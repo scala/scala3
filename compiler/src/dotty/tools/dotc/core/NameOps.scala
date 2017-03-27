@@ -49,26 +49,6 @@ object NameOps {
     }
   }
 
-  class PrefixNameExtractor(pre: TermName, bldr: NameExtractors.PrefixNameExtractor) {
-    def apply(name: TermName): TermName =
-      if (Config.semanticNames) bldr(name) else pre ++ name
-
-    def unapply(name: TermName): Option[TermName] =
-      if (Config.semanticNames)
-        name match {
-          case bldr(original) => Some(original)
-          case _ => None
-        }
-      else tryUnmangle(name)
-
-    def tryUnmangle(name: TermName): Option[TermName] =
-      if (name startsWith pre) Some(name.drop(pre.length).asTermName)
-      else None
-  }
-
-  object SuperAccessorName extends PrefixNameExtractor(nme.SUPER_PREFIX, NameExtractors.SuperAccessorName)
-  object InitializerName extends PrefixNameExtractor(nme.INITIALIZER_PREFIX, NameExtractors.InitializerName)
-
   implicit class NameDecorator[N <: Name](val name: N) extends AnyVal {
     import nme._
 
@@ -82,14 +62,8 @@ object NameOps {
     def isLoopHeaderLabel = (name startsWith WHILE_PREFIX) || (name startsWith DO_WHILE_PREFIX)
     def isProtectedAccessorName = name startsWith PROTECTED_PREFIX
     def isReplWrapperName = name.toSimpleName containsSlice INTERPRETER_IMPORT_WRAPPER
-    def isTraitSetterName =
-      if (Config.semanticNames) name.is(TraitSetterName)
-      else name containsSlice TRAIT_SETTER_SEPARATOR
     def isSetterName = name endsWith SETTER_SUFFIX
     def isSingletonName = name endsWith SINGLETON_SUFFIX
-    def isModuleClassName =
-      if (Config.semanticNames) name.is(ModuleClassName)
-      else name endsWith MODULE_SUFFIX
     def isAvoidClashName = name endsWith AVOID_CLASH_SUFFIX
     def isImportName = name startsWith IMPORT
     def isFieldName = name endsWith LOCAL_SUFFIX
@@ -137,19 +111,13 @@ object NameOps {
     }
 
     /** Convert this module name to corresponding module class name */
-    def moduleClassName: TypeName =
-      if (Config.semanticNames) name.derived(ModuleClassName).toTypeName
-      else (name ++ tpnme.MODULE_SUFFIX).toTypeName
+    def moduleClassName: TypeName = name.derived(ModuleClassName).toTypeName
 
     /** Convert this module class name to corresponding source module name */
     def sourceModuleName: TermName = stripModuleClassSuffix.toTermName
 
     /** If name ends in module class suffix, drop it */
-    def stripModuleClassSuffix: Name =
-      if (isModuleClassName)
-        if (Config.semanticNames) name.exclude(ModuleClassName)
-        else name dropRight MODULE_SUFFIX.length
-      else name
+    def stripModuleClassSuffix: Name = name.exclude(ModuleClassName)
 
     /** Append a suffix so that this name does not clash with another name in the same scope */
     def avoidClashName: TermName = (name ++ AVOID_CLASH_SUFFIX).toTermName
@@ -165,9 +133,7 @@ object NameOps {
     }.asInstanceOf[N]
 
     /** The superaccessor for method with given name */
-    def superName: TermName =
-      if (Config.semanticNames) SuperAccessorName(name.toTermName)
-      else (nme.SUPER_PREFIX ++ name).toTermName
+    def superName: TermName = SuperAccessorName(name.toTermName)
 
     /** The expanded name of `name` relative to given class `base`.
      */
@@ -179,34 +145,24 @@ object NameOps {
     /** The expanded name of `name` relative to `basename` with given `separator`
      */
     def expandedName(prefix: Name, separator: Name = nme.EXPAND_SEPARATOR): N =
-      likeTyped(
-        if (Config.semanticNames) {
-          def qualify(name: SimpleTermName) =
-            separatorToQualified(separator.toString)(prefix.toTermName, name)
-          name rewrite {
-            case name: SimpleTermName =>
-              qualify(name)
-            case AnyQualifiedName(_, _) =>
-              // Note: an expanded name may itself be expanded. For example, look at javap of scala.App.initCode
-              qualify(name.toSimpleName)
-          }
+      likeTyped {
+        def qualify(name: SimpleTermName) =
+          separatorToQualified(separator.toString)(prefix.toTermName, name)
+        name rewrite {
+          case name: SimpleTermName =>
+            qualify(name)
+          case AnyQualifiedName(_, _) =>
+            // Note: an expanded name may itself be expanded. For example, look at javap of scala.App.initCode
+            qualify(name.toSimpleName)
         }
-        else prefix ++ separator ++ name)
+      }
 
     def expandedName(prefix: Name): N = expandedName(prefix, nme.EXPAND_SEPARATOR)
 
-    /** Revert the expanded name.
-     *  Note: This currently gives incorrect results
-     *  if the normal name contains `nme.EXPAND_SEPARATOR`, i.e. two consecutive '$'
-     *  signs. This can happen for instance if a super accessor is paired with
-     *  an encoded name, e.g. super$$plus$eq. See #765.
-     */
-    def unexpandedName: N =
-      if (Config.semanticNames)
-        likeTyped {
-          name.rewrite { case XpandedName(_, unexp) => unexp }
-        }
-      else unexpandedNameOfMangled
+    /** Revert the expanded name. */
+    def unexpandedName: N = likeTyped {
+      name.rewrite { case XpandedName(_, unexp) => unexp }
+    }
 
     def unexpandedNameOfMangled: N = likeTyped {
       var idx = name.lastIndexOfSlice(nme.EXPAND_SEPARATOR)
@@ -219,13 +175,8 @@ object NameOps {
       if (idx < 0) name else (name drop (idx + nme.EXPAND_SEPARATOR.length))
     }
 
-    def expandedPrefix: N =
-      if (Config.semanticNames)
-        likeTyped {
-          name.rewrite { case XpandedName(prefix, _) => prefix }
-        }
-      else expandedPrefixOfMangled
-
+    def expandedPrefix: N = likeTyped { name.exclude(XpandedName) }
+ 
     def expandedPrefixOfMangled: N = {
       val idx = name.lastIndexOfSlice(nme.EXPAND_SEPARATOR)
       assert(idx >= 0)
@@ -233,11 +184,11 @@ object NameOps {
     }
 
     def unmangleExpandedName: N =
-      if (Config.semanticNames && name.isSimple) {
+      if (name.isSimple) {
         val unmangled = unexpandedNameOfMangled
         if (name eq unmangled) name
         else likeTyped(
-            XpandedName(expandedPrefixOfMangled.toTermName, unmangled.asSimpleName))
+          XpandedName(expandedPrefixOfMangled.toTermName, unmangled.asSimpleName))
       }
       else name
 
@@ -253,7 +204,7 @@ object NameOps {
 
     def freshened(implicit ctx: Context): N =
       likeTyped(
-        if (name.isModuleClassName) name.stripModuleClassSuffix.freshened.moduleClassName
+        if (name.is(ModuleClassName)) name.stripModuleClassSuffix.freshened.moduleClassName
         else likeTyped(ctx.freshName(name ++ NameTransformer.NAME_JOIN_STRING)))
 /*
     /** Name with variance prefix: `+` for covariant, `-` for contravariant */
@@ -283,7 +234,7 @@ object NameOps {
 
 */
     def unmangleClassName: N =
-      if (Config.semanticNames && name.isSimple && name.isTypeName)
+      if (name.isSimple && name.isTypeName)
         if (name.endsWith(MODULE_SUFFIX) && !tpnme.falseModuleClassNames.contains(name.asTypeName))
           likeTyped(name.dropRight(MODULE_SUFFIX.length).moduleClassName)
         else name
@@ -439,18 +390,11 @@ object NameOps {
 
     def fieldName: TermName =
       if (name.isSetterName) {
-        if (name.isTraitSetterName) {
-          if (Config.semanticNames) {
-            val TraitSetterName(_, original) = name
-            original.fieldName
-          }
-          else {
-            // has form <$-separated-trait-name>$_setter_$ `name`_$eq
-            val start = name.indexOfSlice(TRAIT_SETTER_SEPARATOR) + TRAIT_SETTER_SEPARATOR.length
-            val end = name.indexOfSlice(SETTER_SUFFIX)
-            (name.slice(start, end) ++ LOCAL_SUFFIX).asTermName
-          }
-        } else getterName.fieldName
+        if (name.is(TraitSetterName)) {
+           val TraitSetterName(_, original) = name
+          original.fieldName
+        }
+        else getterName.fieldName
       }
       else name.mapLast(n => (n ++ LOCAL_SUFFIX).asSimpleName)
 
@@ -469,19 +413,13 @@ object NameOps {
      *  @note Default getter name suffixes start at 1, so `pos` has to be adjusted by +1
      */
     def defaultGetterName(pos: Int): TermName =
-      if (Config.semanticNames) DefaultGetterName(name, pos)
-      else {
-        val prefix = if (name.isConstructorName) DEFAULT_GETTER_INIT else name
-        prefix ++ DEFAULT_GETTER ++ (pos + 1).toString
-      }
+      DefaultGetterName(name, pos)
 
     /** Nominally, name from name$default$N, CONSTRUCTOR for <init> */
     def defaultGetterToMethod: TermName =
-      if (Config.semanticNames)
-        name rewrite {
-          case DefaultGetterName(methName, _) => methName
-        }
-      else defaultGetterToMethodOfMangled
+      name rewrite {
+        case DefaultGetterName(methName, _) => methName
+      }
 
     def defaultGetterToMethodOfMangled: TermName = {
         val p = name.indexOfSlice(DEFAULT_GETTER)
@@ -494,11 +432,9 @@ object NameOps {
 
     /** If this is a default getter, its index (starting from 0), else -1 */
     def defaultGetterIndex: Int =
-      if (Config.semanticNames)
-        name collect {
-          case DefaultGetterName(_, num) => num
-        } getOrElse -1
-      else defaultGetterIndexOfMangled
+      name collect {
+        case DefaultGetterName(_, num) => num
+      } getOrElse -1
 
     def defaultGetterIndexOfMangled: Int = {
       var i = name.length
@@ -590,7 +526,7 @@ object NameOps {
     def inlineAccessorName = nme.INLINE_ACCESSOR_PREFIX ++ name ++ "$"
 
     def unmangleMethodName: TermName =
-      if (Config.semanticNames && name.isSimple) {
+      if (name.isSimple) {
         val idx = name.defaultGetterIndexOfMangled
         if (idx >= 0) name.defaultGetterToMethodOfMangled.defaultGetterName(idx)
         else name
@@ -598,13 +534,8 @@ object NameOps {
       else name
 
     def unmangleSuperName: TermName =
-      if (Config.semanticNames && name.isSimple)
-        SuperAccessorName.tryUnmangle(name.lastPart) match {
-          case scala.Some(original) =>
-            SuperAccessorName(name.mapLast(_ => original.asSimpleName))
-          case None =>
-            name
-        }
+      if (name.isSimple && name.startsWith(str.SUPER_PREFIX))
+        SuperAccessorName(name.drop(str.SUPER_PREFIX.length).asTermName)
       else name
   }
 

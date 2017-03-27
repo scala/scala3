@@ -49,43 +49,36 @@ class NameBuffer extends TastyBuffer(10000) {
   def writeNameRef(ref: NameRef): Unit = writeNat(ref.index)
   def writeNameRef(name: Name): Unit = writeNameRef(nameRefs(name.toTermName))
 
-  def pickleNameContents(name: Name): Unit = name.toTermName match {
-    case name: SimpleTermName =>
-      val bytes =
-        if (name.length == 0) new Array[Byte](0)
-        else Codec.toUTF8(chrs, name.start, name.length)
-      writeByte(UTF8)
-      writeNat(bytes.length)
-      writeBytes(bytes, bytes.length)
-    case QualifiedName(qualified, selector) =>
-      writeByte(QUALIFIED)
-      withLength { writeNameRef(qualified); writeNameRef(selector) }
-    case FlattenedName(qualified, selector) =>
-      writeByte(FLATTENED)
-      withLength { writeNameRef(qualified); writeNameRef(selector) }
-    case XpandedName(prefix, original) =>
-      writeByte(EXPANDED)
-      withLength { writeNameRef(prefix); writeNameRef(original) }
-    case SignedName(original, Signature(params, result)) =>
-      writeByte(SIGNED)
-      withLength(
+  def pickleNameContents(name: Name): Unit = {
+    writeByte(name.toTermName.info.tag)
+    name.toTermName match {
+      case name: SimpleTermName =>
+        val bytes =
+          if (name.length == 0) new Array[Byte](0)
+          else Codec.toUTF8(chrs, name.start, name.length)
+        writeNat(bytes.length)
+        writeBytes(bytes, bytes.length)
+      case QualifiedName(qualified, selector) =>
+        withLength { writeNameRef(qualified); writeNameRef(selector) }
+      case FlattenedName(qualified, selector) =>
+        withLength { writeNameRef(qualified); writeNameRef(selector) }
+      case XpandedName(prefix, original) =>
+        withLength { writeNameRef(prefix); writeNameRef(original) }
+      case SignedName(original, Signature(params, result)) =>
+        withLength(
           { writeNameRef(original); writeNameRef(result); params.foreach(writeNameRef) },
           if ((params.length + 2) * maxIndexWidth <= maxNumInByte) 1 else 2)
-    case ModuleClassName(module) =>
-      writeByte(OBJECTCLASS)
-      withLength { writeNameRef(module) }
-    case SuperAccessorName(accessed) =>
-      writeByte(SUPERACCESSOR)
-      withLength { writeNameRef(accessed) }
-    case DefaultGetterName(method, paramNumber) =>
-      writeByte(DEFAULTGETTER)
-      withLength { writeNameRef(method); writeNat(paramNumber) }
-    case ShadowedName(original) =>
-      writeByte(SHADOWED)
-      withLength { writeNameRef(original) }
-    case VariantName(original, sign) =>
-      writeByte(VARIANT)
-      withLength { writeNameRef(original); writeNat(sign + 1) }
+      case ModuleClassName(module) =>
+        withLength { writeNameRef(module) }
+      case SuperAccessorName(accessed) =>
+        withLength { writeNameRef(accessed) }
+      case DefaultGetterName(method, paramNumber) =>
+        withLength { writeNameRef(method); writeNat(paramNumber) }
+      case ShadowedName(original) =>
+        withLength { writeNameRef(original) }
+      case VariantName(original, sign) =>
+        withLength { writeNameRef(original); writeNat(sign + 1) }
+    }
   }
 
   override def assemble(): Unit = {

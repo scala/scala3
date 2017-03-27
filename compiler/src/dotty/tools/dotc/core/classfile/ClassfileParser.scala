@@ -5,6 +5,7 @@ package classfile
 
 import Contexts._, Symbols._, Types._, Names._, StdNames._, NameOps._, Scopes._, Decorators._
 import SymDenotations._, unpickleScala2.Scala2Unpickler._, Constants._, Annotations._, util.Positions._
+import NameExtractors.ModuleClassName
 import ast.tpd._
 import java.io.{ File, IOException }
 import java.lang.Integer.toHexString
@@ -950,7 +951,7 @@ class ClassfileParser(
         val start = starts(index)
         if (in.buf(start).toInt != CONSTANT_CLASS) errorBadTag(start)
         val name = getExternalName(in.getChar(start + 1))
-        if (name.isModuleClassName && (name ne nme.nothingRuntimeClass) && (name ne nme.nullRuntimeClass))
+        if (name.is(ModuleClassName) && (name ne nme.nothingRuntimeClass) && (name ne nme.nullRuntimeClass))
           // Null$ and Nothing$ ARE classes
           c = ctx.requiredModule(name.sourceModuleName)
         else c = classNameToSymbol(name)

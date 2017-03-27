@@ -406,7 +406,7 @@ object SymDenotations {
         }
         var prefix = encl.fullNameSeparated(separator)
         val fn =
-          if (Config.semanticNames && separatorToQualified.contains(sep)) {
+          if (separatorToQualified.contains(sep)) {
             if (sep == "$")
               // duplicate scalac's behavior: don't write a double '$$' for module class members.
               prefix = prefix.exclude(ModuleClassName)
@@ -1233,7 +1233,7 @@ object SymDenotations {
     // ----- denotation fields and accessors ------------------------------
 
     if (initFlags is (Module, butNot = Package))
-      assert(name.isModuleClassName, s"module naming inconsistency: ${name.debugString}")
+      assert(name.is(ModuleClassName), s"module naming inconsistency: ${name.debugString}")
 
     /** The symbol asserted to have type ClassSymbol */
     def classSymbol: ClassSymbol = symbol.asInstanceOf[ClassSymbol]

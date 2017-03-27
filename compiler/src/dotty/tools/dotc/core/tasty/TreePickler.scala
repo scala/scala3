@@ -56,16 +56,6 @@ class TreePickler(pickler: TastyPickler) {
   private def pickleNameAndSig(name: Name, sig: Signature) =
     pickleName(SignedName(name.toTermName, sig))
 
-  private def pickleName(sym: Symbol)(implicit ctx: Context): Unit = {
-    val nameRef =
-      if (Config.semanticNames) {
-        if (sym is Flags.ExpandedName) assert(sym.name.is(XpandedName))
-        nameIndex(sym.name)
-      }
-      else ???
-    writeNat(nameRef.index)
-  }
-
   private def pickleSymRef(sym: Symbol)(implicit ctx: Context) = symRefs.get(sym) match {
     case Some(label) =>
       if (label != NoAddr) writeRef(label) else pickleForwardSymRef(sym)
@@ -303,7 +293,7 @@ class TreePickler(pickler: TastyPickler) {
     registerDef(sym)
     writeByte(tag)
     withLength {
-      pickleName(sym)
+      pickleName(sym.name)
       pickleParams
       tpt match {
         case templ: Template => pickleTree(tpt)

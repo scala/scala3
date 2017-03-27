@@ -5,6 +5,7 @@ import Names._
 import NameOps._
 import StdNames._
 import util.DotClass
+import tasty.TastyFormat._
 
 object NameExtractors {
 
@@ -15,7 +16,7 @@ object NameExtractors {
   }
 
   val simpleTermNameInfo = new NameInfo {
-    def tag = 0
+    def tag = UTF8
     def mkString(underlying: TermName): String = unsupported("mkString")
   }
 
@@ -94,19 +95,19 @@ object NameExtractors {
     }
   }
 
-  object QualifiedName   extends QualifiedNameExtractor(1, ".", "Qualified")
-  object FlattenedName   extends QualifiedNameExtractor(2, "$", "Flattened")
-  object XpandedName    extends QualifiedNameExtractor(3, str.EXPAND_SEPARATOR, "Expanded")
-  object TraitSetterName extends QualifiedNameExtractor(4, str.TRAIT_SETTER_SEPARATOR, "TraitSetter")
+  object QualifiedName   extends QualifiedNameExtractor(QUALIFIED, ".", "Qualified")
+  object FlattenedName   extends QualifiedNameExtractor(FLATTENED, "$", "Flattened")
+  object XpandedName    extends QualifiedNameExtractor(EXPANDED, str.EXPAND_SEPARATOR, "Expanded")
+  object TraitSetterName extends QualifiedNameExtractor(TRAITSETTER, str.TRAIT_SETTER_SEPARATOR, "TraitSetter")
 
-  object DefaultGetterName extends NumberedNameExtractor(5, "DefaultGetter") {
+  object DefaultGetterName extends NumberedNameExtractor(DEFAULTGETTER, "DefaultGetter") {
     def mkString(underlying: TermName, info: ThisInfo) = {
       val prefix = if (underlying.isConstructorName) nme.DEFAULT_GETTER_INIT else underlying
       prefix.toString + nme.DEFAULT_GETTER + (info.num + 1)
     }
   }
 
-  object VariantName extends NumberedNameExtractor(6, "Variant") {
+  object VariantName extends NumberedNameExtractor(VARIANT, "Variant") {
     val varianceToPrefix = Map(-1 -> '-', 0 -> '=', 1 -> '+')
     val prefixToVariance = Map('-' -> -1, '=' -> 0, '+' -> 1)
     def mkString(underlying: TermName, info: ThisInfo) = {
@@ -114,10 +115,10 @@ object NameExtractors {
     }
   }
 
-  val SuperAccessorName = new PrefixNameExtractor(7, str.SUPER_PREFIX, "SuperAccessor")
-  val InitializerName = new PrefixNameExtractor(8, str.INITIALIZER_PREFIX, "Initializer")
-  val ShadowedName = new PrefixNameExtractor(9, str.SHADOWED_PREFIX, "Shadowed")
-  val ModuleClassName = new SuffixNameExtractor(10, "$", "ModuleClass")
+  val SuperAccessorName = new PrefixNameExtractor(SUPERACCESSOR, str.SUPER_PREFIX, "SuperAccessor")
+  val InitializerName = new PrefixNameExtractor(INITIALIZER, str.INITIALIZER_PREFIX, "Initializer")
+  val ShadowedName = new PrefixNameExtractor(SHADOWED, str.SHADOWED_PREFIX, "Shadowed")
+  val ModuleClassName = new SuffixNameExtractor(OBJECTCLASS, "$", "ModuleClass")
 
   object SignedName extends NameExtractor(63) {
 

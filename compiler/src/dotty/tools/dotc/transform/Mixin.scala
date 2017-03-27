@@ -13,6 +13,7 @@ import Decorators._
 import DenotTransformers._
 import StdNames._
 import NameOps._
+import NameExtractors._
 import Phases._
 import ast.untpd
 import ast.Trees._
