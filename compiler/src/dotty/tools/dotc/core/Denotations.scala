@@ -6,6 +6,7 @@ import SymDenotations.{ SymDenotation, ClassDenotation, NoDenotation }
 import Contexts.{Context, ContextBase}
 import Names._
 import NameOps._
+import NameExtractors._
 import StdNames._
 import Symbols.NoSymbol
 import Symbols._
@@ -1185,19 +1186,19 @@ object Denotations {
         }
         else owner
       }
-      def recur(path: Name, wrap: Name => Name = identity): Denotation = path match {
+      def recur(path: Name, wrap: TermName => Name = identity): Denotation = path match {
         case path: TypeName =>
-          recur(path.toTermName, n => wrap(n.toTypeName))
-        case DerivedTermName(prefix, NameInfo.ModuleClass) =>
-          recur(prefix, n => wrap(n.derived(NameInfo.ModuleClass)))
-        case DerivedTermName(prefix, NameInfo.Select(selector)) =>
+          recur(path.toTermName, n => n.toTypeName)
+        case ModuleClassName(underlying) =>
+          recur(underlying, n => wrap(ModuleClassName(n)))
+        case QualifiedName(prefix, selector) =>
           select(recur(prefix), wrap(selector))
-        case DerivedTermName(prefix, qual: NameInfo.Qualified) =>
-          recur(prefix, n => wrap(n ++ qual.separator ++ qual.name))
+        case AnyQualifiedName(prefix, info) =>
+          recur(prefix, n => wrap(info.mkString(n).toTermName))
         case path: SimpleTermName =>
-          def recurSimple(len: Int, wrap: Name => Name): Denotation = {
+          def recurSimple(len: Int, wrap: TermName => Name): Denotation = {
             val point = path.lastIndexOf('.', len - 1)
-            val selector = wrap(path.slice(point + 1, len))
+            val selector = wrap(path.slice(point + 1, len).asTermName)
             val prefix =
               if (point > 0) recurSimple(point, identity)
               else if (selector.isTermName) defn.RootClass.denot

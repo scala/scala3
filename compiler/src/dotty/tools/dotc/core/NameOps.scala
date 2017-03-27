@@ -4,7 +4,7 @@ package core
 import java.security.MessageDigest
 import scala.annotation.switch
 import scala.io.Codec
-import Names._, StdNames._, Contexts._, Symbols._, Flags._
+import Names._, StdNames._, Contexts._, Symbols._, Flags._, NameExtractors._
 import Decorators.PreNamedString
 import util.{Chars, NameTransformer}
 import Chars.isOperatorPart
@@ -49,14 +49,14 @@ object NameOps {
     }
   }
 
-  class PrefixNameExtractor(pre: TermName, info: NameInfo) {
+  class PrefixNameExtractor(pre: TermName, bldr: NameExtractors.PrefixNameExtractor) {
     def apply(name: TermName): TermName =
-      if (Config.semanticNames) name.derived(info) else pre ++ name
+      if (Config.semanticNames) bldr(name) else pre ++ name
 
     def unapply(name: TermName): Option[TermName] =
       if (Config.semanticNames)
         name match {
-          case DerivedTermName(original, `info`) => Some(original)
+          case bldr(original) => Some(original)
           case _ => None
         }
       else tryUnmangle(name)
@@ -66,8 +66,8 @@ object NameOps {
       else None
   }
 
-  object SuperAccessorName extends PrefixNameExtractor(nme.SUPER_PREFIX, NameInfo.SuperAccessor)
-  object InitializerName extends PrefixNameExtractor(nme.INITIALIZER_PREFIX, NameInfo.Initializer)
+  object SuperAccessorName extends PrefixNameExtractor(nme.SUPER_PREFIX, NameExtractors.SuperAccessorName)
+  object InitializerName extends PrefixNameExtractor(nme.INITIALIZER_PREFIX, NameExtractors.InitializerName)
 
   implicit class NameDecorator[N <: Name](val name: N) extends AnyVal {
     import nme._
@@ -83,12 +83,12 @@ object NameOps {
     def isProtectedAccessorName = name startsWith PROTECTED_PREFIX
     def isReplWrapperName = name.toSimpleName containsSlice INTERPRETER_IMPORT_WRAPPER
     def isTraitSetterName =
-      if (Config.semanticNames) name.is(NameInfo.TraitSetterKind)
+      if (Config.semanticNames) name.is(TraitSetterName)
       else name containsSlice TRAIT_SETTER_SEPARATOR
     def isSetterName = name endsWith SETTER_SUFFIX
     def isSingletonName = name endsWith SINGLETON_SUFFIX
     def isModuleClassName =
-      if (Config.semanticNames) name.is(NameInfo.ModuleClass.kind)
+      if (Config.semanticNames) name.is(ModuleClassName)
       else name endsWith MODULE_SUFFIX
     def isAvoidClashName = name endsWith AVOID_CLASH_SUFFIX
     def isImportName = name startsWith IMPORT
@@ -138,7 +138,7 @@ object NameOps {
 
     /** Convert this module name to corresponding module class name */
     def moduleClassName: TypeName =
-      if (Config.semanticNames) name.derived(NameInfo.ModuleClass).toTypeName
+      if (Config.semanticNames) name.derived(ModuleClassName).toTypeName
       else (name ++ tpnme.MODULE_SUFFIX).toTypeName
 
     /** Convert this module class name to corresponding source module name */
@@ -147,7 +147,7 @@ object NameOps {
     /** If name ends in module class suffix, drop it */
     def stripModuleClassSuffix: Name =
       if (isModuleClassName)
-        if (Config.semanticNames) name.exclude(NameInfo.ModuleClass.kind)
+        if (Config.semanticNames) name.exclude(ModuleClassName)
         else name dropRight MODULE_SUFFIX.length
       else name
 
@@ -166,7 +166,7 @@ object NameOps {
 
     /** The superaccessor for method with given name */
     def superName: TermName =
-      if (Config.semanticNames) name.derived(NameInfo.SuperAccessor).toTermName
+      if (Config.semanticNames) SuperAccessorName(name.toTermName)
       else (nme.SUPER_PREFIX ++ name).toTermName
 
     /** The expanded name of `name` relative to given class `base`.
@@ -182,11 +182,11 @@ object NameOps {
       likeTyped(
         if (Config.semanticNames) {
           def qualify(name: SimpleTermName) =
-            prefix.derived(NameInfo.qualifier(separator.toString)(name))
+            separatorToQualified(separator.toString)(prefix.toTermName, name)
           name rewrite {
             case name: SimpleTermName =>
               qualify(name)
-            case DerivedTermName(_, _: NameInfo.Qualified) =>
+            case AnyQualifiedName(_, _) =>
               // Note: an expanded name may itself be expanded. For example, look at javap of scala.App.initCode
               qualify(name.toSimpleName)
           }
@@ -204,7 +204,7 @@ object NameOps {
     def unexpandedName: N =
       if (Config.semanticNames)
         likeTyped {
-          name.rewrite { case DerivedTermName(_, NameInfo.Expand(unexp)) => unexp }
+          name.rewrite { case XpandedName(_, unexp) => unexp }
         }
       else unexpandedNameOfMangled
 
@@ -222,7 +222,7 @@ object NameOps {
     def expandedPrefix: N =
       if (Config.semanticNames)
         likeTyped {
-          name.rewrite { case DerivedTermName(prefix, NameInfo.Expand(_)) => prefix }
+          name.rewrite { case XpandedName(prefix, _) => prefix }
         }
       else expandedPrefixOfMangled
 
@@ -236,7 +236,8 @@ object NameOps {
       if (Config.semanticNames && name.isSimple) {
         val unmangled = unexpandedNameOfMangled
         if (name eq unmangled) name
-        else likeTyped(expandedPrefixOfMangled.derived(NameInfo.Expand(unmangled.asSimpleName)))
+        else likeTyped(
+            XpandedName(expandedPrefixOfMangled.toTermName, unmangled.asSimpleName))
       }
       else name
 
@@ -440,7 +441,7 @@ object NameOps {
       if (name.isSetterName) {
         if (name.isTraitSetterName) {
           if (Config.semanticNames) {
-            val DerivedTermName(_, NameInfo.TraitSetter(original)) = name
+            val TraitSetterName(_, original) = name
             original.fieldName
           }
           else {
@@ -468,7 +469,7 @@ object NameOps {
      *  @note Default getter name suffixes start at 1, so `pos` has to be adjusted by +1
      */
     def defaultGetterName(pos: Int): TermName =
-      if (Config.semanticNames) name.derived(NameInfo.DefaultGetter(pos))
+      if (Config.semanticNames) DefaultGetterName(name, pos)
       else {
         val prefix = if (name.isConstructorName) DEFAULT_GETTER_INIT else name
         prefix ++ DEFAULT_GETTER ++ (pos + 1).toString
@@ -478,7 +479,7 @@ object NameOps {
     def defaultGetterToMethod: TermName =
       if (Config.semanticNames)
         name rewrite {
-          case DerivedTermName(methName, NameInfo.DefaultGetter(_)) => methName
+          case DefaultGetterName(methName, _) => methName
         }
       else defaultGetterToMethodOfMangled
 
@@ -495,7 +496,7 @@ object NameOps {
     def defaultGetterIndex: Int =
       if (Config.semanticNames)
         name collect {
-          case DerivedTermName(methName, NameInfo.DefaultGetter(num)) => num
+          case DefaultGetterName(_, num) => num
         } getOrElse -1
       else defaultGetterIndexOfMangled
 
@@ -600,7 +601,7 @@ object NameOps {
       if (Config.semanticNames && name.isSimple)
         SuperAccessorName.tryUnmangle(name.lastPart) match {
           case scala.Some(original) =>
-            name.mapLast(_ => original.asSimpleName).derived(NameInfo.SuperAccessor)
+            SuperAccessorName(name.mapLast(_ => original.asSimpleName))
           case None =>
             name
         }

@@ -4,8 +4,10 @@ package core
 package tasty
 
 import collection.mutable
-import Names.{Name, chrs, DerivedTermName, SimpleTermName}
-import Decorators._, NameOps._
+import Names.{Name, chrs, SimpleTermName}
+import NameOps.NameDecorator
+import NameExtractors._
+import Decorators._
 import TastyBuffer._
 import scala.io.Codec
 import TastyName._
@@ -27,20 +29,19 @@ class NameBuffer extends TastyBuffer(10000) {
 
   def nameIndex(name: Name, toTasty: SimpleTermName => TastyName): NameRef = {
     val tname = name.toTermName match {
-      case DerivedTermName(name1, NameInfo.ModuleClass) =>
+      case ModuleClassName(name1) =>
         ModuleClass(nameIndex(name1, toTasty))
-      case DerivedTermName(name1, NameInfo.SuperAccessor) =>
+      case SuperAccessorName(name1) =>
         SuperAccessor(nameIndex(name1, toTasty))
-      case DerivedTermName(prefix, qual: NameInfo.Qualified) =>
-        val tcon: (NameRef, NameRef) => TastyName = qual match {
-          case _: NameInfo.Select => Qualified
-          case _: NameInfo.Flatten => Flattened
-          case _: NameInfo.Expand => Expanded
-        }
-        tcon(nameIndex(prefix, toTasty), nameIndex(qual.name))
-      case DerivedTermName(prefix, NameInfo.DefaultGetter(num)) =>
+      case QualifiedName(prefix, selector) =>
+        Qualified(nameIndex(prefix, toTasty), nameIndex(selector))
+      case FlattenedName(prefix, selector) =>
+        Flattened(nameIndex(prefix, toTasty), nameIndex(selector))
+      case XpandedName(prefix, selector) =>
+        Expanded(nameIndex(prefix, toTasty), nameIndex(selector))
+      case DefaultGetterName(prefix, num) =>
         DefaultGetter(nameIndex(prefix, toTasty), num)
-      case DerivedTermName(prefix, NameInfo.Variant(sign)) =>
+      case VariantName(prefix, sign) =>
         Variant(nameIndex(prefix, toTasty), sign)
       case name1 =>
         if (name1.isShadowedName) Shadowed(nameIndex(name1.revertShadowed, toTasty))

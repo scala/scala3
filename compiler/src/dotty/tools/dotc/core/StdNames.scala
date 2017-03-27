@@ -18,6 +18,8 @@ object StdNames {
   object str {
     val EXPAND_SEPARATOR         = "$$"
     val TRAIT_SETTER_SEPARATOR   = "$_setter_$"
+    val SUPER_PREFIX             = "super$"
+    val INITIALIZER_PREFIX       = "initial$"
   }
 
   abstract class DefinedNames[N <: Name] {

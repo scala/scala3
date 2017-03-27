@@ -19,6 +19,7 @@ import java.util.HashMap
 //import annotation.volatile
 
 object Names {
+  import NameExtractors._
 
   /** A common class for things that can be turned into names.
    *  Instances are both names and strings, the latter via a decorator.
@@ -74,8 +75,9 @@ object Names {
     def likeKinded(name: Name): ThisName
 
     def derived(info: NameInfo): ThisName
-    def exclude(kind: NameInfo.Kind): ThisName
-    def is(kind: NameInfo.Kind): Boolean
+    def derived(kind: ClassifiedNameExtractor): ThisName = derived(kind.info)
+    def exclude(kind: NameExtractor): ThisName
+    def is(kind: NameExtractor): Boolean
     def debugString: String
 
     def toText(printer: Printer): Text = printer.toText(this)
@@ -128,7 +130,7 @@ object Names {
 
     def likeKinded(name: Name): TermName = name.toTermName
 
-    def info = NameInfo.TermName
+    def info: NameInfo = simpleTermNameInfo
     def underlying: TermName = unsupported("underlying")
 
     @sharable private var derivedNames: AnyRef /* SimpleMap | j.u.HashMap */ =
@@ -169,26 +171,26 @@ object Names {
      *  name as underlying name.
      */
     def derived(info: NameInfo): TermName = {
-      val ownKind = this.info.kind
-      if (ownKind < info.kind || NameInfo.definesNewName(info.kind)) add(info)
-      else if (ownKind > info.kind) underlying.derived(info).add(this.info)
+      val ownTag = this.info.tag
+      if (ownTag < info.tag || definesNewName(info.tag)) add(info)
+      else if (ownTag > info.tag) underlying.derived(info).add(this.info)
       else {
         assert(info == this.info)
         this
       }
     }
 
-    def exclude(kind: NameInfo.Kind): TermName = {
-      val ownKind = this.info.kind
-      if (ownKind < kind || NameInfo.definesNewName(ownKind)) this
-      else if (ownKind > kind) underlying.exclude(kind).add(this.info)
+    def exclude(kind: NameExtractor): TermName = {
+      val ownTag = this.info.tag
+      if (ownTag < kind.tag || definesNewName(ownTag)) this
+      else if (ownTag > kind.tag) underlying.exclude(kind).add(this.info)
       else underlying
     }
 
-    def is(kind: NameInfo.Kind): Boolean = {
-      val ownKind = info.kind
-      ownKind == kind ||
-      !NameInfo.definesNewName(ownKind) && ownKind > kind && underlying.is(kind)
+    def is(kind: NameExtractor): Boolean = {
+      val ownTag = this.info.tag
+      ownTag == kind.tag ||
+      !definesNewName(ownTag) && ownTag > kind.tag && underlying.is(kind)
     }
 
     override def hashCode = System.identityHashCode(this)
@@ -199,6 +201,9 @@ object Names {
     // `next` is @sharable because it is only modified in the synchronized block of termName.
 
     def apply(n: Int) = chrs(start + n)
+
+    //override def derived(info: NameInfo): TermName = add(info)
+    //override def is(kind: NameExtractor) = false
 
     private def contains(ch: Char): Boolean = {
       var i = 0
@@ -289,8 +294,8 @@ object Names {
     def likeKinded(name: Name): TypeName = name.toTypeName
 
     def derived(info: NameInfo): TypeName = toTermName.derived(info).toTypeName
-    def exclude(kind: NameInfo.Kind): TypeName = toTermName.exclude(kind).toTypeName
-    def is(kind: NameInfo.Kind) = toTermName.is(kind)
+    def exclude(kind: NameExtractor): TypeName = toTermName.exclude(kind).toTypeName
+    def is(kind: NameExtractor) = toTermName.is(kind)
 
     override def toString = toTermName.toString
     override def debugString = toTermName.debugString + "/T"
@@ -306,7 +311,7 @@ object Names {
     def decode: Name = underlying.decode.derived(info.map(_.decode))
     def firstPart = underlying.firstPart
     def lastPart = info match {
-      case qual: NameInfo.Qualified => qual.name
+      case qual: QualifiedInfo => qual.name
       case _ => underlying.lastPart
     }
     override def toString = info.mkString(underlying)
@@ -319,26 +324,26 @@ object Names {
     def rewrite(f: PartialFunction[Name, Name]): ThisName =
       if (f.isDefinedAt(this)) likeKinded(f(this))
       else info match {
-        case qual: NameInfo.Qualified => this
+        case qual: QualifiedInfo => this
         case _ => underlying.rewrite(f).derived(info)
       }
 
     def collect[T](f: PartialFunction[Name, T]): Option[T] =
       if (f.isDefinedAt(this)) Some(f(this))
       else info match {
-        case qual: NameInfo.Qualified => None
+        case qual: QualifiedInfo => None
         case _ => underlying.collect(f)
       }
 
     def mapLast(f: SimpleTermName => SimpleTermName): ThisName =
       info match {
-        case qual: NameInfo.Qualified => underlying.derived(qual.map(f))
+        case qual: QualifiedInfo => underlying.derived(qual.map(f))
         case _ => underlying.mapLast(f).derived(info)
       }
 
     def mapParts(f: SimpleTermName => SimpleTermName): ThisName =
       info match {
-        case qual: NameInfo.Qualified => underlying.mapParts(f).derived(qual.map(f))
+        case qual: QualifiedInfo => underlying.mapParts(f).derived(qual.map(f))
         case _ => underlying.mapParts(f).derived(info)
       }
   }
@@ -506,17 +511,16 @@ object Names {
 
   implicit val NameOrdering: Ordering[Name] = new Ordering[Name] {
     private def compareInfos(x: NameInfo, y: NameInfo): Int =
-      if (x.kind != y.kind) x.kind - y.kind
+      if (x.tag != y.tag) x.tag - y.tag
       else x match {
-        case x: NameInfo.Qualified =>
+        case x: QualifiedInfo =>
           y match {
-            case y: NameInfo.Qualified =>
-              val s = x.separator.compareTo(y.separator)
-              if (s == 0) compareSimpleNames(x.name, y.name) else s
+            case y: QualifiedInfo =>
+              compareSimpleNames(x.name, y.name)
           }
-        case x: NameInfo.Numbered =>
+        case x: NumberedInfo =>
           y match {
-            case y: NameInfo.Numbered =>
+            case y: NumberedInfo =>
               x.num - y.num
           }
         case _ =>

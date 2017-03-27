@@ -9,7 +9,7 @@ import TastyFormat._
 import Contexts._, Symbols._, Types._, Names._, Constants._, Decorators._, Annotations._, StdNames.tpnme, NameOps._
 import collection.mutable
 import typer.Inliner
-import NameOps._
+import NameOps._, NameExtractors._
 import StdNames.nme
 import TastyBuffer._
 import TypeApplications._
@@ -62,13 +62,13 @@ class TreePickler(pickler: TastyPickler) {
   private def pickleName(sym: Symbol)(implicit ctx: Context): Unit = {
     val nameRef =
       if (Config.semanticNames) {
-        if (sym is Flags.ExpandedName) assert(sym.name.is(NameInfo.ExpandKind))
+        if (sym is Flags.ExpandedName) assert(sym.name.is(XpandedName))
         nameIndex(sym.name)
       }
       else {
         def encodeSuper(name: Name): TastyName.NameRef =
           if (sym is Flags.SuperAccessor) {
-            val SuperAccessorName(n) = name
+            val NameOps.SuperAccessorName(n) = name
             nameIndex(TastyName.SuperAccessor(nameIndex(n)))
           } else nameIndex(name)
         if (sym is Flags.ExpandedName)

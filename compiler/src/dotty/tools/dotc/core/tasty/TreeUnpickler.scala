@@ -5,6 +5,7 @@ package tasty
 
 import Contexts._, Symbols._, Types._, Scopes._, SymDenotations._, Names._, NameOps._
 import StdNames._, Denotations._, Flags._, Constants._, Annotations._
+import NameExtractors._
 import util.Positions._
 import ast.{tpd, Trees, untpd}
 import Trees._
@@ -91,11 +92,11 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table, posUnpickle
     case ModuleClass(original) => toTermName(original).moduleClassName.toTermName
     case SuperAccessor(accessed) => toTermName(accessed).superName
     case DefaultGetter(meth, num) => toTermName(meth).defaultGetterName(num)
-    case Variant(original, sign) => toTermName(original).derived(NameInfo.Variant(sign))
+    case Variant(original, sign) => VariantName(toTermName(original), sign)
   }
 
   private def qualTermName(qual: NameRef, name: NameRef, sep: String) =
-    toTermName(qual).derived(NameInfo.qualifier(sep)(toTermName(name).asSimpleName))
+    separatorToQualified(sep)(toTermName(qual), toTermName(name).asSimpleName)
 
   def toTermName(ref: NameRef): TermName = toTermName(tastyName(ref))
   def toTypeName(ref: NameRef): TypeName = toTermName(ref).toTypeName
