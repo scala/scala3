@@ -36,3 +36,7 @@ matrix:
   TEST:
     - ;test;dotty-bin-tests/test
     - ;publishLocal;dotty-bootstrapped/test
+    - partest-only-no-bootstrap --show-diff --verbose
+    - partest-only --show-diff --verbose
+    - ;set testOptions in LocalProject("dotty-compiler") := Seq() ;dotty-compiler/testOnly dotty.tools.dotc.CompilationTests
+    - ;publishLocal ;set testOptions in LocalProject("dotty-compiler-bootstrapped") := Seq() ;dotty-bootstrapped/testOnly dotty.tools.dotc.CompilationTests
