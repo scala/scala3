@@ -55,7 +55,7 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
     }
     val targs = (0 until targsSize).map(x => new ErazedType()).toList
     val args = ctx.definitions.ArrayOf(ctx.definitions.StringType) :: Nil
-    val call = new CallInfoWithContext(tpe, targs, args, OuterTargs.empty, None, None)
+    val call = CallInfoWithContext(tpe, targs, args, OuterTargs.empty, None, None)
     entryPoints = entryPoints.updated(call, entryPointId)
     addReachableMethod(call)
     val t = ref(s.owner).tpe
@@ -143,9 +143,9 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
       }
       if (!clas.is(JavaDefined) && clas.is(Module)) {
         val fields = clas.classInfo.decls.filter(x => !x.is(Method) && !x.isType)
-        val parent = Some(new CallInfoWithContext(x.tp.select(clas.primaryConstructor).asInstanceOf[TermRef], x.tp.baseArgInfos(clas), Nil, x.outerTargs, None, None))
+        val parent = Some(CallInfoWithContext(x.tp.select(clas.primaryConstructor).asInstanceOf[TermRef], x.tp.baseArgInfos(clas), Nil, x.outerTargs, None, None))
         fields.foreach { fieldSym =>
-          addReachableMethod(new CallInfoWithContext(x.tp.select(fieldSym).asInstanceOf[TermRef], Nil, Nil, x.outerTargs, parent, None))
+          addReachableMethod(CallInfoWithContext(x.tp.select(fieldSym).asInstanceOf[TermRef], Nil, Nil, x.outerTargs, parent, None))
         }
       }
     }
@@ -374,10 +374,10 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
     def dispatchCalls(receiverType: Type, dispatch: CallInfoWithContext => Unit = addCall): Unit = {
       receiverType match {
         case t: PreciseType =>
-          dispatch(new CallInfoWithContext(preciseSelectCall(t.underlying, calleeSymbol), targs, args, outerTargs, someCaller, someCallee))
+          dispatch(CallInfoWithContext(preciseSelectCall(t.underlying, calleeSymbol), targs, args, outerTargs, someCaller, someCallee))
         case t: ClosureType if calleeSymbol.name eq t.implementedMethod.name =>
           val methodSym = t.meth.meth.symbol.asTerm
-          dispatch(new CallInfoWithContext(TermRef.withFixedSym(t.underlying, methodSym.name,  methodSym), targs, t.meth.env.map(_.tpe) ++ args, outerTargs, someCaller, someCallee))
+          dispatch(CallInfoWithContext(TermRef.withFixedSym(t.underlying, methodSym.name,  methodSym), targs, t.meth.env.map(_.tpe) ++ args, outerTargs, someCaller, someCallee))
         case AndType(tp1, tp2) =>
           val set1 = mutable.Set.empty[CallInfoWithContext]
           val set2 = mutable.Set.empty[CallInfoWithContext]
@@ -406,7 +406,7 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
             alt <- tp.tp.member(calleeSymbol.name).altsWith(p => denotMatch(tp, p))
             if alt.exists
           } {
-            dispatch(new CallInfoWithContext(tp.tp.select(alt.symbol).asInstanceOf[TermRef], targs, args, outerTargs ++ tp.outerTargs, someCaller, someCallee))
+            dispatch(CallInfoWithContext(tp.tp.select(alt.symbol).asInstanceOf[TermRef], targs, args, outerTargs ++ tp.outerTargs, someCaller, someCallee))
           }
 
           if (mode >= AnalyseTypes) {
@@ -428,7 +428,7 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
               (uncastedSig.paramTypess.flatten zip castedSig.paramTypess.flatten) foreach (x => addCast(x._2, x._1))
               addCast(uncastedSig.finalResultType, castedSig.finalResultType) // FIXME: this is added even in and tpe that are out of the intersection
 
-              dispatch(new CallInfoWithContext(tp.tp.select(alt.symbol).asInstanceOf[TermRef], targs, args, outerTargs ++ tp.outerTargs, someCaller, someCallee))
+              dispatch(CallInfoWithContext(tp.tp.select(alt.symbol).asInstanceOf[TermRef], targs, args, outerTargs ++ tp.outerTargs, someCaller, someCallee))
             }
           }
       }
@@ -445,7 +445,7 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
       case _ if defn.ObjectMethods.contains(calleeSymbol) || defn.AnyMethods.contains(calleeSymbol) => Nil
       case NoPrefix =>  // inner method
         assert(calleeSymbol.is(ParamAccessor) || calleeSymbol.owner.is(Method) || calleeSymbol.owner.isLocalDummy)
-        addCall(new CallInfoWithContext(TermRef.withFixedSym(caller.call.normalizedPrefix, calleeSymbol.name, calleeSymbol), targs, args, outerTargs, someCaller, someCallee))
+        addCall(CallInfoWithContext(TermRef.withFixedSym(caller.call.normalizedPrefix, calleeSymbol.name, calleeSymbol), targs, args, outerTargs, someCaller, someCallee))
 
       case t if calleeSymbol.isConstructor =>
 
@@ -482,7 +482,7 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
             propagateTargs(receiver).select(calleeSymbol).asInstanceOf[TermRef]
         }
 
-        addCall(new CallInfoWithContext(call, targs, args, outerTargs, someCaller, someCallee))
+        addCall(CallInfoWithContext(call, targs, args, outerTargs, someCaller, someCallee))
 
       // super call in a class (know target precisely)
       case st: SuperType =>
@@ -494,7 +494,7 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
         val thisTpePropagated = propagateTargs(thisTpe)
 
 
-        addCall(new CallInfoWithContext(TermRef.withFixedSym(thisTpePropagated, targetMethod.name, targetMethod), targs, args, outerTargs, someCaller, someCallee))
+        addCall(CallInfoWithContext(TermRef.withFixedSym(thisTpePropagated, targetMethod.name, targetMethod), targs, args, outerTargs, someCaller, someCallee))
 
       // super call in a trait
       case t if calleeSymbol.is(SuperAccessor) =>
@@ -516,7 +516,7 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
             if (s.nonEmpty) {
               val parentMethod = ResolveSuper.rebindSuper(x._2.tp.widenDealias.classSymbol, calleeSymbol).asTerm
               // todo: outerTargs are here defined in terms of location of the subclass. Is this correct?
-              addCall(new CallInfoWithContext(TermRef.withFixedSym(t, parentMethod.name, parentMethod), targs, args, outerTargs, someCaller, someCallee))
+              addCall(CallInfoWithContext(TermRef.withFixedSym(t, parentMethod.name, parentMethod), targs, args, outerTargs, someCaller, someCallee))
 
             }
         }
@@ -534,7 +534,7 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
         if (!currentThis.derivesFrom(thisType.cls))
           dispatchCalls(propagateTargs(receiver.widenDealias))
         else if (calleeSymbol.is(Private))
-          addCall(new CallInfoWithContext(TermRef.withFixedSym(currentThis, calleeSymbol.name, calleeSymbol), targs, args, outerTargs, someCaller, someCallee))
+          addCall(CallInfoWithContext(TermRef.withFixedSym(currentThis, calleeSymbol.name, calleeSymbol), targs, args, outerTargs, someCaller, someCallee))
         else
           dispatchCalls(propagateTargs(AndType.apply(currentThis, thisType.tref)))
 

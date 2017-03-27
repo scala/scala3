@@ -6,14 +6,7 @@ import dotty.tools.dotc.core.Types.{PolyType, TermRef, Type, TypeBounds}
 import dotty.tools.dotc.transform.linker.types.ClosureType
 import dotty.tools.sharable
 
-abstract class AbstractCallInfo(implicit ctx: Context) {
-
-  targs.foreach(targ => assert(!targ.isInstanceOf[TypeBounds], targs))
-
-  call.widenDealias match {
-    case t: PolyType => assert(t.paramNames.size == targs.size, (t.paramNames, targs))
-    case _ =>
-  }
+abstract class AbstractCallInfo {
 
   final val id: Int = AbstractCallInfo.nextId()
 
@@ -26,13 +19,23 @@ abstract class AbstractCallInfo(implicit ctx: Context) {
   /** Type of the arguments at call site */
   val argumentsPassed: List[Type]
 
-  def callSymbol: TermSymbol = call.normalizedPrefix match {
+  def callSymbol(implicit ctx: Context): TermSymbol = call.normalizedPrefix match {
     case t: ClosureType => t.meth.meth.symbol.asTerm
     case _ => call.termSymbol.asTerm
   }
 }
 
 object AbstractCallInfo {
+
+  def assertions(callInfo: AbstractCallInfo)(implicit ctx: Context): Unit = {
+    val targs = callInfo.targs
+    targs.foreach(targ => assert(!targ.isInstanceOf[TypeBounds], targs))
+
+    callInfo.call.widenDealias match {
+      case t: PolyType => assert(t.paramNames.size == targs.size, (t.paramNames, targs))
+      case _ =>
+    }
+  }
 
   @sharable private var lastId = 0
 

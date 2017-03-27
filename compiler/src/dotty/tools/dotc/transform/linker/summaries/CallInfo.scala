@@ -5,8 +5,8 @@ import dotty.tools.dotc.core.Names._
 import dotty.tools.dotc.core.Types._
 
 /* When source is not None this call was generated as part of a call to source */
-class CallInfo(val call: TermRef, val targs: List[Type], val argumentsPassed: List[Type],
-    val source: Option[CallInfo])(implicit ctx: Context) extends AbstractCallInfo {
+class CallInfo private (val call: TermRef, val targs: List[Type], val argumentsPassed: List[Type],
+    val source: Option[CallInfo]) extends AbstractCallInfo {
 
   override def equals(obj: Any): Boolean = obj match {
     case obj: CallInfo =>
@@ -23,8 +23,10 @@ object CallInfo {
   def apply(call: TermRef, targs: List[Type], argumentsPassed: List[Type], source: Option[CallInfo] = None)(implicit ctx: Context): CallInfo = {
     val normalCall = normilezeType(call).asInstanceOf[TermRef]
     val normalTargs = targs.map(x => normilezeType(x))
-    val normalargumentsPassed = argumentsPassed.map(x => normilezeType(x))
-    new CallInfo(normalCall, normalTargs, normalargumentsPassed, source)
+    val normalArgumentsPassed = argumentsPassed.map(x => normilezeType(x))
+    val callInfo = new CallInfo(normalCall, normalTargs, normalArgumentsPassed, source)
+    AbstractCallInfo.assertions(callInfo)
+    callInfo
   }
 
   private def normilezeType(tp: Type)(implicit ctx: Context): Type = new TypeNormilizer().apply(tp)
