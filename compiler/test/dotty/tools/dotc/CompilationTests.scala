@@ -7,12 +7,13 @@ import java.io.{ File => JFile }
 
 import org.junit.experimental.categories.Category
 
-
 @Category(Array(classOf[ParallelTesting]))
 class CompilationTests extends ParallelTesting {
   import CompilationTests._
 
   def interactive: Boolean = !sys.env.contains("DRONE")
+
+  def regex: Option[String] = sys.props.get("dotty.partest.filter")
 
   // Positive tests ------------------------------------------------------------
 

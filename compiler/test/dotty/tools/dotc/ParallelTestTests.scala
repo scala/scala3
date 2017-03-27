@@ -12,6 +12,8 @@ class ParallelTestTests extends ParallelTesting {
 
   def interactive: Boolean = !sys.env.contains("DRONE")
 
+  def regex: Option[String] = None
+
   @Test def missingFile: Unit =
     try {
       compileFile("../tests/partest-test/i-dont-exist.scala", defaultOptions).expectFailure.neg()

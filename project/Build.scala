@@ -47,6 +47,9 @@ object Build {
   // Spawns a repl with the correct classpath
   lazy val repl = inputKey[Unit]("run the REPL with correct classpath")
 
+  // Run tests with filter
+  lazy val filterTest = inputKey[Unit]("runs integration test with the supplied filter")
+
   // Used to compile files similar to ./bin/dotc script
   lazy val dotc =
     inputKey[Unit]("run the compiler using the correct classpath, or the user supplied classpath")
@@ -288,7 +291,6 @@ object Build {
       libraryDependencies += "org.scala-lang.modules" %% "scala-partest" % "1.0.11" % "test",
       testOptions in Test += Tests.Cleanup({ () => partestLockFile.delete }),
       // this option is needed so that partest doesn't run
-      testOptions += Tests.Argument(TestFrameworks.JUnit, "--exclude-categories=dotty.tools.dotc.ParallelTesting"),
       partestDeps := Seq(
         scalaCompiler,
         "org.scala-lang" % "scala-reflect" % scalacVersion,
@@ -335,6 +337,14 @@ object Build {
         val dottyLib = packageAll.value("dotty-library")
         (runMain in Compile).toTask(
           s" dotty.tools.dotc.repl.Main -classpath $dottyLib " + args.mkString(" ")
+        )
+      }.evaluated,
+
+      filterTest := Def.inputTaskDyn {
+        val args: Seq[String] = spaceDelimited("<arg>").parsed
+        testOptions := Seq()
+        (testOnly in Test).toTask(
+          " dotty.tools.dotc.CompilationTests -- -Ddotty.partest.filter=" + args.head
         )
       }.evaluated,
 

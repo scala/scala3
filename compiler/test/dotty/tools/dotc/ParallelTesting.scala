@@ -14,6 +14,7 @@ import scala.io.Source
 import scala.util.control.NonFatal
 import scala.util.Try
 import scala.collection.mutable
+import scala.util.matching.Regex
 
 import core.Contexts._
 import reporting.{ Reporter, TestReporter }
@@ -24,6 +25,10 @@ import dotc.util.DiffUtil
 trait ParallelTesting {
 
   def interactive: Boolean
+
+  def regex: Option[String]
+
+  private lazy val filter: Option[Regex] = regex.map(str => new Regex(str))
 
   private sealed trait Target { self =>
     def outDir: JFile
@@ -121,7 +126,16 @@ trait ParallelTesting {
     /** Actual compilation run logic, the test behaviour is defined here */
     protected def compilationRunnable(target: Target): Runnable
 
-    val totalTargets = targets.length
+    private val allTargets =
+      if (!filter.isDefined) targets
+      else targets.filter {
+        case ConcurrentCompilationTarget(files, _, _) =>
+          files.exists(file => filter.get.findFirstIn(file.getAbsolutePath).isDefined)
+        case SeparateCompilationTarget(dir, _, _) =>
+          filter.get.findFirstIn(dir.getAbsolutePath).isDefined
+      }
+
+    val totalTargets = allTargets.length
 
     private[this] var _errors =  0
     def errors: Int = synchronized { _errors }
@@ -271,31 +285,39 @@ trait ParallelTesting {
 
     private[ParallelTesting] def execute(): this.type = {
       assert(_targetsCompiled == 0, "not allowed to re-use a `CompileRun`")
-      val pool = threadLimit match {
-        case Some(i) => JExecutors.newWorkStealingPool(i)
-        case None => JExecutors.newWorkStealingPool()
-      }
 
-      if (interactive && !suppressAllOutput) pool.submit(statusRunner)
-
-      targets.foreach { target =>
-        pool.submit(compilationRunnable(target))
-      }
-
-      pool.shutdown()
-      if (!pool.awaitTermination(10, TimeUnit.MINUTES))
-        throw new TimeoutException("Compiling targets timed out")
-
-      if (didFail) {
-        echo {
-          """|
-             |================================================================================
-             |Test Report
-             |================================================================================
-             |Failing tests:""".stripMargin
+      if (allTargets.nonEmpty) {
+        val pool = threadLimit match {
+          case Some(i) => JExecutors.newWorkStealingPool(i)
+          case None => JExecutors.newWorkStealingPool()
         }
-        failedCompilationTargets.toArray.sorted.foreach(echo)
-        failureInstructions.iterator.foreach(echo)
+
+        if (interactive && !suppressAllOutput) pool.submit(statusRunner)
+
+        allTargets.foreach { target =>
+          pool.submit(compilationRunnable(target))
+        }
+
+        pool.shutdown()
+        if (!pool.awaitTermination(10, TimeUnit.MINUTES))
+          throw new TimeoutException("Compiling targets timed out")
+
+        if (didFail) {
+          echo {
+            """|
+               |================================================================================
+               |Test Report
+               |================================================================================
+               |Failing tests:""".stripMargin
+          }
+          failedCompilationTargets.toArray.sorted.foreach(echo)
+          failureInstructions.iterator.foreach(echo)
+        }
+      }
+      else echo {
+        regex
+          .map(r => s"""No files matched regex "$r" in test""")
+          .getOrElse("No tests available under target - erroneous test?")
       }
 
       this
