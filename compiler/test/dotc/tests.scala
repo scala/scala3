@@ -248,6 +248,7 @@ class tests extends CompilerTest {
   @Test def link_dce_agressive_all = runFiles(linkDCEDir, linkDCEaggressive)
 
   // Test callgraph DCE on code that use DCEed stdlib
+  @org.junit.Ignore
   @Test def link_dce_stdlib_all(): Unit =
     runFiles(linkDCEWithStdlibDir, linkStdlibMode ::: linkDCE, stdlibFiles = linkDCEStdlibFiles)(noCheckOptions ++ checkOptions ++ classPath)
   @Test def link_dce_aggressive_stdlib_all(): Unit =
