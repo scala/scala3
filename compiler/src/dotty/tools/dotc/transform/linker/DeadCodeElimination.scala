@@ -79,8 +79,11 @@ class DeadCodeElimination extends MiniPhaseTransform {
   }
 
   private def doNotEliminateAggressive(sym: Symbol)(implicit ctx: Context): Boolean = {
-    (sym.allOverriddenSymbols.nonEmpty && sym.allOverriddenSymbols.forall(_.is(Deferred))) ||
-      sym.owner.fullName.toString.contains("Predef") ||
+    sym.owner.fullName.startsWith("scala.Predef") ||
+      defn.ArrayMethods.contains(sym) ||
+      defn.DottyArraysMethods.contains(sym) ||
+      (sym.is(Deferred) && sym.owner.is(Abstract)) ||
+      sym.owner.is(Lazy | Method) ||
       sym.is(Implicit) || sym.is(Synthetic) || sym.owner.is(Trait)
   }
 
