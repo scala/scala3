@@ -138,7 +138,7 @@ object NameOps {
     /** The expanded name of `name` relative to given class `base`.
      */
     def expandedName(base: Symbol, separator: Name)(implicit ctx: Context): N =
-      expandedName(if (base is Flags.ExpandedName) base.name else base.fullNameSeparated("$"), separator)
+      expandedName(if (base.name.is(ExpandedName)) base.name else base.fullNameSeparated("$"), separator)
 
     def expandedName(base: Symbol)(implicit ctx: Context): N = expandedName(base, nme.EXPAND_SEPARATOR)
 
@@ -161,7 +161,7 @@ object NameOps {
 
     /** Revert the expanded name. */
     def unexpandedName: N = likeTyped {
-      name.rewrite { case XpandedName(_, unexp) => unexp }
+      name.rewrite { case ExpandedName(_, unexp) => unexp }
     }
 
     def unexpandedNameOfMangled: N = likeTyped {
@@ -175,8 +175,8 @@ object NameOps {
       if (idx < 0) name else (name drop (idx + nme.EXPAND_SEPARATOR.length))
     }
 
-    def expandedPrefix: N = likeTyped { name.exclude(XpandedName) }
- 
+    def expandedPrefix: N = likeTyped { name.exclude(ExpandedName) }
+
     def expandedPrefixOfMangled: N = {
       val idx = name.lastIndexOfSlice(nme.EXPAND_SEPARATOR)
       assert(idx >= 0)
@@ -188,7 +188,7 @@ object NameOps {
         val unmangled = unexpandedNameOfMangled
         if (name eq unmangled) name
         else likeTyped(
-          XpandedName(expandedPrefixOfMangled.toTermName, unmangled.asSimpleName))
+          ExpandedName(expandedPrefixOfMangled.toTermName, unmangled.asSimpleName))
       }
       else name
 

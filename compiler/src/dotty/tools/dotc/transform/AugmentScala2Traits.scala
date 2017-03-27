@@ -14,6 +14,7 @@ import DenotTransformers._
 import Annotations._
 import StdNames._
 import NameOps._
+import NameExtractors._
 import ast.Trees._
 
 /** This phase augments Scala2 traits with implementation classes and with additional members
@@ -66,7 +67,7 @@ class AugmentScala2Traits extends MiniPhaseTransform with IdentityDenotTransform
         meth.copy(
           owner = implClass,
           name = mold.name.asTermName,
-          flags = Method | JavaStatic | mold.flags & ExpandedName,
+          flags = Method | JavaStatic,
           info = fullyParameterizedType(mold.info, mixin))
       }
 
@@ -75,7 +76,7 @@ class AugmentScala2Traits extends MiniPhaseTransform with IdentityDenotTransform
           name = getter.ensureNotPrivate.name
                   .expandedName(getter.owner, nme.TRAIT_SETTER_SEPARATOR)
                   .asTermName.setterName,
-          flags = Method | Accessor | ExpandedName,
+          flags = Method | Accessor,
           info = MethodType(getter.info.resultType :: Nil, defn.UnitType))
 
       for (sym <- mixin.info.decls) {
@@ -89,7 +90,7 @@ class AugmentScala2Traits extends MiniPhaseTransform with IdentityDenotTransform
           else if (!sym.is(Deferred) && !sym.setter.exists &&
                    !sym.info.resultType.isInstanceOf[ConstantType])
             traitSetter(sym.asTerm).enteredAfter(thisTransform)
-        if ((sym.is(PrivateAccessor, butNot = ExpandedName) &&
+        if ((sym.is(PrivateAccessor) && !sym.name.is(ExpandedName) &&
           (sym.isGetter || sym.isSetter)) // strangely, Scala 2 fields are also methods that have Accessor set.
           || sym.is(SuperAccessor)) // scala2 superaccessors are pickled as private, but are compiled as public expanded
           sym.ensureNotPrivate.installAfter(thisTransform)

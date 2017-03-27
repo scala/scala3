@@ -67,7 +67,7 @@ class Definitions {
     enterTypeField(cls, name, flags | ClassTypeParamCreationFlags, scope)
 
   private def enterSyntheticTypeParam(cls: ClassSymbol, paramFlags: FlagSet, scope: MutableScope, suffix: String = "T0") =
-    enterTypeParam(cls, suffix.toTypeName.expandedName(cls), ExpandedName | paramFlags, scope)
+    enterTypeParam(cls, suffix.toTypeName.expandedName(cls), paramFlags, scope)
 
   // NOTE: Ideally we would write `parentConstrs: => Type*` but SIP-24 is only
   // implemented in Dotty and not in Scala 2.

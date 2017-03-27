@@ -10,6 +10,7 @@ import Decorators._
 import Names._
 import StdNames._
 import NameOps._
+import NameExtractors._
 import Flags._
 import Annotations._
 
@@ -50,6 +51,9 @@ class SymUtils(val self: Symbol) extends AnyVal {
 
   def isAnyOverride(implicit ctx: Context) = self.is(Override) || self.is(AbsOverride)
     // careful: AbsOverride is a term only flag. combining with Override would catch only terms.
+
+  def isAliasPreferred(implicit ctx: Context) =
+    self.is(AliasPreferred) || self.name.is(ExpandedName)
 
   /** If this is a constructor, its owner: otherwise this. */
   final def skipConstructor(implicit ctx: Context): Symbol =

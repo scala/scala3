@@ -62,7 +62,7 @@ class NameBuffer extends TastyBuffer(10000) {
         withLength { writeNameRef(qualified); writeNameRef(selector) }
       case FlattenedName(qualified, selector) =>
         withLength { writeNameRef(qualified); writeNameRef(selector) }
-      case XpandedName(prefix, original) =>
+      case ExpandedName(prefix, original) =>
         withLength { writeNameRef(prefix); writeNameRef(original) }
       case SignedName(original, Signature(params, result)) =>
         withLength(

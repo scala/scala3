@@ -421,7 +421,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
   val Flag_METHOD: Flags = Flags.Method.bits
   val ExcludedForwarderFlags: Flags = {
       Flags.Specialized | Flags.Lifted | Flags.Protected | Flags.JavaStatic |
-     Flags.ExpandedName | Flags.Bridge | Flags.VBridge | Flags.Private | Flags.Macro
+      Flags.Bridge | Flags.VBridge | Flags.Private | Flags.Macro
   }.bits
 
 

@@ -428,7 +428,6 @@ class TreeUnpickler(reader: TastyReader, nameAtRef: NameRef => TermName, posUnpi
       if (!rhsIsEmpty) skipTree()
       val (givenFlags, annots, privateWithin) = readModifiers(end)
       val nameFlags =
-        (if (name.is(XpandedName)) ExpandedName else EmptyFlags) |
         (if (name.is(NameExtractors.SuperAccessorName)) SuperAccessor else EmptyFlags)
       pickling.println(i"creating symbol $name at $start with flags $givenFlags")
       val flags = normalizeFlags(tag, givenFlags | nameFlags, name, isAbsType, rhsIsEmpty)

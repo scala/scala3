@@ -437,7 +437,10 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
         if (name == nme.TRAIT_CONSTRUCTOR) nme.CONSTRUCTOR
         else name.asTermName.unmangleMethodName
     }
-    if (flags is ExpandedName) name = name.unmangleExpandedName
+    if (flags is Scala2ExpandedName) {
+      name = name.unmangleExpandedName
+      flags = flags &~ Scala2ExpandedName
+    }
     if (flags is SuperAccessor) name = name.asTermName.unmangleSuperName
 
     def isClassRoot = (name == classRoot.name) && (owner == classRoot.owner) && !(flags is ModuleClass)
@@ -476,7 +479,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
         var flags1 = flags
         if (flags is TypeParam) {
           name1 = name1.expandedName(owner)
-          flags1 |= owner.typeParamCreationFlags | ExpandedName
+          flags1 |= owner.typeParamCreationFlags
         }
         ctx.newSymbol(owner, name1, flags1, localMemberUnpickler, coord = start)
       case CLASSsym =>

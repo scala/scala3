@@ -13,6 +13,7 @@ import NameOps._, NameExtractors._
 import StdNames.nme
 import TastyBuffer._
 import TypeApplications._
+import transform.SymUtils._
 import config.Config
 
 class TreePickler(pickler: TastyPickler) {
@@ -141,7 +142,7 @@ class TreePickler(pickler: TastyPickler) {
       withLength { pickleType(tycon); args.foreach(pickleType(_)) }
     case ConstantType(value) =>
       pickleConstant(value)
-    case tpe: TypeRef if tpe.info.isAlias && tpe.symbol.is(Flags.AliasPreferred) =>
+    case tpe: TypeRef if tpe.info.isAlias && tpe.symbol.isAliasPreferred =>
       pickleType(tpe.superType)
     case tpe: WithFixedSym =>
       val sym = tpe.symbol

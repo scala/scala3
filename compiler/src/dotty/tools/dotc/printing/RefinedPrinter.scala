@@ -13,6 +13,7 @@ import Trees._
 import TypeApplications._
 import Decorators._
 import config.Config
+import transform.SymUtils._
 import scala.annotation.switch
 import language.implicitConversions
 
@@ -63,7 +64,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
 
   override protected def simpleNameString(sym: Symbol): String = {
     val name = if (ctx.property(XprintMode).isEmpty) sym.originalName else sym.name
-    nameString(if (sym is ExpandedTypeParam) name.asTypeName.unexpandedName else name)
+    nameString(if (sym.is(TypeParam)) name.asTypeName.unexpandedName else name)
   }
 
   override def fullNameString(sym: Symbol): String =
@@ -131,7 +132,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         if (defn.isTupleClass(cls)) return toTextTuple(args)
         return (toTextLocal(tycon) ~ "[" ~ Text(args map argText, ", ") ~ "]").close
       case tp: TypeRef =>
-        val hideType = !ctx.settings.debugAlias.value && (tp.symbol is AliasPreferred)
+        val hideType = !ctx.settings.debugAlias.value && (tp.symbol.isAliasPreferred)
         if (hideType && !ctx.phase.erasedTypes && !tp.symbol.isCompleting) {
           tp.info match {
             case TypeAlias(alias) => return toText(alias)

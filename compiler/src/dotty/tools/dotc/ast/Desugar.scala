@@ -244,7 +244,7 @@ object desugar {
   def typeDef(tdef: TypeDef)(implicit ctx: Context): Tree = {
     if (tdef.mods is PrivateLocalParam) {
       val tparam = cpy.TypeDef(tdef)(name = tdef.name.expandedName(ctx.owner))
-        .withMods(tdef.mods &~ PrivateLocal | ExpandedName)
+        .withMods(tdef.mods &~ PrivateLocal)
       val alias = cpy.TypeDef(tdef)(rhs = refOfDef(tparam))
         .withMods(tdef.mods & VarianceFlags | PrivateLocalParamAccessor | Synthetic)
       Thicket(tparam, alias)

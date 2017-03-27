@@ -367,7 +367,7 @@ object SymDenotations {
 
     /** The expanded name of this denotation. */
     final def expandedName(implicit ctx: Context) =
-      if (is(ExpandedName) || isConstructor) name
+      if (name.is(ExpandedName) || isConstructor) name
       else {
         def legalize(name: Name): Name = // JVM method names may not contain `<' or `>' characters
           if (is(Method)) name.replace('<', '(').replace('>', ')') else name
@@ -1210,9 +1210,7 @@ object SymDenotations {
     /** If denotation is private, remove the Private flag and expand the name if necessary */
     def ensureNotPrivate(implicit ctx: Context) =
       if (is(Private))
-        copySymDenotation(
-          name = expandedName,
-          initFlags = this.flags &~ Private | ExpandedName)
+        copySymDenotation(name = expandedName, initFlags = this.flags &~ Private)
       else this
   }
 

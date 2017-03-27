@@ -79,7 +79,7 @@ class SuperAccessors(thisTransformer: DenotTransformer) {
         .suchThat(_.signature == superInfo.signature).symbol
         .orElse {
           ctx.debuglog(s"add super acc ${sym.showLocated} to $clazz")
-          val deferredOrPrivate = if (clazz is Trait) Deferred | ExpandedName else Private
+          val deferredOrPrivate = if (clazz is Trait) Deferred else Private
           val acc = ctx.newSymbol(
               clazz, superName, SuperAccessor | Artifact | Method | deferredOrPrivate,
               superInfo, coord = sym.coord).enteredAfter(thisTransformer)

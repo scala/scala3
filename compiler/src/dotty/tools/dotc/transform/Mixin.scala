@@ -220,7 +220,7 @@ class Mixin extends MiniPhaseTransform with SymTransformer { thisTransform =>
           ref(mixin.implClass).select(implClassGetter).appliedTo(This(cls))
         }
 
-        if (isCurrent(getter) || getter.is(ExpandedName)) {
+        if (isCurrent(getter) || getter.name.is(ExpandedName)) {
           val rhs =
             if (was(getter, ParamAccessor)) nextArgument()
             else if (isScala2x)

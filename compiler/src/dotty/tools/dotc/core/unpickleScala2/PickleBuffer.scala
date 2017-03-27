@@ -229,7 +229,7 @@ object PickleBuffer {
       MODULEVAR -> Scala2ModuleVar,
       LAZY -> Lazy,
       MIXEDIN -> (MixedIn, Scala2Existential),
-      EXPANDEDNAME -> ExpandedName,
+      EXPANDEDNAME -> Scala2ExpandedName,
       IMPLCLASS -> (Scala2PreSuper, ImplClass),
       SPECIALIZED -> Specialized,
       VBRIDGE -> VBridge,

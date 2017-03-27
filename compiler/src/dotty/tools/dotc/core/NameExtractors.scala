@@ -45,7 +45,7 @@ object NameExtractors {
 
   class PrefixNameExtractor(tag: Int, prefix: String, infoString: String) extends ClassifiedNameExtractor(tag, infoString) {
     def mkString(underlying: TermName, info: ThisInfo) =
-      underlying.mapLast(n => termName(prefix + n)).toString
+      underlying.mapLast(n => termName(prefix + n.toString)).toString
   }
 
   class SuffixNameExtractor(tag: Int, suffix: String, infoString: String) extends ClassifiedNameExtractor(tag, infoString) {
@@ -99,7 +99,7 @@ object NameExtractors {
 
   object QualifiedName   extends QualifiedNameExtractor(QUALIFIED, ".", "Qualified")
   object FlattenedName   extends QualifiedNameExtractor(FLATTENED, "$", "Flattened")
-  object XpandedName    extends QualifiedNameExtractor(EXPANDED, str.EXPAND_SEPARATOR, "Expanded")
+  object ExpandedName    extends QualifiedNameExtractor(EXPANDED, str.EXPAND_SEPARATOR, "Expanded")
   object TraitSetterName extends QualifiedNameExtractor(TRAITSETTER, str.TRAIT_SETTER_SEPARATOR, "TraitSetter")
 
   object DefaultGetterName extends NumberedNameExtractor(DEFAULTGETTER, "DefaultGetter") {
@@ -146,6 +146,6 @@ object NameExtractors {
   val separatorToQualified: Map[String, QualifiedNameExtractor] =
     Map("." -> QualifiedName,
       "$" -> FlattenedName,
-      str.EXPAND_SEPARATOR -> XpandedName,
+      str.EXPAND_SEPARATOR -> ExpandedName,
       str.TRAIT_SETTER_SEPARATOR -> TraitSetterName)
 }

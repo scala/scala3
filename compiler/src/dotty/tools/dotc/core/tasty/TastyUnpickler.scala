@@ -54,7 +54,7 @@ class TastyUnpickler(reader: TastyReader) {
       case FLATTENED =>
         FlattenedName(readName(), readName().asSimpleName)
       case EXPANDED =>
-        XpandedName(readName(), readName().asSimpleName)
+        ExpandedName(readName(), readName().asSimpleName)
       case SIGNED =>
         val original = readName()
         val result = readName().toTypeName
