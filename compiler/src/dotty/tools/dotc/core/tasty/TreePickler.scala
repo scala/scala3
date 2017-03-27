@@ -352,7 +352,7 @@ class TreePickler(pickler: TastyPickler) {
         case Select(qual, name) =>
           writeByte(if (name.isTypeName) SELECTtpt else SELECT)
           val realName = tree.tpe match {
-            case tp: NamedType if tp.name.isShadowedName => tp.name
+            case tp: NamedType if tp.name.is(ShadowedName) => tp.name
             case _ => name
           }
           val sig = tree.tpe.signature

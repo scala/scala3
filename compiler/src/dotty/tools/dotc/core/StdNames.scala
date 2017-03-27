@@ -21,6 +21,8 @@ object StdNames {
     val SUPER_PREFIX             = "super$"
     val INITIALIZER_PREFIX       = "initial$"
     val SHADOWED_PREFIX          = "(shadowed)"
+    val AVOID_CLASH_SUFFIX       = "$_avoid_name_clash_$"
+    val LOCAL_DUMMY_PREFIX       = "<local>_"       // owner of local blocks
   }
 
   abstract class DefinedNames[N <: Name] {
@@ -117,7 +119,6 @@ object StdNames {
     val INTERPRETER_WRAPPER_SUFFIX: N = "$object"
     val LOCALDUMMY_PREFIX: N          = "<local "       // owner of local blocks
     val MODULE_SUFFIX: N              = NameTransformer.MODULE_SUFFIX_STRING
-    val AVOID_CLASH_SUFFIX: N         = "$_avoid_name_clash_$"
     val MODULE_VAR_SUFFIX: N          = "$module"
     val NAME_JOIN: N                  = NameTransformer.NAME_JOIN_STRING
     val USCORE_PARAM_PREFIX: N        = "_$"
@@ -128,7 +129,6 @@ object StdNames {
     val PROTECTED_PREFIX: N           = "protected$"
     val PROTECTED_SET_PREFIX: N       = PROTECTED_PREFIX + "set"
     val ROOT: N                       = "<root>"
-    val SHADOWED: N                   = "(shadowed)"  // tag to be used until we have proper name kinds
     val SINGLETON_SUFFIX: N           = ".type"
     val SPECIALIZED_SUFFIX: N         = "$sp"
     val SUPER_PREFIX: N               = "super$"

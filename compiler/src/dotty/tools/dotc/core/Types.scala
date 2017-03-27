@@ -7,6 +7,7 @@ import Symbols._
 import Flags._
 import Names._
 import StdNames._, NameOps._
+import NameExtractors.ShadowedName
 import Scopes._
 import Constants._
 import Contexts._
@@ -1594,7 +1595,7 @@ object Types {
     }
 
     protected def asMemberOf(prefix: Type, allowPrivate: Boolean)(implicit ctx: Context): Denotation =
-      if (name.isShadowedName) prefix.nonPrivateMember(name.revertShadowed)
+      if (name.is(ShadowedName)) prefix.nonPrivateMember(name.exclude(ShadowedName))
       else if (!allowPrivate) prefix.nonPrivateMember(name)
       else prefix.member(name)
 
@@ -1730,7 +1731,7 @@ object Types {
      *  the public name.
      */
     def shadowed(implicit ctx: Context): NamedType =
-      NamedType(prefix, name.shadowedName)
+      NamedType(prefix, name.derived(ShadowedName))
 
     override def equals(that: Any) = that match {
       case that: NamedType =>
@@ -1804,7 +1805,7 @@ object Types {
       fixDenot(TermRef.withSig(prefix, name, sig), prefix)
 
     override def shadowed(implicit ctx: Context): NamedType =
-      fixDenot(TermRef.withSig(prefix, name.shadowedName, sig), prefix)
+      fixDenot(TermRef.withSig(prefix, name.derived(ShadowedName), sig), prefix)
 
     override def equals(that: Any) = that match {
       case that: TermRefWithSignature =>

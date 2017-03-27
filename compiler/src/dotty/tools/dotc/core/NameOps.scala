@@ -64,10 +64,8 @@ object NameOps {
     def isReplWrapperName = name.toSimpleName containsSlice INTERPRETER_IMPORT_WRAPPER
     def isSetterName = name endsWith SETTER_SUFFIX
     def isSingletonName = name endsWith SINGLETON_SUFFIX
-    def isAvoidClashName = name endsWith AVOID_CLASH_SUFFIX
     def isImportName = name startsWith IMPORT
     def isFieldName = name endsWith LOCAL_SUFFIX
-    def isShadowedName = name.startsWith(nme.SHADOWED)
     def isDefaultGetterName = name.isTermName && name.asTermName.defaultGetterIndex >= 0
     def isScala2LocalSuffix = name.endsWith(" ")
     def isModuleVarName(name: Name): Boolean =
@@ -119,17 +117,10 @@ object NameOps {
     /** If name ends in module class suffix, drop it */
     def stripModuleClassSuffix: Name = name.exclude(ModuleClassName)
 
-    /** Append a suffix so that this name does not clash with another name in the same scope */
-    def avoidClashName: TermName = (name ++ AVOID_CLASH_SUFFIX).toTermName
-
-    /** If name ends in "avoid clash" suffix, drop it */
-    def stripAvoidClashSuffix: Name =
-      if (isAvoidClashName) name dropRight AVOID_CLASH_SUFFIX.length else name
-
     /** If flags is a ModuleClass but not a Package, add module class suffix */
     def adjustIfModuleClass(flags: Flags.FlagSet): N = {
       if (flags is (ModuleClass, butNot = Package)) name.asTypeName.moduleClassName
-      else stripAvoidClashSuffix
+      else likeTyped(name.toTermName.exclude(AvoidClashName))
     }.asInstanceOf[N]
 
     /** The superaccessor for method with given name */
@@ -191,10 +182,6 @@ object NameOps {
           ExpandedName(expandedPrefixOfMangled.toTermName, unmangled.asSimpleName))
       }
       else name
-
-    def shadowedName: N = likeTyped(nme.SHADOWED ++ name)
-
-    def revertShadowed: N = likeTyped(name.drop(nme.SHADOWED.length))
 
     def implClassName: N = likeTyped(name ++ tpnme.IMPL_CLASS_SUFFIX)
 

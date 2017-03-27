@@ -1,4 +1,5 @@
-package dotty.tools.dotc
+package dotty.tools
+package dotc
 package core
 
 import Names._
@@ -11,7 +12,7 @@ import collection.mutable
 
 object NameExtractors {
 
-  private val extractors = new mutable.HashMap[Int, ClassifiedNameExtractor]
+  @sharable private val extractors = new mutable.HashMap[Int, ClassifiedNameExtractor]
 
   abstract class NameInfo extends DotClass {
     def tag: Int
@@ -124,6 +125,8 @@ object NameExtractors {
   val SuperAccessorName = new PrefixNameExtractor(SUPERACCESSOR, str.SUPER_PREFIX, "SuperAccessor")
   val InitializerName = new PrefixNameExtractor(INITIALIZER, str.INITIALIZER_PREFIX, "Initializer")
   val ShadowedName = new PrefixNameExtractor(SHADOWED, str.SHADOWED_PREFIX, "Shadowed")
+  val LocalDummyName = new PrefixNameExtractor(LOCALDUMMY, str.LOCAL_DUMMY_PREFIX, "LocalDummy")
+  val AvoidClashName = new SuffixNameExtractor(AVOIDCLASH, str.AVOID_CLASH_SUFFIX, "AvoidClash")
   val ModuleClassName = new SuffixNameExtractor(OBJECTCLASS, "$", "ModuleClass")
 
   object SignedName extends NameExtractor(63) {

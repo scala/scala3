@@ -19,8 +19,8 @@ import dotty.tools.dotc.core.Denotations.SingleDenotation
 import scala.collection.mutable
 import DenotTransformers._
 import typer.Checking
-import Names.Name
 import NameOps._
+import NameExtractors.AvoidClashName
 import StdNames._
 
 
@@ -129,7 +129,7 @@ class FirstTransform extends MiniPhaseTransform with InfoTransformer with Annota
           case _ =>
             false
         }
-        val uniqueName = if (nameClash) objName.avoidClashName else objName
+        val uniqueName = if (nameClash) AvoidClashName(objName) else objName
         Thicket(stat :: ModuleDef(registerCompanion(uniqueName, stat.symbol), Nil).trees)
       case stat => stat
     }

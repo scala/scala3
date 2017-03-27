@@ -167,13 +167,16 @@ object Names {
       }
     }
 
+    private def rewrap(underlying: TermName) =
+      if (underlying eq this.underlying) this else underlying.add(info)
+
     /** Return derived name with given `info` and the current
      *  name as underlying name.
      */
     def derived(info: NameInfo): TermName = {
       val ownTag = this.info.tag
       if (ownTag < info.tag || definesNewName(info.tag)) add(info)
-      else if (ownTag > info.tag) underlying.derived(info).add(this.info)
+      else if (ownTag > info.tag) rewrap(underlying.derived(info))
       else {
         assert(info == this.info)
         this
@@ -183,7 +186,7 @@ object Names {
     def exclude(kind: NameExtractor): TermName = {
       val ownTag = this.info.tag
       if (ownTag < kind.tag || definesNewName(ownTag)) this
-      else if (ownTag > kind.tag) underlying.exclude(kind).add(this.info)
+      else if (ownTag > kind.tag) rewrap(underlying.exclude(kind))
       else underlying
     }
 
@@ -201,9 +204,6 @@ object Names {
     // `next` is @sharable because it is only modified in the synchronized block of termName.
 
     def apply(n: Int) = chrs(start + n)
-
-    //override def derived(info: NameInfo): TermName = add(info)
-    //override def is(kind: NameExtractor) = false
 
     private def contains(ch: Char): Boolean = {
       var i = 0

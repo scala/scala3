@@ -857,7 +857,7 @@ class TreeUnpickler(reader: TastyReader, nameAtRef: NameRef => TermName, posUnpi
         val localCtx =
           if (name == nme.CONSTRUCTOR) ctx.addMode(Mode.InSuperCall) else ctx
         val qual = readTerm()(localCtx)
-        val unshadowed = if (name.isShadowedName) name.revertShadowed else name
+        val unshadowed = name.exclude(ShadowedName)
         untpd.Select(qual, unshadowed).withType(tpf(qual.tpe.widenIfUnstable))
       }
 

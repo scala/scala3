@@ -230,6 +230,8 @@ object TastyFormat {
   final val SUPERACCESSOR = 20
   final val INITIALIZER = 21
   final val SHADOWED = 22
+  final val LOCALDUMMY = 23
+  final val AVOIDCLASH = 27
   final val OBJECTCLASS = 29
 
   final val SIGNED = 63
