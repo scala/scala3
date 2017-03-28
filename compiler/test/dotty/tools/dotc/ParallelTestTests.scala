@@ -26,7 +26,8 @@ class ParallelTestTests extends ParallelTesting {
   @Test def pos1Error: Unit =
     compileFile("../tests/partest-test/posFail1Error.scala", defaultOptions).expectFailure.checkCompile()
 
-  @Test def negMissingAnnot: Unit = compileFile("../tests/partest-test/negMissingAnnot.scala", defaultOptions).expectFailure.checkExpectedErrors()
+  @Test def negMissingAnnot: Unit =
+    compileFile("../tests/partest-test/negMissingAnnot.scala", defaultOptions).expectFailure.checkExpectedErrors()
 
   @Test def negAnnotWrongLine: Unit =
     compileFile("../tests/partest-test/negAnnotWrongLine.scala", defaultOptions).expectFailure.checkExpectedErrors()
@@ -48,4 +49,7 @@ class ParallelTestTests extends ParallelTesting {
 
   @Test def runDiffOutput1: Unit =
     compileFile("../tests/partest-test/runDiffOutput1.scala", defaultOptions).expectFailure.checkRuns()
+
+  @Test def runStackOverflow: Unit =
+    compileFile("../tests/partest-test/stackOverflow.scala", defaultOptions).expectFailure.checkRuns()
 }
