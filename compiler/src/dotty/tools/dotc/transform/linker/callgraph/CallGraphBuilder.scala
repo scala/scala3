@@ -10,7 +10,6 @@ import dotty.tools.dotc.core.Symbols.{Symbol, _}
 import dotty.tools.dotc.core.TypeErasure
 import dotty.tools.dotc.core.Types._
 import dotty.tools.dotc.transform.ResolveSuper
-import dotty.tools.dotc.transform.linker.CollectSummaries
 import dotty.tools.dotc.transform.linker.summaries._
 import dotty.tools.dotc.transform.linker.types._
 
@@ -46,6 +45,7 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
 
   private val sizesCache = new mutable.HashMap[Symbol, Int]()
   private val lastInstantiation = mutable.Map.empty[CallInfoWithContext, mutable.Map[CallInfo, Int]]
+  private var finished = false
 
   private val normalizeType: Type => Type = new TypeNormalizer
 
@@ -69,7 +69,7 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
   def build(): Unit = {
     ctx.log(s"Building call graph with ${entryPoints.values.toSet.size} entry points")
     val startTime = System.currentTimeMillis()
-    @tailrec def buildLoop(processAllCallSites: Boolean): Unit = {
+    @tailrec def buildLoop(): Unit = {
       val loopStartTime = System.currentTimeMillis()
 
       val reachableMethodsLastSize = reachableMethods.size
@@ -77,10 +77,7 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
       val castsLastSize = casts.size
       val classOfsLastSize = classOfs.size
 
-      if (processAllCallSites)
-        ctx.log("[processing all call sites]")
-
-      processCallSites(processAllCallSites)
+      processCallSites()
 
       val numNewReachableMethods = reachableMethods.size - reachableMethodsLastSize
       val numNewReachableTypes = reachableTypes.size - reachableTypesLastSize
@@ -103,12 +100,17 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
       // GraphVisualization.outputGraphVisToFile(this.result(), outFile)
 
       if (numNewReachableMethods != 0 || numNewReachableTypes != 0 || numNewCasts != 0)
-        buildLoop(false)
-      else if (!processAllCallSites)
-        buildLoop(true)
+        buildLoop()
+      else if (!finished) {
+        // This last loop is only here to check the correctness on the crc map
+        // TODO: remove in production mode
+        ctx.log("[processing all call sites for crc check]")
+        finished = true
+        buildLoop()
+      }
     }
 
-    buildLoop(false)
+    buildLoop()
   }
 
   /** Packages the current call graph into a CallGraph */
@@ -125,10 +127,18 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
 
   private def addReachableType(x: TypeWithContext): Unit = {
     if (!reachableTypes.contains(x)) {
+      finished = false // TODO: replace with assert(!finished)
 
       val substed = new SubstituteByParentMap(x.outerTargs).apply(x.tp)
       def registerSize(sym: Symbol): Unit = sizesCache(sym) = sizesCache.getOrElse(sym, 0) + 1
-      substed.classSymbols.toSet.flatMap((x: ClassSymbol) => x :: x.classParents.map(_.symbol)).foreach(registerSize)
+
+      val classSymbols = mutable.Set.empty[Symbol]
+      def collectClasses(cls: ClassSymbol): Unit = {
+        classSymbols.add(cls)
+        cls.classParents.foreach(x => collectClasses(x.symbol.asClass))
+      }
+      substed.classSymbols.foreach(collectClasses)
+      classSymbols.foreach(registerSize)
 
       reachableTypes += x
 
@@ -155,6 +165,7 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
 
   private def addReachableMethod(method: CallInfoWithContext): Unit = {
     if (!reachableMethods.contains(method)) {
+      finished = false // TODO: replace with assert(!finished)
       reachableMethods += method
       val callSymbol = method.callSymbol
       if (!reachableMethodsSymbols.contains(callSymbol)) {
@@ -192,6 +203,7 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
           val cached = castsCache.getOrElseUpdate(tp, mutable.Set.empty)
           if (!cached.contains(newCast)) {
             if (!addedCast) {
+              finished = false // TODO: replace with assert(!finished)
               casts += newCast
               addedCast = true
             }
@@ -559,11 +571,10 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
     }
   }
 
-  private def processCallSites(processAllCallSites: Boolean): Unit = {
+  private def processCallSites(): Unit = {
     var processed = 0
     var total = 0
 
-    // TODO currently sizesCache must be missing some of the changes. If this is fixed processAllCallSites would not be needed.
     def computeCRC(tp: Type) = tp.classSymbols.iterator.map(x => sizesCache.getOrElse(x, 0)).sum
 
     for (method <- reachableMethods) {
@@ -577,7 +588,7 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
         val needsInstantiation = recomputedCRC != crcMap.getOrElse(callSite, -1)
         if (needsInstantiation)
           crcMap(callSite) = recomputedCRC
-        processAllCallSites || needsInstantiation
+        needsInstantiation || finished // if finished==true we are checking the completeness of the CRC
       }
 
       collectedSummaries.get(method.callSymbol) match {
