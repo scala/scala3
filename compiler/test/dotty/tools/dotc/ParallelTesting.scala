@@ -406,56 +406,63 @@ trait ParallelTesting {
 
   private final class RunTest(testSources: List[TestSource], times: Int, threadLimit: Option[Int], suppressAllOutput: Boolean)
   extends Test(testSources, times, threadLimit, suppressAllOutput) {
-    private def verifyOutput(checkFile: JFile, dir: JFile, testSource: TestSource, warnings: Int) = try {
+
+    private def runMain(dir: JFile, testSource: TestSource): Array[String] = {
+      import java.io.ByteArrayOutputStream
+      import java.net.{ URL, URLClassLoader }
+
+      val printStream = new ByteArrayOutputStream
+      try {
         // Do classloading magic and running here:
-        import java.net.{ URL, URLClassLoader }
-        import java.io.ByteArrayOutputStream
         val ucl = new URLClassLoader(Array(dir.toURI.toURL))
         val cls = ucl.loadClass("Test")
         val meth = cls.getMethod("main", classOf[Array[String]])
 
-        val printStream = new ByteArrayOutputStream
         Console.withOut(printStream) {
           meth.invoke(null, Array("jvm")) // partest passes at least "jvm" as an arg
         }
-
-        val outputLines = printStream.toString("utf-8").lines.toArray
-        val checkLines = Source.fromFile(checkFile).getLines.toArray
-
-        def linesMatch =
-          outputLines
-          .zip(checkLines)
-          .forall { case (x, y) => x == y }
-
-        if (outputLines.length != checkLines.length || !linesMatch) {
-          // Print diff to files and summary:
-          val diff = outputLines.zip(checkLines).map { case (act, exp) =>
-            DiffUtil.mkColoredCodeDiff(exp, act, true)
-          }.mkString("\n")
-          val msg = s"\nOutput from run test '$checkFile' did not match expected, output:\n$diff\n"
-          echo(msg)
-          addFailureInstruction(msg)
-
-          // Print build instructions to file and summary:
-          val buildInstr = testSource.buildInstructions(0, warnings)
-          addFailureInstruction(buildInstr)
-
-          // Fail target:
+      }
+      catch {
+        case ex: NoSuchMethodException =>
+          echo(s"test in '$dir' did not contain method: ${ex.getMessage}      ")
           failTestSource(testSource)
-        }
+
+        case ex: ClassNotFoundException =>
+          echo(s"test in '$dir' did not contain class: ${ex.getMessage}       ")
+          failTestSource(testSource)
+
+        case ex: InvocationTargetException =>
+          echo(s"An exception ocurred when running main: ${ex.getCause}       ")
+          failTestSource(testSource)
+      }
+      printStream.toString("utf-8").lines.toArray
     }
-    catch {
-      case ex: NoSuchMethodException =>
-        echo(s"\ntest in '$dir' did not contain method: ${ex.getMessage}")
-        fail()
 
-      case ex: ClassNotFoundException =>
-        echo(s"\ntest in '$dir' did not contain class: ${ex.getMessage}")
-        fail()
+    private def verifyOutput(checkFile: JFile, dir: JFile, testSource: TestSource, warnings: Int) = {
+      val outputLines = runMain(dir, testSource)
+      val checkLines = Source.fromFile(checkFile).getLines.toArray
 
-      case ex: InvocationTargetException =>
-        echo(s"\nInvocationTargetException ocurred. Test in '$dir' might be using args(X) where X > 0")
-        fail()
+      def linesMatch =
+        outputLines
+        .zip(checkLines)
+        .forall { case (x, y) => x == y }
+
+      if (outputLines.length != checkLines.length || !linesMatch) {
+        // Print diff to files and summary:
+        val diff = outputLines.zip(checkLines).map { case (act, exp) =>
+          DiffUtil.mkColoredCodeDiff(exp, act, true)
+        }.mkString("\n")
+        val msg = s"\nOutput from run test '$checkFile' did not match expected, output:\n$diff\n"
+        echo(msg)
+        addFailureInstruction(msg)
+
+        // Print build instructions to file and summary:
+        val buildInstr = testSource.buildInstructions(0, warnings)
+        addFailureInstruction(buildInstr)
+
+        // Fail target:
+        failTestSource(testSource)
+      }
     }
 
     protected def compilationRunnable(testSource: TestSource): Runnable = new Runnable {
@@ -501,6 +508,7 @@ trait ParallelTesting {
         }
 
         if (errorCount == 0 && hasCheckFile) verifier()
+        else if (errorCount == 0) runMain(testSource.outDir, testSource)
         else if (errorCount > 0) {
           echo(s"\nCompilation failed for: '$testSource'")
           val buildInstr = testSource.buildInstructions(errorCount, warningCount)
