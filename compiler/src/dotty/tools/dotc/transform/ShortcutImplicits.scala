@@ -133,6 +133,7 @@ class ShortcutImplicits extends MiniPhase with IdentityDenotTransformer { thisTr
       if (shouldBeSpecialized(original)) {
         val direct = directMethod(original)
 
+        // TODO also adapt this code to account for nested implicits
         def splitClosure(tree: Tree): (List[Type] => List[List[Tree]] => Tree, Tree) = tree match {
           case Block(Nil, expr) => splitClosure(expr)
           case Block((meth @ DefDef(nme.ANON_FUN, Nil, clparams :: Nil, _, _)) :: Nil, cl: Closure) =>
@@ -150,6 +151,9 @@ class ShortcutImplicits extends MiniPhase with IdentityDenotTransformer { thisTr
               .appliedToArgss(vparamSymss.map(_.map(ref(_))) :+ clparamSyms.map(ref(_)))
             val fwdClosure = cpy.Block(tree)(cpy.DefDef(meth)(rhs = forwarder) :: Nil, cl)
             (remappedCore, fwdClosure)
+
+          // for nested implicits give up for now!
+          case b @ Block(defs, cl: Closure) => (_ => _ => b, b)
           case EmptyTree =>
             (_ => _ => EmptyTree, EmptyTree)
         }
