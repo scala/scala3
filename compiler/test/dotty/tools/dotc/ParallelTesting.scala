@@ -22,18 +22,39 @@ import reporting.diagnostic.MessageContainer
 import interfaces.Diagnostic.ERROR
 import dotc.util.DiffUtil
 
+/** A parallel testing suite whose goal is to integrate nicely with JUnit
+ *
+ *  This trait can be mixed in to offer parallel testing to compile runs. When
+ *  using this, you should be running your JUnit tests **sequentially**, as the
+ *  test suite itself runs with a high level of concurrency.
+ */
 trait ParallelTesting {
 
+  /** If the running environment supports an interactive terminal, each `Test`
+   *  will be run with a progress bar and real time feedback
+   */
   def interactive: Boolean
 
+  /** A regex denoting which tests to run, please note that this gets turned
+   *  into an actual regular expression - and as such should be valid.
+   *
+   *  E.g: `*`is not a regular expression, but `.*` is.
+   */
   def regex: Option[String]
 
+  /** The `regex` string gets turned into an actual regular expression used for
+   *  filtering tests
+   */
   private lazy val filter: Option[Regex] = regex.map(str => new Regex(str))
 
+  /** A compilation target whose files or directory of files is to be compiled
+   *  in a specific way defined by the `Test`
+   */
   private sealed trait Target { self =>
     def outDir: JFile
     def flags: Array[String]
 
+    /** Adds the flags specified in `newFlags0` if they do not already exist */
     def withFlags(newFlags0: String*) = {
       val newFlags = newFlags0.toArray
       if (!flags.containsSlice(newFlags)) self match {
@@ -45,6 +66,7 @@ trait ParallelTesting {
       else self
     }
 
+    /** Generate the instructions to redo the test from the command line */
     def buildInstructions(errors: Int, warnings: Int): String = {
       val sb = new StringBuilder
       val maxLen = 80
@@ -90,6 +112,9 @@ trait ParallelTesting {
     }
   }
 
+  /** A group of files that may all be compiled together, with the same flags
+   *  and output directory
+   */
   private final case class ConcurrentCompilationTarget(
     files: Array[JFile],
     flags: Array[String],
@@ -97,12 +122,19 @@ trait ParallelTesting {
   ) extends Target {
     override def toString() = outDir.toString
   }
+
+  /** A target whose files will be compiled separately according to their
+   *  suffix `_X`
+   */
   private final case class SeparateCompilationTarget(
     dir: JFile,
     flags: Array[String],
     outDir: JFile
   ) extends Target {
 
+    /** Get the files grouped by `_X` as a list of groups, files missing this
+     *  suffix will be put into the same group
+     */
     def compilationUnits: List[Array[JFile]] =
       dir
       .listFiles
@@ -121,11 +153,15 @@ trait ParallelTesting {
       .toList.sortBy(_._1).map(_._2.filter(isCompilable))
   }
 
+  /** Each `Test` takes the `targets` and performs the compilation and assertions
+   *  according to the implementing class "neg", "run" or "pos".
+   */
   private abstract class Test(targets: List[Target], times: Int, threadLimit: Option[Int], suppressAllOutput: Boolean) {
 
     /** Actual compilation run logic, the test behaviour is defined here */
     protected def compilationRunnable(target: Target): Runnable
 
+    /** All targets left after filtering out */
     private val allTargets =
       if (!filter.isDefined) targets
       else targets.filter {
@@ -135,6 +171,7 @@ trait ParallelTesting {
           filter.get.findFirstIn(dir.getAbsolutePath).isDefined
       }
 
+    /** Total amount of targets being compiled by this test */
     val totalTargets = allTargets.length
 
     private[this] var _errors =  0
@@ -143,23 +180,28 @@ trait ParallelTesting {
     private[this] var _targetsCompiled = 0
     private def targetsCompiled: Int = synchronized { _targetsCompiled }
 
+    /** Complete the current compilation with the amount of errors encountered */
     protected final def completeCompilation(errors: Int) = synchronized {
       _targetsCompiled += 1
       _errors += errors
     }
 
     private[this] var _failed = false
+    /** Fail the current test */
     protected[this] final def fail(): Unit = synchronized { _failed = true }
     def didFail: Boolean = _failed
 
+    /** Instructions on how to reproduce failed target compilations */
     private[this] val failureInstructions = mutable.ArrayBuffer.empty[String]
     protected final def addFailureInstruction(ins: String): Unit =
       synchronized { failureInstructions.append(ins) }
 
+    /** The targets that failed according to the implementing subclass */
     private[this] val failedCompilationTargets = mutable.ArrayBuffer.empty[String]
     protected final def addFailedCompilationTarget(target: String): Unit =
       synchronized { failedCompilationTargets.append(target) }
 
+    /** Fails the current target, and makes sure it gets logged */
     protected final def failTarget(target: Target) =
       target match {
         case ConcurrentCompilationTarget(files, _, _) =>
@@ -170,9 +212,11 @@ trait ParallelTesting {
           fail()
       }
 
+    /** Prints to `System.err` if we're not suppressing all output */
     protected def echo(msg: String): Unit =
       if (!suppressAllOutput) System.err.println(msg)
 
+    /** A single `Runnable` that prints a progress bar for the curent `Test` */
     private def statusRunner: Runnable = new Runnable {
       def run(): Unit = {
         val start = System.currentTimeMillis
@@ -197,6 +241,9 @@ trait ParallelTesting {
       }
     }
 
+    /** Wrapper function to make sure that the compiler itself did not crash -
+     *  if it did, the test should automatically fail.
+     */
     protected def compileTry(op: => Unit): Unit =
       try op catch {
         case NonFatal(e) => {
@@ -590,6 +637,110 @@ trait ParallelTesting {
     }
   }
 
+  /** The `CompilationTest` is the main interface to `ParallelTesting`, it
+   *  can be instantiated via one of the following methods:
+   *
+   *  - `compileFile`
+   *  - `compileDir`
+   *  - `compileList`
+   *  - `compileFilesInDir`
+   *  - `compileShallowFilesInDir`
+   *
+   *  Each compilation test can then be turned into either a "pos", "neg" or
+   *  "run" test:
+   *
+   *  ```
+   *  compileFile("../tests/pos/i1103.scala", opts).pos()
+   *  ```
+   *
+   *  These tests can be customized before calling one of the execution
+   *  methods, for instance:
+   *
+   *  ```
+   *  compileFile("../tests/pos/i1103.scala", opts).times(2).verbose.pos()
+   *  ```
+   *
+   *  Which would compile `i1103.scala` twice with the verbose flag as a "pos"
+   *  test.
+   *
+   *  pos tests
+   *  =========
+   *  Pos tests verify that the compiler is able to compile the given `Target`s
+   *  and that they generate no errors or exceptions during compilation
+   *
+   *  neg tests
+   *  =========
+   *  Neg tests are expected to generate a certain amount of errors - but not
+   *  crash the compiler. In each `.scala` file, you specifiy the line on which
+   *  the error will be generated, e.g:
+   *
+   *  ```
+   *  val x: String = 1 // error
+   *  ```
+   *
+   *  if a line generates multiple errors, you need to annotate it multiple
+   *  times. For a line that generates two errors:
+   *
+   *  ```
+   *  val y: String = { val y1: String = 1; 2 } // error // error
+   *  ```
+   *
+   *  Certain errors have no position, if you need to check these annotate the
+   *  file anywhere with `// nopos-error`
+   *
+   *  run tests
+   *  =========
+   *  Run tests are a superset of pos tests, they both verify compilation and
+   *  that the compiler does not crash. In addition, run tests verify that the
+   *  tests are able to run as expected.
+   *
+   *  Run tests need to have the following form:
+   *
+   *  ```
+   *  object Test {
+   *    def main(args: Array[String]): Unit = ()
+   *  }
+   *  ```
+   *
+   *  This is because the runner instantiates the `Test` class and calls the
+   *  main method.
+   *
+   *  Other definitions are allowed in the same file, but the file needs to at
+   *  least have the `Test` object with a `main` method.
+   *
+   *  To verify output you may use `.check` files. These files should share the
+   *  name of the file or directory that they are testing. For instance:
+   *
+   *  ```none
+   *  .
+   *  └── tests
+   *      ├── i1513.scala
+   *      └── i1513.check
+   *  ```
+   *
+   *  If you are testing a directory under separate compilation, you would
+   *  have:
+   *
+   *  ```none
+   *  .
+   *  └── tests
+   *      ├── myTestDir
+   *      │   ├── T_1.scala
+   *      │   ├── T_2.scala
+   *      │   └── T_3.scala
+   *      └── myTestDir.check
+   *  ```
+   *
+   *  In the above example, `i1513.scala` and one of the files `T_X.scala`
+   *  would contain a `Test` object with a main method.
+   *
+   *  Composing tests
+   *  ===============
+   *  Since this is a parallel test suite, it is essential to be able to
+   *  compose tests to take advantage of the concurrency. This is done using
+   *  the `+` function. This function will make sure that tests being combined
+   *  are compatible according to the `require`s in `+`.
+   */
   final class CompilationTest private (
     private[ParallelTesting] val targets: List[Target],
     private[ParallelTesting] val times: Int,
@@ -605,6 +756,20 @@ trait ParallelTesting {
     private[ParallelTesting] def this(targets: List[Target]) =
       this(targets, 1, true, None, false)
 
+    /** Compose test targets from `this` with `other`
+     *
+     *  It does this, only if the two tests are compatible. Otherwise it throws
+     *  an `IllegalArgumentException`.
+     *
+     *  Grouping tests together like this allows us to take advantage of the
+     *  concurrency offered by this test suite as each call to an executing
+     *  method (`pos()` / `neg()`/ `run()`) will spin up a thread pool with the
+     *  maximum allowed level of concurrency. Doing this for only a few targets
+     *  does not yield any real benefit over sequential compilation.
+     *
+     *  As such, each `CompilationTest` should contain as many targets as
+     *  possible.
+     */
     def +(other: CompilationTest) = {
       require(other.times == times, "can't combine tests that are meant to be benchmark compiled")
       require(other.shouldDelete == shouldDelete, "can't combine tests that differ on deleting output")
@@ -612,6 +777,10 @@ trait ParallelTesting {
       new CompilationTest(targets ++ other.targets, times, shouldDelete, threadLimit, shouldFail)
     }
 
+    /** Creates a "pos" test run, which makes sure that all tests pass
+     *  compilation without generating errors and that they do not crash the
+     *  compiler
+     */
     def pos(): this.type = {
       val test = new PosTest(targets, times, threadLimit, shouldFail).execute()
 
@@ -625,6 +794,10 @@ trait ParallelTesting {
       cleanup()
     }
 
+    /** Creates a "neg" test run, which makes sure that each test generates the
+     *  correct amount of errors at the correct positions. It also makes sure
+     *  that none of these tests crash the compiler
+     */
     def neg(): this.type = {
       val test = new NegTest(targets, times, threadLimit, shouldFail).execute()
 
@@ -638,6 +811,11 @@ trait ParallelTesting {
       cleanup()
     }
 
+    /** Creates a "run" test run, which is a superset of "pos". In addition to
+     *  making sure that all tests pass compilation and that they do not crash
+     *  the compiler; it also makes sure that all tests can run with the
+     *  expected output
+     */
     def run(): this.type = {
       val test = new RunTest(targets, times, threadLimit, shouldFail).execute()
 
@@ -651,11 +829,15 @@ trait ParallelTesting {
       cleanup()
     }
 
+    /** Deletes output directories and files */
     private def cleanup(): this.type = {
       if (shouldDelete) targets.foreach(t => delete(t.outDir))
       this
     }
 
+    /** Copies `file` to `dir` - taking into account if `file` is a directory,
+     *  and if so copying recursively
+     */
     private def copyToDir(dir: JFile, file: JFile): JFile = {
       val target = Paths.get(dir.getAbsolutePath, file.getName)
       Files.copy(file.toPath, target, REPLACE_EXISTING)
@@ -663,6 +845,10 @@ trait ParallelTesting {
       target.toFile
     }
 
+    /** Builds a new `CompilationTest` where we have copied the target files to
+     *  the out directory. This is needed for tests that modify the original
+     *  source, such as `-rewrite` tests
+     */
     def copyToTarget(): CompilationTest = new CompilationTest (
       targets.map {
         case target @ ConcurrentCompilationTarget(files, _, outDir) =>
@@ -673,26 +859,44 @@ trait ParallelTesting {
       times, shouldDelete, threadLimit, shouldFail
     )
 
+    /** Builds a `CompilationTest` which performs the compilation `i` times on
+     *  each target
+     */
     def times(i: Int): CompilationTest =
       new CompilationTest(targets, i, shouldDelete, threadLimit, shouldFail)
 
+    /** Builds a `Compilationtest` which passes the verbose flag and logs the
+     *  classpath
+     */
     def verbose: CompilationTest = new CompilationTest(
       targets.map(t => t.withFlags("-verbose", "-Ylog-classpath")),
       times, shouldDelete, threadLimit, shouldFail
     )
 
+    /** Builds a `CompilationTest` which keeps the generated output files
+     *
+     *  This is needed for tests like `tastyBootstrap` which relies on first
+     *  compiling a certain part of the project and then compiling a second
+     *  part which depends on the first
+     */
     def keepOutput: CompilationTest =
       new CompilationTest(targets, times, false, threadLimit, shouldFail)
 
+    /** Builds a `CompilationTest` with a limited level of concurrency with
+     *  maximum `i` threads
+     */
     def limitThreads(i: Int): CompilationTest =
       new CompilationTest(targets, times, shouldDelete, Some(i), shouldFail)
 
+    /** Builds a `CompilationTest` where the executed test is expected to fail
+     *
+     *  This behaviour is mainly needed for the tests that test the test suite.
+     */
     def expectFailure: CompilationTest =
       new CompilationTest(targets, times, shouldDelete, threadLimit, true)
 
+    /** Delete all output files generated by this `CompilationTest` */
     def delete(): Unit = targets.foreach(t => delete(t.outDir))
-
-    def targetDirs: List[JFile] = targets.map(_.outDir)
 
     private def delete(file: JFile): Unit = {
       if (file.isDirectory) file.listFiles.foreach(delete)
@@ -703,12 +907,14 @@ trait ParallelTesting {
     }
   }
 
+  /** Create out directory for directory `d` */
   private def toCompilerDirFromDir(d: JFile, sourceDir: JFile, outDir: String): JFile = {
     val targetDir = new JFile(outDir + s"${sourceDir.getName}/${d.getName}")
     targetDir.mkdirs()
     targetDir
   }
 
+  /** Create out directory for `file` */
   private def toCompilerDirFromFile(file: JFile, sourceDir: JFile, outDir: String): JFile = {
     val uniqueSubdir = file.getName.substring(0, file.getName.lastIndexOf('.'))
     val targetDir = new JFile(outDir + s"${sourceDir.getName}/$uniqueSubdir")
@@ -716,11 +922,13 @@ trait ParallelTesting {
     targetDir
   }
 
+  /** Make sure that directory string is as expected */
   private def checkRequirements(f: String, sourceDir: JFile, outDir: String): Unit = {
     require(sourceDir.isDirectory && sourceDir.exists, "passed non-directory to `compileFilesInDir`")
     require(outDir.last == '/', "please specify an `outDir` with a trailing slash")
   }
 
+  /** Separates directories from files and returns them as `(dirs, files)` */
   private def compilationTargets(sourceDir: JFile): (List[JFile], List[JFile]) =
     sourceDir.listFiles.foldLeft((List.empty[JFile], List.empty[JFile])) { case ((dirs, files), f) =>
       if (f.isDirectory) (f :: dirs, files)
@@ -729,6 +937,13 @@ trait ParallelTesting {
       else (dirs, f :: files)
     }
 
+  /** Gets the name of the calling method via reflection.
+   *
+   *  It does this in a way that needs to work both with the bootstrapped dotty
+   *  and the non-bootstrapped version. Since the two compilers generate
+   *  different bridges, we first need to filter out methods with the same name
+   *  (bridges) - and then find the `@Test` method in our extending class
+   */
   private def getCallingMethod(): String = {
     val seen = mutable.Set.empty[String]
     Thread.currentThread.getStackTrace
@@ -747,6 +962,7 @@ trait ParallelTesting {
       }
   }
 
+  /** Compiles a single file from the string path `f` using the supplied flags */
   def compileFile(f: String, flags: Array[String])(implicit outDirectory: String): CompilationTest = {
     val sourceFile = new JFile(f)
     val parent = sourceFile.getParentFile
@@ -768,6 +984,10 @@ trait ParallelTesting {
     new CompilationTest(target)
   }
 
+  /** Compiles a directory `f` using the supplied `flags`. This method does
+   *  deep compilation, that is - it compiles all files and subdirectories
+   *  contained within the directory `f`.
+   */
   def compileDir(f: String, flags: Array[String])(implicit outDirectory: String): CompilationTest = {
     val outDir = outDirectory + getCallingMethod + "/"
     val sourceDir = new JFile(f)
@@ -785,6 +1005,10 @@ trait ParallelTesting {
     new CompilationTest(target)
   }
 
+  /** Compiles all `files` together as a single compilation run. It is given a
+   *  `testName` since files can be in separate directories and or be otherwise
+   *  dissociated
+   */
   def compileList(testName: String, files: List[String], flags: Array[String])(implicit outDirectory: String): CompilationTest = {
     val outDir = outDirectory + getCallingMethod + "/" + testName + "/"
 
@@ -799,6 +1023,23 @@ trait ParallelTesting {
     new CompilationTest(target)
   }
 
+  /** This function compiles the files and folders contained within directory
+   *  `f` in a specific way.
+   *
+   *  - Each file is compiled separately as a single compilation run
+   *  - Each directory is compiled as a `SeparateCompilationTaret`, in this
+   *    target all files are grouped according to the file suffix `_X` where `X`
+   *    is a number. These groups are then ordered in ascending order based on
+   *    the value of `X` and each group is compiled one after the other.
+   *
+   *  For this function to work as expected, we use the same convention for
+   *  directory layout as the old partest. That is:
+   *
+   *  - Single files can have an associated check-file with the same name (but
+   *    with file extension `.check`)
+   *  - Directories can have an associated check-file, where the check file has
+   *    the same name as the directory (with the file extension `.check`)
+   */
   def compileFilesInDir(f: String, flags: Array[String])(implicit outDirectory: String): CompilationTest = {
     val outDir = outDirectory + getCallingMethod + "/"
     val sourceDir = new JFile(f)
@@ -814,6 +1055,10 @@ trait ParallelTesting {
     new CompilationTest(targets)
   }
 
+  /** This function behaves similar to `compileFilesInDir` but it ignores
+   *  sub-directories and as such, does **not** perform separate compilation
+   *  tests.
+   */
   def compileShallowFilesInDir(f: String, flags: Array[String])(implicit outDirectory: String): CompilationTest = {
     val outDir = outDirectory + getCallingMethod + "/"
     val sourceDir = new JFile(f)
