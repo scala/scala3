@@ -46,6 +46,7 @@ trait ParallelTesting {
    *  in a specific way defined by the `Test`
    */
   private sealed trait TestSource { self =>
+    def name: String
     def outDir: JFile
     def flags: Array[String]
 
@@ -80,7 +81,7 @@ trait ParallelTesting {
       }
 
       self match {
-        case JointCompilationSource(files, _, _) => {
+        case JointCompilationSource(_, files, _, _) => {
           files.map(_.getAbsolutePath).foreach { path =>
             sb.append("\\\n        ")
             sb.append(path)
@@ -111,6 +112,7 @@ trait ParallelTesting {
    *  and output directory
    */
   private final case class JointCompilationSource(
+    name: String,
     files: Array[JFile],
     flags: Array[String],
     outDir: JFile
@@ -124,6 +126,7 @@ trait ParallelTesting {
    *  suffix `_X`
    */
   private final case class SeparateCompilationSource(
+    name: String,
     dir: JFile,
     flags: Array[String],
     outDir: JFile
@@ -164,9 +167,9 @@ trait ParallelTesting {
     private val filteredSources =
       if (!testFilter.isDefined) testSources
       else testSources.filter {
-        case JointCompilationSource(files, _, _) =>
+        case JointCompilationSource(_, files, _, _) =>
           files.exists(file => testFilter.get.findFirstIn(file.getAbsolutePath).isDefined)
-        case SeparateCompilationSource(dir, _, _) =>
+        case SeparateCompilationSource(_, dir, _, _) =>
           testFilter.get.findFirstIn(dir.getAbsolutePath).isDefined
       }
 
@@ -206,19 +209,10 @@ trait ParallelTesting {
 
     /** The test sources that failed according to the implementing subclass */
     private[this] val failedTestSources = mutable.ArrayBuffer.empty[String]
-    protected final def addFailedCompilationTarget(testSource: String): Unit =
-      synchronized { failedTestSources.append(testSource) }
-
-    /** Fails the current `TestSource`, and makes sure it gets logged */
-    protected final def failTestSource(testSource: TestSource) =
-      testSource match {
-        case JointCompilationSource(files, _, _) =>
-          files.map(_.getAbsolutePath).foreach(addFailedCompilationTarget)
-          fail()
-        case SeparateCompilationSource(dir, _, _) =>
-          addFailedCompilationTarget(dir.getAbsolutePath)
-          fail()
-      }
+    protected final def failTestSource(testSource: TestSource) = synchronized {
+      failedTestSources.append(testSource.name)
+      fail()
+    }
 
     /** Prints to `System.err` if we're not suppressing all output */
     protected def echo(msg: String): Unit =
@@ -252,12 +246,12 @@ trait ParallelTesting {
     /** Wrapper function to make sure that the compiler itself did not crash -
      *  if it did, the test should automatically fail.
      */
-    protected def tryCompile(op: => Unit): Unit =
+    protected def tryCompile(testSource: TestSource)(op: => Unit): Unit =
       try op catch {
         case NonFatal(e) => {
           // if an exception is thrown during compilation, the complete test
           // run should fail
-          fail()
+          failTestSource(testSource)
           e.printStackTrace()
           registerCompilation(1)
           throw e
@@ -353,12 +347,17 @@ trait ParallelTesting {
         if (didFail) {
           echo {
             """|
+               |
+               |
                |================================================================================
                |Test Report
                |================================================================================
                |Failing tests:""".stripMargin
           }
-          failedTestSources.toArray.sorted.foreach(echo)
+          failedTestSources.toSet.foreach { source: String =>
+            echo("    " + source)
+          }
+          echo("")
           reproduceInstructions.iterator.foreach(echo)
         }
       }
@@ -375,9 +374,9 @@ trait ParallelTesting {
   private final class PosTest(testSources: List[TestSource], times: Int, threadLimit: Option[Int], suppressAllOutput: Boolean)
   extends Test(testSources, times, threadLimit, suppressAllOutput) {
     protected def compilationRunnable(testSource: TestSource): Runnable = new Runnable {
-      def run(): Unit = tryCompile {
+      def run(): Unit = tryCompile(testSource) {
         testSource match {
-          case testSource @ JointCompilationSource(files, flags, outDir) => {
+          case testSource @ JointCompilationSource(_, files, flags, outDir) => {
             val reporter = compile(testSource.sourceFiles, flags, false, outDir)
             registerCompilation(reporter.errorCount)
 
@@ -385,7 +384,7 @@ trait ParallelTesting {
               echoBuildInstructions(reporter, testSource, reporter.errorCount, reporter.warningCount)
           }
 
-          case testSource @ SeparateCompilationSource(dir, flags, outDir) => {
+          case testSource @ SeparateCompilationSource(_, dir, flags, outDir) => {
             val reporters = testSource.compilationGroups.map(files => compile(files, flags, false, outDir))
             val errorCount = reporters.foldLeft(0) { (acc, reporter) =>
               if (reporter.errorCount > 0)
@@ -470,9 +469,9 @@ trait ParallelTesting {
     }
 
     protected def compilationRunnable(testSource: TestSource): Runnable = new Runnable {
-      def run(): Unit = tryCompile {
+      def run(): Unit = tryCompile(testSource) {
         val (errorCount, warningCount, hasCheckFile, verifier: Function0[Unit]) = testSource match {
-          case testSource @ JointCompilationSource(files, flags, outDir) => {
+          case testSource @ JointCompilationSource(_, files, flags, outDir) => {
             val checkFile = files.flatMap { file =>
               if (file.isDirectory) Nil
               else {
@@ -491,7 +490,7 @@ trait ParallelTesting {
             (reporter.errorCount, reporter.warningCount, checkFile.isDefined, () => verifyOutput(checkFile.get, outDir, testSource, reporter.warningCount))
           }
 
-          case testSource @ SeparateCompilationSource(dir, flags, outDir) => {
+          case testSource @ SeparateCompilationSource(_, dir, flags, outDir) => {
             val checkFile = new JFile(dir.getAbsolutePath.reverse.dropWhile(_ == '/').reverse + ".check")
             val (errorCount, warningCount) =
               testSource
@@ -526,7 +525,7 @@ trait ParallelTesting {
   private final class NegTest(testSources: List[TestSource], times: Int, threadLimit: Option[Int], suppressAllOutput: Boolean)
   extends Test(testSources, times, threadLimit, suppressAllOutput) {
     protected def compilationRunnable(testSource: TestSource): Runnable = new Runnable {
-      def run(): Unit = tryCompile {
+      def run(): Unit = tryCompile(testSource) {
         // In neg-tests we allow two types of error annotations,
         // "nopos-error" which doesn't care about position and "error" which
         // has to be annotated on the correct line number.
@@ -579,7 +578,7 @@ trait ParallelTesting {
         }
 
         val (expectedErrors, actualErrors, hasMissingAnnotations, errorMap) = testSource match {
-          case testSource @ JointCompilationSource(files, flags, outDir) => {
+          case testSource @ JointCompilationSource(_, files, flags, outDir) => {
             val sourceFiles = testSource.sourceFiles
             val (errorMap, expectedErrors) = getErrorMapAndExpectedCount(sourceFiles)
             val reporter = compile(sourceFiles, flags, true, outDir)
@@ -588,7 +587,7 @@ trait ParallelTesting {
             (expectedErrors, actualErrors, () => getMissingExpectedErrors(errorMap, reporter.errors), errorMap)
           }
 
-          case testSource @ SeparateCompilationSource(dir, flags, outDir) => {
+          case testSource @ SeparateCompilationSource(_, dir, flags, outDir) => {
             val compilationGroups = testSource.compilationGroups
             val (errorMap, expectedErrors) = getErrorMapAndExpectedCount(compilationGroups.toArray.flatten)
             val reporters = compilationGroups.map(compile(_, flags, true, outDir))
@@ -837,9 +836,9 @@ trait ParallelTesting {
      */
     def copyToTarget(): CompilationTest = new CompilationTest (
       targets.map {
-        case target @ JointCompilationSource(files, _, outDir) =>
+        case target @ JointCompilationSource(_, files, _, outDir) =>
           target.copy(files = files.map(copyToDir(outDir,_)))
-        case target @ SeparateCompilationSource(dir, _, outDir) =>
+        case target @ SeparateCompilationSource(_, dir, _, outDir) =>
           target.copy(dir = copyToDir(outDir, dir))
       },
       times, shouldDelete, threadLimit, shouldFail
@@ -950,10 +949,11 @@ trait ParallelTesting {
 
   /** Compiles a single file from the string path `f` using the supplied flags */
   def compileFile(f: String, flags: Array[String])(implicit outDirectory: String): CompilationTest = {
+    val callingMethod = getCallingMethod
     val sourceFile = new JFile(f)
     val parent = sourceFile.getParentFile
     val outDir =
-      outDirectory + getCallingMethod + "/" +
+      outDirectory + callingMethod + "/" +
       sourceFile.getName.substring(0, sourceFile.getName.lastIndexOf('.')) + "/"
 
     require(
@@ -963,6 +963,7 @@ trait ParallelTesting {
     )
 
     val target = JointCompilationSource(
+      callingMethod,
       Array(sourceFile),
       flags,
       createOutputDirsForFile(sourceFile, parent, outDir)
@@ -975,7 +976,8 @@ trait ParallelTesting {
    *  contained within the directory `f`.
    */
   def compileDir(f: String, flags: Array[String])(implicit outDirectory: String): CompilationTest = {
-    val outDir = outDirectory + getCallingMethod + "/"
+    val callingMethod = getCallingMethod
+    val outDir = outDirectory + callingMethod + "/"
     val sourceDir = new JFile(f)
     checkRequirements(f, sourceDir, outDir)
 
@@ -987,7 +989,7 @@ trait ParallelTesting {
     val targetDir = new JFile(outDir + "/" + sourceDir.getName + "/")
     targetDir.mkdirs()
 
-    val target = JointCompilationSource(flatten(sourceDir), flags, targetDir)
+    val target = JointCompilationSource(callingMethod, flatten(sourceDir), flags, targetDir)
     new CompilationTest(target)
   }
 
@@ -996,14 +998,15 @@ trait ParallelTesting {
    *  dissociated
    */
   def compileList(testName: String, files: List[String], flags: Array[String])(implicit outDirectory: String): CompilationTest = {
-    val outDir = outDirectory + getCallingMethod + "/" + testName + "/"
+    val callingMethod = getCallingMethod
+    val outDir = outDirectory + callingMethod + "/" + testName + "/"
 
     // Directories in which to compile all containing files with `flags`:
     val targetDir = new JFile(outDir)
     targetDir.mkdirs()
     assert(targetDir.exists, s"couldn't create target directory: $targetDir")
 
-    val target = JointCompilationSource(files.map(new JFile(_)).toArray, flags, targetDir)
+    val target = JointCompilationSource(callingMethod, files.map(new JFile(_)).toArray, flags, targetDir)
 
     // Create a CompilationTest and let the user decide whether to execute a pos or a neg test
     new CompilationTest(target)
@@ -1027,15 +1030,16 @@ trait ParallelTesting {
    *    the same name as the directory (with the file extension `.check`)
    */
   def compileFilesInDir(f: String, flags: Array[String])(implicit outDirectory: String): CompilationTest = {
-    val outDir = outDirectory + getCallingMethod + "/"
+    val callingMethod = getCallingMethod
+    val outDir = outDirectory + callingMethod + "/"
     val sourceDir = new JFile(f)
     checkRequirements(f, sourceDir, outDir)
 
     val (dirs, files) = compilationTargets(sourceDir)
 
     val targets =
-      files.map(f => JointCompilationSource(Array(f), flags, createOutputDirsForFile(f, sourceDir, outDir))) ++
-      dirs.map(dir => SeparateCompilationSource(dir, flags, createOutputDirsForDir(dir, sourceDir, outDir)))
+      files.map(f => JointCompilationSource(callingMethod, Array(f), flags, createOutputDirsForFile(f, sourceDir, outDir))) ++
+      dirs.map(dir => SeparateCompilationSource(callingMethod, dir, flags, createOutputDirsForDir(dir, sourceDir, outDir)))
 
     // Create a CompilationTest and let the user decide whether to execute a pos or a neg test
     new CompilationTest(targets)
@@ -1046,14 +1050,15 @@ trait ParallelTesting {
    *  tests.
    */
   def compileShallowFilesInDir(f: String, flags: Array[String])(implicit outDirectory: String): CompilationTest = {
-    val outDir = outDirectory + getCallingMethod + "/"
+    val callingMethod = getCallingMethod
+    val outDir = outDirectory + callingMethod + "/"
     val sourceDir = new JFile(f)
     checkRequirements(f, sourceDir, outDir)
 
     val (_, files) = compilationTargets(sourceDir)
 
     val targets = files.map { file =>
-      JointCompilationSource(Array(file), flags, createOutputDirsForFile(file, sourceDir, outDir))
+      JointCompilationSource(callingMethod, Array(file), flags, createOutputDirsForFile(file, sourceDir, outDir))
     }
 
     // Create a CompilationTest and let the user decide whether to execute a pos or a neg test
