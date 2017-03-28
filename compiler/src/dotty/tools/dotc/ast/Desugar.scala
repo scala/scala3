@@ -636,6 +636,7 @@ object desugar {
         case (named, tpt) :: Nil =>
           derivedValDef(original, named, tpt, matchExpr, mods)
         case _ =>
+          val tmpName = UniqueName.fresh()
           val patMods =
             mods & Lazy | Synthetic | (if (ctx.owner.isClass) PrivateLocal else EmptyFlags)
           val firstDef =
