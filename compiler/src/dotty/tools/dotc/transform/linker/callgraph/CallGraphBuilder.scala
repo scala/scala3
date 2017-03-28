@@ -183,12 +183,16 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
   private def addCast(from: Type, to: Type) = {
     if (!(from <:< to) && to.classSymbols.forall(!_.derivesFrom(defn.NothingClass))) {
       val newCast = new Cast(from, to)
+      var addedCast = false
       val classSymbols = from.classSymbols.toSet ++ to.classSymbols
       for (tp <- reachableTypes) {
         if (classSymbols.forall(x => tp.tp.classSymbols.exists(y => y.derivesFrom(x)))) {
           val cached = castsCache.getOrElseUpdate(tp, mutable.Set.empty)
           if (!cached.contains(newCast)) {
-            casts += newCast
+            if (!addedCast) {
+              casts += newCast
+              addedCast = true
+            }
             cached += newCast
           }
         }
