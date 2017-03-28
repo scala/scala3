@@ -6,7 +6,7 @@ import core._
 import util.Positions._, Types._, Contexts._, Constants._, Names._, NameOps._, Flags._
 import SymDenotations._, Symbols._, StdNames._, Annotations._, Trees._
 import Decorators._
-import NameExtractors.{UniqueName, EvidenceParamName}
+import NameKinds.{UniqueName, EvidenceParamName}
 import language.higherKinds
 import typer.FrontEnd
 import collection.mutable.ListBuffer

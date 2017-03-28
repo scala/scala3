@@ -5,7 +5,7 @@ import core._
 import Contexts._, Symbols._, Types._, Flags._, Decorators._, StdNames._, Constants._, Phases._
 import TreeTransforms._
 import ast.Trees._
-import NameExtractors.NonLocalReturnKeyName
+import NameKinds.NonLocalReturnKeyName
 import collection.mutable
 
 object NonLocalReturns {

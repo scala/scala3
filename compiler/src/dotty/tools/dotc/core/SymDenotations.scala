@@ -4,7 +4,7 @@ package core
 
 import Periods._, Contexts._, Symbols._, Denotations._, Names._, NameOps._, Annotations._
 import Types._, Flags._, Decorators._, DenotTransformers._, StdNames._, Scopes._, Comments._
-import NameOps._, NameExtractors._
+import NameOps._, NameKinds._
 import Scopes.Scope
 import collection.mutable
 import collection.immutable.BitSet
@@ -406,14 +406,14 @@ object SymDenotations {
         }
         var prefix = encl.fullNameSeparated(separator)
         val fn =
-          if (qualifiedExtractorOfSeparator.contains(sep)) {
+          if (qualifiedNameKindOfSeparator.contains(sep)) {
             if (sep == "$")
               // duplicate scalac's behavior: don't write a double '$$' for module class members.
               prefix = prefix.exclude(ModuleClassName)
             name rewrite {
               case n: SimpleTermName =>
                 val n1 = if (filler.isEmpty) n else termName(filler ++ n)
-                qualifiedExtractorOfSeparator(sep)(prefix.toTermName, n1)
+                qualifiedNameKindOfSeparator(sep)(prefix.toTermName, n1)
             }
           }
           else {

@@ -10,7 +10,7 @@ import DenotTransformers.DenotTransformer
 import Denotations.SingleDenotation
 import Symbols._
 import Types._
-import NameExtractors.TailLabelName
+import NameKinds.TailLabelName
 import TreeTransforms.{MiniPhaseTransform, TransformerInfo}
 
 /**

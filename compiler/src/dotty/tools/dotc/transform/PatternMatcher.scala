@@ -11,7 +11,7 @@ import core.Symbols._
 import core.Types._
 import core.Constants._
 import core.StdNames._
-import core.NameExtractors._
+import core.NameKinds._
 import dotty.tools.dotc.ast.{untpd, TreeTypeMap, tpd}
 import dotty.tools.dotc.core
 import dotty.tools.dotc.core.DenotTransformers.DenotTransformer
@@ -73,11 +73,11 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {
   trait CodegenCore {
 
     // assert(owner ne null); assert(owner ne NoSymbol)
-    def freshSym(pos: Position, tp: Type = NoType, unique: UniqueNameExtractor = PatMatStdBinderName, owner: Symbol = ctx.owner) = {
+    def freshSym(pos: Position, tp: Type = NoType, unique: UniqueNameKind = PatMatStdBinderName, owner: Symbol = ctx.owner) = {
       ctx.newSymbol(owner, unique.fresh(), Flags.Synthetic | Flags.Case, tp, coord = pos)
     }
 
-    def newSynthCaseLabel(unique: UniqueNameExtractor, tpe: Type, owner: Symbol = ctx.owner) =
+    def newSynthCaseLabel(unique: UniqueNameKind, tpe: Type, owner: Symbol = ctx.owner) =
       ctx.newSymbol(owner, unique.fresh(), Flags.Label | Flags.Synthetic | Flags.Method, tpe).asTerm
       //NoSymbol.newLabel(freshName(name), NoPosition) setFlag treeInfo.SYNTH_CASE_FLAGS
 

@@ -19,7 +19,7 @@ import java.util.HashMap
 //import annotation.volatile
 
 object Names {
-  import NameExtractors._
+  import NameKinds._
 
   /** A common class for things that can be turned into names.
    *  Instances are both names and strings, the latter via a decorator.
@@ -75,9 +75,9 @@ object Names {
     def likeKinded(name: Name): ThisName
 
     def derived(info: NameInfo): ThisName
-    def derived(kind: ClassifiedNameExtractor): ThisName = derived(kind.info)
-    def exclude(kind: NameExtractor): ThisName
-    def is(kind: NameExtractor): Boolean
+    def derived(kind: ClassifiedNameKind): ThisName = derived(kind.info)
+    def exclude(kind: NameKind): ThisName
+    def is(kind: NameKind): Boolean
     def debugString: String
 
     def toText(printer: Printer): Text = printer.toText(this)
@@ -130,7 +130,7 @@ object Names {
 
     def likeKinded(name: Name): TermName = name.toTermName
 
-    def info: NameInfo = SimpleTermNameExtractor.info
+    def info: NameInfo = SimpleTermNameKind.info
     def underlying: TermName = unsupported("underlying")
 
     @sharable private var derivedNames: AnyRef /* SimpleMap | j.u.HashMap */ =
@@ -174,8 +174,8 @@ object Names {
      *  name as underlying name.
      */
     def derived(info: NameInfo): TermName = {
-      val thisKind = this.info.extractor
-      val thatKind = info.extractor
+      val thisKind = this.info.kind
+      val thatKind = info.kind
       if (thisKind.tag < thatKind.tag || thatKind.definesNewName) add(info)
       else if (thisKind.tag > thatKind.tag) rewrap(underlying.derived(info))
       else {
@@ -184,15 +184,15 @@ object Names {
       }
     }
 
-    def exclude(kind: NameExtractor): TermName = {
-      val thisKind = this.info.extractor
+    def exclude(kind: NameKind): TermName = {
+      val thisKind = this.info.kind
       if (thisKind.tag < kind.tag || thisKind.definesNewName) this
       else if (thisKind.tag > kind.tag) rewrap(underlying.exclude(kind))
       else underlying
     }
 
-    def is(kind: NameExtractor): Boolean = {
-      val thisKind = this.info.extractor
+    def is(kind: NameKind): Boolean = {
+      val thisKind = this.info.kind
       thisKind == kind ||
       !thisKind.definesNewName && thisKind.tag > kind.tag && underlying.is(kind)
     }
@@ -295,8 +295,8 @@ object Names {
     def likeKinded(name: Name): TypeName = name.toTypeName
 
     def derived(info: NameInfo): TypeName = toTermName.derived(info).toTypeName
-    def exclude(kind: NameExtractor): TypeName = toTermName.exclude(kind).toTypeName
-    def is(kind: NameExtractor) = toTermName.is(kind)
+    def exclude(kind: NameKind): TypeName = toTermName.exclude(kind).toTypeName
+    def is(kind: NameKind) = toTermName.is(kind)
 
     override def toString = toTermName.toString
     override def debugString = toTermName.debugString + "/T"
@@ -512,7 +512,7 @@ object Names {
 
   implicit val NameOrdering: Ordering[Name] = new Ordering[Name] {
     private def compareInfos(x: NameInfo, y: NameInfo): Int =
-      if (x.extractor.tag != y.extractor.tag) x.extractor.tag - y.extractor.tag
+      if (x.kind.tag != y.kind.tag) x.kind.tag - y.kind.tag
       else x match {
         case x: QualifiedInfo =>
           y match {

@@ -4,7 +4,7 @@ package core
 import java.security.MessageDigest
 import scala.annotation.switch
 import scala.io.Codec
-import Names._, StdNames._, Contexts._, Symbols._, Flags._, NameExtractors._
+import Names._, StdNames._, Contexts._, Symbols._, Flags._, NameKinds._
 import Decorators.PreNamedString
 import util.{Chars, NameTransformer}
 import Chars.isOperatorPart
@@ -136,7 +136,7 @@ object NameOps {
     def expandedName(prefix: Name, separator: Name = nme.EXPAND_SEPARATOR): N =
       likeTyped {
         def qualify(name: SimpleTermName) =
-          qualifiedExtractorOfSeparator(separator.toString)(prefix.toTermName, name)
+          qualifiedNameKindOfSeparator(separator.toString)(prefix.toTermName, name)
         name rewrite {
           case name: SimpleTermName =>
             qualify(name)

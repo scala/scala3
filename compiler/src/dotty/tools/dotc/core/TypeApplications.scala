@@ -11,7 +11,7 @@ import util.Stats._
 import util.common._
 import Names._
 import NameOps._
-import NameExtractors._
+import NameKinds._
 import Flags._
 import StdNames.tpnme
 import util.Positions.Position

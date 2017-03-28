@@ -13,7 +13,7 @@ import Decorators._
 import DenotTransformers._
 import StdNames._
 import NameOps._
-import NameExtractors._
+import NameKinds._
 import ast.Trees._
 import util.Positions._
 import Names._

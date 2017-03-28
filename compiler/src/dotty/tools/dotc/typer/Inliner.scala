@@ -15,7 +15,7 @@ import StdNames.nme
 import Contexts.Context
 import Names.{Name, TermName}
 import NameOps._
-import NameExtractors.InlineAccessorName
+import NameKinds.InlineAccessorName
 import SymDenotations.SymDenotation
 import Annotations._
 import transform.ExplicitOuter

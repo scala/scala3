@@ -10,7 +10,7 @@ import Decorators._
 import Names._
 import StdNames._
 import NameOps._
-import NameExtractors._
+import NameKinds._
 import Flags._
 import Annotations._
 

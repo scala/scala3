@@ -19,7 +19,7 @@ import util.Positions._
 import DenotTransformers._
 import StdNames._
 import NameOps._
-import NameExtractors.LazyImplicitName
+import NameKinds.LazyImplicitName
 import ast.tpd.Tree
 import ast.TreeTypeMap
 import Constants.Constant

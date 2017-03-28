@@ -12,7 +12,7 @@ import core._
 import Flags._
 import Contexts._
 import Names._
-import NameExtractors.WildcardParamName
+import NameKinds.WildcardParamName
 import ast.{Positioned, Trees, untpd}
 import ast.Trees._
 import Decorators._
@@ -21,7 +21,6 @@ import util.Positions._
 import Constants._
 import ScriptParsers._
 import Comments._
-
 import scala.annotation.{tailrec, switch}
 import util.DotClass
 import rewrite.Rewrites.patch

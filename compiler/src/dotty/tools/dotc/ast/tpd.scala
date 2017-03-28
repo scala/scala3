@@ -12,7 +12,7 @@ import Denotations._, Decorators._, DenotTransformers._
 import collection.mutable
 import util.{Property, SourceFile, NoSource}
 import typer.ErrorReporting._
-import NameExtractors.TempResultName
+import NameKinds.TempResultName
 
 import scala.annotation.tailrec
 import scala.io.Codec

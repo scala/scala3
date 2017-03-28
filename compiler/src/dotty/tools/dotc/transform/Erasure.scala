@@ -11,7 +11,7 @@ import core.Types._
 import core.Names._
 import core.StdNames._
 import core.NameOps._
-import core.NameExtractors.ShadowedName
+import core.NameKinds.ShadowedName
 import core.Decorators._
 import core.Constants._
 import core.Definitions._

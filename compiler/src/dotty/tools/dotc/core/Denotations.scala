@@ -6,7 +6,7 @@ import SymDenotations.{ SymDenotation, ClassDenotation, NoDenotation }
 import Contexts.{Context, ContextBase}
 import Names._
 import NameOps._
-import NameExtractors._
+import NameKinds._
 import StdNames._
 import Symbols.NoSymbol
 import Symbols._

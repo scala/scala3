@@ -7,7 +7,7 @@ import Symbols._
 import Flags._
 import Names._
 import StdNames._, NameOps._
-import NameExtractors.{ShadowedName, SkolemName}
+import NameKinds.{ShadowedName, SkolemName}
 import Scopes._
 import Constants._
 import Contexts._

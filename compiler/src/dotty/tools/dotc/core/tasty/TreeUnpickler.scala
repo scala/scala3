@@ -5,7 +5,7 @@ package tasty
 
 import Contexts._, Symbols._, Types._, Scopes._, SymDenotations._, Names._, NameOps._
 import StdNames._, Denotations._, Flags._, Constants._, Annotations._
-import NameExtractors._
+import NameKinds._
 import util.Positions._
 import ast.{tpd, Trees, untpd}
 import Trees._

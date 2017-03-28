@@ -20,7 +20,7 @@ import scala.collection.mutable
 import DenotTransformers._
 import typer.Checking
 import NameOps._
-import NameExtractors.AvoidClashName
+import NameKinds.AvoidClashName
 import StdNames._
 
 

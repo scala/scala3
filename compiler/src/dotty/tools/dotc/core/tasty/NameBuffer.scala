@@ -6,7 +6,7 @@ package tasty
 import collection.mutable
 import Names.{Name, chrs, SimpleTermName, DerivedTermName}
 import NameOps.NameDecorator
-import NameExtractors._
+import NameKinds._
 import Decorators._
 import TastyBuffer._
 import scala.io.Codec
@@ -53,7 +53,7 @@ class NameBuffer extends TastyBuffer(10000) {
   def writeNameRef(name: Name): Unit = writeNameRef(nameRefs(name.toTermName))
 
   def pickleNameContents(name: Name): Unit = {
-    val tag = name.toTermName.info.extractor.tag
+    val tag = name.toTermName.info.kind.tag
     writeByte(tag)
     name.toTermName match {
       case name: SimpleTermName =>

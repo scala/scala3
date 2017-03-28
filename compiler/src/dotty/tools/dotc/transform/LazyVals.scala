@@ -10,7 +10,7 @@ import Contexts._
 import Symbols._
 import Decorators._
 import NameOps._
-import NameExtractors._
+import NameKinds._
 import StdNames.nme
 import rewrite.Rewrites.patch
 import util.Positions.Position

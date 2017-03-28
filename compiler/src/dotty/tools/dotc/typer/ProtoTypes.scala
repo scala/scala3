@@ -5,7 +5,7 @@ package typer
 import core._
 import ast._
 import Contexts._, Types._, Flags._, Denotations._, Names._, StdNames._, NameOps._, Symbols._
-import NameExtractors.DepParamName
+import NameKinds.DepParamName
 import Trees._
 import Constants._
 import Scopes._

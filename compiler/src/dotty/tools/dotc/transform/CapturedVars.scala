@@ -12,7 +12,7 @@ import core.SymDenotations._
 import core.StdNames.nme
 import core.Names._
 import core.NameOps._
-import core.NameExtractors.TempResultName
+import core.NameKinds.TempResultName
 import ast.Trees._
 import SymUtils._
 import collection.{ mutable, immutable }

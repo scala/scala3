@@ -12,7 +12,7 @@ import Symbols._
 import Decorators._
 import Names._
 import StdNames._
-import NameExtractors.UniqueName
+import NameKinds.UniqueName
 import Trees._
 import Inferencing._
 import util.Positions._

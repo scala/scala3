@@ -9,7 +9,7 @@ import TastyFormat._
 import Contexts._, Symbols._, Types._, Names._, Constants._, Decorators._, Annotations._, StdNames.tpnme, NameOps._
 import collection.mutable
 import typer.Inliner
-import NameOps._, NameExtractors._
+import NameOps._, NameKinds._
 import StdNames.nme
 import TastyBuffer._
 import TypeApplications._

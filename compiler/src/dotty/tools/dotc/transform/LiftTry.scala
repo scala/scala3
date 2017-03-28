@@ -8,7 +8,7 @@ import core.Contexts._
 import core.Types._
 import core.Flags._
 import core.Decorators._
-import core.NameExtractors.LiftedTreeName
+import core.NameKinds.LiftedTreeName
 import NonLocalReturns._
 
 /** Lifts try's that might be executed on non-empty expression stacks

@@ -5,7 +5,7 @@ import core.Symbols._
 import core.StdNames._
 import ast.Trees._
 import core.Types._
-import core.NameExtractors.ExceptionBinderName
+import core.NameKinds.ExceptionBinderName
 import dotty.tools.dotc.core.Decorators._
 import dotty.tools.dotc.core.Flags
 import dotty.tools.dotc.core.Contexts.Context

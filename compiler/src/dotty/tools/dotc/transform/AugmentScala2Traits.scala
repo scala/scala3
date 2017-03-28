@@ -14,7 +14,7 @@ import DenotTransformers._
 import Annotations._
 import StdNames._
 import NameOps._
-import NameExtractors._
+import NameKinds._
 import ast.Trees._
 
 /** This phase augments Scala2 traits with implementation classes and with additional members
