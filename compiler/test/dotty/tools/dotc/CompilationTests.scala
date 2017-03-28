@@ -4,26 +4,27 @@ package dotc
 
 import org.junit.Test
 import java.io.{ File => JFile }
-
 import org.junit.experimental.categories.Category
+
+import scala.util.matching.Regex
 
 @Category(Array(classOf[ParallelTesting]))
 class CompilationTests extends ParallelTesting {
   import CompilationTests._
 
-  def interactive: Boolean = !sys.env.contains("DRONE")
+  def isInteractive: Boolean = !sys.env.contains("DRONE")
 
-  def regex: Option[String] = sys.props.get("dotty.partest.filter")
+  def testFilter: Option[Regex] = sys.props.get("dotty.partest.filter").map(r => new Regex(r))
 
   // Positive tests ------------------------------------------------------------
 
   @Test def compilePos: Unit = {
     compileList("compileStdLib", StdLibSources.whitelisted, scala2Mode.and("-migration", "-Yno-inline")) +
     compileFilesInDir("../tests/pos", defaultOptions)
-  }.pos()
+  }.checkCompile()
 
   @Test def compilePosScala2: Unit =
-    compileFilesInDir("../tests/pos-scala2", scala2Mode).pos()
+    compileFilesInDir("../tests/pos-scala2", scala2Mode).checkCompile()
 
   @Test def compilePosMixedFlags: Unit = {
     compileFile("../tests/pos/nullarify.scala", defaultOptions.and("-Ycheck:nullarify")) +
@@ -56,10 +57,10 @@ class CompilationTests extends ParallelTesting {
       ),
       scala2Mode
     )
-  }.pos()
+  }.checkCompile()
 
   @Test def compileCoreNoCheck: Unit =
-    compileDir("../compiler/src/dotty/tools/dotc/core", noCheckOptions ++ classPath).pos()
+    compileDir("../compiler/src/dotty/tools/dotc/core", noCheckOptions ++ classPath).checkCompile()
 
   @Test def compileDotcInternals: Unit = {
     compileDir("../compiler/src/dotty/tools/dotc/ast", defaultOptions) +
@@ -72,7 +73,7 @@ class CompilationTests extends ParallelTesting {
     compileDir("../compiler/src/dotty/tools/dotc/typer", defaultOptions) +
     compileDir("../compiler/src/dotty/tools/dotc/util", defaultOptions) +
     compileDir("../compiler/src/dotty/tools/io", defaultOptions)
-  }.pos()
+  }.checkCompile()
 
   @Test def posTwice: Unit = {
     compileFile("../tests/pos/Labels.scala", defaultOptions) +
@@ -128,17 +129,17 @@ class CompilationTests extends ParallelTesting {
       ),
       defaultOptions.and("-Xprompt")
     )
-  }.times(2).pos()
+  }.times(2).checkCompile()
 
   // New tests -----------------------------------------------------------------
 
   @Test def compileNew: Unit =
-    compileFilesInDir("../tests/new", defaultOptions).pos()
+    compileFilesInDir("../tests/new", defaultOptions).checkCompile()
 
   // Negative tests ------------------------------------------------------------
 
   @Test def compileNeg: Unit =
-    compileShallowFilesInDir("../tests/neg", defaultOptions).neg()
+    compileShallowFilesInDir("../tests/neg", defaultOptions).checkExpectedErrors()
 
   @Test def compileNegCustomFlags: Unit = {
     compileFile("../tests/neg/customArgs/typers.scala", allowDoubleBindings) +
@@ -157,14 +158,17 @@ class CompilationTests extends ParallelTesting {
     compileFile("../tests/neg/tailcall/tailrec-2.scala", defaultOptions) +
     compileFile("../tests/neg/tailcall/tailrec-3.scala", defaultOptions) +
     compileDir("../tests/neg/typedIdents", defaultOptions)
-  }.neg()
+  }.checkExpectedErrors()
 
   // Run tests -----------------------------------------------------------------
 
   @Test def runAll: Unit =
-    compileFilesInDir("../tests/run", defaultOptions).run()
+    compileFilesInDir("../tests/run", defaultOptions).checkRuns()
 
   // Pickling Tests ------------------------------------------------------------
+  //
+  // Pickling tests are very memory intensive and as such need to be run with a
+  // lower level of concurrency as to not kill their running VMs
 
   @Test def testPickling1: Unit = {
     compileFilesInDir("../tests/new", picklingOptions) +
@@ -183,21 +187,21 @@ class CompilationTests extends ParallelTesting {
     compileDir("../compiler/src/dotty/tools/dotc/util", picklingOptions) +
     compileDir("../compiler/src/dotty/tools/io", picklingOptions) +
     compileFile("../tests/pos/pickleinf.scala", picklingOptions)
-  }.limitThreads(4).pos()
+  }.limitThreads(4).checkCompile()
 
   @Test def testPickling2: Unit = {
     compileDir("../compiler/src/dotty/tools/dotc/core/classfile", picklingOptions) +
     compileDir("../compiler/src/dotty/tools/dotc/core/tasty", picklingOptions) +
     compileDir("../compiler/src/dotty/tools/dotc/core/unpickleScala2", picklingOptions)
-  }.limitThreads(4).pos()
+  }.limitThreads(4).checkCompile()
 
   @Test def testPickling3: Unit = {
     compileDir("../compiler/src/dotty/tools", picklingOptions)
-  }.limitThreads(4).pos()
+  }.limitThreads(4).checkCompile()
 
   @Test def testPickling4: Unit = {
     compileDir("../compiler/src/dotty/tools/dotc", picklingOptions)
-  }.limitThreads(4).pos()
+  }.limitThreads(4).checkCompile()
 
   /** The purpose of this test is two-fold, being able to compile dotty
    *  bootstrapped, and making sure that TASTY can link against a compiled
@@ -239,7 +243,7 @@ class CompilationTests extends ParallelTesting {
         compileShallowFilesInDir("../compiler/src/dotty/tools/dotc/typer", opt) +
         compileShallowFilesInDir("../compiler/src/dotty/tools/dotc/util", opt)
       } :: Nil
-    }.map(_.pos()).foreach(_.delete())
+    }.map(_.checkCompile()).foreach(_.delete())
   }
 }
 

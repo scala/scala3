@@ -4,8 +4,8 @@ import dotty.tools.dotc.ParallelTesting
 
 object comptest extends ParallelTesting {
 
-  def interactive: Boolean = true
-  def regex: Option[String] = None
+  def isInteractive = true
+  def testFilter = None
 
   implicit val defaultOutputDir: String = "."
 

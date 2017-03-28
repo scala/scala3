@@ -78,9 +78,9 @@ object TestReporter {
     new PrintWriter(new FileOutputStream(new JFile(s"../tests-$timestamp.log"), true))
   }
 
-  def parallelReporter(caller: AnyRef, logLevel: Int): TestReporter = new TestReporter(
+  def parallelReporter(lock: AnyRef, logLevel: Int): TestReporter = new TestReporter(
     new PrintWriter(Console.err, true),
-    str => caller.synchronized {
+    str => lock.synchronized {
       logWriter.println(str)
       logWriter.flush()
     },
