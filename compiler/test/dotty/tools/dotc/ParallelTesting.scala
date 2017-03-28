@@ -406,8 +406,12 @@ trait ParallelTesting {
 
   private final class RunTest(testSources: List[TestSource], times: Int, threadLimit: Option[Int], suppressAllOutput: Boolean)
   extends Test(testSources, times, threadLimit, suppressAllOutput) {
-
     private def runMain(dir: JFile, testSource: TestSource): Array[String] = {
+      def renderStackTrace(ex: Throwable): String =
+        ex.getStackTrace
+          .takeWhile(_.getMethodName != "invoke0")
+          .mkString("    ", "\n    ", "")
+
       import java.io.ByteArrayOutputStream
       import java.net.{ URL, URLClassLoader }
 
@@ -424,15 +428,15 @@ trait ParallelTesting {
       }
       catch {
         case ex: NoSuchMethodException =>
-          echo(s"test in '$dir' did not contain method: ${ex.getMessage}      ")
+          echo(s"test in '$dir' did not contain method: ${ex.getMessage}\n${renderStackTrace(ex.getCause)}")
           failTestSource(testSource)
 
         case ex: ClassNotFoundException =>
-          echo(s"test in '$dir' did not contain class: ${ex.getMessage}       ")
+          echo(s"test in '$dir' did not contain class: ${ex.getMessage}\n${renderStackTrace(ex.getCause)}")
           failTestSource(testSource)
 
         case ex: InvocationTargetException =>
-          echo(s"An exception ocurred when running main: ${ex.getCause}       ")
+          echo(s"An exception ocurred when running main: ${ex.getCause}\n${renderStackTrace(ex.getCause)}")
           failTestSource(testSource)
       }
       printStream.toString("utf-8").lines.toArray
