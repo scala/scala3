@@ -47,6 +47,8 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
   private val sizesCache = new mutable.HashMap[Symbol, Int]()
   private val lastInstantiation = mutable.Map.empty[CallInfoWithContext, mutable.Map[CallInfo, Int]]
 
+  private val normalizeType: Type => Type = new TypeNormalizer
+
   def pushEntryPoint(s: Symbol, entryPointId: Int): Unit = {
     val tpe = ref(s).tpe.asInstanceOf[TermRef]
     val targsSize = tpe.widen match {
@@ -58,7 +60,7 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
     val call = CallInfoWithContext(tpe, targs, args, OuterTargs.empty, None, None)
     entryPoints = entryPoints.updated(call, entryPointId)
     addReachableMethod(call)
-    val t = ref(s.owner).tpe
+    val t = normalizeType(ref(s.owner).tpe)
     val self = new TypeWithContext(t, parentRefinements(t))
     addReachableType(self)
   }
@@ -158,7 +160,7 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
       if (!reachableMethodsSymbols.contains(callSymbol)) {
         reachableMethodsSymbols += callSymbol
         collectedSummaries.get(callSymbol).foreach { summary =>
-          summary.accessedModules.foreach(x => addReachableType(new TypeWithContext(x.info, parentRefinements(x.info))))
+          summary.accessedModules.foreach(x => addReachableType(new TypeWithContext(normalizeType(x.info), parentRefinements(x.info))))
         }
       }
     }
@@ -208,7 +210,7 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
       if (tp.termSymbol.is(Module)) {
         addReachableType(new TypeWithContext(tp.widenDealias, parentRefinements(tp.widenDealias)))
       } else if (tp.typeSymbol.is(Module, butNot = Package)) {
-        val t = ref(tp.typeSymbol).tpe
+        val t = normalizeType(ref(tp.typeSymbol).tpe)
         addReachableType(new TypeWithContext(t, parentRefinements(t)))
       }
       registeredParentModules += tp
@@ -340,7 +342,7 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
       case x: PreciseType =>
         x
       case x: ClosureType =>
-        val utpe =  propagateTargs(x.underlying, isConstructor = true)
+        val utpe =  normalizeType(propagateTargs(x.underlying, isConstructor = true))
         val outer = parentRefinements(utpe) ++ caller.outerTargs
         val closureT = new ClosureType(x.meth, utpe, x.implementedMethod)
         addReachableType(new TypeWithContext(closureT, outer))
@@ -479,7 +481,7 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
           }
         } else constructedType
 
-        val tpe =  propagateTargs(fixNoPrefix, isConstructor = true)
+        val tpe =  normalizeType(propagateTargs(fixNoPrefix, isConstructor = true))
         addReachableType(new TypeWithContext(tpe, parentRefinements(tpe) ++ outerTargs))
 
         val call = {

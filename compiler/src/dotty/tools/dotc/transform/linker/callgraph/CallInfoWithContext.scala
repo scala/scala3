@@ -3,7 +3,7 @@ package dotty.tools.dotc.transform.linker.callgraph
 import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.Types._
 import dotty.tools.dotc.transform.linker.summaries.{AbstractCallInfo, CallInfo}
-import dotty.tools.dotc.transform.linker.types.JavaAllocatedType
+import dotty.tools.dotc.transform.linker.types._
 
 import scala.collection.mutable
 
@@ -52,9 +52,9 @@ class CallInfoWithContext private (val call: TermRef, val targs: List[Type], val
 }
 
 object CallInfoWithContext {
+
   def apply(call: TermRef, targs: List[Type], argumentsPassed: List[Type], outerTargs: OuterTargs,
       parent: Option[CallInfoWithContext], callee: Option[CallInfo])(implicit ctx: Context): CallInfoWithContext = {
-    // TODO normilize types as is done in CallInfo. At call sites of this `apply`
     val callInfo = new CallInfoWithContext(call, targs, argumentsPassed, outerTargs, parent, callee)
     AbstractCallInfo.assertions(callInfo)
     callInfo
