@@ -16,6 +16,7 @@ object NameExtractors {
 
   abstract class NameInfo extends DotClass {
     def tag: Int
+    def definesNewName: Boolean = false
     def mkString(underlying: TermName): String
     def map(f: SimpleTermName => SimpleTermName): NameInfo = this
   }
@@ -64,6 +65,7 @@ object NameExtractors {
   abstract class QualifiedNameExtractor(tag: Int, val separator: String, val infoString: String) extends NameExtractor(tag) {
     type ThisInfo = QualInfo
     case class QualInfo(val name: SimpleTermName) extends Info with QualifiedInfo {
+      override def definesNewName = true
       override def map(f: SimpleTermName => SimpleTermName): NameInfo = new QualInfo(f(name))
       override def toString = s"$infoString $name"
     }
@@ -89,9 +91,10 @@ object NameExtractors {
     def num: Int
   }
 
-  abstract class NumberedNameExtractor(tag: Int, val infoString: String) extends NameExtractor(tag) {
+  abstract class NumberedNameExtractor(tag: Int, val infoString: String) extends NameExtractor(tag) { self =>
     type ThisInfo = NumberedInfo
     case class NumberedInfo(val num: Int) extends Info with NameExtractors.NumberedInfo {
+      override def definesNewName = self.definesNewName
       override def toString = s"$infoString $num"
     }
     def apply(qual: TermName, num: Int) =
@@ -100,6 +103,14 @@ object NameExtractors {
       case DerivedTermName(underlying, info: this.NumberedInfo) => Some((underlying, info.num))
       case _ => None
     }
+    def definesNewName = false
+  }
+
+  class UniqueNameExtractor(sep: String) extends NumberedNameExtractor(UNIQUE, "Unique") {
+    val separator = if (sep.isEmpty) "$" else sep
+    override def definesNewName = !sep.isEmpty
+    def mkString(underlying: TermName, info: ThisInfo) =
+      underlying.toString + separator + info.num
   }
 
   object QualifiedName   extends QualifiedNameExtractor(QUALIFIED, ".", "Qualified")
@@ -147,8 +158,6 @@ object NameExtractors {
     def mkString(underlying: TermName, info: ThisInfo): String = unsupported("mkString")
     def infoString: String = "Signed"
   }
-
-  def definesNewName(tag: Int) = tag <= TraitSetterName.tag
 
   def extractorOfTag(tag: Int) = extractors(tag)
 

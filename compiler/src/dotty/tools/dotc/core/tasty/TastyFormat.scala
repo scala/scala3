@@ -225,8 +225,9 @@ object TastyFormat {
   final val FLATTENED = 3
   final val EXPANDED = 4
   final val TRAITSETTER = 5
-  final val DEFAULTGETTER = 10
-  final val VARIANT = 11
+  final val UNIQUE = 10
+  final val DEFAULTGETTER = 11
+  final val VARIANT = 12
   final val SUPERACCESSOR = 20
   final val INITIALIZER = 21
   final val SHADOWED = 22

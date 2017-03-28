@@ -175,7 +175,7 @@ object Names {
      */
     def derived(info: NameInfo): TermName = {
       val ownTag = this.info.tag
-      if (ownTag < info.tag || definesNewName(info.tag)) add(info)
+      if (ownTag < info.tag || info.definesNewName) add(info)
       else if (ownTag > info.tag) rewrap(underlying.derived(info))
       else {
         assert(info == this.info)
@@ -185,7 +185,7 @@ object Names {
 
     def exclude(kind: NameExtractor): TermName = {
       val ownTag = this.info.tag
-      if (ownTag < kind.tag || definesNewName(ownTag)) this
+      if (ownTag < kind.tag || info.definesNewName) this
       else if (ownTag > kind.tag) rewrap(underlying.exclude(kind))
       else underlying
     }
@@ -193,7 +193,7 @@ object Names {
     def is(kind: NameExtractor): Boolean = {
       val ownTag = this.info.tag
       ownTag == kind.tag ||
-      !definesNewName(ownTag) && ownTag > kind.tag && underlying.is(kind)
+      !info.definesNewName && ownTag > kind.tag && underlying.is(kind)
     }
 
     override def hashCode = System.identityHashCode(this)
