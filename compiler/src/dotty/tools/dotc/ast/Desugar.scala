@@ -557,7 +557,7 @@ object desugar {
    *   val/var/lazy val p = e  ==>  val/var/lazy val x_1 = (e: @unchecked) match (case p => (x_1))
    *
    *   in case there are zero or more than one variables in pattern
-   *   val/var/lazy p = e  ==>  private synthetic [lazy] val t$ = (e: @unchecked) match (case p => (x_1, ..., x_N))
+   *   val/var/lazy p = e  ==>  private[this] synthetic [lazy] val t$ = (e: @unchecked) match (case p => (x_1, ..., x_N))
    *                   val/var/def x_1 = t$._1
    *                   ...
    *                   val/var/def x_N = t$._N
@@ -586,7 +586,8 @@ object desugar {
           derivedValDef(original, named, tpt, matchExpr, mods)
         case _ =>
           val tmpName = ctx.freshName().toTermName
-          val patMods = mods & (AccessFlags | Lazy) | Synthetic
+          val patMods =
+            mods & Lazy | Synthetic | (if (ctx.owner.isClass) PrivateLocal else EmptyFlags)
           val firstDef =
             ValDef(tmpName, TypeTree(), matchExpr)
               .withPos(pat.pos.union(rhs.pos)).withMods(patMods)
