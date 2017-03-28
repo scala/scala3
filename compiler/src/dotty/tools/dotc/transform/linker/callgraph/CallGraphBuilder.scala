@@ -481,7 +481,7 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
           }
         } else constructedType
 
-        val tpe =  normalizeType(propagateTargs(fixNoPrefix, isConstructor = true))
+        val tpe = propagateTargs(fixNoPrefix, isConstructor = true)
         addReachableType(new TypeWithContext(tpe, parentRefinements(tpe) ++ outerTargs))
 
         val call = {

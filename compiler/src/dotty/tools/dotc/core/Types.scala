@@ -1861,15 +1861,10 @@ object Types {
 
   /* used by linker */
   final class TypeRefWithFixedSymAndInfo(prefix: Type, name: TypeName, fixedSym: TypeSymbol, val underl: Type) extends TypeRefWithFixedSym(prefix, name, fixedSym) {
-    override def derivedSelect(prefix: Type)(implicit ctx: Context): Type =
-      if (prefix eq this.prefix) this
-      else {
-        ???
-        //        val res = prefix.lookupRefined(name)
-        //        if (res.exists) res
-        //        else if (name == tpnme.hkApply && prefix.noHK) derivedSelect(prefix.EtaExpandCore)
-        //        else newLikeThis(prefix)
-      }
+    override def derivedSelect(prefix: Type)(implicit ctx: Context): Type = {
+      assert(prefix eq this.prefix, "loss in precision")
+      this
+    }
 
     override def info(implicit ctx: Context): Type = underl
 
