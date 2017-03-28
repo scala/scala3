@@ -12,6 +12,7 @@ import Denotations._, Decorators._, DenotTransformers._
 import collection.mutable
 import util.{Property, SourceFile, NoSource}
 import typer.ErrorReporting._
+import NameExtractors.TempResultName
 
 import scala.annotation.tailrec
 import scala.io.Codec
@@ -897,7 +898,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   def evalOnce(tree: Tree)(within: Tree => Tree)(implicit ctx: Context) = {
     if (isIdempotentExpr(tree)) within(tree)
     else {
-      val vdef = SyntheticValDef(ctx.freshName("ev$").toTermName, tree)
+      val vdef = SyntheticValDef(TempResultName.fresh(), tree)
       Block(vdef :: Nil, within(Ident(vdef.namedType)))
     }
   }

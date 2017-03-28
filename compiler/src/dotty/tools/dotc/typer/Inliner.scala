@@ -15,6 +15,7 @@ import StdNames.nme
 import Contexts.Context
 import Names.{Name, TermName}
 import NameOps._
+import NameExtractors.InlineAccessorName
 import SymDenotations.SymDenotation
 import Annotations._
 import transform.ExplicitOuter
@@ -49,8 +50,7 @@ object Inliner {
         sym.is(AccessFlags) || sym.privateWithin.exists
 
       /** The name of the next accessor to be generated */
-      def accessorName(implicit ctx: Context) =
-        ctx.freshNames.newName(inlineMethod.name.asTermName.inlineAccessorName.toString)
+      def accessorName(implicit ctx: Context) = InlineAccessorName.fresh(inlineMethod.name.asTermName)
 
       /** A fresh accessor symbol.
        *

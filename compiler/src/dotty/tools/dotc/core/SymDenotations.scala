@@ -406,14 +406,14 @@ object SymDenotations {
         }
         var prefix = encl.fullNameSeparated(separator)
         val fn =
-          if (separatorToQualified.contains(sep)) {
+          if (qualifiedExtractorOfSeparator.contains(sep)) {
             if (sep == "$")
               // duplicate scalac's behavior: don't write a double '$$' for module class members.
               prefix = prefix.exclude(ModuleClassName)
             name rewrite {
               case n: SimpleTermName =>
                 val n1 = if (filler.isEmpty) n else termName(filler ++ n)
-                separatorToQualified(sep)(prefix.toTermName, n1)
+                qualifiedExtractorOfSeparator(sep)(prefix.toTermName, n1)
             }
           }
           else {
@@ -1541,7 +1541,7 @@ object SymDenotations {
           !(this is Frozen) ||
           (scope ne this.unforcedDecls) ||
           sym.hasAnnotation(defn.ScalaStaticAnnot) ||
-          sym.name.isInlineAccessor ||
+          sym.name.is(InlineAccessorName) ||
           isUsecase, i"trying to enter $sym in $this, frozen = ${this is Frozen}")
 
       scope.enter(sym)

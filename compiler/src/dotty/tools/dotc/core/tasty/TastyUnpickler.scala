@@ -5,7 +5,7 @@ package tasty
 import scala.collection.mutable
 import TastyFormat._
 import TastyBuffer.NameRef
-import Names.{Name, TermName, termName}
+import Names.{Name, TermName, termName, EmptyTermName}
 import NameExtractors._
 import java.util.UUID
 
@@ -55,6 +55,12 @@ class TastyUnpickler(reader: TastyReader) {
         FlattenedName(readName(), readName().asSimpleName)
       case EXPANDED =>
         ExpandedName(readName(), readName().asSimpleName)
+      case UNIQUE =>
+        val separator = readName().toString
+        val num = readNat()
+        val originals = until(end)(readName())
+        val original = if (originals.isEmpty) EmptyTermName else originals.head
+        uniqueExtractorOfSeparator(separator)(original, num)
       case DEFAULTGETTER =>
         DefaultGetterName(readName(), readNat())
       case VARIANT =>
@@ -67,7 +73,7 @@ class TastyUnpickler(reader: TastyReader) {
         if (sig == Signature.NotAMethod) sig = Signature.NotAMethod
         SignedName(original, sig)
       case _ =>
-        extractorOfTag(tag)(readName())
+        simpleExtractorOfTag(tag)(readName())
     }
     assert(currentAddr == end, s"bad name $result $start $currentAddr $end")
     result

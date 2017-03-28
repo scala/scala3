@@ -12,6 +12,7 @@ import core._
 import Flags._
 import Contexts._
 import Names._
+import NameExtractors.WildcardParamName
 import ast.{Positioned, Trees, untpd}
 import ast.Trees._
 import Decorators._
@@ -1168,7 +1169,7 @@ object Parsers {
     def bindingName(): TermName =
       if (in.token == USCORE) {
         in.nextToken()
-        ctx.freshName(nme.USCORE_PARAM_PREFIX).toTermName
+        WildcardParamName.fresh()
       }
       else ident()
 
@@ -1224,7 +1225,7 @@ object Parsers {
           path(thisOK = true)
         case USCORE =>
           val start = in.skipToken()
-          val pname = ctx.freshName(nme.USCORE_PARAM_PREFIX).toTermName
+          val pname = WildcardParamName.fresh()
           val param = ValDef(pname, TypeTree(), EmptyTree).withFlags(SyntheticTermParam)
             .withPos(Position(start))
           placeholderParams = param :: placeholderParams
@@ -1705,7 +1706,7 @@ object Parsers {
             if (isConcreteOwner || in.token != USCORE) ident().toTypeName
             else {
               in.nextToken()
-              ctx.freshName(nme.USCORE_PARAM_PREFIX).toTypeName
+              WildcardParamName.fresh().toTypeName
             }
           val hkparams = typeParamClauseOpt(ParamOwner.TypeParam)
           val bounds =

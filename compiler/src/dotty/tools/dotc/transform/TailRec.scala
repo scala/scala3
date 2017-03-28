@@ -1,16 +1,17 @@
-package dotty.tools.dotc.transform
+package dotty.tools.dotc
+package transform
 
-import dotty.tools.dotc.ast.Trees._
-import dotty.tools.dotc.ast.{TreeTypeMap, tpd}
-import dotty.tools.dotc.core.Contexts.Context
-import dotty.tools.dotc.core.Decorators._
-import dotty.tools.dotc.core.DenotTransformers.DenotTransformer
-import dotty.tools.dotc.core.Denotations.SingleDenotation
-import dotty.tools.dotc.core.Symbols._
-import dotty.tools.dotc.core.Types._
-import dotty.tools.dotc.core._
-import dotty.tools.dotc.transform.TailRec._
-import dotty.tools.dotc.transform.TreeTransforms.{MiniPhaseTransform, TransformerInfo}
+import ast.Trees._
+import ast.{TreeTypeMap, tpd}
+import core._
+import Contexts.Context
+import Decorators._
+import DenotTransformers.DenotTransformer
+import Denotations.SingleDenotation
+import Symbols._
+import Types._
+import NameExtractors.TailLabelName
+import TreeTransforms.{MiniPhaseTransform, TransformerInfo}
 
 /**
  * A Tail Rec Transformer
@@ -62,6 +63,7 @@ import dotty.tools.dotc.transform.TreeTransforms.{MiniPhaseTransform, Transforme
  *             </p>
  */
 class TailRec extends MiniPhaseTransform with DenotTransformer with FullParameterization { thisTransform =>
+  import TailRec._
 
   import dotty.tools.dotc.ast.tpd._
 
@@ -70,7 +72,6 @@ class TailRec extends MiniPhaseTransform with DenotTransformer with FullParamete
   override def phaseName: String = "tailrec"
   override def treeTransformPhase = thisTransform // TODO Make sure tailrec runs at next phase.
 
-  final val labelPrefix = "tailLabel"
   final val labelFlags = Flags.Synthetic | Flags.Label
 
   /** Symbols of methods that have @tailrec annotatios inside */
@@ -87,12 +88,12 @@ class TailRec extends MiniPhaseTransform with DenotTransformer with FullParamete
     tree
   }
 
-  private def mkLabel(method: Symbol, abstractOverClass: Boolean)(implicit c: Context): TermSymbol = {
-    val name = c.freshName(labelPrefix)
+  private def mkLabel(method: Symbol, abstractOverClass: Boolean)(implicit ctx: Context): TermSymbol = {
+    val name = TailLabelName.fresh()
 
     if (method.owner.isClass)
-      c.newSymbol(method, name.toTermName, labelFlags, fullyParameterizedType(method.info, method.enclosingClass.asClass, abstractOverClass, liftThisType = false))
-    else c.newSymbol(method, name.toTermName, labelFlags, method.info)
+      ctx.newSymbol(method, name.toTermName, labelFlags, fullyParameterizedType(method.info, method.enclosingClass.asClass, abstractOverClass, liftThisType = false))
+    else ctx.newSymbol(method, name.toTermName, labelFlags, method.info)
   }
 
   override def transformDefDef(tree: tpd.DefDef)(implicit ctx: Context, info: TransformerInfo): tpd.Tree = {

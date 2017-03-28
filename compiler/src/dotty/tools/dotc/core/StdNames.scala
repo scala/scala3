@@ -22,7 +22,8 @@ object StdNames {
     val INITIALIZER_PREFIX       = "initial$"
     val SHADOWED_PREFIX          = "(shadowed)"
     val AVOID_CLASH_SUFFIX       = "$_avoid_name_clash_$"
-    val LOCAL_DUMMY_PREFIX       = "<local>_"       // owner of local blocks
+
+    def sanitize(str: String) = str.replaceAll("""[<>]""", """\$""")
   }
 
   abstract class DefinedNames[N <: Name] {
@@ -96,7 +97,7 @@ object StdNames {
 
     val ANON_CLASS: N                 = "$anon"
     val ANON_FUN: N                   = "$anonfun"
-    val BITMAP_PREFIX: N              = "bitmap$"
+    val BITMAP_PREFIX: N              = "bitmap$"  // @darkdimius: $bitmap? Also, the next 4 names are unused.
     val BITMAP_NORMAL: N              = BITMAP_PREFIX         // initialization bitmap for public/protected lazy vals
     val BITMAP_TRANSIENT: N           = BITMAP_PREFIX + "trans$"    // initialization bitmap for transient lazy vals
     val BITMAP_CHECKINIT: N           = BITMAP_PREFIX + "init$"      // initialization bitmap for checkinit values
@@ -106,13 +107,10 @@ object StdNames {
     val DO_WHILE_PREFIX: N            = "doWhile$"
     val EMPTY: N                      = ""
     val EMPTY_PACKAGE: N              = Names.EMPTY_PACKAGE.toString
-    val EVIDENCE_PARAM_PREFIX: N      = "evidence$"
-    val DEP_PARAM_PREFIX              = "<param>"
     val EXCEPTION_RESULT_PREFIX: N    = "exceptionResult"
     val EXPAND_SEPARATOR: N           = str.EXPAND_SEPARATOR
     val IMPL_CLASS_SUFFIX: N          = "$class"
     val IMPORT: N                     = "<import>"
-    val INLINE_ACCESSOR_PREFIX        = "$inlineAccessor$"
     val INTERPRETER_IMPORT_WRAPPER: N = "$iw"
     val INTERPRETER_LINE_PREFIX: N    = "line"
     val INTERPRETER_VAR_PREFIX: N     = "res"
@@ -121,7 +119,6 @@ object StdNames {
     val MODULE_SUFFIX: N              = NameTransformer.MODULE_SUFFIX_STRING
     val MODULE_VAR_SUFFIX: N          = "$module"
     val NAME_JOIN: N                  = NameTransformer.NAME_JOIN_STRING
-    val USCORE_PARAM_PREFIX: N        = "_$"
     val OPS_PACKAGE: N                = "<special-ops>"
     val OVERLOADED: N                 = "<overloaded>"
     val PACKAGE: N                    = "package"
@@ -139,9 +136,6 @@ object StdNames {
     val COMPANION_CLASS_METHOD: N     = "companion$class"
     val TRAIT_SETTER_SEPARATOR: N     = str.TRAIT_SETTER_SEPARATOR
     val DIRECT_SUFFIX: N              = "$direct"
-    val LAZY_IMPLICIT_PREFIX: N       = "$lazy_implicit$"
-    val DOLLAR_VALUES: N              = "$values"
-    val DOLLAR_NEW: N                 = "$new"
 
     // value types (and AnyRef) are all used as terms as well
     // as (at least) arguments to the @specialize annotation.
@@ -249,8 +243,6 @@ object StdNames {
     val EVT2U: N                    = "evt2u$"
     val EQEQ_LOCAL_VAR: N           = "eqEqTemp$"
     val FAKE_LOCAL_THIS: N          = "this$"
-    val LAZY_LOCAL: N               = "$lzy"
-    val LAZY_LOCAL_INIT: N          = "$lzyINIT"
     val LAZY_FIELD_OFFSET: N        = "OFFSET$"
     val LAZY_SLOW_SUFFIX: N         = "$lzycompute"
     val LOCAL_SUFFIX: N             = "$$local"
@@ -448,7 +440,6 @@ object StdNames {
     val lang: N                 = "lang"
     val length: N               = "length"
     val lengthCompare: N        = "lengthCompare"
-    val liftedTree: N           = "liftedTree"
     val `macro` : N             = "macro"
     val macroThis : N           = "_this"
     val macroContext : N        = "c"

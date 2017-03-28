@@ -7,7 +7,7 @@ import Symbols._
 import Flags._
 import Names._
 import StdNames._, NameOps._
-import NameExtractors.ShadowedName
+import NameExtractors.{ShadowedName, SkolemName}
 import Scopes._
 import Constants._
 import Contexts._
@@ -3001,9 +3001,9 @@ object Types {
     override def hashCode: Int = identityHash
     override def equals(that: Any) = this eq that.asInstanceOf[AnyRef]
 
-    private var myRepr: String = null
-    def repr(implicit ctx: Context) = {
-      if (myRepr == null) myRepr = ctx.freshName("?")
+    private var myRepr: Name = null
+    def repr(implicit ctx: Context): Name = {
+      if (myRepr == null) myRepr = SkolemName.fresh()
       myRepr
     }
 

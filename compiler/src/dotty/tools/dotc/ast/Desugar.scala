@@ -6,6 +6,7 @@ import core._
 import util.Positions._, Types._, Contexts._, Constants._, Names._, NameOps._, Flags._
 import SymDenotations._, Symbols._, StdNames._, Annotations._, Trees._
 import Decorators._
+import NameExtractors.{UniqueName, EvidenceParamName}
 import language.higherKinds
 import typer.FrontEnd
 import collection.mutable.ListBuffer
@@ -128,7 +129,7 @@ object desugar {
   def makeImplicitParameters(tpts: List[Tree], forPrimaryConstructor: Boolean)(implicit ctx: Context) =
     for (tpt <- tpts) yield {
        val paramFlags: FlagSet = if (forPrimaryConstructor) PrivateLocalParamAccessor else Param
-       val epname = ctx.freshName(nme.EVIDENCE_PARAM_PREFIX).toTermName
+       val epname = EvidenceParamName.fresh()
        ValDef(epname, tpt, EmptyTree).withFlags(paramFlags | Implicit)
     }
 
@@ -230,7 +231,7 @@ object desugar {
   private def evidenceParams(meth: DefDef)(implicit ctx: Context): List[ValDef] =
     meth.vparamss.reverse match {
       case (vparams @ (vparam :: _)) :: _ if vparam.mods is Implicit =>
-        vparams.dropWhile(!_.name.startsWith(nme.EVIDENCE_PARAM_PREFIX))
+        vparams.dropWhile(!_.name.is(EvidenceParamName))
       case _ =>
         Nil
     }
@@ -635,7 +636,6 @@ object desugar {
         case (named, tpt) :: Nil =>
           derivedValDef(original, named, tpt, matchExpr, mods)
         case _ =>
-          val tmpName = ctx.freshName().toTermName
           val patMods =
             mods & Lazy | Synthetic | (if (ctx.owner.isClass) PrivateLocal else EmptyFlags)
           val firstDef =
@@ -810,7 +810,7 @@ object desugar {
         val selectPos = Position(left.pos.start, op.pos.end, op.pos.start)
         Apply(Select(left, op.name).withPos(selectPos), args)
       } else {
-        val x = ctx.freshName().toTermName
+        val x = UniqueName.fresh()
         val selectPos = Position(op.pos.start, right.pos.end, op.pos.start)
         new InfixOpBlock(
           ValDef(x, TypeTree(), left).withMods(synthetic),
@@ -888,7 +888,7 @@ object desugar {
         case id: Ident if isVarPattern(id) && id.name != nme.WILDCARD => (id, id)
         case Typed(id: Ident, _) if isVarPattern(id) && id.name != nme.WILDCARD => (pat, id)
         case _ =>
-          val name = ctx.freshName().toTermName
+          val name = UniqueName.fresh()
           (Bind(name, pat), Ident(name))
       }
 

@@ -5,6 +5,7 @@ import core._
 import Contexts._, Symbols._, Types._, Flags._, Decorators._, StdNames._, Constants._, Phases._
 import TreeTransforms._
 import ast.Trees._
+import NameExtractors.NonLocalReturnKeyName
 import collection.mutable
 
 object NonLocalReturns {
@@ -38,7 +39,7 @@ class NonLocalReturns extends MiniPhaseTransform { thisTransformer =>
   private def nonLocalReturnKey(meth: Symbol)(implicit ctx: Context) =
     nonLocalReturnKeys.getOrElseUpdate(meth,
       ctx.newSymbol(
-        meth, ctx.freshName("nonLocalReturnKey").toTermName, Synthetic, defn.ObjectType, coord = meth.pos))
+        meth, NonLocalReturnKeyName.fresh(), Synthetic, defn.ObjectType, coord = meth.pos))
 
   /** Generate a non-local return throw with given return expression from given method.
    *  I.e. for the method's non-local return key, generate:

@@ -26,10 +26,13 @@ class NameBuffer extends TastyBuffer(10000) {
         name1 match {
           case SignedName(original, Signature(params, result)) =>
             nameIndex(original); nameIndex(result); params.foreach(nameIndex)
-          case AnyQualifiedName(prefix, info) =>
-            nameIndex(prefix); nameIndex(info.name)
-          case DerivedTermName(prefix, _) =>
-            nameIndex(prefix)
+          case AnyQualifiedName(prefix, name) =>
+            nameIndex(prefix); nameIndex(name)
+          case AnyUniqueName(original, separator, num) =>
+            nameIndex(separator.toTermName)
+            if (original.nonEmpty) nameIndex(original)
+          case DerivedTermName(original, _) =>
+            nameIndex(original)
           case _ =>
         }
         val ref = NameRef(nameRefs.size)
@@ -50,7 +53,8 @@ class NameBuffer extends TastyBuffer(10000) {
   def writeNameRef(name: Name): Unit = writeNameRef(nameRefs(name.toTermName))
 
   def pickleNameContents(name: Name): Unit = {
-    writeByte(name.toTermName.info.tag)
+    val tag = name.toTermName.info.extractor.tag
+    writeByte(tag)
     name.toTermName match {
       case name: SimpleTermName =>
         val bytes =
@@ -58,17 +62,23 @@ class NameBuffer extends TastyBuffer(10000) {
           else Codec.toUTF8(chrs, name.start, name.length)
         writeNat(bytes.length)
         writeBytes(bytes, bytes.length)
-      case AnyQualifiedName(prefix, info) =>
-        withLength { writeNameRef(prefix); writeNameRef(info.name) }
-      case SignedName(original, Signature(params, result)) =>
-        withLength(
-          { writeNameRef(original); writeNameRef(result); params.foreach(writeNameRef) },
-          if ((params.length + 2) * maxIndexWidth <= maxNumInByte) 1 else 2)
+      case AnyQualifiedName(prefix, name) =>
+        withLength { writeNameRef(prefix); writeNameRef(name) }
+      case AnyUniqueName(original, separator, num) =>
+        withLength {
+          writeNameRef(separator.toTermName)
+          writeNat(num)
+          if (original.nonEmpty) writeNameRef(original)
+        }
       case DefaultGetterName(method, paramNumber) =>
         withLength { writeNameRef(method); writeNat(paramNumber) }
       case VariantName(original, sign) =>
         withLength { writeNameRef(original); writeNat(sign + 1) }
-      case DerivedTermName(original, info) =>
+      case SignedName(original, Signature(params, result)) =>
+        withLength(
+          { writeNameRef(original); writeNameRef(result); params.foreach(writeNameRef) },
+          if ((params.length + 2) * maxIndexWidth <= maxNumInByte) 1 else 2)
+      case DerivedTermName(original, _) =>
         withLength { writeNameRef(original) }
     }
   }

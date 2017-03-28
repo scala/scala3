@@ -8,6 +8,7 @@ import core.Contexts._
 import core.Types._
 import core.Flags._
 import core.Decorators._
+import core.NameExtractors.LiftedTreeName
 import NonLocalReturns._
 
 /** Lifts try's that might be executed on non-empty expression stacks
@@ -56,7 +57,7 @@ class LiftTry extends MiniPhase with IdentityDenotTransformer { thisTransform =>
       if (needLift) {
         ctx.debuglog(i"lifting tree at ${tree.pos}, current owner = ${ctx.owner}")
         val fn = ctx.newSymbol(
-          ctx.owner, ctx.freshName("liftedTree").toTermName, Synthetic | Method,
+          ctx.owner, LiftedTreeName.fresh(), Synthetic | Method,
           MethodType(Nil, tree.tpe.widenIfUnstable), coord = tree.pos)
         tree.changeOwnerAfter(ctx.owner, fn, thisTransform)
         Block(DefDef(fn, tree) :: Nil, ref(fn).appliedToNone)

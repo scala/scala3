@@ -130,7 +130,7 @@ object Names {
 
     def likeKinded(name: Name): TermName = name.toTermName
 
-    def info: NameInfo = simpleTermNameInfo
+    def info: NameInfo = SimpleTermNameExtractor.info
     def underlying: TermName = unsupported("underlying")
 
     @sharable private var derivedNames: AnyRef /* SimpleMap | j.u.HashMap */ =
@@ -174,9 +174,10 @@ object Names {
      *  name as underlying name.
      */
     def derived(info: NameInfo): TermName = {
-      val ownTag = this.info.tag
-      if (ownTag < info.tag || info.definesNewName) add(info)
-      else if (ownTag > info.tag) rewrap(underlying.derived(info))
+      val thisKind = this.info.extractor
+      val thatKind = info.extractor
+      if (thisKind.tag < thatKind.tag || thatKind.definesNewName) add(info)
+      else if (thisKind.tag > thatKind.tag) rewrap(underlying.derived(info))
       else {
         assert(info == this.info)
         this
@@ -184,16 +185,16 @@ object Names {
     }
 
     def exclude(kind: NameExtractor): TermName = {
-      val ownTag = this.info.tag
-      if (ownTag < kind.tag || info.definesNewName) this
-      else if (ownTag > kind.tag) rewrap(underlying.exclude(kind))
+      val thisKind = this.info.extractor
+      if (thisKind.tag < kind.tag || thisKind.definesNewName) this
+      else if (thisKind.tag > kind.tag) rewrap(underlying.exclude(kind))
       else underlying
     }
 
     def is(kind: NameExtractor): Boolean = {
-      val ownTag = this.info.tag
-      ownTag == kind.tag ||
-      !info.definesNewName && ownTag > kind.tag && underlying.is(kind)
+      val thisKind = this.info.extractor
+      thisKind == kind ||
+      !thisKind.definesNewName && thisKind.tag > kind.tag && underlying.is(kind)
     }
 
     override def hashCode = System.identityHashCode(this)
@@ -511,7 +512,7 @@ object Names {
 
   implicit val NameOrdering: Ordering[Name] = new Ordering[Name] {
     private def compareInfos(x: NameInfo, y: NameInfo): Int =
-      if (x.tag != y.tag) x.tag - y.tag
+      if (x.extractor.tag != y.extractor.tag) x.extractor.tag - y.extractor.tag
       else x match {
         case x: QualifiedInfo =>
           y match {

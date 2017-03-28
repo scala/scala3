@@ -174,9 +174,6 @@ object Contexts {
     protected def freshNames_=(freshNames: FreshNameCreator) = _freshNames = freshNames
     def freshNames: FreshNameCreator = _freshNames
 
-    def freshName(prefix: String = ""): String = freshNames.newName(prefix)
-    def freshName(prefix: Name): String = freshName(prefix.toString)
-
     /** A map in which more contextual properties can be stored */
     private var _moreProperties: Map[Key[Any], Any] = _
     protected def moreProperties_=(moreProperties: Map[Key[Any], Any]) = _moreProperties = moreProperties

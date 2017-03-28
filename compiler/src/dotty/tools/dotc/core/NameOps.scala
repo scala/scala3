@@ -71,9 +71,7 @@ object NameOps {
     def isModuleVarName(name: Name): Boolean =
       name.stripAnonNumberSuffix endsWith MODULE_VAR_SUFFIX
     def isSelectorName = name.startsWith(" ") && name.tail.forall(_.isDigit)
-    def isLazyLocal = name.endsWith(nme.LAZY_LOCAL)
     def isOuterSelect = name.endsWith(nme.OUTER_SELECT)
-    def isInlineAccessor = name.startsWith(nme.INLINE_ACCESSOR_PREFIX)
 
     /** Is name a variable name? */
     def isVariableName: Boolean = name.length > 0 && {
@@ -112,16 +110,16 @@ object NameOps {
     def moduleClassName: TypeName = name.derived(ModuleClassName).toTypeName
 
     /** Convert this module class name to corresponding source module name */
-    def sourceModuleName: TermName = stripModuleClassSuffix.toTermName
+    def sourceModuleName: TermName = name.toTermName.exclude(ModuleClassName)
 
     /** If name ends in module class suffix, drop it */
     def stripModuleClassSuffix: Name = name.exclude(ModuleClassName)
 
     /** If flags is a ModuleClass but not a Package, add module class suffix */
-    def adjustIfModuleClass(flags: Flags.FlagSet): N = {
+    def adjustIfModuleClass(flags: Flags.FlagSet): N = likeTyped {
       if (flags is (ModuleClass, butNot = Package)) name.asTypeName.moduleClassName
-      else likeTyped(name.toTermName.exclude(AvoidClashName))
-    }.asInstanceOf[N]
+      else name.toTermName.exclude(AvoidClashName)
+    }
 
     /** The superaccessor for method with given name */
     def superName: TermName = SuperAccessorName(name.toTermName)
@@ -138,7 +136,7 @@ object NameOps {
     def expandedName(prefix: Name, separator: Name = nme.EXPAND_SEPARATOR): N =
       likeTyped {
         def qualify(name: SimpleTermName) =
-          separatorToQualified(separator.toString)(prefix.toTermName, name)
+          qualifiedExtractorOfSeparator(separator.toString)(prefix.toTermName, name)
         name rewrite {
           case name: SimpleTermName =>
             qualify(name)
@@ -220,6 +218,13 @@ object NameOps {
     }
 
 */
+    def freshened(implicit ctx: Context): N = likeTyped {
+      name.toTermName match {
+        case ModuleClassName(original) => ModuleClassName(original.freshened)
+        case name => UniqueName.fresh(name)
+      }
+    }
+
     def unmangleClassName: N =
       if (name.isSimple && name.isTypeName)
         if (name.endsWith(MODULE_SUFFIX) && !tpnme.falseModuleClassNames.contains(name.asTypeName))
@@ -503,14 +508,6 @@ object NameOps {
         case NO_NAME => primitivePostfixMethodName
         case name => name
       }
-
-    def lazyLocalName = name ++ nme.LAZY_LOCAL
-    def nonLazyName = {
-      assert(name.isLazyLocal)
-      name.dropRight(nme.LAZY_LOCAL.length)
-    }
-
-    def inlineAccessorName = nme.INLINE_ACCESSOR_PREFIX ++ name ++ "$"
 
     def unmangleMethodName: TermName =
       if (name.isSimple) {

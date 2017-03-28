@@ -33,11 +33,11 @@ Macro-format:
                   QUALIFIED      Length qualified_NameRef selector_NameRef
                   SIGNED         Length original_NameRef resultSig_NameRef paramSig_NameRef*
                   EXPANDED       Length original_NameRef
+                  UNIQUE         Length separator_NameRef num_Nat original_NameRef?
                   OBJECTCLASS    Length module_NameRef
                   SUPERACCESSOR  Length accessed_NameRef
                   DEFAULTGETTER  Length method_NameRef paramNumber_Nat
                   SHADOWED       Length original_NameRef
-                  MANGLED        Length mangle_NameRef name_NameRef
                   ...
 
   NameRef       = Nat                    // ordinal number of name in name table, starting from 1.
@@ -231,7 +231,6 @@ object TastyFormat {
   final val SUPERACCESSOR = 20
   final val INITIALIZER = 21
   final val SHADOWED = 22
-  final val LOCALDUMMY = 23
   final val AVOIDCLASH = 27
   final val OBJECTCLASS = 29
 

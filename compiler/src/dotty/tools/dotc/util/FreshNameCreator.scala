@@ -3,9 +3,12 @@ package dotc
 package util
 
 import scala.collection.mutable
+import core.Names.TermName
+import core.NameExtractors.UniqueNameExtractor
+import core.StdNames.str
 
-trait FreshNameCreator {
-  def newName(prefix: String = ""): String
+abstract class FreshNameCreator {
+  def newName(prefix: TermName, unique: UniqueNameExtractor): TermName
 }
 
 object FreshNameCreator {
@@ -18,11 +21,11 @@ object FreshNameCreator {
      * that the returned name has never been returned by a previous
      * call to this function (provided the prefix does not end in a digit).
      */
-    def newName(prefix: String): String = {
-      val safePrefix = prefix.replaceAll("""[<>]""", """\$""")
-      counters(safePrefix) += 1
-      val counter = counters(safePrefix)
-      if (prefix.isEmpty) "$" + counter + "$" else safePrefix + counter
+    def newName(prefix: TermName, unique: UniqueNameExtractor): TermName = {
+      val key = str.sanitize(prefix.toString + unique.separator)
+      counters(key) += 1
+      val counter = counters(key)
+      prefix.derived(unique.NumberedInfo(counter))
     }
   }
 }
