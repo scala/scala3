@@ -1568,19 +1568,17 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
           case _ => typedUnadapted(desugar(tree), pt)
         }
 
-        val (tree, modified) = etaExpandImplicitFuns(xtree, pt)
-
-        if (modified) {
-          typedUnadapted(tree)
-        } else xtree match {
-          case xtree: untpd.NameTree => typedNamed(encodeName(xtree), pt)
-          case xtree => typedUnnamed(xtree)
+        etaExpandImplicitFuns(xtree, pt) match {
+          case Some(tree) => typedUnadapted(tree)
+          case None => xtree match {
+            case xtree: untpd.NameTree => typedNamed(encodeName(xtree), pt)
+            case xtree => typedUnnamed(xtree)
+          }
         }
     }
   }
 
-  // Sideeffect: annotates the tree with NeedsRetypecheck when a retype check is required.
-  protected def etaExpandImplicitFuns(xtree: untpd.Tree, pt: Type)(implicit ctx: Context): (untpd.Tree, Boolean) = {
+  protected def etaExpandImplicitFuns(xtree: untpd.Tree, pt: Type)(implicit ctx: Context): Option[untpd.Tree] = {
 
     var modified = false
 
@@ -1619,7 +1617,13 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
         case els => loop(els, pt)
       }
 
-    (loop(xtree, pt), modified)
+    val res = loop(xtree, pt)
+
+    if (modified) {
+      Some(res)
+    } else {
+      None
+    }
   }
 
   protected def encodeName(tree: untpd.NameTree)(implicit ctx: Context): untpd.NameTree =
