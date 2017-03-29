@@ -9,8 +9,13 @@ import dotc.typer.FrontEnd
 import dottydoc.core.{ DocASTPhase, ContextDottydoc }
 import model.Package
 import dotty.tools.dottydoc.util.syntax._
+import dotc.reporting.{ StoreReporter, MessageRendering }
+import dotc.interfaces.Diagnostic.ERROR
+import org.junit.Assert.fail
 
-trait DottyDocTest {
+import java.io.{ BufferedWriter, OutputStreamWriter }
+
+trait DottyDocTest extends MessageRendering {
   dotty.tools.dotc.parsing.Scanners // initialize keywords
 
   implicit val ctx: FreshContext = {
@@ -26,6 +31,7 @@ trait DottyDocTest {
       ctx.settings.classpath,
       dotty.Jars.dottyLib
     )
+    ctx.setReporter(new StoreReporter(ctx.reporter))
     base.initialize()(ctx)
     ctx
   }
@@ -36,17 +42,47 @@ trait DottyDocTest {
         def phaseName = "assertionPhase"
         override def run(implicit ctx: Context): Unit =
           assertion(ctx.docbase.packages)
+          if (ctx.reporter.hasErrors) {
+            System.err.println("reporter had errors:")
+            ctx.reporter.removeBufferedMessages.foreach { msg =>
+              System.err.println {
+                messageAndPos(msg.contained, msg.pos, diagnosticLevel(msg))
+              }
+            }
+          }
       }) :: Nil
 
     override def phases =
       super.phases ++ assertionPhase
   }
 
+  private def callingMethod: String =
+    Thread.currentThread.getStackTrace.find {
+      _.getMethodName match {
+        case "checkSource" | "callingMethod" | "getStackTrace" | "currentThread" =>
+          false
+        case _ =>
+          true
+      }
+    }
+    .map(_.getMethodName)
+    .getOrElse {
+      throw new IllegalStateException("couldn't get calling method via reflection")
+    }
+
+  private def sourceFileFromString(name: String, contents: String): SourceFile = {
+    val virtualFile = new scala.reflect.io.VirtualFile(name)
+    val writer = new BufferedWriter(new OutputStreamWriter(virtualFile.output, "UTF-8"))
+    writer.write(contents)
+    writer.close()
+    new SourceFile(virtualFile, scala.io.Codec.UTF8)
+  }
+
   def checkSource(source: String)(assertion: Map[String, Package] => Unit): Unit = {
     val c = compilerWithChecker(assertion)
     c.rootContext(ctx)
     val run = c.newRun
-    run.compile(source)
+    run.compileSources(sourceFileFromString(callingMethod, source) :: Nil)
   }
 
   def checkFiles(sources: List[String])(assertion: Map[String, Package] => Unit): Unit = {

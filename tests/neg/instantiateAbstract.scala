@@ -15,7 +15,7 @@ object Test {
 
   @scala.annotation.Annotation type T = String // error
   @scala.annotation.Annotation val x = 1 // error
-  @scala.annotation.Annotation def f = 1 //error
+  @scala.annotation.Annotation def f = 1 // error
 
   (1: @scala.annotation.Annotation) // error
 

@@ -90,18 +90,18 @@ extends SuiteRunner(testSourcePath, fileManager, updateCheck, failed, javaCmdPat
   }
 
   /** Some tests require a limitation of resources, tests which are compiled
-    * with one or more of the flags in this list will be run with
-    * `limitedThreads`. This is necessary because some test flags require a lot
-    * of memory when running the compiler and may exhaust the available memory
-    * when run in parallel with too many other tests.
-    *
-    * This number could be increased on the CI, but might fail locally if
-    * scaled too extreme - override with:
-    *
-    * ```
-    * -Ddotty.tests.limitedThreads=X
-    * ```
-    */
+   *  with one or more of the flags in this list will be run with
+   *  `limitedThreads`. This is necessary because some test flags require a lot
+   *  of memory when running the compiler and may exhaust the available memory
+   *  when run in parallel with too many other tests.
+   *
+   *  This number could be increased on the CI, but might fail locally if
+   *  scaled too extreme - override with:
+   *
+   *  ```
+   *  -Ddotty.tests.limitedThreads=X
+   *  ```
+   */
   def limitResourceFlags = List("-Ytest-pickler")
   private val limitedThreads = sys.props.get("dotty.tests.limitedThreads").getOrElse("2")
 
