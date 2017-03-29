@@ -20,6 +20,7 @@ import Trees._
 import config.Config
 import Names._
 import StdNames._
+import NameKinds.DefaultGetterName
 import ProtoTypes._
 import EtaExpansion._
 import Inferencing._
@@ -345,7 +346,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
       }
       val getterPrefix =
         if ((meth is Synthetic) && meth.name == nme.apply) nme.CONSTRUCTOR else meth.name
-      def getterName = getterPrefix.defaultGetterName(n)
+      def getterName = DefaultGetterName(getterPrefix, n)
       if (!meth.hasDefaultParams)
         EmptyTree
       else if (receiver.isEmpty) {

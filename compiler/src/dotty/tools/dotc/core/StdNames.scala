@@ -123,8 +123,6 @@ object StdNames {
     val OVERLOADED: N                 = "<overloaded>"
     val PACKAGE: N                    = "package"
     val PACKAGE_CLS: N                = "package$"
-    val PROTECTED_PREFIX: N           = "protected$"
-    val PROTECTED_SET_PREFIX: N       = PROTECTED_PREFIX + "set"
     val ROOT: N                       = "<root>"
     val SINGLETON_SUFFIX: N           = ".type"
     val SPECIALIZED_SUFFIX: N         = "$sp"

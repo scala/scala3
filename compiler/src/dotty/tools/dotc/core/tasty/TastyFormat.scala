@@ -229,8 +229,10 @@ object TastyFormat {
   final val DEFAULTGETTER = 11
   final val VARIANT = 12
   final val SUPERACCESSOR = 20
-  final val INITIALIZER = 21
-  final val SHADOWED = 22
+  final val PROTECTEDACCESSOR = 21
+  final val PROTECTEDSETTER = 22
+  final val INITIALIZER = 23
+  final val SHADOWED = 24
   final val AVOIDCLASH = 27
   final val OBJECTCLASS = 29
 

@@ -5,6 +5,7 @@ import ast.{Trees, tpd}
 import core._, core.Decorators._
 import Annotations._, Contexts._, Flags._, Phases._, Trees._, Types._, Symbols._
 import Names._, NameOps._, StdNames._
+import NameKinds.DefaultGetterName
 import typer.Inliner
 import typer.ErrorReporting.cyclicErrorMsg
 import transform.SymUtils._
@@ -300,7 +301,8 @@ private class ExtractAPICollector(implicit val ctx: Context) extends ThunkHolder
                 sym.owner.companionModule // default getters for class constructors are found in the companion object
               else
                 sym.owner
-            (0 until pnames.length).map(i => qual.info.member(sym.name.defaultGetterName(start + i)).exists)
+            (0 until pnames.length).map(i =>
+              qual.info.member(DefaultGetterName(sym.name, start + i)).exists)
           } else
             (0 until pnames.length).map(Function.const(false))
         val params = (pnames, ptypes, defaults).zipped.map((pname, ptype, isDefault) =>

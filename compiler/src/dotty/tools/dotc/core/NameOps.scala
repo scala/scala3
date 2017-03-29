@@ -60,13 +60,11 @@ object NameOps {
     def isImplClassName = name endsWith IMPL_CLASS_SUFFIX
     def isLocalDummyName = name startsWith LOCALDUMMY_PREFIX
     def isLoopHeaderLabel = (name startsWith WHILE_PREFIX) || (name startsWith DO_WHILE_PREFIX)
-    def isProtectedAccessorName = name startsWith PROTECTED_PREFIX
     def isReplWrapperName = name.toSimpleName containsSlice INTERPRETER_IMPORT_WRAPPER
     def isSetterName = name endsWith SETTER_SUFFIX
     def isSingletonName = name endsWith SINGLETON_SUFFIX
     def isImportName = name startsWith IMPORT
     def isFieldName = name endsWith LOCAL_SUFFIX
-    def isDefaultGetterName = name.isTermName && name.asTermName.defaultGetterIndex >= 0
     def isScala2LocalSuffix = name.endsWith(" ")
     def isModuleVarName(name: Name): Boolean =
       name.stripAnonNumberSuffix endsWith MODULE_VAR_SUFFIX
@@ -400,27 +398,11 @@ object NameOps {
       name.mapLast(n => n.take(n.length - LOCAL_SUFFIX.length).asSimpleName)
     }
 
-    /** Nominally, name$default$N, encoded for <init>
-     *  @param  Post the parameters position.
-     *  @note Default getter name suffixes start at 1, so `pos` has to be adjusted by +1
-     */
-    def defaultGetterName(pos: Int): TermName =
-      DefaultGetterName(name, pos)
-
     /** Nominally, name from name$default$N, CONSTRUCTOR for <init> */
     def defaultGetterToMethod: TermName =
       name rewrite {
         case DefaultGetterName(methName, _) => methName
       }
-
-    def defaultGetterToMethodOfMangled: TermName = {
-        val p = name.indexOfSlice(DEFAULT_GETTER)
-        if (p >= 0) {
-          val q = name.take(p).asTermName
-          // i.e., if (q.decoded == CONSTRUCTOR.toString) CONSTRUCTOR else q
-          if (q == DEFAULT_GETTER_INIT) CONSTRUCTOR else q
-        } else name
-    }
 
     /** If this is a default getter, its index (starting from 0), else -1 */
     def defaultGetterIndex: Int =
@@ -428,25 +410,8 @@ object NameOps {
         case DefaultGetterName(_, num) => num
       } getOrElse -1
 
-    def defaultGetterIndexOfMangled: Int = {
-      var i = name.length
-      while (i > 0 && name(i - 1).isDigit) i -= 1
-      if (i > 0 && i < name.length && name.take(i).endsWith(DEFAULT_GETTER))
-        name.drop(i).toString.toInt - 1
-      else
-        -1
-    }
-
     def stripScala2LocalSuffix: TermName =
       if (name.isScala2LocalSuffix) name.init.asTermName else name
-
-    /** The name of an accessor for protected symbols. */
-    def protectedAccessorName: TermName =
-      PROTECTED_PREFIX ++ name.unexpandedName
-
-    /** The name of a setter for protected symbols. Used for inherited Java fields. */
-    def protectedSetterName: TermName =
-      PROTECTED_SET_PREFIX ++ name.unexpandedName
 
     def moduleVarName: TermName =
       name ++ MODULE_VAR_SUFFIX
@@ -509,18 +474,25 @@ object NameOps {
         case name => name
       }
 
-    def unmangleMethodName: TermName =
-      if (name.isSimple) {
-        val idx = name.defaultGetterIndexOfMangled
-        if (idx >= 0) name.defaultGetterToMethodOfMangled.defaultGetterName(idx)
-        else name
-      }
-      else name
-
     def unmangleSuperName: TermName =
       if (name.isSimple && name.startsWith(str.SUPER_PREFIX))
         SuperAccessorName(name.drop(str.SUPER_PREFIX.length).asTermName)
       else name
+
+    def unmangle(kind: NameKind): TermName = name rewrite {
+      case unmangled: SimpleTermName =>
+        kind.unmangle(unmangled)
+      case ExpandedName(prefix, last) =>
+        kind.unmangle(last) rewrite {
+          case kernel: SimpleTermName =>
+            ExpandedName(prefix, kernel)
+        }
+    }
+
+    def unmangle(kinds: List[NameKind]): TermName = {
+      val unmangled = (name /: kinds)(_.unmangle(_))
+      if (unmangled eq name) name else unmangled.unmangle(kinds)
+    }
   }
 
   private final val FalseSuper = "$$super".toTermName

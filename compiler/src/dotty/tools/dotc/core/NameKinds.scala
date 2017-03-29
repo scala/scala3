@@ -31,6 +31,7 @@ object NameKinds {
       override def toString = infoString
     }
     def definesNewName = false
+    def unmangle(name: SimpleTermName): TermName = name
     def mkString(underlying: TermName, info: ThisInfo): String
     def infoString: String
   }
@@ -58,11 +59,17 @@ object NameKinds {
   extends ClassifiedNameKind(tag, if (optInfoString.isEmpty) s"Prefix $prefix" else optInfoString) {
     def mkString(underlying: TermName, info: ThisInfo) =
       underlying.mapLast(n => termName(prefix + n.toString)).toString
+    override def unmangle(name: SimpleTermName): TermName =
+      if (name.startsWith(prefix)) apply(name.drop(prefix.length).asSimpleName)
+      else name
   }
 
   class SuffixNameKind(tag: Int, suffix: String, optInfoString: String = "")
   extends ClassifiedNameKind(tag, if (optInfoString.isEmpty) s"Suffix $suffix" else optInfoString) {
     def mkString(underlying: TermName, info: ThisInfo) = underlying.toString ++ suffix
+    override def unmangle(name: SimpleTermName): TermName =
+      if (name.endsWith(suffix)) apply(name.take(name.length - suffix.length).asSimpleName)
+      else name
   }
 
   trait QualifiedInfo extends NameInfo {
@@ -181,6 +188,20 @@ object NameKinds {
       val prefix = if (underlying.isConstructorName) nme.DEFAULT_GETTER_INIT else underlying
       prefix.toString + nme.DEFAULT_GETTER + (info.num + 1)
     }
+
+    private val dgLen = nme.DEFAULT_GETTER.length
+
+    override def unmangle(name: SimpleTermName): TermName = {
+      var i = name.length
+      while (i > 0 && name(i - 1).isDigit) i -= 1
+      if (i > dgLen && i < name.length && name.slice(i - dgLen, i) == nme.DEFAULT_GETTER) {
+        val index = name.drop(i).toString.toInt - 1
+        var original = name.take(i - dgLen).asTermName
+        if (original == nme.DEFAULT_GETTER_INIT) original = Names.CONSTRUCTOR
+        apply(original, index)
+      }
+      else name
+    }
   }
 
   object VariantName extends NumberedNameKind(VARIANT, "Variant") {
@@ -194,6 +215,8 @@ object NameKinds {
   val SuperAccessorName = new PrefixNameKind(SUPERACCESSOR, "super$")
   val InitializerName = new PrefixNameKind(INITIALIZER, "initial$")
   val ShadowedName = new PrefixNameKind(SHADOWED, "(shadowed)")
+  val ProtectedAccessorName = new PrefixNameKind(PROTECTEDACCESSOR, "protected$")
+  val ProtectedSetterName = new PrefixNameKind(PROTECTEDSETTER, "protected$set") // dubious encoding, kept for Scala2 compatibility
   val AvoidClashName = new SuffixNameKind(AVOIDCLASH, "$_avoid_name_clash_$")
   val ModuleClassName = new SuffixNameKind(OBJECTCLASS, "$", optInfoString = "ModuleClass")
 
@@ -215,6 +238,9 @@ object NameKinds {
     def mkString(underlying: TermName, info: ThisInfo): String = unsupported("mkString")
     def infoString: String = "Signed"
   }
+
+  val Scala2MethodNameKinds: List[NameKind] =
+    List(DefaultGetterName, ProtectedAccessorName, ProtectedSetterName)
 
   def simpleNameKindOfTag         : collection.Map[Int, ClassifiedNameKind]   = simpleNameKinds
   def qualifiedNameKindOfSeparator: collection.Map[String, QualifiedNameKind] = qualifiedNameKinds

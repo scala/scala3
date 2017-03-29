@@ -6,7 +6,7 @@ import core._
 import util.Positions._, Types._, Contexts._, Constants._, Names._, NameOps._, Flags._
 import SymDenotations._, Symbols._, StdNames._, Annotations._, Trees._
 import Decorators._
-import NameKinds.{UniqueName, EvidenceParamName}
+import NameKinds.{UniqueName, EvidenceParamName, DefaultGetterName}
 import language.higherKinds
 import typer.FrontEnd
 import collection.mutable.ListBuffer
@@ -187,7 +187,7 @@ object desugar {
       case (vparam :: vparams) :: vparamss1 =>
         def defaultGetter: DefDef =
           DefDef(
-            name = meth.name.defaultGetterName(n),
+            name = DefaultGetterName(meth.name, n),
             tparams = meth.tparams.map(tparam => dropContextBound(toDefParam(tparam))),
             vparamss = takeUpTo(normalizedVparamss.nestedMap(toDefParam), n),
             tpt = TypeTree(),
