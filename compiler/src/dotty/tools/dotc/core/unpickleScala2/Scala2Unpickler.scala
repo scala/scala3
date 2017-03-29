@@ -9,7 +9,7 @@ import java.lang.Double.longBitsToDouble
 
 import Contexts._, Symbols._, Types._, Scopes._, SymDenotations._, Names._, NameOps._
 import StdNames._, Denotations._, NameOps._, Flags._, Constants._, Annotations._
-import NameKinds.Scala2MethodNameKinds
+import NameKinds.{Scala2MethodNameKinds, SuperAccessorName, ExpandedName}
 import dotty.tools.dotc.typer.ProtoTypes.{FunProtoTyped, FunProto}
 import util.Positions._
 import dotty.tools.dotc.ast.{tpd, Trees, untpd}, ast.tpd._
@@ -439,12 +439,12 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
         if (name == nme.TRAIT_CONSTRUCTOR) nme.CONSTRUCTOR
         else name.asTermName.unmangle(Scala2MethodNameKinds)
     }
-    if (flags is Scala2ExpandedName) {
-      name = name.unmangleExpandedName
+    if ((flags is Scala2ExpandedName) && name.isSimple) {
+      name = name.unmangle(ExpandedName)
       flags = flags &~ Scala2ExpandedName
     }
     if (flags is Scala2SuperAccessor) {
-      name = name.asTermName.unmangleSuperName
+      name = name.asTermName.unmangle(SuperAccessorName)
       flags = flags &~ Scala2SuperAccessor
     }
 

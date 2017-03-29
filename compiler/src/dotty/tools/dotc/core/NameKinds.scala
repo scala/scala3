@@ -151,8 +151,26 @@ object NameKinds {
 
   val QualifiedName           = new QualifiedNameKind(QUALIFIED, ".")
   val FlattenedName           = new QualifiedNameKind(FLATTENED, "$")
-  val ExpandedName            = new QualifiedNameKind(EXPANDED, str.EXPAND_SEPARATOR)
   val TraitSetterName         = new QualifiedNameKind(TRAITSETTER, str.TRAIT_SETTER_SEPARATOR)
+
+  val ExpandedName = new QualifiedNameKind(EXPANDED, str.EXPAND_SEPARATOR) {
+    private val FalseSuper = "$$super".toTermName
+    private val FalseSuperLength = FalseSuper.length
+
+    override def unmangle(name: SimpleTermName): TermName = {
+      var i = name.lastIndexOfSlice(str.EXPAND_SEPARATOR)
+      if (i < 0) name
+      else {
+        // Hack to make super accessors from traits work. They would otherwise fail because of #765
+        // The problem is that in `x$$super$$plus` the expansion prefix needs to be `x`
+        // instead of `x$$super`.
+        if (i > FalseSuperLength && name.slice(i - FalseSuperLength, i) == FalseSuper)
+          i -= FalseSuper.length
+
+        apply(name.take(i).asTermName, name.drop(i + str.EXPAND_SEPARATOR.length).asSimpleName)
+      }
+    }
+  }
 
   val UniqueName = new UniqueNameKind("$") {
     override def mkString(underlying: TermName, info: ThisInfo) =

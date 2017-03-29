@@ -151,17 +151,6 @@ object NameOps {
       name.rewrite { case ExpandedName(_, unexp) => unexp }
     }
 
-    def unexpandedNameOfMangled: N = likeTyped {
-      var idx = name.lastIndexOfSlice(nme.EXPAND_SEPARATOR)
-
-      // Hack to make super accessors from traits work. They would otherwise fail because of #765
-      // TODO: drop this once we have more robust name handling
-      if (idx > FalseSuperLength && name.slice(idx - FalseSuperLength, idx) == FalseSuper)
-        idx -= FalseSuper.length
-
-      if (idx < 0) name else (name drop (idx + nme.EXPAND_SEPARATOR.length))
-    }
-
     def expandedPrefix: N = likeTyped { name.exclude(ExpandedName) }
 
     def expandedPrefixOfMangled: N = {
@@ -169,15 +158,6 @@ object NameOps {
       assert(idx >= 0)
       likeTyped(name.take(idx))
     }
-
-    def unmangleExpandedName: N =
-      if (name.isSimple) {
-        val unmangled = unexpandedNameOfMangled
-        if (name eq unmangled) name
-        else likeTyped(
-          ExpandedName(expandedPrefixOfMangled.toTermName, unmangled.asSimpleName))
-      }
-      else name
 
     def implClassName: N = likeTyped(name ++ tpnme.IMPL_CLASS_SUFFIX)
 
@@ -354,6 +334,23 @@ object NameOps {
 
     /** If name length exceeds allowable limit, replace part of it by hash */
     def compactified(implicit ctx: Context): TermName = termName(compactify(name.toString))
+
+    def unmangle(kind: NameKind): N = likeTyped {
+      name rewrite {
+        case unmangled: SimpleTermName =>
+          kind.unmangle(unmangled)
+        case ExpandedName(prefix, last) =>
+          kind.unmangle(last) rewrite {
+            case kernel: SimpleTermName =>
+              ExpandedName(prefix, kernel)
+          }
+      }
+    }
+
+    def unmangle(kinds: List[NameKind]): N = {
+      val unmangled = (name /: kinds)(_.unmangle(_))
+      if (unmangled eq name) name else unmangled.unmangle(kinds)
+    }
   }
 
   // needed???
@@ -473,26 +470,6 @@ object NameOps {
         case NO_NAME => primitivePostfixMethodName
         case name => name
       }
-
-    def unmangleSuperName: TermName =
-      if (name.isSimple && name.startsWith(str.SUPER_PREFIX))
-        SuperAccessorName(name.drop(str.SUPER_PREFIX.length).asTermName)
-      else name
-
-    def unmangle(kind: NameKind): TermName = name rewrite {
-      case unmangled: SimpleTermName =>
-        kind.unmangle(unmangled)
-      case ExpandedName(prefix, last) =>
-        kind.unmangle(last) rewrite {
-          case kernel: SimpleTermName =>
-            ExpandedName(prefix, kernel)
-        }
-    }
-
-    def unmangle(kinds: List[NameKind]): TermName = {
-      val unmangled = (name /: kinds)(_.unmangle(_))
-      if (unmangled eq name) name else unmangled.unmangle(kinds)
-    }
   }
 
   private final val FalseSuper = "$$super".toTermName
