@@ -165,7 +165,7 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
 
   private def addReachableMethod(method: CallInfoWithContext): Unit = {
     if (!reachableMethods.contains(method)) {
-      assert(!finished)
+      finished = false // TODO: replace with assert(!finished)
       reachableMethods += method
       val callSymbol = method.callSymbol
       if (!reachableMethodsSymbols.contains(callSymbol)) {
