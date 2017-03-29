@@ -52,4 +52,7 @@ class ParallelTestTests extends ParallelTesting {
 
   @Test def runStackOverflow: Unit =
     compileFile("../tests/partest-test/stackOverflow.scala", defaultOptions).expectFailure.checkRuns()
+
+  @Test def runOutRedirects: Unit =
+    compileFile("../tests/partest-test/i2147.scala", defaultOptions).expectFailure.checkRuns()
 }
