@@ -252,7 +252,7 @@ trait Symbols { this: Context =>
 
   /** Create a class constructor symbol for given class `cls`. */
   def newConstructor(cls: ClassSymbol, flags: FlagSet, paramNames: List[TermName], paramTypes: List[Type], privateWithin: Symbol = NoSymbol, coord: Coord = NoCoord) =
-    newSymbol(cls, nme.CONSTRUCTOR, flags | Method, MethodType(paramNames, paramTypes)(_ => cls.typeRef), privateWithin, coord)
+    newSymbol(cls, nme.CONSTRUCTOR, flags | Method, MethodType(paramNames, paramTypes, cls.typeRef), privateWithin, coord)
 
   /** Create an empty default constructor symbol for given class `cls`. */
   def newDefaultConstructor(cls: ClassSymbol) =
@@ -496,12 +496,15 @@ object Symbols {
     final def sourceFile(implicit ctx: Context): AbstractFile = {
       val file = associatedFile
       if (file != null && !file.path.endsWith("class")) file
-      else denot.topLevelClass.getAnnotation(defn.SourceFileAnnot) match {
-        case Some(sourceAnnot) => sourceAnnot.argumentConstant(0) match {
-          case Some(Constant(path: String)) => AbstractFile.getFile(path)
+      else {
+        val topLevelCls = denot.topLevelClass(ctx.withPhaseNoLater(ctx.flattenPhase))
+        topLevelCls.getAnnotation(defn.SourceFileAnnot) match {
+          case Some(sourceAnnot) => sourceAnnot.argumentConstant(0) match {
+            case Some(Constant(path: String)) => AbstractFile.getFile(path)
+            case none => null
+          }
           case none => null
         }
-        case none => null
       }
     }
 

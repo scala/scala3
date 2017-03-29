@@ -18,6 +18,7 @@ import dotc.parsing.Tokens
 import printing.Highlighting._
 import printing.Formatting
 import ErrorMessageID._
+import dotty.tools.dotc.core.SymDenotations.SymDenotation
 
 object messages {
 
@@ -1134,7 +1135,7 @@ object messages {
   }
 
   case class AnnotatedPrimaryConstructorRequiresModifierOrThis(cls: Name)(implicit ctx: Context)
-    extends Message(AnnotatedPrimaryConstructorRequiresModifierOrThisID) {
+  extends Message(AnnotatedPrimaryConstructorRequiresModifierOrThisID) {
     val kind = "Syntax"
     val msg = hl"""${"private"}, ${"protected"}, or ${"this"} expected for annotated primary constructor"""
     val explanation =
@@ -1145,6 +1146,79 @@ object messages {
            |For example:
            |  ${"class Sample @deprecated this(param: Parameter) { ..."}
            |                           ^^^^
+           |""".stripMargin
+  }
+
+  case class OverloadedOrRecursiveMethodNeedsResultType(tree: Names.TermName)(implicit ctx: Context)
+  extends Message(OverloadedOrRecursiveMethodNeedsResultTypeID) {
+    val kind = "Syntax"
+    val msg = hl"""overloaded or recursive method ${tree} needs return type"""
+    val explanation =
+      hl"""Case 1: ${tree} is overloaded
+          |If there are multiple methods named `${tree.name}` and at least one definition of
+          |it calls another, you need to specify the calling method's return type.
+          |
+          |Case 2: ${tree} is recursive
+          |If `${tree.name}` calls itself on any path, you need to specify its return type.
+          |""".stripMargin
+  }
+
+  case class RecursiveValueNeedsResultType(tree: Names.TermName)(implicit ctx: Context)
+  extends Message(RecursiveValueNeedsResultTypeID) {
+    val kind = "Syntax"
+    val msg = hl"""recursive value ${tree.name} needs type"""
+    val explanation =
+      hl"""The definition of `${tree.name}` is recursive and you need to specify its type.
+          |""".stripMargin
+  }
+
+  case class CyclicReferenceInvolving(denot: SymDenotation)(implicit ctx: Context)
+  extends Message(CyclicReferenceInvolvingID) {
+    val kind = "Syntax"
+    val msg = hl"""cyclic reference involving $denot"""
+    val explanation =
+      hl"""|$denot is declared as part of a cycle which makes it impossible for the
+           |compiler to decide upon ${denot.name}'s type.
+           |""".stripMargin
+  }
+
+  case class CyclicReferenceInvolvingImplicit(cycleSym: Symbol)(implicit ctx: Context)
+  extends Message(CyclicReferenceInvolvingImplicitID) {
+    val kind = "Syntax"
+    val msg = hl"""cyclic reference involving implicit $cycleSym"""
+    val explanation =
+      hl"""|This happens when the right hand-side of $cycleSym's definition involves an implicit search.
+           |To avoid this error, give `${cycleSym.name}` an explicit type.
+           |""".stripMargin
+  }
+
+  case class SuperQualMustBeParent(qual: untpd.Ident, cls: Symbols.ClassSymbol)(implicit ctx: Context)
+  extends Message(SuperQualMustBeParentID) {
+
+    val msg = hl"""|$qual does not name a parent of $cls"""
+
+    val kind = "Reference"
+
+    private val parents: Seq[String] = (cls.info.parents map (_.name.show)).sorted
+
+    val explanation =
+      hl"""|When a qualifier ${"T"} is used in a ${"super"} prefix of the form ${"C.super[T]"},
+           |${"T"} must be a parent type of ${"C"}.
+           |
+           |In this case, the parents of $cls are:
+           |${parents.mkString("  - ", "\n  - ", "")}
+           |""".stripMargin
+  }
+
+  case class VarArgsParamMustComeLast()(implicit ctx: Context)
+    extends Message(IncorrectRepeatedParameterSyntaxID) {
+    override def msg: String = "varargs parameter must come last"
+
+    override def kind: String = "Syntax"
+
+    override def explanation: String =
+      hl"""|The varargs field must be the last field in the method signature.
+           |Attempting to define a field in a method signature after a varargs field is an error.
            |""".stripMargin
   }
 }

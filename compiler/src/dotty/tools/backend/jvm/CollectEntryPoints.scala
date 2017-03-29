@@ -15,7 +15,6 @@ import java.io.{File => JFile}
 import scala.collection.generic.Clearable
 import scala.collection.mutable
 import scala.reflect.ClassTag
-import scala.reflect.internal.util.WeakHashSet
 import scala.reflect.io.{Directory, PlainDirectory, AbstractFile}
 import scala.tools.asm.{ClassVisitor, FieldVisitor, MethodVisitor}
 import scala.tools.nsc.backend.jvm.{BCodeHelpers, BackendInterface}
@@ -50,7 +49,7 @@ class CollectEntryPoints extends MiniPhaseTransform {
 object CollectEntryPoints{
   def isJavaMainMethod(sym: Symbol)(implicit ctx: Context) = {
     (sym.name == nme.main) && (sym.info match {
-      case r@MethodType(_, List(defn.ArrayOf(t))) =>
+      case r@MethodTpe(_, List(defn.ArrayOf(t)), _) =>
         (t.widenDealias =:= defn.StringType) && (
         r.resultType.widenDealias =:= defn.UnitType)
       case _ => false
@@ -82,9 +81,8 @@ object CollectEntryPoints{
     val possibles = if (sym.flags is Flags.Module) (toDenot(sym).info nonPrivateMember nme.main).alternatives else Nil
     val hasApproximate = possibles exists { m =>
       m.info match {
-        case MethodType(_, p :: Nil) =>
-          p.typeSymbol == defn.ArrayClass
-        case _                       => false
+        case MethodTpe(_, p :: Nil, _) => p.typeSymbol == defn.ArrayClass
+        case _                         => false
       }
     }
     // At this point it's a module with a main-looking method, so either succeed or warn that it isn't.
@@ -109,8 +107,8 @@ object CollectEntryPoints{
             toDenot(m.symbol).info match {
               case t: PolyType =>
                 fail("main methods cannot be generic.")
-              case t@MethodType(paramNames, paramTypes) =>
-                if (t.resultType :: paramTypes exists (_.typeSymbol.isAbstractType))
+              case MethodTpe(paramNames, paramTypes, resultType) =>
+                if (resultType :: paramTypes exists (_.typeSymbol.isAbstractType))
                   fail("main methods cannot refer to type parameters or abstract types.", m.symbol.pos)
                 else
                   isJavaMainMethod(m.symbol) || fail("main method must have exact signature (Array[String])Unit", m.symbol.pos)

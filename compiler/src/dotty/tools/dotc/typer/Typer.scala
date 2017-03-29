@@ -625,14 +625,17 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     block.tpe namedPartsWith (tp => locals.contains(tp.symbol))
   }
 
-  /** Check that expression's type can be expressed without references to locally defined
-   *  symbols. The following two remedies are tried before giving up:
-   *  1. If the expected type of the expression is fully defined, pick it as the
-   *     type of the result expressed by adding a type ascription.
-   *  2. If (1) fails, force all type variables so that the block's type is
-   *     fully defined and try again.
+  /** Ensure that an expression's type can be expressed without references to locally defined
+   *  symbols. This is done by adding a type ascription of a widened type that does
+   *  not refer to the locally defined symbols. The widened type is computed using
+   *  `TyperAssigner#avoid`. However, if the expected type is fully defined and not
+   *  a supertype of the widened type, we ascribe with the expected type instead.
+   *
+   *  There's a special case having to do with anonymous classes. Sometimes the
+   *  expected type of a block is the anonymous class defined inside it. In that
+   *  case there's technically a leak which is not removed by the ascription.
    */
-  protected def ensureNoLocalRefs(tree: Tree, pt: Type, localSyms: => List[Symbol], forcedDefined: Boolean = false)(implicit ctx: Context): Tree = {
+  protected def ensureNoLocalRefs(tree: Tree, pt: Type, localSyms: => List[Symbol])(implicit ctx: Context): Tree = {
     def ascribeType(tree: Tree, pt: Type): Tree = tree match {
       case block @ Block(stats, expr) =>
         val expr1 = ascribeType(expr, pt)
@@ -640,16 +643,18 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
       case _ =>
         Typed(tree, TypeTree(pt.simplified))
     }
-    val leaks = escapingRefs(tree, localSyms)
-    if (leaks.isEmpty) tree
-    else if (isFullyDefined(pt, ForceDegree.none)) ascribeType(tree, pt)
-    else if (!forcedDefined) {
+    def noLeaks(t: Tree): Boolean = escapingRefs(t, localSyms).isEmpty
+    if (noLeaks(tree)) tree
+    else {
       fullyDefinedType(tree.tpe, "block", tree.pos)
-      val tree1 = ascribeType(tree, avoid(tree.tpe, localSyms))
-      ensureNoLocalRefs(tree1, pt, localSyms, forcedDefined = true)
-    } else
-      errorTree(tree,
-          em"local definition of ${leaks.head.name} escapes as part of expression's type ${tree.tpe}"/*; full type: ${result.tpe.toString}"*/)
+      var avoidingType = avoid(tree.tpe, localSyms)
+      val ptDefined = isFullyDefined(pt, ForceDegree.none)
+      if (ptDefined && !(avoidingType <:< pt)) avoidingType = pt
+      val tree1 = ascribeType(tree, avoidingType)
+      assert(ptDefined || noLeaks(tree1), // `ptDefined` needed because of special case of anonymous classes
+          i"leak: ${escapingRefs(tree1, localSyms).toList}%, % in $tree1")
+      tree1
+    }
   }
 
   def typedIf(tree: untpd.If, pt: Type)(implicit ctx: Context): Tree = track("typedIf") {
@@ -667,8 +672,8 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
       // this can type the greatest set of admissible closures.
       (pt.dealias.argTypesLo.init, pt.dealias.argTypesHi.last)
     case SAMType(meth) =>
-      val mt @ MethodType(_, paramTypes) = meth.info
-      (paramTypes, mt.resultType)
+      val MethodTpe(_, formals, restpe) = meth.info
+      (formals, restpe)
     case _ =>
       (List.range(0, defaultArity) map alwaysWildcardType, WildcardType)
   }
@@ -1075,6 +1080,13 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
               (if (isVarPattern(arg)) desugar.patternVar(arg) else arg, tparam.paramBounds)
             else
               (arg, WildcardType)
+          if (tpt1.symbol.isClass)
+            tparam match {
+              case tparam: Symbol =>
+                // This is needed to get the test `compileParSetSubset` to work
+                tparam.ensureCompleted()
+              case _ =>
+            }
           typed(desugaredArg, argPt)
         }
         args.zipWithConserve(tparams)(typedArg(_, _)).asInstanceOf[List[Tree]]
@@ -1217,6 +1229,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     completeAnnotations(ddef, sym)
     val tparams1 = tparams mapconserve (typed(_).asInstanceOf[TypeDef])
     val vparamss1 = vparamss nestedMapconserve (typed(_).asInstanceOf[ValDef])
+    vparamss1.foreach(checkNoForwardDependencies)
     if (sym is Implicit) checkImplicitParamsNotSingletons(vparamss1)
     var tpt1 = checkSimpleKinded(typedType(tpt))
 
@@ -1275,10 +1288,10 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     def maybeCall(ref: Tree, psym: Symbol, cinfo: Type): Tree = cinfo match {
       case cinfo: PolyType =>
         maybeCall(ref, psym, cinfo.resultType)
-      case cinfo @ MethodType(Nil, _) if cinfo.resultType.isInstanceOf[ImplicitMethodType] =>
+      case cinfo @ MethodType(Nil) if cinfo.resultType.isInstanceOf[ImplicitMethodType] =>
         val icall = New(ref).select(nme.CONSTRUCTOR).appliedToNone
         typedExpr(untpd.TypedSplice(icall))(superCtx)
-      case cinfo @ MethodType(Nil, _) if !cinfo.resultType.isInstanceOf[MethodType] =>
+      case cinfo @ MethodType(Nil) if !cinfo.resultType.isInstanceOf[MethodType] =>
         ref
       case cinfo: MethodType =>
         if (!ctx.erasedTypes) { // after constructors arguments are passed in super call.
@@ -1314,6 +1327,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     val self1 = typed(self)(ctx.outer).asInstanceOf[ValDef] // outer context where class members are not visible
     val dummy = localDummy(cls, impl)
     val body1 = typedStats(impl.body, dummy)(inClassContext(self1.symbol))
+    cls.setNoInitsFlags((NoInitsInterface /: body1)((fs, stat) => fs & defKind(stat)))
 
     // Expand comments and type usecases
     cookComments(body1.map(_.symbol), self1.symbol)(localContext(cdef, cls).setNewScope)
@@ -1713,7 +1727,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
   def tryInsertImplicitOnQualifier(tree: Tree, pt: Type)(implicit ctx: Context): Option[Tree] = ctx.traceIndented(i"try insert impl on qualifier $tree $pt") {
     tree match {
       case Select(qual, name) =>
-        val qualProto = SelectionProto(name, pt, NoViewsAllowed)
+        val qualProto = SelectionProto(name, pt, NoViewsAllowed, privateOK = false)
         tryEither { implicit ctx =>
           val qual1 = adaptInterpolated(qual, qualProto, EmptyTree)
           if ((qual eq qual1) || ctx.reporter.hasErrors) None

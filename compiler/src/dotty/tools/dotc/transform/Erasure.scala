@@ -40,8 +40,8 @@ class Erasure extends Phase with DenotTransformer { thisTransformer =>
       def isCompacted(sym: Symbol) =
         sym.isAnonymousFunction && {
           sym.info(ctx.withPhase(ctx.phase.next)) match {
-            case MethodType(nme.ALLARGS :: Nil, _) => true
-            case _                                 => false
+            case MethodType(nme.ALLARGS :: Nil) => true
+            case _                              => false
           }
         }
 
@@ -269,7 +269,7 @@ object Erasure extends TypeTestsCasts{
     def adaptToType(tree: Tree, pt: Type)(implicit ctx: Context): Tree =
       if (pt.isInstanceOf[FunProto]) tree
       else tree.tpe.widen match {
-        case MethodType(Nil, _) if tree.isTerm =>
+        case MethodType(Nil) if tree.isTerm =>
           adaptToType(tree.appliedToNone, pt)
         case tpw =>
           if (pt.isInstanceOf[ProtoType] || tree.tpe <:< pt)
@@ -697,9 +697,10 @@ object Erasure extends TypeTestsCasts{
 
           val rhs = paramss.foldLeft(sel)((fun, vparams) =>
             fun.tpe.widen match {
-              case MethodType(names, types) => Apply(fun, (vparams, types).zipped.map(adapt(_, _, untpd.EmptyTree)))
-              case a => error(s"can not resolve apply type $a")
-
+              case mt: MethodType =>
+                Apply(fun, (vparams, mt.paramTypes).zipped.map(adapt(_, _, untpd.EmptyTree)))
+              case a => 
+                error(s"can not resolve apply type $a")
             })
           adapt(rhs, resultType)
       })

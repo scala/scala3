@@ -4,6 +4,7 @@
 
 package dotty.partest
 
+import dotty.tools.FatalError
 import scala.reflect.io.AbstractFile
 import scala.tools.partest._
 import scala.tools.partest.nest._
@@ -294,8 +295,6 @@ class DPTestRunner(testFile: File, suiteRunner: DPSuiteRunner) extends nest.Runn
   // override to add the check for nr of compilation errors if there's a
   // target.nerr file
   override def runNegTest() = runInContext {
-    import scala.reflect.internal.FatalError
-
     sealed abstract class NegTestState
     // Don't get confused, the neg test passes when compilation fails for at
     // least one round (optionally checking the number of compiler errors and

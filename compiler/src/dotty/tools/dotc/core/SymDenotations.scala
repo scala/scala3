@@ -158,7 +158,7 @@ object SymDenotations {
     final def resetFlag(flags: FlagSet): Unit = { myFlags &~= flags }
 
     /** Set applicable flags from `flags` which is a subset of {NoInits, PureInterface} */
-    final def setApplicableFlags(flags: FlagSet): Unit = {
+    final def setNoInitsFlags(flags: FlagSet): Unit = {
       val mask = if (myFlags.is(Trait)) NoInitsInterface else NoInits
       setFlag(flags & mask)
     }
@@ -957,6 +957,10 @@ object SymDenotations {
       else
         companionNamed(name)(ctx.outersIterator.dropWhile(_.scope eq ctx.scope).next)
 
+    /** Is this symbol the same or a linked class of `sym`? */
+    final def isLinkedWith(sym: Symbol)(implicit ctx: Context): Boolean =
+      (symbol eq sym) || (linkedClass eq sym)
+
     /** If this is a class, the module class of its companion object.
      *  If this is a module class, its companion class.
      *  NoSymbol otherwise.
@@ -1040,7 +1044,7 @@ object SymDenotations {
      *  pre: `this.owner` is in the base class sequence of `base`.
      */
     final def superSymbolIn(base: Symbol)(implicit ctx: Context): Symbol = {
-      def loop(bcs: List[ClassSymbol]): Symbol = bcs match {
+      @tailrec def loop(bcs: List[ClassSymbol]): Symbol = bcs match {
         case bc :: bcs1 =>
           val sym = matchingDecl(bcs.head, base.thisType)
             .suchThat(alt => !(alt is Deferred)).symbol
@@ -1056,7 +1060,7 @@ object SymDenotations {
      *  (2) it is abstract override and its super symbol in `base` is
      *      nonexistent or incomplete.
      */
-    final def isIncompleteIn(base: Symbol)(implicit ctx: Context): Boolean =
+    @tailrec final def isIncompleteIn(base: Symbol)(implicit ctx: Context): Boolean =
       (this is Deferred) ||
       (this is AbsOverride) && {
         val supersym = superSymbolIn(base)

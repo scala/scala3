@@ -5,7 +5,7 @@ import java.security.MessageDigest
 import scala.annotation.switch
 import scala.io.Codec
 import Names._, StdNames._, Contexts._, Symbols._, Flags._
-import Decorators.StringDecorator
+import Decorators.PreNamedString
 import util.{Chars, NameTransformer}
 import Chars.isOperatorPart
 import Definitions._

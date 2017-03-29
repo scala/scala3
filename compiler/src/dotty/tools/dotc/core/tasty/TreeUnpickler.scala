@@ -278,8 +278,9 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table, posUnpickle
               result
             case METHODtype =>
               val (names, paramReader) = readNamesSkipParams
-              val result = MethodType(names.map(_.toTermName), paramReader.readParamTypes[Type](end))(
-                mt => registeringType(mt, readType()))
+              val result = MethodType(names.map(_.toTermName))(
+                mt => registeringType(mt, paramReader.readParamTypes[Type](end)),
+                mt => readType())
               goto(end)
               result
             case PARAMtype =>
@@ -768,7 +769,7 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table, posUnpickle
         }
         else EmptyValDef
       setClsInfo(parentRefs, if (self.isEmpty) NoType else self.tpt.tpe)
-      cls.setApplicableFlags(fork.indexStats(end))
+      cls.setNoInitsFlags(fork.indexStats(end))
       val constr = readIndexedDef().asInstanceOf[DefDef]
 
       def mergeTypeParamsAndAliases(tparams: List[TypeDef], stats: List[Tree])(implicit ctx: Context): (List[Tree], List[Tree]) =

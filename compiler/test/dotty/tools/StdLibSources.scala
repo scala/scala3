@@ -11,8 +11,8 @@ object StdLibSources {
 
   private final val stdLibPath = "../scala-scala/src/library/"
 
-  def blacklistFile: String = "./test/dotc/scala-collections.blacklist"
-  private def whitelistFile: String = "./test/dotc/scala-collections.whitelist"
+  def blacklistFile: String = "../compiler/test/dotc/scala-collections.blacklist"
+  private def whitelistFile: String = "../compiler/test/dotc/scala-collections.whitelist"
 
   def whitelisted: List[String] = {
     lazy val whitelistBasedOnBlacklist = all.diff(blacklisted)

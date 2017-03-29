@@ -5,7 +5,7 @@ package parsing
 import scala.collection.mutable
 import mutable.{ Buffer, ArrayBuffer, ListBuffer }
 import scala.util.control.ControlThrowable
-import scala.reflect.internal.Chars.SU
+import util.Chars.SU
 import Parsers._
 import util.Positions._
 import core._

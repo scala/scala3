@@ -4,6 +4,8 @@ package core
 import Names._, Types._, Contexts._, StdNames._
 import TypeErasure.sigName
 
+import scala.annotation.tailrec
+
 /** The signature of a denotation.
  *  Overloaded denotations with the same name are distinguished by
  *  their signatures. A signature of a method (of type PolyType,MethodType, or ExprType) is
@@ -41,7 +43,7 @@ case class Signature(paramsSig: List[TypeName], resSig: TypeName) {
    *  equal or on of them is tpnme.Uninstantiated.
    */
   final def consistentParams(that: Signature): Boolean = {
-    def loop(names1: List[TypeName], names2: List[TypeName]): Boolean =
+    @tailrec def loop(names1: List[TypeName], names2: List[TypeName]): Boolean =
       if (names1.isEmpty) names2.isEmpty
       else names2.nonEmpty && consistent(names1.head, names2.head) && loop(names1.tail, names2.tail)
     loop(this.paramsSig, that.paramsSig)

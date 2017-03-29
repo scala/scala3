@@ -291,34 +291,36 @@ trait TypeAssigner {
 
   def assignType(tree: untpd.Super, qual: Tree, inConstrCall: Boolean, mixinClass: Symbol = NoSymbol)(implicit ctx: Context) = {
     val mix = tree.mix
-    val qtype @ ThisType(_) = qual.tpe
-    val cls = qtype.cls
-
-    def findMixinSuper(site: Type): Type = site.parents filter (_.name == mix.name) match {
-      case p :: Nil =>
-        p
-      case Nil =>
-        errorType(em"$mix does not name a parent class of $cls", tree.pos)
-      case p :: q :: _ =>
-        errorType("ambiguous parent class qualifier", tree.pos)
+    qual.tpe match {
+      case err: ErrorType => untpd.cpy.Super(tree)(qual, mix).withType(err)
+      case qtype @ ThisType(_) =>
+        val cls = qtype.cls
+        def findMixinSuper(site: Type): Type = site.parents filter (_.name == mix.name) match {
+          case p :: Nil =>
+            p
+          case Nil =>
+            errorType(SuperQualMustBeParent(mix, cls), tree.pos)
+          case p :: q :: _ =>
+            errorType("ambiguous parent class qualifier", tree.pos)
+        }
+        val owntype =
+          if (mixinClass.exists) mixinClass.typeRef
+          else if (!mix.isEmpty) findMixinSuper(cls.info)
+          else if (inConstrCall || ctx.erasedTypes) cls.info.firstParent
+          else {
+            val ps = cls.classInfo.parentsWithArgs
+            if (ps.isEmpty) defn.AnyType else ps.reduceLeft((x: Type, y: Type) => x & y)
+          }
+        tree.withType(SuperType(cls.thisType, owntype))
     }
-    val owntype =
-      if (mixinClass.exists) mixinClass.typeRef
-      else if (!mix.isEmpty) findMixinSuper(cls.info)
-      else if (inConstrCall || ctx.erasedTypes) cls.info.firstParent
-      else {
-        val ps = cls.classInfo.parentsWithArgs
-        if (ps.isEmpty) defn.AnyType else ps.reduceLeft((x: Type, y: Type) => x & y)
-      }
-    tree.withType(SuperType(cls.thisType, owntype))
   }
 
   def assignType(tree: untpd.Apply, fn: Tree, args: List[Tree])(implicit ctx: Context) = {
     val ownType = fn.tpe.widen match {
-      case fntpe @ MethodType(_, ptypes) =>
-        if (sameLength(ptypes, args) || ctx.phase.prev.relaxedTyping) fntpe.instantiate(args.tpes)
+      case fntpe: MethodType =>
+        if (sameLength(fntpe.paramTypes, args) || ctx.phase.prev.relaxedTyping) fntpe.instantiate(args.tpes)
         else
-          errorType(i"wrong number of arguments for $fntpe: ${fn.tpe}, expected: ${ptypes.length}, found: ${args.length}", tree.pos)
+          errorType(i"wrong number of arguments for $fntpe: ${fn.tpe}, expected: ${fntpe.paramTypes.length}, found: ${args.length}", tree.pos)
       case t =>
         errorType(i"${err.exprStr(fn)} does not take parameters", tree.pos)
     }

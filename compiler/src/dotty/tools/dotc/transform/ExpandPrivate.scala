@@ -3,7 +3,7 @@ package transform
 
 import core._
 import dotty.tools.dotc.ast.tpd
-import dotty.tools.dotc.core.DenotTransformers.{SymTransformer, IdentityDenotTransformer}
+import dotty.tools.dotc.core.DenotTransformers.{IdentityDenotTransformer, SymTransformer}
 import Contexts.Context
 import Symbols._
 import Scopes._
@@ -11,13 +11,16 @@ import Flags._
 import StdNames._
 import SymDenotations._
 import Types._
+
 import collection.mutable
 import TreeTransforms._
 import Decorators._
 import ast.Trees._
 import TreeTransforms._
 import java.io.File.separatorChar
+
 import ValueClasses._
+import dotty.tools.dotc.core.Phases.Phase
 
 /** Make private term members that are accessed from another class
  *  non-private by resetting the Private flag and expanding their name.
@@ -37,6 +40,9 @@ class ExpandPrivate extends MiniPhaseTransform with IdentityDenotTransformer { t
   import ast.tpd._
 
   override def phaseName: String = "expandPrivate"
+
+  // This phase moves methods around (in infotransform) so it may need to make other methods public
+  override def runsAfter: Set[Class[_ <: Phase]] = Set(classOf[MoveStatics])
 
   override def checkPostCondition(tree: Tree)(implicit ctx: Context): Unit = {
     tree match {

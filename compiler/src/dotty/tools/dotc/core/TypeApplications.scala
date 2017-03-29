@@ -1,4 +1,5 @@
-package dotty.tools.dotc
+package dotty.tools
+package dotc
 package core
 
 import Types._
@@ -412,8 +413,8 @@ class TypeApplications(val self: Type) extends AnyVal {
             val followAlias = Config.simplifyApplications && {
               dealiased.resType match {
                 case AppliedType(tyconBody, _) =>
-                  variancesConform(typParams, tyconBody.typeParams)
-                    // Reducing is safe for type inference, as kind of type constructor does not change
+                  sameLength(dealiased.typeParams, tyconBody.typeParams)
+                    // Reducing is safe for type inference, as kind arity of type constructor does not change
                 case _ => false
               }
             }

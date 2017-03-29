@@ -5,13 +5,11 @@ import java.io.{File, FileInputStream, PrintStream}
 import java.lang.Long.toHexString
 import java.lang.Float.intBitsToFloat
 import java.lang.Double.longBitsToDouble
-import scala.reflect.internal.Flags
-import scala.reflect.internal.pickling.PickleFormat
 import core.unpickleScala2.PickleBuffer
 import core.Names._
 
 object ShowPickled {
-  import PickleFormat._
+  import core.unpickleScala2.PickleFormat._
 
   case class PickleBufferEntry(num: Int, startIndex: Int, tag: Int, bytes: Array[Byte]) {
     def isName = tag == TERMname || tag == TYPEname

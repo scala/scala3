@@ -29,8 +29,11 @@ import StdNames._
  *   - eliminates some kinds of trees: Imports, NamedArgs
  *   - stubs out native methods
  *   - eliminates self tree in Template and self symbol in ClassInfo
- *   - collapsess all type trees to trees of class TypeTree
+ *   - collapses all type trees to trees of class TypeTree
  *   - converts idempotent expressions with constant types
+ *   - drops branches of ifs using the rules
+ *          if (true) A else B  --> A
+ *          if (false) A else B --> B
  */
 class FirstTransform extends MiniPhaseTransform with InfoTransformer with AnnotationTransformer { thisTransformer =>
   import ast.tpd._
@@ -148,7 +151,7 @@ class FirstTransform extends MiniPhaseTransform with InfoTransformer with Annota
   override def transformTemplate(impl: Template)(implicit ctx: Context, info: TransformerInfo): Tree = {
     cpy.Template(impl)(self = EmptyValDef)
   }
-  
+
   override def transformDefDef(ddef: DefDef)(implicit ctx: Context, info: TransformerInfo) = {
     if (ddef.symbol.hasAnnotation(defn.NativeAnnot)) {
       ddef.symbol.resetFlag(Deferred)
@@ -168,13 +171,13 @@ class FirstTransform extends MiniPhaseTransform with InfoTransformer with Annota
   }
 
   override def transformIdent(tree: Ident)(implicit ctx: Context, info: TransformerInfo) =
-    if (tree.isType) TypeTree(tree.tpe).withPos(tree.pos) 
+    if (tree.isType) TypeTree(tree.tpe).withPos(tree.pos)
     else constToLiteral(tree)
 
   override def transformSelect(tree: Select)(implicit ctx: Context, info: TransformerInfo) =
-    if (tree.isType) TypeTree(tree.tpe).withPos(tree.pos) 
+    if (tree.isType) TypeTree(tree.tpe).withPos(tree.pos)
     else constToLiteral(tree)
-    
+
   override def transformTypeApply(tree: TypeApply)(implicit ctx: Context, info: TransformerInfo) =
     constToLiteral(tree)
 
@@ -183,9 +186,15 @@ class FirstTransform extends MiniPhaseTransform with InfoTransformer with Annota
 
   override def transformTyped(tree: Typed)(implicit ctx: Context, info: TransformerInfo) =
     constToLiteral(tree)
-    
+
   override def transformBlock(tree: Block)(implicit ctx: Context, info: TransformerInfo) =
     constToLiteral(tree)
+
+  override def transformIf(tree: If)(implicit ctx: Context, info: TransformerInfo) =
+    tree.cond match {
+      case Literal(Constant(c: Boolean)) => if (c) tree.thenp else tree.elsep
+      case _ => tree
+    }
 
   // invariants: all modules have companion objects
   // all types are TypeTrees

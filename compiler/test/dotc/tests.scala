@@ -153,6 +153,7 @@ class tests extends CompilerTest {
   @Test def pos_anonClassSubtyping = compileFile(posDir, "anonClassSubtyping", twice)
   @Test def pos_extmethods = compileFile(posDir, "extmethods", twice)
   @Test def pos_companions = compileFile(posDir, "companions", twice)
+  @Test def posVarargsT1625 = compileFiles(posDir + "varargsInMethodsT1625/")
 
   @Test def pos_all = compileFiles(posDir) // twice omitted to make tests run faster
 
@@ -176,6 +177,8 @@ class tests extends CompilerTest {
 
   @Test def neg_all = compileFiles(negDir, verbose = true, compileSubDirs = false)
   @Test def neg_typedIdents() = compileDir(negDir, "typedIdents")
+
+  @Test def negVarargsT1625 = compileFiles(negDir + "varargsInMethodsT1625/")
 
   val negCustomArgs = negDir + "customArgs/"
 
@@ -224,6 +227,11 @@ class tests extends CompilerTest {
         |../scala-scala/src/library/scala/collection/SeqLike.scala
         |../scala-scala/src/library/scala/collection/generic/GenSeqFactory.scala""".stripMargin)
   @Test def compileIndexedSeq = compileLine("../scala-scala/src/library/scala/collection/immutable/IndexedSeq.scala")
+  @Test def compileParSetLike = compileLine("../scala-scala/src/library/scala/collection/parallel/mutable/ParSetLike.scala")
+  @Test def compileParSetSubset = compileLine(
+      """../scala-scala/src/library/scala/collection/parallel/mutable/ParSetLike.scala
+        |../scala-scala/src/library/scala/collection/parallel/mutable/ParSet.scala
+        |../scala-scala/src/library/scala/collection/mutable/SetLike.scala""".stripMargin)(scala2mode ++ defaultOptions)
 
   @Test def dotty = {
     dottyBootedLib
@@ -355,7 +363,6 @@ class tests extends CompilerTest {
 
   @Test def tasty_dotc_util = compileDir(dotcDir, "util", testPickling)
   @Test def tasty_tools_io = compileDir(toolsDir, "io", testPickling)
-  @Test def tasty_tests = compileDir(testsDir, "tasty", testPickling)
 
   @Test def tasty_bootstrap = {
     val logging = if (false) List("-Ylog-classpath", "-verbose") else Nil

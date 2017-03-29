@@ -5,6 +5,7 @@ import util.{SourceFile, Positions}
 import Positions.Position
 import core.Contexts.{Context, FreshContext}
 import collection.mutable
+import scala.annotation.tailrec
 
 /** Handles rewriting of Scala2 files to Dotty */
 object Rewrites {
@@ -29,7 +30,7 @@ object Rewrites {
           p2
         }
       val ds = new Array[Char](cs.length + delta)
-      def loop(ps: List[Patch], inIdx: Int, outIdx: Int): Unit = {
+      @tailrec def loop(ps: List[Patch], inIdx: Int, outIdx: Int): Unit = {
         def copy(upTo: Int): Int = {
           val untouched = upTo - inIdx
           Array.copy(cs, inIdx, ds, outIdx, untouched)

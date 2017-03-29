@@ -75,9 +75,22 @@ object Config {
   /** If this flag is set, take the fast path when comparing same-named type-aliases and types */
   final val fastPathForRefinedSubtype = true
 
+  /** If this flag is set, and we compute `T1 { X = S1 }` & `T2 { X = S2 }` as a new
+   *  upper bound of a constrained parameter, try to align the refinements by computing
+   *  `S1 =:= S2` (which might instantiate type parameters).
+   *  This rule is contentious because it cuts the constraint set.
+   *
+   *  For more info, see the comment in `TypeComparer#distributeAnd`.
+   */
+  final val alignArgsInAnd = true
+
   /** If this flag is set, higher-kinded applications are checked for validity
    */
   final val checkHKApplications = false
+
+  /** If this flag is set, method types are checked for valid parameter references
+   */
+  final val checkMethodTypes = false
 
   /** The recursion depth for showing a summarized string */
   final val summarizeDepth = 2

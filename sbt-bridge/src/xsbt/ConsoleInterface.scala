@@ -4,10 +4,6 @@
 package xsbt
 
 import xsbti.Logger
-import scala.tools.nsc.{ GenericRunnerCommand, Interpreter, InterpreterLoop, ObjectRunner, Settings }
-import scala.tools.nsc.interpreter.InteractiveReader
-import scala.tools.nsc.reporters.Reporter
-import scala.tools.nsc.util.ClassPath
 
 import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.repl.REPL

@@ -10,6 +10,7 @@ import dotc.transform.ExplicitOuter._
 import dotc.transform.ValueClasses._
 import util.DotClass
 import Definitions.MaxImplementedFunctionArity
+import scala.annotation.tailrec
 
 /** Erased types are:
  *
@@ -215,13 +216,13 @@ object TypeErasure {
   }
 
   /** The erased least upper bound is computed as follows
-   *  - if both argument are arrays of objects, an array of the lub of the element types
+   *  - if both argument are arrays of objects, an array of the erased lub of the element types
    *  - if both arguments are arrays of same primitives, an array of this primitive
    *  - if one argument is array of primitives and the other is array of objects, Object
    *  - if one argument is an array, Object
    *  - otherwise a common superclass or trait S of the argument classes, with the
    *    following two properties:
-   *      S is minimal: no other common superclass or trait derives from S]
+   *      S is minimal: no other common superclass or trait derives from S
    *      S is last   : in the linearization of the first argument type `tp1`
    *                    there are no minimal common superclasses or traits that
    *                    come after S.
@@ -244,12 +245,16 @@ object TypeErasure {
         case JavaArrayType(_) => defn.ObjectType
         case _ =>
           val cls2 = tp2.classSymbol
-          def loop(bcs: List[ClassSymbol], bestSoFar: ClassSymbol): ClassSymbol = bcs match {
+          @tailrec def loop(bcs: List[ClassSymbol], bestSoFar: ClassSymbol): ClassSymbol = bcs match {
             case bc :: bcs1 =>
-              if (cls2.derivesFrom(bc))
-                if (!bc.is(Trait) && bc != defn.AnyClass) bc
-                else loop(bcs1, if (bestSoFar.derivesFrom(bc)) bestSoFar else bc)
-              else
+              if (cls2.derivesFrom(bc)) {
+                val newBest = if (bestSoFar.derivesFrom(bc)) bestSoFar else bc
+
+                if (!bc.is(Trait) && bc != defn.AnyClass)
+                  newBest
+                else
+                  loop(bcs1, newBest)
+              } else
                 loop(bcs1, bestSoFar)
             case nil =>
               bestSoFar

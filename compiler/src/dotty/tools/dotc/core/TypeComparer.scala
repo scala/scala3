@@ -384,7 +384,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
           // So if the constraint is not yet frozen, we do the same comparison again
           // with a frozen constraint, which means that we get a chance to do the
           // widening in `fourthTry` before adding to the constraint.
-          if (frozenConstraint || alwaysFluid) isSubType(tp1, bounds(tp2).lo)
+          if (frozenConstraint) isSubType(tp1, bounds(tp2).lo)
           else isSubTypeWhenFrozen(tp1, tp2)
         alwaysTrue || {
           if (canConstrain(tp2)) addConstraint(tp2, tp1.widenExpr, fromBelow = true)
@@ -484,11 +484,11 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
         case _ =>
       }
       either(isSubType(tp1, tp21), isSubType(tp1, tp22)) || fourthTry(tp1, tp2)
-    case tp2 @ MethodType(_, formals2) =>
+    case tp2: MethodType =>
       def compareMethod = tp1 match {
-        case tp1 @ MethodType(_, formals1) =>
+        case tp1: MethodType =>
           (tp1.signature consistentParams tp2.signature) &&
-            matchingParams(formals1, formals2, tp1.isJava, tp2.isJava) &&
+            matchingParams(tp1.paramTypes, tp2.paramTypes, tp1.isJava, tp2.isJava) &&
             (tp1.isImplicit == tp2.isImplicit) &&
             isSubType(tp1.resultType, tp2.resultType.subst(tp2, tp1))
         case _ =>
@@ -503,7 +503,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
         // as members of the same type. And it seems most logical to take
         // ()T <:< => T, since everything one can do with a => T one can
         // also do with a ()T by automatic () insertion.
-        case tp1 @ MethodType(Nil, _) => isSubType(tp1.resultType, restpe2)
+        case tp1 @ MethodType(Nil) => isSubType(tp1.resultType, restpe2)
         case _ => isSubType(tp1.widenExpr, restpe2)
       }
       compareExpr
@@ -1143,19 +1143,20 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
     ((defn.AnyType: Type) /: tps)(glb)
 
   /** The least upper bound of two types
+   *  @param canConstrain  If true, new constraints might be added to simplify the lub.
    *  @note  We do not admit singleton types in or-types as lubs.
    */
-  def lub(tp1: Type, tp2: Type): Type = /*>|>*/ ctx.traceIndented(s"lub(${tp1.show}, ${tp2.show})", subtyping, show = true) /*<|<*/ {
+  def lub(tp1: Type, tp2: Type, canConstrain: Boolean = false): Type = /*>|>*/ ctx.traceIndented(s"lub(${tp1.show}, ${tp2.show}, canConstrain=$canConstrain)", subtyping, show = true) /*<|<*/ {
     if (tp1 eq tp2) tp1
     else if (!tp1.exists) tp1
     else if (!tp2.exists) tp2
     else if ((tp1 isRef AnyClass) || (tp2 isRef NothingClass)) tp1
     else if ((tp2 isRef AnyClass) || (tp1 isRef NothingClass)) tp2
     else {
-      val t1 = mergeIfSuper(tp1, tp2)
+      val t1 = mergeIfSuper(tp1, tp2, canConstrain)
       if (t1.exists) t1
       else {
-        val t2 = mergeIfSuper(tp2, tp1)
+        val t2 = mergeIfSuper(tp2, tp1, canConstrain)
         if (t2.exists) t2
         else {
           val tp1w = tp1.widen
@@ -1169,7 +1170,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
 
   /** The least upper bound of a list of types */
   final def lub(tps: List[Type]): Type =
-    ((defn.NothingType: Type) /: tps)(lub)
+    ((defn.NothingType: Type) /: tps)(lub(_,_, canConstrain = false))
 
   /** Merge `t1` into `tp2` if t1 is a subtype of some &-summand of tp2.
    */
@@ -1192,17 +1193,18 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
     }
 
   /** Merge `tp1` into `tp2` if tp1 is a supertype of some |-summand of tp2.
+   *  @param canConstrain  If true, new constraints might be added to make the merge possible.
    */
-  private def mergeIfSuper(tp1: Type, tp2: Type): Type =
-    if (isSubTypeWhenFrozen(tp2, tp1))
-      if (isSubTypeWhenFrozen(tp1, tp2)) tp2 else tp1 // keep existing type if possible
+  private def mergeIfSuper(tp1: Type, tp2: Type, canConstrain: Boolean): Type =
+    if (isSubType(tp2, tp1, whenFrozen = !canConstrain))
+      if (isSubType(tp1, tp2, whenFrozen = !canConstrain)) tp2 else tp1 // keep existing type if possible
     else tp2 match {
       case tp2 @ OrType(tp21, tp22) =>
-        val higher1 = mergeIfSuper(tp1, tp21)
+        val higher1 = mergeIfSuper(tp1, tp21, canConstrain)
         if (higher1 eq tp21) tp2
         else if (higher1.exists) higher1 | tp22
         else {
-          val higher2 = mergeIfSuper(tp1, tp22)
+          val higher2 = mergeIfSuper(tp1, tp22, canConstrain)
           if (higher2 eq tp22) tp2
           else if (higher2.exists) tp21 | higher2
           else NoType
@@ -1300,23 +1302,28 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
     case tp1: RefinedType =>
       tp2 match {
         case tp2: RefinedType if tp1.refinedName == tp2.refinedName =>
-          // Given two refinements `T1 { X = S1 }` and `T2 { X = S2 }`, if `S1 =:= S2`
-          // (possibly by instantiating type parameters), rewrite to `T1 & T2 { X = S1 }`.
-          // Otherwise rewrite to `T1 & T2 { X B }` where `B` is the conjunction of
-          // the bounds of `X` in `T1` and `T2`.
-          // The first rule above is contentious because it cuts the constraint set.
-          // But without it we would replace the two aliases by
-          // `T { X >: S1 | S2 <: S1 & S2 }`, which looks weird and is probably
-          // not what's intended.
+          // Given two refinements `T1 { X = S1 }` and `T2 { X = S2 }` rewrite to
+          // `T1 & T2 { X B }` where `B` is the conjunction of the bounds of `X` in `T1` and `T2`.
+          //
+          // However, if `homogenizeArgs` is set, and both aliases `X = Si` are
+          // nonvariant, and `S1 =:= S2` (possibly by instantiating type parameters),
+          // rewrite instead to `T1 & T2 { X = S1 }`. This rule is contentious because
+          // it cuts the constraint set. On the other hand, without it we would replace
+          // the two aliases by `T { X >: S1 | S2 <: S1 & S2 }`, which looks weird
+          // and is probably not what's intended.
           val rinfo1 = tp1.refinedInfo
           val rinfo2 = tp2.refinedInfo
           val parent = tp1.parent & tp2.parent
-          val rinfo =
-            if (rinfo1.isAlias && rinfo2.isAlias && isSameType(rinfo1, rinfo2))
-              rinfo1
-            else
-              rinfo1 & rinfo2
-          tp1.derivedRefinedType(parent, tp1.refinedName, rinfo)
+
+          def isNonvariantAlias(tp: Type) = tp match {
+            case tp: TypeAlias => tp.variance == 0
+            case _ => false
+          }
+          if (homogenizeArgs &&
+              isNonvariantAlias(rinfo1) && isNonvariantAlias(rinfo2))
+            isSameType(rinfo1, rinfo2) // establish new constraint
+
+          tp1.derivedRefinedType(parent, tp1.refinedName, rinfo1 & rinfo2)
         case _ =>
           NoType
       }
@@ -1486,9 +1493,9 @@ class ExplainingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
       super.hasMatchingMember(name, tp1, tp2)
     }
 
-  override def lub(tp1: Type, tp2: Type) =
-    traceIndented(s"lub(${show(tp1)}, ${show(tp2)})") {
-      super.lub(tp1, tp2)
+  override def lub(tp1: Type, tp2: Type, canConstrain: Boolean = false) =
+    traceIndented(s"lub(${show(tp1)}, ${show(tp2)}, canConstrain=$canConstrain)") {
+      super.lub(tp1, tp2, canConstrain)
     }
 
   override def glb(tp1: Type, tp2: Type) =

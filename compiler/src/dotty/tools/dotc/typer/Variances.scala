@@ -79,8 +79,8 @@ object Variances {
       varianceInType(parent)(tparam) & varianceInType(rinfo)(tparam)
     case tp: RecType =>
       varianceInType(tp.parent)(tparam)
-    case tp @ MethodType(_, paramTypes) =>
-      flip(varianceInTypes(paramTypes)(tparam)) & varianceInType(tp.resultType)(tparam)
+    case tp: MethodType =>
+      flip(varianceInTypes(tp.paramTypes)(tparam)) & varianceInType(tp.resultType)(tparam)
     case ExprType(restpe) =>
       varianceInType(restpe)(tparam)
     case tp @ HKApply(tycon, args) =>

@@ -7,7 +7,7 @@ import _root_.scala.tools.nsc.reporters.ConsoleReporter
 import _root_.scala.tools.nsc.Settings
 import xsbti._
 import xsbti.api.SourceAPI
-import sbt.IO.withTemporaryDirectory
+import sbt.IO._
 import xsbti.api.ClassLike
 import xsbti.api.Definition
 import xsbti.api.Def
@@ -21,7 +21,7 @@ import ScalaCompilerForUnitTesting.ExtractedSourceDependencies
  * Provides common functionality needed for unit tests that require compiling
  * source code using Scala compiler.
  */
-class ScalaCompilerForUnitTesting(nameHashing: Boolean = false) {
+class ScalaCompilerForUnitTesting(nameHashing: Boolean, includeSynthToNameHashing: Boolean = false) {
   import scala.language.reflectiveCalls
 
   /**
@@ -31,6 +31,15 @@ class ScalaCompilerForUnitTesting(nameHashing: Boolean = false) {
   def extractApiFromSrc(src: String): SourceAPI = {
     val (Seq(tempSrcFile), analysisCallback) = compileSrcs(src)
     analysisCallback.apis(tempSrcFile)
+  }
+
+  /**
+   * Compiles given source code using Scala compiler and returns API representation
+   * extracted by ExtractAPI class.
+   */
+  def extractApisFromSrcs(reuseCompilerInstance: Boolean)(srcs: List[String]*): Seq[SourceAPI] = {
+    val (tempSrcFiles, analysisCallback) = compileSrcs(srcs.toList, reuseCompilerInstance)
+    tempSrcFiles.map(analysisCallback.apis)
   }
 
   def extractUsedNamesFromSrc(src: String): Set[String] = {
@@ -66,7 +75,7 @@ class ScalaCompilerForUnitTesting(nameHashing: Boolean = false) {
   def extractDependenciesFromSrcs(srcs: List[Map[Symbol, String]]): ExtractedSourceDependencies = {
     val rawGroupedSrcs = srcs.map(_.values.toList)
     val symbols = srcs.flatMap(_.keys)
-    val (tempSrcFiles, testCallback) = compileSrcs(rawGroupedSrcs)
+    val (tempSrcFiles, testCallback) = compileSrcs(rawGroupedSrcs, reuseCompilerInstance = true)
     val fileToSymbol = (tempSrcFiles zip symbols).toMap
 
     val memberRefFileDeps = testCallback.sourceDependencies collect {
@@ -109,19 +118,31 @@ class ScalaCompilerForUnitTesting(nameHashing: Boolean = false) {
    * useful to compile macros, which cannot be used in the same compilation run that
    * defines them.
    *
+   * The `reuseCompilerInstance` parameter controls whether the same Scala compiler instance
+   * is reused between compiling source groups. Separate compiler instances can be used to
+   * test stability of API representation (with respect to pickling) or to test handling of
+   * binary dependencies.
+   *
    * The sequence of temporary files corresponding to passed snippets and analysis
    * callback is returned as a result.
    */
-  private def compileSrcs(groupedSrcs: List[List[String]]): (Seq[File], TestCallback) = {
-    withTemporaryDirectory { temp =>
-      val analysisCallback = new TestCallback(nameHashing)
+  private def compileSrcs(groupedSrcs: List[List[String]],
+    reuseCompilerInstance: Boolean): (Seq[File], TestCallback) = {
+    // withTemporaryDirectory { temp =>
+    {
+      val temp = createTemporaryDirectory
+      val analysisCallback = new TestCallback(nameHashing, includeSynthToNameHashing)
       val classesDir = new File(temp, "classes")
       classesDir.mkdir()
 
-      // val (compiler, ctx) = prepareCompiler(classesDir, analysisCallback, classesDir.toString)
+      lazy val commonCompilerInstanceAndCtx = prepareCompiler(classesDir, analysisCallback, classesDir.toString)
 
       val files = for ((compilationUnit, unitId) <- groupedSrcs.zipWithIndex) yield {
-        val (compiler, ctx) = prepareCompiler(classesDir, analysisCallback, classesDir.toString)
+        // use a separate instance of the compiler for each group of sources to
+        // have an ability to test for bugs in instability between source and pickled
+        // representation of types
+        val (compiler, ctx) = if (reuseCompilerInstance) commonCompilerInstanceAndCtx else
+          prepareCompiler(classesDir, analysisCallback, classesDir.toString)
         val run = compiler.newRun(ctx)
         val srcFiles = compilationUnit.toSeq.zipWithIndex map {
           case (src, i) =>
@@ -132,7 +153,7 @@ class ScalaCompilerForUnitTesting(nameHashing: Boolean = false) {
 
         run.compile(srcFilePaths)
 
-        srcFilePaths.foreach(f => new File(f).delete)
+        // srcFilePaths.foreach(f => new File(f).delete)
         srcFiles
       }
       (files.flatten.toSeq, analysisCallback)
@@ -140,7 +161,7 @@ class ScalaCompilerForUnitTesting(nameHashing: Boolean = false) {
   }
 
   private def compileSrcs(srcs: String*): (Seq[File], TestCallback) = {
-    compileSrcs(List(srcs.toList))
+    compileSrcs(List(srcs.toList), reuseCompilerInstance = true)
   }
 
   private def prepareSrcFile(baseDir: File, fileName: String, src: String): File = {
@@ -151,10 +172,6 @@ class ScalaCompilerForUnitTesting(nameHashing: Boolean = false) {
 
   private def prepareCompiler(outputDir: File, analysisCallback: AnalysisCallback, classpath: String = ".") = {
     val args = Array.empty[String]
-    object output extends SingleOutput {
-      def outputDirectory: File = outputDir
-      override def toString = s"SingleOutput($outputDirectory)"
-    }
 
     import dotty.tools.dotc._
     import dotty.tools.dotc.core.Contexts._
@@ -171,7 +188,7 @@ class ScalaCompilerForUnitTesting(nameHashing: Boolean = false) {
       }
     }
     val ctx = (new ContextBase).initialCtx.fresh.setSbtCallback(analysisCallback)
-    driver.getCompiler(Array("-classpath", classpath, "-usejavacp"), ctx)
+    driver.getCompiler(Array("-classpath", classpath, "-usejavacp", "-d", outputDir.getAbsolutePath), ctx)
   }
 
   private object ConsoleReporter extends Reporter {

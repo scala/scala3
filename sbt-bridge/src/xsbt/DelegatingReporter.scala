@@ -27,15 +27,23 @@ final class DelegatingReporter(delegate: xsbti.Reporter) extends Reporter
         case _                   => xsbti.Severity.Info
       }
 
-    val position = new Position {
-      def line: Maybe[Integer] = Maybe.nothing()
-      def lineContent: String = ""
-      def offset: Maybe[Integer] = Maybe.nothing()
-      def pointer: Maybe[Integer] = Maybe.nothing()
-      def pointerSpace: Maybe[String] = Maybe.nothing()
-      def sourceFile: Maybe[java.io.File] = Maybe.nothing()
-      def sourcePath: Maybe[String] = Maybe.nothing()
-    }
+    val position =
+      if (false && cont.pos.exists) { // Disabled because it duplicates the information printed by Dotty
+        val pos = cont.pos
+        val src = pos.source
+        new Position {
+          val sourceFile: Maybe[java.io.File] = maybe(Option(src.file.file))
+          val sourcePath: Maybe[String] = maybe(Option(src.file.path))
+          val line: Maybe[Integer] = Maybe.just(pos.line)
+          val lineContent: String = pos.lineContent.stripLineEnd
+          val offset: Maybe[Integer] = Maybe.just(pos.point)
+          val pointer: Maybe[Integer] = Maybe.just(pos.point - src.startOfLine(pos.point))
+          val pointerSpace: Maybe[String] = Maybe.just(
+            ((lineContent: Seq[Char]).take(pointer.get).map { case '\t' => '\t'; case x => ' ' }).mkString
+          )
+        }
+      } else
+        noPosition
 
     val sb = new StringBuilder()
     sb.append(messageAndPos(cont.contained, cont.pos, diagnosticLevel(cont)))
@@ -44,5 +52,20 @@ final class DelegatingReporter(delegate: xsbti.Reporter) extends Reporter
     }
 
     delegate.log(position, sb.toString(), severity)
+  }
+
+  private[this] def maybe[T](opt: Option[T]): Maybe[T] = opt match { 
+    case None => Maybe.nothing[T]
+    case Some(s) => Maybe.just[T](s)
+  }
+
+  private[this] val noPosition = new Position {
+    val line: Maybe[Integer] = Maybe.nothing[Integer]
+    val lineContent: String = ""
+    val offset: Maybe[Integer] = Maybe.nothing[Integer]
+    val pointer: Maybe[Integer] = Maybe.nothing[Integer]
+    val pointerSpace: Maybe[String] = Maybe.nothing[String]
+    val sourceFile: Maybe[java.io.File] = Maybe.nothing[java.io.File]
+    val sourcePath: Maybe[String] = Maybe.nothing[String]
   }
 }

@@ -57,19 +57,14 @@ object ProtoTypes {
       case pt: FunProto =>
         mt match {
           case mt: MethodType =>
-            mt.isDependent || constrainResult(mt.resultType, pt.resultType)
+            constrainResult(resultTypeApprox(mt), pt.resultType)
           case _ =>
             true
         }
       case _: ValueTypeOrProto if !disregardProto(pt) =>
-        mt match {
-          case mt: MethodType =>
-            mt.isDependent || isCompatible(normalize(mt, pt), pt)
-          case _ =>
-            isCompatible(mt, pt)
-        }
-      case _: WildcardType =>
-        isCompatible(mt, pt)
+        isCompatible(normalize(mt, pt), pt)
+      case pt: WildcardType if pt.optBounds.exists =>
+        isCompatible(normalize(mt, pt), pt)
       case _ =>
         true
     }
@@ -95,12 +90,12 @@ object ProtoTypes {
    *
    *       [ ].name: proto
    */
-  abstract case class SelectionProto(val name: Name, val memberProto: Type, val compat: Compatibility)
+  abstract case class SelectionProto(name: Name, memberProto: Type, compat: Compatibility, privateOK: Boolean)
   extends CachedProxyType with ProtoType with ValueTypeOrProto {
 
     override def isMatchedBy(tp1: Type)(implicit ctx: Context) = {
       name == nme.WILDCARD || {
-        val mbr = tp1.member(name)
+        val mbr = if (privateOK) tp1.member(name) else tp1.nonPrivateMember(name)
         def qualifies(m: SingleDenotation) =
           memberProto.isRef(defn.UnitClass) ||
           compat.normalizedCompatible(m.info, memberProto)
@@ -115,11 +110,11 @@ object ProtoTypes {
 
     def derivedSelectionProto(name: Name, memberProto: Type, compat: Compatibility)(implicit ctx: Context) =
       if ((name eq this.name) && (memberProto eq this.memberProto) && (compat eq this.compat)) this
-      else SelectionProto(name, memberProto, compat)
+      else SelectionProto(name, memberProto, compat, privateOK)
 
     override def equals(that: Any): Boolean = that match {
       case that: SelectionProto =>
-        (name eq that.name) && (memberProto == that.memberProto) && (compat eq that.compat)
+        (name eq that.name) && (memberProto == that.memberProto) && (compat eq that.compat) && (privateOK == that.privateOK)
       case _ =>
         false
     }
@@ -129,14 +124,18 @@ object ProtoTypes {
 
     override def deepenProto(implicit ctx: Context) = derivedSelectionProto(name, memberProto.deepenProto, compat)
 
-    override def computeHash = addDelta(doHash(name, memberProto), if (compat eq NoViewsAllowed) 1 else 0)
+    override def computeHash = {
+      val delta = (if (compat eq NoViewsAllowed) 1 else 0) | (if (privateOK) 2 else 0)
+      addDelta(doHash(name, memberProto), delta)
+    }
   }
 
-  class CachedSelectionProto(name: Name, memberProto: Type, compat: Compatibility) extends SelectionProto(name, memberProto, compat)
+  class CachedSelectionProto(name: Name, memberProto: Type, compat: Compatibility, privateOK: Boolean)
+  extends SelectionProto(name, memberProto, compat, privateOK)
 
   object SelectionProto {
-    def apply(name: Name, memberProto: Type, compat: Compatibility)(implicit ctx: Context): SelectionProto = {
-      val selproto = new CachedSelectionProto(name, memberProto, compat)
+    def apply(name: Name, memberProto: Type, compat: Compatibility, privateOK: Boolean)(implicit ctx: Context): SelectionProto = {
+      val selproto = new CachedSelectionProto(name, memberProto, compat, privateOK)
       if (compat eq NoViewsAllowed) unique(selproto) else selproto
     }
   }
@@ -148,7 +147,7 @@ object ProtoTypes {
     if (name.isConstructorName) WildcardType
     else tp match {
       case tp: UnapplyFunProto => new UnapplySelectionProto(name)
-      case tp => SelectionProto(name, IgnoredProto(tp), typer)
+      case tp => SelectionProto(name, IgnoredProto(tp), typer, privateOK = true)
     }
 
   /** A prototype for expressions [] that are in some unspecified selection operation
@@ -159,10 +158,10 @@ object ProtoTypes {
    *  operation is further selection. In this case, the expression need not be a value.
    *  @see checkValue
    */
-  @sharable object AnySelectionProto extends SelectionProto(nme.WILDCARD, WildcardType, NoViewsAllowed)
+  @sharable object AnySelectionProto extends SelectionProto(nme.WILDCARD, WildcardType, NoViewsAllowed, true)
 
   /** A prototype for selections in pattern constructors */
-  class UnapplySelectionProto(name: Name) extends SelectionProto(name, WildcardType, NoViewsAllowed)
+  class UnapplySelectionProto(name: Name) extends SelectionProto(name, WildcardType, NoViewsAllowed, true)
 
   trait ApplyingProto extends ProtoType
 
@@ -237,6 +236,12 @@ object ProtoTypes {
       val targ = cacheTypedArg(arg, typer.typedUnadapted(_, formal))
       typer.adapt(targ, formal, arg)
     }
+
+    /** The type of the argument `arg`.
+     *  @pre `arg` has been typed before
+     */
+    def typeOfArg(arg: untpd.Tree)(implicit ctx: Context): Type =
+      myTypedArg(arg).tpe
 
     private var myTupled: Type = NoType
 
@@ -394,6 +399,26 @@ object ProtoTypes {
   /**  Same as `constrained(pt, EmptyTree)`, but returns just the created polytype */
   def constrained(pt: PolyType)(implicit ctx: Context): PolyType = constrained(pt, EmptyTree)._1
 
+  /** Create a new polyparam that represents a dependent method parameter singleton */
+  def newDepPolyParam(tp: Type)(implicit ctx: Context): PolyParam = {
+    val poly = PolyType(ctx.freshName(nme.DEP_PARAM_PREFIX).toTypeName :: Nil, 0 :: Nil)(
+        pt => TypeBounds.upper(AndType(tp, defn.SingletonType)) :: Nil,
+        pt => defn.AnyType)
+    ctx.typeComparer.addToConstraint(poly, Nil)
+    PolyParam(poly, 0)
+  }
+
+  /** The result type of `mt`, where all references to parameters of `mt` are
+   *  replaced by either wildcards (if typevarsMissContext) or polyparams.
+   */
+  def resultTypeApprox(mt: MethodType)(implicit ctx: Context): Type =
+    if (mt.isDependent) {
+      def replacement(tp: Type) =
+        if (ctx.mode.is(Mode.TypevarsMissContext)) WildcardType else newDepPolyParam(tp)
+      mt.resultType.substParams(mt, mt.paramTypes.map(replacement))
+    }
+    else mt.resultType
+
   /** The normalized form of a type
    *   - unwraps polymorphic types, tracking their parameters in the current constraint
    *   - skips implicit parameters; if result type depends on implicit parameter,
@@ -413,22 +438,18 @@ object ProtoTypes {
     tp.widenSingleton match {
       case poly: PolyType => normalize(constrained(poly).resultType, pt)
       case mt: MethodType =>
-        if (mt.isImplicit)
-          if (mt.isDependent)
-            mt.resultType.substParams(mt, mt.paramTypes.map(Function.const(WildcardType)))
-          else mt.resultType
-        else
-          if (mt.isDependent) tp
-          else {
-            val rt = normalize(mt.resultType, pt)
+        if (mt.isImplicit) resultTypeApprox(mt)
+        else if (mt.isDependent) tp
+        else {
+          val rt = normalize(mt.resultType, pt)
           pt match {
             case pt: IgnoredProto  => mt
             case pt: ApplyingProto => mt.derivedMethodType(mt.paramNames, mt.paramTypes, rt)
             case _ =>
               val ft = defn.FunctionOf(mt.paramTypes, rt)
               if (mt.paramTypes.nonEmpty || ft <:< pt) ft else rt
-            }
           }
+        }
       case et: ExprType => et.resultType
       case _ => tp
     }

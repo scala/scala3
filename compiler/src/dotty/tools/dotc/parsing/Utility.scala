@@ -1,4 +1,5 @@
-package dotty.tools.dotc.parsing
+package dotty.tools.dotc
+package parsing
 
 import scala.collection.mutable
 
@@ -10,7 +11,7 @@ import scala.collection.mutable
  * @author Burak Emir
  */
 object Utility {
-  import scala.reflect.internal.Chars.SU
+  import util.Chars.SU
 
   private val unescMap = Map(
     "lt"    -> '<',

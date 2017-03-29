@@ -287,9 +287,10 @@ object Flags {
 
 
   /** A trait that has only abstract methods as members
-   *  (and therefore can be represented by a Java interface
+   *  and therefore can be represented by a Java interface.
+   *  Warning: flag is set during regular typer pass, should be tested only after typer.
    */
-  final val PureInterface = typeFlag(22, "interface") // TODO when unpickling, reconstitute from context
+  final val PureInterface = typeFlag(22, "interface")
 
   /** Labeled with of abstract & override */
   final val AbsOverride = termFlag(22, "abstract override")
@@ -338,7 +339,9 @@ object Flags {
   final val JavaStaticTerm = JavaStatic.toTermFlags
   final val JavaStaticType = JavaStatic.toTypeFlags
 
-  /** Trait does not have fields or initialization code */
+  /** Trait does not have fields or initialization code.
+   *  Warning: flag is set during regular typer pass, should be tested only after typer.
+   */
   final val NoInits = typeFlag(32, "<noInits>")
 
   /** Variable is accessed from nested function. */
