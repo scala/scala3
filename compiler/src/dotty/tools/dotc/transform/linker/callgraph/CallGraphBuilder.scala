@@ -136,7 +136,7 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
 
   private def addReachableType(x: TypeWithContext): Unit = {
     if (!reachableTypes.contains(x)) {
-      finished = false // TODO: replace with assert(!finished)
+      assert(!finished)
 
       registerTypeForSize(new SubstituteByParentMap(x.outerTargs).apply(x.tp))
 
@@ -165,7 +165,7 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
 
   private def addReachableMethod(method: CallInfoWithContext): Unit = {
     if (!reachableMethods.contains(method)) {
-      finished = false // TODO: replace with assert(!finished)
+      assert(!finished)
       reachableMethods += method
       val callSymbol = method.callSymbol
       if (!reachableMethodsSymbols.contains(callSymbol)) {
