@@ -6,7 +6,7 @@ pipeline:
       - ln -s /var/cache/drone/scala-scala scala-scala
       - ln -s /var/cache/drone/ivy2 "$HOME/.ivy2"
       - ./scripts/update-scala-library
-      - sbt -J-Xmx24G -J-XX:ReservedCodeCacheSize=512m -J-XX:MaxMetaspaceSize=4G -Ddotty.drone.mem=4096m "${TEST}"
+      - sbt -J-Xmx4096m -J-XX:ReservedCodeCacheSize=512m -J-XX:MaxMetaspaceSize=1024m -Ddotty.drone.mem=4096m "${TEST}"
     when:
       branch:
         exclude: gh-pages
