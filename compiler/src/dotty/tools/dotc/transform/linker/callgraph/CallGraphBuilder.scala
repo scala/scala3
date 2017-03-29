@@ -124,21 +124,21 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
     new CallGraph(entryPoints, reachableMethods, reachableTypes, casts, classOfs, outerMethods, mode, specLimit)
   }
 
+  private def registerTypeForSize(tp: Type): Unit = {
+    val classSymbols = mutable.Set.empty[Symbol]
+    def collectClasses(cls: ClassSymbol): Unit = {
+      classSymbols.add(cls)
+      cls.classParents.foreach(x => collectClasses(x.symbol.asClass))
+    }
+    tp.classSymbols.foreach(collectClasses)
+    classSymbols.foreach(sym => sizesCache(sym) = sizesCache.getOrElse(sym, 0) + 1)
+  }
 
   private def addReachableType(x: TypeWithContext): Unit = {
     if (!reachableTypes.contains(x)) {
       finished = false // TODO: replace with assert(!finished)
 
-      val substed = new SubstituteByParentMap(x.outerTargs).apply(x.tp)
-      def registerSize(sym: Symbol): Unit = sizesCache(sym) = sizesCache.getOrElse(sym, 0) + 1
-
-      val classSymbols = mutable.Set.empty[Symbol]
-      def collectClasses(cls: ClassSymbol): Unit = {
-        classSymbols.add(cls)
-        cls.classParents.foreach(x => collectClasses(x.symbol.asClass))
-      }
-      substed.classSymbols.foreach(collectClasses)
-      classSymbols.foreach(registerSize)
+      registerTypeForSize(new SubstituteByParentMap(x.outerTargs).apply(x.tp))
 
       reachableTypes += x
 
@@ -203,10 +203,10 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
           val cached = castsCache.getOrElseUpdate(tp, mutable.Set.empty)
           if (!cached.contains(newCast)) {
             if (!addedCast) {
-              finished = false // TODO: replace with assert(!finished)
               casts += newCast
               addedCast = true
             }
+            finished = false // TODO: replace with assert(!finished)
             cached += newCast
           }
         }
