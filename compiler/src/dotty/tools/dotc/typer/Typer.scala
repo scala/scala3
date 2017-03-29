@@ -1568,10 +1568,9 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
           case _ => typedUnadapted(desugar(tree), pt)
         }
 
-        val tree = etaExpandImplicitFuns(xtree, pt)
+        val (tree, modified) = etaExpandImplicitFuns(xtree, pt)
 
-        if (needsRetype(tree)) {
-          tree.removeAttachment(NeedsRetypecheck)
+        if (modified) {
           typedUnadapted(tree)
         } else xtree match {
           case xtree: untpd.NameTree => typedNamed(encodeName(xtree), pt)
@@ -1580,65 +1579,48 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     }
   }
 
-  val NeedsRetypecheck = new Property.Key[Unit]
-
-  def needsRetype(tree: untpd.Tree): Boolean =
-    tree.getAttachment(NeedsRetypecheck).isDefined
-
-  def retypeRequired(tree: untpd.Tree): untpd.Tree = {
-    tree.putAttachment(NeedsRetypecheck, ())
-    tree
-  }
-
-  def propagateRetype(src: untpd.Tree, trg: untpd.Tree): untpd.Tree = {
-    if (needsRetype(src)) {
-      trg.putAttachment(NeedsRetypecheck, ())
-    }
-    trg
-  }
-
   // Sideeffect: annotates the tree with NeedsRetypecheck when a retype check is required.
-  protected def etaExpandImplicitFuns(xtree: untpd.Tree, pt: Type)(implicit ctx: Context): untpd.Tree = {
+  protected def etaExpandImplicitFuns(xtree: untpd.Tree, pt: Type)(implicit ctx: Context): (untpd.Tree, Boolean) = {
 
-    val isImplicitFunType = !ctx.isAfterTyper && defn.isImplicitFunctionType(pt)
-    val isImplicitClosure = untpd.isImplicitClosure(xtree)
+    var modified = false
 
-    if (isImplicitFunType && xtree.isTerm && isImplicitClosure) {
+    def loop(xtree: untpd.Tree, pt: Type): untpd.Tree = {
+      val isImplicitFunType = !ctx.isAfterTyper && defn.isImplicitFunctionType(pt)
+      val isImplicitClosure = untpd.isImplicitClosure(xtree)
 
-      // peel away a layer of the implicit function type:
-      val defn.FunctionOf(formals, resType, true) = pt.dealias
+      if (isImplicitFunType && xtree.isTerm && isImplicitClosure) {
 
-      // peel away a layer of the implicit closure:
-      etaExpandBody(xtree, resType)
+        // peel away a layer of the implicit function type:
+        val defn.FunctionOf(formals, resType, true) = pt.dealias
 
-    } else if (isImplicitFunType && xtree.isTerm && !isImplicitClosure) {
-      // peel away a layer of the implicit function type:
-      val defn.FunctionOf(formals, resType, true) = pt.dealias
-
-      val t = makeImplicitFunction(etaExpandImplicitFuns(xtree, resType), pt)
-      retypeRequired(t)
-    } else {
-      xtree
+        // peel away a layer of the implicit closure:
+        etaExpandBody(xtree, resType)
+      } else if (isImplicitFunType && xtree.isTerm && !isImplicitClosure) {
+        // peel away a layer of the implicit function type:
+        val defn.FunctionOf(formals, resType, true) = pt.dealias
+        modified = true
+        makeImplicitFunction(loop(xtree, resType), pt)
+      } else {
+        xtree
+      }
     }
+
+      // TODO do we cover all the cases already? What's with Closure?
+    def etaExpandBody(tree: untpd.Tree, pt: Type): untpd.Tree =
+      unsplice(tree) match {
+        case fun: untpd.ImplicitFunction => new untpd.ImplicitFunction(fun.args, loop(fun.body, pt))
+
+        case Block(Nil, expr) => untpd.Block(Nil, etaExpandBody(expr, pt))
+
+        case Block(DefDef(nme, tps, vps, tpt, body) :: Nil, cl: Closure) =>
+          val body2 = etaExpandBody(body.asInstanceOf[Tree], pt)
+          untpd.Block(untpd.DefDef(nme, tps, vps, tpt, body2) :: Nil, cl)
+
+        case els => loop(els, pt)
+      }
+
+    (loop(xtree, pt), modified)
   }
-
-  // TODO do we cover all the cases already? What's with Closure?
-  protected def etaExpandBody(tree: untpd.Tree, pt: Type)(implicit ctx: Context): untpd.Tree =
-    unsplice(tree) match {
-      case fun: untpd.ImplicitFunction =>
-        val body2 = etaExpandImplicitFuns(fun.body, pt)
-        propagateRetype(body2, new untpd.ImplicitFunction(fun.args, body2))
-
-      case Block(Nil, expr) =>
-        val expr2 = etaExpandBody(expr, pt)
-        propagateRetype(expr2, untpd.Block(Nil, expr2))
-
-      case Block(DefDef(nme, tps, vps, tpt, body) :: Nil, cl: Closure) =>
-        val body2 = etaExpandBody(body.asInstanceOf[Tree], pt)
-        propagateRetype(body2, untpd.Block(untpd.DefDef(nme, tps, vps, tpt, body2) :: Nil, cl))
-
-      case els => etaExpandImplicitFuns(els, pt)
-    }
 
   protected def encodeName(tree: untpd.NameTree)(implicit ctx: Context): untpd.NameTree =
     untpd.rename(tree, tree.name.encode)
