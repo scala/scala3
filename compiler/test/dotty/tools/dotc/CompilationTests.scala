@@ -9,7 +9,7 @@ import org.junit.experimental.categories.Category
 import scala.util.matching.Regex
 
 @Category(Array(classOf[ParallelTesting]))
-class CompilationTests extends ParallelTesting {
+class CompilationTests extends ParallelSummaryReport with ParallelTesting {
   import CompilationTests._
 
   def isInteractive: Boolean = !sys.env.contains("DRONE")

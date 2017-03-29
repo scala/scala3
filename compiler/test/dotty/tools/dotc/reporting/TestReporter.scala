@@ -27,6 +27,9 @@ extends Reporter with UniqueMessagePositions with HideNonSensicalMessages with M
   final def flushToFile(): Unit =
     _messageBuf.iterator.foreach(filePrintln)
 
+  final def flushToStdErr(): Unit =
+    _messageBuf.iterator.foreach(System.err.println)
+
   final def inlineInfo(pos: SourcePosition): String =
     if (pos.exists) {
       if (pos.outer.exists)
@@ -78,6 +81,11 @@ object TestReporter {
     new PrintWriter(new FileOutputStream(new JFile(s"../tests-$timestamp.log"), true))
   }
 
+  def writeToLog(str: String) = {
+    logWriter.println(str)
+    logWriter.flush()
+  }
+
   def parallelReporter(lock: AnyRef, logLevel: Int): TestReporter = new TestReporter(
     new PrintWriter(Console.err, true),
     str => lock.synchronized {
@@ -89,13 +97,13 @@ object TestReporter {
 
   def reporter(logLevel: Int): TestReporter = new TestReporter(
     new PrintWriter(Console.err, true),
-    logWriter.println,
+    writeToLog,
     logLevel
   )
 
   def simplifiedReporter(writer: PrintWriter): TestReporter = new TestReporter(
     writer,
-    logWriter.println,
+    writeToLog,
     WARNING
   ) {
     /** Prints the message with the given position indication in a simplified manner */

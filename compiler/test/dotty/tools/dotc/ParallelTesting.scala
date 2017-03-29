@@ -31,6 +31,7 @@ import dotc.util.DiffUtil
 trait ParallelTesting {
 
   import ParallelTesting._
+  import ParallelSummaryReport._
 
   /** If the running environment supports an interactive terminal, each `Test`
    *  will be run with a progress bar and real time feedback
@@ -197,10 +198,7 @@ trait ParallelTesting {
       val errorMsg = testSource.buildInstructions(reporter.errorCount, reporter.warningCount)
       addFailureInstruction(errorMsg)
       failTestSource(testSource)
-      reporter.echo(errorMsg)
-      reporter.flushToFile()
     }
-
 
     /** Instructions on how to reproduce failed test source compilations */
     private[this] val reproduceInstructions = mutable.ArrayBuffer.empty[String]
@@ -210,7 +208,7 @@ trait ParallelTesting {
     /** The test sources that failed according to the implementing subclass */
     private[this] val failedTestSources = mutable.ArrayBuffer.empty[String]
     protected final def failTestSource(testSource: TestSource) = synchronized {
-      failedTestSources.append(testSource.name)
+      failedTestSources.append(testSource.name + " failed")
       fail()
     }
 
@@ -345,21 +343,11 @@ trait ParallelTesting {
           throw new TimeoutException("Compiling targets timed out")
 
         if (didFail) {
-          echo {
-            """|
-               |
-               |
-               |================================================================================
-               |Test Report
-               |================================================================================
-               |Failing tests:""".stripMargin
-          }
-          failedTestSources.toSet.foreach { source: String =>
-            echo("    " + source)
-          }
-          echo("")
-          reproduceInstructions.iterator.foreach(echo)
+          reportFailed()
+          failedTestSources.toSet.foreach(addFailedTest)
+          reproduceInstructions.iterator.foreach(addReproduceInstruction)
         }
+        else reportPassed()
       }
       else echo {
         testFilter
