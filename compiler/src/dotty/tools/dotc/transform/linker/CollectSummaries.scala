@@ -326,11 +326,8 @@ class CollectSummaries extends MiniPhase { thisTransform =>
           case Typed(expr: SeqLiteral, tpt) if x.tpe.isRepeatedParam =>
             wrapArrayTermRef(TreeGen.wrapArrayMethodName(expr.elemtpt.tpe)).widenDealias.finalResultType
           case Typed(expr, _) => argType(expr)
-          case _ =>
-            x.tpe match {
-              case _ if x.isInstanceOf[NamedArg] => ref(symbolOf(x.asInstanceOf[NamedArg].arg)).tpe
-              case _ => x.tpe
-            }
+          case NamedArg(nm, a) => argType(a)
+          case _ => x.tpe
         }
 
         val thisCallInfo = CallInfo(method, typeArguments.map(_.tpe), arguments.flatten.map(argType))
