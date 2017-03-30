@@ -28,7 +28,7 @@ import dotc.util.DiffUtil
  *  using this, you should be running your JUnit tests **sequentially**, as the
  *  test suite itself runs with a high level of concurrency.
  */
-trait ParallelTesting {
+trait ParallelTesting { self =>
 
   import ParallelTesting._
   import ParallelSummaryReport._
@@ -399,18 +399,33 @@ trait ParallelTesting {
           .takeWhile(_.getMethodName != "invoke0")
           .mkString("    ", "\n    ", "")
 
-      import java.io.ByteArrayOutputStream
+      import java.io.{ ByteArrayOutputStream, PrintStream }
       import java.net.{ URL, URLClassLoader }
 
       val printStream = new ByteArrayOutputStream
+      val oldOut = System.out
+      val oldErr = System.out
+
       try {
         // Do classloading magic and running here:
         val ucl = new URLClassLoader(Array(dir.toURI.toURL))
         val cls = ucl.loadClass("Test")
         val meth = cls.getMethod("main", classOf[Array[String]])
 
-        Console.withOut(printStream) {
-          meth.invoke(null, Array("jvm")) // partest passes at least "jvm" as an arg
+        self.synchronized {
+          try {
+            val ps = new PrintStream(printStream)
+            System.setOut(ps)
+            System.setErr(ps)
+            Console.withOut(printStream) {
+              Console.withErr(printStream) {
+                meth.invoke(null, Array("jvm")) // partest passes at least "jvm" as an arg
+              }
+            }
+          } finally {
+            System.setOut(oldOut)
+            System.setErr(oldErr)
+          }
         }
       }
       catch {
