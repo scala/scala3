@@ -11,6 +11,7 @@ import core.Decorators._
 import core.StdNames.nme
 import core.Names._
 import core.NameOps._
+import core.NameKinds.DirectName
 import ast.Trees._
 import ast.tpd
 import collection.mutable
@@ -91,7 +92,7 @@ class ShortcutImplicits extends MiniPhase with IdentityDenotTransformer { thisTr
     /** A new `m$direct` method to accompany the given method `m` */
     private def newDirectMethod(sym: Symbol)(implicit ctx: Context): Symbol = {
       val direct = sym.copy(
-        name = sym.name.directName,
+        name = DirectName(sym.name.asTermName).asInstanceOf[sym.ThisName],
         flags = sym.flags | Synthetic,
         info = directInfo(sym.info))
       if (direct.allOverriddenSymbols.isEmpty) direct.resetFlag(Override)
@@ -103,7 +104,7 @@ class ShortcutImplicits extends MiniPhase with IdentityDenotTransformer { thisTr
      */
     private def directMethod(sym: Symbol)(implicit ctx: Context): Symbol =
       if (sym.owner.isClass) {
-        val direct = sym.owner.info.member(sym.name.directName)
+        val direct = sym.owner.info.member(DirectName(sym.name.asTermName))
           .suchThat(_.info matches directInfo(sym.info)).symbol
         if (direct.maybeOwner == sym.owner) direct
         else newDirectMethod(sym).enteredAfter(thisTransform)
@@ -121,7 +122,7 @@ class ShortcutImplicits extends MiniPhase with IdentityDenotTransformer { thisTr
           case TypeApply(fn, args) => cpy.TypeApply(tree)(directQual(fn), args)
           case Block(stats, expr)  => cpy.Block(tree)(stats, directQual(expr))
           case tree: RefTree =>
-            cpy.Ref(tree)(tree.name.directName)
+            cpy.Ref(tree)(DirectName(tree.name.asTermName))
               .withType(directMethod(tree.symbol).termRef)
         }
         directQual(tree.qualifier)

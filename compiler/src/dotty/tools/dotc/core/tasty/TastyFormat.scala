@@ -235,9 +235,11 @@ object TastyFormat {
   final val INITIALIZER = 23
   final val SHADOWED = 24
   final val AVOIDCLASH = 27
+  final val DIRECT = 28
   final val OBJECTCLASS = 29
 
   final val SIGNED = 63
+  final val firstInternalTag = 64
 
   // AST tags
 

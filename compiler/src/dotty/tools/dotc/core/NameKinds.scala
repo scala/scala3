@@ -248,6 +248,7 @@ object NameKinds {
   val ProtectedAccessorName = new PrefixNameKind(PROTECTEDACCESSOR, "protected$")
   val ProtectedSetterName = new PrefixNameKind(PROTECTEDSETTER, "protected$set") // dubious encoding, kept for Scala2 compatibility
   val AvoidClashName = new SuffixNameKind(AVOIDCLASH, "$_avoid_name_clash_$")
+  val DirectName = new SuffixNameKind(DIRECT, "$direct")
   val ModuleClassName = new SuffixNameKind(OBJECTCLASS, "$", optInfoString = "ModuleClass")
 
   object SignedName extends NameKind(63) {

@@ -132,7 +132,6 @@ object StdNames {
     val COMPANION_MODULE_METHOD: N    = "companion$module"
     val COMPANION_CLASS_METHOD: N     = "companion$class"
     val TRAIT_SETTER_SEPARATOR: N     = str.TRAIT_SETTER_SEPARATOR
-    val DIRECT_SUFFIX: N              = "$direct"
 
     // value types (and AnyRef) are all used as terms as well
     // as (at least) arguments to the @specialize annotation.
@@ -166,7 +165,6 @@ object StdNames {
 
     // fictions we use as both types and terms
     final val ERROR: N    = "<error>"
-    final val ERRORenc: N = encode("<error>")
     final val NO_NAME: N  = "<none>"  // formerly NOSYMBOL
     final val WILDCARD: N = "_"
 
