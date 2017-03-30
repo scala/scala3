@@ -17,7 +17,7 @@ object Definitions {
    *  The limit 22 is chosen for Scala2x interop. It could be something
    *  else without affecting the set of programs that can be compiled.
    */
-  val MaxImplementedTupleArity = 6
+  val MaxImplementedTupleArity = 22
 
   /** The maximum arity N of a function type that's implemented
    *  as a trait `scala.FunctionN`. Functions of higher arity are possible,

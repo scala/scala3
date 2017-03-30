@@ -28,6 +28,7 @@ import classfile.ClassfileParser
 import scala.collection.{ mutable, immutable }
 import scala.collection.mutable.ListBuffer
 import scala.annotation.switch
+import transform.TupleRewrites.UnfoldedTupleType
 
 object Scala2Unpickler {
 
@@ -99,7 +100,21 @@ object Scala2Unpickler {
       else selfInfo
     val tempInfo = new TempClassInfo(denot.owner.thisType, denot.classSymbol, decls, ost)
     denot.info = tempInfo // first rough info to avoid CyclicReferences
-    var parentRefs = ctx.normalizeToClassRefs(parents, cls, decls)
+
+    val tupleArity = defn.TupleNSymbol.indexOf(cls)
+    val tupledParents =
+      // Changing this test to `cls == defn.UnitClass` leads to initialisation cycle with Any:
+      if (denot.symbol.associatedFile.path == "scala/Unit.class")
+        parents :+ defn.TupleType
+      else if (tupleArity != -1) {
+        val productClass = defn.ProductNType(tupleArity).classSymbol
+        val productTypes = parents.collect { case t: RefinedType => t.baseArgTypes(productClass) }.head
+        val tupleType = UnfoldedTupleType(productTypes).folded.asTupleConsType
+        parents :+ tupleType
+      } else parents
+
+    var parentRefs = ctx.normalizeToClassRefs(tupledParents, cls, decls)
+
     if (parentRefs.isEmpty) parentRefs = defn.ObjectType :: Nil
     for (tparam <- tparams) {
       val tsym = decls.lookup(tparam.name)
@@ -738,7 +753,9 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
           }
           else TypeRef(pre, sym.name.asTypeName)
         val args = until(end, readTypeRef)
-        if (sym == defn.ByNameParamClass2x) ExprType(args.head)
+        val isTupleClass = """Tuple\d+.class""".r.findFirstIn(source.name).nonEmpty
+        if (!isTupleClass && defn.TupleNSymbol.contains(sym)) UnfoldedTupleType(args).folded.asTupleConsType
+        else if (sym == defn.ByNameParamClass2x) ExprType(args.head)
         else if (args.nonEmpty) tycon.safeAppliedTo(EtaExpandIfHK(sym.typeParams, args))
         else if (sym.typeParams.nonEmpty) tycon.EtaExpand(sym.typeParams)
         else tycon

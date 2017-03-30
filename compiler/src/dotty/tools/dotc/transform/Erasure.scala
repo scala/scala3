@@ -403,7 +403,13 @@ object Erasure extends TypeTestsCasts {
         }
       }
 
-      recur(typed(tree.qualifier, AnySelectionProto))
+      if (defn.DottyTupleNModule contains tree.qualifier.symbol) {
+        val arity = defn.DottyTupleNModule.indexOf(tree.qualifier.symbol)
+        val tupleCompanion = defn.TupleNType(arity).classSymbol.companionModule.symbol
+        ref(tupleCompanion).select(tree.name).withPos(tree.pos)
+      } else {
+        recur(typed(tree.qualifier, AnySelectionProto))
+      }
     }
 
     override def typedThis(tree: untpd.This)(implicit ctx: Context): Tree =

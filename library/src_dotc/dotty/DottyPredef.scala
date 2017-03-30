@@ -21,7 +21,6 @@ object DottyPredef {
   implicit def eqProxy    : Eq[Proxy, Any]     = Eq
 
   implicit def eqSeq[T, U](implicit eq: Eq[T, U]): Eq[Seq[T], Seq[U]] = Eq
-
   implicit def eqByteNum  : Eq[Byte, Number]   = Eq
   implicit def eqNumByte  : Eq[Number, Byte]   = Eq
   implicit def eqCharNum  : Eq[Char, Number]   = Eq
