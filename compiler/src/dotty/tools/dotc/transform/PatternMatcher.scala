@@ -863,9 +863,9 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {
       override lazy val introducedRebindings = NoRebindings
 
       def outerTestNeeded = {
-        val np = expectedTp.normalizedPrefix
+        /*val np = expectedTp.normalizedPrefix
         val ts = np.termSymbol
-        (ts ne NoSymbol) && needsOuterTest(expectedTp, testedBinder.info, ctx.owner)
+        (ts ne NoSymbol) && */needsOuterTest(expectedTp, testedBinder.info, ctx.owner)
       }
 
       // the logic to generate the run-time test that follows from the fact that
