@@ -7,7 +7,7 @@ object Test {
     case (_, _, 3, _) => "4, #3"
     case (_, 2, _, _) => "4, #2"
     case (_, 2, _)    => "3, #2"
-    case Tuple1(1)    => "1, #1"
+    case dotty.TupleCons(1, ()) => "1, #1"
     case (_, _, _, 4) => "4, #4"
     case THREE        => "THREE"
     case (_, 2)       => "2, #2"

@@ -56,7 +56,7 @@ class ShowTests {
   }
 
   @Test def showMaps = {
-    val mp = scala.collection.immutable.Map("str1" -> "val1", "str2" -> "val2")
+    val mp = scala.collection.immutable.Map(scala.Tuple2("str1", "val1"), scala.Tuple2("str2", "val2"))
     assertEquals("Map(\"str1\" -> \"val1\", \"str2\" -> \"val2\")", mp.show)
   }
 
