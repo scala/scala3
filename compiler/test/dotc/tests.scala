@@ -82,7 +82,7 @@ class tests extends CompilerTest {
 
   val linkDCEcommon = List("-link-java-conservative", "-link-vis", "-Ylink-dce-checks", "-Ylog:callGraph")
   val linkDCE = "-link-dce" :: linkDCEcommon
-  val linkDCEaggressive = "-link-dce-aggressive" :: linkDCEcommon
+  val linkDCEaggressive = "-link-aggressive-dce" :: linkDCEcommon
 
   val testsDir      = "../tests/"
   val posDir        = testsDir + "pos/"

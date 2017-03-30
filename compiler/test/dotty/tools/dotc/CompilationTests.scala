@@ -165,6 +165,14 @@ class CompilationTests extends ParallelSummaryReport with ParallelTesting {
   @Test def runAll: Unit =
     compileFilesInDir("../tests/run", defaultOptions).checkRuns()
 
+  // Link tests -----------------------------------------------------------------
+
+  @Test def linkDCEAll: Unit =
+    compileFilesInDir("../tests/link-dce", linkDCE).checkRuns()
+
+  @Test def linkAggressiveDCEAll: Unit =
+    compileFilesInDir("../tests/link-dce", linkAggressiveDCE).checkRuns()
+
   // Pickling Tests ------------------------------------------------------------
   //
   // Pickling tests are very memory intensive and as such need to be run with a
@@ -309,4 +317,9 @@ object CompilationTests {
   val scala2Mode = defaultOptions ++ Array("-language:Scala2")
   val explicitUTF8 = defaultOptions ++ Array("-encoding", "UTF8")
   val explicitUTF16 = defaultOptions ++ Array("-encoding", "UTF16")
+
+  val linkDCEcommon = Array("-link-java-conservative", "-link-vis", "-Ylink-dce-checks", "-Ylog:callGraph") ++ defaultOptions
+  val linkDCE = "-link-dce" +: linkDCEcommon
+  val linkAggressiveDCE = "-link-aggressive-dce" +: linkDCEcommon
+
 }
