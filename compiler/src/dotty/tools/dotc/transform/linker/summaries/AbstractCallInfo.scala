@@ -29,7 +29,8 @@ object AbstractCallInfo {
 
   def assertions(callInfo: AbstractCallInfo)(implicit ctx: Context): Unit = {
     val targs = callInfo.targs
-    targs.foreach(targ => assert(!targ.isInstanceOf[TypeBounds], targs))
+    callInfo.targs.foreach(targ => assert(!targ.isInstanceOf[TypeBounds], targ))
+    callInfo.argumentsPassed.foreach(arg => assert(arg.widen.isValueType, arg))
 
     callInfo.call.widenDealias match {
       case t: PolyType => assert(t.paramNames.size == targs.size, (t.paramNames, targs))

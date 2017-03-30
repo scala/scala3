@@ -33,17 +33,18 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
   private var reachableTypes = immutable.Set.empty[TypeWithContext]
   private var reachableMethods = mutable.Set.empty[CallInfoWithContext]
 
-  private var reachableMethodsSymbols = immutable.Set.empty[Symbol]
-  private var outerMethods = immutable.Set.empty[Symbol]
+  private var reachableMethodsSymbols = new java.util.IdentityHashMap[Symbol, Unit]
+  private var outerMethods = new java.util.IdentityHashMap[Symbol, Unit]
 
-  private var classOfs = immutable.Set.empty[Symbol]
+  private var classOfs = new java.util.IdentityHashMap[Symbol, Unit]
 
   private val typesByMemberNameCache = new java.util.IdentityHashMap[Name, List[(Int, TypeWithContext)]]()
 
   private var casts = immutable.Set.empty[Cast]
   private val castsCache: mutable.HashMap[TypeWithContext, mutable.Set[Cast]] = mutable.HashMap.empty
+  private val castCache1 = new java.util.IdentityHashMap[ClassSymbol, Set[Cast]]
 
-  private val sizesCache = new mutable.HashMap[Symbol, Int]()
+  private val sizesCache = new java.util.IdentityHashMap[Symbol, Int]()
   private val lastInstantiation = mutable.Map.empty[CallInfoWithContext, mutable.Map[CallInfo, Int]]
   private var finished = false
 
@@ -115,12 +116,13 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
 
   /** Packages the current call graph into a CallGraph */
   def result(): CallGraph = {
+    import scala.collection.JavaConversions._
     val entryPoints = this.entryPoints
     val reachableMethods = this.reachableMethods.toSet
     val reachableTypes = this.reachableTypes
     val casts = this.casts
-    val classOfs = this.classOfs
-    val outerMethods = this.outerMethods
+    val classOfs = this.classOfs.keySet().toSet
+    val outerMethods = this.outerMethods.keySet().toSet
     new CallGraph(entryPoints, reachableMethods, reachableTypes, casts, classOfs, outerMethods, mode, specLimit)
   }
 
@@ -131,7 +133,7 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
       cls.classParents.foreach(x => collectClasses(x.symbol.asClass))
     }
     tp.classSymbols.foreach(collectClasses)
-    classSymbols.foreach(sym => sizesCache(sym) = sizesCache.getOrElse(sym, 0) + 1)
+    classSymbols.foreach(sym => sizesCache.put(sym, sizesCache.getOrDefault(sym, 0) + 1))
   }
 
   private def addReachableType(x: TypeWithContext): Unit = {
@@ -168,8 +170,8 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
       finished = false // TODO: replace with assert(!finished)
       reachableMethods += method
       val callSymbol = method.callSymbol
-      if (!reachableMethodsSymbols.contains(callSymbol)) {
-        reachableMethodsSymbols += callSymbol
+      if (!reachableMethodsSymbols.containsKey(callSymbol)) {
+        reachableMethodsSymbols.put(callSymbol, ())
         collectedSummaries.get(callSymbol).foreach { summary =>
           summary.accessedModules.foreach(x => addReachableType(new TypeWithContext(normalizeType(x.info), parentRefinements(x.info))))
         }
@@ -204,6 +206,13 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
           if (!cached.contains(newCast)) {
             if (!addedCast) {
               casts += newCast
+
+              def collectClasses(cls: ClassSymbol): Unit = {
+                castCache1.put(cls, castCache1.getOrDefault(cls, Set.empty) + newCast)
+                cls.classParents.foreach(x => collectClasses(x.symbol.asClass))
+              }
+              to.classSymbols.foreach(collectClasses)
+
               addedCast = true
             }
             finished = false // TODO: replace with assert(!finished)
@@ -306,6 +315,7 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
 
     def propagateTargs(tp0: Type, isConstructor: Boolean = false): Type = {
       val tp = propagateArgs(tp0)
+      val ret =
       if (mode >= AnalyseTypes && (caller.targs.nonEmpty || caller.outerTargs.nonEmpty || (callerSymbol.owner ne caller.call.normalizedPrefix.classSymbol))) {
         /* && tp.widenDealias.existsPart{x => val t = x.typeSymbol; t.exists && (t.owner == callerSymbol || caller.outerTargs.contains(t.owner))}*/
 
@@ -323,6 +333,9 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
         if (r =:= tp) tp
         else r
       } else tp
+
+      assert(!(tp.isValueType ^ ret.isValueType))
+      ret
     }
 
     val outerTargs: OuterTargs =
@@ -388,8 +401,8 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
         }
       }
       val call = selectCall(tp).orElse(if (tp.givenSelfType.exists) selectCall(tp.givenSelfType) else NoSymbol)
-      assert(call.exists, (tp, sym))
-      tp.select(call).asInstanceOf[TermRef]
+      assert(call.exists)
+      TermRef(tp, call.asTerm)
     }
 
     def dispatchCalls(receiverType: Type, dispatch: CallInfoWithContext => Unit = addCall): Unit = {
@@ -421,35 +434,41 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
           }
 
 
-          for {
-            (dtp, tp) <- getTypesByMemberName(calleeSymbol.name)
-            if filterTypes(tp.tp, receiverTypeWiden, dtp, receiverDepth)
-            alt <- tp.tp.member(calleeSymbol.name).altsWith(p => denotMatch(tp, p))
-            if alt.exists
-          } {
-            dispatch(CallInfoWithContext(tp.tp.select(alt.symbol).asInstanceOf[TermRef], targs, args, outerTargs ++ tp.outerTargs, someCaller, someCallee))
+          for ((dtp, tp) <- getTypesByMemberName(calleeSymbol.name)) {
+            if (filterTypes(tp.tp, receiverTypeWiden, dtp, receiverDepth)) {
+              for (alt <- tp.tp.member(calleeSymbol.name).altsWith(p => denotMatch(tp, p)))
+                if (alt.exists)
+                  dispatch(CallInfoWithContext(TermRef(tp.tp, alt.symbol.asTerm), targs, args, outerTargs ++ tp.outerTargs, someCaller, someCallee))
+            }
           }
 
           if (mode >= AnalyseTypes) {
+            def filterCastCachedFilter = {
+              val receiverBases = receiverType.widen.classSymbols.iterator
+              if(receiverBases.isEmpty)
+                print("")
+              val head = receiverBases.next()
+              receiverBases.foldLeft(castCache1.getOrDefault(head, Set.empty)){case (a,b) =>  a.intersect(castCache1.getOrDefault(b, Set.empty))}
+            }
             def filterCast(cast: Cast) = {
               val receiverBases = receiverType.classSymbols
               val targetBases = cast.to.classSymbols
               receiverBases.forall(c => targetBases.exists(_.derivesFrom(c)))
             }
-            for {
-              (dtp, tp) <- getTypesByMemberName(calleeSymbol.name)
-              cast <- castsCache.getOrElse(tp, Iterator.empty)
-              if filterCast(cast) && filterTypes(tp.tp, cast.from, dtp, cast.fromDepth) && filterTypes(cast.to, receiverType, cast.toDepth, receiverDepth)
-              alt <- tp.tp.member(calleeSymbol.name).altsWith(p => p.matches(calleeSymbol.asSeenFrom(tp.tp)))
-              if alt.exists
-            } {
-              // this additionally introduces a cast of result type and argument types
-              val uncastedSig = preciseSelectCall(tp.tp, alt.symbol).widen.appliedTo(targs).widen
-              val castedSig = preciseSelectCall(receiverType, calleeSymbol).widen.appliedTo(targs).widen
-              (uncastedSig.paramTypess.flatten zip castedSig.paramTypess.flatten) foreach (x => addCast(x._2, x._1))
-              addCast(uncastedSig.finalResultType, castedSig.finalResultType) // FIXME: this is added even in and tpe that are out of the intersection
+            val a = filterCastCachedFilter
+            for ((tpDepth, tp) <- getTypesByMemberName(calleeSymbol.name)) {
+              for (cast <- castsCache.getOrElse(tp, Set.empty[Cast]) intersect a)
+              if (/*filterCast(cast) && */filterTypes(tp.tp, cast.from, tpDepth, cast.fromDepth) && filterTypes(cast.to, receiverType, cast.toDepth, receiverDepth))
+              for (alt <- tp.tp.member(calleeSymbol.name).altsWith(p => p.matches(calleeSymbol.asSeenFrom(tp.tp))))
+              if (alt.exists) {
+                // this additionally introduces a cast of result type and argument types
+                val uncastedSig = preciseSelectCall(tp.tp, alt.symbol).widen.appliedTo(targs).widen
+                val castedSig = preciseSelectCall(receiverType, calleeSymbol).widen.appliedTo(targs).widen
+                (uncastedSig.paramTypess.flatten zip castedSig.paramTypess.flatten) foreach (x => addCast(x._2, x._1))
+                addCast(uncastedSig.finalResultType, castedSig.finalResultType) // FIXME: this is added even in and tpe that are out of the intersection
 
-              dispatch(CallInfoWithContext(tp.tp.select(alt.symbol).asInstanceOf[TermRef], targs, args, outerTargs ++ tp.outerTargs, someCaller, someCallee))
+                dispatch(CallInfoWithContext(tp.tp.select(alt.symbol).asInstanceOf[TermRef], targs, args, outerTargs ++ tp.outerTargs, someCaller, someCallee))
+              }
             }
           }
       }
@@ -457,7 +476,7 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
 
     receiver match {
       case _ if calleeSymbol == defn.Predef_classOf =>
-        classOfs += callee.targs.head.classSymbol
+        classOfs.put(callee.targs.head.classSymbol, ())
       case _ if calleeSymbol == ctx.definitions.throwMethod =>
       case _ if calleeSymbol == ctx.definitions.Any_asInstanceOf =>
         val from = propagateTargs(receiver)
@@ -565,7 +584,8 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
       case _: ClosureType =>
         dispatchCalls(propagateTargs(receiver))
       case x: TermRef if x.symbol.is(Param) && x.symbol.owner == caller.call.termSymbol =>
-        dispatchCalls(propagateTargs(receiver))
+        val a = propagateTargs(receiver)
+        dispatchCalls(a)
       case _ =>
         dispatchCalls(propagateTargs(receiver.widenDealias))
     }
@@ -575,7 +595,7 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
     var processed = 0
     var total = 0
 
-    def computeCRC(tp: Type) = tp.classSymbols.iterator.map(x => sizesCache.getOrElse(x, 0)).sum
+    def computeCRC(tp: Type) = tp.classSymbols.iterator.map(x => sizesCache.getOrDefault(x, 0)).sum
 
     for (method <- reachableMethods) {
       lazy val crcMap = lastInstantiation.getOrElseUpdate(method, mutable.Map.empty)
@@ -608,9 +628,9 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
 
           // val loadedSummary = ctx.summariesPhase.asInstanceOf[CollectSummaries].getLoadedSummary(method.callSymbol)
 
-          if (!outerMethods.contains(method.callSymbol)) {
+          if (!outerMethods.containsKey(method.callSymbol)) {
 
-            outerMethods += method.callSymbol
+            outerMethods.put(method.callSymbol, ())
 
             if (withJavaCallGraph && !method.callSymbol.is(Module | Package) && !method.parent.exists(_.isOnJavaAllocatedType)) {
 
