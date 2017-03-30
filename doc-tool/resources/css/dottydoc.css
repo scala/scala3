@@ -334,3 +334,23 @@ blockquote {
     color: #777;
     border-left: 0.25em solid #ddd;
 }
+
+aside {
+    padding: 15px;
+    margin: 10px 0;
+}
+
+aside.warning {
+    border-left: 3px solid #d62c2c;
+    background-color: #ffe4e4;
+}
+
+aside.notice {
+    border-left: 3px solid #4c97e4;
+    background-color: #e4ebff;
+}
+
+aside.success {
+    border-left: 3px solid #36bf1d;
+    background-color: #ebfddd;
+}
