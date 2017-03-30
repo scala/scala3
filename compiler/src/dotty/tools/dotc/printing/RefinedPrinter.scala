@@ -114,7 +114,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
 
   override def toText(tp: Type): Text = controlled {
     def toTextTuple(args: List[Type]): Text =
-      "(" ~ Text(args.map(argText), ", ") ~ ")"
+      s"scala.Tuple${args.size}[" ~ Text(args.map(argText), ", ") ~ "]"
     def toTextFunction(args: List[Type], isImplicit: Boolean): Text =
       changePrec(GlobalPrec) {
         val argStr: Text =

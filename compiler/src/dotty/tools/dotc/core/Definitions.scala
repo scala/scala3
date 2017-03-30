@@ -12,11 +12,12 @@ import collection.mutable
 import util.common.alwaysZero
 
 object Definitions {
-
-  /** The maximum number of elements in a tuple or product.
-   *  This should be removed once we go to hlists.
+  /** The maximum arity N of Tuple implemented as `scala.TupleN` case classes.
+   *  Tuple of higher arity us an array based representation (`dotty.LargeTuple`).
+   *  The limit 22 is chosen for Scala2x interop. It could be something
+   *  else without affecting the set of programs that can be compiled.
    */
-  val MaxTupleArity = 22
+  val MaxImplementedTupleArity = 6
 
   /** The maximum arity N of a function type that's implemented
    *  as a trait `scala.FunctionN`. Functions of higher arity are possible,
@@ -700,8 +701,19 @@ class Definitions {
   private lazy val ImplementedFunctionType = mkArityArray("scala.Function", MaxImplementedFunctionArity, 0)
   def FunctionClassPerRun = new PerRun[Array[Symbol]](implicit ctx => ImplementedFunctionType.map(_.symbol.asClass))
 
-  lazy val TupleType = mkArityArray("scala.Tuple", MaxTupleArity, 2)
-  lazy val ProductNType = mkArityArray("scala.Product", MaxTupleArity, 0)
+  lazy val TupleNType        = mkArityArray("scala.Tuple", MaxImplementedTupleArity, 1)
+  lazy val TupleNSymbol      = TupleNType.map(t => if (t == null) t else t.classSymbol)
+  lazy val DottyTupleNType   = mkArityArray("dotty.DottyTuple", MaxImplementedTupleArity, 1)
+  lazy val DottyTupleNModule = DottyTupleNType.map(t => if (t == null) t else t.classSymbol.companionModule.symbol)
+  lazy val ProductNType      = mkArityArray("scala.Product", MaxImplementedTupleArity, 0)
+
+  lazy val TupleType             = ctx.requiredClassRef("dotty.Tuple")
+  lazy val TupleConsType         = ctx.requiredClassRef("dotty.TupleCons")
+  lazy val TupleConsModule       = TupleConsType.classSymbol.companionModule.symbol
+  lazy val TupleUnapplySeqType   = ctx.requiredClassRef("dotty.LargeTupleUnapplySeq$")
+  lazy val TupleUnapplySeqModule = TupleUnapplySeqType.classSymbol.companionModule.symbol
+  lazy val LargeTupleType        = ctx.requiredClassRef("dotty.LargeTuple")
+  lazy val LargeTupleModule      = LargeTupleType.classSymbol.companionModule.symbol
 
   def FunctionClass(n: Int, isImplicit: Boolean = false)(implicit ctx: Context) =
     if (isImplicit) ctx.requiredClass("scala.ImplicitFunction" + n.toString)
@@ -714,9 +726,6 @@ class Definitions {
   def FunctionType(n: Int, isImplicit: Boolean = false)(implicit ctx: Context): TypeRef =
     if (n <= MaxImplementedFunctionArity && (!isImplicit || ctx.erasedTypes)) ImplementedFunctionType(n)
     else FunctionClass(n, isImplicit).typeRef
-
-  private lazy val TupleTypes: Set[TypeRef] = TupleType.toSet
-  private lazy val ProductTypes: Set[TypeRef] = ProductNType.toSet
 
   /** If `cls` is a class in the scala package, its name, otherwise EmptyTypeName */
   def scalaClassName(cls: Symbol)(implicit ctx: Context): TypeName =
@@ -837,14 +846,8 @@ class Definitions {
   def isPolymorphicAfterErasure(sym: Symbol) =
      (sym eq Any_isInstanceOf) || (sym eq Any_asInstanceOf)
 
-  def isTupleType(tp: Type)(implicit ctx: Context) = {
-    val arity = tp.dealias.argInfos.length
-    arity <= MaxTupleArity && TupleType(arity) != null && (tp isRef TupleType(arity).symbol)
-  }
-
-  def tupleType(elems: List[Type]) = {
-    TupleType(elems.size).appliedTo(elems)
-  }
+  def isTupleType(tp: Type)(implicit ctx: Context) =
+    tp.derivesFrom(TupleType.symbol)
 
   def isProductSubType(tp: Type)(implicit ctx: Context) =
     tp.derivesFrom(ProductType.symbol)

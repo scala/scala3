@@ -414,10 +414,10 @@ object desugar {
         }
       }
 
-      // Above MaxTupleArity we extend Product instead of ProductN, in this
+      // Above MaxImplementedTupleArity we extend Product instead of ProductN, in this
       // case we need to synthesise productElement & productArity.
       def largeProductMeths =
-        if (arity > Definitions.MaxTupleArity) productElement :: productArity :: Nil
+        if (arity > Definitions.MaxImplementedTupleArity) productElement :: productArity :: Nil
         else Nil
 
       if (isCaseClass)
@@ -432,7 +432,7 @@ object desugar {
       if (targs.isEmpty) tycon else AppliedTypeTree(tycon, targs)
     }
     def product =
-      if (arity > Definitions.MaxTupleArity) scalaDot(str.Product.toTypeName)
+      if (arity > Definitions.MaxImplementedTupleArity) scalaDot(str.Product.toTypeName)
       else productConstr(arity)
 
     // Case classes and case objects get Product/ProductN parents
@@ -1068,14 +1068,22 @@ object desugar {
         t
       case Tuple(ts) =>
         val arity = ts.length
-        def tupleTypeRef = defn.TupleType(arity)
-        if (arity > Definitions.MaxTupleArity) {
-          ctx.error(TupleTooLong(ts), tree.pos)
-          unitLiteral
-        } else if (arity == 1) ts.head
-        else if (ctx.mode is Mode.Type) AppliedTypeTree(ref(tupleTypeRef), ts)
-        else if (arity == 0) unitLiteral
-        else Apply(ref(tupleTypeRef.classSymbol.companionModule.valRef), ts)
+        arity match {
+          case 0 => unitLiteral
+          case _ if ctx.mode is Mode.Type =>
+            // Transforming Tuple types: (T1, T2) → TupleCons[T1, TupleCons[T2, Unit]]
+            val nil: Tree = TypeTree(defn.UnitType)
+            def hconsType(l: Tree, r: Tree): Tree =
+              AppliedTypeTree(ref(defn.TupleConsType), l :: r :: Nil)
+            ts.foldRight(nil)(hconsType)
+          case _ =>
+            // Transforming Tuple trees: (T1, T2, ..., TN) → TupleCons(T1, TupleCons(T2, ... (TupleCons(TN, ())))
+            val nil: Tree = unitLiteral
+            val cons = defn.TupleConsType.classSymbol.companionModule.valRef
+            def consTree(l: Tree, r: Tree): Tree =
+              Apply(ref(cons), l :: r :: Nil)
+            ts.foldRight(nil)(consTree)
+        }
       case WhileDo(cond, body) =>
         // { <label> def while$(): Unit = if (cond) { body; while$() } ; while$() }
         val call = Apply(Ident(nme.WHILE_PREFIX), Nil).withPos(tree.pos)
