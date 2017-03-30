@@ -1813,11 +1813,6 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {
     }
 
     object alignPatterns extends ScalacPatternExpander {
-      /** Converts a T => (A, B, C) extractor to a T => ((A, B, CC)) extractor.
-        */
-      def tupleExtractor(extractor: Extractor): Extractor =
-        extractor.copy(fixed = defn.tupleType(extractor.fixed) :: Nil)
-
       private def validateAligned(tree: Tree, aligned: Aligned): Aligned = {
         import aligned._
 
@@ -1859,29 +1854,13 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {
         }
         val patterns  = newPatterns(args)
         val isSeq = sel.symbol.name == nme.unapplySeq
-        val isUnapply = sel.symbol.name == nme.unapply
         val extractor = sel.symbol.name match {
           case nme.unapply    => unapplyMethodTypes(tree, /*fn*/sel, args, resultType, isSeq = false)
           case nme.unapplySeq => unapplyMethodTypes(tree, /*fn*/sel, args, resultType, isSeq = true)
           case _              => applyMethodTypes(/*fn*/sel.tpe)
         }
 
-        /** Rather than let the error that is SI-6675 pollute the entire matching
-          *  process, we will tuple the extractor before creation Aligned so that
-          *  it contains known good values.
-          */
-        def prodArity       = extractor.prodArity
-        def acceptMessage   = if (extractor.isErroneous) "" else s" to hold ${extractor.offeringString}"
-        val requiresTupling = isUnapply && patterns.totalArity == 1 && prodArity > 1
-
-        //if (requiresTupling && effectivePatternArity(args) == 1)
-        //  currentUnit.deprecationWarning(sel.pos, s"${sel.symbol.owner} expects $prodArity patterns$acceptMessage but crushing into $prodArity-tuple to fit single pattern (SI-6675)")
-
-        val normalizedExtractor =
-          if (requiresTupling)
-            tupleExtractor(extractor)
-          else extractor
-        validateAligned(fn, Aligned(patterns, normalizedExtractor))
+        validateAligned(fn, Aligned(patterns, extractor))
       }
 
       def apply(tree: Tree, resultType: Type): Aligned = tree match {
