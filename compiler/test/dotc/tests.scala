@@ -207,6 +207,8 @@ class tests extends CompilerTest {
 
   @Test def run_all = runFiles(runDir)
 
+  @Test def run_tuples = runFiles(testsDir + "tuples/")
+
   private val stdlibFiles: List[String] = StdLibSources.whitelisted
 
   @Test def compileStdLib =

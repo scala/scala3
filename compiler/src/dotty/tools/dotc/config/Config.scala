@@ -140,7 +140,7 @@ object Config {
   final val LogPendingUnderlyingThreshold = 50
 
   /** How many recursive calls to isSubType are performed before logging starts. */
-  final val LogPendingSubTypesThreshold = 50
+  final val LogPendingSubTypesThreshold = 70
 
   /** How many recursive calls to findMember are performed before logging names starts
    *  Note: this threshold has to be chosen carefully. Too large, and programs

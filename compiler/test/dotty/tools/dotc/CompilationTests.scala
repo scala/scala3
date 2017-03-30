@@ -159,6 +159,9 @@ class CompilationTests extends ParallelTesting {
   @Test def runAll: Unit =
     compileFilesInDir("../tests/run", defaultOptions).checkRuns()
 
+  @Test def runTuples: Unit =
+    compileFilesInDir("../tests/tuples", defaultOptions).checkRuns()
+
   // Pickling Tests ------------------------------------------------------------
   //
   // Pickling tests are very memory intensive and as such need to be run with a
