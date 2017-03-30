@@ -852,9 +852,10 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {
         // See the test for SI-7214 for motivation for dealias. Later `treeCondStrategy#outerTest`
         // generates an outer test based on `patType.prefix` with automatically dealises.
         expectedTp.dealias match {
-          case tref @ TypeRef(pre, name) =>
-            (pre ne NoPrefix) && tref.symbol.isClass &&
-            ExplicitOuter.needsOuterIfReferenced(tref.symbol.asClass)
+          case tref @ TypeRef(pre: SingletonType, name) =>
+            val s = tref
+            s.symbol.isClass &&
+            ExplicitOuter.needsOuterIfReferenced(s.symbol.asClass)
           case _ =>
             false
         }
