@@ -242,8 +242,8 @@ abstract class ClassPath {
       case Some((pkg, rest)) =>
         val rep = packages find (_.name == pkg) flatMap (_ findClass rest)
         rep map {
-          case x: ClassRep  => x
-          case x            => throw new FatalError("Unexpected ClassRep '%s' found searching for name '%s'".format(x, name))
+          case x: AnyClassRep => x
+          case x              => throw new FatalError("Unexpected ClassRep '%s' found searching for name '%s'".format(x, name))
         }
       case _ =>
         classes find (_.name == name)
@@ -256,6 +256,7 @@ abstract class ClassPath {
     }
 
   def sortString = join(split(asClasspathString).sorted: _*)
+
   override def equals(that: Any) = that match {
     case x: ClassPath => this.sortString == x.sortString
     case _            => false
