@@ -347,7 +347,7 @@ class TypeErasure(isJava: Boolean, semiEraseVCs: Boolean, isConstructor: Boolean
    *   - For any other uncurried method type (Fs)T, (|Fs|)|T|.
    *   - For a curried method type (Fs1)(Fs2)T, (|Fs1|,Es2)ET where (Es2)ET = |(Fs2)T|.
    *   - For a polymorphic type [Ts](Ps)T, |(Ps)T|
-   *   _ For a polymorphic type [Ts]T where T is not a method type, ()|T|
+   *   - For a polymorphic type [Ts]T where T is not a method type, ()|T|
    *   - For the class info type of java.lang.Object, the same type without any parents.
    *   - For a class info type of a value class, the same type without any parents.
    *   - For any other class info type with parents Ps, the same type with

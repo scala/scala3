@@ -19,7 +19,7 @@ object Arrays {
 
   /** Convert a sequence to a Java array with element type given by `clazz`. */
   def seqToArray[T](xs: Seq[T], clazz: Class[_]): Array[T] = {
-    val arr = java.lang.reflect.Array.newInstance(clazz, xs.length).asInstanceOf[Array[T]]
+    val arr = jlr.Array.newInstance(clazz, xs.length).asInstanceOf[Array[T]]
     xs.copyToArray(arr)
     arr
   }

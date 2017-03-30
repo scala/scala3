@@ -382,7 +382,6 @@ class Definitions {
   lazy val ArrayModuleType = ctx.requiredModuleRef("scala.Array")
   def ArrayModule(implicit ctx: Context) = ArrayModuleType.symbol.moduleClass.asClass
 
-
   lazy val UnitType: TypeRef = valueTypeRef("scala.Unit", BoxedUnitType, java.lang.Void.TYPE, UnitEnc)
   def UnitClass(implicit ctx: Context) = UnitType.symbol.asClass
   lazy val BooleanType = valueTypeRef("scala.Boolean", BoxedBooleanType, java.lang.Boolean.TYPE, BooleanEnc)
@@ -773,7 +772,7 @@ class Definitions {
    */
   def erasedFunctionClass(cls: Symbol): Symbol = {
     val arity = scalaClassName(cls).functionArity
-    if (arity > 22) defn.FunctionXXLClass
+    if (arity > MaxImplementedFunctionArity) defn.FunctionXXLClass
     else if (arity >= 0) defn.FunctionClass(arity)
     else NoSymbol
   }
@@ -787,7 +786,7 @@ class Definitions {
    */
   def erasedFunctionType(cls: Symbol): Type = {
     val arity = scalaClassName(cls).functionArity
-    if (arity > 22) defn.FunctionXXLType
+    if (arity > MaxImplementedFunctionArity) defn.FunctionXXLType
     else if (arity >= 0) defn.FunctionType(arity)
     else NoType
   }
@@ -805,8 +804,8 @@ class Definitions {
   )
 
   val PredefImportFns = List[() => TermRef](
-      () => ScalaPredefModuleRef,
-      () => DottyPredefModuleRef
+    () => ScalaPredefModuleRef,
+    () => DottyPredefModuleRef
   )
 
   lazy val RootImportFns =

@@ -237,7 +237,7 @@ object Flags {
 
   final val AccessorOrSealed = Accessor.toCommonFlags
 
- /** A mutable var */
+  /** A mutable var */
   final val Mutable = termFlag(12, "mutable")
 
   /** Symbol is local to current class (i.e. private[this] or protected[this]
@@ -252,7 +252,7 @@ object Flags {
   final val TermParamAccessor = ParamAccessor.toTermFlags
   final val TypeParamAccessor = ParamAccessor.toTypeFlags
 
-    /** A value or class implementing a module */
+  /** A value or class implementing a module */
   final val Module = commonFlag(15, "module")
   final val ModuleVal = Module.toTermFlags
   final val ModuleClass = Module.toTypeFlags
