@@ -557,8 +557,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
     def fullName: String = sym.showFullName
     def simpleName: Name = sym.name
     def javaSimpleName: Name = toDenot(sym).name // addModuleSuffix(simpleName.dropLocal)
-    def javaBinaryName: Name = toDenot(sym).fullNameSeparated("/").unmangleClassName // addModuleSuffix(fullNameInternal('/'))
-      // We use `unmangleClassName` so that `stripModuleClassSuffix` works as expected.
+    def javaBinaryName: Name = javaClassName.replace('.', '/').toTermName // TODO: can we make this a string? addModuleSuffix(fullNameInternal('/'))
     def javaClassName: String = toDenot(sym).fullName.toString// addModuleSuffix(fullNameInternal('.')).toString
     def name: Name = sym.name
     def rawname: Name = {

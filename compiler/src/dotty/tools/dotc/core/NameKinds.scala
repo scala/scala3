@@ -14,8 +14,8 @@ import collection.mutable
 object NameKinds {
 
   @sharable private val simpleNameKinds = new mutable.HashMap[Int, ClassifiedNameKind]
+  @sharable private val qualifiedNameKinds = new mutable.HashMap[Int, QualifiedNameKind]
   @sharable private val uniqueNameKinds = new mutable.HashMap[String, UniqueNameKind]
-  @sharable private val qualifiedNameKinds = new mutable.HashMap[String, QualifiedNameKind]
 
   abstract class NameInfo extends DotClass {
     def kind: NameKind
@@ -83,8 +83,18 @@ object NameKinds {
       override def map(f: SimpleTermName => SimpleTermName): NameInfo = new QualInfo(f(name))
       override def toString = s"$infoString $name"
     }
-    def apply(qual: TermName, name: SimpleTermName) =
+    def apply(qual: TermName, name: SimpleTermName): TermName =
       qual.derived(new QualInfo(name))
+
+    /** Overloaded version used only for ExpandedName and TraitSetterName.
+     *  Needed because the suffix of an expanded name may itself be expanded.
+     *  For example, look at javap of scala.App.initCode
+     */
+    def apply(qual: TermName, name: TermName): TermName = name rewrite {
+      case name: SimpleTermName => apply(qual, name)
+      case AnyQualifiedName(_, _) => apply(qual, name.toSimpleName)
+    }
+
     def unapply(name: DerivedTermName): Option[(TermName, SimpleTermName)] = name match {
       case DerivedTermName(qual, info: this.QualInfo) => Some((qual, info.name))
       case _ => None
@@ -96,7 +106,7 @@ object NameKinds {
       s"$underlying$separator${info.name}"
     def infoString = s"Qualified $separator"
 
-    qualifiedNameKinds(separator) = this
+    qualifiedNameKinds(tag) = this
   }
 
   object AnyQualifiedName {
@@ -150,8 +160,8 @@ object NameKinds {
   }
 
   val QualifiedName           = new QualifiedNameKind(QUALIFIED, ".")
-  val FlattenedName           = new QualifiedNameKind(FLATTENED, "$")
-  val TraitSetterName         = new QualifiedNameKind(TRAITSETTER, str.TRAIT_SETTER_SEPARATOR)
+  val FlatName                = new QualifiedNameKind(FLATTENED, "$")
+  val ExpandPrefixName        = new QualifiedNameKind(EXPANDPREFIX, "$")
 
   val ExpandedName = new QualifiedNameKind(EXPANDED, str.EXPAND_SEPARATOR) {
     private val FalseSuper = "$$super".toTermName
@@ -171,6 +181,8 @@ object NameKinds {
       }
     }
   }
+
+  val TraitSetterName         = new QualifiedNameKind(TRAITSETTER, str.TRAIT_SETTER_SEPARATOR)
 
   val UniqueName = new UniqueNameKind("$") {
     override def mkString(underlying: TermName, info: ThisInfo) =
@@ -260,7 +272,7 @@ object NameKinds {
   val Scala2MethodNameKinds: List[NameKind] =
     List(DefaultGetterName, ProtectedAccessorName, ProtectedSetterName)
 
-  def simpleNameKindOfTag         : collection.Map[Int, ClassifiedNameKind]   = simpleNameKinds
-  def qualifiedNameKindOfSeparator: collection.Map[String, QualifiedNameKind] = qualifiedNameKinds
-  def uniqueNameKindOfSeparator   : collection.Map[String, UniqueNameKind]    = uniqueNameKinds
+  def simpleNameKindOfTag      : collection.Map[Int, ClassifiedNameKind] = simpleNameKinds
+  def qualifiedNameKindOfTag   : collection.Map[Int, QualifiedNameKind]  = qualifiedNameKinds
+  def uniqueNameKindOfSeparator: collection.Map[String, UniqueNameKind]  = uniqueNameKinds
 }

@@ -383,20 +383,18 @@ object SymDenotations {
     /** The encoded full path name of this denotation, where outer names and inner names
      *  are separated by `separator` strings.
      *  Never translates expansions of operators back to operator symbol.
-     *  Drops package objects. Represents terms in the owner chain by a simple `~`.
+     *  Drops package objects. Represents each term in the owner chain by a simple `~`.
      *  (Note: scalac uses nothing to represent terms, which can cause name clashes
      *   between same-named definitions in different enclosing methods. Before this commit
      *   we used `$' but this can cause ambiguities with the class separator '$').
      *  A separator "" means "flat name"; the real separator in this case is "$" and
      *  enclosing packages do not form part of the name.
      */
-    def fullNameSeparated(separator: String)(implicit ctx: Context): Name = {
-      val stopAtPackage = separator.isEmpty
-      val sep = if (stopAtPackage) "$" else separator
+    def fullNameSeparated(kind: QualifiedNameKind)(implicit ctx: Context): Name =
       if (symbol == NoSymbol ||
           owner == NoSymbol ||
           owner.isEffectiveRoot ||
-          stopAtPackage && owner.is(PackageClass)) name
+          kind == FlatName && owner.is(PackageClass)) name
       else {
         var filler = ""
         var encl = owner
@@ -404,34 +402,25 @@ object SymDenotations {
           encl = encl.owner
           filler += "~"
         }
-        var prefix = encl.fullNameSeparated(separator)
-        val fn =
-          if (qualifiedNameKindOfSeparator.contains(sep)) {
-            if (sep == "$")
-              // duplicate scalac's behavior: don't write a double '$$' for module class members.
-              prefix = prefix.exclude(ModuleClassName)
-            name rewrite {
-              case n: SimpleTermName =>
-                val n1 = if (filler.isEmpty) n else termName(filler ++ n)
-                qualifiedNameKindOfSeparator(sep)(prefix.toTermName, n1)
-            }
-          }
-          else {
-            val sep1 =
-              if (owner.is(ModuleClass, butNot = Package) && sep == "$") ""
-              else sep
-            // duplicate scalac's behavior: don't write a double '$$' for module class members.
-            prefix ++ sep1 ++ name
-          }
+        var prefix = encl.fullNameSeparated(kind)
+        if (kind.separator == "$")
+          // duplicate scalac's behavior: don't write a double '$$' for module class members.
+          prefix = prefix.exclude(ModuleClassName)
+        def qualify(n: SimpleTermName) =
+          kind(prefix.toTermName, if (filler.isEmpty) n else termName(filler ++ n))
+        val fn = name rewrite {
+          case name: SimpleTermName => qualify(name)
+          case name @ AnyQualifiedName(_, _) => qualify(name.toSimpleName)
+        }
         if (isType) fn.toTypeName else fn.toTermName
       }
-    }
+
 
     /** The encoded flat name of this denotation, where joined names are separated by `separator` characters. */
-    def flatName(implicit ctx: Context): Name = fullNameSeparated("")
+    def flatName(implicit ctx: Context): Name = fullNameSeparated(FlatName)
 
     /** `fullName` where `.' is the separator character */
-    def fullName(implicit ctx: Context): Name = fullNameSeparated(".")
+    def fullName(implicit ctx: Context): Name = fullNameSeparated(QualifiedName)
 
     // ----- Tests -------------------------------------------------
 
@@ -1763,13 +1752,13 @@ object SymDenotations {
       }
     }
 
-    private[this] var fullNameCache: SimpleMap[String, Name] = SimpleMap.Empty
-    override final def fullNameSeparated(separator: String)(implicit ctx: Context): Name = {
-      val cached = fullNameCache(separator)
+    private[this] var fullNameCache: SimpleMap[QualifiedNameKind, Name] = SimpleMap.Empty
+    override final def fullNameSeparated(kind: QualifiedNameKind)(implicit ctx: Context): Name = {
+      val cached = fullNameCache(kind)
       if (cached != null) cached
       else {
-        val fn = super.fullNameSeparated(separator)
-        fullNameCache = fullNameCache.updated(separator, fn)
+        val fn = super.fullNameSeparated(kind)
+        fullNameCache = fullNameCache.updated(kind, fn)
         fn
       }
     }

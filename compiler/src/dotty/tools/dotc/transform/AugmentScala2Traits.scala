@@ -14,7 +14,7 @@ import DenotTransformers._
 import Annotations._
 import StdNames._
 import NameOps._
-import NameKinds._
+import NameKinds.{ExpandedName, TraitSetterName}
 import ast.Trees._
 
 /** This phase augments Scala2 traits with implementation classes and with additional members
@@ -74,7 +74,7 @@ class AugmentScala2Traits extends MiniPhaseTransform with IdentityDenotTransform
       def traitSetter(getter: TermSymbol) =
         getter.copy(
           name = getter.ensureNotPrivate.name
-                  .expandedName(getter.owner, nme.TRAIT_SETTER_SEPARATOR)
+                  .expandedName(getter.owner, TraitSetterName)
                   .asTermName.setterName,
           flags = Method | Accessor,
           info = MethodType(getter.info.resultType :: Nil, defn.UnitType))

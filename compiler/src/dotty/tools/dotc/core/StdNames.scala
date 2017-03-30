@@ -124,7 +124,6 @@ object StdNames {
     val PACKAGE: N                    = "package"
     val PACKAGE_CLS: N                = "package$"
     val ROOT: N                       = "<root>"
-    val SINGLETON_SUFFIX: N           = ".type"
     val SPECIALIZED_SUFFIX: N         = "$sp"
     val SUPER_PREFIX: N               = "super$"
     val WHILE_PREFIX: N               = "while$"

@@ -59,10 +59,8 @@ object NameOps {
     def isStaticConstructorName = name == STATIC_CONSTRUCTOR
     def isImplClassName = name endsWith IMPL_CLASS_SUFFIX
     def isLocalDummyName = name startsWith LOCALDUMMY_PREFIX
-    def isLoopHeaderLabel = (name startsWith WHILE_PREFIX) || (name startsWith DO_WHILE_PREFIX)
     def isReplWrapperName = name.toSimpleName containsSlice INTERPRETER_IMPORT_WRAPPER
     def isSetterName = name endsWith SETTER_SUFFIX
-    def isSingletonName = name endsWith SINGLETON_SUFFIX
     def isImportName = name startsWith IMPORT
     def isFieldName = name endsWith LOCAL_SUFFIX
     def isScala2LocalSuffix = name.endsWith(" ")
@@ -110,8 +108,16 @@ object NameOps {
     /** Convert this module class name to corresponding source module name */
     def sourceModuleName: TermName = name.toTermName.exclude(ModuleClassName)
 
-    /** If name ends in module class suffix, drop it */
-    def stripModuleClassSuffix: Name = name.exclude(ModuleClassName)
+    /** If name ends in module class suffix, drop it. This
+     *  method needs to work on mangled as well as unmangled names because
+     *  it is also called from the backend.
+     */
+    def stripModuleClassSuffix: Name = name match {
+      case name: SimpleTermName if name.endsWith("$") =>
+        name.unmangleClassName.exclude(ModuleClassName)
+      case _ =>
+        name.exclude(ModuleClassName)
+    }
 
     /** If flags is a ModuleClass but not a Package, add module class suffix */
     def adjustIfModuleClass(flags: Flags.FlagSet): N = likeTyped {
@@ -122,41 +128,15 @@ object NameOps {
     /** The superaccessor for method with given name */
     def superName: TermName = SuperAccessorName(name.toTermName)
 
-    /** The expanded name of `name` relative to given class `base`.
-     */
-    def expandedName(base: Symbol, separator: Name)(implicit ctx: Context): N =
-      expandedName(if (base.name.is(ExpandedName)) base.name else base.fullNameSeparated("$"), separator)
-
-    def expandedName(base: Symbol)(implicit ctx: Context): N = expandedName(base, nme.EXPAND_SEPARATOR)
-
-    /** The expanded name of `name` relative to `basename` with given `separator`
-     */
-    def expandedName(prefix: Name, separator: Name = nme.EXPAND_SEPARATOR): N =
-      likeTyped {
-        def qualify(name: SimpleTermName) =
-          qualifiedNameKindOfSeparator(separator.toString)(prefix.toTermName, name)
-        name rewrite {
-          case name: SimpleTermName =>
-            qualify(name)
-          case AnyQualifiedName(_, _) =>
-            // Note: an expanded name may itself be expanded. For example, look at javap of scala.App.initCode
-            qualify(name.toSimpleName)
-        }
-      }
-
-    def expandedName(prefix: Name): N = expandedName(prefix, nme.EXPAND_SEPARATOR)
+    def expandedName(base: Symbol, kind: QualifiedNameKind = ExpandedName)(implicit ctx: Context): N = {
+      val prefix =
+        if (base.name.is(ExpandedName)) base.name else base.fullNameSeparated(ExpandPrefixName)
+      likeTyped { kind(prefix.toTermName, name.toTermName) }
+    }
 
     /** Revert the expanded name. */
     def unexpandedName: N = likeTyped {
       name.rewrite { case ExpandedName(_, unexp) => unexp }
-    }
-
-    def expandedPrefix: N = likeTyped { name.exclude(ExpandedName) }
-
-    def expandedPrefixOfMangled: N = {
-      val idx = name.lastIndexOfSlice(nme.EXPAND_SEPARATOR)
-      assert(idx >= 0)
-      likeTyped(name.take(idx))
     }
 
     def implClassName: N = likeTyped(name ++ tpnme.IMPL_CLASS_SUFFIX)
