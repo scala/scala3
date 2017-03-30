@@ -62,7 +62,6 @@ object NameOps {
     def isReplWrapperName = name.toSimpleName containsSlice INTERPRETER_IMPORT_WRAPPER
     def isSetterName = name endsWith SETTER_SUFFIX
     def isImportName = name startsWith IMPORT
-    def isFieldName = name endsWith LOCAL_SUFFIX
     def isScala2LocalSuffix = name.endsWith(" ")
     def isModuleVarName(name: Name): Boolean =
       name.stripAnonNumberSuffix endsWith MODULE_VAR_SUFFIX
@@ -347,33 +346,22 @@ object NameOps {
   implicit class TermNameDecorator(val name: TermName) extends AnyVal {
     import nme._
 
-    def setterName: TermName =
-      if (name.isFieldName) name.fieldToGetter.setterName
-      else name ++ SETTER_SUFFIX
+    def setterName: TermName = name.exclude(FieldName) ++ SETTER_SUFFIX
 
     def getterName: TermName =
-      if (name.isFieldName) fieldToGetter
-      else setterToGetter
+      name.exclude(FieldName).mapLast(n =>
+        if (n.endsWith(SETTER_SUFFIX)) n.take(n.length - SETTER_SUFFIX.length).asSimpleName
+        else n)
 
     def fieldName: TermName =
       if (name.isSetterName) {
         if (name.is(TraitSetterName)) {
-           val TraitSetterName(_, original) = name
+          val TraitSetterName(_, original) = name
           original.fieldName
         }
         else getterName.fieldName
       }
-      else name.mapLast(n => (n ++ LOCAL_SUFFIX).asSimpleName)
-
-    private def setterToGetter: TermName = {
-      assert(name.endsWith(SETTER_SUFFIX), name + " is referenced as a setter but has wrong name format")
-      name.mapLast(n => n.take(n.length - SETTER_SUFFIX.length).asSimpleName)
-    }
-
-    def fieldToGetter: TermName = {
-      assert(name.isFieldName)
-      name.mapLast(n => n.take(n.length - LOCAL_SUFFIX.length).asSimpleName)
-    }
+      else FieldName(name)
 
     /** Nominally, name from name$default$N, CONSTRUCTOR for <init> */
     def defaultGetterToMethod: TermName =

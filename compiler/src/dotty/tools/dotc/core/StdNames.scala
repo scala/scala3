@@ -240,7 +240,6 @@ object StdNames {
     val FAKE_LOCAL_THIS: N          = "this$"
     val LAZY_FIELD_OFFSET: N        = "OFFSET$"
     val LAZY_SLOW_SUFFIX: N         = "$lzycompute"
-    val LOCAL_SUFFIX: N             = "$$local"
     val UNIVERSE_BUILD_PREFIX: N    = "$u.build."
     val UNIVERSE_BUILD: N           = "$u.build"
     val UNIVERSE_PREFIX: N          = "$u."

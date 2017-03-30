@@ -234,9 +234,11 @@ object TastyFormat {
   final val PROTECTEDSETTER = 22
   final val INITIALIZER = 23
   final val SHADOWED = 24
-  final val AVOIDCLASH = 27
-  final val DIRECT = 28
-  final val OBJECTCLASS = 29
+  final val AVOIDCLASH = 30
+  final val DIRECT = 31
+  final val FIELD = 32
+  final val SETTER = 33
+  final val OBJECTCLASS = 40
 
   final val SIGNED = 63
   final val firstInternalTag = 64
