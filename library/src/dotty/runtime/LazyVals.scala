@@ -8,7 +8,7 @@ import scala.annotation.tailrec
 object LazyVals {
   private val unsafe = scala.concurrent.util.Unsafe.instance
 
-  final val BITS_PER_LAZY_VAL = 2L
+  final val BITS_PER_LAZY_VAL = 2L // To be kept in sync with dotty/tools/dotc/transform/LazyVals.scala
   final val LAZY_VAL_MASK = 3L
   final val debug = false
 
@@ -91,7 +91,7 @@ object LazyVals {
     r
   }
 
-  object Names {
+  object Names { // To be kept in sync with dotty/tools/dotc/transform/LazyVals.scala
     final val state = "STATE"
     final val cas = "CAS"
     final val setFlag = "setFlag"
