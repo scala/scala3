@@ -404,7 +404,7 @@ trait ParallelTesting { self =>
 
       val printStream = new ByteArrayOutputStream
       val oldOut = System.out
-      val oldErr = System.out
+      val oldErr = System.err
 
       try {
         // Do classloading magic and running here:
