@@ -12,7 +12,7 @@ import scala.util.matching.Regex
 class CompilationTests extends ParallelSummaryReport with ParallelTesting {
   import CompilationTests._
 
-  def isInteractive: Boolean = !sys.env.contains("DRONE")
+  def isInteractive: Boolean = ParallelSummaryReport.isInteractive
 
   def testFilter: Option[Regex] = sys.props.get("dotty.partest.filter").map(r => new Regex(r))
 
