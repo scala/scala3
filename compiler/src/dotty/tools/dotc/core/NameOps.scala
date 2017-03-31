@@ -63,9 +63,9 @@ object NameOps {
 
     def isConstructorName = name == CONSTRUCTOR || name == TRAIT_CONSTRUCTOR
     def isStaticConstructorName = name == STATIC_CONSTRUCTOR
-    def isLocalDummyName = name startsWith LOCALDUMMY_PREFIX
+    def isLocalDummyName = name startsWith str.LOCALDUMMY_PREFIX
     def isReplWrapperName = name.toString contains str.INTERPRETER_IMPORT_WRAPPER
-    def isSetterName = name endsWith SETTER_SUFFIX
+    def isSetterName = name endsWith str.SETTER_SUFFIX
     def isScala2LocalSuffix = testSimple(_.endsWith(" "))
     def isSelectorName = testSimple(n => n.startsWith("_") && n.drop(1).forall(_.isDigit))
 
@@ -275,7 +275,7 @@ object NameOps {
 
     def getterName: TermName =
       name.exclude(FieldName).mapLast(n =>
-        if (n.endsWith(SETTER_SUFFIX)) n.take(n.length - str.SETTER_SUFFIX.length).asSimpleName
+        if (n.endsWith(str.SETTER_SUFFIX)) n.take(n.length - str.SETTER_SUFFIX.length).asSimpleName
         else n)
 
     def fieldName: TermName =

@@ -25,6 +25,9 @@ object StdNames {
     final val AVOID_CLASH_SUFFIX       = "$_avoid_name_clash_$"
     final val MODULE_SUFFIX            = NameTransformer.MODULE_SUFFIX_STRING
     final val DEFAULT_GETTER           = "$default$"
+    final val LOCALDUMMY_PREFIX        = "<local "       // owner of local blocks
+    final val ANON_CLASS               = "$anon"
+    final val ANON_FUN                 = "$anonfun"
 
     final val INTERPRETER_IMPORT_WRAPPER = "$iw"
     final val INTERPRETER_LINE_PREFIX    = "line"
@@ -109,8 +112,8 @@ object StdNames {
     final val HASHkw: N      = kw("#")
     final val ATkw: N        = kw("@")
 
-    val ANON_CLASS: N                 = "$anon"
-    val ANON_FUN: N                   = "$anonfun"
+    val ANON_CLASS: N                 = str.ANON_CLASS
+    val ANON_FUN: N                   = str.ANON_FUN
     val BITMAP_PREFIX: N              = "bitmap$"  // @darkdimius: $bitmap? Also, the next 4 names are unused.
     val BITMAP_NORMAL: N              = BITMAP_PREFIX         // initialization bitmap for public/protected lazy vals
     val BITMAP_TRANSIENT: N           = BITMAP_PREFIX + "trans$"    // initialization bitmap for transient lazy vals
@@ -125,7 +128,6 @@ object StdNames {
     val EXPAND_SEPARATOR: N           = str.EXPAND_SEPARATOR
     val IMPL_CLASS_SUFFIX: N          = "$class"
     val IMPORT: N                     = "<import>"
-    val LOCALDUMMY_PREFIX: N          = "<local "       // owner of local blocks
     val MODULE_SUFFIX: N              = NameTransformer.MODULE_SUFFIX_STRING
     val NAME_JOIN: N                  = NameTransformer.NAME_JOIN_STRING
     val OPS_PACKAGE: N                = "<special-ops>"
@@ -261,7 +263,6 @@ object StdNames {
     val ROOTPKG: N                  = "_root_"
     val SELECTOR_DUMMY: N           = "<unapply-selector>"
     val SELF: N                     = "$this"
-    val SETTER_SUFFIX: N            = encode("_=")
     val SKOLEM: N                   = "<skolem>"
     val SPECIALIZED_INSTANCE: N     = "specInstance$"
     val THIS: N                     = "_$this"
@@ -661,22 +662,6 @@ object StdNames {
 
     val isBoxedNumberOrBoolean: N = "isBoxedNumberOrBoolean"
     val isBoxedNumber: N = "isBoxedNumber"
-
-    val reflPolyCacheName: N   = "reflPoly$Cache"
-    val reflClassCacheName: N  = "reflClass$Cache"
-    val reflParamsCacheName: N = "reflParams$Cache"
-    val reflMethodCacheName: N = "reflMethod$Cache"
-    val reflMethodName: N      = "reflMethod$Method"
-
-    private val reflectionCacheNames = Set[N](
-      reflPolyCacheName,
-      reflClassCacheName,
-      reflParamsCacheName,
-      reflMethodCacheName,
-      reflMethodName
-    )
-
-    def isReflectionCacheName(name: Name) = reflectionCacheNames exists (name startsWith _)
   }
 
   class ScalaTermNames extends ScalaNames[TermName] {
@@ -723,7 +708,7 @@ object StdNames {
     }
 
     def localDummyName(clazz: Symbol)(implicit ctx: Context): TermName =
-      LOCALDUMMY_PREFIX ++ clazz.name ++ ">"
+      termName(str.LOCALDUMMY_PREFIX + clazz.name + ">")
 
     def newBitmapName(bitmapPrefix: TermName, n: Int): TermName = bitmapPrefix ++ n.toString
 

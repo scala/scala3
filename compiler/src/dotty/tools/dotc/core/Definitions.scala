@@ -119,7 +119,7 @@ class Definitions {
             enterTypeParam(cls, name ++ "$T" ++ i.toString, Contravariant, decls)
         val resParam = enterTypeParam(cls, name ++ "$R", Covariant, decls)
         val (methodType, parentTraits) =
-          if (name.startsWith(str.ImplicitFunction)) {
+          if (name.firstPart.startsWith(str.ImplicitFunction)) {
             val superTrait =
               FunctionType(arity).appliedTo(argParams.map(_.typeRef) ::: resParam.typeRef :: Nil)
             (ImplicitMethodType, ctx.normalizeToClassRefs(superTrait :: Nil, cls, decls))

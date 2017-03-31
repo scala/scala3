@@ -101,11 +101,7 @@ object Names {
     def isEmpty: Boolean
 
     def startsWith(str: String): Boolean = firstPart.startsWith(str)
-    def startsWith(name: Name): Boolean = startsWith(name.toString)
     def endsWith(str: String): Boolean = lastPart.endsWith(str)
-    def endsWith(name: Name): Boolean = endsWith(name.toString)
-    def lastIndexOfSlice(str: String): Int = lastPart.toString.lastIndexOfSlice(str)
-    def lastIndexOfSlice(name: Name): Int = lastIndexOfSlice(name.toString)
 
     override def hashCode = System.identityHashCode(this)
     override def equals(that: Any) = this eq that.asInstanceOf[AnyRef]
@@ -239,6 +235,8 @@ object Names {
       while (i >= 0 && apply(i) != ch) i -= 1
       i
     }
+
+    def lastIndexOfSlice(str: String): Int = toString.lastIndexOfSlice(str)
 
     override def replace(from: Char, to: Char): SimpleTermName = {
       val cs = new Array[Char](length)

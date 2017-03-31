@@ -1036,7 +1036,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
         val rhs = readTreeRef()
         val params = until(end, readIdentRef)
         val ldef = DefDef(symbol.asTerm, rhs)
-        def isCaseLabel(sym: Symbol) = sym.name.startsWith(nme.CASEkw)
+        def isCaseLabel(sym: Symbol) = sym.name.startsWith(nme.CASEkw.toString)
         if (isCaseLabel(symbol)) ldef
         else Block(ldef :: Nil, Apply(Ident(symbol.termRef), Nil))
 
