@@ -111,8 +111,8 @@ object NameOps {
      *  method needs to work on mangled as well as unmangled names because
      *  it is also called from the backend.
      */
-    def stripModuleClassSuffix: Name = name match {
-      case name: SimpleTermName if name.endsWith("$") =>
+    def stripModuleClassSuffix: Name = name.toTermName match {
+      case n: SimpleTermName if n.endsWith("$") =>
         name.unmangleClassName.exclude(ModuleClassName)
       case _ =>
         name.exclude(ModuleClassName)
