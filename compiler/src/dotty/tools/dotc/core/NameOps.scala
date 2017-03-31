@@ -60,11 +60,9 @@ object NameOps {
     def isLocalDummyName = name startsWith LOCALDUMMY_PREFIX
     def isReplWrapperName = name.toSimpleName containsSlice INTERPRETER_IMPORT_WRAPPER
     def isSetterName = name endsWith SETTER_SUFFIX
-    def isImportName = name startsWith IMPORT
     def isScala2LocalSuffix = name.endsWith(" ")
     def isModuleVarName(name: Name): Boolean = name.exclude(UniqueName).is(ModuleVarName)
     def isSelectorName = name.startsWith("_") && name.tail.forall(_.isDigit)
-    def isOuterSelect = name.endsWith(nme.OUTER_SELECT)
 
     /** Is name a variable name? */
     def isVariableName: Boolean = name.length > 0 && {
@@ -245,12 +243,6 @@ object NameOps {
         try name.toString.substring(prefix.length).toInt
         catch { case _: NumberFormatException => -1 }
       else -1
-    }
-
-    /** The number of hops specified in an outer-select name */
-    def outerSelectHops: Int = {
-      require(isOuterSelect)
-      name.dropRight(nme.OUTER_SELECT.length).toString.toInt
     }
 
     /** The name of the generic runtime operation corresponding to an array operation */

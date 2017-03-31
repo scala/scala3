@@ -229,6 +229,8 @@ object TastyFormat {
   final val UNIQUE = 10
   final val DEFAULTGETTER = 11
   final val VARIANT = 12
+  final val OUTERSELECT = 13
+
   final val SUPERACCESSOR = 20
   final val PROTECTEDACCESSOR = 21
   final val PROTECTEDSETTER = 22

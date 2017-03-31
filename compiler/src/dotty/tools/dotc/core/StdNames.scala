@@ -253,7 +253,6 @@ object StdNames {
     val MODULE_INSTANCE_FIELD: N    = NameTransformer.MODULE_INSTANCE_NAME  // "MODULE$"
     val OUTER: N                    = "$outer"
     val OUTER_LOCAL: N              = "$outer "
-    val OUTER_SELECT: N             = "_<outer>" // emitted by inliner, replaced by outer path in explicitouter
     val REFINE_CLASS: N             = "<refinement>"
     val ROOTPKG: N                  = "_root_"
     val SELECTOR_DUMMY: N           = "<unapply-selector>"

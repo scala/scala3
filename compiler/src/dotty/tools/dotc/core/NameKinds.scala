@@ -242,6 +242,16 @@ object NameKinds {
     }
   }
 
+  /** Names of the form N_<outer>. Emitted by inliner, replaced by outer path
+   *  in ExplicitOuter.
+   */
+  object OuterSelectName extends NumberedNameKind(OUTERSELECT, "OuterSelect") {
+    def mkString(underlying: TermName, info: ThisInfo) = {
+      assert(underlying.isEmpty)
+      info.num + "_<outer>"
+    }
+  }
+
   val SuperAccessorName = new PrefixNameKind(SUPERACCESSOR, "super$")
   val InitializerName = new PrefixNameKind(INITIALIZER, "initial$")
   val ShadowedName = new PrefixNameKind(SHADOWED, "(shadowed)")

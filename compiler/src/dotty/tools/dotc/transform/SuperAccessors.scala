@@ -11,7 +11,7 @@ import Types._, Contexts._, Constants._, Names._, NameOps._, Flags._, DenotTrans
 import SymDenotations._, Symbols._, StdNames._, Annotations._, Trees._, Scopes._, Denotations._
 import util.Positions._
 import Decorators._
-import NameKinds.{ProtectedAccessorName, ProtectedSetterName}
+import NameKinds.{ProtectedAccessorName, ProtectedSetterName, OuterSelectName}
 import Symbols._, TypeUtils._
 
 /** This class performs the following functions:
@@ -152,7 +152,7 @@ class SuperAccessors(thisTransformer: DenotTransformer) {
      */
     private def ensureProtectedAccessOK(sel: Select, targs: List[Tree])(implicit ctx: Context) = {
       val sym = sel.symbol
-      if (sym.isTerm && !sel.name.isOuterSelect && needsProtectedAccessor(sym, sel.pos)) {
+      if (sym.isTerm && !sel.name.is(OuterSelectName) && needsProtectedAccessor(sym, sel.pos)) {
         ctx.debuglog("Adding protected accessor for " + sel)
         protectedAccessorCall(sel, targs)
       } else sel

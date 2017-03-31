@@ -13,6 +13,7 @@ import core.Flags._
 import core.Constants._
 import core.StdNames._
 import core.NameOps._
+import core.NameKinds.OuterSelectName
 import core.Decorators._
 import core.TypeErasure.isErasedType
 import core.Phases.Phase
@@ -339,7 +340,7 @@ class TreeChecker extends Phase with SymTransformer {
       val sym = tree.symbol
       if (!tpe.isInstanceOf[WithFixedSym] &&
           sym.exists && !sym.is(Private) &&
-          !tree.name.isOuterSelect // outer selects have effectively fixed symbols
+          !tree.name.is(OuterSelectName) // outer selects have effectively fixed symbols
           ) {
         val qualTpe = tree.qualifier.typeOpt
         val member =
