@@ -30,9 +30,9 @@ import Decorators._
 import tpd._
 
 import scala.tools.asm
-import NameOps._
 import StdNames.nme
 import NameOps._
+import NameKinds.DefaultGetterName
 import dotty.tools.dotc.core
 import dotty.tools.dotc.core.Names.TypeName
 
@@ -255,7 +255,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
           val evalue = t.symbol.name.toString // value the actual enumeration value.
           av.visitEnum(name, edesc, evalue)
         } else {
-          assert(toDenot(t.symbol).name.toTermName.defaultGetterIndex >= 0) // this should be default getter. do not emmit.
+          assert(toDenot(t.symbol).name.is(DefaultGetterName)) // this should be default getter. do not emmit.
         }
       case t: SeqLiteral =>
         val arrAnnotV: AnnotationVisitor = av.visitArray(name)

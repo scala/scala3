@@ -61,7 +61,6 @@ object NameOps {
     def isReplWrapperName = name.toSimpleName containsSlice INTERPRETER_IMPORT_WRAPPER
     def isSetterName = name endsWith SETTER_SUFFIX
     def isScala2LocalSuffix = name.endsWith(" ")
-    def isModuleVarName(name: Name): Boolean = name.exclude(UniqueName).is(ModuleVarName)
     def isSelectorName = name.startsWith("_") && name.tail.forall(_.isDigit)
 
     /** Is name a variable name? */
@@ -104,9 +103,6 @@ object NameOps {
       if (flags is (ModuleClass, butNot = Package)) name.asTypeName.moduleClassName
       else name.toTermName.exclude(AvoidClashName)
     }
-
-    /** The superaccessor for method with given name */
-    def superName: TermName = SuperAccessorName(name.toTermName)
 
     def expandedName(base: Symbol, kind: QualifiedNameKind = ExpandedName)(implicit ctx: Context): N = {
       val prefix =
@@ -307,17 +303,6 @@ object NameOps {
     }
   }
 
-  // needed???
-  private val Boxed = Map[TypeName, TypeName](
-    tpnme.Boolean -> jtpnme.BoxedBoolean,
-    tpnme.Byte -> jtpnme.BoxedByte,
-    tpnme.Char -> jtpnme.BoxedCharacter,
-    tpnme.Short -> jtpnme.BoxedShort,
-    tpnme.Int -> jtpnme.BoxedInteger,
-    tpnme.Long -> jtpnme.BoxedLong,
-    tpnme.Float -> jtpnme.BoxedFloat,
-    tpnme.Double -> jtpnme.BoxedDouble)
-
   implicit class TermNameDecorator(val name: TermName) extends AnyVal {
     import nme._
 
@@ -338,18 +323,6 @@ object NameOps {
       }
       else FieldName(name)
 
-    /** Nominally, name from name$default$N, CONSTRUCTOR for <init> */
-    def defaultGetterToMethod: TermName =
-      name rewrite {
-        case DefaultGetterName(methName, _) => methName
-      }
-
-    /** If this is a default getter, its index (starting from 0), else -1 */
-    def defaultGetterIndex: Int =
-      name collect {
-        case DefaultGetterName(_, num) => num
-      } getOrElse -1
-
     def stripScala2LocalSuffix: TermName =
       if (name.isScala2LocalSuffix) name.init.asTermName else name
 
@@ -361,57 +334,5 @@ object NameOps {
       case raw.BANG  => UNARY_!
       case _ => name
     }
-
-    /** The name of a method which stands in for a primitive operation
-     *  during structural type dispatch.
-     */
-    def primitiveInfixMethodName: TermName = name match {
-      case OR   => takeOr
-      case XOR  => takeXor
-      case AND  => takeAnd
-      case EQ   => testEqual
-      case NE   => testNotEqual
-      case ADD  => add
-      case SUB  => subtract
-      case MUL  => multiply
-      case DIV  => divide
-      case MOD  => takeModulo
-      case LSL  => shiftSignedLeft
-      case LSR  => shiftLogicalRight
-      case ASR  => shiftSignedRight
-      case LT   => testLessThan
-      case LE   => testLessOrEqualThan
-      case GE   => testGreaterOrEqualThan
-      case GT   => testGreaterThan
-      case ZOR  => takeConditionalOr
-      case ZAND => takeConditionalAnd
-      case _    => NO_NAME
-    }
-
-    /** Postfix/prefix, really.
-     */
-    def primitivePostfixMethodName: TermName = name match {
-      case UNARY_!    => takeNot
-      case UNARY_+    => positive
-      case UNARY_-    => negate
-      case UNARY_~    => complement
-      case `toByte`   => toByte
-      case `toShort`  => toShort
-      case `toChar`   => toCharacter
-      case `toInt`    => toInteger
-      case `toLong`   => toLong
-      case `toFloat`  => toFloat
-      case `toDouble` => toDouble
-      case _          => NO_NAME
-    }
-
-    def primitiveMethodName: TermName =
-      primitiveInfixMethodName match {
-        case NO_NAME => primitivePostfixMethodName
-        case name => name
-      }
   }
-
-  private final val FalseSuper = "$$super".toTermName
-  private val FalseSuperLength = FalseSuper.length
 }

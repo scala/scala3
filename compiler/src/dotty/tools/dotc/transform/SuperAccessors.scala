@@ -11,7 +11,7 @@ import Types._, Contexts._, Constants._, Names._, NameOps._, Flags._, DenotTrans
 import SymDenotations._, Symbols._, StdNames._, Annotations._, Trees._, Scopes._, Denotations._
 import util.Positions._
 import Decorators._
-import NameKinds.{ProtectedAccessorName, ProtectedSetterName, OuterSelectName}
+import NameKinds.{ProtectedAccessorName, ProtectedSetterName, OuterSelectName, SuperAccessorName}
 import Symbols._, TypeUtils._
 
 /** This class performs the following functions:
@@ -72,7 +72,7 @@ class SuperAccessors(thisTransformer: DenotTransformer) {
       val Select(qual, name) = sel
       val sym = sel.symbol
       val clazz = qual.symbol.asClass
-      var superName = name.superName
+      var superName = SuperAccessorName(name.asTermName)
       if (clazz is Trait) superName = superName.expandedName(clazz)
       val superInfo = sel.tpe.widenSingleton.ensureMethodic
 

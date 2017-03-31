@@ -6,6 +6,7 @@ import core._
 import ast._
 import Trees._, Constants._, StdNames._, Scopes._, Denotations._, Comments._
 import Contexts._, Symbols._, Types._, SymDenotations._, Names._, NameOps._, Flags._, Decorators._
+import NameKinds.DefaultGetterName
 import ast.desugar, ast.desugar._
 import ProtoTypes._
 import util.Positions._
@@ -1012,12 +1013,8 @@ class Namer { typer: Typer =>
        *  the corresponding parameter where bound parameters are replaced by
        *  Wildcards.
        */
-      def rhsProto = {
-        val name = sym.asTerm.name
-        val idx = name.defaultGetterIndex
-        if (idx < 0) WildcardType
-        else {
-          val original = name.defaultGetterToMethod
+      def rhsProto = sym.asTerm.name collect {
+        case DefaultGetterName(original, idx) =>
           val meth: Denotation =
             if (original.isConstructorName && (sym.owner is ModuleClass))
               sym.owner.companionClass.info.decl(nme.CONSTRUCTOR)
@@ -1035,8 +1032,7 @@ class Namer { typer: Typer =>
             paramProto(defaultAlts.head.info.widen.paramInfoss, idx)
           else
             WildcardType
-        }
-      }
+      } getOrElse WildcardType
 
       // println(s"final inherited for $sym: ${inherited.toString}") !!!
       // println(s"owner = ${sym.owner}, decls = ${sym.owner.info.decls.show}")

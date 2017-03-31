@@ -252,7 +252,6 @@ object StdNames {
     val REIFY_SYMDEF_PREFIX: N      = "symdef$"
     val MODULE_INSTANCE_FIELD: N    = NameTransformer.MODULE_INSTANCE_NAME  // "MODULE$"
     val OUTER: N                    = "$outer"
-    val OUTER_LOCAL: N              = "$outer "
     val REFINE_CLASS: N             = "<refinement>"
     val ROOTPKG: N                  = "_root_"
     val SELECTOR_DUMMY: N           = "<unapply-selector>"
