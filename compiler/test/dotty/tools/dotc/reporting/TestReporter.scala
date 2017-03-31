@@ -2,7 +2,7 @@ package dotty.tools
 package dotc
 package reporting
 
-import java.io.{ PrintWriter, File => JFile, FileOutputStream }
+import java.io.{ PrintStream, PrintWriter, File => JFile, FileOutputStream }
 import java.text.SimpleDateFormat
 import java.util.Date
 
@@ -93,38 +93,25 @@ object TestReporter {
     logWriter.flush()
   }
 
-  def parallelReporter(lock: AnyRef, logLevel: Int): TestReporter = new TestReporter(
-    new PrintWriter(Console.err, true),
-    str => lock.synchronized {
-      logWriter.println(str)
-      logWriter.flush()
-    },
-    logLevel
-  )
+  def reporter(ps: PrintStream, logLevel: Int): TestReporter =
+    new TestReporter(new PrintWriter(ps, true), writeToLog, logLevel)
 
-  def reporter(logLevel: Int): TestReporter = new TestReporter(
-    new PrintWriter(Console.err, true),
-    writeToLog,
-    logLevel
-  )
+  def simplifiedReporter(writer: PrintWriter): TestReporter = {
+    val rep = new TestReporter(writer, writeToLog, WARNING) {
+      /** Prints the message with the given position indication in a simplified manner */
+      override def printMessageAndPos(m: MessageContainer, extra: String)(implicit ctx: Context): Unit = {
+        val msg = s"${m.pos.line + 1}: " + m.contained.kind + extra
+        val extraInfo = inlineInfo(m.pos)
 
-  def simplifiedReporter(writer: PrintWriter): TestReporter = new TestReporter(
-    writer,
-    writeToLog,
-    WARNING
-  ) {
-    /** Prints the message with the given position indication in a simplified manner */
-    override def printMessageAndPos(m: MessageContainer, extra: String)(implicit ctx: Context): Unit = {
-      val msg = s"${m.pos.line + 1}: " + m.contained.kind + extra
-      val extraInfo = inlineInfo(m.pos)
+        writer.println(msg)
+        _messageBuf.append(msg)
 
-      writer.println(msg)
-      _messageBuf.append(msg)
-
-      if (extraInfo.nonEmpty) {
-        writer.println(extraInfo)
-        _messageBuf.append(extraInfo)
+        if (extraInfo.nonEmpty) {
+          writer.println(extraInfo)
+          _messageBuf.append(extraInfo)
+        }
       }
     }
+    rep
   }
 }

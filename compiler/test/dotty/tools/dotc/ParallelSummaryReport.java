@@ -13,7 +13,7 @@ import dotty.tools.dotc.reporting.TestReporter$;
 public class ParallelSummaryReport {
     public final static boolean isInteractive = !System.getenv().containsKey("DRONE");
 
-    private static TestReporter rep = TestReporter.reporter(-1);
+    private static TestReporter rep = TestReporter.reporter(System.out, -1);
     private static ArrayDeque<String> failedTests = new ArrayDeque<>();
     private static ArrayDeque<String> reproduceInstructions = new ArrayDeque<>();
     private static int passed;
@@ -36,7 +36,7 @@ public class ParallelSummaryReport {
     }
 
     @BeforeClass public final static void setup() {
-        rep = TestReporter.reporter(-1);
+        rep = TestReporter.reporter(System.out, -1);
         failedTests = new ArrayDeque<>();
         reproduceInstructions = new ArrayDeque<>();
     }
