@@ -12,80 +12,63 @@ body {
 
 div#content-wrapper {
     min-height: 100vh;
-    padding-left: 250px;
-    -webkit-transition: all .25s ease-out;
-         -o-transition: all .25s ease-out;
-            transition: all .25s ease-out;
-}
-
-div#content-wrapper.toggled {
     padding-left: 0;
 }
 
-div.index-wrapper {
+div#content-wrapper div#content-body {
+    position: relative;
+}
+
+div#content-wrapper div.index-wrapper {
     background-color: #fafafa;
     position: fixed;
     top: 0;
     left: 0;
-    width: 250px;
     height: 100%;
     overflow-y: auto;
     overflow-x: hidden;
 }
 
-@media screen and (max-width: 575px) {
+/** Animations: Easing for content body slide on toggle  */
+div#content-wrapper,
+div#content-wrapper div#content-body {
+    -webkit-transition: all .25s ease-out;
+         -o-transition: all .25s ease-out;
+            transition: all .25s ease-out;
+}
 
-    div#content-wrapper {
-        padding-left: 0;
-    }
+/** Mobile (x < 576px) sidebar: Defaults closed with 60% wide sidebar */
+div#content-wrapper {}
+div#content-wrapper div#content-body { left: 0; }
+div#content-wrapper div.index-wrapper { width: 60%; }
 
-    div#content-body {
-        position: relative;
-        left: 0;
-        -webkit-transition: all .25s ease-out;
-             -o-transition: all .25s ease-out;
-                transition: all .25s ease-out;
-    }
+div#content-wrapper.toggled {}
+div#content-wrapper.toggled div#content-body { left: 60%; }
+div#content-wrapper.toggled div.index-wrapper {}
 
-    div.index-wrapper {
-        width: 60%;
-    }
+/** Tablet (576px <= x < 768px) sidebar: Defaults closed with 250px wide sidebar */
+@media screen and (min-width: 576px) {
 
-    div#content-wrapper.toggled div#content-body {
-        left: 60%;
-    }
+    div#content-wrapper {}
+    div#content-wrapper div#content-body {}
+    div#content-wrapper div.index-wrapper { width: 250px; }
 
-    div#content-wrapper.toggled div.index-wrapper {
-        left: 0;
-    }
+    div#content-wrapper.toggled {}
+    div#content-wrapper.toggled div#content-body { left: 250px; }
+    div#content-wrapper.toggled div.index-wrapper {}
 
 }
 
-@media screen and (min-width: 576px) and (max-width: 767px) {
+/** Desktop (x >= 768px) sidebar: Defaults open with 250px wide sidebar  */
+@media screen and (min-width: 768px) {
 
-    div#content-wrapper {
-        padding-left: 0;
-    }
+    div#content-wrapper { padding-left: 250px; }
+    div#content-wrapper div#content-body {}
+    div#content-wrapper div.index-wrapper { width: 250px; }
 
-    div#content-body {
-        position: relative;
-        left: 0;
-        -webkit-transition: all .25s ease-out;
-             -o-transition: all .25s ease-out;
-                transition: all .25s ease-out;
-    }
-
-    div.index-wrapper {
-        width: 250px;
-    }
-
-    div#content-wrapper.toggled div#content-body {
-        left: 250px;
-    }
-
-    div#content-wrapper.toggled div.index-wrapper {
-        left: 0;
-    }
+    div#content-wrapper.toggled { padding-left: 0; }
+    div#content-wrapper.toggled div#content-body { left: 0; }
+    div#content-wrapper.toggled div.index-wrapper {}
 
 }
 
@@ -160,7 +143,7 @@ div#content-body {
     background-color: #f4f3f4;
     border-left: 1px solid #e0e0e0;
     box-shadow: -3px 0 5px -2px rgba(0,0,0,0.14);
-    padding: 1px;
+    padding: 1px 1px 1px 30px;
     position: relative;
     min-height: 100vh;
 }
@@ -173,7 +156,7 @@ button#menu-toggle {
     background: rgba(250,250,250,0.4) none;
     border: 1px solid transparent;
     color: #837f84;
-    margin: 2px 0 0 -72px;
+    margin: 2px 0 0 -28px;
     padding: 9px 10px;
     position: fixed;
 }
@@ -198,52 +181,64 @@ button#menu-toggle span.icon-bar {
     height: 2px;
 }
 
-div#content-wrapper button#menu-toggle,
-div#content-wrapper.toggled button#menu-toggle {
-    -webkit-transition: all .25s ease-out;
-         -o-transition: all .25s ease-out;
-            transition: all .25s ease-out;
-}
-
 div#content-wrapper.toggled button#menu-toggle {
     margin: 2px 0 0 -28px;
 }
 
-@media screen and (max-width: 767px) {
+/** Desktop (x >= 768px) menu position: Pull hamburger menu to sidebar and remove content body padding */
+@media screen and (min-width: 768px) {
 
-    div#content-wrapper button#menu-toggle {
-        margin: 2px 0 0 -28px;
-    }
+    div#content-body { padding-left: 1px; }
+
+    button#menu-toggle { margin: 2px 0 0 -72px; }
+
+}
+
+/** Mobile (x < 576px) animations: Hamburger menu button transform to arrow on toggle */
+div#content-wrapper button#menu-toggle span,
+div#content-wrapper.toggled button#menu-toggle span {
+    -webkit-transition: transform .25s ease-out, width .25s ease-out, top .25s ease-out, bottom .25s ease-out;
+         -o-transition: transform .25s ease-out, width .25s ease-out, top .25s ease-out, bottom .25s ease-out;
+            transition: transform .25s ease-out, width .25s ease-out, top .25s ease-out, bottom .25s ease-out;
+}
+
+div#content-wrapper.toggled button#menu-toggle span:first-child + span {
+    -webkit-transform: translateX(-1px) translateY(2px) rotate(-45deg);
+        -ms-transform: translateX(-1px) translateY(2px) rotate(-45deg);
+            transform: translateX(-1px) translateY(2px) rotate(-45deg);
+    width: 10px;
+}
+
+div#content-wrapper.toggled button#menu-toggle span:first-child + span + span {
+    -webkit-transform: rotate(180deg);
+        -ms-transform: rotate(180deg);
+            transform: rotate(180deg);
+}
+
+div#content-wrapper.toggled button#menu-toggle span:first-child + span + span + span {
+    -webkit-transform: translateX(-1px) translateY(-2px) rotate(45deg);
+        -ms-transform: translateX(-1px) translateY(-2px) rotate(45deg);
+            transform: translateX(-1px) translateY(-2px) rotate(45deg);
+    width: 10px;
+}
+
+/** Desktop (x >= 768px) animations: Disable, hamburger menu do not transform */
+@media screen and (min-width: 768px) {
 
     div#content-wrapper button#menu-toggle span,
     div#content-wrapper.toggled button#menu-toggle span {
-        -webkit-transition: transform .25s ease-out, width .25s ease-out, top .25s ease-out, bottom .25s ease-out;
-             -o-transition: transform .25s ease-out, width .25s ease-out, top .25s ease-out, bottom .25s ease-out;
-                transition: transform .25s ease-out, width .25s ease-out, top .25s ease-out, bottom .25s ease-out;
+        -webkit-transition-property: none !important;
+             -o-transition-property: none !important;
+                transition-property: none !important;
     }
 
-    div#content-wrapper.toggled button#menu-toggle span:first-child + span {
-        -webkit-transform: translateX(-1px) translateY(2px) rotate(-45deg);
-            -ms-transform: translateX(-1px) translateY(2px) rotate(-45deg);
-                transform: translateX(-1px) translateY(2px) rotate(-45deg);
-        width: 10px;
-    }
-
-    div#content-wrapper.toggled button#menu-toggle span:first-child + span + span {
-        -webkit-transform: rotate(180deg);
-            -ms-transform: rotate(180deg);
-                transform: rotate(180deg);
-    }
-
+    div#content-wrapper.toggled button#menu-toggle span:first-child + span,
+    div#content-wrapper.toggled button#menu-toggle span:first-child + span + span,
     div#content-wrapper.toggled button#menu-toggle span:first-child + span + span + span {
-        -webkit-transform: translateX(-1px) translateY(-2px) rotate(45deg);
-            -ms-transform: translateX(-1px) translateY(-2px) rotate(45deg);
-                transform: translateX(-1px) translateY(-2px) rotate(45deg);
-        width: 10px;
-    }
-
-    div#content-body {
-        padding-left: 30px;
+        -webkit-transform: unset !important;
+            -ms-transform: unset !important;
+                transform: unset !important;
+        width: 22px !important;
     }
 
 }
