@@ -78,16 +78,15 @@ div#content-wrapper.toggled div.index-wrapper {}
 }
 
 div#content-wrapper button#menu-toggle {
-    background: rgba(250, 250, 250, 0.4) none;
+    background: rgba(244, 243, 244, 0.4) none;
     border: 1px solid transparent;
     color: #837f84;
-    margin: 2px 0 0 -28px;
+    margin: 14px 0 0 -28px;
     padding: 9px 10px;
     position: fixed;
 }
 
 div#content-wrapper button#menu-toggle:hover {
-    color: rgba(0, 0, 0, 0.4);
     cursor: pointer;
 }
 
@@ -96,7 +95,7 @@ div#content-wrapper button#menu-toggle:focus {
 }
 
 div#content-wrapper button#menu-toggle span.icon-bar {
-    background-color:#837f84;
+    background-color: #837f84;
     border-radius: 2px;
     border-color: #837f84;
     color: #837f84;
@@ -106,19 +105,8 @@ div#content-wrapper button#menu-toggle span.icon-bar {
     height: 2px;
 }
 
-div#content-wrapper.toggled button#menu-toggle {
-    margin: 2px 0 0 -28px;
-}
-
-/** Desktop (x >= 768px) menu position: Pull hamburger menu to sidebar and remove content body padding */
-@media screen and (min-width: 768px) {
-
-    div#content-wrapper div#content-body { padding-left: 1px; }
-
-    div#content-wrapper.toggled div#content-body { padding-left: 30px; }
-
-    div#content-wrapper button#menu-toggle { margin: 2px 0 0 -72px; }
-
+div#content-wrapper button#menu-toggle:hover span.icon-bar {
+    background-color: rgba(131, 127, 132, 0.5); /** => #837f84 with 50% opacity */
 }
 
 /** Mobile (x < 576px) animations: Hamburger menu button transform to arrow on toggle */
