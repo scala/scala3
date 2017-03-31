@@ -11,7 +11,7 @@ class CallInfoWithContext private (val call: TermRef, val targs: List[Type], val
     val outerTargs: OuterTargs, val parent: Option[CallInfoWithContext], val callee: Option[CallInfo])
     extends AbstractCallInfo {
 
-  private val outEdges = mutable.HashMap[CallInfo, List[CallInfoWithContext]]().withDefault(x => Nil)
+  private lazy val outEdges = mutable.HashMap[CallInfo, List[CallInfoWithContext]]().withDefault(x => Nil)
 
   def outEdgesIterator: Iterator[(CallInfo, List[CallInfoWithContext])] = outEdges.iterator
 

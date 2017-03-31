@@ -13,6 +13,9 @@ object BuildCallGraph {
   def withJavaCallGraph(implicit ctx: Context): Boolean =
     ctx.settings.linkJavaConservative.value
 
+  def withOutEdges(implicit ctx: Context): Boolean =
+    ctx.settings.linkVis.value
+
   def isPhaseRequired(implicit ctx: Context): Boolean =
     DeadCodeElimination.isPhaseRequired || CallGraphChecks.isPhaseRequired || ctx.settings.linkVis.value
 
@@ -41,7 +44,7 @@ class BuildCallGraph extends Phase {
 
     val collectedSummaries = ctx.summariesPhase.asInstanceOf[CollectSummaries].methodSummaries
 
-    val callGraphBuilder = new CallGraphBuilder(collectedSummaries, mode, specLimit, withJavaCallGraph)
+    val callGraphBuilder = new CallGraphBuilder(collectedSummaries, mode, specLimit, withJavaCallGraph, withOutEdges)
 
     lazy val scalaApp = ctx.requiredClass("scala.App".toTypeName)
     lazy val scalaUtilPropertiesTrait = ctx.requiredClass("scala.util.PropertiesTrait".toTypeName)

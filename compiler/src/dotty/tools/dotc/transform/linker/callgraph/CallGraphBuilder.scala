@@ -23,7 +23,7 @@ object CallGraphBuilder {
 }
 
 class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int, specLimit: Int,
-    withJavaCallGraph: Boolean)(implicit ctx: Context) {
+    withJavaCallGraph: Boolean, withOutEdges: Boolean)(implicit ctx: Context) {
   import CallGraphBuilder._
   import tpd._
 
@@ -47,6 +47,8 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
   private val sizesCache = new java.util.IdentityHashMap[Symbol, Int]()
   private val lastInstantiation = mutable.Map.empty[CallInfoWithContext, mutable.Map[CallInfo, Int]]
   private var finished = false
+
+  private var addingOutEdges = false
 
   private val normalizeType: Type => Type = new TypeNormalizer
 
@@ -107,6 +109,9 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
         // TODO: remove in production mode
         ctx.log("[processing all call sites for crc check]")
         finished = true
+        buildLoop()
+      } else if (withOutEdges && !addingOutEdges) {
+        addingOutEdges = true
         buildLoop()
       }
     }
@@ -259,8 +264,8 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
 
     def addCall(call: CallInfoWithContext) = {
       if (registerCall(call)) {
-        addReachableMethod(call)
-        caller.addOutEdges(callee, call)
+        if (addingOutEdges) caller.addOutEdges(callee, call)
+        else addReachableMethod(call)
       }
     }
 
@@ -443,29 +448,23 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
           }
 
           if (mode >= AnalyseTypes) {
-            def filterCastCachedFilter = {
+            val filterCastCachedFilter = {
               val receiverBases = receiverType.widen.classSymbols.iterator
-              if(receiverBases.isEmpty)
-                print("")
               val head = receiverBases.next()
               receiverBases.foldLeft(castCache1.getOrDefault(head, Set.empty)){case (a,b) =>  a.intersect(castCache1.getOrDefault(b, Set.empty))}
             }
-            def filterCast(cast: Cast) = {
-              val receiverBases = receiverType.classSymbols
-              val targetBases = cast.to.classSymbols
-              receiverBases.forall(c => targetBases.exists(_.derivesFrom(c)))
-            }
-            val a = filterCastCachedFilter
             for ((tpDepth, tp) <- getTypesByMemberName(calleeSymbol.name)) {
-              for (cast <- castsCache.getOrElse(tp, Set.empty[Cast]) intersect a)
+              for (cast <- castsCache.getOrElse(tp, Set.empty[Cast]) intersect filterCastCachedFilter)
               if (/*filterCast(cast) && */filterTypes(tp.tp, cast.from, tpDepth, cast.fromDepth) && filterTypes(cast.to, receiverType, cast.toDepth, receiverDepth))
               for (alt <- tp.tp.member(calleeSymbol.name).altsWith(p => p.matches(calleeSymbol.asSeenFrom(tp.tp))))
               if (alt.exists) {
-                // this additionally introduces a cast of result type and argument types
-                val uncastedSig = preciseSelectCall(tp.tp, alt.symbol).widen.appliedTo(targs).widen
-                val castedSig = preciseSelectCall(receiverType, calleeSymbol).widen.appliedTo(targs).widen
-                (uncastedSig.paramTypess.flatten zip castedSig.paramTypess.flatten) foreach (x => addCast(x._2, x._1))
-                addCast(uncastedSig.finalResultType, castedSig.finalResultType) // FIXME: this is added even in and tpe that are out of the intersection
+                if (!addingOutEdges) {
+                  // this additionally introduces a cast of result type and argument types
+                  val uncastedSig = preciseSelectCall(tp.tp, alt.symbol).widen.appliedTo(targs).widen
+                  val castedSig = preciseSelectCall(receiverType, calleeSymbol).widen.appliedTo(targs).widen
+                  (uncastedSig.paramTypess.flatten zip castedSig.paramTypess.flatten) foreach (x => addCast(x._2, x._1))
+                  addCast(uncastedSig.finalResultType, castedSig.finalResultType) // FIXME: this is added even in and tpe that are out of the intersection
+                }
 
                 dispatch(CallInfoWithContext(tp.tp.select(alt.symbol).asInstanceOf[TermRef], targs, args, outerTargs ++ tp.outerTargs, someCaller, someCallee))
               }
@@ -608,7 +607,7 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
         val needsInstantiation = recomputedCRC != crcMap.getOrElse(callSite, -1)
         if (needsInstantiation)
           crcMap(callSite) = recomputedCRC
-        needsInstantiation || finished // if finished==true we are checking the completeness of the CRC
+        needsInstantiation || addingOutEdges || finished // if finished==true we are checking the completeness of the CRC
       }
 
       collectedSummaries.get(method.callSymbol) match {
