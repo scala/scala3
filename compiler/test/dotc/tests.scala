@@ -203,7 +203,9 @@ class tests extends CompilerTest {
 
   private val stdlibFiles: List[String] = StdLibSources.whitelisted
 
-  @Test def compileStdLib = compileList("compileStdLib", stdlibFiles, "-migration" :: "-Yno-inline" :: scala2mode)
+  @Test def compileStdLib =
+    if (!generatePartestFiles)
+      compileList("compileStdLib", stdlibFiles, "-migration" :: "-Yno-inline" :: scala2mode)
   @Test def compileMixed = compileLine(
       """../tests/pos/B.scala
         |../scala-scala/src/library/scala/collection/immutable/Seq.scala
