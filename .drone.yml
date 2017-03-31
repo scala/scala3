@@ -34,7 +34,9 @@ pipeline:
 
 matrix:
   TEST:
-    - ;test;dotty-bin-tests/test
-    - ;publishLocal;dotty-bootstrapped/test
-    - partest-only-no-bootstrap --show-diff --verbose
-    - partest-only --show-diff --verbose
+    - ;set testOptions in LocalProject("dotty-compiler") += Tests.Argument(TestFrameworks.JUnit, "--exclude-categories=dotty.tools.dotc.ParallelTesting") ;test ;dotty-bin-tests/test
+    - ;set testOptions in LocalProject("dotty-compiler-bootstrapped") += Tests.Argument(TestFrameworks.JUnit, "--exclude-categories=dotty.tools.dotc.ParallelTesting") ;publishLocal ;dotty-bootstrapped/test
+    - ;set testOptions in LocalProject("dotty-compiler") += Tests.Argument(TestFrameworks.JUnit, "--exclude-categories=dotty.tools.dotc.ParallelTesting") ;partest-only-no-bootstrap --show-diff --verbose
+    - ;set testOptions in LocalProject("dotty-compiler-bootstrapped") += Tests.Argument(TestFrameworks.JUnit, "--exclude-categories=dotty.tools.dotc.ParallelTesting") ;partest-only --show-diff --verbose
+    - ;dotty-compiler/testOnly dotty.tools.dotc.CompilationTests
+    - ;publishLocal ;dotty-bootstrapped/testOnly dotty.tools.dotc.CompilationTests

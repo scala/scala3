@@ -35,8 +35,8 @@ object Test {
 
     println("\nFunctions:")
     // FunctionN.getClass.toString has form of "class Test$$$Lambda$N/1349414238",
-    // but number (1349414238) depends on environment
-    println(f1.getClass.toString.takeWhile(_ != '/'))
-    println(f2.getClass.toString.takeWhile(_ != '/'))
+    // but "N/1349414238" depends on environment
+    println(f1.getClass.toString.take("class Test$$$Lambda$".length))
+    println(f2.getClass.toString.take("class Test$$$Lambda$".length))
   }
 }

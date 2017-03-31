@@ -17,9 +17,6 @@ class ConsoleReporter(
 
   import MessageContainer._
 
-  /** maximal number of error messages to be printed */
-  protected def ErrorLimit = 100
-
   /** Prints the message. */
   def printMessage(msg: String): Unit = { writer.print(msg + "\n"); writer.flush() }
 

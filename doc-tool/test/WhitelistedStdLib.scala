@@ -6,18 +6,16 @@ import org.junit.Assert._
 
 class TestWhitelistedCollections extends DottyDocTest {
 
-  @Test def arrayHasDocumentation =
+  @Test def arrayAndImmutableHasDocumentation =
     checkFiles(TestWhitelistedCollections.files) { packages =>
       val array =
         packages("scala")
         .children.find(_.path.mkString(".") == "scala.Array")
         .get
 
-      assert(array.comment.get.body.length > 0)
-    }
+      assert(array.comment.get.body.length > 0,
+        "scala.Array didn't have any documentation")
 
-  @Test def traitImmutableHasDocumentation =
-    checkFiles(TestWhitelistedCollections.files) { packages =>
       val imm =
         packages("scala")
         .children.find(_.path.mkString(".") == "scala.Immutable")

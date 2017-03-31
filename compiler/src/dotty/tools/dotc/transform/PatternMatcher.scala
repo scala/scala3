@@ -848,25 +848,20 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {
 
       val nextBinder = afterTest.asTerm
 
-      def needsOuterTest(patType: Type, selType: Type, currentOwner: Symbol): Boolean = {
+      def outerTestNeeded(implicit ctx: Context): Boolean = {
         // See the test for SI-7214 for motivation for dealias. Later `treeCondStrategy#outerTest`
         // generates an outer test based on `patType.prefix` with automatically dealises.
-        patType.dealias match {
-          case tref @ TypeRef(pre, name) =>
-            (pre ne NoPrefix) && tref.symbol.isClass &&
-            ExplicitOuter.needsOuterIfReferenced(tref.symbol.asClass)
+        expectedTp.dealias match {
+          case tref @ TypeRef(pre: SingletonType, name) =>
+            val s = tref
+            s.symbol.isClass &&
+            ExplicitOuter.needsOuterIfReferenced(s.symbol.asClass)
           case _ =>
             false
         }
       }
 
       override lazy val introducedRebindings = NoRebindings
-
-      def outerTestNeeded = {
-        val np = expectedTp.normalizedPrefix
-        val ts = np.termSymbol
-        (ts ne NoSymbol) && needsOuterTest(expectedTp, testedBinder.info, ctx.owner)
-      }
 
       // the logic to generate the run-time test that follows from the fact that
       // a `prevBinder` is expected to have type `expectedTp`

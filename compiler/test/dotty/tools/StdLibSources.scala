@@ -1,8 +1,9 @@
 package dotty.tools
 
 import java.io.File
-
 import scala.io.Source
+import org.junit.Test
+import org.junit.Assert._
 
 object StdLibSources {
 
@@ -56,4 +57,18 @@ object StdLibSources {
     .map(stdLibPath + _)
     .toList
 
+}
+
+class StdLibSources {
+  @Test def checkWBLists = {
+    val stdlibFilesBlackListed = StdLibSources.blacklisted
+
+    val duplicates = stdlibFilesBlackListed.groupBy(x => x).filter(_._2.size > 1).filter(_._2.size > 1)
+    val msg = duplicates.map(x => s"'${x._1}' appears ${x._2.size} times").mkString(s"Duplicate entries in ${StdLibSources.blacklistFile}:\n", "\n", "\n")
+    assertTrue(msg, duplicates.isEmpty)
+
+    val filesNotInStdLib = stdlibFilesBlackListed.toSet -- StdLibSources.all
+    val msg2 = filesNotInStdLib.map(x => s"'$x'").mkString(s"Entries in ${StdLibSources.blacklistFile} where not found:\n", "\n", "\n")
+    assertTrue(msg2, filesNotInStdLib.isEmpty)
+  }
 }

@@ -85,7 +85,6 @@ class tests extends CompilerTest {
   val negDir        = testsDir + "neg/"
   val runDir        = testsDir + "run/"
   val newDir        = testsDir + "new/"
-  val replDir       = testsDir + "repl/"
   val javaDir       = testsDir + "pos-java-interop/"
 
   val sourceDir = "./src/"
@@ -173,7 +172,6 @@ class tests extends CompilerTest {
   @Test def pos_utf16 = compileFile(posSpecialDir, "utf16encoded", explicitUTF16)
 
   @Test def new_all = compileFiles(newDir, twice)
-  @Test def repl_all = replFiles(replDir)
 
   @Test def neg_all = compileFiles(negDir, verbose = true, compileSubDirs = false)
   @Test def neg_typedIdents() = compileDir(negDir, "typedIdents")
@@ -204,18 +202,6 @@ class tests extends CompilerTest {
   @Test def run_all = runFiles(runDir)
 
   private val stdlibFiles: List[String] = StdLibSources.whitelisted
-
-  @Test def checkWBLists = {
-    val stdlibFilesBlackListed = StdLibSources.blacklisted
-
-    val duplicates = stdlibFilesBlackListed.groupBy(x => x).filter(_._2.size > 1).filter(_._2.size > 1)
-    val msg = duplicates.map(x => s"'${x._1}' appears ${x._2.size} times").mkString(s"Duplicate entries in ${StdLibSources.blacklistFile}:\n", "\n", "\n")
-    assertTrue(msg, duplicates.isEmpty)
-
-    val filesNotInStdLib = stdlibFilesBlackListed.toSet -- StdLibSources.all
-    val msg2 = filesNotInStdLib.map(x => s"'$x'").mkString(s"Entries in ${StdLibSources.blacklistFile} where not found:\n", "\n", "\n")
-    assertTrue(msg2, filesNotInStdLib.isEmpty)
-  }
 
   @Test def compileStdLib = compileList("compileStdLib", stdlibFiles, "-migration" :: "-Yno-inline" :: scala2mode)
   @Test def compileMixed = compileLine(

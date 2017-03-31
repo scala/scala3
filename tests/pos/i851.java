@@ -5,4 +5,4 @@ interface J<T> extends I<T> {
     };
 }
 
-class C<T> extends J<T> {}
+class C<T> implements J<T> {}
