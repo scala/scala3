@@ -526,11 +526,11 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
       case Function(args, body) =>
         this(this(x, args), body)
       case InfixOp(left, op, right) =>
-        this(this(x, left), right)
+        this(this(this(x, left), op), right)
       case PostfixOp(od, op) =>
-        this(x, od)
+        this(this(x, od), op)
       case PrefixOp(op, od) =>
-        this(x, od)
+        this(this(x, op), od)
       case Parens(t) =>
         this(x, t)
       case Tuple(trees) =>
