@@ -149,7 +149,7 @@ class SyntheticMethods(thisTransformer: DenotTransformer) {
      *  gets the hashCode method:
      *
      *    def hashCode: Int = {
-     *      <synthetic> var acc: Int = productPrefix.hashCode()
+     *      <synthetic> var acc: Int = "C".hashCode // constant folded
      *      acc = Statics.mix(acc, x);
      *      acc = Statics.mix(acc, Statics.this.anyHash(y));
      *      Statics.finalizeHash(acc, 2)
@@ -157,7 +157,7 @@ class SyntheticMethods(thisTransformer: DenotTransformer) {
      */
     def caseHashCodeBody(implicit ctx: Context): Tree = {
       val acc = ctx.newSymbol(ctx.owner, "acc".toTermName, Mutable | Synthetic, defn.IntType, coord = ctx.owner.pos)
-      val accDef = ValDef(acc, This(clazz).select(defn.Product_productPrefix).select(defn.Any_hashCode).ensureApplied)
+      val accDef = ValDef(acc, Literal(Constant(clazz.name.toString.hashCode)))
       val mixes = for (accessor <- accessors.toList) yield
         Assign(ref(acc), ref(defn.staticsMethod("mix")).appliedTo(ref(acc), hashImpl(accessor)))
       val finish = ref(defn.staticsMethod("finalizeHash")).appliedTo(ref(acc), Literal(Constant(accessors.size)))
