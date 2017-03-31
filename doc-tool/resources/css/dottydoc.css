@@ -12,7 +12,7 @@ body {
 
 div#content-wrapper {
     min-height: 100vh;
-    padding-left: 300px;
+    padding-left: 250px;
     -webkit-transition: all .25s ease-out;
          -o-transition: all .25s ease-out;
             transition: all .25s ease-out;
@@ -27,13 +27,13 @@ div.index-wrapper {
     position: fixed;
     top: 0;
     left: 0;
-    width: 300px;
+    width: 250px;
     height: 100%;
     overflow-y: auto;
     overflow-x: hidden;
 }
 
-@media screen and (max-width: 767px) {
+@media screen and (max-width: 575px) {
 
     div#content-wrapper {
         padding-left: 0;
@@ -48,12 +48,39 @@ div.index-wrapper {
     }
 
     div.index-wrapper {
-        top: 0;
         width: 60%;
     }
 
     div#content-wrapper.toggled div#content-body {
         left: 60%;
+    }
+
+    div#content-wrapper.toggled div.index-wrapper {
+        left: 0;
+    }
+
+}
+
+@media screen and (min-width: 576px) and (max-width: 767px) {
+
+    div#content-wrapper {
+        padding-left: 0;
+    }
+
+    div#content-body {
+        position: relative;
+        left: 0;
+        -webkit-transition: all .25s ease-out;
+             -o-transition: all .25s ease-out;
+                transition: all .25s ease-out;
+    }
+
+    div.index-wrapper {
+        width: 250px;
+    }
+
+    div#content-wrapper.toggled div#content-body {
+        left: 250px;
     }
 
     div#content-wrapper.toggled div.index-wrapper {
