@@ -18,7 +18,7 @@ div#content-wrapper {
 div#content-wrapper div#content-body {
     background-color: #f4f3f4;
     border-left: 1px solid #e0e0e0;
-    box-shadow: -3px 0 5px -2px rgba(0,0,0,0.14);
+    box-shadow: -3px 0 5px -2px rgba(0, 0, 0, 0.14);
     padding: 1px 1px 1px 30px;
     position: relative;
     min-height: 100vh;
@@ -78,7 +78,7 @@ div#content-wrapper.toggled div.index-wrapper {}
 }
 
 div#content-wrapper button#menu-toggle {
-    background: rgba(250,250,250,0.4) none;
+    background: rgba(250, 250, 250, 0.4) none;
     border: 1px solid transparent;
     color: #837f84;
     margin: 2px 0 0 -28px;
@@ -87,7 +87,7 @@ div#content-wrapper button#menu-toggle {
 }
 
 div#content-wrapper button#menu-toggle:hover {
-    color: rgba(0,0,0,0.4);
+    color: rgba(0, 0, 0, 0.4);
     cursor: pointer;
 }
 
@@ -318,7 +318,7 @@ ul.index-entities > li > a.entity-name {
     font-size: 13px;
     display: block;
     padding: 0 0 0 24px;
-    color: rgba(0,0,0,.87);
+    color: rgba(0, 0, 0, 0.87);
     background: transparent;
     cursor: pointer;
     float: left;
@@ -368,7 +368,7 @@ ul.toc > li > ul.hide {
 ul.index-entities > li.index-title > span {
     font-size: 16px;
     font-weight: bold;
-    color: rgba(0,0,0,.87);
+    color: rgba(0, 0, 0, 0.87);
     padding: 0 24px;
 }
 
@@ -442,7 +442,7 @@ pre {
     background: rgba(244, 243, 244, 0.6);
     border-radius: 2px;
     margin-top: 20px;
-    border: 1px solid rgba(0,0,0,0.1);
+    border: 1px solid rgba(0, 0, 0, 0.1);
 }
 
 pre > code.language-none,
