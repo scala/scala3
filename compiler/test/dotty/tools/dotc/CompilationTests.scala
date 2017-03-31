@@ -165,14 +165,6 @@ class CompilationTests extends ParallelSummaryReport with ParallelTesting {
   @Test def runAll: Unit =
     compileFilesInDir("../tests/run", defaultOptions).checkRuns()
 
-  // Link tests -----------------------------------------------------------------
-
-  @Test def linkDCEAll: Unit =
-    compileFilesInDir("../tests/link-dce", linkDCE).checkRuns()
-
-  @Test def linkAggressiveDCEAll: Unit =
-    compileFilesInDir("../tests/link-dce", linkAggressiveDCE).checkRuns()
-
   // Pickling Tests ------------------------------------------------------------
   //
   // Pickling tests are very memory intensive and as such need to be run with a
@@ -253,6 +245,18 @@ class CompilationTests extends ParallelSummaryReport with ParallelTesting {
       } :: Nil
     }.map(_.checkCompile()).foreach(_.delete())
   }
+
+
+  // Link tests -----------------------------------------------------------------
+
+  @Test def linkDCEAll: Unit = {
+    def linkDCETests = compileFilesInDir("../tests/link-dce", linkDCE)
+    def linkAggressiveDCETests = compileFilesInDir("../tests/link-dce", linkAggressiveDCE)
+
+    (linkDCETests + linkAggressiveDCETests).keepOutput.checkRuns()
+  }
+
+
 }
 
 object CompilationTests {
