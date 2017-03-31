@@ -25,10 +25,16 @@ extends Reporter with UniqueMessagePositions with HideNonSensicalMessages with M
   protected final val _messageBuf = mutable.ArrayBuffer.empty[String]
 
   final def flushToFile(): Unit =
-    _messageBuf.iterator.foreach(filePrintln)
+    _messageBuf
+      .iterator
+      .map(_.replaceAll("\u001b\\[.*?m", ""))
+      .foreach(filePrintln)
 
   final def flushToStdErr(): Unit =
-    _messageBuf.iterator.foreach(System.err.println)
+    _messageBuf
+      .iterator
+      .map(_.replaceAll("\u001b\\[.*?m", ""))
+      .foreach(System.err.println)
 
   final def inlineInfo(pos: SourcePosition): String =
     if (pos.exists) {
@@ -75,10 +81,11 @@ extends Reporter with UniqueMessagePositions with HideNonSensicalMessages with M
 }
 
 object TestReporter {
-  private[this] val logWriter = {
+  private[this] lazy val logWriter = {
     val df = new SimpleDateFormat("yyyy-MM-dd-HH:mm")
     val timestamp = df.format(new Date)
-    new PrintWriter(new FileOutputStream(new JFile(s"../tests-$timestamp.log"), true))
+    new JFile("../testlogs").mkdirs()
+    new PrintWriter(new FileOutputStream(new JFile(s"../testlogs/tests-$timestamp.log"), true))
   }
 
   def writeToLog(str: String) = {

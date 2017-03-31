@@ -51,6 +51,16 @@ trait ParallelTesting { self =>
     def outDir: JFile
     def flags: Array[String]
 
+
+    def title: String = self match {
+      case self: JointCompilationSource =>
+        if (self.files.length > 1) name
+        else self.files.head.getPath
+
+      case self: SeparateCompilationSource =>
+        self.dir.getPath
+    }
+
     /** Adds the flags specified in `newFlags0` if they do not already exist */
     def withFlags(newFlags0: String*) = {
       val newFlags = newFlags0.toArray
@@ -69,7 +79,11 @@ trait ParallelTesting { self =>
       val maxLen = 80
       var lineLen = 0
 
-      sb.append(s"\n\nTest compiled with $errors error(s) and $warnings warning(s), the test can be reproduced by running:")
+      sb.append(
+        s"""|
+            |Test '$title' compiled with $errors error(s) and $warnings warning(s),
+            |the test can be reproduced by running:""".stripMargin
+      )
       sb.append("\n\n./bin/dotc ")
       flags.foreach { arg =>
         if (lineLen > maxLen) {
@@ -447,6 +461,7 @@ trait ParallelTesting { self =>
     private def verifyOutput(checkFile: JFile, dir: JFile, testSource: TestSource, warnings: Int) = {
       val outputLines = runMain(dir, testSource)
       val checkLines = Source.fromFile(checkFile).getLines.toArray
+      val sourceTitle = testSource.title
 
       def linesMatch =
         outputLines
@@ -458,7 +473,11 @@ trait ParallelTesting { self =>
         val diff = outputLines.zip(checkLines).map { case (act, exp) =>
           DiffUtil.mkColoredLineDiff(exp, act)
         }.mkString("\n")
-        val msg = s"\nOutput from run test '$checkFile' did not match expected, output:\n$diff\n"
+
+        val msg =
+          s"""|Output from '$sourceTitle' did not match check file.
+              |Diff ('e' is expected, 'a' is actual):
+              |""".stripMargin + diff + "\n"
         echo(msg)
         addFailureInstruction(msg)
 
