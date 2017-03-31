@@ -250,6 +250,7 @@ object NameKinds {
   val AvoidClashName = new SuffixNameKind(AVOIDCLASH, "$_avoid_name_clash_$")
   val DirectName = new SuffixNameKind(DIRECT, "$direct")
   val FieldName = new SuffixNameKind(FIELD, "$$local")
+  val ModuleVarName = new SuffixNameKind(OBJECTVAR, "$module")
   val ModuleClassName = new SuffixNameKind(OBJECTCLASS, "$", optInfoString = "ModuleClass")
 
   object SignedName extends NameKind(63) {

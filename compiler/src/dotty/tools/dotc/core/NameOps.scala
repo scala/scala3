@@ -57,15 +57,13 @@ object NameOps {
 
     def isConstructorName = name == CONSTRUCTOR || name == TRAIT_CONSTRUCTOR
     def isStaticConstructorName = name == STATIC_CONSTRUCTOR
-    def isImplClassName = name endsWith IMPL_CLASS_SUFFIX
     def isLocalDummyName = name startsWith LOCALDUMMY_PREFIX
     def isReplWrapperName = name.toSimpleName containsSlice INTERPRETER_IMPORT_WRAPPER
     def isSetterName = name endsWith SETTER_SUFFIX
     def isImportName = name startsWith IMPORT
     def isScala2LocalSuffix = name.endsWith(" ")
-    def isModuleVarName(name: Name): Boolean =
-      name.stripAnonNumberSuffix endsWith MODULE_VAR_SUFFIX
-    def isSelectorName = name.startsWith(" ") && name.tail.forall(_.isDigit)
+    def isModuleVarName(name: Name): Boolean = name.exclude(UniqueName).is(ModuleVarName)
+    def isSelectorName = name.startsWith("_") && name.tail.forall(_.isDigit)
     def isOuterSelect = name.endsWith(nme.OUTER_SELECT)
 
     /** Is name a variable name? */
@@ -84,21 +82,6 @@ object NameOps {
         name.length > 0 && name.last == '=' && name.head != '=' && isOperatorPart(name.head)
       case _ =>
         false
-    }
-
-    /** If the name ends with $nn where nn are
-      * all digits, strip the $ and the digits.
-      * Otherwise return the argument.
-      */
-    def stripAnonNumberSuffix: Name = {
-      var pos = name.length
-      while (pos > 0 && name(pos - 1).isDigit)
-        pos -= 1
-
-      if (pos > 0 && pos < name.length && name(pos - 1) == '$')
-        name take (pos - 1)
-      else
-        name
     }
 
     /** Convert this module name to corresponding module class name */
@@ -377,9 +360,6 @@ object NameOps {
 
     def stripScala2LocalSuffix: TermName =
       if (name.isScala2LocalSuffix) name.init.asTermName else name
-
-    def moduleVarName: TermName =
-      name ++ MODULE_VAR_SUFFIX
 
     /** The name unary_x for a prefix operator x */
     def toUnaryName: TermName = name match {

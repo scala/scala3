@@ -117,7 +117,6 @@ object StdNames {
     val INTERPRETER_WRAPPER_SUFFIX: N = "$object"
     val LOCALDUMMY_PREFIX: N          = "<local "       // owner of local blocks
     val MODULE_SUFFIX: N              = NameTransformer.MODULE_SUFFIX_STRING
-    val MODULE_VAR_SUFFIX: N          = "$module"
     val NAME_JOIN: N                  = NameTransformer.NAME_JOIN_STRING
     val OPS_PACKAGE: N                = "<special-ops>"
     val OVERLOADED: N                 = "<overloaded>"

@@ -238,6 +238,7 @@ object TastyFormat {
   final val DIRECT = 31
   final val FIELD = 32
   final val SETTER = 33
+  final val OBJECTVAR = 39
   final val OBJECTCLASS = 40
 
   final val SIGNED = 63
