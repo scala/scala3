@@ -223,8 +223,8 @@ object TastyFormat {
   final val UTF8 = 1
   final val QUALIFIED = 2
   final val FLATTENED = 3
-  final val EXPANDPREFIX = 5
   final val EXPANDED = 4
+  final val EXPANDPREFIX = 5
   final val TRAITSETTER = 6
   final val UNIQUE = 10
   final val DEFAULTGETTER = 11

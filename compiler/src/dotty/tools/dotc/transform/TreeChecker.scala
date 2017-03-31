@@ -403,7 +403,8 @@ class TreeChecker extends Phase with SymTransformer {
     override def typedDefDef(ddef: untpd.DefDef, sym: Symbol)(implicit ctx: Context) =
       withDefinedSyms(ddef.tparams) {
         withDefinedSymss(ddef.vparamss) {
-          if (!sym.isClassConstructor && !(sym.name eq Names.STATIC_CONSTRUCTOR)) assert(isValidJVMMethodName(sym.name), s"${sym.fullName} name is invalid on jvm")
+          if (!sym.isClassConstructor && !(sym.name eq Names.STATIC_CONSTRUCTOR))
+            assert(isValidJVMMethodName(sym.name), s"${sym.name.debugString} name is invalid on jvm")
 
           ddef.vparamss.foreach(_.foreach { vparam =>
             assert(vparam.symbol.is(Param),

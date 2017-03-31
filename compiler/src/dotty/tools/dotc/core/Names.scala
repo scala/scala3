@@ -105,6 +105,7 @@ object Names {
     def lastIndexOfSlice(str: String): Int = lastPart.toString.lastIndexOfSlice(str)
     def lastIndexOfSlice(name: Name): Int = lastIndexOfSlice(name.toString)
 
+    override def hashCode = System.identityHashCode(this)
     override def equals(that: Any) = this eq that.asInstanceOf[AnyRef]
   }
 
@@ -196,9 +197,6 @@ object Names {
       thisKind == kind ||
       !thisKind.definesNewName && thisKind.tag > kind.tag && underlying.is(kind)
     }
-
-    override def hashCode = System.identityHashCode(this)
-    override def equals(other: Any) = this eq other.asInstanceOf[AnyRef]
   }
 
   class SimpleTermName(val start: Int, val length: Int, @sharable private[Names] var next: SimpleTermName) extends TermName {
