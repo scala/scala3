@@ -456,7 +456,7 @@ trait ParallelTesting { self =>
       if (outputLines.length != checkLines.length || !linesMatch) {
         // Print diff to files and summary:
         val diff = outputLines.zip(checkLines).map { case (act, exp) =>
-          DiffUtil.mkColoredCodeDiff(exp, act, true)
+          DiffUtil.mkColoredLineDiff(exp, act)
         }.mkString("\n")
         val msg = s"\nOutput from run test '$checkFile' did not match expected, output:\n$diff\n"
         echo(msg)
