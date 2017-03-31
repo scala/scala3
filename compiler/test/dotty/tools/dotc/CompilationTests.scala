@@ -19,7 +19,7 @@ class CompilationTests extends ParallelSummaryReport with ParallelTesting {
   // Positive tests ------------------------------------------------------------
 
   @Test def compilePos: Unit = {
-    compileList("compileStdLib", StdLibSources.whitelisted, scala2Mode.and("-migration", "-Yno-inline")) +
+    compileList("compileStdLib", StdLibSources.whitelisted, stdlibMode) +
     compileFilesInDir("../tests/pos", defaultOptions)
   }.checkCompile()
 
@@ -253,9 +253,17 @@ class CompilationTests extends ParallelSummaryReport with ParallelTesting {
     def linkDCETests = compileFilesInDir("../tests/link-dce", linkDCE)
     def linkAggressiveDCETests = compileFilesInDir("../tests/link-dce", linkAggressiveDCE)
 
-    (linkDCETests + linkAggressiveDCETests).keepOutput.checkRuns()
+    (linkDCETests + linkAggressiveDCETests).checkRuns()
   }
 
+   @Test def linkDCEStdLibAll: Unit = {
+    val testsDir = new JFile("../tests/link-dce-stdlib")
+    val tests = for (test <- testsDir.listFiles() if test.isDirectory) yield {
+      val files = test.listFiles().toList.map(_.getAbsolutePath) ++ StdLibSources.whitelisted
+      compileList(test.getName, files, linkStdlibMode ++ linkDCE)
+    }
+    tests.reduce((a, b) => a + b).limitThreads(4).checkRuns()
+  }
 
 }
 
@@ -321,6 +329,9 @@ object CompilationTests {
   val scala2Mode = defaultOptions ++ Array("-language:Scala2")
   val explicitUTF8 = defaultOptions ++ Array("-encoding", "UTF8")
   val explicitUTF16 = defaultOptions ++ Array("-encoding", "UTF16")
+
+  val stdlibMode  = scala2Mode.and("-migration", "-Yno-inline")
+  val linkStdlibMode = stdlibMode.and("-Ylink-stdlib")
 
   val linkDCEcommon = Array("-link-java-conservative", "-link-vis", "-Ylink-dce-checks", "-Ylog:callGraph") ++ defaultOptions
   val linkDCE = "-link-dce" +: linkDCEcommon
