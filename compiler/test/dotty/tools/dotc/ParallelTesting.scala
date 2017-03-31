@@ -920,9 +920,8 @@ trait ParallelTesting { self =>
   private def compilationTargets(sourceDir: JFile): (List[JFile], List[JFile]) =
     sourceDir.listFiles.foldLeft((List.empty[JFile], List.empty[JFile])) { case ((dirs, files), f) =>
       if (f.isDirectory) (f :: dirs, files)
-      else if (f.getName.endsWith(".check")) (dirs, files)
-      else if (f.getName.endsWith(".flags")) (dirs, files)
-      else (dirs, f :: files)
+      else if (isSourceFile(f)) (dirs, f :: files)
+      else (dirs, files)
     }
 
   /** Gets the name of the calling method via reflection.
