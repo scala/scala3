@@ -164,7 +164,7 @@ object NameKinds {
   val ExpandPrefixName        = new QualifiedNameKind(EXPANDPREFIX, "$")
 
   val ExpandedName = new QualifiedNameKind(EXPANDED, str.EXPAND_SEPARATOR) {
-    private val FalseSuper = "$$super".toTermName
+    private val FalseSuper = termName("$$super")
     private val FalseSuperLength = FalseSuper.length
 
     override def unmangle(name: SimpleTermName): TermName = {
@@ -216,10 +216,10 @@ object NameKinds {
   object DefaultGetterName extends NumberedNameKind(DEFAULTGETTER, "DefaultGetter") {
     def mkString(underlying: TermName, info: ThisInfo) = {
       val prefix = if (underlying.isConstructorName) nme.DEFAULT_GETTER_INIT else underlying
-      prefix.toString + nme.DEFAULT_GETTER + (info.num + 1)
+      prefix.toString + str.DEFAULT_GETTER + (info.num + 1)
     }
 
-    private val dgLen = nme.DEFAULT_GETTER.length
+    private val dgLen = str.DEFAULT_GETTER.length
 
     override def unmangle(name: SimpleTermName): TermName = {
       var i = name.length

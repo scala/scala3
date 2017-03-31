@@ -247,7 +247,8 @@ class ClassfileParser(
   final def objToAny(tp: Type)(implicit ctx: Context) =
     if (tp.isDirectRef(defn.ObjectClass) && !ctx.phase.erasedTypes) defn.AnyType else tp
 
-  private def sigToType(sig: TermName, owner: Symbol = null)(implicit ctx: Context): Type = {
+  private def sigToType(signature: TermName, owner: Symbol = null)(implicit ctx: Context): Type = {
+    val sig = signature.toSimpleName
     var index = 0
     val end = sig.length
     def accept(ch: Char): Unit = {
@@ -655,7 +656,10 @@ class ClassfileParser(
    *  and implicitly current class' superclasses.
    */
   private def enterOwnInnerClasses()(implicit ctx: Context): Unit = {
-    def className(name: Name): Name = name.drop(name.lastIndexOf('.') + 1)
+    def className(name: Name): Name = {
+      val name1 = name.toSimpleName
+      name1.drop(name1.lastIndexOf('.') + 1)
+    }
 
     def enterClassAndModule(entry: InnerClassEntry, file: AbstractFile, jflags: Int) = {
       ctx.base.loaders.enterClassAndModule(
@@ -1003,7 +1007,7 @@ class ClassfileParser(
         val start = starts(index)
         if (in.buf(start).toInt != CONSTANT_CLASS) errorBadTag(start)
         val name = getExternalName(in.getChar(start + 1))
-        if (name(0) == ARRAY_TAG) {
+        if (name.firstPart(0) == ARRAY_TAG) {
           c = sigToType(name)
           values(index) = c
         } else {

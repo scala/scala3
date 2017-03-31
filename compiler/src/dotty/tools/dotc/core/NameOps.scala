@@ -52,24 +52,32 @@ object NameOps {
   implicit class NameDecorator[N <: Name](val name: N) extends AnyVal {
     import nme._
 
+    def testSimple(f: SimpleTermName => Boolean): Boolean = name match {
+      case name: SimpleTermName => f(name)
+      case name: TypeName => name.toTermName.testSimple(f)
+      case _ => false
+    }
+
     def likeTyped(n: PreName): N =
       (if (name.isTermName) n.toTermName else n.toTypeName).asInstanceOf[N]
 
     def isConstructorName = name == CONSTRUCTOR || name == TRAIT_CONSTRUCTOR
     def isStaticConstructorName = name == STATIC_CONSTRUCTOR
     def isLocalDummyName = name startsWith LOCALDUMMY_PREFIX
-    def isReplWrapperName = name.toSimpleName containsSlice INTERPRETER_IMPORT_WRAPPER
+    def isReplWrapperName = name.toString contains str.INTERPRETER_IMPORT_WRAPPER
     def isSetterName = name endsWith SETTER_SUFFIX
-    def isScala2LocalSuffix = name.endsWith(" ")
-    def isSelectorName = name.startsWith("_") && name.tail.forall(_.isDigit)
+    def isScala2LocalSuffix = testSimple(_.endsWith(" "))
+    def isSelectorName = testSimple(n => n.startsWith("_") && n.drop(1).forall(_.isDigit))
 
     /** Is name a variable name? */
-    def isVariableName: Boolean = name.length > 0 && {
-      val first = name.head
-      (((first.isLower && first.isLetter) || first == '_')
-        && (name != false_)
-        && (name != true_)
-        && (name != null_))
+    def isVariableName: Boolean = testSimple { n =>
+      n.length > 0 && {
+        val first = n.head
+        (((first.isLower && first.isLetter) || first == '_')
+          && (n != false_)
+          && (n != true_)
+          && (n != null_))
+      }
     }
 
     def isOpAssignmentName: Boolean = name match {
@@ -91,11 +99,10 @@ object NameOps {
      *  method needs to work on mangled as well as unmangled names because
      *  it is also called from the backend.
      */
-    def stripModuleClassSuffix: Name = name.toTermName match {
-      case n: SimpleTermName if n.endsWith("$") =>
-        name.unmangleClassName.exclude(ModuleClassName)
-      case _ =>
-        name.exclude(ModuleClassName)
+    def stripModuleClassSuffix: N = likeTyped {
+      val name1 =
+        if (name.isSimple && name.endsWith("$")) name.unmangleClassName else name
+      name.exclude(ModuleClassName)
     }
 
     /** If flags is a ModuleClass but not a Package, add module class suffix */
@@ -159,56 +166,13 @@ object NameOps {
       }
     }
 
-    def unmangleClassName: N =
-      if (name.isSimple && name.isTypeName)
-        if (name.endsWith(MODULE_SUFFIX) && !tpnme.falseModuleClassNames.contains(name.asTypeName))
-          likeTyped(name.dropRight(MODULE_SUFFIX.length).moduleClassName)
-        else name
-      else name
-
-    /** Translate a name into a list of simple TypeNames and TermNames.
-     *  In all segments before the last, type/term is determined by whether
-     *  the following separator char is '.' or '#'.  The last segment
-     *  is of the same type as the original name.
-     *
-     *  Examples:
-     *
-     *  package foo {
-     *    object Lorax { object Wog ; class Wog }
-     *    class Lorax  { object Zax ; class Zax }
-     *  }
-     *
-     *  f("foo.Lorax".toTermName)  == List("foo": Term, "Lorax": Term) // object Lorax
-     *  f("foo.Lorax".toTypeName)  == List("foo": Term, "Lorax": Type) // class Lorax
-     *  f("Lorax.Wog".toTermName)  == List("Lorax": Term, "Wog": Term) // object Wog
-     *  f("Lorax.Wog".toTypeName)  == List("Lorax": Term, "Wog": Type) // class Wog
-     *  f("Lorax#Zax".toTermName)  == List("Lorax": Type, "Zax": Term) // object Zax
-     *  f("Lorax#Zax".toTypeName)  == List("Lorax": Type, "Zax": Type) // class Zax
-     *
-     *  Note that in actual scala syntax you cannot refer to object Zax without an
-     *  instance of Lorax, so Lorax#Zax could only mean the type.  One might think
-     *  that Lorax#Zax.type would work, but this is not accepted by the parser.
-     *  For the purposes of referencing that object, the syntax is allowed.
-     */
-    def segments: List[Name] = {
-      def mkName(name: Name, follow: Char): Name =
-        if (follow == '.') name.toTermName else name.toTypeName
-
-      name.indexWhere(ch => ch == '.' || ch == '#') match {
-        case -1 =>
-          if (name.isEmpty) scala.Nil else name :: scala.Nil
-        case idx =>
-          mkName(name take idx, name(idx)) :: (name drop (idx + 1)).segments
-      }
-    }
-
     /** Is a synthetic function name
      *    - N for FunctionN
      *    - N for ImplicitFunctionN
       *   - (-1) otherwise
      */
     def functionArity: Int =
-      functionArityFor(tpnme.Function) max functionArityFor(tpnme.ImplicitFunction)
+      functionArityFor(str.Function) max functionArityFor(str.ImplicitFunction)
 
     /** Is a function name
      *    - FunctionN for N >= 0
@@ -221,7 +185,7 @@ object NameOps {
      *    - ImplicitFunctionN for N >= 0
      *    - false otherwise
      */
-    def isImplicitFunction: Boolean = functionArityFor(tpnme.ImplicitFunction) >= 0
+    def isImplicitFunction: Boolean = functionArityFor(str.ImplicitFunction) >= 0
 
     /** Is a synthetic function name
      *    - FunctionN for N > 22
@@ -229,12 +193,12 @@ object NameOps {
      *    - false otherwise
      */
     def isSyntheticFunction: Boolean = {
-      functionArityFor(tpnme.Function) > MaxImplementedFunctionArity ||
-        functionArityFor(tpnme.ImplicitFunction) >= 0
+      functionArityFor(str.Function) > MaxImplementedFunctionArity ||
+        functionArityFor(str.ImplicitFunction) >= 0
     }
 
     /** Parsed function arity for function with some specific prefix */
-    private def functionArityFor(prefix: Name): Int = {
+    private def functionArityFor(prefix: String): Int = {
       if (name.startsWith(prefix))
         try name.toString.substring(prefix.length).toInt
         catch { case _: NumberFormatException => -1 }
@@ -285,6 +249,13 @@ object NameOps {
     /** If name length exceeds allowable limit, replace part of it by hash */
     def compactified(implicit ctx: Context): TermName = termName(compactify(name.toString))
 
+    def unmangleClassName: N = name.toTermName match {
+      case name: SimpleTermName
+      if name.endsWith(str.MODULE_SUFFIX) && !nme.falseModuleClassNames.contains(name) =>
+        likeTyped(name.dropRight(str.MODULE_SUFFIX.length).moduleClassName)
+      case _ => name
+    }
+
     def unmangle(kind: NameKind): N = likeTyped {
       name rewrite {
         case unmangled: SimpleTermName =>
@@ -306,11 +277,11 @@ object NameOps {
   implicit class TermNameDecorator(val name: TermName) extends AnyVal {
     import nme._
 
-    def setterName: TermName = name.exclude(FieldName) ++ SETTER_SUFFIX
+    def setterName: TermName = name.exclude(FieldName) ++ str.SETTER_SUFFIX
 
     def getterName: TermName =
       name.exclude(FieldName).mapLast(n =>
-        if (n.endsWith(SETTER_SUFFIX)) n.take(n.length - SETTER_SUFFIX.length).asSimpleName
+        if (n.endsWith(SETTER_SUFFIX)) n.take(n.length - str.SETTER_SUFFIX.length).asSimpleName
         else n)
 
     def fieldName: TermName =
@@ -324,7 +295,7 @@ object NameOps {
       else FieldName(name)
 
     def stripScala2LocalSuffix: TermName =
-      if (name.isScala2LocalSuffix) name.init.asTermName else name
+      if (name.isScala2LocalSuffix) name.asSimpleName.dropRight(1) else name
 
     /** The name unary_x for a prefix operator x */
     def toUnaryName: TermName = name match {

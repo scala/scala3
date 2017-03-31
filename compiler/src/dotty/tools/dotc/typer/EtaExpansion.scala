@@ -63,7 +63,7 @@ object EtaExpansion {
       case mt: MethodType =>
         (args, mt.paramNames, mt.paramInfos).zipped map { (arg, name, tp) =>
           if (tp.isInstanceOf[ExprType]) arg
-          else liftArg(defs, arg, if (name contains '$') EmptyTermName else name)
+          else liftArg(defs, arg, if (name.firstPart contains '$') EmptyTermName else name)
         }
       case _ =>
         args map (liftArg(defs, _))

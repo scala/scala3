@@ -88,8 +88,8 @@ object Names {
     /** Replace operator symbols by corresponding \$op_name's. */
     def encode: Name
 
-    def firstPart: TermName
-    def lastPart: TermName
+    def firstPart: SimpleTermName
+    def lastPart: SimpleTermName
 
     /** A more efficient version of concatenation */
     def ++ (other: Name): ThisName = ++ (other.toString)
@@ -204,7 +204,15 @@ object Names {
 
     def apply(n: Int) = chrs(start + n)
 
-    private def contains(ch: Char): Boolean = {
+    def exists(p: Char => Boolean): Boolean = {
+      var i = 0
+      while (i < length && !p(chrs(start + i))) i += 1
+      i < length
+    }
+
+    def forall(p: Char => Boolean) = !exists(!p(_))
+
+    def contains(ch: Char): Boolean = {
       var i = 0
       while (i < length && chrs(start + i) != ch) i += 1
       i < length
@@ -224,6 +232,12 @@ object Names {
       i > str.length
     }
 
+    def lastIndexOf(ch: Char, start: Int = length - 1): Int = {
+      var i = start
+      while (i >= 0 && apply(i) != ch) i -= 1
+      i
+    }
+
     override def replace(from: Char, to: Char): SimpleTermName = {
       val cs = new Array[Char](length)
       Array.copy(chrs, start, cs, 0, length)
@@ -233,6 +247,19 @@ object Names {
       termName(cs, 0, length)
     }
 
+    def slice(from: Int, until: Int): SimpleTermName = {
+      assert(0 <= from && from <= until && until <= length)
+      termName(chrs, start + from, until - from)
+    }
+
+    def drop(n: Int) = slice(n, length)
+    def take(n: Int) = slice(0, n)
+    def dropRight(n: Int) = slice(0, length - n)
+    def takeRight(n: Int) = slice(length - n, length)
+
+    def head = apply(0)
+    def last = apply(length - 1)
+
     def isSimple = true
     def asSimpleName = this
     def toSimpleName = this
@@ -241,12 +268,6 @@ object Names {
     def collect[T](f: PartialFunction[Name, T]): Option[T] = f.lift(this)
     def mapLast(f: SimpleTermName => SimpleTermName) = f(this)
     def mapParts(f: SimpleTermName => SimpleTermName) = f(this)
-
-    /*def exists(p: Char => Boolean): Boolean = {
-      var i = 0
-      while (i < length && !p(chrs(start + i))) i += 1
-      i < length
-    }*/
 
     def encode: SimpleTermName =
       if (dontEncode(toTermName)) this else NameTransformer.encode(this)
@@ -489,24 +510,6 @@ object Names {
   val REFINEMENT: TermName = termName("<refinement>")
 
   val dontEncode = Set(CONSTRUCTOR, EMPTY_PACKAGE, REFINEMENT)
-
-  def termNameBuilder: Builder[Char, TermName] =
-    StringBuilder.newBuilder.mapResult(termName)
-
-  def typeNameBuilder: Builder[Char, TypeName] =
-    StringBuilder.newBuilder.mapResult(termName(_).toTypeName)
-
-  implicit class nameToSeq(val name: Name) extends IndexedSeqOptimized[Char, Name] {
-    def length = name.asSimpleName.length
-    def apply(n: Int) = name.asSimpleName.apply(n)
-    override protected[this] def newBuilder: Builder[Char, Name] =
-      if (name.isTypeName) typeNameBuilder else termNameBuilder
-
-    def seq: WrappedString = new WrappedString(name.toString)
-    override protected[this] def thisCollection: WrappedString = seq
-    def indexOfSlice(name: Name): Int = indexOfSlice(name.toString)
-    def containsSlice(name: Name): Boolean = containsSlice(name.toString)
-  }
 
   implicit val NameOrdering: Ordering[Name] = new Ordering[Name] {
     private def compareInfos(x: NameInfo, y: NameInfo): Int =

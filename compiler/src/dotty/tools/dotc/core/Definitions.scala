@@ -119,7 +119,7 @@ class Definitions {
             enterTypeParam(cls, name ++ "$T" ++ i.toString, Contravariant, decls)
         val resParam = enterTypeParam(cls, name ++ "$R", Covariant, decls)
         val (methodType, parentTraits) =
-          if (name.startsWith(tpnme.ImplicitFunction)) {
+          if (name.startsWith(str.ImplicitFunction)) {
             val superTrait =
               FunctionType(arity).appliedTo(argParams.map(_.typeRef) ::: resParam.typeRef :: Nil)
             (ImplicitMethodType, ctx.normalizeToClassRefs(superTrait :: Nil, cls, decls))
@@ -723,12 +723,11 @@ class Definitions {
   /** If type `ref` refers to a class in the scala package, its name, otherwise EmptyTypeName */
   def scalaClassName(ref: Type)(implicit ctx: Context): TypeName = scalaClassName(ref.classSymbol)
 
-  private def isVarArityClass(cls: Symbol, prefix: Name) = {
-    val name = scalaClassName(cls)
-    name.startsWith(prefix) &&
-    name.length > prefix.length &&
-    name.drop(prefix.length).forall(_.isDigit)
-  }
+  private def isVarArityClass(cls: Symbol, prefix: String) =
+    scalaClassName(cls).testSimple(name =>
+      name.startsWith(prefix) &&
+      name.length > prefix.length &&
+      name.drop(prefix.length).forall(_.isDigit))
 
   def isBottomClass(cls: Symbol) =
     cls == NothingClass || cls == NullClass
@@ -758,9 +757,9 @@ class Definitions {
    */
   def isSyntheticFunctionClass(cls: Symbol) = scalaClassName(cls).isSyntheticFunction
 
-  def isAbstractFunctionClass(cls: Symbol) = isVarArityClass(cls, tpnme.AbstractFunction)
-  def isTupleClass(cls: Symbol) = isVarArityClass(cls, tpnme.Tuple)
-  def isProductClass(cls: Symbol) = isVarArityClass(cls, tpnme.Product)
+  def isAbstractFunctionClass(cls: Symbol) = isVarArityClass(cls, str.AbstractFunction)
+  def isTupleClass(cls: Symbol) = isVarArityClass(cls, str.Tuple)
+  def isProductClass(cls: Symbol) = isVarArityClass(cls, str.Product)
 
   /** Returns the erased class of the function class `cls`
    *    - FunctionN for N > 22 becomes FunctionXXL

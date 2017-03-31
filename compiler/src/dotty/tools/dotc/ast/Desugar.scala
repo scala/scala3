@@ -403,7 +403,7 @@ object desugar {
 
     def anyRef = ref(defn.AnyRefAlias.typeRef)
     def productConstr(n: Int) = {
-      val tycon = scalaDot((tpnme.Product.toString + n).toTypeName)
+      val tycon = scalaDot((str.Product + n).toTypeName)
       val targs = constrVparamss.head map (_.tpt)
       if (targs.isEmpty) tycon else AppliedTypeTree(tycon, targs)
     }

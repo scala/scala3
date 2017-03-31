@@ -156,8 +156,9 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         //  one version of the annotation tree that has the correct positions).
         withoutPos(super.toText(tp))
       case tp: SelectionProto =>
-        return "?{ " ~ toText(tp.name) ~ (" " provided !tp.name.decode.last.isLetterOrDigit) ~
-          ": " ~ toText(tp.memberProto) ~ " }"
+        return "?{ " ~ toText(tp.name) ~
+           (" " provided !tp.name.toSimpleName.decode.last.isLetterOrDigit) ~
+           ": " ~ toText(tp.memberProto) ~ " }"
       case tp: ViewProto =>
         return toText(tp.argType) ~ " ?=>? " ~ toText(tp.resultType)
       case tp @ FunProto(args, resultType, _) =>

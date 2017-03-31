@@ -16,12 +16,26 @@ object StdNames {
 /** Base strings from which synthetic names are derived. */
 
   object str {
-    val EXPAND_SEPARATOR         = "$$"
-    val TRAIT_SETTER_SEPARATOR   = "$_setter_$"
-    val SUPER_PREFIX             = "super$"
-    val INITIALIZER_PREFIX       = "initial$"
-    val SHADOWED_PREFIX          = "(shadowed)"
-    val AVOID_CLASH_SUFFIX       = "$_avoid_name_clash_$"
+    final val SETTER_SUFFIX            = "_$eq"
+    final val EXPAND_SEPARATOR         = "$$"
+    final val TRAIT_SETTER_SEPARATOR   = "$_setter_$"
+    final val SUPER_PREFIX             = "super$"
+    final val INITIALIZER_PREFIX       = "initial$"
+    final val SHADOWED_PREFIX          = "(shadowed)"
+    final val AVOID_CLASH_SUFFIX       = "$_avoid_name_clash_$"
+    final val MODULE_SUFFIX            = NameTransformer.MODULE_SUFFIX_STRING
+    final val DEFAULT_GETTER           = "$default$"
+
+    final val INTERPRETER_IMPORT_WRAPPER = "$iw"
+    final val INTERPRETER_LINE_PREFIX    = "line"
+    final val INTERPRETER_VAR_PREFIX     = "res"
+    final val INTERPRETER_WRAPPER_SUFFIX = "$object"
+
+    final val Function                   = "Function"
+    final val ImplicitFunction           = "ImplicitFunction"
+    final val AbstractFunction           = "AbstractFunction"
+    final val Tuple                      = "Tuple"
+    final val Product                    = "Product"
 
     def sanitize(str: String) = str.replaceAll("""[<>]""", """\$""")
   }
@@ -102,7 +116,7 @@ object StdNames {
     val BITMAP_TRANSIENT: N           = BITMAP_PREFIX + "trans$"    // initialization bitmap for transient lazy vals
     val BITMAP_CHECKINIT: N           = BITMAP_PREFIX + "init$"      // initialization bitmap for checkinit values
     val BITMAP_CHECKINIT_TRANSIENT: N = BITMAP_PREFIX + "inittrans$" // initialization bitmap for transient checkinit values
-    val DEFAULT_GETTER: N             = "$default$"
+    val DEFAULT_GETTER: N             = str.DEFAULT_GETTER
     val DEFAULT_GETTER_INIT: N        = "$lessinit$greater"
     val DO_WHILE_PREFIX: N            = "doWhile$"
     val EMPTY: N                      = ""
@@ -111,10 +125,6 @@ object StdNames {
     val EXPAND_SEPARATOR: N           = str.EXPAND_SEPARATOR
     val IMPL_CLASS_SUFFIX: N          = "$class"
     val IMPORT: N                     = "<import>"
-    val INTERPRETER_IMPORT_WRAPPER: N = "$iw"
-    val INTERPRETER_LINE_PREFIX: N    = "line"
-    val INTERPRETER_VAR_PREFIX: N     = "res"
-    val INTERPRETER_WRAPPER_SUFFIX: N = "$object"
     val LOCALDUMMY_PREFIX: N          = "<local "       // owner of local blocks
     val MODULE_SUFFIX: N              = NameTransformer.MODULE_SUFFIX_STRING
     val NAME_JOIN: N                  = NameTransformer.NAME_JOIN_STRING
@@ -177,23 +187,18 @@ object StdNames {
     final val REIFY_TREECREATOR_PREFIX: N       = "$treecreator"
     final val REIFY_TYPECREATOR_PREFIX: N       = "$typecreator"
 
-    final val AbstractFunction: N    = "AbstractFunction"
     final val Any: N                 = "Any"
     final val AnyVal: N              = "AnyVal"
     final val ExprApi: N             = "ExprApi"
-    final val Function: N            = "Function"
-    final val ImplicitFunction: N    = "ImplicitFunction"
     final val Mirror: N              = "Mirror"
     final val Nothing: N             = "Nothing"
     final val Null: N                = "Null"
     final val Object: N              = "Object"
     final val PartialFunction: N     = "PartialFunction"
     final val PrefixType: N          = "PrefixType"
-    final val Product: N             = "Product"
     final val Serializable: N        = "Serializable"
     final val Singleton: N           = "Singleton"
     final val Throwable: N           = "Throwable"
-    final val Tuple: N               = "Tuple"
 
     final val ClassfileAnnotation: N = "ClassfileAnnotation"
     final val ClassManifest: N       = "ClassManifest"

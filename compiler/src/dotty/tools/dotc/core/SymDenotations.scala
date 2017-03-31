@@ -407,7 +407,7 @@ object SymDenotations {
           // duplicate scalac's behavior: don't write a double '$$' for module class members.
           prefix = prefix.exclude(ModuleClassName)
         def qualify(n: SimpleTermName) =
-          kind(prefix.toTermName, if (filler.isEmpty) n else termName(filler ++ n))
+          kind(prefix.toTermName, if (filler.isEmpty) n else termName(filler + n))
         val fn = name rewrite {
           case name: SimpleTermName => qualify(name)
           case name @ AnyQualifiedName(_, _) => qualify(name.toSimpleName)

@@ -403,7 +403,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
           def missingArg(n: Int): Unit = {
             val pname = methodType.paramNames(n)
             fail(
-              if (pname contains '$') s"not enough arguments for $methString"
+              if (pname.firstPart contains '$') s"not enough arguments for $methString"
               else s"missing argument for parameter $pname of $methString")
           }
 
@@ -719,7 +719,8 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
       val lhs1 = typedExpr(lhs)
       val liftedDefs = new mutable.ListBuffer[Tree]
       val lhs2 = untpd.TypedSplice(liftAssigned(liftedDefs, lhs1))
-      val assign = untpd.Assign(lhs2, untpd.Apply(untpd.Select(lhs2, name.init), rhss))
+      val assign = untpd.Assign(lhs2,
+          untpd.Apply(untpd.Select(lhs2, name.asSimpleName.dropRight(1)), rhss))
       wrapDefs(liftedDefs, typed(assign))
     }
 
