@@ -71,8 +71,10 @@ object Names {
     def mapLast(f: SimpleTermName => SimpleTermName): ThisName
     def mapParts(f: SimpleTermName => SimpleTermName): ThisName
 
-    /** A name of the same kind as this name and with same characters as given `name` */
-    def likeKinded(name: Name): ThisName
+    /** A name in the same (term or type) namespace as this name and
+     *  with same characters as given `name`.
+     */
+    def likeSpaced(name: Name): ThisName
 
     def derived(info: NameInfo): ThisName
     def derived(kind: ClassifiedNameKind): ThisName = derived(kind.info)
@@ -129,7 +131,7 @@ object Names {
       _typeName
     }
 
-    def likeKinded(name: Name): TermName = name.toTermName
+    def likeSpaced(name: Name): TermName = name.toTermName
 
     def info: NameInfo = SimpleTermNameKind.info
     def underlying: TermName = unsupported("underlying")
@@ -264,7 +266,7 @@ object Names {
     def asSimpleName = this
     def toSimpleName = this
     def rewrite(f: PartialFunction[Name, Name]): ThisName =
-      if (f.isDefinedAt(this)) likeKinded(f(this)) else this
+      if (f.isDefinedAt(this)) likeSpaced(f(this)) else this
     def collect[T](f: PartialFunction[Name, T]): Option[T] = f.lift(this)
     def mapLast(f: SimpleTermName => SimpleTermName) = f(this)
     def mapParts(f: SimpleTermName => SimpleTermName) = f(this)
@@ -311,7 +313,7 @@ object Names {
     def mapLast(f: SimpleTermName => SimpleTermName) = toTermName.mapLast(f).toTypeName
     def mapParts(f: SimpleTermName => SimpleTermName) = toTermName.mapParts(f).toTypeName
 
-    def likeKinded(name: Name): TypeName = name.toTypeName
+    def likeSpaced(name: Name): TypeName = name.toTypeName
 
     def derived(info: NameInfo): TypeName = toTermName.derived(info).toTypeName
     def exclude(kind: NameKind): TypeName = toTermName.exclude(kind).toTypeName
@@ -342,7 +344,7 @@ object Names {
     def toSimpleName = termName(toString)
 
     def rewrite(f: PartialFunction[Name, Name]): ThisName =
-      if (f.isDefinedAt(this)) likeKinded(f(this))
+      if (f.isDefinedAt(this)) likeSpaced(f(this))
       else info match {
         case qual: QualifiedInfo => this
         case _ => underlying.rewrite(f).derived(info)

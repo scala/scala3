@@ -58,7 +58,7 @@ object NameOps {
       case _ => false
     }
 
-    def likeTyped(n: PreName): N =
+    def likeSpaced(n: PreName): N =
       (if (name.isTermName) n.toTermName else n.toTypeName).asInstanceOf[N]
 
     def isConstructorName = name == CONSTRUCTOR || name == TRAIT_CONSTRUCTOR
@@ -99,14 +99,14 @@ object NameOps {
      *  method needs to work on mangled as well as unmangled names because
      *  it is also called from the backend.
      */
-    def stripModuleClassSuffix: N = likeTyped {
+    def stripModuleClassSuffix: N = likeSpaced {
       val name1 =
         if (name.isSimple && name.endsWith("$")) name.unmangleClassName else name
       name.exclude(ModuleClassName)
     }
 
     /** If flags is a ModuleClass but not a Package, add module class suffix */
-    def adjustIfModuleClass(flags: Flags.FlagSet): N = likeTyped {
+    def adjustIfModuleClass(flags: Flags.FlagSet): N = likeSpaced {
       if (flags is (ModuleClass, butNot = Package)) name.asTypeName.moduleClassName
       else name.toTermName.exclude(AvoidClashName)
     }
@@ -114,24 +114,18 @@ object NameOps {
     def expandedName(base: Symbol, kind: QualifiedNameKind = ExpandedName)(implicit ctx: Context): N = {
       val prefix =
         if (base.name.is(ExpandedName)) base.name else base.fullNameSeparated(ExpandPrefixName)
-      likeTyped { kind(prefix.toTermName, name.toTermName) }
+      likeSpaced { kind(prefix.toTermName, name.toTermName) }
     }
 
     /** Revert the expanded name. */
-    def unexpandedName: N = likeTyped {
+    def unexpandedName: N = likeSpaced {
       name.rewrite { case ExpandedName(_, unexp) => unexp }
     }
 
-    def implClassName: N = likeTyped(name ++ tpnme.IMPL_CLASS_SUFFIX)
+    def implClassName: N = likeSpaced(name ++ tpnme.IMPL_CLASS_SUFFIX)
 
-    def errorName: N = likeTyped(name ++ nme.ERROR)
+    def errorName: N = likeSpaced(name ++ nme.ERROR)
 
-    def directName: N = likeTyped(name ++ DIRECT_SUFFIX)
-
-    def freshened(implicit ctx: Context): N =
-      likeTyped(
-        if (name.is(ModuleClassName)) name.stripModuleClassSuffix.freshened.moduleClassName
-        else likeTyped(ctx.freshName(name ++ NameTransformer.NAME_JOIN_STRING)))
 /*
     /** Name with variance prefix: `+` for covariant, `-` for contravariant */
     def withVariance(v: Int): N =
@@ -159,7 +153,7 @@ object NameOps {
     }
 
 */
-    def freshened(implicit ctx: Context): N = likeTyped {
+    def freshened(implicit ctx: Context): N = likeSpaced {
       name.toTermName match {
         case ModuleClassName(original) => ModuleClassName(original.freshened)
         case name => UniqueName.fresh(name)
@@ -241,7 +235,7 @@ object NameOps {
       val methodTags: Seq[Name] = (methodTargs zip methodTarsNames).sortBy(_._2).map(x => typeToTag(x._1))
       val classTags: Seq[Name] = (classTargs zip classTargsNames).sortBy(_._2).map(x => typeToTag(x._1))
 
-      name.likeKinded(name ++ nme.specializedTypeNames.prefix ++
+      name.likeSpaced(name ++ nme.specializedTypeNames.prefix ++
         methodTags.fold(nme.EMPTY)(_ ++ _) ++ nme.specializedTypeNames.separator ++
         classTags.fold(nme.EMPTY)(_ ++ _) ++ nme.specializedTypeNames.suffix)
     }
@@ -252,11 +246,11 @@ object NameOps {
     def unmangleClassName: N = name.toTermName match {
       case name: SimpleTermName
       if name.endsWith(str.MODULE_SUFFIX) && !nme.falseModuleClassNames.contains(name) =>
-        likeTyped(name.dropRight(str.MODULE_SUFFIX.length).moduleClassName)
+        likeSpaced(name.dropRight(str.MODULE_SUFFIX.length).moduleClassName)
       case _ => name
     }
 
-    def unmangle(kind: NameKind): N = likeTyped {
+    def unmangle(kind: NameKind): N = likeSpaced {
       name rewrite {
         case unmangled: SimpleTermName =>
           kind.unmangle(unmangled)
