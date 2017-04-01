@@ -247,22 +247,21 @@ class ClassfileParser(
   final def objToAny(tp: Type)(implicit ctx: Context) =
     if (tp.isDirectRef(defn.ObjectClass) && !ctx.phase.erasedTypes) defn.AnyType else tp
 
-  private def sigToType(signature: TermName, owner: Symbol = null)(implicit ctx: Context): Type = {
-    val sig = signature.toSimpleName
+  private def sigToType(sig: SimpleTermName, owner: Symbol = null)(implicit ctx: Context): Type = {
     var index = 0
     val end = sig.length
     def accept(ch: Char): Unit = {
       assert(sig(index) == ch, (sig(index), ch))
       index += 1
     }
-    def subName(isDelimiter: Char => Boolean): TermName = {
+    def subName(isDelimiter: Char => Boolean): SimpleTermName = {
       val start = index
       while (!isDelimiter(sig(index))) { index += 1 }
-      sig.slice(start, index).asTermName
+      sig.slice(start, index)
     }
     // Warning: sigToType contains nested completers which might be forced in a later run!
     // So local methods need their own ctx parameters.
-    def sig2type(tparams: immutable.Map[Name,Symbol], skiptvs: Boolean)(implicit ctx: Context): Type = {
+    def sig2type(tparams: immutable.Map[Name, Symbol], skiptvs: Boolean)(implicit ctx: Context): Type = {
       val tag = sig(index); index += 1
       (tag: @switch) match {
         case BYTE_TAG   => defn.ByteType
@@ -895,7 +894,7 @@ class ClassfileParser(
     private val len = in.nextChar
     private val starts = new Array[Int](len)
     private val values = new Array[AnyRef](len)
-    private val internalized = new Array[TermName](len)
+    private val internalized = new Array[SimpleTermName](len)
 
     { var i = 1
       while (i < starts.length) {
@@ -922,12 +921,12 @@ class ClassfileParser(
     }
 
     /** Return the name found at given index. */
-    def getName(index: Int): TermName = {
+    def getName(index: Int): SimpleTermName = {
       if (index <= 0 || len <= index)
         errorBadIndex(index)
 
       values(index) match {
-        case name: TermName => name
+        case name: SimpleTermName => name
         case null   =>
           val start = starts(index)
           if (in.buf(start).toInt != CONSTANT_UTF8) errorBadTag(start)
@@ -938,12 +937,12 @@ class ClassfileParser(
     }
 
     /** Return the name found at given index in the constant pool, with '/' replaced by '.'. */
-    def getExternalName(index: Int): TermName = {
+    def getExternalName(index: Int): SimpleTermName = {
       if (index <= 0 || len <= index)
         errorBadIndex(index)
 
       if (internalized(index) == null)
-        internalized(index) = getName(index).replace('/', '.').unmangleClassName
+        internalized(index) = getName(index).replace('/', '.')
 
       internalized(index)
     }
@@ -955,9 +954,9 @@ class ClassfileParser(
         val start = starts(index)
         if (in.buf(start).toInt != CONSTANT_CLASS) errorBadTag(start)
         val name = getExternalName(in.getChar(start + 1))
-        if (name.is(ModuleClassName) && (name ne nme.nothingRuntimeClass) && (name ne nme.nullRuntimeClass))
+        if (name.endsWith("$") && (name ne nme.nothingRuntimeClass) && (name ne nme.nullRuntimeClass))
           // Null$ and Nothing$ ARE classes
-          c = ctx.requiredModule(name.sourceModuleName)
+          c = ctx.requiredModule(name.dropRight(1))
         else c = classNameToSymbol(name)
         values(index) = c
       }
@@ -967,7 +966,7 @@ class ClassfileParser(
     /** Return the external name of the class info structure found at 'index'.
      *  Use 'getClassSymbol' if the class is sure to be a top-level class.
      */
-    def getClassName(index: Int): TermName = {
+    def getClassName(index: Int): SimpleTermName = {
       val start = starts(index)
       if (in.buf(start).toInt != CONSTANT_CLASS) errorBadTag(start)
       getExternalName(in.getChar(start + 1))
