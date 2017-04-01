@@ -416,8 +416,8 @@ class TreeUnpickler(reader: TastyReader, nameAtRef: NameRef => TermName, posUnpi
       val tag = readByte()
       val end = readEnd()
       var name: Name = readName()
-      val mname = name.mangled
       if (tag == TYPEDEF || tag == TYPEPARAM) name = name.toTypeName
+      val mname = name.mangled
       skipParams()
       val ttag = nextUnsharedTag
       val isAbsType = isAbstractType(ttag)
