@@ -100,9 +100,9 @@ object NameOps {
      *  it is also called from the backend.
      */
     def stripModuleClassSuffix: N = likeSpaced {
-      val name1 =
+      val semName =
         if (name.isSimple && name.endsWith("$")) name.unmangleClassName else name
-      name.exclude(ModuleClassName)
+      semName.exclude(ModuleClassName)
     }
 
     /** If flags is a ModuleClass but not a Package, add module class suffix */
