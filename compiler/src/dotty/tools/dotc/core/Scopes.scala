@@ -144,6 +144,11 @@ object Scopes {
     final def toText(printer: Printer): Text = printer.toText(this)
 
     def checkConsistent()(implicit ctx: Context) = ()
+
+    /** Hook for transforming a name before it is used in a lookup or creation.
+     *  Used to mangle names in package scopes.
+     */
+    protected def normalize(name: Name): Name = name
   }
 
   /** A subclass of Scope that defines methods for entering and
@@ -155,6 +160,7 @@ object Scopes {
   class MutableScope protected[Scopes](initElems: ScopeEntry, initSize: Int, val nestingLevel: Int = 0)
       extends Scope {
 
+    /** Scope shares elements with `base` */
     protected[Scopes] def this(base: Scope)(implicit ctx: Context) = {
       this(base.lastEntry, base.size, base.nestingLevel + 1)
       ensureCapacity(MinHash)(ctx) // WTH? it seems the implicit is not in scope for a secondary constructor call.
@@ -178,6 +184,8 @@ object Scopes {
      */
     private var elemsCache: List[Symbol] = null
 
+    protected def newScopeLikeThis() = new MutableScope()
+
     /** Clone scope, taking care not to force the denotations of any symbols in the scope.
      */
     def cloneScope(implicit ctx: Context): MutableScope = {
@@ -187,7 +195,7 @@ object Scopes {
         entries += e
         e = e.prev
       }
-      val scope = newScope
+      val scope = newScopeLikeThis()
       for (i <- entries.length - 1 to 0 by -1) {
         val e = entries(i)
         scope.newScopeEntry(e.name, e.sym)
@@ -198,7 +206,7 @@ object Scopes {
     /** create and enter a scope entry with given name and symbol */
     protected def newScopeEntry(name: Name, sym: Symbol)(implicit ctx: Context): ScopeEntry = {
       ensureCapacity(if (hashTable ne null) hashTable.length else MinHash)
-      val e = new ScopeEntry(name, sym, this)
+      val e = new ScopeEntry(normalize(name), sym, this)
       e.prev = lastEntry
       lastEntry = e
       if (hashTable ne null) enterInHash(e)
@@ -234,7 +242,7 @@ object Scopes {
       enter(sym)
     }
 
-    private def ensureCapacity(tableSize: Int)(implicit ctx: Context): Unit =
+    protected def ensureCapacity(tableSize: Int)(implicit ctx: Context): Unit =
       if (size >= tableSize * FillFactor) createHash(tableSize * 2)
 
     private def createHash(tableSize: Int)(implicit ctx: Context): Unit =
@@ -310,15 +318,16 @@ object Scopes {
     /** Lookup a symbol entry matching given name.
      */
     override def lookupEntry(name: Name)(implicit ctx: Context): ScopeEntry = {
+      val normalized = normalize(name)
       var e: ScopeEntry = null
       if (hashTable ne null) {
-        e = hashTable(name.hashCode & (hashTable.length - 1))
-        while ((e ne null) && e.name != name) {
+        e = hashTable(normalized.hashCode & (hashTable.length - 1))
+        while ((e ne null) && e.name != normalized) {
           e = e.tail
         }
       } else {
         e = lastEntry
-        while ((e ne null) && e.name != name) {
+        while ((e ne null) && e.name != normalized) {
           e = e.prev
         }
       }
@@ -394,12 +403,23 @@ object Scopes {
     }
   }
 
-  class PackageScope extends MutableScope {
-    override final def newScopeEntry(name: Name, sym: Symbol)(implicit ctx: Context): ScopeEntry =
-      super.newScopeEntry(name.mangled, sym)
+  /** The scope of a package. This is different from a normal scope
+   *  in that names of scope entries are kept in mangled form.
+   */
+  class PackageScope protected[Scopes](initElems: ScopeEntry, initSize: Int, nestingLevel: Int)
+  extends MutableScope(initElems, initSize, nestingLevel) {
 
-    override final def lookupEntry(name: Name)(implicit ctx: Context): ScopeEntry =
-      super.lookupEntry(name.mangled)
+    /** Scope shares elements with `base` */
+    def this(base: Scope)(implicit ctx: Context) = {
+      this(base.lastEntry, base.size, base.nestingLevel + 1)
+      ensureCapacity(MinHash)(ctx) // WTH? it seems the implicit is not in scope for a secondary constructor call.
+    }
+
+    def this() = this(null, 0, 0)
+
+    override def newScopeLikeThis() = new PackageScope()
+
+    override protected def normalize(name: Name) = name.mangled
   }
 
   /** Create a new scope */

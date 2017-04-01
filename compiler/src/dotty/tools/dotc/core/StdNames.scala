@@ -454,7 +454,6 @@ object StdNames {
     val ne: N                   = "ne"
     val newFreeTerm: N          = "newFreeTerm"
     val newFreeType: N          = "newFreeType"
-    val newNestedSymbol: N      = "newNestedSymbol"
     val newScopeWith: N         = "newScopeWith"
     val next: N                 = "next"
     val nmeNewTermName: N       = "newTermName"

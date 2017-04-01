@@ -148,7 +148,7 @@ class SymbolLoaders {
     override def sourceModule(implicit ctx: Context) = _sourceModule
     def description = "package loader " + classpath.name
 
-    private[core] val currentDecls: MutableScope = newScope
+    private[core] val currentDecls: MutableScope = new PackageScope()
 
     def doComplete(root: SymDenotation)(implicit ctx: Context): Unit = {
       assert(root is PackageClass, root)

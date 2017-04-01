@@ -938,7 +938,7 @@ class Definitions {
   private def makeScalaSpecial()(implicit ctx: Context) = {
     val oldInfo = ScalaPackageClass.classInfo
     val oldDecls = oldInfo.decls
-    val newDecls = new MutableScope(oldDecls) {
+    val newDecls = new PackageScope(oldDecls) {
       override def lookupEntry(name: Name)(implicit ctx: Context): ScopeEntry = {
         val res = super.lookupEntry(name)
         if (res == null && name.isTypeName && name.isSyntheticFunction)
