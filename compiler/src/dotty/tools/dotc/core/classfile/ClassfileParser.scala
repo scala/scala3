@@ -39,7 +39,7 @@ class ClassfileParser(
   protected val staticScope: MutableScope = newScope       // the scope of all static definitions
   protected var pool: ConstantPool = _              // the classfile's constant pool
 
-  protected var currentClassName: Name = _      // JVM name of the current class
+  protected var currentClassName: SimpleTermName = _      // JVM name of the current class
   protected var classTParams = Map[Name,Symbol]()
 
   classRoot.info = (new NoCompleter).withDecls(instanceScope)
@@ -47,8 +47,8 @@ class ClassfileParser(
 
   private def currentIsTopLevel(implicit ctx: Context) = classRoot.owner is Flags.PackageClass
 
-  private def mismatchError(c: Symbol) =
-    throw new IOException(s"class file '${in.file}' has location not matching its contents: contains $c")
+  private def mismatchError(className: SimpleTermName) =
+    throw new IOException(s"class file '${in.file}' has location not matching its contents: contains class $className")
 
   def run()(implicit ctx: Context): Option[Embedded] = try {
     ctx.debuglog("[class] >> " + classRoot.fullName)
@@ -92,15 +92,8 @@ class ClassfileParser(
     val nameIdx      = in.nextChar
     currentClassName = pool.getClassName(nameIdx)
 
-    if (currentIsTopLevel) {
-      val c = pool.getClassSymbol(nameIdx)
-      if (c != classRoot.symbol) {
-        println(currentClassName.debugString) // TODO: remove
-        println(c.name.debugString)
-        println(classRoot.symbol.name.debugString)
-        mismatchError(c)
-      }
-    }
+    if (currentIsTopLevel && currentClassName != classRoot.fullName.toSimpleName)
+      mismatchError(currentClassName)
 
     addEnclosingTParams()
 
