@@ -1207,7 +1207,7 @@ object Denotations {
           }
           recurSimple(path.length, wrap)
       }
-      recur(path.unmangleClassName)
+      recur(path)
     }
 
     /** If we are looking for a non-existing term name in a package,

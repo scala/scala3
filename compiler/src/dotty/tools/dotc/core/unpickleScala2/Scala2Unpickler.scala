@@ -448,15 +448,18 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
       flags = flags &~ Scala2SuperAccessor
     }
 
-    def isClassRoot = (name == classRoot.name) && (owner == classRoot.owner) && !(flags is ModuleClass)
-    def isModuleClassRoot = (name == moduleClassRoot.name) && (owner == moduleClassRoot.owner) && (flags is Module)
-    def isModuleRoot = (name == moduleClassRoot.name.sourceModuleName) && (owner == moduleClassRoot.owner) && (flags is Module)
+    val sname = name.toSimpleName
+    def nameMatches(rootName: Name) = sname == rootName.toSimpleName
+    def isClassRoot = nameMatches(classRoot.name) && (owner == classRoot.owner) && !(flags is ModuleClass)
+    def isModuleClassRoot = nameMatches(moduleClassRoot.name) && (owner == moduleClassRoot.owner) && (flags is Module)
+    def isModuleRoot = nameMatches(moduleClassRoot.name.sourceModuleName) && (owner == moduleClassRoot.owner) && (flags is Module)
 
     //if (isClassRoot) println(s"classRoot of $classRoot found at $readIndex, flags = $flags") // !!! DEBUG
     //if (isModuleRoot) println(s"moduleRoot of $moduleRoot found at $readIndex, flags = $flags") // !!! DEBUG
     //if (isModuleClassRoot) println(s"moduleClassRoot of $moduleClassRoot found at $readIndex, flags = $flags") // !!! DEBUG
 
     def completeRoot(denot: ClassDenotation, completer: LazyType): Symbol = {
+      denot.name = name
       denot.setFlag(flags)
       denot.resetFlag(Touched) // allow one more completion
       denot.info = completer

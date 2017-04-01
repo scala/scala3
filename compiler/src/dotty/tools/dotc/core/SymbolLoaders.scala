@@ -39,7 +39,7 @@ class SymbolLoaders {
   def enterClass(
       owner: Symbol, name: PreName, completer: SymbolLoader,
       flags: FlagSet = EmptyFlags, scope: Scope = EmptyScope)(implicit ctx: Context): Symbol = {
-    val cls = ctx.newClassSymbol(owner, name.toTypeName.unmangleClassName, flags, completer, assocFile = completer.sourceFileOrNull)
+    val cls = ctx.newClassSymbol(owner, name.toTypeName, flags, completer, assocFile = completer.sourceFileOrNull)
     enterNew(owner, cls, completer, scope)
   }
 
@@ -163,7 +163,7 @@ class SymbolLoaders {
             initializeFromClassPath(root.symbol, classRep)
         for (classRep <- classpath.classes)
           if (maybeModuleClass(classRep) &&
-              !root.unforcedDecls.lookup(classRep.name.toTypeName.unmangleClassName).exists)
+              !root.unforcedDecls.lookup(classRep.name.toTypeName).exists)
             initializeFromClassPath(root.symbol, classRep)
       }
       if (!root.isEmptyPackage)

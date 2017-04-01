@@ -416,6 +416,7 @@ class TreeUnpickler(reader: TastyReader, nameAtRef: NameRef => TermName, posUnpi
       val tag = readByte()
       val end = readEnd()
       var name: Name = readName()
+      val sname = name.toSimpleName
       if (tag == TYPEDEF || tag == TYPEPARAM) name = name.toTypeName
       skipParams()
       val ttag = nextUnsharedTag
@@ -432,9 +433,10 @@ class TreeUnpickler(reader: TastyReader, nameAtRef: NameRef => TermName, posUnpi
       def adjustIfModule(completer: LazyType) =
         if (flags is Module) ctx.adjustModuleCompleter(completer, name) else completer
       val sym =
-        roots.find(root => (root.owner eq ctx.owner) && root.name == name) match {
+        roots.find(root => (root.owner eq ctx.owner) && root.name.toSimpleName == sname && root.isType == name.isTypeName) match {
           case Some(rootd) =>
             pickling.println(i"overwriting ${rootd.symbol} # ${rootd.hashCode}")
+            rootd.name = name
             rootd.info = adjustIfModule(
                 new Completer(ctx.owner, subReader(start, end)) with SymbolLoaders.SecondCompleter)
             rootd.flags = flags &~ Touched // allow one more completion

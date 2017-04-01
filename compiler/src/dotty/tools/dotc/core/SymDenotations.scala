@@ -107,7 +107,7 @@ object SymDenotations {
   class SymDenotation private[SymDenotations] (
     symbol: Symbol,
     ownerIfExists: Symbol,
-    final val name: Name,
+    initName: Name,
     initFlags: FlagSet,
     initInfo: Type,
     initPrivateWithin: Symbol = NoSymbol) extends SingleDenotation(symbol) {
@@ -125,10 +125,17 @@ object SymDenotations {
 
     // ------ Getting and setting fields -----------------------------
 
+    private[this] var myName = initName
     private[this] var myFlags: FlagSet = adaptFlags(initFlags)
     private[this] var myInfo: Type = initInfo
     private[this] var myPrivateWithin: Symbol = initPrivateWithin
     private[this] var myAnnotations: List[Annotation] = Nil
+
+    /** The name of the symbol */
+    def name = myName
+
+    /** Update the name; only called when unpickling top-level classes */
+    def name_=(n: Name) = myName = n
 
     /** The owner of the symbol; overridden in NoDenotation */
     def owner: Symbol = ownerIfExists
@@ -1208,12 +1215,12 @@ object SymDenotations {
   class ClassDenotation private[SymDenotations] (
     symbol: Symbol,
     ownerIfExists: Symbol,
-    name: Name,
+    initName: Name,
     initFlags: FlagSet,
     initInfo: Type,
     initPrivateWithin: Symbol,
     initRunId: RunId)
-    extends SymDenotation(symbol, ownerIfExists, name, initFlags, initInfo, initPrivateWithin) {
+    extends SymDenotation(symbol, ownerIfExists, initName, initFlags, initInfo, initPrivateWithin) {
 
     import util.LRUCache
 

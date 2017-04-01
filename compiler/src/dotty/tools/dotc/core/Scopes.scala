@@ -394,6 +394,14 @@ object Scopes {
     }
   }
 
+  class PackageScope extends MutableScope {
+    override final def newScopeEntry(name: Name, sym: Symbol)(implicit ctx: Context): ScopeEntry =
+      super.newScopeEntry(name.toSimpleName, sym)
+
+    override final def lookupEntry(name: Name)(implicit ctx: Context): ScopeEntry =
+      super.lookupEntry(name.toSimpleName)
+  }
+
   /** Create a new scope */
   def newScope: MutableScope = new MutableScope()
 
@@ -408,7 +416,7 @@ object Scopes {
   }
 
   /** Create new scope for the members of package `pkg` */
-  def newPackageScope(pkgClass: Symbol): MutableScope = newScope
+  def newPackageScope(pkgClass: Symbol): MutableScope = new PackageScope()
 
   /** Transform scope of members of `owner` using operation `op`
    *  This is overridden by the reflective compiler to avoid creating new scopes for packages
