@@ -66,6 +66,8 @@ object Names {
     def isSimple: Boolean
     def asSimpleName: SimpleTermName
     def toSimpleName: SimpleTermName
+    def mangled: Name
+
     def rewrite(f: PartialFunction[Name, Name]): ThisName
     def collect[T](f: PartialFunction[Name, T]): Option[T]
     def mapLast(f: SimpleTermName => SimpleTermName): ThisName
@@ -263,6 +265,8 @@ object Names {
     def isSimple = true
     def asSimpleName = this
     def toSimpleName = this
+    def mangled = this
+
     def rewrite(f: PartialFunction[Name, Name]): ThisName =
       if (f.isDefinedAt(this)) likeSpaced(f(this)) else this
     def collect[T](f: PartialFunction[Name, T]): Option[T] = f.lift(this)
@@ -306,6 +310,8 @@ object Names {
     def isSimple = toTermName.isSimple
     def asSimpleName = toTermName.asSimpleName
     def toSimpleName = toTermName.toSimpleName
+    def mangled = toTermName.toSimpleName.toTypeName
+
     def rewrite(f: PartialFunction[Name, Name]): ThisName = toTermName.rewrite(f).toTypeName
     def collect[T](f: PartialFunction[Name, T]): Option[T] = toTermName.collect(f)
     def mapLast(f: SimpleTermName => SimpleTermName) = toTermName.mapLast(f).toTypeName
@@ -345,6 +351,7 @@ object Names {
       if (simpleName == null) simpleName = termName(toString)
       simpleName
     }
+    def mangled = toSimpleName
 
     def rewrite(f: PartialFunction[Name, Name]): ThisName =
       if (f.isDefinedAt(this)) likeSpaced(f(this))

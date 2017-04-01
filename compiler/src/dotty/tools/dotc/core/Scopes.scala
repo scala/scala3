@@ -396,10 +396,10 @@ object Scopes {
 
   class PackageScope extends MutableScope {
     override final def newScopeEntry(name: Name, sym: Symbol)(implicit ctx: Context): ScopeEntry =
-      super.newScopeEntry(name.toSimpleName, sym)
+      super.newScopeEntry(name.mangled, sym)
 
     override final def lookupEntry(name: Name)(implicit ctx: Context): ScopeEntry =
-      super.lookupEntry(name.toSimpleName)
+      super.lookupEntry(name.mangled)
   }
 
   /** Create a new scope */
