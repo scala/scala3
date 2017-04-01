@@ -11,7 +11,9 @@ import dotty.tools.dotc.reporting.TestReporter$;
  *  this class
  */
 public class ParallelSummaryReport {
-    private static TestReporter rep = TestReporter.reporter(-1);
+    public final static boolean isInteractive = !System.getenv().containsKey("DRONE");
+
+    private static TestReporter rep = TestReporter.reporter(System.out, -1);
     private static ArrayDeque<String> failedTests = new ArrayDeque<>();
     private static ArrayDeque<String> reproduceInstructions = new ArrayDeque<>();
     private static int passed;
@@ -34,7 +36,7 @@ public class ParallelSummaryReport {
     }
 
     @BeforeClass public final static void setup() {
-        rep = TestReporter.reporter(-1);
+        rep = TestReporter.reporter(System.out, -1);
         failedTests = new ArrayDeque<>();
         reproduceInstructions = new ArrayDeque<>();
     }
@@ -54,13 +56,17 @@ public class ParallelSummaryReport {
             .map(x -> "    " + x)
             .forEach(rep::echo);
 
-        rep.flushToStdErr();
+        // If we're compiling locally, we don't need reproduce instructions
+        if (isInteractive) rep.flushToStdErr();
 
         rep.echo("");
 
         reproduceInstructions
             .stream()
             .forEach(rep::echo);
+
+        // If we're on the CI, we want everything
+        if (!isInteractive) rep.flushToStdErr();
 
         if (failed > 0) rep.flushToFile();
     }

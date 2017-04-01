@@ -21,7 +21,7 @@ trait MessageRendering {
     * @return string stripped of ANSI escape codes
     */
   def stripColor(str: String): String =
-    str.replaceAll("\u001B\\[[;\\d]*m", "")
+    str.replaceAll("\u001b\\[.*?m", "")
 
   /** When inlining a method call, if there's an error we'd like to get the
     * outer context and the `pos` at which the call was inlined.

@@ -58,8 +58,25 @@ object DiffUtil {
     (fnd, exp, totalChange.toDouble / (expected.length + found.length))
   }
 
-  def mkColoredCodeDiff(code: String, lastCode: String, printDiffDel: Boolean): String = {
+  def mkColoredLineDiff(expected: String, actual: String): String = {
+    val tokens = splitTokens(expected, Nil).toArray
+    val lastTokens = splitTokens(actual, Nil).toArray
 
+    val diff = hirschberg(lastTokens, tokens)
+
+    "  |SOF\n" + diff.collect {
+      case Unmodified(str) =>
+        "  |" + str
+      case Inserted(str) =>
+        ADDITION_COLOR + "e |" + str + ANSI_DEFAULT
+      case Modified(old, str) =>
+        DELETION_COLOR + "a |" + old + "\ne |" + ADDITION_COLOR + str + ANSI_DEFAULT
+      case Deleted(str) =>
+        DELETION_COLOR + "\na |" + str + ANSI_DEFAULT
+    }.mkString + "\n  |EOF"
+  }
+
+  def mkColoredCodeDiff(code: String, lastCode: String, printDiffDel: Boolean): String = {
     val tokens = splitTokens(code, Nil).toArray
     val lastTokens = splitTokens(lastCode, Nil).toArray
 

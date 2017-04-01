@@ -103,7 +103,7 @@ object Decorators {
      *  as long as `xs`.
      */
     def zipWithConserve[U](ys: List[U])(f: (T, U) => T): List[T] =
-      if (xs.isEmpty) xs
+      if (xs.isEmpty || ys.isEmpty) Nil
       else {
         val x1 = f(xs.head, ys.head)
         val xs1 = xs.tail.zipWithConserve(ys.tail)(f)
