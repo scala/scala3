@@ -339,7 +339,12 @@ object Names {
 
     def isSimple = false
     def asSimpleName = throw new UnsupportedOperationException(s"$debugString is not a simple name")
-    def toSimpleName = termName(toString)
+
+    private var simpleName: SimpleTermName = null
+    def toSimpleName = {
+      if (simpleName == null) simpleName = termName(toString)
+      simpleName
+    }
 
     def rewrite(f: PartialFunction[Name, Name]): ThisName =
       if (f.isDefinedAt(this)) likeSpaced(f(this))
