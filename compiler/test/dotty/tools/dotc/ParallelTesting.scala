@@ -51,6 +51,16 @@ trait ParallelTesting { self =>
     def outDir: JFile
     def flags: Array[String]
 
+
+    def title: String = self match {
+      case self: JointCompilationSource =>
+        if (self.files.length > 1) name
+        else self.files.head.getPath
+
+      case self: SeparateCompilationSource =>
+        self.dir.getPath
+    }
+
     /** Adds the flags specified in `newFlags0` if they do not already exist */
     def withFlags(newFlags0: String*) = {
       val newFlags = newFlags0.toArray
@@ -69,7 +79,11 @@ trait ParallelTesting { self =>
       val maxLen = 80
       var lineLen = 0
 
-      sb.append(s"\n\nTest compiled with $errors error(s) and $warnings warning(s), the test can be reproduced by running:")
+      sb.append(
+        s"""|
+            |Test '$title' compiled with $errors error(s) and $warnings warning(s),
+            |the test can be reproduced by running:""".stripMargin
+      )
       sb.append("\n\n./bin/dotc ")
       flags.foreach { arg =>
         if (lineLen > maxLen) {
@@ -160,6 +174,8 @@ trait ParallelTesting { self =>
    *  according to the implementing class "neg", "run" or "pos".
    */
   private abstract class Test(testSources: List[TestSource], times: Int, threadLimit: Option[Int], suppressAllOutput: Boolean) {
+    protected final val realStdout = System.out
+    protected final val realStderr = System.err
 
     /** Actual compilation run logic, the test behaviour is defined here */
     protected def compilationRunnable(testSource: TestSource): Runnable
@@ -178,10 +194,10 @@ trait ParallelTesting { self =>
     val sourceCount = filteredSources.length
 
     private[this] var _errorCount =  0
-    def errorCount: Int = synchronized { _errorCount }
+    def errorCount: Int = _errorCount
 
     private[this] var _testSourcesCompiled = 0
-    private def testSourcesCompiled : Int = synchronized { _testSourcesCompiled }
+    private def testSourcesCompiled: Int = _testSourcesCompiled
 
     /** Complete the current compilation with the amount of errors encountered */
     protected final def registerCompilation(errors: Int) = synchronized {
@@ -214,7 +230,7 @@ trait ParallelTesting { self =>
 
     /** Prints to `System.err` if we're not suppressing all output */
     protected def echo(msg: String): Unit =
-      if (!suppressAllOutput) System.err.println(msg)
+      if (!suppressAllOutput) realStderr.println(msg)
 
     /** A single `Runnable` that prints a progress bar for the curent `Test` */
     private def createProgressMonitor: Runnable = new Runnable {
@@ -224,17 +240,19 @@ trait ParallelTesting { self =>
         while (tCompiled < sourceCount) {
           val timestamp = (System.currentTimeMillis - start) / 1000
           val progress = (tCompiled.toDouble / sourceCount * 40).toInt
-          print(
+
+          realStdout.print(
             "[" + ("=" * (math.max(progress - 1, 0))) +
             (if (progress > 0) ">" else "") +
             (" " * (39 - progress)) +
             s"] compiling ($tCompiled/$sourceCount, ${timestamp}s)\r"
           )
+
           Thread.sleep(100)
           tCompiled = testSourcesCompiled
         }
         // println, otherwise no newline and cursor at start of line
-        println(
+        realStdout.println(
           s"[=======================================] compiled ($sourceCount/$sourceCount, " +
           s"${(System.currentTimeMillis - start) / 1000}s)  "
         )
@@ -245,7 +263,10 @@ trait ParallelTesting { self =>
      *  if it did, the test should automatically fail.
      */
     protected def tryCompile(testSource: TestSource)(op: => Unit): Unit =
-      try op catch {
+      try {
+        if (!isInteractive) realStdout.println(s"Testing ${testSource.title}")
+        op
+      } catch {
         case NonFatal(e) => {
           // if an exception is thrown during compilation, the complete test
           // run should fail
@@ -295,8 +316,10 @@ trait ParallelTesting { self =>
         Runtime.getRuntime.exec(fullArgs).waitFor() == 0
       } else true
 
-      val reporter = TestReporter.parallelReporter(this, logLevel =
-        if (suppressErrors || suppressAllOutput) ERROR + 1 else ERROR)
+      val reporter =
+        TestReporter.reporter(realStdout, logLevel =
+          if (suppressErrors || suppressAllOutput) ERROR + 1 else ERROR)
+
       val driver =
         if (times == 1) new Driver { def newCompiler(implicit ctx: Context) = new Compiler }
         else new Driver {
@@ -339,8 +362,12 @@ trait ParallelTesting { self =>
         }
 
         pool.shutdown()
-        if (!pool.awaitTermination(10, TimeUnit.MINUTES))
+        if (!pool.awaitTermination(20, TimeUnit.MINUTES)) {
+          pool.shutdownNow()
+          System.setOut(realStdout)
+          System.setErr(realStderr)
           throw new TimeoutException("Compiling targets timed out")
+        }
 
         if (didFail) {
           reportFailed()
@@ -403,8 +430,6 @@ trait ParallelTesting { self =>
       import java.net.{ URL, URLClassLoader }
 
       val printStream = new ByteArrayOutputStream
-      val oldOut = System.out
-      val oldErr = System.err
 
       try {
         // Do classloading magic and running here:
@@ -412,7 +437,7 @@ trait ParallelTesting { self =>
         val cls = ucl.loadClass("Test")
         val meth = cls.getMethod("main", classOf[Array[String]])
 
-        self.synchronized {
+        synchronized {
           try {
             val ps = new PrintStream(printStream)
             System.setOut(ps)
@@ -422,9 +447,13 @@ trait ParallelTesting { self =>
                 meth.invoke(null, Array("jvm")) // partest passes at least "jvm" as an arg
               }
             }
-          } finally {
-            System.setOut(oldOut)
-            System.setErr(oldErr)
+            System.setOut(realStdout)
+            System.setErr(realStderr)
+          } catch {
+            case t: Throwable =>
+              System.setOut(realStdout)
+              System.setErr(realStderr)
+              throw t
           }
         }
       }
@@ -447,6 +476,7 @@ trait ParallelTesting { self =>
     private def verifyOutput(checkFile: JFile, dir: JFile, testSource: TestSource, warnings: Int) = {
       val outputLines = runMain(dir, testSource)
       val checkLines = Source.fromFile(checkFile).getLines.toArray
+      val sourceTitle = testSource.title
 
       def linesMatch =
         outputLines
@@ -456,9 +486,13 @@ trait ParallelTesting { self =>
       if (outputLines.length != checkLines.length || !linesMatch) {
         // Print diff to files and summary:
         val diff = outputLines.zip(checkLines).map { case (act, exp) =>
-          DiffUtil.mkColoredCodeDiff(exp, act, true)
+          DiffUtil.mkColoredLineDiff(exp, act)
         }.mkString("\n")
-        val msg = s"\nOutput from run test '$checkFile' did not match expected, output:\n$diff\n"
+
+        val msg =
+          s"""|Output from '$sourceTitle' did not match check file.
+              |Diff ('e' is expected, 'a' is actual):
+              |""".stripMargin + diff + "\n"
         echo(msg)
         addFailureInstruction(msg)
 
@@ -920,9 +954,8 @@ trait ParallelTesting { self =>
   private def compilationTargets(sourceDir: JFile): (List[JFile], List[JFile]) =
     sourceDir.listFiles.foldLeft((List.empty[JFile], List.empty[JFile])) { case ((dirs, files), f) =>
       if (f.isDirectory) (f :: dirs, files)
-      else if (f.getName.endsWith(".check")) (dirs, files)
-      else if (f.getName.endsWith(".flags")) (dirs, files)
-      else (dirs, f :: files)
+      else if (isSourceFile(f)) (dirs, f :: files)
+      else (dirs, files)
     }
 
   /** Gets the name of the calling method via reflection.
