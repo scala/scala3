@@ -148,6 +148,28 @@ class SymbolLoaders {
     override def sourceModule(implicit ctx: Context) = _sourceModule
     def description = "package loader " + classpath.name
 
+    /** The scope of a package. This is different from a normal scope
+	 *  in three aspects:
+	 *
+	 *   1. Names of scope entries are kept in mangled form.
+	 *   2. Some function types in the `scala` package are synthesized.
+  	 */
+    final class PackageScope extends MutableScope {
+      override def newScopeEntry(name: Name, sym: Symbol)(implicit ctx: Context): ScopeEntry =
+        super.newScopeEntry(name.mangled, sym)
+
+      override def lookupEntry(name: Name)(implicit ctx: Context): ScopeEntry = {
+        val e = super.lookupEntry(name.mangled)
+        if (e == null &&
+            _sourceModule.name == nme.scala_ && _sourceModule == defn.ScalaPackageVal &&
+            name.isTypeName && name.isSyntheticFunction)
+          newScopeEntry(defn.newFunctionNTrait(name.asTypeName))
+        else e
+      }
+
+      override def newScopeLikeThis() = new PackageScope
+    }
+
     private[core] val currentDecls: MutableScope = new PackageScope()
 
     def doComplete(root: SymDenotation)(implicit ctx: Context): Unit = {

@@ -32,7 +32,7 @@ object Scopes {
    *  This value must be a power of two, so that the index of an element can
    *  be computed as element.hashCode & (hashTable.length - 1)
    */
-  private final val MinHash = 8
+  final val MinHashedScopeSize = 8
 
   /** The maximal permissible number of recursions when creating
    *  a hashtable
@@ -144,11 +144,6 @@ object Scopes {
     final def toText(printer: Printer): Text = printer.toText(this)
 
     def checkConsistent()(implicit ctx: Context) = ()
-
-    /** Hook for transforming a name before it is used in a lookup or creation.
-     *  Used to mangle names in package scopes.
-     */
-    protected def normalize(name: Name): Name = name
   }
 
   /** A subclass of Scope that defines methods for entering and
@@ -163,7 +158,7 @@ object Scopes {
     /** Scope shares elements with `base` */
     protected[Scopes] def this(base: Scope)(implicit ctx: Context) = {
       this(base.lastEntry, base.size, base.nestingLevel + 1)
-      ensureCapacity(MinHash)(ctx) // WTH? it seems the implicit is not in scope for a secondary constructor call.
+      ensureCapacity(MinHashedScopeSize)(ctx) // WTH? it seems the implicit is not in scope for a secondary constructor call.
     }
 
     def this() = this(null, 0, 0)
@@ -205,8 +200,8 @@ object Scopes {
 
     /** create and enter a scope entry with given name and symbol */
     protected def newScopeEntry(name: Name, sym: Symbol)(implicit ctx: Context): ScopeEntry = {
-      ensureCapacity(if (hashTable ne null) hashTable.length else MinHash)
-      val e = new ScopeEntry(normalize(name), sym, this)
+      ensureCapacity(if (hashTable ne null) hashTable.length else MinHashedScopeSize)
+      val e = new ScopeEntry(name, sym, this)
       e.prev = lastEntry
       lastEntry = e
       if (hashTable ne null) enterInHash(e)
@@ -242,7 +237,7 @@ object Scopes {
       enter(sym)
     }
 
-    protected def ensureCapacity(tableSize: Int)(implicit ctx: Context): Unit =
+    private def ensureCapacity(tableSize: Int)(implicit ctx: Context): Unit =
       if (size >= tableSize * FillFactor) createHash(tableSize * 2)
 
     private def createHash(tableSize: Int)(implicit ctx: Context): Unit =
@@ -318,16 +313,15 @@ object Scopes {
     /** Lookup a symbol entry matching given name.
      */
     override def lookupEntry(name: Name)(implicit ctx: Context): ScopeEntry = {
-      val normalized = normalize(name)
       var e: ScopeEntry = null
       if (hashTable ne null) {
-        e = hashTable(normalized.hashCode & (hashTable.length - 1))
-        while ((e ne null) && e.name != normalized) {
+        e = hashTable(name.hashCode & (hashTable.length - 1))
+        while ((e ne null) && e.name != name) {
           e = e.tail
         }
       } else {
         e = lastEntry
-        while ((e ne null) && e.name != normalized) {
+        while ((e ne null) && e.name != name) {
           e = e.prev
         }
       }
@@ -403,25 +397,6 @@ object Scopes {
     }
   }
 
-  /** The scope of a package. This is different from a normal scope
-   *  in that names of scope entries are kept in mangled form.
-   */
-  class PackageScope protected[Scopes](initElems: ScopeEntry, initSize: Int, nestingLevel: Int)
-  extends MutableScope(initElems, initSize, nestingLevel) {
-
-    /** Scope shares elements with `base` */
-    def this(base: Scope)(implicit ctx: Context) = {
-      this(base.lastEntry, base.size, base.nestingLevel + 1)
-      ensureCapacity(MinHash)(ctx) // WTH? it seems the implicit is not in scope for a secondary constructor call.
-    }
-
-    def this() = this(null, 0, 0)
-
-    override def newScopeLikeThis() = new PackageScope()
-
-    override protected def normalize(name: Name) = name.mangled
-  }
-
   /** Create a new scope */
   def newScope: MutableScope = new MutableScope()
 
@@ -434,9 +409,6 @@ object Scopes {
     elems foreach scope.enter
     scope
   }
-
-  /** Create new scope for the members of package `pkg` */
-  def newPackageScope(pkgClass: Symbol): MutableScope = new PackageScope()
 
   /** Transform scope of members of `owner` using operation `op`
    *  This is overridden by the reflective compiler to avoid creating new scopes for packages

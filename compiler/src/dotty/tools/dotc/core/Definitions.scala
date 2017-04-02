@@ -108,7 +108,7 @@ class Definitions {
    *        def apply(implicit $x0: T0, ..., $x{N_1}: T{N-1}): R
    *      }
    */
-  private def newFunctionNTrait(name: TypeName) = {
+  def newFunctionNTrait(name: TypeName) = {
     val completer = new LazyType {
       def complete(denot: SymDenotation)(implicit ctx: Context): Unit = {
         val cls = denot.asClass.classSymbol
@@ -932,23 +932,6 @@ class Definitions {
 
   // ----- Initialization ---------------------------------------------------
 
-  /** Give the scala package a scope where a FunctionN trait is automatically
-   *  added when someone looks for it.
-   */
-  private def makeScalaSpecial()(implicit ctx: Context) = {
-    val oldInfo = ScalaPackageClass.classInfo
-    val oldDecls = oldInfo.decls
-    val newDecls = new PackageScope(oldDecls) {
-      override def lookupEntry(name: Name)(implicit ctx: Context): ScopeEntry = {
-        val res = super.lookupEntry(name)
-        if (res == null && name.isTypeName && name.isSyntheticFunction)
-          newScopeEntry(newFunctionNTrait(name.asTypeName))
-        else res
-      }
-    }
-    ScalaPackageClass.info = oldInfo.derivedClassInfo(decls = newDecls)
-  }
-
   /** Lists core classes that don't have underlying bytecode, but are synthesized on-the-fly in every reflection universe */
   lazy val syntheticScalaClasses = List(
     AnyClass,
@@ -976,8 +959,6 @@ class Definitions {
   def init()(implicit ctx: Context) = {
     this.ctx = ctx
     if (!_isInitialized) {
-      makeScalaSpecial()
-
       // force initialization of every symbol that is synthesized or hijacked by the compiler
       val forced = syntheticCoreClasses ++ syntheticCoreMethods ++ ScalaValueClasses()
 
