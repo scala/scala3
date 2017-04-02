@@ -930,14 +930,15 @@ object SymDenotations {
       *  and which is also defined in the same scope and compilation unit.
       *  NoSymbol if this class does not exist.
       */
-    final def companionClass(implicit ctx: Context): Symbol = {
-      val companionMethod = info.decls.denotsNamed(nme.COMPANION_CLASS_METHOD, selectPrivate).first
-
-      if (companionMethod.exists)
-        companionMethod.info.resultType.classSymbol
-      else
-        NoSymbol
-    }
+    final def companionClass(implicit ctx: Context): Symbol =
+      if (is(Package)) NoSymbol
+      else {
+        val companionMethod = info.decls.denotsNamed(nme.COMPANION_CLASS_METHOD, selectPrivate).first
+        if (companionMethod.exists)
+          companionMethod.info.resultType.classSymbol
+        else
+          NoSymbol
+      }
 
     final def scalacLinkedClass(implicit ctx: Context): Symbol =
       if (this is ModuleClass) companionNamed(effectiveName.toTypeName)
@@ -1777,8 +1778,8 @@ object SymDenotations {
       def constrNamed(cname: TermName) = info.decls.denotsNamed(cname).last.symbol
         // denotsNamed returns Symbols in reverse order of occurrence
       if (this.is(ImplClass)) constrNamed(nme.TRAIT_CONSTRUCTOR) // ignore normal constructor
-      else
-        constrNamed(nme.CONSTRUCTOR).orElse(constrNamed(nme.TRAIT_CONSTRUCTOR))
+      else if (this.is(Package)) NoSymbol
+      else constrNamed(nme.CONSTRUCTOR).orElse(constrNamed(nme.TRAIT_CONSTRUCTOR))
     }
 
     /** The parameter accessors of this class. Term and type accessors,

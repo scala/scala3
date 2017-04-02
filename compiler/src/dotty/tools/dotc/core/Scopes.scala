@@ -60,7 +60,7 @@ object Scopes {
    *  or to delete them. These methods are provided by subclass
    *  MutableScope.
    */
-  abstract class Scope extends DotClass with printing.Showable with Iterable[Symbol] {
+  abstract class Scope extends DotClass with printing.Showable {
 
     /** The last scope-entry from which all others are reachable via `prev` */
     private[dotc] def lastEntry: ScopeEntry
@@ -76,17 +76,36 @@ object Scopes {
     /** The symbols in this scope in the order they were entered;
      *  inherited from outer ones first.
      */
-    def toList: List[Symbol]
+    def toList(implicit ctx: Context): List[Symbol]
 
     /** Return all symbols as an iterator in the order they were entered in this scope.
      */
-    def iterator: Iterator[Symbol] = toList.iterator
+    def iterator(implicit ctx: Context): Iterator[Symbol] = toList.iterator
+
+    /** Is the scope empty? */
+    def isEmpty: Boolean = lastEntry eq null
+
+    def foreach[U](p: Symbol => U)(implicit ctx: Context): Unit = toList foreach p
+
+    def filter(p: Symbol => Boolean)(implicit ctx: Context): List[Symbol] = {
+      ensureComplete()
+      var syms: List[Symbol] = Nil
+      var e = lastEntry
+      while ((e ne null) && e.owner == this) {
+        val sym = e.sym
+        if (p(sym)) syms = sym :: syms
+        e = e.prev
+      }
+      syms
+    }
+
+    def find(p: Symbol => Boolean)(implicit ctx: Context): Symbol = filter(p) match {
+      case sym :: _ => sym
+      case _ => NoSymbol
+    }
 
     /** Returns a new mutable scope with the same content as this one. */
     def cloneScope(implicit ctx: Context): MutableScope
-
-    /** Is the scope empty? */
-    override def isEmpty: Boolean = lastEntry eq null
 
     /** Lookup a symbol entry matching given name. */
     def lookupEntry(name: Name)(implicit ctx: Context): ScopeEntry
@@ -144,6 +163,12 @@ object Scopes {
     final def toText(printer: Printer): Text = printer.toText(this)
 
     def checkConsistent()(implicit ctx: Context) = ()
+
+    /** Ensure that all elements of this scope have been entered.
+     *  Overridden by SymbolLoaders.PackageLoader#PackageScope, where it
+     *  makes sure that all names with `$`'s have been added.
+     */
+    protected def ensureComplete()(implicit ctx: Context): Unit = ()
   }
 
   /** A subclass of Scope that defines methods for entering and
@@ -341,8 +366,9 @@ object Scopes {
     /** Returns all symbols as a list in the order they were entered in this scope.
      *  Does _not_ include the elements of inherited scopes.
      */
-    override final def toList: List[Symbol] = {
+    override final def toList(implicit ctx: Context): List[Symbol] = {
       if (elemsCache eq null) {
+        ensureComplete()
         elemsCache = Nil
         var e = lastEntry
         while ((e ne null) && e.owner == this) {
@@ -354,6 +380,7 @@ object Scopes {
     }
 
     override def implicitDecls(implicit ctx: Context): List[TermRef] = {
+      ensureComplete()
       var irefs = new mutable.ListBuffer[TermRef]
       var e = lastEntry
       while (e ne null) {
@@ -368,25 +395,13 @@ object Scopes {
 
     /** Vanilla scope - symbols are stored in declaration order.
      */
-    final def sorted: List[Symbol] = toList
-
-    override def foreach[U](p: Symbol => U): Unit = toList foreach p
-
-    override def filter(p: Symbol => Boolean): List[Symbol] = {
-      var syms: List[Symbol] = Nil
-      var e = lastEntry
-      while ((e ne null) && e.owner == this) {
-        val sym = e.sym
-        if (p(sym)) syms = sym :: syms
-        e = e.prev
-      }
-      syms
-    }
+    final def sorted(implicit ctx: Context): List[Symbol] = toList
 
     override def openForMutations: MutableScope = this
 
     /** Check that all symbols in this scope are in their correct hashtable buckets. */
     override def checkConsistent()(implicit ctx: Context) = {
+      ensureComplete()
       var e = lastEntry
       while (e != null) {
         var e1 = lookupEntry(e.name)
@@ -425,7 +440,7 @@ object Scopes {
     override private[dotc] def lastEntry = null
     override def size = 0
     override def nestingLevel = 0
-    override def toList = Nil
+    override def toList(implicit ctx: Context) = Nil
     override def cloneScope(implicit ctx: Context): MutableScope = unsupported("cloneScope")
     override def lookupEntry(name: Name)(implicit ctx: Context): ScopeEntry = null
     override def lookupNextEntry(entry: ScopeEntry)(implicit ctx: Context): ScopeEntry = null

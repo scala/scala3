@@ -214,7 +214,7 @@ private class ExtractAPICollector(implicit val ctx: Context) extends ThunkHolder
     // and can therefore be ignored.
     def alwaysPresent(s: Symbol) =
       s.isCompanionMethod || (csym.is(ModuleClass) && s.isConstructor)
-    val decls = cinfo.decls.filterNot(alwaysPresent).toList
+    val decls = cinfo.decls.filter(!alwaysPresent(_)).toList
     val apiDecls = apiDefinitions(decls)
 
     val declSet = decls.toSet
@@ -224,7 +224,7 @@ private class ExtractAPICollector(implicit val ctx: Context) extends ThunkHolder
       // We cannot filter out `LegacyApp` because it contains the main method,
       // see the comment about main class discovery in `computeType`.
       .filter(bc => !bc.is(Scala2x) || bc.eq(LegacyAppClass))
-      .flatMap(_.classInfo.decls.filterNot(s => s.is(Private) || declSet.contains(s)))
+      .flatMap(_.classInfo.decls.filter(s => !(s.is(Private) || declSet.contains(s))))
     // Inherited members need to be computed lazily because a class might contain
     // itself as an inherited member, like in `class A { class B extends A }`,
     // this works because of `classLikeCache`

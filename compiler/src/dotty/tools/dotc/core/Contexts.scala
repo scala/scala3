@@ -294,7 +294,7 @@ object Contexts {
 
     /** Is this a context that introduces a non-empty scope? */
     def isNonEmptyScopeContext: Boolean =
-      (this.scope ne outer.scope) && this.scope.nonEmpty
+      (this.scope ne outer.scope) && !this.scope.isEmpty
 
     /** Leave message in diagnostics buffer if it exists */
     def diagnose(str: => String) =

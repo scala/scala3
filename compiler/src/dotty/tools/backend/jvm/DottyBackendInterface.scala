@@ -794,7 +794,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
 
     def memberInfo(s: Symbol): Type = tp.memberInfo(s)
 
-    def decls: List[Symbol] = tp.decls.map(_.symbol).toList
+    def decls: List[Symbol] = tp.decls.toList
 
     def members: List[Symbol] =
       tp.memberDenots(takeAllFilter, (name, buf) => buf ++= tp.member(name).alternatives).map(_.symbol).toList

@@ -363,7 +363,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
       }
 
       def slowSearch(name: Name): Symbol =
-        owner.info.decls.find(_.name == name).getOrElse(NoSymbol)
+        owner.info.decls.find(_.name == name)
 
       def nestedObjectSymbol: Symbol = {
         // If the owner is overloaded (i.e. a method), it's not possible to select the
