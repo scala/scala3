@@ -1,16 +1,18 @@
-package dotty.tools.dotc;
+package dotty.tools.dotc.vulpix;
 
 import org.junit.BeforeClass;
 import org.junit.AfterClass;
 import java.util.ArrayDeque;
+import java.util.function.Supplier;
+import scala.Function0;
+import scala.Unit;
 
 import dotty.tools.dotc.reporting.TestReporter;
-import dotty.tools.dotc.reporting.TestReporter$;
 
 /** Note that while `ParallelTesting` runs in parallel, JUnit tests cannot with
  *  this class
  */
-public class ParallelSummaryReport {
+public class SummaryReport {
     public final static boolean isInteractive = !System.getenv().containsKey("DRONE");
 
     private static TestReporter rep = TestReporter.reporter(System.out, -1);

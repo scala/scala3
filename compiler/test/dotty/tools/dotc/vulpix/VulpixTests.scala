@@ -1,13 +1,14 @@
 package dotty
 package tools
 package dotc
+package vulpix
 
 import org.junit.Assert._
 import org.junit.Test
 
 import scala.util.control.NonFatal
 
-class ParallelTestTests extends ParallelTesting {
+class VulpixTests extends ParallelTesting {
   import CompilationTests._
 
   def isInteractive = !sys.env.contains("DRONE")

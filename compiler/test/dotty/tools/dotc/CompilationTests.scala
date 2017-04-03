@@ -3,16 +3,16 @@ package tools
 package dotc
 
 import org.junit.Test
-import java.io.{ File => JFile }
 import org.junit.experimental.categories.Category
 
 import scala.util.matching.Regex
+import vulpix.{ ParallelTesting, SummaryReport }
 
 @Category(Array(classOf[ParallelTesting]))
-class CompilationTests extends ParallelSummaryReport with ParallelTesting {
+class CompilationTests extends SummaryReport with ParallelTesting {
   import CompilationTests._
 
-  def isInteractive: Boolean = ParallelSummaryReport.isInteractive
+  def isInteractive: Boolean = SummaryReport.isInteractive
 
   def testFilter: Option[Regex] = sys.props.get("dotty.partest.filter").map(r => new Regex(r))
 
@@ -270,7 +270,7 @@ object CompilationTests {
 
   val classPath = {
     val paths = Jars.dottyTestDeps map { p =>
-      val file = new JFile(p)
+      val file = new java.io.File(p)
       assert(
         file.exists,
         s"""|File "$p" couldn't be found. Run `packageAll` from build tool before

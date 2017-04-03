@@ -1,6 +1,6 @@
 package dotc
 
-import dotty.tools.dotc.ParallelTesting
+import dotty.tools.dotc.vulpix.ParallelTesting
 
 object comptest extends ParallelTesting {
 

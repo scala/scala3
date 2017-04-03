@@ -1,6 +1,7 @@
 package dotty
 package tools
 package dotc
+package vulpix
 
 import java.io.{ File => JFile }
 import java.text.SimpleDateFormat
@@ -32,7 +33,7 @@ import dotc.util.DiffUtil
 trait ParallelTesting { self =>
 
   import ParallelTesting._
-  import ParallelSummaryReport._
+  import SummaryReport._
 
   /** If the running environment supports an interactive terminal, each `Test`
    *  will be run with a progress bar and real time feedback
@@ -411,7 +412,8 @@ trait ParallelTesting { self =>
 
             registerCompilation(errorCount)
 
-            if (errorCount > 0) failTestSource(testSource)
+            if (errorCount > 0)
+              failTestSource(testSource)
           }
         }
 
