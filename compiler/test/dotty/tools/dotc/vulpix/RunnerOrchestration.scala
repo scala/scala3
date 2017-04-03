@@ -8,8 +8,11 @@ import java.io.{
   InputStream, ObjectInputStream,
   OutputStream, ObjectOutputStream
 }
+import java.util.concurrent.TimeoutException
 
 import scala.concurrent.duration.Duration
+import scala.concurrent.{ Await, Future }
+import scala.concurrent.ExecutionContext.Implicits.global
 import scala.collection.mutable
 
 trait RunnerOrchestration {
@@ -35,8 +38,47 @@ trait RunnerOrchestration {
     def runMain(dir: JFile): Status = withRunner(_.runMain(dir))
 
     private class Runner(private var process: Process) {
-      def kill(): Unit = ???
-      def runMain(dir: JFile): Status = ???
+      private[this] val ois = new ObjectInputStream(process.getInputStream)
+      private[this] val oos = new ObjectOutputStream(process.getOutputStream)
+
+      def kill(): Unit = {
+        if (process ne null) process.destroy()
+        process = null
+      }
+
+      def runMain(dir: JFile): Status = {
+        assert(process ne null,
+          "Runner was killed and then reused without setting a new process")
+
+        // Makes the encapsulating RunnerMonitor spawn a new runner
+        def respawn(): Unit = {
+          process.destroy()
+          process = createProcess
+        }
+
+        // pass file to running process
+        oos.writeObject(dir)
+
+        // Create a future reading the object:
+        val readObject = Future(ois.readObject().asInstanceOf[Status])
+
+        // Await result for `maxDuration` and then timout and destroy the
+        // process:
+        val status =
+          try Await.result(readObject, maxDuration)
+          catch { case _: TimeoutException => { Timeout } }
+
+        // Handle failure of the VM:
+        status match {
+          case _ if safeMode => respawn()
+          case status: Failure => respawn()
+          case Timeout => respawn()
+          case _ => ()
+        }
+
+        // return run status:
+        status
+      }
     }
 
     private def createProcess: Process = ???
