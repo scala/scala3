@@ -410,10 +410,12 @@ trait ParallelTesting { self =>
               acc + reporter.errorCount
             }
 
+            def warningCount = reporters.foldLeft(0)(_ + _.warningCount)
+
             registerCompilation(errorCount)
 
             if (errorCount > 0)
-              failTestSource(testSource)
+              echoBuildInstructions(reporters.head, testSource, errorCount, warningCount)
           }
         }
 
