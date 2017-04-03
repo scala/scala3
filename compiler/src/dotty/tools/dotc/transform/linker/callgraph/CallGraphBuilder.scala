@@ -446,35 +446,40 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
             (d1 eq d2) || d1.matches(d2)
           }
 
-
           for ((dtp, tp) <- getTypesByMemberName(calleeSymbol.name)) {
             if (filterTypes(tp.tp, receiverTypeWiden, dtp, receiverDepth)) {
-              for (alt <- tp.tp.member(calleeSymbol.name).altsWith(p => denotMatch(tp, p)))
+              for (alt <- tp.tp.member(calleeSymbol.name).altsWith(p => denotMatch(tp, p))) {
                 if (alt.exists)
                   dispatch(CallInfoWithContext(TermRef(tp.tp, alt.symbol.asTerm), targs, args, outerTargs ++ tp.outerTargs, someCaller, someCallee))
+              }
             }
           }
 
           if (mode >= AnalyseTypes) {
-            val filterCastCachedFilter = {
+            lazy val filterCastCachedFilter = {
               val receiverBases = receiverType.widen.classSymbols.iterator
               val head = receiverBases.next()
               receiverBases.foldLeft(castCache1.getOrDefault(head, Set.empty)){case (a,b) =>  a.intersect(castCache1.getOrDefault(b, Set.empty))}
             }
             for ((tpDepth, tp) <- getTypesByMemberName(calleeSymbol.name)) {
-              for (cast <- castsCache.getOrElse(tp, Set.empty[Cast]) intersect filterCastCachedFilter)
-              if (/*filterCast(cast) && */filterTypes(tp.tp, cast.from, tpDepth, cast.fromDepth) && filterTypes(cast.to, receiverType, cast.toDepth, receiverDepth))
-              for (alt <- tp.tp.member(calleeSymbol.name).altsWith(p => p.matches(calleeSymbol.asSeenFrom(tp.tp))))
-              if (alt.exists) {
-                if (!addingOutEdges) {
-                  // this additionally introduces a cast of result type and argument types
-                  val uncastedSig = preciseSelectCall(tp.tp, alt.symbol).widen.appliedTo(targs).widen
-                  val castedSig = preciseSelectCall(receiverType, calleeSymbol).widen.appliedTo(targs).widen
-                  (uncastedSig.paramInfoss.iterator.flatten zip castedSig.paramInfoss.iterator.flatten) foreach (x => addCast(x._2, x._1))
-                  addCast(uncastedSig.finalResultType, castedSig.finalResultType) // FIXME: this is added even in and tpe that are out of the intersection
-                }
+              for (cast <- castsCache.getOrElse(tp, Set.empty[Cast])) {
+                if (filterCastCachedFilter.contains(cast)) {
+                  if (filterTypes(tp.tp, cast.from, tpDepth, cast.fromDepth) && filterTypes(cast.to, receiverType, cast.toDepth, receiverDepth)) {
+                    for (alt <- tp.tp.member(calleeSymbol.name).altsWith(p => p.matches(calleeSymbol.asSeenFrom(tp.tp)))) {
+                      if (alt.exists) {
+                        if (!addingOutEdges) {
+                          // this additionally introduces a cast of result type and argument types
+                          val uncastedSig = preciseSelectCall(tp.tp, alt.symbol).widen.appliedTo(targs).widen
+                          val castedSig = preciseSelectCall(receiverType, calleeSymbol).widen.appliedTo(targs).widen
+                          (uncastedSig.paramInfoss.iterator.flatten zip castedSig.paramInfoss.iterator.flatten) foreach (x => addCast(x._2, x._1))
+                          addCast(uncastedSig.finalResultType, castedSig.finalResultType) // FIXME: this is added even in and tpe that are out of the intersection
+                        }
 
-                dispatch(CallInfoWithContext(tp.tp.select(alt.symbol).asInstanceOf[TermRef], targs, args, outerTargs ++ tp.outerTargs, someCaller, someCallee))
+                        dispatch(CallInfoWithContext(tp.tp.select(alt.symbol).asInstanceOf[TermRef], targs, args, outerTargs ++ tp.outerTargs, someCaller, someCallee))
+                      }
+                    }
+                  }
+                }
               }
             }
           }

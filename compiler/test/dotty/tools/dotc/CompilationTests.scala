@@ -256,7 +256,7 @@ class CompilationTests extends ParallelSummaryReport with ParallelTesting {
     (linkDCETests/* + linkAggressiveDCETests*/).checkRuns()
   }
 
-   @Test def linkDCEStdLibAll: Unit = {
+  @Test def linkDCEStdLibAll: Unit = {
     val testsDir = new JFile("../tests/link-dce-stdlib")
     val tests = for (test <- testsDir.listFiles() if test.isDirectory) yield {
       val files = test.listFiles().toList.map(_.getAbsolutePath) ++ StdLibSources.whitelisted
