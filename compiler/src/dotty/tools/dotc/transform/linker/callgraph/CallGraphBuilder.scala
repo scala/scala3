@@ -46,8 +46,8 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
 
   private val sizesCache = new java.util.IdentityHashMap[Symbol, Int]()
   private val lastInstantiation = mutable.Map.empty[CallInfoWithContext, mutable.Map[CallInfo, Int]]
-  private var finished = false
 
+  private var finished = false // TODO: once the crc is complete, remove finished and use addingOutEdges instead.
   private var addingOutEdges = false
 
   private val normalizeType: Type => Type = new TypeNormalizer
@@ -91,13 +91,20 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
       val loopEndTime = System.currentTimeMillis()
       val loopTime = loopEndTime - loopStartTime
       val totalTime = loopEndTime - startTime
+      val msgInfo = {
+        if (addingOutEdges) ""
+        else
+          s"""
+             |Found $numNewReachableTypes new instantiated types (${reachableTypes.size})
+             |Found $numNewReachableMethods new call sites (${reachableMethods.size})
+             |Found $numNewCasts new casts (${casts.size})
+             |Found $numNewClassOfs new classOfs (${classOfs.size})
+           """.stripMargin
+      }
       ctx.log(
         s"""Graph building iteration $iteration
            |Iteration in ${loopTime/1000.0} seconds out of ${totalTime/1000.0} seconds (${loopTime.toDouble/totalTime})
-           |Found $numNewReachableTypes new instantiated types (${reachableTypes.size})
-           |Found $numNewReachableMethods new call sites (${reachableMethods.size})
-           |Found $numNewCasts new casts (${casts.size})
-           |Found $numNewClassOfs new classOfs (${classOfs.size})""".stripMargin)
+           |$msgInfo""".stripMargin)
 
       // val outFile =  new java.io.File(ctx.settings.d.value + s"/CallGraph-${reachableMethods.items.size}.html")
       // GraphVisualization.outputGraphVisToFile(this.result(), outFile)
@@ -111,6 +118,7 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
         finished = true
         buildLoop()
       } else if (withOutEdges && !addingOutEdges) {
+        ctx.log("[processing all call sites for to add out edges]")
         addingOutEdges = true
         buildLoop()
       }

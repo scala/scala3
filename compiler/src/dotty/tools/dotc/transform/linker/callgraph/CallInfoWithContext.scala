@@ -27,10 +27,9 @@ class CallInfoWithContext private (val call: TermRef, val targs: List[Type], val
   }
 
   def addOutEdges(callSite: CallInfo, e: CallInfoWithContext): Unit = {
-    var es = outEdges(callSite)
+    val es = outEdges(callSite)
     if (!es.contains(e))
-      es = e :: es
-    outEdges(callSite) = es
+      outEdges(callSite) = e :: es
   }
 
   def edgeCount: Int =
