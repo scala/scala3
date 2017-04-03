@@ -145,7 +145,7 @@ class TreeChecker extends Phase with SymTransformer {
     override def checkDerivedValueClass(clazz: Symbol, stats: List[Tree])(implicit ctx: Context) = ()
 
     def withDefinedSym[T](tree: untpd.Tree)(op: => T)(implicit ctx: Context): T = tree match {
-      case tree: DefTree =>
+      case tree: DefTree @unchecked =>
         val sym = tree.symbol
         assert(isValidJVMName(sym.name), s"${sym.fullName} name is invalid on jvm")
         everDefinedSyms.get(sym) match {

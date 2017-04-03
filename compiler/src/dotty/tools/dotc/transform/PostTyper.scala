@@ -264,9 +264,9 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer  { thisTran
               ctx.error(s"${ident.name} is not a member of ${expr.show}", ident.pos)
           }
           selectors.foreach {
-            case ident: Ident                 => checkIdent(ident)
-            case Thicket((ident: Ident) :: _) => checkIdent(ident)
-            case _                            =>
+            case ident @ Ident(_)                 => checkIdent(ident)
+            case Thicket((ident @ Ident(_)) :: _) => checkIdent(ident)
+            case _                                =>
           }
           super.transform(tree)
         case tree =>

@@ -159,7 +159,7 @@ class TreeBuffer extends TastyBuffer(50000) {
       val tree = it.next
       treeAddrs.get(tree) match {
         case addr: Addr => treeAddrs.put(tree, adjusted(addr))
-        case addrs: List[Addr] => treeAddrs.put(tree, addrs.map(adjusted))
+        case addrs: List[Addr @unchecked] => treeAddrs.put(tree, addrs.map(adjusted))
       }
     }
   }
