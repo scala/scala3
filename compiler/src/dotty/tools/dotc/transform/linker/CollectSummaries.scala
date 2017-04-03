@@ -57,6 +57,8 @@ class CollectSummaries extends MiniPhase { thisTransform =>
 
   private def retrieveSummary(claz: Symbol)(implicit ctx: Context): List[MethodSummary] = Nil /* {
     val topDenot = claz.topLevelClass.denot.asSymDenotation
+    if (topDenot.symbol == defn.ObjectClass)
+      return Nil
     topDenot match {
       case clsd: ClassDenotation =>
         clsd.initInfo match {
@@ -122,7 +124,7 @@ class CollectSummaries extends MiniPhase { thisTransform =>
                           val argsSz = reader.readByte()
                           val argsPassed = for(_ <- 0 until argsSz) yield readSymbolRef.info
                           val source = None // TODO
-                          new CallInfo(t.asInstanceOf[TermRef], targs.toList, argsPassed.toList, source)
+                          CallInfo(t.asInstanceOf[TermRef], targs.toList, argsPassed.toList, source) // TODO no need to normalize the types
                         }
 
                         val calls = for(_ <- 0 until listSz) yield readCallInfo
