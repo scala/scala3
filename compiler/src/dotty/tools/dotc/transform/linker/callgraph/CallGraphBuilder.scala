@@ -320,7 +320,7 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
     def propagateArgs(tp: Type): Type = {
       tp match {
         case x: TermRef if mode >= AnalyseArgs && x.symbol.is(Param) && x.symbol.owner == caller.call.termSymbol =>
-          val id = caller.call.termSymbol.info.paramNamess.flatten.indexWhere(_ == x.symbol.name)
+          val id = caller.call.termSymbol.info.paramNamess.iterator.flatten.indexWhere(_ == x.symbol.name)
           caller.argumentsPassed(id)
         case t => t
       }
@@ -386,7 +386,7 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
         addReachableType(new TypeWithContext(closureT, outer))
         closureT
       case x: TermRef if x.symbol.is(Param) && x.symbol.owner == caller.call.termSymbol =>
-        val id = caller.call.termSymbol.info.paramNamess.flatten.indexWhere(_ == x.symbol.name)
+        val id = caller.call.termSymbol.info.paramNamess.iterator.flatten.indexWhere(_ == x.symbol.name)
         caller.argumentsPassed(id)
       case x => propagateTargs(x)
     }
@@ -470,7 +470,7 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
                   // this additionally introduces a cast of result type and argument types
                   val uncastedSig = preciseSelectCall(tp.tp, alt.symbol).widen.appliedTo(targs).widen
                   val castedSig = preciseSelectCall(receiverType, calleeSymbol).widen.appliedTo(targs).widen
-                  (uncastedSig.paramTypess.flatten zip castedSig.paramTypess.flatten) foreach (x => addCast(x._2, x._1))
+                  (uncastedSig.paramTypess.iterator.flatten zip castedSig.paramTypess.iterator.flatten) foreach (x => addCast(x._2, x._1))
                   addCast(uncastedSig.finalResultType, castedSig.finalResultType) // FIXME: this is added even in and tpe that are out of the intersection
                 }
 
@@ -622,13 +622,13 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
         case Some(summary) =>
           summary.definedClosures.foreach(x => addReachableClosure(x, method))
 
-          for {
-            methodCalled <- summary.methodsCalled
-            callSite <- methodCalled._2
-            if needsCallSiteInstantiation(callSite)
-          } {
-            processed += 1
-            instantiateCallSite(method, callSite, _ => true)
+          for (methodCalled <- summary.methodsCalled) {
+            for (callSite <- methodCalled._2) {
+              if (needsCallSiteInstantiation(callSite)) {
+                processed += 1
+                instantiateCallSite(method, callSite, _ => true)
+              }
+            }
           }
 
         case None =>
@@ -644,13 +644,13 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
               addReachableJavaReturnType(method)
 
               // Add all possible calls from java to object passed as parameters.
-              for {
-                rec <- (method.call.normalizedPrefix :: method.argumentsPassed).distinct
-                potentialCall <- allPotentialCallsFor(rec)
-                if needsCallSiteInstantiation(potentialCall) && method.getOutEdges(potentialCall).isEmpty
-              } {
-                processed += 1
-                instantiateCallSite(method, potentialCall, call => collectedSummaries.contains(call.callSymbol))
+              for (rec <- (method.call.normalizedPrefix :: method.argumentsPassed).distinct) {
+                for (potentialCall <- allPotentialCallsFor(rec)) {
+                  if (needsCallSiteInstantiation(potentialCall) && method.getOutEdges(potentialCall).isEmpty) {
+                    processed += 1
+                    instantiateCallSite(method, potentialCall, call => collectedSummaries.contains(call.callSymbol))
+                  }
+                }
               }
             }
           }
@@ -687,7 +687,7 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
       Set.empty
     } else {
       def potentialCall(decl: Symbol): Option[CallInfo] = {
-        def paramTypes = decl.info.paramTypess.flatten
+        lazy val paramTypes = decl.info.paramTypess.flatten
         val call = new TermRefWithFixedSym(argType, decl.name.asTermName, decl.asTerm)
         val targs = call.widenDealias match {
           case call: PolyType =>
