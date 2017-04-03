@@ -18,6 +18,7 @@ public class SummaryReport {
     private static TestReporter rep = TestReporter.reporter(System.out, -1);
     private static ArrayDeque<String> failedTests = new ArrayDeque<>();
     private static ArrayDeque<String> reproduceInstructions = new ArrayDeque<>();
+    private static Supplier<Void> cleanup;
     private static int passed;
     private static int failed;
 
@@ -35,6 +36,23 @@ public class SummaryReport {
 
     public final static void addReproduceInstruction(String msg) {
         reproduceInstructions.offer(msg);
+    }
+
+    public final static void addCleanup(Function0<Unit> func) {
+        // Wow, look at how neatly we - compose cleanup callbacks:
+        if (cleanup == null) {
+            cleanup = () -> {
+                func.apply();
+                return null;
+            };
+        } else {
+            Supplier<Void> oldCleanup = cleanup;
+            cleanup = () -> {
+                oldCleanup.get();
+                func.apply();
+                return null;
+            };
+        }
     }
 
     @BeforeClass public final static void setup() {
@@ -71,5 +89,8 @@ public class SummaryReport {
         if (!isInteractive) rep.flushToStdErr();
 
         if (failed > 0) rep.flushToFile();
+
+        // Perform cleanup callback:
+        if (cleanup != null) cleanup.get();
     }
 }
