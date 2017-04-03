@@ -132,6 +132,13 @@ object NameKinds {
       case DerivedTermName(underlying, info: this.NumberedInfo) => Some((underlying, info.num))
       case _ => None
     }
+    protected def skipSeparatorAndNum(name: SimpleTermName, separator: String): Int = {
+      var i = name.length
+      while (i > 0 && name(i - 1).isDigit) i -= 1
+      if (i > separator.length && i < name.length &&
+          name.slice(i - separator.length, i).toString == separator) i
+      else -1
+    }
   }
 
   case class UniqueNameKind(val separator: String)
@@ -205,6 +212,18 @@ object NameKinds {
   val SkolemName              = new UniqueNameKind("?")
   val LiftedTreeName          = new UniqueNameKind("liftedTree")
 
+  val UniqueExtMethName = new UniqueNameKind("$extension") {
+    override def unmangle(name: SimpleTermName): TermName = {
+      val i = skipSeparatorAndNum(name, separator)
+      if (i > 0) {
+        val index = name.drop(i).toString.toInt
+        var original = name.take(i - separator.length).asTermName
+        apply(original, index)
+      }
+      else name
+    }
+  }
+
   val PatMatStdBinderName     = new UniqueNameKind("x")
   val PatMatPiName            = new UniqueNameKind("pi") // FIXME: explain what this is
   val PatMatPName             = new UniqueNameKind("p")  // FIXME: explain what this is
@@ -218,15 +237,12 @@ object NameKinds {
       val prefix = if (underlying.isConstructorName) nme.DEFAULT_GETTER_INIT else underlying
       prefix.toString + str.DEFAULT_GETTER + (info.num + 1)
     }
-
-    private val dgLen = str.DEFAULT_GETTER.length
-
+    // TODO: Reduce code duplication with UniqueExtMethName
     override def unmangle(name: SimpleTermName): TermName = {
-      var i = name.length
-      while (i > 0 && name(i - 1).isDigit) i -= 1
-      if (i > dgLen && i < name.length && name.slice(i - dgLen, i) == nme.DEFAULT_GETTER) {
+      val i = skipSeparatorAndNum(name, str.DEFAULT_GETTER)
+      if (i > 0) {
         val index = name.drop(i).toString.toInt - 1
-        var original = name.take(i - dgLen).asTermName
+        var original = name.take(i - str.DEFAULT_GETTER.length).asTermName
         if (original == nme.DEFAULT_GETTER_INIT) original = Names.CONSTRUCTOR
         apply(original, index)
       }
@@ -260,6 +276,7 @@ object NameKinds {
   val AvoidClashName = new SuffixNameKind(AVOIDCLASH, "$_avoid_name_clash_$")
   val DirectName = new SuffixNameKind(DIRECT, "$direct")
   val FieldName = new SuffixNameKind(FIELD, "$$local")
+  val ExtMethName = new SuffixNameKind(EXTMETH, "$extension")
   val ModuleVarName = new SuffixNameKind(OBJECTVAR, "$module")
   val ModuleClassName = new SuffixNameKind(OBJECTCLASS, "$", optInfoString = "ModuleClass")
 
@@ -283,7 +300,7 @@ object NameKinds {
   }
 
   val Scala2MethodNameKinds: List[NameKind] =
-    List(DefaultGetterName, ProtectedAccessorName, ProtectedSetterName)
+    List(DefaultGetterName, ExtMethName, UniqueExtMethName, ProtectedAccessorName, ProtectedSetterName)
 
   def simpleNameKindOfTag      : collection.Map[Int, ClassifiedNameKind] = simpleNameKinds
   def qualifiedNameKindOfTag   : collection.Map[Int, QualifiedNameKind]  = qualifiedNameKinds
