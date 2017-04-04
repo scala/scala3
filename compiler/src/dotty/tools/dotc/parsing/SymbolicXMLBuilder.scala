@@ -54,7 +54,7 @@ class SymbolicXMLBuilder(parser: Parser, preserveWS: Boolean)(implicit ctx: Cont
     val __Text: TermName    = "Text"
     val _buf: TermName      = "$buf"
     val _md: TermName       = "$md"
-    val _plus: TermName     = "$amp$plus"
+    val _plus: TermName     = "&+"
     val _tmpscope: TermName = "$tmpscope"
     val _xml: TermName      = "xml"
   }

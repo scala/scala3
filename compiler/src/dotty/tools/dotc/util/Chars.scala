@@ -77,6 +77,12 @@ object Chars {
     chtp == JCharacter.MATH_SYMBOL.toInt || chtp == JCharacter.OTHER_SYMBOL.toInt
   }
 
+  def isValidJVMChar(c: Char) =
+    !(c == '.' || c == ';' || c =='[' || c == '/')
+
+  def isValidJVMMethodChar(c: Char) =
+    !(c == '.' || c == ';' || c =='[' || c == '/' || c == '<' || c == '>')
+
   private final val otherLetters = Set[Char]('\u0024', '\u005F')  // '$' and '_'
   private final val letterGroups = {
     import JCharacter._

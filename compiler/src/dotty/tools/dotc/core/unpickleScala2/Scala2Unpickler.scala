@@ -338,7 +338,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
     def atEnd = readIndex == end
 
     def readExtSymbol(): Symbol = {
-      val name = readNameRef()
+      val name = readNameRef().decode
       val owner = if (atEnd) loadingMirror.RootClass else readSymbolRef()
 
       def adjust(denot: Denotation) = {
@@ -401,7 +401,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
               // println(owner.info.decls.toList.map(_.debugString).mkString("\n  ")) // !!! DEBUG
               //              }
               // (5) Create a stub symbol to defer hard failure a little longer.
-              System.err.println(i"***** missing reference, looking for $name in $owner")
+              System.err.println(i"***** missing reference, looking for ${name.debugString} in $owner")
               System.err.println(i"decls = ${owner.info.decls}")
               owner.info.decls.checkConsistent()
               if (slowSearch(name).exists)
@@ -447,6 +447,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
       name = name.asTermName.unmangle(SuperAccessorName)
       flags = flags &~ Scala2SuperAccessor
     }
+    name = name.mapLast(_.decode)
 
     val mname = name.mangled
     def nameMatches(rootName: Name) = mname == rootName.mangled

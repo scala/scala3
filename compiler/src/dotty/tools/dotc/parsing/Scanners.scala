@@ -7,6 +7,7 @@ import core.StdNames._, core.Comments._
 import util.SourceFile
 import java.lang.Character.isDigit
 import util.Chars._
+import util.NameTransformer.avoidIllegalChars
 import Tokens._
 import scala.annotation.{ switch, tailrec }
 import scala.collection.mutable
@@ -622,6 +623,7 @@ object Scanners {
       if (ch == '`') {
         nextChar()
         finishNamed(BACKQUOTED_IDENT)
+        name = avoidIllegalChars(name)
         if (name.length == 0)
           error("empty quoted identifier")
         else if (name == nme.WILDCARD)

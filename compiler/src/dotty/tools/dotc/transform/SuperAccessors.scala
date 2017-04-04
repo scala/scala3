@@ -107,7 +107,7 @@ class SuperAccessors(thisTransformer: DenotTransformer) {
         // ParamForwaders as installed ParamForwarding.scala do use super calls to vals
         ctx.error(s"super may be not be used on ${sym.underlyingSymbol}", sel.pos)
       else if (isDisallowed(sym))
-        ctx.error(s"super not allowed here: use this.${sel.name.decode} instead", sel.pos)
+        ctx.error(s"super not allowed here: use this.${sel.name} instead", sel.pos)
       else if (sym is Deferred) {
         val member = sym.overridingSymbol(clazz)
         if (!mix.name.isEmpty ||

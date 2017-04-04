@@ -197,7 +197,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
        *  from given `site` and `selectors`.
        */
       def namedImportRef(imp: ImportInfo)(implicit ctx: Context): Type = {
-        val Name = name.toTermName.decode
+        val Name = name.toTermName
         def recur(selectors: List[untpd.Tree]): Type = selectors match {
           case selector :: rest =>
             def checkUnambiguous(found: Type) = {
@@ -1572,14 +1572,11 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
             !ctx.isAfterTyper)
           makeImplicitFunction(xtree, pt)
         else xtree match {
-          case xtree: untpd.NameTree => typedNamed(encodeName(xtree), pt)
+          case xtree: untpd.NameTree => typedNamed(xtree, pt)
           case xtree => typedUnnamed(xtree)
         }
     }
   }
-
-  protected def encodeName(tree: untpd.NameTree)(implicit ctx: Context): untpd.NameTree =
-    untpd.rename(tree, tree.name.encode)
 
   protected def makeImplicitFunction(tree: untpd.Tree, pt: Type)(implicit ctx: Context): Tree = {
     val defn.FunctionOf(formals, resType, true) = pt.dealias

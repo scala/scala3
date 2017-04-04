@@ -8,6 +8,7 @@ import printing.{Showable, Texts, Printer}
 import Texts.Text
 import Decorators._
 import Contexts.Context
+import StdNames.str
 import collection.IndexedSeqOptimized
 import collection.generic.CanBuildFrom
 import collection.mutable.{ Builder, StringBuilder, AnyRefMap }
@@ -67,7 +68,17 @@ object Names {
     def isSimple: Boolean
     def asSimpleName: SimpleTermName
     def toSimpleName: SimpleTermName
-    def mangled: Name
+
+    @sharable // because it's just a cache for performance
+    private[this] var myMangled: Name = null
+
+    protected[Names] def mangle: ThisName
+
+    final def mangled: ThisName = {
+      if (myMangled == null) myMangled = mangle
+      myMangled.asInstanceOf[ThisName]
+    }
+
     def mangledString: String = mangled.toString
 
     def rewrite(f: PartialFunction[Name, Name]): ThisName
@@ -268,7 +279,7 @@ object Names {
     def isSimple = true
     def asSimpleName = this
     def toSimpleName = this
-    def mangled = this
+    final def mangle = encode
 
     def rewrite(f: PartialFunction[Name, Name]): ThisName =
       if (f.isDefinedAt(this)) likeSpaced(f(this)) else this
@@ -277,11 +288,10 @@ object Names {
     def mapParts(f: SimpleTermName => SimpleTermName) = f(this)
 
     def encode: SimpleTermName =
-      if (dontEncode(toTermName)) this else NameTransformer.encode(this)
+      if (dontEncode(this)) this else NameTransformer.encode(this)
 
     /** Replace \$op_name's by corresponding operator symbols. */
-    def decode: SimpleTermName =
-      if (contains('$')) termName(NameTransformer.decode(toString)) else this
+    def decode: SimpleTermName = NameTransformer.decode(this)
 
     def firstPart = this
     def lastPart = this
@@ -324,6 +334,9 @@ object Names {
             .contains(elem.getMethodName))
     }
 
+    def sliceToString(from: Int, end: Int) =
+      if (end <= from) "" else new String(chrs, start + from, end - from)
+
     def debugString: String = toString
   }
 
@@ -346,7 +359,7 @@ object Names {
     def isSimple = toTermName.isSimple
     def asSimpleName = toTermName.asSimpleName
     def toSimpleName = toTermName.toSimpleName
-    def mangled = toTermName.toSimpleName.toTypeName
+    final def mangle = toTermName.mangle.toTypeName
 
     def rewrite(f: PartialFunction[Name, Name]): ThisName = toTermName.rewrite(f).toTypeName
     def collect[T](f: PartialFunction[Name, T]): Option[T] = toTermName.collect(f)
@@ -382,12 +395,8 @@ object Names {
     def isSimple = false
     def asSimpleName = throw new UnsupportedOperationException(s"$debugString is not a simple name")
 
-    private[this] var simpleName: SimpleTermName = null
-    def toSimpleName = {
-      if (simpleName == null) simpleName = termName(toString)
-      simpleName
-    }
-    def mangled = toSimpleName
+    def toSimpleName = termName(toString)
+    final def mangle = encode.toSimpleName
 
     def rewrite(f: PartialFunction[Name, Name]): ThisName =
       if (f.isDefinedAt(this)) likeSpaced(f(this))
@@ -556,8 +565,13 @@ object Names {
   val STATIC_CONSTRUCTOR: TermName = termName("<clinit>")
   val EMPTY_PACKAGE: TermName = termName("<empty>")
   val REFINEMENT: TermName = termName("<refinement>")
+  val LOCALDUMMY_PREFIX: TermName = termName("<local ")
 
-  val dontEncode = Set(CONSTRUCTOR, EMPTY_PACKAGE, REFINEMENT)
+  val dontEncodeNames = Set(CONSTRUCTOR, STATIC_CONSTRUCTOR, EMPTY_PACKAGE, REFINEMENT)
+
+  def dontEncode(name: SimpleTermName) =
+    name.length > 0 && name(0) == '<' &&
+    (dontEncodeNames.contains(name) || name.startsWith(str.LOCALDUMMY_PREFIX))
 
   implicit val NameOrdering: Ordering[Name] = new Ordering[Name] {
     private def compareInfos(x: NameInfo, y: NameInfo): Int =

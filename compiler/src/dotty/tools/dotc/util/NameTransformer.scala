@@ -1,38 +1,24 @@
-/*                     __                                               *\
-**     ________ ___   / /  ___     Scala API                            **
-**    / __/ __// _ | / /  / _ |    (c) 2003-2011, LAMP/EPFL             **
-**  __\ \/ /__/ __ |/ /__/ __ |    http://scala-lang.org/               **
-** /____/\___/_/ |_/____/_/ | |                                         **
-**                          |/                                          **
-\*                                                                      */
-
-package dotty.tools.dotc
+package dotty.tools
+package dotc
 package util
 
 import core.Names._
 import core.Decorators._
+import collection.mutable
+import util.Chars.isValidJVMMethodChar
 
 /** Provides functions to encode and decode Scala symbolic names.
- *  Also provides some constants.
  */
 object NameTransformer {
-  // XXX Short term: providing a way to alter these without having to recompile
-  // the compiler before recompiling the compiler.
-  val MODULE_SUFFIX_STRING = sys.props.getOrElse("SCALA_MODULE_SUFFIX_STRING", "$")
-  val NAME_JOIN_STRING     = sys.props.getOrElse("SCALA_NAME_JOIN_STRING", "$")
-  val MODULE_INSTANCE_NAME = "MODULE$"
 
   private val nops = 128
-  private val ncodes = 26 * 26
 
-  private class OpCodes(val op: Char, val code: String, val next: OpCodes)
+  @sharable private val op2code = new Array[String](nops)
+  @sharable private val str2op = new mutable.HashMap[String, Char]
 
-  private val op2code = new Array[String](nops)
-  private val code2op = new Array[OpCodes](ncodes)
   private def enterOp(op: Char, code: String) = {
     op2code(op) = code
-    val c = (code.charAt(1) - 'a') * 26 + code.charAt(2) - 'a'
-    code2op(c) = new OpCodes(op, code, code2op(c))
+    str2op(code) = op
   }
 
   /* Note: decoding assumes opcodes are only ever lowercase. */
@@ -55,108 +41,76 @@ object NameTransformer {
   enterOp('?', "$qmark")
   enterOp('@', "$at")
 
-  /** Replace operator symbols by corresponding `\$opname`.
+  /** Expand characters that are illegal as JVM method names by `$u`, followed
+   *  by the character's unicode expansion.
+   */
+  def avoidIllegalChars(name: SimpleTermName) = {
+    var i = name.length - 1
+    while (i >= 0 && isValidJVMMethodChar(name(i))) i -= 1
+    if (i >= 0)
+      termName(
+        name.toString.flatMap(ch =>
+          if (isValidJVMMethodChar(ch)) ch.toString else "$u%04X".format(ch.toInt)))
+    else name
+  }
+
+  /** Replace operator symbols by corresponding expansion strings.
    *
    *  @param name the string to encode
    *  @return     the string with all recognized opchars replaced with their encoding
+   *
+   *  Operator symbols are only recognized if they make up the whole name, or
+   *  if they make up the last part of the name which follows a `_`.
    */
   def encode(name: SimpleTermName): SimpleTermName = {
-    var buf: StringBuilder = null
-    val len = name.length
-    var i = 0
-    while (i < len) {
-      val c = name(i)
-      if (c < nops && (op2code(c) ne null)) {
-        if (buf eq null) {
-          buf = new StringBuilder()
-          buf.append(name.slice(0, i))
+    def loop(len: Int, ops: List[String]): SimpleTermName = {
+      def convert =
+        if (ops.isEmpty) name
+        else {
+          val buf = new java.lang.StringBuilder
+          buf.append(chrs, name.start, len)
+          for (op <- ops) buf.append(op)
+          termName(buf.toString)
         }
-        buf.append(op2code(c))
-      /* Handle glyphs that are not valid Java/JVM identifiers */
+      if (len == 0 || name(len - 1) == '_') convert
+      else {
+        val ch = name(len - 1)
+        if (ch <= nops && op2code(ch) != null)
+          loop(len - 1, op2code(ch) :: ops)
+        else if (Chars.isSpecial(ch))
+          loop(len - 1, ch.toString :: ops)
+        else name
       }
-      else if (!Character.isJavaIdentifierPart(c)) {
-        if (buf eq null) {
-          buf = new StringBuilder()
-          buf.append(name.slice(0, i))
-        }
-        buf.append("$u%04X".format(c.toInt))
-      }
-      else if (buf ne null) {
-        buf.append(c)
-      }
-      i += 1
     }
-    if (buf eq null) name
-    else termName(buf.toString)
+    loop(name.length, Nil)
   }
 
-  /** Replace `\$opname` by corresponding operator symbol.
-   *
-   *  @param name0 the string to decode
-   *  @return      the string with all recognized operator symbol encodings replaced with their name
+  /** Replace operator expansions by the operators themselves.
+   *  Operator expansions are only recognized if they make up the whole name, or
+   *  if they make up the last part of the name which follows a `_`.
    */
-  def decode(name0: String): String = {
-    //System.out.println("decode: " + name);//DEBUG
-    val name = if (name0.endsWith("<init>")) name0.substring(0, name0.length() - ("<init>").length()) + "this"
-               else name0
-    var buf: StringBuilder = null
-    val len = name.length()
-    var i = 0
-    while (i < len) {
-      var ops: OpCodes = null
-      var unicode = false
-      val c = name charAt i
-      if (c == '$' && i + 2 < len) {
-        val ch1 = name.charAt(i + 1)
-        if ('a' <= ch1 && ch1 <= 'z') {
-          val ch2 = name.charAt(i + 2)
-          if ('a' <= ch2 && ch2 <= 'z') {
-            ops = code2op((ch1 - 'a') * 26 + ch2 - 'a')
-            while ((ops ne null) && !name.startsWith(ops.code, i)) ops = ops.next
-            if (ops ne null) {
-              if (buf eq null) {
-                buf = new StringBuilder()
-                buf.append(name.substring(0, i))
-              }
-              buf.append(ops.op)
-              i += ops.code.length()
-            }
-            /* Handle the decoding of Unicode glyphs that are
-             * not valid Java/JVM identifiers */
-          } else if ((len - i) >= 6 && // Check that there are enough characters left
-                     ch1 == 'u' &&
-                     ((Character.isDigit(ch2)) ||
-                     ('A' <= ch2 && ch2 <= 'F'))) {
-            /* Skip past "$u", next four should be hexadecimal */
-            val hex = name.substring(i + 2, i + 6)
-            try {
-              val str = Integer.parseInt(hex, 16).toChar
-              if (buf eq null) {
-                buf = new StringBuilder()
-                buf.append(name.substring(0, i))
-              }
-              buf.append(str)
-              /* 2 for "$u", 4 for hexadecimal number */
-              i += 6
-              unicode = true
-            } catch {
-              case _:NumberFormatException =>
-                /* `hex` did not decode to a hexadecimal number, so
-                 * do nothing. */
-            }
-          }
+  def decode(name: SimpleTermName): SimpleTermName = {
+    def loop(len: Int, ops: List[Char]): SimpleTermName = {
+      def convert =
+        if (ops.isEmpty) name
+        else {
+          val buf = new java.lang.StringBuilder
+          buf.append(chrs, name.start, len)
+          for (op <- ops) buf.append(op)
+          termName(buf.toString)
         }
-      }
-      /* If we didn't see an opcode or encoded Unicode glyph, and the
-        buffer is non-empty, write the current character and advance
-         one */
-      if ((ops eq null) && !unicode) {
-        if (buf ne null)
-          buf.append(c)
-        i += 1
+      if (len == 0 || name(len - 1) == '_') convert
+      else if (Chars.isSpecial(name(len - 1))) loop(len - 1, name(len - 1) :: ops)
+      else {
+        val idx = name.lastIndexOf('$', len - 1)
+        if (idx >= 0 && idx + 2 < len)
+          str2op.get(name.sliceToString(idx, len)) match {
+            case Some(ch) => loop(idx, ch :: ops)
+            case None => name
+          }
+        else name
       }
     }
-    //System.out.println("= " + (if (buf == null) name else buf.toString()));//DEBUG
-    if (buf eq null) name else buf.toString()
+    loop(name.length, Nil)
   }
 }

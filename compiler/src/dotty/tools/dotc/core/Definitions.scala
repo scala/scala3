@@ -137,7 +137,7 @@ class Definitions {
   }
 
   private def newMethod(cls: ClassSymbol, name: TermName, info: Type, flags: FlagSet = EmptyFlags): TermSymbol =
-    newSymbol(cls, name.encode, flags | Method, info).asTerm
+    newSymbol(cls, name, flags | Method, info).asTerm
 
   private def enterMethod(cls: ClassSymbol, name: TermName, info: Type, flags: FlagSet = EmptyFlags): TermSymbol =
     newMethod(cls, name, info, flags).entered
@@ -301,7 +301,7 @@ class Definitions {
   lazy val ScalaPredefModuleRef = ctx.requiredModuleRef("scala.Predef")
   def ScalaPredefModule(implicit ctx: Context) = ScalaPredefModuleRef.symbol
 
-    lazy val Predef_ConformsR = ScalaPredefModule.requiredClass("$less$colon$less").typeRef
+    lazy val Predef_ConformsR = ScalaPredefModule.requiredClass("<:<").typeRef
     def Predef_Conforms(implicit ctx: Context) = Predef_ConformsR.symbol
     lazy val Predef_conformsR = ScalaPredefModule.requiredMethodRef("$conforms")
     def Predef_conforms(implicit ctx: Context) = Predef_conformsR.symbol
