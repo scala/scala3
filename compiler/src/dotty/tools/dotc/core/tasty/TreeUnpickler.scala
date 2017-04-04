@@ -1062,7 +1062,13 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table, posUnpickle
       }
 
     def readCases(end: Addr)(implicit ctx: Context): List[CaseDef] =
-      collectWhile(nextByte == CASEDEF && currentAddr != end) { readCase()(ctx.fresh.setNewScope) }
+      collectWhile((nextByte == CASEDEF || nextByte == SHARED) && currentAddr != end) {
+        if (nextByte == SHARED) {
+          readByte()
+          forkAt(readAddr()).readCase()(ctx.fresh.setNewScope)
+        }
+        else readCase()(ctx.fresh.setNewScope)
+      }
 
     def readCase()(implicit ctx: Context): CaseDef = {
       val start = currentAddr
