@@ -411,8 +411,14 @@ object Checking {
         case tp: ClassInfo =>
           tp.derivedClassInfo(
             prefix = apply(tp.prefix),
-            classParents = tp.parentsWithArgs.map(p =>
-              apply(p).underlyingClassRef(refinementOK = false).asInstanceOf[TypeRef]))
+            classParents =
+              tp.parentsWithArgs.map { p =>
+                apply(p).underlyingClassRef(refinementOK = false) match {
+                  case ref: TypeRef => ref
+                  case _ => defn.ObjectType // can happen if class files are missing
+                }
+              }
+            )
         case _ =>
           mapOver(tp)
       }
