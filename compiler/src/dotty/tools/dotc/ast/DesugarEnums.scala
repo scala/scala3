@@ -8,7 +8,7 @@ import SymDenotations._, Symbols._, StdNames._, Annotations._, Trees._
 import Decorators._
 import collection.mutable.ListBuffer
 import util.Property
-import reporting.diagnostic.messages._
+import typer.ErrorReporting._
 
 object DesugarEnums {
   import untpd._
@@ -54,6 +54,31 @@ object DesugarEnums {
       TypeDef(tparam.name, tbounds)
         .withFlags(Param | PrivateLocal | ecTparam.flags & VarianceFlags).withPos(pos)
     }
+  }
+
+  /** A reference to the enum class `E`, possibly followed by type arguments.
+   *  Each covariant type parameter is approximated by its lower bound.
+   *  Each contravariant type parameter is approximated by its upper bound.
+   *  It is an error if a type parameter is non-variant, or if its approximation
+   *  refers to pther type parameters.
+   */
+  def interpolatedEnumParent(pos: Position)(implicit ctx: Context): Tree = {
+    val tparams = enumClass.typeParams
+    def isGround(tp: Type) = tp.subst(tparams, tparams.map(_ => NoType)) eq tp
+    val targs = tparams map { tparam =>
+      if (tparam.variance > 0 && isGround(tparam.info.bounds.lo))
+        tparam.info.bounds.lo
+      else if (tparam.variance < 0 && isGround(tparam.info.bounds.hi))
+        tparam.info.bounds.hi
+      else {
+        def problem =
+          if (tparam.variance == 0) "is non variant"
+          else "has bounds that depend on a type parameter in the same parameter list"
+        errorType(i"""cannot determine type argument for enum parent $enumClass,
+                     |type parameter $tparam $problem""", pos)
+      }
+    }
+    TypeTree(enumClass.typeRef.appliedTo(targs)).withPos(pos)
   }
 
   def enumTagMeth(implicit ctx: Context) =
@@ -111,7 +136,12 @@ object DesugarEnums {
 
   def expandEnumModule(name: TermName, impl: Template, mods: Modifiers, pos: Position)(implicit ctx: Context): Tree =
     if (impl.parents.isEmpty)
-      expandSimpleEnumCase(name, mods, pos)
+      if (impl.body.isEmpty)
+        expandSimpleEnumCase(name, mods, pos)
+      else {
+        val parent = interpolatedEnumParent(pos)
+        expandEnumModule(name, cpy.Template(impl)(parents = parent :: Nil), mods, pos)
+      }
     else {
       def toStringMeth =
         DefDef(nme.toString_, Nil, Nil, TypeTree(defn.StringType), Literal(Constant(name.toString)))
@@ -121,13 +151,17 @@ object DesugarEnums {
       ValDef(name, TypeTree(), New(impl1)).withMods(mods | Final).withPos(pos)
     }
 
-  def expandSimpleEnumCase(name: TermName, mods: Modifiers, pos: Position)(implicit ctx: Context): Tree = {
-    if (reconstitutedEnumTypeParams(pos).nonEmpty)
-      ctx.error(i"illegal enum value of generic $enumClass: an explicit `extends' clause is needed", pos)
-    val (tag, simpleSeen) = nextEnumTag(isSimpleCase = true)
-    val prefix = if (simpleSeen) Nil else enumScaffolding
-    val creator = Apply(Ident(nme.DOLLAR_NEW), List(Literal(Constant(tag)), Literal(Constant(name.toString))))
-    val vdef = ValDef(name, enumClassRef, creator).withMods(mods | Final).withPos(pos)
-    flatTree(prefix ::: vdef :: Nil).withPos(pos.startPos)
-  }
+  def expandSimpleEnumCase(name: TermName, mods: Modifiers, pos: Position)(implicit ctx: Context): Tree =
+    if (reconstitutedEnumTypeParams(pos).nonEmpty) {
+      val parent = interpolatedEnumParent(pos)
+      val impl = Template(emptyConstructor, parent :: Nil, EmptyValDef, Nil)
+      expandEnumModule(name, impl, mods, pos)
+    }
+    else {
+      val (tag, simpleSeen) = nextEnumTag(isSimpleCase = true)
+      val prefix = if (simpleSeen) Nil else enumScaffolding
+      val creator = Apply(Ident(nme.DOLLAR_NEW), List(Literal(Constant(tag)), Literal(Constant(name.toString))))
+      val vdef = ValDef(name, enumClassRef, creator).withMods(mods | Final).withPos(pos)
+      flatTree(prefix ::: vdef :: Nil).withPos(pos.startPos)
+    }
 }
