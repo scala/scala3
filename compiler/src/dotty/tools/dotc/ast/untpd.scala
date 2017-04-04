@@ -477,7 +477,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
       case SymbolLit(str) =>
         cpy.SymbolLit(tree)(str)
       case InterpolatedString(id, segments) =>
-        cpy.InterpolatedString(tree)(id, segments.map(transform(_)))
+        cpy.InterpolatedString(tree)(id, segments.mapConserve(transform))
       case Function(args, body) =>
         cpy.Function(tree)(transform(args), transform(body))
       case InfixOp(left, op, right) =>

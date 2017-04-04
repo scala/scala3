@@ -139,13 +139,13 @@ class TreeChecker extends Phase with SymTransformer {
   class Checker(phasesToCheck: Seq[Phase]) extends ReTyper with Checking {
 
     val nowDefinedSyms = new mutable.HashSet[Symbol]
-    val everDefinedSyms = new mutable.HashMap[Symbol, Tree]
+    val everDefinedSyms = new mutable.HashMap[Symbol, untpd.Tree]
 
     // don't check value classes after typer, as the constraint about constructors doesn't hold after transform
     override def checkDerivedValueClass(clazz: Symbol, stats: List[Tree])(implicit ctx: Context) = ()
 
     def withDefinedSym[T](tree: untpd.Tree)(op: => T)(implicit ctx: Context): T = tree match {
-      case tree: DefTree =>
+      case tree: untpd.DefTree =>
         val sym = tree.symbol
         assert(isValidJVMName(sym.name), s"${sym.fullName} name is invalid on jvm")
         everDefinedSyms.get(sym) match {
@@ -160,7 +160,7 @@ class TreeChecker extends Phase with SymTransformer {
 
         if (ctx.settings.YcheckMods.value) {
           tree match {
-            case t: MemberDef =>
+            case t: untpd.MemberDef =>
               if (t.name ne sym.name) ctx.warning(s"symbol ${sym.fullName} name doesn't correspond to AST: ${t}")
             // todo: compare trees inside annotations
             case _ =>
