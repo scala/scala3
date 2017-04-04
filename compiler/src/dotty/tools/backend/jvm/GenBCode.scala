@@ -50,8 +50,11 @@ class GenBCode extends Phase {
     new PlainDirectory(new Directory(new JFile(ctx.settings.d.value)))
 
   def run(implicit ctx: Context): Unit = {
-    new GenBCodePipeline(entryPoints.toList,
-        new DottyBackendInterface(outputDir, superCallsMap.toMap)(ctx))(ctx).run(ctx.compilationUnit.tpdTree)
+    val saved = Names.useMangled
+    Names.useMangled = true
+    try new GenBCodePipeline(entryPoints.toList,
+          new DottyBackendInterface(outputDir, superCallsMap.toMap)(ctx))(ctx).run(ctx.compilationUnit.tpdTree)
+    finally Names.useMangled = saved
     entryPoints.clear()
   }
 }

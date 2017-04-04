@@ -21,6 +21,11 @@ import java.util.HashMap
 object Names {
   import NameKinds._
 
+  // Gross hack because the backend uses toString on arbitrary names, which means
+  // that the NameHelper abstraction is leaky. As long as cannot get rid of this,
+  // parallel compilation is impossible.
+  @sharable var useMangled: Boolean = false
+
   /** A common class for things that can be turned into names.
    *  Instances are both names and strings, the latter via a decorator.
    */
@@ -287,7 +292,11 @@ object Names {
     override def hashCode: Int = start
 
     override def toString =
-      if (length == 0) "" else new String(chrs, start, length)
+      if (length == 0) ""
+      else {
+        val n = if (useMangled) mangled.asSimpleName else this
+        new String(chrs, n.start, n.length)
+      }
 
     def debugString: String = toString
   }
