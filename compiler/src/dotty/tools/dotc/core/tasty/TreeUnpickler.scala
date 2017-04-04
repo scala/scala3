@@ -736,7 +736,9 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table, posUnpickle
         // no longer necessary.
       goto(end)
       setPos(start, tree)
-      sym.info = ta.avoidPrivateLeaks(sym, tree.pos)
+      if (!sym.isType) { // Only terms might have leaky aliases, see the documentation of `checkNoPrivateLeaks`
+        sym.info = ta.avoidPrivateLeaks(sym, tree.pos)
+      }
       tree
     }
 

@@ -348,12 +348,23 @@ object Checking {
 
   /** Check the type signature of the symbol `M` defined by `tree` does not refer
    *  to a private type or value which is invisible at a point where `M` is still
-   *  visible. As an exception, we allow references to type aliases if the underlying
-   *  type of the alias is not a leak. So type aliases are transparent as far as
-   *  leak testing is concerned.
+   *  visible.
+   *
+   *  As an exception, we allow references to type aliases if the underlying
+   *  type of the alias is not a leak, and if `sym` is not a type. The rationale
+   *  for this is that the inferred type of a term symbol might contain leaky
+   *  aliases which should be removed (see leak-inferred.scala for an example),
+   *  but a type symbol definition will not contain leaky aliases unless the
+   *  user wrote them, so we can ask the user to change his definition. The more
+   *  practical reason for not transforming types is that `checkNoPrivateLeaks`
+   *  can force a lot of denotations, and this restriction means that we never
+   *  need to run `TypeAssigner#avoidPrivateLeaks` on type symbols when
+   *  unpickling, which avoids some issues related to forcing order.
+   *
+   *  See i997.scala for negative tests, and i1130.scala for a case where it
+   *  matters that we transform leaky aliases away.
+   *
    *  @return The `info` of `sym`, with problematic aliases expanded away.
-   *  See i997.scala for tests, i1130.scala for a case where it matters that we
-   *  transform leaky aliases away.
    */
   def checkNoPrivateLeaks(sym: Symbol, pos: Position)(implicit ctx: Context): Type = {
     class NotPrivate extends TypeMap {
@@ -388,7 +399,7 @@ object Checking {
               tp
             }
             else mapOver(tp)
-          if ((errors ne prevErrors) && tp.info.isAlias) {
+          if ((errors ne prevErrors) && !sym.isType && tp.info.isAlias) {
             // try to dealias to avoid a leak error
             val savedErrors = errors
             errors = prevErrors
