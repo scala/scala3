@@ -2,8 +2,13 @@ package dotc
 
 import dotty.tools.dotc.vulpix.ParallelTesting
 
+import scala.concurrent.duration._
+
 object comptest extends ParallelTesting {
 
+  def maxDuration = 3.seconds
+  def numberOfSlaves = 5
+  def safeMode = false
   def isInteractive = true
   def testFilter = None
 

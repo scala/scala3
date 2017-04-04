@@ -1,6 +1,4 @@
-package dotty
-package tools
-package dotc
+package dotty.tools.dotc
 package vulpix
 
 import java.io.{
@@ -18,15 +16,15 @@ import scala.collection.mutable
 trait RunnerOrchestration {
 
   /** The maximum amount of active runners, which contain a child JVM */
-  val numberOfSlaves: Int
+  def numberOfSlaves: Int
 
   /** The maximum duration the child process is allowed to consume before
    *  getting destroyed
    */
-  val maxDuration: Duration
+  def maxDuration: Duration
 
   /** Destroy and respawn process after each test */
-  val safeMode: Boolean
+  def safeMode: Boolean
 
   /** Running a `Test` class's main method from the specified `dir` */
   def runMain(dir: JFile): Status = monitor.runMain(dir)

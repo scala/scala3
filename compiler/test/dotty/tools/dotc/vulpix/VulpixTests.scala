@@ -6,11 +6,15 @@ package vulpix
 import org.junit.Assert._
 import org.junit.Test
 
+import scala.concurrent.duration._
 import scala.util.control.NonFatal
 
 class VulpixTests extends ParallelTesting {
   import CompilationTests._
 
+  def maxDuration = 3.seconds
+  def numberOfSlaves = 5
+  def safeMode = sys.env.get("SAFEMODE").isDefined
   def isInteractive = !sys.env.contains("DRONE")
   def testFilter = None
 

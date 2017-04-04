@@ -6,15 +6,20 @@ import org.junit.Test
 import org.junit.experimental.categories.Category
 
 import scala.util.matching.Regex
+import scala.concurrent.duration._
 import vulpix.{ ParallelTesting, SummaryReport }
 
 @Category(Array(classOf[ParallelTesting]))
 class CompilationTests extends SummaryReport with ParallelTesting {
   import CompilationTests._
 
-  def isInteractive: Boolean = SummaryReport.isInteractive
+  // Test suite configuration --------------------------------------------------
 
-  def testFilter: Option[Regex] = sys.props.get("dotty.partest.filter").map(r => new Regex(r))
+  def maxDuration = 3.seconds
+  def numberOfSlaves = 5
+  def safeMode = sys.env.get("SAFEMODE").isDefined
+  def isInteractive = SummaryReport.isInteractive
+  def testFilter = sys.props.get("dotty.partest.filter").map(r => new Regex(r))
 
   // Positive tests ------------------------------------------------------------
 
