@@ -99,21 +99,23 @@ trait JFileDirectoryLookup[FileEntryType <: ClassRepresentation] extends Directo
       case None => dir.listFiles()
     }
 
-    // Sort by file name for stable order of directory .class entries in package scope.
-    // This gives stable results ordering of base type sequences for unrelated classes
-    // with the same base type depth.
-    //
-    // Notably, this will stably infer`Product with Serializable`
-    // as the type of `case class C(); case class D(); List(C(), D()).head`, rather than the opposite order.
-    // On Mac, the HFS performs this sorting transparently, but on Linux the order is unspecified.
-    //
-    // Note this behaviour can be enabled in javac with `javac -XDsortfiles`, but that's only
-    // intended to improve determinism of the compiler for compiler hackers.
-    java.util.Arrays.sort(listing,
-      new java.util.Comparator[File] {
-        def compare(o1: File, o2: File) = o1.getName.compareTo(o2.getName)
-      })
-    listing
+    if (listing != null) {
+      // Sort by file name for stable order of directory .class entries in package scope.
+      // This gives stable results ordering of base type sequences for unrelated classes
+      // with the same base type depth.
+      //
+      // Notably, this will stably infer`Product with Serializable`
+      // as the type of `case class C(); case class D(); List(C(), D()).head`, rather than the opposite order.
+      // On Mac, the HFS performs this sorting transparently, but on Linux the order is unspecified.
+      //
+      // Note this behaviour can be enabled in javac with `javac -XDsortfiles`, but that's only
+      // intended to improve determinism of the compiler for compiler hackers.
+      java.util.Arrays.sort(listing,
+        new java.util.Comparator[File] {
+          def compare(o1: File, o2: File) = o1.getName.compareTo(o2.getName)
+        })
+      listing
+    } else Array()
   }
   protected def getName(f: File): String = f.getName
   protected def toAbstractFile(f: File): AbstractFile = new PlainFile(new scala.reflect.io.File(f))
