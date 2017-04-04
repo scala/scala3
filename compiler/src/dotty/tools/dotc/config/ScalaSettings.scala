@@ -44,7 +44,6 @@ class ScalaSettings extends Settings.SettingGroup {
   /** -X "Advanced" settings
    */
   val Xhelp = BooleanSetting("-X", "Print a synopsis of advanced options.")
-  val emitTasty = BooleanSetting("-XemitTasty", "Generate tasty in separate *.tasty file.")
   val noForwarders = BooleanSetting("-Xno-forwarders", "Do not generate static forwarders in mirror classes.")
   val XminImplicitSearchDepth = IntSetting("-Xmin-implicit-search-depth", "Set number of levels of implicit searches undertaken before checking for divergence.", 5)
   val xmaxInlines = IntSetting("-Xmax-inlines", "Maximal number of successive inlines", 32)
@@ -71,6 +70,7 @@ class ScalaSettings extends Settings.SettingGroup {
   val debugOwners = BooleanSetting("-Ydebug-owners", "Print all owners of definitions (requires -Yprint-syms)")
   val termConflict = ChoiceSetting("-Yresolve-term-conflict", "strategy", "Resolve term conflicts", List("package", "object", "error"), "error")
   val log = PhasesSetting("-Ylog", "Log operations during")
+  val emitTasty = BooleanSetting("-YemitTasty", "Generate tasty in separate *.tasty file.")
   val Ylogcp = BooleanSetting("-Ylog-classpath", "Output information about what classpath is being applied.")
   val YnoImports = BooleanSetting("-Yno-imports", "Compile without importing scala.*, java.lang.*, or Predef.")
   val YnoPredef = BooleanSetting("-Yno-predef", "Compile without importing Predef.")
