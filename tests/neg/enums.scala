@@ -8,13 +8,13 @@ enum class X {
 }
 
 enum E1[T] {
-  case C
+  case C // error: cannot determine type argument
 }
 
 enum E2[+T, +U >: T] {
-  case C
+  case C // error: cannot determine type argument
 }
 
 enum E3[-T <: Ordered[T]] {
-  case C
+  case C // error: cannot determine type argument
 }
