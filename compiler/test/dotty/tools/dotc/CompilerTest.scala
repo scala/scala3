@@ -2,7 +2,6 @@ package dotty.tools.dotc
 
 import repl.TestREPL
 import core.Contexts._
-import dotty.partest.DPConfig
 import interfaces.Diagnostic.ERROR
 import reporting._
 import diagnostic.MessageContainer
@@ -11,33 +10,11 @@ import config.CompilerCommand
 import dotty.tools.io.PlainFile
 import scala.collection.mutable.ListBuffer
 import scala.reflect.io.{ Path, Directory, File => SFile, AbstractFile }
-import scala.tools.partest.nest.{ FileManager, NestUI }
 import scala.annotation.tailrec
 import java.io.{ RandomAccessFile, File => JFile }
 
 
-/** This class has two modes: it can directly run compiler tests, or it can
-  * generate the necessary file structure for partest in the directory
-  * DPConfig.testRoot. Both modes are regular JUnit tests. Which mode is used
-  * depends on the existence of the tests/locks/partest-ppid.lock file which is
-  * created by sbt to trigger partest generation. Sbt will then run partest on
-  * the generated sources.
-  *
-  * Through overriding the partestableXX methods, tests can always be run as
-  * JUnit compiler tests. Run tests cannot be run by JUnit, only by partest.
-  *
-  * A test can either be a file or a directory. Partest will generate a
-  * <test>-<kind>.log file with output of failed tests. Partest reads compiler
-  * flags and the number of errors expected from a neg test from <test>.flags
-  * and <test>.nerr files (also generated). The test is in a parent directory
-  * that determines the kind of test:
-  * - pos: checks that compilation succeeds
-  * - neg: checks that compilation fails with the given number of errors
-  * - run: compilation succeeds, partest: test run generates the output in
-  *        <test>.check. Run tests always need to be:
-  *        object Test { def main(args: Array[String]): Unit = ... }
-  *        Classpath jars can be added to partestDeps in the sbt Build.scala.
-  */
+/** Legacy compiler tests that run single threaded */
 abstract class CompilerTest {
 
   /** Override with output dir of test so it can be patched. Partest expects
@@ -49,32 +26,9 @@ abstract class CompilerTest {
   def partestableDir(prefix: String, dirName: String, args: List[String]) = true
   def partestableList(testName: String, files: List[String], args: List[String]) = true
 
-  val generatePartestFiles = {
-    /* Because we fork in test, the JVM in which this JUnit test runs has a
-     * different pid from the one that started the partest. But the forked VM
-     * receives the pid of the parent as system property. If the lock file
-     * exists, the parent is requesting partest generation. This mechanism
-     * allows one sbt instance to run test (JUnit only) and another partest.
-     * We cannot run two instances of partest at the same time, because they're
-     * writing to the same directories. The sbt lock file generation prevents
-     * this.
-     */
-    val pid = System.getProperty("partestParentID")
-    if (pid == null)
-      false
-    else
-      new JFile(".." + JFile.separator + "tests" + JFile.separator + "locks" + JFile.separator + s"partest-$pid.lock").exists
-  }
-
-  // Delete generated files from previous run and create new log
-  val logFile = if (!generatePartestFiles) None else Some(CompilerTest.init)
-
   /** Always run with JUnit. */
-  def compileLine(cmdLine: String)(implicit defaultOptions: List[String]): Unit = {
-    if (generatePartestFiles)
-      log("WARNING: compileLine will always run with JUnit, no partest files generated.")
+  def compileLine(cmdLine: String)(implicit defaultOptions: List[String]): Unit =
     compileArgs(cmdLine.split("\n"), Nil)
-  }
 
   /** Compiles the given code file.
     *
@@ -88,36 +42,22 @@ abstract class CompilerTest {
       (implicit defaultOptions: List[String]): Unit = {
     val filePath = s"$prefix$fileName$extension"
     val expErrors = expectedErrors(filePath)
-    if (!generatePartestFiles || !partestableFile(prefix, fileName, extension, args ++ defaultOptions)) {
-      if (runTest)
-        log(s"WARNING: run tests can only be run by partest, JUnit just verifies compilation: $prefix$fileName$extension")
-      if (args.contains("-rewrite")) {
-        val file = new PlainFile(filePath)
-        val data = file.toByteArray
-        // compile with rewrite
-        compileArgs((filePath :: args).toArray, expErrors)
-        // compile again, check that file now compiles without -language:Scala2
-        val plainArgs = args.filter(arg => arg != "-rewrite" && arg != "-language:Scala2")
-        compileFile(prefix, fileName, plainArgs, extension, runTest)
-        // restore original test file
-        val out = file.output
-        out.write(data)
-        out.close()
-      }
-      else compileArgs((filePath :: args).toArray, expErrors)
-    } else {
-      val kind = testKind(prefix, runTest)
-      log(s"generating partest files for test file: $prefix$fileName$extension of kind $kind")
-
-      val sourceFile = new JFile(prefix + fileName + extension)
-      if (sourceFile.exists) {
-        val firstDest = SFile(DPConfig.testRoot + JFile.separator + kind + JFile.separator + fileName + extension)
-        val xerrors = expErrors.map(_.totalErrors).sum
-        computeDestAndCopyFiles(sourceFile, firstDest, kind, args ++ defaultOptions, xerrors.toString)
-      } else {
-        throw new java.io.FileNotFoundException(s"Unable to locate test file $prefix$fileName")
-      }
+    if (runTest)
+      log(s"WARNING: run tests can only be run by partest, JUnit just verifies compilation: $prefix$fileName$extension")
+    if (args.contains("-rewrite")) {
+      val file = new PlainFile(filePath)
+      val data = file.toByteArray
+      // compile with rewrite
+      compileArgs((filePath :: args).toArray, expErrors)
+      // compile again, check that file now compiles without -language:Scala2
+      val plainArgs = args.filter(arg => arg != "-rewrite" && arg != "-language:Scala2")
+      compileFile(prefix, fileName, plainArgs, extension, runTest)
+      // restore original test file
+      val out = file.output
+      out.write(data)
+      out.close()
     }
+    else compileArgs((filePath :: args).toArray, expErrors)
   }
   def runFile(prefix: String, fileName: String, args: List[String] = Nil, extension: String = ".scala")
        (implicit defaultOptions: List[String]): Unit = {
@@ -167,33 +107,11 @@ abstract class CompilerTest {
       val expErrors = expectedErrors(filePaths.toList)
       (filePaths, javaFilePaths, normArgs, expErrors)
     }
-    if (!generatePartestFiles || !partestableDir(prefix, dirName, args ++ defaultOptions)) {
-      if (runTest)
-        log(s"WARNING: run tests can only be run by partest, JUnit just verifies compilation: $prefix$dirName")
-      val (filePaths, javaFilePaths, normArgs, expErrors) = computeFilePathsAndExpErrors
-      compileWithJavac(javaFilePaths, Array.empty) // javac needs to run first on dotty-library
-      compileArgs(javaFilePaths ++ filePaths ++ normArgs, expErrors)
-    } else {
-      val (sourceDir, flags, deep) = args match {
-        case "-deep" :: args1 => (flattenDir(prefix, dirName), args1 ++ defaultOptions, "deep")
-        case _ => (new JFile(prefix + dirName), args ++ defaultOptions, "shallow")
-      }
-      val kind = testKind(prefix, runTest)
-      log(s"generating partest files for test directory ($deep): $prefix$dirName of kind $kind")
-
-      if (sourceDir.exists) {
-        val firstDest = Directory(DPConfig.testRoot + JFile.separator + kind + JFile.separator + dirName)
-        val xerrors = if (isNegTest(prefix)) {
-          val (_, _, _, expErrors) = computeFilePathsAndExpErrors
-          expErrors.map(_.totalErrors).sum
-        } else 0
-        computeDestAndCopyFiles(sourceDir, firstDest, kind, flags, xerrors.toString)
-        if (deep == "deep")
-          Directory(sourceDir).deleteRecursively
-      } else {
-        throw new java.io.FileNotFoundException(s"Unable to locate test dir $prefix$dirName")
-      }
-    }
+    if (runTest)
+      log(s"WARNING: run tests can only be run by partest, JUnit just verifies compilation: $prefix$dirName")
+    val (filePaths, javaFilePaths, normArgs, expErrors) = computeFilePathsAndExpErrors
+    compileWithJavac(javaFilePaths, Array.empty) // javac needs to run first on dotty-library
+    compileArgs(javaFilePaths ++ filePaths ++ normArgs, expErrors)
   }
   def runDir(prefix: String, dirName: String, args: List[String] = Nil)
       (implicit defaultOptions: List[String]): Unit =
@@ -222,19 +140,8 @@ abstract class CompilerTest {
   /** Compiles the given list of code files. */
   def compileList(testName: String, files: List[String], args: List[String] = Nil)
       (implicit defaultOptions: List[String]): Unit = {
-    if (!generatePartestFiles || !partestableList(testName, files, args ++ defaultOptions)) {
-      val expErrors = expectedErrors(files)
-      compileArgs((files ++ args).toArray, expErrors)
-    } else {
-      val destDir = Directory(DPConfig.testRoot + JFile.separator + testName)
-      files.foreach({ file =>
-        val sourceFile = new JFile(file)
-        val destFile = destDir / (if (file.startsWith("../")) file.substring(3) else file)
-        recCopyFiles(sourceFile,  destFile)
-      })
-      compileDir(DPConfig.testRoot + JFile.separator, testName, args)
-      destDir.deleteRecursively
-    }
+    val expErrors = expectedErrors(files)
+    compileArgs((files ++ args).toArray, expErrors)
   }
 
   // ========== HELPERS =============
@@ -425,60 +332,6 @@ abstract class CompilerTest {
   }
   import Difference._
 
-  /** The same source might be used for several partest test cases (e.g. with
-    * different flags). Detects existing versions and computes the path to be
-    * used for this version, e.g. testname_v1 for the first alternative. */
-  private def computeDestAndCopyFiles(source: JFile, dest: Path, kind: String, oldFlags: List[String], nerr: String,
-      nr: Int = 0, oldOutput: String = defaultOutputDir): Unit = {
-
-    val partestOutput = dest.jfile.getParentFile + JFile.separator + dest.stripExtension + "-" + kind + ".obj"
-
-    val altOutput =
-      source.getParentFile.getAbsolutePath.map(x => if (x == JFile.separatorChar) '_' else x)
-
-    val (beforeCp, remaining) = oldFlags
-      .map(f => if (f == oldOutput) partestOutput else f)
-      .span(_ != "-classpath")
-    val flags = beforeCp ++ List("-classpath", (partestOutput :: remaining.drop(1)).mkString(":"))
-
-    val difference = getExisting(dest).isDifferent(source, flags, nerr)
-    difference match {
-      case NotExists => copyFiles(source, dest, partestOutput, flags, nerr, kind)
-      case ExistsSame => // nothing else to do
-      case ExistsDifferent =>
-        val nextDest = dest.parent / (dest match {
-          case d: Directory =>
-            val newVersion = replaceVersion(d.name, nr).getOrElse(altOutput)
-            Directory(newVersion)
-          case f =>
-            val newVersion = replaceVersion(f.stripExtension, nr).getOrElse(altOutput)
-            SFile(newVersion).addExtension(f.extension)
-        })
-        computeDestAndCopyFiles(source, nextDest, kind, flags, nerr, nr + 1, partestOutput)
-    }
-  }
-
-  /** Copies the test sources. Creates flags, nerr, check and output files. */
-  private def copyFiles(sourceFile: Path, dest: Path, partestOutput: String, flags: List[String], nerr: String, kind: String) = {
-    recCopyFiles(sourceFile, dest)
-
-    new JFile(partestOutput).mkdirs
-
-    if (flags.nonEmpty)
-      dest.changeExtension("flags").createFile(true).writeAll(flags.mkString(" "))
-    if (nerr != "0")
-      dest.changeExtension("nerr").createFile(true).writeAll(nerr)
-    sourceFile.changeExtension("check").ifFile({ check =>
-      if (kind == "run") {
-        FileManager.copyFile(check.jfile, dest.changeExtension("check").jfile)
-        dest.changeExtension("checksrc").createFile(true).writeAll("check file generated from source:\n" + check.toString)
-      } else {
-        log(s"WARNING: ignoring $check for test kind $kind")
-      }
-    })
-
-  }
-
   /** Recursively copy over source files and directories, excluding extensions
     * that aren't in extensionsToCopy. */
   private def recCopyFiles(sourceFile: Path, dest: Path): Unit = {
@@ -576,38 +429,6 @@ abstract class CompilerTest {
     }
   }
 
-  /** Creates a temporary directory and copies all (deep) files over, thus
-    * flattening the directory structure. */
-  private def flattenDir(prefix: String, dirName: String): JFile = {
-    val destDir = Directory(DPConfig.testRoot + JFile.separator + "_temp")
-    Directory(prefix + dirName).deepFiles.foreach(source => recCopyFiles(source, destDir / source.name))
-    destDir.jfile
-  }
-
-  /** Write either to console (JUnit) or log file (partest). */
-  private def log(msg: String) = logFile.map(_.appendAll(msg + "\n")).getOrElse(println(msg))
-}
-
-object CompilerTest extends App {
-
-  /** Deletes generated partest sources from a previous run, recreates
-    * directory and returns the freshly created log file. */
-  lazy val init: SFile = {
-    scala.reflect.io.Directory(DPConfig.testRoot).deleteRecursively
-    new JFile(DPConfig.testRoot).mkdirs
-    val log = DPConfig.genLog.createFile(true)
-    println(s"CompilerTest is generating tests for partest, log: $log")
-    log
-  }
-
-//  val dotcDir = "/Users/odersky/workspace/dotty/src/dotty/"
-
-//  new CompilerTest().compileFile(dotcDir + "tools/dotc/", "CompilationUnit")
-//  new CompilerTest().compileFile(dotcDir + "tools/dotc/", "Compiler")
-//  new CompilerTest().compileFile(dotcDir + "tools/dotc/", "Driver")
-//  new CompilerTest().compileFile(dotcDir + "tools/dotc/", "Main")
-//  new CompilerTest().compileFile(dotcDir + "tools/dotc/", "Run")
-
-//  new CompilerTest().compileDir(dotcDir + "tools/dotc")
- // new CompilerTest().compileFile(dotcDir + "tools/dotc/", "Run")
+  /** Write either to console */
+  private def log(msg: String) = println(msg)
 }

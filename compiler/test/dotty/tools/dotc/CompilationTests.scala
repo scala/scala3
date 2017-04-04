@@ -3,13 +3,12 @@ package tools
 package dotc
 
 import org.junit.Test
-import org.junit.experimental.categories.Category
 
 import scala.util.matching.Regex
 import scala.concurrent.duration._
+
 import vulpix.{ ParallelTesting, SummaryReport }
 
-@Category(Array(classOf[ParallelTesting]))
 class CompilationTests extends SummaryReport with ParallelTesting {
   import CompilationTests._
 

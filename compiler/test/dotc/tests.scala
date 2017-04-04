@@ -3,6 +3,7 @@ package dotc
 import dotty.Jars
 import dotty.tools.dotc.CompilerTest
 import dotty.tools.StdLibSources
+import org.junit.experimental.categories.Category
 import org.junit.{Before, Test}
 import org.junit.Assert._
 
@@ -10,10 +11,20 @@ import java.io.{ File => JFile }
 import scala.reflect.io.Directory
 import scala.io.Source
 
-// tests that match regex '(pos|dotc|run|java|compileStdLib)\.*' would be executed as benchmarks.
+/** Marker class to indicate sequential unit tests */
+class SequentialUnitTests
+
+/** WARNING
+ *  =======
+ *  These are legacy, do not add tests here, see `CompilationTests.scala`
+ */
+@Category(Array(classOf[SequentialUnitTests]))
 class tests extends CompilerTest {
 
-  def isRunByJenkins: Boolean = sys.props.isDefinedAt("dotty.jenkins.build")
+  // tests that match regex '(pos|dotc|run|java|compileStdLib)\.*' would be
+  // executed as benchmarks.
+
+  def isRunByDrone: Boolean = sys.props.isDefinedAt("DRONE")
 
   val defaultOutputDir = "../out/"
 
@@ -62,7 +73,7 @@ class tests extends CompilerTest {
   }
 
   implicit val defaultOptions: List[String] = noCheckOptions ++ {
-    if (isRunByJenkins) List("-Ycheck:tailrec,resolveSuper,mixin,restoreScopes,labelDef") // should be Ycheck:all, but #725
+    if (isRunByDrone) List("-Ycheck:tailrec,resolveSuper,mixin,restoreScopes,labelDef") // should be Ycheck:all, but #725
     else List("-Ycheck:tailrec,resolveSuper,mixin,restoreScopes,labelDef")
   } ++ checkOptions ++ classPath
 
