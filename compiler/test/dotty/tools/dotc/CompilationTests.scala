@@ -15,7 +15,7 @@ class CompilationTests extends SummaryReport with ParallelTesting {
 
   // Test suite configuration --------------------------------------------------
 
-  def maxDuration = 3.seconds
+  def maxDuration = 180.seconds
   def numberOfSlaves = 5
   def safeMode = sys.env.get("SAFEMODE").isDefined
   def isInteractive = SummaryReport.isInteractive

@@ -12,8 +12,13 @@ public class Statuses {
     }
 
     static class Failure implements Status, Serializable {
-        public final String output;
-        public Failure(String output) { this.output = output; }
+        public final String message;
+        public final String stacktrace;
+
+        public Failure(String message, String stacktrace) {
+            this.message = message;
+            this.stacktrace = stacktrace;
+        }
     }
 
     static class Timeout implements Status, Serializable {}

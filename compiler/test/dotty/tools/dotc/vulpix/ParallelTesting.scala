@@ -6,7 +6,6 @@ package vulpix
 import java.io.{ File => JFile }
 import java.text.SimpleDateFormat
 import java.util.HashMap
-import java.lang.reflect.InvocationTargetException
 import java.nio.file.StandardCopyOption.REPLACE_EXISTING
 import java.nio.file.{ Files, Path, Paths, NoSuchFileException }
 import java.util.concurrent.{ Executors => JExecutors, TimeUnit, TimeoutException }
@@ -24,13 +23,15 @@ import reporting.diagnostic.MessageContainer
 import interfaces.Diagnostic.ERROR
 import dotc.util.DiffUtil
 
+import vulpix.Statuses._
+
 /** A parallel testing suite whose goal is to integrate nicely with JUnit
  *
  *  This trait can be mixed in to offer parallel testing to compile runs. When
  *  using this, you should be running your JUnit tests **sequentially**, as the
  *  test suite itself runs with a high level of concurrency.
  */
-trait ParallelTesting { self =>
+trait ParallelTesting extends RunnerOrchestration { self =>
 
   import ParallelTesting._
   import SummaryReport._
@@ -225,14 +226,18 @@ trait ParallelTesting { self =>
 
     /** The test sources that failed according to the implementing subclass */
     private[this] val failedTestSources = mutable.ArrayBuffer.empty[String]
-    protected final def failTestSource(testSource: TestSource) = synchronized {
-      failedTestSources.append(testSource.name + " failed")
+    protected final def failTestSource(testSource: TestSource, reason: Option[String] = None) = synchronized {
+      val extra = reason.map(" with reason: " + _).getOrElse("")
+      failedTestSources.append(testSource.name + " failed" + extra)
       fail()
     }
 
     /** Prints to `System.err` if we're not suppressing all output */
-    protected def echo(msg: String): Unit =
-      if (!suppressAllOutput) realStderr.println(msg)
+    protected def echo(msg: String): Unit = if (!suppressAllOutput) {
+      // pad right so that output is at least as large as progress bar line
+      val paddingRight = " " * math.max(0, 80 - msg.length)
+      realStderr.println(msg + paddingRight)
+    }
 
     /** A single `Runnable` that prints a progress bar for the curent `Test` */
     private def createProgressMonitor: Runnable = new Runnable {
@@ -418,98 +423,58 @@ trait ParallelTesting { self =>
               echoBuildInstructions(reporters.head, testSource, errorCount, warningCount)
           }
         }
-
       }
     }
   }
 
   private final class RunTest(testSources: List[TestSource], times: Int, threadLimit: Option[Int], suppressAllOutput: Boolean)
   extends Test(testSources, times, threadLimit, suppressAllOutput) {
-    private def runMain(dir: JFile, testSource: TestSource): Array[String] = {
-      def renderStackTrace(ex: Throwable): String =
-        if (ex == null) ""
-        else ex.getStackTrace
-          .takeWhile(_.getMethodName != "invoke0")
-          .mkString("    ", "\n    ", "")
+    private def verifyOutput(checkFile: JFile, dir: JFile, testSource: TestSource, warnings: Int) = {
+      runMain(dir) match {
+        case success: Success => {
+          val outputLines = success.output.lines.toArray
+          val checkLines: Array[String] = Source.fromFile(checkFile).getLines.toArray
+          val sourceTitle = testSource.title
 
-      import java.io.{ ByteArrayOutputStream, PrintStream }
-      import java.net.{ URL, URLClassLoader }
+          def linesMatch =
+            outputLines
+            .zip(checkLines)
+            .forall { case (x, y) => x == y }
 
-      val printStream = new ByteArrayOutputStream
+          if (outputLines.length != checkLines.length || !linesMatch) {
+            // Print diff to files and summary:
+            val diff = outputLines.zip(checkLines).map { case (act, exp) =>
+              DiffUtil.mkColoredLineDiff(exp, act)
+            }.mkString("\n")
 
-      try {
-        // Do classloading magic and running here:
-        val ucl = new URLClassLoader(Array(dir.toURI.toURL))
-        val cls = ucl.loadClass("Test")
-        val meth = cls.getMethod("main", classOf[Array[String]])
+            val msg =
+              s"""|Output from '$sourceTitle' did not match check file.
+                  |Diff ('e' is expected, 'a' is actual):
+                  |""".stripMargin + diff + "\n"
+            echo(msg)
+            addFailureInstruction(msg)
 
-        synchronized {
-          try {
-            val ps = new PrintStream(printStream)
-            System.setOut(ps)
-            System.setErr(ps)
-            Console.withOut(printStream) {
-              Console.withErr(printStream) {
-                meth.invoke(null, Array("jvm")) // partest passes at least "jvm" as an arg
-              }
-            }
-            System.setOut(realStdout)
-            System.setErr(realStderr)
-          } catch {
-            case t: Throwable =>
-              System.setOut(realStdout)
-              System.setErr(realStderr)
-              throw t
+            // Print build instructions to file and summary:
+            val buildInstr = testSource.buildInstructions(0, warnings)
+            addFailureInstruction(buildInstr)
+
+            // Fail target:
+            failTestSource(testSource)
           }
         }
-      }
-      catch {
-        case ex: NoSuchMethodException =>
-          echo(s"test in '$dir' did not contain method: ${ex.getMessage}\n${renderStackTrace(ex.getCause)}")
+
+        case failure: Failure =>
+          echo(renderFailure(failure))
           failTestSource(testSource)
 
-        case ex: ClassNotFoundException =>
-          echo(s"test in '$dir' did not contain class: ${ex.getMessage}\n${renderStackTrace(ex.getCause)}")
-          failTestSource(testSource)
-
-        case ex: InvocationTargetException =>
-          echo(s"An exception ocurred when running main: ${ex.getCause}\n${renderStackTrace(ex.getCause)}")
-          failTestSource(testSource)
-      }
-      printStream.toString("utf-8").lines.toArray
-    }
-
-    private def verifyOutput(checkFile: JFile, dir: JFile, testSource: TestSource, warnings: Int) = {
-      val outputLines = runMain(dir, testSource)
-      val checkLines = Source.fromFile(checkFile).getLines.toArray
-      val sourceTitle = testSource.title
-
-      def linesMatch =
-        outputLines
-        .zip(checkLines)
-        .forall { case (x, y) => x == y }
-
-      if (outputLines.length != checkLines.length || !linesMatch) {
-        // Print diff to files and summary:
-        val diff = outputLines.zip(checkLines).map { case (act, exp) =>
-          DiffUtil.mkColoredLineDiff(exp, act)
-        }.mkString("\n")
-
-        val msg =
-          s"""|Output from '$sourceTitle' did not match check file.
-              |Diff ('e' is expected, 'a' is actual):
-              |""".stripMargin + diff + "\n"
-        echo(msg)
-        addFailureInstruction(msg)
-
-        // Print build instructions to file and summary:
-        val buildInstr = testSource.buildInstructions(0, warnings)
-        addFailureInstruction(buildInstr)
-
-        // Fail target:
-        failTestSource(testSource)
+        case _: Timeout =>
+          echo("failed because test " + testSource.title + " timed out")
+          failTestSource(testSource, Some("test timed out"))
       }
     }
+
+    private def renderFailure(failure: Failure): String =
+      failure.message + "\n" + failure.stacktrace
 
     protected def compilationRunnable(testSource: TestSource): Runnable = new Runnable {
       def run(): Unit = tryCompile(testSource) {
@@ -554,7 +519,15 @@ trait ParallelTesting { self =>
         }
 
         if (errorCount == 0 && hasCheckFile) verifier()
-        else if (errorCount == 0) runMain(testSource.outDir, testSource)
+        else if (errorCount == 0) runMain(testSource.outDir) match {
+          case status: Failure =>
+            echo(renderFailure(status))
+            failTestSource(testSource)
+          case _: Timeout =>
+            echo("failed because test " + testSource.title + " timed out")
+            failTestSource(testSource, Some("test timed out"))
+          case _: Success => // success!
+        }
         else if (errorCount > 0) {
           echo(s"\nCompilation failed for: '$testSource'")
           val buildInstr = testSource.buildInstructions(errorCount, warningCount)
