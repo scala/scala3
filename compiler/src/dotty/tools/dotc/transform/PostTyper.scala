@@ -2,7 +2,7 @@ package dotty.tools.dotc
 package transform
 
 import dotty.tools.dotc.transform.TreeTransforms.{TransformerInfo, TreeTransform, TreeTransformer}
-import dotty.tools.dotc.ast.{Trees, tpd}
+import dotty.tools.dotc.ast.{Trees, tpd, untpd}
 import scala.collection.{ mutable, immutable }
 import ValueClasses._
 import scala.annotation.tailrec
@@ -258,15 +258,15 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer  { thisTran
           )
         case Import(expr, selectors) =>
           val exprTpe = expr.tpe
-          def checkIdent(ident: Ident): Unit = {
+          def checkIdent(ident: untpd.Ident): Unit = {
             val name = ident.name.asTermName.encode
             if (name != nme.WILDCARD && !exprTpe.member(name).exists && !exprTpe.member(name.toTypeName).exists)
               ctx.error(s"${ident.name} is not a member of ${expr.show}", ident.pos)
           }
           selectors.foreach {
-            case ident @ Ident(_)                 => checkIdent(ident)
-            case Thicket((ident @ Ident(_)) :: _) => checkIdent(ident)
-            case _                                =>
+            case ident: untpd.Ident                 => checkIdent(ident)
+            case Thicket((ident: untpd.Ident) :: _) => checkIdent(ident)
+            case _                                  =>
           }
           super.transform(tree)
         case tree =>
