@@ -13,6 +13,8 @@ import scala.concurrent.{ Await, Future }
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.collection.mutable
 
+import vulpix.Statuses._
+
 trait RunnerOrchestration {
 
   /** The maximum amount of active runners, which contain a child JVM */
@@ -36,14 +38,30 @@ trait RunnerOrchestration {
     def runMain(dir: JFile): Status = withRunner(_.runMain(dir))
 
     private class Runner(private var process: Process) {
-      private[this] val ois = new ObjectInputStream(process.getInputStream)
-      private[this] val oos = new ObjectOutputStream(process.getOutputStream)
+      private[this] var ois: ObjectInputStream = _
+      private[this] var oos: ObjectOutputStream = _
 
+      /** Checks if `process` is still alive
+       *
+       *  When `process.exitValue()` is called on an active process the caught
+       *  exception is thrown. As such we can know if the subprocess exited or
+       *  not.
+       *
+       *  @note used for debug
+       */
+      def isAlive: Boolean =
+        try { process.exitValue(); false }
+        catch { case _: IllegalThreadStateException => true }
+
+      /** Destroys the underlying process and kills IO streams */
       def kill(): Unit = {
         if (process ne null) process.destroy()
         process = null
+        ois = null
+        oos = null
       }
 
+      /** Blocks less than `maxDuration` while running `Test.main` from `dir` */
       def runMain(dir: JFile): Status = {
         assert(process ne null,
           "Runner was killed and then reused without setting a new process")
@@ -52,37 +70,51 @@ trait RunnerOrchestration {
         def respawn(): Unit = {
           process.destroy()
           process = createProcess
+          ois = null
+          oos = null
         }
+
+        if (oos eq null) oos = new ObjectOutputStream(process.getOutputStream)
 
         // pass file to running process
         oos.writeObject(dir)
+        oos.flush()
 
         // Create a future reading the object:
-        val readObject = Future(ois.readObject().asInstanceOf[Status])
+        val readObject = Future {
+          if (ois eq null) ois = new ObjectInputStream(process.getInputStream)
+          ois.readObject().asInstanceOf[Status]
+        }
 
         // Await result for `maxDuration` and then timout and destroy the
         // process:
         val status =
           try Await.result(readObject, maxDuration)
-          catch { case _: TimeoutException => { Timeout } }
+          catch { case _: TimeoutException =>  new Timeout() }
 
         // Handle failure of the VM:
         status match {
           case _ if safeMode => respawn()
-          case status: Failure => respawn()
-          case Timeout => respawn()
+          case _: Failure => respawn()
+          case _: Timeout => respawn()
           case _ => ()
         }
-
-        // return run status:
         status
       }
     }
 
-    private def createProcess: Process = ???
+    private def createProcess: Process = {
+      val sep = sys.props("file.separator")
+      val cp = sys.props("java.class.path")
+      val java = sys.props("java.home") + sep + "bin" + sep + "java"
+      new ProcessBuilder(java, "-cp", cp, "dotty.tools.dotc.vulpix.ChildMain")//classOf[ChildMain].getName)
+        .redirectErrorStream(true)
+        .redirectInput(ProcessBuilder.Redirect.PIPE)
+        .redirectOutput(ProcessBuilder.Redirect.PIPE)
+        .start()
+    }
 
-    private[this] val allRunners =
-      List.fill(numberOfSlaves)(new Runner(createProcess))
+    private[this] val allRunners = List.fill(numberOfSlaves)(new Runner(createProcess))
 
     private[this] val freeRunners = mutable.Queue(allRunners: _*)
     private[this] val busyRunners = mutable.Set.empty[Runner]
