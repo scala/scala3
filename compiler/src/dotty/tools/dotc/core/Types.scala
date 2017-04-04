@@ -3444,7 +3444,7 @@ object Types {
   abstract class FlexType extends UncachedGroundType with ValueType
 
   class ErrorType(_msg: => Message) extends FlexType {
-    val msg = _msg
+    def msg = _msg
   }
 
   object UnspecifiedErrorType extends ErrorType("unspecified error")
