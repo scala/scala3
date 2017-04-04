@@ -4,7 +4,7 @@ package repl
 
 import core.Contexts.Context
 import collection.mutable
-import java.io.StringWriter
+import java.io.{StringWriter, PrintStream}
 import dotty.tools.io.{ PlainFile, Directory }
 import org.junit.Test
 
