@@ -1,0 +1,3 @@
+[submodule "collection-strawman"]
+	path = collection-strawman
+	url = https://github.com/nicolasstucki/collection-strawman.git

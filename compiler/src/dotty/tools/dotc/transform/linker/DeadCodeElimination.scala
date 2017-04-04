@@ -43,7 +43,6 @@ class DeadCodeElimination extends MiniPhaseTransform {
       exception = Throw(New(ctx.requiredClassRef("dotty.runtime.DeadCodeEliminated"), Nil))
       doNotDCEAnnotation = ctx.requiredClassRef("scala.annotation.internal.link.DoNotDeadCodeEliminate").symbol.asClass
       aggressive = ctx.settings.linkDCEAggressive.value
-      aggressivelyDCEd = if (aggressive) Set.empty else null
       doTransform = true
     } else {
       doTransform = false
@@ -64,6 +63,8 @@ class DeadCodeElimination extends MiniPhaseTransform {
     val sym = tree.symbol
     if (!doTransform || doNotEliminate(sym)) tree
     else if (aggressive && !doNotEliminateAggressive(sym)) {
+      if (aggressivelyDCEd eq null)
+        aggressivelyDCEd = Set.empty
       aggressivelyDCEd += sym
       EmptyTree
     } else tpd.cpy.DefDef(tree)(rhs = exception)

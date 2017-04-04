@@ -19,6 +19,7 @@ class CompilationTests extends ParallelSummaryReport with ParallelTesting {
   // Positive tests ------------------------------------------------------------
 
   @Test def compilePos: Unit = {
+    compileList("compileStrawman", strawmanSources, defaultOptions) +
     compileList("compileStdLib", StdLibSources.whitelisted, stdlibMode) +
     compileFilesInDir("../tests/pos", defaultOptions)
   }.checkCompile()
@@ -265,6 +266,16 @@ class CompilationTests extends ParallelSummaryReport with ParallelTesting {
     tests.reduce((a, b) => a + b).limitThreads(4).checkRuns()
   }
 
+  @Test def linkStrawmanDCEAll: Unit = {
+    val testsDir = new JFile("../tests/link-strawman-dce")
+    val tests = for (test <- testsDir.listFiles() if test.getName.endsWith(".scala")) yield {
+      val name = test.getName.dropRight(6)
+      val files = test.getAbsolutePath :: strawmanSources
+      compileList(name, files, linkDCE) + compileList(name + "-aggressive", files, linkAggressiveDCE)
+    }
+    tests.reduce((a, b) => a + b).checkRuns()
+  }
+
 }
 
 object CompilationTests {
@@ -337,4 +348,12 @@ object CompilationTests {
   val linkDCE = "-link-dce" +: linkDCEcommon
   val linkAggressiveDCE = "-link-aggressive-dce" +: linkDCEcommon
 
+  val strawmanSources = {
+    def collectAllFilesInDir(dir: JFile, acc: List[String]): List[String] = {
+      val files = dir.listFiles()
+      val acc2 = files.foldLeft(acc)((acc1, file) => if (file.isFile && file.getPath.endsWith(".scala")) file.getPath :: acc1 else acc1)
+      files.foldLeft(acc2)((acc3, file) => if (file.isDirectory) collectAllFilesInDir(file, acc3) else acc3)
+    }
+    collectAllFilesInDir(new JFile("../collection-strawman/src/main"), Nil)
+  }
 }
