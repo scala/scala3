@@ -228,7 +228,7 @@ object NameKinds {
       val i = skipSeparatorAndNum(name, separator)
       if (i > 0) {
         val index = name.drop(i).toString.toInt
-        var original = name.take(i - separator.length).asTermName
+        val original = name.take(i - separator.length).asTermName
         apply(original, index)
       }
       else name
