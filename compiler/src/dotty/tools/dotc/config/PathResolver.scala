@@ -4,8 +4,9 @@ package config
 
 import java.net.{ URL, MalformedURLException }
 import WrappedProperties.AccessControl
-import io.{ ClassPath, JavaClassPath, File, Directory, Path, AbstractFile }
-import ClassPath.{ JavaContext, DefaultJavaContext, join, split }
+import io.{ ClassPath, File, Directory, Path, AbstractFile }
+import classpath.{AggregateClassPath, ClassPathFactory }
+import ClassPath.{ JavaContext, join, split }
 import PartialFunction.condOpt
 import scala.language.postfixOps
 import core.Contexts._
@@ -128,7 +129,7 @@ object PathResolver {
       )
   }
 
-  def fromPathString(path: String)(implicit ctx: Context): JavaClassPath = {
+  def fromPathString(path: String)(implicit ctx: Context): ClassPath = {
     val settings = ctx.settings.classpath.update(path)
     new PathResolver()(ctx.fresh.setSettings(settings)).result
   }
@@ -150,7 +151,11 @@ object PathResolver {
       val pr = new PathResolver()(ctx.fresh.setSettings(sstate))
       println(" COMMAND: 'scala %s'".format(args.mkString(" ")))
       println("RESIDUAL: 'scala %s'\n".format(rest.mkString(" ")))
-      pr.result.show
+
+      pr.result match {
+        case cp: AggregateClassPath =>
+          println(s"ClassPath has ${cp.aggregates.size} entries and results in:\n${cp.asClassPathStrings}")
+      }
     }
   }
 }
@@ -159,7 +164,7 @@ import PathResolver.{ Defaults, Environment, firstNonEmpty, ppcp }
 class PathResolver(implicit ctx: Context) {
   import ctx.base.settings
 
-  val context = ClassPath.DefaultJavaContext
+  private val classPathFactory = new ClassPathFactory
 
   private def cmdLineOrElse(name: String, alt: String) = {
     (commandLineFor(name) match {
@@ -214,7 +219,7 @@ class PathResolver(implicit ctx: Context) {
       else sys.env.getOrElse("CLASSPATH", ".")
     }
 
-    import context._
+    import classPathFactory._
 
     // Assemble the elements!
     // priority class path takes precedence
@@ -254,8 +259,8 @@ class PathResolver(implicit ctx: Context) {
 
   def containers = Calculated.containers
 
-  lazy val result: JavaClassPath = {
-    val cp = new JavaClassPath(containers.toIndexedSeq, context)
+  lazy val result: ClassPath = {
+    val cp = AggregateClassPath(containers.toIndexedSeq)
 
     if (settings.Ylogcp.value) {
       Console.println("Classpath built from " + settings.toConciseString(ctx.sstate))
