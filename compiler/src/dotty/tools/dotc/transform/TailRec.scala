@@ -325,6 +325,10 @@ class TailRec extends MiniPhaseTransform with DenotTransformer with FullParamete
           else
             rewriteApply(tree, meth)
 
+        case TypeApply(fun, targs) =>
+          val meth = fun.symbol
+          rewriteApply(tree, meth)
+
         case tree@Block(stats, expr) =>
           tpd.cpy.Block(tree)(
             noTailTransforms(stats),
