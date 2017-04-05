@@ -18,7 +18,7 @@ object Test {
     import Planet._
     assert(enumValueNamed("SATURN") == SATURN)
     assert(enumValue(2) == EARTH)
-    val earthWeight = args(0).toDouble
+    val earthWeight = 100
     val mass = earthWeight/EARTH.surfaceGravity
     for (p <- enumValues)
       println(s"Your weight on $p is ${p.surfaceWeight(mass)}")
