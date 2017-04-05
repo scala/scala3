@@ -109,55 +109,6 @@ div#content-wrapper button#menu-toggle:hover span.icon-bar {
     background-color: rgba(131, 127, 132, 0.5); /** => #837f84 with 50% opacity */
 }
 
-/** Mobile (x < 576px) animations: Hamburger menu button transform to arrow on toggle */
-div#content-wrapper button#menu-toggle span,
-div#content-wrapper.toggled button#menu-toggle span {
-    -webkit-transition: transform .25s ease-out, width .25s ease-out, top .25s ease-out, bottom .25s ease-out;
-         -o-transition: transform .25s ease-out, width .25s ease-out, top .25s ease-out, bottom .25s ease-out;
-            transition: transform .25s ease-out, width .25s ease-out, top .25s ease-out, bottom .25s ease-out;
-}
-
-div#content-wrapper.toggled button#menu-toggle span:first-child + span {
-    -webkit-transform: translateX(-1px) translateY(2px) rotate(-45deg);
-        -ms-transform: translateX(-1px) translateY(2px) rotate(-45deg);
-            transform: translateX(-1px) translateY(2px) rotate(-45deg);
-    width: 10px;
-}
-
-div#content-wrapper.toggled button#menu-toggle span:first-child + span + span {
-    -webkit-transform: rotate(180deg);
-        -ms-transform: rotate(180deg);
-            transform: rotate(180deg);
-}
-
-div#content-wrapper.toggled button#menu-toggle span:first-child + span + span + span {
-    -webkit-transform: translateX(-1px) translateY(-2px) rotate(45deg);
-        -ms-transform: translateX(-1px) translateY(-2px) rotate(45deg);
-            transform: translateX(-1px) translateY(-2px) rotate(45deg);
-    width: 10px;
-}
-
-/** Desktop (x >= 768px) animations: Disable, hamburger menu do not transform */
-@media screen and (min-width: 768px) {
-
-    div#content-wrapper button#menu-toggle span,
-    div#content-wrapper.toggled button#menu-toggle span {
-        -webkit-transition-property: none !important;
-             -o-transition-property: none !important;
-                transition-property: none !important;
-    }
-
-    div#content-wrapper.toggled button#menu-toggle span:first-child + span,
-    div#content-wrapper.toggled button#menu-toggle span:first-child + span + span,
-    div#content-wrapper.toggled button#menu-toggle span:first-child + span + span + span {
-        -webkit-transform: unset !important;
-            -ms-transform: unset !important;
-                transform: unset !important;
-        width: 22px !important;
-    }
-
-}
-
 div#doc-page-container > h1 {
     border-bottom: 1px solid #eee;
     padding-bottom: 0.3em;
