@@ -16,9 +16,9 @@ class CompilationTests extends SummaryReport with ParallelTesting {
 
   def maxDuration = 180.seconds
   def numberOfSlaves = 5
-  def safeMode = sys.env.get("SAFEMODE").isDefined
+  def safeMode = sys.env.get("dotty.tests.safemode").isDefined
   def isInteractive = SummaryReport.isInteractive
-  def testFilter = sys.props.get("dotty.partest.filter").map(r => new Regex(r))
+  def testFilter = sys.props.get("dotty.tests.filter").map(r => new Regex(r))
 
   // Positive tests ------------------------------------------------------------
 

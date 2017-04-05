@@ -47,7 +47,14 @@ trait RunnerOrchestration {
 
   private[this] val monitor = new RunnerMonitor
 
-  /** Look away now, sweet child of summer */
+  /** The runner monitor object keeps track of child JVM processes by keeping
+   *  them in two structures - one for free, and one for busy children.
+   *
+   *  When a user calls `runMain` the monitor makes takes a free JVM and blocks
+   *  until the run is complete - or `maxDuration` has passed. It then performs
+   *  cleanup by returning the used JVM to the free list, or respawning it if
+   *  it died
+   */
   private class RunnerMonitor {
 
     def runMain(classPath: String): Status = withRunner(_.runMain(classPath))
@@ -128,6 +135,9 @@ trait RunnerOrchestration {
       }
     }
 
+    /** Create a process which has the classpath of the `ChildJVMMain` and the
+     *  scala library.
+     */
     private def createProcess: Process = {
       val sep = sys.props("file.separator")
       val cp =
@@ -142,7 +152,6 @@ trait RunnerOrchestration {
     }
 
     private[this] val allRunners = List.fill(numberOfSlaves)(new Runner(createProcess))
-
     private[this] val freeRunners = mutable.Queue(allRunners: _*)
     private[this] val busyRunners = mutable.Set.empty[Runner]
 
