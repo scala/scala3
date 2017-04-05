@@ -23,8 +23,6 @@ import dotc.interfaces.Diagnostic.ERROR
 import dotc.util.DiffUtil
 import dotc.{ Driver, Compiler }
 
-import vulpix.Statuses._
-
 /** A parallel testing suite whose goal is to integrate nicely with JUnit
  *
  *  This trait can be mixed in to offer parallel testing to compile runs. When
@@ -53,6 +51,15 @@ trait ParallelTesting extends RunnerOrchestration { self =>
     def name: String
     def outDir: JFile
     def flags: Array[String]
+
+    def classPath: String = {
+      val (beforeCp, cpAndAfter) = flags.toList.span(_ != "-classpath")
+      if (cpAndAfter.nonEmpty) {
+        val (_ :: cpArg :: _) = cpAndAfter
+        s"${outDir.getAbsolutePath}:" + cpArg
+      }
+      else outDir.getAbsolutePath
+    }
 
 
     def title: String = self match {
@@ -294,15 +301,6 @@ trait ParallelTesting extends RunnerOrchestration { self =>
 
       val files: Array[JFile] = files0.flatMap(flattenFiles)
 
-      def findJarFromRuntime(partialName: String) = {
-        val urls = ClassLoader.getSystemClassLoader.asInstanceOf[java.net.URLClassLoader].getURLs.map(_.getFile.toString)
-        urls.find(_.contains(partialName)).getOrElse {
-          throw new java.io.FileNotFoundException(
-            s"""Unable to locate $partialName on classpath:\n${urls.toList.mkString("\n")}"""
-          )
-        }
-      }
-
       def addOutDir(xs: Array[String]): Array[String] = {
         val (beforeCp, cpAndAfter) = xs.toList.span(_ != "-classpath")
         if (cpAndAfter.nonEmpty) {
@@ -313,11 +311,10 @@ trait ParallelTesting extends RunnerOrchestration { self =>
       }
 
       def compileWithJavac(fs: Array[String]) = if (fs.nonEmpty) {
-        val scalaLib = findJarFromRuntime("scala-library-2.")
         val fullArgs = Array(
           "javac",
           "-classpath",
-          s".:$scalaLib:${targetDir.getAbsolutePath}"
+          s".:${Jars.scalaLibraryFromRuntime}:${targetDir.getAbsolutePath}"
         ) ++ flags.takeRight(2) ++ fs
 
         Runtime.getRuntime.exec(fullArgs).waitFor() == 0
@@ -430,9 +427,9 @@ trait ParallelTesting extends RunnerOrchestration { self =>
   private final class RunTest(testSources: List[TestSource], times: Int, threadLimit: Option[Int], suppressAllOutput: Boolean)
   extends Test(testSources, times, threadLimit, suppressAllOutput) {
     private def verifyOutput(checkFile: JFile, dir: JFile, testSource: TestSource, warnings: Int) = {
-      runMain(dir) match {
-        case success: Success => {
-          val outputLines = success.output.lines.toArray
+      runMain(testSource.classPath) match {
+        case Success(output) => {
+          val outputLines = output.lines.toArray
           val checkLines: Array[String] = Source.fromFile(checkFile).getLines.toArray
           val sourceTitle = testSource.title
 
@@ -463,18 +460,15 @@ trait ParallelTesting extends RunnerOrchestration { self =>
           }
         }
 
-        case failure: Failure =>
-          echo(renderFailure(failure))
+        case Failure(output) =>
+          echo(output)
           failTestSource(testSource)
 
-        case _: Timeout =>
+        case Timeout =>
           echo("failed because test " + testSource.title + " timed out")
           failTestSource(testSource, Some("test timed out"))
       }
     }
-
-    private def renderFailure(failure: Failure): String =
-      failure.message + "\n" + failure.stacktrace
 
     protected def compilationRunnable(testSource: TestSource): Runnable = new Runnable {
       def run(): Unit = tryCompile(testSource) {
@@ -519,17 +513,14 @@ trait ParallelTesting extends RunnerOrchestration { self =>
         }
 
         if (errorCount == 0 && hasCheckFile) verifier()
-        else if (errorCount == 0) runMain(testSource.outDir) match {
-          case status: Failure =>
-            echo(renderFailure(status))
+        else if (errorCount == 0) runMain(testSource.classPath) match {
+          case Success(_) => // success!
+          case Failure(output) =>
             failTestSource(testSource)
-          case _: Timeout =>
-            echo("failed because test " + testSource.title + " timed out")
+          case Timeout =>
             failTestSource(testSource, Some("test timed out"))
-          case _: Success => // success!
         }
         else if (errorCount > 0) {
-          echo(s"\nCompilation failed for: '$testSource'")
           val buildInstr = testSource.buildInstructions(errorCount, warningCount)
           addFailureInstruction(buildInstr)
           failTestSource(testSource)

@@ -1,11 +1,8 @@
-package dotty.tools
+package dotty
+package tools
 package vulpix
 
-import java.io.{
-  File => JFile,
-  InputStream, ObjectInputStream,
-  OutputStream, ObjectOutputStream
-}
+import java.io.{ File => JFile, InputStreamReader, BufferedReader, PrintStream }
 import java.util.concurrent.TimeoutException
 
 import scala.concurrent.duration.Duration
@@ -13,8 +10,25 @@ import scala.concurrent.{ Await, Future }
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.collection.mutable
 
-import vulpix.Statuses._
-
+/** Vulpix spawns JVM subprocesses (`numberOfSlaves`) in order to run tests
+ *  without compromising the main JVM
+ *
+ *  These need to be orchestrated in a safe manner with a simple protocol. This
+ *  interface provides just that.
+ *
+ *  The protocol is defined as:
+ *
+ *  - master sends classpath to for which to run `Test#main` and waits for
+ *    `maxDuration`
+ *  - slave invokes the method and waits until completion
+ *  - upon completion it sends back a `RunComplete` message
+ *  - the master checks if the child is still alive
+ *    - child is still alive, the output was valid
+ *    - child is dead, the output is the failure message
+ *
+ *  If this whole chain of events is not completed within `maxDuration`, the
+ *  child process is destroyed and a new child is spawned.
+ */
 trait RunnerOrchestration {
 
   /** The maximum amount of active runners, which contain a child JVM */
@@ -29,25 +43,24 @@ trait RunnerOrchestration {
   def safeMode: Boolean
 
   /** Running a `Test` class's main method from the specified `dir` */
-  def runMain(dir: JFile): Status = monitor.runMain(dir)
+  def runMain(classPath: String): Status = monitor.runMain(classPath)
 
   private[this] val monitor = new RunnerMonitor
 
+  /** Look away now, sweet child of summer */
   private class RunnerMonitor {
 
-    def runMain(dir: JFile): Status = withRunner(_.runMain(dir))
+    def runMain(classPath: String): Status = withRunner(_.runMain(classPath))
 
     private class Runner(private var process: Process) {
-      private[this] var ois: ObjectInputStream = _
-      private[this] var oos: ObjectOutputStream = _
+      private[this] var childStdout: BufferedReader = _
+      private[this] var childStdin: PrintStream = _
 
       /** Checks if `process` is still alive
        *
        *  When `process.exitValue()` is called on an active process the caught
        *  exception is thrown. As such we can know if the subprocess exited or
        *  not.
-       *
-       *  @note used for debug
        */
       def isAlive: Boolean =
         try { process.exitValue(); false }
@@ -57,12 +70,12 @@ trait RunnerOrchestration {
       def kill(): Unit = {
         if (process ne null) process.destroy()
         process = null
-        ois = null
-        oos = null
+        childStdout = null
+        childStdin = null
       }
 
       /** Blocks less than `maxDuration` while running `Test.main` from `dir` */
-      def runMain(dir: JFile): Status = {
+      def runMain(classPath: String): Status = {
         assert(process ne null,
           "Runner was killed and then reused without setting a new process")
 
@@ -70,33 +83,45 @@ trait RunnerOrchestration {
         def respawn(): Unit = {
           process.destroy()
           process = createProcess
-          ois = null
-          oos = null
+          childStdout = null
+          childStdin = null
         }
 
-        if (oos eq null) oos = new ObjectOutputStream(process.getOutputStream)
+        if (childStdin eq null)
+          childStdin = new PrintStream(process.getOutputStream, /* autoFlush = */ true)
 
         // pass file to running process
-        oos.writeObject(dir)
-        oos.flush()
+        childStdin.println(classPath)
 
         // Create a future reading the object:
-        val readObject = Future {
-          if (ois eq null) ois = new ObjectInputStream(process.getInputStream)
-          ois.readObject().asInstanceOf[Status]
+        val readOutput = Future {
+          val sb = new StringBuilder
+
+          if (childStdout eq null)
+            childStdout = new BufferedReader(new InputStreamReader(process.getInputStream))
+
+          var childOutput = childStdout.readLine()
+          while (childOutput != ChildJVMMain.MessageEnd && childOutput != null) {
+            sb.append(childOutput)
+            sb += '\n'
+            childOutput = childStdout.readLine()
+          }
+
+          if (process.isAlive && childOutput != null) Success(sb.toString)
+          else Failure(sb.toString)
         }
 
         // Await result for `maxDuration` and then timout and destroy the
         // process:
         val status =
-          try Await.result(readObject, maxDuration)
-          catch { case _: TimeoutException =>  new Timeout() }
+          try Await.result(readOutput, maxDuration)
+          catch { case _: TimeoutException =>  Timeout }
 
         // Handle failure of the VM:
         status match {
-          case _ if safeMode => respawn()
+          case _: Success if safeMode => respawn()
           case _: Failure => respawn()
-          case _: Timeout => respawn()
+          case Timeout => respawn()
           case _ => ()
         }
         status
@@ -105,9 +130,11 @@ trait RunnerOrchestration {
 
     private def createProcess: Process = {
       val sep = sys.props("file.separator")
-      val cp = sys.props("java.class.path")
-      val java = sys.props("java.home") + sep + "bin" + sep + "java"
-      new ProcessBuilder(java, "-cp", cp, "dotty.tools.dotc.vulpix.ChildMain")//classOf[ChildMain].getName)
+      val cp =
+        classOf[ChildJVMMain].getProtectionDomain.getCodeSource.getLocation.getFile + ":" +
+        Jars.scalaLibraryFromRuntime
+      val javaBin = sys.props("java.home") + sep + "bin" + sep + "java"
+      new ProcessBuilder(javaBin, "-cp", cp, "dotty.tools.vulpix.ChildJVMMain")
         .redirectErrorStream(true)
         .redirectInput(ProcessBuilder.Redirect.PIPE)
         .redirectOutput(ProcessBuilder.Redirect.PIPE)

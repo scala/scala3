@@ -19,4 +19,17 @@ object Jars {
 
   val dottyTestDeps: List[String] =
     dottyLib :: dottyCompiler :: dottyInterfaces :: dottyExtras
+
+
+  def scalaLibraryFromRuntime: String = findJarFromRuntime("scala-library-2.")
+
+  private def findJarFromRuntime(partialName: String) = {
+    val urls = ClassLoader.getSystemClassLoader.asInstanceOf[java.net.URLClassLoader].getURLs.map(_.getFile.toString)
+    urls.find(_.contains(partialName)).getOrElse {
+      throw new java.io.FileNotFoundException(
+        s"""Unable to locate $partialName on classpath:\n${urls.toList.mkString("\n")}"""
+      )
+    }
+  }
+
 }
