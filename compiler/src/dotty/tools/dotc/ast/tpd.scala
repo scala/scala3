@@ -308,8 +308,6 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
           // was ctx.owner.enclosingClass.derivesFrom(pre.cls) which was not tight enough
           // and was spuriously triggered in case inner class would inherit from outer one
           // eg anonymous TypeMap inside TypeMap.andThen
-      case pre: TermRef =>
-        pre.symbol.is(Module) && pre.symbol.isStatic
       case _ =>
         false
     }
