@@ -19,7 +19,7 @@ class CompilationTests extends ParallelSummaryReport with ParallelTesting {
   // Positive tests ------------------------------------------------------------
 
   @Test def compilePos: Unit = {
-    compileList("compileStrawman", strawmanSources, defaultOptions) +
+    // compileList("compileStrawman", strawmanSources, defaultOptions) +
     compileList("compileStdLib", StdLibSources.whitelisted, stdlibMode) +
     compileFilesInDir("../tests/pos", defaultOptions)
   }.checkCompile()
@@ -266,6 +266,7 @@ class CompilationTests extends ParallelSummaryReport with ParallelTesting {
     tests.reduce((a, b) => a + b).limitThreads(4).checkRuns()
   }
 
+  @org.junit.Ignore
   @Test def linkStrawmanDCEAll: Unit = {
     val testsDir = new JFile("../tests/link-strawman-dce")
     val tests = for (test <- testsDir.listFiles() if test.getName.endsWith(".scala")) yield {
