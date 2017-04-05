@@ -235,7 +235,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
     private[this] val failedTestSources = mutable.ArrayBuffer.empty[String]
     protected final def failTestSource(testSource: TestSource, reason: Option[String] = None) = synchronized {
       val extra = reason.map(" with reason: " + _).getOrElse("")
-      failedTestSources.append(testSource.name + " failed" + extra)
+      failedTestSources.append(testSource.title + s" failed (in ${testSource.name})" + extra)
       fail()
     }
 
@@ -516,11 +516,15 @@ trait ParallelTesting extends RunnerOrchestration { self =>
         else if (errorCount == 0) runMain(testSource.classPath) match {
           case Success(_) => // success!
           case Failure(output) =>
+            echo(s"    failed when running '${testSource.title}'")
+            echo(output)
             failTestSource(testSource)
           case Timeout =>
+            echo("    failed because test " + testSource.title + " timed out")
             failTestSource(testSource, Some("test timed out"))
         }
         else if (errorCount > 0) {
+          echo(s"\n    Compilation failed for: '$testSource'")
           val buildInstr = testSource.buildInstructions(errorCount, warningCount)
           addFailureInstruction(buildInstr)
           failTestSource(testSource)
