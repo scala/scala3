@@ -1,4 +1,4 @@
-package dotty.tools.dotc
+package dotty.tools
 package vulpix
 
 import java.io.{

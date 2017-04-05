@@ -1,4 +1,4 @@
-package dotty.tools.dotc.vulpix;
+package dotty.tools.vulpix;
 
 import org.junit.BeforeClass;
 import org.junit.AfterClass;

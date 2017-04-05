@@ -1,5 +1,4 @@
-package dotty.tools.dotc
-package vulpix
+package dotty.tools.vulpix
 
 import java.io.{
   File => JFile,
@@ -9,7 +8,7 @@ import java.io.{
 }
 import java.lang.reflect.InvocationTargetException
 
-import dotty.tools.dotc.vulpix.Statuses._
+import dotty.tools.vulpix.Statuses._
 
 object ChildMain {
   val realStdin = System.in

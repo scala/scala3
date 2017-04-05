@@ -1,6 +1,6 @@
 package dotc
 
-import dotty.tools.dotc.vulpix.ParallelTesting
+import dotty.tools.vulpix.ParallelTesting
 
 import scala.concurrent.duration._
 

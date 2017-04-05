@@ -1,6 +1,4 @@
-package dotty
-package tools
-package dotc
+package dotty.tools
 package vulpix
 
 import org.junit.Assert._
@@ -10,7 +8,7 @@ import scala.concurrent.duration._
 import scala.util.control.NonFatal
 
 class VulpixTests extends ParallelTesting {
-  import CompilationTests._
+  import dotc.CompilationTests._
 
   def maxDuration = 3.seconds
   def numberOfSlaves = 5

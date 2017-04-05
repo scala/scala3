@@ -1,6 +1,5 @@
 package dotty
 package tools
-package dotc
 package vulpix
 
 import java.io.{ File => JFile }
@@ -17,11 +16,12 @@ import scala.collection.mutable
 import scala.util.matching.Regex
 import scala.util.Random
 
-import core.Contexts._
-import reporting.{ Reporter, TestReporter }
-import reporting.diagnostic.MessageContainer
-import interfaces.Diagnostic.ERROR
+import dotc.core.Contexts._
+import dotc.reporting.{ Reporter, TestReporter }
+import dotc.reporting.diagnostic.MessageContainer
+import dotc.interfaces.Diagnostic.ERROR
 import dotc.util.DiffUtil
+import dotc.{ Driver, Compiler }
 
 import vulpix.Statuses._
 
