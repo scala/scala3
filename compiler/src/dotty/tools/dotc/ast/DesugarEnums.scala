@@ -10,26 +10,26 @@ import collection.mutable.ListBuffer
 import util.Property
 import typer.ErrorReporting._
 
+/** Helper methods to desugar enums */
 object DesugarEnums {
   import untpd._
   import desugar.DerivedFromParamTree
 
-  /** Attachment containing: The number of enum cases seen so far, and whether a
-   *  simple enum case was already seen.
-   */
-  val EnumCaseCount = new Property.Key[(Int, Boolean)]
-
-  def enumClass(implicit ctx: Context) = ctx.owner.linkedClass
-
-  def nextEnumTag(isSimpleCase: Boolean)(implicit ctx: Context): (Int, Boolean) = {
-    val (count, simpleSeen) = ctx.tree.removeAttachment(EnumCaseCount).getOrElse((0, false))
-    ctx.tree.pushAttachment(EnumCaseCount, (count + 1, simpleSeen | isSimpleCase))
-    (count, simpleSeen)
+  @sharable object CaseKind extends Enumeration {
+    val Simple, Object, Class = Value
   }
 
+  /** Attachment containing the number of enum cases and the smallest kind that was seen so far. */
+  val EnumCaseCount = new Property.Key[(Int, CaseKind.Value)]
+
+  /** the enumeration class that is a companion of the current object */
+  def enumClass(implicit ctx: Context) = ctx.owner.linkedClass
+
+  /** Is this an enum case that's situated in a companion object of an enum class? */
   def isLegalEnumCase(tree: MemberDef)(implicit ctx: Context): Boolean =
     tree.mods.hasMod[Mod.EnumCase] && enumCaseIsLegal(tree)
 
+  /** Is enum case `tree` situated in a companion object of an enum class? */
   def enumCaseIsLegal(tree: Tree)(implicit ctx: Context): Boolean = (
     ctx.owner.is(ModuleClass) && enumClass.derivesFrom(defn.EnumClass)
     || { ctx.error(em"case not allowed here, since owner ${ctx.owner} is not an `enum' object", tree.pos)
@@ -81,59 +81,89 @@ object DesugarEnums {
     TypeTree(enumClass.typeRef.appliedTo(targs)).withPos(pos)
   }
 
-  def enumTagMeth(implicit ctx: Context) =
-    DefDef(nme.enumTag, Nil, Nil, TypeTree(),
-        Literal(Constant(nextEnumTag(isSimpleCase = false)._1)))
-
+  /** A type tree referring to `enumClass` */
   def enumClassRef(implicit ctx: Context) = TypeTree(enumClass.typeRef)
 
+  /** Add implied flags to an enum class or an enum case */
   def addEnumFlags(cdef: TypeDef)(implicit ctx: Context) =
     if (cdef.mods.hasMod[Mod.Enum]) cdef.withFlags(cdef.mods.flags | Abstract | Sealed)
     else if (isLegalEnumCase(cdef)) cdef.withFlags(cdef.mods.flags | Final)
     else cdef
 
+  private def valuesDot(name: String) = Select(Ident(nme.DOLLAR_VALUES), name.toTermName)
+  private def registerCall = Apply(valuesDot("register"), This(EmptyTypeIdent) :: Nil)
+
   /**  The following lists of definitions for an enum type E:
    *
    *   private val $values = new EnumValues[E]
-   *   def valueOf = $values.fromInt
-   *   def withName = $values.fromName
-   *   def values = $values.values
-	 *
+   *   def enumValue = $values.fromInt
+   *   def enumValueNamed = $values.fromName
+   *   def enumValues = $values.values
+   */
+  private def enumScaffolding(implicit ctx: Context): List[Tree] = {
+    val enumType = enumClass.typeRef.appliedTo(enumClass.typeParams.map(_ => TypeBounds.empty))
+    def enumDefDef(name: String, select: String) =
+      DefDef(name.toTermName, Nil, Nil, TypeTree(), valuesDot(select))
+    val privateValuesDef =
+      ValDef(nme.DOLLAR_VALUES, TypeTree(),
+             New(TypeTree(defn.EnumValuesType.appliedTo(enumType :: Nil)), ListOfNil))
+        .withFlags(Private)
+    val valueOfDef = enumDefDef("enumValue", "fromInt")
+    val withNameDef = enumDefDef("enumValueNamed", "fromName")
+    val valuesDef = enumDefDef("enumValues", "values")
+    List(privateValuesDef, valueOfDef, withNameDef, valuesDef)
+  }
+
+  /** A creation method for a value of enum type `E`, which is defined as follows:
+   *
    *   private def $new(tag: Int, name: String) = new E {
    *     def enumTag = tag
    *     override def toString = name
    *     $values.register(this)
    *   }
    */
-  private def enumScaffolding(implicit ctx: Context): List[Tree] = {
-    def valuesDot(name: String) = Select(Ident(nme.DOLLAR_VALUES), name.toTermName)
-    def enumDefDef(name: String, select: String) =
-      DefDef(name.toTermName, Nil, Nil, TypeTree(), valuesDot(select))
+  private def enumValueCreator(implicit ctx: Context) = {
     def param(name: TermName, typ: Type) =
       ValDef(name, TypeTree(typ), EmptyTree).withFlags(Param)
-    val privateValuesDef =
-      ValDef(nme.DOLLAR_VALUES, TypeTree(),
-             New(TypeTree(defn.EnumValuesType.appliedTo(enumClass.typeRef :: Nil)), ListOfNil))
-        .withFlags(Private)
-    val valueOfDef = enumDefDef("valueOf", "fromInt")
-    val withNameDef = enumDefDef("withName", "fromName")
-    val valuesDef = enumDefDef("values", "values")
     val enumTagDef =
       DefDef(nme.enumTag, Nil, Nil, TypeTree(), Ident(nme.tag))
     val toStringDef =
       DefDef(nme.toString_, Nil, Nil, TypeTree(), Ident(nme.name))
         .withFlags(Override)
-    val registerStat =
-      Apply(valuesDot("register"), This(EmptyTypeIdent) :: Nil)
     def creator = New(Template(emptyConstructor, enumClassRef :: Nil, EmptyValDef,
-        List(enumTagDef, toStringDef, registerStat)))
-    val newDef =
-      DefDef(nme.DOLLAR_NEW, Nil,
-          List(List(param(nme.tag, defn.IntType), param(nme.name, defn.StringType))),
-          TypeTree(), creator)
-    List(privateValuesDef, valueOfDef, withNameDef, valuesDef, newDef)
+        List(enumTagDef, toStringDef, registerCall)))
+    DefDef(nme.DOLLAR_NEW, Nil,
+        List(List(param(nme.tag, defn.IntType), param(nme.name, defn.StringType))),
+        TypeTree(), creator)
   }
 
+  /** A pair consisting of
+   *   - the next enum tag
+   *   - scaffolding containing the necessary definitions for singleton enum cases
+   *     unless that scaffolding was already generated by a previous call to `nextEnumKind`.
+   */
+  def nextEnumTag(kind: CaseKind.Value)(implicit ctx: Context): (Int, List[Tree]) = {
+    val (count, seenKind) = ctx.tree.removeAttachment(EnumCaseCount).getOrElse((0, CaseKind.Class))
+    val minKind = if (kind < seenKind) kind else seenKind
+    ctx.tree.pushAttachment(EnumCaseCount, (count + 1, minKind))
+    val scaffolding =
+      if (kind >= seenKind) Nil
+      else if (kind == CaseKind.Object) enumScaffolding
+      else if (seenKind == CaseKind.Object) enumValueCreator :: Nil
+      else enumScaffolding :+ enumValueCreator
+    (count, scaffolding)
+  }
+
+  /** A pair consisting of
+   *   - a method returning the next enum tag
+   *   - scaffolding as defined in `nextEnumTag`
+   */
+  def enumTagMeth(kind: CaseKind.Value)(implicit ctx: Context): (DefDef, List[Tree]) = {
+    val (tag, scaffolding) = nextEnumTag(kind)
+    (DefDef(nme.enumTag, Nil, Nil, TypeTree(), Literal(Constant(tag))), scaffolding)
+  }
+
+  /** Expand a module definition representing a parameterless enum case */
   def expandEnumModule(name: TermName, impl: Template, mods: Modifiers, pos: Position)(implicit ctx: Context): Tree =
     if (impl.parents.isEmpty)
       if (impl.body.isEmpty)
@@ -146,22 +176,23 @@ object DesugarEnums {
       def toStringMeth =
         DefDef(nme.toString_, Nil, Nil, TypeTree(defn.StringType), Literal(Constant(name.toString)))
           .withFlags(Override)
-      val impl1 = cpy.Template(impl)(body =
-        impl.body ++ List(enumTagMeth, toStringMeth))
-      ValDef(name, TypeTree(), New(impl1)).withMods(mods | Final).withPos(pos)
+      val (tagMeth, scaffolding) = enumTagMeth(CaseKind.Object)
+      val impl1 = cpy.Template(impl)(body = impl.body ++ List(tagMeth, toStringMeth, registerCall))
+      val vdef = ValDef(name, TypeTree(), New(impl1)).withMods(mods | Final).withPos(pos)
+      flatTree(scaffolding ::: vdef :: Nil).withPos(pos.startPos)
     }
 
+  /** Expand a simple enum case */
   def expandSimpleEnumCase(name: TermName, mods: Modifiers, pos: Position)(implicit ctx: Context): Tree =
-    if (reconstitutedEnumTypeParams(pos).nonEmpty) {
+    if (enumClass.typeParams.nonEmpty) {
       val parent = interpolatedEnumParent(pos)
       val impl = Template(emptyConstructor, parent :: Nil, EmptyValDef, Nil)
       expandEnumModule(name, impl, mods, pos)
     }
     else {
-      val (tag, simpleSeen) = nextEnumTag(isSimpleCase = true)
-      val prefix = if (simpleSeen) Nil else enumScaffolding
+      val (tag, scaffolding) = nextEnumTag(CaseKind.Simple)
       val creator = Apply(Ident(nme.DOLLAR_NEW), List(Literal(Constant(tag)), Literal(Constant(name.toString))))
       val vdef = ValDef(name, enumClassRef, creator).withMods(mods | Final).withPos(pos)
-      flatTree(prefix ::: vdef :: Nil).withPos(pos.startPos)
+      flatTree(scaffolding ::: vdef :: Nil).withPos(pos.startPos)
     }
 }

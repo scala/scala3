@@ -395,7 +395,7 @@ object desugar {
               .withMods(synthetic) :: Nil
           }
 
-        val enumTagMeths = if (isEnumCase) enumTagMeth :: Nil else Nil
+        val enumTagMeths = if (isEnumCase) enumTagMeth(CaseKind.Class)._1 :: Nil else Nil
         copyMeths ::: enumTagMeths ::: productElemMeths.toList
       }
       else Nil

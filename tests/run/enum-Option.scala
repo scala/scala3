@@ -1,12 +1,12 @@
-enum class Option[+T] extends Serializable {
+enum class Option[+T >: Null] extends Serializable {
    def isDefined: Boolean
 }
 object Option {
-  def apply[T](x: T): Option[T] = if (x == null) None else Some(x)
+  def apply[T >: Null](x: T): Option[T] = if (x == null) None else Some(x)
   case Some(x: T) {
      def isDefined = true
   }
-  case None extends Option[Nothing] {
+  case None {
      def isDefined = false
   }
 }
@@ -14,6 +14,6 @@ object Option {
 object Test {
   def main(args: Array[String]) = {
     assert(Some(None).isDefined)
-    Option(22) match { case Option.Some(x) => assert(x == 22) }
+    Option("22") match { case Option.Some(x) => assert(x == "22") }
   }
 }

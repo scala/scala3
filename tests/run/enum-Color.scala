@@ -4,7 +4,7 @@ enum Color {
 
 object Test {
   def main(args: Array[String]) =
-    for (color <- Color.values) {
+    for (color <- Color.enumValues) {
       println(s"$color: ${color.enumTag}")
       assert(Color.valueOf(color.enumTag) eq color)
     }
