@@ -104,8 +104,14 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer  { thisTran
     private def transformAnnot(annot: Annotation)(implicit ctx: Context): Annotation =
       annot.derivedAnnotation(transformAnnot(annot.tree))
 
+    private def registerChild(sym: Symbol, tp: Type)(implicit ctx: Context) = {
+      val cls = tp.classSymbol
+      if (cls.is(Sealed)) cls.addAnnotation(Annotation.makeChild(sym))
+    }
+
     private def transformMemberDef(tree: MemberDef)(implicit ctx: Context): Unit = {
       val sym = tree.symbol
+      if (sym.is(CaseVal, butNot = Module | Method)) registerChild(sym, sym.info)
       sym.transformAnnotations(transformAnnot)
     }
 
@@ -227,10 +233,7 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer  { thisTran
 
             // Add Child annotation to sealed parents unless current class is anonymous
             if (!sym.isAnonymousClass) // ignore anonymous class
-              for (parent <- sym.asClass.classInfo.classParents) {
-                val pclazz = parent.classSymbol
-                if (pclazz.is(Sealed)) pclazz.addAnnotation(Annotation.makeChild(sym))
-              }
+              sym.asClass.classInfo.classParents.foreach(registerChild(sym, _))
 
             tree
           }
