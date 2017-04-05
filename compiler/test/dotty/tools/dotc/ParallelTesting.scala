@@ -15,6 +15,7 @@ import scala.util.control.NonFatal
 import scala.util.Try
 import scala.collection.mutable
 import scala.util.matching.Regex
+import scala.util.Random
 
 import core.Contexts._
 import reporting.{ Reporter, TestReporter }
@@ -1011,7 +1012,7 @@ trait ParallelTesting { self =>
    *  deep compilation, that is - it compiles all files and subdirectories
    *  contained within the directory `f`.
    */
-  def compileDir(f: String, flags: Array[String])(implicit outDirectory: String): CompilationTest = {
+  def compileDir(f: String, flags: Array[String], seed: Int = 42)(implicit outDirectory: String): CompilationTest = {
     val callingMethod = getCallingMethod
     val outDir = outDirectory + callingMethod + "/"
     val sourceDir = new JFile(f)
@@ -1021,11 +1022,14 @@ trait ParallelTesting { self =>
       if (f.isDirectory) f.listFiles.flatMap(flatten)
       else Array(f)
 
+    // Deterministically randomises compilation order
+    val files = new Random(seed).shuffle(flatten(sourceDir).toList).toArray
+
     // Directories in which to compile all containing files with `flags`:
     val targetDir = new JFile(outDir + "/" + sourceDir.getName + "/")
     targetDir.mkdirs()
 
-    val target = JointCompilationSource(callingMethod, flatten(sourceDir), flags, targetDir)
+    val target = JointCompilationSource(callingMethod, files, flags, targetDir)
     new CompilationTest(target)
   }
 

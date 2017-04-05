@@ -788,7 +788,7 @@ object Trees {
     def complete(implicit ctx: Context): T
   }
 
-  // ----- Generic Tree Instances, inherited from  `tpt` and `untpd`.
+  // ----- Generic Tree Instances, inherited from `tpt` and `untpd`.
 
   abstract class Instance[T >: Untyped <: Type] extends DotClass { inst =>
 
