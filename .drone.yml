@@ -40,9 +40,7 @@ pipeline:
 
 matrix:
   TEST:
-    - ;set testOptions in LocalProject("dotty-compiler") += Tests.Argument(TestFrameworks.JUnit, "--exclude-categories=dotty.tools.dotc.hydra.ParallelTesting") ;test ;dotty-bin-tests/test
-    - ;set testOptions in LocalProject("dotty-compiler-bootstrapped") += Tests.Argument(TestFrameworks.JUnit, "--exclude-categories=dotty.tools.dotc.hydra.ParallelTesting") ;publishLocal ;dotty-bootstrapped/test
-    - ;set testOptions in LocalProject("dotty-compiler") += Tests.Argument(TestFrameworks.JUnit, "--exclude-categories=dotty.tools.dotc.hydra.ParallelTesting") ;partest-only-no-bootstrap --show-diff --verbose
-    - ;set testOptions in LocalProject("dotty-compiler-bootstrapped") += Tests.Argument(TestFrameworks.JUnit, "--exclude-categories=dotty.tools.dotc.hydra.ParallelTesting") ;partest-only --show-diff --verbose
-    - ;dotty-compiler/testOnly dotty.tools.dotc.CompilationTests
-    - ;publishLocal ;dotty-bootstrapped/testOnly dotty.tools.dotc.CompilationTests
+    - test
+    - ;publishLocal ;dotty-bootstrapped/test
+    - legacyTests
+    - dotty-bin-tests/test

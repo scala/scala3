@@ -47,8 +47,8 @@ object Build {
   // Spawns a repl with the correct classpath
   lazy val repl = inputKey[Unit]("run the REPL with correct classpath")
 
-  // Run tests with filter
-  lazy val filterTest = inputKey[Unit]("runs integration test with the supplied filter")
+  // Run tests with filter through vulpix test suite
+  lazy val vulpix = inputKey[Unit]("runs integration test with the supplied filter")
 
   // Used to compile files similar to ./bin/dotc script
   lazy val dotc =
@@ -134,7 +134,9 @@ object Build {
     settings(
       triggeredMessage in ThisBuild := Watched.clearWhenTriggered,
 
-      addCommandAlias("run", "dotty-compiler/run")
+      addCommandAlias("run", "dotty-compiler/run") ++
+      addCommandAlias("test", "testOnly -- --exclude-categories=java.lang.Exception") ++
+      addCommandAlias("legacyTests", "dotty-compiler/testOnly dotc.tests")
     ).
     settings(publishing)
 
@@ -142,7 +144,8 @@ object Build {
   lazy val `dotty-bootstrapped` = project.
     aggregate(`dotty-library-bootstrapped`, `dotty-compiler-bootstrapped`).
     settings(
-      publishArtifact := false
+      publishArtifact := false,
+      addCommandAlias("test", "testOnly -- --exclude-categories=java.lang.Exception")
     )
 
   lazy val `dotty-interfaces` = project.in(file("interfaces")).
@@ -283,12 +286,13 @@ object Build {
         )
       }.evaluated,
 
-      filterTest := Def.inputTaskDyn {
+      vulpix := Def.inputTaskDyn {
         val args: Seq[String] = spaceDelimited("<arg>").parsed
-        testOptions := Seq()
-        (testOnly in Test).toTask(
-          " dotty.tools.dotc.CompilationTests -- -Ddotty.partest.filter=" + args.head
-        )
+        val cmd = " dotty.tools.dotc.CompilationTests" + {
+          if (args.nonEmpty) " -- -Ddotty.tests.filter=" + args.mkString(" ")
+          else ""
+        }
+        (testOnly in Test).toTask(cmd)
       }.evaluated,
 
       // Override run to be able to run compiled classfiles
@@ -330,12 +334,6 @@ object Build {
       testOptions in Test += Tests.Argument(
         TestFrameworks.JUnit, "-a", "-v",
         "--run-listener=dotty.tools.ContextEscapeDetector"
-      ),
-
-      // Ignore old sequential unit tests when running `test` in sbt
-      testOptions in Test += Tests.Argument(
-        TestFrameworks.JUnit,
-        "--exclude-categories=dotc.SequentialUnitTests"
       ),
 
       /* Add the sources of scalajs-ir.

@@ -11,14 +11,11 @@ import java.io.{ File => JFile }
 import scala.reflect.io.Directory
 import scala.io.Source
 
-/** Marker class to indicate sequential unit tests */
-class SequentialUnitTests
-
 /** WARNING
  *  =======
  *  These are legacy, do not add tests here, see `CompilationTests.scala`
  */
-@Category(Array(classOf[SequentialUnitTests]))
+@Category(Array(classOf[java.lang.Exception]))
 class tests extends CompilerTest {
 
   // tests that match regex '(pos|dotc|run|java|compileStdLib)\.*' would be
