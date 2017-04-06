@@ -990,16 +990,6 @@ class Definitions {
   def isPhantomAssume(sym: Symbol)(implicit ctx: Context): Boolean =
     sym.name == nme.assume_ && (sym.owner eq PhantomClass)
 
-  def topOf(tp: Type)(implicit ctx: Context): Type = tp.phantomTopClass match {
-    case top: ClassInfo => top.prefix.select(tpnme.Any)
-    case _ => defn.AnyType
-  }
-
-  def bottomOf(tp: Type)(implicit ctx: Context): Type = tp.phantomTopClass match {
-    case top: ClassInfo => top.prefix.select(tpnme.Nothing)
-    case _ => defn.NothingType
-  }
-
   lazy val ErasedPhantomClass = ctx.requiredClass("dotty.runtime.ErasedPhantom")
   def ErasedPhantomType = ErasedPhantomClass.typeRef
 

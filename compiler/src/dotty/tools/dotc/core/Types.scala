@@ -175,15 +175,31 @@ object Types {
       loop(this)
     }
 
-    final def isPhantom(implicit ctx: Context): Boolean = phantomTopClass.exists
+    /** Is phantom if upper bounded by XYZ.Any where XYZ extends scala.Phantom */
+    final def isPhantom(implicit ctx: Context): Boolean = isPhantomClass(topType.classSymbol)
 
-    final def phantomTopClass(implicit ctx: Context): Type = this match {
-      case tp: ClassInfo if isPhantomClass(tp.classSymbol) => tp
-      case tp: TypeProxy => tp.superType.phantomTopClass
-      case tp: AndOrType => tp.tp1.phantomTopClass
-      case _ => NoType
+    /** Returns the top type of the lattice
+     *   - XYX.Any if XYZ extends scala.Phantom and this type is upper bounded XYZ.Any
+     *   - scala.Any otherwise
+     */
+    final def topType(implicit ctx: Context): TypeRef = this match {
+      case tp: ClassInfo if isPhantomClass(tp.classSymbol) => tp.prefix.select(tpnme.Any).asInstanceOf[TypeRef]
+      case tp: TypeProxy => tp.superType.topType
+      case tp: AndOrType => tp.tp1.topType
+      case _ => defn.AnyType
     }
 
+    /** Returns the bottom type of the lattice
+     *   - XYZ.Nothing if XYZ extends scala.Phantom and this type is upper bounded XYZ.Any
+     *   - scala.Nothing otherwise
+     */
+    final def bottomType(implicit ctx: Context): Type = topType match {
+      case top: TypeRef if top.prefix.termSymbol ne defn.ScalaPackageVal =>
+        top.prefix.select(tpnme.Nothing)
+      case _ => defn.NothingType
+    }
+
+    /** If the symbol is of the class scala.Phantom.Any or scala.Phantom.Nothing */
     private def isPhantomClass(sym: Symbol)(implicit ctx: Context): Boolean =
       sym.isClass && (sym.owner eq defn.PhantomClass)
 
@@ -3287,8 +3303,8 @@ object Types {
   /** Type bounds >: lo <: hi */
   abstract case class TypeBounds(lo: Type, hi: Type) extends CachedProxyType with TypeType {
 
-    assert(lo.isInstanceOf[TermType])
-    assert(hi.isInstanceOf[TermType])
+    assert(lo.isInstanceOf[TermType], lo)
+    assert(hi.isInstanceOf[TermType], hi)
 
     def variance: Int = 0
 

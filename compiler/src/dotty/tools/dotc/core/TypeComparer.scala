@@ -559,7 +559,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
           }
           if (tp1.symbol eq NothingClass) tp2.isValueTypeOrLambda && !isPhantom(tp2)
           else if (tp1.symbol eq NullClass) isNullable(tp2) && !isPhantom(tp2)
-          else if (defn.isPhantomNothingClass(tp1.symbol)) tp2.isValueTypeOrLambda && (tp1.phantomTopClass == tp2.phantomTopClass)
+          else if (defn.isPhantomNothingClass(tp1.symbol)) tp2.isValueTypeOrLambda && (tp1.topType == tp2.topType)
           else false
       }
     case tp1: SingletonType =>
