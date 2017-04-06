@@ -29,7 +29,6 @@ import config.Printers.{ exhaustivity => debug }
  *      3. A union of spaces `S1 | S2 | ...` is a space
  *      4. For a case class Kon(x1: T1, x2: T2, .., xn: Tn), if S1, S2, ..., Sn
  *          are spaces, then `Kon(S1, S2, ..., Sn)` is a space.
- *      5. A constant `Const(value, T)` is a point in space
  *
  *  For the problem of exhaustivity check, its formulation in terms of space is as follows:
  *
@@ -66,12 +65,6 @@ case class Kon(tp: Type, params: List[Space]) extends Space
 
 /** Union of spaces */
 case class Or(spaces: List[Space]) extends Space
-
-/** Point in space */
-sealed trait Point extends Space
-
-/** Point representing literal constants in patterns */
-case class Const(value: Constant, tp: Type) extends Point
 
 /** abstract space logic */
 trait SpaceLogic {
@@ -157,11 +150,6 @@ trait SpaceLogic {
         simplify(minus(a, b)) == Empty
       case (Kon(tp1, ss1), Kon(tp2, ss2)) =>
         isEqualType(tp1, tp2) && ss1.zip(ss2).forall((isSubspace _).tupled)
-      case (Const(v1, _), Const(v2, _)) => v1 == v2
-      case (Const(_, tp1), Typ(tp2, _)) => isSubType(tp1, tp2) || tryDecompose2(tp2)
-      case (Const(_, _), Or(ss)) => ss.exists(isSubspace(a, _))
-      case (Const(_, _), _) => false
-      case (_, Const(_, _)) => false
     }
 
     debug.println(s"${show(a)} < ${show(b)} = $res")
@@ -198,18 +186,6 @@ trait SpaceLogic {
         if (!isEqualType(tp1, tp2)) Empty
         else if (ss1.zip(ss2).exists(p => simplify(intersect(p._1, p._2)) == Empty)) Empty
         else Kon(tp1, ss1.zip(ss2).map((intersect _).tupled))
-      case (Const(v1, _), Const(v2, _)) =>
-        if (v1 == v2) a else Empty
-      case (Const(_, tp1), Typ(tp2, _)) =>
-        if (isSubType(tp1, tp2)) a
-        else if (canDecompose(tp2)) tryDecompose2(tp2)
-        else Empty
-      case (Const(_, _), _) => Empty
-      case (Typ(tp1, _), Const(_, tp2)) =>
-        if (isSubType(tp2, tp1)) b
-        else if (canDecompose(tp1)) tryDecompose1(tp1)
-        else Empty
-      case (_, Const(_, _)) => Empty
     }
 
     debug.println(s"${show(a)} & ${show(b)} = ${show(res)}")
@@ -255,17 +231,6 @@ trait SpaceLogic {
           Or(ss1.zip(ss2).map((minus _).tupled).zip(0 to ss2.length - 1).map {
               case (ri, i) => Kon(tp1, ss1.updated(i, ri))
             })
-      case (Const(v1, _), Const(v2, _)) =>
-        if (v1 == v2) Empty else a
-      case (Const(_, tp1), Typ(tp2, _)) =>
-        if (isSubType(tp1, tp2)) Empty
-        else if (canDecompose(tp2)) tryDecompose2(tp2)
-        else a
-      case (Const(_, _), _) => a
-      case (Typ(tp1, _), Const(_, tp2)) =>  // Boolean & Java enum
-        if (canDecompose(tp1)) tryDecompose1(tp1)
-        else a
-      case (_, Const(_, _)) => a
     }
 
     debug.println(s"${show(a)} - ${show(b)} = ${show(res)}")
@@ -284,17 +249,14 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
    *  otherwise approximate extractors to Empty
    */
   def project(pat: Tree, roundUp: Boolean = true)(implicit ctx: Context): Space = pat match {
-    case Literal(c) => Const(c, c.tpe)
+    case Literal(c) =>
+      if (c.value.isInstanceOf[Symbol])
+        Typ(c.value.asInstanceOf[Symbol].termRef, false)
+      else
+        Typ(ConstantType(c), false)
     case _: BackquotedIdent => Typ(pat.tpe, false)
     case Ident(_) | Select(_, _) =>
-      pat.tpe.stripAnnots match {
-        case tp: TermRef =>
-          if (pat.symbol.is(Enum))
-            Const(Constant(pat.symbol), tp)
-          else
-            Typ(tp, false)
-        case tp => Typ(tp, false)
-      }
+      Typ(pat.tpe.stripAnnots, false)
     case Alternative(trees) => Or(trees.map(project(_, roundUp)))
     case Bind(_, pat) => project(pat)
     case UnApply(_, _, pats) =>
@@ -366,11 +328,11 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
       case OrType(tp1, tp2) => List(Typ(tp1, true), Typ(tp2, true))
       case _ if tp =:= ctx.definitions.BooleanType =>
         List(
-          Const(Constant(true), ctx.definitions.BooleanType),
-          Const(Constant(false), ctx.definitions.BooleanType)
+          Typ(ConstantType(Constant(true)), true),
+          Typ(ConstantType(Constant(false)), true)
         )
       case _ if tp.classSymbol.is(Enum) =>
-        children.map(sym => Const(Constant(sym), tp))
+        children.map(sym => Typ(sym.termRef, true))
       case _ =>
         val parts = children.map { sym =>
           if (sym.is(ModuleClass))
@@ -419,7 +381,7 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
       tp.classSymbol.is(allOf(Trait, Sealed)) ||
       tp.isInstanceOf[OrType] ||
       tp =:= ctx.definitions.BooleanType ||
-      tp.classSymbol.is(Enum)
+      tp.classSymbol.is(allOf(Enum, Sealed))  // Enum value doesn't have Sealed flag
 
     debug.println(s"decomposable: ${tp.show} = $res")
 
@@ -475,7 +437,7 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
   def show(s: Space): String = {
     def doShow(s: Space, mergeList: Boolean = false): String = s match {
       case Empty => ""
-      case Const(v, _) => v.show
+      case Typ(c: ConstantType, _) => c.value.show
       case Typ(tp: TermRef, _) => tp.symbol.showName
       case Typ(tp, decomposed) =>
         val sym = tp.widen.classSymbol
