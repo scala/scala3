@@ -1220,10 +1220,12 @@ object SymDenotations {
     ownerIfExists: Symbol,
     initName: Name,
     initFlags: FlagSet,
-    val initInfo: Type,
+    initInfo: Type,
     initPrivateWithin: Symbol,
     initRunId: RunId)
     extends SymDenotation(symbol, ownerIfExists, initName, initFlags, initInfo, initPrivateWithin) {
+
+    var hack: Option[Any] = _
 
     import util.LRUCache
 

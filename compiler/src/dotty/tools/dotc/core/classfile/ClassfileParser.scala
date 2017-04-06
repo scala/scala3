@@ -143,6 +143,9 @@ class ClassfileParser(
       setClassInfo(moduleRoot, staticInfo)
     }
 
+    classRoot.hack = result
+    moduleRoot.hack = result
+
     // eager load java enum definitions for exhaustivity check of pattern match
     if (isEnum) {
       instanceScope.toList.map(_.ensureCompleted())

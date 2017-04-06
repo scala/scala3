@@ -29,29 +29,29 @@ class TreeUnpickler(reader: TastyReader, nameAtRef: NameRef => TermName, posUnpi
   import tpd._
 
   /** A map from addresses of definition entries to the symbols they define */
-  private val symAtAddr  = new mutable.HashMap[Addr, Symbol]
+  val symAtAddr  = new mutable.HashMap[Addr, Symbol]
 
   /** A temporary map from addresses of definition entries to the trees they define.
    *  Used to remember trees of symbols that are created by a completion. Emptied
    *  once the tree is inlined into a larger tree.
    */
-  private val treeAtAddr = new mutable.HashMap[Addr, Tree]
+  val treeAtAddr = new mutable.HashMap[Addr, Tree]
 
   /** A map from addresses of type entries to the types they define.
    *  Currently only populated for types that might be recursively referenced
    *  from within themselves (i.e. RecTypes, LambdaTypes).
    */
-  private val typeAtAddr = new mutable.HashMap[Addr, Type]
+  val typeAtAddr = new mutable.HashMap[Addr, Type]
 
   /** The root symbol denotation which are defined by the Tasty file associated with this
    *  TreeUnpickler. Set by `enterTopLevel`.
    */
-  protected var roots: Set[SymDenotation] = Set.empty
+  var roots: Set[SymDenotation] = Set.empty
 
   /** The root symbols that are defined in this Tasty file. This
    *  is a subset of `roots.map(_.symbol)`.
    */
-  private var seenRoots: Set[Symbol] = Set()
+  var seenRoots: Set[Symbol] = Set()
 
   /** The root owner tree. See `OwnerTree` class definition. Set by `enterTopLevel`. */
   private var ownerTree: OwnerTree = _
@@ -66,7 +66,7 @@ class TreeUnpickler(reader: TastyReader, nameAtRef: NameRef => TermName, posUnpi
     this.roots = roots
     var rdr = new TreeReader(reader).fork
     ownerTree = new OwnerTree(NoAddr, 0, rdr.fork, reader.endAddr)
-    rdr.indexStats(reader.endAddr)
+    rdr.indexTopLevel
   }
 
   /** The unpickled trees */
@@ -433,7 +433,7 @@ class TreeUnpickler(reader: TastyReader, nameAtRef: NameRef => TermName, posUnpi
       def adjustIfModule(completer: LazyType) =
         if (flags is Module) ctx.adjustModuleCompleter(completer, name) else completer
       val sym =
-        roots.find(root => (root.owner eq ctx.owner) && root.name.mangled == mname) match {
+        roots.find(root => root.exists && (root.owner eq ctx.owner) && root.name.mangled == mname) match {
           case Some(rootd) =>
             pickling.println(i"overwriting ${rootd.symbol} # ${rootd.hashCode}")
             rootd.name = name
@@ -531,6 +531,17 @@ class TreeUnpickler(reader: TastyReader, nameAtRef: NameRef => TermName, posUnpi
         }
       }
       (flags, annots.toList, privateWithin)
+    }
+
+    /** Create symbols for the definitions in the top level statements.
+     */
+    def indexTopLevel(implicit ctx: Context): Unit = {
+      nextByte match {
+        case PACKAGE =>
+          processPackage { (pid, end) => implicit ctx => indexStats(end) }
+        case _ =>
+          skipTree()
+      }
     }
 
     /** Create symbols for the definitions in the statement sequence between

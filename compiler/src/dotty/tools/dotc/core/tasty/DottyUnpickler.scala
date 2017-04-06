@@ -23,6 +23,12 @@ object DottyUnpickler {
       new TreeUnpickler(reader, nameAtRef, posUnpickler)
   }
 
+  class SectionTreeSectionUnpickler(unpickler: DottyUnpickler, sectionName: String)(implicit ctx: Context) extends TreeSectionUnpickler(posUnpickler = None) {
+    override def unpickle(reader: TastyReader, tastyName: TastyName.Table): SectionTreeUnpickler = {
+      new SectionTreeUnpickler(unpickler, reader, tastyName, sectionName)
+    }
+  }
+
   class PositionsSectionUnpickler extends SectionUnpickler[PositionUnpickler]("Positions") {
     def unpickle(reader: TastyReader, nameAtRef: NameTable) =
       new PositionUnpickler(reader)
@@ -38,7 +44,7 @@ class DottyUnpickler(bytes: Array[Byte]) extends ClassfileParser.Embedded {
 
   val unpickler = new TastyUnpickler(bytes)
   private val posUnpicklerOpt = unpickler.unpickle(new PositionsSectionUnpickler)
-  private val treeUnpickler = unpickler.unpickle(new TreeSectionUnpickler(posUnpicklerOpt)).get
+  val treeUnpickler = unpickler.unpickle(new TreeSectionUnpickler(posUnpicklerOpt)).get
 
   /** Enter all toplevel classes and objects into their scopes
    *  @param roots          a set of SymDenotations that should be overwritten by unpickling

@@ -294,15 +294,21 @@ class ClassfileLoader(val classfile: AbstractFile) extends SymbolLoader {
         // as a stand in for loading.
         // An example for this situation is scala.reflect.Manifest, which exists
         // as a class in scala.reflect and as a val in scala.reflect.package.
-        if (rootDenot is ModuleClass)
+        if (rootDenot is ModuleClass) // TODO: Doo the same thing here
           ctx.newClassSymbol(
             rootDenot.owner, rootDenot.name.stripModuleClassSuffix.asTypeName, Synthetic,
               _ => NoType).classDenot
-        else
-          ctx.newModuleSymbol(
-            rootDenot.owner, rootDenot.name.toTermName, Synthetic, Synthetic,
-            (module, _) => new NoCompleter() withDecls newScope withSourceModule (_ => module))
-            .moduleClass.denot.asClass
+        else {
+          val existing = rootDenot.owner.unforcedDecls.denotsNamed(rootDenot.name.toTermName)
+          existing match {
+            case existing: SymDenotation => existing.symbol.moduleClass.denot.asClass
+            case _ =>
+              ctx.newModuleSymbol(
+                rootDenot.owner, rootDenot.name.toTermName, Synthetic, Synthetic,
+                (module, _) => new NoCompleter() withDecls newScope withSourceModule (_ => module))
+                .moduleClass.denot.asClass
+          }
+        }
     }
     if (rootDenot is ModuleClass) (linkedDenot, rootDenot)
     else (rootDenot, linkedDenot)

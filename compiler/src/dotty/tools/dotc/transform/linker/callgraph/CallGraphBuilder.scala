@@ -10,6 +10,7 @@ import dotty.tools.dotc.core.Symbols.{Symbol, _}
 import dotty.tools.dotc.core.TypeErasure
 import dotty.tools.dotc.core.Types._
 import dotty.tools.dotc.transform.ResolveSuper
+import dotty.tools.dotc.transform.linker.CollectSummaries
 import dotty.tools.dotc.transform.linker.summaries._
 import dotty.tools.dotc.transform.linker.types._
 
@@ -27,16 +28,18 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
   import CallGraphBuilder._
   import tpd._
 
+  private val tastySummaries = new TastySummaries
+
   private var iteration = 0
 
   private var entryPoints = immutable.Map.empty[CallInfoWithContext, Int]
   private var reachableTypes = immutable.Set.empty[TypeWithContext]
   private var reachableMethods = mutable.Set.empty[CallInfoWithContext]
 
-  private var reachableMethodsSymbols = new java.util.IdentityHashMap[Symbol, Unit]
-  private var outerMethods = new java.util.IdentityHashMap[Symbol, Unit]
+  private val reachableMethodsSymbols = new java.util.IdentityHashMap[Symbol, Unit]
+  private val outerMethods = new java.util.IdentityHashMap[Symbol, Unit]
 
-  private var classOfs = new java.util.IdentityHashMap[Symbol, Unit]
+  private val classOfs = new java.util.IdentityHashMap[Symbol, Unit]
 
   private val typesByMemberNameCache = new java.util.IdentityHashMap[Name, List[(Int, TypeWithContext)]]()
 
@@ -623,7 +626,7 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
         needsInstantiation || addingOutEdges || finished // if finished==true we are checking the completeness of the CRC
       }
 
-      collectedSummaries.get(method.callSymbol) match {
+      collectedSummaries.get(method.callSymbol).orElse(tastySummaries(method.callSymbol)) match {
         case Some(summary) =>
           summary.definedClosures.foreach(x => addReachableClosure(x, method))
 
@@ -637,8 +640,6 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
           }
 
         case None =>
-
-          // val loadedSummary = ctx.summariesPhase.asInstanceOf[CollectSummaries].getLoadedSummary(method.callSymbol)
 
           if (!outerMethods.containsKey(method.callSymbol)) {
 

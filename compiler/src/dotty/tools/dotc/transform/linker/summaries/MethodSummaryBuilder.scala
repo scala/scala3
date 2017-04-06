@@ -33,5 +33,5 @@ class MethodSummaryBuilder(val methodDef: Symbol, argumentStoredToHeap: List[Boo
   }
 
   def result(): MethodSummary =
-    MethodSummary(methodDef, thisAccessed, methodsCalled.toMap, definedClosures, accessedModules, argumentReturned, argumentStoredToHeap)
+    new MethodSummary(methodDef, thisAccessed, methodsCalled.toMap, definedClosures, accessedModules, argumentReturned, argumentStoredToHeap)
 }

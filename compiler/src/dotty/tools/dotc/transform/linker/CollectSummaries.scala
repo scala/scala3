@@ -16,10 +16,10 @@ import dotty.tools.dotc.core.Decorators._
 import dotty.tools.dotc.core.SymDenotations.ClassDenotation
 import dotty.tools.dotc.core.tasty._
 import dotty.tools.dotc.core.tasty.DottyUnpickler
+import dotty.tools.dotc.core.tasty.DottyUnpickler.SectionTreeSectionUnpickler
 import dotty.tools.dotc.transform.SymUtils._
 import dotty.tools.dotc.transform.TreeGen
 import dotty.tools.dotc.transform.TreeTransforms._
-import dotty.tools.dotc.transform.linker.callgraph.OuterTargs
 import dotty.tools.dotc.transform.linker.summaries._
 import dotty.tools.dotc.transform.linker.types.{ClosureType, PreciseType}
 import dotty.tools.dotc.typer.Applications._
@@ -34,137 +34,6 @@ class CollectSummaries extends MiniPhase { thisTransform =>
   val phaseName: String = "summaries"
 
   val treeTransform: Collect = new Collect
-
-  private val sectionName = "MethodSummaries"
-  private val version = 1
-
-  private var noSummaryAvailable = Set[Symbol]()
-
-  private var loadedMethodSummaries: Map[Symbol, MethodSummary] = Map.empty
-
-  def getLoadedSummary(d: Symbol)(implicit ctx: Context): Option[MethodSummary] = {
-    if (noSummaryAvailable(d)) None
-    else {
-      if (!loadedMethodSummaries.contains(d)) {
-        val nw = retrieveSummary(d)
-        nw.foreach(ms => loadedMethodSummaries = loadedMethodSummaries.updated(ms.methodDef, ms))
-        if (!loadedMethodSummaries.contains(d))
-          noSummaryAvailable += d
-      }
-      loadedMethodSummaries.get(d)
-    }
-  }
-
-  private def retrieveSummary(claz: Symbol)(implicit ctx: Context): List[MethodSummary] = Nil /* {
-    val topDenot = claz.topLevelClass.denot.asSymDenotation
-    if (topDenot.symbol == defn.ObjectClass)
-      return Nil
-    topDenot match {
-      case clsd: ClassDenotation =>
-        clsd.initInfo match {
-          case info: ClassfileLoader =>
-            info.load(clsd) match {
-              case Some(unpickler: DottyUnpickler) =>
-                class STreeUnpickler(reader: TastyReader, tastyName: TastyName.Table) extends TreeUnpickler(reader, tastyName, posUnpicklerOpt = None) {
-
-                  roots = Set.empty
-
-                  def getStartReader: Option[TreeReader] = {
-                    val st = new TreeReader(reader)
-                    st.skipToplevel()(ctx.addMode(Mode.AllowDependentFunctions))
-
-                    while (true) {
-                      while (reader.nextByte != TastyFormat.VALDEF && !reader.isAtEnd) st.skipTree()
-                      if (reader.isAtEnd) return None // no section here
-                      val tag = reader.readByte()
-                      val end = reader.readEnd()
-                      val name = st.readName()
-                      if (name.toString == sectionName + unpickler.unpickler.uuid) return Some(st.forkAt(end))
-                      st.skipTree() // skip type
-                      st.skipTree() // skip rhs
-                    }
-
-                    None
-                  }
-
-               }
-                class STreeSectionUnpickler extends DottyUnpickler.TreeSectionUnpickler(posUnpickler = None) {
-                  override def unpickle(reader: TastyReader, tastyName: TastyName.Table): STreeUnpickler = {
-                      new STreeUnpickler(reader, tastyName)
-                  }
-                }
-
-                val tastySection = unpickler.unpickler.unpickle(new STreeSectionUnpickler).get
-                tastySection.enterTopLevel(roots = Set.empty)
-                val treeReader = tastySection.asInstanceOf[STreeUnpickler].getStartReader.get
-
-                val unp = new TastyUnpickler.SectionUnpickler[List[MethodSummary]](sectionName) {
-                  def unpickle(reader: TastyReader, tastyName: TastyName.Table): List[MethodSummary] = {
-                    def readSymbolRef = {
-                      val s = treeReader.readType()
-                      s.termSymbol.orElse(s.typeSymbol).orElse(s.classSymbol)
-                    }
-
-                    def readType = treeReader.readType()
-
-                    def readMS: MethodSummary = {
-                      val sym = readSymbolRef
-                      val methodsSz = reader.readInt()
-
-                      val methodsCalled = new mutable.HashMap[Type, List[CallInfo]]()
-
-                      for(_ <- 0 until methodsSz) {
-                        val reciever = readType
-                        val listSz = reader.readInt()
-
-                        def readCallInfo: CallInfo = {
-                          val t = readType
-                          val targsSz = reader.readByte()
-                          val targs = for(_ <- 0 until targsSz) yield readType
-                          val argsSz = reader.readByte()
-                          val argsPassed = for(_ <- 0 until argsSz) yield readSymbolRef.info
-                          val source = None // TODO
-                          CallInfo(t.asInstanceOf[TermRef], targs.toList, argsPassed.toList, source) // TODO no need to normalize the types
-                        }
-
-                        val calls = for(_ <- 0 until listSz) yield readCallInfo
-                        methodsCalled(reciever) = calls.toList
-                      }
-
-                      val accessedModulesSz = reader.readInt()
-
-                      val accesedModules = for(_ <- 0 until accessedModulesSz) yield readSymbolRef
-
-                      val argumentReturned = reader.readByte()
-
-                      val bitsExtected =
-                        sym.info.widenDealias.asInstanceOf[MethodType].paramTypess.foldLeft(0)(_+_.size) + 2 // this and thisAccessed
-                      val bytesExpected = bitsExtected / 8 + (if(bitsExtected % 8 > 0) 1 else 0)
-                      val bytes = reader.readBytes(bytesExpected)
-                      val (thisAccessed :: argumentStoredToHeap) = bytes.toList.flatMap{ bt =>
-                        List((bt & 1)  != 0, (bt & 2)  != 0, (bt & 4)  != 0, (bt & 8)   != 0,
-                             (bt & 16) != 0, (bt & 32) != 0, (bt & 64) != 0, (bt & 128) != 0)
-                      }
-                      val definedClosures = Nil // TODO
-                      new MethodSummary(sym, thisAccessed, methodsCalled.toMap, definedClosures, accesedModules.toList, argumentReturned.toByte, argumentStoredToHeap.take(bitsExtected - 1))
-                    }
-
-                    val version = reader.readInt()
-
-                    val methodsSz = reader.readInt()
-
-                    val methods = for(_ <- 0 until methodsSz) yield readMS
-
-                    methods.toList
-                  }
-                }
-                unpickler.unpickler.unpickle(unp).getOrElse(Nil)
-              case _ => Nil
-            }
-        }
-    }
-  } */
-
 
   override def run(implicit ctx: Context): Unit = {
     if (CollectSummaries.isPhaseRequired)
@@ -326,7 +195,11 @@ class CollectSummaries extends MiniPhase { thisTransform =>
           case Apply(Select(New(tp), _), args) => new PreciseType(tp.tpe)
           case Apply(TypeApply(Select(New(tp), _), targs), args) => new PreciseType(tp.tpe)
           case Typed(expr: SeqLiteral, tpt) if x.tpe.isRepeatedParam =>
-            wrapArrayTermRef(TreeGen.wrapArrayMethodName(expr.elemtpt.tpe)).widenDealias.finalResultType
+            val tp = expr.elemtpt.tpe
+            wrapArrayTermRef(TreeGen.wrapArrayMethodName(tp)).widenDealias match {
+              case warr: PolyType => warr.appliedTo(tp).finalResultType
+              case warr => warr.finalResultType
+            }
           case Typed(expr, _) => argType(expr)
           case NamedArg(nm, a) => argType(a)
           case _ => x.tpe
@@ -547,75 +420,7 @@ class CollectSummaries extends MiniPhase { thisTransform =>
     }
 
     override def transformUnit(tree: tpd.Tree)(implicit ctx: Context, info: TransformerInfo): tpd.Tree = {
-/*
-      for { cls <- ctx.compilationUnit.picklers.keySet} {
-        def serializeCS(methods: List[MethodSummary], pickler: TastyPickler): Unit = {
-          val buf = new TastyBuffer(5000)
-          val treePickl = pickler.treePkl
-          val anchorTree = tpd.SyntheticValDef((sectionName + pickler.uuid.toString).toTermName, Literal(Constant(sectionName)))
-
-          treePickl.preRegister(anchorTree)
-          treePickl.pickle(anchorTree :: Nil)
-
-          pickler.newSection(sectionName, buf)
-          val start = treePickl.buf.currentAddr
-          buf.writeInt(version)//1
-
-          def writeSymbolRef(sym: Symbol) = {
-            treePickl.pickleType(ref(sym).tpe)
-          }
-          def writeTypeRef(tp: Type) = {
-            treePickl.pickleType(tp)
-          }
-
-
-          def serializeMS(ms: MethodSummary) = {
-            writeSymbolRef(ms.methodDef) //26
-
-            buf.writeInt(ms.methodsCalled.size) //29
-            for ((reciever, methods) <- ms.methodsCalled) {
-              writeTypeRef(reciever) //36
-              buf.writeInt(methods.size)
-
-              def writeCallInfo(c: CallInfo): Unit = {
-                writeTypeRef(c.call)
-                buf.writeByte(c.targs.size)
-                c.targs foreach writeTypeRef
-
-                buf.writeByte(c.argumentsPassed.size)
-                c.argumentsPassed.foreach(arg => writeSymbolRef(arg.classSymbol))
-              }
-              methods foreach writeCallInfo
-            }
-
-            buf.writeInt(ms.accessedModules.length)
-            ms.accessedModules foreach writeSymbolRef
-
-            buf.writeByte(ms.argumentReturned)
-            (ms.thisAccessed :: ms.argumentStoredToHeap).grouped(8).map(_.foldRight(0) { (bl: Boolean, acc: Int) =>
-              (if (bl) 1 else 0) + 2 * acc
-            }) foreach (buf.writeByte)
-          }
-
-          buf.writeInt(methods.length) // 19
-
-          methods foreach serializeMS
-
-          val sz = treePickl.buf.currentAddr.index - start.index
-
-          ctx.debuglog("new section for " + cls + " size:"
-            + sz + "/" + buf.currentAddr + "increased by " + (sz + buf.length) * 1.0 / start.index)
-          // note: this is huge overestimate. This section contains a lot of refferences to already existing symbols and types
-          // and will be compressed during bytecode generation by TreePickler.compactify
-        }
-
-          val s = methodSummaries.filter(_._1.topLevelClass == cls)
-
-          // println(s)
-
-          serializeCS(s.values.toList, ctx.compilationUnit.picklers(cls))
-      }
-      */
+      TastySummaries.saveInTasty(methodSummaries.values.toList)
       tree
     }
   }
