@@ -91,7 +91,9 @@ object DesugarEnums {
     else cdef
 
   private def valuesDot(name: String) = Select(Ident(nme.DOLLAR_VALUES), name.toTermName)
-  private def registerCall = Apply(valuesDot("register"), This(EmptyTypeIdent) :: Nil)
+  private def registerCall(implicit ctx: Context): List[Tree] =
+    if (enumClass.typeParams.nonEmpty) Nil
+    else Apply(valuesDot("register"), This(EmptyTypeIdent) :: Nil) :: Nil
 
   /**  The following lists of definitions for an enum type E:
    *
@@ -101,12 +103,11 @@ object DesugarEnums {
    *   def enumValues = $values.values
    */
   private def enumScaffolding(implicit ctx: Context): List[Tree] = {
-    val enumType = enumClass.typeRef.appliedTo(enumClass.typeParams.map(_ => TypeBounds.empty))
     def enumDefDef(name: String, select: String) =
       DefDef(name.toTermName, Nil, Nil, TypeTree(), valuesDot(select))
     val privateValuesDef =
       ValDef(nme.DOLLAR_VALUES, TypeTree(),
-             New(TypeTree(defn.EnumValuesType.appliedTo(enumType :: Nil)), ListOfNil))
+             New(TypeTree(defn.EnumValuesType.appliedTo(enumClass.typeRef :: Nil)), ListOfNil))
         .withFlags(Private)
     val valueOfDef = enumDefDef("enumValue", "fromInt")
     val withNameDef = enumDefDef("enumValueNamed", "fromName")
@@ -131,7 +132,7 @@ object DesugarEnums {
       DefDef(nme.toString_, Nil, Nil, TypeTree(), Ident(nme.name))
         .withFlags(Override)
     def creator = New(Template(emptyConstructor, enumClassRef :: Nil, EmptyValDef,
-        List(enumTagDef, toStringDef, registerCall)))
+        List(enumTagDef, toStringDef) ++ registerCall))
     DefDef(nme.DOLLAR_NEW, Nil,
         List(List(param(nme.tag, defn.IntType), param(nme.name, defn.StringType))),
         TypeTree(), creator)
@@ -147,7 +148,7 @@ object DesugarEnums {
     val minKind = if (kind < seenKind) kind else seenKind
     ctx.tree.pushAttachment(EnumCaseCount, (count + 1, minKind))
     val scaffolding =
-      if (kind >= seenKind) Nil
+      if (enumClass.typeParams.nonEmpty || kind >= seenKind) Nil
       else if (kind == CaseKind.Object) enumScaffolding
       else if (seenKind == CaseKind.Object) enumValueCreator :: Nil
       else enumScaffolding :+ enumValueCreator
@@ -177,7 +178,8 @@ object DesugarEnums {
         DefDef(nme.toString_, Nil, Nil, TypeTree(defn.StringType), Literal(Constant(name.toString)))
           .withFlags(Override)
       val (tagMeth, scaffolding) = enumTagMeth(CaseKind.Object)
-      val impl1 = cpy.Template(impl)(body = impl.body ++ List(tagMeth, toStringMeth, registerCall))
+      val impl1 = cpy.Template(impl)(body =
+        impl.body ++ List(tagMeth, toStringMeth) ++ registerCall)
       val vdef = ValDef(name, TypeTree(), New(impl1)).withMods(mods | Final).withPos(pos)
       flatTree(scaffolding ::: vdef :: Nil).withPos(pos.startPos)
     }
