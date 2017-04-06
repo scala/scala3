@@ -45,7 +45,7 @@ class NameBuffer extends TastyBuffer(10000) {
     val lengthAddr = currentAddr
     for (i <- 0 until lengthWidth) writeByte(0)
     op
-    val length = currentAddr.index - lengthAddr.index - 1
+    val length = currentAddr.index - lengthAddr.index - lengthWidth
     putNat(lengthAddr, length, lengthWidth)
   }
 
@@ -70,10 +70,10 @@ class NameBuffer extends TastyBuffer(10000) {
           writeNat(num)
           if (!original.isEmpty) writeNameRef(original)
         }
-      case DefaultGetterName(method, paramNumber) =>
-        withLength { writeNameRef(method); writeNat(paramNumber) }
       case VariantName(original, sign) =>
         withLength { writeNameRef(original); writeNat(sign + 1) }
+      case AnyNumberedName(original, num) =>
+        withLength { writeNameRef(original); writeNat(num) }
       case SignedName(original, Signature(params, result)) =>
         withLength(
           { writeNameRef(original); writeNameRef(result); params.foreach(writeNameRef) },

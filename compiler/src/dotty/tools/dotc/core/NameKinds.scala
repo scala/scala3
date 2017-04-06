@@ -141,6 +141,13 @@ object NameKinds {
     }
   }
 
+  object AnyNumberedName {
+    def unapply(name: DerivedTermName): Option[(TermName, Int)] = name match {
+      case DerivedTermName(qual, info: NumberedInfo) => Some((qual, info.num))
+      case _ => None
+    }
+  }
+
   case class UniqueNameKind(val separator: String)
   extends NumberedNameKind(UNIQUE, s"Unique $separator") {
     override def definesNewName = true

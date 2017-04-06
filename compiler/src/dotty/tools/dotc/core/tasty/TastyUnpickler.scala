@@ -61,6 +61,8 @@ class TastyUnpickler(reader: TastyReader) {
         DefaultGetterName(readName(), readNat())
       case VARIANT =>
         VariantName(readName(), readNat() - 1)
+      case OUTERSELECT =>
+        OuterSelectName(readName(), readNat())
       case SIGNED =>
         val original = readName()
         val result = readName().toTypeName
