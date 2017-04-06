@@ -45,7 +45,7 @@ class PhantomTypeErasure extends MiniPhaseTransform with InfoTransformer {
         case tp: MethodType if tp.resultType.isPhantom =>
           // Erase return type to Object to match FunctionN erased return type
           val methodType = if (tp.isImplicit) ImplicitMethodType else MethodType
-          methodType(tp.paramNames, tp.paramTypes, defn.ObjectType)
+          methodType(tp.paramNames, tp.paramInfos, defn.ObjectType)
         case _ => mapOver(tp)
       }
     }

@@ -974,8 +974,8 @@ class Definitions {
     val any = enterCompleteClassSymbol(cls, tpnme.Any, Protected | Final | NoInitsTrait, Nil)
     val nothing = enterCompleteClassSymbol(cls, tpnme.Nothing, Protected | Final | NoInitsTrait, List(any.typeRef))
 
-    val tparamNames = tpnme.syntheticTypeParamNames(1)
-    val ptype = PolyType(tparamNames, List(0))(_ => TypeBounds(nothing.typeRef, any.typeRef) :: Nil, PolyParam(_, 0))
+    val tparamNames = List("P".toTypeName)
+    val ptype = PolyType(tparamNames)(_ => TypeBounds(nothing.typeRef, any.typeRef) :: Nil, TypeParamRef(_, 0))
     newSymbol(cls, nme.assume_, Protected | Final | Method, ptype).entered
 
     cls
