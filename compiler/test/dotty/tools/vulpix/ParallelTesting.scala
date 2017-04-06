@@ -206,12 +206,12 @@ trait ParallelTesting extends RunnerOrchestration { self =>
     private[this] var _errorCount =  0
     def errorCount: Int = _errorCount
 
-    private[this] var _testSourcesCompiled = 0
-    private def testSourcesCompiled: Int = _testSourcesCompiled
+    private[this] var _testSourcesCompleted = 0
+    private def testSourcesCompleted: Int = _testSourcesCompleted
 
     /** Complete the current compilation with the amount of errors encountered */
-    protected final def registerCompilation(errors: Int) = synchronized {
-      _testSourcesCompiled += 1
+    protected final def registerCompletion(errors: Int) = synchronized {
+      _testSourcesCompleted += 1
       _errorCount += errors
     }
 
@@ -250,7 +250,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
     private def createProgressMonitor: Runnable = new Runnable {
       def run(): Unit = {
         val start = System.currentTimeMillis
-        var tCompiled = testSourcesCompiled
+        var tCompiled = testSourcesCompleted
         while (tCompiled < sourceCount) {
           val timestamp = (System.currentTimeMillis - start) / 1000
           val progress = (tCompiled.toDouble / sourceCount * 40).toInt
@@ -259,15 +259,15 @@ trait ParallelTesting extends RunnerOrchestration { self =>
             "[" + ("=" * (math.max(progress - 1, 0))) +
             (if (progress > 0) ">" else "") +
             (" " * (39 - progress)) +
-            s"] compiling ($tCompiled/$sourceCount, ${timestamp}s)\r"
+            s"] completed ($tCompiled/$sourceCount, ${timestamp}s)\r"
           )
 
           Thread.sleep(100)
-          tCompiled = testSourcesCompiled
+          tCompiled = testSourcesCompleted
         }
         // println, otherwise no newline and cursor at start of line
         realStdout.println(
-          s"[=======================================] compiled ($sourceCount/$sourceCount, " +
+          s"[=======================================] completed ($sourceCount/$sourceCount, " +
           s"${(System.currentTimeMillis - start) / 1000}s)  "
         )
       }
@@ -286,7 +286,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
           // run should fail
           failTestSource(testSource)
           e.printStackTrace()
-          registerCompilation(1)
+          registerCompletion(1)
           throw e
         }
       }
@@ -351,7 +351,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
     }
 
     private[ParallelTesting] def executeTestSuite(): this.type = {
-      assert(_testSourcesCompiled == 0, "not allowed to re-use a `CompileRun`")
+      assert(_testSourcesCompleted == 0, "not allowed to re-use a `CompileRun`")
 
       if (filteredSources.nonEmpty) {
         val pool = threadLimit match {
@@ -397,7 +397,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
         testSource match {
           case testSource @ JointCompilationSource(_, files, flags, outDir) => {
             val reporter = compile(testSource.sourceFiles, flags, false, outDir)
-            registerCompilation(reporter.errorCount)
+            registerCompletion(reporter.errorCount)
 
             if (reporter.errorCount > 0)
               echoBuildInstructions(reporter, testSource, reporter.errorCount, reporter.warningCount)
@@ -414,7 +414,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
 
             def warningCount = reporters.foldLeft(0)(_ + _.warningCount)
 
-            registerCompilation(errorCount)
+            registerCompletion(errorCount)
 
             if (errorCount > 0)
               echoBuildInstructions(reporters.head, testSource, errorCount, warningCount)
@@ -488,7 +488,6 @@ trait ParallelTesting extends RunnerOrchestration { self =>
             if (reporter.errorCount > 0)
               echoBuildInstructions(reporter, testSource, reporter.errorCount, reporter.warningCount)
 
-            registerCompilation(reporter.errorCount)
             (reporter.errorCount, reporter.warningCount, checkFile.isDefined, () => verifyOutput(checkFile.get, outDir, testSource, reporter.warningCount))
           }
 
@@ -507,28 +506,33 @@ trait ParallelTesting extends RunnerOrchestration { self =>
 
             if (errorCount > 0) fail()
 
-            registerCompilation(errorCount)
             (errorCount, warningCount, checkFile.exists, () => verifyOutput(checkFile, outDir, testSource, warningCount))
           }
         }
 
         if (errorCount == 0 && hasCheckFile) verifier()
         else if (errorCount == 0) runMain(testSource.classPath) match {
-          case Success(_) => // success!
-          case Failure(output) =>
-            echo(s"    failed when running '${testSource.title}'")
-            echo(output)
-            failTestSource(testSource)
-          case Timeout =>
-            echo("    failed because test " + testSource.title + " timed out")
-            failTestSource(testSource, Some("test timed out"))
-        }
+            case Success(_) => // success!
+            case Failure(output) =>
+              echo(s"    failed when running '${testSource.title}'")
+              echo(output)
+              failTestSource(testSource)
+            case Timeout =>
+              echo("    failed because test " + testSource.title + " timed out")
+              failTestSource(testSource, Some("test timed out"))
+          }
         else if (errorCount > 0) {
           echo(s"\n    Compilation failed for: '$testSource'")
           val buildInstr = testSource.buildInstructions(errorCount, warningCount)
           addFailureInstruction(buildInstr)
           failTestSource(testSource)
         }
+        else {
+          realStdout.println("Got a super weird error that I haven't handled yet")
+          realStdout.println("errorCount: " + errorCount)
+          realStdout.println("test: " + testSource.title + " " + testSource.name)
+        }
+        registerCompletion(errorCount)
       }
     }
   }
@@ -627,7 +631,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
           failTestSource(testSource)
         }
 
-        registerCompilation(actualErrors)
+        registerCompletion(actualErrors)
       }
     }
   }
