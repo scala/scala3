@@ -2,25 +2,34 @@ package dotty
 
 /** Jars used when compiling test, normally set from the sbt build */
 object Jars {
+  /** Dotty library Jar */
   val dottyLib: String = sys.env.get("DOTTY_LIB")
-    .getOrElse(sys.props("dotty.tests.classes.library"))
+    .getOrElse(Properties.dottyLib)
 
+  /** Dotty Compiler Jar */
   val dottyCompiler: String = sys.env.get("DOTTY_COMPILER")
-    .getOrElse(sys.props("dotty.tests.classes.compiler"))
+    .getOrElse(Properties.dottyCompiler)
 
+  /** Dotty Interfaces Jar */
   val dottyInterfaces: String = sys.env.get("DOTTY_INTERFACE")
-    .getOrElse(sys.props("dotty.tests.classes.interfaces"))
+    .getOrElse(Properties.dottyInterfaces)
 
-  val dottyExtras: List[String] = Option(sys.env.get("DOTTY_EXTRAS")
-    .getOrElse(sys.props("dotty.tests.extraclasspath")))
-    .map(_.split(":").toList).getOrElse(Nil)
+  /** Dotty extras classpath from env or properties */
+  val dottyExtras: List[String] = sys.env.get("DOTTY_EXTRAS")
+    .map(_.split(":").toList).getOrElse(Properties.dottyExtras)
 
+  /** Dotty REPL dependencies */
   val dottyReplDeps: List[String] = dottyLib :: dottyExtras
 
+  /** Dotty test dependencies */
   val dottyTestDeps: List[String] =
     dottyLib :: dottyCompiler :: dottyInterfaces :: dottyExtras
 
-
+  /** Gets the scala 2.* library at runtime, note that doing this is unsafe
+   *  unless you know that the library will be on the classpath of the running
+   *  application. It is currently safe to call this function if the tests are
+   *  run by sbt.
+   */
   def scalaLibraryFromRuntime: String = findJarFromRuntime("scala-library-2.")
 
   private def findJarFromRuntime(partialName: String) = {
@@ -31,5 +40,4 @@ object Jars {
       )
     }
   }
-
 }

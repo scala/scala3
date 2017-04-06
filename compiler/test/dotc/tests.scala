@@ -21,8 +21,6 @@ class tests extends CompilerTest {
   // tests that match regex '(pos|dotc|run|java|compileStdLib)\.*' would be
   // executed as benchmarks.
 
-  def isRunByDrone: Boolean = sys.props.isDefinedAt("DRONE")
-
   val defaultOutputDir = "../out/"
 
   val noCheckOptions = List(
@@ -70,7 +68,7 @@ class tests extends CompilerTest {
   }
 
   implicit val defaultOptions: List[String] = noCheckOptions ++ {
-    if (isRunByDrone) List("-Ycheck:tailrec,resolveSuper,mixin,restoreScopes,labelDef") // should be Ycheck:all, but #725
+    if (dotty.Properties.isRunByDrone) List("-Ycheck:tailrec,resolveSuper,mixin,restoreScopes,labelDef") // should be Ycheck:all, but #725
     else List("-Ycheck:tailrec,resolveSuper,mixin,restoreScopes,labelDef")
   } ++ checkOptions ++ classPath
 
@@ -229,7 +227,7 @@ class tests extends CompilerTest {
         |../scala-scala/src/library/scala/collection/parallel/mutable/ParSet.scala
         |../scala-scala/src/library/scala/collection/mutable/SetLike.scala""".stripMargin)(scala2mode ++ defaultOptions)
 
-  @Test def dotty = {
+  @Test def dottyBooted = {
     dottyBootedLib
     dottyDependsOnBootedLib
   }
