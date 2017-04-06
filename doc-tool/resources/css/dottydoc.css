@@ -1,29 +1,108 @@
+html, body {
+    overflow-x: hidden;
+}
+
 html {
     height: 100%;
 }
+
 body {
     min-height: 100%;
 }
 
 div#content-wrapper {
     min-height: 100vh;
-    padding-left: 250px;
-    transition: all 0.5s ease;
-}
-
-div#content-wrapper.toggled {
     padding-left: 0;
 }
 
-div.index-wrapper {
+div#content-wrapper div#content-body {
+    background-color: #f4f3f4;
+    border-left: 1px solid #e0e0e0;
+    box-shadow: -3px 0 5px -2px rgba(0, 0, 0, 0.14);
+    padding: 40px 1px 1px 1px;
+    position: relative;
+    min-height: 100vh;
+}
+
+div#content-wrapper div.index-wrapper {
     background-color: #fafafa;
-    width: 250px;
     position: fixed;
     top: 0;
     left: 0;
     height: 100%;
     overflow-y: auto;
     overflow-x: hidden;
+}
+
+/** Animations: Easing for content body slide on toggle  */
+div#content-wrapper,
+div#content-wrapper div#content-body {
+    -webkit-transition: all .25s ease-out;
+         -o-transition: all .25s ease-out;
+            transition: all .25s ease-out;
+}
+
+/** Mobile (x < 576px) sidebar: Defaults closed with 60% wide sidebar */
+div#content-wrapper {}
+div#content-wrapper div#content-body { left: 0; }
+div#content-wrapper div.index-wrapper { width: 60%; }
+
+div#content-wrapper.toggled {}
+div#content-wrapper.toggled div#content-body { left: 60%; }
+div#content-wrapper.toggled div.index-wrapper {}
+
+/** Tablet (576px <= x < 768px) sidebar: Defaults closed with 250px wide sidebar */
+@media screen and (min-width: 576px) {
+
+    div#content-wrapper {}
+    div#content-wrapper div#content-body {}
+    div#content-wrapper div.index-wrapper { width: 250px; }
+
+    div#content-wrapper.toggled {}
+    div#content-wrapper.toggled div#content-body { left: 250px; }
+    div#content-wrapper.toggled div.index-wrapper {}
+
+}
+
+/** Desktop (x >= 768px) sidebar: Defaults open with 250px wide sidebar  */
+@media screen and (min-width: 768px) {
+
+    div#content-wrapper { padding-left: 250px; }
+    div#content-wrapper div#content-body {}
+    div#content-wrapper div.index-wrapper { width: 250px; }
+
+    div#content-wrapper.toggled { padding-left: 0; }
+    div#content-wrapper.toggled div#content-body { left: 0; }
+    div#content-wrapper.toggled div.index-wrapper {}
+
+}
+
+div#content-wrapper button#menu-toggle {
+    background: rgba(244, 243, 244, 0.4) none;
+    border: 1px solid transparent;
+    color: #837f84;
+    margin: -30px 0 0 10px;
+    padding: 9px 10px;
+    position: absolute;
+}
+
+div#content-wrapper button#menu-toggle:hover {
+    cursor: pointer;
+}
+
+div#content-wrapper button#menu-toggle:focus {
+    outline: none;
+}
+
+div#content-wrapper button#menu-toggle span.icon-bar {
+    background-color: #837f84;
+    border-radius: 2px;
+    border-color: #837f84;
+    color: #837f84;
+    display: block;
+    margin: 3px 0;
+    width: 22px;
+    height: 2px;
 }
 
 div#doc-page-container > h1 {
@@ -91,27 +170,6 @@ div#doc-page-container > h4 > a:focus,
 div#doc-page-container > h5 > a:focus,
 div#doc-page-container > h6 > a:focus {
     outline: none;
-}
-
-div#content-body {
-    border-left: 1px solid #e0e0e0;
-    box-shadow: -3px 0px 5px -2px rgba(0,0,0,0.14);
-    position: relative;
-    padding: 10px;
-    background-color: #f4f3f4;
-    min-height: 100vh;
-}
-
-div#menu-toggle {
-    color: #837F84;
-    outline: none;
-    padding-left: 20px;
-    padding-top: 10px;
-}
-
-div#menu-toggle:hover {
-    color: rgba(0, 0, 0, 0.4);
-    cursor: pointer;
 }
 
 ul.index-entities {
@@ -195,7 +253,7 @@ ul.index-entities > li > a.entity-name {
     font-size: 13px;
     display: block;
     padding: 0 0 0 24px;
-    color: rgba(0,0,0,.87);
+    color: rgba(0, 0, 0, 0.87);
     background: transparent;
     cursor: pointer;
     float: left;
@@ -245,7 +303,7 @@ ul.toc > li > ul.hide {
 ul.index-entities > li.index-title > span {
     font-size: 16px;
     font-weight: bold;
-    color: rgba(0,0,0,.87);
+    color: rgba(0, 0, 0, 0.87);
     padding: 0 24px;
 }
 
@@ -319,7 +377,7 @@ pre {
     background: rgba(244, 243, 244, 0.6);
     border-radius: 2px;
     margin-top: 20px;
-    border: 1px solid rgba(0,0,0,0.1);
+    border: 1px solid rgba(0, 0, 0, 0.1);
 }
 
 pre > code.language-none,
