@@ -44,6 +44,7 @@ scala-scala
 out/
 build/
 !out/.keep
+testlogs/
 
 # Ignore build-file
 .packages

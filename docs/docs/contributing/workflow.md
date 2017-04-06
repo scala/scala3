@@ -57,11 +57,21 @@ $ sbt
 To test a specific test tests/x/y.scala (for example tests/pos/t210.scala):
 
 ```bash
-> partest-only-no-bootstrap --show-diff --verbose tests/partest-generated/x/y.scala
+> filterTest .*pos/t210.scala
 ```
 
-Currently this will re-run some unit tests and do some preprocessing because of
-the way partest has been set up.
+The filterTest task takes a regular expression as its argument. For example,
+you could run a negative and a positive test with:
+
+```bash
+> filterTest (.*pos/t697.scala)|(.*neg/i2101.scala)
+```
+
+or if they have the same name, the equivalent can be achieved with:
+
+```bash
+> filterTest .*/i2101.scala
+```
 
 ## Inspecting Trees with Type Stealer ##
 

@@ -670,59 +670,6 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {
       override def toString = "X" + ((extractor, nextBinder.name))
     }
 
-    /**
-     * An optimized version of ExtractorTreeMaker for Products.
-     * For now, this is hard-coded to case classes, and we simply extract the case class fields.
-     *
-     * The values for the subpatterns, as specified by the case class fields at the time of extraction,
-     * are stored in local variables that re-use the symbols in `subPatBinders`.
-     * This makes extractor patterns more debuggable (SI-5739) as well as
-     * avoiding mutation after the pattern has been matched (SI-5158, SI-6070)
-     *
-     * TODO: make this user-definable as follows
-     *   When a companion object defines a method `def unapply_1(x: T): U_1`, but no `def unapply` or `def unapplySeq`,
-     *   the extractor is considered to match any non-null value of type T
-     *   the pattern is expected to have as many sub-patterns as there are `def unapply_I(x: T): U_I` methods,
-     *   and the type of the I'th sub-pattern is `U_I`.
-     *   The same exception for Seq patterns applies: if the last extractor is of type `Seq[U_N]`,
-     *   the pattern must have at least N arguments (exactly N if the last argument is annotated with `: _*`).
-     *   The arguments starting at N (and beyond) are taken from the sequence returned by apply_N,
-     *   and it is checked that the sequence has enough elements to provide values for all expected sub-patterns.
-     *
-     *   For a case class C, the implementation is assumed to be `def unapply_I(x: C) = x._I`,
-     *   and the extractor call is inlined under that assumption.
-     */
-    case class ProductExtractorTreeMaker(prevBinder: Symbol, extraCond: Option[Tree])(
-      val subPatBinders: List[Symbol],
-      val subPatRefs: List[Tree],
-      val mutableBinders: List[Symbol],
-      binderKnownNonNull: Boolean,
-      val ignoredSubPatBinders: Set[Symbol]
-    ) extends FunTreeMaker with PreserveSubPatBinders {
-
-      val nextBinder = prevBinder // just passing through
-
-      // mutable binders must be stored to avoid unsoundness or seeing mutation of fields after matching (SI-5158, SI-6070)
-      def extraStoredBinders: Set[Symbol] = mutableBinders.toSet
-
-      def chainBefore(next: Tree)(casegen: Casegen): Tree = {
-        val nullCheck: Tree = ref(prevBinder).select(defn.Object_ne).appliedTo(Literal(Constant(null)))
-
-        val cond: Option[Tree] =
-          if (binderKnownNonNull) extraCond
-          else extraCond.map(nullCheck.select(defn.Boolean_&&).appliedTo).orElse(Some(nullCheck))
-
-        cond match {
-          case Some(cond: Tree) =>
-            casegen.ifThenElseZero(cond, bindSubPats(next))
-          case _ =>
-            bindSubPats(next)
-        }
-      }
-
-      override def toString = "P" + ((prevBinder.name,  extraCond getOrElse "", introducedRebindings))
-    }
-
     object IrrefutableExtractorTreeMaker {
       // will an extractor with unapply method of methodtype `tp` always succeed?
       // note: this assumes the other side-conditions implied by the extractor are met
@@ -1392,15 +1339,11 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {
       // TODO: check unargs == args
       def apply(tree: Tree, binder: Symbol): ExtractorCall = {
         tree match {
+          case Typed(unapply, _) => apply(unapply, binder)
           case UnApply(unfun, implicits, args) =>
             val castedBinder = ref(binder).ensureConforms(tree.tpe)
             val synth = if (implicits.isEmpty) unfun.appliedTo(castedBinder) else unfun.appliedTo(castedBinder).appliedToArgs(implicits)
-            new ExtractorCallRegular(alignPatterns(tree, synth.tpe), synth, args, synth.tpe) // extractor
-          case Typed(unapply@ UnApply(unfun, implicits, args), tpt) =>
-            val castedBinder = ref(binder).ensureConforms(unapply.tpe)
-            val synth = /*Typed(*/ if (implicits.isEmpty) unfun.appliedTo(castedBinder) else unfun.appliedTo(castedBinder).appliedToArgs(implicits) //, tpt)
-            new ExtractorCallRegular(alignPatterns(tree, synth.tpe), synth, args, synth.tpe) // extractor
-          case Apply(fun, args) => new ExtractorCallProd(alignPatterns(tree, tree.tpe), fun, args, fun.tpe) // case class
+            new ExtractorCallRegular(alignPatterns(tree, synth.tpe), synth, args, synth.tpe)
         }
       }
     }
@@ -1542,34 +1485,6 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {
       // no need to check unless it's an unapplySeq and the minimal length is non-trivially satisfied
         if (!isSeq || expectedLength < starArity) None
         else Some(expectedLength)
-    }
-
-    // TODO: to be called when there's a def unapplyProd(x: T): U
-    // U must have N members _1,..., _N -- the _i are type checked, call their type Ti,
-    // for now only used for case classes -- pretending there's an unapplyProd that's the identity (and don't call it)
-    class ExtractorCallProd(aligner: PatternAligned, val fun: Tree, val args: List[Tree], val resultType: Type) extends ExtractorCall(aligner) {
-      /** Create the TreeMaker that embodies this extractor call
-        *
-        * `binder` has been casted to `paramType` if necessary
-        * `binderKnownNonNull` indicates whether the cast implies `binder` cannot be null
-        * when `binderKnownNonNull` is `true`, `ProductExtractorTreeMaker` does not do a (redundant) null check on binder
-        */
-      def treeMaker(binder: Symbol, binderKnownNonNull: Boolean, pos: Position, binderTypeTested: Type): TreeMaker = {
-        val paramAccessors = binder.caseAccessors
-        // binders corresponding to mutable fields should be stored (SI-5158, SI-6070)
-        // make an exception for classes under the scala package as they should be well-behaved,
-        // to optimize matching on List
-        val mutableBinders = (
-          if (//!binder.info.typeSymbol.hasTransOwner(ScalaPackageClass) // TODO: DDD ???
-          // &&
-            (paramAccessors exists (_.hasAltWith(x => x.symbol is Flags.Mutable))))
-              subPatBinders.zipWithIndex.collect{ case (binder, idx) if paramAccessors(idx).hasAltWith(x => x.symbol is Flags.Mutable) => binder }
-          else Nil
-          )
-
-        // checks binder ne null before chaining to the next extractor
-        ProductExtractorTreeMaker(binder, lengthGuard(binder))(subPatBinders, subPatRefs(binder), mutableBinders, binderKnownNonNull, ignoredSubPatBinders)
-      }
     }
 
     class ExtractorCallRegular(aligner: PatternAligned, extractorCallIncludingDummy: Tree, val args: List[Tree], val resultType: Type) extends ExtractorCall(aligner) {
@@ -1893,11 +1808,6 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {
     }
 
     object alignPatterns extends ScalacPatternExpander {
-      /** Converts a T => (A, B, C) extractor to a T => ((A, B, CC)) extractor.
-        */
-      def tupleExtractor(extractor: Extractor): Extractor =
-        extractor.copy(fixed = defn.tupleType(extractor.fixed) :: Nil)
-
       private def validateAligned(tree: Tree, aligned: Aligned): Aligned = {
         import aligned._
 
@@ -1939,29 +1849,13 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {
         }
         val patterns  = newPatterns(args)
         val isSeq = sel.symbol.name == nme.unapplySeq
-        val isUnapply = sel.symbol.name == nme.unapply
         val extractor = sel.symbol.name match {
           case nme.unapply    => unapplyMethodTypes(tree, /*fn*/sel, args, resultType, isSeq = false)
           case nme.unapplySeq => unapplyMethodTypes(tree, /*fn*/sel, args, resultType, isSeq = true)
           case _              => applyMethodTypes(/*fn*/sel.tpe)
         }
 
-        /** Rather than let the error that is SI-6675 pollute the entire matching
-          *  process, we will tuple the extractor before creation Aligned so that
-          *  it contains known good values.
-          */
-        def prodArity       = extractor.prodArity
-        def acceptMessage   = if (extractor.isErroneous) "" else s" to hold ${extractor.offeringString}"
-        val requiresTupling = isUnapply && patterns.totalArity == 1 && prodArity > 1
-
-        //if (requiresTupling && effectivePatternArity(args) == 1)
-        //  currentUnit.deprecationWarning(sel.pos, s"${sel.symbol.owner} expects $prodArity patterns$acceptMessage but crushing into $prodArity-tuple to fit single pattern (SI-6675)")
-
-        val normalizedExtractor =
-          if (requiresTupling)
-            tupleExtractor(extractor)
-          else extractor
-        validateAligned(fn, Aligned(patterns, normalizedExtractor))
+        validateAligned(fn, Aligned(patterns, extractor))
       }
 
       def apply(tree: Tree, resultType: Type): Aligned = tree match {

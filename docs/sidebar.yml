@@ -23,6 +23,8 @@ sidebar:
           url: docs/contributing/intellij-idea.html
         - title: Workflow
           url: docs/contributing/workflow.html
+        - title: Testing
+          url: docs/contributing/testing.html
     - title: Internals
       subsection:
         - title: Backend

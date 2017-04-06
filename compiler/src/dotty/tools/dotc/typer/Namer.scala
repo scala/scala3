@@ -606,11 +606,11 @@ class Namer { typer: Typer =>
         }
       }
 
-      // If a top-level object has no companion class in the current run, we
-      // enter a dummy companion class symbol (`denot.isAbsent` returns true) in
-      // scope. This ensures that we never use a companion from a previous run
-      // or from the classpath. See tests/pos/false-companion for an
-      // example where this matters.
+      // If a top-level object or class has no companion in the current run, we
+      // enter a dummy companion (`denot.isAbsent` returns true) in scope. This
+      // ensures that we never use a companion from a previous run or from the
+      // classpath. See tests/pos/false-companion for an example where this
+      // matters.
       if (ctx.owner.is(PackageClass)) {
         for (cdef @ TypeDef(moduleName, _) <- moduleDef.values) {
           val moduleSym = ctx.effectiveScope.lookup(moduleName.encode)
@@ -620,6 +620,17 @@ class Namer { typer: Typer =>
             if (!classSym.isDefinedInCurrentRun) {
               val absentClassSymbol = ctx.newClassSymbol(ctx.owner, className, EmptyFlags, _ => NoType)
               enterSymbol(absentClassSymbol)
+            }
+          }
+        }
+        for (cdef @ TypeDef(className, _) <- classDef.values) {
+          val classSym = ctx.effectiveScope.lookup(className.encode)
+          if (classSym.isDefinedInCurrentRun) {
+            val moduleName = className.toTermName
+            val moduleSym = ctx.effectiveScope.lookup(moduleName.encode)
+            if (!moduleSym.isDefinedInCurrentRun) {
+              val absentModuleSymbol = ctx.newModuleSymbol(ctx.owner, moduleName, EmptyFlags, EmptyFlags, (_, _) => NoType)
+              enterSymbol(absentModuleSymbol)
             }
           }
         }

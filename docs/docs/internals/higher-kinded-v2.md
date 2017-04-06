@@ -3,10 +3,11 @@ layout: doc-page
 title: "Higher-Kinded Types in Dotty"
 ---
 
-**This page is out of date and preserved for posterity. Please see [Implementing
-Higher-Kinded Types in
-Dotty](http://guillaume.martres.me/publications/dotty-hk.pdf) for a more up to
-date version**
+<aside class="warning">
+    This page is out of date and preserved for posterity. Please see
+    <a href="http://guillaume.martres.me/publications/dotty-hk.pdf">
+    Implementing Higher-Kinded Types in Dotty</a> for a more up to date version
+</aside>
 
 Higher-Kinded Types in Dotty V2
 ===============================

@@ -3,4 +3,6 @@ trait A {
 
   def foo: Foo = 1
 }
-class B extends A
+class B extends A {
+  foo
+}
