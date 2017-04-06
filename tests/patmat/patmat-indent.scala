@@ -1,5 +1,5 @@
 object Test {
-  val Nil = scala.Nil
+  val Nil: scala.collection.immutable.Nil.type = scala.collection.immutable.Nil
   val X = 5
 
   object Inner {
