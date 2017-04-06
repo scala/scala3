@@ -185,7 +185,7 @@ object Decorators {
      *  give more info about type variables and to disambiguate where needed.
      */
     def ex(args: Any*)(implicit ctx: Context): String =
-      explained2(implicit ctx => em(args: _*))
+      explained(implicit ctx => em(args: _*))
 
     /** Formatter that adds syntax highlighting to all interpolated values */
     def hl(args: Any*)(implicit ctx: Context): String =

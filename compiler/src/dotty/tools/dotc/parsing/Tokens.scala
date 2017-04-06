@@ -92,6 +92,7 @@ abstract class TokensCommon {
   //final val THEN = 60;             enter(THEN, "then")
   //final val FORSOME = 61;          enter(FORSOME, "forSome") // TODO: deprecate
   //final val INLINE = 62;           enter(INLINE, "inline")
+  //final val ENUM = 63;            enter(ENUM, "enum")
 
   /** special symbols */
   final val COMMA = 70;            enter(COMMA, "','")
@@ -175,6 +176,7 @@ object Tokens extends TokensCommon {
   final val THEN = 60;             enter(THEN, "then")
   final val FORSOME = 61;          enter(FORSOME, "forSome") // TODO: deprecate
   final val INLINE = 62;           enter(INLINE, "inline")
+  final val ENUM = 63;             enter(ENUM, "enum")
 
   /** special symbols */
   final val NEWLINE = 78;          enter(NEWLINE, "end of statement", "new line")
@@ -192,7 +194,7 @@ object Tokens extends TokensCommon {
   /** XML mode */
   final val XMLSTART = 96;         enter(XMLSTART, "$XMLSTART$<") // TODO: deprecate
 
-  final val alphaKeywords = tokenRange(IF, INLINE)
+  final val alphaKeywords = tokenRange(IF, ENUM)
   final val symbolicKeywords = tokenRange(USCORE, VIEWBOUND)
   final val symbolicTokens = tokenRange(COMMA, VIEWBOUND)
   final val keywords = alphaKeywords | symbolicKeywords
@@ -213,7 +215,7 @@ object Tokens extends TokensCommon {
 
   final val canStartBindingTokens = identifierTokens | BitSet(USCORE, LPAREN)
 
-  final val templateIntroTokens = BitSet(CLASS, TRAIT, OBJECT, CASECLASS, CASEOBJECT)
+  final val templateIntroTokens = BitSet(CLASS, TRAIT, OBJECT, ENUM, CASECLASS, CASEOBJECT)
 
   final val dclIntroTokens = BitSet(DEF, VAL, VAR, TYPE)
 
@@ -227,6 +229,8 @@ object Tokens extends TokensCommon {
 
   final val modifierTokens = localModifierTokens | accessModifierTokens | BitSet(
     OVERRIDE)
+
+  final val modifierTokensOrCase = modifierTokens | BitSet(CASE)
 
   /** Is token only legal as start of statement (eof also included)? */
   final val mustStartStatTokens = defIntroTokens | modifierTokens | BitSet(

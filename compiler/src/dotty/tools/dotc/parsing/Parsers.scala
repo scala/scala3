@@ -49,6 +49,13 @@ object Parsers {
     val Class, Type, TypeParam, Def = Value
   }
 
+  private implicit class AddDeco(val buf: ListBuffer[Tree]) extends AnyVal {
+    def +++=(x: Tree) = x match {
+      case x: Thicket => buf ++= x.trees
+      case x => buf += x
+    }
+  }
+
   /** The parse starting point depends on whether the source file is self-contained:
    *  if not, the AST will be supplemented.
    */
@@ -1873,29 +1880,32 @@ object Parsers {
       mods1
     }
 
-    /** Def    ::= val PatDef
-     *           | var VarDef
-     *           | def DefDef
-     *           | type {nl} TypeDcl
-     *           | TmplDef
-     *  Dcl    ::= val ValDcl
-     *           | var ValDcl
-     *           | def DefDcl
-     *           | type {nl} TypeDcl
+    /** Def      ::= val PatDef
+     *             | var VarDef
+     *             | def DefDef
+     *             | type {nl} TypeDcl
+     *             | TmplDef
+     *  Dcl      ::= val ValDcl
+     *             | var ValDcl
+     *             | def DefDcl
+     *             | type {nl} TypeDcl
+     *  EnumCase ::= `case' (EnumClassDef | ObjectDef)
      */
     def defOrDcl(start: Int, mods: Modifiers): Tree = in.token match {
       case VAL =>
         val mod = atPos(in.skipToken()) { Mod.Val() }
         val mods1 = mods.withAddedMod(mod)
-        patDefOrDcl(start, mods1, in.getDocComment(start))
+        patDefOrDcl(start, mods1)
       case VAR =>
         val mod = atPos(in.skipToken()) { Mod.Var() }
         val mod1 = addMod(mods, mod)
-        patDefOrDcl(start, mod1, in.getDocComment(start))
+        patDefOrDcl(start, mod1)
       case DEF =>
-        defDefOrDcl(start, posMods(start, mods), in.getDocComment(start))
+        defDefOrDcl(start, posMods(start, mods))
       case TYPE =>
-        typeDefOrDcl(start, posMods(start, mods), in.getDocComment(start))
+        typeDefOrDcl(start, posMods(start, mods))
+      case CASE =>
+        enumCase(start, mods)
       case _ =>
         tmplDef(start, mods)
     }
@@ -1905,7 +1915,7 @@ object Parsers {
      *  ValDcl ::= id {`,' id} `:' Type
      *  VarDcl ::= id {`,' id} `:' Type
      */
-    def patDefOrDcl(start: Offset, mods: Modifiers, docstring: Option[Comment] = None): Tree = atPos(start, nameStart) {
+    def patDefOrDcl(start: Offset, mods: Modifiers): Tree = atPos(start, nameStart) {
       val lhs = commaSeparated(pattern2)
       val tpt = typedOpt()
       val rhs =
@@ -1920,7 +1930,7 @@ object Parsers {
         } else EmptyTree
       lhs match {
         case (id @ Ident(name: TermName)) :: Nil => {
-          ValDef(name, tpt, rhs).withMods(mods).setComment(docstring)
+          ValDef(name, tpt, rhs).withMods(mods).setComment(in.getDocComment(start))
         } case _ =>
           PatDef(mods, lhs, tpt, rhs)
       }
@@ -1946,7 +1956,7 @@ object Parsers {
      *  DefDcl ::= DefSig `:' Type
      *  DefSig ::= id [DefTypeParamClause] ParamClauses
      */
-    def defDefOrDcl(start: Offset, mods: Modifiers, docstring: Option[Comment] = None): Tree = atPos(start, nameStart) {
+    def defDefOrDcl(start: Offset, mods: Modifiers): Tree = atPos(start, nameStart) {
       def scala2ProcedureSyntax(resultTypeStr: String) = {
         val toInsert =
           if (in.token == LBRACE) s"$resultTypeStr ="
@@ -1989,7 +1999,7 @@ object Parsers {
             accept(EQUALS)
             expr()
           }
-        DefDef(name, tparams, vparamss, tpt, rhs).withMods(mods1).setComment(docstring)
+        DefDef(name, tparams, vparamss, tpt, rhs).withMods(mods1).setComment(in.getDocComment(start))
       }
     }
 
@@ -2023,7 +2033,7 @@ object Parsers {
     /** TypeDef ::= type id [TypeParamClause] `=' Type
      *  TypeDcl ::= type id [TypeParamClause] TypeBounds
      */
-    def typeDefOrDcl(start: Offset, mods: Modifiers, docstring: Option[Comment] = None): Tree = {
+    def typeDefOrDcl(start: Offset, mods: Modifiers): Tree = {
       newLinesOpt()
       atPos(start, nameStart) {
         val name = ident().toTypeName
@@ -2031,9 +2041,9 @@ object Parsers {
         in.token match {
           case EQUALS =>
             in.nextToken()
-            TypeDef(name, lambdaAbstract(tparams, typ())).withMods(mods).setComment(docstring)
+            TypeDef(name, lambdaAbstract(tparams, typ())).withMods(mods).setComment(in.getDocComment(start))
           case SUPERTYPE | SUBTYPE | SEMI | NEWLINE | NEWLINES | COMMA | RBRACE | EOF =>
-            TypeDef(name, lambdaAbstract(tparams, typeBounds())).withMods(mods).setComment(docstring)
+            TypeDef(name, lambdaAbstract(tparams, typeBounds())).withMods(mods).setComment(in.getDocComment(start))
           case _ =>
             syntaxErrorOrIncomplete("`=', `>:', or `<:' expected")
             EmptyTree
@@ -2041,43 +2051,51 @@ object Parsers {
       }
     }
 
-    /** TmplDef ::= ([`case'] `class' | `trait') ClassDef
+    /** TmplDef ::=  ([`case' | `enum]'] ‘class’ | trait’) ClassDef
      *            |  [`case'] `object' ObjectDef
+     *            |  `enum' EnumDef
      */
     def tmplDef(start: Int, mods: Modifiers): Tree = {
-      val docstring = in.getDocComment(start)
       in.token match {
         case TRAIT =>
-          classDef(start, posMods(start, addFlag(mods, Trait)), docstring)
+          classDef(start, posMods(start, addFlag(mods, Trait)))
         case CLASS =>
-          classDef(start, posMods(start, mods), docstring)
+          classDef(start, posMods(start, mods))
         case CASECLASS =>
-          classDef(start, posMods(start, mods | Case), docstring)
+          classDef(start, posMods(start, mods | Case))
         case OBJECT =>
-          objectDef(start, posMods(start, mods | Module), docstring)
+          objectDef(start, posMods(start, mods | Module))
         case CASEOBJECT =>
-          objectDef(start, posMods(start, mods | Case | Module), docstring)
+          objectDef(start, posMods(start, mods | Case | Module))
+        case ENUM =>
+          val enumMod = atPos(in.skipToken()) { Mod.Enum() }
+          if (in.token == CLASS) tmplDef(start, addMod(mods, enumMod))
+          else enumDef(start, mods, enumMod)
         case _ =>
           syntaxErrorOrIncomplete("expected start of definition")
           EmptyTree
       }
     }
 
-    /** ClassDef ::= id [ClsTypeParamClause]
-     *               [ConstrMods] ClsParamClauses TemplateOpt
+    /** ClassDef ::= id ClassConstr TemplateOpt
      */
-    def classDef(start: Offset, mods: Modifiers, docstring: Option[Comment]): TypeDef = atPos(start, nameStart) {
-      val name = ident().toTypeName
-      val constr = atPos(in.lastOffset) {
-        val tparams = typeParamClauseOpt(ParamOwner.Class)
-        val cmods = constrModsOpt(name)
-        val vparamss = paramClauses(name, mods is Case)
+    def classDef(start: Offset, mods: Modifiers): TypeDef = atPos(start, nameStart) {
+      classDefRest(start, mods, ident().toTypeName)
+    }
 
-        makeConstructor(tparams, vparamss).withMods(cmods)
-      }
+    def classDefRest(start: Offset, mods: Modifiers, name: TypeName): TypeDef = {
+      val constr = classConstr(name, isCaseClass = mods is Case)
       val templ = templateOpt(constr)
+      TypeDef(name, templ).withMods(mods).setComment(in.getDocComment(start))
+    }
 
-      TypeDef(name, templ).withMods(mods).setComment(docstring)
+    /** ClassConstr ::= [ClsTypeParamClause] [ConstrMods] ClsParamClauses
+     */
+    def classConstr(owner: Name, isCaseClass: Boolean = false): DefDef = atPos(in.lastOffset) {
+      val tparams = typeParamClauseOpt(ParamOwner.Class)
+      val cmods = constrModsOpt(owner)
+      val vparamss = paramClauses(owner, isCaseClass)
+      makeConstructor(tparams, vparamss).withMods(cmods)
     }
 
     /** ConstrMods        ::=  AccessModifier
@@ -2093,11 +2111,73 @@ object Parsers {
 
     /** ObjectDef       ::= id TemplateOpt
      */
-    def objectDef(start: Offset, mods: Modifiers, docstring: Option[Comment] = None): ModuleDef = atPos(start, nameStart) {
-      val name = ident()
-      val template = templateOpt(emptyConstructor)
+    def objectDef(start: Offset, mods: Modifiers): ModuleDef = atPos(start, nameStart) {
+      objectDefRest(start, mods, ident())
+    }
 
-      ModuleDef(name, template).withMods(mods).setComment(docstring)
+    def objectDefRest(start: Offset, mods: Modifiers, name: TermName): ModuleDef = {
+      val template = templateOpt(emptyConstructor)
+      ModuleDef(name, template).withMods(mods).setComment(in.getDocComment(start))
+    }
+
+    /**  id ClassConstr [`extends' [ConstrApps]]
+     *   [nl] ‘{’ EnumCaseStats ‘}’
+     */
+    def enumDef(start: Offset, mods: Modifiers, enumMod: Mod): Thicket = {
+      val point = nameStart
+      val modName = ident()
+      val clsName = modName.toTypeName
+      val constr = classConstr(clsName)
+      val parents =
+        if (in.token == EXTENDS) {
+          in.nextToken();
+          newLineOptWhenFollowedBy(LBRACE)
+          if (in.token == LBRACE) Nil else tokenSeparated(WITH, constrApp)
+        }
+        else Nil
+      val clsDef = atPos(start, point) {
+        TypeDef(clsName, Template(constr, parents, EmptyValDef, Nil))
+          .withMods(addMod(mods, enumMod)).setComment(in.getDocComment(start))
+      }
+      newLineOptWhenFollowedBy(LBRACE)
+      val modDef = atPos(in.offset) {
+        val body = inBraces(enumCaseStats)
+        ModuleDef(modName, Template(emptyConstructor, Nil, EmptyValDef, body))
+          .withMods(mods)
+      }
+      Thicket(clsDef :: modDef :: Nil)
+    }
+
+    /** EnumCaseStats = EnumCaseStat {semi EnumCaseStat */
+    def enumCaseStats(): List[DefTree] = {
+      val cases = new ListBuffer[DefTree] += enumCaseStat()
+      while (in.token != RBRACE) {
+        acceptStatSep()
+        cases += enumCaseStat()
+      }
+      cases.toList
+    }
+
+    /** EnumCaseStat = {Annotation [nl]} {Modifier} EnumCase */
+    def enumCaseStat(): DefTree =
+      enumCase(in.offset, defAnnotsMods(modifierTokens))
+
+    /** EnumCase = `case' (EnumClassDef | ObjectDef) */
+    def enumCase(start: Offset, mods: Modifiers): DefTree = {
+      val mods1 = mods.withAddedMod(atPos(in.offset)(Mod.EnumCase())) | Case
+      accept(CASE)
+      atPos(start, nameStart) {
+        val id = termIdent()
+        if (in.token == LBRACKET || in.token == LPAREN)
+          classDefRest(start, mods1, id.name.toTypeName)
+        else if (in.token == COMMA) {
+          in.nextToken()
+          val ids = commaSeparated(termIdent)
+          PatDef(mods1, id :: ids, TypeTree(), EmptyTree)
+        }
+        else
+          objectDefRest(start, mods1, id.name.asTermName)
+      }
     }
 
 /* -------- TEMPLATES ------------------------------------------- */
@@ -2191,7 +2271,7 @@ object Parsers {
         else if (in.token == IMPORT)
           stats ++= importClause()
         else if (in.token == AT || isTemplateIntro || isModifier)
-          stats += tmplDef(in.offset, defAnnotsMods(modifierTokens))
+          stats +++= tmplDef(in.offset, defAnnotsMods(modifierTokens))
         else if (!isStatSep) {
           if (in.token == CASE)
             syntaxErrorOrIncomplete("only `case class` or `case object` allowed")
@@ -2209,8 +2289,8 @@ object Parsers {
      *  TemplateStat     ::= Import
      *                     | Annotations Modifiers Def
      *                     | Annotations Modifiers Dcl
+     *                     | EnumCaseStat
      *                     | Expr1
-     *                     | super ArgumentExprs {ArgumentExprs}
      *                     |
      */
     def templateStatSeq(): (ValDef, List[Tree]) = checkNoEscapingPlaceholders {
@@ -2240,8 +2320,8 @@ object Parsers {
           stats ++= importClause()
         else if (isExprIntro)
           stats += expr1()
-        else if (isDefIntro(modifierTokens))
-          stats += defOrDcl(in.offset, defAnnotsMods(modifierTokens))
+        else if (isDefIntro(modifierTokensOrCase))
+          stats +++= defOrDcl(in.offset, defAnnotsMods(modifierTokens))
         else if (!isStatSep) {
           exitOnError = mustStartStat
           syntaxErrorOrIncomplete("illegal start of definition")
@@ -2299,9 +2379,9 @@ object Parsers {
             val start = in.offset
             val imods = implicitMods()
             if (isBindingIntro) stats += implicitClosure(start, Location.InBlock, imods)
-            else stats += localDef(start, imods)
+            else stats +++= localDef(start, imods)
           } else {
-            stats += localDef(in.offset)
+            stats +++= localDef(in.offset)
           }
         else if (!isStatSep && (in.token != CASE)) {
           exitOnError = mustStartStat
@@ -2323,8 +2403,7 @@ object Parsers {
         if (in.token == PACKAGE) {
           in.nextToken()
           if (in.token == OBJECT) {
-            val docstring = in.getDocComment(start)
-            ts += objectDef(start, atPos(start, in.skipToken()) { Modifiers(Package) }, docstring)
+            ts += objectDef(start, atPos(start, in.skipToken()) { Modifiers(Package) })
             if (in.token != EOF) {
               acceptStatSep()
               ts ++= topStatSeq()

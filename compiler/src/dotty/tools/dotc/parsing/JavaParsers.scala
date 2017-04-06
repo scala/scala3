@@ -828,11 +828,11 @@ object JavaParsers {
       val superclazz = Apply(TypeApply(
         Select(New(javaLangDot(tpnme.Enum)), nme.CONSTRUCTOR), List(enumType)),
         List(Literal(Constant(null)),Literal(Constant(0))))
-      val enum = atPos(start, nameOffset) {
+      val enumclazz = atPos(start, nameOffset) {
         TypeDef(name,
           makeTemplate(superclazz :: interfaces, body, List(), true)).withMods(mods | Flags.Enum)
       }
-      addCompanionObject(consts ::: statics ::: predefs, enum)
+      addCompanionObject(consts ::: statics ::: predefs, enumclazz)
     }
 
     def enumConst(enumType: Tree) = {

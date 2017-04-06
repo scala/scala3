@@ -289,7 +289,9 @@ TemplateBody      ::=  [nl] ‘{’ [SelfType] TemplateStat {semi TemplateStat} 
 TemplateStat      ::=  Import
                     |  {Annotation [nl]} {Modifier} Def
                     |  {Annotation [nl]} {Modifier} Dcl
+                    |  EnumCaseStat
                     |  Expr1
+                    |
 SelfType          ::=  id [‘:’ InfixType] ‘=>’                                  ValDef(_, name, tpt, _)
                     |  ‘this’ ‘:’ InfixType ‘=>’
 
@@ -328,13 +330,20 @@ DefDef            ::=  DefSig [‘:’ Type] ‘=’ Expr                       
                     |  ‘this’ DefParamClause DefParamClauses                    DefDef(_, <init>, Nil, vparamss, EmptyTree, expr | Block)
                        (‘=’ ConstrExpr | [nl] ConstrBlock)
 
-TmplDef           ::=  ([‘case’] ‘class’ | ‘trait’) ClassDef
+TmplDef           ::=  ([‘case’ | `enum'] ‘class’ | trait’) ClassDef
                     |  [‘case’] ‘object’ ObjectDef
-ClassDef          ::=  id [ClsTypeParamClause]                                  ClassDef(mods, name, tparams, templ)
-                       [ConstrMods] ClsParamClauses TemplateOpt                 with DefDef(_, <init>, Nil, vparamss, EmptyTree, EmptyTree) as first stat
+                    |  `enum' EnumDef
+ClassDef          ::=  id ClassConstr TemplateOpt                               ClassDef(mods, name, tparams, templ)
+ClassConstr       ::=  [ClsTypeParamClause] [ConstrMods] ClsParamClauses         with DefDef(_, <init>, Nil, vparamss, EmptyTree, EmptyTree) as first stat
 ConstrMods        ::=  AccessModifier
                     |  Annotation {Annotation} (AccessModifier | ‘this’)
 ObjectDef         ::=  id TemplateOpt                                           ModuleDef(mods, name, template)  // no constructor
+EnumDef           ::=  id ClassConstr [`extends' [ConstrApps]]                  EnumDef(mods, name, tparams, template)
+                       [nl] ‘{’ EnumCaseStat {semi EnumCaseStat} ‘}’
+EnumCaseStat      ::=  {Annotation [nl]} {Modifier} EnumCase
+EnumCase          ::=  `case' (EnumClassDef | ObjectDef | ids)
+EnumClassDef      ::=  id [ClsTpeParamClause | ClsParamClause]                  ClassDef(mods, name, tparams, templ)
+                       ClsParamClauses TemplateOpt
 TemplateOpt       ::=  [‘extends’ Template | [nl] TemplateBody]
 Template          ::=  ConstrApps [TemplateBody] | TemplateBody                 Template(constr, parents, self, stats)
 ConstrApps        ::=  ConstrApp {‘with’ ConstrApp}

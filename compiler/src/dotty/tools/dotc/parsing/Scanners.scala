@@ -10,6 +10,7 @@ import util.Chars._
 import Tokens._
 import scala.annotation.{ switch, tailrec }
 import scala.collection.mutable
+import scala.collection.immutable.SortedMap
 import mutable.ListBuffer
 import Utility.isNameStart
 import rewrite.Rewrites.patch
@@ -174,37 +175,24 @@ object Scanners {
   class Scanner(source: SourceFile, override val startFrom: Offset = 0)(implicit ctx: Context) extends ScannerCommon(source)(ctx) {
     val keepComments = ctx.settings.YkeepComments.value
 
-    /** All doc comments as encountered, each list contains doc comments from
-     *  the same block level. Starting with the deepest level and going upward
-     */
-    private[this] var docsPerBlockStack: List[List[Comment]] = List(Nil)
+    /** All doc comments kept by their end position in a `Map` */
+    private[this] var docstringMap: SortedMap[Int, Comment] = SortedMap.empty
 
-    /** Adds level of nesting to docstrings */
-    def enterBlock(): Unit =
-      docsPerBlockStack = List(Nil) ::: docsPerBlockStack
-
-    /** Removes level of nesting for docstrings */
-    def exitBlock(): Unit = docsPerBlockStack = docsPerBlockStack match {
-      case x :: Nil => List(Nil)
-      case _ => docsPerBlockStack.tail
+    private[this] def addComment(comment: Comment): Unit = {
+      val lookahead = lookaheadReader
+      def nextPos: Int = (lookahead.getc(): @switch) match {
+        case ' ' | '\t' => nextPos
+        case CR | LF | FF =>
+          // if we encounter line delimitng whitespace we don't count it, since
+          // it seems not to affect positions in source
+          nextPos - 1
+        case _ => lookahead.charOffset - 1
+      }
+      docstringMap = docstringMap + (nextPos -> comment)
     }
 
     /** Returns the closest docstring preceding the position supplied */
-    def getDocComment(pos: Int): Option[Comment] = {
-      def closest(c: Comment, docstrings: List[Comment]): Comment = docstrings match {
-        case x :: xs if (c.pos.end < x.pos.end && x.pos.end <= pos) => closest(x, xs)
-        case Nil => c
-      }
-
-      docsPerBlockStack match {
-        case (list @ (x :: xs)) :: _ => {
-          val c = closest(x, xs)
-          docsPerBlockStack = list.dropWhile(_ != c).tail :: docsPerBlockStack.tail
-          Some(c)
-        }
-        case _ => None
-      }
-    }
+    def getDocComment(pos: Int): Option[Comment] = docstringMap.get(pos)
 
     /** A buffer for comments */
     val commentBuf = new StringBuilder
@@ -294,7 +282,10 @@ object Scanners {
         if (!sepRegions.isEmpty && sepRegions.head == lastToken)
           sepRegions = sepRegions.tail
       case ARROW =>
-        if (!sepRegions.isEmpty && sepRegions.head == lastToken)
+        if (!sepRegions.isEmpty && sepRegions.head == ARROW)
+          sepRegions = sepRegions.tail
+      case EXTENDS =>
+        if (!sepRegions.isEmpty && sepRegions.head == ARROW)
           sepRegions = sepRegions.tail
       case STRINGLIT =>
         if (inMultiLineInterpolation)
@@ -330,7 +321,8 @@ object Scanners {
       if (isAfterLineEnd() &&
           (canEndStatTokens contains lastToken) &&
           (canStartStatTokens contains token) &&
-          (sepRegions.isEmpty || sepRegions.head == RBRACE)) {
+          (sepRegions.isEmpty || sepRegions.head == RBRACE ||
+           sepRegions.head == ARROW && token == CASE)) {
         next copyFrom this
         //  todo: make offset line-end of previous line?
         offset = if (lineStartOffset <= offset) lineStartOffset else lastLineStartOffset
@@ -535,13 +527,13 @@ object Scanners {
         case ',' =>
           nextChar(); token = COMMA
         case '(' =>
-          enterBlock(); nextChar(); token = LPAREN
+          nextChar(); token = LPAREN
         case '{' =>
-          enterBlock(); nextChar(); token = LBRACE
+          nextChar(); token = LBRACE
         case ')' =>
-          exitBlock(); nextChar(); token = RPAREN
+          nextChar(); token = RPAREN
         case '}' =>
-          exitBlock(); nextChar(); token = RBRACE
+          nextChar(); token = RBRACE
         case '[' =>
           nextChar(); token = LBRACKET
         case ']' =>
@@ -606,11 +598,12 @@ object Scanners {
       val start = lastCharOffset
       def finishComment(): Boolean = {
         if (keepComments) {
-          val pos = Position(start, charOffset, start)
+          val pos = Position(start, charOffset - 1, start)
           val comment = Comment(pos, flushBuf(commentBuf))
 
-          if (comment.isDocComment)
-            docsPerBlockStack = (docsPerBlockStack.head :+ comment) :: docsPerBlockStack.tail
+          if (comment.isDocComment) {
+            addComment(comment)
+          }
         }
 
         true

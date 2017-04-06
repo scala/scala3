@@ -238,7 +238,7 @@ object messages {
       import core.Flags._
       val maxDist = 3
       val decls = site.decls.flatMap { sym =>
-        if (sym.is(Synthetic | PrivateOrLocal) || sym.isConstructor) Nil
+        if (sym.flagsUNSAFE.is(Synthetic | PrivateOrLocal) || sym.isConstructor) Nil
         else List((sym.name.show, sym))
       }
 

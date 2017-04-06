@@ -9,6 +9,7 @@ import Decorators._
 import util.Property
 import language.higherKinds
 import collection.mutable.ListBuffer
+import reflect.ClassTag
 
 object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
 
@@ -132,6 +133,10 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
     case class Inline() extends Mod(Flags.Inline)
 
     case class Type() extends Mod(Flags.EmptyFlags)
+
+    case class Enum() extends Mod(Flags.EmptyFlags)
+
+    case class EnumCase() extends Mod(Flags.EmptyFlags)
   }
 
   /** Modifiers and annotations for definitions
@@ -185,6 +190,10 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
     def hasFlags = flags != EmptyFlags
     def hasAnnotations = annotations.nonEmpty
     def hasPrivateWithin = privateWithin != tpnme.EMPTY
+    def hasMod[T: ClassTag] = {
+      val cls = implicitly[ClassTag[T]].runtimeClass
+      mods.exists(mod => cls.isAssignableFrom(mod.getClass))
+    }
   }
 
   @sharable val EmptyModifiers: Modifiers = new Modifiers()

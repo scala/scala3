@@ -4,7 +4,7 @@ package repl
 
 import core.Contexts.Context
 import collection.mutable
-import java.io.StringWriter
+import java.io.{StringWriter, PrintStream}
 import dotty.tools.io.{ PlainFile, Directory }
 import org.junit.Test
 
@@ -58,8 +58,11 @@ class TestREPL(script: String) extends REPL {
     val printed = out.toString
     val transcript = printed.drop(printed.indexOf(config.prompt))
     if (transcript.toString.lines.toList != script.lines.toList) {
-      println("input differs from transcript:")
+      println("input differs from transcript (copy is repl.transcript):")
       println(transcript)
+      val s = new PrintStream("repl.transcript")
+      s.print(transcript)
+      s.close()
       assert(false)
     }
   }
