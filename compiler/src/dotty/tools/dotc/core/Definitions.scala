@@ -477,6 +477,7 @@ class Definitions {
 
   lazy val JavaCloneableClass        = ctx.requiredClass("java.lang.Cloneable")
   lazy val NullPointerExceptionClass = ctx.requiredClass("java.lang.NullPointerException")
+  lazy val IndexOutOfBoundsException = ctx.requiredClass("java.lang.IndexOutOfBoundsException")
   lazy val ClassClass                = ctx.requiredClass("java.lang.Class")
   lazy val BoxedNumberClass          = ctx.requiredClass("java.lang.Number")
   lazy val ThrowableClass            = ctx.requiredClass("java.lang.Throwable")
