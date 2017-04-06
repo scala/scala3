@@ -1011,8 +1011,11 @@ trait ParallelTesting { self =>
   /** Compiles a directory `f` using the supplied `flags`. This method does
    *  deep compilation, that is - it compiles all files and subdirectories
    *  contained within the directory `f`.
+   *
+   *  By default, files are compiled in alphabetical order. An optional seed
+   *  can be used for randomization.
    */
-  def compileDir(f: String, flags: Array[String], seed: Int = 42)(implicit outDirectory: String): CompilationTest = {
+  def compileDir(f: String, flags: Array[String], randomOrder: Option[Int] = None)(implicit outDirectory: String): CompilationTest = {
     val callingMethod = getCallingMethod
     val outDir = outDirectory + callingMethod + "/"
     val sourceDir = new JFile(f)
@@ -1022,14 +1025,18 @@ trait ParallelTesting { self =>
       if (f.isDirectory) f.listFiles.flatMap(flatten)
       else Array(f)
 
-    // Deterministically randomises compilation order
-    val files = new Random(seed).shuffle(flatten(sourceDir).toList).toArray
+    // Sort files either alphabetically or randomly using the provided seed:
+    val sortedFiles = flatten(sourceDir).sorted
+    val randomized  = randomOrder match {
+      case None       => sortedFiles
+      case Some(seed) => new Random(seed).shuffle(sortedFiles.toList).toArray
+    }
 
     // Directories in which to compile all containing files with `flags`:
     val targetDir = new JFile(outDir + "/" + sourceDir.getName + "/")
     targetDir.mkdirs()
 
-    val target = JointCompilationSource(callingMethod, files, flags, targetDir)
+    val target = JointCompilationSource(callingMethod, randomized, flags, targetDir)
     new CompilationTest(target)
   }
 
