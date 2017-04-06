@@ -5,7 +5,7 @@ package ammonite.terminal
 
 case class TermInfo(ts: TermState, width: Int)
 
-sealed trait TermAction
+trait TermAction
 case class Printing(ts: TermState, stdout: String) extends TermAction
 case class TermState(
   inputs: LazyList[Int],
