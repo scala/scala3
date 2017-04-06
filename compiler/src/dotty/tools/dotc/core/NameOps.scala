@@ -126,33 +126,16 @@ object NameOps {
 
     def errorName: N = likeSpaced(name ++ nme.ERROR)
 
-/*
+
     /** Name with variance prefix: `+` for covariant, `-` for contravariant */
     def withVariance(v: Int): N =
-      if (hasVariance) dropVariance.withVariance(v)
-      else v match {
-        case -1 => likeTyped('-' +: name)
-        case  1 => likeTyped('+' +: name)
-        case  0 => name
-      }
-
-    /** Does name have a `+`/`-` variance prefix? */
-    def hasVariance: Boolean =
-      name.nonEmpty && name.head == '+' || name.head == '-'
-
-    /** Drop variance prefix if name has one */
-    def dropVariance: N = if (hasVariance) likeTyped(name.tail) else name
+      likeSpaced { VariantName(name.exclude(VariantName).toTermName, v) }
 
     /** The variance as implied by the variance prefix, or 0 if there is
      *  no variance prefix.
      */
-    def variance = name.head match {
-      case '-' => -1
-      case '+' => 1
-      case _ => 0
-    }
+    def variance = name.collect { case VariantName(_, n) => n }.getOrElse(0)
 
-*/
     def freshened(implicit ctx: Context): N = likeSpaced {
       name.toTermName match {
         case ModuleClassName(original) => ModuleClassName(original.freshened)

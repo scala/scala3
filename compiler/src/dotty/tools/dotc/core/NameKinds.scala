@@ -252,7 +252,6 @@ object NameKinds {
 
   object VariantName extends NumberedNameKind(VARIANT, "Variant") {
     val varianceToPrefix = Map(-1 -> '-', 0 -> '=', 1 -> '+')
-    val prefixToVariance = Map('-' -> -1, '=' -> 0, '+' -> 1)
     def mkString(underlying: TermName, info: ThisInfo) = {
       varianceToPrefix(info.num).toString + underlying
     }

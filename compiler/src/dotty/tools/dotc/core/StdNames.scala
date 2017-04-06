@@ -122,6 +122,8 @@ object StdNames {
     val DEFAULT_GETTER: N             = str.DEFAULT_GETTER
     val DEFAULT_GETTER_INIT: N        = "$lessinit$greater"
     val DO_WHILE_PREFIX: N            = "doWhile$"
+    val DOLLAR_VALUES: N              = "$values"
+    val DOLLAR_NEW: N                 = "$new"
     val EMPTY: N                      = ""
     val EMPTY_PACKAGE: N              = Names.EMPTY_PACKAGE.toString
     val EXCEPTION_RESULT_PREFIX: N    = "exceptionResult"

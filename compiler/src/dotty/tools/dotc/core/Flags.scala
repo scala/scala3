@@ -452,7 +452,7 @@ object Flags {
   final val FromStartFlags =
     Module | Package | Deferred | MethodOrHKCommon | Param | ParamAccessor |
     Scala2ExistentialCommon | Mutable.toCommonFlags | InSuperCall | Touched | JavaStatic |
-    CovariantOrOuter | ContravariantOrLabel | ExpandedName | CaseAccessorOrBaseTypeArg |
+    CovariantOrOuter | ContravariantOrLabel | CaseAccessorOrBaseTypeArg |
     Fresh | Frozen | Erroneous | ImplicitCommon | Permanent | Synthetic |
     SuperAccessorOrScala2x | Inline
 
