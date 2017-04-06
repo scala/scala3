@@ -8,12 +8,14 @@ import scala.Function0;
 import scala.Unit;
 
 import dotty.tools.dotc.reporting.TestReporter;
+import dotty.Properties;
 
 /** Note that while `ParallelTesting` runs in parallel, JUnit tests cannot with
  *  this class
  */
 public class SummaryReport {
-    public final static boolean isInteractive = !System.getenv().containsKey("DRONE");
+    public final static boolean isInteractive =
+        Properties.testsInteractive() && !Properties.isRunByDrone();
 
     private static TestReporter rep = TestReporter.reporter(System.out, -1);
     private static ArrayDeque<String> failedTests = new ArrayDeque<>();
