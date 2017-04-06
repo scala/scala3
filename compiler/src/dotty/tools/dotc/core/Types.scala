@@ -185,7 +185,7 @@ object Types {
     }
 
     private def isPhantomClass(sym: Symbol)(implicit ctx: Context): Boolean =
-      sym.isClass && (sym.owner eq defn.PhantomClass) && (sym.name == tpnme.Any || sym.name == tpnme.Nothing)
+      sym.isClass && (sym.owner eq defn.PhantomClass)
 
     /** Is this type guaranteed not to have `null` as a value?
      *  For the moment this is only true for modules, but it could

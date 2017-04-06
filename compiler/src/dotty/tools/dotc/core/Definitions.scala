@@ -982,13 +982,13 @@ class Definitions {
   }
 
   def isPhantomAnyClass(sym: Symbol)(implicit ctx: Context): Boolean =
-    sym.exists && (sym.owner eq PhantomClass) && sym.name == tpnme.Any
+    sym.name == tpnme.Any && (sym.owner eq PhantomClass)
 
   def isPhantomNothingClass(sym: Symbol)(implicit ctx: Context): Boolean =
-    sym.exists && (sym.owner eq PhantomClass) && sym.name == tpnme.Nothing
+    sym.name == tpnme.Nothing && (sym.owner eq PhantomClass)
 
   def isPhantomAssume(sym: Symbol)(implicit ctx: Context): Boolean =
-    sym.exists && (sym.owner eq PhantomClass) && sym.name == nme.assume_
+    sym.name == nme.assume_ && (sym.owner eq PhantomClass)
 
   def topOf(tp: Type)(implicit ctx: Context): Type = tp.phantomTopClass match {
     case top: ClassInfo => top.prefix.select(tpnme.Any)
