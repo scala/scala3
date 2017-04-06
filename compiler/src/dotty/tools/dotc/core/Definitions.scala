@@ -10,6 +10,7 @@ import scala.collection.{ mutable, immutable }
 import PartialFunction._
 import collection.mutable
 import util.common.alwaysZero
+import typer.Applications
 
 object Definitions {
 
@@ -847,17 +848,9 @@ class Definitions {
   }
 
   def isProductSubType(tp: Type)(implicit ctx: Context) =
-    (tp derivesFrom ProductType.symbol) && tp.baseClasses.exists(isProductClass)
+    Applications.extractorMemberType(tp, nme._1).exists
 
-  def productArity(tp: Type)(implicit ctx: Context) =
-    if (tp derivesFrom ProductType.symbol)
-      tp.baseClasses.find(isProductClass) match {
-        case Some(prod) => prod.typeParams.length
-        case None => -1
-      }
-    else -1
-
-  /** Is `tp` (an alias) of either a scala.FunctionN or a scala.ImplicitFunctionN ? */
+  /** Is `tp` (an alias) of either a scala.FunctionN or a scala.ImplicitFunctionN? */
   def isFunctionType(tp: Type)(implicit ctx: Context) = {
     val arity = functionArity(tp)
     val sym = tp.dealias.typeSymbol

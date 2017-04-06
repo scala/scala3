@@ -233,7 +233,7 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {
         // next: MatchMonad[U]
         // returns MatchMonad[U]
         def flatMap(prev: Tree, b: Symbol, next: Tree): Tree = {
-          val resultArity = defn.productArity(b.info)
+          val resultArity = productArity(b.info)
           if (isProductMatch(prev.tpe, resultArity)) {
             val nullCheck: Tree = prev.select(defn.Object_ne).appliedTo(Literal(Constant(null)))
             ifThenElseZero(
