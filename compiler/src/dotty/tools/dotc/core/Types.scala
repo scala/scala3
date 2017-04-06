@@ -1793,7 +1793,7 @@ object Types {
     override def newLikeThis(prefix: Type)(implicit ctx: Context): TermRef =
       fixDenot(TermRef.withSig(prefix, name, sig), prefix)
 
-    override def shadowed(implicit ctx: Context): NamedType = 
+    override def shadowed(implicit ctx: Context): NamedType =
       fixDenot(TermRef.withSig(prefix, name.shadowedName, sig), prefix)
 
     override def equals(that: Any) = that match {
