@@ -669,7 +669,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
           val tparams1 = tparams1a.drop(lengthDiff)
           variancesConform(tparams1, tparams) && {
             if (lengthDiff > 0)
-              tycon1b = PolyType(tparams1.map(_.paramName), tparams1.map(_.paramVariance))(
+              tycon1b = PolyType(tparams1.map(_.paramName))(
                 tl => tparams1.map(tparam => tl.lifted(tparams, tparam.paramBounds).bounds),
                 tl => tycon1a.appliedTo(args1.take(lengthDiff) ++
                         tparams1.indices.toList.map(PolyParam(tl, _))))
@@ -1281,9 +1281,9 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
       original(tp1.appliedTo(tp1.typeParams.map(_.paramBoundsAsSeenFrom(tp1))), tp2)
     else
       PolyType(
-        paramNames = tpnme.syntheticTypeParamNames(tparams1.length),
-        variances = (tparams1, tparams2).zipped.map((tparam1, tparam2) =>
-          (tparam1.paramVariance + tparam2.paramVariance) / 2))(
+        paramNames = (tpnme.syntheticTypeParamNames(tparams1.length), tparams1, tparams2)
+          .zipped.map((pname, tparam1, tparam2) =>
+            pname.withVariance((tparam1.paramVariance + tparam2.paramVariance) / 2)))(
         paramBoundsExp = tl => (tparams1, tparams2).zipped.map((tparam1, tparam2) =>
           tl.lifted(tparams1, tparam1.paramBoundsAsSeenFrom(tp1)).bounds &
           tl.lifted(tparams2, tparam2.paramBoundsAsSeenFrom(tp2)).bounds),

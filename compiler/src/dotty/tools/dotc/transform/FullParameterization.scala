@@ -122,14 +122,14 @@ trait FullParameterization {
 
     info match {
       case info: PolyType =>
-        PolyType(info.paramNames ++ ctnames, info.variances ++ ctvariances)(
+        PolyType(info.paramNames ++ ctnames)(
           pt =>
             (info.paramBounds.map(mapClassParams(_, pt).bounds) ++
              mappedClassBounds(pt)).mapConserve(_.subst(info, pt).bounds),
           pt => resultType(mapClassParams(_, pt)).subst(info, pt))
       case _ =>
         if (ctparams.isEmpty) resultType(identity)
-        else PolyType(ctnames, ctvariances)(mappedClassBounds, pt => resultType(mapClassParams(_, pt)))
+        else PolyType(ctnames)(mappedClassBounds, pt => resultType(mapClassParams(_, pt)))
     }
   }
 

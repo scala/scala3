@@ -278,9 +278,10 @@ class TypeApplications(val self: Type) extends AnyVal {
    *  TODO: Handle parameterized lower bounds
    */
   def LambdaAbstract(tparams: List[TypeParamInfo])(implicit ctx: Context): Type = {
+    def nameWithVariance(tparam: TypeParamInfo) =
+      tparam.paramName.withVariance(tparam.paramVariance)
     def expand(tp: Type) =
-      PolyType(
-        tparams.map(_.paramName), tparams.map(_.paramVariance))(
+      PolyType(tparams.map(nameWithVariance))(
           tl => tparams.map(tparam => tl.lifted(tparams, tparam.paramBounds).bounds),
           tl => tl.lifted(tparams, tp))
     if (tparams.isEmpty) self
@@ -365,7 +366,9 @@ class TypeApplications(val self: Type) extends AnyVal {
         case arg @ PolyType(tparams, body) if
              !tparams.corresponds(hkParams)(_.paramVariance == _.paramVariance) &&
              tparams.corresponds(hkParams)(varianceConforms) =>
-          PolyType(tparams.map(_.paramName), hkParams.map(_.paramVariance))(
+          PolyType(
+            (tparams, hkParams).zipped.map((tparam, hkparam) =>
+              tparam.paramName.withVariance(hkparam.paramVariance)))(
             tl => arg.paramBounds.map(_.subst(arg, tl).bounds),
             tl => arg.resultType.subst(arg, tl)
           )
