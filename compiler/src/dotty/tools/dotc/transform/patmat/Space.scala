@@ -395,15 +395,6 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
     }
   }
 
-  // simplify p.Case$.This.m => p.Case.m
-  def simplifyPrefix(tp: Type): Type = tp match {
-    case tp @ ThisType(mcls: TypeRef) if mcls.symbol.sourceModule.exists  =>
-      TermRef(simplifyPrefix(mcls.prefix), mcls.symbol.sourceModule.asTerm)
-    case tp @ TypeRef(prefix, _) => tp.derivedSelect(simplifyPrefix(prefix))
-    case tp @ TermRef(prefix, _) => tp.derivedSelect(simplifyPrefix(prefix))
-    case _ => tp
-  }
-
   /** Refine tp2 based on tp1
    *
    *  E.g. if `tp1` is `Option[Int]`, `tp2` is `Some`, then return
