@@ -1329,6 +1329,5 @@ object messages {
 
     val explanation =
       hl"""|""".stripMargin
-  }
-  
+  }  
 }

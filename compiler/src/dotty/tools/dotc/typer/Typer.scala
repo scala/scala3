@@ -1344,8 +1344,12 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
           cls, isRequired, cdef.pos)
     }
 
-    if (!cls.is(Module) && cls.classParents.exists(_.classSymbol eq defn.PhantomClass))
-      ctx.error(PhantomIsInObject(), cdef.pos)
+    if (cls.classParents.exists(_.classSymbol eq defn.PhantomClass)) {
+      if (!cls.is(Module))
+        ctx.error(PhantomIsInObject(), cdef.pos)
+      else if (!cls.owner.is(Module) && !cls.owner.is(Package))
+        ctx.error(PhantomObjectIsInPackageOrObject(), cdef.pos)
+    }
 
     // check value class constraints
     checkDerivedValueClass(cls, body1)
