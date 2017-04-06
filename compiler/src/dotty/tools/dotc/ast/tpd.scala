@@ -145,8 +145,8 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   def ByNameTypeTree(result: Tree)(implicit ctx: Context): ByNameTypeTree =
     ta.assignType(untpd.ByNameTypeTree(result), result)
 
-  def PolyTypeTree(tparams: List[TypeDef], body: Tree)(implicit ctx: Context): PolyTypeTree =
-    ta.assignType(untpd.PolyTypeTree(tparams, body), tparams, body)
+  def LambdaTypeTree(tparams: List[TypeDef], body: Tree)(implicit ctx: Context): LambdaTypeTree =
+    ta.assignType(untpd.LambdaTypeTree(tparams, body), tparams, body)
 
   def TypeBoundsTree(lo: Tree, hi: Tree)(implicit ctx: Context): TypeBoundsTree =
     ta.assignType(untpd.TypeBoundsTree(lo, hi), lo, hi)
@@ -190,7 +190,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
           val maybeImplicit = if (tp.isInstanceOf[ImplicitMethodType]) Implicit else EmptyFlags
           ctx.newSymbol(sym, name, TermParam | maybeImplicit, info)
         }
-        val params = (tp.paramNames, tp.paramTypes).zipped.map(valueParam)
+        val params = (tp.paramNames, tp.paramInfos).zipped.map(valueParam)
         val (paramss, rtp) = valueParamss(tp.instantiate(params map (_.termRef)))
         (params :: paramss, rtp)
       case tp => (Nil, tp.widenExpr)
@@ -221,7 +221,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
           case ctpe: PolyType =>
             isApplicable(ctpe.instantiate(firstParent.argTypes))
           case ctpe: MethodType =>
-            (superArgs corresponds ctpe.paramTypes)(_.tpe <:< _)
+            (superArgs corresponds ctpe.paramInfos)(_.tpe <:< _)
           case _ =>
             false
         }
@@ -836,7 +836,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     val selected =
       if (denot.isOverloaded) {
         def typeParamCount(tp: Type) = tp.widen match {
-          case tp: PolyType => tp.paramBounds.length
+          case tp: PolyType => tp.paramInfos.length
           case _ => 0
         }
         var allAlts = denot.alternatives
@@ -859,7 +859,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     def adaptLastArg(lastParam: Tree, expectedType: Type) = {
       if (isAnnotConstructor && !(lastParam.tpe <:< expectedType)) {
         val defn = ctx.definitions
-        val prefix = args.take(selected.widen.paramTypess.head.size - 1)
+        val prefix = args.take(selected.widen.paramInfoss.head.size - 1)
         expectedType match {
           case defn.ArrayOf(el) =>
             lastParam.tpe match {
@@ -878,7 +878,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     }
 
     val callArgs: List[Tree] = if (args.isEmpty) Nil else {
-      val expectedType = selected.widen.paramTypess.head.last
+      val expectedType = selected.widen.paramInfoss.head.last
       val lastParam = args.last
       adaptLastArg(lastParam, expectedType)
     }

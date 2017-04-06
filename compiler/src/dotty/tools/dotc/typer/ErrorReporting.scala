@@ -46,7 +46,7 @@ object ErrorReporting {
       errorMsg(ex.toMessage, ctx)
   }
 
-  def wrongNumberOfTypeArgs(fntpe: Type, expectedArgs: List[TypeParamInfo], actual: List[untpd.Tree], pos: Position)(implicit ctx: Context) =
+  def wrongNumberOfTypeArgs(fntpe: Type, expectedArgs: List[ParamInfo], actual: List[untpd.Tree], pos: Position)(implicit ctx: Context) =
     errorType(WrongNumberOfTypeArgs(fntpe, expectedArgs, actual)(ctx), pos)
 
   class Errors(implicit ctx: Context) {
@@ -74,7 +74,7 @@ object ErrorReporting {
     def anonymousTypeMemberStr(tpe: Type) = {
       val kind = tpe match {
           case _: TypeBounds => "type with bounds"
-          case _: PolyType | _: MethodType => "method"
+          case _: MethodOrPoly => "method"
           case _ => "value of type"
         }
         em"$kind $tpe"
@@ -105,9 +105,9 @@ object ErrorReporting {
     def whyNoMatchStr(found: Type, expected: Type) = {
       def dropJavaMethod(tp: Type): Type = tp match {
         case tp: PolyType =>
-          tp.derivedPolyType(resType = dropJavaMethod(tp.resultType))
+          tp.derivedLambdaType(resType = dropJavaMethod(tp.resultType))
         case tp: JavaMethodType =>
-          MethodType(tp.paramNames, tp.paramTypes, dropJavaMethod(tp.resultType))
+          MethodType(tp.paramNames, tp.paramInfos, dropJavaMethod(tp.resultType))
         case tp => tp
       }
       val found1 = dropJavaMethod(found)
@@ -121,12 +121,12 @@ object ErrorReporting {
     }
 
     def typeMismatchMsg(found: Type, expected: Type, postScript: String = "") = {
-      // replace constrained polyparams and their typevars by their bounds where possible
+      // replace constrained TypeParamRefs and their typevars by their bounds where possible
       object reported extends TypeMap {
         def setVariance(v: Int) = variance = v
         val constraint = ctx.typerState.constraint
         def apply(tp: Type): Type = tp match {
-          case tp: PolyParam =>
+          case tp: TypeParamRef =>
             constraint.entry(tp) match {
               case bounds: TypeBounds =>
                 if (variance < 0) apply(constraint.fullUpperBound(tp))

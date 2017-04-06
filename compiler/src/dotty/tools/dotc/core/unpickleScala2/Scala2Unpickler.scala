@@ -42,13 +42,15 @@ object Scala2Unpickler {
 
   /** Convert temp poly type to poly type and leave other types alone. */
   def translateTempPoly(tp: Type)(implicit ctx: Context): Type = tp match {
-    case TempPolyType(tparams, restpe) => restpe.LambdaAbstract(tparams)
+    case TempPolyType(tparams, restpe) =>
+      (if (tparams.head.owner.isTerm) PolyType else HKTypeLambda)
+        .fromParams(tparams, restpe)
     case tp => tp
   }
 
   def addConstructorTypeParams(denot: SymDenotation)(implicit ctx: Context) = {
     assert(denot.isConstructor)
-    denot.info = denot.info.LambdaAbstract(denot.owner.typeParams)
+    denot.info = PolyType.fromParams(denot.owner.typeParams, denot.info)
   }
 
   /** Convert array parameters denoting a repeated parameter of a Java method
@@ -56,7 +58,7 @@ object Scala2Unpickler {
    */
   def arrayToRepeated(tp: Type)(implicit ctx: Context): Type = tp match {
     case tp: MethodType =>
-      val lastArg = tp.paramTypes.last
+      val lastArg = tp.paramInfos.last
       assert(lastArg isRef defn.ArrayClass)
       val elemtp0 :: Nil = lastArg.baseArgInfos(defn.ArrayClass)
       val elemtp = elemtp0 match {
@@ -65,12 +67,12 @@ object Scala2Unpickler {
         case _ =>
           elemtp0
       }
-      tp.derivedMethodType(
+      tp.derivedLambdaType(
         tp.paramNames,
-        tp.paramTypes.init :+ defn.RepeatedParamType.appliedTo(elemtp),
+        tp.paramInfos.init :+ defn.RepeatedParamType.appliedTo(elemtp),
         tp.resultType)
     case tp: PolyType =>
-      tp.derivedPolyType(tp.paramNames, tp.paramBounds, arrayToRepeated(tp.resultType))
+      tp.derivedLambdaType(tp.paramNames, tp.paramInfos, arrayToRepeated(tp.resultType))
   }
 
   def ensureConstructor(cls: ClassSymbol, scope: Scope)(implicit ctx: Context) =
@@ -745,7 +747,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
         TempClassInfoType(until(end, readTypeRef), symScope(clazz), clazz)
       case METHODtpe | IMPLICITMETHODtpe =>
         val restpe = readTypeRef()
-        val params = until(end, readSymbolRef)
+        val params = until(end, readSymbolRef).asInstanceOf[List[TermSymbol]]
         def isImplicit =
           tag == IMPLICITMETHODtpe ||
           params.nonEmpty && (params.head is Implicit)

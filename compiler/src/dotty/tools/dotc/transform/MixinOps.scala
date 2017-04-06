@@ -72,7 +72,7 @@ class MixinOps(cls: ClassSymbol, thisTransform: DenotTransformer)(implicit ctx: 
     def hasPrimitiveMissMatch(tp1: Type, tp2: Type): Boolean = (tp1, tp2) match {
       case (tp1: MethodicType, tp2: MethodicType) =>
         hasPrimitiveMissMatch(tp1.resultType, tp2.resultType) ||
-        tp1.paramTypess.flatten.zip(tp1.paramTypess.flatten).exists(args => hasPrimitiveMissMatch(args._1, args._2))
+        tp1.paramInfoss.flatten.zip(tp1.paramInfoss.flatten).exists(args => hasPrimitiveMissMatch(args._1, args._2))
       case _ =>
         def isPrimitiveOrValueClass(sym: Symbol): Boolean = sym.isPrimitiveValueClass || sym.isValueClass
         isPrimitiveOrValueClass(tp1.typeSymbol) ^ isPrimitiveOrValueClass(tp2.typeSymbol)

@@ -157,7 +157,7 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
           tp2
         case tp1 => tp1
       }
-    case tp: PolyParam =>
+    case tp: TypeParamRef =>
       typerState.constraint.typeVarOfParam(tp) orElse tp
     case  _: ThisType | _: BoundType | NoPrefix =>
       tp

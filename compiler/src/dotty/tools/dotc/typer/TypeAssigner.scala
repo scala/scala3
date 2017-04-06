@@ -106,7 +106,7 @@ trait TypeAssigner {
           val base = apply(tycon)
           var args = tp.baseArgInfos(base.typeSymbol)
           if (base.typeParams.length != args.length)
-            args = base.typeParams.map(_.paramBounds)
+            args = base.typeParams.map(_.paramInfo)
           apply(base.appliedTo(args))
         case tp @ RefinedType(parent, name, rinfo) if variance > 0 =>
           val parent1 = apply(tp.parent)
@@ -318,9 +318,9 @@ trait TypeAssigner {
   def assignType(tree: untpd.Apply, fn: Tree, args: List[Tree])(implicit ctx: Context) = {
     val ownType = fn.tpe.widen match {
       case fntpe: MethodType =>
-        if (sameLength(fntpe.paramTypes, args) || ctx.phase.prev.relaxedTyping) fntpe.instantiate(args.tpes)
+        if (sameLength(fntpe.paramInfos, args) || ctx.phase.prev.relaxedTyping) fntpe.instantiate(args.tpes)
         else
-          errorType(i"wrong number of arguments for $fntpe: ${fn.tpe}, expected: ${fntpe.paramTypes.length}, found: ${args.length}", tree.pos)
+          errorType(i"wrong number of arguments for $fntpe: ${fn.tpe}, expected: ${fntpe.paramInfos.length}, found: ${args.length}", tree.pos)
       case t =>
         errorType(i"${err.exprStr(fn)} does not take parameters", tree.pos)
     }
@@ -329,7 +329,7 @@ trait TypeAssigner {
 
   def assignType(tree: untpd.TypeApply, fn: Tree, args: List[Tree])(implicit ctx: Context) = {
     val ownType = fn.tpe.widen match {
-      case pt: PolyType =>
+      case pt: TypeLambda =>
         val paramNames = pt.paramNames
         if (hasNamedArg(args)) {
           // Type arguments which are specified by name (immutable after this first loop)
@@ -348,7 +348,7 @@ trait TypeAssigner {
             val newIndex = gapBuf.length
             gapBuf += idx
             // Re-index unassigned type arguments that remain after transformation
-            PolyParam(pt, newIndex)
+            TypeParamRef(pt, newIndex)
           }
 
           // Type parameters after naming assignment, conserving paramNames order
@@ -358,7 +358,7 @@ trait TypeAssigner {
 
           val transform = new TypeMap {
             def apply(t: Type) = t match {
-              case PolyParam(`pt`, idx) => normArgs(idx)
+              case TypeParamRef(`pt`, idx) => normArgs(idx)
               case _ => mapOver(t)
             }
           }
@@ -366,9 +366,9 @@ trait TypeAssigner {
           if (gapBuf.isEmpty) resultType1
           else {
             val gaps = gapBuf.toList
-            pt.derivedPolyType(
+            pt.derivedLambdaType(
               gaps.map(paramNames),
-              gaps.map(idx => transform(pt.paramBounds(idx)).bounds),
+              gaps.map(idx => transform(pt.paramInfos(idx)).bounds),
               resultType1)
           }
         }
@@ -459,8 +459,8 @@ trait TypeAssigner {
     tree.withType(ownType)
   }
 
-  def assignType(tree: untpd.PolyTypeTree, tparamDefs: List[TypeDef], body: Tree)(implicit ctx: Context) =
-    tree.withType(body.tpe.LambdaAbstract(tparamDefs.map(_.symbol)))
+  def assignType(tree: untpd.LambdaTypeTree, tparamDefs: List[TypeDef], body: Tree)(implicit ctx: Context) =
+    tree.withType(HKTypeLambda.fromParams(tparamDefs.map(_.symbol.asType), body.tpe))
 
   def assignType(tree: untpd.ByNameTypeTree, result: Tree)(implicit ctx: Context) =
     tree.withType(ExprType(result.tpe))

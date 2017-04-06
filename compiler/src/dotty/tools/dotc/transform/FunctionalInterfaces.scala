@@ -31,8 +31,8 @@ class FunctionalInterfaces extends MiniPhaseTransform {
   val maxArgsCount = 2
 
   def shouldSpecialize(m: MethodType)(implicit ctx: Context) =
-    (m.paramTypes.size <= maxArgsCount) &&
-      m.paramTypes.forall(x => allowedArgumentTypes.contains(x.typeSymbol)) &&
+    (m.paramInfos.size <= maxArgsCount) &&
+      m.paramInfos.forall(x => allowedArgumentTypes.contains(x.typeSymbol)) &&
       allowedReturnTypes.contains(m.resultType.typeSymbol)
 
   val functionName = "JFunction".toTermName
@@ -67,7 +67,7 @@ class FunctionalInterfaces extends MiniPhaseTransform {
           val names = ctx.atPhase(ctx.erasurePhase) {
             implicit ctx => functionSymbol.typeParams.map(_.name)
           }
-          val interfaceName = (functionName ++ m.paramTypes.length.toString).specializedFor(m.paramTypes ::: m.resultType :: Nil, names, Nil, Nil)
+          val interfaceName = (functionName ++ m.paramInfos.length.toString).specializedFor(m.paramInfos ::: m.resultType :: Nil, names, Nil, Nil)
 
           // symbols loaded from classpath aren't defined in periods earlier than when they where loaded
           val interface = ctx.withPhase(ctx.typerPhase).getClassIfDefined(functionPackage ++ interfaceName)

@@ -107,13 +107,13 @@ trait FullParameterization {
       val firstArgType = if (liftThisType) thisParamType & clazz.thisType else thisParamType
       MethodType(nme.SELF :: Nil)(
           mt => firstArgType :: Nil,
-          mt => mapClassParams(origResult).substThisUnlessStatic(clazz, MethodParam(mt, 0)))
+          mt => mapClassParams(origResult).substThisUnlessStatic(clazz, mt.newParamRef(0)))
     }
 
     /** Replace class type parameters by the added type parameters of the polytype `pt` */
     def mapClassParams(tp: Type, pt: PolyType): Type = {
       val classParamsRange = (mtparamCount until mtparamCount + ctparams.length).toList
-      tp.substDealias(ctparams, classParamsRange map (PolyParam(pt, _)))
+      tp.substDealias(ctparams, classParamsRange map (TypeParamRef(pt, _)))
     }
 
     /** The bounds for the added type parameters of the polytype `pt` */
@@ -122,14 +122,14 @@ trait FullParameterization {
 
     info match {
       case info: PolyType =>
-        PolyType(info.paramNames ++ ctnames, info.variances ++ ctvariances)(
+        PolyType(info.paramNames ++ ctnames)(
           pt =>
-            (info.paramBounds.map(mapClassParams(_, pt).bounds) ++
+            (info.paramInfos.map(mapClassParams(_, pt).bounds) ++
              mappedClassBounds(pt)).mapConserve(_.subst(info, pt).bounds),
           pt => resultType(mapClassParams(_, pt)).subst(info, pt))
       case _ =>
         if (ctparams.isEmpty) resultType(identity)
-        else PolyType(ctnames, ctvariances)(mappedClassBounds, pt => resultType(mapClassParams(_, pt)))
+        else PolyType(ctnames)(mappedClassBounds, pt => resultType(mapClassParams(_, pt)))
     }
   }
 
@@ -233,7 +233,7 @@ trait FullParameterization {
       fun.appliedToArgss(originalDef.vparamss.nestedMap(vparam => ref(vparam.symbol)))
     else {
       // this type could have changed on forwarding. Need to insert a cast.
-      val args = (originalDef.vparamss, fun.tpe.paramTypess).zipped.map((vparams, paramTypes) =>
+      val args = (originalDef.vparamss, fun.tpe.paramInfoss).zipped.map((vparams, paramTypes) =>
         (vparams, paramTypes).zipped.map((vparam, paramType) => {
           assert(vparam.tpe <:< paramType.widen) // type should still conform to widened type
           ref(vparam.symbol).ensureConforms(paramType)
@@ -256,7 +256,7 @@ object FullParameterization {
     case MethodTpe(nme.SELF :: Nil, _, restpe) =>
       restpe.ensureMethodic.signature
     case info @ MethodTpe(nme.SELF :: otherNames, thisType :: otherTypes, restpe) =>
-      info.derivedMethodType(otherNames, otherTypes, restpe).signature
+      info.derivedLambdaType(otherNames, otherTypes, restpe).signature
     case _ =>
       Signature.NotAMethod
   }

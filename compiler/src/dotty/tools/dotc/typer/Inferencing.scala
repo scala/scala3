@@ -119,11 +119,11 @@ object Inferencing {
     }
   }
 
-  /** If `tree` has a PolyType, infer its type parameters by comparing with expected type `pt` */
+  /** If `tree` has a type lambda type, infer its type parameters by comparing with expected type `pt` */
   def inferTypeParams(tree: Tree, pt: Type)(implicit ctx: Context): Tree = tree.tpe match {
-    case poly: PolyType =>
-      val (poly1, tvars) = constrained(poly, tree)
-      val tree1 = tree.withType(poly1).appliedToTypeTrees(tvars)
+    case tl: TypeLambda =>
+      val (tl1, tvars) = constrained(tl, tree)
+      val tree1 = tree.withType(tl1).appliedToTypeTrees(tvars)
       tree1.tpe <:< pt
       fullyDefinedType(tree1.tpe, "template parent", tree.pos)
       tree1
@@ -157,7 +157,7 @@ object Inferencing {
         case Apply(fn, _) =>
           fn.tpe.widen match {
             case mtp: MethodType =>
-              val (occ, nocc) = toTest.partition(tvar => mtp.paramTypes.exists(tvar.occursIn))
+              val (occ, nocc) = toTest.partition(tvar => mtp.paramInfos.exists(tvar.occursIn))
               occurring(fn, nocc, occ ::: acc)
             case _ =>
               occurring(fn, toTest, acc)
@@ -176,9 +176,9 @@ object Inferencing {
    *           -1 (minimize) if constraint is uniformly from below,
    *            0 if unconstrained, or constraint is from below and above.
    */
-  private def instDirection(param: PolyParam)(implicit ctx: Context): Int = {
+  private def instDirection(param: TypeParamRef)(implicit ctx: Context): Int = {
     val constrained = ctx.typerState.constraint.fullBounds(param)
-    val original = param.binder.paramBounds(param.paramNum)
+    val original = param.binder.paramInfos(param.paramNum)
     val cmp = ctx.typeComparer
     val approxBelow =
       if (!cmp.isSubTypeWhenFrozen(constrained.lo, original.lo)) 1 else 0

@@ -169,12 +169,12 @@ object Constants {
     def convertTo(pt: Type)(implicit ctx: Context): Constant = {
       def classBound(pt: Type): Type = pt.dealias.stripTypeVar match {
         case tref: TypeRef if !tref.symbol.isClass => classBound(tref.info.bounds.lo)
-        case param: PolyParam =>
+        case param: TypeParamRef =>
           ctx.typerState.constraint.entry(param) match {
             case TypeBounds(lo, hi) =>
               if (hi.classSymbol.isPrimitiveValueClass) hi //constrain further with high bound
               else classBound(lo)
-            case NoType => classBound(param.binder.paramBounds(param.paramNum).lo)
+            case NoType => classBound(param.binder.paramInfos(param.paramNum).lo)
             case inst => classBound(inst)
           }
         case pt => pt

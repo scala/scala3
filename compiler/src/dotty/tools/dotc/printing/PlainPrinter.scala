@@ -170,21 +170,20 @@ class PlainPrinter(_ctx: Context) extends Printer {
         def paramText(name: TermName, tp: Type) = toText(name) ~ ": " ~ toText(tp)
         changePrec(GlobalPrec) {
           (if (tp.isImplicit) "(implicit " else "(") ~
-            Text((tp.paramNames, tp.paramTypes).zipped map paramText, ", ") ~
+            Text((tp.paramNames, tp.paramInfos).zipped map paramText, ", ") ~
           ")" ~ toText(tp.resultType)
         }
       case tp: ExprType =>
         changePrec(GlobalPrec) { "=> " ~ toText(tp.resultType) }
-      case tp: PolyType =>
-        def paramText(variance: Int, name: Name, bounds: TypeBounds): Text =
-          varianceString(variance) ~ name.toString ~ toText(bounds)
+      case tp: TypeLambda =>
+        def paramText(name: Name, bounds: TypeBounds): Text = name.toString ~ toText(bounds)
         changePrec(GlobalPrec) {
-          "[" ~ Text((tp.variances, tp.paramNames, tp.paramBounds).zipped.map(paramText), ", ") ~
+          "[" ~ Text((tp.paramNames, tp.paramInfos).zipped.map(paramText), ", ") ~
           "]" ~ (" => " provided !tp.resultType.isInstanceOf[MethodType]) ~
           toTextGlobal(tp.resultType)
         }
-      case tp: PolyParam =>
-        polyParamNameString(tp) ~ polyHash(tp.binder)
+      case tp: TypeParamRef =>
+        TypeParamRefNameString(tp) ~ lambdaHash(tp.binder)
       case AnnotatedType(tpe, annot) =>
         toTextLocal(tpe) ~ " " ~ toText(annot)
       case HKApply(tycon, args) =>
@@ -207,17 +206,18 @@ class PlainPrinter(_ctx: Context) extends Printer {
     }
   }.close
 
-  protected def polyParamNameString(name: TypeName): String = name.toString
+  protected def TypeParamRefNameString(name: TypeName): String = name.toString
 
-  protected def polyParamNameString(param: PolyParam): String = polyParamNameString(param.binder.paramNames(param.paramNum))
+  protected def TypeParamRefNameString(param: TypeParamRef): String =
+    TypeParamRefNameString(param.binder.paramNames(param.paramNum))
 
   /** The name of the symbol without a unique id. Under refined printing,
    *  the decoded original name.
    */
   protected def simpleNameString(sym: Symbol): String = nameString(sym.name)
 
-  /** If -uniqid is set, the hashcode of the polytype, after a # */
-  protected def polyHash(pt: PolyType): Text =
+  /** If -uniqid is set, the hashcode of the lambda type, after a # */
+  protected def lambdaHash(pt: LambdaType): Text =
     if (ctx.settings.uniqid.value) "#" + pt.hashCode else ""
 
   /** If -uniqid is set, the unique id of symbol, after a # */
@@ -259,8 +259,8 @@ class PlainPrinter(_ctx: Context) extends Printer {
         "Super(" ~ toTextGlobal(thistpe) ~ ")"
       case tp @ ConstantType(value) =>
         toText(value)
-      case MethodParam(mt, idx) =>
-        nameString(mt.paramNames(idx))
+      case pref: TermParamRef =>
+        nameString(pref.binder.paramNames(pref.paramNum))
       case tp: RecThis =>
         val idx = openRecs.reverse.indexOf(tp.binder)
         if (idx >= 0) selfRecName(idx + 1)

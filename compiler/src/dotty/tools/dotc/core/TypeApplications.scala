@@ -21,6 +21,8 @@ import java.util.NoSuchElementException
 
 object TypeApplications {
 
+  type TypeParamInfo = ParamInfo.Of[TypeName]
+
   /** Assert type is not a TypeBounds instance and return it unchanged */
   val noBounds = (tp: Type) => tp match {
     case tp: TypeBounds => throw new AssertionError("no TypeBounds allowed")
@@ -73,7 +75,7 @@ object TypeApplications {
     }
 
     def unapply(tp: Type)(implicit ctx: Context): Option[TypeRef] = tp match {
-      case tp @ PolyType(tparams, AppliedType(fn: TypeRef, args)) if (args == tparams.map(_.toArg)) => Some(fn)
+      case tp @ HKTypeLambda(tparams, AppliedType(fn: TypeRef, args)) if (args == tparams.map(_.toArg)) => Some(fn)
       case _ => None
     }
   }
@@ -119,7 +121,7 @@ object TypeApplications {
    */
   def EtaExpandIfHK(tparams: List[TypeParamInfo], args: List[Type])(implicit ctx: Context): List[Type] =
     if (tparams.isEmpty) args
-    else args.zipWithConserve(tparams)((arg, tparam) => arg.EtaExpandIfHK(tparam.paramBoundsOrCompleter))
+    else args.zipWithConserve(tparams)((arg, tparam) => arg.EtaExpandIfHK(tparam.paramInfoOrCompleter))
 
   /** A type map that tries to reduce (part of) the result type of the type lambda `tycon`
    *  with the given `args`(some of which are wildcard arguments represented by type bounds).
@@ -160,18 +162,18 @@ object TypeApplications {
    *  result type. Using this mode, we can guarantee that `appliedTo` will never
    *  produce a higher-kinded application with a type lambda as type constructor.
    */
-  class Reducer(tycon: PolyType, args: List[Type])(implicit ctx: Context) extends TypeMap {
+  class Reducer(tycon: TypeLambda, args: List[Type])(implicit ctx: Context) extends TypeMap {
     private var available = (0 until args.length).toSet
     var allReplaced = true
-    def hasWildcardArg(p: PolyParam) =
+    def hasWildcardArg(p: TypeParamRef) =
       p.binder == tycon && args(p.paramNum).isInstanceOf[TypeBounds]
-    def canReduceWildcard(p: PolyParam) =
+    def canReduceWildcard(p: TypeParamRef) =
       !ctx.mode.is(Mode.AllowLambdaWildcardApply) || available.contains(p.paramNum)
     def apply(t: Type) = t match {
-      case t @ TypeAlias(p: PolyParam) if hasWildcardArg(p) && canReduceWildcard(p) =>
+      case t @ TypeAlias(p: TypeParamRef) if hasWildcardArg(p) && canReduceWildcard(p) =>
         available -= p.paramNum
         args(p.paramNum)
-      case p: PolyParam if p.binder == tycon =>
+      case p: TypeParamRef if p.binder == tycon =>
         args(p.paramNum) match {
           case TypeBounds(lo, hi) =>
             if (ctx.mode.is(Mode.AllowLambdaWildcardApply)) { allReplaced = false; p }
@@ -213,7 +215,7 @@ class TypeApplications(val self: Type) extends AnyVal {
     self match {
       case self: ClassInfo =>
         self.cls.typeParams
-      case self: PolyType =>
+      case self: HKTypeLambda =>
         self.typeParams
       case self: TypeRef =>
         val tsym = self.symbol
@@ -251,7 +253,7 @@ class TypeApplications(val self: Type) extends AnyVal {
   def isHK(implicit ctx: Context): Boolean = self.dealias match {
     case self: TypeRef => self.info.isHK
     case self: RefinedType => false
-    case self: PolyType => true
+    case self: HKTypeLambda => true
     case self: SingletonType => false
     case self: TypeVar =>
       // Using `origin` instead of `underlying`, as is done for typeParams,
@@ -270,31 +272,6 @@ class TypeApplications(val self: Type) extends AnyVal {
       self
   }
 
-  /** Lambda abstract `self` with given type parameters. Examples:
-   *
-   *      type T[X] = U        becomes    type T = [X] -> U
-   *      type T[X] >: L <: U  becomes    type T >: L <: ([X] -> U)
-   *
-   *  TODO: Handle parameterized lower bounds
-   */
-  def LambdaAbstract(tparams: List[TypeParamInfo])(implicit ctx: Context): Type = {
-    def expand(tp: Type) =
-      PolyType(
-        tparams.map(_.paramName), tparams.map(_.paramVariance))(
-          tl => tparams.map(tparam => tl.lifted(tparams, tparam.paramBounds).bounds),
-          tl => tl.lifted(tparams, tp))
-    if (tparams.isEmpty) self
-    else self match {
-      case self: TypeAlias =>
-        self.derivedTypeAlias(expand(self.alias))
-      case self @ TypeBounds(lo, hi) =>
-        self.derivedTypeBounds(
-          if (lo.isRef(defn.NothingClass)) lo else expand(lo),
-          expand(hi))
-      case _ => expand(self)
-    }
-  }
-
   /** Convert a type constructor `TC` which has type parameters `T1, ..., Tn`
    *  in a context where type parameters `U1,...,Un` are expected to
    *
@@ -307,7 +284,7 @@ class TypeApplications(val self: Type) extends AnyVal {
    */
   def EtaExpand(tparams: List[TypeSymbol])(implicit ctx: Context): Type = {
     val tparamsToUse = if (variancesConform(typeParams, tparams)) tparams else typeParamSymbols
-    self.appliedTo(tparams map (_.typeRef)).LambdaAbstract(tparamsToUse)
+    HKTypeLambda.fromParams(tparamsToUse, self.appliedTo(tparams map (_.typeRef)))
       //.ensuring(res => res.EtaReduce =:= self, s"res = $res, core = ${res.EtaReduce}, self = $self, hc = ${res.hashCode}")
   }
 
@@ -362,11 +339,13 @@ class TypeApplications(val self: Type) extends AnyVal {
     if (hkParams.isEmpty) self
     else {
       def adaptArg(arg: Type): Type = arg match {
-        case arg @ PolyType(tparams, body) if
+        case arg @ HKTypeLambda(tparams, body) if
              !tparams.corresponds(hkParams)(_.paramVariance == _.paramVariance) &&
              tparams.corresponds(hkParams)(varianceConforms) =>
-          PolyType(tparams.map(_.paramName), hkParams.map(_.paramVariance))(
-            tl => arg.paramBounds.map(_.subst(arg, tl).bounds),
+          HKTypeLambda(
+            (tparams, hkParams).zipped.map((tparam, hkparam) =>
+              tparam.paramName.withVariance(hkparam.paramVariance)))(
+            tl => arg.paramInfos.map(_.subst(arg, tl).bounds),
             tl => arg.resultType.subst(arg, tl)
           )
         case arg @ TypeAlias(alias) =>
@@ -390,7 +369,7 @@ class TypeApplications(val self: Type) extends AnyVal {
    */
   final def appliedTo(args: List[Type])(implicit ctx: Context): Type = /*>|>*/ track("appliedTo") /*<|<*/ {
     val typParams = self.typeParams
-    def matchParams(t: Type, tparams: List[TypeParamInfo], args: List[Type])(implicit ctx: Context): Type = args match {
+    def matchParams(t: Type, tparams: List[ParamInfo], args: List[Type])(implicit ctx: Context): Type = args match {
       case arg :: args1 =>
         try {
           val tparam :: tparams1 = tparams
@@ -407,7 +386,7 @@ class TypeApplications(val self: Type) extends AnyVal {
     val dealiased = stripped.safeDealias
     if (args.isEmpty || ctx.erasedTypes) self
     else dealiased match {
-      case dealiased: PolyType =>
+      case dealiased: HKTypeLambda =>
         def tryReduce =
           if (!args.exists(_.isInstanceOf[TypeBounds])) {
             val followAlias = Config.simplifyApplications && {
@@ -426,7 +405,7 @@ class TypeApplications(val self: Type) extends AnyVal {
               // In this case we should always dealias since we cannot handle
               // higher-kinded applications to wildcard arguments.
               dealiased
-                .derivedPolyType(resType = tycon.safeDealias.appliedTo(args1))
+                .derivedLambdaType(resType = tycon.safeDealias.appliedTo(args1))
                 .appliedTo(args)
             case _ =>
               val reducer = new Reducer(dealiased, args)
@@ -435,6 +414,8 @@ class TypeApplications(val self: Type) extends AnyVal {
               else HKApply(dealiased, args)
           }
         tryReduce
+      case dealiased: PolyType =>
+        dealiased.instantiate(args)
       case dealiased: AndOrType =>
         dealiased.derivedAndOrType(dealiased.tp1.appliedTo(args), dealiased.tp2.appliedTo(args))
       case dealiased: TypeAlias =>
@@ -475,7 +456,7 @@ class TypeApplications(val self: Type) extends AnyVal {
   /** Turn this type, which is used as an argument for
    *  type parameter `tparam`, into a TypeBounds RHS
    */
-  final def toBounds(tparam: TypeParamInfo)(implicit ctx: Context): TypeBounds = self match {
+  final def toBounds(tparam: ParamInfo)(implicit ctx: Context): TypeBounds = self match {
     case self: TypeBounds => // this can happen for wildcard args
       self
     case _ =>

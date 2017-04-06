@@ -28,7 +28,7 @@ import scala.annotation.tailrec
  *  WildcardType
  *  ErrorType
  *
- *  only for isInstanceOf, asInstanceOf: PolyType, PolyParam, TypeBounds
+ *  only for isInstanceOf, asInstanceOf: PolyType, TypeParamRef, TypeBounds
  *
  */
 object TypeErasure {
@@ -55,7 +55,7 @@ object TypeErasure {
     case ThisType(tref) =>
       isErasedType(tref)
     case tp: MethodType =>
-      tp.paramTypes.forall(isErasedType) && isErasedType(tp.resultType)
+      tp.paramInfos.forall(isErasedType) && isErasedType(tp.resultType)
     case tp @ ClassInfo(pre, _, parents, decls, _) =>
       isErasedType(pre) && parents.forall(isErasedType) //&& decls.forall(sym => isErasedType(sym.info)) && isErasedType(tp.selfType)
     case NoType | NoPrefix | WildcardType | _: ErrorType | SuperType(_, _) =>
@@ -176,7 +176,7 @@ object TypeErasure {
     val erase = erasureFn(isJava, semiEraseVCs, sym.isConstructor, wildcardOK = false)
 
     def eraseParamBounds(tp: PolyType): Type =
-      tp.derivedPolyType(
+      tp.derivedLambdaType(
         tp.paramNames, tp.paramNames map (Function.const(TypeBounds.upper(defn.ObjectType))), tp.resultType)
 
     if (defn.isPolymorphicAfterErasure(sym)) eraseParamBounds(sym.info.asInstanceOf[PolyType])
@@ -186,7 +186,7 @@ object TypeErasure {
       case einfo: MethodType =>
         if (sym.isGetter && einfo.resultType.isRef(defn.UnitClass))
           MethodType(Nil, defn.BoxedUnitType)
-        else if (sym.isAnonymousFunction && einfo.paramTypes.length > MaxImplementedFunctionArity)
+        else if (sym.isAnonymousFunction && einfo.paramInfos.length > MaxImplementedFunctionArity)
           MethodType(nme.ALLARGS :: Nil, JavaArrayType(defn.ObjectType) :: Nil, einfo.resultType)
         else
           einfo
@@ -204,7 +204,7 @@ object TypeErasure {
       !tp.symbol.isClass &&
       !tp.derivesFrom(defn.ObjectClass) &&
       !tp.symbol.is(JavaDefined)
-    case tp: PolyParam =>
+    case tp: TypeParamRef =>
       !tp.derivesFrom(defn.ObjectClass) &&
       !tp.binder.resultType.isInstanceOf[JavaMethodType]
     case tp: TypeAlias => isUnboundedGeneric(tp.alias)
@@ -304,7 +304,7 @@ object TypeErasure {
         case _: ClassInfo => true
         case _ => false
       }
-    case tp: PolyParam => false
+    case tp: TypeParamRef => false
     case tp: TypeProxy => hasStableErasure(tp.superType)
     case tp: AndOrType => hasStableErasure(tp.tp1) && hasStableErasure(tp.tp2)
     case _ => false
@@ -382,13 +382,15 @@ class TypeErasure(isJava: Boolean, semiEraseVCs: Boolean, isConstructor: Boolean
     case tp: MethodType =>
       def paramErasure(tpToErase: Type) =
         erasureFn(tp.isJava, semiEraseVCs, isConstructor, wildcardOK)(tpToErase)
-      val formals = tp.paramTypes.mapConserve(paramErasure)
+      val formals = tp.paramInfos.mapConserve(paramErasure)
       eraseResult(tp.resultType) match {
         case rt: MethodType =>
-          tp.derivedMethodType(tp.paramNames ++ rt.paramNames, formals ++ rt.paramTypes, rt.resultType)
+          tp.derivedLambdaType(tp.paramNames ++ rt.paramNames, formals ++ rt.paramInfos, rt.resultType)
         case rt =>
-          tp.derivedMethodType(tp.paramNames, formals, rt)
+          tp.derivedLambdaType(tp.paramNames, formals, rt)
       }
+    case tp: PolyType =>
+      this(tp.resultType)
     case tp @ ClassInfo(pre, cls, classParents, decls, _) =>
       if (cls is Package) tp
       else {
@@ -517,6 +519,8 @@ class TypeErasure(isJava: Boolean, semiEraseVCs: Boolean, isConstructor: Boolean
         if (inst.exists) sigName(inst) else tpnme.Uninstantiated
       case tp: TypeProxy =>
         sigName(tp.underlying)
+      case tp: PolyType =>
+        sigName(tp.resultType)
       case _: ErrorType | WildcardType =>
         tpnme.WILDCARD
       case tp: WildcardType =>

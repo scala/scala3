@@ -108,7 +108,7 @@ object Inliner {
 
             // Add qualifier type as leading method argument to argument `tp`
             def addQualType(tp: Type): Type = tp match {
-              case tp: PolyType => tp.derivedPolyType(tp.paramNames, tp.paramBounds, addQualType(tp.resultType))
+              case tp: PolyType => tp.derivedLambdaType(tp.paramNames, tp.paramInfos, addQualType(tp.resultType))
               case tp: ExprType => addQualType(tp.resultType)
               case tp => MethodType(qualType :: Nil, tp)
             }
@@ -120,7 +120,8 @@ object Inliner {
             // Abstract accessed type over local refs
             def abstractQualType(mtpe: Type): Type =
               if (localRefs.isEmpty) mtpe
-              else mtpe.LambdaAbstract(localRefs.map(_.symbol)).asInstanceOf[PolyType].flatten
+              else PolyType.fromParams(localRefs.map(_.symbol.asType), mtpe)
+                .asInstanceOf[PolyType].flatten
 
             val accessorType = abstractQualType(addQualType(dealiasMap(accessedType)))
             val accessor = accessorSymbol(tree, accessorType).asTerm
@@ -327,7 +328,7 @@ class Inliner(call: tpd.Tree, rhs: tpd.Tree)(implicit ctx: Context) {
       }
       computeParamBindings(tp.resultType, Nil, argss)
     case tp: MethodType =>
-      (tp.paramNames, tp.paramTypes, argss.head).zipped.foreach { (name, paramtp, arg) =>
+      (tp.paramNames, tp.paramInfos, argss.head).zipped.foreach { (name, paramtp, arg) =>
         def isByName = paramtp.dealias.isInstanceOf[ExprType]
         paramBinding(name) = arg.tpe.stripAnnots.stripTypeVar match {
           case argtpe: SingletonType if isIdempotentExpr(arg) => argtpe
@@ -358,7 +359,7 @@ class Inliner(call: tpd.Tree, rhs: tpd.Tree)(implicit ctx: Context) {
    *  2.  If given type refers to a parameter, make `paramProxy` refer to the entry stored
    *      in `paramNames` under the parameter's name. This roundabout way to bind parameter
    *      references to proxies is done because  we not known a priori what the parameter
-   *      references of a method are (we only know the method's type, but that contains PolyParams
+   *      references of a method are (we only know the method's type, but that contains TypeParamRefs
    *      and MethodParams, not TypeRefs or TermRefs.
    */
   private def registerType(tpe: Type): Unit = tpe match {

@@ -461,12 +461,12 @@ object Erasure extends TypeTestsCasts{
             case mt: MethodType =>
               val outers = outer.args(fun.asInstanceOf[tpd.Tree]) // can't use fun1 here because its type is already erased
               var args0 = outers ::: args ++ protoArgs(pt)
-              if (args0.length > MaxImplementedFunctionArity && mt.paramTypes.length == 1) {
+              if (args0.length > MaxImplementedFunctionArity && mt.paramInfos.length == 1) {
                 val bunchedArgs = untpd.JavaSeqLiteral(args0, TypeTree(defn.ObjectType))
                   .withType(defn.ArrayOf(defn.ObjectType))
                 args0 = bunchedArgs :: Nil
               }
-              val args1 = args0.zipWithConserve(mt.paramTypes)(typedExpr)
+              val args1 = args0.zipWithConserve(mt.paramInfos)(typedExpr)
               untpd.cpy.Apply(tree)(fun1, args1) withType mt.resultType
             case _ =>
               throw new MatchError(i"tree $tree has unexpected type of function ${fun1.tpe.widen}, was ${fun.typeOpt.widen}")
@@ -547,8 +547,8 @@ object Erasure extends TypeTestsCasts{
         case SAMType(sam) =>
           val implType = meth.tpe.widen
 
-          val List(implParamTypes) = implType.paramTypess
-          val List(samParamTypes) = sam.info.paramTypess
+          val List(implParamTypes) = implType.paramInfoss
+          val List(samParamTypes) = sam.info.paramInfoss
           val implResultType = implType.resultType
           val samResultType = sam.info.resultType
 
@@ -698,8 +698,8 @@ object Erasure extends TypeTestsCasts{
           val rhs = paramss.foldLeft(sel)((fun, vparams) =>
             fun.tpe.widen match {
               case mt: MethodType =>
-                Apply(fun, (vparams, mt.paramTypes).zipped.map(adapt(_, _, untpd.EmptyTree)))
-              case a => 
+                Apply(fun, (vparams, mt.paramInfos).zipped.map(adapt(_, _, untpd.EmptyTree)))
+              case a =>
                 error(s"can not resolve apply type $a")
             })
           adapt(rhs, resultType)

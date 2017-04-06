@@ -42,12 +42,12 @@ trait ConstraintHandling {
    */
   protected var homogenizeArgs = false
 
-  /** We are currently comparing polytypes. Used as a flag for
+  /** We are currently comparing type lambdas. Used as a flag for
    *  optimization: when `false`, no need to do an expensive `pruneLambdaParams`
    */
-  protected var comparedPolyTypes: Set[PolyType] = Set.empty
+  protected var comparedTypeLambdas: Set[TypeLambda] = Set.empty
 
-  private def addOneBound(param: PolyParam, bound: Type, isUpper: Boolean): Boolean =
+  private def addOneBound(param: TypeParamRef, bound: Type, isUpper: Boolean): Boolean =
     !constraint.contains(param) || {
       def occursIn(bound: Type): Boolean = {
         val b = bound.dealias
@@ -75,7 +75,7 @@ trait ConstraintHandling {
    *  If `isUpper` is true, ensure that `param <: `bound`, otherwise ensure
    *  that `param >: bound`.
    */
-  def narrowedBound(param: PolyParam, bound: Type, isUpper: Boolean)(implicit ctx: Context): TypeBounds = {
+  def narrowedBound(param: TypeParamRef, bound: Type, isUpper: Boolean)(implicit ctx: Context): TypeBounds = {
     val oldBounds @ TypeBounds(lo, hi) = constraint.nonParamBounds(param)
     val saved = homogenizeArgs
     homogenizeArgs = Config.alignArgsInAnd
@@ -85,7 +85,7 @@ trait ConstraintHandling {
     finally homogenizeArgs = saved
   }
 
-  protected def addUpperBound(param: PolyParam, bound: Type): Boolean = {
+  protected def addUpperBound(param: TypeParamRef, bound: Type): Boolean = {
     def description = i"constraint $param <: $bound to\n$constraint"
     if (bound.isRef(defn.NothingClass) && ctx.typerState.isGlobalCommittable) {
       def msg = s"!!! instantiated to Nothing: $param, constraint = ${constraint.show}"
@@ -101,7 +101,7 @@ trait ConstraintHandling {
     res
   }
 
-  protected def addLowerBound(param: PolyParam, bound: Type): Boolean = {
+  protected def addLowerBound(param: TypeParamRef, bound: Type): Boolean = {
     def description = i"constraint $param >: $bound to\n$constraint"
     constr.println(i"adding $description")
     val upper = constraint.upper(param)
@@ -112,7 +112,7 @@ trait ConstraintHandling {
     res
   }
 
-  protected def addLess(p1: PolyParam, p2: PolyParam): Boolean = {
+  protected def addLess(p1: TypeParamRef, p2: TypeParamRef): Boolean = {
     def description = i"ordering $p1 <: $p2 to\n$constraint"
     val res =
       if (constraint.isLess(p2, p1)) unify(p2, p1)
@@ -133,7 +133,7 @@ trait ConstraintHandling {
   /** Make p2 = p1, transfer all bounds of p2 to p1
    *  @pre  less(p1)(p2)
    */
-  private def unify(p1: PolyParam, p2: PolyParam): Boolean = {
+  private def unify(p1: TypeParamRef, p2: TypeParamRef): Boolean = {
     constr.println(s"unifying $p1 $p2")
     assert(constraint.isLess(p1, p2))
     val down = constraint.exclusiveLower(p2, p1)
@@ -191,7 +191,7 @@ trait ConstraintHandling {
    *  @return the instantiating type
    *  @pre `param` is in the constraint's domain.
    */
-  final def approximation(param: PolyParam, fromBelow: Boolean): Type = {
+  final def approximation(param: TypeParamRef, fromBelow: Boolean): Type = {
     val avoidParam = new TypeMap {
       override def stopAtStatic = true
       def apply(tp: Type) = mapOver {
@@ -235,7 +235,7 @@ trait ConstraintHandling {
    *  a lower bound instantiation can be a singleton type only if the upper bound
    *  is also a singleton type.
    */
-  def instanceType(param: PolyParam, fromBelow: Boolean): Type = {
+  def instanceType(param: TypeParamRef, fromBelow: Boolean): Type = {
     def upperBound = constraint.fullUpperBound(param)
     def isSingleton(tp: Type): Boolean = tp match {
       case tp: SingletonType => true
@@ -301,26 +301,26 @@ trait ConstraintHandling {
     }
 
   /** The current bounds of type parameter `param` */
-  final def bounds(param: PolyParam): TypeBounds = {
+  final def bounds(param: TypeParamRef): TypeBounds = {
     val e = constraint.entry(param)
-    if (e.exists) e.bounds else param.binder.paramBounds(param.paramNum)
+    if (e.exists) e.bounds else param.binder.paramInfos(param.paramNum)
   }
 
-  /** Add polytype `pt`, possibly with type variables `tvars`, to current constraint
+  /** Add type lambda `tl`, possibly with type variables `tvars`, to current constraint
    *  and propagate all bounds.
    *  @param tvars   See Constraint#add
    */
-  def addToConstraint(pt: PolyType, tvars: List[TypeVar]): Unit =
+  def addToConstraint(tl: TypeLambda, tvars: List[TypeVar]): Unit =
     assert {
-      checkPropagated(i"initialized $pt") {
-        constraint = constraint.add(pt, tvars)
-        pt.paramNames.indices.forall { i =>
-          val param = PolyParam(pt, i)
+      checkPropagated(i"initialized $tl") {
+        constraint = constraint.add(tl, tvars)
+        tl.paramNames.indices.forall { i =>
+          val param = TypeParamRef(tl, i)
           val bounds = constraint.nonParamBounds(param)
           val lower = constraint.lower(param)
           val upper = constraint.upper(param)
           if (lower.nonEmpty && !bounds.lo.isRef(defn.NothingClass) ||
-            upper.nonEmpty && !bounds.hi.isRef(defn.AnyClass)) constr.println(i"INIT*** $pt")
+            upper.nonEmpty && !bounds.hi.isRef(defn.AnyClass)) constr.println(i"INIT*** $tl")
           lower.forall(addOneBound(_, bounds.hi, isUpper = true)) &&
             upper.forall(addOneBound(_, bounds.lo, isUpper = false))
         }
@@ -328,7 +328,7 @@ trait ConstraintHandling {
     }
 
   /** Can `param` be constrained with new bounds? */
-  final def canConstrain(param: PolyParam): Boolean =
+  final def canConstrain(param: TypeParamRef): Boolean =
     !frozenConstraint && (constraint contains param)
 
   /** Add constraint `param <: bound` if `fromBelow` is false, `param >: bound` otherwise.
@@ -338,7 +338,7 @@ trait ConstraintHandling {
    *  not be AndTypes and lower bounds may not be OrTypes. This is assured by the
    *  way isSubType is organized.
    */
-  protected def addConstraint(param: PolyParam, bound: Type, fromBelow: Boolean): Boolean = {
+  protected def addConstraint(param: TypeParamRef, bound: Type, fromBelow: Boolean): Boolean = {
     def description = i"constr $param ${if (fromBelow) ">:" else "<:"} $bound:\n$constraint"
     //checkPropagated(s"adding $description")(true) // DEBUG in case following fails
     checkPropagated(s"added $description") {
@@ -357,12 +357,12 @@ trait ConstraintHandling {
        *  missing.
        */
       def pruneLambdaParams(tp: Type) =
-        if (comparedPolyTypes.nonEmpty) {
+        if (comparedTypeLambdas.nonEmpty) {
           val approx = new ApproximatingTypeMap {
             def apply(t: Type): Type = t match {
-              case t @ PolyParam(pt: PolyType, n) if comparedPolyTypes contains pt =>
+              case t @ TypeParamRef(tl: TypeLambda, n) if comparedTypeLambdas contains tl =>
                 val effectiveVariance = if (fromBelow) -variance else variance
-                val bounds = pt.paramBounds(n)
+                val bounds = tl.paramInfos(n)
                 if (effectiveVariance > 0) bounds.lo
                 else if (effectiveVariance < 0) bounds.hi
                 else NoType
@@ -374,7 +374,7 @@ trait ConstraintHandling {
         }
         else tp
 
-      def addParamBound(bound: PolyParam) =
+      def addParamBound(bound: TypeParamRef) =
         if (fromBelow) addLess(bound, param) else addLess(param, bound)
 
       /** Drop all constrained parameters that occur at the toplevel in `bound` and
@@ -419,7 +419,7 @@ trait ConstraintHandling {
           else NoType
         case bound: TypeVar if constraint contains bound.origin =>
           prune(bound.underlying)
-        case bound: PolyParam =>
+        case bound: TypeParamRef =>
           constraint.entry(bound) match {
             case NoType => pruneLambdaParams(bound)
             case _: TypeBounds =>
@@ -434,7 +434,7 @@ trait ConstraintHandling {
       }
 
       try bound match {
-        case bound: PolyParam if constraint contains bound =>
+        case bound: TypeParamRef if constraint contains bound =>
           addParamBound(bound)
         case _ =>
           val pbound = prune(bound)
@@ -446,7 +446,7 @@ trait ConstraintHandling {
   }
 
   /** Instantiate `param` to `tp` if the constraint stays satisfiable */
-  protected def tryInstantiate(param: PolyParam, tp: Type): Boolean = {
+  protected def tryInstantiate(param: TypeParamRef, tp: Type): Boolean = {
     val saved = constraint
     constraint =
       if (addConstraint(param, tp, fromBelow = true) &&
@@ -461,7 +461,7 @@ trait ConstraintHandling {
       val saved = frozenConstraint
       frozenConstraint = true
       for (p <- constraint.domainParams) {
-        def check(cond: => Boolean, q: PolyParam, ordering: String, explanation: String): Unit =
+        def check(cond: => Boolean, q: TypeParamRef, ordering: String, explanation: String): Unit =
           assert(cond, i"propagation failure for $p $ordering $q: $explanation\n$msg")
         for (u <- constraint.upper(p))
           check(bounds(p).hi <:< bounds(u).hi, u, "<:", "upper bound not propagated")

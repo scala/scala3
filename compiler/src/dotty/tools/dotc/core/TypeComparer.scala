@@ -280,7 +280,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
         case _ =>
       }
       thirdTry(tp1, tp2)
-    case tp1: PolyParam =>
+    case tp1: TypeParamRef =>
       def flagNothingBound = {
         if (!frozenConstraint && tp2.isRef(defn.NothingClass) && state.isGlobalCommittable) {
           def msg = s"!!! instantiated to Nothing: $tp1, constraint = ${constraint.show}"
@@ -289,13 +289,13 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
         }
         true
       }
-      def comparePolyParam =
+      def compareTypeParamRef =
         ctx.mode.is(Mode.TypevarsMissContext) ||
         isSubTypeWhenFrozen(bounds(tp1).hi, tp2) || {
           if (canConstrain(tp1)) addConstraint(tp1, tp2, fromBelow = false) && flagNothingBound
           else thirdTry(tp1, tp2)
         }
-      comparePolyParam
+      compareTypeParamRef
     case tp1: ThisType =>
       val cls1 = tp1.cls
       tp2 match {
@@ -373,8 +373,8 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
   private def thirdTry(tp1: Type, tp2: Type): Boolean = tp2 match {
     case tp2: NamedType =>
       thirdTryNamed(tp1, tp2)
-    case tp2: PolyParam =>
-      def comparePolyParam =
+    case tp2: TypeParamRef =>
+      def compareTypeParamRef =
         (ctx.mode is Mode.TypevarsMissContext) || {
         val alwaysTrue =
           // The following condition is carefully formulated to catch all cases
@@ -391,7 +391,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
           else fourthTry(tp1, tp2)
         }
       }
-      comparePolyParam
+      compareTypeParamRef
     case tp2: RefinedType =>
       def compareRefinedSlow: Boolean = {
         val name2 = tp2.refinedName
@@ -428,9 +428,9 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
       compareRec
     case tp2 @ HKApply(tycon2, args2) =>
       compareHkApply2(tp1, tp2, tycon2, args2)
-    case tp2 @ PolyType(tparams2, body2) =>
-      def compareHkLambda: Boolean = tp1.stripTypeVar match {
-        case tp1 @ PolyType(tparams1, body1) =>
+    case tp2: HKTypeLambda =>
+      def compareTypeLambda: Boolean = tp1.stripTypeVar match {
+        case tp1: HKTypeLambda =>
           /* Don't compare bounds of lambdas under language:Scala2, or t2994 will fail
            * The issue is that, logically, bounds should compare contravariantly,
            * but that would invalidate a pattern exploited in t2994:
@@ -446,16 +446,16 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
            */
           def boundsOK =
             ctx.scala2Mode ||
-            tparams1.corresponds(tparams2)((tparam1, tparam2) =>
-              isSubType(tparam2.paramBounds.subst(tp2, tp1), tparam1.paramBounds))
-          val saved = comparedPolyTypes
-          comparedPolyTypes += tp1
-          comparedPolyTypes += tp2
+            tp1.typeParams.corresponds(tp2.typeParams)((tparam1, tparam2) =>
+              isSubType(tparam2.paramInfo.subst(tp2, tp1), tparam1.paramInfo))
+          val saved = comparedTypeLambdas
+          comparedTypeLambdas += tp1
+          comparedTypeLambdas += tp2
           try
-            variancesConform(tparams1, tparams2) &&
+            variancesConform(tp1.typeParams, tp2.typeParams) &&
             boundsOK &&
-            isSubType(body1, body2.subst(tp2, tp1))
-          finally comparedPolyTypes = saved
+            isSubType(tp1.resType, tp2.resType.subst(tp2, tp1))
+          finally comparedTypeLambdas = saved
         case _ =>
           if (!tp1.isHK) {
             tp2 match {
@@ -466,7 +466,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
           }
           fourthTry(tp1, tp2)
       }
-      compareHkLambda
+      compareTypeLambda
     case OrType(tp21, tp22) =>
       // Rewrite T1 <: (T211 & T212) | T22 to T1 <: (T211 | T22) and T1 <: (T212 | T22)
       // and analogously for T1 <: T21 | (T221 & T222)
@@ -484,12 +484,12 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
         case _ =>
       }
       either(isSubType(tp1, tp21), isSubType(tp1, tp22)) || fourthTry(tp1, tp2)
-    case tp2: MethodType =>
+    case tp2: MethodOrPoly =>
       def compareMethod = tp1 match {
-        case tp1: MethodType =>
+        case tp1: MethodOrPoly =>
           (tp1.signature consistentParams tp2.signature) &&
-            matchingParams(tp1.paramTypes, tp2.paramTypes, tp1.isJava, tp2.isJava) &&
-            (tp1.isImplicit == tp2.isImplicit) &&
+            matchingParams(tp1, tp2) &&
+            tp1.isImplicit == tp2.isImplicit &&
             isSubType(tp1.resultType, tp2.resultType.subst(tp2, tp1))
         case _ =>
           false
@@ -618,7 +618,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
     def isMatchingApply(tp1: Type): Boolean = tp1 match {
       case HKApply(tycon1, args1) =>
         tycon1.dealias match {
-          case tycon1: PolyParam =>
+          case tycon1: TypeParamRef =>
             (tycon1 == tycon2 ||
              canConstrain(tycon1) && tryInstantiate(tycon1, tycon2)) &&
             isSubArgs(args1, args2, tparams)
@@ -646,7 +646,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
      *  and the resulting type application is a supertype of `tp1`,
      *  or fallback to fourthTry.
      */
-    def canInstantiate(tycon2: PolyParam): Boolean = {
+    def canInstantiate(tycon2: TypeParamRef): Boolean = {
 
       /** Let
        *
@@ -669,10 +669,10 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
           val tparams1 = tparams1a.drop(lengthDiff)
           variancesConform(tparams1, tparams) && {
             if (lengthDiff > 0)
-              tycon1b = PolyType(tparams1.map(_.paramName), tparams1.map(_.paramVariance))(
-                tl => tparams1.map(tparam => tl.lifted(tparams, tparam.paramBounds).bounds),
+              tycon1b = HKTypeLambda(tparams1.map(_.paramName))(
+                tl => tparams1.map(tparam => tl.integrate(tparams, tparam.paramInfo).bounds),
                 tl => tycon1a.appliedTo(args1.take(lengthDiff) ++
-                        tparams1.indices.toList.map(PolyParam(tl, _))))
+                        tparams1.indices.toList.map(TypeParamRef(tl, _))))
             (ctx.mode.is(Mode.TypevarsMissContext) ||
               tryInstantiate(tycon2, tycon1b.ensureHK)) &&
               isSubType(tp1, tycon1b.appliedTo(args2))
@@ -725,7 +725,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
         fallback(tycon2bounds.lo)
 
     tycon2 match {
-      case param2: PolyParam =>
+      case param2: TypeParamRef =>
         isMatchingApply(tp1) || {
           if (canConstrain(param2)) canInstantiate(param2)
           else compareLower(bounds(param2), tyconIsTypeRef = false)
@@ -746,7 +746,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
    */
   def compareHkApply1(tp1: HKApply, tycon1: Type, args1: List[Type], tp2: Type): Boolean =
     tycon1 match {
-      case param1: PolyParam =>
+      case param1: TypeParamRef =>
         def canInstantiate = tp2 match {
           case AppliedType(tycon2, args2) =>
             tryInstantiate(param1, tycon2.ensureHK) && isSubArgs(args1, args2, tycon2.typeParams)
@@ -764,7 +764,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
   /** Subtype test for corresponding arguments in `args1`, `args2` according to
    *  variances in type parameters `tparams`.
    */
-  def isSubArgs(args1: List[Type], args2: List[Type], tparams: List[TypeParamInfo]): Boolean =
+  def isSubArgs(args1: List[Type], args2: List[Type], tparams: List[ParamInfo]): Boolean =
     if (args1.isEmpty) args2.isEmpty
     else args2.nonEmpty && {
       val v = tparams.head.paramVariance
@@ -806,7 +806,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
     def fix(tp: Type): Type = tp.stripTypeVar match {
       case tp: RecType => fix(tp.parent).substRecThis(tp, anchor)
       case tp @ RefinedType(parent, rname, rinfo) => tp.derivedRefinedType(fix(parent), rname, rinfo)
-      case tp: PolyParam => fixOrElse(bounds(tp).hi, tp)
+      case tp: TypeParamRef => fixOrElse(bounds(tp).hi, tp)
       case tp: TypeProxy => fixOrElse(tp.underlying, tp)
       case tp: AndOrType => tp.derivedAndOrType(fix(tp.tp1), fix(tp.tp2))
       case tp => tp
@@ -967,7 +967,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
 
   /** Defer constraining type variables when compared against prototypes */
   def isMatchedByProto(proto: ProtoType, tp: Type) = tp.stripTypeVar match {
-    case tp: PolyParam if constraint contains tp => true
+    case tp: TypeParamRef if constraint contains tp => true
     case _ => proto.isMatchedBy(tp)
   }
 
@@ -978,7 +978,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
    *  type variable with (the corresponding type in) `tp2` instead.
    */
   private def isCappable(tp: Type): Boolean = tp match {
-    case tp: PolyParam => constraint contains tp
+    case tp: TypeParamRef => constraint contains tp
     case tp: TypeProxy => isCappable(tp.underlying)
     case tp: AndOrType => isCappable(tp.tp1) || isCappable(tp.tp2)
     case _ => false
@@ -1021,7 +1021,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
       tp2.widen match {
         case tp2: MethodType =>
           // implicitness is ignored when matching
-          matchingParams(tp1.paramTypes, tp2.paramTypes, tp1.isJava, tp2.isJava) &&
+          matchingParams(tp1, tp2) &&
           matchesType(tp1.resultType, tp2.resultType.subst(tp2, tp1), relaxed)
         case tp2 =>
           relaxed && tp1.paramNames.isEmpty &&
@@ -1031,7 +1031,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
       tp2.widen match {
         case tp2: PolyType =>
           sameLength(tp1.paramNames, tp2.paramNames) &&
-            matchesType(tp1.resultType, tp2.resultType.subst(tp2, tp1), relaxed)
+          matchesType(tp1.resultType, tp2.resultType.subst(tp2, tp1), relaxed)
         case _ =>
           false
       }
@@ -1047,28 +1047,28 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
       }
   }
 
-  /** Are `syms1` and `syms2` parameter lists with pairwise equivalent types? */
-  def matchingParams(formals1: List[Type], formals2: List[Type], isJava1: Boolean, isJava2: Boolean): Boolean = formals1 match {
-    case formal1 :: rest1 =>
-      formals2 match {
-        case formal2 :: rest2 =>
-          (isSameTypeWhenFrozen(formal1, formal2)
-            || isJava1 && (formal2 isRef ObjectClass) && (formal1 isRef AnyClass)
-            || isJava2 && (formal1 isRef ObjectClass) && (formal2 isRef AnyClass)) &&
-          matchingParams(rest1, rest2, isJava1, isJava2)
-        case nil =>
-          false
-      }
-    case nil =>
-      formals2.isEmpty
-  }
-
-  /** Do generic types `poly1` and `poly2` have type parameters that
-   *  have the same bounds (after renaming one set to the other)?
+  /** Do lambda types `lam1` and `lam2` have parameters that have the same types
+   *  and the same implicit status? (after renaming one set to the other)
    */
-  def matchingTypeParams(poly1: PolyType, poly2: PolyType): Boolean =
-    (poly1.paramBounds corresponds poly2.paramBounds)((b1, b2) =>
-      isSameType(b1, b2.subst(poly2, poly1)))
+  def matchingParams(lam1: MethodOrPoly, lam2: MethodOrPoly): Boolean = {
+    /** Are `syms1` and `syms2` parameter lists with pairwise equivalent types? */
+    def loop(formals1: List[Type], formals2: List[Type]): Boolean = formals1 match {
+      case formal1 :: rest1 =>
+        formals2 match {
+          case formal2 :: rest2 =>
+            val formal2a = if (lam2.isParamDependent) formal2.subst(lam2, lam1) else formal2
+            (isSameTypeWhenFrozen(formal1, formal2a)
+            || lam1.isJava && (formal2 isRef ObjectClass) && (formal1 isRef AnyClass)
+            || lam2.isJava && (formal1 isRef ObjectClass) && (formal2 isRef AnyClass)) &&
+            loop(rest1, rest2)
+          case nil =>
+            false
+        }
+      case nil =>
+        formals2.isEmpty
+    }
+    loop(lam1.paramInfos, lam2.paramInfos)
+  }
 
   // Type equality =:=
 
@@ -1216,7 +1216,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
   /** Form a normalized conjunction of two types.
    *  Note: For certain types, `&` is distributed inside the type. This holds for
    *  all types which are not value types (e.g. TypeBounds, ClassInfo,
-   *  ExprType, MethodType, PolyType). Also, when forming an `&`,
+   *  ExprType, LambdaType). Also, when forming an `&`,
    *  instantiated TypeVars are dereferenced and annotations are stripped.
    *  Finally, refined types with the same refined name are
    *  opportunistically merged.
@@ -1245,7 +1245,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
   /** Form a normalized conjunction of two types.
    *  Note: For certain types, `|` is distributed inside the type. This holds for
    *  all types which are not value types (e.g. TypeBounds, ClassInfo,
-   *  ExprType, MethodType, PolyType). Also, when forming an `|`,
+   *  ExprType, LambdaType). Also, when forming an `|`,
    *  instantiated TypeVars are dereferenced and annotations are stripped.
    *
    *  Sometimes, the disjunction of two types cannot be formed because
@@ -1276,20 +1276,20 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
     val tparams2 = tp2.typeParams
     if (tparams1.isEmpty)
       if (tparams2.isEmpty) op(tp1, tp2)
-      else original(tp1, tp2.appliedTo(tp2.typeParams.map(_.paramBoundsAsSeenFrom(tp2))))
+      else original(tp1, tp2.appliedTo(tp2.typeParams.map(_.paramInfoAsSeenFrom(tp2))))
     else if (tparams2.isEmpty)
-      original(tp1.appliedTo(tp1.typeParams.map(_.paramBoundsAsSeenFrom(tp1))), tp2)
+      original(tp1.appliedTo(tp1.typeParams.map(_.paramInfoAsSeenFrom(tp1))), tp2)
     else
-      PolyType(
-        paramNames = tpnme.syntheticTypeParamNames(tparams1.length),
-        variances = (tparams1, tparams2).zipped.map((tparam1, tparam2) =>
-          (tparam1.paramVariance + tparam2.paramVariance) / 2))(
-        paramBoundsExp = tl => (tparams1, tparams2).zipped.map((tparam1, tparam2) =>
-          tl.lifted(tparams1, tparam1.paramBoundsAsSeenFrom(tp1)).bounds &
-          tl.lifted(tparams2, tparam2.paramBoundsAsSeenFrom(tp2)).bounds),
+      HKTypeLambda(
+        paramNames = (HKTypeLambda.syntheticParamNames(tparams1.length), tparams1, tparams2)
+          .zipped.map((pname, tparam1, tparam2) =>
+            pname.withVariance((tparam1.paramVariance + tparam2.paramVariance) / 2)))(
+        paramInfosExp = tl => (tparams1, tparams2).zipped.map((tparam1, tparam2) =>
+          tl.integrate(tparams1, tparam1.paramInfoAsSeenFrom(tp1)).bounds &
+          tl.integrate(tparams2, tparam2.paramInfoAsSeenFrom(tp2)).bounds),
         resultTypeExp = tl =>
-          original(tl.lifted(tparams1, tp1).appliedTo(tl.paramRefs),
-             tl.lifted(tparams2, tp2).appliedTo(tl.paramRefs)))
+          original(tl.integrate(tparams1, tp1).appliedTo(tl.paramRefs),
+             tl.integrate(tparams2, tp2).appliedTo(tl.paramRefs)))
   }
 
   /** Try to distribute `&` inside type, detect and handle conflicts
@@ -1392,8 +1392,8 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
         case tp2: MethodType =>
           def asGoodParams(formals1: List[Type], formals2: List[Type]) =
             (formals2 corresponds formals1)(isSubTypeWhenFrozen)
-          asGoodParams(tp1.paramTypes, tp2.paramTypes) &&
-          (!asGoodParams(tp2.paramTypes, tp1.paramTypes) ||
+          asGoodParams(tp1.paramInfos, tp2.paramInfos) &&
+          (!asGoodParams(tp2.paramInfos, tp1.paramInfos) ||
            isAsGood(tp1.resultType, tp2.resultType))
         case _ =>
           false
@@ -1424,7 +1424,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
   def showGoal(tp1: Type, tp2: Type)(implicit ctx: Context) = {
     println(ex"assertion failure for $tp1 <:< $tp2, frozen = $frozenConstraint")
     def explainPoly(tp: Type) = tp match {
-      case tp: PolyParam => ctx.echo(s"polyparam ${tp.show} found in ${tp.binder.show}")
+      case tp: TypeParamRef => ctx.echo(s"TypeParamRef ${tp.show} found in ${tp.binder.show}")
       case tp: TypeRef if tp.symbol.exists => ctx.echo(s"typeref ${tp.show} found in ${tp.symbol.owner.show}")
       case tp: TypeVar => ctx.echo(s"typevar ${tp.show}, origin = ${tp.origin}")
       case _ => ctx.echo(s"${tp.show} is a ${tp.getClass}")
@@ -1503,7 +1503,7 @@ class ExplainingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
       super.glb(tp1, tp2)
     }
 
-  override def addConstraint(param: PolyParam, bound: Type, fromBelow: Boolean): Boolean =
+  override def addConstraint(param: TypeParamRef, bound: Type, fromBelow: Boolean): Boolean =
     traceIndented(i"add constraint $param ${if (fromBelow) ">:" else "<:"} $bound $frozenConstraint, constraint = ${ctx.typerState.constraint}") {
       super.addConstraint(param, bound, fromBelow)
     }

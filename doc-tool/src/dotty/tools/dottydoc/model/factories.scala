@@ -79,7 +79,7 @@ object factories {
       case TypeBounds(lo, hi) =>
         BoundsReference(expandTpe(lo), expandTpe(hi))
 
-      case t: PolyParam =>
+      case t: TypeParamRef =>
         typeRef(t.paramName.show, params = params)
 
       case ExprType(tpe) =>
@@ -106,7 +106,7 @@ object factories {
       case ci: ClassInfo =>
         typeRef(ci.cls.name.show, query = ci.typeSymbol.showFullName)
 
-      case tl: PolyType =>
+      case tl: TypeLambda =>
         expandTpe(tl.resType)
 
       case OrType(left, right) =>
@@ -127,7 +127,7 @@ object factories {
 
   def typeParams(sym: Symbol)(implicit ctx: Context): List[String] =
     sym.info match {
-      case pt: PolyType => // TODO: not sure if this case is needed anymore
+      case pt: TypeLambda => // TODO: not sure if this case is needed anymore
         pt.paramNames.map(_.show.split("\\$").last)
       case ClassInfo(_, _, _, decls, _) =>
         decls.iterator
@@ -156,11 +156,11 @@ object factories {
     constructors(sym).head
 
   def paramLists(tpe: Type)(implicit ctx: Context): List[ParamList] = tpe match {
-    case pt: PolyType =>
+    case pt: TypeLambda =>
       paramLists(pt.resultType)
 
     case mt: MethodType =>
-      ParamListImpl(mt.paramNames.zip(mt.paramTypes).map { case (name, tpe) =>
+      ParamListImpl(mt.paramNames.zip(mt.paramInfos).map { case (name, tpe) =>
         NamedReference(
           name.decode.toString,
           returnType(tpe),
@@ -169,13 +169,13 @@ object factories {
         )
       }, mt.isImplicit) :: paramLists(mt.resultType)
 
-    case mp: MethodParam =>
+    case mp: TermParamRef =>
       paramLists(mp.underlying)
 
     case annot: AnnotatedType =>
       paramLists(annot.tpe)
 
-    case (_: PolyParam | _: RefinedType | _: TypeRef | _: ThisType |
+    case (_: TypeParamRef | _: RefinedType | _: TypeRef | _: ThisType |
           _: ExprType  | _: OrType      | _: AndType | _: HKApply  |
           _: TermRef   | _: ConstantType) =>
       Nil // return types should not be in the paramlist

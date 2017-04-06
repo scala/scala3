@@ -113,9 +113,9 @@ trait NamerContextOps { this: Context =>
         if (isJava)
           for (param <- params)
             if (param.info.isDirectRef(defn.ObjectClass)) param.info = defn.AnyType
-        make.fromSymbols(params, resultType)
+        make.fromSymbols(params.asInstanceOf[List[TermSymbol]], resultType)
       }
-    if (typeParams.nonEmpty) monotpe.LambdaAbstract(typeParams)
+    if (typeParams.nonEmpty) PolyType.fromParams(typeParams.asInstanceOf[List[TypeSymbol]], monotpe)
     else if (valueParamss.isEmpty) ExprType(monotpe)
     else monotpe
   }
@@ -298,7 +298,7 @@ class Namer { typer: Typer =>
         val inSuperCall1 = if (tree.mods is ParamOrAccessor) EmptyFlags else inSuperCall
           // suppress inSuperCall for constructor parameters
         val higherKinded = tree match {
-          case TypeDef(_, PolyTypeTree(_, _)) if isDeferred => HigherKinded
+          case TypeDef(_, LambdaTypeTree(_, _)) if isDeferred => HigherKinded
           case _ => EmptyFlags
         }
 
@@ -795,7 +795,7 @@ class Namer { typer: Typer =>
         myTypeParams = {
           implicit val ctx = nestedCtx
           val tparams = original.rhs match {
-            case PolyTypeTree(tparams, _) => tparams
+            case LambdaTypeTree(tparams, _) => tparams
             case _ => Nil
           }
           completeParams(tparams)
@@ -1032,7 +1032,7 @@ class Namer { typer: Typer =>
           }
           val defaultAlts = meth.altsWith(_.hasDefaultParams)
           if (defaultAlts.length == 1)
-            paramProto(defaultAlts.head.info.widen.paramTypess, idx)
+            paramProto(defaultAlts.head.info.widen.paramInfoss, idx)
           else
             WildcardType
         }
@@ -1151,9 +1151,7 @@ class Namer { typer: Typer =>
   }
 
   def typeDefSig(tdef: TypeDef, sym: Symbol, tparamSyms: List[TypeSymbol])(implicit ctx: Context): Type = {
-    def abstracted(tp: Type): Type =
-      if (tparamSyms.nonEmpty) tp.LambdaAbstract(tparamSyms) else tp
-
+    def abstracted(tp: Type): Type = HKTypeLambda.fromParams(tparamSyms, tp)
     val dummyInfo = abstracted(TypeBounds.empty)
     sym.info = dummyInfo
       // Temporarily set info of defined type T to ` >: Nothing <: Any.
@@ -1169,7 +1167,7 @@ class Namer { typer: Typer =>
 
     val isDerived = tdef.rhs.isInstanceOf[untpd.DerivedTypeTree]
     val rhs = tdef.rhs match {
-      case PolyTypeTree(_, body) => body
+      case LambdaTypeTree(_, body) => body
       case rhs => rhs
     }
     val rhsBodyType = typedAheadType(rhs).tpe

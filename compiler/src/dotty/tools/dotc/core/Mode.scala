@@ -34,7 +34,7 @@ object Mode {
    *  context with typerstate and constraint. This is typically done when we
    *  cache the eligibility of implicits. Caching needs to be done across different constraints.
    *  Therefore, if TypevarsMissContext is set, subtyping becomes looser, and assumes
-   *  that PolyParams can be sub- and supertypes of anything. See TypeComparer.
+   *  that TypeParamRefs can be sub- and supertypes of anything. See TypeComparer.
    */
   val TypevarsMissContext = newMode(4, "TypevarsMissContext")
   val CheckCyclic = newMode(5, "CheckCyclic")

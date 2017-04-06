@@ -82,8 +82,8 @@ class ShortcutImplicits extends MiniPhase with IdentityDenotTransformer { thisTr
      *  @return The type of the `apply` member of `implicit Ts => R`.
      */
     private def directInfo(info: Type)(implicit ctx: Context): Type = info match {
-      case info: PolyType   => info.derivedPolyType(resType = directInfo(info.resultType))
-      case info: MethodType => info.derivedMethodType(resType = directInfo(info.resultType))
+      case info: PolyType   => info.derivedLambdaType(resType = directInfo(info.resultType))
+      case info: MethodType => info.derivedLambdaType(resType = directInfo(info.resultType))
       case info: ExprType   => directInfo(info.resultType)
       case info             => info.member(nme.apply).info
     }

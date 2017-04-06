@@ -88,10 +88,8 @@ class VarianceChecker()(implicit ctx: Context) {
           if (sym.variance != 0 && base.isContainedIn(sym.owner)) checkVarianceOfSymbol(sym)
           else if (sym.isAliasType) this(status, sym.info.bounds.hi)
           else foldOver(status, tp)
-        case tp: MethodType =>
-          this(status, tp.resultType) // params will be checked in their TypeDef nodes.
-        case tp: PolyType =>
-          this(status, tp.resultType) // params will be checked in their ValDef nodes.
+        case tp: MethodOrPoly =>
+          this(status, tp.resultType) // params will be checked in their TypeDef or ValDef nodes.
         case AnnotatedType(_, annot) if annot.symbol == defn.UncheckedVarianceAnnot =>
           status
         //case tp: ClassInfo =>

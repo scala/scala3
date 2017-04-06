@@ -617,7 +617,7 @@ object messages {
            |"""
   }
 
-  case class WrongNumberOfTypeArgs(fntpe: Type, expectedArgs: List[TypeParamInfo], actual: List[untpd.Tree])(implicit ctx: Context)
+  case class WrongNumberOfTypeArgs(fntpe: Type, expectedArgs: List[ParamInfo], actual: List[untpd.Tree])(implicit ctx: Context)
   extends Message(WrongNumberOfTypeArgsID) {
     val kind = "Syntax"
 
@@ -625,7 +625,7 @@ object messages {
     private val actualCount = actual.length
     private val msgPrefix = if (actualCount > expectedCount) "Too many" else "Not enough"
 
-    //TODO add def simpleParamName to TypeParamInfo
+    //TODO add def simpleParamName to ParamInfo
     private val expectedArgString = fntpe
       .widen.typeParams
       .map(_.paramName.unexpandedName.show)

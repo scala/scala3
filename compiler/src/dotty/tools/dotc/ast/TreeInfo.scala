@@ -262,7 +262,7 @@ trait UntypedTreeInfo extends TreeInfo[Untyped] { self: Trees.Instance[Untyped] 
     case mdef: TypeDef =>
       def isBounds(rhs: Tree): Boolean = rhs match {
         case _: TypeBoundsTree => true
-        case PolyTypeTree(_, body) => isBounds(body)
+        case LambdaTypeTree(_, body) => isBounds(body)
         case _ => false
       }
       mdef.rhs.isEmpty || isBounds(mdef.rhs)

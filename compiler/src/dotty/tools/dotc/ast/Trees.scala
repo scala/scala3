@@ -578,9 +578,9 @@ object Trees {
   }
 
   /** [typeparams] -> tpt */
-  case class PolyTypeTree[-T >: Untyped] private[ast] (tparams: List[TypeDef[T]], body: Tree[T])
+  case class LambdaTypeTree[-T >: Untyped] private[ast] (tparams: List[TypeDef[T]], body: Tree[T])
     extends TypTree[T] {
-    type ThisTree[-T >: Untyped] = PolyTypeTree[T]
+    type ThisTree[-T >: Untyped] = LambdaTypeTree[T]
   }
 
   /** => T */
@@ -833,7 +833,7 @@ object Trees {
     type OrTypeTree = Trees.OrTypeTree[T]
     type RefinedTypeTree = Trees.RefinedTypeTree[T]
     type AppliedTypeTree = Trees.AppliedTypeTree[T]
-    type PolyTypeTree = Trees.PolyTypeTree[T]
+    type LambdaTypeTree = Trees.LambdaTypeTree[T]
     type ByNameTypeTree = Trees.ByNameTypeTree[T]
     type TypeBoundsTree = Trees.TypeBoundsTree[T]
     type Bind = Trees.Bind[T]
@@ -998,9 +998,9 @@ object Trees {
         case tree: AppliedTypeTree if (tpt eq tree.tpt) && (args eq tree.args) => tree
         case _ => finalize(tree, untpd.AppliedTypeTree(tpt, args))
       }
-      def PolyTypeTree(tree: Tree)(tparams: List[TypeDef], body: Tree): PolyTypeTree = tree match {
-        case tree: PolyTypeTree if (tparams eq tree.tparams) && (body eq tree.body) => tree
-        case _ => finalize(tree, untpd.PolyTypeTree(tparams, body))
+      def LambdaTypeTree(tree: Tree)(tparams: List[TypeDef], body: Tree): LambdaTypeTree = tree match {
+        case tree: LambdaTypeTree if (tparams eq tree.tparams) && (body eq tree.body) => tree
+        case _ => finalize(tree, untpd.LambdaTypeTree(tparams, body))
       }
       def ByNameTypeTree(tree: Tree)(result: Tree): ByNameTypeTree = tree match {
         case tree: ByNameTypeTree if result eq tree.result => tree
@@ -1144,8 +1144,8 @@ object Trees {
             cpy.RefinedTypeTree(tree)(transform(tpt), transformSub(refinements))
           case AppliedTypeTree(tpt, args) =>
             cpy.AppliedTypeTree(tree)(transform(tpt), transform(args))
-          case PolyTypeTree(tparams, body) =>
-            cpy.PolyTypeTree(tree)(transformSub(tparams), transform(body))
+          case LambdaTypeTree(tparams, body) =>
+            cpy.LambdaTypeTree(tree)(transformSub(tparams), transform(body))
           case ByNameTypeTree(result) =>
             cpy.ByNameTypeTree(tree)(transform(result))
           case TypeBoundsTree(lo, hi) =>
@@ -1248,7 +1248,7 @@ object Trees {
             this(this(x, tpt), refinements)
           case AppliedTypeTree(tpt, args) =>
             this(this(x, tpt), args)
-          case PolyTypeTree(tparams, body) =>
+          case LambdaTypeTree(tparams, body) =>
             implicit val ctx = localCtx
             this(this(x, tparams), body)
           case ByNameTypeTree(result) =>

@@ -154,8 +154,8 @@ object desugar {
       case ContextBounds(tbounds, cxbounds) =>
         epbuf ++= makeImplicitParameters(cxbounds, isPrimaryConstructor)
         tbounds
-      case PolyTypeTree(tparams, body) =>
-        cpy.PolyTypeTree(rhs)(tparams, desugarContextBounds(body))
+      case LambdaTypeTree(tparams, body) =>
+        cpy.LambdaTypeTree(rhs)(tparams, desugarContextBounds(body))
       case _ =>
         rhs
     }

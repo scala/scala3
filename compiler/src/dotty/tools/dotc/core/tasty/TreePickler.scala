@@ -253,23 +253,21 @@ class TreePickler(pickler: TastyPickler) {
     case tpe: ExprType =>
       writeByte(BYNAMEtype)
       pickleType(tpe.underlying)
-    case tpe: PolyType =>
-      writeByte(POLYtype)
-      val paramNames = tpe.typeParams.map(tparam =>
-        varianceToPrefix(tparam.paramVariance) +: tparam.paramName)
-      pickleMethodic(tpe.resultType, paramNames, tpe.paramBounds)
+    case tpe: HKTypeLambda =>
+      pickleMethodic(TYPELAMBDAtype, tpe)
+    case tpe: PolyType if richTypes =>
+      pickleMethodic(POLYtype, tpe)
     case tpe: MethodType if richTypes =>
-      writeByte(METHODtype)
-      pickleMethodic(tpe.resultType, tpe.paramNames, tpe.paramTypes)
-    case tpe: PolyParam =>
-      if (!pickleParamType(tpe))
+      pickleMethodic(METHODtype, tpe)
+    case tpe: TypeParamRef =>
+      if (!pickleParamRef(tpe))
       // TODO figure out why this case arises in e.g. pickling AbstractFileReader.
         ctx.typerState.constraint.entry(tpe) match {
           case TypeBounds(lo, hi) if lo eq hi => pickleNewType(lo, richTypes)
           case _ => assert(false, s"orphan poly parameter: $tpe")
         }
-    case tpe: MethodParam =>
-      assert(pickleParamType(tpe), s"orphan method parameter: $tpe")
+    case tpe: TermParamRef =>
+      assert(pickleParamRef(tpe), s"orphan method parameter: $tpe")
     case tpe: LazyRef =>
       pickleType(tpe.ref)
   }} catch {
@@ -283,15 +281,17 @@ class TreePickler(pickler: TastyPickler) {
     pickleName(qualifiedName(pkg))
   }
 
-  def pickleMethodic(result: Type, names: List[Name], types: List[Type])(implicit ctx: Context) =
+  def pickleMethodic(tag: Int, tpe: LambdaType)(implicit ctx: Context) = {
+    writeByte(tag)
     withLength {
-      pickleType(result, richTypes = true)
-      (names, types).zipped.foreach { (name, tpe) =>
+      pickleType(tpe.resultType, richTypes = true)
+      (tpe.paramNames, tpe.paramInfos).zipped.foreach { (name, tpe) =>
         pickleName(name); pickleType(tpe)
       }
     }
+  }
 
-  def pickleParamType(tpe: ParamType)(implicit ctx: Context): Boolean = {
+  def pickleParamRef(tpe: ParamRef)(implicit ctx: Context): Boolean = {
     val binder = pickledTypes.get(tpe.binder)
     val pickled = binder != null
     if (pickled) {
@@ -555,8 +555,8 @@ class TreePickler(pickler: TastyPickler) {
         case Annotated(tree, annot) =>
           writeByte(ANNOTATEDtpt)
           withLength { pickleTree(tree); pickleTree(annot.tree) }
-        case PolyTypeTree(tparams, body) =>
-          writeByte(POLYtpt)
+        case LambdaTypeTree(tparams, body) =>
+          writeByte(LAMBDAtpt)
           withLength { pickleParams(tparams); pickleTree(body) }
         case TypeBoundsTree(lo, hi) =>
           writeByte(TYPEBOUNDStpt)

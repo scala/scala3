@@ -50,12 +50,12 @@ object Checking {
           arg.pos.focus)
   }
 
-  /** Check that type arguments `args` conform to corresponding bounds in `poly`
+  /** Check that type arguments `args` conform to corresponding bounds in `tl`
    *  Note: This does not check the bounds of AppliedTypeTrees. These
    *  are handled by method checkBounds in FirstTransform
    */
-  def checkBounds(args: List[tpd.Tree], poly: PolyType)(implicit ctx: Context): Unit =
-    checkBounds(args, poly.paramBounds, _.substParams(poly, _))
+  def checkBounds(args: List[tpd.Tree], tl: TypeLambda)(implicit ctx: Context): Unit =
+    checkBounds(args, tl.paramInfos, _.substParams(tl, _))
 
   /** Check applied type trees for well-formedness. This means
    *   - all arguments are within their corresponding bounds
@@ -69,20 +69,20 @@ object Checking {
     // If `args` is a list of named arguments, return corresponding type parameters,
     // otherwise return type parameters unchanged
     val tparams = tycon.tpe.typeParams
-    def argNamed(tparam: TypeParamInfo) = args.find {
+    def argNamed(tparam: ParamInfo) = args.find {
       case NamedArg(name, _) => name == tparam.paramName
       case _ => false
     }.getOrElse(TypeTree(tparam.paramRef))
     val orderedArgs = if (hasNamedArg(args)) tparams.map(argNamed) else args
-    val bounds = tparams.map(_.paramBoundsAsSeenFrom(tycon.tpe))
+    val bounds = tparams.map(_.paramInfoAsSeenFrom(tycon.tpe).bounds)
     def instantiate(bound: Type, args: List[Type]) =
-      bound.LambdaAbstract(tparams).appliedTo(args)
+      HKTypeLambda.fromParams(tparams, bound).appliedTo(args)
     checkBounds(orderedArgs, bounds, instantiate)
 
     def checkWildcardHKApply(tp: Type, pos: Position): Unit = tp match {
       case tp @ HKApply(tycon, args) if args.exists(_.isInstanceOf[TypeBounds]) =>
         tycon match {
-          case tycon: PolyType =>
+          case tycon: TypeLambda =>
             ctx.errorOrMigrationWarning(
               ex"unreducible application of higher-kinded type $tycon to wildcard arguments",
               pos)

@@ -270,7 +270,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   def OrTypeTree(left: Tree, right: Tree): OrTypeTree = new OrTypeTree(left, right)
   def RefinedTypeTree(tpt: Tree, refinements: List[Tree]): RefinedTypeTree = new RefinedTypeTree(tpt, refinements)
   def AppliedTypeTree(tpt: Tree, args: List[Tree]): AppliedTypeTree = new AppliedTypeTree(tpt, args)
-  def PolyTypeTree(tparams: List[TypeDef], body: Tree): PolyTypeTree = new PolyTypeTree(tparams, body)
+  def LambdaTypeTree(tparams: List[TypeDef], body: Tree): LambdaTypeTree = new LambdaTypeTree(tparams, body)
   def ByNameTypeTree(result: Tree): ByNameTypeTree = new ByNameTypeTree(result)
   def TypeBoundsTree(lo: Tree, hi: Tree): TypeBoundsTree = new TypeBoundsTree(lo, hi)
   def Bind(name: Name, body: Tree): Bind = new Bind(name, body)
@@ -361,7 +361,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
     ValDef(nme.syntheticParamName(n), tpt, EmptyTree).withFlags(SyntheticTermParam)
 
   def lambdaAbstract(tparams: List[TypeDef], tpt: Tree)(implicit ctx: Context) =
-    if (tparams.isEmpty) tpt else PolyTypeTree(tparams, tpt)
+    if (tparams.isEmpty) tpt else LambdaTypeTree(tparams, tpt)
 
   /** A reference to given definition. If definition is a repeated
    *  parameter, the reference will be a repeated argument.

@@ -66,16 +66,16 @@ object Implicits {
         def discardForView(tpw: Type, argType: Type): Boolean = tpw match {
           case mt: MethodType =>
             mt.isImplicit ||
-            mt.paramTypes.length != 1 ||
-            !(argType relaxed_<:< mt.paramTypes.head)(ctx.fresh.setExploreTyperState)
+            mt.paramInfos.length != 1 ||
+            !(argType relaxed_<:< mt.paramInfos.head)(ctx.fresh.setExploreTyperState)
           case poly: PolyType =>
             // We do not need to call ProtoTypes#constrained on `poly` because
             // `refMatches` is always called with mode TypevarsMissContext enabled.
             poly.resultType match {
               case mt: MethodType =>
                 mt.isImplicit ||
-                mt.paramTypes.length != 1 ||
-                !(argType relaxed_<:< wildApprox(mt.paramTypes.head, null, Set.empty)(ctx.fresh.setExploreTyperState))
+                mt.paramInfos.length != 1 ||
+                !(argType relaxed_<:< wildApprox(mt.paramInfos.head, null, Set.empty)(ctx.fresh.setExploreTyperState))
               case rtp =>
                 discardForView(wildApprox(rtp, null, Set.empty), argType)
             }
@@ -107,9 +107,8 @@ object Implicits {
             !(isFunctionInS2 || isImplicitConverter || isConforms)
         }
 
-        def discardForValueType(tpw: Type): Boolean = tpw match {
-          case mt: MethodType => !mt.isImplicit
-          case mt: PolyType => discardForValueType(tpw.resultType)
+        def discardForValueType(tpw: Type): Boolean = tpw.stripPoly match {
+          case tpw: MethodType => !tpw.isImplicit
           case _ => false
         }
 
@@ -387,7 +386,7 @@ trait ImplicitRunInfo { self: RunInfo =>
             case _ => arg
           }
           (apply(tp.tycon) /: tp.args)((tc, arg) => AndType.make(tc, applyArg(arg)))
-        case tp: PolyType =>
+        case tp: TypeLambda =>
           apply(tp.resType)
         case _ =>
           mapOver(tp)

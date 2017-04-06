@@ -86,7 +86,7 @@ class ReTyper extends Typer {
 
   override def handleUnexpectedFunType(tree: untpd.Apply, fun: Tree)(implicit ctx: Context): Tree = fun.tpe match {
     case mt: MethodType =>
-      val args: List[Tree] = tree.args.zipWithConserve(mt.paramTypes)(typedExpr(_, _)).asInstanceOf[List[Tree]]
+      val args: List[Tree] = tree.args.zipWithConserve(mt.paramInfos)(typedExpr(_, _)).asInstanceOf[List[Tree]]
       assignType(untpd.cpy.Apply(tree)(fun, args), fun, args)
     case _ =>
       super.handleUnexpectedFunType(tree, fun)

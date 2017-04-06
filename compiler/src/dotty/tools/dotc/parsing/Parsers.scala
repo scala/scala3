@@ -728,7 +728,7 @@ object Parsers {
           val start = in.offset
           val tparams = typeParamClause(ParamOwner.TypeParam)
           if (in.token == ARROW)
-            atPos(start, in.skipToken())(PolyTypeTree(tparams, typ()))
+            atPos(start, in.skipToken())(LambdaTypeTree(tparams, typ()))
           else { accept(ARROW); typ() }
         }
         else infixType()

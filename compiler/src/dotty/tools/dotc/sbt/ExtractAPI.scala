@@ -286,7 +286,7 @@ private class ExtractAPICollector(implicit val ctx: Context) extends ThunkHolder
 
   def apiDef(sym: TermSymbol): api.Def = {
     def paramLists(t: Type, start: Int = 0): List[api.ParameterList] = t match {
-      case pt: PolyType =>
+      case pt: TypeLambda =>
         assert(start == 0)
         paramLists(pt.resultType)
       case mt @ MethodTpe(pnames, ptypes, restpe) =>
@@ -311,8 +311,8 @@ private class ExtractAPICollector(implicit val ctx: Context) extends ThunkHolder
     }
 
     val tparams = sym.info match {
-      case pt: PolyType =>
-        (pt.paramNames, pt.paramBounds).zipped.map((pname, pbounds) =>
+      case pt: TypeLambda =>
+        (pt.paramNames, pt.paramInfos).zipped.map((pname, pbounds) =>
           apiTypeParameter(pname.toString, 0, pbounds.lo, pbounds.hi))
       case _ =>
         Nil
@@ -385,9 +385,9 @@ private class ExtractAPICollector(implicit val ctx: Context) extends ThunkHolder
         val apiTycon = simpleType(tycon)
         val apiArgs = args.map(processArg)
         new api.Parameterized(apiTycon, apiArgs.toArray)
-      case PolyType(tparams, res) =>
-        val apiTparams = tparams.map(apiTypeParameter)
-        val apiRes = apiType(res)
+      case tl: TypeLambda =>
+        val apiTparams = tl.typeParams.map(apiTypeParameter)
+        val apiRes = apiType(tl.resType)
         new api.Polymorphic(apiRes, apiTparams.toArray)
       case rt: RefinedType =>
         val name = rt.refinedName.toString
@@ -460,7 +460,7 @@ private class ExtractAPICollector(implicit val ctx: Context) extends ThunkHolder
         new api.Annotated(apiType(tpe), Array(apiAnnotation(annot)))
       case tp: ThisType =>
         apiThis(tp.cls)
-      case tp: ParamType =>
+      case tp: ParamRef =>
         // TODO: Distinguishing parameters based on their names alone is not enough,
         // the binder is also needed (at least for type lambdas).
         new api.ParameterRef(tp.paramName.toString)
@@ -497,9 +497,9 @@ private class ExtractAPICollector(implicit val ctx: Context) extends ThunkHolder
     new api.Singleton(new api.Path(pathComponents.toArray.reverse ++ Array(Constants.thisPath)))
   }
 
-  def apiTypeParameter(tparam: TypeParamInfo): api.TypeParameter =
+  def apiTypeParameter(tparam: ParamInfo): api.TypeParameter =
     apiTypeParameter(tparam.paramName.toString, tparam.paramVariance,
-      tparam.paramBounds.lo, tparam.paramBounds.hi)
+      tparam.paramInfo.bounds.lo, tparam.paramInfo.bounds.hi)
 
   def apiTypeParameter(name: String, variance: Int, lo: Type, hi: Type): api.TypeParameter =
     new api.TypeParameter(name, Array(), Array(), apiVariance(variance),

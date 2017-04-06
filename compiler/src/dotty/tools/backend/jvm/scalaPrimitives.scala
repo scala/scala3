@@ -142,7 +142,7 @@ class DottyPrimitives(ctx: Context) {
         ctx.error(s"Unknown primitive method $cls.$method")
       else alts foreach (s =>
         addPrimitive(s,
-          s.info.paramTypess match {
+          s.info.paramInfoss match {
             case List(tp :: _) if code == ADD && tp =:= ctx.definitions.StringType => CONCAT
             case _                                          => code
           }

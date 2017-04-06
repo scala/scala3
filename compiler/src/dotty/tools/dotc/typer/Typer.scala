@@ -741,14 +741,14 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
         calleeType.widen match {
           case mtpe: MethodType =>
             val pos = params indexWhere (_.name == param.name)
-            if (pos < mtpe.paramTypes.length) {
-              val ptype = mtpe.paramTypes(pos)
+            if (pos < mtpe.paramInfos.length) {
+              val ptype = mtpe.paramInfos(pos)
               if (isFullyDefined(ptype, ForceDegree.noBottom)) return ptype
             }
           case _ =>
         }
         val ofFun =
-          if (nme.syntheticParamNames(args.length + 1) contains param.name)
+          if (MethodType.syntheticParamNames(args.length + 1) contains param.name)
             i" of expanded function $tree"
           else
             ""
@@ -1074,10 +1074,10 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
           wrongNumberOfTypeArgs(tpt1.tpe, tparams, args, tree.pos)
           args = args.take(tparams.length)
         }
-        def typedArg(arg: untpd.Tree, tparam: TypeParamInfo) = {
+        def typedArg(arg: untpd.Tree, tparam: ParamInfo) = {
           val (desugaredArg, argPt) =
             if (ctx.mode is Mode.Pattern)
-              (if (isVarPattern(arg)) desugar.patternVar(arg) else arg, tparam.paramBounds)
+              (if (isVarPattern(arg)) desugar.patternVar(arg) else arg, tparam.paramInfo)
             else
               (arg, WildcardType)
           if (tpt1.symbol.isClass)
@@ -1096,12 +1096,12 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     }
   }
 
-  def typedPolyTypeTree(tree: untpd.PolyTypeTree)(implicit ctx: Context): Tree = track("typedPolyTypeTree") {
-    val PolyTypeTree(tparams, body) = tree
+  def typedLambdaTypeTree(tree: untpd.LambdaTypeTree)(implicit ctx: Context): Tree = track("typedLambdaTypeTree") {
+    val LambdaTypeTree(tparams, body) = tree
     indexAndAnnotate(tparams)
     val tparams1 = tparams.mapconserve(typed(_).asInstanceOf[TypeDef])
     val body1 = typedType(tree.body)
-    assignType(cpy.PolyTypeTree(tree)(tparams1, body1), tparams1, body1)
+    assignType(cpy.LambdaTypeTree(tree)(tparams1, body1), tparams1, body1)
   }
 
   def typedByNameTypeTree(tree: untpd.ByNameTypeTree)(implicit ctx: Context): ByNameTypeTree = track("typedByNameTypeTree") {
@@ -1262,10 +1262,10 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     val TypeDef(name, rhs) = tdef
     completeAnnotations(tdef, sym)
     val rhs1 = tdef.rhs match {
-      case rhs @ PolyTypeTree(tparams, body) =>
+      case rhs @ LambdaTypeTree(tparams, body) =>
         val tparams1 = tparams.map(typed(_)).asInstanceOf[List[TypeDef]]
         val body1 = typedType(body)
-        assignType(cpy.PolyTypeTree(rhs)(tparams1, body1), tparams1, body1)
+        assignType(cpy.LambdaTypeTree(rhs)(tparams1, body1), tparams1, body1)
       case rhs =>
         typedType(rhs)
     }
@@ -1285,9 +1285,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
      *  @param psym  Its type symbol
      *  @param cinfo The info of its constructor
      */
-    def maybeCall(ref: Tree, psym: Symbol, cinfo: Type): Tree = cinfo match {
-      case cinfo: PolyType =>
-        maybeCall(ref, psym, cinfo.resultType)
+    def maybeCall(ref: Tree, psym: Symbol, cinfo: Type): Tree = cinfo.stripPoly match {
       case cinfo @ MethodType(Nil) if cinfo.resultType.isInstanceOf[ImplicitMethodType] =>
         val icall = New(ref).select(nme.CONSTRUCTOR).appliedToNone
         typedExpr(untpd.TypedSplice(icall))(superCtx)
@@ -1555,7 +1553,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
           case tree: untpd.OrTypeTree => typedOrTypeTree(tree)
           case tree: untpd.RefinedTypeTree => typedRefinedTypeTree(tree)
           case tree: untpd.AppliedTypeTree => typedAppliedTypeTree(tree)
-          case tree: untpd.PolyTypeTree => typedPolyTypeTree(tree)(localContext(tree, NoSymbol).setNewScope)
+          case tree: untpd.LambdaTypeTree => typedLambdaTypeTree(tree)(localContext(tree, NoSymbol).setNewScope)
           case tree: untpd.ByNameTypeTree => typedByNameTypeTree(tree)
           case tree: untpd.TypeBoundsTree => typedTypeBoundsTree(tree)
           case tree: untpd.Alternative => typedAlternative(tree, pt)
@@ -1741,7 +1739,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
   def adapt(tree: Tree, pt: Type, original: untpd.Tree = untpd.EmptyTree)(implicit ctx: Context): Tree = /*>|>*/ track("adapt") /*<|<*/ {
     /*>|>*/ ctx.traceIndented(i"adapting $tree of type ${tree.tpe} to $pt", typr, show = true) /*<|<*/ {
       if (tree.isDef) interpolateUndetVars(tree, tree.symbol)
-      else if (!tree.tpe.widen.isInstanceOf[MethodOrPoly]) interpolateUndetVars(tree, NoSymbol)
+      else if (!tree.tpe.widen.isInstanceOf[LambdaType]) interpolateUndetVars(tree, NoSymbol)
       tree.overwriteType(tree.tpe.simplified)
       adaptInterpolated(tree, pt, original)
     }
@@ -1809,12 +1807,12 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
             errorTree(tree,
               em"""none of the ${err.overloadedAltsStr(altDenots)}
                   |match $expectedStr""")
-          def hasEmptyParams(denot: SingleDenotation) = denot.info.paramTypess == ListOfNil
+          def hasEmptyParams(denot: SingleDenotation) = denot.info.paramInfoss == ListOfNil
           pt match {
             case pt: FunProto =>
               tryInsertApplyOrImplicit(tree, pt)(noMatches)
             case _ =>
-              if (altDenots exists (_.info.paramTypess == ListOfNil))
+              if (altDenots exists (_.info.paramInfoss == ListOfNil))
                 typed(untpd.Apply(untpd.TypedSplice(tree), Nil), pt)
               else
                 noMatches
@@ -1841,7 +1839,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     }
 
     def adaptToArgs(wtp: Type, pt: FunProto): Tree = wtp match {
-      case _: MethodType | _: PolyType =>
+      case _: MethodOrPoly =>
         if (pt.args.lengthCompare(1) > 0 && isUnary(wtp) && ctx.canAutoTuple)
           adaptInterpolated(tree, pt.tupled, original)
         else
@@ -1871,7 +1869,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
         case TypeBounds(lo, hi)
         if (lo eq hi) || (hi <:< lo)(ctx.fresh.setExploreTyperState) =>
           inst(lo)
-        case tp: PolyParam =>
+        case tp: TypeParamRef =>
           constraint.typeVarOfParam(tp).orElse(tp)
         case _ => tp
       }
@@ -1886,7 +1884,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
         adaptInterpolated(tree.withType(wtp.resultType), pt, original)
       case wtp: ImplicitMethodType if constrainResult(wtp, followAlias(pt)) =>
         val tvarsToInstantiate = tvarsInParams(tree)
-        wtp.paramTypes.foreach(instantiateSelected(_, tvarsToInstantiate))
+        wtp.paramInfos.foreach(instantiateSelected(_, tvarsToInstantiate))
         val constr = ctx.typerState.constraint
         def addImplicitArgs(implicit ctx: Context) = {
           val errors = new mutable.ListBuffer[() => String]
@@ -1898,7 +1896,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
             for (err <- errors) ctx.error(err(), tree.pos.endPos)
             tree.withType(wtp.resultType)
           }
-          val args = (wtp.paramNames, wtp.paramTypes).zipped map { (pname, formal) =>
+          val args = (wtp.paramNames, wtp.paramInfos).zipped map { (pname, formal) =>
             def implicitArgError(msg: String => String) =
               errors += (() => msg(em"parameter $pname of $methodStr"))
             if (errors.nonEmpty) EmptyTree
@@ -1941,11 +1939,11 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
               // prioritize method parameter types as parameter types of the eta-expanded closure
               0
             else defn.functionArity(pt)
-          else if (pt eq AnyFunctionProto) wtp.paramTypes.length
+          else if (pt eq AnyFunctionProto) wtp.paramInfos.length
           else -1
         if (arity >= 0 && !tree.symbol.isConstructor)
           typed(etaExpand(tree, wtp, arity), pt)
-        else if (wtp.paramTypes.isEmpty)
+        else if (wtp.paramInfos.isEmpty)
           adaptInterpolated(tpd.Apply(tree, Nil), pt, EmptyTree)
         else if (wtp.isImplicit)
           err.typeMismatch(tree, pt)

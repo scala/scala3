@@ -13,20 +13,20 @@ import config.Printers.constr
 /** Constraint over undetermined type parameters. Constraints are built
  *  over values of the following types:
  *
- *   - PolyType    A constraint constrains the type parameters of a set of PolyTypes
- *   - PolyParam   The parameters of the constrained polytypes
- *   - TypeVar     Every constrained parameter might be associated with a TypeVar
- *                 that has the PolyParam as origin.
+ *   - TypeLambda    A constraint constrains the type parameters of a set of TypeLambdas
+ *   - TypeParamRef  The parameters of the constrained type lambdas
+ *   - TypeVar       Every constrained parameter might be associated with a TypeVar
+ *                   that has the TypeParamRef as origin.
  */
 abstract class Constraint extends Showable {
 
   type This <: Constraint
 
   /** Does the constraint's domain contain the type parameters of `pt`? */
-  def contains(pt: PolyType): Boolean
+  def contains(pt: TypeLambda): Boolean
 
   /** Does the constraint's domain contain the type parameter `param`? */
-  def contains(param: PolyParam): Boolean
+  def contains(param: TypeParamRef): Boolean
 
   /** Does this constraint contain the type variable `tvar` and is it uninstantiated? */
   def contains(tvar: TypeVar): Boolean
@@ -34,43 +34,43 @@ abstract class Constraint extends Showable {
   /** The constraint entry for given type parameter `param`, or NoType if `param` is not part of
    *  the constraint domain. Note: Low level, implementation dependent.
    */
-  def entry(param: PolyParam): Type
+  def entry(param: TypeParamRef): Type
 
   /** The type variable corresponding to parameter `param`, or
    *  NoType, if `param` is not in constrained or is not paired with a type variable.
    */
-  def typeVarOfParam(param: PolyParam): Type
+  def typeVarOfParam(param: TypeParamRef): Type
 
   /** Is it known that `param1 <:< param2`? */
-  def isLess(param1: PolyParam, param2: PolyParam): Boolean
+  def isLess(param1: TypeParamRef, param2: TypeParamRef): Boolean
 
   /** The parameters that are known to be smaller wrt <: than `param` */
-  def lower(param: PolyParam): List[PolyParam]
+  def lower(param: TypeParamRef): List[TypeParamRef]
 
   /** The parameters that are known to be greater wrt <: than `param` */
-  def upper(param: PolyParam): List[PolyParam]
+  def upper(param: TypeParamRef): List[TypeParamRef]
 
   /** lower(param) \ lower(butNot) */
-  def exclusiveLower(param: PolyParam, butNot: PolyParam): List[PolyParam]
+  def exclusiveLower(param: TypeParamRef, butNot: TypeParamRef): List[TypeParamRef]
 
   /** upper(param) \ upper(butNot) */
-  def exclusiveUpper(param: PolyParam, butNot: PolyParam): List[PolyParam]
+  def exclusiveUpper(param: TypeParamRef, butNot: TypeParamRef): List[TypeParamRef]
 
   /** The constraint bounds for given type parameter `param`.
    *  Poly params that are known to be smaller or greater than `param`
    *  are not contained in the return bounds.
    *  @pre `param` is not part of the constraint domain.
    */
-  def nonParamBounds(param: PolyParam): TypeBounds
+  def nonParamBounds(param: TypeParamRef): TypeBounds
 
   /** The lower bound of `param` including all known-to-be-smaller parameters */
-  def fullLowerBound(param: PolyParam)(implicit ctx: Context): Type
+  def fullLowerBound(param: TypeParamRef)(implicit ctx: Context): Type
 
   /** The upper bound of `param` including all known-to-be-greater parameters */
-  def fullUpperBound(param: PolyParam)(implicit ctx: Context): Type
+  def fullUpperBound(param: TypeParamRef)(implicit ctx: Context): Type
 
   /** The bounds of `param` including all known-to-be-smaller and -greater parameters */
-  def fullBounds(param: PolyParam)(implicit ctx: Context): TypeBounds
+  def fullBounds(param: TypeParamRef)(implicit ctx: Context): TypeBounds
 
   /** A new constraint which is derived from this constraint by adding
    *  entries for all type parameters of `poly`.
@@ -79,7 +79,7 @@ abstract class Constraint extends Showable {
    *                 satisfiability but will solved to give instances of
    *                 type variables.
    */
-  def add(poly: PolyType, tvars: List[TypeVar])(implicit ctx: Context): This
+  def add(poly: TypeLambda, tvars: List[TypeVar])(implicit ctx: Context): This
 
   /** A new constraint which is derived from this constraint by updating
    *  the entry for parameter `param` to `tp`.
@@ -90,18 +90,18 @@ abstract class Constraint extends Showable {
    *
    * @pre  `this contains param`.
    */
-  def updateEntry(param: PolyParam, tp: Type)(implicit ctx: Context): This
+  def updateEntry(param: TypeParamRef, tp: Type)(implicit ctx: Context): This
 
   /** A constraint that includes the relationship `p1 <: p2`.
    *  `<:` relationships between parameters ("edges") are propagated, but
    *  non-parameter bounds are left alone.
    */
-  def addLess(p1: PolyParam, p2: PolyParam)(implicit ctx: Context): This
+  def addLess(p1: TypeParamRef, p2: TypeParamRef)(implicit ctx: Context): This
 
   /** A constraint resulting from adding p2 = p1 to this constraint, and at the same
    *  time transferring all bounds of p2 to p1
    */
-  def unify(p1: PolyParam, p2: PolyParam)(implicit ctx: Context): This
+  def unify(p1: TypeParamRef, p2: TypeParamRef)(implicit ctx: Context): This
 
   /** A new constraint which is derived from this constraint by removing
    *  the type parameter `param` from the domain and replacing all top-level occurrences
@@ -109,25 +109,25 @@ abstract class Constraint extends Showable {
    *  approximation of it if that is needed to avoid cycles.
    *  Occurrences nested inside a refinement or prefix are not affected.
    */
-  def replace(param: PolyParam, tp: Type)(implicit ctx: Context): This
+  def replace(param: TypeParamRef, tp: Type)(implicit ctx: Context): This
 
   /** Is entry associated with `pt` removable? This is the case if
    *  all type parameters of the entry are associated with type variables
    *  which have their `inst` fields set.
    */
-  def isRemovable(pt: PolyType): Boolean
+  def isRemovable(pt: TypeLambda): Boolean
 
   /** A new constraint with all entries coming from `pt` removed. */
-  def remove(pt: PolyType)(implicit ctx: Context): This
+  def remove(pt: TypeLambda)(implicit ctx: Context): This
 
-  /** The polytypes constrained by this constraint */
-  def domainPolys: List[PolyType]
+  /** The type lambdas constrained by this constraint */
+  def domainLambdas: List[TypeLambda]
 
-  /** The polytype parameters constrained by this constraint */
-  def domainParams: List[PolyParam]
+  /** The type lambda parameters constrained by this constraint */
+  def domainParams: List[TypeParamRef]
 
   /** Check whether predicate holds for all parameters in constraint */
-  def forallParams(p: PolyParam => Boolean): Boolean
+  def forallParams(p: TypeParamRef => Boolean): Boolean
 
   /** Perform operation `op` on all typevars, or only on uninstantiated
    *  typevars, depending on whether `uninstOnly` is set or not.
@@ -143,6 +143,6 @@ abstract class Constraint extends Showable {
   /** Check that no constrained parameter contains itself as a bound */
   def checkNonCyclic()(implicit ctx: Context): Unit
 
-  /** Check that constraint only refers to PolyParams bound by itself */
+  /** Check that constraint only refers to TypeParamRefs bound by itself */
   def checkClosed()(implicit ctx: Context): Unit
 }
