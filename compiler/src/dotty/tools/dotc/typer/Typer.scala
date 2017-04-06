@@ -651,7 +651,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     val cond1 = typed(tree.cond, defn.BooleanType)
     val thenp1 = typed(tree.thenp, pt.notApplied)
     val elsep1 = typed(tree.elsep orElse (untpd.unitLiteral withPos tree.pos), pt.notApplied)
-    if (thenp1.tpe.isPhantom ^ elsep1.tpe.isPhantom)
+    if (thenp1.tpe.isPhantom != elsep1.tpe.isPhantom)
       ctx.error(IfElsePhantom(), tree.pos)
     val thenp2 :: elsep2 :: Nil = harmonize(thenp1 :: elsep1 :: Nil)
     assignType(cpy.If(tree)(cond1, thenp2, elsep2), thenp2, elsep2)
@@ -1651,7 +1651,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
   def typedType(tree: untpd.Tree, pt: Type = WildcardType)(implicit ctx: Context): Tree = {
     // todo: retract mode between Type and Pattern?
 
-    /** Check that the are not mixed Any/Phantom.Any types in `&`, `|` and type bounds,
+    /** Check that there are not mixed Any/Phantom.Any types in `&`, `|` and type bounds,
      *  this includes Phantom.Any of different universes.
      */
     def checkedTops(tree: untpd.Tree): Set[Type] = {

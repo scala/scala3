@@ -206,7 +206,7 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
     }
 
     /** The minimal set of classes in `cs` which derive all other classes in `cs` */
-    @tailrec def dominators(cs: List[ClassSymbol], accu: List[ClassSymbol]): List[ClassSymbol] = cs match {
+    def dominators(cs: List[ClassSymbol], accu: List[ClassSymbol]): List[ClassSymbol] = (cs: @unchecked) match {
       case c :: rest =>
         val accu1 = if (accu exists (_ derivesFrom c)) accu else c :: accu
         if (cs == c.baseClasses) accu1 else dominators(rest, accu1)
