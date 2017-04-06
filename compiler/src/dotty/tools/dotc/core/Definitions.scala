@@ -234,15 +234,15 @@ class Definitions {
   lazy val AnyValClass: ClassSymbol = completeClass(enterCompleteClassSymbol(ScalaPackageClass, tpnme.AnyVal, Abstract, List(AnyClass.typeRef)))
   def AnyValType = AnyValClass.typeRef
 
-    lazy val Any_==       = enterMethod(AnyClass, nme.EQ, methOfAny(BooleanType), Final)
-    lazy val Any_!=       = enterMethod(AnyClass, nme.NE, methOfAny(BooleanType), Final)
-    lazy val Any_equals   = enterMethod(AnyClass, nme.equals_, methOfAny(BooleanType))
-    lazy val Any_hashCode = enterMethod(AnyClass, nme.hashCode_, MethodType(Nil, IntType))
-    lazy val Any_toString = enterMethod(AnyClass, nme.toString_, MethodType(Nil, StringType))
+    lazy val Any_==       = enterMethod(AnyClass, nme.EQ, methOfAny(BooleanType), Final | JavaDefined)
+    lazy val Any_!=       = enterMethod(AnyClass, nme.NE, methOfAny(BooleanType), Final | JavaDefined)
+    lazy val Any_equals   = enterMethod(AnyClass, nme.equals_, methOfAny(BooleanType), JavaDefined)
+    lazy val Any_hashCode = enterMethod(AnyClass, nme.hashCode_, MethodType(Nil, IntType), JavaDefined)
+    lazy val Any_toString = enterMethod(AnyClass, nme.toString_, MethodType(Nil, StringType), JavaDefined)
     lazy val Any_##       = enterMethod(AnyClass, nme.HASHHASH, ExprType(IntType), Final)
-    lazy val Any_getClass = enterMethod(AnyClass, nme.getClass_, MethodType(Nil, ClassClass.typeRef.appliedTo(TypeBounds.empty)), Final)
-    lazy val Any_isInstanceOf = enterT1ParameterlessMethod(AnyClass, nme.isInstanceOf_, _ => BooleanType, Final)
-    lazy val Any_asInstanceOf = enterT1ParameterlessMethod(AnyClass, nme.asInstanceOf_, PolyParam(_, 0), Final)
+    lazy val Any_getClass = enterMethod(AnyClass, nme.getClass_, MethodType(Nil, ClassClass.typeRef.appliedTo(TypeBounds.empty)), Final | JavaDefined)
+    lazy val Any_isInstanceOf = enterT1ParameterlessMethod(AnyClass, nme.isInstanceOf_, _ => BooleanType, Final | JavaDefined)
+    lazy val Any_asInstanceOf = enterT1ParameterlessMethod(AnyClass, nme.asInstanceOf_, PolyParam(_, 0), Final | JavaDefined)
 
     def AnyMethods = List(Any_==, Any_!=, Any_equals, Any_hashCode,
       Any_toString, Any_##, Any_getClass, Any_isInstanceOf, Any_asInstanceOf)
@@ -251,6 +251,7 @@ class Definitions {
     val cls = ctx.requiredClass("java.lang.Object")
     assert(!cls.isCompleted, "race for completing java.lang.Object")
     cls.info = ClassInfo(cls.owner.thisType, cls, AnyClass.typeRef :: Nil, newScope)
+    cls.setFlag(JavaDefined)
 
     // The companion object doesn't really exist, `NoType` is the general
     // technique to do that. Here we need to set it before completing
