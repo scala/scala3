@@ -651,8 +651,8 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     val cond1 = typed(tree.cond, defn.BooleanType)
     val thenp1 = typed(tree.thenp, pt.notApplied)
     val elsep1 = typed(tree.elsep orElse (untpd.unitLiteral withPos tree.pos), pt.notApplied)
-    if (thenp1.tpe.isPhantom != elsep1.tpe.isPhantom)
-      ctx.error(IfElsePhantom(), tree.pos)
+    if (thenp1.tpe.topType != elsep1.tpe.topType)
+      ctx.error(IfElsePhantom(thenp1, elsep1), tree.pos)
     val thenp2 :: elsep2 :: Nil = harmonize(thenp1 :: elsep1 :: Nil)
     assignType(cpy.If(tree)(cond1, thenp2, elsep2), thenp2, elsep2)
   }
@@ -858,9 +858,11 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
 
     val tpdCases = cases mapconserve (typedCase(_, pt, selType, gadtSyms))
 
-    val phantomBranches = tpdCases.count(_.body.tpe.isPhantom)
-    if (phantomBranches != 0 && phantomBranches != tpdCases.size)
-      ctx.error(MatchPhantom(), tpdCases.head.pos)
+    if (tpdCases.nonEmpty) {
+      val top = tpdCases.head.tpe.topType
+      for (tpdCase <- tpdCases if tpdCase.tpe.topType != top)
+        ctx.error(MatchPhantom(tpdCase, top), tpdCase.pos)
+    }
 
     tpdCases
   }

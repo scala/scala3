@@ -1,6 +1,7 @@
 
 class Foo {
   import Boo._
+  import Boo1._
 
   type Blinky <: BooAny
   type Inky <: BooAny
@@ -9,11 +10,28 @@ class Foo {
   val inky = Boo.boo[Inky]
 
   val b = true
-  def fooIf1 = if (b) { blinky } else { "" } // error
-  def fooIf2 = if (b) { "" } else { blinky } // error
+  def fooIf1 =
+    if (b) blinky // error
+    else ""
 
-  def fooMatch1 = blinky match { case _: Blinky => () } // error
-  def fooMatch2 = 1 match { case 1 => 2 case _ => blinky } // error
+  def fooIf2 =
+    if (b) "" // error
+    else blinky
+
+  def fooIf3 =
+    if (b) boo1 // error
+    else blinky
+
+  def fooMatch1 = blinky match { // error
+    case _: Blinky => ()
+  }
+  def fooMatch2 = 1 match { case 1 => 2
+    case _ => blinky // error
+  }
+  def fooMatch3 = 1 match {
+    case 1 => boo1
+    case _ => blinky // error
+  }
 }
 
 object Boo extends Phantom {
@@ -21,3 +39,7 @@ object Boo extends Phantom {
   def boo[B <: BooAny]: B = assume[B]
 }
 
+object Boo1 extends Phantom {
+  type Boo1Any = this.Any
+  def boo1: Boo1Any = assume[Boo1Any]
+}
