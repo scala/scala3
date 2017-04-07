@@ -20,6 +20,11 @@ object Properties {
    */
   val testsFilter: Option[String] = sys.props.get("dotty.tests.filter")
 
+  /** When set, the run tests are only compiled - not run, a warning will be
+   *  issued
+   */
+  val testsNoRun: Boolean = sys.props.get("dotty.tests.norun").isDefined
+
   /** Should Unit tests run in safe mode?
    *
    *  For run tests this means that we respawn child JVM processes after each

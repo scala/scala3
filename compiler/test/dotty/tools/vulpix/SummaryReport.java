@@ -10,8 +10,10 @@ import scala.Unit;
 import dotty.tools.dotc.reporting.TestReporter;
 import dotty.Properties;
 
-/** Note that while `ParallelTesting` runs in parallel, JUnit tests cannot with
- *  this class
+/** This class adds summary reports to `ParallelTesting`
+ *
+ *  It is written in Java because we currently cannot explicitly write static
+ *  methods in Scala without SIP-25 (`@static` fields and methods in Scala)
  */
 public class SummaryReport {
     public final static boolean isInteractive =
@@ -20,6 +22,7 @@ public class SummaryReport {
     private static TestReporter rep = TestReporter.reporter(System.out, -1);
     private static ArrayDeque<String> failedTests = new ArrayDeque<>();
     private static ArrayDeque<String> reproduceInstructions = new ArrayDeque<>();
+    private static ArrayDeque<String> startingMessages = new ArrayDeque<>();
     private static Supplier<Void> cleanup;
     private static int passed;
     private static int failed;
@@ -38,6 +41,10 @@ public class SummaryReport {
 
     public final static void addReproduceInstruction(String msg) {
         reproduceInstructions.offer(msg);
+    }
+
+    public final static void addStartingMessage(String msg) {
+        startingMessages.offer(msg);
     }
 
     public final static void addCleanup(Function0<Unit> func) {
@@ -61,6 +68,10 @@ public class SummaryReport {
         rep = TestReporter.reporter(System.out, -1);
         failedTests = new ArrayDeque<>();
         reproduceInstructions = new ArrayDeque<>();
+        startingMessages = new ArrayDeque<>();
+        cleanup = null;
+        passed = 0;
+        failed = 0;
     }
 
     @AfterClass public final static void teardown() {
@@ -72,6 +83,10 @@ public class SummaryReport {
             passed + " passed, " + failed + " failed, " + (passed + failed) + " total" +
             "\n"
         );
+
+        startingMessages
+            .stream()
+            .forEach(rep::echo);
 
         failedTests
             .stream()

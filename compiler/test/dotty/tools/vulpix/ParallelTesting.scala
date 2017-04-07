@@ -426,8 +426,21 @@ trait ParallelTesting extends RunnerOrchestration { self =>
 
   private final class RunTest(testSources: List[TestSource], times: Int, threadLimit: Option[Int], suppressAllOutput: Boolean)
   extends Test(testSources, times, threadLimit, suppressAllOutput) {
+    private[this] var didAddNoRunWarning = false
+    private[this] def addNoRunWarning() = if (!didAddNoRunWarning) {
+      didAddNoRunWarning = true
+      SummaryReport.addStartingMessage {
+        """|WARNING
+           |-------
+           |Run tests were only compiled, not run - this is due to `dotty.tests.norun`
+           |property being set
+           |""".stripMargin
+      }
+    }
+
     private def verifyOutput(checkFile: JFile, dir: JFile, testSource: TestSource, warnings: Int) = {
-      runMain(testSource.classPath) match {
+      if (Properties.testsNoRun) addNoRunWarning()
+      else runMain(testSource.classPath) match {
         case Success(output) => {
           val outputLines = output.lines.toArray
           val checkLines: Array[String] = Source.fromFile(checkFile).getLines.toArray
@@ -511,16 +524,19 @@ trait ParallelTesting extends RunnerOrchestration { self =>
         }
 
         if (errorCount == 0 && hasCheckFile) verifier()
-        else if (errorCount == 0) runMain(testSource.classPath) match {
-            case Success(_) => // success!
-            case Failure(output) =>
-              echo(s"    failed when running '${testSource.title}'")
-              echo(output)
-              failTestSource(testSource)
-            case Timeout =>
-              echo("    failed because test " + testSource.title + " timed out")
-              failTestSource(testSource, Some("test timed out"))
-          }
+        else if (errorCount == 0) {
+          if (Properties.testsNoRun) addNoRunWarning()
+          else runMain(testSource.classPath) match {
+              case Success(_) => // success!
+              case Failure(output) =>
+                echo(s"    failed when running '${testSource.title}'")
+                echo(output)
+                failTestSource(testSource)
+              case Timeout =>
+                echo("    failed because test " + testSource.title + " timed out")
+                failTestSource(testSource, Some("test timed out"))
+            }
+        }
         else if (errorCount > 0) {
           echo(s"\n    Compilation failed for: '$testSource'")
           val buildInstr = testSource.buildInstructions(errorCount, warningCount)

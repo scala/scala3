@@ -71,7 +71,4 @@ class VulpixTests extends ParallelTesting {
 
   @Test def deadlock: Unit =
     compileFile("../tests/partest-test/deadlock.scala", defaultOptions).expectFailure.checkRuns()
-
-  @Test def forkbomb: Unit =
-    compileFile("../tests/partest-test/forkbomb.scala", defaultOptions).expectFailure.checkRuns()
 }
