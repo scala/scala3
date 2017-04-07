@@ -397,7 +397,7 @@ object SymDenotations {
         var encl = owner
         while (!encl.isClass && !encl.isPackageObject) {
           encl = encl.owner
-          filler += "~"
+          filler += "_$"
         }
         var prefix = encl.fullNameSeparated(kind)
         if (kind.separator == "$")
@@ -499,7 +499,7 @@ object SymDenotations {
      *  step for creating Refinement types.
      */
     final def isRefinementClass(implicit ctx: Context): Boolean =
-      name.decode == tpnme.REFINE_CLASS
+      name == tpnme.REFINE_CLASS
 
     /** Is this symbol a package object or its module class? */
     def isPackageObject(implicit ctx: Context): Boolean = {
