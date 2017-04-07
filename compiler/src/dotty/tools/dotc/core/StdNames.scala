@@ -127,7 +127,7 @@ object StdNames {
     val DOLLAR_VALUES: N              = "$values"
     val DOLLAR_NEW: N                 = "$new"
     val EMPTY: N                      = ""
-    val EMPTY_PACKAGE: N              = Names.EMPTY_PACKAGE.toString
+    val EMPTY_PACKAGE: N              = "<empty>"
     val EXCEPTION_RESULT_PREFIX: N    = "exceptionResult"
     val EXPAND_SEPARATOR: N           = str.EXPAND_SEPARATOR
     val IMPL_CLASS_SUFFIX: N          = "$class"
@@ -241,7 +241,8 @@ object StdNames {
 
     // Compiler-internal
     val ANYname: N                  = "<anyname>"
-    val CONSTRUCTOR: N              = Names.CONSTRUCTOR.toString
+    val CONSTRUCTOR: N              = "<init>"
+    val STATIC_CONSTRUCTOR: N       = "<clinit>"
     val DEFAULT_CASE: N             = "defaultCase$"
     val EVT2U: N                    = "evt2u$"
     val EQEQ_LOCAL_VAR: N           = "eqEqTemp$"

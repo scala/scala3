@@ -254,7 +254,7 @@ object NameKinds {
       if (i > 0) {
         val index = name.drop(i).toString.toInt - 1
         var original = name.take(i - str.DEFAULT_GETTER.length).asTermName
-        if (original == nme.DEFAULT_GETTER_INIT) original = Names.CONSTRUCTOR
+        if (original == nme.DEFAULT_GETTER_INIT) original = nme.CONSTRUCTOR
         apply(original, index)
       }
       else name
