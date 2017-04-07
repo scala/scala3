@@ -8,7 +8,7 @@ import core.Contexts._
 import core.Types._
 import core.Flags._
 import core.Decorators._
-import core.StdNames.nme
+import core.StdNames.{nme, str}
 import core.Names._
 import core.NameOps._
 import core.NameKinds.ExpandPrefixName

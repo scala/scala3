@@ -24,7 +24,7 @@ object StdNames {
     final val SHADOWED_PREFIX          = "(shadowed)"
     final val AVOID_CLASH_SUFFIX       = "$_avoid_name_clash_$"
     final val MODULE_SUFFIX            = "$"
-    //final val NAME_JOIN                = "$"
+    final val NAME_JOIN                = "$"
     final val DEFAULT_GETTER           = "$default$"
     final val LOCALDUMMY_PREFIX        = "<local "       // owner of local blocks
     final val ANON_CLASS               = "$anon"
