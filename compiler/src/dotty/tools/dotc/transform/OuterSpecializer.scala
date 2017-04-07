@@ -5,6 +5,7 @@ import java.util
 import dotty.tools.dotc.ast.Trees._
 import dotty.tools.dotc.ast.{TreeTypeMap, tpd}
 import dotty.tools.dotc.core.Contexts.{Context, ContextBase}
+import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.core.DenotTransformers.InfoTransformer
 import dotty.tools.dotc.core.Denotations.SingleDenotation
 import dotty.tools.dotc.core.Names.{Name, TypeName}
@@ -28,12 +29,7 @@ import scala.reflect.internal.util.Collections
 class OuterSpecializer extends MiniPhaseTransform  with InfoTransformer {
   import tpd._
 
-  override def phaseName = "cspec"
-
-  private def primitiveTypes(implicit ctx: Context) =
-    ??? // defn.ScalaValueTypes
-
-  private def defn(implicit ctx: Context) = ctx.definitions
+  override def phaseName = "specializeClass"
 
   type Specialization = Array[Type]
 
@@ -93,7 +89,7 @@ class OuterSpecializer extends MiniPhaseTransform  with InfoTransformer {
   }
 
   override def prepareForUnit(tree: tpd.Tree)(implicit ctx: Context): TreeTransform = {
-    if (ctx.settings.linkTimeOptimization.value.contains("spec") || ctx.settings.linkTimeOptimization.value.contains("all")) this
+    if (ctx.settings.linkSpecialize.value) this
     else TreeTransforms.NoTransform
   }
 
@@ -418,7 +414,7 @@ class OuterSpecializer extends MiniPhaseTransform  with InfoTransformer {
           .specializedFor(Nil, Nil, instantiations.toList, poly.paramNames)
           .asInstanceOf[TermName]*/ ,
         decl.flags | Flags.Synthetic,
-        ??? // poly.duplicate(poly.paramNames, bounds, resType)
+        poly.newLikeThis(poly.paramNames, bounds, resType)
       )
 
       val map: mutable.HashMap[OuterTargs, Symbols.Symbol] = newSymbolMap.getOrElse(decl, mutable.HashMap.empty)
@@ -784,7 +780,7 @@ class OuterSpecializeParents extends MiniPhaseTransform with InfoTransformer{
     } else tp
   }
 
-  val phaseName: String = "cspec-parents"
+  val phaseName: String = "specializeClassParents"
 
   override def transformApply(tree: tpd.Apply)(implicit ctx: Context, info: TransformerInfo): tpd.Tree = specPhase.transormGenApply(tree)
 

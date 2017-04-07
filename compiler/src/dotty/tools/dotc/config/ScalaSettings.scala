@@ -45,7 +45,7 @@ class ScalaSettings extends Settings.SettingGroup {
   val linkDCEAggressive = BooleanSetting("-link-aggressive-dce", "Enable aggressive dead code elimination.")
   val linkVis = BooleanSetting("-link-vis", "Output the visual representation of the call graph.")
   val linkJavaConservative = BooleanSetting("-link-java-conservative", "Compute call graph for java methods.")
-  val linkTimeOptimization = MultiStringSetting("-lto", "modes", "Enable link time optimizations. Possible options: spec, all.")
+  val linkSpecialize = BooleanSetting("-link-specialize", "Enable link time specialization.")
 
   /** -X "Advanced" settings
    */

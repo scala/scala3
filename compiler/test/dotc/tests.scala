@@ -93,7 +93,7 @@ class tests extends CompilerTest {
   val newDir        = testsDir + "new/"
   val javaDir       = testsDir + "pos-java-interop/"
   val linkDCEDir    = testsDir + "link-dce/"
-  val linkDCEWithStdlibDir = testsDir + "link-dce-stdlib/"
+  val linkDCEWithStdlibDir = testsDir + "link-stdlib-dce/"
 
   val sourceDir = "./src/"
   val dottyDir  = sourceDir + "dotty/"

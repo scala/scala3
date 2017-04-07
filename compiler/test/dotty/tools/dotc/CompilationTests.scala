@@ -19,7 +19,7 @@ class CompilationTests extends ParallelSummaryReport with ParallelTesting {
   // Positive tests ------------------------------------------------------------
 
   @Test def compilePos: Unit = {
-    compileList("compileStrawman", strawmanSources, defaultOptions) +
+    // compileList("compileStrawman", strawmanSources, defaultOptions) +
     compileList("compileStdLib", StdLibSources.whitelisted, stdlibMode) +
     compileFilesInDir("../tests/pos", defaultOptions)
   }.checkCompile()
@@ -258,7 +258,7 @@ class CompilationTests extends ParallelSummaryReport with ParallelTesting {
   }
 
   @Test def linkDCEStdLibAll: Unit = {
-    val testsDir = new JFile("../tests/link-dce-stdlib")
+    val testsDir = new JFile("../tests/link-stdlib-dce")
     val tests = for (test <- testsDir.listFiles() if test.isDirectory) yield {
       val files = test.listFiles().toList.map(_.getAbsolutePath) ++ StdLibSources.whitelisted
       compileList(test.getName, files, linkStdlibMode ++ linkDCE)
@@ -266,6 +266,7 @@ class CompilationTests extends ParallelSummaryReport with ParallelTesting {
     tests.reduce((a, b) => a + b).limitThreads(4).checkRuns()
   }
 
+  /*
   @Test def linkStrawmanDCEAll: Unit = {
     val testsDir = new JFile("../tests/link-strawman-dce")
     val tests = for (test <- testsDir.listFiles() if test.getName.endsWith(".scala")) yield {
@@ -275,6 +276,22 @@ class CompilationTests extends ParallelSummaryReport with ParallelTesting {
     }
     tests.reduce((a, b) => a + b).checkRuns()
   }
+  */
+
+  @Test def linkSpecializeAll: Unit =
+    compileFilesInDir("../tests/link-specialize", linkSpecialize).keepOutput.checkRuns()
+
+  /*
+  @Test def linkStrawmanSpecializeAll: Unit = {
+    val testsDir = new JFile("../tests/link-strawman-specialize")
+    val tests = for (test <- testsDir.listFiles() if test.getName.endsWith(".scala")) yield {
+      val name = test.getName.dropRight(6)
+      val files = test.getAbsolutePath :: strawmanSources
+      compileList(name, files, linkSpecialize)
+    }
+    tests.reduce((a, b) => a + b).checkRuns()
+  }
+  */
 
 }
 
@@ -344,9 +361,11 @@ object CompilationTests {
   val stdlibMode  = scala2Mode.and("-migration", "-Yno-inline")
   val linkStdlibMode = stdlibMode.and("-Ylink-stdlib")
 
-  val linkDCEcommon = Array("-link-java-conservative", "-link-vis", "-Ylink-dce-checks", "-Ylog:callGraph") ++ defaultOptions
+  val linkCommon = Array("-link-vis", "-Ylog:callGraph") ++ defaultOptions
+  val linkDCEcommon = Array("-link-java-conservative", "-Ylink-dce-checks") ++ linkCommon
   val linkDCE = "-link-dce" +: linkDCEcommon
   val linkAggressiveDCE = "-link-aggressive-dce" +: linkDCEcommon
+  val linkSpecialize = Array("-link-specialize", "-Ylog:specializeClass,specializeClassParents") ++ linkCommon
 
   val strawmanSources = {
     def collectAllFilesInDir(dir: JFile, acc: List[String]): List[String] = {
