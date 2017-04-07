@@ -48,7 +48,7 @@ class TastyUnpickler(reader: TastyReader) {
     val result = tag match {
       case UTF8 =>
         goto(end)
-        termName(bytes, start.index, length).decode
+        termName(bytes, start.index, length)
       case QUALIFIED | FLATTENED | EXPANDED | EXPANDPREFIX =>
         qualifiedNameKindOfTag(tag)(readName(), readName().asSimpleName)
       case UNIQUE =>
