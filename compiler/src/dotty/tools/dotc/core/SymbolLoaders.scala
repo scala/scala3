@@ -41,7 +41,7 @@ class SymbolLoaders {
   def enterClass(
       owner: Symbol, name: PreName, completer: SymbolLoader,
       flags: FlagSet = EmptyFlags, scope: Scope = EmptyScope)(implicit ctx: Context): Symbol = {
-    val cls = ctx.newClassSymbol(owner, name.toTypeName, flags, completer, assocFile = completer.sourceFileOrNull)
+    val cls = ctx.newClassSymbol(owner, name.toTypeName.unmangleClassName.decode, flags, completer, assocFile = completer.sourceFileOrNull)
     enterNew(owner, cls, completer, scope)
   }
 
@@ -51,7 +51,7 @@ class SymbolLoaders {
       owner: Symbol, name: PreName, completer: SymbolLoader,
       modFlags: FlagSet = EmptyFlags, clsFlags: FlagSet = EmptyFlags, scope: Scope = EmptyScope)(implicit ctx: Context): Symbol = {
     val module = ctx.newModuleSymbol(
-      owner, name.toTermName, modFlags, clsFlags,
+      owner, name.toTermName.decode, modFlags, clsFlags,
       (module, _) => completer.proxy withDecls newScope withSourceModule (_ => module),
       assocFile = completer.sourceFileOrNull)
     enterNew(owner, module, completer, scope)
@@ -166,13 +166,7 @@ class SymbolLoaders {
       override def lookupEntry(name: Name)(implicit ctx: Context): ScopeEntry = {
         val mangled = name.mangled
         val e = super.lookupEntry(mangled)
-        if (e != null) {
-          // Eagerly update symbol's name to undecoded name to avpid the name
-          // spearding to types.
-          if (name.toSimpleName != mangled && e.sym.initialDenot.name == mangled)
-            e.sym.initialDenot.name = name
-          e
-        }
+        if (e != null) e
         else if (_sourceModule.initialDenot.name == nme.scala_ && _sourceModule == defn.ScalaPackageVal &&
                  name.isTypeName && name.isSyntheticFunction)
           newScopeEntry(defn.newFunctionNTrait(name.asTypeName))

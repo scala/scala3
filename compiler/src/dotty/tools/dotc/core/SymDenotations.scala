@@ -125,7 +125,6 @@ object SymDenotations {
 
     // ------ Getting and setting fields -----------------------------
 
-    private[this] var myName = initName
     private[this] var myFlags: FlagSet = adaptFlags(initFlags)
     private[this] var myInfo: Type = initInfo
     private[this] var myPrivateWithin: Symbol = initPrivateWithin

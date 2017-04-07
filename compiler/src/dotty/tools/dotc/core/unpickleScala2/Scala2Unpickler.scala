@@ -460,7 +460,6 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
     //if (isModuleClassRoot) println(s"moduleClassRoot of $moduleClassRoot found at $readIndex, flags = $flags") // !!! DEBUG
 
     def completeRoot(denot: ClassDenotation, completer: LazyType): Symbol = {
-      denot.name = name
       denot.setFlag(flags)
       denot.resetFlag(Touched) // allow one more completion
       denot.info = completer
