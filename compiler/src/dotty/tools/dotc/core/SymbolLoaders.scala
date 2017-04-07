@@ -166,7 +166,13 @@ class SymbolLoaders {
       override def lookupEntry(name: Name)(implicit ctx: Context): ScopeEntry = {
         val mangled = name.mangled
         val e = super.lookupEntry(mangled)
-        if (e != null) e
+        if (e != null) {
+          // Eagerly update symbol's name to undecoded name to avpid the name
+          // spearding to types.
+          if (name.toSimpleName != mangled && e.sym.initialDenot.name == mangled)
+            e.sym.initialDenot.name = name
+          e
+        }
         else if (_sourceModule.initialDenot.name == nme.scala_ && _sourceModule == defn.ScalaPackageVal &&
                  name.isTypeName && name.isSyntheticFunction)
           newScopeEntry(defn.newFunctionNTrait(name.asTypeName))
