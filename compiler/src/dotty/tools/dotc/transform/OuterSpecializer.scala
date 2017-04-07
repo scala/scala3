@@ -18,11 +18,16 @@ import dotty.tools.dotc.core.StdNames.nme
 import dotty.tools.dotc.core.Symbols.{ClassSymbol, Symbol}
 import dotty.tools.dotc.core.Types._
 import dotty.tools.dotc.transform.TreeTransforms.{MiniPhaseTransform, TransformerInfo, TreeTransform}
-import dotty.tools.dotc.transform.linker.callgraph.{OuterTargs, SubstituteByParentMap}
+import dotty.tools.dotc.transform.linker.callgraph.{CallGraph, OuterTargs, SubstituteByParentMap}
 
 import scala.collection.mutable
 import scala.reflect.internal.util.Collections
 
+
+object OuterSpecializer {
+  def isPhaseRequired(implicit ctx: Context): Boolean =
+    ctx.settings.linkSpecialize.value
+}
 
 // TODO: Check secondary constructors.
 // TODO: check private fields
@@ -37,7 +42,7 @@ class OuterSpecializer extends MiniPhaseTransform  with InfoTransformer {
    * Methods requested for specialization
    * Generic Symbol   =>  List[  (position in list of args, specialized type requested)  ]
    */
-  private val specializationRequests: mutable.HashMap[Symbols.Symbol, List[OuterTargs]] = mutable.HashMap.empty
+  private val specializationRequests: mutable.HashMap[Symbol, List[OuterTargs]] = mutable.HashMap.empty
 
   /**
    * A map that links symbols to their specialized variants.
@@ -45,7 +50,7 @@ class OuterSpecializer extends MiniPhaseTransform  with InfoTransformer {
    * Generic symbol  =>
    * Map{ List of [ Tuple(position in list of args, specialized Type) ] for each variant  =>  Specialized Symbol }
    */
-  val newSymbolMap: mutable.HashMap[Symbol, mutable.HashMap[OuterTargs, Symbols.Symbol]] = mutable.HashMap.empty
+  val newSymbolMap: mutable.HashMap[Symbol, mutable.HashMap[OuterTargs, Symbol]] = mutable.HashMap.empty
 
   /**
    * A map that links symbols to their speciazation requests.
@@ -136,13 +141,46 @@ class OuterSpecializer extends MiniPhaseTransform  with InfoTransformer {
     }
   }
 
-  def registerSpecializationRequest(methodOrClass: Symbols.Symbol)(arguments: OuterTargs)
-                                   (implicit ctx: Context): Unit = {
+  def specializationRequests(callGraph: CallGraph)(implicit ctx: Context): Unit = {
+    callGraph.reachableMethods.foreach { mc =>
+      val methodSym = mc.call.termSymbol
+      val outerTargs = methodSym.info.widen match {
+        case PolyType(names, _) =>
+          (names.map(_.paramName) zip mc.targs).foldLeft(mc.outerTargs)((x, nameType) => x.add(methodSym, nameType._1, nameType._2))
+        case _ =>
+          mc.outerTargs
+      }
+      if (outerTargs.mp.nonEmpty && !methodSym.isPrimaryConstructor)
+        registerSpecializationRequest(methodSym)(outerTargs)
+    }
+    callGraph.reachableTypes.foreach { tpc =>
+      val parentOverrides = tpc.tp.typeMembers(ctx).foldLeft(OuterTargs.empty)((outerTargs, denot) =>
+        denot.symbol.allOverriddenSymbols.foldLeft(outerTargs)((outerTargs, sym) =>
+          outerTargs.add(sym.owner, denot.symbol.name, denot.info)))
+
+      val spec = tpc.outerTargs ++ parentOverrides ++ OuterTargs.parentRefinements(tpc.tp)
+
+      if (spec.nonEmpty) {
+        registerSpecializationRequest(tpc.tp.typeSymbol)(spec)
+        def loop(remaining: List[Symbol]): Unit = {
+          if (remaining.isEmpty) return;
+          val target = remaining.head
+
+          val nspec = new OuterTargs(spec.mp.filter{x => target.derivesFrom(x._1)})
+          if (nspec.nonEmpty)
+            registerSpecializationRequest(target)(nspec)
+          loop(remaining.tail)
+        }
+        val parents = tpc.tp.baseClasses
+        loop(parents)
+      }
+    }
+  }
+
+  def registerSpecializationRequest(methodOrClass: Symbol)(arguments: OuterTargs)(implicit ctx: Context): Unit = {
     if (((methodOrClass.isClass && (!methodOrClass.is(Flags.Module) || !methodOrClass.isStatic)) ||
            methodOrClass.is(Flags.Method))
-      && (methodOrClass.sourceFile ne null))  {
-//      if (methodOrClass.name.toString == "map" && methodOrClass.owner.name.toString == "Iterator")
-//        println("here")
+      && (methodOrClass.sourceFile ne null)) {
       if (ctx.phaseId > this.treeTransformPhase.id)
         assert(ctx.phaseId <= this.treeTransformPhase.id)
       val prev = specializationRequests.getOrElse(methodOrClass, List.empty)
@@ -161,8 +199,10 @@ class OuterSpecializer extends MiniPhaseTransform  with InfoTransformer {
           }
         }
       }
+
       if (prev.exists(isSimilar(arguments, _)))
         return;
+
       specializationRequests.put(methodOrClass, arguments :: prev)
     }
     else {
@@ -306,7 +346,7 @@ class OuterSpecializer extends MiniPhaseTransform  with InfoTransformer {
         }
       }
 
-      val umap: mutable.HashMap[OuterTargs, Symbols.Symbol] = newSymbolMap.getOrElse(claz, mutable.HashMap.empty)
+      val umap: mutable.HashMap[OuterTargs, Symbol] = newSymbolMap.getOrElse(claz, mutable.HashMap.empty)
       umap.put(specialization, newClaz)
       newSymbolMap.put(claz, umap)
       originBySpecialized.put(newClaz, claz)
@@ -417,7 +457,7 @@ class OuterSpecializer extends MiniPhaseTransform  with InfoTransformer {
         poly.newLikeThis(poly.paramNames, bounds, resType)
       )
 
-      val map: mutable.HashMap[OuterTargs, Symbols.Symbol] = newSymbolMap.getOrElse(decl, mutable.HashMap.empty)
+      val map: mutable.HashMap[OuterTargs, Symbol] = newSymbolMap.getOrElse(decl, mutable.HashMap.empty)
       map.put(instantiations, newSym)
       newSymbolMap.put(decl, map)
       outerBySym.put(newSym, instantiations)

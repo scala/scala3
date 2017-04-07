@@ -10,7 +10,6 @@ import dotty.tools.dotc.core.Symbols.{Symbol, _}
 import dotty.tools.dotc.core.TypeErasure
 import dotty.tools.dotc.core.Types._
 import dotty.tools.dotc.transform.ResolveSuper
-import dotty.tools.dotc.transform.linker.CollectSummaries
 import dotty.tools.dotc.transform.linker.summaries._
 import dotty.tools.dotc.transform.linker.types._
 
@@ -25,6 +24,7 @@ object CallGraphBuilder {
 
 class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int, specLimit: Int,
     withJavaCallGraph: Boolean, withOutEdges: Boolean)(implicit ctx: Context) {
+  import OuterTargs.parentRefinements
   import CallGraphBuilder._
   import tpd._
 
@@ -253,22 +253,6 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
       registeredParentModules += tp
       registerParentModules(tp.normalizedPrefix): @tailrec
     }
-  }
-
-  private def parentRefinements(tp: Type)(implicit ctx: Context): OuterTargs = {
-    new TypeAccumulator[OuterTargs]() {
-      def apply(x: OuterTargs, tp: Type): OuterTargs = tp match {
-        case t: RefinedType =>
-          val member = t.parent.member(t.refinedName).symbol
-          val parent = member.owner
-          val nList = x.add(parent, t.refinedName, t.refinedInfo)
-          apply(nList, t.parent)
-        case t: ClosureType =>
-          apply(x, t.u)
-        case _ =>
-          foldOver(x, tp)
-      }
-    }.apply(OuterTargs.empty, tp)
   }
 
   private def instantiateCallSite(caller: CallInfoWithContext, callee: CallInfo, registerCall: CallInfoWithContext => Boolean): Unit = {

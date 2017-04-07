@@ -7,6 +7,8 @@ import dotty.tools.dotc.core.Flags._
 import dotty.tools.dotc.core.Phases.Phase
 import dotty.tools.dotc.core.StdNames.nme
 import dotty.tools.dotc.core.Symbols._
+import dotty.tools.dotc.core.Types.PolyType
+import dotty.tools.dotc.transform.OuterSpecializer
 import dotty.tools.dotc.transform.linker.callgraph._
 
 object BuildCallGraph {
@@ -16,8 +18,10 @@ object BuildCallGraph {
   def withOutEdges(implicit ctx: Context): Boolean =
     ctx.settings.linkVis.value
 
-  def isPhaseRequired(implicit ctx: Context): Boolean =
-    DeadCodeElimination.isPhaseRequired || CallGraphChecks.isPhaseRequired || ctx.settings.linkVis.value
+  def isPhaseRequired(implicit ctx: Context): Boolean = {
+    DeadCodeElimination.isPhaseRequired || CallGraphChecks.isPhaseRequired ||
+    OuterSpecializer.isPhaseRequired || ctx.settings.linkVis.value
+  }
 
   def listPhase(implicit ctx: Context): List[Phase] = {
     if (isPhaseRequired) List(new BuildCallGraph)
@@ -81,48 +85,6 @@ class BuildCallGraph extends Phase {
     callGraphBuilder.result()
   }
 
-//  private def sendSpecializationRequests(callGraph: CallGraph)(implicit ctx: Context): Unit = {
-//   ctx.outerSpecPhase match {
-//      case specPhase: OuterSpecializer =>
-//
-//        callGraph.reachableMethods.foreach { mc =>
-//          val methodSym = mc.call.termSymbol
-//          val outerTargs = methodSym.info.widen match {
-//            case PolyType(names) =>
-//              (names zip mc.targs).foldLeft(mc.outerTargs)((x, nameType) => x.+(methodSym, nameType._1, nameType._2))
-//            case _ =>
-//              mc.outerTargs
-//          }
-//          if (outerTargs.mp.nonEmpty && !methodSym.isPrimaryConstructor)
-//            specPhase.registerSpecializationRequest(methodSym)(outerTargs)
-//        }
-//        callGraph.reachableTypes.foreach { tpc =>
-//          val parentOverrides = tpc.tp.typeMembers(ctx).foldLeft(OuterTargs.empty)((outerTargs, denot) =>
-//            denot.symbol.allOverriddenSymbols.foldLeft(outerTargs)((outerTargs, sym) =>
-//              outerTargs.+(sym.owner, denot.symbol.name, denot.info)))
-//
-//          val spec = tpc.outerTargs ++ parentOverrides ++ parentRefinements(tpc.tp)
-//
-//          if (spec.nonEmpty) {
-//            specPhase.registerSpecializationRequest(tpc.tp.typeSymbol)(spec)
-//            def loop(remaining: List[Symbol]): Unit = {
-//              if (remaining.isEmpty) return;
-//              val target = remaining.head
-//
-//              val nspec = OuterTargs(spec.mp.filter{x => target.derivesFrom(x._1)})
-//              if (nspec.nonEmpty)
-//                specPhase.registerSpecializationRequest(target)(nspec)
-//              loop(remaining.tail)
-//            }
-//            val parents = tpc.tp.baseClasses
-//            loop(parents)
-//          }
-//        }
-//      case _ =>
-//       ctx.warning("No specializer phase found")
-//    }
-//  }
-
   private var runOnce = true
   def run(implicit ctx: Context): Unit = {
     if (runOnce && BuildCallGraph.isPhaseRequired) {
@@ -134,7 +96,10 @@ class BuildCallGraph extends Phase {
       val callGraph = buildCallGraph(mode, specLimit)
       this.callGraph = callGraph
 
-//      sendSpecializationRequests(callGraph)
+      if (OuterSpecializer.isPhaseRequired) {
+        val outerSpecializer = ctx.phaseOfClass(classOf[OuterSpecializer]).asInstanceOf[OuterSpecializer]
+        outerSpecializer.specializationRequests(callGraph)
+      }
 
       callGraph.getInfo().log()
 
