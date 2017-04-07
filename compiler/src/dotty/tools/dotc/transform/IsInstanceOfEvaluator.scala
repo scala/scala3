@@ -146,11 +146,27 @@ class IsInstanceOfEvaluator extends MiniPhaseTransform { thisTransformer =>
               // has @unchecked annotation to suppress warnings
               val hasUncheckedAnnot = arg.hasAnnotation(defn.UncheckedAnnot)
 
-              if (!topType && !hasUncheckedAnnot && !anyValArray) ctx.uncheckedWarning(
-                ErasedType(hl"""|Since type parameters are erased, you should not match on them in
-                                |${"match"} expressions."""),
-                tree.pos
-              )
+              // we don't want to warn when matching on `List` from `Seq` e.g:
+              // (xs: Seq[Int]) match { case xs: List[Int] => ??? }
+              val matchingSeqToList = {
+                val hasSameTypeArgs = s.qualifier.tpe.widen match {
+                  case AppliedType(_, scrutArg :: Nil) =>
+                    (scrutArg eq arg) || arg <:< scrutArg
+                  case _ => false
+                }
+
+                scrutinee.isRef(defn.SeqClass) &&
+                tp.isRef(defn.ListClass) &&
+                hasSameTypeArgs
+              }
+
+              if (!topType && !hasUncheckedAnnot && !matchingSeqToList && !anyValArray) {
+                ctx.uncheckedWarning(
+                  ErasedType(hl"""|Since type parameters are erased, you should not match on them in
+                                  |${"match"} expressions."""),
+                  tree.pos
+                )
+              }
               true
             case _ =>
               if (tree.args.head.symbol.is(TypeParam)) {

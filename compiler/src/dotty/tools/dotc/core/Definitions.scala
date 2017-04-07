@@ -357,6 +357,9 @@ class Definitions {
       List(AnyClass.typeRef), EmptyScope)
   def SingletonType = SingletonClass.typeRef
 
+  lazy val ListType: TypeRef = ctx.requiredClassRef("scala.collection.immutable.List")
+  def ListClass(implicit ctx: Context) = ListType.symbol.asClass
+
   lazy val SeqType: TypeRef = ctx.requiredClassRef("scala.collection.Seq")
   def SeqClass(implicit ctx: Context) = SeqType.symbol.asClass
 

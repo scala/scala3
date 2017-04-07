@@ -52,4 +52,8 @@ scala> def matchList2(xs: List[Any]) = xs match { case List() => ???; case _ => 
 def matchList2(xs: List[Any]): Nothing
 scala> def matchList3(xs: Seq[_]) = xs match { case List() => ???; case _ => ??? }
 def matchList3(xs: Seq[_]): Nothing
+scala> val xs: Seq[Int] = Seq(1,2,3)
+val xs: scala.collection.Seq[Int] = List(1, 2, 3)
+scala> val xsMatch = xs match { case ss: List[Int] => 1 }
+val xsMatch: Int = 1
 scala> :quit
