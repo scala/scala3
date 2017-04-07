@@ -59,4 +59,19 @@ class VulpixTests extends ParallelTesting {
 
   @Test def runOutRedirects: Unit =
     compileFile("../tests/partest-test/i2147.scala", defaultOptions).expectFailure.checkRuns()
+
+  @Test def infiteNonRec: Unit =
+    compileFile("../tests/partest-test/infinite.scala", defaultOptions).expectFailure.checkRuns()
+
+  @Test def infiteTailRec: Unit =
+    compileFile("../tests/partest-test/infiniteTail.scala", defaultOptions).expectFailure.checkRuns()
+
+  @Test def infiniteAlloc: Unit =
+    compileFile("../tests/partest-test/infiniteAlloc.scala", defaultOptions).expectFailure.checkRuns()
+
+  @Test def deadlock: Unit =
+    compileFile("../tests/partest-test/deadlock.scala", defaultOptions).expectFailure.checkRuns()
+
+  @Test def forkbomb: Unit =
+    compileFile("../tests/partest-test/forkbomb.scala", defaultOptions).expectFailure.checkRuns()
 }
