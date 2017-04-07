@@ -97,8 +97,10 @@ class BuildCallGraph extends Phase {
       this.callGraph = callGraph
 
       if (OuterSpecializer.isPhaseRequired) {
+        /*
         val outerSpecializer = ctx.phaseOfClass(classOf[OuterSpecializer]).asInstanceOf[OuterSpecializer]
-        outerSpecializer.specializationRequests(callGraph)
+        outerSpecializer.specializationRequest(callGraph)
+        */
       }
 
       callGraph.getInfo().log()

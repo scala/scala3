@@ -141,7 +141,7 @@ class OuterSpecializer extends MiniPhaseTransform  with InfoTransformer {
     }
   }
 
-  def specializationRequests(callGraph: CallGraph)(implicit ctx: Context): Unit = {
+  def specializationRequest(callGraph: CallGraph)(implicit ctx: Context): Unit = {
     callGraph.reachableMethods.foreach { mc =>
       val methodSym = mc.call.termSymbol
       val outerTargs = methodSym.info.widen match {
