@@ -439,7 +439,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
         if (name == nme.TRAIT_CONSTRUCTOR) nme.CONSTRUCTOR
         else name.asTermName.unmangle(Scala2MethodNameKinds)
     }
-    if ((flags is Scala2ExpandedName) && name.isSimple) {
+    if ((flags is Scala2ExpandedName)) {
       name = name.unmangle(ExpandedName)
       flags = flags &~ Scala2ExpandedName
     }
