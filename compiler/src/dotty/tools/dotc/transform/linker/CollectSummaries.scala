@@ -345,9 +345,9 @@ class CollectSummaries extends MiniPhase { thisTransform =>
             @tailrec def getVarArgTypes(tp: Type, acc: List[Type] = Nil): List[Type] = tp match {
               case tp: PolyType => getVarArgTypes(tp.resultType, acc)
               case tp: MethodType =>
-                val paramTypes = tp.paramTypes
-                lazy val lastParamType = paramTypes.last
-                if (paramTypes.isEmpty || !lastParamType.isRepeatedParam) acc
+                val paramInfos = tp.paramInfos
+                lazy val lastParamType = paramInfos.last
+                if (paramInfos.isEmpty || !lastParamType.isRepeatedParam) acc
                 else getVarArgTypes(tp.resultType, refine(lastParamType) :: acc)
               case _ => acc
             }
@@ -390,8 +390,8 @@ class CollectSummaries extends MiniPhase { thisTransform =>
               case mixin if !mixin.is(NoInits) =>
                 val decl = mixin.primaryConstructor
                 val (tparams, params) = decl.info match {
-                  case tp: PolyType => (mixin.info.typeParams.map(_.paramRef), tp.resType.paramTypess.flatten)
-                  case tp => (Nil, tp.paramTypess.flatten)
+                  case tp: PolyType => (mixin.info.typeParams.map(_.paramRef), tp.resType.paramInfoss.flatten)
+                  case tp => (Nil, tp.paramInfoss.flatten)
                 }
                 CallInfo(decl.termRef, tparams, params, someThisCallInfo)
             }

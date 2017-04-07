@@ -430,7 +430,7 @@ object GraphVisualization {
 
   private def csWTToName(x: AbstractCallInfo)(implicit ctx: Context): String = {
     val targs = typeArgumentsString(x.targs)
-    val vargs = typeParameterString(x.call.widenDealias.paramTypess)
+    val vargs = typeParameterString(x.call.widenDealias.paramInfoss)
     val resultType = typeName(x.call.widenDealias.finalResultType)
     if (x.callSymbol.owner == x.call.normalizedPrefix.classSymbol) {
       val callTypeName = typeName(x.call)

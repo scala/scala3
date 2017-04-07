@@ -470,7 +470,7 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
                   // this additionally introduces a cast of result type and argument types
                   val uncastedSig = preciseSelectCall(tp.tp, alt.symbol).widen.appliedTo(targs).widen
                   val castedSig = preciseSelectCall(receiverType, calleeSymbol).widen.appliedTo(targs).widen
-                  (uncastedSig.paramTypess.iterator.flatten zip castedSig.paramTypess.iterator.flatten) foreach (x => addCast(x._2, x._1))
+                  (uncastedSig.paramInfoss.iterator.flatten zip castedSig.paramInfoss.iterator.flatten) foreach (x => addCast(x._2, x._1))
                   addCast(uncastedSig.finalResultType, castedSig.finalResultType) // FIXME: this is added even in and tpe that are out of the intersection
                 }
 
@@ -687,7 +687,7 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
       Set.empty
     } else {
       def potentialCall(decl: Symbol): Option[CallInfo] = {
-        lazy val paramTypes = decl.info.paramTypess.flatten
+        lazy val paramTypes = decl.info.paramInfoss.flatten
         val call = new TermRefWithFixedSym(argType, decl.name.asTermName, decl.asTerm)
         val targs = call.widenDealias match {
           case call: PolyType =>
@@ -696,7 +696,7 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
                 RefinedType(parent, refinedName, TypeAlias(erasedBounds(refinedInfo)))
               case t => t
             }
-            call.paramBounds.map(erasedBounds)
+            call.paramInfos.map(erasedBounds)
 
           case _ => Nil
         }
