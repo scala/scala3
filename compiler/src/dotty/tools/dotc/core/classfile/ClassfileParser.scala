@@ -92,7 +92,9 @@ class ClassfileParser(
     val nameIdx      = in.nextChar
     currentClassName = pool.getClassName(nameIdx)
 
-    if (currentIsTopLevel && currentClassName != classRoot.fullName.toSimpleName)
+    if (currentIsTopLevel &&
+        currentClassName != classRoot.fullName.toSimpleName &&
+        currentClassName != classRoot.fullName.encode.toSimpleName)
       mismatchError(currentClassName)
 
     addEnclosingTParams()
