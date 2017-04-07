@@ -157,7 +157,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         withoutPos(super.toText(tp))
       case tp: SelectionProto =>
         return "?{ " ~ toText(tp.name) ~
-           (" " provided !tp.name.toSimpleName.decode.last.isLetterOrDigit) ~
+           (" " provided !tp.name.toSimpleName.last.isLetterOrDigit) ~
            ": " ~ toText(tp.memberProto) ~ " }"
       case tp: ViewProto =>
         return toText(tp.argType) ~ " ?=>? " ~ toText(tp.resultType)

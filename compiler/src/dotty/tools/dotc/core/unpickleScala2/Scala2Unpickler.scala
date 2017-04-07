@@ -227,7 +227,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
     val major = readNat()
     val minor = readNat()
     if (major != MajorVersion || minor > MinorVersion)
-      throw new IOException("Scala signature " + classRoot.fullName.decode +
+      throw new IOException("Scala signature " + classRoot.fullName +
         " has wrong version\n expected: " +
         MajorVersion + "." + MinorVersion +
         "\n found: " + major + "." + minor +
