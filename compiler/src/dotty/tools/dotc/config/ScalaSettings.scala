@@ -45,6 +45,7 @@ class ScalaSettings extends Settings.SettingGroup {
   val linkDCEAggressive = BooleanSetting("-link-aggressive-dce", "Enable aggressive dead code elimination.")
   val linkVis = BooleanSetting("-link-vis", "Output the visual representation of the call graph.")
   val linkJavaConservative = BooleanSetting("-link-java-conservative", "Compute call graph for java methods.")
+  val linkTimeOptimization = MultiStringSetting("-lto", "modes", "Enable link time optimizations. Possible options: spec, all.")
 
   /** -X "Advanced" settings
    */
@@ -106,6 +107,8 @@ class ScalaSettings extends Settings.SettingGroup {
   val YnoInline = BooleanSetting("-Yno-inline", "Suppress inlining.")
   val YlinkDCEChecks = BooleanSetting("-Ylink-dce-checks", "Check number of reachable classes and methods.")
   val YlinkStdlib = BooleanSetting("-Ylink-stdlib", "Linker is linking the entire stdlib in tests.")
+  val YlinkSpecialize = IntSetting("-YlinkSpecialize","Specialize methods with maximum this amount of polymorphic types.", 0, 0 to 10)
+
 
   /** Linker specific flags */
   val optimise = BooleanSetting("-optimise", "Generates faster bytecode by applying optimisations to the program") withAbbreviation "-optimize"
