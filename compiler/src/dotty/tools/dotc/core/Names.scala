@@ -100,10 +100,10 @@ object Names {
     def toText(printer: Printer): Text = printer.toText(this)
 
     /** Replace \$op_name's by corresponding operator symbols. */
-    def decode: Name
+    def decode: ThisName
 
     /** Replace operator symbols by corresponding \$op_name's. */
-    def encode: Name
+    def encode: ThisName
 
     def firstPart: SimpleTermName
     def lastPart: SimpleTermName
@@ -382,8 +382,8 @@ object Names {
   case class DerivedTermName(override val underlying: TermName, override val info: NameInfo)
   extends TermName {
     def isEmpty = false
-    def encode: Name = underlying.encode.derived(info.map(_.encode))
-    def decode: Name = underlying.decode.derived(info.map(_.decode))
+    def encode: ThisName = underlying.encode.derived(info.map(_.encode))
+    def decode: ThisName = underlying.decode.derived(info.map(_.decode))
     def firstPart = underlying.firstPart
     def lastPart = info match {
       case qual: QualifiedInfo => qual.name
