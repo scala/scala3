@@ -56,4 +56,9 @@ scala> val xs: Seq[Int] = Seq(1,2,3)
 val xs: scala.collection.Seq[Int] = List(1, 2, 3)
 scala> val xsMatch = xs match { case ss: List[Int] => 1 }
 val xsMatch: Int = 1
+scala> trait Foo[X]; trait Bar[X,Y]
+defined trait Foo
+defined trait Bar
+scala> val underScoreMatch = (Nil: Any) match { case _: Foo[_] => ???; case _: Bar[_,_] => ???; case _ => 0 }
+val underScoreMatch: Int = 0
 scala> :quit

@@ -136,7 +136,7 @@ class IsInstanceOfEvaluator extends MiniPhaseTransform { thisTransformer =>
 
           // Check if the selector's potential type parameters will be erased, and if so warn
           val selTypeParam = tree.args.head.tpe.widen match {
-            case tp @ AppliedType(_, arg :: _) =>
+            case tp @ AppliedType(_, args @ (arg :: _)) =>
               // If the type is `Array[X]` where `X` is a primitive value
               // class. In the future, when we have a solid implementation of
               // Arrays of value classes, we might be able to relax this check.
@@ -145,6 +145,16 @@ class IsInstanceOfEvaluator extends MiniPhaseTransform { thisTransformer =>
               val topType = defn.ObjectType <:< arg
               // has @unchecked annotation to suppress warnings
               val hasUncheckedAnnot = arg.hasAnnotation(defn.UncheckedAnnot)
+
+              // Shouldn't warn when matching on a subclass with underscore
+              // params or type binding
+              val matchingUnderscoresOrTypeBindings = args.forall(_ match {
+                case tr: TypeRef =>
+                  tr.symbol.is(BindDefinedType)
+                case TypeBounds(lo, hi) =>
+                  (lo eq defn.NothingType) && (hi eq defn.AnyType)
+                case _ => false
+              }) && selector <:< scrutinee
 
               // we don't want to warn when matching on `List` from `Seq` e.g:
               // (xs: Seq[Int]) match { case xs: List[Int] => ??? }
@@ -160,13 +170,16 @@ class IsInstanceOfEvaluator extends MiniPhaseTransform { thisTransformer =>
                 hasSameTypeArgs
               }
 
-              if (!topType && !hasUncheckedAnnot && !matchingSeqToList && !anyValArray) {
-                ctx.uncheckedWarning(
-                  ErasedType(hl"""|Since type parameters are erased, you should not match on them in
-                                  |${"match"} expressions."""),
-                  tree.pos
-                )
-              }
+              val shouldWarn =
+                !topType && !hasUncheckedAnnot &&
+                !matchingUnderscoresOrTypeBindings && !matchingSeqToList &&
+                !anyValArray
+
+              if (shouldWarn) ctx.uncheckedWarning(
+                ErasedType(hl"""|Since type parameters are erased, you should not match on them in
+                                |${"match"} expressions."""),
+                tree.pos
+              )
               true
             case _ =>
               if (tree.args.head.symbol.is(TypeParam)) {
