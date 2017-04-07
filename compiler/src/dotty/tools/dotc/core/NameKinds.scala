@@ -11,6 +11,7 @@ import Decorators._
 import Contexts.Context
 import collection.mutable
 
+/** Defines possible kinds of NameInfo of a derived name */
 object NameKinds {
 
   // These are sharable since all NameKinds are created eagerly at the start of the program
@@ -20,12 +21,14 @@ object NameKinds {
   @sharable private val qualifiedNameKinds = new mutable.HashMap[Int, QualifiedNameKind]
   @sharable private val uniqueNameKinds = new mutable.HashMap[String, UniqueNameKind]
 
+  /** A class for the info stored in a derived name */
   abstract class NameInfo extends DotClass {
     def kind: NameKind
     def mkString(underlying: TermName): String
-    def map(f: SimpleTermName => SimpleTermName): NameInfo = this
+    def map(f: SimpleName => SimpleName): NameInfo = this
   }
 
+  /** The kind of a derived name info */
   abstract class NameKind(val tag: Int) extends DotClass { self =>
     type ThisInfo <: Info
     class Info extends NameInfo { this: ThisInfo =>
@@ -34,12 +37,12 @@ object NameKinds {
       override def toString = infoString
     }
     def definesNewName = false
-    def unmangle(name: SimpleTermName): TermName = name
+    def unmangle(name: SimpleName): TermName = name
     def mkString(underlying: TermName, info: ThisInfo): String
     def infoString: String
   }
 
-  object SimpleTermNameKind extends NameKind(UTF8) { self =>
+  object SimpleNameKind extends NameKind(UTF8) { self =>
     type ThisInfo = Info
     val info = new Info
     def mkString(underlying: TermName, info: ThisInfo) = unsupported("mkString")
@@ -51,8 +54,8 @@ object NameKinds {
     val info = new Info
     def apply(qual: TermName) =
       qual.derived(info)
-    def unapply(name: DerivedTermName): Option[TermName] =  name match {
-      case DerivedTermName(underlying, `info`) => Some(underlying)
+    def unapply(name: DerivedName): Option[TermName] =  name match {
+      case DerivedName(underlying, `info`) => Some(underlying)
       case _ => None
     }
     simpleNameKinds(tag) = this
@@ -62,7 +65,7 @@ object NameKinds {
   extends ClassifiedNameKind(tag, if (optInfoString.isEmpty) s"Prefix $prefix" else optInfoString) {
     def mkString(underlying: TermName, info: ThisInfo) =
       underlying.mapLast(n => termName(prefix + n.toString)).toString
-    override def unmangle(name: SimpleTermName): TermName =
+    override def unmangle(name: SimpleName): TermName =
       if (name.startsWith(prefix)) apply(name.drop(prefix.length).asSimpleName)
       else name
   }
@@ -70,23 +73,23 @@ object NameKinds {
   class SuffixNameKind(tag: Int, suffix: String, optInfoString: String = "")
   extends ClassifiedNameKind(tag, if (optInfoString.isEmpty) s"Suffix $suffix" else optInfoString) {
     def mkString(underlying: TermName, info: ThisInfo) = underlying.toString ++ suffix
-    override def unmangle(name: SimpleTermName): TermName =
+    override def unmangle(name: SimpleName): TermName =
       if (name.endsWith(suffix)) apply(name.take(name.length - suffix.length).asSimpleName)
       else name
   }
 
   trait QualifiedInfo extends NameInfo {
-    val name: SimpleTermName
+    val name: SimpleName
   }
 
   class QualifiedNameKind(tag: Int, val separator: String)
   extends NameKind(tag) {
     type ThisInfo = QualInfo
-    case class QualInfo(val name: SimpleTermName) extends Info with QualifiedInfo {
-      override def map(f: SimpleTermName => SimpleTermName): NameInfo = new QualInfo(f(name))
+    case class QualInfo(val name: SimpleName) extends Info with QualifiedInfo {
+      override def map(f: SimpleName => SimpleName): NameInfo = new QualInfo(f(name))
       override def toString = s"$infoString $name"
     }
-    def apply(qual: TermName, name: SimpleTermName): TermName =
+    def apply(qual: TermName, name: SimpleName): TermName =
       qual.derived(new QualInfo(name))
 
     /** Overloaded version used only for ExpandedName and TraitSetterName.
@@ -94,12 +97,12 @@ object NameKinds {
      *  For example, look at javap of scala.App.initCode
      */
     def apply(qual: TermName, name: TermName): TermName = name rewrite {
-      case name: SimpleTermName => apply(qual, name)
+      case name: SimpleName => apply(qual, name)
       case AnyQualifiedName(_, _) => apply(qual, name.toSimpleName)
     }
 
-    def unapply(name: DerivedTermName): Option[(TermName, SimpleTermName)] = name match {
-      case DerivedTermName(qual, info: this.QualInfo) => Some((qual, info.name))
+    def unapply(name: DerivedName): Option[(TermName, SimpleName)] = name match {
+      case DerivedName(qual, info: this.QualInfo) => Some((qual, info.name))
       case _ => None
     }
 
@@ -113,8 +116,8 @@ object NameKinds {
   }
 
   object AnyQualifiedName {
-    def unapply(name: DerivedTermName): Option[(TermName, SimpleTermName)] = name match {
-      case DerivedTermName(qual, info: QualifiedInfo) =>
+    def unapply(name: DerivedName): Option[(TermName, SimpleName)] = name match {
+      case DerivedName(qual, info: QualifiedInfo) =>
         Some((name.underlying, info.name))
       case _ => None
     }
@@ -131,11 +134,11 @@ object NameKinds {
     }
     def apply(qual: TermName, num: Int) =
       qual.derived(new NumberedInfo(num))
-    def unapply(name: DerivedTermName): Option[(TermName, Int)] = name match {
-      case DerivedTermName(underlying, info: this.NumberedInfo) => Some((underlying, info.num))
+    def unapply(name: DerivedName): Option[(TermName, Int)] = name match {
+      case DerivedName(underlying, info: this.NumberedInfo) => Some((underlying, info.num))
       case _ => None
     }
-    protected def skipSeparatorAndNum(name: SimpleTermName, separator: String): Int = {
+    protected def skipSeparatorAndNum(name: SimpleName, separator: String): Int = {
       var i = name.length
       while (i > 0 && name(i - 1).isDigit) i -= 1
       if (i > separator.length && i < name.length &&
@@ -145,8 +148,8 @@ object NameKinds {
   }
 
   object AnyNumberedName {
-    def unapply(name: DerivedTermName): Option[(TermName, Int)] = name match {
-      case DerivedTermName(qual, info: NumberedInfo) => Some((qual, info.num))
+    def unapply(name: DerivedName): Option[(TermName, Int)] = name match {
+      case DerivedName(qual, info: NumberedInfo) => Some((qual, info.num))
       case _ => None
     }
   }
@@ -166,8 +169,8 @@ object NameKinds {
   }
 
   object AnyUniqueName {
-    def unapply(name: DerivedTermName): Option[(TermName, String, Int)] = name match {
-      case DerivedTermName(qual, info: NumberedInfo) =>
+    def unapply(name: DerivedName): Option[(TermName, String, Int)] = name match {
+      case DerivedName(qual, info: NumberedInfo) =>
         info.kind match {
           case unique: UniqueNameKind => Some((qual, unique.separator, info.num))
           case _ => None
@@ -184,7 +187,7 @@ object NameKinds {
     private val FalseSuper = termName("$$super")
     private val FalseSuperLength = FalseSuper.length
 
-    override def unmangle(name: SimpleTermName): TermName = {
+    override def unmangle(name: SimpleName): TermName = {
       var i = name.lastIndexOfSlice(str.EXPAND_SEPARATOR)
       if (i < 0) name
       else {
@@ -224,7 +227,7 @@ object NameKinds {
   val SuperArgName            = new UniqueNameKind("$superArg$")
 
   val UniqueExtMethName = new UniqueNameKind("$extension") {
-    override def unmangle(name: SimpleTermName): TermName = {
+    override def unmangle(name: SimpleName): TermName = {
       val i = skipSeparatorAndNum(name, separator)
       if (i > 0) {
         val index = name.drop(i).toString.toInt
@@ -249,7 +252,7 @@ object NameKinds {
       prefix.toString + str.DEFAULT_GETTER + (info.num + 1)
     }
     // TODO: Reduce code duplication with UniqueExtMethName
-    override def unmangle(name: SimpleTermName): TermName = {
+    override def unmangle(name: SimpleName): TermName = {
       val i = skipSeparatorAndNum(name, str.DEFAULT_GETTER)
       if (i > 0) {
         val index = name.drop(i).toString.toInt - 1
@@ -300,8 +303,8 @@ object NameKinds {
 
     def apply(qual: TermName, sig: Signature) =
       qual.derived(new SignedInfo(sig))
-    def unapply(name: DerivedTermName): Option[(TermName, Signature)] = name match {
-      case DerivedTermName(underlying, info: SignedInfo) => Some((underlying, info.sig))
+    def unapply(name: DerivedName): Option[(TermName, Signature)] = name match {
+      case DerivedName(underlying, info: SignedInfo) => Some((underlying, info.sig))
       case _ => None
     }
 

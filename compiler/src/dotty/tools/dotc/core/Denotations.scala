@@ -1194,7 +1194,7 @@ object Denotations {
           select(recur(prefix), wrap(selector))
         case qn @ AnyQualifiedName(prefix, _) =>
           recur(prefix, n => wrap(qn.info.mkString(n).toTermName))
-        case path: SimpleTermName =>
+        case path: SimpleName =>
           def recurSimple(len: Int, wrap: TermName => Name): Denotation = {
             val point = path.lastIndexOf('.', len - 1)
             val selector = wrap(path.slice(point + 1, len).asTermName)

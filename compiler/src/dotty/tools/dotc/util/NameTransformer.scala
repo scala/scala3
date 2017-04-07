@@ -44,7 +44,7 @@ object NameTransformer {
   /** Expand characters that are illegal as JVM method names by `$u`, followed
    *  by the character's unicode expansion.
    */
-  def avoidIllegalChars(name: SimpleTermName) = {
+  def avoidIllegalChars(name: SimpleName) = {
     var i = name.length - 1
     while (i >= 0 && isValidJVMMethodChar(name(i))) i -= 1
     if (i >= 0)
@@ -62,8 +62,8 @@ object NameTransformer {
    *  Operator symbols are only recognized if they make up the whole name, or
    *  if they make up the last part of the name which follows a `_`.
    */
-  def encode(name: SimpleTermName): SimpleTermName = {
-    def loop(len: Int, ops: List[String]): SimpleTermName = {
+  def encode(name: SimpleName): SimpleName = {
+    def loop(len: Int, ops: List[String]): SimpleName = {
       def convert =
         if (ops.isEmpty) name
         else {
@@ -89,8 +89,8 @@ object NameTransformer {
    *  Operator expansions are only recognized if they make up the whole name, or
    *  if they make up the last part of the name which follows a `_`.
    */
-  def decode(name: SimpleTermName): SimpleTermName = {
-    def loop(len: Int, ops: List[Char]): SimpleTermName = {
+  def decode(name: SimpleName): SimpleName = {
+    def loop(len: Int, ops: List[Char]): SimpleName = {
       def convert =
         if (ops.isEmpty) name
         else {

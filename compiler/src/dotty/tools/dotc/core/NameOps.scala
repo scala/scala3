@@ -52,8 +52,8 @@ object NameOps {
   implicit class NameDecorator[N <: Name](val name: N) extends AnyVal {
     import nme._
 
-    def testSimple(f: SimpleTermName => Boolean): Boolean = name match {
-      case name: SimpleTermName => f(name)
+    def testSimple(f: SimpleName => Boolean): Boolean = name match {
+      case name: SimpleName => f(name)
       case name: TypeName => name.toTermName.testSimple(f)
       case _ => false
     }
@@ -83,7 +83,7 @@ object NameOps {
     def isOpAssignmentName: Boolean = name match {
       case raw.NE | raw.LE | raw.GE | EMPTY =>
         false
-      case name: SimpleTermName =>
+      case name: SimpleName =>
         name.length > 0 && name.last == '=' && name.head != '=' && isOperatorPart(name.head)
       case _ =>
         false
@@ -101,7 +101,7 @@ object NameOps {
      */
     def stripModuleClassSuffix: N = likeSpaced {
       val semName = name.toTermName match {
-        case name: SimpleTermName if name.endsWith("$") => name.unmangleClassName
+        case name: SimpleName if name.endsWith("$") => name.unmangleClassName
         case _ => name
       }
       semName.exclude(ModuleClassName)
@@ -229,7 +229,7 @@ object NameOps {
     def compactified(implicit ctx: Context): TermName = termName(compactify(name.toString))
 
     def unmangleClassName: N = name.toTermName match {
-      case name: SimpleTermName
+      case name: SimpleName
       if name.endsWith(str.MODULE_SUFFIX) && !nme.falseModuleClassNames.contains(name) =>
         likeSpaced(name.dropRight(str.MODULE_SUFFIX.length).moduleClassName)
       case _ => name
@@ -237,11 +237,11 @@ object NameOps {
 
     def unmangle(kind: NameKind): N = likeSpaced {
       name rewrite {
-        case unmangled: SimpleTermName =>
+        case unmangled: SimpleName =>
           kind.unmangle(unmangled)
         case ExpandedName(prefix, last) =>
           kind.unmangle(last) rewrite {
-            case kernel: SimpleTermName =>
+            case kernel: SimpleName =>
               ExpandedName(prefix, kernel)
           }
       }

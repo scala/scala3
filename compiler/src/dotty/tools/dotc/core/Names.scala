@@ -61,10 +61,10 @@ object Names {
     def asTermName: TermName
 
     /** This name downcasted to a simple term name */
-    def asSimpleName: SimpleTermName
+    def asSimpleName: SimpleName
 
     /** This name converted to a simple term name */
-    def toSimpleName: SimpleTermName
+    def toSimpleName: SimpleName
 
     @sharable // because it's just a cache for performance
     private[this] var myMangled: Name = null
@@ -93,10 +93,10 @@ object Names {
     def collect[T](f: PartialFunction[Name, T]): Option[T]
 
     /** Apply `f` to last simple term name making up this name */
-    def mapLast(f: SimpleTermName => SimpleTermName): ThisName
+    def mapLast(f: SimpleName => SimpleName): ThisName
 
     /** Apply `f` to all simple term names making up this name */
-    def mapParts(f: SimpleTermName => SimpleTermName): ThisName
+    def mapParts(f: SimpleName => SimpleName): ThisName
 
     /** A name in the same (term or type) namespace as this name and
      *  with same characters as given `name`.
@@ -137,10 +137,10 @@ object Names {
     def encode: ThisName
 
     /** The first part of this (possible qualified) name */
-    def firstPart: SimpleTermName
+    def firstPart: SimpleName
 
     /** The last part of this (possible qualified) name */
-    def lastPart: SimpleTermName
+    def lastPart: SimpleName
 
     /** Append `other` to the last part of this name */
     def ++ (other: Name): ThisName = ++ (other.toString)
@@ -186,32 +186,32 @@ object Names {
 
     override def likeSpaced(name: Name): TermName = name.toTermName
 
-    def info: NameInfo = SimpleTermNameKind.info
+    def info: NameInfo = SimpleNameKind.info
     def underlying: TermName = unsupported("underlying")
 
     @sharable // because of synchronized block in `and`
     private var derivedNames: AnyRef /* SimpleMap | j.u.HashMap */ =
       SimpleMap.Empty[NameInfo]
 
-    private def getDerived(info: NameInfo): DerivedTermName /* | Null */= derivedNames match {
-      case derivedNames: SimpleMap[NameInfo, DerivedTermName] @unchecked =>
+    private def getDerived(info: NameInfo): DerivedName /* | Null */= derivedNames match {
+      case derivedNames: SimpleMap[NameInfo, DerivedName] @unchecked =>
         derivedNames(info)
-      case derivedNames: HashMap[NameInfo, DerivedTermName] @unchecked =>
+      case derivedNames: HashMap[NameInfo, DerivedName] @unchecked =>
         derivedNames.get(info)
     }
 
-    private def putDerived(info: NameInfo, name: DerivedTermName): name.type = {
+    private def putDerived(info: NameInfo, name: DerivedName): name.type = {
       derivedNames match {
-        case derivedNames: SimpleMap[NameInfo, DerivedTermName] @unchecked =>
+        case derivedNames: SimpleMap[NameInfo, DerivedName] @unchecked =>
           if (derivedNames.size < 4)
             this.derivedNames = derivedNames.updated(info, name)
           else {
-            val newMap = new HashMap[NameInfo, DerivedTermName]
+            val newMap = new HashMap[NameInfo, DerivedName]
             derivedNames.foreachBinding(newMap.put(_, _))
             newMap.put(info, name)
             this.derivedNames = newMap
           }
-        case derivedNames: HashMap[NameInfo, DerivedTermName] @unchecked =>
+        case derivedNames: HashMap[NameInfo, DerivedName] @unchecked =>
           derivedNames.put(info, name)
       }
       name
@@ -219,7 +219,7 @@ object Names {
 
     private def add(info: NameInfo): TermName = synchronized {
       getDerived(info) match {
-        case null        => putDerived(info, new DerivedTermName(this, info))
+        case null        => putDerived(info, new DerivedName(this, info))
         case derivedName => derivedName
       }
     }
@@ -253,7 +253,7 @@ object Names {
   }
 
   /** A simple name is essentiall an interned string */
-  final class SimpleTermName(val start: Int, val length: Int, @sharable private[Names] var next: SimpleTermName) extends TermName {
+  final class SimpleName(val start: Int, val length: Int, @sharable private[Names] var next: SimpleName) extends TermName {
     // `next` is @sharable because it is only modified in the synchronized block of termName.
 
     /** The n'th character */
@@ -289,7 +289,7 @@ object Names {
     def lastIndexOfSlice(str: String): Int = toString.lastIndexOfSlice(str)
 
     /** A slice of this name making up the characters between `from` and `until` (exclusive) */
-    def slice(from: Int, end: Int): SimpleTermName = {
+    def slice(from: Int, end: Int): SimpleName = {
       assert(0 <= from && from <= end && end <= length)
       termName(chrs, start + from, end - from)
     }
@@ -313,17 +313,17 @@ object Names {
     override def rewrite(f: PartialFunction[Name, Name]): ThisName =
       if (f.isDefinedAt(this)) likeSpaced(f(this)) else this
     override def collect[T](f: PartialFunction[Name, T]): Option[T] = f.lift(this)
-    override def mapLast(f: SimpleTermName => SimpleTermName) = f(this)
-    override def mapParts(f: SimpleTermName => SimpleTermName) = f(this)
+    override def mapLast(f: SimpleName => SimpleName) = f(this)
+    override def mapParts(f: SimpleName => SimpleName) = f(this)
 
-    override def encode: SimpleTermName = {
+    override def encode: SimpleName = {
       val dontEncode =
         length >= 3 &&
         head == '<' && last == '>' && isIdentifierStart(apply(1))
       if (dontEncode) this else NameTransformer.encode(this)
     }
 
-    override def decode: SimpleTermName = NameTransformer.decode(this)
+    override def decode: SimpleName = NameTransformer.decode(this)
 
     override def isEmpty = length == 0
 
@@ -339,7 +339,7 @@ object Names {
       i > str.length
     }
 
-    override def replace(from: Char, to: Char): SimpleTermName = {
+    override def replace(from: Char, to: Char): SimpleName = {
       val cs = new Array[Char](length)
       Array.copy(chrs, start, cs, 0, length)
       for (i <- 0 until length) {
@@ -411,8 +411,8 @@ object Names {
 
     override def rewrite(f: PartialFunction[Name, Name]): ThisName = toTermName.rewrite(f).toTypeName
     override def collect[T](f: PartialFunction[Name, T]): Option[T] = toTermName.collect(f)
-    override def mapLast(f: SimpleTermName => SimpleTermName) = toTermName.mapLast(f).toTypeName
-    override def mapParts(f: SimpleTermName => SimpleTermName) = toTermName.mapParts(f).toTypeName
+    override def mapLast(f: SimpleName => SimpleName) = toTermName.mapLast(f).toTypeName
+    override def mapParts(f: SimpleName => SimpleName) = toTermName.mapParts(f).toTypeName
 
     override def likeSpaced(name: Name): TypeName = name.toTypeName
 
@@ -434,7 +434,7 @@ object Names {
   /** A term name that's derived from an `underlying` name and that
    *  adds `info` to it.
    */
-  final case class DerivedTermName(override val underlying: TermName, override val info: NameInfo)
+  final case class DerivedName(override val underlying: TermName, override val info: NameInfo)
   extends TermName {
 
     override def asSimpleName = throw new UnsupportedOperationException(s"$debugString is not a simple name")
@@ -456,13 +456,13 @@ object Names {
         case _ => underlying.collect(f)
       }
 
-    override def mapLast(f: SimpleTermName => SimpleTermName): ThisName =
+    override def mapLast(f: SimpleName => SimpleName): ThisName =
       info match {
         case qual: QualifiedInfo => underlying.derived(qual.map(f))
         case _ => underlying.mapLast(f).derived(info)
       }
 
-    override def mapParts(f: SimpleTermName => SimpleTermName): ThisName =
+    override def mapParts(f: SimpleName => SimpleName): ThisName =
       info match {
         case qual: QualifiedInfo => underlying.mapParts(f).derived(qual.map(f))
         case _ => underlying.mapParts(f).derived(info)
@@ -496,7 +496,7 @@ object Names {
 
   /** Hashtable for finding term names quickly. */
   @sharable // because it's only mutated in synchronized block of termName
-  private var table = new Array[SimpleTermName](InitialHashSize)
+  private var table = new Array[SimpleName](InitialHashSize)
 
   /** The number of defined names. */
   @sharable // because it's only mutated in synchronized block of termName
@@ -524,7 +524,7 @@ object Names {
   /** Create a term name from the characters in cs[offset..offset+len-1].
    *  Assume they are already encoded.
    */
-  def termName(cs: Array[Char], offset: Int, len: Int): SimpleTermName = synchronized {
+  def termName(cs: Array[Char], offset: Int, len: Int): SimpleName = synchronized {
     util.Stats.record("termName")
     val h = hashValue(cs, offset, len) & (table.size - 1)
 
@@ -548,7 +548,7 @@ object Names {
     }
 
     /** Rehash chain of names */
-    def rehash(name: SimpleTermName): Unit =
+    def rehash(name: SimpleName): Unit =
       if (name != null) {
         val oldNext = name.next
         val h = hashValue(chrs, name.start, name.length) & (table.size - 1)
@@ -562,7 +562,7 @@ object Names {
       size += 1
       if (size.toDouble / table.size > fillFactor) {
         val oldTable = table
-        table = new Array[SimpleTermName](table.size * 2)
+        table = new Array[SimpleName](table.size * 2)
         for (i <- 0 until oldTable.size) rehash(oldTable(i))
       }
     }
@@ -574,7 +574,7 @@ object Names {
         return name
       name = name.next
     }
-    name = new SimpleTermName(nc, len, next)
+    name = new SimpleName(nc, len, next)
     enterChars()
     table(h) = name
     incTableSize()
@@ -590,7 +590,7 @@ object Names {
   /** Create a term name from the UTF8 encoded bytes in bs[offset..offset+len-1].
    *  Assume they are already encoded.
    */
-  def termName(bs: Array[Byte], offset: Int, len: Int): SimpleTermName = {
+  def termName(bs: Array[Byte], offset: Int, len: Int): SimpleName = {
     val chars = Codec.fromUTF8(bs, offset, len)
     termName(chars, 0, chars.length)
   }
@@ -602,12 +602,12 @@ object Names {
     termName(bs, offset, len).toTypeName
 
   /** Create a term name from a string, without encoding operators */
-  def termName(s: String): SimpleTermName = termName(s.toCharArray, 0, s.length)
+  def termName(s: String): SimpleName = termName(s.toCharArray, 0, s.length)
 
   /** Create a type name from a string, without encoding operators */
   def typeName(s: String): TypeName = typeName(s.toCharArray, 0, s.length)
 
-  table(0) = new SimpleTermName(-1, 0, null)
+  table(0) = new SimpleName(-1, 0, null)
 
   /** The term name represented by the empty string */
   val EmptyTermName: TermName = table(0)
@@ -633,7 +633,7 @@ object Names {
           assert(x == y)
           0
       }
-    private def compareSimpleNames(x: SimpleTermName, y: SimpleTermName): Int = {
+    private def compareSimpleNames(x: SimpleName, y: SimpleName): Int = {
       val until = x.length min y.length
       var i = 0
       while (i < until && x(i) == y(i)) i = i + 1
@@ -645,14 +645,14 @@ object Names {
       }
     }
     private def compareTermNames(x: TermName, y: TermName): Int = x match {
-      case x: SimpleTermName =>
+      case x: SimpleName =>
         y match {
-          case y: SimpleTermName => compareSimpleNames(x, y)
+          case y: SimpleName => compareSimpleNames(x, y)
           case _ => -1
         }
-      case DerivedTermName(xPre, xInfo) =>
+      case DerivedName(xPre, xInfo) =>
         y match {
-          case DerivedTermName(yPre, yInfo) =>
+          case DerivedName(yPre, yInfo) =>
             val s = compareInfos(xInfo, yInfo)
             if (s == 0) compareTermNames(xPre, yPre) else s
           case _ => 1

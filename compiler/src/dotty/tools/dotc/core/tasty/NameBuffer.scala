@@ -4,7 +4,7 @@ package core
 package tasty
 
 import collection.mutable
-import Names.{Name, chrs, SimpleTermName, DerivedTermName}
+import Names.{Name, chrs, SimpleName, DerivedName}
 import NameOps.NameDecorator
 import NameKinds._
 import Decorators._
@@ -31,7 +31,7 @@ class NameBuffer extends TastyBuffer(10000) {
           case AnyUniqueName(original, separator, num) =>
             nameIndex(separator.toTermName)
             if (!original.isEmpty) nameIndex(original)
-          case DerivedTermName(original, _) =>
+          case DerivedName(original, _) =>
             nameIndex(original)
           case _ =>
         }
@@ -56,7 +56,7 @@ class NameBuffer extends TastyBuffer(10000) {
     val tag = name.toTermName.info.kind.tag
     writeByte(tag)
     name.toTermName match {
-      case name: SimpleTermName =>
+      case name: SimpleName =>
         val bytes =
           if (name.length == 0) new Array[Byte](0)
           else Codec.toUTF8(chrs, name.start, name.length)
@@ -78,7 +78,7 @@ class NameBuffer extends TastyBuffer(10000) {
         withLength(
           { writeNameRef(original); writeNameRef(result); params.foreach(writeNameRef) },
           if ((params.length + 2) * maxIndexWidth <= maxNumInByte) 1 else 2)
-      case DerivedTermName(original, _) =>
+      case DerivedName(original, _) =>
         withLength { writeNameRef(original) }
     }
   }

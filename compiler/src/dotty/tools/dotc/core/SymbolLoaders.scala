@@ -186,7 +186,7 @@ class SymbolLoaders {
 
     private[core] val currentDecls: MutableScope = new PackageScope()
 
-    def isFlatName(name: SimpleTermName) = name.lastIndexOf('$', name.length - 2) >= 0
+    def isFlatName(name: SimpleName) = name.lastIndexOf('$', name.length - 2) >= 0
 
     def isFlatName(classRep: ClassRepresentation) = {
       val idx = classRep.name.indexOf('$')

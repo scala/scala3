@@ -38,7 +38,7 @@ object Scanners {
     var lastOffset: Offset = 0
 
     /** the name of an identifier */
-    var name: SimpleTermName = null
+    var name: SimpleName = null
 
     /** the string value of a literal */
     var strVal: String = null
