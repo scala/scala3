@@ -10,7 +10,6 @@ import Symbols._
 import Names._
 import NameOps._
 import Types._
-import Flags._
 import util.SourcePosition
 import config.Settings.Setting
 import interfaces.Diagnostic.{ERROR, INFO, WARNING}

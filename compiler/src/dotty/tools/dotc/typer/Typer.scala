@@ -651,8 +651,12 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     val cond1 = typed(tree.cond, defn.BooleanType)
     val thenp1 = typed(tree.thenp, pt.notApplied)
     val elsep1 = typed(tree.elsep orElse (untpd.unitLiteral withPos tree.pos), pt.notApplied)
-    if (thenp1.tpe.topType != elsep1.tpe.topType)
-      ctx.error(IfElsePhantom(thenp1, elsep1), tree.pos)
+    if (thenp1.tpe.topType != elsep1.tpe.topType) {
+      ctx.error(s"""if/else cannot have branches with types in different lattices:
+                   |  ${thenp1.tpe.show} of lattice ${thenp1.tpe.topType.show}
+                   |  ${elsep1.tpe.show} of lattice ${elsep1.tpe.topType.show}
+                """.stripMargin, tree.pos)
+    }
     val thenp2 :: elsep2 :: Nil = harmonize(thenp1 :: elsep1 :: Nil)
     assignType(cpy.If(tree)(cond1, thenp2, elsep2), thenp2, elsep2)
   }
@@ -825,7 +829,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
       case _ =>
         val sel1 = typedExpr(tree.selector)
         if (sel1.tpe.isPhantom)
-          ctx.error(MatchOnPhantom(), sel1.pos)
+          ctx.error("Cannot pattern match on phantoms", sel1.pos)
         val selType = fullyDefinedType(sel1.tpe, "pattern selector", tree.pos).widen
 
         val cases1 = typedCases(tree.cases, selType, pt.notApplied)
@@ -861,7 +865,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     if (tpdCases.nonEmpty) {
       val top = tpdCases.head.tpe.topType
       for (tpdCase <- tpdCases if tpdCase.tpe.topType != top)
-        ctx.error(MatchPhantom(tpdCase, top), tpdCase.pos)
+        ctx.error(s"Pattern expected case to return a ${top.show} but was ${tpdCase.tpe.show}", tpdCase.pos)
     }
 
     tpdCases
@@ -1348,9 +1352,9 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
 
     if (cls.classParents.exists(_.classSymbol eq defn.PhantomClass)) {
       if (!cls.is(Module))
-        ctx.error(PhantomIsInObject(), cdef.pos)
+        ctx.error("Only object can extend scala.Phantom", cdef.pos)
       else if (!cls.owner.is(Module) && !cls.owner.is(Package))
-        ctx.error(PhantomObjectIsInPackageOrObject(), cdef.pos)
+        ctx.error("An object extending scala.Phantom must be a top level object or in another object.", cdef.pos)
     }
 
     // check value class constraints
@@ -1661,17 +1665,23 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
      *  this includes Phantom.Any of different universes.
      */
     def checkedTops(tree: untpd.Tree): Set[Type] = {
-      def checkedTops2(tree1: untpd.Tree, tree2: untpd.Tree, msg: => Message, pos: Position): Set[Type] = {
-        val allTops = checkedTops(tree1) union checkedTops(tree2)
-        if (allTops.size > 1)
-          ctx.error(msg, tree.pos)
-        allTops
-      }
       tree match {
         case TypeBoundsTree(lo, hi) =>
-          checkedTops2(lo, hi, PhantomCrossedMixedBounds(lo, hi), tree.pos)
+          val allTops = checkedTops(hi) union checkedTops(lo)
+          if (allTops.size <= 1) allTops
+          else {
+            ctx.error("Type can not be bounded at the same time by types in different latices: " +
+                allTops.map(_.show).mkString(", "), tree.pos)
+            Set.empty
+          }
         case untpd.InfixOp(left, op, right) =>
-          checkedTops2(left, right, PhantomCrossedMixedBounds(left, right), tree.pos)
+          val allTops = checkedTops(left) union checkedTops(right)
+          if (allTops.size <= 1) allTops
+          else {
+            ctx.error(s"Can not use ${op.show} mix types of different lattices: " +
+                allTops.map(_.show).mkString(", "), tree.pos)
+            Set.empty
+          }
         case EmptyTree => Set.empty
         case _ => Set(tree.typeOpt.topType)
       }
