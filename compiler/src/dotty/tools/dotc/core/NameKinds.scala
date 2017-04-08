@@ -206,7 +206,7 @@ object NameKinds {
     override def definesNewName = true
 
     def mkString(underlying: TermName, info: ThisInfo) = {
-      val safePrefix = str.sanitize(underlying.toString + separator)
+      val safePrefix = str.sanitize(underlying.toString) + separator
       safePrefix + info.num
     }
 
