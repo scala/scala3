@@ -566,8 +566,8 @@ class Namer { typer: Typer =>
 
     /** Create links between companion object and companion class */
     def createLinks(classTree: TypeDef, moduleTree: TypeDef)(implicit ctx: Context) = {
-      val claz = ctx.denotNamed(classTree.name).symbol
-      val modl = ctx.denotNamed(moduleTree.name).symbol
+      val claz = ctx.effectiveScope.lookup(classTree.name)
+      val modl = ctx.effectiveScope.lookup(moduleTree.name)
       ctx.synthesizeCompanionMethod(nme.COMPANION_CLASS_METHOD, claz, modl).entered
       ctx.synthesizeCompanionMethod(nme.COMPANION_MODULE_METHOD, modl, claz).entered
     }
