@@ -391,9 +391,12 @@ class TypeApplications(val self: Type) extends AnyVal {
           if (!args.exists(_.isInstanceOf[TypeBounds])) {
             val followAlias = Config.simplifyApplications && {
               dealiased.resType match {
-                case AppliedType(tyconBody, _) =>
-                  sameLength(dealiased.typeParams, tyconBody.typeParams)
-                    // Reducing is safe for type inference, as kind arity of type constructor does not change
+                case AppliedType(tyconBody, dealiasedArgs) =>
+                  // Reduction should not affect type inference when it's
+                  // just eta-reduction (ignoring variance annotations).
+                  // See i2201*.scala for examples where more aggressive
+                  // reduction would break type inference.
+                  dealiased.paramRefs == dealiasedArgs
                 case _ => false
               }
             }
