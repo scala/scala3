@@ -449,8 +449,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
     }
     name = name.mapLast(_.decode)
 
-    val mname = name.mangled
-    def nameMatches(rootName: Name) = mname == rootName.mangled
+    def nameMatches(rootName: Name) = name == rootName
     def isClassRoot = nameMatches(classRoot.name) && (owner == classRoot.owner) && !(flags is ModuleClass)
     def isModuleClassRoot = nameMatches(moduleClassRoot.name) && (owner == moduleClassRoot.owner) && (flags is Module)
     def isModuleRoot = nameMatches(moduleClassRoot.name.sourceModuleName) && (owner == moduleClassRoot.owner) && (flags is Module)

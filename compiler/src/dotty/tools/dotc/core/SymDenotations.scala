@@ -373,18 +373,11 @@ object SymDenotations {
         // might have been moved from different origins into the same class
 
     /** The name with which the denoting symbol was created */
-    final def originalName(implicit ctx: Context) =
-      initial.effectiveName
+    final def originalName(implicit ctx: Context) = initial.effectiveName
 
     /** The encoded full path name of this denotation, where outer names and inner names
-     *  are separated by `separator` strings.
-     *  Never translates expansions of operators back to operator symbol.
-     *  Drops package objects. Represents each term in the owner chain by a simple `~`.
-     *  (Note: scalac uses nothing to represent terms, which can cause name clashes
-     *   between same-named definitions in different enclosing methods. Before this commit
-     *   we used `$' but this can cause ambiguities with the class separator '$').
-     *  A separator "" means "flat name"; the real separator in this case is "$" and
-     *  enclosing packages do not form part of the name.
+     *  are separated by `separator` strings as indicated by the given name kind.
+     *  Drops package objects. Represents each term in the owner chain by a simple `_$`.
      */
     def fullNameSeparated(kind: QualifiedNameKind)(implicit ctx: Context): Name =
       if (symbol == NoSymbol ||
