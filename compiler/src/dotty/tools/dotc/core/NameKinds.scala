@@ -19,6 +19,7 @@ object NameKinds {
   // be created lazily or in modules that start running after compilers are forked.
   @sharable private val simpleNameKinds = new mutable.HashMap[Int, ClassifiedNameKind]
   @sharable private val qualifiedNameKinds = new mutable.HashMap[Int, QualifiedNameKind]
+  @sharable private val numberedNameKinds = new mutable.HashMap[Int, NumberedNameKind]
   @sharable private val uniqueNameKinds = new mutable.HashMap[String, UniqueNameKind]
 
   /** A class for the info stored in a derived name */
@@ -28,20 +29,39 @@ object NameKinds {
     def map(f: SimpleName => SimpleName): NameInfo = this
   }
 
-  /** The kind of a derived name info */
+  /** An abstract base class of classes that define the kind of a derived name info */
   abstract class NameKind(val tag: Int) extends DotClass { self =>
+
+    /** The info class defined by this kind */
     type ThisInfo <: Info
+
+    /** A simple info type; some subclasses of Kind define more refined versions */
     class Info extends NameInfo { this: ThisInfo =>
       def kind = self
       def mkString(underlying: TermName) = self.mkString(underlying, this)
       override def toString = infoString
     }
+
+    /** Does this kind define logically a new name? Tested by the `rewrite` and `collect`
+     *  combinators of names.
+     */
     def definesNewName = false
+
+    /** Unmangle simple name `name` into a name of this kind, or return
+     *  original name if this is not possible.
+     */
     def unmangle(name: SimpleName): TermName = name
+
+    /** Turn a name of this kind consisting of an `underlying` prefix
+     *  and the given `info` into a string.
+     */
     def mkString(underlying: TermName, info: ThisInfo): String
+
+    /** A string used for displaying the structure of a name */
     def infoString: String
   }
 
+  /** The kind of SimpleNames */
   object SimpleNameKind extends NameKind(UTF8) { self =>
     type ThisInfo = Info
     val info = new Info
@@ -49,18 +69,25 @@ object NameKinds {
     def infoString = unsupported("infoString")
   }
 
+  /** The kind of names that add a simple classification to an underlying name.
+   */
   abstract class ClassifiedNameKind(tag: Int, val infoString: String) extends NameKind(tag) {
     type ThisInfo = Info
     val info = new Info
-    def apply(qual: TermName) =
-      qual.derived(info)
+
+    /** Build a new name of this kind from an underlying name */
+    def apply(underlying: TermName) = underlying.derived(info)
+
+    /** Extractor operation for names of this kind */
     def unapply(name: DerivedName): Option[TermName] =  name match {
       case DerivedName(underlying, `info`) => Some(underlying)
       case _ => None
     }
+
     simpleNameKinds(tag) = this
   }
 
+  /** The kind of names that get formed by adding a prefix to an underlying name */
   class PrefixNameKind(tag: Int, prefix: String, optInfoString: String = "")
   extends ClassifiedNameKind(tag, if (optInfoString.isEmpty) s"Prefix $prefix" else optInfoString) {
     def mkString(underlying: TermName, info: ThisInfo) =
@@ -70,6 +97,7 @@ object NameKinds {
       else name
   }
 
+  /** The kind of names that get formed by appending a suffix to an underlying name */
   class SuffixNameKind(tag: Int, suffix: String, optInfoString: String = "")
   extends ClassifiedNameKind(tag, if (optInfoString.isEmpty) s"Suffix $suffix" else optInfoString) {
     def mkString(underlying: TermName, info: ThisInfo) = underlying.toString ++ suffix
@@ -78,10 +106,16 @@ object NameKinds {
       else name
   }
 
+  /** A base trait for infos that define an additional selector name */
   trait QualifiedInfo extends NameInfo {
     val name: SimpleName
   }
 
+  /** The kind of qualified names, consisting of an underlying name as a prefix,
+   *  followed by a separator, followed by a simple selector name.
+   *
+   *  A qualified names always constitutes a new name, different from its underlying name.
+   */
   class QualifiedNameKind(tag: Int, val separator: String)
   extends NameKind(tag) {
     type ThisInfo = QualInfo
@@ -89,6 +123,7 @@ object NameKinds {
       override def map(f: SimpleName => SimpleName): NameInfo = new QualInfo(f(name))
       override def toString = s"$infoString $name"
     }
+
     def apply(qual: TermName, name: SimpleName): TermName =
       qual.derived(new QualInfo(name))
 
@@ -110,11 +145,13 @@ object NameKinds {
 
     def mkString(underlying: TermName, info: ThisInfo) =
       s"$underlying$separator${info.name}"
+
     def infoString = s"Qualified $separator"
 
     qualifiedNameKinds(tag) = this
   }
 
+  /** An extractor for qualified names of an arbitrary kind */
   object AnyQualifiedName {
     def unapply(name: DerivedName): Option[(TermName, SimpleName)] = name match {
       case DerivedName(qual, info: QualifiedInfo) =>
@@ -123,10 +160,12 @@ object NameKinds {
     }
   }
 
+  /** A base trait for infos that contain a number */
   trait NumberedInfo extends NameInfo {
     def num: Int
   }
 
+  /** The kind of numbered names consisting of an underlying name and a number */
   abstract class NumberedNameKind(tag: Int, val infoString: String) extends NameKind(tag) { self =>
     type ThisInfo = NumberedInfo
     case class NumberedInfo(val num: Int) extends Info with NameKinds.NumberedInfo {
@@ -145,8 +184,11 @@ object NameKinds {
           name.slice(i - separator.length, i).toString == separator) i
       else -1
     }
+
+    numberedNameKinds(tag) = this
   }
 
+  /** An extractor for numbered names of arbitrary kind */
   object AnyNumberedName {
     def unapply(name: DerivedName): Option[(TermName, Int)] = name match {
       case DerivedName(qual, info: NumberedInfo) => Some((qual, info.num))
@@ -154,20 +196,28 @@ object NameKinds {
     }
   }
 
+  /** The kind of unique names that consist of an underlying name (can be empty),
+   *  a separator indicating the class of unique name, and a unique number.
+   *
+   *  A unique names always constitutes a new name, different from its underlying name.
+   */
   case class UniqueNameKind(val separator: String)
   extends NumberedNameKind(UNIQUE, s"Unique $separator") {
     override def definesNewName = true
+
     def mkString(underlying: TermName, info: ThisInfo) = {
       val safePrefix = str.sanitize(underlying.toString + separator)
       safePrefix + info.num
     }
 
+    /** Generate fresh unique name of this kind with given prefix name */
     def fresh(prefix: TermName = EmptyTermName)(implicit ctx: Context): TermName =
       ctx.freshNames.newName(prefix, this)
 
     uniqueNameKinds(separator) = this
   }
 
+  /** An extractor for unique names of arbitrary kind */
   object AnyUniqueName {
     def unapply(name: DerivedName): Option[(TermName, String, Int)] = name match {
       case DerivedName(qual, info: NumberedInfo) =>
@@ -179,10 +229,16 @@ object NameKinds {
     }
   }
 
-  val QualifiedName           = new QualifiedNameKind(QUALIFIED, ".")
-  val FlatName                = new QualifiedNameKind(FLATTENED, "$")
-  val ExpandPrefixName        = new QualifiedNameKind(EXPANDPREFIX, "$")
+  /** Names of the form `prefix . name` */
+  val QualifiedName = new QualifiedNameKind(QUALIFIED, ".")
 
+  /** Names of the form `prefix $ name` that are constructed as a result of flattening */
+  val FlatName = new QualifiedNameKind(FLATTENED, "$")
+
+  /** Names of the form `prefix $ name` that are prefixes of expanded names */
+  val ExpandPrefixName = new QualifiedNameKind(EXPANDPREFIX, "$")
+
+  /** Expanded names of the form `prefix $$ name`. */
   val ExpandedName = new QualifiedNameKind(EXPANDED, str.EXPAND_SEPARATOR) {
     private val FalseSuper = termName("$$super")
     private val FalseSuperLength = FalseSuper.length
@@ -202,13 +258,16 @@ object NameKinds {
     }
   }
 
-  val TraitSetterName         = new QualifiedNameKind(TRAITSETTER, str.TRAIT_SETTER_SEPARATOR)
+  /** Expanded names of the form `prefix $_setter_$ name`. These only occur in Scala2. */
+  val TraitSetterName = new QualifiedNameKind(TRAITSETTER, str.TRAIT_SETTER_SEPARATOR)
 
+  /** Unique names of the form `prefix $ n` or `$ n $` */
   val UniqueName = new UniqueNameKind("$") {
     override def mkString(underlying: TermName, info: ThisInfo) =
       if (underlying.isEmpty) "$" + info.num + "$" else super.mkString(underlying, info)
   }
 
+  /** Other unique names */
   val InlineAccessorName      = new UniqueNameKind("$_inlineAccessor_$")
   val TempResultName          = new UniqueNameKind("ev$")
   val EvidenceParamName       = new UniqueNameKind("evidence$")
@@ -226,6 +285,9 @@ object NameKinds {
   val LiftedTreeName          = new UniqueNameKind("liftedTree")
   val SuperArgName            = new UniqueNameKind("$superArg$")
 
+  /** A kind of unique extension methods; Unlike other unique names, these can be
+   *  unmangled.
+   */
   val UniqueExtMethName = new UniqueNameKind("$extension") {
     override def unmangle(name: SimpleName): TermName = {
       val i = skipSeparatorAndNum(name, separator)
@@ -238,6 +300,7 @@ object NameKinds {
     }
   }
 
+  /** Kinds of unique names generated by the pattern matcher */
   val PatMatStdBinderName     = new UniqueNameKind("x")
   val PatMatPiName            = new UniqueNameKind("pi") // FIXME: explain what this is
   val PatMatPName             = new UniqueNameKind("p")  // FIXME: explain what this is
@@ -246,6 +309,7 @@ object NameKinds {
   val PatMatMatchFailName     = new UniqueNameKind("matchFail")
   val PatMatSelectorName      = new UniqueNameKind("selector")
 
+  /** The kind of names of default argument getters */
   object DefaultGetterName extends NumberedNameKind(DEFAULTGETTER, "DefaultGetter") {
     def mkString(underlying: TermName, info: ThisInfo) = {
       val prefix = if (underlying.isConstructorName) nme.DEFAULT_GETTER_INIT else underlying
@@ -264,11 +328,9 @@ object NameKinds {
     }
   }
 
+  /** The kind of names that also encode a variance: 0 for contravariance, 1 for covariance. */
   object VariantName extends NumberedNameKind(VARIANT, "Variant") {
-    val varianceToPrefix = Map(-1 -> '-', 0 -> '=', 1 -> '+')
-    def mkString(underlying: TermName, info: ThisInfo) = {
-      varianceToPrefix(info.num).toString + underlying
-    }
+    def mkString(underlying: TermName, info: ThisInfo) = "-+"(info.num).toString + underlying
   }
 
   /** Names of the form N_<outer>. Emitted by inliner, replaced by outer path
@@ -293,9 +355,9 @@ object NameKinds {
   val ModuleVarName = new SuffixNameKind(OBJECTVAR, "$module")
   val ModuleClassName = new SuffixNameKind(OBJECTCLASS, "$", optInfoString = "ModuleClass")
 
+  /** A name together with a signature. Used in Tasty trees. */
   object SignedName extends NameKind(63) {
 
-    /** @param parts  resultSig followed by paramsSig */
     case class SignedInfo(sig: Signature) extends Info {
       override def toString = s"$infoString $sig"
     }
@@ -312,10 +374,12 @@ object NameKinds {
     def infoString: String = "Signed"
   }
 
+  /** Possible name kinds of a method that comes from Scala2 pickling info. */
   val Scala2MethodNameKinds: List[NameKind] =
     List(DefaultGetterName, ExtMethName, UniqueExtMethName, ProtectedAccessorName, ProtectedSetterName)
 
   def simpleNameKindOfTag      : collection.Map[Int, ClassifiedNameKind] = simpleNameKinds
   def qualifiedNameKindOfTag   : collection.Map[Int, QualifiedNameKind]  = qualifiedNameKinds
+  def numberedNameKindOfTag    : collection.Map[Int, NumberedNameKind]   = numberedNameKinds
   def uniqueNameKindOfSeparator: collection.Map[String, UniqueNameKind]  = uniqueNameKinds
 }

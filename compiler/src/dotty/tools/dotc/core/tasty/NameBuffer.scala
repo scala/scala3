@@ -70,8 +70,6 @@ class NameBuffer extends TastyBuffer(10000) {
           writeNat(num)
           if (!original.isEmpty) writeNameRef(original)
         }
-      case VariantName(original, sign) =>
-        withLength { writeNameRef(original); writeNat(sign + 1) }
       case AnyNumberedName(original, num) =>
         withLength { writeNameRef(original); writeNat(num) }
       case SignedName(original, Signature(params, result)) =>

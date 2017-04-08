@@ -57,12 +57,8 @@ class TastyUnpickler(reader: TastyReader) {
         val originals = until(end)(readName())
         val original = if (originals.isEmpty) EmptyTermName else originals.head
         uniqueNameKindOfSeparator(separator)(original, num)
-      case DEFAULTGETTER =>
-        DefaultGetterName(readName(), readNat())
-      case VARIANT =>
-        VariantName(readName(), readNat() - 1)
-      case OUTERSELECT =>
-        OuterSelectName(readName(), readNat())
+      case DEFAULTGETTER | VARIANT | OUTERSELECT =>
+        numberedNameKindOfTag(tag)(readName(), readNat())
       case SIGNED =>
         val original = readName()
         val result = readName().toTypeName

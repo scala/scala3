@@ -34,14 +34,6 @@ import scala.annotation.tailrec
 case class Signature(paramsSig: List[TypeName], resSig: TypeName) {
   import Signature._
 
-/* FIXME does not compile under dotty, we get a missing param error
-  def checkUnqual(name: TypeName) = name mapParts { part =>
-    assert(!part.contains('.'), name)
-    part
-  }
-  paramsSig.foreach(checkUnqual)
-  checkUnqual(resSig)
-*/
   /** Two names are consistent if they are the same or one of them is tpnme.Uninstantiated */
   private def consistent(name1: TypeName, name2: TypeName) =
     name1 == name2 || name1 == tpnme.Uninstantiated || name2 == tpnme.Uninstantiated

@@ -128,15 +128,24 @@ object NameOps {
 
     def errorName: N = likeSpaced(name ++ nme.ERROR)
 
+    /** Map variance value -1, +1 to 0, 1 */
+    private def varianceToNat(v: Int) = (v + 1) / 2
+
+    /** Map 0, 1 to variance value -1, +1 */
+    private def natToVariance(n: Int) = n * 2 - 1
 
     /** Name with variance prefix: `+` for covariant, `-` for contravariant */
-    def withVariance(v: Int): N =
-      likeSpaced { VariantName(name.exclude(VariantName).toTermName, v) }
+    def withVariance(v: Int): N = {
+      val underlying = name.exclude(VariantName)
+      likeSpaced(
+          if (v == 0) underlying
+          else VariantName(underlying.toTermName, varianceToNat(v)))
+    }
 
     /** The variance as implied by the variance prefix, or 0 if there is
      *  no variance prefix.
      */
-    def variance = name.collect { case VariantName(_, n) => n }.getOrElse(0)
+    def variance = name.collect { case VariantName(_, n) => natToVariance(n) }.getOrElse(0)
 
     def freshened(implicit ctx: Context): N = likeSpaced {
       name.toTermName match {

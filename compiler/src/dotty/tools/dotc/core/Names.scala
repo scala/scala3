@@ -82,13 +82,15 @@ object Names {
     def mangledString: String = mangled.toString
 
     /** Apply rewrite rule given by `f` to some part of this name, skipping and rewrapping
-     *  other decorators. Stops at first qualified name that's encountered.
+     *  other decorators.
+     *  Stops at derived names whose kind has `definesNewName = true`.
      *  If `f` does not apply to any part, return name unchanged.
      */
     def rewrite(f: PartialFunction[Name, Name]): ThisName
 
     /** If partial function `f` is defined for some part of this name, apply it
-     *  in a Some, otherwise None. Stops at first qualified name that's encountered.
+     *  in a Some, otherwise None.
+     *  Stops at derived names whose kind has `definesNewName = true`.
      */
     def collect[T](f: PartialFunction[Name, T]): Option[T]
 
