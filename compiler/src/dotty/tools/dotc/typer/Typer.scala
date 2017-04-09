@@ -651,12 +651,6 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     val cond1 = typed(tree.cond, defn.BooleanType)
     val thenp1 = typed(tree.thenp, pt.notApplied)
     val elsep1 = typed(tree.elsep orElse (untpd.unitLiteral withPos tree.pos), pt.notApplied)
-    if (thenp1.tpe.topType != elsep1.tpe.topType) {
-      ctx.error(s"""if/else cannot have branches with types in different lattices:
-                   |  ${thenp1.tpe.show} of lattice ${thenp1.tpe.topType.show}
-                   |  ${elsep1.tpe.show} of lattice ${elsep1.tpe.topType.show}
-                """.stripMargin, tree.pos)
-    }
     val thenp2 :: elsep2 :: Nil = harmonize(thenp1 :: elsep1 :: Nil)
     assignType(cpy.If(tree)(cond1, thenp2, elsep2), thenp2, elsep2)
   }
@@ -828,8 +822,6 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
         typed(desugar.makeCaseLambda(tree.cases, protoFormals.length, unchecked) withPos tree.pos, pt)
       case _ =>
         val sel1 = typedExpr(tree.selector)
-        if (sel1.tpe.isPhantom)
-          ctx.error("Cannot pattern match on phantoms", sel1.pos)
         val selType = fullyDefinedType(sel1.tpe, "pattern selector", tree.pos).widen
 
         val cases1 = typedCases(tree.cases, selType, pt.notApplied)
@@ -860,15 +852,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
       accu(Set.empty, selType)
     }
 
-    val tpdCases = cases mapconserve (typedCase(_, pt, selType, gadtSyms))
-
-    if (tpdCases.nonEmpty) {
-      val top = tpdCases.head.tpe.topType
-      for (tpdCase <- tpdCases if tpdCase.tpe.topType != top)
-        ctx.error(s"Pattern expected case to return a ${top.show} but was ${tpdCase.tpe.show}", tpdCase.pos)
-    }
-
-    tpdCases
+    cases mapconserve (typedCase(_, pt, selType, gadtSyms))
   }
 
   /** Type a case. Overridden in ReTyper, that's why it's separate from
@@ -1658,38 +1642,8 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
 
   def typedExpr(tree: untpd.Tree, pt: Type = WildcardType)(implicit ctx: Context): Tree =
     typed(tree, pt)(ctx retractMode Mode.PatternOrType)
-  def typedType(tree: untpd.Tree, pt: Type = WildcardType)(implicit ctx: Context): Tree = {
-    // todo: retract mode between Type and Pattern?
-
-    /** Check that there are not mixed Any/Phantom.Any types in `&`, `|` and type bounds,
-     *  this includes Phantom.Any of different universes.
-     */
-    def checkedTops(tree: untpd.Tree): Set[Type] = {
-      tree match {
-        case TypeBoundsTree(lo, hi) =>
-          val allTops = checkedTops(hi) union checkedTops(lo)
-          if (allTops.size <= 1) allTops
-          else {
-            ctx.error("Type can not be bounded at the same time by types in different latices: " +
-                allTops.map(_.show).mkString(", "), tree.pos)
-            Set.empty
-          }
-        case untpd.InfixOp(left, op, right) =>
-          val allTops = checkedTops(left) union checkedTops(right)
-          if (allTops.size <= 1) allTops
-          else {
-            ctx.error(s"Can not use ${op.show} mix types of different lattices: " +
-                allTops.map(_.show).mkString(", "), tree.pos)
-            Set.empty
-          }
-        case EmptyTree => Set.empty
-        case _ => Set(tree.typeOpt.topType)
-      }
-    }
-    checkedTops(tree)
-
+  def typedType(tree: untpd.Tree, pt: Type = WildcardType)(implicit ctx: Context): Tree = // todo: retract mode between Type and Pattern?
     typed(tree, pt)(ctx addMode Mode.Type)
-  }
   def typedPattern(tree: untpd.Tree, selType: Type = WildcardType)(implicit ctx: Context): Tree =
     typed(tree, selType)(ctx addMode Mode.Pattern)
 

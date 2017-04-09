@@ -417,8 +417,10 @@ trait TypeAssigner {
   def assignType(tree: untpd.Inlined, bindings: List[Tree], expansion: Tree)(implicit ctx: Context) =
     tree.withType(avoidingType(expansion, bindings))
 
-  def assignType(tree: untpd.If, thenp: Tree, elsep: Tree)(implicit ctx: Context) =
+  def assignType(tree: untpd.If, thenp: Tree, elsep: Tree)(implicit ctx: Context) = {
+    checkSameUniverse(thenp, elsep, "be combined in branches of if/else", tree.pos)
     tree.withType(thenp.tpe | elsep.tpe)
+  }
 
   def assignType(tree: untpd.Closure, meth: Tree, target: Tree)(implicit ctx: Context) =
     tree.withType(
@@ -428,8 +430,15 @@ trait TypeAssigner {
   def assignType(tree: untpd.CaseDef, body: Tree)(implicit ctx: Context) =
     tree.withType(body.tpe)
 
-  def assignType(tree: untpd.Match, cases: List[CaseDef])(implicit ctx: Context) =
+  def assignType(tree: untpd.Match, cases: List[CaseDef])(implicit ctx: Context) = {
+    if (tree.selector.typeOpt.isPhantom)
+      ctx.error("Cannot pattern match on phantoms", tree.selector.pos)
+    if (cases.nonEmpty) {
+      val head = cases.head
+      cases.tail.foreach(c => checkSameUniverse(head, c, "be combined in branches of a match", c.pos))
+    }
     tree.withType(ctx.typeComparer.lub(cases.tpes))
+  }
 
   def assignType(tree: untpd.Return)(implicit ctx: Context) =
     tree.withType(defn.NothingType)
@@ -449,11 +458,15 @@ trait TypeAssigner {
   def assignType(tree: untpd.SingletonTypeTree, ref: Tree)(implicit ctx: Context) =
     tree.withType(ref.tpe)
 
-  def assignType(tree: untpd.AndTypeTree, left: Tree, right: Tree)(implicit ctx: Context) =
+  def assignType(tree: untpd.AndTypeTree, left: Tree, right: Tree)(implicit ctx: Context) = {
+    checkSameUniverse(left, right, "be combined in `&`", tree.pos)
     tree.withType(left.tpe & right.tpe)
+  }
 
-  def assignType(tree: untpd.OrTypeTree, left: Tree, right: Tree)(implicit ctx: Context) =
+  def assignType(tree: untpd.OrTypeTree, left: Tree, right: Tree)(implicit ctx: Context) = {
+    checkSameUniverse(left, right, "be combined in `|`", tree.pos)
     tree.withType(left.tpe | right.tpe)
+  }
 
   /** Assign type of RefinedType.
    *  Refinements are typed as if they were members of refinement class `refineCls`.
@@ -483,8 +496,10 @@ trait TypeAssigner {
   def assignType(tree: untpd.ByNameTypeTree, result: Tree)(implicit ctx: Context) =
     tree.withType(ExprType(result.tpe))
 
-  def assignType(tree: untpd.TypeBoundsTree, lo: Tree, hi: Tree)(implicit ctx: Context) =
+  def assignType(tree: untpd.TypeBoundsTree, lo: Tree, hi: Tree)(implicit ctx: Context) = {
+    checkSameUniverse(lo, hi, "be combined in type bounds.", tree.pos)
     tree.withType(if (lo eq hi) TypeAlias(lo.tpe) else TypeBounds(lo.tpe, hi.tpe))
+  }
 
   def assignType(tree: untpd.Bind, sym: Symbol)(implicit ctx: Context) =
     tree.withType(NamedType.withFixedSym(NoPrefix, sym))
@@ -529,6 +544,12 @@ trait TypeAssigner {
 
   def assignType(tree: untpd.PackageDef, pid: Tree)(implicit ctx: Context) =
     tree.withType(pid.symbol.valRef)
+
+  private def checkSameUniverse(tree1: Tree, tree2: Tree, relationship: => String, pos: Position)(implicit ctx: Context) = {
+    if (tree1.tpe.topType != tree2.tpe.topType)
+      ctx.error(ex"${tree1.tpe} and ${tree2.tpe} are in different universes. They cannot $relationship", pos)
+  }
+
 }
 
 object TypeAssigner extends TypeAssigner
