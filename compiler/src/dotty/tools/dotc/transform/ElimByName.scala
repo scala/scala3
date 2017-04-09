@@ -112,6 +112,9 @@ class ElimByName extends MiniPhaseTransform with InfoTransformer { thisTransform
   override def transformIdent(tree: Ident)(implicit ctx: Context, info: TransformerInfo): Tree =
     applyIfFunction(tree, tree)
 
+  override def transformSelect(tree: Select)(implicit ctx: Context, info: TransformerInfo): Tree =
+    applyIfFunction(tree, tree)
+
   override def transformTypeApply(tree: TypeApply)(implicit ctx: Context, info: TransformerInfo): Tree = tree match {
     case TypeApply(Select(_, nme.asInstanceOf_), arg :: Nil) =>
       // tree might be of form e.asInstanceOf[x.type] where x becomes a function.
