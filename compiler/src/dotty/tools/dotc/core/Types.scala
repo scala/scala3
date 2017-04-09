@@ -182,9 +182,9 @@ object Types {
      *   - XYX.Any if XYZ extends scala.Phantom and this type is upper bounded XYZ.Any
      *   - scala.Any otherwise
      */
-    final def topType(implicit ctx: Context): TypeRef = this match {
+    final def topType(implicit ctx: Context): TypeRef = widen match {
       case tp: ClassInfo if isPhantomClass(tp.classSymbol) => tp.prefix.select(tpnme.Any).asInstanceOf[TypeRef]
-      case tp: TypeProxy => tp.superType.topType
+      case tp: TypeProxy if tp.superType ne this => tp.superType.topType
       case tp: AndOrType => tp.tp1.topType
       case _ => defn.AnyType
     }
