@@ -1932,13 +1932,23 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
             adapt(typed(original, WildcardType), pt, EmptyTree)
           }
       case wtp: MethodType if !pt.isInstanceOf[SingletonType] =>
+        // Follow proxies and approximate type paramrefs by their upper bound
+        // in the current constraint in order to figure out robustly
+        // whether an expected type is some sort of function type.
+        def underlyingRefined(tp: Type): Type = tp.stripTypeVar match {
+          case tp: RefinedType => tp
+          case tp: TypeParamRef => underlyingRefined(ctx.typeComparer.bounds(tp).hi)
+          case tp: TypeProxy => underlyingRefined(tp.superType)
+          case _ => tp
+        }
+        val ptNorm = underlyingRefined(pt)
         val arity =
-          if (defn.isFunctionType(pt))
+          if (defn.isFunctionType(ptNorm))
             if (!isFullyDefined(pt, ForceDegree.none) && isFullyDefined(wtp, ForceDegree.none))
               // if method type is fully defined, but expected type is not,
               // prioritize method parameter types as parameter types of the eta-expanded closure
               0
-            else defn.functionArity(pt)
+            else defn.functionArity(ptNorm)
           else if (pt eq AnyFunctionProto) wtp.paramInfos.length
           else -1
         if (arity >= 0 && !tree.symbol.isConstructor)
