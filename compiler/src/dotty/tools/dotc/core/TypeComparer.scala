@@ -726,10 +726,9 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
 
     tycon2 match {
       case param2: TypeParamRef =>
-        isMatchingApply(tp1) || {
-          if (canConstrain(param2)) canInstantiate(param2)
-          else compareLower(bounds(param2), tyconIsTypeRef = false)
-        }
+        isMatchingApply(tp1) ||
+        canConstrain(param2) && canInstantiate(param2) ||
+        compareLower(bounds(param2), tyconIsTypeRef = false)
       case tycon2: TypeRef =>
         isMatchingApply(tp1) ||
         compareLower(tycon2.info.bounds, tyconIsTypeRef = true)
