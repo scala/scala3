@@ -1504,20 +1504,29 @@ object Types {
         case _ => NoType
       }
       assert(
-        (lastSymbol eq sym) ||
-        (lastSymbol eq null) || {
+        (lastSymbol eq sym)
+        ||
+        (lastSymbol eq null)
+        || {
           val lastDefRunId = lastDenotation match {
             case d: SymDenotation => d.validFor.runId
             case _ => lastSymbol.defRunId
           }
           (lastDefRunId != sym.defRunId) ||
           (lastDefRunId == NoRunId)
-        } ||
-        (lastSymbol.infoOrCompleter.isInstanceOf[ErrorType] ||
+        }
+        ||
+        lastSymbol.infoOrCompleter.isInstanceOf[ErrorType]
+        ||
+        sym.isPackageObject // package objects can be visited before we get around to index them
+        ||
         sym.owner != lastSymbol.owner &&
-        (sym.owner.derivesFrom(lastSymbol.owner) ||
-         selfTypeOf(sym).derivesFrom(lastSymbol.owner) ||
-         selfTypeOf(lastSymbol).derivesFrom(sym.owner))),
+          (sym.owner.derivesFrom(lastSymbol.owner)
+           ||
+           selfTypeOf(sym).derivesFrom(lastSymbol.owner)
+           ||
+           selfTypeOf(lastSymbol).derivesFrom(sym.owner)
+          ),
         i"""data race? overwriting symbol of type $this,
            |long form = $toString of class $getClass,
            |last sym id = ${lastSymbol.id}, new sym id = ${sym.id},

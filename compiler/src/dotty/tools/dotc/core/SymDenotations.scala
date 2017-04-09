@@ -1493,6 +1493,9 @@ object SymDenotations {
       myMemberCache
     }
 
+    /** Hook to do a pre-enter test. Overridden in PackageDenotation */
+    protected def proceedWithEnter(sym: Symbol, mscope: MutableScope)(implicit ctx: Context): Boolean = true
+
     /** Enter a symbol in current scope, and future scopes of same denotation.
      *  Note: We require that this does not happen after the first time
      *  someone does a findMember on a subclass.
@@ -1510,18 +1513,12 @@ object SymDenotations {
           scope
         case _ => unforcedDecls.openForMutations
       }
-      if (this is PackageClass) {
-        val entry = mscope.lookupEntry(sym.name)
-        if (entry != null) {
-          if (entry.sym == sym) return
-          mscope.unlink(entry)
-          entry.sym.denot = sym.denot // to avoid stale symbols
+      if (proceedWithEnter(sym, mscope)) {
+        enterNoReplace(sym, mscope)
+        val nxt = this.nextInRun
+        if (nxt.validFor.code > this.validFor.code) {
+          this.nextInRun.asSymDenotation.asClass.enter(sym)
         }
-      }
-      enterNoReplace(sym, mscope)
-      val nxt = this.nextInRun
-      if (nxt.validFor.code > this.validFor.code) {
-        this.nextInRun.asSymDenotation.asClass.enter(sym)
       }
     }
 
@@ -1534,7 +1531,7 @@ object SymDenotations {
           (scope ne this.unforcedDecls) ||
           sym.hasAnnotation(defn.ScalaStaticAnnot) ||
           sym.name.isInlineAccessor ||
-          isUsecase)
+          isUsecase, i"trying to enter $sym in $this, frozen = ${this is Frozen}")
 
       scope.enter(sym)
 
@@ -1800,7 +1797,7 @@ object SymDenotations {
   /** The denotation of a package class.
    *  It overrides ClassDenotation to take account of package objects when looking for members
    */
-  class PackageClassDenotation private[SymDenotations] (
+  final class PackageClassDenotation private[SymDenotations] (
     symbol: Symbol,
     ownerIfExists: Symbol,
     name: Name,
@@ -1823,15 +1820,34 @@ object SymDenotations {
       packageObjCache
     }
 
-    /** Look first for members in package; if none are found look in package object */
-    override def computeNPMembersNamed(name: Name, inherited: Boolean)(implicit ctx: Context): PreDenotation = {
-      val denots = super.computeNPMembersNamed(name, inherited)
-      if (denots.exists) denots
-      else packageObj.moduleClass.denot match {
-        case pcls: ClassDenotation => pcls.computeNPMembersNamed(name, inherited)
-        case _ => denots
+    /** Looks in both the package object and the package for members. The precise algorithm
+     *  is as follows:
+     *
+     *  If this is the scala package or the package object exists but is currently completing,
+     *  look in the package first, and if nothing is found there, look in the package object second.
+     *  Otherwise, look in the package object first, and if nothing is found there, in
+     *  the package second.
+     *
+     *  The reason for the special treatment of the scala package is that if we
+     *  complete it too early, we freeze its superclass Any, so that no members can
+     *  be entered in it. As a consequence, there should be no entry in the scala package
+     *  object that hides a class or object in the scala package of the same name, because
+     *  the behavior would then be unintuitive for such members.
+     */
+    override def computeNPMembersNamed(name: Name, inherited: Boolean)(implicit ctx: Context): PreDenotation =
+      packageObj.moduleClass.denot match {
+        case pcls: ClassDenotation if !pcls.isCompleting =>
+          if (symbol eq defn.ScalaPackageClass) {
+            val denots = super.computeNPMembersNamed(name, inherited)
+            if (denots.exists) denots else pcls.computeNPMembersNamed(name, inherited)
+          }
+          else {
+            val denots = pcls.computeNPMembersNamed(name, inherited)
+            if (denots.exists) denots else super.computeNPMembersNamed(name, inherited)
+          }
+        case _ =>
+          super.computeNPMembersNamed(name, inherited)
       }
-    }
 
     /** The union of the member names of the package and the package object */
     override def memberNames(keepOnly: NameFilter)(implicit ctx: Context): Set[Name] = {
@@ -1840,6 +1856,21 @@ object SymDenotations {
         case pcls: ClassDenotation => ownNames union pcls.memberNames(keepOnly)
         case _ => ownNames
       }
+    }
+
+    /** If another symbol with the same name is entered, unlink it,
+     *  and, if symbol is a package object, invalidate the packageObj cache.
+     *  @return  `sym` is not already entered
+     */
+    override def proceedWithEnter(sym: Symbol, mscope: MutableScope)(implicit ctx: Context): Boolean = {
+      val entry = mscope.lookupEntry(sym.name)
+      if (entry != null) {
+        if (entry.sym == sym) return false
+        mscope.unlink(entry)
+        entry.sym.denot = sym.denot // to avoid stale symbols
+        if (sym.name == nme.PACKAGE) packageObjRunId = NoRunId
+      }
+      true
     }
   }
 
