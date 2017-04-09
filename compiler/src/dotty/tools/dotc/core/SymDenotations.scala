@@ -1823,10 +1823,9 @@ object SymDenotations {
     /** Looks in both the package object and the package for members. The precise algorithm
      *  is as follows:
      *
-     *  If this is the scala package or the package object exists but is currently completing,
-     *  look in the package first, and if nothing is found there, look in the package object second.
-     *  Otherwise, look in the package object first, and if nothing is found there, in
-     *  the package second.
+     *  If this is the scala package look in the package first, and if nothing is found
+     *  there, look in the package object second. Otherwise, look in the package object
+     *  first, and if nothing is found there, in the package second.
      *
      *  The reason for the special treatment of the scala package is that if we
      *  complete it too early, we freeze its superclass Any, so that no members can
