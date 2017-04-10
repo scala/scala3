@@ -31,7 +31,8 @@ object OuterSpecializer {
 
 // TODO: Check secondary constructors.
 // TODO: check private fields
-class OuterSpecializer extends MiniPhaseTransform  with InfoTransformer {
+class OuterSpecializer extends MiniPhaseTransform with InfoTransformer {
+  import OuterSpecializer._
   import tpd._
 
   override def phaseName = "specializeClass"
@@ -93,10 +94,8 @@ class OuterSpecializer extends MiniPhaseTransform  with InfoTransformer {
     }
   }
 
-  override def prepareForUnit(tree: tpd.Tree)(implicit ctx: Context): TreeTransform = {
-    if (ctx.settings.linkSpecialize.value) this
-    else TreeTransforms.NoTransform
-  }
+  override def prepareForUnit(tree: tpd.Tree)(implicit ctx: Context): TreeTransform =
+    if (isPhaseRequired) this else TreeTransforms.NoTransform
 
   /** was decl requested to be specialized */
   def requestedSpecialization(decl: Symbol)(implicit ctx: Context): Boolean = {
@@ -211,6 +210,8 @@ class OuterSpecializer extends MiniPhaseTransform  with InfoTransformer {
   }
 
   override def transform(ref: SingleDenotation)(implicit ctx: Context): SingleDenotation = {
+    if (!isPhaseRequired) return ref
+
     val n = super.transform(ref)
     if (n.symbol.isClass && requestedSpecialization(n.symbol)) {
       val sd = n.asInstanceOf[SymDenotation]
@@ -225,6 +226,7 @@ class OuterSpecializer extends MiniPhaseTransform  with InfoTransformer {
   *  provided a method to be specialized, specializes it and enters it into its owner
   * */
   override def transformInfo(tp: Type, sym: Symbol)(implicit ctx: Context): Type = {
+    if (!isPhaseRequired) return tp
 
     def enterNewSyms(newDecls: List[Symbol], classInfo: ClassInfo, tp: Type) = {
       if (!classInfo.typeSymbol.is(Flags.Package)) {
@@ -777,8 +779,18 @@ class OuterSpecializer extends MiniPhaseTransform  with InfoTransformer {
   }
 }
 
-class OuterSpecializeParents extends MiniPhaseTransform with InfoTransformer{
+object OuterSpecializeParents {
+  def isPhaseRequired(implicit ctx: Context): Boolean =
+    OuterSpecializer.isPhaseRequired
+}
+
+class OuterSpecializeParents extends MiniPhaseTransform with InfoTransformer {
+  import OuterSpecializer._
+
   var specPhase: OuterSpecializer = null
+
+  override def prepareForUnit(tree: tpd.Tree)(implicit ctx: Context): TreeTransform =
+    if (isPhaseRequired) this else TreeTransforms.NoTransform
 
   override def init(base: ContextBase, id: Int): Unit = {
     specPhase = base.phaseOfClass(classOf[OuterSpecializer]).asInstanceOf[OuterSpecializer]
@@ -786,6 +798,8 @@ class OuterSpecializeParents extends MiniPhaseTransform with InfoTransformer{
   }
 
   def transformInfo(tp: Type, sym: Symbol)(implicit ctx: Context): Type = {
+    if (!isPhaseRequired) return tp
+
     if (sym.isClass && specPhase.originBySpecialized.contains(sym)) {
       val origSym = specPhase.originBySpecialized(sym)
 //      if (origSym.symbol.name.toString.contains("IterablePolyTransforms"))
