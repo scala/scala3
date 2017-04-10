@@ -3509,7 +3509,7 @@ object Types {
 
     def apply(tp: Type): Type
 
-    protected var variance = 1
+    protected[core] var variance = 1
 
     protected def derivedSelect(tp: NamedType, pre: Type): Type =
       tp.derivedSelect(pre)

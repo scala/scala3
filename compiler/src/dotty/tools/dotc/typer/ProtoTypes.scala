@@ -377,9 +377,10 @@ object ProtoTypes {
    *  Also, if `owningTree` is non-empty, add a type variable for each parameter.
    *  @return  The added type lambda, and the list of created type variables.
    */
-  def constrained(tl: TypeLambda, owningTree: untpd.Tree)(implicit ctx: Context): (TypeLambda, List[TypeTree]) = {
+  def constrained(tl: TypeLambda, owningTree: untpd.Tree, alwaysAddTypeVars: Boolean = false)(implicit ctx: Context): (TypeLambda, List[TypeTree]) = {
     val state = ctx.typerState
-    assert(!(ctx.typerState.isCommittable && owningTree.isEmpty),
+    val addTypeVars = alwaysAddTypeVars || !owningTree.isEmpty
+    assert(!(ctx.typerState.isCommittable && !addTypeVars),
       s"inconsistent: no typevars were added to committable constraint ${state.constraint}")
 
     def newTypeVars(tl: TypeLambda): List[TypeTree] =
@@ -392,7 +393,7 @@ object ProtoTypes {
     val added =
       if (state.constraint contains tl) tl.newLikeThis(tl.paramNames, tl.paramInfos, tl.resultType)
       else tl
-    val tvars = if (owningTree.isEmpty) Nil else newTypeVars(added)
+    val tvars = if (addTypeVars) newTypeVars(added) else Nil
     ctx.typeComparer.addToConstraint(added, tvars.tpes.asInstanceOf[List[TypeVar]])
     (added, tvars)
   }
@@ -400,13 +401,13 @@ object ProtoTypes {
   /**  Same as `constrained(tl, EmptyTree)`, but returns just the created type lambda */
   def constrained(tl: TypeLambda)(implicit ctx: Context): TypeLambda = constrained(tl, EmptyTree)._1
 
-  /** Create a new TypeParamRef that represents a dependent method parameter singleton */
-  def newDepTypeParamRef(tp: Type)(implicit ctx: Context): TypeParamRef = {
+  /** Create a new TypeVar that represents a dependent method parameter singleton */
+  def newDepTypeVar(tp: Type)(implicit ctx: Context): TypeVar = {
     val poly = PolyType(DepParamName.fresh().toTypeName :: Nil)(
         pt => TypeBounds.upper(AndType(tp, defn.SingletonType)) :: Nil,
         pt => defn.AnyType)
-    ctx.typeComparer.addToConstraint(poly, Nil)
-    TypeParamRef(poly, 0)
+    constrained(poly, untpd.EmptyTree, alwaysAddTypeVars = true)
+      ._2.head.tpe.asInstanceOf[TypeVar]
   }
 
   /** The result type of `mt`, where all references to parameters of `mt` are
@@ -415,7 +416,7 @@ object ProtoTypes {
   def resultTypeApprox(mt: MethodType)(implicit ctx: Context): Type =
     if (mt.isDependent) {
       def replacement(tp: Type) =
-        if (ctx.mode.is(Mode.TypevarsMissContext)) WildcardType else newDepTypeParamRef(tp)
+        if (ctx.mode.is(Mode.TypevarsMissContext)) WildcardType else newDepTypeVar(tp)
       mt.resultType.substParams(mt, mt.paramInfos.map(replacement))
     }
     else mt.resultType

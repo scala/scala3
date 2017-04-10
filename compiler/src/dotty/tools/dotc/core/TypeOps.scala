@@ -7,6 +7,7 @@ import SymDenotations._, Denotations.SingleDenotation
 import config.Printers.typr
 import util.Positions._
 import NameOps._
+import NameKinds.DepParamName
 import Decorators._
 import StdNames._
 import Annotations._
@@ -169,6 +170,9 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
       simplify(l, theMap) & simplify(r, theMap)
     case OrType(l, r) =>
       simplify(l, theMap) | simplify(r, theMap)
+    case tp: TypeVar if tp.origin.paramName.is(DepParamName) =>
+      val effectiveVariance = if (theMap == null) 1 else theMap.variance
+      tp.instanceOpt orElse tp.instantiate(fromBelow = effectiveVariance != -1)
     case _ =>
       (if (theMap != null) theMap else new SimplifyMap).mapOver(tp)
   }
