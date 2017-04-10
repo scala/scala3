@@ -1,5 +1,5 @@
 class Base(f: Int => Int) {
-  f(3)
+  println(f(3))
 }
 
 class Child(x: Int) extends Base(y => x + y)
