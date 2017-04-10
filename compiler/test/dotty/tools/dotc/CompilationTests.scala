@@ -267,26 +267,33 @@ class CompilationTests extends ParallelSummaryReport with ParallelTesting {
   }
 
   @Test def linkStrawmanDCEAll: Unit = {
-    val testsDir = new JFile("../tests/link-strawman-dce")
-    val tests = for (test <- testsDir.listFiles() if test.getName.endsWith(".scala")) yield {
-      val name = test.getName.dropRight(6)
-      val files = test.getAbsolutePath :: strawmanSources
-      compileList(name, files, linkDCE) + compileList(name + "-aggressive", files, linkAggressiveDCE)
-    }
-    tests.reduce((a, b) => a + b).checkRuns()
-  }
+    linkTests("../tests/link-strawman-dce", strawmanSources, linkDCE) +
+    linkTests("../tests/link-strawman-dce", strawmanSources, linkAggressiveDCE, "-aggressive")
+  }.keepOutput.checkRuns()
 
   @Test def linkSpecializeAll: Unit =
-    compileFilesInDir("../tests/link-specialize", linkSpecialize).keepOutput.checkRuns()
+    linkTests("../tests/link-specialize", List(specializeUtil), linkSpecialize).keepOutput.checkRuns()
 
-  @Test def linkStrawmanSpecializeAll: Unit = {
-    val testsDir = new JFile("../tests/link-strawman-specialize")
-    val tests = for (test <- testsDir.listFiles() if test.getName.endsWith(".scala")) yield {
-      val name = test.getName.dropRight(6)
-      val files = test.getAbsolutePath :: strawmanSources
-      compileList(name, files, linkSpecialize)
+  @Test def linkStrawmanSpecializeAll: Unit =
+    linkTests("../tests/link-strawman-specialize", specializeUtil :: strawmanSources, linkSpecialize).keepOutput.checkRuns()
+
+  private def specializeUtil = "../tests/link-specialize-util/SpecializeUtil.scala"
+
+  private def linkTests(dir: String, otherSources: List[String], flags: Array[String], nameSuffix: String = ""): CompilationTest = {
+    val testsDir = new JFile(dir)
+    def getAllSources(dir: JFile, acc: List[String]): List[String] = dir.listFiles().foldLeft(acc) { (acc1, f) =>
+      if (f.isDirectory) getAllSources(f, acc1)
+      else if (f.getName.endsWith(".scala") || f.getName.endsWith(".java")) f.getAbsolutePath :: acc1
+      else acc1
     }
-    tests.reduce((a, b) => a + b).checkRuns()
+    val tests = for (test <- testsDir.listFiles() if test.isDirectory || test.getName.endsWith(".scala")) yield {
+      val name = if (test.isDirectory) test.getName else test.getName.dropRight(6)
+      val files = if (test.isDirectory) getAllSources(testsDir, Nil) ::: otherSources else test.getAbsolutePath :: otherSources
+      compileList(name, files, flags, testsDir.getName + nameSuffix)
+    }
+    assert(tests.nonEmpty)
+    if (tests.length == 1) tests.head
+    else tests.reduce((a, b) => a + b)
   }
 
 }

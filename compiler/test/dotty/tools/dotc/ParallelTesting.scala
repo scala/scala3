@@ -1045,8 +1045,7 @@ trait ParallelTesting { self =>
    *  `testName` since files can be in separate directories and or be otherwise
    *  dissociated
    */
-  def compileList(testName: String, files: List[String], flags: Array[String])(implicit outDirectory: String): CompilationTest = {
-    val callingMethod = getCallingMethod
+  def compileList(testName: String, files: List[String], flags: Array[String], callingMethod: String = getCallingMethod)(implicit outDirectory: String): CompilationTest = {
     val outDir = outDirectory + callingMethod + "/" + testName + "/"
 
     // Directories in which to compile all containing files with `flags`:
