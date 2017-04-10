@@ -318,7 +318,7 @@ trait TypeAssigner {
   /** Substitute argument type `argType` for parameter `pref` in type `tp`,
    *  skolemizing the argument type if it is not stable and `pref` occurs in `tp`.
    */
-  def substArgForParam(tp: Type, argType: Type, pref: ParamRef)(implicit ctx: Context) = {
+  def safeSubstParam(tp: Type, pref: ParamRef, argType: Type)(implicit ctx: Context) = {
     val tp1 = tp.substParam(pref, argType)
     if ((tp1 eq tp) || argType.isStable) tp1
     else tp.substParam(pref, SkolemType(argType.widen))
@@ -327,15 +327,15 @@ trait TypeAssigner {
   def assignType(tree: untpd.Apply, fn: Tree, args: List[Tree])(implicit ctx: Context) = {
     val ownType = fn.tpe.widen match {
       case fntpe: MethodType =>
-        def substArgsForParams(tp: Type, args: List[Tree], params: List[ParamRef]): Type = params match {
+        def safeSubstParams(tp: Type, params: List[ParamRef], args: List[Tree]): Type = params match {
           case param :: params1 =>
-            val tp1 = substArgForParam(tp, args.head.tpe, param)
-            substArgsForParams(tp1, args.tail, params1)
+            val tp1 = safeSubstParam(tp, param, args.head.tpe)
+            safeSubstParams(tp1, params1, args.tail)
           case Nil =>
             tp
           }
         if (sameLength(fntpe.paramInfos, args) || ctx.phase.prev.relaxedTyping)
-          if (fntpe.isDependent) substArgsForParams(fntpe.resultType, args, fntpe.paramRefs)
+          if (fntpe.isDependent) safeSubstParams(fntpe.resultType, fntpe.paramRefs, args)
           else fntpe.resultType
         else
           errorType(i"wrong number of arguments for $fntpe: ${fn.tpe}, expected: ${fntpe.paramInfos.length}, found: ${args.length}", tree.pos)
