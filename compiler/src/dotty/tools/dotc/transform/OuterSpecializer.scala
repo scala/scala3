@@ -154,8 +154,11 @@ class OuterSpecializer extends MiniPhaseTransform with InfoTransformer {
     }
     callGraph.reachableTypes.foreach { tpc =>
       val parentOverrides = tpc.tp.typeMembers(ctx).foldLeft(OuterTargs.empty)((outerTargs, denot) =>
-        denot.symbol.allOverriddenSymbols.foldLeft(outerTargs)((outerTargs, sym) =>
-          outerTargs.add(sym.owner, denot.symbol.name, denot.info)))
+        if (denot.symbol.owner eq defn.ScalaShadowingPackageClass) outerTargs // TODO get outer targs from shadowed classes
+        else {denot.symbol.allOverriddenSymbols.foldLeft(outerTargs)((outerTargs, sym) =>
+          outerTargs.add(sym.owner, denot.symbol.name, denot.info))
+        }
+      )
 
       val spec = tpc.outerTargs ++ parentOverrides ++ OuterTargs.parentRefinements(tpc.tp)
 
