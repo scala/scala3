@@ -107,7 +107,7 @@ object Formatting {
     else nonSensicalStartTag + str + nonSensicalEndTag
   }
 
-  private type Recorded = AnyRef /*Symbol | TypeParamRef*/
+  private type Recorded = AnyRef /*Symbol | TypeParamRef | SkolemType */
 
   private class Seen extends mutable.HashMap[String, List[Recorded]] {
 
@@ -135,8 +135,13 @@ object Formatting {
       if ((sym is ModuleClass) && sym.sourceModule.exists) simpleNameString(sym.sourceModule)
       else seen.record(super.simpleNameString(sym), sym)
 
-    override def TypeParamRefNameString(param: TypeParamRef): String =
-      seen.record(super.TypeParamRefNameString(param), param)
+    override def ParamRefNameString(param: ParamRef): String =
+      seen.record(super.ParamRefNameString(param), param)
+
+    override def toTextRef(tp: SingletonType): Text = tp match {
+      case tp: SkolemType => seen.record(tp.repr, tp)
+      case _ => super.toTextRef(tp)
+    }
   }
 
   /** Create explanation for single `Recorded` type or symbol */
@@ -165,6 +170,8 @@ object Formatting {
         s"is a type variable${addendum("constraint", ctx.typeComparer.bounds(param))}"
       case sym: Symbol =>
         s"is a ${ctx.printer.kindString(sym)}${sym.showExtendedLocation}${addendum("bounds", sym.info)}"
+      case tp: SkolemType =>
+        s"is an unknown value of type ${tp.widen.show}"
     }
   }
 
@@ -176,6 +183,7 @@ object Formatting {
   private def explanations(seen: Seen)(implicit ctx: Context): String = {
     def needsExplanation(entry: Recorded) = entry match {
       case param: TypeParamRef => ctx.typerState.constraint.contains(param)
+      case skolem: SkolemType => true
       case _ => false
     }
 
