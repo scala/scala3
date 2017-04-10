@@ -847,9 +847,6 @@ class Definitions {
     TupleType(elems.size).appliedTo(elems)
   }
 
-  def isProductSubType(tp: Type)(implicit ctx: Context) =
-    Applications.extractorMemberType(tp, nme._1).exists
-
   /** Is `tp` (an alias) of either a scala.FunctionN or a scala.ImplicitFunctionN? */
   def isFunctionType(tp: Type)(implicit ctx: Context) = {
     val arity = functionArity(tp)

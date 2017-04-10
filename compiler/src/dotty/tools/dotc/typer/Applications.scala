@@ -47,13 +47,15 @@ object Applications {
     ref.info.widenExpr.dealias
   }
 
+  def canProductMatch(tp: Type)(implicit ctx: Context) =
+    extractorMemberType(tp, nme._1).exists
+
   /** Does `tp` fit the "product match" conditions as an unapply result type
    *  for a pattern with `numArgs` subpatterns?
    *  This is the case of `tp` has members `_1` to `_N` where `N == numArgs`.
    */
   def isProductMatch(tp: Type, numArgs: Int)(implicit ctx: Context) =
-    numArgs > 0 && defn.isProductSubType(tp) &&
-    productSelectorTypes(tp).size == numArgs
+    numArgs > 0 && productArity(tp) == numArgs
 
   /** Does `tp` fit the "get match" conditions as an unapply result type?
    *  This is the case of `tp` has a `get` member as well as a
@@ -69,7 +71,7 @@ object Applications {
   }
 
   def productArity(tp: Type)(implicit ctx: Context) =
-    if (defn.isProductSubType(tp)) productSelectorTypes(tp).size else -1
+    if (canProductMatch(tp)) productSelectorTypes(tp).size else -1
 
   def productSelectors(tp: Type)(implicit ctx: Context): List[Symbol] = {
     val sels = for (n <- Iterator.from(0)) yield tp.member(nme.selectorName(n)).symbol
@@ -111,7 +113,7 @@ object Applications {
         getUnapplySelectors(getTp, args, pos)
       else if (unapplyResult isRef defn.BooleanClass)
         Nil
-      else if (defn.isProductSubType(unapplyResult))
+      else if (canProductMatch(unapplyResult))
         productSelectorTypes(unapplyResult)
           // this will cause a "wrong number of arguments in pattern" error later on,
           // which is better than the message in `fail`.

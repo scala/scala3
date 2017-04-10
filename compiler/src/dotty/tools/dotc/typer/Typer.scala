@@ -762,7 +762,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
       /** Is `formal` a product type which is elementwise compatible with `params`? */
       def ptIsCorrectProduct(formal: Type) = {
         isFullyDefined(formal, ForceDegree.noBottom) &&
-        defn.isProductSubType(formal) &&
+        Applications.canProductMatch(formal) &&
         Applications.productSelectorTypes(formal).corresponds(params) {
           (argType, param) =>
             param.tpt.isEmpty || argType <:< typedAheadType(param.tpt).tpe
