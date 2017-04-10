@@ -364,6 +364,7 @@ class TypeErasure(isJava: Boolean, semiEraseVCs: Boolean, isConstructor: Boolean
       else if (semiEraseVCs && isDerivedValueClass(sym)) eraseDerivedValueClassRef(tp)
       else if (sym == defn.ArrayClass) apply(tp.appliedTo(TypeBounds.empty)) // i966 shows that we can hit a raw Array type.
       else if (defn.isSyntheticFunctionClass(sym)) defn.erasedFunctionType(sym)
+      else if (defn.isPhantomAnyClass(tp.symbol) || defn.isPhantomNothingClass(tp.symbol)) defn.ErasedPhantomType
       else eraseNormalClassRef(tp)
     case tp: RefinedType =>
       val parent = tp.parent
@@ -402,8 +403,8 @@ class TypeErasure(isJava: Boolean, semiEraseVCs: Boolean, isConstructor: Boolean
           else classParents.mapConserve(eraseTypeRef) match {
             case tr :: trs1 =>
               assert(!tr.classSymbol.is(Trait), cls)
-              val tr1 = if (cls is Trait) defn.ObjectType else tr
-              tr1 :: trs1.filterNot(_ isRef defn.ObjectClass)
+              val tr1 = if (cls.is(Trait) || (tr.symbol eq defn.PhantomClass)) defn.ObjectType else tr
+              tr1 :: trs1.filterNot(x => x.isRef(defn.ObjectClass) || x.isRef(defn.PhantomClass))
             case nil => nil
           }
         val erasedDecls = decls.filteredScope(sym => !sym.isType || sym.isClass)
@@ -506,6 +507,8 @@ class TypeErasure(isJava: Boolean, semiEraseVCs: Boolean, isConstructor: Boolean
         }
         if (defn.isSyntheticFunctionClass(sym))
           sigName(defn.erasedFunctionType(sym))
+        else if (defn.isPhantomAnyClass(tp.symbol) || defn.isPhantomNothingClass(tp.symbol))
+          sigName(defn.ErasedPhantomType)
         else
           normalizeClass(sym.asClass).fullName.asTypeName
       case defn.ArrayOf(elem) =>

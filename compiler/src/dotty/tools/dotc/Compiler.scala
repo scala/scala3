@@ -11,7 +11,6 @@ import typer.{FrontEnd, Typer, ImportInfo, RefChecks}
 import reporting.{Reporter, ConsoleReporter}
 import Phases.Phase
 import transform._
-import transform.phantom._
 import util.FreshNameCreator
 import transform.TreeTransforms.{TreeTransform, TreeTransformer}
 import core.DenotTransformers.DenotTransformer
@@ -77,7 +76,6 @@ class Compiler {
            new ResolveSuper,        // Implement super accessors and add forwarders to trait methods
            new PrimitiveForwarders, // Add forwarders to trait methods that have a mismatch between generic and primitives
            new ArrayConstructors),  // Intercept creation of (non-generic) arrays and intrinsify.
-      List(new PhantomTypeErasure), // Erases phantom types to ErasedPhantom
       List(new Erasure),            // Rewrite types to JVM model, erasing all type parameters, abstract types and refinements.
       List(new ElimErasedValueType, // Expand erased value types to their underlying implmementation types
            new VCElideAllocations,  // Peep-hole optimization to eliminate unnecessary value class allocations

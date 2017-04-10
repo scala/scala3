@@ -434,7 +434,14 @@ object Erasure extends TypeTestsCasts{
     override def typedTypeApply(tree: untpd.TypeApply, pt: Type)(implicit ctx: Context) = {
       val ntree = interceptTypeApply(tree.asInstanceOf[TypeApply])(ctx.withPhase(ctx.erasurePhase))
 
-      ntree match {
+      if (defn.isPhantomAssume(tree.fun.symbol)) {
+        /* All phantom types are erased to `ErasedPhantom` (an uninstantiable final abstract class),
+         * hence the only valid term for a `ErasedPhantom` is `null`.
+         * As `Phantom.assume[P <: Phantom.Any]` is the only way to instantiate phantoms, all runtime
+         * values of phantom type become `null` (no instantiation overhead).
+         */
+        Literal(Constant(null)).withType(defn.ErasedPhantomType)
+      } else ntree match {
         case TypeApply(fun, args) =>
           val fun1 = typedExpr(fun, WildcardType)
           fun1.tpe.widen match {

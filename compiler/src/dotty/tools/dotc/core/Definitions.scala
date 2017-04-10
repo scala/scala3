@@ -991,8 +991,6 @@ class Definitions {
     sym.name == nme.assume_ && (sym.owner eq PhantomClass)
 
   lazy val ErasedPhantomClass = ctx.requiredClass("dotty.runtime.ErasedPhantom")
-  def ErasedPhantomType = ErasedPhantomClass.typeRef
+  def ErasedPhantomType(implicit ctx: Context) = ErasedPhantomClass.typeRef
 
-  lazy val ErasedPhantomLatticeClass = ctx.requiredClass("dotty.runtime.ErasedPhantomLattice")
-  def ErasedPhantomLatticeType = ErasedPhantomLatticeClass.typeRef
 }
