@@ -146,6 +146,7 @@ class LambdaLift extends MiniPhase with IdentityDenotTransformer { thisTransform
     def narrowLiftedOwner(sym: Symbol, owner: Symbol)(implicit ctx: Context) =
       if (sym.maybeOwner.isTerm &&
         owner.isProperlyContainedIn(liftedOwner(sym)) &&
+        !sym.is(InSuperCall) &&
         owner != sym) {
         ctx.log(i"narrow lifted $sym to $owner")
         changedLiftedOwner = true
