@@ -513,8 +513,10 @@ object SymDenotations {
 
     /** Is this symbol a package object or its module class? */
     def isPackageObject(implicit ctx: Context): Boolean = {
-      val poName = if (isType) nme.PACKAGE_CLS else nme.PACKAGE
-      (name.toTermName == poName) && (owner is Package) && (this is Module)
+      val nameMatches =
+        if (isType) name == tpnme.PACKAGE.moduleClassName
+        else name == nme.PACKAGE
+      nameMatches && (owner is Package) && (this is Module)
     }
 
     /** Is this symbol an abstract type? */
