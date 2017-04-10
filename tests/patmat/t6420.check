@@ -1,1 +1,1 @@
-5: Pattern Match Exhaustivity: (Nil, _), (List(_, _), _), (Nil, Nil), (Nil, List(_, _)), (List(_, _), Nil), (List(_, _), List(_, _)), (_, Nil), (_, List(_, _))
+5: Pattern Match Exhaustivity: (Nil, _), (List(true, _), _), (List(false, _), _), (_, Nil), (_, List(true, _)), (_, List(false, _))

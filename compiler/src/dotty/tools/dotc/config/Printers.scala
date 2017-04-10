@@ -31,4 +31,5 @@ object Printers {
   val cyclicErrors: Printer = noPrinter
   val pickling: Printer = noPrinter
   val inlining: Printer = noPrinter
+  val exhaustivity: Printer = noPrinter
 }
