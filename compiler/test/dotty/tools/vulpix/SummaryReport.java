@@ -2,6 +2,7 @@ package dotty.tools.vulpix;
 
 import org.junit.BeforeClass;
 import org.junit.AfterClass;
+import java.util.Iterator;
 import java.util.ArrayDeque;
 import java.util.function.Supplier;
 import scala.Function0;
@@ -75,7 +76,7 @@ public class SummaryReport {
     }
 
     @AfterClass public final static void teardown() {
-        rep.echo(
+        rep.log(
             "\n================================================================================" +
             "\nTest Report" +
             "\n================================================================================" +
@@ -86,26 +87,26 @@ public class SummaryReport {
 
         startingMessages
             .stream()
-            .forEach(rep::echo);
+            .forEach(rep::log);
 
         failedTests
             .stream()
             .map(x -> "    " + x)
-            .forEach(rep::echo);
+            .forEach(rep::log);
 
         // If we're compiling locally, we don't need reproduce instructions
         if (isInteractive) rep.flushToStdErr();
 
-        rep.echo("");
+        rep.log("");
 
         reproduceInstructions
             .stream()
-            .forEach(rep::echo);
+            .forEach(rep::log);
 
         // If we're on the CI, we want everything
         if (!isInteractive) rep.flushToStdErr();
 
-        if (failed > 0) rep.flushToFile();
+        rep.flushToFile();
 
         // Perform cleanup callback:
         if (cleanup != null) cleanup.get();
