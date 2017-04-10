@@ -107,10 +107,11 @@ object Types {
     final def isValueTypeOrLambda: Boolean = isValueType || this.isInstanceOf[TypeLambda]
 
     /** Does this type denote a stable reference (i.e. singleton type)? */
-    @tailrec final def isStable(implicit ctx: Context): Boolean = stripTypeVar match {
-      case tp: TermRef => tp.termSymbol.isStable && tp.prefix.isStable
+    final def isStable(implicit ctx: Context): Boolean = stripTypeVar match {
+      case tp: TermRef => tp.termSymbol.isStable && tp.prefix.isStable || tp.info.isStable
       case _: SingletonType | NoPrefix => true
       case tp: RefinedOrRecType => tp.parent.isStable
+      case tp: ExprType => tp.resultType.isStable
       case _ => false
     }
 
