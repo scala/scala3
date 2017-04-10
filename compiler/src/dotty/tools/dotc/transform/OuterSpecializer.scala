@@ -153,28 +153,33 @@ class OuterSpecializer extends MiniPhaseTransform with InfoTransformer {
         registerSpecializationRequest(methodSym)(outerTargs)
     }
     callGraph.reachableTypes.foreach { tpc =>
-      val parentOverrides = tpc.tp.typeMembers(ctx).foldLeft(OuterTargs.empty)((outerTargs, denot) =>
-        if (denot.symbol.owner eq defn.ScalaShadowingPackageClass) outerTargs // TODO get outer targs from shadowed classes
-        else {denot.symbol.allOverriddenSymbols.foldLeft(outerTargs)((outerTargs, sym) =>
-          outerTargs.add(sym.owner, denot.symbol.name, denot.info))
+      if (!tpc.tp.typeSymbol.is(Flags.JavaDefined)) {
+        val parentOverrides = tpc.tp.typeMembers(ctx).foldLeft(OuterTargs.empty)((outerTargs, denot) =>
+          if (!denot.exists || (denot.symbol.owner eq defn.ScalaShadowingPackageClass)) outerTargs // TODO get outer targs from shadowed classes
+          else {
+            denot.symbol.allOverriddenSymbols.foldLeft(outerTargs)((outerTargs, sym) =>
+              outerTargs.add(sym.owner, denot.symbol.name, denot.info))
+          }
+        )
+
+        val spec = tpc.outerTargs ++ parentOverrides ++ OuterTargs.parentRefinements(tpc.tp)
+
+        if (spec.nonEmpty) {
+          registerSpecializationRequest(tpc.tp.typeSymbol)(spec)
+
+          def loop(remaining: List[Symbol]): Unit = {
+            if (remaining.isEmpty) return;
+            val target = remaining.head
+
+            val nspec = new OuterTargs(spec.mp.filter { x => target.derivesFrom(x._1) })
+            if (nspec.nonEmpty)
+              registerSpecializationRequest(target)(nspec)
+            loop(remaining.tail)
+          }
+
+          val parents = tpc.tp.baseClasses
+          loop(parents)
         }
-      )
-
-      val spec = tpc.outerTargs ++ parentOverrides ++ OuterTargs.parentRefinements(tpc.tp)
-
-      if (spec.nonEmpty) {
-        registerSpecializationRequest(tpc.tp.typeSymbol)(spec)
-        def loop(remaining: List[Symbol]): Unit = {
-          if (remaining.isEmpty) return;
-          val target = remaining.head
-
-          val nspec = new OuterTargs(spec.mp.filter{x => target.derivesFrom(x._1)})
-          if (nspec.nonEmpty)
-            registerSpecializationRequest(target)(nspec)
-          loop(remaining.tail)
-        }
-        val parents = tpc.tp.baseClasses
-        loop(parents)
       }
     }
   }
@@ -208,7 +213,7 @@ class OuterSpecializer extends MiniPhaseTransform with InfoTransformer {
       specializationRequests.put(methodOrClass, arguments :: prev)
     }
     else {
-      println(s"ignoring specialization reguest for ${methodOrClass.showFullName} for ${arguments}")
+      ctx.log(s"ignoring specialization reguest for ${methodOrClass.showFullName} for ${arguments}")
     }
   }
 

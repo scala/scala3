@@ -7,5 +7,5 @@ object Test {
 
 class Foo[T](e: T) extends strawman.collection.Iterator[T] {
   def hasNext = true
-  def next = e
+  def next: T = e
 }
