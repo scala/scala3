@@ -32,7 +32,6 @@ import dotc.{ Driver, Compiler }
 trait ParallelTesting extends RunnerOrchestration { self =>
 
   import ParallelTesting._
-  import SummaryReport._
 
   /** If the running environment supports an interactive terminal, each `Test`
    *  will be run with a progress bar and real time feedback
@@ -183,7 +182,10 @@ trait ParallelTesting extends RunnerOrchestration { self =>
   /** Each `Test` takes the `testSources` and performs the compilation and assertions
    *  according to the implementing class "neg", "run" or "pos".
    */
-  private abstract class Test(testSources: List[TestSource], times: Int, threadLimit: Option[Int], suppressAllOutput: Boolean) { test =>
+  private abstract class Test(testSources: List[TestSource], times: Int, threadLimit: Option[Int], suppressAllOutput: Boolean)(implicit val summaryReport: SummaryReporting) { test =>
+
+    import summaryReport._
+
     protected final val realStdout = System.out
     protected final val realStderr = System.err
 
@@ -426,7 +428,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
     }
   }
 
-  private final class PosTest(testSources: List[TestSource], times: Int, threadLimit: Option[Int], suppressAllOutput: Boolean)
+  private final class PosTest(testSources: List[TestSource], times: Int, threadLimit: Option[Int], suppressAllOutput: Boolean)(implicit summaryReport: SummaryReporting)
   extends Test(testSources, times, threadLimit, suppressAllOutput) {
     protected def encapsulatedCompilation(testSource: TestSource) = new LoggedRunnable {
       def checkTestSource(): Unit = tryCompile(testSource) {
@@ -465,12 +467,12 @@ trait ParallelTesting extends RunnerOrchestration { self =>
     }
   }
 
-  private final class RunTest(testSources: List[TestSource], times: Int, threadLimit: Option[Int], suppressAllOutput: Boolean)
+  private final class RunTest(testSources: List[TestSource], times: Int, threadLimit: Option[Int], suppressAllOutput: Boolean)(implicit summaryReport: SummaryReporting)
   extends Test(testSources, times, threadLimit, suppressAllOutput) {
     private[this] var didAddNoRunWarning = false
     private[this] def addNoRunWarning() = if (!didAddNoRunWarning) {
       didAddNoRunWarning = true
-      SummaryReport.addStartingMessage {
+      summaryReport.addStartingMessage {
         """|WARNING
            |-------
            |Run tests were only compiled, not run - this is due to `dotty.tests.norun`
@@ -593,7 +595,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
     }
   }
 
-  private final class NegTest(testSources: List[TestSource], times: Int, threadLimit: Option[Int], suppressAllOutput: Boolean)
+  private final class NegTest(testSources: List[TestSource], times: Int, threadLimit: Option[Int], suppressAllOutput: Boolean)(implicit summaryReport: SummaryReporting)
   extends Test(testSources, times, threadLimit, suppressAllOutput) {
     protected def encapsulatedCompilation(testSource: TestSource) = new LoggedRunnable {
       def checkTestSource(): Unit = tryCompile(testSource) {
@@ -849,7 +851,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
      *  compilation without generating errors and that they do not crash the
      *  compiler
      */
-    def checkCompile(): this.type = {
+    def checkCompile()(implicit summaryReport: SummaryReporting): this.type = {
       val test = new PosTest(targets, times, threadLimit, shouldFail).executeTestSuite()
 
       if (!shouldFail && test.didFail) {
@@ -866,7 +868,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
      *  correct amount of errors at the correct positions. It also makes sure
      *  that none of these tests crash the compiler
      */
-    def checkExpectedErrors(): this.type = {
+    def checkExpectedErrors()(implicit summaryReport: SummaryReporting): this.type = {
       val test = new NegTest(targets, times, threadLimit, shouldFail).executeTestSuite()
 
       if (!shouldFail && test.didFail) {
@@ -884,7 +886,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
      *  the compiler; it also makes sure that all tests can run with the
      *  expected output
      */
-    def checkRuns(): this.type = {
+    def checkRuns()(implicit summaryReport: SummaryReporting): this.type = {
       val test = new RunTest(targets, times, threadLimit, shouldFail).executeTestSuite()
 
       if (!shouldFail && test.didFail) {

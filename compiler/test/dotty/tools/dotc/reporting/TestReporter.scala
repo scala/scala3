@@ -110,15 +110,22 @@ object TestReporter {
     val rep = new TestReporter(writer, writeToLog, WARNING) {
       /** Prints the message with the given position indication in a simplified manner */
       override def printMessageAndPos(m: MessageContainer, extra: String)(implicit ctx: Context): Unit = {
-        val msg = s"${m.pos.line + 1}: " + m.contained.kind + extra
-        val extraInfo = inlineInfo(m.pos)
+        def report() = {
+          val msg = s"${m.pos.line + 1}: " + m.contained.kind + extra
+          val extraInfo = inlineInfo(m.pos)
 
-        writer.println(msg)
-        _messageBuf.append(msg)
+          writer.println(msg)
+          _messageBuf.append(msg)
 
-        if (extraInfo.nonEmpty) {
-          writer.println(extraInfo)
-          _messageBuf.append(extraInfo)
+          if (extraInfo.nonEmpty) {
+            writer.println(extraInfo)
+            _messageBuf.append(extraInfo)
+          }
+        }
+        m match {
+          case m: Error => report()
+          case m: Warning => report()
+          case _ => ()
         }
       }
     }

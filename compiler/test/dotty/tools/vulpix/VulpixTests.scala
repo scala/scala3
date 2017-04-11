@@ -9,7 +9,9 @@ import scala.util.control.NonFatal
 
 /** Meta tests for the Vulpix test suite */
 class VulpixTests extends ParallelTesting {
-  import dotc.CompilationTests._
+  import TestConfiguration._
+
+  implicit val _: SummaryReporting = new NoSummaryReport
 
   def maxDuration = 3.seconds
   def numberOfSlaves = 5

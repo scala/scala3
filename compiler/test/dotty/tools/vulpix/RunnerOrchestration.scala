@@ -43,7 +43,8 @@ trait RunnerOrchestration {
   def safeMode: Boolean
 
   /** Running a `Test` class's main method from the specified `dir` */
-  def runMain(classPath: String): Status = monitor.runMain(classPath)
+  def runMain(classPath: String)(implicit summaryReport: SummaryReporting): Status =
+    monitor.runMain(classPath)
 
   private[this] val monitor = new RunnerMonitor
 
@@ -57,7 +58,8 @@ trait RunnerOrchestration {
    */
   private class RunnerMonitor {
 
-    def runMain(classPath: String): Status = withRunner(_.runMain(classPath))
+    def runMain(classPath: String)(implicit summaryReport: SummaryReporting): Status =
+      withRunner(_.runMain(classPath))
 
     private class Runner(private var process: Process) {
       private[this] var childStdout: BufferedReader = _
@@ -81,8 +83,16 @@ trait RunnerOrchestration {
         childStdin = null
       }
 
+      /** Did add hook to kill the child VMs? */
+      private[this] var didAddCleanupCallback = false
+
       /** Blocks less than `maxDuration` while running `Test.main` from `dir` */
-      def runMain(classPath: String): Status = {
+      def runMain(classPath: String)(implicit summaryReport: SummaryReporting): Status = {
+        if (!didAddCleanupCallback) {
+          // If for some reason the test runner (i.e. sbt) doesn't kill the VM, we
+          // need to clean up ourselves.
+          summaryReport.addCleanup(killAll)
+        }
         assert(process ne null,
           "Runner was killed and then reused without setting a new process")
 
@@ -127,9 +137,9 @@ trait RunnerOrchestration {
         // Handle failure of the VM:
         status match {
           case _: Success if safeMode => respawn()
+          case _: Success => // no need to respawn sub process
           case _: Failure => respawn()
           case Timeout => respawn()
-          case _ => ()
         }
         status
       }
@@ -182,8 +192,5 @@ trait RunnerOrchestration {
 
     // On shutdown, we need to kill all runners:
     sys.addShutdownHook(killAll())
-    // If for some reason the test runner (i.e. sbt) doesn't kill the VM, we
-    // need to clean up ourselves.
-    SummaryReport.addCleanup(killAll)
   }
 }

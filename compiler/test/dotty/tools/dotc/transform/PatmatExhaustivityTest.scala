@@ -9,11 +9,12 @@ import scala.io.Source._
 import scala.reflect.io.Directory
 import org.junit.Test
 import reporting.TestReporter
+import vulpix.TestConfiguration
 
 class PatmatExhaustivityTest {
   val testsDir = "../tests/patmat"
   // stop-after: patmatexhaust-huge.scala crash compiler
-  val options = List("-color:never", "-Ystop-after:splitter", "-Ycheck-all-patmat") ++ CompilationTests.classPath
+  val options = List("-color:never", "-Ystop-after:splitter", "-Ycheck-all-patmat") ++ TestConfiguration.classPath
 
   private def compileFile(file: File) = {
     val stringBuffer = new StringWriter()
