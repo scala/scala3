@@ -227,8 +227,12 @@ class ClassfileParser(
         // seal java enums
         if (isEnum) {
           val enumClass = sym.owner.linkedClass
-          if (!(enumClass is Flags.Sealed)) enumClass.setFlag(Flags.AbstractSealed)
-          enumClass.addAnnotation(Annotation.makeChild(sym))
+          if (!enumClass.exists)
+            ctx.warning(s"no linked class for java enum $sym in ${sym.owner}. A referencing class file might be missing an InnerClasses entry.")
+          else {
+            if (!(enumClass is Flags.Sealed)) enumClass.setFlag(Flags.AbstractSealed)
+            enumClass.addAnnotation(Annotation.makeChild(sym))
+          }
         }
       } finally {
         in.bp = oldbp
