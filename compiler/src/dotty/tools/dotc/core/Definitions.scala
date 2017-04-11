@@ -10,6 +10,7 @@ import scala.collection.{ mutable, immutable }
 import PartialFunction._
 import collection.mutable
 import util.common.alwaysZero
+import typer.Applications
 
 object Definitions {
 
@@ -477,6 +478,7 @@ class Definitions {
 
   lazy val JavaCloneableClass        = ctx.requiredClass("java.lang.Cloneable")
   lazy val NullPointerExceptionClass = ctx.requiredClass("java.lang.NullPointerException")
+  lazy val IndexOutOfBoundsException = ctx.requiredClass("java.lang.IndexOutOfBoundsException")
   lazy val ClassClass                = ctx.requiredClass("java.lang.Class")
   lazy val BoxedNumberClass          = ctx.requiredClass("java.lang.Number")
   lazy val ThrowableClass            = ctx.requiredClass("java.lang.Throwable")
@@ -844,18 +846,7 @@ class Definitions {
     TupleType(elems.size).appliedTo(elems)
   }
 
-  def isProductSubType(tp: Type)(implicit ctx: Context) =
-    (tp derivesFrom ProductType.symbol) && tp.baseClasses.exists(isProductClass)
-
-  def productArity(tp: Type)(implicit ctx: Context) =
-    if (tp derivesFrom ProductType.symbol)
-      tp.baseClasses.find(isProductClass) match {
-        case Some(prod) => prod.typeParams.length
-        case None => -1
-      }
-    else -1
-
-  /** Is `tp` (an alias) of either a scala.FunctionN or a scala.ImplicitFunctionN ? */
+  /** Is `tp` (an alias) of either a scala.FunctionN or a scala.ImplicitFunctionN? */
   def isFunctionType(tp: Type)(implicit ctx: Context) = {
     val arity = functionArity(tp)
     val sym = tp.dealias.typeSymbol
