@@ -981,8 +981,8 @@ class Definitions {
     cls
   }
 
-  def isPhantomAnyClass(sym: Symbol)(implicit ctx: Context): Boolean =
-    sym.name == tpnme.Any && (sym.owner eq PhantomClass)
+  def isPhantomAnyOrNothingClass(sym: Symbol)(implicit ctx: Context): Boolean =
+    (sym.name == tpnme.Any || sym.name == tpnme.Nothing) && (sym.owner eq PhantomClass)
 
   def isPhantomNothingClass(sym: Symbol)(implicit ctx: Context): Boolean =
     sym.name == tpnme.Nothing && (sym.owner eq PhantomClass)
