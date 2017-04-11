@@ -179,6 +179,20 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
           previous
         }
 
+      def selection(imp: ImportInfo, name: Name) =
+        if (imp.sym.isCompleting) {
+          ctx.warning(i"cyclic ${imp.sym}, ignored", tree.pos)
+          NoType
+        } else if (unimported.nonEmpty && unimported.contains(imp.site.termSymbol))
+          NoType
+        else {
+          val pre = imp.site
+          val denot = pre.member(name).accessibleFrom(pre)(refctx)
+            // Pass refctx so that any errors are reported in the context of the
+            // reference instead of the
+          if (reallyExists(denot)) pre.select(name, denot) else NoType
+        }
+
       /** The type representing a named import with enclosing name when imported
        *  from given `site` and `selectors`.
        */
@@ -194,25 +208,15 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
               found
             }
 
-            def selection(name: Name) =
-              if (imp.sym.isCompleting) {
-                ctx.warning(i"cyclic ${imp.sym}, ignored", tree.pos)
-                NoType
-              }
-              else if (unimported.nonEmpty && unimported.contains(imp.site.termSymbol))
-                NoType
-              else {
-                // Pass refctx so that any errors are reported in the context of the
-                // reference instead of the
-                checkUnambiguous(selectionType(imp.site, name, tree.pos)(refctx))
-              }
+            def unambiguousSelection(name: Name) =
+              checkUnambiguous(selection(imp, name))
 
             selector match {
               case Thicket(fromId :: Ident(Name) :: _) =>
                 val Ident(from) = fromId
-                selection(if (name.isTypeName) from.toTypeName else from)
+                unambiguousSelection(if (name.isTypeName) from.toTypeName else from)
               case Ident(Name) =>
-                selection(name)
+                unambiguousSelection(name)
               case _ =>
                 recur(rest)
             }
@@ -225,18 +229,10 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
       /** The type representing a wildcard import with enclosing name when imported
        *  from given import info
        */
-      def wildImportRef(imp: ImportInfo)(implicit ctx: Context): Type = {
-        if (imp.isWildcardImport) {
-          val pre = imp.site
-          if (!unimported.contains(pre.termSymbol) &&
-              !imp.excluded.contains(name.toTermName) &&
-              name != nme.CONSTRUCTOR) {
-            val denot = pre.member(name).accessibleFrom(pre)(refctx)
-            if (reallyExists(denot)) return pre.select(name, denot)
-          }
-        }
-        NoType
-      }
+      def wildImportRef(imp: ImportInfo)(implicit ctx: Context): Type =
+        if (imp.isWildcardImport && !imp.excluded.contains(name.toTermName) && name != nme.CONSTRUCTOR)
+          selection(imp, name)
+        else NoType
 
       /** Is (some alternative of) the given predenotation `denot`
        *  defined in current compilation unit?
