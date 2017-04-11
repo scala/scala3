@@ -62,7 +62,7 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
       case _ => 0
     }
     val targs = (0 until targsSize).map(x => new ErazedType()).toList
-    val args = ctx.definitions.ArrayOf(ctx.definitions.StringType) :: Nil
+    val args = tpe.widenDealias.paramInfoss.flatten
     val call = CallInfoWithContext(tpe, targs, args, OuterTargs.empty, None, None)
     entryPoints = entryPoints.updated(call, entryPointId)
     addReachableMethod(call)

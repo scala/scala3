@@ -72,7 +72,7 @@ class TastySummaries {
                     def readCallInfo: CallInfo = {
                       val t = readType
                       val targsSz = reader.readByte()
-                      val targs = for(_ <- 0 until targsSz) yield readType
+                      val targs = List.fill(targsSz)(readType)
                       val argsSz = reader.readByte()
                       val argsFlags = readCompactBits(reader, argsFlagsSize * argsSz)
                       val argsPassed = for (argFlags <- argsFlags.sliding(argsFlagsSize, argsFlagsSize).toList) yield {
@@ -82,7 +82,7 @@ class TastySummaries {
                         else readType
                       }
                       val source = None // TODO
-                      CallInfo(t.asInstanceOf[TermRef], targs.toList, argsPassed, source) // TODO no need to normalize the types
+                      CallInfo(t.asInstanceOf[TermRef], targs, argsPassed, source) // TODO no need to normalize the types
                     }
 
                     val calls = for(_ <- 0 until listSz) yield readCallInfo
@@ -95,11 +95,7 @@ class TastySummaries {
 
                   val argumentReturned = reader.readByte()
 
-                  val numParameters = sym.info match {
-                    case tp: MethodType => tp.paramInfoss.foldLeft(0)(_ + _.size)
-                    case _: ExprType => 0
-                  }
-                  val bitsExpected = numParameters + 2 // this and thisAccessed
+                  val bitsExpected = reader.readByte()
                   val (thisAccessed :: argumentStoredToHeap) = readCompactBits(reader, bitsExpected)
                   val definedClosures = Nil // TODO
                   new MethodSummary(sym, thisAccessed, methodsCalled.toMap, definedClosures, accessedModules.toList, argumentReturned.toByte, argumentStoredToHeap.take(bitsExpected - 1))
@@ -164,11 +160,12 @@ object TastySummaries {
 
           buf.writeInt(ms.methodsCalled.size) //29
           for ((receiver, methods) <- ms.methodsCalled) {
-            compactBits(List(receiver.isInstanceOf[PreciseType]))
-            receiver match {
-              case receiver: PreciseType => writeTypeRef(receiver.underlying) //36
-              case _ => writeTypeRef(receiver) //36
+            buf.writeByte(if (receiver.isInstanceOf[PreciseType]) 1 else 0)
+            val rec = receiver match {
+              case receiver: PreciseType => receiver.underlying
+              case _ => receiver
             }
+            writeTypeRef(rec)
             buf.writeInt(methods.size)
 
             def writeCallInfo(c: CallInfo): Unit = {
@@ -200,7 +197,9 @@ object TastySummaries {
           ms.accessedModules foreach writeSymbolRef
 
           buf.writeByte(ms.argumentReturned)
-          compactBits(ms.thisAccessed :: ms.argumentStoredToHeap).foreach(buf.writeByte)
+          val flags = ms.thisAccessed :: ms.argumentStoredToHeap
+          buf.writeByte(flags.length)
+          compactBits(flags).foreach(buf.writeByte)
         }
 
         val methods = methodSummaries.filter(_.methodDef.topLevelClass == cls)
@@ -230,7 +229,7 @@ object TastySummaries {
   private def readCompactBits(reader: TastyReader, bitsExpected: Int): List[Boolean] = {
     val bytesExpected = bitsExpected / 8 + (if (bitsExpected % 8 > 0) 1 else 0)
     val bytes = reader.readBytes(bytesExpected)
-    bytes.toList.flatMap { bt =>
+    bytes.toIterator.flatMap { bt =>
       List(
         (bt & 1) != 0,
         (bt & 2) != 0,
@@ -240,7 +239,7 @@ object TastySummaries {
         (bt & 32) != 0,
         (bt & 64) != 0,
         (bt & 128) != 0)
-    }
+    }.take(bitsExpected).toList
   }
 
 }
