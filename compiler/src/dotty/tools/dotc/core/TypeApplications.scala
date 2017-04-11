@@ -429,7 +429,7 @@ class TypeApplications(val self: Type) extends AnyVal {
       case dealiased: LazyRef =>
         LazyRef(() => dealiased.ref.appliedTo(args))
       case dealiased: WildcardType =>
-        dealiased
+        WildcardType(dealiased.optBounds.appliedTo(args).bounds)
       case dealiased: TypeRef if dealiased.symbol == defn.NothingClass =>
         dealiased
       case _ if typParams.isEmpty || typParams.head.isInstanceOf[LambdaParam] =>
