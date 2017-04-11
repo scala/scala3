@@ -134,7 +134,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
       case tp: TypeType =>
         toTextRHS(tp)
       case tp: TermRef
-      if !tp.denotationIsCurrent && !homogenizedView || // always print underyling when testing picklers
+      if !tp.denotationIsCurrent && !homogenizedView || // always print underlying when testing picklers
          tp.symbol.is(Module) ||
          tp.symbol.name.isImportName =>
         toTextRef(tp) ~ ".type"
@@ -183,7 +183,9 @@ class PlainPrinter(_ctx: Context) extends Printer {
           toTextGlobal(tp.resultType)
         }
       case tp: TypeParamRef =>
-        TypeParamRefNameString(tp) ~ lambdaHash(tp.binder)
+        ParamRefNameString(tp) ~ lambdaHash(tp.binder)
+      case tp: TermParamRef =>
+        ParamRefNameString(tp) ~ ".type"
       case AnnotatedType(tpe, annot) =>
         toTextLocal(tpe) ~ " " ~ toText(annot)
       case HKApply(tycon, args) =>
@@ -206,10 +208,10 @@ class PlainPrinter(_ctx: Context) extends Printer {
     }
   }.close
 
-  protected def TypeParamRefNameString(name: TypeName): String = name.toString
+  protected def ParamRefNameString(name: Name): String = name.toString
 
-  protected def TypeParamRefNameString(param: TypeParamRef): String =
-    TypeParamRefNameString(param.binder.paramNames(param.paramNum))
+  protected def ParamRefNameString(param: ParamRef): String =
+    ParamRefNameString(param.binder.paramNames(param.paramNum))
 
   /** The name of the symbol without a unique id. Under refined printing,
    *  the decoded original name.
