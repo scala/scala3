@@ -11,6 +11,7 @@ import util.Stats._
 import util.common._
 import Names._
 import NameOps._
+import NameKinds._
 import Flags._
 import StdNames.tpnme
 import util.Positions.Position
@@ -464,11 +465,6 @@ class TypeApplications(val self: Type) extends AnyVal {
       self
     case _ =>
       val v = tparam.paramVariance
-      /* Not neeeded.
-      if (v > 0 && !(tparam is Local) && !(tparam is ExpandedTypeParam)) TypeBounds.upper(self)
-      else if (v < 0 && !(tparam is Local) && !(tparam is ExpandedTypeParam)) TypeBounds.lower(self)
-      else
-      */
       TypeAlias(self, v)
   }
 
@@ -510,13 +506,14 @@ class TypeApplications(val self: Type) extends AnyVal {
    */
   final def baseTypeWithArgs(base: Symbol)(implicit ctx: Context): Type = ctx.traceIndented(s"btwa ${self.show} wrt $base", core, show = true) {
     def default = self.baseTypeRef(base).appliedTo(baseArgInfos(base))
+    def isExpandedTypeParam(sym: Symbol) = sym.is(TypeParam) && sym.name.is(ExpandedName)
     self match {
       case tp: TypeRef =>
         tp.info match {
           case TypeBounds(_, hi) => hi.baseTypeWithArgs(base)
           case _ => default
         }
-      case tp @ RefinedType(parent, name, _) if !tp.member(name).symbol.is(ExpandedTypeParam) =>
+      case tp @ RefinedType(parent, name, _) if !isExpandedTypeParam(tp.member(name).symbol) =>
         tp.wrapIfMember(parent.baseTypeWithArgs(base))
       case tp: TermRef =>
         tp.underlying.baseTypeWithArgs(base)

@@ -4,7 +4,6 @@ package core
 package tasty
 
 import TastyBuffer._
-import TastyName.NameRef
 import collection.mutable
 
 /** A byte array buffer that can be filled with bytes or natural numbers in TASTY format,

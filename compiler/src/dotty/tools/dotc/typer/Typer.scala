@@ -18,6 +18,7 @@ import SymDenotations._
 import Annotations._
 import Names._
 import NameOps._
+import NameKinds._
 import Flags._
 import Decorators._
 import ErrorReporting._
@@ -572,7 +573,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
         def canAssign(sym: Symbol) = // allow assignments from the primary constructor to class fields
           sym.is(Mutable, butNot = Accessor) ||
           ctx.owner.isPrimaryConstructor && !sym.is(Method) && sym.owner == ctx.owner.owner ||
-          ctx.owner.name.isTraitSetterName || ctx.owner.isStaticConstructor
+          ctx.owner.name.is(TraitSetterName) || ctx.owner.isStaticConstructor
         lhsCore.tpe match {
           case ref: TermRef if canAssign(ref.symbol) =>
             assignType(cpy.Assign(tree)(lhs1, typed(tree.rhs, ref.info)))

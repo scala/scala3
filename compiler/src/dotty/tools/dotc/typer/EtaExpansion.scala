@@ -12,6 +12,7 @@ import Symbols._
 import Decorators._
 import Names._
 import StdNames._
+import NameKinds.UniqueName
 import Trees._
 import Inferencing._
 import util.Positions._
@@ -21,10 +22,10 @@ object EtaExpansion {
 
   import tpd._
 
-  private def lift(defs: mutable.ListBuffer[Tree], expr: Tree, prefix: String = "")(implicit ctx: Context): Tree =
+  private def lift(defs: mutable.ListBuffer[Tree], expr: Tree, prefix: TermName = EmptyTermName)(implicit ctx: Context): Tree =
     if (isPureExpr(expr)) expr
     else {
-      val name = ctx.freshName(prefix).toTermName
+      val name = UniqueName.fresh(prefix)
       val liftedType = fullyDefinedType(expr.tpe.widen, "lifted expression", expr.pos)
       val sym = ctx.newSymbol(ctx.owner, name, EmptyFlags, liftedType, coord = positionCoord(expr.pos))
       defs += ValDef(sym, expr)
@@ -48,7 +49,7 @@ object EtaExpansion {
   }
 
   /** Lift a function argument, stripping any NamedArg wrapper */
-  def liftArg(defs: mutable.ListBuffer[Tree], arg: Tree, prefix: String = "")(implicit ctx: Context): Tree =
+  def liftArg(defs: mutable.ListBuffer[Tree], arg: Tree, prefix: TermName = EmptyTermName)(implicit ctx: Context): Tree =
     arg match {
       case arg @ NamedArg(name, arg1) => cpy.NamedArg(arg)(name, lift(defs, arg1, prefix))
       case arg => lift(defs, arg, prefix)
@@ -62,7 +63,7 @@ object EtaExpansion {
       case mt: MethodType =>
         (args, mt.paramNames, mt.paramInfos).zipped map { (arg, name, tp) =>
           if (tp.isInstanceOf[ExprType]) arg
-          else liftArg(defs, arg, if (name contains '$') "" else name.toString + "$")
+          else liftArg(defs, arg, if (name.firstPart contains '$') EmptyTermName else name)
         }
       case _ =>
         args map (liftArg(defs, _))

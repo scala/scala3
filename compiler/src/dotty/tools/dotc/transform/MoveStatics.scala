@@ -55,6 +55,7 @@ class MoveStatics extends MiniPhaseTransform with SymTransformer { thisTransform
       }
 
       def move(module: TypeDef, companion: TypeDef): List[Tree] = {
+        assert(companion ne module)
         if (!module.symbol.is(Flags.Module)) move(companion, module)
         else {
           val allMembers =

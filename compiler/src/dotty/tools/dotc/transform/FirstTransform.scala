@@ -19,8 +19,8 @@ import dotty.tools.dotc.core.Denotations.SingleDenotation
 import scala.collection.mutable
 import DenotTransformers._
 import typer.Checking
-import Names.Name
 import NameOps._
+import NameKinds.{AvoidClashName, OuterSelectName}
 import StdNames._
 
 
@@ -77,7 +77,7 @@ class FirstTransform extends MiniPhaseTransform with InfoTransformer with Annota
 
   override def checkPostCondition(tree: Tree)(implicit ctx: Context): Unit = {
     tree match {
-      case Select(qual, name) if !name.isOuterSelect && tree.symbol.exists =>
+      case Select(qual, name) if !name.is(OuterSelectName) && tree.symbol.exists =>
         assert(qual.tpe derivesFrom tree.symbol.owner, i"non member selection of ${tree.symbol.showLocated} from ${qual.tpe} in $tree")
       case _: TypeTree =>
       case _: Import | _: NamedArg | _: TypTree =>
@@ -129,7 +129,7 @@ class FirstTransform extends MiniPhaseTransform with InfoTransformer with Annota
           case _ =>
             false
         }
-        val uniqueName = if (nameClash) objName.avoidClashName else objName
+        val uniqueName = if (nameClash) AvoidClashName(objName) else objName
         Thicket(stat :: ModuleDef(registerCompanion(uniqueName, stat.symbol), Nil).trees)
       case stat => stat
     }

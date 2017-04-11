@@ -9,10 +9,11 @@ import TastyBuffer._
 import java.util.UUID
 import core.Symbols.Symbol
 import ast.tpd
+import Decorators._
 
 class TastyPickler {
 
-  private val sections = new mutable.ArrayBuffer[(TastyName.NameRef, TastyBuffer)]
+  private val sections = new mutable.ArrayBuffer[(NameRef, TastyBuffer)]
   val uuid = UUID.randomUUID()
 
   private val headerBuffer = {
@@ -28,7 +29,7 @@ class TastyPickler {
   val nameBuffer = new NameBuffer
 
   def newSection(name: String, buf: TastyBuffer) =
-    sections += ((nameBuffer.nameIndex(name), buf))
+    sections += ((nameBuffer.nameIndex(name.toTermName), buf))
 
   def assembleParts(): Array[Byte] = {
     def lengthWithLength(buf: TastyBuffer) = {

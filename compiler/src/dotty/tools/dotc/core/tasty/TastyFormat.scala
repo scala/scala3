@@ -33,11 +33,11 @@ Macro-format:
                   QUALIFIED      Length qualified_NameRef selector_NameRef
                   SIGNED         Length original_NameRef resultSig_NameRef paramSig_NameRef*
                   EXPANDED       Length original_NameRef
+                  UNIQUE         Length separator_NameRef num_Nat original_NameRef?
                   OBJECTCLASS    Length module_NameRef
                   SUPERACCESSOR  Length accessed_NameRef
                   DEFAULTGETTER  Length method_NameRef paramNumber_Nat
                   SHADOWED       Length original_NameRef
-                  MANGLED        Length mangle_NameRef name_NameRef
                   ...
 
   NameRef       = Nat                    // ordinal number of name in name table, starting from 1.
@@ -222,12 +222,30 @@ object TastyFormat {
 
   final val UTF8 = 1
   final val QUALIFIED = 2
-  final val SIGNED = 3
+  final val FLATTENED = 3
   final val EXPANDED = 4
-  final val OBJECTCLASS = 5
-  final val SUPERACCESSOR = 6
-  final val DEFAULTGETTER = 7
-  final val SHADOWED = 8
+  final val EXPANDPREFIX = 5
+  final val TRAITSETTER = 6
+  final val UNIQUE = 10
+  final val DEFAULTGETTER = 11
+  final val VARIANT = 12
+  final val OUTERSELECT = 13
+
+  final val SUPERACCESSOR = 20
+  final val PROTECTEDACCESSOR = 21
+  final val PROTECTEDSETTER = 22
+  final val INITIALIZER = 23
+  final val SHADOWED = 24
+  final val AVOIDCLASH = 30
+  final val DIRECT = 31
+  final val FIELD = 32
+  final val SETTER = 33
+  final val EXTMETH = 34
+  final val OBJECTVAR = 39
+  final val OBJECTCLASS = 40
+
+  final val SIGNED = 63
+  final val firstInternalTag = 64
 
   // AST tags
 
@@ -411,11 +429,14 @@ object TastyFormat {
   def nameTagToString(tag: Int): String = tag match {
     case UTF8 => "UTF8"
     case QUALIFIED => "QUALIFIED"
-    case SIGNED => "SIGNED"
+    case FLATTENED => "FLATTENED"
     case EXPANDED => "EXPANDED"
+    case SIGNED => "SIGNED"
     case OBJECTCLASS => "OBJECTCLASS"
     case SUPERACCESSOR => "SUPERACCESSOR"
     case DEFAULTGETTER => "DEFAULTGETTER"
+    case SHADOWED => "SHADOWED"
+    case VARIANT => "VARIANT"
   }
 
   def astTagToString(tag: Int): String = tag match {

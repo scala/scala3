@@ -4,7 +4,7 @@ package core
 
 import Periods._, Contexts._, Symbols._, Denotations._, Names._, NameOps._, Annotations._
 import Types._, Flags._, Decorators._, DenotTransformers._, StdNames._, Scopes._, Comments._
-import NameOps._
+import NameOps._, NameKinds._
 import Scopes.Scope
 import collection.mutable
 import collection.immutable.BitSet
@@ -107,7 +107,7 @@ object SymDenotations {
   class SymDenotation private[SymDenotations] (
     symbol: Symbol,
     ownerIfExists: Symbol,
-    final val name: Name,
+    initName: Name,
     initFlags: FlagSet,
     initInfo: Type,
     initPrivateWithin: Symbol = NoSymbol) extends SingleDenotation(symbol) {
@@ -125,10 +125,17 @@ object SymDenotations {
 
     // ------ Getting and setting fields -----------------------------
 
+    private[this] var myName = initName
     private[this] var myFlags: FlagSet = adaptFlags(initFlags)
     private[this] var myInfo: Type = initInfo
     private[this] var myPrivateWithin: Symbol = initPrivateWithin
     private[this] var myAnnotations: List[Annotation] = Nil
+
+    /** The name of the symbol */
+    def name = myName
+
+    /** Update the name; only called when unpickling top-level classes */
+    def name_=(n: Name) = myName = n
 
     /** The owner of the symbol; overridden in NoDenotation */
     def owner: Symbol = ownerIfExists
@@ -252,7 +259,7 @@ object SymDenotations {
      */
     def effectiveName(implicit ctx: Context) =
       if (this is ModuleClass) name.stripModuleClassSuffix
-      else name.stripAvoidClashSuffix
+      else name.exclude(AvoidClashName)
 
     /** The privateWithin boundary, NoSymbol if no boundary is given.
      */
@@ -367,7 +374,7 @@ object SymDenotations {
 
     /** The expanded name of this denotation. */
     final def expandedName(implicit ctx: Context) =
-      if (is(ExpandedName) || isConstructor) name
+      if (name.is(ExpandedName) || isConstructor) name
       else {
         def legalize(name: Name): Name = // JVM method names may not contain `<' or `>' characters
           if (is(Method)) name.replace('<', '(').replace('>', ')') else name
@@ -377,49 +384,50 @@ object SymDenotations {
         // might have been moved from different origins into the same class
 
     /** The name with which the denoting symbol was created */
-    final def originalName(implicit ctx: Context) = {
-      val d = initial
-      if (d is ExpandedName) d.name.unexpandedName else d.name // !!!DEBUG, was: effectiveName
-    }
+    final def originalName(implicit ctx: Context) =
+      initial.effectiveName
 
     /** The encoded full path name of this denotation, where outer names and inner names
      *  are separated by `separator` strings.
      *  Never translates expansions of operators back to operator symbol.
-     *  Drops package objects. Represents terms in the owner chain by a simple `~`.
+     *  Drops package objects. Represents each term in the owner chain by a simple `~`.
      *  (Note: scalac uses nothing to represent terms, which can cause name clashes
      *   between same-named definitions in different enclosing methods. Before this commit
      *   we used `$' but this can cause ambiguities with the class separator '$').
      *  A separator "" means "flat name"; the real separator in this case is "$" and
      *  enclosing packages do not form part of the name.
      */
-    def fullNameSeparated(separator: String)(implicit ctx: Context): Name = {
-      var sep = separator
-      var stopAtPackage = false
-      if (sep.isEmpty) {
-        sep = "$"
-        stopAtPackage = true
-      }
+    def fullNameSeparated(kind: QualifiedNameKind)(implicit ctx: Context): Name =
       if (symbol == NoSymbol ||
           owner == NoSymbol ||
           owner.isEffectiveRoot ||
-          stopAtPackage && owner.is(PackageClass)) name
+          kind == FlatName && owner.is(PackageClass)) name
       else {
+        var filler = ""
         var encl = owner
         while (!encl.isClass && !encl.isPackageObject) {
           encl = encl.owner
-          sep += "~"
+          filler += "~"
         }
-        if (owner.is(ModuleClass, butNot = Package) && sep == "$") sep = "" // duplicate scalac's behavior: don't write a double '$$' for module class members.
-        val fn = encl.fullNameSeparated(separator) ++ sep ++ name
+        var prefix = encl.fullNameSeparated(kind)
+        if (kind.separator == "$")
+          // duplicate scalac's behavior: don't write a double '$$' for module class members.
+          prefix = prefix.exclude(ModuleClassName)
+        def qualify(n: SimpleTermName) =
+          kind(prefix.toTermName, if (filler.isEmpty) n else termName(filler + n))
+        val fn = name rewrite {
+          case name: SimpleTermName => qualify(name)
+          case name @ AnyQualifiedName(_, _) => qualify(name.toSimpleName)
+        }
         if (isType) fn.toTypeName else fn.toTermName
       }
-    }
+
 
     /** The encoded flat name of this denotation, where joined names are separated by `separator` characters. */
-    def flatName(implicit ctx: Context): Name = fullNameSeparated("")
+    def flatName(implicit ctx: Context): Name = fullNameSeparated(FlatName)
 
     /** `fullName` where `.' is the separator character */
-    def fullName(implicit ctx: Context): Name = fullNameSeparated(".")
+    def fullName(implicit ctx: Context): Name = fullNameSeparated(QualifiedName)
 
     // ----- Tests -------------------------------------------------
 
@@ -460,13 +468,13 @@ object SymDenotations {
 
     /** Is this symbol an anonymous class? */
     final def isAnonymousClass(implicit ctx: Context): Boolean =
-      isClass && (initial.name startsWith tpnme.ANON_CLASS)
+      isClass && (initial.name startsWith str.ANON_CLASS)
 
     final def isAnonymousFunction(implicit ctx: Context) =
-      this.symbol.is(Method) && (initial.name startsWith nme.ANON_FUN)
+      this.symbol.is(Method) && (initial.name startsWith str.ANON_FUN)
 
     final def isAnonymousModuleVal(implicit ctx: Context) =
-      this.symbol.is(ModuleVal) && (initial.name startsWith nme.ANON_CLASS)
+      this.symbol.is(ModuleVal) && (initial.name startsWith str.ANON_CLASS)
 
     /** Is this a companion class method or companion object method?
      *  These methods are generated by Symbols#synthesizeCompanionMethod
@@ -505,8 +513,10 @@ object SymDenotations {
 
     /** Is this symbol a package object or its module class? */
     def isPackageObject(implicit ctx: Context): Boolean = {
-      val poName = if (isType) nme.PACKAGE_CLS else nme.PACKAGE
-      (name.toTermName == poName) && (owner is Package) && (this is Module)
+      val nameMatches =
+        if (isType) name == tpnme.PACKAGE.moduleClassName
+        else name == nme.PACKAGE
+      nameMatches && (owner is Package) && (this is Module)
     }
 
     /** Is this symbol an abstract type? */
@@ -922,14 +932,15 @@ object SymDenotations {
       *  and which is also defined in the same scope and compilation unit.
       *  NoSymbol if this class does not exist.
       */
-    final def companionClass(implicit ctx: Context): Symbol = {
-      val companionMethod = info.decls.denotsNamed(nme.COMPANION_CLASS_METHOD, selectPrivate).first
-
-      if (companionMethod.exists)
-        companionMethod.info.resultType.classSymbol
-      else
-        NoSymbol
-    }
+    final def companionClass(implicit ctx: Context): Symbol =
+      if (is(Package)) NoSymbol
+      else {
+        val companionMethod = info.decls.denotsNamed(nme.COMPANION_CLASS_METHOD, selectPrivate).first
+        if (companionMethod.exists)
+          companionMethod.info.resultType.classSymbol
+        else
+          NoSymbol
+      }
 
     final def scalacLinkedClass(implicit ctx: Context): Symbol =
       if (this is ModuleClass) companionNamed(effectiveName.toTypeName)
@@ -1198,9 +1209,7 @@ object SymDenotations {
     /** If denotation is private, remove the Private flag and expand the name if necessary */
     def ensureNotPrivate(implicit ctx: Context) =
       if (is(Private))
-        copySymDenotation(
-          name = expandedName,
-          initFlags = this.flags &~ Private | ExpandedName)
+        copySymDenotation(name = expandedName, initFlags = this.flags &~ Private)
       else this
   }
 
@@ -1209,18 +1218,19 @@ object SymDenotations {
   class ClassDenotation private[SymDenotations] (
     symbol: Symbol,
     ownerIfExists: Symbol,
-    name: Name,
+    initName: Name,
     initFlags: FlagSet,
     initInfo: Type,
     initPrivateWithin: Symbol,
     initRunId: RunId)
-    extends SymDenotation(symbol, ownerIfExists, name, initFlags, initInfo, initPrivateWithin) {
+    extends SymDenotation(symbol, ownerIfExists, initName, initFlags, initInfo, initPrivateWithin) {
 
     import util.LRUCache
 
     // ----- denotation fields and accessors ------------------------------
 
-    if (initFlags is (Module, butNot = Package)) assert(name.isModuleClassName, s"module naming inconsistency: $name")
+    if (initFlags is (Module, butNot = Package))
+      assert(name.is(ModuleClassName), s"module naming inconsistency: ${name.debugString}")
 
     /** The symbol asserted to have type ClassSymbol */
     def classSymbol: ClassSymbol = symbol.asInstanceOf[ClassSymbol]
@@ -1530,7 +1540,7 @@ object SymDenotations {
           !(this is Frozen) ||
           (scope ne this.unforcedDecls) ||
           sym.hasAnnotation(defn.ScalaStaticAnnot) ||
-          sym.name.isInlineAccessor ||
+          sym.name.is(InlineAccessorName) ||
           isUsecase, i"trying to enter $sym in $this, frozen = ${this is Frozen}")
 
       scope.enter(sym)
@@ -1752,13 +1762,13 @@ object SymDenotations {
       }
     }
 
-    private[this] var fullNameCache: SimpleMap[String, Name] = SimpleMap.Empty
-    override final def fullNameSeparated(separator: String)(implicit ctx: Context): Name = {
-      val cached = fullNameCache(separator)
+    private[this] var fullNameCache: SimpleMap[QualifiedNameKind, Name] = SimpleMap.Empty
+    override final def fullNameSeparated(kind: QualifiedNameKind)(implicit ctx: Context): Name = {
+      val cached = fullNameCache(kind)
       if (cached != null) cached
       else {
-        val fn = super.fullNameSeparated(separator)
-        fullNameCache = fullNameCache.updated(separator, fn)
+        val fn = super.fullNameSeparated(kind)
+        fullNameCache = fullNameCache.updated(kind, fn)
         fn
       }
     }
@@ -1770,8 +1780,8 @@ object SymDenotations {
       def constrNamed(cname: TermName) = info.decls.denotsNamed(cname).last.symbol
         // denotsNamed returns Symbols in reverse order of occurrence
       if (this.is(ImplClass)) constrNamed(nme.TRAIT_CONSTRUCTOR) // ignore normal constructor
-      else
-        constrNamed(nme.CONSTRUCTOR).orElse(constrNamed(nme.TRAIT_CONSTRUCTOR))
+      else if (this.is(Package)) NoSymbol
+      else constrNamed(nme.CONSTRUCTOR).orElse(constrNamed(nme.TRAIT_CONSTRUCTOR))
     }
 
     /** The parameter accessors of this class. Term and type accessors,

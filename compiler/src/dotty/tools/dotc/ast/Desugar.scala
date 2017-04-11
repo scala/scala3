@@ -6,6 +6,7 @@ import core._
 import util.Positions._, Types._, Contexts._, Constants._, Names._, NameOps._, Flags._
 import SymDenotations._, Symbols._, StdNames._, Annotations._, Trees._
 import Decorators._
+import NameKinds.{UniqueName, EvidenceParamName, DefaultGetterName}
 import language.higherKinds
 import typer.FrontEnd
 import collection.mutable.ListBuffer
@@ -128,7 +129,7 @@ object desugar {
   def makeImplicitParameters(tpts: List[Tree], forPrimaryConstructor: Boolean)(implicit ctx: Context) =
     for (tpt <- tpts) yield {
        val paramFlags: FlagSet = if (forPrimaryConstructor) PrivateLocalParamAccessor else Param
-       val epname = ctx.freshName(nme.EVIDENCE_PARAM_PREFIX).toTermName
+       val epname = EvidenceParamName.fresh()
        ValDef(epname, tpt, EmptyTree).withFlags(paramFlags | Implicit)
     }
 
@@ -186,7 +187,7 @@ object desugar {
       case (vparam :: vparams) :: vparamss1 =>
         def defaultGetter: DefDef =
           DefDef(
-            name = meth.name.defaultGetterName(n),
+            name = DefaultGetterName(meth.name, n),
             tparams = meth.tparams.map(tparam => dropContextBound(toDefParam(tparam))),
             vparamss = takeUpTo(normalizedVparamss.nestedMap(toDefParam), n),
             tpt = TypeTree(),
@@ -230,7 +231,7 @@ object desugar {
   private def evidenceParams(meth: DefDef)(implicit ctx: Context): List[ValDef] =
     meth.vparamss.reverse match {
       case (vparams @ (vparam :: _)) :: _ if vparam.mods is Implicit =>
-        vparams.dropWhile(!_.name.startsWith(nme.EVIDENCE_PARAM_PREFIX))
+        vparams.dropWhile(!_.name.is(EvidenceParamName))
       case _ =>
         Nil
     }
@@ -244,7 +245,7 @@ object desugar {
   def typeDef(tdef: TypeDef)(implicit ctx: Context): Tree = {
     if (tdef.mods is PrivateLocalParam) {
       val tparam = cpy.TypeDef(tdef)(name = tdef.name.expandedName(ctx.owner))
-        .withMods(tdef.mods &~ PrivateLocal | ExpandedName)
+        .withMods(tdef.mods &~ PrivateLocal)
       val alias = cpy.TypeDef(tdef)(rhs = refOfDef(tparam))
         .withMods(tdef.mods & VarianceFlags | PrivateLocalParamAccessor | Synthetic)
       Thicket(tparam, alias)
@@ -402,7 +403,7 @@ object desugar {
 
     def anyRef = ref(defn.AnyRefAlias.typeRef)
     def productConstr(n: Int) = {
-      val tycon = scalaDot((tpnme.Product.toString + n).toTypeName)
+      val tycon = scalaDot((str.Product + n).toTypeName)
       val targs = constrVparamss.head map (_.tpt)
       if (targs.isEmpty) tycon else AppliedTypeTree(tycon, targs)
     }
@@ -635,7 +636,7 @@ object desugar {
         case (named, tpt) :: Nil =>
           derivedValDef(original, named, tpt, matchExpr, mods)
         case _ =>
-          val tmpName = ctx.freshName().toTermName
+          val tmpName = UniqueName.fresh()
           val patMods =
             mods & Lazy | Synthetic | (if (ctx.owner.isClass) PrivateLocal else EmptyFlags)
           val firstDef =
@@ -810,7 +811,7 @@ object desugar {
         val selectPos = Position(left.pos.start, op.pos.end, op.pos.start)
         Apply(Select(left, op.name).withPos(selectPos), args)
       } else {
-        val x = ctx.freshName().toTermName
+        val x = UniqueName.fresh()
         val selectPos = Position(op.pos.start, right.pos.end, op.pos.start)
         new InfixOpBlock(
           ValDef(x, TypeTree(), left).withMods(synthetic),
@@ -888,7 +889,7 @@ object desugar {
         case id: Ident if isVarPattern(id) && id.name != nme.WILDCARD => (id, id)
         case Typed(id: Ident, _) if isVarPattern(id) && id.name != nme.WILDCARD => (pat, id)
         case _ =>
-          val name = ctx.freshName().toTermName
+          val name = UniqueName.fresh()
           (Bind(name, pat), Ident(name))
       }
 

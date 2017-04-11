@@ -4,8 +4,9 @@ package core
 
 import SymDenotations.{ SymDenotation, ClassDenotation, NoDenotation }
 import Contexts.{Context, ContextBase}
-import Names.{Name, PreName}
-import Names.TypeName
+import Names._
+import NameOps._
+import NameKinds._
 import StdNames._
 import Symbols.NoSymbol
 import Symbols._
@@ -1171,27 +1172,42 @@ object Denotations {
      *  if generateStubs is set, generates stubs for missing top-level symbols
      */
     def staticRef(path: Name, generateStubs: Boolean = true)(implicit ctx: Context): Denotation = {
-      def recur(path: Name, len: Int): Denotation = {
-        val point = path.lastIndexOf('.', len - 1)
-        val owner =
-          if (point > 0) recur(path.toTermName, point).disambiguate(_.info.isParameterless)
-          else if (path.isTermName) defn.RootClass.denot
-          else defn.EmptyPackageClass.denot
+      def select(prefix: Denotation, selector: Name): Denotation = {
+        val owner = prefix.disambiguate(_.info.isParameterless)
         if (owner.exists) {
-          val name = path slice (point + 1, len)
-          val result = owner.info.member(name)
-          if (result ne NoDenotation) result
+          val result = owner.info.member(selector)
+          if (result.exists) result
           else {
             val alt =
-              if (generateStubs) missingHook(owner.symbol.moduleClass, name)
+              if (generateStubs) missingHook(owner.symbol.moduleClass, selector)
               else NoSymbol
-            if (alt.exists) alt.denot
-            else MissingRef(owner, name)
+            if (alt.exists) alt.denot else MissingRef(owner, selector)
           }
         }
         else owner
       }
-      recur(path, path.length)
+      def recur(path: Name, wrap: TermName => Name = identity): Denotation = path match {
+        case path: TypeName =>
+          recur(path.toTermName, n => n.toTypeName)
+        case ModuleClassName(underlying) =>
+          recur(underlying, n => wrap(ModuleClassName(n)))
+        case QualifiedName(prefix, selector) =>
+          select(recur(prefix), wrap(selector))
+        case qn @ AnyQualifiedName(prefix, _) =>
+          recur(prefix, n => wrap(qn.info.mkString(n).toTermName))
+        case path: SimpleTermName =>
+          def recurSimple(len: Int, wrap: TermName => Name): Denotation = {
+            val point = path.lastIndexOf('.', len - 1)
+            val selector = wrap(path.slice(point + 1, len).asTermName)
+            val prefix =
+              if (point > 0) recurSimple(point, identity)
+              else if (selector.isTermName) defn.RootClass.denot
+              else defn.EmptyPackageClass.denot
+            select(prefix, selector)
+          }
+          recurSimple(path.length, wrap)
+      }
+      recur(path)
     }
 
     /** If we are looking for a non-existing term name in a package,

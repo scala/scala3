@@ -20,6 +20,7 @@ import Trees._
 import config.Config
 import Names._
 import StdNames._
+import NameKinds.DefaultGetterName
 import ProtoTypes._
 import EtaExpansion._
 import Inferencing._
@@ -345,7 +346,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
       }
       val getterPrefix =
         if ((meth is Synthetic) && meth.name == nme.apply) nme.CONSTRUCTOR else meth.name
-      def getterName = getterPrefix.defaultGetterName(n)
+      def getterName = DefaultGetterName(getterPrefix, n)
       if (!meth.hasDefaultParams)
         EmptyTree
       else if (receiver.isEmpty) {
@@ -402,7 +403,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
           def missingArg(n: Int): Unit = {
             val pname = methodType.paramNames(n)
             fail(
-              if (pname contains '$') s"not enough arguments for $methString"
+              if (pname.firstPart contains '$') s"not enough arguments for $methString"
               else s"missing argument for parameter $pname of $methString")
           }
 
@@ -718,7 +719,8 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
       val lhs1 = typedExpr(lhs)
       val liftedDefs = new mutable.ListBuffer[Tree]
       val lhs2 = untpd.TypedSplice(liftAssigned(liftedDefs, lhs1))
-      val assign = untpd.Assign(lhs2, untpd.Apply(untpd.Select(lhs2, name.init), rhss))
+      val assign = untpd.Assign(lhs2,
+          untpd.Apply(untpd.Select(lhs2, name.asSimpleName.dropRight(1)), rhss))
       wrapDefs(liftedDefs, typed(assign))
     }
 

@@ -16,6 +16,7 @@ import Types._, Contexts._, Constants._, Names._, NameOps._, Flags._, DenotTrans
 import SymDenotations._, Symbols._, StdNames._, Annotations._, Trees._, Scopes._, Denotations._
 import TypeErasure.{ valueErasure, ErasedValueType }
 import TypeUtils._
+import NameKinds.{ExtMethName, UniqueExtMethName}
 import util.Positions._
 import Decorators._
 import SymUtils._
@@ -206,11 +207,11 @@ object ExtensionMethods {
         val alts = decl.alternatives
         val index = alts indexOf imeth.denot
         assert(index >= 0, alts + " does not contain " + imeth)
-        def altName(index: Int) = (imeth.name + "$extension" + index).toTermName
+        def altName(index: Int) = UniqueExtMethName(imeth.name.asTermName, index)
         altName(index) #:: ((0 until alts.length).toStream filter (index != _) map altName)
       case decl =>
         assert(decl.exists, imeth.name + " not found in " + imeth.owner + "'s decls: " + imeth.owner.info.decls)
-        Stream((imeth.name + "$extension").toTermName)
+        Stream(ExtMethName(imeth.name.asTermName))
     }
   }
 

@@ -11,6 +11,7 @@ import Types._, Contexts._, Constants._, Names._, NameOps._, Flags._, DenotTrans
 import SymDenotations._, Symbols._, StdNames._, Annotations._, Trees._, Scopes._, Denotations._
 import util.Positions._
 import Decorators._
+import NameKinds.{ProtectedAccessorName, ProtectedSetterName, OuterSelectName, SuperAccessorName}
 import Symbols._, TypeUtils._
 
 /** This class performs the following functions:
@@ -71,7 +72,7 @@ class SuperAccessors(thisTransformer: DenotTransformer) {
       val Select(qual, name) = sel
       val sym = sel.symbol
       val clazz = qual.symbol.asClass
-      var superName = name.superName
+      var superName = SuperAccessorName(name.asTermName)
       if (clazz is Trait) superName = superName.expandedName(clazz)
       val superInfo = sel.tpe.widenSingleton.ensureMethodic
 
@@ -79,9 +80,9 @@ class SuperAccessors(thisTransformer: DenotTransformer) {
         .suchThat(_.signature == superInfo.signature).symbol
         .orElse {
           ctx.debuglog(s"add super acc ${sym.showLocated} to $clazz")
-          val deferredOrPrivate = if (clazz is Trait) Deferred | ExpandedName else Private
+          val deferredOrPrivate = if (clazz is Trait) Deferred else Private
           val acc = ctx.newSymbol(
-              clazz, superName, SuperAccessor | Artifact | Method | deferredOrPrivate,
+              clazz, superName, Artifact | Method | deferredOrPrivate,
               superInfo, coord = sym.coord).enteredAfter(thisTransformer)
           // Diagnostic for SI-7091
           if (!accDefs.contains(clazz))
@@ -151,7 +152,7 @@ class SuperAccessors(thisTransformer: DenotTransformer) {
      */
     private def ensureProtectedAccessOK(sel: Select, targs: List[Tree])(implicit ctx: Context) = {
       val sym = sel.symbol
-      if (sym.isTerm && !sel.name.isOuterSelect && needsProtectedAccessor(sym, sel.pos)) {
+      if (sym.isTerm && !sel.name.is(OuterSelectName) && needsProtectedAccessor(sym, sel.pos)) {
         ctx.debuglog("Adding protected accessor for " + sel)
         protectedAccessorCall(sel, targs)
       } else sel
@@ -168,7 +169,7 @@ class SuperAccessors(thisTransformer: DenotTransformer) {
       assert(clazz.exists, sym)
       ctx.debuglog("Decided for host class: " + clazz)
 
-      val accName = sym.name.protectedAccessorName
+      val accName = ProtectedAccessorName(sym.name)
 
       // if the result type depends on the this type of an enclosing class, the accessor
       // has to take an object of exactly this type, otherwise it's more general
@@ -206,7 +207,8 @@ class SuperAccessors(thisTransformer: DenotTransformer) {
     }
 
     def isProtectedAccessor(tree: Tree)(implicit ctx: Context): Boolean = tree match {
-      case Apply(TypeApply(Select(_, name), _), qual :: Nil) => name.isProtectedAccessorName
+      case Apply(TypeApply(Select(_, name), _), qual :: Nil) =>
+        name.is(ProtectedAccessorName) || name.is(ProtectedSetterName)
       case _ => false
     }
 
@@ -221,7 +223,7 @@ class SuperAccessors(thisTransformer: DenotTransformer) {
       assert(clazz.exists, sym)
       ctx.debuglog("Decided for host class: " + clazz)
 
-      val accName    = sym.name.protectedAccessorName
+      val accName = ProtectedAccessorName(sym.name)
 
       // if the result type depends on the this type of an enclosing class, the accessor
       // has to take an object of exactly this type, otherwise it's more general
@@ -265,7 +267,7 @@ class SuperAccessors(thisTransformer: DenotTransformer) {
       assert(clazz.exists, field)
       ctx.debuglog("Decided for host class: " + clazz)
 
-      val accName = field.name.protectedSetterName
+      val accName = ProtectedSetterName(field.name)
       val accType = MethodType(clazz.classInfo.selfType :: field.info :: Nil, defn.UnitType)
       val protectedAccessor = clazz.info.decl(accName).symbol orElse {
         val newAcc = ctx.newSymbol(

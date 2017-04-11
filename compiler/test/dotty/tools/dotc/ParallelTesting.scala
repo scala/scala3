@@ -423,7 +423,8 @@ trait ParallelTesting { self =>
   extends Test(testSources, times, threadLimit, suppressAllOutput) {
     private def runMain(dir: JFile, testSource: TestSource): Array[String] = {
       def renderStackTrace(ex: Throwable): String =
-        ex.getStackTrace
+        if (ex == null) ""
+        else ex.getStackTrace
           .takeWhile(_.getMethodName != "invoke0")
           .mkString("    ", "\n    ", "")
 

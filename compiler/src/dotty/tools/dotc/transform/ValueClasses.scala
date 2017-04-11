@@ -8,6 +8,7 @@ import SymDenotations._
 import Contexts._
 import Flags._
 import StdNames._
+import SymUtils._
 
 /** Methods that apply to user-defined value classes */
 object ValueClasses {
@@ -24,16 +25,13 @@ object ValueClasses {
     d.isRealMethod &&
       isDerivedValueClass(d.owner) &&
       !d.isConstructor &&
-      !d.is(SuperAccessor) &&
+      !d.isSuperAccessor &&
       !d.is(Macro)
 
-  /** The member that of a derived value class that unboxes it. */
+  /** The member of a derived value class that unboxes it. */
   def valueClassUnbox(d: ClassDenotation)(implicit ctx: Context): Symbol =
     // (info.decl(nme.unbox)).orElse(...)      uncomment once we accept unbox methods
-    d.classInfo.decls
-      .find(d => d.isTerm && d.symbol.is(ParamAccessor))
-      .map(_.symbol)
-      .getOrElse(NoSymbol)
+    d.classInfo.decls.find(_.is(TermParamAccessor))
 
   /** For a value class `d`, this returns the synthetic cast from the underlying type to
    *  ErasedValueType defined in the companion module. This method is added to the module

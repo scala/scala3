@@ -11,6 +11,7 @@ import core.Types._
 import core.Names._
 import core.StdNames._
 import core.NameOps._
+import core.NameKinds.ShadowedName
 import core.Decorators._
 import core.Constants._
 import core.Definitions._
@@ -363,7 +364,7 @@ object Erasure extends TypeTestsCasts{
 
       def select(qual: Tree, sym: Symbol): Tree = {
         val name = tree.typeOpt match {
-          case tp: NamedType if tp.name.isShadowedName => sym.name.shadowedName
+          case tp: NamedType if tp.name.is(ShadowedName) => sym.name.derived(ShadowedName)
           case _ => sym.name
         }
         untpd.cpy.Select(tree)(qual, sym.name)

@@ -5,8 +5,10 @@ import ast.{Trees, tpd}
 import core._, core.Decorators._
 import Annotations._, Contexts._, Flags._, Phases._, Trees._, Types._, Symbols._
 import Names._, NameOps._, StdNames._
+import NameKinds.DefaultGetterName
 import typer.Inliner
 import typer.ErrorReporting.cyclicErrorMsg
+import transform.SymUtils._
 
 import dotty.tools.io.Path
 import java.io.PrintWriter
@@ -212,7 +214,7 @@ private class ExtractAPICollector(implicit val ctx: Context) extends ThunkHolder
     // and can therefore be ignored.
     def alwaysPresent(s: Symbol) =
       s.isCompanionMethod || (csym.is(ModuleClass) && s.isConstructor)
-    val decls = cinfo.decls.filterNot(alwaysPresent).toList
+    val decls = cinfo.decls.filter(!alwaysPresent(_)).toList
     val apiDecls = apiDefinitions(decls)
 
     val declSet = decls.toSet
@@ -222,7 +224,7 @@ private class ExtractAPICollector(implicit val ctx: Context) extends ThunkHolder
       // We cannot filter out `LegacyApp` because it contains the main method,
       // see the comment about main class discovery in `computeType`.
       .filter(bc => !bc.is(Scala2x) || bc.eq(LegacyAppClass))
-      .flatMap(_.classInfo.decls.filterNot(s => s.is(Private) || declSet.contains(s)))
+      .flatMap(_.classInfo.decls.filter(s => !(s.is(Private) || declSet.contains(s))))
     // Inherited members need to be computed lazily because a class might contain
     // itself as an inherited member, like in `class A { class B extends A }`,
     // this works because of `classLikeCache`
@@ -299,7 +301,8 @@ private class ExtractAPICollector(implicit val ctx: Context) extends ThunkHolder
                 sym.owner.companionModule // default getters for class constructors are found in the companion object
               else
                 sym.owner
-            (0 until pnames.length).map(i => qual.info.member(sym.name.defaultGetterName(start + i)).exists)
+            (0 until pnames.length).map(i =>
+              qual.info.member(DefaultGetterName(sym.name, start + i)).exists)
           } else
             (0 until pnames.length).map(Function.const(false))
         val params = (pnames, ptypes, defaults).zipped.map((pname, ptype, isDefault) =>
@@ -539,7 +542,7 @@ private class ExtractAPICollector(implicit val ctx: Context) extends ThunkHolder
     val abs = sym.is(Abstract) || sym.is(Deferred) || absOver
     val over = sym.is(Override) || absOver
     new api.Modifiers(abs, over, sym.is(Final), sym.is(Sealed),
-      sym.is(Implicit), sym.is(Lazy), sym.is(Macro), sym.is(SuperAccessor))
+      sym.is(Implicit), sym.is(Lazy), sym.is(Macro), sym.isSuperAccessor)
   }
 
   def apiAnnotations(s: Symbol): List[api.Annotation] = {

@@ -14,6 +14,7 @@ import Contexts._, Symbols._, Flags._, SymDenotations._, Types._, Scopes._, util
 import StdNames._, NameOps._
 import Decorators.{PreNamedString, StringInterpolators}
 import classfile.ClassfileParser
+import util.Stats
 import scala.util.control.NonFatal
 
 object SymbolLoaders {
@@ -148,23 +149,79 @@ class SymbolLoaders {
     override def sourceModule(implicit ctx: Context) = _sourceModule
     def description = "package loader " + classpath.name
 
-    private[core] val currentDecls: MutableScope = newScope
+    private var enterFlatClasses: Option[Context => Unit] = None
+
+    Stats.record("package scopes")
+
+    /** The scope of a package. This is different from a normal scope
+  	 *  in three aspects:
+	   *
+	   *   1. Names of scope entries are kept in mangled form.
+	   *   2. Some function types in the `scala` package are synthesized.
+  	 */
+    final class PackageScope extends MutableScope {
+      override def newScopeEntry(name: Name, sym: Symbol)(implicit ctx: Context): ScopeEntry =
+        super.newScopeEntry(name.mangled, sym)
+
+      override def lookupEntry(name: Name)(implicit ctx: Context): ScopeEntry = {
+        val mangled = name.mangled
+        val e = super.lookupEntry(mangled)
+        if (e != null) e
+        else if (_sourceModule.initialDenot.name == nme.scala_ && _sourceModule == defn.ScalaPackageVal &&
+                 name.isTypeName && name.isSyntheticFunction)
+          newScopeEntry(defn.newFunctionNTrait(name.asTypeName))
+        else if (isFlatName(mangled.toSimpleName) && enterFlatClasses.isDefined) {
+          Stats.record("package scopes with flatnames entered")
+          enterFlatClasses.get(ctx)
+          lookupEntry(name)
+        }
+        else e
+      }
+
+      override def ensureComplete()(implicit ctx: Context) =
+        for (enter <- enterFlatClasses) enter(ctx)
+
+      override def newScopeLikeThis() = new PackageScope
+    }
+
+    private[core] val currentDecls: MutableScope = new PackageScope()
+
+    def isFlatName(name: SimpleTermName) = name.lastIndexOf('$', name.length - 2) >= 0
+
+    def isFlatName(classRep: ClassPath#ClassRep) = {
+      val idx = classRep.name.indexOf('$')
+      idx >= 0 && idx < classRep.name.length - 1
+    }
+
+    def maybeModuleClass(classRep: ClassPath#ClassRep) = classRep.name.last == '$'
+
+    private def enterClasses(root: SymDenotation, flat: Boolean)(implicit ctx: Context) = {
+      def isAbsent(classRep: ClassPath#ClassRep) =
+        !root.unforcedDecls.lookup(classRep.name.toTypeName).exists
+
+      if (!root.isRoot) {
+        for (classRep <- classpath.classes)
+          if (!maybeModuleClass(classRep) && isFlatName(classRep) == flat &&
+            (!flat || isAbsent(classRep))) // on 2nd enter of flat names, check that the name has not been entered before
+            initializeFromClassPath(root.symbol, classRep)
+        for (classRep <- classpath.classes)
+          if (maybeModuleClass(classRep) && isFlatName(classRep) == flat &&
+              isAbsent(classRep))
+            initializeFromClassPath(root.symbol, classRep)
+      }
+    }
 
     def doComplete(root: SymDenotation)(implicit ctx: Context): Unit = {
       assert(root is PackageClass, root)
-        def maybeModuleClass(classRep: ClassPath#ClassRep) = classRep.name.last == '$'
       val pre = root.owner.thisType
       root.info = ClassInfo(pre, root.symbol.asClass, Nil, currentDecls, pre select sourceModule)
       if (!sourceModule.isCompleted)
         sourceModule.completer.complete(sourceModule)
-      if (!root.isRoot) {
-        for (classRep <- classpath.classes)
-          if (!maybeModuleClass(classRep))
-            initializeFromClassPath(root.symbol, classRep)
-        for (classRep <- classpath.classes)
-          if (maybeModuleClass(classRep) && !root.unforcedDecls.lookup(classRep.name.toTypeName).exists)
-            initializeFromClassPath(root.symbol, classRep)
+      enterFlatClasses = Some { ctx =>
+        enterFlatClasses = None
+        enterClasses(root, flat = true)(ctx)
       }
+      enterClasses(root, flat = false)
       if (!root.isEmptyPackage)
         for (pkg <- classpath.packages)
           enterPackage(root.symbol, pkg)

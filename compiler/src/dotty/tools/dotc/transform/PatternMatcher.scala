@@ -11,6 +11,7 @@ import core.Symbols._
 import core.Types._
 import core.Constants._
 import core.StdNames._
+import core.NameKinds._
 import dotty.tools.dotc.ast.{untpd, TreeTypeMap, tpd}
 import dotty.tools.dotc.core
 import dotty.tools.dotc.core.DenotTransformers.DenotTransformer
@@ -70,16 +71,14 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {
   class OptimizingMatchTranslator extends MatchOptimizer/*(val typer: analyzer.Typer)*/ with MatchTranslator
 
   trait CodegenCore {
-    private var ctr = 0 // left for debugging
 
     // assert(owner ne null); assert(owner ne NoSymbol)
-    def freshSym(pos: Position, tp: Type = NoType, prefix: String = "x", owner: Symbol = ctx.owner) = {
-      ctr += 1
-      ctx.newSymbol(owner, ctx.freshName(prefix + ctr).toTermName, Flags.Synthetic | Flags.Case, tp, coord = pos)
+    def freshSym(pos: Position, tp: Type = NoType, unique: UniqueNameKind = PatMatStdBinderName, owner: Symbol = ctx.owner) = {
+      ctx.newSymbol(owner, unique.fresh(), Flags.Synthetic | Flags.Case, tp, coord = pos)
     }
 
-    def newSynthCaseLabel(name: String, tpe: Type, owner: Symbol = ctx.owner) =
-      ctx.newSymbol(owner, ctx.freshName(name).toTermName, Flags.Label | Flags.Synthetic | Flags.Method, tpe).asTerm
+    def newSynthCaseLabel(unique: UniqueNameKind, tpe: Type, owner: Symbol = ctx.owner) =
+      ctx.newSymbol(owner, unique.fresh(), Flags.Label | Flags.Synthetic | Flags.Method, tpe).asTerm
       //NoSymbol.newLabel(freshName(name), NoPosition) setFlag treeInfo.SYNTH_CASE_FLAGS
 
     // codegen relevant to the structure of the translation (how extractors are combined)
@@ -189,7 +188,8 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {
           //NoSymbol.newValueParameter(newTermName("x"), NoPosition, newFlags = SYNTHETIC) setInfo restpe.withoutAnnotations
 
 
-        val caseSyms: List[TermSymbol] = cases.scanLeft(ctx.owner.asTerm)((curOwner, nextTree) => newSynthCaseLabel(ctx.freshName("case"), MethodType(Nil, restpe), curOwner)).tail
+        val caseSyms: List[TermSymbol] = cases.scanLeft(ctx.owner.asTerm)((curOwner, nextTree) =>
+          newSynthCaseLabel(PatMatCaseName, MethodType(Nil, restpe), curOwner)).tail
 
         // must compute catchAll after caseLabels (side-effects nextCase)
         // catchAll.isEmpty iff no synthetic default case needed (the (last) user-defined case is a default)
@@ -197,7 +197,7 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {
         val catchAllDef = matchFailGen.map { _(scrutSym) }
           .getOrElse(Throw(New(defn.MatchErrorType, List(ref(scrutSym)))))
 
-        val matchFail = newSynthCaseLabel(ctx.freshName("matchFail"), MethodType(Nil, restpe))
+        val matchFail = newSynthCaseLabel(PatMatMatchFailName, MethodType(Nil, restpe))
         val catchAllDefBody = DefDef(matchFail, catchAllDef)
 
         val nextCases = (caseSyms.tail ::: List(matchFail)).map(ref(_).ensureApplied)
@@ -249,7 +249,7 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {
             val isEmptyDenot = extractorMember(prev.tpe, nme.isEmpty)
             assert(getDenot.exists && isEmptyDenot.exists, i"${prev.tpe}")
 
-            val tmpSym = freshSym(prev.pos, prev.tpe, "o")
+            val tmpSym = freshSym(prev.pos, prev.tpe, PatMatOName)
             val prevValue = ref(tmpSym).select(getDenot.symbol).ensureApplied
 
             Block(
@@ -1056,9 +1056,9 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {
     }
 
     def newBoundTree(tree: Tree, pt: Type): BoundTree = tree match {
-      case SymbolBound(sym, Typed(subpat, tpe)) => BoundTree(freshSym(tree.pos, pt, prefix = "pi"), tree)
+      case SymbolBound(sym, Typed(subpat, tpe)) => BoundTree(freshSym(tree.pos, pt, PatMatPiName), tree)
       case SymbolBound(sym, expr) => BoundTree(sym, expr)
-      case _                      => BoundTree(freshSym(tree.pos, pt, prefix = "p"), tree)
+      case _                      => BoundTree(freshSym(tree.pos, pt, PatMatPName), tree)
     }
 
     final case class BoundTree(binder: Symbol, tree: Tree) {
@@ -1204,7 +1204,7 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {
 
       val selectorTp = sel.tpe.widen.deAnonymize/*withoutAnnotations*/
 
-      val selectorSym = freshSym(sel.pos, selectorTp, "selector")
+      val selectorSym = freshSym(sel.pos, selectorTp, PatMatSelectorName)
 
       val (nonSyntheticCases, defaultOverride) = cases match {
         case init :+ last if isSyntheticDefaultCase(last) => (init, Some(((scrut: Symbol) => last.body)))

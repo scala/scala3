@@ -4,34 +4,24 @@ package tasty
 
 import Contexts._, Decorators._
 import printing.Texts._
-import TastyName._
+import Names.Name
 import StdNames._
 import TastyUnpickler._
-import TastyBuffer.Addr
+import TastyBuffer.{Addr, NameRef}
 import util.Positions.{Position, offsetToInt}
 import collection.mutable
 
 class TastyPrinter(bytes: Array[Byte])(implicit ctx: Context) {
 
   val unpickler = new TastyUnpickler(bytes)
-  import unpickler.{tastyName, unpickle}
+  import unpickler.{nameAtRef, unpickle}
 
-  def nameToString(name: TastyName): String = name match {
-    case Simple(name) => name.toString
-    case Qualified(qual, name) => nameRefToString(qual) + "." + nameRefToString(name)
-    case Signed(original, params, result) =>
-      i"${nameRefToString(original)}@${params.map(nameRefToString)}%,%:${nameRefToString(result)}"
-    case Expanded(prefix, original) => s"$prefix${nme.EXPAND_SEPARATOR}$original"
-    case ModuleClass(original) => nameRefToString(original) + "/MODULECLASS"
-    case SuperAccessor(accessed) => nameRefToString(accessed) + "/SUPERACCESSOR"
-    case DefaultGetter(meth, num) => nameRefToString(meth) + "/DEFAULTGETTER" + num
-    case Shadowed(original) => nameRefToString(original) + "/SHADOWED"
-  }
+  def nameToString(name: Name): String = name.debugString
 
-  def nameRefToString(ref: NameRef): String = nameToString(tastyName(ref))
+  def nameRefToString(ref: NameRef): String = nameToString(nameAtRef(ref))
 
   def printNames() =
-    for ((name, idx) <- tastyName.contents.zipWithIndex) {
+    for ((name, idx) <- nameAtRef.contents.zipWithIndex) {
       val index = "%4d: ".format(idx)
       println(index + nameToString(name))
     }
@@ -46,7 +36,7 @@ class TastyPrinter(bytes: Array[Byte])(implicit ctx: Context) {
 
   class TreeSectionUnpickler extends SectionUnpickler[Unit]("ASTs") {
     import TastyFormat._
-    def unpickle(reader: TastyReader, tastyName: TastyName.Table): Unit = {
+    def unpickle(reader: TastyReader, tastyName: NameTable): Unit = {
       import reader._
       var indent = 0
       def newLine() = {
@@ -116,7 +106,7 @@ class TastyPrinter(bytes: Array[Byte])(implicit ctx: Context) {
   }
 
   class PositionSectionUnpickler extends SectionUnpickler[Unit]("Positions") {
-    def unpickle(reader: TastyReader, tastyName: TastyName.Table): Unit = {
+    def unpickle(reader: TastyReader, tastyName: NameTable): Unit = {
       print(s"${reader.endAddr.index - reader.currentAddr.index}")
       val positions = new PositionUnpickler(reader).positions
       println(s" position bytes:")

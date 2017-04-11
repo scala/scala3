@@ -9,6 +9,7 @@ import java.lang.Double.longBitsToDouble
 
 import Contexts._, Symbols._, Types._, Scopes._, SymDenotations._, Names._, NameOps._
 import StdNames._, Denotations._, NameOps._, Flags._, Constants._, Annotations._
+import NameKinds.{Scala2MethodNameKinds, SuperAccessorName, ExpandedName}
 import dotty.tools.dotc.typer.ProtoTypes.{FunProtoTyped, FunProto}
 import util.Positions._
 import dotty.tools.dotc.ast.{tpd, Trees, untpd}, ast.tpd._
@@ -18,6 +19,7 @@ import printing.Printer
 import io.AbstractFile
 import util.common._
 import typer.Checking.checkNonCyclic
+import transform.SymUtils._
 import PickleBuffer._
 import PickleFormat._
 import Decorators._
@@ -361,7 +363,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
       }
 
       def slowSearch(name: Name): Symbol =
-        owner.info.decls.find(_.name == name).getOrElse(NoSymbol)
+        owner.info.decls.find(_.name == name)
 
       def nestedObjectSymbol: Symbol = {
         // If the owner is overloaded (i.e. a method), it's not possible to select the
@@ -420,10 +422,10 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
 
     // symbols that were pickled with Pickler.writeSymInfo
     val nameref = readNat()
-    val name0 = at(nameref, readName)
+    var name = at(nameref, readName)
     val owner = readSymbolRef()
 
-    var flags = unpickleScalaFlags(readLongNat(), name0.isTypeName)
+    var flags = unpickleScalaFlags(readLongNat(), name.isTypeName)
     if (flags is DefaultParameter) {
       // DefaultParameterized flag now on method, not parameter
       //assert(flags is Param, s"$name0 in $owner")
@@ -431,18 +433,33 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
       owner.setFlag(DefaultParameterized)
     }
 
-    val name1 = name0.adjustIfModuleClass(flags)
-    val name = if (name1 == nme.TRAIT_CONSTRUCTOR) nme.CONSTRUCTOR else name1
+    name = name.adjustIfModuleClass(flags)
+    if (flags is Method) {
+      name =
+        if (name == nme.TRAIT_CONSTRUCTOR) nme.CONSTRUCTOR
+        else name.asTermName.unmangle(Scala2MethodNameKinds)
+    }
+    if ((flags is Scala2ExpandedName) && name.isSimple) {
+      name = name.unmangle(ExpandedName)
+      flags = flags &~ Scala2ExpandedName
+    }
+    if (flags is Scala2SuperAccessor) {
+      name = name.asTermName.unmangle(SuperAccessorName)
+      flags = flags &~ Scala2SuperAccessor
+    }
 
-    def isClassRoot = (name == classRoot.name) && (owner == classRoot.owner) && !(flags is ModuleClass)
-    def isModuleClassRoot = (name == moduleClassRoot.name) && (owner == moduleClassRoot.owner) && (flags is Module)
-    def isModuleRoot = (name == moduleClassRoot.name.sourceModuleName) && (owner == moduleClassRoot.owner) && (flags is Module)
+    val mname = name.mangled
+    def nameMatches(rootName: Name) = mname == rootName.mangled
+    def isClassRoot = nameMatches(classRoot.name) && (owner == classRoot.owner) && !(flags is ModuleClass)
+    def isModuleClassRoot = nameMatches(moduleClassRoot.name) && (owner == moduleClassRoot.owner) && (flags is Module)
+    def isModuleRoot = nameMatches(moduleClassRoot.name.sourceModuleName) && (owner == moduleClassRoot.owner) && (flags is Module)
 
     //if (isClassRoot) println(s"classRoot of $classRoot found at $readIndex, flags = $flags") // !!! DEBUG
     //if (isModuleRoot) println(s"moduleRoot of $moduleRoot found at $readIndex, flags = $flags") // !!! DEBUG
     //if (isModuleClassRoot) println(s"moduleClassRoot of $moduleClassRoot found at $readIndex, flags = $flags") // !!! DEBUG
 
     def completeRoot(denot: ClassDenotation, completer: LazyType): Symbol = {
+      denot.name = name
       denot.setFlag(flags)
       denot.resetFlag(Touched) // allow one more completion
       denot.info = completer
@@ -470,7 +487,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
         var flags1 = flags
         if (flags is TypeParam) {
           name1 = name1.expandedName(owner)
-          flags1 |= owner.typeParamCreationFlags | ExpandedName
+          flags1 |= owner.typeParamCreationFlags
         }
         ctx.newSymbol(owner, name1, flags1, localMemberUnpickler, coord = start)
       case CLASSsym =>
@@ -546,9 +563,9 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
               else tp1
             if (denot.isConstructor) addConstructorTypeParams(denot)
             if (atEnd) {
-              assert(!(denot is SuperAccessor), denot)
+              assert(!denot.isSuperAccessor, denot)
             } else {
-              assert(denot is (SuperAccessor | ParamAccessor), denot)
+              assert(denot.is(ParamAccessor) || denot.isSuperAccessor, denot)
               def disambiguate(alt: Symbol) = { // !!! DEBUG
                 ctx.debugTraceIndented(s"disambiguating ${denot.info} =:= ${denot.owner.thisType.memberInfo(alt)} ${denot.owner}") {
                   denot.info matches denot.owner.thisType.memberInfo(alt)
@@ -1022,7 +1039,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
         val rhs = readTreeRef()
         val params = until(end, readIdentRef)
         val ldef = DefDef(symbol.asTerm, rhs)
-        def isCaseLabel(sym: Symbol) = sym.name.startsWith(nme.CASEkw)
+        def isCaseLabel(sym: Symbol) = sym.name.startsWith(nme.CASEkw.toString)
         if (isCaseLabel(symbol)) ldef
         else Block(ldef :: Nil, Apply(Ident(symbol.termRef), Nil))
 

@@ -12,6 +12,7 @@ import core.SymDenotations._
 import core.StdNames.nme
 import core.Names._
 import core.NameOps._
+import core.NameKinds.TempResultName
 import ast.Trees._
 import SymUtils._
 import collection.{ mutable, immutable }
@@ -138,7 +139,7 @@ class CapturedVars extends MiniPhase with IdentityDenotTransformer { thisTransfo
           val Select(_, nme.elem) = qual
           recur(qual)
         case Select(_, nme.elem) if refInfo.boxedRefClasses.contains(lhs.symbol.maybeOwner) =>
-          val tempDef = transformFollowing(SyntheticValDef(ctx.freshName("ev$").toTermName, tree.rhs))
+          val tempDef = transformFollowing(SyntheticValDef(TempResultName.fresh(), tree.rhs))
           transformFollowing(Block(tempDef :: Nil, cpy.Assign(tree)(lhs, ref(tempDef.symbol))))
         case _ =>
           tree

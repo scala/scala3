@@ -272,9 +272,6 @@ object Flags {
    */
   final val Synthetic = commonFlag(18, "<synthetic>")
 
-  /** Symbol's name is expanded */
-  final val ExpandedName = commonFlag(19, "<expandedname>")
-
   /** A covariant type variable / an outer accessor */
   final val CovariantOrOuter = commonFlag(20, "")
   final val Covariant = typeFlag(20, "<covariant>")
@@ -308,19 +305,18 @@ object Flags {
   final val CaseAccessor = termFlag(25, "<caseaccessor>")
 
   /** A binding for a type parameter of a base class or trait.
-   *  TODO: Replace with combination of isType, ExpandedName, and Override?
    */
   final val BaseTypeArg = typeFlag(25, "<basetypearg>")
 
   final val CaseAccessorOrBaseTypeArg = CaseAccessor.toCommonFlags
 
   /** A super accessor */
-  final val SuperAccessor = termFlag(26, "<superaccessor>")
+  final val Scala2SuperAccessor = termFlag(26, "<superaccessor>")
 
   /** An unpickled Scala 2.x class */
   final val Scala2x = typeFlag(26, "<scala-2.x>")
 
-  final val SuperAccessorOrScala2x = SuperAccessor.toCommonFlags
+  final val SuperAccessorOrScala2x = Scala2x.toCommonFlags
 
   /** A method that has default params */
   final val DefaultParameterized = termFlag(27, "<defaultparam>")
@@ -409,9 +405,6 @@ object Flags {
   final val Scala2ExistentialCommon = commonFlag(55, "<existential>")
   final val Scala2Existential = Scala2ExistentialCommon.toTypeFlags
 
-  /** An overloaded symbol (Scala 2.x only) */
-  final val Scala2Overloaded = termFlag(56, "<overloaded>")
-
   /** A module variable (Scala 2.x only) */
   final val Scala2ModuleVar = termFlag(57, "<modulevar>")
 
@@ -423,6 +416,13 @@ object Flags {
 
   /** A method that is known to have inherited default parameters */
   final val InheritedDefaultParams = termFlag(60, "<inherited-default-param>")
+
+  /** Translation of Scala2's EXPANDEDNAME flag. This flag is never stored in
+   *  symbols, is only used locally when reading the flags of a Scala2 symbol.
+   *  It's therefore safe to share the code with `InheritedDefaultParams` because
+   *  the latter is never present in Scala2 unpickle info.
+   */
+  final val Scala2ExpandedName = InheritedDefaultParams.toCommonFlags
 
   /** A method that is known to have no default parameters */
   final val NoDefaultParams = termFlag(61, "<no-default-param>")
@@ -452,7 +452,7 @@ object Flags {
   final val FromStartFlags =
     Module | Package | Deferred | MethodOrHKCommon | Param | ParamAccessor |
     Scala2ExistentialCommon | Mutable.toCommonFlags | InSuperCall | Touched | JavaStatic |
-    CovariantOrOuter | ContravariantOrLabel | ExpandedName | CaseAccessorOrBaseTypeArg |
+    CovariantOrOuter | ContravariantOrLabel | CaseAccessorOrBaseTypeArg |
     Fresh | Frozen | Erroneous | ImplicitCommon | Permanent | Synthetic |
     SuperAccessorOrScala2x | Inline
 
@@ -475,7 +475,7 @@ object Flags {
 
   /** Flags that are passed from a type parameter of a class to a refinement symbol
     * that sets the type parameter */
-  final val RetainedTypeArgFlags = VarianceFlags | ExpandedName | Protected | Local
+  final val RetainedTypeArgFlags = VarianceFlags | Protected | Local
 
   /** Modules always have these flags set */
   final val ModuleCreationFlags = ModuleVal | Lazy | Final | Stable
@@ -502,7 +502,7 @@ object Flags {
     */
   final val RetainedModuleValAndClassFlags: FlagSet =
     AccessFlags | Package | Case |
-    Synthetic | ExpandedName | JavaDefined | JavaStatic | Artifact |
+    Synthetic | JavaDefined | JavaStatic | Artifact |
     Erroneous | Lifted | MixedIn | Specialized
 
   /** Flags that can apply to a module val */
@@ -550,9 +550,6 @@ object Flags {
   /** A private accessor */
   final val PrivateAccessor = allOf(Private, Accessor)
 
-  /** A type parameter with synthesized name */
-  final val ExpandedTypeParam = allOf(ExpandedName, TypeParam)
-
   /** An inline method */
   final val InlineMethod = allOf(Inline, Method)
 
@@ -578,7 +575,7 @@ object Flags {
   final val FinalOrInline = Final | Inline
 
   /** If symbol of a type alias has these flags, prefer the alias */
-  final val AliasPreferred = TypeParam | BaseTypeArg | ExpandedName
+  final val AliasPreferred = TypeParam | BaseTypeArg
 
   /** A covariant type parameter instance */
   final val LocalCovariant = allOf(Local, Covariant)

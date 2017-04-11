@@ -97,11 +97,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
     || (sym.name == nme.PACKAGE)               // package
   )
 
-  def nameString(name: Name): String = name.toString + {
-    if (ctx.settings.debugNames.value)
-      if (name.isTypeName) "/T" else "/V"
-    else ""
-  }
+  def nameString(name: Name): String = name.toString
 
   def toText(name: Name): Text = Str(nameString(name))
 
@@ -135,8 +131,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
         toTextRHS(tp)
       case tp: TermRef
       if !tp.denotationIsCurrent && !homogenizedView || // always print underlying when testing picklers
-         tp.symbol.is(Module) ||
-         tp.symbol.name.isImportName =>
+         tp.symbol.is(Module) || tp.symbol.name == nme.IMPORT =>
         toTextRef(tp) ~ ".type"
       case tp: TermRef if tp.denot.isOverloaded =>
         "<overloaded " ~ toTextRef(tp) ~ ">"
@@ -268,7 +263,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
         if (idx >= 0) selfRecName(idx + 1)
         else "{...}.this" // TODO move underlying type to an addendum, e.g. ... z3 ... where z3: ...
       case tp: SkolemType =>
-        if (homogenizedView) toText(tp.info) else tp.repr
+        if (homogenizedView) toText(tp.info) else toText(tp.repr)
     }
   }
 

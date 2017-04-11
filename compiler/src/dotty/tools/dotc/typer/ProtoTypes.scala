@@ -5,6 +5,7 @@ package typer
 import core._
 import ast._
 import Contexts._, Types._, Flags._, Denotations._, Names._, StdNames._, NameOps._, Symbols._
+import NameKinds.DepParamName
 import Trees._
 import Constants._
 import Scopes._
@@ -401,7 +402,7 @@ object ProtoTypes {
 
   /** Create a new TypeParamRef that represents a dependent method parameter singleton */
   def newDepTypeParamRef(tp: Type)(implicit ctx: Context): TypeParamRef = {
-    val poly = PolyType(ctx.freshName(nme.DEP_PARAM_PREFIX).toTypeName :: Nil)(
+    val poly = PolyType(DepParamName.fresh().toTypeName :: Nil)(
         pt => TypeBounds.upper(AndType(tp, defn.SingletonType)) :: Nil,
         pt => defn.AnyType)
     ctx.typeComparer.addToConstraint(poly, Nil)

@@ -6,6 +6,7 @@ import core._
 import config._
 import Symbols._, SymDenotations._, Types._, Contexts._, Decorators._, Flags._, Names._, NameOps._
 import StdNames._, Denotations._, Scopes._, Constants.Constant, SymUtils._
+import NameKinds.DefaultGetterName
 import Annotations._
 import util.Positions._
 import scala.collection.{ mutable, immutable }
@@ -24,12 +25,8 @@ object RefChecks {
   import reporting.diagnostic.Message
   import reporting.diagnostic.messages._
 
-
-  private def isDefaultGetter(name: Name): Boolean =
-    name.isTermName && name.asTermName.defaultGetterIndex >= 0
-
   private val defaultMethodFilter = new NameFilter {
-    def apply(pre: Type, name: Name)(implicit ctx: Context): Boolean = isDefaultGetter(name)
+    def apply(pre: Type, name: Name)(implicit ctx: Context): Boolean = name.is(DefaultGetterName)
   }
 
   /** Only one overloaded alternative is allowed to define default arguments */
@@ -45,7 +42,9 @@ object RefChecks {
       if defaultGetterClass.isClass
     ) {
       val defaultGetterNames = defaultGetterClass.asClass.memberNames(defaultMethodFilter)
-      val defaultMethodNames = defaultGetterNames map (_.asTermName.defaultGetterToMethod)
+      val defaultMethodNames = defaultGetterNames map { _ rewrite {
+        case DefaultGetterName(methName, _) => methName
+      }}
 
       for (name <- defaultMethodNames) {
         val methods = clazz.info.member(name).alternatives.map(_.symbol)
@@ -238,7 +237,7 @@ object RefChecks {
           }
         }
         else
-          isDefaultGetter(member.name) || // default getters are not checked for compatibility
+          member.name.is(DefaultGetterName) || // default getters are not checked for compatibility
           memberTp.overrides(otherTp)
 
       //Console.println(infoString(member) + " overrides " + infoString(other) + " in " + clazz);//DEBUG
@@ -298,7 +297,7 @@ object RefChecks {
       } else if (other.isEffectivelyFinal) { // (1.2)
         overrideError(i"cannot override final member ${other.showLocated}")
       } else if (!other.is(Deferred) &&
-                 !isDefaultGetter(other.name) &&
+                 !other.name.is(DefaultGetterName) &&
                  !member.isAnyOverride) {
         // (*) Exclusion for default getters, fixes SI-5178. We cannot assign the Override flag to
         // the default getter: one default getter might sometimes override, sometimes not. Example in comment on ticket.
@@ -405,7 +404,7 @@ object RefChecks {
 
       def ignoreDeferred(member: SingleDenotation) =
         member.isType ||
-          member.symbol.is(SuperAccessor) || // not yet synthesized
+          member.symbol.isSuperAccessor || // not yet synthesized
           member.symbol.is(JavaDefined) && hasJavaErasedOverriding(member.symbol)
 
       // 2. Check that only abstract classes have deferred members

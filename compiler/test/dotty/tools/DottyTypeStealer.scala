@@ -19,7 +19,7 @@ object DottyTypeStealer extends DottyTest {
         implicit val ctx = context
         val findValDef: (List[ValDef], tpd.Tree) => List[ValDef] =
           (acc , tree) =>  { tree match {
-          case t: ValDef if t.name.startsWith(dummyName.toTermName) => t :: acc
+          case t: ValDef if t.name.startsWith(dummyName) => t :: acc
           case _ => acc
         }
       }

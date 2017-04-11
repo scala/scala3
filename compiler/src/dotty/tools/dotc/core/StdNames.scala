@@ -15,6 +15,34 @@ object StdNames {
 
 /** Base strings from which synthetic names are derived. */
 
+  object str {
+    final val SETTER_SUFFIX            = "_$eq"
+    final val EXPAND_SEPARATOR         = "$$"
+    final val TRAIT_SETTER_SEPARATOR   = "$_setter_$"
+    final val SUPER_PREFIX             = "super$"
+    final val INITIALIZER_PREFIX       = "initial$"
+    final val SHADOWED_PREFIX          = "(shadowed)"
+    final val AVOID_CLASH_SUFFIX       = "$_avoid_name_clash_$"
+    final val MODULE_SUFFIX            = NameTransformer.MODULE_SUFFIX_STRING
+    final val DEFAULT_GETTER           = "$default$"
+    final val LOCALDUMMY_PREFIX        = "<local "       // owner of local blocks
+    final val ANON_CLASS               = "$anon"
+    final val ANON_FUN                 = "$anonfun"
+
+    final val INTERPRETER_IMPORT_WRAPPER = "$iw"
+    final val INTERPRETER_LINE_PREFIX    = "line"
+    final val INTERPRETER_VAR_PREFIX     = "res"
+    final val INTERPRETER_WRAPPER_SUFFIX = "$object"
+
+    final val Function                   = "Function"
+    final val ImplicitFunction           = "ImplicitFunction"
+    final val AbstractFunction           = "AbstractFunction"
+    final val Tuple                      = "Tuple"
+    final val Product                    = "Product"
+
+    def sanitize(str: String) = str.replaceAll("""[<>]""", """\$""")
+  }
+
   abstract class DefinedNames[N <: Name] {
     protected implicit def fromString(s: String): N
     protected def fromName(name: Name): N = fromString(name.toString)
@@ -84,44 +112,30 @@ object StdNames {
     final val HASHkw: N      = kw("#")
     final val ATkw: N        = kw("@")
 
-    val ANON_CLASS: N                 = "$anon"
-    val ANON_FUN: N                   = "$anonfun"
-    val BITMAP_PREFIX: N              = "bitmap$"
+    val ANON_CLASS: N                 = str.ANON_CLASS
+    val ANON_FUN: N                   = str.ANON_FUN
+    val BITMAP_PREFIX: N              = "bitmap$"  // @darkdimius: $bitmap? Also, the next 4 names are unused.
     val BITMAP_NORMAL: N              = BITMAP_PREFIX         // initialization bitmap for public/protected lazy vals
     val BITMAP_TRANSIENT: N           = BITMAP_PREFIX + "trans$"    // initialization bitmap for transient lazy vals
     val BITMAP_CHECKINIT: N           = BITMAP_PREFIX + "init$"      // initialization bitmap for checkinit values
     val BITMAP_CHECKINIT_TRANSIENT: N = BITMAP_PREFIX + "inittrans$" // initialization bitmap for transient checkinit values
-    val DEFAULT_GETTER: N             = "$default$"
-    val DEFAULT_GETTER_INIT: N        = NameTransformer.encode("<init>")
+    val DEFAULT_GETTER: N             = str.DEFAULT_GETTER
+    val DEFAULT_GETTER_INIT: N        = "$lessinit$greater"
     val DO_WHILE_PREFIX: N            = "doWhile$"
+    val DOLLAR_VALUES: N              = "$values"
+    val DOLLAR_NEW: N                 = "$new"
     val EMPTY: N                      = ""
     val EMPTY_PACKAGE: N              = Names.EMPTY_PACKAGE.toString
-    val EVIDENCE_PARAM_PREFIX: N      = "evidence$"
-    val DEP_PARAM_PREFIX              = "<param>"
     val EXCEPTION_RESULT_PREFIX: N    = "exceptionResult"
-    val EXPAND_SEPARATOR: N           = "$$"
+    val EXPAND_SEPARATOR: N           = str.EXPAND_SEPARATOR
     val IMPL_CLASS_SUFFIX: N          = "$class"
     val IMPORT: N                     = "<import>"
-    val INLINE_ACCESSOR_PREFIX        = "$inlineAccessor$"
-    val INTERPRETER_IMPORT_WRAPPER: N = "$iw"
-    val INTERPRETER_LINE_PREFIX: N    = "line"
-    val INTERPRETER_VAR_PREFIX: N     = "res"
-    val INTERPRETER_WRAPPER_SUFFIX: N = "$object"
-    val LOCALDUMMY_PREFIX: N          = "<local "       // owner of local blocks
     val MODULE_SUFFIX: N              = NameTransformer.MODULE_SUFFIX_STRING
-    val AVOID_CLASH_SUFFIX: N         = "$_avoid_name_clash_$"
-    val MODULE_VAR_SUFFIX: N          = "$module"
     val NAME_JOIN: N                  = NameTransformer.NAME_JOIN_STRING
-    val USCORE_PARAM_PREFIX: N        = "_$"
     val OPS_PACKAGE: N                = "<special-ops>"
     val OVERLOADED: N                 = "<overloaded>"
     val PACKAGE: N                    = "package"
-    val PACKAGE_CLS: N                = "package$"
-    val PROTECTED_PREFIX: N           = "protected$"
-    val PROTECTED_SET_PREFIX: N       = PROTECTED_PREFIX + "set"
     val ROOT: N                       = "<root>"
-    val SHADOWED: N                   = "(shadowed)"  // tag to be used until we have proper name kinds
-    val SINGLETON_SUFFIX: N           = ".type"
     val SPECIALIZED_SUFFIX: N         = "$sp"
     val SUPER_PREFIX: N               = "super$"
     val WHILE_PREFIX: N               = "while$"
@@ -129,11 +143,7 @@ object StdNames {
     val INITIALIZER_PREFIX: N         = "initial$"
     val COMPANION_MODULE_METHOD: N    = "companion$module"
     val COMPANION_CLASS_METHOD: N     = "companion$class"
-    val TRAIT_SETTER_SEPARATOR: N     = "$_setter_$"
-    val DIRECT_SUFFIX: N              = "$direct"
-    val LAZY_IMPLICIT_PREFIX: N       = "$lazy_implicit$"
-    val DOLLAR_VALUES: N              = "$values"
-    val DOLLAR_NEW: N                 = "$new"
+    val TRAIT_SETTER_SEPARATOR: N     = str.TRAIT_SETTER_SEPARATOR
 
     // value types (and AnyRef) are all used as terms as well
     // as (at least) arguments to the @specialize annotation.
@@ -167,7 +177,6 @@ object StdNames {
 
     // fictions we use as both types and terms
     final val ERROR: N    = "<error>"
-    final val ERRORenc: N = encode("<error>")
     final val NO_NAME: N  = "<none>"  // formerly NOSYMBOL
     final val WILDCARD: N = "_"
 
@@ -181,23 +190,18 @@ object StdNames {
     final val REIFY_TREECREATOR_PREFIX: N       = "$treecreator"
     final val REIFY_TYPECREATOR_PREFIX: N       = "$typecreator"
 
-    final val AbstractFunction: N    = "AbstractFunction"
     final val Any: N                 = "Any"
     final val AnyVal: N              = "AnyVal"
     final val ExprApi: N             = "ExprApi"
-    final val Function: N            = "Function"
-    final val ImplicitFunction: N    = "ImplicitFunction"
     final val Mirror: N              = "Mirror"
     final val Nothing: N             = "Nothing"
     final val Null: N                = "Null"
     final val Object: N              = "Object"
     final val PartialFunction: N     = "PartialFunction"
     final val PrefixType: N          = "PrefixType"
-    final val Product: N             = "Product"
     final val Serializable: N        = "Serializable"
     final val Singleton: N           = "Singleton"
     final val Throwable: N           = "Throwable"
-    final val Tuple: N               = "Tuple"
 
     final val ClassfileAnnotation: N = "ClassfileAnnotation"
     final val ClassManifest: N       = "ClassManifest"
@@ -241,11 +245,8 @@ object StdNames {
     val EVT2U: N                    = "evt2u$"
     val EQEQ_LOCAL_VAR: N           = "eqEqTemp$"
     val FAKE_LOCAL_THIS: N          = "this$"
-    val LAZY_LOCAL: N               = "$lzy"
-    val LAZY_LOCAL_INIT: N          = "$lzyINIT"
     val LAZY_FIELD_OFFSET: N        = "OFFSET$"
     val LAZY_SLOW_SUFFIX: N         = "$lzycompute"
-    val LOCAL_SUFFIX: N             = "$$local"
     val UNIVERSE_BUILD_PREFIX: N    = "$u.build."
     val UNIVERSE_BUILD: N           = "$u.build"
     val UNIVERSE_PREFIX: N          = "$u."
@@ -259,13 +260,10 @@ object StdNames {
     val REIFY_SYMDEF_PREFIX: N      = "symdef$"
     val MODULE_INSTANCE_FIELD: N    = NameTransformer.MODULE_INSTANCE_NAME  // "MODULE$"
     val OUTER: N                    = "$outer"
-    val OUTER_LOCAL: N              = "$outer "
-    val OUTER_SELECT: N             = "_<outer>" // emitted by inliner, replaced by outer path in explicitouter
     val REFINE_CLASS: N             = "<refinement>"
     val ROOTPKG: N                  = "_root_"
     val SELECTOR_DUMMY: N           = "<unapply-selector>"
     val SELF: N                     = "$this"
-    val SETTER_SUFFIX: N            = encode("_=")
     val SKOLEM: N                   = "<skolem>"
     val SPECIALIZED_INSTANCE: N     = "specInstance$"
     val THIS: N                     = "_$this"
@@ -440,7 +438,6 @@ object StdNames {
     val lang: N                 = "lang"
     val length: N               = "length"
     val lengthCompare: N        = "lengthCompare"
-    val liftedTree: N           = "liftedTree"
     val `macro` : N             = "macro"
     val macroThis : N           = "_this"
     val macroContext : N        = "c"
@@ -458,7 +455,6 @@ object StdNames {
     val ne: N                   = "ne"
     val newFreeTerm: N          = "newFreeTerm"
     val newFreeType: N          = "newFreeType"
-    val newNestedSymbol: N      = "newNestedSymbol"
     val newScopeWith: N         = "newScopeWith"
     val next: N                 = "next"
     val nmeNewTermName: N       = "newTermName"
@@ -540,6 +536,11 @@ object StdNames {
 
     val synthSwitch: N          = "$synthSwitch"
     val _scope: N               = "$scope"
+
+    val nothingClass: N         = "Nothing$"
+    val nullClass: N            = "Null$"
+
+    val falseModuleClassNames = Set(nothingClass, nullClass, nothingRuntimeClass, nullRuntimeClass)
 
     // unencoded operators
     object raw {
@@ -661,22 +662,6 @@ object StdNames {
 
     val isBoxedNumberOrBoolean: N = "isBoxedNumberOrBoolean"
     val isBoxedNumber: N = "isBoxedNumber"
-
-    val reflPolyCacheName: N   = "reflPoly$Cache"
-    val reflClassCacheName: N  = "reflClass$Cache"
-    val reflParamsCacheName: N = "reflParams$Cache"
-    val reflMethodCacheName: N = "reflMethod$Cache"
-    val reflMethodName: N      = "reflMethod$Method"
-
-    private val reflectionCacheNames = Set[N](
-      reflPolyCacheName,
-      reflClassCacheName,
-      reflParamsCacheName,
-      reflMethodCacheName,
-      reflMethodName
-    )
-
-    def isReflectionCacheName(name: Name) = reflectionCacheNames exists (name startsWith _)
   }
 
   class ScalaTermNames extends ScalaNames[TermName] {
@@ -723,7 +708,7 @@ object StdNames {
     }
 
     def localDummyName(clazz: Symbol)(implicit ctx: Context): TermName =
-      LOCALDUMMY_PREFIX ++ clazz.name ++ ">"
+      termName(str.LOCALDUMMY_PREFIX + clazz.name + ">")
 
     def newBitmapName(bitmapPrefix: TermName, n: Int): TermName = bitmapPrefix ++ n.toString
 

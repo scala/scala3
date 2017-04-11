@@ -5,6 +5,7 @@ package tasty
 
 import Contexts._, Symbols._, Types._, Scopes._, SymDenotations._, Names._, NameOps._
 import StdNames._, Denotations._, Flags._, Constants._, Annotations._
+import NameKinds._
 import util.Positions._
 import ast.{tpd, Trees, untpd}
 import Trees._
@@ -15,15 +16,15 @@ import scala.collection.mutable.ListBuffer
 import scala.collection.{ mutable, immutable }
 import config.Printers.pickling
 import typer.Checking
+import config.Config
 
 /** Unpickler for typed trees
  *  @param reader          the reader from which to unpickle
  *  @param tastyName       the nametable
  *  @param posUNpicklerOpt the unpickler for positions, if it exists
  */
-class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table, posUnpicklerOpt: Option[PositionUnpickler]) {
+class TreeUnpickler(reader: TastyReader, nameAtRef: NameRef => TermName, posUnpicklerOpt: Option[PositionUnpickler]) {
   import TastyFormat._
-  import TastyName._
   import TreeUnpickler._
   import tpd._
 
@@ -73,20 +74,6 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table, posUnpickle
     assert(roots != null, "unpickle without previous enterTopLevel")
     new TreeReader(reader).readTopLevel()(ctx.addMode(Mode.AllowDependentFunctions))
   }
-
-  def toTermName(tname: TastyName): TermName = tname match {
-    case Simple(name) => name
-    case Qualified(qual, name) => toTermName(qual) ++ "." ++ toTermName(name)
-    case Signed(original, params, result) => toTermName(original)
-    case Shadowed(original) => toTermName(original).shadowedName
-    case Expanded(prefix, original) => toTermName(original).expandedName(toTermName(prefix))
-    case ModuleClass(original) => toTermName(original).moduleClassName.toTermName
-    case SuperAccessor(accessed) => toTermName(accessed).superName
-    case DefaultGetter(meth, num) => ???
-  }
-
-  def toTermName(ref: NameRef): TermName = toTermName(tastyName(ref))
-  def toTypeName(ref: NameRef): TypeName = toTermName(ref).toTypeName
 
   class Completer(owner: Symbol, reader: TastyReader) extends LazyType {
     import reader._
@@ -165,17 +152,7 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table, posUnpickle
       else tag
     }
 
-    def readName(): TermName = toTermName(readNameRef())
-
-    def readNameSplitSig()(implicit ctx: Context): Any /* TermName | (TermName, Signature) */ =
-      tastyName(readNameRef()) match {
-        case Signed(original, params, result) =>
-          var sig = Signature(params map toTypeName, toTypeName(result))
-          if (sig == Signature.NotAMethod) sig = Signature.NotAMethod
-          (toTermName(original), sig)
-        case name =>
-          toTermName(name)
-      }
+    def readName(): TermName = nameAtRef(readNameRef())
 
 // ------ Reading types -----------------------------------------------------
 
@@ -305,9 +282,9 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table, posUnpickle
           val name =  readName().toTypeName
           TypeRef(readType(), name)
         case TERMREF =>
-          readNameSplitSig() match {
-            case name: TermName => TermRef.all(readType(), name)
-            case (name: TermName, sig: Signature) => TermRef.withSig(readType(), name, sig)
+          readName() match {
+            case SignedName(name, sig) => TermRef.withSig(readType(), name, sig)
+            case name => TermRef.all(readType(), name)
           }
         case THIS =>
           ThisType.raw(readType().asInstanceOf[TypeRef])
@@ -438,9 +415,9 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table, posUnpickle
       val start = currentAddr
       val tag = readByte()
       val end = readEnd()
-      val rawName = tastyName(readNameRef())
-      var name: Name = toTermName(rawName)
+      var name: Name = readName()
       if (tag == TYPEDEF || tag == TYPEPARAM) name = name.toTypeName
+      val mname = name.mangled
       skipParams()
       val ttag = nextUnsharedTag
       val isAbsType = isAbstractType(ttag)
@@ -451,19 +428,15 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table, posUnpickle
       val rhsIsEmpty = noRhs(end)
       if (!rhsIsEmpty) skipTree()
       val (givenFlags, annots, privateWithin) = readModifiers(end)
-      def nameFlags(tname: TastyName): FlagSet = tname match {
-        case TastyName.Expanded(_, original) => ExpandedName | nameFlags(tastyName(original))
-        case TastyName.SuperAccessor(_) => Flags.SuperAccessor
-        case _ => EmptyFlags
-      }
       pickling.println(i"creating symbol $name at $start with flags $givenFlags")
-      val flags = normalizeFlags(tag, givenFlags | nameFlags(rawName), name, isAbsType, rhsIsEmpty)
+      val flags = normalizeFlags(tag, givenFlags, name, isAbsType, rhsIsEmpty)
       def adjustIfModule(completer: LazyType) =
         if (flags is Module) ctx.adjustModuleCompleter(completer, name) else completer
       val sym =
-        roots.find(root => (root.owner eq ctx.owner) && root.name == name) match {
+        roots.find(root => (root.owner eq ctx.owner) && root.name.mangled == mname) match {
           case Some(rootd) =>
             pickling.println(i"overwriting ${rootd.symbol} # ${rootd.hashCode}")
+            rootd.name = name
             rootd.info = adjustIfModule(
                 new Completer(ctx.owner, subReader(start, end)) with SymbolLoaders.SecondCompleter)
             rootd.flags = flags &~ Touched // allow one more completion
@@ -886,7 +859,7 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table, posUnpickle
         val localCtx =
           if (name == nme.CONSTRUCTOR) ctx.addMode(Mode.InSuperCall) else ctx
         val qual = readTerm()(localCtx)
-        val unshadowed = if (name.isShadowedName) name.revertShadowed else name
+        val unshadowed = name.exclude(ShadowedName)
         untpd.Select(qual, unshadowed).withType(tpf(qual.tpe.widenIfUnstable))
       }
 
@@ -905,9 +878,9 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table, posUnpickle
         case SELECT =>
           def readRest(name: Name, sig: Signature) =
             completeSelect(name, TermRef.withSig(_, name.asTermName, sig))
-          readNameSplitSig match {
-            case name: Name => readRest(name, Signature.NotAMethod)
-            case (name: Name, sig: Signature) => readRest(name, sig)
+          readName() match {
+            case SignedName(name, sig) => readRest(name, sig)
+            case name => readRest(name, Signature.NotAMethod)
           }
         case SELECTtpt =>
           val name = readName().toTypeName

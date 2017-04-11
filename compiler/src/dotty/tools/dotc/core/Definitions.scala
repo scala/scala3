@@ -67,7 +67,7 @@ class Definitions {
     enterTypeField(cls, name, flags | ClassTypeParamCreationFlags, scope)
 
   private def enterSyntheticTypeParam(cls: ClassSymbol, paramFlags: FlagSet, scope: MutableScope, suffix: String = "T0") =
-    enterTypeParam(cls, suffix.toTypeName.expandedName(cls), ExpandedName | paramFlags, scope)
+    enterTypeParam(cls, suffix.toTypeName.expandedName(cls), paramFlags, scope)
 
   // NOTE: Ideally we would write `parentConstrs: => Type*` but SIP-24 is only
   // implemented in Dotty and not in Scala 2.
@@ -108,7 +108,7 @@ class Definitions {
    *        def apply(implicit $x0: T0, ..., $x{N_1}: T{N-1}): R
    *      }
    */
-  private def newFunctionNTrait(name: TypeName) = {
+  def newFunctionNTrait(name: TypeName) = {
     val completer = new LazyType {
       def complete(denot: SymDenotation)(implicit ctx: Context): Unit = {
         val cls = denot.asClass.classSymbol
@@ -119,7 +119,7 @@ class Definitions {
             enterTypeParam(cls, name ++ "$T" ++ i.toString, Contravariant, decls)
         val resParam = enterTypeParam(cls, name ++ "$R", Covariant, decls)
         val (methodType, parentTraits) =
-          if (name.startsWith(tpnme.ImplicitFunction)) {
+          if (name.firstPart.startsWith(str.ImplicitFunction)) {
             val superTrait =
               FunctionType(arity).appliedTo(argParams.map(_.typeRef) ::: resParam.typeRef :: Nil)
             (ImplicitMethodType, ctx.normalizeToClassRefs(superTrait :: Nil, cls, decls))
@@ -723,12 +723,11 @@ class Definitions {
   /** If type `ref` refers to a class in the scala package, its name, otherwise EmptyTypeName */
   def scalaClassName(ref: Type)(implicit ctx: Context): TypeName = scalaClassName(ref.classSymbol)
 
-  private def isVarArityClass(cls: Symbol, prefix: Name) = {
-    val name = scalaClassName(cls)
-    name.startsWith(prefix) &&
-    name.length > prefix.length &&
-    name.drop(prefix.length).forall(_.isDigit)
-  }
+  private def isVarArityClass(cls: Symbol, prefix: String) =
+    scalaClassName(cls).testSimple(name =>
+      name.startsWith(prefix) &&
+      name.length > prefix.length &&
+      name.drop(prefix.length).forall(_.isDigit))
 
   def isBottomClass(cls: Symbol) =
     cls == NothingClass || cls == NullClass
@@ -758,9 +757,9 @@ class Definitions {
    */
   def isSyntheticFunctionClass(cls: Symbol) = scalaClassName(cls).isSyntheticFunction
 
-  def isAbstractFunctionClass(cls: Symbol) = isVarArityClass(cls, tpnme.AbstractFunction)
-  def isTupleClass(cls: Symbol) = isVarArityClass(cls, tpnme.Tuple)
-  def isProductClass(cls: Symbol) = isVarArityClass(cls, tpnme.Product)
+  def isAbstractFunctionClass(cls: Symbol) = isVarArityClass(cls, str.AbstractFunction)
+  def isTupleClass(cls: Symbol) = isVarArityClass(cls, str.Tuple)
+  def isProductClass(cls: Symbol) = isVarArityClass(cls, str.Product)
 
   /** Returns the erased class of the function class `cls`
    *    - FunctionN for N > 22 becomes FunctionXXL
@@ -933,23 +932,6 @@ class Definitions {
 
   // ----- Initialization ---------------------------------------------------
 
-  /** Give the scala package a scope where a FunctionN trait is automatically
-   *  added when someone looks for it.
-   */
-  private def makeScalaSpecial()(implicit ctx: Context) = {
-    val oldInfo = ScalaPackageClass.classInfo
-    val oldDecls = oldInfo.decls
-    val newDecls = new MutableScope(oldDecls) {
-      override def lookupEntry(name: Name)(implicit ctx: Context): ScopeEntry = {
-        val res = super.lookupEntry(name)
-        if (res == null && name.isTypeName && name.isSyntheticFunction)
-          newScopeEntry(newFunctionNTrait(name.asTypeName))
-        else res
-      }
-    }
-    ScalaPackageClass.info = oldInfo.derivedClassInfo(decls = newDecls)
-  }
-
   /** Lists core classes that don't have underlying bytecode, but are synthesized on-the-fly in every reflection universe */
   lazy val syntheticScalaClasses = List(
     AnyClass,
@@ -977,8 +959,6 @@ class Definitions {
   def init()(implicit ctx: Context) = {
     this.ctx = ctx
     if (!_isInitialized) {
-      makeScalaSpecial()
-
       // force initialization of every symbol that is synthesized or hijacked by the compiler
       val forced = syntheticCoreClasses ++ syntheticCoreMethods ++ ScalaValueClasses()
 

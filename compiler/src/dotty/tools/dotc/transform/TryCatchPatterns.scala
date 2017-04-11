@@ -5,6 +5,7 @@ import core.Symbols._
 import core.StdNames._
 import ast.Trees._
 import core.Types._
+import core.NameKinds.ExceptionBinderName
 import dotty.tools.dotc.core.Decorators._
 import dotty.tools.dotc.core.Flags
 import dotty.tools.dotc.core.Contexts.Context
@@ -83,7 +84,7 @@ class TryCatchPatterns extends MiniPhaseTransform {
       implicit ctx: Context, info: TransformerInfo): Option[CaseDef] = {
     if (patternMatchCases.isEmpty) None
     else {
-      val exName = ctx.freshName("ex").toTermName
+      val exName = ExceptionBinderName.fresh()
       val fallbackSelector =
         ctx.newSymbol(ctx.owner, exName, Flags.Synthetic | Flags.Case, defn.ThrowableType, coord = pos)
       val sel = Ident(fallbackSelector.termRef).withPos(pos)

@@ -9,16 +9,18 @@ import TastyFormat._
 import Contexts._, Symbols._, Types._, Names._, Constants._, Decorators._, Annotations._, StdNames.tpnme, NameOps._
 import collection.mutable
 import typer.Inliner
-import NameOps._
+import NameOps._, NameKinds._
 import StdNames.nme
 import TastyBuffer._
 import TypeApplications._
+import transform.SymUtils._
+import config.Config
 
 class TreePickler(pickler: TastyPickler) {
   val buf = new TreeBuffer
   pickler.newSection("ASTs", buf)
   import buf._
-  import pickler.nameBuffer.{nameIndex, fullNameIndex}
+  import pickler.nameBuffer.nameIndex
   import ast.tpd._
 
   private val symRefs = new mutable.HashMap[Symbol, Addr]
@@ -52,28 +54,8 @@ class TreePickler(pickler: TastyPickler) {
   }
 
   private def pickleName(name: Name): Unit = writeNat(nameIndex(name).index)
-  private def pickleName(name: TastyName): Unit = writeNat(nameIndex(name).index)
-  private def pickleNameAndSig(name: Name, sig: Signature) = {
-    val Signature(params, result) = sig
-    pickleName(TastyName.Signed(nameIndex(name), params.map(fullNameIndex), fullNameIndex(result)))
-  }
-
-  private def pickleName(sym: Symbol)(implicit ctx: Context): Unit = {
-    def encodeSuper(name: Name): TastyName.NameRef =
-      if (sym is Flags.SuperAccessor) {
-        val SuperAccessorName(n) = name
-        nameIndex(TastyName.SuperAccessor(nameIndex(n)))
-      }
-      else nameIndex(name)
-    val nameRef =
-      if (sym is Flags.ExpandedName)
-        nameIndex(
-          TastyName.Expanded(
-            nameIndex(sym.name.expandedPrefix),
-            encodeSuper(sym.name.unexpandedName)))
-      else encodeSuper(sym.name)
-    writeNat(nameRef.index)
-  }
+  private def pickleNameAndSig(name: Name, sig: Signature) =
+    pickleName(SignedName(name.toTermName, sig))
 
   private def pickleSymRef(sym: Symbol)(implicit ctx: Context) = symRefs.get(sym) match {
     case Some(label) =>
@@ -126,7 +108,7 @@ class TreePickler(pickler: TastyPickler) {
       writeLongInt(java.lang.Double.doubleToRawLongBits(c.doubleValue))
     case StringTag =>
       writeByte(STRINGconst)
-      writeNat(nameIndex(c.stringValue).index)
+      pickleName(c.stringValue.toTermName)
     case NullTag =>
       writeByte(NULLconst)
     case ClazzTag =>
@@ -160,7 +142,7 @@ class TreePickler(pickler: TastyPickler) {
       withLength { pickleType(tycon); args.foreach(pickleType(_)) }
     case ConstantType(value) =>
       pickleConstant(value)
-    case tpe: TypeRef if tpe.info.isAlias && tpe.symbol.is(Flags.AliasPreferred) =>
+    case tpe: TypeRef if tpe.info.isAlias && tpe.symbol.isAliasPreferred =>
       pickleType(tpe.superType)
     case tpe: WithFixedSym =>
       val sym = tpe.symbol
@@ -178,7 +160,7 @@ class TreePickler(pickler: TastyPickler) {
         }
       if (sym.is(Flags.Package)) {
         writeByte(if (tpe.isType) TYPEREFpkg else TERMREFpkg)
-        pickleName(qualifiedName(sym))
+        pickleName(sym.fullName)
       }
       else if (sym is Flags.BindDefinedType) {
         registerDef(sym)
@@ -278,7 +260,7 @@ class TreePickler(pickler: TastyPickler) {
 
   def picklePackageRef(pkg: Symbol)(implicit ctx: Context): Unit = {
     writeByte(TERMREFpkg)
-    pickleName(qualifiedName(pkg))
+    pickleName(pkg.fullName)
   }
 
   def pickleMethodic(tag: Int, tpe: LambdaType)(implicit ctx: Context) = {
@@ -312,7 +294,7 @@ class TreePickler(pickler: TastyPickler) {
     registerDef(sym)
     writeByte(tag)
     withLength {
-      pickleName(sym)
+      pickleName(sym.name)
       pickleParams
       tpt match {
         case templ: Template => pickleTree(tpt)
@@ -370,7 +352,7 @@ class TreePickler(pickler: TastyPickler) {
         case Select(qual, name) =>
           writeByte(if (name.isTypeName) SELECTtpt else SELECT)
           val realName = tree.tpe match {
-            case tp: NamedType if tp.name.isShadowedName => tp.name
+            case tp: NamedType if tp.name.is(ShadowedName) => tp.name
             case _ => name
           }
           val sig = tree.tpe.signature
@@ -574,10 +556,6 @@ class TreePickler(pickler: TastyPickler) {
     writeByte(tag)
     pickleName(id.name)
   }
-
-  def qualifiedName(sym: Symbol)(implicit ctx: Context): TastyName =
-    if (sym.isRoot || sym.owner.isRoot) TastyName.Simple(sym.name.toTermName)
-    else TastyName.Qualified(nameIndex(qualifiedName(sym.owner)), nameIndex(sym.name))
 
   def pickleModifiers(sym: Symbol)(implicit ctx: Context): Unit = {
     import Flags._

@@ -17,6 +17,7 @@ import Decorators._
 import dotty.tools.dotc.transform.Pickler
 import tasty.DottyUnpickler
 import ast.tpd._
+import NameKinds.QualifiedName
 
 /** Compiler for TASTY files.
  *  Usage:
@@ -74,7 +75,7 @@ object FromTasty extends Driver {
       case unit: TASTYCompilationUnit =>
         val className = unit.className.toTypeName
         val clsd =
-          if (className.contains('.')) ctx.base.staticRef(className)
+          if (className.is(QualifiedName)) ctx.base.staticRef(className)
           else defn.EmptyPackageClass.info.decl(className)
         def cannotUnpickle(reason: String) = {
           ctx.error(s"class $className cannot be unpickled because $reason")

@@ -30,9 +30,9 @@ import Decorators._
 import tpd._
 
 import scala.tools.asm
-import NameOps._
 import StdNames.nme
 import NameOps._
+import NameKinds.DefaultGetterName
 import dotty.tools.dotc.core
 import dotty.tools.dotc.core.Names.TypeName
 
@@ -255,7 +255,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
           val evalue = t.symbol.name.toString // value the actual enumeration value.
           av.visitEnum(name, edesc, evalue)
         } else {
-          assert(toDenot(t.symbol).name.toTermName.defaultGetterIndex >= 0) // this should be default getter. do not emmit.
+          assert(toDenot(t.symbol).name.is(DefaultGetterName)) // this should be default getter. do not emmit.
         }
       case t: SeqLiteral =>
         val arrAnnotV: AnnotationVisitor = av.visitArray(name)
@@ -421,7 +421,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
   val Flag_METHOD: Flags = Flags.Method.bits
   val ExcludedForwarderFlags: Flags = {
       Flags.Specialized | Flags.Lifted | Flags.Protected | Flags.JavaStatic |
-     Flags.ExpandedName | Flags.Bridge | Flags.VBridge | Flags.Private | Flags.Macro
+      Flags.Bridge | Flags.VBridge | Flags.Private | Flags.Macro
   }.bits
 
 
@@ -544,8 +544,8 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
     def toTermName: Name = n.toTermName
     def dropModule: Name = n.stripModuleClassSuffix
 
-    def len: Int = n.length
-    def offset: Int = n.start
+    def len: Int = n.toSimpleName.length
+    def offset: Int = n.toSimpleName.start
     def isTermName: Boolean = n.isTermName
     def startsWith(s: String): Boolean = n.startsWith(s)
   }
@@ -557,7 +557,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
     def fullName: String = sym.showFullName
     def simpleName: Name = sym.name
     def javaSimpleName: Name = toDenot(sym).name // addModuleSuffix(simpleName.dropLocal)
-    def javaBinaryName: Name = toDenot(sym).fullNameSeparated("/") // addModuleSuffix(fullNameInternal('/'))
+    def javaBinaryName: Name = javaClassName.replace('.', '/').toTypeName // TODO: can we make this a string? addModuleSuffix(fullNameInternal('/'))
     def javaClassName: String = toDenot(sym).fullName.toString// addModuleSuffix(fullNameInternal('.')).toString
     def name: Name = sym.name
     def rawname: Name = {
@@ -794,7 +794,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
 
     def memberInfo(s: Symbol): Type = tp.memberInfo(s)
 
-    def decls: List[Symbol] = tp.decls.map(_.symbol).toList
+    def decls: List[Symbol] = tp.decls.toList
 
     def members: List[Symbol] =
       tp.memberDenots(takeAllFilter, (name, buf) => buf ++= tp.member(name).alternatives).map(_.symbol).toList

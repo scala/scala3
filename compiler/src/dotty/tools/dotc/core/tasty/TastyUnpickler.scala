@@ -4,14 +4,23 @@ package tasty
 
 import scala.collection.mutable
 import TastyFormat._
-import Names.{Name, termName}
+import TastyBuffer.NameRef
+import Names.{Name, TermName, termName, EmptyTermName}
+import NameKinds._
 import java.util.UUID
 
 object TastyUnpickler {
   class UnpickleException(msg: String) extends Exception(msg)
 
   abstract class SectionUnpickler[R](val name: String) {
-    def unpickle(reader: TastyReader, tastyName: TastyName.Table): R
+    def unpickle(reader: TastyReader, nameAtRef: NameTable): R
+  }
+
+  class NameTable extends (NameRef => TermName) {
+    private val names = new mutable.ArrayBuffer[TermName]
+    def add(name: TermName) = names += name
+    def apply(ref: NameRef) = names(ref.index)
+    def contents: Iterable[TermName] = names
   }
 }
 
@@ -23,18 +32,15 @@ class TastyUnpickler(reader: TastyReader) {
   def this(bytes: Array[Byte]) = this(new TastyReader(bytes))
 
   private val sectionReader = new mutable.HashMap[String, TastyReader]
-  val tastyName = new TastyName.Table
+  val nameAtRef = new NameTable
 
-  def check(cond: Boolean, msg: => String) =
+  private def check(cond: Boolean, msg: => String) =
     if (!cond) throw new UnpickleException(msg)
 
-  def readString(): String = {
-    val TastyName.Simple(name) = tastyName(readNameRef())
-    name.toString
-  }
+  private def readName(): TermName = nameAtRef(readNameRef())
+  private def readString(): String = readName().toString
 
-  def readName(): TastyName = {
-    import TastyName._
+  private def readNameContents(): TermName = {
     val tag = readByte()
     val length = readNat()
     val start = currentAddr
@@ -42,24 +48,30 @@ class TastyUnpickler(reader: TastyReader) {
     val result = tag match {
       case UTF8 =>
         goto(end)
-        Simple(termName(bytes, start.index, length))
-      case QUALIFIED =>
-        Qualified(readNameRef(), readNameRef())
-      case SIGNED =>
-        val original = readNameRef()
-        val result = readNameRef()
-        val params = until(end)(readNameRef())
-        Signed(original, params, result)
-      case EXPANDED =>
-        Expanded(readNameRef(), readNameRef())
-      case OBJECTCLASS =>
-        ModuleClass(readNameRef())
-      case SUPERACCESSOR =>
-        SuperAccessor(readNameRef())
+        termName(bytes, start.index, length)
+      case QUALIFIED | FLATTENED | EXPANDED | EXPANDPREFIX =>
+        qualifiedNameKindOfTag(tag)(readName(), readName().asSimpleName)
+      case UNIQUE =>
+        val separator = readName().toString
+        val num = readNat()
+        val originals = until(end)(readName())
+        val original = if (originals.isEmpty) EmptyTermName else originals.head
+        uniqueNameKindOfSeparator(separator)(original, num)
       case DEFAULTGETTER =>
-        DefaultGetter(readNameRef(), readNat())
-      case SHADOWED =>
-        Shadowed(readNameRef())
+        DefaultGetterName(readName(), readNat())
+      case VARIANT =>
+        VariantName(readName(), readNat() - 1)
+      case OUTERSELECT =>
+        OuterSelectName(readName(), readNat())
+      case SIGNED =>
+        val original = readName()
+        val result = readName().toTypeName
+        val params = until(end)(readName().toTypeName)
+        var sig = Signature(params, result)
+        if (sig == Signature.NotAMethod) sig = Signature.NotAMethod
+        SignedName(original, sig)
+      case _ =>
+        simpleNameKindOfTag(tag)(readName())
     }
     assert(currentAddr == end, s"bad name $result $start $currentAddr $end")
     result
@@ -77,10 +89,10 @@ class TastyUnpickler(reader: TastyReader) {
     new UUID(readUncompressedLong(), readUncompressedLong())
   }
 
-  val uuid = readHeader()
+  private val uuid = readHeader()
 
   locally {
-    until(readEnd()) { tastyName.add(readName()) }
+    until(readEnd()) { nameAtRef.add(readNameContents()) }
     while (!isAtEnd) {
       val secName = readString()
       val secEnd = readEnd()
@@ -91,5 +103,5 @@ class TastyUnpickler(reader: TastyReader) {
 
   def unpickle[R](sec: SectionUnpickler[R]): Option[R] =
     for (reader <- sectionReader.get(sec.name)) yield
-      sec.unpickle(reader, tastyName)
+      sec.unpickle(reader, nameAtRef)
 }

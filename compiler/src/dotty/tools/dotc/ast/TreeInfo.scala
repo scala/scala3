@@ -157,7 +157,7 @@ trait TreeInfo[T >: Untyped <: Type] { self: Trees.Instance[T] =>
   }
 
   /** Is name a left-associative operator? */
-  def isLeftAssoc(operator: Name) = operator.nonEmpty && (operator.last != ':')
+  def isLeftAssoc(operator: Name) = !operator.isEmpty && (operator.toSimpleName.last != ':')
 
   /** can this type be a type pattern? */
   def mayBeTypePat(tree: untpd.Tree): Boolean = unsplice(tree) match {

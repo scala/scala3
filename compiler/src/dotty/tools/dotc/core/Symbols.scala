@@ -19,6 +19,7 @@ import util.Positions._
 import DenotTransformers._
 import StdNames._
 import NameOps._
+import NameKinds.LazyImplicitName
 import ast.tpd.Tree
 import ast.TreeTypeMap
 import Constants.Constant
@@ -260,7 +261,7 @@ trait Symbols { this: Context =>
 
   /** Create a synthetic lazy implicit value */
   def newLazyImplicit(info: Type) =
-    newSymbol(owner, freshName(nme.LAZY_IMPLICIT_PREFIX).toTermName, Lazy, info)
+    newSymbol(owner, LazyImplicitName.fresh(), Lazy, info)
 
   /** Create a symbol representing a selftype declaration for class `cls`. */
   def newSelfSym(cls: ClassSymbol, name: TermName = nme.WILDCARD, selfInfo: Type = NoType): TermSymbol =

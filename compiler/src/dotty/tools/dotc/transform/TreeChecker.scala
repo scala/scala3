@@ -13,6 +13,7 @@ import core.Flags._
 import core.Constants._
 import core.StdNames._
 import core.NameOps._
+import core.NameKinds.OuterSelectName
 import core.Decorators._
 import core.TypeErasure.isErasedType
 import core.Phases.Phase
@@ -50,10 +51,10 @@ class TreeChecker extends Phase with SymTransformer {
   private val seenModuleVals = collection.mutable.HashMap[String, Symbol]()
 
   def isValidJVMName(name: Name) =
-      !name.exists(c => c == '.' || c == ';' || c =='[' || c == '/')
+      !name.toString.exists(c => c == '.' || c == ';' || c =='[' || c == '/')
 
   def isValidJVMMethodName(name: Name) =
-      !name.exists(c => c == '.' || c == ';' || c =='[' || c == '/' || c == '<' || c == '>')
+      !name.toString.exists(c => c == '.' || c == ';' || c =='[' || c == '/' || c == '<' || c == '>')
 
   def printError(str: String)(implicit ctx: Context) = {
     ctx.echo(Console.RED + "[error] " + Console.WHITE  + str)
@@ -339,7 +340,7 @@ class TreeChecker extends Phase with SymTransformer {
       val sym = tree.symbol
       if (!tpe.isInstanceOf[WithFixedSym] &&
           sym.exists && !sym.is(Private) &&
-          !tree.name.isOuterSelect // outer selects have effectively fixed symbols
+          !tree.name.is(OuterSelectName) // outer selects have effectively fixed symbols
           ) {
         val qualTpe = tree.qualifier.typeOpt
         val member =
@@ -390,11 +391,11 @@ class TreeChecker extends Phase with SymTransformer {
           !x.isCompanionMethod &&
           !x.isValueClassConvertMethod
 
-      val symbolsNotDefined = cls.classInfo.decls.toSet.filter(isNonMagicalMethod) -- impl.body.map(_.symbol) - constr.symbol
+      val symbolsNotDefined = cls.classInfo.decls.toList.toSet.filter(isNonMagicalMethod) -- impl.body.map(_.symbol) - constr.symbol
 
       assert(symbolsNotDefined.isEmpty,
           i" $cls tree does not define methods: ${symbolsNotDefined.toList}%, %\n" +
-          i"expected: ${cls.classInfo.decls.toSet.filter(isNonMagicalMethod).toList}%, %\n" +
+          i"expected: ${cls.classInfo.decls.toList.toSet.filter(isNonMagicalMethod)}%, %\n" +
           i"defined: ${impl.body.map(_.symbol)}%, %")
 
       super.typedClassDef(cdef, cls)
@@ -403,7 +404,8 @@ class TreeChecker extends Phase with SymTransformer {
     override def typedDefDef(ddef: untpd.DefDef, sym: Symbol)(implicit ctx: Context) =
       withDefinedSyms(ddef.tparams) {
         withDefinedSymss(ddef.vparamss) {
-          if (!sym.isClassConstructor && !(sym.name eq Names.STATIC_CONSTRUCTOR)) assert(isValidJVMMethodName(sym.name), s"${sym.fullName} name is invalid on jvm")
+          if (!sym.isClassConstructor && !(sym.name eq Names.STATIC_CONSTRUCTOR))
+            assert(isValidJVMMethodName(sym.name), s"${sym.name.debugString} name is invalid on jvm")
 
           ddef.vparamss.foreach(_.foreach { vparam =>
             assert(vparam.symbol.is(Param),

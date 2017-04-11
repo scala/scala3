@@ -26,6 +26,9 @@ object TastyBuffer {
    *  the value of 4 gives a maximal array size of 256M.
    */
   final val AddrWidth = 4
+
+  /** An address referring to a serialized name */
+  case class NameRef(index: Int) extends AnyVal
 }
 import TastyBuffer._
 

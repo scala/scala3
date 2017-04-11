@@ -37,7 +37,7 @@ object Scanners {
     var lastOffset: Offset = 0
 
     /** the name of an identifier */
-    var name: TermName = null
+    var name: SimpleTermName = null
 
     /** the string value of a literal */
     var strVal: String = null
@@ -98,7 +98,7 @@ object Scanners {
 
     /** Clear buffer and set name and token */
     def finishNamed(idtoken: Token = IDENTIFIER, target: TokenData = this): Unit = {
-      target.name = flushBuf(litBuf).toTermName
+      target.name = termName(flushBuf(litBuf))
       target.token = idtoken
       if (idtoken == IDENTIFIER) {
         val idx = target.name.start

@@ -11,6 +11,7 @@ import core.Decorators._
 import core.StdNames.nme
 import core.Names._
 import core.NameOps._
+import core.NameKinds.OuterSelectName
 import ast.Trees._
 import SymUtils._
 import dotty.tools.dotc.ast.tpd
@@ -61,10 +62,11 @@ class ExplicitOuter extends MiniPhaseTransform with InfoTransformer { thisTransf
 
   /** Convert a selection of the form `qual.C_<OUTER>` to an outer path from `qual` to `C` */
   override def transformSelect(tree: Select)(implicit ctx: Context, info: TransformerInfo) =
-    if (tree.name.isOuterSelect)
-      outer.path(start = tree.qualifier, count = tree.name.outerSelectHops)
-        .ensureConforms(tree.tpe)
-    else tree
+    tree.name match {
+      case OuterSelectName(_, nhops) =>
+        outer.path(start = tree.qualifier, count = nhops).ensureConforms(tree.tpe)
+      case _ => tree
+    }
 
   /** First, add outer accessors if a class does not have them yet and it references an outer this.
    *  If the class has outer accessors, implement them.
@@ -215,7 +217,7 @@ object ExplicitOuter {
   def outerAccessor(cls: ClassSymbol)(implicit ctx: Context): Symbol =
     if (cls.isStatic) NoSymbol // fast return to avoid scanning package decls
     else cls.info.member(outerAccName(cls)).suchThat(_ is OuterAccessor).symbol orElse
-      cls.info.decls.find(_ is OuterAccessor).getOrElse(NoSymbol)
+      cls.info.decls.find(_ is OuterAccessor)
 
   /** Class has an outer accessor. Can be called only after phase ExplicitOuter. */
   private def hasOuter(cls: ClassSymbol)(implicit ctx: Context): Boolean =
