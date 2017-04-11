@@ -2,8 +2,8 @@ package dotty.tools
 package dotc
 package config
 
-import io.{AbstractFile,ClassPath,JavaClassPath,MergedClassPath,DeltaClassPath}
-import ClassPath.{ JavaContext, DefaultJavaContext }
+import io._
+import classpath.AggregateClassPath
 import core._
 import Symbols._, Types._, Contexts._, Denotations._, SymDenotations._, StdNames._, Names._
 import Flags._, Scopes._, Decorators._, NameOps._, util.Positions._
@@ -11,7 +11,7 @@ import transform.ExplicitOuter, transform.SymUtils._
 
 class JavaPlatform extends Platform {
 
-  private var currentClassPath: Option[MergedClassPath] = None
+  private var currentClassPath: Option[ClassPath] = None
 
   def classPath(implicit ctx: Context): ClassPath = {
     if (currentClassPath.isEmpty)
@@ -35,8 +35,12 @@ class JavaPlatform extends Platform {
     }
 
   /** Update classpath with a substituted subentry */
-  def updateClassPath(subst: Map[ClassPath, ClassPath]) =
-    currentClassPath = Some(new DeltaClassPath(currentClassPath.get, subst))
+  def updateClassPath(subst: Map[ClassPath, ClassPath]): Unit = currentClassPath.get match {
+    case AggregateClassPath(entries) =>
+      currentClassPath = Some(AggregateClassPath(entries map (e => subst.getOrElse(e, e))))
+    case cp: ClassPath =>
+      currentClassPath = Some(subst.getOrElse(cp, cp))
+  }
 
   def rootLoader(root: TermSymbol)(implicit ctx: Context): SymbolLoader = new ctx.base.loaders.PackageLoader(root, classPath)
 

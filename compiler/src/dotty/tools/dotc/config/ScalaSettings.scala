@@ -73,6 +73,8 @@ class ScalaSettings extends Settings.SettingGroup {
   val log = PhasesSetting("-Ylog", "Log operations during")
   val emitTasty = BooleanSetting("-YemitTasty", "Generate tasty in separate *.tasty file.")
   val Ylogcp = BooleanSetting("-Ylog-classpath", "Output information about what classpath is being applied.")
+  val YdisableFlatCpCaching  = BooleanSetting("-YdisableFlatCpCaching", "Do not cache flat classpath representation of classpath elements from jars across compiler instances.")
+
   val YnoImports = BooleanSetting("-Yno-imports", "Compile without importing scala.*, java.lang.*, or Predef.")
   val YnoPredef = BooleanSetting("-Yno-predef", "Compile without importing Predef.")
   val Yskip = PhasesSetting("-Yskip", "Skip")
