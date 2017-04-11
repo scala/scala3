@@ -143,14 +143,17 @@ class LambdaLift extends MiniPhase with IdentityDenotTransformer { thisTransform
     /** Set `liftedOwner(sym)` to `owner` if `owner` is more deeply nested
      *  than the previous value of `liftedowner(sym)`.
      */
-    def narrowLiftedOwner(sym: Symbol, owner: Symbol)(implicit ctx: Context) =
+    def narrowLiftedOwner(sym: Symbol, owner: Symbol)(implicit ctx: Context): Unit =
       if (sym.maybeOwner.isTerm &&
         owner.isProperlyContainedIn(liftedOwner(sym)) &&
-        !sym.is(InSuperCall) &&
         owner != sym) {
-        ctx.log(i"narrow lifted $sym to $owner")
-        changedLiftedOwner = true
-        liftedOwner(sym) = owner
+        if (sym.is(InSuperCall) && owner.isProperlyContainedIn(sym.enclosingClass))
+          narrowLiftedOwner(sym, sym.enclosingClass)
+        else {
+          ctx.log(i"narrow lifted $sym to $owner")
+          changedLiftedOwner = true
+          liftedOwner(sym) = owner
+        }
       }
 
     /** Mark symbol `sym` as being free in `enclosure`, unless `sym` is defined
