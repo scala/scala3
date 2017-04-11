@@ -134,7 +134,8 @@ object Names {
     def info: NameInfo = SimpleTermNameKind.info
     def underlying: TermName = unsupported("underlying")
 
-    @sharable private var derivedNames: AnyRef /* SimpleMap | j.u.HashMap */ =
+    @sharable // because of synchronized block in `and`
+    private var derivedNames: AnyRef /* SimpleMap | j.u.HashMap */ =
       SimpleMap.Empty[NameInfo]
 
     private def getDerived(info: NameInfo): DerivedTermName /* | Null */= derivedNames match {

@@ -13,6 +13,9 @@ import collection.mutable
 
 object NameKinds {
 
+  // These are sharable since all NameKinds are created eagerly at the start of the program
+  // before any concurrent threads are forked. for this to work, NameKinds should never
+  // be created lazily or in modules that start running after compilers are forked.
   @sharable private val simpleNameKinds = new mutable.HashMap[Int, ClassifiedNameKind]
   @sharable private val qualifiedNameKinds = new mutable.HashMap[Int, QualifiedNameKind]
   @sharable private val uniqueNameKinds = new mutable.HashMap[String, UniqueNameKind]
