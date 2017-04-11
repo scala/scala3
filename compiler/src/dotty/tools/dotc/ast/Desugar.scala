@@ -432,7 +432,7 @@ object desugar {
       if (targs.isEmpty) tycon else AppliedTypeTree(tycon, targs)
     }
     def product =
-      if (arity > Definitions.MaxTupleArity) scalaDot(nme.Product.toTypeName)
+      if (arity > Definitions.MaxTupleArity) scalaDot(str.Product.toTypeName)
       else productConstr(arity)
 
     // Case classes and case objects get Product/ProductN parents
