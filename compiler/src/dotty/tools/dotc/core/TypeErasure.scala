@@ -440,7 +440,7 @@ class TypeErasure(isJava: Boolean, semiEraseVCs: Boolean, isConstructor: Boolean
         // but potentially re-introduced by ResolveSuper, when we add
         // forwarders to mixin methods.
         // See doc comment for ElimByName for speculation how we could improve this.
-      else MethodType(Nil, Nil, eraseResult(rt))
+      else MethodType(Nil, Nil, eraseResult(sym.info.finalResultType))
     case tp: PolyType =>
       eraseResult(tp.resultType) match {
         case rt: MethodType => rt
