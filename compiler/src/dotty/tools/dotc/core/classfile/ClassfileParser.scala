@@ -194,13 +194,21 @@ class ClassfileParser(
         val name = pool.getName(in.nextChar)
         val isConstructor = name eq nme.CONSTRUCTOR
 
-        /** Strip leading outer param from constructor.
-         *  Todo: Also strip trailing access tag for private inner constructors?
+        /** Strip leading outer param from constructor and trailing access tag for
+         *  private inner constructors.
          */
-        def stripOuterParamFromConstructor() = innerClasses.get(currentClassName) match {
+        def normalizeConstructorParams() = innerClasses.get(currentClassName) match {
           case Some(entry) if !isStatic(entry.jflags) =>
             val mt @ MethodTpe(paramNames, paramTypes, resultType) = denot.info
-            denot.info = mt.derivedLambdaType(paramNames.tail, paramTypes.tail, resultType)
+            var normalizedParamNames = paramNames.tail
+            var normalizedParamTypes = paramTypes.tail
+            if ((jflags & JAVA_ACC_SYNTHETIC) != 0) {
+              // SI-7455 strip trailing dummy argument ("access constructor tag") from synthetic constructors which
+              // are added when an inner class needs to access a private constructor.
+              normalizedParamNames = paramNames.dropRight(1)
+              normalizedParamTypes = paramTypes.dropRight(1)
+            }
+            denot.info = mt.derivedLambdaType(normalizedParamNames, normalizedParamTypes, resultType)
           case _ =>
         }
 
@@ -216,7 +224,7 @@ class ClassfileParser(
 
         denot.info = pool.getType(in.nextChar)
         if (isEnum) denot.info = ConstantType(Constant(sym))
-        if (isConstructor) stripOuterParamFromConstructor()
+        if (isConstructor) normalizeConstructorParams()
         setPrivateWithin(denot, jflags)
         denot.info = translateTempPoly(parseAttributes(sym, denot.info))
         if (isConstructor) normalizeConstructorInfo()
