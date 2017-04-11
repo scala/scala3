@@ -7,7 +7,7 @@ import Contexts._, Symbols._, Types._, Names._, StdNames._, NameOps._, Scopes._,
 import SymDenotations._, unpickleScala2.Scala2Unpickler._, Constants._, Annotations._, util.Positions._
 import NameKinds.{ModuleClassName, DefaultGetterName}
 import ast.tpd._
-import java.io.{ File, IOException }
+import java.io.{ ByteArrayInputStream, DataInputStream, File, IOException }
 import java.lang.Integer.toHexString
 import scala.collection.{ mutable, immutable }
 import scala.collection.mutable.{ ListBuffer, ArrayBuffer }
@@ -935,11 +935,15 @@ class ClassfileParser(
         case null   =>
           val start = starts(index)
           if (in.buf(start).toInt != CONSTANT_UTF8) errorBadTag(start)
-          val name = termName(in.buf, start + 3, in.getChar(start + 1))
+          val len   = in.getChar(start + 1).toInt
+          val name = termName(fromMUTF8(in.buf, start + 1, len + 2))
           values(index) = name
           name
       }
     }
+
+    private def fromMUTF8(bytes: Array[Byte], offset: Int, len: Int): String =
+      new DataInputStream(new ByteArrayInputStream(bytes, offset, len)).readUTF
 
     /** Return the name found at given index in the constant pool, with '/' replaced by '.'. */
     def getExternalName(index: Int): SimpleTermName = {
