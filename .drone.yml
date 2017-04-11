@@ -1,3 +1,9 @@
+# After updating this file, you need to re-sign it:
+#
+# - Install [drone-cli](http://readme.drone.io/usage/getting-started-cli/)
+# - Copy your token from  http://dotty-ci.epfl.ch/account (Click SHOW TOKEN)
+# - (export DRONE_TOKEN=your-token; export DRONE_SERVER=http://dotty-ci.epfl.ch; drone sign lampepfl/dotty)
+
 pipeline:
   test:
     image: lampepfl/dotty:latest
