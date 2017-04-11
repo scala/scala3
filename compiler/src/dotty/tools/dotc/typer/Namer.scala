@@ -843,7 +843,7 @@ class Namer { typer: Typer =>
           val targs1 = targs map (typedAheadType(_))
           val ptype = typedAheadType(tpt).tpe appliedTo targs1.tpes
           if (ptype.typeParams.isEmpty) ptype
-          else typedAheadExpr(parent).tpe
+          else fullyDefinedType(typedAheadExpr(parent).tpe, "class parent", parent.pos)
         }
 
       /* Check parent type tree `parent` for the following well-formedness conditions:
