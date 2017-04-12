@@ -91,7 +91,7 @@ extends Reporter with UniqueMessagePositions with HideNonSensicalMessages with M
 }
 
 object TestReporter {
-  lazy val logWriter = {
+  val logWriter = {
     val df = new SimpleDateFormat("yyyy-MM-dd-HH:mm")
     val timestamp = df.format(new Date)
     new JFile("../testlogs").mkdirs()
