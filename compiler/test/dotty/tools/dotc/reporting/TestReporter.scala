@@ -23,6 +23,10 @@ extends Reporter with UniqueMessagePositions with HideNonSensicalMessages with M
   final def errors: Iterator[MessageContainer] = _errorBuf.iterator
 
   protected final val _messageBuf = mutable.ArrayBuffer.empty[String]
+  final def messages: Iterator[String] = _messageBuf.iterator
+
+  private[this] var _didCrash = false
+  final def compilerCrashed: Boolean = _didCrash
 
   final def flushToFile(): Unit =
     _messageBuf
@@ -33,7 +37,6 @@ extends Reporter with UniqueMessagePositions with HideNonSensicalMessages with M
   final def flushToStdErr(): Unit =
     _messageBuf
       .iterator
-      .map(_.replaceAll("\u001b\\[.*?m", ""))
       .foreach(System.err.println)
 
   final def inlineInfo(pos: SourcePosition): String =
@@ -44,8 +47,16 @@ extends Reporter with UniqueMessagePositions with HideNonSensicalMessages with M
     }
     else ""
 
-  def echo(msg: String) =
+  def log(msg: String) =
     _messageBuf.append(msg)
+
+  def logStackTrace(thrown: Throwable): Unit = {
+    _didCrash = true
+    val sw = new java.io.StringWriter
+    val pw = new java.io.PrintWriter(sw)
+    thrown.printStackTrace(pw)
+    log(sw.toString)
+  }
 
   /** Prints the message with the given position indication. */
   def printMessageAndPos(m: MessageContainer, extra: String)(implicit ctx: Context): Unit = {
@@ -73,15 +84,14 @@ extends Reporter with UniqueMessagePositions with HideNonSensicalMessages with M
         _errorBuf.append(m)
         printMessageAndPos(m, extra)
       }
-      case w: Warning =>
-        printMessageAndPos(w, extra)
-      case _ =>
+      case m =>
+        printMessageAndPos(m, extra)
     }
   }
 }
 
 object TestReporter {
-  private[this] lazy val logWriter = {
+  lazy val logWriter = {
     val df = new SimpleDateFormat("yyyy-MM-dd-HH:mm")
     val timestamp = df.format(new Date)
     new JFile("../testlogs").mkdirs()
@@ -100,15 +110,22 @@ object TestReporter {
     val rep = new TestReporter(writer, writeToLog, WARNING) {
       /** Prints the message with the given position indication in a simplified manner */
       override def printMessageAndPos(m: MessageContainer, extra: String)(implicit ctx: Context): Unit = {
-        val msg = s"${m.pos.line + 1}: " + m.contained.kind + extra
-        val extraInfo = inlineInfo(m.pos)
+        def report() = {
+          val msg = s"${m.pos.line + 1}: " + m.contained.kind + extra
+          val extraInfo = inlineInfo(m.pos)
 
-        writer.println(msg)
-        _messageBuf.append(msg)
+          writer.println(msg)
+          _messageBuf.append(msg)
 
-        if (extraInfo.nonEmpty) {
-          writer.println(extraInfo)
-          _messageBuf.append(extraInfo)
+          if (extraInfo.nonEmpty) {
+            writer.println(extraInfo)
+            _messageBuf.append(extraInfo)
+          }
+        }
+        m match {
+          case m: Error => report()
+          case m: Warning => report()
+          case _ => ()
         }
       }
     }

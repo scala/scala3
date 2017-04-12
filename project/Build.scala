@@ -47,8 +47,8 @@ object Build {
   // Spawns a repl with the correct classpath
   lazy val repl = inputKey[Unit]("run the REPL with correct classpath")
 
-  // Run tests with filter
-  lazy val filterTest = inputKey[Unit]("runs integration test with the supplied filter")
+  // Run tests with filter through vulpix test suite
+  lazy val vulpix = inputKey[Unit]("runs integration test with the supplied filter")
 
   // Used to compile files similar to ./bin/dotc script
   lazy val dotc =
@@ -135,26 +135,8 @@ object Build {
       triggeredMessage in ThisBuild := Watched.clearWhenTriggered,
 
       addCommandAlias("run", "dotty-compiler/run") ++
-      addCommandAlias(
-        "partest",
-        ";publishLocal" + // Non-bootstrapped dotty needs to be published first
-        ";dotty-compiler-bootstrapped/lockPartestFile" +
-        ";dotty-compiler-bootstrapped/test:test" +
-        ";dotty-compiler-bootstrapped/runPartestRunner"
-      ) ++
-      addCommandAlias(
-        "partest-only",
-        ";publishLocal" + // Non-bootstrapped dotty needs to be published first
-        ";dotty-compiler-bootstrapped/lockPartestFile" +
-        ";dotty-compiler-bootstrapped/test:test-only dotc.tests" +
-        ";dotty-compiler-bootstrapped/runPartestRunner"
-      ) ++
-      addCommandAlias(
-        "partest-only-no-bootstrap",
-        ";dotty-compiler/lockPartestFile" +
-        ";dotty-compiler/test:test-only dotc.tests" +
-        ";dotty-compiler/runPartestRunner"
-      )
+      addCommandAlias("test", "testOnly -- --exclude-categories=java.lang.Exception") ++
+      addCommandAlias("legacyTests", "dotty-compiler/testOnly dotc.tests")
     ).
     settings(publishing)
 
@@ -162,7 +144,8 @@ object Build {
   lazy val `dotty-bootstrapped` = project.
     aggregate(`dotty-library-bootstrapped`, `dotty-compiler-bootstrapped`).
     settings(
-      publishArtifact := false
+      publishArtifact := false,
+      addCommandAlias("test", "testOnly -- --exclude-categories=java.lang.Exception")
     )
 
   lazy val `dotty-interfaces` = project.in(file("interfaces")).
@@ -287,43 +270,6 @@ object Build {
                                   "org.scala-lang" % "scala-reflect" % scalacVersion,
                                   "org.scala-lang" % "scala-library" % scalacVersion % "test"),
 
-      // start partest specific settings:
-      libraryDependencies += "org.scala-lang.modules" %% "scala-partest" % "1.0.11" % "test",
-      testOptions in Test += Tests.Cleanup({ () => partestLockFile.delete }),
-      // this option is needed so that partest doesn't run
-      partestDeps := Seq(
-        scalaCompiler,
-        "org.scala-lang" % "scala-reflect" % scalacVersion,
-        "org.scala-lang" % "scala-library" % scalacVersion % "test"
-      ),
-      lockPartestFile := {
-        // When this file is present, running `test` generates the files for
-        // partest. Otherwise it just executes the tests directly.
-        val lockDir = partestLockFile.getParentFile
-        lockDir.mkdirs
-        // Cannot have concurrent partests as they write to the same directory.
-        if (lockDir.list.size > 0)
-          throw new RuntimeException("ERROR: sbt partest: another partest is already running, pid in lock file: " + lockDir.list.toList.mkString(" "))
-        partestLockFile.createNewFile
-        partestLockFile.deleteOnExit
-      },
-      runPartestRunner := Def.inputTaskDyn {
-        // Magic! This is both an input task and a dynamic task. Apparently
-        // command line arguments get passed to the last task in an aliased
-        // sequence (see partest alias below), so this works.
-        val args = Def.spaceDelimited("<arg>").parsed
-        val jars = List(
-          (packageBin in Compile).value.getAbsolutePath,
-          packageAll.value("dotty-library"),
-          packageAll.value("dotty-interfaces")
-        ) ++ getJarPaths(partestDeps.value, ivyPaths.value.ivyHome)
-        val dottyJars  =
-          s"""-dottyJars ${jars.length + 2} dotty.jar dotty-lib.jar ${jars.mkString(" ")}"""
-        // Provide the jars required on the classpath of run tests
-        runTask(Test, "dotty.partest.DPConsoleRunner", dottyJars + " " + args.mkString(" "))
-      }.evaluated,
-      // end partest specific settings
-
       // enable improved incremental compilation algorithm
       incOptions := incOptions.value.withNameHashing(true),
 
@@ -340,12 +286,13 @@ object Build {
         )
       }.evaluated,
 
-      filterTest := Def.inputTaskDyn {
+      vulpix := Def.inputTaskDyn {
         val args: Seq[String] = spaceDelimited("<arg>").parsed
-        testOptions := Seq()
-        (testOnly in Test).toTask(
-          " dotty.tools.dotc.CompilationTests -- -Ddotty.partest.filter=" + args.head
-        )
+        val cmd = " dotty.tools.dotc.CompilationTests" + {
+          if (args.nonEmpty) " -- -Ddotty.tests.filter=" + args.mkString(" ")
+          else ""
+        }
+        (testOnly in Test).toTask(cmd)
       }.evaluated,
 
       // Override run to be able to run compiled classfiles
@@ -471,34 +418,9 @@ object Build {
           "-Ddotty.tests.classes.compiler=" + pA("dotty-compiler")
         )
 
-        ("-DpartestParentID=" + pid) :: jars ::: tuning ::: agentOptions ::: ci_build ::: path.toList
+        jars ::: tuning ::: agentOptions ::: ci_build ::: path.toList
       }
   )
-
-  // Partest tasks
-  lazy val partestDeps =
-    SettingKey[Seq[ModuleID]]("partestDeps", "Finds jars for partest dependencies")
-  lazy val runPartestRunner =
-    InputKey[Unit]("runPartestRunner", "Runs partest")
-  lazy val lockPartestFile =
-    TaskKey[Unit]("lockPartestFile", "Creates the lock file at ./tests/locks/partest-<pid>.lock")
-  lazy val partestLockFile =
-    new File("." + File.separator + "tests" + File.separator + "locks" + File.separator + s"partest-$pid.lock")
-
-  def pid = java.lang.Long.parseLong(java.lang.management.ManagementFactory.getRuntimeMXBean().getName().split("@")(0))
-
-  def getJarPaths(modules: Seq[ModuleID], ivyHome: Option[File]): Seq[String] = ivyHome match {
-    case Some(home) =>
-      modules.map({ module =>
-        val file = Path(home) / Path("cache") /
-          Path(module.organization) / Path(module.name) / Path("jars") /
-          Path(module.name + "-" + module.revision + ".jar")
-        if (!file.isFile) throw new RuntimeException("ERROR: sbt getJarPaths: dependency jar not found: " + file)
-        else file.jfile.getAbsolutePath
-      })
-    case None => throw new RuntimeException("ERROR: sbt getJarPaths: ivyHome not defined")
-  }
-  // end partest tasks
 
   lazy val `dotty-compiler` = project.in(file("compiler")).
     dependsOn(`dotty-interfaces`).
