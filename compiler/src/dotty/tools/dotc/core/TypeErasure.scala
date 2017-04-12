@@ -355,7 +355,7 @@ class TypeErasure(isJava: Boolean, semiEraseVCs: Boolean, isConstructor: Boolean
    *   - For NoType or NoPrefix, the type itself.
    *   - For any other type, exception.
    */
-  private def apply(tp: Type)(implicit ctx: Context): Type = tp.dealias match {
+  private def apply(tp: Type)(implicit ctx: Context): Type = tp match {
     case _: ErasedValueType =>
       tp
     case tp: TypeRef =>
@@ -377,6 +377,8 @@ class TypeErasure(isJava: Boolean, semiEraseVCs: Boolean, isConstructor: Boolean
       defn.FunctionType(0)
     case AndType(tp1, tp2) =>
       erasedGlb(this(tp1), this(tp2), isJava)
+    case tp: HKApply =>
+      apply(tp.superType)
     case OrType(tp1, tp2) =>
       ctx.typeComparer.orType(this(tp1), this(tp2), erased = true)
     case tp: MethodType =>
@@ -487,7 +489,7 @@ class TypeErasure(isJava: Boolean, semiEraseVCs: Boolean, isConstructor: Boolean
    *  Need to ensure correspondence with erasure!
    */
   private def sigName(tp: Type)(implicit ctx: Context): TypeName = try {
-    tp.dealias match {
+    tp match {
       case ErasedValueType(_, underlying) =>
         sigName(underlying)
       case tp: TypeRef =>
@@ -508,6 +510,8 @@ class TypeErasure(isJava: Boolean, semiEraseVCs: Boolean, isConstructor: Boolean
           normalizeClass(sym.asClass).fullName.asTypeName
       case defn.ArrayOf(elem) =>
         sigName(this(tp))
+      case tp: HKApply =>
+        sigName(tp.superType)
       case JavaArrayType(elem) =>
         sigName(elem) ++ "[]"
       case tp: TermRef =>
