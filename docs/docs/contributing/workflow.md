@@ -12,7 +12,7 @@ This document details common workflow patterns when working with Dotty.
 git clone https://github.com/lampepfl/dotty.git
 cd dotty
 # Clone dotty-compatible stdlib. Needed for running the test suite.
-git clone -b dotty-library https://github.com/DarkDimius/scala.git scala-scala
+git clone -b dotty-library https://github.com/lampepfl/scala.git scala-scala
 ```
 
 ## Compiling files with dotc ##

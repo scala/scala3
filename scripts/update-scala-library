@@ -2,4 +2,4 @@
 
 baseDir=`pwd`
 . $baseDir/scripts/common
-update DarkDimius scala scala-scala dotty-library
+update lampepfl scala scala-scala dotty-library
