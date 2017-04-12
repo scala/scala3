@@ -256,10 +256,16 @@ class CompilationTests extends ParallelTesting {
   // Link tests -----------------------------------------------------------------
 
   @Test def linkDCEAll: Unit = {
-    def linkDCETests = compileFilesInDir("../tests/link-dce", linkDCE)
-    def linkAggressiveDCETests = compileFilesInDir("../tests/link-dce", linkAggressiveDCE)
+    def linkDCETests =
+      compileFilesInDir("../tests/link-dce", linkDCE)
+    def linkAggressiveDCETests =
+      compileFilesInDir("../tests/link-dce", linkAggressiveDCE)
+    def linkStrawmanDCETests =
+      linkTests("../tests/link-strawman-dce", strawmanSources, linkDCE)
+    def linkStrawmanAggressiveDCETests =
+      linkTests("../tests/link-strawman-dce", strawmanSources, linkAggressiveDCE, "-aggressive")
 
-    (linkDCETests/* + linkAggressiveDCETests*/).checkRuns()
+    (linkDCETests + linkAggressiveDCETests + linkStrawmanDCETests + linkStrawmanAggressiveDCETests).checkRuns()
   }
 
   @Test def linkDCEStdLibAll: Unit = {
@@ -271,16 +277,14 @@ class CompilationTests extends ParallelTesting {
     tests.reduce((a, b) => a + b).limitThreads(4).checkRuns()
   }
 
-  @Test def linkStrawmanDCEAll: Unit = {
-    linkTests("../tests/link-strawman-dce", strawmanSources, linkDCE) +
-    linkTests("../tests/link-strawman-dce", strawmanSources, linkAggressiveDCE, "-aggressive")
-  }.keepOutput.checkRuns()
+  @Test def linkSpecializeAll: Unit = {
+    def linkSpecializeTests =
+      linkTests("../tests/link-specialize", List(specializeUtil), linkSpecialize)
+    def linkStrawmanSpecializeTests =
+      linkTests("../tests/link-strawman-specialize", specializeUtil :: strawmanSources, linkSpecialize)
 
-  @Test def linkSpecializeAll: Unit =
-    linkTests("../tests/link-specialize", List(specializeUtil), linkSpecialize).keepOutput.checkRuns()
-
-  @Test def linkStrawmanSpecializeAll: Unit =
-    linkTests("../tests/link-strawman-specialize", specializeUtil :: strawmanSources, linkSpecialize).keepOutput.checkRuns()
+    (linkSpecializeTests + linkStrawmanSpecializeTests).checkRuns()
+  }
 
   private def specializeUtil = "../tests/link-specialize-util/SpecializeUtil.scala"
 
