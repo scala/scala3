@@ -11,5 +11,6 @@ object Test {
   }
   def main (args: Array[String]): Unit = {
     Console.print((new B).y);
+    println()
   }
 }

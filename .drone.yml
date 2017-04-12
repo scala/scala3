@@ -1,3 +1,9 @@
+# After updating this file, you need to re-sign it:
+#
+# - Install [drone-cli](http://readme.drone.io/usage/getting-started-cli/)
+# - Copy your token from  http://dotty-ci.epfl.ch/account (Click SHOW TOKEN)
+# - (export DRONE_TOKEN=your-token; export DRONE_SERVER=http://dotty-ci.epfl.ch; drone sign lampepfl/dotty)
+
 pipeline:
   test:
     image: lampepfl/dotty:latest
@@ -36,9 +42,7 @@ pipeline:
 
 matrix:
   TEST:
-    - ;set testOptions in LocalProject("dotty-compiler") += Tests.Argument(TestFrameworks.JUnit, "--exclude-categories=dotty.tools.dotc.ParallelTesting") ;test ;dotty-bin-tests/test
-    - ;set testOptions in LocalProject("dotty-compiler-bootstrapped") += Tests.Argument(TestFrameworks.JUnit, "--exclude-categories=dotty.tools.dotc.ParallelTesting") ;publishLocal ;dotty-bootstrapped/test
-    - ;set testOptions in LocalProject("dotty-compiler") += Tests.Argument(TestFrameworks.JUnit, "--exclude-categories=dotty.tools.dotc.ParallelTesting") ;partest-only-no-bootstrap --show-diff --verbose
-    - ;set testOptions in LocalProject("dotty-compiler-bootstrapped") += Tests.Argument(TestFrameworks.JUnit, "--exclude-categories=dotty.tools.dotc.ParallelTesting") ;partest-only --show-diff --verbose
-    - ;dotty-compiler/testOnly dotty.tools.dotc.CompilationTests
-    - ;publishLocal ;dotty-bootstrapped/testOnly dotty.tools.dotc.CompilationTests
+    - test
+    - ;publishLocal ;dotty-bootstrapped/test
+    - legacyTests
+    - dotty-bin-tests/test

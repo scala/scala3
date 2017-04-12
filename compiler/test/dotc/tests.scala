@@ -3,16 +3,22 @@ package dotc
 import dotty.Jars
 import dotty.tools.dotc.CompilerTest
 import dotty.tools.StdLibSources
+import org.junit.experimental.categories.Category
 import org.junit.{Before, Test}
 import org.junit.Assert._
 
 import java.io.{ File => JFile }
 import scala.reflect.io.Directory
 
-// tests that match regex '(pos|dotc|run|java|compileStdLib)\.*' would be executed as benchmarks.
+/** WARNING
+ *  =======
+ *  These are legacy, do not add tests here, see `CompilationTests.scala`
+ */
+@Category(Array(classOf[java.lang.Exception]))
 class tests extends CompilerTest {
 
-  def isRunByJenkins: Boolean = sys.props.isDefinedAt("dotty.jenkins.build")
+  // tests that match regex '(pos|dotc|run|java|compileStdLib)\.*' would be
+  // executed as benchmarks.
 
   val defaultOutputDir = "../out/"
 
@@ -61,7 +67,7 @@ class tests extends CompilerTest {
   }
 
   implicit val defaultOptions: List[String] = noCheckOptions ++ {
-    if (isRunByJenkins) List("-Ycheck:tailrec,resolveSuper,mixin,restoreScopes,labelDef") // should be Ycheck:all, but #725
+    if (dotty.Properties.isRunByDrone) List("-Ycheck:tailrec,resolveSuper,mixin,restoreScopes,labelDef") // should be Ycheck:all, but #725
     else List("-Ycheck:tailrec,resolveSuper,mixin,restoreScopes,labelDef")
   } ++ checkOptions ++ classPath
 
@@ -226,8 +232,8 @@ class tests extends CompilerTest {
   }
 
   @Test def compileStdLib =
-    if (!generatePartestFiles)
-      compileList("compileStdLib", stdlibFiles, stdlibMode)
+    compileList("compileStdLib", stdlibFiles, stdlibMode)
+
   @Test def compileMixed = compileLine(
       """../tests/pos/B.scala
         |../scala-scala/src/library/scala/collection/immutable/Seq.scala
@@ -254,7 +260,7 @@ class tests extends CompilerTest {
   @Test def link_dce_aggressive_stdlib_all(): Unit =
     runFiles(linkDCEWithStdlibDir, linkStdlibMode ::: linkDCEaggressive, stdlibFiles = linkDCEStdlibFiles)(noCheckOptions ++ checkOptions ++ classPath)
 
-  @Test def dotty = {
+  @Test def dottyBooted = {
     dottyBootedLib
     dottyDependsOnBootedLib
   }

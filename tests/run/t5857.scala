@@ -36,10 +36,9 @@ object Test {
       b
     }
 
-    // whatever it is, it should be less than, say, 250ms
+    // whatever it is, it should be less than, say, 1000ms
     // if `max` involves traversal, it takes over 5 seconds on a 3.2GHz i7 CPU
     //println(exectime)
-    assert(exectime < 250, exectime)
+    assert(exectime < 1000, exectime)
   }
-
 }

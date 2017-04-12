@@ -20,8 +20,6 @@ package object io {
   val File = scala.reflect.io.File
   type Path = scala.reflect.io.Path
   val Path = scala.reflect.io.Path
-  type PlainFile = scala.reflect.io.PlainFile
-  //val PlainFile = scala.reflect.io.PlainFile
   val Streamable = scala.reflect.io.Streamable
   type VirtualDirectory = scala.reflect.io.VirtualDirectory
   type VirtualFile = scala.reflect.io.VirtualFile

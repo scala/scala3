@@ -138,7 +138,7 @@ class CompilingInterpreter(
   private val prevRequests = new ArrayBuffer[Request]()
 
   /** the compiler's classpath, as URL's */
-  val compilerClasspath: List[URL] = ictx.platform.classPath(ictx).asURLs
+  val compilerClasspath: Seq[URL] = ictx.platform.classPath(ictx).asURLs
 
   /* A single class loader is used for all commands interpreted by this Interpreter.
      It would also be possible to create a new class loader for each command

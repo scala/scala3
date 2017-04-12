@@ -1,11 +1,10 @@
 package dotty
 package tools
-package dotc
+package vulpix
 
 import java.io.{ File => JFile }
 import java.text.SimpleDateFormat
 import java.util.HashMap
-import java.lang.reflect.InvocationTargetException
 import java.nio.file.StandardCopyOption.REPLACE_EXISTING
 import java.nio.file.{ Files, Path, Paths, NoSuchFileException }
 import java.util.concurrent.{ Executors => JExecutors, TimeUnit, TimeoutException }
@@ -17,11 +16,12 @@ import scala.collection.mutable
 import scala.util.matching.Regex
 import scala.util.Random
 
-import core.Contexts._
-import reporting.{ Reporter, TestReporter }
-import reporting.diagnostic.MessageContainer
-import interfaces.Diagnostic.ERROR
+import dotc.core.Contexts._
+import dotc.reporting.{ Reporter, TestReporter }
+import dotc.reporting.diagnostic.MessageContainer
+import dotc.interfaces.Diagnostic.ERROR
 import dotc.util.DiffUtil
+import dotc.{ Driver, Compiler }
 
 /** A parallel testing suite whose goal is to integrate nicely with JUnit
  *
@@ -29,20 +29,20 @@ import dotc.util.DiffUtil
  *  using this, you should be running your JUnit tests **sequentially**, as the
  *  test suite itself runs with a high level of concurrency.
  */
-trait ParallelTesting { self =>
+trait ParallelTesting extends RunnerOrchestration { self =>
 
   import ParallelTesting._
-  import ParallelSummaryReport._
 
   /** If the running environment supports an interactive terminal, each `Test`
    *  will be run with a progress bar and real time feedback
    */
   def isInteractive: Boolean
 
-  /** A regex which is used to filter which tests to run, if `None` will run
-   *  all tests
+  /** A string which is used to filter which tests to run, if `None` will run
+   *  all tests. All absolute paths that contain the substring `testFilter`
+   *  will be run
    */
-  def testFilter: Option[Regex]
+  def testFilter: Option[String]
 
   /** A test source whose files or directory of files is to be compiled
    *  in a specific way defined by the `Test`
@@ -51,6 +51,15 @@ trait ParallelTesting { self =>
     def name: String
     def outDir: JFile
     def flags: Array[String]
+
+    def classPath: String =
+      outDir.getAbsolutePath +
+      flags
+        .dropWhile(_ != "-classpath")
+        .drop(1)
+        .headOption
+        .map(":" + _)
+        .getOrElse("")
 
 
     def title: String = self match {
@@ -174,21 +183,51 @@ trait ParallelTesting { self =>
   /** Each `Test` takes the `testSources` and performs the compilation and assertions
    *  according to the implementing class "neg", "run" or "pos".
    */
-  private abstract class Test(testSources: List[TestSource], times: Int, threadLimit: Option[Int], suppressAllOutput: Boolean) {
+  private abstract class Test(testSources: List[TestSource], times: Int, threadLimit: Option[Int], suppressAllOutput: Boolean)(implicit val summaryReport: SummaryReporting) { test =>
+
+    import summaryReport._
+
     protected final val realStdout = System.out
     protected final val realStderr = System.err
 
+    /** A runnable that logs its contents in a buffer */
+    trait LoggedRunnable extends Runnable {
+      import TestReporter.logWriter
+
+      /** Instances of `LoggedRunnable` implement this method instead of the
+       *  `run` method
+       */
+      def checkTestSource(): Unit
+
+      private[this] val logBuffer = mutable.ArrayBuffer.empty[String]
+      def log(msg: String): Unit = logBuffer.append(msg)
+
+      def logReporterContents(reporter: TestReporter): Unit =
+        reporter.messages.foreach(log)
+
+      def echo(msg: String): Unit = {
+        log(msg)
+        test.echo(msg)
+      }
+
+      final def run(): Unit = {
+        checkTestSource()
+        logBuffer.iterator.foreach(logWriter.println)
+        logWriter.flush()
+      }
+    }
+
     /** Actual compilation run logic, the test behaviour is defined here */
-    protected def compilationRunnable(testSource: TestSource): Runnable
+    protected def encapsulatedCompilation(testSource: TestSource): LoggedRunnable
 
     /** All testSources left after filtering out */
     private val filteredSources =
       if (!testFilter.isDefined) testSources
       else testSources.filter {
         case JointCompilationSource(_, files, _, _) =>
-          files.exists(file => testFilter.get.findFirstIn(file.getAbsolutePath).isDefined)
+          files.exists(file => file.getAbsolutePath.contains(testFilter.get))
         case SeparateCompilationSource(_, dir, _, _) =>
-          testFilter.get.findFirstIn(dir.getAbsolutePath).isDefined
+          dir.getAbsolutePath.contains(testFilter.get)
       }
 
     /** Total amount of test sources being compiled by this test */
@@ -197,12 +236,12 @@ trait ParallelTesting { self =>
     private[this] var _errorCount =  0
     def errorCount: Int = _errorCount
 
-    private[this] var _testSourcesCompiled = 0
-    private def testSourcesCompiled: Int = _testSourcesCompiled
+    private[this] var _testSourcesCompleted = 0
+    private def testSourcesCompleted: Int = _testSourcesCompleted
 
     /** Complete the current compilation with the amount of errors encountered */
-    protected final def registerCompilation(errors: Int) = synchronized {
-      _testSourcesCompiled += 1
+    protected final def registerCompletion(errors: Int) = synchronized {
+      _testSourcesCompleted += 1
       _errorCount += errors
     }
 
@@ -211,7 +250,7 @@ trait ParallelTesting { self =>
     protected[this] final def fail(): Unit = synchronized { _failed = true }
     def didFail: Boolean = _failed
 
-    protected def echoBuildInstructions(reporter: TestReporter, testSource: TestSource, err: Int, war: Int) = {
+    protected def logBuildInstructions(reporter: TestReporter, testSource: TestSource, err: Int, war: Int) = {
       val errorMsg = testSource.buildInstructions(reporter.errorCount, reporter.warningCount)
       addFailureInstruction(errorMsg)
       failTestSource(testSource)
@@ -224,20 +263,24 @@ trait ParallelTesting { self =>
 
     /** The test sources that failed according to the implementing subclass */
     private[this] val failedTestSources = mutable.ArrayBuffer.empty[String]
-    protected final def failTestSource(testSource: TestSource) = synchronized {
-      failedTestSources.append(testSource.name + " failed")
+    protected final def failTestSource(testSource: TestSource, reason: Option[String] = None) = synchronized {
+      val extra = reason.map(" with reason: " + _).getOrElse("")
+      failedTestSources.append(testSource.title + s" failed (in ${testSource.name})" + extra)
       fail()
     }
 
     /** Prints to `System.err` if we're not suppressing all output */
-    protected def echo(msg: String): Unit =
-      if (!suppressAllOutput) realStderr.println(msg)
+    protected def echo(msg: String): Unit = if (!suppressAllOutput) {
+      // pad right so that output is at least as large as progress bar line
+      val paddingRight = " " * math.max(0, 80 - msg.length)
+      realStderr.println(msg + paddingRight)
+    }
 
     /** A single `Runnable` that prints a progress bar for the curent `Test` */
     private def createProgressMonitor: Runnable = new Runnable {
       def run(): Unit = {
         val start = System.currentTimeMillis
-        var tCompiled = testSourcesCompiled
+        var tCompiled = testSourcesCompleted
         while (tCompiled < sourceCount) {
           val timestamp = (System.currentTimeMillis - start) / 1000
           val progress = (tCompiled.toDouble / sourceCount * 40).toInt
@@ -246,15 +289,15 @@ trait ParallelTesting { self =>
             "[" + ("=" * (math.max(progress - 1, 0))) +
             (if (progress > 0) ">" else "") +
             (" " * (39 - progress)) +
-            s"] compiling ($tCompiled/$sourceCount, ${timestamp}s)\r"
+            s"] completed ($tCompiled/$sourceCount, ${timestamp}s)\r"
           )
 
           Thread.sleep(100)
-          tCompiled = testSourcesCompiled
+          tCompiled = testSourcesCompleted
         }
         // println, otherwise no newline and cursor at start of line
         realStdout.println(
-          s"[=======================================] compiled ($sourceCount/$sourceCount, " +
+          s"[=======================================] completed ($sourceCount/$sourceCount, " +
           s"${(System.currentTimeMillis - start) / 1000}s)  "
         )
       }
@@ -265,7 +308,9 @@ trait ParallelTesting { self =>
      */
     protected def tryCompile(testSource: TestSource)(op: => Unit): Unit =
       try {
-        if (!isInteractive) realStdout.println(s"Testing ${testSource.title}")
+        val testing = s"Testing ${testSource.title}"
+        TestReporter.logWriter.println(testing)
+        if (!isInteractive) realStdout.println(testing)
         op
       } catch {
         case NonFatal(e) => {
@@ -273,7 +318,7 @@ trait ParallelTesting { self =>
           // run should fail
           failTestSource(testSource)
           e.printStackTrace()
-          registerCompilation(1)
+          registerCompletion(1)
           throw e
         }
       }
@@ -288,15 +333,6 @@ trait ParallelTesting { self =>
 
       val files: Array[JFile] = files0.flatMap(flattenFiles)
 
-      def findJarFromRuntime(partialName: String) = {
-        val urls = ClassLoader.getSystemClassLoader.asInstanceOf[java.net.URLClassLoader].getURLs.map(_.getFile.toString)
-        urls.find(_.contains(partialName)).getOrElse {
-          throw new java.io.FileNotFoundException(
-            s"""Unable to locate $partialName on classpath:\n${urls.toList.mkString("\n")}"""
-          )
-        }
-      }
-
       def addOutDir(xs: Array[String]): Array[String] = {
         val (beforeCp, cpAndAfter) = xs.toList.span(_ != "-classpath")
         if (cpAndAfter.nonEmpty) {
@@ -307,11 +343,10 @@ trait ParallelTesting { self =>
       }
 
       def compileWithJavac(fs: Array[String]) = if (fs.nonEmpty) {
-        val scalaLib = findJarFromRuntime("scala-library-2.")
         val fullArgs = Array(
           "javac",
           "-classpath",
-          s".:$scalaLib:${targetDir.getAbsolutePath}"
+          s".:${Jars.scalaLibraryFromRuntime}:${targetDir.getAbsolutePath}"
         ) ++ flags.takeRight(2) ++ fs
 
         Runtime.getRuntime.exec(fullArgs).waitFor() == 0
@@ -339,16 +374,23 @@ trait ParallelTesting { self =>
         }
 
       val allArgs = addOutDir(flags)
-      driver.process(allArgs ++ files.map(_.getAbsolutePath), reporter = reporter)
 
-      val javaFiles = files.filter(_.getName.endsWith(".java")).map(_.getAbsolutePath)
-      assert(compileWithJavac(javaFiles), s"java compilation failed for ${javaFiles.mkString(", ")}")
+      // Compile with a try to catch any StackTrace generated by the compiler:
+      try {
+        driver.process(allArgs ++ files.map(_.getAbsolutePath), reporter = reporter)
+
+        val javaFiles = files.filter(_.getName.endsWith(".java")).map(_.getAbsolutePath)
+        assert(compileWithJavac(javaFiles), s"java compilation failed for ${javaFiles.mkString(", ")}")
+      }
+      catch {
+        case NonFatal(ex) => reporter.logStackTrace(ex)
+      }
 
       reporter
     }
 
     private[ParallelTesting] def executeTestSuite(): this.type = {
-      assert(_testSourcesCompiled == 0, "not allowed to re-use a `CompileRun`")
+      assert(_testSourcesCompleted == 0, "not allowed to re-use a `CompileRun`")
 
       if (filteredSources.nonEmpty) {
         val pool = threadLimit match {
@@ -359,7 +401,7 @@ trait ParallelTesting { self =>
         if (isInteractive && !suppressAllOutput) pool.submit(createProgressMonitor)
 
         filteredSources.foreach { target =>
-          pool.submit(compilationRunnable(target))
+          pool.submit(encapsulatedCompilation(target))
         }
 
         pool.shutdown()
@@ -379,7 +421,7 @@ trait ParallelTesting { self =>
       }
       else echo {
         testFilter
-          .map(r => s"""No files matched regex "$r" in test""")
+          .map(r => s"""No files matched "$r" in test""")
           .getOrElse("No tests available under target - erroneous test?")
       }
 
@@ -387,129 +429,108 @@ trait ParallelTesting { self =>
     }
   }
 
-  private final class PosTest(testSources: List[TestSource], times: Int, threadLimit: Option[Int], suppressAllOutput: Boolean)
+  private final class PosTest(testSources: List[TestSource], times: Int, threadLimit: Option[Int], suppressAllOutput: Boolean)(implicit summaryReport: SummaryReporting)
   extends Test(testSources, times, threadLimit, suppressAllOutput) {
-    protected def compilationRunnable(testSource: TestSource): Runnable = new Runnable {
-      def run(): Unit = tryCompile(testSource) {
+    protected def encapsulatedCompilation(testSource: TestSource) = new LoggedRunnable {
+      def checkTestSource(): Unit = tryCompile(testSource) {
         testSource match {
           case testSource @ JointCompilationSource(_, files, flags, outDir) => {
             val reporter = compile(testSource.sourceFiles, flags, false, outDir)
-            registerCompilation(reporter.errorCount)
+            registerCompletion(reporter.errorCount)
 
-            if (reporter.errorCount > 0)
-              echoBuildInstructions(reporter, testSource, reporter.errorCount, reporter.warningCount)
+            if (reporter.compilerCrashed || reporter.errorCount > 0) {
+              logReporterContents(reporter)
+              logBuildInstructions(reporter, testSource, reporter.errorCount, reporter.warningCount)
+            }
           }
 
           case testSource @ SeparateCompilationSource(_, dir, flags, outDir) => {
             val reporters = testSource.compilationGroups.map(files => compile(files, flags, false, outDir))
+            val compilerCrashed = reporters.exists(_.compilerCrashed)
             val errorCount = reporters.foldLeft(0) { (acc, reporter) =>
               if (reporter.errorCount > 0)
-                echoBuildInstructions(reporter, testSource, reporter.errorCount, reporter.warningCount)
+                logBuildInstructions(reporter, testSource, reporter.errorCount, reporter.warningCount)
 
               acc + reporter.errorCount
             }
 
-            registerCompilation(errorCount)
+            def warningCount = reporters.foldLeft(0)(_ + _.warningCount)
 
-            if (errorCount > 0) failTestSource(testSource)
+            registerCompletion(errorCount)
+
+            if (compilerCrashed || errorCount > 0) {
+              reporters.foreach(logReporterContents)
+              logBuildInstructions(reporters.head, testSource, errorCount, warningCount)
+            }
           }
         }
-
       }
     }
   }
 
-  private final class RunTest(testSources: List[TestSource], times: Int, threadLimit: Option[Int], suppressAllOutput: Boolean)
+  private final class RunTest(testSources: List[TestSource], times: Int, threadLimit: Option[Int], suppressAllOutput: Boolean)(implicit summaryReport: SummaryReporting)
   extends Test(testSources, times, threadLimit, suppressAllOutput) {
-    private def runMain(dir: JFile, testSource: TestSource): Array[String] = {
-      def renderStackTrace(ex: Throwable): String =
-        if (ex == null) ""
-        else ex.getStackTrace
-          .takeWhile(_.getMethodName != "invoke0")
-          .mkString("    ", "\n    ", "")
+    private[this] var didAddNoRunWarning = false
+    private[this] def addNoRunWarning() = if (!didAddNoRunWarning) {
+      didAddNoRunWarning = true
+      summaryReport.addStartingMessage {
+        """|WARNING
+           |-------
+           |Run tests were only compiled, not run - this is due to the `dotty.tests.norun`
+           |property being set
+           |""".stripMargin
+      }
+    }
 
-      import java.io.{ ByteArrayOutputStream, PrintStream }
-      import java.net.{ URL, URLClassLoader }
+    private def verifyOutput(checkFile: Option[JFile], dir: JFile, testSource: TestSource, warnings: Int) = {
+      if (Properties.testsNoRun) addNoRunWarning()
+      else runMain(testSource.classPath) match {
+        case Success(_) if !checkFile.isDefined || !checkFile.get.exists => // success!
+        case Success(output) => {
+          val outputLines = output.lines.toArray
+          val checkLines: Array[String] = Source.fromFile(checkFile.get).getLines.toArray
+          val sourceTitle = testSource.title
 
-      val printStream = new ByteArrayOutputStream
+          def linesMatch =
+            outputLines
+            .zip(checkLines)
+            .forall { case (x, y) => x == y }
 
-      try {
-        // Do classloading magic and running here:
-        val ucl = new URLClassLoader(Array(dir.toURI.toURL))
-        val cls = ucl.loadClass("Test")
-        val meth = cls.getMethod("main", classOf[Array[String]])
+          if (outputLines.length != checkLines.length || !linesMatch) {
+            // Print diff to files and summary:
+            val diff = outputLines.zip(checkLines).map { case (act, exp) =>
+              DiffUtil.mkColoredLineDiff(exp, act)
+            }.mkString("\n")
 
-        synchronized {
-          try {
-            val ps = new PrintStream(printStream)
-            System.setOut(ps)
-            System.setErr(ps)
-            Console.withOut(printStream) {
-              Console.withErr(printStream) {
-                meth.invoke(null, Array("jvm")) // partest passes at least "jvm" as an arg
-              }
-            }
-            System.setOut(realStdout)
-            System.setErr(realStderr)
-          } catch {
-            case t: Throwable =>
-              System.setOut(realStdout)
-              System.setErr(realStderr)
-              throw t
+            val msg =
+              s"""|Output from '$sourceTitle' did not match check file.
+                  |Diff ('e' is expected, 'a' is actual):
+                  |""".stripMargin + diff + "\n"
+            echo(msg)
+            addFailureInstruction(msg)
+
+            // Print build instructions to file and summary:
+            val buildInstr = testSource.buildInstructions(0, warnings)
+            addFailureInstruction(buildInstr)
+
+            // Fail target:
+            failTestSource(testSource)
           }
         }
-      }
-      catch {
-        case ex: NoSuchMethodException =>
-          echo(s"test in '$dir' did not contain method: ${ex.getMessage}\n${renderStackTrace(ex.getCause)}")
+
+        case Failure(output) =>
+          echo(output)
           failTestSource(testSource)
 
-        case ex: ClassNotFoundException =>
-          echo(s"test in '$dir' did not contain class: ${ex.getMessage}\n${renderStackTrace(ex.getCause)}")
-          failTestSource(testSource)
-
-        case ex: InvocationTargetException =>
-          echo(s"An exception ocurred when running main: ${ex.getCause}\n${renderStackTrace(ex.getCause)}")
-          failTestSource(testSource)
-      }
-      printStream.toString("utf-8").lines.toArray
-    }
-
-    private def verifyOutput(checkFile: JFile, dir: JFile, testSource: TestSource, warnings: Int) = {
-      val outputLines = runMain(dir, testSource)
-      val checkLines = Source.fromFile(checkFile).getLines.toArray
-      val sourceTitle = testSource.title
-
-      def linesMatch =
-        outputLines
-        .zip(checkLines)
-        .forall { case (x, y) => x == y }
-
-      if (outputLines.length != checkLines.length || !linesMatch) {
-        // Print diff to files and summary:
-        val diff = outputLines.zip(checkLines).map { case (act, exp) =>
-          DiffUtil.mkColoredLineDiff(exp, act)
-        }.mkString("\n")
-
-        val msg =
-          s"""|Output from '$sourceTitle' did not match check file.
-              |Diff ('e' is expected, 'a' is actual):
-              |""".stripMargin + diff + "\n"
-        echo(msg)
-        addFailureInstruction(msg)
-
-        // Print build instructions to file and summary:
-        val buildInstr = testSource.buildInstructions(0, warnings)
-        addFailureInstruction(buildInstr)
-
-        // Fail target:
-        failTestSource(testSource)
+        case Timeout =>
+          echo("failed because test " + testSource.title + " timed out")
+          failTestSource(testSource, Some("test timed out"))
       }
     }
 
-    protected def compilationRunnable(testSource: TestSource): Runnable = new Runnable {
-      def run(): Unit = tryCompile(testSource) {
-        val (errorCount, warningCount, hasCheckFile, verifier: Function0[Unit]) = testSource match {
+    protected def encapsulatedCompilation(testSource: TestSource) = new LoggedRunnable {
+      def checkTestSource(): Unit = tryCompile(testSource) {
+        val (compilerCrashed, errorCount, warningCount, verifier: Function0[Unit]) = testSource match {
           case testSource @ JointCompilationSource(_, files, flags, outDir) => {
             val checkFile = files.flatMap { file =>
               if (file.isDirectory) Nil
@@ -522,49 +543,51 @@ trait ParallelTesting { self =>
             }.headOption
             val reporter = compile(testSource.sourceFiles, flags, false, outDir)
 
-            if (reporter.errorCount > 0)
-              echoBuildInstructions(reporter, testSource, reporter.errorCount, reporter.warningCount)
+            if (reporter.compilerCrashed || reporter.errorCount > 0) {
+              logReporterContents(reporter)
+              logBuildInstructions(reporter, testSource, reporter.errorCount, reporter.warningCount)
+            }
 
-            registerCompilation(reporter.errorCount)
-            (reporter.errorCount, reporter.warningCount, checkFile.isDefined, () => verifyOutput(checkFile.get, outDir, testSource, reporter.warningCount))
+            (reporter.compilerCrashed, reporter.errorCount, reporter.warningCount, () => verifyOutput(checkFile, outDir, testSource, reporter.warningCount))
           }
 
           case testSource @ SeparateCompilationSource(_, dir, flags, outDir) => {
             val checkFile = new JFile(dir.getAbsolutePath.reverse.dropWhile(_ == '/').reverse + ".check")
+            val reporters = testSource.compilationGroups.map(compile(_, flags, false, outDir))
+            val compilerCrashed = reporters.exists(_.compilerCrashed)
             val (errorCount, warningCount) =
-              testSource
-                .compilationGroups
-                .map(compile(_, flags, false, outDir))
-                .foldLeft((0,0)) { case ((errors, warnings), reporter) =>
-                  if (reporter.errorCount > 0)
-                    echoBuildInstructions(reporter, testSource, reporter.errorCount, reporter.warningCount)
+              reporters.foldLeft((0,0)) { case ((errors, warnings), reporter) =>
+                if (reporter.errorCount > 0)
+                  logBuildInstructions(reporter, testSource, reporter.errorCount, reporter.warningCount)
 
-                  (errors + reporter.errorCount, warnings + reporter.warningCount)
-                }
+                (errors + reporter.errorCount, warnings + reporter.warningCount)
+              }
 
-            if (errorCount > 0) fail()
+            if (errorCount > 0) {
+              reporters.foreach(logReporterContents)
+              logBuildInstructions(reporters.head, testSource, errorCount, warningCount)
+            }
 
-            registerCompilation(errorCount)
-            (errorCount, warningCount, checkFile.exists, () => verifyOutput(checkFile, outDir, testSource, warningCount))
+            (compilerCrashed, errorCount, warningCount, () => verifyOutput(Some(checkFile), outDir, testSource, warningCount))
           }
         }
 
-        if (errorCount == 0 && hasCheckFile) verifier()
-        else if (errorCount == 0) runMain(testSource.outDir, testSource)
-        else if (errorCount > 0) {
-          echo(s"\nCompilation failed for: '$testSource'")
+        if (!compilerCrashed && errorCount == 0) verifier()
+        else {
+          echo(s"\n    Compilation failed for: '$testSource'")
           val buildInstr = testSource.buildInstructions(errorCount, warningCount)
           addFailureInstruction(buildInstr)
           failTestSource(testSource)
         }
+        registerCompletion(errorCount)
       }
     }
   }
 
-  private final class NegTest(testSources: List[TestSource], times: Int, threadLimit: Option[Int], suppressAllOutput: Boolean)
+  private final class NegTest(testSources: List[TestSource], times: Int, threadLimit: Option[Int], suppressAllOutput: Boolean)(implicit summaryReport: SummaryReporting)
   extends Test(testSources, times, threadLimit, suppressAllOutput) {
-    protected def compilationRunnable(testSource: TestSource): Runnable = new Runnable {
-      def run(): Unit = tryCompile(testSource) {
+    protected def encapsulatedCompilation(testSource: TestSource) = new LoggedRunnable {
+      def checkTestSource(): Unit = tryCompile(testSource) {
         // In neg-tests we allow two types of error annotations,
         // "nopos-error" which doesn't care about position and "error" which
         // has to be annotated on the correct line number.
@@ -616,27 +639,39 @@ trait ParallelTesting { self =>
           }
         }
 
-        val (expectedErrors, actualErrors, hasMissingAnnotations, errorMap) = testSource match {
+        val (compilerCrashed, expectedErrors, actualErrors, hasMissingAnnotations, errorMap) = testSource match {
           case testSource @ JointCompilationSource(_, files, flags, outDir) => {
             val sourceFiles = testSource.sourceFiles
             val (errorMap, expectedErrors) = getErrorMapAndExpectedCount(sourceFiles)
             val reporter = compile(sourceFiles, flags, true, outDir)
             val actualErrors = reporter.errorCount
 
-            (expectedErrors, actualErrors, () => getMissingExpectedErrors(errorMap, reporter.errors), errorMap)
+            if (reporter.compilerCrashed || actualErrors > 0)
+              logReporterContents(reporter)
+
+            (reporter.compilerCrashed, expectedErrors, actualErrors, () => getMissingExpectedErrors(errorMap, reporter.errors), errorMap)
           }
 
           case testSource @ SeparateCompilationSource(_, dir, flags, outDir) => {
             val compilationGroups = testSource.compilationGroups
             val (errorMap, expectedErrors) = getErrorMapAndExpectedCount(compilationGroups.toArray.flatten)
             val reporters = compilationGroups.map(compile(_, flags, true, outDir))
+            val compilerCrashed = reporters.exists(_.compilerCrashed)
             val actualErrors = reporters.foldLeft(0)(_ + _.errorCount)
             val errors = reporters.iterator.flatMap(_.errors)
-            (expectedErrors, actualErrors, () => getMissingExpectedErrors(errorMap, errors), errorMap)
+
+            if (actualErrors > 0)
+              reporters.foreach(logReporterContents)
+
+            (compilerCrashed, expectedErrors, actualErrors, () => getMissingExpectedErrors(errorMap, errors), errorMap)
           }
         }
 
-        if (expectedErrors != actualErrors) {
+        if (compilerCrashed) {
+          echo(s"Compiler crashed when compiling: ${testSource.title}")
+          failTestSource(testSource)
+        }
+        else if (expectedErrors != actualErrors) {
           echo {
             s"\nWrong number of errors encountered when compiling $testSource, expected: $expectedErrors, actual: $actualErrors\n"
           }
@@ -655,7 +690,7 @@ trait ParallelTesting { self =>
           failTestSource(testSource)
         }
 
-        registerCompilation(actualErrors)
+        registerCompletion(actualErrors)
       }
     }
   }
@@ -805,7 +840,7 @@ trait ParallelTesting { self =>
      *  compilation without generating errors and that they do not crash the
      *  compiler
      */
-    def checkCompile(): this.type = {
+    def checkCompile()(implicit summaryReport: SummaryReporting): this.type = {
       val test = new PosTest(targets, times, threadLimit, shouldFail).executeTestSuite()
 
       if (!shouldFail && test.didFail) {
@@ -822,7 +857,7 @@ trait ParallelTesting { self =>
      *  correct amount of errors at the correct positions. It also makes sure
      *  that none of these tests crash the compiler
      */
-    def checkExpectedErrors(): this.type = {
+    def checkExpectedErrors()(implicit summaryReport: SummaryReporting): this.type = {
       val test = new NegTest(targets, times, threadLimit, shouldFail).executeTestSuite()
 
       if (!shouldFail && test.didFail) {
@@ -840,7 +875,7 @@ trait ParallelTesting { self =>
      *  the compiler; it also makes sure that all tests can run with the
      *  expected output
      */
-    def checkRuns(): this.type = {
+    def checkRuns()(implicit summaryReport: SummaryReporting): this.type = {
       val test = new RunTest(targets, times, threadLimit, shouldFail).executeTestSuite()
 
       if (!shouldFail && test.didFail) {

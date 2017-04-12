@@ -173,7 +173,7 @@ class ScalaCompilerForUnitTesting(nameHashing: Boolean, includeSynthToNameHashin
   private def prepareCompiler(outputDir: File, analysisCallback: AnalysisCallback, classpath: String = ".") = {
     val args = Array.empty[String]
 
-    import dotty.tools.dotc._
+    import dotty.tools.dotc.{Compiler, Driver}
     import dotty.tools.dotc.core.Contexts._
 
     val driver = new Driver {

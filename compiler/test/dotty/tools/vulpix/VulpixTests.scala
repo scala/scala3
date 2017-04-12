@@ -1,15 +1,21 @@
-package dotty
-package tools
-package dotc
+package dotty.tools
+package vulpix
 
 import org.junit.Assert._
 import org.junit.Test
 
+import scala.concurrent.duration._
 import scala.util.control.NonFatal
 
-class ParallelTestTests extends ParallelTesting {
-  import CompilationTests._
+/** Meta tests for the Vulpix test suite */
+class VulpixTests extends ParallelTesting {
+  import TestConfiguration._
 
+  implicit val _: SummaryReporting = new NoSummaryReport
+
+  def maxDuration = 3.seconds
+  def numberOfSlaves = 5
+  def safeMode = sys.env.get("SAFEMODE").isDefined
   def isInteractive = !sys.env.contains("DRONE")
   def testFilter = None
 
@@ -55,4 +61,16 @@ class ParallelTestTests extends ParallelTesting {
 
   @Test def runOutRedirects: Unit =
     compileFile("../tests/partest-test/i2147.scala", defaultOptions).expectFailure.checkRuns()
+
+  @Test def infiteNonRec: Unit =
+    compileFile("../tests/partest-test/infinite.scala", defaultOptions).expectFailure.checkRuns()
+
+  @Test def infiteTailRec: Unit =
+    compileFile("../tests/partest-test/infiniteTail.scala", defaultOptions).expectFailure.checkRuns()
+
+  @Test def infiniteAlloc: Unit =
+    compileFile("../tests/partest-test/infiniteAlloc.scala", defaultOptions).expectFailure.checkRuns()
+
+  @Test def deadlock: Unit =
+    compileFile("../tests/partest-test/deadlock.scala", defaultOptions).expectFailure.checkRuns()
 }
