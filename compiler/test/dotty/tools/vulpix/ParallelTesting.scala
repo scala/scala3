@@ -482,12 +482,13 @@ trait ParallelTesting extends RunnerOrchestration { self =>
       }
     }
 
-    private def verifyOutput(checkFile: JFile, dir: JFile, testSource: TestSource, warnings: Int) = {
+    private def verifyOutput(checkFile: Option[JFile], dir: JFile, testSource: TestSource, warnings: Int) = {
       if (Properties.testsNoRun) addNoRunWarning()
       else runMain(testSource.classPath) match {
+        case Success(_) if !checkFile.isDefined || !checkFile.get.exists => // success!
         case Success(output) => {
           val outputLines = output.lines.toArray
-          val checkLines: Array[String] = Source.fromFile(checkFile).getLines.toArray
+          val checkLines: Array[String] = Source.fromFile(checkFile.get).getLines.toArray
           val sourceTitle = testSource.title
 
           def linesMatch =
@@ -529,7 +530,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
 
     protected def encapsulatedCompilation(testSource: TestSource) = new LoggedRunnable {
       def checkTestSource(): Unit = tryCompile(testSource) {
-        val (compilerCrashed, errorCount, warningCount, hasCheckFile, verifier: Function0[Unit]) = testSource match {
+        val (compilerCrashed, errorCount, warningCount, verifier: Function0[Unit]) = testSource match {
           case testSource @ JointCompilationSource(_, files, flags, outDir) => {
             val checkFile = files.flatMap { file =>
               if (file.isDirectory) Nil
@@ -547,7 +548,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
               logBuildInstructions(reporter, testSource, reporter.errorCount, reporter.warningCount)
             }
 
-            (reporter.compilerCrashed, reporter.errorCount, reporter.warningCount, checkFile.isDefined, () => verifyOutput(checkFile.get, outDir, testSource, reporter.warningCount))
+            (reporter.compilerCrashed, reporter.errorCount, reporter.warningCount, () => verifyOutput(checkFile, outDir, testSource, reporter.warningCount))
           }
 
           case testSource @ SeparateCompilationSource(_, dir, flags, outDir) => {
@@ -567,24 +568,11 @@ trait ParallelTesting extends RunnerOrchestration { self =>
               logBuildInstructions(reporters.head, testSource, errorCount, warningCount)
             }
 
-            (compilerCrashed, errorCount, warningCount, checkFile.exists, () => verifyOutput(checkFile, outDir, testSource, warningCount))
+            (compilerCrashed, errorCount, warningCount, () => verifyOutput(Some(checkFile), outDir, testSource, warningCount))
           }
         }
 
-        if (!compilerCrashed && errorCount == 0 && hasCheckFile) verifier()
-        else if (!compilerCrashed && errorCount == 0) {
-          if (Properties.testsNoRun) addNoRunWarning()
-          else runMain(testSource.classPath) match {
-              case Success(_) => // success!
-              case Failure(output) =>
-                echo(s"    failed when running '${testSource.title}'")
-                echo(output)
-                failTestSource(testSource)
-              case Timeout =>
-                echo("    failed because test " + testSource.title + " timed out")
-                failTestSource(testSource, Some("test timed out"))
-            }
-        }
+        if (!compilerCrashed && errorCount == 0) verifier()
         else {
           echo(s"\n    Compilation failed for: '$testSource'")
           val buildInstr = testSource.buildInstructions(errorCount, warningCount)
