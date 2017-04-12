@@ -136,7 +136,7 @@ class ShortcutImplicits extends MiniPhase with IdentityDenotTransformer { thisTr
 
         def splitClosure(tree: Tree): (List[Type] => List[List[Tree]] => Tree, Tree) = tree match {
           case Block(Nil, expr) => splitClosure(expr)
-          case Block((meth @ DefDef(nme.ANON_FUN, Nil, clparams :: Nil, _, _)) :: rest, cl: Closure) =>
+          case Block((meth @ DefDef(nme.ANON_FUN, Nil, clparams :: Nil, _, _)) :: Nil, cl: Closure) =>
             val tparamSyms = mdef.tparams.map(_.symbol)
             val vparamSymss = mdef.vparamss.map(_.map(_.symbol))
             val clparamSyms = clparams.map(_.symbol)
@@ -149,7 +149,7 @@ class ShortcutImplicits extends MiniPhase with IdentityDenotTransformer { thisTr
             val forwarder = ref(direct)
               .appliedToTypeTrees(tparamSyms.map(ref(_)))
               .appliedToArgss(vparamSymss.map(_.map(ref(_))) :+ clparamSyms.map(ref(_)))
-            val fwdClosure = cpy.Block(tree)(cpy.DefDef(meth)(rhs = forwarder) :: rest, cl)
+            val fwdClosure = cpy.Block(tree)(cpy.DefDef(meth)(rhs = forwarder) :: Nil, cl)
             (remappedCore, fwdClosure)
           case EmptyTree =>
             (_ => _ => EmptyTree, EmptyTree)
