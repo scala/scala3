@@ -7,7 +7,7 @@ import Contexts._, Symbols._, Types._, Names._, StdNames._, NameOps._, Scopes._,
 import SymDenotations._, unpickleScala2.Scala2Unpickler._, Constants._, Annotations._, util.Positions._
 import NameKinds.{ModuleClassName, DefaultGetterName}
 import ast.tpd._
-import java.io.{ File, IOException }
+import java.io.{ ByteArrayInputStream, DataInputStream, File, IOException }
 import java.lang.Integer.toHexString
 import scala.collection.{ mutable, immutable }
 import scala.collection.mutable.{ ListBuffer, ArrayBuffer }
@@ -194,13 +194,21 @@ class ClassfileParser(
         val name = pool.getName(in.nextChar)
         val isConstructor = name eq nme.CONSTRUCTOR
 
-        /** Strip leading outer param from constructor.
-         *  Todo: Also strip trailing access tag for private inner constructors?
+        /** Strip leading outer param from constructor and trailing access tag for
+         *  private inner constructors.
          */
-        def stripOuterParamFromConstructor() = innerClasses.get(currentClassName) match {
+        def normalizeConstructorParams() = innerClasses.get(currentClassName) match {
           case Some(entry) if !isStatic(entry.jflags) =>
             val mt @ MethodTpe(paramNames, paramTypes, resultType) = denot.info
-            denot.info = mt.derivedLambdaType(paramNames.tail, paramTypes.tail, resultType)
+            var normalizedParamNames = paramNames.tail
+            var normalizedParamTypes = paramTypes.tail
+            if ((jflags & JAVA_ACC_SYNTHETIC) != 0) {
+              // SI-7455 strip trailing dummy argument ("access constructor tag") from synthetic constructors which
+              // are added when an inner class needs to access a private constructor.
+              normalizedParamNames = paramNames.dropRight(1)
+              normalizedParamTypes = paramTypes.dropRight(1)
+            }
+            denot.info = mt.derivedLambdaType(normalizedParamNames, normalizedParamTypes, resultType)
           case _ =>
         }
 
@@ -216,7 +224,7 @@ class ClassfileParser(
 
         denot.info = pool.getType(in.nextChar)
         if (isEnum) denot.info = ConstantType(Constant(sym))
-        if (isConstructor) stripOuterParamFromConstructor()
+        if (isConstructor) normalizeConstructorParams()
         setPrivateWithin(denot, jflags)
         denot.info = translateTempPoly(parseAttributes(sym, denot.info))
         if (isConstructor) normalizeConstructorInfo()
@@ -227,8 +235,12 @@ class ClassfileParser(
         // seal java enums
         if (isEnum) {
           val enumClass = sym.owner.linkedClass
-          if (!(enumClass is Flags.Sealed)) enumClass.setFlag(Flags.AbstractSealed)
-          enumClass.addAnnotation(Annotation.makeChild(sym))
+          if (!enumClass.exists)
+            ctx.warning(s"no linked class for java enum $sym in ${sym.owner}. A referencing class file might be missing an InnerClasses entry.")
+          else {
+            if (!(enumClass is Flags.Sealed)) enumClass.setFlag(Flags.AbstractSealed)
+            enumClass.addAnnotation(Annotation.makeChild(sym))
+          }
         }
       } finally {
         in.bp = oldbp
@@ -923,11 +935,15 @@ class ClassfileParser(
         case null   =>
           val start = starts(index)
           if (in.buf(start).toInt != CONSTANT_UTF8) errorBadTag(start)
-          val name = termName(in.buf, start + 3, in.getChar(start + 1))
+          val len   = in.getChar(start + 1).toInt
+          val name = termName(fromMUTF8(in.buf, start + 1, len + 2))
           values(index) = name
           name
       }
     }
+
+    private def fromMUTF8(bytes: Array[Byte], offset: Int, len: Int): String =
+      new DataInputStream(new ByteArrayInputStream(bytes, offset, len)).readUTF
 
     /** Return the name found at given index in the constant pool, with '/' replaced by '.'. */
     def getExternalName(index: Int): SimpleTermName = {
