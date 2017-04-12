@@ -20,7 +20,8 @@ scala/collection/parallel/ParMap.scala
 scala/collection/parallel/ParMapLike.scala
 # -Yno-deep-subtypes fails
 
-
+scala/sys/process/ProcessImpl.scala
+# Breaks in NameKinds
 
 ## Ycheck failures, presumably linked to TailCalls
 

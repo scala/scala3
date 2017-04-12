@@ -2,8 +2,10 @@ package dotty.tools.dotc.core.tasty
 
 import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.Mode
+import dotty.tools.dotc.core.Names.TermName
+import dotty.tools.dotc.core.tasty.TastyBuffer.NameRef
 
-class SectionTreeUnpickler(unpickler: DottyUnpickler, reader: TastyReader, tastyName: TastyName.Table, sectionName: String)(implicit ctx: Context) extends TreeUnpickler(reader, tastyName, posUnpicklerOpt = None) {
+class SectionTreeUnpickler(unpickler: DottyUnpickler, reader: TastyReader, tastyName: NameRef => TermName, sectionName: String)(implicit ctx: Context) extends TreeUnpickler(reader, tastyName, posUnpicklerOpt = None) {
 
   roots = Set.empty
 

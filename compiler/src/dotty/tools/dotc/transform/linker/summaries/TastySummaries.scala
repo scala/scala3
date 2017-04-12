@@ -6,9 +6,12 @@ import dotty.tools.dotc.core.Constants.Constant
 import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.Symbols.{Symbol, defn}
 import dotty.tools.dotc.core.Decorators._
+import dotty.tools.dotc.core.Names.TermName
 import dotty.tools.dotc.core.SymDenotations.ClassDenotation
 import dotty.tools.dotc.core.Types.{ExprType, MethodType, TermRef, Type}
 import dotty.tools.dotc.core.tasty.DottyUnpickler.SectionTreeSectionUnpickler
+import dotty.tools.dotc.core.tasty.TastyBuffer.NameRef
+import dotty.tools.dotc.core.tasty.TastyUnpickler.NameTable
 import dotty.tools.dotc.core.tasty._
 import dotty.tools.dotc.transform.linker.types.{ClosureType, PreciseType}
 
@@ -48,7 +51,7 @@ class TastySummaries {
             val treeReader = tastySection.asInstanceOf[SectionTreeUnpickler].getStartReader.get
 
             val unp = new TastyUnpickler.SectionUnpickler[List[MethodSummary]](sectionName) {
-              def unpickle(reader: TastyReader, tastyName: TastyName.Table): List[MethodSummary] = {
+              def unpickle(reader: TastyReader, tastyName: NameTable): List[MethodSummary] = {
                 def readSymbolRef = {
                   val s = treeReader.readType()
                   s.termSymbol.orElse(s.typeSymbol).orElse(s.classSymbol)

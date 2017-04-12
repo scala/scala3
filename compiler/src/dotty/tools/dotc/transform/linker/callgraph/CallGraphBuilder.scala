@@ -3,8 +3,9 @@ package dotty.tools.dotc.transform.linker.callgraph
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.Flags._
-import dotty.tools.dotc.core.NameOps.SuperAccessorName
 import dotty.tools.dotc.core.Names._
+import dotty.tools.dotc.core.NameKinds._
+import dotty.tools.dotc.core.NameOps._
 import dotty.tools.dotc.core.StdNames._
 import dotty.tools.dotc.core.Symbols.{Symbol, _}
 import dotty.tools.dotc.core.TypeErasure
@@ -536,17 +537,10 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
         addCall(CallInfoWithContext(TermRef.withFixedSym(thisTpePropagated, targetMethod.name, targetMethod), targs, args, outerTargs, someCaller, someCallee))
 
       // super call in a trait
-      case t if calleeSymbol.is(SuperAccessor) =>
+      case t if calleeSymbol.is(Scala2SuperAccessor) =>
 
         // Taken from ResolveSuper.rebindSuper
-        val unexpandedAccName =
-          if (calleeSymbol.is(ExpandedName))  // Cannot use unexpandedName because of #765. t2183.scala would fail if we did.
-            calleeSymbol.name
-              .drop(calleeSymbol.name.indexOfSlice(nme.EXPAND_SEPARATOR ++ nme.SUPER_PREFIX))
-              .drop(nme.EXPAND_SEPARATOR.length)
-          else calleeSymbol.name
-
-        val SuperAccessorName(memberName) = unexpandedAccName: Name
+        val SuperAccessorName(memberName) = calleeSymbol.name.unexpandedName
 
         val prev = t.widenDealias.classSymbol
         getTypesByMemberName(memberName).foreach {
@@ -715,7 +709,7 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
       }
 
       def allDecls(argType: Type) =
-        (argType.decls ++ argType.parents.flatMap(_.decls)).toSet
+        argType.decls.iterator.toSet ++ argType.parents.flatMap(_.decls.iterator)
 
       for {
         decl <- allDecls(argType)

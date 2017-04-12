@@ -6,15 +6,16 @@ import dotty.tools.dotc.ast.Trees._
 import dotty.tools.dotc.ast.{TreeTypeMap, tpd}
 import dotty.tools.dotc.core.Contexts.{Context, ContextBase}
 import dotty.tools.dotc.core.Symbols._
+import dotty.tools.dotc.core.Decorators._
 import dotty.tools.dotc.core.DenotTransformers.InfoTransformer
 import dotty.tools.dotc.core.Denotations.SingleDenotation
+import dotty.tools.dotc.core.NameKinds._
 import dotty.tools.dotc.core.Names.{Name, TypeName}
 import dotty.tools.dotc.core.SymDenotations.SymDenotation
 import dotty.tools.dotc.core._
-import Decorators._
 import dotty.tools.dotc.core.Constants.Constant
 import dotty.tools.dotc.core.Flags.FlagSet
-import dotty.tools.dotc.core.StdNames.nme
+import dotty.tools.dotc.core.StdNames._
 import dotty.tools.dotc.core.Symbols.{ClassSymbol, Symbol}
 import dotty.tools.dotc.core.Types._
 import dotty.tools.dotc.transform.TreeTransforms.{MiniPhaseTransform, TransformerInfo, TreeTransform}
@@ -262,7 +263,8 @@ class OuterSpecializer extends MiniPhaseTransform with InfoTransformer {
         if (claz.flags is Flags.Module) nm.moduleClassName
         else nm
       }
-      val newClaz = ctx.newClassSymbol(claz.owner, fixModule(ctx.freshName(claz.name + "$spec").toTypeName), claz.flags | Flags.Synthetic, newType)
+      val sepcName: TypeName = SpecializedName.fresh(claz.name.toTermName).toTypeName
+      val newClaz = ctx.newClassSymbol(claz.owner, fixModule(sepcName), claz.flags | Flags.Synthetic, newType)
 
       originalClass.decls.foreach { originalDecl =>
 
@@ -459,7 +461,7 @@ class OuterSpecializer extends MiniPhaseTransform with InfoTransformer {
       } else poly.paramInfos
       val newSym = ctx.newSymbol(
         decl.owner,
-        ctx.freshName(decl.name + "$spec").toTermName
+        SpecializedName.fresh(decl.name.asTermName)
         /*NameOps.NameDecorator(decl.name)
           .specializedFor(Nil, Nil, instantiations.toList, poly.paramNames)
           .asInstanceOf[TermName]*/ ,

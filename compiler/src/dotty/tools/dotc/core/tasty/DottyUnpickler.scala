@@ -24,7 +24,7 @@ object DottyUnpickler {
   }
 
   class SectionTreeSectionUnpickler(unpickler: DottyUnpickler, sectionName: String)(implicit ctx: Context) extends TreeSectionUnpickler(posUnpickler = None) {
-    override def unpickle(reader: TastyReader, tastyName: TastyName.Table): SectionTreeUnpickler = {
+    override def unpickle(reader: TastyReader, tastyName: NameTable): SectionTreeUnpickler = {
       new SectionTreeUnpickler(unpickler, reader, tastyName, sectionName)
     }
   }

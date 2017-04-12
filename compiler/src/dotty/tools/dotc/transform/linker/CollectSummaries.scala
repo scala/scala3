@@ -4,13 +4,12 @@ import dotty.tools.dotc.FromTasty.TASTYCompilationUnit
 import dotty.tools.dotc.ast.Trees._
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.core.Constants.Constant
-import dotty.tools.dotc.core.Mode
+import dotty.tools.dotc.core._
 import dotty.tools.dotc.core.Contexts._
 import dotty.tools.dotc.core.Flags._
 import dotty.tools.dotc.core.Names._
 import dotty.tools.dotc.core.StdNames.nme
 import dotty.tools.dotc.core.Symbols._
-import dotty.tools.dotc.core.{ClassfileLoader, Flags, TypeErasure}
 import dotty.tools.dotc.core.Types._
 import dotty.tools.dotc.core.Decorators._
 import dotty.tools.dotc.core.SymDenotations.ClassDenotation
@@ -22,6 +21,7 @@ import dotty.tools.dotc.transform.TreeGen
 import dotty.tools.dotc.transform.TreeTransforms._
 import dotty.tools.dotc.transform.linker.summaries._
 import dotty.tools.dotc.transform.linker.types.{ClosureType, PreciseType}
+import dotty.tools.dotc.typer.Applications
 import dotty.tools.dotc.typer.Applications._
 
 import scala.annotation.tailrec
@@ -81,7 +81,7 @@ class CollectSummaries extends MiniPhase { thisTransform =>
     override def prepareForValDef(tree: tpd.ValDef)(implicit ctx: Context): TreeTransform = {
       val sym = tree.symbol
       if (sym.exists && ((sym.is(Lazy) &&  (sym.owner.is(Package) || sym.owner.isClass)) ||  //lazy vals and modules
-          sym.owner.name.startsWith(nme.LOCALDUMMY_PREFIX) || // blocks inside constructor
+          sym.owner.name.startsWith(StdNames.str.LOCALDUMMY_PREFIX) || // blocks inside constructor
           sym.owner.isClass)) { // fields
         // owner is a template
         methodSummaryStack.push(curMethodSummary)
@@ -95,7 +95,7 @@ class CollectSummaries extends MiniPhase { thisTransform =>
       if (sym.exists) {
         val ownerIsClass = sym.owner.isClass
         val isLazyValOrModule = sym.is(Lazy) && (ownerIsClass || sym.owner.is(Package))
-        val isBockInsideConstructor = sym.owner.name.startsWith(nme.LOCALDUMMY_PREFIX)
+        val isBockInsideConstructor = sym.owner.name.startsWith(StdNames.str.LOCALDUMMY_PREFIX)
         if (isLazyValOrModule || isBockInsideConstructor || ownerIsClass) {
           assert(curMethodSummary.methodDef eq tree.symbol)
           assert(!methodSummaries.contains(curMethodSummary.methodDef))
@@ -381,7 +381,7 @@ class CollectSummaries extends MiniPhase { thisTransform =>
         else                                                        // result of unapply is Option[(T1, ..., Tn)]
           registerNestedUnapplyFromProduct(getCall, tree.patterns)
 
-      } else if (defn.isProductSubType(unapplyResultType)) {
+      } else if (Applications.canProductMatch(unapplyResultType)) {
         // if result of unapply is a Product
         registerNestedUnapplyFromProduct(unapplyCall, tree.patterns)
       }
@@ -402,7 +402,7 @@ class CollectSummaries extends MiniPhase { thisTransform =>
 
     override def transformTry(tree: tpd.Try)(implicit ctx: Context, info: TransformerInfo): tpd.Tree = {
       // generate synthetic selector of Throwable type (from TryCatchPatterns.scala)
-      val exName = ctx.freshName(nme.DEFAULT_EXCEPTION_NAME).toTermName
+      val exName = NameKinds.DefaultExceptionName.fresh()
       val fallbackSelector = ctx.newSymbol(ctx.owner, exName, Flags.Synthetic | Flags.Case, defn.ThrowableType)
       val sel = Ident(fallbackSelector.termRef)
 
