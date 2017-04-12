@@ -6,11 +6,9 @@ import dotty.tools.dotc.core.Constants.Constant
 import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.Symbols.{Symbol, defn}
 import dotty.tools.dotc.core.Decorators._
-import dotty.tools.dotc.core.Names.TermName
 import dotty.tools.dotc.core.SymDenotations.ClassDenotation
-import dotty.tools.dotc.core.Types.{ExprType, MethodType, TermRef, Type}
+import dotty.tools.dotc.core.Types.{TermRef, Type}
 import dotty.tools.dotc.core.tasty.DottyUnpickler.SectionTreeSectionUnpickler
-import dotty.tools.dotc.core.tasty.TastyBuffer.NameRef
 import dotty.tools.dotc.core.tasty.TastyUnpickler.NameTable
 import dotty.tools.dotc.core.tasty._
 import dotty.tools.dotc.transform.linker.types.{ClosureType, PreciseType}
@@ -49,69 +47,9 @@ class TastySummaries {
             val tastySection = unpickler.unpickler.unpickle(new SectionTreeSectionUnpickler(unpickler, sectionName)).get
             tastySection.enterTopLevel(roots = Set.empty)
             val treeReader = tastySection.asInstanceOf[SectionTreeUnpickler].getStartReader.get
-
             val unp = new TastyUnpickler.SectionUnpickler[List[MethodSummary]](sectionName) {
-              def unpickle(reader: TastyReader, tastyName: NameTable): List[MethodSummary] = {
-                def readSymbolRef = {
-                  val s = treeReader.readType()
-                  s.termSymbol.orElse(s.typeSymbol).orElse(s.classSymbol)
-                }
-
-                def readType = treeReader.readType()
-                def readTerm = treeReader.readTpt()
-
-                def readMS: MethodSummary = {
-
-                  val sym = readSymbolRef
-                  val methodsSz = reader.readInt()
-
-                  val methodsCalled = new mutable.HashMap[Type, List[CallInfo]]()
-
-                  for(_ <- 0 until methodsSz) {
-                    val preciseReceiver :: _ = readCompactBits(reader, 1)
-                    val receiver = if (preciseReceiver) new PreciseType(readType) else readType
-                    val listSz = reader.readInt()
-
-                    def readCallInfo: CallInfo = {
-                      val t = readType
-                      val targsSz = reader.readByte()
-                      val targs = List.fill(targsSz)(readType)
-                      val argsSz = reader.readByte()
-                      val argsFlags = readCompactBits(reader, argsFlagsSize * argsSz)
-                      val argsPassed = for (argFlags <- argsFlags.sliding(argsFlagsSize, argsFlagsSize).toList) yield {
-                        val precise :: closure :: _ = argFlags
-                        if (precise) new PreciseType(readType)
-                        else if (closure) new ClosureType(readTerm.asInstanceOf[tpd.Closure], readType, readSymbolRef)
-                        else readType
-                      }
-                      val source = None // TODO
-                      CallInfo(t.asInstanceOf[TermRef], targs, argsPassed, source) // TODO no need to normalize the types
-                    }
-
-                    val calls = for(_ <- 0 until listSz) yield readCallInfo
-                    methodsCalled(receiver) = calls.toList
-                  }
-
-                  val accessedModulesSz = reader.readInt()
-
-                  val accessedModules = for (_ <- 0 until accessedModulesSz) yield readSymbolRef
-
-                  val argumentReturned = reader.readByte()
-
-                  val bitsExpected = reader.readByte()
-                  val (thisAccessed :: argumentStoredToHeap) = readCompactBits(reader, bitsExpected)
-                  val definedClosures = Nil // TODO
-                  new MethodSummary(sym, thisAccessed, methodsCalled.toMap, definedClosures, accessedModules.toList, argumentReturned.toByte, argumentStoredToHeap.take(bitsExpected - 1))
-                }
-
-                val version = reader.readInt()
-
-                val methodsSz = reader.readInt()
-
-                val methods = for(_ <- 0 until methodsSz) yield readMS
-
-                methods.toList
-              }
+              def unpickle(reader: TastyReader, tastyName: NameTable): List[MethodSummary] =
+                new SummaryReader(treeReader, reader).read()
             }
             unpickler.unpickler.unpickle(unp).getOrElse(Nil)
           case _ => Nil
@@ -128,7 +66,7 @@ object TastySummaries {
 
   val sectionName = "MethodSummaries"
 
-  private[TastySummaries] val argsFlagsSize = 2
+  private val argsFlagsSize = 2
 
   def saveInTasty(methodSummaries: List[MethodSummary])(implicit ctx: Context): Unit = {
     for (cls <- ctx.compilationUnit.picklers.keySet) {
@@ -144,72 +82,10 @@ object TastySummaries {
 
         pickler.newSection(sectionName, buf)
         val start = treePickl.buf.currentAddr
-        buf.writeInt(version) //1
-
-        def writeSymbolRef(sym: Symbol) = {
-          treePickl.pickleType(ref(sym).tpe)
-        }
-
-        def writeTypeRef(tp: Type) = {
-          treePickl.pickleType(tp)
-        }
-
-        def writeTreeRef(tp: tpd.Tree) = {
-          treePickl.pickleTree(tp)
-        }
-
-        def serializeMS(ms: MethodSummary) = {
-          writeSymbolRef(ms.methodDef) //26
-
-          buf.writeInt(ms.methodsCalled.size) //29
-          for ((receiver, methods) <- ms.methodsCalled) {
-            buf.writeByte(if (receiver.isInstanceOf[PreciseType]) 1 else 0)
-            val rec = receiver match {
-              case receiver: PreciseType => receiver.underlying
-              case _ => receiver
-            }
-            writeTypeRef(rec)
-            buf.writeInt(methods.size)
-
-            def writeCallInfo(c: CallInfo): Unit = {
-              writeTypeRef(c.call)
-              buf.writeByte(c.targs.size)
-              c.targs foreach writeTypeRef
-
-              buf.writeByte(c.argumentsPassed.size)
-
-              val argFlags =
-                c.argumentsPassed.flatMap(arg => List(arg.isInstanceOf[PreciseType], arg.isInstanceOf[ClosureType]))
-              assert(argFlags.size == argsFlagsSize * c.argumentsPassed.size)
-              compactBits(argFlags).foreach(buf.writeByte)
-
-              c.argumentsPassed.foreach {
-                case arg: PreciseType => writeTypeRef(arg.underlying)
-                case arg: ClosureType =>
-                  writeTreeRef(arg.meth)
-                  writeTypeRef(arg.u)
-                  writeSymbolRef(arg.implementedMethod)
-                case arg => writeTypeRef(arg)
-              }
-            }
-
-            methods foreach writeCallInfo
-          }
-
-          buf.writeInt(ms.accessedModules.length)
-          ms.accessedModules foreach writeSymbolRef
-
-          buf.writeByte(ms.argumentReturned)
-          val flags = ms.thisAccessed :: ms.argumentStoredToHeap
-          buf.writeByte(flags.length)
-          compactBits(flags).foreach(buf.writeByte)
-        }
 
         val methods = methodSummaries.filter(_.methodDef.topLevelClass == cls)
 
-        buf.writeInt(methods.length) // 19
-
-        methods foreach serializeMS
+        new SummaryWriter(treePickl, buf).write(methods)
 
         val sz = treePickl.buf.currentAddr.index - start.index
 
@@ -224,25 +100,144 @@ object TastySummaries {
     }
   }
 
-  private def compactBits(ls: List[Boolean]): List[Int] = {
-    def foldByte(bt: List[Boolean]) = bt.foldRight(0)((bl: Boolean, acc: Int) => (if (bl) 1 else 0) + (acc << 1))
-    ls.grouped(8).map(foldByte).toList
+  private[TastySummaries] class SummaryReader(tReader: SectionTreeUnpickler#TreeReader, reader: TastyReader)(implicit ctx: Context) {
+
+    def read(): List[MethodSummary] = {
+      val version = reader.readInt()
+      val methodsSz = reader.readInt()
+      List.fill(methodsSz)(readMethodSummary(tReader, reader))
+    }
+
+    private def readSymbolRef = {
+      val sym = tReader.readType()
+      sym.termSymbol.orElse(sym.typeSymbol).orElse(sym.classSymbol)
+    }
+
+    private def readMethodSummary(tReader: SectionTreeUnpickler#TreeReader, reader: TastyReader): MethodSummary = {
+      val sym = readSymbolRef
+      val methodsSz = reader.readInt()
+
+      val methodsCalled = new mutable.HashMap[Type, List[CallInfo]]()
+
+      for (_ <- 0 until methodsSz) {
+        val preciseReceiver = reader.readByte() == 1 // TODO use a single compact bits section for all receivers before the loop
+        val receiver = if (preciseReceiver) new PreciseType(tReader.readType()) else tReader.readType()
+
+        val listSz = reader.readInt()
+        methodsCalled(receiver) = List.fill(listSz)(readCallInfo)
+      }
+
+      val accessedModulesSz = reader.readInt()
+      val accessedModules = List.fill(accessedModulesSz)(readSymbolRef)
+
+      val argumentReturned = reader.readByte()
+
+      val bitsExpected = reader.readByte()
+      val (thisAccessed :: argumentStoredToHeap) = readCompactBits(reader, bitsExpected)
+
+      val definedClosures = Nil // TODO
+
+      new MethodSummary(sym, thisAccessed, methodsCalled.toMap, definedClosures, accessedModules, argumentReturned.toByte, argumentStoredToHeap.take(bitsExpected - 1))
+    }
+
+    private def readCallInfo: CallInfo = {
+      val call = tReader.readType()
+
+      val targsSz = reader.readByte()
+      val targs = List.fill(targsSz)(tReader.readType())
+
+      val argsSz = reader.readByte()
+      val argsFlags = readCompactBits(reader, argsFlagsSize * argsSz)
+      val argsPassed = argsFlags.sliding(argsFlagsSize, argsFlagsSize).map(readArg).toList
+
+      val source = None // TODO
+
+      CallInfo(call.asInstanceOf[TermRef], targs, argsPassed, source) // TODO no need to normalize the types
+    }
+
+    private def readArg(argFlags: List[Boolean]): Type = {
+      assert(argFlags.length == argsFlagsSize)
+      val precise :: closure :: _ = argFlags
+      if (precise) new PreciseType(tReader.readType())
+      else if (closure) new ClosureType(tReader.readTpt().asInstanceOf[tpd.Closure], tReader.readType(), readSymbolRef)
+      else tReader.readType()
+    }
+
+    private def readCompactBits(reader: TastyReader, bitsExpected: Int): List[Boolean] = {
+      val bytesExpected = bitsExpected / 8 + (if (bitsExpected % 8 > 0) 1 else 0)
+      val bytes = reader.readBytes(bytesExpected)
+      bytes.toIterator.flatMap { bt =>
+        List((bt & 1) != 0, (bt & 2) != 0, (bt & 4) != 0, (bt & 8) != 0,
+            (bt & 16) != 0, (bt & 32) != 0, (bt & 64) != 0, (bt & 128) != 0)
+      }.take(bitsExpected).toList
+    }
   }
 
-  private def readCompactBits(reader: TastyReader, bitsExpected: Int): List[Boolean] = {
-    val bytesExpected = bitsExpected / 8 + (if (bitsExpected % 8 > 0) 1 else 0)
-    val bytes = reader.readBytes(bytesExpected)
-    bytes.toIterator.flatMap { bt =>
-      List(
-        (bt & 1) != 0,
-        (bt & 2) != 0,
-        (bt & 4) != 0,
-        (bt & 8) != 0,
-        (bt & 16) != 0,
-        (bt & 32) != 0,
-        (bt & 64) != 0,
-        (bt & 128) != 0)
-    }.take(bitsExpected).toList
+  private class SummaryWriter(treePickl: TreePickler, buf: TastyBuffer)(implicit ctx: Context) {
+    def write(methods: List[MethodSummary]) = {
+      buf.writeInt(version) //1
+      buf.writeInt(methods.length) // 19
+      methods.foreach(serializeMethodSummary)
+    }
+
+    private def writeSymbolRef(sym: Symbol) =
+      treePickl.pickleType(ref(sym).tpe)
+
+    private def serializeMethodSummary(ms: MethodSummary) = {
+      writeSymbolRef(ms.methodDef) //26
+
+      buf.writeInt(ms.methodsCalled.size) //29
+      for ((receiver, methods) <- ms.methodsCalled) {
+        // TODO use a single compact bits section for all receivers before the loop
+        buf.writeByte(if (receiver.isInstanceOf[PreciseType]) 1 else 0)
+        val rec = receiver match {
+          case receiver: PreciseType => receiver.underlying
+          case _ => receiver
+        }
+        treePickl.pickleType(rec)
+        buf.writeInt(methods.size)
+
+        methods.foreach(writeCallInfo)
+      }
+
+      buf.writeInt(ms.accessedModules.length)
+      ms.accessedModules foreach writeSymbolRef
+
+      buf.writeByte(ms.argumentReturned)
+      val flags = ms.thisAccessed :: ms.argumentStoredToHeap
+      buf.writeByte(flags.length)
+      writeCompactBits(flags)
+    }
+
+    private def writeCallInfo(c: CallInfo): Unit = {
+      treePickl.pickleType(c.call)
+
+      buf.writeByte(c.targs.size)
+      c.targs.foreach(targ => treePickl.pickleType(targ))
+
+      buf.writeByte(c.argumentsPassed.size)
+      val argFlags =
+        c.argumentsPassed.flatMap(arg => List(arg.isInstanceOf[PreciseType], arg.isInstanceOf[ClosureType]))
+      assert(argFlags.size == argsFlagsSize * c.argumentsPassed.size)
+      writeCompactBits(argFlags)
+      c.argumentsPassed.foreach(writeArg)
+    }
+
+    private def writeArg(arg: Type): Unit = arg match {
+      case arg: PreciseType =>
+        treePickl.pickleType(arg.underlying)
+      case arg: ClosureType =>
+        treePickl.pickleTree(arg.meth)
+        treePickl.pickleType(arg.u)
+        writeSymbolRef(arg.implementedMethod)
+      case arg =>
+        treePickl.pickleType(arg)
+    }
+
+    private def writeCompactBits(ls: List[Boolean]): Unit = {
+      def foldByte(bt: List[Boolean]) = bt.foldRight(0)((bl: Boolean, acc: Int) => (if (bl) 1 else 0) + (acc << 1))
+      ls.grouped(8).map(foldByte).foreach(buf.writeByte)
+    }
   }
 
 }
