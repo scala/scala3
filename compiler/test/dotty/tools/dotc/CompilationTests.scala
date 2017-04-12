@@ -19,7 +19,7 @@ class CompilationTests extends ParallelTesting {
   def numberOfSlaves = 5
   def safeMode = Properties.testsSafeMode
   def isInteractive = SummaryReport.isInteractive
-  def testFilter = Properties.testsFilter.map(r => new Regex(r))
+  def testFilter = Properties.testsFilter
 
   // Positive tests ------------------------------------------------------------
 

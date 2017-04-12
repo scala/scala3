@@ -38,10 +38,11 @@ trait ParallelTesting extends RunnerOrchestration { self =>
    */
   def isInteractive: Boolean
 
-  /** A regex which is used to filter which tests to run, if `None` will run
-   *  all tests
+  /** A string which is used to filter which tests to run, if `None` will run
+   *  all tests. All absolute paths that contain the substring `testFilter`
+   *  will be run
    */
-  def testFilter: Option[Regex]
+  def testFilter: Option[String]
 
   /** A test source whose files or directory of files is to be compiled
    *  in a specific way defined by the `Test`
@@ -51,14 +52,14 @@ trait ParallelTesting extends RunnerOrchestration { self =>
     def outDir: JFile
     def flags: Array[String]
 
-    def classPath: String = {
-      val (beforeCp, cpAndAfter) = flags.toList.span(_ != "-classpath")
-      if (cpAndAfter.nonEmpty) {
-        val (_ :: cpArg :: _) = cpAndAfter
-        s"${outDir.getAbsolutePath}:" + cpArg
-      }
-      else outDir.getAbsolutePath
-    }
+    def classPath: String =
+      outDir.getAbsolutePath +
+      flags
+        .dropWhile(_ != "-classpath")
+        .drop(1)
+        .headOption
+        .map(":" + _)
+        .getOrElse("")
 
 
     def title: String = self match {
@@ -224,9 +225,9 @@ trait ParallelTesting extends RunnerOrchestration { self =>
       if (!testFilter.isDefined) testSources
       else testSources.filter {
         case JointCompilationSource(_, files, _, _) =>
-          files.exists(file => testFilter.get.findFirstIn(file.getAbsolutePath).isDefined)
+          files.exists(file => file.getAbsolutePath.contains(testFilter.get))
         case SeparateCompilationSource(_, dir, _, _) =>
-          testFilter.get.findFirstIn(dir.getAbsolutePath).isDefined
+          dir.getAbsolutePath.contains(testFilter.get)
       }
 
     /** Total amount of test sources being compiled by this test */
@@ -420,7 +421,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
       }
       else echo {
         testFilter
-          .map(r => s"""No files matched regex "$r" in test""")
+          .map(r => s"""No files matched "$r" in test""")
           .getOrElse("No tests available under target - erroneous test?")
       }
 
@@ -475,7 +476,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
       summaryReport.addStartingMessage {
         """|WARNING
            |-------
-           |Run tests were only compiled, not run - this is due to `dotty.tests.norun`
+           |Run tests were only compiled, not run - this is due to the `dotty.tests.norun`
            |property being set
            |""".stripMargin
       }
