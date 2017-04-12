@@ -54,4 +54,8 @@ object Implicits {
 
   val xx: Int = (1: Byte)
 
+  // Problem with implicits over or types
+  def useOrd[T: math.Ordering](xs: T*) = ()
+  useOrd(Some(1), None)
+
 }

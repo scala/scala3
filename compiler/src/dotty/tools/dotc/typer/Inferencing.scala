@@ -45,9 +45,12 @@ object Inferencing {
     else throw new Error(i"internal error: type of $what $tp is not fully defined, pos = $pos") // !!! DEBUG
 
 
-  /** Instantiate selected type variables `tvars` in type `tp` */
+  /** Instantiate selected type variables `tvars` in type `tp`. Instantiation
+   *  proceeds with `implicitMode = true`, that is, type variables are approximated
+   *  from below using or-dominators.
+   */
   def instantiateSelected(tp: Type, tvars: List[Type])(implicit ctx: Context): Unit =
-    new IsFullyDefinedAccumulator(new ForceDegree.Value(tvars.contains, minimizeAll = true)).process(tp)
+    new IsFullyDefinedAccumulator(new ForceDegree.Value(tvars.contains, implicitMode = true)).process(tp)
 
   /** The accumulator which forces type variables using the policy encoded in `force`
    *  and returns whether the type is fully defined. The direction in which
@@ -81,6 +84,17 @@ object Inferencing {
       case tvar: TypeVar
       if !tvar.isInstantiated && ctx.typerState.constraint.contains(tvar) =>
         force.appliesTo(tvar) && {
+          if (force.implicitMode) {
+            // instantiate to or-dominator of lower bound; without this tweak we'd
+            // fail to find an implicit in situations like this:
+            //
+            //   def f[T: Ordering](xs: T*) = ...
+            //   f(Some(1), None)
+            //
+            // The problem is that there is no implicit Ordering instance for the otherwise inferred
+            // lower bound of T, which is `Some[Int] | None`.
+            ctx.orDominator(ctx.typeComparer.bounds(tvar.origin).lo) <:< tvar.origin
+          }
           val direction = instDirection(tvar.origin)
           if (direction != 0) {
             //if (direction > 0) println(s"inst $tvar dir = up")
@@ -88,7 +102,7 @@ object Inferencing {
           }
           else {
             val minimize =
-              force.minimizeAll ||
+              force.implicitMode ||
               variance >= 0 && !(
                 force == ForceDegree.noBottom &&
                 defn.isBottomType(ctx.typeComparer.approximation(tvar.origin, fromBelow = true)))
@@ -366,9 +380,9 @@ object Inferencing {
 
 /** An enumeration controlling the degree of forcing in "is-dully-defined" checks. */
 @sharable object ForceDegree {
-  class Value(val appliesTo: TypeVar => Boolean, val minimizeAll: Boolean)
-  val none = new Value(_ => false, minimizeAll = false)
-  val all = new Value(_ => true, minimizeAll = false)
-  val noBottom = new Value(_ => true, minimizeAll = false)
+  class Value(val appliesTo: TypeVar => Boolean, val implicitMode: Boolean)
+  val none = new Value(_ => false, implicitMode = false)
+  val all = new Value(_ => true, implicitMode = false)
+  val noBottom = new Value(_ => true, implicitMode = false)
 }
 
