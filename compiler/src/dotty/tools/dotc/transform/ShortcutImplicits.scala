@@ -11,7 +11,7 @@ import core.Decorators._
 import core.StdNames.nme
 import core.Names._
 import core.NameOps._
-import core.NameKinds.DirectName
+import core.NameKinds.DirectMethodName
 import ast.Trees._
 import ast.tpd
 import collection.mutable
@@ -77,6 +77,7 @@ class ShortcutImplicits extends MiniPhase with IdentityDenotTransformer { thisTr
     private def shouldBeSpecialized(sym: Symbol)(implicit ctx: Context) =
       sym.is(Method, butNot = Accessor) &&
       defn.isImplicitFunctionType(sym.info.finalResultType) &&
+      !sym.isAnonymousFunction &&
       (specializeMonoTargets || !sym.isEffectivelyFinal || sym.allOverriddenSymbols.nonEmpty)
 
     /** @pre    The type's final result type is an implicit function type `implicit Ts => R`.
@@ -92,7 +93,7 @@ class ShortcutImplicits extends MiniPhase with IdentityDenotTransformer { thisTr
     /** A new `m$direct` method to accompany the given method `m` */
     private def newDirectMethod(sym: Symbol)(implicit ctx: Context): Symbol = {
       val direct = sym.copy(
-        name = DirectName(sym.name.asTermName).asInstanceOf[sym.ThisName],
+        name = DirectMethodName(sym.name.asTermName).asInstanceOf[sym.ThisName],
         flags = sym.flags | Synthetic,
         info = directInfo(sym.info))
       if (direct.allOverriddenSymbols.isEmpty) direct.resetFlag(Override)
@@ -104,13 +105,12 @@ class ShortcutImplicits extends MiniPhase with IdentityDenotTransformer { thisTr
      */
     private def directMethod(sym: Symbol)(implicit ctx: Context): Symbol =
       if (sym.owner.isClass) {
-        val direct = sym.owner.info.member(DirectName(sym.name.asTermName))
+        val direct = sym.owner.info.member(DirectMethodName(sym.name.asTermName))
           .suchThat(_.info matches directInfo(sym.info)).symbol
         if (direct.maybeOwner == sym.owner) direct
         else newDirectMethod(sym).enteredAfter(thisTransform)
       }
       else directMeth.getOrElseUpdate(sym, newDirectMethod(sym))
-
 
     /** Transform `qual.apply` occurrences according to rewrite rule (2) above */
     override def transformSelect(tree: Select)(implicit ctx: Context, info: TransformerInfo) =
@@ -122,7 +122,7 @@ class ShortcutImplicits extends MiniPhase with IdentityDenotTransformer { thisTr
           case TypeApply(fn, args) => cpy.TypeApply(tree)(directQual(fn), args)
           case Block(stats, expr)  => cpy.Block(tree)(stats, directQual(expr))
           case tree: RefTree =>
-            cpy.Ref(tree)(DirectName(tree.name.asTermName))
+            cpy.Ref(tree)(DirectMethodName(tree.name.asTermName))
               .withType(directMethod(tree.symbol).termRef)
         }
         directQual(tree.qualifier)
@@ -136,7 +136,7 @@ class ShortcutImplicits extends MiniPhase with IdentityDenotTransformer { thisTr
 
         def splitClosure(tree: Tree): (List[Type] => List[List[Tree]] => Tree, Tree) = tree match {
           case Block(Nil, expr) => splitClosure(expr)
-          case Block((meth @ DefDef(nme.ANON_FUN, Nil, clparams :: Nil, _, _)) :: Nil, cl: Closure) =>
+          case Block((meth @ DefDef(nme.ANON_FUN, Nil, clparams :: Nil, _, _)) :: rest, cl: Closure) =>
             val tparamSyms = mdef.tparams.map(_.symbol)
             val vparamSymss = mdef.vparamss.map(_.map(_.symbol))
             val clparamSyms = clparams.map(_.symbol)
@@ -149,7 +149,7 @@ class ShortcutImplicits extends MiniPhase with IdentityDenotTransformer { thisTr
             val forwarder = ref(direct)
               .appliedToTypeTrees(tparamSyms.map(ref(_)))
               .appliedToArgss(vparamSymss.map(_.map(ref(_))) :+ clparamSyms.map(ref(_)))
-            val fwdClosure = cpy.Block(tree)(cpy.DefDef(meth)(rhs = forwarder) :: Nil, cl)
+            val fwdClosure = cpy.Block(tree)(cpy.DefDef(meth)(rhs = forwarder) :: rest, cl)
             (remappedCore, fwdClosure)
           case EmptyTree =>
             (_ => _ => EmptyTree, EmptyTree)
@@ -157,8 +157,8 @@ class ShortcutImplicits extends MiniPhase with IdentityDenotTransformer { thisTr
 
         val (remappedCore, fwdClosure) = splitClosure(mdef.rhs)
         val originalDef = cpy.DefDef(mdef)(rhs = fwdClosure)
-        val directDef = polyDefDef(direct.asTerm, remappedCore)
-        Thicket(originalDef, directDef)
+        val directDef = transformDefDef(polyDefDef(direct.asTerm, remappedCore))
+        flatTree(List(originalDef, directDef))
       }
       else mdef
     }
