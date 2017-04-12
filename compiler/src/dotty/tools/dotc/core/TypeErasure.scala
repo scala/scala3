@@ -355,7 +355,7 @@ class TypeErasure(isJava: Boolean, semiEraseVCs: Boolean, isConstructor: Boolean
    *   - For NoType or NoPrefix, the type itself.
    *   - For any other type, exception.
    */
-  private def apply(tp: Type)(implicit ctx: Context): Type = tp match {
+  private def apply(tp: Type)(implicit ctx: Context): Type = tp.dealias match {
     case _: ErasedValueType =>
       tp
     case tp: TypeRef =>
@@ -487,7 +487,7 @@ class TypeErasure(isJava: Boolean, semiEraseVCs: Boolean, isConstructor: Boolean
    *  Need to ensure correspondence with erasure!
    */
   private def sigName(tp: Type)(implicit ctx: Context): TypeName = try {
-    tp match {
+    tp.dealias match {
       case ErasedValueType(_, underlying) =>
         sigName(underlying)
       case tp: TypeRef =>
