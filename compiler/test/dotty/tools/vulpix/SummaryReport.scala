@@ -5,16 +5,38 @@ package vulpix
 import scala.collection.mutable
 import dotc.reporting.TestReporter
 
+/** `SummaryReporting` can be used by unit tests by utilizing `@AfterClass` to
+ *  call `echoSummary`
+ *
+ *  This is used in vulpix by passing the companion object's `SummaryReporting`
+ *  to each test, the `@AfterClass def` then calls the `SummaryReport`'s
+ *  `echoSummary` method in order to dump the summary to both stdout and a log
+ *  file
+ */
 trait SummaryReporting {
+  /** Report a failed test */
   def reportFailed(): Unit
+
+  /** Report a test as passing */
   def reportPassed(): Unit
+
+  /** Add the name of the failed test */
   def addFailedTest(msg: String): Unit
+
+  /** Add instructions to reproduce the error */
   def addReproduceInstruction(instr: String): Unit
+
+  /** Add a message that will be issued in the beginning of the summary */
   def addStartingMessage(msg: String): Unit
+
+  /** Add a cleanup hook to be run upon completion */
   def addCleanup(f: () => Unit): Unit
+
+  /** Echo the summary report to the appropriate locations */
   def echoSummary(): Unit
 }
 
+/** A summary report that doesn't do anything */
 final class NoSummaryReport extends SummaryReporting {
   def reportFailed(): Unit = ()
   def reportPassed(): Unit = ()
@@ -25,6 +47,9 @@ final class NoSummaryReport extends SummaryReporting {
   def echoSummary(): Unit = ()
 }
 
+/** A summary report that logs to both stdout and the `TestReporter.logWriter`
+ *  which outputs to a log file in `./testlogs/`
+ */
 final class SummaryReport extends SummaryReporting {
 
   private val startingMessages = mutable.ArrayBuffer.empty[String]
