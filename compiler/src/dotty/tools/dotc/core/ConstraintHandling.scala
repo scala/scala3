@@ -308,6 +308,10 @@ trait ConstraintHandling {
           constr.println(i"apply additional constr $lo2 <: $param, was $lo1")
           lo2 <:< param
         }
+        else
+          constr.println(i"""refrain from adding constrint.
+                            |ugliness($lo1) = ${ugliness(0, lo1)}
+                            |ugliness($lo2) = ${ugliness(0, lo2)}""")
       }
     }
 
