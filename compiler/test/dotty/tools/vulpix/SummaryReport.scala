@@ -131,11 +131,14 @@ final class SummaryReport extends SummaryReporting {
     if (cleanUps.nonEmpty) cleanUps.foreach(_.apply())
   }
 
+  private def removeColors(msg: String): String =
+    msg.replaceAll("\u001b\\[.*?m", "")
+
   def echoToLog(msg: String): Unit =
-    TestReporter.logPrintln(msg)
+    TestReporter.logPrintln(removeColors(msg))
 
   def echoToLog(it: Iterator[String]): Unit = {
-    it.foreach(TestReporter.logPrint)
+    it.foreach(msg => TestReporter.logPrint(removeColors(msg)))
     TestReporter.logFlush()
   }
 }
