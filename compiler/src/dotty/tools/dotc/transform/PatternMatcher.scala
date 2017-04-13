@@ -1408,7 +1408,7 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {
       protected def seqTree(binder: Symbol)                = tupleSel(binder)(firstIndexingBinder + 1)
       protected def tupleSel(binder: Symbol)(i: Int): Tree = {
         val accessors =
-          if (Applications.canProductMatch(binder.info))
+          if (defn.isProductSubType(binder.info))
             productSelectors(binder.info)
           else binder.caseAccessors
         val res =
