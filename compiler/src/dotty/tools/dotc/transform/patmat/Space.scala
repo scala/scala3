@@ -247,10 +247,15 @@ trait SpaceLogic {
 }
 
 object SpaceEngine {
-  private sealed trait Implementability
-  private object ClassOrTrait extends Implementability
+  private sealed trait Implementability {
+    def show(implicit ctx: Context) = this match {
+      case SubclassOf(classSyms) => s"SubclassOf(${classSyms.map(_.show)})"
+      case other => other.toString
+    }
+  }
+  private case object ClassOrTrait extends Implementability
   private case class SubclassOf(classSyms: List[Symbol]) extends Implementability
-  private object Unimplementable extends Implementability
+  private case object Unimplementable extends Implementability
 }
 
 /** Scala implementation of space logic */
@@ -258,11 +263,13 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
   import SpaceEngine._
   import tpd._
 
-  /** Checks if `tp` can be implemented by a new class/trait.
+  /** Checks if it's possible to create a trait/class which is a subtype of `tp`.
    *
-   * - doesn't handle member collisions (assumes they don't happen)
+   * - doesn't handle member collisions (will not declare a type unimplementable because of one)
    * - expects that neither Any nor Object reach it
    *   (this is currently true due to both isSubType and and/or type simplification)
+   *
+   * See [[intersectUnrelatedAtomicTypes]].
    */
   private def implementability(tp: Type): Implementability = tp.dealias match {
     case AndType(tp1, tp2) =>
@@ -293,20 +300,37 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
         case (_, SubclassOf(classSyms)) => SubclassOf(classSyms)
         case _ => Unimplementable
       }
-    case tp: RefinedType => implementability(tp.parent)
+    case _: SingletonType =>
+      // singleton types have no instantiable subtypes
+      Unimplementable
+    case tp: RefinedType =>
+      // refinement itself is not considered - it would at most make
+      // a type unimplementable because of a member collision
+      implementability(tp.parent)
     case other =>
       val classSym = other.classSymbol
-      val isOpen =
-        !classSym.is(Sealed | Final) && !other.termSymbol.is(Module)
-
-      if (isOpen) {
-        if (classSym is Trait) ClassOrTrait else SubclassOf(List(classSym))
-      } else Unimplementable
+      if (classSym.exists) {
+        if (classSym is Final) Unimplementable
+        else if (classSym is Trait) ClassOrTrait
+        else SubclassOf(List(classSym))
+      } else {
+        // if no class symbol exists, conservatively say that anything
+        // can implement `tp`
+        ClassOrTrait
+      }
   }
 
   override def intersectUnrelatedAtomicTypes(tp1: Type, tp2: Type) = {
     val and = AndType(tp1, tp2)
-    implementability(and) match  {
+    // Precondition: !(tp1 <:< tp2) && !(tp2 <:< tp1)
+    // Then, no leaf of the and-type tree `and` is a subtype of `and`.
+    // Then, to create a value of type `and` you must instantiate a trait (class/module)
+    // which is a subtype of all the leaves of `and`.
+    val imp = implementability(and)
+
+    debug.println(s"atomic intersection: ${and.show} ~ ${imp.show}")
+
+    imp match {
       case Unimplementable => Empty
       case _ => Typ(and, true)
     }
