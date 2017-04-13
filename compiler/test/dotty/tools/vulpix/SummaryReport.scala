@@ -102,10 +102,11 @@ final class SummaryReport extends SummaryReporting {
     if (isInteractive) {
       println(rep.toString)
       if (failed > 0) println {
-        """|
-           |----------------------------------------------------------
-           |Note: reproduction instructed have been dumped to log file
-           |----------------------------------------------------------""".stripMargin
+        s"""|
+            |--------------------------------------------------------------------------------
+            |Note - reproduction instructions have been dumped to log file:
+            |    ${TestReporter.logPath}
+            |--------------------------------------------------------------------------------""".stripMargin
       }
     }
 
@@ -116,7 +117,7 @@ final class SummaryReport extends SummaryReporting {
     // If we're on the CI, we want everything
     if (!isInteractive) println(rep.toString)
 
-    TestReporter.writeToLog(rep.toString)
+    TestReporter.logPrintln(rep.toString)
 
     // Perform cleanup callback:
     if (cleanUps.nonEmpty) cleanUps.foreach(_.apply())
