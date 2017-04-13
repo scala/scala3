@@ -10,7 +10,6 @@ import scala.collection.{ mutable, immutable }
 import PartialFunction._
 import collection.mutable
 import util.common.alwaysZero
-import typer.Applications
 
 object Definitions {
 
@@ -845,6 +844,9 @@ class Definitions {
   def tupleType(elems: List[Type]) = {
     TupleType(elems.size).appliedTo(elems)
   }
+
+  def isProductSubType(tp: Type)(implicit ctx: Context) =
+    tp.derivesFrom(ProductType.symbol)
 
   /** Is `tp` (an alias) of either a scala.FunctionN or a scala.ImplicitFunctionN? */
   def isFunctionType(tp: Type)(implicit ctx: Context) = {

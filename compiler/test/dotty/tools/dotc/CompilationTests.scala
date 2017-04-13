@@ -156,6 +156,7 @@ class CompilationTests extends ParallelTesting {
     compileFile("../tests/neg/customArgs/nopredef.scala", defaultOptions.and("-Yno-predef")) +
     compileFile("../tests/neg/customArgs/noimports.scala", defaultOptions.and("-Yno-imports")) +
     compileFile("../tests/neg/customArgs/noimports2.scala", defaultOptions.and("-Yno-imports")) +
+    compileFile("../tests/neg/customArgs/overloadsOnAbstractTypes.scala", allowDoubleBindings) +
     compileFile("../tests/neg/tailcall/t1672b.scala", defaultOptions) +
     compileFile("../tests/neg/tailcall/t3275.scala", defaultOptions) +
     compileFile("../tests/neg/tailcall/t6574.scala", defaultOptions) +
@@ -216,9 +217,9 @@ class CompilationTests extends ParallelTesting {
     val opt = Array(
       "-classpath",
       // compile with bootstrapped library on cp:
-      defaultOutputDir + "lib$1/src/:" +
+      defaultOutputDir + "lib/src/:" +
       // as well as bootstrapped compiler:
-      defaultOutputDir + "dotty1$1/dotty/:" +
+      defaultOutputDir + "dotty1/dotty/:" +
       Jars.dottyInterfaces
     )
 

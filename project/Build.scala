@@ -135,7 +135,6 @@ object Build {
       triggeredMessage in ThisBuild := Watched.clearWhenTriggered,
 
       addCommandAlias("run", "dotty-compiler/run") ++
-      addCommandAlias("test", "testOnly -- --exclude-categories=java.lang.Exception") ++
       addCommandAlias("legacyTests", "dotty-compiler/testOnly dotc.tests")
     ).
     settings(publishing)
@@ -144,8 +143,7 @@ object Build {
   lazy val `dotty-bootstrapped` = project.
     aggregate(`dotty-library-bootstrapped`, `dotty-compiler-bootstrapped`).
     settings(
-      publishArtifact := false,
-      addCommandAlias("test", "testOnly -- --exclude-categories=java.lang.Exception")
+      publishArtifact := false
     )
 
   lazy val `dotty-interfaces` = project.in(file("interfaces")).
@@ -285,6 +283,11 @@ object Build {
           s" dotty.tools.dotc.repl.Main -classpath $dottyLib " + args.mkString(" ")
         )
       }.evaluated,
+
+      test in Test := {
+        // Exclude legacy tests by default
+        (testOnly in Test).toTask(" -- --exclude-categories=java.lang.Exception").value
+      },
 
       vulpix := Def.inputTaskDyn {
         val args: Seq[String] = spaceDelimited("<arg>").parsed

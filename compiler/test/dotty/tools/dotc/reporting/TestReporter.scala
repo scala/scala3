@@ -91,23 +91,41 @@ extends Reporter with UniqueMessagePositions with HideNonSensicalMessages with M
 }
 
 object TestReporter {
-  lazy val logWriter = {
+  private[this] var outFile: JFile = _
+  private[this] var logWriter: PrintWriter = _
+
+  private[this] def initLog() = if (logWriter eq null) {
     val df = new SimpleDateFormat("yyyy-MM-dd-HH:mm")
     val timestamp = df.format(new Date)
     new JFile("../testlogs").mkdirs()
-    new PrintWriter(new FileOutputStream(new JFile(s"../testlogs/tests-$timestamp.log"), true))
+    outFile = new JFile(s"../testlogs/tests-$timestamp.log")
+    logWriter = new PrintWriter(new FileOutputStream(outFile, true))
   }
 
-  def writeToLog(str: String) = {
+  def logPrintln(str: String) = {
+    initLog()
     logWriter.println(str)
     logWriter.flush()
   }
 
+  def logPrint(str: String): Unit = {
+    initLog()
+    logWriter.println(str)
+  }
+
+  def logFlush(): Unit =
+    if (logWriter ne null) logWriter.flush()
+
+  def logPath: String = {
+    initLog()
+    outFile.getCanonicalPath
+  }
+
   def reporter(ps: PrintStream, logLevel: Int): TestReporter =
-    new TestReporter(new PrintWriter(ps, true), writeToLog, logLevel)
+    new TestReporter(new PrintWriter(ps, true), logPrintln, logLevel)
 
   def simplifiedReporter(writer: PrintWriter): TestReporter = {
-    val rep = new TestReporter(writer, writeToLog, WARNING) {
+    val rep = new TestReporter(writer, logPrintln, WARNING) {
       /** Prints the message with the given position indication in a simplified manner */
       override def printMessageAndPos(m: MessageContainer, extra: String)(implicit ctx: Context): Unit = {
         def report() = {

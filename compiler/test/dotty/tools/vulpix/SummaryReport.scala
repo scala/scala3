@@ -34,6 +34,12 @@ trait SummaryReporting {
 
   /** Echo the summary report to the appropriate locations */
   def echoSummary(): Unit
+
+  /** Echoes *immediately* to file */
+  def echoToLog(msg: String): Unit
+
+  /** Echoes contents of `it` to file *immediately* then flushes */
+  def echoToLog(it: Iterator[String]): Unit
 }
 
 /** A summary report that doesn't do anything */
@@ -45,6 +51,8 @@ final class NoSummaryReport extends SummaryReporting {
   def addStartingMessage(msg: String): Unit = ()
   def addCleanup(f: () => Unit): Unit = ()
   def echoSummary(): Unit = ()
+  def echoToLog(msg: String): Unit = ()
+  def echoToLog(it: Iterator[String]): Unit = ()
 }
 
 /** A summary report that logs to both stdout and the `TestReporter.logWriter`
@@ -95,17 +103,18 @@ final class SummaryReport extends SummaryReporting {
 
     startingMessages.foreach(rep.append)
 
-    failedTests.map(x => "    " + x).foreach(rep.append)
+    failedTests.map(x => s"    $x\n").foreach(rep.append)
 
     // If we're compiling locally, we don't need instructions on how to
     // reproduce failures
     if (isInteractive) {
       println(rep.toString)
       if (failed > 0) println {
-        """|
-           |----------------------------------------------------------
-           |Note: reproduction instructed have been dumped to log file
-           |----------------------------------------------------------""".stripMargin
+        s"""|
+            |--------------------------------------------------------------------------------
+            |Note - reproduction instructions have been dumped to log file:
+            |    ${TestReporter.logPath}
+            |--------------------------------------------------------------------------------""".stripMargin
       }
     }
 
@@ -116,10 +125,18 @@ final class SummaryReport extends SummaryReporting {
     // If we're on the CI, we want everything
     if (!isInteractive) println(rep.toString)
 
-    TestReporter.writeToLog(rep.toString)
+    TestReporter.logPrintln(rep.toString)
 
     // Perform cleanup callback:
     if (cleanUps.nonEmpty) cleanUps.foreach(_.apply())
+  }
+
+  def echoToLog(msg: String): Unit =
+    TestReporter.logPrintln(msg)
+
+  def echoToLog(it: Iterator[String]): Unit = {
+    it.foreach(TestReporter.logPrint)
+    TestReporter.logFlush()
   }
 }
 

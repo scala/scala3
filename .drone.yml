@@ -40,7 +40,7 @@ pipeline:
 
 matrix:
   TEST:
+    - dotty-bin-tests/test
+    - legacyTests
     - test
     - ;publishLocal ;dotty-bootstrapped/test
-    - legacyTests
-    - dotty-bin-tests/test

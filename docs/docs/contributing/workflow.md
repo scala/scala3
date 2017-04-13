@@ -57,20 +57,15 @@ $ sbt
 To test a specific test tests/x/y.scala (for example tests/pos/t210.scala):
 
 ```bash
-> filterTest .*pos/t210.scala
+> vulpix pos/t210.scala
 ```
 
-The filterTest task takes a regular expression as its argument. For example,
-you could run a negative and a positive test with:
+The `vulpix` task uses its argument for a substring test. For example, you
+could run both a negative and a positive test with the same name
+(`pos/i2101.scala` & `neg/i2101.scala`):
 
 ```bash
-> filterTest (.*pos/t697.scala)|(.*neg/i2101.scala)
-```
-
-or if they have the same name, the equivalent can be achieved with:
-
-```bash
-> filterTest .*/i2101.scala
+> vulpix i2101.scala
 ```
 
 ## Inspecting Trees with Type Stealer ##
