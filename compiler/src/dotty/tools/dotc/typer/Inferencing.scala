@@ -72,8 +72,8 @@ object Inferencing {
    *  to their upper bound.
    */
   private class IsFullyDefinedAccumulator(force: ForceDegree.Value)(implicit ctx: Context) extends TypeAccumulator[Boolean] {
-    private def instantiate(tvar: TypeVar, fromBelow: Boolean): Type = {
-      val inst = tvar.instantiate(fromBelow)
+    private def instantiate(tvar: TypeVar, v: Int): Type = {
+      val inst = tvar.instantiate(v)
       typr.println(i"forced instantiation of ${tvar.origin} = $inst")
       inst
     }
@@ -84,29 +84,20 @@ object Inferencing {
       case tvar: TypeVar
       if !tvar.isInstantiated && ctx.typerState.constraint.contains(tvar) =>
         force.appliesTo(tvar) && {
-          if (force.implicitMode) {
-            // instantiate to or-dominator of lower bound; without this tweak we'd
-            // fail to find an implicit in situations like this:
-            //
-            //   def f[T: Ordering](xs: T*) = ...
-            //   f(Some(1), None)
-            //
-            // The problem is that there is no implicit Ordering instance for the otherwise inferred
-            // lower bound of T, which is `Some[Int] | None`.
-            ctx.orDominator(ctx.typeComparer.bounds(tvar.origin).lo) <:< tvar.origin
-          }
-          val direction = instDirection(tvar.origin)
-          if (direction != 0) {
+          var constrVariance = instVariance(tvar.origin)
+          if (variance == 0) constrVariance = constrVariance min 0
+          if (constrVariance != 0) {
             //if (direction > 0) println(s"inst $tvar dir = up")
-            instantiate(tvar, direction < 0)
+            instantiate(tvar, constrVariance)
           }
           else {
-            val minimize =
-              force.implicitMode ||
-              variance >= 0 && !(
-                force == ForceDegree.noBottom &&
-                defn.isBottomType(ctx.typeComparer.approximation(tvar.origin, fromBelow = true)))
-            if (minimize) instantiate(tvar, fromBelow = true)
+            val effectiveVariance =
+              if (force.implicitMode) 0
+              else if (force == ForceDegree.noBottom &&
+                       defn.isBottomType(ctx.typeComparer.approximation(tvar.origin, fromBelow = true)))
+                -1
+              else variance
+            if (effectiveVariance >= 0) instantiate(tvar, effectiveVariance)
             else toMaximize = true
           }
           foldOver(x, tvar)
@@ -119,7 +110,7 @@ object Inferencing {
       def apply(x: Unit, tp: Type): Unit = {
         tp match {
           case tvar: TypeVar if !tvar.isInstantiated =>
-            instantiate(tvar, fromBelow = false)
+            instantiate(tvar, -1)
           case _ =>
         }
         foldOver(x, tp)
@@ -184,13 +175,15 @@ object Inferencing {
     occurring(tree, boundVars(tree, Nil), Nil)
   }
 
-  /** The instantiation direction for given poly param computed
+  /** The preferred instantiation variance for given param ref computed
    *  from the constraint:
-   *  @return   1 (maximize) if constraint is uniformly from above,
-   *           -1 (minimize) if constraint is uniformly from below,
+   *  @return  -1 (maximize) if constraint is uniformly from above,
+   *           +1 (minimize) if constraint is uniformly from below,
    *            0 if unconstrained, or constraint is from below and above.
+   *  Note that the instantiation direction of the parameter is the reverse
+   *  of the variance: -1 means maximize, +1 means minimize.
    */
-  private def instDirection(param: TypeParamRef)(implicit ctx: Context): Int = {
+  private def instVariance(param: TypeParamRef)(implicit ctx: Context): Int = {
     val constrained = ctx.typerState.constraint.fullBounds(param)
     val original = param.binder.paramInfos(param.paramNum)
     val cmp = ctx.typeComparer
@@ -198,7 +191,7 @@ object Inferencing {
       if (!cmp.isSubTypeWhenFrozen(constrained.lo, original.lo)) 1 else 0
     val approxAbove =
       if (!cmp.isSubTypeWhenFrozen(original.hi, constrained.hi)) 1 else 0
-    approxAbove - approxBelow
+    approxBelow - approxAbove
   }
 
   /** Recursively widen and also follow type declarations and type aliases. */
@@ -277,13 +270,13 @@ object Inferencing {
         vs foreachBinding { (tvar, v) =>
           if (v != 0) {
             typr.println(s"interpolate ${if (v == 1) "co" else "contra"}variant ${tvar.show} in ${tp.show}")
-            tvar.instantiate(fromBelow = v == 1)
+            tvar.instantiate(v)
           }
         }
       for (tvar <- constraint.uninstVars)
         if (!(vs contains tvar) && qualifies(tvar)) {
           typr.println(s"instantiating non-occurring ${tvar.show} in ${tp.show} / $tp")
-          tvar.instantiate(fromBelow = true)
+          tvar.instantiate(0)
         }
     }
     if (constraint.uninstVars exists qualifies) interpolate()
@@ -297,12 +290,11 @@ object Inferencing {
     val vs = variances(tp, alwaysTrue)
     var result: Option[TypeVar] = None
     vs foreachBinding { (tvar, v) =>
-      if (v == 1) tvar.instantiate(fromBelow = false)
-      else if (v == -1) tvar.instantiate(fromBelow = true)
+      if (v != 0) tvar.instantiate(-v)
       else {
         val bounds = ctx.typerState.constraint.fullBounds(tvar.origin)
         if (!(bounds.hi <:< bounds.lo)) result = Some(tvar)
-        tvar.instantiate(fromBelow = false)
+        tvar.instantiate(-1)
       }
     }
     result

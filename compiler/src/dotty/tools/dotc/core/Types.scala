@@ -3073,14 +3073,14 @@ object Types {
     }
 
     /** Instantiate variable from the constraints over its `origin`.
-     *  If `fromBelow` is true, the variable is instantiated to the lub
+     *  If `variance >= 0` the variable is instantiated to the lub
      *  of its lower bounds in the current constraint; otherwise it is
-     *  instantiated to the glb of its upper bounds. However, a lower bound
-     *  instantiation can be a singleton type only if the upper bound
-     *  is also a singleton type.
+     *  instantiated to the glb of its upper bounds. However, lower bound
+     *  singleton types and |-types are sometimes widened; for details see
+     *  TypeComparer#instanceType.
      */
-    def instantiate(fromBelow: Boolean)(implicit ctx: Context): Type =
-      instantiateWith(ctx.typeComparer.instanceType(origin, fromBelow))
+    def instantiate(variance: Int)(implicit ctx: Context): Type =
+      instantiateWith(ctx.typeComparer.instanceType(origin, variance))
 
     /** Unwrap to instance (if instantiated) or origin (if not), until result
      *  is no longer a TypeVar
