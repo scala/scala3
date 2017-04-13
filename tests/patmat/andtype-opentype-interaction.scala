@@ -11,12 +11,20 @@ object Obj extends T
 
 trait OpenTrait
 class OpenClass
+class OpenClassSubclass extends OpenClass
 abstract class OpenAbstractClass
 
 trait Unrelated
 
+trait OpenTrait2
+class OpenClass2
+
 object Test {
-  def m1(s: T & OpenTrait) = s match {
+  def m1a(s: T & OpenTrait) = s match {
+    case _: Unrelated => ;
+  }
+
+  def m1b(s: T & OpenTrait & OpenTrait2) = s match {
     case _: Unrelated => ;
   }
 
@@ -24,7 +32,19 @@ object Test {
     case _: Unrelated => ;
   }
 
+  def m2b(s: T & OpenTrait & OpenClass) = s match {
+    case _: Unrelated => ;
+  }
+
+  def m2c(s: (T & OpenClass) & (OpenTrait & OpenClass2)) = s match {
+    case _: Unrelated => ;
+  }
+
   def m3(s: T & OpenAbstractClass) = s match {
+    case _: Unrelated => ;
+  }
+
+  def m4(s: (T & OpenClass) & (OpenTrait & OpenClassSubclass)) = s match {
     case _: Unrelated => ;
   }
 }

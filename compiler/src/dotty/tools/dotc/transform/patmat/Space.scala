@@ -246,18 +246,70 @@ trait SpaceLogic {
   }
 }
 
+object SpaceEngine {
+  private sealed trait Implementability
+  private object ClassOrTrait extends Implementability
+  private case class SubclassOf(classSyms: List[Symbol]) extends Implementability
+  private object Unimplementable extends Implementability
+}
+
 /** Scala implementation of space logic */
 class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
+  import SpaceEngine._
   import tpd._
 
-  override def intersectUnrelatedAtomicTypes(tp1: Type, tp2: Type) = {
-    def isOpen(tp: Type) =
-      !tp.classSymbol.is(Sealed | Final) && !tp.termSymbol.is(Module)
+  /** Checks if `tp` can be implemented by a new class/trait.
+   *
+   * - doesn't handle member collisions (assumes they don't happen)
+   * - expects that neither Any nor Object reach it
+   *   (this is currently true due to both isSubType and and/or type simplification)
+   */
+  private def implementability(tp: Type): Implementability = tp.dealias match {
+    case AndType(tp1, tp2) =>
+      (implementability(tp1), implementability(tp2)) match {
+        case (Unimplementable, _) | (_, Unimplementable) => Unimplementable
+        case (SubclassOf(classSyms1), SubclassOf(classSyms2)) =>
+          (for {
+            sym1 <- classSyms1
+            sym2 <- classSyms2
+            result <-
+              if (sym1 isSubClass sym2) List(sym1)
+              else if (sym2 isSubClass sym1) List(sym2)
+              else Nil
+          } yield result) match {
+            case Nil => Unimplementable
+            case lst => SubclassOf(lst)
+          }
+        case (ClassOrTrait, ClassOrTrait) => ClassOrTrait
+        case (SubclassOf(clss), _) => SubclassOf(clss)
+        case (_, SubclassOf(clss)) => SubclassOf(clss)
+      }
+    case OrType(tp1, tp2) =>
+      (implementability(tp1), implementability(tp2)) match {
+        case (ClassOrTrait, _) | (_, ClassOrTrait) => ClassOrTrait
+        case (SubclassOf(classSyms1), SubclassOf(classSyms2)) =>
+          SubclassOf(classSyms1 ::: classSyms2)
+        case (SubclassOf(classSyms), _) => SubclassOf(classSyms)
+        case (_, SubclassOf(classSyms)) => SubclassOf(classSyms)
+        case _ => Unimplementable
+      }
+    case tp: RefinedType => implementability(tp.parent)
+    case other =>
+      val classSym = other.classSymbol
+      val isOpen =
+        !classSym.is(Sealed | Final) && !other.termSymbol.is(Module)
 
-    if ((tp1.classSymbol.is(Trait) || tp2.classSymbol.is(Trait))
-        && isOpen(tp1) && isOpen(tp2))
-      Typ(AndType(tp1, tp2), true)
-    else Empty
+      if (isOpen) {
+        if (classSym is Trait) ClassOrTrait else SubclassOf(List(classSym))
+      } else Unimplementable
+  }
+
+  override def intersectUnrelatedAtomicTypes(tp1: Type, tp2: Type) = {
+    val and = AndType(tp1, tp2)
+    implementability(and) match  {
+      case Unimplementable => Empty
+      case _ => Typ(and, true)
+    }
   }
 
   /** Return the space that represents the pattern `pat`
