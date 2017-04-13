@@ -192,8 +192,6 @@ trait ParallelTesting extends RunnerOrchestration { self =>
 
     /** A runnable that logs its contents in a buffer */
     trait LoggedRunnable extends Runnable {
-      import TestReporter.logWriter
-
       /** Instances of `LoggedRunnable` implement this method instead of the
        *  `run` method
        */
@@ -212,8 +210,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
 
       final def run(): Unit = {
         checkTestSource()
-        logBuffer.iterator.foreach(logWriter.println)
-        logWriter.flush()
+        summaryReport.echoToLog(logBuffer.iterator)
       }
     }
 
@@ -265,7 +262,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
     private[this] val failedTestSources = mutable.ArrayBuffer.empty[String]
     protected final def failTestSource(testSource: TestSource, reason: Option[String] = None) = synchronized {
       val extra = reason.map(" with reason: " + _).getOrElse("")
-      failedTestSources.append(testSource.title + s" failed (in ${testSource.name})" + extra)
+      failedTestSources.append(testSource.title + s" failed" + extra)
       fail()
     }
 
@@ -309,7 +306,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
     protected def tryCompile(testSource: TestSource)(op: => Unit): Unit =
       try {
         val testing = s"Testing ${testSource.title}"
-        TestReporter.logWriter.println(testing)
+        summaryReport.echoToLog(testing)
         if (!isInteractive) realStdout.println(testing)
         op
       } catch {
@@ -519,6 +516,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
         }
 
         case Failure(output) =>
+          echo(s"Test '${testSource.title}' failed with output:")
           echo(output)
           failTestSource(testSource)
 
@@ -574,7 +572,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
 
         if (!compilerCrashed && errorCount == 0) verifier()
         else {
-          echo(s"\n    Compilation failed for: '$testSource'")
+          echo(s"    Compilation failed for: '${testSource.title}'                               ")
           val buildInstr = testSource.buildInstructions(errorCount, warningCount)
           addFailureInstruction(buildInstr)
           failTestSource(testSource)
@@ -1018,6 +1016,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
       .getOrElse {
         throw new IllegalStateException("Unable to reflectively find calling method")
       }
+      .takeWhile(_ != '$')
   }
 
   /** Compiles a single file from the string path `f` using the supplied flags */
@@ -1072,7 +1071,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
     val targetDir = new JFile(outDir + "/" + sourceDir.getName + "/")
     targetDir.mkdirs()
 
-    val target = JointCompilationSource(callingMethod, randomized, flags, targetDir)
+    val target = JointCompilationSource(s"compiling '$f' in test '$callingMethod'", randomized, flags, targetDir)
     new CompilationTest(target)
   }
 
@@ -1089,7 +1088,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
     targetDir.mkdirs()
     assert(targetDir.exists, s"couldn't create target directory: $targetDir")
 
-    val target = JointCompilationSource(callingMethod, files.map(new JFile(_)).toArray, flags, targetDir)
+    val target = JointCompilationSource(s"$testName from $callingMethod", files.map(new JFile(_)).toArray, flags, targetDir)
 
     // Create a CompilationTest and let the user decide whether to execute a pos or a neg test
     new CompilationTest(target)

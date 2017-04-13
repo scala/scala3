@@ -216,9 +216,9 @@ class CompilationTests extends ParallelTesting {
     val opt = Array(
       "-classpath",
       // compile with bootstrapped library on cp:
-      defaultOutputDir + "lib$1/src/:" +
+      defaultOutputDir + "lib/src/:" +
       // as well as bootstrapped compiler:
-      defaultOutputDir + "dotty1$1/dotty/:" +
+      defaultOutputDir + "dotty1/dotty/:" +
       Jars.dottyInterfaces
     )
 
