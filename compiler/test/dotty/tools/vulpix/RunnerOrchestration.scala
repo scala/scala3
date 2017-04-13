@@ -3,6 +3,7 @@ package tools
 package vulpix
 
 import java.io.{ File => JFile, InputStreamReader, BufferedReader, PrintStream }
+import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.TimeoutException
 
 import scala.concurrent.duration.Duration
@@ -84,11 +85,11 @@ trait RunnerOrchestration {
       }
 
       /** Did add hook to kill the child VMs? */
-      private[this] var didAddCleanupCallback = false
+      private[this] val didAddCleanupCallback = new AtomicBoolean(false)
 
       /** Blocks less than `maxDuration` while running `Test.main` from `dir` */
       def runMain(classPath: String)(implicit summaryReport: SummaryReporting): Status = {
-        if (!didAddCleanupCallback) {
+        if (didAddCleanupCallback.compareAndSet(false, true)) {
           // If for some reason the test runner (i.e. sbt) doesn't kill the VM, we
           // need to clean up ourselves.
           summaryReport.addCleanup(killAll)
