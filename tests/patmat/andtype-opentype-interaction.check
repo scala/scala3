@@ -1,3 +1,3 @@
 19: Pattern Match Exhaustivity: _: AbstractClass & OpenTrait, _: Clazz & OpenTrait, _: Trait & OpenTrait
-23: Pattern Match Exhaustivity: _: AbstractClass & OpenClass, _: Clazz & OpenClass, _: Trait & OpenClass
-27: Pattern Match Exhaustivity: _: AbstractClass & OpenAbstractClass, _: Clazz & OpenAbstractClass, _: Trait & OpenAbstractClass
+23: Pattern Match Exhaustivity: _: Trait & OpenClass
+27: Pattern Match Exhaustivity: _: Trait & OpenAbstractClass

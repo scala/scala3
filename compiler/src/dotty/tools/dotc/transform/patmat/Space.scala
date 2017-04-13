@@ -74,14 +74,12 @@ trait SpaceLogic {
   /** Is `tp1` the same type as `tp2`? */
   def isEqualType(tp1: Type, tp2: Type): Boolean
 
-  /** Can `tp` be arbitrarily subtyped by any other open type? */
-  def isOpen(tp: Type): Boolean
-
-  /** Construct a space which contains values from both `tp1` and `tp2`.
+  /** Return a space containing the values of both types.
    *
-   * Both types are expected to be open in the [[isOpen]] sense.
+   * The types should be atomic (non-decomposable) and unrelated (neither
+   * should be a subtype of the other).
    */
-  def commonOpenTypeSpace(tp1: Type, tp2: Type): Space
+  def intersectUnrelatedAtomicTypes(tp1: Type, tp2: Type): Space
 
   /** Is the type `tp` decomposable? i.e. all values of the type can be covered
    *  by its decomposed types.
@@ -180,8 +178,7 @@ trait SpaceLogic {
         else if (isSubType(tp2, tp1)) b
         else if (canDecompose(tp1)) tryDecompose1(tp1)
         else if (canDecompose(tp2)) tryDecompose2(tp2)
-        else if (isOpen(tp1) && isOpen(tp2)) commonOpenTypeSpace(tp1, tp2)
-        else Empty
+        else intersectUnrelatedAtomicTypes(tp1, tp2)
       case (Typ(tp1, _), Kon(tp2, ss)) =>
         if (isSubType(tp2, tp1)) b
         else if (isSubType(tp1, tp2)) a // problematic corner case: inheriting a case class
@@ -253,10 +250,15 @@ trait SpaceLogic {
 class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
   import tpd._
 
-  override def isOpen(tp: Type) =
-    !tp.classSymbol.is(Sealed | Final) && !tp.termSymbol.is(Module)
+  override def intersectUnrelatedAtomicTypes(tp1: Type, tp2: Type) = {
+    def isOpen(tp: Type) =
+      !tp.classSymbol.is(Sealed | Final) && !tp.termSymbol.is(Module)
 
-  override def commonOpenTypeSpace(tp1: Type, tp2: Type) = Typ(AndType(tp1, tp2), true)
+    if ((tp1.classSymbol.is(Trait) || tp2.classSymbol.is(Trait))
+        && isOpen(tp1) && isOpen(tp2))
+      Typ(AndType(tp1, tp2), true)
+    else Empty
+  }
 
   /** Return the space that represents the pattern `pat`
    *
