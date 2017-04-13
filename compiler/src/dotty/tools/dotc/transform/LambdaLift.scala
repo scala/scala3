@@ -199,35 +199,44 @@ class LambdaLift extends MiniPhase with IdentityDenotTransformer { thisTransform
      *    }
      *  }
      */
-    private def markFree(sym: Symbol, enclosure: Symbol)(implicit ctx: Context): Symbol = try {
-      if (!enclosure.exists) throw new NoPath
-      if (enclosure == sym.enclosure) NoSymbol
-      else {
-        ctx.debuglog(i"mark free: ${sym.showLocated} with owner ${sym.maybeOwner} marked free in $enclosure")
-        val intermediate =
-          if (enclosure.is(PackageClass)) enclosure
-          else markFree(sym, enclosure.enclosure)
-        narrowLiftedOwner(enclosure, intermediate orElse sym.enclosingClass)
-        if (!intermediate.isRealClass || enclosure.isConstructor) {
-          // Constructors and methods nested inside traits get the free variables
-          // of the enclosing trait or class.
-          // Conversely, local traits do not get free variables.
-          if (!enclosure.is(Trait))
-            if (symSet(free, enclosure).add(sym)) {
-              changedFreeVars = true
-              ctx.log(i"$sym is free in $enclosure")
+    private def markFree(sym: Symbol, enclosure: Symbol)(implicit ctx: Context): Symbol = {
+      def recur(enclosure: Symbol, inSuper: Boolean): Symbol = try
+        if (!enclosure.exists) throw new NoPath
+        else if (enclosure == sym.enclosure) NoSymbol
+        else {
+          val intermediate =
+            if (enclosure.is(PackageClass)) enclosure
+            else {
+              val next = enclosure.enclosure
+              // Skip enclosing class if original enclosure appeared in a super call.
+              // The original enclosure will be moved out of the class, so cannot see
+              // any proxies in the class.
+              if (next.isClass && inSuper) recur(next.enclosure, false) 
+              else recur(next, inSuper)
             }
+          narrowLiftedOwner(enclosure, intermediate orElse sym.enclosingClass)
+          if (!intermediate.isRealClass || enclosure.isConstructor) {
+            // Constructors and methods nested inside traits get the free variables
+            // of the enclosing trait or class.
+            // Conversely, local traits do not get free variables.
+            if (!enclosure.is(Trait))
+              if (symSet(free, enclosure).add(sym)) {
+                changedFreeVars = true
+                ctx.log(i"$sym is free in $enclosure")
+              }
+          }
+          if (intermediate.isRealClass) intermediate
+          else if (enclosure.isRealClass) enclosure
+          else if (intermediate.isClass) intermediate
+          else if (enclosure.isClass) enclosure
+          else NoSymbol
         }
-        if (intermediate.isRealClass) intermediate
-        else if (enclosure.isRealClass) enclosure
-        else if (intermediate.isClass) intermediate
-        else if (enclosure.isClass) enclosure
-        else NoSymbol
+      catch {
+        case ex: NoPath =>
+          println(i"error lambda lifting ${ctx.compilationUnit}: $sym is not visible from $enclosure")
+          throw ex
       }
-    } catch {
-      case ex: NoPath =>
-        println(i"error lambda lifting ${ctx.compilationUnit}: $sym is not visible from $enclosure")
-        throw ex
+      recur(enclosure, enclosure.is(InSuperCall))
     }
 
     private def markCalled(callee: Symbol, caller: Symbol)(implicit ctx: Context): Unit = {

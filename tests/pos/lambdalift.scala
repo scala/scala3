@@ -22,4 +22,21 @@ object test {
     fun("abc")
 
   }
+
+  class D(f: Int => Int) { self =>
+    assert(f(0) == 3)
+    def foo = 2
+
+    def g(xxx: Int) = {
+
+      class E extends D(y => xxx + y) {
+       // println(self.foo)
+      }
+
+      new E
+    }
+    g(3)
+  }
+
+  new D(y => 3)
 }
