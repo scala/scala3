@@ -95,7 +95,7 @@ final class SummaryReport extends SummaryReporting {
 
     startingMessages.foreach(rep.append)
 
-    failedTests.map(x => "    " + x).foreach(rep.append)
+    failedTests.map(x => s"    $x\n").foreach(rep.append)
 
     // If we're compiling locally, we don't need instructions on how to
     // reproduce failures
