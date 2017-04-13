@@ -80,10 +80,9 @@ This might be aliased in the future. It is also possible to run tests filtered
 by using:
 
 ```bash
-> filterTest .*i2147.scala
+> vulpix i2147.scala
 ```
 
 This will run both the test `./tests/pos/i2147.scala` and
-`./tests/partest-test/i2147.scala` since both of these match the given regular
-expression. This also means that you could run `filterTest .*` to run all
-integration tests.
+`./tests/partest-test/i2147.scala` since both of these match the given string.
+This also means that you could run `vulpix` with no arguments to run all integration tests.
