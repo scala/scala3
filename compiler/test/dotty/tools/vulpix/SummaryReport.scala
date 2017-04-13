@@ -34,6 +34,12 @@ trait SummaryReporting {
 
   /** Echo the summary report to the appropriate locations */
   def echoSummary(): Unit
+
+  /** Echoes *immediately* to file */
+  def echoToLog(msg: String): Unit
+
+  /** Echoes contents of `it` to file *immediately* then flushes */
+  def echoToLog(it: Iterator[String]): Unit
 }
 
 /** A summary report that doesn't do anything */
@@ -45,6 +51,8 @@ final class NoSummaryReport extends SummaryReporting {
   def addStartingMessage(msg: String): Unit = ()
   def addCleanup(f: () => Unit): Unit = ()
   def echoSummary(): Unit = ()
+  def echoToLog(msg: String): Unit = ()
+  def echoToLog(it: Iterator[String]): Unit = ()
 }
 
 /** A summary report that logs to both stdout and the `TestReporter.logWriter`
@@ -121,6 +129,14 @@ final class SummaryReport extends SummaryReporting {
 
     // Perform cleanup callback:
     if (cleanUps.nonEmpty) cleanUps.foreach(_.apply())
+  }
+
+  def echoToLog(msg: String): Unit =
+    TestReporter.logPrintln(msg)
+
+  def echoToLog(it: Iterator[String]): Unit = {
+    it.foreach(TestReporter.logPrint)
+    TestReporter.logFlush()
   }
 }
 

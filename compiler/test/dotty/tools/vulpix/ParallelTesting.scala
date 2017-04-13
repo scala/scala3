@@ -192,8 +192,6 @@ trait ParallelTesting extends RunnerOrchestration { self =>
 
     /** A runnable that logs its contents in a buffer */
     trait LoggedRunnable extends Runnable {
-      import TestReporter.logWriter
-
       /** Instances of `LoggedRunnable` implement this method instead of the
        *  `run` method
        */
@@ -212,8 +210,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
 
       final def run(): Unit = {
         checkTestSource()
-        logBuffer.iterator.foreach(logWriter.println)
-        logWriter.flush()
+        summaryReport.echoToLog(logBuffer.iterator)
       }
     }
 
@@ -309,7 +306,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
     protected def tryCompile(testSource: TestSource)(op: => Unit): Unit =
       try {
         val testing = s"Testing ${testSource.title}"
-        TestReporter.logWriter.println(testing)
+        summaryReport.echoToLog(testing)
         if (!isInteractive) realStdout.println(testing)
         op
       } catch {
