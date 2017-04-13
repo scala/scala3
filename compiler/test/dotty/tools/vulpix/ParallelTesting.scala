@@ -572,7 +572,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
 
         if (!compilerCrashed && errorCount == 0) verifier()
         else {
-          echo(s"\n    Compilation failed for: '$testSource'")
+          echo(s"    Compilation failed for: '${testSource.title}'                               ")
           val buildInstr = testSource.buildInstructions(errorCount, warningCount)
           addFailureInstruction(buildInstr)
           failTestSource(testSource)
