@@ -28,18 +28,7 @@ extends Reporter with UniqueMessagePositions with HideNonSensicalMessages with M
   private[this] var _didCrash = false
   final def compilerCrashed: Boolean = _didCrash
 
-  final def flushToFile(): Unit =
-    _messageBuf
-      .iterator
-      .map(_.replaceAll("\u001b\\[.*?m", ""))
-      .foreach(filePrintln)
-
-  final def flushToStdErr(): Unit =
-    _messageBuf
-      .iterator
-      .foreach(System.err.println)
-
-  final def inlineInfo(pos: SourcePosition): String =
+  protected final def inlineInfo(pos: SourcePosition): String =
     if (pos.exists) {
       if (pos.outer.exists)
         s"\ninlined at ${pos.outer}:\n" + inlineInfo(pos.outer)
