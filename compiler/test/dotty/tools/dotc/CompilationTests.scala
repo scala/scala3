@@ -15,7 +15,7 @@ class CompilationTests extends ParallelTesting {
 
   // Test suite configuration --------------------------------------------------
 
-  def maxDuration = 180.seconds
+  def maxDuration = 30.seconds
   def numberOfSlaves = 5
   def safeMode = Properties.testsSafeMode
   def isInteractive = SummaryReport.isInteractive
