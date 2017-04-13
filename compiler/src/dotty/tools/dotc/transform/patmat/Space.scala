@@ -325,6 +325,12 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
     debug.println(s"candidates for ${tp.show} : [${children.map(_.show).mkString(", ")}]")
 
     tp.dealias match {
+      case AndType(tp1, tp2) =>
+        intersect(Typ(tp1, false), Typ(tp2, false)) match {
+          case Or(spaces) => spaces
+          case Empty => Nil
+          case space => List(space)
+        }
       case OrType(tp1, tp2) => List(Typ(tp1, true), Typ(tp2, true))
       case _ if tp =:= ctx.definitions.BooleanType =>
         List(
@@ -380,6 +386,10 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
     val res = tp.classSymbol.is(allOf(Abstract, Sealed)) ||
       tp.classSymbol.is(allOf(Trait, Sealed)) ||
       tp.dealias.isInstanceOf[OrType] ||
+      (tp.isInstanceOf[AndType] && {
+        val and = tp.asInstanceOf[AndType]
+        canDecompose(and.tp1) || canDecompose(and.tp2)
+      }) ||
       tp =:= ctx.definitions.BooleanType ||
       tp.classSymbol.is(allOf(Enum, Sealed))  // Enum value doesn't have Sealed flag
 
@@ -477,6 +487,10 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
         ctx.settings.YcheckAllPatmat.value ||
           tp.typeSymbol.is(Sealed) ||
           tp.isInstanceOf[OrType] ||
+          (tp.isInstanceOf[AndType] && {
+            val and = tp.asInstanceOf[AndType]
+            isCheckable(and.tp1) || isCheckable(and.tp2)
+          }) ||
           tp.typeSymbol == ctx.definitions.BooleanType.typeSymbol ||
           tp.typeSymbol.is(Enum) ||
           canDecompose(tp) ||
