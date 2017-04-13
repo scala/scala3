@@ -1,0 +1,4 @@
+[submodule "scala-backend"]
+	path = scala-backend
+	url = https://github.com/lampepfl/scala.git
+	branch = sharing-backend

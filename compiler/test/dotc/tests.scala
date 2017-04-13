@@ -358,7 +358,8 @@ class tests extends CompilerTest {
   @Test def tasty_dotc_util = compileDir(dotcDir, "util", testPickling)
   @Test def tasty_tools_io = compileDir(toolsDir, "io", testPickling)
 
-  @Test def tasty_bootstrap = {
+  // Disabled, not worth porting since we're getting rid of the old JUnit tests soon.
+  /*@Test*/ def tasty_bootstrap = {
     val logging = if (false) List("-Ylog-classpath", "-verbose") else Nil
     val opt = List("-priorityclasspath", defaultOutputDir) ++ logging
     // first compile dotty
