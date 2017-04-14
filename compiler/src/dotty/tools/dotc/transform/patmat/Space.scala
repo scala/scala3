@@ -537,7 +537,12 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
               tp.refinedName,
               tpb.derivedTypeBounds(follow(lo, false), follow(hi, true))
             )
-          case tp => tp
+          case _ =>
+            tp.derivedRefinedType(
+              expose(tp.parent),
+              tp.refinedName,
+              tp.refinedInfo
+            )
         }
       case _ => tp
     }

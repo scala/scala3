@@ -1,7 +1,30 @@
 sealed trait S
-object O extends S
+
+object BodylessObject extends S
+
+object HasIntM extends S {
+  type M = Int
+}
+
+object HasStringXStringM extends S {
+  type M = String
+  val x: String = ""
+}
+
+object HasIntXStringM extends S {
+  type M = String
+  val x: Int = 0
+}
+
+object HasIntXIntM extends S {
+  type M = Int
+  val x: Int = 0
+}
+
 trait T
 
 class Test {
-  def m(s: S { val x: Int }) = s match { case _: T => ; }
+  def onlyIntX(s: S { val x: Int }) = s match { case _: T => ; }
+  def exposeAlias1[I <: Int](s: S { type M = I; val x: Int }) = s match { case _: T => ; }
+  def exposeAlias2[I <: Int](s: S { val x: Int; type M = I }) = s match { case _: T => ; }
 }
