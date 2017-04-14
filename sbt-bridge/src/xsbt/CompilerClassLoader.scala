@@ -2,6 +2,8 @@ package xsbt
 
 import java.net.{URL, URLClassLoader}
 
+import scala.collection.mutable
+
 /**  A classloader to run the compiler
  *
  *   A CompilerClassLoader is constructed from a list of `urls` that need to be on
@@ -42,6 +44,14 @@ class CompilerClassLoader(urls: Array[URL], sbtLoader: ClassLoader)
 }
 
 object CompilerClassLoader {
+  /** Cache the result of `fixBridgeLoader`.
+   *
+   *  Reusing ClassLoaders is important for warm performance since otherwise the
+   *  JIT code cache for the compiler will be discarded between every call to
+   *  the sbt `compile` task.
+   */
+  private[this] val fixedLoaderCache = new mutable.WeakHashMap[ClassLoader, ClassLoader]
+
   /** Fix the compiler bridge ClassLoader
    *
    *  Soundtrack: https://www.youtube.com/watch?v=imamcajBEJs
@@ -70,7 +80,10 @@ object CompilerClassLoader {
    *  @param bridgeLoader  The classloader that sbt uses to load the compiler bridge
    *  @return A fixed classloader that works with dotty
    */
-  def fixBridgeLoader(bridgeLoader: ClassLoader) = bridgeLoader match {
+  def fixBridgeLoader(bridgeLoader: ClassLoader): ClassLoader =
+    fixedLoaderCache.getOrElseUpdate(bridgeLoader, computeFixedLoader(bridgeLoader))
+
+  private[this] def computeFixedLoader(bridgeLoader: ClassLoader) = bridgeLoader match {
     case bridgeLoader: URLClassLoader =>
       val dualLoader = bridgeLoader.getParent
       val dualLoaderClass = dualLoader.getClass
