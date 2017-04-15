@@ -80,8 +80,9 @@ object CompilerClassLoader {
    *  @param bridgeLoader  The classloader that sbt uses to load the compiler bridge
    *  @return A fixed classloader that works with dotty
    */
-  def fixBridgeLoader(bridgeLoader: ClassLoader): ClassLoader =
+  def fixBridgeLoader(bridgeLoader: ClassLoader): ClassLoader = synchronized {
     fixedLoaderCache.getOrElseUpdate(bridgeLoader, computeFixedLoader(bridgeLoader))
+  }
 
   private[this] def computeFixedLoader(bridgeLoader: ClassLoader) = bridgeLoader match {
     case bridgeLoader: URLClassLoader =>
