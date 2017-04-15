@@ -427,7 +427,7 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
   def constToLiteral(tree: Tree)(implicit ctx: Context): Tree = {
     val tree1 = ConstFold(tree)
     tree1.tpe.widenTermRefExpr match {
-      case ConstantType(value) if isIdempotentExpr(tree1) => Literal(value)
+      case ConstantType(value) if isIdempotentExpr(tree1) && !tree1.symbol.is(Lazy) => Literal(value)
       case _ => tree1
     }
   }
