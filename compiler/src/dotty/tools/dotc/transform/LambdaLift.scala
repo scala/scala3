@@ -66,7 +66,7 @@ class LambdaLift extends MiniPhase with IdentityDenotTransformer { thisTransform
 
   override def relaxedTyping = true
 
-  override def runsAfter: Set[Class[_ <: Phase]] = Set(classOf[Constructors])
+  override def runsAfter: Set[Class[_ <: Phase]] = Set(classOf[Constructors], classOf[HoistSuperArgs])
     // Constructors has to happen before LambdaLift because the lambda lift logic
     // becomes simpler if it can assume that parameter accessors have already been
     // converted to parameters in super calls. Without this it is very hard to get
@@ -146,14 +146,10 @@ class LambdaLift extends MiniPhase with IdentityDenotTransformer { thisTransform
       if (sym.maybeOwner.isTerm &&
         owner.isProperlyContainedIn(liftedOwner(sym)) &&
         owner != sym) {
-        if (sym.is(InSuperCall) && owner.isProperlyContainedIn(sym.enclosingClass))
-          narrowLiftedOwner(sym, sym.enclosingClass)
-        else {
           ctx.log(i"narrow lifted $sym to $owner")
           changedLiftedOwner = true
           liftedOwner(sym) = owner
         }
-      }
 
     /** Mark symbol `sym` as being free in `enclosure`, unless `sym` is defined
      *  in `enclosure` or there is an intermediate class properly containing `enclosure`
@@ -387,7 +383,7 @@ class LambdaLift extends MiniPhase with IdentityDenotTransformer { thisTransform
         local.copySymDenotation(
           owner = newOwner,
           name = newName(local),
-          initFlags = local.flags &~ (InSuperCall | Module) | Private | maybeStatic,
+          initFlags = local.flags &~ Module | Private | maybeStatic,
             // drop Module because class is no longer a singleton in the lifted context.
           info = liftedInfo(local)).installAfter(thisTransform)
       }

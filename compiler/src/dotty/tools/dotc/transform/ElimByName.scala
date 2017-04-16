@@ -43,6 +43,7 @@ class ElimByName extends TransformByNameApply with InfoTransformer { thisTransfo
 
   override def phaseName: String = "elimByName"
 
+  override def runsAfter = Set(classOf[HoistSuperArgs])
   override def runsAfterGroupsOf = Set(classOf[Splitter])
     // assumes idents and selects have symbols; interferes with splitter distribution
     // that's why it's "after group".

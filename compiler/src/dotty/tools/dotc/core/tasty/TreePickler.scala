@@ -577,7 +577,6 @@ class TreePickler(pickler: TastyPickler) {
     if (flags is Synthetic) writeByte(SYNTHETIC)
     if (flags is Artifact) writeByte(ARTIFACT)
     if (flags is Scala2x) writeByte(SCALA2X)
-    if (flags is InSuperCall) writeByte(INSUPERCALL)
     if (sym.isTerm) {
       if (flags is Implicit) writeByte(IMPLICIT)
       if ((flags is Lazy) && !(sym is Module)) writeByte(LAZY)

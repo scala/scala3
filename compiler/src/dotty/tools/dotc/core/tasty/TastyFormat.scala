@@ -186,7 +186,6 @@ Standard-Section: "ASTs" TopLevelStat*
                   CONTRAVARIANT             // type param marked “-”
                   SCALA2X                           // Imported from Scala2.x
                   DEFAULTparameterized  // Method with default params
-                  INSUPERCALL           // defined in the argument of a constructor supercall
                   STABLE                // Method that is assumed to be stable
                   Annotation
   Annotation    = ANNOTATION     Length tycon_Type fullAnnotation_Term
@@ -278,8 +277,7 @@ object TastyFormat {
   final val CONTRAVARIANT = 28
   final val SCALA2X = 29
   final val DEFAULTparameterized = 30
-  final val INSUPERCALL = 31
-  final val STABLE = 32
+  final val STABLE = 31
 
   final val SHARED = 64
   final val TERMREFdirect = 65
@@ -403,7 +401,6 @@ object TastyFormat {
        | CONTRAVARIANT
        | SCALA2X
        | DEFAULTparameterized
-       | INSUPERCALL
        | STABLE
        | ANNOTATION
        | PRIVATEqualified
@@ -469,7 +466,6 @@ object TastyFormat {
     case CONTRAVARIANT => "CONTRAVARIANT"
     case SCALA2X => "SCALA2X"
     case DEFAULTparameterized => "DEFAULTparameterized"
-    case INSUPERCALL => "INSUPERCALL"
     case STABLE => "STABLE"
 
     case SHARED => "SHARED"

@@ -278,14 +278,12 @@ class Namer { typer: Typer =>
         else name
     }
 
-    val inSuperCall = if (ctx.mode is Mode.InSuperCall) InSuperCall else EmptyFlags
-
     tree match {
       case tree: TypeDef if tree.isClassDef =>
         val name = checkNoConflict(tree.name.encode).toTypeName
         val flags = checkFlags(tree.mods.flags &~ Implicit)
         val cls = recordSym(ctx.newClassSymbol(
-          ctx.owner, name, flags | inSuperCall,
+          ctx.owner, name, flags,
           cls => adjustIfModule(new ClassCompleter(cls, tree)(ctx), tree),
           privateWithinClass(tree.mods), tree.namePos, ctx.source.file), tree)
         cls.completer.asInstanceOf[ClassCompleter].init()
@@ -296,8 +294,6 @@ class Namer { typer: Typer =>
         val isDeferred = lacksDefinition(tree)
         val deferred = if (isDeferred) Deferred else EmptyFlags
         val method = if (tree.isInstanceOf[DefDef]) Method else EmptyFlags
-        val inSuperCall1 = if (tree.mods is ParamOrAccessor) EmptyFlags else inSuperCall
-          // suppress inSuperCall for constructor parameters
         val higherKinded = tree match {
           case TypeDef(_, LambdaTypeTree(_, _)) if isDeferred => HigherKinded
           case _ => EmptyFlags
@@ -320,7 +316,7 @@ class Namer { typer: Typer =>
         }
 
         recordSym(ctx.newSymbol(
-          ctx.owner, name, flags | deferred | method | higherKinded | inSuperCall1,
+          ctx.owner, name, flags | deferred | method | higherKinded,
           adjustIfModule(completer, tree),
           privateWithinClass(tree.mods), tree.namePos), tree)
       case tree: Import =>
