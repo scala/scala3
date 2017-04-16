@@ -57,6 +57,7 @@ class Compiler {
            new TailRec,             // Rewrite tail recursion to loops
            new ByNameClosures), List(      // Expand by-name arguments
            new LiftTry,             // Put try expressions that might execute on non-empty stacks into their own methods
+           new HoistSuperArgs,      // Hoist complex arguments of supercalls to enclosing scope
            new ClassOf),            // Expand `Predef.classOf` calls.
       List(new TryCatchPatterns,    // Compile cases in try/catch
            new PatternMatcher,      // Compile pattern matches
