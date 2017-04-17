@@ -14,7 +14,7 @@ import Decorators._
 class TastyPickler {
 
   private val sections = new mutable.ArrayBuffer[(NameRef, TastyBuffer)]
-  val uuid = UUID.randomUUID()
+  private val uuid = UUID.fromString("3cee1b79-c03a-4125-b337-d067b5cb3a94") // TODO: use a hash of the tasty tree
 
   private val headerBuffer = {
     val buf = new TastyBuffer(24)
