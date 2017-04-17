@@ -2151,7 +2151,7 @@ object Parsers {
     /** EnumCaseStats = EnumCaseStat {semi EnumCaseStat */
     def enumCaseStats(): List[DefTree] = {
       val cases = new ListBuffer[DefTree] += enumCaseStat()
-      while (in.token != RBRACE) {
+      while (in.token != RBRACE && in.token != EOF) {
         acceptStatSep()
         cases += enumCaseStat()
       }
