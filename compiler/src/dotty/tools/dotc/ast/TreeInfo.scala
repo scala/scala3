@@ -427,11 +427,12 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
   def constToLiteral(tree: Tree)(implicit ctx: Context): Tree = {
     val tree1 = ConstFold(tree)
     def canInlineConstant(value: Constant): Boolean = {
+      val sym = tree1.symbol
       isIdempotentExpr(tree1) && // see note in documentation
       // lazy value must be initialized (would not be needed with isPureExpr)
-      !tree1.symbol.is(Lazy) &&
+      !sym.is(Lazy) &&
       // could hide initialization order issues (ex. val with constant type read before initialized)
-      (!ctx.owner.isLocalDummy || (tree1.symbol.is(Method) || value.isZero) ||
+      (!ctx.owner.isLocalDummy || (!sym.is(Method) && !sym.is(Lazy) && value.isZero) ||
         ctx.scala2Mode // ignore in Scala 2 because of inlined `final val` values
       )
     }
