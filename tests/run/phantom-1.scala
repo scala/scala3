@@ -18,5 +18,5 @@ object Test {
 
 object Boo extends Phantom {
   type BooAny = this.Any
-  def any: BooAny = assume[BooAny]
+  def any: BooAny = assume
 }

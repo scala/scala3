@@ -9,5 +9,5 @@ class phantomTypeParamBounds2 {
 }
 
 object Boo extends Phantom {
-  def boo[B <: Boo.Any]: B = assume[B]
+  def boo[B <: Boo.Any]: B = assume
 }

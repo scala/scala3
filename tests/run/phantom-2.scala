@@ -16,5 +16,5 @@ object Test {
 
 object Boo extends Phantom {
   type BooNothing = this.Nothing
-  def nothig: BooNothing = assume[BooNothing] // Should be allowed?
+  def nothig: BooNothing = assume
 }

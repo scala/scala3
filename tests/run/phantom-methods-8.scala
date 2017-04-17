@@ -22,5 +22,5 @@ object Test {
 
 object Boo extends Phantom {
   type Inky <: Boo.Any
-  def boo[B <: Boo.Any]: B = assume[B]
+  def boo[B <: Boo.Any]: B = assume
 }

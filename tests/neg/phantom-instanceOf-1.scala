@@ -7,5 +7,5 @@ class phantomInstanceOf1 {
 }
 
 object Boo extends Phantom {
-  def boo[B <: Boo.Any]: B = assume[B]
+  def boo[B <: Boo.Any]: B = assume
 }

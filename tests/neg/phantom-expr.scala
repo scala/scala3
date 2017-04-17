@@ -36,10 +36,10 @@ class Foo {
 
 object Boo extends Phantom {
   type BooAny = this.Any
-  def boo[B <: BooAny]: B = assume[B]
+  def boo[B <: BooAny]: B = assume
 }
 
 object Boo1 extends Phantom {
   type Boo1Any = this.Any
-  def boo1: Boo1Any = assume[Boo1Any]
+  def boo1: Boo1Any = assume
 }

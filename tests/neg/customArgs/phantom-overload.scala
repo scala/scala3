@@ -19,10 +19,10 @@ object Boo extends Phantom {
   type A <: this.Any
   type B <: this.Any
   type N = this.Nothing
-  def nothing = assume[this.Nothing]
+  def nothing: this.Nothing = assume
 }
 
 object Boo2 extends Phantom {
   type C <: this.Any
-  def nothing2 = assume[this.Nothing]
+  def nothing2: this.Nothing = assume
 }

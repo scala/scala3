@@ -23,5 +23,5 @@ object Boo extends Phantom {
   type Pinky <: Inky
   type Clyde >: Pinky <: Inky
   type Casper = Pinky
-  def boo[B <: Blinky]: B = assume[B]
+  def boo[B <: Blinky]: B = assume
 }

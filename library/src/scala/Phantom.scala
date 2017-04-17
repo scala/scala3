@@ -7,7 +7,7 @@ trait Phantom {
 
   protected final abstract class Nothing extends Any
 
-  protected final def assume[P >: this.Nothing <: this.Any]: P =
-    null.asInstanceOf[P] // This implementation matches the erased implementation
+  protected final def assume: this.Nothing =
+    null.asInstanceOf[this.Nothing] // This implementation matches the erased implementation
 }
 */

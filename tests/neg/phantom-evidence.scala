@@ -13,7 +13,7 @@ object WithNormalState extends Phantom {
 
   type =::=[From, To] <: this.Any
 
-  implicit inline def tpEquals[A]: A =::= A = assume[=::=[A, A]]
+  implicit inline def tpEquals[A]: A =::= A = assume
 
   trait State
   sealed trait On extends State

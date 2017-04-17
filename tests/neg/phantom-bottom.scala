@@ -16,10 +16,10 @@ class Foo {
 object Boo extends Phantom {
   type BooAny = this.Any
   type BooNothing = this.Nothing
-  def nothing: BooNothing = assume[BooNothing]
+  def nothing: BooNothing = assume
 }
 
 object Boo2 extends Phantom {
   type BooNothing2 = this.Nothing
-  def nothing: BooNothing2 = assume[BooNothing2]
+  def nothing: BooNothing2 = assume
 }

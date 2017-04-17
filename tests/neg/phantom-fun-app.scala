@@ -20,5 +20,5 @@ object Boo extends Phantom {
   type BooAny = this.Any
   type Blinky <: BooAny
   type Pinky <: Blinky
-  def boo[B <: BooAny]: B = assume[B]
+  def boo[B <: BooAny]: B = assume
 }

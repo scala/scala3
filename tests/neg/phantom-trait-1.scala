@@ -1,4 +1,4 @@
 
 object Boo extends Phantom {
-  override def assume[P >: this.Nothing <: this.Any]: P = super.assume[P] // error
+  override val assume: this.Nothing = super.assume // error
 }
