@@ -377,6 +377,8 @@ class TypeErasure(isJava: Boolean, semiEraseVCs: Boolean, isConstructor: Boolean
       defn.FunctionType(0)
     case AndType(tp1, tp2) =>
       erasedGlb(this(tp1), this(tp2), isJava)
+    case tp: HKApply =>
+      apply(tp.superType)
     case OrType(tp1, tp2) =>
       ctx.typeComparer.orType(this(tp1), this(tp2), erased = true)
     case tp: MethodType =>
@@ -508,6 +510,8 @@ class TypeErasure(isJava: Boolean, semiEraseVCs: Boolean, isConstructor: Boolean
           normalizeClass(sym.asClass).fullName.asTypeName
       case defn.ArrayOf(elem) =>
         sigName(this(tp))
+      case tp: HKApply =>
+        sigName(tp.superType)
       case JavaArrayType(elem) =>
         sigName(elem) ++ "[]"
       case tp: TermRef =>
