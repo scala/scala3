@@ -55,7 +55,8 @@ object LazyVals {
       else if (state == 2) {
         val monitor = getMonitor(t, ord)
         monitor.synchronized {
-          monitor.wait()
+          if (STATE(cur, ord) == 2)
+            monitor.wait()
         }
       }
       else retry = false
