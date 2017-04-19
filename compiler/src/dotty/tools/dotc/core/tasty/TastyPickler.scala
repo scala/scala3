@@ -6,6 +6,7 @@ package tasty
 import TastyFormat._
 import collection.mutable
 import TastyBuffer._
+import util.MurmurLongHash3
 import core.Symbols.Symbol
 import ast.tpd
 import Decorators._
@@ -25,8 +26,8 @@ class TastyPickler {
       buf.length + natSize(buf.length)
     }
 
-    val uuidLow: Long = longHash(nameBuffer.bytes)
-    val uuidHi: Long = sections.iterator.map(x => longHash(x._2.bytes)).fold(0L)(_ ^ _)
+    val uuidLow: Long = MurmurLongHash3.bytesHash(nameBuffer.bytes)
+    val uuidHi: Long = sections.iterator.map(x => MurmurLongHash3.bytesHash(x._2.bytes)).fold(0L)(_ ^ _)
 
     val headerBuffer = {
       val buf = new TastyBuffer(header.length + 24)
@@ -71,8 +72,4 @@ class TastyPickler {
   var addrOfSym: Symbol => Option[Addr] = (_ => None)
 
   val treePkl = new TreePickler(this)
-
-  private def longHash(arr: Array[Byte], i: Int = 0, acc: Long = 1): Long =
-    if (i < arr.length) longHash(arr, i + 1, 31L * acc + arr(i)) else acc
-
 }
