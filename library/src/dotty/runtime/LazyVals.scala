@@ -55,7 +55,7 @@ object LazyVals {
       else if (state == 2) {
         val monitor = getMonitor(t, ord)
         monitor.synchronized {
-          if (STATE(cur, ord) == 2)
+          if (STATE(get(t, offset), ord) == 2) // make sure notification did not happen yet.
             monitor.wait()
         }
       }
