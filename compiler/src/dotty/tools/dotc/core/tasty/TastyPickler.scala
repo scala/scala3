@@ -6,7 +6,6 @@ package tasty
 import TastyFormat._
 import collection.mutable
 import TastyBuffer._
-import java.util.UUID
 import core.Symbols.Symbol
 import ast.tpd
 import Decorators._
@@ -14,17 +13,6 @@ import Decorators._
 class TastyPickler {
 
   private val sections = new mutable.ArrayBuffer[(NameRef, TastyBuffer)]
-  private val uuid = UUID.fromString("3cee1b79-c03a-4125-b337-d067b5cb3a94") // TODO: use a hash of the tasty tree
-
-  private val headerBuffer = {
-    val buf = new TastyBuffer(24)
-    for (ch <- header) buf.writeByte(ch.toByte)
-    buf.writeNat(MajorVersion)
-    buf.writeNat(MinorVersion)
-    buf.writeUncompressedLong(uuid.getMostSignificantBits)
-    buf.writeUncompressedLong(uuid.getLeastSignificantBits)
-    buf
-  }
 
   val nameBuffer = new NameBuffer
 
@@ -36,6 +24,20 @@ class TastyPickler {
       buf.assemble()
       buf.length + natSize(buf.length)
     }
+
+    val uuidLow: Long = longHash(nameBuffer.bytes)
+    val uuidHi: Long = sections.iterator.map(x => longHash(x._2.bytes)).fold(0L)(_ ^ _)
+
+    val headerBuffer = {
+      val buf = new TastyBuffer(header.length + 24)
+      for (ch <- header) buf.writeByte(ch.toByte)
+      buf.writeNat(MajorVersion)
+      buf.writeNat(MinorVersion)
+      buf.writeUncompressedLong(uuidLow)
+      buf.writeUncompressedLong(uuidHi)
+      buf
+    }
+
     val totalSize =
       headerBuffer.length +
       lengthWithLength(nameBuffer) + {
@@ -69,4 +71,8 @@ class TastyPickler {
   var addrOfSym: Symbol => Option[Addr] = (_ => None)
 
   val treePkl = new TreePickler(this)
+
+  private def longHash(arr: Array[Byte], i: Int = 0, acc: Long = 1): Long =
+    if (i < arr.length) longHash(arr, i + 1, 31L * acc + arr(i)) else acc
+
 }
