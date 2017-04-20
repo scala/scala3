@@ -3,7 +3,7 @@ package transform
 
 import TreeTransforms._
 import core._
-import DenotTransformers._
+import DenotTransformers.InfoTransformer
 import Symbols._
 import SymDenotations._
 import Contexts._
@@ -38,7 +38,7 @@ import ast.Trees._
  *  Option 2: Merge ElimByName with erasure, or have it run immediately before. This has not been
  *  tried yet.
  */
-class ElimByName extends ByNameClosures with InfoTransformer { thisTransformer =>
+class ElimByName extends TransformByNameApply with InfoTransformer { thisTransformer =>
   import ast.tpd._
 
   override def phaseName: String = "elimByName"

@@ -55,6 +55,7 @@ class Compiler {
            new ExtensionMethods,    // Expand methods of value classes with extension methods
            new ExpandSAMs,          // Expand single abstract method closures to anonymous classes
            new TailRec,             // Rewrite tail recursion to loops
+           new ByNameClosures), List(      // Expand by-name arguments
            new LiftTry,             // Put try expressions that might execute on non-empty stacks into their own methods
            new ClassOf),            // Expand `Predef.classOf` calls.
       List(new TryCatchPatterns,    // Compile cases in try/catch
@@ -69,7 +70,7 @@ class Compiler {
            new SeqLiterals,         // Express vararg arguments as arrays
            new InterceptedMethods,  // Special handling of `==`, `|=`, `getClass` methods
            new Getters,             // Replace non-private vals and vars with getter defs (fields are added later)
-           new ElimByName,          // Expand by-name parameters and arguments
+           new ElimByName,          // Expand by-name parameters
            new AugmentScala2Traits, // Expand traits defined in Scala 2.11 to simulate old-style rewritings
            new ResolveSuper,        // Implement super accessors and add forwarders to trait methods
            new PrimitiveForwarders, // Add forwarders to trait methods that have a mismatch between generic and primitives
