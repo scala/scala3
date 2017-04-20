@@ -52,7 +52,7 @@ object BenchTests extends OnlineRegressionReport {
 
   val stdlibFiles = StdLibSources.whitelisted
 
-  def stdLib = compiler.compileList("compileStdLib", stdlibFiles, "-migration" :: scala2mode)
+  def stdLib = compiler.compileList("compileStdLib", stdlibFiles, "-migration" :: "-Yno-inline" :: scala2mode)
 
   def dotty = compiler.compileDir(dottyDir, ".",  List("-deep", "-strict"))
 
