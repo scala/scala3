@@ -84,10 +84,12 @@ object TestReporter {
   private[this] var logWriter: PrintWriter = _
 
   private[this] def initLog() = if (logWriter eq null) {
-    val df = new SimpleDateFormat("yyyy-MM-dd-HH:mm")
-    val timestamp = df.format(new Date)
-    new JFile("../testlogs").mkdirs()
-    outFile = new JFile(s"../testlogs/tests-$timestamp.log")
+    val date = new Date
+    val df0 = new SimpleDateFormat("yyyy-MM-dd")
+    val df1 = new SimpleDateFormat("yyyy-MM-dd-HH:mm:ss")
+    val folder = s"../testlogs/tests-${df0.format(date)}"
+    new JFile(folder).mkdirs()
+    outFile = new JFile(s"$folder/tests-${df1.format(date)}.log")
     logWriter = new PrintWriter(new FileOutputStream(outFile, true))
   }
 
