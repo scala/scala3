@@ -5,9 +5,13 @@ package dotc
 import dotty.tools.io.JFile
 import org.junit.{AfterClass, BeforeClass, Test}
 
+import java.nio.file._
+import java.util.stream.{ Stream => JStream }
+import scala.collection.JavaConverters._
 import scala.util.matching.Regex
 import scala.concurrent.duration._
 import vulpix.{ParallelTesting, SummaryReport, SummaryReporting, TestConfiguration}
+
 
 class CompilationTests extends ParallelTesting {
   import TestConfiguration._
@@ -15,7 +19,7 @@ class CompilationTests extends ParallelTesting {
 
   // Test suite configuration --------------------------------------------------
 
-  def maxDuration = 180.seconds
+  def maxDuration = 30.seconds
   def numberOfSlaves = 5
   def safeMode = Properties.testsSafeMode
   def isInteractive = SummaryReport.isInteractive
@@ -157,6 +161,7 @@ class CompilationTests extends ParallelTesting {
     compileFile("../tests/neg/customArgs/nopredef.scala", defaultOptions.and("-Yno-predef")) +
     compileFile("../tests/neg/customArgs/noimports.scala", defaultOptions.and("-Yno-imports")) +
     compileFile("../tests/neg/customArgs/noimports2.scala", defaultOptions.and("-Yno-imports")) +
+    compileFile("../tests/neg/customArgs/overloadsOnAbstractTypes.scala", allowDoubleBindings) +
     compileFile("../tests/neg/tailcall/t1672b.scala", defaultOptions) +
     compileFile("../tests/neg/tailcall/t3275.scala", defaultOptions) +
     compileFile("../tests/neg/tailcall/t6574.scala", defaultOptions) +
@@ -217,9 +222,9 @@ class CompilationTests extends ParallelTesting {
     val opt = Array(
       "-classpath",
       // compile with bootstrapped library on cp:
-      defaultOutputDir + "lib$1/src/:" +
+      defaultOutputDir + "lib/src/:" +
       // as well as bootstrapped compiler:
-      defaultOutputDir + "dotty1$1/dotty/:" +
+      defaultOutputDir + "dotty1/dotty1/:" +
       Jars.dottyInterfaces
     )
 
@@ -227,8 +232,36 @@ class CompilationTests extends ParallelTesting {
       compileDir("../library/src",
         allowDeepSubtypes.and("-Ycheck-reentrant", "-strict", "-priorityclasspath", defaultOutputDir))
 
-    def dotty1 =
-      compileDir("../compiler/src/dotty", opt)
+    def sources(paths: JStream[Path], excludedFiles: List[String] = Nil): List[String] =
+      paths.iterator().asScala
+        .filter(path =>
+          (path.toString.endsWith(".scala") || path.toString.endsWith(".java"))
+            && !excludedFiles.contains(path.getFileName.toString))
+        .map(_.toString).toList
+
+    val compilerDir = Paths.get("../compiler/src")
+    val compilerSources = sources(Files.walk(compilerDir))
+
+    val backendDir = Paths.get("../scala-backend/src/compiler/scala/tools/nsc/backend")
+    val backendJvmDir = Paths.get("../scala-backend/src/compiler/scala/tools/nsc/backend/jvm")
+
+    // NOTE: Keep these exclusions synchronized with the ones in the sbt build (Build.scala)
+    val backendExcluded =
+      List("JavaPlatform.scala", "Platform.scala", "ScalaPrimitives.scala")
+    val backendJvmExcluded =
+      List("BCodeICodeCommon.scala", "GenASM.scala", "GenBCode.scala", "ScalacBackendInterface.scala")
+
+    val backendSources =
+      sources(Files.list(backendDir), excludedFiles = backendExcluded)
+    val backendJvmSources =
+      sources(Files.list(backendJvmDir), excludedFiles = backendJvmExcluded)
+
+    def dotty1 = {
+      compileList(
+        "dotty1",
+        compilerSources ++ backendSources ++ backendJvmSources,
+        opt)
+    }
 
     def dotty2 =
       compileShallowFilesInDir("../compiler/src/dotty", opt)
@@ -247,7 +280,9 @@ class CompilationTests extends ParallelTesting {
         compileShallowFilesInDir("../compiler/src/dotty/tools/dotc/rewrite", opt) +
         compileShallowFilesInDir("../compiler/src/dotty/tools/dotc/transform", opt) +
         compileShallowFilesInDir("../compiler/src/dotty/tools/dotc/typer", opt) +
-        compileShallowFilesInDir("../compiler/src/dotty/tools/dotc/util", opt)
+        compileShallowFilesInDir("../compiler/src/dotty/tools/dotc/util", opt) +
+        compileList("shallow-backend", backendSources, opt) +
+        compileList("shallow-backend-jvm", backendJvmSources, opt)
       } :: Nil
     }.map(_.checkCompile()).foreach(_.delete())
   }

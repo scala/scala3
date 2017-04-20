@@ -11,7 +11,7 @@ import asm._
 import asm.tree._
 import scala.collection.JavaConverters._
 
-import scala.tools.nsc.util.JavaClassPath
+import io.JavaClassPath
 import scala.collection.JavaConverters._
 import scala.tools.asm.{ClassWriter, ClassReader}
 import scala.tools.asm.tree._

@@ -7,6 +7,7 @@ import SymDenotations._, Denotations.SingleDenotation
 import config.Printers.typr
 import util.Positions._
 import NameOps._
+import NameKinds.DepParamName
 import Decorators._
 import StdNames._
 import Annotations._
@@ -158,7 +159,11 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
         case tp1 => tp1
       }
     case tp: TypeParamRef =>
-      typerState.constraint.typeVarOfParam(tp) orElse tp
+      if (tp.paramName.is(DepParamName)) {
+        val bounds = ctx.typeComparer.bounds(tp)
+        if (bounds.lo.isRef(defn.NothingClass)) bounds.hi else bounds.lo
+      }
+      else typerState.constraint.typeVarOfParam(tp) orElse tp
     case  _: ThisType | _: BoundType | NoPrefix =>
       tp
     case tp: RefinedType =>

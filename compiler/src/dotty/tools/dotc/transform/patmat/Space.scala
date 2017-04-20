@@ -324,7 +324,7 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
 
     debug.println(s"candidates for ${tp.show} : [${children.map(_.show).mkString(", ")}]")
 
-    tp match {
+    tp.dealias match {
       case OrType(tp1, tp2) => List(Typ(tp1, true), Typ(tp2, true))
       case _ if tp =:= ctx.definitions.BooleanType =>
         List(
@@ -379,7 +379,7 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
   def canDecompose(tp: Type): Boolean = {
     val res = tp.classSymbol.is(allOf(Abstract, Sealed)) ||
       tp.classSymbol.is(allOf(Trait, Sealed)) ||
-      tp.isInstanceOf[OrType] ||
+      tp.dealias.isInstanceOf[OrType] ||
       tp =:= ctx.definitions.BooleanType ||
       tp.classSymbol.is(allOf(Enum, Sealed))  // Enum value doesn't have Sealed flag
 
@@ -536,6 +536,12 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
               expose(tp.parent),
               tp.refinedName,
               tpb.derivedTypeBounds(follow(lo, false), follow(hi, true))
+            )
+          case _ =>
+            tp.derivedRefinedType(
+              expose(tp.parent),
+              tp.refinedName,
+              tp.refinedInfo
             )
         }
       case _ => tp

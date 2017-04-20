@@ -113,7 +113,7 @@ trait MessageRendering {
     */
   def posStr(pos: SourcePosition, diagnosticLevel: String, message: Message)(implicit ctx: Context): String =
     if (pos.exists) Blue({
-      val file = pos.source.file.toString
+      val file = s"${pos.source.file.toString}:${pos.line + 1}:${pos.column}"
       val errId =
         if (message.errorId ne ErrorMessageID.NoExplanationID) {
           val errorNumber = message.errorId.errorNumber()

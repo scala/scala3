@@ -10,7 +10,7 @@ function getLastStringOnLineWith {
 # Configuration
 SCALA_VERSION=$(getLastStringOnLineWith "val scalacVersion")
 SCALA_BINARY_VERSION=2.11
-SCALA_COMPILER_VERSION=$(getLastStringOnLineWith "scala-compiler")
+SCALA_ASM_VERSION=$(getLastStringOnLineWith "% \"scala-asm\" %")
 SBT_VERSION=$(grep "sbt.version=" "$DOTTY_ROOT/project/build.properties" | sed 's/sbt.version=//')
 bootcp=true
 bootstrapped=false
@@ -146,8 +146,8 @@ if [ "$SCALA_REFLECT_JAR" == "" ]; then
     SCALA_REFLECT_JAR=$(find_jar "$HOME/.ivy2/cache/org.scala-lang/scala-reflect/jars" "scala-reflect-$SCALA_VERSION.jar")
 fi
 
-if [ "$SCALA_COMPILER_JAR" == "" ]; then
-    SCALA_COMPILER_JAR=$(find_jar "$HOME/.ivy2/cache/me.d-d/scala-compiler/jars" "scala-compiler-$SCALA_COMPILER_VERSION.jar")
+if [ "$SCALA_ASM_JAR" == "" ]; then
+    SCALA_ASM_JAR=$(find_jar "$HOME/.ivy2/cache/org.scala-lang.modules/scala-asm/bundles" "scala-asm-$SCALA_ASM_VERSION.jar")
 fi
 
 if [ "$SBT_INTERFACE_JAR" == "" ]; then

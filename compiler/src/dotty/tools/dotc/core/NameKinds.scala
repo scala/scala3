@@ -209,7 +209,7 @@ object NameKinds {
   val InlineAccessorName      = new UniqueNameKind("$_inlineAccessor_$")
   val TempResultName          = new UniqueNameKind("ev$")
   val EvidenceParamName       = new UniqueNameKind("evidence$")
-  val DepParamName            = new UniqueNameKind("<param>")
+  val DepParamName            = new UniqueNameKind("(param)")
   val LazyImplicitName        = new UniqueNameKind("$_lazy_implicit_$")
   val LazyLocalName           = new UniqueNameKind("$lzy")
   val LazyLocalInitName       = new UniqueNameKind("$lzyINIT")

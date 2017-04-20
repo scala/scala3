@@ -1,3 +1,7 @@
+[submodule "scala-backend"]
+	path = scala-backend
+	url = https://github.com/lampepfl/scala.git
+	branch = sharing-backend
 [submodule "collection-strawman"]
 	path = collection-strawman
 	url = https://github.com/nicolasstucki/collection-strawman.git

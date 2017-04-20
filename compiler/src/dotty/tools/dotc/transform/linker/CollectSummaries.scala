@@ -381,7 +381,7 @@ class CollectSummaries extends MiniPhase { thisTransform =>
         else                                                        // result of unapply is Option[(T1, ..., Tn)]
           registerNestedUnapplyFromProduct(getCall, tree.patterns)
 
-      } else if (Applications.canProductMatch(unapplyResultType)) {
+      } else if (defn.isProductSubType(unapplyResultType)) {
         // if result of unapply is a Product
         registerNestedUnapplyFromProduct(unapplyCall, tree.patterns)
       }
