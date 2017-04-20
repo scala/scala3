@@ -977,15 +977,9 @@ class Definitions {
 
     cls
   }
-
-  def isPhantomAnyOrNothingClass(sym: Symbol)(implicit ctx: Context): Boolean =
-    (sym.name == tpnme.Any || sym.name == tpnme.Nothing) && (sym.owner eq PhantomClass)
-
-  def isPhantomNothingClass(sym: Symbol)(implicit ctx: Context): Boolean =
-    sym.name == tpnme.Nothing && (sym.owner eq PhantomClass)
-
-  def isPhantomAssume(sym: Symbol)(implicit ctx: Context): Boolean =
-    sym.name == nme.assume_ && (sym.owner eq PhantomClass)
+  lazy val PhantomAny = PhantomClass.unforcedDecls.find(_.name eq tpnme.Any).asClass
+  lazy val PhantomNothing = PhantomClass.unforcedDecls.find(_.name eq tpnme.Nothing).asClass
+  lazy val PhantomAssume = PhantomClass.unforcedDecls.find(_.name eq nme.assume_)
 
   lazy val ErasedPhantomClass = ctx.requiredClass("dotty.runtime.ErasedPhantom")
   def ErasedPhantomType(implicit ctx: Context) = ErasedPhantomClass.typeRef

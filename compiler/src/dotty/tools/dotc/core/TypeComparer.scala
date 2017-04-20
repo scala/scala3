@@ -48,6 +48,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
   private var myAnyClass: ClassSymbol = null
   private var myNothingClass: ClassSymbol = null
   private var myNullClass: ClassSymbol = null
+  private var myPhantomNothingClass: ClassSymbol = null
   private var myObjectClass: ClassSymbol = null
   private var myAnyType: TypeRef = null
   private var myNothingType: TypeRef = null
@@ -63,6 +64,10 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
   def NullClass = {
     if (myNullClass == null) myNullClass = defn.NullClass
     myNullClass
+  }
+  def PhantomNothing = {
+    if (myPhantomNothingClass == null) myPhantomNothingClass = defn.PhantomNothing
+    myPhantomNothingClass
   }
   def ObjectClass = {
     if (myObjectClass == null) myObjectClass = defn.ObjectClass
@@ -553,7 +558,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
           }
           if (tp1.symbol eq NothingClass) tp2.isValueTypeOrLambda && (tp2.topType.classSymbol eq AnyClass)
           else if (tp1.symbol eq NullClass) isNullable(tp2) && (tp2.topType.classSymbol eq AnyClass)
-          else if (defn.isPhantomNothingClass(tp1.symbol)) tp2.isValueTypeOrLambda && (tp1.topType == tp2.topType)
+          else if (tp1.symbol eq PhantomNothing) tp2.isValueTypeOrLambda && (tp1.topType == tp2.topType)
           else false
       }
     case tp1: SingletonType =>
