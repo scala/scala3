@@ -476,11 +476,12 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
 
   /** Abstract sealed types, or-types, Boolean and Java enums can be decomposed */
   def canDecompose(tp: Type): Boolean = {
+    val dealiasedTp = tp.dealias
     val res = tp.classSymbol.is(allOf(Abstract, Sealed)) ||
       tp.classSymbol.is(allOf(Trait, Sealed)) ||
-      tp.dealias.isInstanceOf[OrType] ||
-      (tp.isInstanceOf[AndType] && {
-        val and = tp.asInstanceOf[AndType]
+      dealiasedTp.isInstanceOf[OrType] ||
+      (dealiasedTp.isInstanceOf[AndType] && {
+        val and = dealiasedTp.asInstanceOf[AndType]
         canDecompose(and.tp1) || canDecompose(and.tp2)
       }) ||
       tp =:= ctx.definitions.BooleanType ||
