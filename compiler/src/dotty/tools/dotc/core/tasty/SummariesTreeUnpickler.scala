@@ -5,13 +5,14 @@ import dotty.tools.dotc.core.Mode
 import dotty.tools.dotc.core.Names.TermName
 import dotty.tools.dotc.core.tasty.TastyBuffer.NameRef
 
-class SectionTreeUnpickler(unpickler: DottyUnpickler, reader: TastyReader, tastyName: NameRef => TermName, sectionName: String)(implicit ctx: Context) extends TreeUnpickler(reader, tastyName, posUnpicklerOpt = None) {
+class SummariesTreeUnpickler(treeUnpickler: TreeUnpickler, reader: TastyReader, tastyName: NameRef => TermName, sectionName: String)(implicit ctx: Context)
+    extends TreeUnpickler(reader, tastyName, posUnpicklerOpt = None) {
 
   roots = Set.empty
 
-  override val symAtAddr = unpickler.treeUnpickler.symAtAddr
-  override val treeAtAddr = unpickler.treeUnpickler.treeAtAddr
-  override val typeAtAddr = unpickler.treeUnpickler.typeAtAddr
+  override val symAtAddr = treeUnpickler.symAtAddr
+  override val treeAtAddr = treeUnpickler.treeAtAddr
+  override val typeAtAddr = treeUnpickler.typeAtAddr
 
   def getStartReader: Option[TreeReader] = {
     val st = new TreeReader(reader)
@@ -23,7 +24,7 @@ class SectionTreeUnpickler(unpickler: DottyUnpickler, reader: TastyReader, tasty
       val tag = reader.readByte()
       val end = reader.readEnd()
       val name = st.readName()
-      if (name.toString == sectionName + unpickler.unpickler.uuid) return Some(st.forkAt(end))
+      if (name.toString == sectionName) return Some(st.forkAt(end))
       st.skipTree() // skip type
       st.skipTree() // skip rhs
     }

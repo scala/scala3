@@ -89,7 +89,7 @@ class TastyUnpickler(reader: TastyReader) {
     new UUID(readUncompressedLong(), readUncompressedLong())
   }
 
-  private[tasty] val uuid = readHeader()
+  private[dotc] val uuid = readHeader()
 
   locally {
     until(readEnd()) { nameAtRef.add(readNameContents()) }

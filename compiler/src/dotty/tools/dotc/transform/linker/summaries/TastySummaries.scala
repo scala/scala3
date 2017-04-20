@@ -8,7 +8,7 @@ import dotty.tools.dotc.core.Symbols.{Symbol, defn}
 import dotty.tools.dotc.core.Decorators._
 import dotty.tools.dotc.core.SymDenotations.ClassDenotation
 import dotty.tools.dotc.core.Types.{TermRef, Type}
-import dotty.tools.dotc.core.tasty.DottyUnpickler.SectionTreeSectionUnpickler
+import dotty.tools.dotc.core.tasty.DottyUnpickler.SummariesTreeSectionUnpickler
 import dotty.tools.dotc.core.tasty.TastyUnpickler.NameTable
 import dotty.tools.dotc.core.tasty._
 import dotty.tools.dotc.transform.linker.types.{ClosureType, PreciseType}
@@ -44,9 +44,10 @@ class TastySummaries {
       case clsd: ClassDenotation =>
         clsd.hack match {
           case Some(unpickler: DottyUnpickler) =>
-            val tastySection = unpickler.unpickler.unpickle(new SectionTreeSectionUnpickler(unpickler, sectionName)).get
+            val summariesUnpickler = new SummariesTreeSectionUnpickler(unpickler.treeUnpickler, sectionName + unpickler.unpickler.uuid)
+            val tastySection = unpickler.unpickler.unpickle(summariesUnpickler).get
             tastySection.enterTopLevel(roots = Set.empty)
-            val treeReader = tastySection.asInstanceOf[SectionTreeUnpickler].getStartReader.get
+            val treeReader = tastySection.asInstanceOf[SummariesTreeUnpickler].getStartReader.get
             val unp = new TastyUnpickler.SectionUnpickler[List[MethodSummary]](sectionName) {
               def unpickle(reader: TastyReader, tastyName: NameTable): List[MethodSummary] =
                 new SummaryReader(treeReader, reader).read()
@@ -100,7 +101,7 @@ object TastySummaries {
     }
   }
 
-  private[TastySummaries] class SummaryReader(tReader: SectionTreeUnpickler#TreeReader, reader: TastyReader)(implicit ctx: Context) {
+  private[TastySummaries] class SummaryReader(tReader: SummariesTreeUnpickler#TreeReader, reader: TastyReader)(implicit ctx: Context) {
 
     def read(): List[MethodSummary] = {
       val version = reader.readInt()
@@ -113,7 +114,7 @@ object TastySummaries {
       sym.termSymbol.orElse(sym.typeSymbol).orElse(sym.classSymbol)
     }
 
-    private def readMethodSummary(tReader: SectionTreeUnpickler#TreeReader, reader: TastyReader): MethodSummary = {
+    private def readMethodSummary(tReader: SummariesTreeUnpickler#TreeReader, reader: TastyReader): MethodSummary = {
       val sym = readSymbolRef
       val methodsSz = reader.readInt()
 

@@ -15,7 +15,6 @@ import dotty.tools.dotc.core.Decorators._
 import dotty.tools.dotc.core.SymDenotations.ClassDenotation
 import dotty.tools.dotc.core.tasty._
 import dotty.tools.dotc.core.tasty.DottyUnpickler
-import dotty.tools.dotc.core.tasty.DottyUnpickler.SectionTreeSectionUnpickler
 import dotty.tools.dotc.transform.SymUtils._
 import dotty.tools.dotc.transform.TreeGen
 import dotty.tools.dotc.transform.TreeTransforms._
