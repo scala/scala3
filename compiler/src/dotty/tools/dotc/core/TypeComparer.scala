@@ -48,6 +48,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
   private var myAnyClass: ClassSymbol = null
   private var myNothingClass: ClassSymbol = null
   private var myNullClass: ClassSymbol = null
+  private var myPhantomAnyClass: ClassSymbol = null
   private var myPhantomNothingClass: ClassSymbol = null
   private var myObjectClass: ClassSymbol = null
   private var myAnyType: TypeRef = null
@@ -65,7 +66,11 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
     if (myNullClass == null) myNullClass = defn.NullClass
     myNullClass
   }
-  def PhantomNothing = {
+  def PhantomAnyClass = {
+    if (myPhantomAnyClass == null) myPhantomAnyClass = defn.PhantomAny
+    myPhantomAnyClass
+  }
+  def PhantomNothingClass = {
     if (myPhantomNothingClass == null) myPhantomNothingClass = defn.PhantomNothing
     myPhantomNothingClass
   }
@@ -556,10 +561,16 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
             case OrType(tp1, tp2) => isNullable(tp1) || isNullable(tp2)
             case _ => false
           }
-          if (tp1.symbol eq NothingClass) tp2.isValueTypeOrLambda && (tp2.topType.classSymbol eq AnyClass)
-          else if (tp1.symbol eq NullClass) isNullable(tp2) && (tp2.topType.classSymbol eq AnyClass)
-          else if (tp1.symbol eq PhantomNothing) tp2.isValueTypeOrLambda && (tp1.topType == tp2.topType)
-          else false
+          def isPhantom(tp: Type): Boolean = {
+            // note that the only phantom classes are PhantomAnyClass and PhantomNothingClass
+            val sym = tp.typeSymbol
+            (sym eq PhantomAnyClass) || (sym eq PhantomNothingClass) ||
+            (!sym.isClass && (tp.topType.classSymbol eq PhantomAnyClass))
+          }
+          val sym1 = tp1.symbol
+          (sym1 eq NothingClass) && tp2.isValueTypeOrLambda && !isPhantom(tp2) ||
+          (sym1 eq NullClass) && isNullable(tp2) ||
+          (sym1 eq PhantomNothingClass) && tp1.topType == tp2.topType
       }
     case tp1: SingletonType =>
       /** if `tp2 == p.type` and `p: q.type` then try `tp1 <:< q.type` as a last effort.*/

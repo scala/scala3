@@ -176,7 +176,12 @@ object Types {
     }
 
     /** Is phantom if upper bounded by XYZ.Any where XYZ extends scala.Phantom */
-    final def isPhantom(implicit ctx: Context): Boolean = isPhantomClass(topType.classSymbol)
+    final def isPhantom(implicit ctx: Context): Boolean = {
+      // note that the only phantom classes are PhantomAnyClass and PhantomNothingClass
+      val sym = typeSymbol
+      (sym eq defn.PhantomAny) || (sym eq defn.PhantomNothing) ||
+      (!sym.isClass && (topType.classSymbol eq defn.PhantomAny))
+    }
 
     /** Returns the top type of the lattice
      *   - XYX.Any if XYZ extends scala.Phantom and this type is upper bounded XYZ.Any
@@ -201,7 +206,7 @@ object Types {
 
     /** If the symbol is of the class scala.Phantom.Any or scala.Phantom.Nothing */
     private def isPhantomClass(sym: Symbol)(implicit ctx: Context): Boolean =
-      sym.isClass && (sym.owner eq defn.PhantomClass)
+      (sym eq defn.PhantomAny) || (sym eq defn.PhantomNothing)
 
     /** Is this type guaranteed not to have `null` as a value?
      *  For the moment this is only true for modules, but it could
