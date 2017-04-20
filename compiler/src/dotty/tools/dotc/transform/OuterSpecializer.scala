@@ -283,8 +283,6 @@ class OuterSpecializer extends MiniPhaseTransform with InfoTransformer {
             }
 
           case other =>
-//            if (other.name.toString == "next")
-//              println("bla")
             val tpe = if (other.isClassConstructor) other.info match {
               case oinfo: PolyType =>
                 val newConstructorBounds = originalClass.typeParams.map(x => specialization.mp(claz)(x.paramName))
@@ -310,12 +308,7 @@ class OuterSpecializer extends MiniPhaseTransform with InfoTransformer {
             val nw = ctx.newSymbol(newClaz, other.name, other.flags, fixMethodic(tpe, other.flags), other.privateWithin, other.coord)
             originBySpecialized.put(nw, other)
 
-            if (nw.name.toString.contains("import"))
-              println("hoo")
-
             val currentBridge = addBridges.getOrElse(claz, Nil).filter(x => x._2 == other && x._1.signature == nw.signature)
-
-
 
             if (!other.isClassConstructor && (nw.signature.matchDegree(other.signature) != Signature.FullMatch) && currentBridge.isEmpty) {
               // bridge is needed
@@ -389,8 +382,6 @@ class OuterSpecializer extends MiniPhaseTransform with InfoTransformer {
     }
 
     def specializeSymbol(sym: Symbol): Type = {
-//      if (sym.name.toString.contains("shortWrapper"))
-//        println("hdd")
       processed.put(sym, NoType)
       ctx.debuglog(s"started specializing type of $sym")
       val ret = sym.info match {
@@ -509,7 +500,7 @@ class OuterSpecializer extends MiniPhaseTransform with InfoTransformer {
 
             newSyms.map { newSym =>
               val newSymType = newSym.info.widenDealias
-              println(s"specializing ${tree.symbol.fullName} for ${newSymType.show}")
+              ctx.log(s"specializing ${tree.symbol.fullName} for ${newSymType.show}")
               val typemap: (Type, List[Symbol], List[Type]) => (List[Symbol], List[Type]) => Type => Type =
                 (oldPoly, oldTparams, newTparams) => (oldArgs, newArgs) =>
                   new SubstituteByParentMap(outerBySym(newSym)) {
@@ -537,8 +528,6 @@ class OuterSpecializer extends MiniPhaseTransform with InfoTransformer {
                      (typeMap: (Type, List[Symbol], List[Type]) => (List[Symbol], List[Type]) => Type => Type)
                      (substFrom: List[Symbol] = Nil, substTo: List[Symbol] = Nil)
                      (implicit ctx: Context): DefDef = {
-//    if (newSym.name.toString.contains("IterablePolyTransforms$spec2"))
-//      println("hsdds")
     val oldSym = oldTree.symbol
     originBySpecialized.put(newSym, oldSym)
     val origTParams = oldTree.tparams.map(_.symbol)
@@ -556,9 +545,6 @@ class OuterSpecializer extends MiniPhaseTransform with InfoTransformer {
       val abstractPolyType = oldSym.info.widenDealias
       val vparamTpes = vparams.flatten.map(_.tpe)
 
-//      if (oldTree.uniqueId == 15973)
-//        println("catch")
-
       val typesReplaced = new TreeTypeMap(
         treeMap = treemap,
         typeMap = typeMap(abstractPolyType, origTParams, tparams)(origVParams, vparamTpes),
@@ -573,8 +559,6 @@ class OuterSpecializer extends MiniPhaseTransform with InfoTransformer {
 
   private def newBridges(claz: ClassSymbol)(implicit ctx: Context) = {
     val bridgeSymbols = addBridges.getOrElse(claz, Nil)
-    //          if (bridgeSymbols.isEmpty)
-    //            println(s"generating no bridges for ${tree.symbol}")
     bridgeSymbols.map { case (nw, old) =>
       polyDefDef(nw.asTerm, tparams => vparamss => {
 
@@ -639,8 +623,6 @@ class OuterSpecializer extends MiniPhaseTransform with InfoTransformer {
                 val newMember = newClassSym.info.decl(t.symbol.name).asSymDenotation.symbol.asType
                 tpd.TypeDef(newMember)
               case t: ValDef =>
-//                if (!newClassSym.info.decl(t.symbol.name).asSymDenotation.exists)
-//                  println("wtf")
                 val newMember = newClassSym.info.decl(t.symbol.name).asSymDenotation.symbol.asTerm
                 tpd.ValDef(newMember, bodytreeTypeMap.apply(t.rhs))
               case _ => // just body. TTM this shit
@@ -674,11 +656,7 @@ class OuterSpecializer extends MiniPhaseTransform with InfoTransformer {
     assert(tree.isInstanceOf[TypeApply])
     val TypeApply(fun, args) = tree
 
-//    if (fun.symbol.isPrimaryConstructor && fun.symbol.owner.name.toString.contains("ArrayBuf"))
-//      println("here")
-
     val canonicalSymbol = canonical.getOrElse(fun.symbol, fun.symbol)
-
 
     if (canonicalSymbol.isPrimaryConstructor && newSymbolMap.contains(canonicalSymbol.owner)) {
       val availableSpecializations = newSymbolMap(fun.symbol.owner)
@@ -761,8 +739,6 @@ class OuterSpecializer extends MiniPhaseTransform with InfoTransformer {
   }
 
   def transormGenApply(tree: GenericApply[Type])(implicit ctx: Context): Tree = {
-//    if (ctx.owner.name.toString.contains("next"))
-//      println("heere")
     tree match {
       case t: tpd.TypeApply =>
         val TypeApply(fun, _) = tree
@@ -812,8 +788,6 @@ class OuterSpecializeParents extends MiniPhaseTransform with InfoTransformer {
 
     if (sym.isClass && specPhase.originBySpecialized.contains(sym)) {
       val origSym = specPhase.originBySpecialized(sym)
-//      if (origSym.symbol.name.toString.contains("IterablePolyTransforms"))
-//        println("dd")
       val specialization: OuterTargs = specPhase.newSymbolMap(origSym).find(_._2 == sym).get._1
 
       tp match {
@@ -834,9 +808,7 @@ class OuterSpecializeParents extends MiniPhaseTransform with InfoTransformer {
                 }.map(_._2.typeRef).getOrElse(parent)
             }
           }
-          val mappedParents: List[TypeRef] = betterParent(classParent) :: original :: others.map(betterParent).toList
-//          if (mappedParents.map(_.typeSymbol).contains(sym))
-//            println("fail")
+          val mappedParents: List[TypeRef] = betterParent(classParent) :: original :: others.map(betterParent)
           classInfo.derivedClassInfo(classParents = mappedParents)
         case _ =>
           ???
