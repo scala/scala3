@@ -254,9 +254,8 @@ class OuterSpecializer extends MiniPhaseTransform with InfoTransformer {
       val newParents = originalClass.classParents.head :: claz.typeRef :: originalClass.classParents.tail
       val map = new SubstituteByParentMap(specialization)
       val newDecls = originalClass.decls.cloneScope.openForMutations // this is a hack. I'm mutating this scope later
-      val newType: ClassSymbol => Type = { nwClaz =>
+      def newType(nwClaz: ClassSymbol): Type =
         ClassInfo(originalClass.prefix, nwClaz, newParents, newDecls, map.apply(originalClass.selfType))
-      }
 
       def fixModule(nm: TypeName): TypeName = {
         import NameOps._
@@ -533,17 +532,15 @@ class OuterSpecializer extends MiniPhaseTransform with InfoTransformer {
     val origTParams = oldTree.tparams.map(_.symbol)
     val origVParams = oldTree.vparamss.flatten.map(_.symbol)
 
-
-    polyDefDef(newSym.asTerm, { tparams => vparams => {
-
-      val treemap: (Tree => Tree) = _ match {
+    def rhsFn(tparams: List[Type])(vparamss: List[List[Tree]]) = {
+      def treemap(tree: Tree): Tree = tree match {
         case Return(t, from) if from.symbol == oldSym => Return(t, ref(newSym))
         case t: This if t.symbol eq oldSym.enclosingClass => This(newSym.enclosingClass.asClass)
         case t => t
       }
 
       val abstractPolyType = oldSym.info.widenDealias
-      val vparamTpes = vparams.flatten.map(_.tpe)
+      val vparamTpes = vparamss.flatten.map(_.tpe)
 
       val typesReplaced = new TreeTypeMap(
         treeMap = treemap,
@@ -554,21 +551,21 @@ class OuterSpecializer extends MiniPhaseTransform with InfoTransformer {
 
       typesReplaced
     }
-    })
+    polyDefDef(newSym.asTerm, rhsFn)
   }
 
   private def newBridges(claz: ClassSymbol)(implicit ctx: Context) = {
     val bridgeSymbols = addBridges.getOrElse(claz, Nil)
     bridgeSymbols.map { case (nw, old) =>
-      polyDefDef(nw.asTerm, tparams => vparamss => {
-
+      def rhsFn(tparams: List[Type])(vparamss: List[List[Tree]]) = {
         val prefix = This(claz).select(old).appliedToTypes(tparams)
         val argTypess = prefix.tpe.widen.paramInfoss
         val argss = Collections.map2(vparamss, argTypess) { (vparams, argTypes) =>
           Collections.map2(vparams, argTypes) { (vparam, argType) => vparam.ensureConforms(argType) }
         }
         prefix.appliedToArgss(argss).ensureConforms(nw.info.finalResultType)
-      })
+      }
+      polyDefDef(nw.asTerm, rhsFn)
     }
 
   }
@@ -578,56 +575,53 @@ class OuterSpecializer extends MiniPhaseTransform with InfoTransformer {
     val oldSym = tree.symbol
     if (oldSym.isClass) newSymbolMap.get(tree.symbol) match {
       case Some(x) =>
-        val newClasses: List[Tree] = x.map { case (outersTargs, newClassSym) =>
-          val typemap: (Type, List[Symbol], List[Type]) => (List[Symbol], List[Type]) => Type => Type =
-            (oldPoly, oldTparams, newTparams) => (oldArgs, newArgs) =>
-              new SubstituteByParentMap(outersTargs) {
-                override def apply(tp: Type): Type = {
-                  val t = super.apply(tp)
-                    .substDealias(oldTparams, newTparams)
-                  val t2 = oldPoly match {
-                    case oldPoly: PolyType => t.substParams(oldPoly, newTparams)
-                    case _ => t
-                  }
-                  t2.subst(oldArgs, newArgs)
+        val newClasses: List[Tree] = x.iterator.map { case (outersTargs, newClassSym) =>
+          def typemap(oldPoly: Type, oldTparams: List[Symbol], newTparams: List[Type])(oldArgs: List[Symbol], newArgs: List[Type]): SubstituteByParentMap = {
+            new SubstituteByParentMap(outersTargs) {
+              override def apply(tp: Type): Type = {
+                val t = super.apply(tp)
+                  .substDealias(oldTparams, newTparams)
+                val t2 = oldPoly match {
+                  case oldPoly: PolyType => t.substParams(oldPoly, newTparams)
+                  case _ => t
                 }
+                t2.subst(oldArgs, newArgs)
               }
+            }
+          }
           //duplicateMethod(newSym, tree)(typeMap = typemap)()
           val treeRhs = tree.rhs.asInstanceOf[Template]
           val newSubst = newClassSym.info.fields.map(_.symbol).toList // ++ newSym.info.accessors
-        val oldSubst = oldSym.info.fields.map(_.symbol).toList // ++ oldSym.info.accessors
-        val treeMap: Tree => Tree = {
-          case t: This if (t.symbol eq oldSym) => tpd.This(newClassSym.asClass)
-          case t => t
-        }
+          val oldSubst = oldSym.info.fields.map(_.symbol).toList // ++ oldSym.info.accessors
+          def treeMap(t: Tree): Tree = t match {
+            case t: This if t.symbol eq oldSym => tpd.This(newClassSym.asClass)
+            case _ => t
+          }
           val bodytreeTypeMap = new TreeTypeMap(typeMap = typemap(null, Nil, Nil)(Nil, Nil), substFrom = oldSubst, substTo = newSubst, treeMap = treeMap
             /*oldOwners = oldSubst, newOwners = newSubst*/)
           val constr = duplicateMethod(newClassSym.primaryConstructor, treeRhs.constr)(typemap)(oldSubst, newSubst)
 
-          val body = treeRhs.body.map { original =>
-            original match {
-              case t: DefDef =>
+          val body = treeRhs.body.map {
+            case t: DefDef =>
+              val variants = newClassSym.info.decl(t.symbol.name).suchThat(p => !(p is Flags.Bridge))
+              val popa = variants.alternatives.map(_.symbol.info.overrides(t.symbol.info))
+              val newMeth: Symbol = // todo: handle overloading
+              /*if(!t.symbol.is(Flags.Private)) t.symbol.matchingMember(newSym.info) // does not work. Signatures do not match anymore
+                 else */
+                t.symbol.asSymDenotation.matchingDecl(newClassSym, newClassSym.thisType).filter(p => !(p is Flags.Bridge)).orElse(
+                  variants.symbol
+                )
+              //x.matchingDecl(original.symbol.owner.asClass, x.owner.thisType).exists)
 
-                val variants = newClassSym.info.decl(t.symbol.name).suchThat(p => !(p is Flags.Bridge))
-                val popa = variants.alternatives.map(_.symbol.info.overrides(original.symbol.info))
-                val newMeth: Symbol = // todo: handle overloading
-                /*if(!t.symbol.is(Flags.Private)) t.symbol.matchingMember(newSym.info) // does not work. Signatures do not match anymore
-                   else */
-                  t.symbol.asSymDenotation.matchingDecl(newClassSym, newClassSym.thisType).filter(p => !(p is Flags.Bridge)).orElse(
-                    variants.symbol
-                  )
-                //x.matchingDecl(original.symbol.owner.asClass, x.owner.thisType).exists)
-
-                duplicateMethod(newMeth, t)(typemap)(oldSubst, newSubst)
-              case t: TypeDef if !t.isClassDef =>
-                val newMember = newClassSym.info.decl(t.symbol.name).asSymDenotation.symbol.asType
-                tpd.TypeDef(newMember)
-              case t: ValDef =>
-                val newMember = newClassSym.info.decl(t.symbol.name).asSymDenotation.symbol.asTerm
-                tpd.ValDef(newMember, bodytreeTypeMap.apply(t.rhs))
-              case _ => // just body. TTM this shit
-                bodytreeTypeMap.apply(original)
-            }
+              duplicateMethod(newMeth, t)(typemap)(oldSubst, newSubst)
+            case t: TypeDef if !t.isClassDef =>
+              val newMember = newClassSym.info.decl(t.symbol.name).asSymDenotation.symbol.asType
+              tpd.TypeDef(newMember)
+            case t: ValDef =>
+              val newMember = newClassSym.info.decl(t.symbol.name).asSymDenotation.symbol.asTerm
+              tpd.ValDef(newMember, bodytreeTypeMap.apply(t.rhs))
+            case t => // just body. TTM this shit
+              bodytreeTypeMap.apply(t)
           }  ++ newBridges(newClassSym.asClass)
           val superArgs = treeRhs.parents.head match {
             case Apply(fn, args) => args
@@ -669,10 +663,10 @@ class OuterSpecializer extends MiniPhaseTransform with InfoTransformer {
         }
       }
 
-      val bestVersions = availableClasses.filter { case (instantiations1, symbol1) =>
-        availableClasses.find { case (instantiations2, symbol2) =>
+      val bestVersions = availableClasses.iterator.filter { case (instantiations1, symbol1) =>
+        !availableClasses.exists { case (instantiations2, symbol2) =>
           (symbol2 ne symbol1) && subsumes(instantiations1, instantiations2)
-        }.isEmpty
+        }
       }.toList
 
       val ideal = availableSpecializations.find {
