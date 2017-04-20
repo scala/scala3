@@ -5,7 +5,7 @@ import dotty.tools.dotc.core.Mode
 import dotty.tools.dotc.core.Names.TermName
 import dotty.tools.dotc.core.tasty.TastyBuffer.NameRef
 
-class SummariesTreeUnpickler(treeUnpickler: TreeUnpickler, reader: TastyReader, tastyName: NameRef => TermName, sectionName: String)(implicit ctx: Context)
+class SummariesTreeUnpickler(treeUnpickler: TreeUnpickler, reader: TastyReader, tastyName: NameRef => TermName, sectionName: String)
     extends TreeUnpickler(reader, tastyName, posUnpicklerOpt = None) {
 
   roots = Set.empty
@@ -14,7 +14,7 @@ class SummariesTreeUnpickler(treeUnpickler: TreeUnpickler, reader: TastyReader, 
   override val treeAtAddr = treeUnpickler.treeAtAddr
   override val typeAtAddr = treeUnpickler.typeAtAddr
 
-  def getStartReader: Option[TreeReader] = {
+  def getStartReader(implicit ctx: Context): Option[TreeReader] = {
     val st = new TreeReader(reader)
     st.skipToplevel()(ctx.addMode(Mode.AllowDependentFunctions))
 

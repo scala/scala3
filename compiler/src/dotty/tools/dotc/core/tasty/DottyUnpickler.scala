@@ -23,16 +23,16 @@ object DottyUnpickler {
       new TreeUnpickler(reader, nameAtRef, posUnpickler)
   }
 
-  class SummariesTreeSectionUnpickler(treeUnpickler: TreeUnpickler, sectionName: String)(implicit ctx: Context)
+  class PositionsSectionUnpickler extends SectionUnpickler[PositionUnpickler]("Positions") {
+    def unpickle(reader: TastyReader, nameAtRef: NameTable) =
+      new PositionUnpickler(reader)
+  }
+
+  class SummariesTreeSectionUnpickler(treeUnpickler: TreeUnpickler, sectionName: String)
       extends TreeSectionUnpickler(posUnpickler = None) {
     override def unpickle(reader: TastyReader, tastyName: NameTable): SummariesTreeUnpickler = {
       new SummariesTreeUnpickler(treeUnpickler, reader, tastyName, sectionName)
     }
-  }
-
-  class PositionsSectionUnpickler extends SectionUnpickler[PositionUnpickler]("Positions") {
-    def unpickle(reader: TastyReader, nameAtRef: NameTable) =
-      new PositionUnpickler(reader)
   }
 }
 
