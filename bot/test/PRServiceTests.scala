@@ -10,11 +10,19 @@ import io.circe.parser.decode
 
 import model.Github._
 import org.http4s.client.blaze._
+import org.http4s.client.Client
 import scalaz.concurrent.Task
 
 class PRServiceTests extends PullRequestService {
   val user = sys.env("USER")
   val token = sys.env("TOKEN")
+
+  private def withClient[A](f: Client => Task[A]): A = {
+    val httpClient = PooledHttp1Client()
+    val ret = f(httpClient).run
+    httpClient.shutdownNow()
+    ret
+  }
 
   def getResource(r: String): String =
     Option(getClass.getResourceAsStream(r)).map(scala.io.Source.fromInputStream)
@@ -58,6 +66,13 @@ class PRServiceTests extends PullRequestService {
       numberOfCommits > 100,
       s"PR 1840, should have a number of commits greater than 100, but was: $numberOfCommits"
     )
+  }
+
+  @Test def canGetComments = {
+    val comments: List[Comment] = withClient(c => getComments(2136, c))
+
+    assert(comments.find(_.user.login == Some("odersky")).isDefined,
+           "Could not find Martin's comment on PR 2136")
   }
 
   @Test def canCheckCLA = {

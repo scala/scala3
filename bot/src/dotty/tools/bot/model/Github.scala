@@ -40,4 +40,6 @@ object Github {
     id: Long,
     state: String
   )
+
+  case class Comment(user: Author)
 }

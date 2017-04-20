@@ -63,14 +63,17 @@ trait PullRequestService {
   def statusUrl(sha: String): String =
     s"https://api.github.com/repos/lampepfl/dotty/statuses/$sha"
 
+  def issueCommentsUrl(issueNbr: Int): String =
+    s"https://api.github.com/repos/lampepfl/dotty/issues/$issueNbr/comments"
+
   def toUri(url: String): Task[Uri] =
     Uri.fromString(url).fold(Task.fail, Task.now)
 
-  def getRequest(endpoint: Uri): Request =
-    Request(uri = endpoint, method = Method.GET).putHeaders(authHeader)
+  def getRequest(endpoint: Uri): Task[Request] =
+    Request(uri = endpoint, method = Method.GET).putHeaders(authHeader).pure[Task]
 
-  def postRequest(endpoint: Uri): Request =
-    Request(uri = endpoint, method = Method.POST).putHeaders(authHeader)
+  def postRequest(endpoint: Uri): Task[Request] =
+    Request(uri = endpoint, method = Method.POST).putHeaders(authHeader).pure[Task]
 
   def shutdownClient(client: Client): Unit =
     client.shutdownNow()
@@ -89,7 +92,7 @@ trait PullRequestService {
     def checkUser(user: String): Task[Commit => CommitStatus] = {
       val claStatus = for {
         endpoint <- toUri(claUrl(user))
-        claReq   <- getRequest(endpoint).pure[Task]
+        claReq   <- getRequest(endpoint)
         claRes   <- httpClient.expect(claReq)(jsonOf[CLASignature])
       } yield { (commit: Commit) =>
         if (claRes.signed) Valid(user, commit)
@@ -133,7 +136,7 @@ trait PullRequestService {
 
       for {
         endpoint <- toUri(statusUrl(cm.commit.sha))
-        req      <- postRequest(endpoint).withBody(stat.asJson).pure[Task]
+        req      <- postRequest(endpoint).withBody(stat.asJson)
         res      <- httpClient.expect(req)(jsonOf[StatusResponse])
       } yield res
     }
@@ -158,7 +161,7 @@ trait PullRequestService {
     def makeRequest(url: String): Task[List[Commit]] =
       for {
         endpoint <- toUri(url)
-        req <- getRequest(endpoint).pure[Task]
+        req <- getRequest(endpoint)
         res <- httpClient.fetch(req){ res =>
           val link = CaseInsensitiveString("Link")
           val next = findNext(res.headers.get(link)).map(makeRequest).getOrElse(Task.now(Nil))
@@ -169,6 +172,13 @@ trait PullRequestService {
 
     makeRequest(commitsUrl(issueNbr))
   }
+
+  def getComments(issueNbr: Int, httpClient: Client): Task[List[Comment]] =
+    for {
+      endpoint <- toUri(issueCommentsUrl(issueNbr))
+      req      <- getRequest(endpoint)
+      res      <- httpClient.expect(req)(jsonOf[List[Comment]])
+    } yield res
 
   def checkPullRequest(issue: Issue): Task[Response] = {
     val httpClient = PooledHttp1Client()
