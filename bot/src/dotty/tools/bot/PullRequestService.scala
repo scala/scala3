@@ -75,17 +75,18 @@ trait PullRequestService {
   def postRequest(endpoint: Uri): Task[Request] =
     Request(uri = endpoint, method = Method.POST).putHeaders(authHeader).pure[Task]
 
-  def shutdownClient(client: Client): Unit =
-    client.shutdownNow()
+  def shutdownClient(client: Client): Task[Unit] =
+    client.shutdownNow().pure[Task]
 
   sealed trait CommitStatus {
     def commit: Commit
     def isValid: Boolean
   }
-  final case class Valid(user: String, commit: Commit) extends CommitStatus { def isValid = true }
+  final case class Valid(user: Option[String], commit: Commit) extends CommitStatus { def isValid = true }
   final case class Invalid(user: String, commit: Commit) extends CommitStatus { def isValid = false }
   final case class CLAServiceDown(user: String, commit: Commit) extends CommitStatus { def isValid = false }
   final case class MissingUser(commit: Commit) extends CommitStatus { def isValid = false }
+  final case class InvalidPrevious(users: List[String], commit: Commit) extends CommitStatus { def isValid = false }
 
   /** Partitions invalid and valid commits */
   def checkCLA(xs: List[Commit], httpClient: Client): Task[List[CommitStatus]] = {
@@ -95,7 +96,7 @@ trait PullRequestService {
         claReq   <- getRequest(endpoint)
         claRes   <- httpClient.expect(claReq)(jsonOf[CLASignature])
       } yield { (commit: Commit) =>
-        if (claRes.signed) Valid(user, commit)
+        if (claRes.signed) Valid(Some(user), commit)
         else Invalid(user, commit)
       }
 
@@ -117,32 +118,35 @@ trait PullRequestService {
     }.map(_.flatten)
   }
 
-  def sendStatuses(xs: List[CommitStatus], httpClient: Client): Task[List[StatusResponse]] = {
-    def setStatus(cm: CommitStatus): Task[StatusResponse] = {
-      val desc =
-        if (cm.isValid) "User signed CLA"
-        else "User needs to sign cla: https://www.lightbend.com/contribute/cla/scala"
+  def setStatus(cm: CommitStatus, httpClient: Client): Task[StatusResponse] = {
+    val desc =
+      if (cm.isValid) "User signed CLA"
+      else "User needs to sign cla: https://www.lightbend.com/contribute/cla/scala"
 
-      val stat = cm match {
-        case Valid(user, commit) =>
-          Status("success", claUrl(user), desc)
-        case Invalid(user, commit) =>
-          Status("failure", claUrl(user), desc)
-        case MissingUser(commit) =>
-          Status("failure", "", "Missing valid github user for this PR")
-        case CLAServiceDown(user, commit) =>
-          Status("pending", claUrl(user), "CLA Service is down")
-      }
-
-      for {
-        endpoint <- toUri(statusUrl(cm.commit.sha))
-        req      <- postRequest(endpoint).withBody(stat.asJson)
-        res      <- httpClient.expect(req)(jsonOf[StatusResponse])
-      } yield res
+    val stat = cm match {
+      case Valid(Some(user), commit) =>
+        Status("success", claUrl(user), desc)
+      case Valid(None, commit) =>
+        Status("success", "", "All contributors signed CLA")
+      case Invalid(user, commit) =>
+        Status("failure", claUrl(user), desc)
+      case MissingUser(commit) =>
+        Status("failure", "", "Missing valid github user for this PR")
+      case CLAServiceDown(user, commit) =>
+        Status("pending", claUrl(user), "CLA Service is down")
+      case InvalidPrevious(users, latestCommit) =>
+        Status("failure", "", users.map("@" + _).mkString(", ") + " have not signed the CLA")
     }
 
-    Task.gatherUnordered(xs.map(setStatus))
+    for {
+      endpoint <- toUri(statusUrl(cm.commit.sha))
+      req      <- postRequest(endpoint).withBody(stat.asJson)
+      res      <- httpClient.expect(req)(jsonOf[StatusResponse])
+    } yield res
   }
+
+  def sendStatuses(xs: List[CommitStatus], httpClient: Client): Task[List[StatusResponse]] =
+    Task.gatherUnordered(xs.map(setStatus(_, httpClient)))
 
   private[this] val ExtractLink = """<([^>]+)>; rel="([^"]+)"""".r
   def findNext(header: Option[Header]): Option[String] = header.flatMap { header =>
@@ -157,6 +161,7 @@ trait PullRequestService {
       .headOption
   }
 
+  /** Ordered from earliest to latest */
   def getCommits(issueNbr: Int, httpClient: Client): Task[List[Commit]] = {
     def makeRequest(url: String): Task[List[Commit]] =
       for {
@@ -180,20 +185,80 @@ trait PullRequestService {
       res      <- httpClient.expect(req)(jsonOf[List[Comment]])
     } yield res
 
-  def checkPullRequest(issue: Issue): Task[Response] = {
+
+  private def usersFromInvalid(xs: List[CommitStatus]) =
+    xs.collect { case Invalid(user, _) => user }
+
+  def sendInitialComment(invalidUsers: List[String]): Task[Unit] = ???
+
+  def checkFreshPR(issue: Issue): Task[Response] = {
+
+    val httpClient = PooledHttp1Client()
+    for {
+      commits  <- getCommits(issue.number, httpClient)
+      statuses <- checkCLA(commits, httpClient)
+
+      (validStatuses, invalidStatuses) = statuses.partition(_.isValid)
+      invalidUsers = usersFromInvalid(invalidStatuses)
+
+      // Mark the invalid statuses:
+      _ <- sendStatuses(invalidStatuses, httpClient)
+
+      // Set status of last to indicate previous failures or all good:
+      _ <- {
+        if (invalidStatuses.nonEmpty)
+          setStatus(InvalidPrevious(invalidUsers, commits.last), httpClient)
+        else
+          setStatus(statuses.last, httpClient)
+      }
+
+      // Send positive comment:
+      _    <- sendInitialComment(invalidUsers)
+      _    <- shutdownClient(httpClient)
+      resp <- Ok("Fresh PR checked")
+    } yield resp
+
+  }
+
+  // TODO: Could this be done with `issueNbr` instead?
+  def getStatuses(commits: List[Commit], client: Client): Task[List[StatusResponse]] =
+    ???
+
+  private def extractCommit(status: StatusResponse): Task[Commit] =
+    ???
+
+  def recheckCLA(statuses: List[StatusResponse], client: Client): Task[List[CommitStatus]] =
+    for {
+      commits  <- Task.gatherUnordered(statuses.map(extractCommit))
+      statuses <- checkCLA(commits, client)
+    } yield statuses
+
+  def checkSynchronize(issue: Issue): Task[Response] = {
     val httpClient = PooledHttp1Client()
 
     for {
-      // First get all the commits from the PR
-      commits  <- getCommits(issue.number, httpClient)
+      commits      <- getCommits(issue.number, httpClient)
+      statuses     <- getStatuses(commits, httpClient)
+      stillInvalid <- recheckCLA(statuses, httpClient)
 
-      // Then check the CLA of each commit for both author and committer
-      statuses <- checkCLA(commits, httpClient)
-
-      // Send statuses to Github and exit
-      _        <- sendStatuses(statuses, httpClient)
-      _        <- shutdownClient(httpClient).pure[Task]
-      resp     <- Ok("All statuses checked")
+      // Set final commit status based on `stillInvalid`:
+      _ <- {
+        if (stillInvalid.nonEmpty)
+          setStatus(InvalidPrevious(usersFromInvalid(stillInvalid), commits.last), httpClient)
+        else {
+          val lastCommit = commits.last
+          setStatus(Valid(lastCommit.author.login, lastCommit), httpClient)
+        }
+      }
+      _    <- shutdownClient(httpClient)
+      resp <- Ok("Updated PR checked")
     } yield resp
   }
+
+  def checkPullRequest(issue: Issue): Task[Response] =
+    issue.action match {
+      case "opened" => checkFreshPR(issue)
+      case "synchronize" => checkSynchronize(issue)
+      case action => BadRequest(s"Unhandled action: $action")
+    }
 }

@@ -9,6 +9,7 @@ object Github {
   )
 
   case class Issue(
+    action: String, // "opened", "reopened", "closed", "synchronize"
     number: Int,
     pull_request: Option[PullRequest]
   )
@@ -35,6 +36,7 @@ object Github {
     context: String = "CLA"
   )
 
+  // TODO: Can we get a `Commit` from `StatusResponse`? 
   case class StatusResponse(
     url: String,
     id: Long,
