@@ -1,4 +1,4 @@
-The dude rules all.
+The dude rules all. For sure
 
 The dotty compiler frontend has been developed since November 2012 by Martin Odersky. It is expected and hoped for
 that the list of contributors to the codebase will grow quickly. Dotty draws inspiration and code from the original
