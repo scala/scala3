@@ -282,7 +282,11 @@ class CompilationTests extends ParallelTesting {
   @Test def linkDCEStdLibAll: Unit = {
     val testsDir = new JFile("../tests/link-stdlib-dce")
     val tests = for (test <- testsDir.listFiles() if test.isDirectory) yield {
-      val files = test.listFiles().toList.map(_.getAbsolutePath) ++ StdLibSources.whitelisted
+      val files0 = sources(Files.walk(test.toPath))
+      val overwritenFilter = files0.iterator.map(f => test.toPath.relativize(Paths.get(f)).toString).collect {
+        case f if f.startsWith("scala") => "../scala-scala/src/library/" + f
+      }.toSet
+      val files = files0 ++ StdLibSources.whitelisted.filterNot(overwritenFilter)
       compileList(test.getName, files, linkStdlibMode ++ linkDCE)
     }
     tests.reduce((a, b) => a + b).limitThreads(4).checkRuns()
@@ -301,14 +305,10 @@ class CompilationTests extends ParallelTesting {
 
   private def linkTests(dir: String, otherSources: List[String], flags: Array[String], nameSuffix: String = ""): CompilationTest = {
     val testsDir = new JFile(dir)
-    def getAllSources(dir: JFile, acc: List[String]): List[String] = dir.listFiles().foldLeft(acc) { (acc1, f) =>
-      if (f.isDirectory) getAllSources(f, acc1)
-      else if (f.getName.endsWith(".scala") || f.getName.endsWith(".java")) f.getAbsolutePath :: acc1
-      else acc1
-    }
     val tests = for (test <- testsDir.listFiles() if test.isDirectory || test.getName.endsWith(".scala")) yield {
       val name = if (test.isDirectory) test.getName else test.getName.dropRight(6)
-      val files = if (test.isDirectory) getAllSources(testsDir, Nil) ::: otherSources else test.getAbsolutePath :: otherSources
+      val files0 = sources(Files.walk(testsDir.toPath))
+      val files = if (test.isDirectory) files0 ::: otherSources else test.getAbsolutePath :: otherSources
       compileList(name, files, flags, testsDir.getName + nameSuffix)
     }
     assert(tests.nonEmpty)
@@ -324,6 +324,13 @@ class CompilationTests extends ParallelTesting {
     }
     collectAllFilesInDir(new JFile("../collection-strawman/src/main"), Nil)
   }
+
+  private def sources(paths: JStream[Path], excludedFiles: List[String] = Nil): List[String] =
+    paths.iterator().asScala.filter { path =>
+      (path.toString.endsWith(".scala") || path.toString.endsWith(".java")) &&
+      !excludedFiles.contains(path.getFileName.toString)
+    }.map(_.toString).toList
+
 }
 
 object CompilationTests {
