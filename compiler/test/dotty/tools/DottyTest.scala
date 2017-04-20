@@ -14,7 +14,7 @@ import dotc.Compiler
 
 import dotc.core.Phases.Phase
 
-trait DottyTest extends ContextEscapeDetection {
+trait DottyTest {
 
   dotc.parsing.Scanners // initialize keywords
 
@@ -30,8 +30,8 @@ trait DottyTest extends ContextEscapeDetection {
     ctx
   }
 
-  override def getCtx: Context = ctx
-  override def clearCtx() = {
+  def getCtx: Context = ctx
+  def clearCtx() = {
     ctx = null
   }
 

@@ -40,7 +40,7 @@ trait BootstrappedCompiler extends Shared with cbt.Dotty{
 
 trait Shared extends BaseBuild{
   // basic cbt config
-  def dottyVersion = Dotty.version
+  def dottyVersion = "0.1.1-20170309-e28d8ee-NIGHTLY"
   override def dependencies = Seq[Dependency]()
   override def defaultScalaVersion = "2.11.5"
 
@@ -90,9 +90,9 @@ class Library(val context: Context) extends Shared{
   )
 }
 class LibraryBootstrapped(context: Context) extends Library(context) with NonBootstrappedCompiler{
+  override def compileDependencies = Seq( library ) ++ dependencies
   override def dependencies: Seq[Dependency] = (
-    //Seq( library ) //, interfaces )
-    //++
+     //, interfaces )
     Resolver(mavenCentral).bind(
       MavenDependency("org.scala-lang","scala-reflect","2.11.5")
       //"me.d-d" % "scala-compiler" % "2.11.5-20170111-125332-40bdc7b65a",
@@ -104,38 +104,74 @@ class LibraryBootstrapped(context: Context) extends Library(context) with NonBoo
 
 class Compiler(val context: Context) extends Shared{
   def suffix = "compiler"
-  override def dependencies = (
+  override def dependencies: Seq[Dependency] = 
+  (
     Seq( library, interfaces )
     ++
+    dottyCompilerMavenDependencies
+    /*
     Resolver(mavenCentral).bind(
       "me.d-d" % "scala-compiler" % "2.11.5-20170111-125332-40bdc7b65a",
       "com.typesafe.sbt" % "sbt-interface" % "0.13.13"
     )
+    */
   )
 }
 class CompilerBootstrapped(context: Context) extends Compiler(context) with NonBootstrappedCompiler{
   // FIXME: using the bootstrapped library here fails with ClassNotFoundException: scala.Product0$class
-  override def dependencies = Seq( libraryBootstrapped, interfaces )// ++ dottyCompilerMavenDependencies
+  override def dependencies = Seq( libraryBootstrapped, interfaces ) ++ dottyCompilerMavenDependencies
+  override def compileJavaFirst = true
+  override def skipJava = false
 }
 
-class CompilerBootstrappedTest(val context: Context) extends BootstrappedCompiler{
+class CompilerBootstrappedTest(val context: Context) extends BootstrappedCompiler{ outer =>
   def suffix = "compiler"
   override def projectDirectory = compilerDirectory ++ "/test"
   override def sources = Seq(
     projectDirectory ++ "/dotc",
     projectDirectory ++ "/dotty/tools",
-    projectDirectory ++ "/dotty/partest",
-    projectDirectory ++ "/dotty/Jars.scala"
+    projectDirectory ++ "/dotty/Jars.scala",
+    projectDirectory ++ "/dotty/partest"
   )
+  override def compileDependencies = {
+    //compileTarget.mkdirs
+    Seq(
+      //libraryBootstrapped,
+      //BinaryDependency( Seq(target++"2"), Nil ) //Seq(compilerBootstrapped) )
+    ) ++ dependencies
+  }
+
+  /*
+  def partest =
+    new BasicBuild(context) with BootstrappedCompiler{
+      def suffix = ???
+      override def projectDirectory = outer.projectDirectory ++ "/dotty/partest"
+      override def dependencies = Seq(compilerBootstrapped) ++
+        Resolver(mavenCentral).bind(
+          "org.scala-lang.modules" %% "scala-partest" % "1.0.11"
+        )
+    }*/
+
+  def jav =
+    new BasicBuild(context) with BootstrappedCompiler{
+      def suffix = ???
+      override def sources = Seq( projectDirectory / "ContextEscapeDetection.java" )
+      override def projectDirectory = outer.projectDirectory ++ "/dotty/tools"
+      override def dependencies = Seq(compilerBootstrapped)
+      override def skipJava = false
+    }
+
   override def dependencies =
-    compilerBootstrapped +:
+    Seq(  compilerBootstrapped ) ++
     Resolver(mavenCentral).bind(
       "org.scala-lang.modules" %% "scala-partest" % "1.0.11",
-      "me.d-d" % "scala-compiler" % "2.11.5-20170111-125332-40bdc7b65a"
+      "com.typesafe.sbt" % "sbt-interface" % "0.13.13",
+      "org.scala-lang.modules" %% "scala-partest" % "1.0.11"
+      //"com.novocode" % "junit-interface" % "0.11"
       //"me.d-d" % "scala-library" % "2.11.5-20170111-125332-40bdc7b65a"
     )
 
-  override def compileJavaFirst = true
+  //override def compileJavaFirst = true
 
   override def flatClassLoader = true // required so partest finds the compiler
 
