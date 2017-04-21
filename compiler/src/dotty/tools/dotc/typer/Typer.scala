@@ -1562,27 +1562,73 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
           case _ => typedUnadapted(desugar(tree), pt)
         }
 
-        if (defn.isImplicitFunctionType(pt) &&
-            xtree.isTerm &&
-            !untpd.isImplicitClosure(xtree) &&
-            !ctx.isAfterTyper)
-          makeImplicitFunction(xtree, pt)
-        else xtree match {
-          case xtree: untpd.NameTree => typedNamed(encodeName(xtree), pt)
-          case xtree => typedUnnamed(xtree)
+        etaExpandImplicitFuns(xtree, pt) match {
+          case Some(tree) => typedUnadapted(tree)
+          case None => xtree match {
+            case xtree: untpd.NameTree => typedNamed(encodeName(xtree), pt)
+            case xtree => typedUnnamed(xtree)
+          }
         }
+    }
+  }
+
+  protected def etaExpandImplicitFuns(xtree: untpd.Tree, pt: Type)(implicit ctx: Context): Option[untpd.Tree] = {
+
+    var modified = false
+
+    def loop(xtree: untpd.Tree, pt: Type): untpd.Tree = {
+      val isImplicitFunType = !ctx.isAfterTyper && defn.isImplicitFunctionType(pt)
+      val isImplicitClosure = untpd.isImplicitClosure(xtree)
+
+      if (isImplicitFunType && xtree.isTerm && isImplicitClosure) {
+
+        // peel away a layer of the implicit function type:
+        val defn.FunctionOf(formals, resType, true) = pt.dealias
+
+        // peel away a layer of the implicit closure:
+        etaExpandBody(xtree, resType)
+      } else if (isImplicitFunType && xtree.isTerm && !isImplicitClosure) {
+        // peel away a layer of the implicit function type:
+        val defn.FunctionOf(formals, resType, true) = pt.dealias
+        modified = true
+        makeImplicitFunction(loop(xtree, resType), pt)
+      } else {
+        xtree
+      }
+    }
+
+      // TODO do we cover all the cases already? What's with Closure?
+    def etaExpandBody(tree: untpd.Tree, pt: Type): untpd.Tree =
+      unsplice(tree) match {
+        case fun: untpd.ImplicitFunction => new untpd.ImplicitFunction(fun.args, loop(fun.body, pt))
+
+        case Block(Nil, expr) => untpd.Block(Nil, etaExpandBody(expr, pt))
+
+        case Block(DefDef(nme, tps, vps, tpt, body) :: Nil, cl: Closure) =>
+          val body2 = etaExpandBody(body.asInstanceOf[Tree], pt)
+          untpd.Block(untpd.DefDef(nme, tps, vps, tpt, body2) :: Nil, cl)
+
+        case els => loop(els, pt)
+      }
+
+    val res = loop(xtree, pt)
+
+    if (modified) {
+      Some(res)
+    } else {
+      None
     }
   }
 
   protected def encodeName(tree: untpd.NameTree)(implicit ctx: Context): untpd.NameTree =
     untpd.rename(tree, tree.name.encode)
 
-  protected def makeImplicitFunction(tree: untpd.Tree, pt: Type)(implicit ctx: Context): Tree = {
+  protected def makeImplicitFunction(tree: untpd.Tree, pt: Type)(implicit ctx: Context): untpd.Tree = {
     val defn.FunctionOf(formals, resType, true) = pt.dealias
     val paramTypes = formals.map(fullyDefinedType(_, "implicit function parameter", tree.pos))
     val ifun = desugar.makeImplicitFunction(paramTypes, tree)
     typr.println(i"make implicit function $tree / $pt ---> $ifun")
-    typedUnadapted(ifun)
+    ifun
   }
 
   def typed(tree: untpd.Tree, pt: Type = WildcardType)(implicit ctx: Context): Tree = /*>|>*/ ctx.traceIndented (i"typing $tree", typr, show = true) /*<|<*/ {
