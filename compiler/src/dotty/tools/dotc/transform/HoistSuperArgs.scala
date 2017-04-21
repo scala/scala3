@@ -42,6 +42,11 @@ class HoistSuperArgs extends MiniPhaseTransform with IdentityDenotTransformer { 
 
   def phaseName = "hoistSuperArgs"
 
+  override def runsAfter = Set(classOf[ByNameClosures])
+    // By name closures need to be introduced first in order to be hoisted out here.
+    // There's an interaction with by name closures in that the <cbn-arg> marker
+    // application should not be hoisted, but be left at the point of call.
+
   /** Hoist complex arguments in super call `parent` out of the class.
    *  @return A pair consisting of the transformed super call and a list of super argument
    *          defininitions.
@@ -81,16 +86,18 @@ class HoistSuperArgs extends MiniPhaseTransform with IdentityDenotTransformer { 
       if (methOwner.isClass) meth.enteredAfter(thisTransform) else meth
     }
 
+    def refNeedsHoist(tp: Type): Boolean = tp match {
+      case tp: ThisType => !tp.cls.isStaticOwner && tp.cls != cls
+      case tp: TermRef => refNeedsHoist(tp.prefix)
+      case _ => false
+    }
+
     /** Super call argument is complex, needs to be hoisted */
     def needsHoist(tree: Tree) = tree match {
       case _: DefDef => true
       case _: Template => true
-      case _: This => !tree.symbol.isStaticOwner
       case _: New => !tree.tpe.typeSymbol.isStatic
-      case _: RefTree =>
-        var owner = tree.symbol.effectiveOwner
-        if (owner.isLocalDummy) owner = owner.owner
-        tree.isTerm && !owner.isStaticOwner && owner != cls
+      case _: RefTree | _: This => refNeedsHoist(tree.tpe)
       case _ => false
     }
 
@@ -99,8 +106,10 @@ class HoistSuperArgs extends MiniPhaseTransform with IdentityDenotTransformer { 
      *  @return  The argument after possible hoisting
      *  Might append a method definition to `superArgs` as a side effect.
      */
-    def hoistSuperArg(arg: Tree) =
-      if (arg.existsSubTree(needsHoist)) {
+    def hoistSuperArg(arg: Tree): Tree = arg match {
+      case Apply(fn, arg1 :: Nil) if fn.symbol == defn.cbnArg =>
+        cpy.Apply(arg)(fn, hoistSuperArg(arg1) :: Nil)
+      case _ if (arg.existsSubTree(needsHoist)) =>
         val superMeth = newSuperArgMethod(arg.tpe)
         val superArgDef = polyDefDef(superMeth, trefs => vrefss => {
           val paramSyms = trefs.map(_.typeSymbol) ::: vrefss.flatten.map(_.symbol)
@@ -139,8 +148,8 @@ class HoistSuperArgs extends MiniPhaseTransform with IdentityDenotTransformer { 
           .appliedToArgss(termParamRefs(constr.info))
         ctx.log(i"hoist $arg, cls = $cls = $res")
         res
-      }
-      else arg
+      case _ => arg
+    }
 
     def recur(tree: Tree): Tree = tree match {
       case Apply(fn, args) => cpy.Apply(tree)(recur(fn), args.mapconserve(hoistSuperArg))

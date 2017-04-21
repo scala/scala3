@@ -280,9 +280,11 @@ class Definitions {
     def ObjectMethods = List(Object_eq, Object_ne, Object_synchronized, Object_clone,
         Object_finalize, Object_notify, Object_notifyAll, Object_wait, Object_waitL, Object_waitLI)
 
-  /** Dummy method needed by elimByName */
-  lazy val dummyApply = enterPolyMethod(
-      OpsPackageClass, nme.dummyApply, 1,
+  /** Marker method to indicate an argument to a call-by-name parameter.
+   *  Created by byNameClosures and elimByName, eliminated by Erasure,
+   */
+  lazy val cbnArg = enterPolyMethod(
+      OpsPackageClass, nme.cbnArg, 1,
       pt => MethodType(List(FunctionOf(Nil, TypeParamRef(pt, 0))), TypeParamRef(pt, 0)))
 
   /** Method representing a throw */

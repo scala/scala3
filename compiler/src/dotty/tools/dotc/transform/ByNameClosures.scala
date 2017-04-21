@@ -15,24 +15,23 @@ import core.StdNames.nme
 /** This phase translates arguments to call-by-name parameters, using the rules
  *
  *      x           ==>    x                   if x is a => parameter
- *      e.apply()   ==>    DummyApply(e)       if e is pure
- *      e           ==>    DummyApply(() => e) for all other arguments
+ *      e.apply()   ==>    <cbn-arg>(e)       if e is pure
+ *      e           ==>    <cbn-arg>(() => e) for all other arguments
  *
  *  where
  *
- *     DummyApply: [T](() => T): T
+ *     <cbn-arg>: [T](() => T): T
  *
- *  is a synthetic method defined in Definitions. Erasure will later strip these DummyApply wrappers.
+ *  is a synthetic method defined in Definitions. Erasure will later strip the <cbn-arg> wrappers.
  */
 class ByNameClosures extends TransformByNameApply with IdentityDenotTransformer { thisTransformer =>
   import ast.tpd._
 
-  override def phaseName: String = "bynameClosures"
+  override def phaseName: String = "byNameClosures"
 
   override def mkClosure(arg: Tree, argType: Type)(implicit ctx: Context): Tree = {
-    val inSuper = if (ctx.mode.is(Mode.InSuperCall)) InSuperCall else EmptyFlags
     val meth = ctx.newSymbol(
-      ctx.owner, nme.ANON_FUN, Synthetic | Method | inSuper, MethodType(Nil, Nil, argType))
+      ctx.owner, nme.ANON_FUN, Synthetic | Method, MethodType(Nil, Nil, argType))
     Closure(meth, _ => arg.changeOwnerAfter(ctx.owner, meth, thisTransformer))
   }
 }

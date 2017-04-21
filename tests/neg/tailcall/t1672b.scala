@@ -46,7 +46,7 @@ object Test1772B {
     else 1 + (try {
       throw new RuntimeException
     } catch {
-      case _: Throwable => bar(i - 1) // error
+      case _: Throwable => bar(i - 1) // old error
     })
   }
 }

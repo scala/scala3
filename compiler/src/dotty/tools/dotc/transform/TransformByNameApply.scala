@@ -13,7 +13,7 @@ import DenotTransformers._
 import core.StdNames.nme
 import ast.Trees._
 
-/** Abstract base class of ByNameClosures and ELimByName, factoring out the
+/** Abstract base class of ByNameClosures and ElimByName, factoring out the
  *  common functionality to transform arguments of by-name parameters.
  */
 abstract class TransformByNameApply extends MiniPhaseTransform { thisTransformer: DenotTransformer =>
@@ -32,7 +32,7 @@ abstract class TransformByNameApply extends MiniPhaseTransform { thisTransformer
     origDenot.info.isInstanceOf[ExprType] && exprBecomesFunction(origDenot)
   }
 
-  def mkClosure(arg: Tree, argType: Type)(implicit ctx: Context): Tree = unsupported("mkClosure")
+  def mkClosure(arg: Tree, argType: Type)(implicit ctx: Context): Tree = unsupported(i"mkClosure($arg)")
 
   override def transformApply(tree: Apply)(implicit ctx: Context, info: TransformerInfo): Tree =
     ctx.traceIndented(s"transforming ${tree.show} at phase ${ctx.phase}", show = true) {
@@ -41,13 +41,13 @@ abstract class TransformByNameApply extends MiniPhaseTransform { thisTransformer
       case formalExpr: ExprType =>
         var argType = arg.tpe.widenIfUnstable
         if (defn.isBottomType(argType)) argType = formal.widenExpr
-        def wrap(arg: Tree) = ref(defn.dummyApply).appliedToType(argType).appliedTo(arg)
+        def wrap(arg: Tree) = ref(defn.cbnArg).appliedToType(argType).appliedTo(arg)
         arg match {
           case Apply(Select(qual, nme.apply), Nil)
           if qual.tpe.derivesFrom(defn.FunctionClass(0)) && isPureExpr(qual) =>
             wrap(qual)
           case _ =>
-            if (isByNameRef(arg) || arg.symbol == defn.dummyApply) arg
+            if (isByNameRef(arg) || arg.symbol == defn.cbnArg) arg
             else wrap(mkClosure(arg, argType))
         }
       case _ =>

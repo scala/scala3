@@ -15,7 +15,7 @@ import util.Attachment
 import core.StdNames.nme
 import ast.Trees._
 
-/** This phase eliminates ExprTypes `=> T` as types of function parameters, and replaces them by
+/** This phase eliminates ExprTypes `=> T` as types of method parameter references, and replaces them b
  *  nullary function types.  More precisely:
  *
  *  For the types of parameter symbols:
@@ -25,7 +25,6 @@ import ast.Trees._
  *  For cbn parameter values
  *
  *         x          ==>    x()
- *         CbnArg(x)  ==>    DummyApply(x)
  *
  *  Note: This scheme to have inconsistent types between method types (whose formal types are still
  *  ExprTypes and parameter valdefs (which are now FunctionTypes) is not pretty. There are two
@@ -43,10 +42,8 @@ class ElimByName extends TransformByNameApply with InfoTransformer { thisTransfo
 
   override def phaseName: String = "elimByName"
 
-  override def runsAfter = Set(classOf[HoistSuperArgs])
   override def runsAfterGroupsOf = Set(classOf[Splitter])
-    // assumes idents and selects have symbols; interferes with splitter distribution
-    // that's why it's "after group".
+    // I got errors running this phase in an earlier group, but I did not track them down.
 
   /** Map `tree` to `tree.apply()` is `ftree` was of ExprType and becomes now a function */
   private def applyIfFunction(tree: Tree, ftree: Tree)(implicit ctx: Context) =
