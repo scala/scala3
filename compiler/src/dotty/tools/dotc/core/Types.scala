@@ -175,33 +175,35 @@ object Types {
       loop(this)
     }
 
-    /** Is phantom if upper bounded by XYZ.Any where XYZ extends scala.Phantom */
-    final def isPhantom(implicit ctx: Context): Boolean = {
-      // note that the only phantom classes are PhantomAnyClass and PhantomNothingClass
-      val sym = typeSymbol
-      (sym eq defn.PhantomAny) || (sym eq defn.PhantomNothing) ||
-      (!sym.isClass && (topType.classSymbol eq defn.PhantomAny))
-    }
-
     /** Returns the top type of the lattice
      *   - XYX.Any if XYZ extends scala.Phantom and this type is upper bounded XYZ.Any
      *   - scala.Any otherwise
      */
-    final def topType(implicit ctx: Context): TypeRef = widen match {
-      case tp: ClassInfo if isPhantomClass(tp.classSymbol) => tp.prefix.select(tpnme.Any).asInstanceOf[TypeRef]
-      case tp: TypeProxy if tp.superType ne this => tp.superType.topType
-      case tp: AndOrType => tp.tp1.topType
-      case _ => defn.AnyType
+    final def topType(implicit ctx: Context): TypeRef = {
+      val lattice = phantomLatticeType
+      if (lattice.exists) lattice.select(tpnme.Any).asInstanceOf[TypeRef]
+      else defn.AnyType
     }
 
     /** Returns the bottom type of the lattice
      *   - XYZ.Nothing if XYZ extends scala.Phantom and this type is upper bounded XYZ.Any
      *   - scala.Nothing otherwise
      */
-    final def bottomType(implicit ctx: Context): Type = topType match {
-      case top: TypeRef if top.prefix.termSymbol ne defn.ScalaPackageVal =>
-        top.prefix.select(tpnme.Nothing)
-      case _ => defn.NothingType
+    final def bottomType(implicit ctx: Context): Type = {
+      val lattice = phantomLatticeType
+      if (lattice.exists) lattice.select(tpnme.Nothing).asInstanceOf[TypeRef]
+      else defn.NothingType
+    }
+
+    /** Returns the type of the lattice
+      *   - XYZ if XYZ extends scala.Phantom and this type is upper bounded XYZ.Any
+      *   - NoType otherwise
+      */
+    final def phantomLatticeType(implicit ctx: Context): Type = widen match {
+      case tp: ClassInfo if isPhantomClass(tp.classSymbol) => tp.prefix
+      case tp: TypeProxy if tp.superType ne this => tp.superType.phantomLatticeType
+      case tp: AndOrType => tp.tp1.phantomLatticeType
+      case _ => NoType
     }
 
     /** If the symbol is of the class scala.Phantom.Any or scala.Phantom.Nothing */
@@ -3308,8 +3310,8 @@ object Types {
   /** Type bounds >: lo <: hi */
   abstract case class TypeBounds(lo: Type, hi: Type) extends CachedProxyType with TypeType {
 
-    assert(lo.isInstanceOf[TermType], lo)
-    assert(hi.isInstanceOf[TermType], hi)
+    assert(lo.isInstanceOf[TermType])
+    assert(hi.isInstanceOf[TermType])
 
     def variance: Int = 0
 

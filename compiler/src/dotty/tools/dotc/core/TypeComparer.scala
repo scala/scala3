@@ -565,7 +565,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
             // note that the only phantom classes are PhantomAnyClass and PhantomNothingClass
             val sym = tp.typeSymbol
             (sym eq PhantomAnyClass) || (sym eq PhantomNothingClass) ||
-            (!sym.isClass && (tp.topType.classSymbol eq PhantomAnyClass))
+            (!sym.isClass && tp.phantomLatticeType.exists)
           }
           val sym1 = tp1.symbol
           (sym1 eq NothingClass) && tp2.isValueTypeOrLambda && !isPhantom(tp2) ||
