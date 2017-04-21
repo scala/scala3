@@ -671,7 +671,7 @@ trait Implicits { self: Typer =>
     ctx.traceIndented(s"search implicit ${pt.show}, arg = ${argument.show}: ${argument.tpe.show}", implicits, show = true) {
       assert(!pt.isInstanceOf[ExprType])
       val isearch =
-        if (ctx.settings.explaintypes.value) new ExplainedImplicitSearch(pt, argument, pos)
+        if (ctx.settings.explainImplicits.value) new ExplainedImplicitSearch(pt, argument, pos)
         else new ImplicitSearch(pt, argument, pos)
       val result = isearch.bestImplicit
       result match {
