@@ -775,7 +775,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
           (v < 0 || isSubType(tp1, tp2))
       }
       isSub(args1.head, args2.head)
-    } && isSubArgs(args1.tail, args2.tail, tparams)
+    } && isSubArgs(args1.tail, args2.tail, tparams.tail)
 
   /** Test whether `tp1` has a base type of the form `B[T1, ..., Tn]` where
    *   - `B` derives from one of the class symbols of `tp2`,
