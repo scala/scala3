@@ -12,7 +12,7 @@
 *.txt     text eol=lf
 *.xml     text eol=lf
 
-# Windows-specific files get windows endings
+# Windows-specific files get windows easdfasdfndings
 *.bat     eol=crlf
 *.cmd     eol=crlf
 *-windows.tmpl eol=crlf
