@@ -334,11 +334,14 @@ object Implicits {
   class FailedImplicit(failures: List[ExplainedSearchFailure], val pt: Type, val argument: tpd.Tree) extends ExplainedSearchFailure {
     def explanation(implicit ctx: Context): String =
       if (failures.isEmpty) s"  No implicit candidates were found that $qualify"
-      else "  " + (failures map (_.explanation) mkString "\n  ")
-    override def postscript(implicit ctx: Context): String =
+      else failures.map(_.explanation).mkString("\n").replace("\n", "\n  ")
+    override def postscript(implicit ctx: Context): String = {
+      val what =
+        if (argument.isEmpty) i"value of type $pt"
+        else i"conversion from ${argument.tpe.widen} to $pt"
       i"""
-         |Implicit search failure summary:
          |$explanation"""
+    }
   }
 }
 
