@@ -92,6 +92,9 @@ object TreeTransforms {
     def prepareForPackageDef(tree: PackageDef)(implicit ctx: Context) = this
     def prepareForStats(trees: List[Tree])(implicit ctx: Context) = this
 
+    /** Prepare for _compilation_ Unit, overriding this can be used as setup
+      * for transformation
+      */
     def prepareForUnit(tree: Tree)(implicit ctx: Context) = this
 
     def transformIdent(tree: Ident)(implicit ctx: Context, info: TransformerInfo): Tree = tree
