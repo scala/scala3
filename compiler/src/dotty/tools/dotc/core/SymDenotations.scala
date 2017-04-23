@@ -7,7 +7,7 @@ import Types._, Flags._, Decorators._, DenotTransformers._, StdNames._, Scopes._
 import NameOps._, NameKinds._
 import Scopes.Scope
 import collection.mutable
-import collection.immutable.BitSet
+import collection.BitSet
 import scala.reflect.io.AbstractFile
 import Decorators.SymbolIteratorDecorator
 import ast._
@@ -1412,7 +1412,7 @@ object SymDenotations {
           to
       }
       val bcs = classSymbol :: addParentBaseClasses(classParents, Nil)
-      val scbits = seen.toImmutable
+      val scbits = seen
       if (isFullyCompleted) {
         myBaseClasses = bcs
         mySuperClassBits = scbits
