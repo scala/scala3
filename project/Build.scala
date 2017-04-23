@@ -14,7 +14,7 @@ object Build {
 
   projectChecks()
 
-  val scalacVersion = "2.11.5" // Do not rename, this is grepped in bin/common.
+  val scalacVersion = "2.11.11" // Do not rename, this is grepped in bin/common.
 
   val dottyOrganization = "ch.epfl.lamp"
   val dottyVersion = {
@@ -81,10 +81,6 @@ object Build {
 
     javacOptions in Global ++= Seq("-Xlint:unchecked", "-Xlint:deprecation")
   )
-
-  /** Enforce 2.11.5. Do not let it be upgraded by dependencies. */
-  private val overrideScalaVersionSetting =
-    ivyScala := ivyScala.value.map(_.copy(overrideScalaVersion = true))
 
   // set sources to src/, tests to test/ and resources to resources/
   lazy val sourceStructure = Seq(
@@ -448,8 +444,6 @@ object Build {
     settings(sourceStructure).
     settings(dottyCompilerSettings).
     settings(
-      overrideScalaVersionSetting,
-
       // Disable scaladoc generation, it's way too slow and we'll replace it
       // by dottydoc anyway. We still publish an empty -javadoc.jar to make
       // sonatype happy.
@@ -520,8 +514,6 @@ object Build {
     dependsOn(`dotty-compiler`).
     settings(sourceStructure).
     settings(
-      overrideScalaVersionSetting,
-
       cleanSbtBridge := {
         val dottySbtBridgeVersion = version.value
         val dottyVersion = (version in `dotty-compiler`).value
@@ -609,8 +601,6 @@ object DottyInjectedPlugin extends AutoPlugin {
     enablePlugins(ScalaJSPlugin).
     settings(sourceStructure).
     settings(
-      overrideScalaVersionSetting,
-
       /* Remove the Scala.js compiler plugin for scalac, and enable the
        * Scala.js back-end of dotty instead.
        */
@@ -644,8 +634,6 @@ object DottyInjectedPlugin extends AutoPlugin {
     dependsOn(`dotty-compiler` % "compile->test").
     settings(sourceStructure).
     settings(
-      overrideScalaVersionSetting,
-
       baseDirectory in (Test,run) := (baseDirectory in `dotty-compiler`).value,
 
       libraryDependencies += "com.storm-enroute" %% "scalameter" % "0.6" % Test,
