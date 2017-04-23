@@ -77,7 +77,7 @@ object Config {
   final val traceDeepSubTypeRecursions = false
 
   /** When explaining subtypes and this flag is set, also show the classes of the compared types. */
-  final val verboseExplainSubtype = true
+  final val verboseExplainSubtype = false
 
   /** If this flag is set, take the fast path when comparing same-named type-aliases and types */
   final val fastPathForRefinedSubtype = true
