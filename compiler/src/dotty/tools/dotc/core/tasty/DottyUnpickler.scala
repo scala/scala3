@@ -11,6 +11,8 @@ import util.{SourceFile, NoSource}
 import Annotations.Annotation
 import core.Mode
 import classfile.ClassfileParser
+import dotty.tools.dotc.transform.linker.summaries.MethodSummary
+import dotty.tools.dotc.transform.linker.summaries.TastySummaries
 
 object DottyUnpickler {
 
@@ -56,5 +58,16 @@ class DottyUnpickler(bytes: Array[Byte]) extends ClassfileParser.Embedded {
   /** The unpickled trees, and the source file they come from. */
   def body(implicit ctx: Context): List[Tree] = {
     treeUnpickler.unpickle()
+  }
+
+  def summaries(implicit ctx: Context) = {
+    val sectionName = TastySummaries.sectionName
+    val tastySection = unpickler.unpickle(new SummariesTreeSectionUnpickler(treeUnpickler, sectionName)).get
+    val treeReader = tastySection.asInstanceOf[SummariesTreeUnpickler].getStartReader(ctx).get
+    val unp = new TastyUnpickler.SectionUnpickler[List[MethodSummary]](sectionName) {
+      def unpickle(reader: TastyReader, tastyName: NameTable): List[MethodSummary] =
+        new TastySummaries.SummaryReader(treeReader, reader)(ctx).read()
+    }
+    unpickler.unpickle(unp).getOrElse(Nil)
   }
 }

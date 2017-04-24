@@ -37,24 +37,10 @@ class TastySummaries {
   }
 
   private def retrieveSummary(sym: Symbol)(implicit ctx: Context): List[MethodSummary] = {
-    val topDenot = sym.topLevelClass.denot.asSymDenotation
-    if (topDenot.symbol == defn.ObjectClass)
-      return Nil
-    topDenot match {
-      case clsd: ClassDenotation =>
-        clsd.hack match {
-          case Some(unpickler: DottyUnpickler) =>
-            val summariesUnpickler = new SummariesTreeSectionUnpickler(unpickler.treeUnpickler, sectionName + unpickler.unpickler.uuid)
-            val tastySection = unpickler.unpickler.unpickle(summariesUnpickler).get
-            tastySection.enterTopLevel(roots = Set.empty)
-            val treeReader = tastySection.asInstanceOf[SummariesTreeUnpickler].getStartReader.get
-            val unp = new TastyUnpickler.SectionUnpickler[List[MethodSummary]](sectionName) {
-              def unpickle(reader: TastyReader, tastyName: NameTable): List[MethodSummary] =
-                new SummaryReader(treeReader, reader).read()
-            }
-            unpickler.unpickler.unpickle(unp).getOrElse(Nil)
-          case _ => Nil
-        }
+    val topDenot = sym.topLevelClass.denot.asClass
+    topDenot.hack match {
+      case Some(unpickler: DottyUnpickler) => unpickler.summaries
+      case _ => Nil
     }
   }
 
@@ -76,7 +62,7 @@ object TastySummaries {
       if (!ctx.scala2Mode) {
         val buf = new TastyBuffer(5000)
         val treePickl = pickler.treePkl
-        val anchorTree = tpd.SyntheticValDef((sectionName + pickler.uuid.toString).toTermName, Literal(Constant(sectionName)))
+        val anchorTree = tpd.SyntheticValDef(sectionName.toTermName, Literal(Constant(sectionName)))
 
         treePickl.preRegister(anchorTree)
         treePickl.pickle(anchorTree :: Nil)
@@ -91,7 +77,7 @@ object TastySummaries {
         val sz = treePickl.buf.currentAddr.index - start.index
 
         ctx.debuglog("new section for " + cls + " size:"
-          + sz + "/" + buf.currentAddr + "increased by " + (sz + buf.length) * 1.0 / start.index)
+          + sz + "/" + buf.currentAddr.index + " increased by " + (sz + buf.length) * 1.0 / start.index)
         // note: this is huge overestimate. This section contains a lot of refferences to already existing symbols and types
         // and will be compressed during bytecode generation by TreePickler.compactify
 
@@ -101,7 +87,7 @@ object TastySummaries {
     }
   }
 
-  private[TastySummaries] class SummaryReader(tReader: SummariesTreeUnpickler#TreeReader, reader: TastyReader)(implicit ctx: Context) {
+  class SummaryReader(tReader: SummariesTreeUnpickler#TreeReader, reader: TastyReader)(implicit ctx: Context) {
 
     def read(): List[MethodSummary] = {
       val version = reader.readInt()

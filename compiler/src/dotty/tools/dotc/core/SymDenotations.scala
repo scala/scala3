@@ -17,6 +17,7 @@ import util.SimpleMap
 import util.Stats
 import config.Config
 import config.Printers.{completions, incremental, noPrinter}
+import classfile.ClassfileParser
 
 trait SymDenotations { this: Context =>
   import SymDenotations._
@@ -1225,7 +1226,7 @@ object SymDenotations {
     initRunId: RunId)
     extends SymDenotation(symbol, ownerIfExists, initName, initFlags, initInfo, initPrivateWithin) {
 
-    var hack: Option[Any] = _
+    var hack: Option[ClassfileParser.Embedded] = _
 
     import util.LRUCache
 
