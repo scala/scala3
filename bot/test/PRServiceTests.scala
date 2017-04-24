@@ -103,4 +103,31 @@ class PRServiceTests extends PullRequestService {
 
     httpClient.shutdownNow()
   }
+
+  @Test def canGetStatus = {
+    val sha = "fa64b4b613fe5e78a5b4185b4aeda89e2f1446ff"
+    val commit = Commit(sha, Author(None), Author(None), CommitInfo(""))
+    val status = withClient(getStatus(commit, _))
+
+    assert(status.sha == sha, "someting wong")
+  }
+
+  @Test def canRecheckCLA = {
+    val shas =
+      "1d62587cb3f41dafd796b0c92ec1c22d95b879f9" ::
+      "ad60a386f488a16612c093576bf7bf4d9f0073bf" ::
+      Nil
+
+    val commits = shas.map { sha =>
+      Commit(sha, Author(Some("felixmulder")), Author(Some("felixmulder")), CommitInfo(""))
+    }
+
+    val statuses = shas.map { sha =>
+      StatusResponse("https://api.github.com/repos/lampepfl/dotty/statuses/" + sha, 0, "failure")
+    }
+
+    val rechecked = withClient(recheckCLA(statuses, commits, _))
+
+    assert(rechecked.forall(cs => cs.isValid), s"Should have set all statuses to valid, but got: $rechecked")
+  }
 }

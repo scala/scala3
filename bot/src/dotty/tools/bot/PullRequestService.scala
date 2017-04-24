@@ -54,17 +54,19 @@ trait PullRequestService {
     currentVersion: String
   )
 
+  private[this] val githubUrl = "https://api.github.com"
+
   def claUrl(userName: String): String =
    s"https://www.lightbend.com/contribute/cla/scala/check/$userName"
 
   def commitsUrl(prNumber: Int): String =
-    s"https://api.github.com/repos/lampepfl/dotty/pulls/$prNumber/commits?per_page=100"
+    s"$githubUrl/repos/lampepfl/dotty/pulls/$prNumber/commits?per_page=100"
 
   def statusUrl(sha: String): String =
-    s"https://api.github.com/repos/lampepfl/dotty/statuses/$sha"
+    s"$githubUrl/repos/lampepfl/dotty/statuses/$sha"
 
   def issueCommentsUrl(issueNbr: Int): String =
-    s"https://api.github.com/repos/lampepfl/dotty/issues/$issueNbr/comments"
+    s"$githubUrl/repos/lampepfl/dotty/issues/$issueNbr/comments"
 
   def toUri(url: String): Task[Uri] =
     Uri.fromString(url).fold(Task.fail, Task.now)
@@ -201,7 +203,7 @@ trait PullRequestService {
       (validStatuses, invalidStatuses) = statuses.partition(_.isValid)
       invalidUsers = usersFromInvalid(invalidStatuses)
 
-      // Mark the invalid statuses:
+      // Mark the invalid commits:
       _ <- sendStatuses(invalidStatuses, httpClient)
 
       // Set status of last to indicate previous failures or all good:
@@ -220,35 +222,48 @@ trait PullRequestService {
 
   }
 
-  // TODO: Could this be done with `issueNbr` instead?
-  def getStatuses(commits: List[Commit], client: Client): Task[List[StatusResponse]] =
-    ???
-
-  private def extractCommit(status: StatusResponse): Task[Commit] =
-    ???
-
-  def recheckCLA(statuses: List[StatusResponse], client: Client): Task[List[CommitStatus]] =
+  def getStatus(commit: Commit, client: Client): Task[StatusResponse] =
     for {
-      commits  <- Task.gatherUnordered(statuses.map(extractCommit))
-      statuses <- checkCLA(commits, client)
+      endpoint <- toUri(statusUrl(commit.sha))
+      req      <- getRequest(endpoint)
+      res      <- client.expect(req)(jsonOf[List[StatusResponse]])
+    } yield res.head
+
+  def getStatuses(commits: List[Commit], client: Client): Task[List[StatusResponse]] =
+    Task.gatherUnordered(commits.map(getStatus(_, client)))
+
+  private def extractCommitSha(status: StatusResponse): Task[String] =
+    Task.delay(status.sha)
+
+  def recheckCLA(statuses: List[StatusResponse], commits: List[Commit], client: Client): Task[List[CommitStatus]] = {
+    /** Return the matching commits from the SHAs */
+    def prunedCommits(shas: List[String]): Task[List[Commit]] =
+      Task.delay(commits.filter(cm => shas.contains(cm.sha)))
+
+    for {
+      commitShas <- Task.gatherUnordered(statuses.map(extractCommitSha))
+      commits    <- prunedCommits(commitShas)
+      statuses   <- checkCLA(commits, client)
     } yield statuses
+  }
 
   def checkSynchronize(issue: Issue): Task[Response] = {
     val httpClient = PooledHttp1Client()
 
     for {
-      commits      <- getCommits(issue.number, httpClient)
-      statuses     <- getStatuses(commits, httpClient)
-      stillInvalid <- recheckCLA(statuses, httpClient)
+      commits  <- getCommits(issue.number, httpClient)
+      statuses <- checkCLA(commits, httpClient)
 
-      // Set final commit status based on `stillInvalid`:
+      (_, invalid) = statuses.partition(_.isValid)
+
+      _ <- sendStatuses(invalid, httpClient)
+
+      // Set final commit status based on `invalid`:
       _ <- {
-        if (stillInvalid.nonEmpty)
-          setStatus(InvalidPrevious(usersFromInvalid(stillInvalid), commits.last), httpClient)
-        else {
-          val lastCommit = commits.last
-          setStatus(Valid(lastCommit.author.login, lastCommit), httpClient)
-        }
+        if (invalid.nonEmpty)
+          setStatus(InvalidPrevious(usersFromInvalid(invalid), commits.last), httpClient)
+        else
+          setStatus(statuses.last, httpClient)
       }
       _    <- shutdownClient(httpClient)
       resp <- Ok("Updated PR checked")

@@ -41,7 +41,9 @@ object Github {
     url: String,
     id: Long,
     state: String
-  )
+  ) {
+    def sha: String = url.split('/').last
+  }
 
   case class Comment(user: Author)
 }
