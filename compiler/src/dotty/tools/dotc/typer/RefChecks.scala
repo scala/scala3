@@ -134,7 +134,20 @@ object RefChecks {
    *       before, but it looks too complicated and method bodies are far too large.
    */
   private def checkAllOverrides(clazz: Symbol)(implicit ctx: Context): Unit = {
-    val self = clazz.thisType
+    val self = clazz.info match {
+      case ClassInfo(_, _, _, _, tp: Type)
+      if (tp ne clazz.typeRef) && !clazz.is(ModuleOrFinal) => 
+        // If class has a non-trivial self type, use a skolem with the class type
+        // as `self` reference, instead of the `this-type` of the class as usual. 
+        // This is done because otherwise we want to understand inherited infos
+        // as they are written, whereas with the this-type they could be 
+        // more special. A test where this makes a difference is pos/i1401.scala.
+        // This one used to succeed only if forwarding parameters is on. 
+        // (Forwarding tends to hide problems by binding parameter names).
+        SkolemType(clazz.typeRef).withName(nme.this_)
+      case _ => 
+        clazz.thisType
+    }
     var hasErrors = false
 
     case class MixinOverrideError(member: Symbol, msg: String)
@@ -201,7 +214,14 @@ object RefChecks {
           infoStringWithLocation(other), infoString(member), msg, addendum)
       }
 
-      def emitOverrideError(fullmsg: String) =
+      def emitOverrideError(fullmsg: String) = {
+        if (false) {
+        val tparams = clazz.info.typeMembers.map(_.symbol)
+          .filter(_.is(BaseTypeArg | TypeParamOrAccessor))
+        println(i"*** type param members of $clazz")
+        for (tparam <- tparams)
+          println(i"  ${tparam.showLocated}: ${tparam.info}")
+        }
         if (!(hasErrors && member.is(Synthetic) && member.is(Module))) {
           // suppress errors relating toi synthetic companion objects if other override
           // errors (e.g. relating to the companion class) have already been reported.
@@ -209,6 +229,7 @@ object RefChecks {
           else mixinOverrideErrors += new MixinOverrideError(member, fullmsg)
           hasErrors = true
         }
+      }
 
       def overrideError(msg: String) = {
         if (noErrorType)

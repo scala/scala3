@@ -39,6 +39,7 @@ object Mode {
   val TypevarsMissContext = newMode(4, "TypevarsMissContext")
   val CheckCyclic = newMode(5, "CheckCyclic")
 
+  /** We are looking at the arguments of a supercall */
   val InSuperCall = newMode(6, "InSuperCall")
 
   /** Allow GADTFlexType labelled types to have their bounds adjusted */
@@ -81,7 +82,7 @@ object Mode {
   val ReadPositions = newMode(16, "ReadPositions")
 
   val PatternOrType = Pattern | Type
-  
+
   /** We are elaborating the fully qualified name of a package clause.
    *  In this case, identifiers should never be imported.
    */
