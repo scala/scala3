@@ -135,7 +135,7 @@ object Build {
 
   // Meta project aggregating all bootstrapped projects
   lazy val `dotty-bootstrapped` = project.
-    aggregate(`dotty-library-bootstrapped`, `dotty-compiler-bootstrapped`).
+    aggregate(`dotty-library-bootstrapped`, `dotty-compiler-bootstrapped`, `dotty-doc-bootstrapped`).
     settings(
       publishArtifact := false
     )
@@ -152,62 +152,72 @@ object Build {
     ).
     settings(publishing)
 
-  lazy val `dotty-doc` = project.in(file("doc-tool")).
-    dependsOn(`dotty-compiler`, `dotty-compiler` % "test->test").
-    settings(sourceStructure).
-    settings(
-      baseDirectory in (Compile, run) := baseDirectory.value / "..",
-      baseDirectory in (Test, run) := baseDirectory.value,
+  // Settings shared between dotty-doc and dotty-doc-bootstrapped
+  lazy val dottyDocSettings = Seq(
+    baseDirectory in (Compile, run) := baseDirectory.value / "..",
+    baseDirectory in (Test, run) := baseDirectory.value,
 
-      connectInput in run := true,
-      outputStrategy := Some(StdoutOutput),
+    connectInput in run := true,
+    outputStrategy := Some(StdoutOutput),
 
-      javaOptions ++= (javaOptions in `dotty-compiler`).value,
-      fork in run := true,
-      fork in Test := true,
-      parallelExecution in Test := false,
+    javaOptions ++= (javaOptions in `dotty-compiler`).value,
+    fork in run := true,
+    fork in Test := true,
+    parallelExecution in Test := false,
 
-      genDocs := Def.inputTaskDyn {
-        val dottyLib = (packageAll in `dotty-compiler`).value("dotty-library")
-        val dottyInterfaces = (packageAll in `dotty-compiler`).value("dotty-interfaces")
-        val otherDeps = (dependencyClasspath in Compile).value.map(_.data).mkString(":")
-        val sources =
-          (unmanagedSources in (Compile, compile)).value ++
+    genDocs := Def.inputTaskDyn {
+      val dottyLib = (packageAll in `dotty-compiler`).value("dotty-library")
+      val dottyInterfaces = (packageAll in `dotty-compiler`).value("dotty-interfaces")
+      val otherDeps = (dependencyClasspath in Compile).value.map(_.data).mkString(":")
+      val sources =
+        (unmanagedSources in (Compile, compile)).value ++
           (unmanagedSources in (`dotty-compiler`, Compile)).value
-        val args: Seq[String] = Seq(
-          "-siteroot", "docs",
-          "-project", "Dotty",
-          "-classpath", s"$dottyLib:$dottyInterfaces:$otherDeps"
-        )
+      val args: Seq[String] = Seq(
+        "-siteroot", "docs",
+        "-project", "Dotty",
+        "-classpath", s"$dottyLib:$dottyInterfaces:$otherDeps"
+      )
         (runMain in Compile).toTask(
           s""" dotty.tools.dottydoc.Main ${args.mkString(" ")} ${sources.mkString(" ")}"""
         )
-      }.evaluated,
+    }.evaluated,
 
-      dottydoc := Def.inputTaskDyn {
-        val args: Seq[String] = spaceDelimited("<arg>").parsed
-        val dottyLib = (packageAll in `dotty-compiler`).value("dotty-library")
-        val dottyInterfaces = (packageAll in `dotty-compiler`).value("dotty-interfaces")
-        val otherDeps = (dependencyClasspath in Compile).value.map(_.data).mkString(":")
-        val cp: Seq[String] = Seq("-classpath", s"$dottyLib:$dottyInterfaces:$otherDeps")
+    dottydoc := Def.inputTaskDyn {
+      val args: Seq[String] = spaceDelimited("<arg>").parsed
+      val dottyLib = (packageAll in `dotty-compiler`).value("dotty-library")
+      val dottyInterfaces = (packageAll in `dotty-compiler`).value("dotty-interfaces")
+      val otherDeps = (dependencyClasspath in Compile).value.map(_.data).mkString(":")
+      val cp: Seq[String] = Seq("-classpath", s"$dottyLib:$dottyInterfaces:$otherDeps")
         (runMain in Compile).toTask(s""" dotty.tools.dottydoc.Main ${cp.mkString(" ")} """ + args.mkString(" "))
-      }.evaluated,
+    }.evaluated,
 
-      libraryDependencies ++= Seq(
-        "com.novocode" % "junit-interface" % "0.11" % "test",
-        "com.vladsch.flexmark" % "flexmark" % "0.11.1",
-        "com.vladsch.flexmark" % "flexmark-ext-gfm-tasklist" % "0.11.1",
-        "com.vladsch.flexmark" % "flexmark-ext-gfm-tables" % "0.11.1",
-        "com.vladsch.flexmark" % "flexmark-ext-autolink" % "0.11.1",
-        "com.vladsch.flexmark" % "flexmark-ext-anchorlink" % "0.11.1",
-        "com.vladsch.flexmark" % "flexmark-ext-emoji" % "0.11.1",
-        "com.vladsch.flexmark" % "flexmark-ext-gfm-strikethrough" % "0.11.1",
-        "com.vladsch.flexmark" % "flexmark-ext-yaml-front-matter" % "0.11.1",
-        "com.fasterxml.jackson.dataformat" % "jackson-dataformat-yaml" % "2.8.6",
-        "nl.big-o" % "liqp" % "0.6.7"
-      )
-    ).
+    libraryDependencies ++= Seq(
+      "com.novocode" % "junit-interface" % "0.11" % "test",
+      "com.vladsch.flexmark" % "flexmark" % "0.11.1",
+      "com.vladsch.flexmark" % "flexmark-ext-gfm-tasklist" % "0.11.1",
+      "com.vladsch.flexmark" % "flexmark-ext-gfm-tables" % "0.11.1",
+      "com.vladsch.flexmark" % "flexmark-ext-autolink" % "0.11.1",
+      "com.vladsch.flexmark" % "flexmark-ext-anchorlink" % "0.11.1",
+      "com.vladsch.flexmark" % "flexmark-ext-emoji" % "0.11.1",
+      "com.vladsch.flexmark" % "flexmark-ext-gfm-strikethrough" % "0.11.1",
+      "com.vladsch.flexmark" % "flexmark-ext-yaml-front-matter" % "0.11.1",
+      "com.fasterxml.jackson.dataformat" % "jackson-dataformat-yaml" % "2.8.6",
+      "nl.big-o" % "liqp" % "0.6.7"
+    )
+  )
+
+  lazy val `dotty-doc` = project.in(file("doc-tool")).
+    dependsOn(`dotty-compiler`, `dotty-compiler` % "test->test").
+    settings(sourceStructure).
+    settings(dottyDocSettings).
     settings(publishing)
+
+  lazy val `dotty-doc-bootstrapped` = project.in(file("doc-tool")).
+    dependsOn(`dotty-compiler-bootstrapped`, `dotty-compiler-bootstrapped` % "test->test").
+    settings(sourceStructure).
+    settings(commonBootstrappedSettings).
+    settings(dottyDocSettings)
+
 
   lazy val `dotty-bot` = project.in(file("bot")).
     settings(sourceStructure).
