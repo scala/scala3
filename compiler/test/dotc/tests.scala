@@ -250,7 +250,7 @@ class tests extends CompilerTest {
 
   @Test def dotc_typer = compileDir(dotcDir, "typer")// twice omitted to make tests run faster
     // error: error while loading Checking$$anon$2$,
-    // class file 'target/scala-2.11/dotty_2.11-0.1.1-SNAPSHOT.jar(dotty/tools/dotc/typer/Checking$$anon$2.class)'
+    // class file 'target/scala-2.11/dotty_2.11-0.1.1-bin-SNAPSHOT.jar(dotty/tools/dotc/typer/Checking$$anon$2.class)'
     // has location not matching its contents: contains class $anon
 
   @Test def dotc_util = compileDir(dotcDir, "util") // twice omitted to make tests run faster
