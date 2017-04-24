@@ -11,18 +11,17 @@ import core.Decorators._
 import core.StdNames.nme
 import core.Names._
 import core.NameOps._
+import core.NameKinds.ExpandPrefixName
 import core.Phases._
 import ast.Trees._
 import SymUtils._
 import ExplicitOuter.outer
 import util.Attachment
-import util.NameTransformer
 import util.Positions._
 import collection.{ mutable, immutable }
 import collection.mutable.{ HashMap, HashSet, LinkedHashMap, LinkedHashSet, TreeSet }
 
 object LambdaLift {
-  private val NJ = NameTransformer.NAME_JOIN_STRING
   private class NoPath extends Exception
 }
 
@@ -338,7 +337,9 @@ class LambdaLift extends MiniPhase with IdentityDenotTransformer { thisTransform
 
     private def newName(sym: Symbol)(implicit ctx: Context): Name =
       if (sym.isAnonymousFunction && sym.owner.is(Method, butNot = Label))
-        (sym.name ++ NJ ++ sym.owner.name).freshened
+        sym.name.rewrite {
+          case name: SimpleTermName => ExpandPrefixName(sym.owner.name.asTermName, name)
+        }.freshened
       else sym.name.freshened
 
     private def generateProxies()(implicit ctx: Context): Unit =
