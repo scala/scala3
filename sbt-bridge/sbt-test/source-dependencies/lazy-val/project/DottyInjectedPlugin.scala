@@ -6,7 +6,7 @@ object DottyInjectedPlugin extends AutoPlugin {
   override def trigger = allRequirements
 
   override val projectSettings = Seq(
-    scalaVersion := "0.1.1-SNAPSHOT",
+    scalaVersion := "0.1.1-bin-SNAPSHOT",
     scalaOrganization := "ch.epfl.lamp",
     scalacOptions += "-language:Scala2",
     scalaBinaryVersion  := "2.11",

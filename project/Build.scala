@@ -21,9 +21,9 @@ object Build {
     val baseVersion = "0.1.1"
     val isNightly = sys.env.get("NIGHTLYBUILD") == Some("yes")
     if (isNightly)
-      baseVersion + "-" + VersionUtil.commitDate + "-" + VersionUtil.gitHash + "-NIGHTLY"
+      baseVersion + "-bin-" + VersionUtil.commitDate + "-" + VersionUtil.gitHash + "-NIGHTLY"
     else
-      baseVersion + "-SNAPSHOT"
+      baseVersion + "-bin-SNAPSHOT"
   }
 
   val jenkinsMemLimit = List("-Xmx1500m")
@@ -573,7 +573,7 @@ object DottyInjectedPlugin extends AutoPlugin {
   override def trigger = allRequirements
 
   override val projectSettings = Seq(
-    scalaVersion := "0.1.1-SNAPSHOT",
+    scalaVersion := "0.1.1-bin-SNAPSHOT",
     scalaOrganization := "ch.epfl.lamp",
     scalacOptions += "-language:Scala2",
     scalaBinaryVersion  := "2.11",
