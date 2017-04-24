@@ -3,7 +3,7 @@ package dotty.tools.bot
 import org.http4s.{ Status => _, _ }
 import org.http4s.client.blaze._
 import org.http4s.client.Client
-import org.http4s.headers.Authorization
+import org.http4s.headers.{ Accept, Authorization }
 
 import cats.syntax.applicative._
 import scalaz.concurrent.Task
@@ -47,6 +47,10 @@ trait PullRequestService {
     new Authorization(creds)
   }
 
+  private[this] lazy val previewAcceptHeader =
+    Accept.parse("application/vnd.github.black-cat-preview+json")
+      .getOrElse(throw new Exception("Couldn't initialize accept header"))
+
   private final case class CLASignature(
     user: String,
     signed: Boolean,
@@ -68,14 +72,20 @@ trait PullRequestService {
   def issueCommentsUrl(issueNbr: Int): String =
     s"$githubUrl/repos/lampepfl/dotty/issues/$issueNbr/comments"
 
+  def reviewUrl(issueNbr: Int): String =
+    s"$githubUrl/repos/lampepfl/dotty/pulls/$issueNbr/reviews"
+
   def toUri(url: String): Task[Uri] =
     Uri.fromString(url).fold(Task.fail, Task.now)
 
   def getRequest(endpoint: Uri): Task[Request] =
-    Request(uri = endpoint, method = Method.GET).putHeaders(authHeader).pure[Task]
+    Request(uri = endpoint, method = Method.GET).putHeaders(authHeader)
+      .pure[Task]
 
   def postRequest(endpoint: Uri): Task[Request] =
-    Request(uri = endpoint, method = Method.POST).putHeaders(authHeader).pure[Task]
+    Request(uri = endpoint, method = Method.POST)
+      .putHeaders(authHeader, previewAcceptHeader)
+      .pure[Task]
 
   def shutdownClient(client: Client): Task[Unit] =
     client.shutdownNow().pure[Task]
@@ -191,11 +201,87 @@ trait PullRequestService {
   private def usersFromInvalid(xs: List[CommitStatus]) =
     xs.collect { case Invalid(user, _) => user }
 
-  def sendInitialComment(invalidUsers: List[String]): Task[Unit] = ???
+  def hasBadCommitMessages(commits: List[Commit]): Boolean =
+    commits.exists { cm =>
+      val firstLine = cm.commit.message.takeWhile(_ != '\n').trim.toLowerCase
+      val firstWord = firstLine.takeWhile(x => x != ':' && x != ' ')
+      val containsColon = firstLine.contains(':')
+
+      val wrongTense = firstWord match {
+        case "added" | "fixed" | "removed" | "moved" | "changed" |
+             "finalized" | "re-added"
+        => true
+
+        case "adds" | "fixes" | "removes" | "moves" | "changes" |
+             "finalizes" | "re-adds"
+        => true
+
+        case _
+        => false
+      }
+
+      wrongTense || firstLine.last == '.' || firstLine.length > 100
+    }
+
+  def sendInitialComment(issueNbr: Int, invalidUsers: List[String], commits: List[Commit], client: Client): Task[ReviewResponse] = {
+
+    val cla = if (invalidUsers.nonEmpty) {
+      s"""|## CLA ##
+          |In order for us to be able to accept your contribution, all users
+          |must sign the Scala CLA.
+          |
+          |Users:
+          |${ invalidUsers.map("@" + _).mkString("- ", "\n- ", "") }
+          |
+          |Could you folks please sign the CLA? :pray:
+          |
+          |Please do this here: https://www.lightbend.com/contribute/cla/scala
+          |""".stripMargin
+    } else "All contributors have signed the CLA, thank you! :heart:"
+
+    val commitRules = if (hasBadCommitMessages(commits)) {
+      """|## Commit Messages ##
+         |We want to keep history, but for that to actually be useful we have
+         |some rules on how to format our commit messages ([relevant xkcd](https://xkcd.com/1296/)).
+         |
+         |Please stick to these guidelines for commit messages:
+         |
+         |> 1. Separate subject from body with a blank line
+         |> 1. When fixing an issue, start your commit message with `Fix #<ISSUE-NBR>: `
+         |> 1. Limit the subject line to 80 characters
+         |> 1. Capitalize the subject line
+         |> 1. Do not end the subject line with a period
+         |> 1. Use the imperative mood in the subject line ("Added" instead of "Add")
+         |> 1. Wrap the body at 80 characters
+         |> 1. Use the body to explain what and why vs. how
+         |>
+         |> adapted from https://chris.beams.io/posts/git-commit""".stripMargin
+    } else ""
+
+    val body =
+      s"""|Hello, and thank you for opening this PR! :tada:
+          |
+          |If you haven't already, please request a review from one of our
+          |collaborators (have no fear, we don't bite)!
+          |
+          |$cla
+          |
+          |$commitRules
+          |
+          |Have an awesome day! :sunny:""".stripMargin
+
+    val review = Review.comment(body)
+
+    for {
+      endpoint <- toUri(reviewUrl(issueNbr))
+      req      <- postRequest(endpoint).withBody(review.asJson)
+      res      <- client.expect(req)(jsonOf[ReviewResponse])
+    } yield res
+  }
 
   def checkFreshPR(issue: Issue): Task[Response] = {
-
     val httpClient = PooledHttp1Client()
+
     for {
       commits  <- getCommits(issue.number, httpClient)
       statuses <- checkCLA(commits, httpClient)
@@ -215,7 +301,7 @@ trait PullRequestService {
       }
 
       // Send positive comment:
-      _    <- sendInitialComment(invalidUsers)
+      _    <- sendInitialComment(issue.number, invalidUsers, commits, httpClient)
       _    <- shutdownClient(httpClient)
       resp <- Ok("Fresh PR checked")
     } yield resp
