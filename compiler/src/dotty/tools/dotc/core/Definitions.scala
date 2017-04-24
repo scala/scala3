@@ -149,18 +149,17 @@ class Definitions {
   }
 
   private def enterPolyMethod(cls: ClassSymbol, name: TermName, typeParamCount: Int,
-                    resultTypeFn: PolyType => Type, flags: FlagSet = EmptyFlags,
-                    bounds: TypeName => TypeBounds = _ => TypeBounds.empty) = {
+                    resultTypeFn: PolyType => Type, flags: FlagSet = EmptyFlags) = {
     val tparamNames = PolyType.syntheticParamNames(typeParamCount)
-    val tparamInfos = tparamNames map bounds
+    val tparamInfos = tparamNames map (_ => TypeBounds.empty)
     val ptype = PolyType(tparamNames)(_ => tparamInfos, resultTypeFn)
     enterMethod(cls, name, ptype, flags)
   }
 
-  private def enterT1ParameterlessMethod(cls: ClassSymbol, name: TermName, resultTypeFn: PolyType => Type, flags: FlagSet, bounds: TypeName => TypeBounds = _ => TypeBounds.empty) =
+  private def enterT1ParameterlessMethod(cls: ClassSymbol, name: TermName, resultTypeFn: PolyType => Type, flags: FlagSet) =
     enterPolyMethod(cls, name, 1, resultTypeFn, flags)
 
-  private def enterT1EmptyParamsMethod(cls: ClassSymbol, name: TermName, resultTypeFn: PolyType => Type, flags: FlagSet, bounds: TypeName => TypeBounds = _ => TypeBounds.empty) =
+  private def enterT1EmptyParamsMethod(cls: ClassSymbol, name: TermName, resultTypeFn: PolyType => Type, flags: FlagSet) =
     enterPolyMethod(cls, name, 1, pt => MethodType(Nil, resultTypeFn(pt)), flags)
 
   private def mkArityArray(name: String, arity: Int, countFrom: Int): Array[TypeRef] = {
@@ -928,7 +927,7 @@ class Definitions {
   // ----- Initialization ---------------------------------------------------
 
   /** Lists core classes that don't have underlying bytecode, but are synthesized on-the-fly in every reflection universe */
-  private lazy val syntheticScalaClasses = List(
+  lazy val syntheticScalaClasses = List(
     AnyClass,
     AnyRefAlias,
     RepeatedParamClass,
@@ -945,7 +944,7 @@ class Definitions {
     OpsPackageClass)
 
   /** Lists core methods that don't have underlying bytecode, but are synthesized on-the-fly in every reflection universe */
-  private lazy val syntheticCoreMethods = AnyMethods ++ ObjectMethods ++ List(String_+, throwMethod)
+  lazy val syntheticCoreMethods = AnyMethods ++ ObjectMethods ++ List(String_+, throwMethod)
 
   lazy val reservedScalaClassNames: Set[Name] = syntheticScalaClasses.map(_.name).toSet
 
