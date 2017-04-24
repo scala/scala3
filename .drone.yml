@@ -6,7 +6,7 @@
 
 pipeline:
   test:
-    image: lampepfl/dotty:latest
+    image: lampepfl/dotty:24-04-2017
     pull: true
     commands:
       - ln -s /var/cache/drone/scala-scala scala-scala
@@ -18,7 +18,7 @@ pipeline:
         exclude: gh-pages
 
   documentation:
-    image: lampepfl/dotty:latest
+    image: lampepfl/dotty:24-04-2017
     pull: true
     commands:
       - ./project/scripts/genDocs "${TEST}" $BOT_PASS
