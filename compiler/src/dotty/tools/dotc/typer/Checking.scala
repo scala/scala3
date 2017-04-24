@@ -130,6 +130,9 @@ object Checking {
    */
   class CheckNonCyclicMap(sym: Symbol, reportErrors: Boolean)(implicit ctx: Context) extends TypeMap {
 
+    /** Set of type references whose info is currently checked */
+    private val locked = mutable.Set[TypeRef]()
+
     /** Are cycles allowed within nested refinedInfos of currently checked type? */
     private var nestedCycleOK = false
 
@@ -212,7 +215,10 @@ object Checking {
           }
           if (isInteresting(pre)) {
             val pre1 = this(pre, false, false)
-            checkInfo(tp.info)
+            if (locked.contains(tp)) throw CyclicReference(tp.symbol)
+            locked += tp
+            try checkInfo(tp.info)
+            finally locked -= tp
             if (pre1 eq pre) tp else tp.newLikeThis(pre1)
           }
           else tp
