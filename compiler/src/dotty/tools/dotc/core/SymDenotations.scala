@@ -636,7 +636,7 @@ object SymDenotations {
     /** Is this symbol a class references to which that are supertypes of null? */
     final def isNullableClass(implicit ctx: Context): Boolean = {
       isClass && !isValueClass && !(this is ModuleClass) &&
-      symbol != defn.NothingClass && symbol != defn.PhantomAny && symbol != defn.PhantomNothing
+      symbol != defn.NothingClass && symbol != defn.PhantomAnyClass && symbol != defn.PhantomNothingClass
     }
 
     /** Is this definition accessible as a member of tree with type `pre`?

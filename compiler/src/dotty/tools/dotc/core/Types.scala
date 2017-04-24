@@ -208,7 +208,7 @@ object Types {
 
     /** If the symbol is of the class scala.Phantom.Any or scala.Phantom.Nothing */
     private def isPhantomClass(sym: Symbol)(implicit ctx: Context): Boolean =
-      (sym eq defn.PhantomAny) || (sym eq defn.PhantomNothing)
+      (sym eq defn.PhantomAnyClass) || (sym eq defn.PhantomNothingClass)
 
     /** Is this type guaranteed not to have `null` as a value?
      *  For the moment this is only true for modules, but it could

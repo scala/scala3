@@ -977,8 +977,8 @@ class Definitions {
 
     cls
   }
-  lazy val PhantomAny = PhantomClass.unforcedDecls.find(_.name eq tpnme.Any).asClass
-  lazy val PhantomNothing = PhantomClass.unforcedDecls.find(_.name eq tpnme.Nothing).asClass
+  lazy val PhantomAnyClass = PhantomClass.unforcedDecls.find(_.name eq tpnme.Any).asClass
+  lazy val PhantomNothingClass = PhantomClass.unforcedDecls.find(_.name eq tpnme.Nothing).asClass
   lazy val PhantomAssume = PhantomClass.unforcedDecls.find(_.name eq nme.assume_)
 
   lazy val ErasedPhantomClass = ctx.requiredClass("dotty.runtime.ErasedPhantom")

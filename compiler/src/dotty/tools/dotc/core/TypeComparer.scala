@@ -67,11 +67,11 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
     myNullClass
   }
   def PhantomAnyClass = {
-    if (myPhantomAnyClass == null) myPhantomAnyClass = defn.PhantomAny
+    if (myPhantomAnyClass == null) myPhantomAnyClass = defn.PhantomAnyClass
     myPhantomAnyClass
   }
   def PhantomNothingClass = {
-    if (myPhantomNothingClass == null) myPhantomNothingClass = defn.PhantomNothing
+    if (myPhantomNothingClass == null) myPhantomNothingClass = defn.PhantomNothingClass
     myPhantomNothingClass
   }
   def ObjectClass = {
