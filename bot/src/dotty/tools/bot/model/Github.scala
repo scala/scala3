@@ -3,12 +3,12 @@ package model
 
 object Github {
   case class Issue(
-    action: String, // "opened", "reopened", "closed", "synchronize"
+    action: Option[String], // "opened", "reopened", "closed", "synchronize"
     number: Int,
     pull_request: Option[PullRequest]
   )
 
-  case class PullRequest(url: String, id: Long, commits_url: String)
+  case class PullRequest(url: String, id: Option[Long], commits_url: Option[String])
 
   case class CommitInfo(message: String)
 
@@ -40,10 +40,8 @@ object Github {
     def sha: String = url.split('/').last
   }
 
-  case class Comment(user: Author)
-
   /** A PR review */
-  case class Review (body: String, event: String)
+  case class Review(body: String, event: String)
 
   object Review {
     def approve(body: String) = Review(body, "APPROVE")
@@ -52,4 +50,8 @@ object Github {
   }
 
   case class ReviewResponse(body: String, state: String, id: Long)
+
+  case class IssueComment(action: String, issue: Issue, comment: Comment)
+
+  case class Comment(user: Author, body: String)
 }

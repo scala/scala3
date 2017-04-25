@@ -37,8 +37,28 @@ trait PullRequestService {
   /** Pull Request HTTP service */
   val prService = HttpService {
     case request @ POST -> Root =>
-      request.as(jsonOf[Issue]).flatMap(checkPullRequest)
+      val githubEvent =
+        request.headers
+          .get(CaseInsensitiveString("X-GitHub-Event"))
+          .map(_.value).getOrElse("")
+
+      githubEvent match {
+        case "pull_request" =>
+          request.as(jsonOf[Issue]).flatMap(checkPullRequest)
+
+        case "issue_comment" =>
+          request.as(jsonOf[IssueComment]).flatMap(respondToComment)
+
+        case "" =>
+          BadRequest("Missing header: X-Github-Event")
+
+        case event =>
+          BadRequest("Unsupported event: $event")
+
+      }
   }
+
+  private[this] val droneContext = "continuous-integration/drone/pr"
 
   private final case class CLASignature(
     user: String,
@@ -148,7 +168,7 @@ trait PullRequestService {
   }
 
   /** Ordered from earliest to latest */
-  def getCommits(issueNbr: Int, httpClient: Client): Task[List[Commit]] = {
+  def getCommits(issueNbr: Int)(implicit httpClient: Client): Task[List[Commit]] = {
     def makeRequest(url: String): Task[List[Commit]] =
       for {
         res <- httpClient.fetch(get(url)) { res =>
@@ -246,10 +266,10 @@ trait PullRequestService {
   }
 
   def checkFreshPR(issue: Issue): Task[Response] = {
-    val httpClient = PooledHttp1Client()
+    implicit val httpClient = PooledHttp1Client()
 
     for {
-      commits  <- getCommits(issue.number, httpClient)
+      commits  <- getCommits(issue.number)
       statuses <- checkCLA(commits, httpClient)
 
       (validStatuses, invalidStatuses) = statuses.partition(_.isValid)
@@ -280,9 +300,31 @@ trait PullRequestService {
   private def extractCommitSha(status: StatusResponse): Task[String] =
     Task.delay(status.sha)
 
+  def startBuild(commit: Commit)(implicit client: Client): Task[Drone.Build] = {
+    def pendingStatus(targetUrl: String): Status =
+      Status("pending", targetUrl, "build restarted by bot", droneContext)
+
+    def filterStatuses(xs: List[StatusResponse]): Task[Int] =
+      xs.filter { status =>
+        (status.state == "failure" || status.state == "success") &&
+        status.context == droneContext
+      }
+      .map(status => Task.now(status.target_url.split('/').last.toInt))
+      .headOption
+      .getOrElse(Task.fail(new NoSuchElementException("Couldn't find drone build for PR")))
+
+    for {
+      statuses     <- getStatus(commit, client)
+      failed       <- filterStatuses(statuses)
+      build        <- Drone.startBuild(failed, droneToken)
+      setStatusReq <- post(statusUrl(commit.sha)).withAuth(githubUser, githubToken)
+      newStatus    =  pendingStatus(s"http://dotty-ci.epfl.ch/lampepfl/dotty/$failed").asJson
+      _            <- client.expect(setStatusReq.withBody(newStatus))(jsonOf[StatusResponse])
+    } yield build
+  }
+
   def cancelBuilds(commits: List[Commit])(implicit client: Client): Task[Boolean] =
     Task.gatherUnordered {
-      val droneContext = "continuous-integration/drone/pr"
       commits.map { commit =>
         for {
           statuses    <- getStatus(commit, client)
@@ -295,10 +337,10 @@ trait PullRequestService {
     .map(xs => xs.foldLeft(true)(_ == _))
 
   def checkSynchronize(issue: Issue): Task[Response] = {
-    val httpClient = PooledHttp1Client()
+    implicit val httpClient = PooledHttp1Client()
 
     for {
-      commits  <- getCommits(issue.number, httpClient)
+      commits  <- getCommits(issue.number)
       statuses <- checkCLA(commits, httpClient)
       invalid  =  statuses.filterNot(_.isValid)
       _        <- sendStatuses(invalid, httpClient)
@@ -318,8 +360,80 @@ trait PullRequestService {
 
   def checkPullRequest(issue: Issue): Task[Response] =
     issue.action match {
-      case "opened" => checkFreshPR(issue)
-      case "synchronize" => checkSynchronize(issue)
-      case action => BadRequest(s"Unhandled action: $action")
+      case Some("opened") => checkFreshPR(issue)
+      case Some("synchronize") => checkSynchronize(issue)
+      case Some(action) => BadRequest(s"Unhandled action: $action")
+      case None => BadRequest("Cannot check pull request, missing action field")
     }
+
+  def restartCI(issue: Issue): Task[Response] = {
+    implicit val client = PooledHttp1Client()
+
+    def restartedComment: Comment = {
+      import scala.util.Random
+      val answers = Array(
+        "Okidokey, boss! :clap:",
+        "You got it, homie! :pray:",
+        "No problem, big shot! :punch:",
+        "Sure thing, I got your back! :heart:",
+        "No WAY! :-1: ...wait, don't fire me please! There, I did it! :tada:"
+      )
+
+      Comment(Author(None), answers(Random.nextInt(answers.length)))
+    }
+
+    for {
+      commits <- getCommits(issue.number)
+      latest  =  commits.last
+      _       <- cancelBuilds(latest :: Nil)
+      _       <- startBuild(latest)
+      req     <- post(issueCommentsUrl(issue.number)).withAuth(githubUser, githubToken)
+      _       <- client.fetch(req.withBody(restartedComment.asJson))(Task.now)
+      res     <- Ok("Replied to request for CI restart")
+    } yield res
+  }
+
+  def cannotUnderstand(line: String, issueComment: IssueComment): Task[Response] = {
+    implicit val client = PooledHttp1Client()
+    val comment = Comment(Author(None), {
+      s"""Hey, sorry - I could not understand what you meant by:
+         |
+         |> $line
+         |
+         |I'm just a dumb bot after all :cry:
+         |
+         |I mostly understand when your mention contains these words:
+         |
+         |- (re)check (the) cla
+         |- recheck
+         |- restart drone
+         |
+         |Maybe if you want to make me smarter, you could open a PR? :heart_eyes:
+         |""".stripMargin
+    })
+    for {
+      req <- post(issueCommentsUrl(issueComment.issue.number)).withAuth(githubUser, githubToken)
+      _   <- client.fetch(req.withBody(comment.asJson))(Task.now)
+      res <- Ok("Delivered could not understand comment")
+    } yield res
+  }
+
+  def extractMention(body: String): Option[String] =
+    body.lines.find(_.startsWith("@dotty-bot:"))
+
+  /** TODO: The implementation here could be quite elegant if we used a trie instead */
+  def interpretMention(line: String, issueComment: IssueComment): Task[Response] = {
+    val loweredLine = line.toLowerCase
+    if (loweredLine.contains("check cla") || loweredLine.contains("check the cla"))
+      checkSynchronize(issueComment.issue)
+    else if (loweredLine.contains("recheck") || loweredLine.contains("restart drone"))
+      restartCI(issueComment.issue)
+    else
+      cannotUnderstand(line, issueComment)
+  }
+
+  def respondToComment(issueComment: IssueComment): Task[Response] =
+    extractMention(issueComment.comment.body)
+      .map(interpretMention(_, issueComment))
+      .getOrElse(Ok("Nothing to do here, move along!"))
 }

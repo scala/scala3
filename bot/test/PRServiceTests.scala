@@ -41,9 +41,22 @@ class PRServiceTests extends PullRequestService {
     assert(issue.pull_request.isDefined, "missing pull request")
   }
 
+  @Test def canUnmarshalIssueComment = {
+    val json = getResource("/test-mention.json")
+    val issueComment: IssueComment = decode[IssueComment](json) match {
+      case Right(is: IssueComment) => is
+      case Left(ex) => throw ex
+    }
+
+    assert(
+      issueComment.comment.body == "@dotty-bot: could you recheck this please?",
+      s"incorrect body: ${issueComment.comment.body}"
+    )
+  }
+
   @Test def canGetAllCommitsFromPR = {
     val issueNbr = 1941 // has 2 commits: https://github.com/lampepfl/dotty/pull/1941/commits
-    val List(c1, c2) = withClient(getCommits(issueNbr, _))
+    val List(c1, c2) = withClient(implicit client => getCommits(issueNbr))
 
     assertEquals(
       "Represent untyped operators as Ident instead of Name",
@@ -58,7 +71,7 @@ class PRServiceTests extends PullRequestService {
 
   @Test def canGetMoreThan100Commits = {
     val issueNbr = 1840 // has >100 commits: https://github.com/lampepfl/dotty/pull/1840/commits
-    val numberOfCommits = withClient(getCommits(issueNbr, _)).length
+    val numberOfCommits = withClient(implicit client => getCommits(issueNbr)).length
 
     assert(
       numberOfCommits > 100,
@@ -123,5 +136,25 @@ class PRServiceTests extends PullRequestService {
     assert(build.status == "pending" || build.status == "building")
     val killed = withClient(implicit client => Drone.stopBuild(1921, droneToken))
     assert(killed, "Couldn't kill build")
+  }
+
+  @Test def canUnderstandWhenToRestartBuild = {
+    val json = getResource("/test-mention.json")
+    val issueComment: IssueComment = decode[IssueComment](json) match {
+      case Right(is: IssueComment) => is
+      case Left(ex) => throw ex
+    }
+
+    assert(respondToComment(issueComment).run.status.code == 200)
+  }
+
+  @Test def canTellUserWhenNotUnderstanding = {
+    val json = getResource("/test-mention-no-understandy.json")
+    val issueComment: IssueComment = decode[IssueComment](json) match {
+      case Right(is: IssueComment) => is
+      case Left(ex) => throw ex
+    }
+
+    assert(respondToComment(issueComment).run.status.code == 200)
   }
 }
