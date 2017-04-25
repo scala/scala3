@@ -1287,8 +1287,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
           tl.integrate(tparams1, tparam1.paramInfoAsSeenFrom(tp1)).bounds &
           tl.integrate(tparams2, tparam2.paramInfoAsSeenFrom(tp2)).bounds),
         resultTypeExp = tl =>
-          original(tl.integrate(tparams1, tp1).appliedTo(tl.paramRefs),
-             tl.integrate(tparams2, tp2).appliedTo(tl.paramRefs)))
+          original(tp1.appliedTo(tl.paramRefs), tp2.appliedTo(tl.paramRefs)))
   }
 
   /** Try to distribute `&` inside type, detect and handle conflicts

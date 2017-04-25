@@ -18,6 +18,7 @@ import core.Decorators._
 import core.TypeErasure.isErasedType
 import core.Phases.Phase
 import core.Mode
+import SymUtils._
 import typer._
 import typer.ErrorReporting._
 import reporting.ThrowingReporter
@@ -45,7 +46,7 @@ import scala.util.control.NonFatal
  */
 class TreeChecker extends Phase with SymTransformer {
   import ast.tpd._
-
+  import TreeChecker._
 
   private val seenClasses = collection.mutable.HashMap[String, Symbol]()
   private val seenModuleVals = collection.mutable.HashMap[String, Symbol]()
@@ -288,26 +289,6 @@ class TreeChecker extends Phase with SymTransformer {
       res
     }
 
-    /** Check that TypeParamRefs and MethodParams refer to an enclosing type */
-    def checkNoOrphans(tp: Type)(implicit ctx: Context) = new TypeMap() {
-      val definedBinders = mutable.Set[Type]()
-      def apply(tp: Type): Type = {
-        tp match {
-          case tp: BindingType =>
-            definedBinders += tp
-            mapOver(tp)
-            definedBinders -= tp
-          case tp: ParamRef =>
-            assert(definedBinders.contains(tp.binder), s"orphan param: $tp")
-          case tp: TypeVar =>
-            apply(tp.underlying)
-          case _ =>
-            mapOver(tp)
-        }
-        tp
-      }
-    }.apply(tp)
-
     def checkNotRepeated(tree: Tree)(implicit ctx: Context): tree.type = {
       def allowedRepeated = (tree.symbol.flags is Case) && tree.tpe.widen.isRepeatedParam
 
@@ -466,4 +447,28 @@ class TreeChecker extends Phase with SymTransformer {
       tree
     }
   }
+}
+
+object TreeChecker {
+  /** Check that TypeParamRefs and MethodParams refer to an enclosing type */
+  def checkNoOrphans(tp0: Type, tree: untpd.Tree = untpd.EmptyTree)(implicit ctx: Context) = new TypeMap() {
+    val definedBinders = new java.util.IdentityHashMap[Type, Any]
+    def apply(tp: Type): Type = {
+      tp match {
+        case tp: BindingType =>
+          definedBinders.put(tp, tp)
+          mapOver(tp)
+          definedBinders.remove(tp)
+        case tp: ParamRef =>
+          assert(definedBinders.get(tp.binder) != null, s"orphan param: ${tp.show}, hash of binder = ${System.identityHashCode(tp.binder)}, tree = ${tree.show}, type = $tp0")
+        case tp: TypeVar =>
+          apply(tp.underlying)
+        case tp: TypeRef if tp.info.isAlias && tp.symbol.isAliasPreferred =>
+          apply(tp.superType)
+        case _ =>
+          mapOver(tp)
+      }
+      tp
+    }
+  }.apply(tp0)
 }
