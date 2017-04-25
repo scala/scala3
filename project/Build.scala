@@ -114,6 +114,8 @@ object Build {
   // currently refers to dotty in its scripted task and "aggregate" does not take by-name
   // parameters: https://github.com/sbt/sbt/issues/2200
   lazy val dottySbtBridgeRef = LocalProject("dotty-sbt-bridge")
+  // Same thing for the bootstrapped version
+  lazy val dottySbtBridgeBootstrappedRef = LocalProject("dotty-sbt-bridge-bootstrapped")
 
   // The root project:
   // - aggregates other projects so that "compile", "test", etc are run on all projects at once.
@@ -135,7 +137,8 @@ object Build {
 
   // Meta project aggregating all bootstrapped projects
   lazy val `dotty-bootstrapped` = project.
-    aggregate(`dotty-library-bootstrapped`, `dotty-compiler-bootstrapped`, `dotty-doc-bootstrapped`).
+    aggregate(`dotty-library-bootstrapped`, `dotty-compiler-bootstrapped`, `dotty-doc-bootstrapped`,
+      dottySbtBridgeBootstrappedRef).
     settings(commonSettings).
     settings(
       publishArtifact := false
@@ -549,44 +552,46 @@ object Build {
   // until sbt/sbt#2402 is fixed (https://github.com/sbt/sbt/issues/2402)
   lazy val cleanSbtBridge = TaskKey[Unit]("cleanSbtBridge", "delete dotty-sbt-bridge cache")
 
+  lazy val dottySbtBridgeSettings = Seq(
+    cleanSbtBridge := {
+      val dottySbtBridgeVersion = version.value
+      val dottyVersion = (version in `dotty-compiler`).value
+      val classVersion = System.getProperty("java.class.version")
+
+      val sbtV = sbtVersion.value
+      val sbtOrg = "org.scala-sbt"
+      val sbtScalaVersion = "2.10.6"
+
+      val home = System.getProperty("user.home")
+      val org = organization.value
+      val artifact = moduleName.value
+
+      IO.delete(file(home) / ".ivy2" / "cache" / sbtOrg / s"$org-$artifact-$dottySbtBridgeVersion-bin_${dottyVersion}__$classVersion")
+      IO.delete(file(home) / ".sbt"  / "boot" / s"scala-$sbtScalaVersion" / sbtOrg / "sbt" / sbtV / s"$org-$artifact-$dottySbtBridgeVersion-bin_${dottyVersion}__$classVersion")
+    },
+    publishLocal := (publishLocal.dependsOn(cleanSbtBridge)).value,
+    description := "sbt compiler bridge for Dotty",
+    resolvers += Resolver.typesafeIvyRepo("releases"), // For org.scala-sbt stuff
+    libraryDependencies ++= Seq(
+      "org.scala-sbt" % "interface" % sbtVersion.value,
+      "org.scala-sbt" % "api" % sbtVersion.value % "test",
+      "org.specs2" %% "specs2" % "2.3.11" % "test"
+    ),
+    // The sources should be published with crossPaths := false since they
+    // need to be compiled by the project using the bridge.
+    crossPaths := false,
+
+    // Don't publish any binaries for the bridge because of the above
+    publishArtifact in (Compile, packageBin) := false,
+
+    fork in Test := true,
+    parallelExecution in Test := false
+  )
+
   lazy val `dotty-sbt-bridge` = project.in(file("sbt-bridge")).
     dependsOn(`dotty-compiler`).
     settings(commonSettings).
-    settings(
-      cleanSbtBridge := {
-        val dottySbtBridgeVersion = version.value
-        val dottyVersion = (version in `dotty-compiler`).value
-        val classVersion = System.getProperty("java.class.version")
-
-        val sbtV = sbtVersion.value
-        val sbtOrg = "org.scala-sbt"
-        val sbtScalaVersion = "2.10.6"
-
-        val home = System.getProperty("user.home")
-        val org = organization.value
-        val artifact = moduleName.value
-
-        IO.delete(file(home) / ".ivy2" / "cache" / sbtOrg / s"$org-$artifact-$dottySbtBridgeVersion-bin_${dottyVersion}__$classVersion")
-        IO.delete(file(home) / ".sbt"  / "boot" / s"scala-$sbtScalaVersion" / sbtOrg / "sbt" / sbtV / s"$org-$artifact-$dottySbtBridgeVersion-bin_${dottyVersion}__$classVersion")
-      },
-      publishLocal := (publishLocal.dependsOn(cleanSbtBridge)).value,
-      description := "sbt compiler bridge for Dotty",
-      resolvers += Resolver.typesafeIvyRepo("releases"), // For org.scala-sbt stuff
-      libraryDependencies ++= Seq(
-        "org.scala-sbt" % "interface" % sbtVersion.value,
-        "org.scala-sbt" % "api" % sbtVersion.value % "test",
-        "org.specs2" %% "specs2" % "2.3.11" % "test"
-      ),
-      // The sources should be published with crossPaths := false since they
-      // need to be compiled by the project using the bridge.
-      crossPaths := false,
-
-      // Don't publish any binaries for the bridge because of the above
-      publishArtifact in (Compile, packageBin) := false,
-
-      fork in Test := true,
-      parallelExecution in Test := false
-    ).
+    settings(dottySbtBridgeSettings).
     settings(ScriptedPlugin.scriptedSettings: _*).
     settings(
       ScriptedPlugin.sbtTestDirectory := baseDirectory.value / "sbt-test",
@@ -624,6 +629,13 @@ object DottyInjectedPlugin extends AutoPlugin {
       }
       */
     )
+
+  lazy val `dotty-sbt-bridge-bootstrapped` = project.in(file("sbt-bridge")).
+    dependsOn(`dotty-compiler-bootstrapped`).
+    settings(commonSettings).
+    settings(commonBootstrappedSettings).
+    settings(dottySbtBridgeSettings)
+
 
   /** A sandbox to play with the Scala.js back-end of dotty.
    *
