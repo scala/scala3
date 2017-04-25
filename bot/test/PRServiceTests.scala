@@ -14,8 +14,9 @@ import org.http4s.client.Client
 import scalaz.concurrent.Task
 
 class PRServiceTests extends PullRequestService {
-  val user = sys.env("USER")
-  val token = sys.env("TOKEN")
+  val githubUser  = sys.env("GITHUB_USER")
+  val githubToken = sys.env("GITHUB_TOKEN")
+  val droneToken  = sys.env("DRONE_TOKEN")
 
   private def withClient[A](f: Client => Task[A]): A = {
     val httpClient = PooledHttp1Client()
@@ -98,28 +99,9 @@ class PRServiceTests extends PullRequestService {
   @Test def canGetStatus = {
     val sha = "fa64b4b613fe5e78a5b4185b4aeda89e2f1446ff"
     val commit = Commit(sha, Author(None), Author(None), CommitInfo(""))
-    val status = withClient(getStatus(commit, _))
+    val status = withClient(getStatus(commit, _)).head
 
     assert(status.sha == sha, "someting wong")
-  }
-
-  @Test def canRecheckCLA = {
-    val shas =
-      "1d62587cb3f41dafd796b0c92ec1c22d95b879f9" ::
-      "ad60a386f488a16612c093576bf7bf4d9f0073bf" ::
-      Nil
-
-    val commits = shas.map { sha =>
-      Commit(sha, Author(Some("felixmulder")), Author(Some("felixmulder")), CommitInfo(""))
-    }
-
-    val statuses = shas.map { sha =>
-      StatusResponse("https://api.github.com/repos/lampepfl/dotty/statuses/" + sha, 0, "failure")
-    }
-
-    val rechecked = withClient(recheckCLA(statuses, commits, _))
-
-    assert(rechecked.forall(cs => cs.isValid), s"Should have set all statuses to valid, but got: $rechecked")
   }
 
   @Test def canPostReview = {

@@ -1,4 +1,5 @@
-package dotty.tools.bot
+package dotty.tools
+package bot
 
 import org.http4s.{ Status => _, _ }
 import org.http4s.client.blaze._
@@ -18,38 +19,25 @@ import org.http4s.dsl._
 import org.http4s.util._
 
 import model.Github._
-
-object TaskIsApplicative {
-  implicit val taskIsApplicative = new cats.Applicative[Task] {
-    def pure[A](x: A): Task[A] = Task.now(x)
-    def ap[A, B](ff: Task[A => B])(fa: Task[A]): Task[B] =
-      for(f <- ff; a <- fa) yield f(a)
-  }
-}
-import TaskIsApplicative._
+import bot.util.TaskIsApplicative._
+import bot.util.HttpClientAux._
 
 trait PullRequestService {
 
   /** Username for authorized admin */
-  def user: String
+  def githubUser: String
 
   /** OAuth token needed for user to create statuses */
-  def token: String
+  def githubToken: String
+
+  /** OAuth token for drone, needed to cancel builds */
+  def droneToken: String
 
   /** Pull Request HTTP service */
   val prService = HttpService {
     case request @ POST -> Root =>
       request.as(jsonOf[Issue]).flatMap(checkPullRequest)
   }
-
-  private[this] lazy val authHeader = {
-    val creds = BasicCredentials(user, token)
-    new Authorization(creds)
-  }
-
-  private[this] lazy val previewAcceptHeader =
-    Accept.parse("application/vnd.github.black-cat-preview+json")
-      .getOrElse(throw new Exception("Couldn't initialize accept header"))
 
   private final case class CLASignature(
     user: String,
@@ -75,18 +63,6 @@ trait PullRequestService {
   def reviewUrl(issueNbr: Int): String =
     s"$githubUrl/repos/lampepfl/dotty/pulls/$issueNbr/reviews"
 
-  def toUri(url: String): Task[Uri] =
-    Uri.fromString(url).fold(Task.fail, Task.now)
-
-  def getRequest(endpoint: Uri): Task[Request] =
-    Request(uri = endpoint, method = Method.GET).putHeaders(authHeader)
-      .pure[Task]
-
-  def postRequest(endpoint: Uri): Task[Request] =
-    Request(uri = endpoint, method = Method.POST)
-      .putHeaders(authHeader, previewAcceptHeader)
-      .pure[Task]
-
   def shutdownClient(client: Client): Task[Unit] =
     client.shutdownNow().pure[Task]
 
@@ -104,9 +80,7 @@ trait PullRequestService {
   def checkCLA(xs: List[Commit], httpClient: Client): Task[List[CommitStatus]] = {
     def checkUser(user: String): Task[Commit => CommitStatus] = {
       val claStatus = for {
-        endpoint <- toUri(claUrl(user))
-        claReq   <- getRequest(endpoint)
-        claRes   <- httpClient.expect(claReq)(jsonOf[CLASignature])
+        claRes <- httpClient.expect(get(claUrl(user)))(jsonOf[CLASignature])
       } yield { (commit: Commit) =>
         if (claRes.signed) Valid(Some(user), commit)
         else Invalid(user, commit)
@@ -151,9 +125,8 @@ trait PullRequestService {
     }
 
     for {
-      endpoint <- toUri(statusUrl(cm.commit.sha))
-      req      <- postRequest(endpoint).withBody(stat.asJson)
-      res      <- httpClient.expect(req)(jsonOf[StatusResponse])
+      req <- post(statusUrl(cm.commit.sha)).withAuth(githubUser, githubToken)
+      res <- httpClient.expect(req.withBody(stat.asJson))(jsonOf[StatusResponse])
     } yield res
   }
 
@@ -177,9 +150,7 @@ trait PullRequestService {
   def getCommits(issueNbr: Int, httpClient: Client): Task[List[Commit]] = {
     def makeRequest(url: String): Task[List[Commit]] =
       for {
-        endpoint <- toUri(url)
-        req <- getRequest(endpoint)
-        res <- httpClient.fetch(req){ res =>
+        res <- httpClient.fetch(get(url)) { res =>
           val link = CaseInsensitiveString("Link")
           val next = findNext(res.headers.get(link)).map(makeRequest).getOrElse(Task.now(Nil))
 
@@ -191,12 +162,7 @@ trait PullRequestService {
   }
 
   def getComments(issueNbr: Int, httpClient: Client): Task[List[Comment]] =
-    for {
-      endpoint <- toUri(issueCommentsUrl(issueNbr))
-      req      <- getRequest(endpoint)
-      res      <- httpClient.expect(req)(jsonOf[List[Comment]])
-    } yield res
-
+    httpClient.expect(get(issueCommentsUrl(issueNbr)))(jsonOf[List[Comment]])
 
   private def usersFromInvalid(xs: List[CommitStatus]) =
     xs.collect { case Invalid(user, _) => user }
@@ -273,9 +239,8 @@ trait PullRequestService {
     val review = Review.comment(body)
 
     for {
-      endpoint <- toUri(reviewUrl(issueNbr))
-      req      <- postRequest(endpoint).withBody(review.asJson)
-      res      <- client.expect(req)(jsonOf[ReviewResponse])
+      req <- post(reviewUrl(issueNbr)).withAuth(githubUser, githubToken)
+      res <- client.expect(req.withBody(review.asJson))(jsonOf[ReviewResponse])
     } yield res
   }
 
@@ -308,30 +273,12 @@ trait PullRequestService {
 
   }
 
-  def getStatus(commit: Commit, client: Client): Task[StatusResponse] =
-    for {
-      endpoint <- toUri(statusUrl(commit.sha))
-      req      <- getRequest(endpoint)
-      res      <- client.expect(req)(jsonOf[List[StatusResponse]])
-    } yield res.head
-
-  def getStatuses(commits: List[Commit], client: Client): Task[List[StatusResponse]] =
-    Task.gatherUnordered(commits.map(getStatus(_, client)))
+  def getStatus(commit: Commit, client: Client): Task[List[StatusResponse]] =
+    client.expect(get(statusUrl(commit.sha)))(jsonOf[List[StatusResponse]])
 
   private def extractCommitSha(status: StatusResponse): Task[String] =
     Task.delay(status.sha)
 
-  def recheckCLA(statuses: List[StatusResponse], commits: List[Commit], client: Client): Task[List[CommitStatus]] = {
-    /** Return the matching commits from the SHAs */
-    def prunedCommits(shas: List[String]): Task[List[Commit]] =
-      Task.delay(commits.filter(cm => shas.contains(cm.sha)))
-
-    for {
-      commitShas <- Task.gatherUnordered(statuses.map(extractCommitSha))
-      commits    <- prunedCommits(commitShas)
-      statuses   <- checkCLA(commits, client)
-    } yield statuses
-  }
 
   def checkSynchronize(issue: Issue): Task[Response] = {
     val httpClient = PooledHttp1Client()
@@ -339,10 +286,9 @@ trait PullRequestService {
     for {
       commits  <- getCommits(issue.number, httpClient)
       statuses <- checkCLA(commits, httpClient)
-
-      (_, invalid) = statuses.partition(_.isValid)
-
-      _ <- sendStatuses(invalid, httpClient)
+      invalid  =  statuses.filterNot(_.isValid)
+      _        <- sendStatuses(invalid, httpClient)
+      _        <- cancelBuilds(commits.dropRight(1), httpClient)
 
       // Set final commit status based on `invalid`:
       _ <- {
