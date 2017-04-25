@@ -1,3 +1,5 @@
+#!/usr/bin/env bash
+
 update() {
   [[ -d $baseDir ]] || mkdir -p $baseDir
   cd $baseDir
@@ -10,10 +12,12 @@ update() {
   (git fetch "https://github.com/$1/$2.git" $4 && git checkout -fq FETCH_HEAD) #|| git checkout -fq $4 # || fallback is for local testing on tag
   git reset --hard
   echo updated $1/$2:$4 under $3. Last commits:
-  git log --pretty=format:"%h - %an, %aD : %s" -n 10 # show last commits
+  git --no-pager log --pretty=format:"%h - %an, %aD : %s" -n 10 # show last commits
   cd -
 }
 
 export LC_ALL=en_US.UTF-8
-unset _JAVA_OPTIONS
-sbtArgs="-Ddotty.jenkins.build=yes -Dfile.encoding=UTF-8 -ivy $baseDir/ivy2 -Dsbt.global.base=$HOME/.sbt/0.13 -sbt-dir $HOME/.sbt/0.13"
+
+baseDir=`pwd`
+
+update DarkDimius scala scala-scala dotty-library
