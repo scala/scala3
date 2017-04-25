@@ -98,8 +98,6 @@ object Build {
     scalaOrganization := dottyOrganization,
     scalaVersion := dottyVersion,
     scalaBinaryVersion := "2.11",
-    scalaCompilerBridgeSource :=
-      (dottyOrganization % "dotty-sbt-bridge" % scalaVersion.value % "component").sources(),
 
     // sbt gets very unhappy if two projects use the same target
     target := baseDirectory.value / ".." / "out" / name.value,
@@ -619,8 +617,7 @@ object DottyInjectedPlugin extends AutoPlugin {
     scalacOptions += "-language:Scala2",
     scalaBinaryVersion  := "2.11",
     autoScalaLibrary := false,
-    libraryDependencies ++= Seq("org.scala-lang" % "scala-library" % "2.11.5"),
-    scalaCompilerBridgeSource := ("ch.epfl.lamp" % "dotty-sbt-bridge" % scalaVersion.value % "component").sources()
+    libraryDependencies ++= Seq("org.scala-lang" % "scala-library" % "2.11.5")
   )
 }
 """)
