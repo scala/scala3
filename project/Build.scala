@@ -373,7 +373,7 @@ object Build {
         val files = ((backendDir *
           (allScalaFiles - "JavaPlatform.scala" - "Platform.scala" - "ScalaPrimitives.scala")) +++
          (backendDir / "jvm") *
-          (allScalaFiles - "BCodeICodeCommon.scala" - "GenASM.scala" - "GenBCode.scala" - "ScalacBackendInterface.scala")
+          (allScalaFiles - "BCodeICodeCommon.scala" - "GenASM.scala" - "GenBCode.scala" - "ScalacBackendInterface.scala" - "BackendStats.scala" - "BCodeAsmEncode.scala")
         ).get
 
         val pairs = files.pair(sbt.Path.rebase(submoduleCompilerDir, outputDir))
