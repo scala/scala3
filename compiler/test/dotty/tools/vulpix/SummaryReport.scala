@@ -59,11 +59,12 @@ final class NoSummaryReport extends SummaryReporting {
  *  which outputs to a log file in `./testlogs/`
  */
 final class SummaryReport extends SummaryReporting {
+  import scala.collection.JavaConversions._
 
-  private val startingMessages = mutable.ArrayBuffer.empty[String]
-  private val failedTests = mutable.ArrayBuffer.empty[String]
-  private val reproduceInstructions = mutable.ArrayBuffer.empty[String]
-  private val cleanUps = mutable.ArrayBuffer.empty[() => Unit]
+  private val startingMessages = new java.util.concurrent.ConcurrentLinkedDeque[String]
+  private val failedTests = new java.util.concurrent.ConcurrentLinkedDeque[String]
+  private val reproduceInstructions = new java.util.concurrent.ConcurrentLinkedDeque[String]
+  private val cleanUps = new java.util.concurrent.ConcurrentLinkedDeque[() => Unit]
 
   private[this] var passed = 0
   private[this] var failed = 0
@@ -75,16 +76,16 @@ final class SummaryReport extends SummaryReporting {
     passed += 1
 
   def addFailedTest(msg: String): Unit =
-    failedTests.append(msg)
+    failedTests.add(msg)
 
   def addReproduceInstruction(instr: String): Unit =
-    reproduceInstructions.append(instr)
+    reproduceInstructions.add(instr)
 
   def addStartingMessage(msg: String): Unit =
-    startingMessages.append(msg)
+    startingMessages.add(msg)
 
   def addCleanup(f: () => Unit): Unit =
-    cleanUps.append(f)
+    cleanUps.add(f)
 
   /** Both echoes the summary to stdout and prints to file */
   def echoSummary(): Unit = {
