@@ -65,7 +65,7 @@ object Build {
   // Shorthand for compiling a docs site
   lazy val dottydoc = inputKey[Unit]("run dottydoc")
 
-  lazy val commonSettings = Seq(
+  lazy val commonSettings = publishSettings ++ Seq(
     scalaVersion := scalacVersion,
     version := dottyVersion,
     organization := dottyOrganization,
@@ -133,8 +133,7 @@ object Build {
 
       addCommandAlias("run", "dotty-compiler/run") ++
       addCommandAlias("legacyTests", "dotty-compiler/testOnly dotc.tests")
-    ).
-    settings(publishing)
+    )
 
   // Meta project aggregating all bootstrapped projects
   lazy val `dotty-bootstrapped` = project.
@@ -155,8 +154,7 @@ object Build {
       EclipseKeys.projectFlavor := EclipseProjectFlavor.Java,
       //Remove javac invalid options in Compile doc
       javacOptions in (Compile, doc) --= Seq("-Xlint:unchecked", "-Xlint:deprecation")
-    ).
-    settings(publishing)
+    )
 
   // Settings shared between dotty-doc and dotty-doc-bootstrapped
   lazy val dottyDocSettings = Seq(
@@ -216,7 +214,7 @@ object Build {
     dependsOn(`dotty-compiler`, `dotty-compiler` % "test->test").
     settings(commonSettings).
     settings(dottyDocSettings).
-    settings(publishing)
+    settings(publishSettings)
 
   lazy val `dotty-doc-bootstrapped` = project.in(file("doc-tool")).
     dependsOn(`dotty-compiler-bootstrapped`, `dotty-compiler-bootstrapped` % "test->test").
@@ -502,8 +500,7 @@ object Build {
           "dotty-compiler-test" -> (packageBin in Test).value
         ) map { case (k, v) => (k, v.getAbsolutePath) }
       }
-    ).
-    settings(publishing)
+    )
 
   lazy val `dotty-compiler-bootstrapped` = project.in(file("compiler")).
     dependsOn(`dotty-library-bootstrapped`).
@@ -544,7 +541,7 @@ object Build {
   lazy val `dotty-library` = project.in(file("library")).
     settings(commonSettings).
     settings(dottyLibrarySettings).
-    settings(publishing)
+    settings(publishSettings)
 
   lazy val `dotty-library-bootstrapped` = project.in(file("library")).
     settings(commonSettings).
@@ -629,8 +626,7 @@ object DottyInjectedPlugin extends AutoPlugin {
 """)
       }
       */
-    ).
-    settings(publishing)
+    )
 
   /** A sandbox to play with the Scala.js back-end of dotty.
    *
@@ -721,8 +717,7 @@ object DottyInjectedPlugin extends AutoPlugin {
     settings(commonSettings).
     settings(
       crossPaths := false
-    ).
-    settings(publishing)
+    )
 
   // sbt >= 0.13.12 will automatically rewrite transitive dependencies on
   // any version in any organization of scala{-library,-compiler,-reflect,p}
@@ -735,26 +730,22 @@ object DottyInjectedPlugin extends AutoPlugin {
     settings(commonSettings).
     settings(
       crossPaths := false
-    ).
-    settings(publishing)
+    )
   lazy val `scala-reflect` = project.
     settings(commonSettings).
     settings(
       crossPaths := false,
       libraryDependencies := Seq("org.scala-lang" % "scala-reflect" % scalaVersion.value)
-    ).
-    settings(publishing)
+    )
   lazy val scalap = project.
     settings(commonSettings).
     settings(
       crossPaths := false,
       libraryDependencies := Seq("org.scala-lang" % "scalap" % scalaVersion.value)
-    ).
-    settings(publishing)
+    )
 
-   lazy val publishing = Seq(
+   lazy val publishSettings = Seq(
      publishMavenStyle := true,
-     publishArtifact := true,
      isSnapshot := version.value.contains("SNAPSHOT"),
      publishTo := {
        val nexus = "https://oss.sonatype.org/"
