@@ -275,7 +275,11 @@ object Build {
       resourceGenerators in Compile += Def.task {
         val file = (resourceManaged in Compile).value / "compiler.properties"
         val contents = s"version.number=${version.value}"
-        IO.write(file, contents)
+
+        if (!(file.exists && IO.read(file) == contents)) {
+          IO.write(file, contents)
+        }
+
         Seq(file)
       }.taskValue,
 
