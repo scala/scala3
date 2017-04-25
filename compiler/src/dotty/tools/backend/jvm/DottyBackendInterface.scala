@@ -11,7 +11,7 @@ import java.io.{File => JFile}
 import scala.collection.generic.Clearable
 import scala.collection.mutable
 import scala.reflect.ClassTag
-import scala.reflect.internal.util.WeakHashSet
+import scala.tools.nsc.util.WeakHashSet
 import dotty.tools.io.{AbstractFile, Directory, PlainDirectory}
 import scala.tools.asm.{AnnotationVisitor, ClassVisitor, FieldVisitor, MethodVisitor}
 import scala.tools.nsc.backend.jvm.{BCodeHelpers, BackendInterface}
