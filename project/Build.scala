@@ -28,6 +28,7 @@ object Build {
     else
       baseVersion + "-bin-SNAPSHOT"
   }
+  val dottyNonBootstrappedVersion = dottyVersion + "-nonbootstrapped"
 
   val jenkinsMemLimit = List("-Xmx1500m")
 
@@ -98,7 +99,7 @@ object Build {
 
   // Settings used when compiling dotty using Scala 2
   lazy val commonNonBootstrappedSettings = commonSettings ++ publishSettings ++ Seq(
-    version := dottyVersion,
+    version := dottyNonBootstrappedVersion,
     scalaVersion := scalacVersion
   )
 
@@ -106,7 +107,7 @@ object Build {
   lazy val commonBootstrappedSettings = commonSettings ++ Seq(
     EclipseKeys.skipProject := true,
     version := dottyVersion,
-    scalaVersion := dottyVersion,
+    scalaVersion := dottyNonBootstrappedVersion,
     scalaOrganization := dottyOrganization,
     scalaBinaryVersion := "2.11",
 
