@@ -65,28 +65,23 @@ object Build {
   // Shorthand for compiling a docs site
   lazy val dottydoc = inputKey[Unit]("run dottydoc")
 
-  // Used in build.sbt
-  val thisBuildSettings = Seq(
-    scalaVersion in Global := scalacVersion,
-    version in Global := dottyVersion,
-    organization in Global := dottyOrganization,
-    organizationName in Global := "LAMP/EPFL",
-    organizationHomepage in Global := Some(url("http://lamp.epfl.ch")),
-    homepage in Global := Some(url("https://github.com/lampepfl/dotty")),
+  lazy val commonSettings = Seq(
+    scalaVersion := scalacVersion,
+    version := dottyVersion,
+    organization := dottyOrganization,
+    organizationName := "LAMP/EPFL",
+    organizationHomepage := Some(url("http://lamp.epfl.ch")),
+    homepage := Some(url("https://github.com/lampepfl/dotty")),
 
-    // scalac options
-    scalacOptions in Global ++= Seq(
+    scalacOptions ++= Seq(
       "-feature",
       "-deprecation",
       "-encoding", "UTF8",
       "-language:existentials,higherKinds,implicitConversions"
     ),
 
-    javacOptions in Global ++= Seq("-Xlint:unchecked", "-Xlint:deprecation")
-  )
+    javacOptions ++= Seq("-Xlint:unchecked", "-Xlint:deprecation"),
 
-  // set sources to src/, tests to test/ and resources to resources/
-  lazy val sourceStructure = Seq(
     scalaSource       in Compile    := baseDirectory.value / "src",
     scalaSource       in Test       := baseDirectory.value / "test",
     javaSource        in Compile    := baseDirectory.value / "src",
@@ -129,6 +124,7 @@ object Build {
       `scala-library`, `scala-compiler`, `scala-reflect`, scalap).
     dependsOn(`dotty-compiler`).
     dependsOn(`dotty-library`).
+    settings(commonSettings).
     settings(
       triggeredMessage in ThisBuild := Watched.clearWhenTriggered,
 
@@ -140,12 +136,13 @@ object Build {
   // Meta project aggregating all bootstrapped projects
   lazy val `dotty-bootstrapped` = project.
     aggregate(`dotty-library-bootstrapped`, `dotty-compiler-bootstrapped`, `dotty-doc-bootstrapped`).
+    settings(commonSettings).
     settings(
       publishArtifact := false
     )
 
   lazy val `dotty-interfaces` = project.in(file("interfaces")).
-    settings(sourceStructure).
+    settings(commonSettings).
     settings(
       // Do not append Scala versions to the generated artifacts
       crossPaths := false,
@@ -214,19 +211,19 @@ object Build {
 
   lazy val `dotty-doc` = project.in(file("doc-tool")).
     dependsOn(`dotty-compiler`, `dotty-compiler` % "test->test").
-    settings(sourceStructure).
+    settings(commonSettings).
     settings(dottyDocSettings).
     settings(publishing)
 
   lazy val `dotty-doc-bootstrapped` = project.in(file("doc-tool")).
     dependsOn(`dotty-compiler-bootstrapped`, `dotty-compiler-bootstrapped` % "test->test").
-    settings(sourceStructure).
+    settings(commonSettings).
     settings(commonBootstrappedSettings).
     settings(dottyDocSettings)
 
 
   lazy val `dotty-bot` = project.in(file("bot")).
-    settings(sourceStructure).
+    settings(commonSettings).
     settings(
       resourceDirectory in Test := baseDirectory.value / "test" / "resources",
 
@@ -485,7 +482,7 @@ object Build {
   lazy val `dotty-compiler` = project.in(file("compiler")).
     dependsOn(`dotty-interfaces`).
     dependsOn(`dotty-library`).
-    settings(sourceStructure).
+    settings(commonSettings).
     settings(dottyCompilerSettings).
     settings(
       // Disable scaladoc generation, it's way too slow and we'll replace it
@@ -507,7 +504,7 @@ object Build {
 
   lazy val `dotty-compiler-bootstrapped` = project.in(file("compiler")).
     dependsOn(`dotty-library-bootstrapped`).
-    settings(sourceStructure).
+    settings(commonSettings).
     settings(commonBootstrappedSettings).
     settings(dottyCompilerSettings).
     settings(
@@ -524,7 +521,7 @@ object Build {
 
   /* Contains unit tests for the scripts */
   lazy val `dotty-bin-tests` = project.in(file("bin")).
-    settings(sourceStructure).
+    settings(commonSettings).
     settings(
       publishArtifact := false,
       parallelExecution in Test := false,
@@ -542,12 +539,12 @@ object Build {
   )
 
   lazy val `dotty-library` = project.in(file("library")).
-    settings(sourceStructure).
+    settings(commonSettings).
     settings(dottyLibrarySettings).
     settings(publishing)
 
   lazy val `dotty-library-bootstrapped` = project.in(file("library")).
-    settings(sourceStructure).
+    settings(commonSettings).
     settings(commonBootstrappedSettings).
     settings(dottyLibrarySettings)
 
@@ -556,7 +553,7 @@ object Build {
 
   lazy val `dotty-sbt-bridge` = project.in(file("sbt-bridge")).
     dependsOn(`dotty-compiler`).
-    settings(sourceStructure).
+    settings(commonSettings).
     settings(
       cleanSbtBridge := {
         val dottySbtBridgeVersion = version.value
@@ -643,7 +640,7 @@ object DottyInjectedPlugin extends AutoPlugin {
    */
   lazy val sjsSandbox = project.in(file("sandbox/scalajs")).
     enablePlugins(ScalaJSPlugin).
-    settings(sourceStructure).
+    settings(commonSettings).
     settings(
       /* Remove the Scala.js compiler plugin for scalac, and enable the
        * Scala.js back-end of dotty instead.
@@ -676,7 +673,7 @@ object DottyInjectedPlugin extends AutoPlugin {
 
   lazy val `dotty-bench` = project.in(file("bench")).
     dependsOn(`dotty-compiler` % "compile->test").
-    settings(sourceStructure).
+    settings(commonSettings).
     settings(
       baseDirectory in (Test,run) := (baseDirectory in `dotty-compiler`).value,
 
@@ -718,6 +715,7 @@ object DottyInjectedPlugin extends AutoPlugin {
   // automatically depend on scalaOrganization.value % "scala-library" % scalaVersion.value
   lazy val `scala-library` = project.
     dependsOn(`dotty-library`).
+    settings(commonSettings).
     settings(
       crossPaths := false
     ).
@@ -731,17 +729,20 @@ object DottyInjectedPlugin extends AutoPlugin {
   // otherwise users will get compilation errors if they happen to transitively
   // depend on one of these projects.
   lazy val `scala-compiler` = project.
+    settings(commonSettings).
     settings(
       crossPaths := false
     ).
     settings(publishing)
   lazy val `scala-reflect` = project.
+    settings(commonSettings).
     settings(
       crossPaths := false,
       libraryDependencies := Seq("org.scala-lang" % "scala-reflect" % scalaVersion.value)
     ).
     settings(publishing)
   lazy val scalap = project.
+    settings(commonSettings).
     settings(
       crossPaths := false,
       libraryDependencies := Seq("org.scala-lang" % "scalap" % scalaVersion.value)
