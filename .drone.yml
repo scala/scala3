@@ -38,9 +38,9 @@ matrix:
   include:
     - CI_TEST: dotty-bin-tests/test
       CI_PUBLISH: true
-    - CI_TEST: legacyTests
+    - CI_TEST: ;publishLocal ;legacyTests
       CI_PUBLISH: false
-    - CI_TEST: test
+    - CI_TEST: ;publishLocal ;test
       CI_PUBLISH: false
     - CI_TEST: ;publishLocal ;dotty-bootstrapped/test
       CI_PUBLISH: false
