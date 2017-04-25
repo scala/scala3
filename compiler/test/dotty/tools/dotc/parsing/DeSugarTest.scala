@@ -3,7 +3,7 @@ package dotc
 package parsing
 
 import Tokens._, Parsers._
-import scala.reflect.io._
+import dotty.tools.io._
 import util._
 import core._
 import ast.Trees._

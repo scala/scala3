@@ -18,13 +18,15 @@ package object io {
   val Directory = scala.reflect.io.Directory
   type File = scala.reflect.io.File
   val File = scala.reflect.io.File
+  type ManifestResources = scala.reflect.io.ManifestResources
   type Path = scala.reflect.io.Path
   val Path = scala.reflect.io.Path
   val Streamable = scala.reflect.io.Streamable
   type VirtualDirectory = scala.reflect.io.VirtualDirectory
   type VirtualFile = scala.reflect.io.VirtualFile
-  val ZipArchive = scala.reflect.io.ZipArchive
   type ZipArchive = scala.reflect.io.ZipArchive
+  val ZipArchive = scala.reflect.io.ZipArchive
+  type FileZipArchive = scala.reflect.io.FileZipArchive
   type JManifest = java.util.jar.Manifest
   type JFile = java.io.File
 

@@ -3,7 +3,7 @@
  */
 package dotty.tools.dotc.classpath
 
-import scala.reflect.io.AbstractFile
+import dotty.tools.io.AbstractFile
 import dotty.tools.io.ClassRepresentation
 
 case class ClassPathEntries(packages: Seq[PackageEntry], classesAndSources: Seq[ClassRepresentation])
