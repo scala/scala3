@@ -86,7 +86,10 @@ object Build {
     scalaSource       in Test       := baseDirectory.value / "test",
     javaSource        in Compile    := baseDirectory.value / "src",
     javaSource        in Test       := baseDirectory.value / "test",
-    resourceDirectory in Compile    := baseDirectory.value / "resources"
+    resourceDirectory in Compile    := baseDirectory.value / "resources",
+
+    // Prevent sbt from rewriting our dependencies
+    ivyScala ~= (_ map (_ copy (overrideScalaVersion = false)))
   )
 
   // Settings used by all dotty-compiled projects
