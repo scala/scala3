@@ -30,7 +30,13 @@ object Github {
     context: String = "CLA"
   )
 
-  case class StatusResponse(url: String, id: Long, state: String) {
+  case class StatusResponse(
+    url: String,
+    id: Long,
+    state: String,
+    context: String,
+    target_url: String
+  ) {
     def sha: String = url.split('/').last
   }
 

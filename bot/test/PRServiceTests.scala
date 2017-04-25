@@ -9,6 +9,7 @@ import io.circe.syntax._
 import io.circe.parser.decode
 
 import model.Github._
+import model.Drone
 import org.http4s.client.blaze._
 import org.http4s.client.Client
 import scalaz.concurrent.Task
@@ -115,5 +116,12 @@ class PRServiceTests extends PullRequestService {
       res.body.contains("Have an awesome day!"),
       s"Body of review was not as expected:\n${res.body}"
     )
+  }
+
+  @Test def canStartAndStopBuild = {
+    val build = withClient(implicit client => Drone.startBuild(1921, droneToken))
+    assert(build.status == "pending" || build.status == "building")
+    val killed = withClient(implicit client => Drone.stopBuild(1921, droneToken))
+    assert(killed, "Couldn't kill build")
   }
 }

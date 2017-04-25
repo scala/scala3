@@ -19,6 +19,7 @@ import org.http4s.dsl._
 import org.http4s.util._
 
 import model.Github._
+import model.Drone
 import bot.util.TaskIsApplicative._
 import bot.util.HttpClientAux._
 
@@ -279,6 +280,19 @@ trait PullRequestService {
   private def extractCommitSha(status: StatusResponse): Task[String] =
     Task.delay(status.sha)
 
+  def cancelBuilds(commits: List[Commit])(implicit client: Client): Task[Boolean] =
+    Task.gatherUnordered {
+      val droneContext = "continuous-integration/drone/pr"
+      commits.map { commit =>
+        for {
+          statuses    <- getStatus(commit, client)
+          cancellable =  statuses.filter(status => status.state == "pending" && status.context == droneContext)
+          runningJobs =  cancellable.map(_.target_url.split('/').last.toInt)
+          cancelled   <- Task.gatherUnordered(runningJobs.map(Drone.stopBuild(_, droneToken)))
+        } yield cancelled.foldLeft(true)(_ == _)
+      }
+    }
+    .map(xs => xs.foldLeft(true)(_ == _))
 
   def checkSynchronize(issue: Issue): Task[Response] = {
     val httpClient = PooledHttp1Client()
@@ -288,7 +302,7 @@ trait PullRequestService {
       statuses <- checkCLA(commits, httpClient)
       invalid  =  statuses.filterNot(_.isValid)
       _        <- sendStatuses(invalid, httpClient)
-      _        <- cancelBuilds(commits.dropRight(1), httpClient)
+      _        <- cancelBuilds(commits.dropRight(1))(httpClient)
 
       // Set final commit status based on `invalid`:
       _ <- {
