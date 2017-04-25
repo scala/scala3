@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 
-# Usage: ./genDocs <test variable> <dotty-bot password>
+# Usage: ./genDocs <true/false> <dotty-bot password>
 
 set -e
 # set extended glob, needed for rm everything but x
 shopt -s extglob
 
-if [ "$1" = ";dotty-compiler/testOnly dotty.tools.dotc.CompilationTests" ]; then
+if [ $1 = true ]; then
 
     # make sure that BOT_PASS is set
     if [ -z ${2+x} ]; then
