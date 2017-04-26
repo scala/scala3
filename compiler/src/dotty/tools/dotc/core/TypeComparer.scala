@@ -574,8 +574,15 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
       isNewSubType(tp1.parent, tp2)
     case tp1 @ HKApply(tycon1, args1) =>
       compareHkApply1(tp1, tycon1, args1, tp2)
-    case EtaExpansion(tycon1) =>
-      isSubType(tycon1, tp2)
+    case tp1: HKTypeLambda =>
+      def compareHKLambda = tp1 match {
+        case EtaExpansion(tycon1) => isSubType(tycon1, tp2)
+        case _ => tp2 match {
+          case tp2: HKTypeLambda => false // this case was covered in thirdTry
+          case _ => tp2.isHK && isSubType(tp1.resultType, tp2.appliedTo(tp1.paramRefs))
+        }
+      }
+      compareHKLambda
     case AndType(tp11, tp12) =>
       // Rewrite (T111 | T112) & T12 <: T2 to (T111 & T12) <: T2 and (T112 | T12) <: T2
       // and analogously for T11 & (T121 | T122) & T12 <: T2
