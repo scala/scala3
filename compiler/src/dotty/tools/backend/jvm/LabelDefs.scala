@@ -90,75 +90,23 @@ class LabelDefs extends MiniPhaseTransform {
     else {
       collectLabelDefs.clear
       val newRhs = collectLabelDefs.transform(tree.rhs)
-      val labelCalls = collectLabelDefs.labelCalls
-      var entryPoints = collectLabelDefs.parentLabelCalls
       var labelDefs = collectLabelDefs.labelDefs
-      var callCounts = collectLabelDefs.callCounts
-
-      // make sure that for every label there's a single location it should return and single entry point
-      // if theres already a location that it returns to that's a failure
-      val disallowed = new mutable.HashMap[Symbol, Tree]()
-      queue.sizeHint(labelCalls.size + entryPoints.size)
 
       def putLabelDefsNearCallees = new TreeMap() {
 
         override def transform(tree: tpd.Tree)(implicit ctx: Context): tpd.Tree = {
           tree match {
-            case t: Apply if (entryPoints.contains(t)) =>
-              entryPoints = entryPoints - t
-              labelLevel = labelLevel + 1
-              val r = Block(moveLabels(t), t)
-              labelLevel = labelLevel - 1
-              if (labelLevel == 0) beingAppended.clear()
-              r
-            case _ => if (entryPoints.nonEmpty && labelDefs.nonEmpty) super.transform(tree) else tree
-          }
+            case t: Apply if labelDefs.contains(t.symbol) =>
+              val labelDef = labelDefs(t.symbol)
+              labelDefs -= t.symbol
 
+              val labelDef2 = transform(labelDef)
+              Block(labelDef2:: Nil, t)
+
+            case _ => if (labelDefs.nonEmpty) super.transform(tree) else tree
+          }
         }
       }
-
-      def moveLabels(entryPoint: Apply): List[Tree] = {
-        val entrySym = entryPoint.symbol
-        if ((entrySym is Flags.Label) && labelDefs.contains(entrySym)) {
-          val visitedNow = new mutable.HashMap[Symbol, Tree]()
-          val treesToAppend = new ArrayBuffer[Tree]() // order matters. parents should go first
-          treesToAppend += labelDefs(entrySym)
-          queue.clear()
-
-          var visited = 0
-          queue += entryPoint
-          while (visited < queue.size) {
-            val owningLabelDefSym = queue(visited).symbol
-            for (call <- labelCalls(owningLabelDefSym)) {
-              val callSym = call.symbol
-              if (!beingAppended.contains(callSym)) {
-                if (disallowed.contains(callSym)) {
-                  val oldCall = disallowed(callSym)
-                  ctx.error(s"Multiple return locations for Label $oldCall and $call", callSym.pos)
-                } else {
-                  if ((!visitedNow.contains(callSym)) && labelDefs.contains(callSym)) {
-                    val defTree = labelDefs(callSym)
-                    visitedNow.put(callSym, defTree)
-                    val callCount = callCounts(callSym)
-                    if (callCount > 1) {
-                      if (!treesToAppend.contains(defTree)) {
-                        treesToAppend += defTree
-                        queue += call
-
-                      }
-                    } else if (entryPoint.symbol ne callSym) entryPoints += call
-                  }
-                }
-              }
-            }
-
-            visited += 1
-          }
-          beingAppended ++= treesToAppend.map(_.symbol)
-          treesToAppend.toList.map(putLabelDefsNearCallees.transform)
-        } else Nil
-      }
-
 
       val res = cpy.DefDef(tree)(rhs = putLabelDefsNearCallees.transform(newRhs))
 
@@ -168,22 +116,11 @@ class LabelDefs extends MiniPhaseTransform {
 
   object collectLabelDefs extends TreeMap() {
 
-    // label calls from this DefDef
-    var parentLabelCalls: mutable.Set[Tree] = new mutable.HashSet[Tree]()
-    var callCounts: mutable.Map[Symbol, Int] = new mutable.HashMap[Symbol, Int]().withDefaultValue(0)
-
-    def shouldMoveLabel = true
-
     // labelSymbol -> Defining tree
     val labelDefs = new mutable.HashMap[Symbol, Tree]()
-    // owner -> all calls by this owner
-    val labelCalls = new mutable.HashMap[Symbol, mutable.Set[Tree]]()
-    var owner: Symbol = null
 
     def clear = {
-      parentLabelCalls.clear()
       labelDefs.clear()
-      labelCalls.clear()
     }
 
     override def transform(tree: tpd.Tree)(implicit ctx: Context): tpd.Tree = tree match {
@@ -196,30 +133,14 @@ class LabelDefs extends MiniPhaseTransform {
         }
       case t: DefDef =>
         assert(t.symbol is Flags.Label)
-
-        val st = parentLabelCalls
-        parentLabelCalls = new mutable.HashSet[Tree]()
-        val symt = owner
-        owner = t.symbol
-
         val r = super.transform(tree)
-
-        owner = symt
-        labelCalls(r.symbol) = parentLabelCalls
-        parentLabelCalls = st
-
-        if (shouldMoveLabel) {
-          labelDefs(r.symbol) = r
-          EmptyTree
-        } else r
+        labelDefs(r.symbol) = r
+        EmptyTree
       case t: Apply if t.symbol is Flags.Label =>
         val sym = t.symbol
-        parentLabelCalls = parentLabelCalls + t
-        if (owner != sym) callCounts(sym) = callCounts(sym) + 1
         super.transform(tree)
       case _ =>
         super.transform(tree)
-
     }
   }
 }
