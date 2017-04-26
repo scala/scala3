@@ -28,11 +28,11 @@ class PatmatExhaustivityTest {
         e.printStackTrace()
     }
 
-    val actual = stringBuffer.toString.trim
+    val actual = stringBuffer.toString.trim.replaceAll("\\s+\n", "\n")
     val checkFilePath = file.getAbsolutePath.stripSuffix(".scala") + ".check"
     val checkContent =
       if (new File(checkFilePath).exists)
-        fromFile(checkFilePath).getLines.mkString("\n").trim
+        fromFile(checkFilePath).getLines.map(_.replaceAll("\\s+$", "")).mkString("\n").trim
       else ""
 
     (file, checkContent, actual)
@@ -55,11 +55,11 @@ class PatmatExhaustivityTest {
         e.printStackTrace()
     }
 
-    val actual = stringBuffer.toString.trim
+    val actual = stringBuffer.toString.trim.replaceAll("\\s+\n", "\n")
     val checkFilePath = file.getPath + File.separator + "expected.check"
     val checkContent =
       if (new File(checkFilePath).exists)
-        fromFile(checkFilePath).getLines.mkString("\n").trim
+        fromFile(checkFilePath).getLines.map(_.replaceAll("\\s+$", "")).mkString("\n").trim
       else ""
 
     (file, checkContent, actual)
