@@ -366,16 +366,11 @@ class Inliner(call: tpd.Tree, rhs: tpd.Tree)(implicit ctx: Context) {
     case tpe: ThisType
     if !ctx.owner.isContainedIn(tpe.cls) && !tpe.cls.is(Package) &&
        !thisProxy.contains(tpe.cls) =>
-      if (tpe.cls.isStaticOwner) {
-        val proxyName = s"${tpe.cls.name}_module".toTermName
-        val proxyType = tpe.cls.sourceModule.termRef
-        thisProxy(tpe.cls) = newSym(proxyName, EmptyFlags, proxyType).termRef
-      } else {
-        val proxyName = s"${tpe.cls.name}_this".toTermName
-        val proxyType = tpe.asSeenFrom(prefix.tpe, meth.owner)
-        thisProxy(tpe.cls) = newSym(proxyName, EmptyFlags, proxyType).termRef
+      val proxyName = s"${tpe.cls.name}_this".toTermName
+      val proxyType = tpe.asSeenFrom(prefix.tpe, meth.owner)
+      thisProxy(tpe.cls) = newSym(proxyName, EmptyFlags, proxyType).termRef
+      if (!tpe.cls.isStaticOwner)
         registerType(meth.owner.thisType) // make sure we have a base from which to outer-select
-      }
     case tpe: NamedType
     if tpe.symbol.is(Param) && tpe.symbol.owner == meth &&
        !paramProxy.contains(tpe) =>
