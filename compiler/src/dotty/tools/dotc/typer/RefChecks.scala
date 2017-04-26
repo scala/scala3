@@ -73,6 +73,22 @@ object RefChecks {
     }
   }
 
+  /** The this-type of `cls` which should be used when looking at the types of
+   *  inherited members. If `cls` has a non-trivial self type, this returns a skolem
+   *  with the class type instead of the `this-type` of the class as usual.
+   *  This is done because otherwise we want to understand inherited infos
+   *  as they are written, whereas with the this-type they could be
+   *  more special. A test where this makes a difference is pos/i1401.scala.
+   *  This one used to succeed only if forwarding parameters is on.
+   *  (Forwarding tends to hide problems by binding parameter names).
+   */
+  private def upwardsThisType(cls: Symbol)(implicit ctx: Context) = cls.info match {
+    case ClassInfo(_, _, _, _, tp: Type) if (tp ne cls.typeRef) && !cls.is(ModuleOrFinal) =>
+      SkolemType(cls.typeRef).withName(nme.this_)
+    case _ =>
+      cls.thisType
+  }
+
   /** Check that self type of this class conforms to self types of parents.
    *  and required classes.
    */
@@ -134,7 +150,7 @@ object RefChecks {
    *       before, but it looks too complicated and method bodies are far too large.
    */
   private def checkAllOverrides(clazz: Symbol)(implicit ctx: Context): Unit = {
-    val self = clazz.thisType
+    val self = upwardsThisType(clazz)
     var hasErrors = false
 
     case class MixinOverrideError(member: Symbol, msg: String)
