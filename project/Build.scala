@@ -682,17 +682,34 @@ object Build {
   lazy val `dotty-sbt-bridge` = project.in(file("sbt-bridge")).
     dependsOn(`dotty-compiler`).
     settings(commonNonBootstrappedSettings).
+    settings(dottySbtBridgeSettings)
+
+  lazy val `dotty-sbt-bridge-bootstrapped` = project.in(file("sbt-bridge")).
+    dependsOn(`dotty-compiler-bootstrapped`).
+    settings(commonBootstrappedSettings).
     settings(dottySbtBridgeSettings).
+    settings(
+      // Disabled because dotty crashes when compiling the tests
+      sources in Test := Seq()
+    )
+
+  lazy val `dotty-sbt-scripted-tests` = project.in(file("sbt-scripted-tests")).
+    settings(
+      publishArtifact := false
+    ).
     settings(ScriptedPlugin.scriptedSettings: _*).
     settings(
       ScriptedPlugin.sbtTestDirectory := baseDirectory.value / "sbt-test",
       ScriptedPlugin.scriptedLaunchOpts := Seq("-Xmx1024m"),
       ScriptedPlugin.scriptedBufferLog := false,
       ScriptedPlugin.scripted := {
+        val x0 = (publishLocal in `dotty-sbt-bridge-bootstrapped`).value
         val x1 = (publishLocal in `dotty-interfaces`).value
-        val x2 = (publishLocal in `dotty-compiler`).value
-        val x3 = (publishLocal in `dotty-library`).value
-        val x4 = (publishLocal in dotty).value // Needed because sbt currently hardcodes the dotty artifact
+        val x2 = (publishLocal in `dotty-compiler-bootstrapped`).value
+        val x3 = (publishLocal in `dotty-library-bootstrapped`).value
+        val x4 = (publishLocal in `scala-library`).value
+        val x5 = (publishLocal in `scala-reflect`).value
+        val x6 = (publishLocal in `dotty-bootstrapped`).value // Needed because sbt currently hardcodes the dotty artifact
         ScriptedPlugin.scriptedTask.evaluated
       }
       // TODO: Use this instead of manually copying DottyInjectedPlugin.scala
@@ -711,25 +728,13 @@ object DottyInjectedPlugin extends AutoPlugin {
     scalaVersion := "0.1.1-bin-SNAPSHOT",
     scalaOrganization := "ch.epfl.lamp",
     scalacOptions += "-language:Scala2",
-    scalaBinaryVersion  := "2.11",
-    autoScalaLibrary := false,
-    libraryDependencies ++= Seq("org.scala-lang" % "scala-library" % "2.11.5")
+    scalaBinaryVersion  := "0.1"
   )
 }
 """)
       }
       */
     )
-
-  lazy val `dotty-sbt-bridge-bootstrapped` = project.in(file("sbt-bridge")).
-    dependsOn(`dotty-compiler-bootstrapped`).
-    settings(commonBootstrappedSettings).
-    settings(dottySbtBridgeSettings).
-    settings(
-      // Disabled because dotty crashes when compiling the tests
-      sources in Test := Seq()
-    )
-
 
   /** A sandbox to play with the Scala.js back-end of dotty.
    *
