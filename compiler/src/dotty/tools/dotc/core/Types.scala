@@ -200,15 +200,11 @@ object Types {
       *   - NoType otherwise
       */
     final def phantomLatticeType(implicit ctx: Context): Type = widen match {
-      case tp: ClassInfo if isPhantomClass(tp.classSymbol) => tp.prefix
+      case tp: ClassInfo if defn.isPhantomClass(tp.classSymbol) => tp.prefix
       case tp: TypeProxy if tp.superType ne this => tp.superType.phantomLatticeType
       case tp: AndOrType => tp.tp1.phantomLatticeType
       case _ => NoType
     }
-
-    /** If the symbol is of the class scala.Phantom.Any or scala.Phantom.Nothing */
-    private def isPhantomClass(sym: Symbol)(implicit ctx: Context): Boolean =
-      (sym eq defn.PhantomAnyClass) || (sym eq defn.PhantomNothingClass)
 
     /** Is this type guaranteed not to have `null` as a value?
      *  For the moment this is only true for modules, but it could

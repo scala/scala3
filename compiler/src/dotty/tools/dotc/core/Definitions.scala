@@ -980,7 +980,7 @@ class Definitions {
   lazy val PhantomNothingClass = PhantomClass.unforcedDecls.find(_.name eq tpnme.Nothing).asClass
   lazy val PhantomAssume = PhantomClass.unforcedDecls.find(_.name eq nme.assume_)
 
-  lazy val ErasedPhantomClass = ctx.requiredClass("dotty.runtime.ErasedPhantom")
-  def ErasedPhantomType(implicit ctx: Context) = ErasedPhantomClass.typeRef
+  /** If the symbol is of the class scala.Phantom.Any or scala.Phantom.Nothing */
+  def isPhantomClass(sym: Symbol) = (sym eq PhantomAnyClass) || (sym eq PhantomNothingClass)
 
 }

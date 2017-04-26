@@ -454,14 +454,9 @@ object Erasure extends TypeTestsCasts{
       val Apply(fun, args) = tree
       if (fun.symbol == defn.cbnArg)
         typedUnadapted(args.head, pt)
-      else if (fun.symbol eq defn.PhantomAssume) {
-        /* All phantom types are erased to `ErasedPhantom` (an un-instantiable final abstract class),
-         * hence the only valid term for a `ErasedPhantom` is `null`.
-         * As `Phantom.assume` is the only way to instantiate phantoms, all runtime values of
-         * phantom type become `null` (no instantiation overhead).
-         */
-        Literal(Constant(null)).withType(defn.ErasedPhantomType)
-      } else typedExpr(fun, FunProto(args, pt, this)) match {
+      else if (fun.symbol eq defn.PhantomAssume)
+        ref(defn.BoxedUnit_UNIT)
+      else typedExpr(fun, FunProto(args, pt, this)) match {
         case fun1: Apply => // arguments passed in prototype were already passed
           fun1
         case fun1 =>
