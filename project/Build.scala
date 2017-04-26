@@ -724,7 +724,11 @@ object DottyInjectedPlugin extends AutoPlugin {
   lazy val `dotty-sbt-bridge-bootstrapped` = project.in(file("sbt-bridge")).
     dependsOn(`dotty-compiler-bootstrapped`).
     settings(commonBootstrappedSettings).
-    settings(dottySbtBridgeSettings)
+    settings(dottySbtBridgeSettings).
+    settings(
+      // Disabled because dotty crashes when compiling the tests
+      sources in Test := Seq()
+    )
 
 
   /** A sandbox to play with the Scala.js back-end of dotty.
