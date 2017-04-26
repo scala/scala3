@@ -13,6 +13,15 @@ import sbt.Package.ManifestAttributes
 
 import com.typesafe.sbteclipse.plugin.EclipsePlugin._
 
+/* In sbt 0.13 the Build trait would expose all vals to the shell, where you
+ * can use them in "set a := b" like expressions. This re-exposes them.
+ */
+object ExposedValues extends AutoPlugin {
+  object autoImport {
+    val bootstrapFromPublishedJars = Build.bootstrapFromPublishedJars
+  }
+}
+
 object Build {
 
   projectChecks()
@@ -65,6 +74,15 @@ object Build {
 
   // Shorthand for compiling a docs site
   lazy val dottydoc = inputKey[Unit]("run dottydoc")
+
+  lazy val bootstrapFromPublishedJars = settingKey[Boolean]("If true, bootstrap dotty from published non-bootstrapped dotty")
+
+  // Used in build.sbt
+  lazy val thisBuildSettings = Def.settings(
+    // Change this to true if you want to bootstrap using a published non-bootstrapped compiler
+    bootstrapFromPublishedJars := false
+  )
+
 
   lazy val commonSettings = publishSettings ++ Seq(
     organization := dottyOrganization,
@@ -131,11 +149,36 @@ object Build {
     // ...but scala-library is
     libraryDependencies += "org.scala-lang" % "scala-library" % scalacVersion,
 
+    ivyConfigurations ++= {
+      if (bootstrapFromPublishedJars.value)
+        Seq(Configurations.ScalaTool)
+      else
+        Seq()
+    },
+    libraryDependencies ++= {
+      if (bootstrapFromPublishedJars.value)
+        Seq(
+          dottyOrganization % "dotty-library_2.11" % dottyNonBootstrappedVersion % Configurations.ScalaTool.name,
+          dottyOrganization % "dotty-compiler_2.11" % dottyNonBootstrappedVersion % Configurations.ScalaTool.name
+        )
+      else
+        Seq()
+    },
+
     // Compile using the non-bootstrapped and non-published dotty
     managedScalaInstance := false,
     scalaInstance := {
-      val libraryJar = (packageBin in (`dotty-library`, Compile)).value
-      val compilerJar = (packageBin in (`dotty-compiler`, Compile)).value
+      val (libraryJar, compilerJar) =
+        if (bootstrapFromPublishedJars.value) {
+          val jars = update.value.select(
+            configuration = configurationFilter(Configurations.ScalaTool.name),
+            artifact = artifactFilter(extension = "jar")
+          )
+          (jars.find(_.getName.startsWith("dotty-library_2.11")).get,
+           jars.find(_.getName.startsWith("dotty-compiler_2.11")).get)
+        } else
+          ((packageBin in (`dotty-library`, Compile)).value,
+           (packageBin in (`dotty-compiler`, Compile)).value)
 
       // All compiler dependencies except the library
       val otherDependencies = (dependencyClasspath in (`dotty-compiler`, Compile)).value
