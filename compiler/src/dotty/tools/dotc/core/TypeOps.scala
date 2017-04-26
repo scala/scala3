@@ -369,9 +369,9 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
       enterArgBinding(formals(name), refinedInfo, cls, decls)
     }
 
-    if (!ctx.settings.YsuppressParamForwarding.value)
+    if (Config.forwardTypeParams)
       forwardParamBindings(parentRefs, refinements, cls, decls)
- 
+
     parentRefs
   }
 

@@ -82,6 +82,13 @@ object Config {
   /** If this flag is set, take the fast path when comparing same-named type-aliases and types */
   final val fastPathForRefinedSubtype = true
 
+  /** If this flag is set, `TypeOps.normalizeToClassRefs` will insert forwarders
+   *  for type parameters of base classes. This is an optimization, which avoids
+   *  long alias chains. We should  not rely on the optimization, though. So changing
+   *  the flag to false can be used for checking that everything works OK without it.
+   */
+  final val forwardTypeParams = true
+
   /** If this flag is set, and we compute `T1 { X = S1 }` & `T2 { X = S2 }` as a new
    *  upper bound of a constrained parameter, try to align the refinements by computing
    *  `S1 =:= S2` (which might instantiate type parameters).
