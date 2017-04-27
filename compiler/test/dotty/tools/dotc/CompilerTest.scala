@@ -77,7 +77,7 @@ abstract class CompilerTest {
     fs: Array[String],
     args: Array[String]
   )(implicit defaultOptions: List[String]): Boolean = {
-    val scalaLib = findJarFromRuntime("scala-library")
+    val scalaLib = dotty.Jars.scalaLibrary
     val fullArgs = Array(
       "javac",
       "-classpath",
