@@ -21,9 +21,6 @@ If you have `CLASSPATH` defined:
    that it contains a `CLASSPATH` variable which reflects the current
    `CLASSPATH`.
 
-In order for compilation errors related to `ENUM` to be resolved, make sure
-that scala-reflect 2.11.5 is on the classpath.
-
 Running the compiler Main class from Eclipse
 --------------------------------------------
 1. Navigate to `dotty.tools.dotc.Main`
