@@ -26,6 +26,7 @@ Start by cloning the repository:
 ```bash
 $ git clone --recursive https://github.com/lampepfl/dotty.git
 $ cd dotty
+$ sbt managedSources ## Needed for IDE import to succeed
 ```
 
 Dotty provides a standard sbt build: compiling, running and starting a repl can
