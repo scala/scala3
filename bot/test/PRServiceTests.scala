@@ -9,12 +9,22 @@ import io.circe.syntax._
 import io.circe.parser.decode
 
 import model.Github._
+import model.Drone
 import org.http4s.client.blaze._
+import org.http4s.client.Client
 import scalaz.concurrent.Task
 
 class PRServiceTests extends PullRequestService {
-  val user = sys.env("USER")
-  val token = sys.env("TOKEN")
+  val githubUser  = sys.env("GITHUB_USER")
+  val githubToken = sys.env("GITHUB_TOKEN")
+  val droneToken  = sys.env("DRONE_TOKEN")
+
+  private def withClient[A](f: Client => Task[A]): A = {
+    val httpClient = PooledHttp1Client()
+    val ret = f(httpClient).run
+    httpClient.shutdownNow()
+    ret
+  }
 
   def getResource(r: String): String =
     Option(getClass.getResourceAsStream(r)).map(scala.io.Source.fromInputStream)
@@ -31,11 +41,22 @@ class PRServiceTests extends PullRequestService {
     assert(issue.pull_request.isDefined, "missing pull request")
   }
 
-  @Test def canGetAllCommitsFromPR = {
-    val httpClient = PooledHttp1Client()
-    val issueNbr = 1941 // has 2 commits: https://github.com/lampepfl/dotty/pull/1941/commits
+  @Test def canUnmarshalIssueComment = {
+    val json = getResource("/test-mention.json")
+    val issueComment: IssueComment = decode[IssueComment](json) match {
+      case Right(is: IssueComment) => is
+      case Left(ex) => throw ex
+    }
 
-    val List(c1, c2) = getCommits(issueNbr, httpClient).run
+    assert(
+      issueComment.comment.body == "@dotty-bot: could you recheck this please?",
+      s"incorrect body: ${issueComment.comment.body}"
+    )
+  }
+
+  @Test def canGetAllCommitsFromPR = {
+    val issueNbr = 1941 // has 2 commits: https://github.com/lampepfl/dotty/pull/1941/commits
+    val List(c1, c2) = withClient(implicit client => getCommits(issueNbr))
 
     assertEquals(
       "Represent untyped operators as Ident instead of Name",
@@ -49,10 +70,8 @@ class PRServiceTests extends PullRequestService {
   }
 
   @Test def canGetMoreThan100Commits = {
-    val httpClient = PooledHttp1Client()
     val issueNbr = 1840 // has >100 commits: https://github.com/lampepfl/dotty/pull/1840/commits
-
-    val numberOfCommits = getCommits(issueNbr, httpClient).run.length
+    val numberOfCommits = withClient(implicit client => getCommits(issueNbr)).length
 
     assert(
       numberOfCommits > 100,
@@ -60,21 +79,25 @@ class PRServiceTests extends PullRequestService {
     )
   }
 
+  @Test def canGetComments = {
+    val comments: List[Comment] = withClient(getComments(2136, _))
+
+    assert(comments.find(_.user.login == Some("odersky")).isDefined,
+           "Could not find Martin's comment on PR 2136")
+  }
+
   @Test def canCheckCLA = {
-    val httpClient = PooledHttp1Client()
     val validUserCommit = Commit("sha-here", Author(Some("felixmulder")), Author(Some("felixmulder")), CommitInfo(""))
-    val statuses: List[CommitStatus] = checkCLA(validUserCommit :: Nil, httpClient).run
+    val statuses: List[CommitStatus] = withClient(checkCLA(validUserCommit :: Nil, _))
 
     assert(statuses.length == 1, s"wrong number of valid statuses: got ${statuses.length}, expected 1")
-    httpClient.shutdownNow()
   }
 
   @Test def canSetStatus = {
-    val httpClient = PooledHttp1Client()
     val sha = "fa64b4b613fe5e78a5b4185b4aeda89e2f1446ff"
     val status = Invalid("smarter", Commit(sha, Author(Some("smarter")), Author(Some("smarter")), CommitInfo("")))
 
-    val statuses: List[StatusResponse] = sendStatuses(status :: Nil, httpClient).run
+    val statuses: List[StatusResponse] = withClient(sendStatuses(status :: Nil, _))
 
     assert(
       statuses.length == 1,
@@ -85,7 +108,53 @@ class PRServiceTests extends PullRequestService {
       statuses.head.state == "failure",
       s"status set had wrong state, expected 'failure', got: ${statuses.head.state}"
     )
+  }
 
-    httpClient.shutdownNow()
+  @Test def canGetStatus = {
+    val sha = "fa64b4b613fe5e78a5b4185b4aeda89e2f1446ff"
+    val commit = Commit(sha, Author(None), Author(None), CommitInfo(""))
+    val status = withClient(getStatus(commit, _)).head
+
+    assert(status.sha == sha, "someting wong")
+  }
+
+  @Test def canPostReview = {
+    val invalidUsers = "felixmulder" :: "smarter" :: Nil
+    val commit = Commit("", Author(Some("smarter")), Author(Some("smarter")), CommitInfo("Added stuff"))
+    val res = withClient(sendInitialComment(2281, invalidUsers, commit :: Nil, _))
+
+    assert(
+      res.body.contains("We want to keep history") &&
+      res.body.contains("Could you folks please sign the CLA?") &&
+      res.body.contains("Have an awesome day!"),
+      s"Body of review was not as expected:\n${res.body}"
+    )
+  }
+
+  @Test def canStartAndStopBuild = {
+    val build = withClient(implicit client => Drone.startBuild(1921, droneToken))
+    assert(build.status == "pending" || build.status == "building")
+    val killed = withClient(implicit client => Drone.stopBuild(1921, droneToken))
+    assert(killed, "Couldn't kill build")
+  }
+
+  @Test def canUnderstandWhenToRestartBuild = {
+    val json = getResource("/test-mention.json")
+    val issueComment: IssueComment = decode[IssueComment](json) match {
+      case Right(is: IssueComment) => is
+      case Left(ex) => throw ex
+    }
+
+    assert(respondToComment(issueComment).run.status.code == 200)
+  }
+
+  @Test def canTellUserWhenNotUnderstanding = {
+    val json = getResource("/test-mention-no-understandy.json")
+    val issueComment: IssueComment = decode[IssueComment](json) match {
+      case Right(is: IssueComment) => is
+      case Left(ex) => throw ex
+    }
+
+    assert(respondToComment(issueComment).run.status.code == 200)
   }
 }

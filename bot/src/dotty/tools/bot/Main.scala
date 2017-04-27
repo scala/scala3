@@ -7,9 +7,10 @@ import scalaz.concurrent.Task
 
 object Main extends ServerApp with PullRequestService {
 
-  val user = sys.env("USER")
-  val token = sys.env("TOKEN")
-  val port = sys.env("PORT").toInt
+  val githubUser  = sys.env("GITHUB_USER")
+  val githubToken = sys.env("GITHUB_TOKEN")
+  val droneToken  = sys.env("DRONE_TOKEN")
+  val port        = sys.env("PORT").toInt
 
   /** Services mounted to the server */
   final val services = prService
