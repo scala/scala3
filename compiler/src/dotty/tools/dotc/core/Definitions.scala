@@ -968,7 +968,7 @@ class Definitions {
   // ----- Phantoms ---------------------------------------------------------
 
   lazy val PhantomClass: ClassSymbol = {
-    val cls = completeClass(enterCompleteClassSymbol(ScalaPackageClass, tpnme.Phantom, Abstract, List(AnyType)))
+    val cls = completeClass(enterCompleteClassSymbol(ScalaPackageClass, tpnme.Phantom, NoInitsTrait, List(AnyType)))
 
     val any = enterCompleteClassSymbol(cls, tpnme.Any, Protected | Final | NoInitsTrait, Nil)
     val nothing = enterCompleteClassSymbol(cls, tpnme.Nothing, Protected | Final | NoInitsTrait, List(any.typeRef))

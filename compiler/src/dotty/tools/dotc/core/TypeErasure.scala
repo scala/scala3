@@ -403,7 +403,7 @@ class TypeErasure(isJava: Boolean, semiEraseVCs: Boolean, isConstructor: Boolean
           else classParents.mapConserve(eraseTypeRef) match {
             case tr :: trs1 =>
               assert(!tr.classSymbol.is(Trait), cls)
-              val tr1 = if (cls.is(Trait) || (tr.symbol eq defn.PhantomClass)) defn.ObjectType else tr
+              val tr1 = if (cls is Trait) defn.ObjectType else tr
               tr1 :: trs1.filterNot(x => x.isRef(defn.ObjectClass) || x.isRef(defn.PhantomClass))
             case nil => nil
           }
