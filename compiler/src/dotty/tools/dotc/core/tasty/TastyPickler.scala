@@ -6,7 +6,7 @@ package tasty
 import TastyFormat._
 import collection.mutable
 import TastyBuffer._
-import util.MurmurLongHash3
+import util.CityHash
 import core.Symbols.Symbol
 import ast.tpd
 import Decorators._
@@ -26,8 +26,8 @@ class TastyPickler {
       buf.length + natSize(buf.length)
     }
 
-    val uuidLow: Long = MurmurLongHash3.bytesHash(nameBuffer.bytes)
-    val uuidHi: Long = sections.iterator.map(x => MurmurLongHash3.bytesHash(x._2.bytes)).fold(0L)(_ ^ _)
+    val uuidLow: Long = CityHash.bytesHash(nameBuffer.bytes)
+    val uuidHi: Long = sections.iterator.map(x => CityHash.bytesHash(x._2.bytes)).fold(0L)(_ ^ _)
 
     val headerBuffer = {
       val buf = new TastyBuffer(header.length + 24)
