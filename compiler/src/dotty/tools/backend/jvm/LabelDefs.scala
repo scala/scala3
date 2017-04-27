@@ -75,8 +75,11 @@ import StdNames.nme
  * Unreachable jumps will be eliminated by local dead code analysis.
  * After JVM is smart enough to remove next-line jumps
  *
- * Note that Label DefDefs can be only nested in Block, otherwise no one would
- * be able to call them Other DefDefs are eliminated
+ * Note that his phase Ychecking this phase required softening scoping rules
+ * as it intentionally allowed to break scoping rules inside methods for labels.
+ * This is modified by setting `labelsReordered` flag in Phases.
+ *
+ * @author Dmitry Petrashko
  */
 class LabelDefs extends MiniPhaseTransform {
   def phaseName: String = "labelDef"
