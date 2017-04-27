@@ -231,7 +231,7 @@ object Build {
 
   // Same as `dotty` but using bootstrapped projects.
   lazy val `dotty-bootstrapped` = project.
-    aggregate(`dotty-library-bootstrapped`, `dotty-compiler-bootstrapped`, `dotty-doc-bootstrapped`,
+    aggregate(`dotty-interfaces`, `dotty-library-bootstrapped`, `dotty-compiler-bootstrapped`, `dotty-doc-bootstrapped`,
       dottySbtBridgeBootstrappedRef,
       `scala-library`, `scala-compiler`, `scala-reflect`, scalap).
     dependsOn(`dotty-compiler-bootstrapped`).
