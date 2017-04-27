@@ -409,11 +409,10 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
     def newSet[K](): mutable.Set[K] = new mutable.HashSet[K]
   }
 
-
-
   val MODULE_INSTANCE_FIELD: String = nme.MODULE_INSTANCE_FIELD.toString
 
-  def internalNameString(offset: Int, length: Int): String = new String(Names.chrs, offset, length)
+  def dropModule(str: String) =
+    if (!str.isEmpty && str.last == '$') str.take(str.length - 1) else str
 
   def newTermName(prefix: String): Name = prefix.toTermName
 
@@ -423,7 +422,6 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
       Flags.Specialized | Flags.Lifted | Flags.Protected | Flags.JavaStatic |
       Flags.Bridge | Flags.VBridge | Flags.Private | Flags.Macro
   }.bits
-
 
   def isQualifierSafeToElide(qual: Tree): Boolean = tpd.isIdempotentExpr(qual)
   def desugarIdent(i: Ident): Option[tpd.Select] = {
@@ -557,7 +555,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
     def fullName: String = sym.showFullName
     def simpleName: Name = sym.name
     def javaSimpleName: Name = toDenot(sym).name // addModuleSuffix(simpleName.dropLocal)
-    def javaBinaryName: Name = javaClassName.replace('.', '/').toTypeName // TODO: can we make this a string? addModuleSuffix(fullNameInternal('/'))
+    def javaBinaryName: String = javaClassName.replace('.', '/') // TODO: can we make this a string? addModuleSuffix(fullNameInternal('/'))
     def javaClassName: String = toDenot(sym).fullName.toString// addModuleSuffix(fullNameInternal('.')).toString
     def name: Name = sym.name
     def rawname: Name = {
