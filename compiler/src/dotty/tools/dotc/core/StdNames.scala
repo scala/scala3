@@ -34,7 +34,7 @@ object StdNames {
     final val INTERPRETER_LINE_PREFIX    = "line"
     final val INTERPRETER_VAR_PREFIX     = "res"
     final val INTERPRETER_WRAPPER_SUFFIX = "$object"
-    final val MODULE_INSTANCE_FIELD      = NameTransformer.MODULE_INSTANCE_NAME  // "MODULE$"
+    final val MODULE_INSTANCE_FIELD      = "MODULE$"
 
     final val Function                   = "Function"
     final val ImplicitFunction           = "ImplicitFunction"
@@ -260,7 +260,6 @@ object StdNames {
     val REIFY_FREE_THIS_SUFFIX: N   = "$this"
     val REIFY_FREE_VALUE_SUFFIX: N  = "$value"
     val REIFY_SYMDEF_PREFIX: N      = "symdef$"
-    val MODULE_INSTANCE_FIELD: N    = "MODULE$"
     val OUTER: N                    = "$outer"
     val REFINE_CLASS: N             = "<refinement>"
     val ROOTPKG: N                  = "_root_"

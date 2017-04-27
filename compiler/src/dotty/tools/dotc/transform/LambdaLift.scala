@@ -334,7 +334,7 @@ class LambdaLift extends MiniPhase with IdentityDenotTransformer { thisTransform
     private def newName(sym: Symbol)(implicit ctx: Context): Name =
       if (sym.isAnonymousFunction && sym.owner.is(Method, butNot = Label))
         sym.name.rewrite {
-          case name: SimpleTermName => ExpandPrefixName(sym.owner.name.asTermName, name)
+          case name: SimpleName => ExpandPrefixName(sym.owner.name.asTermName, name)
         }.freshened
       else sym.name.freshened
 
