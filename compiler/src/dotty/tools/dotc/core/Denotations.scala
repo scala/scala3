@@ -582,7 +582,7 @@ object Denotations {
     def hasUniqueSym: Boolean
     protected def newLikeThis(symbol: Symbol, info: Type): SingleDenotation
 
-    final def signature(implicit ctx: Context): Signature = {
+    final def signature(implicit ctx: Context): Signature =
       if (isType) Signature.NotAMethod // don't force info if this is a type SymDenotation
       else info match {
         case info: MethodicType =>
@@ -594,7 +594,6 @@ object Denotations {
           }
         case _ => Signature.NotAMethod
       }
-    }
 
     def derivedSingleDenotation(symbol: Symbol, info: Type)(implicit ctx: Context): SingleDenotation =
       if ((symbol eq this.symbol) && (info eq this.info)) this

@@ -33,6 +33,7 @@ object StdNames {
     final val INTERPRETER_LINE_PREFIX    = "line"
     final val INTERPRETER_VAR_PREFIX     = "res"
     final val INTERPRETER_WRAPPER_SUFFIX = "$object"
+    final val MODULE_INSTANCE_FIELD      = NameTransformer.MODULE_INSTANCE_NAME  // "MODULE$"
 
     final val Function                   = "Function"
     final val ImplicitFunction           = "ImplicitFunction"
