@@ -3,6 +3,7 @@ import sbt._
 import complete.DefaultParsers._
 import java.io.{ RandomAccessFile, File }
 import java.nio.channels.FileLock
+import java.nio.file.Files
 import scala.reflect.io.Path
 import sbtassembly.AssemblyKeys.assembly
 
@@ -257,17 +258,41 @@ object Build {
       // We do not compile the whole submodule, only the part of the Scala 2.11 GenBCode backend
       // that we reuse for dotty.
       // See http://dotty.epfl.ch/docs/contributing/backend.html for more information.
-      unmanagedSourceDirectories in Compile ++= {
-        val backendDir = baseDirectory.value / ".." / "scala-backend" / "src" / "compiler" / "scala" / "tools" / "nsc" / "backend"
+      //
+      // NOTE: We link (or copy if symbolic links are not supported) these sources in
+      // the current project using `sourceGenerators` instead of simply
+      // referencing them using `unmanagedSourceDirectories` because the latter
+      // breaks some IDEs.
+      sourceGenerators in Compile += Def.task {
+        val outputDir = (sourceManaged in Compile).value
+
+        val submoduleCompilerDir = baseDirectory.value / ".." / "scala-backend" / "src" / "compiler"
+        val backendDir = submoduleCompilerDir / "scala" / "tools" / "nsc" / "backend"
         val allScalaFiles = GlobFilter("*.scala")
 
         // NOTE: Keep these exclusions synchronized with the ones in the tests (CompilationTests.scala)
-        ((backendDir *
+        val files = ((backendDir *
           (allScalaFiles - "JavaPlatform.scala" - "Platform.scala" - "ScalaPrimitives.scala")) +++
          (backendDir / "jvm") *
           (allScalaFiles - "BCodeICodeCommon.scala" - "GenASM.scala" - "GenBCode.scala" - "ScalacBackendInterface.scala")
         ).get
-      },
+
+        val pairs = files.pair(sbt.Path.rebase(submoduleCompilerDir, outputDir))
+
+        try {
+          pairs.foreach { case (src, dst) =>
+            sbt.IO.createDirectory(dst.getParentFile)
+            if (!dst.exists)
+              Files.createSymbolicLink(/*link = */ dst.toPath, /*existing = */src.toPath)
+          }
+        } catch {
+          case e: UnsupportedOperationException =>
+            // If the OS doesn't support symbolic links, copy the directory instead.
+            sbt.IO.copy(pairs, overwrite = true, preserveLastModified = true)
+        }
+
+        pairs.map(_._2)
+      }.taskValue,
 
       // Used by the backend
       libraryDependencies += "org.scala-lang.modules" % "scala-asm" % "5.1.0-scala-2",
