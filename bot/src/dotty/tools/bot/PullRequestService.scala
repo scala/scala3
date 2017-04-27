@@ -84,9 +84,6 @@ trait PullRequestService {
   def reviewUrl(issueNbr: Int): String =
     s"$githubUrl/repos/lampepfl/dotty/pulls/$issueNbr/reviews"
 
-  def shutdownClient(client: Client): Task[Unit] =
-    client.shutdownNow().pure[Task]
-
   sealed trait CommitStatus {
     def commit: Commit
     def isValid: Boolean
@@ -207,7 +204,7 @@ trait PullRequestService {
         => false
       }
 
-      wrongTense || firstLine.last == '.' || firstLine.length > 100
+      wrongTense || firstLine.last == '.' || firstLine.length > 80
     }
 
   def sendInitialComment(issueNbr: Int, invalidUsers: List[String], commits: List[Commit], client: Client): Task[ReviewResponse] = {
@@ -235,7 +232,7 @@ trait PullRequestService {
          |
          |> 1. Separate subject from body with a blank line
          |> 1. When fixing an issue, start your commit message with `Fix #<ISSUE-NBR>: `
-         |> 1. Limit the subject line to 80 characters
+         |> 1. Limit the subject line to 72 characters
          |> 1. Capitalize the subject line
          |> 1. Do not end the subject line with a period
          |> 1. Use the imperative mood in the subject line ("Added" instead of "Add")
@@ -288,7 +285,7 @@ trait PullRequestService {
 
       // Send positive comment:
       _    <- sendInitialComment(issue.number, invalidUsers, commits, httpClient)
-      _    <- shutdownClient(httpClient)
+      _    <- httpClient.shutdown
       resp <- Ok("Fresh PR checked")
     } yield resp
 
@@ -331,10 +328,10 @@ trait PullRequestService {
           cancellable =  statuses.filter(status => status.state == "pending" && status.context == droneContext)
           runningJobs =  cancellable.map(_.target_url.split('/').last.toInt)
           cancelled   <- Task.gatherUnordered(runningJobs.map(Drone.stopBuild(_, droneToken)))
-        } yield cancelled.foldLeft(true)(_ == _)
+        } yield cancelled.forall(identity)
       }
     }
-    .map(xs => xs.foldLeft(true)(_ == _))
+    .map(_.forall(identity))
 
   def checkSynchronize(issue: Issue): Task[Response] = {
     implicit val httpClient = PooledHttp1Client()
@@ -353,7 +350,7 @@ trait PullRequestService {
         else
           setStatus(statuses.last, httpClient)
       }
-      _    <- shutdownClient(httpClient)
+      _    <- httpClient.shutdown
       resp <- Ok("Updated PR checked")
     } yield resp
   }
@@ -421,7 +418,16 @@ trait PullRequestService {
   def extractMention(body: String): Option[String] =
     body.lines.find(_.startsWith("@dotty-bot:"))
 
-  /** TODO: The implementation here could be quite elegant if we used a trie instead */
+  /** Try to make sense of what the user is requesting from the bot
+   *
+   *  The bot's abilities currently only include:
+   *
+   *  - Checking or re-checking the CLA
+   *  - Restarting the CI tests
+   *
+   *  @note The implementation here could be quite elegant if we used a trie
+   *        instead
+   */
   def interpretMention(line: String, issueComment: IssueComment): Task[Response] = {
     val loweredLine = line.toLowerCase
     if (loweredLine.contains("check cla") || loweredLine.contains("check the cla"))
