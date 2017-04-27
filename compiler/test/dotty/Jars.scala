@@ -25,13 +25,14 @@ object Jars {
   val dottyTestDeps: List[String] =
     dottyLib :: dottyCompiler :: dottyInterfaces :: dottyExtras
 
+  def scalaLibrary: String = sys.env.get("DOTTY_SCALA_LIBRARY")
+    .getOrElse(findJarFromRuntime("scala-library-2."))
+
   /** Gets the scala 2.* library at runtime, note that doing this is unsafe
    *  unless you know that the library will be on the classpath of the running
    *  application. It is currently safe to call this function if the tests are
    *  run by sbt.
    */
-  def scalaLibraryFromRuntime: String = findJarFromRuntime("scala-library-2.")
-
   private def findJarFromRuntime(partialName: String) = {
     val urls = ClassLoader.getSystemClassLoader.asInstanceOf[java.net.URLClassLoader].getURLs.map(_.getFile.toString)
     urls.find(_.contains(partialName)).getOrElse {
