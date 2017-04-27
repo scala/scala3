@@ -10,6 +10,8 @@ import org.scalajs.sbtplugin.ScalaJSPlugin
 import org.scalajs.sbtplugin.ScalaJSPlugin.autoImport._
 import sbt.Package.ManifestAttributes
 
+import com.typesafe.sbteclipse.plugin.EclipsePlugin._
+
 object Build {
 
   projectChecks()
@@ -93,6 +95,7 @@ object Build {
 
   // Settings used by all dotty-compiled projects
   lazy val commonBootstrappedSettings = Seq(
+    EclipseKeys.skipProject := true,
     scalaOrganization := dottyOrganization,
     scalaVersion := dottyVersion,
     scalaBinaryVersion := "2.11",
