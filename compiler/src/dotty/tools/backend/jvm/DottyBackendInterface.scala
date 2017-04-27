@@ -404,7 +404,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
     def newAnyRefMap[K <: AnyRef, V](): mutable.AnyRefMap[K, V] = new mutable.AnyRefMap[K, V]()
     def newWeakMap[K, V](): mutable.WeakHashMap[K, V] = new mutable.WeakHashMap[K, V]()
     def recordCache[T <: Clearable](cache: T): T = cache
-    def newWeakSet[K <: AnyRef](): WeakHashSet[K] = new WeakHashSet[K]()
+    def newWeakSet[K >: Null <: AnyRef](): WeakHashSet[K] = new WeakHashSet[K]()
     def newMap[K, V](): mutable.HashMap[K, V] = new mutable.HashMap[K, V]()
     def newSet[K](): mutable.Set[K] = new mutable.HashSet[K]
   }
@@ -540,14 +540,9 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
     def toTypeName: Name = n.toTypeName
     def isTypeName: Boolean = n.isTypeName
     def toTermName: Name = n.toTermName
-    def dropModule: Name = n.stripModuleClassSuffix
-
-    def len: Int = n.toSimpleName.length
-    def offset: Int = n.toSimpleName.start
     def isTermName: Boolean = n.isTermName
     def startsWith(s: String): Boolean = n.startsWith(s)
   }
-
 
   implicit def symHelper(sym: Symbol): SymbolHelper = new SymbolHelper {
     // names
