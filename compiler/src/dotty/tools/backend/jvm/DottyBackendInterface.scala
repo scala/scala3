@@ -535,11 +535,8 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
     }
   }
 
-
   implicit def nameHelper(n: Name): NameHelper = new NameHelper {
-    def toTypeName: Name = n.toTypeName
     def isTypeName: Boolean = n.isTypeName
-    def toTermName: Name = n.toTermName
     def isTermName: Boolean = n.isTermName
     def startsWith(s: String): Boolean = n.startsWith(s)
   }
