@@ -150,6 +150,8 @@ object Build {
       crossPaths := false,
       // Do not depend on the Scala library
       autoScalaLibrary := false,
+      // Let the sbt eclipse plugin now that this is a Java-only project
+      EclipseKeys.projectFlavor := EclipseProjectFlavor.Java,
       //Remove javac invalid options in Compile doc
       javacOptions in (Compile, doc) --= Seq("-Xlint:unchecked", "-Xlint:deprecation")
     ).
