@@ -420,7 +420,6 @@ object Build {
       libraryDependencies ++= Seq("com.typesafe.sbt" % "sbt-interface" % sbtVersion.value,
                                   "org.scala-lang.modules" % "scala-xml_2.11" % "1.0.1",
                                   "com.novocode" % "junit-interface" % "0.11" % "test",
-                                  "org.scala-lang" % "scala-reflect" % scalacVersion,
                                   "org.scala-lang" % "scala-library" % scalacVersion % "test"),
 
       // enable improved incremental compilation algorithm
@@ -629,7 +628,6 @@ object Build {
   // Settings shared between dotty-library and dotty-library-bootstrapped
   lazy val dottyLibrarySettings = Seq(
       libraryDependencies ++= Seq(
-        "org.scala-lang" % "scala-reflect" % scalacVersion,
         "org.scala-lang" % "scala-library" % scalacVersion,
         "com.novocode" % "junit-interface" % "0.11" % "test"
       )

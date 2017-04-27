@@ -101,7 +101,7 @@ class ExtractDependencies extends Phase {
               val classSegments = Path(ze.path).segments
               binaryDependency(zipFile, className(classSegments))
             }
-          case pf: scala.reflect.io.PlainFile =>
+          case pf: dotty.tools.io.PlainFile =>
             val packages = dep.ownersIterator
               .filter(x => x.is(PackageClass) && !x.isEffectiveRoot).length
             // We can recover the fully qualified name of a classfile from
