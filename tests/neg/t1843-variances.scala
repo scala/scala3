@@ -6,7 +6,7 @@
 
 object Crash {
   trait UpdateType[A]
-  case class StateUpdate[+A](updateType : UpdateType[A], value : A) // error
+  case class StateUpdate[+A](updateType : UpdateType[A], value : A) // error // error
   case object IntegerUpdateType extends UpdateType[Integer]
 
   //However this method will cause a crash
