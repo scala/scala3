@@ -123,11 +123,12 @@ class HoistSuperArgs extends MiniPhaseTransform with IdentityDenotTransformer { 
             val paramSyms = trefs.map(_.typeSymbol) ::: vrefss.flatten.map(_.symbol)
             val tmap = new TreeTypeMap(
               typeMap = new TypeMap {
+                lazy val origToParam = origParams.zip(paramSyms).toMap
                 def apply(tp: Type) = tp match {
                   case tp: NamedType
                   if (tp.symbol.owner == cls || tp.symbol.owner == constr) &&
                      tp.symbol.is(ParamOrAccessor) =>
-                    val mappedSym = origParams.zip(paramSyms).toMap.apply(tp.symbol)
+                    val mappedSym = origToParam(tp.symbol)
                     if (tp.symbol.isType) mappedSym.typeRef else mappedSym.termRef
                   case _ =>
                     mapOver(tp)

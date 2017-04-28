@@ -19,7 +19,7 @@ import ast.Trees._
 abstract class TransformByNameApply extends MiniPhaseTransform { thisTransformer: DenotTransformer =>
   import ast.tpd._
 
-  /** The info of the tree's symbol at phase Nullarify (i.e. before transformation) */
+  /** The info of the tree's symbol before it is potentially transformed in this phase */
   private def originalDenotation(tree: Tree)(implicit ctx: Context) =
     tree.symbol.denot(ctx.withPhase(thisTransformer))
 
@@ -32,7 +32,7 @@ abstract class TransformByNameApply extends MiniPhaseTransform { thisTransformer
     origDenot.info.isInstanceOf[ExprType] && exprBecomesFunction(origDenot)
   }
 
-  def mkClosure(arg: Tree, argType: Type)(implicit ctx: Context): Tree = unsupported(i"mkClosure($arg)")
+  def mkByNameClosure(arg: Tree, argType: Type)(implicit ctx: Context): Tree = unsupported(i"mkClosure($arg)")
 
   override def transformApply(tree: Apply)(implicit ctx: Context, info: TransformerInfo): Tree =
     ctx.traceIndented(s"transforming ${tree.show} at phase ${ctx.phase}", show = true) {
@@ -48,7 +48,7 @@ abstract class TransformByNameApply extends MiniPhaseTransform { thisTransformer
             wrap(qual)
           case _ =>
             if (isByNameRef(arg) || arg.symbol == defn.cbnArg) arg
-            else wrap(mkClosure(arg, argType))
+            else wrap(mkByNameClosure(arg, argType))
         }
       case _ =>
         arg
