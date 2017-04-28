@@ -1,5 +1,4 @@
 object Test {
-
   // Devalify shouldn't optimize this
   def theTrap(cond: Boolean, t: => Unit) = {
     val a,b = t
