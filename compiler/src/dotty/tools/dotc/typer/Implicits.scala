@@ -374,18 +374,18 @@ trait ImplicitRunInfo { self: RunInfo =>
         case tp: TypeRef if tp.symbol.isAbstractOrAliasType =>
           val pre = tp.prefix
           def joinClass(tp: Type, cls: ClassSymbol) =
-            AndType.make(tp, cls.typeRef.asSeenFrom(pre, cls.owner))
+            AndType.make(tp, cls.typeRef.asSeenFrom(pre, cls.owner), AndType.unchecked)
           val lead = if (tp.prefix eq NoPrefix) defn.AnyType else apply(tp.prefix)
           (lead /: tp.classSymbols)(joinClass)
         case tp: TypeVar =>
           apply(tp.underlying)
         case tp: HKApply =>
           def applyArg(arg: Type) = arg match {
-            case TypeBounds(lo, hi) => AndType.make(lo, hi)
+            case TypeBounds(lo, hi) => AndType.make(lo, hi, AndType.unchecked)
             case _: WildcardType => defn.AnyType
             case _ => arg
           }
-          (apply(tp.tycon) /: tp.args)((tc, arg) => AndType.make(tc, applyArg(arg)))
+          (apply(tp.tycon) /: tp.args)((tc, arg) => AndType.make(tc, applyArg(arg), AndType.unchecked))
         case tp: TypeLambda =>
           apply(tp.resType)
         case _ =>

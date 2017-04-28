@@ -2219,7 +2219,7 @@ object Types {
 
     def derivedAndType(tp1: Type, tp2: Type)(implicit ctx: Context): Type =
       if ((tp1 eq this.tp1) && (tp2 eq this.tp2)) this
-      else AndType.make(tp1, tp2)
+      else AndType.make(tp1, tp2, AndType.apply)
 
     def derived_& (tp1: Type, tp2: Type)(implicit ctx: Context): Type =
       if ((tp1 eq this.tp1) && (tp2 eq this.tp2)) this
@@ -2234,21 +2234,26 @@ object Types {
   final class CachedAndType(tp1: Type, tp2: Type) extends AndType(tp1, tp2)
 
   object AndType {
-    def apply(tp1: Type, tp2: Type)(implicit ctx: Context) = {
+    def apply(tp1: Type, tp2: Type)(implicit ctx: Context): AndType = {
       assert(tp1.isValueType && tp2.isValueType, i"$tp1 & $tp2 / " + s"$tp1 & $tp2")
       unchecked(tp1, tp2)
     }
-    def unchecked(tp1: Type, tp2: Type)(implicit ctx: Context) = {
+
+    def unchecked(tp1: Type, tp2: Type)(implicit ctx: Context): AndType = {
       assertUnerased()
       unique(new CachedAndType(tp1, tp2))
     }
-    def make(tp1: Type, tp2: Type)(implicit ctx: Context): Type =
+
+    /** Make an AndType using `op` unless clearly unnecessary (i.e. without
+     *  going through `&`).
+     */
+    def make(tp1: Type, tp2: Type, op: (Type, Type) => AndType)(implicit ctx: Context): Type =
       if ((tp1 eq tp2) || (tp2 eq defn.AnyType))
         tp1
       else if (tp1 eq defn.AnyType)
         tp2
       else
-        apply(tp1, tp2)
+        op(tp1, tp2)
   }
 
   abstract case class OrType(tp1: Type, tp2: Type) extends CachedGroundType with AndOrType {
