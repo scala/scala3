@@ -202,7 +202,7 @@ class GenBCodePipeline(val entryPoints: List[Symbol], val int: DottyBackendInter
 
         if (claszSymbol.isClass) // @DarkDimius is this test needed here?
           for (binary <- ctx.compilationUnit.pickled.get(claszSymbol.asClass)) {
-            val dataAttr = new CustomAttr(nme.TASTYATTR.toString, binary)
+            val dataAttr = new CustomAttr(nme.TASTYATTR.mangledString, binary)
             val store = if (mirrorC ne null) mirrorC else plainC
             store.visitAttribute(dataAttr)
             if (ctx.settings.emitTasty.value) {

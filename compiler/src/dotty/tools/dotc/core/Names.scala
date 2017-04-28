@@ -14,6 +14,7 @@ import collection.mutable.{ Builder, StringBuilder, AnyRefMap }
 import collection.immutable.WrappedString
 import collection.generic.CanBuildFrom
 import util.{DotClass, SimpleMap}
+import config.Config
 import java.util.HashMap
 
 //import annotation.volatile
@@ -67,6 +68,7 @@ object Names {
     def asSimpleName: SimpleTermName
     def toSimpleName: SimpleTermName
     def mangled: Name
+    def mangledString: String = mangled.toString
 
     def rewrite(f: PartialFunction[Name, Name]): ThisName
     def collect[T](f: PartialFunction[Name, T]): Option[T]
@@ -287,7 +289,40 @@ object Names {
     override def hashCode: Int = start
 
     override def toString =
-      if (length == 0) "" else new String(chrs, start, length)
+      if (length == 0) ""
+      else {
+        if (Config.checkBackendNames) {
+          if (!toStringOK) {
+            // We print the stacktrace instead of doing an assert directly,
+            // because asserts are caught in exception handlers which might
+            // cause other failures. In that case the first, important failure
+            // is lost.
+            println("Backend should not call Name#toString, Name#mangledString should be used instead.")
+            new Error().printStackTrace()
+            assert(false)
+          }
+        }
+        new String(chrs, start, length)
+      }
+
+    /** It's OK to take a toString if the stacktrace does not occur a method
+     *  in GenBCode or it also contains one of the whitelisted methods below.
+     */
+    private def toStringOK = {
+      val trace = Thread.currentThread.getStackTrace
+      !trace.exists(_.getClassName.endsWith("GenBCode")) ||
+      trace.exists(elem =>
+          List(
+              "mangledString",
+              "toSimpleName",
+              "decode",
+              "unmangle",
+              "dotty$tools$dotc$core$NameOps$NameDecorator$$functionArityFor$extension",
+              "dotty$tools$dotc$typer$Checking$CheckNonCyclicMap$$apply",
+              "$plus$plus",
+              "readConstant")
+            .contains(elem.getMethodName))
+    }
 
     def debugString: String = toString
   }

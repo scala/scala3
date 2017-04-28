@@ -49,6 +49,13 @@ object Config {
    */
   final val checkNoSkolemsInInfo = false
 
+  /** Check that Name#toString is not called directly from backend by analyzing
+   *  the stack trace of each toString call on names. This is very expensive,
+   *  so not suitable for continuous testing. But it can be used to find a problem
+   *  when running a specific test.
+   */
+  final val checkBackendNames = false
+
   /** Type comparer will fail with an assert if the upper bound
    *  of a constrained parameter becomes Nothing. This should be turned
    *  on only for specific debugging as normally instantiation to Nothing
