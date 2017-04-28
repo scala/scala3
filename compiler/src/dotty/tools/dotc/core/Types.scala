@@ -3080,7 +3080,7 @@ object Types {
       myRepr
     }
 
-    override def toString = s"Skolem($hashCode)"
+    override def toString = s"Skolem()"
   }
 
   // ------------ Type variables ----------------------------------------
