@@ -7,15 +7,16 @@ import Periods._
 import Symbols._
 import Types._
 import Scopes._
-import typer.{FrontEnd, ImportInfo, RefChecks, Typer}
-import reporting.{ConsoleReporter, Reporter}
+import typer.{FrontEnd, Typer, ImportInfo, RefChecks}
+import reporting.{Reporter, ConsoleReporter}
 import Phases.Phase
 import transform._
 import util.FreshNameCreator
 import transform.TreeTransforms.{TreeTransform, TreeTransformer}
 import core.DenotTransformers.DenotTransformer
 import core.Denotations.SingleDenotation
-import dotty.tools.backend.jvm.{CollectSuperCalls, GenBCode, LabelDefs}
+
+import dotty.tools.backend.jvm.{LabelDefs, GenBCode, CollectSuperCalls}
 import dotty.tools.dotc.transform.linker.Simplify
 
 /** The central class of the dotc compiler. The job of a compiler is to create
@@ -60,9 +61,6 @@ class Compiler {
            new HoistSuperArgs,      // Hoist complex arguments of supercalls to enclosing scope
            new ClassOf),            // Expand `Predef.classOf` calls.
       List(new TryCatchPatterns,    // Compile cases in try/catch
-           new PatternConstantsFactorization, // extract common constant matches from patterns
-           new PatternTypeFactorization,      // extract common type matches from patterns
-
            new PatternMatcher,      // Compile pattern matches
            new ExplicitOuter,       // Add accessors to outer classes from nested ones.
            new ExplicitSelf,        // Make references to non-trivial self types explicit as casts
