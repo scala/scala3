@@ -293,6 +293,10 @@ object Names {
       else {
         if (Config.checkBackendNames) {
           if (!toStringOK) {
+            // We print the stacktrace instead of doing an assert directly,
+            // because asserts are caught in exception handlers which might
+            // cause other failures. In that case the first, important failure
+            // is lost.
             println("Backend should not call Name#toString, Name#mangledString should be used instead.")
             new Error().printStackTrace()
             assert(false)
@@ -301,6 +305,9 @@ object Names {
         new String(chrs, start, length)
       }
 
+    /** It's OK to take a toString if the stacktrace does not occur a method
+     *  in GenBCode or it also contains one of the whitelisted methods below.
+     */
     private def toStringOK = {
       val trace = Thread.currentThread.getStackTrace
       !trace.exists(_.getClassName.endsWith("GenBCode")) ||
