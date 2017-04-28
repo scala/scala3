@@ -81,7 +81,7 @@ class ExtractUsedNamesSpecification extends Specification {
     // We could avoid this by checking if the untyped tree has a return type
     // but is it worth it? Revisit this after https://github.com/sbt/sbt/issues/1104
     // has landed.
-    val expectedNames = standardNames ++ Set("A", "a", "$eq", "Int")
+    val expectedNames = standardNames ++ Set("A", "a", "=", "Int")
     usedNames === expectedNames
   }
 
@@ -114,7 +114,7 @@ class ExtractUsedNamesSpecification extends Specification {
     val compilerForTesting = new ScalaCompilerForUnitTesting(nameHashing = true)
     val usedNames = compilerForTesting.extractUsedNamesFromSrc(src1, src2)
     val expectedNames = standardNames ++ Set("Test", "Test$", "B", "B$",
-      "Predef", "Predef$", "$qmark$qmark$qmark", "Nothing",
+      "Predef", "Predef$", "???", "Nothing",
       "lista", "List", "A",
       "at", "T", "X1", "X0",
       "as", "S", "Y",
