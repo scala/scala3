@@ -2994,7 +2994,7 @@ object Types {
   // ----- Skolem types -----------------------------------------------
 
   /** A skolem type reference with underlying type `binder`. */
-  abstract case class SkolemType(info: Type) extends UncachedProxyType with ValueType with SingletonType {
+  case class SkolemType(info: Type) extends UncachedProxyType with ValueType with SingletonType {
     override def underlying(implicit ctx: Context) = info
     def derivedSkolemType(info: Type)(implicit ctx: Context) =
       if (info eq this.info) this else SkolemType(info)
@@ -3008,13 +3008,6 @@ object Types {
     }
 
     override def toString = s"Skolem($hashCode)"
-  }
-
-  final class CachedSkolemType(info: Type) extends SkolemType(info)
-
-  object SkolemType {
-    def apply(info: Type)(implicit ctx: Context) =
-      unique(new CachedSkolemType(info))
   }
 
   // ------------ Type variables ----------------------------------------
