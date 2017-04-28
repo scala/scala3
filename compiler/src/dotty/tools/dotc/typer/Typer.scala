@@ -253,14 +253,13 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
         !noImports &&
         (prevPrec < prec || prevPrec == prec && (prevCtx.scope eq ctx.scope))
 
-      @tailrec def loop(implicit ctx: Context): Type = {
+      @tailrec def loop(lastCtx: Context)(implicit ctx: Context): Type = {
         if (ctx.scope == null) previous
         else {
-          val outer = ctx.outer
           var result: Type = NoType
 
           // find definition
-          if ((ctx.scope ne outer.scope) || (ctx.owner ne outer.owner)) {
+          if ((lastCtx eq ctx) || (ctx.scope ne lastCtx.scope) || (ctx.owner ne lastCtx.owner)) {
             val defDenot = ctx.denotNamed(name)
             if (qualifies(defDenot)) {
               val curOwner = ctx.owner
@@ -275,13 +274,14 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
                 if (defDenot.symbol is Package)
                   result = checkNewOrShadowed(previous orElse found, packageClause)
                 else if (prevPrec < packageClause)
-                  result = findRef(found, packageClause, ctx)(outer)
+                  result = findRef(found, packageClause, ctx)(ctx.outer)
               }
             }
           }
 
           if (result.exists) result
           else {  // find import
+            val outer = ctx.outer
             val curImport = ctx.importInfo
             def updateUnimported() =
               if (curImport.unimported.exists) unimported += curImport.unimported
@@ -297,20 +297,21 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
                   findRef(checkNewOrShadowed(wildImp, wildImport), wildImport, ctx)(outer)
                 else {
                   updateUnimported()
-                  loop(outer)
+                  loop(ctx)(outer)
                 }
               }
               else {
                 updateUnimported()
-                loop(outer)
+                loop(ctx)(outer)
               }
             }
-            else loop(outer)
+            else loop(ctx)(outer)
           }
         }
       }
 
-      loop
+      // begin findRef
+      loop(ctx)(ctx)
     }
 
     // begin typedIdent
