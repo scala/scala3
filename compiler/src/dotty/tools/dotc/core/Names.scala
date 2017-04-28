@@ -14,6 +14,7 @@ import collection.mutable.{ Builder, StringBuilder, AnyRefMap }
 import collection.immutable.WrappedString
 import collection.generic.CanBuildFrom
 import util.{DotClass, SimpleMap}
+import config.Config
 import java.util.HashMap
 
 //import annotation.volatile
@@ -289,7 +290,32 @@ object Names {
 
     override def toString =
       if (length == 0) ""
-      else new String(chrs, start, length)
+      else {
+        if (Config.checkBackendNames) {
+          if (!toStringOK) {
+            println("Backend should not call Name#toString, Name#mangledString should be used instead.")
+            new Error().printStackTrace()
+            assert(false)
+          }
+        }
+        new String(chrs, start, length)
+      }
+
+    private def toStringOK = {
+      val trace = Thread.currentThread.getStackTrace
+      !trace.exists(_.getClassName.endsWith("GenBCode")) ||
+      trace.exists(elem =>
+          List(
+              "mangledString",
+              "toSimpleName",
+              "decode",
+              "unmangle",
+              "dotty$tools$dotc$core$NameOps$NameDecorator$$functionArityFor$extension",
+              "dotty$tools$dotc$typer$Checking$CheckNonCyclicMap$$apply",
+              "$plus$plus",
+              "readConstant")
+            .contains(elem.getMethodName))
+    }
 
     def debugString: String = toString
   }
