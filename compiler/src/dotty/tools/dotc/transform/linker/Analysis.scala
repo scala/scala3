@@ -1,19 +1,12 @@
-package dotty.tools.dotc.transform.linker
+package dotty.tools.dotc
+package transform.linker
 
-import dotty.tools.dotc.{ast, core}
-import core._
-import Contexts._
-import dotty.tools.dotc.ast.Trees._
-import StdNames._
-import NameOps._
-import dotty.tools.dotc.ast.tpd
-import Symbols._
-import dotty.tools.dotc.core.Phases.Phase
-import dotty.tools.dotc.core.Types.{NoPrefix, TermRef, ThisType}
-import dotty.tools.dotc.transform.{Erasure, TreeTransforms}
-import dotty.tools.dotc.transform.TreeTransforms.{MiniPhaseTransform, TransformerInfo}
-import dotty.tools.dotc.transform.SymUtils._
-import Decorators._
+import ast.Trees._
+import ast.tpd
+import core.Contexts._
+import core.NameOps._
+import core.StdNames._
+import core.Symbols._
 
 object Analysis {
   import tpd._
@@ -56,7 +49,7 @@ object Analysis {
     "scala.runtime.BoxesRunTime.unboxToChar",
     "scala.runtime.BoxesRunTime.unboxToFloat"
   )
-  
+
   def effectsDontEscape(t: Tree)(implicit ctx: Context) = {
     t match {
       case Apply(fun, args) if fun.symbol.isConstructor && constructorWhiteList.contains(fun.symbol.owner.fullName.toString) =>
