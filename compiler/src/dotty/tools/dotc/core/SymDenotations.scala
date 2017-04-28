@@ -399,7 +399,7 @@ object SymDenotations {
           kind(prefix.toTermName, if (filler.isEmpty) n else termName(filler + n))
         val fn = name rewrite {
           case name: SimpleName => qualify(name)
-          case name @ AnyQualifiedName(_, _) => qualify(name.toSimpleName)
+          case name @ AnyQualifiedName(_, _) => qualify(name.mangled.toSimpleName)
         }
         if (isType) fn.toTypeName else fn.toTermName
       }

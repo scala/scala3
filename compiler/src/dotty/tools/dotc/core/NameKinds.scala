@@ -91,7 +91,7 @@ object NameKinds {
   class PrefixNameKind(tag: Int, prefix: String, optInfoString: String = "")
   extends ClassifiedNameKind(tag, if (optInfoString.isEmpty) s"Prefix $prefix" else optInfoString) {
     def mkString(underlying: TermName, info: ThisInfo) =
-      underlying.mapLast(n => termName(prefix + n.toString)).toString
+      underlying.mapLast(n => termName(prefix + str.sanitize(n.toString))).toString
     override def unmangle(name: SimpleName): TermName =
       if (name.startsWith(prefix)) apply(name.drop(prefix.length).asSimpleName)
       else name
@@ -100,7 +100,8 @@ object NameKinds {
   /** The kind of names that get formed by appending a suffix to an underlying name */
   class SuffixNameKind(tag: Int, suffix: String, optInfoString: String = "")
   extends ClassifiedNameKind(tag, if (optInfoString.isEmpty) s"Suffix $suffix" else optInfoString) {
-    def mkString(underlying: TermName, info: ThisInfo) = underlying.toString ++ suffix
+    def mkString(underlying: TermName, info: ThisInfo) =
+      underlying.mapLast(n => termName(str.sanitize(n.toString) + suffix)).toString
     override def unmangle(name: SimpleName): TermName =
       if (name.endsWith(suffix)) apply(name.take(name.length - suffix.length).asSimpleName)
       else name

@@ -66,20 +66,13 @@ object Names {
     /** This name converted to a simple term name */
     def toSimpleName: SimpleName
 
-    @sharable // because it's just a cache for performance
-    private[this] var myMangled: Name = null
-
-    protected[Names] def mangle: ThisName
-
     /** This name converted to a simple term name and in addition
      *  with all symbolic operator characters expanded.
      */
-    final def mangled: ThisName = {
-      if (myMangled == null) myMangled = mangle
-      myMangled.asInstanceOf[ThisName]
-    }
+    def mangled: ThisName
 
-    def mangledString: String = mangled.toString
+    /** Convert to string after mangling */
+    def mangledString: String
 
     /** Apply rewrite rule given by `f` to some part of this name, skipping and rewrapping
      *  other decorators.
@@ -99,6 +92,11 @@ object Names {
 
     /** Apply `f` to all simple term names making up this name */
     def mapParts(f: SimpleName => SimpleName): ThisName
+
+    /** If this a qualified name, split it into underlyng, last part, and separator
+     *  Otherwise return an empty name, the name itself, and "")
+     */
+    def split: (TermName, TermName, String)
 
     /** A name in the same (term or type) namespace as this name and
      *  with same characters as given `name`.
@@ -252,6 +250,31 @@ object Names {
       thisKind == kind ||
       !thisKind.definesNewName && thisKind.tag > kind.tag && underlying.is(kind)
     }
+
+    @sharable // because it's just a cache for performance
+    private[Names] var myMangledString: String = null
+
+    @sharable // because it's just a cache for performance
+    private[this] var myMangled: Name = null
+
+    protected[Names] def mangle: ThisName
+
+    final def mangled: ThisName = {
+      if (myMangled == null) myMangled = mangle
+      myMangled.asInstanceOf[ThisName]
+    }
+
+    final def mangledString: String = {
+      if (myMangledString == null) {
+        val (prefix, suffix, separator) = split
+        val mangledSuffix = suffix.mangled.toString
+        myMangledString =
+          if (prefix.isEmpty) mangledSuffix
+          else str.sanitize(prefix.mangledString + separator + mangledSuffix)
+      }
+      myMangledString
+    }
+
   }
 
   /** A simple name is essentiall an interned string */
@@ -317,6 +340,7 @@ object Names {
     override def collect[T](f: PartialFunction[Name, T]): Option[T] = f.lift(this)
     override def mapLast(f: SimpleName => SimpleName) = f(this)
     override def mapParts(f: SimpleName => SimpleName) = f(this)
+    override def split = (EmptyTermName, this, "")
 
     override def encode: SimpleName = {
       val dontEncode =
@@ -391,9 +415,6 @@ object Names {
             .contains(elem.getMethodName))
     }
 
-    def sliceToString(from: Int, end: Int) =
-      if (end <= from) "" else new String(chrs, start + from, end - from)
-
     def debugString: String = toString
   }
 
@@ -409,12 +430,14 @@ object Names {
 
     override def asSimpleName = toTermName.asSimpleName
     override def toSimpleName = toTermName.toSimpleName
-    override final def mangle = toTermName.mangle.toTypeName
+    override def mangled = toTermName.mangled.toTypeName
+    override def mangledString = toTermName.mangledString
 
     override def rewrite(f: PartialFunction[Name, Name]): ThisName = toTermName.rewrite(f).toTypeName
     override def collect[T](f: PartialFunction[Name, T]): Option[T] = toTermName.collect(f)
     override def mapLast(f: SimpleName => SimpleName) = toTermName.mapLast(f).toTypeName
     override def mapParts(f: SimpleName => SimpleName) = toTermName.mapParts(f).toTypeName
+    override def split = toTermName.split
 
     override def likeSpaced(name: Name): TypeName = name.toTypeName
 
@@ -469,6 +492,14 @@ object Names {
         case qual: QualifiedInfo => underlying.mapParts(f).derived(qual.map(f))
         case _ => underlying.mapParts(f).derived(info)
       }
+
+    override def split = info match {
+      case info: QualifiedInfo =>
+        (underlying, info.name, info.kind.asInstanceOf[QualifiedNameKind].separator)
+      case _ =>
+        val (prefix, suffix, separator) = underlying.split
+        (prefix, suffix.derived(info), separator)
+    }
 
     override def isEmpty = false
     override def encode: ThisName = underlying.encode.derived(info.map(_.encode))
