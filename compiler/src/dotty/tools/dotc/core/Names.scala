@@ -297,16 +297,16 @@ object Names {
             // because asserts are caught in exception handlers which might
             // cause other failures. In that case the first, important failure
             // is lost.
-            println("Backend should not call Name#toString, Name#mangledString should be used instead.")
-            new Error().printStackTrace()
+            System.err.println("Backend should not call Name#toString, Name#mangledString should be used instead.")
+            Thread.dumpStack()
             assert(false)
           }
         }
         new String(chrs, start, length)
       }
 
-    /** It's OK to take a toString if the stacktrace does not occur a method
-     *  in GenBCode or it also contains one of the whitelisted methods below.
+    /** It's OK to take a toString if the stacktrace does not contain a method
+     *  from GenBCode or it also contains one of the whitelisted methods below.
      */
     private def toStringOK = {
       val trace = Thread.currentThread.getStackTrace
