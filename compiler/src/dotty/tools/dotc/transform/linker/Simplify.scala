@@ -66,16 +66,16 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
       readingOnlyVals(rec)
     case Apply(Select(rec, _), Nil) =>
       if (t.symbol.isGetter && !t.symbol.is(Flags.Mutable)) readingOnlyVals(rec) // getter of a immutable field
-      else if (t.symbol.owner.derivesFrom(defn.ProductClass) && t.symbol.owner.is(Flags.CaseClass) && t.symbol.name.isProductAccessorName)
+      else if (t.symbol.owner.derivesFrom(defn.ProductClass) && t.symbol.owner.is(Flags.CaseClass) && t.symbol.name.isSelectorName)
         readingOnlyVals(rec) // accessing a field of a product
       else if (t.symbol.is(Flags.CaseAccessor) && !t.symbol.is(Flags.Mutable))
         readingOnlyVals(rec)
       else false
     case Select(rec, _) if t.symbol.is(Flags.Method) =>
       if (t.symbol.isGetter && !t.symbol.is(Flags.Mutable)) readingOnlyVals(rec) // getter of a immutable field
-      else if (t.symbol.owner.derivesFrom(defn.ProductClass) && t.symbol.owner.is(Flags.CaseClass) && t.symbol.name.isProductAccessorName) {
+      else if (t.symbol.owner.derivesFrom(defn.ProductClass) && t.symbol.owner.is(Flags.CaseClass) && t.symbol.name.isSelectorName) {
         def isImmutableField = {
-          val fieldId = t.symbol.name.drop(1).toString.toInt - 1
+          val fieldId = t.symbol.name.toString.drop(1).toInt - 1
           !t.symbol.owner.caseAccessors(ctx)(fieldId).is(Flags.Mutable)
         }
         if (isImmutableField) readingOnlyVals(rec) // accessing a field of a product
@@ -437,7 +437,7 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
       case Assign(lhs, rhs) if !lhs.symbol.owner.isClass =>
         checkGood.put(lhs.symbol, checkGood.getOrElse(lhs.symbol, Set.empty) + rhs.symbol)
       case t @ Select(qual, _) if (t.symbol.isGetter && !t.symbol.is(Flags.Mutable)) ||
-        (t.symbol.maybeOwner.derivesFrom(defn.ProductClass) && t.symbol.maybeOwner.is(Flags.CaseClass) && t.symbol.name.isProductAccessorName) ||
+        (t.symbol.maybeOwner.derivesFrom(defn.ProductClass) && t.symbol.maybeOwner.is(Flags.CaseClass) && t.symbol.name.isSelectorName) ||
         (t.symbol.is(Flags.CaseAccessor) && !t.symbol.is(Flags.Mutable)) =>
         gettersCalled(qual.symbol) = true
       case t: DefDef if t.symbol.is(Flags.Label) =>
@@ -545,7 +545,7 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
               Thicket(ass :: updates)
           }
         case sel @ Select(rec, _) if (t.symbol.isGetter && !t.symbol.is(Flags.Mutable)) ||
-          (t.symbol.maybeOwner.derivesFrom(defn.ProductClass) && t.symbol.owner.is(Flags.CaseClass) && t.symbol.name.isProductAccessorName) ||
+          (t.symbol.maybeOwner.derivesFrom(defn.ProductClass) && t.symbol.owner.is(Flags.CaseClass) && t.symbol.name.isSelectorName) ||
           (t.symbol.is(Flags.CaseAccessor) && !t.symbol.is(Flags.Mutable)) =>
           newMappings.getOrElse(rec.symbol, Map.empty).get(sel.symbol) match {
             case None => t
@@ -774,7 +774,7 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
         if (!denot.info.finalResultType.derivesFrom(defn.UnitClass)) {
           val newLabelType = app.symbol.info match {
             case mt: MethodType =>
-              mt.derivedMethodType(mt.paramNames, mt.paramTypes, defn.UnitType)
+              mt.derivedLambdaType(mt.paramNames, mt.paramInfos, defn.UnitType)
             case et: ExprType =>
               et.derivedExprType(defn.UnitType)
           }
