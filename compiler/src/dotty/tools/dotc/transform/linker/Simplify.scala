@@ -87,6 +87,17 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
         case None => true
       }
     case t: This => true
+    // null => false, or the following fails devalify:
+    // trait I {
+    //   def foo: Any = null
+    // }
+    // object Main {
+    //   def main = {
+    //     val s: I = null
+    //     s.foo
+    //   }
+    // }
+    case Literal(Constant(null)) => false
     case t: Literal => true
     case _ => false
   }
@@ -114,21 +125,21 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
    */
   type Optimization = (Context) => (String, ErasureCompatibility, Visitor, Transformer)
 
-  private lazy val _optimizations: Seq[Optimization] = Seq(
-    inlineCaseIntrinsics
-    ,removeUnnecessaryNullChecks
-    ,inlineOptions
-    ,inlineLabelsCalledOnce
-    ,valify
-    ,devalify
-    ,jumpjump
-    ,dropGoodCasts
-    ,dropNoEffects
-    ,inlineLocalObjects // followCases needs to be fixed, see ./tests/pos/rbtree.scala
-    /*, varify*/  // varify could stop other transformations from being applied. postponed.
-    //, bubbleUpNothing
-    ,constantFold
-  )
+  private lazy val _optimizations: Seq[Optimization] =
+    inlineCaseIntrinsics        ::
+    removeUnnecessaryNullChecks ::
+    inlineOptions               ::
+    inlineLabelsCalledOnce      ::
+    valify                      ::
+    devalify                    ::
+    jumpjump                    ::
+    dropGoodCasts               ::
+    dropNoEffects               ::
+    // inlineLocalObjects          :: // followCases needs to be fixed, see ./tests/pos/rbtree.scala
+    // varify                      :: // varify could stop other transformations from being applied. postponed.
+    // bubbleUpNothing             ::
+    constantFold                ::
+    Nil
 
   override def transformDefDef(tree: DefDef)(implicit ctx: Context, info: TransformerInfo): Tree = {
     val ctx0 = ctx
@@ -184,8 +195,13 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
    */
   val inlineCaseIntrinsics: Optimization = { implicit ctx: Context =>
     val transformer: Transformer = () => localCtx => {
-      case a: Apply if !a.tpe.isInstanceOf[MethodicType] && a.symbol.is(Flags.Synthetic) && a.symbol.owner.is(Flags.Module) &&
-        (a.symbol.name == nme.apply) && a.symbol.owner.companionClass.is(Flags.CaseClass) =>
+      case a: Apply if !a.tpe.isInstanceOf[MethodicType]                 &&
+                       a.symbol.is(Flags.Synthetic)                      &&
+                       a.symbol.owner.is(Flags.Module)                   &&
+                       (a.symbol.name == nme.apply)                      &&
+                       a.symbol.owner.companionClass.is(Flags.CaseClass) &&
+                       !a.tpe.derivesFrom(defn.EnumClass)                &&
+                       isPureExpr(a.tree) =>
         def unrollArgs(t: Tree, l: List[List[Tree]]): List[List[Tree]] = t match {
           case Apply(t, args) => unrollArgs(t, args :: l)
           case _ => l
@@ -195,9 +211,15 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
           case head :: tail => rollInArgs(tail, fun.appliedToArgs(head))
           case _ => fun
         }
-        rollInArgs(argss.tail, tpd.New(a.tpe.dealias, argss.head))
-      case a: Apply if a.symbol.is(Flags.Synthetic) && a.symbol.owner.is(Flags.Module) &&
-        (a.symbol.name == nme.unapply) && a.symbol.owner.companionClass.is(Flags.CaseClass) =>
+        val constructor = a.symbol.owner.companionClass.primaryConstructor.asTerm
+        rollInArgs(argss.tail, New(a.tpe.widenDealias, constructor, argss.head))
+
+      case a: Apply if a.symbol.is(Flags.Synthetic)                      &&
+                       a.symbol.owner.is(Flags.Module)                   &&
+                       (a.symbol.name == nme.unapply)                    &&
+                       a.symbol.owner.companionClass.is(Flags.CaseClass) &&
+                       !a.tpe.derivesFrom(defn.EnumClass)                &&
+                       isPureExpr(a.tree) =>
         if (!a.symbol.owner.is(Flags.Scala2x)) {
           if (a.tpe.derivesFrom(defn.BooleanClass)) Literal(Constant(true))
           else a.args.head
@@ -210,14 +232,17 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
           val tplType = a.tpe.baseArgTypes(defn.OptionClass).head
 
           if (fields.tail.nonEmpty) {
-            val tplAlloc = tpd.New(tplType, fields)
-            tpd.New(a.tpe.dealias.translateParameterized(defn.OptionClass, defn.SomeClass), tplAlloc :: Nil)
-          } else { // scalac does not have tupple1
-            tpd.New(a.tpe.dealias.translateParameterized(defn.OptionClass, defn.SomeClass), fields.head :: Nil)
+            val tplAlloc = New(tplType, fields)
+            New(a.tpe.translateParameterized(defn.OptionClass, defn.SomeClass), tplAlloc :: Nil)
+          } else { // scalac does not have Tuple1
+            New(a.tpe.translateParameterized(defn.OptionClass, defn.SomeClass), fields.head :: Nil)
           }
         }
         else a
-      case a: Apply if (a.symbol.name == nme.unapplySeq) && a.symbol.owner.derivesFrom(SeqFactoryClass) && a.symbol.extendedOverriddenSymbols.isEmpty =>
+      case a: Apply if (a.symbol.name == nme.unapplySeq)           &&
+                       a.symbol.owner.derivesFrom(SeqFactoryClass) &&
+                       a.symbol.extendedOverriddenSymbols.isEmpty  &&
+                       isPureExpr(a.tree) =>
         def reciever(t: Tree): Type = t match {
           case t: Apply => reciever(t.fun)
           case t: TypeApply => reciever(t.fun)
@@ -231,7 +256,7 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
 
         val recv = reciever(a)
         if (recv.typeSymbol.is(Flags.Module))
-          tpd.New(a.tpe.dealias.translateParameterized(defn.OptionClass, defn.SomeClass), a.args.head :: Nil)
+          New(a.tpe.translateParameterized(defn.OptionClass, defn.SomeClass), a.args.head :: Nil)
         else a
       case t => t
     }
@@ -682,7 +707,7 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
       case t: Tree =>
     }
 
-    @inline def isNullLiteral(tree: Tree) = tree match {
+    def isNullLiteral(tree: Tree) = tree match {
       case literal: Literal =>
         literal.const.tag == Constants.NullTag
       case _ => false
@@ -982,7 +1007,7 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
       case t: ValDef if t.symbol.is(Flags.Mutable, Flags.Lazy) && !t.symbol.is(Flags.Method) && !t.symbol.owner.isClass =>
         if (isPureExpr(t.rhs))
           defined(t.symbol) = t
-      case t: RefTree if !t.symbol.is(Flags.Method) && !t.symbol.owner.isClass =>
+      case t: RefTree if t.symbol.exists && !t.symbol.is(Flags.Method) && !t.symbol.owner.isClass =>
         if (!firstWrite.contains(t.symbol)) firstRead(t.symbol) = t
       case t @ Assign(l, expr) if  !l.symbol.is(Flags.Method) && !l.symbol.owner.isClass =>
         if (!firstRead.contains(l.symbol)) {
