@@ -1,25 +1,21 @@
-package dotty.tools.dotc.transform.linker
+package dotty.tools.dotc
+package transform.linker
 
-import dotty.tools.dotc.{ast, core}
 import core._
-import Contexts._
-import dotty.tools.dotc.ast.Trees._
-import StdNames._
-import NameOps._
-import dotty.tools.dotc.ast.tpd
-import Symbols._
-import dotty.tools.dotc.core.Phases.Phase
-import dotty.tools.dotc.core.Types.{ConstantType, ExprType, MethodType, MethodicType, NamedType, NoPrefix, NoType, TermRef, ThisType, Type}
-import dotty.tools.dotc.transform.{Erasure, TreeTransforms}
-import dotty.tools.dotc.transform.TreeTransforms.{MiniPhaseTransform, TransformerInfo, TreeTransform}
-import dotty.tools.dotc.transform.SymUtils._
-import Decorators._
-import dotty.tools.dotc.core.Constants.Constant
-import dotty.tools.dotc.core.DenotTransformers.IdentityDenotTransformer
-import dotty.tools.dotc.typer.ConstFold
-
+import core.Constants.Constant
+import core.Contexts._
+import core.Decorators._
+import core.DenotTransformers.IdentityDenotTransformer
+import core.NameOps._
+import core.StdNames._
+import core.Symbols._
+import core.Types._
+import ast.Trees._
+import ast.tpd
 import scala.collection.mutable
-import scala.collection.mutable.ListBuffer
+import transform.SymUtils._
+import transform.TreeTransforms.{MiniPhaseTransform, TransformerInfo, TreeTransform}
+import typer.ConstFold
 
 /** This phase consists of a series of small, simple, local optimizations
  *  applied as a fix point transformation over Dotty Trees.
@@ -36,25 +32,25 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
   private var symmetricOperations: Set[Symbol] = null
   var optimize = false
 
-  override def prepareForUnit(tree: _root_.dotty.tools.dotc.ast.tpd.Tree)(implicit ctx: Context): TreeTransform = {
+  override def prepareForUnit(tree: Tree)(implicit ctx: Context): TreeTransform = {
     SeqFactoryClass = ctx.requiredClass("scala.collection.generic.SeqFactory")
     symmetricOperations = Set(defn.Boolean_&&, defn.Boolean_||, defn.Int_+, defn.Int_*, defn.Long_+, defn.Long_*)
     optimize = ctx.settings.optimise.value
     this
   }
 
-  private def desugarIdent(i: Ident)(implicit ctx: Context): Option[tpd.Select] = {
+  private def desugarIdent(i: Ident)(implicit ctx: Context): Option[Select] = {
     i.tpe match {
       case TermRef(prefix: TermRef, name) =>
-        Some(tpd.ref(prefix).select(i.symbol))
+        Some(ref(prefix).select(i.symbol))
       case TermRef(prefix: ThisType, name) =>
-        Some(tpd.This(prefix.cls).select(i.symbol))
+        Some(This(prefix.cls).select(i.symbol))
       case _ => None
     }
   }
 
   private def dropCasts(t: Tree)(implicit ctx: Context): Tree = t match {
-    //case TypeApply(aio@Select(rec, nm), _) if aio.symbol == defn.Any_asInstanceOf => dropCasts(rec)
+    // case TypeApply(aio@Select(rec, nm), _) if aio.symbol == defn.Any_asInstanceOf => dropCasts(rec)
     case Typed(t, tpe) => t
     case _ => t
   }
@@ -134,7 +130,7 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
     ,constantFold
   )
 
-  override def transformDefDef(tree: tpd.DefDef)(implicit ctx: Context, info: TransformerInfo): tpd.Tree = {
+  override def transformDefDef(tree: DefDef)(implicit ctx: Context, info: TransformerInfo): Tree = {
     val ctx0 = ctx
     if (optimize && !tree.symbol.is(Flags.Label)) {
       implicit val ctx: Context = ctx0.withOwner(tree.symbol(ctx0))
@@ -144,9 +140,9 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
       val erasureCompatibility = if (ctx.erasedTypes) AfterErasure else BeforeErasure
       while (rhs1 ne rhs0) {
         rhs1 = rhs0
-        val initialized = _optimizations.map(x =>x(ctx.withOwner(tree.symbol)))
-        var (names, erasureSupport , visitors, transformers) = unzip4(initialized)
-        // todo: fuse for performance
+        val initialized = _optimizations.map(x => x(ctx.withOwner(tree.symbol)))
+        var (names, erasureSupport, visitors, transformers) = unzip4(initialized)
+        // TODO: fuse for performance
         while (names.nonEmpty) {
           val nextVisitor = visitors.head
           val supportsErasure = erasureSupport.head
@@ -155,13 +151,13 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
             val nextTransformer = transformers.head()
             val name = names.head
             val rhst = new TreeMap() {
-              override def transform(tree: tpd.Tree)(implicit ctx: Context): tpd.Tree = {
+              override def transform(tree: Tree)(implicit ctx: Context): Tree = {
                 val innerCtx = if (tree.isDef && tree.symbol.exists) ctx.withOwner(tree.symbol) else ctx
                 nextTransformer(ctx)(super.transform(tree)(innerCtx))
               }
             }.transform(rhs0)
-//            if (rhst ne rhs0)
-//              println(s"${tree.symbol} after ${name} became ${rhst.show}")
+            // if (rhst ne rhs0)
+            //   println(s"${tree.symbol} after ${name} became ${rhst.show}")
             rhs0 = rhst
           }
           names = names.tail
@@ -205,9 +201,10 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
         if (!a.symbol.owner.is(Flags.Scala2x)) {
           if (a.tpe.derivesFrom(defn.BooleanClass)) Literal(Constant(true))
           else a.args.head
-        } else if (a.tpe.derivesFrom(defn.OptionClass) && a.args.head.tpe.derivesFrom(a.symbol.owner.companionClass)) {
-          // todo: if args is an expression, this will evaluate it multiple times
-          // todo: if the static type is right, it does not mean it's not null
+        }
+        else if (a.tpe.derivesFrom(defn.OptionClass) && a.args.head.tpe.derivesFrom(a.symbol.owner.companionClass)) {
+          // TODO: if args is an expression, this will evaluate it multiple times
+          // TODO: if the static type is right, it does not mean it's not null
           val accessors = a.args.head.tpe.widenDealias.classSymbol.caseAccessors.filter(_.is(Flags.Method))
           val fields = accessors.map(x => a.args.head.select(x).ensureApplied)
           val tplType = a.tpe.baseArgTypes(defn.OptionClass).head
@@ -252,7 +249,8 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
    */
   val constantFold: Optimization = { implicit ctx: Context =>
     def preEval(t: Tree) = {
-      if (t.isInstanceOf[Literal] || t.isInstanceOf[CaseDef] || !isPureExpr(t)) t else {
+      if (t.isInstanceOf[Literal] || t.isInstanceOf[CaseDef] || !isPureExpr(t)) t
+      else {
         val s = ConstFold.apply(t)
         if ((s ne null) && s.tpe.isInstanceOf[ConstantType]) {
           val constant = s.tpe.asInstanceOf[ConstantType].value
@@ -316,27 +314,27 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
         }  else if (!thenp.const.booleanValue && elsep.const.booleanValue) {
           cond.select(defn.Boolean_!).ensureApplied
         } else ??? //should never happen because it would be similar
-//         the lower two are disabled, as it may make the isSimilar rule not apply for a nested structure of iffs.
-//         see the example below:
-    //        (b1, b2) match {
-    //          case (true, true) => true
-    //          case (false, false) => true
-    //          case _ => false
-    //        }
-//      case ift @ If(cond, thenp: Literal, elsep) if ift.tpe.derivesFrom(defn.BooleanClass) && thenp.const.booleanValue =>
-//        //if (thenp.const.booleanValue)
-//          cond.select(defn.Boolean_||).appliedTo(elsep)
-//        //else // thenp is false, this tree is bigger then the original
-//        //  cond.select(defn.Boolean_!).select(defn.Boolean_&&).appliedTo(elsep)
-//      case ift @ If(cond, thenp, elsep :Literal) if ift.tpe.derivesFrom(defn.BooleanClass) && !elsep.const.booleanValue =>
-//        cond.select(defn.Boolean_&&).appliedTo(elsep)
-//        // the other case ins't handled intentionally. See previous case for explanation
+      //    the lower two are disabled, as it may make the isSimilar rule not apply for a nested structure of iffs.
+      //    see the example below:
+      //           (b1, b2) match {
+      //             case (true, true) => true
+      //             case (false, false) => true
+      //             case _ => false
+      //           }
+      // case ift @ If(cond, thenp: Literal, elsep) if ift.tpe.derivesFrom(defn.BooleanClass) && thenp.const.booleanValue =>
+      //   //if (thenp.const.booleanValue)
+      //     cond.select(defn.Boolean_||).appliedTo(elsep)
+      //   //else // thenp is false, this tree is bigger then the original
+      //   //  cond.select(defn.Boolean_!).select(defn.Boolean_&&).appliedTo(elsep)
+      // case ift @ If(cond, thenp, elsep :Literal) if ift.tpe.derivesFrom(defn.BooleanClass) && !elsep.const.booleanValue =>
+      //   cond.select(defn.Boolean_&&).appliedTo(elsep)
+      //   // the other case ins't handled intentionally. See previous case for explanation
       case If(t@ Select(recv, _), thenp, elsep) if t.symbol eq defn.Boolean_! =>
-        tpd.If(recv, elsep, thenp)
+        If(recv, elsep, thenp)
       case If(t@ Apply(Select(recv, _), Nil), thenp, elsep) if t.symbol eq defn.Boolean_! =>
-        tpd.If(recv, elsep, thenp)
-      // todo: similar trick for comparisons.
-      // todo: handle comparison with min\max values
+        If(recv, elsep, thenp)
+      // TODO: similar trick for comparisons.
+      // TODO: handle comparison with min\max values
       case Apply(meth1 @ Select(Apply(meth2 @ Select(rec, _), Nil), _), Nil) if meth1.symbol == defn.Boolean_! && meth2.symbol == defn.Boolean_! =>
         rec
       case meth1 @ Select(meth2 @ Select(rec, _), _) if meth1.symbol == defn.Boolean_! && meth2.symbol == defn.Boolean_! && !ctx.erasedTypes =>
@@ -368,27 +366,27 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
             val const = l.tpe.asInstanceOf[ConstantType].value.booleanValue
             if (l.const.booleanValue) l
             else Block(lhs :: Nil, rhs)
-//          case (Literal(Constant(1)), _)    if sym == defn.Int_*  => rhs
-//          case (Literal(Constant(0)), _)    if sym == defn.Int_+  => rhs
-//          case (Literal(Constant(1L)), _)   if sym == defn.Long_* => rhs
-//          case (Literal(Constant(0L)), _)   if sym == defn.Long_+ => rhs
-//          // todo: same for float, double, short
-//          // todo: empty string concat
-//          // todo: disctribute & reorder constants
-//          // todo: merge subsequent casts
-//          case (_, Literal(Constant(1)))    if sym == defn.Int_/  => lhs
-//          case (_, Literal(Constant(1L)))   if sym == defn.Long_/ => lhs
-//          case (_, Literal(Constant(0)))    if sym == defn.Int_/  =>
-//            Block(List(lhs),
-//              ref(defn.throwMethod).appliedTo(tpd.New(defn.ArithmeticExceptionClass.typeRef, defn.ArithmeticExceptionClass_stringConstructor, Literal(Constant("/ by zero")) :: Nil)))
-//          case (_, Literal(Constant(0L)))  if sym == defn.Long_/ =>
-//            Block(List(lhs),
-//              ref(defn.throwMethod).appliedTo(tpd.New(defn.ArithmeticExceptionClass.typeRef, defn.ArithmeticExceptionClass_stringConstructor, Literal(Constant("/ by zero")) :: Nil)))
+          // case (Literal(Constant(1)), _)    if sym == defn.Int_*  => rhs
+          // case (Literal(Constant(0)), _)    if sym == defn.Int_+  => rhs
+          // case (Literal(Constant(1L)), _)   if sym == defn.Long_* => rhs
+          // case (Literal(Constant(0L)), _)   if sym == defn.Long_+ => rhs
+          // // TODO: same for float, double, short
+          // // TODO: empty string concat
+          // // TODO: disctribute & reorder constants
+          // // TODO: merge subsequent casts
+          // case (_, Literal(Constant(1)))    if sym == defn.Int_/  => lhs
+          // case (_, Literal(Constant(1L)))   if sym == defn.Long_/ => lhs
+          // case (_, Literal(Constant(0)))    if sym == defn.Int_/  =>
+          //   Block(List(lhs),
+          //     ref(defn.throwMethod).appliedTo(New(defn.ArithmeticExceptionClass.typeRef, defn.ArithmeticExceptionClass_stringConstructor, Literal(Constant("/ by zero")) :: Nil)))
+          // case (_, Literal(Constant(0L)))  if sym == defn.Long_/ =>
+          //   Block(List(lhs),
+          //     ref(defn.throwMethod).appliedTo(New(defn.ArithmeticExceptionClass.typeRef, defn.ArithmeticExceptionClass_stringConstructor, Literal(Constant("/ by zero")) :: Nil)))
           case _ => t
         }
-      case t: Match if (t.selector.tpe.isInstanceOf[ConstantType] && t.cases.forall(x => x.pat.tpe.isInstanceOf[ConstantType] || (tpd.isWildcardArg(x.pat) && x.guard.isEmpty))) =>
+      case t: Match if (t.selector.tpe.isInstanceOf[ConstantType] && t.cases.forall(x => x.pat.tpe.isInstanceOf[ConstantType] || (isWildcardArg(x.pat) && x.guard.isEmpty))) =>
         val selectorValue = t.selector.tpe.asInstanceOf[ConstantType].value
-        val better = t.cases.find(x => tpd.isWildcardArg(x.pat) || (x.pat.tpe.asInstanceOf[ConstantType].value eq selectorValue))
+        val better = t.cases.find(x => isWildcardArg(x.pat) || (x.pat.tpe.asInstanceOf[ConstantType].value eq selectorValue))
         if (better.nonEmpty) better.get.body
         else t
       case t: Literal =>
@@ -407,7 +405,7 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
     ("constantFold", BeforeAndAfterErasure, NoVisitor, transformer)
   }
 
-  /** Inline" case classes as vals, this essentially (local) implements multi
+  /** Inline case classes as vals, this essentially (local) implements multi
    *  parameter value classes. The main motivation is to get ride of all the
    *  intermediate tuples coming from pattern matching expressions.
    */
@@ -424,7 +422,7 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
           hasPerfectRHS(symbol) = true
         case Apply(fun, _) if fun.symbol.is(Flags.Label) && (fun.symbol ne symbol) =>
           checkGood.put(symbol, checkGood.getOrElse(symbol, Set.empty) + fun.symbol)
-          //assert(forwarderWritesTo.getOrElse(t.symbol, symbol) == symbol)
+          // assert(forwarderWritesTo.getOrElse(t.symbol, symbol) == symbol)
           forwarderWritesTo(t.symbol) = symbol
         case t: Ident if !t.symbol.owner.isClass && (t.symbol ne symbol) =>
           checkGood.put(symbol, checkGood.getOrElse(symbol, Set.empty) + t.symbol)
@@ -460,16 +458,16 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
 
       val newMappings: Map[Symbol, Map[Symbol, Symbol]] =
         hasPerfectRHS.iterator.map(x => x._1).filter(x => !x.is(Flags.Method) && !x.is(Flags.Label) && gettersCalled.contains(x.symbol) && (x.symbol.info.classSymbol is Flags.CaseClass))
-          .map{ refVal =>
-//          println(s"replacing ${refVal.symbol.fullName} with stack-allocated fields")
-          var accessors = refVal.info.classSymbol.caseAccessors.filter(_.isGetter) // todo: drop mutable ones
-          if (accessors.isEmpty) accessors = refVal.info.classSymbol.caseAccessors
-          val productAccessors = (1 to accessors.length).map(i => refVal.info.member(nme.productAccessorName(i)).symbol) // todo: disambiguate
-          val newLocals = accessors.map(x =>
-            // todo: it would be nice to have an additional optimization that
-            // todo: is capable of turning those mutable ones into immutable in common cases
-            ctx.newSymbol(ctx.owner.enclosingMethod, (refVal.name + "$" + x.name).toTermName, Flags.Synthetic | Flags.Mutable, x.asSeenFrom(refVal.info).info.finalResultType.widenDealias)
-          )
+          .map { refVal =>
+            // println(s"replacing ${refVal.symbol.fullName} with stack-allocated fields")
+            var accessors = refVal.info.classSymbol.caseAccessors.filter(_.isGetter) // TODO: drop mutable ones
+            if (accessors.isEmpty) accessors = refVal.info.classSymbol.caseAccessors
+            val productAccessors = (1 to accessors.length).map(i => refVal.info.member(nme.productAccessorName(i)).symbol) // TODO: disambiguate
+            val newLocals = accessors.map(x =>
+              // TODO: it would be nice to have an additional optimization that
+              // TODO: is capable of turning those mutable ones into immutable in common cases
+              ctx.newSymbol(ctx.owner.enclosingMethod, (refVal.name + "$" + x.name).toTermName, Flags.Synthetic | Flags.Mutable, x.asSeenFrom(refVal.info).info.finalResultType.widenDealias)
+            )
             val fieldMapping = accessors zip newLocals
             val productMappings = productAccessors zip newLocals
             (refVal, (fieldMapping ++ productMappings).toMap)
@@ -482,7 +480,7 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
           case tree@ If(_, thenp, elsep) => cpy.If(tree)(thenp = splitWrites(thenp, target), elsep =  splitWrites(elsep, target))
           case Apply(sel , args) if sel.symbol.isConstructor && t.tpe.widenDealias == target.info.widenDealias.finalResultType.widenDealias =>
             val fieldsByAccessors = newMappings(target)
-            var accessors = target.info.classSymbol.caseAccessors.filter(_.isGetter)  // todo: when is this filter needed?
+            var accessors = target.info.classSymbol.caseAccessors.filter(_.isGetter)  // TODO: when is this filter needed?
             if (accessors.isEmpty) accessors = target.info.classSymbol.caseAccessors
             val assigns = (accessors zip args) map (x => ref(fieldsByAccessors(x._1)).becomes(x._2))
             val recreate = sel.appliedToArgs(accessors.map(x => ref(fieldsByAccessors(x))))
@@ -511,7 +509,7 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
       }
 
       def followCases(t: Symbol, limit: Int = 0): Symbol = if (t.symbol.is(Flags.Label)) {
-        // todo: this can create cycles, see ./tests/pos/rbtree.scala
+        // TODO: this can create cycles, see ./tests/pos/rbtree.scala
         if (limit > 100 && limit > forwarderWritesTo.size + 1) NoSymbol
           // there may be cycles in labels, that never in the end write to a valdef(the value is always on stack)
           // there's not much we can do here, except finding such cases and bailing out
@@ -520,7 +518,7 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
       } else t
 
       hasPerfectRHS.clear()
-      //checkGood.clear()
+      // checkGood.clear()
       gettersCalled.clear()
 
       val res: Context => Tree => Tree = {localCtx => (t: Tree) => t match {
@@ -535,7 +533,7 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
           // break ValDef apart into fields + boxed value
           val newFields = newMappings(a.symbol).values.toSet
           Thicket(
-            newFields.map(x => tpd.ValDef(x.asTerm, tpd.defaultValue(x.symbol.info.widenDealias))).toList :::
+            newFields.map(x => ValDef(x.asTerm, defaultValue(x.symbol.info.widenDealias))).toList :::
               List(cpy.ValDef(a)(rhs = splitWrites(a.rhs, a.symbol))))
         case ass: Assign =>
           newMappings.get(ass.lhs.symbol) match {
@@ -564,7 +562,7 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
       t match {
         case Apply(x, _) if (x.symbol == defn.Boolean_! || x.symbol == defn.Boolean_||) => List.empty
         case Apply(fun @ Select(x, _), y) if (fun.symbol == defn.Boolean_&&) => recur(x) ++ recur(y.head)
-        case TypeApply(fun @Select(x, _), List(tp)) if fun.symbol eq defn.Any_isInstanceOf =>
+        case TypeApply(fun @ Select(x, _), List(tp)) if fun.symbol eq defn.Any_isInstanceOf =>
           if (x.symbol.exists && !x.symbol.owner.isClass && !x.symbol.is(Flags.Method|Flags.Mutable))
             (x.symbol, tp.tpe) :: Nil
           else Nil
@@ -603,7 +601,7 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
           y + ((x._1, x._2 :: y.getOrElse(x._1, Nil)))
         )
         val dropGoodCastsInStats = new TreeMap() {
-          override def transform(tree: tpd.Tree)(implicit ctx: Context): tpd.Tree = super.transform(tree) match {
+          override def transform(tree: Tree)(implicit ctx: Context): Tree = super.transform(tree) match {
             case t: Block =>
               val nstats = t.stats.filterConserve({
                  case TypeApply(fun @ Select(rec, _), List(tp)) if fun.symbol == defn.Any_asInstanceOf =>
@@ -653,7 +651,6 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
         }
         !set.exists(x => !initializedVals.contains(x))
       }
-
     }
     val visitor: Visitor = {
       case vd: ValDef =>
@@ -697,8 +694,8 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
           val sym = check.symbol
           if ( ((sym == defn.Object_eq) || (sym == defn.Object_ne)) &&
             ((isNullLiteral(lhs) && isGood(rhs.symbol)) || (isNullLiteral(rhs) && isGood(lhs.symbol)))) {
-            if (sym == defn.Object_eq) Block(List(lhs, rhs), tpd.Literal(Constant(false)))
-            else if(sym == defn.Object_ne) Block(List(lhs, rhs), tpd.Literal(Constant(true)))
+            if (sym == defn.Object_eq) Block(List(lhs, rhs), Literal(Constant(false)))
+            else if(sym == defn.Object_ne) Block(List(lhs, rhs), Literal(Constant(true)))
             else check
           } else check
         case t => t
@@ -734,8 +731,10 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
 
   private def keepOnlySideEffects(t: Tree)(implicit ctx: Context): Tree = {
     t match {
-      case t: Literal => EmptyTree
-      case t: This => EmptyTree
+      case t: Literal =>
+        EmptyTree
+      case t: This =>
+        EmptyTree
       case Typed(exp, tpe) =>
         keepOnlySideEffects(exp)
       case t @ If(cond, thenp, elsep) =>
@@ -743,19 +742,21 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
         val nelsep = keepOnlySideEffects(elsep)
         if (thenp.isEmpty && elsep.isEmpty) keepOnlySideEffects(cond)
         else cpy.If(t)(
-          thenp = nthenp.orElse(if (thenp.isInstanceOf[Literal]) thenp else  tpd.unitLiteral),
-          elsep = nelsep.orElse(if (elsep.isInstanceOf[Literal]) elsep else  tpd.unitLiteral))
-      case Select(rec, _) if (t.symbol.isGetter && !t.symbol.is(Flags.Mutable)) ||
-        (t.symbol.owner.derivesFrom(defn.ProductClass) && t.symbol.owner.is(Flags.CaseClass) && t.symbol.name.isProductAccessorName) ||
-        (t.symbol.is(Flags.CaseAccessor) && !t.symbol.is(Flags.Mutable))=>
-        keepOnlySideEffects(rec) // accessing a field of a product
-      case Select(qual, _) if !t.symbol.is(Flags.Mutable | Flags.Lazy) && (!t.symbol.is(Flags.Method) || t.symbol.isGetter) =>
+          thenp = nthenp.orElse(if (thenp.isInstanceOf[Literal]) thenp else unitLiteral),
+          elsep = nelsep.orElse(if (elsep.isInstanceOf[Literal]) elsep else unitLiteral))
+      case Select(rec, _) if
+        (t.symbol.isGetter && !t.symbol.is(Flags.Mutable | Flags.Lazy)) ||
+        (t.symbol.owner.derivesFrom(defn.ProductClass) && t.symbol.owner.is(Flags.CaseClass) && t.symbol.name.isSelectorName) ||
+        (t.symbol.is(Flags.CaseAccessor) && !t.symbol.is(Flags.Mutable)) =>
+          keepOnlySideEffects(rec) // accessing a field of a product
+      case Select(qual, _) if !t.symbol.is(Flags.Mutable | Flags.Lazy) && !t.symbol.is(Flags.Method) =>
         keepOnlySideEffects(qual)
-      case Block(List(t: DefDef), s: Closure) => EmptyTree
-      case bl@Block(stats, expr) =>
+      case Block(List(t: DefDef), s: Closure) =>
+        EmptyTree
+      case bl @ Block(stats, expr) =>
         val stats1 = stats.mapConserve(keepOnlySideEffects)
         val stats2 = if (stats1 ne stats) stats1.filter(x=>x ne EmptyTree) else stats1
-        val expr2: tpd.Tree = expr match {
+        val expr2: Tree = expr match {
           case t: Literal if t.tpe.derivesFrom(defn.UnitClass) => expr
           case _ => keepOnlySideEffects(expr).orElse(unitLiteral)
         }
@@ -770,7 +771,7 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
         // invalidates the denotation cache. Because this optimization only
         // operates locally, this should be fine.
         val denot = app.fun.symbol.denot
-        //println(s"replacing ${app.symbol}")
+        // println(s"replacing ${app.symbol}")
         if (!denot.info.finalResultType.derivesFrom(defn.UnitClass)) {
           val newLabelType = app.symbol.info match {
             case mt: MethodType =>
@@ -802,7 +803,7 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
           case _ =>
             rec :: args.map(keepOnlySideEffects)
         }
-        Block(prefix, tpd.unitLiteral)
+        Block(prefix, unitLiteral)
       case t @ TypeApply(Select(rec, _), List(testType)) if t.symbol.eq(defn.Any_asInstanceOf) && testType.tpe.widenDealias.typeSymbol.exists =>
         val receiverType = TypeErasure.erasure(rec.tpe)
         val erazedTestedType = TypeErasure.erasure(testType.tpe)
@@ -815,7 +816,6 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
 
   /** Removes side effect free statements in blocks. */
   val dropNoEffects: Optimization = { implicit ctx: Context =>
-
     val transformer: Transformer = () => localCtx => {
       case Block(Nil, expr) => expr
       case a: Block  =>
@@ -835,10 +835,10 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
       case a: DefDef =>
         if (a.symbol.info.finalResultType.derivesFrom(defn.UnitClass) && !a.rhs.tpe.derivesFrom(defn.UnitClass) && !a.rhs.tpe.derivesFrom(defn.NothingClass)) {
           def insertUnit(t: Tree) = {
-            if (!t.tpe.derivesFrom(defn.UnitClass)) Block(t :: Nil, tpd.unitLiteral)
+            if (!t.tpe.derivesFrom(defn.UnitClass)) Block(t :: Nil, unitLiteral)
             else t
           }
-          cpy.DefDef(a)(rhs = insertUnit(keepOnlySideEffects(a.rhs)), tpt = tpd.TypeTree(defn.UnitType))
+          cpy.DefDef(a)(rhs = insertUnit(keepOnlySideEffects(a.rhs)), tpt = TypeTree(defn.UnitType))
         } else a
       case t => t
     }
@@ -865,8 +865,8 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
       case a: Apply =>
         defined.get(a.symbol) match {
           case None => a
-          case Some(defDef) if a.symbol.is(Flags.Label) && timesUsed.getOrElse(a.symbol, 0) == 1 && a.symbol.info.paramTypess == List(Nil)=>
-            //println(s"Inlining ${defDef.name}")
+          case Some(defDef) if a.symbol.is(Flags.Label) && timesUsed.getOrElse(a.symbol, 0) == 1 && a.symbol.info.paramInfoss == List(Nil) =>
+            // println(s"Inlining ${defDef.name}")
             defDef.rhs.changeOwner(defDef.symbol, localCtx.owner)
           case Some(defDef) if defDef.rhs.isInstanceOf[Literal] =>
             defDef.rhs
@@ -874,11 +874,11 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
             a
         }
       case a: DefDef if (a.symbol.is(Flags.Label) && timesUsed.getOrElse(a.symbol, 0) == 1 && defined.contains(a.symbol)) =>
-        //println(s"Dropping ${a.name} ${timesUsed.get(a.symbol)}")
+        // println(s"Dropping ${a.name} ${timesUsed.get(a.symbol)}")
         defined.put(a.symbol, a)
         EmptyTree
       case a: DefDef if (a.symbol.is(Flags.Label) && timesUsed.getOrElse(a.symbol, 0) == 0 && defined.contains(a.symbol)) =>
-        //println(s"Dropping ${a.name} ${timesUsed.get(a.symbol)}")
+        // println(s"Dropping ${a.name} ${timesUsed.get(a.symbol)}")
         EmptyTree
       case t => t
     }
@@ -894,8 +894,11 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
       case defdef: DefDef if defdef.symbol.is(Flags.Label)  =>
         defdef.rhs match {
           case Apply(t, args) if t.symbol.is(Flags.Label) &&
-            TypeErasure.erasure(defdef.symbol.info.finalResultType).classSymbol == TypeErasure.erasure(t.symbol.info.finalResultType).classSymbol
-            && args.size == defdef.vparamss.map(_.size).sum && (args zip defdef.vparamss.flatten).forall(x => x._1.symbol eq x._2.symbol)  && !(defdef.symbol eq t.symbol) =>
+            TypeErasure.erasure(defdef.symbol.info.finalResultType).classSymbol ==
+            TypeErasure.erasure(t.symbol.info.finalResultType).classSymbol             &&
+            args.size == defdef.vparamss.map(_.size).sum                               &&
+            args.zip(defdef.vparamss.flatten).forall(x => x._1.symbol eq x._2.symbol)  &&
+            !(defdef.symbol eq t.symbol) =>
               defined(defdef.symbol) = t.symbol
           case _ =>
         }
@@ -910,7 +913,7 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
             ref(fwd).appliedToArgs(a.args)
         }
       case a: DefDef if defined.contains(a.symbol) =>
-        //println(s"dropping ${a.symbol.showFullName} as forwarder to ${defined(a.symbol).showFullName}")
+        // println(s"dropping ${a.symbol.showFullName} as forwarder to ${defined(a.symbol).showFullName}")
         EmptyTree
       case t => t
     }
@@ -977,7 +980,7 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
     val secondWrite: mutable.Map[Symbol, Assign] = mutable.Map()
     val visitor: Visitor = {
       case t: ValDef if t.symbol.is(Flags.Mutable, Flags.Lazy) && !t.symbol.is(Flags.Method) && !t.symbol.owner.isClass =>
-        if (tpd.isPureExpr(t.rhs))
+        if (isPureExpr(t.rhs))
           defined(t.symbol) = t
       case t: RefTree if !t.symbol.is(Flags.Method) && !t.symbol.owner.isClass =>
         if (!firstWrite.contains(t.symbol)) firstRead(t.symbol) = t
@@ -999,10 +1002,9 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
     val transformer: Transformer = () => localCtx => {
       val transformation: Tree => Tree = {
         case t: Block => // drop non-side-effecting stats
-          val valdefs = t.stats.filter {
-            case t: ValDef if defined.contains(t.symbol) => true
-            case _ => false
-          }.asInstanceOf[List[ValDef]]
+          val valdefs = t.stats.collect {
+            case t: ValDef if defined.contains(t.symbol) => t
+          }
 
           val assigns = t.stats.filter {
             case t @ Assign(lhs, r) =>
@@ -1024,7 +1026,7 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
               case Some(vd) =>
                 val newD = vd.symbol.asSymDenotation.copySymDenotation(initFlags = vd.symbol.flags.&~(Flags.Mutable))
                 newD.installAfter(this)
-                tpd.ValDef(vd.symbol.asTerm, t.rhs)
+                ValDef(vd.symbol.asTerm, t.rhs)
               case None => t
             }
             case x => x
@@ -1047,8 +1049,8 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
    *
    *  def f(x, y) = f(x + y + 1, x - y - 1)
    *
-   *  In scalac the above is optimized using a by code trick which cannot be
-   *  expressed in bytecode. In the example above, x can be turned into a var
+   *  In scalac the above is optimized using a bytecode trick which cannot be
+   *  expressed in source code. In the example above, x can be turned into a var
    *  by first doing a DUP to push the current value onto the stack. This
    *  introduces a tight coupling between backend and tqilreq which we prefer
    *  to avoid in dotty.
@@ -1058,7 +1060,9 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
     val defined = collection.mutable.HashSet[Symbol]()
     val copies = collection.mutable.HashMap[Symbol, Tree]() // either a duplicate or a read through series of immutable fields
     val visitor: Visitor = {
-      case valdef: ValDef if !valdef.symbol.is(Flags.Param) && !valdef.symbol.is(Flags.Mutable | Flags.Module | Flags.Lazy) && (valdef.symbol.exists && !valdef.symbol.owner.isClass) =>
+      case valdef: ValDef if !valdef.symbol.is(Flags.Param) &&
+                             !valdef.symbol.is(Flags.Mutable | Flags.Module | Flags.Lazy) &&
+                             valdef.symbol.exists && !valdef.symbol.owner.isClass =>
         defined += valdef.symbol
 
         dropCasts(valdef.rhs) match {
@@ -1072,7 +1076,7 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
         timesUsed.put(symIfExists, b4 + 1)
 
       case valdef: ValDef if valdef.symbol.exists && !valdef.symbol.owner.isClass && !valdef.symbol.is(Flags.Param | Flags.Module | Flags.Lazy) =>
-        //todo: handle params after constructors. Start changing public signatures by eliminating unused arguments.
+        // TODO: handle params after constructors. Start changing public signatures by eliminating unused arguments.
         defined += valdef.symbol
 
       case t: RefTree =>
@@ -1087,19 +1091,19 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
         val rhs = dropCasts(x._2)
         rhs.isInstanceOf[Literal] || (!rhs.symbol.owner.isClass && !rhs.symbol.is(Flags.Method) && !rhs.symbol.is(Flags.Mutable))
       }
-      // todo: if a non-synthetic val is duplicate of a synthetic one, rename a synthetic one and drop synthetic flag?
+      // TODO: if a non-synthetic val is duplicate of a synthetic one, rename a synthetic one and drop synthetic flag?
 
       val copiesToReplaceAsUsedOnce =
         timesUsed.filter(x => x._2 == 1).
           flatMap(x => copies.get(x._1) match {
-            case Some(tr) => List((x._1, tr));
+            case Some(tr) => List((x._1, tr))
             case None => Nil
           })
 
       val replacements = copiesToReplaceAsDuplicates ++ copiesToReplaceAsUsedOnce
 
       val deepReplacer = new TreeMap() {
-        override def transform(tree: tpd.Tree)(implicit ctx: Context): tpd.Tree = {
+        override def transform(tree: Tree)(implicit ctx: Context): Tree = {
           def loop(tree: Tree):Tree  =
             tree match {
               case t: RefTree if replacements.contains(t.symbol) =>
@@ -1112,10 +1116,10 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
 
       val transformation: Tree => Tree = {
         case t: ValDef if valsToDrop.contains(t.symbol) =>
-          //println(s"droping definition of ${t.symbol.showFullName} as not used")
+          // println(s"dropping definition of ${t.symbol.showFullName} as not used")
           t.rhs.changeOwner(t.symbol, t.symbol.owner)
         case t: ValDef if replacements.contains(t.symbol) =>
-          //println(s"droping definition of ${t.symbol.showFullName} as an alias")
+          // println(s"dropping definition of ${t.symbol.showFullName} as an alias")
           EmptyTree
         case t: Block => // drop non-side-effecting stats
           t
@@ -1127,7 +1131,7 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
               case t: NamedType =>
                 t.derivedSelect(newPrefix.tpe)
             }
-            tpd.New(newTpt)
+            New(newTpt)
           }
           else t
         case t: RefTree if !t.symbol.is(Flags.Method) && !t.symbol.is(Flags.Param) && !t.symbol.is(Flags.Mutable) =>
@@ -1208,11 +1212,11 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
   }
 
   private def unzip4[A, B, C, D](seq: Seq[(A, B, C, D)]): (Seq[A], Seq[B], Seq[C], Seq[D]) = {
-    val listBuilderA = new ListBuffer[A]()
-    val listBuilderB = new ListBuffer[B]()
-    val listBuilderC = new ListBuffer[C]()
-    val listBuilderD = new ListBuffer[D]()
-    seq.foreach{x =>
+    val listBuilderA = new mutable.ListBuffer[A]()
+    val listBuilderB = new mutable.ListBuffer[B]()
+    val listBuilderC = new mutable.ListBuffer[C]()
+    val listBuilderD = new mutable.ListBuffer[D]()
+    seq.foreach { x =>
       listBuilderA += x._1
       listBuilderB += x._2
       listBuilderC += x._3
