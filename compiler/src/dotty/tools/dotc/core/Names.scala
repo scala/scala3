@@ -93,11 +93,6 @@ object Names {
     /** Apply `f` to all simple term names making up this name */
     def mapParts(f: SimpleName => SimpleName): ThisName
 
-    /** If this a qualified name, split it into underlyng, last part, and separator
-     *  Otherwise return an empty name, the name itself, and "")
-     */
-    def split: (TermName, TermName, String)
-
     /** A name in the same (term or type) namespace as this name and
      *  with same characters as given `name`.
      */
@@ -265,16 +260,24 @@ object Names {
     }
 
     final def mangledString: String = {
-      if (myMangledString == null) {
-        val (prefix, suffix, separator) = split
-        val mangledSuffix = suffix.mangled.toString
-        myMangledString =
-          if (prefix.isEmpty) mangledSuffix
-          else str.sanitize(prefix.mangledString + separator + mangledSuffix)
-      }
+      if (myMangledString == null)
+        myMangledString = qualToString(_.mangledString, _.mangled.toString)
       myMangledString
     }
 
+    /** If this a qualified name, split it into underlyng, last part, and separator
+     *  Otherwise return an empty name, the name itself, and "")
+     */
+    def split: (TermName, TermName, String)
+
+    /** Convert to string as follows. If this is a qualified name
+     *  `<first> <sep> <last>`, the sanitized version of `f1(<first>) <sep> f2(<last>)`.
+     *  Otherwise `f2` applied to this name.
+     */
+    def qualToString(f1: TermName => String, f2: TermName => String) = {
+      val (first, last, sep) = split
+      if (first.isEmpty) f2(last) else str.sanitize(f1(first) + sep + f2(last))
+    }
   }
 
   /** A simple name is essentiall an interned string */
@@ -437,7 +440,6 @@ object Names {
     override def collect[T](f: PartialFunction[Name, T]): Option[T] = toTermName.collect(f)
     override def mapLast(f: SimpleName => SimpleName) = toTermName.mapLast(f).toTypeName
     override def mapParts(f: SimpleName => SimpleName) = toTermName.mapParts(f).toTypeName
-    override def split = toTermName.split
 
     override def likeSpaced(name: Name): TypeName = name.toTypeName
 
