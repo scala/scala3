@@ -136,7 +136,6 @@ class ModifiersParsingTest {
     assert(source.defParam(0).modifiers == List(Mod.Inline()))
 
     source = "def f(implicit a: Int, b: Int) = ???"
-    println(source.defParam(0).modifiers)
     assert(source.defParam(0).modifiers == List(Mod.Implicit()))
     assert(source.defParam(1).modifiers == List(Mod.Implicit()))
 
