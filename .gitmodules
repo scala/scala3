@@ -6,3 +6,7 @@
 	path = scala-scala
 	url = https://github.com/lampepfl/scala.git
 	branch = dotty-library
+[submodule "collection-strawman"]
+	path = collection-strawman
+	url = https://github.com/scala/collection-strawman.git
+	branch = master
