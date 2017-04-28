@@ -10,6 +10,13 @@ class C extends A with B {
  override def foo = super[A].foo + super[B].foo
 }
 
+class Base[A](exp: => Option[A])
+
+object Empty extends Base[Nothing](None)
+
 object Test {
- def main(args: Array[String]) = assert(new C().foo == 3)
+  def main(args: Array[String]): Unit = {
+    assert(new C().foo == 3)
+    Empty
+  }
 }

@@ -30,8 +30,7 @@ class Constructors extends MiniPhaseTransform with IdentityDenotTransformer { th
   import tpd._
 
   override def phaseName: String = "constructors"
-  override def runsAfter: Set[Class[_ <: Phase]] = Set(classOf[Memoize])
-
+  override def runsAfter: Set[Class[_ <: Phase]] = Set(classOf[Memoize], classOf[HoistSuperArgs])
 
   // Collect all private parameter accessors and value definitions that need
   // to be retained. There are several reasons why a parameter accessor or
@@ -103,7 +102,7 @@ class Constructors extends MiniPhaseTransform with IdentityDenotTransformer { th
    *                outer link, so no parameter accessors need to be rewired to parameters
    */
   private def noDirectRefsFrom(tree: Tree)(implicit ctx: Context) =
-    tree.isDef && tree.symbol.isClass && !tree.symbol.is(InSuperCall)
+    tree.isDef && tree.symbol.isClass
 
   /** Class members that can be eliminated if referenced only from their own
    *  constructor.

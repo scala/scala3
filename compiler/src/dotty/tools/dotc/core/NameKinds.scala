@@ -221,6 +221,7 @@ object NameKinds {
   val ExceptionBinderName     = new UniqueNameKind("ex")
   val SkolemName              = new UniqueNameKind("?")
   val LiftedTreeName          = new UniqueNameKind("liftedTree")
+  val SuperArgName            = new UniqueNameKind("$superArg$")
 
   val UniqueExtMethName = new UniqueNameKind("$extension") {
     override def unmangle(name: SimpleTermName): TermName = {
