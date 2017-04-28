@@ -220,7 +220,7 @@ class SymbolLoaders {
       if (!sourceModule.isCompleted)
         sourceModule.completer.complete(sourceModule)
 
-      val packageName = if (root.isEffectiveRoot) "" else root.fullName.toString
+      val packageName = if (root.isEffectiveRoot) "" else root.fullName.mangledString
 
       enterFlatClasses = Some { ctx =>
         enterFlatClasses = None
