@@ -621,6 +621,7 @@ object Build {
     settings(
       publishArtifact := false,
       parallelExecution in Test := false,
+      testOptions in Test += Tests.Argument(TestFrameworks.JUnit, "-a", "-v"),
       libraryDependencies +=
         "com.novocode" % "junit-interface" % "0.11" % "test"
     )

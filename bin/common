@@ -115,6 +115,11 @@ else
         echo "Failed to parse .packages file"
         build_all
     fi
+
+    if [ ! -f "$INTERFACES_JAR" -o ! -f "$MAIN_JAR" -o ! -f "$DOTTY_LIB_JAR" -o ! -f "$TEST_JAR" ]; then
+        echo ".packages file corrupted, rebuilding"
+        build_all
+    fi
 fi
 
 ################# After this point, jar variables will be set #################
@@ -140,10 +145,6 @@ check_jar "dotty-tests"      "$TEST_JAR"       "compiler/test"  'TEST_JAR=$(buil
 # Autodetecting the scala-library location, in case it wasn't provided by an environment variable
 if [ "$SCALA_LIBRARY_JAR" == "" ]; then
     SCALA_LIBRARY_JAR=$(find_jar "$HOME/.ivy2/cache/org.scala-lang/scala-library/jars" "scala-library-$SCALA_VERSION.jar")
-fi
-
-if [ "$SCALA_REFLECT_JAR" == "" ]; then
-    SCALA_REFLECT_JAR=$(find_jar "$HOME/.ivy2/cache/org.scala-lang/scala-reflect/jars" "scala-reflect-$SCALA_VERSION.jar")
 fi
 
 if [ "$SCALA_ASM_JAR" == "" ]; then
