@@ -2,3 +2,7 @@
 	path = scala-backend
 	url = https://github.com/lampepfl/scala.git
 	branch = sharing-backend
+[submodule "scala-scala"]
+	path = scala-scala
+	url = https://github.com/lampepfl/scala.git
+	branch = dotty-library

@@ -996,12 +996,12 @@ object DottyInjectedPlugin extends AutoPlugin {
   }
 
   private def projectChecks(): Unit = {
-    val scalaScala = new File("scala-scala")
-    if (!scalaScala.exists()) {
+    val submodules = List(new File("scala-backend"), new File("scala-scala"))
+    if (!submodules.forall(_.exists)) {
       println(
-        s"""[WARNING] Missing `dotty/scala-scala` library
-           |You can clone the library with:
-           |  > git clone -b dotty-library https://github.com/DarkDimius/scala.git ${scalaScala.getAbsolutePath}
+        s"""[WARNING] Missing some of the submodules
+           |You can initialize the modules with:
+           |  > git submodule update --init
         """.stripMargin)
     }
   }
