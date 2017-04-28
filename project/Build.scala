@@ -996,7 +996,7 @@ object DottyInjectedPlugin extends AutoPlugin {
   }
 
   private def projectChecks(): Unit = {
-    val submodules = List(new File("scala-backend"), new File("scala-scala"), new File("collection-strawman"))
+    val submodules = List(new File("scala-backend"), new File("scala-library"), new File("collection-strawman"))
     if (!submodules.forall(f => f.exists && f.listFiles().nonEmpty)) {
       println(
         s"""[WARNING] Missing some of the submodules
