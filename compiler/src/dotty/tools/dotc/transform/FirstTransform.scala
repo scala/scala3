@@ -9,7 +9,7 @@ import dotty.tools.dotc.transform.TreeTransforms._
 import ast.Trees._
 import Flags._
 import Types._
-import Constants._
+import Constants.Constant
 import Contexts.Context
 import Symbols._
 import SymDenotations._
@@ -34,8 +34,6 @@ import StdNames._
  *   - drops branches of ifs using the rules
  *          if (true) A else B  --> A
  *          if (false) A else B --> B
- *          if (C: true) A else B  --> C; A
- *          if (C: false) A else B  --> C; B
  */
 class FirstTransform extends MiniPhaseTransform with InfoTransformer with AnnotationTransformer { thisTransformer =>
   import ast.tpd._
@@ -192,16 +190,11 @@ class FirstTransform extends MiniPhaseTransform with InfoTransformer with Annota
   override def transformBlock(tree: Block)(implicit ctx: Context, info: TransformerInfo) =
     constToLiteral(tree)
 
-  override def transformIf(tree: If)(implicit ctx: Context, info: TransformerInfo) = {
-    tree.cond.tpe.widenTermRefExpr match {
-      case ConstantType(Constant(condVal: Boolean)) =>
-        val selected = if (condVal) tree.thenp else tree.elsep
-        if (isPureExpr(tree.cond)) selected
-        else Block(tree.cond :: Nil, selected)
-      case _ =>
-        tree
+  override def transformIf(tree: If)(implicit ctx: Context, info: TransformerInfo) =
+    tree.cond match {
+      case Literal(Constant(c: Boolean)) => if (c) tree.thenp else tree.elsep
+      case _ => tree
     }
-  }
 
   // invariants: all modules have companion objects
   // all types are TypeTrees

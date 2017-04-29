@@ -53,20 +53,6 @@ object Constants {
     def isNonUnitAnyVal       = BooleanTag <= tag && tag <= DoubleTag
     def isAnyVal              = UnitTag <= tag && tag <= DoubleTag
 
-    /** Is the zero or un-initialized value of the type */
-    def isZero(implicit ctx: Context): Boolean = tag match {
-      case BooleanTag => !value.asInstanceOf[Boolean]
-      case ByteTag    => value.asInstanceOf[Byte] == 0
-      case ShortTag   => value.asInstanceOf[Short] == 0
-      case CharTag    => value.asInstanceOf[Char] == 0
-      case IntTag     => value.asInstanceOf[Int] == 0
-      case LongTag    => value.asInstanceOf[Long] == 0L
-      case FloatTag   => value.asInstanceOf[Float] == 0.0
-      case DoubleTag  => value.asInstanceOf[Double] == 0.0
-      case NullTag    => true
-      case _          => false
-    }
-
     def tpe(implicit ctx: Context): Type = tag match {
       case UnitTag    => defn.UnitType
       case BooleanTag => defn.BooleanType
