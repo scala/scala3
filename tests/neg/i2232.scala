@@ -33,5 +33,5 @@ object Cats {
 
   val f: Int => Int = _ + 1
   val g: Int => String = _.toString
-  f >>> g
+  f >>> g   // error: no implicit arg found
 }
