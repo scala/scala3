@@ -2219,7 +2219,7 @@ object Types {
 
     def derivedAndType(tp1: Type, tp2: Type)(implicit ctx: Context): Type =
       if ((tp1 eq this.tp1) && (tp2 eq this.tp2)) this
-      else AndType.make(tp1, tp2)
+      else AndType.make(tp1, tp2, checkValid = true)
 
     def derived_& (tp1: Type, tp2: Type)(implicit ctx: Context): Type =
       if ((tp1 eq this.tp1) && (tp2 eq this.tp2)) this
@@ -2234,21 +2234,26 @@ object Types {
   final class CachedAndType(tp1: Type, tp2: Type) extends AndType(tp1, tp2)
 
   object AndType {
-    def apply(tp1: Type, tp2: Type)(implicit ctx: Context) = {
+    def apply(tp1: Type, tp2: Type)(implicit ctx: Context): AndType = {
       assert(tp1.isValueType && tp2.isValueType, i"$tp1 & $tp2 / " + s"$tp1 & $tp2")
       unchecked(tp1, tp2)
     }
-    def unchecked(tp1: Type, tp2: Type)(implicit ctx: Context) = {
+
+    def unchecked(tp1: Type, tp2: Type)(implicit ctx: Context): AndType = {
       assertUnerased()
       unique(new CachedAndType(tp1, tp2))
     }
-    def make(tp1: Type, tp2: Type)(implicit ctx: Context): Type =
+
+    /** Make an AndType using `op` unless clearly unnecessary (i.e. without
+     *  going through `&`).
+     */
+    def make(tp1: Type, tp2: Type, checkValid: Boolean = false)(implicit ctx: Context): Type =
       if ((tp1 eq tp2) || (tp2 eq defn.AnyType))
         tp1
       else if (tp1 eq defn.AnyType)
         tp2
       else
-        apply(tp1, tp2)
+        if (checkValid) apply(tp1, tp2) else unchecked(tp1, tp2)
   }
 
   abstract case class OrType(tp1: Type, tp2: Type) extends CachedGroundType with AndOrType {
@@ -2994,7 +2999,7 @@ object Types {
   // ----- Skolem types -----------------------------------------------
 
   /** A skolem type reference with underlying type `binder`. */
-  abstract case class SkolemType(info: Type) extends UncachedProxyType with ValueType with SingletonType {
+  case class SkolemType(info: Type) extends UncachedProxyType with ValueType with SingletonType {
     override def underlying(implicit ctx: Context) = info
     def derivedSkolemType(info: Type)(implicit ctx: Context) =
       if (info eq this.info) this else SkolemType(info)
@@ -3008,13 +3013,6 @@ object Types {
     }
 
     override def toString = s"Skolem($hashCode)"
-  }
-
-  final class CachedSkolemType(info: Type) extends SkolemType(info)
-
-  object SkolemType {
-    def apply(info: Type)(implicit ctx: Context) =
-      unique(new CachedSkolemType(info))
   }
 
   // ------------ Type variables ----------------------------------------
