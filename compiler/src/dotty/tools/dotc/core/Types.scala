@@ -3006,6 +3006,8 @@ object Types {
     override def hashCode: Int = identityHash
     override def equals(that: Any) = this eq that.asInstanceOf[AnyRef]
 
+    def withName(name: Name): this.type = { myRepr = name; this }
+
     private var myRepr: Name = null
     def repr(implicit ctx: Context): Name = {
       if (myRepr == null) myRepr = SkolemName.fresh()
@@ -3071,14 +3073,14 @@ object Types {
     }
 
     /** Instantiate variable from the constraints over its `origin`.
-     *  If `fromBelow` is true, the variable is instantiated to the lub
+     *  If `variance >= 0` the variable is instantiated to the lub
      *  of its lower bounds in the current constraint; otherwise it is
-     *  instantiated to the glb of its upper bounds. However, a lower bound
-     *  instantiation can be a singleton type only if the upper bound
-     *  is also a singleton type.
+     *  instantiated to the glb of its upper bounds. However, lower bound
+     *  singleton types and |-types are sometimes widened; for details see
+     *  TypeComparer#instanceType.
      */
-    def instantiate(fromBelow: Boolean)(implicit ctx: Context): Type =
-      instantiateWith(ctx.typeComparer.instanceType(origin, fromBelow))
+    def instantiate(variance: Int)(implicit ctx: Context): Type =
+      instantiateWith(ctx.typeComparer.instanceType(origin, variance))
 
     /** Unwrap to instance (if instantiated) or origin (if not), until result
      *  is no longer a TypeVar

@@ -119,24 +119,26 @@ class TreePickler(pickler: TastyPickler) {
       pickleType(c.symbolValue.termRef)
   }
 
-  def pickleType(tpe0: Type, richTypes: Boolean = false)(implicit ctx: Context): Unit = try {
+  def pickleType(tpe0: Type, richTypes: Boolean = false)(implicit ctx: Context): Unit = {
     val tpe = tpe0.stripTypeVar
-    val prev = pickledTypes.get(tpe)
-    if (prev == null) {
-      pickledTypes.put(tpe, currentAddr)
-      pickleNewType(tpe, richTypes)
+    try {
+      val prev = pickledTypes.get(tpe)
+      if (prev == null) {
+        pickledTypes.put(tpe, currentAddr)
+        pickleNewType(tpe, richTypes)
+      }
+      else {
+        writeByte(SHARED)
+        writeRef(prev.asInstanceOf[Addr])
+      }
+    } catch {
+      case ex: AssertionError =>
+        println(i"error when pickling type $tpe")
+        throw ex
     }
-    else {
-      writeByte(SHARED)
-      writeRef(prev.asInstanceOf[Addr])
-    }
-  } catch {
-    case ex: AssertionError =>
-      println(i"error when pickling type $tpe0")
-      throw ex
   }
 
-  private def pickleNewType(tpe: Type, richTypes: Boolean)(implicit ctx: Context): Unit = try { tpe match {
+  private def pickleNewType(tpe: Type, richTypes: Boolean)(implicit ctx: Context): Unit = tpe match {
     case AppliedType(tycon, args) =>
       writeByte(APPLIEDtype)
       withLength { pickleType(tycon); args.foreach(pickleType(_)) }
@@ -241,21 +243,10 @@ class TreePickler(pickler: TastyPickler) {
       pickleMethodic(POLYtype, tpe)
     case tpe: MethodType if richTypes =>
       pickleMethodic(METHODtype, tpe)
-    case tpe: TypeParamRef =>
-      if (!pickleParamRef(tpe))
-      // TODO figure out why this case arises in e.g. pickling AbstractFileReader.
-        ctx.typerState.constraint.entry(tpe) match {
-          case TypeBounds(lo, hi) if lo eq hi => pickleNewType(lo, richTypes)
-          case _ => assert(false, s"orphan poly parameter: $tpe")
-        }
-    case tpe: TermParamRef =>
-      assert(pickleParamRef(tpe), s"orphan method parameter: $tpe")
+    case tpe: ParamRef =>
+      assert(pickleParamRef(tpe), s"orphan parameter reference: $tpe")
     case tpe: LazyRef =>
       pickleType(tpe.ref)
-  }} catch {
-    case ex: AssertionError =>
-      println(i"error while pickling type $tpe")
-      throw ex
   }
 
   def picklePackageRef(pkg: Symbol)(implicit ctx: Context): Unit = {

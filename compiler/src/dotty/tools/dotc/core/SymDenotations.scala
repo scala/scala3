@@ -1381,11 +1381,14 @@ object SymDenotations {
     /** Invalidate baseTypeRefCache, baseClasses and superClassBits on new run */
     private def checkBasesUpToDate()(implicit ctx: Context) =
       if (baseTypeRefValid != ctx.runId) {
-        baseTypeRefCache = new java.util.HashMap[CachedType, Type]
+        invalidateBaseTypeRefCache()
         myBaseClasses = null
         mySuperClassBits = null
         baseTypeRefValid = ctx.runId
       }
+
+    def invalidateBaseTypeRefCache() =
+      baseTypeRefCache = new java.util.HashMap[CachedType, Type]
 
     private def computeBases(implicit ctx: Context): (List[ClassSymbol], BitSet) = {
       if (myBaseClasses eq Nil) throw CyclicReference(this)
@@ -1712,18 +1715,23 @@ object SymDenotations {
       /*>|>*/ ctx.debugTraceIndented(s"$tp.baseTypeRef($this)") /*<|<*/ {
         tp match {
           case tp: CachedType =>
-            checkBasesUpToDate()
-            var basetp = baseTypeRefCache get tp
-            if (basetp == null) {
-              baseTypeRefCache.put(tp, NoPrefix)
-              basetp = computeBaseTypeRefOf(tp)
-              if (isCachable(tp)) baseTypeRefCache.put(tp, basetp)
-              else baseTypeRefCache.remove(tp)
-            } else if (basetp == NoPrefix) {
-              baseTypeRefCache.put(tp, null)
-              throw CyclicReference(this)
+            try {
+              checkBasesUpToDate()
+              var basetp = baseTypeRefCache get tp
+              if (basetp == null) {
+                baseTypeRefCache.put(tp, NoPrefix)
+                basetp = computeBaseTypeRefOf(tp)
+                if (isCachable(tp)) baseTypeRefCache.put(tp, basetp)
+                else baseTypeRefCache.remove(tp)
+              } else if (basetp == NoPrefix)
+                throw CyclicReference(this)
+              basetp
             }
-            basetp
+            catch {
+              case ex: Throwable =>
+                baseTypeRefCache.put(tp, null)
+                throw ex
+            }
           case _ =>
             computeBaseTypeRefOf(tp)
         }

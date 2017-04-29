@@ -230,12 +230,47 @@ trait ConstraintHandling {
   }
 
   /** The instance type of `param` in the current constraint (which contains `param`).
-   *  If `fromBelow` is true, the instance type is the lub of the parameter's
-   *  lower bounds; otherwise it is the glb of its upper bounds. However,
-   *  a lower bound instantiation can be a singleton type only if the upper bound
-   *  is also a singleton type.
+   *  The instance type TI is computed depending on the given variance as follows:
+   *
+   *  If `variance < 0`, `TI` is the glb of `param`'s upper bounds.
+   *  If `variance > 0`, `TI` is the lub of `param`'s lower bounds.
+   *                      However, if `TI` would be a singleton type, and the upper bound is
+   *                      not a singleton type, `TI` is widened to a non-singleton type.
+   *  If `variance = 0`, let `Lo1` be the lower bound of `param` and let `Lo2` be the
+   *                     |-dominator of `Lo1`. If `Lo2` is not more ugly than `Lo1`, we add the
+   *                     additional constraint that `param` should be a supertype of `Lo2`.
+   *                     We then proceed as if `variance > 0`.
+   *
+   *  The reason for tweaking the `variance = 0` case is that in this case we have to make
+   *  a guess, since no possible instance type is better than the other. We apply the heuristic
+   *  that usually an |-type is not what is intended. E.g. given two cases of types
+   *  `Some[Int]` and `None`, we'd naturally want `Option[Int]` as the inferred type, not
+   *  `Some[Int] | None`. If `variance > 0` it's OK to infer the smaller `|-type` since
+   *  we can always widen later to the intended type. But in non-variant situations, we
+   *  have to stick to the initial guess.
+   *
+   *  On the other hand, sometimes the |-dominator is _not_ what we want. For instance, taking
+   *  run/hmap.scala as an example, we have a lower bound
+   *
+   *     HEntry[$param$5, V] | HEntry[String("name"), V]
+   *
+   *  Its |-dominator is
+   *
+   *     HEntry[_ >: $param$11 & String("cat") <: String, V]
+   *
+   *  If we apply the additional constraint we get compilation failures because while
+   *  we can find implicits for the |-type above, we cannot find implicits for the |-dominator.
+   *  There's no hard criterion what should be considered ugly or not. For now we
+   *  pick the degree of undefinedness of type parameters, i.e. how many type
+   *  parameters are instantiated with wildcard types. Maybe we have to refine this
+   *  in the future.
+   *
+   *  The whole thing is clearly not nice, and I would love to have a better criterion.
+   *  In principle we are grappling with the fundamental shortcoming that local type inference
+   *  sometimes has to guess what was intended. The more refined our type lattice becomes,
+   *  the harder it is to make a choice.
    */
-  def instanceType(param: TypeParamRef, fromBelow: Boolean): Type = {
+  def instanceType(param: TypeParamRef, variance: Int): Type = {
     def upperBound = constraint.fullUpperBound(param)
     def isSingleton(tp: Type): Boolean = tp match {
       case tp: SingletonType => true
@@ -257,22 +292,48 @@ trait ConstraintHandling {
       case _ => false
     }
 
-    // First, solve the constraint.
+    // First, consider whether we need to constrain with |-dominator
+    if (variance == 0) {
+      val lo1 = ctx.typeComparer.bounds(param).lo
+      val lo2 = ctx.orDominator(lo1)
+      if (lo1 ne lo2) {
+        val ugliness = new TypeAccumulator[Int] {
+          def apply(x: Int, tp: Type) = tp match {
+            case tp: TypeBounds if !tp.isAlias => apply(apply(x + 1, tp.lo), tp.hi)
+            case tp: AndOrType => apply(x, tp.tp1) max apply(x, tp.tp2)
+            case _ => foldOver(x, tp)
+          }
+        }
+        if (ugliness(0, lo2) <= ugliness(0, lo1)) {
+          constr.println(i"apply additional constr $lo2 <: $param, was $lo1")
+          lo2 <:< param
+        }
+        else
+          constr.println(i"""refrain from adding constrint.
+                            |ugliness($lo1) = ${ugliness(0, lo1)}
+                            |ugliness($lo2) = ${ugliness(0, lo2)}""")
+      }
+    }
+
+    // Then, solve the constraint.
+    val fromBelow = variance >= 0
     var inst = approximation(param, fromBelow)
 
-    // Then, approximate by (1.) - (3.) and simplify as follows.
-    // 1. If instance is from below and is a singleton type, yet
+    // Then, if instance is from below and is a singleton type, yet
     // upper bound is not a singleton type, widen the instance.
     if (fromBelow && isSingleton(inst) && !isSingleton(upperBound))
       inst = inst.widen
 
+    // Then, simplify.
     inst = inst.simplified
 
-    // 2. If instance is from below and is a fully-defined union type, yet upper bound
-    // is not a union type, approximate the union type from above by an intersection
-    // of all common base types.
-    if (fromBelow && isOrType(inst) && isFullyDefined(inst) && !isOrType(upperBound))
+    // Finally, if the instance is from below and is a fully-defined union type, yet upper bound
+    // is not a union type, harmonize the union type.
+    // TODO: See whether we can merge this with the special treatment of dependent params in
+    // simplified.
+    if (fromBelow && isOrType(inst) && isFullyDefined(inst) && !isOrType(upperBound)) {
       inst = ctx.harmonizeUnion(inst)
+    }
 
     inst
   }
