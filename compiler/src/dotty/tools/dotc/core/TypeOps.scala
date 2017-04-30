@@ -273,37 +273,6 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
     }
   }
 
-  /** Given a disjunction T1 | ... | Tn of types with potentially embedded
-   *  type variables, constrain type variables further if this eliminates
-   *  some of the branches of the disjunction. Do this also for disjunctions
-   *  embedded in intersections, as parents in refinements, and in recursive types.
-   *
-   *  For instance, if `A` is an unconstrained type variable, then
-   *
-   *      ArrayBuffer[Int] | ArrayBuffer[A]
-   *
-   *  is approximated by constraining `A` to be =:= to `Int` and returning `ArrayBuffer[Int]`
-   *  instead of `ArrayBuffer[_ >: Int | A <: Int & A]`
-   */
-  def harmonizeUnion(tp: Type): Type = tp match {
-    case tp: OrType =>
-      joinIfScala2(ctx.typeComparer.lub(harmonizeUnion(tp.tp1), harmonizeUnion(tp.tp2), canConstrain = true))
-    case tp @ AndType(tp1, tp2) =>
-      tp derived_& (harmonizeUnion(tp1), harmonizeUnion(tp2))
-    case tp: RefinedType =>
-      tp.derivedRefinedType(harmonizeUnion(tp.parent), tp.refinedName, tp.refinedInfo)
-    case tp: RecType =>
-      tp.rebind(harmonizeUnion(tp.parent))
-    case _ =>
-      tp
-  }
-
-  /** Under -language:Scala2: Replace or-types with their joins */
-  private def joinIfScala2(tp: Type) = tp match {
-    case tp: OrType => tp.join
-    case _ => tp
-  }
-
   /** Not currently needed:
    *
   def liftToRec(f: (Type, Type) => Type)(tp1: Type, tp2: Type)(implicit ctx: Context) = {

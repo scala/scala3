@@ -258,7 +258,7 @@ trait ConstraintHandling {
     }
 
     // First, solve the constraint.
-    var inst = approximation(param, fromBelow)
+    var inst = approximation(param, fromBelow).simplified
 
     // Then, approximate by (1.) - (3.) and simplify as follows.
     // 1. If instance is from below and is a singleton type, yet
@@ -266,13 +266,11 @@ trait ConstraintHandling {
     if (fromBelow && isSingleton(inst) && !isSingleton(upperBound))
       inst = inst.widen
 
-    inst = inst.simplified
-
     // 2. If instance is from below and is a fully-defined union type, yet upper bound
     // is not a union type, approximate the union type from above by an intersection
     // of all common base types.
-    if (fromBelow && isOrType(inst) && /*isFullyDefined(inst) &&*/ !isOrType(upperBound))
-      inst = ctx.harmonizeUnion(inst)
+    if (fromBelow && isOrType(inst) && !isOrType(upperBound))
+      inst = inst.widenUnion
 
     inst
   }

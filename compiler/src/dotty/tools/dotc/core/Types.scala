@@ -872,6 +872,35 @@ object Types {
       case _ => this
     }
 
+    /** If this type contains embedded union types, replace them by their joins.
+     *  "Embedded" means: inside intersectons or recursive types, or in prefixes of refined types.
+     *  If an embedded union is found, we first try to simplify or eliminate it by
+     *  re-lubbing it while allowing type parameters to be constrained further.
+     *  Any remaining union types are replaced by their joins.
+     *
+	   *  For instance, if `A` is an unconstrained type variable, then
+  	 *
+  	 * 	      ArrayBuffer[Int] | ArrayBuffer[A]
+  	 *
+     *  is approximated by constraining `A` to be =:= to `Int` and returning `ArrayBuffer[Int]`
+     *  instead of `ArrayBuffer[_ >: Int | A <: Int & A]`
+     */
+    def widenUnion(implicit ctx: Context): Type = this match {
+      case OrType(tp1, tp2) =>
+        ctx.typeComparer.lub(tp1.widenUnion, tp2.widenUnion, canConstrain = true) match {
+          case union: OrType => union.join
+          case res => res
+        }
+      case tp @ AndType(tp1, tp2) =>
+        tp derived_& (tp1.widenUnion, tp2.widenUnion)
+      case tp: RefinedType =>
+        tp.derivedRefinedType(tp.parent.widenUnion, tp.refinedName, tp.refinedInfo)
+      case tp: RecType =>
+        tp.rebind(tp.parent.widenUnion)
+      case _ =>
+        this
+    }
+
     /** Eliminate anonymous classes */
     final def deAnonymize(implicit ctx: Context): Type = this match {
       case tp:TypeRef if tp.symbol.isAnonymousClass =>
