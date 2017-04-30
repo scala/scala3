@@ -641,7 +641,7 @@ object RefChecks {
     // in either a deprecated member or a scala bridge method, issue a warning.
     if (sym.isDeprecated && !ctx.owner.ownersIterator.exists(_.isDeprecated)) {
       ctx.deprecationWarning("%s%s is deprecated%s".format(
-        sym, sym.showLocated, sym.deprecationMessage map (": " + _) getOrElse "", pos))
+        sym, sym.showLocated, sym.deprecationMessage map (": " + _) getOrElse ""), pos)
     }
     // Similar to deprecation: check if the symbol is marked with @migration
     // indicating it has changed semantics between versions.
