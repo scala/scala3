@@ -271,7 +271,7 @@ trait ConstraintHandling {
     // 2. If instance is from below and is a fully-defined union type, yet upper bound
     // is not a union type, approximate the union type from above by an intersection
     // of all common base types.
-    if (fromBelow && isOrType(inst) && isFullyDefined(inst) && !isOrType(upperBound))
+    if (fromBelow && isOrType(inst) && /*isFullyDefined(inst) &&*/ !isOrType(upperBound))
       inst = ctx.harmonizeUnion(inst)
 
     inst

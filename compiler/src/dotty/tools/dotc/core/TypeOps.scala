@@ -300,7 +300,7 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
 
   /** Under -language:Scala2: Replace or-types with their joins */
   private def joinIfScala2(tp: Type) = tp match {
-    case tp: OrType if scala2Mode => tp.join
+    case tp: OrType => tp.join
     case _ => tp
   }
 
