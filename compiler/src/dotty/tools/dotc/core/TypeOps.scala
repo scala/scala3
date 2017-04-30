@@ -338,7 +338,8 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
         if (name == from.name &&
             (lo2 eq hi2) &&
             info.variance == to.variance &&
-            !decls.lookup(argSym.name).exists) {
+            !decls.lookup(argSym.name).exists &&
+            !ctx.settings.YsuppressParamForwarding.value) {
               // println(s"short-circuit ${argSym.name} was: ${argSym.info}, now: $to")
               enterArgBinding(argSym, to, cls, decls)
             }
