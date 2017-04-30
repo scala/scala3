@@ -404,7 +404,7 @@ object ProtoTypes {
   /** Create a new TypeVar that represents a dependent method parameter singleton */
   def newDepTypeVar(tp: Type)(implicit ctx: Context): TypeVar = {
     val poly = PolyType(DepParamName.fresh().toTypeName :: Nil)(
-        pt => TypeBounds.upper(AndType(tp, defn.SingletonType)) :: Nil,
+        pt => TypeBounds.upper(AndType(tp, defn.SingletonClass.typeRef)) :: Nil,
         pt => defn.AnyType)
     constrained(poly, untpd.EmptyTree, alwaysAddTypeVars = true)
       ._2.head.tpe.asInstanceOf[TypeVar]
