@@ -1511,8 +1511,15 @@ class ExplainingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
 
   override def compareHkApply2(tp1: Type, tp2: HKApply, tycon2: Type, args2: List[Type]): Boolean = {
     def addendum = ""
-    traceIndented(i"compareHkApply $tp1, $tp2$addendum") {
+    traceIndented(i"compareHkApply2 $tp1, $tp2$addendum") {
       super.compareHkApply2(tp1, tp2, tycon2, args2)
+    }
+  }
+
+  override def compareHkApply1(tp1: HKApply, tycon1: Type, args1: List[Type], tp2: Type): Boolean = {
+    def addendum = ""
+    traceIndented(i"compareHkApply1 $tp1, $tp2$addendum") {
+      super.compareHkApply1(tp1, tycon1, args1, tp2)
     }
   }
 
