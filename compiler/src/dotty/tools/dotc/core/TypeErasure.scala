@@ -325,6 +325,10 @@ class TypeErasure(isJava: Boolean, semiEraseVCs: Boolean, isConstructor: Boolean
 
   /**  The erasure |T| of a type T. This is:
    *
+   *   - For dotty.TupleCons:
+   *      - if lenght staticaly known as N, TupleN
+   *      - otherwise Product
+   *   - For dotty.Tuple, java.lang.Object
    *   - For a refined type scala.Array+[T]:
    *      - if T is Nothing or Null, []Object
    *      - otherwise, if T <: Object, []|T|
@@ -347,7 +351,7 @@ class TypeErasure(isJava: Boolean, semiEraseVCs: Boolean, isConstructor: Boolean
    *   - For any other uncurried method type (Fs)T, (|Fs|)|T|.
    *   - For a curried method type (Fs1)(Fs2)T, (|Fs1|,Es2)ET where (Es2)ET = |(Fs2)T|.
    *   - For a polymorphic type [Ts](Ps)T, |(Ps)T|
-   *   _ For a polymorphic type [Ts]T where T is not a method type, ()|T|
+   *   - For a polymorphic type [Ts]T where T is not a method type, ()|T|
    *   - For the class info type of java.lang.Object, the same type without any parents.
    *   - For a class info type of a value class, the same type without any parents.
    *   - For any other class info type with parents Ps, the same type with
@@ -356,6 +360,27 @@ class TypeErasure(isJava: Boolean, semiEraseVCs: Boolean, isConstructor: Boolean
    *   - For any other type, exception.
    */
   private def apply(tp: Type)(implicit ctx: Context): Type = tp match {
+    case _ if tp.isRef(defn.TupleConsType.symbol) =>
+      // Compute the arity of a tuple type, -1 if it's not statically known.
+      def tupleArity(t: Type, acc: Int = 0): Int = t match {
+        case RefinedType(RefinedType(_, _, TypeAlias(headType)), _, TypeAlias(tailType)) =>
+          tupleArity(tailType, acc + 1)
+        case _ if t.isRef(defn.UnitType.symbol) =>
+          acc
+        case AnnotatedType(tpe, _) =>
+          tupleArity(tpe, acc)
+        case tp: TypeProxy =>
+          tupleArity(tp.underlying, acc)
+        case t =>
+          -1
+      }
+      val arity = tupleArity(tp)
+      if (arity > 0 && arity <= Definitions.MaxImplementedTupleArity)
+        defn.TupleNType(arity)
+      else
+        defn.ProductType
+    case _ if tp.isRef(defn.TupleType.symbol) =>
+      defn.ObjectType
     case _: ErasedValueType =>
       tp
     case tp: TypeRef =>
@@ -469,7 +494,7 @@ class TypeErasure(isJava: Boolean, semiEraseVCs: Boolean, isConstructor: Boolean
       // constructor method should not be semi-erased.
       else if (isConstructor && isDerivedValueClass(sym)) eraseNormalClassRef(tp)
       else this(tp)
-    case RefinedType(parent, _, _) if !(parent isRef defn.ArrayClass) =>
+    case RefinedType(parent, _, _) if !(parent isRef defn.ArrayClass) && !(tp isRef defn.TupleConsType.symbol) =>
       eraseResult(parent)
     case _ =>
       this(tp)

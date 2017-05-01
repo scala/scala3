@@ -90,7 +90,13 @@ function build_all {
     printf "done\n"
 
     printf "Building dotty library..."
-    DOTTY_LIB_JAR=$(build_jar dotty-library/package "library/target/scala-$SCALA_BINARY_VERSION")
+
+    cd "$DOTTY_ROOT" >& /dev/null
+    sbt publish-local >& /dev/null
+    cd - >& /dev/null
+
+    DOTTY_LIB_JAR=$(build_jar dotty-library-bootstrapped/package "out/dotty-library-bootstrapped/scala-$SCALA_BINARY_VERSION")
+
     printf "done\n"
 
     printf "Building tests..."

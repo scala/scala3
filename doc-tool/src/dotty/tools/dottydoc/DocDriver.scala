@@ -41,7 +41,8 @@ class DocDriver extends Driver {
   }
 
   override def main(args: Array[String]): Unit = {
-    implicit val (filesToDocument, ctx) = setup(args, initCtx.fresh)
+    val (filesToDocument, ctx0) = setup(args, initCtx.fresh)
+    implicit val ctx: Context = ctx0
     val reporter = doCompile(newCompiler(ctx), filesToDocument)(ctx)
     val siteRoot = new java.io.File(ctx.settings.siteRoot.value)
     val projectName = ctx.settings.projectName.value

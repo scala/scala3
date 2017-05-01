@@ -32,7 +32,7 @@ object VarFoo {
 }
 
 object Foo {
-  def unapply(x: Any): Option[Product2[Int, String]] = x match {
+  def unapply(x: Any): Option[(Int, String)] = x match {
     case y: Bar => Some(y.size, y.name)
     case _ => None
   }
@@ -68,7 +68,7 @@ object Foo {
 // same, but now object is not top-level
 object Mas {
   object Gaz {
-    def unapply(x: Any): Option[Product2[Int, String]] = x match {
+    def unapply(x: Any): Option[(Int, String)] = x match {
       case y: Baz => Some(y.size, y.name)
       case _ => None
     }

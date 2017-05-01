@@ -81,3 +81,27 @@ scala/util/control/Exception.scala
 # 51 |  implicit def throwableSubtypeToCatcher[Ex <: Throwable: ClassTag, T](pf: PartialFunction[Ex, T]) =
 #    |                                                                                                 ^
 #    |                                                                     cyclic reference involving method mkCatcher
+
+scala/Unit.scala
+scala/Tuple1.scala
+scala/Tuple2.scala
+scala/Tuple3.scala
+scala/Tuple4.scala
+scala/Tuple5.scala
+scala/Tuple6.scala
+scala/Tuple7.scala
+scala/Tuple8.scala
+scala/Tuple9.scala
+scala/Tuple10.scala
+scala/Tuple11.scala
+scala/Tuple12.scala
+scala/Tuple13.scala
+scala/Tuple14.scala
+scala/Tuple15.scala
+scala/Tuple16.scala
+scala/Tuple17.scala
+scala/Tuple18.scala
+scala/Tuple19.scala
+scala/Tuple20.scala
+scala/Tuple21.scala
+scala/Tuple22.scala

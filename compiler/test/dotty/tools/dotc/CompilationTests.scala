@@ -160,6 +160,9 @@ class CompilationTests extends ParallelTesting {
   @Test def runAll: Unit =
     compileFilesInDir("../tests/run", defaultOptions).checkRuns()
 
+  @Test def runTuples: Unit =
+    compileFilesInDir("../tests/tuples", defaultOptions).checkRuns()
+
   // Pickling Tests ------------------------------------------------------------
   //
   // Pickling tests are very memory intensive and as such need to be run with a
@@ -197,15 +200,11 @@ class CompilationTests extends ParallelTesting {
     val opt = Array(
       "-classpath",
       // compile with bootstrapped library on cp:
-      defaultOutputDir + "lib/src/:" +
+      Jars.dottyLib + ":" +
       // as well as bootstrapped compiler:
       defaultOutputDir + "dotty1/dotty1/:" +
       Jars.dottyInterfaces
     )
-
-    def lib =
-      compileDir("../library/src",
-        allowDeepSubtypes.and("-Ycheck-reentrant", "-strict", "-priorityclasspath", defaultOutputDir))
 
     def sources(paths: JStream[Path], excludedFiles: List[String] = Nil): List[String] =
       paths.iterator().asScala
@@ -242,7 +241,7 @@ class CompilationTests extends ParallelTesting {
       compileShallowFilesInDir("../compiler/src/dotty", opt)
 
     {
-      lib.keepOutput :: dotty1.keepOutput :: {
+      dotty1.keepOutput :: {
         dotty2 +
         compileShallowFilesInDir("../compiler/src/dotty/tools", opt) +
         compileShallowFilesInDir("../compiler/src/dotty/tools/dotc", opt) +

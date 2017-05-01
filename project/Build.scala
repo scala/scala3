@@ -128,7 +128,6 @@ object Build {
     aggregate(`dotty-interfaces`, `dotty-library`, `dotty-compiler`, `dotty-doc`, dottySbtBridgeRef,
       `scala-library`, `scala-compiler`, `scala-reflect`, scalap).
     dependsOn(`dotty-compiler`).
-    dependsOn(`dotty-library`).
     settings(
       triggeredMessage in ThisBuild := Watched.clearWhenTriggered,
 
@@ -252,7 +251,6 @@ object Build {
 
   // Settings shared between dotty-compiler and dotty-compiler-bootstrapped
   lazy val dottyCompilerSettings = Seq(
-
       // The scala-backend folder is a git submodule that contains a fork of the Scala 2.11
       // compiler developed at https://github.com/lampepfl/scala/tree/sharing-backend.
       // We do not compile the whole submodule, only the part of the Scala 2.11 GenBCode backend
@@ -484,7 +482,6 @@ object Build {
 
   lazy val `dotty-compiler` = project.in(file("compiler")).
     dependsOn(`dotty-interfaces`).
-    dependsOn(`dotty-library`).
     settings(sourceStructure).
     settings(dottyCompilerSettings).
     settings(
@@ -498,7 +495,7 @@ object Build {
         Map(
           "dotty-interfaces" -> (packageBin in (`dotty-interfaces`, Compile)).value,
           "dotty-compiler" -> (packageBin in Compile).value,
-          "dotty-library" -> (packageBin in (`dotty-library`, Compile)).value,
+          "dotty-library" -> (packageBin in (`dotty-library-bootstrapped`, Compile)).value,
           "dotty-compiler-test" -> (packageBin in Test).value
         ) map { case (k, v) => (k, v.getAbsolutePath) }
       }
@@ -542,11 +539,13 @@ object Build {
   )
 
   lazy val `dotty-library` = project.in(file("library")).
+    settings(unmanagedSourceDirectories in Compile += baseDirectory.value / "src_scalac").
     settings(sourceStructure).
     settings(dottyLibrarySettings).
     settings(publishing)
 
   lazy val `dotty-library-bootstrapped` = project.in(file("library")).
+    settings(unmanagedSourceDirectories in Compile += baseDirectory.value / "src_dotc").
     settings(sourceStructure).
     settings(commonBootstrappedSettings).
     settings(dottyLibrarySettings)
@@ -556,6 +555,7 @@ object Build {
 
   lazy val `dotty-sbt-bridge` = project.in(file("sbt-bridge")).
     dependsOn(`dotty-compiler`).
+    dependsOn(`dotty-library`).
     settings(sourceStructure).
     settings(
       cleanSbtBridge := {
@@ -600,7 +600,7 @@ object Build {
       ScriptedPlugin.scripted := {
         val x1 = (publishLocal in `dotty-interfaces`).value
         val x2 = (publishLocal in `dotty-compiler`).value
-        val x3 = (publishLocal in `dotty-library`).value
+        val x3 = (publishLocal in `dotty-library-bootstrapped`).value
         val x4 = (publishLocal in dotty).value // Needed because sbt currently hardcodes the dotty artifact
         ScriptedPlugin.scriptedTask.evaluated
       }

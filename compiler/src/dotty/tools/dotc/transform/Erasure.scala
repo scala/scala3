@@ -135,7 +135,7 @@ class Erasure extends Phase with DenotTransformer { thisTransformer =>
         i"The type $tp - ${tp.toString} of class ${tp.getClass} of tree $tree : ${tree.tpe} / ${tree.getClass} is illegal after erasure, phase = ${ctx.phase.prev}")
 }
 
-object Erasure extends TypeTestsCasts{
+object Erasure extends TypeTestsCasts {
 
   import tpd._
 
@@ -344,7 +344,6 @@ object Erasure extends TypeTestsCasts{
      *      e.m -> e.[]m                if `m` is an array operation other than `clone`.
      */
     override def typedSelect(tree: untpd.Select, pt: Type)(implicit ctx: Context): Tree = {
-
       def mapOwner(sym: Symbol): Symbol = {
         def recur(owner: Symbol): Symbol =
           if ((owner eq defn.AnyClass) || (owner eq defn.AnyValClass)) {
@@ -362,14 +361,9 @@ object Erasure extends TypeTestsCasts{
       val sym = if (owner eq origSym.owner) origSym else owner.info.decl(origSym.name).symbol
       assert(sym.exists, origSym.showLocated)
 
-      def select(qual: Tree, sym: Symbol): Tree = {
-        val name = tree.typeOpt match {
-          case tp: NamedType if tp.name.is(ShadowedName) => sym.name.derived(ShadowedName)
-          case _ => sym.name
-        }
+      def select(qual: Tree, sym: Symbol): Tree =
         untpd.cpy.Select(tree)(qual, sym.name)
           .withType(NamedType.withFixedSym(qual.tpe, sym))
-      }
 
       def selectArrayMember(qual: Tree, erasedPre: Type): Tree =
         if (erasedPre isRef defn.ObjectClass)
@@ -409,7 +403,13 @@ object Erasure extends TypeTestsCasts{
         }
       }
 
-      recur(typed(tree.qualifier, AnySelectionProto))
+      if (defn.DottyTupleNModule contains tree.qualifier.symbol) {
+        val arity = defn.DottyTupleNModule.indexOf(tree.qualifier.symbol)
+        val tupleCompanion = defn.TupleNType(arity).classSymbol.companionModule.symbol
+        ref(tupleCompanion).select(tree.name).withPos(tree.pos)
+      } else {
+        recur(typed(tree.qualifier, AnySelectionProto))
+      }
     }
 
     override def typedThis(tree: untpd.This)(implicit ctx: Context): Tree =
@@ -447,9 +447,9 @@ object Erasure extends TypeTestsCasts{
       }
     }
 
-	/** Besides normal typing, this method collects all arguments
-	 *  to a compacted function into a single argument of array type.
-	 */
+    /** Besides normal typing, this method collects all arguments
+     *  to a compacted function into a single argument of array type.
+     */
     override def typedApply(tree: untpd.Apply, pt: Type)(implicit ctx: Context): Tree = {
       val Apply(fun, args) = tree
       if (fun.symbol == defn.cbnArg)
