@@ -1,18 +1,17 @@
 package dotty.tools.dotc.core.tasty
 
 import dotty.tools.dotc.core.Contexts.Context
+import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.core.Mode
 import dotty.tools.dotc.core.Names.TermName
-import dotty.tools.dotc.core.tasty.TastyBuffer.NameRef
+import dotty.tools.dotc.core.tasty.TastyBuffer.{Addr, NameRef}
 
-class SummariesTreeUnpickler(treeUnpickler: TreeUnpickler, reader: TastyReader, tastyName: NameRef => TermName, sectionName: String)
+import scala.collection.mutable
+
+class SummariesTreeUnpickler(override val symAtAddr: mutable.HashMap[Addr, Symbol], reader: TastyReader, tastyName: NameRef => TermName, sectionName: String)
     extends TreeUnpickler(reader, tastyName, posUnpicklerOpt = None) {
 
   roots = Set.empty
-
-  override val symAtAddr = treeUnpickler.symAtAddr
-  override val treeAtAddr = treeUnpickler.treeAtAddr
-  override val typeAtAddr = treeUnpickler.typeAtAddr
 
   def getStartReader(implicit ctx: Context): Option[TreeReader] = {
     val st = new TreeReader(reader)

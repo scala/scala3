@@ -17,7 +17,6 @@ import scala.collection.mutable
 
 
 class TastySummaries {
-  import TastySummaries._
 
   private var noSummaryAvailable = Set[Symbol]()
 
@@ -38,10 +37,7 @@ class TastySummaries {
 
   private def retrieveSummary(sym: Symbol)(implicit ctx: Context): List[MethodSummary] = {
     val topDenot = sym.topLevelClass.denot.asClass
-    topDenot.hack match {
-      case Some(unpickler: DottyUnpickler) => unpickler.summaries
-      case _ => Nil
-    }
+    topDenot.dottyUnpickler.fold[List[MethodSummary]](Nil)(_.summaries)
   }
 
 }

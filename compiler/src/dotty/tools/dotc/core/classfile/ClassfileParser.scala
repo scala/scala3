@@ -6,6 +6,7 @@ package classfile
 import Contexts._, Symbols._, Types._, Names._, StdNames._, NameOps._, Scopes._, Decorators._
 import SymDenotations._, unpickleScala2.Scala2Unpickler._, Constants._, Annotations._, util.Positions._
 import NameKinds.{ModuleClassName, DefaultGetterName}
+import tasty.DottyUnpickler
 import ast.tpd._
 import java.io.{ ByteArrayInputStream, DataInputStream, File, IOException }
 import java.lang.Integer.toHexString
@@ -143,8 +144,12 @@ class ClassfileParser(
       setClassInfo(moduleRoot, staticInfo)
     }
 
-    classRoot.hack = result
-    moduleRoot.hack = result
+    result match {
+      case result @ Some(_: DottyUnpickler) =>
+        classRoot.dottyUnpickler = result.asInstanceOf[Option[DottyUnpickler]]
+        moduleRoot.dottyUnpickler = result.asInstanceOf[Option[DottyUnpickler]]
+      case _ =>
+    }
 
     // eager load java enum definitions for exhaustivity check of pattern match
     if (isEnum) {

@@ -18,6 +18,7 @@ import util.Stats
 import config.Config
 import config.Printers.{completions, incremental, noPrinter}
 import classfile.ClassfileParser
+import dotty.tools.dotc.core.tasty.DottyUnpickler
 
 trait SymDenotations { this: Context =>
   import SymDenotations._
@@ -1226,7 +1227,7 @@ object SymDenotations {
     initRunId: RunId)
     extends SymDenotation(symbol, ownerIfExists, initName, initFlags, initInfo, initPrivateWithin) {
 
-    var hack: Option[ClassfileParser.Embedded] = _
+    private[dotc] var dottyUnpickler: Option[DottyUnpickler] = None
 
     import util.LRUCache
 

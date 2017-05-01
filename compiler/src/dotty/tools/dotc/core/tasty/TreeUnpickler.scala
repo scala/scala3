@@ -29,29 +29,29 @@ class TreeUnpickler(reader: TastyReader, nameAtRef: NameRef => TermName, posUnpi
   import tpd._
 
   /** A map from addresses of definition entries to the symbols they define */
-  val symAtAddr  = new mutable.HashMap[Addr, Symbol]
+  private[tasty] val symAtAddr  = new mutable.HashMap[Addr, Symbol]
 
   /** A temporary map from addresses of definition entries to the trees they define.
    *  Used to remember trees of symbols that are created by a completion. Emptied
    *  once the tree is inlined into a larger tree.
    */
-  val treeAtAddr = new mutable.HashMap[Addr, Tree]
+  private val treeAtAddr = new mutable.HashMap[Addr, Tree]
 
   /** A map from addresses of type entries to the types they define.
    *  Currently only populated for types that might be recursively referenced
    *  from within themselves (i.e. RecTypes, LambdaTypes).
    */
-  val typeAtAddr = new mutable.HashMap[Addr, Type]
+  private val typeAtAddr = new mutable.HashMap[Addr, Type]
 
   /** The root symbol denotation which are defined by the Tasty file associated with this
    *  TreeUnpickler. Set by `enterTopLevel`.
    */
-  var roots: Set[SymDenotation] = Set.empty
+  private[tasty] var roots: Set[SymDenotation] = null
 
   /** The root symbols that are defined in this Tasty file. This
    *  is a subset of `roots.map(_.symbol)`.
    */
-  var seenRoots: Set[Symbol] = Set()
+  private var seenRoots: Set[Symbol] = Set()
 
   /** The root owner tree. See `OwnerTree` class definition. Set by `enterTopLevel`. */
   private var ownerTree: OwnerTree = _

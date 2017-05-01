@@ -13,6 +13,7 @@ import core.Mode
 import classfile.ClassfileParser
 import dotty.tools.dotc.transform.linker.summaries.MethodSummary
 import dotty.tools.dotc.transform.linker.summaries.TastySummaries
+import scala.collection.mutable
 
 object DottyUnpickler {
 
@@ -30,10 +31,10 @@ object DottyUnpickler {
       new PositionUnpickler(reader)
   }
 
-  class SummariesTreeSectionUnpickler(treeUnpickler: TreeUnpickler, sectionName: String)
+  class SummariesTreeSectionUnpickler(symAtAddr: mutable.HashMap[Addr, Symbol], sectionName: String)
       extends TreeSectionUnpickler(posUnpickler = None) {
     override def unpickle(reader: TastyReader, tastyName: NameTable): SummariesTreeUnpickler = {
-      new SummariesTreeUnpickler(treeUnpickler, reader, tastyName, sectionName)
+      new SummariesTreeUnpickler(symAtAddr, reader, tastyName, sectionName)
     }
   }
 }
@@ -60,9 +61,9 @@ class DottyUnpickler(bytes: Array[Byte]) extends ClassfileParser.Embedded {
     treeUnpickler.unpickle()
   }
 
-  def summaries(implicit ctx: Context) = {
+  def summaries(implicit ctx: Context): List[MethodSummary] = {
     val sectionName = TastySummaries.sectionName
-    val tastySection = unpickler.unpickle(new SummariesTreeSectionUnpickler(treeUnpickler, sectionName)).get
+    val tastySection = unpickler.unpickle(new SummariesTreeSectionUnpickler(treeUnpickler.symAtAddr, sectionName)).get
     val treeReader = tastySection.asInstanceOf[SummariesTreeUnpickler].getStartReader(ctx).get
     val unp = new TastyUnpickler.SectionUnpickler[List[MethodSummary]](sectionName) {
       def unpickle(reader: TastyReader, tastyName: NameTable): List[MethodSummary] =
