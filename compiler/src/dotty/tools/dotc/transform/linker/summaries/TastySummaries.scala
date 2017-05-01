@@ -6,10 +6,7 @@ import dotty.tools.dotc.core.Constants.Constant
 import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.Symbols.{Symbol, defn}
 import dotty.tools.dotc.core.Decorators._
-import dotty.tools.dotc.core.SymDenotations.ClassDenotation
 import dotty.tools.dotc.core.Types.{TermRef, Type}
-import dotty.tools.dotc.core.tasty.DottyUnpickler.SummariesTreeSectionUnpickler
-import dotty.tools.dotc.core.tasty.TastyUnpickler.NameTable
 import dotty.tools.dotc.core.tasty._
 import dotty.tools.dotc.transform.linker.types.{ClosureType, PreciseType}
 

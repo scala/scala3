@@ -72,7 +72,7 @@ class TreeUnpickler(reader: TastyReader, nameAtRef: NameRef => TermName, posUnpi
   /** The unpickled trees */
   def unpickle()(implicit ctx: Context): List[Tree] = {
     assert(roots != null, "unpickle without previous enterTopLevel")
-    new TreeReader(reader).readTopLevel()(ctx.addMode(Mode.AllowDependentFunctions))
+    new TreeReader(reader).forkAt(Addr(0)).readTopLevel()(ctx.addMode(Mode.AllowDependentFunctions))
   }
 
   class Completer(owner: Symbol, reader: TastyReader) extends LazyType {

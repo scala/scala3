@@ -1,13 +1,15 @@
 package dotty.tools.dotc.transform.linker
 
 import dotty.tools.backend.jvm.CollectEntryPoints
+import dotty.tools.dotc.{CompilationUnit, FromTasty}
 import dotty.tools.dotc.core.Contexts._
 import dotty.tools.dotc.core.Decorators._
 import dotty.tools.dotc.core.Flags._
 import dotty.tools.dotc.core.Phases.Phase
 import dotty.tools.dotc.core.StdNames.nme
+import dotty.tools.dotc.core.SymDenotations.ClassDenotation
 import dotty.tools.dotc.core.Symbols._
-import dotty.tools.dotc.core.Types.PolyType
+import dotty.tools.dotc.core.tasty.DottyUnpickler
 import dotty.tools.dotc.transform.OuterSpecializer
 import dotty.tools.dotc.transform.linker.callgraph._
 
@@ -85,9 +87,11 @@ class BuildCallGraph extends Phase {
     callGraphBuilder.result()
   }
 
-  private var runOnce = true
-  def run(implicit ctx: Context): Unit = {
-    if (runOnce && BuildCallGraph.isPhaseRequired) {
+  override def run(implicit ctx: Context): Unit = ()
+
+  override def runOn(units: List[CompilationUnit])(implicit ctx: Context): List[CompilationUnit] = {
+    if (!BuildCallGraph.isPhaseRequired) units
+    else {
       val mode = CallGraphBuilder.AnalyseArgs
       val specLimit = 15
 
@@ -109,7 +113,15 @@ class BuildCallGraph extends Phase {
         ctx.log("Created call graph visualization: " + visFile.getAbsoluteFile)
       }
 
+      def loadCompilationUnits(clsd: ClassDenotation): List[CompilationUnit] = clsd.dottyUnpickler match {
+        case Some(unpickler: DottyUnpickler) => List(FromTasty.compilationUnit(clsd, unpickler))
+        case _ => Nil
+      }
+
+      val topLevelClasses0 = callGraph.reachableClassesSet.map(x => x.topLevelClass.denot.asClass)
+      val topLevelClasses1 = topLevelClasses0.filter(x => !x.is(JavaDefined) && (x.symbol ne defn.ObjectClass))
+      val newUnits = topLevelClasses1.flatMap(loadCompilationUnits)
+      units ::: newUnits.toList
     }
-    runOnce = false
   }
 }

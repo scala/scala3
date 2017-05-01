@@ -2,20 +2,27 @@ package dotty.tools.dotc.transform.linker.callgraph
 
 import dotty.tools.dotc.core.Constants.Constant
 import dotty.tools.dotc.core.Contexts._
-import dotty.tools.dotc.core.Flags
-import dotty.tools.dotc.core.Symbols.Symbol
-import dotty.tools.dotc.core.Types.{ConstantType, PolyType, Type}
-import dotty.tools.dotc.transform.linker.types.ClosureType
+import dotty.tools.dotc.core.Symbols._
+import dotty.tools.dotc.core.Types._
+
+import scala.collection.mutable
 
 class CallGraph(val entryPoints: Map[CallInfoWithContext, Int], val reachableMethods: Set[CallInfoWithContext],
     val reachableTypes: Set[TypeWithContext], val casts: Set[Cast], val classOfs: Set[Symbol],
     val outerMethods: Set[Symbol], val mode: Int, val specLimit: Int)(implicit ctx: Context) { self =>
 
-  private val reachableSet: Set[Symbol] =
+  private lazy val reachableSet: Set[Symbol] =
     reachableMethods.map(_.callSymbol)
 
-  private val reachableClassesSet: Set[Symbol] =
-    reachableTypes.flatMap(x => x.tp.classSymbol :: x.tp.baseClasses)
+  lazy val reachableClassesSet: Set[Symbol] = {
+    val reachableClasses = mutable.Set.empty[Symbol]
+    def collectClasses(cls: ClassSymbol): Unit = {
+      reachableClasses.add(cls)
+      cls.classParents.foreach(x => collectClasses(x.symbol.asClass))
+    }
+    reachableTypes.foreach(x => x.tp.classSymbols.foreach(collectClasses))
+    reachableClasses.toSet
+  }
 
   def isReachableMethod(sym: Symbol): Boolean = reachableSet.contains(sym)
 
