@@ -7,5 +7,5 @@ object Test {
   val a = 1.0e2
   val b = 1e-3
 
-  val x = 2. // error: identifier expected
-}
+  val x = 2.
+}  // error: identifier expected
