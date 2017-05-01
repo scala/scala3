@@ -67,7 +67,7 @@ class Erasure extends Phase with DenotTransformer { thisTransformer =>
         val oldOwner = ref.owner
         val newOwner = if (oldOwner eq defn.AnyClass) defn.ObjectClass else oldOwner
         val oldInfo = ref.info
-        val newInfo = transformInfo(ref.symbol, oldInfo)
+        val newInfo = transformInfo(oldSymbol, oldInfo)
         val oldFlags = ref.flags
         val newFlags =
           if (oldSymbol.is(Flags.TermParam) && isCompacted(oldSymbol.owner)) oldFlags &~ Flags.Param
@@ -594,8 +594,10 @@ object Erasure extends TypeTestsCasts{
       EmptyTree
 
     override def typedStats(stats: List[untpd.Tree], exprOwner: Symbol)(implicit ctx: Context): List[Tree] = {
-      val stats1 = Trees.flatten(super.typedStats(stats, exprOwner))
-      if (ctx.owner.isClass) stats1 ::: addBridges(stats, stats1)(ctx) else stats1
+      val stats1 =
+        if (takesBridges(ctx.owner)) new Bridges(ctx.owner.asClass).add(stats)
+        else stats
+      super.typedStats(stats1, exprOwner)
     }
 
     // this implementation doesn't check for bridge clashes with value types!
@@ -721,4 +723,7 @@ object Erasure extends TypeTestsCasts{
         else adaptToType(tree, pt)
       }
   }
+
+  def takesBridges(sym: Symbol)(implicit ctx: Context) =
+    sym.isClass && !sym.is(Flags.Trait | Flags.Package)
 }
