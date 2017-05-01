@@ -57,6 +57,7 @@ class ScalaSettings extends Settings.SettingGroup {
   val mainClass = StringSetting("-Xmain-class", "path", "Class for manifest's Main-Class entry (only useful with -d <jar>)", "")
   val XnoValueClasses = BooleanSetting("-Xno-value-classes", "Do not use value classes. Helps debugging.")
   val XreplLineWidth = IntSetting("-Xrepl-line-width", "Maximial number of columns per line for REPL output", 390)
+  val XfatalWarnings = BooleanSetting("-Xfatal-warnings", "Fail the compilation if there are any warnings.")
 
   /** -Y "Private" settings */
   val overrideVars = BooleanSetting("-Yoverride-vars", "Allow vars to be overridden.")
