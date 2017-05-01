@@ -43,7 +43,7 @@ class VirtualFile(val name: String, override val path: String) extends AbstractF
 
   override def output: OutputStream = {
     new ByteArrayOutputStream() {
-      override def close() {
+      override def close() = {
         super.close()
         content = toByteArray()
       }

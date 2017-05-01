@@ -153,11 +153,11 @@ final class FileZipArchive(file: JFile) extends ZipArchive(file) {
     val root = new DirEntry("/")
     val dirs = mutable.HashMap[String, DirEntry]("/" -> root)
     val zipFile = openZipFile()
-    val enum    = zipFile.entries()
+    val entries = zipFile.entries()
 
     try {
-      while (enum.hasMoreElements) {
-        val zipEntry = enum.nextElement
+      while (entries.hasMoreElements) {
+        val zipEntry = entries.nextElement
         val dir = getDir(dirs, zipEntry)
         if (zipEntry.isDirectory) dir
         else {
@@ -195,74 +195,6 @@ final class FileZipArchive(file: JFile) extends ZipArchive(file) {
     case _                 => false
   }
 }
-///** ''Note:  This library is considered experimental and should not be used unless you know what you are doing.'' */
-//final class URLZipArchive(val url: URL) extends ZipArchive(null) {
-//  def iterator: Iterator[Entry] = {
-//    val root     = new DirEntry("/")
-//    val dirs     = mutable.HashMap[String, DirEntry]("/" -> root)
-//    val in       = new ZipInputStream(new ByteArrayInputStream(Streamable.bytes(input)))
-//
-//    @tailrec def loop() {
-//      val zipEntry = in.getNextEntry()
-//      class EmptyFileEntry() extends Entry(zipEntry.getName) {
-//        override def toByteArray: Array[Byte] = null
-//        override def sizeOption = Some(0)
-//      }
-//      class FileEntry() extends Entry(zipEntry.getName) {
-//        override val toByteArray: Array[Byte] = {
-//          val len    = zipEntry.getSize().toInt
-//          val arr    = if (len == 0) Array.emptyByteArray else new Array[Byte](len)
-//          var offset = 0
-//
-//          def loop() {
-//            if (offset < len) {
-//              val read = in.read(arr, offset, len - offset)
-//              if (read >= 0) {
-//                offset += read
-//                loop()
-//              }
-//            }
-//          }
-//          loop()
-//
-//          if (offset == arr.length) arr
-//          else throw new IOException("Input stream truncated: read %d of %d bytes".format(offset, len))
-//        }
-//        override def sizeOption = Some(zipEntry.getSize().toInt)
-//      }
-//
-//      if (zipEntry != null) {
-//        val dir = getDir(dirs, zipEntry)
-//        if (zipEntry.isDirectory)
-//          dir
-//        else {
-//          val f = if (zipEntry.getSize() == 0) new EmptyFileEntry() else new FileEntry()
-//          dir.entries(f.name) = f
-//        }
-//        in.closeEntry()
-//        loop()
-//      }
-//    }
-//
-//    loop()
-//    try root.iterator
-//    finally dirs.clear()
-//  }
-//
-//  def name  = url.getFile()
-//  def path  = url.getPath()
-//  def input = url.openStream()
-//  def lastModified =
-//    try url.openConnection().getLastModified()
-//    catch { case _: IOException => 0 }
-//
-//  override def canEqual(other: Any) = other.isInstanceOf[URLZipArchive]
-//  override def hashCode() = url.hashCode
-//  override def equals(that: Any) = that match {
-//    case x: URLZipArchive => url == x.url
-//    case _                => false
-//  }
-//}
 
 final class ManifestResources(val url: URL) extends ZipArchive(null) {
   def iterator = {
@@ -274,12 +206,11 @@ final class ManifestResources(val url: URL) extends ZipArchive(null) {
     for (zipEntry <- iter) {
       val dir = getDir(dirs, zipEntry)
       if (!zipEntry.isDirectory) {
-        class FileEntry() extends Entry(zipEntry.getName) {
+        val f = new Entry(zipEntry.getName) {
           override def lastModified = zipEntry.getTime()
           override def input        = resourceInputStream(path)
           override def sizeOption   = None
         }
-        val f = new FileEntry()
         dir.entries(f.name) = f
       }
     }

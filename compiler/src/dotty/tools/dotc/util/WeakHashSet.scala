@@ -86,7 +86,7 @@ final class WeakHashSet[A >: Null <: AnyRef](val initialCapacity: Int, val loadF
   /**
    * remove a single entry from a linked list in a given bucket
    */
-  private[this] def remove(bucket: Int, prevEntry: Entry[A], entry: Entry[A]) {
+  private[this] def remove(bucket: Int, prevEntry: Entry[A], entry: Entry[A]): Unit = {
     prevEntry match {
       case null => table(bucket) = entry.tail
       case _ => prevEntry.tail = entry.tail
@@ -97,7 +97,7 @@ final class WeakHashSet[A >: Null <: AnyRef](val initialCapacity: Int, val loadF
   /**
    * remove entries associated with elements that have been gc'ed
    */
-  private[this] def removeStaleEntries() {
+  private[this] def removeStaleEntries(): Unit = {
     def poll(): Entry[A] = queue.poll().asInstanceOf[Entry[A]]
 
     @tailrec
@@ -122,7 +122,7 @@ final class WeakHashSet[A >: Null <: AnyRef](val initialCapacity: Int, val loadF
   /**
    * Double the size of the internal table
    */
-  private[this] def resize() {
+  private[this] def resize(): Unit = {
     val oldTable = table
     table = new Array[Entry[A]](oldTable.size * 2)
     threshhold = computeThreshHold
@@ -207,7 +207,7 @@ final class WeakHashSet[A >: Null <: AnyRef](val initialCapacity: Int, val loadF
       val bucket = bucketFor(hash)
       val oldHead = table(bucket)
 
-      def add() {
+      def add() = {
         table(bucket) = new Entry(elem, hash, oldHead, queue)
         count += 1
         if (count > threshhold) resize()
@@ -228,7 +228,7 @@ final class WeakHashSet[A >: Null <: AnyRef](val initialCapacity: Int, val loadF
   def +=(elem: A) = this + elem
 
   // from scala.reflect.interanl.Set
-  override def addEntry(x: A) { this += x }
+  override def addEntry(x: A) = { this += x }
 
   // remove an element from this set and return this set
   override def -(elem: A): this.type = elem match {
