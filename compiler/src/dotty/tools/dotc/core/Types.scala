@@ -3035,6 +3035,8 @@ object Types {
     override def hashCode: Int = identityHash
     override def equals(that: Any) = this eq that.asInstanceOf[AnyRef]
 
+    def withName(name: Name): this.type = { myRepr = name; this }
+
     private var myRepr: Name = null
     def repr(implicit ctx: Context): Name = {
       if (myRepr == null) myRepr = SkolemName.fresh()
