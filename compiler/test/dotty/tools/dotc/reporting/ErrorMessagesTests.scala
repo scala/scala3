@@ -121,10 +121,9 @@ class ErrorMessagesTests extends ErrorMessagesTest {
       val defn = ictx.definitions
 
       assertMessageCount(1, messages)
-      val ExpectedTokenButFound(expected, found, foundName) :: Nil = messages
+      val ExpectedTokenButFound(expected, found) :: Nil = messages
       assertEquals(Tokens.IDENTIFIER, expected)
       assertEquals(Tokens.VAL, found)
-      assertEquals("val", foundName.show)
     }
 
   @Test def expectedToken =
