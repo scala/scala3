@@ -216,7 +216,7 @@ trait TypeAssigner {
     else if (site.derivesFrom(defn.DynamicClass) && !Dynamic.isDynamicMethod(name)) {
       TryDynamicCallType
     } else {
-      if (site.isErroneous) UnspecifiedErrorType
+      if (site.isErroneous || name.toTermName == nme.ERROR) UnspecifiedErrorType
       else {
         def kind = if (name.isTypeName) "type" else "value"
         def addendum =

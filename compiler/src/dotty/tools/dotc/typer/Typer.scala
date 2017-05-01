@@ -354,6 +354,8 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
         // awaiting a better implicits based solution for library-supported xml
         return ref(defn.XMLTopScopeModuleRef)
       }
+      else if (name.toTermName == nme.ERROR)
+        UnspecifiedErrorType
       else
         errorType(new MissingIdent(tree, kind, name.show), tree.pos)
 
