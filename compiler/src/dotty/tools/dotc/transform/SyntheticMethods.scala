@@ -23,6 +23,7 @@ import scala.language.postfixOps
  *    def hashCode(): Int
  *    def canEqual(other: Any): Boolean
  *    def toString(): String
+ *    def productElement(i: Int): Any
  *    def productArity: Int
  *    def productPrefix: String
  *  Special handling:
@@ -44,7 +45,7 @@ class SyntheticMethods(thisTransformer: DenotTransformer) {
     if (myValueSymbols.isEmpty) {
       myValueSymbols = List(defn.Any_hashCode, defn.Any_equals)
       myCaseSymbols = myValueSymbols ++ List(defn.Any_toString, defn.Product_canEqual,
-        defn.Product_productArity, defn.Product_productPrefix)
+        defn.Product_productArity, defn.Product_productPrefix, defn.Product_productElement)
     }
 
   def valueSymbols(implicit ctx: Context) = { initSymbols; myValueSymbols }
@@ -91,9 +92,45 @@ class SyntheticMethods(thisTransformer: DenotTransformer) {
         case nme.canEqual_ => vrefss => canEqualBody(vrefss.head.head)
         case nme.productArity => vrefss => Literal(Constant(accessors.length))
         case nme.productPrefix => ownName
+        case nme.productElement => vrefss => productElementBody(accessors.length, vrefss.head.head)
       }
       ctx.log(s"adding $synthetic to $clazz at ${ctx.phase}")
       DefDef(synthetic, syntheticRHS(ctx.withOwner(synthetic)))
+    }
+
+    /** The class
+     *
+     *  ```
+     *  case class C(x: T, y: T)
+     *  ```
+     *
+     *  gets the `productElement` method:
+     *
+     *  ```
+     *  def productElement(index: Int): Any = index match {
+     *    case 0 => this._1
+     *    case 1 => this._2
+     *    case _ => throw new IndexOutOfBoundsException(index.toString)
+     *  }
+     *  ```
+     */
+    def productElementBody(arity: Int, index: Tree)(implicit ctx: Context): Tree = {
+      val ioob = defn.IndexOutOfBoundsException.typeRef
+      // That's not ioob.typeSymbol.primaryConstructor, this is the other one
+      // that takes a String argument.
+      val constructor = ioob.typeSymbol.info.decls.toList.tail.head.asTerm
+      val stringIndex = Apply(Select(index, nme.toString_), Nil)
+      val error = Throw(New(ioob, constructor, List(stringIndex)))
+
+      // case _ => throw new IndexOutOfBoundsException(i.toString)
+      val defaultCase = CaseDef(Underscore(defn.IntType), EmptyTree, error)
+
+      // case N => _${N + 1}
+      val cases = 0.until(arity).map { i =>
+        CaseDef(Literal(Constant(i)), EmptyTree, Select(This(clazz), nme.selectorName(i)))
+      }
+
+      Match(index, (cases :+ defaultCase).toList)
     }
 
     /** The class

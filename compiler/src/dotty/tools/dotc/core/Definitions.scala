@@ -525,6 +525,8 @@ class Definitions {
     def Product_canEqual(implicit ctx: Context) = Product_canEqualR.symbol
     lazy val Product_productArityR = ProductClass.requiredMethodRef(nme.productArity)
     def Product_productArity(implicit ctx: Context) = Product_productArityR.symbol
+    lazy val Product_productElementR = ProductClass.requiredMethodRef(nme.productElement)
+    def Product_productElement(implicit ctx: Context) = Product_productElementR.symbol
     lazy val Product_productPrefixR = ProductClass.requiredMethodRef(nme.productPrefix)
     def Product_productPrefix(implicit ctx: Context) = Product_productPrefixR.symbol
   lazy val LanguageModuleRef = ctx.requiredModule("scala.language")

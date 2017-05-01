@@ -27,9 +27,7 @@ object desugar {
 
   /** Names of methods that are added unconditionally to case classes */
   def isDesugaredCaseClassMethodName(name: Name)(implicit ctx: Context): Boolean =
-    name == nme.copy ||
-    name == nme.productArity ||
-    name.isSelectorName
+    name == nme.copy || name.isSelectorName
 
 // ----- DerivedTypeTrees -----------------------------------
 
@@ -361,31 +359,12 @@ object desugar {
     //              pN: TN = pN: @uncheckedVariance)(moreParams) =
     //       new C[...](p1, ..., pN)(moreParams)
     //
-    // To add to both case classes and objects
-    //     def productArity = N
-    //     def productElement(i: Int): Any = i match { ... }
-    //
     // Note: copy default parameters need @uncheckedVariance; see
     // neg/t1843-variances.scala for a test case. The test would give
     // two errors without @uncheckedVariance, one of them spurious.
     val caseClassMeths = {
       def syntheticProperty(name: TermName, rhs: Tree) =
         DefDef(name, Nil, Nil, TypeTree(), rhs).withMods(synthetic)
-      def productArity = syntheticProperty(nme.productArity, Literal(Constant(arity)))
-      def productElement = {
-        val param = makeSyntheticParameter(tpt = ref(defn.IntType))
-        // case N => _${N + 1}
-        val cases = 0.until(arity).map { i =>
-          CaseDef(Literal(Constant(i)), EmptyTree, Select(This(EmptyTypeIdent), nme.selectorName(i)))
-        }
-        val ioob  = ref(defn.IndexOutOfBoundsException.typeRef)
-        val error = Throw(New(ioob, List(List(Select(refOfDef(param), nme.toString_)))))
-        // case _ => throw new IndexOutOfBoundsException(i.toString)
-        val defaultCase = CaseDef(untpd.Ident(nme.WILDCARD), EmptyTree, error)
-        val body = Match(refOfDef(param), (cases :+ defaultCase).toList)
-        DefDef(nme.productElement, Nil, List(List(param)), TypeTree(defn.AnyType), body)
-          .withMods(synthetic)
-      }
       def productElemMeths = {
         val caseParams = constrVparamss.head.toArray
         for (i <- 0 until arity if nme.selectorName(i) `ne` caseParams(i).name)
@@ -416,9 +395,7 @@ object desugar {
       }
 
       if (isCaseClass)
-        productElement :: productArity :: copyMeths ::: enumTagMeths ::: productElemMeths.toList
-      else if (isCaseObject)
-        productArity :: productElement :: Nil
+        copyMeths ::: enumTagMeths ::: productElemMeths.toList
       else Nil
     }
 
