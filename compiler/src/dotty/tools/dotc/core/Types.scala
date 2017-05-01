@@ -830,7 +830,7 @@ object Types {
      *  def o: Outer
      *  <o.x.type>.widen = o.C
      */
-    @tailrec final def widen(implicit ctx: Context): Type = widenSingleton match {
+    final def widen(implicit ctx: Context): Type = widenSingleton match {
       case tp: ExprType => tp.resultType.widen
       case tp => tp
     }
@@ -838,7 +838,7 @@ object Types {
     /** Widen from singleton type to its underlying non-singleton
      *  base type by applying one or more `underlying` dereferences.
      */
-    @tailrec final def widenSingleton(implicit ctx: Context): Type = stripTypeVar match {
+    final def widenSingleton(implicit ctx: Context): Type = stripTypeVar match {
       case tp: SingletonType if !tp.isOverloaded => tp.underlying.widenSingleton
       case _ => this
     }
@@ -846,7 +846,7 @@ object Types {
     /** Widen from TermRef to its underlying non-termref
      *  base type, while also skipping Expr types.
      */
-    @tailrec final def widenTermRefExpr(implicit ctx: Context): Type = stripTypeVar match {
+    final def widenTermRefExpr(implicit ctx: Context): Type = stripTypeVar match {
       case tp: TermRef if !tp.isOverloaded => tp.underlying.widenExpr.widenTermRefExpr
       case _ => this
     }
@@ -860,7 +860,7 @@ object Types {
     }
 
     /** Widen type if it is unstable (i.e. an ExprType, or TermRef to unstable symbol */
-    @tailrec final def widenIfUnstable(implicit ctx: Context): Type = stripTypeVar match {
+    final def widenIfUnstable(implicit ctx: Context): Type = stripTypeVar match {
       case tp: ExprType => tp.resultType.widenIfUnstable
       case tp: TermRef if !tp.symbol.isStable => tp.underlying.widenIfUnstable
       case _ => this
@@ -870,6 +870,35 @@ object Types {
     final def widenSkolem(implicit ctx: Context): Type = this match {
       case tp: SkolemType => tp.underlying
       case _ => this
+    }
+
+    /** If this type contains embedded union types, replace them by their joins.
+     *  "Embedded" means: inside intersectons or recursive types, or in prefixes of refined types.
+     *  If an embedded union is found, we first try to simplify or eliminate it by
+     *  re-lubbing it while allowing type parameters to be constrained further.
+     *  Any remaining union types are replaced by their joins.
+     *
+	   *  For instance, if `A` is an unconstrained type variable, then
+  	 *
+  	 * 	      ArrayBuffer[Int] | ArrayBuffer[A]
+  	 *
+     *  is approximated by constraining `A` to be =:= to `Int` and returning `ArrayBuffer[Int]`
+     *  instead of `ArrayBuffer[_ >: Int | A <: Int & A]`
+     */
+    def widenUnion(implicit ctx: Context): Type = this match {
+      case OrType(tp1, tp2) =>
+        ctx.typeComparer.lub(tp1.widenUnion, tp2.widenUnion, canConstrain = true) match {
+          case union: OrType => union.join
+          case res => res
+        }
+      case tp @ AndType(tp1, tp2) =>
+        tp derived_& (tp1.widenUnion, tp2.widenUnion)
+      case tp: RefinedType =>
+        tp.derivedRefinedType(tp.parent.widenUnion, tp.refinedName, tp.refinedInfo)
+      case tp: RecType =>
+        tp.rebind(tp.parent.widenUnion)
+      case _ =>
+        this
     }
 
     /** Eliminate anonymous classes */

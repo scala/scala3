@@ -17,7 +17,7 @@ object Test {
 
   val x: Inv[Int] = inv(true)
 
-  def inv2(cond: Boolean) =
+  def inv2(cond: Boolean): Inv[Int] | Inv2[Int] =
     if (cond) {
       if (cond)
         new Inv(1)

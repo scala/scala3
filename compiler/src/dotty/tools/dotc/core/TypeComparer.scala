@@ -331,7 +331,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
       else thirdTry(tp1, tp2)
     case tp1 @ OrType(tp11, tp12) =>
       def joinOK = tp2.dealias match {
-        case tp12: HKApply =>
+        case _: HKApply =>
           // If we apply the default algorithm for `A[X] | B[Y] <: C[Z]` where `C` is a
           // type parameter, we will instantiate `C` to `A` and then fail when comparing
           // with `B[Y]`. To do the right thing, we need to instantiate `C` to the
@@ -1511,8 +1511,15 @@ class ExplainingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
 
   override def compareHkApply2(tp1: Type, tp2: HKApply, tycon2: Type, args2: List[Type]): Boolean = {
     def addendum = ""
-    traceIndented(i"compareHkApply $tp1, $tp2$addendum") {
+    traceIndented(i"compareHkApply2 $tp1, $tp2$addendum") {
       super.compareHkApply2(tp1, tp2, tycon2, args2)
+    }
+  }
+
+  override def compareHkApply1(tp1: HKApply, tycon1: Type, args1: List[Type], tp2: Type): Boolean = {
+    def addendum = ""
+    traceIndented(i"compareHkApply1 $tp1, $tp2$addendum") {
+      super.compareHkApply1(tp1, tycon1, args1, tp2)
     }
   }
 

@@ -1034,13 +1034,13 @@ class Namer { typer: Typer =>
       // println(s"owner = ${sym.owner}, decls = ${sym.owner.info.decls.show}")
       def isInline = sym.is(FinalOrInline, butNot = Method | Mutable)
 
-      // Widen rhs type and approximate `|' but keep ConstantTypes if
+      // Widen rhs type and eliminate `|' but keep ConstantTypes if
       // definition is inline (i.e. final in Scala2) and keep module singleton types
       // instead of widening to the underlying module class types.
       def widenRhs(tp: Type): Type = tp.widenTermRefExpr match {
         case ctp: ConstantType if isInline => ctp
         case ref: TypeRef if ref.symbol.is(ModuleClass) => tp
-        case _ => ctx.harmonizeUnion(tp.widen)
+        case _ => tp.widen.widenUnion
       }
 
       // Replace aliases to Unit by Unit itself. If we leave the alias in
