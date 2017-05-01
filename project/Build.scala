@@ -419,8 +419,7 @@ object Build {
       com.typesafe.sbteclipse.plugin.EclipsePlugin.EclipseKeys.withSource := true,
 
       // get libraries onboard
-      resolvers += Resolver.typesafeIvyRepo("releases"), // For org.scala-sbt:interface
-      libraryDependencies ++= Seq("org.scala-sbt" % "interface" % sbtVersion.value,
+      libraryDependencies ++= Seq("com.typesafe.sbt" % "sbt-interface" % sbtVersion.value,
                                   "org.scala-lang.modules" % "scala-xml_2.11" % "1.0.1",
                                   "com.novocode" % "junit-interface" % "0.11" % "test",
                                   "org.scala-lang" % "scala-reflect" % scalacVersion,
@@ -557,7 +556,7 @@ object Build {
             // used for tests that compile dotty
             path.contains("scala-asm") ||
             // needed for the xsbti interface
-            path.contains("org.scala-sbt/interface/")
+            path.contains("sbt-interface")
         } yield "-Xbootclasspath/p:" + path
 
         val ci_build = // propagate if this is a ci build
@@ -672,9 +671,9 @@ object Build {
     },
     packageSrc in Compile := (packageSrc in Compile).dependsOn(cleanSbtBridge).value,
     description := "sbt compiler bridge for Dotty",
-    resolvers += Resolver.typesafeIvyRepo("releases"), // For org.scala-sbt stuff
+    resolvers += Resolver.typesafeIvyRepo("releases"), // For org.scala-sbt:api
     libraryDependencies ++= Seq(
-      "org.scala-sbt" % "interface" % sbtVersion.value,
+      "com.typesafe.sbt" % "sbt-interface" % sbtVersion.value,
       "org.scala-sbt" % "api" % sbtVersion.value % "test",
       "org.specs2" % "specs2_2.11" % "2.3.11" % "test"
     ),
