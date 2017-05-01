@@ -129,6 +129,16 @@ object Build {
     scalaOrganization := dottyOrganization,
     scalaBinaryVersion := "0.1",
 
+    // Avoid having to run `dotty-sbt-bridge/publishLocal` before compiling a bootstrapped project
+    scalaCompilerBridgeSource :=
+      (dottyOrganization %% "dotty-sbt-bridge" % "NOT_PUBLISHED" % Configurations.Component.name)
+      .artifacts(Artifact.sources("dotty-sbt-bridge").copy(url =
+        // We cannot use the `packageSrc` task because a setting cannot depend
+        // on a task. Instead, we make `compile` below depend on the bridge `packageSrc`
+        Some((artifactPath in (`dotty-sbt-bridge`, Compile, packageSrc)).value.toURI.toURL))),
+    compile in Compile := (compile in Compile)
+      .dependsOn(packageSrc in (`dotty-sbt-bridge`, Compile)).value,
+
     // Use the same name as the non-bootstrapped projects for the artifacts
     moduleName ~= { _.stripSuffix("-bootstrapped") },
 
@@ -660,7 +670,7 @@ object Build {
       IO.delete(file(home) / ".ivy2" / "cache" / sbtOrg / s"$org-$artifact-$dottySbtBridgeVersion-bin_${dottyVersion}__$classVersion")
       IO.delete(file(home) / ".sbt"  / "boot" / s"scala-$sbtScalaVersion" / sbtOrg / "sbt" / sbtV / s"$org-$artifact-$dottySbtBridgeVersion-bin_${dottyVersion}__$classVersion")
     },
-    publishLocal := (publishLocal.dependsOn(cleanSbtBridge)).value,
+    packageSrc in Compile := (packageSrc in Compile).dependsOn(cleanSbtBridge).value,
     description := "sbt compiler bridge for Dotty",
     resolvers += Resolver.typesafeIvyRepo("releases"), // For org.scala-sbt stuff
     libraryDependencies ++= Seq(
