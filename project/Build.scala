@@ -702,7 +702,7 @@ object Build {
       ScriptedPlugin.sbtTestDirectory := baseDirectory.value / "sbt-test",
       ScriptedPlugin.scriptedLaunchOpts := Seq("-Xmx1024m"),
       ScriptedPlugin.scriptedBufferLog := false,
-      ScriptedPlugin.scripted := {
+      ScriptedPlugin.scripted := ScriptedPlugin.scripted.dependsOn(Def.task {
         val x0 = (publishLocal in `dotty-sbt-bridge-bootstrapped`).value
         val x1 = (publishLocal in `dotty-interfaces`).value
         val x2 = (publishLocal in `dotty-compiler-bootstrapped`).value
@@ -710,8 +710,7 @@ object Build {
         val x4 = (publishLocal in `scala-library`).value
         val x5 = (publishLocal in `scala-reflect`).value
         val x6 = (publishLocal in `dotty-bootstrapped`).value // Needed because sbt currently hardcodes the dotty artifact
-        ScriptedPlugin.scriptedTask.evaluated
-      }
+      }).evaluated
       // TODO: Use this instead of manually copying DottyInjectedPlugin.scala
       // everywhere once https://github.com/sbt/sbt/issues/2601 gets fixed.
       /*,
