@@ -63,7 +63,7 @@ class Bridges(root: ClassSymbol)(implicit ctx: Context) {
         (Accessor | ParamAccessor | CaseAccessor | Deferred | Lazy | Module),
       coord = bridgePos).enteredAfter(ctx.erasurePhase.asInstanceOf[DenotTransformer]).asTerm
 
-    println(
+    ctx.debuglog(
       i"""generating bridge from ${other.showLocated}: ${other.info}
              |to ${member.showLocated}: ${member.info} @ ${member.pos}
              |bridge: ${bridge.showLocated} with flags: ${bridge.flags}""")
