@@ -45,11 +45,10 @@ class Bridges(root: ClassSymbol)(implicit ctx: Context) {
    *  The bridge has the erased info of `other` and forwards to `member`.
    */
   private def addBridgeIfNeeded(member: Symbol, other: Symbol) = {
-    val otherInfo = erasure(other.info)
     def bridgeExists =
       bridgesScope.lookupAll(member.name).exists(bridge =>
-        bridgeTarget(bridge) == member && bridge.info =:= otherInfo)
-    if (!(member.is(Inline) || other.info =:= member.info || bridgeExists))
+        bridgeTarget(bridge) == member && bridge.signature == other.signature)
+    if (!(member.is(Inline) || member.signature == other.signature || bridgeExists))
       addBridge(member, other)
   }
 
