@@ -15,12 +15,21 @@ case class TermState(
 ) extends TermAction
 
 object TermState {
+  // Using unapply instead exposes a dotty/scalac variation. Because
+  // `TermState` is a case class, scalac generate an unapply with this exact
+  // signature, that is used by the `TermInfo` and `TermAction` unapplies.
+  // With dotty, the generated unapply has type `TermState => TermState`
+  // instead, `unapply(ti: TermAction)` thus becomes a infinite tail
+  // recursion. See #2335.
+  def unapplyWorkaround(ti: TermState): Option[(LazyList[Int], Vector[Char], Int, Ansi.Str)] =
+    Some((ti.inputs, ti.buffer, ti.cursor, ti.msg))
+
   def unapply(ti: TermInfo): Option[(LazyList[Int], Vector[Char], Int, Ansi.Str)] =
-    TermState.unapply(ti.ts)
+    TermState.unapplyWorkaround(ti.ts)
 
   def unapply(ti: TermAction): Option[(LazyList[Int], Vector[Char], Int, Ansi.Str)] =
     ti match {
-      case ts: TermState => TermState.unapply(ts)
+      case ts: TermState => TermState.unapplyWorkaround(ts)
       case _ => None
     }
 }
