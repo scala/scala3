@@ -1,5 +1,0 @@
-#!/bin/bash -e
-
-baseDir=`pwd`
-. $baseDir/scripts/common
-update DarkDimius scala scala-scala dotty-library

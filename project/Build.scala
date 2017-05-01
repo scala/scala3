@@ -3,12 +3,15 @@ import sbt._
 import complete.DefaultParsers._
 import java.io.{ RandomAccessFile, File }
 import java.nio.channels.FileLock
+import java.nio.file.Files
 import scala.reflect.io.Path
 import sbtassembly.AssemblyKeys.assembly
 
 import org.scalajs.sbtplugin.ScalaJSPlugin
 import org.scalajs.sbtplugin.ScalaJSPlugin.autoImport._
 import sbt.Package.ManifestAttributes
+
+import com.typesafe.sbteclipse.plugin.EclipsePlugin._
 
 object Build {
 
@@ -21,9 +24,9 @@ object Build {
     val baseVersion = "0.1.1"
     val isNightly = sys.env.get("NIGHTLYBUILD") == Some("yes")
     if (isNightly)
-      baseVersion + "-" + VersionUtil.commitDate + "-" + VersionUtil.gitHash + "-NIGHTLY"
+      baseVersion + "-bin-" + VersionUtil.commitDate + "-" + VersionUtil.gitHash + "-NIGHTLY"
     else
-      baseVersion + "-SNAPSHOT"
+      baseVersion + "-bin-SNAPSHOT"
   }
 
   val jenkinsMemLimit = List("-Xmx1500m")
@@ -93,6 +96,7 @@ object Build {
 
   // Settings used by all dotty-compiled projects
   lazy val commonBootstrappedSettings = Seq(
+    EclipseKeys.skipProject := true,
     scalaOrganization := dottyOrganization,
     scalaVersion := dottyVersion,
     scalaBinaryVersion := "2.11",
@@ -142,7 +146,7 @@ object Build {
 
   // Meta project aggregating all bootstrapped projects
   lazy val `dotty-bootstrapped` = project.
-    aggregate(`dotty-library-bootstrapped`, `dotty-compiler-bootstrapped`).
+    aggregate(`dotty-library-bootstrapped`, `dotty-compiler-bootstrapped`, `dotty-doc-bootstrapped`).
     settings(
       publishArtifact := false
     )
@@ -154,67 +158,79 @@ object Build {
       crossPaths := false,
       // Do not depend on the Scala library
       autoScalaLibrary := false,
+      // Let the sbt eclipse plugin know that this is a Java-only project
+      EclipseKeys.projectFlavor := EclipseProjectFlavor.Java,
       //Remove javac invalid options in Compile doc
       javacOptions in (Compile, doc) --= Seq("-Xlint:unchecked", "-Xlint:deprecation")
     ).
     settings(publishing)
 
-  lazy val `dotty-doc` = project.in(file("doc-tool")).
-    dependsOn(`dotty-compiler`, `dotty-compiler` % "test->test").
-    settings(sourceStructure).
-    settings(
-      baseDirectory in (Compile, run) := baseDirectory.value / "..",
-      baseDirectory in (Test, run) := baseDirectory.value,
+  // Settings shared between dotty-doc and dotty-doc-bootstrapped
+  lazy val dottyDocSettings = Seq(
+    baseDirectory in (Compile, run) := baseDirectory.value / "..",
+    baseDirectory in (Test, run) := baseDirectory.value,
 
-      connectInput in run := true,
-      outputStrategy := Some(StdoutOutput),
+    connectInput in run := true,
+    outputStrategy := Some(StdoutOutput),
 
-      javaOptions ++= (javaOptions in `dotty-compiler`).value,
-      fork in run := true,
-      fork in Test := true,
-      parallelExecution in Test := false,
+    javaOptions ++= (javaOptions in `dotty-compiler`).value,
+    fork in run := true,
+    fork in Test := true,
+    parallelExecution in Test := false,
 
-      genDocs := Def.inputTaskDyn {
-        val dottyLib = (packageAll in `dotty-compiler`).value("dotty-library")
-        val dottyInterfaces = (packageAll in `dotty-compiler`).value("dotty-interfaces")
-        val otherDeps = (dependencyClasspath in Compile).value.map(_.data).mkString(":")
-        val sources =
-          (unmanagedSources in (Compile, compile)).value ++
+    genDocs := Def.inputTaskDyn {
+      val dottyLib = (packageAll in `dotty-compiler`).value("dotty-library")
+      val dottyInterfaces = (packageAll in `dotty-compiler`).value("dotty-interfaces")
+      val otherDeps = (dependencyClasspath in Compile).value.map(_.data).mkString(":")
+      val sources =
+        (unmanagedSources in (Compile, compile)).value ++
           (unmanagedSources in (`dotty-compiler`, Compile)).value
-        val args: Seq[String] = Seq(
-          "-siteroot", "docs",
-          "-project", "Dotty",
-          "-classpath", s"$dottyLib:$dottyInterfaces:$otherDeps"
-        )
+      val args: Seq[String] = Seq(
+        "-siteroot", "docs",
+        "-project", "Dotty",
+        "-classpath", s"$dottyLib:$dottyInterfaces:$otherDeps"
+      )
         (runMain in Compile).toTask(
           s""" dotty.tools.dottydoc.Main ${args.mkString(" ")} ${sources.mkString(" ")}"""
         )
-      }.evaluated,
+    }.evaluated,
 
-      dottydoc := Def.inputTaskDyn {
-        val args: Seq[String] = spaceDelimited("<arg>").parsed
-        val dottyLib = (packageAll in `dotty-compiler`).value("dotty-library")
-        val dottyInterfaces = (packageAll in `dotty-compiler`).value("dotty-interfaces")
-        val otherDeps = (dependencyClasspath in Compile).value.map(_.data).mkString(":")
-        val cp: Seq[String] = Seq("-classpath", s"$dottyLib:$dottyInterfaces:$otherDeps")
+    dottydoc := Def.inputTaskDyn {
+      val args: Seq[String] = spaceDelimited("<arg>").parsed
+      val dottyLib = (packageAll in `dotty-compiler`).value("dotty-library")
+      val dottyInterfaces = (packageAll in `dotty-compiler`).value("dotty-interfaces")
+      val otherDeps = (dependencyClasspath in Compile).value.map(_.data).mkString(":")
+      val cp: Seq[String] = Seq("-classpath", s"$dottyLib:$dottyInterfaces:$otherDeps")
         (runMain in Compile).toTask(s""" dotty.tools.dottydoc.Main ${cp.mkString(" ")} """ + args.mkString(" "))
-      }.evaluated,
+    }.evaluated,
 
-      libraryDependencies ++= Seq(
-        "com.novocode" % "junit-interface" % "0.11" % "test",
-        "com.vladsch.flexmark" % "flexmark" % "0.11.1",
-        "com.vladsch.flexmark" % "flexmark-ext-gfm-tasklist" % "0.11.1",
-        "com.vladsch.flexmark" % "flexmark-ext-gfm-tables" % "0.11.1",
-        "com.vladsch.flexmark" % "flexmark-ext-autolink" % "0.11.1",
-        "com.vladsch.flexmark" % "flexmark-ext-anchorlink" % "0.11.1",
-        "com.vladsch.flexmark" % "flexmark-ext-emoji" % "0.11.1",
-        "com.vladsch.flexmark" % "flexmark-ext-gfm-strikethrough" % "0.11.1",
-        "com.vladsch.flexmark" % "flexmark-ext-yaml-front-matter" % "0.11.1",
-        "com.fasterxml.jackson.dataformat" % "jackson-dataformat-yaml" % "2.8.6",
-        "nl.big-o" % "liqp" % "0.6.7"
-      )
-    ).
+    libraryDependencies ++= Seq(
+      "com.novocode" % "junit-interface" % "0.11" % "test",
+      "com.vladsch.flexmark" % "flexmark" % "0.11.1",
+      "com.vladsch.flexmark" % "flexmark-ext-gfm-tasklist" % "0.11.1",
+      "com.vladsch.flexmark" % "flexmark-ext-gfm-tables" % "0.11.1",
+      "com.vladsch.flexmark" % "flexmark-ext-autolink" % "0.11.1",
+      "com.vladsch.flexmark" % "flexmark-ext-anchorlink" % "0.11.1",
+      "com.vladsch.flexmark" % "flexmark-ext-emoji" % "0.11.1",
+      "com.vladsch.flexmark" % "flexmark-ext-gfm-strikethrough" % "0.11.1",
+      "com.vladsch.flexmark" % "flexmark-ext-yaml-front-matter" % "0.11.1",
+      "com.fasterxml.jackson.dataformat" % "jackson-dataformat-yaml" % "2.8.6",
+      "nl.big-o" % "liqp" % "0.6.7"
+    )
+  )
+
+  lazy val `dotty-doc` = project.in(file("doc-tool")).
+    dependsOn(`dotty-compiler`, `dotty-compiler` % "test->test").
+    settings(sourceStructure).
+    settings(dottyDocSettings).
     settings(publishing)
+
+  lazy val `dotty-doc-bootstrapped` = project.in(file("doc-tool")).
+    dependsOn(`dotty-compiler-bootstrapped`, `dotty-compiler-bootstrapped` % "test->test").
+    settings(sourceStructure).
+    settings(commonBootstrappedSettings).
+    settings(dottyDocSettings)
+
 
   lazy val `dotty-bot` = project.in(file("bot")).
     settings(sourceStructure).
@@ -249,17 +265,41 @@ object Build {
       // We do not compile the whole submodule, only the part of the Scala 2.11 GenBCode backend
       // that we reuse for dotty.
       // See http://dotty.epfl.ch/docs/contributing/backend.html for more information.
-      unmanagedSourceDirectories in Compile ++= {
-        val backendDir = baseDirectory.value / ".." / "scala-backend" / "src" / "compiler" / "scala" / "tools" / "nsc" / "backend"
+      //
+      // NOTE: We link (or copy if symbolic links are not supported) these sources in
+      // the current project using `sourceGenerators` instead of simply
+      // referencing them using `unmanagedSourceDirectories` because the latter
+      // breaks some IDEs.
+      sourceGenerators in Compile += Def.task {
+        val outputDir = (sourceManaged in Compile).value
+
+        val submoduleCompilerDir = baseDirectory.value / ".." / "scala-backend" / "src" / "compiler"
+        val backendDir = submoduleCompilerDir / "scala" / "tools" / "nsc" / "backend"
         val allScalaFiles = GlobFilter("*.scala")
 
         // NOTE: Keep these exclusions synchronized with the ones in the tests (CompilationTests.scala)
-        ((backendDir *
+        val files = ((backendDir *
           (allScalaFiles - "JavaPlatform.scala" - "Platform.scala" - "ScalaPrimitives.scala")) +++
          (backendDir / "jvm") *
           (allScalaFiles - "BCodeICodeCommon.scala" - "GenASM.scala" - "GenBCode.scala" - "ScalacBackendInterface.scala")
         ).get
-      },
+
+        val pairs = files.pair(sbt.Path.rebase(submoduleCompilerDir, outputDir))
+
+        try {
+          pairs.foreach { case (src, dst) =>
+            sbt.IO.createDirectory(dst.getParentFile)
+            if (!dst.exists)
+              Files.createSymbolicLink(/*link = */ dst.toPath, /*existing = */src.toPath)
+          }
+        } catch {
+          case e: UnsupportedOperationException =>
+            // If the OS doesn't support symbolic links, copy the directory instead.
+            sbt.IO.copy(pairs, overwrite = true, preserveLastModified = true)
+        }
+
+        pairs.map(_._2)
+      }.taskValue,
 
       // Used by the backend
       libraryDependencies += "org.scala-lang.modules" % "scala-asm" % "5.1.0-scala-2",
@@ -272,7 +312,11 @@ object Build {
       resourceGenerators in Compile += Def.task {
         val file = (resourceManaged in Compile).value / "compiler.properties"
         val contents = s"version.number=${version.value}"
-        IO.write(file, contents)
+
+        if (!(file.exists && IO.read(file) == contents)) {
+          IO.write(file, contents)
+        }
+
         Seq(file)
       }.taskValue,
 
@@ -581,7 +625,7 @@ object DottyInjectedPlugin extends AutoPlugin {
   override def trigger = allRequirements
 
   override val projectSettings = Seq(
-    scalaVersion := "0.1.1-SNAPSHOT",
+    scalaVersion := "0.1.1-bin-SNAPSHOT",
     scalaOrganization := "ch.epfl.lamp",
     scalacOptions += "-language:Scala2",
     scalaBinaryVersion  := "2.11",

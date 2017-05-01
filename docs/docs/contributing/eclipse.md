@@ -6,7 +6,7 @@ title: Building Dotty with Eclipse
 Build setup
 -----------
 
-1. Run `sbt eclipse`
+1. Run `sbt ;managedSources;eclipse`
 
 2. It is recommended to change the default output folder (in `Properties > java
    build path > Source`) to `dotty/classes` instead of `dotty/bin` because
@@ -20,9 +20,6 @@ If you have `CLASSPATH` defined:
 4. Open the `Run Configurations` tab, and edit the `tests` configuration so
    that it contains a `CLASSPATH` variable which reflects the current
    `CLASSPATH`.
-
-In order for compilation errors related to `ENUM` to be resolved, make sure
-that scala-reflect 2.11.5 is on the classpath.
 
 Running the compiler Main class from Eclipse
 --------------------------------------------

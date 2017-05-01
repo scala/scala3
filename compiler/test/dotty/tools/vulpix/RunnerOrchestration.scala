@@ -153,7 +153,7 @@ trait RunnerOrchestration {
       val sep = sys.props("file.separator")
       val cp =
         classOf[ChildJVMMain].getProtectionDomain.getCodeSource.getLocation.getFile + ":" +
-        Jars.scalaLibraryFromRuntime
+        Jars.scalaLibrary
       val javaBin = sys.props("java.home") + sep + "bin" + sep + "java"
       new ProcessBuilder(javaBin, "-cp", cp, "dotty.tools.vulpix.ChildJVMMain")
         .redirectErrorStream(true)

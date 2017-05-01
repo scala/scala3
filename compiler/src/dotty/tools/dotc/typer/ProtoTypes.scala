@@ -423,8 +423,8 @@ object ProtoTypes {
 
   /** The normalized form of a type
    *   - unwraps polymorphic types, tracking their parameters in the current constraint
-   *   - skips implicit parameters; if result type depends on implicit parameter,
-   *     replace with Wildcard.
+   *   - skips implicit parameters of methods and functions;
+   *     if result type depends on implicit parameter, replace with fresh type dependent parameter.
    *   - converts non-dependent method types to the corresponding function types
    *   - dereferences parameterless method types
    *   - dereferences nullary method types provided the corresponding function type
@@ -438,9 +438,10 @@ object ProtoTypes {
    */
   def normalize(tp: Type, pt: Type)(implicit ctx: Context): Type = Stats.track("normalize") {
     tp.widenSingleton match {
-      case poly: PolyType => normalize(constrained(poly).resultType, pt)
+      case poly: PolyType =>
+        normalize(constrained(poly).resultType, pt)
       case mt: MethodType =>
-        if (mt.isImplicit) resultTypeApprox(mt)
+        if (mt.isImplicit) normalize(resultTypeApprox(mt), pt)
         else if (mt.isDependent) tp
         else {
           val rt = normalize(mt.resultType, pt)
@@ -452,8 +453,11 @@ object ProtoTypes {
               if (mt.paramInfos.nonEmpty || ft <:< pt) ft else rt
           }
         }
-      case et: ExprType => et.resultType
-      case _ => tp
+      case et: ExprType =>
+        normalize(et.resultType, pt)
+      case wtp =>
+        if (defn.isImplicitFunctionType(wtp)) normalize(wtp.dealias.argInfos.last, pt)
+        else tp
     }
   }
 

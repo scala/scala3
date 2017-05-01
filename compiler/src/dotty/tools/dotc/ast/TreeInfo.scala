@@ -3,7 +3,7 @@ package dotc
 package ast
 
 import core._
-import Flags._, Trees._, Types._, Contexts._, Constants._
+import Flags._, Trees._, Types._, Contexts._
 import Names._, StdNames._, NameOps._, Decorators._, Symbols._
 import util.HashSet
 import typer.ConstFold
@@ -426,18 +426,8 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
    */
   def constToLiteral(tree: Tree)(implicit ctx: Context): Tree = {
     val tree1 = ConstFold(tree)
-    def canInlineConstant(value: Constant): Boolean = {
-      val sym = tree1.symbol
-      isIdempotentExpr(tree1) && // see note in documentation
-      // lazy value must be initialized (would not be needed with isPureExpr)
-      !sym.is(Lazy) &&
-      // could hide initialization order issues (ex. val with constant type read before initialized)
-      (!ctx.owner.isLocalDummy || (!sym.is(Method) && !sym.is(Lazy) && value.isZero) ||
-        ctx.scala2Mode // ignore in Scala 2 because of inlined `final val` values
-      )
-    }
     tree1.tpe.widenTermRefExpr match {
-      case ConstantType(value) if canInlineConstant(value) => Literal(value)
+      case ConstantType(value) if isIdempotentExpr(tree1) => Literal(value)
       case _ => tree1
     }
   }

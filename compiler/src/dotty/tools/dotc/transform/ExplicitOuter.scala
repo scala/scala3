@@ -46,7 +46,7 @@ class ExplicitOuter extends MiniPhaseTransform with InfoTransformer { thisTransf
   /** List of names of phases that should have finished their processing of all compilation units
     * before this phase starts
     */
-  override def runsAfter: Set[Class[_ <: Phase]] = Set(classOf[PatternMatcher])
+  override def runsAfter: Set[Class[_ <: Phase]] = Set(classOf[PatternMatcher], classOf[HoistSuperArgs])
 
   /** Add outer accessors if a class always needs an outer pointer */
   override def transformInfo(tp: Type, sym: Symbol)(implicit ctx: Context) = tp match {

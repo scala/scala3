@@ -33,6 +33,7 @@ object StdNames {
     final val INTERPRETER_LINE_PREFIX    = "line"
     final val INTERPRETER_VAR_PREFIX     = "res"
     final val INTERPRETER_WRAPPER_SUFFIX = "$object"
+    final val MODULE_INSTANCE_FIELD      = NameTransformer.MODULE_INSTANCE_NAME  // "MODULE$"
 
     final val Function                   = "Function"
     final val ImplicitFunction           = "ImplicitFunction"
@@ -378,6 +379,7 @@ object StdNames {
     val build : N               = "build"
     val bytes: N                = "bytes"
     val canEqual_ : N           = "canEqual"
+    val cbnArg: N               = "<cbn-arg>"
     val checkInitialized: N     = "checkInitialized"
     val ClassManifestFactory: N = "ClassManifestFactory"
     val classOf: N              = "classOf"
@@ -391,7 +393,6 @@ object StdNames {
     val delayedInitArg: N       = "delayedInit$body"
     val drop: N                 = "drop"
     val dynamics: N             = "dynamics"
-    val dummyApply: N           = "<dummy-apply>"
     val elem: N                 = "elem"
     val emptyValDef: N          = "emptyValDef"
     val ensureAccessible : N    = "ensureAccessible"

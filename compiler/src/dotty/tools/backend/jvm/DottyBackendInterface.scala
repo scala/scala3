@@ -30,7 +30,7 @@ import Decorators._
 import tpd._
 
 import scala.tools.asm
-import StdNames.nme
+import StdNames.{nme, str}
 import NameOps._
 import NameKinds.DefaultGetterName
 import dotty.tools.dotc.core
@@ -161,7 +161,8 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
   def boxMethods: Map[Symbol, Symbol] = defn.ScalaValueClasses().map{x => // @darkdimius Are you sure this should be a def?
     (x, Erasure.Boxing.boxMethod(x.asClass))
   }.toMap
-  def unboxMethods: Map[Symbol, Symbol] = defn.ScalaValueClasses().map(x => (x, Erasure.Boxing.unboxMethod(x.asClass))).toMap
+  def unboxMethods: Map[Symbol, Symbol] =
+    defn.ScalaValueClasses().map(x => (x, Erasure.Boxing.unboxMethod(x.asClass))).toMap
 
   override def isSyntheticArrayConstructor(s: Symbol) = {
     s eq defn.newArrayMethod
@@ -244,7 +245,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
           case ClazzTag => av.visit(name, const.typeValue.toTypeKind(bcodeStore)(innerClasesStore).toASMType)
           case EnumTag =>
             val edesc = innerClasesStore.typeDescriptor(const.tpe.asInstanceOf[bcodeStore.int.Type]) // the class descriptor of the enumeration class.
-            val evalue = const.symbolValue.name.toString // value the actual enumeration value.
+            val evalue = const.symbolValue.name.mangledString // value the actual enumeration value.
             av.visitEnum(name, edesc, evalue)
         }
       case t: TypeApply if (t.fun.symbol == Predef_classOf) =>
@@ -252,7 +253,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
       case t: tpd.Select =>
         if (t.symbol.denot.is(Flags.Enum)) {
           val edesc = innerClasesStore.typeDescriptor(t.tpe.asInstanceOf[bcodeStore.int.Type]) // the class descriptor of the enumeration class.
-          val evalue = t.symbol.name.toString // value the actual enumeration value.
+          val evalue = t.symbol.name.mangledString // value the actual enumeration value.
           av.visitEnum(name, edesc, evalue)
         } else {
           assert(toDenot(t.symbol).name.is(DefaultGetterName)) // this should be default getter. do not emmit.
@@ -262,8 +263,8 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
         for(arg <- t.elems) { emitArgument(arrAnnotV, null, arg, bcodeStore)(innerClasesStore) }
         arrAnnotV.visitEnd()
 
-      case Apply(fun, args) if (fun.symbol == defn.ArrayClass.primaryConstructor ||
-        (toDenot(fun.symbol).owner == defn.ArrayClass.linkedClass && fun.symbol.name == nme_apply)) =>
+      case Apply(fun, args) if fun.symbol == defn.ArrayClass.primaryConstructor ||
+        toDenot(fun.symbol).owner == defn.ArrayClass.linkedClass && fun.symbol.name == nme_apply =>
         val arrAnnotV: AnnotationVisitor = av.visitArray(name)
 
         var actualArgs = if (fun.tpe.isInstanceOf[ImplicitMethodType]) {
@@ -311,7 +312,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
   private def emitAssocs(av: asm.AnnotationVisitor, assocs: List[(Name, Object)], bcodeStore: BCodeHelpers)
                         (innerClasesStore: bcodeStore.BCInnerClassGen) = {
     for ((name, value) <- assocs)
-      emitArgument(av, name.toString, value.asInstanceOf[Tree], bcodeStore)(innerClasesStore)
+      emitArgument(av, name.mangledString, value.asInstanceOf[Tree], bcodeStore)(innerClasesStore)
     av.visitEnd()
   }
 
@@ -360,9 +361,8 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
     else clazz.getName
   }
 
-  def requiredClass[T](implicit evidence: ClassTag[T]): Symbol = {
+  def requiredClass[T](implicit evidence: ClassTag[T]): Symbol =
     ctx.requiredClass(erasureString(evidence.runtimeClass).toTermName)
-  }
 
   def requiredModule[T](implicit evidence: ClassTag[T]): Symbol = {
     val moduleName = erasureString(evidence.runtimeClass)
@@ -404,16 +404,15 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
     def newAnyRefMap[K <: AnyRef, V](): mutable.AnyRefMap[K, V] = new mutable.AnyRefMap[K, V]()
     def newWeakMap[K, V](): mutable.WeakHashMap[K, V] = new mutable.WeakHashMap[K, V]()
     def recordCache[T <: Clearable](cache: T): T = cache
-    def newWeakSet[K <: AnyRef](): WeakHashSet[K] = new WeakHashSet[K]()
+    def newWeakSet[K >: Null <: AnyRef](): WeakHashSet[K] = new WeakHashSet[K]()
     def newMap[K, V](): mutable.HashMap[K, V] = new mutable.HashMap[K, V]()
     def newSet[K](): mutable.Set[K] = new mutable.HashSet[K]
   }
 
+  val MODULE_INSTANCE_FIELD: String = str.MODULE_INSTANCE_FIELD
 
-
-  val MODULE_INSTANCE_FIELD: String = nme.MODULE_INSTANCE_FIELD.toString
-
-  def internalNameString(offset: Int, length: Int): String = new String(Names.chrs, offset, length)
+  def dropModule(str: String) =
+    if (!str.isEmpty && str.last == '$') str.take(str.length - 1) else str
 
   def newTermName(prefix: String): Name = prefix.toTermName
 
@@ -423,7 +422,6 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
       Flags.Specialized | Flags.Lifted | Flags.Protected | Flags.JavaStatic |
       Flags.Bridge | Flags.VBridge | Flags.Private | Flags.Macro
   }.bits
-
 
   def isQualifierSafeToElide(qual: Tree): Boolean = tpd.isIdempotentExpr(qual)
   def desugarIdent(i: Ident): Option[tpd.Select] = {
@@ -537,32 +535,25 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
     }
   }
 
-
   implicit def nameHelper(n: Name): NameHelper = new NameHelper {
-    def toTypeName: Name = n.toTypeName
     def isTypeName: Boolean = n.isTypeName
-    def toTermName: Name = n.toTermName
-    def dropModule: Name = n.stripModuleClassSuffix
-
-    def len: Int = n.toSimpleName.length
-    def offset: Int = n.toSimpleName.start
     def isTermName: Boolean = n.isTermName
     def startsWith(s: String): Boolean = n.startsWith(s)
+    def mangledString: String = n.mangledString
   }
-
 
   implicit def symHelper(sym: Symbol): SymbolHelper = new SymbolHelper {
     // names
     def fullName(sep: Char): String = sym.showFullName
     def fullName: String = sym.showFullName
     def simpleName: Name = sym.name
-    def javaSimpleName: Name = toDenot(sym).name // addModuleSuffix(simpleName.dropLocal)
-    def javaBinaryName: Name = javaClassName.replace('.', '/').toTypeName // TODO: can we make this a string? addModuleSuffix(fullNameInternal('/'))
-    def javaClassName: String = toDenot(sym).fullName.toString// addModuleSuffix(fullNameInternal('.')).toString
+    def javaSimpleName: String = toDenot(sym).name.mangledString // addModuleSuffix(simpleName.dropLocal)
+    def javaBinaryName: String = javaClassName.replace('.', '/') // TODO: can we make this a string? addModuleSuffix(fullNameInternal('/'))
+    def javaClassName: String = toDenot(sym).fullName.mangledString // addModuleSuffix(fullNameInternal('.')).toString
     def name: Name = sym.name
-    def rawname: Name = {
+    def rawname: String = {
       val original = toDenot(sym).initial
-      sym.name(ctx.withPhase(original.validFor.phaseId))
+      sym.name(ctx.withPhase(original.validFor.phaseId)).mangledString
     }
 
     // types
@@ -675,9 +666,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
     }
     def enclClass: Symbol = toDenot(sym).enclosingClass
     def linkedClassOfClass: Symbol = linkedClass
-    def linkedClass: Symbol = {
-      toDenot(sym)(ctx).linkedClass(ctx)
-    } //exitingPickler(sym.linkedClassOfClass)
+    def linkedClass: Symbol = toDenot(sym)(ctx).linkedClass(ctx) //exitingPickler(sym.linkedClassOfClass)
     def companionClass: Symbol = toDenot(sym).companionClass
     def companionModule: Symbol = toDenot(sym).companionModule
     def companionSymbol: Symbol = if (sym is Flags.Module) companionClass else companionModule

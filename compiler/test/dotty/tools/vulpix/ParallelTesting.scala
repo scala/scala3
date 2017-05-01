@@ -343,7 +343,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
         val fullArgs = Array(
           "javac",
           "-classpath",
-          s".:${Jars.scalaLibraryFromRuntime}:${targetDir.getAbsolutePath}"
+          s".:${Jars.scalaLibrary}:${targetDir.getAbsolutePath}"
         ) ++ flags.takeRight(2) ++ fs
 
         Runtime.getRuntime.exec(fullArgs).waitFor() == 0

@@ -74,6 +74,13 @@ trait SpaceLogic {
   /** Is `tp1` the same type as `tp2`? */
   def isEqualType(tp1: Type, tp2: Type): Boolean
 
+  /** Return a space containing the values of both types.
+   *
+   * The types should be atomic (non-decomposable) and unrelated (neither
+   * should be a subtype of the other).
+   */
+  def intersectUnrelatedAtomicTypes(tp1: Type, tp2: Type): Space
+
   /** Is the type `tp` decomposable? i.e. all values of the type can be covered
    *  by its decomposed types.
    *
@@ -171,7 +178,7 @@ trait SpaceLogic {
         else if (isSubType(tp2, tp1)) b
         else if (canDecompose(tp1)) tryDecompose1(tp1)
         else if (canDecompose(tp2)) tryDecompose2(tp2)
-        else Empty
+        else intersectUnrelatedAtomicTypes(tp1, tp2)
       case (Typ(tp1, _), Kon(tp2, ss)) =>
         if (isSubType(tp2, tp1)) b
         else if (isSubType(tp1, tp2)) a // problematic corner case: inheriting a case class
@@ -239,9 +246,95 @@ trait SpaceLogic {
   }
 }
 
+object SpaceEngine {
+  private sealed trait Implementability {
+    def show(implicit ctx: Context) = this match {
+      case SubclassOf(classSyms) => s"SubclassOf(${classSyms.map(_.show)})"
+      case other => other.toString
+    }
+  }
+  private case object ClassOrTrait extends Implementability
+  private case class SubclassOf(classSyms: List[Symbol]) extends Implementability
+  private case object Unimplementable extends Implementability
+}
+
 /** Scala implementation of space logic */
 class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
+  import SpaceEngine._
   import tpd._
+
+  /** Checks if it's possible to create a trait/class which is a subtype of `tp`.
+   *
+   * - doesn't handle member collisions (will not declare a type unimplementable because of one)
+   * - expects that neither Any nor Object reach it
+   *   (this is currently true due to both isSubType and and/or type simplification)
+   *
+   * See [[intersectUnrelatedAtomicTypes]].
+   */
+  private def implementability(tp: Type): Implementability = tp.dealias match {
+    case AndType(tp1, tp2) =>
+      (implementability(tp1), implementability(tp2)) match {
+        case (Unimplementable, _) | (_, Unimplementable) => Unimplementable
+        case (SubclassOf(classSyms1), SubclassOf(classSyms2)) =>
+          (for {
+            sym1 <- classSyms1
+            sym2 <- classSyms2
+            result <-
+              if (sym1 isSubClass sym2) List(sym1)
+              else if (sym2 isSubClass sym1) List(sym2)
+              else Nil
+          } yield result) match {
+            case Nil => Unimplementable
+            case lst => SubclassOf(lst)
+          }
+        case (ClassOrTrait, ClassOrTrait) => ClassOrTrait
+        case (SubclassOf(clss), _) => SubclassOf(clss)
+        case (_, SubclassOf(clss)) => SubclassOf(clss)
+      }
+    case OrType(tp1, tp2) =>
+      (implementability(tp1), implementability(tp2)) match {
+        case (ClassOrTrait, _) | (_, ClassOrTrait) => ClassOrTrait
+        case (SubclassOf(classSyms1), SubclassOf(classSyms2)) =>
+          SubclassOf(classSyms1 ::: classSyms2)
+        case (SubclassOf(classSyms), _) => SubclassOf(classSyms)
+        case (_, SubclassOf(classSyms)) => SubclassOf(classSyms)
+        case _ => Unimplementable
+      }
+    case _: SingletonType =>
+      // singleton types have no instantiable subtypes
+      Unimplementable
+    case tp: RefinedType =>
+      // refinement itself is not considered - it would at most make
+      // a type unimplementable because of a member collision
+      implementability(tp.parent)
+    case other =>
+      val classSym = other.classSymbol
+      if (classSym.exists) {
+        if (classSym is Final) Unimplementable
+        else if (classSym is Trait) ClassOrTrait
+        else SubclassOf(List(classSym))
+      } else {
+        // if no class symbol exists, conservatively say that anything
+        // can implement `tp`
+        ClassOrTrait
+      }
+  }
+
+  override def intersectUnrelatedAtomicTypes(tp1: Type, tp2: Type) = {
+    val and = AndType(tp1, tp2)
+    // Precondition: !(tp1 <:< tp2) && !(tp2 <:< tp1)
+    // Then, no leaf of the and-type tree `and` is a subtype of `and`.
+    // Then, to create a value of type `and` you must instantiate a trait (class/module)
+    // which is a subtype of all the leaves of `and`.
+    val imp = implementability(and)
+
+    debug.println(s"atomic intersection: ${and.show} ~ ${imp.show}")
+
+    imp match {
+      case Unimplementable => Empty
+      case _ => Typ(and, true)
+    }
+  }
 
   /** Return the space that represents the pattern `pat`
    *
@@ -325,6 +418,12 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
     debug.println(s"candidates for ${tp.show} : [${children.map(_.show).mkString(", ")}]")
 
     tp.dealias match {
+      case AndType(tp1, tp2) =>
+        intersect(Typ(tp1, false), Typ(tp2, false)) match {
+          case Or(spaces) => spaces
+          case Empty => Nil
+          case space => List(space)
+        }
       case OrType(tp1, tp2) => List(Typ(tp1, true), Typ(tp2, true))
       case _ if tp =:= ctx.definitions.BooleanType =>
         List(
@@ -377,9 +476,14 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
 
   /** Abstract sealed types, or-types, Boolean and Java enums can be decomposed */
   def canDecompose(tp: Type): Boolean = {
+    val dealiasedTp = tp.dealias
     val res = tp.classSymbol.is(allOf(Abstract, Sealed)) ||
       tp.classSymbol.is(allOf(Trait, Sealed)) ||
-      tp.dealias.isInstanceOf[OrType] ||
+      dealiasedTp.isInstanceOf[OrType] ||
+      (dealiasedTp.isInstanceOf[AndType] && {
+        val and = dealiasedTp.asInstanceOf[AndType]
+        canDecompose(and.tp1) || canDecompose(and.tp2)
+      }) ||
       tp =:= ctx.definitions.BooleanType ||
       tp.classSymbol.is(allOf(Enum, Sealed))  // Enum value doesn't have Sealed flag
 
@@ -477,6 +581,10 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
         ctx.settings.YcheckAllPatmat.value ||
           tp.typeSymbol.is(Sealed) ||
           tp.isInstanceOf[OrType] ||
+          (tp.isInstanceOf[AndType] && {
+            val and = tp.asInstanceOf[AndType]
+            isCheckable(and.tp1) || isCheckable(and.tp2)
+          }) ||
           tp.typeSymbol == ctx.definitions.BooleanType.typeSymbol ||
           tp.typeSymbol.is(Enum) ||
           canDecompose(tp) ||

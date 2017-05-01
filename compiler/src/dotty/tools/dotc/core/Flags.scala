@@ -372,9 +372,6 @@ object Flags {
   /** Symbol always defines a fresh named type */
   final val Fresh = commonFlag(45, "<fresh>")
 
-  /** Symbol is defined in a super call */
-  final val InSuperCall = commonFlag(46, "<in supercall>")
-
   /** Denotation is in train of being loaded and completed, used to catch cyclic dependencies */
   final val Touched = commonFlag(48, "<touched>")
 
@@ -451,7 +448,7 @@ object Flags {
   /** Flags guaranteed to be set upon symbol creation */
   final val FromStartFlags =
     Module | Package | Deferred | MethodOrHKCommon | Param | ParamAccessor |
-    Scala2ExistentialCommon | Mutable.toCommonFlags | InSuperCall | Touched | JavaStatic |
+    Scala2ExistentialCommon | Mutable.toCommonFlags | Touched | JavaStatic |
     CovariantOrOuter | ContravariantOrLabel | CaseAccessorOrBaseTypeArg |
     Fresh | Frozen | Erroneous | ImplicitCommon | Permanent | Synthetic |
     SuperAccessorOrScala2x | Inline
@@ -511,8 +508,7 @@ object Flags {
     Accessor | AbsOverride | Stable | Captured | Synchronized
 
   /** Flags that can apply to a module class */
-  final val RetainedModuleClassFlags: FlagSet = RetainedModuleValAndClassFlags |
-    InSuperCall | ImplClass
+  final val RetainedModuleClassFlags: FlagSet = RetainedModuleValAndClassFlags | ImplClass
 
   /** Packages and package classes always have these flags set */
   final val PackageCreationFlags =
