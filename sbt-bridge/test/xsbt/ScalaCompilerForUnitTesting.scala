@@ -176,17 +176,7 @@ class ScalaCompilerForUnitTesting(nameHashing: Boolean, includeSynthToNameHashin
     import dotty.tools.dotc.{Compiler, Driver}
     import dotty.tools.dotc.core.Contexts._
 
-    val driver = new Driver {
-
-      protected def newCompiler(implicit ctx: Context): Compiler = new Compiler
-
-      override protected def sourcesRequired = false
-
-      def getCompiler(args: Array[String], rootCtx: Context) = {
-        val (fileNames, ctx) = setup(args, rootCtx)
-        (newCompiler(ctx), ctx)
-      }
-    }
+    val driver = new TestDriver
     val ctx = (new ContextBase).initialCtx.fresh.setSbtCallback(analysisCallback)
     driver.getCompiler(Array("-classpath", classpath, "-usejavacp", "-d", outputDir.getAbsolutePath), ctx)
   }

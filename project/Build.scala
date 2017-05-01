@@ -13,6 +13,15 @@ import sbt.Package.ManifestAttributes
 
 import com.typesafe.sbteclipse.plugin.EclipsePlugin._
 
+/* In sbt 0.13 the Build trait would expose all vals to the shell, where you
+ * can use them in "set a := b" like expressions. This re-exposes them.
+ */
+object ExposedValues extends AutoPlugin {
+  object autoImport {
+    val bootstrapFromPublishedJars = Build.bootstrapFromPublishedJars
+  }
+}
+
 object Build {
 
   projectChecks()
@@ -28,6 +37,7 @@ object Build {
     else
       baseVersion + "-bin-SNAPSHOT"
   }
+  val dottyNonBootstrappedVersion = dottyVersion + "-nonbootstrapped"
 
   val jenkinsMemLimit = List("-Xmx1500m")
 
@@ -65,43 +75,81 @@ object Build {
   // Shorthand for compiling a docs site
   lazy val dottydoc = inputKey[Unit]("run dottydoc")
 
-  // Used in build.sbt
-  val thisBuildSettings = Seq(
-    scalaVersion in Global := scalacVersion,
-    version in Global := dottyVersion,
-    organization in Global := dottyOrganization,
-    organizationName in Global := "LAMP/EPFL",
-    organizationHomepage in Global := Some(url("http://lamp.epfl.ch")),
-    homepage in Global := Some(url("https://github.com/lampepfl/dotty")),
+  lazy val bootstrapFromPublishedJars = settingKey[Boolean]("If true, bootstrap dotty from published non-bootstrapped dotty")
 
-    // scalac options
-    scalacOptions in Global ++= Seq(
+  // Used in build.sbt
+  lazy val thisBuildSettings = Def.settings(
+    // Change this to true if you want to bootstrap using a published non-bootstrapped compiler
+    bootstrapFromPublishedJars := false
+  )
+
+
+  lazy val commonSettings = publishSettings ++ Seq(
+    organization := dottyOrganization,
+    organizationName := "LAMP/EPFL",
+    organizationHomepage := Some(url("http://lamp.epfl.ch")),
+    homepage := Some(url("https://github.com/lampepfl/dotty")),
+
+    scalacOptions ++= Seq(
       "-feature",
       "-deprecation",
       "-encoding", "UTF8",
       "-language:existentials,higherKinds,implicitConversions"
     ),
 
-    javacOptions in Global ++= Seq("-Xlint:unchecked", "-Xlint:deprecation")
-  )
+    javacOptions ++= Seq("-Xlint:unchecked", "-Xlint:deprecation"),
 
-  // set sources to src/, tests to test/ and resources to resources/
-  lazy val sourceStructure = Seq(
     scalaSource       in Compile    := baseDirectory.value / "src",
     scalaSource       in Test       := baseDirectory.value / "test",
     javaSource        in Compile    := baseDirectory.value / "src",
     javaSource        in Test       := baseDirectory.value / "test",
-    resourceDirectory in Compile    := baseDirectory.value / "resources"
+    resourceDirectory in Compile    := baseDirectory.value / "resources",
+
+    // Prevent sbt from rewriting our dependencies
+    ivyScala ~= (_ map (_ copy (overrideScalaVersion = false)))
   )
 
-  // Settings used by all dotty-compiled projects
-  lazy val commonBootstrappedSettings = Seq(
+  // Settings used for projects compiled only with Scala 2
+  lazy val commonScala2Settings = commonSettings ++ Seq(
+    version := dottyVersion,
+    scalaVersion := scalacVersion
+  )
+
+  // Settings used when compiling dotty using Scala 2
+  lazy val commonNonBootstrappedSettings = commonSettings ++ publishSettings ++ Seq(
+    version := dottyNonBootstrappedVersion,
+    scalaVersion := scalacVersion
+  )
+
+  // Settings used when compiling dotty with a non-bootstrapped dotty
+  lazy val commonBootstrappedSettings = commonSettings ++ Seq(
     EclipseKeys.skipProject := true,
+    version := dottyVersion,
+    scalaVersion := dottyNonBootstrappedVersion,
     scalaOrganization := dottyOrganization,
-    scalaVersion := dottyVersion,
-    scalaBinaryVersion := "2.11",
+    scalaBinaryVersion := "0.1",
+
+    // Avoid having to run `dotty-sbt-bridge/publishLocal` before compiling a bootstrapped project
     scalaCompilerBridgeSource :=
-      (dottyOrganization % "dotty-sbt-bridge" % scalaVersion.value % "component").sources(),
+      (dottyOrganization %% "dotty-sbt-bridge" % "NOT_PUBLISHED" % Configurations.Component.name)
+      .artifacts(Artifact.sources("dotty-sbt-bridge").copy(url =
+        // We cannot use the `packageSrc` task because a setting cannot depend
+        // on a task. Instead, we make `compile` below depend on the bridge `packageSrc`
+        Some((artifactPath in (`dotty-sbt-bridge`, Compile, packageSrc)).value.toURI.toURL))),
+    compile in Compile := (compile in Compile)
+      .dependsOn(packageSrc in (`dotty-sbt-bridge`, Compile)).value,
+
+    // Use the same name as the non-bootstrapped projects for the artifacts
+    moduleName ~= { _.stripSuffix("-bootstrapped") },
+
+    // Prevent sbt from setting the Scala bootclasspath, otherwise it will
+    // contain `scalaInstance.value.libraryJar` which in our case is the
+    // non-bootstrapped dotty-library that will then take priority over
+    // the bootstrapped dotty-library on the classpath or sourcepath.
+    classpathOptions ~= (_.copy(autoBoot = false)),
+    // We still need a Scala bootclasspath equal to the JVM bootclasspath,
+    // otherwise sbt 0.13 incremental compilation breaks (https://github.com/sbt/sbt/issues/3142)
+    scalacOptions ++= Seq("-bootclasspath", sys.props("sun.boot.class.path")),
 
     // sbt gets very unhappy if two projects use the same target
     target := baseDirectory.value / ".." / "out" / name.value,
@@ -109,7 +157,60 @@ object Build {
     // The non-bootstrapped dotty-library is not necessary when bootstrapping dotty
     autoScalaLibrary := false,
     // ...but scala-library is
-    libraryDependencies += "org.scala-lang" % "scala-library" % scalacVersion
+    libraryDependencies += "org.scala-lang" % "scala-library" % scalacVersion,
+
+    ivyConfigurations ++= {
+      if (bootstrapFromPublishedJars.value)
+        Seq(Configurations.ScalaTool)
+      else
+        Seq()
+    },
+    libraryDependencies ++= {
+      if (bootstrapFromPublishedJars.value)
+        Seq(
+          dottyOrganization % "dotty-library_2.11" % dottyNonBootstrappedVersion % Configurations.ScalaTool.name,
+          dottyOrganization % "dotty-compiler_2.11" % dottyNonBootstrappedVersion % Configurations.ScalaTool.name
+        )
+      else
+        Seq()
+    },
+
+    // Compile using the non-bootstrapped and non-published dotty
+    managedScalaInstance := false,
+    scalaInstance := {
+      val (libraryJar, compilerJar) =
+        if (bootstrapFromPublishedJars.value) {
+          val jars = update.value.select(
+            configuration = configurationFilter(Configurations.ScalaTool.name),
+            artifact = artifactFilter(extension = "jar")
+          )
+          (jars.find(_.getName.startsWith("dotty-library_2.11")).get,
+           jars.find(_.getName.startsWith("dotty-compiler_2.11")).get)
+        } else
+          ((packageBin in (`dotty-library`, Compile)).value,
+           (packageBin in (`dotty-compiler`, Compile)).value)
+
+      // All compiler dependencies except the library
+      val otherDependencies = (dependencyClasspath in (`dotty-compiler`, Compile)).value
+        .filterNot(_.get(artifact.key).exists(_.name == "dotty-library"))
+        .map(_.data)
+
+      // This ScalaInstance#apply overload is deprecated in sbt 0.13, but the non-deprecated
+      // constructor in sbt 1.0 does not exist in sbt 0.13
+      ScalaInstance(scalaVersion.value, libraryJar, compilerJar, otherDependencies: _*)(state.value.classLoaderCache.apply)
+    }
+  )
+
+  // sbt >= 0.13.12 will automatically rewrite transitive dependencies on
+  // any version in any organization of scala{-library,-compiler,-reflect,p}
+  // to have organization `scalaOrganization` and version `scalaVersion`
+  // (see https://github.com/sbt/sbt/pull/2634).
+  // This means that we need to provide dummy artefacts for these projects,
+  // otherwise users will get compilation errors if they happen to transitively
+  // depend on one of these projects.
+  lazy val commonDummySettings = commonBootstrappedSettings ++ Seq(
+    crossPaths := false,
+    libraryDependencies := Seq()
   )
 
   /** Projects -------------------------------------------------------------- */
@@ -118,6 +219,8 @@ object Build {
   // currently refers to dotty in its scripted task and "aggregate" does not take by-name
   // parameters: https://github.com/sbt/sbt/issues/2200
   lazy val dottySbtBridgeRef = LocalProject("dotty-sbt-bridge")
+  // Same thing for the bootstrapped version
+  lazy val dottySbtBridgeBootstrappedRef = LocalProject("dotty-sbt-bridge-bootstrapped")
 
   // The root project:
   // - aggregates other projects so that "compile", "test", etc are run on all projects at once.
@@ -125,27 +228,28 @@ object Build {
   //   this is only necessary for compatibility with sbt which currently hardcodes the "dotty" artifact name
   lazy val dotty = project.in(file(".")).
     // FIXME: we do not aggregate `bin` because its tests delete jars, thus breaking other tests
-    aggregate(`dotty-interfaces`, `dotty-library`, `dotty-compiler`, `dotty-doc`, dottySbtBridgeRef,
-      `scala-library`, `scala-compiler`, `scala-reflect`, scalap).
+    aggregate(`dotty-interfaces`, `dotty-library`, `dotty-compiler`, `dotty-doc`, dottySbtBridgeRef).
     dependsOn(`dotty-compiler`).
     dependsOn(`dotty-library`).
+    settings(commonNonBootstrappedSettings).
     settings(
       triggeredMessage in ThisBuild := Watched.clearWhenTriggered,
 
       addCommandAlias("run", "dotty-compiler/run") ++
       addCommandAlias("legacyTests", "dotty-compiler/testOnly dotc.tests")
-    ).
-    settings(publishing)
-
-  // Meta project aggregating all bootstrapped projects
-  lazy val `dotty-bootstrapped` = project.
-    aggregate(`dotty-library-bootstrapped`, `dotty-compiler-bootstrapped`, `dotty-doc-bootstrapped`).
-    settings(
-      publishArtifact := false
     )
 
+  // Same as `dotty` but using bootstrapped projects.
+  lazy val `dotty-bootstrapped` = project.
+    aggregate(`dotty-interfaces`, `dotty-library-bootstrapped`, `dotty-compiler-bootstrapped`, `dotty-doc-bootstrapped`,
+      dottySbtBridgeBootstrappedRef,
+      `scala-library`, `scala-compiler`, `scala-reflect`, scalap).
+    dependsOn(`dotty-compiler-bootstrapped`).
+    dependsOn(`dotty-library-bootstrapped`).
+    settings(commonBootstrappedSettings)
+
   lazy val `dotty-interfaces` = project.in(file("interfaces")).
-    settings(sourceStructure).
+    settings(commonScala2Settings). // Java-only project, so this is fine
     settings(
       // Do not append Scala versions to the generated artifacts
       crossPaths := false,
@@ -155,8 +259,7 @@ object Build {
       EclipseKeys.projectFlavor := EclipseProjectFlavor.Java,
       //Remove javac invalid options in Compile doc
       javacOptions in (Compile, doc) --= Seq("-Xlint:unchecked", "-Xlint:deprecation")
-    ).
-    settings(publishing)
+    )
 
   // Settings shared between dotty-doc and dotty-doc-bootstrapped
   lazy val dottyDocSettings = Seq(
@@ -214,19 +317,17 @@ object Build {
 
   lazy val `dotty-doc` = project.in(file("doc-tool")).
     dependsOn(`dotty-compiler`, `dotty-compiler` % "test->test").
-    settings(sourceStructure).
-    settings(dottyDocSettings).
-    settings(publishing)
+    settings(commonNonBootstrappedSettings).
+    settings(dottyDocSettings)
 
   lazy val `dotty-doc-bootstrapped` = project.in(file("doc-tool")).
     dependsOn(`dotty-compiler-bootstrapped`, `dotty-compiler-bootstrapped` % "test->test").
-    settings(sourceStructure).
     settings(commonBootstrappedSettings).
     settings(dottyDocSettings)
 
 
   lazy val `dotty-bot` = project.in(file("bot")).
-    settings(sourceStructure).
+    settings(commonScala2Settings).
     settings(
       resourceDirectory in Test := baseDirectory.value / "test" / "resources",
 
@@ -320,7 +421,7 @@ object Build {
       // get libraries onboard
       resolvers += Resolver.typesafeIvyRepo("releases"), // For org.scala-sbt:interface
       libraryDependencies ++= Seq("org.scala-sbt" % "interface" % sbtVersion.value,
-                                  "org.scala-lang.modules" %% "scala-xml" % "1.0.1",
+                                  "org.scala-lang.modules" % "scala-xml_2.11" % "1.0.1",
                                   "com.novocode" % "junit-interface" % "0.11" % "test",
                                   "org.scala-lang" % "scala-reflect" % scalacVersion,
                                   "org.scala-lang" % "scala-library" % scalacVersion % "test"),
@@ -485,7 +586,7 @@ object Build {
   lazy val `dotty-compiler` = project.in(file("compiler")).
     dependsOn(`dotty-interfaces`).
     dependsOn(`dotty-library`).
-    settings(sourceStructure).
+    settings(commonNonBootstrappedSettings).
     settings(dottyCompilerSettings).
     settings(
       // Disable scaladoc generation, it's way too slow and we'll replace it
@@ -502,18 +603,14 @@ object Build {
           "dotty-compiler-test" -> (packageBin in Test).value
         ) map { case (k, v) => (k, v.getAbsolutePath) }
       }
-    ).
-    settings(publishing)
+    )
 
   lazy val `dotty-compiler-bootstrapped` = project.in(file("compiler")).
+    dependsOn(`dotty-interfaces`).
     dependsOn(`dotty-library-bootstrapped`).
-    settings(sourceStructure).
     settings(commonBootstrappedSettings).
     settings(dottyCompilerSettings).
     settings(
-      // Used instead of "dependsOn(`dotty-interfaces`)" because the latter breaks sbt somehow
-      libraryDependencies += scalaOrganization.value % "dotty-interfaces" % version.value,
-
       packageAll := {
         (packageAll in `dotty-compiler`).value ++ Seq(
           ("dotty-compiler" -> (packageBin in Compile).value.getAbsolutePath),
@@ -524,7 +621,7 @@ object Build {
 
   /* Contains unit tests for the scripts */
   lazy val `dotty-bin-tests` = project.in(file("bin")).
-    settings(sourceStructure).
+    settings(commonNonBootstrappedSettings).
     settings(
       publishArtifact := false,
       parallelExecution in Test := false,
@@ -542,68 +639,88 @@ object Build {
   )
 
   lazy val `dotty-library` = project.in(file("library")).
-    settings(sourceStructure).
-    settings(dottyLibrarySettings).
-    settings(publishing)
-
-  lazy val `dotty-library-bootstrapped` = project.in(file("library")).
-    settings(sourceStructure).
-    settings(commonBootstrappedSettings).
+    settings(commonNonBootstrappedSettings).
     settings(dottyLibrarySettings)
+
+  lazy val `dotty-library-bootstrapped`: Project = project.in(file("library")).
+    settings(commonBootstrappedSettings).
+    settings(dottyLibrarySettings).
+    settings(
+      // Needed so that the library sources are visible when `dotty.tools.dotc.core.Definitions#init` is called.
+      scalacOptions in Compile ++= Seq("-sourcepath", (scalaSource in Compile).value.getAbsolutePath)
+    )
 
   // until sbt/sbt#2402 is fixed (https://github.com/sbt/sbt/issues/2402)
   lazy val cleanSbtBridge = TaskKey[Unit]("cleanSbtBridge", "delete dotty-sbt-bridge cache")
 
+  lazy val dottySbtBridgeSettings = Seq(
+    cleanSbtBridge := {
+      val dottySbtBridgeVersion = version.value
+      val dottyVersion = (version in `dotty-compiler`).value
+      val classVersion = System.getProperty("java.class.version")
+
+      val sbtV = sbtVersion.value
+      val sbtOrg = "org.scala-sbt"
+      val sbtScalaVersion = "2.10.6"
+
+      val home = System.getProperty("user.home")
+      val org = organization.value
+      val artifact = moduleName.value
+
+      IO.delete(file(home) / ".ivy2" / "cache" / sbtOrg / s"$org-$artifact-$dottySbtBridgeVersion-bin_${dottyVersion}__$classVersion")
+      IO.delete(file(home) / ".sbt"  / "boot" / s"scala-$sbtScalaVersion" / sbtOrg / "sbt" / sbtV / s"$org-$artifact-$dottySbtBridgeVersion-bin_${dottyVersion}__$classVersion")
+    },
+    packageSrc in Compile := (packageSrc in Compile).dependsOn(cleanSbtBridge).value,
+    description := "sbt compiler bridge for Dotty",
+    resolvers += Resolver.typesafeIvyRepo("releases"), // For org.scala-sbt stuff
+    libraryDependencies ++= Seq(
+      "org.scala-sbt" % "interface" % sbtVersion.value,
+      "org.scala-sbt" % "api" % sbtVersion.value % "test",
+      "org.specs2" % "specs2_2.11" % "2.3.11" % "test"
+    ),
+    // The sources should be published with crossPaths := false since they
+    // need to be compiled by the project using the bridge.
+    crossPaths := false,
+
+    // Don't publish any binaries for the bridge because of the above
+    publishArtifact in (Compile, packageBin) := false,
+
+    fork in Test := true,
+    parallelExecution in Test := false
+  )
+
   lazy val `dotty-sbt-bridge` = project.in(file("sbt-bridge")).
     dependsOn(`dotty-compiler`).
-    settings(sourceStructure).
+    settings(commonNonBootstrappedSettings).
+    settings(dottySbtBridgeSettings)
+
+  lazy val `dotty-sbt-bridge-bootstrapped` = project.in(file("sbt-bridge")).
+    dependsOn(`dotty-compiler-bootstrapped`).
+    settings(commonBootstrappedSettings).
+    settings(dottySbtBridgeSettings).
     settings(
-      cleanSbtBridge := {
-        val dottySbtBridgeVersion = version.value
-        val dottyVersion = (version in `dotty-compiler`).value
-        val classVersion = System.getProperty("java.class.version")
+      // Disabled because dotty crashes when compiling the tests
+      sources in Test := Seq()
+    )
 
-        val sbtV = sbtVersion.value
-        val sbtOrg = "org.scala-sbt"
-        val sbtScalaVersion = "2.10.6"
-
-        val home = System.getProperty("user.home")
-        val org = organization.value
-        val artifact = moduleName.value
-
-        IO.delete(file(home) / ".ivy2" / "cache" / sbtOrg / s"$org-$artifact-$dottySbtBridgeVersion-bin_${dottyVersion}__$classVersion")
-        IO.delete(file(home) / ".sbt"  / "boot" / s"scala-$sbtScalaVersion" / sbtOrg / "sbt" / sbtV / s"$org-$artifact-$dottySbtBridgeVersion-bin_${dottyVersion}__$classVersion")
-      },
-      publishLocal := (publishLocal.dependsOn(cleanSbtBridge)).value,
-      description := "sbt compiler bridge for Dotty",
-      resolvers += Resolver.typesafeIvyRepo("releases"), // For org.scala-sbt stuff
-      libraryDependencies ++= Seq(
-        "org.scala-sbt" % "interface" % sbtVersion.value,
-        "org.scala-sbt" % "api" % sbtVersion.value % "test",
-        "org.specs2" %% "specs2" % "2.3.11" % "test"
-      ),
-      // The sources should be published with crossPaths := false since they
-      // need to be compiled by the project using the bridge.
-      crossPaths := false,
-
-      // Don't publish any binaries for the bridge because of the above
-      publishArtifact in (Compile, packageBin) := false,
-
-      fork in Test := true,
-      parallelExecution in Test := false
+  lazy val `dotty-sbt-scripted-tests` = project.in(file("sbt-scripted-tests")).
+    settings(
+      publishArtifact := false
     ).
     settings(ScriptedPlugin.scriptedSettings: _*).
     settings(
       ScriptedPlugin.sbtTestDirectory := baseDirectory.value / "sbt-test",
       ScriptedPlugin.scriptedLaunchOpts := Seq("-Xmx1024m"),
       ScriptedPlugin.scriptedBufferLog := false,
-      ScriptedPlugin.scripted := {
+      ScriptedPlugin.scripted := ScriptedPlugin.scripted.dependsOn(Def.task {
+        val x0 = (publishLocal in `dotty-sbt-bridge-bootstrapped`).value
         val x1 = (publishLocal in `dotty-interfaces`).value
-        val x2 = (publishLocal in `dotty-compiler`).value
-        val x3 = (publishLocal in `dotty-library`).value
-        val x4 = (publishLocal in dotty).value // Needed because sbt currently hardcodes the dotty artifact
-        ScriptedPlugin.scriptedTask.evaluated
-      }
+        val x2 = (publishLocal in `dotty-compiler-bootstrapped`).value
+        val x3 = (publishLocal in `dotty-library-bootstrapped`).value
+        val x4 = (publishLocal in `scala-library`).value
+        val x5 = (publishLocal in `scala-reflect`).value
+        val x6 = (publishLocal in `dotty-bootstrapped`).value // Needed because sbt currently hardcodes the dotty artifact
+      }).evaluated
       // TODO: Use this instead of manually copying DottyInjectedPlugin.scala
       // everywhere once https://github.com/sbt/sbt/issues/2601 gets fixed.
       /*,
@@ -620,17 +737,13 @@ object DottyInjectedPlugin extends AutoPlugin {
     scalaVersion := "0.1.1-bin-SNAPSHOT",
     scalaOrganization := "ch.epfl.lamp",
     scalacOptions += "-language:Scala2",
-    scalaBinaryVersion  := "2.11",
-    autoScalaLibrary := false,
-    libraryDependencies ++= Seq("org.scala-lang" % "scala-library" % "2.11.5"),
-    scalaCompilerBridgeSource := ("ch.epfl.lamp" % "dotty-sbt-bridge" % scalaVersion.value % "component").sources()
+    scalaBinaryVersion  := "0.1"
   )
 }
 """)
       }
       */
-    ).
-    settings(publishing)
+    )
 
   /** A sandbox to play with the Scala.js back-end of dotty.
    *
@@ -643,7 +756,7 @@ object DottyInjectedPlugin extends AutoPlugin {
    */
   lazy val sjsSandbox = project.in(file("sandbox/scalajs")).
     enablePlugins(ScalaJSPlugin).
-    settings(sourceStructure).
+    settings(commonNonBootstrappedSettings).
     settings(
       /* Remove the Scala.js compiler plugin for scalac, and enable the
        * Scala.js back-end of dotty instead.
@@ -676,7 +789,7 @@ object DottyInjectedPlugin extends AutoPlugin {
 
   lazy val `dotty-bench` = project.in(file("bench")).
     dependsOn(`dotty-compiler` % "compile->test").
-    settings(sourceStructure).
+    settings(commonNonBootstrappedSettings).
     settings(
       baseDirectory in (Test,run) := (baseDirectory in `dotty-compiler`).value,
 
@@ -713,44 +826,27 @@ object DottyInjectedPlugin extends AutoPlugin {
       }
     )
 
-
-  // Dummy scala-library artefact. This is useful because sbt projects
-  // automatically depend on scalaOrganization.value % "scala-library" % scalaVersion.value
+  // Depend on dotty-library so that sbt projects using dotty automatically
+  // depend on the dotty-library
   lazy val `scala-library` = project.
-    dependsOn(`dotty-library`).
-    settings(
-      crossPaths := false
-    ).
-    settings(publishing)
+    dependsOn(`dotty-library-bootstrapped`).
+    settings(commonDummySettings)
 
-  // sbt >= 0.13.12 will automatically rewrite transitive dependencies on
-  // any version in any organization of scala{-library,-compiler,-reflect,p}
-  // to have organization `scalaOrganization` and version `scalaVersion`
-  // (see https://github.com/sbt/sbt/pull/2634).
-  // This means that we need to provide dummy artefacts for these projects,
-  // otherwise users will get compilation errors if they happen to transitively
-  // depend on one of these projects.
   lazy val `scala-compiler` = project.
-    settings(
-      crossPaths := false
-    ).
-    settings(publishing)
+    settings(commonDummySettings)
   lazy val `scala-reflect` = project.
+    settings(commonDummySettings).
     settings(
-      crossPaths := false,
-      libraryDependencies := Seq("org.scala-lang" % "scala-reflect" % scalaVersion.value)
-    ).
-    settings(publishing)
+      libraryDependencies := Seq("org.scala-lang" % "scala-reflect" % scalacVersion)
+    )
   lazy val scalap = project.
+    settings(commonDummySettings).
     settings(
-      crossPaths := false,
-      libraryDependencies := Seq("org.scala-lang" % "scalap" % scalaVersion.value)
-    ).
-    settings(publishing)
+      libraryDependencies := Seq("org.scala-lang" % "scalap" % scalacVersion)
+    )
 
-   lazy val publishing = Seq(
+   lazy val publishSettings = Seq(
      publishMavenStyle := true,
-     publishArtifact := true,
      isSnapshot := version.value.contains("SNAPSHOT"),
      publishTo := {
        val nexus = "https://oss.sonatype.org/"
