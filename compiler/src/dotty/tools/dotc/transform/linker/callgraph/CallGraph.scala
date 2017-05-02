@@ -11,7 +11,7 @@ class CallGraph(val entryPoints: Map[CallInfoWithContext, Int], val reachableMet
     val reachableTypes: Set[TypeWithContext], val casts: Set[Cast], val classOfs: Set[Symbol],
     val outerMethods: Set[Symbol], val mode: Int, val specLimit: Int)(implicit ctx: Context) { self =>
 
-  private lazy val reachableSet: Set[Symbol] =
+  private val reachableMethodSet: Set[Symbol] =
     reachableMethods.map(_.callSymbol)
 
   lazy val reachableClassesSet: Set[Symbol] = {
@@ -24,7 +24,7 @@ class CallGraph(val entryPoints: Map[CallInfoWithContext, Int], val reachableMet
     reachableClasses.toSet
   }
 
-  def isReachableMethod(sym: Symbol): Boolean = reachableSet.contains(sym)
+  def isReachableMethod(sym: Symbol): Boolean = reachableMethodSet.contains(sym)
 
   def isReachableClass(sym: Symbol): Boolean = reachableClassesSet.contains(sym)
 
@@ -34,7 +34,7 @@ class CallGraph(val entryPoints: Map[CallInfoWithContext, Int], val reachableMet
 
   class Info {
 
-    lazy val classesWithReachableMethods = reachableSet.map(_.maybeOwner.info.widen.classSymbol)
+    lazy val classesWithReachableMethods = reachableMethodSet.map(_.maybeOwner.info.widen.classSymbol)
 
     lazy val reachableClasses = classesWithReachableMethods ++ reachableClassesSet
 
