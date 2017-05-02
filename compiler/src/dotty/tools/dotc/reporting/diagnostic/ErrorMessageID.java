@@ -57,6 +57,7 @@ public enum ErrorMessageID {
     CyclicReferenceInvolvingImplicitID,
     SuperQualMustBeParentID,
     AmbiguousImportID,
+    MethodDoesNotTakeParametersId,
     ;
 
     public int errorNumber() {

@@ -1253,4 +1253,21 @@ object messages {
            |"""
   }
 
+  case class MethodDoesNotTakeParameters(tree: tpd.Tree, methPartType: Types.Type)(err: typer.ErrorReporting.Errors)(implicit ctx: Context)
+  extends Message(MethodDoesNotTakeParametersId) {
+    private val more = tree match {
+      case Apply(_, _) => " more"
+      case _ => ""
+    }
+
+    val msg = hl"${err.refStr(methPartType)} does not take$more parameters"
+
+    val kind = "Reference"
+
+    val explanation =
+      hl"""|You have specified more parameter lists as defined in the method definition(s).
+           |In case ${err.refStr(methPartType)} is defined without parenthesis, you may
+           |not use any at call-site, either.
+           |"""
+  }
 }
