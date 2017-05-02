@@ -207,7 +207,7 @@ object Types {
       */
     private final def phantomLatticeType(implicit ctx: Context): Type = widen match {
       case tp: ClassInfo if defn.isPhantomTerminalClass(tp.classSymbol) => tp.prefix
-      case tp: TypeProxy if tp.underlying ne this => tp.underlying.phantomLatticeType
+      case tp: TypeProxy if tp.superType ne this => tp.underlying.phantomLatticeType
       case tp: AndOrType => tp.tp1.phantomLatticeType
       case _ => NoType
     }
