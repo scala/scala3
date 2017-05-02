@@ -418,8 +418,9 @@ trait TypeAssigner {
     tree.withType(avoidingType(expansion, bindings))
 
   def assignType(tree: untpd.If, thenp: Tree, elsep: Tree)(implicit ctx: Context) = {
-    checkSameUniverse(thenp, elsep, "be combined in branches of if/else", tree.pos)
-    tree.withType(thenp.tpe | elsep.tpe)
+    val sameUniverse = checkSameUniverse(thenp, elsep, "be combined in branches of if/else", tree.pos)
+    val tpe = if (sameUniverse) thenp.tpe | elsep.tpe else thenp.tpe
+    tree.withType(tpe)
   }
 
   def assignType(tree: untpd.Closure, meth: Tree, target: Tree)(implicit ctx: Context) =
@@ -433,11 +434,11 @@ trait TypeAssigner {
   def assignType(tree: untpd.Match, cases: List[CaseDef])(implicit ctx: Context) = {
     if (tree.selector.typeOpt.isPhantom)
       ctx.error("Cannot pattern match on phantoms", tree.selector.pos)
-    if (cases.nonEmpty) {
-      val head = cases.head
-      cases.tail.foreach(c => checkSameUniverse(head, c, "be combined in branches of a match", c.pos))
+    val sameUniverse = cases.isEmpty || cases.tail.forall { c =>
+      checkSameUniverse(cases.head, c, "be combined in branches of a match", c.pos)
     }
-    tree.withType(ctx.typeComparer.lub(cases.tpes))
+    val tpe = if (sameUniverse) ctx.typeComparer.lub(cases.tpes) else cases.head.tpe
+    tree.withType(tpe)
   }
 
   def assignType(tree: untpd.Return)(implicit ctx: Context) =
@@ -545,9 +546,10 @@ trait TypeAssigner {
   def assignType(tree: untpd.PackageDef, pid: Tree)(implicit ctx: Context) =
     tree.withType(pid.symbol.valRef)
 
-  private def checkSameUniverse(tree1: Tree, tree2: Tree, relationship: => String, pos: Position)(implicit ctx: Context) = {
-    if (tree1.tpe.topType != tree2.tpe.topType)
-      ctx.error(ex"${tree1.tpe} and ${tree2.tpe} are in different universes. They cannot $relationship", pos)
+  private def checkSameUniverse(tree1: Tree, tree2: Tree, relationship: => String, pos: Position)(implicit ctx: Context): Boolean = {
+    val sameUniverse = tree1.tpe.topType == tree2.tpe.topType
+    if (!sameUniverse) ctx.error(ex"${tree1.tpe} and ${tree2.tpe} are in different universes. They cannot $relationship", pos)
+    sameUniverse
   }
 
 }
