@@ -1264,10 +1264,16 @@ object messages {
 
     val kind = "Reference"
 
-    val explanation =
-      hl"""|You have specified more parameter lists as defined in the method definition(s).
-           |In case ${err.refStr(methPartType)} is defined without parenthesis, you may
+    private val noParameters = if (methPartType.widenSingleton.isInstanceOf[ExprType])
+      hl"""|As ${err.refStr(methPartType)} is defined without parenthesis, you may
            |not use any at call-site, either.
            |"""
+    else
+      ""
+
+    val explanation =
+      s"""|You have specified more parameter lists as defined in the method definition(s).
+          |$noParameters""".stripMargin
+
   }
 }
