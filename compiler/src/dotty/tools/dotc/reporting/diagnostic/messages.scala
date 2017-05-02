@@ -18,6 +18,7 @@ import dotc.parsing.Tokens
 import printing.Highlighting._
 import printing.Formatting
 import ErrorMessageID._
+import Denotations.SingleDenotation
 import dotty.tools.dotc.core.SymDenotations.SymDenotation
 
 object messages {
@@ -1251,6 +1252,27 @@ object messages {
            |- You may replace a name when imported using
            |  ${"import"} scala.{ $name => ${name.show + "Tick"} }
            |"""
+  }
+
+  case class AmbiguousOverload(tree: tpd.Tree, alts: List[SingleDenotation], pt: Type)(
+    err: typer.ErrorReporting.Errors)(
+    implicit ctx: Context)
+  extends Message(AmbiguousOverloadID) {
+
+    private def all = if (alts.length == 2) "both" else "all"
+
+    override def msg: String =
+      s"""|Ambiguous overload. The ${err.overloadedAltsStr(alts)}
+          |$all match ${err.expectedTypeStr(pt)}""".stripMargin
+
+    override def kind: String = "Reference"
+
+    override def explanation: String =
+       s"""|There are ${alts.length} methods that could be referenced as the compiler knows too little about the expected type.
+           |You may specify the expected type e.g. by
+           |- assigning it to a value with a specified type, or
+           |- adding a type ascription as in (MyClass.myMethod: String => Int)
+           |""".stripMargin
   }
 
 }
