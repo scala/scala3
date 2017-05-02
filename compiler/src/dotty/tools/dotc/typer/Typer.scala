@@ -567,7 +567,6 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
       case lhs =>
         val lhsCore = typedUnadapted(lhs, AssignProto)
         def lhs1 = typed(untpd.TypedSplice(lhsCore))
-        lazy val lhsVal = lhsCore.asInstanceOf[TermRef].denot.suchThat(!_.is(Method))
 
         def reassignmentToVal =
           errorTree(cpy.Assign(tree)(lhsCore, typed(tree.rhs, lhs1.tpe.widen)),
