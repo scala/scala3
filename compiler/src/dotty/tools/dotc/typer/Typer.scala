@@ -567,37 +567,42 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
       case lhs =>
         val lhsCore = typedUnadapted(lhs, AssignProto)
         def lhs1 = typed(untpd.TypedSplice(lhsCore))
-        def canAssign(sym: Symbol) = // allow assignments from the primary constructor to class fields
+        lazy val lhsVal = lhsCore.asInstanceOf[TermRef].denot.suchThat(!_.is(Method))
+
+        def reassignmentToVal =
+          errorTree(cpy.Assign(tree)(lhsCore, typed(tree.rhs, lhs1.tpe.widen)),
+            "reassignment to val")
+
+        def canAssign(sym: Symbol) =
           sym.is(Mutable, butNot = Accessor) ||
           ctx.owner.isPrimaryConstructor && !sym.is(Method) && sym.owner == ctx.owner.owner ||
+            // allow assignments from the primary constructor to class fields
           ctx.owner.name.is(TraitSetterName) || ctx.owner.isStaticConstructor
+
         lhsCore.tpe match {
-          case ref: TermRef if canAssign(ref.symbol) =>
-            assignType(cpy.Assign(tree)(lhs1, typed(tree.rhs, ref.info)))
-          case _ =>
-            def reassignmentToVal =
-              errorTree(cpy.Assign(tree)(lhsCore, typed(tree.rhs, lhs1.tpe.widen)),
-                  "reassignment to val")
-            lhsCore.tpe match {
-              case ref: TermRef => // todo: further conditions to impose on getter?
-                val pre = ref.prefix
-                val setterName = ref.name.setterName
-                val setter = pre.member(setterName)
-                lhsCore match {
-                  case lhsCore: RefTree if setter.exists =>
-                    val setterTypeRaw = pre.select(setterName, setter)
-                    val setterType = ensureAccessible(setterTypeRaw, isSuperSelection(lhsCore), tree.pos)
-                    val lhs2 = healNonvariant(
-                      untpd.rename(lhsCore, setterName).withType(setterType), WildcardType)
-                    typedUnadapted(cpy.Apply(tree)(untpd.TypedSplice(lhs2), tree.rhs :: Nil))
-                  case _ =>
-                    reassignmentToVal
-                }
-              case TryDynamicCallType =>
-                typedDynamicAssign(tree, pt)
-              case tpe =>
-                reassignmentToVal
+          case ref: TermRef =>
+            val lhsVal = lhsCore.denot.suchThat(!_.is(Method))
+            if (canAssign(lhsVal.symbol))
+              assignType(cpy.Assign(tree)(lhs1, typed(tree.rhs, lhsVal.info)))
+            else {
+              val pre = ref.prefix
+              val setterName = ref.name.setterName
+              val setter = pre.member(setterName)
+              lhsCore match {
+                case lhsCore: RefTree if setter.exists =>
+                  val setterTypeRaw = pre.select(setterName, setter)
+                  val setterType = ensureAccessible(setterTypeRaw, isSuperSelection(lhsCore), tree.pos)
+                  val lhs2 = healNonvariant(
+                    untpd.rename(lhsCore, setterName).withType(setterType), WildcardType)
+                  typedUnadapted(cpy.Apply(tree)(untpd.TypedSplice(lhs2), tree.rhs :: Nil))
+                case _ =>
+                  reassignmentToVal
+              }
             }
+          case TryDynamicCallType =>
+            typedDynamicAssign(tree, pt)
+          case tpe =>
+            reassignmentToVal
         }
     }
   }
