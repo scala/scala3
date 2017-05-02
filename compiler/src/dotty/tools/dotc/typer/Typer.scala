@@ -1334,6 +1334,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
           cls, isRequired, cdef.pos)
     }
 
+    // Check that phantom lattices are defined in an `object`
     if (cls.classParents.exists(_.classSymbol eq defn.PhantomClass)) {
       if (!cls.is(Module))
         ctx.error("Only object can extend scala.Phantom", cdef.pos)

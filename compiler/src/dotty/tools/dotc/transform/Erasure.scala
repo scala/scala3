@@ -23,7 +23,7 @@ import core.Decorators._
 import dotty.tools.dotc.ast.{Trees, tpd, untpd}
 import ast.Trees._
 import scala.collection.mutable.ListBuffer
-import dotty.tools.dotc.core.{Constants, Flags}
+import core.{Constants, Flags, Mode, PhantomErasure}
 import ValueClasses._
 import TypeUtils._
 import ExplicitOuter._
@@ -455,7 +455,7 @@ object Erasure extends TypeTestsCasts{
       if (fun.symbol == defn.cbnArg)
         typedUnadapted(args.head, pt)
       else if (fun.symbol eq defn.Phantom_assume)
-        ref(defn.BoxedUnit_UNIT)
+        PhantomErasure.erasedAssume
       else typedExpr(fun, FunProto(args, pt, this)) match {
         case fun1: Apply => // arguments passed in prototype were already passed
           fun1

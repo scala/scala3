@@ -201,7 +201,7 @@ object Types {
       else defn.NothingType
     }
 
-    /** Returns the type of the lattice (i.e. the prefix of the phantom type)
+    /** Returns the type of the phantom lattice (i.e. the prefix of the phantom type)
       *   - XYZ if XYZ extends scala.Phantom and this type is upper bounded XYZ.Any
       *   - NoType otherwise
       */
