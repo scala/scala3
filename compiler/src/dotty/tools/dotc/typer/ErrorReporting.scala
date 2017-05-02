@@ -114,7 +114,7 @@ object ErrorReporting {
       val expected1 = dropJavaMethod(expected)
       if ((found1 eq found) != (expected eq expected1) && (found1 <:< expected1))
         "\n (Note that Scala's and Java's representation of this type differs)"
-      else if (ctx.settings.explaintypes.value)
+      else if (ctx.settings.explainTypes.value)
         "\n" + ctx.typerState.show + "\n" + TypeComparer.explained((found <:< expected)(_))
       else
         ""

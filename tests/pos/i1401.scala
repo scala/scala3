@@ -1,7 +1,7 @@
 package i1401
 
-trait Subtractable[A, +Repr <: Subtractable[A, Repr]] {
-  def -(elem: A): Repr
+trait Subtractable[AS, +Repr <: Subtractable[AS, Repr]] {
+  def -(elem: AS): Repr
 }
 
 trait BufferLike[BA, +This <: BufferLike[BA, This] with Buffer[BA]]

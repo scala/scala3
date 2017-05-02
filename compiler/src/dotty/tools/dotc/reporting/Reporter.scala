@@ -37,17 +37,21 @@ trait Reporting { this: Context =>
   def echo(msg: => String, pos: SourcePosition = NoSourcePosition): Unit =
     reporter.report(new Info(msg, pos))
 
+  def reportWarning(warning:Warning):Unit =
+    if(this.settings.XfatalWarnings.value) error(warning.contained, warning.pos)
+    else reporter.report(warning)
+
   def deprecationWarning(msg: => Message, pos: SourcePosition = NoSourcePosition): Unit =
-    reporter.report(new DeprecationWarning(msg, pos))
+    reportWarning(new DeprecationWarning(msg, pos))
 
   def migrationWarning(msg: => Message, pos: SourcePosition = NoSourcePosition): Unit =
-    reporter.report(new MigrationWarning(msg, pos))
+    reportWarning(new MigrationWarning(msg, pos))
 
   def uncheckedWarning(msg: => Message, pos: SourcePosition = NoSourcePosition): Unit =
-    reporter.report(new UncheckedWarning(msg, pos))
+    reportWarning(new UncheckedWarning(msg, pos))
 
   def featureWarning(msg: => Message, pos: SourcePosition = NoSourcePosition): Unit =
-    reporter.report(new FeatureWarning(msg, pos))
+    reportWarning(new FeatureWarning(msg, pos))
 
   def featureWarning(feature: String, featureDescription: String, isScala2Feature: Boolean,
       featureUseSite: Symbol, required: Boolean, pos: SourcePosition): Unit = {
@@ -69,17 +73,15 @@ trait Reporting { this: Context =>
 
     val msg = s"$featureDescription $req be enabled\nby making the implicit value $fqname visible.$explain"
     if (required) error(msg, pos)
-    else reporter.report(new FeatureWarning(msg, pos))
+    else reportWarning(new FeatureWarning(msg, pos))
   }
 
   def warning(msg: => Message, pos: SourcePosition = NoSourcePosition): Unit =
-    reporter.report(new Warning(msg, pos))
+    reportWarning(new Warning(msg, pos))
 
   def strictWarning(msg: => Message, pos: SourcePosition = NoSourcePosition): Unit =
     if (this.settings.strict.value) error(msg, pos)
-    else reporter.report {
-      new ExtendMessage(() => msg)(_ + "\n(This would be an error under strict mode)").warning(pos)
-    }
+    else reportWarning(new ExtendMessage(() => msg)(_ + "\n(This would be an error under strict mode)").warning(pos))
 
   def error(msg: => Message, pos: SourcePosition = NoSourcePosition): Unit =
     reporter.report(new Error(msg, pos))

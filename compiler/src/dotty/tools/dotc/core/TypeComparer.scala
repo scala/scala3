@@ -331,7 +331,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
       else thirdTry(tp1, tp2)
     case tp1 @ OrType(tp11, tp12) =>
       def joinOK = tp2.dealias match {
-        case tp12: HKApply =>
+        case _: HKApply =>
           // If we apply the default algorithm for `A[X] | B[Y] <: C[Z]` where `C` is a
           // type parameter, we will instantiate `C` to `A` and then fail when comparing
           // with `B[Y]`. To do the right thing, we need to instantiate `C` to the
@@ -574,8 +574,15 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
       isNewSubType(tp1.parent, tp2)
     case tp1 @ HKApply(tycon1, args1) =>
       compareHkApply1(tp1, tycon1, args1, tp2)
-    case EtaExpansion(tycon1) =>
-      isSubType(tycon1, tp2)
+    case tp1: HKTypeLambda =>
+      def compareHKLambda = tp1 match {
+        case EtaExpansion(tycon1) => isSubType(tycon1, tp2)
+        case _ => tp2 match {
+          case tp2: HKTypeLambda => false // this case was covered in thirdTry
+          case _ => tp2.isHK && isSubType(tp1.resultType, tp2.appliedTo(tp1.paramRefs))
+        }
+      }
+      compareHKLambda
     case AndType(tp11, tp12) =>
       // Rewrite (T111 | T112) & T12 <: T2 to (T111 & T12) <: T2 and (T112 | T12) <: T2
       // and analogously for T11 & (T121 | T122) & T12 <: T2
@@ -775,7 +782,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
           (v < 0 || isSubType(tp1, tp2))
       }
       isSub(args1.head, args2.head)
-    } && isSubArgs(args1.tail, args2.tail, tparams)
+    } && isSubArgs(args1.tail, args2.tail, tparams.tail)
 
   /** Test whether `tp1` has a base type of the form `B[T1, ..., Tn]` where
    *   - `B` derives from one of the class symbols of `tp2`,
@@ -1287,8 +1294,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
           tl.integrate(tparams1, tparam1.paramInfoAsSeenFrom(tp1)).bounds &
           tl.integrate(tparams2, tparam2.paramInfoAsSeenFrom(tp2)).bounds),
         resultTypeExp = tl =>
-          original(tl.integrate(tparams1, tp1).appliedTo(tl.paramRefs),
-             tl.integrate(tparams2, tp2).appliedTo(tl.paramRefs)))
+          original(tp1.appliedTo(tl.paramRefs), tp2.appliedTo(tl.paramRefs)))
   }
 
   /** Try to distribute `&` inside type, detect and handle conflicts
@@ -1511,8 +1517,15 @@ class ExplainingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
 
   override def compareHkApply2(tp1: Type, tp2: HKApply, tycon2: Type, args2: List[Type]): Boolean = {
     def addendum = ""
-    traceIndented(i"compareHkApply $tp1, $tp2$addendum") {
+    traceIndented(i"compareHkApply2 $tp1, $tp2$addendum") {
       super.compareHkApply2(tp1, tp2, tycon2, args2)
+    }
+  }
+
+  override def compareHkApply1(tp1: HKApply, tycon1: Type, args1: List[Type], tp2: Type): Boolean = {
+    def addendum = ""
+    traceIndented(i"compareHkApply1 $tp1, $tp2$addendum") {
+      super.compareHkApply1(tp1, tycon1, args1, tp2)
     }
   }
 

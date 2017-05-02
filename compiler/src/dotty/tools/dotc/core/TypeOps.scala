@@ -273,37 +273,6 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
     }
   }
 
-  /** Given a disjunction T1 | ... | Tn of types with potentially embedded
-   *  type variables, constrain type variables further if this eliminates
-   *  some of the branches of the disjunction. Do this also for disjunctions
-   *  embedded in intersections, as parents in refinements, and in recursive types.
-   *
-   *  For instance, if `A` is an unconstrained type variable, then
-   *
-   *      ArrayBuffer[Int] | ArrayBuffer[A]
-   *
-   *  is approximated by constraining `A` to be =:= to `Int` and returning `ArrayBuffer[Int]`
-   *  instead of `ArrayBuffer[_ >: Int | A <: Int & A]`
-   */
-  def harmonizeUnion(tp: Type): Type = tp match {
-    case tp: OrType =>
-      joinIfScala2(ctx.typeComparer.lub(harmonizeUnion(tp.tp1), harmonizeUnion(tp.tp2), canConstrain = true))
-    case tp @ AndType(tp1, tp2) =>
-      tp derived_& (harmonizeUnion(tp1), harmonizeUnion(tp2))
-    case tp: RefinedType =>
-      tp.derivedRefinedType(harmonizeUnion(tp.parent), tp.refinedName, tp.refinedInfo)
-    case tp: RecType =>
-      tp.rebind(harmonizeUnion(tp.parent))
-    case _ =>
-      tp
-  }
-
-  /** Under -language:Scala2: Replace or-types with their joins */
-  private def joinIfScala2(tp: Type) = tp match {
-    case tp: OrType if scala2Mode => tp.join
-    case _ => tp
-  }
-
   /** Not currently needed:
    *
   def liftToRec(f: (Type, Type) => Type)(tp1: Type, tp2: Type)(implicit ctx: Context) = {
@@ -352,72 +321,11 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
     }
   }
 
-  /** If we have member definitions
-   *
-   *     type argSym v= from
-   *     type from v= to
-   *
-   *  where the variances of both alias are the same, then enter a new definition
-   *
-   *     type argSym v= to
-   *
-   *  unless a definition for `argSym` already exists in the current scope.
-   */
-  def forwardRef(argSym: Symbol, from: Symbol, to: TypeBounds, cls: ClassSymbol, decls: Scope) =
-    argSym.info match {
-      case info @ TypeBounds(lo2 @ TypeRef(_: ThisType, name), hi2) =>
-        if (name == from.name &&
-            (lo2 eq hi2) &&
-            info.variance == to.variance &&
-            !decls.lookup(argSym.name).exists) {
-              // println(s"short-circuit ${argSym.name} was: ${argSym.info}, now: $to")
-              enterArgBinding(argSym, to, cls, decls)
-            }
-      case _ =>
-    }
-
-
   /** Normalize a list of parent types of class `cls` that may contain refinements
    *  to a list of typerefs referring to classes, by converting all refinements to member
    *  definitions in scope `decls`. Can add members to `decls` as a side-effect.
    */
   def normalizeToClassRefs(parents: List[Type], cls: ClassSymbol, decls: Scope): List[TypeRef] = {
-
-    /** If we just entered the type argument binding
-     *
-     *    type From = To
-     *
-     *  and there is a type argument binding in a parent in `prefs` of the form
-     *
-     *    type X = From
-     *
-     *  then also add the binding
-     *
-     *    type X = To
-     *
-     *  to the current scope, provided (1) variances of both aliases are the same, and
-     *  (2) X is not yet defined in current scope. This "short-circuiting" prevents
-     *  long chains of aliases which would have to be traversed in type comparers.
-     *
-     *  Note: Test i1401.scala shows that `forwardRefs` is also necessary
-     *  for typechecking in the case where self types refer to type parameters
-     *  that are upper-bounded by subclass instances.
-     */
-    def forwardRefs(from: Symbol, to: Type, prefs: List[TypeRef]) = to match {
-      case to @ TypeBounds(lo1, hi1) if lo1 eq hi1 =>
-        for (pref <- prefs) {
-          def forward()(implicit ctx: Context): Unit =
-            for (argSym <- pref.decls)
-              if (argSym is BaseTypeArg)
-                forwardRef(argSym, from, to, cls, decls)
-          pref.info match {
-            case info: TempClassInfo => info.addSuspension(implicit ctx => forward())
-            case _ => forward()
-          }
-        }
-      case _ =>
-    }
-
     // println(s"normalizing $parents of $cls in ${cls.owner}") // !!! DEBUG
 
     // A map consolidating all refinements arising from parent type parameters
@@ -460,15 +368,69 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
         s"redefinition of ${decls.lookup(name).debugString} in ${cls.showLocated}")
       enterArgBinding(formals(name), refinedInfo, cls, decls)
     }
-    // Forward definitions in super classes that have one of the refined parameters
-    // as aliases directly to the refined info.
-    // Note that this cannot be fused with the previous loop because we now
-    // assume that all arguments have been entered in `decls`.
-    refinements foreachBinding { (name, refinedInfo) =>
-      forwardRefs(formals(name), refinedInfo, parentRefs)
-    }
+
+    if (Config.forwardTypeParams)
+      forwardParamBindings(parentRefs, refinements, cls, decls)
+
     parentRefs
   }
+
+  /** Forward parameter bindings in baseclasses to argument types of
+   *  class `cls` if possible.
+   *  If there have member definitions
+   *
+   *     type param v= middle
+   *     type middle v= to
+   *
+   *  where the variances of both alias are the same, then enter a new definition
+   *
+   *     type param v= to
+   *
+   *  If multiple forwarders would be generated, join their `to` types with an `&`.
+   *
+   *  @param cls           The class for which parameter bindings should be forwarded
+   *  @param decls	       Its scope
+   *  @param parentRefs    The parent type references of `cls`
+   *  @param paramBindings The type parameter bindings generated for `cls`
+   *
+   */
+  def forwardParamBindings(parentRefs: List[TypeRef],
+                           paramBindings: SimpleMap[TypeName, Type],
+                           cls: ClassSymbol, decls: Scope)(implicit ctx: Context) = {
+
+    def forwardRef(argSym: Symbol, from: TypeName, to: TypeAlias) = argSym.info match {
+      case info @ TypeAlias(TypeRef(_: ThisType, `from`)) if info.variance == to.variance =>
+        val existing = decls.lookup(argSym.name)
+        if (existing.exists) existing.info = existing.info & to
+        else enterArgBinding(argSym, to, cls, decls)
+      case _ =>
+    }
+
+    def forwardRefs(from: TypeName, to: Type) = to match {
+      case to: TypeAlias =>
+        for (pref <- parentRefs) {
+          def forward()(implicit ctx: Context): Unit =
+            for (argSym <- pref.decls)
+              if (argSym is BaseTypeArg) forwardRef(argSym, from, to)
+          pref.info match {
+            case info: TempClassInfo => info.addSuspension(implicit ctx => forward())
+            case _ => forward()
+          }
+        }
+      case _ =>
+    }
+
+    paramBindings.foreachBinding(forwardRefs)
+  }
+
+  /** Used only for debugging: All BaseTypeArg definitions in
+   *  `cls` and all its base classes.
+   */
+  def allBaseTypeArgs(cls: ClassSymbol)(implicit ctx: Context) =
+    for { bc <- cls.baseClasses
+          sym <- bc.info.decls.toList
+          if sym.is(BaseTypeArg)
+    } yield sym
 
   /** An argument bounds violation is a triple consisting of
    *   - the argument tree

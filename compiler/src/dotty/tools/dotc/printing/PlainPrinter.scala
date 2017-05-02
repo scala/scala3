@@ -174,7 +174,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
         def paramText(name: Name, bounds: TypeBounds): Text = name.toString ~ toText(bounds)
         changePrec(GlobalPrec) {
           "[" ~ Text((tp.paramNames, tp.paramInfos).zipped.map(paramText), ", ") ~
-          "]" ~ (" => " provided !tp.resultType.isInstanceOf[MethodType]) ~
+          "]" ~ lambdaHash(tp) ~ (" => " provided !tp.resultType.isInstanceOf[MethodType]) ~
           toTextGlobal(tp.resultType)
         }
       case tp: TypeParamRef =>

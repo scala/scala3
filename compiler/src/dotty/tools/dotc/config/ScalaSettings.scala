@@ -24,7 +24,8 @@ class ScalaSettings extends Settings.SettingGroup {
   val deprecation = BooleanSetting("-deprecation", "Emit warning and location for usages of deprecated APIs.")
   val migration = BooleanSetting("-migration", "Emit warning and location for migration issues from Scala 2.")
   val encoding = StringSetting("-encoding", "encoding", "Specify character encoding used by source files.", Properties.sourceEncoding)
-  val explaintypes = BooleanSetting("-explaintypes", "Explain type errors in more detail.")
+  val explainTypes = BooleanSetting("-explain-types", "Explain type errors in more detail.")
+  val explainImplicits = BooleanSetting("-explain-implicits", "Explain implicit search errors in more detail.")
   val explain = BooleanSetting("-explain", "Explain errors in more detail.")
   val feature = BooleanSetting("-feature", "Emit warning and location for usages of features that should be imported explicitly.")
   val help = BooleanSetting("-help", "Print a synopsis of standard options")
@@ -63,6 +64,7 @@ class ScalaSettings extends Settings.SettingGroup {
   val mainClass = StringSetting("-Xmain-class", "path", "Class for manifest's Main-Class entry (only useful with -d <jar>)", "")
   val XnoValueClasses = BooleanSetting("-Xno-value-classes", "Do not use value classes. Helps debugging.")
   val XreplLineWidth = IntSetting("-Xrepl-line-width", "Maximial number of columns per line for REPL output", 390)
+  val XfatalWarnings = BooleanSetting("-Xfatal-warnings", "Fail the compilation if there are any warnings.")
 
   /** -Y "Private" settings */
   val overrideVars = BooleanSetting("-Yoverride-vars", "Allow vars to be overridden.")
