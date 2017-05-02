@@ -1112,8 +1112,8 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     val lo1 = typed(lo)
     val hi1 = typed(hi)
 
-    val lo2 = if (!lo1.isEmpty) lo1 else typed(untpd.TypeTree(hi1.typeOpt.bottomType))
-    val hi2 = if (!hi1.isEmpty) hi1 else typed(untpd.TypeTree(lo1.typeOpt.topType))
+    val lo2 = if (lo1.isEmpty) typed(untpd.TypeTree(hi1.typeOpt.bottomType)) else lo1
+    val hi2 = if (hi1.isEmpty) typed(untpd.TypeTree(lo1.typeOpt.topType)) else hi1
 
     val tree1 = assignType(cpy.TypeBoundsTree(tree)(lo2, hi2), lo2, hi2)
     if (ctx.mode.is(Mode.Pattern)) {

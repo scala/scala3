@@ -12,7 +12,6 @@ import config.Printers.{typr, constr, subtyping, noPrinter}
 import TypeErasure.{erasedLub, erasedGlb}
 import TypeApplications._
 import scala.util.control.NonFatal
-import scala.annotation.tailrec
 
 /** Provides methods to compare types.
  */
@@ -48,7 +47,6 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
   private var myAnyClass: ClassSymbol = null
   private var myNothingClass: ClassSymbol = null
   private var myNullClass: ClassSymbol = null
-  private var myPhantomAnyClass: ClassSymbol = null
   private var myPhantomNothingClass: ClassSymbol = null
   private var myObjectClass: ClassSymbol = null
   private var myAnyType: TypeRef = null
@@ -66,12 +64,8 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
     if (myNullClass == null) myNullClass = defn.NullClass
     myNullClass
   }
-  def PhantomAnyClass = {
-    if (myPhantomAnyClass == null) myPhantomAnyClass = defn.PhantomAnyClass
-    myPhantomAnyClass
-  }
   def PhantomNothingClass = {
-    if (myPhantomNothingClass == null) myPhantomNothingClass = defn.PhantomNothingClass
+    if (myPhantomNothingClass == null) myPhantomNothingClass = defn.Phantom_NothingClass
     myPhantomNothingClass
   }
   def ObjectClass = {
@@ -561,14 +555,8 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
             case OrType(tp1, tp2) => isNullable(tp1) || isNullable(tp2)
             case _ => false
           }
-          def isPhantom(tp: Type): Boolean = {
-            // note that the only phantom classes are PhantomAnyClass and PhantomNothingClass
-            val sym = tp.typeSymbol
-            (sym eq PhantomAnyClass) || (sym eq PhantomNothingClass) ||
-            (!sym.isClass && tp.phantomLatticeType.exists)
-          }
           val sym1 = tp1.symbol
-          (sym1 eq NothingClass) && tp2.isValueTypeOrLambda && !isPhantom(tp2) ||
+          (sym1 eq NothingClass) && tp2.isValueTypeOrLambda && !tp2.isPhantom ||
           (sym1 eq NullClass) && isNullable(tp2) ||
           (sym1 eq PhantomNothingClass) && tp1.topType == tp2.topType
       }

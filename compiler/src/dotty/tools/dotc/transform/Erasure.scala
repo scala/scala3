@@ -454,7 +454,7 @@ object Erasure extends TypeTestsCasts{
       val Apply(fun, args) = tree
       if (fun.symbol == defn.cbnArg)
         typedUnadapted(args.head, pt)
-      else if (fun.symbol eq defn.PhantomAssume)
+      else if (fun.symbol eq defn.Phantom_assume)
         ref(defn.BoxedUnit_UNIT)
       else typedExpr(fun, FunProto(args, pt, this)) match {
         case fun1: Apply => // arguments passed in prototype were already passed

@@ -175,6 +175,12 @@ object Types {
       loop(this)
     }
 
+    /** Returns true if the type is a phantom type
+     *   - true if XYZ extends scala.Phantom and this type is upper bounded XYZ.Any
+     *   - false otherwise
+     */
+    final def isPhantom(implicit ctx: Context): Boolean = phantomLatticeType.exists
+
     /** Returns the top type of the lattice
      *   - XYX.Any if XYZ extends scala.Phantom and this type is upper bounded XYZ.Any
      *   - scala.Any otherwise
@@ -195,13 +201,13 @@ object Types {
       else defn.NothingType
     }
 
-    /** Returns the type of the lattice
+    /** Returns the type of the lattice (i.e. the prefix of the phantom type)
       *   - XYZ if XYZ extends scala.Phantom and this type is upper bounded XYZ.Any
       *   - NoType otherwise
       */
-    final def phantomLatticeType(implicit ctx: Context): Type = widen match {
-      case tp: ClassInfo if defn.isPhantomClass(tp.classSymbol) => tp.prefix
-      case tp: TypeProxy if tp.superType ne this => tp.superType.phantomLatticeType
+    private final def phantomLatticeType(implicit ctx: Context): Type = widen match {
+      case tp: ClassInfo if defn.isPhantomTerminalClass(tp.classSymbol) => tp.prefix
+      case tp: TypeProxy if tp.underlying ne this => tp.underlying.phantomLatticeType
       case tp: AndOrType => tp.tp1.phantomLatticeType
       case _ => NoType
     }

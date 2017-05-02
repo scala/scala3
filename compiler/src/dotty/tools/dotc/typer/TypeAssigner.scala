@@ -431,7 +431,7 @@ trait TypeAssigner {
     tree.withType(body.tpe)
 
   def assignType(tree: untpd.Match, cases: List[CaseDef])(implicit ctx: Context) = {
-    if (tree.selector.typeOpt.phantomLatticeType.exists)
+    if (tree.selector.typeOpt.isPhantom)
       ctx.error("Cannot pattern match on phantoms", tree.selector.pos)
     if (cases.nonEmpty) {
       val head = cases.head
