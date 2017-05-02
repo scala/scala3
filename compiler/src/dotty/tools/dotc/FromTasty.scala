@@ -74,9 +74,7 @@ object FromTasty extends Driver {
     def readTASTY(unit: CompilationUnit)(implicit ctx: Context): CompilationUnit = unit match {
       case unit: TASTYCompilationUnit =>
         val className = unit.className.toTypeName
-        val clsd =
-          if (className.is(QualifiedName)) ctx.base.staticRef(className)
-          else defn.EmptyPackageClass.info.decl(className)
+        val clsd = ctx.base.staticRef(className)
         def cannotUnpickle(reason: String) = {
           ctx.error(s"class $className cannot be unpickled because $reason")
           unit
