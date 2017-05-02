@@ -185,9 +185,9 @@ object Types {
      *   - XYX.Any if XYZ extends scala.Phantom and this type is upper bounded XYZ.Any
      *   - scala.Any otherwise
      */
-    final def topType(implicit ctx: Context): TypeRef = {
+    final def topType(implicit ctx: Context): Type = {
       val lattice = phantomLatticeType
-      if (lattice.exists) lattice.select(tpnme.Any).asInstanceOf[TypeRef]
+      if (lattice.exists) lattice.select(tpnme.Any)
       else defn.AnyType
     }
 
@@ -197,7 +197,7 @@ object Types {
      */
     final def bottomType(implicit ctx: Context): Type = {
       val lattice = phantomLatticeType
-      if (lattice.exists) lattice.select(tpnme.Nothing).asInstanceOf[TypeRef]
+      if (lattice.exists) lattice.select(tpnme.Nothing)
       else defn.NothingType
     }
 
