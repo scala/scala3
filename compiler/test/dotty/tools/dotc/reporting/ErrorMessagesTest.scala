@@ -40,7 +40,7 @@ trait ErrorMessagesTest extends DottyTest {
 
     def doReport(m: MessageContainer)(implicit ctx: Context) = {
       capturedContext = ctx
-      buffer append m.contained
+      buffer append m.contained()
     }
 
     def toReport: Report =
