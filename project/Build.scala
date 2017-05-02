@@ -24,8 +24,6 @@ object ExposedValues extends AutoPlugin {
 
 object Build {
 
-  projectChecks()
-
   val scalacVersion = "2.11.11" // Do not rename, this is grepped in bin/common.
 
   val dottyOrganization = "ch.epfl.lamp"
@@ -234,7 +232,7 @@ object Build {
     settings(commonNonBootstrappedSettings).
     settings(
       triggeredMessage in ThisBuild := Watched.clearWhenTriggered,
-
+      submoduleChecks,
       addCommandAlias("run", "dotty-compiler/run") ++
       addCommandAlias("legacyTests", "dotty-compiler/testOnly dotc.tests")
     )
@@ -995,14 +993,15 @@ object DottyInjectedPlugin extends AutoPlugin {
     ))
   }
 
-  private def projectChecks(): Unit = {
+  lazy val submoduleChecks = onLoad in Global := (onLoad in Global).value andThen { state =>
     val submodules = List(new File("scala-backend"), new File("scala-library"), new File("collection-strawman"))
     if (!submodules.forall(f => f.exists && f.listFiles().nonEmpty)) {
-      println(
-        s"""[WARNING] Missing some of the submodules
+      sLog.value.log(Level.Error,
+        s"""Missing some of the submodules
            |You can initialize the modules with:
            |  > git submodule update --init
         """.stripMargin)
     }
+    state
   }
 }
