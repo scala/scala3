@@ -116,9 +116,12 @@ class SyntheticMethods(thisTransformer: DenotTransformer) {
      */
     def productElementBody(arity: Int, index: Tree)(implicit ctx: Context): Tree = {
       val ioob = defn.IndexOutOfBoundsException.typeRef
-      // That's not ioob.typeSymbol.primaryConstructor, this is the other one
-      // that takes a String argument.
-      val constructor = ioob.typeSymbol.info.decls.toList.tail.head.asTerm
+      // Second constructor of ioob that takes a String argument
+      def filterStringConstructor(s: Symbol): Boolean = s.info match {
+        case m: MethodType if s.isConstructor => m.paramInfos == List(defn.StringType)
+        case _ => false
+      }
+      val constructor = ioob.typeSymbol.info.decls.find(filterStringConstructor _).asTerm
       val stringIndex = Apply(Select(index, nme.toString_), Nil)
       val error = Throw(New(ioob, constructor, List(stringIndex)))
 
