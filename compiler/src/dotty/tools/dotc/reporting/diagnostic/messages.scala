@@ -31,7 +31,9 @@ object messages {
   class Warning(
     msgFn: => Message,
     pos: SourcePosition
-  ) extends MessageContainer(msgFn, pos, WARNING)
+  ) extends MessageContainer(msgFn, pos, WARNING) {
+    def toError: Error = new Error(msgFn, pos)
+  }
 
   class Info(
     msgFn: => Message,
