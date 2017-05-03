@@ -308,8 +308,6 @@ class Definitions {
     lazy val Predef_classOfR = ScalaPredefModule.requiredMethodRef("classOf")
     def Predef_classOf(implicit ctx: Context) = Predef_classOfR.symbol
 
-  def ScalaPredefMethods(implicit ctx: Context) = List(Predef_Conforms, Predef_conforms, Predef_classOf)
-
   lazy val ScalaRuntimeModuleRef = ctx.requiredModuleRef("scala.runtime.ScalaRunTime")
   def ScalaRuntimeModule(implicit ctx: Context) = ScalaRuntimeModuleRef.symbol
   def ScalaRuntimeClass(implicit ctx: Context) = ScalaRuntimeModule.moduleClass.asClass
@@ -345,13 +343,12 @@ class Definitions {
     lazy val Predef_ImplicitConverterR = DottyPredefModule.requiredClass("ImplicitConverter").typeRef
     def Predef_ImplicitConverter(implicit ctx: Context) = Predef_ImplicitConverterR.symbol
 
-  def DottyPredefMethods(implicit ctx: Context) = List(Predef_eqAny, Predef_ImplicitConverter)
-
   lazy val DottyArraysModuleRef = ctx.requiredModuleRef("dotty.runtime.Arrays")
   def DottyArraysModule(implicit ctx: Context) = DottyArraysModuleRef.symbol
     def newGenericArrayMethod(implicit ctx: Context) = DottyArraysModule.requiredMethod("newGenericArray")
     def newArrayMethod(implicit ctx: Context) = DottyArraysModule.requiredMethod("newArray")
   def DottyArraysMethods(implicit ctx: Context) = List(newArrayMethod, newGenericArrayMethod)
+
 
   lazy val NilModuleRef = ctx.requiredModuleRef("scala.collection.immutable.Nil")
   def NilModule(implicit ctx: Context) = NilModuleRef.symbol

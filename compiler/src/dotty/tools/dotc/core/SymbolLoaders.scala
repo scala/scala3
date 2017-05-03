@@ -306,7 +306,7 @@ class ClassfileLoader(val classfile: AbstractFile) extends SymbolLoader {
         // as a stand in for loading.
         // An example for this situation is scala.reflect.Manifest, which exists
         // as a class in scala.reflect and as a val in scala.reflect.package.
-        if (rootDenot is ModuleClass) // TODO: Doo the same thing here
+        if (rootDenot is ModuleClass)
           ctx.newClassSymbol(
             rootDenot.owner, rootDenot.name.stripModuleClassSuffix.asTypeName, Synthetic,
               _ => NoType).classDenot

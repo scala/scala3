@@ -48,7 +48,7 @@ class DottyUnpickler(bytes: Array[Byte]) extends ClassfileParser.Embedded {
 
   val unpickler = new TastyUnpickler(bytes)
   private val posUnpicklerOpt = unpickler.unpickle(new PositionsSectionUnpickler)
-  val treeUnpickler = unpickler.unpickle(new TreeSectionUnpickler(posUnpicklerOpt)).get
+  private val treeUnpickler = unpickler.unpickle(new TreeSectionUnpickler(posUnpicklerOpt)).get
 
   /** Enter all toplevel classes and objects into their scopes
    *  @param roots          a set of SymDenotations that should be overwritten by unpickling

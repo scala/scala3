@@ -2,10 +2,10 @@ package dotty
 package tools
 package dotc
 
-import dotty.tools.io.JFile
-import org.junit.{AfterClass, BeforeClass, Test}
+import org.junit.{ Test, BeforeClass, AfterClass }
 
 import java.nio.file._
+import dotty.tools.io.JFile
 import java.util.stream.{ Stream => JStream }
 import scala.collection.JavaConverters._
 import scala.util.matching.Regex

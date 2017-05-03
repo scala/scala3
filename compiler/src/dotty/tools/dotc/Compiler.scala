@@ -7,16 +7,17 @@ import Periods._
 import Symbols._
 import Types._
 import Scopes._
-import typer.{FrontEnd, ImportInfo, RefChecks, Typer}
-import reporting.{ConsoleReporter, Reporter}
+import typer.{FrontEnd, Typer, ImportInfo, RefChecks}
+import reporting.{Reporter, ConsoleReporter}
 import Phases.Phase
 import transform._
 import util.FreshNameCreator
 import transform.TreeTransforms.{TreeTransform, TreeTransformer}
+import transform.linker._
 import core.DenotTransformers.DenotTransformer
 import core.Denotations.SingleDenotation
-import dotty.tools.backend.jvm.{CollectSuperCalls, GenBCode, LabelDefs}
-import dotty.tools.dotc.transform.linker.{BuildCallGraph, CallGraphChecks, CollectSummaries, DeadCodeElimination}
+
+import dotty.tools.backend.jvm.{LabelDefs, GenBCode, CollectSuperCalls}
 
 /** The central class of the dotc compiler. The job of a compiler is to create
  *  runs, which process given `phases` in a given `rootContext`.
@@ -91,10 +92,10 @@ class Compiler {
            new CapturedVars,        // Represent vars captured by closures as heap objects
            new Constructors,        // Collect initialization code in primary constructors
                                        // Note: constructors changes decls in transformTemplate, no InfoTransformers should be added after it
-           new FunctionalInterfaces,// Rewrites closures to implement @specialized types of Functions.
+           new FunctionalInterfaces, // Rewrites closures to implement @specialized types of Functions.
            new GetClass,            // Rewrites getClass calls on primitive types.
            new CallGraphChecks,
-           new DeadCodeElimination),// Replaces dead code by a `throw new DeadCodeEliminated`
+           new DeadCodeElimination), // Replaces dead code by a `throw new DeadCodeEliminated`
       List(new LambdaLift,          // Lifts out nested functions to class scope, storing free variables in environments
                                        // Note: in this mini-phase block scopes are incorrect. No phases that rely on scopes should be here
            new ElimStaticThis,      // Replace `this` references to static objects by global identifiers
