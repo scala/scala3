@@ -15,7 +15,7 @@ object MessageContainer {
   implicit class MessageContext(val c: Context) extends AnyVal {
     def shouldExplain(cont: MessageContainer): Boolean = {
       implicit val ctx = c
-      cont.contained.explanation match {
+      cont.contained().explanation match {
         case "" => false
         case _ => ctx.settings.explain.value
       }
@@ -39,7 +39,7 @@ class MessageContainer(
   /** The message to report */
   def message: String = {
     if (myMsg == null) {
-      myMsg = contained.msg.replaceAll("\u001B\\[[;\\d]*m", "")
+      myMsg = contained().msg.replaceAll("\u001B\\[[;\\d]*m", "")
       if (myMsg.contains(nonSensicalStartTag)) {
         myIsNonSensical = true
         // myMsg might be composed of several d"..." invocations -> nested
@@ -53,7 +53,8 @@ class MessageContainer(
     myMsg
   }
 
-  def contained: Message = {
+  /** This function forces the contained message and returns it */
+  def contained(): Message = {
     if (myContained == null)
       myContained = msgFn
 

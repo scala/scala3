@@ -58,7 +58,6 @@ object TestConfiguration {
   val picklingOptions = defaultOptions ++ Array(
     "-Xprint-types",
     "-Ytest-pickler",
-    "-Ystop-after:pickler",
     "-Yprintpos"
   )
   val scala2Mode = defaultOptions ++ Array("-language:Scala2")

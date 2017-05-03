@@ -66,8 +66,14 @@ class Run(comp: Compiler)(implicit ctx: Context) {
 
   protected def compileUnits() = Stats.monitorHeartBeat {
     ctx.checkSingleThreaded()
+
+    // If testing pickler, make sure to stop after pickling phase:
+    val stopAfter =
+      if (ctx.settings.YtestPickler.value) List("pickler")
+      else ctx.settings.YstopAfter.value
+
     val phases = ctx.squashPhases(ctx.phasePlan,
-      ctx.settings.Yskip.value, ctx.settings.YstopBefore.value, ctx.settings.YstopAfter.value, ctx.settings.Ycheck.value)
+      ctx.settings.Yskip.value, ctx.settings.YstopBefore.value, stopAfter, ctx.settings.Ycheck.value)
     ctx.usePhases(phases)
     var lastPrintedTree: PrintedTree = NoPrintedTree
     for (phase <- ctx.allPhases)
