@@ -310,17 +310,11 @@ class ClassfileLoader(val classfile: AbstractFile) extends SymbolLoader {
           ctx.newClassSymbol(
             rootDenot.owner, rootDenot.name.stripModuleClassSuffix.asTypeName, Synthetic,
               _ => NoType).classDenot
-        else {
-          val existing = rootDenot.owner.unforcedDecls.denotsNamed(rootDenot.name.toTermName)
-          existing match {
-            case existing: SymDenotation => existing.symbol.moduleClass.denot.asClass
-            case _ =>
-              ctx.newModuleSymbol(
-                rootDenot.owner, rootDenot.name.toTermName, Synthetic, Synthetic,
-                (module, _) => new NoCompleter() withDecls newScope withSourceModule (_ => module))
-                .moduleClass.denot.asClass
-          }
-        }
+        else
+          ctx.newModuleSymbol(
+            rootDenot.owner, rootDenot.name.toTermName, Synthetic, Synthetic,
+            (module, _) => new NoCompleter() withDecls newScope withSourceModule (_ => module))
+            .moduleClass.denot.asClass
     }
     if (rootDenot is ModuleClass) (linkedDenot, rootDenot)
     else (rootDenot, linkedDenot)
