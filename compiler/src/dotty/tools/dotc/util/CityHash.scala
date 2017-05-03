@@ -34,9 +34,15 @@ package dotty.tools.dotc.util
 private[util] class CityHash {
 
   // Some primes between 2^63 and 2^64 for various uses.
-  final val k0 = 0xc3a5c85c97cb3127L
-  final val k1 = 0xb492b66fbe98f273L
-  final val k2 = 0x9ae16a3b2f90404fL
+  private val k0 = 0xc3a5c85c97cb3127L
+  private val k1 = 0xb492b66fbe98f273L
+  private val k2 = 0x9ae16a3b2f90404fL
+
+  protected final def cityHash64WithSeed(data: Array[Byte], seed: Long): Long =
+    cityHash64WithSeeds(data, k2, seed)
+
+  protected final def  cityHash64WithSeeds(data: Array[Byte], seed0: Long, seed1: Long): Long =
+    hashLen16(cityHash64(data) - seed0, seed1)
 
   protected final def cityHash64(data: Array[Byte]): Long = {
     implicit val implicitData: Array[Byte] = data
@@ -91,11 +97,11 @@ private[util] class CityHash {
       val a = fetch32(0)
       hashLen16(len + (a << 3), fetch32(len - 4), mul)
     } else if (len > 0) {
-      val a: Byte = data(0)
-      val b: Byte = data(len >> 1)
-      val c: Byte = data(len - 1)
-      val y: Int = a.toInt + (b.toInt << 8)
-      val z: Int = len + (c.toInt << 2)
+      val a: Int = data(0) & 0xFF
+      val b: Int = data(len >> 1) & 0xFF
+      val c: Int = data(len - 1) & 0xFF
+      val y: Int = a + (b << 8)
+      val z: Int = len + (c << 2)
       shiftMix(y * k2 ^ z * k0) * k2
     } else {
       k2
@@ -172,21 +178,21 @@ private[util] class CityHash {
     weakHashLen32WithSeeds(fetch64(s), fetch64(s + 8), fetch64(s + 16), fetch64(s + 24),  a, b)
 
   private final def fetch64(idx: Int)(implicit data: Array[Byte]): Long = {
-    var x: Long = data(idx)
-    x = data(idx + 1) | (x << 8)
-    x = data(idx + 2) | (x << 8)
-    x = data(idx + 3) | (x << 8)
-    x = data(idx + 4) | (x << 8)
-    x = data(idx + 5) | (x << 8)
-    x = data(idx + 6) | (x << 8)
-    data(idx + 7) | (x << 8)
+    var x: Long = data(idx) & 0xFFL
+    x = data(idx + 1) & 0xFFL | (x << 8)
+    x = data(idx + 2) & 0xFFL | (x << 8)
+    x = data(idx + 3) & 0xFFL | (x << 8)
+    x = data(idx + 4) & 0xFFL | (x << 8)
+    x = data(idx + 5) & 0xFFL | (x << 8)
+    x = data(idx + 6) & 0xFFL | (x << 8)
+    data(idx + 7) & 0xFFL | (x << 8)
   }
 
   private final def fetch32(idx: Int)(implicit data: Array[Byte]): Long = {
-    var x: Int = data(idx)
-    x = data(idx + 1) | (x << 8)
-    x = data(idx + 2) | (x << 8)
-    data(idx + 3) | (x << 8)
+    var x: Int = data(idx) & 0xFF
+    x = data(idx + 1) & 0xFF | (x << 8)
+    x = data(idx + 2) & 0xFF | (x << 8)
+    data(idx + 3) & 0xFF | (x << 8)
   }
 
   private final def bswap64(x: Long): Long = {
