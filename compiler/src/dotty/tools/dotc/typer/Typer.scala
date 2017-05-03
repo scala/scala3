@@ -140,16 +140,6 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     def findRef(previous: Type, prevPrec: Int, prevCtx: Context)(implicit ctx: Context): Type = {
       import BindingPrec._
 
-      /** A string which explains how something was bound; Depending on `prec` this is either
-       *      imported by <tree>
-       *  or  defined in <symbol>
-       */
-      def bindingString(prec: Int, whereFound: Context, qualifier: String = "") =
-        if (prec == wildImport || prec == namedImport) {
-          ex"""imported$qualifier by ${hl"${whereFound.importInfo}"}"""
-        } else
-          ex"""defined$qualifier in ${hl"${whereFound.owner.toString}"}"""
-
       /** Check that any previously found result from an inner context
        *  does properly shadow the new one from an outer context.
        *  @param found     The newly found result
@@ -170,11 +160,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
         }
         else {
           if (!scala2pkg && !previous.isError && !found.isError) {
-            error(
-              ex"""|reference to `$name` is ambiguous
-                   |it is both ${bindingString(newPrec, ctx, "")}
-                   |and ${bindingString(prevPrec, prevCtx, " subsequently")}""",
-              tree.pos)
+            error(AmbiguousImport(name, newPrec, prevPrec, prevCtx), tree.pos)
           }
           previous
         }
