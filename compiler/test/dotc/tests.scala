@@ -9,6 +9,7 @@ import org.junit.Assert._
 
 import java.io.{ File => JFile }
 import scala.reflect.io.Directory
+import scala.io.Source
 
 /** WARNING
  *  =======
@@ -83,13 +84,6 @@ class tests extends CompilerTest {
   val explicitUTF8 = List("-encoding", "UTF8")
   val explicitUTF16 = List("-encoding", "UTF16")
 
-  val stdlibMode    = List("-migration", "-Yno-inline", "-language:Scala2")
-  val linkStdlibMode = "-Ylink-stdlib" :: stdlibMode
-
-  val linkDCEcommon = List("-link-java-conservative", "-link-vis", "-Ylink-dce-checks", "-Ylog:callGraph")
-  val linkDCE = "-link-dce" :: linkDCEcommon
-  val linkDCEaggressive = "-link-aggressive-dce" :: linkDCEcommon
-
   val testsDir      = "../tests/"
   val posDir        = testsDir + "pos/"
   val posSpecialDir = testsDir + "pos-special/"
@@ -98,8 +92,6 @@ class tests extends CompilerTest {
   val runDir        = testsDir + "run/"
   val newDir        = testsDir + "new/"
   val javaDir       = testsDir + "pos-java-interop/"
-  val linkDCEDir    = testsDir + "link-dce/"
-  val linkDCEWithStdlibDir = testsDir + "link-stdlib-dce/"
 
   val sourceDir = "./src/"
   val dottyDir  = sourceDir + "dotty/"
@@ -217,23 +209,9 @@ class tests extends CompilerTest {
   @Test def run_all = runFiles(runDir)
 
   private val stdlibFiles: List[String] = StdLibSources.whitelisted
-  private val dottyStdlibFiles: List[String] = StdLibSources.loadList("./test/dotc/dotty-library.whitelist", "../library/src/")
-  private val linkDCEStdlibFiles: List[String] = dottyStdlibFiles ::: stdlibFiles
-
-  @Test def checkWBLists = {
-    val stdlibFilesBlackListed = StdLibSources.blacklisted
-
-    val duplicates = stdlibFilesBlackListed.groupBy(x => x).filter(_._2.size > 1).filter(_._2.size > 1)
-    val msg = duplicates.map(x => s"'${x._1}' appears ${x._2.size} times").mkString(s"Duplicate entries in ${StdLibSources.blacklistFile}:\n", "\n", "\n")
-    assertTrue(msg, duplicates.isEmpty)
-
-    val filesNotInStdLib = stdlibFilesBlackListed.toSet -- StdLibSources.all
-    val msg2 = filesNotInStdLib.map(x => s"'$x'").mkString(s"Entries in ${StdLibSources.blacklistFile} where not found:\n", "\n", "\n")
-    assertTrue(msg2, filesNotInStdLib.isEmpty)
-  }
 
   @Test def compileStdLib =
-    compileList("compileStdLib", stdlibFiles, stdlibMode)
+    compileList("compileStdLib", stdlibFiles, "-migration" :: "-Yno-inline" :: scala2mode)
 
   @Test def compileMixed = compileLine(
       """../tests/pos/B.scala
@@ -249,17 +227,6 @@ class tests extends CompilerTest {
       """../scala-scala/src/library/scala/collection/parallel/mutable/ParSetLike.scala
         |../scala-scala/src/library/scala/collection/parallel/mutable/ParSet.scala
         |../scala-scala/src/library/scala/collection/mutable/SetLike.scala""".stripMargin)(scala2mode ++ defaultOptions)
-
-  // Test callgraph DCE
-  @Test def link_dce_all = runFiles(linkDCEDir, linkDCE)
-  @Test def link_dce_agressive_all = runFiles(linkDCEDir, linkDCEaggressive)
-
-  // Test callgraph DCE on code that use DCEed stdlib
-  @org.junit.Ignore
-  @Test def link_dce_stdlib_all(): Unit =
-    runFiles(linkDCEWithStdlibDir, linkStdlibMode ::: linkDCE, stdlibFiles = linkDCEStdlibFiles)(noCheckOptions ++ checkOptions ++ classPath)
-  @Test def link_dce_aggressive_stdlib_all(): Unit =
-    runFiles(linkDCEWithStdlibDir, linkStdlibMode ::: linkDCEaggressive, stdlibFiles = linkDCEStdlibFiles)(noCheckOptions ++ checkOptions ++ classPath)
 
   @Test def dottyBooted = {
     dottyBootedLib

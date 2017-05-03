@@ -110,7 +110,6 @@ class ScalaSettings extends Settings.SettingGroup {
   val YshowVarBounds = BooleanSetting("-Yshow-var-bounds", "Print type variables with their bounds")
   val YnoInline = BooleanSetting("-Yno-inline", "Suppress inlining.")
   val YlinkDCEChecks = BooleanSetting("-Ylink-dce-checks", "Check number of reachable classes and methods.")
-  val YlinkStdlib = BooleanSetting("-Ylink-stdlib", "Linker is linking the entire stdlib in tests.")
   val YlinkSpecialize = IntSetting("-YlinkSpecialize","Specialize methods with maximum this amount of polymorphic types.", 0, 0 to 10)
 
 

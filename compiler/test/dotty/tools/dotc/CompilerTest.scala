@@ -89,7 +89,7 @@ abstract class CompilerTest {
 
   /** Compiles the code files in the given directory together. If args starts
     * with "-deep", all files in subdirectories (and so on) are included. */
-  def compileDir(prefix: String, dirName: String, args: List[String] = Nil, runTest: Boolean = false, stdlibFiles: List[String] = Nil)
+  def compileDir(prefix: String, dirName: String, args: List[String] = Nil, runTest: Boolean = false)
       (implicit defaultOptions: List[String]): Unit = {
     def computeFilePathsAndExpErrors = {
       val dir = Directory(prefix + dirName)
@@ -97,7 +97,8 @@ abstract class CompilerTest {
         case "-deep" :: args1 => (dir.deepFiles, args1)
         case _ => (dir.files, args)
       }
-      val (filePaths, javaFilePaths) = (files.map(_.toString) ++ stdlibFiles)
+      val (filePaths, javaFilePaths) = files
+        .toArray.map(_.toString)
         .foldLeft((Array.empty[String], Array.empty[String])) { case (acc @ (fp, jfp), name) =>
           if (name endsWith ".scala") (name +: fp, jfp)
           else if (name endsWith ".java") (fp, name +: jfp)
@@ -119,7 +120,7 @@ abstract class CompilerTest {
   /** Compiles each source in the directory path separately by calling
     * compileFile resp. compileDir. */
   def compileFiles(path: String, args: List[String] = Nil, verbose: Boolean = true, runTest: Boolean = false,
-                   compileSubDirs: Boolean = true, stdlibFiles: List[String] = Nil)(implicit defaultOptions: List[String]): Unit = {
+                   compileSubDirs: Boolean = true)(implicit defaultOptions: List[String]): Unit = {
     val dir = Directory(path)
     val fileNames = dir.files.toArray.map(_.jfile.getName).filter(name => (name endsWith ".scala") || (name endsWith ".java"))
     for (name <- fileNames) {
@@ -129,12 +130,12 @@ abstract class CompilerTest {
     if (compileSubDirs)
       for (subdir <- dir.dirs) {
         if (verbose) log(s"testing $subdir")
-        compileDir(path, subdir.jfile.getName, args, runTest, stdlibFiles)
+        compileDir(path, subdir.jfile.getName, args, runTest)
       }
   }
-  def runFiles(path: String, args: List[String] = Nil, verbose: Boolean = true, stdlibFiles: List[String] = Nil)
+  def runFiles(path: String, args: List[String] = Nil, verbose: Boolean = true)
       (implicit defaultOptions: List[String]): Unit =
-    compileFiles(path, args, verbose, true, stdlibFiles = stdlibFiles)
+    compileFiles(path, args, verbose, true)
 
   /** Compiles the given list of code files. */
   def compileList(testName: String, files: List[String], args: List[String] = Nil)
@@ -334,10 +335,37 @@ abstract class CompilerTest {
   /** Recursively copy over source files and directories, excluding extensions
     * that aren't in extensionsToCopy. */
   private def recCopyFiles(sourceFile: Path, dest: Path): Unit = {
+
+    @tailrec def copyfile(file: SFile, bytewise: Boolean): Unit = {
+      if (bytewise) {
+        val in = file.inputStream()
+        val out = SFile(dest).outputStream()
+        val buffer = new Array[Byte](1024)
+        @tailrec def loop(available: Int):Unit = {
+          if (available < 0) {()}
+          else {
+            out.write(buffer, 0, available)
+            val read = in.read(buffer)
+            loop(read)
+          }
+        }
+        loop(0)
+        in.close()
+        out.close()
+      } else {
+        try {
+          SFile(dest)(scala.io.Codec.UTF8).writeAll((s"/* !!!!! WARNING: DO NOT MODIFY. Original is at: $file !!!!! */").replace("\\", "/"), file.slurp("UTF-8"))
+        } catch {
+          case unmappable: java.nio.charset.MalformedInputException =>
+            copyfile(file, true) //there are bytes that can't be mapped with UTF-8. Bail and just do a straight byte-wise copy without the warning header.
+        }
+      }
+    }
+
     processFileDir(sourceFile, { sf =>
       if (extensionsToCopy.contains(sf.extension)) {
         dest.parent.jfile.mkdirs
-        copyfile(sf, dest, false)
+        copyfile(sf, false)
       } else {
         log(s"WARNING: ignoring $sf")
       }
@@ -355,32 +383,6 @@ abstract class CompilerTest {
       val nerr = (dest changeExtension "nerr").toFile.safeSlurp
       ExistingFiles(content.get, flags, nerr)
     } else ExistingFiles()
-  }
-
-  @tailrec private def copyfile(file: SFile, dest: Path, bytewise: Boolean): Unit = {
-    if (bytewise) {
-      val in = file.inputStream()
-      val out = SFile(dest).outputStream()
-      val buffer = new Array[Byte](1024)
-      @tailrec def loop(available: Int):Unit = {
-        if (available < 0) {()}
-        else {
-          out.write(buffer, 0, available)
-          val read = in.read(buffer)
-          loop(read)
-        }
-      }
-      loop(0)
-      in.close()
-      out.close()
-    } else {
-      try {
-        SFile(dest)(scala.io.Codec.UTF8).writeAll((s"/* !!!!! WARNING: DO NOT MODIFY. Original is at: $file !!!!! */").replace("\\", "/"), file.slurp("UTF-8"))
-      } catch {
-        case unmappable: java.nio.charset.MalformedInputException =>
-          copyfile(file, dest, true) //there are bytes that can't be mapped with UTF-8. Bail and just do a straight byte-wise copy without the warning header.
-      }
-    }
   }
 
   /** Encapsulates existing generated test files. */
