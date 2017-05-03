@@ -7,7 +7,7 @@ import dotty.tools.dotc.core.Types.{RefinedType, Type, TypeAccumulator, TypeAlia
 import dotty.tools.dotc.transform.linker.types.ClosureType
 
 object OuterTargs {
-  lazy val empty = new OuterTargs(Map.empty)
+  val empty = new OuterTargs(Map.empty)
 
   def parentRefinements(tp: Type)(implicit ctx: Context): OuterTargs = {
     new TypeAccumulator[OuterTargs]() {

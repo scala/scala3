@@ -45,7 +45,7 @@ class CallInfoWithContext private (val call: TermRef, val targs: List[Type], val
     case _ => false
   }
 
-  override def hashCode(): Int = java.util.Objects.hash(call, targs, argumentsPassed, outerTargs.mp)
+  override def hashCode(): Int = call.hashCode ^ targs.hashCode ^ argumentsPassed.hashCode ^ outerTargs.mp.hashCode
 
   override def toString(): String = s"CallInfoWithContext($call, $targs, $argumentsPassed, $outerTargs, $parent, $callee)"
 }
