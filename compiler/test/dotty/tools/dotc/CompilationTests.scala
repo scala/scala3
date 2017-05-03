@@ -242,9 +242,11 @@ class CompilationTests extends ParallelTesting {
     var failed = 0
     var total = 0
     val blacklisted = Set(
+      // Bridges on collections in different order. Second one in scala2 order.
       "pos/Map/scala/collection/immutable/Map",
       "pos/Map/scala/collection/immutable/AbstractMap",
-      "pos/t1203a/NodeSeq"
+      "pos/t1203a/NodeSeq",
+      "pos/i2345/Whatever"
     )
     def checkIdempotency(): Unit = {
       val groupedBytecodeFiles: List[(Path, Path, Path, Path)] = {
