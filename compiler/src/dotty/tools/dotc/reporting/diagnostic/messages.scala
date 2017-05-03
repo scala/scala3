@@ -1271,7 +1271,7 @@ object messages {
        s"""|There are ${alts.length} methods that could be referenced as the compiler knows too little about the expected type.
            |You may specify the expected type e.g. by
            |- assigning it to a value with a specified type, or
-           |- adding a type ascription as in (MyClass.myMethod: String => Int)
+           |- adding a type ascription as in `(instance.myMethod: String => Int)`
            |""".stripMargin
   }
 
