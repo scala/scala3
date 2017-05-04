@@ -150,7 +150,7 @@ object Build {
     scalacOptions ++= Seq("-bootclasspath", sys.props("sun.boot.class.path")),
 
     // sbt gets very unhappy if two projects use the same target
-    target := baseDirectory.value / ".." / "out" / name.value,
+    target := baseDirectory.value / ".." / "out" / "bootstrap" / name.value,
 
     // The non-bootstrapped dotty-library is not necessary when bootstrapping dotty
     autoScalaLibrary := false,
@@ -994,7 +994,7 @@ object DottyInjectedPlugin extends AutoPlugin {
   }
 
   lazy val submoduleChecks = onLoad in Global := (onLoad in Global).value andThen { state =>
-    val submodules = List(new File("scala-backend"), new File("scala-library"), new File("collection-strawman"))
+    val submodules = List(new File("scala-backend"), new File("scala2-library"), new File("collection-strawman"))
     if (!submodules.forall(f => f.exists && f.listFiles().nonEmpty)) {
       sLog.value.log(Level.Error,
         s"""Missing some of the submodules

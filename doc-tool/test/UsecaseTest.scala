@@ -223,12 +223,12 @@ class UsecaseTest extends DottyDocTest {
   }
 
   @Test def checkIterator =
-    checkFiles("../scala-library/src/library/scala/collection/Iterator.scala" :: Nil) { _ =>
+    checkFiles("../scala2-library/src/library/scala/collection/Iterator.scala" :: Nil) { _ =>
       // success if typer throws no errors! :)
     }
 
   @Test def checkIterableLike =
-    checkFiles("../scala-library/src/library/scala/collection/IterableLike.scala" :: Nil) { _ =>
+    checkFiles("../scala2-library/src/library/scala/collection/IterableLike.scala" :: Nil) { _ =>
       // success if typer throws no errors! :)
     }
 }
