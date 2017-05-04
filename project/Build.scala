@@ -844,6 +844,20 @@ object DottyInjectedPlugin extends AutoPlugin {
       libraryDependencies := Seq("org.scala-lang" % "scalap" % scalacVersion)
     )
 
+
+  // sbt plugin to use Dotty in your own build, see
+  // https://github.com/lampepfl/dotty-example-project for usage.
+  lazy val `sbt-dotty` = project.in(file("sbt-dotty")).
+    settings(commonSettings).
+    settings(
+      sbtPlugin := true,
+      version := "0.1.0-RC4",
+      ScriptedPlugin.scriptedSettings,
+      ScriptedPlugin.sbtTestDirectory := baseDirectory.value / "sbt-test",
+      ScriptedPlugin.scriptedBufferLog := false,
+      ScriptedPlugin.scriptedLaunchOpts += "-Dplugin.version=" + version.value
+    )
+
    lazy val publishSettings = Seq(
      publishMavenStyle := true,
      isSnapshot := version.value.contains("SNAPSHOT"),
