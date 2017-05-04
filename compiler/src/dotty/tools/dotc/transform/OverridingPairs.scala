@@ -31,7 +31,9 @@ object OverridingPairs {
      */
     protected def exclude(sym: Symbol): Boolean = !sym.memberCanMatchInheritedSymbols
 
-    /** The parents of base (may also be refined).
+    /** The parents of base that are checked when deciding whether an overriding
+     *  pair has already been treated in a parent class.
+     *  This may be refined in subclasses. @see Bridges for a use case.
      */
     protected def parents: Array[Symbol] = base.info.parents.toArray map (_.typeSymbol)
 
