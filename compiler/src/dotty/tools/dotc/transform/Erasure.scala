@@ -465,6 +465,8 @@ object Erasure {
       val Apply(fun, args) = tree
       if (fun.symbol == defn.cbnArg)
         typedUnadapted(args.head, pt)
+      else if (defn.isPhantom_assume(fun.symbol))
+        PhantomErasure.erasedAssume
       else typedExpr(fun, FunProto(args, pt, this)) match {
         case fun1: Apply => // arguments passed in prototype were already passed
           fun1

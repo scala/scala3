@@ -1050,4 +1050,8 @@ class Definitions {
 
   def ErasedPhantom_UNIT(implicit ctx: Context) = ErasedPhantomClass.linkedClass.requiredValue("UNIT")
 
+  /** If the symbol is a Phantom.assume (including inlined Phantom.assume). */
+  def isPhantom_assume(sym: Symbol)(implicit ctx: Context): Boolean =
+    (sym eq Phantom_assume) || sym.name.is(NameKinds.InlineAssumeName)
+
 }

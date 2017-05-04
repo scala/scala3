@@ -15,7 +15,7 @@ import StdNames.nme
 import Contexts.Context
 import Names.{Name, TermName, EmptyTermName}
 import NameOps._
-import NameKinds.InlineAccessorName
+import NameKinds.{InlineAccessorName, InlineAssumeName, OuterSelectName}
 import SymDenotations.SymDenotation
 import Annotations._
 import transform.ExplicitOuter
@@ -50,7 +50,13 @@ object Inliner {
         sym.is(AccessFlags) || sym.privateWithin.exists
 
       /** The name of the next accessor to be generated */
-      def accessorName(implicit ctx: Context) = InlineAccessorName.fresh(inlineMethod.name.asTermName)
+      def accessorName(tree: Tree)(implicit ctx: Context) = {
+        if (tree.symbol eq defn.Phantom_assume) InlineAssumeName.fresh().toTermName
+        else {
+          val name = InlineAccessorName.fresh(inlineMethod.name.asTermName)
+          if (tree.isTerm) name.toTermName else name.toTypeName
+        }
+      }
 
       /** A fresh accessor symbol.
        *
@@ -60,7 +66,7 @@ object Inliner {
       def accessorSymbol(tree: Tree, accessorInfo: Type)(implicit ctx: Context): Symbol =
         ctx.newSymbol(
           owner = inlineMethod.owner,
-          name = if (tree.isTerm) accessorName.toTermName else accessorName.toTypeName,
+          name = accessorName(tree),
           flags = if (tree.isTerm) Synthetic | Method else Synthetic,
           info = accessorInfo,
           coord = tree.pos).entered
