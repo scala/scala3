@@ -41,6 +41,7 @@ class ScalaSettings extends Settings.SettingGroup {
   val strict = BooleanSetting("-strict", "Use strict type rules, which means some formerly legal code does not typecheck anymore.")
   val language = MultiStringSetting("-language", "feature", "Enable one or more language features.")
   val rewrite = OptionSetting[Rewrites]("-rewrite", "When used in conjunction with -language:Scala2 rewrites sources to migrate to new syntax")
+  val silentWarnings = BooleanSetting("-nowarn", "Silence all warnings.")
 
   /** -X "Advanced" settings
    */

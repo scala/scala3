@@ -38,8 +38,10 @@ trait Reporting { this: Context =>
     reporter.report(new Info(msg, pos))
 
   def reportWarning(warning: Warning): Unit =
-    if (this.settings.XfatalWarnings.value) reporter.report(warning.toError)
-    else reporter.report(warning)
+    if (!this.settings.silentWarnings.value) {
+      if (this.settings.XfatalWarnings.value) reporter.report(warning.toError)
+      else  reporter.report(warning)
+    }
 
   def deprecationWarning(msg: => Message, pos: SourcePosition = NoSourcePosition): Unit =
     reportWarning(new DeprecationWarning(msg, pos))
