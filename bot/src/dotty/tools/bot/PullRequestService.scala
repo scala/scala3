@@ -34,6 +34,12 @@ trait PullRequestService {
   /** OAuth token for drone, needed to cancel builds */
   def droneToken: String
 
+  /** OAuthed application's "client_id" */
+  def githubClientId: String
+
+  /** OAuthed application's "client_secret" */
+  def githubClientSecret: String
+
   /** Pull Request HTTP service */
   val prService = HttpService {
     case request @ POST -> Root =>
@@ -68,21 +74,23 @@ trait PullRequestService {
   )
 
   private[this] val githubUrl = "https://api.github.com"
+  private[this] def withGithubSecret(url: String, extras: String*): String =
+    s"$url?client_id=$githubClientId&client_secret=$githubClientSecret" + extras.mkString("&", "&", "")
 
   def claUrl(userName: String): String =
    s"https://www.lightbend.com/contribute/cla/scala/check/$userName"
 
   def commitsUrl(prNumber: Int): String =
-    s"$githubUrl/repos/lampepfl/dotty/pulls/$prNumber/commits?per_page=100"
+    withGithubSecret(s"$githubUrl/repos/lampepfl/dotty/pulls/$prNumber/commits", "per_page=100")
 
   def statusUrl(sha: String): String =
-    s"$githubUrl/repos/lampepfl/dotty/statuses/$sha"
+    withGithubSecret(s"$githubUrl/repos/lampepfl/dotty/statuses/$sha")
 
   def issueCommentsUrl(issueNbr: Int): String =
-    s"$githubUrl/repos/lampepfl/dotty/issues/$issueNbr/comments"
+    withGithubSecret(s"$githubUrl/repos/lampepfl/dotty/issues/$issueNbr/comments")
 
   def reviewUrl(issueNbr: Int): String =
-    s"$githubUrl/repos/lampepfl/dotty/pulls/$issueNbr/reviews"
+    withGithubSecret(s"$githubUrl/repos/lampepfl/dotty/pulls/$issueNbr/reviews")
 
   sealed trait CommitStatus {
     def commit: Commit

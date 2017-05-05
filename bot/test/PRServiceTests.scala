@@ -15,9 +15,11 @@ import org.http4s.client.Client
 import scalaz.concurrent.Task
 
 class PRServiceTests extends PullRequestService {
-  val githubUser  = sys.env("GITHUB_USER")
-  val githubToken = sys.env("GITHUB_TOKEN")
-  val droneToken  = sys.env("DRONE_TOKEN")
+  val githubUser         = sys.env("GITHUB_USER")
+  val githubToken        = sys.env("GITHUB_TOKEN")
+  val droneToken         = sys.env("DRONE_TOKEN")
+  val githubClientId     = sys.env("GITHUB_CLIENT_ID")
+  val githubClientSecret = sys.env("GITHUB_CLIENT_SECRET")
 
   private def withClient[A](f: Client => Task[A]): A = {
     val httpClient = PooledHttp1Client()
