@@ -763,7 +763,8 @@ object Parsers {
 
     def withTypeRest(t: Tree): Tree =
       if (in.token == WITH) {
-        deprecationWarning(DeprecatedWithOperator())
+        if (ctx.settings.strict.value)
+          deprecationWarning(DeprecatedWithOperator())
         in.nextToken()
         AndTypeTree(t, withType())
       }
