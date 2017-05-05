@@ -65,7 +65,7 @@ abstract class CompilerTest {
   }
 
   def findJarFromRuntime(partialName: String): String = {
-    val urls = ClassLoader.getSystemClassLoader.asInstanceOf[java.net.URLClassLoader].getURLs.map(_.getFile.toString)
+    val urls = Option(1).getClass.getClassLoader.asInstanceOf[java.net.URLClassLoader].getURLs.map(_.getFile.toString)
     urls.find(_.contains(partialName)).getOrElse {
       throw new java.io.FileNotFoundException(
         s"""Unable to locate $partialName on classpath:\n${urls.toList.mkString("\n")}"""

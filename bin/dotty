@@ -1,0 +1,29 @@
+#!/bin/bash
+DOTTY_HOME=$(dirname $(realpath $0))/..
+CWD=$(pwd)
+
+case "$1" in
+	"quick")
+		shift
+		CBT=cbt
+	;;
+	"direct")
+		shift
+		CBT="cbt direct"
+	;;
+	*)
+		CBT="cbt direct"
+esac
+
+case "$1" in
+	"build")
+		shift
+		cbt $@
+	;;
+	*)
+		CMD=$1
+		shift
+
+		cd $DOTTY_HOME/compiler
+		$CBT "$CMD" "$CWD" $@
+esac
