@@ -16,7 +16,6 @@ trait ErrorMessagesTest extends DottyTest {
   private def freshReporter(ctx: Context) =
     ctx.fresh.setReporter(new CapturingReporter)
 
-
   class Report(messages: List[Message], ictx: Context) {
     def expect(f: (Context, List[Message]) => Unit): Unit = {
       f(ictx, messages)

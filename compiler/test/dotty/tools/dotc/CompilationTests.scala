@@ -72,8 +72,13 @@ class CompilationTests extends ParallelTesting {
       scala2Mode
     ) +
     compileFilesInDir("../tests/new", defaultOptions) +
-    compileFilesInDir("../tests/pos-scala2", scala2Mode)
-    compileFilesInDir("../tests/pos", defaultOptions)
+    compileFilesInDir("../tests/pos-scala2", scala2Mode) +
+    compileFilesInDir("../tests/pos", defaultOptions) +
+    compileFile(
+      // succeeds despite -Xfatal-warnings because of -nowarn
+      "../tests/neg/customArgs/xfatalWarnings.scala",
+      defaultOptions.and("-nowarn", "-Xfatal-warnings")
+    )
   }.checkCompile()
 
   @Test def posTwice: Unit = {
@@ -239,7 +244,7 @@ class CompilationTests extends ParallelTesting {
     }.map(_.checkCompile()).foreach(_.delete())
   }
 
-  @Test def bytecodeIdemporency: Unit = {
+  @Test def bytecodeIdempotency: Unit = {
     var failed = 0
     var total = 0
     val blacklisted = Set(
