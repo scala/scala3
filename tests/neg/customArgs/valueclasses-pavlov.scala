@@ -5,7 +5,7 @@ trait Foo[T <: AnyVal] extends Any {
 
 class Box1(val value: String) extends AnyVal with Foo[Box2] {
   def foo(x: String) = "foo(String): ok"
-  def foo(x: Box2) = "foo(Box2): ok"
+  def foo(x: Box2) = "foo(Box2): ok"  // error: double def
 }
 
 class Box2(val value: String) extends AnyVal
@@ -17,7 +17,7 @@ object test2a {
     val b1 = new Box1(null)
     val b2 = new Box2(null)
     val f: Foo[Box2] = b1
-    println(f.foo(""))
-    println(f.foo(b2))
+    println(f.foo("")) // error: cannot merge
+    println(f.foo(b2)) // error: cannot merge
   }
 }

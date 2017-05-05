@@ -40,7 +40,7 @@ matrix:
       CI_PUBLISH: true
     - CI_TEST: legacyTests
       CI_PUBLISH: false
-    - CI_TEST: test
+    - CI_TEST: ;test;sbt-dotty/scripted
       CI_PUBLISH: false
     - CI_TEST: ;dotty-sbt-bridge/publishLocal ;dotty-bootstrapped/test
       CI_PUBLISH: false

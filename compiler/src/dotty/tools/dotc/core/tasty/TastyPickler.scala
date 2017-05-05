@@ -6,7 +6,6 @@ package tasty
 import TastyFormat._
 import collection.mutable
 import TastyBuffer._
-import java.util.UUID
 import core.Symbols.Symbol
 import ast.tpd
 import Decorators._
@@ -14,17 +13,6 @@ import Decorators._
 class TastyPickler {
 
   private val sections = new mutable.ArrayBuffer[(NameRef, TastyBuffer)]
-  val uuid = UUID.randomUUID()
-
-  private val headerBuffer = {
-    val buf = new TastyBuffer(24)
-    for (ch <- header) buf.writeByte(ch.toByte)
-    buf.writeNat(MajorVersion)
-    buf.writeNat(MinorVersion)
-    buf.writeUncompressedLong(uuid.getMostSignificantBits)
-    buf.writeUncompressedLong(uuid.getLeastSignificantBits)
-    buf
-  }
 
   val nameBuffer = new NameBuffer
 
@@ -36,6 +24,20 @@ class TastyPickler {
       buf.assemble()
       buf.length + natSize(buf.length)
     }
+
+    val uuidLow: Long = pjwHash64(nameBuffer.bytes)
+    val uuidHi: Long = sections.iterator.map(x => pjwHash64(x._2.bytes)).fold(0L)(_ ^ _)
+
+    val headerBuffer = {
+      val buf = new TastyBuffer(header.length + 24)
+      for (ch <- header) buf.writeByte(ch.toByte)
+      buf.writeNat(MajorVersion)
+      buf.writeNat(MinorVersion)
+      buf.writeUncompressedLong(uuidLow)
+      buf.writeUncompressedLong(uuidHi)
+      buf
+    }
+
     val totalSize =
       headerBuffer.length +
       lengthWithLength(nameBuffer) + {
@@ -69,4 +71,23 @@ class TastyPickler {
   var addrOfSym: Symbol => Option[Addr] = (_ => None)
 
   val treePkl = new TreePickler(this)
+
+  /** Returns a non-cryptographic 64-bit hash of the array.
+   *
+   *  from https://en.wikipedia.org/wiki/PJW_hash_function#Implementation
+   */
+  private def pjwHash64(data: Array[Byte]): Long = {
+    var h = 0L
+    var high = 0L
+    var i = 0
+    while (i < data.length) {
+      h = (h << 4) + data(i)
+      high = h & 0xF0000000L
+      if (high != 0)
+        h ^= high >> 24
+      h &= ~high
+      i += 1
+    }
+    h
+  }
 }

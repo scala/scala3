@@ -11,6 +11,9 @@ import TypeErasure.ErasedValueType, ValueClasses._
 /** This phase erases ErasedValueType to their underlying type.
  *  It also removes the synthetic cast methods u2evt$ and evt2u$ which are
  *  no longer needed afterwards.
+ *  Finally, it checks that we don't introduce "double definitions" of pairs
+ *  of methods that now have the same signature but were not considered matching
+ *  before erasure.
  */
 class ElimErasedValueType extends MiniPhaseTransform with InfoTransformer {
 
@@ -65,6 +68,44 @@ class ElimErasedValueType extends MiniPhaseTransform with InfoTransformer {
       else
         tree
     transformTypeOfTree(t)
+  }
+
+  /** Check that we don't have pairs of methods that override each other after
+   *  this phase, yet do not have matching types before erasure.
+   *  The before erasure test is performed after phase elimRepeated, so we
+   *  do not need to special case pairs of `T* / Seq[T]` parameters.
+   */
+  private def checkNoClashes(root: Symbol)(implicit ctx: Context) = {
+    val opc = new OverridingPairs.Cursor(root) {
+      override def exclude(sym: Symbol) =
+        !sym.is(Method) || sym.is(Bridge) || super.exclude(sym)
+      override def matches(sym1: Symbol, sym2: Symbol) =
+        sym1.signature == sym2.signature
+    }
+    def checkNoConflict(sym1: Symbol, sym2: Symbol, info: Type)(implicit ctx: Context): Unit = {
+      val site = root.thisType
+      val info1 = site.memberInfo(sym1)
+      val info2 = site.memberInfo(sym2)
+      if (!info1.matchesLoosely(info2))
+        ctx.error(
+            em"""double definition:
+                |$sym1: $info1 in ${sym1.owner} ${sym1.flags} and
+                |$sym2: $info2 in ${sym2.owner} ${sym2.flags}
+                |have same type after erasure: $info""",
+            root.pos)
+    }
+    val earlyCtx = ctx.withPhase(ctx.elimRepeatedPhase.next)
+    while (opc.hasNext) {
+      val sym1 = opc.overriding
+      val sym2 = opc.overridden
+      checkNoConflict(sym1, sym2, sym1.info)(earlyCtx)
+      opc.next()
+    }
+  }
+
+  override def transformTypeDef(tree: TypeDef)(implicit ctx: Context, info: TransformerInfo): Tree = {
+    checkNoClashes(tree.symbol)
+    tree
   }
 
   override def transformInlined(tree: Inlined)(implicit ctx: Context, info: TransformerInfo): Tree =

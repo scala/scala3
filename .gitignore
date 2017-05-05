@@ -20,10 +20,13 @@ project/local-plugins.sbt
 # Scala-IDE specific
 .scala_dependencies
 .cache
+.cache-main
+.cache-tests
 .classpath
 .project
 .settings
 classes/
+*/bin/
 
 # idea
 .idea
