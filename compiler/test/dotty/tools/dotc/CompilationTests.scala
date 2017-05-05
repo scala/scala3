@@ -323,8 +323,8 @@ class CompilationTests extends ParallelTesting {
   @Test def linkAll: Unit = {
     def commonLibraries = {
       compileList("stdlib", StdLibSources.whitelisted, scala2Mode.and("-migration", "-Yno-inline")) +
-        compileList("strawman", strawmanSources, defaultOptions) +
-        compileList("testUtils", testUtils, defaultOptions)
+      compileList("strawman", strawmanSources, defaultOptions) +
+      compileList("testUtils", testUtils, defaultOptions)
     }
 
     // Compile and setup libraries
@@ -380,8 +380,8 @@ class CompilationTests extends ParallelTesting {
       linkStrawmanDCETests +
       linkStrawmanAggressiveDCETests +
       linkStdLibDCE +
-      linkSpecializeTests +
-      linkStrawmanSpecializeTests
+      linkSpecializeTests /* +
+      linkStrawmanSpecializeTests*/
     }.checkRuns()
 
     libraries.delete()
