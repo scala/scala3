@@ -524,6 +524,8 @@ class Definitions {
     def Product_canEqual(implicit ctx: Context) = Product_canEqualR.symbol
     lazy val Product_productArityR = ProductClass.requiredMethodRef(nme.productArity)
     def Product_productArity(implicit ctx: Context) = Product_productArityR.symbol
+    lazy val Product_productElementR = ProductClass.requiredMethodRef(nme.productElement)
+    def Product_productElement(implicit ctx: Context) = Product_productElementR.symbol
     lazy val Product_productPrefixR = ProductClass.requiredMethodRef(nme.productPrefix)
     def Product_productPrefix(implicit ctx: Context) = Product_productPrefixR.symbol
   lazy val LanguageModuleRef = ctx.requiredModule("scala.language")
@@ -701,7 +703,6 @@ class Definitions {
   def FunctionClassPerRun = new PerRun[Array[Symbol]](implicit ctx => ImplementedFunctionType.map(_.symbol.asClass))
 
   lazy val TupleType = mkArityArray("scala.Tuple", MaxTupleArity, 2)
-  lazy val ProductNType = mkArityArray("scala.Product", MaxTupleArity, 0)
 
   def FunctionClass(n: Int, isImplicit: Boolean = false)(implicit ctx: Context) =
     if (isImplicit) ctx.requiredClass("scala.ImplicitFunction" + n.toString)
@@ -716,7 +717,6 @@ class Definitions {
     else FunctionClass(n, isImplicit).typeRef
 
   private lazy val TupleTypes: Set[TypeRef] = TupleType.toSet
-  private lazy val ProductTypes: Set[TypeRef] = ProductNType.toSet
 
   /** If `cls` is a class in the scala package, its name, otherwise EmptyTypeName */
   def scalaClassName(cls: Symbol)(implicit ctx: Context): TypeName =

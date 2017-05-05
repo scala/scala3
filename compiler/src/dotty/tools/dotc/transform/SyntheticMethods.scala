@@ -17,20 +17,22 @@ import scala.language.postfixOps
 
 /** Synthetic method implementations for case classes, case objects,
  *  and value classes.
+ *
  *  Selectively added to case classes/objects, unless a non-default
  *  implementation already exists:
  *    def equals(other: Any): Boolean
  *    def hashCode(): Int
  *    def canEqual(other: Any): Boolean
  *    def toString(): String
+ *    def productElement(i: Int): Any
  *    def productArity: Int
  *    def productPrefix: String
+ *
  *  Special handling:
  *    protected def readResolve(): AnyRef
  *
  *  Selectively added to value classes, unless a non-default
  *  implementation already exists:
- *
  *    def equals(other: Any): Boolean
  *    def hashCode(): Int
  */
@@ -44,14 +46,13 @@ class SyntheticMethods(thisTransformer: DenotTransformer) {
     if (myValueSymbols.isEmpty) {
       myValueSymbols = List(defn.Any_hashCode, defn.Any_equals)
       myCaseSymbols = myValueSymbols ++ List(defn.Any_toString, defn.Product_canEqual,
-        defn.Product_productArity, defn.Product_productPrefix)
+        defn.Product_productArity, defn.Product_productPrefix, defn.Product_productElement)
     }
 
   def valueSymbols(implicit ctx: Context) = { initSymbols; myValueSymbols }
   def caseSymbols(implicit ctx: Context) = { initSymbols; myCaseSymbols }
 
-  /** The synthetic methods of the case or value class `clazz`.
-   */
+  /** The synthetic methods of the case or value class `clazz`. */
   def syntheticMethods(clazz: ClassSymbol)(implicit ctx: Context): List[Tree] = {
     val clazzType = clazz.typeRef
     lazy val accessors =
@@ -91,6 +92,7 @@ class SyntheticMethods(thisTransformer: DenotTransformer) {
         case nme.canEqual_ => vrefss => canEqualBody(vrefss.head.head)
         case nme.productArity => vrefss => Literal(Constant(accessors.length))
         case nme.productPrefix => ownName
+        case nme.productElement => vrefss => productElementBody(accessors.length, vrefss.head.head)
       }
       ctx.log(s"adding $synthetic to $clazz at ${ctx.phase}")
       DefDef(synthetic, syntheticRHS(ctx.withOwner(synthetic)))
@@ -98,18 +100,60 @@ class SyntheticMethods(thisTransformer: DenotTransformer) {
 
     /** The class
      *
-     *      case class C(x: T, y: U)
+     *  ```
+     *  case class C(x: T, y: T)
+     *  ```
      *
-     *  gets the equals method:
+     *  gets the `productElement` method:
      *
-     *      def equals(that: Any): Boolean =
-     *        (this eq that) || {
-     *          that match {
-     *            case x$0 @ (_: C) => this.x == this$0.x && this.y == x$0.y
-     *            case _ => false
-     *         }
+     *  ```
+     *  def productElement(index: Int): Any = index match {
+     *    case 0 => this._1
+     *    case 1 => this._2
+     *    case _ => throw new IndexOutOfBoundsException(index.toString)
+     *  }
+     *  ```
+     */
+    def productElementBody(arity: Int, index: Tree)(implicit ctx: Context): Tree = {
+      val ioob = defn.IndexOutOfBoundsException.typeRef
+      // Second constructor of ioob that takes a String argument
+      def filterStringConstructor(s: Symbol): Boolean = s.info match {
+        case m: MethodType if s.isConstructor => m.paramInfos == List(defn.StringType)
+        case _ => false
+      }
+      val constructor = ioob.typeSymbol.info.decls.find(filterStringConstructor _).asTerm
+      val stringIndex = Apply(Select(index, nme.toString_), Nil)
+      val error = Throw(New(ioob, constructor, List(stringIndex)))
+
+      // case _ => throw new IndexOutOfBoundsException(i.toString)
+      val defaultCase = CaseDef(Underscore(defn.IntType), EmptyTree, error)
+
+      // case N => _${N + 1}
+      val cases = 0.until(arity).map { i =>
+        CaseDef(Literal(Constant(i)), EmptyTree, Select(This(clazz), nme.selectorName(i)))
+      }
+
+      Match(index, (cases :+ defaultCase).toList)
+    }
+
+    /** The class
      *
-     *  If C is a value class the initial `eq` test is omitted.
+     *  ```
+     *  case class C(x: T, y: U)
+     *  ```
+     *
+     *  gets the `equals` method:
+     *
+     *  ```
+     *  def equals(that: Any): Boolean =
+     *    (this eq that) || {
+     *      that match {
+     *        case x$0 @ (_: C) => this.x == this$0.x && this.y == x$0.y
+     *        case _ => false
+     *     }
+     *  ```
+     *
+     *  If `C` is a value class the initial `eq` test is omitted.
      */
     def equalsBody(that: Tree)(implicit ctx: Context): Tree = {
       val thatAsClazz = ctx.newSymbol(ctx.owner, nme.x_0, Synthetic, clazzType, coord = ctx.owner.pos) // x$0
@@ -131,11 +175,15 @@ class SyntheticMethods(thisTransformer: DenotTransformer) {
 
     /** The class
      *
+     *  ```
      *  class C(x: T) extends AnyVal
+     *  ```
      *
-     *  gets the hashCode method:
+     *  gets the `hashCode` method:
      *
-     *    def hashCode: Int = x.hashCode()
+     *  ```
+     *  def hashCode: Int = x.hashCode()
+     *  ```
      */
     def valueHashCodeBody(implicit ctx: Context): Tree = {
       assert(accessors.length == 1)
@@ -144,17 +192,21 @@ class SyntheticMethods(thisTransformer: DenotTransformer) {
 
     /** The class
      *
-     *   package p
-     *    case class C(x: T, y: T)
+     *  ```
+     *  package p
+     *  case class C(x: T, y: T)
+     *  ```
      *
-     *  gets the hashCode method:
+     *  gets the `hashCode` method:
      *
-     *    def hashCode: Int = {
-     *      <synthetic> var acc: Int = "p.C".hashCode // constant folded
-     *      acc = Statics.mix(acc, x);
-     *      acc = Statics.mix(acc, Statics.this.anyHash(y));
-     *      Statics.finalizeHash(acc, 2)
-     *    }
+     *  ```
+     *  def hashCode: Int = {
+     *    <synthetic> var acc: Int = "p.C".hashCode // constant folded
+     *    acc = Statics.mix(acc, x);
+     *    acc = Statics.mix(acc, Statics.this.anyHash(y));
+     *    Statics.finalizeHash(acc, 2)
+     *  }
+     *  ```
      */
     def caseHashCodeBody(implicit ctx: Context): Tree = {
       val acc = ctx.newSymbol(ctx.owner, "acc".toTermName, Mutable | Synthetic, defn.IntType, coord = ctx.owner.pos)
@@ -165,7 +217,7 @@ class SyntheticMethods(thisTransformer: DenotTransformer) {
       Block(accDef :: mixes, finish)
     }
 
-    /** The hashCode implementation for given symbol `sym`. */
+    /** The `hashCode` implementation for given symbol `sym`. */
     def hashImpl(sym: Symbol)(implicit ctx: Context): Tree =
       defn.scalaClassName(sym.info.finalResultType) match {
         case tpnme.Unit | tpnme.Null               => Literal(Constant(0))
@@ -180,11 +232,15 @@ class SyntheticMethods(thisTransformer: DenotTransformer) {
 
     /** The class
      *
-     *    case class C(...)
+     *  ```
+     *  case class C(...)
+     *  ```
      *
-     *  gets the canEqual method
+     *  gets the `canEqual` method
      *
-     *    def canEqual(that: Any) = that.isInstanceOf[C]
+     *  ```
+     *  def canEqual(that: Any) = that.isInstanceOf[C]
+     *  ```
      */
     def canEqualBody(that: Tree): Tree = that.isInstance(clazzType)
 
