@@ -351,7 +351,9 @@ object NameKinds {
   val ProtectedSetterName = new PrefixNameKind(PROTECTEDSETTER, "protected$set") // dubious encoding, kept for Scala2 compatibility
   val AvoidClashName = new SuffixNameKind(AVOIDCLASH, "$_avoid_name_clash_$")
   val DirectMethodName = new SuffixNameKind(DIRECT, "$direct") { override def definesNewName = true }
-  val FieldName = new SuffixNameKind(FIELD, "$$local")
+  val FieldName = new SuffixNameKind(FIELD, "$$local") {
+      override def mkString(underlying: TermName, info: ThisInfo) = underlying.toString
+  }
   val ExtMethName = new SuffixNameKind(EXTMETH, "$extension")
   val ModuleVarName = new SuffixNameKind(OBJECTVAR, "$module")
   val ModuleClassName = new SuffixNameKind(OBJECTCLASS, "$", optInfoString = "ModuleClass")

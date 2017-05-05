@@ -1,6 +1,6 @@
 # Fields of A:
-private final int A.a$$local
-private final int A.b$$local
+private final int A.a
+private final int A.b
 private final scala.Tuple2 A.$1$
 # Methods of A:
 public int A.a()
