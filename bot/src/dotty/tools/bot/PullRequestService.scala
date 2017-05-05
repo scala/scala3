@@ -42,6 +42,15 @@ trait PullRequestService {
 
   /** Pull Request HTTP service */
   val prService = HttpService {
+    case GET -> Root / "rate" => {
+      val client = PooledHttp1Client()
+      for {
+        rates <- client.expect(get(rateLimit))(EntityDecoder.text)
+        resp  <- Ok(rates)
+        _     <- client.shutdown
+      } yield resp
+    }
+
     case request @ POST -> Root =>
       val githubEvent =
         request.headers
@@ -76,6 +85,8 @@ trait PullRequestService {
   private[this] val githubUrl = "https://api.github.com"
   private[this] def withGithubSecret(url: String, extras: String*): String =
     s"$url?client_id=$githubClientId&client_secret=$githubClientSecret" + extras.mkString("&", "&", "")
+
+  def rateLimit: String = withGithubSecret("https://api.github.com/rate_limit")
 
   def claUrl(userName: String): String =
    s"https://www.lightbend.com/contribute/cla/scala/check/$userName"
