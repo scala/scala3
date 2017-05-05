@@ -353,13 +353,13 @@ class CompilationTests extends ParallelTesting {
 
     // DCE tests
 
-    def linkDCETests = compileFilesInDir("../tests/link-dce", linkDCE ++ classPath)
-    def linkAggressiveDCETests = compileFilesInDir("../tests/link-dce", linkAggressiveDCE ++ classPath)
-    def linkStrawmanDCETests = linkTests("../tests/link-strawman-dce", linkDCE ++ strawmanClassPath)
-    def linkStrawmanAggressiveDCETests = linkTests("../tests/link-strawman-dce", linkAggressiveDCE ++ strawmanClassPath, "-aggressive")
+    def linkDCETests = compileFilesInDir("../tests/link/dce", linkDCE ++ classPath)
+    def linkAggressiveDCETests = compileFilesInDir("../tests/link/dce", linkAggressiveDCE ++ classPath)
+    def linkStrawmanDCETests = linkTests("../tests/link/strawman-dce", linkDCE ++ strawmanClassPath)
+    def linkStrawmanAggressiveDCETests = linkTests("../tests/link/strawman-dce", linkAggressiveDCE ++ strawmanClassPath, "-aggressive")
 
     def linkStdLibDCE = {
-      val testsDir = new JFile("../tests/link-stdlib-dce")
+      val testsDir = new JFile("../tests/link/stdlib-dce")
       val tests = for (test <- testsDir.listFiles() if test.isDirectory) yield {
         val files = sources(Files.walk(test.toPath))
         compileList(test.getName, files, scala2Mode ++ linkDCE ++ stdlibClassPath)
@@ -369,19 +369,24 @@ class CompilationTests extends ParallelTesting {
 
     // specialization tests
 
-    def linkSpecializeTests = linkTests("../tests/link-specialize", linkSpecialize ++ utilsOnlyClassPath)
-    def linkStrawmanSpecializeTests = linkTests("../tests/link-strawman-specialize", linkSpecialize ++ strawmanClassPath)
+    def linkSpecializeTests = linkTests("../tests/link/specialize", linkSpecialize ++ utilsOnlyClassPath)
+    def linkStrawmanSpecializeTests = linkTests("../tests/link/strawman-specialize", linkSpecialize ++ strawmanClassPath)
+
+    // Plain strawman tests
+
+    def strawmanTest = compileFilesInDir("../tests/strawman", basicDefaultOptions ++ strawmanClassPath)
 
     // Run all tests
 
     {
       linkDCETests +
       linkAggressiveDCETests +
-      linkStrawmanDCETests +
-      linkStrawmanAggressiveDCETests +
+      /* linkStrawmanDCETests +
+      linkStrawmanAggressiveDCETests + */
       linkStdLibDCE +
       linkSpecializeTests /* +
-      linkStrawmanSpecializeTests*/
+      linkStrawmanSpecializeTests +
+      strawmanTest */
     }.checkRuns()
 
     libraries.delete()
