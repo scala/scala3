@@ -10,7 +10,7 @@ object StdLibSources {
   /* For debug only */
   private val useExplicitWhiteList = false
 
-  private final val stdLibPath = "../scala-scala/src/library/"
+  private final val stdLibPath = "../scala2-library/src/library/"
 
   def blacklistFile: String = "../compiler/test/dotc/scala-collections.blacklist"
   private def whitelistFile: String = "../compiler/test/dotc/scala-collections.whitelist"

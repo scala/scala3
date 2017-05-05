@@ -24,8 +24,6 @@ object ExposedValues extends AutoPlugin {
 
 object Build {
 
-  projectChecks()
-
   val scalacVersion = "2.11.11" // Do not rename, this is grepped in bin/common.
 
   val dottyOrganization = "ch.epfl.lamp"
@@ -152,7 +150,7 @@ object Build {
     scalacOptions ++= Seq("-bootclasspath", sys.props("sun.boot.class.path")),
 
     // sbt gets very unhappy if two projects use the same target
-    target := baseDirectory.value / ".." / "out" / name.value,
+    target := baseDirectory.value / ".." / "out" / "bootstrap" / name.value,
 
     // The non-bootstrapped dotty-library is not necessary when bootstrapping dotty
     autoScalaLibrary := false,
@@ -234,7 +232,7 @@ object Build {
     settings(commonNonBootstrappedSettings).
     settings(
       triggeredMessage in ThisBuild := Watched.clearWhenTriggered,
-
+      submoduleChecks,
       addCommandAlias("run", "dotty-compiler/run") ++
       addCommandAlias("legacyTests", "dotty-compiler/testOnly dotc.tests")
     )
@@ -1009,14 +1007,15 @@ object DottyInjectedPlugin extends AutoPlugin {
     ))
   }
 
-  private def projectChecks(): Unit = {
-    val scalaScala = new File("scala-scala")
-    if (!scalaScala.exists()) {
-      println(
-        s"""[WARNING] Missing `dotty/scala-scala` library
-           |You can clone the library with:
-           |  > git clone -b dotty-library https://github.com/DarkDimius/scala.git ${scalaScala.getAbsolutePath}
+  lazy val submoduleChecks = onLoad in Global := (onLoad in Global).value andThen { state =>
+    val submodules = List(new File("scala-backend"), new File("scala2-library"), new File("collection-strawman"))
+    if (!submodules.forall(f => f.exists && f.listFiles().nonEmpty)) {
+      sLog.value.log(Level.Error,
+        s"""Missing some of the submodules
+           |You can initialize the modules with:
+           |  > git submodule update --init
         """.stripMargin)
     }
+    state
   }
 }
