@@ -29,8 +29,6 @@ class CompilationTests extends ParallelTesting {
   // Positive tests ------------------------------------------------------------
 
   @Test def compilePos: Unit = {
-    compileList("compileStdLib", StdLibSources.whitelisted, scala2Mode.and("-migration", "-Yno-inline")) +
-    compileList("compileStrawman", strawmanSources, defaultOptions) +
     compileDir("../compiler/src/dotty/tools/dotc/ast", defaultOptions) +
     compileDir("../compiler/src/dotty/tools/dotc/config", defaultOptions) +
     compileDir("../compiler/src/dotty/tools/dotc/core", allowDeepSubtypes) +
@@ -267,63 +265,77 @@ class CompilationTests extends ParallelTesting {
 
   // Link tests -----------------------------------------------------------------
 
-  @Test def linkDCEAll: Unit = {
-    def linkDCETests =
-      compileFilesInDir("../tests/link-dce", linkDCE)
-    def linkAggressiveDCETests =
-      compileFilesInDir("../tests/link-dce", linkAggressiveDCE)
-    def linkStrawmanDCETests =
-      linkTests("../tests/link-strawman-dce", strawmanSources, linkDCE)
-    def linkStrawmanAggressiveDCETests =
-      linkTests("../tests/link-strawman-dce", strawmanSources, linkAggressiveDCE, "-aggressive")
-
-    (linkDCETests + linkAggressiveDCETests + linkStrawmanDCETests + linkStrawmanAggressiveDCETests).checkRuns()
-  }
-
-  @Test def linkDCEStdLibAll: Unit = {
-    val testsDir = new JFile("../tests/link-stdlib-dce")
-    val tests = for (test <- testsDir.listFiles() if test.isDirectory) yield {
-      val files0 = sources(Files.walk(test.toPath))
-      val overwritenFilter = files0.iterator.map(f => test.toPath.relativize(Paths.get(f)).toString).collect {
-        case f if f.startsWith("scala") => "../scala-scala/src/library/" + f
-      }.toSet
-      val files = files0 ++ StdLibSources.whitelisted.filterNot(overwritenFilter)
-      compileList(test.getName, files, linkStdlibMode ++ linkDCE)
+  @Test def linkAll: Unit = {
+    def commonLibraries = {
+      compileList("stdlib", StdLibSources.whitelisted, scala2Mode.and("-migration", "-Yno-inline")) +
+      compileList("strawman", strawmanSources, defaultOptions) +
+      compileList("testUtils", testUtils, defaultOptions)
     }
-    tests.reduce((a, b) => a + b).limitThreads(4).checkRuns()
+
+    // Compile and setup libraries
+
+    val libraries = commonLibraries.keepOutput.checkCompile()
+
+    val commonLibrariesPath = defaultOutputDir + "commonLibraries/"
+    val utils = commonLibrariesPath + "testUtils"
+
+    val utilsOnlyClassPath = mkClassPath(utils :: Jars.dottyTestDeps)
+    val stdlibClassPath = mkClassPath(commonLibrariesPath + "stdlib" :: utils :: Jars.dottyTestDeps)
+    val strawmanClassPath = mkClassPath(commonLibrariesPath + "strawman" :: utils :: Jars.dottyTestDeps)
+
+    // DCE tests
+
+    def linkDCETests = compileFilesInDir("../tests/link-dce", linkDCE ++ classPath)
+    def linkAggressiveDCETests = compileFilesInDir("../tests/link-dce", linkAggressiveDCE ++ classPath)
+    def linkStrawmanDCETests = linkTests("../tests/link-strawman-dce", linkDCE ++ strawmanClassPath)
+    def linkStrawmanAggressiveDCETests = linkTests("../tests/link-strawman-dce", linkAggressiveDCE ++ strawmanClassPath, "-aggressive")
+
+    def linkStdLibDCE = {
+      val testsDir = new JFile("../tests/link-stdlib-dce")
+      val tests = for (test <- testsDir.listFiles() if test.isDirectory) yield {
+        val files = sources(Files.walk(test.toPath))
+        compileList(test.getName, files, scala2Mode ++ linkDCE ++ stdlibClassPath)
+      }
+      tests.reduce((a, b) => a + b)
+    }
+
+    // specialization tests
+
+    def linkSpecializeTests = linkTests("../tests/link-specialize", linkSpecialize ++ utilsOnlyClassPath)
+    def linkStrawmanSpecializeTests = linkTests("../tests/link-strawman-specialize", linkSpecialize ++ strawmanClassPath)
+
+    // Run all tests
+
+    {
+      linkDCETests +
+      linkAggressiveDCETests +
+      linkStrawmanDCETests +
+      linkStrawmanAggressiveDCETests +
+      linkStdLibDCE +
+      linkSpecializeTests +
+      linkStrawmanSpecializeTests
+    }.checkRuns()
+
+    libraries.delete()
   }
 
-  @Test def linkSpecializeAll: Unit = {
-    def linkSpecializeTests =
-      linkTests("../tests/link-specialize", List(specializeUtil), linkSpecialize)
-    def linkStrawmanSpecializeTests =
-      linkTests("../tests/link-strawman-specialize", specializeUtil :: strawmanSources, linkSpecialize)
+  private def strawmanSources =
+    sources(Files.walk(Paths.get("../collection-strawman/src/main")))
 
-    (linkSpecializeTests + linkStrawmanSpecializeTests).checkRuns()
-  }
+  private def testUtils =
+    sources(Files.walk(Paths.get("../tests/utils/")))
 
-  private def specializeUtil = "../tests/link-specialize-util/SpecializeUtil.scala"
-
-  private def linkTests(dir: String, otherSources: List[String], flags: Array[String], nameSuffix: String = ""): CompilationTest = {
+  private def linkTests(dir: String, flags: Array[String], nameSuffix: String = ""): CompilationTest = {
     val testsDir = new JFile(dir)
     val tests = for (test <- testsDir.listFiles() if test.isDirectory || test.getName.endsWith(".scala")) yield {
       val name = if (test.isDirectory) test.getName else test.getName.dropRight(6)
       val files0 = sources(Files.walk(testsDir.toPath))
-      val files = if (test.isDirectory) files0 ::: otherSources else test.getAbsolutePath :: otherSources
+      val files = if (test.isDirectory) files0 else test.getAbsolutePath :: Nil
       compileList(name, files, flags, testsDir.getName + nameSuffix)
     }
     assert(tests.nonEmpty)
     if (tests.length == 1) tests.head
     else tests.reduce((a, b) => a + b)
-  }
-
-  private val strawmanSources = {
-    def collectAllFilesInDir(dir: JFile, acc: List[String]): List[String] = {
-      val files = dir.listFiles()
-      val acc2 = files.foldLeft(acc)((acc1, file) => if (file.isFile && file.getPath.endsWith(".scala")) file.getPath :: acc1 else acc1)
-      files.foldLeft(acc2)((acc3, file) => if (file.isDirectory) collectAllFilesInDir(file, acc3) else acc3)
-    }
-    collectAllFilesInDir(new JFile("../collection-strawman/src/main"), Nil)
   }
 
   private def sources(paths: JStream[Path], excludedFiles: List[String] = Nil): List[String] =

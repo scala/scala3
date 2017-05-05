@@ -1,6 +1,6 @@
-package link
+package tests
 
-object SpecializeUtil {
+object SpecializeUtils {
 
   def checkMethodExists(cls: Class[_], name: String, params: List[Class[_]], ret: Class[_], specialized: Boolean = true): Unit = {
     val nameMatch = if (specialized) name + "\\$spec\\d*" else name

@@ -64,11 +64,16 @@ class DottyUnpickler(bytes: Array[Byte]) extends ClassfileParser.Embedded {
   def summaries(implicit ctx: Context): List[MethodSummary] = {
     val sectionName = TastySummaries.sectionName
     val tastySection = unpickler.unpickle(new SummariesTreeSectionUnpickler(treeUnpickler.symAtAddr, sectionName)).get
-    val treeReader = tastySection.asInstanceOf[SummariesTreeUnpickler].getStartReader(ctx).get
-    val unp = new TastyUnpickler.SectionUnpickler[List[MethodSummary]](sectionName) {
-      def unpickle(reader: TastyReader, tastyName: NameTable): List[MethodSummary] =
-        new TastySummaries.SummaryReader(treeReader, reader)(ctx).read()
+    tastySection.asInstanceOf[SummariesTreeUnpickler].getStartReader(ctx) match {
+      case Some(treeReader) =>
+        val unp = new TastyUnpickler.SectionUnpickler[List[MethodSummary]](sectionName) {
+          def unpickle(reader: TastyReader, tastyName: NameTable): List[MethodSummary] =
+            new TastySummaries.SummaryReader(treeReader, reader)(ctx).read()
+        }
+        unpickler.unpickle(unp).getOrElse(Nil)
+
+      case None => Nil
     }
-    unpickler.unpickle(unp).getOrElse(Nil)
+
   }
 }

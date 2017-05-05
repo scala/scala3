@@ -1,4 +1,4 @@
-import link.SpecializeUtil._
+import tests.SpecializeUtils._
 
 object Test {
   def main(args: Array[String]): Unit = {

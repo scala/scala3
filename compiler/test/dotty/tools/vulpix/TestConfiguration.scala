@@ -23,8 +23,10 @@ object TestConfiguration {
     "-Yforce-sbt-phases"
   )
 
-  val classPath = {
-    val paths = Jars.dottyTestDeps map { p =>
+  val classPath = mkClassPath(Jars.dottyTestDeps)
+
+  def mkClassPath(classPaths: List[String]): Array[String] = {
+    val paths = classPaths map { p =>
       val file = new java.io.File(p)
       assert(
         file.exists,
@@ -52,7 +54,8 @@ object TestConfiguration {
 
   private val yCheckOptions = Array("-Ycheck:tailrec,resolveSuper,mixin,restoreScopes,labelDef")
 
-  val defaultOptions = noCheckOptions ++ checkOptions ++ yCheckOptions ++ classPath
+  val basicDefaultOptions = noCheckOptions ++ checkOptions ++ yCheckOptions
+  val defaultOptions = basicDefaultOptions ++ classPath
   val allowDeepSubtypes = defaultOptions diff Array("-Yno-deep-subtypes")
   val allowDoubleBindings = defaultOptions diff Array("-Yno-double-bindings")
   val picklingOptions = defaultOptions ++ Array(
@@ -67,7 +70,7 @@ object TestConfiguration {
   val stdlibMode  = scala2Mode.and("-migration", "-Yno-inline")
   val linkStdlibMode = stdlibMode.and("-Ylink-stdlib")
 
-  val linkCommon = Array("-link-vis", "-Ylog:callGraph") ++ defaultOptions
+  val linkCommon = Array("-link-vis", "-Ylog:callGraph") ++ basicDefaultOptions
   val linkDCEcommon = Array("-link-java-conservative", "-Ylink-dce-checks") ++ linkCommon
   val linkDCE = "-link-dce" +: linkDCEcommon
   val linkAggressiveDCE = "-link-aggressive-dce" +: linkDCEcommon
