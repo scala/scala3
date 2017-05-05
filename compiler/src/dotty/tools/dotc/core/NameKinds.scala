@@ -305,7 +305,7 @@ object NameKinds {
       case _ => None
     }
 
-    def mkString(underlying: TermName, info: ThisInfo): String = unsupported("mkString")
+    def mkString(underlying: TermName, info: ThisInfo): String = s"$underlying[with sig ${info.sig}]"
     def infoString: String = "Signed"
   }
 
