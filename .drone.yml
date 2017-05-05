@@ -40,5 +40,5 @@ matrix:
       CI_PUBLISH: false
     - CI_TEST: ;test;sbt-dotty/scripted
       CI_PUBLISH: false
-    - CI_TEST: ;dotty-sbt-bridge/publishLocal ;dotty-bootstrapped/test
+    - CI_TEST: dotty-bootstrapped/test
       CI_PUBLISH: false
