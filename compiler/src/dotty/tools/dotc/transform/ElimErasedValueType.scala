@@ -89,8 +89,8 @@ class ElimErasedValueType extends MiniPhaseTransform with InfoTransformer {
       if (!info1.matchesLoosely(info2))
         ctx.error(
             em"""double definition:
-                |$sym1: $info1 in ${sym1.owner} ${sym1.flags} and
-                |$sym2: $info2 in ${sym2.owner} ${sym2.flags}
+                |$sym1: $info1 in ${sym1.owner} and
+                |$sym2: $info2 in ${sym2.owner}
                 |have same type after erasure: $info""",
             root.pos)
     }
