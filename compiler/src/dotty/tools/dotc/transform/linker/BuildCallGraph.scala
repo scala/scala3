@@ -114,7 +114,9 @@ class BuildCallGraph extends Phase {
       }
 
       def loadCompilationUnits(clsd: ClassDenotation): List[CompilationUnit] = clsd.dottyUnpickler match {
-        case Some(unpickler: DottyUnpickler) => List(FromTasty.compilationUnit(clsd, unpickler))
+        case Some(unpickler: DottyUnpickler) =>
+          ctx.log("Loading compilation unit for: " + clsd)
+          List(FromTasty.compilationUnit(clsd, unpickler))
         case _ => Nil
       }
 
