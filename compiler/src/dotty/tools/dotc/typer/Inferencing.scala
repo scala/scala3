@@ -187,17 +187,6 @@ object Inferencing {
     approxAbove - approxBelow
   }
 
-  /** Recursively widen and also follow type declarations and type aliases. */
-  def widenForMatchSelector(tp: Type)(implicit ctx: Context): Type = tp.widen match {
-    case tp: TypeRef if !tp.symbol.isClass =>
-      widenForMatchSelector(tp.superType)
-    case tp: HKApply =>
-      widenForMatchSelector(tp.superType)
-    case tp: AnnotatedType =>
-      tp.derivedAnnotatedType(widenForMatchSelector(tp.tpe), tp.annot)
-    case tp => tp
-  }
-
   /** Following type aliases and stripping refinements and annotations, if one arrives at a
    *  class type reference where the class has a companion module, a reference to
    *  that companion module. Otherwise NoType

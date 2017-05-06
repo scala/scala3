@@ -834,8 +834,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
         typed(desugar.makeCaseLambda(tree.cases, protoFormals.length, unchecked) withPos tree.pos, pt)
       case _ =>
         val sel1 = typedExpr(tree.selector)
-        val selType = widenForMatchSelector(
-            fullyDefinedType(sel1.tpe, "pattern selector", tree.pos))
+        val selType = fullyDefinedType(sel1.tpe, "pattern selector", tree.pos).widen
 
         val cases1 = typedCases(tree.cases, selType, pt.notApplied)
         val cases2 = harmonize(cases1).asInstanceOf[List[CaseDef]]
