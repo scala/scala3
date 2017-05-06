@@ -347,7 +347,7 @@ class TreePickler(pickler: TastyPickler) {
             case _ => name
           }
           val sig = tree.tpe.signature
-          if (sig == Signature.NotAMethod) pickleName(realName)
+          if (name.isTypeName || sig == Signature.NotAMethod) pickleName(realName)
           else pickleNameAndSig(realName, sig)
           pickleTree(qual)
         case Apply(fun, args) =>
