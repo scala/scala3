@@ -245,9 +245,6 @@ trait PullRequestService {
     val body =
       s"""|Hello, and thank you for opening this PR! :tada:
           |
-          |If you haven't already, please request a review from one of our
-          |collaborators (have no fear, we don't bite)!
-          |
           |$cla
           |
           |$commitRules
