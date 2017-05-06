@@ -98,10 +98,10 @@ class SymUtils(val self: Symbol) extends AnyVal {
     else accessorNamed(self.asTerm.name.setterName)
 
   def field(implicit ctx: Context): Symbol = {
-    val fieldName = if (self.hasAnnotation(defn.ScalaStaticAnnot)) {
-      self.name.asTermName.getterName
-    } else self.asTerm.name.fieldName
-    
+    val thisName = self.name.asTermName
+    val fieldName =
+      if (self.hasAnnotation(defn.ScalaStaticAnnot)) thisName.getterName
+      else thisName.fieldName
     self.owner.info.decl(fieldName).suchThat(!_.is(Method)).symbol
   }
 
