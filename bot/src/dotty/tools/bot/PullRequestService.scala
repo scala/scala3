@@ -103,6 +103,9 @@ trait PullRequestService {
   def reviewUrl(issueNbr: Int): String =
     withGithubSecret(s"$githubUrl/repos/lampepfl/dotty/pulls/$issueNbr/reviews")
 
+  def contributorsUrl: String =
+    withGithubSecret("https://api.github.com/repos/lampepfl/dotty/contributors")
+
   sealed trait CommitStatus {
     def commit: Commit
     def isValid: Boolean
@@ -183,6 +186,13 @@ trait PullRequestService {
       .headOption
   }
 
+  /** Get all contributors from GitHub */
+  def getContributors(implicit client: Client): Task[Set[String]] =
+    for {
+      authors <- client.expect(get(contributorsUrl))(jsonOf[List[Author]])
+      logins  =  authors.map(_.login).flatten
+    } yield logins.toSet
+
   /** Ordered from earliest to latest */
   def getCommits(issueNbr: Int)(implicit httpClient: Client): Task[List[Commit]] = {
     def makeRequest(url: String): Task[List[Commit]] =
@@ -226,8 +236,11 @@ trait PullRequestService {
       wrongTense || firstLine.last == '.' || firstLine.length > 80
     }
 
-  def sendInitialComment(issueNbr: Int, invalidUsers: List[String], commits: List[Commit], client: Client): Task[ReviewResponse] = {
-
+  /** Returns the body of a `ReviewResponse` */
+  def sendInitialComment(issueNbr: Int,
+                         invalidUsers: List[String],
+                         commits: List[Commit],
+                         newContributors: Boolean)(implicit client: Client): Task[String] = {
     val cla = if (invalidUsers.nonEmpty) {
       s"""|## CLA ##
           |In order for us to be able to accept your contribution, all users
@@ -272,9 +285,16 @@ trait PullRequestService {
 
     val review = Review.comment(body)
 
+    val shouldPost = newContributors || commitRules.nonEmpty || invalidUsers.nonEmpty
+
     for {
       req <- post(reviewUrl(issueNbr)).withAuth(githubUser, githubToken)
-      res <- client.expect(req.withBody(review.asJson))(jsonOf[ReviewResponse])
+      res <- {
+        if (shouldPost)
+          client.expect(req.withBody(review.asJson))(jsonOf[ReviewResponse]).map(_.body)
+        else
+          Task.now("")
+      }
     } yield res
   }
 
@@ -299,10 +319,12 @@ trait PullRequestService {
           setStatus(statuses.last, httpClient)
       }
 
-      // Send positive comment:
-      _    <- sendInitialComment(issue.number, invalidUsers, commits, httpClient)
-      _    <- httpClient.shutdown
-      resp <- Ok("Fresh PR checked")
+      authors  =  commits.map(_.author.login).flatten.toSet
+      contribs <- getContributors
+      newContr =  !authors.forall(contribs.contains)
+      _        <- sendInitialComment(issue.number, invalidUsers, commits, newContr)
+      _        <- httpClient.shutdown
+      resp     <- Ok("Fresh PR checked")
     } yield resp
 
   }
