@@ -20,11 +20,11 @@ class Test(val tb: Toolbox) {
   import tb._
   implicit val cap: Cap = null
 
-  def foo(tree: Tree): Int = tree match { // error: private escape
-    case tb.Apply(fun, args) => 3 // error
+  def foo(tree: Tree): Int = (tree: Any) match {
+    case tb.Apply(fun, args) => 3 // error, but error message is wrong
   }
 
-  def bar(tree: tpd.Tree): Int = tree match {  // error: private escape
-    case Apply(fun, args) => 3 // error
+  def bar(tree: tpd.Tree): Int = (tree: Any) match {
+    case Apply(fun, args) => 3 // error, but error message is wrong
   }
 }
