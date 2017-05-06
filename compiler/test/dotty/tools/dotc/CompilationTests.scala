@@ -244,7 +244,7 @@ class CompilationTests extends ParallelTesting {
     }.map(_.checkCompile()).foreach(_.delete())
   }
 
-  /** Add a `z` so that hey run last. TODO: Only run them selectively? */
+  /** Add a `z` so that they run last. TODO: Only run them selectively? */
   @Test def zBytecodeIdempotency: Unit = {
     var failed = 0
     var total = 0

@@ -247,7 +247,7 @@ object Names {
     }
 
     @sharable // because it's just a cache for performance
-    private[Names] var myMangledString: String = null
+    private[this] var myMangledString: String = null
 
     @sharable // because it's just a cache for performance
     private[this] var myMangled: Name = null
