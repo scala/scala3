@@ -354,6 +354,7 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
     case Bind(_, pat) => project(pat)
     case UnApply(_, _, pats) =>
       if (pat.tpe.classSymbol.is(CaseClass))
+        // FIXME: why dealias is needed here?
         Kon(pat.tpe.stripAnnots.dealias, pats.map(pat => project(pat, roundUp)))
       else if (roundUp) Typ(pat.tpe.stripAnnots, false)
       else Empty
