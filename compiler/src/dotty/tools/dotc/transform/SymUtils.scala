@@ -97,8 +97,13 @@ class SymUtils(val self: Symbol) extends AnyVal {
     if (self.isSetter) self
     else accessorNamed(self.asTerm.name.setterName)
 
-  def field(implicit ctx: Context): Symbol =
-    self.owner.info.decl(self.asTerm.name.fieldName).suchThat(!_.is(Method)).symbol
+  def field(implicit ctx: Context): Symbol = {
+    val thisName = self.name.asTermName
+    val fieldName =
+      if (self.hasAnnotation(defn.ScalaStaticAnnot)) thisName.getterName
+      else thisName.fieldName
+    self.owner.info.decl(fieldName).suchThat(!_.is(Method)).symbol
+  }
 
   def isField(implicit ctx: Context): Boolean =
     self.isTerm && !self.is(Method)

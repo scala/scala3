@@ -69,6 +69,7 @@ import Decorators._
     val sym = tree.symbol
 
     def newField = {
+      assert(!sym.hasAnnotation(defn.ScalaStaticAnnot))
       val fieldType =
         if (sym.isGetter) sym.info.resultType
         else /*sym.isSetter*/ sym.info.firstParamTypes.head
