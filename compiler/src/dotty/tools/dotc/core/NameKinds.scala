@@ -61,8 +61,7 @@ object NameKinds {
     def infoString: String
   }
 
-  /** The kind of SimpleNames */
-  val SimpleNameKind = new NameKind(UTF8) { self =>
+  object SimpleNameKind extends NameKind(UTF8) { self =>
     type ThisInfo = Info
     val info = new Info
     def mkString(underlying: TermName, info: ThisInfo) = unsupported("mkString")
@@ -359,7 +358,7 @@ object NameKinds {
   val ModuleClassName = new SuffixNameKind(OBJECTCLASS, "$", optInfoString = "ModuleClass")
 
   /** A name together with a signature. Used in Tasty trees. */
-  val SignedName = new NameKind(63) {
+  object SignedName extends NameKind(63) {
 
     case class SignedInfo(sig: Signature) extends Info {
       override def toString = s"$infoString $sig"
