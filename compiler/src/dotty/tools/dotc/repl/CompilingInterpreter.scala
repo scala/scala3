@@ -742,7 +742,7 @@ class CompilingInterpreter(
       override def shouldShowResult(req: Request): Boolean =
         !statement.mods.is(Flags.AccessFlags) &&
           !(isGeneratedVarName(statement.name.toString) &&
-            req.typeOf(statement.name.encode) == "Unit")
+            req.typeOf(statement.name) == "Unit")
     }
 
 
@@ -812,7 +812,7 @@ class CompilingInterpreter(
       /** Print out lhs instead of the generated varName */
       override def resultExtractionCode(req: Request, code: PrintWriter): Unit = {
         code.print(" + \"" + lhs.show + ": " +
-          string2code(req.typeOf(helperName.encode)) +
+          string2code(req.typeOf(helperName)) +
           " = \" + " +
           string2code(req.fullPath(helperName))
           + " + \"\\n\"")

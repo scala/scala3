@@ -120,7 +120,7 @@ abstract class CharArrayReader { self =>
   def isAtEnd = charOffset >= buf.length
 
   /** A new reader that takes off at the current character position */
-  def lookaheadReader = new CharArrayLookaheadReader
+  def lookaheadReader() = new CharArrayLookaheadReader
 
   class CharArrayLookaheadReader extends CharArrayReader {
     val buf = self.buf

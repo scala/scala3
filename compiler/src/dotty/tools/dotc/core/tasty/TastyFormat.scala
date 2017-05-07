@@ -29,16 +29,29 @@ Macro-format:
   Section       = NameRef Length Bytes
   Length        = Nat                    // length of rest of entry in bytes
 
-  Name          = UTF8           Length UTF8-CodePoint*
-                  QUALIFIED      Length qualified_NameRef selector_NameRef
-                  SIGNED         Length original_NameRef resultSig_NameRef paramSig_NameRef*
-                  EXPANDED       Length original_NameRef
-                  UNIQUE         Length separator_NameRef num_Nat original_NameRef?
-                  OBJECTCLASS    Length module_NameRef
-                  SUPERACCESSOR  Length accessed_NameRef
-                  DEFAULTGETTER  Length method_NameRef paramNumber_Nat
-                  SHADOWED       Length original_NameRef
-                  ...
+  Name          = UTF8              Length UTF8-CodePoint*
+                  QUALIFIED         Length qualified_NameRef selector_NameRef
+                  FLATTENED         Length qualified_NameRef selector_NameRef
+                  EXPANDED          Length qualified_NameRef selector_NameRef
+                  EXPANDEDPREFIX    Length qualified_NameRef selector_NameRef
+                  TRAITSETTER       Length qualified_NameRef selector_NameRef
+                  UNIQUE            Length separator_NameRef uniqid_Nat underlying_NameRef?
+									DEFAULTGETTER     Length underlying_NameRef index_Nat
+									VARIANT           Length underlying_NameRef variance_Nat      // 0: Contravariant, 1: Covariant
+									OUTERSELECT       Length underlying_NameRef nhops_Nat         // a reference to `nhops` <outer> selections, followed by `underlying`
+
+									SUPERACCESSOR     Length underlying_NameRef
+									PROTECTEDACCESSOR Length underlying_NameRef
+									PROTECTEDSETTER   Length underlying_NameRef
+									INITIALIZER       Length underlying_NameRef
+									SHADOWED          Length underlying_NameRef
+									AVOIDCLASH        Length underlying_NameRef
+									DIRECT            Length underlying_NameRef
+									FIELD             Length underlying_NameRef
+									EXTMETH           Length underlying_NameRef
+									OBJECTVAR         Length underlying_NameRef
+									OBJECTCLASS       Length underlying_NameRef
+                  SIGNED            Length original_NameRef resultSig_NameRef paramSig_NameRef*
 
   NameRef       = Nat                    // ordinal number of name in name table, starting from 1.
 
@@ -238,8 +251,7 @@ object TastyFormat {
   final val AVOIDCLASH = 30
   final val DIRECT = 31
   final val FIELD = 32
-  final val SETTER = 33
-  final val EXTMETH = 34
+  final val EXTMETH = 33
   final val OBJECTVAR = 39
   final val OBJECTCLASS = 40
 
@@ -428,12 +440,26 @@ object TastyFormat {
     case QUALIFIED => "QUALIFIED"
     case FLATTENED => "FLATTENED"
     case EXPANDED => "EXPANDED"
-    case SIGNED => "SIGNED"
-    case OBJECTCLASS => "OBJECTCLASS"
-    case SUPERACCESSOR => "SUPERACCESSOR"
+    case EXPANDPREFIX => "EXPANDPREFIX"
+    case TRAITSETTER => "TRAITSETTER"
+    case UNIQUE => "UNIQUE"
     case DEFAULTGETTER => "DEFAULTGETTER"
-    case SHADOWED => "SHADOWED"
     case VARIANT => "VARIANT"
+    case OUTERSELECT => "OUTERSELECT"
+
+    case SUPERACCESSOR => "SUPERACCESSOR"
+    case PROTECTEDACCESSOR => "PROTECTEDACCESSOR"
+    case PROTECTEDSETTER => "PROTECTEDSETTER"
+    case INITIALIZER => "INITIALIZER"
+    case SHADOWED => "SHADOWED"
+    case AVOIDCLASH => "AVOIDCLASH"
+    case DIRECT => "DIRECT"
+    case FIELD => "FIELD"
+    case EXTMETH => "EXTMETH"
+    case OBJECTVAR => "OBJECTVAR"
+    case OBJECTCLASS => "OBJECTCLASS"
+
+    case SIGNED => "SIGNED"
   }
 
   def astTagToString(tag: Int): String = tag match {

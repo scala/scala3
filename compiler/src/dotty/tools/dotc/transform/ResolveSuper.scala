@@ -19,7 +19,6 @@ import util.Positions._
 import Names._
 import collection.mutable
 import ResolveSuper._
-import config.Config
 
 /** This phase adds super accessors and method overrides where
  *  linearization differs from Java's rule for default methods in interfaces.
@@ -96,7 +95,7 @@ object ResolveSuper {
   def rebindSuper(base: Symbol, acc: Symbol)(implicit ctx: Context): Symbol = {
     var bcs = base.info.baseClasses.dropWhile(acc.owner != _).tail
     var sym: Symbol = NoSymbol
-    val SuperAccessorName(memberName) = acc.name.unexpandedName // dotty deviation: ": Name" needed otherwise pattern type is neither a subtype nor a supertype of selector type
+    val SuperAccessorName(memberName) = acc.name.unexpandedName
     ctx.debuglog(i"starting rebindsuper from $base of ${acc.showLocated}: ${acc.info} in $bcs, name = $memberName")
     while (bcs.nonEmpty && sym == NoSymbol) {
       val other = bcs.head.info.nonPrivateDecl(memberName)

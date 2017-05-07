@@ -82,7 +82,7 @@ class SyntheticMethods(thisTransformer: DenotTransformer) {
         ref(defn.runtimeMethodRef("_" + sym.name.toString)).appliedToArgs(This(clazz) :: vrefss.head)
 
       def ownName(vrefss: List[List[Tree]]): Tree =
-        Literal(Constant(clazz.name.stripModuleClassSuffix.decode.toString))
+        Literal(Constant(clazz.name.stripModuleClassSuffix.toString))
 
       def syntheticRHS(implicit ctx: Context): List[List[Tree]] => Tree = synthetic.name match {
         case nme.hashCode_ if isDerivedValueClass(clazz) => vrefss => valueHashCodeBody

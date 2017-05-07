@@ -111,7 +111,7 @@ object JavaParsers {
 
     def makeTemplate(parents: List[Tree], stats: List[Tree], tparams: List[TypeDef], needsDummyConstr: Boolean) = {
       def pullOutFirstConstr(stats: List[Tree]): (Tree, List[Tree]) = stats match {
-        case (meth: DefDef) :: rest if meth.name == CONSTRUCTOR => (meth, rest)
+        case (meth: DefDef) :: rest if meth.name == nme.CONSTRUCTOR => (meth, rest)
         case first :: rest =>
           val (constr, tail) = pullOutFirstConstr(rest)
           (constr, first :: tail)

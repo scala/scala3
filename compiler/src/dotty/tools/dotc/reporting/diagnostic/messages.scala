@@ -1057,7 +1057,7 @@ object messages {
            |""".stripMargin
   }
 
-  case class ExpectedTokenButFound(expected: Token, found: Token, foundName: TermName)(implicit ctx: Context)
+  case class ExpectedTokenButFound(expected: Token, found: Token)(implicit ctx: Context)
   extends Message(ExpectedTokenButFoundID) {
     val kind = "Syntax"
 
@@ -1065,9 +1065,7 @@ object messages {
       if (Tokens.isIdentifier(expected)) "an identifier"
       else Tokens.showToken(expected)
 
-    private val foundText =
-      if (foundName != null) hl"`${foundName.show}`"
-      else Tokens.showToken(found)
+    private val foundText = Tokens.showToken(found)
 
     val msg = hl"""${expectedText} expected, but ${foundText} found"""
 
@@ -1077,10 +1075,7 @@ object messages {
            |If you necessarily want to use $foundText as identifier, you may put it in backticks.""".stripMargin
       else
         ""
-
-    val explanation =
-      s"""|The text ${foundText} may not occur at that position, the compiler expected ${expectedText}.$ifKeyword
-          |""".stripMargin
+    val explanation = s"$ifKeyword"
   }
 
   case class MixedLeftAndRightAssociativeOps(op1: Name, op2: Name, op2LeftAssoc: Boolean)(implicit ctx: Context)

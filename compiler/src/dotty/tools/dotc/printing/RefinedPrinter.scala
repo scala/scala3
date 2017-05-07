@@ -60,7 +60,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
   protected val PrintableFlags = (SourceModifierFlags | Label | Module | Local).toCommonFlags
 
   override def nameString(name: Name): String =
-    if (ctx.settings.debugNames.value) name.debugString else name.decode.toString
+    if (ctx.settings.debugNames.value) name.debugString else name.toString
 
   override protected def simpleNameString(sym: Symbol): String = {
     val name = if (ctx.property(XprintMode).isEmpty) sym.originalName else sym.name
@@ -157,7 +157,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         withoutPos(super.toText(tp))
       case tp: SelectionProto =>
         return "?{ " ~ toText(tp.name) ~
-           (" " provided !tp.name.toSimpleName.decode.last.isLetterOrDigit) ~
+           (" " provided !tp.name.toSimpleName.last.isLetterOrDigit) ~
            ": " ~ toText(tp.memberProto) ~ " }"
       case tp: ViewProto =>
         return toText(tp.argType) ~ " ?=>? " ~ toText(tp.resultType)

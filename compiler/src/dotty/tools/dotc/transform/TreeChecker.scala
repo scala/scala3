@@ -25,6 +25,7 @@ import reporting.ThrowingReporter
 import ast.Trees._
 import ast.{tpd, untpd}
 import util.SourcePosition
+import util.Chars._
 import collection.mutable
 import ProtoTypes._
 import config.Printers
@@ -51,11 +52,9 @@ class TreeChecker extends Phase with SymTransformer {
   private val seenClasses = collection.mutable.HashMap[String, Symbol]()
   private val seenModuleVals = collection.mutable.HashMap[String, Symbol]()
 
-  def isValidJVMName(name: Name) =
-      !name.toString.exists(c => c == '.' || c == ';' || c =='[' || c == '/')
+  def isValidJVMName(name: Name) = name.toString.forall(isValidJVMChar)
 
-  def isValidJVMMethodName(name: Name) =
-      !name.toString.exists(c => c == '.' || c == ';' || c =='[' || c == '/' || c == '<' || c == '>')
+  def isValidJVMMethodName(name: Name) = name.toString.forall(isValidJVMMethodChar)
 
   def printError(str: String)(implicit ctx: Context) = {
     ctx.echo(Console.RED + "[error] " + Console.WHITE  + str)
@@ -149,7 +148,7 @@ class TreeChecker extends Phase with SymTransformer {
     def withDefinedSym[T](tree: untpd.Tree)(op: => T)(implicit ctx: Context): T = tree match {
       case tree: untpd.DefTree =>
         val sym = tree.symbol
-        assert(isValidJVMName(sym.name), s"${sym.fullName} name is invalid on jvm")
+        assert(isValidJVMName(sym.name.encode), s"${sym.name.debugString} name is invalid on jvm")
         everDefinedSyms.get(sym) match {
           case Some(t)  =>
             if (t ne tree)
@@ -385,8 +384,8 @@ class TreeChecker extends Phase with SymTransformer {
     override def typedDefDef(ddef: untpd.DefDef, sym: Symbol)(implicit ctx: Context) =
       withDefinedSyms(ddef.tparams) {
         withDefinedSymss(ddef.vparamss) {
-          if (!sym.isClassConstructor && !(sym.name eq Names.STATIC_CONSTRUCTOR))
-            assert(isValidJVMMethodName(sym.name), s"${sym.name.debugString} name is invalid on jvm")
+          if (!sym.isClassConstructor && !(sym.name eq nme.STATIC_CONSTRUCTOR))
+            assert(isValidJVMMethodName(sym.name.encode), s"${sym.name.debugString} name is invalid on jvm")
 
           ddef.vparamss.foreach(_.foreach { vparam =>
             assert(vparam.symbol.is(Param),

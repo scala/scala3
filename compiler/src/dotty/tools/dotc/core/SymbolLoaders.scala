@@ -41,7 +41,7 @@ class SymbolLoaders {
   def enterClass(
       owner: Symbol, name: PreName, completer: SymbolLoader,
       flags: FlagSet = EmptyFlags, scope: Scope = EmptyScope)(implicit ctx: Context): Symbol = {
-    val cls = ctx.newClassSymbol(owner, name.toTypeName, flags, completer, assocFile = completer.sourceFileOrNull)
+    val cls = ctx.newClassSymbol(owner, name.toTypeName.unmangleClassName.decode, flags, completer, assocFile = completer.sourceFileOrNull)
     enterNew(owner, cls, completer, scope)
   }
 
@@ -51,7 +51,7 @@ class SymbolLoaders {
       owner: Symbol, name: PreName, completer: SymbolLoader,
       modFlags: FlagSet = EmptyFlags, clsFlags: FlagSet = EmptyFlags, scope: Scope = EmptyScope)(implicit ctx: Context): Symbol = {
     val module = ctx.newModuleSymbol(
-      owner, name.toTermName, modFlags, clsFlags,
+      owner, name.toTermName.decode, modFlags, clsFlags,
       (module, _) => completer.proxy withDecls newScope withSourceModule (_ => module),
       assocFile = completer.sourceFileOrNull)
     enterNew(owner, module, completer, scope)
@@ -186,7 +186,7 @@ class SymbolLoaders {
 
     private[core] val currentDecls: MutableScope = new PackageScope()
 
-    def isFlatName(name: SimpleTermName) = name.lastIndexOf('$', name.length - 2) >= 0
+    def isFlatName(name: SimpleName) = name.lastIndexOf('$', name.length - 2) >= 0
 
     def isFlatName(classRep: ClassRepresentation) = {
       val idx = classRep.name.indexOf('$')

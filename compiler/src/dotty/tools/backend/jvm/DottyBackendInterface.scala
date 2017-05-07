@@ -634,7 +634,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
         toDenot(sym)(shiftedContext).isStatic(shiftedContext)
       }
 
-    def isStaticConstructor: Boolean = (isStaticMember && isClassConstructor) || (sym.name eq core.Names.STATIC_CONSTRUCTOR)
+    def isStaticConstructor: Boolean = (isStaticMember && isClassConstructor) || (sym.name eq nme.STATIC_CONSTRUCTOR)
 
 
     // navigation

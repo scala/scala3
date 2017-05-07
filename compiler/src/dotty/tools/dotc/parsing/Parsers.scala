@@ -266,7 +266,7 @@ object Parsers {
     def accept(token: Int): Int = {
       val offset = in.offset
       if (in.token != token) {
-        syntaxErrorOrIncomplete(ExpectedTokenButFound(token, in.token, in.name))
+        syntaxErrorOrIncomplete(ExpectedTokenButFound(token, in.token))
       }
       if (in.token == token) in.nextToken()
       offset
@@ -477,7 +477,7 @@ object Parsers {
         in.nextToken()
         name
       } else {
-        syntaxErrorOrIncomplete(ExpectedTokenButFound(IDENTIFIER, in.token, in.name))
+        syntaxErrorOrIncomplete(ExpectedTokenButFound(IDENTIFIER, in.token))
         nme.ERROR
       }
 
