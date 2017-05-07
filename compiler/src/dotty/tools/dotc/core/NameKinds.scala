@@ -62,7 +62,7 @@ object NameKinds {
   }
 
   /** The kind of SimpleNames */
-  object SimpleNameKind extends NameKind(UTF8) { self =>
+  val SimpleNameKind = new NameKind(UTF8) { self =>
     type ThisInfo = Info
     val info = new Info
     def mkString(underlying: TermName, info: ThisInfo) = unsupported("mkString")
@@ -311,7 +311,7 @@ object NameKinds {
   val PatMatSelectorName      = new UniqueNameKind("selector")
 
   /** The kind of names of default argument getters */
-  object DefaultGetterName extends NumberedNameKind(DEFAULTGETTER, "DefaultGetter") {
+  val DefaultGetterName = new NumberedNameKind(DEFAULTGETTER, "DefaultGetter") {
     def mkString(underlying: TermName, info: ThisInfo) = {
       val prefix = if (underlying.isConstructorName) nme.DEFAULT_GETTER_INIT else underlying
       prefix.toString + str.DEFAULT_GETTER + (info.num + 1)
@@ -330,14 +330,14 @@ object NameKinds {
   }
 
   /** The kind of names that also encode a variance: 0 for contravariance, 1 for covariance. */
-  object VariantName extends NumberedNameKind(VARIANT, "Variant") {
+  val VariantName = new NumberedNameKind(VARIANT, "Variant") {
     def mkString(underlying: TermName, info: ThisInfo) = "-+"(info.num).toString + underlying
   }
 
   /** Names of the form N_<outer>. Emitted by inliner, replaced by outer path
    *  in ExplicitOuter.
    */
-  object OuterSelectName extends NumberedNameKind(OUTERSELECT, "OuterSelect") {
+  val OuterSelectName = new NumberedNameKind(OUTERSELECT, "OuterSelect") {
     def mkString(underlying: TermName, info: ThisInfo) = {
       assert(underlying.isEmpty)
       info.num + "_<outer>"
@@ -359,7 +359,7 @@ object NameKinds {
   val ModuleClassName = new SuffixNameKind(OBJECTCLASS, "$", optInfoString = "ModuleClass")
 
   /** A name together with a signature. Used in Tasty trees. */
-  object SignedName extends NameKind(63) {
+  val SignedName = new NameKind(63) {
 
     case class SignedInfo(sig: Signature) extends Info {
       override def toString = s"$infoString $sig"
