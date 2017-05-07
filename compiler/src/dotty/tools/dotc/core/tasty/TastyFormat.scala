@@ -36,21 +36,21 @@ Macro-format:
                   EXPANDEDPREFIX    Length qualified_NameRef selector_NameRef
                   TRAITSETTER       Length qualified_NameRef selector_NameRef
                   UNIQUE            Length separator_NameRef uniqid_Nat underlying_NameRef?
-									DEFAULTGETTER     Length underlying_NameRef index_Nat
-									VARIANT           Length underlying_NameRef variance_Nat      // 0: Contravariant, 1: Covariant
-									OUTERSELECT       Length underlying_NameRef nhops_Nat         // a reference to `nhops` <outer> selections, followed by `underlying`
+                  DEFAULTGETTER     Length underlying_NameRef index_Nat
+                  VARIANT           Length underlying_NameRef variance_Nat      // 0: Contravariant, 1: Covariant
+                  OUTERSELECT       Length underlying_NameRef nhops_Nat         // a reference to `nhops` <outer> selections, followed by `underlying`
 
-									SUPERACCESSOR     Length underlying_NameRef
-									PROTECTEDACCESSOR Length underlying_NameRef
-									PROTECTEDSETTER   Length underlying_NameRef
-									INITIALIZER       Length underlying_NameRef
-									SHADOWED          Length underlying_NameRef
-									AVOIDCLASH        Length underlying_NameRef
-									DIRECT            Length underlying_NameRef
-									FIELD             Length underlying_NameRef
-									EXTMETH           Length underlying_NameRef
-									OBJECTVAR         Length underlying_NameRef
-									OBJECTCLASS       Length underlying_NameRef
+                  SUPERACCESSOR     Length underlying_NameRef
+                  PROTECTEDACCESSOR Length underlying_NameRef
+                  PROTECTEDSETTER   Length underlying_NameRef
+                  INITIALIZER       Length underlying_NameRef
+                  SHADOWED          Length underlying_NameRef
+                  AVOIDCLASH        Length underlying_NameRef
+                  DIRECT            Length underlying_NameRef
+                  FIELD             Length underlying_NameRef
+                  EXTMETH           Length underlying_NameRef
+                  OBJECTVAR         Length underlying_NameRef
+                  OBJECTCLASS       Length underlying_NameRef
                   SIGNED            Length original_NameRef resultSig_NameRef paramSig_NameRef*
 
   NameRef       = Nat                    // ordinal number of name in name table, starting from 1.

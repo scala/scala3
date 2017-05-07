@@ -1,16 +1,16 @@
 B:
-private final int B.theValue$$local
-private final int B.theValueInB$$local
+private final int B.theValue
+private final int B.theValueInB
 Bz:
-private final int Bz.theValue$$local
-private final int Bz.theValueInBz$$local
+private final int Bz.theValue
+private final int Bz.theValueInBz
 C:
 
 D:
-private final int D.other$$local
+private final int D.other
 NonVal:
 
 X:
-private final int X.theValue$$local
+private final int X.theValue
 Y:
 

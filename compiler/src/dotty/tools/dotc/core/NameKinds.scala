@@ -61,7 +61,6 @@ object NameKinds {
     def infoString: String
   }
 
-  /** The kind of SimpleNames */
   object SimpleNameKind extends NameKind(UTF8) { self =>
     type ThisInfo = Info
     val info = new Info
@@ -311,7 +310,7 @@ object NameKinds {
   val PatMatSelectorName      = new UniqueNameKind("selector")
 
   /** The kind of names of default argument getters */
-  object DefaultGetterName extends NumberedNameKind(DEFAULTGETTER, "DefaultGetter") {
+  val DefaultGetterName = new NumberedNameKind(DEFAULTGETTER, "DefaultGetter") {
     def mkString(underlying: TermName, info: ThisInfo) = {
       val prefix = if (underlying.isConstructorName) nme.DEFAULT_GETTER_INIT else underlying
       prefix.toString + str.DEFAULT_GETTER + (info.num + 1)
@@ -330,14 +329,14 @@ object NameKinds {
   }
 
   /** The kind of names that also encode a variance: 0 for contravariance, 1 for covariance. */
-  object VariantName extends NumberedNameKind(VARIANT, "Variant") {
+  val VariantName = new NumberedNameKind(VARIANT, "Variant") {
     def mkString(underlying: TermName, info: ThisInfo) = "-+"(info.num).toString + underlying
   }
 
   /** Names of the form N_<outer>. Emitted by inliner, replaced by outer path
    *  in ExplicitOuter.
    */
-  object OuterSelectName extends NumberedNameKind(OUTERSELECT, "OuterSelect") {
+  val OuterSelectName = new NumberedNameKind(OUTERSELECT, "OuterSelect") {
     def mkString(underlying: TermName, info: ThisInfo) = {
       assert(underlying.isEmpty)
       info.num + "_<outer>"
@@ -351,7 +350,9 @@ object NameKinds {
   val ProtectedSetterName = new PrefixNameKind(PROTECTEDSETTER, "protected$set") // dubious encoding, kept for Scala2 compatibility
   val AvoidClashName = new SuffixNameKind(AVOIDCLASH, "$_avoid_name_clash_$")
   val DirectMethodName = new SuffixNameKind(DIRECT, "$direct") { override def definesNewName = true }
-  val FieldName = new SuffixNameKind(FIELD, "$$local")
+  val FieldName = new SuffixNameKind(FIELD, "$$local") {
+      override def mkString(underlying: TermName, info: ThisInfo) = underlying.toString
+  }
   val ExtMethName = new SuffixNameKind(EXTMETH, "$extension")
   val ModuleVarName = new SuffixNameKind(OBJECTVAR, "$module")
   val ModuleClassName = new SuffixNameKind(OBJECTCLASS, "$", optInfoString = "ModuleClass")

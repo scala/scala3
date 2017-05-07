@@ -2930,7 +2930,7 @@ object Types {
         case tycon: TypeRef if !tycon.symbol.isClass =>
         case _: TypeParamRef | _: ErrorType | _: WildcardType =>
         case _: TypeLambda =>
-          assert(args.exists(_.isInstanceOf[TypeBounds]), s"unreduced type apply: $this")
+          assert(!args.exists(_.isInstanceOf[TypeBounds]), s"unreduced type apply: $this")
         case tycon: AnnotatedType =>
           check(tycon.underlying)
         case _ =>
