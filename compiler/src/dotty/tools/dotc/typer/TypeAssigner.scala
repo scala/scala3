@@ -94,7 +94,7 @@ trait TypeAssigner {
               val refinableDecls = info.decls.filter(
                 sym => !(sym.is(TypeParamAccessor | Private) || sym.isConstructor))
               val fullType = (parentType /: refinableDecls)(addRefinement)
-              mapOver(fullType)
+              apply(fullType)
             case TypeBounds(lo, hi) if variance > 0 =>
               apply(hi)
             case _ =>
