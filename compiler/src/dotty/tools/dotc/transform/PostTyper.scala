@@ -265,7 +265,7 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer  { thisTran
         case Import(expr, selectors) =>
           val exprTpe = expr.tpe
           def checkIdent(ident: untpd.Ident): Unit = {
-            val name = ident.name.asTermName.encode
+            val name = ident.name.asTermName
             if (name != nme.WILDCARD && !exprTpe.member(name).exists && !exprTpe.member(name.toTypeName).exists)
               ctx.error(s"${ident.name} is not a member of ${expr.show}", ident.pos)
           }

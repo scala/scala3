@@ -20,10 +20,13 @@ project/local-plugins.sbt
 # Scala-IDE specific
 .scala_dependencies
 .cache
+.cache-main
+.cache-tests
 .classpath
 .project
 .settings
 classes/
+*/bin/
 
 # idea
 .idea
@@ -36,9 +39,6 @@ dotty-lib.jar
 tests/partest-generated/
 tests/locks/
 /test-classes/
-
-# Used in tests
-scala-scala
 
 # Ignore output files but keep the directory
 out/

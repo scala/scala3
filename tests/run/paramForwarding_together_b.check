@@ -1,5 +1,5 @@
 # Fields in A:
-private final int A.member$$local
+private final int A.member
 # Fields in SubA:
 
 # Fields in B:

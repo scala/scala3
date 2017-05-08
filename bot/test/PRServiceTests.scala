@@ -15,9 +15,11 @@ import org.http4s.client.Client
 import scalaz.concurrent.Task
 
 class PRServiceTests extends PullRequestService {
-  val githubUser  = sys.env("GITHUB_USER")
-  val githubToken = sys.env("GITHUB_TOKEN")
-  val droneToken  = sys.env("DRONE_TOKEN")
+  val githubUser         = sys.env("GITHUB_USER")
+  val githubToken        = sys.env("GITHUB_TOKEN")
+  val droneToken         = sys.env("DRONE_TOKEN")
+  val githubClientId     = sys.env("GITHUB_CLIENT_ID")
+  val githubClientSecret = sys.env("GITHUB_CLIENT_SECRET")
 
   private def withClient[A](f: Client => Task[A]): A = {
     val httpClient = PooledHttp1Client()
@@ -121,13 +123,14 @@ class PRServiceTests extends PullRequestService {
   @Test def canPostReview = {
     val invalidUsers = "felixmulder" :: "smarter" :: Nil
     val commit = Commit("", Author(Some("smarter")), Author(Some("smarter")), CommitInfo("Added stuff"))
-    val res = withClient(sendInitialComment(2281, invalidUsers, commit :: Nil, _))
+    val resBody =
+      withClient(sendInitialComment(2281, invalidUsers, commit :: Nil, false)(_))
 
     assert(
-      res.body.contains("We want to keep history") &&
-      res.body.contains("Could you folks please sign the CLA?") &&
-      res.body.contains("Have an awesome day!"),
-      s"Body of review was not as expected:\n${res.body}"
+      resBody.contains("We want to keep history") &&
+      resBody.contains("Could you folks please sign the CLA?") &&
+      resBody.contains("Have an awesome day!"),
+      s"Body of review was not as expected:\n${resBody}"
     )
   }
 
@@ -156,5 +159,10 @@ class PRServiceTests extends PullRequestService {
     }
 
     assert(respondToComment(issueComment).run.status.code == 200)
+  }
+
+  @Test def canGetContributors = {
+    val contributors = withClient(getContributors(_))
+    assert(contributors.contains("felixmulder"))
   }
 }

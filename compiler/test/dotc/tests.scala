@@ -193,6 +193,9 @@ class tests extends CompilerTest {
   @Test def neg_i1050 = compileFile(negCustomArgs, "i1050", List("-strict"))
   @Test def neg_i1240 = compileFile(negCustomArgs, "i1240")(allowDoubleBindings)
   @Test def neg_i2002 = compileFile(negCustomArgs, "i2002")(allowDoubleBindings)
+  @Test def neg_valueclasses_doubledefs = compileFile(negCustomArgs, "valueclasses-doubledefs")(allowDoubleBindings)
+  @Test def neg_valueclasses_doubledefs2 = compileFile(negCustomArgs, "valueclasses-doubledefs2")(allowDoubleBindings)
+  @Test def neg_valueclasses_pavlov = compileFile(negCustomArgs, "valueclasses-pavlov")(allowDoubleBindings)
 
   val negTailcallDir = negDir + "tailcall/"
   @Test def neg_tailcall_t1672b = compileFile(negTailcallDir, "t1672b")
@@ -215,18 +218,18 @@ class tests extends CompilerTest {
 
   @Test def compileMixed = compileLine(
       """../tests/pos/B.scala
-        |../scala-scala/src/library/scala/collection/immutable/Seq.scala
-        |../scala-scala/src/library/scala/collection/parallel/ParSeq.scala
-        |../scala-scala/src/library/scala/package.scala
-        |../scala-scala/src/library/scala/collection/GenSeqLike.scala
-        |../scala-scala/src/library/scala/collection/SeqLike.scala
-        |../scala-scala/src/library/scala/collection/generic/GenSeqFactory.scala""".stripMargin)
-  @Test def compileIndexedSeq = compileLine("../scala-scala/src/library/scala/collection/immutable/IndexedSeq.scala")
-  @Test def compileParSetLike = compileLine("../scala-scala/src/library/scala/collection/parallel/mutable/ParSetLike.scala")
+        |../scala2-library/src/library/scala/collection/immutable/Seq.scala
+        |../scala2-library/src/library/scala/collection/parallel/ParSeq.scala
+        |../scala2-library/src/library/scala/package.scala
+        |../scala2-library/src/library/scala/collection/GenSeqLike.scala
+        |../scala2-library/src/library/scala/collection/SeqLike.scala
+        |../scala2-library/src/library/scala/collection/generic/GenSeqFactory.scala""".stripMargin)
+  @Test def compileIndexedSeq = compileLine("../scala2-library/src/library/scala/collection/immutable/IndexedSeq.scala")
+  @Test def compileParSetLike = compileLine("../scala2-library/src/library/scala/collection/parallel/mutable/ParSetLike.scala")
   @Test def compileParSetSubset = compileLine(
-      """../scala-scala/src/library/scala/collection/parallel/mutable/ParSetLike.scala
-        |../scala-scala/src/library/scala/collection/parallel/mutable/ParSet.scala
-        |../scala-scala/src/library/scala/collection/mutable/SetLike.scala""".stripMargin)(scala2mode ++ defaultOptions)
+      """../scala2-library/src/library/scala/collection/parallel/mutable/ParSetLike.scala
+        |../scala2-library/src/library/scala/collection/parallel/mutable/ParSet.scala
+        |../scala2-library/src/library/scala/collection/mutable/SetLike.scala""".stripMargin)(scala2mode ++ defaultOptions)
 
   @Test def dottyBooted = {
     dottyBootedLib

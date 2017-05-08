@@ -67,7 +67,7 @@ class Erasure extends Phase with DenotTransformer { thisTransformer =>
         val oldOwner = ref.owner
         val newOwner = if (oldOwner eq defn.AnyClass) defn.ObjectClass else oldOwner
         val oldInfo = ref.info
-        val newInfo = transformInfo(ref.symbol, oldInfo)
+        val newInfo = transformInfo(oldSymbol, oldInfo)
         val oldFlags = ref.flags
         val newFlags =
           if (oldSymbol.is(Flags.TermParam) && isCompacted(oldSymbol.owner)) oldFlags &~ Flags.Param
@@ -594,117 +594,10 @@ object Erasure extends TypeTestsCasts{
       EmptyTree
 
     override def typedStats(stats: List[untpd.Tree], exprOwner: Symbol)(implicit ctx: Context): List[Tree] = {
-      val stats1 = Trees.flatten(super.typedStats(stats, exprOwner))
-      if (ctx.owner.isClass) stats1 ::: addBridges(stats, stats1)(ctx) else stats1
-    }
-
-    // this implementation doesn't check for bridge clashes with value types!
-    def addBridges(oldStats: List[untpd.Tree], newStats: List[tpd.Tree])(implicit ctx: Context): List[tpd.Tree] = {
-      val beforeCtx = ctx.withPhase(ctx.erasurePhase)
-      def traverse(after: List[Tree], before: List[untpd.Tree],
-                   emittedBridges: ListBuffer[tpd.DefDef] = ListBuffer[tpd.DefDef]()): List[tpd.DefDef] = {
-        after match {
-          case Nil => emittedBridges.toList
-          case (member: DefDef) :: newTail =>
-            before match {
-              case Nil => emittedBridges.toList
-              case (oldMember: untpd.DefDef) :: oldTail =>
-                try {
-                  val oldSymbol = oldMember.symbol(beforeCtx)
-                  val newSymbol = member.symbol(ctx)
-                  assert(oldSymbol.name(beforeCtx) == newSymbol.name,
-                    s"${oldSymbol.name(beforeCtx)} bridging with ${newSymbol.name}")
-                  val newOverridden = oldSymbol.denot.allOverriddenSymbols.toSet // TODO: clarify new <-> old in a comment; symbols are swapped here
-                  val oldOverridden = newSymbol.allOverriddenSymbols(beforeCtx).toSet // TODO: can we find a more efficient impl? newOverridden does not have to be a set!
-                  def stillInBaseClass(sym: Symbol) = ctx.owner derivesFrom sym.owner
-                  val neededBridges = (oldOverridden -- newOverridden).filter(stillInBaseClass)
-
-                  var minimalSet = Set[Symbol]()
-                  // compute minimal set of bridges that are needed:
-                  for (bridge <- neededBridges) {
-                    val isRequired = minimalSet.forall(nxtBridge => !(bridge.info =:= nxtBridge.info))
-
-                    if (isRequired) {
-                      // check for clashes
-                      val clash: Option[Symbol] = oldSymbol.owner.info.decls.lookupAll(bridge.name).find {
-                        sym =>
-                          (sym.name eq bridge.name) && sym.info.widen =:= bridge.info.widen
-                      }.orElse(
-                        emittedBridges.find(stat => (stat.name == bridge.name) && stat.tpe.widen =:= bridge.info.widen)
-                          .map(_.symbol))
-                      clash match {
-                        case Some(cl) =>
-                          ctx.error(i"bridge for method ${newSymbol.showLocated(beforeCtx)} of type ${newSymbol.info(beforeCtx)}\n" +
-                            i"clashes with ${cl.symbol.showLocated(beforeCtx)} of type ${cl.symbol.info(beforeCtx)}\n" +
-                            i"both have same type after erasure: ${bridge.symbol.info}")
-                        case None => minimalSet += bridge
-                      }
-                    }
-                  }
-
-                  val bridgeImplementations = minimalSet.map {
-                    sym => makeBridgeDef(member, sym)(ctx)
-                  }
-                  emittedBridges ++= bridgeImplementations
-                } catch {
-                  case ex: MergeError => ctx.error(ex.getMessage, member.pos)
-                }
-
-                traverse(newTail, oldTail, emittedBridges)
-              case notADefDef :: oldTail =>
-                traverse(after, oldTail, emittedBridges)
-            }
-          case notADefDef :: newTail =>
-            traverse(newTail, before, emittedBridges)
-        }
-      }
-
-      traverse(newStats, oldStats)
-    }
-
-    private final val NoBridgeFlags = Flags.Accessor | Flags.Deferred | Flags.Lazy | Flags.ParamAccessor
-
-    /** Create a bridge DefDef which overrides a parent method.
-     *
-     *  @param newDef     The DefDef which needs bridging because its signature
-     *                    does not match the parent method signature
-     *  @param parentSym  A symbol corresponding to the parent method to override
-     *  @return           A new DefDef whose signature matches the parent method
-     *                    and whose body only contains a call to newDef
-     */
-    def makeBridgeDef(newDef: tpd.DefDef, parentSym: Symbol)(implicit ctx: Context): tpd.DefDef = {
-      val newDefSym = newDef.symbol
-      val currentClass = newDefSym.owner.asClass
-
-      def error(reason: String) = {
-        assert(false, s"failure creating bridge from ${newDefSym} to ${parentSym}, reason: $reason")
-        ???
-      }
-      var excluded = NoBridgeFlags
-      if (!newDefSym.is(Flags.Protected)) excluded |= Flags.Protected // needed to avoid "weaker access" assertion failures in expandPrivate
-      val bridge = ctx.newSymbol(currentClass,
-        parentSym.name, parentSym.flags &~ excluded | Flags.Bridge, parentSym.info, coord = newDefSym.owner.coord).asTerm
-      bridge.enteredAfter(ctx.phase.prev.asInstanceOf[DenotTransformer]) // this should be safe, as we're executing in context of next phase
-      ctx.debuglog(s"generating bridge from ${newDefSym} to $bridge")
-
-      val sel: Tree = This(currentClass).select(newDefSym.termRef)
-
-      val resultType = parentSym.info.widen.resultType
-
-      val bridgeCtx = ctx.withOwner(bridge)
-
-      tpd.DefDef(bridge, { paramss: List[List[tpd.Tree]] =>
-          implicit val ctx = bridgeCtx
-
-          val rhs = paramss.foldLeft(sel)((fun, vparams) =>
-            fun.tpe.widen match {
-              case mt: MethodType =>
-                Apply(fun, (vparams, mt.paramInfos).zipped.map(adapt(_, _, untpd.EmptyTree)))
-              case a =>
-                error(s"can not resolve apply type $a")
-            })
-          adapt(rhs, resultType)
-      })
+      val stats1 =
+        if (takesBridges(ctx.owner)) new Bridges(ctx.owner.asClass).add(stats)
+        else stats
+      super.typedStats(stats1, exprOwner)
     }
 
     override def adapt(tree: Tree, pt: Type, original: untpd.Tree)(implicit ctx: Context): Tree =
@@ -715,4 +608,7 @@ object Erasure extends TypeTestsCasts{
         else adaptToType(tree, pt)
       }
   }
+
+  def takesBridges(sym: Symbol)(implicit ctx: Context) =
+    sym.isClass && !sym.is(Flags.Trait | Flags.Package)
 }

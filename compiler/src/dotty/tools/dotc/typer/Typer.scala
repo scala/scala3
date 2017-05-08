@@ -183,7 +183,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
        *  from given `site` and `selectors`.
        */
       def namedImportRef(imp: ImportInfo)(implicit ctx: Context): Type = {
-        val Name = name.toTermName.decode
+        val Name = name.toTermName
         def recur(selectors: List[untpd.Tree]): Type = selectors match {
           case selector :: rest =>
             def checkUnambiguous(found: Type) = {
@@ -340,6 +340,8 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
         // awaiting a better implicits based solution for library-supported xml
         return ref(defn.XMLTopScopeModuleRef)
       }
+      else if (name.toTermName == nme.ERROR)
+        UnspecifiedErrorType
       else
         errorType(new MissingIdent(tree, kind, name.show), tree.pos)
 
@@ -820,8 +822,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
         typed(desugar.makeCaseLambda(tree.cases, protoFormals.length, unchecked) withPos tree.pos, pt)
       case _ =>
         val sel1 = typedExpr(tree.selector)
-        val selType = widenForMatchSelector(
-            fullyDefinedType(sel1.tpe, "pattern selector", tree.pos))
+        val selType = fullyDefinedType(sel1.tpe, "pattern selector", tree.pos).widen
 
         val cases1 = typedCases(tree.cases, selType, pt.notApplied)
         val cases2 = harmonize(cases1).asInstanceOf[List[CaseDef]]
@@ -1559,14 +1560,11 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
             !ctx.isAfterTyper)
           makeImplicitFunction(xtree, pt)
         else xtree match {
-          case xtree: untpd.NameTree => typedNamed(encodeName(xtree), pt)
+          case xtree: untpd.NameTree => typedNamed(xtree, pt)
           case xtree => typedUnnamed(xtree)
         }
     }
   }
-
-  protected def encodeName(tree: untpd.NameTree)(implicit ctx: Context): untpd.NameTree =
-    untpd.rename(tree, tree.name.encode)
 
   protected def makeImplicitFunction(tree: untpd.Tree, pt: Type)(implicit ctx: Context): Tree = {
     val defn.FunctionOf(formals, resType, true) = pt.dealias

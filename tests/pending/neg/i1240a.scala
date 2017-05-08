@@ -12,6 +12,10 @@ class B extends A {
   override def give[X] = Nil
   override def foo[B](x: C[B]): C[B] =  {println("B.C"); x} // error: merge error during erasure
   val a: A = this
-  a.foo(a.give[Int]) // what method should be called here in runtime?
+}
+
+object Test extends B {
+  def main(args: Array[String]): Unit =
+    a.foo(a.give[Int]) // what method should be called here in runtime?
 }
 

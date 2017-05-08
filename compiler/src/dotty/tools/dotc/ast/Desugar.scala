@@ -27,9 +27,7 @@ object desugar {
 
   /** Names of methods that are added unconditionally to case classes */
   def isDesugaredCaseClassMethodName(name: Name)(implicit ctx: Context): Boolean =
-    name == nme.copy ||
-    name == nme.productArity ||
-    name.isSelectorName
+    name == nme.copy || name.isSelectorName
 
 // ----- DerivedTypeTrees -----------------------------------
 
@@ -291,7 +289,8 @@ object desugar {
       case _ => false
     }
 
-    val isCaseClass = mods.is(Case) && !mods.is(Module)
+    val isCaseClass  = mods.is(Case) && !mods.is(Module)
+    val isCaseObject = mods.is(Case) && mods.is(Module)
     val isEnum = mods.hasMod[Mod.Enum]
     val isEnumCase = isLegalEnumCase(cdef)
     val isValueClass = parents.nonEmpty && isAnyVal(parents.head)
@@ -360,31 +359,12 @@ object desugar {
     //              pN: TN = pN: @uncheckedVariance)(moreParams) =
     //       new C[...](p1, ..., pN)(moreParams)
     //
-    // Above arity 22 we also synthesize:
-    //     def productArity = N
-    //     def productElement(i: Int): Any = i match { ... }
-    //
     // Note: copy default parameters need @uncheckedVariance; see
     // neg/t1843-variances.scala for a test case. The test would give
     // two errors without @uncheckedVariance, one of them spurious.
     val caseClassMeths = {
       def syntheticProperty(name: TermName, rhs: Tree) =
         DefDef(name, Nil, Nil, TypeTree(), rhs).withMods(synthetic)
-      def productArity = syntheticProperty(nme.productArity, Literal(Constant(arity)))
-      def productElement = {
-        val param = makeSyntheticParameter(tpt = ref(defn.IntType))
-        // case N => _${N + 1}
-        val cases = 0.until(arity).map { i =>
-          CaseDef(Literal(Constant(i)), EmptyTree, Select(This(EmptyTypeIdent), nme.selectorName(i)))
-        }
-        val ioob  = ref(defn.IndexOutOfBoundsException.typeRef)
-        val error = Throw(New(ioob, List(List(Select(refOfDef(param), nme.toString_)))))
-        // case _ => throw new IndexOutOfBoundsException(i.toString)
-        val defaultCase = CaseDef(untpd.Ident(nme.WILDCARD), EmptyTree, error)
-        val body = Match(refOfDef(param), (cases :+ defaultCase).toList)
-        DefDef(nme.productElement, Nil, List(List(param)), TypeTree(defn.AnyType), body)
-          .withMods(synthetic)
-      }
       def productElemMeths = {
         val caseParams = constrVparamss.head.toArray
         for (i <- 0 until arity if nme.selectorName(i) `ne` caseParams(i).name)
@@ -414,33 +394,19 @@ object desugar {
         }
       }
 
-      // Above MaxTupleArity we extend Product instead of ProductN, in this
-      // case we need to synthesise productElement & productArity.
-      def largeProductMeths =
-        if (arity > Definitions.MaxTupleArity) productElement :: productArity :: Nil
-        else Nil
-
       if (isCaseClass)
-        largeProductMeths ::: copyMeths ::: enumTagMeths ::: productElemMeths.toList
+        copyMeths ::: enumTagMeths ::: productElemMeths.toList
       else Nil
     }
 
     def anyRef = ref(defn.AnyRefAlias.typeRef)
-    def productConstr(n: Int) = {
-      val tycon = scalaDot((str.Product + n).toTypeName)
-      val targs = constrVparamss.head map (_.tpt)
-      if (targs.isEmpty) tycon else AppliedTypeTree(tycon, targs)
-    }
-    def product =
-      if (arity > Definitions.MaxTupleArity) scalaDot(str.Product.toTypeName)
-      else productConstr(arity)
 
-    // Case classes and case objects get Product/ProductN parents
+    // Case classes and case objects get Product parents
     var parents1 = parents
     if (isEnumCase && parents.isEmpty)
       parents1 = enumClassTypeRef :: Nil
-    if (mods.is(Case))
-      parents1 = parents1 :+ product // TODO: This also adds Product0 to case objects. Do we want that?
+    if (isCaseClass | isCaseObject)
+      parents1 = parents1 :+ scalaDot(str.Product.toTypeName)
     if (isEnum)
       parents1 = parents1 :+ ref(defn.EnumType)
 
@@ -498,7 +464,6 @@ object desugar {
       else if (isValueClass)
         companionDefs(anyRef, Nil)
       else Nil
-
 
     // For an implicit class C[Ts](p11: T11, ..., p1N: T1N) ... (pM1: TM1, .., pMN: TMN), the method
     //     synthetic implicit C[Ts](p11: T11, ..., p1N: T1N) ... (pM1: TM1, ..., pMN: TMN): C[Ts] =

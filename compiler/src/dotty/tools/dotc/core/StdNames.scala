@@ -16,14 +16,15 @@ object StdNames {
 /** Base strings from which synthetic names are derived. */
 
   object str {
-    final val SETTER_SUFFIX            = "_$eq"
+    final val SETTER_SUFFIX            = "_="
     final val EXPAND_SEPARATOR         = "$$"
     final val TRAIT_SETTER_SEPARATOR   = "$_setter_$"
     final val SUPER_PREFIX             = "super$"
     final val INITIALIZER_PREFIX       = "initial$"
     final val SHADOWED_PREFIX          = "(shadowed)"
     final val AVOID_CLASH_SUFFIX       = "$_avoid_name_clash_$"
-    final val MODULE_SUFFIX            = NameTransformer.MODULE_SUFFIX_STRING
+    final val MODULE_SUFFIX            = "$"
+    final val NAME_JOIN                = "$"
     final val DEFAULT_GETTER           = "$default$"
     final val LOCALDUMMY_PREFIX        = "<local "       // owner of local blocks
     final val ANON_CLASS               = "$anon"
@@ -33,7 +34,7 @@ object StdNames {
     final val INTERPRETER_LINE_PREFIX    = "line"
     final val INTERPRETER_VAR_PREFIX     = "res"
     final val INTERPRETER_WRAPPER_SUFFIX = "$object"
-    final val MODULE_INSTANCE_FIELD      = NameTransformer.MODULE_INSTANCE_NAME  // "MODULE$"
+    final val MODULE_INSTANCE_FIELD      = "MODULE$"
 
     final val Function                   = "Function"
     final val ImplicitFunction           = "ImplicitFunction"
@@ -126,13 +127,12 @@ object StdNames {
     val DOLLAR_VALUES: N              = "$values"
     val DOLLAR_NEW: N                 = "$new"
     val EMPTY: N                      = ""
-    val EMPTY_PACKAGE: N              = Names.EMPTY_PACKAGE.toString
+    val EMPTY_PACKAGE: N              = "<empty>"
     val EXCEPTION_RESULT_PREFIX: N    = "exceptionResult"
     val EXPAND_SEPARATOR: N           = str.EXPAND_SEPARATOR
     val IMPL_CLASS_SUFFIX: N          = "$class"
     val IMPORT: N                     = "<import>"
-    val MODULE_SUFFIX: N              = NameTransformer.MODULE_SUFFIX_STRING
-    val NAME_JOIN: N                  = NameTransformer.NAME_JOIN_STRING
+    val MODULE_SUFFIX: N              = str.MODULE_SUFFIX
     val OPS_PACKAGE: N                = "<special-ops>"
     val OVERLOADED: N                 = "<overloaded>"
     val PACKAGE: N                    = "package"
@@ -241,7 +241,8 @@ object StdNames {
 
     // Compiler-internal
     val ANYname: N                  = "<anyname>"
-    val CONSTRUCTOR: N              = Names.CONSTRUCTOR.toString
+    val CONSTRUCTOR: N              = "<init>"
+    val STATIC_CONSTRUCTOR: N       = "<clinit>"
     val DEFAULT_CASE: N             = "defaultCase$"
     val EVT2U: N                    = "evt2u$"
     val EQEQ_LOCAL_VAR: N           = "eqEqTemp$"
@@ -259,7 +260,6 @@ object StdNames {
     val REIFY_FREE_THIS_SUFFIX: N   = "$this"
     val REIFY_FREE_VALUE_SUFFIX: N  = "$value"
     val REIFY_SYMDEF_PREFIX: N      = "symdef$"
-    val MODULE_INSTANCE_FIELD: N    = NameTransformer.MODULE_INSTANCE_NAME  // "MODULE$"
     val OUTER: N                    = "$outer"
     val REFINE_CLASS: N             = "<refinement>"
     val ROOTPKG: N                  = "_root_"
@@ -310,7 +310,7 @@ object StdNames {
     val _21 : N = "_21"
     val _22 : N = "_22"
 
-    val ??? = encode("???")
+    val ??? : N = "???"
 
     val genericWrapArray: N     = "genericWrapArray"
     def wrapRefArray: N         = "wrapRefArray"
@@ -595,36 +595,36 @@ object StdNames {
     def newLazyValSlowComputeName(lzyValName: N) = lzyValName ++ LAZY_SLOW_SUFFIX
 
     // ASCII names for operators
-    val ADD      = encode("+")
-    val AND      = encode("&")
-    val ASR      = encode(">>")
-    val DIV      = encode("/")
-    val EQ       = encode("==")
-    val EQL      = encode("=")
-    val GE       = encode(">=")
-    val GT       = encode(">")
-    val HASHHASH = encode("##")
-    val LE       = encode("<=")
-    val LSL      = encode("<<")
-    val LSR      = encode(">>>")
-    val LT       = encode("<")
-    val MINUS    = encode("-")
-    val MOD      = encode("%")
-    val MUL      = encode("*")
-    val NE       = encode("!=")
-    val OR       = encode("|")
+    val ADD      : N = "+"
+    val AND      : N = "&"
+    val ASR      : N = ">>"
+    val DIV      : N = "/"
+    val EQ       : N = "=="
+    val EQL      : N = "="
+    val GE       : N = ">="
+    val GT       : N = ">"
+    val HASHHASH : N = "##"
+    val LE       : N = "<="
+    val LSL      : N = "<<"
+    val LSR      : N = ">>>"
+    val LT       : N = "<"
+    val MINUS    : N = "-"
+    val MOD      : N = "%"
+    val MUL      : N = "*"
+    val NE       : N = "!="
+    val OR       : N = "|"
     val PLUS     = ADD    // technically redundant, but ADD looks funny with MINUS
     val SUB      = MINUS  // ... as does SUB with PLUS
-    val XOR      = encode("^")
-    val ZAND     = encode("&&")
-    val ZOR      = encode("||")
+    val XOR      : N = "^"
+    val ZAND     : N = "&&"
+    val ZOR      : N = "||"
 
     // unary operators
     val UNARY_PREFIX: N = "unary_"
-    val UNARY_~ = encode("unary_~")
-    val UNARY_+ = encode("unary_+")
-    val UNARY_- = encode("unary_-")
-    val UNARY_! = encode("unary_!")
+    val UNARY_~ : N = "unary_~"
+    val UNARY_+ : N = "unary_+"
+    val UNARY_- : N = "unary_-"
+    val UNARY_! : N = "unary_!"
 
     // Grouped here so Cleanup knows what tests to perform.
     val CommonOpNames   = Set[Name](OR, XOR, AND, EQ, NE)

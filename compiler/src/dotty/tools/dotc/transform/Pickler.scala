@@ -11,6 +11,7 @@ import Periods._
 import Phases._
 import Symbols._
 import Flags.Module
+import reporting.ThrowingReporter
 import collection.mutable
 
 /** This phase pickles trees */
@@ -77,6 +78,7 @@ class Pickler extends Phase {
       testUnpickler(
           ctx.fresh
             .setPeriod(Period(ctx.runId + 1, FirstPhaseId))
+            .setReporter(new ThrowingReporter(ctx.reporter))
             .addMode(Mode.ReadPositions))
     result
   }

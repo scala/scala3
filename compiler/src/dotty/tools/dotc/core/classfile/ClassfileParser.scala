@@ -39,7 +39,7 @@ class ClassfileParser(
   protected val staticScope: MutableScope = newScope       // the scope of all static definitions
   protected var pool: ConstantPool = _              // the classfile's constant pool
 
-  protected var currentClassName: SimpleTermName = _      // JVM name of the current class
+  protected var currentClassName: SimpleName = _      // JVM name of the current class
   protected var classTParams = Map[Name,Symbol]()
 
   classRoot.info = (new NoCompleter).withDecls(instanceScope)
@@ -47,7 +47,7 @@ class ClassfileParser(
 
   private def currentIsTopLevel(implicit ctx: Context) = classRoot.owner is Flags.PackageClass
 
-  private def mismatchError(className: SimpleTermName) =
+  private def mismatchError(className: SimpleName) =
     throw new IOException(s"class file '${in.file}' has location not matching its contents: contains class $className")
 
   def run()(implicit ctx: Context): Option[Embedded] = try {
@@ -92,7 +92,9 @@ class ClassfileParser(
     val nameIdx      = in.nextChar
     currentClassName = pool.getClassName(nameIdx)
 
-    if (currentIsTopLevel && currentClassName != classRoot.fullName.toSimpleName)
+    if (currentIsTopLevel &&
+        currentClassName != classRoot.fullName.toSimpleName &&
+        currentClassName != classRoot.fullName.encode.toSimpleName)
       mismatchError(currentClassName)
 
     addEnclosingTParams()
@@ -252,14 +254,14 @@ class ClassfileParser(
   final def objToAny(tp: Type)(implicit ctx: Context) =
     if (tp.isDirectRef(defn.ObjectClass) && !ctx.phase.erasedTypes) defn.AnyType else tp
 
-  private def sigToType(sig: SimpleTermName, owner: Symbol = null)(implicit ctx: Context): Type = {
+  private def sigToType(sig: SimpleName, owner: Symbol = null)(implicit ctx: Context): Type = {
     var index = 0
     val end = sig.length
     def accept(ch: Char): Unit = {
       assert(sig(index) == ch, (sig(index), ch))
       index += 1
     }
-    def subName(isDelimiter: Char => Boolean): SimpleTermName = {
+    def subName(isDelimiter: Char => Boolean): SimpleName = {
       val start = index
       while (!isDelimiter(sig(index))) { index += 1 }
       sig.slice(start, index)
@@ -899,7 +901,7 @@ class ClassfileParser(
     private val len = in.nextChar
     private val starts = new Array[Int](len)
     private val values = new Array[AnyRef](len)
-    private val internalized = new Array[SimpleTermName](len)
+    private val internalized = new Array[SimpleName](len)
 
     { var i = 1
       while (i < starts.length) {
@@ -926,12 +928,12 @@ class ClassfileParser(
     }
 
     /** Return the name found at given index. */
-    def getName(index: Int): SimpleTermName = {
+    def getName(index: Int): SimpleName = {
       if (index <= 0 || len <= index)
         errorBadIndex(index)
 
       values(index) match {
-        case name: SimpleTermName => name
+        case name: SimpleName => name
         case null   =>
           val start = starts(index)
           if (in.buf(start).toInt != CONSTANT_UTF8) errorBadTag(start)
@@ -946,7 +948,7 @@ class ClassfileParser(
       new DataInputStream(new ByteArrayInputStream(bytes, offset, len)).readUTF
 
     /** Return the name found at given index in the constant pool, with '/' replaced by '.'. */
-    def getExternalName(index: Int): SimpleTermName = {
+    def getExternalName(index: Int): SimpleName = {
       if (index <= 0 || len <= index)
         errorBadIndex(index)
 
@@ -975,7 +977,7 @@ class ClassfileParser(
     /** Return the external name of the class info structure found at 'index'.
      *  Use 'getClassSymbol' if the class is sure to be a top-level class.
      */
-    def getClassName(index: Int): SimpleTermName = {
+    def getClassName(index: Int): SimpleName = {
       val start = starts(index)
       if (in.buf(start).toInt != CONSTANT_CLASS) errorBadTag(start)
       getExternalName(in.getChar(start + 1))

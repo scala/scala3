@@ -227,7 +227,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
     val major = readNat()
     val minor = readNat()
     if (major != MajorVersion || minor > MinorVersion)
-      throw new IOException("Scala signature " + classRoot.fullName.decode +
+      throw new IOException("Scala signature " + classRoot.fullName +
         " has wrong version\n expected: " +
         MajorVersion + "." + MinorVersion +
         "\n found: " + major + "." + minor +
@@ -338,7 +338,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
     def atEnd = readIndex == end
 
     def readExtSymbol(): Symbol = {
-      val name = readNameRef()
+      val name = readNameRef().decode
       val owner = if (atEnd) loadingMirror.RootClass else readSymbolRef()
 
       def adjust(denot: Denotation) = {
@@ -401,7 +401,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
               // println(owner.info.decls.toList.map(_.debugString).mkString("\n  ")) // !!! DEBUG
               //              }
               // (5) Create a stub symbol to defer hard failure a little longer.
-              System.err.println(i"***** missing reference, looking for $name in $owner")
+              System.err.println(i"***** missing reference, looking for ${name.debugString} in $owner")
               System.err.println(i"decls = ${owner.info.decls}")
               owner.info.decls.checkConsistent()
               if (slowSearch(name).exists)
@@ -439,7 +439,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
         if (name == nme.TRAIT_CONSTRUCTOR) nme.CONSTRUCTOR
         else name.asTermName.unmangle(Scala2MethodNameKinds)
     }
-    if ((flags is Scala2ExpandedName) && name.isSimple) {
+    if ((flags is Scala2ExpandedName)) {
       name = name.unmangle(ExpandedName)
       flags = flags &~ Scala2ExpandedName
     }
@@ -447,9 +447,9 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
       name = name.asTermName.unmangle(SuperAccessorName)
       flags = flags &~ Scala2SuperAccessor
     }
+    name = name.mapLast(_.decode)
 
-    val mname = name.mangled
-    def nameMatches(rootName: Name) = mname == rootName.mangled
+    def nameMatches(rootName: Name) = name == rootName
     def isClassRoot = nameMatches(classRoot.name) && (owner == classRoot.owner) && !(flags is ModuleClass)
     def isModuleClassRoot = nameMatches(moduleClassRoot.name) && (owner == moduleClassRoot.owner) && (flags is Module)
     def isModuleRoot = nameMatches(moduleClassRoot.name.sourceModuleName) && (owner == moduleClassRoot.owner) && (flags is Module)
@@ -459,7 +459,6 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
     //if (isModuleClassRoot) println(s"moduleClassRoot of $moduleClassRoot found at $readIndex, flags = $flags") // !!! DEBUG
 
     def completeRoot(denot: ClassDenotation, completer: LazyType): Symbol = {
-      denot.name = name
       denot.setFlag(flags)
       denot.resetFlag(Touched) // allow one more completion
       denot.info = completer

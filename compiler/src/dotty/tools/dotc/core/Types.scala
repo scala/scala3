@@ -2930,7 +2930,7 @@ object Types {
         case tycon: TypeRef if !tycon.symbol.isClass =>
         case _: TypeParamRef | _: ErrorType | _: WildcardType =>
         case _: TypeLambda =>
-          assert(args.exists(_.isInstanceOf[TypeBounds]), s"unreduced type apply: $this")
+          assert(!args.exists(_.isInstanceOf[TypeBounds]), s"unreduced type apply: $this")
         case tycon: AnnotatedType =>
           check(tycon.underlying)
         case _ =>
@@ -3444,7 +3444,7 @@ object Types {
   abstract class FlexType extends UncachedGroundType with ValueType
 
   class ErrorType(_msg: => Message) extends FlexType {
-    val msg = _msg
+    def msg = _msg
   }
 
   object UnspecifiedErrorType extends ErrorType("unspecified error")

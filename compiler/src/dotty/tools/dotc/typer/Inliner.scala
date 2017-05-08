@@ -409,11 +409,14 @@ class Inliner(call: tpd.Tree, rhs: tpd.Tree)(implicit ctx: Context) {
     var lastSelf: Symbol = NoSymbol
     var lastLevel: Int = 0
     for ((level, selfSym) <- sortedProxies) {
+      lazy val rhsClsSym = selfSym.info.widenDealias.classSymbol
       val rhs =
-        if (!lastSelf.exists)
-          prefix
-        else
+        if (lastSelf.exists)
           untpd.Select(ref(lastSelf), OuterSelectName(EmptyTermName, lastLevel - level)).withType(selfSym.info)
+        else if (rhsClsSym.is(Module))
+          ref(rhsClsSym.sourceModule)
+        else
+          prefix
       bindingsBuf += ValDef(selfSym.asTerm, rhs)
       lastSelf = selfSym
       lastLevel = level

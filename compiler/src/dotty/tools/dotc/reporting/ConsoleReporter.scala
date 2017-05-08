@@ -41,18 +41,25 @@ class ConsoleReporter(
   }
 
   /** Show prompt if `-Xprompt` is passed as a flag to the compiler */
-  def displayPrompt()(implicit ctx: Context): Unit = {
-    printMessage("\na)bort, s)tack, r)esume: ")
-    flush()
+  def displayPrompt(): Unit = {
+    writer.println()
+    writer.print("a)bort, s)tack, r)esume: ")
+    writer.flush()
     if (reader != null) {
-      val response = reader.read().asInstanceOf[Char].toLower
-      if (response == 'a' || response == 's') {
-        Thread.dumpStack()
-        if (response == 'a')
-          sys.exit(1)
+      def loop(): Unit = reader.read match {
+        case 'a' | 'A' =>
+          new Throwable().printStackTrace(writer)
+          System.exit(1)
+        case 's' | 'S' =>
+          new Throwable().printStackTrace(writer)
+          writer.println()
+          writer.flush()
+        case 'r' | 'R' =>
+          ()
+        case _ =>
+          loop()
       }
-      print("\n")
-      flush()
+      loop()
     }
   }
 

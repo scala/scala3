@@ -107,7 +107,7 @@ object SymDenotations {
   class SymDenotation private[SymDenotations] (
     symbol: Symbol,
     ownerIfExists: Symbol,
-    initName: Name,
+    final val name: Name,
     initFlags: FlagSet,
     initInfo: Type,
     initPrivateWithin: Symbol = NoSymbol) extends SingleDenotation(symbol) {
@@ -125,17 +125,10 @@ object SymDenotations {
 
     // ------ Getting and setting fields -----------------------------
 
-    private[this] var myName = initName
     private[this] var myFlags: FlagSet = adaptFlags(initFlags)
     private[this] var myInfo: Type = initInfo
     private[this] var myPrivateWithin: Symbol = initPrivateWithin
     private[this] var myAnnotations: List[Annotation] = Nil
-
-    /** The name of the symbol */
-    def name = myName
-
-    /** Update the name; only called when unpickling top-level classes */
-    def name_=(n: Name) = myName = n
 
     /** The owner of the symbol; overridden in NoDenotation */
     def owner: Symbol = ownerIfExists
@@ -375,27 +368,16 @@ object SymDenotations {
     /** The expanded name of this denotation. */
     final def expandedName(implicit ctx: Context) =
       if (name.is(ExpandedName) || isConstructor) name
-      else {
-        def legalize(name: Name): Name = // JVM method names may not contain `<' or `>' characters
-          if (is(Method)) name.replace('<', '(').replace('>', ')') else name
-        legalize(name.expandedName(initial.owner))
-      }
+      else name.expandedName(initial.owner)
         // need to use initial owner to disambiguate, as multiple private symbols with the same name
         // might have been moved from different origins into the same class
 
     /** The name with which the denoting symbol was created */
-    final def originalName(implicit ctx: Context) =
-      initial.effectiveName
+    final def originalName(implicit ctx: Context) = initial.effectiveName
 
     /** The encoded full path name of this denotation, where outer names and inner names
-     *  are separated by `separator` strings.
-     *  Never translates expansions of operators back to operator symbol.
-     *  Drops package objects. Represents each term in the owner chain by a simple `~`.
-     *  (Note: scalac uses nothing to represent terms, which can cause name clashes
-     *   between same-named definitions in different enclosing methods. Before this commit
-     *   we used `$' but this can cause ambiguities with the class separator '$').
-     *  A separator "" means "flat name"; the real separator in this case is "$" and
-     *  enclosing packages do not form part of the name.
+     *  are separated by `separator` strings as indicated by the given name kind.
+     *  Drops package objects. Represents each term in the owner chain by a simple `_$`.
      */
     def fullNameSeparated(kind: QualifiedNameKind)(implicit ctx: Context): Name =
       if (symbol == NoSymbol ||
@@ -407,17 +389,17 @@ object SymDenotations {
         var encl = owner
         while (!encl.isClass && !encl.isPackageObject) {
           encl = encl.owner
-          filler += "~"
+          filler += "_$"
         }
         var prefix = encl.fullNameSeparated(kind)
         if (kind.separator == "$")
           // duplicate scalac's behavior: don't write a double '$$' for module class members.
           prefix = prefix.exclude(ModuleClassName)
-        def qualify(n: SimpleTermName) =
+        def qualify(n: SimpleName) =
           kind(prefix.toTermName, if (filler.isEmpty) n else termName(filler + n))
         val fn = name rewrite {
-          case name: SimpleTermName => qualify(name)
-          case name @ AnyQualifiedName(_, _) => qualify(name.toSimpleName)
+          case name: SimpleName => qualify(name)
+          case name @ AnyQualifiedName(_, _) => qualify(name.mangled.toSimpleName)
         }
         if (isType) fn.toTypeName else fn.toTermName
       }
@@ -509,7 +491,7 @@ object SymDenotations {
      *  step for creating Refinement types.
      */
     final def isRefinementClass(implicit ctx: Context): Boolean =
-      name.decode == tpnme.REFINE_CLASS
+      name == tpnme.REFINE_CLASS
 
     /** Is this symbol a package object or its module class? */
     def isPackageObject(implicit ctx: Context): Boolean = {
@@ -1218,12 +1200,12 @@ object SymDenotations {
   class ClassDenotation private[SymDenotations] (
     symbol: Symbol,
     ownerIfExists: Symbol,
-    initName: Name,
+    name: Name,
     initFlags: FlagSet,
     initInfo: Type,
     initPrivateWithin: Symbol,
     initRunId: RunId)
-    extends SymDenotation(symbol, ownerIfExists, initName, initFlags, initInfo, initPrivateWithin) {
+    extends SymDenotation(symbol, ownerIfExists, name, initFlags, initInfo, initPrivateWithin) {
 
     import util.LRUCache
 

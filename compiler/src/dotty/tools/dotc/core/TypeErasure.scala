@@ -536,7 +536,7 @@ class TypeErasure(isJava: Boolean, semiEraseVCs: Boolean, isConstructor: Boolean
     }
   } catch {
     case ex: AssertionError =>
-      println(s"no sig for $tp")
+      println(s"no sig for $tp because of ${ex.printStackTrace()}")
       throw ex
   }
 

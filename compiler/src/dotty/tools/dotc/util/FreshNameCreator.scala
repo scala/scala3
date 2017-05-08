@@ -22,10 +22,9 @@ object FreshNameCreator {
      * call to this function (provided the prefix does not end in a digit).
      */
     def newName(prefix: TermName, unique: UniqueNameKind): TermName = {
-      val key = str.sanitize(prefix.toString + unique.separator)
+      val key = str.sanitize(prefix.toString) + unique.separator
       counters(key) += 1
-      val counter = counters(key)
-      prefix.derived(unique.NumberedInfo(counter))
+      prefix.derived(unique.NumberedInfo(counters(key)))
     }
   }
 }

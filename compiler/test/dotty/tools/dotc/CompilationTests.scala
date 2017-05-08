@@ -29,6 +29,7 @@ class CompilationTests extends ParallelTesting {
 
   @Test def compilePos: Unit = {
     compileList("compileStdLib", StdLibSources.whitelisted, scala2Mode.and("-migration", "-Yno-inline")) +
+    compileDir("../collection-strawman/src/main", defaultOptions) +
     compileDir("../compiler/src/dotty/tools/dotc/ast", defaultOptions) +
     compileDir("../compiler/src/dotty/tools/dotc/config", defaultOptions) +
     compileDir("../compiler/src/dotty/tools/dotc/core", allowDeepSubtypes) +
@@ -49,30 +50,35 @@ class CompilationTests extends ParallelTesting {
       "compileMixed",
       List(
         "../tests/pos/B.scala",
-        "../scala-scala/src/library/scala/collection/immutable/Seq.scala",
-        "../scala-scala/src/library/scala/collection/parallel/ParSeq.scala",
-        "../scala-scala/src/library/scala/package.scala",
-        "../scala-scala/src/library/scala/collection/GenSeqLike.scala",
-        "../scala-scala/src/library/scala/collection/SeqLike.scala",
-        "../scala-scala/src/library/scala/collection/generic/GenSeqFactory.scala"
+        "../scala2-library/src/library/scala/collection/immutable/Seq.scala",
+        "../scala2-library/src/library/scala/collection/parallel/ParSeq.scala",
+        "../scala2-library/src/library/scala/package.scala",
+        "../scala2-library/src/library/scala/collection/GenSeqLike.scala",
+        "../scala2-library/src/library/scala/collection/SeqLike.scala",
+        "../scala2-library/src/library/scala/collection/generic/GenSeqFactory.scala"
       ),
       defaultOptions
     ) +
     compileFilesInDir("../tests/pos-special/spec-t5545", defaultOptions) +
-    compileFile("../scala-scala/src/library/scala/collection/immutable/IndexedSeq.scala", defaultOptions) +
-    compileFile("../scala-scala/src/library/scala/collection/parallel/mutable/ParSetLike.scala", defaultOptions) +
+    compileFile("../scala2-library/src/library/scala/collection/immutable/IndexedSeq.scala", defaultOptions) +
+    compileFile("../scala2-library/src/library/scala/collection/parallel/mutable/ParSetLike.scala", defaultOptions) +
     compileList(
       "parSetSubset",
       List(
-       "../scala-scala/src/library/scala/collection/parallel/mutable/ParSetLike.scala",
-       "../scala-scala/src/library/scala/collection/parallel/mutable/ParSet.scala",
-       "../scala-scala/src/library/scala/collection/mutable/SetLike.scala"
+       "../scala2-library/src/library/scala/collection/parallel/mutable/ParSetLike.scala",
+       "../scala2-library/src/library/scala/collection/parallel/mutable/ParSet.scala",
+       "../scala2-library/src/library/scala/collection/mutable/SetLike.scala"
       ),
       scala2Mode
     ) +
     compileFilesInDir("../tests/new", defaultOptions) +
-    compileFilesInDir("../tests/pos-scala2", scala2Mode)
-    compileFilesInDir("../tests/pos", defaultOptions)
+    compileFilesInDir("../tests/pos-scala2", scala2Mode) +
+    compileFilesInDir("../tests/pos", defaultOptions) +
+    compileFile(
+      // succeeds despite -Xfatal-warnings because of -nowarn
+      "../tests/neg/customArgs/xfatalWarnings.scala",
+      defaultOptions.and("-nowarn", "-Xfatal-warnings")
+    )
   }.checkCompile()
 
   @Test def posTwice: Unit = {
@@ -207,30 +213,6 @@ class CompilationTests extends ParallelTesting {
       compileDir("../library/src",
         allowDeepSubtypes.and("-Ycheck-reentrant", "-strict", "-priorityclasspath", defaultOutputDir))
 
-    def sources(paths: JStream[Path], excludedFiles: List[String] = Nil): List[String] =
-      paths.iterator().asScala
-        .filter(path =>
-          (path.toString.endsWith(".scala") || path.toString.endsWith(".java"))
-            && !excludedFiles.contains(path.getFileName.toString))
-        .map(_.toString).toList
-
-    val compilerDir = Paths.get("../compiler/src")
-    val compilerSources = sources(Files.walk(compilerDir))
-
-    val backendDir = Paths.get("../scala-backend/src/compiler/scala/tools/nsc/backend")
-    val backendJvmDir = Paths.get("../scala-backend/src/compiler/scala/tools/nsc/backend/jvm")
-
-    // NOTE: Keep these exclusions synchronized with the ones in the sbt build (Build.scala)
-    val backendExcluded =
-      List("JavaPlatform.scala", "Platform.scala", "ScalaPrimitives.scala")
-    val backendJvmExcluded =
-      List("BCodeICodeCommon.scala", "GenASM.scala", "GenBCode.scala", "ScalacBackendInterface.scala")
-
-    val backendSources =
-      sources(Files.list(backendDir), excludedFiles = backendExcluded)
-    val backendJvmSources =
-      sources(Files.list(backendJvmDir), excludedFiles = backendJvmExcluded)
-
     def dotty1 = {
       compileList(
         "dotty1",
@@ -260,6 +242,118 @@ class CompilationTests extends ParallelTesting {
         compileList("shallow-backend-jvm", backendJvmSources, opt)
       } :: Nil
     }.map(_.checkCompile()).foreach(_.delete())
+  }
+
+  /** Add a `z` so that they run last. TODO: Only run them selectively? */
+  @Test def zBytecodeIdempotency: Unit = {
+    var failed = 0
+    var total = 0
+    val blacklisted = Set(
+      // Bridges on collections in different order. Second one in scala2 order.
+      "pos/Map/scala/collection/immutable/Map",
+      "pos/Map/scala/collection/immutable/AbstractMap",
+      "pos/t1203a/NodeSeq",
+      "pos/i2345/Whatever"
+    )
+    def checkIdempotency(): Unit = {
+      val groupedBytecodeFiles: List[(Path, Path, Path, Path)] = {
+        val bytecodeFiles = {
+          def bytecodeFiles(paths: JStream[Path]): List[Path] = {
+            def isBytecode(file: String) = file.endsWith(".class") || file.endsWith(".tasty")
+            paths.iterator.asScala.filter(path => isBytecode(path.toString)).toList
+          }
+          val compilerDir1 = Paths.get("../out/idempotency1")
+          val compilerDir2 = Paths.get("../out/idempotency2")
+          bytecodeFiles(Files.walk(compilerDir1)) ++ bytecodeFiles(Files.walk(compilerDir2))
+        }
+        val groups = bytecodeFiles.groupBy(f => f.toString.substring("../out/idempotencyN/".length, f.toString.length - 6))
+        groups.filterNot(x => blacklisted(x._1)).valuesIterator.flatMap { g =>
+          def pred(f: Path, i: Int, isTasty: Boolean) =
+            f.toString.contains("idempotency" + i) && f.toString.endsWith(if (isTasty) ".tasty" else ".class")
+          val class1 = g.find(f => pred(f, 1, isTasty = false))
+          val class2 = g.find(f => pred(f, 2, isTasty = false))
+          val tasty1 = g.find(f => pred(f, 1, isTasty = true))
+          val tasty2 = g.find(f => pred(f, 2, isTasty = true))
+          assert(class1.isDefined, "Could not find class in idempotency1 for " + class2)
+          assert(class2.isDefined, "Could not find class in idempotency2 for " + class1)
+          if (tasty1.isEmpty || tasty2.isEmpty) Nil
+          else List(Tuple4(class1.get, tasty1.get, class2.get, tasty2.get))
+        }.toList
+      }
+
+      for ((class1, tasty1, class2, tasty2) <- groupedBytecodeFiles) {
+        total += 1
+        val bytes1 = Files.readAllBytes(class1)
+        val bytes2 = Files.readAllBytes(class2)
+        if (!java.util.Arrays.equals(bytes1, bytes2)) {
+          failed += 1
+          val tastyBytes1 = Files.readAllBytes(tasty1)
+          val tastyBytes2 = Files.readAllBytes(tasty2)
+          if (java.util.Arrays.equals(tastyBytes1, tastyBytes2))
+            println(s"Idempotency test failed between $class1 and $class1 (same tasty)")
+          else
+            println(s"Idempotency test failed between $tasty1 and $tasty2")
+          /* Dump bytes to console, could be useful if issue only appears in CI.
+           * Create the .class locally with Files.write(path, Array[Byte](...)) with the printed array
+           */
+          // println(bytes1.mkString("Array[Byte](", ",", ")"))
+          // println(bytes2.mkString("Array[Byte](", ",", ")"))
+        }
+      }
+    }
+
+    val opt = defaultOptions.and("-YemitTasty")
+
+    def idempotency1() = {
+      compileList("dotty1", compilerSources ++ backendSources ++ backendJvmSources, opt) +
+      compileFilesInDir("../tests/pos", opt)
+    }
+    def idempotency2() = {
+      compileList("dotty1", compilerSources ++ backendSources ++ backendJvmSources, opt) +
+      compileFilesInDir("../tests/pos", opt)
+    }
+
+    val tests = (idempotency1() + idempotency2()).keepOutput.checkCompile()
+
+    assert(new java.io.File("../out/idempotency1/").exists)
+    assert(new java.io.File("../out/idempotency2/").exists)
+
+    val t0 = System.currentTimeMillis()
+    checkIdempotency()
+    println(s"checked bytecode idempotency (${(System.currentTimeMillis() - t0) / 1000.0} sec)")
+
+    tests.delete()
+
+    assert(failed == 0, s"Failed $failed idempotency checks (out of $total)")
+  }
+
+
+  private val (compilerSources, backendSources, backendJvmSources) = {
+    def sources(paths: JStream[Path], excludedFiles: List[String] = Nil): List[String] =
+      paths.iterator().asScala
+        .filter(path =>
+          (path.toString.endsWith(".scala") || path.toString.endsWith(".java"))
+            && !excludedFiles.contains(path.getFileName.toString))
+        .map(_.toString).toList
+
+    val compilerDir = Paths.get("../compiler/src")
+    val compilerSources0 = sources(Files.walk(compilerDir))
+
+    val backendDir = Paths.get("../scala-backend/src/compiler/scala/tools/nsc/backend")
+    val backendJvmDir = Paths.get("../scala-backend/src/compiler/scala/tools/nsc/backend/jvm")
+
+    // NOTE: Keep these exclusions synchronized with the ones in the sbt build (Build.scala)
+    val backendExcluded =
+      List("JavaPlatform.scala", "Platform.scala", "ScalaPrimitives.scala")
+    val backendJvmExcluded =
+      List("BCodeICodeCommon.scala", "GenASM.scala", "GenBCode.scala", "ScalacBackendInterface.scala")
+
+    val backendSources0 =
+      sources(Files.list(backendDir), excludedFiles = backendExcluded)
+    val backendJvmSources0 =
+      sources(Files.list(backendJvmDir), excludedFiles = backendJvmExcluded)
+
+    (compilerSources0, backendSources0, backendJvmSources0)
   }
 }
 
