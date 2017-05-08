@@ -1241,9 +1241,9 @@ object messages {
 
 
     val msg =
-      s"""|reference to `${hl"$name"}` is ambiguous
+      i"""|reference to `${hl"$name"}` is ambiguous
           |it is both ${bindingString(newPrec, ctx)}
-          |and ${bindingString(prevPrec, prevCtx, " subsequently")}""".stripMargin
+          |and ${bindingString(prevPrec, prevCtx, " subsequently")}"""
 
     val kind = "Reference"
 
@@ -1255,7 +1255,7 @@ object messages {
            |- Named imports take precedence over wildcard imports
            |- You may replace a name when imported using
            |  ${"import"} scala.{ $name => ${name.show + "Tick"} }
-           |""".stripMargin
+           |"""
   }
 
 }
