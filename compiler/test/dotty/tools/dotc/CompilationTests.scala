@@ -306,10 +306,12 @@ class CompilationTests extends ParallelTesting {
 
     def idempotency1() = {
       compileList("dotty1", compilerSources ++ backendSources ++ backendJvmSources, opt) +
+      compileDir("../collection-strawman/src/main", opt) +
       compileFilesInDir("../tests/pos", opt)
     }
     def idempotency2() = {
       compileList("dotty1", compilerSources ++ backendSources ++ backendJvmSources, opt) +
+      compileDir("../collection-strawman/src/main", opt) +
       compileFilesInDir("../tests/pos", opt)
     }
 
