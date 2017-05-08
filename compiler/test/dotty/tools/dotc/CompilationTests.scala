@@ -29,7 +29,6 @@ class CompilationTests extends ParallelTesting {
 
   @Test def compilePos: Unit = {
     compileList("compileStdLib", StdLibSources.whitelisted, scala2Mode.and("-migration", "-Yno-inline")) +
-    compileDir("../collection-strawman/src/main", defaultOptions) +
     compileDir("../compiler/src/dotty/tools/dotc/ast", defaultOptions) +
     compileDir("../compiler/src/dotty/tools/dotc/config", defaultOptions) +
     compileDir("../compiler/src/dotty/tools/dotc/core", allowDeepSubtypes) +
@@ -50,24 +49,24 @@ class CompilationTests extends ParallelTesting {
       "compileMixed",
       List(
         "../tests/pos/B.scala",
-        "../scala2-library/src/library/scala/collection/immutable/Seq.scala",
-        "../scala2-library/src/library/scala/collection/parallel/ParSeq.scala",
-        "../scala2-library/src/library/scala/package.scala",
-        "../scala2-library/src/library/scala/collection/GenSeqLike.scala",
-        "../scala2-library/src/library/scala/collection/SeqLike.scala",
-        "../scala2-library/src/library/scala/collection/generic/GenSeqFactory.scala"
+        "../scala-scala/src/library/scala/collection/immutable/Seq.scala",
+        "../scala-scala/src/library/scala/collection/parallel/ParSeq.scala",
+        "../scala-scala/src/library/scala/package.scala",
+        "../scala-scala/src/library/scala/collection/GenSeqLike.scala",
+        "../scala-scala/src/library/scala/collection/SeqLike.scala",
+        "../scala-scala/src/library/scala/collection/generic/GenSeqFactory.scala"
       ),
       defaultOptions
     ) +
     compileFilesInDir("../tests/pos-special/spec-t5545", defaultOptions) +
-    compileFile("../scala2-library/src/library/scala/collection/immutable/IndexedSeq.scala", defaultOptions) +
-    compileFile("../scala2-library/src/library/scala/collection/parallel/mutable/ParSetLike.scala", defaultOptions) +
+    compileFile("../scala-scala/src/library/scala/collection/immutable/IndexedSeq.scala", defaultOptions) +
+    compileFile("../scala-scala/src/library/scala/collection/parallel/mutable/ParSetLike.scala", defaultOptions) +
     compileList(
       "parSetSubset",
       List(
-       "../scala2-library/src/library/scala/collection/parallel/mutable/ParSetLike.scala",
-       "../scala2-library/src/library/scala/collection/parallel/mutable/ParSet.scala",
-       "../scala2-library/src/library/scala/collection/mutable/SetLike.scala"
+       "../scala-scala/src/library/scala/collection/parallel/mutable/ParSetLike.scala",
+       "../scala-scala/src/library/scala/collection/parallel/mutable/ParSet.scala",
+       "../scala-scala/src/library/scala/collection/mutable/SetLike.scala"
       ),
       scala2Mode
     ) +
