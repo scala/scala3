@@ -11,16 +11,16 @@ class Foo {
 
   val b = true
   def fooIf1 =
-    if (b) blinky // error
-    else ""
+    if (b) blinky
+    else ""  // error
 
   def fooIf2 =
-    if (b) "" // error
-    else blinky
+    if (b) ""
+    else blinky // error
 
   def fooIf3 =
-    if (b) boo1 // error
-    else blinky
+    if (b) boo1
+    else blinky // error
 
   def fooMatch1 = blinky match { // error
     case _: Blinky => ()
@@ -32,6 +32,10 @@ class Foo {
     case 1 => boo1
     case _ => blinky // error
   }
+  def fooTry =
+    try 1
+    catch { case ex: Exception => blinky // error
+    }
 }
 
 object Boo extends Phantom {
