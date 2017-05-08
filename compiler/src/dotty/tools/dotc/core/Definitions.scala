@@ -108,7 +108,7 @@ class Definitions {
    *        def apply(implicit $x0: T0, ..., $x{N_1}: T{N-1}): R
    *      }
    */
-  def newFunctionNTrait(name: TypeName) = {
+  def newFunctionNTrait(name: TypeName): ClassSymbol = {
     val completer = new LazyType {
       def complete(denot: SymDenotation)(implicit ctx: Context): Unit = {
         val cls = denot.asClass.classSymbol
@@ -189,7 +189,14 @@ class Definitions {
 
   lazy val ScalaPackageVal = ctx.requiredPackage("scala")
   lazy val ScalaMathPackageVal = ctx.requiredPackage("scala.math")
-  lazy val ScalaPackageClass = ScalaPackageVal.moduleClass.asClass
+  lazy val ScalaPackageClass = {
+    val cls = ScalaPackageVal.moduleClass.asClass
+    cls.info.decls.openForMutations.useSynthesizer(
+      name => ctx =>
+        if (name.isTypeName && name.isSyntheticFunction) newFunctionNTrait(name.asTypeName)
+        else NoSymbol)
+    cls
+  }
   lazy val JavaPackageVal = ctx.requiredPackage("java")
   lazy val JavaLangPackageVal = ctx.requiredPackage("java.lang")
   // fundamental modules
