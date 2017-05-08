@@ -829,8 +829,13 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
     assert(tag == CHILDREN)
     val end = readNat() + readIndex
     val target = readSymbolRef()
-    while (readIndex != end)
-      target.addAnnotation(Annotation.makeChild(readSymbolRef()))
+    while (readIndex != end) {
+      val start = readIndex
+      readNat() // skip reference for now
+      target.addAnnotation(
+          Annotation.makeChild(implicit ctx =>
+              atReadPos(start, () => readSymbolRef())))
+    }
   }
 
   /* Read a reference to a pickled item */
