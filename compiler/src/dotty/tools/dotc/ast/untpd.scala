@@ -517,6 +517,8 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
         cpy.ContextBounds(tree)(transformSub(bounds), transform(cxBounds))
       case PatDef(mods, pats, tpt, rhs) =>
         cpy.PatDef(tree)(mods, transform(pats), transform(tpt), transform(rhs))
+      case TypedSplice(_) =>
+        tree
       case _ =>
         super.transform(tree)
     }
