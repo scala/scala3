@@ -1218,4 +1218,11 @@ object messages {
            |Attempting to define a field in a method signature after a varargs field is an error.
            |""".stripMargin
   }
+
+  case class ErasedType(val explanation: String = "")(implicit ctx: Context)
+  extends Message(ErasedTypeID) {
+    val kind = "Erased Type"
+    val msg =
+      i"abstract type pattern is unchecked since it is eliminated by erasure"
+  }
 }

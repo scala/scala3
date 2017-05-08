@@ -1,0 +1,64 @@
+scala> def unsafeCast[S](a: Any) = a match { case s: S => s; case _ => ??? }
+-- [E048] Erased Type Unchecked Warning: <console> -----------------------------
+4 |def unsafeCast[S](a: Any) = a match { case s: S => s; case _ => ??? }
+  |                                                ^
+  |      abstract type pattern is unchecked since it is eliminated by erasure
+
+longer explanation available when compiling with `-explain`
+def unsafeCast[S](a: Any): [S](a: Any)S
+scala> unsafeCast[String](1)
+java.lang.ClassCastException: java.lang.Integer cannot be cast to java.lang.String
+	at .<init>(<console>:6)
+	at .<clinit>(<console>)
+	at RequestResult$.<init>(<console>:3)
+	at RequestResult$.<clinit>(<console>)
+	at RequestResult$result(<console>)
+	at sun.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
+	at sun.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.jav...
+scala> class A; def unsafeCast2[S <: A](a: Any) = a match { case s: S => s; case _ => ??? }
+-- [E048] Erased Type Unchecked Warning: <console> -----------------------------
+4 |class A; def unsafeCast2[S <: A](a: Any) = a match { case s: S => s; case _ => ??? }
+  |                                                               ^
+  |      abstract type pattern is unchecked since it is eliminated by erasure
+
+longer explanation available when compiling with `-explain`
+defined class A
+def unsafeCast2[S <: A](a: Any): [S <: A](a: Any)S
+scala> def matchArray1[A](xs: Array[A]) = xs match { case xs: Array[Int] => xs; case xs: Array[A] => ??? }
+def matchArray1[A](xs: Array[A]): [A](xs: Array[A])Array[Int]
+scala> def matchArray2[A](xs: Array[Any]) = xs match { case xs: Array[Int] => xs; case xs: Array[A] => ??? }
+-- [E048] Erased Type Unchecked Warning: <console> -----------------------------
+5 |def matchArray2[A](xs: Array[Any]) = xs match { case xs: Array[Int] => xs; case xs: Array[A] => ??? }
+  |                                                                                             ^
+  |      abstract type pattern is unchecked since it is eliminated by erasure
+
+longer explanation available when compiling with `-explain`
+def matchArray2[A](xs: Array[Any]): [A](xs: Array[Any])Array[Int]
+scala> def matchArray3[A](xs: Array[A]) = xs match { case xs: Array[Int] => xs; case xs: Array[AnyRef] => ???; case xs: Array[Any] => ??? }
+def matchArray3[A](xs: Array[A]): [A](xs: Array[A])Array[Int]
+scala> def matchArray4(xs: Array[Any]) = xs match { case xs: Array[Int] => xs; case xs: Array[A] => ???; case xs: Array[Any] => ??? }
+-- [E048] Erased Type Unchecked Warning: <console> -----------------------------
+5 |def matchArray4(xs: Array[Any]) = xs match { case xs: Array[Int] => xs; case xs: Array[A] => ???; case xs: Array[Any] => ??? }
+  |                                                                                          ^
+  |      abstract type pattern is unchecked since it is eliminated by erasure
+
+longer explanation available when compiling with `-explain`
+def matchArray4(xs: Array[Any]): Array[Int]
+scala> def matchArray5[A](xs: Array[Any]) = xs match { case xs: Array[Int] => xs; case xs: Array[A @unchecked] => ??? }
+def matchArray5[A](xs: Array[Any]): [A](xs: Array[Any])Array[Int]
+scala> def matchList1(xs: List[Any]) = xs match { case xs: List[Int @unchecked] => ??? }
+def matchList1(xs: List[Any]): Nothing
+scala> def matchList2(xs: List[Any]) = xs match { case List() => ???; case _ => ??? }
+def matchList2(xs: List[Any]): Nothing
+scala> def matchList3(xs: Seq[_]) = xs match { case List() => ???; case _ => ??? }
+def matchList3(xs: Seq[_]): Nothing
+scala> val xs: Seq[Int] = Seq(1,2,3)
+val xs: scala.collection.Seq[Int] = List(1, 2, 3)
+scala> val xsMatch = xs match { case ss: List[Int] => 1 }
+val xsMatch: Int = 1
+scala> trait Foo[X]; trait Bar[X,Y]
+defined trait Foo
+defined trait Bar
+scala> val underScoreMatch = (Nil: Any) match { case _: Foo[_] => ???; case _: Bar[_,_] => ???; case _ => 0 }
+val underScoreMatch: Int = 0
+scala> :quit
