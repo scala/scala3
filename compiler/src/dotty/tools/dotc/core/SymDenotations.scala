@@ -483,8 +483,8 @@ object SymDenotations {
     def isNumericValueClass(implicit ctx: Context) =
       maybeOwner == defn.ScalaPackageClass && defn.ScalaNumericValueClasses().contains(symbol)
 
-    /** Is symbol a phantom class for which no runtime representation exists? */
-    def isPhantomClass(implicit ctx: Context) = defn.PhantomClasses contains symbol
+    /** Is symbol a class for which no runtime representation exists? */
+    def isNotRuntimeClass(implicit ctx: Context) = defn.NotRuntimeClasses contains symbol
 
     /** Is this symbol a class representing a refinement? These classes
      *  are used only temporarily in Typer and Unpickler as an intermediate
@@ -635,7 +635,7 @@ object SymDenotations {
 
     /** Is this symbol a class references to which that are supertypes of null? */
     final def isNullableClass(implicit ctx: Context): Boolean =
-      isClass && !isValueClass && !(this is ModuleClass) && symbol != defn.NothingClass
+      isClass && !isValueClass && !(this is ModuleClass) && symbol != defn.NothingClass && !defn.isPhantomTerminalClass(symbol)
 
     /** Is this definition accessible as a member of tree with type `pre`?
      *  @param pre          The type of the tree from which the selection is made

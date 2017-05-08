@@ -820,7 +820,7 @@ class Definitions {
   lazy val UnqualifiedOwnerTypes: Set[NamedType] =
     RootImportTypes.toSet[NamedType] ++ RootImportTypes.map(_.symbol.moduleClass.typeRef)
 
-  lazy val PhantomClasses = Set[Symbol](AnyClass, AnyValClass, NullClass, NothingClass)
+  lazy val NotRuntimeClasses = Set[Symbol](AnyClass, AnyValClass, NullClass, NothingClass)
 
   /** Classes that are known not to have an initializer irrespective of
    *  whether NoInits is set. Note: FunctionXXLClass is in this set
@@ -832,7 +832,7 @@ class Definitions {
    *  trait gets screwed up. Therefore, it is mandatory that FunctionXXL
    *  is treated as a NoInit trait.
    */
-  lazy val NoInitClasses = PhantomClasses + FunctionXXLClass
+  lazy val NoInitClasses = NotRuntimeClasses + FunctionXXLClass
 
   def isPolymorphicAfterErasure(sym: Symbol) =
      (sym eq Any_isInstanceOf) || (sym eq Any_asInstanceOf)
@@ -936,7 +936,8 @@ class Definitions {
     NullClass,
     NothingClass,
     SingletonClass,
-    EqualsPatternClass)
+    EqualsPatternClass,
+    PhantomClass)
 
   lazy val syntheticCoreClasses = syntheticScalaClasses ++ List(
     EmptyPackageVal,
@@ -963,4 +964,23 @@ class Definitions {
       _isInitialized = true
     }
   }
+
+  // ----- Phantoms ---------------------------------------------------------
+
+  lazy val PhantomClass: ClassSymbol = {
+    val cls = completeClass(enterCompleteClassSymbol(ScalaPackageClass, tpnme.Phantom, NoInitsTrait, List(AnyType)))
+
+    val any = enterCompleteClassSymbol(cls, tpnme.Any, Protected | Final | NoInitsTrait, Nil)
+    val nothing = enterCompleteClassSymbol(cls, tpnme.Nothing, Protected | Final | NoInitsTrait, List(any.typeRef))
+    enterMethod(cls, nme.assume_, MethodType(Nil, nothing.typeRef), Protected | Final | Method)
+
+    cls
+  }
+  lazy val Phantom_AnyClass = PhantomClass.unforcedDecls.find(_.name eq tpnme.Any).asClass
+  lazy val Phantom_NothingClass = PhantomClass.unforcedDecls.find(_.name eq tpnme.Nothing).asClass
+  lazy val Phantom_assume = PhantomClass.unforcedDecls.find(_.name eq nme.assume_)
+
+  /** If the symbol is of the class scala.Phantom.Any or scala.Phantom.Nothing */
+  def isPhantomTerminalClass(sym: Symbol) = (sym eq Phantom_AnyClass) || (sym eq Phantom_NothingClass)
+
 }

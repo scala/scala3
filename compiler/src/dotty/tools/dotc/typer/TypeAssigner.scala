@@ -418,7 +418,7 @@ trait TypeAssigner {
     tree.withType(avoidingType(expansion, bindings))
 
   def assignType(tree: untpd.If, thenp: Tree, elsep: Tree)(implicit ctx: Context) =
-    tree.withType(thenp.tpe | elsep.tpe)
+    tree.withType(lubInSameUniverse(thenp :: elsep :: Nil, "branches of an if/else"))
 
   def assignType(tree: untpd.Closure, meth: Tree, target: Tree)(implicit ctx: Context) =
     tree.withType(
@@ -428,15 +428,18 @@ trait TypeAssigner {
   def assignType(tree: untpd.CaseDef, body: Tree)(implicit ctx: Context) =
     tree.withType(body.tpe)
 
-  def assignType(tree: untpd.Match, cases: List[CaseDef])(implicit ctx: Context) =
-    tree.withType(ctx.typeComparer.lub(cases.tpes))
+  def assignType(tree: untpd.Match, cases: List[CaseDef])(implicit ctx: Context) = {
+    if (tree.selector.typeOpt.isPhantom)
+      ctx.error("cannot pattern match on values of a phantom type", tree.selector.pos)
+    tree.withType(lubInSameUniverse(cases, "branches of a match"))
+  }
 
   def assignType(tree: untpd.Return)(implicit ctx: Context) =
     tree.withType(defn.NothingType)
 
   def assignType(tree: untpd.Try, expr: Tree, cases: List[CaseDef])(implicit ctx: Context) =
     if (cases.isEmpty) tree.withType(expr.tpe)
-    else tree.withType(ctx.typeComparer.lub(expr.tpe :: cases.tpes))
+    else tree.withType(lubInSameUniverse(expr :: cases, "branches of a try"))
 
   def assignType(tree: untpd.SeqLiteral, elems: List[Tree], elemtpt: Tree)(implicit ctx: Context) = {
     val ownType = tree match {
@@ -450,10 +453,10 @@ trait TypeAssigner {
     tree.withType(ref.tpe)
 
   def assignType(tree: untpd.AndTypeTree, left: Tree, right: Tree)(implicit ctx: Context) =
-    tree.withType(left.tpe & right.tpe)
+    tree.withType(inSameUniverse(_ & _, left.tpe, right, "an `&`"))
 
   def assignType(tree: untpd.OrTypeTree, left: Tree, right: Tree)(implicit ctx: Context) =
-    tree.withType(left.tpe | right.tpe)
+    tree.withType(inSameUniverse(_ | _, left.tpe, right, "an `|`"))
 
   /** Assign type of RefinedType.
    *  Refinements are typed as if they were members of refinement class `refineCls`.
@@ -484,7 +487,9 @@ trait TypeAssigner {
     tree.withType(ExprType(result.tpe))
 
   def assignType(tree: untpd.TypeBoundsTree, lo: Tree, hi: Tree)(implicit ctx: Context) =
-    tree.withType(if (lo eq hi) TypeAlias(lo.tpe) else TypeBounds(lo.tpe, hi.tpe))
+    tree.withType(
+        if (lo eq hi) TypeAlias(lo.tpe)
+        else inSameUniverse(TypeBounds(_, _), lo.tpe, hi, "type bounds"))
 
   def assignType(tree: untpd.Bind, sym: Symbol)(implicit ctx: Context) =
     tree.withType(NamedType.withFixedSym(NoPrefix, sym))
@@ -529,6 +534,24 @@ trait TypeAssigner {
 
   def assignType(tree: untpd.PackageDef, pid: Tree)(implicit ctx: Context) =
     tree.withType(pid.symbol.valRef)
+
+  /** Ensure that `tree2`'s type is in the same universe as `tree1`. If that's the case, return
+   *  `op` applied to both types.
+   *  If not, issue an error and return `tree1`'s type.
+   */
+  private def inSameUniverse(op: (Type, Type) => Type, tp1: Type, tree2: Tree, relationship: => String)(implicit ctx: Context): Type =
+    if (tp1.topType == tree2.tpe.topType)
+      op(tp1, tree2.tpe)
+    else {
+      ctx.error(ex"$tp1 and ${tree2.tpe} are in different universes. They cannot be combined in $relationship", tree2.pos)
+      tp1
+    }
+
+  private def lubInSameUniverse(trees: List[Tree], relationship: => String)(implicit ctx: Context): Type =
+    trees match {
+      case first :: rest => (first.tpe /: rest)(inSameUniverse(_ | _, _, _, relationship))
+      case Nil => defn.NothingType
+    }
 }
 
 object TypeAssigner extends TypeAssigner

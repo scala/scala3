@@ -174,7 +174,7 @@ class Mixin extends MiniPhaseTransform with SymTransformer { thisTransform =>
 
     def superCallOpt(baseCls: Symbol): List[Tree] = superCalls.get(baseCls) match {
       case Some(call) =>
-        if (defn.PhantomClasses.contains(baseCls)) Nil else call :: Nil
+        if (defn.NotRuntimeClasses.contains(baseCls)) Nil else call :: Nil
       case None =>
         if (baseCls.is(NoInitsTrait) || defn.NoInitClasses.contains(baseCls)) Nil
         else {

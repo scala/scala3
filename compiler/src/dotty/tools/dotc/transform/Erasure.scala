@@ -28,6 +28,7 @@ import ValueClasses._
 import TypeUtils._
 import ExplicitOuter._
 import core.Mode
+import core.PhantomErasure
 
 class Erasure extends Phase with DenotTransformer { thisTransformer =>
 
@@ -454,6 +455,8 @@ object Erasure extends TypeTestsCasts{
       val Apply(fun, args) = tree
       if (fun.symbol == defn.cbnArg)
         typedUnadapted(args.head, pt)
+      else if (fun.symbol eq defn.Phantom_assume)
+        PhantomErasure.erasedAssume
       else typedExpr(fun, FunProto(args, pt, this)) match {
         case fun1: Apply => // arguments passed in prototype were already passed
           fun1

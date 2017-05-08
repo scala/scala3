@@ -670,16 +670,6 @@ object desugar {
       tree
   }
 
-  /** EmptyTree in lower bound ==> Nothing
-   *  EmptyTree in upper bounds ==> Any
-   */
-  def typeBoundsTree(tree: TypeBoundsTree)(implicit ctx: Context): TypeBoundsTree = {
-    val TypeBoundsTree(lo, hi) = tree
-    val lo1 = if (lo.isEmpty) untpd.TypeTree(defn.NothingType) else lo
-    val hi1 = if (hi.isEmpty) untpd.TypeTree(defn.AnyType) else hi
-    cpy.TypeBoundsTree(tree)(lo1, hi1)
-  }
-
   /** Make closure corresponding to function.
    *      params => body
    *  ==>
