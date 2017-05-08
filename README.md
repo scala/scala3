@@ -8,9 +8,13 @@ Dotty
 * [FAQ](http://dotty.epfl.ch/#why-dotty)
 * [Mailing list](https://groups.google.com/forum/#!forum/dotty-internals)
 
+Try it out
+==========
+To try it in your project see also the [Getting Started User Guide](http://dotty.epfl.ch/#getting-started).
+
 How to Contribute
 =================
-* [Getting Started](http://dotty.epfl.ch/docs/contributing/getting-started.html)
+* [Getting Started as Contributor](http://dotty.epfl.ch/docs/contributing/getting-started.html)
 * [Awesome Error Messages](http://scala-lang.org/blog/2016/10/14/dotty-errors.html)
 * [Issues](https://github.com/lampepfl/dotty/issues?q=is%3Aissue+is%3Aopen+label%3A%22help+wanted%22)
 
