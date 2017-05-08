@@ -3,4 +3,4 @@ layout: doc-page
 title: "Using Dotty with sbt"
 ---
 
-See the [example project](https://github.com/lampepfl/dotty-example-project).
+To try it in your project see the [Getting Started User Guide](http://dotty.epfl.ch/#getting-started).
