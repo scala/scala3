@@ -135,7 +135,7 @@ object messages {
   }
 
   case class EmptyCatchBlock(tryBody: untpd.Tree)(implicit ctx: Context)
-  extends EmptyCatchOrFinallyBlock(tryBody, EmptyCatchBlockID) {
+ extends EmptyCatchOrFinallyBlock(tryBody, EmptyCatchBlockID) {
     val kind = "Syntax"
     val msg =
       hl"""|The ${"catch"} block does not contain a valid expression, try
@@ -1252,85 +1252,5 @@ object messages {
            |  ${"import"} scala.{ $name => ${name.show + "Tick"} }
            |"""
   }
-  
-  case class ErasedPhantomsSignatureCollision(decls: Iterable[Symbol], erased: (Name, Type))(implicit ctx: Context)
-  extends Message(ErasedPhantomsSignatureCollisionID) {
-    val kind = "Phantom restriction"
-    val msg = em"After phantom erasure methods $methodsString will have the same signature: ${erased._1}${erased._2}"
 
-    private def methodsString = decls.map(decl => em"${decl.name}${decl.info}").mkString(", ")
-
-    val explanation =
-      hl"""|Phantom erasure removes all phantom parameters/arguments from methods and functions.
-           |""".stripMargin
-  }
-
-  case class PhantomInheritance(cdef: tpd.TypeDef)(implicit ctx: Context)
-  extends Message(PhantomInheritanceID) {
-    val kind = "Phantom restriction"
-    val msg = perfix + " cannot extend both Any and PhantomAny."
-
-    def perfix =
-      if (cdef.symbol.flags.is(Flags.Trait)) "A trait"
-      else if (cdef.symbol.flags.is(Flags.Abstract)) "An abstract class"
-      else "A class"
-
-    val explanation =
-      hl"""|""".stripMargin
-  }
-
-  case class PhantomMixedBounds(op: untpd.Ident)(implicit ctx: Context)
-  extends Message(PhantomMixedBoundsID) {
-    val kind = "Phantom restriction"
-    val msg = hl"Can not mix types of ${"Any"} and ${"Phantom.Any"} with ${op.show}."
-
-    val explanation =
-      hl"""|""".stripMargin
-  }
-
-  case class PhantomCrossedMixedBounds(lo: untpd.Tree, hi: untpd.Tree)(implicit ctx: Context)
-  extends Message(PhantomCrossedMixedBoundsID) {
-    val kind = "Phantom restriction"
-    val msg = hl"Type can not be bounded at the same time by types in the ${"Any"} and ${"Phantom.Any"} latices."
-
-    val explanation =
-      hl"""|""".stripMargin
-  }
-
-  case class MatchPhantom(tpdCase: tpd.CaseDef, expected: Type)(implicit ctx: Context) extends Message(MatchPhantomID) {
-    val kind = "Phantom restriction"
-    val msg = s"Pattern expected case to return a ${expected.show} but was ${tpdCase.tpe.show}"
-
-    val explanation =
-      hl"""|""".stripMargin
-  }
-
-
-  case class MatchOnPhantom()(implicit ctx: Context) extends Message(MatchOnPhantomID) {
-    val kind = "Phantom restriction"
-    val msg = "Cannot pattern match on phantoms"
-
-    val explanation =
-      hl"""|""".stripMargin
-  }
-
-  case class IfElsePhantom(thenp: tpd.Tree, elsep: tpd.Tree)(implicit ctx: Context) extends Message(IfElsePhantomID) {
-    val kind = "Phantom restriction"
-    val msg =
-      s"""if/else cannot have branches with types in different lattices:
-         |  ${thenp.tpe.show} of lattice ${thenp.tpe.topType.show}
-         |  ${elsep.tpe.show} of lattice ${elsep.tpe.topType.show}
-       """.stripMargin
-
-    val explanation =
-      hl"""|""".stripMargin
-  }
-
-  case class PhantomIsInObject()(implicit ctx: Context) extends Message(PhantomIsInObjectID) {
-    val kind = "Phantom restriction"
-    val msg = s"Only ${"object"} can extend ${"scala.Phantom"}"
-
-    val explanation =
-      hl"""|""".stripMargin
-  }  
 }

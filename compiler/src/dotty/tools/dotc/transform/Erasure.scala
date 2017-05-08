@@ -23,11 +23,12 @@ import core.Decorators._
 import dotty.tools.dotc.ast.{Trees, tpd, untpd}
 import ast.Trees._
 import scala.collection.mutable.ListBuffer
-import core.{Constants, Flags, Mode, PhantomErasure}
+import dotty.tools.dotc.core.{Constants, Flags}
 import ValueClasses._
 import TypeUtils._
 import ExplicitOuter._
 import core.Mode
+import core.PhantomErasure
 
 class Erasure extends Phase with DenotTransformer { thisTransformer =>
 
