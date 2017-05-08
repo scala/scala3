@@ -1,3 +1,3 @@
-package + // error
+package foo+ // error
 
 class Foo
