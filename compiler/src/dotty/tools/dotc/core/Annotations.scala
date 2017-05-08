@@ -141,9 +141,15 @@ object Annotations {
       apply(defn.AliasAnnot, List(
         ref(TermRef.withSigAndDenot(sym.owner.thisType, sym.name, sym.signature, sym))))
 
-    def makeChild(sym: Symbol)(implicit ctx: Context) =
-      deferred(defn.ChildAnnot,
-        implicit ctx => New(defn.ChildAnnotType.appliedTo(sym.owner.thisType.select(sym.name, sym)), Nil))
+    def makeChild(delayedSym: Context => Symbol)(implicit ctx: Context): Annotation = {
+      def makeChildLater(implicit ctx: Context) = {
+        val sym = delayedSym(ctx)
+        New(defn.ChildAnnotType.appliedTo(sym.owner.thisType.select(sym.name, sym)), Nil)
+      }
+      deferred(defn.ChildAnnot, implicit ctx => makeChildLater(ctx))
+    }
+
+    def makeChild(sym: Symbol)(implicit ctx: Context): Annotation = makeChild(_ => sym)
 
     def makeSourceFile(path: String)(implicit ctx: Context) =
       apply(defn.SourceFileAnnot, Literal(Constant(path)))
