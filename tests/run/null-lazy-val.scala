@@ -4,9 +4,9 @@ object Test {
   def main(args: Array[String]): Unit = {
     val f = new Foo
     println(1)
-    f.foo
+    println(f.foo)
     println(2)
-    f.foo
+    println(f.foo)
 
     // TODO: Erase
     // Currently not erasing fields for lazy vals
@@ -17,15 +17,8 @@ object Test {
 }
 
 class Foo {
-  import Boo._
-
-  lazy val foo = {
+  lazy val foo: Null = {
     println("foo")
-    any
+    null
   }
-}
-
-object Boo extends Phantom {
-  type BooAny = this.Any
-  def any: BooAny = assume
 }

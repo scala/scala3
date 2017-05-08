@@ -103,17 +103,22 @@ import Decorators._
         var rhs = tree.rhs.changeOwnerAfter(sym, field, thisTransform)
         if (isWildcardArg(rhs)) rhs = EmptyTree
         val fieldDef = transformFollowing(ValDef(field, adaptToField(rhs)))
-        val isUnitField = tree.tpt.tpe.widenDealias =:= defn.BoxedUnitType
-        val getterRhs =
-          if (isUnitField) ref(defn.BoxedUnit_UNIT)
+        val rhsClass = tree.tpt.tpe.widenDealias.classSymbol
+        val getterRhs = {
+          if (rhsClass eq defn.BoxedUnitClass) ref(defn.BoxedUnit_UNIT)
+          else if (rhsClass eq defn.NullClass) Literal(Constant(null))
+          else if (rhsClass eq defn.NothingClass) Throw(Literal(Constant(null)))
           else transformFollowingDeep(ref(field))(ctx.withOwner(sym), info)
+        }
         val getterDef = cpy.DefDef(tree)(rhs = getterRhs)
         Thicket(fieldDef, getterDef)
       } else if (sym.isSetter) {
         if (!sym.is(ParamAccessor)) { val Literal(Constant(())) = tree.rhs } // this is intended as an assertion
         field.setFlag(Mutable) // necessary for vals mixed in from Scala2 traits
-        if (tree.vparamss.head.head.tpt.tpe =:= defn.BoxedUnitType) tree
-        else {
+        val rhsCls = tree.vparamss.head.head.tpt.tpe.classSymbol
+        if ((rhsCls eq defn.BoxedUnitClass) || (rhsCls eq defn.NullClass) || (rhsCls eq defn.NothingClass)) {
+          tree
+        } else {
           val initializer = Assign(ref(field), adaptToField(ref(tree.vparamss.head.head.symbol)))
           cpy.DefDef(tree)(rhs = transformFollowingDeep(initializer)(ctx.withOwner(sym), info))
         }
