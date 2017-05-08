@@ -328,4 +328,34 @@ class ErrorMessagesTests extends ErrorMessagesTest {
         assertEquals("B", qual.show)
         assertEquals("class C", cls.show)
       }
+
+  @Test def ambiguousImport =
+    checkMessagesAfter("frontend") {
+      """
+        |object A {
+        |  class ToBeImported
+        |}
+        |object B {
+        |  class ToBeImported
+        |}
+        |class C {
+        |  import A.ToBeImported
+        |  import B.ToBeImported
+        |
+        |  val value: ToBeImported = ???
+        |}
+      """.stripMargin
+    }
+      .expect { (ictx, messages) =>
+        implicit val ctx: Context = ictx
+        val defn = ictx.definitions
+
+        import typer.Typer.BindingPrec._
+
+        assertMessageCount(1, messages)
+        val AmbiguousImport(name, newPrec, prevPrec, prevCtx) :: Nil = messages
+        assertEquals("ToBeImported", name.show)
+        assertEquals(namedImport, newPrec)
+        assertEquals(namedImport, prevPrec)
+      }
 }

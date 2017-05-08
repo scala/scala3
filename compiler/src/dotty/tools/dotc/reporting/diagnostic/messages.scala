@@ -1218,4 +1218,39 @@ object messages {
            |Attempting to define a field in a method signature after a varargs field is an error.
            |""".stripMargin
   }
+
+  case class AmbiguousImport(name: Names.Name, newPrec: Int, prevPrec: Int, prevCtx: Context)(implicit ctx: Context)
+    extends Message(AmbiguousImportID) {
+
+    import typer.Typer.BindingPrec._
+
+    /** A string which explains how something was bound; Depending on `prec` this is either
+      *      imported by <tree>
+      *  or  defined in <symbol>
+      */
+    private def bindingString(prec: Int, whereFound: Context, qualifier: String = "") =
+      if (isImportPrec(prec)) {
+        ex"""imported$qualifier by ${hl"${whereFound.importInfo}"}"""
+      } else
+        ex"""defined$qualifier in ${hl"${whereFound.owner.toString}"}"""
+
+
+    val msg =
+      i"""|reference to `${hl"$name"}` is ambiguous
+          |it is both ${bindingString(newPrec, ctx)}
+          |and ${bindingString(prevPrec, prevCtx, " subsequently")}"""
+
+    val kind = "Reference"
+
+    val explanation =
+      hl"""|The compiler can't decide which of the possible choices you
+           |are referencing with $name.
+           |Note:
+           |- Definitions take precedence over imports
+           |- Named imports take precedence over wildcard imports
+           |- You may replace a name when imported using
+           |  ${"import"} scala.{ $name => ${name.show + "Tick"} }
+           |"""
+  }
+
 }
