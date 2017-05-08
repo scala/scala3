@@ -49,30 +49,35 @@ class CompilationTests extends ParallelTesting {
       "compileMixed",
       List(
         "../tests/pos/B.scala",
-        "../scala-scala/src/library/scala/collection/immutable/Seq.scala",
-        "../scala-scala/src/library/scala/collection/parallel/ParSeq.scala",
-        "../scala-scala/src/library/scala/package.scala",
-        "../scala-scala/src/library/scala/collection/GenSeqLike.scala",
-        "../scala-scala/src/library/scala/collection/SeqLike.scala",
-        "../scala-scala/src/library/scala/collection/generic/GenSeqFactory.scala"
+        "../scala2-library/src/library/scala/collection/immutable/Seq.scala",
+        "../scala2-library/src/library/scala/collection/parallel/ParSeq.scala",
+        "../scala2-library/src/library/scala/package.scala",
+        "../scala2-library/src/library/scala/collection/GenSeqLike.scala",
+        "../scala2-library/src/library/scala/collection/SeqLike.scala",
+        "../scala2-library/src/library/scala/collection/generic/GenSeqFactory.scala"
       ),
       defaultOptions
     ) +
     compileFilesInDir("../tests/pos-special/spec-t5545", defaultOptions) +
-    compileFile("../scala-scala/src/library/scala/collection/immutable/IndexedSeq.scala", defaultOptions) +
-    compileFile("../scala-scala/src/library/scala/collection/parallel/mutable/ParSetLike.scala", defaultOptions) +
+    compileFile("../scala2-library/src/library/scala/collection/immutable/IndexedSeq.scala", defaultOptions) +
+    compileFile("../scala2-library/src/library/scala/collection/parallel/mutable/ParSetLike.scala", defaultOptions) +
     compileList(
       "parSetSubset",
       List(
-       "../scala-scala/src/library/scala/collection/parallel/mutable/ParSetLike.scala",
-       "../scala-scala/src/library/scala/collection/parallel/mutable/ParSet.scala",
-       "../scala-scala/src/library/scala/collection/mutable/SetLike.scala"
+       "../scala2-library/src/library/scala/collection/parallel/mutable/ParSetLike.scala",
+       "../scala2-library/src/library/scala/collection/parallel/mutable/ParSet.scala",
+       "../scala2-library/src/library/scala/collection/mutable/SetLike.scala"
       ),
       scala2Mode
     ) +
     compileFilesInDir("../tests/new", defaultOptions) +
-    compileFilesInDir("../tests/pos-scala2", scala2Mode)
-    compileFilesInDir("../tests/pos", defaultOptions)
+    compileFilesInDir("../tests/pos-scala2", scala2Mode) +
+    compileFilesInDir("../tests/pos", defaultOptions) +
+    compileFile(
+      // succeeds despite -Xfatal-warnings because of -nowarn
+      "../tests/neg/customArgs/xfatalWarnings.scala",
+      defaultOptions.and("-nowarn", "-Xfatal-warnings")
+    )
   }.checkCompile()
 
   @Test def posTwice: Unit = {
@@ -238,7 +243,8 @@ class CompilationTests extends ParallelTesting {
     }.map(_.checkCompile()).foreach(_.delete())
   }
 
-  @Test def bytecodeIdemporency: Unit = {
+  /** Add a `z` so that they run last. TODO: Only run them selectively? */
+  @Test def zBytecodeIdempotency: Unit = {
     var failed = 0
     var total = 0
     val blacklisted = Set(

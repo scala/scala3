@@ -814,9 +814,11 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
     def followTypeAlias(tree: untpd.Tree): untpd.Tree = {
       tree match {
         case tree: untpd.RefTree =>
-          val ttree = typedType(untpd.rename(tree, tree.name.toTypeName))
+          val nestedCtx = ctx.fresh.setNewTyperState
+          val ttree =
+            typedType(untpd.rename(tree, tree.name.toTypeName))(nestedCtx)
           ttree.tpe match {
-            case alias: TypeRef if alias.info.isAlias =>
+            case alias: TypeRef if alias.info.isAlias && !nestedCtx.reporter.hasErrors =>
               companionRef(alias) match {
                 case companion: TermRef => return untpd.ref(companion) withPos tree.pos
                 case _ =>

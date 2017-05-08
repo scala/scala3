@@ -698,7 +698,7 @@ object RefChecks {
       if (!concrOvers.isEmpty)
         ctx.deprecationWarning(
           symbol.toString + " overrides concrete, non-deprecated symbol(s):" +
-            concrOvers.map(_.name.decode).mkString("    ", ", ", ""), tree.pos)
+            concrOvers.map(_.name).mkString("    ", ", ", ""), tree.pos)
     }
   }
 

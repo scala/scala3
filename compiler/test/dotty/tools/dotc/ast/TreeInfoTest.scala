@@ -4,6 +4,7 @@ package ast
 
 import org.junit.Test
 import core.Names._
+import core.StdNames.nme
 import core.Types._
 import core.Symbols._
 import org.junit.Assert._
@@ -19,7 +20,7 @@ class TreeInfoTest extends DottyTest {
       val xTree = tree.find(tree => tree.symbol.name == termName("x")).get
       val path = defPath(xTree.symbol, tree)
       assertEquals(List(
-        ("PackageDef", EMPTY_PACKAGE),
+        ("PackageDef", nme.EMPTY_PACKAGE),
         ("TypeDef", typeName("A")),
         ("Template", termName("<local A>")),
         ("DefDef", termName("bar")),

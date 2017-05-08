@@ -2,18 +2,18 @@ import scala.annotation.static
 
 class Foo{
   class Bar {
-    def qwa = 
+    def qwa =
      Bar.field
          // 0: invokestatic  #31                 // Method Foo$Bar$.field:()I
          // 3: ireturn
   }
   object Bar {
-     @static 
+     @static
      val field = 1
    }
 }
 
-object Foo{ 
+object Foo{
  @static
  def method = 1
 
@@ -35,6 +35,6 @@ object Test {
 }
 
 class WithLazies{
-  @volatile lazy val s = 1 
+  @volatile lazy val s = 1
   //         98: getstatic     #30                 // Field WithLazies$.OFFSET$0:J
 }

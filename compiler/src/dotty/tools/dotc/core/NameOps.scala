@@ -52,8 +52,8 @@ object NameOps {
   implicit class NameDecorator[N <: Name](val name: N) extends AnyVal {
     import nme._
 
-    def testSimple(f: SimpleTermName => Boolean): Boolean = name match {
-      case name: SimpleTermName => f(name)
+    def testSimple(f: SimpleName => Boolean): Boolean = name match {
+      case name: SimpleName => f(name)
       case name: TypeName => name.toTermName.testSimple(f)
       case _ => false
     }
@@ -83,7 +83,7 @@ object NameOps {
     def isOpAssignmentName: Boolean = name match {
       case raw.NE | raw.LE | raw.GE | EMPTY =>
         false
-      case name: SimpleTermName =>
+      case name: SimpleName =>
         name.length > 0 && name.last == '=' && name.head != '=' && isOperatorPart(name.head)
       case _ =>
         false
@@ -100,8 +100,10 @@ object NameOps {
      *  it is also called from the backend.
      */
     def stripModuleClassSuffix: N = likeSpaced {
-      val semName =
-        if (name.isSimple && name.endsWith("$")) name.unmangleClassName else name
+      val semName = name.toTermName match {
+        case name: SimpleName if name.endsWith("$") => name.unmangleClassName
+        case _ => name
+      }
       semName.exclude(ModuleClassName)
     }
 
@@ -126,15 +128,24 @@ object NameOps {
 
     def errorName: N = likeSpaced(name ++ nme.ERROR)
 
+    /** Map variance value -1, +1 to 0, 1 */
+    private def varianceToNat(v: Int) = (v + 1) / 2
+
+    /** Map 0, 1 to variance value -1, +1 */
+    private def natToVariance(n: Int) = n * 2 - 1
 
     /** Name with variance prefix: `+` for covariant, `-` for contravariant */
-    def withVariance(v: Int): N =
-      likeSpaced { VariantName(name.exclude(VariantName).toTermName, v) }
+    def withVariance(v: Int): N = {
+      val underlying = name.exclude(VariantName)
+      likeSpaced(
+          if (v == 0) underlying
+          else VariantName(underlying.toTermName, varianceToNat(v)))
+    }
 
     /** The variance as implied by the variance prefix, or 0 if there is
      *  no variance prefix.
      */
-    def variance = name.collect { case VariantName(_, n) => n }.getOrElse(0)
+    def variance = name.collect { case VariantName(_, n) => natToVariance(n) }.getOrElse(0)
 
     def freshened(implicit ctx: Context): N = likeSpaced {
       name.toTermName match {
@@ -227,7 +238,7 @@ object NameOps {
     def compactified(implicit ctx: Context): TermName = termName(compactify(name.toString))
 
     def unmangleClassName: N = name.toTermName match {
-      case name: SimpleTermName
+      case name: SimpleName
       if name.endsWith(str.MODULE_SUFFIX) && !nme.falseModuleClassNames.contains(name) =>
         likeSpaced(name.dropRight(str.MODULE_SUFFIX.length).moduleClassName)
       case _ => name
@@ -235,11 +246,11 @@ object NameOps {
 
     def unmangle(kind: NameKind): N = likeSpaced {
       name rewrite {
-        case unmangled: SimpleTermName =>
+        case unmangled: SimpleName =>
           kind.unmangle(unmangled)
         case ExpandedName(prefix, last) =>
           kind.unmangle(last) rewrite {
-            case kernel: SimpleTermName =>
+            case kernel: SimpleName =>
               ExpandedName(prefix, kernel)
           }
       }

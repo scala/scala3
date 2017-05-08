@@ -94,7 +94,7 @@ trait TypeAssigner {
               val refinableDecls = info.decls.filter(
                 sym => !(sym.is(TypeParamAccessor | Private) || sym.isConstructor))
               val fullType = (parentType /: refinableDecls)(addRefinement)
-              mapOver(fullType)
+              apply(fullType)
             case TypeBounds(lo, hi) if variance > 0 =>
               apply(hi)
             case _ =>
@@ -216,7 +216,7 @@ trait TypeAssigner {
     else if (site.derivesFrom(defn.DynamicClass) && !Dynamic.isDynamicMethod(name)) {
       TryDynamicCallType
     } else {
-      if (site.isErroneous) UnspecifiedErrorType
+      if (site.isErroneous || name.toTermName == nme.ERROR) UnspecifiedErrorType
       else {
         def kind = if (name.isTypeName) "type" else "value"
         def addendum =

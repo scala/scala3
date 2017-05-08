@@ -208,9 +208,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
   protected def ParamRefNameString(param: ParamRef): String =
     ParamRefNameString(param.binder.paramNames(param.paramNum))
 
-  /** The name of the symbol without a unique id. Under refined printing,
-   *  the decoded original name.
-   */
+  /** The name of the symbol without a unique id. */
   protected def simpleNameString(sym: Symbol): String = nameString(sym.name)
 
   /** If -uniqid is set, the hashcode of the lambda type, after a # */

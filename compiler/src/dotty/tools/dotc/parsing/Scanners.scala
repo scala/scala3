@@ -7,6 +7,7 @@ import core.StdNames._, core.Comments._
 import util.SourceFile
 import java.lang.Character.isDigit
 import util.Chars._
+import util.NameTransformer.avoidIllegalChars
 import Tokens._
 import scala.annotation.{ switch, tailrec }
 import scala.collection.mutable
@@ -37,7 +38,7 @@ object Scanners {
     var lastOffset: Offset = 0
 
     /** the name of an identifier */
-    var name: SimpleTermName = null
+    var name: SimpleName = null
 
     /** the string value of a literal */
     var strVal: String = null
@@ -179,7 +180,7 @@ object Scanners {
     private[this] var docstringMap: SortedMap[Int, Comment] = SortedMap.empty
 
     private[this] def addComment(comment: Comment): Unit = {
-      val lookahead = lookaheadReader
+      val lookahead = lookaheadReader()
       def nextPos: Int = (lookahead.getc(): @switch) match {
         case ' ' | '\t' => nextPos
         case CR | LF | FF =>
@@ -622,6 +623,7 @@ object Scanners {
       if (ch == '`') {
         nextChar()
         finishNamed(BACKQUOTED_IDENT)
+        name = avoidIllegalChars(name)
         if (name.length == 0)
           error("empty quoted identifier")
         else if (name == nme.WILDCARD)
@@ -861,7 +863,7 @@ object Scanners {
         nextChar()
       }
       if (ch == 'e' || ch == 'E') {
-        val lookahead = lookaheadReader
+        val lookahead = lookaheadReader()
         lookahead.nextChar()
         if (lookahead.ch == '+' || lookahead.ch == '-') {
           lookahead.nextChar()
@@ -905,36 +907,10 @@ object Scanners {
       }
       token = INTLIT
       if (base == 10 && ch == '.') {
-        val isDefinitelyNumber = {
-          val lookahead = lookaheadReader
-          val c = lookahead.getc()
-          (c: @switch) match {
-            /** Another digit is a giveaway. */
-            case '0' | '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9' =>
-              true
-
-            /** Backquoted idents like 22.`foo`. */
-            case '`' =>
-              false
-
-            /** These letters may be part of a literal, or a method invocation on an Int.
-             */
-            case 'd' | 'D' | 'f' | 'F' =>
-              !isIdentifierPart(lookahead.getc())
-
-            /** A little more special handling for e.g. 5e7 */
-            case 'e' | 'E' =>
-              val ch = lookahead.getc()
-              !isIdentifierPart(ch) || (isDigit(ch) || ch == '+' || ch == '-')
-
-            case x =>
-              !isIdentifierStart(x)
-          }
-        }
-        if (isDefinitelyNumber) {
-          putChar(ch)
-          nextChar()
-          getFraction()
+        val lookahead = lookaheadReader()
+        lookahead.nextChar()
+        if ('0' <= lookahead.ch && lookahead.ch <= '9') {
+          putChar('.'); nextChar(); getFraction()
         }
       } else (ch: @switch) match {
         case 'e' | 'E' | 'f' | 'F' | 'd' | 'D' =>

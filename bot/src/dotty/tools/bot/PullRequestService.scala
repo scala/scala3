@@ -34,8 +34,23 @@ trait PullRequestService {
   /** OAuth token for drone, needed to cancel builds */
   def droneToken: String
 
+  /** OAuthed application's "client_id" */
+  def githubClientId: String
+
+  /** OAuthed application's "client_secret" */
+  def githubClientSecret: String
+
   /** Pull Request HTTP service */
   val prService = HttpService {
+    case GET -> Root / "rate" => {
+      val client = PooledHttp1Client()
+      for {
+        rates <- client.expect(get(rateLimit))(EntityDecoder.text)
+        resp  <- Ok(rates)
+        _     <- client.shutdown
+      } yield resp
+    }
+
     case request @ POST -> Root =>
       val githubEvent =
         request.headers
@@ -68,21 +83,28 @@ trait PullRequestService {
   )
 
   private[this] val githubUrl = "https://api.github.com"
+  private[this] def withGithubSecret(url: String, extras: String*): String =
+    s"$url?client_id=$githubClientId&client_secret=$githubClientSecret" + extras.mkString("&", "&", "")
+
+  def rateLimit: String = withGithubSecret("https://api.github.com/rate_limit")
 
   def claUrl(userName: String): String =
    s"https://www.lightbend.com/contribute/cla/scala/check/$userName"
 
   def commitsUrl(prNumber: Int): String =
-    s"$githubUrl/repos/lampepfl/dotty/pulls/$prNumber/commits?per_page=100"
+    withGithubSecret(s"$githubUrl/repos/lampepfl/dotty/pulls/$prNumber/commits", "per_page=100")
 
   def statusUrl(sha: String): String =
-    s"$githubUrl/repos/lampepfl/dotty/statuses/$sha"
+    withGithubSecret(s"$githubUrl/repos/lampepfl/dotty/statuses/$sha")
 
   def issueCommentsUrl(issueNbr: Int): String =
-    s"$githubUrl/repos/lampepfl/dotty/issues/$issueNbr/comments"
+    withGithubSecret(s"$githubUrl/repos/lampepfl/dotty/issues/$issueNbr/comments")
 
   def reviewUrl(issueNbr: Int): String =
-    s"$githubUrl/repos/lampepfl/dotty/pulls/$issueNbr/reviews"
+    withGithubSecret(s"$githubUrl/repos/lampepfl/dotty/pulls/$issueNbr/reviews")
+
+  def contributorsUrl: String =
+    withGithubSecret("https://api.github.com/repos/lampepfl/dotty/contributors")
 
   sealed trait CommitStatus {
     def commit: Commit
@@ -164,6 +186,13 @@ trait PullRequestService {
       .headOption
   }
 
+  /** Get all contributors from GitHub */
+  def getContributors(implicit client: Client): Task[Set[String]] =
+    for {
+      authors <- client.expect(get(contributorsUrl))(jsonOf[List[Author]])
+      logins  =  authors.map(_.login).flatten
+    } yield logins.toSet
+
   /** Ordered from earliest to latest */
   def getCommits(issueNbr: Int)(implicit httpClient: Client): Task[List[Commit]] = {
     def makeRequest(url: String): Task[List[Commit]] =
@@ -207,8 +236,11 @@ trait PullRequestService {
       wrongTense || firstLine.last == '.' || firstLine.length > 80
     }
 
-  def sendInitialComment(issueNbr: Int, invalidUsers: List[String], commits: List[Commit], client: Client): Task[ReviewResponse] = {
-
+  /** Returns the body of a `ReviewResponse` */
+  def sendInitialComment(issueNbr: Int,
+                         invalidUsers: List[String],
+                         commits: List[Commit],
+                         newContributors: Boolean)(implicit client: Client): Task[String] = {
     val cla = if (invalidUsers.nonEmpty) {
       s"""|## CLA ##
           |In order for us to be able to accept your contribution, all users
@@ -245,9 +277,6 @@ trait PullRequestService {
     val body =
       s"""|Hello, and thank you for opening this PR! :tada:
           |
-          |If you haven't already, please request a review from one of our
-          |collaborators (have no fear, we don't bite)!
-          |
           |$cla
           |
           |$commitRules
@@ -256,9 +285,16 @@ trait PullRequestService {
 
     val review = Review.comment(body)
 
+    val shouldPost = newContributors || commitRules.nonEmpty || invalidUsers.nonEmpty
+
     for {
       req <- post(reviewUrl(issueNbr)).withAuth(githubUser, githubToken)
-      res <- client.expect(req.withBody(review.asJson))(jsonOf[ReviewResponse])
+      res <- {
+        if (shouldPost)
+          client.expect(req.withBody(review.asJson))(jsonOf[ReviewResponse]).map(_.body)
+        else
+          Task.now("")
+      }
     } yield res
   }
 
@@ -283,10 +319,12 @@ trait PullRequestService {
           setStatus(statuses.last, httpClient)
       }
 
-      // Send positive comment:
-      _    <- sendInitialComment(issue.number, invalidUsers, commits, httpClient)
-      _    <- httpClient.shutdown
-      resp <- Ok("Fresh PR checked")
+      authors  =  commits.map(_.author.login).flatten.toSet
+      contribs <- getContributors
+      newContr =  !authors.forall(contribs.contains)
+      _        <- sendInitialComment(issue.number, invalidUsers, commits, newContr)
+      _        <- httpClient.shutdown
+      resp     <- Ok("Fresh PR checked")
     } yield resp
 
   }

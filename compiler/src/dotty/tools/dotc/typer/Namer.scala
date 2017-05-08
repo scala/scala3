@@ -257,7 +257,7 @@ class Namer { typer: Typer =>
 
     /** Add moduleClass/sourceModule to completer if it is for a module val or class */
     def adjustIfModule(completer: LazyType, tree: MemberDef) =
-      if (tree.mods is Module) ctx.adjustModuleCompleter(completer, tree.name.encode)
+      if (tree.mods is Module) ctx.adjustModuleCompleter(completer, tree.name)
       else completer
 
     typr.println(i"creating symbol for $tree in ${ctx.mode}")
@@ -280,7 +280,7 @@ class Namer { typer: Typer =>
 
     tree match {
       case tree: TypeDef if tree.isClassDef =>
-        val name = checkNoConflict(tree.name.encode).toTypeName
+        val name = checkNoConflict(tree.name).asTypeName
         val flags = checkFlags(tree.mods.flags &~ Implicit)
         val cls = recordSym(ctx.newClassSymbol(
           ctx.owner, name, flags,
@@ -289,7 +289,7 @@ class Namer { typer: Typer =>
         cls.completer.asInstanceOf[ClassCompleter].init()
         cls
       case tree: MemberDef =>
-        val name = checkNoConflict(tree.name.encode)
+        val name = checkNoConflict(tree.name)
         val flags = checkFlags(tree.mods.flags)
         val isDeferred = lacksDefinition(tree)
         val deferred = if (isDeferred) Deferred else EmptyFlags
@@ -566,8 +566,8 @@ class Namer { typer: Typer =>
 
     /** Create links between companion object and companion class */
     def createLinks(classTree: TypeDef, moduleTree: TypeDef)(implicit ctx: Context) = {
-      val claz = ctx.effectiveScope.lookup(classTree.name.encode)
-      val modl = ctx.effectiveScope.lookup(moduleTree.name.encode)
+      val claz = ctx.effectiveScope.lookup(classTree.name)
+      val modl = ctx.effectiveScope.lookup(moduleTree.name)
       ctx.synthesizeCompanionMethod(nme.COMPANION_CLASS_METHOD, claz, modl).entered
       ctx.synthesizeCompanionMethod(nme.COMPANION_MODULE_METHOD, modl, claz).entered
     }
@@ -609,10 +609,10 @@ class Namer { typer: Typer =>
       // matters.
       if (ctx.owner.is(PackageClass)) {
         for (cdef @ TypeDef(moduleName, _) <- moduleDef.values) {
-          val moduleSym = ctx.effectiveScope.lookup(moduleName.encode)
+          val moduleSym = ctx.effectiveScope.lookup(moduleName)
           if (moduleSym.isDefinedInCurrentRun) {
             val className = moduleName.stripModuleClassSuffix.toTypeName
-            val classSym = ctx.effectiveScope.lookup(className.encode)
+            val classSym = ctx.effectiveScope.lookup(className)
             if (!classSym.isDefinedInCurrentRun) {
               val absentClassSymbol = ctx.newClassSymbol(ctx.owner, className, EmptyFlags, _ => NoType)
               enterSymbol(absentClassSymbol)
