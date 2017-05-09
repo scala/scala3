@@ -881,35 +881,44 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
    *  Normalization is as follows: If `tp2` contains a skolem to its refinement type,
    *  rebase both itself and the member info of `tp` on a freshly created skolem type.
    */
-  protected def hasMatchingMember(name: Name, tp1: Type, tp2: RefinedType): Boolean = {
-    val rinfo2 = tp2.refinedInfo
-    val mbr = tp1.member(name)
+  protected def hasMatchingMember(name: Name, tp1: Type, tp2: RefinedType): Boolean =
+    /*>|>*/ ctx.traceIndented(i"hasMatchingMember($tp1 . $name :? ${tp2.refinedInfo}), mbr: ${tp1.member(name).info}", subtyping) /*<|<*/ {
+      val rinfo2 = tp2.refinedInfo
 
-    def qualifies(m: SingleDenotation) = isSubType(m.info, rinfo2)
-
-    def memberMatches: Boolean = mbr match { // inlined hasAltWith for performance
-      case mbr: SingleDenotation => qualifies(mbr)
-      case _ => mbr hasAltWith qualifies
-    }
-
-    // special case for situations like:
-    //    class C { type T }
-    //    val foo: C
-    //    foo.type <: C { type T {= , <: , >:} foo.T }
-    def selfReferentialMatch = tp1.isInstanceOf[SingletonType] && {
-      rinfo2 match {
-        case rinfo2: TypeBounds =>
-          val mbr1 = tp1.select(name)
-          !defn.isBottomType(tp1.widen) &&
-          (mbr1 =:= rinfo2.hi || (rinfo2.hi ne rinfo2.lo) && mbr1 =:= rinfo2.lo)
+      // If the member is an abstract type, compare the member itself
+      // instead of its bounds. This case is needed situations like:
+      //
+      //    class C { type T }
+      //    val foo: C
+      //    foo.type <: C { type T {= , <: , >:} foo.T }
+      //
+      // or like:
+      //
+      //    class C[T]
+      //    C[_] <: C[TV]
+      //
+      // where TV is a type variable. See i2397.scala for an example of the latter.
+      def matchAbstractTypeMember(info1: Type) = info1 match {
+        case TypeBounds(lo, hi) if lo ne hi =>
+          tp2.refinedInfo match {
+            case rinfo2: TypeBounds =>
+              val ref1 = tp1.widenExpr.select(name)
+              (rinfo2.variance > 0 || isSubType(rinfo2.lo, ref1)) &&
+              (rinfo2.variance < 0 || isSubType(ref1, rinfo2.hi))
+            case _ =>
+              false
+          }
         case _ => false
       }
-    }
 
-    /*>|>*/ ctx.traceIndented(i"hasMatchingMember($tp1 . $name :? ${tp2.refinedInfo}) ${mbr.info.show} $rinfo2", subtyping) /*<|<*/ {
-      memberMatches || selfReferentialMatch
+      def qualifies(m: SingleDenotation) =
+        isSubType(m.info, rinfo2) || matchAbstractTypeMember(m.info)
+
+      tp1.member(name) match { // inlined hasAltWith for performance
+        case mbr: SingleDenotation => qualifies(mbr)
+        case mbr => mbr hasAltWith qualifies
+      }
     }
-  }
 
   final def ensureStableSingleton(tp: Type): SingletonType = tp.stripTypeVar match {
     case tp: SingletonType if tp.isStable => tp
