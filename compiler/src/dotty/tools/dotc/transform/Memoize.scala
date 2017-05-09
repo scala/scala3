@@ -98,27 +98,37 @@ import Decorators._
 
     val NoFieldNeeded = Lazy | Deferred | JavaDefined | (if (ctx.settings.YnoInline.value) EmptyFlags else Inline)
 
+    def isErasableBottomField(cls: Symbol): Boolean = {
+      // TODO: For Scala.js, return false if this field is in a js.Object unless it was a Phantom before erasure.
+      //       Could time travel to detect phantom types or add an annotation before erasure.
+      !field.isVolatile && ((cls eq defn.NothingClass) || (cls eq defn.NullClass) || (cls eq defn.BoxedUnitClass))
+    }
+
+    def erasedBottomTree(sym: Symbol) = {
+      if (sym eq defn.NothingClass) Throw(Literal(Constant(null)))
+      else if (sym eq defn.NullClass) Literal(Constant(null))
+      else {
+        assert(sym eq defn.BoxedUnitClass)
+        ref(defn.BoxedUnit_UNIT)
+      }
+    }
+
     if (sym.is(Accessor, butNot = NoFieldNeeded))
       if (sym.isGetter) {
         var rhs = tree.rhs.changeOwnerAfter(sym, field, thisTransform)
         if (isWildcardArg(rhs)) rhs = EmptyTree
         val fieldDef = transformFollowing(ValDef(field, adaptToField(rhs)))
         val rhsClass = tree.tpt.tpe.widenDealias.classSymbol
-        val getterRhs = {
-          if (rhsClass eq defn.BoxedUnitClass) ref(defn.BoxedUnit_UNIT)
-          else if (rhsClass eq defn.NullClass) Literal(Constant(null))
-          else if (rhsClass eq defn.NothingClass) Throw(Literal(Constant(null)))
+        val getterRhs =
+          if (isErasableBottomField(rhsClass)) erasedBottomTree(rhsClass)
           else transformFollowingDeep(ref(field))(ctx.withOwner(sym), info)
-        }
         val getterDef = cpy.DefDef(tree)(rhs = getterRhs)
         Thicket(fieldDef, getterDef)
       } else if (sym.isSetter) {
         if (!sym.is(ParamAccessor)) { val Literal(Constant(())) = tree.rhs } // this is intended as an assertion
         field.setFlag(Mutable) // necessary for vals mixed in from Scala2 traits
-        val rhsCls = tree.vparamss.head.head.tpt.tpe.classSymbol
-        if ((rhsCls eq defn.BoxedUnitClass) || (rhsCls eq defn.NullClass) || (rhsCls eq defn.NothingClass)) {
-          tree
-        } else {
+        if (isErasableBottomField(tree.vparamss.head.head.tpt.tpe.classSymbol)) tree
+        else {
           val initializer = Assign(ref(field), adaptToField(ref(tree.vparamss.head.head.symbol)))
           cpy.DefDef(tree)(rhs = transformFollowingDeep(initializer)(ctx.withOwner(sym), info))
         }

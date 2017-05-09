@@ -161,6 +161,12 @@ class FirstTransform extends MiniPhaseTransform with InfoTransformer with Annota
     } else ddef
   }
 
+  override def transformValDef(vdef: tpd.ValDef)(implicit ctx: Context, info: TransformerInfo): tpd.Tree = {
+    if (vdef.symbol.hasAnnotation(defn.VolatileAnnot) && vdef.tpt.tpe.isPhantom)
+      ctx.error("Phantom fields can not be @volatile", vdef.pos)
+    vdef
+  }
+
   override def transformStats(trees: List[Tree])(implicit ctx: Context, info: TransformerInfo): List[Tree] =
     ast.Trees.flatten(reorderAndComplete(trees)(ctx.withPhase(thisTransformer.next)))
 
