@@ -60,14 +60,14 @@ class Definitions {
   private def enterCompleteClassSymbol(owner: Symbol, name: TypeName, flags: FlagSet, parents: List[TypeRef], decls: Scope = newScope) =
     ctx.newCompleteClassSymbol(owner, name, flags | Permanent, parents, decls).entered
 
-  private def enterTypeField(cls: ClassSymbol, name: TypeName, flags: FlagSet, scope: MutableScope) =
-    scope.enter(newSymbol(cls, name, flags, TypeBounds.empty))
+  private def enterTypeField(cls: ClassSymbol, name: TypeName, flags: FlagSet, scope: MutableScope, typeBounds: TypeBounds) =
+    scope.enter(newSymbol(cls, name, flags, typeBounds))
 
-  private def enterTypeParam(cls: ClassSymbol, name: TypeName, flags: FlagSet, scope: MutableScope) =
-    enterTypeField(cls, name, flags | ClassTypeParamCreationFlags, scope)
+  private def enterTypeParam(cls: ClassSymbol, name: TypeName, flags: FlagSet, scope: MutableScope, typeBounds: TypeBounds) =
+    enterTypeField(cls, name, flags | ClassTypeParamCreationFlags, scope, typeBounds)
 
   private def enterSyntheticTypeParam(cls: ClassSymbol, paramFlags: FlagSet, scope: MutableScope, suffix: String = "T0") =
-    enterTypeParam(cls, suffix.toTypeName.expandedName(cls), paramFlags, scope)
+    enterTypeParam(cls, suffix.toTypeName.expandedName(cls), paramFlags, scope, TypeBounds.empty)
 
   // NOTE: Ideally we would write `parentConstrs: => Type*` but SIP-24 is only
   // implemented in Dotty and not in Scala 2.
@@ -104,33 +104,31 @@ class Definitions {
    *        def apply(implicit $x0: T0, ..., $x{N_1}: T{N-1}): R
    *      }
    */
-  def newFunctionNTrait(name: TypeName): ClassSymbol = {
+  def newFunctionNTrait(name: TypeName, lattice: Symbol): ClassSymbol = {
     val completer = new LazyType {
       def complete(denot: SymDenotation)(implicit ctx: Context): Unit = {
         val cls = denot.asClass.classSymbol
         val decls = newScope
         val arity = name.functionArity
+        val top = lattice.thisType.select(tpnme.Any)
+        val bottom = lattice.thisType.select(tpnme.Nothing)
         val paramNamePrefix = tpnme.scala_ ++ str.NAME_JOIN ++ name ++ str.EXPAND_SEPARATOR
         val argParams =
           for (i <- List.range(1, arity + 1)) yield
-            enterTypeParam(cls, paramNamePrefix ++ "T" ++ i.toString, Contravariant, decls)
-        val resParam = enterTypeParam(cls, paramNamePrefix ++ "R", Covariant, decls)
+            enterTypeParam(cls, paramNamePrefix ++ "T" ++ i.toString, Contravariant, decls, TypeBounds(bottom, top)).typeRef
+        val resParam = enterTypeParam(cls, paramNamePrefix ++ "R", Covariant, decls, TypeBounds.empty).typeRef
         val (methodType, parentTraits) =
           if (name.firstPart.startsWith(str.ImplicitFunction)) {
             val superTrait =
-              FunctionType(arity).appliedTo(argParams.map(_.typeRef) ::: resParam.typeRef :: Nil)
+              FunctionType(arity, isImplicit = false, top).appliedTo(argParams ::: resParam :: Nil)
             (ImplicitMethodType, superTrait :: Nil)
           }
           else (MethodType, Nil)
-        val applyMeth =
-          decls.enter(
-            newMethod(cls, nme.apply,
-              methodType(argParams.map(_.typeRef), resParam.typeRef), Deferred))
-        denot.info =
-          ClassInfo(ScalaPackageClass.thisType, cls, ObjectType :: parentTraits, decls)
+        decls.enter(newMethod(cls, nme.apply, methodType(argParams, resParam), Deferred))
+        denot.info = ClassInfo(lattice.thisType, cls, ObjectType :: parentTraits, decls)
       }
     }
-    newClassSymbol(ScalaPackageClass, name, Trait | NoInits, completer)
+    newClassSymbol(lattice, name, Trait | NoInits, completer)
   }
 
   private def newMethod(cls: ClassSymbol, name: TermName, info: Type, flags: FlagSet = EmptyFlags): TermSymbol =
@@ -190,7 +188,7 @@ class Definitions {
     val cls = ScalaPackageVal.moduleClass.asClass
     cls.info.decls.openForMutations.useSynthesizer(
       name => ctx =>
-        if (name.isTypeName && name.isSyntheticFunction) newFunctionNTrait(name.asTypeName)
+        if (name.isTypeName && name.isSyntheticScalaFunction) newFunctionNTrait(name.asTypeName, cls)
         else NoSymbol)
     cls
   }
@@ -687,7 +685,7 @@ class Definitions {
 
   object FunctionOf {
     def apply(args: List[Type], resultType: Type, isImplicit: Boolean = false)(implicit ctx: Context) =
-      FunctionType(args.length, isImplicit).appliedTo(args ::: resultType :: Nil)
+      FunctionType(args, resultType, isImplicit).appliedTo(args ::: resultType :: Nil)
     def unapply(ft: Type)(implicit ctx: Context) = {
       val tsym = ft.typeSymbol
       if (isFunctionClass(tsym)) {
@@ -767,15 +765,38 @@ class Definitions {
     lazy val Function0_applyR = ImplementedFunctionType(0).symbol.requiredMethodRef(nme.apply)
     def Function0_apply(implicit ctx: Context) = Function0_applyR.symbol
 
-  def FunctionType(n: Int, isImplicit: Boolean = false)(implicit ctx: Context): TypeRef =
-    if (n <= MaxImplementedFunctionArity && (!isImplicit || ctx.erasedTypes)) ImplementedFunctionType(n)
+  def FunctionType(n: Int, isImplicit: Boolean = false, top: Type = AnyType)(implicit ctx: Context): TypeRef = {
+    if (top.isPhantom) {
+      val functionPrefix = if (isImplicit) str.ImplicitFunction else str.Function
+      val functionName = (functionPrefix + n).toTypeName
+      val functionType = top.normalizedPrefix.select(functionName)
+      assert(functionType.classSymbol.exists)
+      functionType.asInstanceOf[TypeRef]
+    }
+    else if (n <= MaxImplementedFunctionArity && (!isImplicit || ctx.erasedTypes)) ImplementedFunctionType(n)
     else FunctionClass(n, isImplicit).typeRef
+  }
+
+  def FunctionType(args: List[Type], resultType: Type, isImplicit: Boolean)(implicit ctx: Context): TypeRef =
+    FunctionType(args.length, isImplicit, topInSameUniverse(args, "function arguments."))
+
+  private def topInSameUniverse(types: List[Type], relationship: => String)(implicit ctx: Context): Type = {
+    types match {
+      case first :: Nil => first.topType
+      case first :: rest => (first /: rest)(inSameUniverse((t1, _) => t1.topType, _, _, relationship, ctx.owner.pos))
+      case Nil => defn.AnyType
+    }
+  }
 
   private lazy val TupleTypes: Set[TypeRef] = TupleType.toSet
 
   /** If `cls` is a class in the scala package, its name, otherwise EmptyTypeName */
   def scalaClassName(cls: Symbol)(implicit ctx: Context): TypeName =
     if (cls.isClass && cls.owner == ScalaPackageClass) cls.asClass.name else EmptyTypeName
+
+  /** If `cls` is a class in an object extending scala.Phantom, its name, otherwise EmptyTypeName */
+  def phantomClassName(cls: Symbol)(implicit ctx: Context): TypeName =
+    if (cls.isClass && cls.owner.derivesFrom(PhantomClass)) cls.asClass.name else EmptyTypeName
 
   /** If type `ref` refers to a class in the scala package, its name, otherwise EmptyTypeName */
   def scalaClassName(ref: Type)(implicit ctx: Context): TypeName = scalaClassName(ref.classSymbol)
@@ -795,24 +816,28 @@ class Definitions {
    *   - FunctionN for N >= 0
    *   - ImplicitFunctionN for N > 0
    */
-  def isFunctionClass(cls: Symbol) = scalaClassName(cls).isFunction
+  def isFunctionClass(cls: Symbol) =
+    scalaClassName(cls).isFunction || phantomClassName(cls).isFunction
 
   /** Is an implicit function class.
    *   - ImplicitFunctionN for N > 0
    */
-  def isImplicitFunctionClass(cls: Symbol) = scalaClassName(cls).isImplicitFunction
+  def isImplicitFunctionClass(cls: Symbol) =
+    scalaClassName(cls).isImplicitFunction || phantomClassName(cls).isImplicitFunction
 
   /** Is a class that will be erased to FunctionXXL
    *   - FunctionN for N >= 22
    *   - ImplicitFunctionN for N >= 22
    */
-  def isXXLFunctionClass(cls: Symbol) = scalaClassName(cls).functionArity > MaxImplementedFunctionArity
+  def isXXLFunctionClass(cls: Symbol) =
+    scalaClassName(cls).functionArity > MaxImplementedFunctionArity
 
   /** Is a synthetic function class
    *    - FunctionN for N > 22
    *    - ImplicitFunctionN for N > 0
    */
-  def isSyntheticFunctionClass(cls: Symbol) = scalaClassName(cls).isSyntheticFunction
+  def isSyntheticFunctionClass(cls: Symbol) =
+    scalaClassName(cls).isSyntheticScalaFunction || phantomClassName(cls).isFunction
 
   def isAbstractFunctionClass(cls: Symbol) = isVarArityClass(cls, str.AbstractFunction)
   def isTupleClass(cls: Symbol) = isVarArityClass(cls, str.Tuple)
@@ -829,6 +854,7 @@ class Definitions {
     val arity = scalaClassName(cls).functionArity
     if (arity > 22) FunctionXXLClass
     else if (arity >= 0) FunctionClass(arity)
+    else if (phantomClassName(cls).isFunction) FunctionClass(0)
     else NoSymbol
   }
 
@@ -841,8 +867,9 @@ class Definitions {
    */
   def erasedFunctionType(cls: Symbol): Type = {
     val arity = scalaClassName(cls).functionArity
-    if (arity > 22) defn.FunctionXXLType
-    else if (arity >= 0) defn.FunctionType(arity)
+    if (arity > 22) FunctionXXLType
+    else if (arity >= 0) FunctionType(arity)
+    else if (phantomClassName(cls).isFunction) FunctionType(0)
     else NoType
   }
 
@@ -887,7 +914,10 @@ class Definitions {
    *  trait gets screwed up. Therefore, it is mandatory that FunctionXXL
    *  is treated as a NoInit trait.
    */
-  lazy val NoInitClasses = NotRuntimeClasses + FunctionXXLClass
+  private lazy val NoInitClasses = NotRuntimeClasses + FunctionXXLClass
+
+  def isNoInitClass(cls: Symbol): Boolean =
+    cls.is(NoInitsTrait) || NoInitClasses.contains(cls) || isFunctionClass(cls)
 
   def isPolymorphicAfterErasure(sym: Symbol) =
      (sym eq Any_isInstanceOf) || (sym eq Any_asInstanceOf)
@@ -908,7 +938,11 @@ class Definitions {
   def isFunctionType(tp: Type)(implicit ctx: Context) = {
     val arity = functionArity(tp)
     val sym = tp.dealias.typeSymbol
-    arity >= 0 && isFunctionClass(sym) && tp.isRef(FunctionType(arity, sym.name.isImplicitFunction).typeSymbol)
+    def top =
+      if (!sym.owner.derivesFrom(defn.PhantomClass)) defn.AnyType
+      else sym.owner.thisType.select(tpnme.Any)
+    def funType = FunctionType(arity, sym.name.isImplicitFunction, top)
+    arity >= 0 && isFunctionClass(sym) && tp.isRef(funType.typeSymbol)
   }
 
   def functionArity(tp: Type)(implicit ctx: Context) = tp.dealias.argInfos.length - 1
@@ -1024,6 +1058,10 @@ class Definitions {
 
   lazy val PhantomClass: ClassSymbol = {
     val cls = completeClass(enterCompleteClassSymbol(ScalaPackageClass, tpnme.Phantom, NoInitsTrait, List(AnyType)))
+    cls.unforcedDecls.openForMutations.useSynthesizer { name => ctx =>
+      if (name.isTypeName && name.isFunction) newFunctionNTrait(name.asTypeName, cls)
+      else NoSymbol
+    }
 
     val any = enterCompleteClassSymbol(cls, tpnme.Any, Protected | Final | NoInitsTrait, Nil)
     val nothing = enterCompleteClassSymbol(cls, tpnme.Nothing, Protected | Final | NoInitsTrait, List(any.typeRef))
@@ -1043,5 +1081,17 @@ class Definitions {
   def ErasedPhantomClass(implicit ctx: Context) = ErasedPhantomType.symbol.asClass
 
   def ErasedPhantom_UNIT(implicit ctx: Context) = ErasedPhantomClass.linkedClass.requiredValue("UNIT")
+
+  /** Ensure that `tp2`' is in the same universe as `tp1`. If that's the case, return
+   *  `op` applied to both types.
+   *  If not, issue an error and return `tp1`'.
+   */
+  def inSameUniverse(op: (Type, Type) => Type, tp1: Type, tp2: Type, relationship: => String, pos: Position)(implicit ctx: Context): Type =
+    if (tp1.topType == tp2.topType)
+      op(tp1, tp2)
+    else {
+      ctx.error(ex"$tp1 and $tp2 are in different universes. They cannot be combined in $relationship", pos)
+      tp1
+    }
 
 }

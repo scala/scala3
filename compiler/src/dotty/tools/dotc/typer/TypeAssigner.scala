@@ -465,10 +465,10 @@ trait TypeAssigner {
     tree.withType(ref.tpe)
 
   def assignType(tree: untpd.AndTypeTree, left: Tree, right: Tree)(implicit ctx: Context) =
-    tree.withType(inSameUniverse(AndType(_, _), left.tpe, right, "an `&`"))
+    tree.withType(defn.inSameUniverse(AndType(_, _), left.tpe, right.tpe, "an `&`", right.pos))
 
   def assignType(tree: untpd.OrTypeTree, left: Tree, right: Tree)(implicit ctx: Context) =
-    tree.withType(inSameUniverse(OrType(_, _), left.tpe, right, "an `|`"))
+    tree.withType(defn.inSameUniverse(OrType(_, _), left.tpe, right.tpe, "an `|`", right.pos))
 
   /** Assign type of RefinedType.
    *  Refinements are typed as if they were members of refinement class `refineCls`.
@@ -503,7 +503,7 @@ trait TypeAssigner {
   def assignType(tree: untpd.TypeBoundsTree, lo: Tree, hi: Tree)(implicit ctx: Context) =
     tree.withType(
         if (lo eq hi) TypeAlias(lo.tpe)
-        else inSameUniverse(TypeBounds(_, _), lo.tpe, hi, "type bounds"))
+        else defn.inSameUniverse(TypeBounds(_, _), lo.tpe, hi.tpe, "type bounds", hi.pos))
 
   def assignType(tree: untpd.Bind, sym: Symbol)(implicit ctx: Context) =
     tree.withType(NamedType(NoPrefix, sym))
@@ -547,21 +547,9 @@ trait TypeAssigner {
   def assignType(tree: untpd.PackageDef, pid: Tree)(implicit ctx: Context) =
     tree.withType(pid.symbol.termRef)
 
-  /** Ensure that `tree2`'s type is in the same universe as `tree1`. If that's the case, return
-   *  `op` applied to both types.
-   *  If not, issue an error and return `tree1`'s type.
-   */
-  private def inSameUniverse(op: (Type, Type) => Type, tp1: Type, tree2: Tree, relationship: => String)(implicit ctx: Context): Type =
-    if (tp1.topType == tree2.tpe.topType)
-      op(tp1, tree2.tpe)
-    else {
-      ctx.error(ex"$tp1 and ${tree2.tpe} are in different universes. They cannot be combined in $relationship", tree2.pos)
-      tp1
-    }
-
   private def lubInSameUniverse(trees: List[Tree], relationship: => String)(implicit ctx: Context): Type =
     trees match {
-      case first :: rest => (first.tpe /: rest)(inSameUniverse(_ | _, _, _, relationship))
+      case first :: rest => (first.tpe /: rest)((tp, tree) => defn.inSameUniverse(_ | _, tp, tree.tpe, relationship, tree.pos))
       case Nil => defn.NothingType
     }
 }
