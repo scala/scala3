@@ -621,6 +621,8 @@ object Build {
     settings(
       publishArtifact := false,
       parallelExecution in Test := false,
+      // Increase verbosity of test output, started and passed tests are
+      // logged with:
       testOptions in Test += Tests.Argument(TestFrameworks.JUnit, "-a", "-v"),
       libraryDependencies +=
         "com.novocode" % "junit-interface" % "0.11" % "test"

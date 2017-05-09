@@ -8,7 +8,7 @@ import Names._, NameOps._, StdNames._
 
 import scala.collection.{Set, mutable}
 
-import dotty.tools.io.{AbstractFile, Path, ZipArchive}
+import dotty.tools.io.{AbstractFile, Path, ZipArchive, PlainFile}
 import java.io.File
 
 import java.util.{Arrays, Comparator}
@@ -101,7 +101,7 @@ class ExtractDependencies extends Phase {
               val classSegments = Path(ze.path).segments
               binaryDependency(zipFile, className(classSegments))
             }
-          case pf: dotty.tools.io.PlainFile =>
+          case pf: PlainFile =>
             val packages = dep.ownersIterator
               .filter(x => x.is(PackageClass) && !x.isEffectiveRoot).length
             // We can recover the fully qualified name of a classfile from
