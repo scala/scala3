@@ -9,7 +9,7 @@ import util.SourcePosition
 import config.CompilerCommand
 import dotty.tools.io.PlainFile
 import scala.collection.mutable.ListBuffer
-import scala.reflect.io.{ Path, Directory, File => SFile, AbstractFile }
+import dotty.tools.io.{ Path, Directory, File => SFile, AbstractFile }
 import scala.annotation.tailrec
 import java.io.{ RandomAccessFile, File => JFile }
 

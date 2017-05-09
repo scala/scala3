@@ -6,8 +6,7 @@ package dotty.tools.dotc.classpath
 import java.io.File
 import java.net.URL
 import scala.annotation.tailrec
-import scala.reflect.io.{AbstractFile, FileZipArchive, ManifestResources}
-import dotty.tools.io.ClassPath
+import dotty.tools.io.{AbstractFile, ClassPath, FileZipArchive, ManifestResources}
 import dotty.tools.dotc.config.Settings
 import dotty.tools.dotc.core.Contexts.Context
 import FileUtils._

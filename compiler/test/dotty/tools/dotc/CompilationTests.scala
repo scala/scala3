@@ -214,6 +214,30 @@ class CompilationTests extends ParallelTesting {
       compileDir("../library/src",
         allowDeepSubtypes.and("-Ycheck-reentrant", "-strict", "-priorityclasspath", defaultOutputDir))
 
+    def sources(paths: JStream[Path], excludedFiles: List[String] = Nil): List[String] =
+      paths.iterator().asScala
+        .filter(path =>
+          (path.toString.endsWith(".scala") || path.toString.endsWith(".java"))
+            && !excludedFiles.contains(path.getFileName.toString))
+        .map(_.toString).toList
+
+    val compilerDir = Paths.get("../compiler/src")
+    val compilerSources = sources(Files.walk(compilerDir))
+
+    val backendDir = Paths.get("../scala-backend/src/compiler/scala/tools/nsc/backend")
+    val backendJvmDir = Paths.get("../scala-backend/src/compiler/scala/tools/nsc/backend/jvm")
+
+    // NOTE: Keep these exclusions synchronized with the ones in the sbt build (Build.scala)
+    val backendExcluded =
+      List("JavaPlatform.scala", "Platform.scala", "ScalaPrimitives.scala")
+    val backendJvmExcluded =
+      List("BCodeICodeCommon.scala", "GenASM.scala", "GenBCode.scala", "ScalacBackendInterface.scala", "BackendStats.scala", "BCodeAsmEncode.scala")
+
+    val backendSources =
+      sources(Files.list(backendDir), excludedFiles = backendExcluded)
+    val backendJvmSources =
+      sources(Files.list(backendJvmDir), excludedFiles = backendJvmExcluded)
+
     def dotty1 = {
       compileList(
         "dotty1",
@@ -349,7 +373,7 @@ class CompilationTests extends ParallelTesting {
     val backendExcluded =
       List("JavaPlatform.scala", "Platform.scala", "ScalaPrimitives.scala")
     val backendJvmExcluded =
-      List("BCodeICodeCommon.scala", "GenASM.scala", "GenBCode.scala", "ScalacBackendInterface.scala")
+      List("BCodeICodeCommon.scala", "GenASM.scala", "GenBCode.scala", "ScalacBackendInterface.scala", "BackendStats.scala")
 
     val backendSources0 =
       sources(Files.list(backendDir), excludedFiles = backendExcluded)

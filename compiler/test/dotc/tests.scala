@@ -8,7 +8,7 @@ import org.junit.{Before, Test}
 import org.junit.Assert._
 
 import java.io.{ File => JFile }
-import scala.reflect.io.Directory
+import dotty.tools.io.Directory
 import scala.io.Source
 
 /** WARNING

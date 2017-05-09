@@ -182,7 +182,7 @@ class JSCodeGen()(implicit ctx: Context) {
 
   private def getFileFor(cunit: CompilationUnit, sym: Symbol,
       suffix: String) = {
-    import scala.reflect.io._
+    import dotty.tools.io._
 
     val outputDirectory: AbstractFile = // TODO Support virtual files
       new PlainDirectory(new Directory(new java.io.File(ctx.settings.d.value)))

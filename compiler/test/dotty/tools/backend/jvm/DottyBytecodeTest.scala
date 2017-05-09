@@ -5,7 +5,7 @@ import dotc.core.Contexts.{Context, ContextBase}
 import dotc.core.Phases.Phase
 import dotc.Compiler
 
-import scala.reflect.io.{VirtualDirectory => Directory}
+import dotty.tools.io.{VirtualDirectory => Directory}
 import scala.tools.asm
 import asm._
 import asm.tree._

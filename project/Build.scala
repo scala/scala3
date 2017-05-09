@@ -373,7 +373,7 @@ object Build {
         val files = ((backendDir *
           (allScalaFiles - "JavaPlatform.scala" - "Platform.scala" - "ScalaPrimitives.scala")) +++
          (backendDir / "jvm") *
-          (allScalaFiles - "BCodeICodeCommon.scala" - "GenASM.scala" - "GenBCode.scala" - "ScalacBackendInterface.scala")
+          (allScalaFiles - "BCodeICodeCommon.scala" - "GenASM.scala" - "GenBCode.scala" - "ScalacBackendInterface.scala" - "BackendStats.scala")
         ).get
 
         val pairs = files.pair(sbt.Path.rebase(submoduleCompilerDir, outputDir))
@@ -420,7 +420,6 @@ object Build {
       libraryDependencies ++= Seq("com.typesafe.sbt" % "sbt-interface" % sbtVersion.value,
                                   "org.scala-lang.modules" % "scala-xml_2.11" % "1.0.1",
                                   "com.novocode" % "junit-interface" % "0.11" % "test",
-                                  "org.scala-lang" % "scala-reflect" % scalacVersion,
                                   "org.scala-lang" % "scala-library" % scalacVersion % "test"),
 
       // enable improved incremental compilation algorithm
@@ -622,6 +621,9 @@ object Build {
     settings(
       publishArtifact := false,
       parallelExecution in Test := false,
+      // Increase verbosity of test output, started and passed tests are
+      // logged with:
+      testOptions in Test += Tests.Argument(TestFrameworks.JUnit, "-a", "-v"),
       libraryDependencies +=
         "com.novocode" % "junit-interface" % "0.11" % "test"
     )
@@ -629,7 +631,6 @@ object Build {
   // Settings shared between dotty-library and dotty-library-bootstrapped
   lazy val dottyLibrarySettings = Seq(
       libraryDependencies ++= Seq(
-        "org.scala-lang" % "scala-reflect" % scalacVersion,
         "org.scala-lang" % "scala-library" % scalacVersion,
         "com.novocode" % "junit-interface" % "0.11" % "test"
       )

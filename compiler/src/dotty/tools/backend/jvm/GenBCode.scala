@@ -33,7 +33,7 @@ import dotty.tools.dotc.util.{DotClass, Positions}
 import tpd._
 import StdNames._
 
-import scala.reflect.io.{AbstractFile, Directory, PlainDirectory}
+import dotty.tools.io.{AbstractFile, Directory, PlainDirectory}
 
 class GenBCode extends Phase {
   def phaseName: String = "genBCode"
@@ -62,10 +62,10 @@ class GenBCodePipeline(val entryPoints: List[Symbol], val int: DottyBackendInter
 
   val sourceFile = ctx.compilationUnit.source
 
-  /** Convert a `scala.reflect.io.AbstractFile` into a
+  /** Convert a `dotty.tools.io.AbstractFile` into a
    *  `dotty.tools.dotc.interfaces.AbstractFile`.
    */
-  private[this] def convertAbstractFile(absfile: scala.reflect.io.AbstractFile): interfaces.AbstractFile =
+  private[this] def convertAbstractFile(absfile: dotty.tools.io.AbstractFile): interfaces.AbstractFile =
     new interfaces.AbstractFile {
       override def name = absfile.name
       override def path = absfile.path

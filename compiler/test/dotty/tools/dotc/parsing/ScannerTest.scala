@@ -2,7 +2,7 @@ package dotty.tools
 package dotc
 package parsing
 
-import scala.reflect.io._
+import dotty.tools.io._
 import scala.io.Codec
 import util._
 import Tokens._, Scanners._

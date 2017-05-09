@@ -1,15 +1,13 @@
 /*
  * Copyright (c) 2014 Contributor. All rights reserved.
  */
-package dotty.tools.dotc.classpath
+package dotty.tools
+package dotc.classpath
 
 import java.net.URL
 import scala.annotation.tailrec
 import scala.collection.mutable.ArrayBuffer
-import scala.reflect.internal.FatalError
-import scala.reflect.io.AbstractFile
-import dotty.tools.io.ClassPath
-import dotty.tools.io.ClassRepresentation
+import dotty.tools.io.{ AbstractFile, ClassPath, ClassRepresentation }
 
 /**
  * A classpath unifying multiple class- and sourcepath entries.

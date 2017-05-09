@@ -8,7 +8,7 @@ import NameOps._, NameKinds._
 import Scopes.Scope
 import collection.mutable
 import collection.BitSet
-import scala.reflect.io.AbstractFile
+import dotty.tools.io.AbstractFile
 import Decorators.SymbolIteratorDecorator
 import ast._
 import annotation.tailrec
