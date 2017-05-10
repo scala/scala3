@@ -192,8 +192,7 @@ private class ExtractAPICollector(implicit val ctx: Context) extends ThunkHolder
     val acc = apiAccess(sym)
     val modifiers = apiModifiers(sym)
     val anns = apiAnnotations(sym).toArray
-    // from SymDenotations.topLevelClass
-    val topLevel = (sym.isEffectiveRoot || (sym is PackageClass) || (sym.owner is PackageClass))
+    val topLevel = sym.isTopLevelClass
     val childrenOfSealedClass = sym.children.sorted(classFirstSort).map(c => apiType(c.info)).toArray
 
     val cl = new api.ClassLike(

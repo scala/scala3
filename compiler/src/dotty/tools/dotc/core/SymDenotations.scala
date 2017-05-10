@@ -928,12 +928,15 @@ object SymDenotations {
      */
     final def topLevelClass(implicit ctx: Context): Symbol = {
       def topLevel(d: SymDenotation): Symbol = {
-        if (d.isEffectiveRoot || (d is PackageClass) || (d.owner is PackageClass)) d.symbol
+        if (d.isTopLevelClass) d.symbol
         else topLevel(d.owner)
       }
       val sym = topLevel(this)
       if (sym.isClass) sym else sym.moduleClass
     }
+
+    final def isTopLevelClass(implicit ctx: Context): Boolean =
+      this.isEffectiveRoot || (this is PackageClass) || (this.owner is PackageClass)
 
     /** The package class containing this denotation */
     final def enclosingPackageClass(implicit ctx: Context): Symbol =
