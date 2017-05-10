@@ -828,7 +828,14 @@ object DottyInjectedPlugin extends AutoPlugin {
   // depend on the dotty-library
   lazy val `scala-library` = project.
     dependsOn(`dotty-library-bootstrapped`).
-    settings(commonDummySettings)
+    settings(commonDummySettings).
+    settings(
+      // Need a direct dependency on the real scala-library even though we indirectly
+      // depend on it via dotty-library, because sbt may rewrite dependencies
+      // (see https://github.com/sbt/sbt/pull/2634), but won't rewrite the direct
+      // dependencies of scala-library (see https://github.com/sbt/sbt/pull/2897)
+      libraryDependencies += "org.scala-lang" % "scala-library" % scalacVersion
+    )
 
   lazy val `scala-compiler` = project.
     settings(commonDummySettings)
@@ -854,7 +861,17 @@ object DottyInjectedPlugin extends AutoPlugin {
       ScriptedPlugin.scriptedSettings,
       ScriptedPlugin.sbtTestDirectory := baseDirectory.value / "sbt-test",
       ScriptedPlugin.scriptedBufferLog := false,
-      ScriptedPlugin.scriptedLaunchOpts += "-Dplugin.version=" + version.value
+      ScriptedPlugin.scriptedLaunchOpts += "-Dplugin.version=" + version.value,
+      ScriptedPlugin.scriptedLaunchOpts += "-Dplugin.scalaVersion=" + dottyVersion,
+      ScriptedPlugin.scripted := ScriptedPlugin.scripted.dependsOn(Def.task {
+        val x0 = (publishLocal in `dotty-sbt-bridge-bootstrapped`).value
+        val x1 = (publishLocal in `dotty-interfaces`).value
+        val x2 = (publishLocal in `dotty-compiler-bootstrapped`).value
+        val x3 = (publishLocal in `dotty-library-bootstrapped`).value
+        val x4 = (publishLocal in `scala-library`).value
+        val x5 = (publishLocal in `scala-reflect`).value
+        val x6 = (publishLocal in `dotty-bootstrapped`).value // Needed because sbt currently hardcodes the dotty artifact
+      }).evaluated
     )
 
    lazy val publishSettings = Seq(
