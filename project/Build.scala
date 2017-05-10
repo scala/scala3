@@ -861,7 +861,17 @@ object DottyInjectedPlugin extends AutoPlugin {
       ScriptedPlugin.scriptedSettings,
       ScriptedPlugin.sbtTestDirectory := baseDirectory.value / "sbt-test",
       ScriptedPlugin.scriptedBufferLog := false,
-      ScriptedPlugin.scriptedLaunchOpts += "-Dplugin.version=" + version.value
+      ScriptedPlugin.scriptedLaunchOpts += "-Dplugin.version=" + version.value,
+      ScriptedPlugin.scriptedLaunchOpts += "-Dplugin.scalaVersion=" + dottyVersion,
+      ScriptedPlugin.scripted := ScriptedPlugin.scripted.dependsOn(Def.task {
+        val x0 = (publishLocal in `dotty-sbt-bridge-bootstrapped`).value
+        val x1 = (publishLocal in `dotty-interfaces`).value
+        val x2 = (publishLocal in `dotty-compiler-bootstrapped`).value
+        val x3 = (publishLocal in `dotty-library-bootstrapped`).value
+        val x4 = (publishLocal in `scala-library`).value
+        val x5 = (publishLocal in `scala-reflect`).value
+        val x6 = (publishLocal in `dotty-bootstrapped`).value // Needed because sbt currently hardcodes the dotty artifact
+      }).evaluated
     )
 
    lazy val publishSettings = Seq(
