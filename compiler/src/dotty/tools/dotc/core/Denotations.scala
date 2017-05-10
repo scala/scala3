@@ -553,7 +553,7 @@ object Denotations {
       if (sd1.exists)
         if (sd2.exists)
           if (isDoubleDef(denot1.symbol, denot2.symbol)) doubleDefError(denot1, denot2)
-          else throw new TypeError(s"failure to disambiguate overloaded reference $this")
+          else throw new TypeError(i"failure to disambiguate overloaded reference at $this")
         else sd1
       else sd2
     }
