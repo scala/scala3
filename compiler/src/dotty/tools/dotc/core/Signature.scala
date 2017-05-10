@@ -49,6 +49,13 @@ case class Signature(paramsSig: List[TypeName], resSig: TypeName) {
     loop(this.paramsSig, that.paramsSig)
   }
 
+  /** Is this siganture consistent with that signature?
+   *  This is the case if the signatures have consistent parameters
+   *  and result types.
+   */
+  final def consistentWith(that: Signature): Boolean =
+    consistentParams(that) && consistent(resSig, that.resSig)
+
   /** The degree to which this signature matches `that`.
    *  If parameter names are consistent and result types names match (i.e. they are the same
    *  or one is a wildcard), the result is `FullMatch`.
