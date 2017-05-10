@@ -5,6 +5,7 @@ package xsbt
 
 import xsbti.{ Logger, Severity }
 import java.net.URL
+import java.util.Optional
 
 class ScaladocInterface {
   def run(args: Array[String], log: Logger, delegate: xsbti.Reporter) =
@@ -20,13 +21,13 @@ class DottydocRunner(args: Array[String], log: Logger, delegate: xsbti.Reporter)
   )
 
   private[this] val NoPosition = new xsbti.Position {
-    val line = xsbti.Maybe.nothing[Integer]
+    val line = Optional.empty[Integer]
     val lineContent = ""
-    val offset = xsbti.Maybe.nothing[Integer]
-    val sourcePath = xsbti.Maybe.nothing[String]
-    val sourceFile = xsbti.Maybe.nothing[java.io.File]
-    val pointer = xsbti.Maybe.nothing[Integer]
-    val pointerSpace = xsbti.Maybe.nothing[String]
+    val offset = Optional.empty[Integer]
+    val sourcePath = Optional.empty[String]
+    val sourceFile = Optional.empty[java.io.File]
+    val pointer = Optional.empty[Integer]
+    val pointerSpace = Optional.empty[String]
   }
 
   private def getStringSetting(name: String): Option[String] =

@@ -11,6 +11,7 @@ import collection.BitSet
 import dotty.tools.io.AbstractFile
 import Decorators.SymbolIteratorDecorator
 import ast._
+import ast.Trees._
 import annotation.tailrec
 import CheckRealizable._
 import util.SimpleIdentityMap
@@ -333,6 +334,14 @@ object SymDenotations {
       case ann :: rest => if (ann matches cls) anns else dropOtherAnnotations(rest, cls)
       case Nil => Nil
     }
+
+    final def children(implicit ctx: Context): List[Symbol] =
+      this.annotations.filter(_.symbol == ctx.definitions.ChildAnnot).map { annot =>
+        // refer to definition of Annotation.makeChild
+        annot.tree match {
+          case Apply(TypeApply(_, List(tpTree)), _) => tpTree.symbol
+        }
+      }
 
     /** The denotation is completed: info is not a lazy type and attributes have defined values */
     final def isCompleted: Boolean = !myInfo.isInstanceOf[LazyType]

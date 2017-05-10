@@ -3,8 +3,7 @@
  */
 package xsbt
 
-import xsbti.{ AnalysisCallback, Logger, Problem, Reporter, Severity, DependencyContext }
-import xsbti.api.SourceAPI
+import xsbti.{ AnalysisCallback, Logger, Problem, Reporter, Severity }
 import xsbti.compile._
 import Log.debug
 import java.io.File
