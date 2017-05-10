@@ -3,7 +3,7 @@ layout: doc-page
 title: Building Dotty with Eclipse
 ---
 
-Build setup
+Setup
 -----------
 
 1. Run `sbt ;managedSources;eclipse`

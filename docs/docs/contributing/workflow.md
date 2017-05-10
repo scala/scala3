@@ -44,13 +44,6 @@ Additional logging information can be obtained by changes some `noPrinter` to
 `new Printer` in `compiler/src/dotty/tools/dotc/config/Printers.scala`. This enables the
 `subtyping.println("")` and `ctx.traceIndented("", subtyping)` style logging.
 
-## Running tests ##
-
-```bash
-$ sbt
-> partest --show-diff --verbose
-```
-
 ## Running single tests ##
 To test a specific test tests/x/y.scala (for example tests/pos/t210.scala):
 

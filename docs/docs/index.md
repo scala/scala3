@@ -31,3 +31,6 @@ Index
       scheme
     - [Periods](internals/periods.md)
     - [Type System](internals/type-system.md)
+* Resources
+    - [Talks](resources/talks.md)
+

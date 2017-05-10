@@ -15,12 +15,12 @@ sidebar:
           url: docs/usage/migrating.html
     - title: Contributing
       subsection:
-        - title: Eclipse
-          url: docs/contributing/eclipse.html
         - title: Getting Started
           url: docs/contributing/getting-started.html
         - title: IntelliJ IDEA
           url: docs/contributing/intellij-idea.html
+        - title: Eclipse
+          url: docs/contributing/eclipse.html
         - title: Workflow
           url: docs/contributing/workflow.html
         - title: Testing
@@ -49,3 +49,7 @@ sidebar:
           url: docs/internals/syntax.html
         - title: Type System
           url: docs/internals/type-system.html
+    - title: Resources
+      subsection:
+        - title: Talks
+          url: docs/resources/talks.html
