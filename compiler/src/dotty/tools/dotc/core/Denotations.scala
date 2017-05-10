@@ -310,12 +310,26 @@ object Denotations {
             }
           case tp1: MethodOrPoly =>
             tp2 match {
-              case tp2: MethodOrPoly
-              if ctx.typeComparer.matchingParams(tp1, tp2) &&
-                 tp1.isImplicit == tp2.isImplicit =>
-                tp1.derivedLambdaType(
-                  mergeParamNames(tp1, tp2), tp1.paramInfos,
-                  infoMeet(tp1.resultType, tp2.resultType.subst(tp2, tp1)))
+              case tp2: MethodOrPoly =>
+                // Two remedial strategies
+                //  1. Prefer method types over poly types. This is necessary to handle
+                //     overloaded definitions like the following
+                //
+                //        def ++ [B >: A](xs: C[B]): D[B]
+                //        def ++ (xs: C[A]): D[A]
+                //
+                //     (Code like this is found in the collection strawman)
+                // 2. In the case of two method types or two polytypes with matching
+                //    parameters and implicit status, merge corresppnding parameter
+                //    and result types.
+                if (tp1.isInstanceOf[PolyType] && tp2.isInstanceOf[MethodType]) tp2
+                else if (tp2.isInstanceOf[PolyType] && tp1.isInstanceOf[MethodType]) tp1
+                else if (ctx.typeComparer.matchingParams(tp1, tp2) &&
+                         tp1.isImplicit == tp2.isImplicit)
+                  tp1.derivedLambdaType(
+                    mergeParamNames(tp1, tp2), tp1.paramInfos,
+                    infoMeet(tp1.resultType, tp2.resultType.subst(tp2, tp1)))
+                else mergeConflict(tp1, tp2)
               case _ =>
                 mergeConflict(tp1, tp2)
             }
