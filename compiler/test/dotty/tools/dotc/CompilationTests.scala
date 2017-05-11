@@ -32,7 +32,7 @@ class CompilationTests extends ParallelTesting {
     compileDir("../collection-strawman/src/main", defaultOptions) +
     compileDir("../compiler/src/dotty/tools/dotc/ast", defaultOptions) +
     compileDir("../compiler/src/dotty/tools/dotc/config", defaultOptions) +
-    compileDir("../compiler/src/dotty/tools/dotc/core", allowDeepSubtypes) +
+    compileDir("../compiler/src/dotty/tools/dotc/core", allowDeepSubtypes)
     compileDir("../compiler/src/dotty/tools/dotc/transform", allowDeepSubtypes) +
     compileDir("../compiler/src/dotty/tools/dotc/parsing", defaultOptions) +
     compileDir("../compiler/src/dotty/tools/dotc/printing", defaultOptions) +
@@ -40,7 +40,7 @@ class CompilationTests extends ParallelTesting {
     compileDir("../compiler/src/dotty/tools/dotc/typer", defaultOptions) +
     compileDir("../compiler/src/dotty/tools/dotc/util", defaultOptions) +
     compileDir("../compiler/src/dotty/tools/io", defaultOptions) +
-    compileDir("../compiler/src/dotty/tools/dotc/core", noCheckOptions ++ classPath) +
+    compileDir("../compiler/src/dotty/tools/dotc/core", noCheckOptions ++ classPath)
     compileFile("../tests/pos/nullarify.scala", defaultOptions.and("-Ycheck:nullarify")) +
     compileFile("../tests/pos-scala2/rewrites.scala", scala2Mode.and("-rewrite")).copyToTarget() +
     compileFile("../tests/pos-special/t8146a.scala", allowDeepSubtypes) +

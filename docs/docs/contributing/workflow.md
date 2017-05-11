@@ -38,7 +38,7 @@ Here are some useful debugging `<OPTIONS>`:
 * `-Ycheck:all` verifies the consistency of `AST` nodes between phases, in
   particular checks that types do not change. Some phases currently can't be
   `Ycheck`ed, therefore in the tests we run:
-  `-Ycheck:tailrec,resolveSuper,mixin,restoreScopes,labelDef`.
+  `-Ycheck:tailrec,resolveSuper,mixin,restoreScopes,labelDef,simplify`.
 
 Additional logging information can be obtained by changes some `noPrinter` to
 `new Printer` in `compiler/src/dotty/tools/dotc/config/Printers.scala`. This enables the
