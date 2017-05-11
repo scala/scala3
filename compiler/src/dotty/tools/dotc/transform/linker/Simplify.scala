@@ -150,10 +150,12 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
     dropNoEffects               ::
     // inlineLocalObjects          :: // followCases needs to be fixed, see ./tests/pos/rbtree.scala
     // varify                      :: // varify could stop other transformations from being applied. postponed.
-    bubbleUpNothing             ::
+    // bubbleUpNothing             ::
       // Still need to import the tailRec thing
       // t2429.scala
       // constraining-lub.scala
+      // t8933c.scala
+      // t348plus.scala
     constantFold                ::
     Nil
 
