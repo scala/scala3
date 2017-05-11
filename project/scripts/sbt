@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+
+CI_TEST=$1
+
+if [ -n "$2" ]; then
+  if [ $2 = true ]; then
+    SHOULD_RUN=true
+  else
+    SHOULD_RUN=false
+  fi
+else
+  SHOULD_RUN=true
+fi
+
+if [ $SHOULD_RUN = true ]; then
+  sbt -J-Xmx4096m \
+      -J-XX:ReservedCodeCacheSize=512m \
+      -J-XX:MaxMetaspaceSize=1024m \
+      -Ddotty.drone.mem=4096m "$CI_TEST"
+else
+  echo "Not running, \$2=$2, SHOULD_RUN=$SHOULD_RUN"
+fi
