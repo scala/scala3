@@ -558,7 +558,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
 
         def reassignmentToVal =
           errorTree(cpy.Assign(tree)(lhsCore, typed(tree.rhs, lhs1.tpe.widen)),
-            "reassignment to val")
+            ReassignmentToVal(lhsCore.symbol.name))
 
         def canAssign(sym: Symbol) =
           sym.is(Mutable, butNot = Accessor) ||

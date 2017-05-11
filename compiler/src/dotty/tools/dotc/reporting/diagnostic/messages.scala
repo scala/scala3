@@ -1253,4 +1253,18 @@ object messages {
            |"""
   }
 
+  case class ReassignmentToVal(name: Names.Name)(implicit ctx: Context)
+    extends Message(ReassignmentToValID) {
+    val kind = "Reference"
+    val msg = hl"""reassignment to val `$name`"""
+    val explanation =
+      hl"""|You can not assign a new value to `$name` as values can't be changed.
+           |Keep in mind that every statement has a value, so you may e.g. use
+           |  ${"val"} $name ${"= if (condition) 2 else 5"}
+           |In case you need a reassignable name, you can declare it as
+           |variable
+           |  ${"var"} $name ${"="} ...
+           |""".stripMargin
+  }
+
 }
