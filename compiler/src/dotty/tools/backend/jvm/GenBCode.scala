@@ -25,7 +25,7 @@ import Symbols._
 import Denotations._
 import Phases._
 import java.lang.AssertionError
-import java.io.{FileOutputStream, File => JFile}
+import java.io.{DataOutputStream, File => JFile}
 
 import scala.tools.asm
 import scala.tools.asm.tree._
@@ -205,12 +205,16 @@ class GenBCodePipeline(val entryPoints: List[Symbol], val int: DottyBackendInter
             val dataAttr = new CustomAttr(nme.TASTYATTR.mangledString, binary)
             val store = if (mirrorC ne null) mirrorC else plainC
             store.visitAttribute(dataAttr)
+            val outTastyFile = getFileForClassfile(outF, store.name, ".tasty")
             if (ctx.settings.emitTasty.value) {
-              val outTastyFile = getFileForClassfile(outF, store.name, ".tasty").file
-              val fos = new FileOutputStream(outTastyFile, false)
-              fos.write(binary)
-              fos.close()
+              val outstream = new DataOutputStream(outTastyFile.bufferedOutput)
 
+              try outstream.write(binary)
+              finally outstream.close()
+            } else if (!outTastyFile.isVirtual) {
+              // Create an empty file to signal that a tasty section exist in the corresponding .class
+              // This is much cheaper and simpler to check than doing classfile parsing
+              outTastyFile.create()
             }
           }
 
