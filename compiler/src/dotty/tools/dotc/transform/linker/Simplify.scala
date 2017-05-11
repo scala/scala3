@@ -16,6 +16,7 @@ import scala.collection.mutable
 import transform.SymUtils._
 import transform.TreeTransforms.{MiniPhaseTransform, TransformerInfo, TreeTransform}
 import typer.ConstFold
+import dotty.tools.dotc.config.Printers.simplify
 
 /** This phase consists of a series of small, simple, local optimizations
  *  applied as a fix point transformation over Dotty Trees.
@@ -56,15 +57,21 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
   }
 
   private def readingOnlyVals(t: Tree)(implicit ctx: Context): Boolean = dropCasts(t) match {
-    case Typed(exp, tpe) => readingOnlyVals(exp)
-    case TypeApply(fun @Select(rec, _), List(tp))
-      if (fun.symbol eq defn.Any_asInstanceOf) && rec.tpe.derivesFrom(TypeErasure.erasure(tp.tpe).classSymbol) =>
-      readingOnlyVals(rec)
+    case Typed(exp, _) => readingOnlyVals(exp)
+    case TypeApply(fun @ Select(rec, _), List(tp)) =>
+      if ((fun.symbol eq defn.Any_asInstanceOf) && rec.tpe.derivesFrom(tp.tpe.classSymbol))
+        readingOnlyVals(rec)
+      else false
     case Apply(Select(rec, _), Nil) =>
-      if (t.symbol.isGetter && !t.symbol.is(Flags.Mutable)) readingOnlyVals(rec) // getter of a immutable field
-      else if (t.symbol.owner.derivesFrom(defn.ProductClass) && t.symbol.owner.is(Flags.CaseClass) && t.symbol.name.isSelectorName)
-        readingOnlyVals(rec) // accessing a field of a product
-      else if (t.symbol.is(Flags.CaseAccessor) && !t.symbol.is(Flags.Mutable))
+      def isGetterOfAImmutableField = t.symbol.isGetter && !t.symbol.is(Flags.Mutable)
+      def isCaseClassWithVar        = t.symbol.info.decls.exists(_.is(Flags.Mutable))
+      def isAccessingProductField   = t.symbol.exists                               &&
+                                      t.symbol.owner.derivesFrom(defn.ProductClass) &&
+                                      t.symbol.owner.is(Flags.CaseClass)            &&
+                                      t.symbol.name.isSelectorName                  &&
+                                      !isCaseClassWithVar // Conservative Covers case class A(var x: Int)
+      def isImmutableCaseAccessor   = t.symbol.is(Flags.CaseAccessor) && !t.symbol.is(Flags.Mutable)
+      if (isGetterOfAImmutableField || isAccessingProductField || isImmutableCaseAccessor)
         readingOnlyVals(rec)
       else false
     case Select(rec, _) if t.symbol.is(Flags.Method) =>
@@ -127,8 +134,14 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
 
   private lazy val _optimizations: Seq[Optimization] =
     inlineCaseIntrinsics        ::
-    removeUnnecessaryNullChecks ::
+    removeUnnecessaryNullChecks :: // Doesn't seams to work AfterErasure
     inlineOptions               ::
+       // Tests that fail when enabled AfterErasure, to be investigated?
+       // ../tests/run/Course-2002-04.scala failed
+       // ../tests/run/t2005.scala failed
+       // ../tests/run/optimizer-array-load.scala failed
+       // ../tests/pos/virtpatmat_exist1.scala failed
+       // ../tests/pos/t1133.scala failed
     inlineLabelsCalledOnce      ::
     valify                      ::
     devalify                    ::
@@ -137,7 +150,10 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
     dropNoEffects               ::
     // inlineLocalObjects          :: // followCases needs to be fixed, see ./tests/pos/rbtree.scala
     // varify                      :: // varify could stop other transformations from being applied. postponed.
-    // bubbleUpNothing             ::
+    bubbleUpNothing             ::
+      // Still need to import the tailRec thing
+      // t2429.scala
+      // constraining-lub.scala
     constantFold                ::
     Nil
 
@@ -167,8 +183,10 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
                 nextTransformer(ctx)(super.transform(tree)(innerCtx))
               }
             }.transform(rhs0)
-            // if (rhst ne rhs0)
-            //   println(s"${tree.symbol} after ${name} became ${rhst.show}")
+            if (rhst ne rhs0) {
+              simplify.println(s"${tree.symbol} was simplified by ${name}: ${rhs0.show}")
+              simplify.println(s"became: ${rhst.show}")
+            }
             rhs0 = rhst
           }
           names = names.tail
@@ -435,10 +453,12 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
    *  intermediate tuples coming from pattern matching expressions.
    */
   val inlineLocalObjects: Optimization = { implicit ctx: Context =>
-    val hasPerfectRHS = collection.mutable.HashMap[Symbol, Boolean]() // in the end only calls constructor. Reason for unconditional inlining
-    val checkGood = collection.mutable.HashMap[Symbol, Set[Symbol]]() // if all values have perfect RHS than key has perfect RHS
-    val forwarderWritesTo = collection.mutable.HashMap[Symbol, Symbol]()
-    val gettersCalled = collection.mutable.HashSet[Symbol]()
+    // In the end only calls constructor. Reason for unconditional inlining
+    val hasPerfectRHS = mutable.HashMap[Symbol, Boolean]()
+    // If all values have perfect RHS than key has perfect RHS
+    val checkGood = mutable.HashMap[Symbol, Set[Symbol]]()
+    val forwarderWritesTo = mutable.HashMap[Symbol, Symbol]()
+    val gettersCalled = mutable.HashSet[Symbol]()
     def followTailPerfect(t: Tree, symbol: Symbol): Unit = {
       t match {
         case Block(_, expr) => followTailPerfect(expr, symbol)
@@ -484,7 +504,7 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
       val newMappings: Map[Symbol, Map[Symbol, Symbol]] =
         hasPerfectRHS.iterator.map(x => x._1).filter(x => !x.is(Flags.Method) && !x.is(Flags.Label) && gettersCalled.contains(x.symbol) && (x.symbol.info.classSymbol is Flags.CaseClass))
           .map { refVal =>
-            // println(s"replacing ${refVal.symbol.fullName} with stack-allocated fields")
+            simplify.println(s"replacing ${refVal.symbol.fullName} with stack-allocated fields")
             var accessors = refVal.info.classSymbol.caseAccessors.filter(_.isGetter) // TODO: drop mutable ones
             if (accessors.isEmpty) accessors = refVal.info.classSymbol.caseAccessors
             val productAccessors = (1 to accessors.length).map(i => refVal.info.member(nme.productAccessorName(i)).symbol) // TODO: disambiguate
@@ -505,20 +525,20 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
           case tree@ If(_, thenp, elsep) => cpy.If(tree)(thenp = splitWrites(thenp, target), elsep =  splitWrites(elsep, target))
           case Apply(sel , args) if sel.symbol.isConstructor && t.tpe.widenDealias == target.info.widenDealias.finalResultType.widenDealias =>
             val fieldsByAccessors = newMappings(target)
-            var accessors = target.info.classSymbol.caseAccessors.filter(_.isGetter)  // TODO: when is this filter needed?
+            var accessors = target.info.classSymbol.caseAccessors.filter(_.isGetter) // TODO: when is this filter needed?
             if (accessors.isEmpty) accessors = target.info.classSymbol.caseAccessors
             val assigns = (accessors zip args) map (x => ref(fieldsByAccessors(x._1)).becomes(x._2))
             val recreate = sel.appliedToArgs(accessors.map(x => ref(fieldsByAccessors(x))))
             Block(assigns, recreate)
           case Apply(fun, _) if fun.symbol.is(Flags.Label) =>
-            t // do nothing. it will do on its own
+            t // Do nothing. It will do on its own.
           case t: Ident if !t.symbol.owner.isClass && newMappings.contains(t.symbol) && t.symbol.info.classSymbol == target.info.classSymbol =>
             val fieldsByAccessorslhs = newMappings(target)
             val fieldsByAccessorsrhs = newMappings(t.symbol)
             val accessors = target.info.classSymbol.caseAccessors.filter(_.isGetter)
             val assigns = accessors map (x => ref(fieldsByAccessorslhs(x)).becomes(ref(fieldsByAccessorsrhs(x))))
             Block(assigns, t)
-          // if t is itself split, push writes
+          // If `t` is itself split, push writes.
           case _ =>
             evalOnce(t){ev =>
               if (ev.tpe.derivesFrom(defn.NothingClass)) ev
@@ -528,7 +548,7 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
                 val assigns = accessors map (x => ref(fieldsByAccessors(x)).becomes(ev.select(x)))
                 Block(assigns, ev)
               }
-            } // need to eval-once and update fields
+            } // Need to eval-once and update fields.
 
         }
       }
@@ -536,7 +556,7 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
       def followCases(t: Symbol, limit: Int = 0): Symbol = if (t.symbol.is(Flags.Label)) {
         // TODO: this can create cycles, see ./tests/pos/rbtree.scala
         if (limit > 100 && limit > forwarderWritesTo.size + 1) NoSymbol
-          // there may be cycles in labels, that never in the end write to a valdef(the value is always on stack)
+          // There may be cycles in labels, that never in the end write to a valdef(the value is always on stack)
           // there's not much we can do here, except finding such cases and bailing out
           // there may not be a cycle bigger that hashmapSize > 1
         else followCases(forwarderWritesTo.getOrElse(t.symbol, NoSymbol), limit + 1)
@@ -555,7 +575,7 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
           }
         case a: ValDef if toSplit.contains(a.symbol) =>
           toSplit -= a.symbol
-          // break ValDef apart into fields + boxed value
+          // Break ValDef apart into fields + boxed value
           val newFields = newMappings(a.symbol).values.toSet
           Thicket(
             newFields.map(x => ValDef(x.asTerm, defaultValue(x.symbol.info.widenDealias))).toList :::
@@ -601,7 +621,7 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
       t match {
         case Apply(x, _) if (x.symbol == defn.Boolean_! || x.symbol == defn.Boolean_||) => List.empty
         case Apply(fun @ Select(x, _), y) if (fun.symbol == defn.Boolean_&&) => recur(x) ++ recur(y.head)
-        case Apply(fun @Select(x, _), List(tp)) if fun.symbol eq defn.Object_ne =>
+        case Apply(fun @ Select(x, _), List(tp)) if fun.symbol eq defn.Object_ne =>
           if (x.symbol.exists && !x.symbol.owner.isClass && !x.symbol.is(Flags.Method|Flags.Mutable))
             x.symbol :: Nil
           else Nil
@@ -617,7 +637,6 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
    *  - Simplify (a == null) and (a != null) when the result is statically known
    */
   val dropGoodCasts: Optimization = { implicit ctx: Context =>
-
     val transformer: Transformer = () => localCtx => {
       case t @ If(cond, thenp, elsep) =>
         val newTypeTested = collectTypeTests(cond)
@@ -681,9 +700,7 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
       case vd: ValDef =>
         val rhs = vd.rhs
         val rhsName = rhs.symbol.name
-        if (!vd.symbol.is(Flags.Mutable) &&
-          !rhs.isEmpty) {
-
+        if (!vd.symbol.is(Flags.Mutable) && !rhs.isEmpty) {
           def checkNonNull(t: Tree, target: Symbol): Boolean = t match {
             case Block(_ , expr) => checkNonNull(expr, target)
             case If(_, thenp, elsep) => checkNonNull(thenp, target) && checkNonNull(elsep, target)
@@ -727,7 +744,7 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
       }
       transformation
     }
-    ("removeUnnecessaryNullChecks", BeforeAndAfterErasure, visitor,
+    ("removeUnnecessaryNullChecks", BeforeErasure, visitor,
       transformer)
   }
 
@@ -737,21 +754,44 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
    *  compiler will often be able to reduce them to a single main with ???...
    */
   val bubbleUpNothing: Optimization = { implicit ctx: Context =>
+    object Notathing {
+      def unapply(t: Tree): Option[Tree] = Option(lookup(t))
+      def lookup(t: Tree): Tree = t match {
+        case x if x.tpe.derivesFrom(defn.NothingClass) => t
+        case Typed(x, _) => lookup(x)
+        case Block(_, x) => lookup(x)
+        case _ => null
+      }
+    }
+    def notathing(t: Tree): Boolean = t match {
+      case Notathing(_) => true
+      case _ => false
+    }
     val transformer: Transformer = () => localCtx => {
-      case Apply(Select(qual, _), args)  if qual.tpe.derivesFrom(defn.NothingClass) => qual
-      case Apply(Select(qual, _), args)  if args.exists(x => x.tpe.derivesFrom(defn.NothingClass)) =>
-        val (keep, noth :: other) = args.span(x => !x.tpe.derivesFrom(defn.NothingClass))
-        Block(qual :: keep, noth)
-      case Assign(_, rhs) if rhs.tpe.derivesFrom(defn.NothingClass) =>
+      case t @ Apply(Select(Notathing(qual), _), args) =>
+        Typed(qual, TypeTree(t.tpe))
+      // This case leads to complications with multiple argument lists,
+      // how to do you rewrites tree.witType(???)(ctx).withType(???)(ctx)
+      // using Ycheckable steps?
+
+      // Solution: only transform when having a complete application,
+      // steal code from tailRec
+
+      // case t @ Apply(Select(qual, _), args) if args.exists(notathing) =>
+      //   val (keep, noth :: other) = args.span(x => !notathing(x))
+      //   Block(qual :: keep, Typed(noth, TypeTree(t.tpe)))
+      case Assign(_, rhs) if notathing(rhs) =>
         rhs
-      case If(cond, _, _) if cond.tpe.derivesFrom(defn.NothingClass) => cond
-      case a: Block if a.stats.exists(x => x.tpe.derivesFrom(defn.NothingClass))  =>
-        val (keep, noth :: other) = a.stats.span(x => !x.tpe.derivesFrom(defn.NothingClass))
-        val keep2 = other.filter(x => x.isDef)
-        Block(keep ::: keep2, noth)
+      case t @ If(Notathing(cond), _, _) =>
+        Typed(cond, TypeTree(t.tpe))
+      case b: Block if b.stats.exists(x => !x.isDef && notathing(x)) =>
+        val (keep, noth :: other) = b.stats.span(x => x.isDef || !notathing(x))
+        val keepDefs = other.filter(x => x.isDef)
+        val body = keep ::: keepDefs
+        Typed(Block(body, noth), TypeTree(b.tpe))
       case t => t
     }
-    ("bubbleUpNothing", BeforeAndAfterErasure, NoVisitor, transformer)
+    ("bubbleUpNothing", BeforeErasure, NoVisitor, transformer)
   }
 
   private def keepOnlySideEffects(t: Tree)(implicit ctx: Context): Tree = {
@@ -773,8 +813,10 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
         (t.symbol.isGetter && !t.symbol.is(Flags.Mutable | Flags.Lazy)) ||
         (t.symbol.owner.derivesFrom(defn.ProductClass) && t.symbol.owner.is(Flags.CaseClass) && t.symbol.name.isSelectorName) ||
         (t.symbol.is(Flags.CaseAccessor) && !t.symbol.is(Flags.Mutable)) =>
-          keepOnlySideEffects(rec) // accessing a field of a product
-      case Select(qual, _) if !t.symbol.is(Flags.Mutable | Flags.Lazy) && !t.symbol.is(Flags.Method) =>
+          keepOnlySideEffects(rec) // Accessing a field of a product
+      case s @ Select(qual, name) if
+          !name.eq(nme.TYPE_) && // Keep the .TYPE added by ClassOf
+          !t.symbol.is(Flags.Mutable | Flags.Lazy) && !t.symbol.is(Flags.Method) =>
         keepOnlySideEffects(qual)
       case Block(List(t: DefDef), s: Closure) =>
         EmptyTree
@@ -796,7 +838,7 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
         // invalidates the denotation cache. Because this optimization only
         // operates locally, this should be fine.
         val denot = app.fun.symbol.denot
-        // println(s"replacing ${app.symbol}")
+        simplify.println(s"replacing ${app.symbol}")
         if (!denot.info.finalResultType.derivesFrom(defn.UnitClass)) {
           val newLabelType = app.symbol.info match {
             case mt: MethodType =>
@@ -872,8 +914,8 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
 
   /** Inlines LabelDef which are used exactly once. */
   val inlineLabelsCalledOnce: Optimization = { implicit ctx: Context =>
-    val timesUsed = collection.mutable.HashMap[Symbol, Int]()
-    val defined = collection.mutable.HashMap[Symbol, DefDef]()
+    val timesUsed = mutable.HashMap[Symbol, Int]()
+    val defined = mutable.HashMap[Symbol, DefDef]()
 
     val visitor: Visitor = {
       case defdef: DefDef if defdef.symbol.is(Flags.Label)  =>
@@ -891,7 +933,7 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
         defined.get(a.symbol) match {
           case None => a
           case Some(defDef) if a.symbol.is(Flags.Label) && timesUsed.getOrElse(a.symbol, 0) == 1 && a.symbol.info.paramInfoss == List(Nil) =>
-            // println(s"Inlining ${defDef.name}")
+            simplify.println(s"Inlining labeldef ${defDef.name}")
             defDef.rhs.changeOwner(defDef.symbol, localCtx.owner)
           case Some(defDef) if defDef.rhs.isInstanceOf[Literal] =>
             defDef.rhs
@@ -899,11 +941,11 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
             a
         }
       case a: DefDef if (a.symbol.is(Flags.Label) && timesUsed.getOrElse(a.symbol, 0) == 1 && defined.contains(a.symbol)) =>
-        // println(s"Dropping ${a.name} ${timesUsed.get(a.symbol)}")
+        simplify.println(s"Dropping labeldef (used once) ${a.name} ${timesUsed.get(a.symbol)}")
         defined.put(a.symbol, a)
         EmptyTree
       case a: DefDef if (a.symbol.is(Flags.Label) && timesUsed.getOrElse(a.symbol, 0) == 0 && defined.contains(a.symbol)) =>
-        // println(s"Dropping ${a.name} ${timesUsed.get(a.symbol)}")
+        simplify.println(s"Dropping labeldef (never used) ${a.name} ${timesUsed.get(a.symbol)}")
         EmptyTree
       case t => t
     }
@@ -912,8 +954,8 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
 
   /** Rewrites pairs of consecutive LabelDef jumps by jumping directly to the target. */
   val jumpjump: Optimization = { implicit ctx: Context =>
-    // optimize label defs that call other label-defs
-    val defined = collection.mutable.HashMap[Symbol, Symbol]()
+    // Optimize label defs that call other label-defs
+    val defined = mutable.HashMap[Symbol, Symbol]()
 
     val visitor: Visitor = {
       case defdef: DefDef if defdef.symbol.is(Flags.Label)  =>
@@ -938,7 +980,7 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
             ref(fwd).appliedToArgs(a.args)
         }
       case a: DefDef if defined.contains(a.symbol) =>
-        // println(s"dropping ${a.symbol.showFullName} as forwarder to ${defined(a.symbol).showFullName}")
+        simplify.println(s"Dropping ${a.symbol.showFullName} as forwarder to ${defined(a.symbol).showFullName}")
         EmptyTree
       case t => t
     }
@@ -947,8 +989,8 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
 
   /** Inlines Option methods whose result is known statically. */
   val inlineOptions: Optimization = { implicit ctx: Context =>
-    val somes = collection.mutable.HashMap[Symbol, Tree]()
-    val nones = collection.mutable.HashSet[Symbol]()
+    val somes = mutable.HashMap[Symbol, Tree]()
+    val nones = mutable.HashSet[Symbol]()
 
     val visitor: Visitor = {
       case valdef: ValDef if !valdef.symbol.is(Flags.Mutable) &&
@@ -993,12 +1035,12 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
       if (nw ne old) nw
       else tree
     }
-    ("inlineLabelsCalledOnce", BeforeAndAfterErasure, visitor, transformer)
+    ("inlineLabelsCalledOnce", BeforeErasure, visitor, transformer)
   }
 
   /** Rewrite vars with exactly one assignment as vals. */
   val valify: Optimization = { implicit ctx: Context =>
-    // either a duplicate or a read through series of immutable fields
+    // Either a duplicate or a read through series of immutable fields.
     val defined: mutable.Map[Symbol, ValDef] = mutable.Map()
     val firstRead: mutable.Map[Symbol, RefTree] = mutable.Map()
     val firstWrite: mutable.Map[Symbol, Assign] = mutable.Map()
@@ -1026,7 +1068,7 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
 
     val transformer: Transformer = () => localCtx => {
       val transformation: Tree => Tree = {
-        case t: Block => // drop non-side-effecting stats
+        case t: Block => // Drop non-side-effecting stats
           val valdefs = t.stats.collect {
             case t: ValDef if defined.contains(t.symbol) => t
           }
@@ -1067,23 +1109,12 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
     ("valify", BeforeAndAfterErasure, visitor, transformer)
   }
 
-  /** Gets ride of duplicate parameters of tail recursive functions using mutable parameter.
-   *
-   *  Unlike what's done in scalac, this is limited to the simple cases,
-   *  for instance, we would not optimize anything in the following case:
-   *
-   *  def f(x, y) = f(x + y + 1, x - y - 1)
-   *
-   *  In scalac the above is optimized using a bytecode trick which cannot be
-   *  expressed in source code. In the example above, x can be turned into a var
-   *  by first doing a DUP to push the current value onto the stack. This
-   *  introduces a tight coupling between backend and tqilreq which we prefer
-   *  to avoid in dotty.
-   */
+  /** Inline vals */
   val devalify: Optimization = { implicit ctx: Context =>
-    val timesUsed = collection.mutable.HashMap[Symbol, Int]()
-    val defined = collection.mutable.HashSet[Symbol]()
-    val copies = collection.mutable.HashMap[Symbol, Tree]() // either a duplicate or a read through series of immutable fields
+    val timesUsed = mutable.HashMap[Symbol, Int]()
+    val defined = mutable.HashSet[Symbol]()
+    // Either a duplicate or a read through series of immutable fields
+    val copies = mutable.HashMap[Symbol, Tree]()
     val visitor: Visitor = {
       case valdef: ValDef if !valdef.symbol.is(Flags.Param) &&
                              !valdef.symbol.is(Flags.Mutable | Flags.Module | Flags.Lazy) &&
@@ -1100,7 +1131,8 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
         val b4 = timesUsed.getOrElseUpdate(symIfExists, 0)
         timesUsed.put(symIfExists, b4 + 1)
 
-      case valdef: ValDef if valdef.symbol.exists && !valdef.symbol.owner.isClass && !valdef.symbol.is(Flags.Param | Flags.Module | Flags.Lazy) =>
+      case valdef: ValDef if valdef.symbol.exists && !valdef.symbol.owner.isClass &&
+                             !valdef.symbol.is(Flags.Param | Flags.Module | Flags.Lazy) =>
         // TODO: handle params after constructors. Start changing public signatures by eliminating unused arguments.
         defined += valdef.symbol
 
@@ -1141,13 +1173,13 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
 
       val transformation: Tree => Tree = {
         case t: ValDef if valsToDrop.contains(t.symbol) =>
-          // println(s"dropping definition of ${t.symbol.showFullName} as not used")
+          // TODO: Could emit a warning for non synthetic code? This valdef is
+          // probably something users would want to remove from source...
+          simplify.println(s"Dropping definition of ${t.symbol.showFullName} as not used")
           t.rhs.changeOwner(t.symbol, t.symbol.owner)
         case t: ValDef if replacements.contains(t.symbol) =>
-          // println(s"dropping definition of ${t.symbol.showFullName} as an alias")
+          simplify.println(s"Dropping definition of ${t.symbol.showFullName} as an alias")
           EmptyTree
-        case t: Block => // drop non-side-effecting stats
-          t
         case t: New =>
           val symIfExists = t.tpt.tpe.normalizedPrefix.termSymbol
           if (replacements.contains(symIfExists)) {
@@ -1168,7 +1200,8 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
 
       transformation
     }
-    ("devalify", BeforeAndAfterErasure, visitor, transformer)
+    // See tests/pos/devalify.scala for examples of why this needs to be after Erasure.
+    ("devalify", AfterErasure, visitor, transformer)
   }
 
   /** Inline val with exactly one assignment to a var. For example:
@@ -1187,8 +1220,8 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
    *  }
    */
   val varify: Optimization = { implicit ctx: Context =>
-    val paramsTimesUsed = collection.mutable.HashMap[Symbol, Int]()
-    val possibleRenames = collection.mutable.HashMap[Symbol, Set[Symbol]]()
+    val paramsTimesUsed = mutable.HashMap[Symbol, Int]()
+    val possibleRenames = mutable.HashMap[Symbol, Set[Symbol]]()
     val visitor: Visitor = {
       case t: ValDef
         if t.symbol.is(Flags.Param) =>

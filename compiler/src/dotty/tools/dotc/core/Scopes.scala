@@ -91,8 +91,10 @@ object Scopes {
     /** Is the scope empty? */
     def isEmpty: Boolean = lastEntry eq null
 
-    def foreach[U](p: Symbol => U)(implicit ctx: Context): Unit = toList foreach p
+    /** Applies a function f to all Symbols of this Scope. */
+    def foreach[U](f: Symbol => U)(implicit ctx: Context): Unit = toList.foreach(f)
 
+    /** Selects all Symbols of this Scope which satisfy a predicate. */
     def filter(p: Symbol => Boolean)(implicit ctx: Context): List[Symbol] = {
       ensureComplete()
       var syms: List[Symbol] = Nil
@@ -105,6 +107,10 @@ object Scopes {
       syms
     }
 
+    /** Tests whether a predicate holds for at least one Symbol of this Scope. */
+    def exists(p: Symbol => Boolean)(implicit ctx: Context): Boolean = filter(p).isEmpty
+
+    /** Finds the first Symbol of this Scope satisfying a predicate, if any. */
     def find(p: Symbol => Boolean)(implicit ctx: Context): Symbol = filter(p) match {
       case sym :: _ => sym
       case _ => NoSymbol
