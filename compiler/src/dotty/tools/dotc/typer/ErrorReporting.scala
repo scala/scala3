@@ -96,6 +96,12 @@ object ErrorReporting {
 
     def exprStr(tree: Tree): String = refStr(tree.tpe)
 
+    def takesNoParamsStr(tree: Tree, kind: String) =
+      if (tree.tpe.widen.exists)
+        i"${exprStr(tree)} does not take ${kind}parameters"
+      else
+        i"undefined: $tree # ${tree.uniqueId}: ${tree.tpe.toString}"
+
     def patternConstrStr(tree: Tree): String = ???
 
     def typeMismatch(tree: Tree, pt: Type, implicitFailure: SearchFailure = NoImplicitMatches): Tree =
