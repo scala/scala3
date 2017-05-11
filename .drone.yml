@@ -17,14 +17,6 @@ pipeline:
       branch:
         exclude: gh-pages
 
-  documentation:
-    image: lampepfl/dotty:24-04-2017
-    pull: true
-    commands:
-      - ./project/scripts/genDocs "${CI_PUBLISH}" $BOT_PASS
-    when:
-      branch: master
-
   publish_nightly:
     image: lampepfl/dotty:24-04-2017
     pull: true
@@ -33,12 +25,20 @@ pipeline:
       - ./project/scripts/sbt "sbt-scripted-tests/scripted source-dependencies/*1of3" "${CI_PUBLISH}"
       - ./project/scripts/sbt "sbt-scripted-tests/scripted source-dependencies/*2of3" "${CI_PUBLISH}"
       - ./project/scripts/sbt "sbt-scripted-tests/scripted source-dependencies/*3of3" "${CI_PUBLISH}"
-      - ./project/scripts/sbtPublish "${CI_PUBLISH}" $SONATYPE_USER $SONATYPE_PW $PGP_PW
+      - ./project/scripts/sbtPublish '${CI_PUBLISH}' '$SONATYPE_USER' '$SONATYPE_PW' '$PGP_PW'
     volumes:
       - /home/drone/keys:/keys
     when:
       event: deployment
       environment: nightly
+
+  documentation:
+    image: lampepfl/dotty:24-04-2017
+    pull: true
+    commands:
+      - ./project/scripts/genDocs "${CI_PUBLISH}" $BOT_PASS
+    when:
+      branch: master
 
   slack:
     image: plugins/slack
