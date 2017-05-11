@@ -52,10 +52,11 @@ object TestConfiguration {
 
   private val yCheckOptions = Array("-Ycheck:tailrec,resolveSuper,mixin,arrayConstructors,labelDef")
 
-  val defaultOptions = noCheckOptions ++ checkOptions ++ yCheckOptions ++ classPath :+ "-optimise"
+  val defaultUnoptimised = noCheckOptions ++ checkOptions ++ yCheckOptions ++ classPath
+  val defaultOptions = defaultUnoptimised :+ "-optimise"
   val allowDeepSubtypes = defaultOptions diff Array("-Yno-deep-subtypes")
   val allowDoubleBindings = defaultOptions diff Array("-Yno-double-bindings")
-  val picklingOptions = defaultOptions ++ Array(
+  val picklingOptions = defaultUnoptimised ++ Array(
     "-Xprint-types",
     "-Ytest-pickler",
     "-Yprintpos"
