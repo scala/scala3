@@ -1341,6 +1341,9 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     // check value class constraints
     checkDerivedValueClass(cls, body1)
 
+    if (ctx.settings.YretainTrees.value) {
+      cls.myTree = cdef1
+    }
     cdef1
 
     // todo later: check that

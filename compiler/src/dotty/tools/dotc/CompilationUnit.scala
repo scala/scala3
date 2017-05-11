@@ -19,6 +19,4 @@ class CompilationUnit(val source: SourceFile) {
 
   /** Pickled TASTY binaries, indexed by class. */
   var pickled: Map[ClassSymbol, Array[Byte]] = Map()
-
-  var unpicklers: Map[ClassSymbol, TastyUnpickler] = Map()
 }

@@ -20,7 +20,8 @@ import DenotTransformers._
 import StdNames._
 import NameOps._
 import NameKinds.LazyImplicitName
-import ast.tpd.Tree
+import ast.tpd
+import tpd.Tree
 import ast.TreeTypeMap
 import Constants.Constant
 import reporting.diagnostic.Message
@@ -551,6 +552,34 @@ object Symbols {
     extends Symbol(coord, id) {
 
     type ThisName = TypeName
+
+    /** If this is a top-level class, and if `-Yretain-trees` is set, return the TypeDef tree
+     *  for this class, otherwise EmptyTree.
+     */
+    def tree(implicit ctx: Context): tpd.Tree /* tpd.TypeDef | tpd.EmptyTree */ = {
+      // TODO: Consider storing this tree like we store lazy trees for inline functions
+      if (unpickler != null && !denot.isAbsent) {
+        assert(myTree.isEmpty)
+
+        import ast.Trees._
+
+        def findTree(tree: tpd.Tree): Option[tpd.TypeDef] = tree match {
+          case PackageDef(_, stats) =>
+            stats.flatMap(findTree).headOption
+          case tree: tpd.TypeDef if tree.symbol == this =>
+            Some(tree)
+          case _ =>
+              None
+        }
+        val List(unpickledTree) = unpickler.body(ctx.addMode(Mode.ReadPositions))
+        unpickler = null
+
+        myTree = findTree(unpickledTree).get
+      }
+      myTree
+    }
+    private[dotc] var myTree: tpd.Tree = tpd.EmptyTree
+    private[dotc] var unpickler: tasty.DottyUnpickler = _
 
     /** The source or class file from which this class was generated, null if not applicable. */
     override def associatedFile(implicit ctx: Context): AbstractFile =
