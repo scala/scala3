@@ -133,30 +133,30 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
   type Optimization = (Context) => (String, ErasureCompatibility, Visitor, Transformer)
 
   private lazy val _optimizations: Seq[Optimization] =
-    inlineCaseIntrinsics        ::
-    removeUnnecessaryNullChecks :: // Doesn't seams to work AfterErasure
-    inlineOptions               ::
+    // inlineCaseIntrinsics        ::
+    // removeUnnecessaryNullChecks :: // Doesn't seams to work AfterErasure
+    // inlineOptions               ::
        // Tests that fail when enabled AfterErasure, to be investigated?
        // ../tests/run/Course-2002-04.scala failed
        // ../tests/run/t2005.scala failed
        // ../tests/run/optimizer-array-load.scala failed
        // ../tests/pos/virtpatmat_exist1.scala failed
        // ../tests/pos/t1133.scala failed
-    inlineLabelsCalledOnce      ::
-    valify                      ::
-    devalify                    ::
-    jumpjump                    ::
-    dropGoodCasts               ::
-    dropNoEffects               ::
-    // inlineLocalObjects          :: // followCases needs to be fixed, see ./tests/pos/rbtree.scala
-    // varify                      :: // varify could stop other transformations from being applied. postponed.
-    // bubbleUpNothing             ::
-      // Still need to import the tailRec thing
-      // t2429.scala
-      // constraining-lub.scala
-      // t8933c.scala
-      // t348plus.scala
-    constantFold                ::
+    // inlineLabelsCalledOnce      ::
+    // valify                      ::
+    // devalify                    ::
+    // jumpjump                    ::
+    // dropGoodCasts               ::
+    // dropNoEffects               ::
+    // // inlineLocalObjects          :: // followCases needs to be fixed, see ./tests/pos/rbtree.scala
+    // // varify                      :: // varify could stop other transformations from being applied. postponed.
+    // // bubbleUpNothing             ::
+    //   // Still need to import the tailRec thing
+    //   // t2429.scala
+    //   // constraining-lub.scala
+    //   // t8933c.scala
+    //   // t348plus.scala
+    // constantFold                ::
     Nil
 
   override def transformDefDef(tree: DefDef)(implicit ctx: Context, info: TransformerInfo): Tree = {
