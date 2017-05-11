@@ -1870,10 +1870,13 @@ object Types {
     override def newLikeThis(prefix: Type)(implicit ctx: Context): TermRef = {
       // If symbol exists, the new signature is the symbol's signature as seen
       // from the new prefix, modulo consistency
-      val symSig =
-        if (symbol.exists) symbol.info.asSeenFrom(prefix, symbol.owner).signature
-        else sig
-      val newSig = if (sig.consistentWith(symSig)) sig else symSig
+      val newSig =
+        if (sig == Signature.NotAMethod || !symbol.exists)
+          sig
+        else
+          sig.updateWith(symbol.info.asSeenFrom(prefix, symbol.owner).signature)
+      if (newSig ne sig)
+        core.println(i"sig change at ${ctx.phase} for $this, pre = $prefix, sig: $sig --> $newSig")
       fixDenot(TermRef.withSig(prefix, name, newSig), prefix)
     }
 

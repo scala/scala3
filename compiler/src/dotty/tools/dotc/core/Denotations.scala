@@ -311,7 +311,8 @@ object Denotations {
           case tp1: MethodOrPoly =>
             tp2 match {
               case tp2: MethodOrPoly =>
-                // Two remedial strategies
+                // Two remedial strategies:
+                //
                 //  1. Prefer method types over poly types. This is necessary to handle
                 //     overloaded definitions like the following
                 //
@@ -319,6 +320,7 @@ object Denotations {
                 //        def ++ (xs: C[A]): D[A]
                 //
                 //     (Code like this is found in the collection strawman)
+                //
                 // 2. In the case of two method types or two polytypes with matching
                 //    parameters and implicit status, merge corresppnding parameter
                 //    and result types.
