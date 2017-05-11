@@ -343,11 +343,11 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
       case If(cond1, If(cond2, thenp2, elsep2), elsep1) if isSimilar(elsep1, elsep2) =>
         If(cond1.select(defn.Boolean_&&).appliedTo(cond2), thenp2, elsep1)
       case If(cond1, If(cond2, thenp2, elsep2), elsep1) if isSimilar(elsep1, thenp2) =>
-        If(cond1.select(defn.Boolean_!).select(defn.Boolean_||).appliedTo(cond2), elsep1, elsep2)
+        If(cond1.select(defn.Boolean_!).ensureApplied.select(defn.Boolean_||).appliedTo(cond2), elsep1, elsep2)
       case If(cond1, thenp1, If(cond2, thenp2, elsep2)) if isSimilar(thenp1, thenp2) =>
         If(cond1.select(defn.Boolean_||).appliedTo(cond2), thenp1, elsep2)
       case If(cond1, thenp1, If(cond2, thenp2, elsep2)) if isSimilar(thenp1, elsep2) =>
-        If(cond1.select(defn.Boolean_||).appliedTo(cond2.select(defn.Boolean_!)), thenp1, thenp2)
+        If(cond1.select(defn.Boolean_||).appliedTo(cond2.select(defn.Boolean_!).ensureApplied), thenp1, thenp2)
       case If(t: Literal, thenp, elsep) =>
         if (t.const.booleanValue) thenp
         else elsep
@@ -368,7 +368,7 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
       //   //if (thenp.const.booleanValue)
       //     cond.select(defn.Boolean_||).appliedTo(elsep)
       //   //else // thenp is false, this tree is bigger then the original
-      //   //  cond.select(defn.Boolean_!).select(defn.Boolean_&&).appliedTo(elsep)
+      //   //  cond.select(defn.Boolean_!).ensureApplied.select(defn.Boolean_&&).appliedTo(elsep)
       // case ift @ If(cond, thenp, elsep :Literal) if ift.tpe.derivesFrom(defn.BooleanClass) && !elsep.const.booleanValue =>
       //   cond.select(defn.Boolean_&&).appliedTo(elsep)
       //   // the other case ins't handled intentionally. See previous case for explanation
