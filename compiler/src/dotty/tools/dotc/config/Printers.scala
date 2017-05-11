@@ -32,4 +32,5 @@ object Printers {
   val pickling: Printer = noPrinter
   val inlining: Printer = noPrinter
   val exhaustivity: Printer = noPrinter
+  val simplify: Printer = noPrinter
 }

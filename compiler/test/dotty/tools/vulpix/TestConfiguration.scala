@@ -50,7 +50,7 @@ object TestConfiguration {
     Array("-classpath", paths)
   }
 
-  private val yCheckOptions = Array("-Ycheck:tailrec,resolveSuper,mixin,restoreScopes,labelDef")
+  private val yCheckOptions = Array("-Ycheck:tailrec,resolveSuper,mixin,arrayConstructors,labelDef")
 
   val defaultOptions = noCheckOptions ++ checkOptions ++ yCheckOptions ++ classPath :+ "-optimise"
   val allowDeepSubtypes = defaultOptions diff Array("-Yno-deep-subtypes")
