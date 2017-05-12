@@ -18,6 +18,7 @@ import dotc.parsing.Tokens
 import printing.Highlighting._
 import printing.Formatting
 import ErrorMessageID._
+import Denotations.SingleDenotation
 import dotty.tools.dotc.core.SymDenotations.SymDenotation
 
 object messages {
@@ -1193,7 +1194,6 @@ object messages {
   extends Message(SuperQualMustBeParentID) {
 
     val msg = hl"""|$qual does not name a parent of $cls"""
-
     val kind = "Reference"
 
     private val parents: Seq[String] = (cls.info.parents map (_.name.show)).sorted
@@ -1208,15 +1208,13 @@ object messages {
   }
 
   case class VarArgsParamMustComeLast()(implicit ctx: Context)
-    extends Message(IncorrectRepeatedParameterSyntaxID) {
-    override def msg: String = "varargs parameter must come last"
-
-    override def kind: String = "Syntax"
-
-    override def explanation: String =
+  extends Message(IncorrectRepeatedParameterSyntaxID) {
+    val msg = "varargs parameter must come last"
+    val kind = "Syntax"
+    val explanation =
       hl"""|The varargs field must be the last field in the method signature.
            |Attempting to define a field in a method signature after a varargs field is an error.
-           |""".stripMargin
+           |"""
   }
 
   case class AmbiguousImport(name: Names.Name, newPrec: Int, prevPrec: Int, prevCtx: Context)(implicit ctx: Context)
@@ -1253,6 +1251,25 @@ object messages {
            |"""
   }
 
+  case class AmbiguousOverload(tree: tpd.Tree, alts: List[SingleDenotation], pt: Type)(
+    err: typer.ErrorReporting.Errors)(
+    implicit ctx: Context)
+  extends Message(AmbiguousOverloadID) {
+
+    private val all = if (alts.length == 2) "both" else "all"
+    val msg =
+      s"""|Ambiguous overload. The ${err.overloadedAltsStr(alts)}
+          |$all match ${err.expectedTypeStr(pt)}""".stripMargin
+    val kind = "Reference"
+    val explanation =
+      hl"""|There are ${alts.length} methods that could be referenced as the compiler knows too little
+           |about the expected type.
+           |You may specify the expected type e.g. by
+           |- assigning it to a value with a specified type, or
+           |- adding a type ascription as in `${"instance.myMethod: String => Int"}`
+           |"""
+  }
+                        
   case class ReassignmentToVal(name: Names.Name)(implicit ctx: Context)
     extends Message(ReassignmentToValID) {
     val kind = "Reference"
