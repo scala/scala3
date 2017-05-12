@@ -15,27 +15,24 @@ Contents
 -------
 
 * Usage
-    - [Migrating from Scala 2](usage/migrating.md)
-    - [Dotty projects with cbt](usage/cbt-projects.md)
-    - [Dotty projects with sbt](usage/sbt-projects.md)
+    - [Migrating from Scala 2](usage/migrating.md): migration information
+    - [Dotty projects with cbt](usage/cbt-projects.md): using cbt
+    - [Dotty projects with sbt](usage/sbt-projects.md): using sbt
 * Contributing
-    - [Getting Started](contributing/getting-started.md) details on how to run
-      tests, use the cli scripts
-    - [Workflow](contributing/workflow.md) common dev patterns and hints
-    - [Eclipse](contributing/eclipse.md) setting up dev environment
-    - [Intellij-IDEA](contributing/intellij-idea.md) setting up dev environment
+    - [Getting Started](contributing/getting-started.md): details on how to run tests, use the cli scripts
+    - [Workflow](contributing/workflow.md): common dev patterns and hints
+    - [Eclipse](contributing/eclipse.md): setting up dev environment
+    - [Intellij-IDEA](contributing/intellij-idea.md): setting up dev environment
+    - [Working with the Backend](contributing/backend.md): working with the scala backend 
 * Internals document the compiler internals
-    - [Syntax Summary](internals/syntax.md)
-    - [Project Structure](internals/overall-structure.md)
-      of the project
-    - [Backend](internals/backend.md) details on the bytecode backend
-    - [Contexts](internals/contexts.md) details the use of `Context` in the
-      compiler
-    - [Dotty vs Scala2](internals/dotc-scalac.md)
-    - [Higher Kinded Type Scheme](internals/higher-kinded-v2.md)
-      scheme
-    - [Periods](internals/periods.md)
-    - [Type System](internals/type-system.md)
+    - [Syntax Summary](internals/syntax.md): brief analysis of the syntax
+    - [Project Structure](internals/overall-structure.md): of the project
+    - [Backend](internals/backend.md): details on the bytecode backend
+    - [Contexts](internals/contexts.md): details the use of `Context` in the compiler
+    - [Dotty vs Scala 2](internals/dotc-scalac.md): explaining the differences between Scalac and Dotty
+    - [Higher Kinded Type Scheme](internals/higher-kinded-v2.md): scheme
+    - [Periods](internals/periods.md): details on the concepts of runs, phases and periods
+    - [Type System](internals/type-system.md): details on the type system of Dotty
 * Resources
-    - [Talks](resources/talks.md)
+    - [Talks](resources/talks.md): presentations of the various aspects of Dotty
 

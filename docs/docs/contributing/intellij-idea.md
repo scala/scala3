@@ -38,9 +38,13 @@ For example, to run a test you can write with or without flags:
 dotc tests/pos/Arrays.scala
 ```
 
-If you are interested in debugging the compiler you can enable the necessary agent on the JVM and this
-is done in two steps. For the first step you need to pass the 
-necessary flag to the running VM. For convenience, this is already in comments on the `Build.scala` file under project. 
+If you are interested in debugging the compiler you can enable the necessary agent on the JVM.
+This is done in two steps. For the first step you need to pass the 
+necessary flag to the running VM. For convenience, this is already in comments on the `Build.scala` file under the
+`project` directory. The string you need to uncomment is the following:
+
+> `"-agentlib:jdwp=transport=dt_socket,server=y,suspend=y,address=5005"`
+
 Uncomment the line and reload the project file with the `reload` command on sbt. 
 Now, each time you run `dotc` the compiler listens at the designated address and waits the agent to connect.
 For, the second step you need to create a configuration for Debug through IDEA: 

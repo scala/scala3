@@ -1,6 +1,6 @@
 ---
 layout: doc-page
-title: Working with the backend
+title: Working with the Backend
 ---
 
 The compiler backend is based on a fork of the Scala 2.11 `GenBCode` backend and
