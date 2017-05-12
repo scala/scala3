@@ -5,7 +5,7 @@ title: Getting Started
 
 Requirements
 ------------
-Make sure that you are using Java 8 or later, the output of `java -version`
+Make sure that you are using Java 8 or later. The output of `java -version`
 should contain `1.8`.
 
 Compiling and Running
@@ -15,11 +15,11 @@ Start by cloning the repository:
 ```bash
 $ git clone --recursive https://github.com/lampepfl/dotty.git
 $ cd dotty
-$ sbt managedSources ## Needed for IDE import to succeed
+$ sbt managedSources # Needed for IDE import to succeed
 ```
 
 Dotty provides a standard sbt build: compiling, running and starting a repl can
-all be done from within sbt using
+all be done from within sbt:
 
 ```bash
 $ sbt
@@ -28,13 +28,21 @@ $ sbt
 hello world
 ```
 
-there is also a bash script that can be used in the same way:
+There are also bash scripts that can be used in the same way. Assuming that you have cloned the Dotty repo locally, append 
+the following line on your `.bash_profile`:
 
-```bash
+```shell
+export PATH=$HOME/dotty/bin:$PATH
+```
+
+and you will be able to run the corresponding commands directly from your console:
+
+```shell
 # Compile code using Dotty
-./bin/dotc tests/pos/HelloWorld.scala
+dotc tests/pos/HelloWorld.scala
+
 # Run it with the proper classpath
-./bin/dotr HelloWorld
+dotr HelloWorld
 ```
 
 
@@ -52,5 +60,5 @@ scala>
 or via bash:
 
 ```bash
-$ ./bin/dotr
+$ dotr
 ```

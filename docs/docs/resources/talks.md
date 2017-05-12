@@ -6,6 +6,7 @@ title: Talks
 Talks on Dotty
 --------------
 - (ScalaDays 2016, Berlin) [Scala's Road Ahead](https://www.youtube.com/watch?v=GHzWqJKFCk4) by Martin Odersky [\[slides\]](http://www.slideshare.net/Odersky/scala-days-nyc-2016)
+
 - (JVMLS 2015) [Compilers are Databases](https://www.youtube.com/watch?v=WxyyJyB_Ssc) by Martin Odersky [\[slides\]](http://www.slideshare.net/Odersky/compilers-are-databases)
 
 Deep Dive with Dotty

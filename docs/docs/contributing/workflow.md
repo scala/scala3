@@ -3,26 +3,20 @@ layout: doc-page
 title: Workflow
 ---
 
-This document details common workflow patterns when working with Dotty.
-
-## Cloning and building ##
-
-```bash
-# Start by cloning the repository:
-git clone --recursive https://github.com/lampepfl/dotty.git
-cd dotty
-```
+Check [Getting Started](getting-started.md) for instructions on how to obtain the source code of dotty and 
+[Eclipse](eclipse.md) or [IntelliJ-IDEA](intellij-idea.md).
+This document details common workflow patterns when working with Dotty before using the debugging tools.
 
 ## Compiling files with dotc ##
 
-From sbt:
+As we have seen you can compile a test file either from sbt:
 
 ```bash
 $ sbt
 > dotc <OPTIONS> <FILE>
 ```
 
-From terminal:
+or from terminal:
 
 ```bash
 $ ./bin/dotc <OPTIONS> <FILE>
@@ -40,24 +34,9 @@ Here are some useful debugging `<OPTIONS>`:
   `Ycheck`ed, therefore in the tests we run:
   `-Ycheck:tailrec,resolveSuper,mixin,restoreScopes,labelDef`.
 
-Additional logging information can be obtained by changes some `noPrinter` to
+More powerful logging capabilities can be enabled by changing some `noPrinter` to
 `new Printer` in `compiler/src/dotty/tools/dotc/config/Printers.scala`. This enables the
 `subtyping.println("")` and `ctx.traceIndented("", subtyping)` style logging.
-
-## Running single tests ##
-To test a specific test tests/x/y.scala (for example tests/pos/t210.scala):
-
-```bash
-> vulpix pos/t210.scala
-```
-
-The `vulpix` task uses its argument for a substring test. For example, you
-could run both a negative and a positive test with the same name
-(`pos/i2101.scala` & `neg/i2101.scala`):
-
-```bash
-> vulpix i2101.scala
-```
 
 ## Inspecting Trees with Type Stealer ##
 
@@ -71,7 +50,7 @@ scala> import dotty.tools.DottyTypeStealer._; import dotty.tools.dotc.core._; im
 
 Now, you can define types and access their representation. For example:
 
-```scala
+```bash
 scala> val s = stealType("class O { type X }", "O#X")
 scala> implicit val ctx: Context = s._1
 scala> val t = s._2(0)
@@ -84,3 +63,5 @@ u: dotty.tools.dotc.core.Types.Type = TypeBounds(TypeRef(ThisType(TypeRef(NoPref
 Many objects in the dotc compiler implement a `Showable` trait (e.g. `Tree`,
 `Symbol`, `Type`). These objects may be prettyprinted using the `.show`
 method
+
+To contribute to dotty please follow the [Dotty Developer Guidelines](https://github.com/lampepfl/dotty/blob/master/CONTRIBUTING.md).
