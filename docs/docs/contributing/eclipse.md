@@ -9,9 +9,12 @@ Setup
 You can setup Eclipse by using _[Scala IDE for Eclipse](http://scala-ide.org/)_ directly to run Dotty. Alternatively you can download 
 your Eclipse distribution of choice and enable the Scala IDE from the Eclipse Marketplace, separately.
 
-Assuming you have cloned dotty's repository from Github (and run `sbt managedSources` as described in 
-[Getting Started](getting-started.md)) you can now proceed to set up Dotty with Eclipse. In addition to the previous
-command you need to run `sbt eclipse` to generate the project structure for Eclipse.
+1. Clone Dotty's repository from Github (and run `sbt managedSources` as described in 
+[Getting Started](getting-started.md)) 
+2. Generate the Eclipse configuration files:
+```
+sbt eclipse
+```
 
 - Note: It is recommended to change the default output folder (in `Properties > java
    build path > Source`) to `dotty/classes` instead of `dotty/bin` because
