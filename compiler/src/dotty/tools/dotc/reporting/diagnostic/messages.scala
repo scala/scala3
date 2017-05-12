@@ -1251,6 +1251,30 @@ object messages {
            |"""
   }
 
+  case class MethodDoesNotTakeParameters(tree: tpd.Tree, methPartType: Types.Type)(err: typer.ErrorReporting.Errors)(implicit ctx: Context)
+  extends Message(MethodDoesNotTakeParametersId) {
+    private val more = tree match {
+      case Apply(_, _) => " more"
+      case _ => ""
+    }
+
+    val msg = hl"${err.refStr(methPartType)} does not take$more parameters"
+
+    val kind = "Reference"
+
+    private val noParameters = if (methPartType.widenSingleton.isInstanceOf[ExprType])
+      hl"""|As ${err.refStr(methPartType)} is defined without parenthesis, you may
+           |not use any at call-site, either.
+           |"""
+    else
+      ""
+
+    val explanation =
+      s"""|You have specified more parameter lists as defined in the method definition(s).
+          |$noParameters""".stripMargin
+
+  }
+                        
   case class AmbiguousOverload(tree: tpd.Tree, alts: List[SingleDenotation], pt: Type)(
     err: typer.ErrorReporting.Errors)(
     implicit ctx: Context)
@@ -1283,5 +1307,4 @@ object messages {
            |  ${"var"} $name ${"="} ...
            |""".stripMargin
   }
-
 }

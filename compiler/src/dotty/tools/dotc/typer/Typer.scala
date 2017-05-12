@@ -1834,11 +1834,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
         else
           tree
       case _ => tryInsertApplyOrImplicit(tree, pt) {
-        val more = tree match {
-          case Apply(_, _) => " more"
-          case _ => ""
-        }
-        errorTree(tree, em"$methodStr does not take$more parameters")
+        errorTree(tree, MethodDoesNotTakeParameters(tree, methPart(tree).tpe)(err))
       }
     }
 

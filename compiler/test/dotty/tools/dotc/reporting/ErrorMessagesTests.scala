@@ -360,6 +360,46 @@ class ErrorMessagesTests extends ErrorMessagesTest {
         assertEquals(namedImport, prevPrec)
       }
 
+  @Test def methodDoesNotTakePrameters =
+    checkMessagesAfter("frontend") {
+      """
+        |object Scope{
+        |  def foo = ()
+        |  foo()
+        |}
+      """.stripMargin
+    }
+    .expect { (ictx, messages) =>
+      implicit val ctx: Context = ictx
+      val defn = ictx.definitions
+
+      assertMessageCount(1, messages)
+      val MethodDoesNotTakeParameters(tree, methodPart) :: Nil = messages
+
+      assertEquals("Scope.foo", tree.show)
+      assertEquals("=> Unit(Scope.foo)", methodPart.show)
+    }
+
+  @Test def methodDoesNotTakeMorePrameters =
+    checkMessagesAfter("frontend") {
+      """
+        |object Scope{
+        |  def foo(a: Int) = ()
+        |  foo(1)("2")
+        |}
+      """.stripMargin
+    }
+    .expect { (ictx, messages) =>
+      implicit val ctx: Context = ictx
+      val defn = ictx.definitions
+
+      assertMessageCount(1, messages)
+      val MethodDoesNotTakeParameters(tree, methodPart) :: Nil = messages
+
+      assertEquals("Scope.foo(1)", tree.show)
+      assertEquals("((a: Int)Unit)(Scope.foo)", methodPart.show)
+    }
+  
   @Test def ambiugousOverloadWithWildcard =
     checkMessagesAfter("frontend") {
       """object Context {
