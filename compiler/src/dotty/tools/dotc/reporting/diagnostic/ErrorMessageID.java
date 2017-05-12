@@ -58,6 +58,8 @@ public enum ErrorMessageID {
     SuperQualMustBeParentID,
     AmbiguousImportID,
     MethodDoesNotTakeParametersId,
+    AmbiguousOverloadID,
+    ReassignmentToValID,
     ;
 
     public int errorNumber() {

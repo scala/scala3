@@ -4,6 +4,7 @@ package reporting
 
 import core.Contexts.Context
 import diagnostic.messages._
+import dotty.tools.dotc.core.Types.WildcardType
 import dotty.tools.dotc.parsing.Tokens
 import org.junit.Assert._
 import org.junit.{Ignore, Test}
@@ -368,16 +369,16 @@ class ErrorMessagesTests extends ErrorMessagesTest {
         |}
       """.stripMargin
     }
-      .expect { (ictx, messages) =>
-        implicit val ctx: Context = ictx
-        val defn = ictx.definitions
+    .expect { (ictx, messages) =>
+      implicit val ctx: Context = ictx
+      val defn = ictx.definitions
 
-        assertMessageCount(1, messages)
-        val MethodDoesNotTakeParameters(tree, methodPart) :: Nil = messages
+      assertMessageCount(1, messages)
+      val MethodDoesNotTakeParameters(tree, methodPart) :: Nil = messages
 
-        assertEquals("Scope.foo", tree.show)
-        assertEquals("=> Unit(Scope.foo)", methodPart.show)
-      }
+      assertEquals("Scope.foo", tree.show)
+      assertEquals("=> Unit(Scope.foo)", methodPart.show)
+    }
 
   @Test def methodDoesNotTakeMorePrameters =
     checkMessagesAfter("frontend") {
@@ -388,15 +389,55 @@ class ErrorMessagesTests extends ErrorMessagesTest {
         |}
       """.stripMargin
     }
-      .expect { (ictx, messages) =>
-        implicit val ctx: Context = ictx
-        val defn = ictx.definitions
+    .expect { (ictx, messages) =>
+      implicit val ctx: Context = ictx
+      val defn = ictx.definitions
 
-        assertMessageCount(1, messages)
-        val MethodDoesNotTakeParameters(tree, methodPart) :: Nil = messages
+      assertMessageCount(1, messages)
+      val MethodDoesNotTakeParameters(tree, methodPart) :: Nil = messages
 
-        assertEquals("Scope.foo(1)", tree.show)
-        assertEquals("((a: Int)Unit)(Scope.foo)", methodPart.show)
-      }
+      assertEquals("Scope.foo(1)", tree.show)
+      assertEquals("((a: Int)Unit)(Scope.foo)", methodPart.show)
+    }
+  
+  @Test def ambiugousOverloadWithWildcard =
+    checkMessagesAfter("frontend") {
+      """object Context {
+        |  trait A {
+        |    def foo(s: String): String
+        |    def foo: String = foo("foo")
+        |  }
+        |  object B extends A {
+        |    def foo(s: String): String = s
+        |  }
+        |  B.foo
+        |}
+      """.stripMargin
+    }
+    .expect { (ictx, messages) =>
+      implicit val ctx: Context = ictx
+      val defn = ictx.definitions
 
+      assertMessageCount(1, messages)
+      val AmbiguousOverload(tree, List(alt1, alt2), pt: WildcardType) :: Nil = messages
+      assertEquals("method foo", alt1.show)
+      assertEquals("(s: String)String", alt1.info.show)
+      assertEquals("method foo", alt2.show)
+    }
+
+  @Test def reassignmentToVal =
+    checkMessagesAfter("frontend") {
+      """
+        |class Context {
+        |  val value = 3
+        |  value = 4
+        |}
+      """.stripMargin
+    }
+    .expect { (ictx, messages) =>
+      implicit val ctx: Context = ictx
+      assertMessageCount(1, messages)
+      val ReassignmentToVal(name) :: Nil = messages
+      assertEquals("value", name.show)
+    }
 }

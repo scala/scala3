@@ -558,7 +558,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
 
         def reassignmentToVal =
           errorTree(cpy.Assign(tree)(lhsCore, typed(tree.rhs, lhs1.tpe.widen)),
-            "reassignment to val")
+            ReassignmentToVal(lhsCore.symbol.name))
 
         def canAssign(sym: Symbol) =
           sym.is(Mutable, butNot = Accessor) ||
@@ -1791,7 +1791,6 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
       typr.println(i"adapt overloaded $ref with alternatives ${altDenots map (_.info)}%, %")
       val alts = altDenots map (alt =>
         TermRef.withSigAndDenot(ref.prefix, ref.name, alt.info.signature, alt))
-      def expectedStr = err.expectedTypeStr(pt)
       resolveOverloaded(alts, pt) match {
         case alt :: Nil =>
           adapt(tree.withType(alt), pt, original)
@@ -1799,7 +1798,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
           def noMatches =
             errorTree(tree,
               em"""none of the ${err.overloadedAltsStr(altDenots)}
-                  |match $expectedStr""")
+                  |match ${err.expectedTypeStr(pt)}""")
           def hasEmptyParams(denot: SingleDenotation) = denot.info.paramInfoss == ListOfNil
           pt match {
             case pt: FunProto =>
@@ -1812,10 +1811,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
           }
         case alts =>
           val remainingDenots = alts map (_.denot.asInstanceOf[SingleDenotation])
-          def all = if (remainingDenots.length == 2) "both" else "all"
-          errorTree(tree,
-            em"""Ambiguous overload. The ${err.overloadedAltsStr(remainingDenots)}
-                |$all match $expectedStr""")
+          errorTree(tree, AmbiguousOverload(tree, remainingDenots, pt)(err))
       }
     }
 
