@@ -774,6 +774,7 @@ class RefChecks extends MiniPhase { thisTransformer =>
 
   import tpd._
   import reporting.diagnostic.messages.ForwardReferenceExtendsOverDefinition
+  import dotty.tools.dotc.reporting.diagnostic.messages.UnboundPlaceholderParameter
 
   override def phaseName: String = "refchecks"
 
@@ -796,12 +797,19 @@ class RefChecks extends MiniPhase { thisTransformer =>
     override def transformValDef(tree: ValDef)(implicit ctx: Context, info: TransformerInfo) = {
       checkDeprecatedOvers(tree)
       val sym = tree.symbol
-      if (sym.exists && sym.owner.isTerm && !sym.is(Lazy))
-        currentLevel.levelAndIndex.get(sym) match {
-          case Some((level, symIdx)) if symIdx <= level.maxIndex =>
-            ctx.error(ForwardReferenceExtendsOverDefinition(sym, level.refSym), level.refPos)
+      if (sym.exists && sym.owner.isTerm) {
+        tree.rhs match {
+          case Ident(nme.WILDCARD) => ctx.error(UnboundPlaceholderParameter(), sym.pos)
           case _ =>
         }
+        if (!sym.is(Lazy)) {
+          currentLevel.levelAndIndex.get(sym) match {
+            case Some((level, symIdx)) if symIdx <= level.maxIndex =>
+              ctx.error(ForwardReferenceExtendsOverDefinition(sym, level.refSym), level.refPos)
+            case _ =>
+          }
+        }
+      }
       tree
     }
 

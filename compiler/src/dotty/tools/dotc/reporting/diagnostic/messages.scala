@@ -490,7 +490,10 @@ object messages {
            |${"var a = _"}
            |
            |Note that this use of `_` is not placeholder syntax,
-           |but an uninitialized var definition"""
+           |but an uninitialized var definition.
+           |Only fields can be left uninitialized in this manner; local variables
+           |must be initialized.
+           |"""
   }
 
   case class IllegalStartSimpleExpr(illegalToken: String)(implicit ctx: Context)
