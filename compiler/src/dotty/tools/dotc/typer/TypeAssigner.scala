@@ -340,7 +340,7 @@ trait TypeAssigner {
         else
           errorType(i"wrong number of arguments for $fntpe: ${fn.tpe}, expected: ${fntpe.paramInfos.length}, found: ${args.length}", tree.pos)
       case t =>
-        errorType(i"${err.exprStr(fn)} does not take parameters", tree.pos)
+        errorType(err.takesNoParamsStr(fn, ""), tree.pos)
     }
     tree.withType(ownType)
   }
@@ -396,7 +396,7 @@ trait TypeAssigner {
           else wrongNumberOfTypeArgs(fn.tpe, pt.typeParams, args, tree.pos)
         }
       case _ =>
-        errorType(i"${err.exprStr(fn)} does not take type parameters", tree.pos)
+        errorType(err.takesNoParamsStr(fn, "type "), tree.pos)
     }
 
     tree.withType(ownType)

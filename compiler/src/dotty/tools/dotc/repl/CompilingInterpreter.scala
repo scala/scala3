@@ -15,7 +15,7 @@ import scala.collection.mutable.{ListBuffer, HashSet, ArrayBuffer}
 
 //import ast.parser.SyntaxAnalyzer
 import io.{PlainFile, VirtualDirectory}
-import scala.reflect.io.{PlainDirectory, Directory}
+import dotty.tools.io.{PlainDirectory, Directory}
 import reporting.{ConsoleReporter, Reporter}
 import core.Flags
 import util.{SourceFile, NameTransformer}

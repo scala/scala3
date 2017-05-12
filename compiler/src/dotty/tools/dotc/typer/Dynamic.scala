@@ -15,6 +15,7 @@ import core.Symbols._
 import core.Definitions
 import Inferencing._
 import ErrorReporting._
+import dotty.tools.dotc.reporting.diagnostic.messages.ReassignmentToVal
 
 object Dynamic {
   def isDynamicMethod(name: Name): Boolean =
@@ -99,7 +100,7 @@ trait Dynamic { self: Typer with Applications =>
       case TypeApply(Select(qual, name), targs) if !isDynamicMethod(name) =>
         typedDynamicAssign(qual, name, targs)
       case _ =>
-        errorTree(tree, "reassignment to val")
+        errorTree(tree, ReassignmentToVal(tree.lhs.symbol.name))
     }
   }
 

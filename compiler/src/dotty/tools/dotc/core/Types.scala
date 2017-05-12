@@ -1867,8 +1867,18 @@ object Types {
       }
       else candidate
 
-    override def newLikeThis(prefix: Type)(implicit ctx: Context): TermRef =
-      fixDenot(TermRef.withSig(prefix, name, sig), prefix)
+    override def newLikeThis(prefix: Type)(implicit ctx: Context): TermRef = {
+      // If symbol exists, the new signature is the symbol's signature as seen
+      // from the new prefix, modulo consistency
+      val newSig =
+        if (sig == Signature.NotAMethod || !symbol.exists)
+          sig
+        else
+          sig.updateWith(symbol.info.asSeenFrom(prefix, symbol.owner).signature)
+      if (newSig ne sig)
+        core.println(i"sig change at ${ctx.phase} for $this, pre = $prefix, sig: $sig --> $newSig")
+      fixDenot(TermRef.withSig(prefix, name, newSig), prefix)
+    }
 
     override def shadowed(implicit ctx: Context): NamedType =
       fixDenot(TermRef.withSig(prefix, name.derived(ShadowedName), sig), prefix)

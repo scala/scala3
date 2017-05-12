@@ -1,11 +1,10 @@
 package dotty.tools.dotc.classpath
 
 import dotty.tools.io.ClassRepresentation
-import scala.reflect.io.{AbstractFile, Path, PlainFile, VirtualDirectory}
+import dotty.tools.io.{AbstractFile, Path, PlainFile, VirtualDirectory}
 import FileUtils._
 import java.net.URL
 
-import scala.reflect.internal.util.AbstractFileClassLoader
 import dotty.tools.io.ClassPath
 
 case class VirtualDirectoryClassPath(dir: VirtualDirectory) extends ClassPath with DirectoryLookup[ClassFileEntryImpl] with NoSourcePaths {

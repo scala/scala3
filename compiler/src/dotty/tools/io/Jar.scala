@@ -40,6 +40,8 @@ class Jar(file: File) extends Iterable[JarEntry] {
 
   protected def errorFn(msg: String): Unit = Console println msg
 
+  private implicit def enrichManifest(m: JManifest): Jar.WManifest = Jar.WManifest(m)
+
   lazy val jarFile  = new JarFile(file.jfile)
   lazy val manifest = withJarInput(s => Option(s.getManifest))
 
@@ -65,7 +67,6 @@ class Jar(file: File) extends Iterable[JarEntry] {
     Iterator continually in.getNextJarEntry() takeWhile (_ != null) foreach f
   }
   override def iterator: Iterator[JarEntry] = this.toList.iterator
-  def fileishIterator: Iterator[Fileish] = jarFile.entries.asScala map (x => Fileish(x, () => getEntryStream(x)))
 
   private def getEntryStream(entry: JarEntry) = jarFile getInputStream entry match {
     case null   => errorFn("No such entry: " + entry) ; null

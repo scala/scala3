@@ -167,9 +167,6 @@ class SymbolLoaders {
         val mangled = name.mangled
         val e = super.lookupEntry(mangled)
         if (e != null) e
-        else if (_sourceModule.initialDenot.name == nme.scala_ && _sourceModule == defn.ScalaPackageVal &&
-                 name.isTypeName && name.isSyntheticFunction)
-          newScopeEntry(defn.newFunctionNTrait(name.asTypeName))
         else if (isFlatName(mangled.toSimpleName) && enterFlatClasses.isDefined) {
           Stats.record("package scopes with flatnames entered")
           enterFlatClasses.get(ctx)

@@ -1341,8 +1341,10 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {
         tree match {
           case Typed(unapply, _) => apply(unapply, binder)
           case UnApply(unfun, implicits, args) =>
-            val castedBinder = ref(binder).ensureConforms(tree.tpe)
-            val synth = if (implicits.isEmpty) unfun.appliedTo(castedBinder) else unfun.appliedTo(castedBinder).appliedToArgs(implicits)
+            val mt @ MethodType(_) = unfun.tpe.widen
+            val castedBinder = ref(binder).ensureConforms(mt.paramInfos.head)
+            var synth = unfun.appliedTo(castedBinder)
+            if (implicits.nonEmpty) synth = synth.appliedToArgs(implicits)
             new ExtractorCallRegular(alignPatterns(tree, synth.tpe), synth, args, synth.tpe)
         }
       }

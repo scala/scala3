@@ -1,7 +1,7 @@
 package dotty.tools.dotc
 package core
 
-import Names._, Types._, Contexts._, StdNames._
+import Names._, Types._, Contexts._, StdNames._, Decorators._
 import TypeErasure.sigName
 
 import scala.annotation.tailrec
@@ -47,6 +47,20 @@ case class Signature(paramsSig: List[TypeName], resSig: TypeName) {
       if (names1.isEmpty) names2.isEmpty
       else names2.nonEmpty && consistent(names1.head, names2.head) && loop(names1.tail, names2.tail)
     loop(this.paramsSig, that.paramsSig)
+  }
+
+  /** `that` signature, but keeping all corresponding parts of `this` signature. */
+  final def updateWith(that: Signature): Signature = {
+    def update(name1: TypeName, name2: TypeName): TypeName =
+      if (consistent(name1, name2)) name1 else name2
+    if (this == that) this
+    else if (!this.paramsSig.hasSameLengthAs(that.paramsSig)) that
+    else {
+      val mapped = Signature(
+          this.paramsSig.zipWithConserve(that.paramsSig)(update),
+          update(this.resSig, that.resSig))
+      if (mapped == this) this else mapped
+    }
   }
 
   /** The degree to which this signature matches `that`.

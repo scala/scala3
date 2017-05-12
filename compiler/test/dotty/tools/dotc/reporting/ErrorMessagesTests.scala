@@ -385,4 +385,19 @@ class ErrorMessagesTests extends ErrorMessagesTest {
       assertEquals("method foo", alt2.show)
     }
 
+  @Test def reassignmentToVal =
+    checkMessagesAfter("frontend") {
+      """
+        |class Context {
+        |  val value = 3
+        |  value = 4
+        |}
+      """.stripMargin
+    }
+    .expect { (ictx, messages) =>
+      implicit val ctx: Context = ictx
+      assertMessageCount(1, messages)
+      val ReassignmentToVal(name) :: Nil = messages
+      assertEquals("value", name.show)
+    }
 }

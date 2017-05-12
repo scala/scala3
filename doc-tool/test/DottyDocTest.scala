@@ -71,7 +71,7 @@ trait DottyDocTest extends MessageRendering {
     }
 
   private def sourceFileFromString(name: String, contents: String): SourceFile = {
-    val virtualFile = new scala.reflect.io.VirtualFile(name)
+    val virtualFile = new dotty.tools.io.VirtualFile(name)
     val writer = new BufferedWriter(new OutputStreamWriter(virtualFile.output, "UTF-8"))
     writer.write(contents)
     writer.close()

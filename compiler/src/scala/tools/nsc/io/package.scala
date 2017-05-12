@@ -10,17 +10,17 @@ package scala.tools.nsc
  * See http://dotty.epfl.ch/docs/contributing/backend.html for more information.
  */
 package object io {
-  type AbstractFile = scala.reflect.io.AbstractFile
-  val AbstractFile = scala.reflect.io.AbstractFile
+  type AbstractFile = dotty.tools.io.AbstractFile
+  val AbstractFile = dotty.tools.io.AbstractFile
 
-  type Directory = scala.reflect.io.Directory
-  val Directory = scala.reflect.io.Directory
+  type Directory = dotty.tools.io.Directory
+  val Directory = dotty.tools.io.Directory
 
-  type Path = scala.reflect.io.Path
-  val Path = scala.reflect.io.Path
+  type Path = dotty.tools.io.Path
+  val Path = dotty.tools.io.Path
 
-  type File = scala.reflect.io.File
-  val File = scala.reflect.io.File
+  type File = dotty.tools.io.File
+  val File = dotty.tools.io.File
 
   type Jar = dotty.tools.io.Jar
   val Jar = dotty.tools.io.Jar
