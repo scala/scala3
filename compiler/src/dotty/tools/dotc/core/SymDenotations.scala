@@ -15,6 +15,7 @@ import annotation.tailrec
 import CheckRealizable._
 import util.SimpleMap
 import util.Stats
+import java.util.WeakHashMap
 import config.Config
 import config.Printers.{completions, incremental, noPrinter}
 
@@ -1250,6 +1251,7 @@ object SymDenotations {
 
     override protected[dotc] final def info_=(tp: Type) = {
       super.info_=(tp)
+      invalidateMemberNamesCache()
       myTypeParams = null // changing the info might change decls, and with it typeParams
     }
 
@@ -1322,7 +1324,7 @@ object SymDenotations {
       myMemberFingerPrint = FingerPrint.unknown
       myMemberCache = null
       myMemberCachePeriod = Nowhere
-      memberNamesCache = SimpleMap.Empty
+      invalidateMemberNamesCache()
     }
 
    // ------ class-specific operations -----------------------------------
@@ -1534,6 +1536,7 @@ object SymDenotations {
         myMemberFingerPrint.include(sym.name)
       if (myMemberCache != null)
         myMemberCache invalidate sym.name
+      invalidateMemberNamesCache()
     }
 
     /** Replace symbol `prev` (if defined in current class) by symbol `replacement`.
@@ -1556,6 +1559,7 @@ object SymDenotations {
       info.decls.openForMutations.unlink(sym)
       myMemberFingerPrint = FingerPrint.unknown
       if (myMemberCache != null) myMemberCache invalidate sym.name
+      invalidateMemberNamesCache()
     }
 
     /** Make sure the type parameters of this class appear in the order given
@@ -1720,35 +1724,37 @@ object SymDenotations {
       }
     }
 
-    private[this] var memberNamesCache: SimpleMap[NameFilter, Set[Name]] = SimpleMap.Empty
+    private[this] var memberNamesCache: MemberNames = null
 
-    def memberNames(keepOnly: NameFilter)(implicit ctx: Context): Set[Name] = {
-      def computeMemberNames: Set[Name] = {
-        var names = Set[Name]()
-        def maybeAdd(name: Name) = if (keepOnly(thisType, name)) names += name
-        for (p <- classParents)
-          for (name <- p.memberNames(keepOnly, thisType)) maybeAdd(name)
-        val ownSyms =
-          if (keepOnly == implicitFilter)
-            if (this is Package) Iterator.empty
-            else info.decls.iterator filter (_ is Implicit)
-          else info.decls.iterator
-        for (sym <- ownSyms) maybeAdd(sym.name)
-        names
-      }
-      if ((this is PackageClass) || !Config.cacheMemberNames)
-        computeMemberNames // don't cache package member names; they might change
+    private def memberNamesCacheValid = memberNamesCache != null && memberNamesCache.isValid
+
+    def memberNames(keepOnly: NameFilter, onBehalf: MemberNames)(implicit ctx: Context): Set[Name] =
+     if ((this is PackageClass) || !Config.cacheMemberNames)
+        computeMemberNames(keepOnly, onBehalf) // don't cache package member names; they might change
       else {
-        val cached = memberNamesCache(keepOnly)
-        if (cached != null) cached
-        else {
-          val names = computeMemberNames
-          if (isFullyCompleted) {
-            setFlag(Frozen)
-            memberNamesCache = memberNamesCache.updated(keepOnly, names)
-          }
-          names
-        }
+        if (!memberNamesCacheValid) memberNamesCache = new MemberNames
+        memberNamesCache(keepOnly, this, onBehalf)
+      }
+
+    def computeMemberNames(keepOnly: NameFilter, onBehalf: MemberNames)(implicit ctx: Context): Set[Name] = {
+      var names = Set[Name]()
+      def maybeAdd(name: Name) = if (keepOnly(thisType, name)) names += name
+      for (p <- classParents)
+        for (name <- p.memberNames(keepOnly, onBehalf, thisType))
+          maybeAdd(name)
+      val ownSyms =
+        if (keepOnly eq implicitFilter)
+          if (this is Package) Iterator.empty
+          else info.decls.iterator filter (_ is Implicit)
+        else info.decls.iterator
+      for (sym <- ownSyms) maybeAdd(sym.name)
+      names
+    }
+
+    def invalidateMemberNamesCache() = {
+      if (memberNamesCacheValid) {
+        memberNamesCache.invalidate()
+        memberNamesCache = null
       }
     }
 
@@ -1849,10 +1855,10 @@ object SymDenotations {
       }
 
     /** The union of the member names of the package and the package object */
-    override def memberNames(keepOnly: NameFilter)(implicit ctx: Context): Set[Name] = {
-      val ownNames = super.memberNames(keepOnly)
+    override def memberNames(keepOnly: NameFilter, onBehalf: MemberNames)(implicit ctx: Context): Set[Name] = {
+      val ownNames = super.memberNames(keepOnly, onBehalf)
       packageObj.moduleClass.denot match {
-        case pcls: ClassDenotation => ownNames union pcls.memberNames(keepOnly)
+        case pcls: ClassDenotation => ownNames union pcls.memberNames(keepOnly, onBehalf)
         case _ => ownNames
       }
     }
@@ -2014,6 +2020,100 @@ object SymDenotations {
     def contains(name: Name): Boolean = {
       val hash = name.hashCode & Mask
       (bits(hash >> WordSizeLog) & (1L << hash)) != 0
+    }
+  }
+
+  abstract class InheritedCache {
+    def invalidate(): Unit
+
+    private[this] var dependent: WeakHashMap[InheritedCache, Unit] = null
+
+    protected[this] def invalidateDependents() = {
+      if (dependent != null) {
+        val it = dependent.keySet.iterator()
+        while (it.hasNext()) it.next().invalidate()
+      }
+      dependent = null
+    }
+
+    protected[this] def addDependent(dep: InheritedCache) = {
+      if (dependent == null) dependent = new WeakHashMap
+      dependent.put(dep, ())
+    }
+  }
+
+  class MemberNames extends InheritedCache {
+    private[this] var cache: SimpleMap[NameFilter, Set[Name]] = SimpleMap.Empty
+
+    final def isValid: Boolean = cache != null
+
+    private var locked = false
+
+    /** Computing parent member names might force parents, which could invalidate
+     *  the cache itself. In that case we should cancel invalidation and
+     *  proceed as usual. However, all cache entries should be cleared.
+     */
+    def invalidate(): Unit =
+      if (isValid)
+        if (locked) cache = SimpleMap.Empty
+        else {
+          cache = null
+          invalidateDependents()
+        }
+
+    def apply(keepOnly: NameFilter, clsd: ClassDenotation, onBehalf: MemberNames)(implicit ctx: Context) = {
+      assert(isValid)
+      val cached = cache(keepOnly)
+      try
+        if (cached != null) cached
+        else {
+          locked = true
+          val computed =
+            try clsd.computeMemberNames(keepOnly, this)
+            finally locked = false
+          cache = cache.updated(keepOnly, computed)
+          computed
+        }
+      finally if (onBehalf != null) addDependent(onBehalf)
+    }
+  }
+
+  class BaseClasses extends InheritedCache {
+    private[this] var listCache: List[ClassSymbol] = null
+    private[this] var setCache: BitSet = null
+
+    private var valid = true
+    var locked = false
+
+    final def isValid: Boolean = listCache != null
+
+    def invalidate(): Unit =
+      if (isValid && !locked) {
+        listCache = null
+        setCache = null
+        invalidateDependents()
+      }
+
+    private def compute(clsd: ClassDenotation)(implicit ctx: Context) = {
+      assert(valid)
+      locked = true
+      val (computedList, computedSet) =
+        try clsd.computeBases(this)
+        finally locked = false
+      listCache = computedList
+      setCache = computedSet
+    }
+
+    def asList(clsd: ClassDenotation, onBehalf: BaseClasses)(implicit ctx: Context) =
+      try {
+        if (listCache == null) compute(clsd)
+        listCache
+      }
+      finally if (onBehalf != null) addDependent(onBehalf)
+
+    def asSet(clsd: ClassDenotation, onBehalf: BaseClasses)(implicit ctx: Context): BitSet = {
+      asList(clsd, onBehalf)
+      setCache
     }
   }
 

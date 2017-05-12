@@ -646,25 +646,25 @@ object Types {
      *  @note: OK to use a Set[Name] here because Name hashcodes are replayable,
      *         hence the Set will always give the same names in the same order.
      */
-    final def memberNames(keepOnly: NameFilter, pre: Type = this)(implicit ctx: Context): Set[Name] = this match {
+    final def memberNames(keepOnly: NameFilter, onBehalf: MemberNames, pre: Type = this)(implicit ctx: Context): Set[Name] = this match {
       case tp: ClassInfo =>
-        tp.cls.memberNames(keepOnly) filter (keepOnly(pre, _))
+        tp.cls.memberNames(keepOnly, onBehalf) filter (keepOnly(pre, _))
       case tp: RefinedType =>
-        val ns = tp.parent.memberNames(keepOnly, pre)
+        val ns = tp.parent.memberNames(keepOnly, onBehalf, pre)
         if (keepOnly(pre, tp.refinedName)) ns + tp.refinedName else ns
       case tp: TypeProxy =>
-        tp.underlying.memberNames(keepOnly, pre): @tailrec
+        tp.underlying.memberNames(keepOnly, onBehalf, pre): @tailrec
       case tp: AndType =>
-        tp.tp1.memberNames(keepOnly, pre) | tp.tp2.memberNames(keepOnly, pre)
+        tp.tp1.memberNames(keepOnly, onBehalf, pre) | tp.tp2.memberNames(keepOnly, onBehalf, pre)
       case tp: OrType =>
-        tp.tp1.memberNames(keepOnly, pre) & tp.tp2.memberNames(keepOnly, pre)
+        tp.tp1.memberNames(keepOnly, onBehalf, pre) & tp.tp2.memberNames(keepOnly, onBehalf, pre)
       case _ =>
         Set()
     }
 
     def memberDenots(keepOnly: NameFilter, f: (Name, mutable.Buffer[SingleDenotation]) => Unit)(implicit ctx: Context): Seq[SingleDenotation] = {
       val buf = mutable.ArrayBuffer[SingleDenotation]()
-      for (name <- memberNames(keepOnly)) f(name, buf)
+      for (name <- memberNames(keepOnly, onBehalf = null)) f(name, buf)
       buf
     }
 
