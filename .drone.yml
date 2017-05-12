@@ -22,9 +22,9 @@ pipeline:
     pull: true
     commands:
       - ./project/scripts/sbt ";clean ;publishLocal" "${CI_PUBLISH}"
-      - ./project/scripts/sbt "sbt-scripted-tests/scripted source-dependencies/*1of3" "${CI_PUBLISH}"
-      - ./project/scripts/sbt "sbt-scripted-tests/scripted source-dependencies/*2of3" "${CI_PUBLISH}"
-      - ./project/scripts/sbt "sbt-scripted-tests/scripted source-dependencies/*3of3" "${CI_PUBLISH}"
+      - ./project/scripts/sbt "dotty-sbt-scripted-tests/scripted source-dependencies/*1of3" "${CI_PUBLISH}"
+      - ./project/scripts/sbt "dotty-sbt-scripted-tests/scripted source-dependencies/*2of3" "${CI_PUBLISH}"
+      - ./project/scripts/sbt "dotty-sbt-scripted-tests/scripted source-dependencies/*3of3" "${CI_PUBLISH}"
       - ./project/scripts/sbtPublish '${CI_PUBLISH}' '$SONATYPE_USER' '$SONATYPE_PW' '$PGP_PW'
     volumes:
       - /home/drone/keys:/keys
