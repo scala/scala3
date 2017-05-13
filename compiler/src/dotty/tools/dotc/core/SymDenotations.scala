@@ -1170,7 +1170,7 @@ object SymDenotations {
     { // simulate default parameters, while also passing implicit context ctx to the default values
       val initFlags1 = (if (initFlags != UndefinedFlags) initFlags else this.flags) &~ Frozen
       val info1 = if (info != null) info else this.info
-      if (ctx.isAfterTyper && changedClassParents(info, info1))
+      if (ctx.isAfterTyper && changedClassParents(info, info1, completersMatter = false))
         assert(ctx.phase.changesParents, i"undeclared parent change at ${ctx.phase} for $this, was: $info, now: $info1")
       val privateWithin1 = if (privateWithin != null) privateWithin else this.privateWithin
       val annotations1 = if (annotations != null) annotations else this.annotations
@@ -1185,15 +1185,17 @@ object SymDenotations {
      */
     def copyCaches(from: SymDenotation, phase: Phase)(implicit ctx: Context): this.type = this
 
-    /** Are `info1` and `info2` ClassInfo types with different parents? */
-    protected def changedClassParents(info1: Type, info2: Type): Boolean =
+    /** Are `info1` and `info2` ClassInfo types with different parents?
+     *  @param completersMatter  if `true`, consider parents changed if `info1` or `info2 `is a type completer
+     */
+    protected def changedClassParents(info1: Type, info2: Type, completersMatter: Boolean): Boolean =
       info2 match {
         case info2: ClassInfo =>
           info1 match {
             case info1: ClassInfo => info1.classParents ne info2.classParents
-            case _ => false
+            case _ => completersMatter
           }
-        case _ => false
+        case _ => completersMatter
       }
 
     override def initial: SymDenotation = super.initial.asSymDenotation
@@ -1307,12 +1309,11 @@ object SymDenotations {
     }
 
     override protected[dotc] final def info_=(tp: Type) = {
-      super.info_=(tp)
-      if (changedClassParents(infoOrCompleter, tp) || true) {
+      if (changedClassParents(infoOrCompleter, tp, completersMatter = true))
         invalidateBaseDataCache()
-      }
       invalidateMemberNamesCache()
       myTypeParams = null // changing the info might change decls, and with it typeParams
+      super.info_=(tp)
     }
 
     /** The denotations of all parents in this class. */

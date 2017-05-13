@@ -911,7 +911,7 @@ class Namer { typer: Typer =>
       Checking.checkWellFormed(cls)
       if (isDerivedValueClass(cls)) cls.setFlag(Final)
       cls.info = avoidPrivateLeaks(cls, cls.pos)
-      cls.baseClasses.foreach(_.invalidateBaseTypeRefCache) // TODO: needed?
+      cls.baseClasses.foreach(_.invalidateBaseTypeRefCache) // we might have looked before and found nothing
     }
   }
 
