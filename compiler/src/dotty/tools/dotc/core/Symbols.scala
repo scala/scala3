@@ -562,27 +562,6 @@ object Symbols {
     final def classDenot(implicit ctx: Context): ClassDenotation =
       denot.asInstanceOf[ClassDenotation]
 
-    private var superIdHint: Int = -1
-
-    override def superId(implicit ctx: Context): Int = {
-      val hint = superIdHint
-      if (hint >= 0 && hint <= ctx.lastSuperId && (ctx.classOfId(hint) eq this))
-        hint
-      else {
-        val id = ctx.superIdOfClass get this match {
-          case Some(id) =>
-            id
-          case None =>
-            val id = ctx.nextSuperId
-            ctx.superIdOfClass(this) = id
-            ctx.classOfId(id) = this
-            id
-        }
-        superIdHint = id
-        id
-      }
-    }
-
     override protected def prefixString = "ClassSymbol"
   }
 
