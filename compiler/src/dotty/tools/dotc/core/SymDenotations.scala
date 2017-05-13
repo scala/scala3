@@ -1239,8 +1239,8 @@ object SymDenotations {
     private[this] var baseTypeRefCache: java.util.HashMap[CachedType, Type] = null
     private[this] var baseTypeRefValid: RunId = NoRunId
 
-    private var baseDataCache: BaseData = null
-    private var memberNamesCache: MemberNames = null
+    private var baseDataCache: BaseData = BaseData.None
+    private var memberNamesCache: MemberNames = MemberNames.None
 
     private def memberCache(implicit ctx: Context): LRUCache[Name, PreDenotation] = {
       if (myMemberCachePeriod != ctx.period) {
@@ -1250,31 +1250,21 @@ object SymDenotations {
       myMemberCache
     }
 
-    private def baseDataCacheValid(implicit ctx: Context) =
-      baseDataCache != null && baseDataCache.isValid
+    private def invalidateBaseDataCache() = {
+      baseDataCache.invalidate()
+      baseDataCache = BaseData.None
+    }
 
-    private def invalidateBaseDataCache() =
-      if (baseDataCache != null) {
-        baseDataCache.invalidate()
-        baseDataCache = null
-      }
-
-    private def memberNamesCacheValid(implicit ctx: Context) =
-      memberNamesCache != null && memberNamesCache.isValid
-
-    private def invalidateMemberNamesCache() =
-      if (memberNamesCache != null) {
-        memberNamesCache.invalidate()
-        memberNamesCache = null
-      }
+    private def invalidateMemberNamesCache() = {
+      memberNamesCache.invalidate()
+      memberNamesCache = MemberNames.None
+    }
 
     override def copyCaches(from: SymDenotation, phase: Phase)(implicit ctx: Context): this.type = {
       from match {
         case from: ClassDenotation =>
-          if (from.memberNamesCache != null && from.memberNamesCache.isValidAt(phase))
-            memberNamesCache = from.memberNamesCache
-          if (from.baseDataCache != null && from.baseDataCache.isValidAt(phase))
-            baseDataCache = from.baseDataCache
+          if (from.memberNamesCache.isValidAt(phase)) memberNamesCache = from.memberNamesCache
+          if (from.baseDataCache.isValidAt(phase)) baseDataCache = from.baseDataCache
         case _ =>
       }
       this
@@ -1429,7 +1419,7 @@ object SymDenotations {
     }
 
     private def baseData(implicit onBehalf: BaseData, ctx: Context): (List[ClassSymbol], BaseClassSet) = {
-      if (!baseDataCacheValid) baseDataCache = BaseData()
+      if (!baseDataCache.isValid) baseDataCache = BaseData.newCache()
       baseDataCache(this)
     }
 
@@ -1771,7 +1761,7 @@ object SymDenotations {
      if ((this is PackageClass) || !Config.cacheMemberNames)
         computeMemberNames(keepOnly) // don't cache package member names; they might change
       else {
-        if (!memberNamesCacheValid) memberNamesCache = MemberNames()
+        if (!memberNamesCache.isValid) memberNamesCache = MemberNames.newCache()
         memberNamesCache(keepOnly, this)
       }
 
@@ -2071,7 +2061,7 @@ object SymDenotations {
     implicit val None: MemberNames = new InvalidCache with MemberNames {
       def apply(keepOnly: NameFilter, clsd: ClassDenotation)(implicit onBehalf: MemberNames, ctx: Context) = ???
     }
-    def apply()(implicit ctx: Context): MemberNames = new MemberNamesImpl(ctx.period)
+    def newCache()(implicit ctx: Context): MemberNames = new MemberNamesImpl(ctx.period)
   }
 
   trait BaseData extends InheritedCache {
@@ -2085,7 +2075,7 @@ object SymDenotations {
       def apply(clsd: ClassDenotation)(implicit onBehalf: BaseData, ctx: Context) = ???
       def signalProvisional() = ()
     }
-    def apply()(implicit ctx: Context): BaseData = new BaseDataImpl(ctx.period)
+    def newCache()(implicit ctx: Context): BaseData = new BaseDataImpl(ctx.period)
   }
 
   private abstract class InheritedCacheImpl(val createdAt: Period) extends InheritedCache {
