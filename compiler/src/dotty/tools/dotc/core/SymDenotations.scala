@@ -1425,7 +1425,9 @@ object SymDenotations {
         case nil =>
           to
       }
-      if (classParents.isEmpty && !is(Package) && !symbol.eq(defn.AnyClass))
+      def emptyParentsExpected =
+        is(Package) || (symbol == defn.AnyClass) || ctx.erasedTypes && (symbol == defn.ObjectClass)
+      if (classParents.isEmpty && !emptyParentsExpected)
         onBehalf.signalProvisional()
       (classSymbol :: addParentBaseClasses(classParents, Nil),
        new BaseClassSet(seen.toArray))
