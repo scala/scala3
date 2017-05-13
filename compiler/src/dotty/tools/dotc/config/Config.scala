@@ -4,7 +4,6 @@ object Config {
 
   final val cacheMembersNamed = true
   final val cacheAsSeenFrom = true
-  final val useFingerPrints = true // note: it currently seems to be slightly faster not to use them! my junit test: 548s without, 560s with.
   final val cacheMemberNames = true
   final val cacheImplicitScopes = true
 

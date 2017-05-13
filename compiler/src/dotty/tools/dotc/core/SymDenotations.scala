@@ -1452,42 +1452,6 @@ object SymDenotations {
 
     final override def typeParamCreationFlags = ClassTypeParamCreationFlags
 
-    private[this] var myMemberFingerPrint: FingerPrint = FingerPrint.unknown
-
-    private def computeMemberFingerPrint(implicit ctx: Context): FingerPrint = {
-      var fp = FingerPrint()
-      var e = info.decls.lastEntry
-      while (e != null) {
-        fp.include(e.name)
-        e = e.prev
-      }
-      var ps = classParents
-      while (ps.nonEmpty) {
-        val parent = ps.head.typeSymbol
-        parent.denot match {
-          case parentDenot: ClassDenotation =>
-            fp.include(parentDenot.memberFingerPrint)
-            if (parentDenot.isFullyCompleted) parentDenot.setFlag(Frozen)
-          case _ =>
-        }
-        ps = ps.tail
-      }
-      fp
-    }
-
-    /** A bloom filter for the names of all members in this class.
-     *  Makes sense only for parent classes, and should definitely
-     *  not be used for package classes because cache never
-     *  gets invalidated.
-     */
-    def memberFingerPrint(implicit ctx: Context): FingerPrint =
-      if (myMemberFingerPrint != FingerPrint.unknown) myMemberFingerPrint
-      else {
-        val fp = computeMemberFingerPrint
-        if (isFullyCompleted) myMemberFingerPrint = fp
-        fp
-      }
-
     /** Hook to do a pre-enter test. Overridden in PackageDenotation */
     protected def proceedWithEnter(sym: Symbol, mscope: MutableScope)(implicit ctx: Context): Boolean = true
 
@@ -1530,8 +1494,6 @@ object SymDenotations {
 
       scope.enter(sym)
 
-      if (myMemberFingerPrint != FingerPrint.unknown)
-        myMemberFingerPrint.include(sym.name)
       if (myMemberCache != null) myMemberCache.invalidate(sym.name)
       if (!sym.flagsUNSAFE.is(Private)) invalidateMemberNamesCache()
     }
@@ -1553,7 +1515,6 @@ object SymDenotations {
     def delete(sym: Symbol)(implicit ctx: Context) = {
       require(!(this is Frozen))
       info.decls.openForMutations.unlink(sym)
-      myMemberFingerPrint = FingerPrint.unknown
       if (myMemberCache != null) myMemberCache.invalidate(sym.name)
       if (!sym.flagsUNSAFE.is(Private)) invalidateMemberNamesCache()
     }
@@ -1603,31 +1564,27 @@ object SymDenotations {
     }
 
     private[core] def computeNPMembersNamed(name: Name, inherited: Boolean)(implicit ctx: Context): PreDenotation = /*>|>*/ Stats.track("computeNPMembersNamed") /*<|<*/ {
-      if (!inherited ||
-          !Config.useFingerPrints ||
-          (memberFingerPrint contains name)) {
-        Stats.record("computeNPMembersNamed after fingerprint")
-        ensureCompleted()
-        val ownDenots = info.decls.denotsNamed(name, selectNonPrivate)
-        if (debugTrace)  // DEBUG
-          println(s"$this.member($name), ownDenots = $ownDenots")
-        def collect(denots: PreDenotation, parents: List[TypeRef]): PreDenotation = parents match {
-          case p :: ps =>
-            val denots1 = collect(denots, ps)
-            p.symbol.denot match {
-              case parentd: ClassDenotation =>
-                denots1 union
-                  parentd.nonPrivateMembersNamed(name, inherited = true)
-                    .mapInherited(ownDenots, denots1, thisType)
-              case _ =>
-                denots1
-            }
-          case nil =>
-            denots
-        }
-        if (name.isConstructorName) ownDenots
-        else collect(ownDenots, classParents)
-      } else NoDenotation
+      Stats.record("computeNPMembersNamed after fingerprint")
+      ensureCompleted()
+      val ownDenots = info.decls.denotsNamed(name, selectNonPrivate)
+      if (debugTrace) // DEBUG
+        println(s"$this.member($name), ownDenots = $ownDenots")
+      def collect(denots: PreDenotation, parents: List[TypeRef]): PreDenotation = parents match {
+        case p :: ps =>
+          val denots1 = collect(denots, ps)
+          p.symbol.denot match {
+            case parentd: ClassDenotation =>
+              denots1 union
+                parentd.nonPrivateMembersNamed(name, inherited = true)
+                .mapInherited(ownDenots, denots1, thisType)
+            case _ =>
+              denots1
+          }
+        case nil =>
+          denots
+      }
+      if (name.isConstructorName) ownDenots
+      else collect(ownDenots, classParents)
     }
 
     override final def findMember(name: Name, pre: Type, excluded: FlagSet)(implicit ctx: Context): Denotation = {
@@ -1981,30 +1938,7 @@ object SymDenotations {
     }
   }
 
-  // ---- Fingerprints -----------------------------------------------------
-
-  /** A fingerprint is a bitset that acts as a bloom filter for sets
-   *  of names.
-   */
-  class FingerPrint(val bits: Array[Long]) extends AnyVal {
-    import FingerPrint._
-
-    /** Include some bits of name's hashcode in set */
-    def include(name: Name): Unit = {
-      val hash = name.hashCode & Mask
-      bits(hash >> WordSizeLog) |= (1L << hash)
-    }
-
-    /** Include all bits of `that` fingerprint in set */
-    def include(that: FingerPrint): Unit =
-      for (i <- 0 until NumWords) bits(i) |= that.bits(i)
-
-    /** Does set contain hash bits of given name? */
-    def contains(name: Name): Boolean = {
-      val hash = name.hashCode & Mask
-      (bits(hash >> WordSizeLog) & (1L << hash)) != 0
-    }
-  }
+  // ---- Caches for inherited info -----------------------------------------
 
   trait InheritedCache {
     def isValid(implicit ctx: Context): Boolean
@@ -2145,15 +2079,6 @@ object SymDenotations {
     }
 
     def sameGroup(p1: Phase, p2: Phase) = p1.parentsGroup == p2.parentsGroup
-  }
-
-  object FingerPrint {
-    def apply() = new FingerPrint(new Array[Long](NumWords))
-    val unknown = new FingerPrint(null)
-    private final val WordSizeLog = 6
-    private final val NumWords = 32
-    private final val NumBits = NumWords << WordSizeLog
-    private final val Mask = NumBits - 1
   }
 
   class BaseClassSet(val classIds: Array[Int]) extends AnyVal {
