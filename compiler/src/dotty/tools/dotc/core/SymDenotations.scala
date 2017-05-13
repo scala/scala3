@@ -1329,8 +1329,6 @@ object SymDenotations {
 
     /** Invalidate all caches and fields that depend on base classes and their contents */
     override def invalidateInheritedInfo(): Unit = {
-      myBaseClasses = null
-      mySuperClassBits = null
       myMemberFingerPrint = FingerPrint.unknown
       myMemberCache = null
       myMemberCachePeriod = Nowhere
@@ -1370,9 +1368,6 @@ object SymDenotations {
       myTypeRef
     }
 
-    private[this] var myBaseClasses: List[ClassSymbol] = null
-    private[this] var mySuperClassBits: BitSet = null
-
     private[this] var baseClassesCache: BaseData = null
 
     private def baseClassesCacheValid = baseClassesCache != null && baseClassesCache.isValid
@@ -1403,15 +1398,13 @@ object SymDenotations {
     private def checkBasesUpToDate()(implicit ctx: Context) =
       if (baseTypeRefValid != ctx.runId) {
         invalidateBaseTypeRefCache()
-        myBaseClasses = null
-        mySuperClassBits = null
         baseTypeRefValid = ctx.runId
       }
 
     def invalidateBaseTypeRefCache() =
       baseTypeRefCache = new java.util.HashMap[CachedType, Type]
 
-    def computeBases(implicit onBehalf: BaseData, ctx: Context): (List[ClassSymbol], BaseClassSet) = {
+    def computeBaseData(implicit onBehalf: BaseData, ctx: Context): (List[ClassSymbol], BaseClassSet) = {
       val seen = mutable.SortedSet[Int]()
       def addBaseClasses(bcs: List[ClassSymbol], to: List[ClassSymbol])
           : List[ClassSymbol] = bcs match {
@@ -1432,70 +1425,11 @@ object SymDenotations {
         case nil =>
           to
       }
-      if (classParents.isEmpty &&
-          !is(Package) && !symbol.eq(defn.AnyClass)) {
+      if (classParents.isEmpty && !is(Package) && !symbol.eq(defn.AnyClass))
         onBehalf.signalProvisional()
-        (classSymbol :: Nil, Set())
-      }
       (classSymbol :: addParentBaseClasses(classParents, Nil),
        new BaseClassSet(seen.toArray))
     }
-
-    private def computeBasesOLD(implicit ctx: Context): (List[ClassSymbol], BitSet) = {
-      if (myBaseClasses eq Nil) throw CyclicReference(this)
-      myBaseClasses = Nil
-      val seen = new mutable.BitSet
-      val locked = new mutable.BitSet
-      def addBaseClasses(bcs: List[ClassSymbol], to: List[ClassSymbol])
-          : List[ClassSymbol] = bcs match {
-        case bc :: bcs1 =>
-          val bcs1added = addBaseClasses(bcs1, to)
-          val id = bc.superId
-          if (seen contains id) bcs1added
-          else {
-            seen += id
-            bc :: bcs1added
-          }
-        case nil =>
-          to
-      }
-      def addParentBaseClasses(ps: List[TypeRef], to: List[ClassSymbol]): List[ClassSymbol] = ps match {
-        case p :: ps1 =>
-          addParentBaseClasses(ps1,
-              addBaseClasses(p.symbol.asClass.baseClasses, to))
-        case nil =>
-          to
-      }
-      val bcs = classSymbol :: addParentBaseClasses(classParents, Nil)
-      val scbits = seen
-      if (isFullyCompleted) {
-        myBaseClasses = bcs
-        mySuperClassBits = scbits
-      }
-      else {
-        println(i"RETRY $this # ${symbol.id}")
-        myBaseClasses = null
-      }
-      (bcs, scbits)
-    }
-
-    /** A bitset that contains the superId's of all base classes */
-    private def superClassBitsOLD(implicit ctx: Context): BitSet =
-      if (classParents.isEmpty) BitSet() // can happen when called too early in Namers
-      else {
-        checkBasesUpToDate()
-        if (mySuperClassBits != null) mySuperClassBits else computeBasesOLD._2
-      }
-
-    /** The base classes of this class in linearization order,
-     *  with the class itself as first element.
-     */
-    def baseClassesOLD(implicit ctx: Context): List[ClassSymbol] =
-      if (classParents.isEmpty) classSymbol :: Nil // can happen when called too early in Namers
-      else {
-        checkBasesUpToDate()
-        if (myBaseClasses != null) myBaseClasses else computeBasesOLD._1
-      }
 
     final override def derivesFrom(base: Symbol)(implicit ctx: Context): Boolean =
       !isAbsent &&
@@ -2181,7 +2115,7 @@ object SymDenotations {
           locked = true
           provisional = false
           val computed =
-            try clsd.computeBases(this, ctx)
+            try clsd.computeBaseData(this, ctx)
             finally locked = false
           if (!provisional) cache = computed
           else onBehalf.signalProvisional()
