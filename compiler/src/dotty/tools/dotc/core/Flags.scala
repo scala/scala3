@@ -349,9 +349,6 @@ object Flags {
   /** A bridge method. Set by Erasure */
   final val Bridge = termFlag(34, "<bridge>")
 
-  /** All class attributes are fully defined */
-  final val FullyCompleted = typeFlag(34, "<fully-completed>")
-
   /** Symbol is a Java varargs bridge */ // (needed?)
   final val VBridge = termFlag(35, "<vbridge>") // TODO remove
 
