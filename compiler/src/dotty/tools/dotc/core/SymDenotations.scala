@@ -1176,7 +1176,6 @@ object SymDenotations {
       val annotations1 = if (annotations != null) annotations else this.annotations
       val d = ctx.SymDenotation(symbol, owner, name, initFlags1, info1, privateWithin1)
       d.annotations = annotations1
-      // TODO: Copy memberCache if info does not change
       d
     }
 
@@ -1911,12 +1910,20 @@ object SymDenotations {
 
   // ---- Caches for inherited info -----------------------------------------
 
+  /** Base trait for caches that keep info dependent on inherited classes */
   trait InheritedCache {
+
+    /** Is the cache valid in current period? */
     def isValid(implicit ctx: Context): Boolean
+
+    /** is the cache valid in current run at given phase? */
     def isValidAt(phase: Phase)(implicit ctx: Context): Boolean
+
+    /** Render invalid this cache and all cache that depend on it */
     def invalidate(): Unit
   }
 
+  /** A cache for sets of member names, indexed by a NameFilter */
   trait MemberNames extends InheritedCache {
     def apply(keepOnly: NameFilter, clsd: ClassDenotation)
              (implicit onBehalf: MemberNames, ctx: Context): Set[Name]
@@ -1929,6 +1936,9 @@ object SymDenotations {
     def newCache()(implicit ctx: Context): MemberNames = new MemberNamesImpl(ctx.period)
   }
 
+  /** A cache for baseclasses, as a sequence in linearization order and as a set that
+   *  can be queried efficiently for containment.
+   */
   trait BaseData extends InheritedCache {
     def apply(clsd: ClassDenotation)
              (implicit onBehalf: BaseData, ctx: Context): (List[ClassSymbol], BaseClassSet)
