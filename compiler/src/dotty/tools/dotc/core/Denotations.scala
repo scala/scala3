@@ -805,7 +805,7 @@ object Denotations {
               val transformer = ctx.denotTransformers(nextTransformerId)
               //println(s"transforming $this with $transformer")
               try {
-                next = transformer.transform(cur)(ctx.withPhase(transformer)).syncWithParents
+                next = transformer.transform(cur)(ctx.withPhase(transformer))
               } catch {
                 case ex: CyclicReference =>
                   println(s"error while transforming $this") // DEBUG

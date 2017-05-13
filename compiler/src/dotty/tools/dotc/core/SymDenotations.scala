@@ -1262,6 +1262,9 @@ object SymDenotations {
       memberNamesCache = MemberNames.None
     }
 
+    def invalidateBaseTypeRefCache() =
+      baseTypeRefCache = new java.util.HashMap[CachedType, Type]
+
     override def copyCaches(from: SymDenotation, phase: Phase)(implicit ctx: Context): this.type = {
       from match {
         case from: ClassDenotation =>
@@ -1348,45 +1351,6 @@ object SymDenotations {
         isCompleted && testFullyCompleted && { setFlag(FullyCompleted); true }
     }
 
-    // ------ syncing inheritance-related info -----------------------------
-
-    private var firstRunId: RunId = initRunId
-
-    /** invalidate caches influenced by parent classes if one of the parents
-     *  is younger than the denotation itself.
-     */
-    override def syncWithParents(implicit ctx: Context): SingleDenotation = {
-      def isYounger(tref: TypeRef) = tref.symbol.denot match {
-        case denot: ClassDenotation =>
-          if (denot.validFor.runId < ctx.runId) denot.current // syncs with its parents in turn
-          val result = denot.firstRunId > this.firstRunId
-          if (result) incremental.println(s"$denot is younger than $this")
-          result
-        case _ => false
-      }
-      val parentIsYounger = (firstRunId < ctx.runId) && {
-        infoOrCompleter match {
-          case cinfo: ClassInfo => cinfo.classParents exists isYounger
-          case _ => false
-        }
-      }
-      if (parentIsYounger) {
-        incremental.println(s"parents of $this are invalid; symbol id = ${symbol.id}, copying ...\n")
-        invalidateInheritedInfo()
-      }
-      firstRunId = ctx.runId
-      this
-    }
-
-    /** Invalidate all caches and fields that depend on base classes and their contents */
-    override def invalidateInheritedInfo(): Unit = {
-      myMemberFingerPrint = FingerPrint.unknown
-      myMemberCache = null
-      myMemberCachePeriod = Nowhere
-      invalidateBaseDataCache()
-      invalidateMemberNamesCache()
-    }
-
    // ------ class-specific operations -----------------------------------
 
     private[this] var myThisType: Type = null
@@ -1440,9 +1404,6 @@ object SymDenotations {
         invalidateBaseTypeRefCache()
         baseTypeRefValid = ctx.runId
       }
-
-    def invalidateBaseTypeRefCache() =
-      baseTypeRefCache = new java.util.HashMap[CachedType, Type]
 
     def computeBaseData(implicit onBehalf: BaseData, ctx: Context): (List[ClassSymbol], BaseClassSet) = {
       val seen = mutable.SortedSet[Int]()
@@ -1571,8 +1532,7 @@ object SymDenotations {
 
       if (myMemberFingerPrint != FingerPrint.unknown)
         myMemberFingerPrint.include(sym.name)
-      if (myMemberCache != null)
-        myMemberCache invalidate sym.name
+      if (myMemberCache != null) myMemberCache.invalidate(sym.name)
       if (!sym.flagsUNSAFE.is(Private)) invalidateMemberNamesCache()
     }
 
@@ -1583,8 +1543,7 @@ object SymDenotations {
     def replace(prev: Symbol, replacement: Symbol)(implicit ctx: Context): Unit = {
       require(!(this is Frozen))
       unforcedDecls.openForMutations.replace(prev, replacement)
-      if (myMemberCache != null)
-        myMemberCache invalidate replacement.name
+      if (myMemberCache != null) myMemberCache.invalidate(replacement.name)
     }
 
     /** Delete symbol from current scope.
@@ -1595,8 +1554,8 @@ object SymDenotations {
       require(!(this is Frozen))
       info.decls.openForMutations.unlink(sym)
       myMemberFingerPrint = FingerPrint.unknown
-      if (myMemberCache != null) myMemberCache invalidate sym.name
-      invalidateMemberNamesCache()
+      if (myMemberCache != null) myMemberCache.invalidate(sym.name)
+      if (!sym.flagsUNSAFE.is(Private)) invalidateMemberNamesCache()
     }
 
     /** Make sure the type parameters of this class appear in the order given
