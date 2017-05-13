@@ -22,7 +22,7 @@ class RestoreScopes extends MiniPhaseTransform with IdentityDenotTransformer { t
   import ast.tpd._
   override def phaseName = "restoreScopes"
 
-  override def changesMembers = true
+  override def changesMembers = true // the phase affects scopes, applying tree transformations of previous phases
 
   /* Note: We need to wait until we see a package definition because
    * DropEmptyConstructors changes template members when analyzing the
