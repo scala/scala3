@@ -4,7 +4,7 @@ package core
 
 import Periods._, Contexts._, Symbols._, Denotations._, Names._, NameOps._, Annotations._
 import Types._, Flags._, Decorators._, DenotTransformers._, StdNames._, Scopes._, Comments._
-import NameOps._, NameKinds._
+import NameOps._, NameKinds._, Phases._
 import Scopes.Scope
 import collection.mutable
 import collection.BitSet
@@ -1180,6 +1180,11 @@ object SymDenotations {
       d
     }
 
+    /** Copy mamberNames and baseData caches from given denotation, provided
+     *  they are valid at given `phase`.
+     */
+    def copyCaches(from: SymDenotation, phase: Phase)(implicit ctx: Context): this.type = this
+
     /** Are `info1` and `info2` ClassInfo types with different parents? */
     protected def changedClassParents(info1: Type, info2: Type): Boolean =
       info2 match {
@@ -1224,6 +1229,57 @@ object SymDenotations {
 
     import util.LRUCache
 
+    // ----- caches -------------------------------------------------------
+
+    private[this] var myTypeParams: List[TypeSymbol] = null
+
+    private[this] var myMemberCache: LRUCache[Name, PreDenotation] = null
+    private[this] var myMemberCachePeriod: Period = Nowhere
+
+    private[this] var baseTypeRefCache: java.util.HashMap[CachedType, Type] = null
+    private[this] var baseTypeRefValid: RunId = NoRunId
+
+    private var baseDataCache: BaseData = null
+    private var memberNamesCache: MemberNames = null
+
+    private def memberCache(implicit ctx: Context): LRUCache[Name, PreDenotation] = {
+      if (myMemberCachePeriod != ctx.period) {
+        myMemberCache = new LRUCache
+        myMemberCachePeriod = ctx.period
+      }
+      myMemberCache
+    }
+
+    private def baseDataCacheValid(implicit ctx: Context) =
+      baseDataCache != null && baseDataCache.isValid
+
+    private def invalidateBaseDataCache() =
+      if (baseDataCache != null) {
+        baseDataCache.invalidate()
+        baseDataCache = null
+      }
+
+    private def memberNamesCacheValid(implicit ctx: Context) =
+      memberNamesCache != null && memberNamesCache.isValid
+
+    private def invalidateMemberNamesCache() =
+      if (memberNamesCache != null) {
+        memberNamesCache.invalidate()
+        memberNamesCache = null
+      }
+
+    override def copyCaches(from: SymDenotation, phase: Phase)(implicit ctx: Context): this.type = {
+      from match {
+        case from: ClassDenotation =>
+          if (from.memberNamesCache != null && from.memberNamesCache.isValidAt(phase))
+            memberNamesCache = from.memberNamesCache
+          if (from.baseDataCache != null && from.baseDataCache.isValidAt(phase))
+            baseDataCache = from.baseDataCache
+        case _ =>
+      }
+      this
+    }
+
     // ----- denotation fields and accessors ------------------------------
 
     if (initFlags is (Module, butNot = Package))
@@ -1234,9 +1290,6 @@ object SymDenotations {
 
     /** The info asserted to have type ClassInfo */
     def classInfo(implicit ctx: Context): ClassInfo = info.asInstanceOf[ClassInfo]
-
-    /** TODO: Document why caches are supposedly safe to use */
-    private[this] var myTypeParams: List[TypeSymbol] = _
 
     /** The type parameters in this class, in the order they appear in the current
      *  scope `decls`. This might be temporarily the incorrect order when
@@ -1375,20 +1428,9 @@ object SymDenotations {
       myTypeRef
     }
 
-    private[this] var baseClassesCache: BaseData = null
-
-    private def baseClassesCacheValid = baseClassesCache != null && baseClassesCache.isValid
-
-    private def invalidateBaseDataCache() = {
-      if (baseClassesCacheValid) {
-        baseClassesCache.invalidate()
-        baseClassesCache = null
-      }
-    }
-
     private def baseData(implicit onBehalf: BaseData, ctx: Context): (List[ClassSymbol], BaseClassSet) = {
-      if (!baseClassesCacheValid) baseClassesCache = new BaseData
-      baseClassesCache(this)
+      if (!baseDataCacheValid) baseDataCache = BaseData()
+      baseDataCache(this)
     }
 
     /** The base classes of this class in linearization order,
@@ -1493,17 +1535,6 @@ object SymDenotations {
         if (isFullyCompleted) myMemberFingerPrint = fp
         fp
       }
-
-    private[this] var myMemberCache: LRUCache[Name, PreDenotation] = null
-    private[this] var myMemberCachePeriod: Period = Nowhere
-
-    private def memberCache(implicit ctx: Context): LRUCache[Name, PreDenotation] = {
-      if (myMemberCachePeriod != ctx.period) {
-        myMemberCache = new LRUCache
-        myMemberCachePeriod = ctx.period
-      }
-      myMemberCache
-    }
 
     /** Hook to do a pre-enter test. Overridden in PackageDenotation */
     protected def proceedWithEnter(sym: Symbol, mscope: MutableScope)(implicit ctx: Context): Boolean = true
@@ -1654,9 +1685,6 @@ object SymDenotations {
       raw.filterExcluded(excluded).asSeenFrom(pre).toDenot(pre)
     }
 
-    private[this] var baseTypeRefCache: java.util.HashMap[CachedType, Type] = null
-    private[this] var baseTypeRefValid: RunId = NoRunId
-
     /** Compute tp.baseTypeRef(this) */
     final def baseTypeRefOf(tp: Type)(implicit ctx: Context): Type = {
 
@@ -1739,22 +1767,11 @@ object SymDenotations {
       }
     }
 
-    private[this] var memberNamesCache: MemberNames = null
-
-    private def memberNamesCacheValid = memberNamesCache != null && memberNamesCache.isValid
-
-    private def invalidateMemberNamesCache() = {
-      if (memberNamesCacheValid) {
-        memberNamesCache.invalidate()
-        memberNamesCache = null
-      }
-    }
-
     def memberNames(keepOnly: NameFilter)(implicit onBehalf: MemberNames, ctx: Context): Set[Name] =
      if ((this is PackageClass) || !Config.cacheMemberNames)
         computeMemberNames(keepOnly) // don't cache package member names; they might change
       else {
-        if (!memberNamesCacheValid) memberNamesCache = new MemberNames
+        if (!memberNamesCacheValid) memberNamesCache = MemberNames()
         memberNamesCache(keepOnly, this)
       }
 
@@ -1811,6 +1828,7 @@ object SymDenotations {
         val ClassInfo(pre, _, ps, decls, selfInfo) = classInfo
         if (classInfo(prevCtx).decls eq decls)
           copySymDenotation(info = ClassInfo(pre, classSymbol, ps, decls.cloneScope, selfInfo))
+            .copyCaches(this, phase.next)
             .installAfter(phase)
       }
   }
@@ -2038,12 +2056,44 @@ object SymDenotations {
     }
   }
 
-  abstract class InheritedCache {
+  trait InheritedCache {
+    def isValid(implicit ctx: Context): Boolean
+    def isValidAt(phase: Phase)(implicit ctx: Context): Boolean
     def invalidate(): Unit
+  }
+
+  trait MemberNames extends InheritedCache {
+    def apply(keepOnly: NameFilter, clsd: ClassDenotation)
+             (implicit onBehalf: MemberNames, ctx: Context): Set[Name]
+  }
+
+  object MemberNames {
+    implicit val None: MemberNames = new InvalidCache with MemberNames {
+      def apply(keepOnly: NameFilter, clsd: ClassDenotation)(implicit onBehalf: MemberNames, ctx: Context) = ???
+    }
+    def apply()(implicit ctx: Context): MemberNames = new MemberNamesImpl(ctx.period)
+  }
+
+  trait BaseData extends InheritedCache {
+    def apply(clsd: ClassDenotation)
+             (implicit onBehalf: BaseData, ctx: Context): (List[ClassSymbol], BaseClassSet)
+    def signalProvisional(): Unit
+  }
+
+  object BaseData {
+    implicit val None: BaseData = new InvalidCache with BaseData {
+      def apply(clsd: ClassDenotation)(implicit onBehalf: BaseData, ctx: Context) = ???
+      def signalProvisional() = ()
+    }
+    def apply()(implicit ctx: Context): BaseData = new BaseDataImpl(ctx.period)
+  }
+
+  private abstract class InheritedCacheImpl(val createdAt: Period) extends InheritedCache {
+    protected def sameGroup(p1: Phase, p2: Phase): Boolean
 
     private[this] var dependent: WeakHashMap[InheritedCache, Unit] = null
 
-    protected[this] def invalidateDependents() = {
+    protected def invalidateDependents() = {
       if (dependent != null) {
         val it = dependent.keySet.iterator()
         while (it.hasNext()) it.next().invalidate()
@@ -2051,16 +2101,26 @@ object SymDenotations {
       dependent = null
     }
 
-    protected[this] def addDependent(dep: InheritedCache) = {
+    protected def addDependent(dep: InheritedCache) = {
       if (dependent == null) dependent = new WeakHashMap
       dependent.put(dep, ())
     }
+
+    def isValidAt(phase: Phase)(implicit ctx: Context) =
+      createdAt.runId == ctx.runId && sameGroup(ctx.phases(createdAt.phaseId), phase)
   }
 
-  class MemberNames extends InheritedCache {
+  private class InvalidCache extends InheritedCache {
+    def isValid(implicit ctx: Context) = false
+    def isValidAt(phase: Phase)(implicit ctx: Context) = false
+    def invalidate(): Unit = ()
+  }
+
+  private class MemberNamesImpl(createdAt: Period) extends InheritedCacheImpl(createdAt) with MemberNames {
     private[this] var cache: SimpleMap[NameFilter, Set[Name]] = SimpleMap.Empty
 
-    final def isValid: Boolean = cache != null
+    final def isValid(implicit ctx: Context): Boolean =
+      cache != null && isValidAt(ctx.phase)
 
     private var locked = false
 
@@ -2069,7 +2129,7 @@ object SymDenotations {
      *  proceed as usual. However, all cache entries should be cleared.
      */
     def invalidate(): Unit =
-      if (isValid)
+      if (cache != null)
         if (locked) cache = SimpleMap.Empty
         else {
           cache = null
@@ -2091,23 +2151,21 @@ object SymDenotations {
         }
       finally addDependent(onBehalf)
     }
+
+    def sameGroup(p1: Phase, p2: Phase) = p1.membersGroup == p2.membersGroup
   }
 
-  object MemberNames {
-    implicit def onBehalfOfNone(implicit ctx: Context): MemberNames = ctx.dummyMemberNames
-  }
-
-  class BaseData extends InheritedCache {
+  private class BaseDataImpl(createdAt: Period) extends InheritedCacheImpl(createdAt) with BaseData {
     private[this] var cache: (List[ClassSymbol], BaseClassSet) = null
 
     private[this] var valid = true
     private[this] var locked = false
     private[this] var provisional = false
 
-    final def isValid: Boolean = valid
+    final def isValid(implicit ctx: Context): Boolean = valid && isValidAt(ctx.phase)
 
     def invalidate(): Unit =
-      if (isValid && !locked) {
+      if (valid && !locked) {
         invalidateCount += 1
         cache = null
         valid = false
@@ -2135,10 +2193,8 @@ object SymDenotations {
       }
       finally addDependent(onBehalf)
     }
-  }
 
-  object BaseData {
-    implicit def onBehalfOfNone(implicit ctx: Context): BaseData = ctx.dummyBaseData
+    def sameGroup(p1: Phase, p2: Phase) = p1.parentsGroup == p2.parentsGroup
   }
 
   object FingerPrint {

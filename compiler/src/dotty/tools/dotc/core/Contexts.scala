@@ -575,10 +575,6 @@ object Contexts {
     /** The standard definitions */
     val definitions = new Definitions
 
-    /** Sinks for "onBehalf" chains */
-    val dummyMemberNames = new MemberNames
-    val dummyBaseData = new BaseData
-
     /** Initializes the `ContextBase` with a starting context.
      *  This initializes the `platform` and the `definitions`.
      */

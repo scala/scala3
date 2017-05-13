@@ -468,7 +468,7 @@ object Symbols {
         }
         else this.owner.asClass.ensureFreshScopeAfter(phase)
         if (!this.flagsUNSAFE.is(Private))
-          assert(phase.changesMembers, i"$this entered in ${this.owner} after undeclared phase $phase")
+          assert(phase.changesMembers, i"$this entered in ${this.owner} at undeclared phase $phase")
         entered
       }
 

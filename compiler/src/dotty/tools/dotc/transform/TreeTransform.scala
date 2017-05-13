@@ -187,7 +187,7 @@ object TreeTransforms {
           else {
             val derivedAnnots = (annots, annotTrees1).zipped.map((annot, annotTree1) =>
               annot.derivedAnnotation(annotTree1))
-            ref1.copySymDenotation(annotations = derivedAnnots)
+            ref1.copySymDenotation(annotations = derivedAnnots).copyCaches(ref1, ctx.phase.next)
           }
         case ref1 =>
           ref1
