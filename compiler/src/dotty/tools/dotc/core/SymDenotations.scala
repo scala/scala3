@@ -1234,6 +1234,7 @@ object SymDenotations {
     // ----- caches -------------------------------------------------------
 
     private[this] var myTypeParams: List[TypeSymbol] = null
+    private[this] var fullNameCache: SimpleMap[QualifiedNameKind, Name] = SimpleMap.Empty
 
     private[this] var myMemberCache: LRUCache[Name, PreDenotation] = null
     private[this] var myMemberCachePeriod: Period = Nowhere
@@ -1668,7 +1669,6 @@ object SymDenotations {
       names
     }
 
-    private[this] var fullNameCache: SimpleMap[QualifiedNameKind, Name] = SimpleMap.Empty
     override final def fullNameSeparated(kind: QualifiedNameKind)(implicit ctx: Context): Name = {
       val cached = fullNameCache(kind)
       if (cached != null) cached
