@@ -16,6 +16,8 @@ class Flatten extends MiniPhaseTransform with SymTransformer { thisTransform =>
   import ast.tpd._
   override def phaseName = "flatten"
 
+  override def changesMembers = true // the phase removes inner classes
+
   def transformSym(ref: SymDenotation)(implicit ctx: Context) = {
     if (ref.isClass && !ref.is(Package) && !ref.owner.is(Package)) {
       ref.copySymDenotation(

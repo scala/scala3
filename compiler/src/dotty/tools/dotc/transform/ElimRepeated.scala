@@ -29,9 +29,10 @@ class ElimRepeated extends MiniPhaseTransform with InfoTransformer with Annotati
 
   override def phaseName = "elimRepeated"
 
+  override def changesMembers = true // the phase adds vararg bridges
+
   def transformInfo(tp: Type, sym: Symbol)(implicit ctx: Context): Type =
     elimRepeated(tp)
-
 
   override def transform(ref: SingleDenotation)(implicit ctx: Context): SingleDenotation =
     super.transform(ref) match {

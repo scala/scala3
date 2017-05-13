@@ -305,6 +305,12 @@ object Phases {
      */
     def isTyper = false
 
+    /** Can this transform create or delete non-private members? */
+    def changesMembers: Boolean = false
+
+    /** Can this transform change the parents of a class? */
+    def changesParents: Boolean = false
+
     def exists: Boolean = true
 
     private var myPeriod: Period = Periods.InvalidPeriod
@@ -315,6 +321,8 @@ object Phases {
     private var mySymbolicRefs = false
     private var myLabelsReordered = false
 
+    private var myMembersGroup = 0
+    private var myParentsGroup = 0
 
     /** The sequence position of this phase in the given context where 0
      * is reserved for NoPhase and the first real phase is at position 1.
@@ -331,6 +339,8 @@ object Phases {
     final def refChecked = myRefChecked     // Phase is after RefChecks
     final def symbolicRefs = mySymbolicRefs // Phase is after ResolveSuper, newly generated TermRefs should be symbolic
     final def labelsReordered = myLabelsReordered // Phase is after LabelDefs, labels are flattened and owner chains don't mirror this
+    final def membersGroup = myMembersGroup // group id for phases where all symbols have the same non-private members
+    final def parentsGroup = myParentsGroup // group id for phases where all symbols have the same base classes
 
     protected[Phases] def init(base: ContextBase, start: Int, end:Int): Unit = {
       if (start >= FirstPhaseId)
@@ -342,6 +352,8 @@ object Phases {
       myRefChecked   = prev.getClass == classOf[RefChecks]    || prev.refChecked
       mySymbolicRefs = prev.getClass == classOf[ResolveSuper] || prev.symbolicRefs
       myLabelsReordered = prev.getClass == classOf[LabelDefs] || prev.labelsReordered
+      myMembersGroup = if (changesMembers) prev.membersGroup + 1 else prev.membersGroup
+      myParentsGroup = if (changesParents) prev.parentsGroup + 1 else prev.parentsGroup
     }
 
     protected[Phases] def init(base: ContextBase, id: Int): Unit = init(base, id, id)

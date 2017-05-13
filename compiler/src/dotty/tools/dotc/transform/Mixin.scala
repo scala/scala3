@@ -98,6 +98,8 @@ class Mixin extends MiniPhaseTransform with SymTransformer { thisTransform =>
 
   override def runsAfter: Set[Class[_ <: Phase]] = Set(classOf[Erasure])
 
+  override def changesMembers = true  // the phase adds implementions of mixin accessors
+
   override def transformSym(sym: SymDenotation)(implicit ctx: Context): SymDenotation =
     if (sym.is(Accessor, butNot = Deferred) && sym.owner.is(Trait)) {
       val sym1 =

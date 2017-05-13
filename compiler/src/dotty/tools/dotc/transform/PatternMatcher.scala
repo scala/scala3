@@ -31,10 +31,8 @@ import dotty.tools.dotc.util.Positions.Position
 import dotty.tools.dotc.core.Decorators._
 import dotty.tools.dotc.core.Flags
 
-/** This transform eliminates patterns. Right now it's a dummy.
- *  Awaiting the real pattern matcher.
- *  elimRepeated is required
- * TODO: outer tests are not generated yet.
+/** This phase rewrites pattern matches.
+ *  FIXME: A more detailed explanation would be good.
  */
 class PatternMatcher extends MiniPhaseTransform with DenotTransformer {
   import dotty.tools.dotc.ast.tpd._

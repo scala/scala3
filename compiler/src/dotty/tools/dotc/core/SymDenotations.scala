@@ -1170,6 +1170,8 @@ object SymDenotations {
     { // simulate default parameters, while also passing implicit context ctx to the default values
       val initFlags1 = (if (initFlags != UndefinedFlags) initFlags else this.flags) &~ Frozen
       val info1 = if (info != null) info else this.info
+      if (ctx.isAfterTyper && changedClassParents(info, info1))
+        assert(ctx.phase.changesParents, i"undeclared parent change at ${ctx.phase} for $this, was: $info, now: $info1")
       val privateWithin1 = if (privateWithin != null) privateWithin else this.privateWithin
       val annotations1 = if (annotations != null) annotations else this.annotations
       val d = ctx.SymDenotation(symbol, owner, name, initFlags1, info1, privateWithin1)
@@ -1177,6 +1179,17 @@ object SymDenotations {
       // TODO: Copy memberCache if info does not change
       d
     }
+
+    /** Are `info1` and `info2` ClassInfo types with different parents? */
+    protected def changedClassParents(info1: Type, info2: Type): Boolean =
+      info2 match {
+        case info2: ClassInfo =>
+          info1 match {
+            case info1: ClassInfo => info1.classParents ne info2.classParents
+            case _ => false
+          }
+        case _ => false
+      }
 
     override def initial: SymDenotation = super.initial.asSymDenotation
 
@@ -1251,16 +1264,10 @@ object SymDenotations {
     }
 
     override protected[dotc] final def info_=(tp: Type) = {
-      val parentChange = infoOrCompleter match {
-        case info: ClassInfo =>
-          tp match {
-            case tp: ClassInfo => info.classParents ne tp.classParents
-            case _ => true
-          }
-        case _ => true
-      }
       super.info_=(tp)
-      if (parentChange || true) invalidateBaseDataCache()
+      if (changedClassParents(infoOrCompleter, tp) || true) {
+        invalidateBaseDataCache()
+      }
       invalidateMemberNamesCache()
       myTypeParams = null // changing the info might change decls, and with it typeParams
     }
@@ -1544,7 +1551,7 @@ object SymDenotations {
         myMemberFingerPrint.include(sym.name)
       if (myMemberCache != null)
         myMemberCache invalidate sym.name
-      invalidateMemberNamesCache()
+      if (!sym.flagsUNSAFE.is(Private)) invalidateMemberNamesCache()
     }
 
     /** Replace symbol `prev` (if defined in current class) by symbol `replacement`.

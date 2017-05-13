@@ -48,6 +48,8 @@ class ExplicitOuter extends MiniPhaseTransform with InfoTransformer { thisTransf
     */
   override def runsAfter: Set[Class[_ <: Phase]] = Set(classOf[PatternMatcher], classOf[HoistSuperArgs])
 
+  override def changesMembers = true // the phase adds outer accessors
+
   /** Add outer accessors if a class always needs an outer pointer */
   override def transformInfo(tp: Type, sym: Symbol)(implicit ctx: Context) = tp match {
     case tp @ ClassInfo(_, cls, _, decls, _) if needsOuterAlways(cls) && !sym.is(JavaDefined) =>

@@ -467,6 +467,8 @@ object Symbols {
           if (this is Module) this.moduleClass.validFor |= InitialPeriod
         }
         else this.owner.asClass.ensureFreshScopeAfter(phase)
+        if (!this.flagsUNSAFE.is(Private))
+          assert(phase.changesMembers, i"$this entered in ${this.owner} after undeclared phase $phase")
         entered
       }
 
