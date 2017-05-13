@@ -1384,30 +1384,20 @@ object SymDenotations {
       }
     }
 
-    private def baseData(onBehalf: BaseData)(implicit ctx: Context): (List[ClassSymbol], BaseClassSet) = {
+    private def baseData(implicit onBehalf: BaseData, ctx: Context): (List[ClassSymbol], BaseClassSet) = {
       if (!baseClassesCacheValid) baseClassesCache = new BaseData
-      baseClassesCache(this, onBehalf)
+      baseClassesCache(this)
     }
 
     /** The base classes of this class in linearization order,
      *  with the class itself as first element.
      */
-    def baseClasses(onBehalf: BaseData)(implicit ctx: Context): List[ClassSymbol] =
-      baseData(onBehalf)._1
-
-    def baseClasses(implicit ctx: Context): List[ClassSymbol] = {
-      //val was = baseClassesOLD
-      val now = baseClasses(null: BaseData)
-      //assert(now == was ||
-      //       was.nonEmpty && now == was.init, i"""diff in baseclasses for $this at ${ctx.phase},
-      //                      |was: $was%, %
-      //                      |now: $now%, %""")
-      now
-    }
+    def baseClasses(implicit onBehalf: BaseData, ctx: Context): List[ClassSymbol] =
+      baseData._1
 
     /** A bitset that contains the superId's of all base classes */
-    private def baseClassSet(onBehalf: BaseData = null)(implicit ctx: Context): BaseClassSet =
-      baseData(onBehalf)._2
+    private def baseClassSet(implicit onBehalf: BaseData, ctx: Context): BaseClassSet =
+      baseData._2
 
     /** Invalidate baseTypeRefCache, baseClasses and superClassBits on new run */
     private def checkBasesUpToDate()(implicit ctx: Context) =
@@ -1421,7 +1411,7 @@ object SymDenotations {
     def invalidateBaseTypeRefCache() =
       baseTypeRefCache = new java.util.HashMap[CachedType, Type]
 
-    def computeBases(onBehalf: BaseData)(implicit ctx: Context): (List[ClassSymbol], BaseClassSet) = {
+    def computeBases(implicit onBehalf: BaseData, ctx: Context): (List[ClassSymbol], BaseClassSet) = {
       val seen = mutable.SortedSet[Int]()
       def addBaseClasses(bcs: List[ClassSymbol], to: List[ClassSymbol])
           : List[ClassSymbol] = bcs match {
@@ -1438,13 +1428,13 @@ object SymDenotations {
       def addParentBaseClasses(ps: List[TypeRef], to: List[ClassSymbol]): List[ClassSymbol] = ps match {
         case p :: ps1 =>
           addParentBaseClasses(ps1,
-              addBaseClasses(p.symbol.asClass.baseClasses(onBehalf), to))
+              addBaseClasses(p.symbol.asClass.baseClasses, to))
         case nil =>
           to
       }
       if (classParents.isEmpty &&
           !is(Package) && !symbol.eq(defn.AnyClass)) {
-        if (onBehalf != null) onBehalf.signalProvisional()
+        onBehalf.signalProvisional()
         (classSymbol :: Nil, Set())
       }
       (classSymbol :: addParentBaseClasses(classParents, Nil),
@@ -1507,18 +1497,11 @@ object SymDenotations {
         if (myBaseClasses != null) myBaseClasses else computeBasesOLD._1
       }
 
-    def properlyDerivesFrom(base: Symbol)(implicit ctx: Context) = {
-      //val was = superClassBitsOLD contains base.superId
-      val now = baseClassSet() contains base
-      //assert(was == now, i"diff for $this derivesFrom $base, was: $was, npw: $now, $superClassBitsOLD: ${base.superId}// ${baseClassSet().classIds.deep}: ${base.id}")
-      now
-    }
-
     final override def derivesFrom(base: Symbol)(implicit ctx: Context): Boolean =
       !isAbsent &&
       base.isClass &&
       (  (symbol eq base)
-      || properlyDerivesFrom(base)
+      || (baseClassSet contains base)
       || (this is Erroneous)
       || (base is Erroneous)
       )
@@ -1768,7 +1751,7 @@ object SymDenotations {
               tp
             else subcls.denot match {
               case cdenot: ClassDenotation =>
-                if (cdenot.properlyDerivesFrom(symbol)) foldGlb(NoType, tp.parents)
+                if (cdenot.baseClassSet contains symbol) foldGlb(NoType, tp.parents)
                 else NoType
               case _ =>
                 baseTypeRefOf(tp.superType)
@@ -1823,19 +1806,19 @@ object SymDenotations {
       }
     }
 
-    def memberNames(keepOnly: NameFilter, onBehalf: MemberNames)(implicit ctx: Context): Set[Name] =
+    def memberNames(keepOnly: NameFilter)(implicit onBehalf: MemberNames, ctx: Context): Set[Name] =
      if ((this is PackageClass) || !Config.cacheMemberNames)
-        computeMemberNames(keepOnly, onBehalf) // don't cache package member names; they might change
+        computeMemberNames(keepOnly) // don't cache package member names; they might change
       else {
         if (!memberNamesCacheValid) memberNamesCache = new MemberNames
-        memberNamesCache(keepOnly, this, onBehalf)
+        memberNamesCache(keepOnly, this)
       }
 
-    def computeMemberNames(keepOnly: NameFilter, onBehalf: MemberNames)(implicit ctx: Context): Set[Name] = {
+    def computeMemberNames(keepOnly: NameFilter)(implicit onBehalf: MemberNames, ctx: Context): Set[Name] = {
       var names = Set[Name]()
       def maybeAdd(name: Name) = if (keepOnly(thisType, name)) names += name
       for (p <- classParents)
-        for (name <- p.memberNames(keepOnly, onBehalf, thisType))
+        for (name <- p.symbol.asClass.memberNames(keepOnly))
           maybeAdd(name)
       val ownSyms =
         if (keepOnly eq implicitFilter)
@@ -1943,10 +1926,10 @@ object SymDenotations {
       }
 
     /** The union of the member names of the package and the package object */
-    override def memberNames(keepOnly: NameFilter, onBehalf: MemberNames)(implicit ctx: Context): Set[Name] = {
-      val ownNames = super.memberNames(keepOnly, onBehalf)
+    override def memberNames(keepOnly: NameFilter)(implicit onBehalf: MemberNames, ctx: Context): Set[Name] = {
+      val ownNames = super.memberNames(keepOnly)
       packageObj.moduleClass.denot match {
-        case pcls: ClassDenotation => ownNames union pcls.memberNames(keepOnly, onBehalf)
+        case pcls: ClassDenotation => ownNames union pcls.memberNames(keepOnly)
         case _ => ownNames
       }
     }
@@ -2149,7 +2132,7 @@ object SymDenotations {
           invalidateDependents()
         }
 
-    def apply(keepOnly: NameFilter, clsd: ClassDenotation, onBehalf: MemberNames)(implicit ctx: Context) = {
+    def apply(keepOnly: NameFilter, clsd: ClassDenotation)(implicit onBehalf: MemberNames, ctx: Context) = {
       assert(isValid)
       val cached = cache(keepOnly)
       try
@@ -2157,13 +2140,17 @@ object SymDenotations {
         else {
           locked = true
           val computed =
-            try clsd.computeMemberNames(keepOnly, this)
+            try clsd.computeMemberNames(keepOnly)(this, ctx)
             finally locked = false
           cache = cache.updated(keepOnly, computed)
           computed
         }
-      finally if (onBehalf != null) addDependent(onBehalf)
+      finally addDependent(onBehalf)
     }
+  }
+
+  object MemberNames {
+    implicit def onBehalfOfNone(implicit ctx: Context): MemberNames = ctx.dummyMemberNames
   }
 
   class BaseData extends InheritedCache {
@@ -2184,7 +2171,7 @@ object SymDenotations {
 
     def signalProvisional() = provisional = true
 
-    def apply(clsd: ClassDenotation, onBehalf: BaseData)(implicit ctx: Context)
+    def apply(clsd: ClassDenotation)(implicit onBehalf: BaseData, ctx: Context)
         : (List[ClassSymbol], BaseClassSet) = {
       assert(isValid)
       try {
@@ -2194,15 +2181,19 @@ object SymDenotations {
           locked = true
           provisional = false
           val computed =
-            try clsd.computeBases(this)
+            try clsd.computeBases(this, ctx)
             finally locked = false
           if (!provisional) cache = computed
-          else if (onBehalf != null) onBehalf.signalProvisional()
+          else onBehalf.signalProvisional()
           computed
         }
       }
-      finally if (onBehalf != null) addDependent(onBehalf)
+      finally addDependent(onBehalf)
     }
+  }
+
+  object BaseData {
+    implicit def onBehalfOfNone(implicit ctx: Context): BaseData = ctx.dummyBaseData
   }
 
   object FingerPrint {
@@ -2228,8 +2219,6 @@ object SymDenotations {
       false
     }
   }
-
-  private val AccessorOrLabel = Accessor | Label
 
   @sharable private var indent = 0 // for completions printing
 }

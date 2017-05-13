@@ -41,7 +41,7 @@ object RefChecks {
       defaultGetterClass <- List(clazz, clazz.companionModule.moduleClass);
       if defaultGetterClass.isClass
     ) {
-      val defaultGetterNames = defaultGetterClass.asClass.memberNames(defaultMethodFilter, onBehalf = null)
+      val defaultGetterNames = defaultGetterClass.asClass.memberNames(defaultMethodFilter)
       val defaultMethodNames = defaultGetterNames map { _ rewrite {
         case DefaultGetterName(methName, _) => methName
       }}

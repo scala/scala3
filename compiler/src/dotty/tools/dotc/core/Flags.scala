@@ -558,6 +558,9 @@ object Flags {
   /** A lazy or deferred value */
   final val LazyOrDeferred = Lazy | Deferred
 
+  /** An accessor or label */
+  final val AccessorOrLabel = Accessor | Label
+
   /** A synthetic or private definition */
   final val SyntheticOrPrivate = Synthetic | Private
 
