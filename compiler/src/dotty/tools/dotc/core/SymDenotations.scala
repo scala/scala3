@@ -1168,7 +1168,7 @@ object SymDenotations {
       privateWithin: Symbol = null,
       annotations: List[Annotation] = null)(implicit ctx: Context) =
     { // simulate default parameters, while also passing implicit context ctx to the default values
-      val initFlags1 = (if (initFlags != UndefinedFlags) initFlags else this.flags) &~ Frozen
+      val initFlags1 = (if (initFlags != UndefinedFlags) initFlags else this.flags)
       val info1 = if (info != null) info else this.info
       if (ctx.isAfterTyper && changedClassParents(info, info1, completersMatter = false))
         assert(ctx.phase.changesParents, i"undeclared parent change at ${ctx.phase} for $this, was: $info, now: $info1")
@@ -1483,17 +1483,7 @@ object SymDenotations {
 
     /** Enter a symbol in given `scope` without potentially replacing the old copy. */
     def enterNoReplace(sym: Symbol, scope: MutableScope)(implicit ctx: Context): Unit = {
-      def isUsecase = ctx.docCtx.isDefined && sym.name.show.takeRight(4) == "$doc"
-      require(
-          (sym.denot.flagsUNSAFE is Private) ||
-          !(this is Frozen) ||
-          (scope ne this.unforcedDecls) ||
-          sym.hasAnnotation(defn.ScalaStaticAnnot) ||
-          sym.name.is(InlineAccessorName) ||
-          isUsecase, i"trying to enter $sym in $this, frozen = ${this is Frozen}")
-
       scope.enter(sym)
-
       if (myMemberCache != null) myMemberCache.invalidate(sym.name)
       if (!sym.flagsUNSAFE.is(Private)) invalidateMemberNamesCache()
     }
@@ -1503,7 +1493,6 @@ object SymDenotations {
      *  @pre `prev` and `replacement` have the same name.
      */
     def replace(prev: Symbol, replacement: Symbol)(implicit ctx: Context): Unit = {
-      require(!(this is Frozen))
       unforcedDecls.openForMutations.replace(prev, replacement)
       if (myMemberCache != null) myMemberCache.invalidate(replacement.name)
     }
@@ -1513,7 +1502,6 @@ object SymDenotations {
      *  someone does a findMember on a subclass.
      */
     def delete(sym: Symbol)(implicit ctx: Context) = {
-      require(!(this is Frozen))
       info.decls.openForMutations.unlink(sym)
       if (myMemberCache != null) myMemberCache.invalidate(sym.name)
       if (!sym.flagsUNSAFE.is(Private)) invalidateMemberNamesCache()

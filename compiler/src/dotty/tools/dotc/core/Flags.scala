@@ -375,9 +375,6 @@ object Flags {
   /** Denotation is in train of being loaded and completed, used to catch cyclic dependencies */
   final val Touched = commonFlag(48, "<touched>")
 
-  /** Class is not allowed to accept new members because fingerprint of subclass has been taken */
-  final val Frozen = commonFlag(49, "<frozen>")
-
   /** An error symbol */
   final val Erroneous = commonFlag(50, "<is-error>")
 
@@ -450,7 +447,7 @@ object Flags {
     Module | Package | Deferred | MethodOrHKCommon | Param | ParamAccessor |
     Scala2ExistentialCommon | Mutable.toCommonFlags | Touched | JavaStatic |
     CovariantOrOuter | ContravariantOrLabel | CaseAccessorOrBaseTypeArg |
-    Fresh | Frozen | Erroneous | ImplicitCommon | Permanent | Synthetic |
+    Fresh | Erroneous | ImplicitCommon | Permanent | Synthetic |
     SuperAccessorOrScala2x | Inline
 
   /** Flags guaranteed to be set upon symbol creation, or, if symbol is a top-level
