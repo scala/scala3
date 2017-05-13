@@ -61,6 +61,7 @@ public enum ErrorMessageID {
     AmbiguousOverloadID,
     ReassignmentToValID,
     TypeDoesNotTakeParametersID,
+    ParameterizedTypeLacksArgumentsID,
     ;
 
     public int errorNumber() {
