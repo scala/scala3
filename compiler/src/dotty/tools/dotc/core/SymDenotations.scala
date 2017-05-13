@@ -1238,8 +1238,10 @@ object SymDenotations {
     private[this] var myMemberCache: LRUCache[Name, PreDenotation] = null
     private[this] var myMemberCachePeriod: Period = Nowhere
 
-    private[this] var baseTypeRefCache: java.util.HashMap[CachedType, Type] = null
-    private[this] var baseTypeRefValid: RunId = NoRunId
+    /** A cache from types T to baseTypeRef(T, C) */
+    type BaseTypeRefMap = java.util.HashMap[CachedType, Type]
+    private[this] var myBaseTypeRefCache: BaseTypeRefMap = null
+    private[this] var myBaseTypeRefCachePeriod: Period = Nowhere
 
     private var baseDataCache: BaseData = BaseData.None
     private var memberNamesCache: MemberNames = MemberNames.None
@@ -1252,6 +1254,16 @@ object SymDenotations {
       myMemberCache
     }
 
+    private def baseTypeRefCache(implicit ctx: Context): BaseTypeRefMap = {
+      if (myBaseTypeRefCachePeriod != ctx.period &&
+          (myBaseTypeRefCachePeriod.runId != ctx.runId ||
+           ctx.phases(myBaseTypeRefCachePeriod.phaseId).parentsGroup != ctx.phase.parentsGroup)) {
+        myBaseTypeRefCache = new BaseTypeRefMap
+        myBaseTypeRefCachePeriod = ctx.period
+      }
+      myBaseTypeRefCache
+    }
+
     private def invalidateBaseDataCache() = {
       baseDataCache.invalidate()
       baseDataCache = BaseData.None
@@ -1262,14 +1274,19 @@ object SymDenotations {
       memberNamesCache = MemberNames.None
     }
 
-    def invalidateBaseTypeRefCache() =
-      baseTypeRefCache = new java.util.HashMap[CachedType, Type]
+    def invalidateBaseTypeRefCache() = {
+      myBaseTypeRefCache = null
+      myBaseTypeRefCachePeriod = Nowhere
+    }
 
     override def copyCaches(from: SymDenotation, phase: Phase)(implicit ctx: Context): this.type = {
       from match {
         case from: ClassDenotation =>
           if (from.memberNamesCache.isValidAt(phase)) memberNamesCache = from.memberNamesCache
-          if (from.baseDataCache.isValidAt(phase)) baseDataCache = from.baseDataCache
+          if (from.baseDataCache.isValidAt(phase)) {
+            baseDataCache = from.baseDataCache
+            myBaseTypeRefCache = from.baseTypeRefCache
+          }
         case _ =>
       }
       this
@@ -1380,13 +1397,6 @@ object SymDenotations {
     /** A bitset that contains the superId's of all base classes */
     private def baseClassSet(implicit onBehalf: BaseData, ctx: Context): BaseClassSet =
       baseData._2
-
-    /** Invalidate baseTypeRefCache, baseClasses and superClassBits on new run */
-    private def checkBasesUpToDate()(implicit ctx: Context) =
-      if (baseTypeRefValid != ctx.runId) {
-        invalidateBaseTypeRefCache()
-        baseTypeRefValid = ctx.runId
-      }
 
     def computeBaseData(implicit onBehalf: BaseData, ctx: Context): (List[ClassSymbol], BaseClassSet) = {
       val seen = mutable.SortedSet[Int]()
@@ -1571,8 +1581,6 @@ object SymDenotations {
         case _ => bt
       }
 
-      def inCache(tp: Type) = baseTypeRefCache.containsKey(tp)
-
       /** We cannot cache:
        *  - type variables which are uninstantiated or whose instances can
        *    change, depending on typerstate.
@@ -1581,13 +1589,16 @@ object SymDenotations {
        *    and this changes subtyping relations. As a shortcut, we do not
        *    cache ErasedValueType at all.
        */
-      def isCachable(tp: Type): Boolean = tp match {
-        case _: TypeErasure.ErasedValueType => false
-        case tp: TypeRef if tp.symbol.isClass => true
-        case tp: TypeVar => tp.inst.exists && inCache(tp.inst)
-        case tp: TypeProxy => inCache(tp.underlying)
-        case tp: AndOrType => inCache(tp.tp1) && inCache(tp.tp2)
-        case _ => true
+      def isCachable(tp: Type, btrCache: BaseTypeRefMap): Boolean = {
+        def inCache(tp: Type) = btrCache.containsKey(tp)
+        tp match {
+          case _: TypeErasure.ErasedValueType => false
+          case tp: TypeRef if tp.symbol.isClass => true
+          case tp: TypeVar => tp.inst.exists && inCache(tp.inst)
+          case tp: TypeProxy => inCache(tp.underlying)
+          case tp: AndOrType => inCache(tp.tp1) && inCache(tp.tp2)
+          case _ => true
+        }
       }
 
       def computeBaseTypeRefOf(tp: Type): Type = {
@@ -1622,21 +1633,21 @@ object SymDenotations {
       /*>|>*/ ctx.debugTraceIndented(s"$tp.baseTypeRef($this)") /*<|<*/ {
         tp match {
           case tp: CachedType =>
+          val btrCache = baseTypeRefCache
             try {
-              checkBasesUpToDate()
-              var basetp = baseTypeRefCache get tp
+              var basetp = btrCache get tp
               if (basetp == null) {
-                baseTypeRefCache.put(tp, NoPrefix)
+                btrCache.put(tp, NoPrefix)
                 basetp = computeBaseTypeRefOf(tp)
-                if (isCachable(tp)) baseTypeRefCache.put(tp, basetp)
-                else baseTypeRefCache.remove(tp)
+                if (isCachable(tp, baseTypeRefCache)) btrCache.put(tp, basetp)
+                else btrCache.remove(tp)
               } else if (basetp == NoPrefix)
                 throw CyclicReference(this)
               basetp
             }
             catch {
               case ex: Throwable =>
-                baseTypeRefCache.put(tp, null)
+                btrCache.put(tp, null)
                 throw ex
             }
           case _ =>
