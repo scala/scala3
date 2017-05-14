@@ -92,8 +92,6 @@ class Run(comp: Compiler)(implicit ctx: Context) {
     for (unit <- units)
       Stats.record("retained typed trees at end", unit.tpdTree.treeSize)
     Stats.record("total trees at end", ast.Trees.ntrees)
-    println(s"bts counts: ${SymDenotations.btsCount.deep}")
-    println(s"invalidate count: ${SymDenotations.invalidateCount}")
   }
 
   private sealed trait PrintedTree

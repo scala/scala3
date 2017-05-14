@@ -1421,7 +1421,6 @@ object SymDenotations {
       }
       def emptyParentsExpected =
         is(Package) || (symbol == defn.AnyClass) || ctx.erasedTypes && (symbol == defn.ObjectClass)
-      btsCount(ctx.phaseId) += 1
       if (classParents.isEmpty && !emptyParentsExpected)
         onBehalf.signalProvisional()
       (classSymbol :: addParentBaseClasses(classParents, Nil),
@@ -2041,8 +2040,7 @@ object SymDenotations {
     final def isValid(implicit ctx: Context): Boolean = valid && isValidAt(ctx.phase)
 
     def invalidate(): Unit =
-      if (valid && !locked) {
-        invalidateCount += 1
+      if (isValid && !locked) {
         cache = null
         valid = false
         invalidateDependents()
@@ -2089,7 +2087,4 @@ object SymDenotations {
   }
 
   @sharable private var indent = 0 // for completions printing
-
-  @sharable val btsCount = new Array[Int](Periods.MaxPossiblePhaseId + 1)
-  @sharable var invalidateCount = 0
 }
