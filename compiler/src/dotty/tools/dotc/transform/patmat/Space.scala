@@ -417,14 +417,13 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
     case Bind(_, pat) => project(pat)
     case UnApply(fun, _, pats) =>
       if (pat.tpe.classSymbol.is(CaseClass))
-        // FIXME: why dealias is needed here?
-        Kon(pat.tpe.stripAnnots.dealias, pats.map(pat => project(pat)))
+        Kon(pat.tpe.stripAnnots, pats.map(pat => project(pat)))
       else if (fun.symbol.owner == scalaSeqFactoryClass && fun.symbol.name == nme.unapplySeq)
         projectList(pats)
       else if (fun.symbol.info.resultType.isRef(scalaSomeClass))
-        Kon(pat.tpe.stripAnnots.dealias, pats.map(pat => project(pat)))
+        Kon(pat.tpe.stripAnnots, pats.map(pat => project(pat)))
       else
-        Fun(pat.tpe.stripAnnots.dealias, fun.tpe, pats.map(pat => project(pat)))
+        Fun(pat.tpe.stripAnnots, fun.tpe, pats.map(pat => project(pat)))
     case Typed(pat @ UnApply(_, _, _), _) => project(pat)
     case Typed(expr, _) => Typ(expr.tpe.stripAnnots, true)
     case _ =>
@@ -470,7 +469,7 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
   /** Is `tp1` a subtype of `tp2`?  */
   def isSubType(tp1: Type, tp2: Type): Boolean = {
     // check SI-9657 and tests/patmat/gadt.scala
-    val res = erase(tp1) <:< erase(tp2)
+    val res = tp1 <:< erase(tp2)
     debug.println(s"${tp1.show} <:< ${tp2.show} = $res")
     res
   }
