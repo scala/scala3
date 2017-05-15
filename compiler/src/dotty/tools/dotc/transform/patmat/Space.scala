@@ -101,7 +101,13 @@ trait SpaceLogic {
   /** Display space in string format */
   def show(sp: Space): String
 
-  /** Simplify space using the laws, there's no nested union after simplify */
+  /** Simplify space using the laws, there's no nested union after simplify
+   *
+   *  @param aggressive if true and OR space has less than 5 components, `simplify` will
+   *                    collapse `sp1 | sp2` to `sp1` if `sp2` is a subspace of `sp1`.
+   *
+   *                    This reduces noise in counterexamples.
+   */
   def simplify(space: Space, aggressive: Boolean = false): Space = space match {
     case Kon(tp, spaces) =>
       val sp = Kon(tp, spaces.map(simplify(_)))
@@ -160,7 +166,7 @@ trait SpaceLogic {
         ss.forall(isSubspace(_, b))
       case (Typ(tp1, _), Typ(tp2, _)) =>
         isSubType(tp1, tp2)
-      case (Typ(tp1, _), Or(ss)) =>  // optimization
+      case (Typ(tp1, _), Or(ss)) =>  // optimization: don't go to subtraction too early
         ss.exists(isSubspace(a, _)) || tryDecompose1(tp1)
       case (_, Or(_)) =>
         simplify(minus(a, b)) == Empty
@@ -323,11 +329,11 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
   import SpaceEngine._
   import tpd._
 
-  private val scalaSomeClass       = ctx.requiredClassRef("scala.Some".toTypeName).symbol.asClass
+  private val scalaSomeClass       = ctx.requiredClass("scala.Some".toTypeName)
   private val scalaSeqFactoryClass = ctx.requiredClass("scala.collection.generic.SeqFactory".toTypeName)
   private val scalaListType        = ctx.requiredClassRef("scala.collection.immutable.List".toTypeName)
   private val scalaNilType         = ctx.requiredModuleRef("scala.collection.immutable.Nil".toTermName)
-  private val scalaConType         = ctx.requiredClassRef("scala.collection.immutable.::".toTypeName)
+  private val scalaConsType        = ctx.requiredClassRef("scala.collection.immutable.::".toTypeName)
 
   /** Checks if it's possible to create a trait/class which is a subtype of `tp`.
    *
@@ -442,7 +448,7 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
       (pats, Typ(scalaNilType, false))
 
     items.foldRight[Space](zero) { (pat, acc) =>
-      Kon(scalaConType.appliedTo(pats.head.tpe.widen), project(pat) :: acc :: Nil)
+      Kon(scalaConsType.appliedTo(pats.head.tpe.widen), project(pat) :: acc :: Nil)
     }
   }
 
@@ -469,6 +475,19 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
   /** Is `tp1` a subtype of `tp2`?  */
   def isSubType(tp1: Type, tp2: Type): Boolean = {
     // check SI-9657 and tests/patmat/gadt.scala
+    //
+    // `erase` is a walkaround to make the following code pass the check:
+    //
+    //    def f(e: Either[Int, String]) = e match {
+    //      case Left(i) => i
+    //      case Right(s) => 0
+    //    }
+    //
+    // The problem is that when decompose `Either[Int, String]`, `Type.wrapIfMember`
+    // only refines the type member inherited from `Either` -- it's complex to refine
+    // the type members in `Left` and `Right`.
+    //
+    // FIXME: remove this hack
     val res = tp1 <:< erase(tp2)
     debug.println(s"${tp1.show} <:< ${tp2.show} = $res")
     res
@@ -509,7 +528,7 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
           case space => List(space)
         }
       case OrType(tp1, tp2) => List(Typ(tp1, true), Typ(tp2, true))
-      case tp if tp =:= ctx.definitions.BooleanType =>
+      case tp if tp.isRef(defn.BooleanClass) =>
         List(
           Typ(ConstantType(Constant(true)), true),
           Typ(ConstantType(Constant(false)), true)
@@ -568,7 +587,7 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
         val and = dealiasedTp.asInstanceOf[AndType]
         canDecompose(and.tp1) || canDecompose(and.tp2)
       }) ||
-      tp =:= ctx.definitions.BooleanType ||
+      tp.isRef(defn.BooleanClass) ||
       tp.classSymbol.is(allOf(Enum, Sealed))  // Enum value doesn't have Sealed flag
 
     debug.println(s"decomposable: ${tp.show} = $res")
@@ -632,9 +651,9 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
 
         if (ctx.definitions.isTupleType(tp))
           signature(tp).map(_ => "_").mkString("(", ", ", ")")
-        else if (sym.showFullName == "scala.collection.immutable.List")
+        else if (scalaListType.isRef(sym))
           if (mergeList) "_*" else "_: List"
-        else if (sym.showFullName == "scala.collection.immutable.::")
+        else if (scalaConsType.isRef(sym))
           if (mergeList) "_" else "List(_)"
         else if (tp.classSymbol.is(CaseClass))
         // use constructor syntax for case class
@@ -646,7 +665,7 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
       case Kon(tp, params) =>
         if (ctx.definitions.isTupleType(tp))
           "(" + params.map(doShow(_)).mkString(", ") + ")"
-        else if (tp.widen.classSymbol.showFullName == "scala.collection.immutable.::")
+        else if (tp.isRef(scalaConsType.symbol))
           if (mergeList) params.map(doShow(_, mergeList)).mkString(", ")
           else params.map(doShow(_, true)).filter(_ != "Nil").mkString("List(", ", ", ")")
         else
@@ -673,7 +692,7 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
             val and = tp.asInstanceOf[AndType]
             isCheckable(and.tp1) || isCheckable(and.tp2)
           }) ||
-          tp.typeSymbol == ctx.definitions.BooleanType.typeSymbol ||
+          tp.isRef(defn.BooleanClass) ||
           tp.typeSymbol.is(Enum) ||
           canDecompose(tp) ||
           (defn.isTupleType(tp) && tp.dealias.argInfos.exists(isCheckable(_)))
