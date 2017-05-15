@@ -611,7 +611,7 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
   override def toString: String = {
     def entryText(tp: Type): String = tp match {
       case tp: TypeBounds => tp.toString
-      case _ =>" := " + tp
+      case _ => " := " + tp
     }
     val constrainedText =
       " constrained types = " + domainLambdas.mkString("\n")
