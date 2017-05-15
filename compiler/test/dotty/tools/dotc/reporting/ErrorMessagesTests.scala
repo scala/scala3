@@ -198,21 +198,6 @@ class ErrorMessagesTests extends ErrorMessagesTest {
       assertTrue("expected trait", isTrait)
     }
 
-  @Test def constructorModifier =
-    checkMessagesAfter("frontend") {
-      """
-        |class AnotherClass @deprecated ()
-      """.stripMargin
-    }
-    .expect { (ictx, messages) =>
-      implicit val ctx: Context = ictx
-      val defn = ictx.definitions
-
-      assertMessageCount(1, messages)
-      val AnnotatedPrimaryConstructorRequiresModifierOrThis(cls) :: Nil = messages
-      assertEquals("AnotherClass", cls.show)
-    }
-
   @Test def overloadedMethodNeedsReturnType =
     checkMessagesAfter("frontend") {
       """
@@ -399,7 +384,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
       assertEquals("Scope.foo(1)", tree.show)
       assertEquals("((a: Int)Unit)(Scope.foo)", methodPart.show)
     }
-  
+
   @Test def ambiugousOverloadWithWildcard =
     checkMessagesAfter("frontend") {
       """object Context {
