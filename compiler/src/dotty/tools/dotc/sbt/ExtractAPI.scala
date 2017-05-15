@@ -386,7 +386,7 @@ private class ExtractAPICollector(implicit val ctx: Context) extends ThunkHolder
           sym.owner.thisType
         else
           tp.prefix
-        new api.Projection(simpleType(prefix), sym.name.toString)
+        new api.Projection(apiType(prefix), sym.name.toString)
       case AppliedType(tycon, args) =>
         def processArg(arg: Type): api.Type = arg match {
           case arg @ TypeBounds(lo, hi) => // Handle wildcard parameters
@@ -402,7 +402,7 @@ private class ExtractAPICollector(implicit val ctx: Context) extends ThunkHolder
             apiType(arg)
         }
 
-        val apiTycon = simpleType(tycon)
+        val apiTycon = apiType(tycon)
         val apiArgs = args.map(processArg)
         new api.Parameterized(apiTycon, apiArgs.toArray)
       case tl: TypeLambda =>
@@ -496,15 +496,6 @@ private class ExtractAPICollector(implicit val ctx: Context) extends ThunkHolder
         Constants.emptyType
       }
     }
-  }
-
-  // TODO: Get rid of this method. See https://github.com/sbt/zinc/issues/101
-  def simpleType(tp: Type): api.SimpleType = apiType(tp) match {
-    case tp: api.SimpleType =>
-      tp
-    case _ =>
-      ctx.debuglog("sbt-api: Not a simple type: " + tp.show)
-      Constants.emptyType
   }
 
   def apiLazy(tp: => Type): api.Type = {
