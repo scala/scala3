@@ -1257,7 +1257,7 @@ object SymDenotations {
     private def baseTypeRefCache(implicit ctx: Context): BaseTypeRefMap = {
       if (myBaseTypeRefCachePeriod != ctx.period &&
           (myBaseTypeRefCachePeriod.runId != ctx.runId ||
-           ctx.phases(myBaseTypeRefCachePeriod.phaseId).parentsGroup != ctx.phase.parentsGroup)) {
+           ctx.phases(myBaseTypeRefCachePeriod.phaseId).sameParentsStartId != ctx.phase.sameParentsStartId)) {
         myBaseTypeRefCache = new BaseTypeRefMap
         myBaseTypeRefCachePeriod = ctx.period
       }
@@ -2027,7 +2027,7 @@ object SymDenotations {
       finally addDependent(onBehalf)
     }
 
-    def sameGroup(p1: Phase, p2: Phase) = p1.membersGroup == p2.membersGroup
+    def sameGroup(p1: Phase, p2: Phase) = p1.sameMembersStartId == p2.sameMembersStartId
   }
 
   private class BaseDataImpl(createdAt: Period) extends InheritedCacheImpl(createdAt) with BaseData {
@@ -2068,7 +2068,7 @@ object SymDenotations {
       finally addDependent(onBehalf)
     }
 
-    def sameGroup(p1: Phase, p2: Phase) = p1.parentsGroup == p2.parentsGroup
+    def sameGroup(p1: Phase, p2: Phase) = p1.sameParentsStartId == p2.sameParentsStartId
   }
 
   class BaseClassSet(val classIds: Array[Int]) extends AnyVal {
