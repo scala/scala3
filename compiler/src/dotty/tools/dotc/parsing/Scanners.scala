@@ -65,7 +65,6 @@ object Scanners {
       */
     var errOffset: Offset = NoOffset
 
-
     /** Generate an error at the given offset */
     def error(msg: String, off: Offset = offset) = {
       ctx.error(msg, source atPos Position(off))
@@ -217,10 +216,41 @@ object Scanners {
 
     private class TokenData0 extends TokenData
 
-    /** we need one token lookahead and one token history
+    /** The scanner itself needs one token lookahead and one token history
      */
     val next : TokenData = new TokenData0
     private val prev : TokenData = new TokenData0
+
+    /** The parser can also add more lookahead tokens via `insertTokens`.
+     *  Tokens beyond `next` are stored in `following`.
+     */
+    private var following: List[TokenData] = Nil
+
+    /** Push a copy of token data `td` to `following` */
+    private def pushCopy(td: TokenData) = {
+      val copy = new TokenData0
+      copy.copyFrom(td)
+      following = copy :: following
+    }
+
+    /** If following is empty, invalidate token data `td` by setting 
+     *  `td.token` to `EMPTY`. Otherwise pop head of `following` into `td`.
+     */
+    private def popCopy(td: TokenData) = {
+      if (following.isEmpty) td.token = EMPTY
+      else {
+        td.copyFrom(following.head)
+        following = following.tail
+      }
+
+    /** Insert tokens `tds` in front of current token */
+    def insertTokens(tds: List[TokenData]) = {
+      if (next.token != EMPTY) pushCopy(next)
+      pushCopy(this)
+      following = tds ++ following
+      popCopy(this)
+      if (following.nonEmpty) popCopy(next)
+    }
 
     /** a stack of tokens which indicates whether line-ends can be statement separators
      *  also used for keeping track of nesting levels.
@@ -310,7 +340,7 @@ object Scanners {
         if (token == ERROR) adjustSepRegions(STRINGLIT)
       } else {
         this copyFrom next
-        next.token = EMPTY
+        popCopy(next)
       }
 
       /** Insert NEWLINE or NEWLINES if
