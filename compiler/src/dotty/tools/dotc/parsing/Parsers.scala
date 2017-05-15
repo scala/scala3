@@ -1351,7 +1351,6 @@ object Parsers {
       }
       else
         inParens(if (in.token == RPAREN) Nil else commaSeparated(argumentExpr))
-
     }
 
     /** ArgumentExprs ::= ParArgumentExprs
