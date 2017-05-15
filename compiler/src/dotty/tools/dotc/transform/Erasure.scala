@@ -600,7 +600,7 @@ object Erasure extends TypeTestsCasts{
       val stats1 =
         if (takesBridges(ctx.owner)) new Bridges(ctx.owner.asClass).add(stats)
         else stats
-      super.typedStats(stats1, exprOwner)
+      super.typedStats(stats1, exprOwner).filter(!_.isEmpty)
     }
 
     override def adapt(tree: Tree, pt: Type, original: untpd.Tree)(implicit ctx: Context): Tree =
