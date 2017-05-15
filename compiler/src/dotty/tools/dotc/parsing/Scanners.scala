@@ -233,10 +233,10 @@ object Scanners {
       following = copy :: following
     }
 
-    /** If following is empty, invalidate token data `td` by setting 
+    /** If following is empty, invalidate token data `td` by setting
      *  `td.token` to `EMPTY`. Otherwise pop head of `following` into `td`.
      */
-    private def popCopy(td: TokenData) = {
+    private def popCopy(td: TokenData) =
       if (following.isEmpty) td.token = EMPTY
       else {
         td.copyFrom(following.head)
