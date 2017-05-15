@@ -1341,7 +1341,8 @@ object Parsers {
             try commaSeparated(argumentExpr)
             finally openParens.change(LPAREN, -1)
           }
-        if (args == ParamNotArg :: Nil) in.adjustSepRegions(RPAREN) // simulate `)` without requiring it
+        if (args == ParamNotArg :: Nil)
+          in.adjustSepRegions(RPAREN) // simulate `)` without requiring it
         else {
           lookaheadTokens.clear()
           accept(RPAREN)
@@ -1374,7 +1375,7 @@ object Parsers {
      *  start an expression or is an identifier and is followed by `:`,
      *  stop parsing the rest of the expression and return `EmptyTree`,
      *  indicating that we should re-parse the expression as a parameter clause.
-     *  Otherwise clear the lookahead buffer and parse as normal.
+     *  Otherwise parse as normal.
      */
     def classConstrAnnotExpr() = {
       saveLookahead()
