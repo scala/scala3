@@ -2,16 +2,17 @@ package dotty.tools.dotc
 package transform
 package patmat
 
-import core.Types._
-import core.Contexts._
-import core.Flags._
+import core._
+import Types._
+import Contexts._
+import Flags._
 import ast.Trees._
 import ast.tpd
-import core.Decorators._
-import core.Symbols._
-import core.StdNames._
-import core.NameOps._
-import core.Constants._
+import Decorators._
+import Symbols._
+import StdNames._
+import NameOps._
+import Constants._
 import reporting.diagnostic.messages._
 import config.Printers.{ exhaustivity => debug }
 
@@ -329,11 +330,11 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
   import SpaceEngine._
   import tpd._
 
-  private val scalaSomeClass       = ctx.requiredClass("scala.Some".toTypeName)
-  private val scalaSeqFactoryClass = ctx.requiredClass("scala.collection.generic.SeqFactory".toTypeName)
-  private val scalaListType        = ctx.requiredClassRef("scala.collection.immutable.List".toTypeName)
-  private val scalaNilType         = ctx.requiredModuleRef("scala.collection.immutable.Nil".toTermName)
-  private val scalaConsType        = ctx.requiredClassRef("scala.collection.immutable.::".toTypeName)
+  private val scalaSomeClass       = ctx.requiredClass("scala.Some")
+  private val scalaSeqFactoryClass = ctx.requiredClass("scala.collection.generic.SeqFactory")
+  private val scalaListType        = ctx.requiredClassRef("scala.collection.immutable.List")
+  private val scalaNilType         = ctx.requiredModuleRef("scala.collection.immutable.Nil")
+  private val scalaConsType        = ctx.requiredClassRef("scala.collection.immutable.::")
 
   /** Checks if it's possible to create a trait/class which is a subtype of `tp`.
    *
