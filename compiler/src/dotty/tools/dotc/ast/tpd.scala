@@ -474,9 +474,8 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
 
     override def Apply(tree: Tree)(fun: Tree, args: List[Tree])(implicit ctx: Context): Apply = {
       val untyped = untpd.cpy.Apply(tree)(fun, args)
-      val typed = ta.assignType(untyped, fun, args)
       if (untyped.ne(tree))
-        typed
+        ta.assignType(untyped, fun, args)
       else
         tree.asInstanceOf[Apply]
     }
@@ -488,9 +487,8 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
 
     override def TypeApply(tree: Tree)(fun: Tree, args: List[Tree])(implicit ctx: Context): TypeApply = {
       val untyped = untpd.cpy.TypeApply(tree)(fun, args)
-      val typed = ta.assignType(untyped, fun, args)
       if (untyped.ne(tree))
-        typed
+        ta.assignType(untyped, fun, args)
       else
         tree.asInstanceOf[TypeApply]
 
