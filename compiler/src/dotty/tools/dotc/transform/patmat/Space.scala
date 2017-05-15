@@ -509,14 +509,14 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
           case space => List(space)
         }
       case OrType(tp1, tp2) => List(Typ(tp1, true), Typ(tp2, true))
-      case _ if tp =:= ctx.definitions.BooleanType =>
+      case tp if tp =:= ctx.definitions.BooleanType =>
         List(
           Typ(ConstantType(Constant(true)), true),
           Typ(ConstantType(Constant(false)), true)
         )
-      case _ if tp.classSymbol.is(Enum) =>
+      case tp if tp.classSymbol.is(Enum) =>
         children.map(sym => Typ(sym.termRef, true))
-      case _ =>
+      case tp =>
         val parts = children.map { sym =>
           if (sym.is(ModuleClass))
             refine(tp, sym.sourceModule.termRef)
