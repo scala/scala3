@@ -6,7 +6,7 @@ title: Building Dotty with Eclipse
 Setup
 -----------
 
-You can setup Eclipse by using _[Scala IDE for Eclipse](http://scala-ide.org/)_ directly to run Dotty. Alternatively you can download 
+You can setup Eclipse by using [Scala IDE for Eclipse](http://scala-ide.org/) to run Dotty. Alternatively you can download 
 your Eclipse distribution of choice and enable the Scala IDE from the Eclipse Marketplace, separately.
 
 1. Clone Dotty's repository from Github (and run `sbt managedSources` as described in 
@@ -57,4 +57,5 @@ Additionally you need to specify the scala-asm library as an external jar depend
 
 ![](../../images/eclipse/eclipse-runconfiguration.png "Import Dotty Projects")
 
-The compiler can be run and debugged using the same configuration. To contribute to dotty please follow the [Dotty Developer Guidelines](https://github.com/lampepfl/dotty/blob/master/CONTRIBUTING.md).
+The compiler can be run and debugged using the same configuration. 
+

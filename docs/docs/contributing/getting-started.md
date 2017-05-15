@@ -3,6 +3,8 @@ layout: doc-page
 title: Getting Started
 ---
 
+                                 
+
 Requirements
 ------------
 Make sure that you are using Java 8 or later. The output of `java -version`
@@ -62,3 +64,7 @@ or via bash:
 ```bash
 $ dotr
 ```
+
+Before contributing in Dotty, we invite you to consult the 
+[Dotty Developer Guidelines](https://github.com/lampepfl/dotty/blob/master/CONTRIBUTING.md).
+   

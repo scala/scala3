@@ -6,7 +6,7 @@ title: Working with the Backend
 The compiler backend is based on a fork of the Scala 2.11 `GenBCode` backend and
 lives at 
 
-> https://github.com/lampepfl/scala/tree/sharing-backend. 
+> https://github.com/lampepfl/scala/tree/sharing-backend
 
 The dotty source tree contains a git submodule in the directory
 [scala-backend](https://github.com/lampepfl/dotty/tree/master/scala-backend)

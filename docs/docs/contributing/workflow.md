@@ -19,24 +19,24 @@ $ sbt
 or from terminal:
 
 ```bash
-$ ./bin/dotc <OPTIONS> <FILE>
+$ dotc <OPTIONS> <FILE>
 ```
 
 Here are some useful debugging `<OPTIONS>`:
 
 * `-Xprint:PHASE1,PHASE2,...` or `-Xprint:all`: prints the `AST` after each
-  specified phase. Phase names can be found by searching
-  `compiler/src/dotty/tools/dotc/transform/` for `phaseName`.
+  specified phase. Phase names can be found by examining the
+  `dotty.tools.dotc.transform.*` classes for their `phaseName` field e.g., `-Xprint:erasure`. 
+  You can discover all phases in the `dotty.tools.dotc.Compiler` class
 * `-Ylog:PHASE1,PHASE2,...` or `-Ylog:all`: enables `ctx.log("")` logging for
   the specified phase.
 * `-Ycheck:all` verifies the consistency of `AST` nodes between phases, in
   particular checks that types do not change. Some phases currently can't be
   `Ycheck`ed, therefore in the tests we run:
   `-Ycheck:tailrec,resolveSuper,mixin,restoreScopes,labelDef`.
-
-More powerful logging capabilities can be enabled by changing some `noPrinter` to
-`new Printer` in `compiler/src/dotty/tools/dotc/config/Printers.scala`. This enables the
-`subtyping.println("")` and `ctx.traceIndented("", subtyping)` style logging.
+* the last frontier of debugging (before actual debugging) is the range of logging capabilities that 
+can be enabled through the `dotty.tools.dotc.config.Printers` object. Change any of the desired printer from `noPrinter` to
+`default` and this will give you the full logging capability of the compiler.
 
 ## Inspecting Trees with Type Stealer ##
 
@@ -64,5 +64,3 @@ u: dotty.tools.dotc.core.Types.Type = TypeBounds(TypeRef(ThisType(TypeRef(NoPref
 Many objects in the dotc compiler implement a `Showable` trait (e.g. `Tree`,
 `Symbol`, `Type`). These objects may be prettyprinted using the `.show`
 method
-
-To contribute to dotty please follow the [Dotty Developer Guidelines](https://github.com/lampepfl/dotty/blob/master/CONTRIBUTING.md).
