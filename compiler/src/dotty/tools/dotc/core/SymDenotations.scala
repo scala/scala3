@@ -2040,7 +2040,7 @@ object SymDenotations {
     final def isValid(implicit ctx: Context): Boolean = valid && isValidAt(ctx.phase)
 
     def invalidate(): Unit =
-      if (isValid && !locked) {
+      if (valid && !locked) {
         cache = null
         valid = false
         invalidateDependents()
