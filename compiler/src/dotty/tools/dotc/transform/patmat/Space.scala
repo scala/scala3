@@ -323,7 +323,7 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
   import SpaceEngine._
   import tpd._
 
-  private val scalaOptionClass     = ctx.requiredClassRef("scala.Option".toTypeName).symbol.asClass
+  private val scalaSomeClass       = ctx.requiredClassRef("scala.Some".toTypeName).symbol.asClass
   private val scalaSeqFactoryClass = ctx.requiredClass("scala.collection.generic.SeqFactory".toTypeName)
   private val scalaListType        = ctx.requiredClassRef("scala.collection.immutable.List".toTypeName)
   private val scalaNilType         = ctx.requiredModuleRef("scala.collection.immutable.Nil".toTermName)
@@ -420,7 +420,7 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
         Kon(pat.tpe.stripAnnots, pats.map(pat => project(pat)))
       else if (fun.symbol.owner == scalaSeqFactoryClass && fun.symbol.name == nme.unapplySeq)
         projectList(pats)
-      else if (!fun.symbol.info.finalResultType.isRef(scalaOptionClass))
+      else if (fun.symbol.info.finalResultType.isRef(scalaSomeClass))
         Kon(pat.tpe.stripAnnots, pats.map(pat => project(pat)))
       else
         Fun(pat.tpe.stripAnnots, fun.tpe, pats.map(pat => project(pat)))
