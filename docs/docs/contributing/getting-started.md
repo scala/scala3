@@ -65,6 +65,6 @@ or via bash:
 $ dotr
 ```
 
-Before contributing in Dotty, we invite you to consult the 
+Before contributing to Dotty, we invite you to consult the 
 [Dotty Developer Guidelines](https://github.com/lampepfl/dotty/blob/master/CONTRIBUTING.md).
    
