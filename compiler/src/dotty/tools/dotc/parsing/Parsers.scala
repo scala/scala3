@@ -1318,9 +1318,9 @@ object Parsers {
      *                    |  `(' [ExprsInParens `,'] PostfixExpr `:' `_' `*' ')'
      *
      *  Special treatment for arguments of primary class constructor
-     *  annotations. Empty argument lists `(` `)` get represented
-     *  as `List(ParamNotArg)` instead of `Nil`, indicating that the
-     *  token sequence should be interpreted as an empty parameter clause
+     *  annotations. All empty argument lists `(` `)` follwoing the first 
+     *  get represented as `List(ParamNotArg)` instead of `Nil`, indicating that
+     *  the token sequence should be interpreted as an empty parameter clause
      *  instead. `ParamNotArg` can also be produced when parsing the first
      *  argument (see `classConstrAnnotExpr`).
      *
@@ -1329,13 +1329,15 @@ object Parsers {
      *  contains the tokens that need to be replayed to parse the parameter clause.
      *  Otherwise, `lookaheadTokens` is empty.
      */
-    def parArgumentExprs(): List[Tree] = {
+    def parArgumentExprs(first: Boolean = false): List[Tree] = {
       if (inClassConstrAnnots) {
         assert(lookaheadTokens.isEmpty)
         saveLookahead()
         accept(LPAREN)
         val args =
-          if (in.token == RPAREN) ParamNotArg :: Nil
+          if (in.token == RPAREN)
+            if (first) Nil // first () counts as annotation argument
+            else ParamNotArg :: Nil
           else {
             openParens.change(LPAREN, +1)
             try commaSeparated(argumentExpr)
@@ -1377,8 +1379,8 @@ object Parsers {
      *  Otherwise parse as normal.
      */
     def classConstrAnnotExpr() = {
-      saveLookahead()
       if (in.token == IDENTIFIER) {
+        saveLookahead()
         postfixExpr() match {
           case Ident(_) if in.token == COLON => ParamNotArg
           case t => expr1Rest(t, Location.InParens)
@@ -1404,9 +1406,9 @@ object Parsers {
      */
     def parArgumentExprss(fn: Tree): Tree =
       if (in.token == LPAREN) {
-        val first = parArgumentExprs()
-        if (inClassConstrAnnots && first == ParamNotArg :: Nil) fn
-        else parArgumentExprss(Apply(fn, first))
+        val args = parArgumentExprs(first = !fn.isInstanceOf[Trees.Apply[_]])
+        if (inClassConstrAnnots && args == ParamNotArg :: Nil) fn
+        else parArgumentExprss(Apply(fn, args))
       }
       else fn
 
