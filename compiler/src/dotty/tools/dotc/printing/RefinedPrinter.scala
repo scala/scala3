@@ -124,7 +124,10 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
             toTextTuple(args.init)
         ("implicit " provided isImplicit) ~ argStr ~ " => " ~ argText(args.last)
       }
-    homogenize(tp) match {
+    val htp = homogenize(tp)
+    htp match {
+      case x: ConstantType if homogenizedView =>
+        return toText(x.widen)
       case AppliedType(tycon, args) =>
         val cls = tycon.typeSymbol
         if (tycon.isRepeatedParam) return toTextLocal(args.head) ~ "*"
