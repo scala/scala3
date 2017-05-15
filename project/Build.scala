@@ -703,7 +703,8 @@ object Build {
 
   lazy val `dotty-sbt-scripted-tests` = project.in(file("sbt-scripted-tests")).
     settings(
-      publishArtifact := false
+      publishArtifact := false,
+      resolvers += Resolver.typesafeIvyRepo("releases") // For org.scala-sbt:scripted
     ).
     settings(ScriptedPlugin.scriptedSettings: _*).
     settings(
