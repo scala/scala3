@@ -104,6 +104,10 @@ object tags {
         title
 
       case ConstantReference(title) => title
+
+      case _ =>  // EmptyReference
+        ctx.docbase.error(s"invalid reference: $ref")
+        null
     }
     override def render(tctx: TemplateContext, nodes: LNode*): AnyRef = nodes(0).render(tctx) match {
       case map: JMap[String, AnyRef] @unchecked =>

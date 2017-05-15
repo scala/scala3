@@ -351,15 +351,17 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {
       /* (Nil, body) means that `body` is the default case
        * It's a bit hacky but it simplifies manipulations.
        */
-      def extractSwitchCase(treeMakers: List[TreeMaker]): (List[Int], BodyTreeMaker) = treeMakers match {
+      def extractSwitchCase(treeMakers: List[TreeMaker]): (List[Int], BodyTreeMaker) = (treeMakers: @unchecked) match {
         // case 5 =>
         case List(IntEqualityTestTreeMaker(intValue), body: BodyTreeMaker) =>
           (List(intValue), body)
 
         // case 5 | 6 =>
         case List(AlternativesTreeMaker(_, alts, _), body: BodyTreeMaker) =>
-          val intValues = alts.map {
-            case List(IntEqualityTestTreeMaker(intValue)) => intValue
+          val intValues = alts.map { alt =>
+            (alt: @unchecked) match {
+              case List(IntEqualityTestTreeMaker(intValue)) => intValue
+            }
           }
           (intValues, body)
 
