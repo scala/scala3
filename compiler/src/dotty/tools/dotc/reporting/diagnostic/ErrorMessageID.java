@@ -50,7 +50,7 @@ public enum ErrorMessageID {
     ExpectedTokenButFoundID,
     MixedLeftAndRightAssociativeOpsID,
     CantInstantiateAbstractClassOrTraitID,
-    AnnotatedPrimaryConstructorRequiresModifierOrThisID,
+    DUMMY_AVAILABLE_1,
     OverloadedOrRecursiveMethodNeedsResultTypeID,
     RecursiveValueNeedsResultTypeID,
     CyclicReferenceInvolvingID,
