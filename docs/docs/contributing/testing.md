@@ -20,6 +20,7 @@ scanning and message errors.
 To run all tests in e.g., for the compiler test-suite you can write:
 
 ```bash
+$ sbt
 > dotty-compiler/test
 ```
 
@@ -27,31 +28,51 @@ To run a single test class you use `testOnly` and the fully qualified class name
 For example:
 
 ```bash
-> dotty-compiler/testOnly dotty.tools.dotc.transform.TreeTransformerTest
+> testOnly dotty.tools.dotc.transform.TreeTransformerTest
 ```
 
-You can further restrict the executed tests to a subset of methods by appending ``-- *method_name`` 
-as in the example below:
+The test command follows a regular expression-based syntax `testOnly * -- *`. 
+The right-hand side picks a range of names for methods and the left-hand side picks a range of class names and their
+fully-qualified paths.
+
+Consequently, you can restrict the aforementioned executed test to a subset of methods by appending ``-- *method_name``.
+The example below picks up all methods with the name `canOverwrite`:
 
 ```bash
-> dotty-compiler/testOnly dotty.tools.dotc.transform.TreeTransformerTest -- *canOverwrite
+> testOnly dotty.tools.dotc.transform.TreeTransformerTest -- *canOverwrite
+```
+
+Additionally, you can run all tests named `method_name`, in any class, without providing a class name:
+
+```bash
+> testOnly -- *canOverwrite
+```
+
+You can also run all paths of classes of a certain name:
+
+```bash
+> testOnly *.TreeTransformerTest
 ```
 
 ## Integration tests
 These tests are Scala source files expected to compile with Dotty (pos tests),
 along with their expected output (run tests) or errors (neg tests).
 
-All of these tests are contained in the `./tests/*` directories.
+All of these tests are contained in the `./tests/*` directories and can be run with the `vulpix` command.
 
 Currently to run these tests you need to invoke from sbt:
 
 ```bash
-> testOnly dotty.tools.dotc.CompilationTests
+$ sbt
+> vulpix
 ```
 
-It is also possible to run tests filtered by using the `vulpix` command, again from sbt:
+(which is effectively the same with `testOnly dotty.tools.dotc.CompilationTests`)
+
+It is also possible to run tests filtered, again from sbt:
 
 ```bash
+$ sbt
 > vulpix i2147.scala
 ```
 

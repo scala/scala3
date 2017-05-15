@@ -8,7 +8,7 @@ Setup
 
 You can setup IntelliJ [IDEA >= 2016.1](https://www.jetbrains.com/idea/nextversion) to run Dotty.
 
-Assuming you have cloned dotty's repository from Github (and run `sbt managedSources` as described in [Getting Started](getting-started.md))
+Assuming you have cloned dotty's repository from Github (and run `sbt managedSources` as described in [Getting Started](getting-started.md)),
 you can now proceed with importing it to IDEA by selecting the
 corresponding option from the startup menu. Navigate on the corresponding directory and select it. Next, you need
 to select the model of the import and as the screenshot shows, select SBT.

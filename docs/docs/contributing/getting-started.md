@@ -32,17 +32,17 @@ There are also bash scripts that can be used in the same way. Assuming that you 
 the following line on your `.bash_profile`:
 
 ```shell
-export PATH=$HOME/dotty/bin:$PATH
+$ export PATH=$HOME/dotty/bin:$PATH
 ```
 
 and you will be able to run the corresponding commands directly from your console:
 
 ```shell
 # Compile code using Dotty
-dotc tests/pos/HelloWorld.scala
+$ dotc tests/pos/HelloWorld.scala
 
 # Run it with the proper classpath
-dotr HelloWorld
+$ dotr HelloWorld
 ```
 
 

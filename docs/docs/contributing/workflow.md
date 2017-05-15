@@ -44,13 +44,14 @@ There is no power mode for the REPL yet, but you can inspect types with the
 type stealer:
 
 ```bash
+$ sbt 
 > repl
 scala> import dotty.tools.DottyTypeStealer._; import dotty.tools.dotc.core._; import Contexts._,Types._
 ```
 
 Now, you can define types and access their representation. For example:
 
-```bash
+```scala
 scala> val s = stealType("class O { type X }", "O#X")
 scala> implicit val ctx: Context = s._1
 scala> val t = s._2(0)

@@ -12,8 +12,8 @@ your Eclipse distribution of choice and enable the Scala IDE from the Eclipse Ma
 1. Clone Dotty's repository from Github (and run `sbt managedSources` as described in 
 [Getting Started](getting-started.md)) 
 2. Generate the Eclipse configuration files:
-```
-sbt eclipse
+```shell
+$ sbt eclipse
 ```
 
 - Note: It is recommended to change the default output folder (in `Properties > java
