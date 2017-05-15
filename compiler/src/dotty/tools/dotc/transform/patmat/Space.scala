@@ -474,9 +474,7 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
 
   /** Is `tp1` a subtype of `tp2`?  */
   def isSubType(tp1: Type, tp2: Type): Boolean = {
-    // check SI-9657 and tests/patmat/gadt.scala
-    //
-    // `erase` is a walkaround to make the following code pass the check:
+    // `erase` is a workaround to make the following code pass the check:
     //
     //    def f(e: Either[Int, String]) = e match {
     //      case Left(i) => i
