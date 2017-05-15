@@ -464,6 +464,8 @@ object Checking {
           case List(param) =>
             if (param.is(Mutable))
               ctx.error("value class parameter must not be a var", param.pos)
+            if (param.info.isPhantom)
+              ctx.error("value class parameter must not be phantom", param.pos)
           case _ =>
             ctx.error("value class needs to have exactly one val parameter", clazz.pos)
         }
