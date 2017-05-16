@@ -473,4 +473,15 @@ class ErrorMessagesTests extends ErrorMessagesTest {
         assertEquals("trait WithParams", symbol.show)
       }
 
+  @Test def varValParametersMayNotBeCallByName =
+    checkMessagesAfter("frontend") {
+      "trait Trait(val noNoNo: => String)"
+    }
+      .expect { (ictx, messages) =>
+        implicit val ctx: Context = ictx
+        assertMessageCount(1, messages)
+        val VarValParametersMayNotBeCallByName(name, false) :: Nil = messages
+        assertEquals("noNoNo", name.show)
+      }
+
 }

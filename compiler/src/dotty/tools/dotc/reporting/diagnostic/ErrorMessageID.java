@@ -62,6 +62,7 @@ public enum ErrorMessageID {
     ReassignmentToValID,
     TypeDoesNotTakeParametersID,
     ParameterizedTypeLacksArgumentsID,
+    VarValParametersMayNotBeCallByNameID,
     ;
 
     public int errorNumber() {
