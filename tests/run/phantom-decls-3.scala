@@ -7,20 +7,14 @@ object Test {
   import Boo._
 
   def main(args: Array[String]): Unit = {
-
-    new Boo3(){
-      type Boo1 = BooAny
-    }.polyfun1(boo[Pinky])
-
-    new Boo3(){
-      type Boo1 = Blinky
-    }.polyfun1(boo[Blinky])
-
+    new Boo3(){ }.polyfun1(boo[Pinky])
+    new Boo3(){ }.polyfun1(boo[Blinky])
   }
+
+  type Boo1 = BooAny
 
   trait Boo3 {
     println("Boo3")
-    type Boo1 <: BooAny
     def polyfun1(p3: Boo1): Unit = {
       println("Boo3.polyfun1")
     }

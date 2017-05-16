@@ -10,7 +10,7 @@ class BooFunDef1 {
 }
 
 class Foo {
-  type Y <: Boo.BooAny
+  type Y <: Boo.BooAny // error
 }
 
 object Boo extends Phantom {

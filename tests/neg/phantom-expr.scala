@@ -3,9 +3,6 @@ class Foo {
   import Boo._
   import Boo1._
 
-  type Blinky <: BooAny
-  type Inky <: BooAny
-
   val blinky = Boo.boo[Blinky]
   val inky = Boo.boo[Inky]
 
@@ -40,6 +37,8 @@ class Foo {
 
 object Boo extends Phantom {
   type BooAny = this.Any
+  type Blinky <: BooAny
+  type Inky <: BooAny
   def boo[B <: BooAny]: B = assume
 }
 
