@@ -1342,11 +1342,11 @@ object messages {
     val msg = s"${if (mutable) "`var'" else "`val'"} parameters may not be call-by-name"
     val kind = "Syntax"
     val explanation =
-      hl"""Parameters of classes and traits may no be call-by-name. In case you
-          |want the parameter to be evaluated on demand, consider using a function
-          |and a lazy value in the class such as
-          |  ${s"class MyClass(${name}Tick: () => String) {"}
-          |  ${s"  lazy val $name = ${name}Tick"}
+      hl"""${"var"} and ${"val"} parameters of classes and traits may no be call-by-name. In case you
+          |want the parameter to be evaluated on demand, consider making it just a parameter
+          |and a ${"def"} in the class such as
+          |  ${s"class MyClass(${name}Tick: => String) {"}
+          |  ${s"  def $name() = ${name}Tick"}
           |  ${"}"}
           |"""
   }
