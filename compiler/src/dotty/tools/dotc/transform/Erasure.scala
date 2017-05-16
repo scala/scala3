@@ -234,9 +234,7 @@ object Erasure extends TypeTestsCasts{
      *  in ExtensionMethods#transform.
      */
     def cast(tree: Tree, pt: Type)(implicit ctx: Context): Tree = {
-      // TODO: The commented out assertion fails for tailcall/t6574.scala
-      //       Fix the problem and enable the assertion.
-      // assert(!pt.isInstanceOf[SingletonType], pt)
+      assert(!pt.isInstanceOf[SingletonType], pt)
       if (pt isRef defn.UnitClass) unbox(tree, pt)
       else (tree.tpe, pt) match {
         case (JavaArrayType(treeElem), JavaArrayType(ptElem))
