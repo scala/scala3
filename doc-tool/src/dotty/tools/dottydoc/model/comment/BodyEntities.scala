@@ -64,7 +64,7 @@ final case class Text(text: String) extends Inline
 abstract class EntityLink(val title: Inline) extends Inline { def link: LinkTo }
 object EntityLink {
   def apply(title: Inline, linkTo: LinkTo) = new EntityLink(title) { def link: LinkTo = linkTo }
-  def unapply(el: EntityLink): Option[(Inline, LinkTo)] = Some((el.title, el.link))
+  def unapply(el: EntityLink): Some[(Inline, LinkTo)] = Some((el.title, el.link))
 }
 final case class HtmlTag(data: String) extends Inline {
   private val Pattern = """(?ms)\A<(/?)(.*?)[\s>].*\z""".r

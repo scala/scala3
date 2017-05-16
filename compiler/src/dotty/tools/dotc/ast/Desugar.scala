@@ -859,7 +859,7 @@ object desugar {
         case IdPattern(named, tpt) =>
           Function(derivedValDef(pat, named, tpt, EmptyTree, Modifiers(Param)) :: Nil, body)
         case _ =>
-          makeCaseLambda(CaseDef(pat, EmptyTree, body) :: Nil, unchecked = false)
+          makeCaseLambda(CaseDef(pat, EmptyTree, body) :: Nil)
       }
 
       /** If `pat` is not an Identifier, a Typed(Ident, _), or a Bind, wrap
