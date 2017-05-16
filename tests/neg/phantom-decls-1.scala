@@ -7,18 +7,23 @@ object Test {
   import Boo._
 
   def main(args: Array[String]): Unit = {
-    new Boo5[Blinky](boo[Pinky])
-    new Boo5[Pinky](boo[Pinky])
+    new Boo1[BooAny]().polyfun1(boo[Blinky])
+    new Boo1[BooAny]().polyfun1(boo[Inky])
   }
 
-  class Boo5[P <: Blinky](p5: P) {
-    println("Boo5")
+  def fun(top: BooAny): Unit = ()
+
+  class Boo1[P <: BooAny] { // error
+    println("Boo1")
+    def polyfun1(p1: P): Unit = {
+      println("Boo1.polyfun1")
+    }
   }
 }
 
 object Boo extends Phantom {
+  type BooAny = this.Any
   type Blinky <: this.Any
   type Inky <: Blinky
-  type Pinky <: Inky
   def boo[B <: Blinky]: B = assume
 }
