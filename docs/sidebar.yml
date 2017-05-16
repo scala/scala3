@@ -26,7 +26,7 @@ sidebar:
         - title: Testing
           url: docs/contributing/testing.html
         - title: Working with the Backend
-          url: docs/contributing/backend.md
+          url: docs/contributing/backend.html
     - title: Internals
       subsection:
         - title: Backend

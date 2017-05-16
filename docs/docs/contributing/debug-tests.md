@@ -21,13 +21,13 @@ $ dotc tests/debug/while.scala
 Second, run the compiled class with debugging enabled (suppose the main class is `Test`):
 
 ```shell
-dotr -d Test
+$ dotr -d Test
 ```
 
 Third, start JDB:
 
 ```
-jdb -attach 5005 -sourcepath tests/debug/
+$ jdb -attach 5005 -sourcepath tests/debug/
 ```
 
 You can run `help` for commands that supported by JDB.
@@ -83,13 +83,13 @@ compiler/test/debug/Gen tests/debug/while.scala > robot
 First, compile the file `tests/debug/while.scala`:
 
 ```
-bin/dotc tests/debug/while.scala
+$ dotc tests/debug/while.scala
 ```
 
 Second, run the compiled class with debugging enabled:
 
 ```
-bin/dotr -d Test
+$ dotr -d Test
 ```
 
 Finally, run the expect script:
