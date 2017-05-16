@@ -19,6 +19,7 @@ import printing.Highlighting._
 import printing.Formatting
 import ErrorMessageID._
 import Denotations.SingleDenotation
+import dotty.tools.dotc.ast.Trees
 import dotty.tools.dotc.core.SymDenotations.SymDenotation
 
 object messages {
@@ -1277,7 +1278,7 @@ object messages {
           |$noParameters""".stripMargin
 
   }
-                        
+
   case class AmbiguousOverload(tree: tpd.Tree, alts: List[SingleDenotation], pt: Type)(
     err: typer.ErrorReporting.Errors)(
     implicit ctx: Context)
@@ -1296,7 +1297,7 @@ object messages {
            |- adding a type ascription as in `${"instance.myMethod: String => Int"}`
            |"""
   }
-                        
+
   case class ReassignmentToVal(name: Names.Name)(implicit ctx: Context)
     extends Message(ReassignmentToValID) {
     val kind = "Reference"
@@ -1309,5 +1310,20 @@ object messages {
            |variable
            |  ${"var"} $name ${"="} ...
            |""".stripMargin
+  }
+
+  case class TypeDoesNotTakeParameters(tpe: Types.Type, params: List[Trees.Tree[Trees.Untyped]])(implicit ctx: Context)
+    extends Message(TypeDoesNotTakeParametersID) {
+    val kind = "Reference"
+    val msg = hl"$tpe does not take type parameters"
+
+    private val ps =
+      if (params.size == 1) hl"a type parameter ${params.head}"
+      else hl"type parameters ${params.map(_.show).mkString(", ")}"
+
+    val explanation =
+      i"""You specified $ps for ${hl"$tpe"}, which is not
+         |declared to take any.
+         |"""
   }
 }

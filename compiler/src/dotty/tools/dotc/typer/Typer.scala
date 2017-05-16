@@ -1052,7 +1052,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     val tpt1 = typed(tree.tpt, AnyTypeConstructorProto)(ctx.retractMode(Mode.Pattern))
     val tparams = tpt1.tpe.typeParams
     if (tparams.isEmpty) {
-      ctx.error(ex"${tpt1.tpe} does not take type parameters", tree.pos)
+      ctx.error(TypeDoesNotTakeParameters(tpt1.tpe, tree.args), tree.pos)
       tpt1
     }
     else {

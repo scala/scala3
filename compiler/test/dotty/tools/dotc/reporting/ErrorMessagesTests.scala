@@ -399,7 +399,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
       assertEquals("Scope.foo(1)", tree.show)
       assertEquals("((a: Int)Unit)(Scope.foo)", methodPart.show)
     }
-  
+
   @Test def ambiugousOverloadWithWildcard =
     checkMessagesAfter("frontend") {
       """object Context {
@@ -440,4 +440,21 @@ class ErrorMessagesTests extends ErrorMessagesTest {
       val ReassignmentToVal(name) :: Nil = messages
       assertEquals("value", name.show)
     }
+
+  @Test def typeDoesNotTakeParameters =
+    checkMessagesAfter("frontend") {
+      """
+        |trait WithOutParams
+        |class Extending extends WithOutParams[String]
+      """.stripMargin
+    }
+      .expect { (ictx, messages) =>
+        implicit val ctx: Context = ictx
+        val defn = ictx.definitions
+
+        assertMessageCount(1, messages)
+        val TypeDoesNotTakeParameters(tpe, params) :: Nil = messages
+        assertEquals("WithOutParams", tpe.show)
+      }
+
 }
