@@ -250,7 +250,10 @@ object Inferencing {
       //     val y: List[List[String]] = List(List(1))
       if (!hasUnreportedErrors)
         vs foreachBinding { (tvar, v) =>
-          if (v != 0) {
+          if (v != 0 && ctx.typerState.constraint.contains(tvar)) {
+            // previous interpolations could have already instantiated `tvar`
+            // through unification, that's why we have to check again whether `tvar`
+            // is contained in the current constraint.
             typr.println(s"interpolate ${if (v == 1) "co" else "contra"}variant ${tvar.show} in ${tp.show}")
             tvar.instantiate(fromBelow = v == 1)
           }
