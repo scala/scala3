@@ -16,6 +16,7 @@ import NameKinds.TempResultName
 
 import scala.annotation.tailrec
 import scala.io.Codec
+import scala.collection.mutable
 
 /** Some creators for typed trees */
 object tpd extends Trees.Instance[Type] with TypedTreeInfo {
@@ -603,6 +604,27 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
 
     def subst(from: List[Symbol], to: List[Symbol])(implicit ctx: Context): ThisTree =
       new TreeTypeMap(substFrom = from, substTo = to).apply(tree)
+
+    /** Ensure that top-level definitions of the current tree have the given owner */
+    def ensureOwner(owner: Symbol)(implicit ctx: Context): tpd.Tree = {
+      tree.owners.foldRight(tree) { (from, acc) =>
+        if (from eq owner) acc
+        else acc.changeOwner(from, owner)
+      }
+    }
+
+    /** Get the owners of the top-level definitions of the current tree */
+    def owners(implicit ctx: Context): List[Symbol] = {
+      val owners = mutable.Set.empty[Symbol]
+      new TreeTraverser {
+        def traverse(tree: tpd.Tree)(implicit ctx: Context): Unit = tree match {
+          case tree: tpd.DefTree => owners += tree.symbol.owner
+          case _                 => traverseChildren(tree)
+        }
+      }.traverse(tree)
+
+      owners.toList
+    }
 
     /** Change owner from `from` to `to`. If `from` is a weak owner, also change its
      *  owner to `to`, and continue until a non-weak owner is reached.
