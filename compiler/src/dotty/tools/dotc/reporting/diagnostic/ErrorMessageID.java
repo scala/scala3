@@ -60,6 +60,7 @@ public enum ErrorMessageID {
     MethodDoesNotTakeParametersId,
     AmbiguousOverloadID,
     ReassignmentToValID,
+    TypeDoesNotTakeParametersID,
     ;
 
     public int errorNumber() {
