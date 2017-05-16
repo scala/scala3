@@ -457,4 +457,20 @@ class ErrorMessagesTests extends ErrorMessagesTest {
         assertEquals("WithOutParams", tpe.show)
       }
 
+  @Test def parameterizedTypeLacksParameters =
+    checkMessagesAfter("frontend") {
+      """
+        |trait WithParams(s: String)
+        |class Extending extends WithParams
+      """.stripMargin
+    }
+      .expect { (ictx, messages) =>
+        implicit val ctx: Context = ictx
+        val defn = ictx.definitions
+
+        assertMessageCount(1, messages)
+        val ParameterizedTypeLacksArguments(symbol) :: Nil = messages
+        assertEquals("trait WithParams", symbol.show)
+      }
+
 }

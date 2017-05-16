@@ -1286,7 +1286,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
       case cinfo: MethodType =>
         if (!ctx.erasedTypes) { // after constructors arguments are passed in super call.
           typr.println(i"constr type: $cinfo")
-          ctx.error(em"parameterized $psym lacks argument list", ref.pos)
+          ctx.error(ParameterizedTypeLacksArguments(psym), ref.pos)
         }
         ref
       case _ =>

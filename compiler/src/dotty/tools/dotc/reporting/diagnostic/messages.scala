@@ -1326,4 +1326,14 @@ object messages {
          |declared to take any.
          |"""
   }
+
+  case class ParameterizedTypeLacksArguments(psym: Symbol)(implicit ctx: Context)
+    extends Message(ParameterizedTypeLacksArgumentsID) {
+    val msg = hl"parameterized $psym lacks argument list"
+    val kind = "Reference"
+    val explanation =
+      hl"""The $psym is declared with non-implicit parameters, you may not leave
+          |out the parameter list when extending it.
+          |"""
+  }
 }
