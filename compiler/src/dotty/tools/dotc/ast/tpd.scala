@@ -605,7 +605,11 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     def subst(from: List[Symbol], to: List[Symbol])(implicit ctx: Context): ThisTree =
       new TreeTypeMap(substFrom = from, substTo = to).apply(tree)
 
-    /** Ensure that top-level definitions of the current tree have the given owner */
+    /** Ensure that top-level definitions of the current tree have the given owner
+     *
+     *  @note Dependeing on the shape of the tree, this operation can be expensive.
+     *        Always prefer using `changeOwner` directly.
+     */
     def ensureOwner(owner: Symbol)(implicit ctx: Context): tpd.Tree = {
       tree.owners.foldRight(tree) { (from, acc) =>
         if (from eq owner) acc
@@ -613,7 +617,11 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       }
     }
 
-    /** Get the owners of the top-level definitions of the current tree */
+    /** Get the owners of the top-level definitions of the current tree
+     *
+     *  @note Dependeing on the shape of the tree, this operation can be expensive.
+     *        Always prefer using the known owner from the context.
+     */
     def owners(implicit ctx: Context): List[Symbol] = {
       val owners = mutable.Set.empty[Symbol]
       new TreeTraverser {
