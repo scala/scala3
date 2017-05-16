@@ -22,7 +22,7 @@ if [ -z "$SONATYPE_USER" -o -z "$SONATYPE_PW" -o -z "$PGP_PW" ]; then
 fi
 
 CMD='     ;set credentials += Credentials("Sonatype Nexus Repository Manager", "oss.sonatype.org", "'"$SONATYPE_USER"'", "'"$SONATYPE_PW"'")'
-CMD="$CMD ;set pgpPassphrase := Some(\"$PGP_PW\".toCharArray)"
+CMD="$CMD ;set pgpPassphrase := Some(\"\"\"$PGP_PW\"\"\".toCharArray)"
 CMD="$CMD ;set pgpSecretRing := file(\"/keys/secring.asc\")"
 CMD="$CMD ;set pgpPublicRing := file(\"/keys/pubring.asc\")"
 CMD="$CMD ;dotty-bootstrapped/publishSigned ;sonatypeRelease"
