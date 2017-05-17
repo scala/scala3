@@ -22,7 +22,7 @@ pipeline:
     commands:
       - ./project/scripts/sbt ";clean ;publishLocal" "${CI_PUBLISH}"
       - ./project/scripts/sbt "dotty-sbt-scripted-tests/scripted source-dependencies/*" "${CI_PUBLISH}"
-      - ./project/scripts/sbtPublish '${CI_PUBLISH}' '$SONATYPE_USER' '$SONATYPE_PW' '$PGP_PW'
+      - ./project/scripts/sbtPublish '${CI_PUBLISH}' '${SONATYPE_USER}' '${SONATYPE_PW}' '${PGP_PW}'
     volumes:
       - /home/drone/keys:/keys
     when:
