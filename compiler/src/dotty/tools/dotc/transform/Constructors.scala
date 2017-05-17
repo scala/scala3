@@ -252,9 +252,17 @@ class Constructors extends MiniPhaseTransform with IdentityDenotTransformer { th
       case _ => superCalls
     }
 
+    // Lazy Vals may decide to create an eager val instead of a lazy val
+    // this val should be assigned before constructor body code starts running
+
+    val (lazyAssignments, stats) = followConstrStats.partition {
+      case Assign(l, r) if l.symbol.name.is(NameKinds.LazyLocalName) => true
+      case _ => false
+    }
+
     cpy.Template(tree)(
       constr = cpy.DefDef(constr)(
-        rhs = Block(copyParams ::: mappedSuperCalls ::: followConstrStats, unitLiteral)),
+        rhs = Block(copyParams ::: mappedSuperCalls ::: lazyAssignments ::: stats, unitLiteral)),
       body = clsStats.toList)
   }
 }
