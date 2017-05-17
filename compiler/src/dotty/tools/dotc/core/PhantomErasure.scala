@@ -20,9 +20,9 @@ import dotty.tools.dotc.core.Types.Type
 object PhantomErasure {
 
   /** Returns the default erased type of a phantom type */
-  def erasedPhantomType(implicit ctx: Context): Type = defn.BoxedUnitType
+  def erasedPhantomType(implicit ctx: Context): Type = defn.ErasedPhantomType
 
   /** Returns the default erased tree for a call to Phantom.assume */
-  def erasedAssume(implicit ctx: Context): Tree = ref(defn.BoxedUnit_UNIT)
+  def erasedAssume(implicit ctx: Context): Tree = ref(defn.ErasedPhantom_UNIT)
 
 }

@@ -990,4 +990,10 @@ class Definitions {
   /** If the symbol is of the class scala.Phantom.Any or scala.Phantom.Nothing */
   def isPhantomTerminalClass(sym: Symbol) = (sym eq Phantom_AnyClass) || (sym eq Phantom_NothingClass)
 
+
+  lazy val ErasedPhantomType: TypeRef = ctx.requiredClassRef("dotty.runtime.ErasedPhantom")
+  def ErasedPhantomClass(implicit ctx: Context) = ErasedPhantomType.symbol.asClass
+
+  def ErasedPhantom_UNIT(implicit ctx: Context) = ErasedPhantomClass.linkedClass.requiredValue("UNIT")
+
 }
