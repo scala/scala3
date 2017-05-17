@@ -13,6 +13,10 @@ else
 fi
 
 if [ $SHOULD_RUN = true ]; then
+  # get the ivy2 cache:
+  ln -s /var/cache/drone/ivy2 "$HOME/.ivy2" || true
+
+  # run sbt with the supplied arg:
   sbt -J-Xmx4096m \
       -J-XX:ReservedCodeCacheSize=512m \
       -J-XX:MaxMetaspaceSize=1024m \
