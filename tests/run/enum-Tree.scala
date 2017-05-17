@@ -5,7 +5,7 @@ enum Tree[T] {
   case Succ(n: Tree[Int]) extends Tree[Int]
   case Pred(n: Tree[Int]) extends Tree[Int]
   case IsZero(n: Tree[Int]) extends Tree[Boolean]
-  case If(cond: Tree[Boolean], thenp: Tree[T], elsep: Tree[T])
+  case If[T](cond: Tree[Boolean], thenp: Tree[T], elsep: Tree[T])
 }
 
 object Test {
