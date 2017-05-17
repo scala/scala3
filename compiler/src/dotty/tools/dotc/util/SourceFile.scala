@@ -107,6 +107,7 @@ case class SourceFile(file: AbstractFile, content: Array[Char]) extends interfac
    */
   def offsetToLine(offset: Int): Int = {
     lastLine = Util.bestFit(lineIndices, lineIndices.length, offset, lastLine)
+    if (offset >= length) lastLine -= 1 // compensate for the sentinel
     lastLine
   }
 
@@ -129,7 +130,7 @@ case class SourceFile(file: AbstractFile, content: Array[Char]) extends interfac
     var idx = startOfLine(offset)
     var col = 0
     while (idx != offset) {
-      col += (if (content(idx) == '\t') (tabInc - col) % tabInc else 1)
+      col += (if (idx < length && content(idx) == '\t') (tabInc - col) % tabInc else 1)
       idx += 1
     }
     col

@@ -1,0 +1,8 @@
+scala> def x
+-- [E018] Syntax Error: <console>:1:5 ------------------------------------------
+1 |def x
+  |     ^
+  |     missing return type
+
+longer explanation available when compiling with `-explain`
+scala> :quit
