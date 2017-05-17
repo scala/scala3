@@ -23,7 +23,7 @@ class C {
 
 class E {
   class F {
-    type T <: x.type // old-error: not stable
+    type T <: x.type // error
     val z: x.type = ??? // old-error: not stable
   }
   lazy val x: F#T = ???
