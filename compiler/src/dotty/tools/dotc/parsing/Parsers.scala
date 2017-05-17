@@ -1767,7 +1767,7 @@ object Parsers {
             } else {
               accept(COLON)
               if (in.token == ARROW && owner.isTypeName && !(mods is Local))
-                syntaxError(s"${if (mods is Mutable) "`var'" else "`val'"} parameters may not be call-by-name")
+                syntaxError(VarValParametersMayNotBeCallByName(name, mods is Mutable))
               paramType()
             }
           val default =

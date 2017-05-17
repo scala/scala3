@@ -1336,4 +1336,18 @@ object messages {
           |out the parameter list when extending it.
           |"""
   }
+
+  case class VarValParametersMayNotBeCallByName(name: Names.TermName, mutable: Boolean)(implicit ctx: Context)
+    extends Message(VarValParametersMayNotBeCallByNameID) {
+    val msg = s"${if (mutable) "`var'" else "`val'"} parameters may not be call-by-name"
+    val kind = "Syntax"
+    val explanation =
+      hl"""${"var"} and ${"val"} parameters of classes and traits may no be call-by-name. In case you
+          |want the parameter to be evaluated on demand, consider making it just a parameter
+          |and a ${"def"} in the class such as
+          |  ${s"class MyClass(${name}Tick: => String) {"}
+          |  ${s"  def $name() = ${name}Tick"}
+          |  ${"}"}
+          |"""
+  }
 }
