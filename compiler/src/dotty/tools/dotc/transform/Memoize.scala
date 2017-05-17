@@ -99,17 +99,19 @@ import Decorators._
     val NoFieldNeeded = Lazy | Deferred | JavaDefined | (if (ctx.settings.YnoInline.value) EmptyFlags else Inline)
 
     def isErasableBottomField(cls: Symbol): Boolean = {
-      // TODO: For Scala.js, return false if this field is in a js.Object unless it was a Phantom before erasure.
-      //       Could time travel to detect phantom types or add an annotation before erasure.
-      !field.isVolatile && ((cls eq defn.NothingClass) || (cls eq defn.NullClass) || (cls eq defn.BoxedUnitClass))
+      // TODO: For Scala.js, return false if this field is in a js.Object unless it is an ErasedPhantomClass.
+      !field.isVolatile &&
+      ((cls eq defn.NothingClass) || (cls eq defn.NullClass) || (cls eq defn.BoxedUnitClass) || (cls eq defn.ErasedPhantomClass))
     }
 
     def erasedBottomTree(sym: Symbol) = {
       if (sym eq defn.NothingClass) Throw(Literal(Constant(null)))
       else if (sym eq defn.NullClass) Literal(Constant(null))
+      else if (sym eq defn.BoxedUnitClass) ref(defn.BoxedUnit_UNIT)
+      else if (sym eq defn.ErasedPhantomClass) ref(defn.ErasedPhantom_UNIT)
       else {
-        assert(sym eq defn.BoxedUnitClass)
-        ref(defn.BoxedUnit_UNIT)
+        assert(false, sym + " has no erased bottom tree")
+        EmptyTree
       }
     }
 
