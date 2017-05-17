@@ -110,7 +110,7 @@ import Decorators._
       else if (sym eq defn.BoxedUnitClass) ref(defn.BoxedUnit_UNIT)
       else if (sym eq defn.ErasedPhantomClass) ref(defn.ErasedPhantom_UNIT)
       else {
-        assert(false) // Not in sync with isErasableBottomField
+        assert(false, sym + " has no erased bottom tree")
         EmptyTree
       }
     }
