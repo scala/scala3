@@ -14,21 +14,20 @@ if [ $SHOULD_RUN = false ]; then
   exit 0
 fi
 
-if [ -z "$SONATYPE_USER" -o -z "$SONATYPE_PW" -o -z "$PGP_PW" ]; then
+if [ -z "$2" -o -z "$3" -o -z "$4" ]; then
     echo "invalid args: this script takes 4 args, usage:"
     echo ""
     echo "    ./project/scripts/sbt SHOULD_RUN SONATYPE_USER SONATYPE_PW PGP_PW"
     exit 1
 fi
 
-CMD='     ;set credentials += Credentials("Sonatype Nexus Repository Manager", "oss.sonatype.org", "'"$SONATYPE_USER"'", "'"$SONATYPE_PW"'")'
-CMD="$CMD ;set pgpPassphrase := Some(\"\"\"$PGP_PW\"\"\".toCharArray)"
+CMD='     ;set credentials += Credentials("Sonatype Nexus Repository Manager", "oss.sonatype.org", "'"$2"'", "'"$3"'")'
+CMD="$CMD ;set pgpPassphrase := Some(\"\"\"$4\"\"\".toCharArray)"
 CMD="$CMD ;set pgpSecretRing := file(\"/keys/secring.asc\")"
 CMD="$CMD ;set pgpPublicRing := file(\"/keys/pubring.asc\")"
 CMD="$CMD ;dotty-bootstrapped/publishSigned ;sonatypeRelease"
 
-echo "Will run sbt with command: \"$CMD\""
-
+export NIGHTLYBUILD="yes"
 sbt -J-Xmx4096m \
     -J-XX:ReservedCodeCacheSize=512m \
     -J-XX:MaxMetaspaceSize=1024m \
