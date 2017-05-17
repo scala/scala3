@@ -272,62 +272,6 @@ class CompilationTests extends ParallelTesting {
 
   /** Add a `z` so that they run last. TODO: Only run them selectively? */
   @Test def zBytecodeIdempotency: Unit = {
-    var failed = 0
-    var total = 0
-    val blacklisted = Set(
-      // Bridges on collections in different order. Second one in scala2 order.
-      "pos/Map/scala/collection/immutable/Map",
-      "pos/Map/scala/collection/immutable/AbstractMap",
-      "pos/t1203a/NodeSeq",
-      "pos/i2345/Whatever"
-    )
-    def checkIdempotency(): Unit = {
-      val groupedBytecodeFiles: List[(Path, Path, Path, Path)] = {
-        val bytecodeFiles = {
-          def bytecodeFiles(paths: JStream[Path]): List[Path] = {
-            def isBytecode(file: String) = file.endsWith(".class") || file.endsWith(".tasty")
-            paths.iterator.asScala.filter(path => isBytecode(path.toString)).toList
-          }
-          val compilerDir1 = Paths.get("../out/idempotency1")
-          val compilerDir2 = Paths.get("../out/idempotency2")
-          bytecodeFiles(Files.walk(compilerDir1)) ++ bytecodeFiles(Files.walk(compilerDir2))
-        }
-        val groups = bytecodeFiles.groupBy(f => f.toString.substring("../out/idempotencyN/".length, f.toString.length - 6))
-        groups.filterNot(x => blacklisted(x._1)).valuesIterator.flatMap { g =>
-          def pred(f: Path, i: Int, isTasty: Boolean) =
-            f.toString.contains("idempotency" + i) && f.toString.endsWith(if (isTasty) ".tasty" else ".class")
-          val class1 = g.find(f => pred(f, 1, isTasty = false))
-          val class2 = g.find(f => pred(f, 2, isTasty = false))
-          val tasty1 = g.find(f => pred(f, 1, isTasty = true))
-          val tasty2 = g.find(f => pred(f, 2, isTasty = true))
-          assert(class1.isDefined, "Could not find class in idempotency1 for " + class2)
-          assert(class2.isDefined, "Could not find class in idempotency2 for " + class1)
-          if (tasty1.isEmpty || tasty2.isEmpty) Nil
-          else List(Tuple4(class1.get, tasty1.get, class2.get, tasty2.get))
-        }.toList
-      }
-
-      for ((class1, tasty1, class2, tasty2) <- groupedBytecodeFiles) {
-        total += 1
-        val bytes1 = Files.readAllBytes(class1)
-        val bytes2 = Files.readAllBytes(class2)
-        if (!java.util.Arrays.equals(bytes1, bytes2)) {
-          failed += 1
-          val tastyBytes1 = Files.readAllBytes(tasty1)
-          val tastyBytes2 = Files.readAllBytes(tasty2)
-          if (java.util.Arrays.equals(tastyBytes1, tastyBytes2))
-            println(s"Idempotency test failed between $class1 and $class1 (same tasty)")
-          else
-            println(s"Idempotency test failed between $tasty1 and $tasty2")
-          /* Dump bytes to console, could be useful if issue only appears in CI.
-           * Create the .class locally with Files.write(path, Array[Byte](...)) with the printed array
-           */
-          // println(bytes1.mkString("Array[Byte](", ",", ")"))
-          // println(bytes2.mkString("Array[Byte](", ",", ")"))
-        }
-      }
-    }
-
     val opt = defaultOptions.and("-YemitTasty")
 
     def idempotency1() = {
@@ -346,13 +290,9 @@ class CompilationTests extends ParallelTesting {
     assert(new java.io.File("../out/idempotency1/").exists)
     assert(new java.io.File("../out/idempotency2/").exists)
 
-    val t0 = System.currentTimeMillis()
-    checkIdempotency()
-    println(s"checked bytecode idempotency (${(System.currentTimeMillis() - t0) / 1000.0} sec)")
+    compileFile("../tests/idempotency/IdempotencyCheck.scala", defaultOptions).checkRuns()
 
     tests.delete()
-
-    assert(failed == 0, s"Failed $failed idempotency checks (out of $total)")
   }
 
 
