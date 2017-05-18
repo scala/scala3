@@ -473,6 +473,16 @@ object Checking {
       stats.foreach(checkValueClassMember)
     }
   }
+
+  /** Verify type definitions meet the requirements */
+  def checkTypeDef(tdef: tpd.TypeDef)(implicit ctx: Context): Unit = {
+    val isParam = tdef.tpe.typeSymbol.is(Param)
+    val isPhantom = tdef.tpe.isPhantom
+    if (isParam && isPhantom && tdef.symbol.owner.isPrimaryConstructor)
+      ctx.error("Classes cannot have phantom type parameters", tdef.pos)
+    else if (!isParam && isPhantom && !tdef.symbol.owner.isStaticOwner)
+      ctx.error("Non static classes cannot have phantom type members", tdef.pos)
+  }
 }
 
 trait Checking {

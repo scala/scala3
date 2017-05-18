@@ -1261,7 +1261,9 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
       case rhs =>
         typedType(rhs)
     }
-    assignType(cpy.TypeDef(tdef)(name, rhs1), sym)
+    val tdef1 = assignType(cpy.TypeDef(tdef)(name, rhs1), sym)
+    Checking.checkTypeDef(tdef1)
+    tdef1
   }
 
   def typedClassDef(cdef: untpd.TypeDef, cls: ClassSymbol)(implicit ctx: Context) = track("typedClassDef") {

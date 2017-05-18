@@ -506,16 +506,8 @@ trait TypeAssigner {
   def assignType(tree: untpd.DefDef, sym: Symbol)(implicit ctx: Context) =
     tree.withType(symbolicIfNeeded(sym).orElse(sym.termRefWithSig))
 
-  def assignType(tree: untpd.TypeDef, sym: Symbol)(implicit ctx: Context) = {
-    val tdef = tree.withType(symbolicIfNeeded(sym).orElse(sym.typeRef))
-    val isParam = tdef.tpe.typeSymbol.is(Param)
-    val isPhantom = tdef.tpe.isPhantom
-    if (isParam && isPhantom && tdef.symbol.owner.isPrimaryConstructor)
-      ctx.error("Classes cannot have phantom type parameters", tdef.pos)
-    else if (!isParam && isPhantom && !tdef.symbol.owner.isStaticOwner)
-      ctx.error("Non static classes cannot have phantom type members", tdef.pos)
-    tdef
-  }
+  def assignType(tree: untpd.TypeDef, sym: Symbol)(implicit ctx: Context) =
+    tree.withType(symbolicIfNeeded(sym).orElse(sym.typeRef))
 
   private def symbolicIfNeeded(sym: Symbol)(implicit ctx: Context) = {
     val owner = sym.owner
