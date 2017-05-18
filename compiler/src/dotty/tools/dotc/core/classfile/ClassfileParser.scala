@@ -430,8 +430,9 @@ class ClassfileParser(
     tag match {
       case STRING_TAG =>
         if (skip) None else Some(Literal(Constant(pool.getName(index).toString)))
-      case BOOL_TAG | BYTE_TAG | CHAR_TAG | SHORT_TAG | INT_TAG |
-        LONG_TAG | FLOAT_TAG | DOUBLE_TAG =>
+      case BOOL_TAG | BYTE_TAG | CHAR_TAG | SHORT_TAG =>
+        if (skip) None else Some(Literal(pool.getConstant(index, tag)))
+      case INT_TAG | LONG_TAG | FLOAT_TAG | DOUBLE_TAG =>
         if (skip) None else Some(Literal(pool.getConstant(index)))
       case CLASS_TAG =>
         if (skip) None else Some(Literal(Constant(pool.getType(index))))
@@ -829,7 +830,7 @@ class ClassfileParser(
             if (sym == classRoot.symbol) staticScope.lookup(name)
             else {
               var module = sym.companionModule
-              if (module == NoSymbol && sym.isAbsent)
+              if (!module.exists && sym.isAbsent)
                 module = sym.scalacLinkedClass
               module.info.member(name).symbol
             }
@@ -1045,7 +1046,7 @@ class ClassfileParser(
       getClassSymbol(index)
     }
 
-    def getConstant(index: Int)(implicit ctx: Context): Constant = {
+    def getConstant(index: Int, tag: Int = -1)(implicit ctx: Context): Constant = {
       if (index <= 0 || len <= index) errorBadIndex(index)
       var value = values(index)
       if (value eq null) {
@@ -1053,6 +1054,20 @@ class ClassfileParser(
         value = (in.buf(start).toInt: @switch) match {
           case CONSTANT_STRING =>
             Constant(getName(in.getChar(start + 1).toInt).toString)
+          case CONSTANT_INTEGER if tag != -1 =>
+            val value = in.getInt(start + 1)
+            (tag: @switch) match {
+              case BOOL_TAG =>
+                Constant(value != 0)
+              case BYTE_TAG =>
+                Constant(value.toByte)
+              case CHAR_TAG =>
+                Constant(value.toChar)
+              case SHORT_TAG =>
+                Constant(value.toShort)
+              case _ =>
+                errorBadTag(tag)
+            }
           case CONSTANT_INTEGER =>
             Constant(in.getInt(start + 1))
           case CONSTANT_FLOAT =>
