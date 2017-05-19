@@ -54,3 +54,10 @@ div#toolbar > div#project-details > h2#project-version {
   margin-left: 1px;
 }
 
+div#toolbar > a#github-link {
+  color: #fff;
+  position: absolute;
+  top: 7px;
+  right: 15px;
+  font-size: 40px;
+}

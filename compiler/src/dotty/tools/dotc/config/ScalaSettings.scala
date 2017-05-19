@@ -130,5 +130,12 @@ class ScalaSettings extends Settings.SettingGroup {
     ""
   )
 
+  val projectUrl = StringSetting (
+    "-project-url",
+    "project repository homepage",
+    "The source repository of your project",
+    ""
+  )
+
   val wikiSyntax = BooleanSetting("-Xwiki-syntax", "Retains the Scala2 behavior of using Wiki Syntax in Scaladoc")
 }

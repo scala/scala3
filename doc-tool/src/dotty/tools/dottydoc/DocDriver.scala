@@ -46,11 +46,12 @@ class DocDriver extends Driver {
     val siteRoot = new java.io.File(ctx.settings.siteRoot.value)
     val projectName = ctx.settings.projectName.value
     val projectVersion = ctx.settings.projectVersion.value
+    val projectUrl = ctx.settings.projectUrl.value
 
     if (!siteRoot.exists || !siteRoot.isDirectory)
       ctx.error(s"Site root does not exist: $siteRoot")
     else {
-      Site(siteRoot, projectName, projectVersion, ctx.docbase.packages)
+      Site(siteRoot, projectName, projectVersion, projectUrl, ctx.docbase.packages)
         .generateApiDocs()
         .copyStaticFiles()
         .generateHtmlFiles()

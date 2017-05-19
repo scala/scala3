@@ -28,7 +28,13 @@ import io.{ AbstractFile, VirtualFile, File }
 import scala.collection.mutable.ArrayBuffer
 import util.syntax._
 
-case class Site(val root: JFile, val projectTitle: String, val projectVersion: String, val documentation: Map[String, Package]) extends ResourceFinder {
+case class Site(
+  val root: JFile,
+  val projectTitle: String,
+  val projectVersion: String,
+  val projectUrl: String,
+  val documentation: Map[String, Package]
+) extends ResourceFinder {
   /** Documentation serialized to java maps */
   private val docs: JList[_] = {
     import model.JavaConverters._
@@ -157,7 +163,11 @@ case class Site(val root: JFile, val projectTitle: String, val projectVersion: S
       "../" * (assetLen - rootLen - 1 + additionalDepth) + "."
     }
 
-    DefaultParams(docs, documentation, PageInfo(pathFromRoot), SiteInfo(baseUrl, projectTitle, projectVersion, Array()), sidebar)
+    DefaultParams(
+      docs, documentation, PageInfo(pathFromRoot),
+      SiteInfo(baseUrl, projectTitle, projectVersion, projectUrl, Array()),
+      sidebar
+    )
   }
 
   /* Creates output directories if allowed */
