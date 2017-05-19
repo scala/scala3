@@ -560,6 +560,12 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
                 // we need the checkNonCyclic call to insert LazyRefs for F-bounded cycles
               else if (!denot.is(Param)) tp1.underlyingIfRepeated(isJava = false)
               else tp1
+
+            if (!denot.isType) { // Only terms might have leaky aliases, see the documentation of `checkNoPrivateLeaks`
+              val sym = denot.symbol
+              denot.info = ctx.typeAssigner.avoidPrivateLeaks(sym, sym.pos)
+            }
+
             if (denot.isConstructor) addConstructorTypeParams(denot)
             if (atEnd) {
               assert(!denot.isSuperAccessor, denot)
