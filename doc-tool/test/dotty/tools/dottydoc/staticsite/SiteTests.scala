@@ -85,7 +85,12 @@ class SiteTests extends DottyDocTest with SourceFileOps {
       "css/api-page.css",
       "css/dottydoc.css",
       "css/color-brewer.css",
-      "js/highlight.pack.js"
+      "css/bootstrap.min.css",
+      "css/font-awesome.min.css",
+      "js/highlight.pack.js",
+      "js/bootstrap.min.js",
+      "js/tether.min.js",
+      "js/jquery.min.js"
     )
     val expectedCompd = Set(
       // Directories starting in `_` are not included in compilable files
