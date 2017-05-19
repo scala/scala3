@@ -63,6 +63,20 @@ public enum ErrorMessageID {
     TypeDoesNotTakeParametersID,
     ParameterizedTypeLacksArgumentsID,
     VarValParametersMayNotBeCallByNameID,
+    MissingTypeParameterForID,
+    DoesNotConformToBoundID,
+    DoesNotConformToSelfTypeID,
+    DoesNotConformToSelfTypeCantBeInstantiatedID,
+    AbstractMemberMayNotHaveModifierID,
+    TopLevelCantBeImplicitID,
+    TypesAndTraitsCantBeImplicitID,
+    OnlyClassesCanBeAbstractID,
+    AbstractOverrideOnlyInTraitsID,
+    TraitsMayNotBeFinalID,
+    NativeMembersMayNotHaveImplementationID,
+    OnlyClassesCanHaveDeclaredButUndefinedMembersID,
+    CannotExtendAnyValID,
+    CannotHaveSameNameAsID,
     ;
 
     public int errorNumber() {
