@@ -233,7 +233,71 @@ object Scanners {
      *            (the STRINGLIT appears twice in succession on the stack iff the
      *             expression is a multiline string literal).
      */
-    var sepRegions: List[Token] = List()
+    var regionStack: List[LexicalRegion] = Indented(0) :: Nil
+
+// Indentation handling
+
+    /** The column of current token in source; issues warning if tabs are used */
+    private def currentColumn = {
+      val c = source.column(offset, tabOK = false)
+      if (c >= 0) c
+      else {
+        ctx.warning(s"tab character should not be used for indentation; assuming tab with = ${source.tabInc}")
+        source.column(offset)
+      }
+    }
+
+    def lookaheadScanner: Scanner = new Scanner(source, offset)
+
+    /** If last token on the current line is `=>' and there are no open
+     *  braces or other non-indent lexical regions, the start offset of the next line.
+     *  Otherwise -1
+     */
+    private def columnIfFollowingArrow(): Int = {
+      val la = lookaheadScanner
+      var lastToken = la.token
+      do {
+        lastToken = la.token
+        la.nextToken()
+      } while (la.token != EOF && !la.isAfterLineEnd())
+      if (lastToken == ARROW && la.inIndented) la.currentColumn else -1
+    }
+
+    /** Called when at line end, insert INDENT/UNDENT tokens as needed
+     *  and update region stack.
+     *  @param lastToken   The last token before the end of line
+     *  @param column      The column of the start of the next line
+     */
+    private def trackIndent(lastToken: Token, column: Int) = regionStack match {
+      case Indented(col) :: _ =>
+        if (column > col && canStartIndentTokens.contains(lastToken)) {
+          regionStack = Indented(column) :: regionStack
+          next.copyFrom(this)
+          token = INDENT
+        } else if (column < col) {
+          regionStack = regionStack.tail
+          next.copyFrom(this)
+          token = UNDENT
+        }
+      case _ =>
+    }
+
+    /** Track a `with` that occurs not at the end of a line:
+     *  If the line ends in an `=>' and the next line is indented,
+     *  start a new indentation block immediately after the `with'.
+     */
+    private def trackWith() = regionStack match {
+      case Indented(col) :: _ =>
+        val column = columnIfFollowingArrow()
+        if (column > col) {
+          regionStack = Indented(column) :: regionStack
+          next.copyFrom(this)
+          token = INDENT
+        }
+      case _ =>
+    }
+
+    private def inIndented = regionStack.head.isInstanceOf[Indented]
 
 // Scala 2 compatibility
 
@@ -250,13 +314,13 @@ object Scanners {
     /** Are we directly in a string interpolation expression?
      */
     private def inStringInterpolation =
-      sepRegions.nonEmpty && sepRegions.head == STRINGLIT
+      (regionStack.head == InStringLit || regionStack.head == InMultiLineStringLit)
 
     /** Are we directly in a multiline string interpolation expression?
      *  @pre inStringInterpolation
      */
     private def inMultiLineInterpolation =
-      inStringInterpolation && sepRegions.tail.nonEmpty && sepRegions.tail.head == STRINGPART
+      regionStack.head == InMultiLineStringLit
 
     /** read next token and return last offset
      */
@@ -266,33 +330,32 @@ object Scanners {
       off
     }
 
-    def adjustSepRegions(lastToken: Token): Unit = (lastToken: @switch) match {
+    private def endRegion(region: LexicalRegion): Unit =
+      if (regionStack.head == region) regionStack = regionStack.tail
+
+    private def adjustSepRegions(lastToken: Token): Unit = (lastToken: @switch) match {
       case LPAREN =>
-        sepRegions = RPAREN :: sepRegions
+        regionStack = InParens :: regionStack
       case LBRACKET =>
-        sepRegions = RBRACKET :: sepRegions
+        regionStack = InBrackets :: regionStack
       case LBRACE =>
-        sepRegions = RBRACE :: sepRegions
+        regionStack = InBraces :: regionStack
       case CASE =>
-        sepRegions = ARROW :: sepRegions
+        regionStack = InPattern :: regionStack
       case RBRACE =>
-        while (!sepRegions.isEmpty && sepRegions.head != RBRACE)
-          sepRegions = sepRegions.tail
-        if (!sepRegions.isEmpty) sepRegions = sepRegions.tail
-      case RBRACKET | RPAREN =>
-        if (!sepRegions.isEmpty && sepRegions.head == lastToken)
-          sepRegions = sepRegions.tail
+        while (regionStack.head != InBraces && !inIndented)
+          regionStack = regionStack.tail
+        endRegion(InBraces)
+      case RBRACKET =>
+        endRegion(InBrackets)
+      case RPAREN =>
+        endRegion(InParens)
       case ARROW =>
-        if (!sepRegions.isEmpty && sepRegions.head == ARROW)
-          sepRegions = sepRegions.tail
+        endRegion(InPattern)
       case EXTENDS =>
-        if (!sepRegions.isEmpty && sepRegions.head == ARROW)
-          sepRegions = sepRegions.tail
+        endRegion(InPattern)
       case STRINGLIT =>
-        if (inMultiLineInterpolation)
-          sepRegions = sepRegions.tail.tail
-        else if (inStringInterpolation)
-          sepRegions = sepRegions.tail
+        endRegion(if (inMultiLineInterpolation) InMultiLineStringLit else InStringLit)
       case _ =>
     }
 
@@ -313,22 +376,29 @@ object Scanners {
         next.token = EMPTY
       }
 
-      /** Insert NEWLINE or NEWLINES if
+      /** (1) Insert NEWLINE or NEWLINES if
        *  - we are after a newline
-       *  - we are within a { ... } or on toplevel (wrt sepRegions)
+       *  - we are within a { ... } or on toplevel (wrt regionStack)
        *  - the current token can start a statement and the one before can end it
-       *  insert NEWLINES if we are past a blank line, NEWLINE otherwise
+       *  insert NEWLINES if we are past a blank line, NEWLINE otherwise.
+       *
+       *  (2) Handle indentation
        */
-      if (isAfterLineEnd() &&
-          (canEndStatTokens contains lastToken) &&
-          (canStartStatTokens contains token) &&
-          (sepRegions.isEmpty || sepRegions.head == RBRACE ||
-           sepRegions.head == ARROW && token == CASE)) {
-        next copyFrom this
-        //  todo: make offset line-end of previous line?
-        offset = if (lineStartOffset <= offset) lineStartOffset else lastLineStartOffset
-        token = if (pastBlankLine()) NEWLINES else NEWLINE
+      if (isAfterLineEnd()) {
+        trackIndent(lastToken, currentColumn)
+        if ((canEndStatTokens contains lastToken) &&
+            (canStartStatTokens contains token) &&
+            (inIndented ||
+             regionStack.head == InBraces ||
+             regionStack.head == InPattern && token == CASE)) {
+          next copyFrom this
+          //  todo: make offset line-end of previous line?
+          offset = if (lineStartOffset <= offset) lineStartOffset else lastLineStartOffset
+          token = if (pastBlankLine()) NEWLINES else NEWLINE
+        }
       }
+      else if (token == EOF) trackIndent(lastToken, 0)
+      else if (lastToken == WITH) trackWith()
 
       postProcessToken()
       // print("[" + this +"]")
@@ -470,15 +540,14 @@ object Scanners {
                 if (ch == '\"') {
                   nextRawChar()
                   getStringPart(multiLine = true)
-                  sepRegions = STRINGPART :: sepRegions // indicate string part
-                  sepRegions = STRINGLIT :: sepRegions // once more to indicate multi line string part
+                  regionStack = InMultiLineStringLit :: regionStack
                 } else {
                   token = STRINGLIT
                   strVal = ""
                 }
               } else {
                 getStringPart(multiLine = false)
-                sepRegions = STRINGLIT :: sepRegions // indicate single line string part
+                regionStack = InStringLit :: regionStack
               }
             } else {
               nextChar()

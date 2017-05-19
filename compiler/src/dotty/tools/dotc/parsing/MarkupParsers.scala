@@ -389,7 +389,7 @@ object MarkupParsers {
 
     def escapeToScala[A](op: => A, kind: String) = {
       xEmbeddedBlock = false
-      val res = saving[List[Int], A](parser.in.sepRegions, parser.in.sepRegions = _) {
+      val res = saving[List[Tokens.LexicalRegion], A](parser.in.regionStack, parser.in.regionStack = _) {
         parser.in resume LBRACE
         op
       }

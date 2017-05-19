@@ -124,9 +124,11 @@ abstract class TokensCommon {
   final val RBRACKET = 93;         enter(RBRACKET, "']'")
   final val LBRACE = 94;           enter(LBRACE, "'{'")
   final val RBRACE = 95;           enter(RBRACE, "'}'")
+  final val INDENT = 96;           enter(INDENT, "start of indented block")
+  final val UNDENT = 97;           enter(UNDENT, "end of indented block")
 
   final val firstParen = LPAREN
-  final val lastParen = RBRACE
+  final val lastParen = UNDENT
 
   def buildKeywordArray(keywords: TokenSet) = {
     def start(tok: Token) = tokenString(tok).toTermName.asSimpleName.start
@@ -192,7 +194,7 @@ object Tokens extends TokensCommon {
   final val VIEWBOUND = 84;        enter(VIEWBOUND, "<%") // TODO: deprecate
 
   /** XML mode */
-  final val XMLSTART = 96;         enter(XMLSTART, "$XMLSTART$<") // TODO: deprecate
+  final val XMLSTART = 98;         enter(XMLSTART, "$XMLSTART$<") // TODO: deprecate
 
   final val alphaKeywords = tokenRange(IF, ENUM)
   final val symbolicKeywords = tokenRange(USCORE, VIEWBOUND)
@@ -208,7 +210,7 @@ object Tokens extends TokensCommon {
     USCORE, NULL, THIS, SUPER, TRUE, FALSE, RETURN, XMLSTART)
 
   final val canStartExpressionTokens = atomicExprTokens | BitSet(
-    LBRACE, LPAREN, IF, DO, WHILE, FOR, NEW, TRY, THROW)
+    LBRACE, LPAREN, INDENT, IF, DO, WHILE, FOR, NEW, TRY, THROW)
 
   final val canStartTypeTokens = literalTokens | identifierTokens | BitSet(
     THIS, SUPER, USCORE, LPAREN, AT)
@@ -240,7 +242,21 @@ object Tokens extends TokensCommon {
     AT, CASE)
 
   final val canEndStatTokens = atomicExprTokens | BitSet(
-    TYPE, RPAREN, RBRACE, RBRACKET)
+    TYPE, RPAREN, RBRACE, RBRACKET, UNDENT)
+
+  final val canStartIndentTokens =
+    BitSet(EQUALS, THEN, ELSE, MATCH, FOR, YIELD, WHILE, DO, TRY, FINALLY, WITH)
 
   final val numericLitTokens = BitSet(INTLIT, LONGLIT, FLOATLIT, DOUBLELIT)
+
+  class LexicalRegion(override val toString: String)
+
+  final val InParens = new LexicalRegion("(..)")
+  final val InBrackets = new LexicalRegion("[..]")
+  final val InBraces = new LexicalRegion("{..}")
+  final val InPattern = new LexicalRegion("case..=>")
+  final val InStringLit = new LexicalRegion("\"..\"")
+  final val InMultiLineStringLit = new LexicalRegion("\"\"\"..\"\"\"")
+
+  case class Indented(column: Int) extends LexicalRegion(s"indent $column")
 }

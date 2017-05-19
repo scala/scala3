@@ -158,7 +158,8 @@ object Parsers {
     def isBindingIntro = canStartBindingTokens contains in.token
     def isTemplateIntro = templateIntroTokens contains in.token
     def isDclIntro = dclIntroTokens contains in.token
-    def isStatSeqEnd = in.token == RBRACE || in.token == EOF
+    def isStatSeqEnd = in.token == RBRACE || in.token == UNDENT || in.token == EOF
+    def isBlockStart = in.token == LBRACE || in.token == INDENT
     def mustStartStat = mustStartStatTokens contains in.token
 
     def isDefIntro(allowedMods: BitSet) =
@@ -386,7 +387,8 @@ object Parsers {
     }
 
     def inParens[T](body: => T): T = enclosed(LPAREN, body)
-    def inBraces[T](body: => T): T = enclosed(LBRACE, body)
+    def inBraces[T](body: => T): T =
+      enclosed(if (in.token == INDENT) INDENT else LBRACE, body)
     def inBrackets[T](body: => T): T = enclosed(LBRACKET, body)
 
     def inDefScopeBraces[T](body: => T): T = {
@@ -1234,7 +1236,7 @@ object Parsers {
           atPos(start) { Ident(pname) }
         case LPAREN =>
           atPos(in.offset) { makeTupleOrParens(inParens(exprsInParensOpt())) }
-        case LBRACE =>
+        case LBRACE | INDENT =>
           canApply = false
           blockExpr()
         case NEW =>
@@ -1266,7 +1268,7 @@ object Parsers {
         case LBRACKET =>
           val tapp = atPos(startOffset(t), in.offset) { TypeApply(t, typeArgs(namedOK = true, wildOK = false)) }
           simpleExprRest(tapp, canApply = true)
-        case LPAREN | LBRACE if canApply =>
+        case LPAREN | LBRACE | INDENT if canApply =>
           val app = atPos(startOffset(t), in.offset) { Apply(t, argumentExprs()) }
           simpleExprRest(app, canApply = true)
         case WITH =>
@@ -1294,7 +1296,7 @@ object Parsers {
      *                 |  [nl] BlockExpr
      */
     def argumentExprs(): List[Tree] =
-      if (in.token == LBRACE) blockExpr() :: Nil else parArgumentExprs()
+      if (isBlockStart) blockExpr() :: Nil else parArgumentExprs()
 
     val argumentExpr = () => exprInParens() match {
       case a @ Assign(Ident(id), rhs) => cpy.NamedArg(a)(id, rhs)
@@ -1305,7 +1307,7 @@ object Parsers {
      */
     def argumentExprss(fn: Tree): Tree = {
       newLineOptWhenFollowedBy(LBRACE)
-      if (in.token == LPAREN || in.token == LBRACE) argumentExprss(Apply(fn, argumentExprs()))
+      if (in.token == LPAREN || isBlockStart) argumentExprss(Apply(fn, argumentExprs()))
       else fn
     }
 
@@ -1375,7 +1377,7 @@ object Parsers {
     def forExpr(): Tree = atPos(in.skipToken()) {
       var wrappedEnums = true
       val enums =
-        if (in.token == LBRACE) inBraces(enumerators())
+        if (isBlockStart) inBraces(enumerators())
         else if (in.token == LPAREN) {
           val lparenOffset = in.skipToken()
           openParens.change(LPAREN, 1)
@@ -1997,7 +1999,7 @@ object Parsers {
             EmptyTree
           else if (scala2ProcedureSyntax(": Unit")) {
             tpt = scalaUnit
-            if (in.token == LBRACE) expr()
+            if (isBlockStart) expr()
             else EmptyTree
           }
           else {
@@ -2013,7 +2015,7 @@ object Parsers {
      *                    |  ConstrBlock
      */
     def constrExpr(): Tree =
-      if (in.token == LBRACE) constrBlock()
+      if (isBlockStart) constrBlock()
       else Block(selfInvocation() :: Nil, Literal(Constant(())))
 
     /** SelfInvocation  ::= this ArgumentExprs {ArgumentExprs}
@@ -2027,12 +2029,14 @@ object Parsers {
     /** ConstrBlock    ::=  `{' SelfInvocation {semi BlockStat} `}'
      */
     def constrBlock(): Tree =
-      atPos(in.skipToken()) {
-        val stats = selfInvocation() :: {
-          if (isStatSep) { in.nextToken(); blockStatSeq() }
-          else Nil
-        }
-        accept(RBRACE)
+      atPos(in.offset) {
+        val stats =
+          inBraces {
+            selfInvocation() :: {
+              if (isStatSep) { in.nextToken(); blockStatSeq() }
+              else Nil
+            }
+          }
         Block(stats, Literal(Constant(())))
       }
 
@@ -2048,7 +2052,7 @@ object Parsers {
           case EQUALS =>
             in.nextToken()
             TypeDef(name, lambdaAbstract(tparams, typ())).withMods(mods).setComment(in.getDocComment(start))
-          case SUPERTYPE | SUBTYPE | SEMI | NEWLINE | NEWLINES | COMMA | RBRACE | EOF =>
+          case SUPERTYPE | SUBTYPE | SEMI | NEWLINE | NEWLINES | COMMA | RBRACE | UNDENT | EOF =>
             TypeDef(name, lambdaAbstract(tparams, typeBounds())).withMods(mods).setComment(in.getDocComment(start))
           case _ =>
             syntaxErrorOrIncomplete("`=', `>:', or `<:' expected")
@@ -2161,7 +2165,7 @@ object Parsers {
     /** EnumCaseStats = EnumCaseStat {semi EnumCaseStat */
     def enumCaseStats(): List[DefTree] = {
       val cases = new ListBuffer[DefTree] += enumCaseStat()
-      while (in.token != RBRACE && in.token != EOF) {
+      while (!isStatSeqEnd) {
         acceptStatSep()
         cases += enumCaseStat()
       }
@@ -2206,7 +2210,7 @@ object Parsers {
      */
     def constrAppsOpt(): List[Tree] = {
       newLineOptWhenFollowedBy(LBRACE)
-      if (in.token == LBRACE) Nil
+      if (isBlockStart) Nil
       else
         constrApp() :: {
           if (in.token == WITH) {
@@ -2225,7 +2229,7 @@ object Parsers {
     def template(constr: DefDef): (Template, Boolean) = {
       val parents = constrAppsOpt()
       newLineOptWhenFollowedBy(LBRACE)
-      val missingBody = in.token != LBRACE
+      val missingBody = !isBlockStart
       (templateBodyOpt(constr, parents), missingBody)
     }
 
@@ -2245,7 +2249,7 @@ object Parsers {
         }
         else {
           newLineOptWhenFollowedBy(LBRACE)
-          if (in.token == LBRACE) templateBody()
+          if (isBlockStart) templateBody()
           else (EmptyValDef, Nil)
         }
       Template(constr, parents, self, stats)
@@ -2439,7 +2443,7 @@ object Parsers {
             skipToBrace()
             if (in.token == EOF)
               ts += makePackaging(start, pkg, List())
-            else if (in.token == LBRACE) {
+            else if (isBlockStart) {
               ts += inDefScopeBraces(makePackaging(start, pkg, topStatSeq()))
               acceptStatSepUnlessAtEnd()
               ts ++= topStatSeq()
