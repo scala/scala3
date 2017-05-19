@@ -42,7 +42,7 @@ case class SourceFile(file: AbstractFile, content: Array[Char]) extends interfac
   def this(file: AbstractFile, cs: Seq[Char]) = this(file, cs.toArray)
 
   /** Tab increment; can be overridden */
-  def tabInc = 8
+  def tabInc = 2
 
   override def name = file.name
   override def path = file.path
@@ -125,15 +125,22 @@ case class SourceFile(file: AbstractFile, content: Array[Char]) extends interfac
   def lineContent(offset: Int): String =
     content.slice(startOfLine(offset), nextLine(offset)).mkString
 
-  /** The column corresponding to `offset`, starting at 0 */
-  def column(offset: Int): Int = {
+  /** The column corresponding to `offset`, starting at 0
+   *  Returns -1 if tab character is encountered and `tabOK` is false.
+   */
+  def column(offset: Int, tabOK: Boolean = true): Int = {
     var idx = startOfLine(offset)
     var col = 0
+    var tabSeen = false
     while (idx != offset) {
-      col += (if (idx < length && content(idx) == '\t') (tabInc - col) % tabInc else 1)
+      if (idx < length && content(idx) == '\t') {
+        tabSeen = true
+        col += (tabInc - col) % tabInc
+      }
+      else col += 1
       idx += 1
     }
-    col
+    if (tabSeen && !tabOK) -1 else col
   }
 
   override def toString = file.toString
