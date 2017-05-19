@@ -461,8 +461,12 @@ object desugar {
       }
       else if (defaultGetters.nonEmpty)
         companionDefs(anyRef, defaultGetters)
-      else if (isValueClass)
-        companionDefs(anyRef, Nil)
+      else if (isValueClass) {
+        constr0.vparamss match {
+          case List(_ :: Nil) => companionDefs(anyRef, Nil)
+          case _ => Nil // error will be emitted in typer
+        }
+      }
       else Nil
 
     // For an implicit class C[Ts](p11: T11, ..., p1N: T1N) ... (pM1: TM1, .., pMN: TMN), the method
