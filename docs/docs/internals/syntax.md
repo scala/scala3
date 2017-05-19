@@ -124,6 +124,7 @@ FunArgTypes       ::=  InfixType
                     |  ‘(’ [ FunArgType {‘,’ FunArgType } ] ‘)’
 InfixType         ::=  RefinedType {id [nl] RefinedType}                        InfixOp(t1, op, t2)
 RefinedType       ::=  WithType {[nl] Refinement}                               RefinedTypeTree(t, ds)
+                    |  Refinement
 WithType          ::=  AnnotType {‘with’ AnnotType}                             (deprecated)
 AnnotType         ::=  SimpleType {Annotation}                                  Annotated(t, annot)
 SimpleType        ::=  SimpleType TypeArgs                                      AppliedTypeTree(t, args)
@@ -132,7 +133,6 @@ SimpleType        ::=  SimpleType TypeArgs                                      
                     |  Path ‘.’ ‘type’                                          SingletonTypeTree(p)
                     |  ‘(’ ArgTypes ‘)’                                         Tuple(ts)
                     |  ‘_’ TypeBounds
-                    |  Refinement                                               RefinedTypeTree(EmptyTree, refinement)
                     |  SimpleLiteral                                            SingletonTypeTree(l)
 ArgTypes          ::=  Type {‘,’ Type}
                     |  NamedTypeArg {‘,’ NamedTypeArg}
@@ -170,7 +170,7 @@ Expr1             ::=  ‘if’ ‘(’ Expr ‘)’ {nl} Expr [[semi] ‘else�
                     |  [SimpleExpr ‘.’] id ‘=’ Expr                             Assign(expr, expr)
                     |  SimpleExpr1 ArgumentExprs ‘=’ Expr                       Assign(expr, expr)
                     |  PostfixExpr [Ascription]
-                    |  PostfixExpr ‘match’ ‘{’ CaseClauses ‘}’                  Match(expr, cases) -- point on match
+                    |  PostfixExpr ‘match’ {’ CaseClauses ‘}’                  Match(expr, cases) -- point on match
 Ascription        ::=  ‘:’ InfixType                                            Typed(expr, tp)
                     |  ‘:’ Annotation {Annotation}                              Typed(expr, Annotated(EmptyTree, annot)*)
 Catches           ::=  ‘catch’ Expr
@@ -188,6 +188,7 @@ SimpleExpr1       ::=  Literal
                     |  SimpleExpr ‘.’ id                                        Select(expr, id)
                     |  SimpleExpr (TypeArgs | NamedTypeArgs)                    TypeApply(expr, args)
                     |  SimpleExpr1 ArgumentExprs                                Apply(expr, args)
+                    |  SimpleExpr1 ‘with’ BlockExpr
                     |  XmlExpr
 ExprsInParens     ::=  ExprInParens {‘,’ ExprInParens}
 ExprInParens      ::=  PostfixExpr ‘:’ Type
@@ -285,7 +286,8 @@ AccessQualifier   ::=  ‘[’ (id | ‘this’) ‘]’
 
 Annotation        ::=  ‘@’ SimpleType {ParArgumentExprs}                        Apply(tpe, args)
 
-TemplateBody      ::=  [nl] ‘{’ [SelfType] TemplateStat {semi TemplateStat} ‘}’ (self, stats)
+TemplateBody      ::=  [‘with’] [nl] ‘{’ [SelfType]
+                       TemplateStat {semi TemplateStat} ‘}’                     (self, stats)
 TemplateStat      ::=  Import
                     |  {Annotation [nl]} {Modifier} Def
                     |  {Annotation [nl]} {Modifier} Dcl
@@ -326,7 +328,6 @@ PatDef            ::=  Pattern2 {‘,’ Pattern2} [‘:’ Type] ‘=’ Expr  
 VarDef            ::=  PatDef
                     |  ids ‘:’ Type ‘=’ ‘_’
 DefDef            ::=  DefSig [‘:’ Type] ‘=’ Expr                               DefDef(_, name, tparams, vparamss, tpe, expr)
-                    |  DefSig [nl] ‘{’ Block ‘}’                                DefDef(_, name, tparams, vparamss, tpe, Block)
                     |  ‘this’ DefParamClause DefParamClauses                    DefDef(_, <init>, Nil, vparamss, EmptyTree, expr | Block)
                        (‘=’ ConstrExpr | [nl] ConstrBlock)
 
@@ -338,7 +339,7 @@ ClassConstr       ::=  [ClsTypeParamClause] [ConstrMods] ClsParamClauses        
 ConstrMods        ::=  AccessModifier
                     |  Annotation {Annotation} (AccessModifier | ‘this’)
 ObjectDef         ::=  id TemplateOpt                                           ModuleDef(mods, name, template)  // no constructor
-EnumDef           ::=  id ClassConstr [`extends' [ConstrApps]]                  EnumDef(mods, name, tparams, template)
+EnumDef           ::=  id ClassConstr [`extends' [ConstrApps]] [‘with’]          EnumDef(mods, name, tparams, template)
                        [nl] ‘{’ EnumCaseStat {semi EnumCaseStat} ‘}’
 EnumCaseStat      ::=  {Annotation [nl]} {Modifier} EnumCase
 EnumCase          ::=  `case' (EnumClassDef | ObjectDef | ids)
@@ -358,7 +359,7 @@ TopStat           ::=  {Annotation [nl]} {Modifier} TmplDef
                     |  Import
                     |  Packaging
                     |  PackageObject
-Packaging         ::=  ‘package’ QualId [nl] ‘{’ TopStatSeq ‘}’                 Package(qid, stats)
+Packaging         ::=  ‘package’ QualId [nl] [‘with’] ‘{’ TopStatSeq ‘}’                 Package(qid, stats)
 PackageObject     ::=  ‘package’ ‘object’ ObjectDef                             object with package in mods.
 
 CompilationUnit   ::=  {‘package’ QualId semi} TopStatSeq                       Package(qid, stats)
