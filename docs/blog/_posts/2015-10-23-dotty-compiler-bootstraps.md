@@ -1,5 +1,5 @@
 ---
-layout: blog
+layout: blog-page
 author: Martin Odersky and Dmitry Petrashko
 title: "We got liftoff!"
 subTitle: The Dotty compiler for Scala bootstraps.

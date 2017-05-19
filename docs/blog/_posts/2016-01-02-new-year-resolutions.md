@@ -1,5 +1,5 @@
 ---
-layout: blog
+layout: blog-page
 title: New Year Resolutions
 author: Martin Odersky
 authorImg: /images/martin.jpg
