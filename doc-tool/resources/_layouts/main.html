@@ -54,6 +54,10 @@
                 $('pre code').each(function(i, block) {
                     hljs.highlightBlock(block);
                 });
+
+                if (window.location.hash.length > 0) {
+                    window.scrollTo(0, $(window.location.hash).offset().top - 90);
+                }
             });
         </script>
     </body>
