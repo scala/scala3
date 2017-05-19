@@ -1400,7 +1400,7 @@ object messages {
   case class AbstractMemberMayNotHaveModifier(sym: Symbol, flag: FlagSet)(
     implicit ctx: Context)
     extends Message(AbstractMemberMayNotHaveModifierID) {
-    val msg = hl"""abstract $sym may not have `$flag' modifier"""
+    val msg = hl"""${"abstract"} $sym may not have `$flag' modifier"""
     val kind = "Syntax"
     val explanation = ""
   }
@@ -1442,7 +1442,8 @@ object messages {
     extends Message(TraitsMayNotBeFinalID) {
     val msg = hl"""$sym may not be ${"final"}"""
     val kind = "Syntax"
-    val explanation = "A trait can never be final."
+    val explanation =
+      "A trait can never be final since it is abstract and must be extended to be useful."
   }
 
   case class NativeMembersMayNotHaveImplementation(sym: Symbol)(
