@@ -1,5 +1,11 @@
-<div class="index-wrapper">
-    {% include "toc" %}
+<div class="index-wrapper" style="top: {{ sidebarTop }};">
+    <ul class="toc">
+        {% assign parent = page.path | first %}
+        {% for title in sidebar %}
+        <li>{% renderTitle title, parent %}</li>
+        {% endfor %}
+    </ul>
+
     <ul class="index-entities">
     {% if docs.size > 0 %}
     <li class="index-title">
@@ -30,9 +36,3 @@
     {% endfor %}
     </ul>
 </div>
-<script>
-function toggleMenu() {
-    var wrapper = document.getElementById("content-wrapper");
-    wrapper.classList.toggle("toggled");
-}
-</script>
