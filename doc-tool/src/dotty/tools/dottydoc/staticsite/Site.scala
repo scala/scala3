@@ -127,6 +127,7 @@ case class Site(val root: JFile, val projectTitle: String, val documentation: Ma
 
       // Copy statics included in resources
       Map(
+        "css/sidebar.css" -> "/css/sidebar.css",
         "css/api-page.css" -> "/css/api-page.css",
         "css/dottydoc.css" -> "/css/dottydoc.css",
         "css/color-brewer.css" -> "/css/color-brewer.css",
