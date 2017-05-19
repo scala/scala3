@@ -97,7 +97,8 @@ object RefChecks {
       def checkSelfConforms(other: TypeRef, category: String, relation: String) = {
         val otherSelf = other.givenSelfType.asSeenFrom(cls.thisType, other.classSymbol)
         if (otherSelf.exists && !(cinfo.selfType <:< otherSelf))
-          ctx.error(ex"$category: self type ${cinfo.selfType} of $cls does not conform to self type $otherSelf of $relation ${other.classSymbol}", cls.pos)
+          ctx.error(DoesNotConformToSelfType(category, cinfo.selfType, cls, otherSelf, relation, other.classSymbol),
+            cls.pos)
       }
       for (parent <- cinfo.classParents)
         checkSelfConforms(parent, "illegal inheritance", "parent")

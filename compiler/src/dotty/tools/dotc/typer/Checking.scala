@@ -18,18 +18,21 @@ import Constants._
 import Scopes._
 import CheckRealizable._
 import ErrorReporting.errorTree
+
 import annotation.unchecked
 import util.Positions._
-import util.{Stats, SimpleMap}
+import util.{SimpleMap, Stats}
 import util.common._
 import transform.SymUtils._
 import Decorators._
 import Uniques._
 import ErrorReporting.{err, errorType}
 import config.Printers.typr
+
 import collection.mutable
 import SymDenotations.NoCompleter
-import dotty.tools.dotc.reporting.diagnostic.messages.CantInstantiateAbstractClassOrTrait
+import dotty.tools.dotc.reporting.diagnostic.{ErrorMessageID, Message}
+import dotty.tools.dotc.reporting.diagnostic.messages._
 import dotty.tools.dotc.transform.ValueClasses._
 
 object Checking {
@@ -42,11 +45,12 @@ object Checking {
   def checkBounds(args: List[tpd.Tree], boundss: List[TypeBounds], instantiate: (Type, List[Type]) => Type)(implicit ctx: Context): Unit = {
     (args, boundss).zipped.foreach { (arg, bound) =>
       if (!bound.isHK && arg.tpe.isHK)
+        // see MissingTypeParameterFor
         ctx.error(ex"missing type parameter(s) for $arg", arg.pos)
     }
     for ((arg, which, bound) <- ctx.boundsViolations(args, boundss, instantiate))
       ctx.error(
-          ex"Type argument ${arg.tpe} does not conform to $which bound $bound ${err.whyNoMatchStr(arg.tpe, bound)}",
+          DoesNotConformToBound(arg.tpe, which, bound)(err),
           arg.pos.focus)
   }
 
@@ -111,7 +115,7 @@ object Checking {
           val stp = SkolemType(tp)
           val selfType = tref.givenSelfType.asSeenFrom(stp, cls)
           if (selfType.exists && !(stp <:< selfType))
-            ctx.error(ex"$tp does not conform to its self type $selfType; cannot be instantiated")
+            ctx.error(DoesNotConformToSelfTypeCantBeInstantiated(tp, selfType), pos)
         }
       case _ =>
     }
@@ -119,10 +123,8 @@ object Checking {
   /** Check that type `tp` is realizable. */
   def checkRealizable(tp: Type, pos: Position)(implicit ctx: Context): Unit = {
     val rstatus = realizability(tp)
-    if (rstatus ne Realizable) {
-      def msg = em"$tp is not a legal path\n since it${rstatus.msg}"
-      if (ctx.scala2Mode) ctx.migrationWarning(msg, pos) else ctx.error(msg, pos)
-    }
+    if (rstatus ne Realizable)
+      ctx.errorOrMigrationWarning(em"$tp is not a legal path\n since it${rstatus.msg}", pos)
   }
 
   /** A type map which checks that the only cycles in a type are F-bounds
@@ -304,50 +306,46 @@ object Checking {
 
   /** Check that symbol's definition is well-formed. */
   def checkWellFormed(sym: Symbol)(implicit ctx: Context): Unit = {
-    //println(i"check wf $sym with flags ${sym.flags}")
-    def fail(msg: String) = ctx.error(msg, sym.pos)
-    def varNote =
-      if (sym.is(Mutable)) "\n(Note that variables need to be initialized to be defined)"
-      else ""
+    def fail(msg: Message) = ctx.error(msg, sym.pos)
 
     def checkWithDeferred(flag: FlagSet) =
       if (sym.is(flag))
-        fail(i"abstract member may not have `$flag' modifier")
+        fail(AbstractMemberMayNotHaveModifier(sym, flag))
     def checkNoConflict(flag1: FlagSet, flag2: FlagSet) =
       if (sym.is(allOf(flag1, flag2)))
         fail(i"illegal combination of modifiers: $flag1 and $flag2 for: $sym")
 
     if (sym.is(ImplicitCommon)) {
       if (sym.owner.is(Package))
-        fail(i"`implicit' modifier cannot be used for top-level definitions")
+        fail(TopLevelCantBeImplicit(sym))
       if (sym.isType)
-        fail(i"`implicit' modifier cannot be used for types or traits")
+        fail(TypesAndTraitsCantBeImplicit(sym))
     }
     if (!sym.isClass && sym.is(Abstract))
-      fail(i"`abstract' modifier can be used only for classes; it should be omitted for abstract members")
+      fail(OnlyClassesCanBeAbstract(sym))
     if (sym.is(AbsOverride) && !sym.owner.is(Trait))
-      fail(i"`abstract override' modifier only allowed for members of traits")
+      fail(AbstractOverrideOnlyInTraits(sym))
     if (sym.is(Trait) && sym.is(Final))
-      fail(i"$sym may not be `final'")
+      fail(TraitsMayNotBeFinal(sym))
     if (sym.hasAnnotation(defn.NativeAnnot)) {
       if (!sym.is(Deferred))
-        fail(i"`@native' members may not have implementation")
+        fail(NativeMembersMayNotHaveImplementation(sym))
     }
     else if (sym.is(Deferred, butNot = Param) && !sym.isType && !sym.isSelfSym) {
       if (!sym.owner.isClass || sym.owner.is(Module) || sym.owner.isAnonymousClass)
-        fail(i"only classes can have declared but undefined members$varNote")
+        fail(OnlyClassesCanHaveDeclaredButUndefinedMembers(sym))
       checkWithDeferred(Private)
       checkWithDeferred(Final)
       checkWithDeferred(Inline)
     }
     if (sym.isValueClass && sym.is(Trait) && !sym.isRefinementClass)
-      fail(i"$sym cannot extend AnyVal")
+      fail(CannotExtendAnyVal(sym))
     checkNoConflict(Final, Sealed)
     checkNoConflict(Private, Protected)
     checkNoConflict(Abstract, Override)
     if (sym.isType && !sym.is(Deferred))
       for (cls <- sym.allOverriddenSymbols.filter(_.isClass)) {
-        fail(i"$sym cannot have the same name as ${cls.showLocated} -- class definitions cannot be overridden")
+        fail(CannotHaveSameNameAs(sym, cls))
         sym.setFlag(Private) // break the overriding relationship by making sym Private
       }
   }
@@ -610,7 +608,7 @@ trait Checking {
     if (tpt.tpe.isHK && !ctx.compilationUnit.isJava) {
         // be more lenient with missing type params in Java,
         // needed to make pos/java-interop/t1196 work.
-      errorTree(tpt, ex"missing type parameter for ${tpt.tpe}")
+      errorTree(tpt, MissingTypeParameterFor(tpt.tpe))
     }
     else tpt
 

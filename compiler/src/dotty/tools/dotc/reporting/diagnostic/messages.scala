@@ -20,6 +20,7 @@ import printing.Formatting
 import ErrorMessageID._
 import Denotations.SingleDenotation
 import dotty.tools.dotc.ast.Trees
+import dotty.tools.dotc.core.Flags.{FlagSet, Mutable}
 import dotty.tools.dotc.core.SymDenotations.SymDenotation
 
 object messages {
@@ -1351,4 +1352,131 @@ object messages {
           |  ${"}"}
           |"""
   }
+
+  case class MissingTypeParameterFor(tpe: Type)(implicit ctx: Context)
+    extends Message(MissingTypeParameterForID) {
+    val msg = hl"missing type parameter for ${tpe}"
+    val kind = "Syntax"
+    val explanation = ""
+  }
+
+  case class DoesNotConformToBound(tpe: Type, which: String, bound: Type)(
+    err: typer.ErrorReporting.Errors)(implicit ctx: Context)
+    extends Message(DoesNotConformToBoundID) {
+    val msg = hl"Type argument ${tpe} does not conform to $which bound $bound ${err.whyNoMatchStr(tpe, bound)}"
+    val kind = "Type Mismatch"
+    val explanation = ""
+  }
+
+  case class DoesNotConformToSelfType(category: String, selfType: Type, cls: Symbol,
+                                      otherSelf: Type, relation: String, other: Symbol)(
+    implicit ctx: Context)
+    extends Message(DoesNotConformToSelfTypeID) {
+    val msg = hl"""$category: self type $selfType of $cls does not conform to self type $otherSelf
+                  |of $relation $other"""
+    val kind = "Type Mismatch"
+    val explanation =
+      hl"""You mixed in $other which requires self type $otherSelf, but $cls has self type
+          |$selfType and does not inherit from $otherSelf.
+          |
+          |Note: Self types are indicated with the notation
+          |  ${s"class "}$other ${"{ this: "}$otherSelf${" => "}
+        """
+  }
+
+  case class DoesNotConformToSelfTypeCantBeInstantiated(tp: Type, selfType: Type)(
+    implicit ctx: Context)
+    extends Message(DoesNotConformToSelfTypeCantBeInstantiatedID) {
+    val msg = hl"""$tp does not conform to its self type $selfType; cannot be instantiated"""
+    val kind = "Type Mismatch"
+    val explanation =
+      hl"""To create an instance of $tp it needs to inherit $selfType in some way.
+          |
+          |Note: Self types are indicated with the notation
+          |  ${s"class "}$tp ${"{ this: "}$selfType${" => "}
+          |"""
+  }
+
+  case class AbstractMemberMayNotHaveModifier(sym: Symbol, flag: FlagSet)(
+    implicit ctx: Context)
+    extends Message(AbstractMemberMayNotHaveModifierID) {
+    val msg = hl"""abstract $sym may not have `$flag' modifier"""
+    val kind = "Syntax"
+    val explanation = ""
+  }
+
+  case class TopLevelCantBeImplicit(sym: Symbol)(
+    implicit ctx: Context)
+    extends Message(TopLevelCantBeImplicitID) {
+    val msg = hl"""${"implicit"} modifier cannot be used for top-level definitions"""
+    val kind = "Syntax"
+    val explanation = ""
+  }
+
+  case class TypesAndTraitsCantBeImplicit(sym: Symbol)(
+    implicit ctx: Context)
+    extends Message(TypesAndTraitsCantBeImplicitID) {
+    val msg = hl"""${"implicit"} modifier cannot be used for types or traits"""
+    val kind = "Syntax"
+    val explanation = ""
+  }
+
+  case class OnlyClassesCanBeAbstract(sym: Symbol)(
+    implicit ctx: Context)
+    extends Message(OnlyClassesCanBeAbstractID) {
+    val msg = hl"""${"abstract"} modifier can be used only for classes; it should be omitted for abstract members"""
+    val kind = "Syntax"
+    val explanation = ""
+  }
+  case class AbstractOverrideOnlyInTraits(sym: Symbol)(
+    implicit ctx: Context)
+    extends Message(AbstractOverrideOnlyInTraitsID) {
+    val msg = hl"""${"abstract override"} modifier only allowed for members of traits"""
+    val kind = "Syntax"
+    val explanation = ""
+  }
+
+  case class TraitsMayNotBeFinal(sym: Symbol)(
+    implicit ctx: Context)
+    extends Message(TraitsMayNotBeFinalID) {
+    val msg = hl"""$sym may not be ${"final"}"""
+    val kind = "Syntax"
+    val explanation = "A trait can never be final."
+  }
+
+  case class NativeMembersMayNotHaveImplementation(sym: Symbol)(
+    implicit ctx: Context)
+    extends Message(NativeMembersMayNotHaveImplementationID) {
+    val msg = hl"""${"@native"} members may not have an implementation"""
+    val kind = "Syntax"
+    val explanation = ""
+  }
+
+  case class OnlyClassesCanHaveDeclaredButUndefinedMembers(sym: Symbol)(
+    implicit ctx: Context)
+    extends Message(OnlyClassesCanHaveDeclaredButUndefinedMembersID) {
+
+    private val varNote =
+      if (sym.is(Mutable)) "Note that variables need to be initialized to be defined."
+      else ""
+    val msg = hl"""only classes can have declared but undefined members"""
+    val kind = "Syntax"
+    val explanation = s"$varNote"
+  }
+
+  case class CannotExtendAnyVal(sym: Symbol)(implicit ctx: Context)
+    extends Message(CannotExtendAnyValID) {
+    val msg = hl"""$sym cannot extend ${"AnyVal"}"""
+    val kind = "Syntax"
+    val explanation = ""
+  }
+
+  case class CannotHaveSameNameAs(sym: Symbol, cls: Symbol)(implicit ctx: Context)
+    extends Message(CannotHaveSameNameAsID) {
+    val msg = hl"""$sym cannot have the same name as ${cls.showLocated} -- class definitions cannot be overridden"""
+    val kind = "Syntax"
+    val explanation = ""
+  }
+
+
 }
