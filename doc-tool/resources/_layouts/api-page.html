@@ -1,184 +1,198 @@
 ---
-layout: sidebar
+layout: main
 extraCSS:
     - css/api-page.css
 ---
 
-<script>
-    document.title = "{{ site.project }} API - {{ entity.name }}"
-</script>
+<div id="content-wrapper">
+    {% include "sidebar" %}
 
-<div id="entity-container">
-    <div id="entity-title">
-        <span id="entity-annotations">
-            {% for annot in entity.annotations %}@{{ annot | split: '.' | last }} {% endfor %}
-        </span>
-        <span id="entity-modifiers">
-            {{ entity.modifiers | join: " " }}
-        </span>
-        <span id="entity-kind">
-            {{ entity.kind }}
-        </span>
-        <span id="entity-name">
-            {{ entity.name }}
-        </span>
-        {% if entity.typeParams.size > 0 %}
-        <span id="entity-type-params">
-            <span class="no-left">[</span>
-            {% for param in entity.typeParams %}
-            <span class="no-left">
-                {% if forloop.last %}
-                    {{ param }}
-                {% else %}
-                    {{ param }},
-                {% endif %}
-            </span>
-            {% endfor %}
-            <span class="no-left">]</span>
-        </span>
-        {% endif %}
-        {% if entity.superTypes.size > 0 %}
-        <div id="super-types">
-            {% for super in entity.superTypes %}
-            {% if forloop.first %}
-            <span class="keyword">extends</span>
-            {% else %}
-            <span class="keyword">with</span>
-            {% endif %}
-            <span class="entity-super-type">{% renderLink super %}</span>
-            {% endfor %}
-        </div>
-        {% endif %}
-    </div>
+    <script>
+        document.title = "{{ site.project }} API - {{ entity.name }}"
+    </script>
 
-    {% if entity.comment.body %}
-    <div id="entity-body" class="entity-section">
-        {{ entity.comment.body }}
-    </div>
-    {% endif %}
+    <div id="content-body">
+        <button type="button" id="menu-toggle" onclick="toggleMenu()" aria-expanded="false">
+            <span class="sr-only" aria-hidden="true">Toggle navigation</span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+        </button>
 
-    <h1 class="section {% if entity.constructors == null or entity.constructors.size == 0 %}empty{% endif %}">
-        Constructors
-    </h1>
-
-    <div id="entity-constructors" class="entity-section {% if entity.constructors == null or entity.constructors.size == 0 %}empty{% endif %}">
-        {% for constructor in entity.constructors %}
-            {% for plist in constructor %}
-            <div class="member">
-                <div class="member-title">
-                    <span class="member-name">{{ entity.name }}</span>
-                    <span class="no-left">(</span>
-                        {% if plist.isImplicit %}
-                        <span class="no-left keyword">implicit</span>
+        <div id="entity-container">
+            <div id="entity-title">
+                <span id="entity-annotations">
+                    {% for annot in entity.annotations %}@{{ annot | split: '.' | last }} {% endfor %}
+                </span>
+                <span id="entity-modifiers">
+                    {{ entity.modifiers | join: " " }}
+                </span>
+                <span id="entity-kind">
+                    {{ entity.kind }}
+                </span>
+                <span id="entity-name">
+                    {{ entity.name }}
+                </span>
+                {% if entity.typeParams.size > 0 %}
+                <span id="entity-type-params">
+                    <span class="no-left">[</span>
+                    {% for param in entity.typeParams %}
+                    <span class="no-left">
+                        {% if forloop.last %}
+                            {{ param }}
+                        {% else %}
+                            {{ param }},
                         {% endif %}
-                        {% for namedRef in plist.list %}
-                            <span class="{% if forloop.first %}no-left{% endif %}">
-                                {{ namedRef.title }}:{% if namedRef.isByName %} =&gt;{% endif %}
-                            </span>
-                            {% renderRef namedRef.ref %}
-                            {% if forloop.last != true %}
-                                <span class="no-left">, </span>
-                            {% endif %}
-                        {% endfor %}
-                    <span class="no-left">)</span>
-                </div>
-            </div>
-            {% endfor %}
-        {% endfor %}
-    </div>
-
-    <h1 class="section {% if entity.hasVisibleMembers == false %}empty{% endif %}">
-        Members
-    </h1>
-
-    <div id="entity-members" class="entity-section {% if entity.hasVisibleMembers == false %}empty{% endif %}">
-        {% for member in entity.members %}
-        <div id="{{ member.signature }}" class="member {% if member.isPrivate %}private{% elsif member.isProtected %}protected{% endif %}">
-            <div class="member-title">
-                <span class="expand-button {% if member.hasShortenedDocstring == false %}invisible{% endif %}" onclick="toggleMemberBody(this, '{{ member.signature }}');">[+]</span>
-                <span class="member-annotations">
-                    {% for annot in member.annotations %}@{{ annot | split: '.' | last }} {% endfor %}
-                </span>
-                <span class="member-modifiers">
-                    {{ member.modifiers | join: " " }}
-                </span>
-                <span class="member-kind">
-                    {{ member.kind }}
-                </span>
-                <span class="member-name {% if member.isImplicitlyAddedFrom != null %}implicitly-added{% endif %}">
-                    {% if member.kind == "class" or member.kind == "case class" or member.kind == "object" or member.kind == "trait" %}
-                        <a href="{{ site.baseurl }}/api/{{ member.path | join: "/" }}.html">{{ member.name }}</a>
-                    {% elsif member.kind == "package" %}
-                        <a href="{{ site.baseurl }}/api/{{ member.path | join: "/" }}/index.html">{{ member.name }}</a>
-                    {% else %}
-                        {{ member.name }}
-                    {% endif %}
-                </span>
-
-                {% if member.kind == "def" and member.paramLists.size > 0 %}
-                    {% for plist in member.paramLists %}
-                    <span class="no-left">(</span>
-                        {% if plist.isImplicit %}
-                        <span class="no-left keyword">implicit</span>
-                        {% endif %}
-                        {% for namedRef in plist.list %}
-                            <span class="{% if forloop.first %}no-left{% endif %}">
-                                {{ namedRef.title }}:{% if namedRef.isByName %} =&gt;{% endif %}
-                            </span>
-                            {% renderRef namedRef.ref %}
-                            {% if forloop.last != true %}
-                                <span class="no-left">, </span>
-                            {% endif %}
-                        {% endfor %}
-                    <span class="no-left">)</span>
+                    </span>
                     {% endfor %}
-                {% endif %}
-
-                {% if member.kind == "type" %}
-                {% for tparam in member.typeParams %}
-                    {% if forloop.first %}
-                        <span class="no-left">[</span>
-                    {% endif %}
-                    {% if forloop.last %}
-                        <span class="no-left">{{ tparam }}</span>
-                        <span class="no-left">]</span>
-                    {% else %}
-                        <span class="no-left">{{ tparam }}, </span>
-                    {% endif %}
-                {% endfor %}
-                {% if member.alias != null %}
-                <span class="type-alias">
-                    <span class="equals"> = </span>
-                    {% renderRef member.alias %}
+                    <span class="no-left">]</span>
                 </span>
                 {% endif %}
-                {% endif %}
-
-                {% if member.returnValue %}
-                <span class="no-left">: {% renderRef member.returnValue %}</span>
-                {% endif %}
-            </div><!-- end member-title -->
-
-            <div class="member-body">
-                <div class="member-body-short" id="short-body-{{ member.signature }}">
-                    {{ member.comment.short }}
+                {% if entity.superTypes.size > 0 %}
+                <div id="super-types">
+                    {% for super in entity.superTypes %}
+                    {% if forloop.first %}
+                    <span class="keyword">extends</span>
+                    {% else %}
+                    <span class="keyword">with</span>
+                    {% endif %}
+                    <span class="entity-super-type">{% renderLink super %}</span>
+                    {% endfor %}
                 </div>
-                <div class="member-body-long" id ="long-body-{{ member.signature }}">
-                    {{ member.comment.body }}
-                </div>
+                {% endif %}
             </div>
-            <script>
-                function toggleMemberBody(span, sig) {
-                    var shortBody = document.getElementById("short-body-" + sig);
-                    var longBody = document.getElementById("long-body-" + sig);
 
-                    shortBody.classList.toggle("toggled")
-                    longBody.classList.toggle("toggled")
+            {% if entity.comment.body %}
+            <div id="entity-body" class="entity-section">
+                {{ entity.comment.body }}
+            </div>
+            {% endif %}
 
-                    span.innerHTML = (span.innerHTML == "[+]") ?  "[-]" : "[+]";
-                }
-            </script>
-        </div><!-- end member -->
-        {% endfor %}
+            <h1 class="section {% if entity.constructors == null or entity.constructors.size == 0 %}empty{% endif %}">
+                Constructors
+            </h1>
+
+            <div id="entity-constructors" class="entity-section {% if entity.constructors == null or entity.constructors.size == 0 %}empty{% endif %}">
+                {% for constructor in entity.constructors %}
+                    {% for plist in constructor %}
+                    <div class="member">
+                        <div class="member-title">
+                            <span class="member-name">{{ entity.name }}</span>
+                            <span class="no-left">(</span>
+                                {% if plist.isImplicit %}
+                                <span class="no-left keyword">implicit</span>
+                                {% endif %}
+                                {% for namedRef in plist.list %}
+                                    <span class="{% if forloop.first %}no-left{% endif %}">
+                                        {{ namedRef.title }}:{% if namedRef.isByName %} =&gt;{% endif %}
+                                    </span>
+                                    {% renderRef namedRef.ref %}
+                                    {% if forloop.last != true %}
+                                        <span class="no-left">, </span>
+                                    {% endif %}
+                                {% endfor %}
+                            <span class="no-left">)</span>
+                        </div>
+                    </div>
+                    {% endfor %}
+                {% endfor %}
+            </div>
+
+            <h1 class="section {% if entity.hasVisibleMembers == false %}empty{% endif %}">
+                Members
+            </h1>
+
+            <div id="entity-members" class="entity-section {% if entity.hasVisibleMembers == false %}empty{% endif %}">
+                {% for member in entity.members %}
+                <div id="{{ member.signature }}" class="member {% if member.isPrivate %}private{% elsif member.isProtected %}protected{% endif %}">
+                    <div class="member-title">
+                        <span class="expand-button {% if member.hasShortenedDocstring == false %}invisible{% endif %}" onclick="toggleMemberBody(this, '{{ member.signature }}');">[+]</span>
+                        <span class="member-annotations">
+                            {% for annot in member.annotations %}@{{ annot | split: '.' | last }} {% endfor %}
+                        </span>
+                        <span class="member-modifiers">
+                            {{ member.modifiers | join: " " }}
+                        </span>
+                        <span class="member-kind">
+                            {{ member.kind }}
+                        </span>
+                        <span class="member-name {% if member.isImplicitlyAddedFrom != null %}implicitly-added{% endif %}">
+                            {% if member.kind == "class" or member.kind == "case class" or member.kind == "object" or member.kind == "trait" %}
+                                <a href="{{ site.baseurl }}/api/{{ member.path | join: "/" }}.html">{{ member.name }}</a>
+                            {% elsif member.kind == "package" %}
+                                <a href="{{ site.baseurl }}/api/{{ member.path | join: "/" }}/index.html">{{ member.name }}</a>
+                            {% else %}
+                                {{ member.name }}
+                            {% endif %}
+                        </span>
+
+                        {% if member.kind == "def" and member.paramLists.size > 0 %}
+                            {% for plist in member.paramLists %}
+                            <span class="no-left">(</span>
+                                {% if plist.isImplicit %}
+                                <span class="no-left keyword">implicit</span>
+                                {% endif %}
+                                {% for namedRef in plist.list %}
+                                    <span class="{% if forloop.first %}no-left{% endif %}">
+                                        {{ namedRef.title }}:{% if namedRef.isByName %} =&gt;{% endif %}
+                                    </span>
+                                    {% renderRef namedRef.ref %}
+                                    {% if forloop.last != true %}
+                                        <span class="no-left">, </span>
+                                    {% endif %}
+                                {% endfor %}
+                            <span class="no-left">)</span>
+                            {% endfor %}
+                        {% endif %}
+
+                        {% if member.kind == "type" %}
+                        {% for tparam in member.typeParams %}
+                            {% if forloop.first %}
+                                <span class="no-left">[</span>
+                            {% endif %}
+                            {% if forloop.last %}
+                                <span class="no-left">{{ tparam }}</span>
+                                <span class="no-left">]</span>
+                            {% else %}
+                                <span class="no-left">{{ tparam }}, </span>
+                            {% endif %}
+                        {% endfor %}
+                        {% if member.alias != null %}
+                        <span class="type-alias">
+                            <span class="equals"> = </span>
+                            {% renderRef member.alias %}
+                        </span>
+                        {% endif %}
+                        {% endif %}
+
+                        {% if member.returnValue %}
+                        <span class="no-left">: {% renderRef member.returnValue %}</span>
+                        {% endif %}
+                    </div><!-- end member-title -->
+
+                    <div class="member-body">
+                        <div class="member-body-short" id="short-body-{{ member.signature }}">
+                            {{ member.comment.short }}
+                        </div>
+                        <div class="member-body-long" id ="long-body-{{ member.signature }}">
+                            {{ member.comment.body }}
+                        </div>
+                    </div>
+                    <script>
+                        function toggleMemberBody(span, sig) {
+                            var shortBody = document.getElementById("short-body-" + sig);
+                            var longBody = document.getElementById("long-body-" + sig);
+
+                            shortBody.classList.toggle("toggled")
+                            longBody.classList.toggle("toggled")
+
+                            span.innerHTML = (span.innerHTML == "[+]") ?  "[-]" : "[+]";
+                        }
+                    </script>
+                </div><!-- end member -->
+                {% endfor %}
+            </div>
+        </div><!-- end entity-container -->
     </div>
-</div><!-- end entity-container -->
+
+</div><!-- end content-wrapper -->

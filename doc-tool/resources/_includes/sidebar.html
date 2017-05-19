@@ -1,0 +1,35 @@
+<div class="index-wrapper">
+    {% include "toc" %}
+    <ul class="index-entities">
+    {% if docs.size > 0 %}
+    <li class="index-title">
+        <span>API</span>
+    </li>
+    {% endif %}
+    {% for pkg in docs %}
+        <li class="index-entity entity-package">
+            <a class="entity-name" href="{{ site.baseurl }}/api/{{ pkg.path | join: "/" }}/index.html">{{ pkg.name }}</a>
+        </li>
+        {% for member in pkg.children %}
+            {% if member.kind == "object" and member.hasCompanion %}
+            {% elsif member.kind != "package" %}
+            <li class="index-entity {% if member.hasCompanion %} with-companion {% endif %}">
+                <div class="entity-kinds">
+                    {% if member.hasCompanion %}
+                    <a class="letter-anchor object" href="{{ site.baseurl }}/api/{{ member.companionPath | join: "/" }}.html">O</a>
+                    {% endif %}
+                    <a class="letter-anchor {{ member.kind }}" href="{{ site.baseurl }}/api/{{ member.path | join: "/" }}.html">{{ member.kind | first | capitalize }}</a>
+                </div>
+                <a class="entity-name" href="{{ site.baseurl }}/api/{{ member.path | join: "/" }}.html">{{ member.name }}</a>
+            </li>
+            {% endif %}
+        {% endfor %}
+    {% endfor %}
+    </ul>
+</div>
+<script>
+function toggleMenu() {
+    var wrapper = document.getElementById("content-wrapper");
+    wrapper.classList.toggle("toggled");
+}
+</script>
