@@ -282,6 +282,7 @@ object Build {
       val args: Seq[String] = Seq(
         "-siteroot", "docs",
         "-project", "Dotty",
+        "-project-version", dottyVersion,
         "-classpath", s"$dottyLib:$dottyInterfaces:$otherDeps"
       )
         (runMain in Compile).toTask(
