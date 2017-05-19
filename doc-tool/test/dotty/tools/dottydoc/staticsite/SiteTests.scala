@@ -10,7 +10,7 @@ class SiteTests extends DottyDocTest with SourceFileOps {
     assert(site.root.exists && site.root.isDirectory,
            s"'${site.root.getName}' is not a directory")
 
-    val expectedLayouts = Set("main", "index", "sidebar", "blog-page", "doc-page", "api-page")
+    val expectedLayouts = Set("main", "index", "blog-page", "doc-page", "api-page")
     assert(site.layouts.keys == expectedLayouts,
            s"Incorrect layouts in: ${site.layouts.keys}, expected: $expectedLayouts")
   }
@@ -82,6 +82,8 @@ class SiteTests extends DottyDocTest with SourceFileOps {
     val compd  = site.compilableFiles.map(site.stripRoot).toSet
 
     val expectedAssets = Set(
+      "css/toolbar.css",
+      "css/sidebar.css",
       "css/api-page.css",
       "css/dottydoc.css",
       "css/color-brewer.css",

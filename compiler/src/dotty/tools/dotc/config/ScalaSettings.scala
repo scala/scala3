@@ -123,5 +123,12 @@ class ScalaSettings extends Settings.SettingGroup {
     sys.props("user.dir").split(File.separatorChar).last
   )
 
+  val projectVersion = StringSetting (
+    "-project-version",
+    "project version",
+    "The current version of your project",
+    ""
+  )
+
   val wikiSyntax = BooleanSetting("-Xwiki-syntax", "Retains the Scala2 behavior of using Wiki Syntax in Scaladoc")
 }

@@ -86,13 +86,15 @@ object internal {
     annotations: List[String],
     name: String,
     members: List[Entity],
-    modifiers: List[String],
+    private val mods: List[String],
     path: List[String],
     superTypes: List[MaterializableLink] = Nil,
     var comment: Option[Comment] = None,
     var companionPath: List[String] = Nil,
     var parent: Entity = NonEntity
-  ) extends Object
+  ) extends Object {
+    def modifiers: List[String] = mods.filterNot(_ == "final")
+  }
 
   final case class DefImpl(
     symbol: Symbol,

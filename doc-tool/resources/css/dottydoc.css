@@ -1,5 +1,10 @@
+@import url(https://fonts.googleapis.com/css?family=Source+Sans+Pro:200,300,400,600,700);
+@import url(https://fonts.googleapis.com/css?family=Roboto+Slab:100,300,400,700);
+
 html, body {
     overflow-x: hidden;
+    font-family: "Roboto Slab", serif;
+    font-weight: 300;
 }
 
 html {
@@ -13,25 +18,13 @@ body {
 div#content-wrapper {
     min-height: 100vh;
     padding-left: 0;
+    margin-top: 75px;
 }
 
 div#content-wrapper div#content-body {
-    background-color: #f4f3f4;
-    border-left: 1px solid #e0e0e0;
-    box-shadow: -3px 0 5px -2px rgba(0, 0, 0, 0.14);
-    padding: 40px 1px 1px 1px;
+    padding: 20px 1px 1px 1px;
     position: relative;
     min-height: 100vh;
-}
-
-div#content-wrapper div.index-wrapper {
-    background-color: #fafafa;
-    position: fixed;
-    top: 0;
-    left: 0;
-    height: 100%;
-    overflow-y: auto;
-    overflow-x: hidden;
 }
 
 /** Animations: Easing for content body slide on toggle  */
@@ -40,41 +33,6 @@ div#content-wrapper div#content-body {
     -webkit-transition: all .25s ease-out;
          -o-transition: all .25s ease-out;
             transition: all .25s ease-out;
-}
-
-/** Mobile (x < 576px) sidebar: Defaults closed with 60% wide sidebar */
-div#content-wrapper {}
-div#content-wrapper div#content-body { left: 0; }
-div#content-wrapper div.index-wrapper { width: 60%; }
-
-div#content-wrapper.toggled {}
-div#content-wrapper.toggled div#content-body { left: 60%; }
-div#content-wrapper.toggled div.index-wrapper {}
-
-/** Tablet (576px <= x < 768px) sidebar: Defaults closed with 250px wide sidebar */
-@media screen and (min-width: 576px) {
-
-    div#content-wrapper {}
-    div#content-wrapper div#content-body {}
-    div#content-wrapper div.index-wrapper { width: 250px; }
-
-    div#content-wrapper.toggled {}
-    div#content-wrapper.toggled div#content-body { left: 250px; }
-    div#content-wrapper.toggled div.index-wrapper {}
-
-}
-
-/** Desktop (x >= 768px) sidebar: Defaults open with 250px wide sidebar  */
-@media screen and (min-width: 768px) {
-
-    div#content-wrapper { padding-left: 250px; }
-    div#content-wrapper div#content-body {}
-    div#content-wrapper div.index-wrapper { width: 250px; }
-
-    div#content-wrapper.toggled { padding-left: 0; }
-    div#content-wrapper.toggled div#content-body { left: 0; }
-    div#content-wrapper.toggled div.index-wrapper {}
-
 }
 
 div#content-wrapper button#menu-toggle {
@@ -132,6 +90,12 @@ div#entity-container h3 > a,
 div#entity-container h4 > a,
 div#entity-container h5 > a,
 div#entity-container h6 > a,
+div#blog-post-container h1 > a,
+div#blog-post-container h2 > a,
+div#blog-post-container h3 > a,
+div#blog-post-container h4 > a,
+div#blog-post-container h5 > a,
+div#blog-post-container h6 > a,
 div#doc-page-container > h1 > a,
 div#doc-page-container > h2 > a,
 div#doc-page-container > h3 > a,
@@ -140,6 +104,8 @@ div#doc-page-container > h5 > a,
 div#doc-page-container > h6 > a {
     text-decoration: none;
     color: #373a3c;
+    font-family: "Source Sans Pro", sans-serif;
+    font-weight: 400;
 }
 
 div#entity-container h1 > a:hover,
@@ -148,6 +114,12 @@ div#entity-container h3 > a:hover,
 div#entity-container h4 > a:hover,
 div#entity-container h5 > a:hover,
 div#entity-container h6 > a:hover,
+div#blog-post-container h1 > a:hover,
+div#blog-post-container h2 > a:hover,
+div#blog-post-container h3 > a:hover,
+div#blog-post-container h4 > a:hover,
+div#blog-post-container h5 > a:hover,
+div#blog-post-container h6 > a:hover,
 div#doc-page-container > h1 > a:hover,
 div#doc-page-container > h2 > a:hover,
 div#doc-page-container > h3 > a:hover,
@@ -172,159 +144,6 @@ div#doc-page-container > h6 > a:focus {
     outline: none;
 }
 
-ul.index-entities {
-    list-style-type: none;
-    padding-left: 0;
-}
-
-ul.toc {
-    list-style-type: none;
-    padding-top: 18px;
-    padding-left: 0;
-}
-
-ul.toc > li:hover {
-    background-color: transparent;
-}
-
-ul.toc > li.toc-title {
-    margin-top: 1rem;
-}
-
-ul.toc > li.toc-title > a {
-    font-size: 16px;
-    font-weight: bold;
-}
-
-ul.toc > li > a#home-button,
-ul.toc > li > a#home-button:hover {
-    text-align: center;
-    background: transparent;
-}
-
-ul.toc > li > a#home-button svg g#logo-foreground {
-    fill: rgba(202, 68, 94, 1);
-}
-
-ul.toc > li > a#home-button svg g#logo-background {
-    fill: rgba(202, 68, 94, 0.45);
-}
-
-ul.toc > li > a {
-    width: 100%;
-    user-select: none;
-}
-
-ul.toc > li,
-ul.index-entities > li {
-    line-height: 40px;
-    display: inline-block;
-    width: 100%;
-}
-
-ul.index-entities > li.index-entity:not(.entity-package) {
-    width: calc(100% + 40px);
-    transition: all 0.2s ease;
-    margin-left: -40px;
-}
-
-ul.index-entities > li.index-entity.with-companion {
-    width: calc(100% + 80px);
-    margin-left: -80px;
-}
-
-ul.index-entities > li.index-entity:hover {
-    margin-left: 0;
-}
-
-ul.toc > li.logo-li > a {
-    margin: 0;
-    padding: 0;
-    float: none;
-}
-
-li.index-entity.entity-package > a.entity-name {
-  color: #ff4081;
-  text-decoration: none;
-}
-
-ul.toc > li > a,
-ul.index-entities > li > a.entity-name {
-    font-size: 13px;
-    display: block;
-    padding: 0 0 0 24px;
-    color: rgba(0, 0, 0, 0.87);
-    background: transparent;
-    cursor: pointer;
-    float: left;
-}
-
-ul.index-entities > li > div.entity-kinds {
-    float: left;
-}
-
-ul.index-entities > li > div.entity-kinds > a.letter-anchor {
-    float: left;
-    width: 40px;
-    height: 40px;
-    color: white;
-    display: block;
-    text-align: center;
-    text-decoration: none;
-}
-
-ul.index-entities > li > div.entity-kinds > a.letter-anchor:focus,
-ul.index-entities > li > div.entity-kinds > a.letter-anchor:hover {
-    text-decoration: none;
-}
-
-ul.index-entities > li > div.entity-kinds > a.letter-anchor.object {
-    background-color: rgb(44, 108, 141);
-}
-
-ul.index-entities > li > div.entity-kinds > a.letter-anchor.class {
-    background-color: rgb(68, 173, 125);
-}
-
-ul.index-entities > li > div.entity-kinds > a.letter-anchor.trait {
-    background-color: rgb(25, 170, 207);
-}
-
-ul.toc > li > ul.show {
-    display: block;
-    list-style-type: none;
-    font-size: 13px;
-}
-
-ul.toc > li > ul.hide {
-    display: none;
-}
-
-ul.index-entities > li.index-title > span {
-    font-size: 16px;
-    font-weight: bold;
-    color: rgba(0, 0, 0, 0.87);
-    padding: 0 24px;
-}
-
-ul.index-entities > li.index-title:hover {
-    background-color: transparent;
-}
-
-li.index-entity > a:focus {
-    text-decoration: none;
-}
-
-ul.index-entities > li:hover,
-ul.toc > li > a:hover {
-    background-color: rgba(0, 0, 0, 0.2);
-}
-
-ul.index-entities > li > a:hover,
-ul.toc > li > a:hover {
-    text-decoration: none;
-}
-
 .darken {
     background-color: rgba(0, 0, 0, 0.2);
 }
@@ -332,8 +151,9 @@ ul.toc > li > a:hover {
 div#post-title,
 div#post-footer,
 h1#doc-page-title {
-    margin-left: 20px;
-    margin-top: 10px;
+    margin: 10px 0 40px 10px;
+    font-family: "Source Sans Pro", sans-serif;
+    font-weight: 400;
 }
 
 div#post-title > h2#sub-title {
@@ -347,13 +167,21 @@ div#post-title > h3#post-date {
     margin-bottom: 2px;
 }
 
+div#content-wrapper div#content-body.doc-page-body {
+  max-width: 1000px;
+  margin: 0 auto;
+  padding-right: 250px; /** account for sidebar */
+}
+
+div#content-body.doc-page-body > hr {
+  margin-left: 10px;
+}
+
 div#blog-post-container,
 div#doc-page-container {
     background-color: #fff;
     padding: 10px;
     border-radius: 4px;
-    margin: 20px;
-    padding: 30px;
 }
 
 div#doc-page-container > p + h1 {
@@ -380,7 +208,14 @@ pre {
     border: 1px solid rgba(0, 0, 0, 0.1);
 }
 
+p > img {
+  /** Make sure images adhere to container rules */
+  width: 100%;
+  height: auto;
+}
+
 pre > code.language-none,
+pre > code.language-shell,
 pre > code.hljs {
     display: block;
     padding: 10px;

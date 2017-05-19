@@ -3,7 +3,7 @@ layout: doc-page
 title: Getting Started
 ---
 
-                                 
+
 
 Requirements
 ------------
@@ -30,7 +30,7 @@ $ sbt
 hello world
 ```
 
-There are also bash scripts that can be used in the same way. Assuming that you have cloned the Dotty repo locally, append 
+There are also bash scripts that can be used in the same way. Assuming that you have cloned the Dotty repo locally, append
 the following line on your `.bash_profile`:
 
 ```shell
@@ -65,6 +65,5 @@ or via bash:
 $ dotr
 ```
 
-Before contributing to Dotty, we invite you to consult the 
-[Dotty Developer Guidelines](https://github.com/lampepfl/dotty/blob/master/CONTRIBUTING.md).
-   
+Before contributing to Dotty, we invite you to consult the
+[Dotty Developer Guidelines](https://github.com/lampepfl/dotty/blob/master/CONTRIBUTING).

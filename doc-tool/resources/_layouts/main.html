@@ -7,6 +7,8 @@
 
         <title>{{ page.title }}</title>
 
+        <link rel="icon" type="image/png" href="{{ site.baseurl }}/images/favicon.png">
+
         <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
 
         <link
@@ -52,6 +54,10 @@
                 $('pre code').each(function(i, block) {
                     hljs.highlightBlock(block);
                 });
+
+                if (window.location.hash.length > 0) {
+                    window.scrollTo(0, $(window.location.hash).offset().top - 90);
+                }
             });
         </script>
     </body>
