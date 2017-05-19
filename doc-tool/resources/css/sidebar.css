@@ -10,6 +10,7 @@ div#content-wrapper div.index-wrapper {
     font-family: "Titillium Web", sans-serif;
     font-weight: 200;
     padding-left: 14px;
+    padding-bottom: 75px;
 }
 
 /** Mobile (x < 576px) sidebar: Defaults closed with 60% wide sidebar */
@@ -131,6 +132,30 @@ li.entity-package > ul.package-entities {
 li.entity-package > ul.package-entities > li {
     margin-left: -52px;
     transition: all 0.2s ease;
+}
+
+li.entity-package > ul.package-entities > li#hide-hidden-by-default,
+li.entity-package > ul.package-entities > li#show-hidden-by-default {
+  margin-left: 0;
+  color: #ff4081;
+  font-size: 13px;
+}
+
+li.entity-package > ul.package-entities > li#hide-hidden-by-default:hover,
+li.entity-package > ul.package-entities > li#show-hidden-by-default:hover {
+  cursor: pointer;
+}
+
+li.entity-package > ul.package-entities > li#show-hidden-by-default,
+li.entity-package > ul.package-entities > li#hide-hidden-by-default.toggled,
+li.entity-package > ul.package-entities > li.hidden-by-default.toggled {
+  display: block;
+}
+
+li.entity-package > ul.package-entities > li.hidden-by-default,
+li.entity-package > ul.package-entities > li#show-hidden-by-default.toggled,
+li.entity-package > ul.package-entities > li#hide-hidden-by-default {
+  display: none;
 }
 
 li.entity-package > ul.package-entities > li.with-companion {
