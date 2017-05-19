@@ -2,24 +2,21 @@
 layout: main
 extraCSS:
     - css/sidebar.css
+    - css/toolbar.css
     - css/api-page.css
 ---
 
+{% include "toolbar" %}
+
 <div id="content-wrapper">
+    {% assign sidebarTop = "75px" %}
     {% include "sidebar" %}
 
     <script>
-        document.title = "{{ site.project }} API - {{ entity.name }}"
+        document.title = "{{ site.project }} Docs - {{ entity.name }}"
     </script>
 
     <div id="content-body">
-        <button type="button" id="menu-toggle" onclick="toggleMenu()" aria-expanded="false">
-            <span class="sr-only" aria-hidden="true">Toggle navigation</span>
-            <span class="icon-bar"></span>
-            <span class="icon-bar"></span>
-            <span class="icon-bar"></span>
-        </button>
-
         <div id="entity-container">
             <div id="entity-title">
                 <span id="entity-annotations">

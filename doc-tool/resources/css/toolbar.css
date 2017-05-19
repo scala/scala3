@@ -1,0 +1,56 @@
+@import url(https://fonts.googleapis.com/css?family=Source+Sans+Pro:200,300,400,600,700);
+
+div#toolbar {
+  height: 75px;
+  width: 100%;
+  background-color: #4c5264;
+  position: fixed;
+  top: 0; left: 0;
+  z-index: 2;
+}
+
+div#toolbar > a#home-button svg g#logo-foreground {
+    fill: rgba(202, 68, 94, 1);
+}
+
+div#toolbar > a#home-button svg g#logo-background {
+    fill: rgba(202, 68, 94, 0.45);
+}
+
+div#toolbar > a#home-button {
+    margin: 9px 0 0 38px;
+    user-select: none;
+    float: left;
+}
+
+div#toolbar > div#project-details {
+    float: left;
+    color: #fff;
+    font-family: "Source Sans Pro", sans-serif;
+    margin: 18px 0 0 40px;
+    padding-left: 10px;
+}
+
+div#toolbar > div#project-details:before {
+    display: block;
+    content: '';
+    position: absolute;
+    top: 22px;
+    left: 95px;
+    width: 1px;
+    bottom: 20px;
+    background-color: #767e94;
+}
+
+div#toolbar > div#project-details > h1#project-name {
+  font-size: 20px;
+  font-weight: 300;
+  margin-bottom: 3px;
+}
+
+div#toolbar > div#project-details > h2#project-version {
+  font-size: 12px;
+  font-weight: 200;
+  margin-left: 1px;
+}
+

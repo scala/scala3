@@ -1,8 +1,22 @@
 ---
-layout: sidebar
+layout: main
+extraCSS:
+    - css/sidebar.css
+    - css/toolbar.css
+    - css/api-page.css
 ---
 
-<h1 id="doc-page-title">{{ page.title }}</h1>
-<div id="doc-page-container">
-    {{ content }}
-</div>
+{% include "toolbar" %}
+
+<div id="content-wrapper">
+    {% assign sidebarTop = "75px" %}
+    {% include "sidebar" %}
+
+    <div id="content-body" class="doc-page-body">
+        <h1 id="doc-page-title">{{ page.title }}</h1>
+        <hr/>
+        <div id="doc-page-container">
+            {{ content }}
+        </div>
+    </div><!-- end content-body -->
+</div><!-- end content-wrapper -->

@@ -127,6 +127,7 @@ case class Site(val root: JFile, val projectTitle: String, val documentation: Ma
 
       // Copy statics included in resources
       Map(
+        "css/toolbar.css" -> "/css/toolbar.css",
         "css/sidebar.css" -> "/css/sidebar.css",
         "css/api-page.css" -> "/css/api-page.css",
         "css/dottydoc.css" -> "/css/dottydoc.css",
@@ -364,7 +365,7 @@ case class Site(val root: JFile, val projectTitle: String, val documentation: Ma
     val defaultIncludes: Map[String, Include] = Map(
       "header.html" -> "/_includes/header.html",
       "scala-logo.svg" -> "/_includes/scala-logo.svg",
-      "toc.html" -> "/_includes/toc.html",
+      "toolbar.html" -> "/_includes/toolbar.html",
       "sidebar.html" -> "/_includes/sidebar.html"
     ).map {
       case (name, path) =>
