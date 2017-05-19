@@ -467,16 +467,13 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
 
     def finishSym(sym: Symbol): Symbol = {
       if (sym.isClass) sym.setFlag(Scala2x)
-      val owner = sym.owner
-      if (owner.isClass &&
-          !(  isUnpickleRoot(sym)
-           || (sym is Scala2Existential)
-           || isRefinementClass(sym)
-           )
-         )
-        owner.asClass.enter(sym, symScope(owner))
-      else if (isRefinementClass(owner))
-        symScope(owner).openForMutations.enter(sym)
+      if (!(isRefinementClass(sym) || isUnpickleRoot(sym) || (sym is Scala2Existential))) {
+        val owner = sym.owner
+        if (owner.isClass)
+          owner.asClass.enter(sym, symScope(owner))
+        else if (isRefinementClass(owner))
+          symScope(owner).openForMutations.enter(sym)
+      }
       sym
     }
 
