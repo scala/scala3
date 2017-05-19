@@ -352,7 +352,8 @@ object messages {
     val explanation = {
       val TypeDef(name, impl @ Template(constr0, parents, self, _)) = cdef
       val exampleArgs =
-        constr0.vparamss(0).map(_.withMods(untpd.Modifiers()).show).mkString(", ")
+        if(constr0.vparamss.isEmpty) "..."
+        else constr0.vparamss(0).map(_.withMods(untpd.Modifiers()).show).mkString(", ")
       def defHasBody[T] = impl.body.exists(!_.isEmpty)
       val exampleBody = if (defHasBody) "{\n ...\n }" else ""
       hl"""|There may not be any method, member or object in scope with the same name as
