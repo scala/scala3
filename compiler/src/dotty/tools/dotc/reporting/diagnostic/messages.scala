@@ -1428,6 +1428,7 @@ object messages {
     val kind = "Syntax"
     val explanation = ""
   }
+
   case class AbstractOverrideOnlyInTraits(sym: Symbol)(
     implicit ctx: Context)
     extends Message(AbstractOverrideOnlyInTraitsID) {
