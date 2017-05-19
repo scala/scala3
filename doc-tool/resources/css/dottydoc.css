@@ -1,5 +1,10 @@
+@import url(https://fonts.googleapis.com/css?family=Source+Sans+Pro:200,300,400,600,700);
+@import url(https://fonts.googleapis.com/css?family=Roboto+Slab:100,300,400,700);
+
 html, body {
     overflow-x: hidden;
+    font-family: "Roboto Slab", serif;
+    font-weight: 300;
 }
 
 html {
@@ -13,13 +18,11 @@ body {
 div#content-wrapper {
     min-height: 100vh;
     padding-left: 0;
+    margin-top: 75px;
 }
 
 div#content-wrapper div#content-body {
-    background-color: #f4f3f4;
-    border-left: 1px solid #e0e0e0;
-    box-shadow: -3px 0 5px -2px rgba(0, 0, 0, 0.14);
-    padding: 40px 1px 1px 1px;
+    padding: 20px 1px 1px 1px;
     position: relative;
     min-height: 100vh;
 }
@@ -87,6 +90,12 @@ div#entity-container h3 > a,
 div#entity-container h4 > a,
 div#entity-container h5 > a,
 div#entity-container h6 > a,
+div#blog-post-container h1 > a,
+div#blog-post-container h2 > a,
+div#blog-post-container h3 > a,
+div#blog-post-container h4 > a,
+div#blog-post-container h5 > a,
+div#blog-post-container h6 > a,
 div#doc-page-container > h1 > a,
 div#doc-page-container > h2 > a,
 div#doc-page-container > h3 > a,
@@ -95,6 +104,8 @@ div#doc-page-container > h5 > a,
 div#doc-page-container > h6 > a {
     text-decoration: none;
     color: #373a3c;
+    font-family: "Source Sans Pro", sans-serif;
+    font-weight: 400;
 }
 
 div#entity-container h1 > a:hover,
@@ -103,6 +114,12 @@ div#entity-container h3 > a:hover,
 div#entity-container h4 > a:hover,
 div#entity-container h5 > a:hover,
 div#entity-container h6 > a:hover,
+div#blog-post-container h1 > a:hover,
+div#blog-post-container h2 > a:hover,
+div#blog-post-container h3 > a:hover,
+div#blog-post-container h4 > a:hover,
+div#blog-post-container h5 > a:hover,
+div#blog-post-container h6 > a:hover,
 div#doc-page-container > h1 > a:hover,
 div#doc-page-container > h2 > a:hover,
 div#doc-page-container > h3 > a:hover,
@@ -134,8 +151,9 @@ div#doc-page-container > h6 > a:focus {
 div#post-title,
 div#post-footer,
 h1#doc-page-title {
-    margin-left: 20px;
-    margin-top: 10px;
+    margin: 10px 0 40px 10px;
+    font-family: "Source Sans Pro", sans-serif;
+    font-weight: 400;
 }
 
 div#post-title > h2#sub-title {
@@ -149,13 +167,21 @@ div#post-title > h3#post-date {
     margin-bottom: 2px;
 }
 
+div#content-wrapper div#content-body.doc-page-body {
+  max-width: 1000px;
+  margin: 0 auto;
+  padding-right: 250px; /** account for sidebar */
+}
+
+div#content-body.doc-page-body > hr {
+  margin-left: 10px;
+}
+
 div#blog-post-container,
 div#doc-page-container {
     background-color: #fff;
     padding: 10px;
     border-radius: 4px;
-    margin: 20px;
-    padding: 30px;
 }
 
 div#doc-page-container > p + h1 {
@@ -182,7 +208,14 @@ pre {
     border: 1px solid rgba(0, 0, 0, 0.1);
 }
 
+p > img {
+  /** Make sure images adhere to container rules */
+  width: 100%;
+  height: auto;
+}
+
 pre > code.language-none,
+pre > code.language-shell,
 pre > code.hljs {
     display: block;
     padding: 10px;

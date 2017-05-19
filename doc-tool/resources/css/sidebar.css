@@ -1,11 +1,15 @@
+@import url(https://fonts.googleapis.com/css?family=Titillium+Web:200,300,400,600);
+
 div#content-wrapper div.index-wrapper {
-    background-color: #fafafa;
     position: fixed;
     top: 0;
     left: 0;
     height: 100%;
     overflow-y: auto;
     overflow-x: hidden;
+    font-family: "Titillium Web", sans-serif;
+    font-weight: 200;
+    padding-left: 14px;
 }
 
 /** Mobile (x < 576px) sidebar: Defaults closed with 60% wide sidebar */
@@ -45,24 +49,12 @@ ul.toc > li > a#home-button:hover {
     background: transparent;
 }
 
-ul.toc > li > a#home-button svg g#logo-foreground {
-    fill: rgba(202, 68, 94, 1);
-}
-
-ul.toc > li > a#home-button svg g#logo-background {
-    fill: rgba(202, 68, 94, 0.45);
-}
-
-ul.toc > li > a {
-    width: 100%;
-    user-select: none;
-}
-
 ul.toc > li,
 ul.index-entities > li {
     line-height: 40px;
     display: inline-block;
     width: 100%;
+    border-left: 1px solid #fff;
 }
 
 ul.toc > li.logo-li > a {
@@ -75,10 +67,12 @@ ul.toc > li > a {
     font-size: 13px;
     display: block;
     padding: 0 0 0 24px;
+    width: 100%;
     color: rgba(0, 0, 0, 0.87);
     background: transparent;
     cursor: pointer;
     float: left;
+    text-transform: uppercase;
 }
 
 ul.toc > li > ul.show {
@@ -96,6 +90,7 @@ ul.index-entities > li.index-title > span {
     font-weight: bold;
     color: rgba(0, 0, 0, 0.87);
     padding: 0 24px;
+    text-transform: uppercase;
 }
 
 ul.index-entities > li.index-title:hover {
@@ -107,11 +102,11 @@ li.index-entity > a:focus {
 }
 
 ul.toc > li > a:hover {
-    background-color: rgba(0, 0, 0, 0.2);
+    text-decoration: none;
 }
 
-ul.toc > li > a:hover {
-    text-decoration: none;
+ul.toc > li:hover {
+  border-left: 1px solid #0fa00f;
 }
 
 li.index-entity.entity-package:hover {
@@ -122,6 +117,7 @@ li.entity-package > h1 > a.entity-name {
     color: #ff4081;
     text-decoration: none;
     font-size: 13px;
+    font-weight: 300;
     padding-left: 24px;
 }
 
@@ -200,10 +196,11 @@ div#cover-block {
 }
 
 /** Tablet (576px <= x < 768px) sidebar: Defaults closed with 250px wide sidebar */
-@media screen and (min-width: 576px) {
+@media screen and (min-width: 576px) and (max-width: 899px) {
     div#content-wrapper {}
     div#content-wrapper div#content-body {}
-    div#content-wrapper div.index-wrapper { width: 250px; }
+    div#content-wrapper div#content-body.doc-page-body { padding-right: 0; }
+    div#content-wrapper div.index-wrapper { display: none; }
 
     div#content-wrapper.toggled {}
     div#content-wrapper.toggled div#content-body { left: 250px; }
@@ -211,10 +208,13 @@ div#cover-block {
 }
 
 /** Desktop (x >= 768px) sidebar: Defaults open with 250px wide sidebar  */
-@media screen and (min-width: 768px) {
+@media screen and (min-width: 900px) {
     div#content-wrapper { padding-left: 250px; }
     div#content-wrapper div#content-body {}
-    div#content-wrapper div.index-wrapper { width: 250px; }
+    div#content-wrapper div.index-wrapper {
+        width: 250px;
+        display: block;
+    }
 
     div#content-wrapper.toggled { padding-left: 0; }
     div#content-wrapper.toggled div#content-body { left: 0; }
