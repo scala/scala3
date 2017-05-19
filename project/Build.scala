@@ -891,7 +891,7 @@ object DottyInjectedPlugin extends AutoPlugin {
      publishArtifact in Test := false,
      homepage := Some(url(dottyGithubUrl)),
      licenses += ("BSD New",
-       url("$dottyGithubUrl/blob/master/LICENSE.md")),
+       url(s"$dottyGithubUrl/blob/master/LICENSE.md")),
      scmInfo := Some(
        ScmInfo(
          url(dottyGithubUrl),

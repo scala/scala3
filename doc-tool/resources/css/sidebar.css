@@ -25,6 +25,14 @@ ul.index-entities {
     padding-left: 0;
 }
 
+ul.index-entities > li > input#search-api-input {
+    border: 0;
+    margin-left: 22px;
+    outline: none;
+    line-height: 35px;
+    box-shadow: inset 0 0px 0 white, inset 0 -0.5px 0 rgba(0, 0, 0, 0.5);
+}
+
 ul.toc {
     list-style-type: none;
     padding-top: 18px;
