@@ -130,6 +130,11 @@ case class Site(val root: JFile, val projectTitle: String, val documentation: Ma
         "css/api-page.css" -> "/css/api-page.css",
         "css/dottydoc.css" -> "/css/dottydoc.css",
         "css/color-brewer.css" -> "/css/color-brewer.css",
+        "css/font-awesome.min.css" -> "/css/font-awesome.min.css",
+        "css/bootstrap.min.css" -> "/css/bootstrap.min.css",
+        "js/bootstrap.min.js" -> "/js/bootstrap.min.js",
+        "js/jquery.min.js" -> "/js/jquery.min.js",
+        "js/tether.min.js" -> "/js/tether.min.js",
         "js/highlight.pack.js" -> "/js/highlight.pack.js"
       )
       .mapValues(getResource)
