@@ -84,6 +84,7 @@ class SiteTests extends DottyDocTest with SourceFileOps {
     val expectedAssets = Set(
       "css/toolbar.css",
       "css/sidebar.css",
+      "css/search.css",
       "css/api-page.css",
       "css/dottydoc.css",
       "css/color-brewer.css",

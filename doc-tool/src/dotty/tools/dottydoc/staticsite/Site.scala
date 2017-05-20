@@ -134,6 +134,7 @@ case class Site(
       // Copy statics included in resources
       Map(
         "css/toolbar.css" -> "/css/toolbar.css",
+        "css/search.css" -> "/css/search.css",
         "css/sidebar.css" -> "/css/sidebar.css",
         "css/api-page.css" -> "/css/api-page.css",
         "css/dottydoc.css" -> "/css/dottydoc.css",
@@ -209,7 +210,7 @@ case class Site(
 
       // generate search page:
       val target = mkdirs(fs.getPath(outDir.getAbsolutePath +  "/api/search.html"))
-      val searchPageParams = defaultParams(target.toFile).withPosts(blogInfo).toMap
+      val searchPageParams = defaultParams(target.toFile, -1).withPosts(blogInfo).toMap
       val searchPage = new HtmlPage("_layouts/search.html", layouts("search").content, searchPageParams, includes)
       render(searchPage).foreach { rendered =>
         Files.copy(
