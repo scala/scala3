@@ -184,7 +184,7 @@ object Scanners {
       def nextPos: Int = (lookahead.getc(): @switch) match {
         case ' ' | '\t' => nextPos
         case CR | LF | FF =>
-          // if we encounter line delimitng whitespace we don't count it, since
+          // if we encounter line delimiting whitespace we don't count it, since
           // it seems not to affect positions in source
           nextPos - 1
         case _ => lookahead.charOffset - 1
@@ -194,6 +194,11 @@ object Scanners {
 
     /** Returns the closest docstring preceding the position supplied */
     def getDocComment(pos: Int): Option[Comment] = docstringMap.get(pos)
+
+    private[this] var myEndComments = new ListBuffer[Comment]
+
+    /** Comments of the form `// end <ident>` */
+    def endComments: List[Comment] = myEndComments.toList
 
     /** A buffer for comments */
     val commentBuf = new StringBuilder
@@ -639,10 +644,8 @@ object Scanners {
     }
 
     private def skipComment(): Boolean = {
-      def appendToComment(ch: Char) =
-        if (keepComments) commentBuf.append(ch)
       def nextChar() = {
-        appendToComment(ch)
+        commentBuf.append(ch)
         Scanner.this.nextChar()
       }
       def skipLine(): Unit = {
@@ -667,14 +670,11 @@ object Scanners {
       def nestedComment() = { nextChar(); skipComment() }
       val start = lastCharOffset
       def finishComment(): Boolean = {
-        if (keepComments) {
-          val pos = Position(start, charOffset - 1, start)
-          val comment = Comment(pos, flushBuf(commentBuf))
+        val pos = Position(start, charOffset - 1, start)
+        val comment = Comment(pos, flushBuf(commentBuf))
 
-          if (comment.isDocComment) {
-            addComment(comment)
-          }
-        }
+        if (keepComments && comment.isDocComment) addComment(comment)
+        if (comment.endCommentString.nonEmpty) myEndComments += comment
 
         true
       }

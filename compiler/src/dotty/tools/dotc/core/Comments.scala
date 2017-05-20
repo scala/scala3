@@ -8,9 +8,11 @@ import util.SourceFile
 import util.Positions._
 import util.CommentParsing._
 import util.Property.Key
+import util.Chars.{isIdentifierPart, isOperatorPart}
 import parsing.Parsers.Parser
 import reporting.diagnostic.messages.ProperDefinitionNotFound
 
+// TODO Document. Also, this should not be in core. util or ast is better.
 object Comments {
   val ContextDoc = new Key[ContextDocstrings]
 
@@ -18,6 +20,8 @@ object Comments {
   implicit class CommentsContext(val ctx: Context) extends AnyVal {
     def docCtx: Option[ContextDocstrings] = ctx.property(ContextDoc)
   }
+
+  private final val endCommentPrefix = "// end "
 
   /** Context for Docstrings, contains basic functionality for getting
     * docstrings via `Symbol` and expanding templates
@@ -49,6 +53,19 @@ object Comments {
     def usecases: List[UseCase]
 
     val isDocComment = raw.startsWith("/**")
+
+    /** If comment starts with `// end `, the identifier immediately following it.
+     *  The identifier counts if the comment ends with it, or if it followed by
+     *  a punctuation character in '.', ';', ','.
+     */
+    val endCommentString: String =
+      if (raw.startsWith(endCommentPrefix)) {
+        val contents = raw.drop(endCommentPrefix.length)
+        val str = contents.takeWhile(c => isIdentifierPart(c) || isOperatorPart(c))
+        val follow = contents.drop(str.length)
+        if (follow.isEmpty || ".;,".contains(follow.head)) str else ""
+      }
+      else ""
 
     def expand(f: String => String): Comment = new Comment(pos, f(raw)) {
       val isExpanded = true

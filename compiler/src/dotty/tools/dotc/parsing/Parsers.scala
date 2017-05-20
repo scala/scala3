@@ -24,6 +24,7 @@ import Comments._
 import scala.annotation.{tailrec, switch}
 import util.DotClass
 import rewrite.Rewrites.patch
+import CheckAlignments.checkEndComments
 
 object Parsers {
 
@@ -960,6 +961,7 @@ object Parsers {
         t
       } else {
         val t = expr()
+        newLineOptWhenFollowedBy(altToken)
         accept(altToken)
         t
       }
@@ -2457,6 +2459,7 @@ object Parsers {
         else
           ts ++= topStatSeq()
 
+        checkEndComments(source, in.endComments, ts.toList)
         ts.toList
       }
 

@@ -6,7 +6,9 @@ import core.Decorators._
 import util.Positions._
 import Trees.{MemberDef, DefTree}
 
-/** Utility functions to go from typed to untyped ASTs */
+/** Utility functions to go from typed to untyped ASTs
+ *  and to navigate in untyped ASTs
+ */
 object NavigateAST {
 
   /** The untyped tree corresponding to typed tree `tree` in the compilation
@@ -57,7 +59,6 @@ object NavigateAST {
   def untypedPath(pos: Position)(implicit ctx: Context): List[Positioned] =
     pathTo(pos, ctx.compilationUnit.untpdTree)
 
-
   /** The reverse path from node `from` to the node that closest encloses position `pos`,
    *  or `Nil` if no such path exists. If a non-empty path is returned it starts with
    *  the node closest enclosing `pos` and ends with `from`.
@@ -78,5 +79,29 @@ object NavigateAST {
       if (p.pos contains pos) childPath(p.productIterator, p :: path)
       else path
     singlePath(from, Nil)
+  }
+
+  /** The subtrees of `roots` that immediately precede `offset`, from outer to inner.
+   *  Every returned subtree `t` satisfies the following condition
+   *
+   *    - t's position is a non-empty, non-synthetic interval
+   *    - t's end position  <=  offset`  and
+   *    - there is no other eligible tree t' which lies entirely between t's end position and `offset`.
+   */
+  def precedingTrees(offset: Int, roots: List[Positioned])(implicit ctx: Context): List[Positioned] = {
+    def precedingPath(xs: List[Any], path: List[Positioned]): List[Positioned] = xs match {
+      case (p: Positioned) :: xs1
+      if p.pos.exists && p.pos.start < p.pos.end && p.pos.start <= offset =>
+        val children = p.productIterator.toList.reverse
+        if (!p.pos.isSynthetic && p.pos.end <= offset) precedingPath(children, p :: path)
+        else precedingPath(children ::: xs1, path)
+      case (ys: List[_]) :: xs1 =>
+        precedingPath(ys.reverse ::: xs1, path)
+      case _ :: xs1 =>
+        precedingPath(xs1, path)
+      case _ =>
+        path
+    }
+    precedingPath(roots.reverse, Nil)
   }
 }
