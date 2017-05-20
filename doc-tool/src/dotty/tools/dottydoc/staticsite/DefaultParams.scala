@@ -5,6 +5,8 @@ package staticsite
 import model.{ Entity, Package, NonEntity }
 
 import java.util.{ HashMap, List => JList, Map => JMap }
+import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
 import scala.collection.JavaConverters._
 
 case class DefaultParams(
@@ -58,7 +60,7 @@ case class DefaultParams(
   def withDate(d: String) = copy(page = PageInfo(page.url, d))
 }
 
-case class PageInfo(url: String, date: String = "") {
+case class PageInfo(url: String, date: String = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd")).toString ) {
   val path: Array[String] = url.split('/').reverse.drop(1)
 }
 
