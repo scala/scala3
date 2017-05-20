@@ -61,19 +61,19 @@ onmessage = function(e) {
                     "package": parent,
                     "entity": entity
                 });
-            } else {
-                var searchChild = function(member) {
-                    if (searchRegex.test(member.name)) {
-                        postMessage({
-                            "type": "memberResult",
-                            "package": parent,
-                            "parent": entity,
-                            "member": member,
-                        });
-                    }
-                };
-                entity.members.forEach(searchChild);
             }
+
+            var searchChild = function(member) {
+                if (searchRegex.test(member.name)) {
+                    postMessage({
+                        "type": "memberResult",
+                        "package": parent,
+                        "parent": entity,
+                        "member": member,
+                    });
+                }
+            };
+            entity.members.forEach(searchChild);
         };
     };
 
