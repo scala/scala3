@@ -90,6 +90,7 @@ class SiteTests extends DottyDocTest with SourceFileOps {
       "css/color-brewer.css",
       "css/bootstrap.min.css",
       "css/font-awesome.min.css",
+      "js/api-search.js",
       "js/highlight.pack.js",
       "js/bootstrap.min.js",
       "js/tether.min.js",

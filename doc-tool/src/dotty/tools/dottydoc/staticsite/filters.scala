@@ -2,8 +2,9 @@ package dotty.tools
 package dottydoc
 package staticsite
 
-import java.util.{ Map => JMap }
+import java.util.{ Map => JMap, List => JList }
 
+import com.fasterxml.jackson.databind.ObjectMapper
 import liqp.filters.Filter
 
 /** Custom liquid template filters */
@@ -36,6 +37,22 @@ object filters {
     override def apply(value: Any, params: AnyRef*): AnyRef = value match {
       case str: String if str.nonEmpty => str.charAt(0).toString
       case xs: Array[String] if xs.nonEmpty => xs.head
+      case _ => null
+    }
+  }
+
+  /** Used to transform java representation to valid JSON
+   *
+   *  This can be used on things like the docs (`java.util.List[Map[String,_]]`)
+   *  which are available globally:
+   *
+   *  ```html
+   *  {{ docs | json }}
+   *  ```
+   */
+  final class Json extends Filter("json") {
+    override def apply(value: Any, params: AnyRef*): AnyRef = value match {
+      case map: JList[_] => new ObjectMapper().writeValueAsString(map)
       case _ => null
     }
   }

@@ -17,8 +17,11 @@
           var input = document.getElementById("search-api-input");
           input.onkeydown = function(evt) {
               evt = evt || window.event;
-              if (evt.keyCode == 13)
-                  window.location = "{{ site.baseurl }}/api/search.html?searchTerm=" + input.value;
+              if (evt.keyCode == 13) window.location = (
+                  "{{ site.baseurl }}/api/search.html?" +
+                  "searchTerm=" + input.value +
+                  "&previousUrl=" + encodeURI(window.location)
+              );
           };
       </script>
     </li>

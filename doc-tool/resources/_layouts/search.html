@@ -7,9 +7,41 @@ extraCSS:
 
 {% include "toolbar" %}
 
+<a id="back-anchor" href="">&lt; Back</a>
 <h1 id="searching-for"></h1>
 
 <script>
-    document.getElementById("searching-for").innerHTML =
-        location.search;
+    // Parse parameters from URL:
+    var parameters = [];
+    var apiSearch = undefined;
+    (function() {
+        var pairs = location.search.substring(1).split('&');
+        for (var i = 0; i < pairs.length; i++) {
+            var keyVal = pairs[i].split('=');
+            parameters[keyVal[0]] = keyVal.length == 2 ? keyVal[1] : undefined;
+        }
+    })();
+
+    // Set search term and back button:
+    var searchTerm = parameters["searchTerm"];
+    document.getElementById("searching-for").innerHTML = 'Seaching for "' + searchTerm + '"...';
+    document.getElementById("back-anchor").href = parameters["previousUrl"];
+
+    if (!window.Worker) {
+        document.getElementById("searching-for").innerHTML =
+            "Couldn't search for \"" + searchTerm + "\", " +
+            "web workers not supported. Please update your browser.";
+    }
+    else {
+      apiSearch = new Worker("{{ site.baseurl }}/js/api-search.js");
+      apiSearch.postMessage({
+        "type":   "setup",
+        "search": searchTerm,
+        "docs":   {{ docs | json }},
+      });
+
+      apiSearch.onmessage = function(res) {
+        console.log("got res: " + res.data);
+      };
+    }
 </script>
