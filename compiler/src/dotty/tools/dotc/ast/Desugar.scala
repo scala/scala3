@@ -778,7 +778,7 @@ object desugar {
     /**    { label def lname(): Unit = rhs; call }
      */
     def labelDefAndCall(lname: TermName, rhs: Tree, call: Tree) = {
-      val ldef = DefDef(lname, Nil, ListOfNil, TypeTree(defn.UnitType), rhs).withFlags(Label)
+      val ldef = DefDef(lname, Nil, ListOfNil, TypeTree(defn.UnitType), rhs).withFlags(Label | Synthetic)
       Block(ldef, call)
     }
 
