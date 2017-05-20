@@ -206,6 +206,18 @@ case class Site(
         genDoc(pkg)
         pkg.children.foreach(genDoc)
       }
+
+      // generate search page:
+      val target = mkdirs(fs.getPath(outDir.getAbsolutePath +  "/api/search.html"))
+      val searchPageParams = defaultParams(target.toFile).withPosts(blogInfo).toMap
+      val searchPage = new HtmlPage("_layouts/search.html", layouts("search").content, searchPageParams, includes)
+      render(searchPage).foreach { rendered =>
+        Files.copy(
+          new ByteArrayInputStream(rendered.getBytes(StandardCharsets.UTF_8)),
+          target,
+          REPLACE_EXISTING
+        )
+      }
     }
 
   /** Generate HTML files from markdown and .html sources */
@@ -338,6 +350,7 @@ case class Site(
 
     val defaultLayouts: Map[String, Layout] = Map(
       "main" -> "/_layouts/main.html",
+      "search" -> "/_layouts/search.html",
       "doc-page" -> "/_layouts/doc-page.html",
       "api-page" -> "/_layouts/api-page.html",
       "blog-page" -> "/_layouts/blog-page.html",

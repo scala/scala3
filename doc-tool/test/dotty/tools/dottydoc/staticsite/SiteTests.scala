@@ -10,7 +10,7 @@ class SiteTests extends DottyDocTest with SourceFileOps {
     assert(site.root.exists && site.root.isDirectory,
            s"'${site.root.getName}' is not a directory")
 
-    val expectedLayouts = Set("main", "index", "blog-page", "doc-page", "api-page")
+    val expectedLayouts = Set("main", "index", "blog-page", "doc-page", "api-page", "search")
     assert(site.layouts.keys == expectedLayouts,
            s"Incorrect layouts in: ${site.layouts.keys}, expected: $expectedLayouts")
   }
@@ -99,9 +99,12 @@ class SiteTests extends DottyDocTest with SourceFileOps {
       "index.md"
     )
 
+    def printSet(xs: Set[String]): String =
+      xs.toList.sorted.mkString("\n{\n  ", ",\n  ", "\n}")
+
     assert(expectedAssets == assets,
-           s"assets incorrect, found: $assets - expected $expectedAssets")
+           s"assets incorrect, found: ${ printSet(assets) } - expected ${ printSet(expectedAssets) }")
     assert(expectedCompd == compd,
-           s"compilable files incorrect, found: $compd - expected $expectedCompd")
+           s"compilable files incorrect, found: ${ printSet(compd) } - expected ${ printSet(expectedCompd) }")
   }
 }
