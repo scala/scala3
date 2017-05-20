@@ -77,14 +77,13 @@ trait MessageRendering {
   /** The column markers aligned under the error */
   def columnMarker(pos: SourcePosition, offset: Int)(implicit ctx: Context): String = {
     val prefix = " " * (offset - 1)
-    val whitespace = " " * pos.startColumn
+    val padding = pos.startColumnPadding
     val carets = Red {
       if (pos.startLine == pos.endLine)
         "^" * math.max(1, pos.endColumn - pos.startColumn)
       else "^"
     }
-
-    s"$prefix|$whitespace${carets.show}"
+    s"$prefix|$padding${carets.show}"
   }
 
   /** The error message (`msg`) aligned under `pos`
@@ -92,18 +91,16 @@ trait MessageRendering {
     * @return aligned error message
     */
   def errorMsg(pos: SourcePosition, msg: String, offset: Int)(implicit ctx: Context): String = {
-    val leastWhitespace = msg.lines.foldLeft(Int.MaxValue) { (minPad, line) =>
+    val padding = msg.lines.foldLeft(pos.startColumnPadding) { (pad, line) =>
       val lineLength = stripColor(line).length
-      val currPad = math.min(
-        math.max(0, ctx.settings.pageWidth.value - offset - lineLength),
-        offset + pos.startColumn
-      )
+      val maxPad = math.max(0, ctx.settings.pageWidth.value - offset - lineLength) - offset
 
-      math.min(currPad, minPad)
+      if (maxPad < pad.length) " " * maxPad
+      else pad
     }
 
     msg.lines
-      .map { line => " " * (offset - 1) + "|" + (" " * (leastWhitespace - offset)) + line}
+      .map { line => " " * (offset - 1) + "|" + padding + line}
       .mkString(sys.props("line.separator"))
   }
 
