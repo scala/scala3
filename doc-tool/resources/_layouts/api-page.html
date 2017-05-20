@@ -67,6 +67,7 @@ extraCSS:
             {% endif %}
 
             <h1 class="section {% if entity.constructors == null or entity.constructors.size == 0 %}empty{% endif %}">
+                <span class="expand-button" onclick="toggleConstructorsBody(this, '{{ member.signature }}');">[-]</span>
                 Constructors
             </h1>
 
@@ -97,6 +98,7 @@ extraCSS:
             </div>
 
             <h1 class="section {% if entity.hasVisibleMembers == false %}empty{% endif %}">
+              <span class="expand-button" onclick="toggleMembersBody(this, '{{ member.signature }}');">[-]</span>
                 Members
             </h1>
 
@@ -169,21 +171,27 @@ extraCSS:
                     </div><!-- end member-title -->
 
                     <div class="member-body">
-                        <div class="member-body-short" id="short-body-{{ member.signature }}">
-                            {{ member.comment.short }}
-                        </div>
                         <div class="member-body-long" id ="long-body-{{ member.signature }}">
                             {{ member.comment.body }}
                         </div>
                     </div>
                     <script>
+
+                        function toggleConstructorsBody(span, sig){
+                            var members = document.getElementById("entity-constructors");
+                            members.classList.toggle("toggled");
+                            span.innerHTML = (span.innerHTML == "[-]") ?  "[+]" : "[-]";
+                        }
+
+                        function toggleMembersBody(span, sig){
+                            var members = document.getElementById("entity-members");
+                            members.classList.toggle("toggled");
+                            span.innerHTML = (span.innerHTML == "[-]") ?  "[+]" : "[-]";
+                        }
+
                         function toggleMemberBody(span, sig) {
-                            var shortBody = document.getElementById("short-body-" + sig);
                             var longBody = document.getElementById("long-body-" + sig);
-
-                            shortBody.classList.toggle("toggled")
                             longBody.classList.toggle("toggled")
-
                             span.innerHTML = (span.innerHTML == "[+]") ?  "[-]" : "[+]";
                         }
                     </script>

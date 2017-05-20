@@ -22,7 +22,7 @@ trait Entity { entity =>
   def annotations: List[String]
 
   def hasShortenedDocstring: Boolean =
-    comment.map(d => d.body.length > d.short.length).getOrElse(false)
+    comment.map(d => d.body.length > 0).getOrElse(false)
 
   def signature: String =
     entity.name + (entity match {
