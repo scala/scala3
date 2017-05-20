@@ -220,11 +220,11 @@ ul.package-entities > li > div.entity-kinds > a.letter-anchor.trait {
 /** Cover block used to hide where the kind blocks come from */
 div#cover-block {
     position: absolute;
-    background: #fafafa;
+    background: #fff;
     border-right: 2px solid gray;
-    width: 40px;
+    width: 41px;
     height: 100%;
-    left: -40px;
+    left: -41px;
     top: 0;
 }
 

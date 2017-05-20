@@ -7,13 +7,33 @@ extraCSS:
 
 {% include "toolbar" %}
 
-<a id="back-anchor" href="">&lt; Back</a>
-<h1 id="searching-for"></h1>
+<div id="back-container">
+    <span>
+        <a id="back-anchor" href="">Back</a>
+    </span>
+</div>
+
+<div id="search-container">
+    <h1 id="searching-for"></h1>
+    <div id="result-container">
+        <div class="results">
+            <h1>Entity Results</h1>
+            <ul id="entity-results">
+            </ul>
+        </div>
+        <div class="results">
+            <h1>Member Results</h1>
+            <ul id="member-results">
+            </ul>
+        </div>
+    </div>
+</div>
 
 <script>
     // Parse parameters from URL:
     var parameters = [];
     var apiSearch = undefined;
+    var docs = {{ docs | json }};
     (function() {
         var pairs = location.search.substring(1).split('&');
         for (var i = 0; i < pairs.length; i++) {
@@ -24,7 +44,7 @@ extraCSS:
 
     // Set search term and back button:
     var searchTerm = parameters["searchTerm"];
-    document.getElementById("searching-for").innerHTML = 'Seaching for "' + searchTerm + '"...';
+    document.getElementById("searching-for").innerHTML = 'Search results for "' + searchTerm + '"';
     document.getElementById("back-anchor").href = parameters["previousUrl"];
 
     if (!window.Worker) {
@@ -33,15 +53,101 @@ extraCSS:
             "web workers not supported. Please update your browser.";
     }
     else {
-      apiSearch = new Worker("{{ site.baseurl }}/js/api-search.js");
-      apiSearch.postMessage({
-        "type":   "setup",
-        "search": searchTerm,
-        "docs":   {{ docs | json }},
-      });
+        // perform API search:
+        apiSearch = new Worker("{{ site.baseurl }}/js/api-search.js");
+        apiSearch.postMessage({
+            "type":   "setup",
+            "search": searchTerm,
+            "docs":   docs,
+        });
 
-      apiSearch.onmessage = function(res) {
-        console.log("got res: " + res.data);
-      };
+        var entityResultsNode = document.getElementById("entity-results");
+        var entityResults = [];
+
+        var insertEntity = function(entity, parent) {
+            var shouldInsert =
+                parent.kind == "package" &&
+                !(entity.kind == "object" && entity.hasCompanion)
+
+            if (shouldInsert) {
+                // If parent package not in list, create it first:
+                if (!(parent.name in entityResults)) {
+                    var packageLi = document.createElement("li");
+                    entityResultsNode.appendChild(packageLi);
+
+                    packageLi.innerHTML =
+                        "<h1 class=\"package-name\">" +
+                            "<a href=\"{{ site.baseurl }}/api/" + parent.path.join('/') + "/index.html\">" +
+                                parent.name +
+                            "</a>" +
+                        "</h1>";
+
+                    var entityUl = document.createElement("ul");
+                    entityUl.classList.add("entity-ul");
+                    packageLi.appendChild(entityUl);
+                    entityResults[parent.name] = entityUl;
+                    var coverBlock = document.createElement("div");
+                    coverBlock.classList.add("cover-block");
+                    entityUl.appendChild(coverBlock);
+                }
+
+                // Insert into list of results in package, no need to sort -
+                // already sorted:
+                var entityUl = entityResults[parent.name];
+                var entityLi = document.createElement("li");
+                if (entity.hasCompanion)
+                    entityLi.classList.add("entity-result-li", "with-companion");
+                else
+                    entityLi.classList.add("entity-result-li");
+
+                var companion = !entity.hasCompanion ? "" : (
+                    '<a class="letter-anchor object" href="{{ site.baseurl }}/api/' + entity.companionPath.join('/') + '.html">O</a>'
+                );
+
+                var letter =
+                    '<a class="letter-anchor ' + entity.kind + '" href="{{ site.baseurl }}/api/' + entity.path.join('/') + '.html">' +
+                    entity.kind.charAt(0).toUpperCase() +
+                    '</a>'
+
+                entityLi.innerHTML = (
+                    '<div class="entity-kinds">' +
+                        companion +
+                        letter +
+                    '</div>' +
+                    "<a class=\"entity-name\" href=\"{{ site.baseurl }}/api/" + entity.path.join('/') + ".html\">" +
+                    entity.name +
+                    "</a>"
+                );
+                entityUl.appendChild(entityLi);
+            }
+        };
+
+        var memberResultsNode = document.getElementById("member-results");
+        var memberResults = [];
+        var insertMember = function(member, parent) {
+
+        };
+
+        apiSearch.onmessage = function(res) {
+            switch(res.data.type) {
+                case "entityResult": {
+                    var entity = res.data.entity;
+                    var parent = res.data.parent;
+                    console.log("got entity: " + entity.name + ", in package: " + parent.name);
+                    insertEntity(entity, parent);
+                    break;
+                }
+                case "memberResult": {
+                    var member = res.data.member;
+                    var parent = res.data.parent;
+                    console.log("got member: " + member.name + ", in entity: " + parent.name);
+                    insertMember(member, parent);
+                    break;
+                }
+                default: {
+                    console.log("Got unknown message: " + res.data.type);
+                }
+            }
+        };
     }
 </script>
