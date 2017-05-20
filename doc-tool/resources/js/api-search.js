@@ -16,14 +16,15 @@
  *  ```json
  *  {
  *      "type": "entityResult",
- *      "parent": <parent entity>,
+ *      "package": <parent package>,
  *      "entity": <entity>
  *  }
  *
  *  {
  *      "type": "memberResult",
+ *      "package": <parent package>,
  *      "parent": <parent entity>,
- *      "member": <entity >
+ *      "member": <entity>
  *  }
  *  ```
  */
@@ -57,7 +58,7 @@ onmessage = function(e) {
             if (searchRegex.test(fullName)) {
                 postMessage({
                     "type": "entityResult",
-                    "parent": parent,
+                    "package": parent,
                     "entity": entity
                 });
             } else {
@@ -65,6 +66,7 @@ onmessage = function(e) {
                     if (searchRegex.test(member.name)) {
                         postMessage({
                             "type": "memberResult",
+                            "package": parent,
                             "parent": entity,
                             "member": member,
                         });
