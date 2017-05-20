@@ -449,7 +449,7 @@ object Checking {
     }
     if (isDerivedValueClass(clazz)) {
       if (clazz.is(Trait))
-        ctx.error("Only classes (not traits) are allowed to extend AnyVal", clazz.pos)
+        ctx.error(CannotExtendAnyVal(clazz), clazz.pos)
       if (clazz.is(Abstract))
         ctx.error("`abstract' modifier cannot be used with value classes", clazz.pos)
       if (!clazz.isStatic)

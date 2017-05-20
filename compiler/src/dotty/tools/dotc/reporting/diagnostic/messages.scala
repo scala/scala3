@@ -1470,7 +1470,11 @@ object messages {
     extends Message(CannotExtendAnyValID) {
     val msg = hl"""$sym cannot extend ${"AnyVal"}"""
     val kind = "Syntax"
-    val explanation = ""
+    val explanation =
+      hl"""Only classes (not traits) are allowed to extend ${"AnyVal"}, but traits may extend
+          |${"Any"} to become ${Green("\"universal traits\"")} which may only have ${"def"} members.
+          |Universal traits can be mixed into classes that extend ${"AnyVal"}.
+          |"""
   }
 
   case class CannotHaveSameNameAs(sym: Symbol, cls: Symbol)(implicit ctx: Context)
