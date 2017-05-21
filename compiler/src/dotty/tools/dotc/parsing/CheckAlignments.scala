@@ -32,6 +32,11 @@ object CheckAlignments {
     case _            => ""
   }
 
+  private def isEnum(t: Positioned)(implicit ctx: Context) = t match {
+    case t: MemberDef => t.mods.hasMod[Mod.Enum]
+    case _ => false
+  }
+
   def checkEndComments(source: SourceFile, endComments: List[Comment], roots: List[Tree])(implicit ctx: Context) = {
     for (ec <- endComments) {
       val endStr = ec.endCommentString
@@ -44,11 +49,18 @@ object CheckAlignments {
           if (s2.isEmpty) "nothing" else s"'$s2'"
         else
           if (s2.isEmpty) s"'$s1'" else s"'$s1 $s2'"
+      def isMatch(t: Positioned) = {
+        endStr == kindString(t) ||
+        endStr == definedString(t) ||
+        endStr == "enum" && isEnum(t)
+          // FIXME: enum does not work yet because the preceding object
+          //   - does not carry the enum modifier
+          //   - has the wrong column if cases are indented, since it starts with the first case
+      }
       def checkMatch(ts: List[Positioned]): Unit = ts match {
         case t :: ts1 =>
           if (source.column(t.pos.start) == column) {
-            if (endStr == kindString(t) || endStr == definedString(t))
-              warning = ""
+            if (isMatch(t)) warning = ""
             else {
               if (kindString(t).nonEmpty)
                 warning = misAligned(combine(kindString(t), definedString(t)))

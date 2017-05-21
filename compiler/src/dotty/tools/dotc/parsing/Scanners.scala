@@ -347,8 +347,6 @@ object Scanners {
         regionStack = InBrackets :: regionStack
       case LBRACE =>
         regionStack = InBraces :: regionStack
-      case CASE =>
-        regionStack = InPattern :: regionStack
       case RBRACE =>
         while (regionStack.head != InBraces && !inIndented)
           regionStack = regionStack.tail
@@ -357,14 +355,16 @@ object Scanners {
         endRegion(InBrackets)
       case RPAREN =>
         endRegion(InParens)
-      case ARROW =>
-        endRegion(InPattern)
-      case EXTENDS =>
-        endRegion(InPattern)
       case STRINGLIT =>
         endRegion(if (inMultiLineInterpolation) InMultiLineStringLit else InStringLit)
       case _ =>
     }
+
+    def startPattern() =
+      regionStack = InPattern :: regionStack
+
+    def endPattern() =
+      regionStack = regionStack.dropWhile(_ != InPattern).tail
 
     /** Produce next token, filling TokenData fields of Scanner.
      */

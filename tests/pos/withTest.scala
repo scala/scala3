@@ -1,72 +1,78 @@
-object Test1 with
-
-  val xs = List(1, 2, 3)
-
-  xs.map with
-    x => x + 3
-
 object Test with
 
-  val xs = List(1, 2, 3)
+   val xs = List(1, 2, 3)
 
-  xs.map with x =>
-       x + 2
-    .filter with
-       x => x % 2 == 0
-    .foldLeft(0) with
-       _ + _
+// Plain indentation
 
-// another test
+   xs.map with
+        x => x + 2
+     .filter with
+        x => x % 2 == 0
+     .foldLeft(0) with
+        _ + _
 
-  xs.map with x =>
-      x + 2
-    .filter with x =>
-      x % 2 == 0
-    .foldLeft(0) with
-      _ + _
+// Using lambdas with `with`
+
+   xs.map with x =>
+        x + 2
+     .filter with x =>
+        x % 2 == 0
+     .foldLeft(0) with
+        _ + _
 
 // for expressions
 
-  for
-    x <- List(1, 2, 3)
-    y <- List(x + 1)
-  yield
-    x + y
+   for
+      x <- List(1, 2, 3)
+      y <- List(x + 1)
+   yield
+      x + y
 
-  for
-    x <- List(1, 2, 3)
-    y <- List(x + 1)
-  do
-    println(x + y)
+   for
+      x <- List(1, 2, 3)
+      y <- List(x + 1)
+   do
+      println(x + y)
 
-  try
-    val x = 3
-  finally
-    println("done")
 
-  xs match
-    case Nil =>
-      println()
-      0
-    case x :: Nil =>
-      1
-    case _ => 2
+// Try expressions
 
-  do
-    println("x")
-    println("y")
-  while
-    println("z")
-    true
+   try
+      val x = 3
+      x
+   catch
+      case ex: Exception =>
+         0
+   finally
+      println("done")
 
-  while
-    println("z")
-    true
-  do
-    println("x")
-    println("y")
+// Match expressions
 
-  // end while
+   xs match
+      case Nil =>
+         println()
+         0
+      case x :: Nil =>
+         1
+      case _ => 2
+
+// While and Do
+
+   do
+      println("x")
+      println("y")
+   while
+      println("z")
+      true
+
+   while
+      println("z")
+      true
+   do
+      println("x")
+      println("y")
+
+   // end while
 
 // end Test
 
@@ -74,12 +80,15 @@ package p with
 
   object o with
 
-    class C extends Object
-               with Serializable with
+    class B with self =>
+      def f(x: Int) = ???
 
-      val x = new C with
-          def y = 3
+    val x = 3
 
+    enum Color with
+      case Red, Green, Blue
+
+    class C extends Object with Serializable with self =>
       val result =
         if x == x then
           println("yes")
@@ -89,5 +98,4 @@ package p with
           false
 
     // end C
-  // end object
-
+  // end o

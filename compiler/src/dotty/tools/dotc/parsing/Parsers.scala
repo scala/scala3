@@ -1432,10 +1432,14 @@ object Parsers {
     /**  Pattern           ::=  Pattern1 { `|' Pattern1 }
      */
     val pattern = () => {
-      val pat = pattern1()
-      if (isIdent(nme.raw.BAR))
-        atPos(startOffset(pat)) { Alternative(pat :: patternAlts()) }
-      else pat
+      in.startPattern()
+      try {
+        val pat = pattern1()
+        if (isIdent(nme.raw.BAR))
+          atPos(startOffset(pat)) { Alternative(pat :: patternAlts()) }
+        else pat
+      }
+      finally in.endPattern()
     }
 
     def patternAlts(): List[Tree] =
