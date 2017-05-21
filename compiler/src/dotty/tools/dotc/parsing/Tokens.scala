@@ -245,7 +245,7 @@ object Tokens extends TokensCommon {
     TYPE, RPAREN, RBRACE, RBRACKET, UNDENT)
 
   final val canStartIndentTokens =
-    BitSet(EQUALS, THEN, ELSE, MATCH, FOR, YIELD, WHILE, DO, TRY, FINALLY, WITH)
+    BitSet(EQUALS, IF, THEN, ELSE, MATCH, FOR, YIELD, WHILE, DO, TRY, CATCH, FINALLY, WITH)
 
   final val numericLitTokens = BitSet(INTLIT, LONGLIT, FLOATLIT, DOUBLELIT)
 
