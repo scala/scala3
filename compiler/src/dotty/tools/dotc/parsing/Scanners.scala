@@ -261,11 +261,13 @@ object Scanners {
     private def columnIfFollowingArrow(): Int = {
       val la = lookaheadScanner
       var lastToken = la.token
+      var withSeen = false
       do {
         lastToken = la.token
         la.nextToken()
+        withSeen |= la.token == WITH
       } while (la.token != EOF && !la.isAfterLineEnd())
-      if (lastToken == ARROW && la.inIndented) la.currentColumn else -1
+      if (lastToken == ARROW && la.inIndented && !withSeen) la.currentColumn else -1
     }
 
     /** Called when at line end, insert INDENT/UNDENT tokens as needed
@@ -390,7 +392,7 @@ object Scanners {
        *  (2) Handle indentation
        */
       if (isAfterLineEnd()) {
-        trackIndent(lastToken, currentColumn)
+        trackIndent(lastToken, if (token == EOF) 0 else currentColumn)
         if ((canEndStatTokens contains lastToken) &&
             (canStartStatTokens contains token) &&
             (inIndented ||
