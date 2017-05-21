@@ -151,7 +151,6 @@ object JavaConverters {
       "path" -> ent.path.asJava,
       "children" -> ent.children.map(_.asJava()).asJava,
       "comment" -> ent.comment.map(_.asJava).asJava,
-      "hasShortenedDocstring" -> ent.hasShortenedDocstring,
       "signature" -> ent.signature
     )
     val members = ent match {

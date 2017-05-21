@@ -67,7 +67,7 @@ extraCSS:
             {% endif %}
 
             <h1 class="section {% if entity.constructors == null or entity.constructors.size == 0 %}empty{% endif %}">
-                <span class="expand-button" onclick="toggleConstructorsBody(this, '{{ member.signature }}');">[-]</span>
+                <span class="expand-button visible{% if entity.constructors == null or entity.constructors.size == 0 %}invisible{% endif %}" onclick="toggleMembersBody(this, 'constructors');">[-]</span>
                 Constructors
             </h1>
 
@@ -98,7 +98,7 @@ extraCSS:
             </div>
 
             <h1 class="section {% if entity.hasVisibleMembers == false %}empty{% endif %}">
-              <span class="expand-button" onclick="toggleMembersBody(this, '{{ member.signature }}');">[-]</span>
+              <span class="expand-button visible" onclick="toggleMembersBody(this, 'members');">[-]</span>
                 Members
             </h1>
 
@@ -106,7 +106,7 @@ extraCSS:
                 {% for member in entity.members %}
                 <div id="{{ member.signature }}" class="member {% if member.isPrivate %}private{% elsif member.isProtected %}protected{% endif %}">
                     <div class="member-title">
-                        <span class="expand-button {% if member.hasShortenedDocstring == false %}invisible{% endif %}" onclick="toggleMemberBody(this, '{{ member.signature }}');">[+]</span>
+                        <span class="expand-button {% if member.comment.body %}visible{% endif %}" onclick="toggleMemberBody(this, '{{ member.signature }}');">[+]</span>
                         <span class="member-annotations">
                             {% for annot in member.annotations %}@{{ annot | split: '.' | last }} {% endfor %}
                         </span>
@@ -177,14 +177,8 @@ extraCSS:
                     </div>
                     <script>
 
-                        function toggleConstructorsBody(span, sig){
-                            var members = document.getElementById("entity-constructors");
-                            members.classList.toggle("toggled");
-                            span.innerHTML = (span.innerHTML == "[-]") ?  "[+]" : "[-]";
-                        }
-
-                        function toggleMembersBody(span, sig){
-                            var members = document.getElementById("entity-members");
+                        function toggleMembersBody(span, arg){
+                            var members = document.getElementById("entity-" + arg);
                             members.classList.toggle("toggled");
                             span.innerHTML = (span.innerHTML == "[-]") ?  "[+]" : "[-]";
                         }
