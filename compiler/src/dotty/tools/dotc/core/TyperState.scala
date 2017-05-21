@@ -76,8 +76,6 @@ class TyperState(r: Reporter) extends DotClass with Showable {
   /** Can this state be transitively committed until the top-level? */
   def isGlobalCommittable: Boolean = false
 
-  def tryWithFallback[T](op: => T)(fallback: => T)(implicit ctx: Context): T = unsupported("tryWithFallBack")
-
   override def toText(printer: Printer): Text = "ImmutableTyperState"
 
   /** A string showing the hashes of all nested mutable typerstates */
@@ -168,45 +166,6 @@ extends TyperState(r) {
     }
     for (poly <- toCollect)
       constraint = constraint.remove(poly)
-  }
-
-  /** Try operation `op`; if it produces errors, execute `fallback` with constraint and
-   *  reporter as they were before `op` was executed. This is similar to `typer/tryEither`,
-   *  but with one important difference: Any type variable instantiations produced by `op`
-   *  are persisted even if `op` fails. This is normally not what one wants and therefore
-   *  it is recommended to use
-   *
-   *      tryEither { implicit ctx => op } { (_, _) => fallBack }
-   *
-   *  instead of
-   *
-   *      ctx.tryWithFallback(op)(fallBack)
-   *
-   *  `tryWithFallback` is only used when an implicit parameter search fails
-   *  and the whole expression is subsequently retype-checked with a Wildcard
-   *  expected type (so as to allow an implicit conversion on the result and
-   *  avoid over-constraining the implicit parameter search). In this case,
-   *  the only type variables that might be falsely instantiated by `op` but
-   *  not by `fallBack` are type variables in the typed expression itself, and
-   *  these will be thrown away and new ones will be created on re-typing.
-   *  So `tryWithFallback` is safe. It is also necessary because without it
-   *  we do not propagate enough instantiation information into the implicit search
-   *  and this might lead to a missing parameter type error. This is exhibited
-   *  at several places in the test suite (for instance in `pos_typers`).
-   *  Overall, this is rather ugly, but despite trying for 2 days I have not
-   *  found a better solution.
-   */
-  override def tryWithFallback[T](op: => T)(fallback: => T)(implicit ctx: Context): T = {
-    val storeReporter = new StoreReporter(myReporter)
-    val savedReporter = myReporter
-    myReporter = storeReporter
-    val savedConstraint = myConstraint
-    val result = try op finally myReporter = savedReporter
-    if (!storeReporter.hasErrors) result
-    else {
-      myConstraint = savedConstraint
-      fallback
-    }
   }
 
   override def toText(printer: Printer): Text = constraint.toText(printer)

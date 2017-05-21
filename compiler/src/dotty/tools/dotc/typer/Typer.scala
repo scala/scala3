@@ -1911,11 +1911,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
           }
           else adapt(tpd.Apply(tree, args), pt)
         }
-        if ((pt eq WildcardType) || original.isEmpty) addImplicitArgs(argCtx(tree))
-        else
-          ctx.typerState.tryWithFallback(addImplicitArgs(argCtx(tree))) {
-            adapt(typed(original, WildcardType), pt, EmptyTree)
-          }
+        addImplicitArgs(argCtx(tree))
       case wtp: MethodType if !pt.isInstanceOf[SingletonType] =>
         // Follow proxies and approximate type paramrefs by their upper bound
         // in the current constraint in order to figure out robustly

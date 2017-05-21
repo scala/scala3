@@ -680,6 +680,7 @@ trait Implicits { self: Typer =>
       result match {
         case result: SearchSuccess =>
           result.tstate.commit()
+          implicits.println(i"success: $result")
           implicits.println(i"committing ${result.tstate.constraint} yielding ${ctx.typerState.constraint} ${ctx.typerState.hashesStr}")
           result
         case result: AmbiguousImplicits =>
