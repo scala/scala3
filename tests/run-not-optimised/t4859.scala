@@ -3,8 +3,6 @@ object O {
   object P
 }
 
-// We assume module initialisation to be pure, running this test under
-// -optimise yields different results.
 object Outer {
   println("Outer")
   object Inner {
