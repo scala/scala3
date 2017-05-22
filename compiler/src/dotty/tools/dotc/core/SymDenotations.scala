@@ -467,7 +467,7 @@ object SymDenotations {
       name.toTermName == nme.COMPANION_CLASS_METHOD ||
       name.toTermName == nme.COMPANION_MODULE_METHOD
 
-    /** Is this a syntetic method that represents conversions between representations of a value class
+    /** Is this a synthetic method that represents conversions between representations of a value class
       *  These methods are generated in ExtensionMethods
       *  and used in ElimErasedValueType.
       */
