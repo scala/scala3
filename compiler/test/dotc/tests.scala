@@ -105,7 +105,7 @@ class tests extends CompilerTest {
   val libDir = "../library/src/"
 
   def dottyBootedLib = compileDir(libDir, ".", List("-deep", "-Ycheck-reentrant", "-strict") ::: defaultOptions)(allowDeepSubtypes) // note the -deep argument
-  def dottyDependsOnBootedLib = compileDir(dottyDir, ".", List("-deep", "-Ycheck-reentrant", "-strict") ::: defaultOptions)(allowDeepSubtypes) // note the -deep argument
+  def dottyDependsOnBootedLib = compileDir(dottyDir, ".", List("-deep", "-Ycheck-reentrant") ::: defaultOptions)(allowDeepSubtypes) // note the -deep argument
 
   @Before def cleanup(): Unit = {
     // remove class files from stdlib and tests compilation

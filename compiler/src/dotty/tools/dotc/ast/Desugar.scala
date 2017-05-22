@@ -296,18 +296,8 @@ object desugar {
     val isValueClass = parents.nonEmpty && isAnyVal(parents.head)
       // This is not watertight, but `extends AnyVal` will be replaced by `inline` later.
 
-    lazy val reconstitutedTypeParams = reconstitutedEnumTypeParams(cdef.pos.startPos)
 
-    val originalTparams =
-      if (isEnumCase && parents.isEmpty) {
-        if (constr1.tparams.nonEmpty) {
-          if (reconstitutedTypeParams.nonEmpty)
-            ctx.error(em"case with type parameters needs extends clause", constr1.tparams.head.pos)
-          constr1.tparams
-        }
-        else reconstitutedTypeParams
-      }
-      else constr1.tparams
+    val originalTparams = constr1.tparams
     val originalVparamss = constr1.vparamss
     val constrTparams = originalTparams.map(toDefParam)
     val constrVparamss =
@@ -328,9 +318,9 @@ object desugar {
       case stat =>
         stat
     }
+    def anyRef = ref(defn.AnyRefAlias.typeRef)
 
-    val derivedTparams =
-      if (isEnumCase) constrTparams else constrTparams map derivedTypeParam
+    val derivedTparams = constrTparams map derivedTypeParam
     val derivedVparamss = constrVparamss nestedMap derivedTermParam
     val arity = constrVparamss.head.length
 
@@ -343,10 +333,23 @@ object desugar {
 
     // a reference to the class type bound by `cdef`, with type parameters coming from the constructor
     val classTypeRef = appliedRef(classTycon)
-    // a reference to `enumClass`, with type parameters coming from the constructor
-    lazy val enumClassTypeRef =
-      if (reconstitutedTypeParams.isEmpty) enumClassRef
-      else appliedRef(enumClassRef)
+
+    // a reference to `enumClass`, with type parameters coming from the case constructor
+    lazy val enumClassTypeRef = enumClass.primaryConstructor.info match {
+      case info: PolyType =>
+        if (constrTparams.isEmpty)
+          interpolatedEnumParent(cdef.pos.startPos)
+        else if ((constrTparams.corresponds(info.paramNames))((param, name) => param.name == name))
+          appliedRef(enumClassRef)
+        else {
+          ctx.error(i"explicit extends clause needed because type parameters of case and enum class differ"
+              , cdef.pos.startPos)
+          AppliedTypeTree(enumClassRef, constrTparams map (_ => anyRef))
+            .withPos(cdef.pos.startPos)
+        }
+      case _ =>
+        enumClassRef
+    }
 
     // new C[Ts](paramss)
     lazy val creatorExpr = New(classTypeRef, constrVparamss nestedMap refOfDef)
@@ -398,8 +401,6 @@ object desugar {
         copyMeths ::: enumTagMeths ::: productElemMeths.toList
       else Nil
     }
-
-    def anyRef = ref(defn.AnyRefAlias.typeRef)
 
     // Case classes and case objects get Product parents
     var parents1 = parents
