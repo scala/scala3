@@ -33,6 +33,7 @@ class DocCompiler extends Compiler {
                                 new LinkCompanions,
                                 new AlternateConstructors,
                                 new SortMembers)),
+    List(DocMiniTransformations(new RemoveEmptyPackages)),
     List(new StatisticsPhase)
   )
 }
