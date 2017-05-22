@@ -689,5 +689,111 @@ class ErrorMessagesTests extends ErrorMessagesTest {
         assertEquals("class A", cls.show)
       }
 
+  @Test def valueClassesMayNotDefineInner =
+    checkMessagesAfter("refchecks") {
+      """class MyValue(i: Int) extends AnyVal {
+        |  class Inner
+        |}
+        |""".stripMargin
+    }
+      .expect { (ictx, messages) =>
+        implicit val ctx: Context = ictx
+        assertMessageCount(1, messages)
+        val ValueClassesMayNotDefineInner(valueClass, inner) :: Nil = messages
+        assertEquals("class MyValue", valueClass.show)
+        assertEquals("class Inner", inner.show)
+      }
+
+  @Test def valueClassesMayNotDefineNonParameterField =
+    checkMessagesAfter("refchecks") {
+      """class MyValue(i: Int) extends AnyVal {
+        |  val illegal: Int
+        |}
+        |""".stripMargin
+    }
+      .expect { (ictx, messages) =>
+        implicit val ctx: Context = ictx
+        assertMessageCount(1, messages)
+        val ValueClassesMayNotDefineNonParameterField(valueClass, field) :: Nil = messages
+        assertEquals("class MyValue", valueClass.show)
+        assertEquals("value illegal", field.show)
+      }
+
+  @Test def valueClassesMayNotDefineASecondaryConstructor =
+    checkMessagesAfter("refchecks") {
+      """class MyValue(i: Int) extends AnyVal {
+        |  def this() = this(2)
+        |}
+        |""".stripMargin
+    }
+      .expect { (ictx, messages) =>
+        implicit val ctx: Context = ictx
+        assertMessageCount(1, messages)
+        val ValueClassesMayNotDefineASecondaryConstructor(valueClass, constuctor) :: Nil = messages
+        assertEquals("class MyValue", valueClass.show)
+        assertEquals("constructor MyValue", constuctor.show)
+      }
+
+  @Test def valueClassesMayNotContainInitalization =
+    checkMessagesAfter("refchecks") {
+      """class MyValue(i: Int) extends AnyVal {
+        |  println("Hallo?")
+        |}
+        |""".stripMargin
+    }
+      .expect { (ictx, messages) =>
+        implicit val ctx: Context = ictx
+        assertMessageCount(1, messages)
+        val ValueClassesMayNotContainInitalization(valueClass) :: Nil = messages
+        assertEquals("class MyValue", valueClass.show)
+      }
+
+  @Test def valueClassesMayNotBeContained =
+    checkMessagesAfter("refchecks") {
+      """class Outer {
+        |  class MyValue(i: Int) extends AnyVal
+        |}
+        |""".stripMargin
+    }
+      .expect { (ictx, messages) =>
+        implicit val ctx: Context = ictx
+        assertMessageCount(1, messages)
+        val ValueClassesMayNotBeContainted(valueClass) :: Nil = messages
+        assertEquals("class MyValue", valueClass.show)
+      }
+
+  @Test def valueClassesMayNotWrapItself =
+    checkMessagesAfter("refchecks") {
+      """class MyValue(i: MyValue) extends AnyVal"""
+    }
+      .expect { (ictx, messages) =>
+        implicit val ctx: Context = ictx
+        assertMessageCount(1, messages)
+        val ValueClassesMayNotWrapItself(valueClass) :: Nil = messages
+        assertEquals("class MyValue", valueClass.show)
+      }
+
+  @Test def valueClassParameterMayNotBeVar =
+    checkMessagesAfter("refchecks") {
+      """class MyValue(var i: Int) extends AnyVal"""
+    }
+      .expect { (ictx, messages) =>
+        implicit val ctx: Context = ictx
+        assertMessageCount(1, messages)
+        val ValueClassParameterMayNotBeAVar(valueClass, param) :: Nil = messages
+        assertEquals("class MyValue", valueClass.show)
+        assertEquals("variable i", param.show)
+      }
+
+  @Test def valueClassNeedsExactlyOneVal =
+    checkMessagesAfter("refchecks") {
+      """class MyValue(var i: Int, j: Int) extends AnyVal"""
+    }
+      .expect { (ictx, messages) =>
+        implicit val ctx: Context = ictx
+        assertMessageCount(1, messages)
+        val ValueClassNeedsExactlyOneValParam(valueClass) :: Nil = messages
+        assertEquals("class MyValue", valueClass.show)
+      }
 
 }
