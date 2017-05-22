@@ -431,11 +431,18 @@ object desugar {
     // For all other classes, the parent is AnyRef.
     val companions =
       if (isCaseClass) {
+        def extractType(t: Tree): Tree = t match {
+          case Apply(t1, _) => extractType(t1)
+          case TypeApply(t1, ts) => AppliedTypeTree(extractType(t1), ts)
+          case Select(t1, nme.CONSTRUCTOR) => extractType(t1)
+          case New(t1) => t1
+          case t1 => t1
+        }
         // The return type of the `apply` method
         val applyResultTpt =
           if (isEnumCase)
             if (parents.isEmpty) enumClassTypeRef
-            else parents.reduceLeft(AndTypeTree)
+            else parents.map(extractType).reduceLeft(AndTypeTree)
           else TypeTree()
 
         val parent =
