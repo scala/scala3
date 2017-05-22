@@ -66,6 +66,23 @@ h1.section {
     margin: 30px 0;
 }
 
+h1.section > span.expand-button.visible {
+    color: rgba(167, 161, 161, 0.5);
+    font-family: "Source Code Pro", sans-serif;
+    font-size: 25px;
+}
+
+h1.section > span.expand-button.visible:hover {
+    color: rgb(167, 161, 161);
+    cursor: pointer;
+    user-select: none;
+}
+
+h1.section > span.expand-button,
+h1.section > span.expand-button.hover {
+    color: transparent;
+}
+
 .empty {
     display: none;
 }
@@ -112,18 +129,18 @@ div.entity-section > div.member > div.member-title span.no-right {
     margin-right: -11px;
 }
 
-div.entity-section > div.member > div.member-title > span.expand-button {
+div.entity-section > div.member > div.member-title > span.expand-button.visible {
     color: rgba(167, 161, 161, 0.5);
 }
 
-div.entity-section > div.member > div.member-title > span.expand-button:hover {
+div.entity-section > div.member > div.member-title > span.expand-button.visible:hover {
     color: rgb(167, 161, 161);
     cursor: pointer;
     user-select: none;
 }
 
-div.entity-section > div.member > div.member-title > span.expand-button.invisible,
-div.entity-section > div.member > div.member-title > span.expand-button.invisible:hover {
+div.entity-section > div.member > div.member-title > span.expand-button,
+div.entity-section > div.member > div.member-title > span.expand-button:hover {
     color: transparent;
 }
 
@@ -141,4 +158,8 @@ div.entity-section > div.member > div.member-body > div.member-body-long {
 
 div.entity-section > div.member > div.member-body > div.member-body-long.toggled {
     display: block;
+}
+
+div.entity-section.toggled {
+    display: none;
 }

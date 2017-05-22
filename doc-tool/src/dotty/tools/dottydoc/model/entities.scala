@@ -21,9 +21,6 @@ trait Entity { entity =>
 
   def annotations: List[String]
 
-  def hasShortenedDocstring: Boolean =
-    comment.map(d => d.body.length > d.short.length).getOrElse(false)
-
   def signature: String =
     entity.name + (entity match {
       case o: Object => "$"

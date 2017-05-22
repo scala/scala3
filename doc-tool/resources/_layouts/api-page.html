@@ -67,6 +67,7 @@ extraCSS:
             {% endif %}
 
             <h1 class="section {% if entity.constructors == null or entity.constructors.size == 0 %}empty{% endif %}">
+                <span class="expand-button visible{% if entity.constructors == null or entity.constructors.size == 0 %}invisible{% endif %}" onclick="toggleMembersBody(this, 'constructors');">[-]</span>
                 Constructors
             </h1>
 
@@ -97,6 +98,7 @@ extraCSS:
             </div>
 
             <h1 class="section {% if entity.hasVisibleMembers == false %}empty{% endif %}">
+              <span class="expand-button visible" onclick="toggleMembersBody(this, 'members');">[-]</span>
                 Members
             </h1>
 
@@ -104,7 +106,7 @@ extraCSS:
                 {% for member in entity.members %}
                 <div id="{{ member.signature }}" class="member {% if member.isPrivate %}private{% elsif member.isProtected %}protected{% endif %}">
                     <div class="member-title">
-                        <span class="expand-button {% if member.hasShortenedDocstring == false %}invisible{% endif %}" onclick="toggleMemberBody(this, '{{ member.signature }}');">[+]</span>
+                        <span class="expand-button {% if member.comment.body %}visible{% endif %}" onclick="toggleMemberBody(this, '{{ member.signature }}');">[+]</span>
                         <span class="member-annotations">
                             {% for annot in member.annotations %}@{{ annot | split: '.' | last }} {% endfor %}
                         </span>
@@ -169,21 +171,21 @@ extraCSS:
                     </div><!-- end member-title -->
 
                     <div class="member-body">
-                        <div class="member-body-short" id="short-body-{{ member.signature }}">
-                            {{ member.comment.short }}
-                        </div>
                         <div class="member-body-long" id ="long-body-{{ member.signature }}">
                             {{ member.comment.body }}
                         </div>
                     </div>
                     <script>
+
+                        function toggleMembersBody(span, arg){
+                            var members = document.getElementById("entity-" + arg);
+                            members.classList.toggle("toggled");
+                            span.innerHTML = (span.innerHTML == "[-]") ?  "[+]" : "[-]";
+                        }
+
                         function toggleMemberBody(span, sig) {
-                            var shortBody = document.getElementById("short-body-" + sig);
                             var longBody = document.getElementById("long-body-" + sig);
-
-                            shortBody.classList.toggle("toggled")
                             longBody.classList.toggle("toggled")
-
                             span.innerHTML = (span.innerHTML == "[+]") ?  "[-]" : "[+]";
                         }
                     </script>

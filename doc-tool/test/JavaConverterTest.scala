@@ -230,7 +230,6 @@ class JavaConverterTest {
     assertEquals(expected.kind, actual.get("kind"))
     assertSameSeq(expected.annotations, actual.get("annotations"))
     assertSameSeq(expected.path, actual.get("path"))
-    assertEquals(expected.hasShortenedDocstring, actual.get("hasShortenedDocstring"))
     // Only test if a comment is present
     expected.comment match {
       case Some(c) => assertNotEquals(null, actual.get("comment"))
