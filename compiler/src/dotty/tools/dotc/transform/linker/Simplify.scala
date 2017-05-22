@@ -40,6 +40,88 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
     this
   }
 
+  type Visitor = Tree => Unit
+  type ErasureCompatibility = Int
+  val BeforeErasure: ErasureCompatibility = 1
+  val AfterErasure: ErasureCompatibility  = 2
+  val BeforeAndAfterErasure: ErasureCompatibility  = BeforeErasure | AfterErasure
+
+  val NoVisitor: Visitor = (_) => ()
+  type Transformer = () => (Context => Tree => Tree)
+
+  /** Every optimization is a function of the following type.
+   *
+   *  - String is the optimization name (for debugging)
+   *
+   *  - ErasureCompatibility is flag indicating whether this optimization can
+   *    be run before or after Erasure (or both).
+   *
+   *  - Visitor is run first to gather information on Trees (using mutation)
+   *
+   *  - Transformer does the actual Tree => Tree transformation, possibly
+   *  - using a different context from the one using in Optimization.
+   */
+  type Optimization = (Context) => (String, ErasureCompatibility, Visitor, Transformer)
+
+  private lazy val _optimizations: Seq[Optimization] =
+    inlineCaseIntrinsics        ::
+    removeUnnecessaryNullChecks ::
+    inlineOptions               ::
+    inlineLabelsCalledOnce      ::
+    valify                      ::
+    devalify                    ::
+    jumpjump                    ::
+    dropGoodCasts               ::
+    dropNoEffects               ::
+    // inlineLocalObjects          :: // followCases needs to be fixed, see ./tests/pos/rbtree.scala
+    // varify                      :: // varify could stop other transformations from being applied. postponed.
+    // bubbleUpNothing             ::
+    constantFold                ::
+    Nil
+
+  override def transformDefDef(tree: DefDef)(implicit ctx: Context, info: TransformerInfo): Tree = {
+    val ctx0 = ctx
+    if (optimize && !tree.symbol.is(Flags.Label)) {
+      implicit val ctx: Context = ctx0.withOwner(tree.symbol(ctx0))
+      // TODO: optimize class bodies before erasure?
+      var rhs0 = tree.rhs
+      var rhs1: Tree = null
+      val erasureCompatibility = if (ctx.erasedTypes) AfterErasure else BeforeErasure
+      while (rhs1 ne rhs0) {
+        rhs1 = rhs0
+        val initialized = _optimizations.map(x => x(ctx.withOwner(tree.symbol)))
+        var (names, erasureSupport , visitors, transformers) = unzip4(initialized)
+        // TODO: fuse for performance
+        while (names.nonEmpty) {
+          val nextVisitor = visitors.head
+          val supportsErasure = erasureSupport.head
+          if ((supportsErasure & erasureCompatibility) > 0) {
+            rhs0.foreachSubTree(nextVisitor)
+            val nextTransformer = transformers.head()
+            val name = names.head
+            val rhst = new TreeMap() {
+              override def transform(tree: Tree)(implicit ctx: Context): Tree = {
+                val innerCtx = if (tree.isDef && tree.symbol.exists) ctx.withOwner(tree.symbol) else ctx
+                nextTransformer(ctx)(super.transform(tree)(innerCtx))
+              }
+            }.transform(rhs0)
+            if (rhst ne rhs0) {
+              simplify.println(s"${tree.symbol} was simplified by ${name}: ${rhs0.show}")
+              simplify.println(s"became: ${rhst.show}")
+            }
+            rhs0 = rhst
+          }
+          names = names.tail
+          visitors = visitors.tail
+          erasureSupport = erasureSupport.tail
+          transformers = transformers.tail
+        }
+      }
+      if (rhs0 ne tree.rhs) cpy.DefDef(tree)(rhs = rhs0)
+      else tree
+    } else tree
+  }
+
   private def desugarIdent(i: Ident)(implicit ctx: Context): Option[Select] = {
     i.tpe match {
       case TermRef(prefix: TermRef, name) =>
@@ -107,99 +189,6 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
     case Literal(Constant(null)) => false
     case t: Literal => true
     case _ => false
-  }
-
-  type Visitor = Tree => Unit
-  type ErasureCompatibility = Int
-  val BeforeErasure: ErasureCompatibility = 1
-  val AfterErasure: ErasureCompatibility  = 2
-  val BeforeAndAfterErasure: ErasureCompatibility  = BeforeErasure | AfterErasure
-
-  val NoVisitor: Visitor = (_) => ()
-  type Transformer = () => (Context => Tree => Tree)
-
-  /** Every optimization is a function of the following type.
-   *
-   *  - String is the optimization name (for debugging)
-   *
-   *  - ErasureCompatibility is flag indicating whether this optimization can
-   *    be run before or after Erasure (or both).
-   *
-   *  - Visitor is run first to gather information on Trees (using mutation)
-   *
-   *  - Transformer does the actual Tree => Tree transformation, possibly
-   *  - using a different context from the one using in Optimization.
-   */
-  type Optimization = (Context) => (String, ErasureCompatibility, Visitor, Transformer)
-
-  private lazy val _optimizations: Seq[Optimization] =
-    inlineCaseIntrinsics        ::
-    removeUnnecessaryNullChecks :: // Doesn't seams to work AfterErasure
-    inlineOptions               ::
-       // Tests that fail when enabled AfterErasure, to be investigated?
-       // ../tests/run/Course-2002-04.scala failed
-       // ../tests/run/t2005.scala failed
-       // ../tests/run/optimizer-array-load.scala failed
-       // ../tests/pos/virtpatmat_exist1.scala failed
-       // ../tests/pos/t1133.scala failed
-    inlineLabelsCalledOnce      ::
-    valify                      ::
-    devalify                    ::
-    jumpjump                    ::
-    dropGoodCasts               ::
-    dropNoEffects               ::
-    // inlineLocalObjects          :: // followCases needs to be fixed, see ./tests/pos/rbtree.scala
-    // varify                      :: // varify could stop other transformations from being applied. postponed.
-    // bubbleUpNothing             ::
-      // Still need to import the tailRec thing
-      // t2429.scala
-      // constraining-lub.scala
-      // t8933c.scala
-      // t348plus.scala
-    constantFold                ::
-    Nil
-
-  override def transformDefDef(tree: DefDef)(implicit ctx: Context, info: TransformerInfo): Tree = {
-    val ctx0 = ctx
-    if (optimize && !tree.symbol.is(Flags.Label)) {
-      implicit val ctx: Context = ctx0.withOwner(tree.symbol(ctx0))
-      // TODO: optimize class bodies before erasure?
-      var rhs0 = tree.rhs
-      var rhs1: Tree = null
-      val erasureCompatibility = if (ctx.erasedTypes) AfterErasure else BeforeErasure
-      while (rhs1 ne rhs0) {
-        rhs1 = rhs0
-        val initialized = _optimizations.map(x => x(ctx.withOwner(tree.symbol)))
-        var (names, erasureSupport, visitors, transformers) = unzip4(initialized)
-        // TODO: fuse for performance
-        while (names.nonEmpty) {
-          val nextVisitor = visitors.head
-          val supportsErasure = erasureSupport.head
-          if ((supportsErasure & erasureCompatibility) > 0) {
-            rhs0.foreachSubTree(nextVisitor)
-            val nextTransformer = transformers.head()
-            val name = names.head
-            val rhst = new TreeMap() {
-              override def transform(tree: Tree)(implicit ctx: Context): Tree = {
-                val innerCtx = if (tree.isDef && tree.symbol.exists) ctx.withOwner(tree.symbol) else ctx
-                nextTransformer(ctx)(super.transform(tree)(innerCtx))
-              }
-            }.transform(rhs0)
-            if (rhst ne rhs0) {
-              simplify.println(s"${tree.symbol} was simplified by ${name}: ${rhs0.show}")
-              simplify.println(s"became: ${rhst.show}")
-            }
-            rhs0 = rhst
-          }
-          names = names.tail
-          visitors = visitors.tail
-          erasureSupport = erasureSupport.tail
-          transformers = transformers.tail
-        }
-      }
-      if (rhs0 ne tree.rhs) cpy.DefDef(tree)(rhs = rhs0)
-      else tree
-    } else tree
   }
 
   /** Inline case class specific methods using desugarings assumptions.
@@ -374,9 +363,9 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
       // case ift @ If(cond, thenp, elsep :Literal) if ift.tpe.derivesFrom(defn.BooleanClass) && !elsep.const.booleanValue =>
       //   cond.select(defn.Boolean_&&).appliedTo(elsep)
       //   // the other case ins't handled intentionally. See previous case for explanation
-      case If(t@ Select(recv, _), thenp, elsep) if t.symbol eq defn.Boolean_! =>
+      case If(t @ Select(recv, _), thenp, elsep) if t.symbol eq defn.Boolean_! =>
         If(recv, elsep, thenp)
-      case If(t@ Apply(Select(recv, _), Nil), thenp, elsep) if t.symbol eq defn.Boolean_! =>
+      case If(t @ Apply(Select(recv, _), Nil), thenp, elsep) if t.symbol eq defn.Boolean_! =>
         If(recv, elsep, thenp)
       // TODO: similar trick for comparisons.
       // TODO: handle comparison with min\max values
@@ -384,7 +373,7 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
         rec
       case meth1 @ Select(meth2 @ Select(rec, _), _) if meth1.symbol == defn.Boolean_! && meth2.symbol == defn.Boolean_! && !ctx.erasedTypes =>
         rec
-      case t@Apply(Select(lhs, _), List(rhs)) =>
+      case t @ Apply(Select(lhs, _), List(rhs)) =>
         val sym = t.symbol
         (lhs, rhs) match {
           case (lhs, Literal(_)) if !lhs.isInstanceOf[Literal] && symmetricOperations.contains(sym) =>
@@ -441,6 +430,7 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
       case t if !isPureExpr(t) =>
         t
       case t =>
+        // TODO: did not manage to trigger this in tests
         val s = ConstFold.apply(t)
         if ((s ne null) && s.tpe.isInstanceOf[ConstantType]) {
           val constant = s.tpe.asInstanceOf[ConstantType].value
@@ -798,7 +788,7 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
 
   private def keepOnlySideEffects(t: Tree)(implicit ctx: Context): Tree = {
     t match {
-      case t: Literal =>
+      case l: Literal =>
         EmptyTree
       case t: This =>
         EmptyTree
@@ -889,8 +879,8 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
       case Block(Nil, expr) => expr
       case a: Block  =>
         val newStats0 = a.stats.mapConserve(keepOnlySideEffects)
-        val newStats1 = if (newStats0 eq a.stats) newStats0 else newStats0.flatMap{
-          case x: Block=> x.stats ::: List(x.expr)
+        val newStats1 = if (newStats0 eq a.stats) newStats0 else newStats0.flatMap {
+          case x: Block => x.stats ::: List(x.expr)
           case EmptyTree => Nil
           case t => t :: Nil
         }
@@ -1037,7 +1027,7 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
       if (nw ne old) nw
       else tree
     }
-    ("inlineLabelsCalledOnce", BeforeErasure, visitor, transformer)
+    ("inlineOptions", BeforeErasure, visitor, transformer)
   }
 
   /** Rewrite vars with exactly one assignment as vals. */
