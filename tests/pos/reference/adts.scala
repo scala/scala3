@@ -1,3 +1,4 @@
+package adts
 object t1 {
 
 enum Option[+T] {

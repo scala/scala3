@@ -1,3 +1,5 @@
+package enums
+
 object t1 {
 
 enum Color {

@@ -1,3 +1,5 @@
+package implicitByName
+
 object Test {
 
 trait Codec[T] {
