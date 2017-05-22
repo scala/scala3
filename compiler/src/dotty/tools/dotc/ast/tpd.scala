@@ -473,33 +473,24 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     }
 
     override def Apply(tree: Tree)(fun: Tree, args: List[Tree])(implicit ctx: Context): Apply = {
-      if (ctx.settings.optimise.value) {
-        val untyped = untpd.cpy.Apply(tree)(fun, args)
-        val typed   = ta.assignType(untyped, fun, args)
-        if (untyped.ne(tree))
-          typed
-        else
-          tree.asInstanceOf[Apply]
-      } else {
-        ta.assignType(untpd.cpy.Apply(tree)(fun, args), fun, args)
-      }
+      val untyped = untpd.cpy.Apply(tree)(fun, args)
+      if (untyped.ne(tree) || !ctx.settings.optimise.value)
+        ta.assignType(untyped, fun, args)
+      else
+        tree.asInstanceOf[Apply]
     }
+
       // Note: Reassigning the original type if `fun` and `args` have the same types as before
       // does not work here: The computed type depends on the widened function type, not
       // the function type itself. A treetransform may keep the function type the
       // same but its widened type might change.
 
     override def TypeApply(tree: Tree)(fun: Tree, args: List[Tree])(implicit ctx: Context): TypeApply = {
-      if (ctx.settings.optimise.value) {
-        val untyped = untpd.cpy.TypeApply(tree)(fun, args)
-        val typed   = ta.assignType(untyped, fun, args)
-        if (untyped.ne(tree))
-          typed
-        else
-          tree.asInstanceOf[TypeApply]
-      } else {
-        ta.assignType(untpd.cpy.TypeApply(tree)(fun, args), fun, args)
-      }
+      val untyped = untpd.cpy.TypeApply(tree)(fun, args)
+      if (untyped.ne(tree) || !ctx.settings.optimise.value)
+        ta.assignType(untyped, fun, args)
+      else
+        tree.asInstanceOf[TypeApply]
     }
       // Same remark as for Apply
 
@@ -535,16 +526,12 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     }
 
     override def Closure(tree: Tree)(env: List[Tree], meth: Tree, tpt: Tree)(implicit ctx: Context): Closure = {
-      if (ctx.settings.optimise.value) {
-        val untyped = untpd.cpy.Closure(tree)(env, meth, tpt)
-        val typed   = ta.assignType(untyped, meth, tpt)
-        if (untyped.ne(tree))
-          typed
-        else
-          tree.asInstanceOf[Closure]
-      } else {
-        ta.assignType(untpd.cpy.Closure(tree)(env, meth, tpt), meth, tpt)
-      }
+      val untyped = untpd.cpy.Closure(tree)(env, meth, tpt)
+      val typed = ta.assignType(untyped, meth, tpt)
+      if (untyped.ne(tree) || !ctx.settings.optimise.value)
+        typed
+      else
+        tree.asInstanceOf[Closure]
     }
       // Same remark as for Apply
 
@@ -980,4 +967,3 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     if (file != null && file.exists) new SourceFile(file, Codec(encoding)) else NoSource
   }
 }
-
