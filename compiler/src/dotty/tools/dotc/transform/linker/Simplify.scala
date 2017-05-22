@@ -235,18 +235,21 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
           else a.args.head
         }
         else if (a.tpe.derivesFrom(defn.OptionClass) && a.args.head.tpe.derivesFrom(a.symbol.owner.companionClass)) {
-          // TODO: if args is an expression, this will evaluate it multiple times
-          // TODO: if the static type is right, it does not mean it's not null
-          val accessors = a.args.head.tpe.widenDealias.classSymbol.caseAccessors.filter(_.is(Flags.Method))
-          val fields = accessors.map(x => a.args.head.select(x).ensureApplied)
-          val tplType = a.tpe.baseArgTypes(defn.OptionClass).head
-
-          if (fields.tail.nonEmpty) {
-            val tplAlloc = New(tplType, fields)
-            New(a.tpe.translateParameterized(defn.OptionClass, defn.SomeClass), tplAlloc :: Nil)
-          } else { // scalac does not have Tuple1
-            New(a.tpe.translateParameterized(defn.OptionClass, defn.SomeClass), fields.head :: Nil)
+          def some(e: Tree) = {
+            val accessors = e.tpe.widenDealias.classSymbol.caseAccessors.filter(_.is(Method))
+            val fields = accessors.map(x => e.select(x).ensureApplied)
+            val tplType = a.tpe.baseArgTypes(defn.OptionClass).head
+            if (fields.tail.nonEmpty) {
+              val tplAlloc = New(tplType, fields)
+              New(a.tpe.translateParameterized(defn.OptionClass, defn.SomeClass), tplAlloc :: Nil)
+            } else { // scalac does not have Tuple1
+              New(a.tpe.translateParameterized(defn.OptionClass, defn.SomeClass), fields.head :: Nil)
+            }
           }
+          val none = ref(defn.NoneModuleRef)
+          def isNull(e: Tree) = e.select(defn.Object_eq).appliedTo(Literal(Constant(null)))
+          def fi(e: Tree) = If(isNull(e), none, some(e))
+          evalOnce(a.args.head)(fi)
         }
         else a
       case a: Apply if (a.symbol.name == nme.unapplySeq)           &&
