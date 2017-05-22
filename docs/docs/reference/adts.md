@@ -92,6 +92,22 @@ enum Color(val rgb: Int) {
 }
 ```
 
+## Syntax of Enums
+
+ 1. Enum definitions and enum classes are defined as follows:
+
+        TmplDef ::=  `enum' `class’ ClassDef
+                 |   `enum' EnumDef
+        EnumDef ::=  id ClassConstr [`extends' [ConstrApps]]
+                     [nl] `{’ EnumCaseStat {semi EnumCaseStat} `}’
+
+2. Cases of enums are defined as follows:
+
+        EnumCaseStat  ::=  {Annotation [nl]} {Modifier} EnumCase
+        EnumCase      ::=  `case' (EnumClassDef | ObjectDef | ids)
+        EnumClassDef  ::=  id [ClsTpeParamClause | ClsParamClause]
+                           ClsParamClauses TemplateOpt
+        TemplateStat  ::=  ... | EnumCaseStat
 
 
 
