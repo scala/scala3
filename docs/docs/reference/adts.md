@@ -55,6 +55,44 @@ val res3: t2.Option.Some[Int] = Some(2)
 scala> scala> new Option.Some(2)
 ```
 
+As all other enums, ADTs can have methods on both the enum class and
+its companion object. For instance, here is `Option` again, with an
+`isDefined` method and an `Option(...)` constructor.
+
+```scala
+enum class Option[+T] {
+   def isDefined: Boolean
+}
+object Option {
+  def apply[T >: Null](x: T): Option[T] =
+    if (x == null) None else Some(x)
+
+  case Some[+T](x: T) {
+     def isDefined = true
+  }
+  case None {
+     def isDefined = false
+  }
+}
+```
+
+Enumerations and ADTs have been presented as two different
+concepts. But since they share the same syntactic construct, they can
+be seen simply as two ends of a spectrum and it is perfectly possible
+to conctruct hybrids. For instance, the code below gives an
+implementation of `Color` either with three enum values or with a
+parameterized case that takes an RGB value.
+
+```scala
+enum Color(val rgb: Int) {
+  case Red   extends Color(0xFF0000)
+  case Green extends Color(0x00FF00)
+  case Blue  extends Color(0x0000FF)
+  case Mix(mix: Int) extends Color(mix)
+}
+```
+
+
 
 
 

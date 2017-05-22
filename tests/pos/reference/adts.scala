@@ -24,3 +24,21 @@ enum Color(val rgb: Int) {
   case Mix(mix: Int) extends Color(mix)
 }
 
+object t3 {
+
+enum class Option[+T] {
+   def isDefined: Boolean
+}
+object Option {
+  def apply[T >: Null](x: T): Option[T] =
+    if (x == null) None else Some(x)
+
+  case Some[+T](x: T) {
+     def isDefined = true
+  }
+  case None {
+     def isDefined = false
+  }
+}
+
+}
