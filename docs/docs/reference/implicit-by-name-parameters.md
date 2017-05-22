@@ -47,8 +47,7 @@ The precise steps for constructing an implicit argument for a by-name parameter 
 
 In the example above, the definition of `s` would be expanded as follows.
 
-  val s = implicitly[Test.Serializable[Option[Int]]](
-    serializeOption[Int](serializeInt)
-  )
+    val s = implicitly[Test.Serializable[Option[Int]]](
+      serializeOption[Int](serializeInt))
 
 No lazy val was generated because the synthesized argument is not recursive.
