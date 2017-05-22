@@ -657,7 +657,7 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
         else if (tp.classSymbol.is(CaseClass))
         // use constructor syntax for case class
           showType(tp) + signature(tp).map(_ => "_").mkString("(", ", ", ")")
-        else if (signature(tp).nonEmpty)
+        else if (sym.is(Flags.Case) && signature(tp).nonEmpty)
           tp.classSymbol.name + signature(tp).map(_ => "_").mkString("(", ", ", ")")
         else if (decomposed) "_: " + showType(tp)
         else "_"

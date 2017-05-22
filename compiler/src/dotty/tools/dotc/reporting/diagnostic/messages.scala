@@ -789,7 +789,12 @@ object messages {
            |It would fail on: $uncovered"""
 
 
-    val explanation = ""
+    val explanation =
+      hl"""|There are several ways to make the match exhaustive:
+           | - add missing cases as shown in the warning
+           | - change the return type of irrefutable extractors as `Some[T]` if exist
+           | - add a wildcard `_` case at the end
+           |"""
   }
 
   case class MatchCaseUnreachable()(implicit ctx: Context)
