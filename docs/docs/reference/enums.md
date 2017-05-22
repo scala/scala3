@@ -8,7 +8,7 @@ enum Color {
 }
 ```
 
-This defines a new class, `Color`, with three values, `Color.Red`,
+This defines a new `sealed` class, `Color`, with three values, `Color.Red`,
 `Color.Green`, `Color.Blue`.  The color values are members of `Color`s
 companion object. The `Color` definition above is equivalent to the
 following more explicit definition of an _enum class_ and a companion
@@ -99,6 +99,20 @@ object Planet {
 ```
 
 ## Implementation
+
+Enum classes are represented as `sealed` classes that extend the `scala.Enum` trait.
+This trait defines a single method, `enumTag`:
+
+```scala
+package scala
+
+/** A base trait of all enum classes */
+trait Enum {
+
+  /** A number uniquely identifying a case of an enum */
+  def enumTag: Int
+}
+```
 
 Enum values with `extends` clauses get expanded to anonymus class instances.
 For instance, the `VENUS` value above would be defined like this:
