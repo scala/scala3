@@ -27,6 +27,7 @@ object Build {
   val scalacVersion = "2.11.11" // Do not rename, this is grepped in bin/common.
 
   val dottyOrganization = "ch.epfl.lamp"
+  val dottyGithubUrl = "https://github.com/lampepfl/dotty"
   val dottyVersion = {
     val baseVersion = "0.1.1"
     val isNightly = sys.env.get("NIGHTLYBUILD") == Some("yes")
@@ -86,7 +87,7 @@ object Build {
     organization := dottyOrganization,
     organizationName := "LAMP/EPFL",
     organizationHomepage := Some(url("http://lamp.epfl.ch")),
-    homepage := Some(url("https://github.com/lampepfl/dotty")),
+    homepage := Some(url(dottyGithubUrl)),
 
     scalacOptions ++= Seq(
       "-feature",
@@ -283,6 +284,7 @@ object Build {
         "-siteroot", "docs",
         "-project", "Dotty",
         "-project-version", dottyVersion,
+        "-project-url", dottyGithubUrl,
         "-classpath", s"$dottyLib:$dottyInterfaces:$otherDeps"
       )
         (runMain in Compile).toTask(
@@ -887,12 +889,12 @@ object DottyInjectedPlugin extends AutoPlugin {
          Some("releases"  at nexus + "service/local/staging/deploy/maven2")
      },
      publishArtifact in Test := false,
-     homepage := Some(url("https://github.com/lampepfl/dotty")),
+     homepage := Some(url(dottyGithubUrl)),
      licenses += ("BSD New",
-       url("https://github.com/lampepfl/dotty/blob/master/LICENSE.md")),
+       url(s"$dottyGithubUrl/blob/master/LICENSE.md")),
      scmInfo := Some(
        ScmInfo(
-         url("https://github.com/lampepfl/dotty"),
+         url(dottyGithubUrl),
          "scm:git:git@github.com:lampepfl/dotty.git"
        )
      ),

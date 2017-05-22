@@ -1,0 +1,160 @@
+@import url(https://fonts.googleapis.com/css?family=Titillium+Web:200,300,400,600);
+@import url(https://fonts.googleapis.com/css?family=Source+Sans+Pro:200,300,400,600,700);
+
+div#back-container {
+    height: 75px;
+    width: 100%;
+    padding-top: 25px;
+}
+
+div#back-container > span {
+    padding: 10px;
+    border-left: 1px solid #fff;
+    margin-left: 27px;
+    font-family: "Titillium Web", sans-serif;
+    font-weight: 200;
+    text-transform: uppercase;
+    font-size: 13px;
+}
+
+div#back-container > span:hover {
+    border-left: 1px solid #0fa00f;
+}
+
+div#back-container > span > a#back-anchor:hover,
+div#back-container > span > a#back-anchor:focus,
+div#back-container > span > a#back-anchor {
+    color: #373a3c;
+    text-decoration: none;
+}
+
+div#search-container {
+    margin: 0 auto;
+    width: 1000px;
+}
+
+div#search-container > h1#searching-for {
+    text-align: center;
+    margin-bottom: 50px;
+    font-family: "Source Sans Pro", sans-serif;
+}
+
+div#search-container > div#result-container {
+    width: 100%;
+}
+
+div#result-container > div.results {
+    float: left;
+    width: 50%;
+    padding-right: 20px;
+    min-height: 40px; /** debug */
+}
+
+div#entity-results {
+    background-color: green; /** debug */
+}
+
+div#member-results {
+    background-color: red; /** debug */
+}
+
+div.results > h1 {
+    width: 100%;
+    border-bottom: 1px solid black;
+    font-family: "Titillium Web", sans-serif;
+    font-weight: 300;
+    font-size: 24px;
+}
+
+div.results ul {
+    list-style-type: none;
+    padding-left: 0;
+}
+
+div.results > ul > li > h1.package-name {
+    font-size: 13px;
+    margin-top: 20px;
+}
+
+div.results > ul > li > h1.package-name > a {
+    font-family: "Titillium Web", sans-serif;
+    font-weight: 300;
+    color: #ff4081;
+}
+
+div.results > ul > li a:hover,
+div.results > ul > li a:focus,
+div.results > ul > li a {
+    color: #373a3c;
+    text-decoration: none;
+}
+
+div.results > ul > li > ul {
+    border-left: 2px solid gray;
+    font-family: "Titillium Web", sans-serif;
+    font-size: 13px;
+    font-weight: 100;
+}
+
+div.results > ul > li > ul > li {
+    line-height: 40px;
+}
+
+div.results li.entity-result-li {
+}
+
+div.results ul.entity-ul {
+    position: relative;
+}
+
+div.cover-block {
+    position: absolute;
+    background: #fff;
+    border-right: 2px solid gray;
+    width: 82px;
+    height: 100%;
+    left: -82px;
+    top: 0;
+}
+
+div.results li.entity-result-li > a.entity-name {
+    margin-left: 10px;
+}
+
+div.results li.entity-result-li {
+    transition: all 0.2s ease;
+    margin-left: -42px;
+}
+
+div.results li.entity-result-li.with-companion {
+    margin-left: -82px;
+}
+
+div.results li.entity-result-li:hover {
+    margin-left: 0;
+}
+
+div.results li.entity-result-li > div.entity-kinds {
+    float: left;
+}
+
+div.results li.entity-result-li > div.entity-kinds > a.letter-anchor {
+    height: 40px;
+    width: 40px;
+    display: block;
+    float: left;
+    text-align: center;
+    color: #fff;
+}
+
+div.results li.entity-result-li > div.entity-kinds > a.letter-anchor.object {
+    background-color: rgb(44, 108, 141);
+}
+
+div.results li.entity-result-li > div.entity-kinds > a.letter-anchor.class {
+    background-color: rgb(68, 173, 125);
+}
+
+div.results li.entity-result-li > div.entity-kinds > a.letter-anchor.trait {
+    background-color: rgb(25, 170, 207);
+}

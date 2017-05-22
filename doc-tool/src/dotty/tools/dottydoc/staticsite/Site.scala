@@ -28,7 +28,13 @@ import io.{ AbstractFile, VirtualFile, File }
 import scala.collection.mutable.ArrayBuffer
 import util.syntax._
 
-case class Site(val root: JFile, val projectTitle: String, val projectVersion: String, val documentation: Map[String, Package]) extends ResourceFinder {
+case class Site(
+  val root: JFile,
+  val projectTitle: String,
+  val projectVersion: String,
+  val projectUrl: String,
+  val documentation: Map[String, Package]
+) extends ResourceFinder {
   /** Documentation serialized to java maps */
   private val docs: JList[_] = {
     import model.JavaConverters._
@@ -128,12 +134,14 @@ case class Site(val root: JFile, val projectTitle: String, val projectVersion: S
       // Copy statics included in resources
       Map(
         "css/toolbar.css" -> "/css/toolbar.css",
+        "css/search.css" -> "/css/search.css",
         "css/sidebar.css" -> "/css/sidebar.css",
         "css/api-page.css" -> "/css/api-page.css",
         "css/dottydoc.css" -> "/css/dottydoc.css",
         "css/color-brewer.css" -> "/css/color-brewer.css",
         "css/font-awesome.min.css" -> "/css/font-awesome.min.css",
         "css/bootstrap.min.css" -> "/css/bootstrap.min.css",
+        "js/api-search.js" -> "/js/api-search.js",
         "js/bootstrap.min.js" -> "/js/bootstrap.min.js",
         "js/jquery.min.js" -> "/js/jquery.min.js",
         "js/tether.min.js" -> "/js/tether.min.js",
@@ -157,7 +165,11 @@ case class Site(val root: JFile, val projectTitle: String, val projectVersion: S
       "../" * (assetLen - rootLen - 1 + additionalDepth) + "."
     }
 
-    DefaultParams(docs, documentation, PageInfo(pathFromRoot), SiteInfo(baseUrl, projectTitle, projectVersion, Array()), sidebar)
+    DefaultParams(
+      docs, documentation, PageInfo(pathFromRoot),
+      SiteInfo(baseUrl, projectTitle, projectVersion, projectUrl, Array()),
+      sidebar
+    )
   }
 
   /* Creates output directories if allowed */
@@ -195,6 +207,18 @@ case class Site(val root: JFile, val projectTitle: String, val projectVersion: S
       documentation.values.foreach { pkg =>
         genDoc(pkg)
         pkg.children.foreach(genDoc)
+      }
+
+      // generate search page:
+      val target = mkdirs(fs.getPath(outDir.getAbsolutePath +  "/api/search.html"))
+      val searchPageParams = defaultParams(target.toFile, -1).withPosts(blogInfo).toMap
+      val searchPage = new HtmlPage("_layouts/search.html", layouts("search").content, searchPageParams, includes)
+      render(searchPage).foreach { rendered =>
+        Files.copy(
+          new ByteArrayInputStream(rendered.getBytes(StandardCharsets.UTF_8)),
+          target,
+          REPLACE_EXISTING
+        )
       }
     }
 
@@ -328,6 +352,7 @@ case class Site(val root: JFile, val projectTitle: String, val projectVersion: S
 
     val defaultLayouts: Map[String, Layout] = Map(
       "main" -> "/_layouts/main.html",
+      "search" -> "/_layouts/search.html",
       "doc-page" -> "/_layouts/doc-page.html",
       "api-page" -> "/_layouts/api-page.html",
       "blog-page" -> "/_layouts/blog-page.html",

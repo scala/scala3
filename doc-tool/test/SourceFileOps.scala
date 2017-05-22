@@ -11,7 +11,10 @@ import model.Package
 
 trait SourceFileOps {
   import scala.collection.JavaConverters._
-  val site = new Site(new java.io.File("../doc-tool/resources/"), "test-site", "v0.1", Map.empty)
+  val site = new Site(
+    new java.io.File("../doc-tool/resources/"),
+    "test-site", "v0.1", "http://github.com/lampepfl/dotty", Map.empty
+  )
 
   def stringToSource(path: String, sourceCode: String): SourceFile = {
     val virtualFile = new VirtualFile(path, path)

@@ -10,6 +10,7 @@ div#content-wrapper div.index-wrapper {
     font-family: "Titillium Web", sans-serif;
     font-weight: 200;
     padding-left: 14px;
+    padding-bottom: 75px;
 }
 
 /** Mobile (x < 576px) sidebar: Defaults closed with 60% wide sidebar */
@@ -22,6 +23,14 @@ div#content-wrapper.toggled div.index-wrapper {}
 ul.index-entities {
     list-style-type: none;
     padding-left: 0;
+}
+
+ul.index-entities > li > input#search-api-input {
+    border: 0;
+    margin-left: 22px;
+    outline: none;
+    line-height: 35px;
+    box-shadow: inset 0 0px 0 white, inset 0 -0.5px 0 rgba(0, 0, 0, 0.5);
 }
 
 ul.toc {
@@ -133,6 +142,30 @@ li.entity-package > ul.package-entities > li {
     transition: all 0.2s ease;
 }
 
+li.entity-package > ul.package-entities > li#hide-hidden-by-default,
+li.entity-package > ul.package-entities > li#show-hidden-by-default {
+  margin-left: 0;
+  color: #ff4081;
+  font-size: 13px;
+}
+
+li.entity-package > ul.package-entities > li#hide-hidden-by-default:hover,
+li.entity-package > ul.package-entities > li#show-hidden-by-default:hover {
+  cursor: pointer;
+}
+
+li.entity-package > ul.package-entities > li#show-hidden-by-default,
+li.entity-package > ul.package-entities > li#hide-hidden-by-default.toggled,
+li.entity-package > ul.package-entities > li.hidden-by-default.toggled {
+  display: block;
+}
+
+li.entity-package > ul.package-entities > li.hidden-by-default,
+li.entity-package > ul.package-entities > li#show-hidden-by-default.toggled,
+li.entity-package > ul.package-entities > li#hide-hidden-by-default {
+  display: none;
+}
+
 li.entity-package > ul.package-entities > li.with-companion {
   margin-left: -92px;
 }
@@ -187,11 +220,11 @@ ul.package-entities > li > div.entity-kinds > a.letter-anchor.trait {
 /** Cover block used to hide where the kind blocks come from */
 div#cover-block {
     position: absolute;
-    background: #fafafa;
+    background: #fff;
     border-right: 2px solid gray;
-    width: 40px;
+    width: 41px;
     height: 100%;
-    left: -40px;
+    left: -41px;
     top: 0;
 }
 

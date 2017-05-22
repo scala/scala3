@@ -69,7 +69,9 @@ h1.section {
 h1.section > span.expand-button.visible {
     color: rgba(167, 161, 161, 0.5);
     font-family: "Source Code Pro", sans-serif;
-    font-size: 25px;
+    font-size: 16px;
+    float: left;
+    margin: 14px 9px 0 0;
 }
 
 h1.section > span.expand-button.visible:hover {

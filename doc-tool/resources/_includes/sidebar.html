@@ -11,6 +11,20 @@
     <li class="index-title">
         <span>API</span>
     </li>
+    <li>
+      <input id="search-api-input" type="text" placeholder="Search API"/>
+      <script>
+          var input = document.getElementById("search-api-input");
+          input.onkeydown = function(evt) {
+              evt = evt || window.event;
+              if (evt.keyCode == 13) window.location = (
+                  "{{ site.baseurl }}/api/search.html?" +
+                  "searchTerm=" + input.value +
+                  "&previousUrl=" + encodeURI(window.location)
+              );
+          };
+      </script>
+    </li>
     {% endif %}
     {% for pkg in docs %}
         <li class="index-entity entity-package">
@@ -20,7 +34,16 @@
             {% for member in pkg.children %}
                 {% if member.kind == "object" and member.hasCompanion %}
                 {% elsif member.kind != "package" %}
+
+                {% if forloop.index == 6 and forloop.length > 7 %}
+                <li id="show-hidden-by-default" onclick="toggleHiddenByDefault(this);">+ expand rest</li>
+                <li class="hidden-by-default {% if member.hasCompanion %} with-companion {% endif %}">
+                {% elsif forloop.index > 6 and forloop.length > 7 %}
+                <li class="hidden-by-default {% if member.hasCompanion %} with-companion {% endif %}">
+                {% else %}
                 <li class="{% if member.hasCompanion %} with-companion {% endif %}">
+                {% endif %}<!-- end li setter -->
+
                     <div class="entity-kinds">
                         {% if member.hasCompanion %}
                         <a class="letter-anchor object" href="{{ site.baseurl }}/api/{{ member.companionPath | join: "/" }}.html">O</a>
@@ -29,10 +52,28 @@
                     </div>
                     <a class="entity-name" href="{{ site.baseurl }}/api/{{ member.path | join: "/" }}.html">{{ member.name }}</a>
                 </li>
+
+                {% if forloop.last and forloop.index > 6 %}
+                <li id="hide-hidden-by-default" onclick="toggleHiddenByDefault(this);">- collapse members</li>
                 {% endif %}
+
+                {% endif %} <!-- end != "package" -->
+
             {% endfor %}
             </ul>
         </li>
     {% endfor %}
     </ul>
 </div>
+<script>
+    function toggleHiddenByDefault(li) {
+        var ul = li.parentElement;
+
+        for (var i = 0; i < ul.children.length; i++) {
+            var childLi = ul.children[i];
+            if (childLi.classList.contains('hidden-by-default') || childLi.id == "hide-hidden-by-default" || childLi.id == "show-hidden-by-default") {
+                childLi.classList.toggle('toggled');
+            }
+        }
+    }
+</script>

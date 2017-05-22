@@ -6,4 +6,15 @@
         <h1 id="project-name">{{ site.project }} Documentation</h1>
         <h2 id="project-version">{{ site.version }}</h2>
     </div>
+
+    {% if site.projectUrl %}
+    <a title="Project repository" id="github-link" href="{{ site.projectUrl }}">
+        {% if site.projectUrl contains "github" %}
+        <i class="fa fa-github" aria-hidden="true"></i>
+        {% else %}
+        <i class="fa fa-code" aria-hidden="true"></i>
+        {% endif %}
+    </a>
+    {% endif %}
 </div>
+<div id="toolbar-spacing"></div>
