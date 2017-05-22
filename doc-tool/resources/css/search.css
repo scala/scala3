@@ -134,6 +134,25 @@ div.results li.entity-result-li:hover {
     margin-left: 0;
 }
 
+div.results li.entity-result-li > div.member-result {
+    transition: all 0.2s ease;
+    margin-left: 105px;
+}
+
+div.results li.entity-result-li:hover > div.member-result {
+    margin-left: 23px;
+}
+
+div.results li.entity-result-li > div.member-result > span.member-kind {
+    margin-right: 5px;
+    font-weight: 400;
+}
+
+div.results li.entity-result-li > div.member-result > span.member-return {
+    margin-left: 5px;
+    font-weight: 400;
+}
+
 div.results li.entity-result-li > div.entity-kinds {
     float: left;
 }

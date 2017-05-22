@@ -265,17 +265,34 @@ object JavaConverters {
         "companionPath" -> e.companionPath.asJava
       )
 
-      (e match {
-        case e: Package   => entity(e) ++ members(e)
-        case e: Class     => entity(e) ++ members(e) ++ companion(e)
-        case e: CaseClass => entity(e) ++ members(e) ++ companion(e)
-        case e: Trait     => entity(e) ++ members(e) ++ companion(e)
-        case e: Object    => entity(e) ++ members(e) ++ companion(e)
-        case e: TypeAlias => entity(e)
-        case e: Def       => entity(e)
-        case e: Val       => entity(e)
+      def typeParams(e: TypeParams) =
+        Map("typeParams" -> e.typeParams.asJava)
+
+      def paramLists(e: Def) = Map(
+        "paramLists" -> {
+          e.paramLists.map { paramList =>
+            Map(
+              "isImplicit" -> paramList.isImplicit,
+              "list" -> paramList.list.map(_.showReference).asJava
+            ).asJava
+          }
+          .asJava
+        }
+      )
+
+      def returnValue(e: ReturnValue) =
+        Map("returnValue" -> e.returnValue.showReference)
+
+      entity(e) ++ (e match {
+        case e: Package   => members(e)
+        case e: Class     => members(e) ++ companion(e)
+        case e: CaseClass => members(e) ++ companion(e)
+        case e: Trait     => members(e) ++ companion(e)
+        case e: Object    => members(e) ++ companion(e)
+        case e: Def       => typeParams(e) ++ paramLists(e) ++ returnValue(e)
+        case e: TypeAlias => Map.empty
+        case e: Val       => Map.empty
       })
-      .asJava
-    }
+    }.asJava
   }
 }
