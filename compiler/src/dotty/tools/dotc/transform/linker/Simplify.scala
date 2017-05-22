@@ -273,7 +273,10 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
         else a
       case t => t
     }
-    ("inlineCaseIntrinsics", BeforeAndAfterErasure, NoVisitor, transformer)
+    // To run this optimisation after erasure one would need to specialize it
+    // for constructor with outer pointer and values classes. There is probably
+    // no need to run this more than once.
+    ("inlineCaseIntrinsics", BeforeErasure, NoVisitor, transformer)
   }
 
   /** Various constant folding.
@@ -811,8 +814,8 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
         (t.symbol.is(CaseAccessor) && !t.symbol.is(Mutable)) =>
           keepOnlySideEffects(rec) // Accessing a field of a product
       case s @ Select(qual, name) if
-          !name.eq(nme.TYPE_) && // Keep the .TYPE added by ClassOf
-          !t.symbol.is(Flags.Mutable | Flags.Lazy) && !t.symbol.is(Flags.Method) =>
+          // !name.eq(nme.TYPE_) && // Keep the .TYPE added by ClassOf, would be needed for AfterErasure
+          !t.symbol.is(Mutable | Lazy) && !t.symbol.is(Method) =>
         keepOnlySideEffects(qual)
       case Block(List(t: DefDef), s: Closure) =>
         EmptyTree
@@ -905,7 +908,8 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
         } else a
       case t => t
     }
-    ("dropNoEffects", BeforeAndAfterErasure, NoVisitor, transformer)
+    // BoxedUnit messes up this phase after erasure
+    ("dropNoEffects", BeforeErasure, NoVisitor, transformer)
   }
 
   /** Inlines LabelDef which are used exactly once. */
@@ -945,7 +949,7 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
         EmptyTree
       case t => t
     }
-    ("inlineLabelsCalledOnce", BeforeAndAfterErasure, visitor, transformer)
+    ("inlineLabelsCalledOnce", BeforeErasure, visitor, transformer)
   }
 
   /** Rewrites pairs of consecutive LabelDef jumps by jumping directly to the target. */
