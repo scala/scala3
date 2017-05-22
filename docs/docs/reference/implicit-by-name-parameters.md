@@ -3,28 +3,33 @@
 Call-by-name implicit parameters can be used to avoid a divergent implicit expansion.
 
 ```scala
+trait Serializable[T] {
+  def write(x: T): Unit
+}
+
+implicit def serializeInt: Serializable[Int] = ???
+
 implicit def serializeOption[T](implicit ev: => Serializable[T]): Serializable[Option[T]] =
   new Serializable[Option[T]] {
-    def write(x: Option[T], out: DataOutputStream) = t match {
+    def write(xo: Option[T]) = xo match {
       case Some(x) => ev.write(x)
       case None =>
     }
   }
 
-  val s = serializeOption[Option[Int]]
-  s.write(Some(33))
-  s.write(None)
+val s = implicitly[Serializable[Option[Int]]]
+
+s.write(Some(33))
+s.write(None)
 ```
 As is the case for a normal by-name parameter, the argument for the implicit parameter `ev`
 is evaluated on demand. In the example above, if the option value `x` is `None`, it is
 not evaluated at all.
 
 The synthesized argument for an implicit parameter is backed by a lazy
-val, which means that the parameter is evaluated at most once. The
-lazy val is also available as a value for implicit search, which can
-be useful to avoid an otherwise diverging expansion.
+val if this is necessary to prevent an otherwise diverging expansion.
 
-The precise steps for constructing an implicit argument for a by-name parameter of type `=> T` are:
+The precise steps for constructing an implicit argument for a by-name parameter of type `=> T` are as follows.
 
  1. Create a new implicit value with a fresh name _lv_, which has the signature of the following definition:
 
@@ -40,3 +45,10 @@ The precise steps for constructing an implicit argument for a by-name parameter 
 
     Otherwise, return `E` unchanged.
 
+In the example above, the definition of `s` would be expanded as follows.
+
+  val s = implicitly[Test.Serializable[Option[Int]]](
+    serializeOption[Int](serializeInt)
+  )
+
+No lazy val was generated because the synthesized argument is not recursive.
