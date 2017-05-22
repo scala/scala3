@@ -444,9 +444,10 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
       case templ: untpd.Template =>
         import untpd._
         var templ1 = templ
+        def isEligible(tp: Type) = tp.exists && !tp.typeSymbol.is(Final)
         if (templ1.parents.isEmpty &&
             isFullyDefined(pt, ForceDegree.noBottom) &&
-            pt.underlyingClassRef(refinementOK = false).exists)
+            isEligible(pt.underlyingClassRef(refinementOK = false)))
           templ1 = cpy.Template(templ)(parents = untpd.TypeTree(pt) :: Nil)
         templ1.parents foreach {
           case parent: RefTree =>
