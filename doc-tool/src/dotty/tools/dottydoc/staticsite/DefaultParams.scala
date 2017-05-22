@@ -11,6 +11,7 @@ import scala.collection.JavaConverters._
 
 case class DefaultParams(
   docs: JList[_],
+  docsFlattened: JList[_],
   originalDocs: Map[String, Package],
   page: PageInfo,
   site: SiteInfo,
@@ -22,6 +23,8 @@ case class DefaultParams(
   def toMap: Map[String, AnyRef] = {
     val base = Map(
       "docs" -> docs,
+
+      "searchableDocs" -> docsFlattened,
 
       "originalDocs" -> originalDocs,
 

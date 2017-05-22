@@ -47,7 +47,15 @@ onmessage = function(e) {
     var searchRegex = regexForTerm(searchTerm);
 
     var filterPackages = function(entity) {
-        return entity.kind != "package";
+        switch(entity.kind) {
+            case "val":
+            case "def":
+            case "type":
+            case "package":
+                return false;
+            default:
+                return true;
+        }
     };
 
     // look at this higher order function, such syntax:
@@ -78,7 +86,7 @@ onmessage = function(e) {
     };
 
     docs.forEach(function(pack) {
-        pack.children
+        pack.members
             .filter(filterPackages)
             .forEach(messageParentIfMatches(pack));
     });

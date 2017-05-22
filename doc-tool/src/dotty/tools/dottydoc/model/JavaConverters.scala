@@ -241,13 +241,41 @@ object JavaConverters {
   }
 
   implicit class JavaMap(val map: collection.Map[String, Package]) extends AnyVal {
-    def toJavaList: LinkedList[AnyRef] = {
-      map.toList
-         .sortBy(_._1)
-         .foldLeft(new LinkedList[AnyRef]()) { case (list, (_, pkg)) =>
-           list.add(pkg.asJava())
-           list
-         }
+    def toJavaList: LinkedList[AnyRef] =
+      convertToList(map.mapValues(_.asJava))
+
+    def flattened: LinkedList[AnyRef] =
+      convertToList(map.mapValues(flattenEntity))
+
+    private[this] def convertToList(ms: collection.Map[String, AnyRef]): LinkedList[AnyRef] =
+      ms.toList.sortBy(_._1)
+        .foldLeft(new LinkedList[AnyRef]()) { case (list, (_, value)) =>
+          list.add(value); list
+        }
+
+    private[this] def flattenEntity(e: Entity): JMap[String, _] = {
+      def entity(e: Entity) =
+        Map("name" -> e.name, "path" -> e.path.asJava, "kind" -> e.kind)
+
+      def members(e: Entity with Members) =
+        Map("members" -> e.members.map(flattenEntity).asJava)
+
+      def companion(e: Companion) = Map(
+        "hasCompanion" -> e.hasCompanion,
+        "companionPath" -> e.companionPath.asJava
+      )
+
+      (e match {
+        case e: Package   => entity(e) ++ members(e)
+        case e: Class     => entity(e) ++ members(e) ++ companion(e)
+        case e: CaseClass => entity(e) ++ members(e) ++ companion(e)
+        case e: Trait     => entity(e) ++ members(e) ++ companion(e)
+        case e: Object    => entity(e) ++ members(e) ++ companion(e)
+        case e: TypeAlias => entity(e)
+        case e: Def       => entity(e)
+        case e: Val       => entity(e)
+      })
+      .asJava
     }
   }
 }

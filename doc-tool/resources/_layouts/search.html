@@ -33,7 +33,7 @@ extraCSS:
     // Parse parameters from URL:
     var parameters = [];
     var apiSearch = undefined;
-    var docs = {{ docs | json }};
+    var docs = {{ searchableDocs | json }};
     (function() {
         var pairs = location.search.substring(1).split('&');
         for (var i = 0; i < pairs.length; i++) {
