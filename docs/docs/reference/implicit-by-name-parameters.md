@@ -3,21 +3,22 @@
 Call-by-name implicit parameters can be used to avoid a divergent implicit expansion.
 
 ```scala
-trait Serializable[T] {
+trait Codec[T] {
   def write(x: T): Unit
 }
 
-implicit def serializeInt: Serializable[Int] = ???
+implicit def intCodec: Codec[Int] = ???
 
-implicit def serializeOption[T](implicit ev: => Serializable[T]): Serializable[Option[T]] =
-  new Serializable[Option[T]] {
+implicit def optionCodec[T]
+    (implicit ev: => Codec[T]): Codec[Option[T]] =
+  new {
     def write(xo: Option[T]) = xo match {
       case Some(x) => ev.write(x)
       case None =>
     }
   }
 
-val s = implicitly[Serializable[Option[Int]]]
+val s = implicitly[Codec[Option[Int]]]
 
 s.write(Some(33))
 s.write(None)
@@ -53,8 +54,8 @@ The precise steps for constructing an implicit argument for a by-name parameter 
 In the example above, the definition of `s` would be expanded as follows.
 
 ```scala
-val s = implicitly[Test.Serializable[Option[Int]]](
-  serializeOption[Int](serializeInt))
+val s = implicitly[Test.Codec[Option[Int]]](
+  optionCodec[Int](intCodec))
 ```
 
 No lazy val was generated because the synthesized argument is not recursive.
