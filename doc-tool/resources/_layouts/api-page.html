@@ -175,22 +175,21 @@ extraCSS:
                             {{ member.comment.body }}
                         </div>
                     </div>
-                    <script>
-
-                        function toggleMembersBody(span, arg){
-                            var members = document.getElementById("entity-" + arg);
-                            members.classList.toggle("toggled");
-                            span.innerHTML = (span.innerHTML == "[-]") ?  "[+]" : "[-]";
-                        }
-
-                        function toggleMemberBody(span, sig) {
-                            var longBody = document.getElementById("long-body-" + sig);
-                            longBody.classList.toggle("toggled")
-                            span.innerHTML = (span.innerHTML == "[+]") ?  "[-]" : "[+]";
-                        }
-                    </script>
                 </div><!-- end member -->
                 {% endfor %}
+                <script>
+                    function toggleMembersBody(span, arg){
+                        var members = document.getElementById("entity-" + arg);
+                        members.classList.toggle("toggled");
+                        span.innerHTML = (span.innerHTML == "[-]") ?  "[+]" : "[-]";
+                    }
+
+                    function toggleMemberBody(span, sig) {
+                        var longBody = document.getElementById("long-body-" + sig);
+                        longBody.classList.toggle("toggled")
+                        span.innerHTML = (span.innerHTML == "[+]") ?  "[-]" : "[+]";
+                    }
+                </script>
             </div>
         </div><!-- end entity-container -->
     </div>
