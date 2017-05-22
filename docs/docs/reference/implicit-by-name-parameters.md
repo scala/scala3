@@ -33,7 +33,9 @@ The precise steps for constructing an implicit argument for a by-name parameter 
 
  1. Create a new implicit value with a fresh name _lv_, which has the signature of the following definition:
 
-        implicit lazy val lv: T
+    ```scala
+    implicit lazy val lv: T
+    ```
 
     The current implementation uses the prefix `$lazy_implicit$` followed by a unique integer for _lv_.
 
@@ -41,13 +43,18 @@ The precise steps for constructing an implicit argument for a by-name parameter 
 
  1. If this implicit search succeeds with expression `E`, and `E` contains references to the lazy implicit value _lv_, replace `E` by
 
-        { implicit lazy val lv: T = E; lv }
+
+    ```scala
+    { implicit lazy val lv: T = E; lv }
+    ```
 
     Otherwise, return `E` unchanged.
 
 In the example above, the definition of `s` would be expanded as follows.
 
-    val s = implicitly[Test.Serializable[Option[Int]]](
-      serializeOption[Int](serializeInt))
+```scala
+val s = implicitly[Test.Serializable[Option[Int]]](
+  serializeOption[Int](serializeInt))
+```
 
 No lazy val was generated because the synthesized argument is not recursive.
