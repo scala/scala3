@@ -3,6 +3,10 @@ sidebar:
       url: blog/index.html
     - title: Reference
       subsection:
+        - title: Intersection types
+          url: docs/reference/intersection-types.html
+        - title: Union types
+          url: docs/reference/union-types.html
         - title: Trait Parameters
           url: docs/reference/trait-parameters.html
         - title: Enumerations

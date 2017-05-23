@@ -63,4 +63,3 @@ class C extends A with B {
   def children: List[A & B] = ???
 }
 ```
-
