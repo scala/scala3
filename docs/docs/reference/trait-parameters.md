@@ -27,7 +27,7 @@ because it violates one of the following rules for trait parameters:
 
  1. If a class `C` extends a parameterized trait `T`, and its superclass does not, `C` _must_ pass arguments to `T`.
 
- 2. If a class `C` extends a parameterized trait `T`, and its superclass does as well, `C` _may not`  pass arguments to `T`.
+ 2. If a class `C` extends a parameterized trait `T`, and its superclass does as well, `C` _may not_  pass arguments to `T`.
 
  3. Traits may never pass arguments to parent traits.
 
