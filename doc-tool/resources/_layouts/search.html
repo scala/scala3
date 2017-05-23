@@ -61,7 +61,7 @@ extraCSS:
             "docs":   docs,
         });
 
-        var insertEntity = function(entityResultsNode, entityResults) {
+        var insertEntity = function(entityResultsNode, entityResults, suffix) {
             return function(entity, parent) {
                 var shouldInsert =
                     parent.kind == "package" &&
@@ -92,7 +92,7 @@ extraCSS:
                     // Insert into list of results in package, no need to sort -
                     // already sorted:
                     var entityUl = entityResults[parent.name];
-                    var selector = entity.path.slice(0, entity.path.length - 1).join('-') + '-' + entity.name;
+                    var selector = entity.path.slice(0, entity.path.length - 1).join('-') + '-' + entity.name + '-' + suffix;
                     var entityLi = document.querySelector('#' + selector);
                     if (!entityLi) {
                         entityLi = document.createElement("li");
@@ -127,7 +127,7 @@ extraCSS:
                 }
                 else {
                     var path = entity.path.slice(0, entity.path.length - 1)
-                    return document.querySelector('#' + path + '-' + entity.name);
+                    return document.querySelector('#' + path + '-' + entity.name + '-' + suffix);
                 }
             };
         };
@@ -170,14 +170,14 @@ extraCSS:
                 case "entityResult": {
                     var entity = res.data.entity;
                     //console.log("got entity: " + entity.name + ", in package: " + package.name);
-                    insertEntity(entityResultsNode, entityResults)(entity, package);
+                    insertEntity(entityResultsNode, entityResults, "entity")(entity, package);
                     break;
                 }
                 case "memberResult": {
                     var member = res.data.member;
                     var parent = res.data.parent;
                     //console.log("got member: " + member.name + ", in entity: " + parent.name);
-                    var li = insertEntity(memberResultsNode, memberResults)(parent, package);
+                    var li = insertEntity(memberResultsNode, memberResults, "member")(parent, package);
                     if (li) insertMember(member, li);
                     break;
                 }
