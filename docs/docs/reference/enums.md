@@ -1,4 +1,7 @@
-# Enumerations
+---
+layout: doc-page
+title: "Enumerations"
+---
 
 An enumeration is used to define a type consisting of a set of named values.
 

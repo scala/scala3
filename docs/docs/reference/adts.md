@@ -1,4 +1,8 @@
-# Algebraic Data Types
+---
+layout: doc-page
+title: "Algebraic Data Types"
+---
+
 
 The `enum` concept is general enough to also support algebraic data
 types (ADTs) and their generalized version (GADTs). Here's an example

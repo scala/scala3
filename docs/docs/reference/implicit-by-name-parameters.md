@@ -1,4 +1,7 @@
-# Implicit By-Name Parameters
+---
+layout: doc-page
+title: "Implicit By-Name Parameters"
+---
 
 Call-by-name implicit parameters can be used to avoid a divergent implicit expansion.
 

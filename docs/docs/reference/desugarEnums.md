@@ -1,4 +1,7 @@
-# Translation of Enums and ADTs
+---
+layout: doc-page
+title: "Translation of Enums and ADTs"
+---
 
 The compiler expands enum classes and cases to code that only uses
 Scala's other language features. As such, enums in Scala are

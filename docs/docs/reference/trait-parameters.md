@@ -1,4 +1,7 @@
-# Trait Parameters
+---
+layout: doc-page
+title: "Trait Parameters"
+---
 
 Dotty allows traits to have parameters, just like classes have parameters.
 
