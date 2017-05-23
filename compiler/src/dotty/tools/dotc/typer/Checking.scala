@@ -461,10 +461,6 @@ object Checking {
       else {
         val clParamAccessors = clazz.asClass.paramAccessors.filter(_.isTerm)
         clParamAccessors match {
-          case List(acc1, acc2) if acc1.is(Mutable) =>
-              ctx.error(ValueClassParameterMayNotBeAVar(clazz, acc1), acc1.pos)
-          case List(acc1, acc2) if acc2.is(Mutable) =>
-              ctx.error(ValueClassParameterMayNotBeAVar(clazz, acc2), acc2.pos)
           case List(param) =>
             if (param.is(Mutable))
               ctx.error(ValueClassParameterMayNotBeAVar(clazz, param), param.pos)

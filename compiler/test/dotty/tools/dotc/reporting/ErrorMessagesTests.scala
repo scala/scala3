@@ -773,7 +773,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
         assertEquals("class MyValue", valueClass.show)
       }
 
-  @Test def valueClassParameterMayNotBeVar =
+  @Test @Ignore def valueClassParameterMayNotBeVar =
     checkMessagesAfter("refchecks") {
       """class MyValue(var i: Int) extends AnyVal"""
     }
