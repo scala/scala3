@@ -1190,7 +1190,9 @@ object Trees {
     }
 
     abstract class TreeAccumulator[X] {
+      // Ties the knot of the traversal: call `foldOver(x, tree))` to dive in the `tree` node.
       def apply(x: X, tree: Tree)(implicit ctx: Context): X
+
       def apply(x: X, trees: Traversable[Tree])(implicit ctx: Context): X = (x /: trees)(apply)
       def foldOver(x: X, tree: Tree)(implicit ctx: Context): X = {
         def localCtx =
@@ -1301,7 +1303,7 @@ object Trees {
     class ShallowFolder[X](f: (X, Tree) => X) extends TreeAccumulator[X] {
       def apply(x: X, tree: Tree)(implicit ctx: Context): X = {
         val x1 = f(x, tree)
-        if (x1.asInstanceOf[AnyRef] ne x1.asInstanceOf[AnyRef]) x1
+        if (x1.asInstanceOf[AnyRef] ne x.asInstanceOf[AnyRef]) x1
         else foldOver(x1, tree)
       }
     }
