@@ -39,6 +39,7 @@ extends interfaces.SourcePosition {
   def start: Int = pos.start
   def startLine: Int = source.offsetToLine(start)
   def startColumn: Int = source.column(start)
+  def startColumnPadding: String = source.startColumnPadding(start)
 
   def end: Int = pos.end
   def endLine: Int = source.offsetToLine(end)

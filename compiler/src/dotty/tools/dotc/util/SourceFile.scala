@@ -136,6 +136,17 @@ case class SourceFile(file: AbstractFile, content: Array[Char]) extends interfac
     col
   }
 
+  /** The padding of the column corresponding to `offset`, includes tabs */
+  def startColumnPadding(offset: Int): String = {
+    var idx = startOfLine(offset)
+    val pad = new StringBuilder
+    while (idx != offset) {
+      pad.append(if (idx < length && content(idx) == '\t') '\t' else ' ')
+      idx += 1
+    }
+    pad.result()
+  }
+
   override def toString = file.toString
 }
 
