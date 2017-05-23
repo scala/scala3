@@ -1,6 +1,6 @@
-# Enums
+# Enumerations
 
-The most basic use of enums is as enumerations of simple values:
+An enumeration is used to define a type consisting of a set of named values.
 
 ```scala
 enum Color {

@@ -1,6 +1,18 @@
 sidebar:
     - title: Blog
       url: blog/index.html
+    - title: Reference
+      subsection:
+        - title: Trait Parameters
+          url: docs/reference/trait-parameters.html
+        - title: Enumerations
+          url: docs/reference/enums.html
+        - title: Algebraic Data Types
+          url: docs/reference/adts.html
+        - title: Enum Translation
+          url: docs/reference/desugarEnums.html
+        - title: By-Name Implicits
+          url: docs/reference/implicit-by-name-parameters.html
     - title: Usage
       subsection:
         - title: cbt-projects
