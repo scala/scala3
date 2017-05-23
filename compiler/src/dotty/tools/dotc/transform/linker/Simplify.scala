@@ -837,7 +837,6 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
         // invalidates the denotation cache. Because this optimization only
         // operates locally, this should be fine.
         val denot = app.fun.symbol.denot
-        simplify.println(s"replacing ${app.symbol}")
         if (!denot.info.finalResultType.derivesFrom(defn.UnitClass)) {
           val newLabelType = app.symbol.info match {
             case mt: MethodType =>
@@ -1113,10 +1112,11 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
   val devalify: Optimization = { implicit ctx: Context =>
     val timesUsed = mutable.HashMap[Symbol, Int]()
     val defined = mutable.HashSet[Symbol]()
+    val usedInInnerClass = mutable.HashMap[Symbol, Int]()
     // Either a duplicate or a read through series of immutable fields
     val copies = mutable.HashMap[Symbol, Tree]()
-    val visitor: Visitor = {
-      case valdef: ValDef if !valdef.symbol.is(Param) &&
+    def doVisit(tree: Tree, used: mutable.HashMap[Symbol, Int]): Unit = tree match {
+      case valdef: ValDef if !valdef.symbol.is(Param)                   &&
                              !valdef.symbol.is(Mutable | Module | Lazy) &&
                              valdef.symbol.exists && !valdef.symbol.owner.isClass =>
         defined += valdef.symbol
@@ -1128,8 +1128,8 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
         }
       case t: New =>
         val symIfExists = t.tpt.tpe.normalizedPrefix.termSymbol
-        val b4 = timesUsed.getOrElseUpdate(symIfExists, 0)
-        timesUsed.put(symIfExists, b4 + 1)
+        val b4 = used.getOrElseUpdate(symIfExists, 0)
+        used.put(symIfExists, b4 + 1)
 
       case valdef: ValDef if valdef.symbol.exists && !valdef.symbol.owner.isClass &&
                              !valdef.symbol.is(Param | Module | Lazy) =>
@@ -1137,9 +1137,34 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
         defined += valdef.symbol
 
       case t: RefTree =>
-        val b4 = timesUsed.getOrElseUpdate(t.symbol, 0)
-        timesUsed.put(t.symbol, b4 + 1)
+        val b4 = used.getOrElseUpdate(t.symbol, 0)
+        used.put(t.symbol, b4 + 1)
       case _ =>
+    }
+
+    val visitor: Visitor = { tree =>
+      def crossingClassBoundaries(t: Tree): Boolean = t match {
+        case _: New      => true
+        case _: Template => true
+        case _           => false
+      }
+      // We shouldn't inline `This` nodes, which we approximate by not inlining
+      // anything across class boundaries. To do so, we visit every class a
+      // second time and record what's used in the usedInInnerClass Set.
+      if (crossingClassBoundaries(tree)) {
+        // Doing a foreachSubTree(tree) here would work, but would also
+        // be exponential for deeply nested classes. Instead we do a short
+        // circuit traversal that doesn't visit further nested classes.
+        val reVisitClass = new TreeAccumulator[Unit] {
+          def apply(u: Unit, t: Tree)(implicit ctx: Context): Unit = {
+            doVisit(t, usedInInnerClass)
+            if (!crossingClassBoundaries(t))
+              foldOver((), t)
+          }
+        }
+        reVisitClass.foldOver((), tree)
+      }
+      doVisit(tree, timesUsed)
     }
 
     val transformer: Transformer = () => localCtx => {
@@ -1157,7 +1182,7 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
             case None => Nil
           })
 
-      val replacements = copiesToReplaceAsDuplicates ++ copiesToReplaceAsUsedOnce
+      val replacements = copiesToReplaceAsDuplicates ++ copiesToReplaceAsUsedOnce -- usedInInnerClass.keySet
 
       val deepReplacer = new TreeMap() {
         override def transform(tree: Tree)(implicit ctx: Context): Tree = {
