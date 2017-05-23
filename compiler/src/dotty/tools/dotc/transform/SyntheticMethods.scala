@@ -159,7 +159,7 @@ class SyntheticMethods(thisTransformer: DenotTransformer) {
       val thatAsClazz = ctx.newSymbol(ctx.owner, nme.x_0, Synthetic, clazzType, coord = ctx.owner.pos) // x$0
       def wildcardAscription(tp: Type) = Typed(Underscore(tp), TypeTree(tp))
       val pattern = Bind(thatAsClazz, wildcardAscription(clazzType)) // x$0 @ (_: C)
-      val comparisons = accessors map (accessor =>
+      val comparisons = accessors.filter(!_.info.isPhantom).map(accessor =>
         This(clazz).select(accessor).select(defn.Any_==).appliedTo(ref(thatAsClazz).select(accessor)))
       val rhs = // this.x == this$0.x && this.y == x$0.y
         if (comparisons.isEmpty) Literal(Constant(true)) else comparisons.reduceLeft(_ and _)
@@ -187,7 +187,8 @@ class SyntheticMethods(thisTransformer: DenotTransformer) {
      */
     def valueHashCodeBody(implicit ctx: Context): Tree = {
       assert(accessors.length == 1)
-      ref(accessors.head).select(nme.hashCode_).ensureApplied
+      if (accessors.head.info.isPhantom) Literal(Constant(0))
+      else ref(accessors.head).select(nme.hashCode_).ensureApplied
     }
 
     /** The class
