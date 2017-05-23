@@ -792,8 +792,8 @@ object messages {
     val explanation =
       hl"""|There are several ways to make the match exhaustive:
            | - Add missing cases as shown in the warning
-           | - If an extractor always return Some(...), write Some[X] for its return type
-           | - Add a case _ => ... at the end to match all remaining cases
+           | - If an extractor always return 'Some(...)', write 'Some[X]' for its return type
+           | - Add a 'case _ => ...' at the end to match all remaining cases
            |"""
   }
 
