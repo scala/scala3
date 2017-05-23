@@ -39,6 +39,15 @@ ul.toc {
     padding-left: 0;
 }
 
+ul.toc ul {
+    padding-left: 0;
+}
+
+ul.toc > li,
+ul.toc ul > li {
+    padding-left: 24px;
+}
+
 ul.toc > li:hover {
     background-color: transparent;
 }
@@ -72,10 +81,11 @@ ul.toc > li.logo-li > a {
     float: none;
 }
 
-ul.toc > li > a {
+ul.toc > li > a,
+ul.toc li > a.toggle-children {
     font-size: 13px;
     display: block;
-    padding: 0 0 0 24px;
+    padding: 0;
     width: 100%;
     color: rgba(0, 0, 0, 0.87);
     background: transparent;
@@ -84,13 +94,9 @@ ul.toc > li > a {
     text-transform: uppercase;
 }
 
-ul.toc > li > ul.show {
-    display: block;
+ul.toc > li ul {
     list-style-type: none;
     font-size: 13px;
-}
-
-ul.toc > li > ul.hide {
     display: none;
 }
 

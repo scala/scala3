@@ -9,7 +9,7 @@ import liqp.tags.Tag
 import liqp.TemplateContext
 import liqp.nodes.LNode
 
-import java.util.{ Map => JMap }
+import java.util.{ Map => JMap, List => JList }
 import model._
 import util.syntax._
 
@@ -163,22 +163,23 @@ object tags {
   case class RenderTitle(params: Map[String, AnyRef])(implicit ctx: Context)
   extends Tag("renderTitle") with ParamConverter {
     private def renderTitle(t: Title, parent: String): String = {
-        if (!t.url.isDefined && t.subsection.nonEmpty) {
-          val onclickFunction =
-            s"""(function(){var child=document.getElementById("${t.title}");child.classList.toggle("show");child.classList.toggle("hide");})();"""
-          s"""|<a class="toggle-children" onclick='$onclickFunction'>${t.title}</a>
-              |<ul id="${t.title}" class="${if (parent.toLowerCase == t.title.toLowerCase) "show" else "hide"}">
-              |    ${t.subsection.map(renderTitle(_, parent)).mkString("<li>", "</li><li>", "</li>")}
-              |</ul>""".stripMargin
-        }
-        else if (t.url.isDefined) {
-          val url = t.url.get
-          s"""<a href="$baseurl/$url">${t.title}</a>"""
-        }
-        else /*if (t.subsection.nonEmpty)*/ {
-          ctx.docbase.error(s"url was defined for subsection with title: ${t.title}, remove url to get toggleable entries")
-          t.title
-        }
+      if (!t.url.isDefined && t.subsection.nonEmpty) {
+        s"""|<a class="toggle-children" onclick='clickToc(this, "$parent");'>${t.title}</a>
+            |<ul id="${ if(parent == t.title.toLowerCase.split(" ").mkString("-")) "active-toc-entry" else "" }">
+            |    ${ t.subsection.map(renderTitle(_, parent)).mkString("<li>","\n</li>\n<li>", "</li>") }
+            |</ul>
+            |""".stripMargin
+      }
+      else if (t.url.isDefined) {
+        val url = t.url.get
+        s"""<a href="$baseurl/$url">${t.title}</a>"""
+      }
+      else {
+        ctx.docbase.error(
+          s"url was defined for subsection with title: ${t.title}, remove url to get toggleable entries"
+        )
+        t.title
+      }
     }
 
     override def render(ctx: TemplateContext, nodes: LNode*): AnyRef =
