@@ -791,9 +791,9 @@ object messages {
 
     val explanation =
       hl"""|There are several ways to make the match exhaustive:
-           | - add missing cases as shown in the warning
-           | - change the return type of irrefutable extractors as `Some[T]` if exist
-           | - add a wildcard `_` case at the end
+           | - Add missing cases as shown in the warning
+           | - If an extractor always return Some(...), write Some[X] for its return type
+           | - Add a case _ => ... at the end to match all remaining cases
            |"""
   }
 
