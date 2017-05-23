@@ -41,6 +41,11 @@ case class Site(
     documentation.toJavaList
   }
 
+  private val docsFlattened: JList[_] = {
+    import model.JavaConverters._
+    documentation.flattened
+  }
+
   /** All files that are considered static in this context, this can be
     * anything from CSS, JS to images and other files.
     *
@@ -166,7 +171,7 @@ case class Site(
     }
 
     DefaultParams(
-      docs, documentation, PageInfo(pathFromRoot),
+      docs, docsFlattened, documentation, PageInfo(pathFromRoot),
       SiteInfo(baseUrl, projectTitle, projectVersion, projectUrl, Array()),
       sidebar
     )

@@ -35,4 +35,38 @@ object references {
       case _ => None
     }
   }
+
+  implicit class ReferenceShower(val ref: Reference) extends AnyVal {
+    def showReference: String = ref match {
+      case TypeReference(title, _, tparams) =>
+        title + {
+          if (tparams.nonEmpty) tparams.map(_.showReference).mkString("[", ",", "]")
+          else ""
+        }
+
+      case AndOrTypeReference(left, part, right) =>
+        left.showReference + s" $part " + right.showReference
+
+      case FunctionReference(args, ret) =>
+        if (args.isEmpty)
+          "() => " + ret.showReference
+        else if (args.tail.isEmpty)
+          args.head + " => " + ret.showReference
+        else
+          args.mkString("(", ",", s") => ${ret.showReference}")
+
+      case TupleReference(xs) =>
+        xs.mkString("(", ",", ")")
+
+      case BoundsReference(lo, hi) =>
+        lo.showReference + "<: " + hi.showReference
+
+      case NamedReference(title, ref, isByName, isRepeated) =>
+        val byName = if (isByName) "=> " else ""
+        val repeated = if (isRepeated) "*" else ""
+        s"$title: $byName${ref.showReference}$repeated"
+
+      case ConstantReference(title) => title
+    }
+  }
 }

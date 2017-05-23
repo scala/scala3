@@ -47,15 +47,7 @@ div#result-container > div.results {
     float: left;
     width: 50%;
     padding-right: 20px;
-    min-height: 40px; /** debug */
-}
-
-div#entity-results {
-    background-color: green; /** debug */
-}
-
-div#member-results {
-    background-color: red; /** debug */
+    overflow: hidden;
 }
 
 div.results > h1 {
@@ -132,6 +124,39 @@ div.results li.entity-result-li.with-companion {
 
 div.results li.entity-result-li:hover {
     margin-left: 0;
+}
+
+div.results li.entity-result-li > div.member-result {
+    padding-top: 3px;
+    display: block;
+    width: 100%;
+    min-height: 30px;
+    transition: all 0.2s ease;
+    margin-left: 105px;
+}
+
+div.results li.entity-result-li:hover > div.member-result {
+    margin-left: 23px;
+}
+
+div.results li.entity-result-li > div.member-result > div.member-kind {
+    margin-right: 5px;
+    font-weight: 400;
+}
+
+div.results li.entity-result-li > div.member-result > div.member-return {
+    margin-left: 5px;
+    font-weight: 400;
+    white-space: nowrap;
+}
+
+div.results li.entity-result-li > div.member-result > div.member-kind,
+div.results li.entity-result-li > div.member-result > div.member-name,
+div.results li.entity-result-li > div.member-result > div.member-param-lists,
+div.results li.entity-result-li > div.member-result > div.member-return {
+    float: left;
+    line-height: 16px;
+    display: inline;
 }
 
 div.results li.entity-result-li > div.entity-kinds {

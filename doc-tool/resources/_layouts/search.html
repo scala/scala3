@@ -33,7 +33,7 @@ extraCSS:
     // Parse parameters from URL:
     var parameters = [];
     var apiSearch = undefined;
-    var docs = {{ docs | json }};
+    var docs = {{ searchableDocs | json }};
     (function() {
         var pairs = location.search.substring(1).split('&');
         for (var i = 0; i < pairs.length; i++) {
@@ -61,7 +61,7 @@ extraCSS:
             "docs":   docs,
         });
 
-        var insertEntity = function(entityResultsNode, entityResults) {
+        var insertEntity = function(entityResultsNode, entityResults, suffix) {
             return function(entity, parent) {
                 var shouldInsert =
                     parent.kind == "package" &&
@@ -92,41 +92,71 @@ extraCSS:
                     // Insert into list of results in package, no need to sort -
                     // already sorted:
                     var entityUl = entityResults[parent.name];
-                    var entityLi = document.createElement("li");
-                    if (entity.hasCompanion)
-                        entityLi.classList.add("entity-result-li", "with-companion");
-                    else
-                        entityLi.classList.add("entity-result-li");
+                    var selector = entity.path.slice(0, entity.path.length - 1).join('-') + '-' + entity.name + '-' + suffix;
+                    var entityLi = document.querySelector('#' + selector);
+                    if (!entityLi) {
+                        entityLi = document.createElement("li");
+                        if (entity.hasCompanion)
+                            entityLi.classList.add("entity-result-li", "with-companion");
+                        else
+                            entityLi.classList.add("entity-result-li");
 
-                    var companion = !entity.hasCompanion ? "" : (
-                        '<a class="letter-anchor object" href="{{ site.baseurl }}/api/' + entity.companionPath.join('/') + '.html">O</a>'
-                    );
+                        entityLi.id = selector;
 
-                    var letter =
-                        '<a class="letter-anchor ' + entity.kind + '" href="{{ site.baseurl }}/api/' + entity.path.join('/') + '.html">' +
-                        entity.kind.charAt(0).toUpperCase() +
-                        '</a>'
+                        var companion = !entity.hasCompanion ? "" : (
+                            '<a class="letter-anchor object" href="{{ site.baseurl }}/api/' + entity.companionPath.join('/') + '.html">O</a>'
+                        );
 
-                    entityLi.innerHTML = (
-                        '<div class="entity-kinds">' +
-                            companion +
-                            letter +
-                        '</div>' +
-                        "<a class=\"entity-name\" href=\"{{ site.baseurl }}/api/" + entity.path.join('/') + ".html\">" +
-                        entity.name +
-                        "</a>"
-                    );
-                    entityUl.appendChild(entityLi);
+                        var letter =
+                            '<a class="letter-anchor ' + entity.kind + '" href="{{ site.baseurl }}/api/' + entity.path.join('/') + '.html">' +
+                            entity.kind.charAt(0).toUpperCase() +
+                            '</a>'
+
+                        entityLi.innerHTML = (
+                            '<div class="entity-kinds">' +
+                                companion +
+                                letter +
+                            '</div>' +
+                            "<a class=\"entity-name\" href=\"{{ site.baseurl }}/api/" + entity.path.join('/') + ".html\">" +
+                            entity.name +
+                            "</a>"
+                        );
+                        entityUl.appendChild(entityLi);
+                    }
                     return entityLi;
                 }
                 else {
-                    return undefined;
+                    var path = entity.path.slice(0, entity.path.length - 1)
+                    return document.querySelector('#' + path + '-' + entity.name + '-' + suffix);
                 }
             };
         };
 
         var insertMember = function(member, li) {
-            li.appendChild(document.createTextNode(", " + member.name));
+            var div = document.createElement("div");
+            div.classList.add("member-result");
+
+            var renderParamList = function(plist) {
+                var start = plist.isImplicit ? "(implicit " : "(";
+                var args = plist.list.join(', ');
+                return start + args + ")";
+            };
+
+            var concatenateStrings = function(acc, str) { return acc + str; };
+
+            var paramLists = !member.paramLists ? "" : (
+                member.paramLists
+                    .map(renderParamList)
+                    .reduce(concatenateStrings, "")
+            );
+
+            div.innerHTML =
+                '<div class="member-kind">'+ member.kind +'</div>' +
+                '<div class="member-name">'+ member.name +'</div>' +
+                '<div class="member-param-lists">' + paramLists + ':</div>' +
+                '<div class="member-return">'+ member.returnValue +'</div>'
+
+            li.appendChild(div);
         };
 
         var entityResultsNode = document.getElementById("entity-results");
@@ -135,20 +165,19 @@ extraCSS:
         var memberResults = [];
 
         apiSearch.onmessage = function(res) {
+            var package = res.data.package;
             switch(res.data.type) {
                 case "entityResult": {
                     var entity = res.data.entity;
-                    var package = res.data.package;
                     //console.log("got entity: " + entity.name + ", in package: " + package.name);
-                    insertEntity(entityResultsNode, entityResults)(entity, package);
+                    insertEntity(entityResultsNode, entityResults, "entity")(entity, package);
                     break;
                 }
                 case "memberResult": {
                     var member = res.data.member;
                     var parent = res.data.parent;
-                    var package = res.data.package;
                     //console.log("got member: " + member.name + ", in entity: " + parent.name);
-                    var li = insertEntity(memberResultsNode, memberResults)(parent, package);
+                    var li = insertEntity(memberResultsNode, memberResults, "member")(parent, package);
                     if (li) insertMember(member, li);
                     break;
                 }

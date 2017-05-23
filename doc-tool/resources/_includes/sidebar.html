@@ -6,6 +6,25 @@
         {% endfor %}
     </ul>
 
+    <script>
+        function clickToc(elem, currentPage) {
+            var sibling = elem.parentElement.children[1];
+            if (sibling.style.display === "" || sibling.style.display === "none")
+                sibling.style.display = "block";
+            else
+                sibling.style.display = "";
+        }
+
+        (function() {
+            var activeEntry = document.querySelector("#active-toc-entry")
+
+            while (activeEntry != null && activeEntry.tagName.toLowerCase() === "ul") {
+                activeEntry.style.display = "block";
+                activeEntry = activeEntry.parentElement.parentElement;
+            }
+        })();
+    </script>
+
     <ul class="index-entities">
     {% if docs.size > 0 %}
     <li class="index-title">

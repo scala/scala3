@@ -241,13 +241,58 @@ object JavaConverters {
   }
 
   implicit class JavaMap(val map: collection.Map[String, Package]) extends AnyVal {
-    def toJavaList: LinkedList[AnyRef] = {
-      map.toList
-         .sortBy(_._1)
-         .foldLeft(new LinkedList[AnyRef]()) { case (list, (_, pkg)) =>
-           list.add(pkg.asJava())
-           list
-         }
-    }
+    def toJavaList: LinkedList[AnyRef] =
+      convertToList(map.mapValues(_.asJava))
+
+    def flattened: LinkedList[AnyRef] =
+      convertToList(map.mapValues(flattenEntity))
+
+    private[this] def convertToList(ms: collection.Map[String, AnyRef]): LinkedList[AnyRef] =
+      ms.toList.sortBy(_._1)
+        .foldLeft(new LinkedList[AnyRef]()) { case (list, (_, value)) =>
+          list.add(value); list
+        }
+
+    private[this] def flattenEntity(e: Entity): JMap[String, _] = {
+      def entity(e: Entity) =
+        Map("name" -> e.name, "path" -> e.path.asJava, "kind" -> e.kind)
+
+      def members(e: Entity with Members) =
+        Map("members" -> e.members.map(flattenEntity).asJava)
+
+      def companion(e: Companion) = Map(
+        "hasCompanion" -> e.hasCompanion,
+        "companionPath" -> e.companionPath.asJava
+      )
+
+      def typeParams(e: TypeParams) =
+        Map("typeParams" -> e.typeParams.asJava)
+
+      def paramLists(e: Def) = Map(
+        "paramLists" -> {
+          e.paramLists.map { paramList =>
+            Map(
+              "isImplicit" -> paramList.isImplicit,
+              "list" -> paramList.list.map(_.showReference).asJava
+            ).asJava
+          }
+          .asJava
+        }
+      )
+
+      def returnValue(e: ReturnValue) =
+        Map("returnValue" -> e.returnValue.showReference)
+
+      entity(e) ++ (e match {
+        case e: Package   => members(e)
+        case e: Class     => members(e) ++ companion(e)
+        case e: CaseClass => members(e) ++ companion(e)
+        case e: Trait     => members(e) ++ companion(e)
+        case e: Object    => members(e) ++ companion(e)
+        case e: Def       => typeParams(e) ++ paramLists(e) ++ returnValue(e)
+        case e: TypeAlias => Map.empty
+        case e: Val       => Map.empty
+      })
+    }.asJava
   }
 }
