@@ -164,6 +164,9 @@ object Parsers {
     def isDefIntro(allowedMods: BitSet) =
       in.token == AT || (allowedMods contains in.token) || (defIntroTokens contains in.token)
 
+    def isCaseIntro =
+      in.token == AT || (modifierTokensOrCase contains in.token)
+
     def isStatSep: Boolean =
       in.token == NEWLINE || in.token == NEWLINES || in.token == SEMI
 
@@ -2244,12 +2247,18 @@ object Parsers {
       Thicket(clsDef :: modDef :: Nil)
     }
 
-    /** EnumCaseStats = EnumCaseStat {semi EnumCaseStat */
+    /** EnumCaseStats = EnumCaseStat {semi EnumCaseStat} */
     def enumCaseStats(): List[DefTree] = {
       val cases = new ListBuffer[DefTree] += enumCaseStat()
-      while (in.token != RBRACE && in.token != EOF) {
+      var exitOnError = false
+      while (!isStatSeqEnd && !exitOnError) {
         acceptStatSep()
-        cases += enumCaseStat()
+        if (isCaseIntro)
+          cases += enumCaseStat()
+        else if (!isStatSep) {
+          exitOnError = mustStartStat
+          syntaxErrorOrIncomplete("illegal start of case")
+        }
       }
       cases.toList
     }
