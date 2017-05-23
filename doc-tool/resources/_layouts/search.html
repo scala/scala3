@@ -151,11 +151,10 @@ extraCSS:
             );
 
             div.innerHTML =
-                '<span class="member-kind">'+ member.kind +'</span>' +
-                '<span class="member-name">'+ member.name +'</span>' +
-                paramLists +
-                ':' +
-                '<span class="member-return">'+ member.returnValue +'</span>'
+                '<div class="member-kind">'+ member.kind +'</div>' +
+                '<div class="member-name">'+ member.name +'</div>' +
+                '<div class="member-param-lists">' + paramLists + ':</div>' +
+                '<div class="member-return">'+ member.returnValue +'</div>'
 
             li.appendChild(div);
         };
