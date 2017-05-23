@@ -16,6 +16,6 @@ object Exception {
 
   def mkThrowableCatcher[T](isDef: Throwable => Boolean, f: Throwable => T) = mkCatcher(isDef, f) // error: undetermined ClassTag
 
-  implicit def throwableSubtypeToCatcher[Ex <: Throwable: ClassTag, T](pf: PartialFunction[Ex, T]) =
+  implicit def throwableSubtypeToCatcher[Ex <: Throwable: ClassTag, T](pf: PartialFunction[Ex, T]) = // error: result type needs to be given
     mkCatcher(pf.isDefinedAt _, pf.apply _)
 }
