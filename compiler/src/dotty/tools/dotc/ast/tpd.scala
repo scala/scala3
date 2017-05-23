@@ -2,15 +2,28 @@ package dotty.tools
 package dotc
 package ast
 
-import dotty.tools.dotc.transform.{ExplicitOuter, Erasure}
+import dotty.tools.dotc.transform.{Erasure, ExplicitOuter}
 import dotty.tools.dotc.typer.ProtoTypes.FunProtoTyped
 import transform.SymUtils._
 import core._
-import util.Positions._, Types._, Contexts._, Constants._, Names._, Flags._
-import SymDenotations._, Symbols._, StdNames._, Annotations._, Trees._, Symbols._
-import Denotations._, Decorators._, DenotTransformers._
+import util.Positions._
+import Types._
+import Contexts._
+import Constants._
+import Names._
+import Flags._
+import SymDenotations._
+import Symbols._
+import StdNames._
+import Annotations._
+import Trees._
+import Symbols._
+import Denotations._
+import Decorators._
+import DenotTransformers._
+
 import collection.mutable
-import util.{Property, SourceFile, NoSource}
+import util.{NoSource, Property, SourceFile}
 import typer.ErrorReporting._
 import NameKinds.TempResultName
 
@@ -454,6 +467,10 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   override val cpy: TypedTreeCopier = // Type ascription needed to pick up any new members in TreeCopier (currently there are none)
     new TypedTreeCopier
 
+  /** TypedTreeCopier does some optimizations that are only correct when
+   * tpe.widenDealias does not change. This is false if the trees are constructed
+   * in different phases.
+   */
   class TypedTreeCopier extends TreeCopier {
     def postProcess(tree: Tree, copied: untpd.Tree): copied.ThisTree[Type] =
       copied.withTypeUnchecked(tree.tpe)
@@ -472,15 +489,26 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       }
     }
 
-    override def Apply(tree: Tree)(fun: Tree, args: List[Tree])(implicit ctx: Context): Apply =
-      ta.assignType(untpd.cpy.Apply(tree)(fun, args), fun, args)
+    override def Apply(tree: Tree)(fun: Tree, args: List[Tree])(implicit ctx: Context): Apply = {
+      val untyped = untpd.cpy.Apply(tree)(fun, args)
+      if (untyped.ne(tree) || !ctx.settings.optimise.value)
+        ta.assignType(untyped, fun, args)
+      else
+        tree.asInstanceOf[Apply]
+    }
+
       // Note: Reassigning the original type if `fun` and `args` have the same types as before
       // does not work here: The computed type depends on the widened function type, not
       // the function type itself. A treetransform may keep the function type the
       // same but its widened type might change.
 
-    override def TypeApply(tree: Tree)(fun: Tree, args: List[Tree])(implicit ctx: Context): TypeApply =
-      ta.assignType(untpd.cpy.TypeApply(tree)(fun, args), fun, args)
+    override def TypeApply(tree: Tree)(fun: Tree, args: List[Tree])(implicit ctx: Context): TypeApply = {
+      val untyped = untpd.cpy.TypeApply(tree)(fun, args)
+      if (untyped.ne(tree) || !ctx.settings.optimise.value)
+        ta.assignType(untyped, fun, args)
+      else
+        tree.asInstanceOf[TypeApply]
+    }
       // Same remark as for Apply
 
     override def Literal(tree: Tree)(const: Constant)(implicit ctx: Context): Literal =
@@ -514,8 +542,14 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       }
     }
 
-    override def Closure(tree: Tree)(env: List[Tree], meth: Tree, tpt: Tree)(implicit ctx: Context): Closure =
-      ta.assignType(untpd.cpy.Closure(tree)(env, meth, tpt), meth, tpt)
+    override def Closure(tree: Tree)(env: List[Tree], meth: Tree, tpt: Tree)(implicit ctx: Context): Closure = {
+      val untyped = untpd.cpy.Closure(tree)(env, meth, tpt)
+      val typed = ta.assignType(untyped, meth, tpt)
+      if (untyped.ne(tree) || !ctx.settings.optimise.value)
+        typed
+      else
+        tree.asInstanceOf[Closure]
+    }
       // Same remark as for Apply
 
     override def Match(tree: Tree)(selector: Tree, cases: List[CaseDef])(implicit ctx: Context): Match = {
@@ -564,6 +598,109 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       }
     }
 
+    override def If(tree: If)(cond: Tree = tree.cond, thenp: Tree = tree.thenp, elsep: Tree = tree.elsep)(implicit ctx: Context): If =
+      If(tree: Tree)(cond, thenp, elsep)
+    override def Closure(tree: Closure)(env: List[Tree] = tree.env, meth: Tree = tree.meth, tpt: Tree = tree.tpt)(implicit ctx: Context): Closure =
+      Closure(tree: Tree)(env, meth, tpt)
+    override def CaseDef(tree: CaseDef)(pat: Tree = tree.pat, guard: Tree = tree.guard, body: Tree = tree.body)(implicit ctx: Context): CaseDef =
+      CaseDef(tree: Tree)(pat, guard, body)
+    override def Try(tree: Try)(expr: Tree = tree.expr, cases: List[CaseDef] = tree.cases, finalizer: Tree = tree.finalizer)(implicit ctx: Context): Try =
+      Try(tree: Tree)(expr, cases, finalizer)
+  }
+
+  val cpy_slow: TimeTravellingCopier = new TimeTravellingCopier
+
+  /** TypedTreeCopier does some optimizations that are only correct when
+   * tpe.widenDealias does not change. This is false if the trees are constructed
+   * in different phases and their types may widen
+   */
+  class TimeTravellingCopier extends TypedTreeCopier {
+
+    // Note: Reassigning the original type if `fun` and `args` have the same types as before
+    // does not work here: The computed type depends on the widened function type, not
+    // the function type itself. A treetransform may keep the function type the
+    // same but its widened type might change.
+    override def Apply(tree: tpd.Tree)(fun: tpd.Tree, args: List[tpd.Tree])(implicit ctx: Context): tpd.Apply = {
+      ta.assignType(untpd.cpy.Apply(tree)(fun, args), fun, args)
+    }
+
+    override def TypeApply(tree: tpd.Tree)(fun: tpd.Tree, args: List[tpd.Tree])(implicit ctx: Context): tpd.TypeApply = {
+      ta.assignType(untpd.cpy.TypeApply(tree)(fun, args), fun, args)
+    }
+
+    override def Block(tree: tpd.Tree)(stats: List[tpd.Tree], expr: tpd.Tree)(implicit ctx: Context): tpd.Block = {
+      val tree1 = ta.assignType(untpd.cpy.Block(tree)(stats, expr), stats, expr)
+
+      tree match {
+        case tree: Block if (expr eq tree.expr) && (stats eq tree.stats) && (tree1.tpe eq tree.tpe) =>
+          // the last guard is needed in case avoid somehow widened the type.
+          // if it did it could potentially need to rewiden it
+          // eg {val s = ...; s}
+          // changing type of s should change type of block, though type of expr is unchanged - TermRef(s)
+          tree
+        case _ => tree1
+      }
+    }
+
+    override def If(tree: tpd.Tree)(cond: tpd.Tree, thenp: tpd.Tree, elsep: tpd.Tree)(implicit ctx: Context): tpd.If = {
+      val tree1 = ta.assignType(untpd.cpy.If(tree)(cond, thenp, elsep), thenp, elsep)
+
+      tree match {
+        case tree: If if (thenp eq tree.thenp) && (elsep eq tree.elsep) && (tree1.tpe eq tree.tpe) =>
+          // last guard is needed in case previous if had computed a widened ORType that needs to be recomputed
+          // eg {val a = ...; val b = ...; if (...) a else b}
+          // changing type of a or b should change type of if, though types of both trees remain unchanged
+          tree
+        case _ =>
+          tree1
+      }
+    }
+
+    override def Closure(tree: tpd.Tree)(env: List[tpd.Tree], meth: tpd.Tree, tpt: tpd.Tree)(implicit ctx: Context): tpd.Closure = {
+      def createNode = ta.assignType(untpd.cpy.Closure(tree)(env, meth, tpt), meth, tpt)
+      tree match {
+        case tree: Closure if (tree.env eq env) && (tree.meth eq meth) && (tree.tpt eq tpt) =>
+          val tree1 = createNode
+          if  (tree.tpe eq tree1.tpe) {
+            // last guard is needed in case widened type of meth has changed.
+            tree
+          } else tree1
+        case _ =>
+          createNode
+      }
+
+    }
+
+    override def Match(tree: tpd.Tree)(selector: tpd.Tree, cases: List[tpd.CaseDef])(implicit ctx: Context): tpd.Match = {
+      def createNode = ta.assignType(untpd.cpy.Match(tree)(selector, cases), cases)
+
+      tree match {
+        case tree: Match if (cases eq tree.cases) && (selector eq tree.selector) =>
+          val tree1 = createNode
+          if (tree1.tpe eq tree.tpe) {
+            // same as If
+            tree
+          } else tree1
+        case _ => createNode
+      }
+    }
+
+    override def Try(tree: Tree)(expr: Tree, cases: List[CaseDef], finalizer: Tree)(implicit ctx: Context): Try = {
+      def createNode = ta.assignType(untpd.cpy.Try(tree)(expr, cases, finalizer), expr, cases)
+
+      tree match {
+        case tree: Try if (tree.expr eq expr) && (cases eq tree.cases) =>
+          val tree1 = createNode
+          if (tree1.tpe eq tree.tpe) {
+            // same as If
+            tree
+          } else tree1
+        case _ => createNode
+      }
+    }
+
+
+    /* push virtual dispatch out of forwarders so that TypedTreeCopier is monomorphic */
     override def If(tree: If)(cond: Tree = tree.cond, thenp: Tree = tree.thenp, elsep: Tree = tree.elsep)(implicit ctx: Context): If =
       If(tree: Tree)(cond, thenp, elsep)
     override def Closure(tree: Closure)(env: List[Tree] = tree.env, meth: Tree = tree.meth, tpt: Tree = tree.tpt)(implicit ctx: Context): Closure =
