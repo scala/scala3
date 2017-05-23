@@ -24,6 +24,7 @@ import Comments._
 import scala.annotation.{tailrec, switch}
 import util.DotClass
 import rewrite.Rewrites.patch
+import CheckAlignments.checkEndComments
 
 object Parsers {
 
@@ -158,7 +159,8 @@ object Parsers {
     def isBindingIntro = canStartBindingTokens contains in.token
     def isTemplateIntro = templateIntroTokens contains in.token
     def isDclIntro = dclIntroTokens contains in.token
-    def isStatSeqEnd = in.token == RBRACE || in.token == EOF
+    def isStatSeqEnd = in.token == RBRACE || in.token == UNDENT || in.token == EOF
+    def isBlockStart = in.token == LBRACE || in.token == INDENT
     def mustStartStat = mustStartStatTokens contains in.token
 
     def isDefIntro(allowedMods: BitSet) =
@@ -421,7 +423,8 @@ object Parsers {
     }
 
     def inParens[T](body: => T): T = enclosed(LPAREN, body)
-    def inBraces[T](body: => T): T = enclosed(LBRACE, body)
+    def inBraces[T](body: => T): T =
+      enclosed(if (in.token == INDENT) INDENT else LBRACE, body)
     def inBrackets[T](body: => T): T = enclosed(LBRACKET, body)
 
     def inDefScopeBraces[T](body: => T): T = {
@@ -430,18 +433,16 @@ object Parsers {
       finally lastStatOffset = saved
     }
 
-    /** part { `separator` part }
+    /** part { `,' part }
      */
-    def tokenSeparated[T](separator: Int, part: () => T): List[T] = {
+    def commaSeparated[T](part: () => T): List[T] = {
       val ts = new ListBuffer[T] += part()
-      while (in.token == separator) {
+      while (in.token == COMMA) {
         in.nextToken()
         ts += part()
       }
       ts.toList
     }
-
-    def commaSeparated[T](part: () => T): List[T] = tokenSeparated(COMMA, part)
 
 /* --------- OPERAND/OPERATOR STACK --------------------------------------- */
 
@@ -783,8 +784,14 @@ object Parsers {
       infixOps(t, canStartTypeTokens, refinedType, isType = true, notAnOperator = nme.raw.STAR)
 
     /** RefinedType        ::=  WithType {Annotation | [nl] Refinement}
+     *                       |  Refinement
      */
-    val refinedType: () => Tree = () => refinedTypeRest(withType())
+    val refinedType: () => Tree = () => {
+      if (in.token == LBRACE)
+        atPos(in.offset) { RefinedTypeTree(EmptyTree, refinement()) }
+      else
+        refinedTypeRest(withType())
+    }
 
     def refinedTypeRest(t: Tree): Tree = {
       newLineOptWhenFollowedBy(LBRACE)
@@ -819,7 +826,6 @@ object Parsers {
      *                     |  Path `.' type
      *                     |  `(' ArgTypes `)'
      *                     |  `_' TypeBounds
-     *                     |  Refinement
      *                     |  Literal
      */
     def simpleType(): Tree = simpleTypeRest {
@@ -827,8 +833,6 @@ object Parsers {
         atPos(in.offset) {
           makeTupleOrParens(inParens(argTypes(namedOK = false, wildOK = true)))
         }
-      else if (in.token == LBRACE)
-        atPos(in.offset) { RefinedTypeTree(EmptyTree, refinement()) }
       else if (isSimpleLiteral) { SingletonTypeTree(literal()) }
       else if (in.token == USCORE) {
         val start = in.skipToken()
@@ -992,6 +996,7 @@ object Parsers {
         t
       } else {
         val t = expr()
+        newLineOptWhenFollowedBy(altToken)
         accept(altToken)
         t
       }
@@ -1248,6 +1253,7 @@ object Parsers {
      *                 |  `(' [ExprsInParens] `)'
      *                 |  SimpleExpr `.' id
      *                 |  SimpleExpr (TypeArgs | NamedTypeArgs)
+     *                 |  SimpleExpr1 `with' BlockExpr
      *                 |  SimpleExpr1 ArgumentExprs
      */
     def simpleExpr(): Tree = {
@@ -1266,7 +1272,7 @@ object Parsers {
           atPos(start) { Ident(pname) }
         case LPAREN =>
           atPos(in.offset) { makeTupleOrParens(inParens(exprsInParensOpt())) }
-        case LBRACE =>
+        case LBRACE | INDENT =>
           canApply = false
           blockExpr()
         case NEW =>
@@ -1298,9 +1304,12 @@ object Parsers {
         case LBRACKET =>
           val tapp = atPos(startOffset(t), in.offset) { TypeApply(t, typeArgs(namedOK = true, wildOK = false)) }
           simpleExprRest(tapp, canApply = true)
-        case LPAREN | LBRACE if canApply =>
+        case LPAREN | LBRACE | INDENT if canApply =>
           val app = atPos(startOffset(t), in.offset) { Apply(t, argumentExprs()) }
           simpleExprRest(app, canApply = true)
+        case WITH =>
+          in.nextToken()
+          simpleExprRest(Apply(t, Block(Nil, blockExpr())), canApply = true)
         case USCORE =>
           atPos(startOffset(t), in.skipToken()) { PostfixOp(t, Ident(nme.WILDCARD)) }
         case _ =>
@@ -1358,7 +1367,7 @@ object Parsers {
      *                 |  [nl] BlockExpr
      */
     def argumentExprs(): List[Tree] =
-      if (in.token == LBRACE) blockExpr() :: Nil else parArgumentExprs()
+      if (isBlockStart) blockExpr() :: Nil else parArgumentExprs()
 
     val argumentExpr = () => {
       val arg =
@@ -1393,7 +1402,7 @@ object Parsers {
      */
     def argumentExprss(fn: Tree): Tree = {
       newLineOptWhenFollowedBy(LBRACE)
-      if (in.token == LPAREN || in.token == LBRACE) argumentExprss(Apply(fn, argumentExprs()))
+      if (in.token == LPAREN || isBlockStart) argumentExprss(Apply(fn, argumentExprs()))
       else fn
     }
 
@@ -1471,7 +1480,7 @@ object Parsers {
     def forExpr(): Tree = atPos(in.skipToken()) {
       var wrappedEnums = true
       val enums =
-        if (in.token == LBRACE) inBraces(enumerators())
+        if (isBlockStart) inBraces(enumerators())
         else if (in.token == LPAREN) {
           val lparenOffset = in.skipToken()
           openParens.change(LPAREN, 1)
@@ -1524,10 +1533,14 @@ object Parsers {
     /**  Pattern           ::=  Pattern1 { `|' Pattern1 }
      */
     val pattern = () => {
-      val pat = pattern1()
-      if (isIdent(nme.raw.BAR))
-        atPos(startOffset(pat)) { Alternative(pat :: patternAlts()) }
-      else pat
+      in.startPattern()
+      try {
+        val pat = pattern1()
+        if (isIdent(nme.raw.BAR))
+          atPos(startOffset(pat)) { Alternative(pat :: patternAlts()) }
+        else pat
+      }
+      finally in.endPattern()
     }
 
     def patternAlts(): List[Tree] =
@@ -2093,7 +2106,7 @@ object Parsers {
             EmptyTree
           else if (scala2ProcedureSyntax(": Unit")) {
             tpt = scalaUnit
-            if (in.token == LBRACE) expr()
+            if (isBlockStart) expr()
             else EmptyTree
           }
           else {
@@ -2109,7 +2122,7 @@ object Parsers {
      *                    |  ConstrBlock
      */
     def constrExpr(): Tree =
-      if (in.token == LBRACE) constrBlock()
+      if (isBlockStart) constrBlock()
       else Block(selfInvocation() :: Nil, Literal(Constant(())))
 
     /** SelfInvocation  ::= this ArgumentExprs {ArgumentExprs}
@@ -2123,12 +2136,14 @@ object Parsers {
     /** ConstrBlock    ::=  `{' SelfInvocation {semi BlockStat} `}'
      */
     def constrBlock(): Tree =
-      atPos(in.skipToken()) {
-        val stats = selfInvocation() :: {
-          if (isStatSep) { in.nextToken(); blockStatSeq() }
-          else Nil
-        }
-        accept(RBRACE)
+      atPos(in.offset) {
+        val stats =
+          inBraces {
+            selfInvocation() :: {
+              if (isStatSep) { in.nextToken(); blockStatSeq() }
+              else Nil
+            }
+          }
         Block(stats, Literal(Constant(())))
       }
 
@@ -2144,7 +2159,7 @@ object Parsers {
           case EQUALS =>
             in.nextToken()
             TypeDef(name, lambdaAbstract(tparams, typ())).withMods(mods).setComment(in.getDocComment(start))
-          case SUPERTYPE | SUBTYPE | SEMI | NEWLINE | NEWLINES | COMMA | RBRACE | EOF =>
+          case SUPERTYPE | SUBTYPE | SEMI | NEWLINE | NEWLINES | COMMA | RBRACE | UNDENT | EOF =>
             TypeDef(name, lambdaAbstract(tparams, typeBounds())).withMods(mods).setComment(in.getDocComment(start))
           case _ =>
             syntaxErrorOrIncomplete("`=', `>:', or `<:' expected")
@@ -2216,8 +2231,13 @@ object Parsers {
       ModuleDef(name, template).withMods(mods).setComment(in.getDocComment(start))
     }
 
+    def skipToBrace(): Unit = {
+      if (in.token == WITH) in.nextToken()
+      newLineOptWhenFollowedBy(LBRACE)
+    }
+
     /**  id ClassConstr [`extends' [ConstrApps]]
-     *   [nl] ‘{’ EnumCaseStats ‘}’
+     *   [`with'] [nl] ‘{’ EnumCaseStats ‘}’
      */
     def enumDef(start: Offset, mods: Modifiers, enumMod: Mod): Thicket = {
       val point = nameStart
@@ -2227,15 +2247,14 @@ object Parsers {
       val parents =
         if (in.token == EXTENDS) {
           in.nextToken();
-          newLineOptWhenFollowedBy(LBRACE)
-          if (in.token == LBRACE) Nil else tokenSeparated(WITH, constrApp)
+          constrAppsOpt()
         }
         else Nil
       val clsDef = atPos(start, point) {
         TypeDef(clsName, Template(constr, parents, EmptyValDef, Nil))
           .withMods(addMod(mods, enumMod)).setComment(in.getDocComment(start))
       }
-      newLineOptWhenFollowedBy(LBRACE)
+      skipToBrace()
       val modDef = atPos(in.offset) {
         val body = inBraces(enumCaseStats)
         ModuleDef(modName, Template(emptyConstructor, Nil, EmptyValDef, body))
@@ -2247,7 +2266,7 @@ object Parsers {
     /** EnumCaseStats = EnumCaseStat {semi EnumCaseStat */
     def enumCaseStats(): List[DefTree] = {
       val cases = new ListBuffer[DefTree] += enumCaseStat()
-      while (in.token != RBRACE && in.token != EOF) {
+      while (!isStatSeqEnd) {
         acceptStatSep()
         cases += enumCaseStat()
       }
@@ -2286,38 +2305,54 @@ object Parsers {
       else t
     }
 
+    /** ConstrApps ::=  ConstrApp {`with' ConstrApp}
+     *
+     *  Accepts empty list if followed by `{`.
+     */
+    def constrAppsOpt(): List[Tree] = {
+      newLineOptWhenFollowedBy(LBRACE)
+      if (isBlockStart) Nil
+      else
+        constrApp() :: {
+          if (in.token == WITH) {
+            in.nextToken()
+            constrAppsOpt()
+          }
+          else Nil
+        }
+    }
+
     /** Template          ::=  ConstrApps [TemplateBody] | TemplateBody
-     *  ConstrApps        ::=  ConstrApp {`with' ConstrApp}
      *
      *  @return  a pair consisting of the template, and a boolean which indicates
      *           whether the template misses a body (i.e. no {...} part).
      */
     def template(constr: DefDef): (Template, Boolean) = {
+      val parents = constrAppsOpt()
       newLineOptWhenFollowedBy(LBRACE)
-      if (in.token == LBRACE) (templateBodyOpt(constr, Nil), false)
-      else {
-        val parents = tokenSeparated(WITH, constrApp)
-        newLineOptWhenFollowedBy(LBRACE)
-        val missingBody = in.token != LBRACE
-        (templateBodyOpt(constr, parents), missingBody)
-      }
+      val missingBody = !isBlockStart
+      (templateBodyOpt(constr, parents), missingBody)
     }
 
     /** TemplateOpt = [`extends' Template | TemplateBody]
      */
     def templateOpt(constr: DefDef): Template =
       if (in.token == EXTENDS) { in.nextToken(); template(constr)._1 }
-      else {
-        newLineOptWhenFollowedBy(LBRACE)
-        if (in.token == LBRACE) template(constr)._1
-        else Template(constr, Nil, EmptyValDef, Nil)
-      }
+      else templateBodyOpt(constr, Nil)
 
-    /** TemplateBody ::= [nl] `{' TemplateStatSeq `}'
+    /** TemplateBody ::= [with] [nl] `{' TemplateStatSeq `}'
      */
-    def templateBodyOpt(constr: DefDef, parents: List[Tree]) = {
+    def templateBodyOpt(constr: DefDef, parents: List[Tree]): Template = {
       val (self, stats) =
-        if (in.token == LBRACE) templateBody() else (EmptyValDef, Nil)
+        if (in.token == WITH) {
+          skipToBrace()
+          templateBody()
+        }
+        else {
+          newLineOptWhenFollowedBy(LBRACE)
+          if (isBlockStart) templateBody()
+          else (EmptyValDef, Nil)
+        }
       Template(constr, parents, self, stats)
     }
 
@@ -2342,7 +2377,7 @@ object Parsers {
      */
     def packaging(start: Int): Tree = {
       val pkg = qualId()
-      newLineOptWhenFollowedBy(LBRACE)
+      skipToBrace()
       val stats = inDefScopeBraces(topStatSeq)
       makePackaging(start, pkg, stats)
     }
@@ -2506,10 +2541,10 @@ object Parsers {
             }
           } else {
             val pkg = qualId()
-            newLineOptWhenFollowedBy(LBRACE)
+            skipToBrace()
             if (in.token == EOF)
               ts += makePackaging(start, pkg, List())
-            else if (in.token == LBRACE) {
+            else if (isBlockStart) {
               ts += inDefScopeBraces(makePackaging(start, pkg, topStatSeq()))
               acceptStatSepUnlessAtEnd()
               ts ++= topStatSeq()
@@ -2523,6 +2558,7 @@ object Parsers {
         else
           ts ++= topStatSeq()
 
+        checkEndComments(source, in.endComments, ts.toList)
         ts.toList
       }
 
