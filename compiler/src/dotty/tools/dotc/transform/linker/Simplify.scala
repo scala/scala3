@@ -205,12 +205,12 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
    */
   val inlineCaseIntrinsics: Optimization = { implicit ctx: Context =>
     val transformer: Transformer = () => localCtx => {
-      case a: Apply if !a.tpe.isInstanceOf[MethodicType]                &&
-                       a.symbol.is(Synthetic)                           &&
-                       a.symbol.owner.is(Module)                        &&
-                       (a.symbol.name == nme.apply)                     &&
-                       a.symbol.owner.companionClass.is(CaseClass)      &&
-                       !a.tpe.derivesFrom(defn.EnumClass)               &&
+      case a: Apply if !a.tpe.isInstanceOf[MethodicType]           &&
+                       a.symbol.is(Synthetic)                      &&
+                       a.symbol.owner.is(Module)                   &&
+                       (a.symbol.name == nme.apply)                &&
+                       a.symbol.owner.companionClass.is(CaseClass) &&
+                       !a.tpe.derivesFrom(defn.EnumClass)          &&
                        (isPureExpr(a.fun) || a.fun.symbol.is(Synthetic)) =>
         def unrollArgs(t: Tree, l: List[List[Tree]]): List[List[Tree]] = t match {
           case Apply(t, args) => unrollArgs(t, args :: l)
@@ -224,11 +224,11 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
         val constructor = a.symbol.owner.companionClass.primaryConstructor.asTerm
         rollInArgs(argss.tail, New(a.tpe.widenDealias, constructor, argss.head))
 
-      case a: Apply if a.symbol.is(Synthetic)                            &&
-                       a.symbol.owner.is(Module)                         &&
-                       (a.symbol.name == nme.unapply)                    &&
-                       a.symbol.owner.companionClass.is(CaseClass)       &&
-                       !a.tpe.derivesFrom(defn.EnumClass)                &&
+      case a: Apply if a.symbol.is(Synthetic)                       &&
+                       a.symbol.owner.is(Module)                    &&
+                       (a.symbol.name == nme.unapply)               &&
+                       a.symbol.owner.companionClass.is(CaseClass)  &&
+                       !a.tpe.derivesFrom(defn.EnumClass)           &&
                        (isPureExpr(a.fun) || a.fun.symbol.is(Synthetic)) =>
         if (!a.symbol.owner.is(Scala2x)) {
           if (a.tpe.derivesFrom(defn.BooleanClass)) Literal(Constant(true))
@@ -474,7 +474,9 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
       }
     }
     val visitor: Visitor = {
-      case vdef: ValDef if (vdef.symbol.info.classSymbol is CaseClass) && !vdef.symbol.is(Lazy)  && !vdef.symbol.info.classSymbol.caseAccessors.exists(x => x.is(Mutable)) =>
+      case vdef: ValDef if (vdef.symbol.info.classSymbol is CaseClass) &&
+                           !vdef.symbol.is(Lazy)                       &&
+                           !vdef.symbol.info.classSymbol.caseAccessors.exists(x => x.is(Mutable)) =>
         followTailPerfect(vdef.rhs, vdef.symbol)
       case Assign(lhs, rhs) if !lhs.symbol.owner.isClass =>
         checkGood.put(lhs.symbol, checkGood.getOrElse(lhs.symbol, Set.empty) + rhs.symbol)
@@ -898,7 +900,9 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
           cpy.Block(a)(stats = newStats2, newExpr)
         else newExpr
       case a: DefDef =>
-        if (a.symbol.info.finalResultType.derivesFrom(defn.UnitClass) && !a.rhs.tpe.derivesFrom(defn.UnitClass) && !a.rhs.tpe.derivesFrom(defn.NothingClass)) {
+        if (a.symbol.info.finalResultType.derivesFrom(defn.UnitClass) &&
+            !a.rhs.tpe.derivesFrom(defn.UnitClass)                    &&
+            !a.rhs.tpe.derivesFrom(defn.NothingClass)) {
           def insertUnit(t: Tree) = {
             if (!t.tpe.derivesFrom(defn.UnitClass)) Block(t :: Nil, unitLiteral)
             else t
@@ -1050,7 +1054,7 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
           defined(t.symbol) = t
       case t: RefTree if t.symbol.exists && !t.symbol.is(Method) && !t.symbol.owner.isClass =>
         if (!firstWrite.contains(t.symbol)) firstRead(t.symbol) = t
-      case t @ Assign(l, expr) if  !l.symbol.is(Method) && !l.symbol.owner.isClass =>
+      case t @ Assign(l, expr) if !l.symbol.is(Method) && !l.symbol.owner.isClass =>
         if (!firstRead.contains(l.symbol)) {
           if (firstWrite.contains(l.symbol)) {
             if (!secondWrite.contains(l.symbol))
@@ -1116,8 +1120,7 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
     // Either a duplicate or a read through series of immutable fields
     val copies = mutable.HashMap[Symbol, Tree]()
     def doVisit(tree: Tree, used: mutable.HashMap[Symbol, Int]): Unit = tree match {
-      case valdef: ValDef if !valdef.symbol.is(Param)                   &&
-                             !valdef.symbol.is(Mutable | Module | Lazy) &&
+      case valdef: ValDef if !valdef.symbol.is(Param | Mutable | Module | Lazy) &&
                              valdef.symbol.exists && !valdef.symbol.owner.isClass =>
         defined += valdef.symbol
 
@@ -1171,7 +1174,7 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
       val valsToDrop = defined -- timesUsed.keySet
       val copiesToReplaceAsDuplicates = copies.filter { x =>
         val rhs = dropCasts(x._2)
-        rhs.isInstanceOf[Literal] || (!rhs.symbol.owner.isClass && !rhs.symbol.is(Method) && !rhs.symbol.is(Mutable))
+        rhs.isInstanceOf[Literal] || (!rhs.symbol.owner.isClass && !rhs.symbol.is(Method | Mutable))
       }
       // TODO: if a non-synthetic val is duplicate of a synthetic one, rename a synthetic one and drop synthetic flag?
 
@@ -1216,7 +1219,7 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
             New(newTpt)
           }
           else t
-        case t: RefTree if !t.symbol.is(Method) && !t.symbol.is(Param) && !t.symbol.is(Mutable) =>
+        case t: RefTree if !t.symbol.is(Method | Param | Mutable) =>
           if (replacements.contains(t.symbol))
             deepReplacer.transform(replacements(t.symbol)).ensureConforms(t.tpe.widen)
           else t
