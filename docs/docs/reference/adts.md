@@ -22,8 +22,8 @@ be given explicitly:
 
 ```scala
 enum Option[+T] {
-  case Some[T](x: T) extends Option[T]
-  case None          extends Option[Nothing]
+  case Some[+T](x: T) extends Option[T]
+  case None           extends Option[Nothing]
 }
 ```
 
@@ -93,6 +93,9 @@ enum Color(val rgb: Int) {
 ```
 
 ## Syntax of Enums
+
+Changes to the syntax fall in two categories: enum classes and cases inside enums.
+The changes are specified below as deltas with respect to the Scala syntax given [here](https://github.com/lampepfl/dotty/blob/master/docs/docs/internals/syntax.md)
 
  1. Enum definitions and enum classes are defined as follows:
 
