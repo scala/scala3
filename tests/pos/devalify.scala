@@ -31,4 +31,15 @@ object Test {
 
     println(subFooBar)
   }
+
+  def test3: Unit = {
+    trait NumericRange {
+      def mapRange: NumericRange = {
+        val self = this
+        new NumericRange {
+          def underlyingRange: NumericRange = self
+        }
+      }
+    }
+  }
 }
