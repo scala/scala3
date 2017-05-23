@@ -642,11 +642,11 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
   /** Display spaces */
   def show(s: Space): String = {
 
-    // does the companion object of the given symbol have custom unapply
+    /** does the companion object of the given symbol have custom unapply */
     def hasCustomUnapply(sym: Symbol): Boolean = {
       val companion = sym.companionModule
-      companion.findMember(nme.unapply, NoPrefix, Flags.Synthetic).exists ||
-        companion.findMember(nme.unapplySeq, NoPrefix, Flags.Synthetic).exists
+      companion.findMember(nme.unapply, NoPrefix, excluded = Synthetic).exists ||
+        companion.findMember(nme.unapplySeq, NoPrefix, excluded = Synthetic).exists
     }
 
     def doShow(s: Space, mergeList: Boolean = false): String = s match {
