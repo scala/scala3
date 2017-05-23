@@ -98,7 +98,7 @@ abstract class AbstractFile extends Iterable[AbstractFile] {
 
   /** Checks extension case insensitively. */
   def hasExtension(other: String) = extension == other.toLowerCase
-  private lazy val extension: String = Path.extension(name)
+  private val extension: String = Path.extension(name)
 
   /** The absolute file, if this is a relative file. */
   def absolute: AbstractFile
