@@ -1318,7 +1318,7 @@ object Parsers {
      *                    |  `(' [ExprsInParens `,'] PostfixExpr `:' `_' `*' ')'
      *
      *  Special treatment for arguments of primary class constructor
-     *  annotations. All empty argument lists `(` `)` follwoing the first 
+     *  annotations. All empty argument lists `(` `)` following the first 
      *  get represented as `List(ParamNotArg)` instead of `Nil`, indicating that
      *  the token sequence should be interpreted as an empty parameter clause
      *  instead. `ParamNotArg` can also be produced when parsing the first
