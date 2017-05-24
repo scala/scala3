@@ -147,14 +147,18 @@ extraCSS:
             var paramLists = !member.paramLists ? "" : (
                 member.paramLists
                     .map(renderParamList)
-                    .reduce(concatenateStrings, "")
+                    .reduce(concatenateStrings, "") + ': '
+            );
+
+            var returnValue = !member.returnValue ? "" : (
+                member.returnValue
             );
 
             div.innerHTML =
                 '<div class="member-kind">'+ member.kind +'</div>' +
                 '<div class="member-name">'+ member.name +'</div>' +
-                '<div class="member-param-lists">' + paramLists + ':</div>' +
-                '<div class="member-return">'+ member.returnValue +'</div>'
+                '<div class="member-param-lists">' + paramLists + '</div>' +
+                '<div class="member-return">'+ returnValue +'</div>'
 
             li.appendChild(div);
         };

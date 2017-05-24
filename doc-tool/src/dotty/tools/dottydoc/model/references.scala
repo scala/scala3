@@ -51,7 +51,7 @@ object references {
         if (args.isEmpty)
           "() => " + ret.showReference
         else if (args.tail.isEmpty)
-          args.head + " => " + ret.showReference
+          args.head.showReference + " => " + ret.showReference
         else
           args.mkString("(", ",", s") => ${ret.showReference}")
 
