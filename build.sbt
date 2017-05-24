@@ -22,5 +22,6 @@ val scalap = Build.scalap
 val dist = Build.dist
 
 val `sbt-dotty` = Build.`sbt-dotty`
+val `vscode-dotty` = Build.`vscode-dotty`
 
 inThisBuild(Build.thisBuildSettings)
