@@ -1,8 +1,6 @@
 sidebar:
     - title: Blog
       url: blog/index.html
-    - title: Docs
-      url: docs/index.html
     - title: Usage
       subsection:
         - title: cbt-projects

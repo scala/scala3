@@ -48,21 +48,31 @@ div#toolbar > div#project-details:before {
 }
 
 div#toolbar > div#project-details > h1#project-name {
-  font-size: 20px;
-  font-weight: 300;
-  margin-bottom: 3px;
+    font-size: 20px;
+    font-weight: 300;
+    margin-bottom: 3px;
+}
+
+div#toolbar > div#project-details > h1#project-name > a {
+    color: #fff;
+}
+
+div#toolbar > div#project-details > h1#project-name > a:hover,
+div#toolbar > div#project-details > h1#project-name > a:focus {
+    text-decoration: none;
+    color: rgba(255, 255, 255, 0.8);
 }
 
 div#toolbar > div#project-details > h2#project-version {
-  font-size: 12px;
-  font-weight: 200;
-  margin-left: 1px;
+    font-size: 12px;
+    font-weight: 200;
+    margin-left: 1px;
 }
 
 div#toolbar > a#github-link {
-  color: #fff;
-  position: absolute;
-  top: 7px;
-  right: 15px;
-  font-size: 40px;
+    color: #fff;
+    position: absolute;
+    top: 7px;
+    right: 15px;
+    font-size: 40px;
 }
