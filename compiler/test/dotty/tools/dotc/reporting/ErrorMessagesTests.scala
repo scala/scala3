@@ -7,7 +7,7 @@ import diagnostic.messages._
 import dotty.tools.dotc.core.Types.WildcardType
 import dotty.tools.dotc.parsing.Tokens
 import org.junit.Assert._
-import org.junit.{Ignore, Test}
+import org.junit.Test
 
 class ErrorMessagesTests extends ErrorMessagesTest {
   // In the case where there are no errors, we can do "expectNoErrors" in the
@@ -758,7 +758,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
         assertEquals("class MyValue", valueClass.show)
       }
 
-  @Test @Ignore def valueClassParameterMayNotBeVar =
+  @Test def valueClassParameterMayNotBeVar =
     checkMessagesAfter("refchecks") {
       """class MyValue(var i: Int) extends AnyVal"""
     }
