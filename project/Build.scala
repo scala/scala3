@@ -244,6 +244,7 @@ object Build {
   // Same as `dotty` but using bootstrapped projects.
   lazy val `dotty-bootstrapped` = project.
     aggregate(`dotty-interfaces`, `dotty-library-bootstrapped`, `dotty-compiler-bootstrapped`, `dotty-doc-bootstrapped`,
+      `dotty-language-server`,
       dottySbtBridgeBootstrappedRef,
       `scala-library`, `scala-compiler`, `scala-reflect`, scalap).
     dependsOn(`dotty-compiler-bootstrapped`).
@@ -758,6 +759,23 @@ object DottyInjectedPlugin extends AutoPlugin {
 """)
       }
       */
+    )
+
+  lazy val `dotty-language-server` = project.in(file("language-server")).
+    dependsOn(`dotty-compiler-bootstrapped`).
+    settings(commonBootstrappedSettings).
+    settings(
+      // Sources representing the shared configuration file used to communicate between the sbt-dotty
+      // plugin and the language server
+      unmanagedSourceDirectories in Compile += baseDirectory.value / "../sbt-dotty/src/dotty/tools/sbtplugin/config",
+
+      // fork so that the shutdown hook in Main is run when we ctrl+c a run
+      // (you need to have `cancelable in Global := true` in your global sbt config to ctrl+c a run)
+      fork in run := true,
+      libraryDependencies ++= Seq(
+        "org.eclipse.lsp4j" % "org.eclipse.lsp4j" % "0.2.0",
+        Dependencies.`jackson-databind`
+      )
     )
 
   /** A sandbox to play with the Scala.js back-end of dotty.
