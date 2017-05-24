@@ -1,0 +1,43 @@
+#!/usr/bin/env bash
+
+# Try to autodetect real location of the script
+
+if [ -z "$PROG_HOME" ] ; then
+  ## resolve links - $0 may be a link to PROG_HOME
+  PRG="$0"
+
+  # need this for relative symlinks
+  while [ -h "$PRG" ] ; do
+    ls=`ls -ld "$PRG"`
+    link=`expr "$ls" : '.*-> \(.*\)$'`
+    if expr "$link" : '/.*' > /dev/null; then
+      PRG="$link"
+    else
+      PRG="`dirname "$PRG"`/$link"
+    fi
+  done
+
+  saveddir=`pwd`
+
+  PROG_HOME=`dirname "$PRG"`/..
+
+  # make it fully qualified
+  PROG_HOME=`cd "$PROG_HOME" && pwd`
+
+  cd "$saveddir"
+fi
+
+source "$PROG_HOME/bin/common"
+
+CLASS_PATH="-classpath .:$DOTTY_LIB:$SCALA_LIB"
+
+first_arg="$1"
+
+if [ -z "$1" ]; then
+    echo "Starting dotty REPL..."
+    eval "$PROG_HOME/bin/dotc -repl"
+elif [[ ${first_arg:0:1} == "-" ]]; then
+    eval "$PROG_HOME/bin/dotc -repl $@"
+else
+  eval exec "\"$JAVACMD\"" $CLASS_PATH $@
+fi

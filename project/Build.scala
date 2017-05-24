@@ -8,6 +8,7 @@ import java.util.Calendar
 
 import scala.reflect.io.Path
 import sbtassembly.AssemblyKeys.assembly
+import xerial.sbt.Pack._
 
 import org.scalajs.sbtplugin.ScalaJSPlugin
 import org.scalajs.sbtplugin.ScalaJSPlugin.autoImport._
@@ -1052,4 +1053,20 @@ object DottyInjectedPlugin extends AutoPlugin {
     }
     state
   }
+
+  lazy val dist = project.
+    aggregate(`dotty-interfaces`, `dotty-library`, `dotty-compiler`).
+    dependsOn(`dotty-compiler`).
+    dependsOn(`dotty-library`).
+    settings(commonNonBootstrappedSettings).
+    settings(packSettings).
+    settings(
+      triggeredMessage in ThisBuild := Watched.clearWhenTriggered,
+      submoduleChecks,
+      publishArtifact := false,
+      // packMain := Map("dummy" -> "dotty.tools.dotc.Main"),
+      packExpandedClasspath := true,
+      packResourceDir += (baseDirectory.value / "bin" -> "bin"),
+      packArchiveName := "dotty-" + dottyVersion
+    )
 }

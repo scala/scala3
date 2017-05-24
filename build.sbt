@@ -18,6 +18,7 @@ val `scala-library` = Build.`scala-library`
 val `scala-compiler` = Build.`scala-compiler`
 val `scala-reflect` = Build.`scala-reflect`
 val scalap = Build.scalap
+val dist = Build.dist
 
 val `sbt-dotty` = Build.`sbt-dotty`
 
