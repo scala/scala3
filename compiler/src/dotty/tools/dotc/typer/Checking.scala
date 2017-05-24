@@ -459,7 +459,9 @@ object Checking {
       if (isCyclic(clazz.asClass))
         ctx.error(ValueClassesMayNotWrapItself(clazz), clazz.pos)
       else {
-        val clParamAccessors = clazz.asClass.paramAccessors.filter(_.isTerm)
+        val clParamAccessors = clazz.asClass.paramAccessors.filter { param =>
+          param.isTerm && !param.is(Flags.Accessor)
+        }
         clParamAccessors match {
           case List(param) =>
             if (param.is(Mutable))
