@@ -10,12 +10,14 @@ import scala.reflect.io.Path
 import sbtassembly.AssemblyKeys.assembly
 import xerial.sbt.Pack._
 
-import org.scalajs.sbtplugin.ScalaJSPlugin
-import org.scalajs.sbtplugin.ScalaJSPlugin.autoImport._
 import sbt.Package.ManifestAttributes
 
 import com.typesafe.sbteclipse.plugin.EclipsePlugin._
+
 import dotty.tools.sbtplugin.DottyPlugin.autoImport._
+import dotty.tools.sbtplugin.DottyIDEPlugin.autoImport._
+import org.scalajs.sbtplugin.ScalaJSPlugin
+import org.scalajs.sbtplugin.ScalaJSPlugin.autoImport._
 
 /* In sbt 0.13 the Build trait would expose all vals to the shell, where you
  * can use them in "set a := b" like expressions. This re-exposes them.
@@ -83,7 +85,13 @@ object Build {
   // Used in build.sbt
   lazy val thisBuildSettings = Def.settings(
     // Change this to true if you want to bootstrap using a published non-bootstrapped compiler
-    bootstrapFromPublishedJars := false
+    bootstrapFromPublishedJars := false,
+
+
+    // Override `launchIDE` from sbt-dotty to use the language-server and
+    // vscode extension from the source repository of dotty instead of a
+    // published version.
+    launchIDE := (run in `dotty-language-server`).dependsOn(prepareIDE).toTask("").value
   )
 
   // Only available in vscode-dotty
@@ -240,6 +248,7 @@ object Build {
     settings(
       triggeredMessage in ThisBuild := Watched.clearWhenTriggered,
       submoduleChecks,
+
       addCommandAlias("run", "dotty-compiler/run") ++
       addCommandAlias("legacyTests", "dotty-compiler/testOnly dotc.tests")
     )
@@ -318,7 +327,7 @@ object Build {
       "com.vladsch.flexmark" % "flexmark-ext-emoji" % "0.11.1",
       "com.vladsch.flexmark" % "flexmark-ext-gfm-strikethrough" % "0.11.1",
       "com.vladsch.flexmark" % "flexmark-ext-yaml-front-matter" % "0.11.1",
-      "com.fasterxml.jackson.dataformat" % "jackson-dataformat-yaml" % "2.8.6",
+      Dependencies.`jackson-dataformat-yaml`,
       "nl.big-o" % "liqp" % "0.6.7"
     )
   )
@@ -907,8 +916,14 @@ object DottyInjectedPlugin extends AutoPlugin {
   lazy val `sbt-dotty` = project.in(file("sbt-dotty")).
     settings(commonSettings).
     settings(
+      // Keep in sync with inject-sbt-dotty.sbt
+      libraryDependencies += Dependencies.`jackson-databind`,
+      unmanagedSourceDirectories in Compile +=
+        baseDirectory.value / "../language-server/src/dotty/tools/languageserver/config",
+
+
       sbtPlugin := true,
-      version := "0.1.0-RC4",
+      version := "0.1.0-RC5",
       ScriptedPlugin.scriptedSettings,
       ScriptedPlugin.sbtTestDirectory := baseDirectory.value / "sbt-test",
       ScriptedPlugin.scriptedBufferLog := false,
