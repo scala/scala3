@@ -505,6 +505,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       val untyped = untpd.cpy.Apply(tree)(fun, args)
       if (untyped eq tree)
         tree.asInstanceOf[Apply]
+      else ta.assignType(untyped, fun, args)
     }
 
       // Note: Reassigning the original type if `fun` and `args` have the same types as before
@@ -516,6 +517,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       val untyped = untpd.cpy.TypeApply(tree)(fun, args)
       if (untyped eq tree)
         tree.asInstanceOf[TypeApply]
+      else ta.assignType(untyped, fun, args)
     }
       // Same remark as for Apply
 
