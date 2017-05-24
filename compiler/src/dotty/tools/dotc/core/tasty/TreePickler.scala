@@ -178,6 +178,7 @@ class TreePickler(pickler: TastyPickler) {
       if (tpe.symbol.is(Flags.Package)) picklePackageRef(tpe.symbol)
       else {
         writeByte(TERMREF)
+        assert(tpe.prefix.member(tpe.name).hasAltWith(x => x.signature == tpe.signature))
         pickleNameAndSig(tpe.name, tpe.signature); pickleType(tpe.prefix)
       }
     case tpe: NamedType =>
@@ -348,7 +349,10 @@ class TreePickler(pickler: TastyPickler) {
           }
           val sig = tree.tpe.signature
           if (name.isTypeName || sig == Signature.NotAMethod) pickleName(realName)
-          else pickleNameAndSig(realName, sig)
+          else {
+            assert(qual.tpe.member(name).hasAltWith(x => x.signature == sig))
+            pickleNameAndSig(realName, sig)
+          }
           pickleTree(qual)
         case Apply(fun, args) =>
           writeByte(APPLY)

@@ -479,8 +479,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
 
     override def Select(tree: Tree)(qualifier: Tree, name: Name)(implicit ctx: Context): Select = {
       val tree1 = untpd.cpy.Select(tree)(qualifier, name)
-      lazy val oldMember = tree.asInstanceOf[Select].qualifier.tpe.member(name)
-      tree match {
+      val r = tree match {
         case tree: Select if (qualifier.tpe eq tree.qualifier.tpe) =>
           tree.tpe match {
             case tpe: NamedType =>
@@ -499,6 +498,14 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
           case _ => tree1.withTypeUnchecked(tree.tpe)
         }
       }
+
+      if (name.toString == "value" || name.toString == "specializedFor") {
+        if (r.tpe.signature != qualifier.tpe.member(name).signature) {
+          println(s"tree maintains has a wrong signature at phase ${ctx.phase.phaseName}")
+        }
+      }
+
+      r
     }
 
     override def Apply(tree: Tree)(fun: Tree, args: List[Tree])(implicit ctx: Context): Apply = {
