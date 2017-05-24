@@ -730,16 +730,11 @@ object Parsers {
     def typ(): Tree = {
       val start = in.offset
       val isImplicit = in.token == IMPLICIT
-      var isImplicitFun = false
       if (isImplicit) in.nextToken()
       def functionRest(params: List[Tree]): Tree =
         atPos(start, accept(ARROW)) {
           val t = typ()
-          if (isImplicit) {
-            isImplicitFun = true
-            new ImplicitFunction(params, t)
-          }
-          else Function(params, t)
+          if (isImplicit) new ImplicitFunction(params, t) else Function(params, t)
         }
       val t =
         if (in.token == LPAREN) {
@@ -776,13 +771,13 @@ object Parsers {
         }
         else infixType()
 
-      if (isImplicit && !isImplicitFun && in.token != ARROW)
-        syntaxError("Types with implicit keyword can only be function types", Position(start, start + nme.IMPLICITkw.asSimpleName.length))
-
       in.token match {
         case ARROW => functionRest(t :: Nil)
         case FORSOME => syntaxError(ExistentialTypesNoLongerSupported()); t
-        case _ => t
+        case _ =>
+          if (isImplicit && !t.isInstanceOf[ImplicitFunction])
+            syntaxError("Types with implicit keyword can only be function types", Position(start, start + nme.IMPLICITkw.asSimpleName.length))
+          t
       }
     }
 
