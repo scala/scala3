@@ -63,9 +63,6 @@ object Trees {
 
     private def nxId = {
       nextId += 1
-      if ((nextId == 94) && (nextId < 170)) {
-        println("dssds")
-      }
       //assert(nextId != 199, this)
       nextId
 
