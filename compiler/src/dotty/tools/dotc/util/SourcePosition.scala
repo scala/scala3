@@ -7,6 +7,11 @@ import Positions.{Position, NoPosition}
 /** A source position is comprised of a position in a source file */
 case class SourcePosition(source: SourceFile, pos: Position, outer: SourcePosition = NoSourcePosition)
 extends interfaces.SourcePosition {
+  /** Is `that` a source position contained in this source position ?
+   *  `outer` is not taken into account. */
+  def contains(that: SourcePosition): Boolean =
+    this.source == that.source && this.pos.contains(that.pos)
+
   def exists = pos.exists
 
   def lineContent: String = source.lineContent(point)
