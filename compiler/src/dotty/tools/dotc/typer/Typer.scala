@@ -357,7 +357,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
 
   private def typedSelect(tree: untpd.Select, pt: Type, qual: Tree)(implicit ctx: Context): Select =
     healNonvariant(
-      checkValue(assignType(cpy.Select(tree)(qual, tree.name), qual), pt),
+      checkValue(assignType(cpy.Select(tree)(qual, tree.name), qual), pt), // see note in TypedTreeCopier.select
       pt)
 
   /** Let `tree = p.n` where `p: T`. If tree's type is an unsafe instantiation

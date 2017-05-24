@@ -481,8 +481,19 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       val tree1 = untpd.cpy.Select(tree)(qualifier, name)
       lazy val oldMember = tree.asInstanceOf[Select].qualifier.tpe.member(name)
       tree match {
-        case tree: Select if (qualifier.tpe eq tree.qualifier.tpe) && (oldMember.isOverloaded || oldMember.signature == qualifier.tpe.member(name).signature) =>
-          tree1.withTypeUnchecked(tree.tpe)
+        case tree: Select if (qualifier.tpe eq tree.qualifier.tpe) =>
+          tree.tpe match {
+            case tpe: NamedType =>
+              val tp = tpe.derivedSelect(qualifier.tpe.widenIfUnstable)
+              if (tp == tree.tpe)
+              // Unfortunately if qualifiers are the same, the widened type may be different from the one that
+              // was used to construct the tree. And even time travel won't help here.
+              // By the time we call typedSelect not all type-variables may be instantiated
+              // and the selection may succeed with a weaker signature than the one we'll get here.
+                tree.withTypeUnchecked(tree.tpe)
+              else tree1.withType(tpe.derivedSelect(qualifier.tpe.widenIfUnstable))
+            case _ => tree1.withTypeUnchecked(tree.tpe)
+          }
         case _ => tree.tpe match {
           case tpe: NamedType => tree1.withType(tpe.derivedSelect(qualifier.tpe.widenIfUnstable))
           case _ => tree1.withTypeUnchecked(tree.tpe)
@@ -492,9 +503,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
 
     override def Apply(tree: Tree)(fun: Tree, args: List[Tree])(implicit ctx: Context): Apply = {
       val untyped = untpd.cpy.Apply(tree)(fun, args)
-      if (untyped.ne(tree) || !ctx.settings.optimise.value)
-        ta.assignType(untyped, fun, args)
-      else
+      if (untyped eq tree)
         tree.asInstanceOf[Apply]
     }
 
@@ -505,9 +514,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
 
     override def TypeApply(tree: Tree)(fun: Tree, args: List[Tree])(implicit ctx: Context): TypeApply = {
       val untyped = untpd.cpy.TypeApply(tree)(fun, args)
-      if (untyped.ne(tree) || !ctx.settings.optimise.value)
-        ta.assignType(untyped, fun, args)
-      else
+      if (untyped eq tree)
         tree.asInstanceOf[TypeApply]
     }
       // Same remark as for Apply
@@ -552,7 +559,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
         tree.asInstanceOf[Closure]
     }
       // Same remark as for Apply
-
+    
     override def Match(tree: Tree)(selector: Tree, cases: List[CaseDef])(implicit ctx: Context): Match = {
       val tree1 = untpd.cpy.Match(tree)(selector, cases)
       tree match {
@@ -621,6 +628,9 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     // does not work here: The computed type depends on the widened function type, not
     // the function type itself. A treetransform may keep the function type the
     // same but its widened type might change.
+    // It's not only tree transform unfortunatelly. Typer may also create types of Apply nodes that are less precise
+    // than the one that we'would expect because he didn't yet instantiate all type-variables
+    // see https://github.com/lampepfl/dotty/pull/2446 for a testcase
     override def Apply(tree: tpd.Tree)(fun: tpd.Tree, args: List[tpd.Tree])(implicit ctx: Context): tpd.Apply = {
       ta.assignType(untpd.cpy.Apply(tree)(fun, args), fun, args)
     }

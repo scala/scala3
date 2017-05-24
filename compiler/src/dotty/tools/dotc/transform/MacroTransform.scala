@@ -9,6 +9,7 @@ import Contexts._
 import Symbols._
 import Flags.PackageVal
 import Decorators._
+import dotty.tools.dotc.ast.tpd
 
 /** A base class for transforms.
  *  A transform contains a compiler phase which applies a tree transformer.
@@ -30,7 +31,7 @@ abstract class MacroTransform extends Phase {
    */
   protected def transformPhase(implicit ctx: Context): Phase = this
 
-  class Transformer extends TreeMap {
+  class Transformer(cpy: TreeCopier = tpd.cpy) extends TreeMap(cpy) {
 
     protected def localCtx(tree: Tree)(implicit ctx: Context) = {
       val sym = tree.symbol
