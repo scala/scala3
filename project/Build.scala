@@ -1055,7 +1055,7 @@ object DottyInjectedPlugin extends AutoPlugin {
   }
 
   lazy val dist = project.
-    aggregate(`dotty-interfaces`, `dotty-library`, `dotty-compiler`).
+    dependsOn(`dotty-interfaces`).
     dependsOn(`dotty-compiler`).
     dependsOn(`dotty-library`).
     settings(commonNonBootstrappedSettings).
