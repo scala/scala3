@@ -77,7 +77,7 @@ scala> class Foo() { def bar: Int = 1 }; val foo = new Foo(); foo.barr
 -- [E008] Member Not Found Error: <console>:4:59 -------------------------------
 4 |class Foo() { def bar: Int = 1 }; val foo = new Foo(); foo.barr
   |                                                       ^^^^^^^^
-  |        value `barr` is not a member of Foo(foo) - did you mean `foo.bar`?
+  |             value `barr` is not a member of Foo - did you mean `foo.bar`?
 scala> val x: List[Int] = "foo" :: List(1)
 -- [E007] Type Mismatch Error: <console>:4:19 ----------------------------------
 4 |val x: List[Int] = "foo" :: List(1)
