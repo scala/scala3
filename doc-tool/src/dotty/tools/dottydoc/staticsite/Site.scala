@@ -172,7 +172,10 @@ case class Site(
 
     DefaultParams(
       docs, docsFlattened, documentation, PageInfo(pathFromRoot),
-      SiteInfo(baseUrl, projectTitle, projectVersion, projectUrl, Array()),
+      SiteInfo(
+        baseUrl, projectTitle, projectVersion, projectUrl, Array(),
+        root.toString
+      ),
       sidebar
     )
   }
@@ -290,7 +293,7 @@ case class Site(
     * // given that root is: /some/root
     * ```
     */
-  def stripRoot(f: JFile): String = {
+  def stripRoot(f: JFile, root: JFile = root): String = {
     val rootLen = root.getAbsolutePath.length + 1
     f.getAbsolutePath.drop(rootLen)
   }
