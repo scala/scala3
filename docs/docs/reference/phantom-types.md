@@ -27,7 +27,7 @@ If they don't live in the universe bounded by `scala.Any` and `scala.Nothing` wh
 they live? The answer is in their own type universes bounded by their phantom `Any` and `Nothing`. 
 In fact we allow multiple phantom universes to exist.
 
-```
+```none
           +-----+                     +---------------+           +--------------------+
           | Any |                     | MyPhantom.Any |           | MyOtherPhantom.Any |
           +-----+                     +---------------+           +--------------------+
