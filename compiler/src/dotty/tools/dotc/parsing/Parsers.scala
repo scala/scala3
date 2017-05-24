@@ -306,9 +306,6 @@ object Parsers {
       } finally inFunReturnType = saved
     }
 
-    /** A placeholder for dummy arguments that should be re-parsed as parameters */
-    val ParamNotArg = EmptyTree
-
     /** A flag indicating we are parsing in the annotations of a primary
      *  class constructor
      */
@@ -316,29 +313,9 @@ object Parsers {
 
     private def fromWithinClassConstr[T](body: => T): T = {
       val saved = inClassConstrAnnots
-      try {
-        inClassConstrAnnots = true
-        body
-      } finally {
-        inClassConstrAnnots = saved
-        if (lookaheadTokens.nonEmpty) {
-          in.insertTokens(lookaheadTokens.toList)
-          lookaheadTokens.clear()
-        }
-      }
-    }
-
-    /** Lookahead tokens for the case of annotations in class constructors.
-     *  We store tokens in lookahead as long as they can form a valid prefix
-     *  of a class parameter clause.
-     */
-    private[this] var lookaheadTokens = new ListBuffer[TokenData]
-
-    /** Copy current token to end of lookahead */
-    private def saveLookahead() = {
-      val lookahead = new TokenData{}
-      lookahead.copyFrom(in)
-      lookaheadTokens += lookahead
+      inClassConstrAnnots = true
+      try body
+      finally inClassConstrAnnots = saved
     }
 
     def migrationWarningOrError(msg: String, offset: Int = in.offset) =
@@ -1371,44 +1348,9 @@ object Parsers {
 
     /** ParArgumentExprs ::= `(' [ExprsInParens] `)'
      *                    |  `(' [ExprsInParens `,'] PostfixExpr `:' `_' `*' ')'
-     *
-     *  Special treatment for arguments of primary class constructor
-     *  annotations. All empty argument lists `(` `)` following the first
-     *  get represented as `List(ParamNotArg)` instead of `Nil`, indicating that
-     *  the token sequence should be interpreted as an empty parameter clause
-     *  instead. `ParamNotArg` can also be produced when parsing the first
-     *  argument (see `classConstrAnnotExpr`).
-     *
-     *  The method affects `lookaheadTokens` as a side effect.
-     *  If the argument list parses as `List(ParamNotArg)`, `lookaheadTokens`
-     *  contains the tokens that need to be replayed to parse the parameter clause.
-     *  Otherwise, `lookaheadTokens` is empty.
      */
-    def parArgumentExprs(first: Boolean = false): List[Tree] = {
-      if (inClassConstrAnnots) {
-        assert(lookaheadTokens.isEmpty)
-        saveLookahead()
-        accept(LPAREN)
-        val args =
-          if (in.token == RPAREN)
-            if (first) Nil // first () counts as annotation argument
-            else ParamNotArg :: Nil
-          else {
-            openParens.change(LPAREN, +1)
-            try commaSeparated(argumentExpr)
-            finally openParens.change(LPAREN, -1)
-          }
-        if (args == ParamNotArg :: Nil)
-          in.adjustSepRegions(RPAREN) // simulate `)` without requiring it
-        else {
-          lookaheadTokens.clear()
-          accept(RPAREN)
-        }
-        args
-      }
-      else
-        inParens(if (in.token == RPAREN) Nil else commaSeparated(argumentExpr))
-    }
+    def parArgumentExprs(): List[Tree] =
+      inParens(if (in.token == RPAREN) Nil else commaSeparated(argumentExpr))
 
     /** ArgumentExprs ::= ParArgumentExprs
      *                 |  [nl] BlockExpr
@@ -1416,34 +1358,11 @@ object Parsers {
     def argumentExprs(): List[Tree] =
       if (in.token == LBRACE) blockExpr() :: Nil else parArgumentExprs()
 
-    val argumentExpr = () => {
-      val arg =
-        if (inClassConstrAnnots && lookaheadTokens.nonEmpty) classConstrAnnotExpr()
-        else exprInParens()
-      arg match {
-        case arg @ Assign(Ident(id), rhs) => cpy.NamedArg(arg)(id, rhs)
-        case arg => arg
-      }
+    val argumentExpr = () => exprInParens() match {
+      case arg @ Assign(Ident(id), rhs) => cpy.NamedArg(arg)(id, rhs)
+      case arg => arg
     }
 
-    /** Handle first argument of an argument list to an annotation of
-     *  a primary class constructor. If the current token either cannot
-     *  start an expression or is an identifier and is followed by `:`,
-     *  stop parsing the rest of the expression and return `EmptyTree`,
-     *  indicating that we should re-parse the expression as a parameter clause.
-     *  Otherwise parse as normal.
-     */
-    def classConstrAnnotExpr() = {
-      if (in.token == IDENTIFIER) {
-        saveLookahead()
-        postfixExpr() match {
-          case Ident(_) if in.token == COLON => ParamNotArg
-          case t => expr1Rest(t, Location.InParens)
-        }
-      }
-      else if (isExprIntro) exprInParens()
-      else ParamNotArg
-    }
 
     /** ArgumentExprss ::= {ArgumentExprs}
      */
@@ -1455,17 +1374,29 @@ object Parsers {
 
     /** ParArgumentExprss ::= {ParArgumentExprs}
      *
-     *  Special treatment for arguments of primary class constructor
-     *  annotations. If an argument list returns `List(ParamNotArg)`
-     *  ignore it, and return prefix parsed before that list instead.
+     *  Special treatment for arguments to primary constructor annotations.
+     *  (...) is considered an argument only if it does not look like a formal
+     *  parameter list, i.e. does not start with `( <annot>* <mod>* ident : `
+     *  Furthermore, `()` is considered a annotation argument only if it comes first.
      */
-    def parArgumentExprss(fn: Tree): Tree =
-      if (in.token == LPAREN) {
-        val args = parArgumentExprs(first = !fn.isInstanceOf[Trees.Apply[_]])
-        if (inClassConstrAnnots && args == ParamNotArg :: Nil) fn
-        else parArgumentExprss(Apply(fn, args))
+    def parArgumentExprss(fn: Tree): Tree = {
+      def isLegalAnnotArg: Boolean = {
+        val lookahead = in.lookaheadScanner
+        (lookahead.token == LPAREN) && {
+          lookahead.nextToken()
+          if (lookahead.token == RPAREN)
+            !fn.isInstanceOf[Trees.Apply[_]] // allow one () as annotation argument
+          else if (lookahead.token == IDENTIFIER) {
+            lookahead.nextToken()
+            lookahead.token != COLON
+          }
+          else canStartExpressionTokens.contains(lookahead.token)
+        }
       }
+      if (in.token == LPAREN && (!inClassConstrAnnots || isLegalAnnotArg))
+        parArgumentExprss(Apply(fn, parArgumentExprs()))
       else fn
+    }
 
     /** BlockExpr         ::= `{' BlockExprContents `}'
      *  BlockExprContents ::= CaseClauses | Block
