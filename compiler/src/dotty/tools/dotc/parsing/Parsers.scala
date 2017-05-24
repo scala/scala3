@@ -116,9 +116,9 @@ object Parsers {
     /** Issue an error at given offset if beyond last error offset
       *  and update lastErrorOffset.
       */
-    def syntaxError(msg: => Message, offset: Int = in.offset): Unit =
+    def syntaxError(msg: => Message, offset: Int = in.offset, name: Name = in.name): Unit =
       if (offset > lastErrorOffset) {
-        val length = if (in.name != null) in.name.show.length else 0
+        val length = if (name != null) name.show.length else 0
         syntaxError(msg, Position(offset, offset + length))
         lastErrorOffset = in.offset
       }
@@ -730,11 +730,16 @@ object Parsers {
     def typ(): Tree = {
       val start = in.offset
       val isImplicit = in.token == IMPLICIT
+      var isImplicitFun = false
       if (isImplicit) in.nextToken()
       def functionRest(params: List[Tree]): Tree =
         atPos(start, accept(ARROW)) {
           val t = typ()
-          if (isImplicit) new ImplicitFunction(params, t) else Function(params, t)
+          if (isImplicit) {
+            isImplicitFun = true
+            new ImplicitFunction(params, t)
+          }
+          else Function(params, t)
         }
       val t =
         if (in.token == LPAREN) {
@@ -770,6 +775,9 @@ object Parsers {
           else { accept(ARROW); typ() }
         }
         else infixType()
+
+      if (isImplicit && !isImplicitFun && in.token != ARROW)
+        syntaxError("Types with implicit keyword can only be function types", start, nme.IMPLICITkw)
 
       in.token match {
         case ARROW => functionRest(t :: Nil)
