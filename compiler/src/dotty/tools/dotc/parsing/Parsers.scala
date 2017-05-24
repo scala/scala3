@@ -116,9 +116,9 @@ object Parsers {
     /** Issue an error at given offset if beyond last error offset
       *  and update lastErrorOffset.
       */
-    def syntaxError(msg: => Message, offset: Int = in.offset, name: Name = in.name): Unit =
+    def syntaxError(msg: => Message, offset: Int = in.offset): Unit =
       if (offset > lastErrorOffset) {
-        val length = if (name != null) name.show.length else 0
+        val length = if (in.name != null) in.name.show.length else 0
         syntaxError(msg, Position(offset, offset + length))
         lastErrorOffset = in.offset
       }
@@ -777,7 +777,7 @@ object Parsers {
         else infixType()
 
       if (isImplicit && !isImplicitFun && in.token != ARROW)
-        syntaxError("Types with implicit keyword can only be function types", start, nme.IMPLICITkw)
+        syntaxError("Types with implicit keyword can only be function types", Position(start, start + nme.IMPLICITkw.asSimpleName.length))
 
       in.token match {
         case ARROW => functionRest(t :: Nil)
