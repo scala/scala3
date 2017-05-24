@@ -211,6 +211,8 @@ trait TypeAssigner {
   /** The type of a selection with `name` of a tree with type `site`.
    */
   def selectionType(site: Type, name: Name, pos: Position)(implicit ctx: Context): Type = {
+    if (name.toString == "specializedFor")
+      println("bugaga")
     val mbr = site.member(name)
     if (reallyExists(mbr)) site.select(name, mbr)
     else if (site.derivesFrom(defn.DynamicClass) && !Dynamic.isDynamicMethod(name)) {

@@ -63,8 +63,12 @@ object Trees {
 
     private def nxId = {
       nextId += 1
+      if ((nextId == 94) && (nextId < 170)) {
+        println("dssds")
+      }
       //assert(nextId != 199, this)
       nextId
+
     }
 
     /** A unique identifier for this tree. Used for debugging, and potentially
@@ -73,6 +77,7 @@ object Trees {
     private var myUniqueId: Int = nxId
 
     def uniqueId = myUniqueId
+
 
     /** The type  constructor at the root of the tree */
     type ThisTree[T >: Untyped] <: Tree[T]

@@ -479,8 +479,9 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
 
     override def Select(tree: Tree)(qualifier: Tree, name: Name)(implicit ctx: Context): Select = {
       val tree1 = untpd.cpy.Select(tree)(qualifier, name)
+      lazy val oldMember = tree.asInstanceOf[Select].qualifier.tpe.member(name)
       tree match {
-        case tree: Select if qualifier.tpe eq tree.qualifier.tpe =>
+        case tree: Select if (qualifier.tpe eq tree.qualifier.tpe) && (oldMember.isOverloaded || oldMember.signature == qualifier.tpe.member(name).signature) =>
           tree1.withTypeUnchecked(tree.tpe)
         case _ => tree.tpe match {
           case tpe: NamedType => tree1.withType(tpe.derivedSelect(qualifier.tpe.widenIfUnstable))
