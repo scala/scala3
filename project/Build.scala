@@ -15,6 +15,7 @@ import org.scalajs.sbtplugin.ScalaJSPlugin.autoImport._
 import sbt.Package.ManifestAttributes
 
 import com.typesafe.sbteclipse.plugin.EclipsePlugin._
+import dotty.tools.sbtplugin.DottyPlugin.autoImport._
 
 /* In sbt 0.13 the Build trait would expose all vals to the shell, where you
  * can use them in "set a := b" like expressions. This re-exposes them.
@@ -132,8 +133,6 @@ object Build {
     EclipseKeys.skipProject := true,
     version := dottyVersion,
     scalaVersion := dottyNonBootstrappedVersion,
-    scalaOrganization := dottyOrganization,
-    scalaBinaryVersion := "0.1",
 
     // Avoid having to run `dotty-sbt-bridge/publishLocal` before compiling a bootstrapped project
     scalaCompilerBridgeSource :=
@@ -174,9 +173,9 @@ object Build {
     libraryDependencies ++= {
       if (bootstrapFromPublishedJars.value)
         Seq(
-          dottyOrganization % "dotty-library_2.11" % dottyNonBootstrappedVersion % Configurations.ScalaTool.name,
-          dottyOrganization % "dotty-compiler_2.11" % dottyNonBootstrappedVersion % Configurations.ScalaTool.name
-        )
+          dottyOrganization %% "dotty-library" % dottyNonBootstrappedVersion % Configurations.ScalaTool.name,
+          dottyOrganization %% "dotty-compiler" % dottyNonBootstrappedVersion % Configurations.ScalaTool.name
+        ).map(_.withDottyCompat())
       else
         Seq()
     },
@@ -439,7 +438,7 @@ object Build {
 
       // get libraries onboard
       libraryDependencies ++= Seq("com.typesafe.sbt" % "sbt-interface" % sbtVersion.value,
-                                  "org.scala-lang.modules" % "scala-xml_2.11" % "1.0.1",
+                                  ("org.scala-lang.modules" %% "scala-xml" % "1.0.1").withDottyCompat(),
                                   "com.novocode" % "junit-interface" % "0.11" % "test",
                                   "org.scala-lang" % "scala-library" % scalacVersion % "test"),
 
@@ -695,7 +694,7 @@ object Build {
     libraryDependencies ++= Seq(
       "com.typesafe.sbt" % "sbt-interface" % sbtVersion.value,
       "org.scala-sbt" % "api" % sbtVersion.value % "test",
-      "org.specs2" % "specs2_2.11" % "2.3.11" % "test"
+      ("org.specs2" %% "specs2" % "2.3.11" % "test").withDottyCompat()
     ),
     // The sources should be published with crossPaths := false since they
     // need to be compiled by the project using the bridge.
