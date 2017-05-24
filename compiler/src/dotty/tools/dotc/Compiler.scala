@@ -49,6 +49,7 @@ class Compiler {
       List(new FirstTransform,      // Some transformations to put trees into a canonical form
            new CheckReentrant),     // Internal use only: Check that compiled program has no data races involving global vars
       List(new CheckStatic,         // Check restrictions that apply to @static members
+           new CheckPhantomCast,    // Checks that no Phantom types in are in casts
            new ElimRepeated,        // Rewrite vararg parameters and arguments
            new RefChecks,           // Various checks mostly related to abstract members and overriding
            new NormalizeFlags,      // Rewrite some definition flags
