@@ -29,7 +29,7 @@ fi
 
 source "$PROG_HOME/bin/common"
 
-CLASS_PATH="-classpath .:$DOTTY_LIB:$SCALA_LIB"
+CLASS_PATH="-classpath .$PSEP$DOTTY_LIB$PSEP$SCALA_LIB"
 
 first_arg="$1"
 
