@@ -3,9 +3,6 @@ layout: doc-page
 title: "Phantom Types"
 ---
 
-Phantom Types  :ghost:
-======================
-
 
 What is a phantom type?
 -----------------------
