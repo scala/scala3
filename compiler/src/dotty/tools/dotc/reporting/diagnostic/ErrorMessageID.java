@@ -77,6 +77,15 @@ public enum ErrorMessageID {
     OnlyClassesCanHaveDeclaredButUndefinedMembersID,
     CannotExtendAnyValID,
     CannotHaveSameNameAsID,
+    ValueClassesMayNotDefineInnerID,
+    ValueClassesMayNotDefineNonParameterFieldID,
+    ValueClassesMayNotDefineASecondaryConstructorID,
+    ValueClassesMayNotContainInitalizationID,
+    ValueClassesMayNotBeAbstractID,
+    ValueClassesMayNotBeContaintedID,
+    ValueClassesMayNotWrapItselfID,
+    ValueClassParameterMayNotBeAVarID,
+    ValueClassNeedsExactlyOneValParamID,
     ;
 
     public int errorNumber() {

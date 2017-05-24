@@ -439,35 +439,35 @@ object Checking {
   def checkDerivedValueClass(clazz: Symbol, stats: List[Tree])(implicit ctx: Context) = {
     def checkValueClassMember(stat: Tree) = stat match {
       case _: TypeDef if stat.symbol.isClass =>
-        ctx.error(s"value class may not define an inner class", stat.pos)
+        ctx.error(ValueClassesMayNotDefineInner(clazz, stat.symbol), stat.pos)
       case _: ValDef if !stat.symbol.is(ParamAccessor) =>
-        ctx.error(s"value class may not define non-parameter field", stat.pos)
-      case d: DefDef if d.symbol.isConstructor =>
-        ctx.error(s"value class may not define secondary constructor", stat.pos)
+        ctx.error(ValueClassesMayNotDefineNonParameterField(clazz, stat.symbol), stat.pos)
+      case _: DefDef if stat.symbol.isConstructor =>
+        ctx.error(ValueClassesMayNotDefineASecondaryConstructor(clazz, stat.symbol), stat.pos)
       case _: MemberDef | _: Import | EmptyTree =>
       // ok
       case _ =>
-        ctx.error(s"value class may not contain initialization statements", stat.pos)
+        ctx.error(ValueClassesMayNotContainInitalization(clazz), stat.pos)
     }
     if (isDerivedValueClass(clazz)) {
       if (clazz.is(Trait))
         ctx.error(CannotExtendAnyVal(clazz), clazz.pos)
       if (clazz.is(Abstract))
-        ctx.error("`abstract' modifier cannot be used with value classes", clazz.pos)
+        ctx.error(ValueClassesMayNotBeAbstract(clazz), clazz.pos)
       if (!clazz.isStatic)
-        ctx.error(s"value class may not be a ${if (clazz.owner.isTerm) "local class" else "member of another class"}", clazz.pos)
+        ctx.error(ValueClassesMayNotBeContainted(clazz), clazz.pos)
       if (isCyclic(clazz.asClass))
-        ctx.error("value class cannot wrap itself", clazz.pos)
+        ctx.error(ValueClassesMayNotWrapItself(clazz), clazz.pos)
       else {
         val clParamAccessors = clazz.asClass.paramAccessors.filter(_.isTerm)
         clParamAccessors match {
           case List(param) =>
             if (param.is(Mutable))
-              ctx.error("value class parameter must not be a var", param.pos)
+              ctx.error(ValueClassParameterMayNotBeAVar(clazz, param), param.pos)
             if (param.info.isPhantom)
               ctx.error("value class parameter must not be phantom", param.pos)
           case _ =>
-            ctx.error("value class needs to have exactly one val parameter", clazz.pos)
+            ctx.error(ValueClassNeedsExactlyOneValParam(clazz), clazz.pos)
         }
       }
       stats.foreach(checkValueClassMember)

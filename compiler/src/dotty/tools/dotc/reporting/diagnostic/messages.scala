@@ -1469,5 +1469,70 @@ object messages {
     val explanation = ""
   }
 
+  case class ValueClassesMayNotDefineInner(valueClass: Symbol, inner: Symbol)(implicit ctx: Context)
+    extends Message(ValueClassesMayNotDefineInnerID) {
+    val msg = hl"""value classes may not define an inner class"""
+    val kind = "Syntax"
+    val explanation = ""
+  }
+
+  case class ValueClassesMayNotDefineNonParameterField(valueClass: Symbol, field: Symbol)(implicit ctx: Context)
+    extends Message(ValueClassesMayNotDefineNonParameterFieldID) {
+    val msg = hl"""value classes may not define non-parameter field"""
+    val kind = "Syntax"
+    val explanation = ""
+  }
+
+  case class ValueClassesMayNotDefineASecondaryConstructor(valueClass: Symbol, constructor: Symbol)(implicit ctx: Context)
+    extends Message(ValueClassesMayNotDefineASecondaryConstructorID) {
+    val msg = hl"""value classes may not define a secondary constructor"""
+    val kind = "Syntax"
+    val explanation = ""
+  }
+
+  case class ValueClassesMayNotContainInitalization(valueClass: Symbol)(implicit ctx: Context)
+    extends Message(ValueClassesMayNotContainInitalizationID) {
+    val msg = hl"""value classes may not contain initialization statements"""
+    val kind = "Syntax"
+    val explanation = ""
+  }
+
+  case class ValueClassesMayNotBeAbstract(valueClass: Symbol)(implicit ctx: Context)
+    extends Message(ValueClassesMayNotBeAbstractID) {
+    val msg = hl"""value classes may not be ${"abstract"}"""
+    val kind = "Syntax"
+    val explanation = ""
+  }
+
+  case class ValueClassesMayNotBeContainted(valueClass: Symbol)(implicit ctx: Context)
+    extends Message(ValueClassesMayNotBeContaintedID) {
+    private val localOrMember = if (valueClass.owner.isTerm) "local class" else "member of another class"
+    val msg = s"""value classes may not be a $localOrMember"""
+    val kind = "Syntax"
+    val explanation = ""
+  }
+
+  case class ValueClassesMayNotWrapItself(valueClass: Symbol)(implicit ctx: Context)
+    extends Message(ValueClassesMayNotWrapItselfID) {
+    val msg = """a value class may not wrap itself"""
+    val kind = "Syntax"
+    val explanation = ""
+  }
+
+  case class ValueClassParameterMayNotBeAVar(valueClass: Symbol, param: Symbol)(implicit ctx: Context)
+    extends Message(ValueClassParameterMayNotBeAVarID) {
+    val msg = hl"""a value class parameter may not be a ${"var"}"""
+    val kind = "Syntax"
+    val explanation =
+      hl"""A value class must have exactly one ${"val"} parameter.
+          |"""
+  }
+
+  case class ValueClassNeedsExactlyOneValParam(valueClass: Symbol)(implicit ctx: Context)
+    extends Message(ValueClassNeedsExactlyOneValParamID) {
+    val msg = hl"""value class needs to have exactly one ${"val"} parameter"""
+    val kind = "Syntax"
+    val explanation = ""
+  }
 
 }
