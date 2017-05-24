@@ -127,12 +127,25 @@ div.results li.entity-result-li:hover {
 }
 
 div.results li.entity-result-li > div.member-result {
+    overflow: hidden;
     padding-top: 3px;
     display: block;
-    width: 100%;
-    min-height: 30px;
+    width: calc(100% - 105px);
+    margin-bottom: 10px;
     transition: all 0.2s ease;
     margin-left: 105px;
+}
+
+div.results li.entity-result-li:hover > div.member-result {
+    width: calc(100% - 65px);
+}
+
+div.results li.entity-result-li.with-companion:hover > div.member-result {
+    width: calc(100% - 23px);
+}
+
+div.results li.entity-result-li:not(.with-companion) > div.member-result {
+    margin-left: 65px;
 }
 
 div.results li.entity-result-li:hover > div.member-result {
@@ -144,8 +157,11 @@ div.results li.entity-result-li > div.member-result > div.member-kind {
     font-weight: 400;
 }
 
+div.results li.entity-result-li > div.member-result > div.member-param-lists {
+    margin-right: 5px;
+}
+
 div.results li.entity-result-li > div.member-result > div.member-return {
-    margin-left: 5px;
     font-weight: 400;
     white-space: nowrap;
 }
