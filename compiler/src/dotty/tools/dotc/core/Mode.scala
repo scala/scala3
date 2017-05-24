@@ -81,10 +81,13 @@ object Mode {
   /** Read original positions when unpickling from TASTY */
   val ReadPositions = newMode(16, "ReadPositions")
 
+  /** Don't suppress exceptions thrown during show */
+  val PrintShowExceptions = newMode(17, "PrintShowExceptions")
+
   val PatternOrType = Pattern | Type
 
   /** We are elaborating the fully qualified name of a package clause.
    *  In this case, identifiers should never be imported.
    */
-  val InPackageClauseName = newMode(17, "InPackageClauseName")
+  val InPackageClauseName = newMode(18, "InPackageClauseName")
 }
