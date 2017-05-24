@@ -257,7 +257,9 @@ object ExplicitOuter {
       case _ => false
     }
     tree match {
-      case _: This | _: Ident => isOuterRef(tree.tpe)
+      case _: This | _: Ident =>
+        tree.symbol.is(InSuperCall) || // symbol in supercalls are lifted to the next outer class
+        isOuterRef(tree.tpe)
       case nw: New =>
         val newCls = nw.tpe.classSymbol
         isOuterSym(newCls.owner.enclosingClass) ||

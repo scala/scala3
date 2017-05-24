@@ -96,8 +96,9 @@ class Erasure extends Phase with DenotTransformer { thisTransformer =>
     assertErased(tree)
     tree match {
       case res: tpd.This =>
-        assert(!ExplicitOuter.referencesOuter(ctx.owner.lexicallyEnclosingClass, res),
-          i"Reference to $res from ${ctx.owner.showLocated}")
+        assert(
+          !ExplicitOuter.referencesOuter(ctx.owner.lexicallyEnclosingClass, res),
+          i"Reference to $res from ${ctx.owner} in ${ctx.owner.ownersIterator.toList}%, %")
       case ret: tpd.Return =>
         // checked only after erasure, as checking before erasure is complicated
         // due presence of type params in returned types
