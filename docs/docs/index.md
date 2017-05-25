@@ -16,8 +16,9 @@ Contents
 
 * Usage
     - [Migrating from Scala 2](usage/migrating.md): migration information
-    - [Dotty projects with cbt](usage/cbt-projects.md): using cbt
     - [Dotty projects with sbt](usage/sbt-projects.md): using sbt
+    - [IDE support for Dotty](usage/ide-support.md)
+    - [Dotty projects with cbt](usage/cbt-projects.md): using cbt
 * Contributing
     - [Getting Started](contributing/getting-started.md): details on how to run tests, use the cli scripts
     - [Workflow](contributing/workflow.md): common dev patterns and hints

@@ -3,10 +3,12 @@ sidebar:
       url: blog/index.html
     - title: Usage
       subsection:
-        - title: cbt-projects
-          url: docs/usage/cbt-projects.html
         - title: sbt-projects
           url: docs/usage/sbt-projects.html
+        - title: IDE support for Dotty
+          url: docs/usage/ide-support.html
+        - title: cbt-projects
+          url: docs/usage/cbt-projects.html
         - title: Dottydoc
           url: docs/usage/dottydoc.html
         - title: Migrating
