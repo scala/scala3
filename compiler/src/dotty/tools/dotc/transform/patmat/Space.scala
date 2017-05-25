@@ -641,6 +641,14 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
 
   /** Display spaces */
   def show(s: Space): String = {
+
+    /** does the companion object of the given symbol have custom unapply */
+    def hasCustomUnapply(sym: Symbol): Boolean = {
+      val companion = sym.companionModule
+      companion.findMember(nme.unapply, NoPrefix, excluded = Synthetic).exists ||
+        companion.findMember(nme.unapplySeq, NoPrefix, excluded = Synthetic).exists
+    }
+
     def doShow(s: Space, mergeList: Boolean = false): String = s match {
       case Empty => ""
       case Typ(c: ConstantType, _) => c.value.show
@@ -654,11 +662,9 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
           if (mergeList) "_*" else "_: List"
         else if (scalaConsType.isRef(sym))
           if (mergeList) "_" else "List(_)"
-        else if (tp.classSymbol.is(CaseClass))
+        else if (tp.classSymbol.is(CaseClass) && !hasCustomUnapply(tp.classSymbol))
         // use constructor syntax for case class
           showType(tp) + signature(tp).map(_ => "_").mkString("(", ", ", ")")
-        else if (signature(tp).nonEmpty)
-          tp.classSymbol.name + signature(tp).map(_ => "_").mkString("(", ", ", ")")
         else if (decomposed) "_: " + showType(tp)
         else "_"
       case Kon(tp, params) =>
