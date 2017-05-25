@@ -116,7 +116,7 @@ object CompilerCommand extends DotClass {
       ctx.echo(versionMsg)
       Nil
     } else if (!Properties.isJavaAtLeast("1.8")) {
-      ctx.error("Dotty requires Java 8 or newer to run")
+      ctx.error("Dotty requires Java 8 to run")
       Nil
     }
     else if (shouldStopWithInfo) {

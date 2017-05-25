@@ -128,9 +128,10 @@ trait PropertiesTrait {
    */
   def isJavaAtLeast(version: String) = {
     val okVersions = version match {
-      case "1.5"    => List("1.5", "1.6", "1.7")
-      case "1.6"    => List("1.6", "1.7")
-      case "1.7"    => List("1.7")
+      case "1.5"    => List("1.5", "1.6", "1.7", "1.8")
+      case "1.6"    => List("1.6", "1.7", "1.8")
+      case "1.7"    => List("1.7", "1.8")
+      case "1.8"    => List("1.8")
       case _        => Nil
     }
     okVersions exists (javaVersion startsWith _)
