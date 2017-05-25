@@ -11,7 +11,7 @@ import Properties._
 object CompilerCommand extends DotClass {
 
   /** The name of the command */
-  def cmdName = "scalac"
+  def cmdName = "dotc"
 
   private def explainAdvanced = """
     |-- Notes on option parsing --
