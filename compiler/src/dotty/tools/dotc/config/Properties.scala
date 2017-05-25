@@ -119,8 +119,8 @@ trait PropertiesTrait {
   def jdkHome              = envOrElse("JDK_HOME", envOrElse("JAVA_HOME", javaHome))
 
   def versionMsg            = "Scala %s %s -- %s".format(propCategory, versionString, copyrightString)
-  def scalaCmd              = if (isWin) "scala.bat" else "scala"
-  def scalacCmd             = if (isWin) "scalac.bat" else "scalac"
+  def scalaCmd              = if (isWin) "dotr.bat" else "dotr"
+  def scalacCmd             = if (isWin) "dotc.bat" else "dotc"
 
   /** Can the java version be determined to be at least as high as the argument?
    *  Hard to properly future proof this but at the rate 1.7 is going we can leave
