@@ -56,36 +56,7 @@ trait PropertiesTrait {
   def scalaPropOrElse(name: String, alt: String): String = scalaProps.getProperty(name, alt)
   def scalaPropOrEmpty(name: String): String             = scalaPropOrElse(name, "")
   def scalaPropOrNone(name: String): Option[String]      = Option(scalaProps.getProperty(name))
-
-  /** The numeric portion of the runtime Scala version, if this is a final
-   *  release.  If for instance the versionString says "version 2.9.0.final",
-   *  this would return Some("2.9.0").
-   *
-   *  @return Some(version) if this is a final release build, None if
-   *  it is an RC, Beta, etc. or was built from source, or if the version
-   *  cannot be read.
-   */
-  val releaseVersion =
-    for {
-      v <- scalaPropOrNone("maven.version.number")
-      if !(v endsWith "-SNAPSHOT")
-    } yield v
-
-  /** The development Scala version, if this is not a final release.
-   *  The precise contents are not guaranteed, but it aims to provide a
-   *  unique repository identifier (currently the svn revision) in the
-   *  fourth dotted segment if the running version was built from source.
-   *
-   *  @return Some(version) if this is a non-final version, None if this
-   *  is a final release or the version cannot be read.
-   */
-  val developmentVersion =
-    for {
-      v <- scalaPropOrNone("maven.version.number")
-      if v endsWith "-SNAPSHOT"
-      ov <- scalaPropOrNone("version.number")
-    } yield ov
-
+  
   /** Either the development or release version if known, otherwise
    *  the empty string.
    */
@@ -94,8 +65,16 @@ trait PropertiesTrait {
   /** The version number of the jar this was loaded from plus "version " prefix,
    *  or "version (unknown)" if it cannot be determined.
    */
-  val versionString         = "version " + "0.01" //scalaPropOrElse("version.number", "(unknown)")" +
-  val copyrightString       = "(c) 2013 LAMP/EPFL" // scalaPropOrElse("copyright.string", "(c) 2002-2011 LAMP/EPFL")
+  val versionString = {
+    val v = scalaPropOrElse("version.number", "(unknown)")
+    "version " + scalaPropOrElse("version.number", "(unknown)") + {
+      if (v.contains("SNAPSHOT") || v.contains("NIGHTLY")) {
+        "-git-" + scalaPropOrElse("git.hash", "(unknown)")
+      } else ""
+    }
+  }
+  
+  val copyrightString       = scalaPropOrElse("copyright.string", "(c) 2002-2017 LAMP/EPFL")
 
   /** This is the encoding to use reading in source files, overridden with -encoding
    *  Note that it uses "prop" i.e. looks in the scala jar, not the system properties.
