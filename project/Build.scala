@@ -1,9 +1,11 @@
 import sbt.Keys._
 import sbt._
 import complete.DefaultParsers._
-import java.io.{ RandomAccessFile, File }
+import java.io.{File, RandomAccessFile}
 import java.nio.channels.FileLock
 import java.nio.file.Files
+import java.util.Calendar
+
 import scala.reflect.io.Path
 import sbtassembly.AssemblyKeys.assembly
 
@@ -405,8 +407,18 @@ object Build {
 
       // Generate compiler.properties, used by sbt
       resourceGenerators in Compile += Def.task {
+        import java.util._
+        import java.text._
         val file = (resourceManaged in Compile).value / "compiler.properties"
-        val contents = s"version.number=${version.value}"
+        val dateFormat = new SimpleDateFormat("yyyyMMdd-HHmmss")
+        dateFormat.setTimeZone(TimeZone.getTimeZone("GMT"))
+        val contents =                //2.11.11.v20170413-090219-8a413ba7cc
+          s"""version.number=${version.value}
+             |maven.version.number=${version.value}
+             |git.hash=${VersionUtil.gitHash}
+             |osgi.version.number=${version.value}-v${dateFormat.format(Calendar.getInstance().getTime)v}
+             |copyright.string=Copyright 2002-${Calendar.getInstance().get(Calendar.YEAR)}, LAMP/EPFL
+           """.stripMargin
 
         if (!(file.exists && IO.read(file) == contents)) {
           IO.write(file, contents)
