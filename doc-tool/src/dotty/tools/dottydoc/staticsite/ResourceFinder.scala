@@ -9,8 +9,8 @@ trait ResourceFinder {
   final case class ResourceNotFoundException(message: String) extends Exception(message)
 
   protected def getResource(r: String): String =
-    Option(getClass.getResourceAsStream(r)).map(scala.io.Source.fromInputStream)
+    Option(getClass.getResourceAsStream(r))
+      .map(scala.io.Source.fromInputStream(_)(scala.io.Codec.UTF8))
       .map(_.mkString)
       .getOrElse(throw ResourceNotFoundException(r))
-
 }
