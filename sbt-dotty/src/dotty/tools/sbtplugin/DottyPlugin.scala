@@ -2,6 +2,7 @@ package dotty.tools.sbtplugin
 
 import sbt._
 import sbt.Keys._
+import sbt.inc.{ ClassfileManager, IncOptions }
 
 object DottyPlugin extends AutoPlugin {
   object autoImport {
@@ -78,6 +79,37 @@ object DottyPlugin extends AutoPlugin {
     }
   }
 
+  /** Patches the IncOptions so that .tasty files are pruned as needed.
+   *
+   *  This code is adapted from `scalaJSPatchIncOptions` in Scala.js, which needs
+   *  to do the exact same thing but for classfiles.
+   *
+   *  This complicated logic patches the ClassfileManager factory of the given
+   *  IncOptions with one that is aware of .tasty files emitted by the Dotty
+   *  compiler. This makes sure that, when a .class file must be deleted, the
+   *  corresponding .tasty file is also deleted.
+   */
+  def dottyPatchIncOptions(incOptions: IncOptions): IncOptions = {
+    val inheritedNewClassfileManager = incOptions.newClassfileManager
+    val newClassfileManager = () => new ClassfileManager {
+      private[this] val inherited = inheritedNewClassfileManager()
+
+      def delete(classes: Iterable[File]): Unit = {
+        inherited.delete(classes flatMap { classFile =>
+          val dottyFiles = if (classFile.getPath endsWith ".class") {
+            val f = new File(classFile.getAbsolutePath.stripSuffix(".class") + ".tasty")
+            if (f.exists) List(f)
+            else Nil
+          } else Nil
+          classFile :: dottyFiles
+        })
+      }
+
+      def generated(classes: Iterable[File]): Unit = inherited.generated(classes)
+      def complete(success: Boolean): Unit = inherited.complete(success)
+    }
+    incOptions.withNewClassfileManager(newClassfileManager)
+  }
 
   override def projectSettings: Seq[Setting[_]] = {
     Seq(
@@ -97,6 +129,13 @@ object DottyPlugin extends AutoPlugin {
           "ch.epfl.lamp"
         else
           scalaOrganization.value
+      },
+
+      incOptions in Compile := {
+        if (isDotty.value)
+          dottyPatchIncOptions((incOptions in Compile).value)
+        else
+          (incOptions in Compile).value
       },
 
       scalaBinaryVersion := {
