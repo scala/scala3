@@ -454,6 +454,8 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   override val cpy: TypedTreeCopier = // Type ascription needed to pick up any new members in TreeCopier (currently there are none)
     new TypedTreeCopier
 
+  val cpyBetweenPhases = new TimeTravellingTreeCopier
+
   class TypedTreeCopier extends TreeCopier {
     def postProcess(tree: Tree, copied: untpd.Tree): copied.ThisTree[Type] =
       copied.withTypeUnchecked(tree.tpe)
@@ -472,16 +474,25 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       }
     }
 
-    override def Apply(tree: Tree)(fun: Tree, args: List[Tree])(implicit ctx: Context): Apply =
-      ta.assignType(untpd.cpy.Apply(tree)(fun, args), fun, args)
-      // Note: Reassigning the original type if `fun` and `args` have the same types as before
-      // does not work here: The computed type depends on the widened function type, not
-      // the function type itself. A treetransform may keep the function type the
-      // same but its widened type might change.
+    override def Apply(tree: Tree)(fun: Tree, args: List[Tree])(implicit ctx: Context): Apply = {
+      val tree1 = untpd.cpy.Apply(tree)(fun, args)
+      tree match {
+        case tree: Apply
+        if (fun.tpe eq tree.fun.tpe) && (args corresponds tree.args)(_ eq _) =>
+          tree1.withTypeUnchecked(tree.tpe)
+        case _ => ta.assignType(tree1, fun, args)
+      }
+    }
 
-    override def TypeApply(tree: Tree)(fun: Tree, args: List[Tree])(implicit ctx: Context): TypeApply =
-      ta.assignType(untpd.cpy.TypeApply(tree)(fun, args), fun, args)
-      // Same remark as for Apply
+    override def TypeApply(tree: Tree)(fun: Tree, args: List[Tree])(implicit ctx: Context): TypeApply = {
+      val tree1 = untpd.cpy.TypeApply(tree)(fun, args)
+      tree match {
+        case tree: TypeApply
+        if (fun.tpe eq tree.fun.tpe) && (args corresponds tree.args)(_ eq _) =>
+          tree1.withTypeUnchecked(tree.tpe)
+        case _ => ta.assignType(tree1, fun, args)
+      }
+    }
 
     override def Literal(tree: Tree)(const: Constant)(implicit ctx: Context): Literal =
       ta.assignType(untpd.cpy.Literal(tree)(const))
@@ -572,6 +583,19 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       CaseDef(tree: Tree)(pat, guard, body)
     override def Try(tree: Try)(expr: Tree = tree.expr, cases: List[CaseDef] = tree.cases, finalizer: Tree = tree.finalizer)(implicit ctx: Context): Try =
       Try(tree: Tree)(expr, cases, finalizer)
+  }
+
+  class TimeTravellingTreeCopier extends TypedTreeCopier {
+    override def Apply(tree: Tree)(fun: Tree, args: List[Tree])(implicit ctx: Context): Apply =
+      ta.assignType(untpd.cpy.Apply(tree)(fun, args), fun, args)
+      // Note: Reassigning the original type if `fun` and `args` have the same types as before
+      // does not work here: The computed type depends on the widened function type, not
+      // the function type itself. A treetransform may keep the function type the
+      // same but its widened type might change.
+
+    override def TypeApply(tree: Tree)(fun: Tree, args: List[Tree])(implicit ctx: Context): TypeApply =
+      ta.assignType(untpd.cpy.TypeApply(tree)(fun, args), fun, args)
+      // Same remark as for Apply
   }
 
   override def skipTransform(tree: Tree)(implicit ctx: Context) = tree.tpe.isError
