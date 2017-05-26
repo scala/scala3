@@ -478,7 +478,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       val tree1 = untpd.cpy.Apply(tree)(fun, args)
       tree match {
         case tree: Apply
-        if (fun.tpe eq tree.fun.tpe) && (args corresponds tree.args)(_ eq _) =>
+        if (fun.tpe eq tree.fun.tpe) && sameTypes(args, tree.args) =>
           tree1.withTypeUnchecked(tree.tpe)
         case _ => ta.assignType(tree1, fun, args)
       }
@@ -488,7 +488,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       val tree1 = untpd.cpy.TypeApply(tree)(fun, args)
       tree match {
         case tree: TypeApply
-        if (fun.tpe eq tree.fun.tpe) && (args corresponds tree.args)(_ eq _) =>
+        if (fun.tpe eq tree.fun.tpe) && sameTypes(args, tree.args) =>
           tree1.withTypeUnchecked(tree.tpe)
         case _ => ta.assignType(tree1, fun, args)
       }
@@ -525,10 +525,15 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       }
     }
 
-    override def Closure(tree: Tree)(env: List[Tree], meth: Tree, tpt: Tree)(implicit ctx: Context): Closure =
-      ta.assignType(untpd.cpy.Closure(tree)(env, meth, tpt), meth, tpt)
-      // Same remark as for Apply
 
+    override def Closure(tree: Tree)(env: List[Tree], meth: Tree, tpt: Tree)(implicit ctx: Context): Closure = {
+      val tree1 = untpd.cpy.Closure(tree)(env, meth, tpt)
+      tree match {
+        case tree: Closure if sameTypes(env, tree.env) && (meth.tpe eq tree.meth.tpe) && (tpt.tpe eq tree.tpt.tpe) =>
+          tree1.withTypeUnchecked(tree.tpe)
+        case _ => ta.assignType(tree1, meth, tpt)
+      }
+    }
     override def Match(tree: Tree)(selector: Tree, cases: List[CaseDef])(implicit ctx: Context): Match = {
       val tree1 = untpd.cpy.Match(tree)(selector, cases)
       tree match {
@@ -596,6 +601,12 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     override def TypeApply(tree: Tree)(fun: Tree, args: List[Tree])(implicit ctx: Context): TypeApply =
       ta.assignType(untpd.cpy.TypeApply(tree)(fun, args), fun, args)
       // Same remark as for Apply
+    
+    override def Closure(tree: Tree)(env: List[Tree], meth: Tree, tpt: Tree)(implicit ctx: Context): Closure =
+            ta.assignType(untpd.cpy.Closure(tree)(env, meth, tpt), meth, tpt)
+
+    override def Closure(tree: Closure)(env: List[Tree] = tree.env, meth: Tree = tree.meth, tpt: Tree = tree.tpt)(implicit ctx: Context): Closure =
+      Closure(tree: Tree)(env, meth, tpt)
   }
 
   override def skipTransform(tree: Tree)(implicit ctx: Context) = tree.tpe.isError
