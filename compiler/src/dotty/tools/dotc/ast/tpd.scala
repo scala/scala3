@@ -605,7 +605,9 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
 
     override def Closure(tree: Tree)(env: List[Tree], meth: Tree, tpt: Tree)(implicit ctx: Context): Closure =
       ta.assignType(untpd.cpy.Closure(tree)(env, meth, tpt), meth, tpt)
-      // Same remark as for Apply
+
+    override def Closure(tree: Closure)(env: List[Tree] = tree.env, meth: Tree = tree.meth, tpt: Tree = tree.tpt)(implicit ctx: Context): Closure =
+      Closure(tree: Tree)(env, meth, tpt)
   }
 
   override def skipTransform(tree: Tree)(implicit ctx: Context) = tree.tpe.isError
