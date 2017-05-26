@@ -490,7 +490,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
         if (id.name == nme.WILDCARD || id.name == nme.WILDCARD_STAR) ifPat
         else {
           import untpd._
-          typed(Bind(id.name, Typed(Ident(wildName), tree.tpt)).withPos(id.pos), pt)
+          typed(Bind(id.name, Typed(Ident(wildName), tree.tpt)).withPos(tree.pos), pt)
         }
       case _ => ifExpr
     }
@@ -1318,7 +1318,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
 
     completeAnnotations(cdef, cls)
     val constr1 = typed(constr).asInstanceOf[DefDef]
-    val parentsWithClass = ensureFirstIsClass(parents mapconserve typedParent, cdef.pos.toSynthetic)
+    val parentsWithClass = ensureFirstIsClass(parents mapconserve typedParent, cdef.namePos)
     val parents1 = ensureConstrCall(cls, parentsWithClass)(superCtx)
     val self1 = typed(self)(ctx.outer).asInstanceOf[ValDef] // outer context where class members are not visible
     val dummy = localDummy(cls, impl)
@@ -1347,6 +1347,9 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     // check value class constraints
     checkDerivedValueClass(cls, body1)
 
+    if (ctx.settings.YretainTrees.value) {
+      cls.myTree = cdef1
+    }
     cdef1
 
     // todo later: check that

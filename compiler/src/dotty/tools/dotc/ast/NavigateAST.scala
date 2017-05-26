@@ -4,7 +4,7 @@ package ast
 import core.Contexts.Context
 import core.Decorators._
 import util.Positions._
-import Trees.{MemberDef, DefTree}
+import Trees.{MemberDef, DefTree, WithLazyField}
 
 /** Utility functions to go from typed to untyped ASTs */
 object NavigateAST {
@@ -61,8 +61,13 @@ object NavigateAST {
   /** The reverse path from node `from` to the node that closest encloses position `pos`,
    *  or `Nil` if no such path exists. If a non-empty path is returned it starts with
    *  the node closest enclosing `pos` and ends with `from`.
+   *
+   *  @param skipZeroExtent  If true, skip over zero-extent nodes in the search. These nodes
+   *                         do not correspond to code the user wrote since their start and
+   *                         end point are the same, so this is useful when trying to reconcile
+   *                         nodes with source code.
    */
-  def pathTo(pos: Position, from: Positioned)(implicit ctx: Context): List[Positioned] = {
+  def pathTo(pos: Position, from: Positioned, skipZeroExtent: Boolean = false)(implicit ctx: Context): List[Positioned] = {
     def childPath(it: Iterator[Any], path: List[Positioned]): List[Positioned] = {
       while (it.hasNext) {
         val path1 = it.next match {
@@ -75,8 +80,17 @@ object NavigateAST {
       path
     }
     def singlePath(p: Positioned, path: List[Positioned]): List[Positioned] =
-      if (p.pos contains pos) childPath(p.productIterator, p :: path)
-      else path
+      if (p.pos.exists && !(skipZeroExtent && p.pos.isZeroExtent) && p.pos.contains(pos)) {
+        // FIXME: We shouldn't be manually forcing trees here, we should replace
+        // our usage of `productIterator` by something in `Positioned` that takes
+        // care of low-level details like this for us.
+        p match {
+          case p: WithLazyField[_] =>
+            p.forceIfLazy
+          case _ =>
+        }
+        childPath(p.productIterator, p :: path)
+      } else path
     singlePath(from, Nil)
   }
 }

@@ -555,7 +555,7 @@ object desugar {
       val clsRef = Ident(clsName)
       val modul = ValDef(moduleName, clsRef, New(clsRef, Nil))
         .withMods(mods | ModuleCreationFlags | mods.flags & AccessFlags)
-        .withPos(mdef.pos)
+        .withPos(mdef.pos.startPos)
       val ValDef(selfName, selfTpt, _) = impl.self
       val selfMods = impl.self.mods
       if (!selfTpt.isEmpty) ctx.error(ObjectMayNotHaveSelfType(mdef), impl.self.pos)
@@ -785,7 +785,7 @@ object desugar {
     /**    { label def lname(): Unit = rhs; call }
      */
     def labelDefAndCall(lname: TermName, rhs: Tree, call: Tree) = {
-      val ldef = DefDef(lname, Nil, ListOfNil, TypeTree(defn.UnitType), rhs).withFlags(Label)
+      val ldef = DefDef(lname, Nil, ListOfNil, TypeTree(defn.UnitType), rhs).withFlags(Label | Synthetic)
       Block(ldef, call)
     }
 

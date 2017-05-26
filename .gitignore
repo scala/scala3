@@ -17,6 +17,9 @@ project/local-plugins.sbt
 .ensime
 .ensime_cache/
 
+# npm
+node_modules
+
 # Scala-IDE specific
 .scala_dependencies
 .cache
@@ -27,6 +30,11 @@ project/local-plugins.sbt
 .settings
 classes/
 */bin/
+
+# Dotty IDE
+/.dotty-ide-dev-port
+/.dotty-ide-artifact
+/.dotty-ide.json
 
 # idea
 .idea

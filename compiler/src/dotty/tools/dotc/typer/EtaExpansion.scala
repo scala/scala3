@@ -139,8 +139,8 @@ object EtaExpansion {
       if (mt.paramInfos.length == xarity) mt.paramInfos map (_ => TypeTree())
       else mt.paramInfos map TypeTree
     val params = (mt.paramNames, paramTypes).zipped.map((name, tpe) =>
-      ValDef(name, tpe, EmptyTree).withFlags(Synthetic | Param).withPos(tree.pos))
-    var ids: List[Tree] = mt.paramNames map (name => Ident(name).withPos(tree.pos))
+      ValDef(name, tpe, EmptyTree).withFlags(Synthetic | Param).withPos(tree.pos.startPos))
+    var ids: List[Tree] = mt.paramNames map (name => Ident(name).withPos(tree.pos.startPos))
     if (mt.paramInfos.nonEmpty && mt.paramInfos.last.isRepeatedParam)
       ids = ids.init :+ repeated(ids.last)
     var body: Tree = Apply(lifted, ids)

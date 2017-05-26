@@ -46,8 +46,15 @@ class DottyUnpickler(bytes: Array[Byte]) extends ClassfileParser.Embedded {
   def enter(roots: Set[SymDenotation])(implicit ctx: Context): Unit =
     treeUnpickler.enterTopLevel(roots)
 
+  /** Only used if `-Yretain-trees` is set. */
+  private[this] var myBody: List[Tree] = _
   /** The unpickled trees, and the source file they come from. */
   def body(implicit ctx: Context): List[Tree] = {
-    treeUnpickler.unpickle()
+    def computeBody() = treeUnpickler.unpickle()
+    if (ctx.settings.YretainTrees.value) {
+      if (myBody == null)
+        myBody = computeBody()
+      myBody
+    } else computeBody()
   }
 }
