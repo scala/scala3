@@ -79,6 +79,9 @@ object Positions {
     /** Is this position source-derived? */
     def isSourceDerived = !isSynthetic
 
+    /** Is this a zero-extent position? */
+    def isZeroExtent = start == end
+
      /** A position where all components are shifted by a given `offset`
      *  relative to this position.
      */
