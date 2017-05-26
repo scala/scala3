@@ -89,10 +89,6 @@ case "$1" in
    -nobootcp) unset bootcp && shift ;;
       -colors) colors=true && shift ;;
    -no-colors) unset colors && shift ;;
-      -jrebel) jrebel=true && shift ;;
-   -no-jrebel) unset jrebel && shift ;;
-
-      -toolcp) require_arg classpath "$1" "$2" && toolcp="$2" && shift 2 ;;
 
           # break out -D and -J options and add them to JAVA_OPTS as well
           # so they reach the JVM in time to do some good. The -D options
