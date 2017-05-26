@@ -12,4 +12,6 @@ object Foo {
   val fun0a: Fun0[Int] = () => 42
   val fun0b: Fun0[Int] { def foo(): Int } = () => 42 // error
 
+  val pf: PartialFunction[Int, Int]{ def foo(): Int } = { case x1 => 42 } // error
+
 }
