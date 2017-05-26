@@ -465,7 +465,8 @@ trait TypeAssigner {
     def addRefinement(parent: Type, refinement: Tree): Type = {
       val rsym = refinement.symbol
       val rinfo = if (rsym is Accessor) rsym.info.resultType else rsym.info
-      RefinedType(parent, rsym.name, rinfo)
+      if (rinfo.isError) rinfo
+      else RefinedType(parent, rsym.name, rinfo)
     }
     val refined = (parent.tpe /: refinements)(addRefinement)
     tree.withType(RecType.closeOver(rt => refined.substThis(refineCls, RecThis(rt))))
