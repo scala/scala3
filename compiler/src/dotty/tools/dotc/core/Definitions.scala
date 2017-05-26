@@ -114,10 +114,11 @@ class Definitions {
         val cls = denot.asClass.classSymbol
         val decls = newScope
         val arity = name.functionArity
+        val paramNamePrefix = tpnme.scala_ ++ str.NAME_JOIN ++ name ++ str.EXPAND_SEPARATOR
         val argParams =
-          for (i <- List.range(0, arity)) yield
-            enterTypeParam(cls, name ++ "$T" ++ i.toString, Contravariant, decls)
-        val resParam = enterTypeParam(cls, name ++ "$R", Covariant, decls)
+          for (i <- List.range(1, arity + 1)) yield
+            enterTypeParam(cls, paramNamePrefix ++ "T" ++ i.toString, Contravariant, decls)
+        val resParam = enterTypeParam(cls, paramNamePrefix ++ "R", Covariant, decls)
         val (methodType, parentTraits) =
           if (name.firstPart.startsWith(str.ImplicitFunction)) {
             val superTrait =
