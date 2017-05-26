@@ -1,10 +1,8 @@
 
 class phantomClassOf {
-  type Blinky <: Boo.BooAny
-
-  classOf[Blinky] // error
+  classOf[Boo.Blinky] // error
 }
 
 object Boo extends Phantom {
-  type BooAny = this.Any
+  type Blinky = this.Any
 }
