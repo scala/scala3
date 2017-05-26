@@ -95,7 +95,7 @@ object DottyPlugin extends AutoPlugin {
 
       scalaBinaryVersion := {
         if (isDotty.value)
-          "0.1" // TODO: Fix sbt so that this isn't needed
+          scalaVersion.value.split("\\.").take(2).mkString(".") // Not needed with sbt >= 0.13.16
         else
           scalaBinaryVersion.value
       }
