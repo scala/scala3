@@ -1058,6 +1058,7 @@ object DottyInjectedPlugin extends AutoPlugin {
     dependsOn(`dotty-interfaces`).
     dependsOn(`dotty-compiler`).
     dependsOn(`dotty-library`).
+    dependsOn(`dotty-doc`).
     settings(commonNonBootstrappedSettings).
     settings(packSettings).
     settings(

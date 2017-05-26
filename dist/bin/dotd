@@ -1,0 +1,82 @@
+#!/usr/bin/env bash
+
+# Try to autodetect real location of the script
+
+if [ -z "$PROG_HOME" ] ; then
+  ## resolve links - $0 may be a link to PROG_HOME
+  PRG="$0"
+
+  # need this for relative symlinks
+  while [ -h "$PRG" ] ; do
+    ls=`ls -ld "$PRG"`
+    link=`expr "$ls" : '.*-> \(.*\)$'`
+    if expr "$link" : '/.*' > /dev/null; then
+      PRG="$link"
+    else
+      PRG="`dirname "$PRG"`/$link"
+    fi
+  done
+
+  saveddir=`pwd`
+
+  PROG_HOME=`dirname "$PRG"`/..
+
+  # make it fully qualified
+  PROG_HOME=`cd "$PROG_HOME" && pwd`
+
+  cd "$saveddir"
+fi
+
+source "$PROG_HOME/bin/common"
+
+for filename in $PROG_HOME/lib/*.jar; do
+  # Set dotty-doc dep:
+  [[ $filename =~ dotty-doc.*.jar ]] && DOTTY_DOC_LIB=$filename
+  # Set flexmark deps:
+  [[ $filename =~ flexmark.*.jar ]] && \
+    [[ -z "$FLEXMARK_LIBS" ]] && FLEXMARK_LIBS=$filename
+  [[ $filename =~ flexmark.*.jar ]] && \
+    [[ ! -z "$FLEXMARK_LIBS" ]] && FLEXMARK_LIBS="$FLEXMARK_LIBS:$filename"
+
+  # Set jackson deps:
+  [[ $filename =~ /jackson.*.jar ]] && \
+    [[ -z "$JACKSON_LIBS" ]] && JACKSON_LIBS=$filename
+  [[ $filename =~ /jackson.*.jar ]] && \
+    [[ ! -z "$JACKSON_LIBS" ]] && JACKSON_LIBS="$JACKSON_LIBS:$filename"
+
+  # Set liqp dep:
+  [[ $filename =~ liqp.*.jar ]] && LIQP_LIB=$filename
+
+  # Set ANTLR dep:
+  [[ $filename =~ antlr-3.*.jar ]] && ANTLR_LIB=$filename
+  [[ $filename =~ antlr-runtime-3.*.jar ]] && ANTLR_RUNTIME_LIB=$filename
+
+  # Set autolink dep:
+  [[ $filename =~ /autolink.*.jar ]] && AUTOLINK_LIB=$filename
+
+  # Set snakeyaml dep:
+  [[ $filename =~ /snakeyaml.*.jar ]] && SNAKEYAML_LIB=$filename
+
+  # Set ST4 dep:
+  [[ $filename =~ /ST4.*.jar ]] && ST4_LIB=$filename
+
+  # Set jsoup dep:
+  [[ $filename =~ /jsoup.*.jar ]] && JSOUP_LIB=$filename
+done
+
+CLASS_PATH="-classpath .$PSEP$DOTTY_LIB$PSEP$DOTTY_COMP$PSEP$DOTTY_DOC_LIB$PSEP$DOTTY_INTF"
+CLASS_PATH="$CLASS_PATH$PSEP$SCALA_LIB"
+CLASS_PATH="$CLASS_PATH$PSEP$FLEXMARK_LIBS"
+CLASS_PATH="$CLASS_PATH$PSEP$JACKSON_LIBS"
+CLASS_PATH="$CLASS_PATH$PSEP$LIQP_LIB"
+CLASS_PATH="$CLASS_PATH$PSEP$ANTLR_LIB$PSEP$ANTLR_RUNTIME_LIB"
+CLASS_PATH="$CLASS_PATH$PSEP$AUTOLINK_LIB"
+CLASS_PATH="$CLASS_PATH$PSEP$SNAKEYAML_LIB"
+CLASS_PATH="$CLASS_PATH$PSEP$ST4_LIB"
+CLASS_PATH="$CLASS_PATH$PSEP$JSOUP_LIB"
+
+first_arg="$1"
+
+echo $JAVACMD dotty.tools.dottydoc.Main $CLASS_PATH
+
+eval exec "\"$JAVACMD\"" $CLASS_PATH dotty.tools.dottydoc.Main $@
