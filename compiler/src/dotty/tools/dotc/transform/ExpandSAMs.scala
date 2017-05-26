@@ -8,6 +8,7 @@ import TreeTransforms._
 import SymUtils._
 import ast.untpd
 import ast.Trees._
+import dotty.tools.dotc.util.Positions.Position
 
 /** Expand SAM closures that cannot be represented by the JVM as lambdas to anonymous classes.
  *  These fall into five categories
@@ -36,8 +37,10 @@ class ExpandSAMs extends MiniPhaseTransform { thisTransformer =>
         case tpe @ SAMType(_) if tpe.isRef(defn.PartialFunctionClass) =>
           toPartialFunction(tree)
         case tpe @ SAMType(_) if isPlatformSam(tpe.classSymbol.asClass) =>
+          checkRefinements(tpe, fn.pos)
           tree
         case tpe =>
+          checkRefinements(tpe, fn.pos)
           val Seq(samDenot) = tpe.abstractTermMembers.filter(!_.symbol.isSuperAccessor)
           cpy.Block(tree)(stats,
               AnonClass(tpe :: Nil, fn.symbol.asTerm :: Nil, samDenot.symbol.asTerm.name :: Nil))
@@ -83,4 +86,13 @@ class ExpandSAMs extends MiniPhaseTransform { thisTransformer =>
     val anonCls = AnonClass(tpt.tpe :: Nil, List(applyFn, isDefinedAtFn), List(nme.apply, nme.isDefinedAt))
     cpy.Block(tree)(List(applyDef, isDefinedAtDef), anonCls)
   }
+
+  private def checkRefinements(tpe: Type, pos: Position)(implicit ctx: Context): Unit = tpe match {
+    case RefinedType(parent, name, _) =>
+      if (name.isTermName && tpe.member(name).symbol.ownersIterator.isEmpty) // if member defined in the refinement
+        ctx.error(s"Cannot refine $name on a lambda", pos)
+      checkRefinements(parent, pos)
+    case _ =>
+  }
+
 }
