@@ -346,6 +346,8 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
             if (prevInfo == null) tp.refinedInfo else prevInfo & tp.refinedInfo)
           formals = formals.updated(name, tp1.typeParamNamed(name))
           normalizeToRef(tp1)
+        case tp @ RefinedType(tp1, _: TermName, _) =>
+            normalizeToRef(tp1)
         case _: ErrorType =>
           defn.AnyType
         case AnnotatedType(tpe, _) =>
