@@ -64,7 +64,7 @@ for filename in $PROG_HOME/lib/*.jar; do
   [[ $filename =~ /jsoup.*.jar ]] && JSOUP_LIB=$filename
 done
 
-CLASS_PATH="-classpath .$PSEP$DOTTY_LIB$PSEP$DOTTY_COMP$PSEP$DOTTY_DOC_LIB$PSEP$DOTTY_INTF"
+CLASS_PATH="-classpath $DOTTY_LIB$PSEP$DOTTY_COMP$PSEP$DOTTY_DOC_LIB$PSEP$DOTTY_INTF"
 CLASS_PATH="$CLASS_PATH$PSEP$SCALA_LIB"
 CLASS_PATH="$CLASS_PATH$PSEP$FLEXMARK_LIBS"
 CLASS_PATH="$CLASS_PATH$PSEP$JACKSON_LIBS"
@@ -75,4 +75,10 @@ CLASS_PATH="$CLASS_PATH$PSEP$SNAKEYAML_LIB"
 CLASS_PATH="$CLASS_PATH$PSEP$ST4_LIB"
 CLASS_PATH="$CLASS_PATH$PSEP$JSOUP_LIB"
 
-eval exec "\"$JAVACMD\"" $CLASS_PATH dotty.tools.dottydoc.Main $@
+eval exec "\"$JAVACMD\"" \
+    -Dscala.usejavacp=true \
+    $CLASS_PATH \
+    dotty.tools.dottydoc.Main \
+    $@
+
+exit $?
