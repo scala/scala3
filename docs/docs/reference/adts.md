@@ -32,7 +32,7 @@ enum Option[+T] {
 ```
 
 Note that the parent type of `None` is inferred as
-`List[Nothing]`. Generally, all covariant type parameters of the enum
+`Option[Nothing]`. Generally, all covariant type parameters of the enum
 class are minimized in a compiler-generated extends clause whereas all
 contravariant type parameters are maximized. If `Option` was non-variant,
 you'd need to give the extends clause of `None` explicitly.
