@@ -475,8 +475,11 @@ trait TypeAssigner {
     assert(!hasNamedArg(args))
     val tparams = tycon.tpe.typeParams
     val ownType =
-      if (sameLength(tparams, args)) tycon.tpe.appliedTo(args.tpes)
-      else wrongNumberOfTypeArgs(tycon.tpe, tparams, args, tree.pos)
+      if (sameLength(tparams, args)) {
+        val argTypes = args.tpes
+        if (argTypes.exists(_ eq NoType)) UnspecifiedErrorType // error reported when typing args
+        else tycon.tpe.appliedTo(args.tpes)
+      } else wrongNumberOfTypeArgs(tycon.tpe, tparams, args, tree.pos)
     tree.withType(ownType)
   }
 

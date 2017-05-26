@@ -1007,7 +1007,8 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
             throw ex
         }
       case _ =>
-        assert(isFullyDefined(pt, ForceDegree.none))
+        assert(isFullyDefined(pt, ForceDegree.none) || pt.isInstanceOf[WildcardType])
+        if (pt.isInstanceOf[WildcardType]) ctx.error("explicit type is required", tree.pos)
         tree.withType(pt)
     }
   }
