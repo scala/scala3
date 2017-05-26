@@ -14,6 +14,14 @@ the code, setup Dotty with your favorite IDE and more!
 Contents
 -------
 
+* Dotty Language Reference
+    - [Intersection Types](reference/intersection-types.md)
+    - [Union Types](reference/union-types.md)
+    - [Trait Parameters](reference/trait-parameters.md)
+    - [Enumerations](reference/enums.md)
+    - [Algebraic Data Types](reference/adts.md)
+    - [Enum Translation](reference/desugarEnums.md)
+    - [By-Name Implicits](reference/implicit-by-name-parameters.md)
 * Usage
     - [Migrating from Scala 2](usage/migrating.md): migration information
     - [Dotty projects with cbt](usage/cbt-projects.md): using cbt
