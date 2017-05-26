@@ -62,7 +62,7 @@ object TreeTransforms {
 
     def treeTransformPhase: Phase = phase.next
 
-    val cpy = cpyBetweenPhases
+    val cpy: TypedTreeCopier = cpyBetweenPhases
 
     def prepareForIdent(tree: Ident)(implicit ctx: Context) = this
     def prepareForSelect(tree: Select)(implicit ctx: Context) = this

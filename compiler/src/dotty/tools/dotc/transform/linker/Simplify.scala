@@ -32,6 +32,7 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
 
   private var SeqFactoryClass: Symbol = null
   private var symmetricOperations: Set[Symbol] = null
+  override val cpy = tpd.cpy
   var optimize = false
 
   override def prepareForUnit(tree: Tree)(implicit ctx: Context): TreeTransform = {
