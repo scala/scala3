@@ -75,8 +75,4 @@ CLASS_PATH="$CLASS_PATH$PSEP$SNAKEYAML_LIB"
 CLASS_PATH="$CLASS_PATH$PSEP$ST4_LIB"
 CLASS_PATH="$CLASS_PATH$PSEP$JSOUP_LIB"
 
-first_arg="$1"
-
-echo $JAVACMD dotty.tools.dottydoc.Main $CLASS_PATH
-
 eval exec "\"$JAVACMD\"" $CLASS_PATH dotty.tools.dottydoc.Main $@
