@@ -923,7 +923,7 @@ object DottyInjectedPlugin extends AutoPlugin {
 
 
       sbtPlugin := true,
-      version := "0.1.0-RC5",
+      version := "0.1.0",
       ScriptedPlugin.scriptedSettings,
       ScriptedPlugin.sbtTestDirectory := baseDirectory.value / "sbt-test",
       ScriptedPlugin.scriptedBufferLog := false,
