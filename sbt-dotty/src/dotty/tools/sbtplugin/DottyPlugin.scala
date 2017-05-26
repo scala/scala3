@@ -27,7 +27,8 @@ object DottyPlugin extends AutoPlugin {
 
     implicit class DottyCompatModuleID(moduleID: ModuleID) {
       /** If this ModuleID cross-version is a Dotty version, replace it
-       *  by the Scala 2.x version that the Dotty version is retro-compatible with.
+       *  by the Scala 2.x version that the Dotty version is retro-compatible with,
+       *  otherwise do nothing.
        *
        *  This setting is useful when your build contains dependencies that have only
        *  been published with Scala 2.x, if you have:
@@ -46,10 +47,15 @@ object DottyPlugin extends AutoPlugin {
        *  Dotty is released, you should not rely on it.
        */
       def withDottyCompat(): ModuleID =
-        moduleID.cross(CrossVersion.binaryMapped {
-          case version if version.startsWith("0.") => "2.11"
-          case version => version
-        })
+        moduleID.crossVersion match {
+          case _: CrossVersion.Binary =>
+            moduleID.cross(CrossVersion.binaryMapped {
+              case version if version.startsWith("0.") => "2.11"
+              case version => version
+            })
+          case _ =>
+            moduleID
+        }
     }
   }
 
