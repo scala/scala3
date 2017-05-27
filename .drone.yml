@@ -21,7 +21,7 @@ pipeline:
     pull: true
     commands:
       - ./project/scripts/sbt ";clean ;publishLocal" "${CI_PUBLISH}"
-      - ./project/scripts/sbt "dotty-sbt-scripted-tests/scripted source-dependencies/*" "${CI_PUBLISH}"
+      - ./project/scripts/sbt "sbt-dotty/scripted source-dependencies/*" "${CI_PUBLISH}"
       - ./project/scripts/sbtPublish ${CI_PUBLISH} $SONATYPE_USER $SONATYPE_PW $PGP_PW
     volumes:
       - /home/drone/keys:/keys
@@ -50,7 +50,7 @@ matrix:
       CI_PUBLISH: true
     - CI_TEST: legacyTests
       CI_PUBLISH: false
-    - CI_TEST: ;test;sbt-dotty/scripted
+    - CI_TEST: ;test;sbt-dotty/scripted compilerReporter/*;sbt-dotty/scripted discovery/*;sbt-dotty/scripted sbt-dotty/*
       CI_PUBLISH: false
     - CI_TEST: dotty-bootstrapped/test
       CI_PUBLISH: false
