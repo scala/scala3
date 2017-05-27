@@ -400,6 +400,7 @@ object StdNames {
     val ensureAccessible : N    = "ensureAccessible"
     val enumTag: N              = "enumTag"
     val eq: N                   = "eq"
+    val eqInstance: N           = "eqInstance"
     val equalsNumChar : N       = "equalsNumChar"
     val equalsNumNum : N        = "equalsNumNum"
     val equalsNumObject : N     = "equalsNumObject"
