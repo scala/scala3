@@ -730,49 +730,6 @@ object Build {
       sources in Test := Seq()
     )
 
-  lazy val `dotty-sbt-scripted-tests` = project.in(file("sbt-scripted-tests")).
-    settings(
-      publishArtifact := false,
-      resolvers += Resolver.typesafeIvyRepo("releases") // For org.scala-sbt:scripted
-    ).
-    settings(ScriptedPlugin.scriptedSettings: _*).
-    settings(
-      ScriptedPlugin.sbtTestDirectory := baseDirectory.value / "sbt-test",
-      ScriptedPlugin.scriptedLaunchOpts := Seq("-Xmx1024m"),
-      ScriptedPlugin.scriptedBufferLog := false,
-      ScriptedPlugin.scripted := ScriptedPlugin.scripted.dependsOn(Def.task {
-        val x0 = (publishLocal in `dotty-sbt-bridge-bootstrapped`).value
-        val x1 = (publishLocal in `dotty-interfaces`).value
-        val x2 = (publishLocal in `dotty-compiler-bootstrapped`).value
-        val x3 = (publishLocal in `dotty-library-bootstrapped`).value
-        val x4 = (publishLocal in `scala-library`).value
-        val x5 = (publishLocal in `scala-reflect`).value
-        val x6 = (publishLocal in `dotty-bootstrapped`).value // Needed because sbt currently hardcodes the dotty artifact
-      }).evaluated
-      // TODO: Use this instead of manually copying DottyInjectedPlugin.scala
-      // everywhere once https://github.com/sbt/sbt/issues/2601 gets fixed.
-      /*,
-      ScriptedPlugin.scriptedPrescripted := { f =>
-        IO.write(inj, """
-import sbt._
-import Keys._
-
-object DottyInjectedPlugin extends AutoPlugin {
-  override def requires = plugins.JvmPlugin
-  override def trigger = allRequirements
-
-  override val projectSettings = Seq(
-    scalaVersion := "0.1.1-bin-SNAPSHOT",
-    scalaOrganization := "ch.epfl.lamp",
-    scalacOptions += "-language:Scala2",
-    scalaBinaryVersion  := "0.1"
-  )
-}
-""")
-      }
-      */
-    )
-
   lazy val `dotty-language-server` = project.in(file("language-server")).
     dependsOn(`dotty-compiler-bootstrapped`).
     settings(commonBootstrappedSettings).
