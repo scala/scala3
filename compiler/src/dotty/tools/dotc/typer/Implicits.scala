@@ -676,7 +676,7 @@ trait Implicits { self: Typer =>
       val isearch =
         if (ctx.settings.explainImplicits.value) new ExplainedImplicitSearch(pt, argument, pos)
         else new ImplicitSearch(pt, argument, pos)
-      val result = isearch.bestImplicit
+      val result = isearch.bestImplicit(contextual = true)
       result match {
         case result: SearchSuccess =>
           result.tstate.commit()
@@ -706,7 +706,7 @@ trait Implicits { self: Typer =>
   }
 
   /** An implicit search; parameters as in `inferImplicit` */
-  class ImplicitSearch(protected val pt: Type, protected val argument: Tree, pos: Position, contextual: Boolean = true)(implicit ctx: Context) {
+  class ImplicitSearch(protected val pt: Type, protected val argument: Tree, pos: Position)(implicit ctx: Context) {
 
     private def nestedContext = ctx.fresh.setMode(ctx.mode &~ Mode.ImplicitsEnabled)
 
@@ -763,7 +763,8 @@ trait Implicits { self: Typer =>
         // which is different from `eqAny`?
         def hasEq(tp: Type): Boolean = {
           def search(contextual: Boolean): Boolean =
-            new ImplicitSearch(defn.EqType.appliedTo(tp, tp), EmptyTree, pos, contextual).bestImplicit match {
+            new ImplicitSearch(defn.EqType.appliedTo(tp, tp), EmptyTree, pos)
+              .bestImplicit(contextual) match {
               case result: SearchSuccess =>
                 result.ref.symbol != defn.Predef_eqAny ||
                 contextual && search(contextual = false)
@@ -878,14 +879,15 @@ trait Implicits { self: Typer =>
     }
 
     /** Find a unique best implicit reference */
-    def bestImplicit: SearchResult = {
-      searchImplicits(ctx.implicits.eligible(wildProto), contextual) match {
+    def bestImplicit(contextual: Boolean): SearchResult = {
+      val eligible =
+        if (contextual) ctx.implicits.eligible(wildProto)
+        else implicitScope(wildProto).eligible
+      searchImplicits(eligible, contextual) match {
         case result: SearchSuccess => result
         case result: AmbiguousImplicits => result
         case result: SearchFailure =>
-          if (contextual)
-            searchImplicits(implicitScope(wildProto).eligible, contextual = false)
-          else result
+          if (contextual) bestImplicit(contextual = false) else result
       }
     }
 
