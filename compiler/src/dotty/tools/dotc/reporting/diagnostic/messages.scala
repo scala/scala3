@@ -1472,11 +1472,25 @@ object messages {
           |"""
   }
 
-  case class CannotHaveSameNameAs(sym: Symbol, cls: Symbol)(implicit ctx: Context)
+  case class CannotHaveSameNameAs(sym: Symbol, cls: Symbol, reason: CannotHaveSameNameAs.Reason)(implicit ctx: Context)
     extends Message(CannotHaveSameNameAsID) {
-    val msg = hl"""$sym cannot have the same name as ${cls.showLocated} -- class definitions cannot be overridden"""
+    import CannotHaveSameNameAs._
+    def resonMessage: String = reason match {
+      case CannotBeOverridden => "class definitions cannot be overridden"
+      case DefinedInSelf(self) =>
+        s"""cannot define ${sym.showKind} member with the same name as a ${cls.showKind} member in self reference ${self.name}.
+           |(Note: this can be resolved by using another name)
+           |""".stripMargin
+    }
+
+    val msg = hl"""$sym cannot have the same name as ${cls.showLocated} -- """ + resonMessage
     val kind = "Syntax"
     val explanation = ""
+  }
+  object CannotHaveSameNameAs {
+    sealed trait Reason
+    case object CannotBeOverridden extends Reason
+    case class DefinedInSelf(self: tpd.ValDef) extends Reason
   }
 
   case class ValueClassesMayNotDefineInner(valueClass: Symbol, inner: Symbol)(implicit ctx: Context)
