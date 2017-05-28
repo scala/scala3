@@ -706,7 +706,7 @@ trait Implicits { self: Typer =>
   }
 
   /** An implicit search; parameters as in `inferImplicit` */
-  class ImplicitSearch(protected val pt: Type, protected val argument: Tree, pos: Position)(implicit ctx: Context) {
+  class ImplicitSearch(protected val pt: Type, protected val argument: Tree, pos: Position, contextual: Boolean = true)(implicit ctx: Context) {
 
     private def nestedContext = ctx.fresh.setMode(ctx.mode &~ Mode.ImplicitsEnabled)
 
@@ -743,7 +743,7 @@ trait Implicits { self: Typer =>
       def typedImplicit(cand: Candidate)(implicit ctx: Context): SearchResult = track("typedImplicit") { ctx.traceIndented(i"typed implicit ${cand.ref}, pt = $pt, implicitsEnabled == ${ctx.mode is ImplicitsEnabled}", implicits, show = true) {
         assert(constr eq ctx.typerState.constraint)
         val ref = cand.ref
-        var generated: Tree = tpd.ref(ref).withPos(pos.startPos)
+        var generated: Tree = tpd.ref(ref).withPos(pos)
         if (!argument.isEmpty)
           generated = typedUnadapted(
             untpd.Apply(untpd.TypedSplice(generated), untpd.TypedSplice(argument) :: Nil),
@@ -759,13 +759,19 @@ trait Implicits { self: Typer =>
               case _ => false
             }
           }
-        // Does there exist an implicit value of type `Eq[tp, tp]`?
-        def hasEq(tp: Type): Boolean =
-          new ImplicitSearch(defn.EqType.appliedTo(tp, tp), EmptyTree, pos).bestImplicit match {
-            case result: SearchSuccess => result.ref.symbol != defn.Predef_eqAny
-            case result: AmbiguousImplicits => true
-            case _ => false
-          }
+        // Does there exist an implicit value of type `Eq[tp, tp]`
+        // which is different from `eqAny`?
+        def hasEq(tp: Type): Boolean = {
+          def search(contextual: Boolean): Boolean =
+            new ImplicitSearch(defn.EqType.appliedTo(tp, tp), EmptyTree, pos, contextual).bestImplicit match {
+              case result: SearchSuccess =>
+                result.ref.symbol != defn.Predef_eqAny ||
+                contextual && search(contextual = false)
+              case result: AmbiguousImplicits => true
+              case _ => false
+            }
+          search(contextual = true)
+        }
 
         def validEqAnyArgs(tp1: Type, tp2: Type) = {
           List(tp1, tp2).foreach(fullyDefinedType(_, "eqAny argument", pos))
@@ -873,11 +879,13 @@ trait Implicits { self: Typer =>
 
     /** Find a unique best implicit reference */
     def bestImplicit: SearchResult = {
-      searchImplicits(ctx.implicits.eligible(wildProto), contextual = true) match {
+      searchImplicits(ctx.implicits.eligible(wildProto), contextual) match {
         case result: SearchSuccess => result
         case result: AmbiguousImplicits => result
         case result: SearchFailure =>
-          searchImplicits(implicitScope(wildProto).eligible, contextual = false)
+          if (contextual)
+            searchImplicits(implicitScope(wildProto).eligible, contextual = false)
+          else result
       }
     }
 
