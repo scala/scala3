@@ -23,6 +23,8 @@ sidebar:
           url: docs/reference/implicit-by-name-parameters.htmldocs/reference/implicit-by-name-parameters.html
         - title: Auto Parameter Tupling
           url: docs/reference/auto-parameter-tupling.html
+        - title: Named Type Arguments
+          url: docs/reference/named-typeargs.html
     - title: Usage
       subsection:
         - title: sbt-projects
