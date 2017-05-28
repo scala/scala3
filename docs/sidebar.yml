@@ -15,6 +15,8 @@ sidebar:
           url: docs/reference/adts.html
         - title: Enum Translation
           url: docs/reference/desugarEnums.html
+         -title: Multiversal Equality
+          url: docs/reference/multiversal-equality.html
         - title: By-Name Implicits
           url: docs/reference/implicit-by-name-parameters.html
     - title: Usage
