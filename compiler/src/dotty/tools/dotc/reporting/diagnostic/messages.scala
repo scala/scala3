@@ -1475,7 +1475,7 @@ object messages {
   case class CannotHaveSameNameAs(sym: Symbol, cls: Symbol, reason: CannotHaveSameNameAs.Reason)(implicit ctx: Context)
     extends Message(CannotHaveSameNameAsID) {
     import CannotHaveSameNameAs._
-    def resonMessage: String = reason match {
+    def reasonMessage: String = reason match {
       case CannotBeOverridden => "class definitions cannot be overridden"
       case DefinedInSelf(self) =>
         s"""cannot define ${sym.showKind} member with the same name as a ${cls.showKind} member in self reference ${self.name}.
@@ -1483,7 +1483,7 @@ object messages {
            |""".stripMargin
     }
 
-    val msg = hl"""$sym cannot have the same name as ${cls.showLocated} -- """ + resonMessage
+    val msg = hl"""$sym cannot have the same name as ${cls.showLocated} -- """ + reasonMessage
     val kind = "Syntax"
     val explanation = ""
   }
