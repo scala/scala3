@@ -89,7 +89,7 @@ comma separated simple cases into a sequence of cases.
 
        case C <params> ...
 
-   expands analogous to a case class:
+   expands analogous to a final case class:
 
        final case class C <params> ...
 
