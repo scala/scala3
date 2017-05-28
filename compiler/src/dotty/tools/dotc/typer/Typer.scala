@@ -1321,44 +1321,49 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     val parentsWithClass = ensureFirstIsClass(parents mapconserve typedParent, cdef.namePos)
     val parents1 = ensureConstrCall(cls, parentsWithClass)(superCtx)
     val self1 = typed(self)(ctx.outer).asInstanceOf[ValDef] // outer context where class members are not visible
-    val dummy = localDummy(cls, impl)
-    val body1 = typedStats(impl.body, dummy)(inClassContext(self1.symbol))
-    cls.setNoInitsFlags((NoInitsInterface /: body1)((fs, stat) => fs & defKind(stat)))
+    if (self1.tpt.tpe.isError) {
+      // fail fast to avoid typing the body with an error type
+      cdef.withType(UnspecifiedErrorType)
+    } else {
+      val dummy = localDummy(cls, impl)
+      val body1 = typedStats(impl.body, dummy)(inClassContext(self1.symbol))
+      cls.setNoInitsFlags((NoInitsInterface /: body1) ((fs, stat) => fs & defKind(stat)))
 
-    // Expand comments and type usecases
-    cookComments(body1.map(_.symbol), self1.symbol)(localContext(cdef, cls).setNewScope)
+      // Expand comments and type usecases
+      cookComments(body1.map(_.symbol), self1.symbol)(localContext(cdef, cls).setNewScope)
 
-    checkNoDoubleDefs(cls)
-    val impl1 = cpy.Template(impl)(constr1, parents1, self1, body1)
-      .withType(dummy.nonMemberTermRef)
-    checkVariance(impl1)
-    if (!cls.is(AbstractOrTrait) && !ctx.isAfterTyper) checkRealizableBounds(cls.typeRef, cdef.namePos)
-    val cdef1 = assignType(cpy.TypeDef(cdef)(name, impl1), cls)
-    if (ctx.phase.isTyper && cdef1.tpe.derivesFrom(defn.DynamicClass) && !ctx.dynamicsEnabled) {
-      val isRequired = parents1.exists(_.tpe.isRef(defn.DynamicClass))
-      ctx.featureWarning(nme.dynamics.toString, "extension of type scala.Dynamic", isScala2Feature = true,
+      checkNoDoubleDefs(cls)
+      val impl1 = cpy.Template(impl)(constr1, parents1, self1, body1)
+        .withType(dummy.nonMemberTermRef)
+      checkVariance(impl1)
+      if (!cls.is(AbstractOrTrait) && !ctx.isAfterTyper) checkRealizableBounds(cls.typeRef, cdef.namePos)
+      val cdef1 = assignType(cpy.TypeDef(cdef)(name, impl1), cls)
+      if (ctx.phase.isTyper && cdef1.tpe.derivesFrom(defn.DynamicClass) && !ctx.dynamicsEnabled) {
+        val isRequired = parents1.exists(_.tpe.isRef(defn.DynamicClass))
+        ctx.featureWarning(nme.dynamics.toString, "extension of type scala.Dynamic", isScala2Feature = true,
           cls, isRequired, cdef.pos)
+      }
+
+      // Check that phantom lattices are defined in a static object
+      if (cls.classParents.exists(_.classSymbol eq defn.PhantomClass) && !cls.isStaticOwner)
+        ctx.error("only static objects can extend scala.Phantom", cdef.pos)
+
+      // check value class constraints
+      checkDerivedValueClass(cls, body1)
+
+      if (ctx.settings.YretainTrees.value) {
+        cls.myTree = cdef1
+      }
+      cdef1
+
+      // todo later: check that
+      //  1. If class is non-abstract, it is instantiatable:
+      //  - self type is s supertype of own type
+      //  - all type members have consistent bounds
+      // 2. all private type members have consistent bounds
+      // 3. Types do not override classes.
+      // 4. Polymorphic type defs override nothing.
     }
-
-    // Check that phantom lattices are defined in a static object
-    if (cls.classParents.exists(_.classSymbol eq defn.PhantomClass) && !cls.isStaticOwner)
-      ctx.error("only static objects can extend scala.Phantom", cdef.pos)
-
-    // check value class constraints
-    checkDerivedValueClass(cls, body1)
-
-    if (ctx.settings.YretainTrees.value) {
-      cls.myTree = cdef1
-    }
-    cdef1
-
-    // todo later: check that
-    //  1. If class is non-abstract, it is instantiatable:
-    //  - self type is s supertype of own type
-    //  - all type members have consistent bounds
-    // 2. all private type members have consistent bounds
-    // 3. Types do not override classes.
-    // 4. Polymorphic type defs override nothing.
   }
 
   /** Ensure that the first type in a list of parent types Ps points to a non-trait class.

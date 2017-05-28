@@ -466,6 +466,7 @@ trait TypeAssigner {
       val rsym = refinement.symbol
       val rinfo = if (rsym is Accessor) rsym.info.resultType else rsym.info
       if (rinfo.isError) rinfo
+      else if (!rinfo.exists) parent // can happen after failure in self type definition
       else RefinedType(parent, rsym.name, rinfo)
     }
     val refined = (parent.tpe /: refinements)(addRefinement)
