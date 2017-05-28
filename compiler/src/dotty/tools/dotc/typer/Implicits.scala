@@ -656,7 +656,7 @@ trait Implicits { self: Typer =>
     if (!ctx.isAfterTyper && !assumedCanEqual(ltp, rtp)) {
       val res = inferImplicitArg(
         defn.EqType.appliedTo(ltp, rtp), msgFun => ctx.error(msgFun(""), pos), pos)
-      implicits.println(i"Eq witness found: $res: ${res.tpe}")
+      implicits.println(i"Eq witness found for $ltp / $rtp: $res: ${res.tpe}")
     }
 
   /** Find an implicit parameter or conversion.

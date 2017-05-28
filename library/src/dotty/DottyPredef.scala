@@ -16,6 +16,15 @@ object DottyPredef {
 
   implicit def eqNumber   : Eq[Number, Number] = Eq
   implicit def eqString   : Eq[String, String] = Eq
+  implicit def eqBoolean  : Eq[Boolean, Boolean] = Eq
+  implicit def eqByte     : Eq[Byte, Byte] = Eq
+  implicit def eqShort    : Eq[Short, Short] = Eq
+  implicit def eqChar     : Eq[Char, Char] = Eq
+  implicit def eqInt      : Eq[Int, Int] = Eq
+  implicit def eqLong     : Eq[Long, Long] = Eq
+  implicit def eqFloat    : Eq[Float, Float] = Eq
+  implicit def eqDouble   : Eq[Double, Double] = Eq
+  implicit def eqUnit     : Eq[Unit, Unit] = Eq
 
   // true asymmetry, modeling the (somewhat problematic) nature of equals on Proxies
   implicit def eqProxy    : Eq[Proxy, Any]     = Eq
