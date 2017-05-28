@@ -357,7 +357,7 @@ trait Symbols { this: Context =>
 // ----- Locating predefined symbols ----------------------------------------
 
   def requiredPackage(path: PreName): TermSymbol =
-    base.staticRef(path.toTermName).requiredSymbol(_ is Package).asTerm
+    base.staticRef(path.toTermName, isPackage = true).requiredSymbol(_ is Package).asTerm
 
   def requiredPackageRef(path: PreName): TermRef = requiredPackage(path).termRef
 
