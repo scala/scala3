@@ -83,6 +83,7 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
     constantFold                ::
     Nil
 
+  // The entry point of local optimisation: DefDefs
   override def transformDefDef(tree: DefDef)(implicit ctx: Context, info: TransformerInfo): Tree = {
     val ctx0 = ctx
     if (optimize && !tree.symbol.is(Label)) {
@@ -195,35 +196,37 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
     case _ => false
   }
 
-  // Apply fun may be a side-effectful function. E.g. a block, see tests/run/t4859.scala
-  // we need to maintain expressions that were in this block
-  private def evalReciever(a: Apply, res: Tree)(implicit ctx: Context) = {
-    def receiver(t: Tree):
-    (Tree) = t match {
-      case TypeApply(fun, targs) if fun.symbol eq t.symbol => receiver(fun)
-      case Apply(fn, args) if fn.symbol == t.symbol => receiver(fn)
-      case Select(qual, _) => qual
-      case x => x
-    }
-
-    val recv = receiver(a)
-
-    if (recv.isEmpty || tpd.isPureRef(recv)) res else Block(recv :: Nil, res)
-  }
-
   /** Inline case class specific methods using desugarings assumptions.
    *
-   * - CC.apply(args)              → new CC(args)
-   * - Seq.unapplySeq(arg)         → new Some(arg)  // where Seq is any companion of type <: SeqFactoryClass
+   * -
+   * -
    *
    * Dotty only:
-   * - CC.unapply(arg): Boolean    → true
+   * -
    *
    * Scala2 only:
-   * - CC.unapply(arg): Option[CC] → new Some(new scala.TupleN(arg._1, ..., arg._N))
+   * -
    */
   val inlineCaseIntrinsics: Optimization = { implicit ctx: Context =>
+    // Apply fun may be a side-effectful function. E.g. a block, see tests/run/t4859.scala
+    // we need to maintain expressions that were in this block
+    def evalReciever(a: Apply, res: Tree) = {
+      def receiver(t: Tree): Tree = t match {
+        case TypeApply(fun, targs) if fun.symbol eq t.symbol => receiver(fun)
+        case Apply(fn, args) if fn.symbol == t.symbol => receiver(fn)
+        case Select(qual, _) => qual
+        case x => x
+      }
+      val recv = receiver(a)
+      if (recv.isEmpty || tpd.isPureRef(recv))
+        res
+      else
+        Block(recv :: Nil, res)
+    }
+
     val transformer: Transformer = () => localCtx => {
+      // For synthetic applies on case classes (both dotty/scalac)
+      // - CC.apply(args) → new CC(args)
       case a: Apply if !a.tpe.isInstanceOf[MethodicType]           &&
                        a.symbol.is(Synthetic)                      &&
                        a.symbol.owner.is(Module)                   &&
@@ -231,6 +234,7 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
                        a.symbol.owner.companionClass.is(CaseClass) &&
                        !a.tpe.derivesFrom(defn.EnumClass)          &&
                        (isPureExpr(a.fun) || a.fun.symbol.is(Synthetic)) =>
+
         def unrollArgs(t: Tree, l: List[List[Tree]]): List[List[Tree]] = t match {
           case Apply(t, args) => unrollArgs(t, args :: l)
           case _ => l
@@ -243,6 +247,10 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
         val constructor = a.symbol.owner.companionClass.primaryConstructor.asTerm
         rollInArgs(argss.tail, New(a.tpe.widenDealias, constructor, argss.head))
 
+      // For synthetic dotty unapplies on case classes:
+      // - CC.unapply(arg): CC → arg
+      // - CC.unapply(arg): Boolean → true, dotty only
+      // - CC.unapply(arg): Option[CC] → new Some(new scala.TupleN(arg._1, ..., arg._N))
       case a: Apply if a.symbol.is(Synthetic)                       &&
                        a.symbol.owner.is(Module)                    &&
                        (a.symbol.name == nme.unapply)               &&
@@ -250,21 +258,33 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
                        !a.tpe.derivesFrom(defn.EnumClass)           &&
                        (isPureExpr(a.fun) || a.fun.symbol.is(Synthetic)) =>
 
-        if (!a.symbol.owner.is(Scala2x)) {
-          if (a.tpe.derivesFrom(defn.BooleanClass)) evalReciever(a, Literal(Constant(true)))
-          else evalReciever(a, a.args.head)
+        val args = a.args.head
+        val isDottyUnapply = !a.symbol.owner.is(Scala2x)
+        val isScalaOptionUnapply =
+          a.tpe.derivesFrom(defn.OptionClass) &&
+          a.args.head.tpe.derivesFrom(a.symbol.owner.companionClass)
+
+        if (isDottyUnapply) { // dotty only
+          if (a.tpe.derivesFrom(defn.BooleanClass))
+            // CC.unapply(arg): Boolean → true
+            evalReciever(a, Literal(Constant(true)))
+          else
+            // CC.unapply(arg): CC → arg
+            evalReciever(a, a.args.head)
         }
-        else if (a.tpe.derivesFrom(defn.OptionClass) && a.args.head.tpe.derivesFrom(a.symbol.owner.companionClass)) {
+        else if (isScalaOptionUnapply) {
+          // CC.unapply(arg): Option[CC] → new Some(new scala.TupleN(arg._1, ..., arg._N))
+          // The output is defined as a Tree => Tree to go thought tpd.evalOnce.
           def some(e: Tree) = {
             val accessors = e.tpe.widenDealias.classSymbol.caseAccessors.filter(_.is(Method))
-            val fields = accessors.map(x => e.select(x).ensureApplied)
-            val tplType = a.tpe.baseArgTypes(defn.OptionClass).head
-            if (fields.tail.nonEmpty) {
-              val tplAlloc = New(tplType, fields)
-              New(a.tpe.translateParameterized(defn.OptionClass, defn.SomeClass), tplAlloc :: Nil)
-            } else { // scalac does not have Tuple1
-              New(a.tpe.translateParameterized(defn.OptionClass, defn.SomeClass), fields.head :: Nil)
-            }
+            val fields    = accessors.map(x => e.select(x).ensureApplied)
+            val tplType   = a.tpe.baseArgTypes(defn.OptionClass).head
+            val someTpe   = a.tpe.translateParameterized(defn.OptionClass, defn.SomeClass)
+
+            if (fields.tail.nonEmpty)
+              New(someTpe, New(tplType, fields) :: Nil)
+            else // scalac does not have Tuple1
+              New(someTpe, fields.head :: Nil)
           }
           val none = ref(defn.NoneModuleRef)
           def isNull(e: Tree) = e.select(defn.Object_eq).appliedTo(Literal(Constant(null)))
@@ -272,24 +292,29 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
           evalReciever(a, evalOnce(a.args.head)(fi))
         }
         else a
+
+      // Seq.unapplySeq(arg) → new Some(arg)
+      // Where Seq is any companion of type <: SeqFactoryClass
       case a: Apply if (a.symbol.name == nme.unapplySeq)           &&
                        a.symbol.owner.derivesFrom(SeqFactoryClass) &&
                        a.symbol.extendedOverriddenSymbols.isEmpty  &&
-                       isPureExpr(a.tree) =>
+                       (isPureExpr(a.fun) || a.fun.symbol.is(Synthetic)) =>
+
         def reciever(t: Tree): Type = t match {
-          case t: Apply => reciever(t.fun)
+          case t: Apply     => reciever(t.fun)
           case t: TypeApply => reciever(t.fun)
-          case t: Ident => desugarIdent(t) match {
+          case t: Ident     => desugarIdent(t) match {
             case Some(t) => reciever(t)
             case _ => NoType
           }
-          case t: Select =>
-            t.qualifier.tpe.widenDealias
+          case t: Select => t.qualifier.tpe.widenDealias
         }
 
         val recv = reciever(a)
-        if (recv.typeSymbol.is(Module))
-          evalReciever(a, New(a.tpe.translateParameterized(defn.OptionClass, defn.SomeClass), a.args.head :: Nil))
+        if (recv.typeSymbol.is(Module)) {
+          val someTpe  = a.tpe.translateParameterized(defn.OptionClass, defn.SomeClass)
+          evalReciever(a, New(someTpe, a.args.head :: Nil))
+        }
         else a
       case t => t
     }
@@ -324,7 +349,9 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
       case t1: Apply =>
         t2 match {
           case t2: Apply =>
-            (t1.symbol == t2.symbol) && (t1.args zip t2.args).forall(x => isSimilar(x._1, x._2)) && isSimilar(t1.fun, t2.fun)
+            (t1.symbol == t2.symbol) &&
+            (t1.args zip t2.args).forall(x => isSimilar(x._1, x._2)) &&
+            isSimilar(t1.fun, t2.fun)
           case _ => false
         }
       case t1: Ident =>
@@ -338,7 +365,9 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
           case None => t1.symbol eq t2.symbol
         }
       case t1: Select => t2 match {
-        case t2: Select => (t1.symbol eq t2.symbol) && isSimilar(t1.qualifier, t2.qualifier)
+        case t2: Select =>
+          (t1.symbol eq t2.symbol) &&
+          isSimilar(t1.qualifier, t2.qualifier)
         case t2: Ident => desugarIdent(t2) match {
           case Some(t2) => isSimilar(t1, t2)
           case None => false
@@ -346,87 +375,109 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
         case _ => false
       }
       case t1: Literal => t2 match {
-        case t2: Literal if t1.const.tag == t2.const.tag && t1.const.value == t2.const.value =>
-          true
+        case t2: Literal =>
+          t1.const.tag   == t2.const.tag &&
+          t1.const.value == t2.const.value
         case _ => false
       }
       case _ => false
     }
+
+    def isBool(tpe: Type): Boolean = tpe.derivesFrom(defn.BooleanClass)
+    def isConst(tpe: Type): Boolean      = tpe.isInstanceOf[ConstantType]
+    def asConst(tpe: Type): ConstantType = tpe.asInstanceOf[ConstantType]
 
     val transformer: Transformer = () => localCtx => { x => preEval(x) match {
       // TODO: include handling of isInstanceOf similar to one in IsInstanceOfEvaluator
       // TODO: include methods such as Int.int2double(see ./tests/pos/harmonize.scala)
       case If(cond1, thenp, elsep) if isSimilar(thenp, elsep) =>
         Block(cond1 :: Nil, thenp)
+
       case If(cond1, If(cond2, thenp2, elsep2), elsep1) if isSimilar(elsep1, elsep2) =>
         If(cond1.select(defn.Boolean_&&).appliedTo(cond2), thenp2, elsep1)
+
       case If(cond1, If(cond2, thenp2, elsep2), elsep1) if isSimilar(elsep1, thenp2) =>
         If(cond1.select(defn.Boolean_!).ensureApplied.select(defn.Boolean_||).appliedTo(cond2), elsep1, elsep2)
+
       case If(cond1, thenp1, If(cond2, thenp2, elsep2)) if isSimilar(thenp1, thenp2) =>
         If(cond1.select(defn.Boolean_||).appliedTo(cond2), thenp1, elsep2)
+
       case If(cond1, thenp1, If(cond2, thenp2, elsep2)) if isSimilar(thenp1, elsep2) =>
         If(cond1.select(defn.Boolean_||).appliedTo(cond2.select(defn.Boolean_!).ensureApplied), thenp1, thenp2)
+
       case If(t: Literal, thenp, elsep) =>
         if (t.const.booleanValue) thenp
         else elsep
-      case ift @ If(cond, thenp: Literal, elsep: Literal) if ift.tpe.derivesFrom(defn.BooleanClass) && thenp.const.booleanValue && !elsep.const.booleanValue =>
-        if (thenp.const.booleanValue && !elsep.const.booleanValue) {
+
+      case ift @ If(cond, thenp: Literal, elsep: Literal)
+        if isBool(ift.tpe) && thenp.const.booleanValue && !elsep.const.booleanValue =>
           cond
-        }  else if (!thenp.const.booleanValue && elsep.const.booleanValue) {
-          cond.select(defn.Boolean_!).ensureApplied
-        } else ??? //should never happen because it would be similar
-      //    the lower two are disabled, as it may make the isSimilar rule not apply for a nested structure of iffs.
-      //    see the example below:
-      //           (b1, b2) match {
-      //             case (true, true) => true
-      //             case (false, false) => true
-      //             case _ => false
-      //           }
-      // case ift @ If(cond, thenp: Literal, elsep) if ift.tpe.derivesFrom(defn.BooleanClass) && thenp.const.booleanValue =>
-      //   //if (thenp.const.booleanValue)
-      //     cond.select(defn.Boolean_||).appliedTo(elsep)
-      //   //else // thenp is false, this tree is bigger then the original
-      //   //  cond.select(defn.Boolean_!).ensureApplied.select(defn.Boolean_&&).appliedTo(elsep)
-      // case ift @ If(cond, thenp, elsep :Literal) if ift.tpe.derivesFrom(defn.BooleanClass) && !elsep.const.booleanValue =>
-      //   cond.select(defn.Boolean_&&).appliedTo(elsep)
-      //   // the other case ins't handled intentionally. See previous case for explanation
+
+      //  the lower two are disabled, as it may make the isSimilar rule not apply for a nested structure of iffs.
+      //  see the example below:
+      //         (b1, b2) match {
+      //           case (true, true) => true
+      //           case (false, false) => true
+      //           case _ => false
+      //         }
+      // case ift @ If(cond, thenp: Literal, elsep)
+      //   if isBool(ift.tpe) && thenp.const.booleanValue =>
+      //     if (thenp.const.booleanValue)
+      //       cond.select(defn.Boolean_||).appliedTo(elsep)
+      //     else // thenp is false, this tree is bigger then the original
+      //       cond.select(defn.Boolean_!).ensureApplied.select(defn.Boolean_&&).appliedTo(elsep)
+      // case ift @ If(cond, thenp, elsep :Literal) if
+      //    isBool(ift.tpe) && !elsep.const.booleanValue =>
+      //       cond.select(defn.Boolean_&&).appliedTo(elsep)
+      //   the other case ins't handled intentionally. See previous case for explanation
+
       case If(t @ Select(recv, _), thenp, elsep) if t.symbol eq defn.Boolean_! =>
         If(recv, elsep, thenp)
+
       case If(t @ Apply(Select(recv, _), Nil), thenp, elsep) if t.symbol eq defn.Boolean_! =>
         If(recv, elsep, thenp)
+
       // TODO: similar trick for comparisons.
       // TODO: handle comparison with min\max values
-      case Apply(meth1 @ Select(Apply(meth2 @ Select(rec, _), Nil), _), Nil) if meth1.symbol == defn.Boolean_! && meth2.symbol == defn.Boolean_! =>
-        rec
-      case meth1 @ Select(meth2 @ Select(rec, _), _) if meth1.symbol == defn.Boolean_! && meth2.symbol == defn.Boolean_! && !ctx.erasedTypes =>
-        rec
+      case Apply(meth1 @ Select(Apply(meth2 @ Select(rec, _), Nil), _), Nil)
+        if meth1.symbol == defn.Boolean_! && meth2.symbol == defn.Boolean_! =>
+          rec
+
+      case meth1 @ Select(meth2 @ Select(rec, _), _)
+        if meth1.symbol == defn.Boolean_! && meth2.symbol == defn.Boolean_! && !ctx.erasedTypes =>
+          rec
+
       case t @ Apply(Select(lhs, _), List(rhs)) =>
         val sym = t.symbol
         (lhs, rhs) match {
           case (lhs, Literal(_)) if !lhs.isInstanceOf[Literal] && symmetricOperations.contains(sym) =>
             rhs.select(sym).appliedTo(lhs)
-          case (l , _) if (sym == defn.Boolean_&&) && l.tpe.isInstanceOf[ConstantType]  =>
-            val const = l.tpe.asInstanceOf[ConstantType].value.booleanValue
+          case (l, _) if (sym == defn.Boolean_&&) && isConst(l.tpe) =>
+            val const = asConst(l.tpe).value.booleanValue
             if (const) Block(lhs :: Nil, rhs)
             else l
 
-          case (l, x: Literal) if sym == defn.Boolean_== && l.tpe.derivesFrom(defn.BooleanClass) && x.tpe.derivesFrom(defn.BooleanClass) =>
+          case (l, x: Literal) if sym == defn.Boolean_== && isBool(l.tpe) && isBool(x.tpe) =>
             if (x.const.booleanValue) l
             else l.select(defn.Boolean_!).ensureApplied
-          case (l, x: Literal) if sym == defn.Boolean_!= && l.tpe.derivesFrom(defn.BooleanClass) && x.tpe.derivesFrom(defn.BooleanClass) =>
-            if (!x.const.booleanValue) l
-            else l.select(defn.Boolean_!).ensureApplied
-          case (x: Literal, l) if sym == defn.Boolean_== && l.tpe.derivesFrom(defn.BooleanClass) && x.tpe.derivesFrom(defn.BooleanClass) =>
-            if (x.const.booleanValue) l
-            else l.select(defn.Boolean_!).ensureApplied
-          case (x: Literal, l) if sym == defn.Boolean_!= && l.tpe.derivesFrom(defn.BooleanClass) && x.tpe.derivesFrom(defn.BooleanClass) =>
+
+          case (l, x: Literal) if sym == defn.Boolean_!= && isBool(l.tpe) && isBool(x.tpe) =>
             if (!x.const.booleanValue) l
             else l.select(defn.Boolean_!).ensureApplied
 
-          case (l: Literal, _) if (sym == defn.Boolean_||) && l.tpe.isInstanceOf[ConstantType]   =>
-            val const = l.tpe.asInstanceOf[ConstantType].value.booleanValue
+          case (x: Literal, l) if sym == defn.Boolean_== && isBool(l.tpe) && isBool(x.tpe) =>
+            if (x.const.booleanValue) l
+            else l.select(defn.Boolean_!).ensureApplied
+
+          case (x: Literal, l) if sym == defn.Boolean_!= && isBool(l.tpe) && isBool(x.tpe) =>
+            if (!x.const.booleanValue) l
+            else l.select(defn.Boolean_!).ensureApplied
+
+          case (l: Literal, _) if (sym == defn.Boolean_||) && isConst(l.tpe)   =>
+            val const = asConst(l.tpe).value.booleanValue
             if (l.const.booleanValue) l
             else Block(lhs :: Nil, rhs)
+
           // case (Literal(Constant(1)), _)    if sym == defn.Int_*  => rhs
           // case (Literal(Constant(0)), _)    if sym == defn.Int_+  => rhs
           // case (Literal(Constant(1L)), _)   if sym == defn.Long_* => rhs
@@ -443,21 +494,25 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
           // case (_, Literal(Constant(0L)))  if sym == defn.Long_/ =>
           //   Block(List(lhs),
           //     ref(defn.throwMethod).appliedTo(New(defn.ArithmeticExceptionClass.typeRef, defn.ArithmeticExceptionClass_stringConstructor, Literal(Constant("/ by zero")) :: Nil)))
+
           case _ => t
         }
-      case t: Match if (t.selector.tpe.isInstanceOf[ConstantType] && t.cases.forall(x => x.pat.tpe.isInstanceOf[ConstantType] || (isWildcardArg(x.pat) && x.guard.isEmpty))) =>
-        val selectorValue = t.selector.tpe.asInstanceOf[ConstantType].value
-        val better = t.cases.find(x => isWildcardArg(x.pat) || (x.pat.tpe.asInstanceOf[ConstantType].value eq selectorValue))
-        if (better.nonEmpty) better.get.body
-        else t
-      case t: Literal =>
-        t
-      case t: CaseDef =>
-        t
-      case t if !isPureExpr(t) =>
-        t
+
+      // This case can only be triggered when running Simplify before pattern matching:
+      // case t: Match
+      //   if t.selector.tpe.isInstanceOf[ConstantType] &&
+      //      t.cases.forall { x =>
+      //        x.pat.tpe.isInstanceOf[ConstantType] || (isWildcardArg(x.pat) && x.guard.isEmpty)
+      //      } =>
+      //   val selectorValue = t.selector.tpe.asInstanceOf[ConstantType].value
+      //   val better = t.cases.find(x => isWildcardArg(x.pat) || (x.pat.tpe.asInstanceOf[ConstantType].value eq selectorValue))
+      //   if (better.nonEmpty) better.get.body
+      //   else t
+
+      case t: Literal => t
+      case t: CaseDef => t
+      case t if !isPureExpr(t) => t
       case t =>
-        // TODO: did not manage to trigger this in tests
         val s = ConstFold.apply(t)
         if ((s ne null) && s.tpe.isInstanceOf[ConstantType]) {
           val constant = s.tpe.asInstanceOf[ConstantType].value
@@ -662,28 +717,36 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
       case t @ If(cond, thenp, elsep) =>
         val newTypeTested = collectTypeTests(cond)
         val nullTested = collectNullTests(cond).toSet
-        val testedMap = newTypeTested.foldRight[Map[Symbol, List[Type]]](Map.empty)((x, y) =>
+        val testedMap = newTypeTested.foldRight[Map[Symbol, List[Type]]](Map.empty) { case (x, y) =>
           y + ((x._1, x._2 :: y.getOrElse(x._1, Nil)))
-        )
+        }
         val dropGoodCastsInStats = new TreeMap() {
-          override def transform(tree: Tree)(implicit ctx: Context): Tree = super.transform(tree) match {
-            case t: Block =>
-              val nstats = t.stats.filterConserve({
-                 case TypeApply(fun @ Select(rec, _), List(tp)) if fun.symbol == defn.Any_asInstanceOf =>
-                   !testedMap.getOrElse(rec.symbol, Nil).exists(x => x <:< tp.tpe)
-                 case _ => true
-              })
-              if (nstats eq t.stats) t
-              else Block(nstats, t.expr)
-            case Apply(fun @ Select(lhs, _), List(Literal(const)))
-              if const.tag == Constants.NullTag && (fun.symbol == defn.Object_eq || fun.symbol == defn.Object_ne) && nullTested.contains(lhs.symbol) =>
+          override def transform(tree: Tree)(implicit ctx: Context): Tree = {
+            def applyCondition(fun: Select, tree: Tree, const: Constant): Boolean =
+              const.tag == Constants.NullTag &&
+              (fun.symbol == defn.Object_eq || fun.symbol == defn.Object_ne) &&
+              (nullTested.contains(tree.symbol))
+
+            def applyBody(fun: Select): Tree =
               if (fun.symbol == defn.Object_eq) Literal(Constant(false))
               else Literal(Constant(true))
-            case Apply(fun @ Select(Literal(const), _), List(rhs))
-              if const.tag == Constants.NullTag && (fun.symbol == defn.Object_eq || fun.symbol == defn.Object_ne) && nullTested.contains(rhs.symbol) =>
-              if (fun.symbol == defn.Object_eq) Literal(Constant(false))
-              else Literal(Constant(true))
-            case t => t
+
+            super.transform(tree) match {
+              case t: Block =>
+                val nstats = t.stats.filterConserve({
+                  case TypeApply(fun @ Select(rec, _), List(tp))
+                    if fun.symbol == defn.Any_asInstanceOf =>
+                      !testedMap.getOrElse(rec.symbol, Nil).exists(x => x <:< tp.tpe)
+                  case _ => true
+                })
+                if (nstats eq t.stats) t
+                else Block(nstats, t.expr)
+              case Apply(fun @ Select(lhs, _), List(Literal(const))) if applyCondition(fun, lhs, const) =>
+                applyBody(fun)
+              case Apply(fun @ Select(Literal(const), _), List(rhs)) if applyCondition(fun, rhs, const) =>
+                applyBody(fun)
+              case t => t
+            }
           }
         }
         val nthenp = dropGoodCastsInStats.transform(thenp)
@@ -1072,8 +1135,10 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
       case t: ValDef if t.symbol.is(Mutable, Lazy) && !t.symbol.is(Method) && !t.symbol.owner.isClass =>
         if (isPureExpr(t.rhs))
           defined(t.symbol) = t
+
       case t: RefTree if t.symbol.exists && !t.symbol.is(Method) && !t.symbol.owner.isClass =>
         if (!firstWrite.contains(t.symbol)) firstRead(t.symbol) = t
+
       case t @ Assign(l, expr) if !l.symbol.is(Method) && !l.symbol.owner.isClass =>
         if (!firstRead.contains(l.symbol)) {
           if (firstWrite.contains(l.symbol)) {
