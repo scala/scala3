@@ -1963,7 +1963,8 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
             case _: RefTree | _: Literal
             if !isVarPattern(tree) &&
                !(tree.tpe <:< pt)(ctx.addMode(Mode.GADTflexible)) =>
-              checkCanEqual(pt, wtp, tree.pos)(ctx.retractMode(Mode.Pattern))
+              val tp1 :: tp2 :: Nil = harmonizeTypes(pt :: wtp :: Nil)
+              checkCanEqual(tp1, tp2, tree.pos)(ctx.retractMode(Mode.Pattern))
             case _ =>
           }
           tree
