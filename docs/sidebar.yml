@@ -12,7 +12,7 @@ sidebar:
             - title: Type lambdas
               url: docs/reference/type-lambdas.html
             - title: Implicit Function Types
-              url: docs/reference/implicit-function-types.md
+              url: docs/reference/implicit-function-types.html
         - title: Enums
           subsection:
             - title: Enumerations
