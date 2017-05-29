@@ -192,6 +192,22 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
     case _ => false
   }
 
+  // Apply fun may be a side-effectful function. E.g. a block, see tests/run/t4859.scala
+  // we need to maintain expressions that were in this block
+  private def evalReciever(a: Apply, res: Tree) = {
+    def receiver(t: Tree):
+    (Tree) = t match {
+      case TypeApply(fun, targs) if fun.symbol eq t.symbol => receiver(fun)
+      case Apply(fn, args) if fn.symbol == t.symbol => receiver(fn)
+      case Select(qual, _) => qual
+      case x => x
+    }
+
+    val recv = receiver(a)
+
+    if (recv.isEmpty || tpd.isPureRef(recv)) res else Block(recv :: Nil, res)
+  }
+
   /** Inline case class specific methods using desugarings assumptions.
    *
    * - CC.apply(args)              → new CC(args)
@@ -230,9 +246,10 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
                        a.symbol.owner.companionClass.is(CaseClass)  &&
                        !a.tpe.derivesFrom(defn.EnumClass)           &&
                        (isPureExpr(a.fun) || a.fun.symbol.is(Synthetic)) =>
+
         if (!a.symbol.owner.is(Scala2x)) {
-          if (a.tpe.derivesFrom(defn.BooleanClass)) Literal(Constant(true))
-          else a.args.head
+          if (a.tpe.derivesFrom(defn.BooleanClass)) evalReciever(a, Literal(Constant(true)))
+          else evalReciever(a, a.args.head)
         }
         else if (a.tpe.derivesFrom(defn.OptionClass) && a.args.head.tpe.derivesFrom(a.symbol.owner.companionClass)) {
           def some(e: Tree) = {
@@ -249,7 +266,7 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
           val none = ref(defn.NoneModuleRef)
           def isNull(e: Tree) = e.select(defn.Object_eq).appliedTo(Literal(Constant(null)))
           def fi(e: Tree) = If(isNull(e), none, some(e))
-          evalOnce(a.args.head)(fi)
+          evalReciever(a, evalOnce(a.args.head)(fi))
         }
         else a
       case a: Apply if (a.symbol.name == nme.unapplySeq)           &&
@@ -269,7 +286,7 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
 
         val recv = reciever(a)
         if (recv.typeSymbol.is(Module))
-          New(a.tpe.translateParameterized(defn.OptionClass, defn.SomeClass), a.args.head :: Nil)
+          evalReciever(a, New(a.tpe.translateParameterized(defn.OptionClass, defn.SomeClass), a.args.head :: Nil))
         else a
       case t => t
     }
