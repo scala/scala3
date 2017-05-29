@@ -31,7 +31,8 @@ object Formatting {
       case arg: Showable =>
         try arg.show
         catch {
-          case NonFatal(ex) => s"[cannot display due to $ex, raw string = $toString]"
+          case NonFatal(ex) if !ctx.mode.is(Mode.PrintShowExceptions) =>
+            s"[cannot display due to $ex, raw string = $toString]"
         }
       case _ => arg.toString
     }

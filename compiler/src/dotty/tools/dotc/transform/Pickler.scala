@@ -79,7 +79,8 @@ class Pickler extends Phase {
           ctx.fresh
             .setPeriod(Period(ctx.runId + 1, FirstPhaseId))
             .setReporter(new ThrowingReporter(ctx.reporter))
-            .addMode(Mode.ReadPositions))
+            .addMode(Mode.ReadPositions)
+            .addMode(Mode.PrintShowExceptions))
     result
   }
 
