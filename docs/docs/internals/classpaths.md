@@ -43,5 +43,5 @@ file:/usr/lib/jvm/java-7-oracle/jre/lib/ext/sunpkcs11.jar:file:/usr/lib/jvm/java
 =====================================================
 ```
 Since scala/dotty only pick up `java.class.path` and `sun.boot.class.path`,
-it's clear why dotty crashes in sbt and Eclipse unless we set the boot
+it's clear why Dotty crashes in sbt and Eclipse unless we set the boot
 classpath explicitly.

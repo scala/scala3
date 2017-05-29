@@ -11,14 +11,14 @@ there are a couple of things where I would like to do better in 2016
 than in 2015. The first is that I would like to do more blogging and
 writing in general. I have been pretty silent for most of the last
 year. This was mostly caused by the fact that I had been heads down to
-work on DOT, Scala's foundations, and _dotty_, the new Scala compiler
+work on DOT, Scala's foundations, and _Dotty_, the new Scala compiler
 platform we are working on. It's been a lot of work, but we are finally
 getting good results. DOT now has a mechanized proof of type soundness
-and the dotty compiler [can now compile
+and the Dotty compiler [can now compile
 itself](http://www.scala-lang.org/blog/2015/10/23/dotty-compiler-bootstraps.html)
 as well as large parts of Scala's standard library.
 
-The dotty compiler has a completely new and quite unusual
+The Dotty compiler has a completely new and quite unusual
 architecture, which makes it resemble a functional database or a
 functional reactive program. My [talk at the JVM language
 summit](https://www.youtube.com/watch?v=WxyyJyB_Ssc) gives an
