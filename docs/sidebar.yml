@@ -3,10 +3,14 @@ sidebar:
       url: blog/index.html
     - title: Reference
       subsection:
+        - title: Implicit Function Types
+          url: docs/reference/implicit-function-types.md
         - title: Intersection types
           url: docs/reference/intersection-types.html
         - title: Union types
           url: docs/reference/union-types.html
+        - title: Type lambdas
+          url: docs/reference/type-lambdas.html
         - title: Trait Parameters
           url: docs/reference/trait-parameters.html
         - title: Enumerations
@@ -15,8 +19,16 @@ sidebar:
           url: docs/reference/adts.html
         - title: Enum Translation
           url: docs/reference/desugarEnums.html
+         -title: Multiversal Equality
+          url: docs/reference/multiversal-equality.html
         - title: By-Name Implicits
-          url: docs/reference/implicit-by-name-parameters.html
+          url: docs/reference/implicit-by-name-parameters.htmldocs/reference/implicit-by-name-parameters.html
+        - title: Auto Parameter Tupling
+          url: docs/reference/auto-parameter-tupling.html
+        - title: Named Type Arguments
+          url: docs/reference/named-typeargs.html
+        - title: Inline
+          url: docs/reference/inline.html
     - title: Usage
       subsection:
         - title: sbt-projects

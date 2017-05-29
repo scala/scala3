@@ -547,6 +547,7 @@ class Definitions {
 
   lazy val EqType = ctx.requiredClassRef("scala.Eq")
   def EqClass(implicit ctx: Context) = EqType.symbol.asClass
+  def EqModule(implicit ctx: Context) = EqClass.companionModule
 
   lazy val XMLTopScopeModuleRef = ctx.requiredModuleRef("scala.xml.TopScope")
 
