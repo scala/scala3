@@ -6,7 +6,7 @@ title: "Programmatic Structural Types"
 Previously, Scala supported structural types by means of
 reflection. This is problematic on other platforms, because Scala's
 reflection is JVM-based. Consequently, Scala.js and Scala.native don't
-dupport structural types fully. The reflction based implementation is
+support structural types fully. The reflction based implementation is
 also needlessly restrictive, since it rules out other implementation
 schemes. This makes structural types unsuitable for e.g. modelling
 rows in a database, for which they would otherwise seem to be an ideal
