@@ -34,6 +34,9 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
   private var symmetricOperations: Set[Symbol] = null
   var optimize = false
 
+
+  override val cpy = tpd.cpy
+
   override def prepareForUnit(tree: Tree)(implicit ctx: Context): TreeTransform = {
     SeqFactoryClass = ctx.requiredClass("scala.collection.generic.SeqFactory")
     symmetricOperations = Set(defn.Boolean_&&, defn.Boolean_||, defn.Int_+, defn.Int_*, defn.Long_+, defn.Long_*)
@@ -118,7 +121,7 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
           transformers = transformers.tail
         }
       }
-      if (rhs0 ne tree.rhs) cpy.DefDef(tree)(rhs = rhs0)
+      if (rhs0 ne tree.rhs) tpd.cpy.DefDef(tree)(rhs = rhs0)
       else tree
     } else tree
   }
@@ -539,8 +542,8 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
 
       def splitWrites(t: Tree, target: Symbol): Tree = {
         t match {
-          case tree@ Block(stats, expr) => cpy.Block(tree)(stats, splitWrites(expr, target))
-          case tree@ If(_, thenp, elsep) => cpy.If(tree)(thenp = splitWrites(thenp, target), elsep =  splitWrites(elsep, target))
+          case tree@ Block(stats, expr) => tpd.cpy.Block(tree)(stats, splitWrites(expr, target))
+          case tree@ If(_, thenp, elsep) => tpd.cpy.If(tree)(thenp = splitWrites(thenp, target), elsep =  splitWrites(elsep, target))
           case Apply(sel , args) if sel.symbol.isConstructor && t.tpe.widenDealias == target.info.widenDealias.finalResultType.widenDealias =>
             val fieldsByAccessors = newMappings(target)
             var accessors = target.info.classSymbol.caseAccessors.filter(_.isGetter) // TODO: when is this filter needed?
@@ -588,7 +591,7 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
         case ddef: DefDef if ddef.symbol.is(Label) =>
           newMappings.get(followCases(ddef.symbol)) match {
             case Some(mappings) =>
-              cpy.DefDef(ddef)(rhs = splitWrites(ddef.rhs, followCases(ddef.symbol)))
+              tpd.cpy.DefDef(ddef)(rhs = splitWrites(ddef.rhs, followCases(ddef.symbol)))
             case _ => ddef
           }
         case a: ValDef if toSplit.contains(a.symbol) =>
@@ -597,7 +600,7 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
           val newFields = newMappings(a.symbol).values.toSet
           Thicket(
             newFields.map(x => ValDef(x.asTerm, defaultValue(x.symbol.info.widenDealias))).toList :::
-              List(cpy.ValDef(a)(rhs = splitWrites(a.rhs, a.symbol))))
+              List(tpd.cpy.ValDef(a)(rhs = splitWrites(a.rhs, a.symbol))))
         case ass: Assign =>
           newMappings.get(ass.lhs.symbol) match {
             case None =>   ass
@@ -685,7 +688,7 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
         }
         val nthenp = dropGoodCastsInStats.transform(thenp)
 
-        cpy.If(t)(thenp = nthenp, elsep = elsep)
+        tpd.cpy.If(t)(thenp = nthenp, elsep = elsep)
       case t => t
     }
     ("dropGoodCasts", BeforeAndAfterErasure, NoVisitor, transformer)
@@ -824,7 +827,7 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
         val nthenp = keepOnlySideEffects(thenp)
         val nelsep = keepOnlySideEffects(elsep)
         if (thenp.isEmpty && elsep.isEmpty) keepOnlySideEffects(cond)
-        else cpy.If(t)(
+        else tpd.cpy.If(t)(
           thenp = nthenp.orElse(if (thenp.isInstanceOf[Literal]) thenp else unitLiteral),
           elsep = nelsep.orElse(if (elsep.isInstanceOf[Literal]) elsep else unitLiteral))
       case Select(rec, _) if
@@ -845,7 +848,7 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
           case t: Literal if t.tpe.derivesFrom(defn.UnitClass) => expr
           case _ => keepOnlySideEffects(expr).orElse(unitLiteral)
         }
-        cpy.Block(bl)(stats2, expr2)
+        tpd.cpy.Block(bl)(stats2, expr2)
       case t: Ident if !t.symbol.is(Method | Lazy) && !t.symbol.info.isInstanceOf[ExprType] =>
         desugarIdent(t) match {
           case Some(t) => t
@@ -914,7 +917,7 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
           case _ => (newStats1, a.expr)
         }
         if (newStats2.nonEmpty)
-          cpy.Block(a)(stats = newStats2, newExpr)
+          tpd.cpy.Block(a)(stats = newStats2, newExpr)
         else newExpr
       case a: DefDef =>
         if (a.symbol.info.finalResultType.derivesFrom(defn.UnitClass) &&
@@ -924,7 +927,7 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
             if (!t.tpe.derivesFrom(defn.UnitClass)) Block(t :: Nil, unitLiteral)
             else t
           }
-          cpy.DefDef(a)(rhs = insertUnit(keepOnlySideEffects(a.rhs)), tpt = TypeTree(defn.UnitType))
+          tpd.cpy.DefDef(a)(rhs = insertUnit(keepOnlySideEffects(a.rhs)), tpt = TypeTree(defn.UnitType))
         } else a
       case t => t
     }
@@ -1120,7 +1123,7 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
           }
 
           if (newStats eq t.stats) t
-          else cpy.Block(t)(newStats, t.expr)
+          else tpd.cpy.Block(t)(newStats, t.expr)
         case tree => tree
       }
 
