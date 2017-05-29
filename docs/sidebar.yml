@@ -5,14 +5,14 @@ sidebar:
       subsection:
         - title: New Types
           subsection:
-            - title: Implicit Function Types
-              url: docs/reference/implicit-function-types.md
             - title: Intersection types
               url: docs/reference/intersection-types.html
             - title: Union types
               url: docs/reference/union-types.html
             - title: Type lambdas
               url: docs/reference/type-lambdas.html
+            - title: Implicit Function Types
+              url: docs/reference/implicit-function-types.md
         - title: Enums
           subsection:
             - title: Enumerations
@@ -21,14 +21,14 @@ sidebar:
               url: docs/reference/adts.html
             - title: Translation
               url: docs/reference/desugarEnums.html
-        - title: Trait Parameters
-          url: docs/reference/trait-parameters.html
-        - title: Multiversal Equality
-          url: docs/reference/multiversal-equality.html
-        - title: Inline
-          url: docs/reference/inline.html
-        - title: Smaller Additions
+        - title: Other New Features
           subsection:
+            - title: Multiversal Equality
+              url: docs/reference/multiversal-equality.html
+            - title: Inline
+              url: docs/reference/inline.html
+            - title: Trait Parameters
+              url: docs/reference/trait-parameters.html
             - title: By-Name Implicits
               url: docs/reference/implicit-by-name-parameters.html
             - title: Auto Parameter Tupling
