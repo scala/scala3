@@ -19,7 +19,7 @@ some JVM's means that it will only be interpreted. So, better not use it
 for benchmarking! Also, if you want to access the command line arguments,
 you need to use an explicit `main` method for that.
 
-    object Hello extends App {
+    object Hello {
       def main(args: Array[String]) =
         println(s"Hello, ${args(0)}")
     }
