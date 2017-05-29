@@ -3,6 +3,10 @@ sidebar:
       url: blog/index.html
     - title: Reference
       subsection:
+        - title: Dropped Features
+          subsection:
+            - title: DelayedInit
+            - url: docs/reference/delayed-init.md
         - title: Implicit Function Types
           url: docs/reference/implicit-function-types.md
         - title: Intersection types
