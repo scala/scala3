@@ -76,6 +76,7 @@ class Compiler {
            new AugmentScala2Traits, // Expand traits defined in Scala 2.11 to simulate old-style rewritings
            new ResolveSuper,        // Implement super accessors and add forwarders to trait methods
            new PrimitiveForwarders, // Add forwarders to trait methods that have a mismatch between generic and primitives
+           new FunctionXXLForwarders, // Add forwarders for FunctionXXL apply method
            new ArrayConstructors),  // Intercept creation of (non-generic) arrays and intrinsify.
       List(new Erasure),            // Rewrite types to JVM model, erasing all type parameters, abstract types and refinements.
       List(new ElimErasedValueType, // Expand erased value types to their underlying implmementation types
