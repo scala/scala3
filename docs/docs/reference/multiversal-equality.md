@@ -20,7 +20,7 @@ a value `y` has type `S` instead of the expected type `T`.
 If all you do with `y` is compare it to other values of type `T`, the program will
 typecheck but probably give unexpected results.
 
-Multiversal equaliy is an opt-in way to make universal equality
+Multiversal equality is an opt-in way to make universal equality
 safer. The idea is that by declaring an `implicit` value one can
 restrict the types that are legal in comparisons. The example above
 would not typecheck if an implicit was declared like this for type `T`
