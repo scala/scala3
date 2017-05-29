@@ -42,6 +42,8 @@ class FirstTransform extends MiniPhaseTransform with InfoTransformer with Annota
 
   private var addCompanionPhases: List[NeedsCompanions] = _
 
+  override def changesMembers = true // the phase adds companion objects
+
   def needsCompanion(cls: ClassSymbol)(implicit ctx: Context) =
     addCompanionPhases.exists(_.isCompanionNeeded(cls))
 

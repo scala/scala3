@@ -349,9 +349,6 @@ object Flags {
   /** A bridge method. Set by Erasure */
   final val Bridge = termFlag(34, "<bridge>")
 
-  /** All class attributes are fully defined */
-  final val FullyCompleted = typeFlag(34, "<fully-completed>")
-
   /** Symbol is a Java varargs bridge */ // (needed?)
   final val VBridge = termFlag(35, "<vbridge>") // TODO remove
 
@@ -374,9 +371,6 @@ object Flags {
 
   /** Denotation is in train of being loaded and completed, used to catch cyclic dependencies */
   final val Touched = commonFlag(48, "<touched>")
-
-  /** Class is not allowed to accept new members because fingerprint of subclass has been taken */
-  final val Frozen = commonFlag(49, "<frozen>")
 
   /** An error symbol */
   final val Erroneous = commonFlag(50, "<is-error>")
@@ -450,7 +444,7 @@ object Flags {
     Module | Package | Deferred | MethodOrHKCommon | Param | ParamAccessor |
     Scala2ExistentialCommon | Mutable.toCommonFlags | Touched | JavaStatic |
     CovariantOrOuter | ContravariantOrLabel | CaseAccessorOrBaseTypeArg |
-    Fresh | Frozen | Erroneous | ImplicitCommon | Permanent | Synthetic |
+    Fresh | Erroneous | ImplicitCommon | Permanent | Synthetic |
     SuperAccessorOrScala2x | Inline
 
   /** Flags guaranteed to be set upon symbol creation, or, if symbol is a top-level
@@ -557,6 +551,9 @@ object Flags {
 
   /** A lazy or deferred value */
   final val LazyOrDeferred = Lazy | Deferred
+
+  /** An accessor or label */
+  final val AccessorOrLabel = Accessor | Label
 
   /** A synthetic or private definition */
   final val SyntheticOrPrivate = Synthetic | Private

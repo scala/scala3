@@ -344,7 +344,7 @@ trait Symbols { this: Context =>
         copy.denot = odenot.copySymDenotation(
           symbol = copy,
           owner = ttmap1.mapOwner(odenot.owner),
-          initFlags = odenot.flags &~ (Frozen | Touched) | Fresh,
+          initFlags = odenot.flags &~ Touched | Fresh,
           info = completer,
           privateWithin = ttmap1.mapOwner(odenot.privateWithin), // since this refers to outer symbols, need not include copies (from->to) in ownermap here.
           annotations = odenot.annotations)
@@ -468,6 +468,8 @@ object Symbols {
           if (this is Module) this.moduleClass.validFor |= InitialPeriod
         }
         else this.owner.asClass.ensureFreshScopeAfter(phase)
+        if (!this.flagsUNSAFE.is(Private))
+          assert(phase.changesMembers, i"$this entered in ${this.owner} at undeclared phase $phase")
         entered
       }
 
@@ -588,27 +590,6 @@ object Symbols {
 
     final def classDenot(implicit ctx: Context): ClassDenotation =
       denot.asInstanceOf[ClassDenotation]
-
-    private var superIdHint: Int = -1
-
-    override def superId(implicit ctx: Context): Int = {
-      val hint = superIdHint
-      if (hint >= 0 && hint <= ctx.lastSuperId && (ctx.classOfId(hint) eq this))
-        hint
-      else {
-        val id = ctx.superIdOfClass get this match {
-          case Some(id) =>
-            id
-          case None =>
-            val id = ctx.nextSuperId
-            ctx.superIdOfClass(this) = id
-            ctx.classOfId(id) = this
-            id
-        }
-        superIdHint = id
-        id
-      }
-    }
 
     override protected def prefixString = "ClassSymbol"
   }

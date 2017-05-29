@@ -49,6 +49,8 @@ class ExtensionMethods extends MiniPhaseTransform with DenotTransformer with Ful
 
   override def runsAfterGroupsOf = Set(classOf[FirstTransform]) // need companion objects to exist
 
+  override def changesMembers = true // the phase adds extension methods
+
   override def transform(ref: SingleDenotation)(implicit ctx: Context): SingleDenotation = ref match {
     case moduleClassSym: ClassDenotation if moduleClassSym is ModuleClass =>
       moduleClassSym.linkedClass match {

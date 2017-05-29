@@ -58,6 +58,8 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer  { thisTran
   /** the following two members override abstract members in Transform */
   override def phaseName: String = "posttyper"
 
+  override def changesMembers = true // the phase adds super accessors and synthetic methods
+
   override def transformPhase(implicit ctx: Context) = thisTransformer.next
 
   protected def newTransformer(implicit ctx: Context): Transformer =

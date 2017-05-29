@@ -53,6 +53,8 @@ class ResolveSuper extends MiniPhaseTransform with IdentityDenotTransformer { th
   override def runsAfter = Set(classOf[ElimByName], // verified empirically, need to figure out what the reason is.
                                classOf[AugmentScala2Traits])
 
+  override def changesMembers = true // the phase adds super accessors and method forwarders
+
   override def transformTemplate(impl: Template)(implicit ctx: Context, info: TransformerInfo) = {
     val cls = impl.symbol.owner.asClass
     val ops = new MixinOps(cls, thisTransform)

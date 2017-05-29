@@ -805,7 +805,7 @@ object Denotations {
               val transformer = ctx.denotTransformers(nextTransformerId)
               //println(s"transforming $this with $transformer")
               try {
-                next = transformer.transform(cur)(ctx.withPhase(transformer)).syncWithParents
+                next = transformer.transform(cur)(ctx.withPhase(transformer))
               } catch {
                 case ex: CyclicReference =>
                   println(s"error while transforming $this") // DEBUG
@@ -817,7 +817,6 @@ object Denotations {
                 next match {
                   case next: ClassDenotation =>
                     assert(!next.is(Package), s"illegal transformation of package denotation by transformer ${ctx.withPhase(transformer).phase}")
-                    next.resetFlag(Frozen)
                   case _ =>
                 }
                 next.insertAfter(cur)

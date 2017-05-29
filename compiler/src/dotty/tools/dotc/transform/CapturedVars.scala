@@ -18,6 +18,9 @@ import SymUtils._
 import collection.{ mutable, immutable }
 import collection.mutable.{ LinkedHashMap, LinkedHashSet, TreeSet }
 
+/** This phase translates variables that are captured in closures to
+ *  heap-allocated refs.
+ */
 class CapturedVars extends MiniPhase with IdentityDenotTransformer { thisTransform =>
   import ast.tpd._
 

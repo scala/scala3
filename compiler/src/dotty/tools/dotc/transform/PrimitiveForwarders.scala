@@ -37,6 +37,8 @@ class PrimitiveForwarders extends MiniPhaseTransform with IdentityDenotTransform
 
   override def runsAfter = Set(classOf[ResolveSuper])
 
+  override def changesMembers = true   // the phase adds primitive forwarders
+
   override def transformTemplate(impl: Template)(implicit ctx: Context, info: TransformerInfo) = {
     val cls = impl.symbol.owner.asClass
     val ops = new MixinOps(cls, thisTransform)
