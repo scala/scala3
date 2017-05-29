@@ -1170,8 +1170,6 @@ object Build {
     settings(commonNonBootstrappedSettings).
     settings(packSettings).
     settings(
-      triggeredMessage in ThisBuild := Watched.clearWhenTriggered,
-      submoduleChecks,
       publishArtifact := false,
       // packMain := Map("dummy" -> "dotty.tools.dotc.Main"),
       packExpandedClasspath := true,
@@ -1189,8 +1187,6 @@ object Build {
     settings(packSettings).
     settings(
       target := baseDirectory.value / "target",                    // override setting in commonBootstrappedSettings
-      triggeredMessage in ThisBuild := Watched.clearWhenTriggered,
-      submoduleChecks,
       publishArtifact := false,
       // packMain := Map("dummy" -> "dotty.tools.dotc.Main"),
       packExpandedClasspath := true,
