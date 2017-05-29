@@ -27,7 +27,7 @@ sidebar:
           url: docs/reference/multiversal-equality.html
         - title: Inline
           url: docs/reference/inline.html
-        - title: Smaller Changes
+        - title: Smaller Additions
           subsection:
             - title: By-Name Implicits
               url: docs/reference/implicit-by-name-parameters.html
@@ -41,6 +41,12 @@ sidebar:
               url: docs/reference/changed/lazy-vals.md
             - title: Structural Types
               url: docs/reference/changed/structural-types.md
+            - title: Type Checking
+              url: docs/reference/changed/type-checking.md
+            - title: Type Inference
+              url: docs/reference/changed/type-inference.md
+            - title: Implicit Resolution
+              url: docs/reference/changed/implicit-resolution.md
         - title: Dropped Features
           subsection:
             - title: DelayedInit
