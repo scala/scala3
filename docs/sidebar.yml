@@ -45,7 +45,7 @@ sidebar:
               url: docs/reference/dropped/existential-types.md
             - title: Type Projection
               url: docs/reference/dropped/type-projection.md
-            - Procedure Syntax
+            - title: Procedure Syntax
               url: docs/reference/dropped/procedure-syntax.md
             - title: Early Initializers
               url: docs/reference/dropped/early-initializers.md
