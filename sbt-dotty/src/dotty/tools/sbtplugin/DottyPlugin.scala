@@ -79,15 +79,15 @@ object DottyPlugin extends AutoPlugin {
     }
   }
 
-  /** Patches the IncOptions so that .tasty files are pruned as needed.
+  /** Patches the IncOptions so that .tasty and .hasTasty files are pruned as needed.
    *
    *  This code is adapted from `scalaJSPatchIncOptions` in Scala.js, which needs
    *  to do the exact same thing but for classfiles.
    *
    *  This complicated logic patches the ClassfileManager factory of the given
-   *  IncOptions with one that is aware of .tasty files emitted by the Dotty
+   *  IncOptions with one that is aware of .tasty and .hasTasty files emitted by the Dotty
    *  compiler. This makes sure that, when a .class file must be deleted, the
-   *  corresponding .tasty file is also deleted.
+   *  corresponding .tasty or .hasTasty file is also deleted.
    */
   def dottyPatchIncOptions(incOptions: IncOptions): IncOptions = {
     val inheritedNewClassfileManager = incOptions.newClassfileManager
@@ -95,11 +95,11 @@ object DottyPlugin extends AutoPlugin {
       private[this] val inherited = inheritedNewClassfileManager()
 
       def delete(classes: Iterable[File]): Unit = {
+        val tastySuffixes = List(".tasty", ".hasTasty")
         inherited.delete(classes flatMap { classFile =>
           val dottyFiles = if (classFile.getPath endsWith ".class") {
-            val f = new File(classFile.getAbsolutePath.stripSuffix(".class") + ".tasty")
-            if (f.exists) List(f)
-            else Nil
+            val prefix = classFile.getAbsolutePath.stripSuffix(".class")
+            tastySuffixes.map(suffix => new File(prefix + suffix)).filter(_.exists)
           } else Nil
           classFile :: dottyFiles
         })
