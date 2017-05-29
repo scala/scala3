@@ -77,7 +77,10 @@ trait SimplifyEquivalences { self: DottyBytecodeTest =>
       """,
       """
          |val t = Tuple2(1, "s")
-         |print(new Some(new Tuple2(t._1, t._2)))
+         |print({
+         |  Tuple2 // TODO: teach Simplify that initializing Tuple2 has no effect
+         |  new Some(new Tuple2(t._1, t._2))
+         |})
       """)
 
   @Test def constantFold =
