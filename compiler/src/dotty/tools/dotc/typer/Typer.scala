@@ -365,10 +365,15 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     checkValue(tree1, pt)
   }
 
-  private def typedSelect(tree: untpd.Select, pt: Type, qual: Tree)(implicit ctx: Context): Select =
-    healNonvariant(
-      checkValue(assignType(cpy.Select(tree)(qual, tree.name), qual), pt),
+  private def typedSelect(tree: untpd.Select, pt: Type, qual: Tree)(implicit ctx: Context): Select = {
+    val r = healNonvariant(
+      checkValue(assignType(cpy.Select(tree)(qual, tree.name), qual), pt), // see note in TypedTreeCopier.select
       pt)
+    if (tree.name.toString == "value" || tree.name.toString == "specializedFor")  {
+      println("Typer typed tree with signature" + r.tpe.signature)
+    }
+    r
+  }
 
   /** Let `tree = p.n` where `p: T`. If tree's type is an unsafe instantiation
    *  (see TypeOps#asSeenFrom for how this can happen), rewrite the prefix `p`

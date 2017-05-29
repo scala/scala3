@@ -89,7 +89,7 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer  { thisTran
     case _ => tree
   }
 
-  class PostTyperTransformer extends Transformer {
+  class PostTyperTransformer extends Transformer(tpd.cpy_slow) {
 
     private var inJavaAnnot: Boolean = false
 
@@ -121,7 +121,7 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer  { thisTran
       val qual = tree.qualifier
       qual.symbol.moduleClass.denot match {
         case pkg: PackageClassDenotation if !tree.symbol.maybeOwner.is(Package) =>
-          transformSelect(cpy.Select(tree)(qual select pkg.packageObj.symbol, tree.name), targs)
+          transformSelect(cpy_slow.Select(tree)(qual select pkg.packageObj.symbol, tree.name), targs)
         case _ =>
           val tree1 = super.transform(tree)
           constToLiteral(tree1) match {
@@ -178,8 +178,10 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer  { thisTran
             Checking.checkRealizable(qual.tpe, qual.pos.focus)
             super.transform(tree)
           }
-          else
-            transformSelect(paramFwd.adaptRef(fixSignature(tree)), Nil)
+          else {
+            super.transform(transformSelect(paramFwd.adaptRef(fixSignature(tree)), Nil))
+          }
+
         case tree: Super =>
           if (ctx.owner.enclosingMethod.isInlineMethod)
             ctx.error(em"super not allowed in inline ${ctx.owner}", tree.pos)
@@ -191,7 +193,7 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer  { thisTran
             case sel: Select =>
               val args1 = transform(args)
               val sel1 = transformSelect(sel, args1)
-              if (superAcc.isProtectedAccessor(sel1)) sel1 else cpy.TypeApply(tree1)(sel1, args1)
+              if (superAcc.isProtectedAccessor(sel1)) sel1 else cpy_slow.TypeApply(tree1)(sel1, args1)
             case _ =>
               super.transform(tree1)
           }
@@ -209,7 +211,7 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer  { thisTran
           //  2. To enable correct pickling (calls can share symbols with the inlined code, which
           //     would trigger an assertion when pickling).
           val callTrace = Ident(call.symbol.topLevelClass.typeRef).withPos(call.pos)
-          cpy.Inlined(tree)(callTrace, transformSub(bindings), transform(expansion))
+          cpy_slow.Inlined(tree)(callTrace, transformSub(bindings), transform(expansion))
         case tree: Template =>
           val saved = parentNews
           parentNews ++= tree.parents.flatMap(newPart)
@@ -250,7 +252,7 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer  { thisTran
           Checking.checkInstantiable(tree.tpe, tree.pos)
           super.transform(tree)
         case tree @ Annotated(annotated, annot) =>
-          cpy.Annotated(tree)(transform(annotated), transformAnnot(annot))
+          cpy_slow.Annotated(tree)(transform(annotated), transformAnnot(annot))
         case tree: AppliedTypeTree =>
           Checking.checkAppliedType(tree)
           super.transform(tree)

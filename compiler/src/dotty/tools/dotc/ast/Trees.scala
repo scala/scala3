@@ -65,6 +65,7 @@ object Trees {
       nextId += 1
       //assert(nextId != 199, this)
       nextId
+
     }
 
     /** A unique identifier for this tree. Used for debugging, and potentially
@@ -73,6 +74,7 @@ object Trees {
     private var myUniqueId: Int = nxId
 
     def uniqueId = myUniqueId
+
 
     /** The type  constructor at the root of the tree */
     type ThisTree[T >: Untyped] <: Tree[T]
