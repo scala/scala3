@@ -24,7 +24,7 @@ import reporting._, reporting.diagnostic.MessageContainer
 import util._
 import interactive._, interactive.InteractiveDriver._
 
-import config.ProjectConfig
+import languageserver.config.ProjectConfig
 
 import lsp4j.services._
 
