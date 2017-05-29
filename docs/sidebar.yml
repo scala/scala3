@@ -7,6 +7,8 @@ sidebar:
           subsection:
             - title: DelayedInit
               url: docs/reference/dropped/delayed-init.md
+            - title: Macros
+              url: docs/reference/dropped/macros.md
         - title: Implicit Function Types
           url: docs/reference/implicit-function-types.md
         - title: Intersection types
