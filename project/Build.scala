@@ -430,7 +430,6 @@ object Build {
           s"""version.number=${version.value}
              |maven.version.number=${version.value}
              |git.hash=${VersionUtil.gitHash}
-             |osgi.version.number=${version.value}-v${dateFormat.format(Calendar.getInstance().getTime)}
              |copyright.string=Copyright 2002-${Calendar.getInstance().get(Calendar.YEAR)}, LAMP/EPFL
            """.stripMargin
 
