@@ -112,7 +112,7 @@ object Test extends TestTrait {
         case _: ExceptionTrait                       => println("ExceptionTrait")
         case e: IOException if e.getMessage == null  => println("IOException")
         case _: NullPointerException | _:IOException => println("NullPointerException | IOException")
-        case `a`                                     => println("`a`")
+//        case `a`                                     => println("`a`")
         case EX                                      => println("EX")
         case e: IllegalArgumentException             => println("IllegalArgumentException")
         case _: ClassCastException                   => println("ClassCastException")
