@@ -3,32 +3,58 @@ sidebar:
       url: blog/index.html
     - title: Reference
       subsection:
-        - title: Implicit Function Types
-          url: docs/reference/implicit-function-types.md
-        - title: Intersection types
-          url: docs/reference/intersection-types.html
-        - title: Union types
-          url: docs/reference/union-types.html
-        - title: Type lambdas
-          url: docs/reference/type-lambdas.html
+        - title: New Types
+          subsection:
+            - title: Implicit Function Types
+              url: docs/reference/implicit-function-types.md
+            - title: Intersection types
+              url: docs/reference/intersection-types.html
+            - title: Union types
+              url: docs/reference/union-types.html
+            - title: Type lambdas
+              url: docs/reference/type-lambdas.html
+        - title: Enums
+          subsection:
+            - title: Enumerations
+              url: docs/reference/enums.html
+            - title: Algebraic Data Types
+              url: docs/reference/adts.html
+            - title: Translation
+              url: docs/reference/desugarEnums.html
         - title: Trait Parameters
           url: docs/reference/trait-parameters.html
-        - title: Enumerations
-          url: docs/reference/enums.html
-        - title: Algebraic Data Types
-          url: docs/reference/adts.html
-        - title: Enum Translation
-          url: docs/reference/desugarEnums.html
-        - title: Multiversal Equality
+         -title: Multiversal Equality
           url: docs/reference/multiversal-equality.html
-        - title: By-Name Implicits
-          url: docs/reference/implicit-by-name-parameters.htmldocs/reference/implicit-by-name-parameters.html
-        - title: Auto Parameter Tupling
-          url: docs/reference/auto-parameter-tupling.html
-        - title: Named Type Arguments
-          url: docs/reference/named-typeargs.html
         - title: Inline
           url: docs/reference/inline.html
+        - title: Smaller Changes
+          subsection:
+            - title: By-Name Implicits
+              url: docs/reference/implicit-by-name-parameters.html
+            - title: Auto Parameter Tupling
+              url: docs/reference/auto-parameter-tupling.html
+            - title: Named Type Arguments
+              url: docs/reference/named-typeargs.html
+        - title: Dropped Features
+          subsection:
+            - title: DelayedInit
+              url: docs/reference/dropped/delayed-init.md
+            - title: Macros
+              url: docs/reference/dropped/macros.md
+            - title: Existential Types
+              url: docs/reference/dropped/existential-types.md
+            - title: Type Projection
+              url: docs/reference/dropped/type-projection.md
+            - Procedure Syntax
+              url: docs/reference/dropped/procedure-syntax.md
+            - title: Early Initializers
+              url: docs/reference/dropped/early-initializers.md
+            - title: Class Shadowing
+              url: docs/reference/dropped/class-shadowing.md
+            - title: Limit 22
+              url: docs/reference/dropped/limit22.md
+            - title: XML literals
+              url: docs/reference/dropped/xml.md
     - title: Usage
       subsection:
         - title: sbt-projects
