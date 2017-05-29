@@ -5,14 +5,14 @@ sidebar:
       subsection:
         - title: New Types
           subsection:
-            - title: Implicit Function Types
-              url: docs/reference/implicit-function-types.md
             - title: Intersection types
               url: docs/reference/intersection-types.html
             - title: Union types
               url: docs/reference/union-types.html
             - title: Type lambdas
               url: docs/reference/type-lambdas.html
+            - title: Implicit Function Types
+              url: docs/reference/implicit-function-types.md
         - title: Enums
           subsection:
             - title: Enumerations
@@ -21,20 +21,36 @@ sidebar:
               url: docs/reference/adts.html
             - title: Translation
               url: docs/reference/desugarEnums.html
-        - title: Trait Parameters
-          url: docs/reference/trait-parameters.html
-        - title: Multiversal Equality
-          url: docs/reference/multiversal-equality.html
-        - title: Inline
-          url: docs/reference/inline.html
-        - title: Smaller Changes
+        - title: Other New Features
           subsection:
+            - title: Multiversal Equality
+              url: docs/reference/multiversal-equality.html
+            - title: Inline
+              url: docs/reference/inline.html
+            - title: Trait Parameters
+              url: docs/reference/trait-parameters.html
             - title: By-Name Implicits
               url: docs/reference/implicit-by-name-parameters.html
             - title: Auto Parameter Tupling
               url: docs/reference/auto-parameter-tupling.html
             - title: Named Type Arguments
               url: docs/reference/named-typeargs.html
+        - title: Changed Features
+          subsection:
+            - title: Volatile Lazy Vals
+              url: docs/reference/changed/lazy-vals.md
+            - title: Structural Types
+              url: docs/reference/changed/structural-types.md
+            - title: Type Checking
+              url: docs/reference/changed/type-checking.md
+            - title: Type Inference
+              url: docs/reference/changed/type-inference.md
+            - title: Implicit Resolution
+              url: docs/reference/changed/implicit-resolution.md
+            - title: Implicit Conversions
+              url: docs/reference/changed/implicit-conversions.md
+            - title: Vararg Patterns
+              url: docs/reference/changed/vararg-patterns.md
         - title: Dropped Features
           subsection:
             - title: DelayedInit

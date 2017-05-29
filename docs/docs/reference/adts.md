@@ -108,7 +108,7 @@ The changes are specified below as deltas with respect to the Scala syntax given
         EnumDef ::=  id ClassConstr [`extends' [ConstrApps]]
                      [nl] `{’ EnumCaseStat {semi EnumCaseStat} `}’
 
-2. Cases of enums are defined as follows:
+ 2. Cases of enums are defined as follows:
 
         EnumCaseStat  ::=  {Annotation [nl]} {Modifier} EnumCase
         EnumCase      ::=  `case' (EnumClassDef | ObjectDef | ids)
