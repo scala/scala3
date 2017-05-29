@@ -205,16 +205,16 @@ class GenBCodePipeline(val entryPoints: List[Symbol], val int: DottyBackendInter
             val dataAttr = new CustomAttr(nme.TASTYATTR.mangledString, binary)
             val store = if (mirrorC ne null) mirrorC else plainC
             store.visitAttribute(dataAttr)
-            val outTastyFile = getFileForClassfile(outF, store.name, ".tasty")
             if (ctx.settings.emitTasty.value) {
+              val outTastyFile = getFileForClassfile(outF, store.name, ".tasty")
               val outstream = new DataOutputStream(outTastyFile.bufferedOutput)
 
               try outstream.write(binary)
               finally outstream.close()
-            } else if (!outTastyFile.isVirtual) {
+            } else {
               // Create an empty file to signal that a tasty section exist in the corresponding .class
               // This is much cheaper and simpler to check than doing classfile parsing
-              outTastyFile.create()
+              getFileForClassfile(outF, store.name, ".hasTasty")
             }
           }
 

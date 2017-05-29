@@ -85,12 +85,13 @@ class InteractiveDriver(settings: List[String]) extends Driver {
               binFile.name.stripSuffix(".class")
             else
               null
+          // Presence of a file with one of these suffixes indicates that the
+          // corresponding class has been pickled with TASTY.
+          val tastySuffixes = List(".hasTasty", ".tasty")
           prefix != null && {
-            val tastyFile = prefix + ".tasty"
             binFile match {
               case pf: PlainFile =>
-                val tastyPath = pf.givenPath.parent / tastyFile
-                tastyPath.exists
+                tastySuffixes.map(suffix => pf.givenPath.parent / (prefix + suffix)).exists(_.exists)
               case _ =>
                 sys.error(s"Unhandled file type: $binFile [getClass = ${binFile.getClass}]")
             }
