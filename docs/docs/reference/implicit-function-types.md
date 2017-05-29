@@ -28,9 +28,9 @@ with the previous definitions,
 
     def g(arg: Contextual[Int]) = ...
 
-    g(22)   // is expanded to g { implicit ctx => 22 }
+    g(22)      // is expanded to g { implicit ctx => 22 }
 
-    g(f)    // is expanded to g { implicit ctx => f(2)(ctx) }
+    g(f(2))    // is expanded to g { implicit ctx => f(2)(ctx) }
 
     g(implicit ctx => f(22)(ctx)) // is left as it is
 
