@@ -1,0 +1,14 @@
+package <empty>.type {
+  import dotty.tools.dotc.core.Decorators._
+  import dotty.tools.dotc.core.NameOps._
+  final lazy module val Test: Test = new Test()
+  @scala.annotation.internal.SourceFile("test.scala") final module class Test()
+     extends
+   java.lang.Object() { this: Test.type => 
+    dotty.tools.dotc.core.NameOps.NameDecorator[
+      dotty.tools.dotc.core.Names.TermName
+    ](dotty.tools.dotc.core.Decorators.PreNamedString("JFunction").toTermName).
+      specializedFor
+    (scala.Nil, scala.Predef.???, scala.Nil, scala.Nil)(scala.Predef.???)
+  }
+}
