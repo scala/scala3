@@ -6,6 +6,7 @@ import Symbols._, Types._, Contexts._, SymDenotations._, DenotTransformers._, Fl
 import util.Positions._
 import SymUtils._
 import StdNames._, NameOps._
+import Decorators._
 
 class MixinOps(cls: ClassSymbol, thisTransform: DenotTransformer)(implicit ctx: Context) {
   import ast.tpd._
@@ -13,6 +14,10 @@ class MixinOps(cls: ClassSymbol, thisTransform: DenotTransformer)(implicit ctx: 
   val superCls: Symbol = cls.superClass
   val mixins: List[ClassSymbol] = cls.mixins
 
+  lazy val JUnit4Annotations: List[Symbol] = List("Test", "Ignore", "Before", "After", "BeforeClass", "AfterClass").
+    map(n => ctx.getClassIfDefined("org.junit." + n)).
+    filter(_.exists)
+  
   def implementation(member: TermSymbol): TermSymbol = {
     val res = member.copy(
       owner = cls,
@@ -59,8 +64,12 @@ class MixinOps(cls: ClassSymbol, thisTransform: DenotTransformer)(implicit ctx: 
     def needsDisambiguation = competingMethods.exists(x=> !(x is Deferred)) // multiple implementations are available
     def hasNonInterfaceDefinition = competingMethods.exists(!_.owner.is(Trait)) // there is a definition originating from class
     meth.is(Method, butNot = PrivateOrAccessorOrDeferred) &&
-    (meth.owner.is(Scala2x) || needsDisambiguation || hasNonInterfaceDefinition ) &&
+    (meth.owner.is(Scala2x) || needsDisambiguation || hasNonInterfaceDefinition || needsJUnit4Fix(meth) ) &&
     isCurrent(meth)
+  }
+
+  private def needsJUnit4Fix(meth: Symbol): Boolean = {
+    meth.annotations.nonEmpty && JUnit4Annotations.exists(annot => annot.exists && meth.hasAnnotation(annot))
   }
 
   /** Get `sym` of the method that needs a forwarder
