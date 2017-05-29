@@ -47,6 +47,8 @@ sidebar:
               url: docs/reference/changed/type-inference.md
             - title: Implicit Resolution
               url: docs/reference/changed/implicit-resolution.md
+            - title: Vararg Patterns
+              url: docs/reference/changed/vararg-patterns.md
         - title: Dropped Features
           subsection:
             - title: DelayedInit
