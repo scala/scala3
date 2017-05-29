@@ -51,6 +51,8 @@ sidebar:
               url: docs/reference/changed/implicit-conversions.html
             - title: Vararg Patterns
               url: docs/reference/changed/vararg-patterns.html
+            - title: Pettern matching
+              url: docs/reference/changed/pattern-matching.html
         - title: Dropped Features
           subsection:
             - title: DelayedInit
