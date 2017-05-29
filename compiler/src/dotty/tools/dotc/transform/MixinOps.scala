@@ -69,7 +69,7 @@ class MixinOps(cls: ClassSymbol, thisTransform: DenotTransformer)(implicit ctx: 
   }
 
   private def needsJUnit4Fix(meth: Symbol): Boolean = {
-    meth.annotations.nonEmpty && JUnit4Annotations.exists(annot => annot.exists && meth.hasAnnotation(annot))
+    meth.annotations.nonEmpty && JUnit4Annotations.exists(annot => meth.hasAnnotation(annot))
   }
 
   /** Get `sym` of the method that needs a forwarder
