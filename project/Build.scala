@@ -1178,4 +1178,24 @@ object Build {
       packResourceDir += (baseDirectory.value / "bin" -> "bin"),
       packArchiveName := "dotty-" + dottyVersion
     )
+
+   // Same as `dist` but using bootstrapped projects.
+  lazy val `dist-bootstrapped` = project.
+    dependsOn(`dotty-interfaces`).
+    dependsOn(`dotty-library-bootstrapped`).
+    dependsOn(`dotty-compiler-bootstrapped`).
+    dependsOn(`dotty-doc-bootstrapped`).
+    settings(commonBootstrappedSettings).
+    settings(packSettings).
+    settings(
+      target := baseDirectory.value / "target",                    // override setting in commonBootstrappedSettings
+      triggeredMessage in ThisBuild := Watched.clearWhenTriggered,
+      submoduleChecks,
+      publishArtifact := false,
+      // packMain := Map("dummy" -> "dotty.tools.dotc.Main"),
+      packExpandedClasspath := true,
+      // packExcludeJars := Seq("scala-library-.*\\.jar"),
+      packResourceDir += (baseDirectory.value / "bin" -> "bin"),
+      packArchiveName := "dotty-" + dottyVersion
+    )
 }
