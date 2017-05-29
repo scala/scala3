@@ -30,7 +30,7 @@ This is a recorded meeting between EPFL and Waterloo, where we introduce how typ
 - (Typelevel Summit Oslo, May 2016) [Dotty and types: the story so far](https://www.youtube.com/watch?v=YIQjfCKDR5A) by 
 Guillaume Martres [\[slides\]](http://guillaume.martres.me/talks/typelevel-summit-oslo/).
 Guillaume focused on some of the practical improvements to the type system that Dotty makes, like the new type parameter 
-inference algorithm that reasone about the type safety of more situations.
+inference algorithm that is able to reason about the type safety of more situations than scalac.
 
 - (flatMap(Oslo) 2016) [AutoSpecialization in Dotty](https://vimeo.com/165928176) by [Dmitry Petrashko](http://twitter.com/darkdimius) [\[slides\]](https://d-d.me/talks/flatmap2016/#/). 
 The Dotty Linker analyses your program and its dependencies to 
@@ -38,12 +38,12 @@ apply a new specialization scheme. It builds on our experience from Specializati
 and drastically reduces the size of the emitted bytecode. And, best of all, it's always enabled, happens behind the 
 scenes without annotations,  and results in speedups in excess of 20x. Additionally, it "just works" on Scala collections.
 
-- (ScalaSphere 2016) [Hacking on Dotty: A live demo](https://www.youtube.com/watch?v=0OOYGeZLHs4) by Guillaume Martres [\[slides\]](http://guillaume.martres.me/talks/dotty-live-demo/) 
+- (ScalaSphere 2016) [Hacking on Dotty: A live demo](https://www.youtube.com/watch?v=0OOYGeZLHs4) by Guillaume Martres [\[slides\]](http://guillaume.martres.me/talks/dotty-live-demo/).
 Guillaume hacks on Dotty: a live demo during which he 
 creates a simple compiler phase to trace method calls at run-time.
 
 - (Scala By the Bay 2016) [Dotty: what is it and how it works](https://www.youtube.com/watch?v=wCFbYu7xEJA) by Guillaume 
-Martres [\[slides\]](http://guillaume.martres.me/talks/dotty-tutorial/#/) Guillaume provides a high-level view of the 
+Martres [\[slides\]](http://guillaume.martres.me/talks/dotty-tutorial/#/). Guillaume provides a high-level view of the 
 compilation-pipeline of Dotty.
 
 - (ScalaDays 2015, Amsterdam) [Making your Scala applications smaller and faster with the Dotty linker](https://www.youtube.com/watch?v=xCeI1ArdXM4) by Dmitry Petrashko [\[slides\]](https://d-d.me/scaladays2015/#/). 
