@@ -35,6 +35,12 @@ sidebar:
               url: docs/reference/auto-parameter-tupling.html
             - title: Named Type Arguments
               url: docs/reference/named-typeargs.html
+        - title: Changed Features
+          subsection:
+            - title: Volatile Lazy Vals
+              url: docs/reference/changed/lazy-vals.md
+            - title: Structural Types
+              url: docs/reference/changed/structural-types.md
         - title: Dropped Features
           subsection:
             - title: DelayedInit
