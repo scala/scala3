@@ -82,7 +82,8 @@ class DocASTPhase extends Phase {
     }
 
 
-    tree match {
+    if (tree.symbol.is(Flags.Synthetic) && !tree.symbol.is(Flags.Module)) NonEntity
+    else tree match {
       /** package */
       case pd @ PackageDef(pid, st) =>
         addPackage(PackageImpl(pd.symbol, annotations(pd.symbol), pd.symbol.showFullName, collectEntityMembers(st), path(pd.symbol)))

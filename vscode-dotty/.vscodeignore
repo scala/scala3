@@ -1,0 +1,10 @@
+## This is used to exclude files from "vsce publish"
+target/**
+.vscode/**
+.vscode-test/**
+out/test/**
+test/**
+src/**
+**/*.map
+.gitignore
+tsconfig.json

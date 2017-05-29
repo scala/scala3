@@ -17,6 +17,7 @@ import Decorators.{PreNamedString, StringInterpolators}
 import classfile.ClassfileParser
 import util.Stats
 import scala.util.control.NonFatal
+import ast.Trees._
 
 object SymbolLoaders {
   /** A marker trait for a completer that replaces the original
@@ -167,9 +168,6 @@ class SymbolLoaders {
         val mangled = name.mangled
         val e = super.lookupEntry(mangled)
         if (e != null) e
-        else if (_sourceModule.initialDenot.name == nme.scala_ && _sourceModule == defn.ScalaPackageVal &&
-                 name.isTypeName && name.isSyntheticFunction)
-          newScopeEntry(defn.newFunctionNTrait(name.asTypeName))
         else if (isFlatName(mangled.toSimpleName) && enterFlatClasses.isDefined) {
           Stats.record("package scopes with flatnames entered")
           enterFlatClasses.get(ctx)
@@ -323,9 +321,14 @@ class ClassfileLoader(val classfile: AbstractFile) extends SymbolLoader {
   override def doComplete(root: SymDenotation)(implicit ctx: Context): Unit =
     load(root)
 
-  def load(root: SymDenotation)(implicit ctx: Context): Option[ClassfileParser.Embedded] = {
+  def load(root: SymDenotation)(implicit ctx: Context): Unit = {
     val (classRoot, moduleRoot) = rootDenots(root.asClass)
-    new ClassfileParser(classfile, classRoot, moduleRoot)(ctx).run()
+    (new ClassfileParser(classfile, classRoot, moduleRoot)(ctx)).run() match {
+      case Some(unpickler: tasty.DottyUnpickler) if ctx.settings.YretainTrees.value =>
+        classRoot.symbol.asClass.unpickler = unpickler
+        moduleRoot.symbol.asClass.unpickler = unpickler
+      case _ =>
+    }
   }
 }
 

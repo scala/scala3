@@ -28,11 +28,22 @@ import io.{ AbstractFile, VirtualFile, File }
 import scala.collection.mutable.ArrayBuffer
 import util.syntax._
 
-case class Site(val root: JFile, val projectTitle: String, val documentation: Map[String, Package]) extends ResourceFinder {
+case class Site(
+  val root: JFile,
+  val projectTitle: String,
+  val projectVersion: String,
+  val projectUrl: String,
+  val documentation: Map[String, Package]
+) extends ResourceFinder {
   /** Documentation serialized to java maps */
   private val docs: JList[_] = {
     import model.JavaConverters._
     documentation.toJavaList
+  }
+
+  private val docsFlattened: JList[_] = {
+    import model.JavaConverters._
+    documentation.flattened
   }
 
   /** All files that are considered static in this context, this can be
@@ -127,9 +138,18 @@ case class Site(val root: JFile, val projectTitle: String, val documentation: Ma
 
       // Copy statics included in resources
       Map(
+        "css/toolbar.css" -> "/css/toolbar.css",
+        "css/search.css" -> "/css/search.css",
+        "css/sidebar.css" -> "/css/sidebar.css",
         "css/api-page.css" -> "/css/api-page.css",
         "css/dottydoc.css" -> "/css/dottydoc.css",
         "css/color-brewer.css" -> "/css/color-brewer.css",
+        "css/font-awesome.min.css" -> "/css/font-awesome.min.css",
+        "css/bootstrap.min.css" -> "/css/bootstrap.min.css",
+        "js/api-search.js" -> "/js/api-search.js",
+        "js/bootstrap.min.js" -> "/js/bootstrap.min.js",
+        "js/jquery.min.js" -> "/js/jquery.min.js",
+        "js/tether.min.js" -> "/js/tether.min.js",
         "js/highlight.pack.js" -> "/js/highlight.pack.js"
       )
       .mapValues(getResource)
@@ -150,7 +170,14 @@ case class Site(val root: JFile, val projectTitle: String, val documentation: Ma
       "../" * (assetLen - rootLen - 1 + additionalDepth) + "."
     }
 
-    DefaultParams(docs, documentation, PageInfo(pathFromRoot), SiteInfo(baseUrl, projectTitle, Array()), sidebar)
+    DefaultParams(
+      docs, docsFlattened, documentation, PageInfo(pathFromRoot),
+      SiteInfo(
+        baseUrl, projectTitle, projectVersion, projectUrl, Array(),
+        root.toString
+      ),
+      sidebar
+    )
   }
 
   /* Creates output directories if allowed */
@@ -188,6 +215,18 @@ case class Site(val root: JFile, val projectTitle: String, val documentation: Ma
       documentation.values.foreach { pkg =>
         genDoc(pkg)
         pkg.children.foreach(genDoc)
+      }
+
+      // generate search page:
+      val target = mkdirs(fs.getPath(outDir.getAbsolutePath +  "/api/search.html"))
+      val searchPageParams = defaultParams(target.toFile, -1).withPosts(blogInfo).toMap
+      val searchPage = new HtmlPage("_layouts/search.html", layouts("search").content, searchPageParams, includes)
+      render(searchPage).foreach { rendered =>
+        Files.copy(
+          new ByteArrayInputStream(rendered.getBytes(StandardCharsets.UTF_8)),
+          target,
+          REPLACE_EXISTING
+        )
       }
     }
 
@@ -254,7 +293,7 @@ case class Site(val root: JFile, val projectTitle: String, val documentation: Ma
     * // given that root is: /some/root
     * ```
     */
-  def stripRoot(f: JFile): String = {
+  def stripRoot(f: JFile, root: JFile = root): String = {
     val rootLen = root.getAbsolutePath.length + 1
     f.getAbsolutePath.drop(rootLen)
   }
@@ -321,7 +360,7 @@ case class Site(val root: JFile, val projectTitle: String, val documentation: Ma
 
     val defaultLayouts: Map[String, Layout] = Map(
       "main" -> "/_layouts/main.html",
-      "sidebar" -> "/_layouts/sidebar.html",
+      "search" -> "/_layouts/search.html",
       "doc-page" -> "/_layouts/doc-page.html",
       "api-page" -> "/_layouts/api-page.html",
       "blog-page" -> "/_layouts/blog-page.html",
@@ -359,7 +398,8 @@ case class Site(val root: JFile, val projectTitle: String, val documentation: Ma
     val defaultIncludes: Map[String, Include] = Map(
       "header.html" -> "/_includes/header.html",
       "scala-logo.svg" -> "/_includes/scala-logo.svg",
-      "toc.html" -> "/_includes/toc.html"
+      "toolbar.html" -> "/_includes/toolbar.html",
+      "sidebar.html" -> "/_includes/sidebar.html"
     ).map {
       case (name, path) =>
         (name, Include(path, stringToSourceFile(name, path, getResource(path))))

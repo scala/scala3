@@ -443,13 +443,19 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     tree.tpt match {
       case templ: untpd.Template =>
         import untpd._
-        templ.parents foreach {
+        var templ1 = templ
+        def isEligible(tp: Type) = tp.exists && !tp.typeSymbol.is(Final)
+        if (templ1.parents.isEmpty &&
+            isFullyDefined(pt, ForceDegree.noBottom) &&
+            isEligible(pt.underlyingClassRef(refinementOK = false)))
+          templ1 = cpy.Template(templ)(parents = untpd.TypeTree(pt) :: Nil)
+        templ1.parents foreach {
           case parent: RefTree =>
             typedAheadImpl(parent, tree => inferTypeParams(typedType(tree), pt))
           case _ =>
         }
         val x = tpnme.ANON_CLASS
-        val clsDef = TypeDef(x, templ).withFlags(Final)
+        val clsDef = TypeDef(x, templ1).withFlags(Final)
         typed(cpy.Block(tree)(clsDef :: Nil, New(Ident(x), Nil)), pt)
       case _ =>
         var tpt1 = typedType(tree.tpt)
@@ -484,7 +490,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
         if (id.name == nme.WILDCARD || id.name == nme.WILDCARD_STAR) ifPat
         else {
           import untpd._
-          typed(Bind(id.name, Typed(Ident(wildName), tree.tpt)).withPos(id.pos), pt)
+          typed(Bind(id.name, Typed(Ident(wildName), tree.tpt)).withPos(tree.pos), pt)
         }
       case _ => ifExpr
     }
@@ -558,7 +564,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
 
         def reassignmentToVal =
           errorTree(cpy.Assign(tree)(lhsCore, typed(tree.rhs, lhs1.tpe.widen)),
-            "reassignment to val")
+            ReassignmentToVal(lhsCore.symbol.name))
 
         def canAssign(sym: Symbol) =
           sym.is(Mutable, butNot = Accessor) ||
@@ -1052,7 +1058,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     val tpt1 = typed(tree.tpt, AnyTypeConstructorProto)(ctx.retractMode(Mode.Pattern))
     val tparams = tpt1.tpe.typeParams
     if (tparams.isEmpty) {
-      ctx.error(ex"${tpt1.tpe} does not take type parameters", tree.pos)
+      ctx.error(TypeDoesNotTakeParameters(tpt1.tpe, tree.args), tree.pos)
       tpt1
     }
     else {
@@ -1108,10 +1114,14 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
   }
 
   def typedTypeBoundsTree(tree: untpd.TypeBoundsTree)(implicit ctx: Context): TypeBoundsTree = track("typedTypeBoundsTree") {
-    val TypeBoundsTree(lo, hi) = desugar.typeBoundsTree(tree)
+    val TypeBoundsTree(lo, hi) = tree
     val lo1 = typed(lo)
     val hi1 = typed(hi)
-    val tree1 = assignType(cpy.TypeBoundsTree(tree)(lo1, hi1), lo1, hi1)
+
+    val lo2 = if (lo1.isEmpty) typed(untpd.TypeTree(hi1.typeOpt.bottomType)) else lo1
+    val hi2 = if (hi1.isEmpty) typed(untpd.TypeTree(lo1.typeOpt.topType)) else hi1
+
+    val tree1 = assignType(cpy.TypeBoundsTree(tree)(lo2, hi2), lo2, hi2)
     if (ctx.mode.is(Mode.Pattern)) {
       // Associate a pattern-bound type symbol with the wildcard.
       // The bounds of the type symbol can be constrained when comparing a pattern type
@@ -1282,7 +1292,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
       case cinfo: MethodType =>
         if (!ctx.erasedTypes) { // after constructors arguments are passed in super call.
           typr.println(i"constr type: $cinfo")
-          ctx.error(em"parameterized $psym lacks argument list", ref.pos)
+          ctx.error(ParameterizedTypeLacksArguments(psym), ref.pos)
         }
         ref
       case _ =>
@@ -1308,40 +1318,52 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
 
     completeAnnotations(cdef, cls)
     val constr1 = typed(constr).asInstanceOf[DefDef]
-    val parentsWithClass = ensureFirstIsClass(parents mapconserve typedParent, cdef.pos.toSynthetic)
+    val parentsWithClass = ensureFirstIsClass(parents mapconserve typedParent, cdef.namePos)
     val parents1 = ensureConstrCall(cls, parentsWithClass)(superCtx)
     val self1 = typed(self)(ctx.outer).asInstanceOf[ValDef] // outer context where class members are not visible
-    val dummy = localDummy(cls, impl)
-    val body1 = typedStats(impl.body, dummy)(inClassContext(self1.symbol))
-    cls.setNoInitsFlags((NoInitsInterface /: body1)((fs, stat) => fs & defKind(stat)))
+    if (self1.tpt.tpe.isError) {
+      // fail fast to avoid typing the body with an error type
+      cdef.withType(UnspecifiedErrorType)
+    } else {
+      val dummy = localDummy(cls, impl)
+      val body1 = typedStats(impl.body, dummy)(inClassContext(self1.symbol))
+      cls.setNoInitsFlags((NoInitsInterface /: body1) ((fs, stat) => fs & defKind(stat)))
 
-    // Expand comments and type usecases
-    cookComments(body1.map(_.symbol), self1.symbol)(localContext(cdef, cls).setNewScope)
+      // Expand comments and type usecases
+      cookComments(body1.map(_.symbol), self1.symbol)(localContext(cdef, cls).setNewScope)
 
-    checkNoDoubleDefs(cls)
-    val impl1 = cpy.Template(impl)(constr1, parents1, self1, body1)
-      .withType(dummy.nonMemberTermRef)
-    checkVariance(impl1)
-    if (!cls.is(AbstractOrTrait) && !ctx.isAfterTyper) checkRealizableBounds(cls.typeRef, cdef.namePos)
-    val cdef1 = assignType(cpy.TypeDef(cdef)(name, impl1), cls)
-    if (ctx.phase.isTyper && cdef1.tpe.derivesFrom(defn.DynamicClass) && !ctx.dynamicsEnabled) {
-      val isRequired = parents1.exists(_.tpe.isRef(defn.DynamicClass))
-      ctx.featureWarning(nme.dynamics.toString, "extension of type scala.Dynamic", isScala2Feature = true,
+      checkNoDoubleDefs(cls)
+      val impl1 = cpy.Template(impl)(constr1, parents1, self1, body1)
+        .withType(dummy.nonMemberTermRef)
+      checkVariance(impl1)
+      if (!cls.is(AbstractOrTrait) && !ctx.isAfterTyper) checkRealizableBounds(cls.typeRef, cdef.namePos)
+      val cdef1 = assignType(cpy.TypeDef(cdef)(name, impl1), cls)
+      if (ctx.phase.isTyper && cdef1.tpe.derivesFrom(defn.DynamicClass) && !ctx.dynamicsEnabled) {
+        val isRequired = parents1.exists(_.tpe.isRef(defn.DynamicClass))
+        ctx.featureWarning(nme.dynamics.toString, "extension of type scala.Dynamic", isScala2Feature = true,
           cls, isRequired, cdef.pos)
+      }
+
+      // Check that phantom lattices are defined in a static object
+      if (cls.classParents.exists(_.classSymbol eq defn.PhantomClass) && !cls.isStaticOwner)
+        ctx.error("only static objects can extend scala.Phantom", cdef.pos)
+
+      // check value class constraints
+      checkDerivedValueClass(cls, body1)
+
+      if (ctx.settings.YretainTrees.value) {
+        cls.myTree = cdef1
+      }
+      cdef1
+
+      // todo later: check that
+      //  1. If class is non-abstract, it is instantiatable:
+      //  - self type is s supertype of own type
+      //  - all type members have consistent bounds
+      // 2. all private type members have consistent bounds
+      // 3. Types do not override classes.
+      // 4. Polymorphic type defs override nothing.
     }
-
-    // check value class constraints
-    checkDerivedValueClass(cls, body1)
-
-    cdef1
-
-    // todo later: check that
-    //  1. If class is non-abstract, it is instantiatable:
-    //  - self type is s supertype of own type
-    //  - all type members have consistent bounds
-    // 2. all private type members have consistent bounds
-    // 3. Types do not override classes.
-    // 4. Polymorphic type defs override nothing.
   }
 
   /** Ensure that the first type in a list of parent types Ps points to a non-trait class.
@@ -1783,7 +1805,6 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
       typr.println(i"adapt overloaded $ref with alternatives ${altDenots map (_.info)}%, %")
       val alts = altDenots map (alt =>
         TermRef.withSigAndDenot(ref.prefix, ref.name, alt.info.signature, alt))
-      def expectedStr = err.expectedTypeStr(pt)
       resolveOverloaded(alts, pt) match {
         case alt :: Nil =>
           adapt(tree.withType(alt), pt, original)
@@ -1791,7 +1812,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
           def noMatches =
             errorTree(tree,
               em"""none of the ${err.overloadedAltsStr(altDenots)}
-                  |match $expectedStr""")
+                  |match ${err.expectedTypeStr(pt)}""")
           def hasEmptyParams(denot: SingleDenotation) = denot.info.paramInfoss == ListOfNil
           pt match {
             case pt: FunProto =>
@@ -1804,10 +1825,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
           }
         case alts =>
           val remainingDenots = alts map (_.denot.asInstanceOf[SingleDenotation])
-          def all = if (remainingDenots.length == 2) "both" else "all"
-          errorTree(tree,
-            em"""Ambiguous overload. The ${err.overloadedAltsStr(remainingDenots)}
-                |$all match $expectedStr""")
+          errorTree(tree, AmbiguousOverload(tree, remainingDenots, pt)(err))
       }
     }
 
@@ -1830,11 +1848,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
         else
           tree
       case _ => tryInsertApplyOrImplicit(tree, pt) {
-        val more = tree match {
-          case Apply(_, _) => " more"
-          case _ => ""
-        }
-        errorTree(tree, em"$methodStr does not take$more parameters")
+        errorTree(tree, MethodDoesNotTakeParameters(tree, methPart(tree).tpe)(err))
       }
     }
 
@@ -1911,11 +1925,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
           }
           else adapt(tpd.Apply(tree, args), pt)
         }
-        if ((pt eq WildcardType) || original.isEmpty) addImplicitArgs(argCtx(tree))
-        else
-          ctx.typerState.tryWithFallback(addImplicitArgs(argCtx(tree))) {
-            adapt(typed(original, WildcardType), pt, EmptyTree)
-          }
+        addImplicitArgs(argCtx(tree))
       case wtp: MethodType if !pt.isInstanceOf[SingletonType] =>
         // Follow proxies and approximate type paramrefs by their upper bound
         // in the current constraint in order to figure out robustly

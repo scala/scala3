@@ -15,4 +15,10 @@ object intersection {
 
   type needsA = A => Nothing
   type needsB = B => Nothing
+
+
+  class C[-T]
+  def f: C[A] & C[B] = ???
+  def g: C[A | B] = f
+  def h: C[A] & C[B] = g
 }

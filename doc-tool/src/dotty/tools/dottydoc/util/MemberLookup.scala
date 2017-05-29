@@ -77,6 +77,8 @@ trait MemberLookup {
       case (x :: xs, _) =>
         if (xs.nonEmpty) globalLookup
         else lookup(entity, packages, "scala." + query)
+      case (Nil, _) =>
+        throw new IllegalArgumentException("`query` cannot be empty")
     }
   }
 

@@ -2,6 +2,7 @@ package dotty.tools.sbtplugin
 
 import sbt._
 import sbt.Keys._
+import sbt.inc.{ ClassfileManager, IncOptions }
 
 object DottyPlugin extends AutoPlugin {
   object autoImport {
@@ -27,7 +28,8 @@ object DottyPlugin extends AutoPlugin {
 
     implicit class DottyCompatModuleID(moduleID: ModuleID) {
       /** If this ModuleID cross-version is a Dotty version, replace it
-       *  by the Scala 2.x version that the Dotty version is retro-compatible with.
+       *  by the Scala 2.x version that the Dotty version is retro-compatible with,
+       *  otherwise do nothing.
        *
        *  This setting is useful when your build contains dependencies that have only
        *  been published with Scala 2.x, if you have:
@@ -46,10 +48,15 @@ object DottyPlugin extends AutoPlugin {
        *  Dotty is released, you should not rely on it.
        */
       def withDottyCompat(): ModuleID =
-        moduleID.cross(CrossVersion.binaryMapped {
-          case version if version.startsWith("0.") => "2.11"
-          case version => version
-        })
+        moduleID.crossVersion match {
+          case _: CrossVersion.Binary =>
+            moduleID.cross(CrossVersion.binaryMapped {
+              case version if version.startsWith("0.") => "2.11"
+              case version => version
+            })
+          case _ =>
+            moduleID
+        }
     }
   }
 
@@ -72,6 +79,37 @@ object DottyPlugin extends AutoPlugin {
     }
   }
 
+  /** Patches the IncOptions so that .tasty files are pruned as needed.
+   *
+   *  This code is adapted from `scalaJSPatchIncOptions` in Scala.js, which needs
+   *  to do the exact same thing but for classfiles.
+   *
+   *  This complicated logic patches the ClassfileManager factory of the given
+   *  IncOptions with one that is aware of .tasty files emitted by the Dotty
+   *  compiler. This makes sure that, when a .class file must be deleted, the
+   *  corresponding .tasty file is also deleted.
+   */
+  def dottyPatchIncOptions(incOptions: IncOptions): IncOptions = {
+    val inheritedNewClassfileManager = incOptions.newClassfileManager
+    val newClassfileManager = () => new ClassfileManager {
+      private[this] val inherited = inheritedNewClassfileManager()
+
+      def delete(classes: Iterable[File]): Unit = {
+        inherited.delete(classes flatMap { classFile =>
+          val dottyFiles = if (classFile.getPath endsWith ".class") {
+            val f = new File(classFile.getAbsolutePath.stripSuffix(".class") + ".tasty")
+            if (f.exists) List(f)
+            else Nil
+          } else Nil
+          classFile :: dottyFiles
+        })
+      }
+
+      def generated(classes: Iterable[File]): Unit = inherited.generated(classes)
+      def complete(success: Boolean): Unit = inherited.complete(success)
+    }
+    incOptions.withNewClassfileManager(newClassfileManager)
+  }
 
   override def projectSettings: Seq[Setting[_]] = {
     Seq(
@@ -93,9 +131,16 @@ object DottyPlugin extends AutoPlugin {
           scalaOrganization.value
       },
 
+      incOptions in Compile := {
+        if (isDotty.value)
+          dottyPatchIncOptions((incOptions in Compile).value)
+        else
+          (incOptions in Compile).value
+      },
+
       scalaBinaryVersion := {
         if (isDotty.value)
-          "0.1" // TODO: Fix sbt so that this isn't needed
+          scalaVersion.value.split("\\.").take(2).mkString(".") // Not needed with sbt >= 0.13.16
         else
           scalaBinaryVersion.value
       }

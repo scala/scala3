@@ -14,7 +14,7 @@ object TreeGen {
   def wrapArrayMethodName(elemtp: Type)(implicit ctx: Context): TermName = {
     val elemCls = elemtp.classSymbol
     if (elemCls.isPrimitiveValueClass) nme.wrapXArray(elemCls.name)
-    else if (elemCls.derivesFrom(defn.ObjectClass) && !elemCls.isPhantomClass) nme.wrapRefArray
+    else if (elemCls.derivesFrom(defn.ObjectClass) && !elemCls.isNotRuntimeClass) nme.wrapRefArray
     else nme.genericWrapArray
   }
 

@@ -6,7 +6,7 @@ package transform
 import java.io._
 
 import scala.io.Source._
-import scala.reflect.io.Directory
+import dotty.tools.io.Directory
 import org.junit.Test
 import reporting.TestReporter
 import vulpix.TestConfiguration

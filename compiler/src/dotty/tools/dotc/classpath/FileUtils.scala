@@ -1,12 +1,12 @@
 /*
  * Copyright (c) 2014 Contributor. All rights reserved.
  */
-package dotty.tools.dotc.classpath
+package dotty.tools
+package dotc.classpath
 
 import java.io.{File => JFile, FileFilter}
 import java.net.URL
-import scala.reflect.internal.FatalError
-import scala.reflect.io.AbstractFile
+import dotty.tools.io.AbstractFile
 
 /**
  * Common methods related to Java files and abstract files used in the context of classpath

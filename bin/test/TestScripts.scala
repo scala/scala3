@@ -17,9 +17,8 @@ class TestScripts {
 
   private def executeScript(script: String): (Int, String) = {
     val sb = new StringBuilder
-    val ret = Process(script) ! ProcessLogger { line => println(line); sb.append(line) }
+    val ret = Process(script) ! ProcessLogger { line => println(line); sb.append(line + "\n") }
     val output = sb.toString
-    println(output) // For CI, otherwise "terminal inactive for 5m0s, build cancelled"
     (ret, output)
   }
 
@@ -59,7 +58,7 @@ class TestScripts {
 
     val (retDotr, dotrOutput) = executeScript("./bin/dotr HelloWorld")
     assert(
-      retDotr == 0 && dotrOutput == "hello world",
+      retDotr == 0 && dotrOutput == "hello world\n",
       s"Running hello world exited with status: $retDotr and output: $dotrOutput"
     )
   }
@@ -93,8 +92,19 @@ class TestScripts {
 
   /** dotc script should work after corrupting .packages */
   @Test def reCreatesPackagesIfNecessary = doUnlessWindows {
-    executeScript("sed -i.old 's/2.1/2.X/' ./.packages") // That's going to replace 2.11 with 2.X1
-    val (retFirstBuild, _) = executeScript("./bin/dotc ./tests/pos/HelloWorld.scala")
+    import java.nio.file.{Paths, Files}
+    import java.nio.charset.StandardCharsets
+    val contents =
+      """|/Users/fixel/Projects/dotty/interfaces/target/dotty-interfaces-0.1.1-bin-SNAPSHOT-X.jar
+         |/Users/fixel/Projects/dotty/compiler/target/scala-2.11/dotty-compiler_2.1X-0.1.1-bin-SNAPSHOT.jar
+         |/Users/fixel/Projects/dotty/library/target/scala-2.11/dotty-library_2.1X-0.1.1-bin-SNAPSHOT.jar
+         |/Users/fixel/Projects/dotty/doc-tool/target/scala-2.11/dotty-doc_2.1X-0.1.1-bin-SNAPSHOT-tests.jar"""
+      .stripMargin
+
+    Files.write(Paths.get("./.packages"), contents.getBytes(StandardCharsets.UTF_8))
+
+    val (retFirstBuild, output) = executeScript("./bin/dotc ./tests/pos/HelloWorld.scala")
+    assert(output.contains(".packages file corrupted"))
     assert(retFirstBuild == 0, "building dotc failed")
   }
 }

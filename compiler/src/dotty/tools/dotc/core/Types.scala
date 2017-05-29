@@ -172,7 +172,44 @@ object Types {
         case _ =>
           false
       }
-      cls == defn.AnyClass || loop(this)
+      loop(this)
+    }
+
+    /** Returns true if the type is a phantom type
+     *   - true if XYZ extends scala.Phantom and this type is upper bounded XYZ.Any
+     *   - false otherwise
+     */
+    final def isPhantom(implicit ctx: Context): Boolean = phantomLatticeType.exists
+
+    /** Returns the top type of the lattice
+     *   - XYX.Any if XYZ extends scala.Phantom and this type is upper bounded XYZ.Any
+     *   - scala.Any otherwise
+     */
+    final def topType(implicit ctx: Context): Type = {
+      val lattice = phantomLatticeType
+      if (lattice.exists) lattice.select(tpnme.Any)
+      else defn.AnyType
+    }
+
+    /** Returns the bottom type of the lattice
+     *   - XYZ.Nothing if XYZ extends scala.Phantom and this type is upper bounded XYZ.Any
+     *   - scala.Nothing otherwise
+     */
+    final def bottomType(implicit ctx: Context): Type = {
+      val lattice = phantomLatticeType
+      if (lattice.exists) lattice.select(tpnme.Nothing)
+      else defn.NothingType
+    }
+
+    /** Returns the type of the phantom lattice (i.e. the prefix of the phantom type)
+      *   - XYZ if XYZ extends scala.Phantom and this type is upper bounded XYZ.Any
+      *   - NoType otherwise
+      */
+    private final def phantomLatticeType(implicit ctx: Context): Type = widen match {
+      case tp: ClassInfo if defn.isPhantomTerminalClass(tp.classSymbol) => tp.prefix
+      case tp: TypeProxy if tp.superType ne this => tp.underlying.phantomLatticeType
+      case tp: AndOrType => tp.tp1.phantomLatticeType
+      case _ => NoType
     }
 
     /** Is this type guaranteed not to have `null` as a value?
@@ -1830,8 +1867,18 @@ object Types {
       }
       else candidate
 
-    override def newLikeThis(prefix: Type)(implicit ctx: Context): TermRef =
-      fixDenot(TermRef.withSig(prefix, name, sig), prefix)
+    override def newLikeThis(prefix: Type)(implicit ctx: Context): TermRef = {
+      // If symbol exists, the new signature is the symbol's signature as seen
+      // from the new prefix, modulo consistency
+      val newSig =
+        if (sig == Signature.NotAMethod || !symbol.exists)
+          sig
+        else
+          sig.updateWith(symbol.info.asSeenFrom(prefix, symbol.owner).signature)
+      if (newSig ne sig)
+        core.println(i"sig change at ${ctx.phase} for $this, pre = $prefix, sig: $sig --> $newSig")
+      fixDenot(TermRef.withSig(prefix, name, newSig), prefix)
+    }
 
     override def shadowed(implicit ctx: Context): NamedType =
       fixDenot(TermRef.withSig(prefix, name.derived(ShadowedName), sig), prefix)

@@ -351,15 +351,17 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {
       /* (Nil, body) means that `body` is the default case
        * It's a bit hacky but it simplifies manipulations.
        */
-      def extractSwitchCase(treeMakers: List[TreeMaker]): (List[Int], BodyTreeMaker) = treeMakers match {
+      def extractSwitchCase(treeMakers: List[TreeMaker]): (List[Int], BodyTreeMaker) = (treeMakers: @unchecked) match {
         // case 5 =>
         case List(IntEqualityTestTreeMaker(intValue), body: BodyTreeMaker) =>
           (List(intValue), body)
 
         // case 5 | 6 =>
         case List(AlternativesTreeMaker(_, alts, _), body: BodyTreeMaker) =>
-          val intValues = alts.map {
-            case List(IntEqualityTestTreeMaker(intValue)) => intValue
+          val intValues = alts.map { alt =>
+            (alt: @unchecked) match {
+              case List(IntEqualityTestTreeMaker(intValue)) => intValue
+            }
           }
           (intValues, body)
 
@@ -1341,8 +1343,10 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {
         tree match {
           case Typed(unapply, _) => apply(unapply, binder)
           case UnApply(unfun, implicits, args) =>
-            val castedBinder = ref(binder).ensureConforms(tree.tpe)
-            val synth = if (implicits.isEmpty) unfun.appliedTo(castedBinder) else unfun.appliedTo(castedBinder).appliedToArgs(implicits)
+            val mt @ MethodType(_) = unfun.tpe.widen
+            val castedBinder = ref(binder).ensureConforms(mt.paramInfos.head)
+            var synth = unfun.appliedTo(castedBinder)
+            if (implicits.nonEmpty) synth = synth.appliedToArgs(implicits)
             new ExtractorCallRegular(alignPatterns(tree, synth.tpe), synth, args, synth.tpe)
         }
       }

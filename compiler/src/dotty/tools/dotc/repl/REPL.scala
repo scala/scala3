@@ -5,7 +5,7 @@ package repl
 import core.Contexts.Context
 import reporting.Reporter
 import io.{AbstractFile, PlainFile, VirtualDirectory}
-import scala.reflect.io.{PlainDirectory, Directory}
+import dotty.tools.io.{PlainDirectory, Directory}
 import java.io.{BufferedReader, File => JFile, FileReader, PrintWriter}
 import java.net.{URL, URLClassLoader}
 

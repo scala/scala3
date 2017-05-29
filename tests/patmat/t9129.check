@@ -1,1 +1,1 @@
-21: Pattern Match Exhaustivity: Two(B2, A2), Two(_, A2)
+21: Pattern Match Exhaustivity: Two(_, A2)

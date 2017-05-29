@@ -1,5 +1,5 @@
 ---
-layout: blog
+layout: blog-page
 title: Multiversal Equality for Scala
 author: Martin Odersky
 authorImg: /images/martin.jpg

@@ -680,6 +680,7 @@ trait Implicits { self: Typer =>
       result match {
         case result: SearchSuccess =>
           result.tstate.commit()
+          implicits.println(i"success: $result")
           implicits.println(i"committing ${result.tstate.constraint} yielding ${ctx.typerState.constraint} ${ctx.typerState.hashesStr}")
           result
         case result: AmbiguousImplicits =>
@@ -742,7 +743,7 @@ trait Implicits { self: Typer =>
       def typedImplicit(cand: Candidate)(implicit ctx: Context): SearchResult = track("typedImplicit") { ctx.traceIndented(i"typed implicit ${cand.ref}, pt = $pt, implicitsEnabled == ${ctx.mode is ImplicitsEnabled}", implicits, show = true) {
         assert(constr eq ctx.typerState.constraint)
         val ref = cand.ref
-        var generated: Tree = tpd.ref(ref).withPos(pos)
+        var generated: Tree = tpd.ref(ref).withPos(pos.startPos)
         if (!argument.isEmpty)
           generated = typedUnadapted(
             untpd.Apply(untpd.TypedSplice(generated), untpd.TypedSplice(argument) :: Nil),

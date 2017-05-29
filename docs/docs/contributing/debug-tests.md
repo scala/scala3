@@ -14,20 +14,20 @@ Both are usually pre-installed on Mac OS and linux distributions.
 
 First, compile the file `tests/debug/while.scala`:
 
-```
-bin/dotc tests/debug/while.scala
+```shell
+$ dotc tests/debug/while.scala
 ```
 
 Second, run the compiled class with debugging enabled (suppose the main class is `Test`):
 
-```
-bin/dotr -d Test
+```shell
+$ dotr -d Test
 ```
 
 Third, start JDB:
 
 ```
-jdb -attach 5005 -sourcepath tests/debug/
+$ jdb -attach 5005 -sourcepath tests/debug/
 ```
 
 You can run `help` for commands that supported by JDB.
@@ -36,7 +36,7 @@ You can run `help` for commands that supported by JDB.
 
 ### 1. Annotate the source code with debug information.
 
-Following file (`tests/debug/while.scala`) is an example of annoated source code:
+Following file (`tests/debug/while.scala`) is an example of annotated source code:
 
 ```Scala
 object Test {
@@ -83,13 +83,13 @@ compiler/test/debug/Gen tests/debug/while.scala > robot
 First, compile the file `tests/debug/while.scala`:
 
 ```
-bin/dotc tests/debug/while.scala
+$ dotc tests/debug/while.scala
 ```
 
 Second, run the compiled class with debugging enabled:
 
 ```
-bin/dotr -d Test
+$ dotr -d Test
 ```
 
 Finally, run the expect script:

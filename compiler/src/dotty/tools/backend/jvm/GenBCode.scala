@@ -25,7 +25,7 @@ import Symbols._
 import Denotations._
 import Phases._
 import java.lang.AssertionError
-import java.io.{FileOutputStream, File => JFile}
+import java.io.{DataOutputStream, File => JFile}
 
 import scala.tools.asm
 import scala.tools.asm.tree._
@@ -33,7 +33,7 @@ import dotty.tools.dotc.util.{DotClass, Positions}
 import tpd._
 import StdNames._
 
-import scala.reflect.io.{AbstractFile, Directory, PlainDirectory}
+import dotty.tools.io.{AbstractFile, Directory, PlainDirectory}
 
 class GenBCode extends Phase {
   def phaseName: String = "genBCode"
@@ -62,10 +62,10 @@ class GenBCodePipeline(val entryPoints: List[Symbol], val int: DottyBackendInter
 
   val sourceFile = ctx.compilationUnit.source
 
-  /** Convert a `scala.reflect.io.AbstractFile` into a
+  /** Convert a `dotty.tools.io.AbstractFile` into a
    *  `dotty.tools.dotc.interfaces.AbstractFile`.
    */
-  private[this] def convertAbstractFile(absfile: scala.reflect.io.AbstractFile): interfaces.AbstractFile =
+  private[this] def convertAbstractFile(absfile: dotty.tools.io.AbstractFile): interfaces.AbstractFile =
     new interfaces.AbstractFile {
       override def name = absfile.name
       override def path = absfile.path
@@ -206,12 +206,16 @@ class GenBCodePipeline(val entryPoints: List[Symbol], val int: DottyBackendInter
             val dataAttr = new CustomAttr(nme.TASTYATTR.mangledString, binary)
             val store = if (mirrorC ne null) mirrorC else plainC
             store.visitAttribute(dataAttr)
+            val outTastyFile = getFileForClassfile(outF, store.name, ".tasty")
             if (ctx.settings.emitTasty.value) {
-              val outTastyFile = getFileForClassfile(outF, store.name, ".tasty").file
-              val fos = new FileOutputStream(outTastyFile, false)
-              fos.write(binary)
-              fos.close()
+              val outstream = new DataOutputStream(outTastyFile.bufferedOutput)
 
+              try outstream.write(binary)
+              finally outstream.close()
+            } else if (!outTastyFile.isVirtual) {
+              // Create an empty file to signal that a tasty section exist in the corresponding .class
+              // This is much cheaper and simpler to check than doing classfile parsing
+              outTastyFile.create()
             }
           }
 

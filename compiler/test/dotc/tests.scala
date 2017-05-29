@@ -8,7 +8,7 @@ import org.junit.{Before, Test}
 import org.junit.Assert._
 
 import java.io.{ File => JFile }
-import scala.reflect.io.Directory
+import dotty.tools.io.Directory
 import scala.io.Source
 
 /** WARNING
@@ -105,7 +105,7 @@ class tests extends CompilerTest {
   val libDir = "../library/src/"
 
   def dottyBootedLib = compileDir(libDir, ".", List("-deep", "-Ycheck-reentrant", "-strict") ::: defaultOptions)(allowDeepSubtypes) // note the -deep argument
-  def dottyDependsOnBootedLib = compileDir(dottyDir, ".", List("-deep", "-Ycheck-reentrant", "-strict") ::: defaultOptions)(allowDeepSubtypes) // note the -deep argument
+  def dottyDependsOnBootedLib = compileDir(dottyDir, ".", List("-deep", "-Ycheck-reentrant") ::: defaultOptions)(allowDeepSubtypes) // note the -deep argument
 
   @Before def cleanup(): Unit = {
     // remove class files from stdlib and tests compilation

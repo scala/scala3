@@ -20,11 +20,10 @@ CompilerMain=dotty.tools.dotc.Main
 FromTasty=dotty.tools.dotc.FromTasty
 ReplMain=dotty.tools.dotc.repl.Main
 
-if [ ! -f "$SCALA_LIBRARY_JAR" -o ! -f "$SCALA_REFLECT_JAR"  -o ! -f "$SCALA_ASM_JAR" -o ! -f "$SBT_INTERFACE_JAR" ]
+if [ ! -f "$SCALA_LIBRARY_JAR" -o ! -f "$SCALA_ASM_JAR" -o ! -f "$SBT_INTERFACE_JAR" ]
 then
   echo To use this script please set
   echo SCALA_LIBRARY_JAR to point to scala-library-$SCALA_VERSION.jar "(currently $SCALA_LIBRARY_JAR)"
-  echo SCALA_REFLECT_JAR to point to scala-reflect-$SCALA_VERSION.jar "(currently $SCALA_REFLECT_JAR)"
   echo SCALA_ASM_JAR to point to scala-asm-$SCALA_ASM_VERSION.jar "(currently $SCALA_ASM_JAR)"
   echo SBT_INTERFACE_JAR to point to interface-$SBT_VERSION.jar "(currently $SBT_INTERFACE_JAR)"
 fi
@@ -116,9 +115,9 @@ trap onExit INT
 classpathArgs () {
   if [[ "true" == "$bootstrapped" ]]; then
     check_jar "dotty-bootstrapped" "$DOTTY_JAR" "target" 'build_jar "test:runMain dotc.build" target' &> /dev/null
-    toolchain="$DOTTY_JAR:$DOTTY_LIB_JAR:$SCALA_LIBRARY_JAR:$SCALA_REFLECT_JAR:$SCALA_ASM_JAR:$SBT_INTERFACE_JAR"
+    toolchain="$DOTTY_JAR:$DOTTY_LIB_JAR:$SCALA_LIBRARY_JAR:$SCALA_ASM_JAR:$SBT_INTERFACE_JAR"
   else
-    toolchain="$SCALA_LIBRARY_JAR:$DOTTY_LIB_JAR:$SCALA_REFLECT_JAR:$SCALA_ASM_JAR:$SBT_INTERFACE_JAR"
+    toolchain="$SCALA_LIBRARY_JAR:$DOTTY_LIB_JAR:$SCALA_ASM_JAR:$SBT_INTERFACE_JAR"
   fi
   bcpJars="$INTERFACES_JAR:$MAIN_JAR:$DOTTY_LIB_JAR"
   cpJars="$INTERFACES_JAR:$MAIN_JAR:$DOTTY_LIB_JAR:$TEST_JAR"

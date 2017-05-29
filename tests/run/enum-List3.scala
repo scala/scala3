@@ -1,6 +1,6 @@
 enum List[+T] {
-  case Cons(x: T, xs: List[T])
-  case Nil extends List[Nothing]
+  case Cons[T](x: T, xs: List[T])
+  case Nil
 }
 object Test {
   import List._

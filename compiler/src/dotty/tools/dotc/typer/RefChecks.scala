@@ -97,7 +97,8 @@ object RefChecks {
       def checkSelfConforms(other: TypeRef, category: String, relation: String) = {
         val otherSelf = other.givenSelfType.asSeenFrom(cls.thisType, other.classSymbol)
         if (otherSelf.exists && !(cinfo.selfType <:< otherSelf))
-          ctx.error(ex"$category: self type ${cinfo.selfType} of $cls does not conform to self type $otherSelf of $relation ${other.classSymbol}", cls.pos)
+          ctx.error(DoesNotConformToSelfType(category, cinfo.selfType, cls, otherSelf, relation, other.classSymbol),
+            cls.pos)
       }
       for (parent <- cinfo.classParents)
         checkSelfConforms(parent, "illegal inheritance", "parent")
@@ -774,6 +775,7 @@ class RefChecks extends MiniPhase { thisTransformer =>
 
   import tpd._
   import reporting.diagnostic.messages.ForwardReferenceExtendsOverDefinition
+  import dotty.tools.dotc.reporting.diagnostic.messages.UnboundPlaceholderParameter
 
   override def phaseName: String = "refchecks"
 
@@ -796,12 +798,19 @@ class RefChecks extends MiniPhase { thisTransformer =>
     override def transformValDef(tree: ValDef)(implicit ctx: Context, info: TransformerInfo) = {
       checkDeprecatedOvers(tree)
       val sym = tree.symbol
-      if (sym.exists && sym.owner.isTerm && !sym.is(Lazy))
-        currentLevel.levelAndIndex.get(sym) match {
-          case Some((level, symIdx)) if symIdx <= level.maxIndex =>
-            ctx.error(ForwardReferenceExtendsOverDefinition(sym, level.refSym), level.refPos)
+      if (sym.exists && sym.owner.isTerm) {
+        tree.rhs match {
+          case Ident(nme.WILDCARD) => ctx.error(UnboundPlaceholderParameter(), sym.pos)
           case _ =>
         }
+        if (!sym.is(Lazy)) {
+          currentLevel.levelAndIndex.get(sym) match {
+            case Some((level, symIdx)) if symIdx <= level.maxIndex =>
+              ctx.error(ForwardReferenceExtendsOverDefinition(sym, level.refSym), level.refPos)
+            case _ =>
+          }
+        }
+      }
       tree
     }
 

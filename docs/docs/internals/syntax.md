@@ -335,8 +335,7 @@ TmplDef           ::=  ([‘case’ | `enum'] ‘class’ | trait’) ClassDef
                     |  `enum' EnumDef
 ClassDef          ::=  id ClassConstr TemplateOpt                               ClassDef(mods, name, tparams, templ)
 ClassConstr       ::=  [ClsTypeParamClause] [ConstrMods] ClsParamClauses         with DefDef(_, <init>, Nil, vparamss, EmptyTree, EmptyTree) as first stat
-ConstrMods        ::=  AccessModifier
-                    |  Annotation {Annotation} (AccessModifier | ‘this’)
+ConstrMods        ::=  {Annotation} [AccessModifier]
 ObjectDef         ::=  id TemplateOpt                                           ModuleDef(mods, name, template)  // no constructor
 EnumDef           ::=  id ClassConstr [`extends' [ConstrApps]]                  EnumDef(mods, name, tparams, template)
                        [nl] ‘{’ EnumCaseStat {semi EnumCaseStat} ‘}’

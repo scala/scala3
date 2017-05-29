@@ -107,6 +107,7 @@ case class SourceFile(file: AbstractFile, content: Array[Char]) extends interfac
    */
   def offsetToLine(offset: Int): Int = {
     lastLine = Util.bestFit(lineIndices, lineIndices.length, offset, lastLine)
+    if (offset >= length) lastLine -= 1 // compensate for the sentinel
     lastLine
   }
 
@@ -129,10 +130,21 @@ case class SourceFile(file: AbstractFile, content: Array[Char]) extends interfac
     var idx = startOfLine(offset)
     var col = 0
     while (idx != offset) {
-      col += (if (content(idx) == '\t') (tabInc - col) % tabInc else 1)
+      col += (if (idx < length && content(idx) == '\t') (tabInc - col) % tabInc else 1)
       idx += 1
     }
     col
+  }
+
+  /** The padding of the column corresponding to `offset`, includes tabs */
+  def startColumnPadding(offset: Int): String = {
+    var idx = startOfLine(offset)
+    val pad = new StringBuilder
+    while (idx != offset) {
+      pad.append(if (idx < length && content(idx) == '\t') '\t' else ' ')
+      idx += 1
+    }
+    pad.result()
   }
 
   override def toString = file.toString

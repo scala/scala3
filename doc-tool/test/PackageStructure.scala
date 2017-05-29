@@ -60,14 +60,8 @@ class PackageStructure extends DottyDocTest {
       """.stripMargin)
 
     checkSources(source1 :: source2 :: Nil) { packages =>
-      packages("scala") match {
-        case PackageImpl(
-          _,
-          _,
-          "scala",
-          List(PackageImpl(_, _, "scala.collection", List(tA, tB), _, _, _, _)),
-          _, _, _, _
-        ) =>
+      packages("scala.collection") match {
+        case PackageImpl(_, _, "scala.collection", List(tA, tB), _, _, _, _) =>
           assert(
             tA.name == "A" && tB.name == "B",
             s"trait A had name '${tA.name}' and trait B had name '${tB.name}'"

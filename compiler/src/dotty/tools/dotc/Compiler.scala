@@ -52,6 +52,7 @@ class Compiler {
       List(new FirstTransform,      // Some transformations to put trees into a canonical form
            new CheckReentrant),     // Internal use only: Check that compiled program has no data races involving global vars
       List(new CheckStatic,         // Check restrictions that apply to @static members
+           new CheckPhantomCast,    // Checks that no Phantom types in are in casts
            new ElimRepeated,        // Rewrite vararg parameters and arguments
            new RefChecks,           // Various checks mostly related to abstract members and overriding
            new NormalizeFlags,      // Rewrite some definition flags
@@ -135,7 +136,7 @@ class Compiler {
     val start = bootstrap.fresh
       .setOwner(defn.RootClass)
       .setTyper(new Typer)
-      .setMode(Mode.ImplicitsEnabled)
+      .addMode(Mode.ImplicitsEnabled)
       .setTyperState(new MutableTyperState(ctx.typerState, ctx.typerState.reporter, isCommittable = true))
       .setFreshNames(new FreshNameCreator.Default)
     ctx.initialize()(start) // re-initialize the base context with start

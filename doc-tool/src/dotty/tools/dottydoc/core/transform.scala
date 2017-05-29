@@ -53,6 +53,11 @@ object transform {
         pack <- rootPackages(ctx.docbase.packages)
         transformed =  performPackageTransform(pack)
       } yield ctx.docbase.packagesMutable(pack.name) = transformed
+
+      ctx.docbase.packagesMutable.foreach { case (key, value) =>
+        if (value eq NonEntity) ctx.docbase.packagesMutable -= key
+      }
+
       units
     }
 

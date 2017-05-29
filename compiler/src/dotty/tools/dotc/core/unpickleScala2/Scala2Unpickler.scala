@@ -467,16 +467,13 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
 
     def finishSym(sym: Symbol): Symbol = {
       if (sym.isClass) sym.setFlag(Scala2x)
-      val owner = sym.owner
-      if (owner.isClass &&
-          !(  isUnpickleRoot(sym)
-           || (sym is Scala2Existential)
-           || isRefinementClass(sym)
-           )
-         )
-        owner.asClass.enter(sym, symScope(owner))
-      else if (isRefinementClass(owner))
-        symScope(owner).openForMutations.enter(sym)
+      if (!(isRefinementClass(sym) || isUnpickleRoot(sym) || (sym is Scala2Existential))) {
+        val owner = sym.owner
+        if (owner.isClass)
+          owner.asClass.enter(sym, symScope(owner))
+        else if (isRefinementClass(owner))
+          symScope(owner).openForMutations.enter(sym)
+      }
       sym
     }
 
@@ -560,6 +557,12 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
                 // we need the checkNonCyclic call to insert LazyRefs for F-bounded cycles
               else if (!denot.is(Param)) tp1.underlyingIfRepeated(isJava = false)
               else tp1
+
+            if (!denot.isType) { // Only terms might have leaky aliases, see the documentation of `checkNoPrivateLeaks`
+              val sym = denot.symbol
+              denot.info = ctx.typeAssigner.avoidPrivateLeaks(sym, sym.pos)
+            }
+
             if (denot.isConstructor) addConstructorTypeParams(denot)
             if (atEnd) {
               assert(!denot.isSuperAccessor, denot)

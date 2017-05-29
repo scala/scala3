@@ -37,25 +37,6 @@ object DesugarEnums {
        }
     )
 
-  /** Type parameters reconstituted from the constructor
-   *  of the `enum' class corresponding to an enum case.
-   *  The variance is the same as the corresponding type parameter of the enum class.
-   */
-  def reconstitutedEnumTypeParams(pos: Position)(implicit ctx: Context) = {
-    val tparams = enumClass.primaryConstructor.info match {
-      case info: PolyType =>
-        ctx.newTypeParams(ctx.newLocalDummy(enumClass), info.paramNames, EmptyFlags, info.instantiateBounds)
-      case _ =>
-        Nil
-    }
-    (tparams, enumClass.typeParams).zipped.map { (tparam, ecTparam) =>
-      val tbounds = new DerivedFromParamTree
-      tbounds.pushAttachment(OriginalSymbol, tparam)
-      TypeDef(tparam.name, tbounds)
-        .withFlags(Param | PrivateLocal | ecTparam.flags & VarianceFlags).withPos(pos)
-    }
-  }
-
   /** A reference to the enum class `E`, possibly followed by type arguments.
    *  Each covariant type parameter is approximated by its lower bound.
    *  Each contravariant type parameter is approximated by its upper bound.

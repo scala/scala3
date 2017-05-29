@@ -22,8 +22,6 @@ import dotty.tools.dotc.transform.TreeTransforms.{MiniPhaseTransform, Transforme
 import dotty.tools.dotc.transform.linker.callgraph.{CallGraph, OuterTargs, SubstituteByParentMap}
 
 import scala.collection.mutable
-import scala.reflect.internal.util.Collections
-
 
 object OuterSpecializer {
   def isPhaseRequired(implicit ctx: Context): Boolean =
@@ -560,8 +558,8 @@ class OuterSpecializer extends MiniPhaseTransform with InfoTransformer {
       def rhsFn(tparams: List[Type])(vparamss: List[List[Tree]]) = {
         val prefix = This(claz).select(old).appliedToTypes(tparams)
         val argTypess = prefix.tpe.widen.paramInfoss
-        val argss = Collections.map2(vparamss, argTypess) { (vparams, argTypes) =>
-          Collections.map2(vparams, argTypes) { (vparam, argType) => vparam.ensureConforms(argType) }
+        val argss = (vparamss zip argTypess).map { case (vparams, argTypes) =>
+          (vparams zip argTypes).map { case (vparam, argType) => vparam.ensureConforms(argType) }
         }
         prefix.appliedToArgss(argss).ensureConforms(nw.info.finalResultType)
       }

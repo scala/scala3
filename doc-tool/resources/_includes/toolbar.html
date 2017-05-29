@@ -1,0 +1,20 @@
+<div id="toolbar">
+    <a id="home-button" href="{{ site.baseurl }}/index.html">
+        {% include "scala-logo.svg" %}
+    </a>
+    <div id="project-details">
+        <h1 id="project-name"><a href="{{ site.baseurl }}/docs/">{{ site.project }} Documentation</a></h1>
+        <h2 id="project-version">{{ site.version }}</h2>
+    </div>
+
+    {% if site.projectUrl %}
+    <a title="Project repository" id="github-link" href="{{ site.projectUrl }}">
+        {% if site.projectUrl contains "github" %}
+        <i class="fa fa-github" aria-hidden="true"></i>
+        {% else %}
+        <i class="fa fa-code" aria-hidden="true"></i>
+        {% endif %}
+    </a>
+    {% endif %}
+</div>
+<div id="toolbar-spacing"></div>

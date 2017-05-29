@@ -108,16 +108,17 @@ class Definitions {
    *        def apply(implicit $x0: T0, ..., $x{N_1}: T{N-1}): R
    *      }
    */
-  def newFunctionNTrait(name: TypeName) = {
+  def newFunctionNTrait(name: TypeName): ClassSymbol = {
     val completer = new LazyType {
       def complete(denot: SymDenotation)(implicit ctx: Context): Unit = {
         val cls = denot.asClass.classSymbol
         val decls = newScope
         val arity = name.functionArity
+        val paramNamePrefix = tpnme.scala_ ++ str.NAME_JOIN ++ name ++ str.EXPAND_SEPARATOR
         val argParams =
-          for (i <- List.range(0, arity)) yield
-            enterTypeParam(cls, name ++ "$T" ++ i.toString, Contravariant, decls)
-        val resParam = enterTypeParam(cls, name ++ "$R", Covariant, decls)
+          for (i <- List.range(1, arity + 1)) yield
+            enterTypeParam(cls, paramNamePrefix ++ "T" ++ i.toString, Contravariant, decls)
+        val resParam = enterTypeParam(cls, paramNamePrefix ++ "R", Covariant, decls)
         val (methodType, parentTraits) =
           if (name.firstPart.startsWith(str.ImplicitFunction)) {
             val superTrait =
@@ -189,7 +190,14 @@ class Definitions {
 
   lazy val ScalaPackageVal = ctx.requiredPackage("scala")
   lazy val ScalaMathPackageVal = ctx.requiredPackage("scala.math")
-  lazy val ScalaPackageClass = ScalaPackageVal.moduleClass.asClass
+  lazy val ScalaPackageClass = {
+    val cls = ScalaPackageVal.moduleClass.asClass
+    cls.info.decls.openForMutations.useSynthesizer(
+      name => ctx =>
+        if (name.isTypeName && name.isSyntheticFunction) newFunctionNTrait(name.asTypeName)
+        else NoSymbol)
+    cls
+  }
   lazy val JavaPackageVal = ctx.requiredPackage("java")
   lazy val JavaLangPackageVal = ctx.requiredPackage("java.lang")
   // fundamental modules
@@ -830,7 +838,7 @@ class Definitions {
   lazy val UnqualifiedOwnerTypes: Set[NamedType] =
     RootImportTypes.toSet[NamedType] ++ RootImportTypes.map(_.symbol.moduleClass.typeRef)
 
-  lazy val PhantomClasses = Set[Symbol](AnyClass, AnyValClass, NullClass, NothingClass)
+  lazy val NotRuntimeClasses = Set[Symbol](AnyClass, AnyValClass, NullClass, NothingClass)
 
   /** Classes that are known not to have an initializer irrespective of
    *  whether NoInits is set. Note: FunctionXXLClass is in this set
@@ -842,7 +850,7 @@ class Definitions {
    *  trait gets screwed up. Therefore, it is mandatory that FunctionXXL
    *  is treated as a NoInit trait.
    */
-  lazy val NoInitClasses = PhantomClasses + FunctionXXLClass
+  lazy val NoInitClasses = NotRuntimeClasses + FunctionXXLClass
 
   def isPolymorphicAfterErasure(sym: Symbol) =
      (sym eq Any_isInstanceOf) || (sym eq Any_asInstanceOf)
@@ -946,7 +954,8 @@ class Definitions {
     NullClass,
     NothingClass,
     SingletonClass,
-    EqualsPatternClass)
+    EqualsPatternClass,
+    PhantomClass)
 
   lazy val syntheticCoreClasses = syntheticScalaClasses ++ List(
     EmptyPackageVal,
@@ -973,4 +982,29 @@ class Definitions {
       _isInitialized = true
     }
   }
+
+  // ----- Phantoms ---------------------------------------------------------
+
+  lazy val PhantomClass: ClassSymbol = {
+    val cls = completeClass(enterCompleteClassSymbol(ScalaPackageClass, tpnme.Phantom, NoInitsTrait, List(AnyType)))
+
+    val any = enterCompleteClassSymbol(cls, tpnme.Any, Protected | Final | NoInitsTrait, Nil)
+    val nothing = enterCompleteClassSymbol(cls, tpnme.Nothing, Protected | Final | NoInitsTrait, List(any.typeRef))
+    enterMethod(cls, nme.assume_, MethodType(Nil, nothing.typeRef), Protected | Final | Method)
+
+    cls
+  }
+  lazy val Phantom_AnyClass = PhantomClass.unforcedDecls.find(_.name eq tpnme.Any).asClass
+  lazy val Phantom_NothingClass = PhantomClass.unforcedDecls.find(_.name eq tpnme.Nothing).asClass
+  lazy val Phantom_assume = PhantomClass.unforcedDecls.find(_.name eq nme.assume_)
+
+  /** If the symbol is of the class scala.Phantom.Any or scala.Phantom.Nothing */
+  def isPhantomTerminalClass(sym: Symbol) = (sym eq Phantom_AnyClass) || (sym eq Phantom_NothingClass)
+
+
+  lazy val ErasedPhantomType: TypeRef = ctx.requiredClassRef("dotty.runtime.ErasedPhantom")
+  def ErasedPhantomClass(implicit ctx: Context) = ErasedPhantomType.symbol.asClass
+
+  def ErasedPhantom_UNIT(implicit ctx: Context) = ErasedPhantomClass.linkedClass.requiredValue("UNIT")
+
 }

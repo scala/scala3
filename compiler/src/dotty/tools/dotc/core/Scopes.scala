@@ -39,6 +39,12 @@ object Scopes {
    */
   private final val MaxRecursions = 1000
 
+  /** A function that optionally produces synthesized symbols with
+   *  the given name in the given context. Returns `NoSymbol` if the
+   *  no symbol should be synthesized for the given name.
+   */
+  type SymbolSynthesizer = Name => Context => Symbol
+
   class ScopeEntry private[Scopes] (val name: Name, _sym: Symbol, val owner: Scope) {
 
     var sym: Symbol = _sym
@@ -204,6 +210,12 @@ object Scopes {
      */
     private var elemsCache: List[Symbol] = null
 
+    /** The synthesizer to be used, or `null` if no synthesis is done on this scope */
+    private var synthesize: SymbolSynthesizer = null
+
+    /** Use specified synthesize for this scope */
+    def useSynthesizer(s: SymbolSynthesizer): Unit = synthesize = s
+
     protected def newScopeLikeThis() = new MutableScope()
 
     /** Clone scope, taking care not to force the denotations of any symbols in the scope.
@@ -220,6 +232,7 @@ object Scopes {
         val e = entries(i)
         scope.newScopeEntry(e.name, e.sym)
       }
+      scope.synthesize = synthesize
       scope
     }
 
@@ -350,7 +363,11 @@ object Scopes {
           e = e.prev
         }
       }
-      e
+      if ((e eq null) && (synthesize != null)) {
+        val sym = synthesize(name)(ctx)
+        if (sym.exists) newScopeEntry(sym) else e
+      }
+      else e
     }
 
     /** lookup next entry with same name as this one */

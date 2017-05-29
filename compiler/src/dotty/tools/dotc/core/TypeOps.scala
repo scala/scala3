@@ -314,11 +314,14 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
       case _ =>
         tpe
     }
-    tpe.prefix match {
-      case pre: ThisType if pre.cls is Package => tryInsert(pre.cls)
-      case pre: TermRef if pre.symbol is Package => tryInsert(pre.symbol.moduleClass)
-      case _ => tpe
-    }
+    if (tpe.symbol.isRoot)
+      tpe
+    else
+      tpe.prefix match {
+        case pre: ThisType if pre.cls is Package => tryInsert(pre.cls)
+        case pre: TermRef if pre.symbol is Package => tryInsert(pre.symbol.moduleClass)
+        case _ => tpe
+      }
   }
 
   /** Normalize a list of parent types of class `cls` that may contain refinements
@@ -346,6 +349,8 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
             if (prevInfo == null) tp.refinedInfo else prevInfo & tp.refinedInfo)
           formals = formals.updated(name, tp1.typeParamNamed(name))
           normalizeToRef(tp1)
+        case tp @ RefinedType(tp1, _: TermName, _) =>
+            normalizeToRef(tp1)
         case _: ErrorType =>
           defn.AnyType
         case AnnotatedType(tpe, _) =>

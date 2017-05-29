@@ -28,6 +28,7 @@ import ValueClasses._
 import TypeUtils._
 import ExplicitOuter._
 import core.Mode
+import core.PhantomErasure
 
 class Erasure extends Phase with DenotTransformer { thisTransformer =>
 
@@ -233,9 +234,7 @@ object Erasure extends TypeTestsCasts{
      *  in ExtensionMethods#transform.
      */
     def cast(tree: Tree, pt: Type)(implicit ctx: Context): Tree = {
-      // TODO: The commented out assertion fails for tailcall/t6574.scala
-      //       Fix the problem and enable the assertion.
-      // assert(!pt.isInstanceOf[SingletonType], pt)
+      assert(!pt.isInstanceOf[SingletonType], pt)
       if (pt isRef defn.UnitClass) unbox(tree, pt)
       else (tree.tpe, pt) match {
         case (JavaArrayType(treeElem), JavaArrayType(ptElem))
@@ -454,6 +453,8 @@ object Erasure extends TypeTestsCasts{
       val Apply(fun, args) = tree
       if (fun.symbol == defn.cbnArg)
         typedUnadapted(args.head, pt)
+      else if (fun.symbol eq defn.Phantom_assume)
+        PhantomErasure.erasedAssume
       else typedExpr(fun, FunProto(args, pt, this)) match {
         case fun1: Apply => // arguments passed in prototype were already passed
           fun1
@@ -597,7 +598,7 @@ object Erasure extends TypeTestsCasts{
       val stats1 =
         if (takesBridges(ctx.owner)) new Bridges(ctx.owner.asClass).add(stats)
         else stats
-      super.typedStats(stats1, exprOwner)
+      super.typedStats(stats1, exprOwner).filter(!_.isEmpty)
     }
 
     override def adapt(tree: Tree, pt: Type, original: untpd.Tree)(implicit ctx: Context): Tree =

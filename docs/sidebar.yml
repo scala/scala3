@@ -1,30 +1,48 @@
 sidebar:
     - title: Blog
       url: blog/index.html
-    - title: Docs
-      url: docs/index.html
+    - title: Reference
+      subsection:
+        - title: Intersection types
+          url: docs/reference/intersection-types.html
+        - title: Union types
+          url: docs/reference/union-types.html
+        - title: Trait Parameters
+          url: docs/reference/trait-parameters.html
+        - title: Enumerations
+          url: docs/reference/enums.html
+        - title: Algebraic Data Types
+          url: docs/reference/adts.html
+        - title: Enum Translation
+          url: docs/reference/desugarEnums.html
+        - title: By-Name Implicits
+          url: docs/reference/implicit-by-name-parameters.html
     - title: Usage
       subsection:
-        - title: cbt-projects
-          url: docs/usage/cbt-projects.html
         - title: sbt-projects
           url: docs/usage/sbt-projects.html
+        - title: IDE support for Dotty
+          url: docs/usage/ide-support.html
+        - title: cbt-projects
+          url: docs/usage/cbt-projects.html
         - title: Dottydoc
           url: docs/usage/dottydoc.html
         - title: Migrating
           url: docs/usage/migrating.html
     - title: Contributing
       subsection:
-        - title: Eclipse
-          url: docs/contributing/eclipse.html
         - title: Getting Started
           url: docs/contributing/getting-started.html
-        - title: IntelliJ IDEA
-          url: docs/contributing/intellij-idea.html
         - title: Workflow
           url: docs/contributing/workflow.html
+        - title: Eclipse
+          url: docs/contributing/eclipse.html
+        - title: IntelliJ IDEA
+          url: docs/contributing/intellij-idea.html
         - title: Testing
           url: docs/contributing/testing.html
+        - title: Working with the Backend
+          url: docs/contributing/backend.html
     - title: Internals
       subsection:
         - title: Backend
@@ -49,3 +67,7 @@ sidebar:
           url: docs/internals/syntax.html
         - title: Type System
           url: docs/internals/type-system.html
+    - title: Resources
+      subsection:
+        - title: Talks
+          url: docs/resources/talks.html
