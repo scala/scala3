@@ -669,7 +669,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
       .expect { (ictx, messages) =>
         implicit val ctx: Context = ictx
         assertMessageCount(1, messages)
-        val CannotHaveSameNameAs(symbol, cls) :: Nil = messages
+        val CannotHaveSameNameAs(symbol, cls, _) :: Nil = messages
         assertEquals("class A", symbol.show)
         assertEquals("class A", cls.show)
       }

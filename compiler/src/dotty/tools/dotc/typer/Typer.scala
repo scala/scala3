@@ -1326,12 +1326,30 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
         result
       }
 
+    /** Checks if one of the decls is a type with the same name as class type member in selfType */
+    def classExistsOnSelf(decls: Scope, self: tpd.ValDef): Boolean = {
+      val selfType = self.tpt.tpe
+      if (!selfType.exists || (selfType.classSymbol eq cls)) false
+      else {
+        def memberInSelfButNotThis(decl: Symbol) =
+          selfType.member(decl.name).symbol.filter(other => other.isClass && other.owner != cls)
+        decls.iterator.filter(_.isType).foldLeft(false) { (foundRedef, decl) =>
+          val other = memberInSelfButNotThis(decl)
+          if (other.exists) {
+            val msg = CannotHaveSameNameAs(decl, other, CannotHaveSameNameAs.DefinedInSelf(self))
+            ctx.error(msg, decl.pos)
+          }
+          foundRedef || other.exists
+        }
+      }
+    }
+
     completeAnnotations(cdef, cls)
     val constr1 = typed(constr).asInstanceOf[DefDef]
     val parentsWithClass = ensureFirstIsClass(parents mapconserve typedParent, cdef.namePos)
     val parents1 = ensureConstrCall(cls, parentsWithClass)(superCtx)
     val self1 = typed(self)(ctx.outer).asInstanceOf[ValDef] // outer context where class members are not visible
-    if (self1.tpt.tpe.isError) {
+    if (self1.tpt.tpe.isError || classExistsOnSelf(cls.unforcedDecls, self1)) {
       // fail fast to avoid typing the body with an error type
       cdef.withType(UnspecifiedErrorType)
     } else {
