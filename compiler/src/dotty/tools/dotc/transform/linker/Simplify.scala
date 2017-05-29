@@ -1135,10 +1135,20 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
   /** Inline vals */
   val devalify: Optimization = { implicit ctx: Context =>
     val timesUsed = mutable.HashMap[Symbol, Int]()
+    val timesUsedAsType = mutable.HashMap[Symbol, Int]()
+
     val defined = mutable.HashSet[Symbol]()
     val usedInInnerClass = mutable.HashMap[Symbol, Int]()
     // Either a duplicate or a read through series of immutable fields
     val copies = mutable.HashMap[Symbol, Tree]()
+    def visitType(tp: Type): Unit = {
+          tp.foreachPart(x => x match {
+            case TermRef(NoPrefix, _) =>
+              val b4 = timesUsedAsType.getOrElseUpdate(x.termSymbol, 0)
+              timesUsedAsType.put(x.termSymbol, b4 + 1)
+            case _ =>
+          })
+    }
     def doVisit(tree: Tree, used: mutable.HashMap[Symbol, Int]): Unit = tree match {
       case valdef: ValDef if !valdef.symbol.is(Param | Mutable | Module | Lazy) &&
                              valdef.symbol.exists && !valdef.symbol.owner.isClass =>
@@ -1149,6 +1159,7 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
             copies.put(valdef.symbol, valdef.rhs)
           case _ =>
         }
+        visitType(valdef.symbol.info)
       case t: New =>
         val symIfExists = t.tpt.tpe.normalizedPrefix.termSymbol
         val b4 = used.getOrElseUpdate(symIfExists, 0)
@@ -1159,6 +1170,11 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
         // TODO: handle params after constructors. Start changing public signatures by eliminating unused arguments.
         defined += valdef.symbol
 
+      case valdef: ValDef => visitType(valdef.symbol.info)
+      case t: DefDef      => visitType(t.symbol.info)
+      case t: Typed       =>
+        visitType(t.tpt.tpe)
+      case t: TypeApply   => t.args.foreach(x => visitType(x.tpe))
       case t: RefTree =>
         val b4 = used.getOrElseUpdate(t.symbol, 0)
         used.put(t.symbol, b4 + 1)
@@ -1191,11 +1207,11 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
     }
 
     val transformer: Transformer = () => localCtx => {
-      val valsToDrop = defined -- timesUsed.keySet
+      val valsToDrop = defined -- timesUsed.keySet -- timesUsedAsType.keySet
       val copiesToReplaceAsDuplicates = copies.filter { x =>
         val rhs = dropCasts(x._2)
         rhs.isInstanceOf[Literal] || (!rhs.symbol.owner.isClass && !rhs.symbol.is(Method | Mutable))
-      }
+      } -- timesUsedAsType.keySet
       // TODO: if a non-synthetic val is duplicate of a synthetic one, rename a synthetic one and drop synthetic flag?
 
       val copiesToReplaceAsUsedOnce =
@@ -1203,7 +1219,7 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
           flatMap(x => copies.get(x._1) match {
             case Some(tr) => List((x._1, tr))
             case None => Nil
-          })
+          }) -- timesUsedAsType.keySet
 
       val replacements = copiesToReplaceAsDuplicates ++ copiesToReplaceAsUsedOnce -- usedInInnerClass.keySet
 
@@ -1249,7 +1265,7 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
       transformation
     }
     // See tests/pos/devalify.scala for examples of why this needs to be after Erasure.
-    ("devalify", AfterErasure, visitor, transformer)
+    ("devalify", BeforeAndAfterErasure, visitor, transformer)
   }
 
   /** Inline val with exactly one assignment to a var. For example:
