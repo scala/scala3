@@ -8,7 +8,7 @@ lives at
 
 > https://github.com/lampepfl/scala/tree/sharing-backend
 
-The dotty source tree contains a git submodule in the directory
+The Dotty source tree contains a git submodule in the directory
 [scala-backend](https://github.com/lampepfl/dotty/tree/master/scala-backend)
 that points to this fork. We do not compile every file in this submodule,
 instead we add the subset of files we need to the dotty-compiler project in the
@@ -60,8 +60,8 @@ $ cd ..
 ```
 
 Once your PR has been merged into the backend, you'll need to make another PR
-against dotty itself to update the backend, the following commands should be run
-in the root dotty repository, not in the submodule:
+against Dotty itself to update the backend, the following commands should be run
+in the root Dotty repository, not in the submodule:
 
 ``` shell
 # The --remote option will update the submodule to the latest commit in the
@@ -69,5 +69,5 @@ in the root dotty repository, not in the submodule:
 git submodule update --init --remote
 
 git commit -am "Update backend to include ..."
-# Then push and make a PR against dotty as usual
+# Then push and make a PR against Dotty as usual
 ```

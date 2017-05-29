@@ -256,5 +256,5 @@ A blog page uses files placed in `./blog/_posts/` as input to render a blog.
 
 Default Includes
 ================
-* `scala-logo.svg`: the scala in dotty version as svg
+* `scala-logo.svg`: the scala in Dotty version as svg
 * `toc.html`: the default table of contents template

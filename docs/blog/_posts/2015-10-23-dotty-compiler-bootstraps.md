@@ -29,7 +29,7 @@ fine, yet gets translated to something subtly wrong by the compiler.
 
 Having the compiler compile itself is a good test to demonstrate that
 the generated code has reached a certain level of quality. Not only is
-a compiler a large program (44k lines in the case of dotty), it is
+a compiler a large program (44k lines in the case of Dotty), it is
 also one that exercises a large part of the language in quite
 intricate ways. Moreover, bugs in the code of a compiler don't tend to
 go unnoticed, precisely because every part of a compiler feeds into

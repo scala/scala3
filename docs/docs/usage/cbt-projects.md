@@ -3,7 +3,7 @@ layout: doc-page
 title: "Using Dotty with cbt"
 ---
 
-cbt comes with built-in dotty support. Follow the
+cbt comes with built-in Dotty support. Follow the
 [cbt tutorial](https://github.com/cvogt/cbt/), then simply extend `Dotty` in the Build class.
 
 ```scala
