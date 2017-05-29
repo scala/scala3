@@ -7,6 +7,7 @@ import core.Contexts._
 import core.NameOps._
 import core.StdNames._
 import core.Symbols._
+import dotty.tools.dotc.core.Flags
 
 object Analysis {
   import tpd._
@@ -35,6 +36,8 @@ object Analysis {
     "scala.Some"
   )
 
+  private val moduleWhiteList = constructorWhiteList.map(x => x + "$")
+
   private val methodsWhiteList = List(
     "java.lang.Math.min",
     "java.lang.Math.max",
@@ -55,6 +58,8 @@ object Analysis {
       case Apply(fun, args) if fun.symbol.isConstructor && constructorWhiteList.contains(fun.symbol.owner.fullName.toString) =>
         true
       case Apply(fun, args) if methodsWhiteList.contains(fun.symbol.fullName.toString) =>
+        true
+      case Ident(_) if t.symbol.is(Flags.Module) && (t.symbol.is(Flags.Synthetic) || moduleWhiteList.contains(t.symbol.fullName.toString)) =>
         true
       case _ =>
         false

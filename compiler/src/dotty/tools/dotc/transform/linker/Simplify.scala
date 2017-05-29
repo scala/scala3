@@ -849,10 +849,10 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
           case _ => keepOnlySideEffects(expr).orElse(unitLiteral)
         }
         tpd.cpy.Block(bl)(stats2, expr2)
-      case t: Ident if !t.symbol.is(Method | Lazy) && !t.symbol.info.isInstanceOf[ExprType] =>
+      case t: Ident if !t.symbol.is(Method | Lazy) && !t.symbol.info.isInstanceOf[ExprType] || Analysis.effectsDontEscape(t) =>
         desugarIdent(t) match {
-          case Some(t) => t
-          case None => EmptyTree
+          case Some(t) if !(t.qualifier.symbol.is(Flags.JavaDefined) && t.qualifier.symbol.is(Flags.Package)) => t
+          case _ => EmptyTree
         }
       case app: Apply if app.fun.symbol.is(Label) && !app.tpe.finalResultType.derivesFrom(defn.UnitClass) =>
         // This is "the scary hack". It changes the return type to Unit, then
