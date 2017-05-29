@@ -244,11 +244,21 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
         else {
           var result: Type = NoType
 
-          // find definition
-          if ((lastCtx eq ctx) || (ctx.scope ne lastCtx.scope) || (ctx.owner ne lastCtx.owner)) {
+          val curOwner = ctx.owner
+
+          // Can this scope contain new definitions? This is usually the first
+          // context where either the scope or the owner changes wrt the
+          // context immediately nested in it. But for package contexts, it's
+          // the opposite: the last context before the package changes. This distinction
+          // is made so that top-level imports following a package clause are
+          // logically nested in that package clause.
+          val isNewDefScope =
+            if (curOwner is Package) curOwner ne ctx.outer.owner
+            else (ctx.scope ne lastCtx.scope) || (curOwner ne lastCtx.owner)
+
+          if (isNewDefScope) {
             val defDenot = ctx.denotNamed(name)
             if (qualifies(defDenot)) {
-              val curOwner = ctx.owner
               val found =
                 if (isSelfDenot(defDenot)) curOwner.enclosingClass.thisType
                 else curOwner.thisType.select(name, defDenot)
@@ -297,7 +307,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
       }
 
       // begin findRef
-      loop(ctx)(ctx)
+      loop(NoContext)(ctx)
     }
 
     // begin typedIdent
