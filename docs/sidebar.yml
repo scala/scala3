@@ -3,6 +3,8 @@ sidebar:
       url: blog/index.html
     - title: Reference
       subsection:
+        - title: Implicit Function Types
+          url: docs/reference/implicit-function-types.md
         - title: Intersection types
           url: docs/reference/intersection-types.html
         - title: Union types
@@ -25,6 +27,8 @@ sidebar:
           url: docs/reference/auto-parameter-tupling.html
         - title: Named Type Arguments
           url: docs/reference/named-typeargs.html
+        - title: Inline
+          url: docs/reference/inline.html
     - title: Usage
       subsection:
         - title: sbt-projects
