@@ -23,7 +23,7 @@ sidebar:
               url: docs/reference/desugarEnums.html
         - title: Trait Parameters
           url: docs/reference/trait-parameters.html
-         -title: Multiversal Equality
+        - title: Multiversal Equality
           url: docs/reference/multiversal-equality.html
         - title: Inline
           url: docs/reference/inline.html
