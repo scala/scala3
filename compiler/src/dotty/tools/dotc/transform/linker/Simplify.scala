@@ -194,7 +194,7 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
 
   // Apply fun may be a side-effectful function. E.g. a block, see tests/run/t4859.scala
   // we need to maintain expressions that were in this block
-  private def evalReciever(a: Apply, res: Tree) = {
+  private def evalReciever(a: Apply, res: Tree)(implicit ctx: Context) = {
     def receiver(t: Tree):
     (Tree) = t match {
       case TypeApply(fun, targs) if fun.symbol eq t.symbol => receiver(fun)
