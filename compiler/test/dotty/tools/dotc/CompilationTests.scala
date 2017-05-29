@@ -297,8 +297,7 @@ class CompilationTests extends ParallelTesting {
   @Test def linkAll: Unit = {
     def commonLibraries = {
       compileList("stdlib", StdLibSources.whitelisted, scala2Mode.and("-migration", "-Yno-inline")) +
-      compileList("strawman", strawmanSources, defaultOptions) +
-      compileList("testUtils", testUtils, defaultOptions)
+      compileList("strawman", strawmanSources, defaultOptions)
     }
 
     // Compile and setup libraries
@@ -306,11 +305,10 @@ class CompilationTests extends ParallelTesting {
     val libraries = commonLibraries.keepOutput.checkCompile()
 
     val commonLibrariesPath = defaultOutputDir + "commonLibraries/"
-    val utils = commonLibrariesPath + "testUtils/"
 
-    val utilsOnlyClassPath = mkClassPath(utils :: Jars.dottyTestDeps)
-    val stdlibClassPath = mkClassPath(commonLibrariesPath + "stdlib" :: utils :: Jars.dottyTestDeps)
-    val strawmanClassPath = mkClassPath(commonLibrariesPath + "strawman" :: utils :: Jars.dottyTestDeps)
+    val utilsOnlyClassPath = mkClassPath(Jars.dottyTestDeps)
+    val stdlibClassPath = mkClassPath(commonLibrariesPath + "stdlib" :: Jars.dottyTestDeps)
+    val strawmanClassPath = mkClassPath(commonLibrariesPath + "strawman" :: Jars.dottyTestDeps)
 
     def linkTests(dir: String, flags: Array[String], nameSuffix: String = ""): CompilationTest = {
       val testsDir = new JFile(dir)
@@ -363,7 +361,7 @@ class CompilationTests extends ParallelTesting {
       strawmanTest */
     }.checkRuns()
 
-    libraries.delete()
+    // libraries.delete()
   }
 
   private def strawmanSources =
