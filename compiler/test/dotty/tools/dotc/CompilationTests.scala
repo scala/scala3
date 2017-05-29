@@ -168,7 +168,7 @@ class CompilationTests extends ParallelTesting {
   @Test def runAll: Unit =
     compileFilesInDir("../tests/run", defaultOptions).checkRuns()
 
-  // The two tests that current fail under -optimise
+  // The two tests that currently fail under -optimise
   @Test def runNotOptimised: Unit =
     compileFilesInDir("../tests/run-not-optimised", defaultOptions.filterNot("-optimise".==)).checkRuns()
 
