@@ -19,14 +19,14 @@ object MarkdownLinkVisitor {
           val url = node.getUrl
 
           if (url.endsWith(".md")) {
-            if (url.subSequence(0, url.lastIndexOf('.')).indexOf("/") <0) {
+            if (url.subSequence(0, url.lastIndexOf('.')).indexOf("/") < 0) {
               val method = url.subSequence(0, url.lastIndexOf('.')).toString.toTypeName
-              if (ctx.getClassIfDefined(method).exists) node.setUrl{
+              if (ctx.getClassIfDefined(method).exists) node.setUrl {
                 url.subSequence(0, url.lastIndexOf('.')).append(".html")
               } else {
                 ctx.error(s"""Ambiguous reference to "$url"""")
               }
-            } else node.setUrl{
+            } else node.setUrl {
               url.subSequence(0, url.lastIndexOf('.')).append(".html")
             }
           }
