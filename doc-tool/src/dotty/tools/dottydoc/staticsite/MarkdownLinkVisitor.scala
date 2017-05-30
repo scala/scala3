@@ -7,28 +7,15 @@ import com.vladsch.flexmark.util.sequence.CharSubSequence
 import model.{ Package, NonEntity, Val, Def, TypeAlias }
 import dottydoc.util.MemberLookup
 
-import dotty.tools.dotc.core.Contexts.Context
-import dotty.tools.dotc.core.Decorators._
-
 object MarkdownLinkVisitor {
   private val EntityLink = """([^\.]+)(\.[^\.]+)*""".r
-  def apply(node: Node, docs: Map[String, Package], params: Map[String, AnyRef])(implicit ctx: Context): Unit =
+  def apply(node: Node, docs: Map[String, Package], params: Map[String, AnyRef]): Unit =
     (new NodeVisitor(
       new VisitHandler(classOf[Link], new Visitor[Link] with MemberLookup {
         override def visit(node: Link): Unit = {
           val url = node.getUrl
-
-          if (url.endsWith(".md")) {
-            if (url.subSequence(0, url.lastIndexOf('.')).indexOf("/") < 0) {
-              val method = url.subSequence(0, url.lastIndexOf('.')).toString.toTypeName
-              if (ctx.getClassIfDefined(method).exists) node.setUrl {
-                url.subSequence(0, url.lastIndexOf('.')).append(".html")
-              } else {
-                ctx.error(s"""Ambiguous reference to "$url"""")
-              }
-            } else node.setUrl {
-              url.subSequence(0, url.lastIndexOf('.')).append(".html")
-            }
+          if (url.endsWith(".md")) node.setUrl {
+            url.subSequence(0, url.lastIndexOf('.')).append(".html")
           }
           else if (EntityLink.unapplySeq(url.toString).isDefined) {
             lookup(NonEntity, docs, url.toString).foreach { ent =>
