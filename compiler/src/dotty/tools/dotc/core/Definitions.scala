@@ -400,6 +400,16 @@ class Definitions {
     def Boolean_&& = Boolean_andR.symbol
     lazy val Boolean_orR  = BooleanClass.requiredMethodRef(nme.ZOR)
     def Boolean_|| = Boolean_orR.symbol
+    lazy val Boolean_eqeqR = BooleanClass.info.member(nme.EQ).suchThat(_.info.firstParamTypes match {
+      case List(pt) => (pt isRef BooleanClass)
+      case _ => false
+    })
+    def Boolean_== = Boolean_eqeqR.symbol
+    lazy val Boolean_neqeqR = BooleanClass.info.member(nme.NE).suchThat(_.info.firstParamTypes match {
+      case List(pt) => (pt isRef BooleanClass)
+      case _ => false
+    })
+    def Boolean_!= = Boolean_neqeqR.symbol
 
   lazy val ByteType: TypeRef = valueTypeRef("scala.Byte", BoxedByteType, java.lang.Byte.TYPE, ByteEnc)
   def ByteClass(implicit ctx: Context) = ByteType.symbol.asClass
@@ -431,6 +441,13 @@ class Definitions {
     lazy val Long_LSR_Int = LongType.member(nme.LSR).requiredSymbol(
       x => (x is Method) && (x.info.firstParamTypes.head isRef defn.IntClass)
     )
+    lazy val Long_plusR   = LongClass.requiredMethodRef(nme.PLUS, List(LongType))
+    def Long_+ = Long_plusR.symbol
+    lazy val Long_mulR   = LongClass.requiredMethodRef(nme.MUL, List(LongType))
+    def Long_* = Long_mulR.symbol
+    lazy val Long_divR   = LongClass.requiredMethodRef(nme.DIV, List(LongType))
+    def Long_/ = Long_divR.symbol
+
   lazy val FloatType: TypeRef = valueTypeRef("scala.Float", BoxedFloatType, java.lang.Float.TYPE, FloatEnc)
   def FloatClass(implicit ctx: Context) = FloatType.symbol.asClass
   lazy val DoubleType: TypeRef = valueTypeRef("scala.Double", BoxedDoubleType, java.lang.Double.TYPE, DoubleEnc)
@@ -491,6 +508,11 @@ class Definitions {
   lazy val BoxedNumberClass          = ctx.requiredClass("java.lang.Number")
   lazy val ThrowableClass            = ctx.requiredClass("java.lang.Throwable")
   lazy val ClassCastExceptionClass   = ctx.requiredClass("java.lang.ClassCastException")
+  lazy val ArithmeticExceptionClass  = ctx.requiredClass("java.lang.ArithmeticException")
+    lazy val ArithmeticExceptionClass_stringConstructor  = ArithmeticExceptionClass.info.member(nme.CONSTRUCTOR).suchThat(_.info.firstParamTypes match {
+      case List(pt) => (pt isRef StringClass)
+      case _ => false
+    }).symbol.asTerm
   lazy val JavaSerializableClass     = ctx.requiredClass("java.io.Serializable")
   lazy val ComparableClass           = ctx.requiredClass("java.lang.Comparable")
 
@@ -522,6 +544,10 @@ class Definitions {
   def DynamicClass(implicit ctx: Context) = DynamicType.symbol.asClass
   lazy val OptionType: TypeRef                  = ctx.requiredClassRef("scala.Option")
   def OptionClass(implicit ctx: Context) = OptionType.symbol.asClass
+  lazy val SomeType: TypeRef                  = ctx.requiredClassRef("scala.Some")
+  def SomeClass(implicit ctx: Context) = SomeType.symbol.asClass
+  lazy val NoneModuleRef: TermRef                  = ctx.requiredModuleRef("scala.None")
+  def NoneClass(implicit ctx: Context) = NoneModuleRef.symbol.moduleClass.asClass
   lazy val EnumType: TypeRef                    = ctx.requiredClassRef("scala.Enum")
   def EnumClass(implicit ctx: Context) = EnumType.symbol.asClass
   lazy val EnumValuesType: TypeRef              = ctx.requiredClassRef("scala.runtime.EnumValues")

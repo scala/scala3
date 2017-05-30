@@ -184,7 +184,10 @@ class TreeChecker extends Phase with SymTransformer {
       vparamss.foldRightBN(op)(withDefinedSyms(_)(_))
 
     def assertDefined(tree: untpd.Tree)(implicit ctx: Context) =
-      if (tree.symbol.maybeOwner.isTerm)
+      if (
+        tree.symbol.maybeOwner.isTerm &&
+        !(tree.symbol.is(Label) && !tree.symbol.owner.isClass && ctx.phase.labelsReordered) // labeldefs breaks scoping
+      )
         assert(nowDefinedSyms contains tree.symbol, i"undefined symbol ${tree.symbol}")
 
     /** assert Java classes are not used as objects */
