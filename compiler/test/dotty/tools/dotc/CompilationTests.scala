@@ -167,7 +167,6 @@ class CompilationTests extends ParallelTesting {
 
   @Test def runAll: Unit =
     compileFilesInDir("../tests/run", defaultOptions).checkRuns()
-  
 
   // Pickling Tests ------------------------------------------------------------
   //

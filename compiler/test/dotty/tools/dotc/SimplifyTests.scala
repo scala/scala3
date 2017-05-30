@@ -7,19 +7,19 @@ import dotty.tools.dotc.config.CompilerCommand
 import dotty.tools.dotc.core.Contexts.FreshContext
 import scala.tools.asm.tree.MethodNode
 
-class SimplifyPosTests extends DottyBytecodeOptimisedTest with SimplifyEquivalences
-class SimplifyNegTests extends DottyBytecodeTest          with SimplifyEquivalences
+class SimplifyPosTests extends SimplifyTests(optimise = true)
+class SimplifyNegTests extends SimplifyTests(optimise = false)
 
-class DottyBytecodeOptimisedTest extends DottyBytecodeTest {
+abstract class SimplifyTests(val optimise: Boolean) extends DottyBytecodeTest {
   override protected def initializeCtx(c: FreshContext): Unit = {
     super.initializeCtx(c)
-    val flags = Array("-optimise") // :+ "-Xprint:simplify"
-    val summary = CompilerCommand.distill(flags)(c)
-    c.setSettings(summary.sstate)
+    if (optimise) {
+      val flags = Array("-optimise") // :+ "-Xprint:simplify"
+      val summary = CompilerCommand.distill(flags)(c)
+      c.setSettings(summary.sstate)
+    }
   }
-}
 
-trait SimplifyEquivalences { self: DottyBytecodeTest =>
   def check(source: String, expected: String, shared: String = ""): Unit = {
     import ASMConverters._
     val src =
@@ -45,7 +45,7 @@ trait SimplifyEquivalences { self: DottyBytecodeTest =>
       val A = instructions("A")
       val B = instructions("B")
       val diff = diffInstructions(A, B)
-      if (this.isInstanceOf[DottyBytecodeOptimisedTest])
+      if (optimise)
         assert(A == B, s"Bytecode doesn't match: (lhs = source, rhs = expected) \n$diff")
       else
         assert(A != B, s"Same Bytecodes without -optimise: you are testing the wrong thing!")
