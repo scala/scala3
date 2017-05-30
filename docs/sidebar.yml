@@ -38,39 +38,39 @@ sidebar:
         - title: Changed Features
           subsection:
             - title: Volatile Lazy Vals
-              url: docs/reference/changed/lazy-vals.md
+              url: docs/reference/changed/lazy-vals.html
             - title: Structural Types
-              url: docs/reference/changed/structural-types.md
+              url: docs/reference/changed/structural-types.html
             - title: Type Checking
-              url: docs/reference/changed/type-checking.md
+              url: docs/reference/changed/type-checking.html
             - title: Type Inference
-              url: docs/reference/changed/type-inference.md
+              url: docs/reference/changed/type-inference.html
             - title: Implicit Resolution
-              url: docs/reference/changed/implicit-resolution.md
+              url: docs/reference/changed/implicit-resolution.html
             - title: Implicit Conversions
-              url: docs/reference/changed/implicit-conversions.md
+              url: docs/reference/changed/implicit-conversions.html
             - title: Vararg Patterns
-              url: docs/reference/changed/vararg-patterns.md
+              url: docs/reference/changed/vararg-patterns.html
         - title: Dropped Features
           subsection:
             - title: DelayedInit
-              url: docs/reference/dropped/delayed-init.md
+              url: docs/reference/dropped/delayed-init.html
             - title: Macros
-              url: docs/reference/dropped/macros.md
+              url: docs/reference/dropped/macros.html
             - title: Existential Types
-              url: docs/reference/dropped/existential-types.md
+              url: docs/reference/dropped/existential-types.html
             - title: Type Projection
-              url: docs/reference/dropped/type-projection.md
+              url: docs/reference/dropped/type-projection.html
             - title: Procedure Syntax
-              url: docs/reference/dropped/procedure-syntax.md
+              url: docs/reference/dropped/procedure-syntax.html
             - title: Early Initializers
-              url: docs/reference/dropped/early-initializers.md
+              url: docs/reference/dropped/early-initializers.html
             - title: Class Shadowing
-              url: docs/reference/dropped/class-shadowing.md
+              url: docs/reference/dropped/class-shadowing.html
             - title: Limit 22
-              url: docs/reference/dropped/limit22.md
+              url: docs/reference/dropped/limit22.html
             - title: XML literals
-              url: docs/reference/dropped/xml.md
+              url: docs/reference/dropped/xml.html
     - title: Usage
       subsection:
         - title: sbt-projects
