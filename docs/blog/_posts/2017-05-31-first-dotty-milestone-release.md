@@ -1,11 +1,11 @@
 ---
 layout: blog-page
-title: Announcing Dotty 0.1.2, a major step towards Scala 3
+title: Announcing Dotty 0.1.2-RC1, a major step towards Scala 3
 author: Dmytro Petrashko
 authorImg: /images/petrashko.jpg
 ---
 
-Today, we’re excited to release the first alpha version of Dotty.
+Today, we’re excited to release the first alpha version of Dotty, version 0.1.2-RC1.
 This release is a technology preview demonstrating new language features, we are
 interested in feedback from both application and library authors willing to
 experiment with it.
@@ -56,7 +56,7 @@ supports Dotty. To try it out:
 3. That's it!
 
   
-# What’s in the 0.1.2 technology preview ?
+# What’s in the 0.1.2-RC1 technology preview ?
 This technology preview demonstrates new language features planned for Scala 3:
  
   - [Intersection Types](http://dotty.epfl.ch/docs/reference/intersection-types.html)
