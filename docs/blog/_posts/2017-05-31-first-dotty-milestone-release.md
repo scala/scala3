@@ -6,8 +6,7 @@ authorImg: /images/petrashko.jpg
 ---
 
 Today, we’re excited to release the alpha version of Dotty 0.1.2. 
-This release serves as a technology preview that demonstrates improvements in 
-compilation speed as well as new language features.
+This release serves as a technology preview that demonstrates new language features and compiler supporting them.
 
 
 <!--more-->
@@ -27,7 +26,7 @@ In case you prefer Sbt, We provide Sbt project templates.
 Using sbt version 0.13.13 or newer, do `sbt new lampepfl/dotty.g8`.
 This should set-up a new Sbt project with Dotty as compiler.
 For more details on how to use sbt-dotty plugin, please have a look
-on [example project](https://github.com/lampepfl/dotty-example-project)
+at [example project](https://github.com/lampepfl/dotty-example-project)
 
 
 In case you prefer to get a standalone `dotc` script,
@@ -41,30 +40,33 @@ brew install lampepfl/brew/dotty
 
   
 # What’s in 0.1.2 technology preview?
-Being a technology preview, we are proud to show present you new language features
+The technology preview presents you new language features
  that are we have been developing in preparation for Scala 3: 
+ 
     - [Intersection Types](http://dotty.epfl.ch/docs/reference/intersection-types.html)
-    - [Union Types](http://dotty.epfl.ch/docs/reference/reference/union-types.html)
-    - [Trait Parameters](http://dotty.epfl.ch/docs/reference/reference/trait-parameters.html)
-    - [Enumerations](http://dotty.epfl.ch/docs/reference/reference/enums.html)
-    - [Algebraic Data Types](http://dotty.epfl.ch/docs/reference/reference/adts.html)
-    - [By-Name Implicits](http://dotty.epfl.ch/docs/reference/reference/implicit-by-name-parameters.html)
+    - [Union Types](http://dotty.epfl.ch/docs/reference/union-types.html)
+    - [Trait Parameters](http://dotty.epfl.ch/docs/reference/trait-parameters.html)
+    - [Enumerations](http://dotty.epfl.ch/docs/reference/enums.html)
+    - [Algebraic Data Types](http://dotty.epfl.ch/docs/reference/adts.html)
+    - [By-Name Implicits](http://dotty.epfl.ch/docs/reference/implicit-by-name-parameters.html)
 
-We also ship with tools that help you try out Dotty platform:
+We also ship with tools that help you try out the Dotty platform:
+
     - [Visual Studio Code Plugin](http://dotty.epfl.ch/docs/usage/ide-support.html)
     - [SBT support, including crosscompilation with Scala2](https://github.com/lampepfl/dotty-example-project)
 
-Full release notes are also [available](http://dotty.epfl.ch/docs/release-notes/0.1.2.html).
+See here for full [release notes](http://dotty.epfl.ch/docs/release-notes/0.1.2.html).
 
 ## Release schedule
 
-We are adopting time based release schedule.
+We are adopting a time based release schedule.
 Every day we will publish a nightly, for those who want to be on the very edge of progress. 
 
-Every 6 weeks we will cut a new milestone release. Those releases are a good place to be for library authors
+Every 6 weeks we will cut a new milestone release. 
+Those releases are a good place to be for library authors
  as we intend to provide hot-fixes and fix regression there.
  
-One day, a milestone release will be promotedt to become a stable release of Dotty.
+At the end of 6 weeks, the milestone will be promoted to a stable release.
 
 ## What are the next steps?
 
@@ -78,10 +80,10 @@ If you want to get your hands dirty with any of this, now is a good
 moment to get involved! Join the team of contributors, including
 Dmitry Petrashko ([@DarkDimius](https://twitter.com/DarkDimius)),
 Guillaume Martres ([@smarter](https://github.com/smarter)),
-Felix Mulder ([@smarter](https://twitter.com/felixmulder)),
+Felix Mulder ([@felixmulder](https://twitter.com/felixmulder)),
 Nicolas Stucki ([@stucki_nicolas](https://twitter.com/stucki_nicolas)),
-Liu Fengyun ([@olhotak](https://github.com/liufengyun)),
-Olivier Blanvillain ([@olhotak](https://github.com/OlivierBlanvillain)),
+Liu Fengyun ([@liufengyun](https://github.com/liufengyun)),
+Olivier Blanvillain ([@OlivierBlanvillain](https://github.com/OlivierBlanvillain)),
 and others!
 
 
