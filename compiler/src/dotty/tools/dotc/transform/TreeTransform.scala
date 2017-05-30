@@ -62,6 +62,8 @@ object TreeTransforms {
 
     def treeTransformPhase: Phase = phase.next
 
+    val cpy = cpyBetweenPhases
+
     def prepareForIdent(tree: Ident)(implicit ctx: Context) = this
     def prepareForSelect(tree: Select)(implicit ctx: Context) = this
     def prepareForThis(tree: This)(implicit ctx: Context) = this
