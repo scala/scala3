@@ -41,6 +41,4 @@ affect implicits on the language level.
     more deeply than `i`. Previously, this would have resulted in an
     ambiguity error.
 
-[//] # todo: expand with precise rules
-
-
+[//]: # todo: expand with precise rules

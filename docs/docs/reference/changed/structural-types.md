@@ -25,7 +25,7 @@ The most important method of a `Selectable` is `selectDynamic`: It
 takes a field name and returns the value associated with that name in
 the selectable.
 
-Assume now `r` is a value with structural type `S`.` In general `S` is
+Assume now `r` is a value with structural type `S`. In general `S` is
 of the form `C { Rs }`, i.e. it consists of a class reference `C` and
 refinement declarations `Rs`. We call a field selection `r.f`
 _structural_ if `f` is a name defined by a declaration in `Rs` whereas

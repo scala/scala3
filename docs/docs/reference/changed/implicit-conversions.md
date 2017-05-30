@@ -36,7 +36,7 @@ In summary, previous code using implicit conversion parameters such as
       val x: B = a    // error under Dotty
     }
 
-is no longer legal and has to be rwritten to
+is no longer legal and has to be rewritten to
 
     def useConversion(implicit f: ImplicitConverter[A, B]) {
       val y: A = ...
