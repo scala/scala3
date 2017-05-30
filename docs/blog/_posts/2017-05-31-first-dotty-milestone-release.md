@@ -66,24 +66,24 @@ This technology preview demonstrates new language features planned for Scala 3:
 
 We also ship with tools that help you try out the Dotty platform:
 
-  - [Visual Studio Code Plugin](http://dotty.epfl.ch/docs/usage/ide-support.html)
-  - [SBT support, including crosscompilation with Scala2](https://github.com/lampepfl/dotty-example-project)
+  - [IDE features for Visual Studio Code](http://dotty.epfl.ch/docs/usage/ide-support.html)
+  - [sbt support, including retro-compatibility with Scala 2](https://github.com/lampepfl/dotty-example-project)
 
-See here for full [release notes](http://dotty.epfl.ch/docs/release-notes/0.1.2.html).
+See here for the full [release notes](http://dotty.epfl.ch/docs/release-notes/0.1.2.html).
 
 ## Release schedule
 
 We are adopting a time-based release schedule:
 - Nightly builds will be published, for those wanting to be at the forefront of
   development.
-- Every 6 week, a release candidate will be cut based on the last nightly build,
+- Every 6 weeks, a release candidate will be cut based on the last nightly build,
   the release candidates let library authors test their code in advance of each
   release. Multiple release candidates may be released during each 6 weeks
   period to fix regressions.
-- Every 6 week, the last release candidate becomes a release.
+- Every 6 weeks, the last release candidate becomes a release.
  
 At the end of 6 weeks, the milestone will be promoted to a stable release.
-See here for full [version number explanation](http://dotty.epfl.ch/docs/usage/version-numbers.html).
+See here for the full [version number explanation](http://dotty.epfl.ch/docs/usage/version-numbers.html).
 
 ## What are the next steps?
 
@@ -106,7 +106,7 @@ and others!
 
 ## Library authors: Join our community build
 
-Dotty now has a set of libraries that are build with every nightly.
+Dotty now has a set of libraries that are build against every nightly snapshot.
 Currently this includes scalatest, squants and algebra.
 Join our [community build](https://github.com/lampepfl/dotty-community-build)
  to make sure that our regression suite includes your library.
