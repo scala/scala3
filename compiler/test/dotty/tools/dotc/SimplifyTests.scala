@@ -20,23 +20,23 @@ class DottyBytecodeOptimisedTest extends DottyBytecodeTest {
 }
 
 trait SimplifyEquivalences { self: DottyBytecodeTest =>
-  def check(expr1: String, expr2: String, shared: String = ""): Unit = {
+  def check(source: String, expected: String, shared: String = ""): Unit = {
     import ASMConverters._
-    val source =
+    val src =
       s"""
       $shared
       |class A {
       |  def main(): Unit = {
-            $expr1
+            $source
       |  }
       |}
       |class B {
       |  def main(): Unit = {
-            $expr2
+            $expected
       |  }
       |}
       """.stripMargin
-    checkBCode(source) { dir =>
+    checkBCode(src) { dir =>
       def instructions(clazz: String): List[Instruction] = {
         val clsIn   = dir.lookupName(s"$clazz.class", directory = false).input
         val clsNode = loadClassNode(clsIn)
@@ -46,9 +46,9 @@ trait SimplifyEquivalences { self: DottyBytecodeTest =>
       val B = instructions("B")
       val diff = diffInstructions(A, B)
       if (this.isInstanceOf[DottyBytecodeOptimisedTest])
-        assert(A == B, s"Bytecode wasn't same:\n$diff")
+        assert(A == B, s"Bytecode doesn't match: (lhs = source, rhs = expected) \n$diff")
       else
-        assert(A != B, s"Bytecode was the same:\n$diff")
+        assert(A != B, s"Same Bytecodes without -optimise: you are testing the wrong thing!")
     }
   }
 
@@ -62,9 +62,9 @@ trait SimplifyEquivalences { self: DottyBytecodeTest =>
 
   @Test def inlineCaseIntrinsicsDottyApply =
     check(
-      expr1  = "CC.apply(1, 2)",
-      expr2  = "new CC(1, 2)",
-      shared = "case class CC(i: Int, j: Int)")
+      source   = "CC.apply(1, 2)",
+      expected = "new CC(1, 2)",
+      shared   = "case class CC(i: Int, j: Int)")
 
   @Test def inlineCaseIntrinsicsScalacApply =
     check("::.apply(1, Nil)", "new ::(1, Nil)")

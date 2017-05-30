@@ -245,7 +245,7 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
           case _ => fun
         }
         val constructor = a.symbol.owner.companionClass.primaryConstructor.asTerm
-        rollInArgs(argss.tail, New(a.tpe.widenDealias, constructor, argss.head))
+        evalReciever(a, rollInArgs(argss.tail, New(a.tpe.widenDealias, constructor, argss.head)))
 
       // For synthetic dotty unapplies on case classes:
       // - CC.unapply(arg): CC → arg
@@ -1207,12 +1207,12 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
     // Either a duplicate or a read through series of immutable fields
     val copies = mutable.HashMap[Symbol, Tree]()
     def visitType(tp: Type): Unit = {
-          tp.foreachPart(x => x match {
-            case TermRef(NoPrefix, _) =>
-              val b4 = timesUsedAsType.getOrElseUpdate(x.termSymbol, 0)
-              timesUsedAsType.put(x.termSymbol, b4 + 1)
-            case _ =>
-          })
+      tp.foreachPart(x => x match {
+        case TermRef(NoPrefix, _) =>
+          val b4 = timesUsedAsType.getOrElseUpdate(x.termSymbol, 0)
+          timesUsedAsType.put(x.termSymbol, b4 + 1)
+        case _ =>
+      })
     }
     def doVisit(tree: Tree, used: mutable.HashMap[Symbol, Int]): Unit = tree match {
       case valdef: ValDef if !valdef.symbol.is(Param | Mutable | Module | Lazy) &&
@@ -1237,8 +1237,7 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
 
       case valdef: ValDef => visitType(valdef.symbol.info)
       case t: DefDef      => visitType(t.symbol.info)
-      case t: Typed       =>
-        visitType(t.tpt.tpe)
+      case t: Typed       => visitType(t.tpt.tpe)
       case t: TypeApply   => t.args.foreach(x => visitType(x.tpe))
       case t: RefTree =>
         val b4 = used.getOrElseUpdate(t.symbol, 0)
