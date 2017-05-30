@@ -104,5 +104,12 @@ Liu Fengyun ([@liufengyun](https://github.com/liufengyun)),
 Olivier Blanvillain ([@OlivierBlanvillain](https://github.com/OlivierBlanvillain)),
 and others!
 
+## Library authors: Join our community build
+
+Dotty now has a set of libraries that are build with every nightly.
+Currently this includes scalatest, squants and algebra.
+Join our [community build](https://github.com/lampepfl/dotty-community-build)
+ to make sure that our regression suite includes your library.
+
 
 To get started, see <https://github.com/lampepfl/dotty>.
