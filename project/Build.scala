@@ -901,7 +901,7 @@ object Build {
     settings(
       EclipseKeys.skipProject := true,
 
-      version := "0.0.1", // Keep in sync with package.json
+      version := "0.1.0", // Keep in sync with package.json
 
       autoScalaLibrary := false,
       publishArtifact := false,
