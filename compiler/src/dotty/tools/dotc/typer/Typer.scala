@@ -1520,7 +1520,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     case Some(sym) =>
       sym.ensureCompleted()
       sym
-    case none =>
+    case None =>
       NoSymbol
   }
 
@@ -1540,7 +1540,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     val xtree = expanded(initTree)
     xtree.removeAttachment(TypedAhead) match {
       case Some(ttree) => ttree
-      case none =>
+      case None =>
 
         def typedNamed(tree: untpd.NameTree, pt: Type)(implicit ctx: Context): Tree = {
           val sym = retrieveSym(xtree)
@@ -1647,7 +1647,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
         mdef.removeAttachment(ExpandedTree) match {
           case Some(xtree) =>
             traverse(xtree :: rest)
-          case none =>
+          case None =>
             typed(mdef) match {
               case mdef1: DefDef if Inliner.hasBodyToInline(mdef1.symbol) =>
                 buf ++= inlineExpansion(mdef1)
@@ -1661,7 +1661,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
       case stat :: rest =>
         buf += typed(stat)(ctx.exprContext(stat, exprOwner))
         traverse(rest)
-      case nil =>
+      case Nil =>
         buf.toList
     }
     val localCtx = {
