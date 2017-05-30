@@ -5,18 +5,25 @@ author: Dmytro Petrashko
 authorImg: /images/petrashko.jpg
 ---
 
-Today, we’re excited to release the Dotty version 0.1.2-RC1. 
-This release serves as a technology preview that demonstrates new language features and compiler supporting them.
+Today, we excited to release Dotty version 0.1.2-RC1.  This release
+serves as a technology preview that demonstrates new language features
+and the compiler supporting them.
 
 
 <!--more-->
 
 ## Why is this important?
 
-17 month has passed since dotty has [bootstrapped](http://dotty.epfl.ch/blog/2015/10/23/dotty-compiler-bootstraps.html).
-Back at the time Dotty was just an ambitious experiment.
-This experiment has proved to be a major success.
-Today, we are glad to announce that Scala 3.0 will be build on Dotty code.
+_Dotty_ is the project name for a language and compiler that
+is slated to become Scala 3.0. This is an ongoing development,
+developed transparently as open source software. The Dotty project
+started more than 4 years ago. It reached a major milestone in 2015 by
+achieving
+[bootstrap](http://dotty.epfl.ch/blog/2015/10/23/dotty-compiler-bootstraps.html),
+that is, showing that the new compiler could compile itself.  Today we
+have reached another milestone with this first release of the
+codebase. Developments will not stop here, but they will in the future
+all be part of regular time-based releases.
 
 ## How can you try it out?
 
@@ -52,11 +59,11 @@ supports Dotty. To try it out:
 1. Click on `Build Settings` in the menu on the left
 2. Under `Target`, click on `Dotty`
 3. That's it!
-  
-  
+
+
 # What’s in the 0.1.2-RC1 technology preview ?
 This technology preview demonstrates new language features planned for Scala 3:
- 
+
   - [Intersection Types](http://dotty.epfl.ch/docs/reference/intersection-types.html)
   - [Union Types](http://dotty.epfl.ch/docs/reference/union-types.html)
   - [Trait Parameters](http://dotty.epfl.ch/docs/reference/trait-parameters.html)
@@ -81,7 +88,7 @@ We are adopting a time-based release schedule:
   release. Multiple release candidates may be released during each 6 weeks
   period to fix regressions.
 - Every 6 weeks, the last release candidate becomes a release.
- 
+
 At the end of 6 weeks, the milestone will be promoted to a stable release.
 See here for the full [version number explanation](http://dotty.epfl.ch/docs/usage/version-numbers.html).
 
