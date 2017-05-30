@@ -5,7 +5,7 @@ author: Dmytro Petrashko
 authorImg: /images/petrashko.jpg
 ---
 
-Today, we’re excited to release the alpha version of Dotty 0.1.2. 
+Today, we’re excited to release the Dotty version 0.1.2-RC1. 
 This release serves as a technology preview that demonstrates new language features and compiler supporting them.
 
 
@@ -67,6 +67,7 @@ Those releases are a good place to be for library authors
  as we intend to provide hot-fixes and fix regression there.
  
 At the end of 6 weeks, the milestone will be promoted to a stable release.
+See here for full [version number explanation](http://dotty.epfl.ch/docs/usage/version-numbers.html).
 
 ## What are the next steps?
 
