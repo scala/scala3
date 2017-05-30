@@ -1,6 +1,6 @@
 ---
 layout: blog-page
-title: Announcing Dotty 0.1.2, a major step towards Scala 3
+title: Announcing Dotty 0.1.2-RC1, a major step towards Scala 3
 author: Dmytro Petrashko
 authorImg: /images/petrashko.jpg
 ---
@@ -18,30 +18,44 @@ Back at the time Dotty was just an ambitious experiment.
 This experiment has proved to be a major success.
 Today, we are glad to announce that Scala 3.0 will be build on Dotty code.
 
-## How you can try it out?
+## How can you try it out?
 
-You have two alternatives: either use sbt-dotty plugin or get a standalone installation.
+You have several alternatives: use the `sbt-dotty` plugin, get a standalone
+installation, or try it online on [Scastie](https://scastie.scala-lang.org/).
 
-In case you prefer Sbt, We provide Sbt project templates. 
-Using sbt version 0.13.13 or newer, do `sbt new lampepfl/dotty.g8`.
-This should set-up a new Sbt project with Dotty as compiler.
-For more details on how to use sbt-dotty plugin, please have a look
-at [example project](https://github.com/lampepfl/dotty-example-project)
+### sbt
+Using sbt 0.13.13 or newer, do:
 
+```
+sbt new lampepfl/dotty.g8
+```
 
-In case you prefer to get a standalone `dotc` script,
-releases are available for download on the _Releases_
-section of Dotty repository: https://github.com/lampepfl/dotty/releases/
+This will setup a new sbt project with Dotty as compiler. For more details on
+using Dotty with sbt, see the
+[example project](https://github.com/lampepfl/dotty-example-project).
+
+### Standalone installation
+
+Releases are available for download on the _Releases_
+section of the Dotty repository: https://github.com/lampepfl/dotty/releases.
+
 We also provide a [homebrew](https://brew.sh/) package that can be installed by running
 
 ```
 brew install lampepfl/brew/dotty
 ```
 
+### Scastie
+
+[Scastie](https://scastie.scala-lang.org/), the online Scala playground,
+supports Dotty. To try it out:
+1. Click on `Build Settings` in the menu on the left
+2. Under `Target`, click on `Dotty`
+3. That's it!
   
-# What’s in 0.1.2 technology preview?
-The technology preview presents you new language features
- that are we have been developing in preparation for Scala 3: 
+  
+# What’s in the 0.1.2-RC1 technology preview ?
+This technology preview demonstrates new language features planned for Scala 3:
  
   - [Intersection Types](http://dotty.epfl.ch/docs/reference/intersection-types.html)
   - [Union Types](http://dotty.epfl.ch/docs/reference/union-types.html)
@@ -59,12 +73,14 @@ See here for full [release notes](http://dotty.epfl.ch/docs/release-notes/0.1.2.
 
 ## Release schedule
 
-We are adopting a time based release schedule.
-Every day we will publish a nightly, for those who want to be on the very edge of progress. 
-
-Every 6 weeks we will cut a new milestone release. 
-Those releases are a good place to be for library authors
- as we intend to provide hot-fixes and fix regression there.
+We are adopting a time-based release schedule:
+- Nightly builds will be published, for those wanting to be at the forefront of
+  development.
+- Every 6 week, a release candidate will be cut based on the last nightly build,
+  the release candidates let library authors test their code in advance of each
+  release. Multiple release candidates may be released during each 6 weeks
+  period to fix regressions.
+- Every 6 week, the last release candidate becomes a release.
  
 At the end of 6 weeks, the milestone will be promoted to a stable release.
 See here for full [version number explanation](http://dotty.epfl.ch/docs/usage/version-numbers.html).
@@ -79,6 +95,7 @@ Over the coming weeks and months, we plan to work on the following topics:
 
 If you want to get your hands dirty with any of this, now is a good
 moment to get involved! Join the team of contributors, including
+Martin Odersky ([@odersky](https://twitter.com/odersky))
 Dmitry Petrashko ([@DarkDimius](https://twitter.com/DarkDimius)),
 Guillaume Martres ([@smarter](https://github.com/smarter)),
 Felix Mulder ([@felixmulder](https://twitter.com/felixmulder)),
@@ -88,4 +105,4 @@ Olivier Blanvillain ([@OlivierBlanvillain](https://github.com/OlivierBlanvillain
 and others!
 
 
-To get started: <https://github.com/lampepfl/dotty>.
+To get started, see <https://github.com/lampepfl/dotty>.
