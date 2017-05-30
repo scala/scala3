@@ -1,6 +1,18 @@
 sidebar:
     - title: Blog
       url: blog/index.html
+    - title: Usage
+      subsection:
+        - title: sbt-projects
+          url: docs/usage/sbt-projects.html
+        - title: IDE support for Dotty
+          url: docs/usage/ide-support.html
+        - title: cbt-projects
+          url: docs/usage/cbt-projects.html
+        - title: Dottydoc
+          url: docs/usage/dottydoc.html
+        - title: Migrating
+          url: docs/usage/migrating.html
     - title: Reference
       subsection:
         - title: New Types
@@ -71,18 +83,6 @@ sidebar:
               url: docs/reference/dropped/limit22.html
             - title: XML literals
               url: docs/reference/dropped/xml.html
-    - title: Usage
-      subsection:
-        - title: sbt-projects
-          url: docs/usage/sbt-projects.html
-        - title: IDE support for Dotty
-          url: docs/usage/ide-support.html
-        - title: cbt-projects
-          url: docs/usage/cbt-projects.html
-        - title: Dottydoc
-          url: docs/usage/dottydoc.html
-        - title: Migrating
-          url: docs/usage/migrating.html
     - title: Contributing
       subsection:
         - title: Getting Started
