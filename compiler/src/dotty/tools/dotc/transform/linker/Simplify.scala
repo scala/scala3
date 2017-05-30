@@ -1226,9 +1226,11 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
         }
         visitType(valdef.symbol.info)
       case t: New =>
-        val symIfExists = t.tpt.tpe.normalizedPrefix.termSymbol
+        val normalized = t.tpt.tpe.normalizedPrefix
+        val symIfExists = normalized.termSymbol
         val b4 = used.getOrElseUpdate(symIfExists, 0)
         used.put(symIfExists, b4 + 1)
+        visitType(normalized)
 
       case valdef: ValDef if valdef.symbol.exists && !valdef.symbol.owner.isClass &&
                              !valdef.symbol.is(Param | Module | Lazy) =>
@@ -1279,8 +1281,8 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
       // TODO: if a non-synthetic val is duplicate of a synthetic one, rename a synthetic one and drop synthetic flag?
 
       val copiesToReplaceAsUsedOnce =
-        timesUsed.filter(x => x._2 == 1).
-          flatMap(x => copies.get(x._1) match {
+        timesUsed.filter(x => x._2 == 1)
+          .flatMap(x => copies.get(x._1) match {
             case Some(tr) => List((x._1, tr))
             case None => Nil
           }) -- timesUsedAsType.keySet
@@ -1289,7 +1291,7 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
 
       val deepReplacer = new TreeMap() {
         override def transform(tree: Tree)(implicit ctx: Context): Tree = {
-          def loop(tree: Tree):Tree  =
+          def loop(tree: Tree): Tree  =
             tree match {
               case t: RefTree if replacements.contains(t.symbol) =>
                 loop(replacements(t.symbol))
