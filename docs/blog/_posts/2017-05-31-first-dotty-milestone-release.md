@@ -43,17 +43,17 @@ brew install lampepfl/brew/dotty
 The technology preview presents you new language features
  that are we have been developing in preparation for Scala 3: 
  
-    - [Intersection Types](http://dotty.epfl.ch/docs/reference/intersection-types.html)
-    - [Union Types](http://dotty.epfl.ch/docs/reference/union-types.html)
-    - [Trait Parameters](http://dotty.epfl.ch/docs/reference/trait-parameters.html)
-    - [Enumerations](http://dotty.epfl.ch/docs/reference/enums.html)
-    - [Algebraic Data Types](http://dotty.epfl.ch/docs/reference/adts.html)
-    - [By-Name Implicits](http://dotty.epfl.ch/docs/reference/implicit-by-name-parameters.html)
+  - [Intersection Types](http://dotty.epfl.ch/docs/reference/intersection-types.html)
+  - [Union Types](http://dotty.epfl.ch/docs/reference/union-types.html)
+  - [Trait Parameters](http://dotty.epfl.ch/docs/reference/trait-parameters.html)
+  - [Enumerations](http://dotty.epfl.ch/docs/reference/enums.html)
+  - [Algebraic Data Types](http://dotty.epfl.ch/docs/reference/adts.html)
+  - [By-Name Implicits](http://dotty.epfl.ch/docs/reference/implicit-by-name-parameters.html)
 
 We also ship with tools that help you try out the Dotty platform:
 
-    - [Visual Studio Code Plugin](http://dotty.epfl.ch/docs/usage/ide-support.html)
-    - [SBT support, including crosscompilation with Scala2](https://github.com/lampepfl/dotty-example-project)
+  - [Visual Studio Code Plugin](http://dotty.epfl.ch/docs/usage/ide-support.html)
+  - [SBT support, including crosscompilation with Scala2](https://github.com/lampepfl/dotty-example-project)
 
 See here for full [release notes](http://dotty.epfl.ch/docs/release-notes/0.1.2.html).
 
