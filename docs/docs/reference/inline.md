@@ -59,7 +59,7 @@ Note that the arguments corresponding to the parameters `msg` and `op`
 of the inline method `log` are defined before the inlined body (which
 is in this case simply `op`). By-name parameters of the inlined method
 correspond to `def` bindings whereas by-value parameters correspond to
-`val` bindings. Do if `log` was defined like this:
+`val` bindings. So if `log` was defined like this:
 
     inline def log[T](msg: String)(op: => T): T = ...
 
@@ -119,7 +119,7 @@ it happens in the fronend instead of in the backend, and it also applies
 to method arguments and recursive methods.
 
 Since `inline` is now a keyword, it would be a syntax error to write
-`@inline`. Hwoever, one can still refer to the annotation by putting
+`@inline`. However, one can still refer to the annotation by putting
 it in backticks, i.e.
 
     @`inline` def ...
