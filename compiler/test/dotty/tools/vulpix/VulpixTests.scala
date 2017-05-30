@@ -14,6 +14,7 @@ class VulpixTests extends ParallelTesting {
   implicit val _: SummaryReporting = new NoSummaryReport
 
   def maxDuration = 3.seconds
+  def maxCompileTime= 10.seconds
   def numberOfSlaves = 5
   def safeMode = sys.env.get("SAFEMODE").isDefined
   def isInteractive = !sys.env.contains("DRONE")
@@ -73,4 +74,10 @@ class VulpixTests extends ParallelTesting {
 
   @Test def deadlock: Unit =
     compileFile("../tests/partest-test/deadlock.scala", defaultOptions).expectFailure.checkRuns()
+
+  /** We alow for maximum 10 seconds of compile time, compiling the standard
+   *  library takes a biiiit longer (> 30 seconds)
+   */
+  @Test def infiniteCompile: Unit =
+    compileList("compileStdLib", StdLibSources.whitelisted, scala2Mode.and("-migration", "-Yno-inline")).expectFailure.checkCompile()
 }

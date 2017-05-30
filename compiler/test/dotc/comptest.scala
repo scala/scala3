@@ -7,6 +7,7 @@ import scala.concurrent.duration._
 object comptest extends ParallelTesting {
 
   def maxDuration = 3.seconds
+  def maxCompileTime = 1.minute
   def numberOfSlaves = 5
   def safeMode = false
   def isInteractive = true
