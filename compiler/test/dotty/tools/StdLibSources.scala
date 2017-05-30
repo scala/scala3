@@ -55,7 +55,7 @@ object StdLibSources {
     .map(_.takeWhile(_ != '#').trim) // allow comments in the end of line
     .filter(_.nonEmpty)
     .map(stdLibPath + _)
-    .toList
+    .toArray.sorted.toList
 
 }
 
