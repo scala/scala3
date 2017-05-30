@@ -21,13 +21,17 @@ if [ -z "$2" -o -z "$3" -o -z "$4" ]; then
     exit 1
 fi
 
+if [ ! "$NIGHTLYBUILD" = "yes" ] && [ ! "$RELEASEBUILD" = "yes" ]; then
+    echo "Neither NIGHTLYBUILD or RELEASEBUILD env var set to \"yes\""
+    exit 1
+fi
+
 CMD="     ;set credentials in ThisBuild := Seq(Credentials(\"Sonatype Nexus Repository Manager\", \"oss.sonatype.org\", \"$2\", \"$3\"))"
 CMD="$CMD ;set pgpPassphrase := Some(\"\"\"$4\"\"\".toCharArray)"
 CMD="$CMD ;set pgpSecretRing := file(\"/keys/secring.asc\")"
 CMD="$CMD ;set pgpPublicRing := file(\"/keys/pubring.asc\")"
 CMD="$CMD ;dotty-bootstrapped/publishSigned ;sonatypeRelease"
 
-export NIGHTLYBUILD="yes"
 sbt -J-Xmx4096m \
     -J-XX:ReservedCodeCacheSize=512m \
     -J-XX:MaxMetaspaceSize=1024m \

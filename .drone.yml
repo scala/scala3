@@ -22,12 +22,23 @@ pipeline:
     commands:
       - ./project/scripts/sbt ";clean ;publishLocal" "${CI_PUBLISH}"
       - ./project/scripts/sbt "sbt-dotty/scripted source-dependencies/*" "${CI_PUBLISH}"
-      - ./project/scripts/sbtPublish ${CI_PUBLISH} $SONATYPE_USER $SONATYPE_PW $PGP_PW
+      - NIGHTLYBUILD="yes" ./project/scripts/sbtPublish ${CI_PUBLISH} $SONATYPE_USER $SONATYPE_PW $PGP_PW
     volumes:
       - /home/drone/keys:/keys
     when:
       event: deployment
       environment: nightly
+
+  publish_release:
+    image: lampepfl/dotty:24-04-2017
+    pull: true
+    commands:
+      - RELEASEBUILD="yes" ./project/scripts/sbtPublish ${CI_PUBLISH} $SONATYPE_USER $SONATYPE_PW $PGP_PW
+    volumes:
+      - /home/drone/keys:/keys
+    when:
+      event: deployment
+      environment: release
 
   documentation:
     image: lampepfl/dotty:24-04-2017

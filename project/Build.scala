@@ -35,10 +35,13 @@ object Build {
   val dottyOrganization = "ch.epfl.lamp"
   val dottyGithubUrl = "https://github.com/lampepfl/dotty"
   val dottyVersion = {
-    val baseVersion = "0.1.1"
+    val baseVersion = "0.1.2-RC1"
     val isNightly = sys.env.get("NIGHTLYBUILD") == Some("yes")
+    val isRelease = sys.env.get("RELEASEBUILD") == Some("yes")
     if (isNightly)
       baseVersion + "-bin-" + VersionUtil.commitDate + "-" + VersionUtil.gitHash + "-NIGHTLY"
+    else if (isRelease)
+      baseVersion
     else
       baseVersion + "-bin-SNAPSHOT"
   }
