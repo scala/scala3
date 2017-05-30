@@ -19,6 +19,7 @@ val `scala-compiler` = Build.`scala-compiler`
 val `scala-reflect` = Build.`scala-reflect`
 val scalap = Build.scalap
 val dist = Build.dist
+val `dist-bootstrapped` = Build.`dist-bootstrapped`
 
 val `sbt-dotty` = Build.`sbt-dotty`
 val `vscode-dotty` = Build.`vscode-dotty`
