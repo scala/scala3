@@ -235,7 +235,7 @@ div#cover-block {
 }
 
 /** Tablet (576px <= x < 768px) sidebar: Defaults closed with 250px wide sidebar */
-@media screen and (min-width: 576px) and (max-width: 899px) {
+@media screen and (max-width: 899px) {
     div#content-wrapper {}
     div#content-wrapper div#content-body {}
     div#content-wrapper div#content-body.doc-page-body { padding-right: 0; }
