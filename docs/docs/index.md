@@ -23,24 +23,24 @@ Contents
     - [Enum Translation](reference/desugarEnums.md)
     - [By-Name Implicits](reference/implicit-by-name-parameters.md)
 * Usage
-    - [Dotty projects with sbt](usage/sbt-projects.md): using sbt
+    - [Dotty projects with sbt](usage/sbt-projects.md)
     - [IDE support for Dotty](usage/ide-support.md)
-    - [Dotty projects with cbt](usage/cbt-projects.md): using cbt
-* Contributing
+    - [Dotty projects with cbt](usage/cbt-projects.md)
+* Contributing to Dotty
     - [Getting Started](contributing/getting-started.md): details on how to run tests, use the cli scripts
     - [Workflow](contributing/workflow.md): common dev patterns and hints
     - [Eclipse](contributing/eclipse.md): setting up dev environment
-    - [Intellij-IDEA](contributing/intellij-idea.md): setting up dev environment
-    - [Working with the Backend](contributing/backend.md): working with the scala backend 
+    - [Intellij-IDEA](contributing/intellij-idea.md)
+    - [Working with the Backend](contributing/backend.md)
 * Internals document the compiler internals
     - [Syntax Summary](internals/syntax.md): brief analysis of the syntax
-    - [Project Structure](internals/overall-structure.md): of the project
-    - [Backend](internals/backend.md): details on the bytecode backend
+    - [Project Structure](internals/overall-structure.md)
+    - [Backend](internals/backend.md)
     - [Contexts](internals/contexts.md): details the use of `Context` in the compiler
     - [Dotty vs Scala 2](internals/dotc-scalac.md): explaining the differences between Scalac and Dotty
-    - [Higher Kinded Type Scheme](internals/higher-kinded-v2.md): scheme
-    - [Periods](internals/periods.md): details on the concepts of runs, phases and periods
-    - [Type System](internals/type-system.md): details on the type system of Dotty
+    - [Higher Kinded Type Scheme](internals/higher-kinded-v2.md)
+    - [Periods](internals/periods.md)
+    - [Type System](internals/type-system.md)
 * Resources
     - [Talks](resources/talks.md): presentations of the various aspects of Dotty
 
