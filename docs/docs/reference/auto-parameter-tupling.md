@@ -28,6 +28,6 @@ Generally, a function value with `n > 1` parameters is converted to a
 pattern-matching closure using `case` if the expected type is a unary
 function type of the form `((T_1, ..., T_n)) => U`.
 
+### Reference
 
-
-
+For more info, see [Issue #897](https://github.com/lampepfl/dotty/issues/897).

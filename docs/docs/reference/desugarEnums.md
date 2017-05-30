@@ -138,7 +138,7 @@ comma separated simple cases into a sequence of cases.
    Any modifiers or annotations on the original case extend to all expanded
    cases.
 
-## Equality
+### Equality
 
 An `enum` type contains a `scala.Eq` instance that restricts values of the `enum` type to
 be compared only to other values of the same enum type. Furtermore, generic
@@ -147,7 +147,7 @@ be compared only to other values of the same enum type. Furtermore, generic
 
     implicit def eqOption[T, U](implicit ev1: Eq[T, U]): Eq[Option[T], Option[U]] = Eq
 
-## Translation of Enumerations
+### Translation of Enumerations
 
 Non-generic enum classes `E` that define one or more singleton cases
 are called _enumerations_. Companion objects of enumerations define

@@ -43,6 +43,7 @@ is no longer legal and has to be rwritten to
       val x: B = a    // OK
     }
 
+### Reference
 
-
+For more info, see [PR #2065](https://github.com/lampepfl/dotty/pull/2065).
 

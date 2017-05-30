@@ -96,7 +96,7 @@ enum Color(val rgb: Int) {
 }
 ```
 
-## Syntax of Enums
+### Syntax of Enums
 
 Changes to the syntax fall in two categories: enum classes and cases inside enums.
 The changes are specified below as deltas with respect to the Scala syntax given [here](https://github.com/lampepfl/dotty/blob/master/docs/docs/internals/syntax.md)
@@ -116,7 +116,6 @@ The changes are specified below as deltas with respect to the Scala syntax given
                            ClsParamClauses TemplateOpt
         TemplateStat  ::=  ... | EnumCaseStat
 
+### Reference
 
-
-
-
+For more info, see [Issue #1970](https://github.com/lampepfl/dotty/issues/1970).

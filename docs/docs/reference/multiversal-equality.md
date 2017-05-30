@@ -95,3 +95,7 @@ The precise rules for equality checking are as follows.
 
 More on multiversal equality is found in a [blog post]
 and a [Github issue].
+
+### Reference
+
+For more info, see [Issue #1247](https://github.com/lampepfl/dotty/issues/1247).

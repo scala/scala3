@@ -109,7 +109,7 @@ overhead:
       }
     }
 
-## Relationship to `@inline`.
+### Relationship to `@inline`.
 
 Existing Scala defines a `@inline` annotation which is used as a hint
 for the backend to inline. For most purposes, this annotation is
@@ -125,6 +125,10 @@ it in backticks, i.e.
     @`inline` def ...
 
 
+### Reference
+
+For more info, see [PR #1492](https://github.com/lampepfl/dotty/pull/1492) and
+[Scala SIP 28](http://docs.scala-lang.org/sips/pending/inline-meta.html)
 
 
 
