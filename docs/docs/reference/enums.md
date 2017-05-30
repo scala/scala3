@@ -26,7 +26,7 @@ object Color {
 }
 ```
 
-## Parameterized enums
+### Parameterized enums
 
 Enum classes can be parameterized.
 
@@ -41,7 +41,7 @@ enum Color(val rgb: Int) {
 As the example shows, you can define the parameter value by using an
 explicit extends clause.
 
-## Methods defined for enums
+### Methods defined for enums
 
 The values of an enum correspond to unique integers. The integer
 associated with an enum value is returned by its `enumTag` method:
@@ -67,7 +67,7 @@ scala> Color.enumValues
 val res3: collection.Iterable[Color] = MapLike(Red, Green, Blue)
 ```
 
-## User-defined members of enums
+### User-defined members of enums
 
 It is possible to add your own definitions to an enum class or its
 companion object.  To make clear what goes where you need to use the
@@ -101,7 +101,7 @@ object Planet {
 }
 ```
 
-## Implementation
+### Implementation
 
 Enum classes are represented as `sealed` classes that extend the `scala.Enum` trait.
 This trait defines a single method, `enumTag`:
@@ -137,3 +137,7 @@ definition of value `Color.Red` above would expand to:
 ```scala
 val Red: Color = $new(0, "Red")
 ```
+
+### Reference
+
+For more info, see [Issue #1970](https://github.com/lampepfl/dotty/issues/1970).

@@ -102,7 +102,7 @@ the cast lies about the structure of the record, the corresponding
 likely be part if a database access layer which would ensure its
 correctness.
 
-## Notes:
+### Notes:
 
 1. The scheme does not handle polymorphic methods in structural
 refinements. Such polymorphic methods are currently flagged as
@@ -127,3 +127,7 @@ differences.
    takes class tags indicating the method's formal parameter types as
    additional argument. `Dynamic` comes with `applyDynamic` and
    `updateDynamic` methods, which take actual argument values.
+
+### Reference
+
+For more info, see [Issue #1886](https://github.com/lampepfl/dotty/issues/1886).
