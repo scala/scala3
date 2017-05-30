@@ -30,7 +30,7 @@ abstract class MacroTransform extends Phase {
    */
   protected def transformPhase(implicit ctx: Context): Phase = this
 
-  class Transformer extends TreeMap {
+  class Transformer extends TreeMap(cpy = cpyBetweenPhases) {
 
     protected def localCtx(tree: Tree)(implicit ctx: Context) = {
       val sym = tree.symbol

@@ -168,6 +168,10 @@ class CompilationTests extends ParallelTesting {
   @Test def runAll: Unit =
     compileFilesInDir("../tests/run", defaultOptions).checkRuns()
 
+  // For the single test that currently fail under -optimise
+  @Test def runNotOptimised: Unit =
+    compileFilesInDir("../tests/run-not-optimised", defaultOptions.filterNot("-optimise".==)).checkRuns()
+
   // Pickling Tests ------------------------------------------------------------
   //
   // Pickling tests are very memory intensive and as such need to be run with a

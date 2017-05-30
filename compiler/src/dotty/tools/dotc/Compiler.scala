@@ -17,6 +17,7 @@ import core.DenotTransformers.DenotTransformer
 import core.Denotations.SingleDenotation
 
 import dotty.tools.backend.jvm.{LabelDefs, GenBCode, CollectSuperCalls}
+import dotty.tools.dotc.transform.linker.Simplify
 
 /** The central class of the dotc compiler. The job of a compiler is to create
  *  runs, which process given `phases` in a given `rootContext`.
@@ -75,6 +76,7 @@ class Compiler {
            new ElimByName,          // Expand by-name parameter references
            new AugmentScala2Traits, // Expand traits defined in Scala 2.11 to simulate old-style rewritings
            new ResolveSuper,        // Implement super accessors and add forwarders to trait methods
+           new Simplify,            // Perform local optimizations, simplified versions of what linker does.
            new PrimitiveForwarders, // Add forwarders to trait methods that have a mismatch between generic and primitives
            new FunctionXXLForwarders, // Add forwarders for FunctionXXL apply method
            new ArrayConstructors),  // Intercept creation of (non-generic) arrays and intrinsify.
@@ -88,9 +90,10 @@ class Compiler {
            new NonLocalReturns,     // Expand non-local returns
            new CapturedVars,        // Represent vars captured by closures as heap objects
            new Constructors,        // Collect initialization code in primary constructors
-                                       // Note: constructors changes decls in transformTemplate, no InfoTransformers should be added after it
+                                    // Note: constructors changes decls in transformTemplate, no InfoTransformers should be added after it
            new FunctionalInterfaces, // Rewrites closures to implement @specialized types of Functions.
-           new GetClass),           // Rewrites getClass calls on primitive types.
+           new GetClass,            // Rewrites getClass calls on primitive types.
+           new Simplify),           // Perform local optimizations, simplified versions of what linker does.
       List(new LambdaLift,          // Lifts out nested functions to class scope, storing free variables in environments
                                        // Note: in this mini-phase block scopes are incorrect. No phases that rely on scopes should be here
            new ElimStaticThis,      // Replace `this` references to static objects by global identifiers

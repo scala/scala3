@@ -14,7 +14,7 @@ object DottyTypeStealer extends DottyTest {
     val gatheredSource = s" ${source}\n object A$dummyName {$vals}"
     var scontext : Context = null
     var tp: List[Type] = null
-    checkCompile("frontend",gatheredSource) {
+    checkCompile("frontend", gatheredSource) {
       (tree, context) =>
         implicit val ctx = context
         val findValDef: (List[ValDef], tpd.Tree) => List[ValDef] =

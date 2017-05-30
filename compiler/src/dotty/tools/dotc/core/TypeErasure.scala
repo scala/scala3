@@ -226,7 +226,8 @@ object TypeErasure {
    *      S is last   : in the linearization of the first argument type `tp1`
    *                    there are no minimal common superclasses or traits that
    *                    come after S.
-   *  (the reason to pick last is that we prefer classes over traits that way).
+   *  The reason to pick last is that we prefer classes over traits that way,
+   *  which leads to more predictable bytecode and (?) faster dynamic dispatch.
    */
   def erasedLub(tp1: Type, tp2: Type)(implicit ctx: Context): Type = tp1 match {
     case JavaArrayType(elem1) =>
@@ -245,25 +246,38 @@ object TypeErasure {
         case JavaArrayType(_) => defn.ObjectType
         case _ =>
           val cls2 = tp2.classSymbol
-          @tailrec def loop(bcs: List[ClassSymbol], bestSoFar: ClassSymbol): ClassSymbol = bcs match {
-            case bc :: bcs1 =>
-              if (cls2.derivesFrom(bc)) {
-                val newBest = if (bestSoFar.derivesFrom(bc)) bestSoFar else bc
 
-                if (!bc.is(Trait) && bc != defn.AnyClass)
-                  newBest
-                else
-                  loop(bcs1, newBest)
-              } else
-                loop(bcs1, bestSoFar)
-            case nil =>
-              bestSoFar
+          /** takeWhile+1 */
+          def takeUntil[T](l: List[T])(f: T => Boolean): List[T] = {
+            @tailrec def loop(tail: List[T], acc: List[T]): List[T] =
+              tail match {
+                case h :: t => loop(if (f(h)) t else Nil, h :: acc)
+                case Nil    => acc.reverse
+              }
+            loop(l, Nil)
           }
-          val t = loop(tp1.baseClasses, defn.ObjectClass)
-          if (t eq defn.AnyValClass)
-            // while AnyVal is a valid common super class for primitives it does not exist after erasure
-            defn.ObjectType
-          else t.typeRef
+
+          // We are not interested in anything that is not a supertype of tp2
+          val tp2superclasses = tp1.baseClasses.filter(cls2.derivesFrom)
+
+          // From the spec, "Linearization also satisfies the property that a
+          // linearization of a class always contains the linearization of its
+          // direct superclass as a suffix"; it's enought to consider every
+          // candidate up to the first class.
+          val candidates = takeUntil(tp2superclasses)(!_.is(Trait))
+
+          // Candidates st "no other common superclass or trait derives from S"
+          val minimums = candidates.filter { cand =>
+            candidates.forall(x => !x.derivesFrom(cand) || x.eq(cand))
+          }
+
+          // Pick the last minimum to prioritise classes over traits
+          minimums.lastOption match {
+            case Some(lub) if lub != defn.AnyClass && lub != defn.AnyValClass =>
+              lub.typeRef
+            case _ => // Any/AnyVal only exist before erasure
+              defn.ObjectType
+          }
       }
   }
 
@@ -440,7 +454,7 @@ class TypeErasure(isJava: Boolean, semiEraseVCs: Boolean, isConstructor: Boolean
         // but potentially re-introduced by ResolveSuper, when we add
         // forwarders to mixin methods.
         // See doc comment for ElimByName for speculation how we could improve this.
-      else MethodType(Nil, Nil, eraseResult(rt))
+      else MethodType(Nil, Nil, eraseResult(sym.info.finalResultType))
     case tp: PolyType =>
       eraseResult(tp.resultType) match {
         case rt: MethodType => rt
