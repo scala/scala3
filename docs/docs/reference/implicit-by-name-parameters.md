@@ -65,4 +65,4 @@ No lazy val was generated because the synthesized argument is not recursive.
 
 ### Reference
 
-For more info, see [Issue #1998](https://github.com/lampepfl/dotty/issues/1998.)
+For more info, see [Issue #1998](https://github.com/lampepfl/dotty/issues/1998)
