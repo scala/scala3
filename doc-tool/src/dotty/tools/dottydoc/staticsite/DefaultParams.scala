@@ -43,7 +43,7 @@ case class DefaultParams(
         "root" -> site.root
       ).asJava,
 
-      "sidebar" -> sidebar.titles.asJava
+      "sidebar" -> sidebar.toMap
     )
     val entityMap = entity match {
       case NonEntity => Map.empty
@@ -79,7 +79,11 @@ case class SiteInfo(
   root: String
 )
 
-case class Sidebar(titles: List[Title])
+case class Sidebar(titles: List[Title]) {
+  import model.JavaConverters._
+  def toMap: JMap[String, _] =
+    Map("titles" -> titles.map(_.toMap).asJava).asJava
+}
 
 object Sidebar {
   def apply(map: HashMap[String, AnyRef]): Option[Sidebar] = Option(map.get("sidebar")).map {
@@ -91,7 +95,15 @@ object Sidebar {
   def empty: Sidebar = Sidebar(Nil)
 }
 
-case class Title(title: String, url: Option[String], subsection: List[Title])
+case class Title(title: String, url: Option[String], subsection: List[Title], description: Option[String]) {
+  import model.JavaConverters._
+  def toMap: JMap[String, _] = Map(
+    "title" -> title,
+    "url" -> url.getOrElse(null), // ugh, Java
+    "subsection" -> subsection.map(_.toMap).asJava,
+    "description" -> description.getOrElse(null)
+  ).asJava
+}
 
 object Title {
   def apply(map: JMap[String, AnyRef]): Option[Title] = {
@@ -101,13 +113,18 @@ object Title {
     val url = Option(map.get("url")).collect {
       case s: String => s
     }
+
+    val description = Option(map.get("description")).collect {
+      case s: String => s
+    }
+
     val subsection = Option(map.get("subsection")).collect {
       case xs: JList[JMap[String, AnyRef]] @unchecked =>
         xs.asScala.map(Title.apply).toList.flatMap(x => x)
     }.getOrElse(Nil)
 
     title.map {
-      case title: String  => Title(title, url, subsection)
+      case title: String  => Title(title, url, subsection, description)
     }
   }
 }

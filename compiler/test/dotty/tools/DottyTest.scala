@@ -18,12 +18,11 @@ trait DottyTest extends ContextEscapeDetection {
 
   dotc.parsing.Scanners // initialize keywords
 
-  implicit var ctx: Contexts.Context = {
+  implicit var ctx: Context = {
     val base = new ContextBase {}
     import base.settings._
     val ctx = base.initialCtx.fresh
-    ctx.setSetting(ctx.settings.encoding, "UTF8")
-    ctx.setSetting(ctx.settings.classpath, Jars.dottyLib)
+    initializeCtx(ctx)
     // when classpath is changed in ctx, we need to re-initialize to get the
     // correct classpath from PathResolver
     base.initialize()(ctx)
@@ -35,7 +34,12 @@ trait DottyTest extends ContextEscapeDetection {
     ctx = null
   }
 
-  private def compilerWithChecker(phase: String)(assertion:(tpd.Tree, Context) => Unit) = new Compiler {
+  protected def initializeCtx(fc: FreshContext): Unit = {
+    fc.setSetting(fc.settings.encoding, "UTF8")
+    fc.setSetting(fc.settings.classpath, Jars.dottyLib)
+  }
+
+  private def compilerWithChecker(phase: String)(assertion: (tpd.Tree, Context) => Unit) = new Compiler {
     override def phases = {
       val allPhases = super.phases
       val targetPhase = allPhases.flatten.find(p => p.phaseName == phase).get
@@ -58,7 +62,7 @@ trait DottyTest extends ContextEscapeDetection {
     run.compile(source)
   }
 
-  def checkCompile(checkAfterPhase: String, sources:List[String])(assertion:(tpd.Tree, Context) => Unit): Unit = {
+  def checkCompile(checkAfterPhase: String, sources: List[String])(assertion: (tpd.Tree, Context) => Unit): Unit = {
     val c = compilerWithChecker(checkAfterPhase)(assertion)
     c.rootContext(ctx)
     val run = c.newRun

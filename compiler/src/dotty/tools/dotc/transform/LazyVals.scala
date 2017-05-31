@@ -29,15 +29,7 @@ import Erasure.Boxing.adaptToType
 
 class LazyVals extends MiniPhaseTransform with IdentityDenotTransformer {
   import LazyVals._
-
   import tpd._
-
-  def transformer = new LazyVals
-
-  val containerFlags = Flags.Synthetic | Flags.Mutable | Flags.Lazy
-  val initFlags      = Flags.Synthetic | Flags.Method
-
-  val containerFlagsMask = Flags.Method | Flags.Lazy | Flags.Accessor | Flags.Module
 
   /** this map contains mutable state of transformation: OffsetDefs to be appended to companion object definitions,
     * and number of bits currently used */
@@ -49,6 +41,15 @@ class LazyVals extends MiniPhaseTransform with IdentityDenotTransformer {
   /** List of names of phases that should have finished processing of tree
     * before this phase starts processing same tree */
   override def runsAfter = Set(classOf[Mixin])
+
+  override def changesMembers = true  // the phase adds lazy val accessors
+
+  def transformer = new LazyVals
+
+  val containerFlags = Flags.Synthetic | Flags.Mutable | Flags.Lazy
+  val initFlags      = Flags.Synthetic | Flags.Method
+
+  val containerFlagsMask = Flags.Method | Flags.Lazy | Flags.Accessor | Flags.Module
 
   override def transformDefDef(tree: tpd.DefDef)(implicit ctx: Context, info: TransformerInfo): tpd.Tree =
    transformLazyVal(tree)

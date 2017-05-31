@@ -70,7 +70,7 @@ categories:
 We can in fact construct soundness issues in all of these cases. Look
 at the discussion for issues [#50](https://github.com/lampepfl/dotty/issues/50)
 and [#1050](https://github.com/lampepfl/dotty/issues/1050) in the
-[dotty](https://github.com/lampepfl/dotty/issues/1050) repository
+[Dotty](https://github.com/lampepfl/dotty/issues/1050) repository
 on GitHub. All issues work fundamentally in the same way: Construct a type `S`
 which has a type member `T` with bad bounds, say
 
@@ -138,7 +138,7 @@ arithmetic.
 
 To ease the transition, we will continue for a while to allow unrestricted type
 projections under a flag, even though they are potentially
-unsound. In the current dotty compiler, that flag is a language import
+unsound. In the current Dotty compiler, that flag is a language import
 `-language:Scala2`, but it could be something different for other
 compilers, e.g. `-unsafe`.  Maybe we can find rules that are less
 restrictive than the ones we have now, and are still sound.  But one

@@ -8,7 +8,8 @@ object Test {
     assert((10 to 1 by -1 drop 9) == Seq(1))
 
     assert((1 to 10 drop 9) == Seq(10))
-    assert((1 until 10 drop 9) == Nil)
+    assert((1 until 10 drop 9) == (Nil: List[Int]))
+      // investigate why we need the type annotation here. See #2567.
 
     assert(Stream(1 to 10).flatten.toList == Stream(1 until 11).flatten.toList)
   }

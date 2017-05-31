@@ -347,7 +347,7 @@ object Checking {
     checkNoConflict(Abstract, Override)
     if (sym.isType && !sym.is(Deferred))
       for (cls <- sym.allOverriddenSymbols.filter(_.isClass)) {
-        fail(CannotHaveSameNameAs(sym, cls))
+        fail(CannotHaveSameNameAs(sym, cls, CannotHaveSameNameAs.CannotBeOverridden))
         sym.setFlag(Private) // break the overriding relationship by making sym Private
       }
   }

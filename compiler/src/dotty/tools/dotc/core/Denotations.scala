@@ -805,7 +805,7 @@ object Denotations {
               val transformer = ctx.denotTransformers(nextTransformerId)
               //println(s"transforming $this with $transformer")
               try {
-                next = transformer.transform(cur)(ctx.withPhase(transformer)).syncWithParents
+                next = transformer.transform(cur)(ctx.withPhase(transformer))
               } catch {
                 case ex: CyclicReference =>
                   println(s"error while transforming $this") // DEBUG
@@ -817,7 +817,6 @@ object Denotations {
                 next match {
                   case next: ClassDenotation =>
                     assert(!next.is(Package), s"illegal transformation of package denotation by transformer ${ctx.withPhase(transformer).phase}")
-                    next.resetFlag(Frozen)
                   case _ =>
                 }
                 next.insertAfter(cur)
@@ -1186,11 +1185,11 @@ object Denotations {
      *  or a MissingRef or NoQualifyingRef instance, if it does not exist.
      *  if generateStubs is set, generates stubs for missing top-level symbols
      */
-    def staticRef(path: Name, generateStubs: Boolean = true)(implicit ctx: Context): Denotation = {
+    def staticRef(path: Name, generateStubs: Boolean = true, isPackage: Boolean = false)(implicit ctx: Context): Denotation = {
       def select(prefix: Denotation, selector: Name): Denotation = {
         val owner = prefix.disambiguate(_.info.isParameterless)
         if (owner.exists) {
-          val result = owner.info.member(selector)
+          val result = if (isPackage) owner.info.decl(selector) else owner.info.member(selector)
           if (result.exists) result
           else {
             val alt =

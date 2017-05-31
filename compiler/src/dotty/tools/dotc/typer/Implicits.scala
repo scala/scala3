@@ -656,7 +656,7 @@ trait Implicits { self: Typer =>
     if (!ctx.isAfterTyper && !assumedCanEqual(ltp, rtp)) {
       val res = inferImplicitArg(
         defn.EqType.appliedTo(ltp, rtp), msgFun => ctx.error(msgFun(""), pos), pos)
-      implicits.println(i"Eq witness found: $res: ${res.tpe}")
+      implicits.println(i"Eq witness found for $ltp / $rtp: $res: ${res.tpe}")
     }
 
   /** Find an implicit parameter or conversion.
@@ -676,7 +676,7 @@ trait Implicits { self: Typer =>
       val isearch =
         if (ctx.settings.explainImplicits.value) new ExplainedImplicitSearch(pt, argument, pos)
         else new ImplicitSearch(pt, argument, pos)
-      val result = isearch.bestImplicit
+      val result = isearch.bestImplicit(contextual = true)
       result match {
         case result: SearchSuccess =>
           result.tstate.commit()
@@ -743,7 +743,7 @@ trait Implicits { self: Typer =>
       def typedImplicit(cand: Candidate)(implicit ctx: Context): SearchResult = track("typedImplicit") { ctx.traceIndented(i"typed implicit ${cand.ref}, pt = $pt, implicitsEnabled == ${ctx.mode is ImplicitsEnabled}", implicits, show = true) {
         assert(constr eq ctx.typerState.constraint)
         val ref = cand.ref
-        var generated: Tree = tpd.ref(ref).withPos(pos.startPos)
+        var generated: Tree = tpd.ref(ref).withPos(pos)
         if (!argument.isEmpty)
           generated = typedUnadapted(
             untpd.Apply(untpd.TypedSplice(generated), untpd.TypedSplice(argument) :: Nil),
@@ -759,13 +759,20 @@ trait Implicits { self: Typer =>
               case _ => false
             }
           }
-        // Does there exist an implicit value of type `Eq[tp, tp]`?
-        def hasEq(tp: Type): Boolean =
-          new ImplicitSearch(defn.EqType.appliedTo(tp, tp), EmptyTree, pos).bestImplicit match {
-            case result: SearchSuccess => result.ref.symbol != defn.Predef_eqAny
-            case result: AmbiguousImplicits => true
-            case _ => false
-          }
+        // Does there exist an implicit value of type `Eq[tp, tp]`
+        // which is different from `eqAny`?
+        def hasEq(tp: Type): Boolean = {
+          def search(contextual: Boolean): Boolean =
+            new ImplicitSearch(defn.EqType.appliedTo(tp, tp), EmptyTree, pos)
+              .bestImplicit(contextual) match {
+              case result: SearchSuccess =>
+                result.ref.symbol != defn.Predef_eqAny ||
+                contextual && search(contextual = false)
+              case result: AmbiguousImplicits => true
+              case _ => false
+            }
+          search(contextual = true)
+        }
 
         def validEqAnyArgs(tp1: Type, tp2: Type) = {
           List(tp1, tp2).foreach(fullyDefinedType(_, "eqAny argument", pos))
@@ -872,12 +879,15 @@ trait Implicits { self: Typer =>
     }
 
     /** Find a unique best implicit reference */
-    def bestImplicit: SearchResult = {
-      searchImplicits(ctx.implicits.eligible(wildProto), contextual = true) match {
+    def bestImplicit(contextual: Boolean): SearchResult = {
+      val eligible =
+        if (contextual) ctx.implicits.eligible(wildProto)
+        else implicitScope(wildProto).eligible
+      searchImplicits(eligible, contextual) match {
         case result: SearchSuccess => result
         case result: AmbiguousImplicits => result
         case result: SearchFailure =>
-          searchImplicits(implicitScope(wildProto).eligible, contextual = false)
+          if (contextual) bestImplicit(contextual = false) else result
       }
     }
 

@@ -31,6 +31,8 @@ import ast.Trees._
 class AugmentScala2Traits extends MiniPhaseTransform with IdentityDenotTransformer with FullParameterization { thisTransform =>
   import ast.tpd._
 
+  override def changesMembers = true
+
   override def phaseName: String = "augmentScala2Traits"
 
   override def rewiredTarget(referenced: Symbol, derived: Symbol)(implicit ctx: Context) = NoSymbol

@@ -35,10 +35,13 @@ object Build {
   val dottyOrganization = "ch.epfl.lamp"
   val dottyGithubUrl = "https://github.com/lampepfl/dotty"
   val dottyVersion = {
-    val baseVersion = "0.1.1"
+    val baseVersion = "0.2.0"
     val isNightly = sys.env.get("NIGHTLYBUILD") == Some("yes")
+    val isRelease = sys.env.get("RELEASEBUILD") == Some("yes")
     if (isNightly)
       baseVersion + "-bin-" + VersionUtil.commitDate + "-" + VersionUtil.gitHash + "-NIGHTLY"
+    else if (isRelease)
+      baseVersion
     else
       baseVersion + "-bin-SNAPSHOT"
   }
@@ -437,7 +440,6 @@ object Build {
           s"""version.number=${version.value}
              |maven.version.number=${version.value}
              |git.hash=${VersionUtil.gitHash}
-             |osgi.version.number=${version.value}-v${dateFormat.format(Calendar.getInstance().getTime)}
              |copyright.string=Copyright 2002-${Calendar.getInstance().get(Calendar.YEAR)}, LAMP/EPFL
            """.stripMargin
 
@@ -888,7 +890,7 @@ object Build {
 
 
       sbtPlugin := true,
-      version := "0.1.0",
+      version := "0.1.1",
       ScriptedPlugin.scriptedSettings,
       ScriptedPlugin.sbtTestDirectory := baseDirectory.value / "sbt-test",
       ScriptedPlugin.scriptedBufferLog := false,
@@ -910,7 +912,7 @@ object Build {
     settings(
       EclipseKeys.skipProject := true,
 
-      version := "0.0.1", // Keep in sync with package.json
+      version := "0.1.0", // Keep in sync with package.json
 
       autoScalaLibrary := false,
       publishArtifact := false,
@@ -1178,11 +1180,27 @@ object Build {
     settings(commonNonBootstrappedSettings).
     settings(packSettings).
     settings(
-      triggeredMessage in ThisBuild := Watched.clearWhenTriggered,
-      submoduleChecks,
       publishArtifact := false,
       // packMain := Map("dummy" -> "dotty.tools.dotc.Main"),
       packExpandedClasspath := true,
+      packResourceDir += (baseDirectory.value / "bin" -> "bin"),
+      packArchiveName := "dotty-" + dottyVersion
+    )
+
+   // Same as `dist` but using bootstrapped projects.
+  lazy val `dist-bootstrapped` = project.
+    dependsOn(`dotty-interfaces`).
+    dependsOn(`dotty-library-bootstrapped`).
+    dependsOn(`dotty-compiler-bootstrapped`).
+    dependsOn(`dotty-doc-bootstrapped`).
+    settings(commonBootstrappedSettings).
+    settings(packSettings).
+    settings(
+      target := baseDirectory.value / "target",                    // override setting in commonBootstrappedSettings
+      publishArtifact := false,
+      // packMain := Map("dummy" -> "dotty.tools.dotc.Main"),
+      packExpandedClasspath := true,
+      // packExcludeJars := Seq("scala-library-.*\\.jar"),
       packResourceDir += (baseDirectory.value / "bin" -> "bin"),
       packArchiveName := "dotty-" + dottyVersion
     )

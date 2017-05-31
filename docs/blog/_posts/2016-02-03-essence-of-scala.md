@@ -131,7 +131,7 @@ project are important.
     wildcard parameters `[_ <: T]`, `[_ >: T]` should be.
 
  3. DOT also provides a blueprint for Scala compilation. The new Scala
-    compiler _dotty_ has internal data structures that closely resemble DOT.
+    compiler _Dotty_ has internal data structures that closely resemble DOT.
     In particular, type parameters are immediately mapped to type members,
     in the way we propose to encode them also in the calculus.
 

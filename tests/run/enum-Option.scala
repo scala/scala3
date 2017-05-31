@@ -16,5 +16,6 @@ object Test {
   def main(args: Array[String]) = {
     assert(Some(None).isDefined)
     Option("22") match { case Option.Some(x) => assert(x == "22") }
+    assert(Some(None) != None)
   }
 }

@@ -48,6 +48,9 @@ class ShortcutImplicits extends MiniPhase with IdentityDenotTransformer { thisTr
   import tpd._
 
   override def phaseName: String = "shortcutImplicits"
+
+  override def changesMembers = true  // the phase adds "direct" methods
+
   val treeTransform = new Transform
 
   /** If this option is true, we don't specialize symbols that are known to be only

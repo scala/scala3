@@ -165,3 +165,21 @@ div.entity-section > div.member > div.member-body > div.member-body-long.toggled
 div.entity-section.toggled {
     display: none;
 }
+
+@media screen and (max-width: 576px) {
+    a#edit-on-github {
+        position: static !important;
+    }
+}
+
+@media screen and (min-width: 576px) and (max-width: 899px) {
+    a#edit-on-github {
+        right: 10px !important;
+    }
+}
+
+@media screen and (min-width: 899px) and (max-width: 1046px) {
+    a#edit-on-github {
+        position: static !important;
+    }
+}

@@ -14,7 +14,7 @@ import core.StdNames.nme
 
 /** This phase translates arguments to call-by-name parameters, using the rules
  *
- *      x           ==>    x                   if x is a => parameter
+ *      x           ==>    x                  if x is a => parameter
  *      e.apply()   ==>    <cbn-arg>(e)       if e is pure
  *      e           ==>    <cbn-arg>(() => e) for all other arguments
  *

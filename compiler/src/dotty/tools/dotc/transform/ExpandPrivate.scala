@@ -44,6 +44,8 @@ class ExpandPrivate extends MiniPhaseTransform with IdentityDenotTransformer { t
   // This phase moves methods around (in infotransform) so it may need to make other methods public
   override def runsAfter: Set[Class[_ <: Phase]] = Set(classOf[MoveStatics])
 
+  override def changesMembers = true // the phase introduces new members with mangled names
+
   override def checkPostCondition(tree: Tree)(implicit ctx: Context): Unit = {
     tree match {
       case t: DefDef =>

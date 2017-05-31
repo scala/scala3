@@ -62,6 +62,8 @@ object TreeTransforms {
 
     def treeTransformPhase: Phase = phase.next
 
+    val cpy: TypedTreeCopier = cpyBetweenPhases
+
     def prepareForIdent(tree: Ident)(implicit ctx: Context) = this
     def prepareForSelect(tree: Select)(implicit ctx: Context) = this
     def prepareForThis(tree: This)(implicit ctx: Context) = this
@@ -187,7 +189,7 @@ object TreeTransforms {
           else {
             val derivedAnnots = (annots, annotTrees1).zipped.map((annot, annotTree1) =>
               annot.derivedAnnotation(annotTree1))
-            ref1.copySymDenotation(annotations = derivedAnnots)
+            ref1.copySymDenotation(annotations = derivedAnnots).copyCaches(ref1, ctx.phase.next)
           }
         case ref1 =>
           ref1

@@ -53,7 +53,7 @@ scenarios where plain parameters would be too cumbersome. For
 instance, type classes would be a lot less popular if one would have
 to pass all dictionaries by hand. Implicit parameters are also very
 useful as a general context passing mechanism. For instance in the
-_dotty_ compiler, almost every function takes an implicit context
+_Dotty_ compiler, almost every function takes an implicit context
 parameter which defines all elements relating to the current state of
 the compilation. This is in my experience much better than the cake
 pattern because it is lightweight and can express context changes in a
@@ -151,7 +151,7 @@ implicit parameter:
 
 A three-times repetition might not look so bad here, but it certainly
 smells of boilerplate. In real-sized projects, this can get much worse.
-For instance, the _dotty_ compiler uses implicit abstraction
+For instance, the _Dotty_ compiler uses implicit abstraction
 over contexts for most of its parts. Consequently it ends up with currently
 no fewer than 2641 occurrences of the text string
 
@@ -180,7 +180,7 @@ type of `f1` is:
 
 Just like the normal function type syntax `A => B`, desugars to `scala.Function1[A, B]`
 the implicit function type syntax `implicit A => B` desugars to `scala.ImplicitFunction1[A, B]`.
-The same holds at other function arities. With dotty's [pull request #1758](https://github.com/lampepfl/dotty/pull/1758)
+The same holds at other function arities. With Dotty's [pull request #1758](https://github.com/lampepfl/dotty/pull/1758)
 merged there is no longer an upper limit of 22 for such functions.
 
 The type `ImplicitFunction1` can be thought of being defined as follows:

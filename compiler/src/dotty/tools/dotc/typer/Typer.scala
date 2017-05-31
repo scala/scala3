@@ -244,11 +244,21 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
         else {
           var result: Type = NoType
 
-          // find definition
-          if ((lastCtx eq ctx) || (ctx.scope ne lastCtx.scope) || (ctx.owner ne lastCtx.owner)) {
+          val curOwner = ctx.owner
+
+          // Can this scope contain new definitions? This is usually the first
+          // context where either the scope or the owner changes wrt the
+          // context immediately nested in it. But for package contexts, it's
+          // the opposite: the last context before the package changes. This distinction
+          // is made so that top-level imports following a package clause are
+          // logically nested in that package clause.
+          val isNewDefScope =
+            if (curOwner is Package) curOwner ne ctx.outer.owner
+            else (ctx.scope ne lastCtx.scope) || (curOwner ne lastCtx.owner)
+
+          if (isNewDefScope) {
             val defDenot = ctx.denotNamed(name)
             if (qualifies(defDenot)) {
-              val curOwner = ctx.owner
               val found =
                 if (isSelfDenot(defDenot)) curOwner.enclosingClass.thisType
                 else curOwner.thisType.select(name, defDenot)
@@ -297,7 +307,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
       }
 
       // begin findRef
-      loop(ctx)(ctx)
+      loop(NoContext)(ctx)
     }
 
     // begin typedIdent
@@ -1316,12 +1326,30 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
         result
       }
 
+    /** Checks if one of the decls is a type with the same name as class type member in selfType */
+    def classExistsOnSelf(decls: Scope, self: tpd.ValDef): Boolean = {
+      val selfType = self.tpt.tpe
+      if (!selfType.exists || (selfType.classSymbol eq cls)) false
+      else {
+        def memberInSelfButNotThis(decl: Symbol) =
+          selfType.member(decl.name).symbol.filter(other => other.isClass && other.owner != cls)
+        decls.iterator.filter(_.isType).foldLeft(false) { (foundRedef, decl) =>
+          val other = memberInSelfButNotThis(decl)
+          if (other.exists) {
+            val msg = CannotHaveSameNameAs(decl, other, CannotHaveSameNameAs.DefinedInSelf(self))
+            ctx.error(msg, decl.pos)
+          }
+          foundRedef || other.exists
+        }
+      }
+    }
+
     completeAnnotations(cdef, cls)
     val constr1 = typed(constr).asInstanceOf[DefDef]
     val parentsWithClass = ensureFirstIsClass(parents mapconserve typedParent, cdef.namePos)
     val parents1 = ensureConstrCall(cls, parentsWithClass)(superCtx)
     val self1 = typed(self)(ctx.outer).asInstanceOf[ValDef] // outer context where class members are not visible
-    if (self1.tpt.tpe.isError) {
+    if (self1.tpt.tpe.isError || classExistsOnSelf(cls.unforcedDecls, self1)) {
       // fail fast to avoid typing the body with an error type
       cdef.withType(UnspecifiedErrorType)
     } else {
@@ -1968,7 +1996,8 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
             case _: RefTree | _: Literal
             if !isVarPattern(tree) &&
                !(tree.tpe <:< pt)(ctx.addMode(Mode.GADTflexible)) =>
-              checkCanEqual(pt, wtp, tree.pos)(ctx.retractMode(Mode.Pattern))
+              val tp1 :: tp2 :: Nil = harmonizeTypes(pt :: wtp :: Nil)
+              checkCanEqual(tp1, tp2, tree.pos)(ctx.retractMode(Mode.Pattern))
             case _ =>
           }
           tree

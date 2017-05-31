@@ -151,7 +151,8 @@ object RefChecks {
    *       before, but it looks too complicated and method bodies are far too large.
    */
   private def checkAllOverrides(clazz: Symbol)(implicit ctx: Context): Unit = {
-    val self = upwardsThisType(clazz)
+    val self = clazz.thisType
+    val upwardsSelf = upwardsThisType(clazz)
     var hasErrors = false
 
     case class MixinOverrideError(member: Symbol, msg: String)
@@ -245,17 +246,24 @@ object RefChecks {
           (if (otherAccess == "") "public" else "at least " + otherAccess))
       }
 
-      def compatibleTypes =
-        if (member.isType) { // intersection of bounds to refined types must be nonempty
-          member.is(BaseTypeArg) ||
-          (memberTp frozen_<:< otherTp) || {
-            val jointBounds = (memberTp.bounds & otherTp.bounds).bounds
-            jointBounds.lo frozen_<:< jointBounds.hi
+      def compatibleTypes(memberTp: Type, otherTp: Type): Boolean =
+        try
+          if (member.isType) { // intersection of bounds to refined types must be nonempty
+            member.is(BaseTypeArg) ||
+            (memberTp frozen_<:< otherTp) || {
+              val jointBounds = (memberTp.bounds & otherTp.bounds).bounds
+              jointBounds.lo frozen_<:< jointBounds.hi
+            }
           }
+          else
+            member.name.is(DefaultGetterName) || // default getters are not checked for compatibility
+            memberTp.overrides(otherTp)
+        catch {
+          case ex: MissingType =>
+            // can happen when called with upwardsSelf as qualifier of memberTp and otherTp,
+            // because in that case we might access types that are not members of the qualifier.
+            false
         }
-        else
-          member.name.is(DefaultGetterName) || // default getters are not checked for compatibility
-          memberTp.overrides(otherTp)
 
       //Console.println(infoString(member) + " overrides " + infoString(other) + " in " + clazz);//DEBUG
 
@@ -356,7 +364,8 @@ object RefChecks {
         overrideError("cannot be used here - term macros cannot override abstract methods")
       } else if (other.is(Macro) && !member.is(Macro)) { // (1.10)
         overrideError("cannot be used here - only term macros can override term macros")
-      } else if (!compatibleTypes) {
+      } else if (!compatibleTypes(memberTp, otherTp) &&
+                 !compatibleTypes(upwardsSelf.memberInfo(member), upwardsSelf.memberInfo(other))) {
         overrideError("has incompatible type" + err.whyNoMatchStr(memberTp, otherTp))
       } else {
         checkOverrideDeprecated()

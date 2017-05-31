@@ -774,7 +774,10 @@ object Parsers {
       in.token match {
         case ARROW => functionRest(t :: Nil)
         case FORSOME => syntaxError(ExistentialTypesNoLongerSupported()); t
-        case _ => t
+        case _ =>
+          if (isImplicit && !t.isInstanceOf[ImplicitFunction])
+            syntaxError("Types with implicit keyword can only be function types", Position(start, start + nme.IMPLICITkw.asSimpleName.length))
+          t
       }
     }
 

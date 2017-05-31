@@ -25,7 +25,6 @@ object Test {
       case _: ExceptionTrait =>
       case _: NoSuchElementException if a <= 1 =>
       case _: NullPointerException | _:IOException =>
-      case `a` => // This case should probably emmit an error
       case e: Int => // error
       case EX =>
       case IAE(msg) =>

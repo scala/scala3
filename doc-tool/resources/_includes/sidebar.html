@@ -1,7 +1,7 @@
 <div class="index-wrapper" style="top: {{ sidebarTop }};">
     <ul class="toc">
         {% assign parent = page.path | first %}
-        {% for title in sidebar %}
+        {% for title in sidebar.titles %}
         <li>{% renderTitle title, parent %}</li>
         {% endfor %}
     </ul>

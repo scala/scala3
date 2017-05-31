@@ -597,26 +597,6 @@ object Contexts {
 
     def nextId = { _nextId += 1; _nextId }
 
-    /** A map from a superclass id to the typeref of the class that has it */
-    private[core] var classOfId = new Array[ClassSymbol](Config.InitialSuperIdsSize)
-
-    /** A map from a the typeref of a class to its superclass id */
-    private[core] val superIdOfClass = new mutable.AnyRefMap[ClassSymbol, Int]
-
-    /** The last allocated superclass id */
-    private[core] var lastSuperId = -1
-
-    /** Allocate and return next free superclass id */
-    private[core] def nextSuperId: Int = {
-      lastSuperId += 1
-      if (lastSuperId >= classOfId.length) {
-        val tmp = new Array[ClassSymbol](classOfId.length * 2)
-        classOfId.copyToArray(tmp)
-        classOfId = tmp
-      }
-      lastSuperId
-    }
-
     // Types state
     /** A table for hash consing unique types */
     private[core] val uniques = new util.HashSet[Type](Config.initialUniquesCapacity) {
@@ -682,9 +662,6 @@ object Contexts {
 
     def reset() = {
       for ((_, set) <- uniqueSets) set.clear()
-      for (i <- 0 until classOfId.length) classOfId(i) = null
-      superIdOfClass.clear()
-      lastSuperId = -1
     }
 
     // Test that access is single threaded

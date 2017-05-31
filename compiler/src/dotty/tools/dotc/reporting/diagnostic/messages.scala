@@ -1221,17 +1221,24 @@ object messages {
   case class AmbiguousImport(name: Names.Name, newPrec: Int, prevPrec: Int, prevCtx: Context)(implicit ctx: Context)
     extends Message(AmbiguousImportID) {
 
-    import typer.Typer.BindingPrec._
+    import typer.Typer.BindingPrec
 
     /** A string which explains how something was bound; Depending on `prec` this is either
       *      imported by <tree>
       *  or  defined in <symbol>
       */
-    private def bindingString(prec: Int, whereFound: Context, qualifier: String = "") =
-      if (isImportPrec(prec)) {
-        ex"""imported$qualifier by ${hl"${whereFound.importInfo}"}"""
+    private def bindingString(prec: Int, whereFound: Context, qualifier: String = "") = {
+      val howVisible = prec match {
+        case BindingPrec.definition => "defined"
+        case BindingPrec.namedImport => "imported by name"
+        case BindingPrec.wildImport => "imported"
+        case BindingPrec.packageClause => "found"
+      }
+      if (BindingPrec.isImportPrec(prec)) {
+        ex"""$howVisible$qualifier by ${hl"${whereFound.importInfo}"}"""
       } else
-        ex"""defined$qualifier in ${hl"${whereFound.owner.toString}"}"""
+        ex"""$howVisible$qualifier in ${hl"${whereFound.owner}"}"""
+    }
 
 
     val msg =
@@ -1472,11 +1479,25 @@ object messages {
           |"""
   }
 
-  case class CannotHaveSameNameAs(sym: Symbol, cls: Symbol)(implicit ctx: Context)
+  case class CannotHaveSameNameAs(sym: Symbol, cls: Symbol, reason: CannotHaveSameNameAs.Reason)(implicit ctx: Context)
     extends Message(CannotHaveSameNameAsID) {
-    val msg = hl"""$sym cannot have the same name as ${cls.showLocated} -- class definitions cannot be overridden"""
+    import CannotHaveSameNameAs._
+    def reasonMessage: String = reason match {
+      case CannotBeOverridden => "class definitions cannot be overridden"
+      case DefinedInSelf(self) =>
+        s"""cannot define ${sym.showKind} member with the same name as a ${cls.showKind} member in self reference ${self.name}.
+           |(Note: this can be resolved by using another name)
+           |""".stripMargin
+    }
+
+    val msg = hl"""$sym cannot have the same name as ${cls.showLocated} -- """ + reasonMessage
     val kind = "Syntax"
     val explanation = ""
+  }
+  object CannotHaveSameNameAs {
+    sealed trait Reason
+    case object CannotBeOverridden extends Reason
+    case class DefinedInSelf(self: tpd.ValDef) extends Reason
   }
 
   case class ValueClassesMayNotDefineInner(valueClass: Symbol, inner: Symbol)(implicit ctx: Context)

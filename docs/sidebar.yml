@@ -1,22 +1,6 @@
 sidebar:
     - title: Blog
       url: blog/index.html
-    - title: Reference
-      subsection:
-        - title: Intersection types
-          url: docs/reference/intersection-types.html
-        - title: Union types
-          url: docs/reference/union-types.html
-        - title: Trait Parameters
-          url: docs/reference/trait-parameters.html
-        - title: Enumerations
-          url: docs/reference/enums.html
-        - title: Algebraic Data Types
-          url: docs/reference/adts.html
-        - title: Enum Translation
-          url: docs/reference/desugarEnums.html
-        - title: By-Name Implicits
-          url: docs/reference/implicit-by-name-parameters.html
     - title: Usage
       subsection:
         - title: sbt-projects
@@ -29,6 +13,76 @@ sidebar:
           url: docs/usage/dottydoc.html
         - title: Migrating
           url: docs/usage/migrating.html
+    - title: Reference
+      subsection:
+        - title: New Types
+          subsection:
+            - title: Intersection types
+              url: docs/reference/intersection-types.html
+            - title: Union types
+              url: docs/reference/union-types.html
+            - title: Type lambdas
+              url: docs/reference/type-lambdas.html
+            - title: Implicit Function Types
+              url: docs/reference/implicit-function-types.html
+        - title: Enums
+          subsection:
+            - title: Enumerations
+              url: docs/reference/enums.html
+            - title: Algebraic Data Types
+              url: docs/reference/adts.html
+            - title: Translation
+              url: docs/reference/desugarEnums.html
+        - title: Other New Features
+          subsection:
+            - title: Multiversal Equality
+              url: docs/reference/multiversal-equality.html
+            - title: Inline
+              url: docs/reference/inline.html
+            - title: Trait Parameters
+              url: docs/reference/trait-parameters.html
+            - title: By-Name Implicits
+              url: docs/reference/implicit-by-name-parameters.html
+            - title: Auto Parameter Tupling
+              url: docs/reference/auto-parameter-tupling.html
+            - title: Named Type Arguments
+              url: docs/reference/named-typeargs.html
+        - title: Changed Features
+          subsection:
+            - title: Volatile Lazy Vals
+              url: docs/reference/changed/lazy-vals.html
+            - title: Structural Types
+              url: docs/reference/changed/structural-types.html
+            - title: Type Checking
+              url: docs/reference/changed/type-checking.html
+            - title: Type Inference
+              url: docs/reference/changed/type-inference.html
+            - title: Implicit Resolution
+              url: docs/reference/changed/implicit-resolution.html
+            - title: Implicit Conversions
+              url: docs/reference/changed/implicit-conversions.html
+            - title: Vararg Patterns
+              url: docs/reference/changed/vararg-patterns.html
+        - title: Dropped Features
+          subsection:
+            - title: DelayedInit
+              url: docs/reference/dropped/delayed-init.html
+            - title: Macros
+              url: docs/reference/dropped/macros.html
+            - title: Existential Types
+              url: docs/reference/dropped/existential-types.html
+            - title: Type Projection
+              url: docs/reference/dropped/type-projection.html
+            - title: Procedure Syntax
+              url: docs/reference/dropped/procedure-syntax.html
+            - title: Early Initializers
+              url: docs/reference/dropped/early-initializers.html
+            - title: Class Shadowing
+              url: docs/reference/dropped/class-shadowing.html
+            - title: Limit 22
+              url: docs/reference/dropped/limit22.html
+            - title: XML literals
+              url: docs/reference/dropped/xml.html
     - title: Contributing
       subsection:
         - title: Getting Started

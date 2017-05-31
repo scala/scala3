@@ -44,8 +44,10 @@ object DenotTransformers {
         val info1 = transformInfo(ref.info, ref.symbol)
         if (info1 eq ref.info) ref
         else ref match {
-          case ref: SymDenotation => ref.copySymDenotation(info = info1)
-          case _ => ref.derivedSingleDenotation(ref.symbol, info1)
+          case ref: SymDenotation =>
+            ref.copySymDenotation(info = info1).copyCaches(ref, ctx.phase.next)
+          case _ =>
+            ref.derivedSingleDenotation(ref.symbol, info1)
         }
       }
     }

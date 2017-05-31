@@ -1,0 +1,5 @@
+scala> val ### = 42
+val ###: Int = 42
+scala> ### + ###
+val res0: Int = 84
+scala> :quit

@@ -308,6 +308,12 @@ object Phases {
      */
     def isTyper = false
 
+    /** Can this transform create or delete non-private members? */
+    def changesMembers: Boolean = false
+
+    /** Can this transform change the parents of a class? */
+    def changesParents: Boolean = false
+
     def exists: Boolean = true
 
     private var myPeriod: Period = Periods.InvalidPeriod
@@ -318,6 +324,8 @@ object Phases {
     private var mySymbolicRefs = false
     private var myLabelsReordered = false
 
+    private var mySameMembersStartId = NoPhaseId
+    private var mySameParentsStartId = NoPhaseId
 
     /** The sequence position of this phase in the given context where 0
      * is reserved for NoPhase and the first real phase is at position 1.
@@ -335,6 +343,11 @@ object Phases {
     final def symbolicRefs = mySymbolicRefs // Phase is after ResolveSuper, newly generated TermRefs should be symbolic
     final def labelsReordered = myLabelsReordered // Phase is after LabelDefs, labels are flattened and owner chains don't mirror this
 
+    final def sameMembersStartId = mySameMembersStartId
+      // id of first phase where all symbols are guaranteed to have the same members as in this phase
+    final def sameParentsStartId = mySameParentsStartId
+      // id of first phase where all symbols are guaranteed to have the same parents as in this phase
+
     protected[Phases] def init(base: ContextBase, start: Int, end:Int): Unit = {
       if (start >= FirstPhaseId)
         assert(myPeriod == Periods.InvalidPeriod, s"phase $this has already been used once; cannot be reused")
@@ -345,6 +358,8 @@ object Phases {
       myRefChecked   = prev.getClass == classOf[RefChecks]    || prev.refChecked
       mySymbolicRefs = prev.getClass == classOf[ResolveSuper] || prev.symbolicRefs
       myLabelsReordered = prev.getClass == classOf[LabelDefs] || prev.labelsReordered
+      mySameMembersStartId = if (changesMembers) id else prev.sameMembersStartId
+      mySameParentsStartId = if (changesParents) id else prev.sameMembersStartId
     }
 
     protected[Phases] def init(base: ContextBase, id: Int): Unit = init(base, id, id)
