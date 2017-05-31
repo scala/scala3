@@ -106,7 +106,7 @@ Martin Odersky ([@odersky](https://twitter.com/odersky))
 Dmitry Petrashko ([@DarkDimius](https://twitter.com/DarkDimius)),
 Guillaume Martres ([@smarter](https://github.com/smarter)),
 Felix Mulder ([@felixmulder](https://twitter.com/felixmulder)),
-Nicolas Stucki ([@stucki_nicolas](https://twitter.com/stucki_nicolas)),
+Nicolas Stucki ([@nicolasstucki](https://twitter.com/stucki_nicolas)),
 Liu Fengyun ([@liufengyun](https://github.com/liufengyun)),
 Olivier Blanvillain ([@OlivierBlanvillain](https://github.com/OlivierBlanvillain)),
 and others!
