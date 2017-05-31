@@ -28,7 +28,7 @@ all be part of regular time-based releases.
 ## How can you try it out?
 
 You have several alternatives: use the `sbt-dotty` plugin, get a standalone
-installation, or try it online on [Scastie](https://scastie.scala-lang.org/).
+installation, or try it online on [Scastie](https://scastie.scala-lang.org/?target=dotty).
 
 ### sbt
 Using sbt 0.13.13 or newer, do:
