@@ -122,6 +122,8 @@ class TreeChecker extends Phase with SymTransformer {
     val squahsedPhase = ctx.squashed(prevPhase)
     ctx.echo(s"checking ${ctx.compilationUnit} after phase ${squahsedPhase}")
 
+    assertSelectWrapsNew(ctx.compilationUnit.tpdTree)(ctx)
+
     val checkingCtx = ctx
         .fresh
         .setMode(Mode.ImplicitsEnabled)
@@ -448,6 +450,26 @@ class TreeChecker extends Phase with SymTransformer {
         })
       tree
     }
+  }
+
+  /**
+    * Checks that `New` nodes are always wrapped inside `Select` nodes.
+    */
+  def assertSelectWrapsNew(tree: tpd.Tree)(implicit ctx: Context): Unit = {
+    (new TreeAccumulator[tpd.Tree] {
+      override def apply(parent: tpd.Tree, tree: tpd.Tree)(implicit ctx: Context): tpd.Tree = {
+        tree match {
+          case tree: tpd.New if !parent.isInstanceOf[tpd.Select] =>
+            assert(assertion = false, i"`New` node must be wrapped in a `Select`:\n  parent = ${parent.show}\n  child = ${tree.show}")
+          case _: tpd.Annotated =>
+            // Don't check inside annotations, since they're allowed to contain
+            // somewhat invalid trees.
+          case _ =>
+            foldOver(tree, tree) // replace the parent when folding over the children
+        }
+        parent // return the old parent so that my siblings see it
+      }
+    })(tpd.EmptyTree, tree)
   }
 }
 
