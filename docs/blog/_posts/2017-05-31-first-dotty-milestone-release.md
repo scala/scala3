@@ -3,6 +3,7 @@ layout: blog-page
 title: Announcing Dotty 0.1.2-RC1, a major step towards Scala 3
 author: Dmytro Petrashko
 authorImg: /images/petrashko.jpg
+date: 2017-05-31
 ---
 
 Today, we are excited to release Dotty version 0.1.2-RC1.  This release

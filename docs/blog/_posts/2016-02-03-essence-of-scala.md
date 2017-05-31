@@ -3,6 +3,7 @@ layout: blog-page
 title: The Essence of Scala
 author: Martin Odersky
 authorImg: /images/martin.jpg
+date: 2016-02-03
 ---
 
 What do you get if you boil Scala on a slow flame and wait until all
