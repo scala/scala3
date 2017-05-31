@@ -55,8 +55,8 @@ respect to normal case classes. The classes making up the cases do
 exist, and can be unvealed by constructing them directly with a `new`.
 
 ```scala
+scala> new Option.Some(2)
 val res3: t2.Option.Some[Int] = Some(2)
-scala> scala> new Option.Some(2)
 ```
 
 As all other enums, ADTs can have methods on both the enum class and
