@@ -1307,7 +1307,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
           alts filter (alt => sizeFits(alt, alt.widen))
 
         def narrowByShapes(alts: List[TermRef]): List[TermRef] = {
-          if (normArgs exists untpd.isFunctionWithUnknownParamType)
+          if (normArgs exists (untpd.isFunctionWithUnknownParamType(_)))
             if (hasNamedArg(args)) narrowByTrees(alts, args map treeShape, resultType)
             else narrowByTypes(alts, normArgs map typeShape, resultType)
           else
@@ -1400,13 +1400,16 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
             val formalParamTypessForArg: List[List[Type]] =
               decomposedFormalsForArg.map(_.get._1)
             if (isUniform(formalParamTypessForArg)((x, y) => x.length == y.length)) {
-              val commonParamTypes = formalParamTypessForArg.transpose.map(ps =>
-                // Given definitions above, for i = 1,...,m,
-                //   ps(i) = List(p_i_1, ..., p_i_n)  -- i.e. a column
-                // If all p_i_k's are the same, assume the type as formal parameter
-                // type of the i'th parameter of the closure.
-                if (isUniform(ps)(ctx.typeComparer.isSameTypeWhenFrozen(_, _))) ps.head
-                else WildcardType)
+              val commonParamTypes = formalParamTypessForArg
+                .transpose
+                .zipWithIndex
+                .map {
+                  case (ps, idx) =>
+                    if (untpd.isFunctionWithUnknownParamType(arg, idx))
+                      ps.reduceLeft(_ | _)
+                    else
+                      WildcardType
+                }
               val commonFormal = defn.FunctionOf(commonParamTypes, WildcardType)
               overload.println(i"pretype arg $arg with expected type $commonFormal")
               pt.typedArg(arg, commonFormal)(ctx.addMode(Mode.ImplicitsEnabled))
