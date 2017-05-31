@@ -44,7 +44,8 @@ using Dotty with sbt, see the
 ### Standalone installation
 
 Releases are available for download on the _Releases_
-section of the Dotty repository: https://github.com/lampepfl/dotty/releases.
+section of the Dotty repository: 
+https://github.com/lampepfl/dotty/releases
 
 We also provide a [homebrew](https://brew.sh/) package that can be installed by running
 
@@ -93,9 +94,9 @@ See here for the full [version number explanation](http://dotty.epfl.ch/docs/usa
 
 Over the coming weeks and months, we plan to work on the following topics:
 
- - [Integrate Local optimizations developed in Dotty linker](https://github.com/lampepfl/dotty/pull/2513);
- - [Add Language-level support for HMaps and HLists](https://github.com/lampepfl/dotty/pull/2199);
- - [Port global optimizations from Dotty linker](https://github.com/lampepfl/dotty/pull/1840).
+ - [Integrate Local optimizations developed in Dotty linker](https://github.com/lampepfl/dotty/pull/2513)
+ - [Add Language-level support for HMaps and HLists](https://github.com/lampepfl/dotty/pull/2199)
+ - [Port global optimizations from Dotty linker](https://github.com/lampepfl/dotty/pull/1840)
 
 If you want to get your hands dirty with any of this, now is a good
 moment to get involved! Join the team of contributors, including
