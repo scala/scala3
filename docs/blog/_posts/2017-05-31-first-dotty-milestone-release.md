@@ -28,7 +28,7 @@ all be part of regular time-based releases.
 ## How can you try it out?
 
 You have several alternatives: use the `sbt-dotty` plugin, get a standalone
-installation, or try it online on [Scastie](https://scastie.scala-lang.org/).
+installation, or try it online on [Scastie].
 
 ### sbt
 Using sbt 0.13.13 or newer, do:
@@ -44,7 +44,8 @@ using Dotty with sbt, see the
 ### Standalone installation
 
 Releases are available for download on the _Releases_
-section of the Dotty repository: https://github.com/lampepfl/dotty/releases.
+section of the Dotty repository: 
+https://github.com/lampepfl/dotty/releases
 
 We also provide a [homebrew](https://brew.sh/) package that can be installed by running
 
@@ -54,12 +55,9 @@ brew install lampepfl/brew/dotty
 
 ### Scastie
 
-[Scastie](https://scastie.scala-lang.org/), the online Scala playground,
-supports Dotty. To try it out:
-1. Click on `Build Settings` in the menu on the left
-2. Under `Target`, click on `Dotty`
-3. That's it!
-
+[Scastie], the online Scala playground,
+supports Dotty. 
+You can try it out there without installing anything.
 
 # What’s in the 0.1.2-RC1 technology preview?
 This technology preview demonstrates new language features planned for Scala 3:
@@ -117,3 +115,6 @@ Join our [community build](https://github.com/lampepfl/dotty-community-build)
 
 
 To get started, see <https://github.com/lampepfl/dotty>.
+
+
+[Scastie]: https://scastie.scala-lang.org/?target=dotty
