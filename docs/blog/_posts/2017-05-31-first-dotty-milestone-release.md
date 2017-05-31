@@ -5,7 +5,7 @@ author: Dmytro Petrashko
 authorImg: /images/petrashko.jpg
 ---
 
-Today, we excited to release Dotty version 0.1.2-RC1.  This release
+Today, we are excited to release Dotty version 0.1.2-RC1.  This release
 serves as a technology preview that demonstrates new language features
 and the compiler supporting them.
 
@@ -81,11 +81,11 @@ See here for the full [release notes](http://dotty.epfl.ch/docs/release-notes/0.
 We are adopting a time-based release schedule:
 - Nightly builds will be published, for those wanting to be at the forefront of
   development.
-- Every 6 weeks, a release candidate will be cut based on the last nightly build,
-  the release candidates let library authors test their code in advance of each
+- Every 6 weeks, a release candidate will be cut based on the latest nightly build.
+  The release candidates let library authors test their code in advance of each
   release. Multiple release candidates may be released during each 6 weeks
   period to fix regressions.
-- Every 6 weeks, the last release candidate becomes a release.
+- Every 6 weeks, the latest release candidate becomes a release.
 
 At the end of 6 weeks, the milestone will be promoted to a stable release.
 See here for the full [version number explanation](http://dotty.epfl.ch/docs/usage/version-numbers.html).
