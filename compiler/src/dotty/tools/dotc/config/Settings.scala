@@ -115,7 +115,7 @@ object Settings {
       val ArgsSummary(sstate, arg :: args, errors, warnings) = state
       def update(value: Any, args: List[String]) = {
         if (changed) {
-          state.warn(s"Flag $name set repeatedly")
+          ArgsSummary(updateIn(sstate, value), args, errors, warnings :+ s"Flag $name set repeatedly")
         } else {
           changed = true
           ArgsSummary(updateIn(sstate, value), args, errors, warnings)
