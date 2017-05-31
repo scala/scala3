@@ -54,11 +54,8 @@ brew install lampepfl/brew/dotty
 
 ### Scastie
 
-[Scastie](https://scastie.scala-lang.org/), the online Scala playground,
-supports Dotty. To try it out:
-1. Click on `Build Settings` in the menu on the left
-2. Under `Target`, click on `Dotty`
-3. That's it!
+[Scastie](https://scastie.scala-lang.org/?target=dotty), the online Scala playground,
+supports Dotty.
 
 
 # What’s in the 0.1.2-RC1 technology preview?
