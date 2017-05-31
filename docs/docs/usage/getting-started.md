@@ -11,7 +11,7 @@ Make sure that you are using Java 8 or later. The output of `java -version`
 should contain `1.8`.
 
 
-Install Dotty
+Option 1: Install Dotty
 -------------
 If you're a Mac user, you can install dotty with [brew](https://brew.sh/)
 
@@ -21,7 +21,7 @@ brew install lampepfl/brew/dotty
 
 If you're a Linux or Windows user, download the [latest release](https://github.com/lampepfl/dotty/releases). Optionally add path of the folder `bin/` to the system environment variable `PATH`.
 
-Getting Dotty
+Option 2: Using Dotty directly from source
 -------------
 ```bash
 $ git clone --recursive https://github.com/lampepfl/dotty.git
