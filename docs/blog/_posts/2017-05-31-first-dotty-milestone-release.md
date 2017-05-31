@@ -5,7 +5,7 @@ author: Dmytro Petrashko
 authorImg: /images/petrashko.jpg
 ---
 
-Today, we excited to release Dotty version 0.1.2-RC1.  This release
+Today, we are excited to release Dotty version 0.1.2-RC1.  This release
 serves as a technology preview that demonstrates new language features
 and the compiler supporting them.
 
@@ -16,7 +16,7 @@ and the compiler supporting them.
 
 _Dotty_ is the project name for a language and compiler that
 is slated to become Scala 3.0. This is an ongoing development,
-developed transparently as open source software. The Dotty project
+transparently developed as open source software. The Dotty project
 started more than 4 years ago. It reached a major milestone in 2015 by
 achieving
 [bootstrap](http://dotty.epfl.ch/blog/2015/10/23/dotty-compiler-bootstraps.html),
@@ -80,14 +80,11 @@ See here for the full [release notes](http://dotty.epfl.ch/docs/release-notes/0.
 
 ## Release schedule
 
-We are adopting a time-based release schedule:
+Starting from this release, we are adopting a time-based release schedule:
 - Nightly builds will be published, for those wanting to be at the forefront of
   development.
-- Every 6 weeks, a release candidate will be cut based on the last nightly build,
-  the release candidates let library authors test their code in advance of each
-  release. Multiple release candidates may be released during each 6 weeks
-  period to fix regressions.
-- Every 6 weeks, the last release candidate becomes a release.
+- Every 6 weeks, a release candidate will be cut based on the latest nightly build.
+- Every 6 weeks, the latest release candidate becomes a release.
 
 At the end of 6 weeks, the milestone will be promoted to a stable release.
 See here for the full [version number explanation](http://dotty.epfl.ch/docs/usage/version-numbers.html).
