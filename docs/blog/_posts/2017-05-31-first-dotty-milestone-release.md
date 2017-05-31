@@ -28,7 +28,7 @@ all be part of regular time-based releases.
 ## How can you try it out?
 
 You have several alternatives: use the `sbt-dotty` plugin, get a standalone
-installation, or try it online on [Scastie](https://scastie.scala-lang.org/?target=dotty).
+installation, or try it online on [Scastie].
 
 ### sbt
 Using sbt 0.13.13 or newer, do:
@@ -54,7 +54,7 @@ brew install lampepfl/brew/dotty
 
 ### Scastie
 
-[Scastie](https://scastie.scala-lang.org/?target=dotty), the online Scala playground,
+[Scastie], the online Scala playground,
 supports Dotty.
 
 
@@ -117,3 +117,6 @@ Join our [community build](https://github.com/lampepfl/dotty-community-build)
 
 
 To get started, see <https://github.com/lampepfl/dotty>.
+
+
+[Scastie]: https://scastie.scala-lang.org/?target=dotty
