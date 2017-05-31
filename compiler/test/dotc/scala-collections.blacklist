@@ -76,8 +76,3 @@ scala/StringContext.scala
 # 168 |  def f[A >: Any](args: A*): String = macro ???
 #     |                                      ^^^^^
 #     |                                      not found: macro
-
-scala/util/control/Exception.scala
-# 51 |  implicit def throwableSubtypeToCatcher[Ex <: Throwable: ClassTag, T](pf: PartialFunction[Ex, T]) =
-#    |                                                                                                 ^
-#    |                                                                     cyclic reference involving method mkCatcher
