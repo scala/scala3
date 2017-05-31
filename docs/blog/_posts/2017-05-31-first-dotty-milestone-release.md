@@ -56,7 +56,7 @@ brew install lampepfl/brew/dotty
 
 [Scastie], the online Scala playground,
 supports Dotty. 
-You can try it out there without installing.
+You can try it out there without installing anything.
 
 # What’s in the 0.1.2-RC1 technology preview?
 This technology preview demonstrates new language features planned for Scala 3:
