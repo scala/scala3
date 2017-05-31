@@ -61,7 +61,7 @@ supports Dotty. To try it out:
 3. That's it!
 
 
-# What’s in the 0.1.2-RC1 technology preview ?
+# What’s in the 0.1.2-RC1 technology preview?
 This technology preview demonstrates new language features planned for Scala 3:
 
   - [Intersection Types](http://dotty.epfl.ch/docs/reference/intersection-types.html)
@@ -113,7 +113,7 @@ and others!
 
 ## Library authors: Join our community build
 
-Dotty now has a set of libraries that are build against every nightly snapshot.
+Dotty now has a set of libraries that are built against every nightly snapshot.
 Currently this includes scalatest, squants and algebra.
 Join our [community build](https://github.com/lampepfl/dotty-community-build)
  to make sure that our regression suite includes your library.
