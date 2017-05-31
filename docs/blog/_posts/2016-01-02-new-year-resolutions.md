@@ -3,6 +3,7 @@ layout: blog-page
 title: New Year Resolutions
 author: Martin Odersky
 authorImg: /images/martin.jpg
+date: 2016-01-02
 ---
 
 For most of us, the change of the year is an occasion for thinking
