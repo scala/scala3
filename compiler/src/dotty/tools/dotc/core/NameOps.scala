@@ -156,33 +156,36 @@ object NameOps {
 
     /** Is a synthetic function name
      *    - N for FunctionN
-     *    - N for ImplicitFunctionN
+     *    - N for ImplicitFunctionN (N >= 1)
       *   - (-1) otherwise
      */
     def functionArity: Int =
-      functionArityFor(str.Function) max functionArityFor(str.ImplicitFunction)
+      functionArityFor(str.Function) max {
+        val n = functionArityFor(str.ImplicitFunction)
+        if (n == 0) -1 else n
+      }
 
     /** Is a function name
      *    - FunctionN for N >= 0
-     *    - ImplicitFunctionN for N >= 0
+     *    - ImplicitFunctionN for N >= 1
      *    - false otherwise
      */
     def isFunction: Boolean = functionArity >= 0
 
     /** Is a implicit function name
-     *    - ImplicitFunctionN for N >= 0
+     *    - ImplicitFunctionN for N >= 1
      *    - false otherwise
      */
-    def isImplicitFunction: Boolean = functionArityFor(str.ImplicitFunction) >= 0
+    def isImplicitFunction: Boolean = functionArityFor(str.ImplicitFunction) >= 1
 
     /** Is a synthetic function name
      *    - FunctionN for N > 22
-     *    - ImplicitFunctionN for N >= 0
+     *    - ImplicitFunctionN for N >= 1
      *    - false otherwise
      */
     def isSyntheticFunction: Boolean = {
       functionArityFor(str.Function) > MaxImplementedFunctionArity ||
-        functionArityFor(str.ImplicitFunction) >= 0
+        functionArityFor(str.ImplicitFunction) >= 1
     }
 
     /** Parsed function arity for function with some specific prefix */
