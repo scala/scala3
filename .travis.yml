@@ -1,0 +1,27 @@
+branches:
+  only:
+  - master
+matrix:
+  include:
+    - os: osx
+      osx_image: xcode8.3
+      language: java
+      env: PACK=dist
+    - os: osx
+      osx_image: xcode8.3
+      language: java
+      env: PACK=dist-bootstrapped
+    - os: linux
+      language: scala
+      jdk: oraclejdk8
+      env: PACK=dist
+    - os: linux
+      language: scala
+      jdk: oraclejdk8
+      env: PACK=dist-bootstrapped
+before_install:
+  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew install sbt ; fi
+script:
+  - sbt $PACK/pack
+  - $PACK/target/pack/bin/dotc tests/pos/HelloWorld.scala
+  - $PACK/target/pack/bin/dotr HelloWorld
