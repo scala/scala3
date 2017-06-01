@@ -65,5 +65,14 @@ or via bash:
 $ dotr
 ```
 
+
+Generating Documentation
+-------------------------
+To generate this page and other static page docs, run
+```bash
+$ sbt
+> genDocs
+```
+
 Before contributing to Dotty, we invite you to consult the
 [Dotty Developer Guidelines](https://github.com/lampepfl/dotty/blob/master/CONTRIBUTING).
