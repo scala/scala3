@@ -740,7 +740,10 @@ class Definitions {
   lazy val TupleType = mkArityArray("scala.Tuple", MaxTupleArity, 2)
 
   def FunctionClass(n: Int, isImplicit: Boolean = false)(implicit ctx: Context) =
-    if (isImplicit) ctx.requiredClass("scala.ImplicitFunction" + n.toString)
+    if (isImplicit) {
+      require(n > 0)
+      ctx.requiredClass("scala.ImplicitFunction" + n.toString)
+    }
     else if (n <= MaxImplementedFunctionArity) FunctionClassPerRun()(ctx)(n)
     else ctx.requiredClass("scala.Function" + n.toString)
 
@@ -773,12 +776,12 @@ class Definitions {
 
   /** Is a function class.
    *   - FunctionN for N >= 0
-   *   - ImplicitFunctionN for N >= 0
+   *   - ImplicitFunctionN for N > 0
    */
   def isFunctionClass(cls: Symbol) = scalaClassName(cls).isFunction
 
   /** Is an implicit function class.
-   *   - ImplicitFunctionN for N >= 0
+   *   - ImplicitFunctionN for N > 0
    */
   def isImplicitFunctionClass(cls: Symbol) = scalaClassName(cls).isImplicitFunction
 
@@ -790,7 +793,7 @@ class Definitions {
 
   /** Is a synthetic function class
    *    - FunctionN for N > 22
-   *    - ImplicitFunctionN for N >= 0
+   *    - ImplicitFunctionN for N > 0
    */
   def isSyntheticFunctionClass(cls: Symbol) = scalaClassName(cls).isSyntheticFunction
 
