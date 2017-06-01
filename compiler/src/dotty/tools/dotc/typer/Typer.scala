@@ -1345,7 +1345,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     }
 
     def isScalaPhantomSelf(self: tpd.ValDef): Boolean = {
-      if (self.tpt.tpe.derivesFrom(defn.PhantomClass)) {
+      if (self.tpt.tpe.classSymbol eq defn.PhantomClass) {
         ctx.error("self type cannot contain scala.Phantom", self.tpt.pos)
         true
       } else false
