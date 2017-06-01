@@ -771,11 +771,16 @@ class Definitions {
   def isBottomType(tp: Type) =
     tp.derivesFrom(NothingClass) || tp.derivesFrom(NullClass)
 
-  /** Is a function class.
+  /** Is any function class that satisfies:
    *   - FunctionN for N >= 0
    *   - ImplicitFunctionN for N >= 0
    */
   def isFunctionClass(cls: Symbol) = scalaClassName(cls).isFunction
+
+  /** Is a function class where
+   *    - FunctionN for N >= 0
+   */
+  def isPlainFunctionClass(cls: Symbol) = scalaClassName(cls).isPlainFunction
 
   /** Is an implicit function class.
    *   - ImplicitFunctionN for N >= 0
@@ -914,9 +919,9 @@ class Definitions {
   lazy val ScalaNumericValueTypeList = List(
     ByteType, ShortType, CharType, IntType, LongType, FloatType, DoubleType)
 
-  private lazy val ScalaNumericValueTypes: collection.Set[TypeRef] = ScalaNumericValueTypeList.toSet
-  private lazy val ScalaValueTypes: collection.Set[TypeRef] = ScalaNumericValueTypes + UnitType + BooleanType
-  private lazy val ScalaBoxedTypes = ScalaValueTypes map (t => boxedTypes(t.name))
+  lazy val ScalaNumericValueTypes: collection.Set[TypeRef] = ScalaNumericValueTypeList.toSet
+  lazy val ScalaValueTypes: collection.Set[TypeRef] = ScalaNumericValueTypes + UnitType + BooleanType
+  lazy val ScalaBoxedTypes = ScalaValueTypes map (t => boxedTypes(t.name))
 
   val ScalaNumericValueClasses = new PerRun[collection.Set[Symbol]](implicit ctx => ScalaNumericValueTypes.map(_.symbol))
   val ScalaValueClasses        = new PerRun[collection.Set[Symbol]](implicit ctx => ScalaValueTypes.map(_.symbol))
