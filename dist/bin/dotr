@@ -29,7 +29,7 @@ fi
 
 source "$PROG_HOME/bin/common"
 
-CLASS_PATH="-classpath .$PSEP$DOTTY_LIB$PSEP$SCALA_LIB"
+CLASS_PATH=".$PSEP$DOTTY_LIB$PSEP$SCALA_LIB"
 
 first_arg="$1"
 
@@ -39,5 +39,5 @@ if [ -z "$1" ]; then
 elif [[ ${first_arg:0:1} == "-" ]]; then
     eval "$PROG_HOME/bin/dotc -repl $@"
 else
-  eval exec "\"$JAVACMD\"" $CLASS_PATH $@
+  eval exec "\"$JAVACMD\"" "-classpath \"$CLASS_PATH\"" $@
 fi
