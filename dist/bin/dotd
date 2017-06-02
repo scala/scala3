@@ -30,55 +30,50 @@ fi
 source "$PROG_HOME/bin/common"
 
 # Set dotty-doc dep:
-DOTTY_DOC_LIB=$(find_lib *dotty-doc*)
+DOTTY_DOC_LIB=$(find_lib "*dotty-doc*")
 
 # Set flexmark deps:
 FLEXMARK_LIBS=""
-FLEXMARK_LIBS+=$(find_lib *flexmark-0*)$PSEP
-FLEXMARK_LIBS+=$(find_lib *flexmark-ext-anchorlink*)$PSEP
-FLEXMARK_LIBS+=$(find_lib *flexmark-ext-autolink*)$PSEP
-FLEXMARK_LIBS+=$(find_lib *flexmark-ext-emoji*)$PSEP
-FLEXMARK_LIBS+=$(find_lib *flexmark-ext-strikethrough*)$PSEP
-FLEXMARK_LIBS+=$(find_lib *flexmark-ext-gfm-tables*)$PSEP
-FLEXMARK_LIBS+=$(find_lib *flexmark-ext-gfm-tasklist*)$PSEP
-FLEXMARK_LIBS+=$(find_lib *flexmark-ext-ins*)$PSEP
-FLEXMARK_LIBS+=$(find_lib *flexmark-ext-superscript*)$PSEP
-FLEXMARK_LIBS+=$(find_lib *flexmark-ext-tables*)$PSEP
-FLEXMARK_LIBS+=$(find_lib *flexmark-ext-wikilink*)$PSEP
-FLEXMARK_LIBS+=$(find_lib *flexmark-ext-yaml-front-matter*)$PSEP
-FLEXMARK_LIBS+=$(find_lib *flexmark-jira-converter*)$PSEP
-FLEXMARK_LIBS+=$(find_lib *flexmark-util*)
+FLEXMARK_LIBS+=$(find_lib "*flexmark-0*")$PSEP
+FLEXMARK_LIBS+=$(find_lib "*flexmark-ext-anchorlink*")$PSEP
+FLEXMARK_LIBS+=$(find_lib "*flexmark-ext-autolink*")$PSEP
+FLEXMARK_LIBS+=$(find_lib "*flexmark-ext-emoji*")$PSEP
+FLEXMARK_LIBS+=$(find_lib "*flexmark-ext-gfm-strikethrough*")$PSEP
+FLEXMARK_LIBS+=$(find_lib "*flexmark-ext-gfm-tables*")$PSEP
+FLEXMARK_LIBS+=$(find_lib "*flexmark-ext-gfm-tasklist*")$PSEP
+FLEXMARK_LIBS+=$(find_lib "*flexmark-ext-ins*")$PSEP
+FLEXMARK_LIBS+=$(find_lib "*flexmark-ext-superscript*")$PSEP
+FLEXMARK_LIBS+=$(find_lib "*flexmark-ext-tables*")$PSEP
+FLEXMARK_LIBS+=$(find_lib "*flexmark-ext-wikilink*")$PSEP
+FLEXMARK_LIBS+=$(find_lib "*flexmark-ext-yaml-front-matter*")$PSEP
+FLEXMARK_LIBS+=$(find_lib "*flexmark-jira-converter*")$PSEP
+FLEXMARK_LIBS+=$(find_lib "*flexmark-util*")
 
 # Set jackson deps:
 JACKSON_LIBS=""
-JACKSON_LIBS+=$(find_lib *jackson-annotations*)$PSEP
-JACKSON_LIBS+=$(find_lib *jackson-core*)$PSEP
-JACKSON_LIBS+=$(find_lib *jackson-databind*)$PSEP
-JACKSON_LIBS+=$(find_lib *jackson-dataformat-yaml*)
-
-[[ $filename =~ /jackson.*.jar ]] && \
-  [[ -z "$JACKSON_LIBS" ]] && JACKSON_LIBS=$filename
-[[ $filename =~ /jackson.*.jar ]] && \
-  [[ ! -z "$JACKSON_LIBS" ]] && JACKSON_LIBS="$JACKSON_LIBS:$filename"
+JACKSON_LIBS+=$(find_lib "*jackson-annotations*")$PSEP
+JACKSON_LIBS+=$(find_lib "*jackson-core*")$PSEP
+JACKSON_LIBS+=$(find_lib "*jackson-databind*")$PSEP
+JACKSON_LIBS+=$(find_lib "*jackson-dataformat-yaml*")
 
 # Set liqp dep:
-LIQP_LIB=$(find_lib *liqp*)
+LIQP_LIB=$(find_lib "*liqp*")
 
 # Set ANTLR dep:
-ANTLR_LIB=$(find_lib *antlr-3*)
-ANTLR_RUNTIME_LIB=$(find_lib *antlr-runtime-3*)
+ANTLR_LIB=$(find_lib "*antlr-3*")
+ANTLR_RUNTIME_LIB=$(find_lib "*antlr-runtime-3*")
 
 # Set autolink dep:
-AUTOLINK_LIB=$(find_lib *autolink*)
+AUTOLINK_LIB=$(find_lib "*autolink-0.6*") # conflict with flexmark-ext-autolink-0.11
 
 # Set snakeyaml dep:
-SNAKEYAML_LIB=$(find_lib *snakeyaml*)
+SNAKEYAML_LIB=$(find_lib "*snakeyaml*")
 
 # Set ST4 dep:
-ST4_LIB=$(find_lib *ST4*)
+ST4_LIB=$(find_lib "*ST4*")
 
 # Set jsoup dep:
-JSOUP_LIB=$(find_lib *jsoup*)
+JSOUP_LIB=$(find_lib "*jsoup*")
 
 CLASS_PATH="$DOTTY_LIB$PSEP$DOTTY_COMP$PSEP$DOTTY_DOC_LIB$PSEP$DOTTY_INTF$PSEP$SBT_INTF"
 CLASS_PATH="$CLASS_PATH$PSEP$SCALA_LIB"
