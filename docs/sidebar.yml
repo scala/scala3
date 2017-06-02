@@ -28,11 +28,11 @@ sidebar:
         - title: Enums
           subsection:
             - title: Enumerations
-              url: docs/reference/enums.html
+              url: docs/reference/enums/enums.html
             - title: Algebraic Data Types
-              url: docs/reference/adts.html
+              url: docs/reference/enums/adts.html
             - title: Translation
-              url: docs/reference/desugarEnums.html
+              url: docs/reference/enums/desugarEnums.html
         - title: Other New Features
           subsection:
             - title: Multiversal Equality
