@@ -45,7 +45,7 @@ val either: Password | UserName = UserName(Eve)
 The type of `res2` is `Object & Product`, which is a supertype of
 `UserName` and `Product`, but not the least supertype `Password |
 UserName`.  If we want the least supertype, we have to give it
-explicitely, as is done for the type of `Either`. More precisely, the
+explicitely, as is done for the type of `either`. More precisely, the
 typechecker will _widen_ a union type to a non-union type when
 inferring the type of `val` or `var`, or the result type of a `def`,
 or the argument to pass for a type parameter.  The widened type of `A
