@@ -7,8 +7,9 @@ import ast.Trees._
 
 /** Every pure statement preceding a ??? can be removed.
  *
- *  This optimisation makes it rather tricky meaningful examples since the
- *  compiler will often be able to reduce them to a single main with ???...
+ *  This optimisation makes it rather tricky to write meaningful examples
+ *  since the compiler will often be able to reduce them to a single main
+ *  method with body = ???.
  */
 class BubbleUpNothing(implicit val ctx: Context) extends Optimisation {
   import ast.tpd._

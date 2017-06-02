@@ -10,11 +10,11 @@ trait Optimisation {
   def visitor: Tree => Unit
 
   /** Does the actual Tree => Tree transformation, possibly using a different
-   *  context from the one using in Optimisation.
+   *  context from the one used in Optimisation.
    */
   def transformer(localCtx: Context): Tree => Tree
 
-  def name: String = this.getClass.getName.init
+  def name: String = this.getClass.getName.split('.').last
 
   val NoVisitor: Tree => Unit = _ => ()
 }

@@ -20,7 +20,7 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
   override def phaseName: String = "simplify"
   override val cpy = tpd.cpy
 
-  def beforeErasure(implicit ctx: Context): List[Optimisation] =
+  private def beforeErasure(implicit ctx: Context): List[Optimisation] =
     new InlineCaseIntrinsics        ::
     new RemoveUnnecessaryNullChecks ::
     new InlineOptions               ::
@@ -36,50 +36,73 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
     new ConstantFold                ::
     Nil
 
-  def afterErasure(implicit ctx: Context): List[Optimisation] =
-    // new InlineCaseIntrinsics        ::
-    // new RemoveUnnecessaryNullChecks ::
-    // new InlineOptions               ::
-    // new InlineLabelsCalledOnce      ::
+  private def afterErasure(implicit ctx: Context): List[Optimisation] =
     new Valify(this)                ::
     new Devalify                    ::
     new Jumpjump                    ::
     new DropGoodCasts               ::
-    // new DropNoEffects(this)         ::
-    // new InlineLocalObjects          :: // followCases needs to be fixed, see ./tests/pos/rbtree.scala
-    // new Varify                      :: // varify could stop other transformations from being applied. postponed.
-    // new BubbleUpNothing             ::
     new ConstantFold                ::
     Nil
+
+  /** Optimisation fuel, for debugging. Decremented every time Simplify
+   *  applies an optimisation until fuel == 0. Original idea from Automatic
+   *  Isolation of Compiler Errors by David Whalley. Unable with -Yopt-fuel.
+   *
+   *  The fuel can be used to do a bisection on large test cases that fail
+   *  -optimise. See compiler/test/bisect.sh for a shell script to automates
+   *  the bisection search.
+   */
+  var fuel: Int = -1
+
+  override def prepareForUnit(tree: Tree)(implicit ctx: Context) = {
+    val maxFuel = ctx.settings.YoptFuel.value
+    if (fuel < 0 && maxFuel > 0) // Both defaults are at -1
+      fuel = maxFuel
+    this
+  }
 
   // The entry point of local optimisation: DefDefs
   override def transformDefDef(tree: DefDef)(implicit ctx: Context, info: TransformerInfo): Tree = {
     val ctx0 = ctx
     if (ctx.settings.optimise.value && !tree.symbol.is(Label)) {
       implicit val ctx: Context = ctx0.withOwner(tree.symbol(ctx0))
-      val optimisations = if (ctx.erasedTypes) afterErasure else beforeErasure
+      val optimisations = {
+        val o = if (ctx.erasedTypes) afterErasure else beforeErasure
+        val p = ctx.settings.YoptPhases.value
+        if (p.isEmpty) o else o.filter(x => p.contains(x.name))
+      }
 
       var rhs0 = tree.rhs
       var rhs1: Tree = null
       while (rhs1 ne rhs0) {
         rhs1 = rhs0
         val context = ctx.withOwner(tree.symbol)
-        // TODO: fuse for performance
-        optimisations.foreach { optimisation =>
+        optimisations.foreach { optimisation => // TODO: fuse for performance
+          // Visit
           rhs0.foreachSubTree(optimisation.visitor)
 
-          val rhst = new TreeMap() {
+          // Transform
+          rhs0 = new TreeMap() {
             override def transform(tree: Tree)(implicit ctx: Context): Tree = {
               val innerCtx = if (tree.isDef && tree.symbol.exists) ctx.withOwner(tree.symbol) else ctx
-              optimisation.transformer(ctx)(super.transform(tree)(innerCtx))
+              val childOptimizedTree = super.transform(tree)(innerCtx)
+
+              if (fuel == 0)
+                childOptimizedTree
+              else {
+                val fullyOptimizedTree = optimisation.transformer(ctx)(childOptimizedTree)
+
+                if (tree ne fullyOptimizedTree) {
+                  if (fuel > 0) fuel -= 1
+                  if (fuel != -1 && fuel < 10) {
+                    println(s"${tree.symbol} was simplified by ${optimisation.name} (fuel=$fuel): ${tree.show}")
+                    println(s"became after ${optimisation.name}: (fuel=$fuel) ${fullyOptimizedTree.show}")
+                  }
+                }
+                fullyOptimizedTree
+              }
             }
           }.transform(rhs0)
-
-          if (rhst ne rhs0) {
-            simplify.println(s"${tree.symbol} was simplified by ${optimisation.name}: ${rhs0.show}")
-            simplify.println(s"became: ${rhst.show}")
-          }
-          rhs0 = rhst
         }
       }
       if (rhs0 ne tree.rhs) tpd.cpy.DefDef(tree)(rhs = rhs0)
