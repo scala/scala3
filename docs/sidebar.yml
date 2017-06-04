@@ -3,6 +3,8 @@ sidebar:
       url: blog/index.html
     - title: Usage
       subsection:
+        - title: Getting Started
+          url: docs/usage/getting-started.html
         - title: sbt-projects
           url: docs/usage/sbt-projects.html
         - title: IDE support for Dotty
@@ -11,8 +13,6 @@ sidebar:
           url: docs/usage/cbt-projects.html
         - title: Dottydoc
           url: docs/usage/dottydoc.html
-        - title: Migrating
-          url: docs/usage/migrating.html
     - title: Reference
       subsection:
         - title: New Types
@@ -28,11 +28,11 @@ sidebar:
         - title: Enums
           subsection:
             - title: Enumerations
-              url: docs/reference/enums.html
+              url: docs/reference/enums/enums.html
             - title: Algebraic Data Types
-              url: docs/reference/adts.html
+              url: docs/reference/enums/adts.html
             - title: Translation
-              url: docs/reference/desugarEnums.html
+              url: docs/reference/enums/desugarEnums.html
         - title: Other New Features
           subsection:
             - title: Multiversal Equality
@@ -63,7 +63,7 @@ sidebar:
               url: docs/reference/changed/implicit-conversions.html
             - title: Vararg Patterns
               url: docs/reference/changed/vararg-patterns.html
-            - title: Pettern matching
+            - title: Pattern matching
               url: docs/reference/changed/pattern-matching.html
         - title: Dropped Features
           subsection:

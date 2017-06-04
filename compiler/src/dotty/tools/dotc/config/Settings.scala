@@ -65,6 +65,8 @@ object Settings {
     depends: List[(Setting[_], Any)] = Nil,
     propertyClass: Option[Class[_]] = None)(private[Settings] val idx: Int) {
 
+    private var changed: Boolean = false
+
     def withAbbreviation(abbrv: String): Setting[T] =
       copy(aliases = aliases :+ abbrv)(idx)
 
@@ -111,8 +113,14 @@ object Settings {
 
     def tryToSet(state: ArgsSummary): ArgsSummary = {
       val ArgsSummary(sstate, arg :: args, errors, warnings) = state
-      def update(value: Any, args: List[String]) =
-        ArgsSummary(updateIn(sstate, value), args, errors, warnings)
+      def update(value: Any, args: List[String]) = {
+        if (changed) {
+          ArgsSummary(updateIn(sstate, value), args, errors, warnings :+ s"Flag $name set repeatedly")
+        } else {
+          changed = true
+          ArgsSummary(updateIn(sstate, value), args, errors, warnings)
+        }
+      }
       def fail(msg: String, args: List[String]) =
         ArgsSummary(sstate, args, errors :+ msg, warnings)
       def missingArg =

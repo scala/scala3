@@ -65,9 +65,9 @@ classpathArgs () {
   toolchain+="$DOTTY_COMP"
 
   if [[ -n "$bootcp" ]]; then
-    jvm_cp_args="-Xbootclasspath/a:$toolchain"
+    jvm_cp_args="-Xbootclasspath/a:\"$toolchain\""
   else
-    jvm_cp_args="-classpath $toolchain"
+    jvm_cp_args="-classpath \"$toolchain\""
   fi
 }
 

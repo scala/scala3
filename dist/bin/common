@@ -94,12 +94,21 @@ fi
 # * The code below is for Dotty
 # *-------------------------------------------------*/
 
-for filename in $PROG_HOME/lib/*.jar; do
-  [[ $filename =~ .*dotty-compiler.*.jar ]] && DOTTY_COMP=$filename
-  [[ $filename =~ .*dotty-interfaces.*.jar ]] && DOTTY_INTF=$filename
-  [[ $filename =~ .*dotty-library.*.jar ]] && DOTTY_LIB=$filename
-  [[ $filename =~ .*scala-asm.*.jar ]] && SCALA_ASM=$filename
-  [[ $filename =~ .*scala-library.*.jar ]] && SCALA_LIB=$filename
-  [[ $filename =~ .*scala-xml.*.jar ]] && SCALA_XML=$filename
-  [[ $filename =~ .*sbt-interface.*.jar ]] && SBT_INTF=$filename
-done
+find_lib () {
+  local lib=$(find $PROG_HOME/lib/ -name "$1")
+  if $cygwin; then
+    cygpath -am $lib
+  elif $mingw; then
+    echo $lib | sed 's|/|\\\\|g'
+  else
+    echo $lib
+  fi
+}
+
+DOTTY_COMP=$(find_lib "*dotty-compiler*")
+DOTTY_INTF=$(find_lib "*dotty-interfaces*")
+DOTTY_LIB=$(find_lib "*dotty-library*")
+SCALA_ASM=$(find_lib "*scala-asm*")
+SCALA_LIB=$(find_lib "*scala-library*")
+SCALA_XML=$(find_lib "*scala-xml*")
+SBT_INTF=$(find_lib "*sbt-interface*")
