@@ -66,7 +66,7 @@ This technology preview demonstrates new language features planned for Scala 3:
   - [Intersection Types](http://dotty.epfl.ch/docs/reference/intersection-types.html)
   - [Union Types](http://dotty.epfl.ch/docs/reference/union-types.html)
   - [Trait Parameters](http://dotty.epfl.ch/docs/reference/trait-parameters.html)
-  - [Enumerations](http://dotty.epfl.ch/docs/reference/enums.html)
+  - [Enumerations](http://dotty.epfl.ch/docs/reference/enums/enums.html)
   - [Algebraic Data Types](http://dotty.epfl.ch/docs/reference/adts.html)
   - [By-Name Implicits](http://dotty.epfl.ch/docs/reference/implicit-by-name-parameters.html)
 
