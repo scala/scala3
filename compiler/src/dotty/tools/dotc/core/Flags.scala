@@ -402,6 +402,9 @@ object Flags {
   /** A definition that's initialized before the super call (Scala 2.x only) */
   final val Scala2PreSuper = termFlag(58, "<presuper>")
 
+  /** A Scala 2.12 or higher trait */
+  final val Scala_2_12_Trait = typeFlag(58, "<scala12trait>")
+
   /** A macro (Scala 2.x only) */
   final val Macro = commonFlag(59, "<macro>")
 

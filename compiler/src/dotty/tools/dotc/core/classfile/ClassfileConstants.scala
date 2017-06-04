@@ -10,6 +10,8 @@ object ClassfileConstants {
   final val JAVA_MAJOR_VERSION = 45
   final val JAVA_MINOR_VERSION = 3
 
+  final val JAVA8_MAJOR_VERSION = 52
+
   /** (see http://java.sun.com/docs/books/jvms/second_edition/jvms-clarify.html)
    *
    *  If the `ACC_INTERFACE` flag is set, the `ACC_ABSTRACT` flag must also
