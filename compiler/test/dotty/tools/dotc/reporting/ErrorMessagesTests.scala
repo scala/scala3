@@ -781,4 +781,15 @@ class ErrorMessagesTests extends ErrorMessagesTest {
         assertEquals("class MyValue", valueClass.show)
       }
 
+  @Test def onlyCaseClassOrCaseObjectAllowed =
+    checkMessagesAfter("frontend") {
+      """case Foobar"""
+    }
+      .expect { (ictx, messages) =>
+        implicit val ctx: Context = ictx
+        assertMessageCount(1, messages)
+        val err :: Nil = messages
+        assertEquals(err, OnlyCaseClassOrCaseObjectAllowed())
+      }
+
 }
