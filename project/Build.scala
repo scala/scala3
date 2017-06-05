@@ -363,6 +363,10 @@ object Build {
     ).
     settings(commonBootstrappedSettings).
     settings(
+      // set system in/out for repl
+      connectInput in run := true,
+      outputStrategy := Some(StdoutOutput),
+
       javaOptions ++= (javaOptions in `dotty-compiler`).value,
       fork in run := true,
       fork in Test := true,
