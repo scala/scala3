@@ -37,7 +37,7 @@ import collection.mutable
 class LinkScala2Impls extends MiniPhase with IdentityDenotTransformer { thisTransform =>
   import ast.tpd._
 
-  override def phaseName: String = "linkScala2ImplClasses"
+  override def phaseName: String = "linkScala2Impls"
   override def changesMembers = true
   val treeTransform = new Transform
 
