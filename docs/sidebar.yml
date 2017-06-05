@@ -25,6 +25,8 @@ sidebar:
               url: docs/reference/type-lambdas.html
             - title: Implicit Function Types
               url: docs/reference/implicit-function-types.html
+            - title: Phantom Types
+              url: docs/reference/phantom-types.html
         - title: Enums
           subsection:
             - title: Enumerations
