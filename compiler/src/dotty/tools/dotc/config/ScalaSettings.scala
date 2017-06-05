@@ -121,7 +121,7 @@ class ScalaSettings extends Settings.SettingGroup {
     "-project",
     "project title",
     "The name of the project",
-    sys.props("user.dir").split(File.separatorChar).last
+    ""
   )
 
   val projectVersion = StringSetting (
