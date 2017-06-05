@@ -117,10 +117,10 @@ trait PullRequestService {
   final case class InvalidPrevious(users: List[String], commit: Commit) extends CommitStatus { def isValid = false }
 
   /** Partitions invalid and valid commits */
-  def checkCLA(xs: List[Commit], httpClient: Client): Task[List[CommitStatus]] = {
+  def checkCLA(xs: List[Commit])(implicit client: Client): Task[List[CommitStatus]] = {
     def checkUser(user: String): Task[Commit => CommitStatus] = {
       val claStatus = for {
-        claRes <- httpClient.expect(get(claUrl(user)))(jsonOf[CLASignature])
+        claRes <- client.expect(get(claUrl(user)))(jsonOf[CLASignature])
       } yield { (commit: Commit) =>
         if (claRes.signed) Valid(Some(user), commit)
         else Invalid(user, commit)
@@ -303,7 +303,7 @@ trait PullRequestService {
 
     for {
       commits  <- getCommits(issue.number)
-      statuses <- checkCLA(commits, httpClient)
+      statuses <- checkCLA(commits)
 
       (validStatuses, invalidStatuses) = statuses.partition(_.isValid)
       invalidUsers = usersFromInvalid(invalidStatuses)
@@ -372,23 +372,41 @@ trait PullRequestService {
     .map(_.forall(identity))
 
   def checkSynchronize(issue: Issue): Task[Response] = {
-    implicit val httpClient = PooledHttp1Client()
+    implicit val client = PooledHttp1Client()
+
+    def extractFailures(c: List[CommitStatus]): List[String] = c.collect {
+      case Invalid(user, _) =>
+        s"@$user hasn't signed the CLA"
+      case MissingUser(commit) =>
+        s"missing user for commit: ${commit.sha} - correct email associated with GitHub account?"
+      case CLAServiceDown(user, _) =>
+        s"couldn't fetch status for: $user"
+    }
 
     for {
       commits  <- getCommits(issue.number)
-      statuses <- checkCLA(commits, httpClient)
+      statuses <- checkCLA(commits)
       invalid  =  statuses.filterNot(_.isValid)
-      _        <- sendStatuses(invalid, httpClient)
-      _        <- cancelBuilds(commits.dropRight(1))(httpClient)
+      _        <- sendStatuses(invalid, client)
+      _        <- cancelBuilds(commits.dropRight(1))
 
       // Set final commit status based on `invalid`:
       _ <- {
         if (invalid.nonEmpty)
-          setStatus(InvalidPrevious(usersFromInvalid(invalid), commits.last), httpClient)
+          setStatus(InvalidPrevious(usersFromInvalid(invalid), commits.last), client)
         else
-          setStatus(statuses.last, httpClient)
+          setStatus(statuses.last, client)
       }
-      _    <- httpClient.shutdown
+
+      // Send comment regarding recheck:
+      comment =
+        if (invalid.isEmpty) "All users have signed the CLA as far as I can tell! :tada:"
+        else s"There are still some issues:\n\n- ${extractFailures(invalid).mkString("\n- ")}"
+
+      req  <- post(issueCommentsUrl(issue.number)).withAuth(githubUser, githubToken)
+      _    <- client.fetch(req.withBody(comment.asJson))(Task.now)
+
+      _    <- client.shutdown
       resp <- Ok("Updated PR checked")
     } yield resp
   }
