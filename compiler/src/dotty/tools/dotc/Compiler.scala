@@ -94,7 +94,7 @@ class Compiler {
            new FunctionalInterfaces, // Rewrites closures to implement @specialized types of Functions.
            new GetClass,            // Rewrites getClass calls on primitive types.
            new Simplify),           // Perform local optimizations, simplified versions of what linker does.
-      List(new LinkScala2ImplClasses, // Forward calls to the implementation classes of traits defined by Scala 2.11
+      List(new LinkScala2Impls,     // Redirect calls to trait methods defined by Scala 2.x, so that they now go to their implementations
            new LambdaLift,          // Lifts out nested functions to class scope, storing free variables in environments
                                        // Note: in this mini-phase block scopes are incorrect. No phases that rely on scopes should be here
            new ElimStaticThis,      // Replace `this` references to static objects by global identifiers

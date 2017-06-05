@@ -34,7 +34,7 @@ import collection.mutable
  *
  *  where f is a static member of M.
  */
-class LinkScala2ImplClasses extends MiniPhase with IdentityDenotTransformer { thisTransform =>
+class LinkScala2Impls extends MiniPhase with IdentityDenotTransformer { thisTransform =>
   import ast.tpd._
 
   override def phaseName: String = "linkScala2ImplClasses"
@@ -46,7 +46,7 @@ class LinkScala2ImplClasses extends MiniPhase with IdentityDenotTransformer { th
     // that's why it is runsAfterGroupOf
 
   class Transform extends TreeTransform {
-    def phase = thisTransform
+    def phase = LinkScala2Impls
 
     /** Copy definitions from implementation class to trait itself */
     private def augmentScala_2_12_Trait(mixin: ClassSymbol)(implicit ctx: Context): Unit = {
@@ -55,7 +55,7 @@ class LinkScala2ImplClasses extends MiniPhase with IdentityDenotTransformer { th
         name = if (sym.isConstructor) sym.name else ImplMethName(sym.name)
       )
       for (sym <- mixin.implClass.info.decls)
-        newImpl(sym.asTerm).enteredAfter(thisTransform)
+        newImpl(sym.asTerm).enteredAfter(LinkScala2Impls)
     }
 
     override def prepareForTemplate(impl: Template)(implicit ctx: Context) = {
