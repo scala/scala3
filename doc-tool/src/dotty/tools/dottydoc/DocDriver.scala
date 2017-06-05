@@ -48,7 +48,9 @@ class DocDriver extends Driver {
     val projectVersion = ctx.settings.projectVersion.value
     val projectUrl = ctx.settings.projectUrl.value
 
-    if (!siteRoot.exists || !siteRoot.isDirectory)
+    if (projectName.isEmpty)
+      ctx.error(s"Site project name not set. Use `-project <title>` to set the project name")
+    else if (!siteRoot.exists || !siteRoot.isDirectory)
       ctx.error(s"Site root does not exist: $siteRoot")
     else {
       Site(siteRoot, projectName, projectVersion, projectUrl, ctx.docbase.packages)
