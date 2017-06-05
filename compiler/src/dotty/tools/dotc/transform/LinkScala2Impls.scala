@@ -46,7 +46,7 @@ class LinkScala2Impls extends MiniPhase with IdentityDenotTransformer { thisTran
     // that's why it is runsAfterGroupOf
 
   class Transform extends TreeTransform {
-    def phase = LinkScala2Impls
+    def phase = thisTransform
 
     /** Copy definitions from implementation class to trait itself */
     private def augmentScala_2_12_Trait(mixin: ClassSymbol)(implicit ctx: Context): Unit = {
@@ -55,7 +55,7 @@ class LinkScala2Impls extends MiniPhase with IdentityDenotTransformer { thisTran
         name = if (sym.isConstructor) sym.name else ImplMethName(sym.name)
       )
       for (sym <- mixin.implClass.info.decls)
-        newImpl(sym.asTerm).enteredAfter(LinkScala2Impls)
+        newImpl(sym.asTerm).enteredAfter(thisTransform)
     }
 
     override def prepareForTemplate(impl: Template)(implicit ctx: Context) = {
@@ -82,10 +82,10 @@ class LinkScala2Impls extends MiniPhase with IdentityDenotTransformer { thisTran
     }
 
     private def implMethod(meth: Symbol)(implicit ctx: Context): Symbol = {
-      val (implInfo, implName) = 
-        if (meth.owner.is(Scala_2_12_Trait)) 
+      val (implInfo, implName) =
+        if (meth.owner.is(Scala_2_12_Trait))
           (meth.owner.info, ImplMethName(meth.name.asTermName))
-        else 
+        else
           (meth.owner.implClass.info, meth.name)
       if (meth.isConstructor)
         implInfo.decl(nme.TRAIT_CONSTRUCTOR).symbol
