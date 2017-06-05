@@ -279,7 +279,7 @@ object Build {
   // Same as `dotty` but using bootstrapped projects.
   lazy val `dotty-bootstrapped` = project.
     aggregate(`dotty-interfaces`, `dotty-library-bootstrapped`, `dotty-compiler-bootstrapped`, `dotty-doc-bootstrapped`,
-      `dotty-language-server`,
+      `dotty-language-server`, `dotty-repl`,
       dottySbtBridgeBootstrappedRef,
       `scala-library`, `scala-compiler`, `scala-reflect`, scalap).
     dependsOn(`dotty-compiler-bootstrapped`).
@@ -354,6 +354,20 @@ object Build {
       "nl.big-o" % "liqp" % "0.6.7"
     )
   )
+
+  lazy val `dotty-repl` = project.in(file("repl")).
+    dependsOn(
+      `dotty-language-server`,
+      `dotty-compiler-bootstrapped`,
+      `dotty-compiler-bootstrapped` % "test->test"
+    ).
+    settings(commonBootstrappedSettings).
+    settings(
+      javaOptions ++= (javaOptions in `dotty-compiler`).value,
+      fork in run := true,
+      fork in Test := true,
+      parallelExecution in Test := false
+    )
 
   lazy val `dotty-doc` = project.in(file("doc-tool")).
     dependsOn(`dotty-compiler`, `dotty-compiler` % "test->test").

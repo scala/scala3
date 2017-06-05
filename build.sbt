@@ -18,6 +18,7 @@ val `dotty-bench-bootstrapped` = Build.`dotty-bench-bootstrapped`
 val `scala-library` = Build.`scala-library`
 val `scala-compiler` = Build.`scala-compiler`
 val `scala-reflect` = Build.`scala-reflect`
+val `dotty-repl` = Build.`dotty-repl`
 val scalap = Build.scalap
 val dist = Build.dist
 val `dist-bootstrapped` = Build.`dist-bootstrapped`
