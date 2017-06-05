@@ -18,7 +18,7 @@ import scala.io.Codec
 import dotc._
 import ast.{Trees, tpd}
 import core._, core.Decorators.{sourcePos => _, _}
-import Contexts._, Flags._, Names._, NameOps._, Symbols._, SymDenotations._, Trees._, Types._
+import Contexts._, Flags._, Names._, NameOps._, Symbols._, Denotations._, SymDenotations._, Trees._, Types._
 import classpath.ClassPathEntries
 import reporting._, reporting.diagnostic.MessageContainer
 import util._
@@ -112,6 +112,9 @@ class DottyLanguageServer extends LanguageServer
         }
       }
     })
+
+  private def ignoreStale[T](onError: T)(op: => T): T = 
+    try op catch { case ex: StaleSymbol => onError }
 
   override def initialize(params: InitializeParams) = computeAsync { cancelToken =>
     rootUri = params.getRootUri
@@ -282,18 +285,20 @@ class DottyLanguageServer extends LanguageServer
   }
 
   override def hover(params: TextDocumentPositionParams) = computeAsync { cancelToken =>
-    val uri = new URI(params.getTextDocument.getUri)
-    val driver = driverFor(uri)
-    implicit val ctx = driver.currentCtx
+    ignoreStale(new Hover) {
+      val uri = new URI(params.getTextDocument.getUri)
+      val driver = driverFor(uri)
+      implicit val ctx = driver.currentCtx
 
-    val pos = sourcePosition(driver, uri, params.getPosition)
-    val tp = Interactive.enclosingType(driver.openedTrees(uri), pos)
-    val tpw = tp.widenTermRefExpr
+      val pos = sourcePosition(driver, uri, params.getPosition)
+      val tp = Interactive.enclosingType(driver.openedTrees(uri), pos)
+      val tpw = tp.widenTermRefExpr
 
-    if (tpw == NoType) new Hover
-    else {
-      val str = tpw.show.toString
-      new Hover(List(JEither.forLeft(str)).asJava, null)
+      if (tpw == NoType) new Hover
+      else {
+        val str = tpw.show.toString
+        new Hover(List(JEither.forLeft(str)).asJava, null)
+      }
     }
   }
 
