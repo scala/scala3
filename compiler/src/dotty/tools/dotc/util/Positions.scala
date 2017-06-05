@@ -100,13 +100,18 @@ object Positions {
 
     /** A copy of this position with a different start */
     def withStart(start: Int) =
-      fromOffsets(start, this.end, if (isSynthetic) SyntheticPointDelta else this.point - start)
+      if (exists) fromOffsets(start, this.end, if (isSynthetic) SyntheticPointDelta else this.point - start)
+      else this
 
     /** A copy of this position with a different end */
-    def withEnd(end: Int) = fromOffsets(this.start, end, pointDelta)
+    def withEnd(end: Int) =
+      if (exists) fromOffsets(this.start, end, pointDelta)
+      else this
 
     /** A copy of this position with a different point */
-    def withPoint(point: Int) = fromOffsets(this.start, this.end, point - this.start)
+    def withPoint(point: Int) =
+      if (exists) fromOffsets(this.start, this.end, point - this.start)
+      else this
 
     /** A synthetic copy of this position */
     def toSynthetic = if (isSynthetic) this else Position(start, end)
