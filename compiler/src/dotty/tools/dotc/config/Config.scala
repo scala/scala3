@@ -167,5 +167,6 @@ object Config {
    */
   final val PendingFindMemberLimit = LogPendingFindMemberThreshold * 4
 
+  /** When in IDE, turn StaleSymbol errors into warnings instead of crashing */
   final val ignoreStaleInIDE = true
 }
