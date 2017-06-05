@@ -16,46 +16,84 @@ import NameOps._
 import Phases._
 import ast.untpd
 import ast.Trees._
+import NameKinds.ImplMethName
 import collection.mutable
 
 /** Rewrite calls
  *
  *    super[M].f(args)
  *
- *  where M is a Scala2 trait implemented by the current class to
+ *  where M is a Scala 2.11 trait implemented by the current class to
  *
  *    M$class.f(this, args)
  *
  *  provided the implementation class M$class defines a corresponding function `f`.
+ *  If M is a Scala 2.12 or newer trait, rewrite to
+ *
+ *    M.f(this, args)
+ *
+ *  where f is a static member of M.
  */
-class LinkScala2ImplClasses extends MiniPhaseTransform with IdentityDenotTransformer { thisTransform =>
+class LinkScala2ImplClasses extends MiniPhase with IdentityDenotTransformer { thisTransform =>
   import ast.tpd._
 
   override def phaseName: String = "linkScala2ImplClasses"
+  override def changesMembers = true
+  val treeTransform = new Transform
 
-  override def runsAfter: Set[Class[_ <: Phase]] = Set(classOf[Mixin])
+  override def runsAfterGroupsOf: Set[Class[_ <: Phase]] = Set(classOf[Mixin])
+    // Adds as a side effect static members to traits which can confuse Mixin,
+    // that's why it is runsAfterGroupOf
 
-  override def transformApply(app: Apply)(implicit ctx: Context, info: TransformerInfo) = {
-    def currentClass = ctx.owner.enclosingClass.asClass
-    app match {
-      case Apply(sel @ Select(Super(_, _), _), args)
-      if sel.symbol.owner.is(Scala2xTrait) && currentClass.mixins.contains(sel.symbol.owner) =>
-        val impl = implMethod(sel.symbol)
-        if (impl.exists) Apply(ref(impl), This(currentClass) :: args).withPos(app.pos)
-        else app // could have been an abstract method in a trait linked to from a super constructor
-      case _ =>
-        app
+  class Transform extends TreeTransform {
+    def phase = thisTransform
+
+    /** Copy definitions from implementation class to trait itself */
+    private def augmentScala_2_12_Trait(mixin: ClassSymbol)(implicit ctx: Context): Unit = {
+      def newImpl(sym: TermSymbol): Symbol = sym.copy(
+        owner = mixin,
+        name = if (sym.isConstructor) sym.name else ImplMethName(sym.name)
+      )
+      for (sym <- mixin.implClass.info.decls)
+        newImpl(sym.asTerm).enteredAfter(thisTransform)
     }
-  }
 
-  private def implMethod(meth: Symbol)(implicit ctx: Context): Symbol = {
-    val implInfo = meth.owner.implClass.info
-    if (meth.isConstructor)
-      implInfo.decl(nme.TRAIT_CONSTRUCTOR).symbol
-    else
-      implInfo.decl(meth.name)
-      .suchThat(c => FullParameterization.memberSignature(c.info) == meth.signature)
-      .symbol
+    override def prepareForTemplate(impl: Template)(implicit ctx: Context) = {
+      val cls = impl.symbol.owner.asClass
+      for (mixin <- cls.mixins)
+        if (mixin.is(Scala_2_12_Trait, butNot = Scala_2_12_Augmented)) {
+          augmentScala_2_12_Trait(mixin)
+          mixin.setFlag(Scala_2_12_Augmented)
+        }
+      this
+    }
+
+    override def transformApply(app: Apply)(implicit ctx: Context, info: TransformerInfo) = {
+      def currentClass = ctx.owner.enclosingClass.asClass
+      app match {
+        case Apply(sel @ Select(Super(_, _), _), args)
+        if sel.symbol.owner.is(Scala2xTrait) && currentClass.mixins.contains(sel.symbol.owner) =>
+          val impl = implMethod(sel.symbol)
+          if (impl.exists) Apply(ref(impl), This(currentClass) :: args).withPos(app.pos)
+          else app // could have been an abstract method in a trait linked to from a super constructor
+        case _ =>
+          app
+      }
+    }
+
+    private def implMethod(meth: Symbol)(implicit ctx: Context): Symbol = {
+      val (implInfo, implName) = 
+        if (meth.owner.is(Scala_2_12_Trait)) 
+          (meth.owner.info, ImplMethName(meth.name.asTermName))
+        else 
+          (meth.owner.implClass.info, meth.name)
+      if (meth.isConstructor)
+        implInfo.decl(nme.TRAIT_CONSTRUCTOR).symbol
+      else
+        implInfo.decl(implName)
+          .suchThat(c => FullParameterization.memberSignature(c.info) == meth.signature)
+          .symbol
+    }
   }
 
   private val Scala2xTrait = allOf(Scala2x, Trait)

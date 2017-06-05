@@ -75,7 +75,7 @@ class Compiler {
            new InterceptedMethods,  // Special handling of `==`, `|=`, `getClass` methods
            new Getters,             // Replace non-private vals and vars with getter defs (fields are added later)
            new ElimByName,          // Expand by-name parameter references
-           new AugmentScala2Traits, // Expand traits defined in Scala 2.11 to simulate old-style rewritings
+           new AugmentScala2Traits, // Expand traits defined in Scala 2.x to simulate old-style rewritings
            new ResolveSuper,        // Implement super accessors and add forwarders to trait methods
            new Simplify,            // Perform local optimizations, simplified versions of what linker does.
            new PrimitiveForwarders, // Add forwarders to trait methods that have a mismatch between generic and primitives
@@ -87,7 +87,6 @@ class Compiler {
            new Mixin,               // Expand trait fields and trait initializers
            new LazyVals,            // Expand lazy vals
            new Memoize,             // Add private fields to getters and setters
-           new LinkScala2ImplClasses, // Forward calls to the implementation classes of traits defined by Scala 2.11
            new NonLocalReturns,     // Expand non-local returns
            new CapturedVars,        // Represent vars captured by closures as heap objects
            new Constructors,        // Collect initialization code in primary constructors
@@ -95,7 +94,8 @@ class Compiler {
            new FunctionalInterfaces, // Rewrites closures to implement @specialized types of Functions.
            new GetClass,            // Rewrites getClass calls on primitive types.
            new Simplify),           // Perform local optimizations, simplified versions of what linker does.
-      List(new LambdaLift,          // Lifts out nested functions to class scope, storing free variables in environments
+      List(new LinkScala2ImplClasses, // Forward calls to the implementation classes of traits defined by Scala 2.11
+           new LambdaLift,          // Lifts out nested functions to class scope, storing free variables in environments
                                        // Note: in this mini-phase block scopes are incorrect. No phases that rely on scopes should be here
            new ElimStaticThis,      // Replace `this` references to static objects by global identifiers
            new Flatten,             // Lift all inner classes to package scope

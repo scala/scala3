@@ -359,6 +359,7 @@ object NameKinds {
   val ExtMethName = new SuffixNameKind(EXTMETH, "$extension")
   val ModuleVarName = new SuffixNameKind(OBJECTVAR, "$module")
   val ModuleClassName = new SuffixNameKind(OBJECTCLASS, "$", optInfoString = "ModuleClass")
+  val ImplMethName = new SuffixNameKind(IMPLMETH, "$")
 
   /** A name together with a signature. Used in Tasty trees. */
   object SignedName extends NameKind(63) {
