@@ -122,6 +122,11 @@ object Build {
     javaSource        in Compile    := baseDirectory.value / "src",
     javaSource        in Test       := baseDirectory.value / "test",
     resourceDirectory in Compile    := baseDirectory.value / "resources",
+  
+    // Add EPFL resolver if on CI
+    resolvers ++=
+      if (sys.env.get("CI") == Some("drone")) Seq("EPFL Artifactory" at "http://scala-webapps.epfl.ch:8081")
+      else Seq(),
 
     // Prevent sbt from rewriting our dependencies
     ivyScala ~= (_ map (_ copy (overrideScalaVersion = false)))
