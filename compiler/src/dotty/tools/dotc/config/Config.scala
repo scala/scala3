@@ -72,6 +72,9 @@ object Config {
   /** Check positions for consistency after parsing */
   final val checkPositions = true
 
+  /** Check that typed trees don't point to untyped ones */
+  final val checkTreesConsistent = false
+
   /** Show subtype traces for all deep subtype recursions */
   final val traceDeepSubTypeRecursions = false
 
@@ -163,4 +166,6 @@ object Config {
    *  when findMemberLimit is set.
    */
   final val PendingFindMemberLimit = LogPendingFindMemberThreshold * 4
+
+  final val ignoreStaleInIDE = true
 }
