@@ -124,12 +124,10 @@ object DottyIDEPlugin extends AutoPlugin {
   }
 
   private val projectConfig = taskKey[Option[ProjectConfig]]("")
-  private val compileForIDE = taskKey[Unit]("Compile all projects supported by the IDE")
-  private val runCode = taskKey[Unit]("")
 
   object autoImport {
-    val configureIDE = taskKey[Unit]("Generate IDE config files")
-    val launchIDE = taskKey[Unit]("Run Visual Studio Code on this project")
+    val runCode = taskKey[Unit]("Start VSCode, usually called from launchIDE")
+    val launchIDE = taskKey[Unit]("Configure and run VSCode on this project")
   }
 
   import autoImport._
@@ -137,6 +135,40 @@ object DottyIDEPlugin extends AutoPlugin {
   override def requires: Plugins = plugins.JvmPlugin
   override def trigger = allRequirements
 
+  def configureIDE = Command.command("configureIDE") { origState =>
+    val (dottyVersion, projRefs, dottyState) = dottySetup(origState)
+    val configs0 = runInAllConfigurations(projectConfig, projRefs, dottyState).flatten
+
+    // Drop configurations that do not define their own sources, but just
+    // inherit their sources from some other configuration.
+    val configs = distinctBy(configs0)(_.sourceDirectories.deep)
+
+    // Write the version of the Dotty Language Server to use in a file by itself.
+    // This could be a field in the JSON config file, but that would require all
+    // IDE plugins to parse JSON.
+    val dlsVersion = dottyVersion
+      .replace("-nonbootstrapped", "") // The language server is only published bootstrapped
+    val dlsBinaryVersion = dlsVersion.split("\\.").take(2).mkString(".")
+    val pwArtifact = new PrintWriter(".dotty-ide-artifact")
+    try {
+      pwArtifact.println(s"ch.epfl.lamp:dotty-language-server_${dlsBinaryVersion}:${dlsVersion}")
+    } finally {
+      pwArtifact.close()
+    }
+
+    val mapper = new ObjectMapper
+    mapper.writerWithDefaultPrettyPrinter()
+      .writeValue(new File(".dotty-ide.json"), configs.toArray)
+
+    origState
+  }
+
+  def compileForIDE = Command.command("compileForIDE") { origState =>
+    val (dottyVersion, projRefs, dottyState) = dottySetup(origState)
+    runInAllConfigurations(compile, projRefs, dottyState)
+
+    origState
+  }
 
   override def projectSettings: Seq[Setting[_]] = Seq(
     // Use Def.derive so `projectConfig` is only defined in the configurations where the
@@ -169,43 +201,7 @@ object DottyIDEPlugin extends AutoPlugin {
   )
 
   override def buildSettings: Seq[Setting[_]] = Seq(
-    configureIDE := Def.taskDyn {
-      val origState = state.value
-      Def.task {
-        val (dottyVersion, projRefs, dottyState) = dottySetup(origState)
-        val configs0 = runInAllConfigurations(projectConfig, projRefs, dottyState).flatten
-
-        // Drop configurations that do not define their own sources, but just
-        // inherit their sources from some other configuration.
-        val configs = distinctBy(configs0)(_.sourceDirectories.deep)
-
-        // Write the version of the Dotty Language Server to use in a file by itself.
-        // This could be a field in the JSON config file, but that would require all
-        // IDE plugins to parse JSON.
-        val dlsVersion = dottyVersion
-          .replace("-nonbootstrapped", "") // The language server is only published bootstrapped
-        val dlsBinaryVersion = dlsVersion.split("\\.").take(2).mkString(".")
-        val pwArtifact = new PrintWriter(".dotty-ide-artifact")
-        try {
-          pwArtifact.println(s"ch.epfl.lamp:dotty-language-server_${dlsBinaryVersion}:${dlsVersion}")
-        } finally {
-          pwArtifact.close()
-        }
-
-        val mapper = new ObjectMapper
-        mapper.writerWithDefaultPrettyPrinter()
-          .writeValue(new File(".dotty-ide.json"), configs.toArray)
-      }
-    }.value,
-
-    compileForIDE := Def.taskDyn {
-      val origState = state.value
-      Def.task {
-        val (dottyVersion, projRefs, dottyState) = dottySetup(origState)
-        runInAllConfigurations(compile, projRefs, dottyState)
-        ()
-      }
-    }.value,
+    commands ++= Seq(configureIDE, compileForIDE),
 
     runCode := {
       val exitCode = new ProcessBuilder("code", "--install-extension", "lampepfl.dotty")
@@ -218,8 +214,7 @@ object DottyIDEPlugin extends AutoPlugin {
       new ProcessBuilder("code", baseDirectory.value.getAbsolutePath)
         .inheritIO()
         .start()
-    },
-
-    launchIDE := runCode.dependsOn(configureIDE).value
-  )
+    }
+    
+  ) ++ addCommandAlias("launchIDE", ";configureIDE;runCode")
 }

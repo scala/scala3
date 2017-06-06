@@ -91,10 +91,10 @@ object Build {
     bootstrapFromPublishedJars := false,
 
 
-    // Override `launchIDE` from sbt-dotty to use the language-server and
+    // Override `runCode` from sbt-dotty to use the language-server and
     // vscode extension from the source repository of dotty instead of a
     // published version.
-    launchIDE := (run in `dotty-language-server`).dependsOn(configureIDE).toTask("").value
+    runCode := (run in `dotty-language-server`).toTask("").value
   )
 
   // Only available in vscode-dotty
