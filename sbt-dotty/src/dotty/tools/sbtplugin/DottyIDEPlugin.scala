@@ -186,8 +186,11 @@ object DottyIDEPlugin extends AutoPlugin {
           .replace("-nonbootstrapped", "") // The language server is only published bootstrapped
         val dlsBinaryVersion = dlsVersion.split("\\.").take(2).mkString(".")
         val pwArtifact = new PrintWriter(".dotty-ide-artifact")
-        pwArtifact.println(s"ch.epfl.lamp:dotty-language-server_${dlsBinaryVersion}:${dlsVersion}")
-        pwArtifact.close()
+        try {
+          pwArtifact.println(s"ch.epfl.lamp:dotty-language-server_${dlsBinaryVersion}:${dlsVersion}")
+        } finally {
+          pwArtifact.close()
+        }
 
         val mapper = new ObjectMapper
         mapper.writerWithDefaultPrettyPrinter()
