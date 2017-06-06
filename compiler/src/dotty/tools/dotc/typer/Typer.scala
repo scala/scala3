@@ -2012,7 +2012,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
             else -1 // no eta expansion in this case
           }
 
-        if (arity >= 0 && !tree.symbol.isConstructor)
+        if (arity >= 0 && !tree.symbol.isConstructor && !ctx.mode.is(Mode.Pattern))
           typed(etaExpand(tree, wtp, arity), pt)
         else if (wtp.paramInfos.isEmpty)
           adaptInterpolated(tpd.Apply(tree, Nil), pt, EmptyTree)
