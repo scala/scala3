@@ -2006,8 +2006,12 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
               // prioritize method parameter types as parameter types of the eta-expanded closure
               0
             else defn.functionArity(ptNorm)
-          else if (pt eq AnyFunctionProto) wtp.paramInfos.length
-          else -1
+          else {
+            val nparams = wtp.paramInfos.length
+            if (nparams > 0 || pt.eq(AnyFunctionProto)) nparams
+            else -1 // no eta expansion in this case
+          }
+
         if (arity >= 0 && !tree.symbol.isConstructor)
           typed(etaExpand(tree, wtp, arity), pt)
         else if (wtp.paramInfos.isEmpty)
