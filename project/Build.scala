@@ -7,18 +7,12 @@ import java.nio.file.{ Files, FileSystemException }
 import java.util.Calendar
 
 import scala.reflect.io.Path
-import sbtassembly.AssemblyKeys.assembly
-import xerial.sbt.Pack._
 
 import sbt.Package.ManifestAttributes
-
-import com.typesafe.sbteclipse.plugin.EclipsePlugin._
 
 import dotty.tools.sbtplugin.DottyPlugin.autoImport._
 import dotty.tools.sbtplugin.DottyIDEPlugin.{ prepareCommand, runProcess }
 import dotty.tools.sbtplugin.DottyIDEPlugin.autoImport._
-import org.scalajs.sbtplugin.ScalaJSPlugin
-import org.scalajs.sbtplugin.ScalaJSPlugin.autoImport._
 
 import pl.project13.scala.sbt.JmhPlugin
 import JmhPlugin.JmhKeys.Jmh
@@ -151,7 +145,6 @@ object Build {
 
   // Settings used when compiling dotty with a non-bootstrapped dotty
   lazy val commonBootstrappedSettings = commonSettings ++ Seq(
-    EclipseKeys.skipProject := true,
     version := dottyVersion,
     scalaVersion := dottyNonBootstrappedVersion,
 
@@ -285,8 +278,6 @@ object Build {
       crossPaths := false,
       // Do not depend on the Scala library
       autoScalaLibrary := false,
-      // Let the sbt eclipse plugin know that this is a Java-only project
-      EclipseKeys.projectFlavor := EclipseProjectFlavor.Java,
       //Remove javac invalid options in Compile doc
       javacOptions in (Compile, doc) --= Seq("-Xlint:unchecked", "-Xlint:deprecation")
     )
@@ -369,10 +360,6 @@ object Build {
     settings(commonScala2Settings).
     settings(
       resourceDirectory in Test := baseDirectory.value / "test" / "resources",
-
-      // specify main and ignore tests when assembling
-      mainClass in assembly := Some("dotty.tools.bot.Main"),
-      test in assembly := {},
 
       libraryDependencies ++= {
         val circeVersion = "0.7.0"
@@ -462,18 +449,11 @@ object Build {
         Seq(file)
       }.taskValue,
 
-      // include sources in eclipse (downloads source code for all dependencies)
-      //http://stackoverflow.com/questions/10472840/how-to-attach-sources-to-sbt-managed-dependencies-in-scala-ide#answer-11683728
-      com.typesafe.sbteclipse.plugin.EclipsePlugin.EclipseKeys.withSource := true,
-
       // get libraries onboard
-      libraryDependencies ++= Seq("com.typesafe.sbt" % "sbt-interface" % sbtVersion.value,
+      libraryDependencies ++= Seq("org.scala-sbt" % "compiler-interface" % sbtVersion.value,
                                   ("org.scala-lang.modules" %% "scala-xml" % "1.0.6").withDottyCompat(),
                                   "com.novocode" % "junit-interface" % "0.11" % "test",
                                   "org.scala-lang" % "scala-library" % scalacVersion % "test"),
-
-      // enable improved incremental compilation algorithm
-      incOptions := incOptions.value.withNameHashing(true),
 
       // For convenience, change the baseDirectory when running the compiler
       baseDirectory in (Compile, run) := baseDirectory.value / "..",
@@ -721,7 +701,7 @@ object Build {
     description := "sbt compiler bridge for Dotty",
     resolvers += Resolver.typesafeIvyRepo("releases"), // For org.scala-sbt:api
     libraryDependencies ++= Seq(
-      "com.typesafe.sbt" % "sbt-interface" % sbtVersion.value,
+      "org.scala-sbt" % "compiler-interface" % "1.0.0-X16",
       "org.scala-sbt" % "api" % sbtVersion.value % "test",
       ("org.specs2" %% "specs2-core" % "3.9.1" % "test").withDottyCompat(),
       ("org.specs2" %% "specs2-junit" % "3.9.1" % "test").withDottyCompat()
