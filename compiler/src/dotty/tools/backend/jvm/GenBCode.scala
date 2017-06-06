@@ -17,6 +17,7 @@ import java.util.Optional
 
 import scala.reflect.ClassTag
 import dotty.tools.dotc.core._
+import dotty.tools.dotc.sbt.ExtractDependencies
 import Periods._
 import SymDenotations._
 import Contexts._
@@ -134,6 +135,8 @@ class GenBCodePipeline(val entryPoints: List[Symbol], val int: DottyBackendInter
     private val poison3 = Item3(Int.MaxValue, null, null, null, null)
     private val q3 = new java.util.PriorityQueue[Item3](1000, i3comparator)
 
+    private val srcClassNames = new mutable.HashMap[String, String]
+
     /*
      *  Pipeline that takes ClassDefs from queue-1, lowers them into an intermediate form, placing them on queue-2
      */
@@ -229,6 +232,15 @@ class GenBCodePipeline(val entryPoints: List[Symbol], val int: DottyBackendInter
           } else null
 
         // ----------- hand over to pipeline-2
+
+        val srcClassName = ctx.atPhase(ctx.typerPhase) { implicit ctx =>
+          ExtractDependencies.extractedName(claszSymbol)
+        }
+        for (cls <- List(mirrorC, plainC, beanC)) {
+          if (cls != null) {
+            srcClassNames += (cls.name -> srcClassName)
+          }
+        }
 
         val item2 =
           Item2(arrivalPos,
@@ -403,13 +415,21 @@ class GenBCodePipeline(val entryPoints: List[Symbol], val int: DottyBackendInter
               else getFileForClassfile(outFolder, jclassName, ".class")
             bytecodeWriter.writeClass(jclassName, jclassName, jclassBytes, outFile)
 
-            val className = jclassName.replace('/', '.')
+            val srcClassName = srcClassNames(jclassName)
+
             if (ctx.compilerCallback != null)
-              ctx.compilerCallback.onClassGenerated(sourceFile, convertAbstractFile(outFile), className)
-            if (ctx.sbtCallback != null)
+              ctx.compilerCallback.onClassGenerated(sourceFile, convertAbstractFile(outFile), srcClassName)
+            if (ctx.sbtCallback != null) {
               // ctx.sbtCallback.generatedClass(sourceFile.jfile.orElse(null), outFile.file, className)
               // TODO: Check
-              ctx.sbtCallback.generatedNonLocalClass(sourceFile.jfile.orElse(null), outFile.file, jclassName, className)
+              val isLocal = srcClassName.contains("_$")
+              if (isLocal)
+                ctx.sbtCallback.generatedLocalClass(sourceFile.jfile.orElse(null), outFile.file)
+              else {
+                ctx.sbtCallback.generatedNonLocalClass(sourceFile.jfile.orElse(null), outFile.file,
+                  jclassName, srcClassName)
+              }
+            }
           }
           catch {
             case e: FileConflictException =>

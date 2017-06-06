@@ -37,6 +37,8 @@ import xsbti.UseScope
  *  @see ExtractAPI
  */
 class ExtractDependencies extends Phase {
+  import ExtractDependencies._
+
   override def phaseName: String = "sbt-deps"
 
   // This phase should be run directly after `Frontend`, if it is run after
@@ -69,12 +71,13 @@ class ExtractDependencies extends Phase {
         } finally pw.close()
       }
 
+      // println("extractDeps.usedNames: " + extractDeps.usedNames)
       if (ctx.sbtCallback != null) {
         extractDeps.usedNames.foreach{
           case (rawClassName, usedNames) =>
-            val className = rawClassName.toString.trim
+            val className = rawClassName.toString
             usedNames.defaultNames.foreach { rawUsedName =>
-              val useName = rawUsedName.decode.toString.trim
+              val useName = rawUsedName.toString
               val useScopes =
                 usedNames.scopedNames.get(rawUsedName) match {
                   case None => EnumSet.of(UseScope.Default)
@@ -109,7 +112,7 @@ class ExtractDependencies extends Phase {
         def className(classSegments: List[String]) =
           classSegments.mkString(".").stripSuffix(".class")
         def binaryDependency(file: File, className: String) =
-          ctx.sbtCallback.binaryDependency(file, className, currentClass.fullName.toString, currentSourceFile, context)
+          ctx.sbtCallback.binaryDependency(file, className, extractedName(currentClass), currentSourceFile, context)
 
         depFile match {
           case ze: ZipArchive#Entry =>
@@ -128,10 +131,20 @@ class ExtractDependencies extends Phase {
             ctx.warning(s"sbt-deps: Ignoring dependency $depFile of class ${depFile.getClass}")
         }
       } else if (depFile.file != currentSourceFile) {
-        ctx.sbtCallback.classDependency(dep.enclosingClass.fullName.toString, currentClass.fullName.toString, context)
+        ctx.sbtCallback.classDependency(extractedName(dep.enclosingClass), extractedName(currentClass), context)
       }
     }
   }
+}
+
+object ExtractDependencies {
+  def extractedName(sym: Symbol)(implicit ctx: Context): String =
+    // ctx.atPhase(ctx.flattenPhase.next) { implicit ctx =>
+      if (sym.is(ModuleClass))
+        sym.fullName.stripModuleClassSuffix.toString
+      else
+        sym.fullName.toString
+    // }
 }
 
 private final class NameUsedInClass {
@@ -171,15 +184,16 @@ private final class NameUsedInClass {
  */
 private class ExtractDependenciesCollector(implicit val ctx: Context) extends tpd.TreeTraverser { thisTreeTraverser =>
   import tpd._
+  import ExtractDependencies._
 
-  private[this] val _usedNames = new mutable.HashMap[Name, NameUsedInClass].withDefault(_ => new NameUsedInClass)
+  private[this] val _usedNames = new mutable.HashMap[String, NameUsedInClass]
   private[this] val _topLevelDependencies = new mutable.HashSet[Symbol]
   private[this] val _topLevelInheritanceDependencies = new mutable.HashSet[Symbol]
 
   /** The names used in this class, this does not include names which are only
    *  defined and not referenced.
    */
-  def usedNames: collection.Map[Name, NameUsedInClass] = _usedNames
+  def usedNames: collection.Map[String, NameUsedInClass] = _usedNames
 
   /** The set of top-level classes that the compilation unit depends on
    *  because it refers to these classes or something defined in them.
@@ -192,8 +206,9 @@ private class ExtractDependenciesCollector(implicit val ctx: Context) extends tp
    */
   def topLevelInheritanceDependencies: Set[Symbol] = _topLevelInheritanceDependencies
 
-  private def addUsedName(enclosingName: Name, name: Name) = {
-    val nameUsed = _usedNames(enclosingName)
+  private def addUsedName(enclosingSym: Symbol, name: Name) = {
+    val enclosingName = extractedName(enclosingSym)
+    val nameUsed = _usedNames.getOrElseUpdate(enclosingName, new NameUsedInClass)
     nameUsed.defaultNames += name
     // TODO: Set correct scope
     nameUsed.scopedNames(name).add(UseScope.Default)
@@ -204,21 +219,20 @@ private class ExtractDependenciesCollector(implicit val ctx: Context) extends tp
       val tlClass = sym.topLevelClass
       if (tlClass.ne(NoSymbol)) // Some synthetic type aliases like AnyRef do not belong to any class
         _topLevelDependencies += sym.topLevelClass
-      addUsedName(nonLocalEnclosingClass(sym).fullName, sym.name)
+      addUsedName(nonLocalEnclosingClass(ctx.owner), sym.name)
     }
 
-  private def isLocal(sym: Symbol)(implicit ctx: Context): Boolean = {
-    val owner = sym.maybeOwner
-    owner.isTerm ||
-    owner.is(Trait) && isLocal(owner) ||
-    sym.isConstructor && isLocal(owner)
-  }
+  private def isLocal(sym: Symbol)(implicit ctx: Context): Boolean =
+    sym.ownersIterator.exists(_.isTerm)
 
   private def nonLocalEnclosingClass(sym: Symbol)(implicit ctx: Context): Symbol =
     sym.enclosingClass match {
       case NoSymbol => NoSymbol
-      case sym: Symbol if (isLocal(sym)) => sym
-      case sym: Symbol => nonLocalEnclosingClass(sym.owner)
+      case csym =>
+        if (isLocal(csym))
+          nonLocalEnclosingClass(csym.owner)
+        else
+          csym
     }
 
   private def ignoreDependency(sym: Symbol) =
@@ -231,9 +245,10 @@ private class ExtractDependenciesCollector(implicit val ctx: Context) extends tp
     _topLevelInheritanceDependencies += sym.topLevelClass
 
   private object PatMatDependencyTraverser extends ExtractTypesCollector {
-    override protected def addDependency(symbol: Symbol): Unit = {
+    override protected def addDependency(symbol: Symbol)(implicit ctx: Context): Unit = {
       if (!ignoreDependency(symbol) && symbol.is(Sealed)) {
-        val nameUsed = _usedNames(nonLocalEnclosingClass(symbol).fullName)
+        val encName = nonLocalEnclosingClass(ctx.owner).fullName.stripModuleClassSuffix.mangledString
+        val nameUsed = _usedNames.getOrElseUpdate(encName, new NameUsedInClass)
 
         nameUsed.defaultNames += symbol.name
         nameUsed.scopedNames(symbol.name).add(UseScope.PatMatTarget)
@@ -262,7 +277,7 @@ private class ExtractDependenciesCollector(implicit val ctx: Context) extends tp
           case Thicket(Ident(name) :: Ident(rename) :: Nil) =>
             addImported(name)
             if (rename ne nme.WILDCARD)
-              addUsedName(nonLocalEnclosingClass(ctx.owner).fullName, rename)
+              addUsedName(nonLocalEnclosingClass(ctx.owner), rename)
           case _ =>
         }
       case Inlined(call, _, _) =>
@@ -338,7 +353,7 @@ private class ExtractDependenciesCollector(implicit val ctx: Context) extends tp
       }
     }
 
-    protected def addDependency(symbol: Symbol): Unit =
+    protected def addDependency(symbol: Symbol)(implicit ctx: Context): Unit =
       thisTreeTraverser.addDependency(symbol)
   }
 

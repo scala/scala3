@@ -112,6 +112,7 @@ class ExtractAPI extends Phase {
 private class ExtractAPICollector(implicit val ctx: Context) extends ThunkHolder {
   import tpd._
   import xsbti.api
+  import ExtractDependencies.extractedName
 
   /** This cache is necessary for correctness, see the comment about inherited
    *  members in `apiClassStructure`
@@ -187,7 +188,7 @@ private class ExtractAPICollector(implicit val ctx: Context) extends ThunkHolder
 
     val selfType = apiType(sym.givenSelfType)
 
-    val name = if (sym.is(ModuleClass)) sym.fullName.sourceModuleName else sym.fullName
+    val name = extractedName(sym)
 
     val tparams = sym.typeParams.map(apiTypeParameter).toArray
 
@@ -204,12 +205,22 @@ private class ExtractAPICollector(implicit val ctx: Context) extends ThunkHolder
     ).toArray
 
     val cl = new api.ClassLike(
-      name.toString, acc, modifiers, anns, defType, strict2lzy(selfType), strict2lzy(structure), Constants.emptyStringArray,
+      name, acc, modifiers, anns, defType, strict2lzy(selfType), strict2lzy(structure), Constants.emptyStringArray,
       childrenOfSealedClass, topLevel, tparams)
+
+    // if (name.toString.contains("DottyPredef")) {
+    //   println("sym: " + sym)
+    //   println("name: " + name)
+    //   ctx.atPhase(ctx.flattenPhase.next) { implicit ctx =>
+    //     println("flatten: " + sym.fullName.toString)
+    //     println("flattenm: " + sym.fullName.mangledString)
+    //   }
+    //   println("flattenx: " + toDenot(sym.binaryName.toString)
+    // }
 
     allNonLocalClassesInSrc += cl
 
-    new api.ClassLikeDef(name.toString, acc, modifiers, anns, tparams, defType);
+    new api.ClassLikeDef(name, acc, modifiers, anns, tparams, defType)
   }
 
   private[this] val LegacyAppClass = ctx.requiredClass("dotty.runtime.LegacyApp")
