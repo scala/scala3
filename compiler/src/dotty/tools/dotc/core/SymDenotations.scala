@@ -102,11 +102,10 @@ trait SymDenotations { this: Context =>
 
   /** Configurable: Accept stale symbol with warning if in IDE */
   def acceptStale(denot: SingleDenotation): Boolean =
-    (mode.is(Mode.Interactive) && Config.ignoreStaleInIDE) && {
-      ctx.warning(denot.staleSymbolMsg)
+    mode.is(Mode.Interactive) && Config.ignoreStaleInIDE && {
+      ctx.echo(denot.staleSymbolMsg)
       true
     }
-
 }
 
 object SymDenotations {

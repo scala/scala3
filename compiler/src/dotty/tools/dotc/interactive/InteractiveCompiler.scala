@@ -15,7 +15,4 @@ class InteractiveCompiler extends Compiler {
   override def phases: List[List[Phase]] = List(
     List(new FrontEnd)
   )
-
-  override def rootContext(implicit ctx: Context) =
-    super.rootContext.fresh.addMode(Mode.Interactive)
 }

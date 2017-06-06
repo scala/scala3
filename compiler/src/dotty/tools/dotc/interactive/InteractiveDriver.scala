@@ -33,7 +33,7 @@ class InteractiveDriver(settings: List[String]) extends Driver {
   override def sourcesRequired = false
 
   private val myInitCtx: Context = {
-    val rootCtx = initCtx.fresh.addMode(Mode.ReadPositions)
+    val rootCtx = initCtx.fresh.addMode(Mode.ReadPositions).addMode(Mode.Interactive)
     rootCtx.setSetting(rootCtx.settings.YretainTrees, true)
     val ctx = setup(settings.toArray, rootCtx)._2
     ctx.initialize()(ctx)
