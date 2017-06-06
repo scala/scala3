@@ -42,7 +42,7 @@ class CachedCompilerImpl(args: Array[String], output: Output, resident: Boolean)
       case multi: MultipleOutput =>
         ???
       case single: SingleOutput =>
-        List("-d", single.outputDirectory.getAbsolutePath.toString)
+        List("-d", single.getOutputDirectory.getAbsolutePath.toString)
     }
 
   def commandArguments(sources: Array[File]): Array[String] =
