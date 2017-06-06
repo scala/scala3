@@ -1056,12 +1056,8 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
      */
     def isAsSpecific(alt1: TermRef, tp1: Type, alt2: TermRef, tp2: Type): Boolean = ctx.traceIndented(i"isAsSpecific $tp1 $tp2", overload) { tp1 match {
       case tp1: MethodType => // (1)
-        def repeatedToSingle(tp: Type): Type = tp match {
-          case tp @ ExprType(tp1) => tp.derivedExprType(repeatedToSingle(tp1))
-          case _ => if (tp.isRepeatedParam) tp.argTypesHi.head else tp
-        }
         val formals1 =
-          if (tp1.isVarArgsMethod && tp2.isVarArgsMethod) tp1.paramInfos map repeatedToSingle
+          if (tp1.isVarArgsMethod && tp2.isVarArgsMethod) tp1.paramInfos.map(_.repeatedToSingle)
           else tp1.paramInfos
         isApplicable(alt2, formals1, WildcardType) ||
         tp1.paramInfos.isEmpty && tp2.isInstanceOf[LambdaType]

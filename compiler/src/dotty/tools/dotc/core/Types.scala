@@ -1044,7 +1044,13 @@ object Types {
       case _ => NoType
     }
 
-  	/** If this is a FunProto or PolyProto, WildcardType, otherwise this. */
+    /** If this is a repeated type, its element type, otherwise the type itself */
+    def repeatedToSingle(implicit ctx: Context): Type = this match {
+      case tp @ ExprType(tp1) => tp.derivedExprType(tp1.repeatedToSingle)
+      case _                  => if (isRepeatedParam) this.argTypesHi.head else this
+    }
+
+    /** If this is a FunProto or PolyProto, WildcardType, otherwise this. */
     def notApplied: Type = this
 
     // ----- Normalizing typerefs over refined types ----------------------------
