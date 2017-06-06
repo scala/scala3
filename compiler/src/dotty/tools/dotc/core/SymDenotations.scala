@@ -99,6 +99,13 @@ trait SymDenotations { this: Context =>
         explain("denotation is not a SymDenotation")
     }
   }
+
+  /** Configurable: Accept stale symbol with warning if in IDE */
+  def acceptStale(denot: SingleDenotation): Boolean =
+    mode.is(Mode.Interactive) && Config.ignoreStaleInIDE && {
+      ctx.echo(denot.staleSymbolMsg)
+      true
+    }
 }
 
 object SymDenotations {

@@ -13,6 +13,7 @@ import collection.mutable.ListBuffer
 import parsing.Tokens.Token
 import printing.Printer
 import util.{Stats, Attachment, Property, DotClass}
+import config.Config
 import annotation.unchecked.uncheckedVariance
 import language.implicitConversions
 
@@ -113,9 +114,29 @@ object Trees {
      *  type. (Overridden by empty trees)
      */
     def withType(tpe: Type)(implicit ctx: Context): ThisTree[Type] = {
-      if (tpe.isInstanceOf[ErrorType]) assert(ctx.reporter.errorsReported)
+      if (tpe.isInstanceOf[ErrorType])
+        assert(ctx.reporter.errorsReported)
+      else if (Config.checkTreesConsistent)
+        checkChildrenTyped(productIterator)
       withTypeUnchecked(tpe)
     }
+
+    /** Check that typed trees don't refer to untyped ones, except if
+     *   - the parent tree is an import, or
+     *   - the child tree is an identifier, or
+     *   - errors were reported
+     */
+    private def checkChildrenTyped(it: Iterator[Any])(implicit ctx: Context): Unit =
+      if (!this.isInstanceOf[Import[_]])
+        while (it.hasNext)
+          it.next match {
+            case x: Ident[_] => // untyped idents are used in a number of places in typed trees
+            case x: Tree[_] =>
+              assert(x.hasType || ctx.reporter.errorsReported,
+                     s"$this has untyped child $x")
+            case xs: List[_] => checkChildrenTyped(xs.iterator)
+            case _ =>
+          }
 
     def withTypeUnchecked(tpe: Type): ThisTree[Type] = {
       val tree =
@@ -1177,6 +1198,8 @@ object Trees {
           case Thicket(trees) =>
             val trees1 = transform(trees)
             if (trees1 eq trees) tree else Thicket(trees1)
+          case _ if ctx.reporter.errorsReported =>
+            tree
         }
 
       def transformStats(trees: List[Tree])(implicit ctx: Context): List[Tree] =
@@ -1282,6 +1305,9 @@ object Trees {
             this(this(x, arg), annot)
           case Thicket(ts) =>
             this(x, ts)
+          case _ if ctx.reporter.errorsReported =>
+            // in case of errors it may be that typed trees point to untyped ones.
+            x
         }
       }
     }

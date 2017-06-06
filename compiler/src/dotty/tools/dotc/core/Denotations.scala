@@ -722,7 +722,7 @@ object Denotations {
      *  if denotation is no longer valid.
      */
     private def bringForward()(implicit ctx: Context): SingleDenotation = this match {
-      case denot: SymDenotation if ctx.stillValid(denot) =>
+      case denot: SymDenotation if ctx.stillValid(denot) || ctx.acceptStale(denot) =>
         assert(ctx.runId > validFor.runId || ctx.settings.YtestPickler.value, // mixing test pickler with debug printing can travel back in time
             s"denotation $denot invalid in run ${ctx.runId}. ValidFor: $validFor")
         var d: SingleDenotation = denot
@@ -918,13 +918,15 @@ object Denotations {
       old.nextInRun = this
     }
 
-    def staleSymbolError(implicit ctx: Context) = {
+    def staleSymbolError(implicit ctx: Context) =
+      throw new StaleSymbol(staleSymbolMsg)
+
+    def staleSymbolMsg(implicit ctx: Context): String = {
       def ownerMsg = this match {
         case denot: SymDenotation => s"in ${denot.owner}"
         case _ => ""
       }
-      def msg = s"stale symbol; $this#${symbol.id} $ownerMsg, defined in ${myValidFor}, is referred to in run ${ctx.period}"
-      throw new StaleSymbol(msg)
+      s"stale symbol; $this#${symbol.id} $ownerMsg, defined in ${myValidFor}, is referred to in run ${ctx.period}"
     }
 
     /** The period (interval of phases) for which there exists

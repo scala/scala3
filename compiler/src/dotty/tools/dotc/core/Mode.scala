@@ -90,4 +90,7 @@ object Mode {
    *  In this case, identifiers should never be imported.
    */
   val InPackageClauseName = newMode(18, "InPackageClauseName")
+
+  /** We are in the IDE */
+  val Interactive = newMode(20, "Interactive")
 }

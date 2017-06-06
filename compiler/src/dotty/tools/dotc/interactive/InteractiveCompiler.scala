@@ -5,6 +5,7 @@ package interactive
 import core._
 import Phases._
 import typer._
+import Contexts._
 
 class InteractiveCompiler extends Compiler {
   // TODO: Figure out what phases should be run in IDEs
