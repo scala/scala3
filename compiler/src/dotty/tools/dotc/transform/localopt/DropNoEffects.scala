@@ -123,12 +123,14 @@ class DropNoEffects(val simplifyPhase: Simplify)(implicit val ctx: Context) exte
             rec :: args.map(keepOnlySideEffects)
         }
         Block(prefix, unitLiteral)
+
       case t @ TypeApply(Select(rec, _), List(testType)) if t.symbol.eq(defn.Any_asInstanceOf) && testType.tpe.widenDealias.typeSymbol.exists =>
         val receiverType = TypeErasure.erasure(rec.tpe)
         val erazedTestedType = TypeErasure.erasure(testType.tpe)
         if (receiverType.derivesFrom(erazedTestedType.typeSymbol))
-          EmptyTree
+          rec
         else t
+
       case _ => t
     }
   }
