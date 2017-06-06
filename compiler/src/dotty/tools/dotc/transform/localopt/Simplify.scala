@@ -113,6 +113,7 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
 
 object Simplify {
   import tpd._
+  // TODO: This function is duplicated in jvm/DottyBackendInterface.scala, let's factor these out!
   def desugarIdent(i: Ident)(implicit ctx: Context): Option[Select] = {
     i.tpe match {
       case TermRef(prefix: TermRef, name) =>
