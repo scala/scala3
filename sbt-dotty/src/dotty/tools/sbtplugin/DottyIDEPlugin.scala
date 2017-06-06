@@ -44,12 +44,11 @@ object DottyIDEPlugin extends AutoPlugin {
   }
 
   private val projectConfig = taskKey[Option[ProjectConfig]]("")
-  private val configureIDE = taskKey[Unit]("Generate IDE config files")
   private val compileForIDE = taskKey[Unit]("Compile all projects supported by the IDE")
   private val runCode = taskKey[Unit]("")
 
   object autoImport {
-    val prepareIDE = taskKey[Unit]("Prepare for IDE launch")
+    val configureIDE = taskKey[Unit]("Generate IDE config files")
     val launchIDE = taskKey[Unit]("Run Visual Studio Code on this project")
   }
 
@@ -64,6 +63,11 @@ object DottyIDEPlugin extends AutoPlugin {
     Def.derive(projectConfig := {
       if (sources.value.isEmpty) None
       else {
+        // Not needed to generate the config, but this guarantees that the
+        // generated config is usable by an IDE without any extra compilation
+        // step.
+        val _ = compile.value
+
         val id = s"${thisProject.value.id}/${configuration.value.name}"
         val compilerVersion = scalaVersion.value
           .replace("-nonbootstrapped", "") // The language server is only published bootstrapped
@@ -135,11 +139,6 @@ object DottyIDEPlugin extends AutoPlugin {
         .start()
     },
 
-    prepareIDE := {
-      val x1 = configureIDE.value
-      val x2 = compileForIDE.value
-    },
-
-    launchIDE := runCode.dependsOn(prepareIDE).value
+    launchIDE := runCode.dependsOn(configureIDE).value
   )
 }

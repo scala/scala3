@@ -94,7 +94,7 @@ object Build {
     // Override `launchIDE` from sbt-dotty to use the language-server and
     // vscode extension from the source repository of dotty instead of a
     // published version.
-    launchIDE := (run in `dotty-language-server`).dependsOn(prepareIDE).toTask("").value
+    launchIDE := (run in `dotty-language-server`).dependsOn(configureIDE).toTask("").value
   )
 
   // Only available in vscode-dotty
@@ -882,7 +882,7 @@ object Build {
 
 
       sbtPlugin := true,
-      version := "0.1.1",
+      version := "0.1.2-SNAPSHOT",
       ScriptedPlugin.scriptedSettings,
       ScriptedPlugin.sbtTestDirectory := baseDirectory.value / "sbt-test",
       ScriptedPlugin.scriptedBufferLog := false,
