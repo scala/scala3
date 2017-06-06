@@ -193,7 +193,12 @@ private class ExtractAPICollector(implicit val ctx: Context) extends ThunkHolder
     val modifiers = apiModifiers(sym)
     val anns = apiAnnotations(sym).toArray
     val topLevel = sym.isTopLevelClass
-    val childrenOfSealedClass = sym.children.sorted(classFirstSort).map(c => apiType(c.info)).toArray
+    val childrenOfSealedClass = sym.children.sorted(classFirstSort).map(c =>
+      if (c.isClass)
+        apiType(c.typeRef)
+      else
+        apiType(c.valRef)
+    ).toArray
 
     val cl = new api.ClassLike(
       name.toString, acc, modifiers, anns, defType, strict2lzy(selfType), strict2lzy(structure), Constants.emptyStringArray,
