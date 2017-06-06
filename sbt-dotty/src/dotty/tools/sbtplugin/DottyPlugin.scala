@@ -2,7 +2,9 @@ package dotty.tools.sbtplugin
 
 import sbt._
 import sbt.Keys._
-import sbt.inc.{ ClassfileManager, IncOptions }
+// import sbt.inc.{ ClassfileManager, IncOptions }
+import xsbti.compile._
+import java.util.Optional
 
 object DottyPlugin extends AutoPlugin {
   object autoImport {
@@ -49,44 +51,38 @@ object DottyPlugin extends AutoPlugin {
       nightly
     }
 
-    implicit class DottyCompatModuleID(moduleID: ModuleID) {
-      /** If this ModuleID cross-version is a Dotty version, replace it
-       *  by the Scala 2.x version that the Dotty version is retro-compatible with,
-       *  otherwise do nothing.
-       *
-       *  This setting is useful when your build contains dependencies that have only
-       *  been published with Scala 2.x, if you have:
-       *  {{{
-       *  libraryDependencies += "a" %% "b" % "c"
-       *  }}}
-       *  you can replace it by:
-       *  {{{
-       *  libraryDependencies += ("a" %% "b" % "c").withDottyCompat()
-       *  }}}
-       *  This will have no effect when compiling with Scala 2.x, but when compiling
-       *  with Dotty this will change the cross-version to a Scala 2.x one. This
-       *  works because Dotty is currently retro-compatible with Scala 2.x.
-       *
-       *  NOTE: Dotty's retro-compatibility with Scala 2.x will be dropped before
-       *  Dotty is released, you should not rely on it.
-       */
-      def withDottyCompat(): ModuleID =
-        moduleID.crossVersion match {
-          case _: CrossVersion.Binary =>
-            moduleID.cross(CrossVersion.binaryMapped { version =>
-              CrossVersion.partialVersion(version) match {
-                case Some((0, minor)) =>
-                  // Dotty v0.4 or greater is compatible with 2.12.x
-                  if (minor >= 4) "2.12"
-                  else "2.11"
-                case _ =>
-                  version
-              }
-            })
-          case _ =>
-            moduleID
-        }
-    }
+    // implicit class DottyCompatModuleID(moduleID: ModuleID) {
+    //   /** If this ModuleID cross-version is a Dotty version, replace it
+    //    *  by the Scala 2.x version that the Dotty version is retro-compatible with,
+    //    *  otherwise do nothing.
+    //    *
+    //    *  This setting is useful when your build contains dependencies that have only
+    //    *  been published with Scala 2.x, if you have:
+    //    *  {{{
+    //    *  libraryDependencies += "a" %% "b" % "c"
+    //    *  }}}
+    //    *  you can replace it by:
+    //    *  {{{
+    //    *  libraryDependencies += ("a" %% "b" % "c").withDottyCompat()
+    //    *  }}}
+    //    *  This will have no effect when compiling with Scala 2.x, but when compiling
+    //    *  with Dotty this will change the cross-version to a Scala 2.x one. This
+    //    *  works because Dotty is currently retro-compatible with Scala 2.x.
+    //    *
+    //    *  NOTE: Dotty's retro-compatibility with Scala 2.x will be dropped before
+    //    *  Dotty is released, you should not rely on it.
+    //    */
+    //   def withDottyCompat(): ModuleID =
+    //     moduleID.crossVersion match {
+    //       case _: librarymanagement.Binary =>
+    //         moduleID.cross(CrossVersion.binaryMapped {
+    //           case version if version.startsWith("0.") => "2.11"
+    //           case version => version
+    //         })
+    //       case _ =>
+    //         moduleID
+    //     }
+    // }
   }
 
   import autoImport._
@@ -108,6 +104,27 @@ object DottyPlugin extends AutoPlugin {
     }
   }
 
+  // Copy-pasted from sbt where it's private
+  private case class WrappedClassFileManager(internal: ClassFileManager,
+                                             external: Option[ClassFileManager])
+      extends ClassFileManager {
+
+    override def delete(classes: Array[File]): Unit = {
+      external.foreach(_.delete(classes))
+      internal.delete(classes)
+    }
+
+    override def complete(success: Boolean): Unit = {
+      external.foreach(_.complete(success))
+      internal.complete(success)
+    }
+
+    override def generated(classes: Array[File]): Unit = {
+      external.foreach(_.generated(classes))
+      internal.generated(classes)
+    }
+  }
+
   /** Patches the IncOptions so that .tasty and .hasTasty files are pruned as needed.
    *
    *  This code is adapted from `scalaJSPatchIncOptions` in Scala.js, which needs
@@ -119,25 +136,34 @@ object DottyPlugin extends AutoPlugin {
    *  corresponding .tasty or .hasTasty file is also deleted.
    */
   def dottyPatchIncOptions(incOptions: IncOptions): IncOptions = {
-    val inheritedNewClassfileManager = incOptions.newClassfileManager
-    val newClassfileManager = () => new ClassfileManager {
-      private[this] val inherited = inheritedNewClassfileManager()
+    val inheritedNewClassFileManager = ClassFileManagerUtil.getDefaultClassFileManager(incOptions)
+    val tastyFileManager = new ClassFileManager {
+      private[this] val inherited = inheritedNewClassFileManager
 
-      def delete(classes: Iterable[File]): Unit = {
+      def delete(classes: Array[File]): Unit = {
         val tastySuffixes = List(".tasty", ".hasTasty")
         inherited.delete(classes flatMap { classFile =>
-          val dottyFiles = if (classFile.getPath endsWith ".class") {
+          if (classFile.getPath endsWith ".class") {
             val prefix = classFile.getAbsolutePath.stripSuffix(".class")
             tastySuffixes.map(suffix => new File(prefix + suffix)).filter(_.exists)
           } else Nil
-          classFile :: dottyFiles
         })
       }
 
-      def generated(classes: Iterable[File]): Unit = inherited.generated(classes)
-      def complete(success: Boolean): Unit = inherited.complete(success)
+      def generated(classes: Array[File]): Unit = {}
+      def complete(success: Boolean): Unit = {}
     }
-    incOptions.withNewClassfileManager(newClassfileManager)
+    val inheritedHooks = incOptions.externalHooks
+    val hooks = new ExternalHooks {
+      override def externalClassFileManager() = Option(inheritedHooks.externalClassFileManager.orElse(null)) match {
+        case Some(prevManager) =>
+          Optional.of(WrappedClassFileManager(prevManager, Some(tastyFileManager)))
+        case None =>
+          Optional.of(tastyFileManager)
+      }
+      override def externalLookup() = inheritedHooks.externalLookup()
+    }
+    incOptions.withExternalHooks(hooks)
   }
 
   override def projectSettings: Seq[Setting[_]] = {
@@ -161,10 +187,11 @@ object DottyPlugin extends AutoPlugin {
       },
 
       incOptions in Compile := {
+        val inc = (incOptions in Compile).value
         if (isDotty.value)
-          dottyPatchIncOptions((incOptions in Compile).value)
+          dottyPatchIncOptions(inc)
         else
-          (incOptions in Compile).value
+          inc
       },
 
       scalaBinaryVersion := {
