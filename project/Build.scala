@@ -920,9 +920,7 @@ object Build {
             .start()
             .waitFor()
           if (exitCode != 0)
-            throw new FeedbackProvidedException {
-              override def toString = "'npm run update-all' in vscode-dotty failed"
-            }
+            throw new MessageOnlyException("'npm run update-all' in vscode-dotty failed")
         }
         val tsc = baseDirectory.value / "node_modules" / ".bin" / "tsc"
         val exitCodeTsc = new java.lang.ProcessBuilder(tsc.getAbsolutePath, "--pretty", "--project", baseDirectory.value.getAbsolutePath)
@@ -930,9 +928,7 @@ object Build {
           .start()
           .waitFor()
         if (exitCodeTsc != 0)
-          throw new FeedbackProvidedException {
-            override def toString = "tsc in vscode-dotty failed"
-          }
+          throw new MessageOnlyException("tsc in vscode-dotty failed")
 
         // Currently, vscode-dotty depends on daltonjorge.scala for syntax highlighting,
         // this is not automatically installed when starting the extension in development mode
@@ -942,9 +938,7 @@ object Build {
           .start()
           .waitFor()
         if (exitCodeInstall != 0)
-          throw new FeedbackProvidedException {
-            override def toString = "Installing dependency daltonjorge.scala failed"
-          }
+          throw new MessageOnlyException("Installing dependency daltonjorge.scala failed")
 
         sbt.inc.Analysis.Empty
       },
@@ -955,9 +949,7 @@ object Build {
           .start()
           .waitFor()
         if (exitCode != 0)
-          throw new FeedbackProvidedException {
-            override def toString = "vsce package failed"
-          }
+          throw new MessageOnlyException("vsce package failed")
 
         baseDirectory.value / s"dotty-${version.value}.vsix"
       },
@@ -968,9 +960,7 @@ object Build {
           .start()
           .waitFor()
         if (exitCode != 0)
-          throw new FeedbackProvidedException {
-            override def toString = "vsce unpublish failed"
-          }
+          throw new MessageOnlyException("vsce unpublish failed")
       },
       publish := {
         val exitCode = new java.lang.ProcessBuilder("vsce", "publish")
@@ -979,9 +969,7 @@ object Build {
           .start()
           .waitFor()
         if (exitCode != 0)
-          throw new FeedbackProvidedException {
-            override def toString = "vsce publish failed"
-          }
+          throw new MessageOnlyException("vsce publish failed")
       },
       run := Def.inputTask {
         val inputArgs = spaceDelimited("<arg>").parsed
@@ -994,9 +982,7 @@ object Build {
           .start()
           .waitFor()
         if (exitCode != 0)
-          throw new FeedbackProvidedException {
-            override def toString = "Running Visual Studio Code failed"
-          }
+          throw new MessageOnlyException("Running Visual Studio Code failed")
       }.dependsOn(compile in Compile).evaluated
     )
 

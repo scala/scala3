@@ -82,9 +82,7 @@ object DottyIDEPlugin extends AutoPlugin {
       }.unzip
 
     if (dottyVersions.isEmpty)
-      throw new FeedbackProvidedException {
-        override def toString = "No Dotty project detected"
-      }
+      throw new MessageOnlyException("No Dotty project detected")
     else {
       val dottyVersion = dottyVersions.sorted.last
       val dottyState = updateScalaVersion(state, dottyProjRefs, dottyVersion)
@@ -212,9 +210,7 @@ object DottyIDEPlugin extends AutoPlugin {
         .start()
         .waitFor()
       if (exitCode != 0)
-        throw new FeedbackProvidedException {
-          override def toString = "Installing the Dotty support for VSCode failed"
-        }
+        throw new MessageOnlyException("Installing the Dotty support for VSCode failed")
 
       new ProcessBuilder("code", baseDirectory.value.getAbsolutePath)
         .inheritIO()
