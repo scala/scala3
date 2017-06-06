@@ -280,6 +280,13 @@ trait UntypedTreeInfo extends TreeInfo[Untyped] { self: Trees.Instance[Untyped] 
     case _ => false
   }
 
+  /** Is tree a Function or Closure node, possibly preceded by definitions? (currently unused) */
+  def isClosure(tree: Tree)(implicit ctx: Context): Boolean = unsplice(tree) match {
+    case _: Function | _: Closure => true
+    case Block(_, expr) => isClosure(expr)
+    case _ => false
+  }
+
   /** Is `tree` an implicit function or closure, possibly nested in a block? */
   def isImplicitClosure(tree: Tree)(implicit ctx: Context): Boolean = unsplice(tree) match {
     case Function((param: untpd.ValDef) :: _, _) => param.mods.is(Implicit)
@@ -467,6 +474,12 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
   /** Is tree a `this` node which belongs to `enclClass`? */
   def isSelf(tree: Tree, enclClass: Symbol)(implicit ctx: Context): Boolean = unsplice(tree) match {
     case This(_) => tree.symbol == enclClass
+    case _ => false
+  }
+
+  /** Is tree a compiler-generated `.apply` node? */
+  def isSyntheticApply(tree: Tree): Boolean = tree match {
+    case Select(qual, nme.apply) => tree.pos.end == qual.pos.end
     case _ => false
   }
 
