@@ -46,6 +46,9 @@ class ExtractAPI extends Phase {
     val forceRun = dumpInc || ctx.settings.YforceSbtPhases.value
     if ((ctx.sbtCallback != null || forceRun) && !unit.isJava) {
       val sourceFile = unit.source.file
+      if (ctx.sbtCallback != null)
+        ctx.sbtCallback.startSource(sourceFile)
+
       val apiTraverser = new ExtractAPICollector
       val sources = apiTraverser.apiSource(unit.tpdTree)
 
