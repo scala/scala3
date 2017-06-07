@@ -67,13 +67,19 @@ import transform.SymUtils._
   def collectTypeTests(t: Tree)(implicit ctx: Context): List[(Symbol, Type)] = {
     def recur(t: Tree): List[(Symbol, Type)] =
       t match {
-        case Apply(x, _) if (x.symbol == defn.Boolean_! || x.symbol == defn.Boolean_||) => List.empty
-        case Apply(fun @ Select(x, _), y) if (fun.symbol == defn.Boolean_&&) => recur(x) ++ recur(y.head)
-        case TypeApply(fun @ Select(x, _), List(tp)) if fun.symbol eq defn.Any_isInstanceOf =>
-          if (x.symbol.exists && !x.symbol.owner.isClass && !x.symbol.is(Method|Mutable))
-            (x.symbol, tp.tpe) :: Nil
-          else Nil
-        case _ => List.empty
+        case Apply(x, _) if (x.symbol == defn.Boolean_! || x.symbol == defn.Boolean_||) =>
+          Nil
+
+        case Apply(fun @ Select(x, _), y) if (fun.symbol == defn.Boolean_&&) =>
+          recur(x) ++ recur(y.head)
+
+        case TypeApply(fun @ Select(x, _), List(tp))
+          if fun.symbol.eq(defn.Any_isInstanceOf) &&
+             !x.symbol.is(Method | Mutable)       &&
+             x.symbol.exists && !x.symbol.owner.isClass =>
+          (x.symbol, tp.tpe) :: Nil
+
+        case _ => Nil
       }
     recur(t)
   }
@@ -81,13 +87,18 @@ import transform.SymUtils._
   def collectNullTests(t: Tree)(implicit ctx: Context): List[Symbol] = {
     def recur(t: Tree): List[Symbol] =
       t match {
-        case Apply(x, _) if (x.symbol == defn.Boolean_! || x.symbol == defn.Boolean_||) => List.empty
-        case Apply(fun @ Select(x, _), y) if (fun.symbol == defn.Boolean_&&) => recur(x) ++ recur(y.head)
-        case Apply(fun @ Select(x, _), List(tp)) if fun.symbol eq defn.Object_ne =>
-          if (x.symbol.exists && !x.symbol.owner.isClass && !x.symbol.is(Method|Mutable))
-            x.symbol :: Nil
-          else Nil
-        case _ => List.empty
+        case Apply(x, _) if (x.symbol == defn.Boolean_! || x.symbol == defn.Boolean_||) => Nil
+
+        case Apply(fun @ Select(x, _), y) if (fun.symbol == defn.Boolean_&&) =>
+          recur(x) ++ recur(y.head)
+
+        case Apply(fun @ Select(x, _), List(tp))
+            if fun.symbol.eq(defn.Object_ne)  &&
+               !x.symbol.is(Method | Mutable) &&
+               x.symbol.exists && !x.symbol.owner.isClass =>
+          x.symbol :: Nil
+
+        case _ => Nil
       }
     recur(t)
   }
