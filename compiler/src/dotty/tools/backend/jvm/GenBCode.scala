@@ -92,15 +92,17 @@ class GenBCodePipeline(val entryPoints: List[Symbol], val int: DottyBackendInter
 
     /* ---------------- q2 ---------------- */
 
-    case class Item2(arrivalPos:   Int,
-                     mirror:       asm.tree.ClassNode,
-                     plain:        asm.tree.ClassNode,
-                     bean:         asm.tree.ClassNode,
-                     outFolder:    scala.tools.nsc.io.AbstractFile) {
+    case class SubItem2(classNode: asm.tree.ClassNode,
+                        file:      scala.tools.nsc.io.AbstractFile)
+
+    case class Item2(arrivalPos: Int,
+                     mirror:     SubItem2,
+                     plain:      SubItem2,
+                     bean:       SubItem2) {
       def isPoison = { arrivalPos == Int.MaxValue }
     }
 
-    private val poison2 = Item2(Int.MaxValue, null, null, null, null)
+    private val poison2 = Item2(Int.MaxValue, null, null, null)
     private val q2 = new _root_.java.util.LinkedList[Item2]
 
     /* ---------------- q3 ---------------- */
@@ -114,14 +116,14 @@ class GenBCodePipeline(val entryPoints: List[Symbol], val int: DottyBackendInter
      */
     case class SubItem3(
                          jclassName:  String,
-                         jclassBytes: Array[Byte]
+                         jclassBytes: Array[Byte],
+                         jclassFile:  scala.tools.nsc.io.AbstractFile
                          )
 
     case class Item3(arrivalPos: Int,
                      mirror:     SubItem3,
                      plain:      SubItem3,
-                     bean:       SubItem3,
-                     outFolder:  scala.tools.nsc.io.AbstractFile) {
+                     bean:       SubItem3) {
 
       def isPoison  = { arrivalPos == Int.MaxValue }
     }
@@ -132,10 +134,8 @@ class GenBCodePipeline(val entryPoints: List[Symbol], val int: DottyBackendInter
         else 1
       }
     }
-    private val poison3 = Item3(Int.MaxValue, null, null, null, null)
+    private val poison3 = Item3(Int.MaxValue, null, null, null)
     private val q3 = new java.util.PriorityQueue[Item3](1000, i3comparator)
-
-    private val srcClassNames = new mutable.HashMap[String, String]
 
     /*
      *  Pipeline that takes ClassDefs from queue-1, lowers them into an intermediate form, placing them on queue-2
@@ -231,21 +231,54 @@ class GenBCodePipeline(val entryPoints: List[Symbol], val int: DottyBackendInter
             )
           } else null
 
-        // ----------- hand over to pipeline-2
+        // ----------- create files
 
-        val srcClassName = ctx.atPhase(ctx.typerPhase) { implicit ctx =>
+        // @smarter try/catch around getFileForClassfile needed?
+        val mirrorFileC =
+          if (mirrorC != null && outF != null)
+              getFileForClassfile(outF, mirrorC.name, ".class")
+          else null
+
+        val plainFileC =
+          if (outF == null) null
+          else getFileForClassfile(outF, plainC.name, ".class")
+
+        val beanFileC =
+          if (beanC != null && outF != null)
+            getFileForClassfile(outF, beanC.name, ".class")
+          else null
+
+        // ----------- sbt's callbacks
+
+        val fullClassName = ctx.atPhase(ctx.typerPhase) { implicit ctx =>
           ExtractDependencies.extractedName(claszSymbol)
         }
-        for (cls <- List(mirrorC, plainC, beanC)) {
+        val isLocal = fullClassName.contains("_$")
+
+        for ((cls, clsFile) <- List((plainC, plainFileC), (mirrorC, mirrorFileC), (beanC, beanFileC))) {
           if (cls != null) {
-            srcClassNames += (cls.name -> srcClassName)
+            if (ctx.compilerCallback != null)
+              ctx.compilerCallback.onClassGenerated(sourceFile, convertAbstractFile(clsFile), fullClassName)
+            if (ctx.sbtCallback != null) {
+              // ctx.sbtCallback.generatedClass(sourceFile.jfile.orElse(null), clsFile.file, fullClassName)
+              // TODO: Check
+              if (isLocal)
+                ctx.sbtCallback.generatedLocalClass(sourceFile.jfile.orElse(null), clsFile.file)
+              else {
+                ctx.sbtCallback.generatedNonLocalClass(sourceFile.jfile.orElse(null), clsFile.file,
+                  cls.name, fullClassName)
+              }
+            }
           }
         }
 
+        // ----------- hand over to pipeline-2
+
         val item2 =
           Item2(arrivalPos,
-            mirrorC, plainC, beanC,
-            outF)
+            SubItem2(mirrorC, mirrorFileC),
+            SubItem2(plainC, plainFileC),
+            SubItem2(beanC, beanFileC))
 
         q2 add item2 // at the very end of this method so that no Worker2 thread starts mutating before we're done.
 
@@ -275,12 +308,12 @@ class GenBCodePipeline(val entryPoints: List[Symbol], val int: DottyBackendInter
           }
           else {
             try {
-              localOptimizations(item.plain)
+              localOptimizations(item.plain.classNode)
               addToQ3(item)
             } catch {
               case ex: Throwable =>
                 ex.printStackTrace()
-                ctx.error(s"Error while emitting ${item.plain.name}\n${ex.getMessage}")
+                ctx.error(s"Error while emitting ${item.plain.classNode.name}\n${ex.getMessage}")
             }
           }
         }
@@ -294,11 +327,14 @@ class GenBCodePipeline(val entryPoints: List[Symbol], val int: DottyBackendInter
           cw.toByteArray
         }
 
-        val Item2(arrivalPos, mirror, plain, bean, outFolder) = item
+        val Item2(arrivalPos,
+                  SubItem2(mirror, mirrorFile),
+                  SubItem2(plain, plainFile),
+                  SubItem2(bean, beanFile)) = item
 
-        val mirrorC = if (mirror == null) null else SubItem3(mirror.name, getByteArray(mirror))
-        val plainC  = SubItem3(plain.name, getByteArray(plain))
-        val beanC   = if (bean == null)   null else SubItem3(bean.name, getByteArray(bean))
+        val mirrorC = if (mirror == null) null else SubItem3(mirror.name, getByteArray(mirror), mirrorFile)
+        val plainC  = SubItem3(plain.name, getByteArray(plain), plainFile)
+        val beanC   = if (bean == null)   null else SubItem3(bean.name, getByteArray(bean), beanFile)
 
         if (AsmUtils.traceSerializedClassEnabled && plain.name.contains(AsmUtils.traceSerializedClassPattern)) {
           if (mirrorC != null) AsmUtils.traceClass(mirrorC.jclassBytes)
@@ -306,7 +342,7 @@ class GenBCodePipeline(val entryPoints: List[Symbol], val int: DottyBackendInter
           if (beanC != null) AsmUtils.traceClass(beanC.jclassBytes)
         }
 
-        q3 add Item3(arrivalPos, mirrorC, plainC, beanC, outFolder)
+        q3 add Item3(arrivalPos, mirrorC, plainC, beanC)
 
       }
 
@@ -406,35 +442,10 @@ class GenBCodePipeline(val entryPoints: List[Symbol], val int: DottyBackendInter
     /* Pipeline that writes classfile representations to disk. */
     private def drainQ3() = {
 
-      def sendToDisk(cfr: SubItem3, outFolder: scala.tools.nsc.io.AbstractFile): Unit = {
+      def sendToDisk(cfr: SubItem3): Unit = {
         if (cfr != null){
-          val SubItem3(jclassName, jclassBytes) = cfr
-          try {
-            val outFile =
-              if (outFolder == null) null
-              else getFileForClassfile(outFolder, jclassName, ".class")
-            bytecodeWriter.writeClass(jclassName, jclassName, jclassBytes, outFile)
-
-            val srcClassName = srcClassNames(jclassName)
-
-            if (ctx.compilerCallback != null)
-              ctx.compilerCallback.onClassGenerated(sourceFile, convertAbstractFile(outFile), srcClassName)
-            if (ctx.sbtCallback != null) {
-              // ctx.sbtCallback.generatedClass(sourceFile.jfile.orElse(null), outFile.file, className)
-              // TODO: Check
-              val isLocal = srcClassName.contains("_$")
-              if (isLocal)
-                ctx.sbtCallback.generatedLocalClass(sourceFile.jfile.orElse(null), outFile.file)
-              else {
-                ctx.sbtCallback.generatedNonLocalClass(sourceFile.jfile.orElse(null), outFile.file,
-                  jclassName, srcClassName)
-              }
-            }
-          }
-          catch {
-            case e: FileConflictException =>
-              ctx.error(s"error writing $jclassName: ${e.getMessage}")
-          }
+          val SubItem3(jclassName, jclassBytes, jclassFile) = cfr
+          bytecodeWriter.writeClass(jclassName, jclassName, jclassBytes, jclassFile)
         }
       }
 
@@ -447,10 +458,9 @@ class GenBCodePipeline(val entryPoints: List[Symbol], val int: DottyBackendInter
         moreComing   = !incoming.isPoison
         if (moreComing) {
           val item = incoming
-          val outFolder = item.outFolder
-          sendToDisk(item.mirror, outFolder)
-          sendToDisk(item.plain,  outFolder)
-          sendToDisk(item.bean,   outFolder)
+          sendToDisk(item.mirror)
+          sendToDisk(item.plain)
+          sendToDisk(item.bean)
           expected += 1
         }
       }
