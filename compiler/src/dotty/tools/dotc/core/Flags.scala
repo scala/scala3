@@ -400,13 +400,13 @@ object Flags {
   final val Scala2ModuleVar = termFlag(57, "<modulevar>")
 
   /** A Scala 2.12 trait that has been augmented with static members */
-  final val Scala_2_12_Augmented = typeFlag(57, "<scala12augmented")
+  final val Scala_2_12_Augmented = typeFlag(57, "<scala_2_12_augmented>")
 
   /** A definition that's initialized before the super call (Scala 2.x only) */
   final val Scala2PreSuper = termFlag(58, "<presuper>")
 
   /** A Scala 2.12 or higher trait */
-  final val Scala_2_12_Trait = typeFlag(58, "<scala12trait>")
+  final val Scala_2_12_Trait = typeFlag(58, "<scala_2_12_trait>")
 
   /** A macro (Scala 2.x only) */
   final val Macro = commonFlag(59, "<macro>")
