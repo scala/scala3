@@ -2011,16 +2011,39 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
             if (nparams > 0 || pt.eq(AnyFunctionProto)) nparams
             else -1 // no eta expansion in this case
           }
+
+        /** A synthetic apply should be eta-expanded if it is the apply of an implicit function
+         *  class, and the expected type is a function type. This rule is needed so we can pass
+         *  an implicit function to a regular function type. So the following is OK
+         *
+         *     val f: implicit A => B  =  ???
+         *     val g: A => B = f
+         *
+         *  and the last line expands to
+         *
+         *     val g: A => B  =  (x$0: A) => f.apply(x$0)
+         *
+         *  One could be tempted not to eta expand the rhs, but that would violate the invariant
+         *  that expressions of implicit function types are always implicit closures, which is
+         *  exploited by ShortcutImplicits.
+         *
+         *  On the other hand, the following would give an error if there is no implicit
+         *  instance of A available.
+         *
+         *     val x: AnyRef = f
+         *
+         *  That's intentional, we want to fail here, otherwise some unsuccesful implicit searches
+         *  would go undetected.
+         *
+         *  Examples for these cases are found in run/implicitFuns.scala and neg/i2006.scala.
+         */
         def isExpandableApply =
           defn.isImplicitFunctionClass(tree.symbol.maybeOwner) && defn.isFunctionType(ptNorm)
 
         // Reasons NOT to eta expand:
         //  - we reference a constructor
         //  - we are in a patterm
-        //  - the current tree is a synthetic non-implicit apply (eta-expasion would simply undo that)
-        //  - the current tree is a synthetic implicit apply and the expected
-        //    type is a function type (this rule is needed so we can pass an implicit function
-        //    to a regular function type)
+        //  - the current tree is a synthetic apply which is not expandable (eta-expasion would simply undo that)
         if (arity >= 0 &&
             !tree.symbol.isConstructor &&
             !ctx.mode.is(Mode.Pattern) &&
