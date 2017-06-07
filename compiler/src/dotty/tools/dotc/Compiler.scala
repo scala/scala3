@@ -40,8 +40,8 @@ class Compiler {
    *   - after erasure, asSeenFrom is the identity, so every reference has a
    *     plain SymDenotation, as opposed to a UniqueRefDenotation.
    */
-  def phases: List[List[Phase]] =
-    List(
+  def phases: List[List[Phase]] = {
+    val allPhases = List(
       List(new FrontEnd),           // Compiler frontend: scanner, parser, namer, typer
       List(new sbt.ExtractDependencies), // Sends information on classes' dependencies to sbt via callbacks
       List(new PostTyper),          // Additional checks and cleanups after type checking
@@ -110,6 +110,9 @@ class Compiler {
            new LabelDefs),          // Converts calls to labels to jumps
       List(new GenBCode)            // Generate JVM bytecode
     )
+    assert(allPhases.last.last.id <= Periods.MaxPossiblePhaseId)
+    allPhases
+  }
 
   var runId = 1
   def nextRunId = {
