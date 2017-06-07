@@ -1407,14 +1407,14 @@ object SymDenotations {
       baseData._2
 
     def computeBaseData(implicit onBehalf: BaseData, ctx: Context): (List[ClassSymbol], BaseClassSet) = {
-      val seen = mutable.SortedSet[Int]()
+      val seen = new BaseClassSetBuilder
       def addBaseClasses(bcs: List[ClassSymbol], to: List[ClassSymbol])
           : List[ClassSymbol] = bcs match {
         case bc :: bcs1 =>
           val bcs1added = addBaseClasses(bcs1, to)
-          if (seen contains bc.id) bcs1added
+          if (seen contains bc) bcs1added
           else {
-            seen += bc.id
+            seen.add(bc)
             bc :: bcs1added
           }
         case nil =>
@@ -1432,7 +1432,7 @@ object SymDenotations {
       if (classParents.isEmpty && !emptyParentsExpected)
         onBehalf.signalProvisional()
       (classSymbol :: addParentBaseClasses(classParents, Nil),
-       new BaseClassSet(seen.toArray))
+       seen.result)
     }
 
     final override def derivesFrom(base: Symbol)(implicit ctx: Context): Boolean =
@@ -2080,17 +2080,44 @@ object SymDenotations {
   }
 
   class BaseClassSet(val classIds: Array[Int]) extends AnyVal {
-    def contains(sym: Symbol): Boolean = {
+    def contains(sym: Symbol, limit: Int) = {
       val id = sym.id
-      var lo = 0
-      var hi = classIds.length - 1
-      while (lo <= hi) {
-        val mid = (lo + hi) / 2
-        if (id < classIds(mid)) hi = mid - 1
-        else if (id > classIds(mid)) lo = mid + 1
-        else return true
+      var i = 0
+      while (i < limit && classIds(i) != id) i += 1
+      i < limit && {
+        if (i > 0) {
+          val t = classIds(i)
+          classIds(i) = classIds(i - 1)
+          classIds(i - 1) = t
+        }
+        true
       }
-      false
+    }
+    def contains(sym: Symbol): Boolean = contains(sym, classIds.length)
+  }
+
+  private class BaseClassSetBuilder {
+    private var classIds = new Array[Int](32)
+    private var length = 0
+
+    private def resize(size: Int) = {
+      val classIds1 = new Array[Int](size)
+      Array.copy(classIds, 0, classIds1, 0, classIds.length min size)
+      classIds = classIds1
+    }
+
+    def contains(sym: Symbol): Boolean =
+      new BaseClassSet(classIds).contains(sym, length)
+
+    def add(sym: Symbol): Unit = {
+      if (length == classIds.length) resize(length * 2)
+      classIds(length) = sym.id
+      length += 1
+    }
+
+    def result = {
+      if (length != classIds.length) resize(length)
+      new BaseClassSet(classIds)
     }
   }
 
