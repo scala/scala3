@@ -233,20 +233,18 @@ class GenBCodePipeline(val entryPoints: List[Symbol], val int: DottyBackendInter
 
         // ----------- create files
 
-        // @smarter try/catch around getFileForClassfile needed?
-        val mirrorFileC =
-          if (mirrorC != null && outF != null)
-              getFileForClassfile(outF, mirrorC.name, ".class")
-          else null
-
-        val plainFileC =
-          if (outF == null) null
-          else getFileForClassfile(outF, plainC.name, ".class")
-
-        val beanFileC =
-          if (beanC != null && outF != null)
-            getFileForClassfile(outF, beanC.name, ".class")
-          else null
+        val classNodes = List(mirrorC, plainC, beanC)
+        val classFiles = classNodes.map(cls =>
+          if (outF != null && cls != null) {
+            try {
+              getFileForClassfile(outF, cls.name, ".class")
+            } catch {
+              case e: FileConflictException =>
+                ctx.error(s"error writing ${cls.name}: ${e.getMessage}")
+                null
+            }
+          } else null
+        )
 
         // ----------- sbt's callbacks
 
@@ -255,7 +253,7 @@ class GenBCodePipeline(val entryPoints: List[Symbol], val int: DottyBackendInter
         }
         val isLocal = fullClassName.contains("_$")
 
-        for ((cls, clsFile) <- List((plainC, plainFileC), (mirrorC, mirrorFileC), (beanC, beanFileC))) {
+        for ((cls, clsFile) <- classNodes.zip(classFiles)) {
           if (cls != null) {
             if (ctx.compilerCallback != null)
               ctx.compilerCallback.onClassGenerated(sourceFile, convertAbstractFile(clsFile), fullClassName)
@@ -276,9 +274,9 @@ class GenBCodePipeline(val entryPoints: List[Symbol], val int: DottyBackendInter
 
         val item2 =
           Item2(arrivalPos,
-            SubItem2(mirrorC, mirrorFileC),
-            SubItem2(plainC, plainFileC),
-            SubItem2(beanC, beanFileC))
+            SubItem2(mirrorC, classFiles(0)),
+            SubItem2(plainC, classFiles(1)),
+            SubItem2(beanC, classFiles(2)))
 
         q2 add item2 // at the very end of this method so that no Worker2 thread starts mutating before we're done.
 
