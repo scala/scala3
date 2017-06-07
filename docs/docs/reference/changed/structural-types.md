@@ -15,11 +15,13 @@ match.
 Dotty allows to implement structural types programmatically, using
 "Selectables". `Selectable` is a trait defined as follows:
 
-    trait Selectable extends Any {
-      def selectDynamic(name: String): Any
-      def selectDynamicMethod(name: String, paramClasses: ClassTag[_]*): Any =
-        new UnsupportedOperationException("selectDynamicMethod")
-    }
+```scala
+trait Selectable extends Any {
+  def selectDynamic(name: String): Any
+  def selectDynamicMethod(name: String, paramClasses: ClassTag[_]*): Any =
+    new UnsupportedOperationException("selectDynamicMethod")
+  }
+```
 
 The most important method of a `Selectable` is `selectDynamic`: It
 takes a field name and returns the value associated with that name in
@@ -50,16 +52,17 @@ Package `scala.reflect` contains an implicit conversion which can map
 any value to a selectable that emulates reflection-based selection, in
 a way similar to what was done until now:
 
-    package scala.reflect
+```scala
+package scala.reflect
 
-    object Selectable {
-      implicit def reflectiveSelectable(receiver: Any): scala.Selectable =
-        receiver match {
-          case receiver: scala.Selectable => receiver
-          case _ => new scala.reflect.Selectable(receiver)
-        }
+object Selectable {
+  implicit def reflectiveSelectable(receiver: Any): scala.Selectable =
+    receiver match {
+      case receiver: scala.Selectable => receiver
+      case _ => new scala.reflect.Selectable(receiver)
     }
-
+  }
+```
 When imported, `reflectiveSelectable` provides a way to access fields
 of any structural type using Java reflection. This is similar to the
 current implementation of structural types. The main difference is
@@ -80,9 +83,11 @@ other `Selectable` is defined.
 Other selectable instances can be defined in libraries. For instance,
 here is a simple class of records that support dynamic selection:
 
-    case class Record(elems: (String, Any)*) extends Selectable {
-      def selectDynamic(name: String): Any = elems.find(_._1 == name).get._2
-    }
+````scala
+case class Record(elems: (String, Any)*) extends Selectable {
+  def selectDynamic(name: String): Any = elems.find(_._1 == name).get._2
+}
+```
 
 `Record` consists of a list of pairs of element names and values. Its
 `selectDynamic` operation finds the pair with given name and returns
@@ -91,9 +96,10 @@ its value.
 For illustration, let's define a record value and cast it to a
 structural type `Person`:
 
-    type Person = Record { val name: String; val age: Int }
-    val person = Record(("name" -> "Emma", "age" -> 42)).asInstanceOf[Person]
-
+```scala
+type Person = Record { val name: String; val age: Int }
+val person = Record(("name" -> "Emma", "age" -> 42)).asInstanceOf[Person]
+```
 Then `person.name` will have static type `String`, and will produce `"Emma"` as result.
 
 The safety of this scheme relies on the correctness of the cast. If

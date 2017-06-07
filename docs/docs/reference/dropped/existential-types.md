@@ -20,9 +20,9 @@ Existential types using `forSome` have been dropped. The reasons for dropping th
 Existential types that can be expressed using only wildcards (but not
 `forSome`) are still supported, but are treated as refined types.
 For instance, the type
-
-    Map[_ <: AnyRef, Int]
-
+```scala
+Map[_ <: AnyRef, Int]
+```
 is treated as the type `Map`, where the first type parameter
 is upper-bounded by `AnyRef` and the second type parameter is an alias
 of `Int`.
@@ -30,4 +30,3 @@ of `Int`.
 When reading classfiles compiled with _scalac_, Dotty will do a best
 effort to approximate existential types with its own types. It will
 issue a warning is a precise emulation is not possible.
-
