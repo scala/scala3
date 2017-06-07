@@ -746,7 +746,10 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
      * True for module classes of package level objects. The backend will generate a mirror class for
      * such objects.
      */
-    def isTopLevelModuleClass: Boolean = sym.isModuleClass && sym.isStatic
+    def isTopLevelModuleClass: Boolean = sym.isModuleClass &&
+      ctx.atPhase(ctx.flattenPhase) { implicit ctx =>
+        toDenot(sym).owner.is(Flags.PackageClass)
+      }
 
     /**
      * This is basically a re-implementation of sym.isStaticOwner, but using the originalOwner chain.
