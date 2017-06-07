@@ -527,7 +527,7 @@ class Inliner(call: tpd.Tree, rhs: tpd.Tree)(implicit ctx: Context) {
       cond1.tpe.widenTermRefExpr match {
         case ConstantType(Constant(condVal: Boolean)) =>
           val selected = typed(if (condVal) tree.thenp else tree.elsep, pt)
-          if (isIdempotentExpr(cond1)) selected
+          if (isPureExpr(cond1)) selected
           else Block(cond1 :: Nil, selected)
         case _ =>
           val if1 = untpd.cpy.If(tree)(cond = untpd.TypedSplice(cond1))
