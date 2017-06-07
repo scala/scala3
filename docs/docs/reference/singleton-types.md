@@ -7,7 +7,7 @@ Literal Singleton Types allows primitive literals to be used as types. For examp
 
 ```scala
 val t: 42 = 42
-val t: "Jedi" = "Jedi"
+val x: "Jedi" = "Jedi"
 ```
 
 It is also possible to define functions returning or taking singleton types such as
