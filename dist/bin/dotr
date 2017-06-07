@@ -31,6 +31,11 @@ source "$PROG_HOME/bin/common"
 
 CLASS_PATH=".$PSEP$DOTTY_LIB$PSEP$SCALA_LIB"
 
+# -d must be the first option
+case "$1" in
+  -d) DEBUG="$DEBUG_STR" && shift ;;
+esac
+
 first_arg="$1"
 
 if [ -z "$1" ]; then
@@ -39,5 +44,5 @@ if [ -z "$1" ]; then
 elif [[ ${first_arg:0:1} == "-" ]]; then
     eval "$PROG_HOME/bin/dotc -repl $@"
 else
-  eval exec "\"$JAVACMD\"" "-classpath \"$CLASS_PATH\"" $@
+  eval exec "\"$JAVACMD\"" "$DEBUG" "-classpath \"$CLASS_PATH\"" $@
 fi

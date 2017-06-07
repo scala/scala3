@@ -76,7 +76,7 @@ case "$1" in
            --) shift; for arg; do addResidual "$arg"; done; set -- ;;
      -h|-help) help=true && shift ;;
   -v|-verbose) verbose=true && shift ;;
-    -debug) debug=true && shift ;;
+       -debug) DEBUG="$DEBUG_STR" && shift ;;
     -q|-quiet) quiet=true && shift ;;
 
     # Optimize for short-running applications, see https://github.com/lampepfl/dotty/issues/222
@@ -103,6 +103,7 @@ classpathArgs
 
 eval exec "\"$JAVACMD\"" \
      ${JAVA_OPTS:-$default_java_opts} \
+     "$DEBUG" \
      "${java_args[@]}" \
      "$jvm_cp_args" \
      -Dscala.usejavacp=true \

@@ -112,3 +112,6 @@ SCALA_ASM=$(find_lib "*scala-asm*")
 SCALA_LIB=$(find_lib "*scala-library*")
 SCALA_XML=$(find_lib "*scala-xml*")
 SBT_INTF=$(find_lib "*sbt-interface*")
+
+# debug
+DEBUG_STR=-agentlib:jdwp=transport=dt_socket,server=y,suspend=y,address=5005
