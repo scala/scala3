@@ -38,7 +38,7 @@ class InlineCaseIntrinsics(implicit val ctx: Context) extends Optimisation {
         case _ => fun
       }
       val constructor = a.symbol.owner.companionClass.primaryConstructor.asTerm
-      evalReciever(a, rollInArgs(argss.tail, New(a.tpe.widenDealias, constructor, argss.head)))
+      evalreceiver(a, rollInArgs(argss.tail, New(a.tpe.widenDealias, constructor, argss.head)))
 
     // For synthetic dotty unapplies on case classes:
     // - CC.unapply(arg): CC → arg
@@ -60,10 +60,10 @@ class InlineCaseIntrinsics(implicit val ctx: Context) extends Optimisation {
       if (isDottyUnapply) { // dotty only
         if (a.tpe.derivesFrom(defn.BooleanClass))
           // CC.unapply(arg): Boolean → true
-          evalReciever(a, Literal(Constant(true)))
+          evalreceiver(a, Literal(Constant(true)))
         else
           // CC.unapply(arg): CC → arg
-          evalReciever(a, a.args.head)
+          evalreceiver(a, a.args.head)
       }
       else if (isScalaOptionUnapply) {
         // CC.unapply(arg): Option[CC] → new Some(new scala.TupleN(arg._1, ..., arg._N))
@@ -82,7 +82,7 @@ class InlineCaseIntrinsics(implicit val ctx: Context) extends Optimisation {
         val none = ref(defn.NoneModuleRef)
         def isNull(e: Tree) = e.select(defn.Object_eq).appliedTo(Literal(Constant(null)))
         def fi(e: Tree) = If(isNull(e), none, some(e))
-        evalReciever(a, evalOnce(a.args.head)(fi))
+        evalreceiver(a, evalOnce(a.args.head)(fi))
       }
       else a
 
@@ -93,20 +93,20 @@ class InlineCaseIntrinsics(implicit val ctx: Context) extends Optimisation {
                      a.symbol.extendedOverriddenSymbols.isEmpty  &&
                      (isPureExpr(a.fun) || a.fun.symbol.is(Synthetic)) =>
 
-      def reciever(t: Tree): Type = t match {
-        case t: Apply     => reciever(t.fun)
-        case t: TypeApply => reciever(t.fun)
+      def receiver(t: Tree): Type = t match {
+        case t: Apply     => receiver(t.fun)
+        case t: TypeApply => receiver(t.fun)
         case t: Ident     => desugarIdent(t) match {
-          case Some(t) => reciever(t)
+          case Some(t) => receiver(t)
           case _ => NoType
         }
         case t: Select => t.qualifier.tpe.widenDealias
       }
 
-      val recv = reciever(a)
+      val recv = receiver(a)
       if (recv.typeSymbol.is(Module)) {
         val someTpe  = a.tpe.translateParameterized(defn.OptionClass, defn.SomeClass)
-        evalReciever(a, New(someTpe, a.args.head :: Nil))
+        evalreceiver(a, New(someTpe, a.args.head :: Nil))
       }
       else a
     case t => t
@@ -114,7 +114,7 @@ class InlineCaseIntrinsics(implicit val ctx: Context) extends Optimisation {
 
   // Apply fun may be a side-effectful function. E.g. a block, see tests/run/t4859.scala
   // we need to maintain expressions that were in this block
-  def evalReciever(a: Apply, res: Tree) = {
+  def evalreceiver(a: Apply, res: Tree) = {
     def receiver(t: Tree): Tree = t match {
       case TypeApply(fun, targs) if fun.symbol eq t.symbol => receiver(fun)
       case Apply(fn, args) if fn.symbol == t.symbol => receiver(fn)

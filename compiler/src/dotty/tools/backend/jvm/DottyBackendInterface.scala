@@ -173,7 +173,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
 
   val primitives: Primitives = new Primitives {
     val primitives = new DottyPrimitives(ctx)
-    def getPrimitive(app: Apply, reciever: Type): Int = primitives.getPrimitive(app, reciever)
+    def getPrimitive(app: Apply, receiver: Type): Int = primitives.getPrimitive(app, receiver)
 
     def getPrimitive(sym: Symbol): Int = primitives.getPrimitive(sym)
 
