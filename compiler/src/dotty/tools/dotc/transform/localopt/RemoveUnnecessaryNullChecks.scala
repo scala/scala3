@@ -24,7 +24,7 @@ import scala.collection.mutable
 
   val checkGood = mutable.HashMap[Symbol, Set[Symbol]]()
 
-  def isGood(t: Symbol) = {
+  def isGood(t: Symbol): Boolean = {
     t.exists && initializedVals.contains(t) && {
       var changed = true
       var set = Set(t)
@@ -43,21 +43,31 @@ import scala.collection.mutable
       val rhsName = rhs.symbol.name
       if (!vd.symbol.is(Mutable) && !rhs.isEmpty) {
         def checkNonNull(t: Tree, target: Symbol): Boolean = t match {
-          case Block(_ , expr) => checkNonNull(expr, target)
-          case If(_, thenp, elsep) => checkNonNull(thenp, target) && checkNonNull(elsep, target)
-          case t: New => true
+          case Block(_ , expr) =>
+            checkNonNull(expr, target)
+
+          case If(_, thenp, elsep) =>
+            checkNonNull(thenp, target) && checkNonNull(elsep, target)
+
+          case _: New | _: This => true
+
           case t: Apply if t.symbol.isPrimaryConstructor => true
+
           case t: Literal => t.const.value != null
-          case t: This => true
+
           case t: Ident if !t.symbol.owner.isClass =>
             checkGood.put(target, checkGood.getOrElse(target, Set.empty) + t.symbol)
             true
+
           case t: Apply if !t.symbol.owner.isClass =>
             checkGood.put(target, checkGood.getOrElse(target, Set.empty) + t.symbol)
             true
+
           case t: Typed =>
             checkNonNull(t.expr, target)
+
           case _ => t.tpe.isNotNull
+
         }
         if (checkNonNull(vd.rhs, vd.symbol))
           initializedVals += vd.symbol
@@ -74,14 +84,19 @@ import scala.collection.mutable
       case _ => false
     }
     val transformation: Tree => Tree = {
-      case check@Apply(Select(lhs, _), List(rhs)) =>
+      case check @ Apply(Select(lhs, _), List(rhs)) =>
         val sym = check.symbol
-        if ( ((sym == defn.Object_eq) || (sym == defn.Object_ne)) &&
-          ((isNullLiteral(lhs) && isGood(rhs.symbol)) || (isNullLiteral(rhs) && isGood(lhs.symbol)))) {
-          if (sym == defn.Object_eq) Block(List(lhs, rhs), Literal(Constant(false)))
-          else if(sym == defn.Object_ne) Block(List(lhs, rhs), Literal(Constant(true)))
+        val eqOrNe  = sym == defn.Object_eq || sym == defn.Object_ne
+        val nullLhs = isNullLiteral(lhs) && isGood(rhs.symbol)
+        val nullRhs = isNullLiteral(rhs) && isGood(lhs.symbol)
+
+        if (eqOrNe && (nullLhs || nullRhs)) {
+          def block(b: Boolean) = Block(List(lhs, rhs), Literal(Constant(b)))
+          if (sym == defn.Object_eq) block(false)
+          else if (sym == defn.Object_ne) block(true)
           else check
         } else check
+
       case t => t
     }
     transformation

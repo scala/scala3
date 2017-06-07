@@ -13,38 +13,55 @@ class InlineLabelsCalledOnce(implicit val ctx: Context) extends Optimisation {
   import ast.tpd._
 
   val timesUsed = mutable.HashMap[Symbol, Int]()
-  val defined = mutable.HashMap[Symbol, DefDef]()
+  val defined   = mutable.HashMap[Symbol, DefDef]()
 
   val visitor: Tree => Unit = {
-    case defdef: DefDef if defdef.symbol.is(Label)  =>
+    case d: DefDef if d.symbol.is(Label)  =>
       var isRecursive = false
-      defdef.rhs.foreachSubTree(x => if (x.symbol == defdef.symbol) isRecursive = true)
-      if (!isRecursive) defined.put(defdef.symbol, defdef)
+      d.rhs.foreachSubTree { x =>
+        if (x.symbol == d.symbol)
+          isRecursive = true
+      }
+      if (!isRecursive)
+        defined.put(d.symbol, d)
+
     case t: Apply if t.symbol.is(Label) =>
       val b4 = timesUsed.getOrElseUpdate(t.symbol, 0)
       timesUsed.put(t.symbol, b4 + 1)
+
     case _ =>
   }
 
   def transformer(localCtx: Context): Tree => Tree = {
     case a: Apply =>
       defined.get(a.symbol) match {
-        case None => a
-        case Some(defDef) if a.symbol.is(Label) && timesUsed.getOrElse(a.symbol, 0) == 1 && a.symbol.info.paramInfoss == List(Nil) =>
+        case Some(defDef) if usedOnce(a) && a.symbol.info.paramInfoss == List(Nil) =>
           simplify.println(s"Inlining labeldef ${defDef.name}")
           defDef.rhs.changeOwner(defDef.symbol, localCtx.owner)
+
         case Some(defDef) if defDef.rhs.isInstanceOf[Literal] =>
           defDef.rhs
-        case Some(_) =>
-          a
+
+        case _ => a
       }
-    case a: DefDef if (a.symbol.is(Label) && timesUsed.getOrElse(a.symbol, 0) == 1 && defined.contains(a.symbol)) =>
-      simplify.println(s"Dropping labeldef (used once) ${a.name} ${timesUsed.get(a.symbol)}")
-      defined.put(a.symbol, a)
+
+    case d: DefDef if usedOnce(d) =>
+      simplify.println(s"Dropping labeldef (used once) ${d.name} ${timesUsed.get(d.symbol)}")
+      defined.put(d.symbol, d)
       EmptyTree
-    case a: DefDef if (a.symbol.is(Label) && timesUsed.getOrElse(a.symbol, 0) == 0 && defined.contains(a.symbol)) =>
-      simplify.println(s"Dropping labeldef (never used) ${a.name} ${timesUsed.get(a.symbol)}")
+
+    case d: DefDef if neverUsed(d) =>
+      simplify.println(s"Dropping labeldef (never used) ${d.name} ${timesUsed.get(d.symbol)}")
       EmptyTree
+
     case t => t
   }
+
+  def usedN(t: Tree, n: Int): Boolean =
+    t.symbol.is(Label)                    &&
+    timesUsed.getOrElse(t.symbol, 0) == n &&
+    defined.contains(t.symbol)
+
+  def usedOnce(t: Tree): Boolean  = usedN(t, 1)
+  def neverUsed(t: Tree): Boolean = usedN(t, 0)
 }

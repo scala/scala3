@@ -30,23 +30,23 @@ import scala.collection.mutable
   val possibleRenames = mutable.HashMap[Symbol, Set[Symbol]]()
 
   val visitor: Tree => Unit = {
-    case t: ValDef
-      if t.symbol.is(Param) =>
+    case t: ValDef if t.symbol.is(Param) =>
       paramsTimesUsed += (t.symbol -> 0)
-    case valDef: ValDef
-      if valDef.symbol.is(Mutable) =>
-      valDef.rhs.foreachSubTree { subtree =>
+
+    case t: ValDef if t.symbol.is(Mutable) =>
+      t.rhs.foreachSubTree { subtree =>
         if (paramsTimesUsed.contains(subtree.symbol) &&
-          valDef.symbol.info.widenDealias <:< subtree.symbol.info.widenDealias) {
-          val newSet = possibleRenames.getOrElse(valDef.symbol, Set.empty) + subtree.symbol
-          possibleRenames.put(valDef.symbol, newSet)
+          t.symbol.info.widenDealias <:< subtree.symbol.info.widenDealias) {
+          val newSet = possibleRenames.getOrElse(t.symbol, Set.empty) + subtree.symbol
+          possibleRenames.put(t.symbol, newSet)
         }
       }
-    case t: RefTree
-      if paramsTimesUsed.contains(t.symbol) =>
+
+    case t: RefTree if paramsTimesUsed.contains(t.symbol) =>
       val param = t.symbol
       val current = paramsTimesUsed.get(param)
       current foreach { c => paramsTimesUsed += (param -> (c + 1)) }
+
     case _ =>
   }
 
@@ -57,19 +57,20 @@ import scala.collection.mutable
       .filter(x => x._2.nonEmpty)
       .map(x => (x._1, x._2.head))
       .toMap
+
     val transformation: Tree => Tree = {
-      case t: RefTree
-        if renames.contains(t.symbol) =>
+      case t: RefTree if renames.contains(t.symbol) =>
         ref(renames(t.symbol))
-      case t: ValDef
-        if renames.contains(t.symbol) =>
+
+      case t: ValDef if renames.contains(t.symbol) =>
         val replaced = renames(t.symbol)
         if (t.rhs.symbol == replaced) EmptyTree
         else ref(replaced).becomes(t.rhs)
-      case t: ValDef
-        if paramCandidates.contains(t.symbol) =>
+
+      case t: ValDef if paramCandidates.contains(t.symbol) =>
         t.symbol.flags = Mutable
         t
+
       case t => t
     }
     transformation

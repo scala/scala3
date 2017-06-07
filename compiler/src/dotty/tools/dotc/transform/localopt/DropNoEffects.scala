@@ -42,9 +42,11 @@ class DropNoEffects(val simplifyPhase: Simplify)(implicit val ctx: Context) exte
       else newExpr
 
     // Keep only side effect free statements unit returning functions
-    case a: DefDef if (a.symbol.info.finalResultType.derivesFrom(defn.UnitClass) &&
-                      !a.rhs.tpe.derivesFrom(defn.UnitClass)                     &&
-                      !a.rhs.tpe.derivesFrom(defn.NothingClass))                 =>
+    case a: DefDef
+      if a.symbol.info.finalResultType.derivesFrom(defn.UnitClass) &&
+        !a.rhs.tpe.derivesFrom(defn.UnitClass)                     &&
+        !a.rhs.tpe.derivesFrom(defn.NothingClass)                  =>
+
       def insertUnit(t: Tree) = {
         if (!t.tpe.derivesFrom(defn.UnitClass)) Block(t :: Nil, unitLiteral)
         else t
@@ -74,15 +76,15 @@ class DropNoEffects(val simplifyPhase: Simplify)(implicit val ctx: Context) exte
         elsep = nelsep.orElse(if (elsep.isInstanceOf[Literal]) elsep else unitLiteral))
 
     // Accessing a field of a product
-    case t @ Select(rec, _) if
-      (t.symbol.isGetter && !t.symbol.is(Mutable | Lazy)) ||
-      (t.symbol.owner.derivesFrom(defn.ProductClass) && t.symbol.owner.is(CaseClass) && t.symbol.name.isSelectorName) ||
-      (t.symbol.is(CaseAccessor) && !t.symbol.is(Mutable)) =>
-        keepOnlySideEffects(rec)
+    case t @ Select(rec, _)
+      if (t.symbol.isGetter && !t.symbol.is(Mutable | Lazy)) ||
+         (t.symbol.owner.derivesFrom(defn.ProductClass) && t.symbol.owner.is(CaseClass) && t.symbol.name.isSelectorName) ||
+         (t.symbol.is(CaseAccessor) && !t.symbol.is(Mutable)) =>
 
-    case s @ Select(qual, name) if
-        // !name.eq(nme.TYPE_) && // Keep the .TYPE added by ClassOf, would be needed for AfterErasure
-        !s.symbol.is(Mutable | Lazy) && !s.symbol.is(Method) =>
+      keepOnlySideEffects(rec)
+
+    // !name.eq(nme.TYPE_) && // Keep the .TYPE added by ClassOf, would be needed for AfterErasure
+    case s @ Select(qual, name) if !s.symbol.is(Mutable | Lazy | Method) =>
       keepOnlySideEffects(qual)
 
     case Block(List(t: DefDef), s: Closure) =>

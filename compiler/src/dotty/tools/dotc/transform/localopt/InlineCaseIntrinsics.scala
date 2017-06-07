@@ -11,7 +11,12 @@ import ast.Trees._
 import transform.SymUtils._
 import Simplify.desugarIdent
 
-/** Inline case class specific methods using desugarings assumptions. */
+/** Inline case class specific methods using desugarings assumptions.
+ *
+ *  Note: to run this optimisation after erasure one would need to specialize
+ *  it for constructor with outer pointer and values classes. There is
+ *  probably no need to run this more than once.
+ */
 class InlineCaseIntrinsics(implicit val ctx: Context) extends Optimisation {
   import ast.tpd._
 
@@ -20,13 +25,14 @@ class InlineCaseIntrinsics(implicit val ctx: Context) extends Optimisation {
   def transformer(localCtx: Context): Tree => Tree = {
     // For synthetic applies on case classes (both dotty/scalac)
     // - CC.apply(args) → new CC(args)
-    case a: Apply if !a.tpe.isInstanceOf[MethodicType]           &&
-                     a.symbol.is(Synthetic)                      &&
-                     a.symbol.owner.is(Module)                   &&
-                     (a.symbol.name == nme.apply)                &&
-                     a.symbol.owner.companionClass.is(CaseClass) &&
-                     !a.tpe.derivesFrom(defn.EnumClass)          &&
-                     (isPureExpr(a.fun) || a.fun.symbol.is(Synthetic)) =>
+    case a: Apply
+      if !a.tpe.isInstanceOf[MethodicType]           &&
+         a.symbol.is(Synthetic)                      &&
+         a.symbol.owner.is(Module)                   &&
+         a.symbol.name == nme.apply                  &&
+         a.symbol.owner.companionClass.is(CaseClass) &&
+         !a.tpe.derivesFrom(defn.EnumClass)          &&
+         (isPureExpr(a.fun) || a.fun.symbol.is(Synthetic)) =>
 
       def unrollArgs(t: Tree, l: List[List[Tree]]): List[List[Tree]] = t match {
         case Apply(t, args) => unrollArgs(t, args :: l)
@@ -44,12 +50,13 @@ class InlineCaseIntrinsics(implicit val ctx: Context) extends Optimisation {
     // - CC.unapply(arg): CC → arg
     // - CC.unapply(arg): Boolean → true, dotty only
     // - CC.unapply(arg): Option[CC] → new Some(new scala.TupleN(arg._1, ..., arg._N))
-    case a: Apply if a.symbol.is(Synthetic)                       &&
-                     a.symbol.owner.is(Module)                    &&
-                     (a.symbol.name == nme.unapply)               &&
-                     a.symbol.owner.companionClass.is(CaseClass)  &&
-                     !a.tpe.derivesFrom(defn.EnumClass)           &&
-                     (isPureExpr(a.fun) || a.fun.symbol.is(Synthetic)) =>
+    case a: Apply
+      if a.symbol.is(Synthetic)                       &&
+         a.symbol.owner.is(Module)                    &&
+         a.symbol.name == nme.unapply                 &&
+         a.symbol.owner.companionClass.is(CaseClass)  &&
+         !a.tpe.derivesFrom(defn.EnumClass)           &&
+         (isPureExpr(a.fun) || a.fun.symbol.is(Synthetic)) =>
 
       val args = a.args.head
       val isDottyUnapply = !a.symbol.owner.is(Scala2x)
@@ -88,10 +95,11 @@ class InlineCaseIntrinsics(implicit val ctx: Context) extends Optimisation {
 
     // Seq.unapplySeq(arg) → new Some(arg)
     // Where Seq is any companion of type <: SeqFactoryClass
-    case a: Apply if (a.symbol.name == nme.unapplySeq)           &&
-                     a.symbol.owner.derivesFrom(defn.SeqFactoryClass) &&
-                     a.symbol.extendedOverriddenSymbols.isEmpty  &&
-                     (isPureExpr(a.fun) || a.fun.symbol.is(Synthetic)) =>
+    case a: Apply
+      if a.symbol.name == nme.unapplySeq                  &&
+         a.symbol.owner.derivesFrom(defn.SeqFactoryClass) &&
+         a.symbol.extendedOverriddenSymbols.isEmpty       &&
+         (isPureExpr(a.fun) || a.fun.symbol.is(Synthetic)) =>
 
       def receiver(t: Tree): Type = t match {
         case t: Apply     => receiver(t.fun)
@@ -127,8 +135,4 @@ class InlineCaseIntrinsics(implicit val ctx: Context) extends Optimisation {
     else
       Block(recv :: Nil, res)
   }
-
-  // To run this optimisation after erasure one would need to specialize it
-  // for constructor with outer pointer and values classes. There is probably
-  // no need to run this more than once.
 }

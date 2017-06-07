@@ -20,13 +20,15 @@ class Jumpjump(implicit val ctx: Context) extends Optimisation {
   val visitor: Tree => Unit = {
     case defdef: DefDef if defdef.symbol.is(Label)  =>
       defdef.rhs match {
-        case Apply(t, args) if t.symbol.is(Label) &&
-          TypeErasure.erasure(defdef.symbol.info.finalResultType).classSymbol ==
-          TypeErasure.erasure(t.symbol.info.finalResultType).classSymbol             &&
-          args.size == defdef.vparamss.map(_.size).sum                               &&
-          args.zip(defdef.vparamss.flatten).forall(x => x._1.symbol eq x._2.symbol)  &&
-          !(defdef.symbol eq t.symbol) =>
-            defined(defdef.symbol) = t.symbol
+        case Apply(t, args)
+          if t.symbol.is(Label) &&
+            TypeErasure.erasure(defdef.symbol.info.finalResultType).classSymbol ==
+            TypeErasure.erasure(t.symbol.info.finalResultType).classSymbol             &&
+            args.size == defdef.vparamss.map(_.size).sum                               &&
+            args.zip(defdef.vparamss.flatten).forall(x => x._1.symbol eq x._2.symbol)  &&
+            defdef.symbol != t.symbol                                                  =>
+
+          defined(defdef.symbol) = t.symbol
         case _ =>
       }
     case _ =>

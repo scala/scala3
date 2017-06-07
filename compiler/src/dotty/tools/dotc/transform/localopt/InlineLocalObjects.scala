@@ -14,9 +14,9 @@ import transform.SymUtils._
 import config.Printers.simplify
 
 /** Inline case classes as vals, this essentially (local) implements multi
-*  parameter value classes. The main motivation is to get ride of all the
-*  intermediate tuples coming from pattern matching expressions.
-*/
+ *  parameter value classes. The main motivation is to get ride of all the
+ *  intermediate tuples coming from pattern matching expressions.
+ */
 class InlineLocalObjects(implicit val ctx: Context) extends Optimisation {
   import ast.tpd._
 
