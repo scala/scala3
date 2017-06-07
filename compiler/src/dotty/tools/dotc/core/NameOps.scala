@@ -190,10 +190,13 @@ object NameOps {
 
     /** Parsed function arity for function with some specific prefix */
     private def functionArityFor(prefix: String): Int = {
-      if (name.startsWith(prefix))
-        try name.toString.substring(prefix.length).toInt
-        catch { case _: NumberFormatException => -1 }
-      else -1
+      if (name.startsWith(prefix)) {
+        val suffix = name.toString.substring(prefix.length)
+        if (suffix.matches("\\d+"))
+          suffix.toInt
+        else
+          -1
+      } else -1
     }
 
     /** The name of the generic runtime operation corresponding to an array operation */
