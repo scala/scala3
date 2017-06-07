@@ -45,7 +45,7 @@ using Dotty with sbt, see the
 ### Standalone installation
 
 Releases are available for download on the _Releases_
-section of the Dotty repository: 
+section of the Dotty repository:
 https://github.com/lampepfl/dotty/releases
 
 We also provide a [homebrew](https://brew.sh/) package that can be installed by running
@@ -57,7 +57,7 @@ brew install lampepfl/brew/dotty
 ### Scastie
 
 [Scastie], the online Scala playground,
-supports Dotty. 
+supports Dotty.
 You can try it out there without installing anything.
 
 # What’s in the 0.1.2-RC1 technology preview?
@@ -67,7 +67,7 @@ This technology preview demonstrates new language features planned for Scala 3:
   - [Union Types](http://dotty.epfl.ch/docs/reference/union-types.html)
   - [Trait Parameters](http://dotty.epfl.ch/docs/reference/trait-parameters.html)
   - [Enumerations](http://dotty.epfl.ch/docs/reference/enums/enums.html)
-  - [Algebraic Data Types](http://dotty.epfl.ch/docs/reference/adts.html)
+  - [Algebraic Data Types](http://dotty.epfl.ch/docs/reference/enums/adts.html)
   - [By-Name Implicits](http://dotty.epfl.ch/docs/reference/implicit-by-name-parameters.html)
 
 We also ship with tools that help you try out the Dotty platform:

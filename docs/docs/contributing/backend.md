@@ -4,12 +4,12 @@ title: Working with the Backend
 ---
 
 The compiler backend is based on a fork of the Scala 2.11 `GenBCode` backend and
-lives at 
+lives at
 
 > https://github.com/lampepfl/scala/tree/sharing-backend
 
 The Dotty source tree contains a git submodule in the directory
-[scala-backend](https://github.com/lampepfl/dotty/tree/master/scala-backend)
+[scala-backend](https://github.com/lampepfl/scala/tree/sharing-backend)
 that points to this fork. We do not compile every file in this submodule,
 instead we add the subset of files we need to the dotty-compiler project in the
 sbt build.
@@ -24,7 +24,7 @@ $ git submodule update --init
 
 ## Environment setup
 
-1. Set the following git configuration options to make working with submodules easier, 
+1. Set the following git configuration options to make working with submodules easier,
 see the [Git Book](https://git-scm.com/book/en/v2/Git-Tools-Submodules)
 for more information:
 ``` shell
@@ -35,7 +35,7 @@ $ git config --global push.recurseSubmodules check
 
 2. Fork scala from github
 
-> https://github.com/lampepfl/scala 
+> https://github.com/lampepfl/scala
 
 (in the following commands, `dotty-staging/scala` is used as a placeholder for your own fork).
 
@@ -65,7 +65,7 @@ in the root Dotty repository, not in the submodule:
 
 ``` shell
 # The --remote option will update the submodule to the latest commit in the
-# https://github.com/lampepfl/dotty/tree/master/scala-backend branch
+# https://github.com/lampepfl/scala/tree/sharing-backend branch
 git submodule update --init --remote
 
 git commit -am "Update backend to include ..."
