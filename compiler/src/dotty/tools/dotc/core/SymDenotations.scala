@@ -71,7 +71,7 @@ trait SymDenotations { this: Context =>
 
   /** Explain why symbol is invalid; used for debugging only */
   def traceInvalid(denot: Denotation): Boolean = {
-    def show(d: Denotation) = s"$d#${d.symbol.id}/${denot.symbol.initialDenot.name.debugString}"
+    def show(d: Denotation) = s"$d#${d.symbol.id}"
     def explain(msg: String) = {
       println(s"${show(denot)} is invalid at ${this.period} because $msg")
       false
