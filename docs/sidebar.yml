@@ -105,8 +105,6 @@ sidebar:
       subsection:
         - title: Backend
           url: docs/internals/backend.html
-        - title: Benchmarks
-          url: docs/internals/benchmarks.html
         - title: Classpaths
           url: docs/internals/classpaths.html
         - title: Core Data Structrues
