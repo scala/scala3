@@ -477,7 +477,9 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
     case _ => false
   }
 
-  /** Is tree a compiler-generated `.apply` node? */
+  /** Is tree a compiler-generated `.apply` node that refers to the
+   *  apply of a function class? (implicit functions are excluded)
+   */
   def isSyntheticApply(tree: Tree): Boolean = tree match {
     case Select(qual, nme.apply) => tree.pos.end == qual.pos.end
     case _ => false

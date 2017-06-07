@@ -2011,17 +2011,25 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
             if (nparams > 0 || pt.eq(AnyFunctionProto)) nparams
             else -1 // no eta expansion in this case
           }
+        def isExpandableApply =
+          defn.isImplicitFunctionClass(tree.symbol.maybeOwner) && defn.isFunctionType(ptNorm)
 
-        if (wtp.isImplicit)
-          err.typeMismatch(tree, pt)
-        else if (arity >= 0 &&
-                 !tree.symbol.isConstructor &&
-                 !ctx.mode.is(Mode.Pattern) &&
-                 !isApplyProto(pt) &&
-                 !isSyntheticApply(tree))
+        // Reasons NOT to eta expand:
+        //  - we reference a constructor
+        //  - we are in a patterm
+        //  - the current tree is a synthetic non-implicit apply (eta-expasion would simply undo that)
+        //  - the current tree is a synthetic implicit apply and the expected
+        //    type is a function type (this rule is needed so we can pass an implicit function
+        //    to a regular function type)
+        if (arity >= 0 &&
+            !tree.symbol.isConstructor &&
+            !ctx.mode.is(Mode.Pattern) &&
+            !(isSyntheticApply(tree) && !isExpandableApply))
           typed(etaExpand(tree, wtp, arity), pt)
         else if (wtp.paramInfos.isEmpty)
           adaptInterpolated(tpd.Apply(tree, Nil), pt, EmptyTree)
+        else if (wtp.isImplicit)
+          err.typeMismatch(tree, pt)
         else
           missingArgs
       case _ =>
