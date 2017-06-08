@@ -295,7 +295,8 @@ object Terminal {
     lazy val (width, _, initialConfig) = TTY.init()
     try {
       readChar(TermState(LazyList.continually(reader.read()), Vector.empty, 0, ""), 0)
-    }finally{
+    }
+    finally {
 
       // Don't close these! Closing these closes stdin/stdout,
       // which seems to kill the entire program
