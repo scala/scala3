@@ -3,7 +3,7 @@ import sbt._
 import complete.DefaultParsers._
 import java.io.{File, RandomAccessFile}
 import java.nio.channels.FileLock
-import java.nio.file.Files
+import java.nio.file.{ Files, FileSystemException }
 import java.util.Calendar
 
 import scala.reflect.io.Path
@@ -407,7 +407,7 @@ object Build {
               Files.createSymbolicLink(/*link = */ dst.toPath, /*existing = */src.toPath)
           }
         } catch {
-          case e: UnsupportedOperationException =>
+          case _: UnsupportedOperationException | _: FileSystemException =>
             // If the OS doesn't support symbolic links, copy the directory instead.
             sbt.IO.copy(pairs, overwrite = true, preserveLastModified = true)
         }
