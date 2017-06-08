@@ -22,7 +22,7 @@ pipeline:
     commands:
       - ./project/scripts/sbt ";clean ;publishLocal" "${CI_PUBLISH}"
       - ./project/scripts/sbt "sbt-dotty/scripted source-dependencies/*" "${CI_PUBLISH}"
-      - NIGHTLYBUILD="yes" ./project/scripts/sbtPublish ${CI_PUBLISH} $SONATYPE_USER $SONATYPE_PW $PGP_PW
+      - NIGHTLYBUILD="yes" ./project/scripts/sbtPublish ${CI_PUBLISH} $SONATYPE_USER $SONATYPE_PW $PGP_PW ";dotty-bootstrapped/publishSigned ;sonatypeRelease"
     volumes:
       - /home/drone/keys:/keys
     when:
