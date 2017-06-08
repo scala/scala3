@@ -16,11 +16,11 @@ class B(name:String) extends A(name,0){
 class D {
 
    object A {
-     def unapply(p:A) = Some(p.getName)
+     def unapply(p:A) = Some(p.getName())
    }
 
    object B {
-     def unapply(p:B) = Some(p.getName)
+     def unapply(p:B) = Some(p.getName())
    }
    def foo(p:Any) = p match {
       case B(n)    => println("B")

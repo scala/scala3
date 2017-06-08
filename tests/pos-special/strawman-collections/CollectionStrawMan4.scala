@@ -68,7 +68,7 @@ object CollectionStrawMan4 {
     def foldRight[B](z: B)(op: (A, B) => B): B = iterator.foldRight(z)(op)
     def indexWhere(p: A => Boolean): Int = iterator.indexWhere(p)
     def isEmpty: Boolean = !iterator.hasNext
-    def head: A = iterator.next
+    def head: A = iterator.next()
   }
 
   /** Transforms returning same collection type */
@@ -164,7 +164,7 @@ object CollectionStrawMan4 {
 
   object List extends IterableFactory[List] {
     def fromIterator[B](it: Iterator[B]): List[B] =
-      if (it.hasNext) Cons(it.next, fromIterator(it)) else Nil
+      if (it.hasNext) Cons(it.next(), fromIterator(it)) else Nil
     def fromIterable[B](c: Iterable[B]): List[B] = c match {
       case View.Concat(xs, ys: List[B]) =>
         fromIterable(xs) ++: ys
@@ -449,7 +449,7 @@ object CollectionStrawMan4 {
     def next(): A
     def iterator = this
     def foldLeft[B](z: B)(op: (B, A) => B): B =
-      if (hasNext) foldLeft(op(z, next))(op) else z
+      if (hasNext) foldLeft(op(z, next()))(op) else z
     def foldRight[B](z: B)(op: (A, B) => B): B =
       if (hasNext) op(next(), foldRight(z)(op)) else z
     def foreach(f: A => Unit): Unit =

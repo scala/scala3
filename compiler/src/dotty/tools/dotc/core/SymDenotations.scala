@@ -962,7 +962,7 @@ object SymDenotations {
       else if (ctx.scope.lookup(this.name) == symbol)
         ctx.scope.lookup(name)
       else
-        companionNamed(name)(ctx.outersIterator.dropWhile(_.scope eq ctx.scope).next)
+        companionNamed(name)(ctx.outersIterator.dropWhile(_.scope eq ctx.scope).next())
 
     /** Is this symbol the same or a linked class of `sym`? */
     final def isLinkedWith(sym: Symbol)(implicit ctx: Context): Boolean =

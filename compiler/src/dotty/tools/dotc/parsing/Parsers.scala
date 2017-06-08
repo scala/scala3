@@ -178,7 +178,7 @@ object Parsers {
     private var lastStatOffset = -1
 
     def setLastStatOffset() =
-      if (mustStartStat && in.isAfterLineEnd)
+      if (mustStartStat && in.isAfterLineEnd())
         lastStatOffset = in.offset
 
     /** Is offset1 less or equally indented than offset2?
@@ -949,12 +949,12 @@ object Parsers {
 
     def contextBounds(pname: TypeName): List[Tree] = in.token match {
       case COLON =>
-        atPos(in.skipToken) {
+        atPos(in.skipToken()) {
           AppliedTypeTree(toplevelTyp(), Ident(pname))
         } :: contextBounds(pname)
       case VIEWBOUND =>
         deprecationWarning("view bounds `<%' are deprecated, use a context bound `:' instead")
-        atPos(in.skipToken) {
+        atPos(in.skipToken()) {
           Function(Ident(pname) :: Nil, toplevelTyp())
         } :: contextBounds(pname)
       case _ =>
@@ -1637,7 +1637,7 @@ object Parsers {
      *                      |  `(' [Patterns `,'] Pattern2 `:' `_' `*' ')
      */
     def argumentPatterns(): List[Tree] =
-      inParens(patternsOpt)
+      inParens(patternsOpt())
 
 /* -------- MODIFIERS and ANNOTATIONS ------------------------------------------- */
 
@@ -2092,7 +2092,7 @@ object Parsers {
         val rhs =
           if (in.token == EQUALS) {
             in.nextToken()
-            expr
+            expr()
           }
           else if (!tpt.isEmpty)
             EmptyTree
@@ -2242,7 +2242,7 @@ object Parsers {
       }
       newLineOptWhenFollowedBy(LBRACE)
       val modDef = atPos(in.offset) {
-        val body = inBraces(enumCaseStats)
+        val body = inBraces(enumCaseStats())
         ModuleDef(modName, Template(emptyConstructor, Nil, EmptyValDef, body))
           .withMods(mods)
       }
@@ -2354,7 +2354,7 @@ object Parsers {
     def packaging(start: Int): Tree = {
       val pkg = qualId()
       newLineOptWhenFollowedBy(LBRACE)
-      val stats = inDefScopeBraces(topStatSeq)
+      val stats = inDefScopeBraces(topStatSeq())
       makePackaging(start, pkg, stats)
     }
 

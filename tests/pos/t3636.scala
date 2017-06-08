@@ -28,12 +28,12 @@ object TxnLocal {
       def set( v: T )( implicit tx: ProcTxn ) : Unit = c.set( v )( tx.ccstm )
       def swap( v: T )( implicit tx: ProcTxn ) : T = {
          // currently not implemented in CTxnLocal
-         val oldV = apply
+         val oldV = apply()
          set( v )
          oldV
       }
       def transform( f: T => T )( implicit tx: ProcTxn ): Unit = {
-         set( f( apply ))
+         set( f( apply() ))
       }
    }
 }

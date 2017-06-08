@@ -54,7 +54,7 @@ class ClassfileParser(
 
   def run()(implicit ctx: Context): Option[Embedded] = try {
     ctx.debuglog("[class] >> " + classRoot.fullName)
-    parseHeader
+    parseHeader()
     this.pool = new ConstantPool
     parseClass()
   } catch {
@@ -127,7 +127,7 @@ class ClassfileParser(
       // might be reassigned by later parseAttributes
       val staticInfo = TempClassInfoType(List(), staticScope, moduleRoot.symbol)
 
-      enterOwnInnerClasses
+      enterOwnInnerClasses()
 
       classRoot.setFlag(sflags)
       moduleRoot.setFlag(Flags.JavaDefined | Flags.ModuleClassCreationFlags)
@@ -185,7 +185,7 @@ class ClassfileParser(
     }
     // skip rest of member for now
     in.nextChar // info
-    skipAttributes
+    skipAttributes()
   }
 
   val memberCompleter = new LazyType {

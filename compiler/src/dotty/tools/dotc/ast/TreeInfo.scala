@@ -53,7 +53,7 @@ trait TreeInfo[T >: Untyped <: Type] { self: Trees.Instance[T] =>
     def map[R](f: (Symbol, Tree) => R): List[R] = {
       val b = List.newBuilder[R]
       foreach(b += f(_, _))
-      b.result
+      b.result()
     }
   }
 

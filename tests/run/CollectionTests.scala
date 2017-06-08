@@ -108,7 +108,7 @@ object CollectionStrawMan5 {
     def foldRight[B](z: B)(op: (A, B) => B): B = iterator.foldRight(z)(op)
     def indexWhere(p: A => Boolean): Int = iterator.indexWhere(p)
     def isEmpty: Boolean = !iterator.hasNext
-    def head: A = iterator.next
+    def head: A = iterator.next()
     def view: View[A] = View.fromIterator(iterator)
   }
 
@@ -141,7 +141,7 @@ object CollectionStrawMan5 {
     def reverse: Repr = {
       var xs: List[A] = Nil
       var it = coll.iterator
-      while (it.hasNext) xs = new Cons(it.next, xs)
+      while (it.hasNext) xs = new Cons(it.next(), xs)
       fromLikeIterable(xs)
     }
   }
@@ -430,7 +430,7 @@ object CollectionStrawMan5 {
     def next(): A
     def iterator = this
     def foldLeft[B](z: B)(op: (B, A) => B): B =
-      if (hasNext) foldLeft(op(z, next))(op) else z
+      if (hasNext) foldLeft(op(z, next()))(op) else z
     def foldRight[B](z: B)(op: (A, B) => B): B =
       if (hasNext) op(next(), foldRight(z)(op)) else z
     def foreach(f: A => Unit): Unit =

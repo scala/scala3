@@ -348,7 +348,7 @@ object Contexts {
      */
     def thisCallArgContext: Context = {
       assert(owner.isClassConstructor)
-      val constrCtx = outersIterator.dropWhile(_.outer.owner == owner).next
+      val constrCtx = outersIterator.dropWhile(_.outer.owner == owner).next()
       superOrThisCallContext(owner, constrCtx.scope)
         .setTyperState(typerState)
         .setGadt(gadt)
@@ -356,7 +356,7 @@ object Contexts {
 
     /** The super- or this-call context with given owner and locals. */
     private def superOrThisCallContext(owner: Symbol, locals: Scope): FreshContext = {
-      var classCtx = outersIterator.dropWhile(!_.isClassDefContext).next
+      var classCtx = outersIterator.dropWhile(!_.isClassDefContext).next()
       classCtx.outer.fresh.setOwner(owner)
         .setScope(locals)
         .setMode(classCtx.mode | Mode.InSuperCall)

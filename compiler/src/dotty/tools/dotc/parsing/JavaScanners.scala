@@ -435,7 +435,7 @@ object JavaScanners {
         nextChar()
       }
       if (ch == 'e' || ch == 'E') {
-        val lookahead = lookaheadReader
+        val lookahead = lookaheadReader()
         lookahead.nextChar()
         if (lookahead.ch == '+' || lookahead.ch == '-') {
           lookahead.nextChar()
@@ -475,7 +475,7 @@ object JavaScanners {
       }
       token = INTLIT
       if (base <= 10 && ch == '.') {
-        val lookahead = lookaheadReader
+        val lookahead = lookaheadReader()
         lookahead.nextChar()
         lookahead.ch match {
           case '0' | '1' | '2' | '3' | '4' | '5' | '6' | '7' |

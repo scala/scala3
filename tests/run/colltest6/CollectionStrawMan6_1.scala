@@ -942,7 +942,7 @@ object CollectionStrawMan6 extends LowPriority {
     def next(): A
     def iterator = this
     def foldLeft[B](z: B)(op: (B, A) => B): B =
-      if (hasNext) foldLeft(op(z, next))(op) else z
+      if (hasNext) foldLeft(op(z, next()))(op) else z
     def foldRight[B](z: B)(op: (A, B) => B): B =
       if (hasNext) op(next(), foldRight(z)(op)) else z
     def foreach(f: A => Unit): Unit =

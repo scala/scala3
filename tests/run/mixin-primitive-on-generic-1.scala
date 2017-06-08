@@ -2,7 +2,7 @@
 object Test {
   def main(args: Array[String]): Unit = {
     println((new Foo: Baz).value1)
-    println((new Foo: Baz).value2)
+    println((new Foo: Baz).value2())
   }
 }
 

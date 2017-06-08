@@ -16,8 +16,8 @@ object Test {
     val m1 = new Meter(1)
     m1.zero
     m1.zero2
-    m1.one
-    m1.one2
+    m1.one()
+    m1.one2()
     m1.one3(10)
     m1.two(11)(12)
     m1.two2(11)(12)
@@ -27,8 +27,8 @@ object Test {
 
       zero
       zero2
-      one
-      one2
+      one()
+      one2()
       one3(10)
       two(11)(12)
       two2(11)(12)

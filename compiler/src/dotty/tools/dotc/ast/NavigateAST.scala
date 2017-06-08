@@ -70,7 +70,7 @@ object NavigateAST {
   def pathTo(pos: Position, from: Positioned, skipZeroExtent: Boolean = false)(implicit ctx: Context): List[Positioned] = {
     def childPath(it: Iterator[Any], path: List[Positioned]): List[Positioned] = {
       while (it.hasNext) {
-        val path1 = it.next match {
+        val path1 = it.next() match {
           case p: Positioned => singlePath(p, path)
           case xs: List[_] => childPath(xs.iterator, path)
           case _ => path

@@ -512,7 +512,7 @@ object Denotations {
                 def lubSym(overrides: Iterator[Symbol], previous: Symbol): Symbol =
                   if (!overrides.hasNext) previous
                   else {
-                    val candidate = overrides.next
+                    val candidate = overrides.next()
                     if (owner2 derivesFrom candidate.owner)
                       if (candidate isAccessibleFrom pre) candidate
                       else lubSym(overrides, previous orElse candidate)
@@ -779,7 +779,7 @@ object Denotations {
       }
 
       if (valid.runId != currentPeriod.runId)
-        if (exists) initial.bringForward.current
+        if (exists) initial.bringForward().current
         else this
       else {
         var cur = this

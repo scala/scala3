@@ -146,7 +146,7 @@ trait TypeAssigner {
     denot match {
       case denot: SymDenotation =>
         denot.exists && {
-          denot.ensureCompleted
+          denot.ensureCompleted()
           !denot.isAbsent
         }
       case denot: SingleDenotation =>

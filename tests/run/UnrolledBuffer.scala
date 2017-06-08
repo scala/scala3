@@ -21,7 +21,7 @@ object Test {
     assert(u1.nonEmpty)
     assert(u1.size == 3)
 
-    u1.clear
+    u1.clear()
     assert(u1.isEmpty)
     assert(u1.size == 0)
 
@@ -40,8 +40,8 @@ object Test {
     val u2 = u1 map { x => (x - 1) / 2 }
     assert(u2 == UnrolledBuffer(0, 1, 2, 3, 4))
 
-    u1.clear
-    u2.clear
+    u1.clear()
+    u2.clear()
     assert(u1.size == 0)
     assert(u2.size == 0)
 

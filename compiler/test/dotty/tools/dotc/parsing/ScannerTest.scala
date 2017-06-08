@@ -24,7 +24,7 @@ class ScannerTest extends DottyTest {
     var i = 0
     while (scanner.token != EOF) {
 //    print("[" + scanner.token.show +"]")
-      scanner.nextToken
+      scanner.nextToken()
 //      i += 1
 //      if (i % 10 == 0) println()
     }
