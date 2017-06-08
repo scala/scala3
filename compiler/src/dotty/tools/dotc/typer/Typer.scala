@@ -732,13 +732,15 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
       /** If parameter `param` appears exactly once as an argument in `args`,
        *  the singleton list consisting of its position in `args`, otherwise `Nil`.
        */
-      def paramIndices(param: untpd.ValDef, args: List[untpd.Tree], start: Int): List[Int] = args match {
-        case arg :: args1 =>
-          if (refersTo(arg, param))
-            if (paramIndices(param, args1, start + 1).isEmpty) start :: Nil
-            else Nil
-          else paramIndices(param, args1, start + 1)
-        case _ => Nil
+      def paramIndices(param: untpd.ValDef, args: List[untpd.Tree]): List[Int] = {
+        def loop(args: List[untpd.Tree], start: Int): List[Int] = args match {
+          case arg :: args1 =>
+            val others = loop(args1, start + 1)
+            if (refersTo(arg, param)) start :: others else others
+          case _ => Nil
+        }
+        val allIndices = loop(args, 0)
+        if (allIndices.length == 1) allIndices else Nil
       }
 
       /** If function is of the form
@@ -752,7 +754,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
       def calleeType: Type = fnBody match {
         case Apply(expr, args) =>
           paramIndex = {
-            for (param <- params; idx <- paramIndices(param, args, 0))
+            for (param <- params; idx <- paramIndices(param, args))
             yield param.name -> idx
           }.toMap
           if (paramIndex.size == params.length)
