@@ -12,7 +12,6 @@ private[repl] enum ParseResult {
   case Trees(xs: Seq[untpd.Tree])
   case SyntaxErrors(xs: Seq[MessageContainer])
   case Incomplete
-  case Exit
 }
 
 private[repl] object replParse {

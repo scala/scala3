@@ -21,7 +21,7 @@ class Repl(settings: List[String]) {
         displayErrors(errs)
         run(history)
 
-      case (Exit, _) => ()
+      case (Exit(), _) => ()
     }
 
   // Unimplemented:

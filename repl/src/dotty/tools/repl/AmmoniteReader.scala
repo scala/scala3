@@ -13,6 +13,9 @@ import dotc.interactive.InteractiveDriver
 
 import java.io.{ OutputStreamWriter, InputStreamReader }
 
+/** Denotes ctrl-d fired */
+sealed case class Exit()
+
 private[repl] class AmmoniteReader(interactive: InteractiveDriver, compiler: AnyRef, history: List[String]) {
   type History = List[String]
 
@@ -27,11 +30,12 @@ private[repl] class AmmoniteReader(interactive: InteractiveDriver, compiler: Any
       BasicFilters.injectNewLine(b, c, rest, indent = 2)
   }
 
-  private[this] var latestParseResult: Trees | SyntaxErrors | Exit = Exit
+  private[this] var latestParseResult: Trees | SyntaxErrors | Exit = Exit()
   private def isIncomplete(source: String): Boolean =
     replParse(source)(interactive.currentCtx) match {
       case Incomplete =>
         true
+
       // FIXME: split into two cases workaround for match on `SyntaxErrors |
       //        Trees` not working with backend
       case res: SyntaxErrors =>
