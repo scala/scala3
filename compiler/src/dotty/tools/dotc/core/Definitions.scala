@@ -1010,7 +1010,7 @@ class Definitions {
 
     val any = enterCompleteClassSymbol(cls, tpnme.Any, Protected | Final | NoInitsTrait, Nil)
     val nothing = enterCompleteClassSymbol(cls, tpnme.Nothing, Protected | Final | NoInitsTrait, List(any.typeRef))
-    enterMethod(cls, nme.assume_, MethodType(Nil, nothing.typeRef), Protected | Final | Method)
+    enterMethod(cls, nme.assume_, ExprType(nothing.typeRef), Protected | Final | Method)
 
     cls
   }

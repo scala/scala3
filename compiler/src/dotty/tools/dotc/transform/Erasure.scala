@@ -411,8 +411,13 @@ object Erasure extends TypeTestsCasts{
         }
       }
 
-      recur(typed(tree.qualifier, AnySelectionProto))
+      if (tree.symbol eq defn.Phantom_assume) PhantomErasure.erasedAssume
+      else recur(typed(tree.qualifier, AnySelectionProto))
     }
+
+    override def typedIdent(tree: untpd.Ident, pt: Type)(implicit ctx: Context): tpd.Tree =
+      if (tree.symbol eq defn.Phantom_assume) PhantomErasure.erasedAssume
+      else super.typedIdent(tree, pt)
 
     override def typedThis(tree: untpd.This)(implicit ctx: Context): Tree =
       if (tree.symbol == ctx.owner.lexicallyEnclosingClass || tree.symbol.isStaticOwner) promote(tree)
@@ -456,8 +461,6 @@ object Erasure extends TypeTestsCasts{
       val Apply(fun, args) = tree
       if (fun.symbol == defn.cbnArg)
         typedUnadapted(args.head, pt)
-      else if (fun.symbol eq defn.Phantom_assume)
-        PhantomErasure.erasedAssume
       else typedExpr(fun, FunProto(args, pt, this)) match {
         case fun1: Apply => // arguments passed in prototype were already passed
           fun1
