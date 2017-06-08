@@ -1144,7 +1144,7 @@ object Build {
       sLog.value.log(Level.Error,
         s"""Missing some of the submodules
            |You can initialize the modules with:
-           |  > git submodule update --init
+           |  > git submodule update --init --depth 50
         """.stripMargin)
     }
     state
