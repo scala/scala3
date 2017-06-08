@@ -25,7 +25,7 @@ class Repl(settings: List[String]) {
         displaySyntaxErrors(errs)(ctx)
         run(history)
 
-      case (Command(cmd), history) =>
+      case (cmd: Command, history) =>
         interpretCommand(cmd, history)
 
       case (Newline, history) =>
@@ -35,8 +35,8 @@ class Repl(settings: List[String]) {
   // Unimplemented:
   def compile(trees: Seq[untpd.Tree]): Unit = ()
 
-  def interpretCommand(cmd: String, history: List[String]): Unit = cmd match {
-    case ":quit" => ()
+  def interpretCommand(cmd: Command, history: List[String]): Unit = cmd match {
+    case Quit => ()
     case _ => run(history)
   }
 

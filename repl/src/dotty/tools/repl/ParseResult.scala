@@ -11,14 +11,16 @@ import dotc.reporting._
 sealed trait ParseResult
 case class Trees(xs: Seq[untpd.Tree]) extends ParseResult
 case class SyntaxErrors(errors: Seq[MessageContainer], ctx: Context) extends ParseResult
-case class Command(cmd: String) extends ParseResult
 case object Newline extends ParseResult
+
+sealed trait Command extends ParseResult
+case object Quit extends Command
 
 object ParseResult {
 
   def apply(sourceCode: String)(implicit ctx: Context): ParseResult = sourceCode match {
     case "" => Newline
-    case ":quit" => Command(sourceCode)
+    case ":quit" => Quit
     case _ => {
       val reporter = new StoreReporter(null) with UniqueMessagePositions with HideNonSensicalMessages
       implicit val myCtx = ctx.fresh.setReporter(reporter)
@@ -43,6 +45,7 @@ object ParseResult {
         val source = new SourceFile("<console>", sourceCode.toCharArray)
         val parser = new Parsers.Parser(source)(myCtx)
         parser.templateStatSeq
+
 
         !reporter.hasErrors && needsMore
       }

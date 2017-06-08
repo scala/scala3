@@ -24,8 +24,8 @@ private[repl] class AmmoniteReader(interactive: InteractiveDriver, compiler: Any
       val isIncomplete =
         ParseResult.isIncomplete(b.mkString)(interactive.currentCtx)
 
-      if (isIncomplete) Result(b.mkString) // short-circuit the filters
-      else BasicFilters.injectNewLine(b, c, rest, indent = 2)
+      if (isIncomplete) BasicFilters.injectNewLine(b, c, rest, indent = 2)
+      else Result(b.mkString) // short-circuit the filters
   }
 
   def prompt(): (ParseResult, History) = {
@@ -70,6 +70,6 @@ private[repl] class AmmoniteReader(interactive: InteractiveDriver, compiler: Any
       .map { source =>
         (ParseResult(source)(interactive.currentCtx), source :: history)
       }
-      .getOrElse((Command(":quit"), history))
+      .getOrElse((Quit, history))
   }
 }
