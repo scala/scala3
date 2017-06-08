@@ -44,7 +44,7 @@ private[comment] final class WikiParser(
     else if (checkSkipInitWhitespace("----"))
       hrule()
     else if (checkList)
-      listBlock
+      listBlock()
     else {
       para()
     }
@@ -76,7 +76,7 @@ private[comment] final class WikiParser(
       * not a list or a different list. */
     def listLine(indent: Int, style: String): Option[Block] =
       if (countWhitespace > indent && checkList)
-        Some(listBlock)
+        Some(listBlock())
       else if (countWhitespace != indent || !checkSkipInitWhitespace(style))
         None
       else {
@@ -217,7 +217,7 @@ private[comment] final class WikiParser(
           check(",,")           ||
           check("[[")           ||
           isInlineEnd           ||
-          checkParaEnded        ||
+          checkParaEnded()      ||
           char == endOfLine
         }
         Text(str)
@@ -227,7 +227,7 @@ private[comment] final class WikiParser(
     val inlines: List[Inline] = {
       val iss = mutable.ListBuffer.empty[Inline]
       iss += inline0()
-      while (!isInlineEnd && !checkParaEnded) {
+      while (!isInlineEnd && !checkParaEnded()) {
         val skipEndOfLine = if (char == endOfLine) {
           nextChar()
           true
