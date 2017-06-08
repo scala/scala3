@@ -8,23 +8,19 @@ import dotc.util.SourceFile
 import dotc.ast.untpd
 import dotc.reporting._
 
-private[repl] enum ParseResult {
-  case Trees(xs: Seq[untpd.Tree])
-  case SyntaxErrors(xs: Seq[MessageContainer])
-  case Incomplete
-}
+sealed trait ParseResult
+case class Trees(xs: Seq[untpd.Tree]) extends ParseResult
+case class SyntaxErrors(errors: Seq[MessageContainer], ctx: Context) extends ParseResult
+case class Command(cmd: String) extends ParseResult
+case object Newline extends ParseResult
 
-private[repl] object replParse {
-  import ParseResult._
+object ParseResult {
 
-  def apply(sourceCode: String)(implicit ctx: Context): ParseResult = {
-    val reporter =
-      new StoreReporter(null)
-      with UniqueMessagePositions
-      with HideNonSensicalMessages
-
-    var needsMore = false
-    reporter.withIncompleteHandler(_ => _ => needsMore = true) {
+  def apply(sourceCode: String)(implicit ctx: Context): ParseResult = sourceCode match {
+    case "" => Newline
+    case ":quit" => Command(sourceCode)
+    case _ => {
+      val reporter = new StoreReporter(null) with UniqueMessagePositions with HideNonSensicalMessages
       implicit val myCtx = ctx.fresh.setReporter(reporter)
 
       val source = new SourceFile("<console>", sourceCode.toCharArray)
@@ -32,9 +28,24 @@ private[repl] object replParse {
 
       val (_, stats) = parser.templateStatSeq
 
-      if (reporter.hasErrors) SyntaxErrors(reporter.removeBufferedMessages)
-      else if (needsMore) Incomplete
+      if (reporter.hasErrors) SyntaxErrors(reporter.removeBufferedMessages, myCtx)
       else Trees(stats)
+    }
+  }
+
+  def isIncomplete(sourceCode: String)(implicit ctx: Context): Boolean = sourceCode match {
+    case "" | ":quit" => false
+    case _ => {
+      val reporter = new StoreReporter(null) with HideNonSensicalMessages
+      var needsMore = false
+      reporter.withIncompleteHandler(_ => _ => needsMore = true) {
+        implicit val myCtx = ctx.fresh.setReporter(reporter)
+        val source = new SourceFile("<console>", sourceCode.toCharArray)
+        val parser = new Parsers.Parser(source)(myCtx)
+        parser.templateStatSeq
+
+        !reporter.hasErrors && needsMore
+      }
     }
   }
 }

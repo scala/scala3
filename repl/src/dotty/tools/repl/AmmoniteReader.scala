@@ -1,20 +1,15 @@
 package dotty.tools
 package repl
 
-//import terminal._
 import terminal.{ Exit => _, _ }
 import terminal.filters._
 import GUILikeFilters._
 import LazyList._
-import ParseResult._
 
 import dotc.printing.SyntaxHighlighting
 import dotc.interactive.InteractiveDriver
 
 import java.io.{ OutputStreamWriter, InputStreamReader }
-
-/** Denotes ctrl-d fired */
-sealed case class Exit()
 
 private[repl] class AmmoniteReader(interactive: InteractiveDriver, compiler: AnyRef, history: List[String]) {
   type History = List[String]
@@ -25,26 +20,15 @@ private[repl] class AmmoniteReader(interactive: InteractiveDriver, compiler: Any
   private[this] val cutPasteFilter  = ReadlineFilters.CutPasteFilter()
   private[this] val selectionFilter = GUILikeFilters.SelectionFilter(indent = 2)
   private[this] val multilineFilter = Filter("multilineFilter") {
-    case TermState(lb ~: rest, b, c, d)
-    if (lb == 10 || lb == 13) && isIncomplete(b.mkString) =>
-      BasicFilters.injectNewLine(b, c, rest, indent = 2)
+    case TermState(lb ~: rest, b, c, d) if (lb == 10 || lb == 13) =>
+      val isIncomplete =
+        ParseResult.isIncomplete(b.mkString)(interactive.currentCtx)
+
+      if (isIncomplete) Result(b.mkString) // short-circuit the filters
+      else BasicFilters.injectNewLine(b, c, rest, indent = 2)
   }
 
-  private[this] var latestParseResult: Trees | SyntaxErrors | Exit = Exit()
-  private def isIncomplete(source: String): Boolean =
-    replParse(source)(interactive.currentCtx) match {
-      case Incomplete =>
-        true
-
-      // FIXME: split into two cases workaround for match on `SyntaxErrors |
-      //        Trees` not working with backend
-      case res: SyntaxErrors =>
-        latestParseResult = res; false
-      case res: Trees =>
-        latestParseResult = res; false
-    }
-
-  def prompt(): (Trees | SyntaxErrors | Exit, History) = {
+  def prompt(): (ParseResult, History) = {
     val historyFilter = new HistoryFilter(
       () => history.toVector,
       Console.BLUE,
@@ -81,12 +65,11 @@ private[repl] class AmmoniteReader(interactive: InteractiveDriver, compiler: Any
 
     val prompt = Console.BLUE + "scala> " + Console.RESET
 
-    val newHistory =
-      Terminal
+    Terminal
       .readLine(prompt, reader, writer, allFilters, displayTransform)
-      .map(_ :: history)
-      .getOrElse(history)
-
-    (latestParseResult, newHistory)
+      .map { source =>
+        (ParseResult(source)(interactive.currentCtx), source :: history)
+      }
+      .getOrElse((Command(":quit"), history))
   }
 }
