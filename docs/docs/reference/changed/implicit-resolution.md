@@ -4,7 +4,7 @@ title: "Changes in Implicit Resolution"
 ---
 
 Implicit resolution uses a new algorithm which caches implicit results
-more aggressively for perforance. There are also some changes that
+more aggressively for performance. There are also some changes that
 affect implicits on the language level.
 
  1. Types of implicit values and result types of implicit methods

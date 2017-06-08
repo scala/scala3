@@ -1566,4 +1566,11 @@ object messages {
     val explanation = ""
   }
 
+  case class OnlyCaseClassOrCaseObjectAllowed()(implicit ctx: Context)
+    extends Message(OnlyCaseClassOrCaseObjectAllowedID) {
+    val msg = "only `case class` or `case object` allowed"
+    val kind = "Syntax"
+    val explanation = ""
+  }
+
 }

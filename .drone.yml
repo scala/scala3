@@ -8,7 +8,7 @@
 
 pipeline:
   test:
-    image: lampepfl/dotty:24-04-2017
+    image: lampepfl/dotty:07-06-2017
     pull: true
     commands:
       - ./project/scripts/sbt "${CI_TEST}"
@@ -17,7 +17,7 @@ pipeline:
         exclude: gh-pages
 
   publish_nightly:
-    image: lampepfl/dotty:24-04-2017
+    image: lampepfl/dotty:07-06-2017
     pull: true
     commands:
       - ./project/scripts/sbt ";clean ;publishLocal" "${CI_PUBLISH}"
@@ -30,18 +30,29 @@ pipeline:
       environment: nightly
 
   publish_release:
-    image: lampepfl/dotty:24-04-2017
+    image: lampepfl/dotty:07-06-2017
     pull: true
     commands:
-      - RELEASEBUILD="yes" ./project/scripts/sbtPublish ${CI_PUBLISH} $SONATYPE_USER $SONATYPE_PW $PGP_PW
+      - RELEASEBUILD="yes" ./project/scripts/sbtPublish ${CI_PUBLISH} $SONATYPE_USER $SONATYPE_PW $PGP_PW ";dotty-bootstrapped/publishSigned ;sonatypeRelease"
     volumes:
       - /home/drone/keys:/keys
     when:
       event: deployment
       environment: release
 
+  publish_sbt_release:
+    image: lampepfl/dotty:07-06-2017
+    pull: true
+    commands:
+      - RELEASEBUILD="yes" ./project/scripts/sbtPublish ${CI_PUBLISH} $SONATYPE_USER $SONATYPE_PW $PGP_PW ";sbt-dotty/publishSigned ;sonatypeRelease"
+    volumes:
+      - /home/drone/keys:/keys
+    when:
+      event: deployment
+      environment: sbt_release
+
   documentation:
-    image: lampepfl/dotty:24-04-2017
+    image: lampepfl/dotty:07-06-2017
     pull: true
     commands:
       - ./project/scripts/genDocs "${CI_PUBLISH}" $BOT_PASS

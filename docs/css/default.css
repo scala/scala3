@@ -173,10 +173,6 @@ h1#dotty {
 div.centered-subtitle {
     text-align: center;
     font-family: 'Source Sans Pro', sans-serif;
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    right: 0;
 }
 
 div.centered-subtitle > a {

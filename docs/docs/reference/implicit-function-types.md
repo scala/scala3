@@ -3,7 +3,7 @@ layout: doc-page
 title: "Implicit Function Types"
 ---
 
-An implicit funciton type describes functions with implicit parameters. Example:
+An implicit function type describes functions with implicit parameters. Example:
 
     type Contextual[T] = implicit Context => T
 

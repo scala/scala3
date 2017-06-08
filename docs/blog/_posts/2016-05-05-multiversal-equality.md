@@ -3,6 +3,7 @@ layout: blog-page
 title: Multiversal Equality for Scala
 author: Martin Odersky
 authorImg: /images/martin.jpg
+date: 2016-05-05
 ---
 
 I have been working recently on making equality tests using `==` and `!=` safer in Scala. This has led to a [Language Enhancement Proposal](https://github.com/lampepfl/dotty/issues/1247) which I summarize in this blog.

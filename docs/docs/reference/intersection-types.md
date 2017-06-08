@@ -6,19 +6,19 @@ title: "Intersection Types"
 Used on types, the `&` operator creates an intersection type.
 
 ```scala
-trait Resetable {
+trait Resettable {
   def reset(): this.type
 }
 trait Growable[T] {
   def add(x: T): this.type
 }
-def f(x: Resetable & Growable[String]) = {
+def f(x: Resettable & Growable[String]) = {
   x.reset()
   x.add("first")
 }
 ```
 
-The value `x` is required to be _both_ a `Resetable` and a
+The value `x` is required to be _both_ a `Resettable` and a
 `Growable[String]`.  Intersection types `A & B` replace compound types
 `A with B` in Scala 2 (for the moment, `A with B` is still allowed, but
 it will be deprecated and removed in the future).
@@ -27,7 +27,7 @@ Unlike `with` types, `&` is _commutative_: `A & B` is the same type as
 `B & A`.
 
 The members of an intersection type `A & B` are all the members of `A`
-and all the members of `B`. For instance `Resetable & Growable[String]`
+and all the members of `B`. For instance `Resettable & Growable[String]`
 has member methods `reset` and `add`.
 
 If a member appears in both `A` and `B`, its type in `A & B` is the
