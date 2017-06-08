@@ -31,16 +31,16 @@ its type checking because this turns out to be more efficient).
 
 In summary, previous code using implicit conversion parameters such as
 
-    def useConversion(implicit f: A => B) {
+    def useConversion(implicit f: A => B) = {
       val y: A = ...
       val x: B = a    // error under Dotty
     }
 
 is no longer legal and has to be rewritten to
 
-    def useConversion(implicit f: ImplicitConverter[A, B]) {
+    def useConversion(implicit f: ImplicitConverter[A, B]) = {
       val y: A = ...
-      val x: B = a    // OK
+      val x: B = y    // OK
     }
 
 ### Reference
