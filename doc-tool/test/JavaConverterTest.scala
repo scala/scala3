@@ -51,7 +51,7 @@ class JavaConverterTest {
       def returnValue = new TypeReference("String", new NoLink("title", "target"), List())
       def paramLists = List(paramList)
     }
-    assertSerializedCorrectly(df, df.asJava())
+    assertSerializedCorrectly(df, df.asJava)
     val trt = new Trait {
       def symbol = NoSymbol
       def name = "someTrait"
@@ -67,7 +67,7 @@ class JavaConverterTest {
       def companionPath = "path" :: "to" :: "companion" :: Nil
       def companionPath_=(xs: List[String]) = Unit
     }
-    assertSerializedCorrectly(trt, trt.asJava())
+    assertSerializedCorrectly(trt, trt.asJava)
     val cls = new Class {
       def symbol = NoSymbol
       def name = "test"
@@ -83,7 +83,7 @@ class JavaConverterTest {
       def companionPath_=(xs: List[String]) = Unit
       def constructors = List(List(paramList))
     }
-    assertSerializedCorrectly(cls, cls.asJava())
+    assertSerializedCorrectly(cls, cls.asJava)
     val caseClass = new CaseClass {
       def symbol = NoSymbol
       def name = "test"
@@ -99,7 +99,7 @@ class JavaConverterTest {
       def companionPath = "path" :: "to" :: "companion" :: Nil
       def companionPath_=(xs: List[String]) = Unit
     }
-    assertSerializedCorrectly(caseClass, caseClass.asJava())
+    assertSerializedCorrectly(caseClass, caseClass.asJava)
     val obj = new EObject {
       def symbol = NoSymbol
       def name = "someObject"
@@ -114,7 +114,7 @@ class JavaConverterTest {
       def companionPath = "path" :: "to" :: "companion" :: Nil
       def companionPath_=(xs: List[String]) = Unit
     }
-    assertSerializedCorrectly(obj, obj.asJava())
+    assertSerializedCorrectly(obj, obj.asJava)
     val typeAlias = new TypeAlias {
       def symbol = NoSymbol
       def name = "typeAlias"
@@ -126,7 +126,7 @@ class JavaConverterTest {
       def typeParams = "String" :: "String" :: Nil
       def alias = Some(new TypeReference("String", new NoLink("title", "target"), List()))
     }
-    assertSerializedCorrectly(typeAlias, typeAlias.asJava())
+    assertSerializedCorrectly(typeAlias, typeAlias.asJava)
     val vl = new Val {
       val kind = "val"
       def symbol = NoSymbol
@@ -140,7 +140,7 @@ class JavaConverterTest {
       def implicitlyAddedFrom = Some(
         new TypeReference("String", new NoLink("title", "target"), List()))
     }
-    assertSerializedCorrectly(vl, vl.asJava())
+    assertSerializedCorrectly(vl, vl.asJava)
     val pkg = new Package {
       def symbol = NoSymbol
       def name = "test"
@@ -151,7 +151,7 @@ class JavaConverterTest {
       def members = trt :: typeAlias :: Nil
       def superTypes = new NoLink("title", "query") :: Nil
     }
-    assertSerializedCorrectly(pkg, pkg.asJava())
+    assertSerializedCorrectly(pkg, pkg.asJava)
   }
 
   def assertEach[E, C[E] <: Seq[E]](expected: C[E], serialized: Any)(pairwiseAssertion: (E, Any) => Unit): Unit = {
