@@ -1353,12 +1353,22 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
       }
     }
 
+    def isScalaPhantomSelf(self: tpd.ValDef): Boolean = {
+      if (self.tpt.tpe.classSymbol eq defn.PhantomClass) {
+        ctx.error("self type cannot contain scala.Phantom", self.tpt.pos)
+        true
+      } else false
+    }
+
+    def isInvalidSelf(self: tpd.ValDef): Boolean =
+      self.tpt.tpe.isError || classExistsOnSelf(cls.unforcedDecls, self) || isScalaPhantomSelf(self)
+
     completeAnnotations(cdef, cls)
     val constr1 = typed(constr).asInstanceOf[DefDef]
     val parentsWithClass = ensureFirstIsClass(parents mapconserve typedParent, cdef.namePos)
     val parents1 = ensureConstrCall(cls, parentsWithClass)(superCtx)
     val self1 = typed(self)(ctx.outer).asInstanceOf[ValDef] // outer context where class members are not visible
-    if (self1.tpt.tpe.isError || classExistsOnSelf(cls.unforcedDecls, self1)) {
+    if (isInvalidSelf(self1)) {
       // fail fast to avoid typing the body with an error type
       cdef.withType(UnspecifiedErrorType)
     } else {
