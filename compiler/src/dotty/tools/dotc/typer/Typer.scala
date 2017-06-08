@@ -1202,7 +1202,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     // necessary to force annotation trees to be computed.
     sym.annotations.foreach(_.ensureCompleted)
     lazy val annotCtx = {
-      val c = ctx.outersIterator.dropWhile(_.owner == sym).next
+      val c = ctx.outersIterator.dropWhile(_.owner == sym).next()
       c.property(ExprOwner) match {
         case Some(exprOwner) if c.owner.isClass =>
           // We need to evaluate annotation arguments in an expression context, since
@@ -1737,7 +1737,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
   def tryAlternatively[T](op1: Context => T)(op2: Context => T)(implicit ctx: Context): T =
     tryEither(op1) { (failedVal, failedState) =>
       tryEither(op2) { (_, _) =>
-        failedState.commit
+        failedState.commit()
         failedVal
       }
     }
@@ -1858,9 +1858,10 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
 
     def methodStr = err.refStr(methPart(tree).tpe)
 
-    def missingArgs = errorTree(tree,
-      em"""missing arguments for $methodStr
-          |follow this method with `_' if you want to treat it as a partially applied function""")
+    def missingArgs(mt: MethodType) = {
+      ctx.error(em"missing arguments for $methodStr", tree.pos)
+      tree.withType(mt.resultType)
+    }
 
     def adaptOverloaded(ref: TermRef) = {
       val altDenots = ref.denot.alternatives
@@ -2040,6 +2041,22 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
         def isExpandableApply =
           defn.isImplicitFunctionClass(tree.symbol.maybeOwner) && defn.isFunctionType(ptNorm)
 
+        /** Is reference to this symbol `f` automatically expanded to `f()`? */
+        def isAutoApplied(sym: Symbol): Boolean = {
+          def test(sym1: Symbol) =
+            sym1.is(JavaDefined) ||
+            sym1.owner == defn.AnyClass ||
+            sym1 == defn.Object_clone
+          sym.isConstructor ||
+          test(sym) ||
+          sym.allOverriddenSymbols.exists(test) ||
+          sym.owner.is(Scala2x) || // need to exclude Scala-2 compiled symbols for now, since the
+                                   // Scala library does not always follow the right conventions.
+                                   // Examples are: isWhole(), toInt(), toDouble() in BigDecimal, Numeric, RichInt, ScalaNumberProxy.
+          ctx.testScala2Mode(em"${sym.showLocated} requires () argument", tree.pos,
+              patch(tree.pos.endPos, "()"))
+        }
+
         // Reasons NOT to eta expand:
         //  - we reference a constructor
         //  - we are in a patterm
@@ -2049,12 +2066,12 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
             !ctx.mode.is(Mode.Pattern) &&
             !(isSyntheticApply(tree) && !isExpandableApply))
           typed(etaExpand(tree, wtp, arity), pt)
-        else if (wtp.paramInfos.isEmpty)
+        else if (wtp.paramInfos.isEmpty && isAutoApplied(tree.symbol))
           adaptInterpolated(tpd.Apply(tree, Nil), pt, EmptyTree)
         else if (wtp.isImplicit)
           err.typeMismatch(tree, pt)
         else
-          missingArgs
+          missingArgs(wtp)
       case _ =>
         ctx.typeComparer.GADTused = false
         if (defn.isImplicitFunctionClass(wtp.underlyingClassRef(refinementOK = false).classSymbol) &&
@@ -2093,11 +2110,12 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
           else
             tree
         }
-        else if (wtp.isInstanceOf[MethodType]) missingArgs
-        else {
-          typr.println(i"adapt to subtype ${tree.tpe} !<:< $pt")
-          //typr.println(TypeComparer.explained(implicit ctx => tree.tpe <:< pt))
-          adaptToSubType(wtp)
+        else wtp match {
+          case wtp: MethodType => missingArgs(wtp)
+          case _ =>
+            typr.println(i"adapt to subtype ${tree.tpe} !<:< $pt")
+            //typr.println(TypeComparer.explained(implicit ctx => tree.tpe <:< pt))
+            adaptToSubType(wtp)
         }
     }
     /** Adapt an expression of constant type to a different constant type `tpe`. */
