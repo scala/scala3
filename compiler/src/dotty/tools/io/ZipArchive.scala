@@ -197,7 +197,7 @@ final class FileZipArchive(file: JFile) extends ZipArchive(file) {
 }
 
 final class ManifestResources(val url: URL) extends ZipArchive(null) {
-  def iterator = {
+  def iterator() = {
     val root     = new DirEntry("/")
     val dirs     = mutable.HashMap[String, DirEntry]("/" -> root)
     val manifest = new Manifest(input)

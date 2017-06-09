@@ -115,7 +115,7 @@ trait HOSeq {
     def iterator: Iterator[t] = new Iterator[t] {
       var these = List.this
       def hasNext: Boolean = !these.isEmpty
-      def next: t =
+      def next(): t =
         if (!hasNext)
           throw new NoSuchElementException("next on empty Iterator")
         else {

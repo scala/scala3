@@ -134,7 +134,7 @@ object CollectionStrawMan4 {
     def iterator = new Iterator[A] {
       private[this] var current = self
       def hasNext = !current.isEmpty
-      def next = { val r = current.head; current = current.tail; r }
+      def next() = { val r = current.head; current = current.tail; r }
     }
     def fromIterable[B](c: Iterable[B]): List[B] = List.fromIterable(c)
     def apply(i: Int): A = {
@@ -348,7 +348,7 @@ object CollectionStrawMan4 {
     def iterator: Iterator[A] = new Iterator[A] {
       private var current = start
       def hasNext = current < end
-      def next: A = {
+      def next(): A = {
         val r = apply(current)
         current += 1
         r
@@ -528,7 +528,7 @@ object CollectionStrawMan4 {
   object Iterator {
     val empty: Iterator[Nothing] = new Iterator[Nothing] {
       def hasNext = false
-      def next = throw new NoSuchElementException("next on empty iterator")
+      def next() = throw new NoSuchElementException("next on empty iterator")
     }
     def apply[A](xs: A*): Iterator[A] = new RandomAccessView[A] {
       val start = 0

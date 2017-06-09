@@ -763,6 +763,20 @@ object SymDenotations {
 
     def isInlineMethod(implicit ctx: Context): Boolean = is(InlineMethod, butNot = Accessor)
 
+    /** ()T and => T types should be treated as equivalent for this symbol.
+     *  Note: For the moment, we treat Scala-2 compiled symbols as loose matching,
+     *  because the Scala library does not always follow the right conventions.
+     *  Examples are: isWhole(), toInt(), toDouble() in BigDecimal, Numeric, RichInt, ScalaNumberProxy.
+     */
+    def matchNullaryLoosely(implicit ctx: Context): Boolean = {
+      def test(sym: Symbol) =
+        sym.is(JavaDefined) ||
+        sym.owner == defn.AnyClass ||
+        sym == defn.Object_clone ||
+        sym.owner.is(Scala2x)
+      test(symbol) || allOverriddenSymbols.exists(test)
+    }
+
     // ------ access to related symbols ---------------------------------
 
     /* Modules and module classes are represented as follows:
@@ -937,7 +951,6 @@ object SymDenotations {
       if (this is ModuleClass) companionNamed(effectiveName.toTypeName)
       else if (this.isClass) companionNamed(effectiveName.moduleClassName).sourceModule.moduleClass
       else NoSymbol
-
 
     /** Find companion class symbol with given name, or NoSymbol if none exists.
      *  Three alternative strategies:

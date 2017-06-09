@@ -769,21 +769,23 @@ object Types {
     def relaxed_<:<(that: Type)(implicit ctx: Context) =
       (this <:< that) || (this isValueSubType that)
 
-    /** Is this type a legal type for a member that overrides another
-     *  member of type `that`? This is the same as `<:<`, except that
-     *  the types `()T`, `=> T` and `T` are seen as overriding
-     *  each other.
+    /** Is this type a legal type for member `sym1` that overrides another
+     *  member `sym2` of type `that`? This is the same as `<:<`, except that
+     *  if `matchLoosely` evaluates to true the types `=> T` and `()T` are seen
+     *  as overriding each other.
      */
-    final def overrides(that: Type)(implicit ctx: Context) = {
-      def result(tp: Type): Type = tp match {
-        case ExprType(_) | MethodType(Nil) => tp.resultType
+    final def overrides(that: Type, matchLoosely: => Boolean)(implicit ctx: Context): Boolean = {
+      def widenNullary(tp: Type) = tp match {
+        case tp @ MethodType(Nil) => tp.resultType
         case _ => tp
       }
-      (this frozen_<:< that) || {
-        val rthat = result(that)
-        val rthis = result(this)
-        (rthat.ne(that) || rthis.ne(this)) && (rthis frozen_<:< rthat)
-      }
+      ((this.widenExpr frozen_<:< that.widenExpr) ||
+        matchLoosely && {
+          val this1 = widenNullary(this)
+          val that1 = widenNullary(that)
+          ((this1 `ne` this) || (that1 `ne` that)) && this1.overrides(this1, matchLoosely = false)
+        }
+      )
     }
 
     /** Is this type close enough to that type so that members

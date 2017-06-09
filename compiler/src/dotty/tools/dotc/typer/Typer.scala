@@ -2045,16 +2045,8 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
 
         /** Is reference to this symbol `f` automatically expanded to `f()`? */
         def isAutoApplied(sym: Symbol): Boolean = {
-          def test(sym1: Symbol) =
-            sym1.is(JavaDefined) ||
-            sym1.owner == defn.AnyClass ||
-            sym1 == defn.Object_clone
           sym.isConstructor ||
-          test(sym) ||
-          sym.allOverriddenSymbols.exists(test) ||
-          sym.owner.is(Scala2x) || // need to exclude Scala-2 compiled symbols for now, since the
-                                   // Scala library does not always follow the right conventions.
-                                   // Examples are: isWhole(), toInt(), toDouble() in BigDecimal, Numeric, RichInt, ScalaNumberProxy.
+          sym.matchNullaryLoosely ||
           ctx.testScala2Mode(em"${sym.showLocated} requires () argument", tree.pos,
               patch(tree.pos.endPos, "()"))
         }

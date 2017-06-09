@@ -408,7 +408,8 @@ object Denotations {
 
         /** Sym preference provided types also override */
         def prefer(sym1: Symbol, sym2: Symbol, info1: Type, info2: Type) =
-          preferSym(sym1, sym2) && info1.overrides(info2)
+          preferSym(sym1, sym2) &&
+          info1.overrides(info2, sym1.matchNullaryLoosely || sym2.matchNullaryLoosely)
 
         def handleDoubleDef =
           if (preferSym(sym1, sym2)) denot1
