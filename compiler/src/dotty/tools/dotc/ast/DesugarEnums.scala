@@ -161,8 +161,8 @@ object DesugarEnums {
       val (tagMeth, scaffolding) = enumTagMeth(CaseKind.Object)
       val impl1 = cpy.Template(impl)(body =
         impl.body ++ List(tagMeth, toStringMeth) ++ registerCall)
-      val vdef = ValDef(name, TypeTree(), New(impl1)).withMods(mods | Final).withPos(pos)
-      flatTree(scaffolding ::: vdef :: Nil).withPos(pos.startPos)
+      val vdef = ValDef(name, TypeTree(), New(impl1)).withMods(mods | Final)
+      flatTree(scaffolding ::: vdef :: Nil).withPos(pos)
     }
 
   /** Expand a simple enum case */
@@ -175,7 +175,7 @@ object DesugarEnums {
     else {
       val (tag, scaffolding) = nextEnumTag(CaseKind.Simple)
       val creator = Apply(Ident(nme.DOLLAR_NEW), List(Literal(Constant(tag)), Literal(Constant(name.toString))))
-      val vdef = ValDef(name, enumClassRef, creator).withMods(mods | Final).withPos(pos)
-      flatTree(scaffolding ::: vdef :: Nil).withPos(pos.startPos)
+      val vdef = ValDef(name, enumClassRef, creator).withMods(mods | Final)
+      flatTree(scaffolding ::: vdef :: Nil).withPos(pos)
     }
 }
