@@ -7,17 +7,25 @@ import dotc.reporting.MessageRendering
 import dotc.reporting.diagnostic.MessageContainer
 import dotc.ast.untpd
 import dotc.core.Contexts.Context
+import dotc.config.CompilerCommand
 import dotc.{ Compiler, Driver }
 
 import AmmoniteReader._
 
-class Repl(settings: List[String]) extends Driver {
+class Repl(settings: Array[String]) extends Driver {
 
   // FIXME: Change the Driver API to not require implementing this method
   override protected def newCompiler(implicit ctx: Context): Compiler =
     ???
 
-  private[this] var myCtx = initCtx.fresh
+  private[this] def initializeCtx = {
+    val rootCtx = initCtx.fresh
+    val summary = CompilerCommand.distill(settings)(rootCtx)
+    rootCtx.setSettings(summary.sstate)
+  }
+
+  private[this] var myCtx = initializeCtx
+  private[this] var compiler = new ReplCompiler(myCtx)
 
   private def readLine(history: History) =
     AmmoniteReader(history)(myCtx).prompt()
@@ -25,8 +33,8 @@ class Repl(settings: List[String]) extends Driver {
   @tailrec
   final def run(history: History = Nil): Unit =
     readLine(history) match {
-      case (Trees(parsedTrees), history) =>
-        compile(parsedTrees)
+      case (parsed: Parsed, history) =>
+        compile(parsed, history.length)
         run(history)
 
       case (SyntaxErrors(errs, ctx), history) =>
@@ -40,8 +48,8 @@ class Repl(settings: List[String]) extends Driver {
         interpretCommand(cmd, history)
     }
 
-  // Unimplemented:
-  def compile(trees: Seq[untpd.Tree]): Unit = ()
+  def compile(parsed: Parsed, line: Int): Unit =
+    compiler.compile(parsed, line)(myCtx)
 
   def interpretCommand(cmd: Command, history: History): Unit = cmd match {
     case UnknownCommand(cmd) => {

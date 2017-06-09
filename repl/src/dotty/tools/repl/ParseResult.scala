@@ -9,7 +9,7 @@ import dotc.ast.untpd
 import dotc.reporting._
 
 sealed trait ParseResult
-case class Trees(xs: Seq[untpd.Tree]) extends ParseResult
+case class Parsed(sourceCode: String, trees: Seq[untpd.Tree]) extends ParseResult
 case class SyntaxErrors(errors: Seq[MessageContainer], ctx: Context) extends ParseResult
 case object Newline extends ParseResult
 
@@ -52,7 +52,7 @@ object ParseResult {
       val (_, stats) = parser.templateStatSeq
 
       if (reporter.hasErrors) SyntaxErrors(reporter.removeBufferedMessages, myCtx)
-      else Trees(stats)
+      else Parsed(sourceCode, stats)
     }
   }
 

@@ -63,6 +63,11 @@ class Run(comp: Compiler)(implicit ctx: Context) {
       compileUnits()
     }
 
+  def compileUnits(us: List[CompilationUnit]): Unit = {
+    units = us
+    compileUnits()
+  }
+
   protected def compileUnits() = Stats.monitorHeartBeat {
     ctx.checkSingleThreaded()
 
