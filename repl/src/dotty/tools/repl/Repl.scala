@@ -1,21 +1,29 @@
 package dotty.tools
 package repl
 
-import dotc.interactive.{ InteractiveCompiler, InteractiveDriver }
+import scala.annotation.tailrec
+
 import dotc.reporting.MessageRendering
 import dotc.reporting.diagnostic.MessageContainer
 import dotc.ast.untpd
 import dotc.core.Contexts.Context
+import dotc.{ Compiler, Driver }
 
-class Repl(settings: List[String]) {
+import AmmoniteReader._
 
-  val interactive = new InteractiveDriver(settings)
-  val compiler    = new InteractiveCompiler
+class Repl(settings: List[String]) extends Driver {
 
-  def readLine(history: List[String]) =
-    (new AmmoniteReader(interactive, compiler, history)).prompt()
+  // FIXME: Change the Driver API to not require implementing this method
+  override protected def newCompiler(implicit ctx: Context): Compiler =
+    ???
 
-  def run(history: List[String] = Nil): Unit =
+  private[this] var myCtx = initCtx.fresh
+
+  private def readLine(history: History) =
+    AmmoniteReader(history)(myCtx).prompt()
+
+  @tailrec
+  final def run(history: History = Nil): Unit =
     readLine(history) match {
       case (Trees(parsedTrees), history) =>
         compile(parsedTrees)
@@ -25,19 +33,44 @@ class Repl(settings: List[String]) {
         displaySyntaxErrors(errs)(ctx)
         run(history)
 
-      case (cmd: Command, history) =>
-        interpretCommand(cmd, history)
-
       case (Newline, history) =>
         run(history)
+
+      case (cmd: Command, history) =>
+        interpretCommand(cmd, history)
     }
 
   // Unimplemented:
   def compile(trees: Seq[untpd.Tree]): Unit = ()
 
-  def interpretCommand(cmd: Command, history: List[String]): Unit = cmd match {
-    case Quit => ()
-    case _ => run(history)
+  def interpretCommand(cmd: Command, history: History): Unit = cmd match {
+    case UnknownCommand(cmd) => {
+      println(s"""Unknown command: "$cmd", run ":help" for a list of commands""")
+      run(history)
+    }
+
+    case Help => {
+      println(Help.text)
+      run(history)
+    }
+
+    case Reset => {
+      myCtx = initCtx.fresh
+      run(Nil)
+    }
+
+    case Load(path) =>
+      if ((new java.io.File(path)).exists) {
+        val contents = scala.io.Source.fromFile(path).mkString
+        run(contents :: history)
+      }
+      else {
+        println(s"""Couldn't find file "$path"""")
+        run(history)
+      }
+
+    case Quit =>
+      // end of the world!
   }
 
   private val messageRenderer = new MessageRendering {}

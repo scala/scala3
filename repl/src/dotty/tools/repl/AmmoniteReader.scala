@@ -1,18 +1,19 @@
 package dotty.tools
 package repl
 
-import terminal.{ Exit => _, _ }
-import terminal.filters._
-import GUILikeFilters._
-import LazyList._
+import java.io.{ OutputStreamWriter, InputStreamReader }
 
+import dotc.core.Contexts.Context
 import dotc.printing.SyntaxHighlighting
 import dotc.interactive.InteractiveDriver
 
-import java.io.{ OutputStreamWriter, InputStreamReader }
+import terminal._
+import terminal.filters._
+import GUILikeFilters._
+import LazyList._
+import AmmoniteReader._
 
-private[repl] class AmmoniteReader(interactive: InteractiveDriver, compiler: AnyRef, history: List[String]) {
-  type History = List[String]
+private[repl] class AmmoniteReader(history: History)(implicit ctx: Context) {
 
   private[this] val reader = new InputStreamReader(System.in)
   private[this] val writer = new OutputStreamWriter(System.out)
@@ -21,11 +22,12 @@ private[repl] class AmmoniteReader(interactive: InteractiveDriver, compiler: Any
   private[this] val selectionFilter = GUILikeFilters.SelectionFilter(indent = 2)
   private[this] val multilineFilter = Filter("multilineFilter") {
     case TermState(lb ~: rest, b, c, d) if (lb == 10 || lb == 13) =>
-      val isIncomplete =
-        ParseResult.isIncomplete(b.mkString)(interactive.currentCtx)
+      val source = b.mkString
 
-      if (isIncomplete) BasicFilters.injectNewLine(b, c, rest, indent = 2)
-      else Result(b.mkString) // short-circuit the filters
+      if (ParseResult.isIncomplete(source))
+        BasicFilters.injectNewLine(b, c, rest, indent = 2)
+      else
+        Result(source) // short-circuit the filters
   }
 
   def prompt(): (ParseResult, History) = {
@@ -68,8 +70,15 @@ private[repl] class AmmoniteReader(interactive: InteractiveDriver, compiler: Any
     Terminal
       .readLine(prompt, reader, writer, allFilters, displayTransform)
       .map { source =>
-        (ParseResult(source)(interactive.currentCtx), source :: history)
+        (ParseResult(source), source :: history)
       }
       .getOrElse((Quit, history))
   }
+}
+
+object AmmoniteReader {
+  type History = List[String]
+
+  def apply(history: History)(implicit ctx: Context) =
+    new AmmoniteReader(history)
 }
