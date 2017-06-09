@@ -1538,15 +1538,31 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     val pt1 = if (defn.isFunctionType(pt)) pt else AnyFunctionProto
     var res = typed(qual, pt1)
     if (pt1.eq(AnyFunctionProto) && !defn.isFunctionClass(res.tpe.classSymbol)) {
-      def msg = i"not a function: ${res.tpe}; cannot be followed by `_'"
+      ctx.errorOrMigrationWarning(i"not a function: ${res.tpe}; cannot be followed by `_'", tree.pos)
       if (ctx.scala2Mode) {
         // Under -rewrite, patch `x _` to `(() => x)`
-        ctx.migrationWarning(msg, tree.pos)
         patch(Position(tree.pos.start), "(() => ")
         patch(Position(qual.pos.end, tree.pos.end), ")")
         res = typed(untpd.Function(Nil, untpd.TypedSplice(res)))
       }
-      else ctx.error(msg, tree.pos)
+    }
+    else if (ctx.settings.strict.value) {
+      lazy val (prefix, suffix) = res match {
+        case Block(mdef @ DefDef(_, _, vparams :: Nil, _, _) :: Nil, _: Closure) =>
+          val arity = vparams.length
+          if (arity > 0) ("", "") else ("(() => ", "())")
+        case _ =>
+          ("(() => ", ")")
+      }
+      def remedy =
+        if ((prefix ++ suffix).isEmpty) "simply leave out the trailing ` _`"
+        else s"use `$prefix<function>$suffix` instead"
+      ctx.errorOrMigrationWarning(i"""The syntax `<function> _` is no longer supported;
+                                     |you can $remedy""", tree.pos)
+      if (ctx.scala2Mode) {
+        patch(Position(tree.pos.start), prefix)
+        patch(Position(qual.pos.end, tree.pos.end), suffix)
+      }
     }
     res
   }
@@ -2053,7 +2069,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
 
         // Reasons NOT to eta expand:
         //  - we reference a constructor
-        //  - we are in a patterm
+        //  - we are in a pattern
         //  - the current tree is a synthetic apply which is not expandable (eta-expasion would simply undo that)
         if (arity >= 0 &&
             !tree.symbol.isConstructor &&
