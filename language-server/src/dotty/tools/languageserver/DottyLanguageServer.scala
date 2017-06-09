@@ -76,7 +76,7 @@ class DottyLanguageServer extends LanguageServer
   def driverFor(uri: URI): InteractiveDriver = {
     val matchingConfig =
       drivers.keys.find(config => config.sourceDirectories.exists(sourceDir =>
-        uri.getRawPath.startsWith(sourceDir.getAbsolutePath.toString)))
+        new File(uri.getPath).getCanonicalPath.startsWith(sourceDir.getCanonicalPath)))
     matchingConfig match {
       case Some(config) =>
         drivers(config)
