@@ -2384,7 +2384,7 @@ object Parsers {
           if (in.token == CASE)
             syntaxErrorOrIncomplete(OnlyCaseClassOrCaseObjectAllowed())
           else
-            syntaxErrorOrIncomplete("expected class or object definition")
+            syntaxErrorOrIncomplete(ExpectedClassOrObjectDef())
           if (mustStartStat) // do parse all definitions even if they are probably local (i.e. a "}" has been forgotten)
             defOrDcl(in.offset, defAnnotsMods(modifierTokens))
         }
