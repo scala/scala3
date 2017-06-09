@@ -367,6 +367,23 @@ object Build {
       connectInput in run := true,
       outputStrategy := Some(StdoutOutput),
 
+      run := Def.inputTaskDyn {
+        val classPath =
+          (packageAll in `dotty-compiler-bootstrapped`).value("dotty-library") + ":" +
+          (packageAll in `dotty-compiler-bootstrapped`).value("dotty-interfaces")
+
+        val args: Seq[String] = spaceDelimited("<arg>").parsed
+
+        val fullArgs = args.span(_ != "-classpath") match {
+          case (beforeCp, Nil) => beforeCp ++ ("-classpath" :: classPath :: Nil)
+          case (beforeCp, rest) => beforeCp ++ rest
+        }
+
+        (runMain in Compile).toTask(
+          s" dotty.tools.repl.Main " + fullArgs.mkString(" ")
+        )
+      }.evaluated,
+
       javaOptions ++= (javaOptions in `dotty-compiler`).value,
       fork in run := true,
       fork in Test := true,
