@@ -5,11 +5,19 @@ import core.Contexts.Context
 import core.Symbols._
 import ast.Trees._
 
-/** Every pure statement preceding a ??? can be removed.
+/**
+ * If a block has a statement that evaluates to Nothing:
+ *  - Every pure statement dirrectly preceding an expression that returns Nothing can be removed,
+ *  - as every statement after an expression that returns Nothing can be removed
+ *
+ * If an If condition evalutates to Nothing, the entire If can be replaced by condition
+ * If an argument evaluates to Nothing, the entire call can be replaced by evaluation of arguments.
  *
  *  This optimisation makes it rather tricky to write meaningful examples
  *  since the compiler will often be able to reduce them to a single main
  *  method with body = ???.
+ *
+ *  @author DarkDimius, OlivierBlanvillain
  */
 class BubbleUpNothing(implicit val ctx: Context) extends Optimisation {
   import ast.tpd._

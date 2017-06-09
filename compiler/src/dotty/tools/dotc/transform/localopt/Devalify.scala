@@ -13,7 +13,13 @@ import config.Printers.simplify
 import Simplify.desugarIdent
 import transform.SymUtils._
 
-/** Inline vals */
+/** Inline vals and remove vals that are aliases to other vals
+ *
+ * Notion of alias is a by-value notion, so "good" casts are ignored.
+ *
+ * This phase has to be careful not to eliminate vals that are parts of other types
+ * @author DarkDimius, OlivierBlanvillain
+ * */
 class Devalify(implicit val ctx: Context) extends Optimisation {
   import ast.tpd._
 

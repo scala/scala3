@@ -16,6 +16,8 @@ import transform.SymUtils._
  *
  *  - a.asInstanceOf[T] → a when we know that a: T
  *  - Simplify (a == null) and (a != null) when the result is statically known
+ *
+ *  @author DarkDimius, OlivierBlanvillain
  */
  class DropGoodCasts(implicit val ctx: Context) extends Optimisation {
   import ast.tpd._

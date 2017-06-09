@@ -40,7 +40,6 @@ import scala.collection.mutable
   val visitor: Tree => Unit = {
     case vd: ValDef =>
       val rhs = vd.rhs
-      val rhsName = rhs.symbol.name
       if (!vd.symbol.is(Mutable) && !rhs.isEmpty) {
         def checkNonNull(t: Tree, target: Symbol): Boolean = t match {
           case Block(_ , expr) =>

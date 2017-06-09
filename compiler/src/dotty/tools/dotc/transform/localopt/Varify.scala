@@ -11,6 +11,7 @@ import scala.collection.mutable
  *
  *  {
  *    val l = <expr>
+ *    // code that may use l
  *    var r = l
  *    // code not using l
  *  }
@@ -19,6 +20,7 @@ import scala.collection.mutable
  *
  *  {
  *    var r = <expr>
+ *    // code that may use l
  *    // code not using l
  *  }
  */

@@ -14,12 +14,24 @@ import ast.tpd
  *
  *  The termination condition uses referential equality on Trees. Furthermore,
  *  termination relies of every optimisation to be shrinking transformations.
+ *
+ *  This phase is intended to be run multiple times in the compilation pipeline.
+ *  This is due to several reasons:
+ *   - running this phase early allows to reduce size of compilation unit, speeding up subsequent transformations.
+ *   - running this phase late allows to eliminate inefficiencies created by previous phase
+ *   - different patters are easier to optimize at different moments of pipeline
  */
 class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
   import tpd._
   override def phaseName: String = "simplify"
   override val cpy = tpd.cpy
 
+  /** The original intention is to run most optimizations both before and after erasure.
+   * Erasure creates new inefficiencies as well as new optimization opportunities.
+   *
+   * The order of optimizations is tuned to converge faster.
+   * Reordering them may require quadratically more rounds to finish.
+   */
   private def beforeErasure(implicit ctx: Context): List[Optimisation] =
     new InlineCaseIntrinsics        ::
     new RemoveUnnecessaryNullChecks ::
@@ -36,6 +48,7 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
     new ConstantFold                ::
     Nil
 
+  /** see comment on  beforeErasure */
   private def afterErasure(implicit ctx: Context): List[Optimisation] =
     new Valify(this)                ::
     new Devalify                    ::

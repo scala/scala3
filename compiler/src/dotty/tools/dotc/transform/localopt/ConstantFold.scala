@@ -11,11 +11,14 @@ import Simplify.desugarIdent
 /** Various constant folding.
  *
  *  - Starts/ends with the constant folding implemented in typer (ConstFold).
- *
+ *  - Join branches if they are "similar"
+ *  - regularize arithmetic and boolean expressions to have constants on the left, ie. 6 * 2 * a * 5 => 60 * a
  *  - (if) specific optimisation that propagate booleans, negation, and factor
- *    out (nested) if with equivalent branches wrt to isSimilar (using &&,||).
+ *    out (nested) if with equivalent branches wrt to isSimilar (using &&,||).  Dark:   ping @OlivierBlanvillain, I didn't understand this
  *
  *  - Constant propagation over pattern matching.
+ *
+ *  @author DarkDimius, OlivierBlanvillain
  */
  class ConstantFold(implicit val ctx: Context) extends Optimisation {
   import ast.tpd._

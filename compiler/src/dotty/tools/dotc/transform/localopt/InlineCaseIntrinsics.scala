@@ -10,12 +10,15 @@ import core.Flags._
 import ast.Trees._
 import transform.SymUtils._
 import Simplify.desugarIdent
+import dotty.tools.dotc.ast.tpd
 
 /** Inline case class specific methods using desugarings assumptions.
  *
  *  Note: to run this optimisation after erasure one would need to specialize
  *  it for constructor with outer pointer and values classes. There is
  *  probably no need to run this more than once.
+ *
+ *  @author DarkDimius, OlivierBlanvillain
  */
 class InlineCaseIntrinsics(implicit val ctx: Context) extends Optimisation {
   import ast.tpd._
