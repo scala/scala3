@@ -87,6 +87,7 @@ public enum ErrorMessageID {
     ValueClassParameterMayNotBeAVarID,
     ValueClassNeedsExactlyOneValParamID,
     OnlyCaseClassOrCaseObjectAllowedID,
+    ExpectedClassOrObjectDefID,
     ;
 
     public int errorNumber() {

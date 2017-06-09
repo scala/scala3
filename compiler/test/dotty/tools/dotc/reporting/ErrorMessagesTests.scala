@@ -792,4 +792,15 @@ class ErrorMessagesTests extends ErrorMessagesTest {
         assertEquals(err, OnlyCaseClassOrCaseObjectAllowed())
       }
 
+  @Test def expectedClassOrObjectDef =
+    checkMessagesAfter("frontend") {
+      """Foo"""
+    }
+      .expect { (ictx, messages) =>
+        implicit val ctx: Context = ictx
+        assertMessageCount(1, messages)
+        val err :: Nil = messages
+        assertEquals(err, ExpectedClassOrObjectDef())
+      }
+
 }
