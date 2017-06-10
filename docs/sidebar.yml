@@ -27,6 +27,8 @@ sidebar:
               url: docs/reference/implicit-function-types.html
             - title: Phantom Types
               url: docs/reference/phantom-types.html
+            - title: Literal Singleton Types
+              url: docs/reference/singleton-types.html
         - title: Enums
           subsection:
             - title: Enumerations
