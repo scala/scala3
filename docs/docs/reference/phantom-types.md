@@ -12,7 +12,7 @@ These are useful to prove static properties of the code using type evidences.
 As they have no effect on the runtime they can be erased from the resulting code by 
 the compiler once it has shown the constraints hold.
 
-When saying that a they have no effect on the runtime we do not only mean side effects 
+When saying that they have no effect on the runtime we do not only mean side effects 
 like IO, field mutation, exceptions and so on. We also imply that if a function receives 
 a phantom its result will not be affected by this argument.
 
@@ -79,7 +79,7 @@ from outside `MyPhantoms` unless an alias is defined for them.
 
 New phantom types can be defined using `type XYZ <: OtherPhantom` (where `>: MyPhantom.Nothing` 
 will be inferred), this would be the equivalent of `class XYZ extends OtherClass` on a types 
-only (no runtime definitions). Or aliased with `type MyAny = OtherPhantom`. Whitin `MyPhantoms` 
+only (no runtime definitions). Or aliased with `type MyAny = OtherPhantom`. Within `MyPhantoms` 
 it is possible to refer to `MyPhantoms.Any` and `MyPhantoms.Nothing` with `this.Any` and 
 `this.Nothing` (or just `Any` and `Nothing` but not recommended). Using this we will define 
 four the four phantoms: `Inky`, `Blinky`, `Pinky` and `Clyde`.

@@ -10,6 +10,9 @@ SONATYPE_PW=$3
 # PGP Credentials:
 PGP_PW=$4
 
+# Release command:
+RELEASE_CMD=$5
+
 if [ $SHOULD_RUN = false ]; then
   exit 0
 fi
@@ -30,7 +33,7 @@ CMD="     ;set credentials in ThisBuild := Seq(Credentials(\"Sonatype Nexus Repo
 CMD="$CMD ;set pgpPassphrase := Some(\"\"\"$4\"\"\".toCharArray)"
 CMD="$CMD ;set pgpSecretRing := file(\"/keys/secring.asc\")"
 CMD="$CMD ;set pgpPublicRing := file(\"/keys/pubring.asc\")"
-CMD="$CMD ;dotty-bootstrapped/publishSigned ;sonatypeRelease"
+CMD="$CMD $RELEASE_CMD"
 
 sbt -J-Xmx4096m \
     -J-XX:ReservedCodeCacheSize=512m \

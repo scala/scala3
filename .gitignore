@@ -22,6 +22,9 @@ project/local-plugins.sbt
 # npm
 node_modules
 
+# VS Code
+.vscode/
+
 # Scala-IDE specific
 .scala_dependencies
 .cache

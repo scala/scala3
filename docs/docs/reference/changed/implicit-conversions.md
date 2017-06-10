@@ -30,20 +30,21 @@ def convert[A, B](x: A)(implicit converter: ImplicitConverter[A, B]): B =
 its type checking because this turns out to be more efficient).
 
 In summary, previous code using implicit conversion parameters such as
-
 ```scala
-def useConversion(implicit f: A => B) = {
-  val y: A = ...
-  val x: B = a    // error under Dotty
-}
+    def useConversion(implicit f: A => B) = {
+      val y: A = ...
+      val x: B = a    // error under Dotty
+    }
 ```
+
 is no longer legal and has to be rewritten to
 ```scala
-def useConversion(implicit f: ImplicitConverter[A, B]) = {
-  val y: A = ...
-  val x: B = y    // OK
-}
+    def useConversion(implicit f: ImplicitConverter[A, B]) = {
+      val y: A = ...
+      val x: B = y    // OK
+    }
 ```
+
 ### Reference
 
 For more info, see [PR #2065](https://github.com/lampepfl/dotty/pull/2065).

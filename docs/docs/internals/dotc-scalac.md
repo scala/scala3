@@ -4,10 +4,10 @@ title: "Differences between Scalac and Dotty"
 ---
 
 Overview explanation how symbols, named types and denotations hang together:
-[Denotations.scala:22]
+[Denotations1]
 
 ### Denotation ###
-Comment with a few details: [Denotations.scala:70]
+Comment with a few details: [Denotations2]
 
 A `Denotation` is the result of a name lookup during a given period
 
@@ -97,6 +97,6 @@ if (sym is Flags.PackageClass)  // dotc (*)
 
 `@todo`
 
-[Denotations.scala:22]: https://github.com/lampepfl/dotty/blob/master/src/dotty/tools/dotc/core/Denotations.scala#L22
-[Denotations.scala:70]: https://github.com/lampepfl/dotty/blob/master/src/dotty/tools/dotc/core/Denotations.scala#L70
-[Signature.scala:7]: https://github.com/lampepfl/dotty/blob/master/src/dotty/tools/dotc/core/Signature.scala#L7
+[Denotations1]: https://github.com/lampepfl/dotty/blob/a527f3b1e49c0d48148ccfb2eb52e3302fc4a349/compiler/src/dotty/tools/dotc/core/Denotations.scala#L27-L72
+[Denotations2]: https://github.com/lampepfl/dotty/blob/a527f3b1e49c0d48148ccfb2eb52e3302fc4a349/compiler/src/dotty/tools/dotc/core/Denotations.scala#L77-L103
+[Signature1]: https://github.com/lampepfl/dotty/blob/a527f3b1e49c0d48148ccfb2eb52e3302fc4a349/compiler/src/dotty/tools/dotc/core/Signature.scala#L9-L33

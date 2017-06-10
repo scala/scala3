@@ -4,9 +4,11 @@ title: "Implicit Function Types"
 ---
 
 An implicit function type describes functions with implicit parameters. Example:
+
 ```scala
-type Contextual[T] = implicit Context => T
+    type Contextual[T] = implicit Context => T
 ```
+
 A value of implicit function type is applied to implicit arguments, in
 the same way a method with implicit parameters is applied. For instance:
 ```scala
