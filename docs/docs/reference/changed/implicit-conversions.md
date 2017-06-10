@@ -6,14 +6,12 @@ title: "Restrictions to Implicit Conversions"
 Previously, an implicit value of type `Function1`, or any of its subtypes
 could be used as an implicit conversion. That is, the following code would compile
 even though it probably masks a type error:
-
 ```scala
 implicit val m: Map[String, Int] = Map(1 -> "abc")
 
 val x: String = 1  // scalac: assigns "abc" to x
                    // Dotty: type error
 ```
-
 By contrast, Dotty only considers _methods_ as implicit conversions, so the
 `Map` value `m` above would not qualify as a conversion from `String` to `Int`.
 
@@ -32,17 +30,18 @@ def convert[A, B](x: A)(implicit converter: ImplicitConverter[A, B]): B =
 its type checking because this turns out to be more efficient).
 
 In summary, previous code using implicit conversion parameters such as
+
 ```scala
-def useConversion(implicit f: A => B) {
+def useConversion(implicit f: A => B) = {
   val y: A = ...
   val x: B = a    // error under Dotty
 }
 ```
 is no longer legal and has to be rewritten to
 ```scala
-def useConversion(implicit f: ImplicitConverter[A, B]) {
+def useConversion(implicit f: ImplicitConverter[A, B]) = {
   val y: A = ...
-  val x: B = a    // OK
+  val x: B = y    // OK
 }
 ```
 ### Reference
