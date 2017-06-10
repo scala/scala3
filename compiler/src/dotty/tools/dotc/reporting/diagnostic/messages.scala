@@ -1573,4 +1573,11 @@ object messages {
     val explanation = ""
   }
 
+  case class ExpectedClassOrObjectDef()(implicit ctx: Context)
+    extends Message(ExpectedClassOrObjectDefID) {
+    val kind = "Syntax"
+    val msg = "expected class or object definition"
+    val explanation = ""
+  }
+
 }
