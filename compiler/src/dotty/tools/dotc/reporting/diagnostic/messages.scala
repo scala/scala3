@@ -1580,4 +1580,10 @@ object messages {
     val explanation = ""
   }
 
+  case class SuperCallsNotAllowedInline(symbol: Symbol)(implicit ctx: Context)
+    extends Message(SuperCallsNotAllowedInlineID) {
+    val kind = "Syntax"
+    val msg = s"super call not allowed in inline $symbol"
+    val explanation = ""
+  }
 }
