@@ -196,7 +196,7 @@ class tests extends CompilerTest {
   @Test def neg_valueclasses_doubledefs = compileFile(negCustomArgs, "valueclasses-doubledefs")(allowDoubleBindings)
   @Test def neg_valueclasses_doubledefs2 = compileFile(negCustomArgs, "valueclasses-doubledefs2")(allowDoubleBindings)
   @Test def neg_valueclasses_pavlov = compileFile(negCustomArgs, "valueclasses-pavlov")(allowDoubleBindings)
-  @Test def neg_trailingUnderscore = compileFile(negCustomArgs, "trailingUnderscore")(List("-strict"))
+  @Test def neg_trailingUnderscore = compileFile(negCustomArgs, "trailingUnderscore", args = "-strict" :: Nil)
 
   val negTailcallDir = negDir + "tailcall/"
   @Test def neg_tailcall_t1672b = compileFile(negTailcallDir, "t1672b")
