@@ -15,6 +15,7 @@ import util.Positions._
 import Decorators._
 import config.Printers.typr
 import Symbols._, TypeUtils._
+import reporting.diagnostic.messages.SuperCallsNotAllowedInline
 
 /** A macro transform that runs immediately after typer and that performs the following functions:
  *
@@ -182,7 +183,7 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer  { thisTran
             transformSelect(paramFwd.adaptRef(fixSignature(tree)), Nil)
         case tree: Super =>
           if (ctx.owner.enclosingMethod.isInlineMethod)
-            ctx.error(em"super not allowed in inline ${ctx.owner}", tree.pos)
+            ctx.error(SuperCallsNotAllowedInline(ctx.owner), tree.pos)
           super.transform(tree)
         case tree: TypeApply =>
           val tree1 @ TypeApply(fn, args) = normalizeTypeArgs(tree)
