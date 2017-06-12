@@ -802,5 +802,22 @@ class ErrorMessagesTests extends ErrorMessagesTest {
         val err :: Nil = messages
         assertEquals(err, ExpectedClassOrObjectDef())
       }
+  @Test def anonymousFunctionMissingParamType =
+    checkMessagesAfter("refchecks") {
+      """
+        |object AnonymousF {
+        |  val f = { case l@List(1,2,3) => Some(l) }
+        |}""".stripMargin
+    }
+      .expect { (ictx, messages) =>
+        implicit val ctx: Context = ictx
+        val defn = ictx.definitions
+
+        assertMessageCount(1, messages)
+        val AnonymousFunctionMissingParamType(param, args, _, pt) :: Nil = messages
+        assertEquals("x$1", param.show)
+        assertEquals(s"List(ValDef(${param.show},TypeTree,EmptyTree))", args.toString)
+        assertEquals("?", pt.show)
+      }
 
 }
