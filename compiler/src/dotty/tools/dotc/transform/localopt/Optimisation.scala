@@ -14,7 +14,7 @@ trait Optimisation {
    */
   def transformer(localCtx: Context): Tree => Tree
 
-  def name: String = this.getClass.getName.split('.').last
+  def name: String = this.getClass.getSimpleName
 
   val NoVisitor: Tree => Unit = _ => ()
 }
