@@ -828,7 +828,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
         |}
         |
         |class B extends A {
-        |  @inline def bar(): Unit = super.foo()
+        |  inline def bar(): Unit = super.foo()
         |}
       """.stripMargin
     }

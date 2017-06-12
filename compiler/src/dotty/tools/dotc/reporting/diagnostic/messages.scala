@@ -1612,6 +1612,6 @@ object messages {
     extends Message(SuperCallsNotAllowedInlineID) {
     val kind = "Syntax"
     val msg = s"super call not allowed in inline $symbol"
-    val explanation = ""
+    val explanation = "Method inlining prohibits calling superclass methods, as it may lead to confusion about which super is being called"
   }
 }
