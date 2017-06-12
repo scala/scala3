@@ -27,10 +27,10 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
   override val cpy = tpd.cpy
 
   /** The original intention is to run most optimizations both before and after erasure.
-   * Erasure creates new inefficiencies as well as new optimization opportunities.
+   *  Erasure creates new inefficiencies as well as new optimization opportunities.
    *
-   * The order of optimizations is tuned to converge faster.
-   * Reordering them may require quadratically more rounds to finish.
+   *  The order of optimizations is tuned to converge faster.
+   *  Reordering them may require quadratically more rounds to finish.
    */
   private val beforeErasure: List[Optimisation] =
     new InlineCaseIntrinsics        ::
@@ -48,7 +48,7 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
     new ConstantFold                ::
     Nil
 
-  /** see comment on  beforeErasure */
+  /** See comment on beforeErasure */
   private val afterErasure: List[Optimisation] =
     new Valify(this)                ::
     new Devalify                    ::
@@ -68,8 +68,8 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
   var fuel: Int = -1
 
 
-  /** using fuel stops any inlining and prevents optimizations from triggering.
-   * on my tests it gives 20% slowdown, so it is going to be disabled in public builds.
+  /** Using fuel stops any inlining and prevents optimizations from triggering.
+   *  on my tests it gives 20% slowdown, so it is going to be disabled in public builds.
    */
   private final val useFuel = false
 
@@ -95,7 +95,7 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
     val ctx0 = ctx
     if (ctx.settings.optimise.value && !tree.symbol.is(Label)) {
       implicit val ctx: Context = ctx0.withOwner(tree.symbol(ctx0))
-      
+
       var rhs0 = tree.rhs
       var rhs1: Tree = null
       while (rhs1 ne rhs0) {

@@ -15,11 +15,12 @@ import transform.SymUtils._
 
 /** Inline vals and remove vals that are aliases to other vals
  *
- * Notion of alias is a by-value notion, so "good" casts are ignored.
+ *  Notion of alias is a by-value notion, so "good" casts are ignored.
  *
- * This phase has to be careful not to eliminate vals that are parts of other types
- * @author DarkDimius, OlivierBlanvillain
- * */
+ *  This phase has to be careful not to eliminate vals that are parts of other types
+ *
+ *  @author DarkDimius, OlivierBlanvillain
+ */
 class Devalify extends Optimisation {
   import ast.tpd._
 
@@ -98,7 +99,7 @@ class Devalify extends Optimisation {
     doVisit(tree, timesUsed)
   }
 
-  override def transformer(implicit ctx: Context): Tree => Tree = {
+  def transformer(implicit ctx: Context): Tree => Tree = {
     val valsToDrop = defined -- timesUsed.keySet -- timesUsedAsType.keySet
     val copiesToReplaceAsDuplicates = copies.filter { x =>
       val rhs = dropCasts(x._2)

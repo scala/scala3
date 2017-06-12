@@ -17,7 +17,6 @@ import scala.collection.mutable
  *  - fallsback to `tpe.isNotNull`, which will eventually be true for non nullable types.
  *  - in (a.call; a == null), the first call throws a NPE if a is null; the test can be removed.
  *
- *
  *  @author DarkDimius, Jvican, OlivierBlanvillain
  */
  class RemoveUnnecessaryNullChecks extends Optimisation {
@@ -78,7 +77,7 @@ import scala.collection.mutable
   }
 
 
-  def transformer(implicit localCtx: Context): Tree => Tree = {
+  def transformer(implicit ctx: Context): Tree => Tree = {
     def isNullLiteral(tree: Tree) = tree match {
       case literal: Literal =>
         literal.const.tag == NullTag

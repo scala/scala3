@@ -11,7 +11,7 @@ import ast.Trees._
 import Simplify.desugarIdent
 
 /** Removes side effect free statements in blocks and Defdef.
- *  Flattens blocks(except Closure-blocks)
+ *  Flattens blocks (except Closure-blocks)
  *  Note: BoxedUnit currently messes up this phase when run after erasure
  *
  *  @author DarkDimius, OlivierBlanvillain
@@ -59,7 +59,7 @@ class DropNoEffects(val simplifyPhase: Simplify) extends Optimisation {
     case t => t
   }
 
-  def keepOnlySideEffects(t: Tree)(implicit ctx: Context):  Tree = t match {
+  def keepOnlySideEffects(t: Tree)(implicit ctx: Context): Tree = t match {
     case l: Literal =>
       EmptyTree
 

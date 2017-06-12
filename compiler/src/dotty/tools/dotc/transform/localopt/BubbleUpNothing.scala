@@ -6,13 +6,12 @@ import core.Symbols._
 import ast.Trees._
 import dotty.tools.dotc.ast.tpd
 
-/**
- * If a block has a statement that evaluates to Nothing:
- *  - Every pure statement dirrectly preceding an expression that returns Nothing can be removed,
- *  - as every statement after an expression that returns Nothing can be removed
+/** If a block has a statement that evaluates to Nothing:
+ *   - Every pure statement dirrectly preceding an expression that returns Nothing can be removed,
+ *   - as every statement after an expression that returns Nothing can be removed
  *
- * If an If condition evalutates to Nothing, the entire If can be replaced by condition
- * If an argument evaluates to Nothing, the entire call can be replaced by evaluation of arguments.
+ *  If an If condition evalutates to Nothing, the entire If can be replaced by condition
+ *  If an argument evaluates to Nothing, the entire call can be replaced by evaluation of arguments.
  *
  *  This optimisation makes it rather tricky to write meaningful examples
  *  since the compiler will often be able to reduce them to a single main
@@ -25,11 +24,7 @@ class BubbleUpNothing extends Optimisation {
 
   def visitor(implicit ctx: Context) = NoVisitor
 
-
-  /** Does the actual Tree => Tree transformation, possibly using a different
-   * context from the one used in Optimisation.
-   */
-  def transformer(implicit ctx: Context): (tpd.Tree) => tpd.Tree = {
+  def transformer(implicit ctx: Context): Tree => Tree = {
     case t @ Apply(Select(Notathing(qual), _), args) =>
       Typed(qual, TypeTree(t.tpe))
     // This case leads to complications with multiple argument lists,

@@ -11,10 +11,16 @@ import Simplify.desugarIdent
 /** Various constant folding.
  *
  *  - Starts/ends with the constant folding implemented in typer (ConstFold).
+ *
  *  - Join branches if they are "similar"
- *  - regularize arithmetic and boolean expressions to have constants on the left, ie. 6 * 2 * a * 5 => 60 * a
+ *
+ *  - regularize arithmetic and boolean expressions to have constants on the
+ *    left, ie. 6 * 2 * a * 5 => 60 * a
+ *
  *  - (if) specific optimisation that propagate booleans, negation, and factor
- *    out (nested) if with equivalent branches wrt to isSimilar (using &&,||).  Dark:   ping @OlivierBlanvillain, I didn't understand this
+ *    out (nested) if with equivalent branches wrt to isSimilar. For example:
+ *      - if (b) exp else exp → b; exp
+ *      - if (b1) e1 else if (b2) e1 else e2 → if (b1 || b2) e1 else e2
  *
  *  - Constant propagation over pattern matching.
  *
@@ -209,7 +215,7 @@ import Simplify.desugarIdent
     case _ => false
   }
 
-  def isBool(tpe: Type)(implicit ctx: Context): Boolean = tpe.derivesFrom(defn.BooleanClass)
+  def isBool(tpe: Type)(implicit ctx: Context): Boolean       = tpe.derivesFrom(defn.BooleanClass)
   def isConst(tpe: Type)(implicit ctx: Context): Boolean      = tpe.isInstanceOf[ConstantType]
   def asConst(tpe: Type)(implicit ctx: Context): ConstantType = tpe.asInstanceOf[ConstantType]
 }

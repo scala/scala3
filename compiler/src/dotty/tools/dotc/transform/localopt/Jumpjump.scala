@@ -13,8 +13,8 @@ import core.Flags._
 
 /** Rewrites pairs of consecutive LabelDef jumps by jumping directly to the target.
  *
- * @author DarkDimius, OlivierBlanvillain
- * */
+ *  @author DarkDimius, OlivierBlanvillain
+ */
 class Jumpjump extends Optimisation {
   import ast.tpd._
 

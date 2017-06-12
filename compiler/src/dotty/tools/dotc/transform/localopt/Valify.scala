@@ -10,8 +10,8 @@ import scala.collection.mutable
 
 /** Rewrite vars with exactly one assignment as vals.
  *
- * @author DarkDimius, OlivierBlanvillain
- * */
+ *  @author DarkDimius, OlivierBlanvillain
+ */
 class Valify(val simplifyPhase: Simplify) extends Optimisation {
   import ast.tpd._
 
@@ -24,7 +24,7 @@ class Valify(val simplifyPhase: Simplify) extends Optimisation {
 
   val secondWrite: mutable.Map[Symbol, Assign] = mutable.Map()
 
-  def visitor(implicit localCtx: Context): Tree => Unit = {
+  def visitor(implicit ctx: Context): Tree => Unit = {
     case t: ValDef if t.symbol.is(Mutable, Lazy) && !t.symbol.is(Method) && !t.symbol.owner.isClass =>
       if (isPureExpr(t.rhs))
         defined(t.symbol) = t

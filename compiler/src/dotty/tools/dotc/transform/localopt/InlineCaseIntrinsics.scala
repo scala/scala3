@@ -23,9 +23,9 @@ import dotty.tools.dotc.ast.tpd
 class InlineCaseIntrinsics extends Optimisation {
   import ast.tpd._
 
-  def visitor(implicit ctx: Context): (tpd.Tree) => Unit = NoVisitor
+  def visitor(implicit ctx: Context): Tree => Unit = NoVisitor
 
-  def transformer(implicit localCtx: Context): Tree => Tree = {
+  def transformer(implicit ctx: Context): Tree => Tree = {
     // For synthetic applies on case classes (both dotty/scalac)
     // - CC.apply(args) → new CC(args)
     case a: Apply

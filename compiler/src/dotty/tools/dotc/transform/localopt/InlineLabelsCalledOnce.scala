@@ -10,9 +10,8 @@ import config.Printers.simplify
 
 /** Inlines LabelDef which are used exactly once.
  *
- * @author DarkDimius, OlivierBlanvillain
- *         
- * */
+ *  @author DarkDimius, OlivierBlanvillain
+ */
 class InlineLabelsCalledOnce extends Optimisation {
   import ast.tpd._
 
