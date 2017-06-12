@@ -1,5 +1,6 @@
 ---
 layout: main
+title: Search
 extraCSS:
     - css/toolbar.css
     - css/search.css
@@ -43,9 +44,10 @@ extraCSS:
     })();
 
     // Set search term and back button:
-    var searchTerm = parameters["searchTerm"];
+    var searchTerm = decodeURIComponent(parameters["searchTerm"]);
     document.getElementById("searching-for").innerHTML = 'Search results for "' + searchTerm + '"';
     document.getElementById("back-anchor").href = parameters["previousUrl"];
+    document.title = searchTerm + ' - Search results';
 
     if (!window.Worker) {
         document.getElementById("searching-for").innerHTML =
