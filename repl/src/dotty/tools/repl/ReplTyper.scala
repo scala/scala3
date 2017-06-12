@@ -4,6 +4,7 @@ package repl
 import java.io.{ File => JFile }
 
 import dotc.ast.untpd
+import dotc.ast.tpd
 import dotc.{ CompilationUnit, Compiler }
 import dotc.core.{ Phases, Decorators, Flags }
 import Decorators._, Flags._
@@ -12,35 +13,18 @@ import dotc.typer.FrontEnd
 import backend.jvm.GenBCode
 import dotc.core.Contexts.Context
 import dotc.util.Positions._
+import dotc.reporting.diagnostic.MessageContainer
 import dotc.reporting._
 import io._
 
-class ReplCompiler(ictx: Context) extends Compiler {
-
-  ictx.base.initialize()(ictx)
+class ReplTyper(ictx: Context) extends Compiler {
 
   type NextRes = Int
-
-  /** A GenBCode phase that outputs to a virtual directory */
-  private class REPLGenBCode extends GenBCode {
-    override def phaseName = "replGenBCode"
-
-    /** Directory to save class files to */
-    private val virtualDirectory =
-      if (ictx.settings.d.isDefault(ictx))
-        new VirtualDirectory("(memory)", None)
-      else
-        new PlainDirectory(new Directory(new JFile(ictx.settings.d.value(ictx))))
-
-    override def outputDir(implicit ctx: Context) = virtualDirectory
-  }
 
   private class REPLFrontEnd extends FrontEnd {
     override def phaseName = "replFrontEnd"
 
     override def runOn(units: List[CompilationUnit])(implicit ctx: Context) = {
-      for (unit <- units) do println(unit.untpdTree.show)
-
       val unitContexts = for (unit <- units) yield ctx.fresh.setCompilationUnit(unit)
       var remaining = unitContexts
       while (remaining.nonEmpty) {
@@ -53,10 +37,7 @@ class ReplCompiler(ictx: Context) extends Compiler {
     }
   }
 
-  override def phases = {
-    val replPhases = Phases.replace(classOf[FrontEnd], _ => new REPLFrontEnd :: Nil, super.phases)
-    Phases.replace(classOf[GenBCode], _ => new REPLGenBCode :: Nil, replPhases)
-  }
+  override def phases = List(new REPLFrontEnd :: Nil)
 
   def freeToAssigned(trees: Seq[untpd.Tree], currentRes: Int)
                     (implicit ctx: Context): (NextRes, Seq[untpd.Tree]) = {
@@ -82,7 +63,18 @@ class ReplCompiler(ictx: Context) extends Compiler {
       .withPos(Position(trees.head.pos.start, trees.last.pos.end))
   }
 
-  def compile(parsed: Parsed, currentRes: Int)(implicit ctx: Context): NextRes = {
+  def extractStats(tree: tpd.Tree)(implicit ctx: Context): Seq[tpd.Tree] =
+    tree match {
+      case tpd.TypeDef(_, tpl: tpd.Template) =>
+        tpl.body.collect { case tree: tpd.Tree => tree }
+      case _ => Nil
+    }
+
+  sealed trait Result
+  case class TypedTrees(trees: Seq[tpd.Tree]) extends Result
+  case class TypeErrors(msgs: Seq[MessageContainer]) extends Result
+
+  def typeCheck(parsed: Parsed, currentRes: Int)(implicit ctx: Context): (NextRes, Result) = {
     val reporter = new StoreReporter(null) with UniqueMessagePositions with HideNonSensicalMessages
 
     val unit = new CompilationUnit(new SourceFile(s"repl-run-$currentRes", parsed.sourceCode))
@@ -92,6 +84,11 @@ class ReplCompiler(ictx: Context) extends Compiler {
     val run = newRun(ctx.fresh.setReporter(reporter))
     run.compileUnits(unit :: Nil)
 
-    newRes
+    val errs = reporter.removeBufferedMessages
+    val res =
+      if (errs.isEmpty) TypedTrees(extractStats(unit.tpdTree))
+      else TypeErrors(errs)
+
+    (newRes, res)
   }
 }

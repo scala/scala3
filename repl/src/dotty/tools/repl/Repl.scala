@@ -21,11 +21,13 @@ class Repl(settings: Array[String]) extends Driver {
   private[this] def initializeCtx = {
     val rootCtx = initCtx.fresh
     val summary = CompilerCommand.distill(settings)(rootCtx)
-    rootCtx.setSettings(summary.sstate)
+    val ictx = rootCtx.setSettings(summary.sstate)
+    ictx.base.initialize()(ictx)
+    ictx
   }
 
   private[this] var myCtx = initializeCtx
-  private[this] var compiler = new ReplCompiler(myCtx)
+  private[this] var typer = new ReplTyper(myCtx)
 
   private def readLine(history: History) =
     AmmoniteReader(history)(myCtx).prompt()
@@ -49,7 +51,7 @@ class Repl(settings: Array[String]) extends Driver {
     }
 
   def compile(parsed: Parsed, line: Int): Unit =
-    compiler.compile(parsed, line)(myCtx)
+    typer.typeCheck(parsed, line)(myCtx)
 
   def interpretCommand(cmd: Command, history: History): Unit = cmd match {
     case UnknownCommand(cmd) => {
