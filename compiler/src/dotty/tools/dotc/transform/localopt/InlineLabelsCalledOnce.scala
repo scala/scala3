@@ -8,14 +8,18 @@ import transform.SymUtils._
 import scala.collection.mutable
 import config.Printers.simplify
 
-/** Inlines LabelDef which are used exactly once. */
-class InlineLabelsCalledOnce(implicit val ctx: Context) extends Optimisation {
+/** Inlines LabelDef which are used exactly once.
+ *
+ * @author DarkDimius, OlivierBlanvillain
+ *         
+ * */
+class InlineLabelsCalledOnce extends Optimisation {
   import ast.tpd._
 
   val timesUsed = mutable.HashMap[Symbol, Int]()
   val defined   = mutable.HashMap[Symbol, DefDef]()
 
-  val visitor: Tree => Unit = {
+  def visitor(implicit ctx: Context): Tree => Unit = {
     case d: DefDef if d.symbol.is(Label)  =>
       var isRecursive = false
       d.rhs.foreachSubTree { x =>
@@ -32,12 +36,12 @@ class InlineLabelsCalledOnce(implicit val ctx: Context) extends Optimisation {
     case _ =>
   }
 
-  def transformer(localCtx: Context): Tree => Tree = {
+  def transformer(implicit ctx: Context): Tree => Tree = {
     case a: Apply =>
       defined.get(a.symbol) match {
         case Some(defDef) if usedOnce(a) && a.symbol.info.paramInfoss == List(Nil) =>
           simplify.println(s"Inlining labeldef ${defDef.name}")
-          defDef.rhs.changeOwner(defDef.symbol, localCtx.owner)
+          defDef.rhs.changeOwner(defDef.symbol, ctx.owner)
 
         case Some(defDef) if defDef.rhs.isInstanceOf[Literal] =>
           defDef.rhs
@@ -57,11 +61,11 @@ class InlineLabelsCalledOnce(implicit val ctx: Context) extends Optimisation {
     case t => t
   }
 
-  def usedN(t: Tree, n: Int): Boolean =
+  def usedN(t: Tree, n: Int)(implicit ctx: Context): Boolean =
     t.symbol.is(Label)                    &&
     timesUsed.getOrElse(t.symbol, 0) == n &&
     defined.contains(t.symbol)
 
-  def usedOnce(t: Tree): Boolean  = usedN(t, 1)
-  def neverUsed(t: Tree): Boolean = usedN(t, 0)
+  def usedOnce(t: Tree)(implicit ctx: Context): Boolean  = usedN(t, 1)
+  def neverUsed(t: Tree)(implicit ctx: Context): Boolean = usedN(t, 0)
 }

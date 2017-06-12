@@ -19,12 +19,12 @@ import transform.SymUtils._
  *
  *  @author DarkDimius, OlivierBlanvillain
  */
- class DropGoodCasts(implicit val ctx: Context) extends Optimisation {
+ class DropGoodCasts extends Optimisation {
   import ast.tpd._
 
-  val visitor = NoVisitor
+  def visitor(implicit ctx: Context) = NoVisitor
 
-  def transformer(localCtx: Context): Tree => Tree = {
+  def transformer(implicit ctx: Context): Tree => Tree = {
     case t @ If(cond, thenp, elsep) =>
       val newTypeTested = collectTypeTests(cond)
       val nullTested = collectNullTests(cond).toSet

@@ -16,15 +16,18 @@ import scala.collection.mutable
  *  - literal is either null itself or non null
  *  - fallsback to `tpe.isNotNull`, which will eventually be true for non nullable types.
  *  - in (a.call; a == null), the first call throws a NPE if a is null; the test can be removed.
+ *
+ *
+ *  @author DarkDimius, Jvican, OlivierBlanvillain
  */
- class RemoveUnnecessaryNullChecks(implicit val ctx: Context) extends Optimisation {
+ class RemoveUnnecessaryNullChecks extends Optimisation {
   import ast.tpd._
 
   val initializedVals = mutable.HashSet[Symbol]()
 
   val checkGood = mutable.HashMap[Symbol, Set[Symbol]]()
 
-  def isGood(t: Symbol): Boolean = {
+  def isGood(t: Symbol)(implicit ctx: Context): Boolean = {
     t.exists && initializedVals.contains(t) && {
       var changed = true
       var set = Set(t)
@@ -37,7 +40,7 @@ import scala.collection.mutable
     }
   }
 
-  val visitor: Tree => Unit = {
+  def visitor(implicit ctx: Context): Tree => Unit = {
     case vd: ValDef =>
       val rhs = vd.rhs
       if (!vd.symbol.is(Mutable) && !rhs.isEmpty) {
@@ -75,8 +78,7 @@ import scala.collection.mutable
   }
 
 
-  def transformer(localCtx: Context): Tree => Tree = {
-    implicit val ctx: Context = localCtx
+  def transformer(implicit localCtx: Context): Tree => Tree = {
     def isNullLiteral(tree: Tree) = tree match {
       case literal: Literal =>
         literal.const.tag == NullTag

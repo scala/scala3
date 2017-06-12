@@ -4,6 +4,7 @@ package transform.localopt
 import core.Contexts.Context
 import core.Symbols._
 import ast.Trees._
+import dotty.tools.dotc.ast.tpd
 
 /**
  * If a block has a statement that evaluates to Nothing:
@@ -19,12 +20,16 @@ import ast.Trees._
  *
  *  @author DarkDimius, OlivierBlanvillain
  */
-class BubbleUpNothing(implicit val ctx: Context) extends Optimisation {
+class BubbleUpNothing extends Optimisation {
   import ast.tpd._
 
-  val visitor = NoVisitor
+  def visitor(implicit ctx: Context) = NoVisitor
 
-  def transformer(localCtx: Context): Tree => Tree = {
+
+  /** Does the actual Tree => Tree transformation, possibly using a different
+   * context from the one used in Optimisation.
+   */
+  def transformer(implicit ctx: Context): (tpd.Tree) => tpd.Tree = {
     case t @ Apply(Select(Notathing(qual), _), args) =>
       Typed(qual, TypeTree(t.tpe))
     // This case leads to complications with multiple argument lists,
@@ -50,8 +55,8 @@ class BubbleUpNothing(implicit val ctx: Context) extends Optimisation {
   }
 
   object Notathing {
-    def unapply(t: Tree): Option[Tree] = Option(lookup(t))
-    def lookup(t: Tree): Tree = t match {
+    def unapply(t: Tree)(implicit ctx: Context): Option[Tree] = Option(lookup(t))
+    def lookup(t: Tree)(implicit ctx: Context): Tree = t match {
       case x if x.tpe.derivesFrom(defn.NothingClass) => t
       case Typed(x, _) => lookup(x)
       case Block(_, x) => lookup(x)
@@ -59,7 +64,7 @@ class BubbleUpNothing(implicit val ctx: Context) extends Optimisation {
     }
   }
 
-  def notathing(t: Tree): Boolean = t match {
+  def notathing(t: Tree)(implicit ctx: Context): Boolean = t match {
     case Notathing(_) => true
     case _ => false
   }

@@ -9,14 +9,18 @@ import core.Flags._
 import ast.Trees._
 import scala.collection.mutable
 
-/** Inlines Option methods whose result is known statically. */
-class InlineOptions(implicit val ctx: Context) extends Optimisation {
+/** Inlines Option methods whose result is known statically.
+ *
+ *
+ * @author DarkDimius, OlivierBlanvillain
+ * */
+class InlineOptions extends Optimisation {
   import ast.tpd._
 
-  val somes = mutable.HashMap[Symbol, Tree]()
-  val nones = mutable.HashSet[Symbol]()
+  private val somes = mutable.HashMap[Symbol, Tree]()
+  private val nones = mutable.HashSet[Symbol]()
 
-  val visitor: Tree => Unit = {
+  def visitor(implicit ctx: Context): Tree => Unit = {
     case valdef: ValDef if !valdef.symbol.is(Mutable) &&
       valdef.rhs.isInstanceOf[Apply] && valdef.rhs.tpe.derivesFrom(defn.SomeClass) &&
       valdef.rhs.symbol.isPrimaryConstructor =>
@@ -29,7 +33,7 @@ class InlineOptions(implicit val ctx: Context) extends Optimisation {
     case _ =>
   }
 
-  def transformer(localCtx: Context): Tree => Tree = { tree =>
+  def transformer(implicit ctx: Context): Tree => Tree = { tree =>
     def rewriteSelect(x: Tree) = x match {
       case Select(rec, nm) if nm == nme.get       && somes.contains(rec.symbol) => somes(rec.symbol)
       case Select(rec, nm) if nm == nme.isDefined && somes.contains(rec.symbol) => Literal(Constant(true))

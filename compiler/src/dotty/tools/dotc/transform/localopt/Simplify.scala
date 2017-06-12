@@ -32,7 +32,7 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
    * The order of optimizations is tuned to converge faster.
    * Reordering them may require quadratically more rounds to finish.
    */
-  private def beforeErasure(implicit ctx: Context): List[Optimisation] =
+  private val beforeErasure: List[Optimisation] =
     new InlineCaseIntrinsics        ::
     new RemoveUnnecessaryNullChecks ::
     new InlineOptions               ::
@@ -49,7 +49,7 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
     Nil
 
   /** see comment on  beforeErasure */
-  private def afterErasure(implicit ctx: Context): List[Optimisation] =
+  private val afterErasure: List[Optimisation] =
     new Valify(this)                ::
     new Devalify                    ::
     new Jumpjump                    ::

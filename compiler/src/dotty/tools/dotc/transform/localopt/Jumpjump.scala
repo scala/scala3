@@ -11,13 +11,16 @@ import scala.collection.mutable
 import config.Printers.simplify
 import core.Flags._
 
-/** Rewrites pairs of consecutive LabelDef jumps by jumping directly to the target. */
-class Jumpjump(implicit val ctx: Context) extends Optimisation {
+/** Rewrites pairs of consecutive LabelDef jumps by jumping directly to the target.
+ *
+ * @author DarkDimius, OlivierBlanvillain
+ * */
+class Jumpjump extends Optimisation {
   import ast.tpd._
 
   val defined = mutable.HashMap[Symbol, Symbol]()
 
-  val visitor: Tree => Unit = {
+  def visitor(implicit ctx: Context): Tree => Unit = {
     case defdef: DefDef if defdef.symbol.is(Label)  =>
       defdef.rhs match {
         case Apply(t, args)
@@ -34,7 +37,7 @@ class Jumpjump(implicit val ctx: Context) extends Optimisation {
     case _ =>
   }
 
-  def transformer(localCtx: Context): Tree => Tree = {
+  def transformer(implicit ctx: Context): Tree => Tree = {
     case a: Apply if  defined.contains(a.fun.symbol) =>
       defined.get(a.symbol) match {
         case None => a

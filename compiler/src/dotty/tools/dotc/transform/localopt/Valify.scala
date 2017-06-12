@@ -8,8 +8,11 @@ import core.Flags._
 import ast.Trees._
 import scala.collection.mutable
 
-/** Rewrite vars with exactly one assignment as vals. */
-class Valify(val simplifyPhase: Simplify)(implicit val ctx: Context) extends Optimisation {
+/** Rewrite vars with exactly one assignment as vals.
+ *
+ * @author DarkDimius, OlivierBlanvillain
+ * */
+class Valify(val simplifyPhase: Simplify) extends Optimisation {
   import ast.tpd._
 
   // Either a duplicate or a read through series of immutable fields.
@@ -21,7 +24,7 @@ class Valify(val simplifyPhase: Simplify)(implicit val ctx: Context) extends Opt
 
   val secondWrite: mutable.Map[Symbol, Assign] = mutable.Map()
 
-  val visitor: Tree => Unit = {
+  def visitor(implicit localCtx: Context): Tree => Unit = {
     case t: ValDef if t.symbol.is(Mutable, Lazy) && !t.symbol.is(Method) && !t.symbol.owner.isClass =>
       if (isPureExpr(t.rhs))
         defined(t.symbol) = t
@@ -44,7 +47,7 @@ class Valify(val simplifyPhase: Simplify)(implicit val ctx: Context) extends Opt
     case _ =>
   }
 
-  def transformer(localCtx: Context): Tree => Tree = {
+  def transformer(implicit ctx: Context): Tree => Tree = {
     case t: Block => // Drop non-side-effecting stats
       val valdefs = t.stats.collect {
         case t: ValDef if defined.contains(t.symbol) => t

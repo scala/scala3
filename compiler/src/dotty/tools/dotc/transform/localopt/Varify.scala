@@ -24,14 +24,14 @@ import scala.collection.mutable
  *    // code not using l
  *  }
  */
- class Varify(implicit val ctx: Context) extends Optimisation {
+ class Varify extends Optimisation {
   import ast.tpd._
 
   val paramsTimesUsed = mutable.HashMap[Symbol, Int]()
 
   val possibleRenames = mutable.HashMap[Symbol, Set[Symbol]]()
 
-  val visitor: Tree => Unit = {
+  def visitor(implicit ctx: Context): Tree => Unit = {
     case t: ValDef if t.symbol.is(Param) =>
       paramsTimesUsed += (t.symbol -> 0)
 
@@ -52,7 +52,7 @@ import scala.collection.mutable
     case _ =>
   }
 
-  def transformer(localCtx: Context): Tree => Tree = {
+  def transformer(implicit ctx: Context): Tree => Tree = {
     val paramCandidates = paramsTimesUsed.filter(kv => kv._2 == 1).keySet
     val renames: Map[Symbol, Symbol] = possibleRenames.iterator
       .map(kv => (kv._1, kv._2.intersect(paramCandidates)))

@@ -20,12 +20,12 @@ import dotty.tools.dotc.ast.tpd
  *
  *  @author DarkDimius, OlivierBlanvillain
  */
-class InlineCaseIntrinsics(implicit val ctx: Context) extends Optimisation {
+class InlineCaseIntrinsics extends Optimisation {
   import ast.tpd._
 
-  val visitor = NoVisitor
+  def visitor(implicit ctx: Context): (tpd.Tree) => Unit = NoVisitor
 
-  def transformer(localCtx: Context): Tree => Tree = {
+  def transformer(implicit localCtx: Context): Tree => Tree = {
     // For synthetic applies on case classes (both dotty/scalac)
     // - CC.apply(args) → new CC(args)
     case a: Apply
@@ -125,7 +125,7 @@ class InlineCaseIntrinsics(implicit val ctx: Context) extends Optimisation {
 
   // Apply fun may be a side-effectful function. E.g. a block, see tests/run/t4859.scala
   // we need to maintain expressions that were in this block
-  def evalreceiver(a: Apply, res: Tree) = {
+  def evalreceiver(a: Apply, res: Tree)(implicit ctx: Context) = {
     def receiver(t: Tree): Tree = t match {
       case TypeApply(fun, targs) if fun.symbol eq t.symbol => receiver(fun)
       case Apply(fn, args) if fn.symbol == t.symbol => receiver(fn)

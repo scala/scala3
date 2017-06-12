@@ -16,12 +16,12 @@ import Simplify.desugarIdent
  *
  *  @author DarkDimius, OlivierBlanvillain
  */
-class DropNoEffects(val simplifyPhase: Simplify)(implicit val ctx: Context) extends Optimisation {
+class DropNoEffects(val simplifyPhase: Simplify) extends Optimisation {
   import ast.tpd._
 
-  val visitor = NoVisitor
+  def visitor(implicit ctx: Context) = NoVisitor
 
-  def transformer(localCtx: Context): Tree => Tree = {
+  def transformer(implicit ctx: Context): Tree => Tree = {
     // Remove empty blocks
     case Block(Nil, expr) => expr
 
@@ -59,7 +59,7 @@ class DropNoEffects(val simplifyPhase: Simplify)(implicit val ctx: Context) exte
     case t => t
   }
 
-  val keepOnlySideEffects: Tree => Tree = {
+  def keepOnlySideEffects(t: Tree)(implicit ctx: Context):  Tree = t match {
     case l: Literal =>
       EmptyTree
 
@@ -194,7 +194,7 @@ class DropNoEffects(val simplifyPhase: Simplify)(implicit val ctx: Context) exte
   )
 
   /** Does this tree has side effects? This is an approximation awaiting real purity analysis... */
-  def effectsDontEscape(t: Tree): Boolean = t match {
+  def effectsDontEscape(t: Tree)(implicit ctx: Context): Boolean = t match {
     case Apply(fun, _) if fun.symbol.isConstructor && constructorWhiteList.contains(fun.symbol.owner.fullName.toString) =>
       true
     case Apply(fun, _) if methodsWhiteList.contains(fun.symbol.fullName.toString) =>

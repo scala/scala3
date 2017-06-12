@@ -20,7 +20,7 @@ import transform.SymUtils._
  * This phase has to be careful not to eliminate vals that are parts of other types
  * @author DarkDimius, OlivierBlanvillain
  * */
-class Devalify(implicit val ctx: Context) extends Optimisation {
+class Devalify extends Optimisation {
   import ast.tpd._
 
   val timesUsed = mutable.HashMap[Symbol, Int]()
@@ -31,7 +31,7 @@ class Devalify(implicit val ctx: Context) extends Optimisation {
   // Either a duplicate or a read through series of immutable fields
   val copies = mutable.HashMap[Symbol, Tree]()
 
-  def visitType(tp: Type): Unit = {
+  def visitType(tp: Type)(implicit ctx: Context): Unit = {
     tp.foreachPart(x => x match {
       case TermRef(NoPrefix, _) =>
         val b4 = timesUsedAsType.getOrElseUpdate(x.termSymbol, 0)
@@ -40,7 +40,7 @@ class Devalify(implicit val ctx: Context) extends Optimisation {
     })
   }
 
-  def doVisit(tree: Tree, used: mutable.HashMap[Symbol, Int]): Unit = tree match {
+  def doVisit(tree: Tree, used: mutable.HashMap[Symbol, Int])(implicit ctx: Context): Unit = tree match {
     case valdef: ValDef if !valdef.symbol.is(Param | Mutable | Module | Lazy) &&
                            valdef.symbol.exists && !valdef.symbol.owner.isClass =>
       defined += valdef.symbol
@@ -73,7 +73,7 @@ class Devalify(implicit val ctx: Context) extends Optimisation {
     case _ =>
   }
 
-  def visitor: Tree => Unit = { tree =>
+  def visitor(implicit ctx: Context): Tree => Unit = { tree =>
     def crossingClassBoundaries(t: Tree): Boolean = t match {
       case _: New      => true
       case _: Template => true
@@ -98,7 +98,7 @@ class Devalify(implicit val ctx: Context) extends Optimisation {
     doVisit(tree, timesUsed)
   }
 
-  def transformer(localCtx: Context): Tree => Tree = {
+  override def transformer(implicit ctx: Context): Tree => Tree = {
     val valsToDrop = defined -- timesUsed.keySet -- timesUsedAsType.keySet
     val copiesToReplaceAsDuplicates = copies.filter { x =>
       val rhs = dropCasts(x._2)

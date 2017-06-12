@@ -17,7 +17,7 @@ import config.Printers.simplify
  *  parameter value classes. The main motivation is to get ride of all the
  *  intermediate tuples coming from pattern matching expressions.
  */
-class InlineLocalObjects(implicit val ctx: Context) extends Optimisation {
+class InlineLocalObjects extends Optimisation {
   import ast.tpd._
 
   // In the end only calls constructor. Reason for unconditional inlining
@@ -27,7 +27,7 @@ class InlineLocalObjects(implicit val ctx: Context) extends Optimisation {
   val forwarderWritesTo = mutable.HashMap[Symbol, Symbol]()
   val gettersCalled = mutable.HashSet[Symbol]()
 
-  def followTailPerfect(t: Tree, symbol: Symbol): Unit = {
+  def followTailPerfect(t: Tree, symbol: Symbol)(implicit ctx: Context): Unit = {
     t match {
       case Block(_, expr) => followTailPerfect(expr, symbol)
       case If(_, thenp, elsep) => followTailPerfect(thenp, symbol); followTailPerfect(elsep, symbol);
@@ -43,7 +43,7 @@ class InlineLocalObjects(implicit val ctx: Context) extends Optimisation {
     }
   }
 
-  val visitor: Tree => Unit = {
+  def visitor(implicit ctx: Context): Tree => Unit = {
     case vdef: ValDef if (vdef.symbol.info.classSymbol is CaseClass) &&
                          !vdef.symbol.is(Lazy)                       &&
                          !vdef.symbol.info.classSymbol.caseAccessors.exists(x => x.is(Mutable)) =>
@@ -63,7 +63,7 @@ class InlineLocalObjects(implicit val ctx: Context) extends Optimisation {
     case _ =>
   }
 
-  def transformer(localCtx: Context): Tree => Tree = {
+  def transformer(implicit ctx: Context): Tree => Tree = {
     var hasChanged = true
     while(hasChanged) {
       hasChanged = false

@@ -20,12 +20,12 @@ import Simplify.desugarIdent
  *
  *  @author DarkDimius, OlivierBlanvillain
  */
- class ConstantFold(implicit val ctx: Context) extends Optimisation {
+ class ConstantFold extends Optimisation {
   import ast.tpd._
 
-  val visitor = NoVisitor
+  def visitor(implicit ctx: Context) = NoVisitor
 
-  def transformer(localCtx: Context): Tree => Tree = { x => preEval(x) match {
+  def transformer(implicit ctx: Context): Tree => Tree = { x => preEval(x) match {
     // TODO: include handling of isInstanceOf similar to one in IsInstanceOfEvaluator
     // TODO: include methods such as Int.int2double(see ./tests/pos/harmonize.scala)
     case If(cond1, thenp, elsep) if isSimilar(thenp, elsep) =>
@@ -160,7 +160,7 @@ import Simplify.desugarIdent
     }
   }
 
-  def preEval(t: Tree) = {
+  def preEval(t: Tree)(implicit ctx: Context) = {
     if (t.isInstanceOf[Literal] || t.isInstanceOf[CaseDef] || !isPureExpr(t)) t
     else {
       val s = ConstFold.apply(t)
@@ -171,7 +171,7 @@ import Simplify.desugarIdent
     }
   }
 
-  def isSimilar(t1: Tree, t2: Tree): Boolean = t1 match {
+  def isSimilar(t1: Tree, t2: Tree)(implicit ctx: Context): Boolean = t1 match {
     case t1: Apply =>
       t2 match {
         case t2: Apply =>
@@ -209,7 +209,7 @@ import Simplify.desugarIdent
     case _ => false
   }
 
-  def isBool(tpe: Type): Boolean = tpe.derivesFrom(defn.BooleanClass)
-  def isConst(tpe: Type): Boolean      = tpe.isInstanceOf[ConstantType]
-  def asConst(tpe: Type): ConstantType = tpe.asInstanceOf[ConstantType]
+  def isBool(tpe: Type)(implicit ctx: Context): Boolean = tpe.derivesFrom(defn.BooleanClass)
+  def isConst(tpe: Type)(implicit ctx: Context): Boolean      = tpe.isInstanceOf[ConstantType]
+  def asConst(tpe: Type)(implicit ctx: Context): ConstantType = tpe.asInstanceOf[ConstantType]
 }
