@@ -11,6 +11,7 @@ import dotc.util.SourceFile
 import dotc.typer.FrontEnd
 import backend.jvm.GenBCode
 import dotc.core.Contexts.Context
+import dotc.util.Positions._
 import dotc.reporting._
 import io._
 
@@ -57,35 +58,36 @@ class ReplCompiler(ictx: Context) extends Compiler {
     Phases.replace(classOf[GenBCode], _ => new REPLGenBCode :: Nil, replPhases)
   }
 
-  def wrapped(trees: Seq[untpd.Tree], currentRes: Int)(implicit ctx: Context): (NextRes, untpd.ModuleDef) = {
+  def freeToAssigned(trees: Seq[untpd.Tree], currentRes: Int)
+                    (implicit ctx: Context): (NextRes, Seq[untpd.Tree]) = {
     import untpd._
+
     def freeExpression(t: Tree) =
       t.isTerm && !t.isInstanceOf[Assign]
 
     val (exps, other) = trees.partition(freeExpression)
-
     val resX = exps.zipWithIndex.map { (exp, i) =>
       ValDef(s"res${i + currentRes}".toTermName, TypeTree(), exp)
+        .withPos(exp.pos)
     }
 
-    val moduleIndex = resX.length + currentRes
-    val module = {
-      val stats = if (trees.isEmpty) List(EmptyTree) else resX ++ other
-      val tmpl = Template(emptyConstructor, Nil, EmptyValDef, stats)
-      val moduleName = s"EncapsulatedRes$moduleIndex".toTermName
+    (currentRes + resX.length, resX ++ other)
+  }
 
-      ModuleDef(moduleName, tmpl).withFlags(Module)
-    }
+  def wrapped(trees: Seq[untpd.Tree])(implicit ctx: Context): untpd.TypeDef = {
+    import untpd._
 
-    (moduleIndex + 1, module)
+    val tmpl = Template(emptyConstructor, Nil, EmptyValDef, trees)
+    TypeDef("TypeCheckingContext".toTypeName, tmpl)
+      .withPos(Position(trees.head.pos.start, trees.last.pos.end))
   }
 
   def compile(parsed: Parsed, currentRes: Int)(implicit ctx: Context): NextRes = {
     val reporter = new StoreReporter(null) with UniqueMessagePositions with HideNonSensicalMessages
 
     val unit = new CompilationUnit(new SourceFile(s"repl-run-$currentRes", parsed.sourceCode))
-    val (newRes, tree) = wrapped(parsed.trees, currentRes)
-    unit.untpdTree = tree
+    val (newRes, trees) = freeToAssigned(parsed.trees, currentRes)
+    unit.untpdTree = wrapped(trees)
 
     val run = newRun(ctx.fresh.setReporter(reporter))
     run.compileUnits(unit :: Nil)
