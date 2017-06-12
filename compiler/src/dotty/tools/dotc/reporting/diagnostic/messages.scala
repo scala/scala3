@@ -176,6 +176,34 @@ object messages {
            |Or, add an explicit `()' as a parameter list to ${cdef.name}."""
   }
 
+  case class AnonymousFunctionMissingParamType(param: untpd.ValDef,
+                                               args: List[untpd.Tree],
+                                               tree: untpd.Function,
+                                               pt: Type)
+                                              (implicit ctx: Context)
+  extends Message(AnonymousFunctionMissingParamTypeID) {
+    val kind = "Syntax"
+
+    val msg = {
+      val ofFun =
+        if (MethodType.syntheticParamNames(args.length + 1) contains param.name)
+          i" of expanded function $tree"
+        else
+          ""
+
+      i"missing parameter type for parameter ${param.name}$ofFun, expected = $pt"
+    }
+
+    val explanation =
+      hl"""|Anonymous functions must define a type. For example, if you define a function like this one:
+           |
+           |${"val f = { case xs @ List(1, 2, 3) => Some(xs) }"}
+           |
+           |Make sure you give it a type of what you expect to match and help the type inference system:
+           |
+           |${"val f: Seq[Int] => Option[List[Int]] = { case xs @ List(1, 2, 3) => Some(xs) }"} """
+  }
+
 
   // Type Errors ------------------------------------------------------------ //
   case class DuplicateBind(bind: untpd.Bind, tree: untpd.CaseDef)(implicit ctx: Context)
