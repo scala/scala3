@@ -762,12 +762,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
             }
           case _ =>
         }
-        val ofFun =
-          if (MethodType.syntheticParamNames(args.length + 1) contains param.name)
-            i" of expanded function $tree"
-          else
-            ""
-        errorType(i"missing parameter type for parameter ${param.name}$ofFun, expected = $pt", param.pos)
+        errorType(AnonymousFunctionMissingParamType(param, args, tree, pt), param.pos)
       }
 
       def protoFormal(i: Int): Type =
