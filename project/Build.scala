@@ -167,6 +167,8 @@ object Build {
     // otherwise sbt 0.13 incremental compilation breaks (https://github.com/sbt/sbt/issues/3142)
     scalacOptions ++= Seq("-bootclasspath", sys.props("sun.boot.class.path")),
 
+    scalacOptions += "-optimise",
+
     // sbt gets very unhappy if two projects use the same target
     target := baseDirectory.value / ".." / "out" / "bootstrap" / name.value,
 
