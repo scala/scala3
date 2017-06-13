@@ -32,7 +32,7 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
    *  The order of optimizations is tuned to converge faster.
    *  Reordering them may require quadratically more rounds to finish.
    */
-  private val beforeErasure: List[Optimisation] =
+  private def beforeErasure: List[Optimisation] =
     new InlineCaseIntrinsics        ::
     new RemoveUnnecessaryNullChecks ::
     new InlineOptions               ::
@@ -49,7 +49,7 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
     Nil
 
   /** See comment on beforeErasure */
-  private val afterErasure: List[Optimisation] =
+  private def afterErasure: List[Optimisation] =
     new Valify(this)                ::
     new Devalify                    ::
     new Jumpjump                    ::
@@ -67,26 +67,10 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
    */
   var fuel: Int = -1
 
-
-  /** Using fuel stops any inlining and prevents optimizations from triggering.
-   *  on my tests it gives 20% slowdown, so it is going to be disabled in public builds.
-   */
-  private final val useFuel = false
-
-  private var optimisations: List[Optimisation] = _
-
   override def prepareForUnit(tree: Tree)(implicit ctx: Context) = {
     val maxFuel = ctx.settings.YoptFuel.value
-    if (!useFuel && maxFuel != ctx.settings.YoptFuel.default)
-      ctx.error("Optimization fuel-debugging requires enabling in source, see Simplify.scala::useFuel")
     if (fuel < 0 && maxFuel > 0) // Both defaults are at -1
       fuel = maxFuel
-
-    optimisations = {
-      val o = if (ctx.erasedTypes) afterErasure else beforeErasure
-      val p = ctx.settings.YoptPhases.value
-      if (p.isEmpty) o else o.filter(x => p.contains(x.name))
-    }
     this
   }
 
@@ -95,12 +79,17 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
     val ctx0 = ctx
     if (ctx.settings.optimise.value && !tree.symbol.is(Label)) {
       implicit val ctx: Context = ctx0.withOwner(tree.symbol(ctx0))
+      val optimisations = {
+        val o = if (ctx.erasedTypes) afterErasure else beforeErasure
+        val p = ctx.settings.YoptPhases.value
+        if (p.isEmpty) o else o.filter(x => p.contains(x.name))
+      }
 
       var rhs0 = tree.rhs
       var rhs1: Tree = null
       while (rhs1 ne rhs0) {
         rhs1 = rhs0
-//        val context = ctx.withOwner(tree.symbol)
+        val context = ctx.withOwner(tree.symbol)
         optimisations.foreach { optimisation => // TODO: fuse for performance
           // Visit
           rhs0.foreachSubTree(optimisation.visitor)
@@ -110,21 +99,7 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
             override def transform(tree: Tree)(implicit ctx: Context): Tree = {
               val innerCtx = if (tree.isDef && tree.symbol.exists) ctx.withOwner(tree.symbol) else ctx
               val childOptimizedTree = super.transform(tree)(innerCtx)
-
-              if (useFuel && fuel == 0)
-                childOptimizedTree
-              else {
-                val fullyOptimizedTree = optimisation.transformer(ctx)(childOptimizedTree)
-
-                if (useFuel && (tree ne fullyOptimizedTree)) {
-                  if (fuel > 0) fuel -= 1
-                  if (fuel != -1 && fuel < 10) {
-                    println(s"${tree.symbol} was simplified by ${optimisation.name} (fuel=$fuel): ${tree.show}")
-                    println(s"became after ${optimisation.name}: (fuel=$fuel) ${fullyOptimizedTree.show}")
-                  }
-                }
-                fullyOptimizedTree
-              }
+              printIfDifferent(childOptimizedTree, optimisation.transformer(ctx)(childOptimizedTree), optimisation)
             }
           }.transform(rhs0)
         }
@@ -132,6 +107,23 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
       if (rhs0 ne tree.rhs) tpd.cpy.DefDef(tree)(rhs = rhs0)
       else tree
     } else tree
+  }
+
+  private def printIfDifferent(tree1: Tree, tree2: => Tree, opt: Optimisation)(implicit ctx: Context): Tree = {
+    if (fuel == -1)
+      tree2 // Does nothing when fuel is disabled.
+    else if (fuel == 0)
+      tree1 // No more fuel? No more transformations for you!
+    else {  // Print the trees if different and consume fuel accordingly.
+      if (tree1 ne tree2) {
+        if (fuel > 0) fuel -= 1
+        if (fuel != -1) {
+          println(s"${tree1.symbol} was simplified by ${opt.name} (fuel=$fuel): ${tree1.show}")
+          println(s"became after ${opt.name}: (fuel=$fuel) ${tree2.show}")
+        }
+      }
+      tree2
+    }
   }
 }
 
