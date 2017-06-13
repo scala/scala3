@@ -893,7 +893,6 @@ object Parsers {
             in.nextToken()
             otherArgs(NamedArg(name, typ()), namedTypeArg)
           case firstArg =>
-            if (in.token == EQUALS) println(s"??? $firstArg")
             otherArgs(firstArg, typ)
         }
       else commaSeparated(typParser)
