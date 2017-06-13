@@ -473,6 +473,12 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
       }
       compareTypeLambda
     case OrType(tp21, tp22) =>
+      val tp1a = tp1.widenDealias
+      if (tp1a ne tp1)
+        // Follow the alias; this might avoid truncating the search space in the either below
+        // Note that it's safe to widen here because singleton types cannot be part of `|`.
+        return isSubType(tp1a, tp2)
+
       // Rewrite T1 <: (T211 & T212) | T22 to T1 <: (T211 | T22) and T1 <: (T212 | T22)
       // and analogously for T1 <: T21 | (T221 & T222)
       // `|' types to the right of <: are problematic, because
@@ -591,6 +597,10 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
       }
       compareHKLambda
     case AndType(tp11, tp12) =>
+      val tp2a = tp2.dealias
+      if (tp2a ne tp2) // Follow the alias; this might avoid truncating the search space in the either below
+        return isSubType(tp1, tp2a)
+
       // Rewrite (T111 | T112) & T12 <: T2 to (T111 & T12) <: T2 and (T112 | T12) <: T2
       // and analogously for T11 & (T121 | T122) & T12 <: T2
       // `&' types to the left of <: are problematic, because
