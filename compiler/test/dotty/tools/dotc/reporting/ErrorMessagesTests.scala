@@ -820,4 +820,23 @@ class ErrorMessagesTests extends ErrorMessagesTest {
         assertEquals("?", pt.show)
       }
 
+  @Test def superCallsNotAllowedInline =
+  checkMessagesAfter("refchecks") {
+       """
+        |class A {
+        |  def foo(): Unit = ()
+        |}
+        |
+        |class B extends A {
+        |  inline def bar(): Unit = super.foo()
+        |}
+      """.stripMargin
+    }
+      .expect { (ictx, messages) =>
+        implicit val ctx: Context = ictx
+        assertMessageCount(1, messages)
+        val err :: Nil = messages
+        val SuperCallsNotAllowedInline(symbol) = err
+        assertEquals("method bar", symbol.show)
+      }
 }

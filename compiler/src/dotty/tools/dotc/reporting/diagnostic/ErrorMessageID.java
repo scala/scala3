@@ -88,7 +88,8 @@ public enum ErrorMessageID {
     ValueClassNeedsExactlyOneValParamID,
     OnlyCaseClassOrCaseObjectAllowedID,
     ExpectedClassOrObjectDefID,
-    AnonymousFunctionMissingParamTypeID
+    AnonymousFunctionMissingParamTypeID,
+    SuperCallsNotAllowedInlineID
     ;
 
     public int errorNumber() {
