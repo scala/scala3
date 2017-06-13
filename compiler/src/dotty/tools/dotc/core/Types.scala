@@ -125,7 +125,7 @@ object Types {
     def isRef(sym: Symbol)(implicit ctx: Context): Boolean = stripAnnots.stripTypeVar match {
       case this1: TypeRef =>
         this1.info match { // see comment in Namer#typeDefSig
-          case TypeAlias(tp) => tp.isRef(sym)
+          case TypeAlias(tp) => assert(tp ne this); tp.isRef(sym)
           case _ =>  this1.symbol eq sym
         }
       case this1: RefinedOrRecType => this1.parent.isRef(sym)
