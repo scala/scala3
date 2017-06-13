@@ -11,6 +11,7 @@ import dotc.config.CompilerCommand
 import dotc.{ Compiler, Driver }
 
 import AmmoniteReader._
+import results._
 
 class Repl(settings: Array[String]) extends Driver {
 
@@ -26,21 +27,23 @@ class Repl(settings: Array[String]) extends Driver {
     ictx
   }
 
-  private[this] var myCtx = initializeCtx
-  private[this] var typer = new ReplTyper(myCtx)
+  private[this] var myCtx    = initializeCtx
+  private[this] var typer    = new ReplTyper(myCtx)
+  private[this] var compiler = new ReplCompiler(myCtx)
 
   private def readLine(history: History) =
     AmmoniteReader(history)(myCtx).prompt()
 
   @tailrec
-  final def run(history: History = Nil): Unit =
+  final def run(history: History = Nil,
+                tree: InjectableTree = InjectableTree()(myCtx)): Unit =
     readLine(history) match {
       case (parsed: Parsed, history) =>
-        compile(parsed, history.length)
-        run(history)
+        val newTree = compile(parsed, tree)(myCtx)
+        run(history, newTree)
 
       case (SyntaxErrors(errs, ctx), history) =>
-        displaySyntaxErrors(errs)(ctx)
+        displayErrors(errs)(ctx)
         run(history)
 
       case (Newline, history) =>
@@ -50,8 +53,22 @@ class Repl(settings: Array[String]) extends Driver {
         interpretCommand(cmd, history)
     }
 
-  def compile(parsed: Parsed, line: Int): Unit =
-    typer.typeCheck(parsed, line)(myCtx)
+  def compile(parsed: Parsed, tree: InjectableTree)(implicit ctx: Context): InjectableTree = {
+    val res = for {
+      typed    <- typer.typeCheck(parsed, tree.nextId)
+      injected <- InjectableTree.patch(tree, typed)
+      _        <- compiler.compile(injected.obj)
+    } yield injected
+
+    // Fold over result, on failure - report errors and return old `tree`:
+    res.fold(
+      errors => {
+        displayErrors(errors.msgs)
+        tree
+      },
+      id
+    )
+  }
 
   def interpretCommand(cmd: Command, history: History): Unit = cmd match {
     case UnknownCommand(cmd) => {
@@ -87,6 +104,6 @@ class Repl(settings: Array[String]) extends Driver {
   private def renderMessage(cont: MessageContainer): Context => String =
     messageRenderer.messageAndPos(cont.contained(), cont.pos, messageRenderer.diagnosticLevel(cont))
 
-  def displaySyntaxErrors(errs: Seq[MessageContainer])(implicit ctx: Context): Unit =
+  def displayErrors(errs: Seq[MessageContainer])(implicit ctx: Context): Unit =
     errs.map(renderMessage(_)(ctx)).foreach(println)
 }

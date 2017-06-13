@@ -10,12 +10,15 @@ import dotc.core.{ Phases, Decorators, Flags }
 import Decorators._, Flags._
 import dotc.util.SourceFile
 import dotc.typer.FrontEnd
-import backend.jvm.GenBCode
 import dotc.core.Contexts.Context
 import dotc.util.Positions._
 import dotc.reporting.diagnostic.MessageContainer
 import dotc.reporting._
 import io._
+
+import results._
+
+case class TypedTrees(nextId: Int, trees: Seq[tpd.Tree])
 
 class ReplTyper(ictx: Context) extends Compiler {
 
@@ -70,11 +73,7 @@ class ReplTyper(ictx: Context) extends Compiler {
       case _ => Nil
     }
 
-  sealed trait Result
-  case class TypedTrees(trees: Seq[tpd.Tree]) extends Result
-  case class TypeErrors(msgs: Seq[MessageContainer]) extends Result
-
-  def typeCheck(parsed: Parsed, currentRes: Int)(implicit ctx: Context): (NextRes, Result) = {
+  def typeCheck(parsed: Parsed, currentRes: Int)(implicit ctx: Context): Result[TypedTrees] = {
     val reporter = new StoreReporter(null) with UniqueMessagePositions with HideNonSensicalMessages
 
     val unit = new CompilationUnit(new SourceFile(s"repl-run-$currentRes", parsed.sourceCode))
@@ -85,10 +84,7 @@ class ReplTyper(ictx: Context) extends Compiler {
     run.compileUnits(unit :: Nil)
 
     val errs = reporter.removeBufferedMessages
-    val res =
-      if (errs.isEmpty) TypedTrees(extractStats(unit.tpdTree))
-      else TypeErrors(errs)
-
-    (newRes, res)
+    if (errs.isEmpty) TypedTrees(newRes, extractStats(unit.tpdTree))
+    else Errors(errs)
   }
 }
