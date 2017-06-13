@@ -724,41 +724,70 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
        */
       var fnBody = tree.body
 
+      /** A map from parameter names to unique positions where the parameter
+       *  appears in the argument list of an application.
+       */
+      var paramIndex = Map[Name, Int]()
+
+      /** If parameter `param` appears exactly once as an argument in `args`,
+       *  the singleton list consisting of its position in `args`, otherwise `Nil`.
+       */
+      def paramIndices(param: untpd.ValDef, args: List[untpd.Tree], start: Int): List[Int] = args match {
+        case arg :: args1 =>
+          if (refersTo(arg, param))
+            if (paramIndices(param, args1, start + 1).isEmpty) start :: Nil
+            else Nil
+          else paramIndices(param, args1, start + 1)
+        case _ => Nil
+      }
+
       /** If function is of the form
-       *      (x1, ..., xN) => f(x1, ..., XN)
-       *  the type of `f`, otherwise NoType. (updates `fnBody` as a side effect).
+       *      (x1, ..., xN) => f(... x1, ..., XN, ...)
+       *  where each `xi` occurs exactly once in the argument list of `f` (in
+       *  any order), the type of `f`, otherwise NoType.
+       *  Updates `fnBody` and `paramIndex` as a side effect.
+       *  @post: If result exists, `paramIndex` is defined for the name of
+       *         every parameter in `params`.
        */
       def calleeType: Type = fnBody match {
-        case Apply(expr, args) if (args corresponds params)(refersTo) =>
-          expr match {
-            case untpd.TypedSplice(expr1) =>
-              expr1.tpe
-            case _ =>
-              val protoArgs = args map (_ withType WildcardType)
-              val callProto = FunProto(protoArgs, WildcardType, this)
-              val expr1 = typedExpr(expr, callProto)
-              fnBody = cpy.Apply(fnBody)(untpd.TypedSplice(expr1), args)
-              expr1.tpe
-          }
+        case Apply(expr, args) =>
+          paramIndex = {
+            for (param <- params; idx <- paramIndices(param, args, 0))
+            yield param.name -> idx
+          }.toMap
+          if (paramIndex.size == params.length)
+            expr match {
+              case untpd.TypedSplice(expr1) =>
+                expr1.tpe
+              case _ =>
+                val protoArgs = args map (_ withType WildcardType)
+                val callProto = FunProto(protoArgs, WildcardType, this)
+                val expr1 = typedExpr(expr, callProto)
+                fnBody = cpy.Apply(fnBody)(untpd.TypedSplice(expr1), args)
+                expr1.tpe
+            }
+          else NoType
         case _ =>
           NoType
       }
 
       /** Two attempts: First, if expected type is fully defined pick this one.
        *  Second, if function is of the form
-       *      (x1, ..., xN) => f(x1, ..., XN)
-       *  and f has a method type MT, pick the corresponding parameter type in MT,
-       *  if this one is fully defined.
+       *      (x1, ..., xN) => f(... x1, ..., XN, ...)
+       *  where each `xi` occurs exactly once in the argument list of `f` (in
+       *  any order), and f has a method type MT, pick the corresponding parameter
+       *  type in MT, if this one is fully defined.
        *  If both attempts fail, issue a "missing parameter type" error.
        */
       def inferredParamType(param: untpd.ValDef, formal: Type): Type = {
         if (isFullyDefined(formal, ForceDegree.noBottom)) return formal
         calleeType.widen match {
           case mtpe: MethodType =>
-            val pos = params indexWhere (_.name == param.name)
+            val pos = paramIndex(param.name)
             if (pos < mtpe.paramInfos.length) {
               val ptype = mtpe.paramInfos(pos)
-              if (isFullyDefined(ptype, ForceDegree.noBottom)) return ptype
+              if (isFullyDefined(ptype, ForceDegree.noBottom) && !ptype.isRepeatedParam)
+                return ptype
             }
           case _ =>
         }
