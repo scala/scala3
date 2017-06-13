@@ -1681,7 +1681,7 @@ object Parsers {
 
     def addFlag(mods: Modifiers, flag: FlagSet): Modifiers = {
       def incompatible(kind: String) = {
-        syntaxError(s"modifier(s) `${mods.flags}' not allowed for $kind")
+        syntaxError(ModifiersNotAllowed(mods.flags, kind))
         Modifiers(flag)
       }
       if (compatible(mods.flags, flag)) mods | flag
