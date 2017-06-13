@@ -8,7 +8,9 @@ to avoid the performance overhead of thread synchonization because many lazy val
 
 To get back safe publishing you need to annotate a lazy val with `@volatile`. In
 
-    @volatile lazy val x = expr
+```scala
+@volatile lazy val x = expr
+```
 
 it is guaranteed that readers of a lazy val will see the value of `x`
 once it is assigned.
