@@ -1423,8 +1423,11 @@ object Types {
   /** A marker trait for types that can be types of values or prototypes of value types */
   trait ValueTypeOrProto extends TermType
 
+  /** A marker trait for types that can be types of values or wildcards */
+  trait ValueTypeOrWildcard extends TermType
+
   /** A marker trait for types that can be types of values or that are higher-kinded  */
-  trait ValueType extends ValueTypeOrProto
+  trait ValueType extends ValueTypeOrProto with ValueTypeOrWildcard
 
   /** A marker trait for types that are guaranteed to contain only a
    *  single non-null value (they might contain null in addition).
@@ -2317,7 +2320,8 @@ object Types {
 
   object AndType {
     def apply(tp1: Type, tp2: Type)(implicit ctx: Context): AndType = {
-      assert(tp1.isValueType && tp2.isValueType, i"$tp1 & $tp2 / " + s"$tp1 & $tp2")
+      assert(tp1.isInstanceOf[ValueTypeOrWildcard] &&
+             tp2.isInstanceOf[ValueTypeOrWildcard], i"$tp1 & $tp2 / " + s"$tp1 & $tp2")
       unchecked(tp1, tp2)
     }
 
@@ -2340,7 +2344,8 @@ object Types {
 
   abstract case class OrType(tp1: Type, tp2: Type) extends CachedGroundType with AndOrType {
 
-    assert(tp1.isInstanceOf[ValueType] && tp2.isInstanceOf[ValueType])
+    assert(tp1.isInstanceOf[ValueTypeOrWildcard] &&
+           tp2.isInstanceOf[ValueTypeOrWildcard], s"$tp1 $tp2")
     def isAnd = false
 
     private[this] var myJoin: Type = _
@@ -2375,7 +2380,8 @@ object Types {
       unique(new CachedOrType(tp1, tp2))
     }
     def make(tp1: Type, tp2: Type)(implicit ctx: Context): Type =
-      if (tp1 eq tp2) tp1 else apply(tp1, tp2)
+      if (tp1 eq tp2) tp1
+      else apply(tp1, tp2)
   }
 
   // ----- ExprType and LambdaTypes -----------------------------------
@@ -3506,7 +3512,7 @@ object Types {
   object TryDynamicCallType extends FlexType
 
   /** Wildcard type, possibly with bounds */
-  abstract case class WildcardType(optBounds: Type) extends CachedGroundType with TermType {
+  abstract case class WildcardType(optBounds: Type) extends CachedGroundType with ValueTypeOrWildcard {
     def derivedWildcardType(optBounds: Type)(implicit ctx: Context) =
       if (optBounds eq this.optBounds) this
       else if (!optBounds.exists) WildcardType
