@@ -752,10 +752,12 @@ trait Implicits { self: Typer =>
         lazy val shadowing =
           typed(untpd.Ident(ref.name) withPos pos.toSynthetic, funProto)(
             nestedContext.addMode(Mode.ImplicitShadowing).setExploreTyperState)
-        def refMatches(shadowing: Tree): Boolean =
+        def refSameAs(shadowing: Tree): Boolean =
           ref.symbol == closureBody(shadowing).symbol || {
             shadowing match {
-              case Trees.Select(qual, nme.apply) => refMatches(qual)
+              case Trees.Select(qual, nme.apply) => refSameAs(qual)
+              case Trees.Apply(fn, _) => refSameAs(fn)
+              case Trees.TypeApply(fn, _) => refSameAs(fn)
               case _ => false
             }
           }
@@ -782,7 +784,7 @@ trait Implicits { self: Typer =>
         if (ctx.reporter.hasErrors)
           nonMatchingImplicit(ref, ctx.reporter.removeBufferedMessages)
         else if (contextual && !ctx.mode.is(Mode.ImplicitShadowing) &&
-                 !shadowing.tpe.isError && !refMatches(shadowing)) {
+                 !shadowing.tpe.isError && !refSameAs(shadowing)) {
           implicits.println(i"SHADOWING $ref in ${ref.termSymbol.owner} is shadowed by $shadowing in ${shadowing.symbol.owner}")
           shadowedImplicit(ref, methPart(shadowing).tpe)
         }
