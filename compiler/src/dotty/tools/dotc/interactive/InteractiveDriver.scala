@@ -44,7 +44,9 @@ class InteractiveDriver(settings: List[String]) extends Driver {
 
   def currentCtx: Context = myCtx
 
-  private val myOpenedFiles = new mutable.LinkedHashMap[URI, SourceFile]
+  private val myOpenedFiles = new mutable.LinkedHashMap[URI, SourceFile] {
+    override def default(key: URI) = NoSource
+  }
 
   private val myOpenedTrees = new mutable.LinkedHashMap[URI, List[SourceTree]] {
     override def default(key: URI) = Nil
