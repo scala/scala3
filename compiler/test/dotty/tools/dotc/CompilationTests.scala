@@ -207,7 +207,7 @@ class CompilationTests extends ParallelTesting {
       // compile with bootstrapped library on cp:
       defaultOutputDir + "lib/src/:" +
       // as well as bootstrapped compiler:
-      defaultOutputDir + "dotty1/dotty1/:" +
+      defaultOutputDir + "dotty1/dotty/:" +
       Jars.dottyInterfaces
     )
 
@@ -241,17 +241,21 @@ class CompilationTests extends ParallelTesting {
 
     def dotty1 = {
       compileList(
-        "dotty1",
+        "dotty",
         compilerSources ++ backendSources ++ backendJvmSources,
         opt)
     }
 
-    def dotty2 =
-      compileShallowFilesInDir("../compiler/src/dotty", opt)
+    def dotty2 = {
+      compileList(
+        "dotty",
+        compilerSources ++ backendSources ++ backendJvmSources,
+        opt)
+    }
 
-    {
+    val tests = {
       lib.keepOutput :: dotty1.keepOutput :: {
-        dotty2 +
+        dotty2.keepOutput +
         compileShallowFilesInDir("../compiler/src/dotty/tools", opt) +
         compileShallowFilesInDir("../compiler/src/dotty/tools/dotc", opt) +
         compileShallowFilesInDir("../compiler/src/dotty/tools/dotc/ast", opt) +
@@ -267,7 +271,13 @@ class CompilationTests extends ParallelTesting {
         compileList("shallow-backend", backendSources, opt) +
         compileList("shallow-backend-jvm", backendJvmSources, opt)
       } :: Nil
-    }.map(_.checkCompile()).foreach(_.delete())
+    }.map(_.checkCompile())
+
+    assert(new java.io.File("../out/dotty1/dotty/").exists)
+    assert(new java.io.File("../out/dotty2/dotty/").exists)
+    compileList("idempotency", List("../tests/idempotency/BootstrapChecker.scala", "../tests/idempotency/IdempotencyCheck.scala"), defaultOptions).checkRuns()
+
+    tests.foreach(_.delete())
   }
 
   /** Add a `z` so that they run last. TODO: Only run them selectively? */
@@ -275,12 +285,10 @@ class CompilationTests extends ParallelTesting {
     val opt = defaultOptions.and("-YemitTasty")
 
     def idempotency1() = {
-      compileList("dotty1", compilerSources ++ backendSources ++ backendJvmSources, opt) +
       compileDir("../collection-strawman/src/main", opt) +
       compileFilesInDir("../tests/pos", opt)
     }
     def idempotency2() = {
-      compileList("dotty1", compilerSources ++ backendSources ++ backendJvmSources, opt) +
       compileDir("../collection-strawman/src/main", opt) +
       compileFilesInDir("../tests/pos", opt)
     }
@@ -290,7 +298,7 @@ class CompilationTests extends ParallelTesting {
     assert(new java.io.File("../out/idempotency1/").exists)
     assert(new java.io.File("../out/idempotency2/").exists)
 
-    compileFile("../tests/idempotency/IdempotencyCheck.scala", defaultOptions).checkRuns()
+    compileList("idempotency", List("../tests/idempotency/Checker.scala", "../tests/idempotency/IdempotencyCheck.scala"), defaultOptions).checkRuns()
 
     tests.delete()
   }
