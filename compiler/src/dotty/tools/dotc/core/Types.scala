@@ -1528,10 +1528,14 @@ object Types {
     /** Hook for adding debug check code when denotations are assigned */
     final def checkDenot()(implicit ctx: Context) =
       if (Config.checkTypeRefCycles)
-        lastDenotation.info match {
-          case TypeBounds(lo, hi) =>
-            assert(lo ne this)
-            assert(hi ne this)
+        lastDenotation match {
+          case d: SingleDenotation =>
+            d.infoOrCompleter match {
+              case TypeBounds(lo, hi) =>
+                assert(lo ne this)
+                assert(hi ne this)
+              case _ =>
+            }
           case _ =>
         }
 
