@@ -916,7 +916,7 @@ object Parsers {
       val t = toplevelTyp()
       if (isIdent(nme.raw.STAR)) {
         in.nextToken()
-        atPos(startOffset(t)) { PostfixOp(t, Ident(nme.raw.STAR)) }
+        atPos(startOffset(t)) { PostfixOp(t, Ident(tpnme.raw.STAR)) }
       } else t
     }
 
@@ -1322,7 +1322,7 @@ object Parsers {
      *                    |  `(' [ExprsInParens `,'] PostfixExpr `:' `_' `*' ')'
      *
      *  Special treatment for arguments of primary class constructor
-     *  annotations. All empty argument lists `(` `)` following the first 
+     *  annotations. All empty argument lists `(` `)` following the first
      *  get represented as `List(ParamNotArg)` instead of `Nil`, indicating that
      *  the token sequence should be interpreted as an empty parameter clause
      *  instead. `ParamNotArg` can also be produced when parsing the first
@@ -2047,7 +2047,7 @@ object Parsers {
 
     private def checkVarArgsRules(vparamss: List[List[untpd.ValDef]]): List[untpd.ValDef] = {
       def isVarArgs(tpt: Trees.Tree[Untyped]): Boolean = tpt match {
-        case PostfixOp(_, op) if op.name == nme.raw.STAR => true
+        case PostfixOp(_, op) if op.name == tpnme.raw.STAR => true
         case _ => false
       }
 

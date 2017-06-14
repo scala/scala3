@@ -368,7 +368,6 @@ class Definitions {
 
   lazy val SeqType: TypeRef = ctx.requiredClassRef("scala.collection.Seq")
   def SeqClass(implicit ctx: Context) = SeqType.symbol.asClass
-
     lazy val Seq_applyR = SeqClass.requiredMethodRef(nme.apply)
     def Seq_apply(implicit ctx: Context) = Seq_applyR.symbol
     lazy val Seq_headR = SeqClass.requiredMethodRef(nme.head)

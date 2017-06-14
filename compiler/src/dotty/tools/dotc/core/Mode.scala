@@ -70,26 +70,29 @@ object Mode {
   /** We are currently unpickling Scala2 info */
   val Scala2Unpickling = newMode(13, "Scala2Unpickling")
 
+  /** We are currently unpickling from Java 8 or higher */
+  val Java8Unpickling = newMode(14, "Java8Unpickling")
+
   /** Use Scala2 scheme for overloading and implicit resolution */
-  val OldOverloadingResolution = newMode(14, "OldOverloadingResolution")
+  val OldOverloadingResolution = newMode(15, "OldOverloadingResolution")
 
   /** Allow hk applications of type lambdas to wildcard arguments;
    *  used for checking that such applications do not normally arise
    */
-  val AllowLambdaWildcardApply = newMode(15, "AllowHKApplyToWildcards")
+  val AllowLambdaWildcardApply = newMode(16, "AllowHKApplyToWildcards")
 
   /** Read original positions when unpickling from TASTY */
-  val ReadPositions = newMode(16, "ReadPositions")
+  val ReadPositions = newMode(17, "ReadPositions")
 
   /** Don't suppress exceptions thrown during show */
-  val PrintShowExceptions = newMode(17, "PrintShowExceptions")
+  val PrintShowExceptions = newMode(18, "PrintShowExceptions")
 
   val PatternOrType = Pattern | Type
 
   /** We are elaborating the fully qualified name of a package clause.
    *  In this case, identifiers should never be imported.
    */
-  val InPackageClauseName = newMode(18, "InPackageClauseName")
+  val InPackageClauseName = newMode(19, "InPackageClauseName")
 
   /** We are in the IDE */
   val Interactive = newMode(20, "Interactive")
