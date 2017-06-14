@@ -384,7 +384,7 @@ object Types {
 
     /** The base classes of this type as determined by ClassDenotation
      *  in linearization order, with the class itself as first element.
-     *  For AndTypes/OrTypes, the union/intersection of the operands' baseclasses.
+     *  For AndTypes/OrTypes, the merge/intersection of the operands' baseclasses.
      *  Inherited by all type proxies. `Nil` for all other types.
      */
     final def baseClasses(implicit ctx: Context): List[ClassSymbol] = track("baseClasses") {
@@ -475,22 +475,24 @@ object Types {
      */
     final def findMember(name: Name, pre: Type, excluded: FlagSet)(implicit ctx: Context): Denotation = {
       @tailrec def go(tp: Type): Denotation = tp match {
-        case tp: RefinedType =>
-          if (name eq tp.refinedName) goRefined(tp) else go(tp.parent)
-        case tp: ThisType =>
-          goThis(tp)
-        case tp: TypeRef =>
-          tp.denot.findMember(name, pre, excluded)
         case tp: TermRef =>
           go (tp.underlying match {
             case mt: MethodType
             if mt.paramInfos.isEmpty && (tp.symbol is Stable) => mt.resultType
             case tp1 => tp1
           })
-        case tp: TypeParamRef =>
-          goParam(tp)
+        case tp: TypeRef =>
+          tp.denot.findMember(name, pre, excluded)
+        case tp: ThisType =>
+          goThis(tp)
+        case tp: RefinedType =>
+          if (name eq tp.refinedName) goRefined(tp) else go(tp.parent)
         case tp: RecType =>
           goRec(tp)
+        case tp: TypeParamRef =>
+          goParam(tp)
+        case tp: SuperType =>
+          goSuper(tp)
         case tp: HKApply =>
           goApply(tp)
         case tp: TypeProxy =>
@@ -613,6 +615,12 @@ object Types {
           case _ =>
             go(next)
         }
+      }
+      def goSuper(tp: SuperType) = go(tp.underlying) match {
+        case d: JointRefDenotation =>
+          typr.println(i"redirecting super.$name from $tp to ${d.symbol.showLocated}")
+          new UniqueRefDenotation(d.symbol, tp.memberInfo(d.symbol), d.validFor)
+        case d => d
       }
       def goAnd(l: Type, r: Type) = {
         go(l) & (go(r), pre, safeIntersection = ctx.pendingMemberSearches.contains(name))
