@@ -14,10 +14,7 @@ trait TreeInfo[T >: Untyped <: Type] { self: Trees.Instance[T] =>
   // Note: the <: Type constraint looks necessary (and is needed to make the file compile in dotc).
   // But Scalac accepts the program happily without it. Need to find out why.
 
-  def unsplice[T >: Untyped](tree: Trees.Tree[T]): Trees.Tree[T] = tree.asInstanceOf[untpd.Tree] match {
-    case untpd.TypedSplice(tree1) => tree1.asInstanceOf[Trees.Tree[T]]
-    case _ => tree
-  }
+  def unsplice(tree: Trees.Tree[T]): Trees.Tree[T] = tree
 
   def isDeclarationOrTypeDef(tree: Tree): Boolean = unsplice(tree) match {
     case DefDef(_, _, _, _, EmptyTree)
@@ -116,7 +113,7 @@ trait TreeInfo[T >: Untyped <: Type] { self: Trees.Instance[T] =>
     case _ => false
   }
 
-  def isSuperSelection(tree: untpd.Tree) = unsplice(tree) match {
+  def isSuperSelection(tree: Tree) = unsplice(tree) match {
     case Select(Super(_, _), _) => true
     case _ => false
   }
@@ -129,7 +126,7 @@ trait TreeInfo[T >: Untyped <: Type] { self: Trees.Instance[T] =>
   }
 
   /** Is tree a variable pattern? */
-  def isVarPattern(pat: untpd.Tree): Boolean = unsplice(pat) match {
+  def isVarPattern(pat: Tree): Boolean = unsplice(pat) match {
     case x: BackquotedIdent => false
     case x: Ident => x.name.isVariableName
     case _  => false
@@ -160,7 +157,7 @@ trait TreeInfo[T >: Untyped <: Type] { self: Trees.Instance[T] =>
   def isLeftAssoc(operator: Name) = !operator.isEmpty && (operator.toSimpleName.last != ':')
 
   /** can this type be a type pattern? */
-  def mayBeTypePat(tree: untpd.Tree): Boolean = unsplice(tree) match {
+  def mayBeTypePat(tree: Tree): Boolean = unsplice(tree) match {
     case AndTypeTree(tpt1, tpt2) => mayBeTypePat(tpt1) || mayBeTypePat(tpt2)
     case OrTypeTree(tpt1, tpt2) => mayBeTypePat(tpt1) || mayBeTypePat(tpt2)
     case RefinedTypeTree(tpt, refinements) => mayBeTypePat(tpt) || refinements.exists(_.isInstanceOf[Bind])
@@ -252,6 +249,13 @@ trait TreeInfo[T >: Untyped <: Type] { self: Trees.Instance[T] =>
 trait UntypedTreeInfo extends TreeInfo[Untyped] { self: Trees.Instance[Untyped] =>
   import TreeInfo._
   import untpd._
+
+  /** The underlying tree when stripping any TypedSplice or Parens nodes */
+  override def unsplice(tree: Tree): Tree = tree match {
+    case TypedSplice(tree1) => tree1
+    case Parens(tree1) => unsplice(tree1)
+    case _ => tree
+  }
 
   /** True iff definition is a val or def with no right-hand-side, or it
    *  is an abstract typoe declaration
