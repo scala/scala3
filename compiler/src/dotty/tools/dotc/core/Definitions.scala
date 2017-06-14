@@ -372,8 +372,6 @@ class Definitions {
     def Seq_apply(implicit ctx: Context) = Seq_applyR.symbol
     lazy val Seq_headR = SeqClass.requiredMethodRef(nme.head)
     def Seq_head(implicit ctx: Context) = Seq_headR.symbol
-  lazy val SeqFactoryType: TypeRef = ctx.requiredClassRef("scala.collection.generic.SeqFactory")
-  def SeqFactoryClass(implicit ctx: Context) = SeqFactoryType.symbol.asClass
 
   lazy val ArrayType: TypeRef = ctx.requiredClassRef("scala.Array")
   def ArrayClass(implicit ctx: Context) = ArrayType.symbol.asClass
@@ -448,8 +446,6 @@ class Definitions {
     def Long_* = Long_mulR.symbol
     lazy val Long_divR   = LongClass.requiredMethodRef(nme.DIV, List(LongType))
     def Long_/ = Long_divR.symbol
-  val CommutativePrimitiveOperations = new PerRun[collection.Set[Symbol]](implicit ctx =>
-    Set(defn.Boolean_&&, defn.Boolean_||, defn.Int_+, defn.Int_*, defn.Long_+, defn.Long_*))
 
   lazy val FloatType: TypeRef = valueTypeRef("scala.Float", BoxedFloatType, java.lang.Float.TYPE, FloatEnc)
   def FloatClass(implicit ctx: Context) = FloatType.symbol.asClass

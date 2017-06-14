@@ -26,7 +26,7 @@ import Simplify.desugarIdent
  *
  *  @author DarkDimius, OlivierBlanvillain
  */
- class ConstantFold extends Optimisation {
+ class ConstantFold(val simplifyPhase: Simplify) extends Optimisation {
   import ast.tpd._
 
   def visitor(implicit ctx: Context) = NoVisitor
@@ -94,7 +94,7 @@ import Simplify.desugarIdent
     case t @ Apply(Select(lhs, _), List(rhs)) =>
       val sym = t.symbol
       (lhs, rhs) match {
-        case (lhs, Literal(_)) if !lhs.isInstanceOf[Literal] && defn.CommutativePrimitiveOperations().contains(sym) =>
+        case (lhs, Literal(_)) if !lhs.isInstanceOf[Literal] && simplifyPhase.CommutativePrimitiveOperations.contains(sym) =>
           rhs.select(sym).appliedTo(lhs)
 
         case (l, _) if (sym == defn.Boolean_&&) && isConst(l.tpe) =>

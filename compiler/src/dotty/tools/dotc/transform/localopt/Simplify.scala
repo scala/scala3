@@ -3,10 +3,12 @@ package transform.localopt
 
 import core.Contexts.Context
 import core.DenotTransformers.IdentityDenotTransformer
+import core.Symbols._
 import core.Types._
+import core.Flags._
+import core.Decorators._
 import transform.TreeTransforms.{MiniPhaseTransform, TransformerInfo}
 import config.Printers.simplify
-import core.Flags._
 import ast.tpd
 
 /** This phase consists of a series of small, simple, local optimisations
@@ -26,6 +28,9 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
   override def phaseName: String = "simplify"
   override val cpy = tpd.cpy
 
+  private[localopt] var SeqFactoryClass: Symbol = null
+  private[localopt] var CommutativePrimitiveOperations: Set[Symbol] = null
+
   /** The original intention is to run most optimizations both before and after erasure.
    *  Erasure creates new inefficiencies as well as new optimization opportunities.
    *
@@ -33,7 +38,7 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
    *  Reordering them may require quadratically more rounds to finish.
    */
   private def beforeErasure: List[Optimisation] =
-    new InlineCaseIntrinsics        ::
+    new InlineCaseIntrinsics(this)  ::
     new RemoveUnnecessaryNullChecks ::
     new InlineOptions               ::
     new InlineLabelsCalledOnce      ::
@@ -45,7 +50,7 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
     // new InlineLocalObjects          :: // followCases needs to be fixed, see ./tests/pos/rbtree.scala
     // new Varify                      :: // varify could stop other transformations from being applied. postponed.
     // new BubbleUpNothing             ::
-    new ConstantFold                ::
+    new ConstantFold(this)          ::
     Nil
 
   /** See comment on beforeErasure */
@@ -54,7 +59,7 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
     new Devalify                    ::
     new Jumpjump                    ::
     new DropGoodCasts               ::
-    new ConstantFold                ::
+    new ConstantFold(this)          ::
     Nil
 
   /** Optimisation fuel, for debugging. Decremented every time Simplify
@@ -68,6 +73,8 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
   var fuel: Int = -1
 
   override def prepareForUnit(tree: Tree)(implicit ctx: Context) = {
+    SeqFactoryClass = ctx.requiredClass("scala.collection.generic.SeqFactory")
+    CommutativePrimitiveOperations = Set(defn.Boolean_&&, defn.Boolean_||, defn.Int_+, defn.Int_*, defn.Long_+, defn.Long_*)
     val maxFuel = ctx.settings.YoptFuel.value
     if (fuel < 0 && maxFuel > 0) // Both defaults are at -1
       fuel = maxFuel

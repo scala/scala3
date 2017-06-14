@@ -20,7 +20,7 @@ import dotty.tools.dotc.ast.tpd
  *
  *  @author DarkDimius, OlivierBlanvillain
  */
-class InlineCaseIntrinsics extends Optimisation {
+class InlineCaseIntrinsics(val simplifyPhase: Simplify) extends Optimisation {
   import ast.tpd._
 
   def visitor(implicit ctx: Context): Tree => Unit = NoVisitor
@@ -100,7 +100,7 @@ class InlineCaseIntrinsics extends Optimisation {
     // Where Seq is any companion of type <: SeqFactoryClass
     case a: Apply
       if a.symbol.name == nme.unapplySeq                  &&
-         a.symbol.owner.derivesFrom(defn.SeqFactoryClass) &&
+         a.symbol.owner.derivesFrom(simplifyPhase.SeqFactoryClass) &&
          a.symbol.extendedOverriddenSymbols.isEmpty       &&
          (isPureExpr(a.fun) || a.fun.symbol.is(Synthetic)) =>
 
