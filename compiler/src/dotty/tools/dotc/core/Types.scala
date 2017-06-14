@@ -1532,8 +1532,8 @@ object Types {
           case d: SingleDenotation =>
             d.infoOrCompleter match {
               case TypeBounds(lo, hi) =>
-                assert(lo ne this)
-                assert(hi ne this)
+                assert(lo ne this, this)
+                assert(hi ne this, this)
               case _ =>
             }
           case _ =>
