@@ -256,7 +256,9 @@ object TastyFormat {
   final val OBJECTCLASS = 40
 
   final val SIGNED = 63
+  
   final val firstInternalTag = 64
+  final val IMPLMETH = 64
 
   // AST tags
 

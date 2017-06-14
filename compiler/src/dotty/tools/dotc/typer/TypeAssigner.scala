@@ -56,8 +56,9 @@ trait TypeAssigner {
         // TODO: measure the cost of using `existsPart`, and if necessary replace it
         // by a `TypeAccumulator` where we have set `stopAtStatic = true`.
         tp existsPart {
-          case tp: NamedType => forbidden contains tp.symbol
-          case tp: ThisType => forbidden contains tp.cls
+          case tp: TermRef => forbidden.contains(tp.symbol) || toAvoid(tp.underlying)
+          case tp: TypeRef => forbidden.contains(tp.symbol)
+          case tp: ThisType => forbidden.contains(tp.cls)
           case _ => false
         }
       def apply(tp: Type): Type = tp match {

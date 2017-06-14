@@ -1056,8 +1056,8 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
             throw ex
         }
       case _ =>
-        assert(isFullyDefined(pt, ForceDegree.none))
-        tree.withType(pt)
+        tree.withType(
+          if (isFullyDefined(pt, ForceDegree.none)) pt else UnspecifiedErrorType)
     }
   }
 
@@ -1124,7 +1124,8 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
                 tparam.ensureCompleted()
               case _ =>
             }
-          typed(desugaredArg, argPt)
+          if (desugaredArg.isType) typed(desugaredArg, argPt)
+          else desugaredArg.withType(UnspecifiedErrorType)
         }
         args.zipWithConserve(tparams)(typedArg(_, _)).asInstanceOf[List[Tree]]
       }

@@ -380,7 +380,7 @@ object desugar {
       def enumTagMeths = if (isEnumCase) enumTagMeth(CaseKind.Class)._1 :: Nil else Nil
       def copyMeths = {
         def isRepeated(tree: Tree): Boolean = tree match {
-          case PostfixOp(_, Ident(nme.raw.STAR)) => true
+          case PostfixOp(_, Ident(tpnme.raw.STAR)) => true
           case ByNameTypeTree(tree1) => isRepeated(tree1)
           case _ => false
         }
@@ -1051,7 +1051,7 @@ object desugar {
         else // l.op(r), or val x = r; l.op(x), plus handle named args specially
           makeBinop(l, op, r)
       case PostfixOp(t, op) =>
-        if ((ctx.mode is Mode.Type) && !op.isBackquoted && op.name == nme.raw.STAR) {
+        if ((ctx.mode is Mode.Type) && !op.isBackquoted && op.name == tpnme.raw.STAR) {
           val seqType = if (ctx.compilationUnit.isJava) defn.ArrayType else defn.SeqType
           Annotated(
             AppliedTypeTree(ref(seqType), t),
