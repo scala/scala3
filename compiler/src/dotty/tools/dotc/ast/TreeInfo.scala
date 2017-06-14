@@ -471,7 +471,7 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
   }
 
   /** Is tree a compiler-generated `.apply` node that refers to the
-   *  apply of a function class? (implicit functions are excluded)
+   *  apply of a function class?
    */
   def isSyntheticApply(tree: Tree): Boolean = tree match {
     case Select(qual, nme.apply) => tree.pos.end == qual.pos.end
@@ -710,7 +710,7 @@ object TreeInfo {
   /*
   def isAbsTypeDef(tree: Tree) = tree match {
     case TypeDef(_, _, _, TypeBoundsTree(_, _)) => true
-    case TypeDef(_, _, _, rhs) => rhs.tpe. isInstanceOf[TypeBounds]
+    case TypeDef(_, _, _, rhs) => rhs.tpe.isInstanceOf[TypeBounds]
     case _ => false
   }
 
