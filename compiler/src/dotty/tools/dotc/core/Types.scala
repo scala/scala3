@@ -1526,7 +1526,14 @@ object Types {
     }
 
     /** Hook for adding debug check code when denotations are assigned */
-    final def checkDenot()(implicit ctx: Context) = {}
+    final def checkDenot()(implicit ctx: Context) =
+      if (Config.checkTypeRefCycles)
+        lastDenotation.info match {
+          case TypeBounds(lo, hi) =>
+            assert(lo.stripTypeVar.stripAnnots ne this)
+            assert(hi.stripTypeVar.stripAnnots ne this)
+          case _ =>
+        }
 
     /** A second fallback to recompute the denotation if necessary */
     private def computeDenot(implicit ctx: Context): Denotation = {
@@ -1562,9 +1569,9 @@ object Types {
 
           // Don't use setDenot here; double binding checks can give spurious failures after erasure
           lastDenotation = d
-          checkDenot()
           lastSymbol = d.symbol
           checkedPeriod = ctx.period
+          checkDenot()
         }
         d
       }
