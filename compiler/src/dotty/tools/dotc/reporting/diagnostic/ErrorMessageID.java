@@ -90,7 +90,7 @@ public enum ErrorMessageID {
     ExpectedClassOrObjectDefID,
     AnonymousFunctionMissingParamTypeID,
     SuperCallsNotAllowedInlineID,
-    ModifiersNotAllowedID
+    ModifiersNotAllowedID,
     ;
 
     public int errorNumber() {
