@@ -1530,8 +1530,8 @@ object Types {
       if (Config.checkTypeRefCycles)
         lastDenotation.info match {
           case TypeBounds(lo, hi) =>
-            assert(lo.stripTypeVar.stripAnnots ne this)
-            assert(hi.stripTypeVar.stripAnnots ne this)
+            assert(lo ne this)
+            assert(hi ne this)
           case _ =>
         }
 
