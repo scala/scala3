@@ -42,6 +42,8 @@ class ClassfileParser(
   protected var currentClassName: SimpleName = _      // JVM name of the current class
   protected var classTParams = Map[Name,Symbol]()
 
+  private var Scala2UnpicklingMode = Mode.Scala2Unpickling
+
   classRoot.info = (new NoCompleter).withDecls(instanceScope)
   moduleRoot.info = (new NoCompleter).withDecls(staticScope).withSourceModule(_ => staticModule)
 
@@ -69,6 +71,8 @@ class ClassfileParser(
       throw new IOException(s"class file '${in.file}' has wrong magic number 0x${toHexString(magic)}, should be 0x${toHexString(JAVA_MAGIC)}")
     val minorVersion = in.nextChar.toInt
     val majorVersion = in.nextChar.toInt
+    if (majorVersion >= JAVA8_MAJOR_VERSION)
+      Scala2UnpicklingMode |= Mode.Java8Unpickling
     if ((majorVersion < JAVA_MAJOR_VERSION) ||
         ((majorVersion == JAVA_MAJOR_VERSION) &&
          (minorVersion < JAVA_MINOR_VERSION)))
@@ -714,7 +718,7 @@ class ClassfileParser(
 
       def unpickleScala(bytes: Array[Byte]): Some[Embedded] = {
         val unpickler = new unpickleScala2.Scala2Unpickler(bytes, classRoot, moduleRoot)(ctx)
-        unpickler.run()(ctx.addMode(Mode.Scala2Unpickling))
+        unpickler.run()(ctx.addMode(Scala2UnpicklingMode))
         Some(unpickler)
       }
 
