@@ -1,5 +1,6 @@
 package dotty.tools.dotc
 package transform
+
 import core.Contexts.Context
 
 /** Utility class for lazy values whose evaluation depends on a context.

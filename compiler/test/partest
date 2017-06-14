@@ -1,4 +1,0 @@
-#!/usr/bin/env bash
-# partest error message references partest script to update check files
-
-exec sbt "partest-only $*"

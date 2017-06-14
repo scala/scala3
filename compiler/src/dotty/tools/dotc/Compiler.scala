@@ -17,7 +17,7 @@ import core.DenotTransformers.DenotTransformer
 import core.Denotations.SingleDenotation
 
 import dotty.tools.backend.jvm.{LabelDefs, GenBCode, CollectSuperCalls}
-import dotty.tools.dotc.transform.linker.Simplify
+import dotty.tools.dotc.transform.localopt.Simplify
 
 /** The central class of the dotc compiler. The job of a compiler is to create
  *  runs, which process given `phases` in a given `rootContext`.
