@@ -1431,8 +1431,16 @@ object SymDenotations {
         is(Package) || (symbol == defn.AnyClass) || ctx.erasedTypes && (symbol == defn.ObjectClass)
       if (classParents.isEmpty && !emptyParentsExpected)
         onBehalf.signalProvisional()
-      (classSymbol :: addParentBaseClasses(classParents, Nil),
-       seen.result)
+      val builder = new BaseDataBuilder
+      for (p <- classParents) builder.addAll(p.symbol.asClass.baseClasses)
+      val was =
+        (classSymbol :: addParentBaseClasses(classParents, Nil),
+         seen.result)
+      val now =
+        (classSymbol :: builder.baseClasses, builder.baseClassSet)
+      assert(was._1 == now._1)
+      assert(was._2.classIds.toList == now._2.classIds.toList)
+      was
     }
 
     final override def derivesFrom(base: Symbol)(implicit ctx: Context): Boolean =
@@ -2119,6 +2127,48 @@ object SymDenotations {
       if (length != classIds.length) resize(length)
       new BaseClassSet(classIds)
     }
+  }
+
+  /** A class to combine base data from parent types  */
+  class BaseDataBuilder {
+    private var classes: List[ClassSymbol] = Nil
+    private var classIds = new Array[Int](32)
+    private var length = 0
+
+    private def resize(size: Int) = {
+      val classIds1 = new Array[Int](size)
+      Array.copy(classIds, 0, classIds1, 0, classIds.length min size)
+      classIds = classIds1
+    }
+
+    private def contains(sym: Symbol): Boolean =
+      new BaseClassSet(classIds).contains(sym, length)
+
+    private def add(sym: Symbol): Unit = {
+      if (length == classIds.length) resize(length * 2)
+      classIds(length) = sym.id
+      length += 1
+    }
+
+    def addAll(bcs: List[ClassSymbol]): this.type = {
+      bcs match {
+        case bc :: bcs1 =>
+          addAll(bcs1)
+          if (!contains(bc)) {
+            add(bc)
+            classes = bc :: classes
+          }
+        case nil =>
+      }
+      this
+    }
+
+    def baseClassSet = {
+      if (length != classIds.length) resize(length)
+      new BaseClassSet(classIds)
+    }
+
+    def baseClasses: List[ClassSymbol] = classes
   }
 
   @sharable private var indent = 0 // for completions printing
