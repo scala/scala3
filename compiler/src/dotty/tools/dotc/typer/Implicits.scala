@@ -123,7 +123,9 @@ object Implicits {
             record("discarded eligible")
             false
           }
-          else NoViewsAllowed.isCompatible(normalize(ref, pt), pt)
+          else
+            NoViewsAllowed.isCompatible(normalize(ref, pt), pt) ||
+              NoViewsAllowed.isCompatible(ref, pt)  // `pt` could be an implicit function type, check i2749
         }
       }
 

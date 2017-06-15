@@ -1640,6 +1640,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
         if (defn.isImplicitFunctionType(pt) &&
             xtree.isTerm &&
             !untpd.isImplicitClosure(xtree) &&
+            !ctx.mode.is(Mode.ImplicitShadowing) &&
             !ctx.isAfterTyper)
           makeImplicitFunction(xtree, pt)
         else xtree match {
