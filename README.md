@@ -14,6 +14,12 @@ Try it out
 ==========
 To try it in your project see also the [Getting Started User Guide](http://dotty.epfl.ch/#getting-started).
 
+Code of Conduct
+===============
+Dotty uses the [Scala Code of Conduct](https://www.scala-lang.org/conduct.html)
+for all communication and discussion. This includes both GitHub, Gitter chat and
+other more direct lines of communication such as email.
+
 How to Contribute
 =================
 * [Getting Started as Contributor](http://dotty.epfl.ch/docs/contributing/getting-started.html)
