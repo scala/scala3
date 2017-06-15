@@ -396,7 +396,12 @@ object Types {
         case tp: ClassInfo =>
           tp.cls.baseClasses
         case AndType(tp1, tp2) =>
-          tp1.baseClasses union tp2.baseClasses
+          if (false) tp1.baseClasses union tp2.baseClasses
+          else
+          (new BaseDataBuilder)
+            .addAll(tp1.baseClasses)
+            .addAll(tp2.baseClasses)
+            .baseClasses
         case OrType(tp1, tp2) =>
           tp1.baseClasses intersect tp2.baseClasses
         case _ => Nil
@@ -3232,7 +3237,7 @@ object Types {
             if (!given.exists) fullRef
             else if (cls is Module) given
             else if (ctx.erasedTypes) fullRef
-            else AndType(given, fullRef)
+            else AndType(fullRef, given)
           raw//.asSeenFrom(prefix, cls.owner)
         }
       selfTypeCache
