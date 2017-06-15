@@ -525,12 +525,16 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
     def args: List[Tree] = List.empty // those arguments to scala-defined annotations. they are never emmited
   }
 
-  def assocsFromApply(tree: Tree) = {
+  def assocsFromApply(tree: Tree): List[(Name, Tree)] = {
     tree match {
+      case Block(_, expr) => assocsFromApply(expr)
       case Apply(fun, args) =>
         fun.tpe.widen match {
           case MethodType(names) =>
-            names zip args
+            (names zip args).filter {
+              case (_, t: tpd.Ident) if (t.tpe.normalizedPrefix eq NoPrefix) => false
+              case _ => true
+            }
         }
     }
   }
