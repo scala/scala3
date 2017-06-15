@@ -22,6 +22,7 @@ object IdempotencyCheck {
     s.contains("$accum$") ||
     s.startsWith("/dotty/dotty/tools/dotc/sbt/ExtractAPICollector$classFirstSort$") ||
     s.startsWith("/dotty/dotty/tools/dotc/transform/PatternMatcher$Translator$TreeMakers$IntEqualityTestTreeMaker$") ||
+    s.startsWith("dotty/dotty/tools/dotc/transform/Constructors$intoConstr$") ||
     s.startsWith("/dotty/dotty/tools/dotc/typer/RefChecks$MixinOverrideError$") ||
     s.startsWith("/dotty/dotty/tools/dotc/typer/ImplicitRunInfo$liftToClasses$") ||
     s.startsWith("/dotty/dotty/tools/dotc/typer/Inliner$addAccessors$") ||
