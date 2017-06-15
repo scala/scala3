@@ -5,29 +5,13 @@ import java.util.stream.{ Stream => JStream }
 import scala.collection.JavaConverters._
 
 object IdempotencyCheck {
-  val blacklistedSet = Set(
+  val blacklisted = Set(
     // No fix needed. Bridges on collections in different order. Second one in scala2 order.
     "pos/Map/scala/collection/immutable/Map",
     "pos/Map/scala/collection/immutable/AbstractMap",
     "pos/t1203a/NodeSeq",
     "pos/i2345/Whatever"
   )
-
-  def blacklisted(s: String) = {
-    blacklistedSet(s) ||
-    // FIXME: non-deterministic method/class names
-    s.contains("$$anon$") ||
-    s.contains("$$anonfun$") ||
-    s.contains("$accu$") ||
-    s.contains("$accum$") ||
-    s.startsWith("/dotty/dotty/tools/dotc/sbt/ExtractAPICollector$classFirstSort$") ||
-    s.startsWith("/dotty/dotty/tools/dotc/transform/PatternMatcher$Translator$TreeMakers$IntEqualityTestTreeMaker$") ||
-    s.startsWith("dotty/dotty/tools/dotc/transform/Constructors$intoConstr$") ||
-    s.startsWith("/dotty/dotty/tools/dotc/typer/RefChecks$MixinOverrideError$") ||
-    s.startsWith("/dotty/dotty/tools/dotc/typer/ImplicitRunInfo$liftToClasses$") ||
-    s.startsWith("/dotty/dotty/tools/dotc/typer/Inliner$addAccessors$") ||
-    s.startsWith("/dotty/dotty/tools/dotc/typer/ErrorReporting$reported$")
-  }
 
   def checkIdempotency(dirPrefix: String): Unit = {
     var failed = 0
