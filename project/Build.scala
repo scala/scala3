@@ -1148,10 +1148,12 @@ object Build {
         """.stripMargin)
     }
 
-    val vscodeSetting = new File(".vscode/settings.json")
+    // If .vscode does not exist yet, initialize it with the contents of .vscode-template/
+    val vscodeSetting = new File(".vscode/")
     if(!vscodeSetting.exists()) {
-      val vscodeSettingTemplate = new File(".vscode/settings-template.json")
-      java.nio.file.Files.copy(vscodeSettingTemplate.toPath, vscodeSetting.toPath)
+      vscodeSetting.mkdir()
+      for (file <- new File(".vscode-template/").listFiles)
+        java.nio.file.Files.copy(file.toPath, new File(vscodeSetting.getPath() + '/' + file.getName).toPath)
     }
 
     state
