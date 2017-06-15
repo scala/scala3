@@ -556,9 +556,10 @@ object Symbols {
     type ThisName = TypeName
 
     /** If this is a top-level class, and if `-Yretain-trees` is set, return the TypeDef tree
-     *  for this class, otherwise EmptyTree.
+     *  for this class, otherwise EmptyTree. This will force the info of the class.
      */
     def tree(implicit ctx: Context): tpd.Tree /* tpd.TypeDef | tpd.EmptyTree */ = {
+      denot.info
       // TODO: Consider storing this tree like we store lazy trees for inline functions
       if (unpickler != null && !denot.isAbsent) {
         assert(myTree.isEmpty)
