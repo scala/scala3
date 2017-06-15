@@ -3235,7 +3235,7 @@ object Types {
             if (!given.exists) fullRef
             else if (cls is Module) given
             else if (ctx.erasedTypes) fullRef
-            else AndType(given, fullRef)
+            else AndType(fullRef, given)
           raw//.asSeenFrom(prefix, cls.owner)
         }
       selfTypeCache
