@@ -255,7 +255,7 @@ class CompilationTests extends ParallelTesting {
 
     val tests = {
       lib.keepOutput :: dotty1.keepOutput :: {
-        dotty2.keepOutput +
+        dotty2 +
         compileShallowFilesInDir("../compiler/src/dotty/tools", opt) +
         compileShallowFilesInDir("../compiler/src/dotty/tools/dotc", opt) +
         compileShallowFilesInDir("../compiler/src/dotty/tools/dotc/ast", opt) +
@@ -270,7 +270,7 @@ class CompilationTests extends ParallelTesting {
         compileShallowFilesInDir("../compiler/src/dotty/tools/dotc/util", opt) +
         compileList("shallow-backend", backendSources, opt) +
         compileList("shallow-backend-jvm", backendJvmSources, opt)
-      } :: Nil
+      }.keepOutput :: Nil
     }.map(_.checkCompile())
 
     assert(new java.io.File("../out/dotty1/dotty/").exists)
