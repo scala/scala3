@@ -2,6 +2,7 @@ package dotty.tools.dotc
 package config
 
 import scala.annotation.tailrec
+import dotty.tools.sharable
 
 /** A simple (overly so) command line parser.
  *  !!! This needs a thorough test suite to make sure quoting is
@@ -30,7 +31,7 @@ object CommandLineParser {
   }
   private object DoubleQuoted extends QuotedExtractor('"')
   private object SingleQuoted extends QuotedExtractor('\'')
-  private val Word = """(\S+)(.*)""".r
+  @sharable private val Word = """(\S+)(.*)""".r
 
   // parse `in` for an argument, return it and the remainder of the input (or an error message)
   // (argument may be in single/double quotes, taking escaping into account, quotes are stripped)
