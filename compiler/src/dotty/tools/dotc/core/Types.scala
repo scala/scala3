@@ -394,6 +394,8 @@ object Types {
         case tp: ClassInfo =>
           tp.cls.baseClasses
         case AndType(tp1, tp2) =>
+          if (true) tp1.baseClasses union tp2.baseClasses
+          else
           (new BaseDataBuilder)
             .addAll(tp1.baseClasses)
             .addAll(tp2.baseClasses)
