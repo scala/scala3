@@ -4,8 +4,18 @@ package repl
 import org.junit.Assert._
 import org.junit.Test
 import dotc.ast.tpd
+import dotc.core.Contexts.Context
 
 class InjectableTreeTests extends ReplTest {
+
+  def extractMembers(obj: tpd.TypeDef)(implicit ctx: Context): List[tpd.MemberDef] =
+    obj.rhs match {
+      case tmpl: tpd.Template =>
+        tmpl.body.collect { case tree: tpd.MemberDef => tree }
+      case _ => Nil
+    }
+
+
   @Test def crashCheck = {
     implicit val ctx = myCtx
     val injTree = InjectableTree()
@@ -21,9 +31,17 @@ class InjectableTreeTests extends ReplTest {
     val parsed @ Parsed(_,_) = ParseResult("def foo: 1 = 1")
     val typer = new ReplTyper(myCtx)
 
-    val tt @ TypedTrees(_,_) = typer.typeCheck(parsed, 0)
-    val newInjTree @ InjectableTree(_,_) = InjectableTree.patch(injTree, tt)
+    val tt @ TypedTrees(_,_, newCtx) = typer.typeCheck(parsed, 0)
+    val InjectableTree(tpd.Thicket(List(_, obj: tpd.TypeDef)), 0) =
+      InjectableTree.patch(injTree, tt)(newCtx)
 
-    // assert( newInjTree has 1 method == "def foo: 1 = 1" )
+    val members = extractMembers(obj)
+
+    assert(members.length == 1, s"Wrong amount of members in object: $members")
+
+    members.head match {
+      case tpd.DefDef(name, _, _, _, _) => assert(name.show == "foo")
+      case _ => assert(false, "incorrect shit yo")
+    }
   }
 }

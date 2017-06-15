@@ -27,7 +27,7 @@ class Repl(settings: Array[String]) extends Driver {
     ictx
   }
 
-  protected[this] var myCtx    = initializeCtx
+  protected[this] var myCtx    = initializeCtx: Context
   protected[this] var typer    = new ReplTyper(myCtx)
   protected[this] var compiler = new ReplCompiler(myCtx)
 
@@ -56,9 +56,9 @@ class Repl(settings: Array[String]) extends Driver {
   def compile(parsed: Parsed, tree: InjectableTree)(implicit ctx: Context): InjectableTree = {
     val res = for {
       typed    <- typer.typeCheck(parsed, tree.nextId)
-      injected <- InjectableTree.patch(tree, typed)
-      _        <- compiler.compile(injected.obj)
-    } yield injected
+      injected <- InjectableTree.patch(tree, typed)(typed.newCtx)
+      _        <- compiler.compile(injected.obj)(typed.newCtx)
+    } yield (injected, typed.newCtx)
 
     // Fold over result, on failure - report errors and return old `tree`:
     res.fold(
@@ -66,7 +66,10 @@ class Repl(settings: Array[String]) extends Driver {
         displayErrors(errors.msgs)
         tree
       },
-      id
+      (injected, newCtx) => {
+        myCtx = newCtx
+        injected
+      }
     )
   }
 

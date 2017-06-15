@@ -6,7 +6,8 @@ import dotc.core.Decorators.PreNamedString
 import dotc.ast.tpd.{ ModuleDef, Thicket, cpy }
 import dotc.core.Flags.EmptyFlags
 import dotc.core.Scopes
-import dotc.ast.Trees.Template
+import dotc.ast.Trees._
+import dotc.ast.tpd
 import dotc.core.StdNames._
 
 import results.Result
@@ -30,8 +31,16 @@ object InjectableTree {
            (implicit ctx: Context): Result[InjectableTree] = {
 
     val changedTrees =
-      res.trees.map(t => t.changeOwner(t.symbol, tree.obj.symbol)).toList
+      res.trees.map(t => t.changeOwner(t.symbol, tree.obj.trees(1).symbol)).toList
 
-    new InjectableTree(cpy.Thicket(tree.obj)(changedTrees), tree.nextId)
+    val statsReplacer = new tpd.TreeMap {
+      override def transformStats(trees: List[tpd.Tree])(implicit ctx: Context) =
+        changedTrees
+    }
+
+    new InjectableTree(
+      statsReplacer.transform(tree.obj).asInstanceOf[tpd.Thicket],
+      tree.nextId
+    )
   }
 }

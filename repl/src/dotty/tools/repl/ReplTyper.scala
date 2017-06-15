@@ -18,7 +18,7 @@ import io._
 
 import results._
 
-case class TypedTrees(nextId: Int, trees: Seq[tpd.Tree])
+case class TypedTrees(nextId: Int, trees: Seq[tpd.Tree], newCtx: Context)
 
 class ReplTyper(ictx: Context) extends Compiler {
 
@@ -84,7 +84,7 @@ class ReplTyper(ictx: Context) extends Compiler {
     run.compileUnits(unit :: Nil)
 
     val errs = reporter.removeBufferedMessages
-    if (errs.isEmpty) TypedTrees(newRes, extractStats(unit.tpdTree))
+    if (errs.isEmpty) TypedTrees(newRes, extractStats(unit.tpdTree), run.runContext)
     else Errors(errs)
   }
 }
