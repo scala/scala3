@@ -27,9 +27,9 @@ class Repl(settings: Array[String]) extends Driver {
     ictx
   }
 
-  private[this] var myCtx    = initializeCtx
-  private[this] var typer    = new ReplTyper(myCtx)
-  private[this] var compiler = new ReplCompiler(myCtx)
+  protected[this] var myCtx    = initializeCtx
+  protected[this] var typer    = new ReplTyper(myCtx)
+  protected[this] var compiler = new ReplCompiler(myCtx)
 
   private def readLine(history: History) =
     AmmoniteReader(history)(myCtx).prompt()
