@@ -14,10 +14,13 @@ import results.Result
 case class InjectableTree(obj: Thicket, nextId: Int)
 
 object InjectableTree {
+  /** Create the initial InjectableTree - after being called once, should never
+   *  be called again
+   */
   def apply()(implicit ctx: Context) = new InjectableTree({
     val defn = ctx.definitions
     val sym = ctx.newCompleteModuleSymbol(
-      ctx.owner, "ReplSession".toTermName,
+      defn.RootPackage, "ReplSession".toTermName,
       EmptyFlags, EmptyFlags, defn.AnyType :: Nil, Scopes.newScope
     )
     ModuleDef(sym, Nil)
@@ -26,11 +29,9 @@ object InjectableTree {
   def patch(tree: InjectableTree, res: TypedTrees)
            (implicit ctx: Context): Result[InjectableTree] = {
 
-    val changedTrees = res.trees.map(t => t.changeOwner(t.symbol, tree.obj.symbol))
-    val treeNames = changedTrees.map(_.symbol.show)
+    val changedTrees =
+      res.trees.map(t => t.changeOwner(t.symbol, tree.obj.symbol)).toList
 
-    println(tree.obj)
-
-    new InjectableTree(cpy.Thicket(tree.obj)(Nil), tree.nextId)
+    new InjectableTree(cpy.Thicket(tree.obj)(changedTrees), tree.nextId)
   }
 }

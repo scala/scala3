@@ -367,6 +367,9 @@ object Build {
       connectInput in run := true,
       outputStrategy := Some(StdoutOutput),
 
+      // enable verbose exception messages for JUnit
+      testOptions in Test += Tests.Argument(TestFrameworks.JUnit, "-a", "-v"),
+
       run := Def.inputTaskDyn {
         val classPath =
           (packageAll in `dotty-compiler-bootstrapped`).value("dotty-library") + ":" +
