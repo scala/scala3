@@ -20,6 +20,7 @@ import printing.Formatting
 import ErrorMessageID._
 import Denotations.SingleDenotation
 import dotty.tools.dotc.ast.Trees
+import dotty.tools.dotc.ast.untpd.Modifiers
 import dotty.tools.dotc.core.Flags.{FlagSet, Mutable}
 import dotty.tools.dotc.core.SymDenotations.SymDenotation
 
@@ -1613,5 +1614,21 @@ object messages {
     val kind = "Syntax"
     val msg = s"super call not allowed in inline $symbol"
     val explanation = "Method inlining prohibits calling superclass methods, as it may lead to confusion about which super is being called."
+  }
+
+  case class ModifiersNotAllowed(flags: FlagSet, sort: String)(implicit ctx: Context)
+    extends Message(ModifiersNotAllowedID) {
+    val kind = "Syntax"
+    val msg = s"modifier(s) `$flags' not allowed for $sort"
+    val explanation = {
+      val code = "sealed def y: Int = 1"
+      hl"""You tried to use a modifier that is inapplicable for the type of item under modification
+         |
+         |
+         |Consider the following example:
+         |$code
+         |In this instance, the modifier 'sealed' is not applicable to the item type 'def' (method)
+        """
+    }
   }
 }
