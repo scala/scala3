@@ -1305,8 +1305,10 @@ object Trees {
             this(this(x, arg), annot)
           case Thicket(ts) =>
             this(x, ts)
-          case _ if ctx.reporter.errorsReported =>
+          case _ if ctx.mode.is(Mode.Interactive) =>
             // in case of errors it may be that typed trees point to untyped ones.
+            // The can still traverse inside such trees, either in the run where errors
+            // are reported, or in subsequent ones.
             x
         }
       }
