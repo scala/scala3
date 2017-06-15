@@ -208,7 +208,8 @@ class CompilationTests extends ParallelTesting {
       defaultOutputDir + "lib/src/:" +
       // as well as bootstrapped compiler:
       defaultOutputDir + "dotty1/dotty/:" +
-      Jars.dottyInterfaces
+      Jars.dottyInterfaces,
+      "-Ycheck-reentrant"
     )
 
     def lib =
