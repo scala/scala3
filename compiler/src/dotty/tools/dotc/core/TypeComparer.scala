@@ -1143,29 +1143,26 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
           case OrType(tp11, tp12) =>
             tp11 & tp2 | tp12 & tp2
           case _ =>
-            val t1 = mergeIfSub(tp1, tp2)
-            if (t1.exists) t1
-            else {
-              val t2 = mergeIfSub(tp2, tp1)
-              if (t2.exists) t2
-              else tp1 match {
-                case tp1: ConstantType =>
-                  tp2 match {
-                    case tp2: ConstantType =>
-                      // Make use of the fact that the intersection of two constant types
-                      // types which are not subtypes of each other is known to be empty.
-                      // Note: The same does not apply to singleton types in general.
-                      // E.g. we could have a pattern match against `x.type & y.type`
-                      // which might succeed if `x` and `y` happen to be the same ref
-                      // at run time. It would not work to replace that with `Nothing`.
-                      // However, maybe we can still apply the replacement to
-                      // types which are not explicitly written.
-                      defn.NothingType
-                    case _ => andType(tp1, tp2)
-                  }
-                case _ => andType(tp1, tp2)
-              }
-          }
+            val tp1a = dropIfSuper(tp1, tp2)
+            val tp2a = dropIfSuper(tp2, tp1)
+            if ((tp1a ne tp1) || (tp2a ne tp2)) glb(tp1a, tp2a)
+            else tp1 match {
+             case tp1: ConstantType =>
+                tp2 match {
+                  case tp2: ConstantType =>
+                    // Make use of the fact that the intersection of two constant types
+                    // types which are not subtypes of each other is known to be empty.
+                    // Note: The same does not apply to singleton types in general.
+                    // E.g. we could have a pattern match against `x.type & y.type`
+                    // which might succeed if `x` and `y` happen to be the same ref
+                    // at run time. It would not work to replace that with `Nothing`.
+                    // However, maybe we can still apply the replacement to
+                    // types which are not explicitly written.
+                    defn.NothingType
+                 case _ => andType(tp1, tp2)
+                }
+              case _ => andType(tp1, tp2)
+            }
         }
     }
   }
@@ -1204,24 +1201,15 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
   final def lub(tps: List[Type]): Type =
     ((defn.NothingType: Type) /: tps)(lub(_,_, canConstrain = false))
 
-  /** Merge `t1` into `tp2` if t1 is a subtype of some &-summand of tp2.
+  /** If some (&-operand of) this type is a supertype of `sub`, widen it to `Any`.
    */
-  private def mergeIfSub(tp1: Type, tp2: Type): Type =
-    if (isSubTypeWhenFrozen(tp1, tp2))
-      if (isSubTypeWhenFrozen(tp2, tp1)) tp2 else tp1 // keep existing type if possible
-    else tp2 match {
-      case tp2 @ AndType(tp21, tp22) =>
-        val lower1 = mergeIfSub(tp1, tp21)
-        if (lower1 eq tp21) tp2
-        else if (lower1.exists) lower1 & tp22
-        else {
-          val lower2 = mergeIfSub(tp1, tp22)
-          if (lower2 eq tp22) tp2
-          else if (lower2.exists) tp21 & lower2
-          else NoType
-        }
+  private def dropIfSuper(tp: Type, sub: Type): Type =
+    if (isSubTypeWhenFrozen(sub, tp)) defn.AnyType
+    else tp match {
+      case tp @ AndType(tp1, tp2) =>
+        tp.derivedAndType(dropIfSuper(tp1, sub), dropIfSuper(tp2, sub))
       case _ =>
-        NoType
+        tp
     }
 
   /** Merge `tp1` into `tp2` if tp1 is a supertype of some |-summand of tp2.

@@ -79,27 +79,6 @@ class X3 {
   override type T = A1 // error: overrides nothing
 }
 
-package p3 {
-
-// Dotty change of rules: Toverrider#f does not
-// override TCommon#f, hence the accidental override rule
-// applies.
-trait TCommon {
-  def f: String
-}
-
-class C1 extends TCommon {
-  def f = "in C1"
-}
-
-trait TOverrider { this: TCommon =>
-  override def f = "in TOverrider"   // The overridden self-type member...
-}
-
-class C2 extends C1 with TOverrider  // ... fails to override, here. // error: accidental override
-
-}
-
 package p4 {
 
   abstract class C[T] { def head: T }
