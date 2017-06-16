@@ -13,7 +13,7 @@ import dotc.{ Compiler, Driver }
 import AmmoniteReader._
 import results._
 
-case class State(objects: Int, freeValues: Int, history: History, ictx: Context)
+case class State(objectIndex: Int, valIndex: Int, history: History, ictx: Context)
 object State {
   def initial(ctx: Context): State = new State(0, 0, Nil, ctx)
 }

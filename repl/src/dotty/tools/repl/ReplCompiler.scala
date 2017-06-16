@@ -67,20 +67,20 @@ class ReplCompiler(ictx: Context) extends Compiler {
     )
   }
 
-  def freeToAssigned(trees: Seq[untpd.Tree], state: State)
-                    (implicit ctx: Context): (State, Seq[untpd.Tree]) = {
+  def freeToAssigned(trees: Seq[untpd.Tree], state: State): (State, Seq[untpd.Tree]) = {
     import untpd._
+    implicit val ctx = state.ictx
 
     def freeExpression(t: Tree) =
       t.isTerm && !t.isInstanceOf[Assign]
 
     val (exps, other) = trees.partition(freeExpression)
     val resX = exps.zipWithIndex.map { (exp, i) =>
-      ValDef(s"res${i + state.freeValues}".toTermName, TypeTree(), exp)
+      ValDef(s"res${i + state.valIndex}".toTermName, TypeTree(), exp)
         .withPos(exp.pos)
     }
 
-    (state.copy(freeValues = state.freeValues + resX.length), resX ++ other)
+    (state.copy(valIndex = state.valIndex + resX.length), resX ++ other)
   }
 
   def wrapped(trees: Seq[untpd.Tree], nextId: Int)(implicit ctx: Context): untpd.PackageDef = {
@@ -93,28 +93,39 @@ class ReplCompiler(ictx: Context) extends Compiler {
 
     val tmpl = Template(emptyConstructor, Nil, EmptyValDef, imports ++ trees)
     PackageDef(Ident(nme.NO_NAME),
-      ModuleDef(("ReplSession$" + nextId).toTermName, tmpl)
+      ModuleDef(s"ReplSession$$$nextId".toTermName, tmpl)
         .withMods(new Modifiers(Module | Final))
         .withPos(Position(trees.head.pos.start, trees.last.pos.end)) :: Nil
     )
   }
 
-  def compile(parsed: Parsed, state: State)(implicit ctx: Context): Result[State] = {
+  def createUnit(trees: Seq[untpd.Tree], objectIndex: Int, sourceCode: String)(implicit ctx: Context): Result[CompilationUnit] = {
+    val unit = new CompilationUnit(new SourceFile(s"ReplsSession$$$objectIndex", sourceCode))
+    unit.untpdTree = wrapped(trees, objectIndex)
+    unit
+  }
+
+  def runCompilation(unit: CompilationUnit, state: State): Result[State] = {
+    implicit val ctx = state.ictx
     val reporter = new StoreReporter(null) with UniqueMessagePositions with HideNonSensicalMessages
-
-    val unit = new CompilationUnit(new SourceFile("ReplSession$" + (state.objects + 1), parsed.sourceCode))
-    val (stateAfterAssign, trees) = freeToAssigned(parsed.trees, state)
-    unit.untpdTree = wrapped(trees, 0)
-
     val run = newRun(ctx.fresh.setReporter(reporter))
     run.compileUnits(unit :: Nil)
 
     val errs = reporter.removeBufferedMessages
     if (errs.isEmpty) state.copy(
-      freeValues = stateAfterAssign.freeValues,
-      objects = state.objects + 1,
-      ictx = run.runContext
+      objectIndex = state.objectIndex + 1,
+      valIndex    = state.valIndex,
+      ictx        = run.runContext
     )
     else Errors(errs)
+  }
+
+  def compile(parsed: Parsed, state: State): Result[State] = {
+    implicit val ctx = state.ictx
+    for {
+      stateAndTrees <- freeToAssigned(parsed.trees, state)
+      unit          <- createUnit(stateAndTrees._2, state.objectIndex, parsed.sourceCode)
+      state         <- runCompilation(unit, stateAndTrees._1)
+    } yield state
   }
 }

@@ -13,6 +13,7 @@ class ReplTest extends Repl(Array(
   /** Make sure the context is new before each test */
   @Before def init = {
     myCtx = initializeCtx
+    compiler = new ReplCompiler(myCtx)
   }
 }
 
