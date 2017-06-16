@@ -35,7 +35,7 @@
     "tsc": "./node_modules/.bin/tsc",
     "vscode:prepublish": "npm run update-all && ./node_modules/.bin/tsc -p ./",
     "compile": "./node_modules/.bin/tsc -p ./",
-    "update-all": "npm install && node ./node_modules/vscode/bin/install && mkdir -p out && curl -L -o out/coursier https://github.com/coursier/coursier/raw/v1.0.0-RC3/coursier",
+    "update-all": "npm install && node ./node_modules/vscode/bin/install && curl -L -o out/coursier https://github.com/coursier/coursier/raw/v1.0.0-RC3/coursier",
     "test": "node ./node_modules/vscode/bin/test"
   },
   "extensionDependencies": [

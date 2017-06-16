@@ -3,6 +3,7 @@ target/**
 .vscode/**
 .vscode-test/**
 out/test/**
+out/.keep
 test/**
 src/**
 **/*.map
