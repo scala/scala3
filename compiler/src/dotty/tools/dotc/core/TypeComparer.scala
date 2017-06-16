@@ -1145,7 +1145,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
           case _ =>
             val tp1a = dropIfSuper(tp1, tp2)
             val tp2a = dropIfSuper(tp2, tp1)
-            if ((tp1a ne tp1) || (tp2a ne tp2)) glb(tp1a, tp2)
+            if ((tp1a ne tp1) || (tp2a ne tp2)) glb(tp1a, tp2a)
             else tp1 match {
              case tp1: ConstantType =>
                 tp2 match {
