@@ -4,12 +4,12 @@ package repl
 import org.junit.Assert._
 import org.junit.Test
 
-class ReplTyperTests extends ReplTest {
+class ReplCompilerTests extends ReplTest {
   @Test def typeCheck = {
     val parsed @ Parsed(_,_) = ParseResult("def foo: 1 = 1")(myCtx)
-    val typer = new ReplTyper(myCtx)
-    val res = typer.typeCheck(parsed, 0)(myCtx)
-    assert(res.isInstanceOf[TypedTrees],
+    val compiler = new ReplCompiler(myCtx)
+    val res = compiler.compile(parsed, State.initial(myCtx))(myCtx)
+    assert(res.isInstanceOf[State],
       s"Assumed value of `typeCheck` would be TypedTrees - but got: $res")
   }
 }

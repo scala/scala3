@@ -13,13 +13,18 @@ import dotc.{ Compiler, Driver }
 import AmmoniteReader._
 import results._
 
+case class State(objects: Int, freeValues: Int, history: History, ictx: Context)
+object State {
+  def initial(ctx: Context): State = new State(0, 0, Nil, ctx)
+}
+
 class Repl(settings: Array[String]) extends Driver {
 
   // FIXME: Change the Driver API to not require implementing this method
   override protected def newCompiler(implicit ctx: Context): Compiler =
     ???
 
-  private[this] def initializeCtx = {
+  protected[this] def initializeCtx = {
     val rootCtx = initCtx.fresh
     val summary = CompilerCommand.distill(settings)(rootCtx)
     val ictx = rootCtx.setSettings(summary.sstate)
@@ -28,75 +33,69 @@ class Repl(settings: Array[String]) extends Driver {
   }
 
   protected[this] var myCtx    = initializeCtx: Context
-  protected[this] var typer    = new ReplTyper(myCtx)
   protected[this] var compiler = new ReplCompiler(myCtx)
 
   private def readLine(history: History) =
     AmmoniteReader(history)(myCtx).prompt()
 
   @tailrec
-  final def run(history: History = Nil,
-                tree: InjectableTree = InjectableTree()(myCtx)): Unit =
-    readLine(history) match {
+  final def run(state: State = State.initial(myCtx)): Unit =
+    readLine(state.history) match {
       case (parsed: Parsed, history) =>
-        val newTree = compile(parsed, tree)(myCtx)
-        run(history, newTree)
+        val newState = compile(parsed, state)
+        run(newState.copy(history = history))
 
       case (SyntaxErrors(errs, ctx), history) =>
         displayErrors(errs)(ctx)
-        run(history)
+        run(state)
 
       case (Newline, history) =>
-        run(history)
+        run(state)
 
       case (cmd: Command, history) =>
-        interpretCommand(cmd, history)
+        interpretCommand(cmd, state)
     }
 
-  def compile(parsed: Parsed, tree: InjectableTree)(implicit ctx: Context): InjectableTree = {
-    val res = for {
-      typed    <- typer.typeCheck(parsed, tree.nextId)
-      injected <- InjectableTree.patch(tree, typed)(typed.newCtx)
-      _        <- compiler.compile(injected.obj)(typed.newCtx)
-    } yield (injected, typed.newCtx)
-
-    // Fold over result, on failure - report errors and return old `tree`:
-    res.fold(
-      errors => {
-        displayErrors(errors.msgs)
-        tree
-      },
-      (injected, newCtx) => {
-        myCtx = newCtx
-        injected
-      }
-    )
+  def compile(parsed: Parsed, state: State): State = {
+    implicit val ctx = state.ictx
+    compiler
+      .compile(parsed, state)
+      .fold(
+        errors => {
+          displayErrors(errors.msgs)
+          state
+        },
+        state => {
+          myCtx = state.ictx
+          state
+        }
+      )
   }
 
-  def interpretCommand(cmd: Command, history: History): Unit = cmd match {
+  def interpretCommand(cmd: Command, state: State): Unit = cmd match {
     case UnknownCommand(cmd) => {
       println(s"""Unknown command: "$cmd", run ":help" for a list of commands""")
-      run(history)
+      run(state)
     }
 
     case Help => {
       println(Help.text)
-      run(history)
+      run(state)
     }
 
     case Reset => {
       myCtx = initCtx.fresh
-      run(Nil)
+      run()
     }
 
     case Load(path) =>
       if ((new java.io.File(path)).exists) {
         val contents = scala.io.Source.fromFile(path).mkString
-        run(contents :: history)
+        run(state.copy(history = contents :: state.history))
       }
       else {
         println(s"""Couldn't find file "$path"""")
-        run(history)
+        run(state)
       }
 
     case Quit =>
