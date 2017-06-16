@@ -15,7 +15,7 @@ import sbt.Package.ManifestAttributes
 import com.typesafe.sbteclipse.plugin.EclipsePlugin._
 
 import dotty.tools.sbtplugin.DottyPlugin.autoImport._
-import dotty.tools.sbtplugin.DottyIDEPlugin.runProcess
+import dotty.tools.sbtplugin.DottyIDEPlugin.{ prepareCommand, runProcess }
 import dotty.tools.sbtplugin.DottyIDEPlugin.autoImport._
 import org.scalajs.sbtplugin.ScalaJSPlugin
 import org.scalajs.sbtplugin.ScalaJSPlugin.autoImport._
@@ -771,7 +771,7 @@ object Build {
           s"--extensionDevelopmentPath=$extensionPath" +:
             (if (inputArgs.isEmpty) List((baseDirectory.value / "..").getAbsolutePath) else inputArgs)
 
-        val clientCommand = codeCommand.value ++ codeArgs
+        val clientCommand = prepareCommand(codeCommand.value ++ codeArgs)
 
         val allArgs = "-client_command" +: clientCommand
 

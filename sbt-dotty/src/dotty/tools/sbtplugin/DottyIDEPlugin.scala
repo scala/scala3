@@ -124,8 +124,17 @@ object DottyIDEPlugin extends AutoPlugin {
     runTask(joinedTask, state)
   }
 
+  /** Prepare command to be passed to ProcessBuilder */
+  def prepareCommand(cmd: Seq[String]): Seq[String] =
+    if (isWin) Seq("cmd.exe", "/C") ++ cmd
+    else cmd
+
+  /** Run `cmd`.
+   *  @param wait  If true, wait for `cmd` to return and throw an exception if the exit code is non-zero.
+   *  @param directory  If not null, run `cmd` in this directory.
+   */
   def runProcess(cmd: Seq[String], wait: Boolean = false, directory: File = null): Unit = {
-    val pb0 = new ProcessBuilder(cmd: _*).inheritIO()
+    val pb0 = new ProcessBuilder(prepareCommand(cmd): _*).inheritIO()
     val pb = if (directory != null) pb0.directory(directory) else pb0
     if (wait) {
       val exitCode = pb.start().waitFor()
@@ -221,10 +230,7 @@ object DottyIDEPlugin extends AutoPlugin {
     commands ++= Seq(configureIDE, compileForIDE),
 
     codeCommand := {
-      if (isWin)
-        Seq("cmd.exe", "/C", "code", "-n")
-      else
-        Seq("code", "-n")
+      Seq("code", "-n")
     },
 
     runCode := {
