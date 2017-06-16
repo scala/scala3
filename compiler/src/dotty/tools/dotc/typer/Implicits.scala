@@ -60,6 +60,7 @@ object Implicits {
 
     /** Return those references in `refs` that are compatible with type `pt`. */
     protected def filterMatching(pt: Type)(implicit ctx: Context): List[Candidate] = track("filterMatching") {
+      val ptNorm = normalize(pt, pt) // `pt` could be implicit function types, check i2749
 
       def refMatches(ref: TermRef)(implicit ctx: Context) = /*ctx.traceIndented(i"refMatches $ref $pt")*/ {
 
@@ -124,8 +125,7 @@ object Implicits {
             false
           }
           else
-            NoViewsAllowed.isCompatible(normalize(ref, pt), pt) ||
-              NoViewsAllowed.isCompatible(ref, pt)  // `pt` could be an implicit function type, check i2749
+            NoViewsAllowed.isCompatible(normalize(ref, pt), ptNorm)
         }
       }
 
