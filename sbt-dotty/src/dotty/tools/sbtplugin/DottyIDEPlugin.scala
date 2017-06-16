@@ -131,7 +131,8 @@ object DottyIDEPlugin extends AutoPlugin {
       val exitCode = pb.start().waitFor()
       if (exitCode != 0) {
         val cmdString = cmd.mkString(" ")
-        throw new MessageOnlyException("""Running command "${cmdString}" failed.""")
+        val description = if (directory != null) s""" in directory "$directory"""" else ""
+        throw new MessageOnlyException(s"""Running command "${cmdString}"${description} failed.""")
       }
     }
     else

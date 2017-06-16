@@ -930,22 +930,10 @@ object Build {
       compile in Compile := {
         val coursier = baseDirectory.value / "out/coursier"
         val packageJson = baseDirectory.value / "package.json"
-        if (!coursier.exists || packageJson.lastModified > coursier.lastModified) {
-          val exitCode = new java.lang.ProcessBuilder("npm", "run", "update-all")
-            .directory(baseDirectory.value)
-            .inheritIO()
-            .start()
-            .waitFor()
-          if (exitCode != 0)
-            throw new MessageOnlyException("'npm run update-all' in vscode-dotty failed")
-        }
+        if (!coursier.exists || packageJson.lastModified > coursier.lastModified)
+          runProcess(Seq("npm", "run", "update-all"), wait = true, directory = baseDirectory.value)
         val tsc = baseDirectory.value / "node_modules" / ".bin" / "tsc"
-        val exitCodeTsc = new java.lang.ProcessBuilder(tsc.getAbsolutePath, "--pretty", "--project", baseDirectory.value.getAbsolutePath)
-          .inheritIO()
-          .start()
-          .waitFor()
-        if (exitCodeTsc != 0)
-          throw new MessageOnlyException("tsc in vscode-dotty failed")
+        runProcess(Seq(tsc.getAbsolutePath, "--pretty", "--project", baseDirectory.value.getAbsolutePath), wait = true)
 
         // Currently, vscode-dotty depends on daltonjorge.scala for syntax highlighting,
         // this is not automatically installed when starting the extension in development mode
@@ -955,33 +943,15 @@ object Build {
         sbt.inc.Analysis.Empty
       },
       sbt.Keys.`package`:= {
-        val exitCode = new java.lang.ProcessBuilder("vsce", "package")
-          .directory(baseDirectory.value)
-          .inheritIO()
-          .start()
-          .waitFor()
-        if (exitCode != 0)
-          throw new MessageOnlyException("vsce package failed")
+        runProcess(Seq("vsce", "package"), wait = true, directory = baseDirectory.value)
 
         baseDirectory.value / s"dotty-${version.value}.vsix"
       },
       unpublish := {
-        val exitCode = new java.lang.ProcessBuilder("vsce", "unpublish")
-          .directory(baseDirectory.value)
-          .inheritIO()
-          .start()
-          .waitFor()
-        if (exitCode != 0)
-          throw new MessageOnlyException("vsce unpublish failed")
+        runProcess(Seq("vsce", "unpublish"), wait = true, directory = baseDirectory.value)
       },
       publish := {
-        val exitCode = new java.lang.ProcessBuilder("vsce", "publish")
-          .directory(baseDirectory.value)
-          .inheritIO()
-          .start()
-          .waitFor()
-        if (exitCode != 0)
-          throw new MessageOnlyException("vsce publish failed")
+        runProcess(Seq("vsce", "publish"), wait = true, directory = baseDirectory.value)
       },
       run := Def.inputTask {
         val inputArgs = spaceDelimited("<arg>").parsed
