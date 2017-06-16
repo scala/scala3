@@ -899,7 +899,7 @@ object Build {
 
 
       sbtPlugin := true,
-      version := "0.1.3-SNAPSHOT",
+      version := "0.1.3",
       ScriptedPlugin.scriptedSettings,
       ScriptedPlugin.sbtTestDirectory := baseDirectory.value / "sbt-test",
       ScriptedPlugin.scriptedBufferLog := false,
