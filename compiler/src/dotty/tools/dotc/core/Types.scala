@@ -1538,7 +1538,8 @@ object Types {
               else recomputeMember(d) // symbol could have been overridden, recompute membership
             else {
               val newd = loadDenot
-              if (newd.exists) newd else d.staleSymbolError
+              if (newd.exists || ctx.mode.is(Mode.Interactive)) newd
+              else d.staleSymbolError
             }
           case d =>
             if (d.validFor.runId != ctx.period.runId) loadDenot
