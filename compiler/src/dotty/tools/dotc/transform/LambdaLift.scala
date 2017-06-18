@@ -100,7 +100,7 @@ class LambdaLift extends MiniPhase with IdentityDenotTransformer { thisTransform
      *  Note: During tree transform (which runs at phase LambdaLift + 1), liftedOwner
      *  is also used to decide whether a method had a term owner before.
      */
-    private val liftedOwner = new HashMap[Symbol, Symbol]
+    private val liftedOwner = new LinkedHashMap[Symbol, Symbol]
 
     /** The outer parameter of a constructor */
     private val outerParam = new HashMap[Symbol, Symbol]
