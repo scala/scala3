@@ -2077,6 +2077,11 @@ object SymDenotations {
     def contains(sym: Symbol): Boolean = contains(sym, classIds.length)
   }
 
+  object BaseClassSet {
+    def apply(bcs: List[ClassSymbol]): BaseClassSet =
+      new BaseClassSet(bcs.toArray.map(_.id))
+  }
+
   /** A class to combine base data from parent types */
   class BaseDataBuilder {
     private var classes: List[ClassSymbol] = Nil
@@ -2089,9 +2094,6 @@ object SymDenotations {
       classIds = classIds1
     }
 
-    private def contains(sym: Symbol): Boolean =
-      new BaseClassSet(classIds).contains(sym, length)
-
     private def add(sym: Symbol): Unit = {
       if (length == classIds.length) resize(length * 2)
       classIds(length) = sym.id
@@ -2099,10 +2101,11 @@ object SymDenotations {
     }
 
     def addAll(bcs: List[ClassSymbol]): this.type = {
+      val len = length
       bcs match {
         case bc :: bcs1 =>
           addAll(bcs1)
-          if (!contains(bc)) {
+          if (!new BaseClassSet(classIds).contains(bc, len)) {
             add(bc)
             classes = bc :: classes
           }

@@ -1161,7 +1161,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
                       // However, maybe we can still apply the replacement to
                       // types which are not explicitly written.
                       defn.NothingType
-                   case _ => andType(tp1, tp2)
+                    case _ => andType(tp1, tp2)
                   }
                 case _ => andType(tp1, tp2)
               }

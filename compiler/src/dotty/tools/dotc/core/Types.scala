@@ -384,22 +384,15 @@ object Types {
 
     /** The base classes of this type as determined by ClassDenotation
      *  in linearization order, with the class itself as first element.
-     *  For AndTypes/OrTypes, the merge/intersection of the operands' baseclasses.
-     *  Inherited by all type proxies. `Nil` for all other types.
+     *  Inherited by all type proxies. Overridden for And and Or types.
+     *  `Nil` for all other types.
      */
-    final def baseClasses(implicit ctx: Context): List[ClassSymbol] = track("baseClasses") {
+    def baseClasses(implicit ctx: Context): List[ClassSymbol] = track("baseClasses") {
       this match {
         case tp: TypeProxy =>
           tp.underlying.baseClasses
         case tp: ClassInfo =>
           tp.cls.baseClasses
-        case AndType(tp1, tp2) =>
-          (new BaseDataBuilder)
-            .addAll(tp1.baseClasses)
-            .addAll(tp2.baseClasses)
-            .baseClasses
-        case OrType(tp1, tp2) =>
-          tp1.baseClasses intersect tp2.baseClasses
         case _ => Nil
       }
     }
@@ -2307,6 +2300,37 @@ object Types {
     def tp2: Type
     def isAnd: Boolean
     def derivedAndOrType(tp1: Type, tp2: Type)(implicit ctx: Context): Type  // needed?
+
+    private[this] var myBaseClassesPeriod: Period = Nowhere
+    private[this] var myBaseClasses: List[ClassSymbol] = _
+
+    /** Base classes of And are the merge of the operand base classes
+     *  For OrTypes, it's the intersection.
+     */
+    override final def baseClasses(implicit ctx: Context) = {
+      if (myBaseClassesPeriod != ctx.period) {
+        val bcs1 = tp1.baseClasses
+        val bcs1set = BaseClassSet(bcs1)
+        def recur(bcs2: List[ClassSymbol]): List[ClassSymbol] = bcs2 match {
+          case bc2 :: bcs2rest =>
+            if (isAnd)
+              if (bcs1set contains bc2)
+                if (bc2.is(Trait)) recur(bcs2rest)
+                else bcs1 // common class, therefore rest is the same in both sequences
+              else bc2 :: recur(bcs2rest)
+            else
+              if (bcs1set contains bc2)
+                if (bc2.is(Trait)) bc2 :: recur(bcs2rest)
+                else bcs2rest 
+              else recur(bcs2rest)
+          case nil =>
+            if (isAnd) bcs1 else bcs2
+        }
+        myBaseClasses = recur(tp2.baseClasses)
+        myBaseClassesPeriod = ctx.period
+      }
+      myBaseClasses
+    }
   }
 
   abstract case class AndType(tp1: Type, tp2: Type) extends CachedGroundType with AndOrType {
