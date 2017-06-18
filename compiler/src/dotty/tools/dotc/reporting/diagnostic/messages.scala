@@ -205,6 +205,39 @@ object messages {
            |${"val f: Seq[Int] => Option[List[Int]] = { case xs @ List(1, 2, 3) => Some(xs) }"} """
   }
 
+  case class WildcardOnTypeArgumentNotAllowedOnNew()(implicit ctx: Context)
+  extends Message(WildcardOnTypeArgumentNotAllowedOnNewID) {
+    val kind = "syntax"
+    val msg = "type argument must be fully defined"
+
+    val code1 =
+      """
+        |object TyperDemo {
+        |  class Team[A]
+        |  val team = new Team[_]
+        |}
+      """.stripMargin
+
+    val code2 =
+      """
+        |object TyperDemo {
+        |  class Team[A]
+        |  val team = new Team[Int]
+        |}
+      """.stripMargin
+
+    val explanation =
+      hl"""|Wildcard on arguments is not allowed when declaring a new type.
+           |
+           |Given the following example:
+           |
+           |$code1
+           |
+           |You must complete all the type parameters, for instance:
+           |
+           |$code2 """
+  }
+
 
   // Type Errors ------------------------------------------------------------ //
   case class DuplicateBind(bind: untpd.Bind, tree: untpd.CaseDef)(implicit ctx: Context)

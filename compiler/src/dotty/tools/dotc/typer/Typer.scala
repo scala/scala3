@@ -479,7 +479,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
         tpt1 match {
           case AppliedTypeTree(_, targs) =>
             for (targ @ TypeBoundsTree(_, _) <- targs)
-              ctx.error("type argument must be fully defined", targ.pos)
+              ctx.error(WildcardOnTypeArgumentNotAllowedOnNew(), targ.pos)
           case _ =>
         }
 

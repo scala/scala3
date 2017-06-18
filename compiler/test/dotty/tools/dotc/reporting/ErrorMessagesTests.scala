@@ -849,4 +849,22 @@ class ErrorMessagesTests extends ErrorMessagesTest {
         assertEquals("lazy", flags.toString)
         assertEquals("trait", sort)
       }
+
+  @Test def wildcardOnTypeArgumentNotAllowedOnNew =
+    checkMessagesAfter("refchecks") {
+      """
+        |object TyperDemo {
+        |  class Team[A]
+        |  val team = new Team[_]
+        |}""".stripMargin
+    }
+      .expect { (ictx, messages) =>
+        implicit val ctx: Context = ictx
+        val defn = ictx.definitions
+
+        assertMessageCount(1, messages)
+        val err :: Nil = messages
+
+        assertEquals(err, WildcardOnTypeArgumentNotAllowedOnNew())
+      }
 }
