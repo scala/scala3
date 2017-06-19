@@ -87,7 +87,8 @@ class DropNoEffects(val simplifyPhase: Simplify) extends Optimisation {
       keepOnlySideEffects(rec)
 
     // !name.eq(nme.TYPE_) && // Keep the .TYPE added by ClassOf, would be needed for AfterErasure
-    case s @ Select(qual, name) if !s.symbol.is(Mutable | Lazy | Method) =>
+    // Without is(JavaStatic), { System.out } becomes { System }, but "Java class can't be used as value"
+    case s @ Select(qual, name) if !s.symbol.is(Mutable | Lazy | Method | JavaStatic) =>
       keepOnlySideEffects(qual)
 
     case Block(List(t: DefDef), s: Closure) =>

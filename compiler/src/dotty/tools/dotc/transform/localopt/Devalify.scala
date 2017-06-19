@@ -166,10 +166,12 @@ class Devalify extends Optimisation {
 
   def readingOnlyVals(t: Tree)(implicit ctx: Context): Boolean = dropCasts(t) match {
     case Typed(exp, _) => readingOnlyVals(exp)
+
     case TypeApply(fun @ Select(rec, _), List(tp)) =>
       if ((fun.symbol eq defn.Any_asInstanceOf) && rec.tpe.derivesFrom(tp.tpe.classSymbol))
         readingOnlyVals(rec)
       else false
+
     case Apply(Select(rec, _), Nil) =>
       def isGetterOfAImmutableField = t.symbol.isGetter && !t.symbol.is(Mutable)
       def isCaseClassWithVar        = t.symbol.info.decls.exists(_.is(Mutable))
@@ -182,8 +184,10 @@ class Devalify extends Optimisation {
       if (isGetterOfAImmutableField || isAccessingProductField || isImmutableCaseAccessor)
         readingOnlyVals(rec)
       else false
+
     case Select(rec, _) if t.symbol.is(Method) =>
-      if (t.symbol.isGetter && !t.symbol.is(Mutable)) readingOnlyVals(rec) // getter of a immutable field
+      if (t.symbol.isGetter && !t.symbol.is(Mutable))
+        readingOnlyVals(rec) // getter of a immutable field
       else if (t.symbol.owner.derivesFrom(defn.ProductClass) && t.symbol.owner.is(CaseClass) && t.symbol.name.isSelectorName) {
         def isImmutableField = {
           val fieldId = t.symbol.name.toString.drop(1).toInt - 1
@@ -194,13 +198,22 @@ class Devalify extends Optimisation {
       } else if (t.symbol.is(CaseAccessor) && !t.symbol.is(Mutable))
         readingOnlyVals(rec)
       else false
+
     case Select(qual, _) if !t.symbol.is(Mutable) =>
-      readingOnlyVals(qual)
+      if (t.symbol == defn.SystemModule) {
+        // System.in is static final fields that, for legacy reasons, must be
+        // allowed to be changed by the methods System.setIn...
+        // https://docs.oracle.com/javase/specs/jls/se8/html/jls-17.html#jls-17.5.4
+        false
+      } else
+        readingOnlyVals(qual)
+
     case t: Ident if !t.symbol.is(Mutable) && !t.symbol.is(Method) && !t.symbol.info.dealias.isInstanceOf[ExprType] =>
       desugarIdent(t) match {
         case Some(t) => readingOnlyVals(t)
         case None => true
       }
+
     case t: This => true
     // null => false, or the following fails devalify:
     // trait I {
