@@ -25,6 +25,7 @@ import org.scalajs.sbtplugin.ScalaJSPlugin.autoImport._
 object ExposedValues extends AutoPlugin {
   object autoImport {
     val bootstrapFromPublishedJars = Build.bootstrapFromPublishedJars
+    val bootstrapOptimised = Build.bootstrapOptimised
   }
 }
 
@@ -51,6 +52,7 @@ object Build {
 
   val JENKINS_BUILD = "dotty.jenkins.build"
   val DRONE_MEM = "dotty.drone.mem"
+
 
   val agentOptions = List(
     // "-agentlib:jdwp=transport=dt_socket,server=y,suspend=y,address=5005"
@@ -84,12 +86,14 @@ object Build {
   lazy val dottydoc = inputKey[Unit]("run dottydoc")
 
   lazy val bootstrapFromPublishedJars = settingKey[Boolean]("If true, bootstrap dotty from published non-bootstrapped dotty")
+  lazy val bootstrapOptimised = settingKey[Boolean]("Bootstrap with -optimise")
 
   // Used in build.sbt
   lazy val thisBuildSettings = Def.settings(
     // Change this to true if you want to bootstrap using a published non-bootstrapped compiler
     bootstrapFromPublishedJars := false,
 
+    bootstrapOptimised := false,
 
     // Override `runCode` from sbt-dotty to use the language-server and
     // vscode extension from the source repository of dotty instead of a
@@ -167,8 +171,6 @@ object Build {
     // otherwise sbt 0.13 incremental compilation breaks (https://github.com/sbt/sbt/issues/3142)
     scalacOptions ++= Seq("-bootclasspath", sys.props("sun.boot.class.path")),
 
-    scalacOptions += "-optimise",
-
     // sbt gets very unhappy if two projects use the same target
     target := baseDirectory.value / ".." / "out" / "bootstrap" / name.value,
 
@@ -176,6 +178,13 @@ object Build {
     autoScalaLibrary := false,
     // ...but scala-library is
     libraryDependencies += "org.scala-lang" % "scala-library" % scalacVersion,
+
+    scalacOptions ++= {
+      if (bootstrapOptimised.value)
+        Seq("-optimise")
+      else
+        Seq()
+    },
 
     ivyConfigurations ++= {
       if (bootstrapFromPublishedJars.value)

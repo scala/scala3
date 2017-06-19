@@ -351,9 +351,12 @@ object DottyLanguageServer {
 
   /** Convert an lsp4j.Position to a SourcePosition */
   def sourcePosition(driver: InteractiveDriver, uri: URI, pos: lsp4j.Position): SourcePosition = {
-    val source = driver.openedFiles(uri) // might throw exception
-    val p = Positions.Position(source.lineToOffset(pos.getLine) + pos.getCharacter)
-    new SourcePosition(source, p)
+    val source = driver.openedFiles(uri)
+    if (source.exists) {
+      val p = Positions.Position(source.lineToOffset(pos.getLine) + pos.getCharacter)
+      new SourcePosition(source, p)
+    }
+    else NoSourcePosition
   }
 
   /** Convert a SourcePosition to an lsp4j.Range */

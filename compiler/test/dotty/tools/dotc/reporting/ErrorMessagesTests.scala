@@ -839,4 +839,14 @@ class ErrorMessagesTests extends ErrorMessagesTest {
         val SuperCallsNotAllowedInline(symbol) = err
         assertEquals("method bar", symbol.show)
       }
+
+  @Test def modifiersNotAllowed =
+    checkMessagesAfter("refchecks")("""lazy trait T""")
+      .expect { (ictx, messages) =>
+        implicit val ctx: Context = ictx
+        assertMessageCount(1, messages)
+        val ModifiersNotAllowed(flags, sort) :: Nil = messages
+        assertEquals("lazy", flags.toString)
+        assertEquals("trait", sort)
+      }
 }

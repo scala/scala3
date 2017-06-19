@@ -1,8 +1,8 @@
 # After updating this file, you need to re-sign it:
 #
 # - Install [drone-cli](http://readme.drone.io/usage/getting-started-cli/)
-# - Copy your token from  http://dotty-ci.epfl.ch/account (Click SHOW TOKEN)
-# - (export DRONE_TOKEN=your-token; export DRONE_SERVER=http://dotty-ci.epfl.ch; drone sign lampepfl/dotty)
+# - Copy your token from http://dotty-ci.epfl.ch/account (Click SHOW TOKEN)
+# - DRONE_TOKEN=your-token DRONE_SERVER=http://dotty-ci.epfl.ch drone sign lampepfl/dotty
 #
 # Please note that the signing can only be done by collaborators.
 
@@ -75,4 +75,6 @@ matrix:
     - CI_TEST: ;test;sbt-dotty/scripted compilerReporter/*;sbt-dotty/scripted discovery/*;sbt-dotty/scripted sbt-dotty/*
       CI_PUBLISH: false
     - CI_TEST: dotty-bootstrapped/test
+      CI_PUBLISH: false
+    - CI_TEST: ;set bootstrapOptimised in ThisBuild := true ;dotty-bootstrapped/test
       CI_PUBLISH: false

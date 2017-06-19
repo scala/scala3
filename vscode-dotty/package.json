@@ -2,7 +2,7 @@
   "name": "dotty",
   "displayName": "Dotty Language Server",
   "description": "IDE integration for Dotty, the experimental Scala compiler",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "license": "BSD-3-Clause",
   "publisher": "lampepfl",
   "repository": {
@@ -18,7 +18,7 @@
   ],
   "main": "./out/src/extension",
   "activationEvents": [
-    "onLanguage:scala"
+    "workspaceContains:.dotty-ide.json"
   ],
   "languages": [
     {

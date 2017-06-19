@@ -172,6 +172,9 @@ h1#doc-page-title {
     margin: 10px 0 40px 10px;
     font-family: "Source Sans Pro", sans-serif;
     font-weight: 400;
+    display: -webkit-flex;
+    display: flex;
+    width: 550px;
 }
 
 div#post-title > h2#sub-title {

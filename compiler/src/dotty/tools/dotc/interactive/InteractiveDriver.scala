@@ -44,8 +44,13 @@ class InteractiveDriver(settings: List[String]) extends Driver {
 
   def currentCtx: Context = myCtx
 
-  private val myOpenedFiles = new mutable.LinkedHashMap[URI, SourceFile]
-  private val myOpenedTrees = new mutable.LinkedHashMap[URI, List[SourceTree]]
+  private val myOpenedFiles = new mutable.LinkedHashMap[URI, SourceFile] {
+    override def default(key: URI) = NoSource
+  }
+
+  private val myOpenedTrees = new mutable.LinkedHashMap[URI, List[SourceTree]] {
+    override def default(key: URI) = Nil
+  }
 
   def openedFiles: Map[URI, SourceFile] = myOpenedFiles
   def openedTrees: Map[URI, List[SourceTree]] = myOpenedTrees
@@ -69,6 +74,10 @@ class InteractiveDriver(settings: List[String]) extends Driver {
     }
   }
 
+  // Presence of a file with one of these suffixes indicates that the
+  // corresponding class has been pickled with TASTY.
+  private val tastySuffixes = List(".hasTasty", ".tasty")
+
   private def classNames(cp: ClassPath, packageName: String): List[String] = {
     def className(classSegments: List[String]) =
       classSegments.mkString(".").stripSuffix(".class")
@@ -85,9 +94,6 @@ class InteractiveDriver(settings: List[String]) extends Driver {
               binFile.name.stripSuffix(".class")
             else
               null
-          // Presence of a file with one of these suffixes indicates that the
-          // corresponding class has been pickled with TASTY.
-          val tastySuffixes = List(".hasTasty", ".tasty")
           prefix != null && {
             binFile match {
               case pf: PlainFile =>
@@ -123,8 +129,12 @@ class InteractiveDriver(settings: List[String]) extends Driver {
       .stream
       .toArray(new IntFunction[Array[ZipEntry]] { def apply(size: Int) = new Array(size) })
       .toSeq
-    entries.filter(_.getName.endsWith(".tasty"))
-      .map(_.getName.replace("/", ".").stripSuffix(".tasty"))
+    for {
+      entry <- entries
+      name = entry.getName
+      tastySuffix <- tastySuffixes
+      if name.endsWith(tastySuffix)
+    } yield name.replace("/", ".").stripSuffix(tastySuffix)
   }
 
   // FIXME: classfiles in directories may change at any point, so we retraverse
@@ -136,8 +146,14 @@ class InteractiveDriver(settings: List[String]) extends Driver {
       val root = dirCp.dir.toPath
       Files.walkFileTree(root, new SimpleFileVisitor[Path] {
         override def visitFile(path: Path, attrs: BasicFileAttributes) = {
-          if (!attrs.isDirectory && path.getFileName.toString.endsWith(".tasty")) {
-            names += root.relativize(path).toString.replace("/", ".").stripSuffix(".tasty")
+          if (!attrs.isDirectory) {
+            val name = path.getFileName.toString
+            for {
+              tastySuffix <- tastySuffixes
+              if name.endsWith(tastySuffix)
+            } {
+              names += root.relativize(path).toString.replace("/", ".").stripSuffix(tastySuffix)
+            }
           }
           FileVisitResult.CONTINUE
         }
