@@ -5,6 +5,7 @@ import sbt.Keys._
 import java.io._
 import java.lang.ProcessBuilder
 import scala.collection.mutable
+import scala.util.Properties.{ isWin, isMac }
 
 import dotty.tools.languageserver.config.ProjectConfig
 
@@ -123,9 +124,34 @@ object DottyIDEPlugin extends AutoPlugin {
     runTask(joinedTask, state)
   }
 
+  /** Prepare command to be passed to ProcessBuilder */
+  def prepareCommand(cmd: Seq[String]): Seq[String] =
+    if (isWin) Seq("cmd.exe", "/C") ++ cmd
+    else cmd
+
+  /** Run `cmd`.
+   *  @param wait  If true, wait for `cmd` to return and throw an exception if the exit code is non-zero.
+   *  @param directory  If not null, run `cmd` in this directory.
+   */
+  def runProcess(cmd: Seq[String], wait: Boolean = false, directory: File = null): Unit = {
+    val pb0 = new ProcessBuilder(prepareCommand(cmd): _*).inheritIO()
+    val pb = if (directory != null) pb0.directory(directory) else pb0
+    if (wait) {
+      val exitCode = pb.start().waitFor()
+      if (exitCode != 0) {
+        val cmdString = cmd.mkString(" ")
+        val description = if (directory != null) s""" in directory "$directory"""" else ""
+        throw new MessageOnlyException(s"""Running command "${cmdString}"${description} failed.""")
+      }
+    }
+    else
+      pb.start()
+  }
+
   private val projectConfig = taskKey[Option[ProjectConfig]]("")
 
   object autoImport {
+    val codeCommand = taskKey[Seq[String]]("Command to start VSCode")
     val runCode = taskKey[Unit]("Start VSCode, usually called from launchIDE")
     val launchIDE = taskKey[Unit]("Configure and run VSCode on this project")
   }
@@ -203,17 +229,13 @@ object DottyIDEPlugin extends AutoPlugin {
   override def buildSettings: Seq[Setting[_]] = Seq(
     commands ++= Seq(configureIDE, compileForIDE),
 
-    runCode := {
-      val exitCode = new ProcessBuilder("code", "--install-extension", "lampepfl.dotty")
-        .inheritIO()
-        .start()
-        .waitFor()
-      if (exitCode != 0)
-        throw new MessageOnlyException("Installing the Dotty support for VSCode failed")
+    codeCommand := {
+      Seq("code", "-n")
+    },
 
-      new ProcessBuilder("code", baseDirectory.value.getAbsolutePath)
-        .inheritIO()
-        .start()
+    runCode := {
+      runProcess(codeCommand.value ++ Seq("--install-extension", "lampepfl.dotty"), wait = true)
+      runProcess(codeCommand.value ++ Seq("."), directory = baseDirectory.value)
     }
     
   ) ++ addCommandAlias("launchIDE", ";configureIDE;runCode")

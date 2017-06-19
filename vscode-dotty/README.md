@@ -6,7 +6,10 @@ Dotty, please follow the instructions at https://github.com/lampepfl/dotty-examp
 
 ## Starting Visual Studio Code from sbt
 First, make sure `code`, the binary for Visual Studio Code, is on your `$PATH`,
-this is the case if you can start the IDE by running `code` in a terminal.
+this is the case if you can start the IDE by running `code` in a terminal. This
+is the default on all systems except Mac where you'll need to follow these
+instructions: https://code.visualstudio.com/docs/setup/mac#_command-line
+
 
 If this is the case and your project succesfully compiles with dotty, you can
 simply use the `launchIDE` command provided by the sbt-dotty plugin:

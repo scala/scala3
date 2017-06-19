@@ -15,6 +15,7 @@ import sbt.Package.ManifestAttributes
 import com.typesafe.sbteclipse.plugin.EclipsePlugin._
 
 import dotty.tools.sbtplugin.DottyPlugin.autoImport._
+import dotty.tools.sbtplugin.DottyIDEPlugin.{ prepareCommand, runProcess }
 import dotty.tools.sbtplugin.DottyIDEPlugin.autoImport._
 import org.scalajs.sbtplugin.ScalaJSPlugin
 import org.scalajs.sbtplugin.ScalaJSPlugin.autoImport._
@@ -766,8 +767,13 @@ object Build {
         val mainClass = "dotty.tools.languageserver.Main"
         val extensionPath = (baseDirectory in `vscode-dotty`).value.getAbsolutePath
 
-        val codeArgs = if (inputArgs.isEmpty) List((baseDirectory.value / "..").getAbsolutePath) else inputArgs
-        val allArgs = List("-client_command", "code", s"--extensionDevelopmentPath=$extensionPath") ++ codeArgs
+        val codeArgs =
+          s"--extensionDevelopmentPath=$extensionPath" +:
+            (if (inputArgs.isEmpty) List((baseDirectory.value / "..").getAbsolutePath) else inputArgs)
+
+        val clientCommand = prepareCommand(codeCommand.value ++ codeArgs)
+
+        val allArgs = "-client_command" +: clientCommand
 
         runTask(Runtime, mainClass, allArgs: _*)
       }.dependsOn(compile in (`vscode-dotty`, Compile)).evaluated
@@ -893,7 +899,7 @@ object Build {
 
 
       sbtPlugin := true,
-      version := "0.1.2",
+      version := "0.1.3",
       ScriptedPlugin.scriptedSettings,
       ScriptedPlugin.sbtTestDirectory := baseDirectory.value / "sbt-test",
       ScriptedPlugin.scriptedBufferLog := false,
@@ -924,76 +930,36 @@ object Build {
       compile in Compile := {
         val coursier = baseDirectory.value / "out/coursier"
         val packageJson = baseDirectory.value / "package.json"
-        if (!coursier.exists || packageJson.lastModified > coursier.lastModified) {
-          val exitCode = new java.lang.ProcessBuilder("npm", "run", "update-all")
-            .directory(baseDirectory.value)
-            .inheritIO()
-            .start()
-            .waitFor()
-          if (exitCode != 0)
-            throw new MessageOnlyException("'npm run update-all' in vscode-dotty failed")
-        }
+        if (!coursier.exists || packageJson.lastModified > coursier.lastModified)
+          runProcess(Seq("npm", "run", "update-all"), wait = true, directory = baseDirectory.value)
         val tsc = baseDirectory.value / "node_modules" / ".bin" / "tsc"
-        val exitCodeTsc = new java.lang.ProcessBuilder(tsc.getAbsolutePath, "--pretty", "--project", baseDirectory.value.getAbsolutePath)
-          .inheritIO()
-          .start()
-          .waitFor()
-        if (exitCodeTsc != 0)
-          throw new MessageOnlyException("tsc in vscode-dotty failed")
+        runProcess(Seq(tsc.getAbsolutePath, "--pretty", "--project", baseDirectory.value.getAbsolutePath), wait = true)
 
         // Currently, vscode-dotty depends on daltonjorge.scala for syntax highlighting,
         // this is not automatically installed when starting the extension in development mode
         // (--extensionDevelopmentPath=...)
-        val exitCodeInstall = new java.lang.ProcessBuilder("code", "--install-extension", "daltonjorge.scala")
-          .inheritIO()
-          .start()
-          .waitFor()
-        if (exitCodeInstall != 0)
-          throw new MessageOnlyException("Installing dependency daltonjorge.scala failed")
+        runProcess(codeCommand.value ++ Seq("--install-extension", "daltonjorge.scala"), wait = true)
 
         sbt.inc.Analysis.Empty
       },
       sbt.Keys.`package`:= {
-        val exitCode = new java.lang.ProcessBuilder("vsce", "package")
-          .directory(baseDirectory.value)
-          .inheritIO()
-          .start()
-          .waitFor()
-        if (exitCode != 0)
-          throw new MessageOnlyException("vsce package failed")
+        runProcess(Seq("vsce", "package"), wait = true, directory = baseDirectory.value)
 
         baseDirectory.value / s"dotty-${version.value}.vsix"
       },
       unpublish := {
-        val exitCode = new java.lang.ProcessBuilder("vsce", "unpublish")
-          .directory(baseDirectory.value)
-          .inheritIO()
-          .start()
-          .waitFor()
-        if (exitCode != 0)
-          throw new MessageOnlyException("vsce unpublish failed")
+        runProcess(Seq("vsce", "unpublish"), wait = true, directory = baseDirectory.value)
       },
       publish := {
-        val exitCode = new java.lang.ProcessBuilder("vsce", "publish")
-          .directory(baseDirectory.value)
-          .inheritIO()
-          .start()
-          .waitFor()
-        if (exitCode != 0)
-          throw new MessageOnlyException("vsce publish failed")
+        runProcess(Seq("vsce", "publish"), wait = true, directory = baseDirectory.value)
       },
       run := Def.inputTask {
         val inputArgs = spaceDelimited("<arg>").parsed
         val codeArgs = if (inputArgs.isEmpty) List((baseDirectory.value / "..").getAbsolutePath) else inputArgs
         val extensionPath = baseDirectory.value.getAbsolutePath
-        val processArgs = List("code", s"--extensionDevelopmentPath=${extensionPath}") ++ codeArgs
+        val processArgs = List(s"--extensionDevelopmentPath=${extensionPath}") ++ codeArgs
 
-        val exitCode = new java.lang.ProcessBuilder(processArgs: _*)
-          .inheritIO()
-          .start()
-          .waitFor()
-        if (exitCode != 0)
-          throw new MessageOnlyException("Running Visual Studio Code failed")
+        runProcess(codeCommand.value ++ processArgs, wait = true)
       }.dependsOn(compile in Compile).evaluated
     )
 

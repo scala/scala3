@@ -18,7 +18,9 @@ Usage
 =====
 1. Install [Visual Studio Code](https://code.visualstudio.com/).
 2. Make sure `code`, the binary for Visual Studio Code, is on your `$PATH`, this
-   is the case if you can start the IDE by running `code` in a terminal.
+   is the case if you can start the IDE by running `code` in a terminal. This
+   is the default on all systems except Mac where you'll need to follow these
+   instructions: https://code.visualstudio.com/docs/setup/mac#_command-line
 3. In your project, run:
 ```shell
 sbt launchIDE
