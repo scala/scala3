@@ -13,10 +13,7 @@ import dotc.{ Compiler, Driver }
 import AmmoniteReader._
 import results._
 
-case class State(objectIndex: Int, valIndex: Int, history: History, ictx: Context)
-object State {
-  def initial(ctx: Context): State = new State(0, 0, Nil, ctx)
-}
+case class State(objectIndex: Int, valIndex: Int, history: History)
 
 class Repl(settings: Array[String]) extends Driver {
 
@@ -38,15 +35,14 @@ class Repl(settings: Array[String]) extends Driver {
   private def readLine(history: History) =
     AmmoniteReader(history)(myCtx).prompt()
 
-  @tailrec
-  final def run(state: State = State.initial(myCtx)): Unit =
+  @tailrec final def run(state: State = State(0, 0, Nil)): Unit =
     readLine(state.history) match {
       case (parsed: Parsed, history) =>
         val newState = compile(parsed, state)
         run(newState.copy(history = history))
 
       case (SyntaxErrors(errs, ctx), history) =>
-        displayErrors(errs)(ctx)
+        displayErrors(errs)(myCtx)
         run(state)
 
       case (Newline, history) =>
@@ -57,17 +53,16 @@ class Repl(settings: Array[String]) extends Driver {
     }
 
   def compile(parsed: Parsed, state: State): State = {
-    implicit val ctx = state.ictx
+    implicit val ctx = myCtx
     compiler
       .compile(parsed, state)
       .fold(
         errors => {
-          displayErrors(errors.msgs)
+          displayErrors(errors)
           state
         },
-        state => {
-          myCtx = state.ictx
-          state
+        (unit, newState) => {
+          newState
         }
       )
   }

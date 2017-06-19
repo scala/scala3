@@ -67,9 +67,11 @@ class ReplCompiler(ictx: Context) extends Compiler {
     )
   }
 
-  def freeToAssigned(trees: Seq[untpd.Tree], state: State): (State, Seq[untpd.Tree]) = {
+  sealed case class Definitions(trees: Seq[untpd.Tree], state: State)
+
+  def definitions(trees: Seq[untpd.Tree], state: State): Result[Definitions] = {
     import untpd._
-    implicit val ctx = state.ictx
+    implicit val ctx = ictx
 
     def freeExpression(t: Tree) =
       t.isTerm && !t.isInstanceOf[Assign]
@@ -80,7 +82,10 @@ class ReplCompiler(ictx: Context) extends Compiler {
         .withPos(exp.pos)
     }
 
-    (state.copy(valIndex = state.valIndex + resX.length), resX ++ other)
+    Definitions(
+      resX ++ other,
+      state.copy(valIndex = state.valIndex + resX.length)
+    ).result
   }
 
   def wrapped(trees: Seq[untpd.Tree], nextId: Int)(implicit ctx: Context): untpd.PackageDef = {
@@ -102,11 +107,11 @@ class ReplCompiler(ictx: Context) extends Compiler {
   def createUnit(trees: Seq[untpd.Tree], objectIndex: Int, sourceCode: String)(implicit ctx: Context): Result[CompilationUnit] = {
     val unit = new CompilationUnit(new SourceFile(s"ReplsSession$$$objectIndex", sourceCode))
     unit.untpdTree = wrapped(trees, objectIndex)
-    unit
+    unit.result
   }
 
   def runCompilation(unit: CompilationUnit, state: State): Result[State] = {
-    implicit val ctx = state.ictx
+    implicit val ctx = ictx
     val reporter = new StoreReporter(null) with UniqueMessagePositions with HideNonSensicalMessages
     val run = newRun(ctx.fresh.setReporter(reporter))
     run.compileUnits(unit :: Nil)
@@ -114,18 +119,17 @@ class ReplCompiler(ictx: Context) extends Compiler {
     val errs = reporter.removeBufferedMessages
     if (errs.isEmpty) state.copy(
       objectIndex = state.objectIndex + 1,
-      valIndex    = state.valIndex,
-      ictx        = run.runContext
-    )
-    else Errors(errs)
+      valIndex    = state.valIndex
+    ).result
+    else errs.errors
   }
 
-  def compile(parsed: Parsed, state: State): Result[State] = {
-    implicit val ctx = state.ictx
+  def compile(parsed: Parsed, state: State): Result[(CompilationUnit, State)] = {
+    implicit val ctx = ictx
     for {
-      stateAndTrees <- freeToAssigned(parsed.trees, state)
-      unit          <- createUnit(stateAndTrees._2, state.objectIndex, parsed.sourceCode)
-      state         <- runCompilation(unit, stateAndTrees._1)
-    } yield state
+      defs  <- definitions(parsed.trees, state)
+      unit  <- createUnit(defs.trees, state.objectIndex, parsed.sourceCode)
+      state <- runCompilation(unit, defs.state)
+    } yield (unit, state)
   }
 }

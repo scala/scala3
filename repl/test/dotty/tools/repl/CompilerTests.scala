@@ -4,48 +4,54 @@ package repl
 import org.junit.Assert._
 import org.junit.Test
 
+import dotc.reporting.diagnostic.MessageContainer
 import dotc.ast.untpd
 
 import results._
 
 class ReplCompilerTests extends ReplTest {
+
+  def onErrors(xs: Seq[MessageContainer]): Unit =
+    fail(s"Expected no errors, got: \n${ xs.map(_.message).mkString("\n") }")
+
   @Test def compileSingle = {
     val parsed @ Parsed(_,_) = ParseResult("def foo: 1 = 1")(myCtx)
-    val res = compiler.compile(parsed, State.initial(myCtx))
-    assert(res.isInstanceOf[State],
-      s"Assumed value of `typeCheck` would be TypedTrees - but got: $res")
+    compiler
+      .compile(parsed, State(0, 0, Nil))
+      .fold(onErrors(_), _ => ())
   }
 
   @Test def compileTwo = {
+    implicit val ctx = myCtx
     val parsed @ Parsed(_,_) = ParseResult("def foo: 1 = 1")(myCtx)
 
     compiler
-      .compile(parsed, State.initial(myCtx))
-      .flatMap { state =>
-        val parsed @ Parsed(_,_) = ParseResult("def foo(i: Int): i.type = i")(state.ictx)
-        compiler.compile(parsed, state.copy(ictx = myCtx))
+      .compile(parsed, State(0, 0, Nil))
+      .flatMap { (unit, state) =>
+        val parsed @ Parsed(_,_) = ParseResult("def foo(i: Int): i.type = i")
+        compiler.compile(parsed, state)
       }
       .fold(
-        error =>
-          fail(s"Expected no errors, got: \n${ error.msgs.map(_.message).mkString("\n") }"),
-        state =>
+        onErrors(_),
+        (unit, state) => {
           assert(state.objectIndex == 2,
             s"Wrong object offset: expected 2 got ${state.objectIndex}")
+        }
       )
   }
 
   @Test def inspectSingle = {
-    val parsed @ Parsed(_,_) = ParseResult("def foo: 1 = 1")(myCtx)
+    implicit val ctx = myCtx
+    val parsed @ Parsed(_,_) = ParseResult("def foo: 1 = 1")
     val res = for {
-      stateAndTrees <- compiler.freeToAssigned(parsed.trees, State.initial(myCtx))
-      (State(objectIndex, _, _, ictx), trees) = stateAndTrees
-      unit <- compiler.createUnit(trees, objectIndex, parsed.sourceCode)(myCtx)
-    } yield (unit.untpdTree, ictx)
+      defs <- compiler.definitions(parsed.trees, State(0, 0, Nil))
+      unit <- compiler.createUnit(defs.trees, defs.state.objectIndex, parsed.sourceCode)
+    } yield unit.untpdTree
 
     res.fold(
-      error => fail(s"received errors: ${error.msgs}"),
-      (tree, ictx) => {
-        implicit val ctx = ictx
+      onErrors(_),
+      tree => {
+        implicit val ctx = myCtx
 
         tree match {
           case untpd.PackageDef(_, List(mod: untpd.ModuleDef)) =>
