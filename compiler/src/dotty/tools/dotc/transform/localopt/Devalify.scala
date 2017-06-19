@@ -175,61 +175,61 @@ class Devalify extends Optimisation {
     def isImmutableCaseAccessor   = t.symbol.is(CaseAccessor) && !t.symbol.is(Mutable)
 
     dropCasts(t) match {
-    case Typed(exp, _) => readingOnlyVals(exp)
+      case Typed(exp, _) => readingOnlyVals(exp)
 
-    case TypeApply(fun @ Select(rec, _), List(tp)) =>
-      if ((fun.symbol eq defn.Any_asInstanceOf) && rec.tpe.derivesFrom(tp.tpe.classSymbol))
-        readingOnlyVals(rec)
-      else false
-
-    case Apply(Select(rec, _), Nil) =>
-      if (isGetterOfAImmutableField || isAccessingProductField || isImmutableCaseAccessor)
-        readingOnlyVals(rec)
-      else false
-
-    case Select(rec, _) if t.symbol.is(Method) =>
-      if (isGetterOfAImmutableField)
-        readingOnlyVals(rec) // Getter of an immutable field
-      else if (isAccessingProductField) {
-        def isImmutableField = {
-          val fieldId = t.symbol.name.toString.drop(1).toInt - 1
-          !t.symbol.owner.caseAccessors(ctx)(fieldId).is(Mutable)
-        }
-        if (isImmutableField) readingOnlyVals(rec) // Accessing a field of a product
+      case TypeApply(fun @ Select(rec, _), List(tp)) =>
+        if ((fun.symbol eq defn.Any_asInstanceOf) && rec.tpe.derivesFrom(tp.tpe.classSymbol))
+          readingOnlyVals(rec)
         else false
-      } else if (isImmutableCaseAccessor)
-        readingOnlyVals(rec)
-      else false
 
-    case Select(qual, _) if !t.symbol.is(Mutable) =>
-      if (t.symbol == defn.SystemModule) {
-        // System.in is static final fields that, for legacy reasons, must be
-        // allowed to be changed by the methods System.setIn...
-        // https://docs.oracle.com/javase/specs/jls/se8/html/jls-17.html#jls-17.5.4
-        false
-      } else
-        readingOnlyVals(qual)
+      case Apply(Select(rec, _), Nil) =>
+        if (isGetterOfAImmutableField || isAccessingProductField || isImmutableCaseAccessor)
+          readingOnlyVals(rec)
+        else false
 
-    case t: Ident if !t.symbol.is(Mutable | Method) && !t.symbol.info.dealias.isInstanceOf[ExprType] =>
-      desugarIdent(t) match {
-        case Some(t) => readingOnlyVals(t)
-        case None => true
-      }
+      case Select(rec, _) if t.symbol.is(Method) =>
+        if (isGetterOfAImmutableField)
+          readingOnlyVals(rec) // Getter of an immutable field
+        else if (isAccessingProductField) {
+          def isImmutableField = {
+            val fieldId = t.symbol.name.toString.drop(1).toInt - 1
+            !t.symbol.owner.caseAccessors(ctx)(fieldId).is(Mutable)
+          }
+          if (isImmutableField) readingOnlyVals(rec) // Accessing a field of a product
+          else false
+        } else if (isImmutableCaseAccessor)
+          readingOnlyVals(rec)
+        else false
 
-    case t: This => true
-    // null => false, or the following fails devalify:
-    // trait I {
-    //   def foo: Any = null
-    // }
-    // object Main {
-    //   def main = {
-    //     val s: I = null
-    //     s.foo
-    //   }
-    // }
-    case Literal(Constant(null)) => false
-    case t: Literal => true
-    case _ => false
+      case Select(qual, _) if !t.symbol.is(Mutable) =>
+        if (t.symbol == defn.SystemModule) {
+          // System.in is static final fields that, for legacy reasons, must be
+          // allowed to be changed by the methods System.setIn...
+          // https://docs.oracle.com/javase/specs/jls/se8/html/jls-17.html#jls-17.5.4
+          false
+        } else
+          readingOnlyVals(qual)
+
+      case t: Ident if !t.symbol.is(Mutable | Method) && !t.symbol.info.dealias.isInstanceOf[ExprType] =>
+        desugarIdent(t) match {
+          case Some(t) => readingOnlyVals(t)
+          case None => true
+        }
+
+      case t: This => true
+      // null => false, or the following fails devalify:
+      // trait I {
+      //   def foo: Any = null
+      // }
+      // object Main {
+      //   def main = {
+      //     val s: I = null
+      //     s.foo
+      //   }
+      // }
+      case Literal(Constant(null)) => false
+      case t: Literal => true
+      case _ => false
     }
   }
 }
