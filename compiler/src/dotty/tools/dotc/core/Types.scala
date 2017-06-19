@@ -2321,7 +2321,7 @@ object Types {
             else
               if (bcs1set contains bc2)
                 if (bc2.is(Trait)) bc2 :: recur(bcs2rest)
-                else bcs2rest 
+                else bcs2
               else recur(bcs2rest)
           case nil =>
             if (isAnd) bcs1 else bcs2
