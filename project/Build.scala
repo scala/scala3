@@ -1148,13 +1148,8 @@ object Build {
         """.stripMargin)
     }
 
-    // If .vscode does not exist yet, initialize it with the contents of .vscode-template/
-    val vscodeSetting = new File(".vscode/")
-    if (!vscodeSetting.exists()) {
-      vscodeSetting.mkdir()
-      for (file <- new File(".vscode-template/").listFiles)
-        java.nio.file.Files.copy(file.toPath, new File(vscodeSetting.getPath() + '/' + file.getName).toPath)
-    }
+    // If contents .vscode do not exist yet, initialize them with the contents of .vscode-template/
+    sbt.IO.copyDirectory(new File(".vscode-template/"), new File(".vscode/"), overwrite = false)
 
     state
   }
