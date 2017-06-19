@@ -10,6 +10,7 @@ import core.Types._
 import core.Flags._
 import ast.Trees._
 import transform.SymUtils._
+import Simplify.isMutable
 
 /** Eliminated casts and equality tests whose results can be locally
  *  determined at compile time:
@@ -77,7 +78,8 @@ import transform.SymUtils._
 
         case TypeApply(fun @ Select(x, _), List(tp))
           if fun.symbol.eq(defn.Any_isInstanceOf) &&
-             !x.symbol.is(Method | Mutable)       &&
+             !isMutable(x)                        &&
+             !x.symbol.is(Method)                 &&
              x.symbol.exists && !x.symbol.owner.isClass =>
           (x.symbol, tp.tpe) :: Nil
 
@@ -89,14 +91,16 @@ import transform.SymUtils._
   def collectNullTests(t: Tree)(implicit ctx: Context): List[Symbol] = {
     def recur(t: Tree): List[Symbol] =
       t match {
-        case Apply(x, _) if (x.symbol == defn.Boolean_! || x.symbol == defn.Boolean_||) => Nil
+        case Apply(x, _) if (x.symbol == defn.Boolean_! || x.symbol == defn.Boolean_||) =>
+          Nil
 
         case Apply(fun @ Select(x, _), y) if (fun.symbol == defn.Boolean_&&) =>
           recur(x) ++ recur(y.head)
 
         case Apply(fun @ Select(x, _), List(tp))
             if fun.symbol.eq(defn.Object_ne)  &&
-               !x.symbol.is(Method | Mutable) &&
+               !isMutable(x)                  &&
+               !x.symbol.is(Method)           &&
                x.symbol.exists && !x.symbol.owner.isClass =>
           x.symbol :: Nil
 

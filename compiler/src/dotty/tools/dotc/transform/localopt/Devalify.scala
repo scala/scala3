@@ -10,7 +10,7 @@ import core.Types._
 import ast.Trees._
 import scala.collection.mutable
 import config.Printers.simplify
-import Simplify.desugarIdent
+import Simplify.{desugarIdent, isMutable}
 import transform.SymUtils._
 
 /** Inline vals and remove vals that are aliases to other vals
@@ -201,14 +201,8 @@ class Devalify extends Optimisation {
           readingOnlyVals(rec)
         else false
 
-      case Select(qual, _) if !t.symbol.is(Mutable) =>
-        if (t.symbol == defn.SystemModule) {
-          // System.in is static final fields that, for legacy reasons, must be
-          // allowed to be changed by the methods System.setIn...
-          // https://docs.oracle.com/javase/specs/jls/se8/html/jls-17.html#jls-17.5.4
-          false
-        } else
-          readingOnlyVals(qual)
+      case t @ Select(qual, _) if !isMutable(t) =>
+        readingOnlyVals(qual)
 
       case t: Ident if !t.symbol.is(Mutable | Method) && !t.symbol.info.dealias.isInstanceOf[ExprType] =>
         desugarIdent(t) match {
