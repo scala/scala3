@@ -1,5 +1,5 @@
 
-import java.nio.file.{Files, Path, Paths}
+import java.nio.file.{ Files => JFiles, Path => JPath, Paths => JPaths }
 import java.util.stream.{ Stream => JStream }
 
 import scala.collection.JavaConverters._
@@ -17,20 +17,20 @@ object IdempotencyCheck {
     var failed = 0
     var total = 0
 
-    val groupedBytecodeFiles: List[(Path, Path, Path, Path)] = {
+    val groupedBytecodeFiles: List[(JPath, JPath, JPath, JPath)] = {
       val bytecodeFiles = {
-        def bytecodeFiles(paths: JStream[Path]): List[Path] = {
+        def bytecodeFiles(paths: JStream[JPath]): List[JPath] = {
           def isBytecode(file: String) = file.endsWith(".class") || file.endsWith(".tasty")
           paths.iterator.asScala.filter(path => isBytecode(path.toString)).toList
         }
-        val compilerDir1 = Paths.get(dirPrefix + 1)
-        val compilerDir2 = Paths.get(dirPrefix + 2)
-        bytecodeFiles(Files.walk(compilerDir1)) ++ bytecodeFiles(Files.walk(compilerDir2))
+        val compilerDir1 = JPaths.get(dirPrefix + 1)
+        val compilerDir2 = JPaths.get(dirPrefix + 2)
+        bytecodeFiles(JFiles.walk(compilerDir1)) ++ bytecodeFiles(JFiles.walk(compilerDir2))
       }
       val groups = bytecodeFiles.groupBy(f => f.toString.substring(dirPrefix.length + 1, f.toString.length - 6))
 
       groups.filterNot(x => blacklisted(x._1)).valuesIterator.flatMap { g =>
-        def pred(f: Path, i: Int, isTasty: Boolean) =
+        def pred(f: JPath, i: Int, isTasty: Boolean) =
           f.toString.contains(dirPrefix + i) && f.toString.endsWith(if (isTasty) ".tasty" else ".class")
         val class1 = g.find(f => pred(f, 1, isTasty = false))
         val class2 = g.find(f => pred(f, 2, isTasty = false))
@@ -45,18 +45,18 @@ object IdempotencyCheck {
 
     for ((class1, tasty1, class2, tasty2) <- groupedBytecodeFiles) {
       total += 1
-      val bytes1 = Files.readAllBytes(class1)
-      val bytes2 = Files.readAllBytes(class2)
+      val bytes1 = JFiles.readAllBytes(class1)
+      val bytes2 = JFiles.readAllBytes(class2)
       if (!java.util.Arrays.equals(bytes1, bytes2)) {
         failed += 1
-        val tastyBytes1 = Files.readAllBytes(tasty1)
-        val tastyBytes2 = Files.readAllBytes(tasty2)
+        val tastyBytes1 = JFiles.readAllBytes(tasty1)
+        val tastyBytes2 = JFiles.readAllBytes(tasty2)
         if (java.util.Arrays.equals(tastyBytes1, tastyBytes2))
           println(s"Idempotency test failed between $class1 and $class1 (same tasty)")
         else
           println(s"Idempotency test failed between $tasty1 and $tasty2")
         /* Dump bytes to console, could be useful if issue only appears in CI.
-         * Create the .class locally with Files.write(path, Array[Byte](...)) with the printed array
+         * Create the .class locally with JFiles.write(path, Array[Byte](...)) with the printed array
          */
         // println(bytes1.mkString("Array[Byte](", ",", ")"))
         // println(bytes2.mkString("Array[Byte](", ",", ")"))
