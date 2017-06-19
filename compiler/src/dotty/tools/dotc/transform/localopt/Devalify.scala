@@ -164,7 +164,17 @@ class Devalify extends Optimisation {
     case _ => t
   }
 
-  def readingOnlyVals(t: Tree)(implicit ctx: Context): Boolean = dropCasts(t) match {
+  def readingOnlyVals(t: Tree)(implicit ctx: Context): Boolean = {
+    def isGetterOfAImmutableField = t.symbol.isGetter && !t.symbol.is(Mutable)
+    def isCaseClassWithVar        = t.symbol.info.decls.exists(_.is(Mutable))
+    def isAccessingProductField   = t.symbol.exists                               &&
+                                    t.symbol.owner.derivesFrom(defn.ProductClass) &&
+                                    t.symbol.owner.is(CaseClass)                  &&
+                                    t.symbol.name.isSelectorName                  &&
+                                    !isCaseClassWithVar // Conservatively covers case class A(var x: Int)
+    def isImmutableCaseAccessor   = t.symbol.is(CaseAccessor) && !t.symbol.is(Mutable)
+
+    dropCasts(t) match {
     case Typed(exp, _) => readingOnlyVals(exp)
 
     case TypeApply(fun @ Select(rec, _), List(tp)) =>
@@ -173,29 +183,21 @@ class Devalify extends Optimisation {
       else false
 
     case Apply(Select(rec, _), Nil) =>
-      def isGetterOfAImmutableField = t.symbol.isGetter && !t.symbol.is(Mutable)
-      def isCaseClassWithVar        = t.symbol.info.decls.exists(_.is(Mutable))
-      def isAccessingProductField   = t.symbol.exists                               &&
-                                      t.symbol.owner.derivesFrom(defn.ProductClass) &&
-                                      t.symbol.owner.is(CaseClass)                  &&
-                                      t.symbol.name.isSelectorName                  &&
-                                      !isCaseClassWithVar // Conservative Covers case class A(var x: Int)
-      def isImmutableCaseAccessor   = t.symbol.is(CaseAccessor) && !t.symbol.is(Mutable)
       if (isGetterOfAImmutableField || isAccessingProductField || isImmutableCaseAccessor)
         readingOnlyVals(rec)
       else false
 
     case Select(rec, _) if t.symbol.is(Method) =>
-      if (t.symbol.isGetter && !t.symbol.is(Mutable))
-        readingOnlyVals(rec) // getter of a immutable field
-      else if (t.symbol.owner.derivesFrom(defn.ProductClass) && t.symbol.owner.is(CaseClass) && t.symbol.name.isSelectorName) {
+      if (isGetterOfAImmutableField)
+        readingOnlyVals(rec) // Getter of an immutable field
+      else if (isAccessingProductField) {
         def isImmutableField = {
           val fieldId = t.symbol.name.toString.drop(1).toInt - 1
           !t.symbol.owner.caseAccessors(ctx)(fieldId).is(Mutable)
         }
-        if (isImmutableField) readingOnlyVals(rec) // accessing a field of a product
+        if (isImmutableField) readingOnlyVals(rec) // Accessing a field of a product
         else false
-      } else if (t.symbol.is(CaseAccessor) && !t.symbol.is(Mutable))
+      } else if (isImmutableCaseAccessor)
         readingOnlyVals(rec)
       else false
 
@@ -208,7 +210,7 @@ class Devalify extends Optimisation {
       } else
         readingOnlyVals(qual)
 
-    case t: Ident if !t.symbol.is(Mutable) && !t.symbol.is(Method) && !t.symbol.info.dealias.isInstanceOf[ExprType] =>
+    case t: Ident if !t.symbol.is(Mutable | Method) && !t.symbol.info.dealias.isInstanceOf[ExprType] =>
       desugarIdent(t) match {
         case Some(t) => readingOnlyVals(t)
         case None => true
@@ -228,5 +230,6 @@ class Devalify extends Optimisation {
     case Literal(Constant(null)) => false
     case t: Literal => true
     case _ => false
+    }
   }
 }
