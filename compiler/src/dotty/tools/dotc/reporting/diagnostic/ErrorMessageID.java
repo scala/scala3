@@ -91,7 +91,7 @@ public enum ErrorMessageID {
     AnonymousFunctionMissingParamTypeID,
     SuperCallsNotAllowedInlineID,
     ModifiersNotAllowedID,
-    WildcardOnTypeArgumentNotAllowedOnNewID
+    WildcardOnTypeArgumentNotAllowedOnNewID,
     ;
 
     public int errorNumber() {
