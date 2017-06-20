@@ -1,6 +1,7 @@
 class Foo extends bla.Base {
   class Inner {
-    println(foo)
+    println(foo())
+    println(bar)
   }
 }
 

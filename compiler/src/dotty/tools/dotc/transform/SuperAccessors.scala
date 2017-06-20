@@ -187,11 +187,11 @@ class SuperAccessors(thisTransformer: DenotTransformer) {
       }
       val protectedAccessor = clazz.info.decl(accName).suchThat(_.signature == accType.signature).symbol orElse {
         val newAcc = ctx.newSymbol(
-          clazz, accName, Artifact, accType, coord = sel.pos).enteredAfter(thisTransformer)
+          clazz, accName, Artifact | Method, accType, coord = sel.pos).enteredAfter(thisTransformer)
         val code = polyDefDef(newAcc, trefs => vrefss => {
           val (receiver :: _) :: tail = vrefss
           val base = receiver.select(sym).appliedToTypes(trefs)
-          (base /: vrefss)(Apply(_, _))
+          (base /: tail)(Apply(_, _))
         })
         ctx.debuglog("created protected accessor: " + code)
         accDefs(clazz) += code
