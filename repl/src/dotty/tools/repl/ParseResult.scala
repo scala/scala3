@@ -31,11 +31,11 @@ case object Help extends Command {
 
 object ParseResult {
 
-  private[this] val CommandExtract = """(:[\S]+)\s*""".r
+  private[this] val CommandExtract = """(:[\S]+)\s*([\S]+)?""".r
 
   def apply(sourceCode: String)(implicit ctx: Context): ParseResult = sourceCode match {
     case "" => Newline
-    case CommandExtract(cmd) => cmd match {
+    case CommandExtract(cmd, arg) => cmd match {
       case ":quit"  => Quit
       case ":help"  => Help
       case ":reset" => Reset
