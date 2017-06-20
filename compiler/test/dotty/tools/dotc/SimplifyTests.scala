@@ -76,11 +76,7 @@ abstract class SimplifyTests(val optimise: Boolean) extends DottyBytecodeTest {
          |print(Tuple2.unapply(t))
       """,
       """
-         |val t = Tuple2(1, "s")
-         |print({
-         |  Tuple2 // TODO: teach Simplify that initializing Tuple2 has no effect
-         |  new Some(new Tuple2(t._1, t._2))
-         |})
+         |print(new Some(new Tuple2(1, "s")))
       """)
 
   @Test def constantFold =
@@ -97,20 +93,84 @@ abstract class SimplifyTests(val optimise: Boolean) extends DottyBytecodeTest {
   @Test def dropNoEffects =
     check(
       """
-         |"wow"
+         |val a = "wow"
          |print(1)
       """,
       """
          |print(1)
       """)
 
-  // @Test def inlineOptions =
+  @Test def dropNoEffectsTuple =
+    check("new Tuple2(1, 3)", "")
+
+  @Test def inlineLocalObjects =
+    check(
+      """
+         |val t = new Tuple2(1, 3)
+         |print(t._1 + t._2)
+      """,
+      """
+         |val i = 3
+         |print(1 + i) // Prevents typer from constant folding 1 + 3 to 4
+      """)
+
+  @Test def inlineOptions =
+    check(
+      """
+         |val sum = Some("s")
+         |println(sum.isDefined)
+      """,
+      """
+         |println(true)
+      """)
+
+  // @Test def listPatmapExample =
   //   check(
   //     """
-  //        |val sum = Some("s")
-  //        |println(sum.isDefined)
+  //        |val l = 1 :: 2 :: Nil
+  //        |l match {
+  //        |  case Nil => print("nil")
+  //        |  case x :: xs => print(x)
+  //        |}
+  //     """,
+  //     """TODO
+  //     """)
+
+  // @Test def fooCCExample =
+  //   check(
+  //     source   =
+  //     """
+  //       |val x: Any = new Object {}
+  //       |val (a, b) = x match {
+  //       |  case CC(s @ 1, CC(t, _)) =>
+  //       |    (s , 2)
+  //       |  case _ => (42, 43)
+  //       |}
+  //       |a + b
+  //     """,
+  //     expected =
+  //     """TODO
+  //     """,
+  //     shared   = "case class CC(a: Int, b: Object)")
+
+  // @Test def booleansFunctionExample =
+  //   check(
+  //     """
+  //     |val a: Any = new Object {}
+  //     |val (b1, b2) = (a.isInstanceOf[String], a.isInstanceOf[List[Int]])
+  //     |(b1, b2) match {
+  //     |  case (true, true) => true
+  //     |  case (false, false) => true
+  //     |  case _ => false
+  //     |}
   //     """,
   //     """
-  //        |println(true)
+  //     |val a: Any = new Object {}
+  //     |val bl = a.isInstanceOf[List[_]]
+  //     |val bl2 = a.isInstanceOf[String]
+  //     |if (true == bl2 && true == bl)
+  //     |  true
+  //     |else
+  //     |  false == bl2 && false == bl
   //     """)
 }
