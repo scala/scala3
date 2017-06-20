@@ -23,6 +23,13 @@ class ReplCompiler(ictx: Context) extends Compiler {
 
   type NextRes = Int
 
+  /** Directory to save class files to */
+  final val virtualDirectory =
+    if (ictx.settings.d.isDefault(ictx))
+      new VirtualDirectory("(memory)", None)
+    else
+      new PlainDirectory(new Directory(new JFile(ictx.settings.d.value(ictx))))
+
   private class REPLFrontEnd extends FrontEnd {
     override def phaseName = "replFrontEnd"
 
@@ -42,14 +49,6 @@ class ReplCompiler(ictx: Context) extends Compiler {
   /** A GenBCode phase that outputs to a virtual directory */
   private class REPLGenBCode extends GenBCode {
     override def phaseName = "replGenBCode"
-
-    /** Directory to save class files to */
-    private val virtualDirectory =
-      if (ictx.settings.d.isDefault(ictx))
-        new VirtualDirectory("(memory)", None)
-      else
-        new PlainDirectory(new Directory(new JFile(ictx.settings.d.value(ictx))))
-
     override def outputDir(implicit ctx: Context) = virtualDirectory
   }
 

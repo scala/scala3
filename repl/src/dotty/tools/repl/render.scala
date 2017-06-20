@@ -1,12 +1,25 @@
 package dotty.tools
 package repl
 
+import scala.util.control.NonFatal
+
 import dotc.core.Types._
 import dotc.core.Contexts.Context
 import dotc.core.Denotations.Denotation
 import dotc.core.Flags
+import dotc.core.Symbols.Symbol
 
 object Rendering {
+  /** Load the value of the symbol using reflection */
+  private[this] def valueOf(sym: Symbol, classLoader: ClassLoader)(implicit ctx: Context): String = {
+    val objectName = "$none$." + sym.owner.name.show
+    val resObj: Class[_] = Class.forName(objectName, true, classLoader)
+    val objInstance = resObj.newInstance()
+    objInstance
+      .getClass()
+      .getDeclaredMethods.find(_.getName == sym.name.show).get
+      .invoke(objInstance).toString
+  }
 
   def renderMethod(d: Denotation)(implicit ctx: Context): String = {
     def params(tpe: Type): String = tpe match {
@@ -31,13 +44,13 @@ object Rendering {
     s"def ${d.symbol.name.show}${params(d.info)}"
   }
 
-  def renderVal(d: Denotation)(implicit ctx: Context): String = {
+  def renderVal(d: Denotation, classLoader: ClassLoader)(implicit ctx: Context): String = {
     val prefix = if (d.symbol.is(Flags.Mutable)) "var" else "val"
     val tpe = d.info match {
       case ConstantType(c) => c.value.toString
       case tpe => tpe.show
     }
-    s"$prefix ${d.symbol.name.show}: $tpe"
+    val res = valueOf(d.symbol, classLoader)
+    s"$prefix ${d.symbol.name.show}: $tpe = $res"
   }
-
 }

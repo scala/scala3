@@ -1,6 +1,9 @@
 package dotty.tools
 package repl
 
+import java.net.{URL, URLClassLoader}
+import java.lang.ClassLoader
+
 import scala.annotation.tailrec
 
 import dotc.reporting.MessageRendering
@@ -15,13 +18,17 @@ import dotc.core.Types.{ ExprType, ConstantType }
 import dotc.config.CompilerCommand
 import dotc.{ Compiler, Driver }
 import dotc.printing.SyntaxHighlighting
+import dotc.repl.AbstractFileClassLoader // FIXME
 
 import AmmoniteReader._
 import results._
 
 case class State(objectIndex: Int, valIndex: Int, history: History)
 
-class Repl(settings: Array[String]) extends Driver {
+class Repl(
+  settings: Array[String],
+  parentClassLoader: Option[ClassLoader] = None
+) extends Driver {
 
   // FIXME: Change the Driver API to not require implementing this method
   override protected def newCompiler(implicit ctx: Context): Compiler =
@@ -33,6 +40,25 @@ class Repl(settings: Array[String]) extends Driver {
     val ictx = rootCtx.setSettings(summary.sstate)
     ictx.base.initialize()(ictx)
     ictx
+  }
+
+  private[this] var _classLoader: ClassLoader = _
+  def classLoader(implicit ctx: Context): ClassLoader = {
+    if (_classLoader eq null) _classLoader = {
+      /** the compiler's classpath, as URL's */
+      val compilerClasspath: Seq[URL] = ctx.platform.classPath(ctx).asURLs
+
+      lazy val parent = new URLClassLoader(compilerClasspath.toArray,
+                                           classOf[Repl].getClassLoader)
+
+      new AbstractFileClassLoader(compiler.virtualDirectory,
+                                  parentClassLoader.getOrElse(parent))
+    }
+
+    // Set the current Java "context" class loader to this interpreter's
+    // class loader
+    Thread.currentThread.setContextClassLoader(_classLoader)
+    _classLoader
   }
 
   protected[this] var myCtx    = initializeCtx: Context
@@ -94,8 +120,8 @@ class Repl(settings: Array[String]) extends Driver {
 
       (
         defs.map(Rendering.renderMethod) ++
-        vals.map(Rendering.renderVal)
-      ).foreach(println)
+        vals.map(Rendering.renderVal(_, classLoader))
+      ).foreach(str => println(SyntaxHighlighting(str)))
     }
 
     def displayTypeDef(tree: tpd.TypeDef) = {
@@ -108,8 +134,7 @@ class Repl(settings: Array[String]) extends Driver {
         else if (sym.is(Module)) "object"
         else "class"
 
-
-      println(SyntaxHighlighting(s"defined $kind $name"))
+      println(SyntaxHighlighting(s"// defined $kind $name"))
     }
 
 
@@ -138,6 +163,7 @@ class Repl(settings: Array[String]) extends Driver {
 
     case Reset => {
       myCtx = initCtx.fresh
+      _classLoader = null
       run()
     }
 
