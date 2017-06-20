@@ -45,12 +45,20 @@ object Rendering {
   }
 
   def renderVal(d: Denotation, classLoader: ClassLoader)(implicit ctx: Context): String = {
-    val prefix = if (d.symbol.is(Flags.Mutable)) "var" else "val"
+    val prefix =
+      if (d.symbol.is(Flags.Mutable)) "var"
+      else if (d.symbol.is(Flags.Lazy)) "lazy val"
+      else "val"
+
     val tpe = d.info match {
       case ConstantType(c) => c.value.toString
       case tpe => tpe.show
     }
-    val res = valueOf(d.symbol, classLoader)
+
+    val res =
+      if (d.symbol.is(Flags.Lazy)) "<lazy>"
+      else valueOf(d.symbol, classLoader)
+
     s"$prefix ${d.symbol.name.show}: $tpe = $res"
   }
 }
