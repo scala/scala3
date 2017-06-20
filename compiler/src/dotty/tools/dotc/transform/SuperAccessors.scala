@@ -187,11 +187,11 @@ class SuperAccessors(thisTransformer: DenotTransformer) {
       }
       val protectedAccessor = clazz.info.decl(accName).suchThat(_.signature == accType.signature).symbol orElse {
         val newAcc = ctx.newSymbol(
-          clazz, accName, Artifact, accType, coord = sel.pos).enteredAfter(thisTransformer)
+          clazz, accName, Artifact | Method, accType, coord = sel.pos).enteredAfter(thisTransformer)
         val code = polyDefDef(newAcc, trefs => vrefss => {
           val (receiver :: _) :: tail = vrefss
           val base = receiver.select(sym).appliedToTypes(trefs)
-          (base /: vrefss)(Apply(_, _))
+          (base /: tail)(Apply(_, _))
         })
         ctx.debuglog("created protected accessor: " + code)
         accDefs(clazz) += code
@@ -300,9 +300,8 @@ class SuperAccessors(thisTransformer: DenotTransformer) {
     private def needsProtectedAccessor(sym: Symbol, pos: Position)(implicit ctx: Context): Boolean = {
       val clazz = currentClass
       val host = hostForAccessorOf(sym, clazz)
-      val selfType = host.classInfo.selfType
       def accessibleThroughSubclassing =
-        validCurrentClass && (selfType <:< sym.owner.typeRef) && !clazz.is(Trait)
+        validCurrentClass && (clazz.classInfo.selfType <:< sym.owner.typeRef) && !clazz.is(Trait)
 
       val isCandidate = (
            sym.is(Protected)
@@ -312,9 +311,11 @@ class SuperAccessors(thisTransformer: DenotTransformer) {
         && (sym.enclosingPackageClass != currentClass.enclosingPackageClass)
         && (sym.enclosingPackageClass == sym.accessBoundary(sym.enclosingPackageClass))
       )
-      def isSelfType = !(host.typeRef <:< selfType) && {
-        if (selfType.typeSymbol.is(JavaDefined))
-          ctx.restrictionError(s"cannot accesses protected $sym from within $clazz with self type $selfType", pos)
+      val hostSelfType = host.classInfo.selfType
+      def isSelfType = !(host.typeRef <:< hostSelfType) && {
+        if (hostSelfType.typeSymbol.is(JavaDefined))
+          ctx.restrictionError(
+            s"cannot accesses protected $sym from within $clazz with host self type $hostSelfType", pos)
         true
       }
       def isJavaProtected = host.is(Trait) && sym.is(JavaDefined) && {
