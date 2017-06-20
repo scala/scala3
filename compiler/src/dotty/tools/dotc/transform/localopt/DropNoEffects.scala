@@ -3,12 +3,11 @@ package transform.localopt
 
 import core.TypeErasure
 import core.Contexts.Context
-import core.NameOps._
 import core.Symbols._
 import core.Types._
 import core.Flags._
 import ast.Trees._
-import Simplify.desugarIdent
+import Simplify._
 
 /** Removes side effect free statements in blocks and Defdef.
  *  Flattens blocks (except Closure-blocks)
@@ -79,11 +78,7 @@ class DropNoEffects(val simplifyPhase: Simplify) extends Optimisation {
         elsep = nelsep.orElse(if (elsep.isInstanceOf[Literal]) elsep else unitLiteral))
 
     // Accessing a field of a product
-    case t @ Select(rec, _)
-      if (t.symbol.isGetter && !t.symbol.is(Mutable | Lazy)) ||
-         (t.symbol.owner.derivesFrom(defn.ProductClass) && t.symbol.owner.is(CaseClass) && t.symbol.name.isSelectorName) ||
-         (t.symbol.is(CaseAccessor) && !t.symbol.is(Mutable)) =>
-
+    case t @ Select(rec, _) if isImmutableAccessor(t) =>
       keepOnlySideEffects(rec)
 
     // !name.eq(nme.TYPE_) && // Keep the .TYPE added by ClassOf, would be needed for AfterErasure

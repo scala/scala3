@@ -6,7 +6,6 @@ import core.Contexts.Context
 import core.Decorators._
 import core.Names.Name
 import core.Types.Type
-import core.NameOps._
 import core.StdNames._
 import core.Symbols._
 import core.Flags._
@@ -14,6 +13,7 @@ import ast.Trees._
 import scala.collection.mutable
 import transform.SymUtils._
 import config.Printers.simplify
+import Simplify._
 
 /** Inline case classes as vals.
  *
@@ -74,10 +74,7 @@ class InlineLocalObjects extends Optimisation {
     case Assign(lhs, rhs) if !lhs.symbol.owner.isClass =>
       checkGood.put(lhs.symbol, checkGood.getOrElse(lhs.symbol, Set.empty) + rhs.symbol)
 
-    case t @ Select(qual, _) if
-      (t.symbol.isGetter && !t.symbol.is(Mutable | Lazy)) ||
-      (t.symbol.maybeOwner.derivesFrom(defn.ProductClass) && t.symbol.maybeOwner.is(CaseClass) && t.symbol.name.isSelectorName) ||
-      (t.symbol.is(CaseAccessor) && !t.symbol.is(Mutable)) =>
+    case t @ Select(qual, _) if isImmutableAccessor(t) =>
       gettersCalled(qual.symbol) = true
 
     case t: DefDef if t.symbol.is(Label) =>
@@ -204,9 +201,7 @@ class InlineLocalObjects extends Optimisation {
             Thicket(t :: updates)
         }
 
-      case t @ Select(rec, _) if (t.symbol.isGetter && !t.symbol.is(Mutable | Lazy)) ||
-        (t.symbol.maybeOwner.derivesFrom(defn.ProductClass) && t.symbol.owner.is(CaseClass) && t.symbol.name.isSelectorName) ||
-        (t.symbol.is(CaseAccessor) && !t.symbol.is(Mutable)) =>
+      case t @ Select(rec, _) if isImmutableAccessor(t) =>
         newMappings.getOrElse(rec.symbol, Map.empty).get(t.symbol) match {
           case None => t
           case Some(newSym) => ref(newSym)

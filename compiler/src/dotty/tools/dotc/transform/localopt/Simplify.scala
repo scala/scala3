@@ -7,6 +7,7 @@ import core.Symbols._
 import core.Types._
 import core.Flags._
 import core.Decorators._
+import core.NameOps._
 import transform.TreeTransforms.{MiniPhaseTransform, TransformerInfo}
 import config.Printers.simplify
 import ast.tpd
@@ -156,5 +157,16 @@ object Simplify {
     case s: Select => s.symbol.owner == defn.SystemModule
     case i: Ident  => desugarIdent(i).exists(isEffectivelyMutable)
     case _ => false
+  }
+
+  def isImmutableAccessor(t: Tree)(implicit ctx: Context): Boolean = {
+    val isImmutableGetter = t.symbol.isGetter && !t.symbol.is(Mutable | Lazy)
+    val isCaseAccessor    = t.symbol.is(CaseAccessor) && !t.symbol.is(Mutable | Lazy)
+    val isProductAccessor = t.symbol.exists                               &&
+                            t.symbol.owner.derivesFrom(defn.ProductClass) &&
+                            t.symbol.owner.is(CaseClass)                  &&
+                            t.symbol.name.isSelectorName                  &&
+                            !t.symbol.info.decls.exists(_.is(Mutable | Lazy)) // Conservatively covers case class A(var x: Int)
+    isImmutableGetter || isCaseAccessor || isProductAccessor
   }
 }

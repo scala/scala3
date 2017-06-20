@@ -4,13 +4,12 @@ package transform.localopt
 import core.Constants.Constant
 import core.Contexts.Context
 import core.Flags._
-import core.NameOps._
 import core.Symbols._
 import core.Types._
 import ast.Trees._
 import scala.collection.mutable
 import config.Printers.simplify
-import Simplify.{desugarIdent, isEffectivelyMutable}
+import Simplify._
 import transform.SymUtils._
 
 /** Inline vals and remove vals that are aliases to other vals
@@ -164,66 +163,38 @@ class Devalify extends Optimisation {
     case _ => t
   }
 
-  def readingOnlyVals(t: Tree)(implicit ctx: Context): Boolean = {
-    def isGetterOfAImmutableField = t.symbol.isGetter && !t.symbol.is(Mutable)
-    def isCaseClassWithVar        = t.symbol.info.decls.exists(_.is(Mutable))
-    def isAccessingProductField   = t.symbol.exists                               &&
-                                    t.symbol.owner.derivesFrom(defn.ProductClass) &&
-                                    t.symbol.owner.is(CaseClass)                  &&
-                                    t.symbol.name.isSelectorName                  &&
-                                    !isCaseClassWithVar // Conservatively covers case class A(var x: Int)
-    def isImmutableCaseAccessor   = t.symbol.is(CaseAccessor) && !t.symbol.is(Mutable)
+  def readingOnlyVals(t: Tree)(implicit ctx: Context): Boolean = dropCasts(t) match {
+    case Typed(exp, _) => readingOnlyVals(exp)
 
-    dropCasts(t) match {
-      case Typed(exp, _) => readingOnlyVals(exp)
+    case TypeApply(fun @ Select(rec, _), List(tp)) =>
+      val isAsInstanceOf = fun.symbol == defn.Any_asInstanceOf && rec.tpe.derivesFrom(tp.tpe.classSymbol)
+      isAsInstanceOf && readingOnlyVals(rec)
 
-      case TypeApply(fun @ Select(rec, _), List(tp)) =>
-        if ((fun.symbol eq defn.Any_asInstanceOf) && rec.tpe.derivesFrom(tp.tpe.classSymbol))
-          readingOnlyVals(rec)
-        else false
+    case t @ Apply(Select(rec, _), Nil) =>
+      isImmutableAccessor(t) && readingOnlyVals(rec)
 
-      case Apply(Select(rec, _), Nil) =>
-        if (isGetterOfAImmutableField || isAccessingProductField || isImmutableCaseAccessor)
-          readingOnlyVals(rec)
-        else false
+    case t @ Select(rec, _) if t.symbol.is(Method) =>
+      isImmutableAccessor(t) && readingOnlyVals(rec)
 
-      case Select(rec, _) if t.symbol.is(Method) =>
-        if (isGetterOfAImmutableField)
-          readingOnlyVals(rec) // Getter of an immutable field
-        else if (isAccessingProductField) {
-          def isImmutableField = {
-            val fieldId = t.symbol.name.toString.drop(1).toInt - 1
-            !t.symbol.owner.caseAccessors(ctx)(fieldId).is(Mutable)
-          }
-          if (isImmutableField) readingOnlyVals(rec) // Accessing a field of a product
-          else false
-        } else if (isImmutableCaseAccessor)
-          readingOnlyVals(rec)
-        else false
+    case t @ Select(qual, _) if !isEffectivelyMutable(t) =>
+      readingOnlyVals(qual)
 
-      case t @ Select(qual, _) if !isEffectivelyMutable(t) =>
-        readingOnlyVals(qual)
+    case t: Ident if !t.symbol.is(Mutable | Method) && !t.symbol.info.dealias.isInstanceOf[ExprType] =>
+      desugarIdent(t).forall(readingOnlyVals)
 
-      case t: Ident if !t.symbol.is(Mutable | Method) && !t.symbol.info.dealias.isInstanceOf[ExprType] =>
-        desugarIdent(t) match {
-          case Some(t) => readingOnlyVals(t)
-          case None => true
-        }
-
-      case t: This => true
-      // null => false, or the following fails devalify:
-      // trait I {
-      //   def foo: Any = null
-      // }
-      // object Main {
-      //   def main = {
-      //     val s: I = null
-      //     s.foo
-      //   }
-      // }
-      case Literal(Constant(null)) => false
-      case t: Literal => true
-      case _ => false
-    }
+    case t: This => true
+    // null => false, or the following fails devalify:
+    // trait I {
+    //   def foo: Any = null
+    // }
+    // object Main {
+    //   def main = {
+    //     val s: I = null
+    //     s.foo
+    //   }
+    // }
+    case Literal(Constant(null)) => false
+    case t: Literal => true
+    case _ => false
   }
 }
