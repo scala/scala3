@@ -26,6 +26,7 @@ object Rendering {
       case ConstantType(c) => ": " + c.value
       case tpe: ParamRef => ": " + tpe.paramName + ".type"
       case tpe: TypeRef => ": " + tpe.show
+      case tpe: ExprType => ": " + tpe.resType.show
       case mt: MethodType =>
         val ps = mt.paramNames.zip(mt.paramInfos).map { (name, tpe) =>
           val tp = tpe match {
