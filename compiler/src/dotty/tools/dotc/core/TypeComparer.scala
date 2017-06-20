@@ -1143,11 +1143,11 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
           case OrType(tp11, tp12) =>
             tp11 & tp2 | tp12 & tp2
           case _ =>
-            val t1 = mergeIfSub(tp1, tp2)
-            if (t1.exists) t1
+            val tp1a = dropIfSuper(tp1, tp2)
+            if (tp1a ne tp1) glb(tp1a, tp2)
             else {
-              val t2 = mergeIfSub(tp2, tp1)
-              if (t2.exists) t2
+              val tp2a = dropIfSuper(tp2, tp1)
+              if (tp2a ne tp2) glb(tp1, tp2a)
               else tp1 match {
                 case tp1: ConstantType =>
                   tp2 match {
@@ -1203,6 +1203,22 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
   /** The least upper bound of a list of types */
   final def lub(tps: List[Type]): Type =
     ((defn.NothingType: Type) /: tps)(lub(_,_, canConstrain = false))
+
+  private def recombineAndOr(tp: AndOrType, tp1: Type, tp2: Type) =
+    if (!tp1.exists) tp2
+    else if (!tp2.exists) tp1
+    else tp.derivedAndOrType(tp1, tp2)
+
+  /** If some (&-operand of) this type is a supertype of `sub` replace it with `NoType`.
+   */
+  private def dropIfSuper(tp: Type, sub: Type): Type =
+    if (isSubTypeWhenFrozen(sub, tp)) NoType
+    else tp match {
+      case tp @ AndType(tp1, tp2) =>
+        recombineAndOr(tp, dropIfSuper(tp1, sub), dropIfSuper(tp2, sub))
+      case _ =>
+        tp
+    }
 
   /** Merge `t1` into `tp2` if t1 is a subtype of some &-summand of tp2.
    */

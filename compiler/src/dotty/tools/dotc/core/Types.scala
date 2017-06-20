@@ -386,19 +386,15 @@ object Types {
 
     /** The base classes of this type as determined by ClassDenotation
      *  in linearization order, with the class itself as first element.
-     *  For AndTypes/OrTypes, the union/intersection of the operands' baseclasses.
-     *  Inherited by all type proxies. `Nil` for all other types.
+     *  Inherited by all type proxies. Overridden for And and Or types.
+     *  `Nil` for all other types.
      */
-    final def baseClasses(implicit ctx: Context): List[ClassSymbol] = track("baseClasses") {
+    def baseClasses(implicit ctx: Context): List[ClassSymbol] = track("baseClasses") {
       this match {
         case tp: TypeProxy =>
           tp.underlying.baseClasses
         case tp: ClassInfo =>
           tp.cls.baseClasses
-        case AndType(tp1, tp2) =>
-          tp1.baseClasses union tp2.baseClasses
-        case OrType(tp1, tp2) =>
-          tp1.baseClasses intersect tp2.baseClasses
         case _ => Nil
       }
     }
@@ -474,22 +470,24 @@ object Types {
      */
     final def findMember(name: Name, pre: Type, excluded: FlagSet)(implicit ctx: Context): Denotation = {
       @tailrec def go(tp: Type): Denotation = tp match {
-        case tp: RefinedType =>
-          if (name eq tp.refinedName) goRefined(tp) else go(tp.parent)
-        case tp: ThisType =>
-          goThis(tp)
-        case tp: TypeRef =>
-          tp.denot.findMember(name, pre, excluded)
         case tp: TermRef =>
           go (tp.underlying match {
             case mt: MethodType
             if mt.paramInfos.isEmpty && (tp.symbol is Stable) => mt.resultType
             case tp1 => tp1
           })
-        case tp: TypeParamRef =>
-          goParam(tp)
+        case tp: TypeRef =>
+          tp.denot.findMember(name, pre, excluded)
+        case tp: ThisType =>
+          goThis(tp)
+        case tp: RefinedType =>
+          if (name eq tp.refinedName) goRefined(tp) else go(tp.parent)
         case tp: RecType =>
           goRec(tp)
+        case tp: TypeParamRef =>
+          goParam(tp)
+        case tp: SuperType =>
+          goSuper(tp)
         case tp: HKApply =>
           goApply(tp)
         case tp: TypeProxy =>
@@ -612,6 +610,12 @@ object Types {
           case _ =>
             go(next)
         }
+      }
+      def goSuper(tp: SuperType) = go(tp.underlying) match {
+        case d: JointRefDenotation =>
+          typr.println(i"redirecting super.$name from $tp to ${d.symbol.showLocated}")
+          new UniqueRefDenotation(d.symbol, tp.memberInfo(d.symbol), d.validFor)
+        case d => d
       }
       def goAnd(l: Type, r: Type) = {
         go(l) & (go(r), pre, safeIntersection = ctx.pendingMemberSearches.contains(name))
@@ -2298,6 +2302,37 @@ object Types {
     def tp2: Type
     def isAnd: Boolean
     def derivedAndOrType(tp1: Type, tp2: Type)(implicit ctx: Context): Type  // needed?
+
+    private[this] var myBaseClassesPeriod: Period = Nowhere
+    private[this] var myBaseClasses: List[ClassSymbol] = _
+
+    /** Base classes of And are the merge of the operand base classes
+     *  For OrTypes, it's the intersection.
+     */
+    override final def baseClasses(implicit ctx: Context) = {
+      if (myBaseClassesPeriod != ctx.period) {
+        val bcs1 = tp1.baseClasses
+        val bcs1set = BaseClassSet(bcs1)
+        def recur(bcs2: List[ClassSymbol]): List[ClassSymbol] = bcs2 match {
+          case bc2 :: bcs2rest =>
+            if (isAnd)
+              if (bcs1set contains bc2)
+                if (bc2.is(Trait)) recur(bcs2rest)
+                else bcs1 // common class, therefore rest is the same in both sequences
+              else bc2 :: recur(bcs2rest)
+            else
+              if (bcs1set contains bc2)
+                if (bc2.is(Trait)) bc2 :: recur(bcs2rest)
+                else bcs2
+              else recur(bcs2rest)
+          case nil =>
+            if (isAnd) bcs1 else bcs2
+        }
+        myBaseClasses = recur(tp2.baseClasses)
+        myBaseClassesPeriod = ctx.period
+      }
+      myBaseClasses
+    }
   }
 
   abstract case class AndType(tp1: Type, tp2: Type) extends CachedGroundType with AndOrType {

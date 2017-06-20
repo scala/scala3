@@ -1407,32 +1407,13 @@ object SymDenotations {
       baseData._2
 
     def computeBaseData(implicit onBehalf: BaseData, ctx: Context): (List[ClassSymbol], BaseClassSet) = {
-      val seen = new BaseClassSetBuilder
-      def addBaseClasses(bcs: List[ClassSymbol], to: List[ClassSymbol])
-          : List[ClassSymbol] = bcs match {
-        case bc :: bcs1 =>
-          val bcs1added = addBaseClasses(bcs1, to)
-          if (seen contains bc) bcs1added
-          else {
-            seen.add(bc)
-            bc :: bcs1added
-          }
-        case nil =>
-          to
-      }
-      def addParentBaseClasses(ps: List[TypeRef], to: List[ClassSymbol]): List[ClassSymbol] = ps match {
-        case p :: ps1 =>
-          addParentBaseClasses(ps1,
-              addBaseClasses(p.symbol.asClass.baseClasses, to))
-        case nil =>
-          to
-      }
       def emptyParentsExpected =
         is(Package) || (symbol == defn.AnyClass) || ctx.erasedTypes && (symbol == defn.ObjectClass)
       if (classParents.isEmpty && !emptyParentsExpected)
         onBehalf.signalProvisional()
-      (classSymbol :: addParentBaseClasses(classParents, Nil),
-       seen.result)
+      val builder = new BaseDataBuilder
+      for (p <- classParents) builder.addAll(p.symbol.asClass.baseClasses)
+      (classSymbol :: builder.baseClasses, builder.baseClassSet)
     }
 
     final override def derivesFrom(base: Symbol)(implicit ctx: Context): Boolean =
@@ -2096,7 +2077,14 @@ object SymDenotations {
     def contains(sym: Symbol): Boolean = contains(sym, classIds.length)
   }
 
-  private class BaseClassSetBuilder {
+  object BaseClassSet {
+    def apply(bcs: List[ClassSymbol]): BaseClassSet =
+      new BaseClassSet(bcs.toArray.map(_.id))
+  }
+
+  /** A class to combine base data from parent types */
+  class BaseDataBuilder {
+    private var classes: List[ClassSymbol] = Nil
     private var classIds = new Array[Int](32)
     private var length = 0
 
@@ -2106,19 +2094,32 @@ object SymDenotations {
       classIds = classIds1
     }
 
-    def contains(sym: Symbol): Boolean =
-      new BaseClassSet(classIds).contains(sym, length)
-
-    def add(sym: Symbol): Unit = {
+    private def add(sym: Symbol): Unit = {
       if (length == classIds.length) resize(length * 2)
       classIds(length) = sym.id
       length += 1
     }
 
-    def result = {
+    def addAll(bcs: List[ClassSymbol]): this.type = {
+      val len = length
+      bcs match {
+        case bc :: bcs1 =>
+          addAll(bcs1)
+          if (!new BaseClassSet(classIds).contains(bc, len)) {
+            add(bc)
+            classes = bc :: classes
+          }
+        case nil =>
+      }
+      this
+    }
+
+    def baseClassSet = {
       if (length != classIds.length) resize(length)
       new BaseClassSet(classIds)
     }
+
+    def baseClasses: List[ClassSymbol] = classes
   }
 
   @sharable private var indent = 0 // for completions printing
