@@ -316,7 +316,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     if (ctx.mode is Mode.Pattern) {
       if (name == nme.WILDCARD)
         return tree.withType(pt)
-      if (isVarPattern(tree) && name.isTermName)
+      if (untpd.isVarPattern(tree) && name.isTermName)
         return typed(desugar.patternVar(tree), pt)
     }
 
@@ -496,7 +496,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
      *                   (x: T) to (x @ (w: T)). This is either `_` or `_*`.
      */
     def cases(ifPat: => Tree, ifExpr: => Tree, wildName: TermName) = tree.expr match {
-      case id: untpd.Ident if (ctx.mode is Mode.Pattern) && isVarPattern(id) =>
+      case id: untpd.Ident if (ctx.mode is Mode.Pattern) && untpd.isVarPattern(id) =>
         if (id.name == nme.WILDCARD || id.name == nme.WILDCARD_STAR) ifPat
         else {
           import untpd._
@@ -1114,7 +1114,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
         def typedArg(arg: untpd.Tree, tparam: ParamInfo) = {
           val (desugaredArg, argPt) =
             if (ctx.mode is Mode.Pattern)
-              (if (isVarPattern(arg)) desugar.patternVar(arg) else arg, tparam.paramInfo)
+              (if (untpd.isVarPattern(arg)) desugar.patternVar(arg) else arg, tparam.paramInfo)
             else
               (arg, WildcardType)
           if (tpt1.symbol.isClass)
