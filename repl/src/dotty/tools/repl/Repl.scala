@@ -6,9 +6,15 @@ import scala.annotation.tailrec
 import dotc.reporting.MessageRendering
 import dotc.reporting.diagnostic.MessageContainer
 import dotc.ast.untpd
+import dotc.ast.tpd
 import dotc.core.Contexts.Context
+import dotc.core.Flags._
+import dotc.core.Denotations.Denotation
+import dotc.core.NameKinds.SimpleNameKind
+import dotc.core.Types.{ ExprType, ConstantType }
 import dotc.config.CompilerCommand
 import dotc.{ Compiler, Driver }
+import dotc.printing.SyntaxHighlighting
 
 import AmmoniteReader._
 import results._
@@ -61,10 +67,62 @@ class Repl(settings: Array[String]) extends Driver {
           displayErrors(errors)
           state
         },
-        (unit, newState) => {
+        (unit, newState, ctx) => {
+          displayDefinitions(unit.tpdTree)(ctx)
           newState
         }
       )
+  }
+
+  def displayDefinitions(tree: tpd.Tree)(implicit ctx: Context): Unit = {
+    def display(tree: tpd.Tree) = if (tree.symbol.info.exists) {
+      val info = tree.symbol.info
+      val defn = ctx.definitions
+      val defs =
+        info.bounds.hi.finalResultType
+        .membersBasedOnFlags(Method, Synthetic | Private)
+        .filterNot { denot =>
+          denot.symbol.owner == defn.AnyClass ||
+          denot.symbol.owner == defn.ObjectClass ||
+          denot.symbol.isConstructor
+        }
+
+      val vals =
+        info.fields
+        .filterNot(_.symbol.is(ParamAccessor | Private | Synthetic | Module))
+        .filter(_.symbol.name.is(SimpleNameKind))
+
+      (
+        defs.map(Rendering.renderMethod) ++
+        vals.map(Rendering.renderVal)
+      ).foreach(println)
+    }
+
+    def displayTypeDef(tree: tpd.TypeDef) = {
+      val sym = tree.symbol
+      val name = tree.name.show.dropRight(if (sym.is(Module)) 1 else 0)
+
+      val kind =
+        if (sym.is(CaseClass)) "case class"
+        else if (sym.is(Trait)) "trait"
+        else if (sym.is(Module)) "object"
+        else "class"
+
+
+      println(SyntaxHighlighting(s"defined $kind $name"))
+    }
+
+
+    tree match {
+      case tpd.PackageDef(_, xs) =>
+        val allTypeDefs = xs.collect { case td: tpd.TypeDef => td }
+        val (objs, tds) = allTypeDefs.partition(_.name.show.startsWith("ReplSession"))
+        objs
+          .foreach(display)
+        tds
+          .filterNot(t => t.symbol.is(Synthetic) || !t.name.is(SimpleNameKind))
+          .foreach(displayTypeDef)
+    }
   }
 
   def interpretCommand(cmd: Command, state: State): Unit = cmd match {

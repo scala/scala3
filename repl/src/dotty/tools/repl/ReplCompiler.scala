@@ -110,26 +110,26 @@ class ReplCompiler(ictx: Context) extends Compiler {
     unit.result
   }
 
-  def runCompilation(unit: CompilationUnit, state: State): Result[State] = {
+  def runCompilation(unit: CompilationUnit, state: State): Result[(State, Context)] = {
     implicit val ctx = ictx
     val reporter = new StoreReporter(null) with UniqueMessagePositions with HideNonSensicalMessages
     val run = newRun(ctx.fresh.setReporter(reporter))
     run.compileUnits(unit :: Nil)
 
     val errs = reporter.removeBufferedMessages
-    if (errs.isEmpty) state.copy(
-      objectIndex = state.objectIndex + 1,
-      valIndex    = state.valIndex
-    ).result
+    if (errs.isEmpty) {
+      val newState = State(state.objectIndex + 1, state.valIndex, state.history)
+      (newState, run.runContext).result
+    }
     else errs.errors
   }
 
-  def compile(parsed: Parsed, state: State): Result[(CompilationUnit, State)] = {
+  def compile(parsed: Parsed, state: State): Result[(CompilationUnit, State, Context)] = {
     implicit val ctx = ictx
     for {
-      defs  <- definitions(parsed.trees, state)
-      unit  <- createUnit(defs.trees, state.objectIndex, parsed.sourceCode)
-      state <- runCompilation(unit, defs.state)
-    } yield (unit, state)
+      defs         <- definitions(parsed.trees, state)
+      unit         <- createUnit(defs.trees, state.objectIndex, parsed.sourceCode)
+      (state, ctx) <- runCompilation(unit, defs.state)
+    } yield (unit, state, ctx)
   }
 }

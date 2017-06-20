@@ -27,13 +27,13 @@ class ReplCompilerTests extends ReplTest {
 
     compiler
       .compile(parsed, State(0, 0, Nil))
-      .flatMap { (unit, state) =>
-        val parsed @ Parsed(_,_) = ParseResult("def foo(i: Int): i.type = i")
+      .flatMap { (unit, state, ctx) =>
+        val parsed @ Parsed(_,_) = ParseResult("def foo(i: Int): i.type = i")(ctx)
         compiler.compile(parsed, state)
       }
       .fold(
         onErrors(_),
-        (unit, state) => {
+        (unit, state, ctx) => {
           assert(state.objectIndex == 2,
             s"Wrong object offset: expected 2 got ${state.objectIndex}")
         }

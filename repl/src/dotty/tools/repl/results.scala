@@ -7,7 +7,7 @@ object results {
   type Errors = Seq[MessageContainer]
 
   /** A result of a computation is either a list of errors or the result `A` */
-  class Result[A] private[results] (result: Errors | A) {
+  class Result[A] private[results] (result: Errors | A) { self =>
     def flatMap[B](f: A => Result[B]): Result[B] =
       result match {
         case errs: Errors => new Result(errs)
@@ -25,6 +25,13 @@ object results {
         case errs: Errors => onErrors(errs)
         case a: A @unchecked => onResult(a)
       }
+
+    class WithFilter(p: A => Boolean) {
+      def flatMap[B](f: A => Result[B]) = self.flatMap(f)
+      def map[B](f: A => B) = self.map(f)
+    }
+
+    def withFilter(p: A => Boolean) = new WithFilter(p)
   }
 
   implicit class ResultConversionA[A](val a: A) extends AnyVal {
