@@ -147,14 +147,14 @@ object Simplify {
     }
   }
 
-  // System.in is static final fields that, for legacy reasons, must be
-  // allowed to be changed by the methods System.setIn. `isMutable` is true
-  // is the field is Mutable or if it's a field of java.lang.System.
-  // https://docs.oracle.com/javase/specs/jls/se8/html/jls-17.html#jls-17.5.4
-  def isMutable(t: Tree)(implicit ctx: Context): Boolean = t match {
+  /** Is this tree mutable, or java.lang.System.{in, out, err}? These three
+   *  System members are the only static final fields that are mutable.
+   *  See https://docs.oracle.com/javase/specs/jls/se8/html/jls-17.html#jls-17.5.4
+   */
+  def isEffectivelyMutable(t: Tree)(implicit ctx: Context): Boolean = t match {
     case _ if t.symbol.is(Mutable) => true
-    case s: Symbol => (s.symbol == defn.SystemModule)
-    case i: Ident  => desugarIdent(i).exists(isMutable)
+    case s: Select => (s.symbol == defn.SystemModule)
+    case i: Ident  => desugarIdent(i).exists(isEffectivelyMutable)
     case _ => false
   }
 }

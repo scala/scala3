@@ -10,7 +10,7 @@ import core.Types._
 import ast.Trees._
 import scala.collection.mutable
 import config.Printers.simplify
-import Simplify.{desugarIdent, isMutable}
+import Simplify.{desugarIdent, isEffectivelyMutable}
 import transform.SymUtils._
 
 /** Inline vals and remove vals that are aliases to other vals
@@ -201,7 +201,7 @@ class Devalify extends Optimisation {
           readingOnlyVals(rec)
         else false
 
-      case t @ Select(qual, _) if !isMutable(t) =>
+      case t @ Select(qual, _) if !isEffectivelyMutable(t) =>
         readingOnlyVals(qual)
 
       case t: Ident if !t.symbol.is(Mutable | Method) && !t.symbol.info.dealias.isInstanceOf[ExprType] =>

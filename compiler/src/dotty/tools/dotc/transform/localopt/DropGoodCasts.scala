@@ -10,7 +10,7 @@ import core.Types._
 import core.Flags._
 import ast.Trees._
 import transform.SymUtils._
-import Simplify.isMutable
+import Simplify.isEffectivelyMutable
 
 /** Eliminated casts and equality tests whose results can be locally
  *  determined at compile time:
@@ -78,7 +78,7 @@ import Simplify.isMutable
 
         case TypeApply(fun @ Select(x, _), List(tp))
           if fun.symbol.eq(defn.Any_isInstanceOf) &&
-             !isMutable(x)                        &&
+             !isEffectivelyMutable(x)             &&
              !x.symbol.is(Method)                 &&
              x.symbol.exists && !x.symbol.owner.isClass =>
           (x.symbol, tp.tpe) :: Nil
@@ -99,7 +99,7 @@ import Simplify.isMutable
 
         case Apply(fun @ Select(x, _), List(tp))
             if fun.symbol.eq(defn.Object_ne)  &&
-               !isMutable(x)                  &&
+               !isEffectivelyMutable(x)       &&
                !x.symbol.is(Method)           &&
                x.symbol.exists && !x.symbol.owner.isClass =>
           x.symbol :: Nil
