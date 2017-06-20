@@ -12,12 +12,12 @@ import dotc.core.Symbols.Symbol
 object Rendering {
   /** Load the value of the symbol using reflection */
   private[this] def valueOf(sym: Symbol, classLoader: ClassLoader)(implicit ctx: Context): String = {
-    val objectName = "$none$." + sym.owner.name.show
+    val objectName = sym.owner.fullName.encode.toString
     val resObj: Class[_] = Class.forName(objectName, true, classLoader)
     val objInstance = resObj.newInstance()
     objInstance
       .getClass()
-      .getDeclaredMethods.find(_.getName == sym.name.show).get
+      .getDeclaredMethods.find(_.getName == sym.name.encode.toString).get
       .invoke(objInstance).toString
   }
 

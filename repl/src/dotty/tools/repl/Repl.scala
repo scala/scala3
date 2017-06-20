@@ -134,7 +134,10 @@ class Repl(
         else if (sym.is(Module)) "object"
         else "class"
 
-      println(SyntaxHighlighting(s"// defined $kind $name"))
+      println(
+        SyntaxHighlighting(s"// defined ").toString +
+        SyntaxHighlighting(s"$kind $name").toString
+      )
     }
 
 
