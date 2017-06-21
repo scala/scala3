@@ -76,24 +76,58 @@ class ReplCompiler(ictx: Context) extends Compiler {
       t.isTerm && !t.isInstanceOf[Assign]
 
     val (exps, other) = trees.partition(freeExpression)
-    val resX = exps.zipWithIndex.map { (exp, i) =>
-      ValDef(s"res${i + state.valIndex}".toTermName, TypeTree(), exp)
-        .withPos(exp.pos)
+    val resX = exps.zipWithIndex.flatMap { (exp, i) =>
+      val resName = s"res${i + state.valIndex}".toTermName
+      val showName = resName ++ "Show"
+      val showApply = Apply(Select(Ident(resName), "show".toTermName), Nil)
+      List(
+        ValDef(resName, TypeTree(), exp).withPos(exp.pos),
+        ValDef(showName, TypeTree(), showApply).withPos(exp.pos).withFlags(Synthetic)
+      )
+    }
+
+    val othersWithShow = other.flatMap {
+      case t: ValDef => {
+        val tShow =
+          cpy.ValDef(t)(name = t.name ++ "Show", rhs = Select(Ident(t.name), "show".toTermName))
+            .withFlags(Synthetic)
+
+        List(t, tShow)
+      }
+      case t => List(t)
     }
 
     Definitions(
-      resX ++ other,
-      state.copy(valIndex = state.valIndex + resX.length)
+      resX ++ othersWithShow,
+      state.copy(valIndex = state.valIndex + exps.length)
     ).result
   }
 
+  /** Wrap trees in an object and add imports from the previous compilations
+   *
+   *  The resulting structure is something like:
+   *
+   *  ```
+   *  package <none> {
+   *    object ReplSession$nextId {
+   *      import ReplSession${i <- 0 until nextId}._
+   *      import dotty.Show._
+   *
+   *      <trees>
+   *    }
+   *  }
+   *  ```
+   */
   def wrapped(trees: Seq[untpd.Tree], nextId: Int)(implicit ctx: Context): untpd.PackageDef = {
     import untpd._
     import dotc.core.StdNames._
 
-    val imports = List.range(0, nextId).map{ i =>
-      Import(Ident(("ReplSession$" + i).toTermName), Ident(nme.WILDCARD) :: Nil)
-    }
+    val imports =
+      Import(Ident("dotty".toTermName), Ident("Show".toTermName) :: Nil) ::
+      Import(Ident("Show".toTermName), Ident(nme.WILDCARD) :: Nil) ::
+      List.range(0, nextId).map { i =>
+        Import(Ident(("ReplSession$" + i).toTermName), Ident(nme.WILDCARD) :: Nil)
+      }
 
     val tmpl = Template(emptyConstructor, Nil, EmptyValDef, imports ++ trees)
     PackageDef(Ident(nme.NO_NAME),

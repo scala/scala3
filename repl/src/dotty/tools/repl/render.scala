@@ -11,17 +11,18 @@ import dotc.core.Symbols.Symbol
 
 object Rendering {
   /** Load the value of the symbol using reflection */
-  private[this] def valueOf(sym: Symbol, classLoader: ClassLoader)(implicit ctx: Context): String = {
+  private[this] def valueOf(sym: Symbol, classLoader: ClassLoader)(implicit ctx: Context): Option[String] = {
     val defn = ctx.definitions
-    val objectName = sym.owner.fullName.encode.toString
+    val objectName = sym.owner.fullName.encode.toString.dropRight(1) // gotta drop the '$'
     val resObj: Class[_] = Class.forName(objectName, true, classLoader)
 
-    if (!sym.is(Flags.Method) && sym.info == defn.UnitType) "()"
-    else {
+    val res =
       resObj
-        .getDeclaredMethods.find(_.getName == sym.name.encode.toString).get
-        .invoke(null).toString
-    }
+      .getDeclaredMethods.find(_.getName == sym.name.encode.toString + "Show").get
+      .invoke(null).toString
+
+    if (!sym.is(Flags.Method) && sym.info == defn.UnitType) None
+    else Some(res)
   }
 
   def renderMethod(d: Denotation)(implicit ctx: Context): String = {
@@ -59,10 +60,14 @@ object Rendering {
       case tpe => tpe.show
     }
 
-    val res =
-      if (d.symbol.is(Flags.Lazy)) "<lazy>"
+    val resultValue =
+      if (d.symbol.is(Flags.Lazy)) Some("<lazy>")
       else valueOf(d.symbol, classLoader)
 
-    s"$prefix ${d.symbol.name.show}: $tpe = $res"
+    resultValue
+      .map { value =>
+        s"$prefix ${d.symbol.name.show}: $tpe = $value"
+      }
+      .getOrElse("")
   }
 }
