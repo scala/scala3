@@ -483,7 +483,6 @@ class Definitions {
   lazy val BoxedFloatModule   = ctx.requiredModule("java.lang.Float")
   lazy val BoxedDoubleModule  = ctx.requiredModule("java.lang.Double")
   lazy val BoxedUnitModule    = ctx.requiredModule("java.lang.Void")
-  lazy val SystemModule       = ctx.requiredModule("java.lang.System")
 
   lazy val ByNameParamClass2x = enterSpecialPolyClass(tpnme.BYNAME_PARAM_CLASS, Covariant, Seq(AnyType))
   lazy val EqualsPatternClass = enterSpecialPolyClass(tpnme.EQUALS_PATTERN, EmptyFlags, Seq(AnyType))
@@ -515,6 +514,9 @@ class Definitions {
     }).symbol.asTerm
   lazy val JavaSerializableClass     = ctx.requiredClass("java.io.Serializable")
   lazy val ComparableClass           = ctx.requiredClass("java.lang.Comparable")
+
+  lazy val SystemClass               = ctx.requiredClass("java.lang.System")
+  lazy val SystemModule              = SystemClass.linkedClass
 
   // in scalac modified to have Any as parent
 

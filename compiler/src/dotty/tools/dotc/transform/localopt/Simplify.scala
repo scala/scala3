@@ -153,7 +153,7 @@ object Simplify {
    */
   def isEffectivelyMutable(t: Tree)(implicit ctx: Context): Boolean = t match {
     case _ if t.symbol.is(Mutable) => true
-    case s: Select => (s.symbol == defn.SystemModule)
+    case s: Select => s.symbol.owner == defn.SystemModule
     case i: Ident  => desugarIdent(i).exists(isEffectivelyMutable)
     case _ => false
   }
