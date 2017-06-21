@@ -63,6 +63,7 @@ class Repl(
 
   protected[this] var myCtx    = initializeCtx: Context
   protected[this] var compiler = new ReplCompiler(myCtx)
+  protected[this] var typer    = new ReplTyper(myCtx)
 
   private def readLine(history: History) =
     AmmoniteReader(history)(myCtx).prompt()
@@ -166,6 +167,8 @@ class Repl(
 
     case Reset => {
       myCtx = initCtx.fresh
+      compiler = new ReplCompiler(myCtx)
+      typer = new ReplTyper(myCtx)
       _classLoader = null
       run()
     }
@@ -180,11 +183,32 @@ class Repl(
         run(state)
       }
 
+    case Type(expr) => {
+      typer.typeOf(expr, state).fold(
+        errors => displayErrors(errors)(myCtx),
+        res    => println(SyntaxHighlighting(res))
+      )
+      run(state.copy(history = s":type $expr" :: state.history))
+    }
+
     case Quit =>
       // end of the world!
   }
 
-  private val messageRenderer = new MessageRendering {}
+  /** A `MessageRenderer` without file positions */
+  private val messageRenderer = new MessageRendering {
+    import dotc.reporting.diagnostic._
+    import dotc.util._
+    override def messageAndPos(msg: Message, pos: SourcePosition, diagnosticLevel: String)(implicit ctx: Context): String = {
+      val sb = scala.collection.mutable.StringBuilder.newBuilder
+      val (srcBefore, srcAfter, offset) = sourceLines(pos)
+      val marker = columnMarker(pos, offset)
+      val err = errorMsg(pos, msg.msg, offset)
+      sb.append((srcBefore ::: marker :: err :: outer(pos, " " * (offset - 1)) ::: srcAfter).mkString("\n"))
+      sb.toString
+    }
+  }
+
   private def renderMessage(cont: MessageContainer): Context => String =
     messageRenderer.messageAndPos(cont.contained(), cont.pos, messageRenderer.diagnosticLevel(cont))
 

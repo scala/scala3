@@ -16,6 +16,7 @@ case object Newline extends ParseResult
 sealed trait Command extends ParseResult
 case class UnknownCommand(cmd: String) extends Command
 case class Load(path: String) extends Command
+case class Type(expr: String) extends Command
 case object Reset extends Command
 case object Quit extends Command
 case object Help extends Command {
@@ -25,13 +26,14 @@ case object Help extends Command {
       |:help                    print this summary or command-specific help
       |:load <path>             interpret lines in a file
       |:quit                    exit the interpreter
+      |:type <expression>       evaluate the type of the given expression
       |:reset                   reset the repl to its initial state, forgetting all session entries
     """.stripMargin
 }
 
 object ParseResult {
 
-  private[this] val CommandExtract = """(:[\S]+)\s*([\S]+)?""".r
+  private[this] val CommandExtract = """(:[\S]+)\s*(.*)""".r
 
   def apply(sourceCode: String)(implicit ctx: Context): ParseResult = sourceCode match {
     case "" => Newline
@@ -40,6 +42,7 @@ object ParseResult {
       case ":help"  => Help
       case ":reset" => Reset
       case ":load"  => Load(sourceCode.drop(5).trim)
+      case ":type"  => Type(arg)
       case _        => UnknownCommand(cmd)
     }
     case _ => {
