@@ -658,7 +658,7 @@ trait Checking {
       case parent: ClassSymbol =>
         if (parent is Case)
           ctx.error(ex"""case $caseCls has case ancestor $parent, but case-to-case inheritance is prohibited.
-                        |To overcome this limitation, use extractors to pattern match on non-leaf nodes.""")
+                        |To overcome this limitation, use extractors to pattern match on non-leaf nodes.""", pos)
         else checkCaseInheritance(parent.superClass, caseCls, pos)
       case _ =>
     }
