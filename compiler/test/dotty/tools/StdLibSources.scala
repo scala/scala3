@@ -17,14 +17,18 @@ object StdLibSources {
 
   def whitelisted: List[String] = {
     lazy val whitelistBasedOnBlacklist = all.diff(blacklisted)
-    if (!useExplicitWhiteList) {
-      whitelistBasedOnBlacklist
-    } else if (!new File(whitelistFile).exists()) {
-      genWhitelist(whitelistBasedOnBlacklist.map(_.replace(stdLibPath, "")))
-      whitelistBasedOnBlacklist
-    } else {
-      loadList(whitelistFile)
-    }
+    val files =
+      if (!useExplicitWhiteList) {
+        whitelistBasedOnBlacklist
+      } else if (!new File(whitelistFile).exists()) {
+        genWhitelist(whitelistBasedOnBlacklist.map(_.replace(stdLibPath, "")))
+        whitelistBasedOnBlacklist
+      } else {
+        loadList(whitelistFile)
+      }
+    // Sort the files so their compilation order is deterministic, and
+    // https://github.com/lampepfl/dotty/issues/2792 can be repro'ed.
+    files.sorted
   }
 
   def blacklisted: List[String] = loadList(blacklistFile)
