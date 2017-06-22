@@ -1,6 +1,7 @@
 package dotty.tools
 package repl
 
+import java.io.PrintStream
 import java.net.{URL, URLClassLoader}
 import java.lang.ClassLoader
 
@@ -27,7 +28,8 @@ case class State(objectIndex: Int, valIndex: Int, history: History)
 
 class Repl(
   settings: Array[String],
-  parentClassLoader: Option[ClassLoader] = None
+  parentClassLoader: Option[ClassLoader] = None,
+  out: PrintStream = System.out
 ) extends Driver {
 
   // FIXME: Change the Driver API to not require implementing this method
@@ -129,7 +131,7 @@ class Repl(
       (
         defs.map(Rendering.renderMethod) ++
         vals.map(Rendering.renderVal(_, classLoader))
-      ).foreach(str => println(SyntaxHighlighting(str)))
+      ).foreach(str => out.println(SyntaxHighlighting(str)))
     }
 
     def displayTypeDef(tree: tpd.TypeDef) = {
@@ -142,7 +144,7 @@ class Repl(
         else if (sym.is(Module)) "object"
         else "class"
 
-      println(
+      out.println(
         SyntaxHighlighting(s"// defined ").toString +
         SyntaxHighlighting(s"$kind $name").toString
       )
@@ -163,12 +165,12 @@ class Repl(
 
   def interpretCommand(cmd: Command, state: State): Unit = cmd match {
     case UnknownCommand(cmd) => {
-      println(s"""Unknown command: "$cmd", run ":help" for a list of commands""")
+      out.println(s"""Unknown command: "$cmd", run ":help" for a list of commands""")
       run(state)
     }
 
     case Help => {
-      println(Help.text)
+      out.println(Help.text)
       run(state)
     }
 
@@ -183,14 +185,14 @@ class Repl(
         run(state.copy(history = contents :: state.history))
       }
       else {
-        println(s"""Couldn't find file "$path"""")
+        out.println(s"""Couldn't find file "$path"""")
         run(state)
       }
 
     case Type(expr) => {
       compiler.typeOf(expr, state).fold(
         errors => displayErrors(errors)(myCtx),
-        res    => println(SyntaxHighlighting(res))
+        res    => out.println(SyntaxHighlighting(res))
       )
       run(state.copy(history = s":type $expr" :: state.history))
     }
@@ -217,5 +219,5 @@ class Repl(
     messageRenderer.messageAndPos(cont.contained(), cont.pos, messageRenderer.diagnosticLevel(cont))
 
   def displayErrors(errs: Seq[MessageContainer])(implicit ctx: Context): Unit =
-    errs.map(renderMessage(_)(ctx)).foreach(println)
+    errs.map(renderMessage(_)(ctx)).foreach(out.println)
 }
