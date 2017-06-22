@@ -3,14 +3,16 @@ package repl
 
 import dotc.reporting.diagnostic.MessageContainer
 import dotc.core.Contexts.Context
-import dotc.parsing.Parsers
+import dotc.parsing.Parsers.Parser
 import dotc.util.SourceFile
 import dotc.ast.untpd
 import dotc.reporting._
 
+import results._
+
 sealed trait ParseResult
 case class Parsed(sourceCode: String, trees: Seq[untpd.Tree]) extends ParseResult
-case class SyntaxErrors(errors: Seq[MessageContainer], ctx: Context) extends ParseResult
+case class SyntaxErrors(errors: Seq[MessageContainer]) extends ParseResult
 case object Newline extends ParseResult
 
 sealed trait Command extends ParseResult
@@ -35,45 +37,49 @@ object ParseResult {
 
   private[this] val CommandExtract = """(:[\S]+)\s*(.*)""".r
 
-  def apply(sourceCode: String)(implicit ctx: Context): ParseResult = sourceCode match {
-    case "" => Newline
-    case CommandExtract(cmd, arg) => cmd match {
-      case ":quit"  => Quit
-      case ":help"  => Help
-      case ":reset" => Reset
-      case ":load"  => Load(sourceCode.drop(5).trim)
-      case ":type"  => Type(arg)
-      case _        => UnknownCommand(cmd)
-    }
-    case _ => {
-      val reporter = new StoreReporter(null) with UniqueMessagePositions with HideNonSensicalMessages
-      implicit val myCtx = ctx.fresh.setReporter(reporter)
+  private[this] def storeReporter =
+    new StoreReporter(null)
+    with UniqueMessagePositions with HideNonSensicalMessages
 
-      val source = new SourceFile("<console>", sourceCode.toCharArray)
-      val parser = new Parsers.Parser(source)(myCtx)
+  def apply(sourceCode: String)(implicit ctx: Context): ParseResult =
+    sourceCode match {
+      case "" => Newline
+      case CommandExtract(cmd, arg) => cmd match {
+        case ":quit"  => Quit
+        case ":help"  => Help
+        case ":reset" => Reset
+        case ":load"  => Load(arg)
+        case ":type"  => Type(arg)
+        case _        => UnknownCommand(cmd)
+      }
+      case _ => {
+        def parse(sourceCode: String): Result[List[untpd.Tree]] = {
+          val reporter = storeReporter
+          val source = new SourceFile("<console>", sourceCode.toCharArray)
+          val parser = new Parser(source)(ctx.fresh.setReporter(reporter))
 
-      val (_, stats) = parser.templateStatSeq
+          val (_, stats) = parser.templateStatSeq
 
-      if (reporter.hasErrors) SyntaxErrors(reporter.removeBufferedMessages, myCtx)
-      else Parsed(sourceCode, stats)
-    }
-  }
+          if (reporter.hasErrors) reporter.removeBufferedMessages.errors
+          else stats.result
+        }
 
-  def isIncomplete(sourceCode: String)(implicit ctx: Context): Boolean = sourceCode match {
-    case "" => false
-    case CommandExtract(_) => false
-    case _ => {
-      val reporter = new StoreReporter(null) with HideNonSensicalMessages
-      var needsMore = false
-      reporter.withIncompleteHandler(_ => _ => needsMore = true) {
-        implicit val myCtx = ctx.fresh.setReporter(reporter)
-        val source = new SourceFile("<console>", sourceCode.toCharArray)
-        val parser = new Parsers.Parser(source)(myCtx)
-        parser.templateStatSeq
-
-
-        !reporter.hasErrors && needsMore
+        parse(sourceCode).fold(SyntaxErrors(_), Parsed(sourceCode, _))
       }
     }
-  }
+
+  def isIncomplete(sourceCode: String)(implicit ctx: Context): Boolean =
+    sourceCode match {
+      case CommandExtract(_) | "" => false
+      case _ => {
+        val reporter = storeReporter
+        var needsMore = false
+        reporter.withIncompleteHandler(_ => _ => needsMore = true) {
+          val source = new SourceFile("<console>", sourceCode.toCharArray)
+          val parser = new Parser(source)(ctx.fresh.setReporter(reporter))
+          parser.templateStatSeq
+          !reporter.hasErrors && needsMore
+        }
+      }
+    }
 }

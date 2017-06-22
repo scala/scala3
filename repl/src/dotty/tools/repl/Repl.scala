@@ -74,7 +74,7 @@ class Repl(
         val newState = compile(parsed, state)
         run(newState.copy(history = history))
 
-      case (SyntaxErrors(errs, ctx), history) =>
+      case (SyntaxErrors(errs), history) =>
         displayErrors(errs)(myCtx)
         run(state)
 

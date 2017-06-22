@@ -14,11 +14,9 @@ import dotc.interfaces.Diagnostic.ERROR
 
 import results._
 
-class ReplTyper(ictx: Context) {
+class ReplTyper(ictx: Context) extends Compiler {
 
-  private val compiler = new Compiler {
-    override def phases = List(new REPLFrontEnd :: Nil)
-  }
+  override def phases = List(new REPLFrontEnd :: Nil)
 
   private def wrapped(expr: String, sourceFile: SourceFile, nextId: Int)(implicit ctx: Context): Result[untpd.PackageDef] = {
     def wrap(trees: Seq[untpd.Tree]): untpd.PackageDef = {
@@ -43,7 +41,7 @@ class ReplTyper(ictx: Context) {
     ParseResult(expr) match {
       case Parsed(sourceCode, trees) =>
         wrap(trees).result
-      case SyntaxErrors(reported, _) =>
+      case SyntaxErrors(reported) =>
         reported.errors
       case _ => Seq(
         new messages.Error(
@@ -77,12 +75,12 @@ class ReplTyper(ictx: Context) {
     implicit val ctx = ictx
 
     val reporter = new StoreReporter(null) with UniqueMessagePositions with HideNonSensicalMessages
-    val run  = compiler.newRun(ctx.fresh.setReporter(reporter))
     val src  = new SourceFile(s"EvaluateExpr", expr)
     val unit = new CompilationUnit(src)
 
     wrapped(expr, src, state.objectIndex).flatMap { pkg =>
       unit.untpdTree = pkg
+      val run  = newRun(ctx.fresh.setReporter(reporter))
       run.compileUnits(unit :: Nil)
       val errs = reporter.removeBufferedMessages
       if (errs.isEmpty) extractTpe(unit.tpdTree, src)(run.runContext)
