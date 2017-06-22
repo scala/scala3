@@ -12,7 +12,7 @@ import dotc.typer.FrontEnd
 import backend.jvm.GenBCode
 import dotc.core.Contexts.Context
 import dotc.util.Positions._
-import dotc.reporting.diagnostic.MessageContainer
+import dotc.reporting.diagnostic.{ messages, MessageContainer }
 import dotc.reporting._
 import io._
 
@@ -148,5 +148,77 @@ class ReplCompiler(ictx: Context) extends Compiler {
       unit         <- createUnit(defs.trees, state.objectIndex, parsed.sourceCode)
       (state, ctx) <- runCompilation(unit, defs.state)
     } yield (unit, state, ctx)
+  }
+
+
+  def typeOf(expr: String, state: State): Result[String] = {
+
+    def extractTpe(tree: tpd.Tree, sourceFile: SourceFile)(implicit ctx: Context): Result[String] = {
+      def error: Result[String] =
+        Seq(new messages.Error(s"Invalid scala expression",
+          sourceFile.atPos(Position(0, sourceFile.content.length)))).errors
+
+      import tpd._
+      tree match {
+        case PackageDef(_, List(TypeDef(_,tmpl: Template))) =>
+          tmpl.body
+            .collect { case vd: ValDef => vd }
+            .find(_.name.show == "expr")
+            .map(_.symbol.info.show.result)
+            .getOrElse(error)
+
+        case _ =>
+          error
+      }
+    }
+
+    def wrapped(expr: String, sourceFile: SourceFile, nextId: Int)(implicit ctx: Context): Result[untpd.PackageDef] = {
+      def wrap(trees: Seq[untpd.Tree]): untpd.PackageDef = {
+        import untpd._
+        import dotc.core.StdNames._
+
+        val imports = List.range(0, nextId).map { i =>
+          Import(Ident(("ReplSession$" + i).toTermName), Ident(nme.WILDCARD) :: Nil)
+        }
+
+        val valdef =
+          ValDef("expr".toTermName, TypeTree(), Block(trees.init.toList, trees.last))
+
+        val tmpl = Template(emptyConstructor, Ident("Any".toTypeName) :: Nil, EmptyValDef, imports :+ valdef)
+        PackageDef(Ident(nme.NO_NAME),
+          TypeDef("EvaluateExpr".toTypeName, tmpl)
+            .withMods(new Modifiers(Final))
+            .withPos(Position(trees.head.pos.start, trees.last.pos.end)) :: Nil
+        )
+      }
+
+      ParseResult(expr) match {
+        case Parsed(sourceCode, trees) =>
+          wrap(trees).result
+        case SyntaxErrors(reported) =>
+          reported.errors
+        case _ => Seq(
+          new messages.Error(
+            s"Couldn't parse '$expr' to valid scala",
+            sourceFile.atPos(Position(0, expr.length))
+          )
+        ).errors
+      }
+    }
+
+    implicit val ctx: Context = ictx.fresh.setSetting(ictx.settings.YstopAfter, List("frontEnd"))
+
+    val reporter = new StoreReporter(null) with UniqueMessagePositions with HideNonSensicalMessages
+    val src  = new SourceFile(s"EvaluateExpr", expr)
+    val unit = new CompilationUnit(src)
+
+    wrapped(expr, src, state.objectIndex).flatMap { pkg =>
+      unit.untpdTree = pkg
+      val run  = newRun(ctx.fresh.setReporter(reporter))
+      run.compileUnits(unit :: Nil)
+      val errs = reporter.removeBufferedMessages
+      if (errs.isEmpty) extractTpe(unit.tpdTree, src)(run.runContext)
+      else errs.errors
+    }
   }
 }

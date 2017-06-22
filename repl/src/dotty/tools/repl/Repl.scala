@@ -61,9 +61,16 @@ class Repl(
     _classLoader
   }
 
-  protected[this] var myCtx    = initializeCtx: Context
-  protected[this] var compiler = new ReplCompiler(myCtx)
-  protected[this] var typer    = new ReplTyper(myCtx)
+  private[this] def resetToInitial(): Unit = {
+    myCtx = initializeCtx
+    compiler = new ReplCompiler(myCtx)
+    _classLoader = null
+  }
+
+  protected[this] var myCtx: Context         = _
+  protected[this] var compiler: ReplCompiler = _
+
+  resetToInitial()
 
   private def readLine(history: History) =
     AmmoniteReader(history)(myCtx).prompt()
@@ -166,10 +173,7 @@ class Repl(
     }
 
     case Reset => {
-      myCtx = initCtx.fresh
-      compiler = new ReplCompiler(myCtx)
-      typer = new ReplTyper(myCtx)
-      _classLoader = null
+      resetToInitial()
       run()
     }
 
@@ -184,7 +188,7 @@ class Repl(
       }
 
     case Type(expr) => {
-      typer.typeOf(expr, state).fold(
+      compiler.typeOf(expr, state).fold(
         errors => displayErrors(errors)(myCtx),
         res    => println(SyntaxHighlighting(res))
       )

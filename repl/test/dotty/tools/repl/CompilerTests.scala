@@ -4,15 +4,11 @@ package repl
 import org.junit.Assert._
 import org.junit.Test
 
-import dotc.reporting.diagnostic.MessageContainer
 import dotc.ast.untpd
 
 import results._
 
 class ReplCompilerTests extends ReplTest {
-
-  def onErrors(xs: Seq[MessageContainer]): Unit =
-    fail(s"Expected no errors, got: \n${ xs.map(_.message).mkString("\n") }")
 
   @Test def compileSingle = {
     val parsed @ Parsed(_,_) = ParseResult("def foo: 1 = 1")(myCtx)
