@@ -1,6 +1,7 @@
 package scala
 
 import annotation.implicitNotFound
+import scala.collection.{GenSeq, Set}
 
 /** A marker trait indicating that values of type `L` can be compared to values of type `R`. */
 @implicitNotFound("Values of types ${L} and ${R} cannot be compared with == or !=")
@@ -11,6 +12,14 @@ sealed trait Eq[-L, -R]
  *  any instance of `Eq`.
  */
 object Eq extends Eq[Any, Any] {
+
+  /** A fall-back "implicit" to compare values of any types.
+   *  Even though this method is not declared implicit, the compiler will
+   *  compute instances as solutions to `Eq[T, U]` queries if `T <: U` or `U <: T`
+   *  or both `T` and `U` are Eq-free. A type `S` is Eq-free if there is no
+   *  implicit instance of type `Eq[S, S]`.
+   */
+  def eqAny[L, R]: Eq[L, R] = Eq
 
   // Instances of `Eq` for common types
 
@@ -29,7 +38,8 @@ object Eq extends Eq[Any, Any] {
   // true asymmetry, modeling the (somewhat problematic) nature of equals on Proxies
   implicit def eqProxy    : Eq[Proxy, Any]     = Eq
 
-  implicit def eqSeq[T, U](implicit eq: Eq[T, U]): Eq[Seq[T], Seq[U]] = Eq
+  implicit def eqSeq[T, U](implicit eq: Eq[T, U]): Eq[GenSeq[T], GenSeq[U]] = Eq
+  implicit def eqSet[T, U](implicit eq: Eq[T, U]): Eq[Set[T], Set[U]] = Eq
 
   implicit def eqByteNum  : Eq[Byte, Number]   = Eq
   implicit def eqNumByte  : Eq[Number, Byte]   = Eq

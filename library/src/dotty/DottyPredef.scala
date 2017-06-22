@@ -2,19 +2,8 @@ package dotty
 
 import scala.reflect.ClassTag
 import scala.Predef.???
-import scala.collection.Seq
 
-/** unimplemented implicit for TypeTag */
 object DottyPredef {
-
-  /** A fall-back implicit to compare values of any types.
-   *  The compiler will restrict implicit instances of `eqAny`. An instance
-   *  `eqAny[T, U]` is _valid_ if `T <: U` or `U <: T` or both `T` and `U` are
-   *  Eq-free. A type `S` is Eq-free if there is no implicit instance of `Eq[S, S]`.
-   *  An implicit search will fail instead of returning an invalid `eqAny` instance.
-   *  The method is here instead of the `Eq` object so that it can be disabled.
-   */
-  implicit def eqAny[L, R]: Eq[L, R] = Eq
 
   /** A class for implicit values that can serve as implicit conversions
    *  The implicit resolution algorithm will act as if there existed

@@ -195,4 +195,7 @@ object language {
 
   /** Where imported, auto-tupling is disabled */
   object noAutoTupling
+
+  /* Where imported loose equality using eqAny is disabled */
+  object strictEquality
 }
