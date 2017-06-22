@@ -1538,7 +1538,8 @@ object Types {
               else recomputeMember(d) // symbol could have been overridden, recompute membership
             else {
               val newd = loadDenot
-              if (newd.exists || ctx.mode.is(Mode.Interactive)) newd
+              if (newd.exists) newd
+              else if (ctx.mode.is(Mode.Interactive)) d
               else d.staleSymbolError
             }
           case d =>
