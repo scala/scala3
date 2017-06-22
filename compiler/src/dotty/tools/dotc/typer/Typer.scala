@@ -1343,22 +1343,18 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
         ref
     }
 
-    def typedParent(tree: untpd.Tree): Tree =
+    def typedParent(tree: untpd.Tree): Tree = {
+      var result = if (tree.isType) typedType(tree)(superCtx) else typedExpr(tree)(superCtx)
+      val psym = result.tpe.typeSymbol
       if (tree.isType) {
-        val result = typedType(tree)(superCtx)
-        val psym = result.tpe.typeSymbol
-        checkTraitInheritance(psym, cls, tree.pos)
         if (psym.is(Trait) && !cls.is(Trait) && !cls.superClass.isSubClass(psym))
-          maybeCall(result, psym, psym.primaryConstructor.info)
-        else
-          result
+          result = maybeCall(result, psym, psym.primaryConstructor.info)
       }
-      else {
-        val result = typedExpr(tree)(superCtx)
-        checkTraitInheritance(result.symbol, cls, tree.pos)
-        checkParentCall(result, cls)
-        result
-      }
+      else checkParentCall(result, cls)
+      checkTraitInheritance(psym, cls, tree.pos)
+      if (cls is Case) checkCaseInheritance(psym, cls, tree.pos)
+      result
+    }
 
     /** Checks if one of the decls is a type with the same name as class type member in selfType */
     def classExistsOnSelf(decls: Scope, self: tpd.ValDef): Boolean = {
