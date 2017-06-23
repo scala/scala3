@@ -401,8 +401,8 @@ class TypeErasure(isJava: Boolean, semiEraseVCs: Boolean, isConstructor: Boolean
       def paramErasure(tpToErase: Type) =
         erasureFn(tp.isJava, semiEraseVCs, isConstructor, wildcardOK)(tpToErase)
       val (names, formals0) =
-        if (tp.paramInfos.forall(!_.isPhantom)) (tp.paramNames, tp.paramInfos)
-        else tp.paramNames.iterator.zip(tp.paramInfos.iterator).filterNot(_._2.isPhantom).toList.unzip
+        if (tp.paramInfos.exists(_.isPhantom)) tp.paramNames.zip(tp.paramInfos).filterNot(_._2.isPhantom).unzip
+        else (tp.paramNames, tp.paramInfos)
       val formals = formals0.mapConserve(paramErasure)
       eraseResult(tp.resultType) match {
         case rt: MethodType =>

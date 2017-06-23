@@ -7,7 +7,7 @@ import dotty.tools.dotc.core.Types.Type
 
 /** Phantom erasure erases:
  *
- *  - Parameters/arguments are erased removed from the function definition/call in `PhantomArgumentEval`.
+ *  - Parameters/arguments are removed from the function definition/call in `PhantomArgumentEval`.
  *    If the evaluation of the phantom arguments may produce a side effect, these are evaluated and stored in
  *    local `val`s and then the non phantoms are used in the Apply. Phantom `val`s are then erased to
  *    `val ev$i: ErasedPhantom = myPhantom` intended to be optimized away by local optimizations. `myPhantom` could be
