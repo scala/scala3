@@ -56,26 +56,31 @@ each other, but not comparable to anything else:
 (As usual, the names of the implicit definitions don't matter, we have
 chosen `eqA`, ..., `eqBA` only for illustration).
 
-The `dotty.DottyPredef` object defines a number of `Eq`
-implicits. `dotty.DottyPredef` is a temporary `Predef`-like object.
-The contents of this object are by default imported into every
-program. Once dotty becomes standard Scala, `DottyPredef` will go away
-and its contents will be merged with `scala.Predef`.
+The `scala.Eq` object defines a number of `Eq` implicits that make
+values of types `String`, `Boolean` and `Unit` only comparable to
+values of the same type. They also make numbers only comparable to
+other numbers, sequences only comparable to other
+sequences and sets only comparable to other sets.
 
-The `Eq` instances defined by `DottyPredef` make values of types
-`String`, `Boolean` and `Unit` only comparable to values of the same
-type. They also make numbers only comparable to other numbers, and
-sequences only comparable to other sequences. There's also a
-"fallback" instance `eqAny` that allows comparisons over types that do
-not themeselves have an `Eq` instance.  `eqAny` is defined as follows:
+There's also a "fallback" instance named `eqAny` that allows comparisons
+over all types that do not themeselves have an `Eq` instance.  `eqAny` is
+defined as follows:
 
-    implicit def eqAny[L, R]: Eq[L, R] = Eq
+    def eqAny[L, R]: Eq[L, R] = Eq
+
+Even though `eqAny` is not declared implicit, the compiler will still
+construct an `eqAny` instance as answer to an implicit search for the
+type `Eq[L, R]`, provided that neither `L` nor `R` have `Eq` instances
+defined on them.
 
 The primary motivation for having `eqAny` is backwards compatibility,
-if this is of no concern one can disable `eqAny` by unimporting it
-from `DottyPredef` like this
+if this is of no concern one can disable `eqAny` by enabling the language
+feature `strictEquality`. As for all language features this can be either
+done with an import
 
-    import dotty.DottyPredef.{eqAny => _, _}
+    import scala.language.strictEquality
+
+or with a command line option `-language:strictEquality`.
 
 All `enum` types also come with `Eq` instances that make values of the
 `enum` type comparable only to other values of that `enum` type.
@@ -87,11 +92,11 @@ The precise rules for equality checking are as follows.
     of the other, or an implicit value of type `scala.Eq[T, U]` is found.
 
  2. The usual rules for implicit search apply also to `Eq` instances,
-    with one modification: The value `eqAny` in `dotty.DottyPredef` is
-    eligible only if neither `T` nor `U` have a reflexive `Eq`
+    with one modification: An instance of `scala.Eq.eqAny[T, U]` is
+    constructed if neither `T` nor `U` have a reflexive `Eq`
     instance themselves. Here, a type `T` has a reflexive `Eq`
-    instance if the implicit search for `Eq[T, T]` where `eqAny` is
-    not eligible is successful.
+    instance if the implicit search for `Eq[T, T]` succeeds
+    and constructs an instance different from `eqAny`.
 
 More on multiversal equality is found in a [blog post]
 and a [Github issue].

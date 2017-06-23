@@ -347,7 +347,6 @@ class Definitions {
 
   def DottyPredefModule(implicit ctx: Context) = DottyPredefModuleRef.symbol
 
-    def Predef_eqAny(implicit ctx: Context) = DottyPredefModule.requiredMethod(nme.eqAny)
     lazy val Predef_ImplicitConverterR = DottyPredefModule.requiredClass("ImplicitConverter").typeRef
     def Predef_ImplicitConverter(implicit ctx: Context) = Predef_ImplicitConverterR.symbol
 
@@ -573,6 +572,8 @@ class Definitions {
   lazy val EqType = ctx.requiredClassRef("scala.Eq")
   def EqClass(implicit ctx: Context) = EqType.symbol.asClass
   def EqModule(implicit ctx: Context) = EqClass.companionModule
+
+    def Eq_eqAny(implicit ctx: Context) = EqModule.requiredMethod(nme.eqAny)
 
   lazy val XMLTopScopeModuleRef = ctx.requiredModuleRef("scala.xml.TopScope")
 

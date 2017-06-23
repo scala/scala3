@@ -1,5 +1,4 @@
-import dotty.DottyPredef.{eqAny => _, _}
-
+import language.strictEquality
 object equality1 {
   class A
   class B

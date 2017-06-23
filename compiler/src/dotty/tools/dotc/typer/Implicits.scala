@@ -545,29 +545,49 @@ trait Implicits { self: Typer =>
     /** If `formal` is of the form ClassTag[T], where `T` is a class type,
      *  synthesize a class tag for `T`.
    	 */
-    def synthesizedClassTag(formal: Type, pos: Position)(implicit ctx: Context): Tree = {
-      if (formal.isRef(defn.ClassTagClass))
-        formal.argTypes match {
-          case arg :: Nil =>
-            fullyDefinedType(arg, "ClassTag argument", pos) match {
-              case defn.ArrayOf(elemTp) =>
-                val etag = inferImplicitArg(defn.ClassTagType.appliedTo(elemTp), error, pos)
-                if (etag.isEmpty) etag else etag.select(nme.wrap)
-              case tp if hasStableErasure(tp) =>
-                if (defn.isBottomClass(tp.typeSymbol))
-                  error(where => i"attempt to take ClassTag of undetermined type for $where")
-                ref(defn.ClassTagModule)
-                  .select(nme.apply)
-                  .appliedToType(tp)
-                  .appliedTo(clsOf(erasure(tp)))
-                  .withPos(pos)
-              case tp =>
-                EmptyTree
-            }
-          case _ =>
-            EmptyTree
-        }
-      else EmptyTree
+    def synthesizedClassTag(formal: Type)(implicit ctx: Context): Tree =
+      formal.argTypes match {
+        case arg :: Nil =>
+          fullyDefinedType(arg, "ClassTag argument", pos) match {
+            case defn.ArrayOf(elemTp) =>
+              val etag = inferImplicitArg(defn.ClassTagType.appliedTo(elemTp), error, pos)
+              if (etag.isEmpty) etag else etag.select(nme.wrap)
+            case tp if hasStableErasure(tp) =>
+              if (defn.isBottomClass(tp.typeSymbol))
+                error(where => i"attempt to take ClassTag of undetermined type for $where")
+              ref(defn.ClassTagModule)
+                .select(nme.apply)
+                .appliedToType(tp)
+                .appliedTo(clsOf(erasure(tp)))
+                .withPos(pos)
+            case tp =>
+              EmptyTree
+          }
+        case _ =>
+          EmptyTree
+      }
+
+    /** If `formal` is of the form Eq[T, U], where no `Eq` instance exists for
+     *  either `T` or `U`, synthesize `Eq.eqAny[T, U]` as solution.
+   	 */
+    def synthesizedEq(formal: Type)(implicit ctx: Context): Tree = {
+      //println(i"synth eq $formal / ${formal.argTypes}%, %")
+      formal.argTypes match {
+        case args @ (arg1 :: arg2 :: Nil)
+        if !ctx.featureEnabled(defn.LanguageModuleClass, nme.strictEquality) &&
+           validEqAnyArgs(arg1, arg2)(ctx.fresh.setExploreTyperState) =>
+          ref(defn.Eq_eqAny).appliedToTypes(args).withPos(pos)
+        case _ =>
+          EmptyTree
+      }
+    }
+
+    def hasEq(tp: Type): Boolean =
+      inferImplicit(defn.EqType.appliedTo(tp, tp), EmptyTree, pos).isInstanceOf[SearchSuccess]
+
+    def validEqAnyArgs(tp1: Type, tp2: Type)(implicit ctx: Context) = {
+      List(tp1, tp2).foreach(fullyDefinedType(_, "eqAny argument", pos))
+      assumedCanEqual(tp1, tp2) || !hasEq(tp1) && !hasEq(tp2)
     }
 
     /** The context to be used when resolving a by-name implicit argument.
@@ -606,7 +626,13 @@ trait Implicits { self: Typer =>
         error(where => s"ambiguous implicits: ${ambi.explanation} of $where")
         EmptyTree
       case failure: SearchFailure =>
-        val arg = synthesizedClassTag(formalValue, pos)
+        val arg =
+          if (formalValue.isRef(defn.ClassTagClass))
+            synthesizedClassTag(formalValue)
+          else if (formalValue.isRef(defn.EqClass))
+            synthesizedEq(formalValue)
+          else
+            EmptyTree
         if (!arg.isEmpty) arg
         else {
           var msgFn = (where: String) =>
@@ -638,10 +664,10 @@ trait Implicits { self: Typer =>
     }
 
     val lift = new TypeMap {
-      def apply(t: Type) = t match {
+      def apply(t: Type): Type = t match {
         case t: TypeRef =>
           t.info match {
-            case TypeBounds(lo, hi) if lo ne hi => hi
+            case TypeBounds(lo, hi) if lo ne hi => apply(hi)
             case _ => t
           }
         case _ =>
@@ -714,6 +740,8 @@ trait Implicits { self: Typer =>
       if (argument.isEmpty) f(resultType) else ViewProto(f(argument.tpe.widen), f(resultType))
         // Not clear whether we need to drop the `.widen` here. All tests pass with it in place, though.
 
+    private def isCoherent = pt.isRef(defn.EqClass)
+
     assert(argument.isEmpty || argument.tpe.isValueType || argument.tpe.isInstanceOf[ExprType],
         em"found: $argument: ${argument.tpe}, expected: $pt")
 
@@ -761,26 +789,7 @@ trait Implicits { self: Typer =>
               case _ => false
             }
           }
-        // Does there exist an implicit value of type `Eq[tp, tp]`
-        // which is different from `eqAny`?
-        def hasEq(tp: Type): Boolean = {
-          def search(contextual: Boolean): Boolean =
-            new ImplicitSearch(defn.EqType.appliedTo(tp, tp), EmptyTree, pos)
-              .bestImplicit(contextual) match {
-              case result: SearchSuccess =>
-                result.ref.symbol != defn.Predef_eqAny ||
-                contextual && search(contextual = false)
-              case result: AmbiguousImplicits => true
-              case _ => false
-            }
-          search(contextual = true)
-        }
 
-        def validEqAnyArgs(tp1: Type, tp2: Type) = {
-          List(tp1, tp2).foreach(fullyDefinedType(_, "eqAny argument", pos))
-          assumedCanEqual(tp1, tp2) || !hasEq(tp1) && !hasEq(tp2) ||
-            { implicits.println(i"invalid eqAny[$tp1, $tp2]"); false }
-        }
         if (ctx.reporter.hasErrors)
           nonMatchingImplicit(ref, ctx.reporter.removeBufferedMessages)
         else if (contextual && !ctx.mode.is(Mode.ImplicitShadowing) &&
@@ -788,13 +797,8 @@ trait Implicits { self: Typer =>
           implicits.println(i"SHADOWING $ref in ${ref.termSymbol.owner} is shadowed by $shadowing in ${shadowing.symbol.owner}")
           shadowedImplicit(ref, methPart(shadowing).tpe)
         }
-        else generated1 match {
-          case TypeApply(fn, targs @ (arg1 :: arg2 :: Nil))
-          if fn.symbol == defn.Predef_eqAny && !validEqAnyArgs(arg1.tpe, arg2.tpe) =>
-            nonMatchingImplicit(ref, Nil)
-          case _ =>
-            SearchSuccess(generated1, ref, cand.level, ctx.typerState)
-        }
+        else
+          SearchSuccess(generated1, ref, cand.level, ctx.typerState)
       }}
 
       /** Given a list of implicit references, produce a list of all implicit search successes,
@@ -812,7 +816,7 @@ trait Implicits { self: Typer =>
             case fail: SearchFailure =>
               rankImplicits(pending1, acc)
             case best: SearchSuccess =>
-              if (ctx.mode.is(Mode.ImplicitExploration)) best :: Nil
+              if (ctx.mode.is(Mode.ImplicitExploration) || isCoherent) best :: Nil
               else {
                 val newPending = pending1.filter(cand1 =>
                   isAsGood(cand1.ref, best.ref, cand1.level, best.level)(nestedContext.setExploreTyperState))
