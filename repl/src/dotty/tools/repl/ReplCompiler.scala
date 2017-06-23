@@ -60,10 +60,11 @@ class ReplCompiler(ictx: Context) extends Compiler {
       t.isTerm && !t.isInstanceOf[Assign]
 
     val (exps, other) = trees.partition(freeExpression)
+    val show = "show".toTermName
     val resX = exps.zipWithIndex.flatMap { (exp, i) =>
       val resName = s"res${i + state.valIndex}".toTermName
       val showName = resName ++ "Show"
-      val showApply = Apply(Select(Ident(resName), "show".toTermName), Nil)
+      val showApply = Apply(Select(Ident(resName), show), Nil)
       List(
         ValDef(resName, TypeTree(), exp).withPos(exp.pos),
         ValDef(showName, TypeTree(), showApply).withPos(exp.pos).withFlags(Synthetic)
@@ -72,11 +73,9 @@ class ReplCompiler(ictx: Context) extends Compiler {
 
     val othersWithShow = other.flatMap {
       case t: ValDef => {
-        val tShow =
-          cpy.ValDef(t)(name = t.name ++ "Show", rhs = Select(Ident(t.name), "show".toTermName))
-            .withFlags(Synthetic)
-
-        List(t, tShow)
+        val name = t.name ++ "Show"
+        val select = Select(Ident(t.name), show)
+        List(t, ValDef(name, TypeTree(), select).withFlags(Synthetic))
       }
       case t => List(t)
     }
