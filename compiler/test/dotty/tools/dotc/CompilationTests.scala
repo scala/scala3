@@ -5,6 +5,7 @@ package dotc
 import org.junit.{ Test, BeforeClass, AfterClass }
 
 import java.nio.file._
+import dotty.tools.io.JFile
 import java.util.stream.{ Stream => JStream }
 import scala.collection.JavaConverters._
 import scala.util.matching.Regex
@@ -28,8 +29,6 @@ class CompilationTests extends ParallelTesting {
   // Positive tests ------------------------------------------------------------
 
   @Test def compilePos: Unit = {
-    compileList("compileStdLib", StdLibSources.whitelisted, scala2Mode.and("-migration", "-Yno-inline")) +
-    compileDir("../collection-strawman/src/main", defaultOptions) +
     compileDir("../compiler/src/dotty/tools/dotc/ast", defaultOptions) +
     compileDir("../compiler/src/dotty/tools/dotc/config", defaultOptions) +
     compileDir("../compiler/src/dotty/tools/dotc/core", allowDeepSubtypes) +
@@ -313,15 +312,83 @@ class CompilationTests extends ParallelTesting {
     tests.delete()
   }
 
+  @Test def linkAll: Unit = {
+    def commonLibraries = {
+      compileList("stdlib", StdLibSources.whitelisted, scala2Mode.and("-migration", "-Yno-inline")) +
+      compileList("strawman", strawmanSources, defaultOptions)
+    }
+
+    // Compile and setup libraries
+
+    val libraries = commonLibraries.keepOutput.checkCompile()
+
+    val commonLibrariesPath = defaultOutputDir + "commonLibraries/"
+
+    val utilsOnlyClassPath = mkClassPath(Jars.dottyTestDeps)
+    val stdlibClassPath = mkClassPath(commonLibrariesPath + "stdlib" :: Jars.dottyTestDeps)
+    val strawmanClassPath = mkClassPath(commonLibrariesPath + "strawman" :: Jars.dottyTestDeps)
+
+    def linkTests(dir: String, flags: Array[String], nameSuffix: String = ""): CompilationTest = {
+      val testsDir = new JFile(dir)
+      val tests = for (test <- testsDir.listFiles() if test.isDirectory || test.getName.endsWith(".scala")) yield {
+        val name = if (test.isDirectory) test.getName else test.getName.dropRight(6)
+        val files0 = sources(Files.walk(testsDir.toPath))
+        val files = if (test.isDirectory) files0 else test.getAbsolutePath :: Nil
+        compileList(name, files, flags, testsDir.getName + nameSuffix)
+      }
+      assert(tests.nonEmpty)
+      if (tests.length == 1) tests.head
+      else tests.reduce((a, b) => a + b)
+    }
+
+    // DCE tests
+
+    def linkDCETests = compileFilesInDir("../tests/link/dce", linkDCE ++ classPath)
+    def linkAggressiveDCETests = compileFilesInDir("../tests/link/dce", linkAggressiveDCE ++ classPath)
+    def linkStrawmanDCETests = linkTests("../tests/link/strawman-dce", linkDCE ++ strawmanClassPath)
+    def linkStrawmanAggressiveDCETests = linkTests("../tests/link/strawman-dce", linkAggressiveDCE ++ strawmanClassPath, "-aggressive")
+
+    def linkStdLibDCE = {
+      val testsDir = new JFile("../tests/link/stdlib-dce")
+      val tests = for (test <- testsDir.listFiles() if test.isDirectory) yield {
+        val files = sources(Files.walk(test.toPath))
+        compileList(test.getName, files, scala2Mode ++ linkDCE ++ stdlibClassPath)
+      }
+      tests.reduce((a, b) => a + b)
+    }
+
+    // specialization tests
+
+    def linkSpecializeTests = linkTests("../tests/link/specialize", linkSpecialize ++ utilsOnlyClassPath)
+    def linkStrawmanSpecializeTests = linkTests("../tests/link/strawman-specialize", linkSpecialize ++ strawmanClassPath)
+
+    // Plain strawman tests
+
+    def strawmanTest = compileFilesInDir("../tests/strawman", basicDefaultOptions ++ strawmanClassPath)
+
+    // Run all tests
+
+    {
+      linkDCETests +
+      linkAggressiveDCETests +
+      /* linkStrawmanDCETests +
+      linkStrawmanAggressiveDCETests + */
+      linkStdLibDCE +
+      linkSpecializeTests /* +
+      linkStrawmanSpecializeTests +
+      strawmanTest */
+    }.checkRuns()
+
+    // libraries.delete()
+  }
+
+  private def strawmanSources =
+    sources(Files.walk(Paths.get("../collection-strawman/src/main")))
+
+  private def testUtils =
+    sources(Files.walk(Paths.get("../tests/utils/")))
 
   private val (compilerSources, backendSources, backendJvmSources) = {
-    def sources(paths: JStream[Path], excludedFiles: List[String] = Nil): List[String] =
-      paths.iterator().asScala
-        .filter(path =>
-          (path.toString.endsWith(".scala") || path.toString.endsWith(".java"))
-            && !excludedFiles.contains(path.getFileName.toString))
-        .map(_.toString).toList
-
     val compilerDir = Paths.get("../compiler/src")
     val compilerSources0 = sources(Files.walk(compilerDir))
 
@@ -341,6 +408,13 @@ class CompilationTests extends ParallelTesting {
 
     (compilerSources0, backendSources0, backendJvmSources0)
   }
+
+  private def sources(paths: JStream[Path], excludedFiles: List[String] = Nil): List[String] =
+    paths.iterator().asScala
+      .filter(path =>
+        (path.toString.endsWith(".scala") || path.toString.endsWith(".java"))
+          && !excludedFiles.contains(path.getFileName.toString))
+      .map(_.toString).toList
 }
 
 object CompilationTests {

@@ -43,6 +43,12 @@ class ScalaSettings extends Settings.SettingGroup {
   val rewrite = OptionSetting[Rewrites]("-rewrite", "When used in conjunction with -language:Scala2 rewrites sources to migrate to new syntax")
   val silentWarnings = BooleanSetting("-nowarn", "Silence all warnings.")
 
+  val linkDCE = BooleanSetting("-link-dce", "Enable dead code elimination.")
+  val linkDCEAggressive = BooleanSetting("-link-aggressive-dce", "Enable aggressive dead code elimination.")
+  val linkVis = BooleanSetting("-link-vis", "Output the visual representation of the call graph.")
+  val linkJavaConservative = BooleanSetting("-link-java-conservative", "Compute call graph for java methods.")
+  val linkSpecialize = BooleanSetting("-link-specialize", "Enable link time specialization.")
+
   /** -X "Advanced" settings
    */
   val Xhelp = BooleanSetting("-X", "Print a synopsis of advanced options.")
@@ -106,6 +112,9 @@ class ScalaSettings extends Settings.SettingGroup {
   val YnoDoubleBindings = BooleanSetting("-Yno-double-bindings", "Assert no namedtype is bound twice (should be enabled only if program is error-free).")
   val YshowVarBounds = BooleanSetting("-Yshow-var-bounds", "Print type variables with their bounds")
   val YnoInline = BooleanSetting("-Yno-inline", "Suppress inlining.")
+  val YlinkDCEChecks = BooleanSetting("-Ylink-dce-checks", "Check number of reachable classes and methods.")
+  val YlinkSpecialize = IntSetting("-YlinkSpecialize","Specialize methods with maximum this amount of polymorphic types.", 0, 0 to 10)
+
 
   /** Linker specific flags */
   val YoptPhases = PhasesSetting("-Yopt-phases", "Restrict the optimisation phases to execute under -optimise.")

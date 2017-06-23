@@ -18,6 +18,8 @@ import util.Stats
 import java.util.WeakHashMap
 import config.Config
 import config.Printers.{completions, incremental, noPrinter}
+import classfile.ClassfileParser
+import dotty.tools.dotc.core.tasty.DottyUnpickler
 
 trait SymDenotations { this: Context =>
   import SymDenotations._
@@ -1235,6 +1237,8 @@ object SymDenotations {
     initPrivateWithin: Symbol,
     initRunId: RunId)
     extends SymDenotation(symbol, ownerIfExists, name, initFlags, initInfo, initPrivateWithin) {
+
+    private[dotc] var dottyUnpickler: Option[DottyUnpickler] = None
 
     import util.LRUCache
 

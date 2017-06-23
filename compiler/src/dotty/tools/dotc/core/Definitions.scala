@@ -354,6 +354,8 @@ class Definitions {
   def DottyArraysModule(implicit ctx: Context) = DottyArraysModuleRef.symbol
     def newGenericArrayMethod(implicit ctx: Context) = DottyArraysModule.requiredMethod("newGenericArray")
     def newArrayMethod(implicit ctx: Context) = DottyArraysModule.requiredMethod("newArray")
+  def DottyArraysMethods(implicit ctx: Context) = List(newArrayMethod, newGenericArrayMethod)
+
 
   lazy val NilModuleRef = ctx.requiredModuleRef("scala.collection.immutable.Nil")
   def NilModule(implicit ctx: Context) = NilModuleRef.symbol
@@ -386,7 +388,7 @@ class Definitions {
     def ArrayConstructor(implicit ctx: Context) = ArrayConstructorR.symbol
   lazy val ArrayModuleType = ctx.requiredModuleRef("scala.Array")
   def ArrayModule(implicit ctx: Context) = ArrayModuleType.symbol.moduleClass.asClass
-
+  def ArrayMethods(implicit ctx: Context) = List(Array_apply, Array_update, Array_length, Array_clone, ArrayConstructor)
 
   lazy val UnitType: TypeRef = valueTypeRef("scala.Unit", BoxedUnitType, java.lang.Void.TYPE, UnitEnc)
   def UnitClass(implicit ctx: Context) = UnitType.symbol.asClass
@@ -455,6 +457,12 @@ class Definitions {
   def BoxedUnitClass(implicit ctx: Context) = BoxedUnitType.symbol.asClass
 
     def BoxedUnit_UNIT(implicit ctx: Context) = BoxedUnitClass.linkedClass.requiredValue("UNIT")
+
+
+  def isPrimitiveClass(sym: Symbol): Boolean = {
+    sym == defn.IntClass || sym == defn.LongClass || sym == defn.ShortClass || sym ==  defn.CharClass || sym == defn.ByteClass ||
+    sym == defn.BooleanClass || sym == defn.FloatClass || sym == defn.DoubleClass || sym == defn.UnitClass
+  }
 
   lazy val BoxedBooleanType: TypeRef = ctx.requiredClassRef("java.lang.Boolean")
   def BoxedBooleanClass(implicit ctx: Context) = BoxedBooleanType.symbol.asClass
@@ -600,6 +608,8 @@ class Definitions {
   def ContravariantBetweenAnnot(implicit ctx: Context) = ContravariantBetweenAnnotType.symbol.asClass
   lazy val DeprecatedAnnotType = ctx.requiredClassRef("scala.deprecated")
   def DeprecatedAnnot(implicit ctx: Context) = DeprecatedAnnotType.symbol.asClass
+  lazy val EntryPointAnnotType = ctx.requiredClassRef("scala.EntryPoint")
+  def EntryPointAnnot(implicit ctx: Context) = EntryPointAnnotType.symbol.asClass
   lazy val ImplicitNotFoundAnnotType = ctx.requiredClassRef("scala.annotation.implicitNotFound")
   def ImplicitNotFoundAnnot(implicit ctx: Context) = ImplicitNotFoundAnnotType.symbol.asClass
   lazy val InlineAnnotType = ctx.requiredClassRef("scala.inline")

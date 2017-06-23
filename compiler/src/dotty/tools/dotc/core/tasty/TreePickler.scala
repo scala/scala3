@@ -153,6 +153,11 @@ class TreePickler(pickler: TastyPickler) {
           writeByte(if (tpe.isType) TYPEREFdirect else TERMREFdirect)
           pickleSymRef(sym)
         }
+        else if (tpe.isTerm) {
+          writeByte(TERMREF) // should be changed to a new entry that keeps track of prefix, symbol & owner
+          pickleName(tpe.name)
+          pickleType(tpe.prefix)
+        }
         else {
           assert(tpe.symbol.isClass)
           assert(tpe.symbol.is(Flags.Scala2x), tpe.symbol.showLocated)

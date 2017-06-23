@@ -32,6 +32,7 @@ import config.Printers
 import java.lang.AssertionError
 
 import dotty.tools.dotc.core.Names
+import linker.DeadCodeElimination
 
 import scala.util.control.NonFatal
 
@@ -376,7 +377,9 @@ class TreeChecker extends Phase with SymTransformer {
           !x.isCompanionMethod &&
           !x.isValueClassConvertMethod
 
-      val symbolsNotDefined = cls.classInfo.decls.toList.toSet.filter(isNonMagicalMethod) -- impl.body.map(_.symbol) - constr.symbol
+      val dce = ctx.phaseOfClass(classOf[DeadCodeElimination]).asInstanceOf[DeadCodeElimination]
+
+      val symbolsNotDefined = cls.classInfo.decls.toList.toSet.filter(x => isNonMagicalMethod(x) && !dce.wasAggressivelyDCEd(x)) -- impl.body.map(_.symbol) - constr.symbol
 
       assert(symbolsNotDefined.isEmpty,
           i" $cls tree does not define methods: ${symbolsNotDefined.toList}%, %\n" +

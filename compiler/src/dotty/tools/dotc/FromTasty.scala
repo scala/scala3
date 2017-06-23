@@ -15,7 +15,7 @@ import util._
 import reporting.Reporter
 import Decorators._
 import dotty.tools.dotc.transform.Pickler
-import tasty.DottyUnpickler
+import tasty.{DottyUnpickler, TastyBuffer}
 import ast.tpd._
 import NameKinds.QualifiedName
 
@@ -100,5 +100,14 @@ object FromTasty extends Driver {
             unit
         }
     }
+  }
+
+  def compilationUnit(clsd: ClassDenotation, unpickler: DottyUnpickler)(implicit ctx: Context): CompilationUnit = {
+    val List(unpickled) = unpickler.body(ctx.addMode(Mode.ReadPositions))
+    val unit1 = new CompilationUnit(new SourceFile(clsd.symbol.sourceFile, Seq()))
+    unit1.tpdTree = unpickled
+    unit1.unpicklers += (clsd.classSymbol -> unpickler.unpickler)
+    force.traverse(unit1.tpdTree)
+    unit1
   }
 }

@@ -286,6 +286,8 @@ object NameKinds {
   val SkolemName              = new UniqueNameKind("?")
   val LiftedTreeName          = new UniqueNameKind("liftedTree")
   val SuperArgName            = new UniqueNameKind("$superArg$")
+  val SpecializedName         = new UniqueNameKind("$spec")
+  val DefaultExceptionName    = new UniqueNameKind(nme.DEFAULT_EXCEPTION_NAME.toString)
 
   /** A kind of unique extension methods; Unlike other unique names, these can be
    *  unmangled.

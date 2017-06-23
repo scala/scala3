@@ -13,6 +13,7 @@ import Phases.Phase
 import transform._
 import util.FreshNameCreator
 import transform.TreeTransforms.{TreeTransform, TreeTransformer}
+import transform.linker._
 import core.DenotTransformers.DenotTransformer
 import core.Denotations.SingleDenotation
 
@@ -47,6 +48,8 @@ class Compiler {
       List(new PostTyper),          // Additional checks and cleanups after type checking
       List(new sbt.ExtractAPI),     // Sends a representation of the API of classes to sbt via callbacks
       List(new Pickler),            // Generate TASTY info
+      List(new CollectSummaries),   // Collects method summaries for the call graph construction
+      List(new BuildCallGraph),     // Builds the call graph
       List(new FirstTransform,      // Some transformations to put trees into a canonical form
            new CheckReentrant,      // Internal use only: Check that compiled program has no data races involving global vars
            new ElimJavaPackages),   // Eliminate syntactic references to Java packages
@@ -69,6 +72,8 @@ class Compiler {
            new ShortcutImplicits,   // Allow implicit functions without creating closures
            new CrossCastAnd,        // Normalize selections involving intersection types.
            new Splitter),           // Expand selections involving union types into conditionals
+      List(new OuterSpecializer),
+      List(new OuterSpecializeParents),
       List(new VCInlineMethods,     // Inlines calls to value class methods
            new IsInstanceOfEvaluator, // Issues warnings when unreachable statements are present in match/if expressions
            new SeqLiterals,         // Express vararg arguments as arrays
@@ -82,7 +87,7 @@ class Compiler {
            new FunctionXXLForwarders, // Add forwarders for FunctionXXL apply method
            new ArrayConstructors),  // Intercept creation of (non-generic) arrays and intrinsify.
       List(new Erasure),            // Rewrite types to JVM model, erasing all type parameters, abstract types and refinements.
-      List(new ElimErasedValueType, // Expand erased value types to their underlying implmementation types
+      List(new ElimErasedValueType, // Expand erased value types to their underlying implementation types
            new VCElideAllocations,  // Peep-hole optimization to eliminate unnecessary value class allocations
            new Mixin,               // Expand trait fields and trait initializers
            new LazyVals,            // Expand lazy vals
@@ -93,6 +98,8 @@ class Compiler {
                                     // Note: constructors changes decls in transformTemplate, no InfoTransformers should be added after it
            new FunctionalInterfaces, // Rewrites closures to implement @specialized types of Functions.
            new GetClass,            // Rewrites getClass calls on primitive types.
+           new CallGraphChecks,
+           new DeadCodeElimination, // Replaces dead code by a `throw new DeadCodeEliminated`
            new Simplify),           // Perform local optimizations, simplified versions of what linker does.
       List(new LinkScala2Impls,     // Redirect calls to trait methods defined by Scala 2.x, so that they now go to their implementations
            new LambdaLift,          // Lifts out nested functions to class scope, storing free variables in environments
