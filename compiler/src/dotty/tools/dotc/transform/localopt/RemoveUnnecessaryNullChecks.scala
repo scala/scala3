@@ -26,6 +26,11 @@ import scala.collection.mutable
 
   val checkGood = mutable.HashMap[Symbol, Set[Symbol]]()
 
+  def clear(): Unit = {
+    initializedVals.clear()
+    checkGood.clear()
+  }
+
   def isGood(t: Symbol)(implicit ctx: Context): Boolean = {
     t.exists && initializedVals.contains(t) && {
       var changed = true

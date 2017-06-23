@@ -31,6 +31,14 @@ class Devalify extends Optimisation {
   // Either a duplicate or a read through series of immutable fields
   val copies = mutable.HashMap[Symbol, Tree]()
 
+  def clear(): Unit = {
+    timesUsed.clear()
+    timesUsedAsType.clear()
+    defined.clear()
+    usedInInnerClass.clear()
+    copies.clear()
+  }
+
   def visitType(tp: Type)(implicit ctx: Context): Unit = {
     tp.foreachPart(x => x match {
       case TermRef(NoPrefix, _) =>

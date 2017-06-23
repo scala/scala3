@@ -17,8 +17,13 @@ import scala.collection.mutable
 class InlineOptions extends Optimisation {
   import ast.tpd._
 
-  private val somes = mutable.HashMap[Symbol, Tree]()
-  private val nones = mutable.HashSet[Symbol]()
+  val somes = mutable.HashMap[Symbol, Tree]()
+  val nones = mutable.HashSet[Symbol]()
+
+  def clear(): Unit = {
+    somes.clear()
+    nones.clear()
+  }
 
   def visitor(implicit ctx: Context): Tree => Unit = {
     case valdef: ValDef if !valdef.symbol.is(Mutable) &&

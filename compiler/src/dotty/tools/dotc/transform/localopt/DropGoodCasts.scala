@@ -24,6 +24,7 @@ import Simplify.isEffectivelyMutable
   import ast.tpd._
 
   def visitor(implicit ctx: Context) = NoVisitor
+  def clear(): Unit = ()
 
   def transformer(implicit ctx: Context): Tree => Tree = {
     case t @ If(cond, thenp, elsep) =>

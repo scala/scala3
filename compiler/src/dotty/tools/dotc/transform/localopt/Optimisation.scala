@@ -6,11 +6,14 @@ import ast.tpd.Tree
 
 trait Optimisation {
 
-  /** Run first to gather information on Trees (using mutation) */
+  /** Gathers information on trees (using mutation), to be run first. */
   def visitor(implicit ctx: Context): Tree => Unit
 
   /** Does the actual Tree => Tree transformation. */
   def transformer(implicit ctx: Context): Tree => Tree
+
+  /** Clears all the state of this optimisation, to be run last. */
+  def clear(): Unit
 
   def name: String = this.getClass.getSimpleName
 
