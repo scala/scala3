@@ -809,8 +809,8 @@ class Definitions {
    */
   def erasedFunctionClass(cls: Symbol): Symbol = {
     val arity = scalaClassName(cls).functionArity
-    if (arity > 22) defn.FunctionXXLClass
-    else if (arity >= 0) defn.FunctionClass(arity)
+    if (arity > 22) FunctionXXLClass
+    else if (arity >= 0) FunctionClass(arity)
     else NoSymbol
   }
 
