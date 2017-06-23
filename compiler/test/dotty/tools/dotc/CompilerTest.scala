@@ -227,7 +227,7 @@ abstract class CompilerTest {
 
   /** Extracts the errors expected for the given neg test file. */
   def getErrors(fileName: String): ErrorsInFile = {
-    val content = SFile(fileName).slurp
+    val content = SFile(fileName).slurp()
     val (line, rest) = content.span(_ != '\n')
 
     @tailrec
@@ -379,8 +379,8 @@ abstract class CompilerTest {
   private def getExisting(dest: Path): ExistingFiles = {
     val content: Option[Option[String]] = processFileDir(dest, f => try Some(f.slurp("UTF8")) catch {case io: java.io.IOException => Some(io.toString())}, d => Some(""))
     if (content.isDefined && content.get.isDefined) {
-      val flags = (dest changeExtension "flags").toFile.safeSlurp
-      val nerr = (dest changeExtension "nerr").toFile.safeSlurp
+      val flags = (dest changeExtension "flags").toFile.safeSlurp()
+      val nerr = (dest changeExtension "nerr").toFile.safeSlurp()
       ExistingFiles(content.get, flags, nerr)
     } else ExistingFiles()
   }

@@ -10,14 +10,14 @@ object Test {
     println(Array(1) == Array(1))
     println(Array(1) equals Array(1))
     println(Array(1).deep == Array(1).deep)
-    println
+    println()
   }
 
   def testEquals2: Unit = {
     println(Array(Array(1), Array(2)) == Array(Array(1), Array(2)))
     println(Array(Array(1), Array(2)) equals Array(Array(1), Array(2)))
     println(Array(Array(1), Array(2)).deep equals Array(Array(1), Array(2)).deep)
-    println
+    println()
   }
 
   def testEquals3: Unit = {
@@ -33,7 +33,7 @@ object Test {
       println(x == y)
       println(x equals y)
       println(x.deep == y.deep)
-      println
+      println()
     }
     test(a1, b1)
     test(a2, b2)
@@ -63,7 +63,7 @@ object Test {
       println(a.deep.toString)
       println(a.deep.mkString("[", ";", "]"))
       println(a.deep.mkString(";"))
-      println
+      println()
     }
 
     val ba1 = Array(true, false)
@@ -92,7 +92,7 @@ object Test {
     println(Array(Array(true, false), Array(false)).deep.mkString("[", "; ", "]"))
     println(Array(Array('1', '2'), Array('3')).deep.mkString("[", "; ", "]"))
     println(Array(Array(1, 2), Array(3)).deep.mkString("[", "; ", "]"))
-    println
+    println()
   }
 
   def testToString3: Unit = {

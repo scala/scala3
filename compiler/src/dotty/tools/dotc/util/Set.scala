@@ -23,5 +23,5 @@ abstract class Set[T >: Null] {
 
   def toList = iterator.toList
 
-  def clear: Unit
+  def clear(): Unit
 }

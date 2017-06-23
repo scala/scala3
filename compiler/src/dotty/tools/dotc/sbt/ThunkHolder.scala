@@ -114,7 +114,7 @@ private object SafeLazy {
       eval = null // clear the reference, ensuring the only memory we hold onto is the result
       t
     }
-    def get: T = _t
+    def get(): T = _t
   }
 
   private[this] final class Strict[T <: AnyRef](val get: T) extends xsbti.api.Lazy[T] with java.io.Serializable

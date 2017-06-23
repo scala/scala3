@@ -129,7 +129,7 @@ object Trees {
     private def checkChildrenTyped(it: Iterator[Any])(implicit ctx: Context): Unit =
       if (!this.isInstanceOf[Import[_]])
         while (it.hasNext)
-          it.next match {
+          it.next() match {
             case x: Ident[_] => // untyped idents are used in a number of places in typed trees
             case x: Tree[_] =>
               assert(x.hasType || ctx.reporter.errorsReported,

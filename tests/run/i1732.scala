@@ -9,7 +9,7 @@ object Test {
   def main(args: Array[String]): Unit = {
     brk { () => ??? }
     Breaks.breakable {
-      Breaks.break
+      Breaks.break()
     }
   }
 }

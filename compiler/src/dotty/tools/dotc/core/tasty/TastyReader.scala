@@ -62,12 +62,12 @@ class TastyReader(val bytes: Array[Byte], start: Int, end: Int, val base: Int = 
   /** Read a natural number fitting in an Int in big endian format, base 128.
    *  All but the last digits have bit 0x80 set.
    */
-  def readNat(): Int = readLongNat.toInt
+  def readNat(): Int = readLongNat().toInt
 
   /** Read an integer number in 2's complement big endian format, base 128.
    *  All but the last digits have bit 0x80 set.
    */
-  def readInt(): Int = readLongInt.toInt
+  def readInt(): Int = readLongInt().toInt
 
   /** Read a natural number fitting in a Long in big endian format, base 128.
    *  All but the last digits have bit 0x80 set.

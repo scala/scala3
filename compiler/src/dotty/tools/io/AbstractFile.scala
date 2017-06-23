@@ -186,7 +186,7 @@ abstract class AbstractFile extends Iterable[AbstractFile] {
   }
 
   /** Returns all abstract subfiles of this abstract directory. */
-  def iterator: Iterator[AbstractFile]
+  def iterator(): Iterator[AbstractFile]
 
   /** Returns the abstract file in this abstract directory with the specified
    *  name. If there is no such file, returns `null`. The argument

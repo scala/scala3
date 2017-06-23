@@ -34,13 +34,13 @@ class TestREPL(script: String) extends REPL {
     override def input(in: Interpreter)(implicit ctx: Context) = new InteractiveReader {
       val lines = script.lines.buffered
       def readLine(prompt: String): String = {
-        val line = lines.next
+        val line = lines.next()
         val buf = new StringBuilder
         if (line.startsWith(prompt)) {
           output.println(line)
           buf append line.drop(prompt.length)
           while (lines.hasNext && lines.head.startsWith(continuationPrompt)) {
-            val continued = lines.next
+            val continued = lines.next()
             output.println(continued)
             buf append System.lineSeparator()
             buf append continued.drop(continuationPrompt.length)

@@ -69,6 +69,8 @@ sidebar:
               url: docs/reference/changed/vararg-patterns.html
             - title: Pattern matching
               url: docs/reference/changed/pattern-matching.html
+            - title: Eta Expansion
+              url: docs/reference/changed/eta-expansion.html
         - title: Dropped Features
           subsection:
             - title: DelayedInit
@@ -89,6 +91,8 @@ sidebar:
               url: docs/reference/dropped/limit22.html
             - title: XML literals
               url: docs/reference/dropped/xml.html
+            - title: Auto-Application
+              url: docs/reference/dropped/auto-apply.html
     - title: Contributing
       subsection:
         - title: Getting Started

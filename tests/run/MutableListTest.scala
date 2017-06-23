@@ -84,7 +84,7 @@ object Test {
     assert(mlist(5) == -25)
     assert(mlist(0) == -1)
     assert(mlist.last == -81)
-    mlist.clear
+    mlist.clear()
     assert(mlist.isEmpty)
     mlist += 1001
     assert(mlist.head == 1001)
@@ -107,7 +107,7 @@ object Test {
     lst += 7
     assert(lst.init.last == 129)
     assert(lst.length == 5)
-    lst.clear
+    lst.clear()
     assert(lst.length == 0)
     for (i <- 0 until 5) lst += i
     assert(lst.reduceLeft(_ + _) == 10)

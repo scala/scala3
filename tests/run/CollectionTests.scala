@@ -108,7 +108,7 @@ object CollectionStrawMan5 {
     def foldRight[B](z: B)(op: (A, B) => B): B = iterator.foldRight(z)(op)
     def indexWhere(p: A => Boolean): Int = iterator.indexWhere(p)
     def isEmpty: Boolean = !iterator.hasNext
-    def head: A = iterator.next
+    def head: A = iterator.next()
     def view: View[A] = View.fromIterator(iterator)
   }
 
@@ -141,7 +141,7 @@ object CollectionStrawMan5 {
     def reverse: Repr = {
       var xs: List[A] = Nil
       var it = coll.iterator
-      while (it.hasNext) xs = new Cons(it.next, xs)
+      while (it.hasNext) xs = new Cons(it.next(), xs)
       fromLikeIterable(xs)
     }
   }
@@ -156,7 +156,7 @@ object CollectionStrawMan5 {
     def iterator = new Iterator[A] {
       private[this] var current = self
       def hasNext = !current.isEmpty
-      def next = { val r = current.head; current = current.tail; r }
+      def next() = { val r = current.head; current = current.tail; r }
     }
     def fromIterable[B](c: Iterable[B]): List[B] = List.fromIterable(c)
     def apply(i: Int): A = {
@@ -359,7 +359,7 @@ object CollectionStrawMan5 {
     def iterator: Iterator[A] = new Iterator[A] {
       private var current = start
       def hasNext = current < end
-      def next: A = {
+      def next(): A = {
         val r = apply(current)
         current += 1
         r
@@ -430,7 +430,7 @@ object CollectionStrawMan5 {
     def next(): A
     def iterator = this
     def foldLeft[B](z: B)(op: (B, A) => B): B =
-      if (hasNext) foldLeft(op(z, next))(op) else z
+      if (hasNext) foldLeft(op(z, next()))(op) else z
     def foldRight[B](z: B)(op: (A, B) => B): B =
       if (hasNext) op(next(), foldRight(z)(op)) else z
     def foreach(f: A => Unit): Unit =
@@ -510,7 +510,7 @@ object CollectionStrawMan5 {
   object Iterator {
     val empty: Iterator[Nothing] = new Iterator[Nothing] {
       def hasNext = false
-      def next = throw new NoSuchElementException("next on empty iterator")
+      def next() = throw new NoSuchElementException("next on empty iterator")
     }
     def apply[A](xs: A*): Iterator[A] = new RandomAccessView[A] {
       val start = 0
