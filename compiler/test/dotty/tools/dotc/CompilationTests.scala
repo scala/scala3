@@ -72,6 +72,16 @@ class CompilationTests extends ParallelTesting {
       ),
       scala2Mode
     ) +
+    // FIXME: This fails with .times(2), see #2799
+    compileList(
+      "testPredefDeprecatedNonCyclic",
+      List(
+        "../scala2-library/src/library/scala/io/Position.scala",
+        "../scala2-library/src/library/scala/Predef.scala",
+        "../scala2-library/src/library/scala/deprecated.scala"
+      ),
+      scala2Mode
+    ) +
     compileFilesInDir("../tests/new", defaultOptions) +
     compileFilesInDir("../tests/pos-scala2", scala2Mode) +
     compileFilesInDir("../tests/pos", defaultOptions) +
