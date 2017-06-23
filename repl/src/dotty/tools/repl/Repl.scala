@@ -29,7 +29,7 @@ case class State(objectIndex: Int, valIndex: Int, history: History)
 class Repl(
   settings: Array[String],
   parentClassLoader: Option[ClassLoader] = None,
-  out: PrintStream = System.out
+  protected val out: PrintStream = System.out
 ) extends Driver {
 
   // FIXME: Change the Driver API to not require implementing this method
@@ -116,7 +116,7 @@ class Repl(
       val defn = ctx.definitions
       val defs =
         info.bounds.hi.finalResultType
-        .membersBasedOnFlags(Method, Synthetic | Private)
+        .membersBasedOnFlags(Method, Accessor | ParamAccessor | Synthetic | Private)
         .filterNot { denot =>
           denot.symbol.owner == defn.AnyClass ||
           denot.symbol.owner == defn.ObjectClass ||
