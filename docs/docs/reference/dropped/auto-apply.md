@@ -76,7 +76,7 @@ requirement.
 
 Existing Scala code with inconsistent parameters can still be compiled
 in Dotty under `-language:Scala2`. When paired with the `-rewrite`
-option, the code will be automatcally rewritten to conforrm to Dotty's
+option, the code will be automatcally rewritten to conform to Dotty's
 stricter checking.
 
 ### Reference
