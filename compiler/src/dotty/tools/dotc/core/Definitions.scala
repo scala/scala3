@@ -829,7 +829,7 @@ class Definitions {
   }
 
   val predefClassNames: Set[Name] =
-    Set("Predef$", "DeprecatedPredef", "LowPriorityImplicits").map(_.toTypeName)
+    Set("Predef$", "DeprecatedPredef", "LowPriorityImplicits").map(_.toTypeName.unmangleClassName)
 
   /** Is `cls` the predef module class, or a class inherited by Predef? */
   def isPredefClass(cls: Symbol) =
