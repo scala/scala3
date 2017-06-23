@@ -40,7 +40,7 @@ class A[T] {
 
   def f(x: T)(y: T = x) = y
 
-  def next: T
+  def next: T = ???
 
 }
 
@@ -50,7 +50,7 @@ class B extends A[Int] {
 
   f(2)()
 
-  def next(): Int     // error: incompatible type
+  override def next(): Int = ???    // error: incompatible type
 
 }
 
