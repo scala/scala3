@@ -233,9 +233,7 @@ object Names {
       }
     }
 
-    /** Is it impossible that trees of kind `kind` qualify as
-     *  derived trees of kind `shadowed`?
-     */
+    /** Is it impossible that names of kind `kind` also qualify as names of kind `shadowed`? */
     private def shadows(kind: NameKind, shadowed: NameKind): Boolean =
       kind.tag < shadowed.tag ||
       kind.definesQualifiedName ||
