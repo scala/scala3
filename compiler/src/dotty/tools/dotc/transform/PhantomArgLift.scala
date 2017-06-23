@@ -52,16 +52,6 @@ class PhantomArgLift extends MiniPhaseTransform {
       }
   }
 
-  override def transformAssign(tree: Assign)(implicit ctx: Context, info: TransformerInfo): Tree = {
-    if (!tree.rhs.tpe.isPhantom) super.transformAssign(tree)
-    else {
-      // Apply the same transformation to setters before their creation.
-      val synthVal = SyntheticValDef(TempResultName.fresh(), tree.rhs)
-      val synthValRef = ref(synthVal.symbol)
-      Block(List(synthVal), Assign(tree.lhs, synthValRef))
-    }
-  }
-
   /* private methods */
 
   /** Returns true if at least on of the arguments is an impure phantom.
