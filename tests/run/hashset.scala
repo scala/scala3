@@ -23,7 +23,7 @@ object Test extends dotty.runtime.LegacyApp {
     println((for (i <- 0 until 20) yield i + " " + (h1 contains i)).toList.sorted mkString(","))
     println((for (i <- 20 until 40) yield i + " " + (h1 contains i)).toList.sorted mkString(","))
     println(h1.toList.sorted mkString ",")
-    println
+    println()
 
     println("*** " + creator.hashSetType + " Strings with null")
     val h2 = creator.create[String]
@@ -38,7 +38,7 @@ object Test extends dotty.runtime.LegacyApp {
     h2 -= "" + 0
     println("null " + (h2 contains null))
     println((for (i <- 0 until 20) yield i + " " + (h2 contains ("" + i))).toList.sorted mkString(","))
-    println
+    println()
   }
 
    trait Creator {

@@ -11,7 +11,7 @@ object Test {
   def check_from: Int = {
     val it1 = Iterator.from(-1)
     val it2 = Iterator.from(0, -1)
-    it1.next + it2.next
+    it1.next() + it2.next()
   }
 
   def check_range: Int = {
@@ -57,8 +57,8 @@ object Test {
   def check_drop: Int = {
     val it1 = Iterator.from(0)
     val it2 = it1 map { 2 * _ }
-    val n1 = it1 drop 2 next
-    val n2 = it2 drop 2 next;
+    val n1 = it1 drop 2 next()
+    val n2 = it2 drop 2 next();
     n1 + n2
   }
 

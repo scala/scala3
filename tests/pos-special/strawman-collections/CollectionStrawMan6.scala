@@ -142,7 +142,7 @@ object CollectionStrawMan6 extends LowPriority {
     def iterator = new Iterator[A] {
       private[this] var current: Seq[A] = self
       def hasNext = !current.isEmpty
-      def next = { val r = current.head; current = current.tail; r }
+      def next() = { val r = current.head; current = current.tail; r }
     }
 
     /** `length is defined in terms of `iterator` */
@@ -891,7 +891,7 @@ object CollectionStrawMan6 extends LowPriority {
     def iterator: Iterator[A] = new Iterator[A] {
       private var current = 0
       def hasNext = current < self.length
-      def next: A = {
+      def next(): A = {
         val r = apply(current)
         current += 1
         r
@@ -941,7 +941,7 @@ object CollectionStrawMan6 extends LowPriority {
     def next(): A
     def iterator = this
     def foldLeft[B](z: B)(op: (B, A) => B): B =
-      if (hasNext) foldLeft(op(z, next))(op) else z
+      if (hasNext) foldLeft(op(z, next()))(op) else z
     def foldRight[B](z: B)(op: (A, B) => B): B =
       if (hasNext) op(next(), foldRight(z)(op)) else z
     def foreach(f: A => Unit): Unit =
@@ -1010,7 +1010,7 @@ object CollectionStrawMan6 extends LowPriority {
     def take(n: Int): Iterator[A] = new Iterator[A] {
       private var i = 0
       def hasNext = self.hasNext && i < n
-      def next =
+      def next() =
         if (hasNext) {
           i += 1
           self.next()
@@ -1035,7 +1035,7 @@ object CollectionStrawMan6 extends LowPriority {
   object Iterator {
     val empty: Iterator[Nothing] = new Iterator[Nothing] {
       def hasNext = false
-      def next = throw new NoSuchElementException("next on empty iterator")
+      def next() = throw new NoSuchElementException("next on empty iterator")
     }
     def apply[A](xs: A*): Iterator[A] = new IndexedView[A] {
       val length = xs.length

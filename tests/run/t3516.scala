@@ -7,7 +7,7 @@ object Test {
     val s1 = mkIterator.toStream
     val s2 = mkInfinite.toStream
     // back and forth without slipping into nontermination.
-    println((Stream from 1).toIterator.drop(10).toStream.drop(10).toIterator.next)
+    println((Stream from 1).toIterator.drop(10).toStream.drop(10).toIterator.next())
     ()
   }
 }

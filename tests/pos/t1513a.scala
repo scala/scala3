@@ -29,7 +29,7 @@ object Test {
   def at2[NN <: Nat, OO](p: Proxy[NN])(implicit e: Accessor.Aux[String :: HNil, NN, OO]): OO = ???
 
   // N is fixed by a value
-  at2(Proxy[Zero]): String
+  at2(Proxy[Zero]()): String
 
   // N is fixed as a type parameter (by name)
   at1[NN = Zero]: String

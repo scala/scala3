@@ -732,13 +732,15 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
       /** If parameter `param` appears exactly once as an argument in `args`,
        *  the singleton list consisting of its position in `args`, otherwise `Nil`.
        */
-      def paramIndices(param: untpd.ValDef, args: List[untpd.Tree], start: Int): List[Int] = args match {
-        case arg :: args1 =>
-          if (refersTo(arg, param))
-            if (paramIndices(param, args1, start + 1).isEmpty) start :: Nil
-            else Nil
-          else paramIndices(param, args1, start + 1)
-        case _ => Nil
+      def paramIndices(param: untpd.ValDef, args: List[untpd.Tree]): List[Int] = {
+        def loop(args: List[untpd.Tree], start: Int): List[Int] = args match {
+          case arg :: args1 =>
+            val others = loop(args1, start + 1)
+            if (refersTo(arg, param)) start :: others else others
+          case _ => Nil
+        }
+        val allIndices = loop(args, 0)
+        if (allIndices.length == 1) allIndices else Nil
       }
 
       /** If function is of the form
@@ -752,7 +754,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
       def calleeType: Type = fnBody match {
         case Apply(expr, args) =>
           paramIndex = {
-            for (param <- params; idx <- paramIndices(param, args, 0))
+            for (param <- params; idx <- paramIndices(param, args))
             yield param.name -> idx
           }.toMap
           if (paramIndex.size == params.length)
@@ -1202,7 +1204,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     // necessary to force annotation trees to be computed.
     sym.annotations.foreach(_.ensureCompleted)
     lazy val annotCtx = {
-      val c = ctx.outersIterator.dropWhile(_.owner == sym).next
+      val c = ctx.outersIterator.dropWhile(_.owner == sym).next()
       c.property(ExprOwner) match {
         case Some(exprOwner) if c.owner.isClass =>
           // We need to evaluate annotation arguments in an expression context, since
@@ -1343,22 +1345,18 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
         ref
     }
 
-    def typedParent(tree: untpd.Tree): Tree =
+    def typedParent(tree: untpd.Tree): Tree = {
+      var result = if (tree.isType) typedType(tree)(superCtx) else typedExpr(tree)(superCtx)
+      val psym = result.tpe.typeSymbol
       if (tree.isType) {
-        val result = typedType(tree)(superCtx)
-        val psym = result.tpe.typeSymbol
-        checkTraitInheritance(psym, cls, tree.pos)
         if (psym.is(Trait) && !cls.is(Trait) && !cls.superClass.isSubClass(psym))
-          maybeCall(result, psym, psym.primaryConstructor.info)
-        else
-          result
+          result = maybeCall(result, psym, psym.primaryConstructor.info)
       }
-      else {
-        val result = typedExpr(tree)(superCtx)
-        checkTraitInheritance(result.symbol, cls, tree.pos)
-        checkParentCall(result, cls)
-        result
-      }
+      else checkParentCall(result, cls)
+      checkTraitInheritance(psym, cls, tree.pos)
+      if (cls is Case) checkCaseInheritance(psym, cls, tree.pos)
+      result
+    }
 
     /** Checks if one of the decls is a type with the same name as class type member in selfType */
     def classExistsOnSelf(decls: Scope, self: tpd.ValDef): Boolean = {
@@ -1536,15 +1534,31 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     val pt1 = if (defn.isFunctionType(pt)) pt else AnyFunctionProto
     var res = typed(qual, pt1)
     if (pt1.eq(AnyFunctionProto) && !defn.isFunctionClass(res.tpe.classSymbol)) {
-      def msg = i"not a function: ${res.tpe}; cannot be followed by `_'"
+      ctx.errorOrMigrationWarning(i"not a function: ${res.tpe}; cannot be followed by `_'", tree.pos)
       if (ctx.scala2Mode) {
         // Under -rewrite, patch `x _` to `(() => x)`
-        ctx.migrationWarning(msg, tree.pos)
         patch(Position(tree.pos.start), "(() => ")
         patch(Position(qual.pos.end, tree.pos.end), ")")
         res = typed(untpd.Function(Nil, untpd.TypedSplice(res)))
       }
-      else ctx.error(msg, tree.pos)
+    }
+    else if (ctx.settings.strict.value) {
+      lazy val (prefix, suffix) = res match {
+        case Block(mdef @ DefDef(_, _, vparams :: Nil, _, _) :: Nil, _: Closure) =>
+          val arity = vparams.length
+          if (arity > 0) ("", "") else ("(() => ", "())")
+        case _ =>
+          ("(() => ", ")")
+      }
+      def remedy =
+        if ((prefix ++ suffix).isEmpty) "simply leave out the trailing ` _`"
+        else s"use `$prefix<function>$suffix` instead"
+      ctx.errorOrMigrationWarning(i"""The syntax `<function> _` is no longer supported;
+                                     |you can $remedy""", tree.pos)
+      if (ctx.scala2Mode) {
+        patch(Position(tree.pos.start), prefix)
+        patch(Position(qual.pos.end, tree.pos.end), suffix)
+      }
     }
     res
   }
@@ -1693,7 +1707,10 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
       case Thicket(stats) :: rest =>
         traverse(stats ++ rest)
       case stat :: rest =>
-        buf += typed(stat)(ctx.exprContext(stat, exprOwner))
+        val stat1 = typed(stat)(ctx.exprContext(stat, exprOwner))
+        if (!ctx.isAfterTyper && isPureExpr(stat1))
+          ctx.warning(em"a pure expression does nothing in statement position", stat.pos)
+        buf += stat1
         traverse(rest)
       case nil =>
         buf.toList
@@ -1737,7 +1754,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
   def tryAlternatively[T](op1: Context => T)(op2: Context => T)(implicit ctx: Context): T =
     tryEither(op1) { (failedVal, failedState) =>
       tryEither(op2) { (_, _) =>
-        failedState.commit
+        failedState.commit()
         failedVal
       }
     }
@@ -1858,9 +1875,10 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
 
     def methodStr = err.refStr(methPart(tree).tpe)
 
-    def missingArgs = errorTree(tree,
-      em"""missing arguments for $methodStr
-          |follow this method with `_' if you want to treat it as a partially applied function""")
+    def missingArgs(mt: MethodType) = {
+      ctx.error(em"missing arguments for $methodStr", tree.pos)
+      tree.withType(mt.resultType)
+    }
 
     def adaptOverloaded(ref: TermRef) = {
       val altDenots = ref.denot.alternatives
@@ -2006,16 +2024,63 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
               // prioritize method parameter types as parameter types of the eta-expanded closure
               0
             else defn.functionArity(ptNorm)
-          else if (pt eq AnyFunctionProto) wtp.paramInfos.length
-          else -1
-        if (arity >= 0 && !tree.symbol.isConstructor)
+          else {
+            val nparams = wtp.paramInfos.length
+            if (nparams > 0 || pt.eq(AnyFunctionProto)) nparams
+            else -1 // no eta expansion in this case
+          }
+
+        /** A synthetic apply should be eta-expanded if it is the apply of an implicit function
+         *  class, and the expected type is a function type. This rule is needed so we can pass
+         *  an implicit function to a regular function type. So the following is OK
+         *
+         *     val f: implicit A => B  =  ???
+         *     val g: A => B = f
+         *
+         *  and the last line expands to
+         *
+         *     val g: A => B  =  (x$0: A) => f.apply(x$0)
+         *
+         *  One could be tempted not to eta expand the rhs, but that would violate the invariant
+         *  that expressions of implicit function types are always implicit closures, which is
+         *  exploited by ShortcutImplicits.
+         *
+         *  On the other hand, the following would give an error if there is no implicit
+         *  instance of A available.
+         *
+         *     val x: AnyRef = f
+         *
+         *  That's intentional, we want to fail here, otherwise some unsuccesful implicit searches
+         *  would go undetected.
+         *
+         *  Examples for these cases are found in run/implicitFuns.scala and neg/i2006.scala.
+         */
+        def isExpandableApply =
+          defn.isImplicitFunctionClass(tree.symbol.maybeOwner) && defn.isFunctionType(ptNorm)
+
+        /** Is reference to this symbol `f` automatically expanded to `f()`? */
+        def isAutoApplied(sym: Symbol): Boolean = {
+          sym.isConstructor ||
+          sym.matchNullaryLoosely ||
+          ctx.testScala2Mode(em"${sym.showLocated} requires () argument", tree.pos,
+              patch(tree.pos.endPos, "()"))
+        }
+
+        // Reasons NOT to eta expand:
+        //  - we reference a constructor
+        //  - we are in a pattern
+        //  - the current tree is a synthetic apply which is not expandable (eta-expasion would simply undo that)
+        if (arity >= 0 &&
+            !tree.symbol.isConstructor &&
+            !ctx.mode.is(Mode.Pattern) &&
+            !(isSyntheticApply(tree) && !isExpandableApply))
           typed(etaExpand(tree, wtp, arity), pt)
-        else if (wtp.paramInfos.isEmpty)
+        else if (wtp.paramInfos.isEmpty && isAutoApplied(tree.symbol))
           adaptInterpolated(tpd.Apply(tree, Nil), pt, EmptyTree)
         else if (wtp.isImplicit)
           err.typeMismatch(tree, pt)
         else
-          missingArgs
+          missingArgs(wtp)
       case _ =>
         ctx.typeComparer.GADTused = false
         if (defn.isImplicitFunctionClass(wtp.underlyingClassRef(refinementOK = false).classSymbol) &&
@@ -2054,11 +2119,12 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
           else
             tree
         }
-        else if (wtp.isInstanceOf[MethodType]) missingArgs
-        else {
-          typr.println(i"adapt to subtype ${tree.tpe} !<:< $pt")
-          //typr.println(TypeComparer.explained(implicit ctx => tree.tpe <:< pt))
-          adaptToSubType(wtp)
+        else wtp match {
+          case wtp: MethodType => missingArgs(wtp)
+          case _ =>
+            typr.println(i"adapt to subtype ${tree.tpe} !<:< $pt")
+            //typr.println(TypeComparer.explained(implicit ctx => tree.tpe <:< pt))
+            adaptToSubType(wtp)
         }
     }
     /** Adapt an expression of constant type to a different constant type `tpe`. */

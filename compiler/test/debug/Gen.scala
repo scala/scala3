@@ -64,7 +64,7 @@ object Gen {
   }
 
   def parse(file: String): Program = {
-    val lines = Source.fromFile(file).getLines.toBuffer
+    val lines = Source.fromFile(file).getLines().toBuffer
 
     val breaks = new ListBuffer[Break]()
     val cmds = new ListBuffer[Command]()

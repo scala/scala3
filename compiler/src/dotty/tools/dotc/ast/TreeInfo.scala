@@ -53,7 +53,7 @@ trait TreeInfo[T >: Untyped <: Type] { self: Trees.Instance[T] =>
     def map[R](f: (Symbol, Tree) => R): List[R] = {
       val b = List.newBuilder[R]
       foreach(b += f(_, _))
-      b.result
+      b.result()
     }
   }
 
@@ -471,6 +471,14 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
   /** Is tree a `this` node which belongs to `enclClass`? */
   def isSelf(tree: Tree, enclClass: Symbol)(implicit ctx: Context): Boolean = unsplice(tree) match {
     case This(_) => tree.symbol == enclClass
+    case _ => false
+  }
+
+  /** Is tree a compiler-generated `.apply` node that refers to the
+   *  apply of a function class?
+   */
+  def isSyntheticApply(tree: Tree): Boolean = tree match {
+    case Select(qual, nme.apply) => tree.pos.end == qual.pos.end
     case _ => false
   }
 

@@ -46,15 +46,15 @@ final class DelegatingReporter(delegate: xsbti.Reporter) extends Reporter
         noPosition
 
     val sb = new StringBuilder()
-    sb.append(messageAndPos(cont.contained, cont.pos, diagnosticLevel(cont)))
-    if (ctx.shouldExplain(cont) && cont.contained.explanation.nonEmpty) {
-      sb.append(explanation(cont.contained))
+    sb.append(messageAndPos(cont.contained(), cont.pos, diagnosticLevel(cont)))
+    if (ctx.shouldExplain(cont) && cont.contained().explanation.nonEmpty) {
+      sb.append(explanation(cont.contained()))
     }
 
     delegate.log(position, sb.toString(), severity)
   }
 
-  private[this] def maybe[T](opt: Option[T]): Maybe[T] = opt match { 
+  private[this] def maybe[T](opt: Option[T]): Maybe[T] = opt match {
     case None => Maybe.nothing[T]
     case Some(s) => Maybe.just[T](s)
   }

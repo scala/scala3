@@ -518,8 +518,11 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
   def dynamicsEnabled =
     featureEnabled(defn.LanguageModuleClass, nme.dynamics)
 
-  def testScala2Mode(msg: => String, pos: Position) = {
-    if (scala2Mode) migrationWarning(msg, pos)
+  def testScala2Mode(msg: => String, pos: Position, rewrite: => Unit = ()) = {
+    if (scala2Mode) {
+      migrationWarning(msg, pos)
+      rewrite
+    }
     scala2Mode
   }
 }

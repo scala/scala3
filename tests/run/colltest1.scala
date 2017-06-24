@@ -56,7 +56,7 @@ object Test extends dotty.runtime.LegacyApp {
     val buf = new mutable.ArrayBuffer[Int]
     firstFive copyToBuffer buf
     secondFive copyToBuffer buf
-    assert(buf.result == ten, buf.result)
+    assert(buf.result() == ten, buf.result())
     assert(ten.toArray.size == 10)
     assert(ten.toArray.toSeq == ten, ten.toArray.toSeq)
     assert(ten.toIterable == ten)

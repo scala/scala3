@@ -72,6 +72,16 @@ class CompilationTests extends ParallelTesting {
       ),
       scala2Mode
     ) +
+    // FIXME: This fails with .times(2), see #2799
+    compileList(
+      "testPredefDeprecatedNonCyclic",
+      List(
+        "../scala2-library/src/library/scala/io/Position.scala",
+        "../scala2-library/src/library/scala/Predef.scala",
+        "../scala2-library/src/library/scala/deprecated.scala"
+      ),
+      scala2Mode
+    ) +
     compileFilesInDir("../tests/new", defaultOptions) +
     compileFilesInDir("../tests/pos-scala2", scala2Mode) +
     compileFilesInDir("../tests/pos", defaultOptions) +
@@ -153,6 +163,7 @@ class CompilationTests extends ParallelTesting {
     compileFile("../tests/neg/customArgs/noimports2.scala", defaultOptions.and("-Yno-imports")) +
     compileFile("../tests/neg/customArgs/overloadsOnAbstractTypes.scala", allowDoubleBindings) +
     compileFile("../tests/neg/customArgs/xfatalWarnings.scala", defaultOptions.and("-Xfatal-warnings")) +
+    compileFile("../tests/neg/customArgs/pureStatement.scala", defaultOptions.and("-Xfatal-warnings")) +
     compileFile("../tests/neg/customArgs/phantom-overload.scala", allowDoubleBindings) +
     compileFile("../tests/neg/tailcall/t1672b.scala", defaultOptions) +
     compileFile("../tests/neg/tailcall/t3275.scala", defaultOptions) +

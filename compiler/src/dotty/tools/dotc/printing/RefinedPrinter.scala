@@ -617,6 +617,8 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       val clsStr = ""//if (tree.isType) tree.getClass.toString else ""
       txt = (txt ~ "@" ~ pos.toString ~ clsStr).close
     }
+    if (ctx.settings.YshowTreeIds.value)
+      txt = (txt ~ "#" ~ tree.uniqueId.toString).close
     tree match {
       case Block(_, _) | Template(_, _, _, _) => txt
       case _ => txt.close

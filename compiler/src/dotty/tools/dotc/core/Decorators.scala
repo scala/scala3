@@ -37,7 +37,7 @@ object Decorators {
   implicit class SymbolIteratorDecorator(val it: Iterator[Symbol]) extends AnyVal {
     final def findSymbol(p: Symbol => Boolean): Symbol = {
       while (it.hasNext) {
-        val sym = it.next
+        val sym = it.next()
         if (p(sym)) return sym
       }
       NoSymbol

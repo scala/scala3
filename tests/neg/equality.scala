@@ -56,6 +56,14 @@ object equality {
     null == Str("x")
     null == null
 
+    1 == true  // error
+
+    null == true // OK by eqProxy
+    true == null // error
+    null == 1    // OK by eqProxy or eqNumInt
+    1 == null    // OK by eqIntNum
+
+
     class Fruit
 
     implicit def eqFruit: Eq[Fruit, Fruit] = Eq
@@ -105,5 +113,22 @@ object equality {
     "abc" == bi // error
     bi == "abc" // error
     "world" == ps // error
+
+    val s1 = Set(1, 2, 3)
+    val s2 = Set()
+
+    Nil == s1 // error
+    s1 == Nil // error
+    Nil == s2 // error
+    s2 == Nil // error
+
+    import collection.parallel._
+    val p1 = ParSeq(1, 2, 3)
+    val p2 = ParSeq()
+    Nil == p1 // OK
+    p1 == Nil // OK
+    Nil == p2 // OK
+    p2 == Nil // Ok
+
   }
 }

@@ -28,7 +28,7 @@ trait Phases {
     if ((this eq NoContext) || !phase.exists) Nil
     else {
       val rest = outersIterator.dropWhile(_.phase == phase)
-      phase :: (if (rest.hasNext) rest.next.phasesStack else Nil)
+      phase :: (if (rest.hasNext) rest.next().phasesStack else Nil)
     }
 
   /** Execute `op` at given phase */

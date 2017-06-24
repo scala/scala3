@@ -173,7 +173,7 @@ class CompilingInterpreter(
       def simpleParse(code: String)(implicit ctx: Context): List[Tree] = {
         val source = new SourceFile("<console>", code.toCharArray())
         val parser = new Parser(source)
-        val (selfDef, stats) = parser.templateStatSeq
+        val (selfDef, stats) = parser.templateStatSeq()
         stats
       }
       val trees = simpleParse(line)(ctx.fresh.setReporter(reporter))
@@ -592,7 +592,7 @@ class CompilingInterpreter(
         preamble.append("object " + impname + "{\n")
         trailingBraces.append("}\n")
         accessPath.append("." + impname)
-        currentImps.clear
+        currentImps.clear()
       }
 
       addWrapper()
@@ -782,7 +782,7 @@ class CompilingInterpreter(
           // Take the DefDef and remove the `rhs` and ascribed type `tpt`
           val copy = ast.untpd.cpy.DefDef(defDef)(
             rhs = EmptyTree,
-            tpt = TypeTree
+            tpt = TypeTree()
           )
 
           val tpt = defDef.tpt match {

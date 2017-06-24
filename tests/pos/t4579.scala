@@ -457,14 +457,14 @@ class LispUser(lisp: Lisp) {
 
     Console.println(string2lisp("(lambda (x) (+ (* x x) 1))").asInstanceOf[AnyRef]);
     Console.println(lisp2string(string2lisp("(lambda (x) (+ (* x x) 1))")));
-    Console.println;
+    Console.println();
 
     Console.println("(    '(1 2 3)) = " + evaluate("     (quote(1 2 3))"));
     Console.println("(car '(1 2 3)) = " + evaluate("(car (quote(1 2 3)))"));
     Console.println("(cdr '(1 2 3)) = " + evaluate("(cdr (quote(1 2 3)))"));
     Console.println("(null? '(2 3)) = " + evaluate("(null? (quote(2 3)))"));
     Console.println("(null?    '()) = " + evaluate("(null?    (quote()))"));
-    Console.println;
+    Console.println();
 
     Console.println("faculty(10) = " + evaluate(
       "(def (faculty n) " +
@@ -500,7 +500,7 @@ class LispUser(lisp: Lisp) {
               "(val v3 (+ (+ (foo 3) (foo 4)) (foo 5)) " +
                 "(val v4 (foo 6) " +
                   "(cons v1 (cons v2 (cons v3 (cons v4 nil))))))))))"));
-    Console.println;
+    Console.println();
   }
 }
 

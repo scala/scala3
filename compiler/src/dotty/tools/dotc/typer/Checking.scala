@@ -638,7 +638,7 @@ trait Checking {
    *
    *  The standard library relies on this idiom.
    */
-  def checkTraitInheritance(parent: Symbol, cls: ClassSymbol, pos: Position)(implicit ctx: Context): Unit = {
+  def checkTraitInheritance(parent: Symbol, cls: ClassSymbol, pos: Position)(implicit ctx: Context): Unit =
     parent match {
       case parent: ClassSymbol if parent is Trait =>
         val psuper = parent.superClass
@@ -650,7 +650,18 @@ trait Checking {
           ctx.error(em"illegal trait inheritance: super$csuper does not derive from $parent's super$psuper", pos)
       case _ =>
     }
-  }
+
+  /** Check that case classes are not inherited by case classes.
+   */
+  def checkCaseInheritance(parent: Symbol, caseCls: ClassSymbol, pos: Position)(implicit ctx: Context): Unit =
+    parent match {
+      case parent: ClassSymbol =>
+        if (parent is Case)
+          ctx.error(ex"""case $caseCls has case ancestor $parent, but case-to-case inheritance is prohibited.
+                        |To overcome this limitation, use extractors to pattern match on non-leaf nodes.""", pos)
+        else checkCaseInheritance(parent.superClass, caseCls, pos)
+      case _ =>
+    }
 
   /** Check that method parameter types do not reference their own parameter
    *  or later parameters in the same parameter section.
@@ -686,5 +697,6 @@ trait NoChecking extends Checking {
   override def checkNotSingleton(tpt: Tree, where: String)(implicit ctx: Context): Tree = tpt
   override def checkDerivedValueClass(clazz: Symbol, stats: List[Tree])(implicit ctx: Context) = ()
   override def checkTraitInheritance(parentSym: Symbol, cls: ClassSymbol, pos: Position)(implicit ctx: Context) = ()
+  override def checkCaseInheritance(parentSym: Symbol, caseCls: ClassSymbol, pos: Position)(implicit ctx: Context) = ()
   override def checkNoForwardDependencies(vparams: List[ValDef])(implicit ctx: Context): Unit = ()
 }

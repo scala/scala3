@@ -140,7 +140,7 @@ object JavaConverters {
   }
 
   implicit class JavaEntity(val ent: Entity) extends AnyVal {
-    def asJava(): JMap[String, _] = parseEntity(ent)
+    def asJava: JMap[String, _] = parseEntity(ent)
   }
 
   private def parseEntity(ent: Entity): JMap[String, _] = {
@@ -149,13 +149,13 @@ object JavaConverters {
       "annotations" -> ent.annotations.asJava,
       "name" -> ent.name,
       "path" -> ent.path.asJava,
-      "children" -> ent.children.map(_.asJava()).asJava,
+      "children" -> ent.children.map(_.asJava).asJava,
       "comment" -> ent.comment.map(_.asJava).asJava,
       "signature" -> ent.signature
     )
     val members = ent match {
       case ent: Members => Map(
-        "members" -> ent.members.map(_.asJava()).asJava,
+        "members" -> ent.members.map(_.asJava).asJava,
         "hasVisibleMembers" -> ent.hasVisibleMembers
       )
       case _ => Map.empty

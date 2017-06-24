@@ -86,7 +86,7 @@ trait NamerContextOps { this: Context =>
     outersIterator
       .dropWhile(_.owner != sym)
       .dropWhile(_.owner == sym)
-      .next
+      .next()
 
   /** The given type, unless `sym` is a constructor, in which case the
    *  type of the constructed instance is returned
@@ -138,7 +138,7 @@ object NamerContextOps {
   private def findModuleBuddy(name: Name, scope: Scope)(implicit ctx: Context) = {
     val it = scope.lookupAll(name).filter(_ is Module)
     assert(it.hasNext, s"no companion $name in $scope")
-    it.next
+    it.next()
   }
 }
 
@@ -911,7 +911,7 @@ class Namer { typer: Typer =>
       Checking.checkWellFormed(cls)
       if (isDerivedValueClass(cls)) cls.setFlag(Final)
       cls.info = avoidPrivateLeaks(cls, cls.pos)
-      cls.baseClasses.foreach(_.invalidateBaseTypeRefCache) // we might have looked before and found nothing
+      cls.baseClasses.foreach(_.invalidateBaseTypeRefCache()) // we might have looked before and found nothing
     }
   }
 

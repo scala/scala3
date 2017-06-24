@@ -257,7 +257,10 @@ object RefChecks {
           }
           else
             member.name.is(DefaultGetterName) || // default getters are not checked for compatibility
-            memberTp.overrides(otherTp)
+            memberTp.overrides(otherTp,
+                member.matchNullaryLoosely || other.matchNullaryLoosely ||
+                ctx.testScala2Mode(overrideErrorMsg("no longer has compatible type"),
+                   (if (member.owner == clazz) member else clazz).pos))
         catch {
           case ex: MissingType =>
             // can happen when called with upwardsSelf as qualifier of memberTp and otherTp,

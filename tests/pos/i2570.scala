@@ -21,9 +21,18 @@ object Test {
   def sum2(x: Int, ys: Int*) = (x /: ys)(_ + _)
   val h1: ((Int, Seq[Int]) => Int) = sum2
 
-// Not yet:
-//  val h1 = repeat
-//  val h2: (String, Int, Int) = h1
-//  val h3 = sum
-//  val h4: (Int, => Int) = h3
+  val h3 = repeat
+  val h4: ((String, Int, Int) => String) = h3
+  val h5 = sum
+  val h6: ((Int, => Int) => Int) = h5
+
+  class A
+  class B
+  class C
+  implicit object b extends B
+
+  def foo(x: A)(implicit bla: B): C = ???
+
+  val h7 = foo
+  val h8: A => C = h7
 }

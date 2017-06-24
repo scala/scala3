@@ -69,7 +69,7 @@ object desugar {
         val originalOwner = sym.owner
         def apply(tp: Type) = tp match {
           case tp: NamedType if tp.symbol.exists && (tp.symbol.owner eq originalOwner) =>
-            val defctx = ctx.outersIterator.dropWhile(_.scope eq ctx.scope).next
+            val defctx = ctx.outersIterator.dropWhile(_.scope eq ctx.scope).next()
             var local = defctx.denotNamed(tp.name).suchThat(_ is ParamOrAccessor).symbol
             if (local.exists) (defctx.owner.thisType select local).dealias
             else {
@@ -538,12 +538,12 @@ object desugar {
     val cdef1 = addEnumFlags {
       val originalTparamsIt = originalTparams.toIterator
       val originalVparamsIt = originalVparamss.toIterator.flatten
-      val tparamAccessors = derivedTparams.map(_.withMods(originalTparamsIt.next.mods))
+      val tparamAccessors = derivedTparams.map(_.withMods(originalTparamsIt.next().mods))
       val caseAccessor = if (isCaseClass) CaseAccessor else EmptyFlags
       val vparamAccessors = derivedVparamss match {
         case first :: rest =>
-          first.map(_.withMods(originalVparamsIt.next.mods | caseAccessor)) ++
-          rest.flatten.map(_.withMods(originalVparamsIt.next.mods))
+          first.map(_.withMods(originalVparamsIt.next().mods | caseAccessor)) ++
+          rest.flatten.map(_.withMods(originalVparamsIt.next().mods))
         case _ =>
           Nil
       }
