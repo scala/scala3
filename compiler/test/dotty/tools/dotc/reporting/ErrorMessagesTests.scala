@@ -843,24 +843,22 @@ class ErrorMessagesTests extends ErrorMessagesTest {
       }
 
   @Test def modifiersNotAllowed =
-    checkMessagesAfter("refchecks")("""lazy trait T""")
-      .expect { (ictx, messages) =>
-        implicit val ctx: Context = ictx
-        assertMessageCount(1, messages)
-        val ModifiersNotAllowed(flags, sort) :: Nil = messages
-        assertEquals("lazy", flags.toString)
-        assertEquals(Some("trait"), sort)
-      }
+    verifyModifiersNotAllowed("lazy trait T", "lazy", Some("trait"))
 
   @Test def modifiersOtherThanTraitMethodVariable =
-    checkMessagesAfter("refchecks")("""sealed lazy class x""")
+    verifyModifiersNotAllowed("sealed lazy class x", "sealed")
+
+  private def verifyModifiersNotAllowed(code: String, modifierAssertion: String,
+                                        typeAssertion: Option[String] = None) = {
+    checkMessagesAfter("refchecks")(code)
       .expect { (ictx, messages) =>
         implicit val ctx: Context = ictx
         assertMessageCount(1, messages)
         val ModifiersNotAllowed(flags, sort) :: Nil = messages
-        assertEquals("sealed", flags.toString)
-        assertEquals(None, sort)
+        assertEquals(modifierAssertion, flags.toString)
+        assertEquals(typeAssertion, sort)
       }
+  }
 
   @Test def wildcardOnTypeArgumentNotAllowedOnNew =
     checkMessagesAfter("refchecks") {
