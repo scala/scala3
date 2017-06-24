@@ -4,6 +4,8 @@ package reporting
 
 import core.Contexts.Context
 import diagnostic.messages._
+import dotty.tools.dotc.core.Flags
+import dotty.tools.dotc.core.Flags.FlagSet
 import dotty.tools.dotc.core.Types.WildcardType
 import dotty.tools.dotc.parsing.Tokens
 import org.junit.Assert._
@@ -847,7 +849,17 @@ class ErrorMessagesTests extends ErrorMessagesTest {
         assertMessageCount(1, messages)
         val ModifiersNotAllowed(flags, sort) :: Nil = messages
         assertEquals("lazy", flags.toString)
-        assertEquals("trait", sort)
+        assertEquals(Some("trait"), sort)
+      }
+
+  @Test def modifiersOtherThanTraitMethodVariable =
+    checkMessagesAfter("refchecks")("""sealed lazy class x""")
+      .expect { (ictx, messages) =>
+        implicit val ctx: Context = ictx
+        assertMessageCount(1, messages)
+        val ModifiersNotAllowed(flags, sort) :: Nil = messages
+        assertEquals("sealed", flags.toString)
+        assertEquals(None, sort)
       }
 
   @Test def wildcardOnTypeArgumentNotAllowedOnNew =

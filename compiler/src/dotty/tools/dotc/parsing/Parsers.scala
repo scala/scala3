@@ -1680,20 +1680,15 @@ object Parsers {
     )
 
     def addFlag(mods: Modifiers, flag: FlagSet): Modifiers = {
-      def incompatible(kind: String) = {
-        syntaxError(ModifiersNotAllowed(mods.flags, kind))
+      if (compatible(mods.flags, flag)) mods | flag
+      else {
+        syntaxError(ModifiersNotAllowed(mods.flags, getPrintableTypeFromFlagSet(flag)))
         Modifiers(flag)
       }
-      if (compatible(mods.flags, flag)) mods | flag
-      else flag match {
-        case Trait => incompatible("trait")
-        case Method => incompatible("method")
-        case Mutable => incompatible("variable")
-        case _ =>
-          syntaxError(s"illegal modifier combination: ${mods.flags} and $flag")
-          mods
-      }
     }
+
+    private def getPrintableTypeFromFlagSet(flag: FlagSet) =
+      Map(Trait -> "trait", Method -> "method", Mutable -> "variable").get(flag)
 
     /** Always add the syntactic `mod`, but check and conditionally add semantic `mod.flags`
      */
