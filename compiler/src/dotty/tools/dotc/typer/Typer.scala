@@ -1707,7 +1707,10 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
       case Thicket(stats) :: rest =>
         traverse(stats ++ rest)
       case stat :: rest =>
-        buf += typed(stat)(ctx.exprContext(stat, exprOwner))
+        val stat1 = typed(stat)(ctx.exprContext(stat, exprOwner))
+        if ((ctx.owner.isType || rest.nonEmpty) && isPureExpr(stat1) && !ctx.isAfterTyper)
+          ctx.warning(em"a pure expression does nothing in statement position", stat1.pos)
+        buf += stat1
         traverse(rest)
       case nil =>
         buf.toList
