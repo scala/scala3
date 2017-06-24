@@ -81,7 +81,7 @@ stricter checking.
 
 ### Reference
 
-For more info, see [Issue #2570](https://github.com/lampepfl/dotty/issue/2570) and [PR #2716](https://github.com/lampepfl/dotty/pull/2716).
+For more info, see [Issue #2570](https://github.com/lampepfl/dotty/issues/2570) and [PR #2716](https://github.com/lampepfl/dotty/pull/2716).
 
 
 
