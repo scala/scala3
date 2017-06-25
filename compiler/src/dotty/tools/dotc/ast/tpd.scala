@@ -682,6 +682,12 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     def select(name: Name)(implicit ctx: Context): Select =
       Select(tree, name)
 
+    /** A select node with the given selector name such that the designated
+     *  member satisfies predicate `p`. Useful for disambiguating overloaded members.
+     */
+    def select(name: Name, p: Symbol => Boolean)(implicit ctx: Context): Select =
+      select(tree.tpe.member(name).suchThat(p).symbol)
+
     /** A select node with the given type */
     def select(tp: NamedType)(implicit ctx: Context): Select =
       untpd.Select(tree, tp.name).withType(tp)

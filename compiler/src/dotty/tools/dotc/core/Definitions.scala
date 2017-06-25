@@ -373,6 +373,10 @@ class Definitions {
     def Seq_apply(implicit ctx: Context) = Seq_applyR.symbol
     lazy val Seq_headR = SeqClass.requiredMethodRef(nme.head)
     def Seq_head(implicit ctx: Context) = Seq_headR.symbol
+    lazy val Seq_dropR = SeqClass.requiredMethodRef(nme.drop)
+    def Seq_drop(implicit ctx: Context) = Seq_dropR.symbol
+    lazy val Seq_lengthCompareR = SeqClass.requiredMethodRef(nme.lengthCompare)
+    def Seq_lengthCompare(implicit ctx: Context) = Seq_lengthCompareR.symbol
 
   lazy val ArrayType: TypeRef = ctx.requiredClassRef("scala.Array")
   def ArrayClass(implicit ctx: Context) = ArrayType.symbol.asClass
