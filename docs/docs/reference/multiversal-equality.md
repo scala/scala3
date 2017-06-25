@@ -98,9 +98,5 @@ The precise rules for equality checking are as follows.
     instance if the implicit search for `Eq[T, T]` succeeds
     and constructs an instance different from `eqAny`.
 
-More on multiversal equality is found in a [blog post]
-and a [Github issue].
-
-### Reference
-
-For more info, see [Issue #1247](https://github.com/lampepfl/dotty/issues/1247).
+More on multiversal equality is found in a [blog post](http://www.scala-lang.org/blog/2016/05/06/multiversal-equality.html)
+and a [Github issue](https://github.com/lampepfl/dotty/issues/1247).
