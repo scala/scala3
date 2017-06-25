@@ -93,7 +93,7 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {
       def _isInstanceOf(b: Symbol, tp: Type): Tree
       /* tgt is expected to be a Seq, call tgt.drop(n) */
       def drop(tgt: Tree)(n: Int): Tree
-      /* tgt is expected to have method apply(int), call tgt.drop(i) */
+      /* tgt is expected to have method apply(int), call tgt.apply(i) */
       def index(tgt: Tree)(i: Int): Tree
       /* make tree that accesses the i'th component of the tuple referenced by binder */
       def tupleSel(binder: Symbol)(i: Int): Tree
