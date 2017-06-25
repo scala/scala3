@@ -146,4 +146,15 @@ object Simplify {
       case _ => None
     }
   }
+
+  /** Is this tree mutable, or java.lang.System.{in, out, err}? These three
+   *  System members are the only static final fields that are mutable.
+   *  See https://docs.oracle.com/javase/specs/jls/se8/html/jls-17.html#jls-17.5.4
+   */
+  def isEffectivelyMutable(t: Tree)(implicit ctx: Context): Boolean = t match {
+    case _ if t.symbol.is(Mutable) => true
+    case s: Select => s.symbol.owner == defn.SystemModule
+    case i: Ident  => desugarIdent(i).exists(isEffectivelyMutable)
+    case _ => false
+  }
 }

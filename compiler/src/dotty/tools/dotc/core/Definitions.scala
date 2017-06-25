@@ -514,6 +514,9 @@ class Definitions {
   lazy val JavaSerializableClass     = ctx.requiredClass("java.io.Serializable")
   lazy val ComparableClass           = ctx.requiredClass("java.lang.Comparable")
 
+  lazy val SystemClass               = ctx.requiredClass("java.lang.System")
+  lazy val SystemModule              = SystemClass.linkedClass
+
   // in scalac modified to have Any as parent
 
   lazy val SerializableType: TypeRef       = ctx.requiredClassRef("scala.Serializable")
