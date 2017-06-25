@@ -33,13 +33,8 @@ import reporting.diagnostic.Message
 object Applications {
   import tpd._
 
-  def extractorMember(tp: Type, name: Name)(implicit ctx: Context) = {
-    def isPossibleExtractorType(tp: Type) = tp match {
-      case _: MethodOrPoly => false
-      case _ => true
-    }
-    tp.member(name).suchThat(d => isPossibleExtractorType(d.info))
-  }
+  def extractorMember(tp: Type, name: Name)(implicit ctx: Context) =
+    tp.member(name).suchThat(_.info.isParameterless)
 
   def extractorMemberType(tp: Type, name: Name, errorPos: Position = NoPosition)(implicit ctx: Context) = {
     val ref = extractorMember(tp, name)
@@ -72,7 +67,8 @@ object Applications {
     if (defn.isProductSubType(tp)) productSelectorTypes(tp).size else -1
 
   def productSelectors(tp: Type)(implicit ctx: Context): List[Symbol] = {
-    val sels = for (n <- Iterator.from(0)) yield tp.member(nme.selectorName(n)).symbol
+    val sels = for (n <- Iterator.from(0)) yield
+      tp.member(nme.selectorName(n)).suchThat(_.info.isParameterless).symbol
     sels.takeWhile(_.exists).toList
   }
 
