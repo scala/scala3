@@ -4,7 +4,7 @@ package repl
 import dotc.reporting.diagnostic.MessageContainer
 
 object results {
-  type Errors = Seq[MessageContainer]
+  type Errors = List[MessageContainer]
   private case class ErrorContainer(messages: Errors)
 
   /** A result of a computation is either a list of errors or the result `A` */

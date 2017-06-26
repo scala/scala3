@@ -42,7 +42,7 @@ class ReplTest extends Repl(
 ) {
 
   /** An initial state object to throw around :fire: */
-  val initState = State(0, 0, Nil)
+  val initState = State(0, 0, Nil, Nil)
 
   /** Fail if there are errors */
   def onErrors(xs: Seq[MessageContainer]): Unit =

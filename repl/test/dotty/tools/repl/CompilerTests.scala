@@ -16,7 +16,7 @@ class ReplCompilerTests extends ReplTest with MessageRendering {
   @Test def compileSingle = {
     val parsed @ Parsed(_,_) = ParseResult("def foo: 1 = 1")(myCtx)
     compiler
-      .compile(parsed, State(0, 0, Nil))
+      .compile(parsed, initState)
       .fold(onErrors(_), _ => ())
   }
 
@@ -25,7 +25,7 @@ class ReplCompilerTests extends ReplTest with MessageRendering {
     val parsed @ Parsed(_,_) = ParseResult("def foo: 1 = 1")(myCtx)
 
     compiler
-      .compile(parsed, State(0, 0, Nil))
+      .compile(parsed, initState)
       .flatMap { (unit, state, ctx) =>
         val parsed @ Parsed(_,_) = ParseResult("def foo(i: Int): i.type = i")(ctx)
         compiler.compile(parsed, state)
@@ -43,8 +43,8 @@ class ReplCompilerTests extends ReplTest with MessageRendering {
     implicit val ctx = myCtx
     val parsed @ Parsed(_,_) = ParseResult("def foo: 1 = 1")
     val res = for {
-      defs <- compiler.definitions(parsed.trees, State(0, 0, Nil))
-      unit <- compiler.createUnit(defs.trees, defs.state.objectIndex, parsed.sourceCode)
+      defs <- compiler.definitions(parsed.trees, initState)
+      unit <- compiler.createUnit(defs.trees, defs.state, parsed.sourceCode)
     } yield unit.untpdTree
 
     res.fold(
@@ -89,5 +89,22 @@ class ReplCompilerTests extends ReplTest with MessageRendering {
                        "// defined class Foo")
 
     expected === stripColor(storedOutput()).split("\n")
+  }
+
+  @Test def testImportMutable = {
+    implicit val ctx = myCtx
+    val parsedImport @ Parsed(_,_) = ParseResult("import scala.collection.mutable")
+    val newState = compile(parsedImport, initState)
+
+    assert(newState.imports.nonEmpty, "Didn't add import to `State` after compilation")
+
+    val mutableUse @ Parsed(_,_) = ParseResult("""mutable.Map("one" -> 1)""")
+
+    compile(mutableUse, newState)
+
+    assertEquals(
+      "val res0: scala.collection.mutable.Map[String, Int] = Map(one -> 1)\n",
+      stripColor(storedOutput())
+    )
   }
 }

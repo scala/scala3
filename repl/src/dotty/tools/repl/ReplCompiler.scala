@@ -101,28 +101,28 @@ class ReplCompiler(ictx: Context) extends Compiler {
    *  }
    *  ```
    */
-  def wrapped(trees: Seq[untpd.Tree], nextId: Int)(implicit ctx: Context): untpd.PackageDef = {
+  def wrapped(trees: Seq[untpd.Tree], state: State)(implicit ctx: Context): untpd.PackageDef = {
     import untpd._
     import dotc.core.StdNames._
 
     val imports =
       Import(Ident("dotty".toTermName), Ident("Show".toTermName) :: Nil) ::
       Import(Ident("Show".toTermName), Ident(nme.WILDCARD) :: Nil) ::
-      List.range(0, nextId).map { i =>
+      List.range(0, state.objectIndex).map { i =>
         Import(Ident(("ReplSession$" + i).toTermName), Ident(nme.WILDCARD) :: Nil)
       }
 
-    val tmpl = Template(emptyConstructor, Nil, EmptyValDef, imports ++ trees)
+    val tmpl = Template(emptyConstructor, Nil, EmptyValDef, imports ++ state.imports ++ trees)
     PackageDef(Ident(nme.NO_NAME),
-      ModuleDef(s"ReplSession$$$nextId".toTermName, tmpl)
+      ModuleDef(s"ReplSession$$${ state.objectIndex }".toTermName, tmpl)
         .withMods(new Modifiers(Module | Final))
         .withPos(Position(trees.head.pos.start, trees.last.pos.end)) :: Nil
     )
   }
 
-  def createUnit(trees: Seq[untpd.Tree], objectIndex: Int, sourceCode: String)(implicit ctx: Context): Result[CompilationUnit] = {
-    val unit = new CompilationUnit(new SourceFile(s"ReplsSession$$$objectIndex", sourceCode))
-    unit.untpdTree = wrapped(trees, objectIndex)
+  def createUnit(trees: Seq[untpd.Tree], state: State, sourceCode: String)(implicit ctx: Context): Result[CompilationUnit] = {
+    val unit = new CompilationUnit(new SourceFile(s"ReplsSession$$${ state.objectIndex }", sourceCode))
+    unit.untpdTree = wrapped(trees, state)
     unit.result
   }
 
@@ -134,7 +134,7 @@ class ReplCompiler(ictx: Context) extends Compiler {
 
     val errs = reporter.removeBufferedMessages
     if (errs.isEmpty) {
-      val newState = State(state.objectIndex + 1, state.valIndex, state.history)
+      val newState = State(state.objectIndex + 1, state.valIndex, state.history, state.imports)
       (newState, run.runContext).result
     }
     else errs.errors
@@ -144,7 +144,7 @@ class ReplCompiler(ictx: Context) extends Compiler {
     implicit val ctx = ictx
     for {
       defs         <- definitions(parsed.trees, state)
-      unit         <- createUnit(defs.trees, state.objectIndex, parsed.sourceCode)
+      unit         <- createUnit(defs.trees, state, parsed.sourceCode)
       (state, ctx) <- runCompilation(unit, defs.state)
     } yield (unit, state, ctx)
   }
@@ -154,7 +154,7 @@ class ReplCompiler(ictx: Context) extends Compiler {
 
     def extractTpe(tree: tpd.Tree, sourceFile: SourceFile)(implicit ctx: Context): Result[String] = {
       def error: Result[String] =
-        Seq(new messages.Error(s"Invalid scala expression",
+        List(new messages.Error(s"Invalid scala expression",
           sourceFile.atPos(Position(0, sourceFile.content.length)))).errors
 
       import tpd._
@@ -171,14 +171,14 @@ class ReplCompiler(ictx: Context) extends Compiler {
       }
     }
 
-    def wrapped(expr: String, sourceFile: SourceFile, nextId: Int)(implicit ctx: Context): Result[untpd.PackageDef] = {
+    def wrapped(expr: String, sourceFile: SourceFile, state: State)(implicit ctx: Context): Result[untpd.PackageDef] = {
       def wrap(trees: Seq[untpd.Tree]): untpd.PackageDef = {
         import untpd._
         import dotc.core.StdNames._
 
-        val imports = List.range(0, nextId).map { i =>
+        val imports = List.range(0, state.objectIndex).map { i =>
           Import(Ident(("ReplSession$" + i).toTermName), Ident(nme.WILDCARD) :: Nil)
-        }
+        } ++ state.imports
 
         val valdef =
           ValDef("expr".toTermName, TypeTree(), Block(trees.init.toList, trees.last))
@@ -196,7 +196,7 @@ class ReplCompiler(ictx: Context) extends Compiler {
           wrap(trees).result
         case SyntaxErrors(reported) =>
           reported.errors
-        case _ => Seq(
+        case _ => List(
           new messages.Error(
             s"Couldn't parse '$expr' to valid scala",
             sourceFile.atPos(Position(0, expr.length))
@@ -211,7 +211,7 @@ class ReplCompiler(ictx: Context) extends Compiler {
     val src  = new SourceFile(s"EvaluateExpr", expr)
     val unit = new CompilationUnit(src)
 
-    wrapped(expr, src, state.objectIndex).flatMap { pkg =>
+    wrapped(expr, src, state).flatMap { pkg =>
       unit.untpdTree = pkg
       val run  = newRun(ctx.fresh.setReporter(reporter))
       run.compileUnits(unit :: Nil)

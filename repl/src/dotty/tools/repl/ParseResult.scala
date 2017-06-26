@@ -11,8 +11,8 @@ import dotc.reporting._
 import results._
 
 sealed trait ParseResult
-case class Parsed(sourceCode: String, trees: Seq[untpd.Tree]) extends ParseResult
-case class SyntaxErrors(errors: Seq[MessageContainer]) extends ParseResult
+case class Parsed(sourceCode: String, trees: List[untpd.Tree]) extends ParseResult
+case class SyntaxErrors(errors: List[MessageContainer]) extends ParseResult
 case object Newline extends ParseResult
 
 sealed trait Command extends ParseResult
