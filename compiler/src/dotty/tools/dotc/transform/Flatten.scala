@@ -39,7 +39,7 @@ class Flatten extends MiniPhaseTransform with SymTransformer { thisTransform =>
   override def transformStats(stats: List[Tree])(implicit ctx: Context, info: TransformerInfo) =
     if (ctx.owner is Package) {
       val liftedStats = stats ++ liftedDefs
-      liftedDefs.clear
+      liftedDefs.clear()
       liftedStats
     }
     else stats

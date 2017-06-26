@@ -485,7 +485,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
         case Success(_) if !checkFile.isDefined || !checkFile.get.exists => // success!
         case Success(output) => {
           val outputLines = output.lines.toArray
-          val checkLines: Array[String] = Source.fromFile(checkFile.get).getLines.toArray
+          val checkLines: Array[String] = Source.fromFile(checkFile.get).getLines().toArray
           val sourceTitle = testSource.title
 
           def linesMatch =
@@ -596,7 +596,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
           val errorMap = new HashMap[String, Integer]()
           var expectedErrors = 0
           files.filter(_.getName.endsWith(".scala")).foreach { file =>
-            Source.fromFile(file).getLines.zipWithIndex.foreach { case (line, lineNbr) =>
+            Source.fromFile(file).getLines().zipWithIndex.foreach { case (line, lineNbr) =>
               val errors = line.sliding("// error".length).count(_.mkString == "// error")
               if (errors > 0)
                 errorMap.put(s"${file.getAbsolutePath}:${lineNbr}", errors)
@@ -1021,7 +1021,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
 
   /** Compiles a single file from the string path `f` using the supplied flags */
   def compileFile(f: String, flags: Array[String])(implicit outDirectory: String): CompilationTest = {
-    val callingMethod = getCallingMethod
+    val callingMethod = getCallingMethod()
     val sourceFile = new JFile(f)
     val parent = sourceFile.getParentFile
     val outDir =
@@ -1051,7 +1051,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
    *  can be used for randomization.
    */
   def compileDir(f: String, flags: Array[String], randomOrder: Option[Int] = None)(implicit outDirectory: String): CompilationTest = {
-    val callingMethod = getCallingMethod
+    val callingMethod = getCallingMethod()
     val outDir = outDirectory + callingMethod + "/"
     val sourceDir = new JFile(f)
     checkRequirements(f, sourceDir, outDir)
@@ -1080,7 +1080,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
    *  dissociated
    */
   def compileList(testName: String, files: List[String], flags: Array[String])(implicit outDirectory: String): CompilationTest = {
-    val callingMethod = getCallingMethod
+    val callingMethod = getCallingMethod()
     val outDir = outDirectory + callingMethod + "/" + testName + "/"
 
     // Directories in which to compile all containing files with `flags`:
@@ -1112,7 +1112,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
    *    the same name as the directory (with the file extension `.check`)
    */
   def compileFilesInDir(f: String, flags: Array[String])(implicit outDirectory: String): CompilationTest = {
-    val callingMethod = getCallingMethod
+    val callingMethod = getCallingMethod()
     val outDir = outDirectory + callingMethod + "/"
     val sourceDir = new JFile(f)
     checkRequirements(f, sourceDir, outDir)
@@ -1132,7 +1132,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
    *  tests.
    */
   def compileShallowFilesInDir(f: String, flags: Array[String])(implicit outDirectory: String): CompilationTest = {
-    val callingMethod = getCallingMethod
+    val callingMethod = getCallingMethod()
     val outDir = outDirectory + callingMethod + "/"
     val sourceDir = new JFile(f)
     checkRequirements(f, sourceDir, outDir)

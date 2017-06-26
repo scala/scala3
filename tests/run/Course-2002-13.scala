@@ -268,7 +268,7 @@ object Test {
 
       "?phrase(S,V,A,D,N).\n" + "?more.\n"
     );
-    Console.println;
+    Console.println();
 
     Prolog.process(
       "sujet(jean).\n" +
@@ -287,7 +287,7 @@ object Test {
 
       "?phrase(S,V,A,D,N).\n" + "?more.\n"
     );
-    Console.println;
+    Console.println();
 
     Prolog.process(
       "sujet(jean).\n" +
@@ -313,7 +313,7 @@ object Test {
       "?phrase(jean,mange,le,cons(grand,nil),cheval).\n" +
       "?phrase(jean,mange,le,cons(grand,nil),table).\n"
     );
-    Console.println;
+    Console.println();
 
     ()
   }

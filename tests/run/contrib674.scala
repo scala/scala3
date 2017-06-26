@@ -15,5 +15,5 @@ object Test extends dotty.runtime.LegacyApp {
     1
   }
 
-  bad
+  bad()
 }

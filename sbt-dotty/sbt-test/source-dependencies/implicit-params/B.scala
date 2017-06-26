@@ -1,4 +1,4 @@
 object B extends A
 {
-	val y = x(3)
+	val y: String = x(3)
 }

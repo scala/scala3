@@ -260,19 +260,19 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
        *  1. `(args diff toDrop)` can be reordered to match `pnames`
        *  2. For every `(name -> arg)` in `nameToArg`, `arg` is an element of `args`
        */
-      def recur(pnames: List[Name], args: List[Trees.Tree[T]],
-                nameToArg: Map[Name, Trees.NamedArg[T]], toDrop: Set[Name]): List[Trees.Tree[T]] = pnames match {
+      def handleNamed(pnames: List[Name], args: List[Trees.Tree[T]],
+                      nameToArg: Map[Name, Trees.NamedArg[T]], toDrop: Set[Name]): List[Trees.Tree[T]] = pnames match {
         case pname :: pnames1 if nameToArg contains pname =>
           // there is a named argument for this parameter; pick it
-          nameToArg(pname) :: recur(pnames1, args, nameToArg - pname, toDrop + pname)
+          nameToArg(pname) :: handleNamed(pnames1, args, nameToArg - pname, toDrop + pname)
         case _ =>
           def pnamesRest = if (pnames.isEmpty) pnames else pnames.tail
           args match {
             case (arg @ NamedArg(aname, _)) :: args1 =>
               if (toDrop contains aname) // argument is already passed
-                recur(pnames, args1, nameToArg, toDrop - aname)
+                handleNamed(pnames, args1, nameToArg, toDrop - aname)
               else if ((nameToArg contains aname) && pnames.nonEmpty) // argument is missing, pass an empty tree
-                genericEmptyTree :: recur(pnames.tail, args, nameToArg, toDrop)
+                genericEmptyTree :: handleNamed(pnames.tail, args, nameToArg, toDrop)
               else { // name not (or no longer) available for named arg
                 def msg =
                   if (methodType.paramNames contains aname)
@@ -280,17 +280,26 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
                   else
                     s"$methString does not have a parameter $aname"
                 fail(msg, arg.asInstanceOf[Arg])
-                arg :: recur(pnamesRest, args1, nameToArg, toDrop)
+                arg :: handleNamed(pnamesRest, args1, nameToArg, toDrop)
               }
             case arg :: args1 =>
-              arg :: recur(pnamesRest, args1, nameToArg, toDrop) // unnamed argument; pick it
+              arg :: handleNamed(pnamesRest, args1, nameToArg, toDrop) // unnamed argument; pick it
             case Nil => // no more args, continue to pick up any preceding named args
               if (pnames.isEmpty) Nil
-              else recur(pnamesRest, args, nameToArg, toDrop)
+              else handleNamed(pnamesRest, args, nameToArg, toDrop)
           }
       }
-      val nameAssocs = for (arg @ NamedArg(name, _) <- args) yield (name, arg)
-      recur(methodType.paramNames, args, nameAssocs.toMap, Set())
+
+      def handlePositional(pnames: List[Name], args: List[Trees.Tree[T]]): List[Trees.Tree[T]] =
+        args match {
+          case (arg: NamedArg) :: _ =>
+            val nameAssocs = for (arg @ NamedArg(name, _) <- args) yield (name, arg)
+            handleNamed(pnames, args, nameAssocs.toMap, Set())
+          case arg :: args1 => arg :: handlePositional(pnames.tail, args1)
+          case Nil => Nil
+        }
+
+      handlePositional(methodType.paramNames, args)
     }
 
     /** Splice new method reference into existing application */

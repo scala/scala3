@@ -24,14 +24,14 @@ trait HOSeq {
     def filter(p: t => Boolean): m[t] = {
       val buf = accumulator[t]
       val elems = iterator
-      while (elems.hasNext) { val x = elems.next; if (p(x)) buf += x }
+      while (elems.hasNext) { val x = elems.next(); if (p(x)) buf += x }
       buf.result
     }
 
     def map[s](f: t => s): m[s] = {
       val buf = accumulator[s]
       val elems = iterator
-      while (elems.hasNext) buf += f(elems.next)
+      while (elems.hasNext) buf += f(elems.next())
       buf.result
     }
 
@@ -44,8 +44,8 @@ trait HOSeq {
         // -- 2nd-order type params are not yet in scope in view bound
       val elems = iterator
       while (elems.hasNext) {
-        val elemss: Iterator[s] = f(elems.next).iterator
-        while (elemss.hasNext) buf += elemss.next
+        val elemss: Iterator[s] = f(elems.next()).iterator
+        while (elemss.hasNext) buf += elemss.next()
       }
       buf.result
     }
@@ -111,7 +111,7 @@ trait HOSeq {
     def iterator: Iterator[t] = new Iterator[t] {
     var these = List.this
     def hasNext: Boolean = !these.isEmpty
-    def next: t =
+    def next(): t =
       if (!hasNext)
         throw new NoSuchElementException("next on empty Iterator")
       else {

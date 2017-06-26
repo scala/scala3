@@ -79,7 +79,7 @@ object EtaExpansion {
    *     val xN = argN
    *     x0.f(x1, ..., xN)
    *
-   *  But leave idempotent expressions alone.
+   *  But leave pure expressions alone.
    *
    */
   def liftApp(defs: mutable.ListBuffer[Tree], tree: Tree)(implicit ctx: Context): Tree = tree match {

@@ -9,7 +9,7 @@ package io
 /** ''Note:  This library is considered experimental and should not be used unless you know what you are doing.'' */
 class PlainDirectory(givenPath: Directory) extends PlainFile(givenPath) {
   override def isDirectory = true
-  override def iterator = givenPath.list filter (_.exists) map (x => new PlainFile(x))
+  override def iterator() = givenPath.list filter (_.exists) map (x => new PlainFile(x))
   override def delete(): Unit = givenPath.deleteRecursively()
 }
 

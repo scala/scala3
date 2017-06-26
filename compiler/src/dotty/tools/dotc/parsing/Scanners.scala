@@ -451,7 +451,7 @@ object Scanners {
                 getOperatorRest()
             }
           }
-          fetchLT
+          fetchLT()
         case '~' | '!' | '@' | '#' | '%' |
              '^' | '*' | '+' | '-' | /*'<' | */
              '>' | '?' | ':' | '=' | '&' |
@@ -485,7 +485,7 @@ object Scanners {
             }
             getNumber()
           }
-          fetchZero
+          fetchZero()
         case '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9' =>
           base = 10
           getNumber()
@@ -526,7 +526,7 @@ object Scanners {
               }
             }
           }
-          fetchDoubleQuote
+          fetchDoubleQuote()
         case '\'' =>
           def fetchSingleQuote() = {
             nextChar()
@@ -545,7 +545,7 @@ object Scanners {
               }
             }
           }
-          fetchSingleQuote
+          fetchSingleQuote()
         case '.' =>
           nextChar()
           if ('0' <= ch && ch <= '9') {
@@ -595,7 +595,7 @@ object Scanners {
               nextChar()
             }
           }
-          fetchOther
+          fetchOther()
       }
     }
 

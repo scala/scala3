@@ -233,9 +233,15 @@ object Names {
       }
     }
 
+    /** Is it impossible that names of kind `kind` also qualify as names of kind `shadowed`? */
+    private def shadows(kind: NameKind, shadowed: NameKind): Boolean =
+      kind.tag < shadowed.tag ||
+      kind.definesQualifiedName ||
+      kind.definesNewName && !shadowed.definesQualifiedName
+
     override def exclude(kind: NameKind): TermName = {
       val thisKind = this.info.kind
-      if (thisKind.tag < kind.tag || thisKind.definesNewName) this
+      if (shadows(thisKind, kind)) this
       else if (thisKind.tag > kind.tag) rewrap(underlying.exclude(kind))
       else underlying
     }
@@ -243,7 +249,7 @@ object Names {
     override def is(kind: NameKind): Boolean = {
       val thisKind = this.info.kind
       thisKind == kind ||
-      !thisKind.definesNewName && thisKind.tag > kind.tag && underlying.is(kind)
+      !shadows(thisKind, kind) && underlying.is(kind)
     }
 
     @sharable // because it's just a cache for performance

@@ -347,7 +347,6 @@ class Definitions {
 
   def DottyPredefModule(implicit ctx: Context) = DottyPredefModuleRef.symbol
 
-    def Predef_eqAny(implicit ctx: Context) = DottyPredefModule.requiredMethod(nme.eqAny)
     lazy val Predef_ImplicitConverterR = DottyPredefModule.requiredClass("ImplicitConverter").typeRef
     def Predef_ImplicitConverter(implicit ctx: Context) = Predef_ImplicitConverterR.symbol
 
@@ -515,6 +514,9 @@ class Definitions {
   lazy val JavaSerializableClass     = ctx.requiredClass("java.io.Serializable")
   lazy val ComparableClass           = ctx.requiredClass("java.lang.Comparable")
 
+  lazy val SystemClass               = ctx.requiredClass("java.lang.System")
+  lazy val SystemModule              = SystemClass.linkedClass
+
   // in scalac modified to have Any as parent
 
   lazy val SerializableType: TypeRef       = ctx.requiredClassRef("scala.Serializable")
@@ -573,6 +575,8 @@ class Definitions {
   lazy val EqType = ctx.requiredClassRef("scala.Eq")
   def EqClass(implicit ctx: Context) = EqType.symbol.asClass
   def EqModule(implicit ctx: Context) = EqClass.companionModule
+
+    def Eq_eqAny(implicit ctx: Context) = EqModule.requiredMethod(nme.eqAny)
 
   lazy val XMLTopScopeModuleRef = ctx.requiredModuleRef("scala.xml.TopScope")
 
@@ -809,8 +813,8 @@ class Definitions {
    */
   def erasedFunctionClass(cls: Symbol): Symbol = {
     val arity = scalaClassName(cls).functionArity
-    if (arity > 22) defn.FunctionXXLClass
-    else if (arity >= 0) defn.FunctionClass(arity)
+    if (arity > 22) FunctionXXLClass
+    else if (arity >= 0) FunctionClass(arity)
     else NoSymbol
   }
 
@@ -829,7 +833,7 @@ class Definitions {
   }
 
   val predefClassNames: Set[Name] =
-    Set("Predef$", "DeprecatedPredef", "LowPriorityImplicits").map(_.toTypeName)
+    Set("Predef$", "DeprecatedPredef", "LowPriorityImplicits").map(_.toTypeName.unmangleClassName)
 
   /** Is `cls` the predef module class, or a class inherited by Predef? */
   def isPredefClass(cls: Symbol) =

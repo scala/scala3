@@ -28,7 +28,7 @@ object Test {
   }
 
   def test(m: collection.mutable.Map[String, String]): Unit = {
-    m.clear
+    m.clear()
     assert(m.size == 0)
 
     m.put("key", "value")
@@ -46,7 +46,7 @@ object Test {
     assert(m.nonEmpty)
     assert(m.remove("key") == Some("anotherValue"))
 
-    m.clear
+    m.clear()
     for (i <- 0 until 10) m += (("key" + i, "value" + i))
     for ((k, v) <- m) assert(k.startsWith("key"))
   }

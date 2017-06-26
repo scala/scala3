@@ -256,7 +256,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
           val evalue = t.symbol.name.mangledString // value the actual enumeration value.
           av.visitEnum(name, edesc, evalue)
         } else {
-          assert(toDenot(t.symbol).name.is(DefaultGetterName)) // this should be default getter. do not emmit.
+          assert(toDenot(t.symbol).name.is(DefaultGetterName), toDenot(t.symbol).name.debugString) // this should be default getter. do not emmit.
         }
       case t: SeqLiteral =>
         val arrAnnotV: AnnotationVisitor = av.visitArray(name)
@@ -525,12 +525,16 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
     def args: List[Tree] = List.empty // those arguments to scala-defined annotations. they are never emmited
   }
 
-  def assocsFromApply(tree: Tree) = {
+  def assocsFromApply(tree: Tree): List[(Name, Tree)] = {
     tree match {
+      case Block(_, expr) => assocsFromApply(expr)
       case Apply(fun, args) =>
         fun.tpe.widen match {
           case MethodType(names) =>
-            names zip args
+            (names zip args).filter {
+              case (_, t: tpd.Ident) if (t.tpe.normalizedPrefix eq NoPrefix) => false
+              case _ => true
+            }
         }
     }
   }

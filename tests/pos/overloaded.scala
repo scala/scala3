@@ -17,7 +17,7 @@ object overloaded {
   val y1: Int => Int = g
   val y2: Any = g _
 
-  println(g)
+  println(g())
 
   val xs = List("a", "b")
   xs.mkString

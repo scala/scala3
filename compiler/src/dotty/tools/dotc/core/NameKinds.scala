@@ -42,10 +42,11 @@ object NameKinds {
       override def toString = infoString
     }
 
-    /** Does this kind define logically a new name? Tested by the `rewrite` and `collect`
-     *  combinators of names.
+    /** Does this kind define logically a new name (respectively qualified name)?
+     *  Tested by the `rewrite` and `collect` combinators of class `Name`.
      */
     def definesNewName = false
+    def definesQualifiedName = false
 
     /** Unmangle simple name `name` into a name of this kind, or return
      *  original name if this is not possible.
@@ -142,6 +143,7 @@ object NameKinds {
     }
 
     override def definesNewName = true
+    override def definesQualifiedName = true
 
     def mkString(underlying: TermName, info: ThisInfo) =
       s"$underlying$separator${info.name}"
