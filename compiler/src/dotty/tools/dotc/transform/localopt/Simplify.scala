@@ -101,8 +101,7 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
       var rhs1: Tree = null
       while (rhs1 ne rhs0) {
         rhs1 = rhs0
-        val context = ctx.withOwner(tree.symbol)
-        optimisations.foreach { optimisation => // TODO: fuse for performance
+        optimisations.foreach { optimisation =>
           // Visit
           rhs0.foreachSubTree(optimisation.visitor)
 
@@ -130,14 +129,16 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
     else if (fuel == 0)
       tree1 // No more fuel? No more transformations for you!
     else {  // Print the trees if different and consume fuel accordingly.
-      if (tree1 ne tree2) {
-        if (fuel > 0) fuel -= 1
-        if (fuel != -1) {
+      val t2 = tree2
+      if (tree1 ne t2) {
+        if (fuel > 0)
+          fuel -= 1
+        if (fuel != -1 && fuel < 5) {
           println(s"${tree1.symbol} was simplified by ${opt.name} (fuel=$fuel): ${tree1.show}")
-          println(s"became after ${opt.name}: (fuel=$fuel) ${tree2.show}")
+          println(s"became after ${opt.name}: (fuel=$fuel) ${t2.show}")
         }
       }
-      tree2
+      t2
     }
   }
 }
