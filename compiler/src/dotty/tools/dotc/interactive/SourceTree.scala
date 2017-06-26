@@ -39,7 +39,9 @@ case class SourceTree(tree: tpd.NameTree, source: SourceFile) {
 }
 object SourceTree {
   def fromSymbol(sym: ClassSymbol)(implicit ctx: Context): Option[SourceTree] = {
-    if (sym == defn.SourceFileAnnot) None // FIXME: No SourceFile annotation on SourceFile itself
+    if (sym == defn.SourceFileAnnot || // FIXME: No SourceFile annotation on SourceFile itself
+        sym.sourceFile == null) // FIXME: We cannot deal with external projects yet
+      None
     else {
       sym.tree match {
         case tree: tpd.TypeDef =>
