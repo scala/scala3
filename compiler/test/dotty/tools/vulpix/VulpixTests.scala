@@ -73,4 +73,10 @@ class VulpixTests extends ParallelTesting {
 
   @Test def deadlock: Unit =
     compileFile("../tests/partest-test/deadlock.scala", defaultOptions).expectFailure.checkRuns()
+
+  @Test def badJava: Unit =
+    try compileFile("../tests/partest-test/BadJava.java", defaultOptions).suppressAllOutput.checkCompile
+    catch {
+      case ae: AssertionError => assert(ae.getMessage.contains("java compilation failed"))
+    }
 }
