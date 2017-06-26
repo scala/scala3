@@ -24,7 +24,10 @@ import dotc.repl.AbstractFileClassLoader // FIXME
 import AmmoniteReader._
 import results._
 
-case class State(objectIndex: Int, valIndex: Int, history: History, imports: List[untpd.Import])
+case class State(objectIndex: Int, valIndex: Int, history: History, imports: List[untpd.Import]) {
+  def withHistory(newEntry: String) = copy(history = newEntry :: history)
+  def withHistory(h: History) = copy(history = h)
+}
 
 class Repl(
   settings: Array[String],
@@ -84,7 +87,7 @@ class Repl(
     readLine(state.history) match {
       case (parsed: Parsed, history) =>
         val newState = compile(parsed, state)
-        run(newState.copy(history = history))
+        run(newState.withHistory(history))
 
       case (SyntaxErrors(errs), history) =>
         displayErrors(errs)(myCtx)
@@ -169,12 +172,12 @@ class Repl(
   def interpretCommand(cmd: Command, state: State): Unit = cmd match {
     case UnknownCommand(cmd) => {
       out.println(s"""Unknown command: "$cmd", run ":help" for a list of commands""")
-      run(state)
+      run(state.withHistory(s":$cmd"))
     }
 
     case Help => {
       out.println(Help.text)
-      run(state)
+      run(state.withHistory(":help"))
     }
 
     case Reset => {
@@ -183,13 +186,23 @@ class Repl(
     }
 
     case Load(path) =>
+      val loadCmd = s":load $path"
       if ((new java.io.File(path)).exists) {
         val contents = scala.io.Source.fromFile(path).mkString
-        run(state.copy(history = contents :: state.history))
+        ParseResult(contents)(myCtx) match {
+          case parsed: Parsed =>
+            val newState = compile(parsed, state)
+            run(newState.withHistory(loadCmd))
+          case SyntaxErrors(errors) =>
+            displayErrors(errors)(myCtx)
+            run(state.withHistory(loadCmd))
+          case _ =>
+            run(state.withHistory(loadCmd))
+        }
       }
       else {
         out.println(s"""Couldn't find file "$path"""")
-        run(state)
+        run(state.withHistory(loadCmd))
       }
 
     case Type(expr) => {
@@ -197,7 +210,7 @@ class Repl(
         errors => displayErrors(errors)(myCtx),
         res    => out.println(SyntaxHighlighting(res))
       )
-      run(state.copy(history = s":type $expr" :: state.history))
+      run(state.withHistory(s":type $expr"))
     }
 
     case Quit =>
