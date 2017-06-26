@@ -1680,15 +1680,15 @@ object Parsers {
     )
 
     def addFlag(mods: Modifiers, flag: FlagSet): Modifiers = {
+      def getPrintableTypeFromFlagSet =
+        Map(Trait -> "trait", Method -> "method", Mutable -> "variable").get(flag)
+
       if (compatible(mods.flags, flag)) mods | flag
       else {
-        syntaxError(ModifiersNotAllowed(mods.flags, getPrintableTypeFromFlagSet(flag)))
+        syntaxError(ModifiersNotAllowed(mods.flags, getPrintableTypeFromFlagSet))
         Modifiers(flag)
       }
     }
-
-    private def getPrintableTypeFromFlagSet(flag: FlagSet) =
-      Map(Trait -> "trait", Method -> "method", Mutable -> "variable").get(flag)
 
     /** Always add the syntactic `mod`, but check and conditionally add semantic `mod.flags`
      */

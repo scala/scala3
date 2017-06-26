@@ -1658,20 +1658,8 @@ object messages {
       val second = "sealed lazy class z"
       hl"""You tried to use a modifier that is inapplicable for the type of item under modification
          |
-         |  Here is a list of modifiers and applicable item types
-         |
-         |
-         |  Modifier          ::=  LocalModifier
-         |                         AccessModifier
-         |                         `override'         traits, methods
-         |  LocalModifier     ::=  `abstract'         classes, traits
-         |                         `final'            classes, traits, methods
-         |                         `sealed'           classes, traits
-         |                         `implicit'         variables, methods, classes
-         |                         `lazy'             values
-         |  AccessModifier    ::=  (`private' | `protected') [AccessQualifier] methods, classes
-         |  AccessQualifier   ::=  `[' (id | `this') `]'
-         |
+         |  Please see the official Scala Language Specification section on modifiers:
+         |  https://www.scala-lang.org/files/archive/spec/2.11/05-classes-and-objects.html#modifiers
          |
          |Consider the following example:
          |$first
