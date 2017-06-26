@@ -18,10 +18,24 @@ case object Newline extends ParseResult
 sealed trait Command extends ParseResult
 case class UnknownCommand(cmd: String) extends Command
 case class Load(path: String) extends Command
+object Load {
+  val command = ":load"
+}
 case class Type(expr: String) extends Command
-case object Reset extends Command
-case object Quit extends Command
+object Type {
+  val command = ":type"
+}
+case object Imports extends Command {
+  val command = ":imports"
+}
+case object Reset extends Command {
+  val command = ":reset"
+}
+case object Quit extends Command {
+  val command = ":quit"
+}
 case object Help extends Command {
+  val command = ":help"
   val text =
     """The REPL has several commands available:
       |
@@ -45,12 +59,13 @@ object ParseResult {
     sourceCode match {
       case "" => Newline
       case CommandExtract(cmd, arg) => cmd match {
-        case ":quit"  => Quit
-        case ":help"  => Help
-        case ":reset" => Reset
-        case ":load"  => Load(arg)
-        case ":type"  => Type(arg)
-        case _        => UnknownCommand(cmd)
+        case Quit.command => Quit
+        case Help.command => Help
+        case Reset.command => Reset
+        case Imports.command => Imports
+        case Load.command => Load(arg)
+        case Type.command => Type(arg)
+        case _ => UnknownCommand(cmd)
       }
       case _ => {
         def parse(sourceCode: String): Result[List[untpd.Tree]] = {

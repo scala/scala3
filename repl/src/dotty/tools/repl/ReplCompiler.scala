@@ -112,7 +112,7 @@ class ReplCompiler(ictx: Context) extends Compiler {
         Import(Ident(("ReplSession$" + i).toTermName), Ident(nme.WILDCARD) :: Nil)
       }
 
-    val tmpl = Template(emptyConstructor, Nil, EmptyValDef, imports ++ state.imports ++ trees)
+    val tmpl = Template(emptyConstructor, Nil, EmptyValDef, imports ++ state.imports.map(_._1) ++ trees)
     PackageDef(Ident(nme.NO_NAME),
       ModuleDef(s"ReplSession$$${ state.objectIndex }".toTermName, tmpl)
         .withMods(new Modifiers(Module | Final))
