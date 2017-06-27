@@ -2,6 +2,12 @@
 //
 // e.g. addSbtPlugin("com.github.mpeltonen" % "sbt-idea" % "1.1.0")
 
+// Add EPFL Artifactory if on CI
+resolvers ++= {
+  if (sys.env.get("CI") == Some("drone")) Seq("EPFL Artifactory" at "http://scala-webapps.epfl.ch:8081")
+  else Seq()
+}
+
 // Scala IDE project file generator
 addSbtPlugin("com.typesafe.sbteclipse" % "sbteclipse-plugin" % "5.1.0")
 
