@@ -59,9 +59,13 @@ object AllocationStats {
     val data = counts.readOnlySnapshot()
     clear()
     val longestNameLength = data.keys.map(x => x._2.getName.length).max
+    val total = data.groupBy( x => x._1._2).map(x => (x._1, x._2.map(_._2).sum))
     val byPhase = data.groupBy(x => x._1._1).map(x => (x._1, x._2.map(x => (x._1._2, x._2)))).toSeq.sortBy(x => -x._2.map(_._2).sum)
 
-    "Class allocations by phase:\n" + byPhase.map { x =>
+    "Total allocations:\n" + total.map{ x =>
+         "   " + x._1.getName + " -> " + x._2
+    }.mkString("\n") +
+      "Class allocations by phase:\n" + byPhase.map { x =>
       val phaseName = x._1.getSimpleName
       val subtrees = x._2.toSeq.sortBy(-_._2).map(x => s"${x._1.getName.padTo(longestNameLength, " ").mkString} -> ${x._2}").mkString("\n   ", "\n   ","\n")
       phaseName ++ subtrees
