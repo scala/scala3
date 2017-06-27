@@ -18,6 +18,8 @@ import config.Printers.patmatch
 object PatMat {
   import ast.tpd._
 
+  final val selfCheck = true
+
   abstract class Node
 
   class Translator(implicit ctx: Context) {
@@ -142,12 +144,6 @@ object PatMat {
       val tpe = label.info.finalResultType
     }
 
-    def isVarPattern(pat: Tree): Boolean = pat match {
-      case x: BackquotedIdent => false
-      case x: Ident => x.name.isVariableName
-      case _ => false
-    }
-
     /** A conservative approximation of which patterns do not discern anything.
       * They are discarded during the translation.
       */
@@ -155,9 +151,10 @@ object PatMat {
       def unapply(pat: Tree): Boolean = pat match {
         case Typed(_, tpt) if tpt.tpe.isRepeatedParam => true
         case Bind(nme.WILDCARD, WildcardPattern()) => true // don't skip when binding an interesting symbol!
-        case t if (isWildcardArg(t))               => true
-        case x: Ident                              => isVarPattern(x)
-        case Alternative(ps)                       => ps forall unapply
+        case t if isWildcardArg(t)                 => true
+        case x: BackquotedIdent                    => false
+        case x: Ident                              => x.name.isVariableName
+        case Alternative(ps)                       => ps.forall(unapply)
         case EmptyTree                             => true
         case _                                     => false
       }
@@ -189,12 +186,12 @@ object PatMat {
           case Nil => onSuccess
         }
 
-        def translateElems(seqSym: Symbol, args: List[Tree], exact: Boolean, onSuccess: Node) = {
-          val selectors = args.indices.toList.map(idx =>
-            ref(seqSym).select(nme.apply).appliedTo(Literal(Constant(idx))))
-          new LengthTest(seqSym, args.length, exact,
-            translateArgs(selectors, args, onSuccess), onFailure)
-        }
+      def translateElems(seqSym: Symbol, args: List[Tree], exact: Boolean, onSuccess: Node) = {
+        val selectors = args.indices.toList.map(idx =>
+          ref(seqSym).select(nme.apply).appliedTo(Literal(Constant(idx))))
+        new LengthTest(seqSym, args.length, exact,
+          translateArgs(selectors, args, onSuccess), onFailure)
+      }
 
       def translateUnApplySeq(getResult: Symbol, args: List[Tree]): Node = args.lastOption match {
         case Some(VarArgPattern(arg)) =>
@@ -215,25 +212,25 @@ object PatMat {
       }
 
       def translateUnApply(unapp: Tree, args: List[Tree]): Node = {
-          def caseClass = unapp.symbol.owner.linkedClass
-          lazy val caseAccessors = caseClass.caseAccessors.filter(_.is(Method))
-          if (isSyntheticScala2Unapply(unapp.symbol) && caseAccessors.length == args.length)
-            translateArgs(caseAccessors.map(ref(scrutinee).select(_)), args, onSuccess)
-          else if (unapp.tpe.isRef(defn.BooleanClass))
-            new GuardTest(unapp, onSuccess, onFailure)
-          else {
-            letAbstract(unapp) { unappResult =>
-              val isUnapplySeq = unapp.symbol.name == nme.unapplySeq
-              if (isProductMatch(unapp.tpe.widen, args.length) && !isUnapplySeq) {
-                val selectors = productSelectors(unapp.tpe).take(args.length)
-                  .map(ref(unappResult).select(_))
-                translateArgs(selectors, args, onSuccess)
-              }
-              else {
-                assert(isGetMatch(unapp.tpe))
-                val get = ref(unappResult).select(nme.get, _.info.isParameterless)
-                letAbstract(get) { getResult =>
-                  if (isUnapplySeq)
+        def caseClass = unapp.symbol.owner.linkedClass
+        lazy val caseAccessors = caseClass.caseAccessors.filter(_.is(Method))
+        if (isSyntheticScala2Unapply(unapp.symbol) && caseAccessors.length == args.length)
+          translateArgs(caseAccessors.map(ref(scrutinee).select(_)), args, onSuccess)
+        else if (unapp.tpe.isRef(defn.BooleanClass))
+          new GuardTest(unapp, onSuccess, onFailure)
+        else {
+          letAbstract(unapp) { unappResult =>
+            val isUnapplySeq = unapp.symbol.name == nme.unapplySeq
+            if (isProductMatch(unapp.tpe.widen, args.length) && !isUnapplySeq) {
+              val selectors = productSelectors(unapp.tpe).take(args.length)
+                .map(ref(unappResult).select(_))
+              translateArgs(selectors, args, onSuccess)
+            }
+            else {
+              assert(isGetMatch(unapp.tpe))
+              val get = ref(unappResult).select(nme.get, _.info.isParameterless)
+              letAbstract(get) { getResult =>
+                if (isUnapplySeq)
                   translateUnApplySeq(getResult, args)
                  else {
                     val selectors =
@@ -254,7 +251,8 @@ object PatMat {
               translatePattern(casted, pat, onSuccess, onFailure)),
             onFailure)
         case UnApply(extractor, implicits, args) =>
-          var unapp = extractor.appliedTo(ref(scrutinee))
+          val mt @ MethodType(_) = extractor.tpe.widen
+          var unapp = extractor.appliedTo(ref(scrutinee).ensureConforms(mt.paramInfos.head))
           if (implicits.nonEmpty) unapp = unapp.appliedToArgs(implicits)
           translateUnApply(unapp, args)
         case Bind(name, body) =>
@@ -376,20 +374,22 @@ object PatMat {
     val seen = mutable.Set[Int]()
 
     def emit(node: Node): Tree = {
-      assert(node.isInstanceOf[CallNode] || !seen.contains(node.id), node.id)
-      seen += node.id
+      if (selfCheck) {
+        assert(node.isInstanceOf[CallNode] || !emitted.contains(node.id), node.id)
+        emitted += node.id
+      }
       node match {
-      case node: Test =>
-        If(node.condition, emit(node.onSuccess), emit(node.onFailure)).withPos(node.pos)
-      case node @ LetNode(sym, body) =>
-        val symDef =
-          if (sym.is(Label)) DefDef(sym, emit(labelled(sym)))
-          else ValDef(sym, rhs(sym).ensureConforms(sym.info))
-        seq(symDef :: Nil, emit(body))
-      case BodyNode(tree) =>
-        tree
-      case CallNode(label) =>
-        ref(label).ensureApplied
+        case node: Test =>
+          If(node.condition, emit(node.onSuccess), emit(node.onFailure)).withPos(node.pos)
+        case node @ LetNode(sym, body) =>
+          val symDef =
+            if (sym.is(Label)) DefDef(sym, emit(labelled(sym)))
+            else ValDef(sym, rhs(sym).ensureConforms(sym.info))
+          seq(symDef :: Nil, emit(body))
+        case BodyNode(tree) =>
+          tree
+        case CallNode(label) =>
+          ref(label).ensureApplied
       }
     }
 
@@ -455,7 +455,7 @@ class PatMat extends MiniPhaseTransform {
     // check exhaustivity and unreachability
     val engine = new patmat.SpaceEngine
 
-    if (engine.checkable(tree) && false) {
+    if (engine.checkable(tree)) {
       engine.checkExhaustivity(tree)
       engine.checkRedundancy(tree)
     }
