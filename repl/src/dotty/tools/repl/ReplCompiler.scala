@@ -4,7 +4,7 @@ package repl
 import java.io.{ File => JFile }
 
 import dotc.ast.{ untpd, tpd }
-import dotc.{ CompilationUnit, Compiler }
+import dotc.{ Run, CompilationUnit, Compiler }
 import dotc.core.Decorators._, dotc.core.Flags._, dotc.core.Phases
 import dotc.core.Names._, dotc.core.Contexts._, dotc.core.StdNames.nme
 import dotc.util.SourceFile
@@ -119,7 +119,7 @@ class ReplCompiler(ictx: Context) extends Compiler {
 
   def runCompilation(unit: CompilationUnit, state: State)(implicit ctx: Context): Result[(State, Context)] = {
     val reporter = new StoreReporter(null) with UniqueMessagePositions with HideNonSensicalMessages
-    val run = new dotc.Run(this)(ctx.fresh.setReporter(reporter))
+    val run = new Run(this)(ctx.fresh.setReporter(reporter))
     run.compileUnits(unit :: Nil)
 
     if (!reporter.hasErrors)
@@ -140,14 +140,14 @@ class ReplCompiler(ictx: Context) extends Compiler {
   def addMagicImports(state: State)(implicit ctx: Context): Context = {
     def addImport(path: TermName)(implicit ctx: Context) = {
       val ref = tpd.ref(ctx.requiredModuleRef(path.toTermName))
-      val symbol = ctx.newImportSymbol(ctx.owner, ref)//tpd.ref(ctx.requiredModuleRef(path.toTermName)))
+      val symbol = ctx.newImportSymbol(ctx.owner, ref)
       ctx.fresh.setImportInfo(new ImportInfo(implicit ctx => symbol, untpd.Ident(nme.WILDCARD) :: Nil, None))
     }
 
     List
       .range(0, state.objectIndex)
       .foldLeft(addImport("dotty.Show".toTermName)) { (ictx, i) =>
-        addImport(nme.EMPTY_PACKAGE ++ (".ReplSession$" + i))(ictx)
+        addImport(nme.NO_NAME ++ (".ReplSession$" + i))(ictx)
       }
   }
 
@@ -175,16 +175,13 @@ class ReplCompiler(ictx: Context) extends Compiler {
     def wrapped(expr: String, sourceFile: SourceFile, state: State)(implicit ctx: Context): Result[untpd.PackageDef] = {
       def wrap(trees: Seq[untpd.Tree]): untpd.PackageDef = {
         import untpd._
-        import dotc.core.StdNames._
-
-        val imports = List.range(0, state.objectIndex).map { i =>
-          Import(Ident(("ReplSession$" + i).toTermName), Ident(nme.WILDCARD) :: Nil)
-        } ++ state.imports
 
         val valdef =
           ValDef("expr".toTermName, TypeTree(), Block(trees.init.toList, trees.last))
 
-        val tmpl = Template(emptyConstructor, Ident("Any".toTypeName) :: Nil, EmptyValDef, imports :+ valdef)
+        val tmpl =
+          Template(emptyConstructor, Ident("Any".toTypeName) :: Nil, EmptyValDef, state.imports.map(_._1) :+ valdef)
+
         PackageDef(Ident(nme.NO_NAME),
           TypeDef("EvaluateExpr".toTypeName, tmpl)
             .withMods(new Modifiers(Final))
@@ -206,19 +203,20 @@ class ReplCompiler(ictx: Context) extends Compiler {
       }
     }
 
-    implicit val ctx: Context = ictx.fresh.setSetting(ictx.settings.YstopAfter, List("frontEnd"))
+    implicit val ctx: Context =
+      addMagicImports(state)(rootContext(ictx))
+      .fresh.setSetting(ictx.settings.YstopAfter, List("frontEnd"))
 
     val reporter = new StoreReporter(null) with UniqueMessagePositions with HideNonSensicalMessages
     val src  = new SourceFile(s"EvaluateExpr", expr)
-    val unit = new CompilationUnit(src)
 
     wrapped(expr, src, state).flatMap { pkg =>
+      val unit = new CompilationUnit(src)
       unit.untpdTree = pkg
-      val run  = newRun(ctx.fresh.setReporter(reporter))
+      val run  = new Run(this)(ctx.fresh.setReporter(reporter))
       run.compileUnits(unit :: Nil)
-      val errs = reporter.removeBufferedMessages
-      if (errs.isEmpty) extractTpe(unit.tpdTree, src)(run.runContext)
-      else errs.errors
+      if (!reporter.hasErrors) extractTpe(unit.tpdTree, src)(run.runContext)
+      else reporter.removeBufferedMessages.errors
     }
   }
 }
