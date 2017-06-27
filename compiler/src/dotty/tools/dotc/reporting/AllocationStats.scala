@@ -63,8 +63,9 @@ object AllocationStats {
     val total = data.groupBy( x => x._1._2).map(x => (x._1, x._2.map(_._2).sum)).toSeq.sortBy(-_._2)
     val byPhase = data.groupBy(x => x._1._1).map(x => (x._1, x._2.map(x => (x._1._2, x._2)))).toSeq.sortBy(x => -x._2.map(_._2).sum)
 
+
     "Total allocations:\n" + total.map{ x =>
-         "   " + x._1.getName + " -> " + x._2
+         "   " + x._1.getName.padTo(longestNameLength, " ").mkString + " -> " + x._2
     }.mkString("\n") +
       "\n\n\nClass allocations by phase:\n" + byPhase.map { x =>
       val phaseName = x._1.getSimpleName
