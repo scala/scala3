@@ -1,7 +1,7 @@
 package dotty.tools.dotc
 package config
 
-import java.io.File
+import java.nio.file.{Files, Paths}
 import Settings._
 import core.Contexts._
 import util.DotClass
@@ -37,14 +37,18 @@ object CompilerCommand extends DotClass {
      * Expands all arguments starting with @ to the contents of the
      * file named like each argument.
      */
-    def expandArg(arg: String): List[String] = unsupported("expandArg")/*{
+    def expandArg(arg: String): List[String] = {
       def stripComment(s: String) = s takeWhile (_ != '#')
-      val file = File(arg stripPrefix "@")
-      if (!file.exists)
-        throw new java.io.FileNotFoundException("argument file %s could not be found" format file.name)
+      val path = Paths.get(arg stripPrefix "@")
+      if (!Files.exists(path))
+        throw new java.io.FileNotFoundException("argument file %s could not be found" format path.getFileName)
 
-      settings splitParams (file.lines() map stripComment mkString " ")
-    }*/
+      import scala.collection.JavaConversions._
+      val lines = Files.readAllLines(path) // default to UTF-8 encoding
+
+      val params = lines map stripComment mkString " "
+      CommandLineParser.tokenize(params)
+    }
 
     // expand out @filename to the contents of that filename
     def expandedArguments = args.toList flatMap {
