@@ -12,7 +12,7 @@ import SymDenotations._, Symbols._, StdNames._, Annotations._, Trees._, Scopes._
 import util.Positions._
 import Decorators._
 import NameKinds.{ProtectedAccessorName, ProtectedSetterName, OuterSelectName, SuperAccessorName}
-import Symbols._, TypeUtils._
+import Symbols._, TypeUtils._, SymUtils._
 
 /** This class performs the following functions:
  *
@@ -137,15 +137,11 @@ class SuperAccessors(thisTransformer: DenotTransformer) {
     /** Disallow some super.XX calls targeting Any methods which would
      *  otherwise lead to either a compiler crash or runtime failure.
      */
-    private def isDisallowed(sym: Symbol)(implicit ctx: Context) = {
-      val d = defn
-      import d._
-      (sym eq Any_isInstanceOf) ||
-      (sym eq Any_asInstanceOf) ||
-      (sym eq Any_==) ||
-      (sym eq Any_!=) ||
-      (sym eq Any_##)
-    }
+    private def isDisallowed(sym: Symbol)(implicit ctx: Context) =
+      sym.isTypeTestOrCast ||
+      (sym eq defn.Any_==) ||
+      (sym eq defn.Any_!=) ||
+      (sym eq defn.Any_##)
 
     /** Replace `sel` (or `sel[targs]` if `targs` is nonempty) with a protected accessor
      *  call, if necessary.

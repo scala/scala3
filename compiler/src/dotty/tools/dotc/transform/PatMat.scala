@@ -100,7 +100,7 @@ object PatMat {
 
     class TypeTest(scrut: Symbol, tpt: Tree, ons: Node, onf: Node) extends Test(scrut, ons, onf) {
       def pos = tpt.pos
-      def condition = scrutinee.isInstance(tpt.tpe)
+      def condition = scrutinee.select(defn.Any_typeTest).appliedToType(tpt.tpe)
       override def toString = i"TypeTest($scrutinee: $tpt)"
     }
 
@@ -232,16 +232,16 @@ object PatMat {
               letAbstract(get) { getResult =>
                 if (isUnapplySeq)
                   translateUnApplySeq(getResult, args)
-                 else {
-                    val selectors =
-                      if (args.tail.isEmpty) ref(getResult) :: Nil
-                      else productSelectors(get.tpe).map(ref(getResult).select(_))
-                    new UnApplyTest(unappResult, translateArgs(selectors, args, onSuccess), onFailure)
-                  }
+                else {
+                  val selectors =
+                    if (args.tail.isEmpty) ref(getResult) :: Nil
+                    else productSelectors(get.tpe).map(ref(getResult).select(_))
+                  new UnApplyTest(unappResult, translateArgs(selectors, args, onSuccess), onFailure)
                 }
               }
             }
           }
+        }
       }
 
       swapBind(tree) match {
@@ -371,7 +371,7 @@ object PatMat {
       transform(node)
     }
 
-    val seen = mutable.Set[Int]()
+    val emitted = mutable.Set[Int]()
 
     def emit(node: Node): Tree = {
       if (selfCheck) {
