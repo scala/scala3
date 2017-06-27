@@ -141,7 +141,9 @@ class ReplCompiler(ictx: Context) extends Compiler {
     def addImport(path: TermName)(implicit ctx: Context) = {
       val ref = tpd.ref(ctx.requiredModuleRef(path.toTermName))
       val symbol = ctx.newImportSymbol(ctx.owner, ref)
-      ctx.fresh.setImportInfo(new ImportInfo(implicit ctx => symbol, untpd.Ident(nme.WILDCARD) :: Nil, None))
+      val importInfo =
+        new ImportInfo(implicit ctx => symbol, untpd.Ident(nme.WILDCARD) :: Nil, None)
+      ctx.fresh.setNewScope.setImportInfo(importInfo)
     }
 
     List
