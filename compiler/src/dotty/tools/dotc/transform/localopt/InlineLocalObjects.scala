@@ -66,16 +66,13 @@ class InlineLocalObjects(val simplifyPhase: Simplify) extends Optimisation {
   object NewCaseClassValDef {
     def unapply(t: ValDef)(implicit ctx: Context): Option[(Tree, List[Tree])] =
       t.rhs match {
-        case Apply(fun, args) =>
-          val isCaseClass   = t.symbol.info.classSymbol is CaseClass
-          val isVal         = !t.symbol.is(Lazy | Mutable)
-          val notMutableCC  = !t.symbol.info.classSymbol.caseAccessors.exists(_.is(Mutable))
-          val isConstructor = fun.symbol.isConstructor
-          // Rules out case class inheritance and enums
-          val notWeirdCC    = t.tpe.widenDealias == t.symbol.info.widenDealias.finalResultType.widenDealias
-          if (isCaseClass && isVal && notMutableCC && isConstructor && notWeirdCC)
-            Some((fun, args))
-          else None
+        case Apply(fun, args)
+          if t.symbol.info.classSymbol.is(CaseClass)                          && // is rhs a case class?
+             !t.symbol.is(Lazy | Mutable)                                     && // is lhs a val?
+             !t.symbol.info.classSymbol.caseAccessors.exists(_.is(Mutable))   && // is the case class immutable?
+             fun.symbol.isConstructor                                         && // is rhs a new?
+             t.tpe.widenDealias == t.symbol.info.finalResultType.widenDealias => // no case class inheritance or enums
+          Some((fun, args))
         case _ => None
       }
   }
