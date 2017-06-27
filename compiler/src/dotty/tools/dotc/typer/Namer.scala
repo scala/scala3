@@ -4,23 +4,39 @@ package typer
 
 import core._
 import ast._
-import Trees._, Constants._, StdNames._, Scopes._, Denotations._, Comments._
-import Contexts._, Symbols._, Types._, SymDenotations._, Names._, NameOps._, Flags._, Decorators._
+import Trees._
+import Constants._
+import StdNames._
+import Scopes._
+import Denotations._
+import Comments._
+import Contexts._
+import Symbols._
+import Types._
+import SymDenotations._
+import Names._
+import NameOps._
+import Flags._
+import Decorators._
 import NameKinds.DefaultGetterName
-import ast.desugar, ast.desugar._
+import ast.desugar
+import ast.desugar._
 import ProtoTypes._
 import util.Positions._
-import util.{Property, SourcePosition, DotClass}
+import util.{DotClass, Property, SourcePosition}
+
 import collection.mutable
 import annotation.tailrec
 import ErrorReporting._
 import tpd.ListOfTreeDecorator
 import config.Config
-import config.Printers.{typr, completions, noPrinter}
+import config.Printers.{completions, noPrinter, typr}
 import Annotations._
 import Inferencing._
 import transform.ValueClasses._
 import TypeApplications._
+import dotty.tools.dotc.reporting.AllocationStats
+
 import language.implicitConversions
 import reporting.diagnostic.messages._
 
@@ -284,7 +300,7 @@ class Namer { typer: Typer =>
         val flags = checkFlags(tree.mods.flags &~ Implicit)
         val cls = recordSym(ctx.newClassSymbol(
           ctx.owner, name, flags,
-          cls => adjustIfModule(new ClassCompleter(cls, tree)(ctx), tree),
+          cls => adjustIfModule(AllocationStats.registerAllocation(new ClassCompleter(cls, tree)(ctx)), tree),
           privateWithinClass(tree.mods), tree.namePos, ctx.source.file), tree)
         cls.completer.asInstanceOf[ClassCompleter].init()
         cls
@@ -311,8 +327,8 @@ class Namer { typer: Typer =>
         val cctx = if (tree.name == nme.CONSTRUCTOR && !(tree.mods is JavaDefined)) ctx.outer else ctx
 
         val completer = tree match {
-          case tree: TypeDef => new TypeDefCompleter(tree)(cctx)
-          case _ => new Completer(tree)(cctx)
+          case tree: TypeDef => AllocationStats.registerAllocation(new TypeDefCompleter(tree)(cctx))
+          case _ => AllocationStats.registerAllocation(new Completer(tree)(cctx))
         }
 
         recordSym(ctx.newSymbol(
@@ -321,7 +337,7 @@ class Namer { typer: Typer =>
           privateWithinClass(tree.mods), tree.namePos), tree)
       case tree: Import =>
         recordSym(ctx.newSymbol(
-          ctx.owner, nme.IMPORT, Synthetic, new Completer(tree), NoSymbol, tree.pos), tree)
+          ctx.owner, nme.IMPORT, Synthetic, AllocationStats.registerAllocation(new Completer(tree)), NoSymbol, tree.pos), tree)
       case _ =>
         NoSymbol
     }
@@ -379,7 +395,7 @@ class Namer { typer: Typer =>
       case ref: RefTree => Some(ref.name.asTermName)
       case _            => None
     }
-    ctx.fresh.setImportInfo(new ImportInfo(implicit ctx => sym, imp.selectors, impNameOpt))
+    ctx.fresh.setImportInfo(AllocationStats.registerAllocation(new ImportInfo(implicit ctx => sym, imp.selectors, impNameOpt)))
   }
 
   /** A new context for the interior of a class */
@@ -888,7 +904,7 @@ class Namer { typer: Typer =>
         else createSymbol(self)
 
       // pre-set info, so that parent types can refer to type params
-      val tempInfo = new TempClassInfo(cls.owner.thisType, cls, decls, selfInfo)
+      val tempInfo = AllocationStats.registerAllocation(new TempClassInfo(cls.owner.thisType, cls, decls, selfInfo))
       denot.info = tempInfo
 
       // Ensure constructor is completed so that any parameter accessors

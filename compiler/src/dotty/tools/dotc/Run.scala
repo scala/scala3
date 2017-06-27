@@ -9,16 +9,19 @@ import Phases._
 import Decorators._
 import dotty.tools.dotc.transform.TreeTransforms.TreeTransformer
 import io.PlainFile
+
 import scala.io.Codec
 import util._
-import reporting.Reporter
+import reporting.{AllocationStats, Reporter}
 import transform.TreeChecker
 import rewrite.Rewrites
 import java.io.{BufferedWriter, OutputStreamWriter}
+
 import printing.XprintMode
 
 import scala.annotation.tailrec
 import dotty.tools.io.VirtualFile
+
 import scala.util.control.NonFatal
 
 /** A compiler run. Exports various methods to compile source files */
@@ -92,6 +95,8 @@ class Run(comp: Compiler)(implicit ctx: Context) {
     for (unit <- units)
       Stats.record("retained typed trees at end", unit.tpdTree.treeSize)
     Stats.record("total trees at end", ast.Trees.ntrees)
+    if (AllocationStats.collect)
+      ctx.echo(AllocationStats.report())
   }
 
   private sealed trait PrintedTree

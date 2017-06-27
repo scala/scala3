@@ -2,17 +2,31 @@ package dotty.tools
 package dotc
 package ast
 
-import dotty.tools.dotc.transform.{ExplicitOuter, Erasure}
+import dotty.tools.dotc.transform.{Erasure, ExplicitOuter}
 import dotty.tools.dotc.typer.ProtoTypes.FunProtoTyped
 import transform.SymUtils._
 import core._
-import util.Positions._, Types._, Contexts._, Constants._, Names._, Flags._
-import SymDenotations._, Symbols._, StdNames._, Annotations._, Trees._, Symbols._
-import Denotations._, Decorators._, DenotTransformers._
+import util.Positions._
+import Types._
+import Contexts._
+import Constants._
+import Names._
+import Flags._
+import SymDenotations._
+import Symbols._
+import StdNames._
+import Annotations._
+import Trees._
+import Symbols._
+import Denotations._
+import Decorators._
+import DenotTransformers._
+
 import collection.mutable
-import util.{Property, SourceFile, NoSource}
+import util.{NoSource, Property, SourceFile}
 import typer.ErrorReporting._
 import NameKinds.TempResultName
+import dotty.tools.dotc.reporting.AllocationStats
 
 import scala.annotation.tailrec
 import scala.io.Codec
@@ -120,7 +134,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     ta.assignType(untpd.SeqLiteral(elems, elemtpt), elems, elemtpt)
 
   def JavaSeqLiteral(elems: List[Tree], elemtpt: Tree)(implicit ctx: Context): JavaSeqLiteral =
-    ta.assignType(new untpd.JavaSeqLiteral(elems, elemtpt), elems, elemtpt).asInstanceOf[JavaSeqLiteral]
+    ta.assignType(AllocationStats.registerAllocation(new untpd.JavaSeqLiteral(elems, elemtpt)), elems, elemtpt).asInstanceOf[JavaSeqLiteral]
 
   def Inlined(call: Tree, bindings: List[MemberDef], expansion: Tree)(implicit ctx: Context): Inlined =
     ta.assignType(untpd.Inlined(call, bindings, expansion), bindings, expansion)
@@ -866,7 +880,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
 
   def applyOverloaded(receiver: Tree, method: TermName, args: List[Tree], targs: List[Type], expectedType: Type, isAnnotConstructor: Boolean = false)(implicit ctx: Context): Tree = {
     val typer = ctx.typer
-    val proto = new FunProtoTyped(args, expectedType, typer)
+    val proto = AllocationStats.registerAllocation(new FunProtoTyped(args, expectedType, typer))
     val denot = receiver.tpe.member(method)
     assert(denot.exists, i"no member $receiver . $method, members = ${receiver.tpe.decls}")
     val selected =

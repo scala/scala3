@@ -418,7 +418,9 @@ object Contexts {
     }
 
     /** A fresh clone of this context. */
-    def fresh: FreshContext = clone.asInstanceOf[FreshContext].init(this)
+    def fresh: FreshContext = {
+      AllocationStats.registerAllocation(clone()).asInstanceOf[FreshContext].init(this)
+    }
 
     final def withOwner(owner: Symbol): Context =
       if (owner ne this.owner) fresh.setOwner(owner) else this
