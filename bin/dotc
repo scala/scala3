@@ -166,7 +166,7 @@ case "$1" in
            --) shift; for arg; do addResidual "$arg"; done; set -- ;;
      -h|-help) help=true && shift ;;
      -bootstrapped) bootstrapped=true && shift ;;
-  -v|-verbose) verbose=true && shift ;;
+  -v|-verbose) verbose=true && addScala "-verbose" && shift ;;
     -debug) debug=true && shift ;;
     -q|-quiet) quiet=true && shift ;;
 
