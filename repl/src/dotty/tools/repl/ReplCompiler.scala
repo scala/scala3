@@ -5,12 +5,11 @@ import java.io.{ File => JFile }
 
 import dotc.ast.{ untpd, tpd }
 import dotc.{ CompilationUnit, Compiler }
-import dotc.core.{ Phases, Decorators, Flags }
-import Decorators._, Flags._
+import dotc.core.Decorators._, dotc.core.Flags._, dotc.core.Phases
+import dotc.core.Names._, dotc.core.Contexts._, dotc.core.StdNames.nme
 import dotc.util.SourceFile
-import dotc.typer.FrontEnd
+import dotc.typer.{ ImportInfo, FrontEnd }
 import backend.jvm.GenBCode
-import dotc.core.Contexts.Context
 import dotc.util.Positions._
 import dotc.reporting.diagnostic.{ messages, MessageContainer }
 import dotc.reporting._
@@ -52,9 +51,8 @@ class ReplCompiler(ictx: Context) extends Compiler {
 
   sealed case class Definitions(trees: Seq[untpd.Tree], state: State)
 
-  def definitions(trees: Seq[untpd.Tree], state: State): Result[Definitions] = {
+  def definitions(trees: Seq[untpd.Tree], state: State)(implicit ctx: Context): Result[Definitions] = {
     import untpd._
-    implicit val ctx = ictx
 
     def freeExpression(t: Tree) =
       t.isTerm && !t.isInstanceOf[Assign]
@@ -81,7 +79,7 @@ class ReplCompiler(ictx: Context) extends Compiler {
     }
 
     Definitions(
-      resX ++ othersWithShow,
+      state.imports.map(_._1) ++ resX ++ othersWithShow,
       state.copy(valIndex = state.valIndex + exps.length)
     ).result
   }
@@ -105,14 +103,7 @@ class ReplCompiler(ictx: Context) extends Compiler {
     import untpd._
     import dotc.core.StdNames._
 
-    val imports =
-      Import(Ident("dotty".toTermName), Ident("Show".toTermName) :: Nil) ::
-      Import(Ident("Show".toTermName), Ident(nme.WILDCARD) :: Nil) ::
-      List.range(0, state.objectIndex).map { i =>
-        Import(Ident(("ReplSession$" + i).toTermName), Ident(nme.WILDCARD) :: Nil)
-      }
-
-    val tmpl = Template(emptyConstructor, Nil, EmptyValDef, imports ++ state.imports.map(_._1) ++ trees)
+    val tmpl = Template(emptyConstructor(ctx), Nil, EmptyValDef, trees)
     PackageDef(Ident(nme.NO_NAME),
       ModuleDef(s"ReplSession$$${ state.objectIndex }".toTermName, tmpl)
         .withMods(new Modifiers(Module | Final))
@@ -126,29 +117,39 @@ class ReplCompiler(ictx: Context) extends Compiler {
     unit.result
   }
 
-  def runCompilation(unit: CompilationUnit, state: State): Result[(State, Context)] = {
-    implicit val ctx = ictx
+  def runCompilation(unit: CompilationUnit, state: State)(implicit ctx: Context): Result[(State, Context)] = {
     val reporter = new StoreReporter(null) with UniqueMessagePositions with HideNonSensicalMessages
-    val run = newRun(ctx.fresh.setReporter(reporter))
+    val run = new dotc.Run(this)(ctx.fresh.setReporter(reporter))
     run.compileUnits(unit :: Nil)
 
-    val errs = reporter.removeBufferedMessages
-    if (errs.isEmpty) {
-      val newState = State(state.objectIndex + 1, state.valIndex, state.history, state.imports)
-      (newState, run.runContext).result
-    }
-    else errs.errors
+    if (!reporter.hasErrors)
+      (state.copy(objectIndex = state.objectIndex + 1), run.runContext).result
+    else
+      reporter.removeBufferedMessages.errors
   }
 
   def compile(parsed: Parsed, state: State): Result[(CompilationUnit, State, Context)] = {
-    implicit val ctx = ictx
+    implicit val ctx: Context = addMagicImports(state)(rootContext(ictx))
     for {
-      defs         <- definitions(parsed.trees, state)
-      unit         <- createUnit(defs.trees, state, parsed.sourceCode)
-      (state, ctx) <- runCompilation(unit, defs.state)
-    } yield (unit, state, ctx)
+      defs          <- definitions(parsed.trees, state)
+      unit          <- createUnit(defs.trees, state, parsed.sourceCode)
+      (state, ictx) <- runCompilation(unit, defs.state)
+    } yield (unit, state, ictx)
   }
 
+  def addMagicImports(state: State)(implicit ctx: Context): Context = {
+    def addImport(path: TermName)(implicit ctx: Context) = {
+      val ref = tpd.ref(ctx.requiredModuleRef(path.toTermName))
+      val symbol = ctx.newImportSymbol(ctx.owner, ref)//tpd.ref(ctx.requiredModuleRef(path.toTermName)))
+      ctx.fresh.setImportInfo(new ImportInfo(implicit ctx => symbol, untpd.Ident(nme.WILDCARD) :: Nil, None))
+    }
+
+    List
+      .range(0, state.objectIndex)
+      .foldLeft(addImport("dotty.Show".toTermName)) { (ictx, i) =>
+        addImport(nme.EMPTY_PACKAGE ++ (".ReplSession$" + i))(ictx)
+      }
+  }
 
   def typeOf(expr: String, state: State): Result[String] = {
 
