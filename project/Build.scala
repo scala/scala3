@@ -264,7 +264,7 @@ object Build {
   //   this is only necessary for compatibility with sbt which currently hardcodes the "dotty" artifact name
   lazy val dotty = project.in(file(".")).
     // FIXME: we do not aggregate `bin` because its tests delete jars, thus breaking other tests
-    aggregate(`dotty-interfaces`, `dotty-library`, `dotty-compiler`, `dotty-doc`, dottySbtBridgeRef).
+    aggregate(`dotty-interfaces`, `dotty-library`, `dotty-compiler`, `dotty-doc`, dottySbtBridgeRef, `dotty-repl`).
     dependsOn(`dotty-compiler`).
     dependsOn(`dotty-library`).
     settings(commonNonBootstrappedSettings).
@@ -386,6 +386,8 @@ object Build {
           s" dotty.tools.repl.Main " + fullArgs.mkString(" ")
         )
       }.evaluated,
+
+      repl := run.evaluated,
 
       javaOptions ++= (javaOptions in `dotty-compiler`).value,
       fork in run := true,
@@ -518,14 +520,6 @@ object Build {
       baseDirectory in (Compile, run) := baseDirectory.value / "..",
       // .. but not when running test
       baseDirectory in (Test, run) := baseDirectory.value,
-
-      repl := Def.inputTaskDyn {
-        val args: Seq[String] = spaceDelimited("<arg>").parsed
-        val dottyLib = packageAll.value("dotty-library")
-        (runMain in Compile).toTask(
-          s" dotty.tools.dotc.repl.Main -classpath $dottyLib " + args.mkString(" ")
-        )
-      }.evaluated,
 
       test in Test := {
         // Exclude legacy tests by default
