@@ -12,7 +12,7 @@ import Denotations._, Decorators._, DenotTransformers._
 import collection.mutable
 import util.{Property, SourceFile, NoSource}
 import typer.ErrorReporting._
-import NameKinds.TempResultName
+import NameKinds.{TempResultName, OuterSelectName}
 
 import scala.annotation.tailrec
 import scala.io.Codec
@@ -810,6 +810,13 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
         setr.appliedTo(rhs)
       }
       else Assign(tree, rhs)
+
+    /** A synthetic select with that will be turned into an outer path by ExplicitOuter.
+     *  @param levels  How many outer levels to select
+     *  @param tp      The type of the destination of the outer path.
+     */
+    def outerSelect(levels: Int, tp: Type)(implicit ctx: Context): Tree =
+      untpd.Select(tree, OuterSelectName(EmptyTermName, levels)).withType(tp)
 
     // --- Higher order traversal methods -------------------------------
 

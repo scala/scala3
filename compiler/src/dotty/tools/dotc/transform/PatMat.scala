@@ -22,7 +22,7 @@ object PatMat {
 
   abstract class Node
 
-  class Translator(implicit ctx: Context) {
+  class Translator(resultType: Type, trans: TreeTransform)(implicit ctx: Context, info: TransformerInfo) {
 
     def patmatGenerated(sym: Symbol) =
       sym.is(Synthetic) &&
@@ -100,7 +100,42 @@ object PatMat {
 
     class TypeTest(scrut: Symbol, tpt: Tree, ons: Node, onf: Node) extends Test(scrut, ons, onf) {
       def pos = tpt.pos
-      def condition = scrutinee.select(defn.Any_typeTest).appliedToType(tpt.tpe)
+      private val expectedTp = tpt.tpe
+
+      private def outerTestNeeded(implicit ctx: Context): Boolean = {
+        // See the test for SI-7214 for motivation for dealias. Later `treeCondStrategy#outerTest`
+        // generates an outer test based on `patType.prefix` with automatically dealises.
+        expectedTp.dealias match {
+          case tref @ TypeRef(pre: SingletonType, name) =>
+            tref.symbol.isClass &&
+            ExplicitOuter.needsOuterIfReferenced(tref.symbol.asClass)
+          case _ =>
+            false
+        }
+      }
+
+      private def outerTest: Tree = trans.transformFollowingDeep {
+        val expectedOuter = singleton(expectedTp.normalizedPrefix)
+        val expectedClass = expectedTp.dealias.classSymbol.asClass
+        ExplicitOuter.ensureOuterAccessors(expectedClass)(ctx.withPhase(ctx.explicitOuterPhase.next))
+        scrutinee.ensureConforms(expectedTp)
+          .outerSelect(1, expectedOuter.tpe.widen)
+          .select(defn.Object_eq)
+          .appliedTo(expectedOuter)
+      }
+
+      def condition = expectedTp.dealias match {
+        case expectedTp: SingletonType =>
+          val test =
+            if (expectedTp.widen.derivesFrom(defn.ObjectClass))
+              scrutinee.ensureConforms(defn.ObjectType).select(defn.Object_eq)
+            else
+              scrutinee.select(defn.Any_==)
+          test.appliedTo(singleton(expectedTp))
+        case _ =>
+          val typeTest = scrutinee.select(defn.Any_typeTest).appliedToType(tpt.tpe)
+          if (outerTestNeeded) typeTest.and(outerTest) else typeTest
+      }
       override def toString = i"TypeTest($scrutinee: $tpt)"
     }
 
@@ -450,7 +485,7 @@ class PatMat extends MiniPhaseTransform {
   override def runsAfterGroupsOf = Set(classOf[TailRec]) // tailrec is not capable of reversing the patmat tranformation made for tree
 
   override def transformMatch(tree: Match)(implicit ctx: Context, info: TransformerInfo): Tree = {
-    val translated = new Translator()(ctx).translateMatch(tree)
+    val translated = new Translator(tree.tpe, this).translateMatch(tree)
 
     // check exhaustivity and unreachability
     val engine = new patmat.SpaceEngine
