@@ -30,8 +30,11 @@ object PatMat {
 
     val sanitize = new TypeMap {
       def apply(t: Type): Type = t.widenExpr match {
-        case t: TermRef
-        if patmatGenerated(t.symbol) || t.info.isInstanceOf[ExprType] => apply(t.info)
+        case t: TermRef if patmatGenerated(t.symbol) =>
+          t.info.widenExpr match {
+            case t1: TermRef => apply(t1)
+            case _ => t
+          }
         case t => mapOver(t)
       }
     }
@@ -39,6 +42,7 @@ object PatMat {
     case class BinderInfo(rhs: Tree)
 
     val binding = mutable.Map[Symbol, AnyRef/*Tree | Node*/]()
+    val nonNull = mutable.Set[Symbol]()
 
     def rhs(sym: Symbol) = {
       assert(!sym.is(Label))
@@ -64,7 +68,7 @@ object PatMat {
     }
 
     def newLabel(body: Node) = {
-      val label = freshLabel(MethodType(Nil, sanitize(body.tpe)))
+      val label = freshLabel(MethodType(Nil, resultType))
       binding(label) = body
       label
     }
@@ -72,7 +76,6 @@ object PatMat {
     private var nxId = 0
 
     sealed abstract class Node {
-      def tpe: Type
       val id = nxId
       nxId += 1
     }
@@ -81,21 +84,14 @@ object PatMat {
       def this(scrut: Symbol, ons: Node, onf: Node) = this(ref(scrut), ons, onf)
       def condition: Tree
       def pos: Position
-      val tpe =
-        try sanitize(onSuccess.tpe | onFailure.tpe)
-        catch {
-          case ex: AssertionError =>
-            println(i"cannot | $onSuccess: ${onSuccess.tpe} with $onFailure ${onFailure.tpe}")
-            throw ex
-        }
     }
 
-    class UnApplyTest(scrut: Symbol, ons: Node, onf: Node) extends Test(scrut, ons, onf) {
+    class NonEmptyTest(scrut: Symbol, ons: Node, onf: Node) extends Test(scrut, ons, onf) {
       def pos = scrut.pos
       def condition = scrutinee
         .select(nme.isEmpty, _.info.isParameterless)
         .select(nme.UNARY_!, _.info.isParameterless)
-      override def toString = i"UnApplyTest($scrutinee)"
+      override def toString = i"NonEmptyTest($scrutinee)"
     }
 
     class TypeTest(scrut: Symbol, tpt: Tree, ons: Node, onf: Node) extends Test(scrut, ons, onf) {
@@ -145,18 +141,22 @@ object PatMat {
       override def toString = i"EqualTest($tree == $scrutinee)"
     }
 
+    class NonNullTest(scrut: Symbol, ons: Node, onf: Node) extends Test(scrut, ons, onf) {
+      def pos = scrut.pos
+      def condition = scrutinee.testNotNull
+    }
+
     class LengthTest(scrut: Symbol, len: Int, exact: Boolean, ons: Node, onf: Node) extends Test(scrut, ons, onf) {
       def pos = scrut.pos
-      def condition = scrutinee
-        .select(defn.Any_!=)
-        .appliedTo(Literal(Constant(null)))
-        .select(defn.Boolean_&&)
-        .appliedTo(
+      def condition = //scrutinee
+        //.select(defn.Any_!=)
+        //.appliedTo(Literal(Constant(null)))
+        //.and(
           scrutinee
             .select(defn.Seq_lengthCompare.matchingMember(scrutinee.tpe))
             .appliedTo(Literal(Constant(len)))
             .select(if (exact) defn.Int_== else defn.Int_>=)
-            .appliedTo(Literal(Constant(0))))
+            .appliedTo(Literal(Constant(0)))//)
       override def toString =
         i"Lengthtest($scrutinee.length ${if (exact) "==" else ">="} $len)"
     }
@@ -167,17 +167,11 @@ object PatMat {
       override def toString = i"GuardTest($scrutinee)"
     }
 
-    case class LetNode(sym: TermSymbol, var body: Node) extends Node {
-      val tpe = sanitize(body.tpe)
-    }
+    case class LetNode(sym: TermSymbol, var body: Node) extends Node
 
-    case class BodyNode(var tree: Tree) extends Node {
-      val tpe = tree.tpe
-    }
+    case class BodyNode(var tree: Tree) extends Node
 
-    case class CallNode(label: TermSymbol) extends Node {
-      val tpe = label.info.finalResultType
-    }
+    case class CallNode(label: TermSymbol) extends Node
 
     /** A conservative approximation of which patterns do not discern anything.
       * They are discarded during the translation.
@@ -205,8 +199,12 @@ object PatMat {
     def isSyntheticScala2Unapply(sym: Symbol) =
       sym.is(SyntheticCase) && sym.owner.is(Scala2x)
 
-    def swapBind(tree: Tree) = tree match {
-      case Bind(name, Typed(pat, tpt)) => Typed(cpy.Bind(tree)(name, pat), tpt)
+    def swapBind(tree: Tree): Tree = tree match {
+      case Bind(name, pat0) =>
+        swapBind(pat0) match {
+          case Typed(pat, tpt) => Typed(cpy.Bind(tree)(name, pat), tpt)
+          case _ => tree
+        }
       case _ => tree
     }
 
@@ -263,17 +261,19 @@ object PatMat {
             }
             else {
               assert(isGetMatch(unapp.tpe))
-              val get = ref(unappResult).select(nme.get, _.info.isParameterless)
-              letAbstract(get) { getResult =>
+              val argsPlan = {
+                val get = ref(unappResult).select(nme.get, _.info.isParameterless)
                 if (isUnapplySeq)
-                  translateUnApplySeq(getResult, args)
-                else {
-                  val selectors =
-                    if (args.tail.isEmpty) ref(getResult) :: Nil
-                    else productSelectors(get.tpe).map(ref(getResult).select(_))
-                  new UnApplyTest(unappResult, translateArgs(selectors, args, onSuccess), onFailure)
-                }
+                  letAbstract(get)(translateUnApplySeq(_, args))
+                else
+                  letAbstract(get) { getResult =>
+                    val selectors =
+                      if (args.tail.isEmpty) ref(getResult) :: Nil
+                      else productSelectors(get.tpe).map(ref(getResult).select(_))
+                    translateArgs(selectors, args, onSuccess)
+                  }
               }
+              new NonEmptyTest(unappResult, argsPlan, onFailure)
             }
           }
         }
@@ -282,14 +282,18 @@ object PatMat {
       swapBind(tree) match {
         case Typed(pat, tpt) =>
           new TypeTest(scrutinee, tpt,
-            letAbstract(ref(scrutinee).asInstance(tpt.tpe))(casted =>
-              translatePattern(casted, pat, onSuccess, onFailure)),
+            letAbstract(ref(scrutinee).asInstance(tpt.tpe)) { casted =>
+              nonNull += casted
+              translatePattern(casted, pat, onSuccess, onFailure)
+            },
             onFailure)
         case UnApply(extractor, implicits, args) =>
           val mt @ MethodType(_) = extractor.tpe.widen
           var unapp = extractor.appliedTo(ref(scrutinee).ensureConforms(mt.paramInfos.head))
           if (implicits.nonEmpty) unapp = unapp.appliedToArgs(implicits)
-          translateUnApply(unapp, args)
+          val unapplyPlan = translateUnApply(unapp, args)
+          if (scrutinee.info.isNotNull || nonNull(scrutinee)) unapplyPlan
+          else new NonNullTest(scrutinee, unapplyPlan, onFailure)
         case Bind(name, body) =>
           val body1 = translatePattern(scrutinee, body, onSuccess, onFailure)
           if (name == nme.WILDCARD) body1
