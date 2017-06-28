@@ -9,6 +9,7 @@ import terminal.SpecialKeys._
 import terminal.DelegateFilter
 import terminal._
 
+import Filter._
 /**
  * Filters have hook into the various {Ctrl,Shift,Fn,Alt}x{Up,Down,Left,Right}
  * combination keys, and make them behave similarly as they would on a normal
@@ -16,8 +17,7 @@ import terminal._
  * text selection, etc.
  */
 object GUILikeFilters {
-  case class SelectionFilter(indent: Int) extends DelegateFilter {
-    def identifier = "SelectionFilter"
+  case class SelectionFilter(indent: Int) extends DelegateFilter("SelectionFilter") {
     var mark: Option[Int] = None
 
     def setMark(c: Int) = {
@@ -66,17 +66,17 @@ object GUILikeFilters {
 
     def filter = Filter.merge(
 
-      Case(ShiftUp) {(b, c, m) => setMark(c); BasicFilters.moveUp(b, c, m.width)},
-      Case(ShiftDown) {(b, c, m) => setMark(c); BasicFilters.moveDown(b, c, m.width)},
-      Case(ShiftRight) {(b, c, m) => setMark(c); (b, c + 1)},
-      Case(ShiftLeft) {(b, c, m) => setMark(c); (b, c - 1)},
-      Case(AltShiftUp) {(b, c, m) => setMark(c); BasicFilters.moveUp(b, c, m.width)},
-      Case(AltShiftDown) {(b, c, m) => setMark(c); BasicFilters.moveDown(b, c, m.width)},
-      Case(AltShiftRight) {(b, c, m) => setMark(c); wordRight(b, c)},
-      Case(AltShiftLeft) {(b, c, m) => setMark(c); wordLeft(b, c)},
-      Case(FnShiftRight) {(b, c, m) => setMark(c); BasicFilters.moveEnd(b, c, m.width)},
-      Case(FnShiftLeft) {(b, c, m) => setMark(c); BasicFilters.moveStart(b, c, m.width)},
-      Filter("fnOtherFilter") {
+      simple(ShiftUp){(b, c, m) => setMark(c); BasicFilters.moveUp(b, c, m.width)},
+      simple(ShiftDown){(b, c, m) => setMark(c); BasicFilters.moveDown(b, c, m.width)},
+      simple(ShiftRight){(b, c, m) => setMark(c); (b, c + 1)},
+      simple(ShiftLeft){(b, c, m) => setMark(c); (b, c - 1)},
+      simple(AltShiftUp){(b, c, m) => setMark(c); BasicFilters.moveUp(b, c, m.width)},
+      simple(AltShiftDown){(b, c, m) => setMark(c); BasicFilters.moveDown(b, c, m.width)},
+      simple(AltShiftRight){(b, c, m) => setMark(c); wordRight(b, c)},
+      simple(AltShiftLeft){(b, c, m) => setMark(c); wordLeft(b, c)},
+      simple(FnShiftRight){(b, c, m) => setMark(c); BasicFilters.moveEnd(b, c, m.width)},
+      simple(FnShiftLeft){(b, c, m) => setMark(c); BasicFilters.moveStart(b, c, m.width)},
+      partial(identifier) {
         case TS(27 ~: 91 ~: 90 ~: rest, b, c, _) if mark.isDefined =>
           doIndent(b, c, rest,
             slice => -math.min(slice.iterator.takeWhile(_ == ' ').size, indent)
@@ -130,27 +130,27 @@ object GUILikeFilters {
   }
 
   val fnFilter = Filter.merge(
-    Case(FnUp)((b, c, m) => (b, c - 9999)),
-    Case(FnDown)((b, c, m) => (b, c + 9999)),
-    Case(FnRight)((b, c, m) => BasicFilters.moveEnd(b, c, m.width)),
-    Case(FnLeft)((b, c, m) => BasicFilters.moveStart(b, c, m.width))
+    simple(FnUp)((b, c, m) => (b, c - 9999)),
+    simple(FnDown)((b, c, m) => (b, c + 9999)),
+    simple(FnRight)((b, c, m) => BasicFilters.moveEnd(b, c, m.width)),
+    simple(FnLeft)((b, c, m) => BasicFilters.moveStart(b, c, m.width))
   )
   val altFilter = Filter.merge(
-    Case(AltUp)    {(b, c, m) => BasicFilters.moveUp(b, c, m.width)},
-    Case(AltDown)  {(b, c, m) => BasicFilters.moveDown(b, c, m.width)},
-    Case(AltRight) {(b, c, m) => wordRight(b, c)},
-    Case(AltLeft)  {(b, c, m) => wordLeft(b, c)}
+    simple(AltUp){(b, c, m) => BasicFilters.moveUp(b, c, m.width)},
+    simple(AltDown){(b, c, m) => BasicFilters.moveDown(b, c, m.width)},
+    simple(AltRight){(b, c, m) => wordRight(b, c)},
+    simple(AltLeft){(b, c, m) => wordLeft(b, c)}
   )
 
   val fnAltFilter = Filter.merge(
-    Case(FnAltUp)    {(b, c, m) => (b, c)},
-    Case(FnAltDown)  {(b, c, m) => (b, c)},
-    Case(FnAltRight) {(b, c, m) => (b, c)},
-    Case(FnAltLeft)  {(b, c, m) => (b, c)}
+    simple(FnAltUp){(b, c, m) => (b, c)},
+    simple(FnAltDown){(b, c, m) => (b, c)},
+    simple(FnAltRight){(b, c, m) => (b, c)},
+    simple(FnAltLeft){(b, c, m) => (b, c)}
   )
   val fnAltShiftFilter = Filter.merge(
-    Case(FnAltShiftRight) {(b, c, m) => (b, c)},
-    Case(FnAltShiftLeft)  {(b, c, m) => (b, c)}
+    simple(FnAltShiftRight){(b, c, m) => (b, c)},
+    simple(FnAltShiftLeft){(b, c, m) => (b, c)}
   )
 
 

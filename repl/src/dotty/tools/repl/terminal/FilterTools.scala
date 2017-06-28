@@ -24,37 +24,6 @@ object FilterTools {
     splitIndex
   }
 
-  /**
-   * Shorthand to construct a filter in the common case where you're
-   * switching on the prefix of the input stream and want to run some
-   * transformation on the buffer/cursor
-   */
-  def Case(s: String)
-          (f: (Vector[Char], Int, TermInfo) => (Vector[Char], Int)) = new Filter {
-    val op = new PartialFunction[TermInfo, TermAction] {
-      def isDefinedAt(x: TermInfo) = {
-
-        def rec(i: Int, c: LazyList[Int]): Boolean = {
-          if (i >= s.length) true
-          else if (c.head == s(i)) rec(i + 1, c.tail)
-          else false
-        }
-        rec(0, x.ts.inputs)
-      }
-
-      def apply(v1: TermInfo) = {
-        val (buffer1, cursor1) = f(v1.ts.buffer, v1.ts.cursor, v1)
-        TermState(
-          v1.ts.inputs.dropPrefix(s.map(_.toInt)).get,
-          buffer1,
-          cursor1
-        )
-      }
-
-    }.lift
-    def identifier = "Case"
-  }
-
   /** Shorthand for pattern matching on [[TermState]] */
   val TS = TermState
 

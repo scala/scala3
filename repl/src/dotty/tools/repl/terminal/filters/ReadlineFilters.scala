@@ -6,6 +6,9 @@ package filters
 import terminal.FilterTools._
 import terminal.SpecialKeys._
 import terminal.{DelegateFilter, Filter, Terminal}
+
+import Filter._
+
 /**
  * Filters for injection of readline-specific hotkeys, the sort that
  * are available in bash, python and most other interactive command-lines
@@ -40,23 +43,27 @@ object ReadlineFilters {
    * rather than using arrows
    */
   lazy val navFilter = Filter.merge(
-    Case(Ctrl('b'))((b, c, m) => (b, c - 1)), // <- one char
-    Case(Ctrl('f'))((b, c, m) => (b, c + 1)), // -> one char
-    Case(Alt + "b")((b, c, m) => GUILikeFilters.wordLeft(b, c)), // <- one word
-    Case(Alt + "B")((b, c, m) => GUILikeFilters.wordLeft(b, c)), // <- one word
-    Case(LinuxCtrlLeft)((b, c, m) => GUILikeFilters.wordLeft(b, c)), // <- one word
-    Case(Alt + "f")((b, c, m) => GUILikeFilters.wordRight(b, c)), // -> one  word
-    Case(Alt + "F")((b, c, m) => GUILikeFilters.wordRight(b, c)), // -> one  word
-    Case(LinuxCtrlRight)((b, c, m) => GUILikeFilters.wordRight(b, c)), // -> one word
-    Case(Home)((b, c, m) => BasicFilters.moveStart(b, c, m.width)), // <- one line
-    Case(HomeScreen)((b, c, m) => BasicFilters.moveStart(b, c, m.width)), // <- one line
-    Case(Ctrl('a'))((b, c, m) => BasicFilters.moveStart(b, c, m.width)),
-    Case(End)((b, c, m) => BasicFilters.moveEnd(b, c, m.width)), // -> one line
-    Case(EndScreen)((b, c, m) => BasicFilters.moveEnd(b, c, m.width)), // -> one line
-    Case(Ctrl('e'))((b, c, m) => BasicFilters.moveEnd(b, c, m.width)),
-    Case(Alt + "t")((b, c, m) => transposeWord(b, c)),
-    Case(Alt + "T")((b, c, m) => transposeWord(b, c)),
-    Case(Ctrl('t'))((b, c, m) => transposeLetter(b, c))
+    simple(Ctrl('p'))((b, c, m) => BasicFilters.moveUp(b, c, m.width)),
+    simple(Ctrl('n'))((b, c, m) => BasicFilters.moveDown(b, c, m.width)),
+    simple(Ctrl('b'))((b, c, m) => (b, c - 1)), // <- one char
+    simple(Ctrl('f'))((b, c, m) => (b, c + 1)), // -> one char
+    simple(Alt + "b")((b, c, m) => GUILikeFilters.wordLeft(b, c)), // <- one word
+    simple(Alt + "B")((b, c, m) => GUILikeFilters.wordLeft(b, c)), // <- one word
+    simple(LinuxCtrlLeft)((b, c, m) => GUILikeFilters.wordLeft(b, c)), // <- one word
+    simple(Alt + "f")((b, c, m) => GUILikeFilters.wordRight(b, c)), // -> one  word
+    simple(Alt + "F")((b, c, m) => GUILikeFilters.wordRight(b, c)), // -> one  word
+    simple(LinuxCtrlRight)((b, c, m) => GUILikeFilters.wordRight(b, c)), // -> one word
+    simple(Home)((b, c, m) => BasicFilters.moveStart(b, c, m.width)), // <- one line
+    simple(HomeScreen)((b, c, m) => BasicFilters.moveStart(b, c, m.width)), // <- one line
+    simple(HomeLinuxXterm)((b, c, m) => BasicFilters.moveStart(b, c, m.width)), // <- one line
+    simple(Ctrl('a'))((b, c, m) => BasicFilters.moveStart(b, c, m.width)),
+    simple(End)((b, c, m) => BasicFilters.moveEnd(b, c, m.width)), // -> one line
+    simple(EndScreen)((b, c, m) => BasicFilters.moveEnd(b, c, m.width)), // -> one line
+    simple(EndRxvt)((b, c, m) => BasicFilters.moveEnd(b, c, m.width)), // -> one line
+    simple(Ctrl('e'))((b, c, m) => BasicFilters.moveEnd(b, c, m.width)),
+    simple(Alt + "t")((b, c, m) => transposeWord(b, c)),
+    simple(Alt + "T")((b, c, m) => transposeWord(b, c)),
+    simple(Ctrl('t'))((b, c, m) => transposeLetter(b, c))
   )
 
   def transposeLetter(b: Vector[Char], c: Int) =
@@ -81,7 +88,8 @@ object ReadlineFilters {
           val leftStart = GUILikeFilters.consumeWord(b, leftStart0 - 1, -1, 1)
           val leftEnd   = GUILikeFilters.consumeWord(b, leftStart, 1, 0)
           (leftStart, leftEnd)
-        }else (leftStart0, leftEnd0)
+        } else
+          (leftStart0, leftEnd0)
 
       val newB =
         b.slice(0, leftStart)         ++
@@ -98,8 +106,7 @@ object ReadlineFilters {
    * All the cut-pasting logic, though for many people they simply
    * use these shortcuts for deleting and don't use paste much at all.
    */
-  case class CutPasteFilter() extends DelegateFilter {
-    def identifier = "CutPasteFilter"
+  case class CutPasteFilter() extends DelegateFilter("CutPasteFilter") {
     var accumulating = false
     var currentCut = Vector.empty[Char]
     def prepend(b: Vector[Char]) = {
@@ -117,13 +124,53 @@ object ReadlineFilters {
       (b patch(from = c - 1, patch = Nil, replaced = 1), c - 1)
     }
 
-    def cutAllLeft(b: Vector[Char], c: Int) = {
-      prepend(b.take(c))
-      (b.drop(c), 0)
+    def cutLineLeft(b: Vector[Char], c: Int) = {
+      val (allBeforeCursor, allAfterCursor) = b.splitAt(c)
+      val previousNewlineIndex = allBeforeCursor.lastIndexWhere(_ == '\n')
+      if (previousNewlineIndex == -1) {
+        // beginning of input. no leading newline
+        prepend(allBeforeCursor)
+        (allAfterCursor, 0)
+      } else {
+        val (allBeforeLine, lineBeforeCursor) = allBeforeCursor.splitAt(
+          previousNewlineIndex
+        )
+        val charsBeforeCursorOnLine = lineBeforeCursor.length
+        if (charsBeforeCursorOnLine == 1) {
+          // if only a newline before cursor on line, cut it
+          prepend(lineBeforeCursor)
+          (allBeforeLine ++ allAfterCursor, c - 1)
+        } else {
+          // if there's more on the line before cursor, cut to beginning of line
+          prepend(lineBeforeCursor.tail)
+          val buffer = allBeforeLine ++ "\n" ++ allAfterCursor
+          val cursor = c - (charsBeforeCursorOnLine - 1)
+          (buffer, cursor)
+        }
+      }
     }
-    def cutAllRight(b: Vector[Char], c: Int) = {
-      append(b.drop(c))
-      (b.take(c), c)
+
+    def cutLineRight(b: Vector[Char], c: Int) = {
+      val (allBeforeCursor, allAfterCursor) = b.splitAt(c)
+      val nextNewlineIndex = allAfterCursor.indexWhere(_ == '\n')
+      if (nextNewlineIndex == -1) {
+        // end of input. no trailing newline
+        append(allAfterCursor)
+        (allBeforeCursor, c)
+      } else {
+        allAfterCursor.splitAt(
+          nextNewlineIndex
+        ) match {
+          case (Vector(), Vector('\n', allAfterNewline: _*)) =>
+            // if there's only a newline after cursor on line, cut it
+            append(Vector('\n'))
+            (allBeforeCursor ++ allAfterNewline, c)
+          case (restOfLine, allAfterLine) =>
+            // if there's more on the line after cursor, cut to end of line
+            append(restOfLine)
+            (allBeforeCursor ++ allAfterLine, c)
+        }
+      }
     }
 
     def cutWordRight(b: Vector[Char], c: Int) = {
@@ -144,20 +191,21 @@ object ReadlineFilters {
     }
 
     def filter = Filter.merge(
-      Case(Ctrl('u'))((b, c, m) => cutAllLeft(b, c)),
-      Case(Ctrl('k'))((b, c, m) => cutAllRight(b, c)),
-      Case(Alt + "d")((b, c, m) => cutWordRight(b, c)),
-      Case(Ctrl('w'))((b, c, m) => cutWordLeft(b, c)),
-      Case(Alt + "\u007f")((b, c, m) => cutWordLeft(b, c)),
+      simple(Ctrl('u'))((b, c, m) => cutLineLeft(b, c)),
+      simple(Ctrl('k'))((b, c, m) => cutLineRight(b, c)),
+      simple(Alt + "d")((b, c, m) => cutWordRight(b, c)),
+      simple(Ctrl('w'))((b, c, m) => cutWordLeft(b, c)),
+      simple(Alt + "\u007f")((b, c, m) => cutWordLeft(b, c)),
       // weird hacks to make it run code every time without having to be the one
       // handling the input; ideally we'd change Filter to be something
       // other than a PartialFunction, but for now this will do.
 
       // If some command goes through that's not appending/prepending to the
       // kill ring, stop appending and allow the next kill to override it
-      Filter.wrap("ReadLineFilterWrap") {_ => accumulating = false; None},
-      Case(Ctrl('h'))((b, c, m) => cutCharLeft(b, c)),
-      Case(Ctrl('y'))((b, c, m) => paste(b, c))
+      Filter.wrap(identifier) { _ => accumulating = false; None },
+      simple(Ctrl('h'))((b, c, m) => cutCharLeft(b, c)),
+      simple(Ctrl('y'))((b, c, m) => paste(b, c))
     )
   }
+
 }

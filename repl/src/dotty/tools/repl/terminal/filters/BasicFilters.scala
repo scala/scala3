@@ -9,6 +9,8 @@ import terminal.SpecialKeys._
 import terminal.Filter
 import terminal._
 
+import terminal.Filter._
+
 /**
  * Filters for simple operation of a terminal: cursor-navigation
  * (including with all the modifier keys), enter/ctrl-c-exit, etc.
@@ -29,10 +31,10 @@ object BasicFilters {
   }
 
   def navFilter = Filter.merge(
-    Case(Up)((b, c, m) => moveUp(b, c, m.width)),
-    Case(Down)((b, c, m) => moveDown(b, c, m.width)),
-    Case(Right)((b, c, m) => (b, c + 1)),
-    Case(Left)((b, c, m) => (b, c - 1))
+    simple(Up)((b, c, m) => moveUp(b, c, m.width)),
+    simple(Down)((b, c, m) => moveDown(b, c, m.width)),
+    simple(Right)((b, c, m) => (b, c + 1)),
+    simple(Left)((b, c, m) => (b, c - 1))
   )
 
   def tabColumn(indent: Int, b: Vector[Char], c: Int, rest: LazyList[Int]) = {
@@ -43,11 +45,11 @@ object BasicFilters {
     TS(rest, lhs ++ Vector.fill(spacesToInject)(' ') ++ rhs, c + spacesToInject)
   }
 
-  def tabFilter(indent: Int): Filter = Filter("tabFilter") {
+  def tabFilter(indent: Int): Filter = Filter.partial("tabFilter") {
     case TS(9 ~: rest, b, c, _) => tabColumn(indent, b, c, rest)
   }
 
-  def loggingFilter: Filter = Filter("loggingFilter") {
+  def loggingFilter: Filter = Filter.partial("loggingFilter") {
     case TS(Ctrl('q') ~: rest, b, c, _) =>
       println("Char Display Mode Enabled! Ctrl-C to exit")
       var curr = rest
@@ -58,7 +60,7 @@ object BasicFilters {
       TS(curr, b, c)
   }
 
-  def typingFilter: Filter = Filter("typingFilter") {
+  def typingFilter: Filter = Filter.partial("typingFilter") {
     case TS(p"\u001b[3~$rest", b, c, _) =>
 //      Debug("fn-delete")
       val (first, last) = b.splitAt(c)
@@ -80,14 +82,14 @@ object BasicFilters {
     else injectNewLine(b, c, rest)
   }
 
-  def enterFilter: Filter = Filter("enterFilter") {
+  def enterFilter: Filter = Filter.partial("enterFilter") {
     case TS(13 ~: rest, b, c, _) => doEnter(b, c, rest) // Enter
     case TS(10 ~: rest, b, c, _) => doEnter(b, c, rest) // Enter
     case TS(10 ~: 13 ~: rest, b, c, _) => doEnter(b, c, rest) // Enter
     case TS(13 ~: 10 ~: rest, b, c, _) => doEnter(b, c, rest) // Enter
   }
 
-  def exitFilter: Filter = Filter("exitFilter") {
+  def exitFilter: Filter = Filter.partial("exitFilter") {
     case TS(Ctrl('c') ~: rest, b, c, _) =>
       Result("")
     case TS(Ctrl('d') ~: rest, b, c, _) =>
@@ -100,7 +102,7 @@ object BasicFilters {
     case TS(-1 ~: rest, b, c, _) => Exit   // java.io.Reader.read() produces -1 on EOF
   }
 
-  def clearFilter: Filter = Filter("clearFilter") {
+  def clearFilter: Filter = Filter.partial("clearFilter") {
     case TS(Ctrl('l') ~: rest, b, c, _) => ClearScreen(TS(rest, b, c))
   }
 

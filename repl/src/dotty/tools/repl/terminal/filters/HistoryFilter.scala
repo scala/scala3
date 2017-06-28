@@ -16,10 +16,8 @@ class HistoryFilter(
   history: () => IndexedSeq[String],
   commentStartColor: String,
   commentEndColor: String
-) extends DelegateFilter {
+) extends DelegateFilter("HistoryFilter") {
 
-
-  def identifier = "HistoryFilter"
   /**
     * `-1` means we haven't started looking at history, `n >= 0` means we're
     * currently at history command `n`
@@ -163,14 +161,14 @@ class HistoryFilter(
     }
   }
 
-  def prelude: Filter = Filter("historyPrelude") {
+  def prelude: Filter = Filter.partial("historyPrelude") {
     case TS(inputs, b, c, _) if activeHistory && prevBuffer.exists(_ != b) =>
       endHistory()
       prevBuffer = None
       TS(inputs, b, c)
   }
 
-  def filter0: Filter = Filter("filter0") {
+  def filter0: Filter = Filter.partial("filter0") {
     // Ways to kick off the history/search if you're not already in it
 
     // `Ctrl-R`

@@ -20,7 +20,7 @@ private[repl] class AmmoniteReader(history: History)(implicit ctx: Context) {
 
   private[this] val cutPasteFilter  = ReadlineFilters.CutPasteFilter()
   private[this] val selectionFilter = GUILikeFilters.SelectionFilter(indent = 2)
-  private[this] val multilineFilter = Filter("multilineFilter") {
+  private[this] val multilineFilter = Filter.partial("multilineFilter") {
     case TermState(lb ~: rest, b, c, d) if (lb == 10 || lb == 13) =>
       val source = b.mkString
 

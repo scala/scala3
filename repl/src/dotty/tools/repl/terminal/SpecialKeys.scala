@@ -31,12 +31,16 @@ object SpecialKeys {
   val Home  = Alt+"OH"
   val End   = Alt+"OF"
 
+  val Tab = 9.toChar.toString
+
   // For some reason Screen makes these print different incantations
   // from a normal snippet, so this causes issues like
   // https://github.com/lihaoyi/Ammonite/issues/152 unless we special
   // case them
   val HomeScreen     = Alt+"[1~"
   val EndScreen      = Alt+"[4~"
+  val HomeLinuxXterm = Alt+"[7~"
+  val EndRxvt        = Alt+"[8~"
 
   val ShiftUp        = Alt+"[1;2A"
   val ShiftDown      = Alt+"[1;2B"

@@ -21,8 +21,7 @@ import scala.collection.mutable
   *
   * @param maxUndo: the maximum number of undo-frames that are stored.
   */
-case class UndoFilter(maxUndo: Int = 25) extends DelegateFilter {
-  def identifier = "UndoFilter"
+case class UndoFilter(maxUndo: Int = 25) extends DelegateFilter("UndoFilter") {
   /**
     * The current stack of states that undo/redo would cycle through.
     *
@@ -130,7 +129,7 @@ case class UndoFilter(maxUndo: Int = 25) extends DelegateFilter {
         pushUndos(b, c)
         None
     },
-    Filter("undoFilter") {
+    Filter.partial("undoFilter") {
       case TS(31 ~: rest, b, c, _) => wrap(undo(b, c), rest)
       case TS(27 ~: 114 ~: rest, b, c, _) => wrap(undo(b, c), rest)
       case TS(27 ~: 45 ~: rest, b, c, _) => wrap(redo(b, c), rest)
