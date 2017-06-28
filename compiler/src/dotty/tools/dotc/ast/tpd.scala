@@ -777,7 +777,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       else Erasure.Boxing.adaptToType(tree, tp)
 
     /** `tree ne null` (might need a cast to be type correct) */
-     def testNotNull(implicit ctx: Context): Tree =
+    def testNotNull(implicit ctx: Context): Tree =
       tree.ensureConforms(defn.ObjectType)
         .select(defn.Object_ne).appliedTo(Literal(Constant(null)))
 

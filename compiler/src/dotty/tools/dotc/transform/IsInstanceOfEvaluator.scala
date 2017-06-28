@@ -90,15 +90,15 @@ class IsInstanceOfEvaluator extends MiniPhaseTransform { thisTransformer =>
      *  If `to` is set to true and the qualifier is not a primitive, the
      *  instanceOf is replaced by a null check, since:
      *
-     *  `scrutinee.isInstanceOf[Selector]` if `scrutinee eq null`
+     *  `scutinee == null` implies `!scrutinee.isInstanceOf[Selector]`
      */
     def rewrite(qualifier: Tree, to: Boolean): Tree =
-      if (!to || !qualifier.tpe.widen.derivesFrom(defn.AnyRefAlias)) {
+      if (to && !qualifier.tpe.isNotNull) qualifier.testNotNull
+      else {
         val literal = Literal(Constant(to))
         if (!isPureExpr(qualifier)) Block(List(qualifier), literal)
         else literal
-      } else
-        Apply(qualifier.select(defn.Object_ne), List(Literal(Constant(null))))
+      }
 
     /** Attempts to rewrite type test to either `scrutinee ne null` or a
      *  constant. Any_typeTest nodes have been rewritten to Any_isInstanceOf at this point.
