@@ -256,7 +256,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
           val evalue = t.symbol.name.mangledString // value the actual enumeration value.
           av.visitEnum(name, edesc, evalue)
         } else {
-          assert(toDenot(t.symbol).name.is(DefaultGetterName), toDenot(t.symbol).name.debugString) // this should be default getter. do not emmit.
+          // This is a default getter. do not emmit.
         }
       case t: SeqLiteral =>
         val arrAnnotV: AnnotationVisitor = av.visitArray(name)
