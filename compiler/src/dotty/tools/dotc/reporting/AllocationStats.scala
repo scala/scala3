@@ -90,7 +90,7 @@ object AllocationStats {
     }.mkString("\n") + {
       "\n\n\nDenotation length distribution:\n" + denotationsByLength.map {
         x => s"${pad(x._1.toString)} -> ${x._2.size}\n"
-      }
+      }.mkString("\n")
     }
   }
 
