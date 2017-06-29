@@ -55,21 +55,22 @@ trait TypeTestsCasts {
            */
           def isCheckable =
             foundCls.isClass && testCls.isClass &&
-            foundCls.isPrimitiveValueClass == testCls.isPrimitiveValueClass &&
-               // if `found` is primitive but `test` is not, it's illegal anyway
+            !(testCls.isPrimitiveValueClass && !foundCls.isPrimitiveValueClass) &&
                // if `test` is primitive but `found` is not, we might have a case like
                // found = java.lang.Integer, test = Int, which could be true
                // (not sure why that is so, but scalac behaves the same way)
-            !isDerivedValueClass(foundCls) && !isDerivedValueClass(testCls) &&
+            !isDerivedValueClass(foundCls) && !isDerivedValueClass(testCls)
                // we don't have the logic to handle derived value classes
-            foundCls != defn.ObjectClass
-               // if `foundCls == Object`, it could have been `Any` before erasure.
 
           /** Check whether a runtime test that a value of `foundCls` can be a `testCls`
            *  can be true in some cases. Issure a warning or an error if that's not the case.
            */
           def checkSensical: Boolean =
             if (!isCheckable) true
+            else if (foundCls.isPrimitiveValueClass && !testCls.isPrimitiveValueClass) {
+                ctx.error("cannot test if value types are references", tree.pos)
+                false
+              }
             else if (!foundCls.derivesFrom(testCls)) {
               if (foundCls.is(Final)) {
                 unreachable(i"$foundCls is not a subclass of $testCls")
