@@ -55,7 +55,7 @@ trait TypeTestsCasts {
             val testCls = testType.typeSymbol
             !foundCls.isClass ||
             !testCls.isClass ||
-            testCls.isPrimitiveValueClass ||
+            foundCls.isPrimitiveValueClass != testCls.isPrimitiveValueClass ||
             ValueClasses.isDerivedValueClass(foundCls) ||
             ValueClasses.isDerivedValueClass(testCls) ||
             foundCls == defn.ObjectClass ||
@@ -72,7 +72,6 @@ trait TypeTestsCasts {
               else true
             }
           }
-          println(i"test ii $tree ${expr.tpe} $testType")
 
           if (expr.tpe <:< testType)
             if (expr.tpe.isNotNull) {
