@@ -7,6 +7,7 @@ import java.util.concurrent.atomic.{AtomicInteger, AtomicReferenceArray}
 
 import dotty.tools.dotc.core.Denotations.{Denotation, MultiDenotation, SingleDenotation}
 import dotty.tools.dotc.core.Periods
+import dotty.tools.dotc.core.Periods.Period
 import dotty.tools.dotc.typer.FrontEnd
 import dotty.tools.sharable
 
@@ -18,11 +19,11 @@ import scala.collection.concurrent.TrieMap
  * @author Dmitry Petrahsko
  */
 object AllocationStats {
-  final val collect = false
+  final val collect = true
 
   @sharable private val counts = collection.concurrent.TrieMap[(Class[_], Class[_]), Int]()
   @sharable private val lastPhase = new ThreadLocal[Class[_]]()
-  private val denotations = new TrieMap[SingleDenotation, SingleDenotation]()
+  @sharable private val denotations = new TrieMap[SingleDenotation, SingleDenotation]()
 
   def fixPhase(x: Class[_]): Class[_] = {
     if (x eq null) {
