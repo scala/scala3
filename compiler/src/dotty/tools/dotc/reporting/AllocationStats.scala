@@ -31,14 +31,16 @@ object AllocationStats {
   }
 
   def registerAllocation[T](obj: T)(implicit ctx: Context): T  = {
+    // this method should be kept very small
     if (collect)
-      registerAllocation(fixPhase(if (ctx eq null) null else ctx.phase.getClass), obj)
+      registerAllocation(ctx, obj)
 
     obj
   }
 
 
-  private def registerAllocation[T](p: Class[_], obj: T): T = {
+  private def registerAllocation[T](ctx: Context, obj: T): T = {
+    val p: Class[_] = fixPhase(if (ctx eq null) null else ctx.phase.getClass)
     //markReported(obj)
     val key = (if (p eq null) null else p, obj.getClass)
 

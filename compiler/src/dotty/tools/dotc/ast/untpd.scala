@@ -501,7 +501,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
     r
   }
   def Annotated(arg: Tree, annot: Tree)(implicit ctx: Context): Annotated = {
-    val r = new Annotated(arg, annot)
+    val r = Annotated(arg, annot)
     if (AllocationStats.collect)
       AllocationStats.registerAllocation(r)
     r
