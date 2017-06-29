@@ -69,13 +69,23 @@ object AllocationStats {
     counts.clear()
   }
 
-  def report(): String = {
+  def report()(implicit ctx: Context): String = {
     val data = counts.readOnlySnapshot()
     clear()
     val longestNameLength = data.keys.map(x => x._2.getName.length).max
     val total = data.groupBy( x => x._1._2).map(x => (x._1, x._2.values.sum)).toSeq.sortBy(-_._2)
     val byPhase = data.groupBy(x => x._1._1).map(x => (x._1, x._2.map(x => (x._1._2, x._2)))).toSeq.sortBy(x => -x._2.map(_._2).sum)
-    val denotationsByLength = denotations.keySet.map(_.initial).filter(x => x.validFor != Periods.Nowhere).toSeq.groupBy(x => x.history.length).toSeq.sortBy(x => -x._1)
+    val denotStarts = denotations.keySet.map(_.initial).filter(x => x.validFor != Periods.Nowhere).toSeq
+    val denotationsByLength = denotStarts.groupBy(x => x.history.length).toSeq.sortBy(x => -x._1)
+
+    def creatorPhase(p: Period): Phase = {
+      val x = ctx.withPhase(p.firstPhaseId).phase
+      if (x.isTyper) x
+      else x.prev // all phases by typer create period.next and run at it
+    }
+    val newDenotationsPerPhase =
+      denotStarts.flatMap(x => x.history).groupBy(x => creatorPhase(x.validFor).phaseName)
+        .toSeq.sortBy(x => -x._2.length)
 
     def pad(o: AnyRef) =
       o.toString.padTo(longestNameLength, " ").mkString
@@ -89,7 +99,11 @@ object AllocationStats {
       phaseName ++ subtrees
     }.mkString("\n") + {
       "\n\n\nDenotation length distribution:\n" + denotationsByLength.map {
-        x => s"${pad(x._1.toString)} -> ${x._2.size}\n"
+        x => s"${pad(x._1.toString)} -> ${x._2.size}"
+      }.mkString("\n")
+    } + {
+      "\n\n\nNew denotations retained per phase:\n" + newDenotationsPerPhase.map{
+        x => s"${pad(x._1)} -> ${x._2.size}"
       }.mkString("\n")
     }
   }
