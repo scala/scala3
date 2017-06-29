@@ -6,6 +6,7 @@ import java.lang.ref.WeakReference
 import java.util.concurrent.atomic.{AtomicInteger, AtomicReferenceArray}
 
 import dotty.tools.dotc.core.Denotations.{Denotation, MultiDenotation, SingleDenotation}
+import dotty.tools.dotc.core.Periods
 import dotty.tools.dotc.typer.FrontEnd
 import dotty.tools.sharable
 
@@ -72,9 +73,9 @@ object AllocationStats {
     val data = counts.readOnlySnapshot()
     clear()
     val longestNameLength = data.keys.map(x => x._2.getName.length).max
-    val total = data.groupBy( x => x._1._2).map(x => (x._1, x._2.map(_._2).sum)).toSeq.sortBy(-_._2)
+    val total = data.groupBy( x => x._1._2).map(x => (x._1, x._2.values.sum)).toSeq.sortBy(-_._2)
     val byPhase = data.groupBy(x => x._1._1).map(x => (x._1, x._2.map(x => (x._1._2, x._2)))).toSeq.sortBy(x => -x._2.map(_._2).sum)
-    val denotationsByLength = denotations.keysIterator.map(_.initial).toSeq.distinct.groupBy(x => x.history.length).toSeq.sortBy(x => -x._1)
+    val denotationsByLength = denotations.keySet.map(_.initial).filter(x => x.validFor != Periods.Nowhere).toSeq.groupBy(x => x.history.length).toSeq.sortBy(x => -x._1)
 
     def pad(o: AnyRef) =
       o.toString.padTo(longestNameLength, " ").mkString
