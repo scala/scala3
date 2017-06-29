@@ -166,3 +166,70 @@ object LazyList {
     }
   }
 }
+
+/**
+ * Created by haoyi on 8/29/15.
+ */
+object FrontEndUtils {
+  import Ansi.Str._
+
+  private[this] val newLine = System.lineSeparator()
+
+  def transpose[A](xs: List[List[A]]): List[List[A]] = {
+    @tailrec def transpose(xs: List[List[A]], result: List[List[A]]): List[List[A]] = {
+      xs.filter(_.nonEmpty) match {
+        case Nil =>  result
+        case ys: List[List[A]] => transpose(ys.map(_.tail), ys.map(_.head) :: result)
+      }
+    }
+
+    transpose(xs, Nil).reverse
+  }
+
+  def width = TTY.consoleDim("cols")
+  def height = TTY.consoleDim("lines")
+  def tabulate(snippetsRaw: Seq[Ansi.Str], width: Int): Iterator[String] = {
+    val gap = 2
+    val snippets = if (snippetsRaw.isEmpty) Seq(Ansi.Str.parse("")) else snippetsRaw
+    val maxLength = snippets.maxBy(_.length).length + gap
+    val columns = math.max(1, width / maxLength)
+
+    val grouped =
+      snippets.toList
+              .grouped(math.ceil(snippets.length * 1.0 / columns).toInt)
+              .toList
+
+    transpose(grouped).iterator.flatMap {
+      case first :+ last => first.map(
+        x => x ++ " " * (width / columns - x.length)
+      ) :+ last :+ Ansi.Str.parse(newLine)
+    }
+    .map(_.render)
+  }
+
+  @tailrec def findPrefix(strings: Seq[String], i: Int = 0): String = {
+    if (strings.count(_.length > i) == 0) strings(0).take(i)
+    else if(strings.collect{ case x if x.length > i => x(i)}.distinct.length > 1)
+      strings(0).take(i)
+    else findPrefix(strings, i + 1)
+  }
+
+  def printCompletions(completions: Seq[String],
+                       details: Seq[String]): List[String] = {
+
+    val prelude: List[String] =
+      if (details.length != 0 || completions.length != 0) List(newLine)
+      else Nil
+
+    val detailsText =
+      if (details.length == 0) Nil
+      else FrontEndUtils.tabulate(details.map(Ansi.Str.parse(_)), FrontEndUtils.width)
+
+    val completionText =
+      if (completions.length == 0) Nil
+      else FrontEndUtils.tabulate(completions.map(Ansi.Str.parse(_)), FrontEndUtils.width)
+
+    (prelude ++ detailsText ++ completionText)
+  }
+
+}

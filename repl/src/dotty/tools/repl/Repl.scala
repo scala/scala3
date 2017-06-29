@@ -11,8 +11,10 @@ import dotc.reporting.MessageRendering
 import dotc.reporting.diagnostic.MessageContainer
 import dotc.ast.untpd
 import dotc.ast.tpd
+import dotc.interactive.{ SourceTree, Interactive }
 import dotc.core.Contexts.Context
 import dotc.core.Flags._
+import dotc.core.Symbols.Symbol
 import dotc.core.Denotations.Denotation
 import dotc.core.NameKinds.SimpleNameKind
 import dotc.core.Types.{ ExprType, ConstantType }
@@ -80,14 +82,33 @@ class Repl(
 
   resetToInitial()
 
-  private def readLine(history: History) =
-    AmmoniteReader(history)(myCtx).prompt()
+  private[this] def completions(cursor: Int, snippet: String, state: State): (Int, Seq[String], Seq[String]) = {
+    def onSuccess(syms: List[Symbol])(implicit ctx: Context) = {
+      val (inCompanion, inInstance) = syms.partition(_.owner.is(Module))
+      (cursor, inInstance.map(_.name.show), inCompanion.map(_.name.show))
+    }
+
+    val expr = if (snippet.nonEmpty && snippet.last == '.') snippet.init else snippet
+
+    compiler.typeCheck(expr, state).map { (tree, ctx) =>
+      val ntree = tree.asInstanceOf[tpd.NameTree]
+      val srcFile = new dotc.util.SourceFile("compl", snippet)
+      val src = SourceTree(ntree, srcFile)
+      val pos = dotc.util.Positions.Position(cursor)
+      val srcPos = dotc.util.SourcePosition(srcFile, pos)
+      (Interactive.completions(src :: Nil, srcPos)(ctx), ctx)
+    }
+    .fold(_ => (cursor, Nil, Nil), onSuccess(_)(_))
+  }
+
+  private def readLine(state: State) =
+    AmmoniteReader(state.history, completions(_, _, state))(myCtx).prompt()
 
   def extractImports(trees: List[untpd.Tree])(implicit context: Context): List[(untpd.Import, String)] =
     trees.collect { case imp: untpd.Import => (imp, imp.show) }
 
   @tailrec final def run(state: State = State(0, 0, Nil, Nil)): Unit =
-    readLine(state.history) match {
+    readLine(state) match {
       case (parsed: Parsed, history) =>
         val newState = compile(parsed, state)
         run(newState.withHistory(history))
