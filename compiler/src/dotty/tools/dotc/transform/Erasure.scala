@@ -172,7 +172,8 @@ object Erasure extends TypeTestsCasts{
     }
 
     def constant(tree: Tree, const: Tree)(implicit ctx: Context) =
-      if (isPureExpr(tree)) const else Block(tree :: Nil, const)
+      (if (isPureExpr(tree)) const else Block(tree :: Nil, const))
+        .withPos(tree.pos)
 
     final def box(tree: Tree, target: => String = "")(implicit ctx: Context): Tree = ctx.traceIndented(i"boxing ${tree.showSummary}: ${tree.tpe} into $target") {
       tree.tpe.widen match {
