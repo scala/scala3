@@ -1648,18 +1648,23 @@ object messages {
     val explanation = "Method inlining prohibits calling superclass methods, as it may lead to confusion about which super is being called."
   }
 
-  case class ModifiersNotAllowed(flags: FlagSet, sort: String)(implicit ctx: Context)
+  case class ModifiersNotAllowed(flags: FlagSet, printableType: Option[String])(implicit ctx: Context)
     extends Message(ModifiersNotAllowedID) {
     val kind = "Syntax"
-    val msg = s"modifier(s) `$flags' not allowed for $sort"
+    val msg = s"modifier(s) `$flags' not allowed for ${printableType.getOrElse("combination")}"
     val explanation = {
-      val code = "sealed def y: Int = 1"
+      val first = "sealed def y: Int = 1"
+      val second = "sealed lazy class z"
       hl"""You tried to use a modifier that is inapplicable for the type of item under modification
          |
+         |  Please see the official Scala Language Specification section on modifiers:
+         |  https://www.scala-lang.org/files/archive/spec/2.11/05-classes-and-objects.html#modifiers
          |
          |Consider the following example:
-         |$code
+         |$first
          |In this instance, the modifier 'sealed' is not applicable to the item type 'def' (method)
+         |$second
+         |In this instance, the modifier combination is not supported
         """
     }
   }

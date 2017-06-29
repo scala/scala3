@@ -1680,18 +1680,13 @@ object Parsers {
     )
 
     def addFlag(mods: Modifiers, flag: FlagSet): Modifiers = {
-      def incompatible(kind: String) = {
-        syntaxError(ModifiersNotAllowed(mods.flags, kind))
-        Modifiers(flag)
-      }
+      def getPrintableTypeFromFlagSet =
+        Map(Trait -> "trait", Method -> "method", Mutable -> "variable").get(flag)
+
       if (compatible(mods.flags, flag)) mods | flag
-      else flag match {
-        case Trait => incompatible("trait")
-        case Method => incompatible("method")
-        case Mutable => incompatible("variable")
-        case _ =>
-          syntaxError(s"illegal modifier combination: ${mods.flags} and $flag")
-          mods
+      else {
+        syntaxError(ModifiersNotAllowed(mods.flags, getPrintableTypeFromFlagSet))
+        Modifiers(flag)
       }
     }
 
