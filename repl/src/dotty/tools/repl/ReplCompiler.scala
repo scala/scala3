@@ -153,26 +153,13 @@ class ReplCompiler(ictx: Context) extends Compiler {
       }
   }
 
-  def typeOf(expr: String, state: State): Result[String] = {
-
-    def extractTpe(tree: tpd.Tree, sourceFile: SourceFile)(implicit ctx: Context): Result[String] = {
-      def error: Result[String] =
-        List(new messages.Error(s"Invalid scala expression",
-          sourceFile.atPos(Position(0, sourceFile.content.length)))).errors
-
-      import tpd._
-      tree match {
-        case PackageDef(_, List(TypeDef(_,tmpl: Template))) =>
-          tmpl.body
-            .collect { case vd: ValDef => vd }
-            .find(_.name.show == "expr")
-            .map(_.symbol.info.show.result)
-            .getOrElse(error)
-
-        case _ =>
-          error
-      }
+  def typeOf(expr: String, state: State): Result[String] =
+    typeCheck(expr, state).map { (tree, ictx) =>
+      implicit val ctx = ictx
+      tree.symbol.info.show
     }
+
+  def typeCheck(expr: String, state: State): Result[(tpd.Tree, Context)] = {
 
     def wrapped(expr: String, sourceFile: SourceFile, state: State)(implicit ctx: Context): Result[untpd.PackageDef] = {
       def wrap(trees: Seq[untpd.Tree]): untpd.PackageDef = {
@@ -205,6 +192,23 @@ class ReplCompiler(ictx: Context) extends Compiler {
       }
     }
 
+    def unwrapped(tree: tpd.Tree, sourceFile: SourceFile)(implicit ctx: Context): Result[tpd.Tree] = {
+      def error: Result[tpd.Tree] =
+        List(new messages.Error(s"Invalid scala expression",
+          sourceFile.atPos(Position(0, sourceFile.content.length)))).errors
+
+      import tpd._
+      tree match {
+        case PackageDef(_, List(TypeDef(_,tmpl: Template))) =>
+          tmpl.body
+              .collectFirst { case dd: DefDef if dd.name.show == "expr" => dd.rhs.result }
+              .getOrElse(error)
+        case _ =>
+          error
+      }
+    }
+
+
     implicit val ctx: Context =
       addMagicImports(state)(rootContext(ictx))
       .fresh.setSetting(ictx.settings.YstopAfter, List("frontEnd"))
@@ -217,7 +221,10 @@ class ReplCompiler(ictx: Context) extends Compiler {
       unit.untpdTree = pkg
       val run  = new Run(this)(ctx.fresh.setReporter(reporter))
       run.compileUnits(unit :: Nil)
-      if (!reporter.hasErrors) extractTpe(unit.tpdTree, src)(run.runContext)
+
+      if (!reporter.hasErrors) unwrapped(unit.tpdTree, src).map { tree =>
+        (tree, run.runContext)
+      }
       else reporter.removeBufferedMessages.errors
     }
   }
