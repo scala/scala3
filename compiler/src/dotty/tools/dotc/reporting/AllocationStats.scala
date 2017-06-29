@@ -5,8 +5,11 @@ import dotty.tools.dotc.core.Phases.Phase
 import java.lang.ref.WeakReference
 import java.util.concurrent.atomic.{AtomicInteger, AtomicReferenceArray}
 
+import dotty.tools.dotc.core.Denotations.{Denotation, MultiDenotation, SingleDenotation}
 import dotty.tools.dotc.typer.FrontEnd
 import dotty.tools.sharable
+
+import scala.collection.concurrent.TrieMap
 
 
 /** Collect collection allocation statistics in the entire compiler.
@@ -18,6 +21,7 @@ object AllocationStats {
 
   @sharable private val counts = collection.concurrent.TrieMap[(Class[_], Class[_]), Int]()
   @sharable private val lastPhase = new ThreadLocal[Class[_]]()
+  private val denotations = new TrieMap[SingleDenotation, SingleDenotation]()
 
   def fixPhase(x: Class[_]): Class[_] = {
     if (x eq null) {
@@ -30,7 +34,7 @@ object AllocationStats {
     }
   }
 
-  def registerAllocation[T](obj: T)(implicit ctx: Context): T  = {
+  @inline def registerAllocation[T](obj: T)(implicit ctx: Context): T  = {
     // this method should be kept very small
     if (collect)
       registerAllocation(ctx, obj)
@@ -43,6 +47,12 @@ object AllocationStats {
     val p: Class[_] = fixPhase(if (ctx eq null) null else ctx.phase.getClass)
     //markReported(obj)
     val key = (if (p eq null) null else p, obj.getClass)
+
+    obj match {
+      case t: SingleDenotation =>
+        denotations.put(t, t)
+      case _ =>
+    }
 
     counts.putIfAbsent(key, 0)
     var repeat = true
@@ -64,17 +74,25 @@ object AllocationStats {
     val longestNameLength = data.keys.map(x => x._2.getName.length).max
     val total = data.groupBy( x => x._1._2).map(x => (x._1, x._2.map(_._2).sum)).toSeq.sortBy(-_._2)
     val byPhase = data.groupBy(x => x._1._1).map(x => (x._1, x._2.map(x => (x._1._2, x._2)))).toSeq.sortBy(x => -x._2.map(_._2).sum)
+    val denotationsByLength = denotations.keysIterator.map(_.initial).toSeq.distinct.groupBy(x => x.history.length).toSeq.sortBy(x => -x._1)
 
+    def pad(o: AnyRef) =
+      o.toString.padTo(longestNameLength, " ").mkString
 
     "Total allocations:\n" + total.map{ x =>
-         "   " + x._1.getName.padTo(longestNameLength, " ").mkString + " -> " + x._2
+         "   " + pad(x._1.getName) + " -> " + x._2
     }.mkString("\n") +
       "\n\n\nClass allocations by phase:\n" + byPhase.map { x =>
       val phaseName = x._1.getSimpleName
-      val subtrees = x._2.toSeq.sortBy(-_._2).map(x => s"${x._1.getName.padTo(longestNameLength, " ").mkString} -> ${x._2}").mkString("\n   ", "\n   ","\n")
+      val subtrees = x._2.toSeq.sortBy(-_._2).map(x => s"${pad(x._1.getName)} -> ${x._2}").mkString("\n   ", "\n   ","\n")
       phaseName ++ subtrees
-    }.mkString("\n")
+    }.mkString("\n") + {
+      "\n\n\nDenotation length distribution:\n" + denotationsByLength.map {
+        x => s"${pad(x._1.toString)} -> ${x._2.size}\n"
+      }
+    }
   }
+
 
   /*
   final val historySize = 1024

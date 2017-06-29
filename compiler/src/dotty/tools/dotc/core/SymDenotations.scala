@@ -2,22 +2,40 @@ package dotty.tools
 package dotc
 package core
 
-import Periods._, Contexts._, Symbols._, Denotations._, Names._, NameOps._, Annotations._
-import Types._, Flags._, Decorators._, DenotTransformers._, StdNames._, Scopes._, Comments._
-import NameOps._, NameKinds._, Phases._
+import Periods._
+import Contexts._
+import Symbols._
+import Denotations._
+import Names._
+import NameOps._
+import Annotations._
+import Types._
+import Flags._
+import Decorators._
+import DenotTransformers._
+import StdNames._
+import Scopes._
+import Comments._
+import NameOps._
+import NameKinds._
+import Phases._
 import Scopes.Scope
+
 import collection.mutable
 import collection.BitSet
 import dotty.tools.io.AbstractFile
 import Decorators.SymbolIteratorDecorator
 import ast._
+
 import annotation.tailrec
 import CheckRealizable._
 import util.SimpleMap
 import util.Stats
 import java.util.WeakHashMap
+
 import config.Config
 import config.Printers.{completions, incremental, noPrinter}
+import dotty.tools.dotc.reporting.AllocationStats
 
 trait SymDenotations { this: Context =>
   import SymDenotations._
@@ -34,9 +52,9 @@ trait SymDenotations { this: Context =>
     initPrivateWithin: Symbol = NoSymbol)(implicit ctx: Context): SymDenotation = {
     val result =
       if (symbol.isClass)
-        if (initFlags is Package) new PackageClassDenotation(symbol, owner, name, initFlags, initInfo, initPrivateWithin, ctx.runId)
-        else new ClassDenotation(symbol, owner, name, initFlags, initInfo, initPrivateWithin, ctx.runId)
-      else new SymDenotation(symbol, owner, name, initFlags, initInfo, initPrivateWithin)
+        if (initFlags is Package) AllocationStats.registerAllocation(new PackageClassDenotation(symbol, owner, name, initFlags, initInfo, initPrivateWithin, ctx.runId))
+        else AllocationStats.registerAllocation(new ClassDenotation(symbol, owner, name, initFlags, initInfo, initPrivateWithin, ctx.runId))
+      else AllocationStats.registerAllocation(new SymDenotation(symbol, owner, name, initFlags, initInfo, initPrivateWithin))
     result.validFor = stablePeriod
     result
   }
@@ -1164,7 +1182,7 @@ object SymDenotations {
 
     // ----- copies and transforms  ----------------------------------------
 
-    protected def newLikeThis(s: Symbol, i: Type): SingleDenotation = new UniqueRefDenotation(s, i, validFor)
+    protected def newLikeThis(s: Symbol, i: Type): SingleDenotation = AllocationStats.registerAllocation(new UniqueRefDenotation(s, i, validFor))(null)
 
     /** Copy this denotation, overriding selective fields */
     final def copySymDenotation(
@@ -1845,9 +1863,9 @@ object SymDenotations {
     /** A proxy to this lazy type that keeps the complete operation
      *  but provides fresh slots for scope/sourceModule/moduleClass
      */
-    def proxy: LazyType = new LazyType {
+    def proxy: LazyType = AllocationStats.registerAllocation(new LazyType {
       override def complete(denot: SymDenotation)(implicit ctx: Context) = self.complete(denot)
-    }
+    })(null)
 
     def decls: Scope = myDecls
     def sourceModule(implicit ctx: Context): Symbol = mySourceModuleFn(ctx)
