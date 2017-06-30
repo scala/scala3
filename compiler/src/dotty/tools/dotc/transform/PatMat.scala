@@ -127,7 +127,7 @@ object PatMat {
       override def toString = i"TypeTest($scrutinee: $tpt)"
     }
 
-    class EqualTest(scrut: Symbol, tree: Tree, ons: Node, onf: Node) extends Test(scrut, ons, onf) {
+    class EqualTest(scrut: Symbol, val tree: Tree, ons: Node, onf: Node) extends Test(scrut, ons, onf) {
       def pos = tree.pos
       def condition = applyOverloaded(tree, nme.EQ, scrutinee :: Nil, Nil, defn.BooleanType)
       override def toString = i"EqualTest($tree == $scrutinee)"
@@ -404,6 +404,42 @@ object PatMat {
 
     val emitted = mutable.Set[Int]()
 
+    /** Collect longest list of nodes that represent possible cases of
+     *  a switch, including a last default case, by starting with this
+     *  node on following onSuccess nodes.
+     */
+    def collectSwitchCases(node: Test): List[Node] = {
+      def isSwitchableType(tpe: Type): Boolean =
+        (tpe isRef defn.IntClass) ||
+        (tpe isRef defn.ByteClass) ||
+        (tpe isRef defn.ShortClass) ||
+        (tpe isRef defn.CharClass)
+
+      val scrutinee = node.scrutinee
+
+      def isIntConst(tree: Tree) = tree match {
+        case Literal(const) => const.isIntRange
+        case _ => false
+      }
+
+      def recur(node: Node): List[Node] = node match {
+        case node: EqualTest if node.scrutinee === scrutinee && isIntConst(node.tree) =>
+          node :: recur(node.onFailure)
+        case _ =>
+          node :: Nil
+      }
+
+      recur(node)
+    }
+
+    /** Emit cases of a switch */
+    def emitSwitchCases(cases: List[Node]): List[CaseDef] = cases match {
+      case (test: EqualTest) :: cases1 =>
+        CaseDef(test.tree, EmptyTree, emit(test.onSuccess)) :: emitSwitchCases(cases1)
+      case (default: Node) :: Nil =>
+        CaseDef(Underscore(defn.IntType), EmptyTree, emit(default)) :: Nil
+    }
+
     def emit(node: Node): Tree = {
       if (selfCheck) {
         assert(node.isInstanceOf[CallNode] || !emitted.contains(node.id), node.id)
@@ -411,7 +447,11 @@ object PatMat {
       }
       node match {
         case node: Test =>
-          If(node.condition, emit(node.onSuccess), emit(node.onFailure)).withPos(node.pos)
+          val switchCases = collectSwitchCases(node)
+          if (switchCases.lengthCompare(4) >= 0) // at least 3 cases + default
+            Match(node.scrutinee, emitSwitchCases(switchCases))
+          else
+            If(node.condition, emit(node.onSuccess), emit(node.onFailure)).withPos(node.pos)
         case node @ LetNode(sym, body) =>
           val symDef =
             if (sym.is(Label)) DefDef(sym, emit(labelled(sym)))
