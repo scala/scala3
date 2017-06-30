@@ -3750,7 +3750,7 @@ object Types {
           if (underlying1 eq underlying) tp
           else derivedAnnotatedType(tp, underlying1, mapOver(annot))
 
-        case tp @ WildcardType =>
+        case tp: WildcardType =>
           derivedWildcardType(tp, mapOver(tp.optBounds))
 
         case tp: JavaArrayType =>
