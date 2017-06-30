@@ -1663,4 +1663,23 @@ object messages {
         """
     }
   }
+
+  case class ImplicitFunctionTypeNeedsNonEmptyParameterList()(implicit ctx: Context)
+    extends Message(ImplicitFunctionTypeNeedsNonEmptyParameterListID) {
+    val kind = "Syntax"
+    val msg = "implicit function type needs non-empty parameter list"
+    val explanation = {
+      val code1 = "type Transactional[T] = implicit Transaction => T"
+      val code2 = "val cl: implicit A => B"
+      hl"""It is not allowed to leave implicit function parameter list empty.
+         |Possible ways to define implicit function type:
+         |
+         |$code1
+         |
+         |or
+         |
+         |$code2""".stripMargin
+    }
+  }
+
 }

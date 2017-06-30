@@ -690,7 +690,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
       val isImplicit = tree match {
         case _: untpd.ImplicitFunction =>
           if (args.length == 0) {
-            ctx.error(i"implicit function type needs non-empty parameter list", tree.pos)
+            ctx.error(ImplicitFunctionTypeNeedsNonEmptyParameterList(), tree.pos)
             false
           }
           else true
