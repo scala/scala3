@@ -92,6 +92,7 @@ public enum ErrorMessageID {
     SuperCallsNotAllowedInlineID,
     ModifiersNotAllowedID,
     WildcardOnTypeArgumentNotAllowedOnNewID,
+    ImplicitFunctionTypeNeedsNonEmptyParameterListID,
     ;
 
     public int errorNumber() {
