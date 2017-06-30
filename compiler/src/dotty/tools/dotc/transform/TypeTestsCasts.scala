@@ -133,9 +133,7 @@ object TypeTestsCasts {
          */
         def transformTypeTest(expr: Tree, testType: Type, flagUnrelated: Boolean): Tree = testType.dealias match {
           case _: SingletonType =>
-            val cmpOp =
-              if (testType derivesFrom defn.AnyValClass) defn.Any_equals else defn.Object_eq
-              expr.select(cmpOp).appliedTo(singleton(testType))
+            expr.isInstance(testType).withPos(tree.pos)
           case OrType(tp1, tp2) =>
             evalOnce(expr) { e =>
               transformTypeTest(e, tp1, flagUnrelated = false)

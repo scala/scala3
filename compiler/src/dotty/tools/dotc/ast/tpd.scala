@@ -757,9 +757,20 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     def ensureApplied(implicit ctx: Context): Tree =
       if (tree.tpe.widen.isParameterless) tree else tree.appliedToNone
 
-    /** `tree.isInstanceOf[tp]` */
-    def isInstance(tp: Type)(implicit ctx: Context): Tree =
-      tree.select(defn.Any_isInstanceOf).appliedToType(tp)
+    /** `tree == that` */
+    def equal(that: Tree)(implicit ctx: Context) =
+      applyOverloaded(tree, nme.EQ, that :: Nil, Nil, defn.BooleanType)
+
+    /** `tree.isInstanceOf[tp]`, with special treatment of singleton types */
+    def isInstance(tp: Type)(implicit ctx: Context): Tree = tp match {
+      case tp: SingletonType =>
+        if (tp.widen.derivesFrom(defn.ObjectClass))
+          tree.ensureConforms(defn.ObjectType).select(defn.Object_eq).appliedTo(singleton(tp))
+        else
+          singleton(tp).equal(tree)
+      case _ =>
+        tree.select(defn.Any_isInstanceOf).appliedToType(tp)
+    }
 
     /** tree.asInstanceOf[`tp`] */
     def asInstance(tp: Type)(implicit ctx: Context): Tree = {

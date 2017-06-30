@@ -39,8 +39,6 @@ object PatMat {
       }
     }
 
-    case class BinderInfo(rhs: Tree)
-
     val binding = mutable.Map[Symbol, AnyRef/*Tree | Node*/]()
     val nonNull = mutable.Set[Symbol]()
 
@@ -54,7 +52,6 @@ object PatMat {
       binding(sym).asInstanceOf[Node]
     }
 
-      // assert(owner ne null); assert(owner ne NoSymbol)
     def freshSym(info: Type, pos: Position, owner: Symbol = ctx.owner): TermSymbol =
       ctx.newSymbol(owner, PatMatStdBinderName.fresh(), Synthetic | Case, info, coord = pos)
 
@@ -122,12 +119,7 @@ object PatMat {
 
       def condition = expectedTp.dealias match {
         case expectedTp: SingletonType =>
-          val test =
-            if (expectedTp.widen.derivesFrom(defn.ObjectClass))
-              scrutinee.ensureConforms(defn.ObjectType).select(defn.Object_eq)
-            else
-              scrutinee.select(defn.Any_==)
-          test.appliedTo(singleton(expectedTp))
+          scrutinee.isInstance(expectedTp)
         case _ =>
           val typeTest = scrutinee.select(defn.Any_typeTest).appliedToType(tpt.tpe)
           if (outerTestNeeded) typeTest.and(outerTest) else typeTest
