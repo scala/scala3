@@ -47,7 +47,24 @@ object PatternMatcher {
 
   final val selfCheck = true // debug option, if on we check that no case gets generated twice
 
-  /** The pattern matching translator. */
+  /** The pattern matching translator.
+   *  Its general structure is a pipeline:
+   *
+   *     Match tree ---matchPlan---> Plan ---optimize---> Plan ---emit---> Tree
+   *
+   *  The pipeline consists of three steps:
+   *
+   *    - build a plan, using methods `matchPlan`, `caseDefPlan`, `patternPlan`.
+   *    - optimize the plan, using methods `optimize`, `hoistLabelled`, `referenceCount`.
+   *    - emit the translated tree, using methods `emit`, `collectSwitchCases`,
+   *      `emitSwitchCases`, and `emitCondition`.
+   *
+   *  A plan represents the underlying decision graph. It consists
+   *  of tests, let and label bindings, calls to labels and code blocks.
+   *  It's represented by its own data type. Plans are optimized by
+   *  inlining, hoisting, and dead code elimination. We should also
+   *  do common test elimination but right now this is missing.
+   */
   class Translator(resultType: Type, trans: TreeTransform)(implicit ctx: Context, info: TransformerInfo) {
 
     // ------- Bindings for variables and labels ---------------------
@@ -356,17 +373,17 @@ object PatternMatcher {
      *
      *  The rewrite is useful to group cases that can form a switch together.
      */
-    private def hoistCases(plan: TestPlan): Plan = plan.onFailure match {
+    private def hoistLabelled(plan: TestPlan): Plan = plan.onFailure match {
       case LetPlan(sym, body) if sym.is(Label) =>
         plan.onFailure = body
-        LetPlan(sym, hoistCases(plan))
+        LetPlan(sym, hoistLabelled(plan))
       case _ =>
         plan
     }
 
     /** Inline let-bound trees and labelled blocks that are referenced only once.
      *  Drop all variables and labels that are not referenced anymore after this.
-     *  Also: hoist cases out of tests using `hoistCases`.
+     *  Also: hoist cases out of tests using `hoistLabelled`.
      */
     private def optimize(plan: Plan): Plan = {
       val refCount = referenceCount(plan)
@@ -387,7 +404,7 @@ object PatternMatcher {
           plan.scrutinee = treeMap.transform(plan.scrutinee)
           plan.onSuccess = transform(plan.onSuccess)
           plan.onFailure = transform(plan.onFailure)
-          hoistCases(plan)
+          hoistLabelled(plan)
         case plan @ LetPlan(sym, body) =>
           val body1 = transform(body)
           if (toDrop(sym)) body1
@@ -412,15 +429,8 @@ object PatternMatcher {
 
     // ----- Generating trees from plans ---------------
 
-    /** The position to be used for the tree generated from a plan */
-    private def position(plan: TestPlan) = plan.test match {
-      case TypeTest(tpt) => tpt.pos
-      case EqualTest(tree) => tree.pos
-      case _ => plan.scrutinee.pos
-    }
-
     /** The condition a test plan rewrites to */
-    private def condition(plan: TestPlan): Tree = {
+    private def emitCondition(plan: TestPlan): Tree = {
       val scrutinee = plan.scrutinee
       plan.test match {
         case NonEmptyTest =>
@@ -526,7 +536,7 @@ object PatternMatcher {
           if (switchCases.lengthCompare(4) >= 0) // at least 3 cases + default
             Match(plan.scrutinee, emitSwitchCases(switchCases))
           else
-            If(condition(plan).withPos(position(plan)), emit(plan.onSuccess), emit(plan.onFailure))
+            If(emitCondition(plan).withPos(plan.pos), emit(plan.onSuccess), emit(plan.onFailure))
         case plan @ LetPlan(sym, body) =>
           val symDef =
             if (sym.is(Label)) DefDef(sym, emit(labelled(sym)))
