@@ -663,6 +663,26 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
     case _ =>
       false
   }
+
+  /** Structural tree comparison (since == on trees is reference equality).
+   *  For the moment, only Ident, Select, Literal, Apply and TypeApply are supported
+   */
+  implicit class StructuralEqDeco(t1: Tree) {
+    def === (t2: Tree)(implicit ctx: Context): Boolean = (t1, t2) match {
+      case (t1: Ident, t2: Ident) =>
+        t1.symbol == t2.symbol
+      case (t1 @ Select(q1, _), t2 @ Select(q2, _)) =>
+        t1.symbol == t2.symbol && q1 === q2
+      case (Literal(c1), Literal(c2)) =>
+        c1 == c2
+      case (Apply(f1, as1), Apply(f2, as2)) =>
+        f1 === f2 && as1.corresponds(as2)(_ === _)
+      case (TypeApply(f1, ts1), TypeApply(f2, ts2)) =>
+        f1 === f2 && ts1.tpes.corresponds(ts2.tpes)(_ =:= _)
+      case _ =>
+        false
+    }
+  }
 }
 
 object TreeInfo {
