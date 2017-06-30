@@ -507,7 +507,18 @@ object PatMat {
       patmatch.println(i"Nodes for $tree:${show(raw)}")
       val specialized = specialize(raw)
       patmatch.println(s"Specialized: ${show(specialized)}")
-      emit(specialized)
+      val result = emit(specialized)
+
+      tree.selector match {
+        case Typed(_, tpt) if tpt.tpe.hasAnnotation(defn.SwitchAnnot) =>
+          result match {
+            case _: Match | Block(_, _: Match) =>
+            case _ => ctx.warning("could not emit switch for @switch annotated match", tree.pos)
+          }
+        case _ =>
+      }
+
+      result
     }
   }
 }
