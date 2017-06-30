@@ -76,7 +76,7 @@ object SyntaxHighlighting {
           if (remaining.nonEmpty) takeChar() // drop 1 for appendLiteral
           appendString('"', next == "\"\"\"")
         } else {
-          if (n.isUpper && keywordStart) {
+          if (n.isUpper && (keywordStart || prev == '.')) {
             appendWhile(n, !typeEnders.contains(_), typeDef)
           } else if (keywordStart) {
             append(n, keywords.contains(_), { kw =>
@@ -125,7 +125,8 @@ object SyntaxHighlighting {
               takeChars(2)
               newBuf append tripleQs
               prev = '?'
-            } else if (n.isUpper && keywordStart)
+            }
+            else if (n.isUpper && keywordStart)
               appendWhile(n, !typeEnders.contains(_), typeDef)
             else if (numberStart(n))
               appendWhile(n, { x => x.isDigit || x == '.' || x == '\u0000'}, literal)
@@ -281,6 +282,7 @@ object SyntaxHighlighting {
         case '[' => true
         case ':' => true
         case '@' => true
+        case '.' => true
         case _ => false
       }
 
