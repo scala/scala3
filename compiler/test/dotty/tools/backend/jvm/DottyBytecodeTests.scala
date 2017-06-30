@@ -33,6 +33,7 @@ class TestBCode extends DottyBytecodeTest {
                  |  def foo(i: Int) = i match {
                  |    case 2 => println(2)
                  |    case 1 => println(1)
+                 |    case 0 => println(0)
                  |  }
                  |}""".stripMargin
 
@@ -54,6 +55,7 @@ class TestBCode extends DottyBytecodeTest {
                  |  def foo(i: Int) = (i: @switch) match {
                  |    case 2 => println(2)
                  |    case 1 => println(1)
+                 |    case 0 => println(0)
                  |  }
                  |}""".stripMargin
 
