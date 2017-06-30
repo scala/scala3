@@ -35,4 +35,5 @@ object TermState {
 
 case class ClearScreen(ts: TermState) extends TermAction
 case object Exit extends TermAction
+case object Interrupt extends TermAction
 case class Result(s: String) extends TermAction

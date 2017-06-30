@@ -115,9 +115,12 @@ class Repl(
 
       case (SyntaxErrors(errs), history) =>
         displayErrors(errs)(myCtx)
+        run(state.withHistory(history))
+
+      case (Newline, _) =>
         run(state)
 
-      case (Newline, history) =>
+      case (SigKill, _) =>
         run(state)
 
       case (cmd: Command, history) =>

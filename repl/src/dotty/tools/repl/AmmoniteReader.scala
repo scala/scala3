@@ -98,8 +98,11 @@ private[repl] class AmmoniteReader(history: History,
 
     Terminal
       .readLine(prompt, reader, writer, allFilters, displayTransform)
-      .map { source =>
-        (ParseResult(source), source :: history)
+      .map {
+        case Result(source) =>
+          (ParseResult(source), source :: history)
+        case Interrupt =>
+          (SigKill, history)
       }
       .getOrElse((Quit, history))
   }

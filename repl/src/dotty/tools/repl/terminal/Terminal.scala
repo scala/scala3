@@ -103,7 +103,6 @@ object Terminal {
   type Action    = (Vector[Char], Int) => (Vector[Char], Int)
   type MsgAction = (Vector[Char], Int) => (Vector[Char], Int, String)
 
-
   def noTransform(x: Vector[Char], i: Int) = (Ansi.Str.parse(x), i)
   /**
    * Blockingly reads a line from the given input stream and returns it.
@@ -121,7 +120,7 @@ object Terminal {
                writer: java.io.Writer,
                filters: Filter,
                displayTransform: (Vector[Char], Int) => (Ansi.Str, Int) = noTransform)
-               : Option[String] = {
+               : Option[TermAction] = {
 
     /**
       * Erases the previous line and re-draws it with the new buffer and
@@ -211,7 +210,7 @@ object Terminal {
     }
 
     @tailrec
-    def readChar(lastState: TermState, ups: Int, fullPrompt: Boolean = true): Option[String] = {
+    def readChar(lastState: TermState, ups: Int, fullPrompt: Boolean = true): Option[TermAction] = {
       val moreInputComing = reader.ready()
 
       lazy val (transformedBuffer0, cursorOffset) = displayTransform(
@@ -262,6 +261,15 @@ object Terminal {
       // `.get` because we assume that *some* filter is going to match each
       // character, even if only to dump the character to the screen. If nobody
       // matches the character then we can feel free to blow up
+      def redrawAndNewline() = {
+        redrawLine(
+          transformedBuffer, lastState.buffer.length,
+          oldCursorY + newlineUp, rowLengths, false, newlinePrompt
+        )
+        writer.write(10)
+        writer.write(13)
+        writer.flush()
+      }
       filters.op(TermInfo(lastState, actualWidth)).get match {
         case Printing(TermState(s, b, c, msg), stdout) =>
           writer.write(stdout)
@@ -272,15 +280,14 @@ object Terminal {
           val (nextUps, newState) = updateState(s, b, c, msg)
           readChar(newState, nextUps, false)
 
-        case Result(s) =>
-          redrawLine(
-            transformedBuffer, lastState.buffer.length,
-            oldCursorY + newlineUp, rowLengths, false, newlinePrompt
-          )
-          writer.write(10)
-          writer.write(13)
-          writer.flush()
-          Some(s)
+        case res: Result =>
+          redrawAndNewline()
+          Some(res)
+
+        case Interrupt =>
+          redrawAndNewline()
+          Some(Interrupt)
+
         case ClearScreen(ts) =>
           ansi.clearScreen(2)
           ansi.up(9999)

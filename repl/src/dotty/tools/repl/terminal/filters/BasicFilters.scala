@@ -91,7 +91,7 @@ object BasicFilters {
 
   def exitFilter: Filter = Filter.partial("exitFilter") {
     case TS(Ctrl('c') ~: rest, b, c, _) =>
-      Result("")
+      Interrupt
     case TS(Ctrl('d') ~: rest, b, c, _) =>
       // only exit if the line is empty, otherwise, behave like
       // "delete" (i.e. delete one char to the right)

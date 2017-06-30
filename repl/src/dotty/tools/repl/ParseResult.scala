@@ -14,6 +14,7 @@ sealed trait ParseResult
 case class Parsed(sourceCode: String, trees: List[untpd.Tree]) extends ParseResult
 case class SyntaxErrors(errors: List[MessageContainer]) extends ParseResult
 case object Newline extends ParseResult
+case object SigKill extends ParseResult
 
 sealed trait Command extends ParseResult
 case class UnknownCommand(cmd: String) extends Command
