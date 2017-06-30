@@ -57,7 +57,14 @@ object Rendering {
 
     val tpe = d.info match {
       case ConstantType(c) => c.value.toString
-      case tpe => tpe.show
+      case tpe => {
+        val shown = tpe.show
+        val replPrefix = "<none>.ReplSession$"
+        if (shown.startsWith(replPrefix))
+          shown.drop(replPrefix.length).dropWhile(_ != '.').drop(1)
+        else
+          shown
+      }
     }
 
     val resultValue =
