@@ -178,7 +178,7 @@ object PatternMatcher {
     }
 
     /** Rewrite (repeatedly) `x @ (p: T)` to `(x @ p): T`
-     *  This brings out the type tests to wheere they can be analyzed.
+     *  This brings out the type tests to where they can be analyzed.
      */
     private def swapBind(tree: Tree): Tree = tree match {
       case Bind(name, pat0) =>
@@ -423,7 +423,6 @@ object PatternMatcher {
           if (refCount(label) == 1) transform(labelled(label))
           else plan
       }
-      val LetPlan(sym, body) = plan
       transform(plan)
     }
 
@@ -504,7 +503,8 @@ object PatternMatcher {
       }
 
       def recur(plan: Plan): List[Plan] = plan match {
-        case TestPlan(EqualTest(tree), scrut, _, _, onf) if scrut === scrutinee && isIntConst(tree) =>
+        case TestPlan(EqualTest(tree), scrut, _, _, onf)
+        if scrut === scrutinee && isIntConst(tree) =>
           plan :: recur(onf)
         case _ =>
           plan :: Nil
