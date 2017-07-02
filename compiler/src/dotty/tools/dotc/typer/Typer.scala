@@ -798,7 +798,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
 
       def protoFormal(i: Int): Type =
         if (protoFormals.length == params.length) protoFormals(i)
-        else errorType(i"wrong number of parameters, expected: ${protoFormals.length}", tree.pos)
+        else errorType(WrongNumberOfParameters(protoFormals.length), tree.pos)
 
       /** Is `formal` a product type which is elementwise compatible with `params`? */
       def ptIsCorrectProduct(formal: Type) = {
