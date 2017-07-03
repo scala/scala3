@@ -1872,6 +1872,8 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
    */
   def adaptInterpolated(tree: Tree, pt: Type, original: untpd.Tree)(implicit ctx: Context): Tree = {
 
+    assert(pt.exists)
+
     def methodStr = err.refStr(methPart(tree).tpe)
 
     def missingArgs(mt: MethodType) = {

@@ -1224,12 +1224,12 @@ object messages {
   }
 
   object OverloadedOrRecursiveMethodNeedsResultType {
-    @specialized def apply[T >: Trees.Untyped](tree: NameTree[T])(implicit ctx: Context)
+    def apply[T >: Trees.Untyped](tree: NameTree[T])(implicit ctx: Context)
     : OverloadedOrRecursiveMethodNeedsResultType =
-      OverloadedOrRecursiveMethodNeedsResultType(tree.name.toString)(ctx)
+      OverloadedOrRecursiveMethodNeedsResultType(tree.show)(ctx)
     def apply(symbol: Symbol)(implicit ctx: Context)
     : OverloadedOrRecursiveMethodNeedsResultType =
-      OverloadedOrRecursiveMethodNeedsResultType(symbol.name.toString)(ctx)
+      OverloadedOrRecursiveMethodNeedsResultType(symbol.show)(ctx)
   }
 
   case class RecursiveValueNeedsResultType(tree: Names.TermName)(implicit ctx: Context)

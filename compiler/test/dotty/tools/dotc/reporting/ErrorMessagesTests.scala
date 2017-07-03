@@ -218,20 +218,19 @@ class ErrorMessagesTests extends ErrorMessagesTest {
       assertEquals("foo", treeName)
     }
 
-//The following test is disabled (may be running in an unsupported phase)
-//
-//    checkMessagesAfter("frontend") {
-//      """
-//        |case class Foo[T](x: T)
-//        |object Foo { def apply[T]() = Foo(null.asInstanceOf[T]) }
-//      """.stripMargin
-//    }.expect { (ictx, messages) =>
-//      implicit val ctx: Context = ictx
-//
-//      assertMessageCount(1, messages)
-//      val OverloadedOrRecursiveMethodNeedsResultType(treeName2) :: Nil = messages
-//      assertEquals("Foo", treeName2)
-//    }
+
+    checkMessagesAfter("frontend") {
+      """
+        |case class Foo[T](x: T)
+        |object Foo { def apply[T]() = Foo(null.asInstanceOf[T]) }
+      """.stripMargin
+    }.expect { (ictx, messages) =>
+      implicit val ctx: Context = ictx
+
+      assertMessageCount(1, messages)
+      val OverloadedOrRecursiveMethodNeedsResultType(treeName2) :: Nil = messages
+      assertEquals("Foo", treeName2)
+    }
   }
 
   @Test def recursiveMethodNeedsReturnType =
