@@ -48,7 +48,7 @@ object ProtoTypes {
 
     private def disregardProto(pt: Type)(implicit ctx: Context): Boolean = pt.dealias match {
       case _: OrType => true
-      case pt => pt.isRef(defn.UnitClass)
+      case ptd => ptd.isRef(defn.UnitClass)
     }
 
     /** Check that the result type of the current method
