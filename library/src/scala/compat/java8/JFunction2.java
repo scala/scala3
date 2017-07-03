@@ -5,6 +5,8 @@
 
 package scala.compat.java8;
 
+import scala.MatchError;
+
 @FunctionalInterface
 public interface JFunction2<T1, T2, R> extends scala.Function2<T1, T2, R> {
     default void $init$() {
@@ -12,12 +14,21 @@ public interface JFunction2<T1, T2, R> extends scala.Function2<T1, T2, R> {
 
     @SuppressWarnings("unchecked")
     default scala.Function1<T1, scala.Function1<T2, R>> curried() {
-      return scala.Function2$class.curried(this);
+      return x1 -> x2 -> apply(x1, x2);
     }
 
     @SuppressWarnings("unchecked")
     default scala.Function1<scala.Tuple2<T1, T2>, R> tupled() {
-      return scala.Function2$class.tupled(this);
+        return x0$1 -> {
+            if (x0$1 == null) {
+                throw new MatchError(x0$1);
+            }
+            T1 x1 = x0$1._1();
+            T2 x2 = x0$1._2();
+            R r = this.apply(x1, x2);
+            return r;
+        }
+        ;
     }
 
     @SuppressWarnings("unchecked")

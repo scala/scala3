@@ -35,7 +35,7 @@ object ExposedValues extends AutoPlugin {
 
 object Build {
 
-  val scalacVersion = "2.11.11" // Do not rename, this is grepped in bin/common.
+  val scalacVersion = "2.12.2" // Do not rename, this is grepped in bin/common.
 
   val dottyOrganization = "ch.epfl.lamp"
   val dottyGithubUrl = "https://github.com/lampepfl/dotty"
@@ -215,8 +215,8 @@ object Build {
             configuration = configurationFilter(Configurations.ScalaTool.name),
             artifact = artifactFilter(extension = "jar")
           )
-          (jars.find(_.getName.startsWith("dotty-library_2.11")).get,
-           jars.find(_.getName.startsWith("dotty-compiler_2.11")).get)
+          (jars.find(_.getName.startsWith("dotty-library_2.12")).get,
+           jars.find(_.getName.startsWith("dotty-compiler_2.12")).get)
         } else
           ((packageBin in (`dotty-library`, Compile)).value,
            (packageBin in (`dotty-compiler`, Compile)).value)
@@ -469,7 +469,7 @@ object Build {
 
       // get libraries onboard
       libraryDependencies ++= Seq("com.typesafe.sbt" % "sbt-interface" % sbtVersion.value,
-                                  ("org.scala-lang.modules" %% "scala-xml" % "1.0.1").withDottyCompat(),
+                                  "org.scala-lang.modules" %% "scala-xml" % "1.0.6",
                                   "com.novocode" % "junit-interface" % "0.11" % "test",
                                   "org.scala-lang" % "scala-library" % scalacVersion % "test"),
 

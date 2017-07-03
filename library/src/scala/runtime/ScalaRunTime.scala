@@ -131,15 +131,15 @@ object ScalaRunTime {
   }
 
   def array_clone(xs: AnyRef): AnyRef = xs match {
-    case x: Array[AnyRef]  => ArrayRuntime.cloneArray(x)
-    case x: Array[Int]     => ArrayRuntime.cloneArray(x)
-    case x: Array[Double]  => ArrayRuntime.cloneArray(x)
-    case x: Array[Long]    => ArrayRuntime.cloneArray(x)
-    case x: Array[Float]   => ArrayRuntime.cloneArray(x)
-    case x: Array[Char]    => ArrayRuntime.cloneArray(x)
-    case x: Array[Byte]    => ArrayRuntime.cloneArray(x)
-    case x: Array[Short]   => ArrayRuntime.cloneArray(x)
-    case x: Array[Boolean] => ArrayRuntime.cloneArray(x)
+    case x: Array[AnyRef]  => x.clone()
+    case x: Array[Int]     => x.clone()
+    case x: Array[Double]  => x.clone()
+    case x: Array[Long]    => x.clone()
+    case x: Array[Float]   => x.clone()
+    case x: Array[Char]    => x.clone()
+    case x: Array[Byte]    => x.clone()
+    case x: Array[Short]   => x.clone()
+    case x: Array[Boolean] => x.clone()
     case x: Array[Unit]    => x
     case x: VCArrayPrototype[_] => x.clone()
     case null => throw new NullPointerException
@@ -214,10 +214,8 @@ object ScalaRunTime {
   // Note that these are the implementations called by ##, so they
   // must not call ## themselves.
 
-  def hash(x: Any): Int =
-    if (x == null) 0
-    else if (x.isInstanceOf[java.lang.Number]) BoxesRunTime.hashFromNumber(x.asInstanceOf[java.lang.Number])
-    else x.hashCode
+  @deprecated("Use scala.runtime.Statics.anyHash instead.", "2.12.0")
+  def hash(x: Any): Int = Statics.anyHash(x)
 
   def hash(dv: Double): Int = {
     val iv = dv.toInt
@@ -243,7 +241,6 @@ object ScalaRunTime {
     val high = (lv >>> 32).toInt
     low ^ (high + lowSign)
   }
-  def hash(x: Number): Int  = runtime.BoxesRunTime.hashFromNumber(x)
 
   // The remaining overloads are here for completeness, but the compiler
   // inlines these definitions directly so they're not generally used.

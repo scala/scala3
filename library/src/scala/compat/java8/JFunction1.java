@@ -13,13 +13,12 @@ public interface JFunction1<T1, R> extends scala.Function1<T1, R> {
     @Override
     @SuppressWarnings("unchecked")
     default <A> scala.Function1<T1, A> andThen(scala.Function1<R, A> g) {
-        return scala.Function1$class.andThen(this, g);
+        return x -> g.apply(this.apply(x));
     }
-
     @Override
     @SuppressWarnings("unchecked")
     default <A> scala.Function1<A, R> compose(scala.Function1<A, T1> g) {
-        return scala.Function1$class.compose(this, g);
+        return x -> this.apply(g.apply(x));
     }
     @SuppressWarnings("unchecked")
     default void apply$mcVI$sp(int v1) {

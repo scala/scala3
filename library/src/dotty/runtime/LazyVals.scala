@@ -6,7 +6,19 @@ import scala.annotation.tailrec
  * Helper methods used in thread-safe lazy vals.
  */
 object LazyVals {
-  private val unsafe = scala.concurrent.util.Unsafe.instance
+  private val unsafe: sun.misc.Unsafe =
+      classOf[sun.misc.Unsafe].getDeclaredFields.find { field =>
+        field.getType == classOf[sun.misc.Unsafe] && {
+          field.setAccessible(true)
+          true
+        }
+      }
+      .map(_.get(null).asInstanceOf[sun.misc.Unsafe])
+      .getOrElse {
+        throw new ExceptionInInitializerError {
+          new IllegalStateException("Can't find instance of sun.misc.Unsafe")
+        }
+      }
 
   final val BITS_PER_LAZY_VAL = 2L
   final val LAZY_VAL_MASK = 3L

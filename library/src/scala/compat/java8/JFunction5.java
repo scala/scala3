@@ -5,6 +5,8 @@
 
 package scala.compat.java8;
 
+import scala.MatchError;
+
 @FunctionalInterface
 public interface JFunction5<T1, T2, T3, T4, T5, R> extends scala.Function5<T1, T2, T3, T4, T5, R> {
     default void $init$() {
@@ -12,12 +14,12 @@ public interface JFunction5<T1, T2, T3, T4, T5, R> extends scala.Function5<T1, T
 
     @SuppressWarnings("unchecked")
     default scala.Function1<T1, scala.Function1<T2, scala.Function1<T3, scala.Function1<T4, scala.Function1<T5, R>>>>> curried() {
-      return scala.Function5$class.curried(this);
+        throw new UnsupportedOperationException("todo");
     }
 
     @SuppressWarnings("unchecked")
     default scala.Function1<scala.Tuple5<T1, T2, T3, T4, T5>, R> tupled() {
-      return scala.Function5$class.tupled(this);
+        throw new UnsupportedOperationException("todo");
     }
 
 
