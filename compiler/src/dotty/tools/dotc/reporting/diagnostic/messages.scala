@@ -1226,10 +1226,10 @@ object messages {
   object OverloadedOrRecursiveMethodNeedsResultType {
     def apply[T >: Trees.Untyped](tree: NameTree[T])(implicit ctx: Context)
     : OverloadedOrRecursiveMethodNeedsResultType =
-      OverloadedOrRecursiveMethodNeedsResultType(tree.show)(ctx)
+      OverloadedOrRecursiveMethodNeedsResultType(tree.name.show)(ctx)
     def apply(symbol: Symbol)(implicit ctx: Context)
     : OverloadedOrRecursiveMethodNeedsResultType =
-      OverloadedOrRecursiveMethodNeedsResultType(symbol.show)(ctx)
+      OverloadedOrRecursiveMethodNeedsResultType(symbol.name.show)(ctx)
   }
 
   case class RecursiveValueNeedsResultType(tree: Names.TermName)(implicit ctx: Context)
