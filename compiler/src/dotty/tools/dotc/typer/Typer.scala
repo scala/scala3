@@ -940,8 +940,9 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     def caseRest(pat: Tree)(implicit ctx: Context) = {
       val pat1 = indexPattern.transform(pat)
       val guard1 = typedExpr(tree.guard, defn.BooleanType)
-      val body1 = ensureNoLocalRefs(typedExpr(tree.body, pt), pt, ctx.scope.toList)
-        .ensureConforms(pt)(originalCtx) // insert a cast if body does not conform to expected type if we disregard gadt bounds
+      var body1 = ensureNoLocalRefs(typedExpr(tree.body, pt), pt, ctx.scope.toList)
+      if (pt.isValueType) // insert a cast if body does not conform to expected type if we disregard gadt bounds
+        body1 = body1.ensureConforms(pt)(originalCtx)
       assignType(cpy.CaseDef(tree)(pat1, guard1, body1), body1)
     }
 
@@ -1183,7 +1184,8 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     val pt1 = fullyDefinedType(pt, "pattern variable", tree.pos)
     val body1 = typed(tree.body, pt1)
     body1 match {
-      case UnApply(fn, Nil, arg :: Nil) if fn.symbol.owner == defn.ClassTagClass && !body1.tpe.isError =>
+      case UnApply(fn, Nil, arg :: Nil)
+      if fn.symbol.exists && fn.symbol.owner == defn.ClassTagClass && !body1.tpe.isError =>
         // A typed pattern `x @ (e: T)` with an implicit `ctag: ClassTag[T]`
         // was rewritten to `x @ ctag(e)` by `tryWithClassTag`.
         // Rewrite further to `ctag(x @ e)`
