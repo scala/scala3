@@ -130,7 +130,14 @@ object PatternMatcher {
     sealed abstract class Plan { val id = nxId; nxId += 1 }
 
     case class TestPlan(test: Test, var scrutinee: Tree, pos: Position,
-                        var onSuccess: Plan, var onFailure: Plan) extends Plan
+                        var onSuccess: Plan, var onFailure: Plan) extends Plan {
+      override def equals(that: Any) = that match {
+        case that: TestPlan => this.scrutinee === that.scrutinee && this.test == that.test
+        case _ => false
+      }
+      override def hashCode = scrutinee.hash * 41 + test.hashCode
+    }
+
     case class LetPlan(sym: TermSymbol, var body: Plan) extends Plan
     case class CodePlan(var tree: Tree) extends Plan
     case class CallPlan(label: TermSymbol) extends Plan
@@ -142,8 +149,20 @@ object PatternMatcher {
 
     /** The different kinds of tests */
     sealed abstract class Test
-    case class TypeTest(tpt: Tree) extends Test                   // scrutinee.isInstanceOf[tpt]
-    case class EqualTest(tree: Tree) extends Test                 // scrutinee == tree
+    case class TypeTest(tpt: Tree) extends Test {                 // scrutinee.isInstanceOf[tpt]
+      override def equals(that: Any) = that match {
+        case that: TypeTest => this.tpt.tpe =:= that.tpt.tpe
+        case _ => false
+      }
+      override def hashCode = tpt.tpe.hash
+    }
+    case class EqualTest(tree: Tree) extends Test {               // scrutinee == tree
+      override def equals(that: Any) = that match {
+        case that: EqualTest => this.tree === that.tree
+        case _ => false
+      }
+      override def hashCode = tree.hash
+    }
     case class LengthTest(len: Int, exact: Boolean) extends Test  // scrutinee (== | >=) len
     case object NonEmptyTest extends Test                         // !scrutinee.isEmpty
     case object NonNullTest extends Test                          // scrutinee ne null
@@ -354,7 +373,7 @@ object PatternMatcher {
               case plan: Plan => traverse(plan)
             }
           }
-        case CodePlan(tree) =>
+        case CodePlan(_) =>
           ;
         case CallPlan(label) =>
           count(label) += 1
@@ -363,35 +382,268 @@ object PatternMatcher {
       count
     }
 
-    /** Rewrite (repeatedly)
+    /** Rewrite everywhere
      *
-     *    if cond then let caseN = labelled in ons else onf
+     *     if C then (let L = B in E1) else E2
+     * -->
+     *     let L = B in if C then E1 else E2
      *
-     *  to
+     *     if C then E1 else (let L = B in E2)
+     * -->
+     *     let L = B in if C then E1 else E2
      *
-     *    let caseN = labelled in if cond then ons else onf
-     *
-     *  The rewrite is useful to group cases that can form a switch together.
-     */
-    private def hoistLabelled(plan: TestPlan): Plan = plan.onFailure match {
-      case LetPlan(sym, body) if sym.is(Label) =>
-        plan.onFailure = body
-        LetPlan(sym, hoistLabelled(plan))
+     *     let L1 = (let L2 = B2 in B1) in E
+     * -->
+     *     let L2 = B2 in let L1 = B1 in E
+    */
+    private def hoistLabels(plan: Plan): Plan = plan match {
+      case plan: TestPlan =>
+        plan.onSuccess match {
+          case lp @ LetPlan(sym, body) if sym.is(Label) =>
+            plan.onSuccess = body
+            lp.body = plan
+            hoistLabels(lp)
+          case _ =>
+            plan.onFailure match {
+              case lp @ LetPlan(sym, body) if sym.is(Label) =>
+                plan.onFailure = body
+                lp.body = plan
+                hoistLabels(lp)
+              case _ =>
+                plan.onSuccess = hoistLabels(plan.onSuccess)
+                plan.onFailure = hoistLabels(plan.onFailure)
+                plan
+            }
+        }
+      case plan @ LetPlan(sym, body) =>
+        if (sym.is(Label))
+          labelled(sym) match {
+            case plan1: LetPlan if plan1.sym.is(Label) =>
+              binding(sym) = plan1.body
+              plan1.body = plan
+              hoistLabels(plan1)
+            case _ =>
+              plan.body = hoistLabels(plan.body)
+              plan
+          }
+        else {
+          plan.body = hoistLabels(plan.body)
+          plan
+        }
       case _ =>
         plan
+    }
+
+    /** Eliminate tests that are redundant (known to be true or false).
+     *  Two parts:
+     *
+     *   - If we know at some point that a test is true or false skip it and continue
+     *     diretcly with the test's onSuccess or onFailure continuation.
+     *   - If a label of a call points to a test that is known to be true or false
+     *     at the point of call, let the label point instead to the test's onSuccess
+     *     or onFailure continuation.
+     *
+     *  We use some tricks to identify a let pointing to an unapply and the
+     *  NonEmptyTest that follows it as a single `UnappTest` test.
+     */
+    def elimRedundantTests(plan: Plan): Plan = {
+      type SeenTests = Map[TestPlan, Boolean] // Map from tests to their outcomes
+
+      def isUnapply(sym: Symbol) = sym.name == nme.unapply || sym.name == nme.unapplySeq
+
+      /** A locally used test value that represents combos of
+       *
+       *   let x = X.unapply(...) in if !x.isEmpty then ... else ...
+       */
+      case object UnappTest extends Test
+
+      /** If `plan` is the NonEmptyTest part of an unapply, the corresponding UnappTest
+       *  otherwise the original plan
+       */
+      def normalize(plan: TestPlan): TestPlan = plan.scrutinee match {
+        case id: Ident
+        if plan.test == NonEmptyTest &&
+           isPatmatGenerated(id.symbol) &&
+           isUnapply(rhs(id.symbol).symbol) =>
+          TestPlan(UnappTest, rhs(id.symbol), plan.pos, plan.onSuccess, plan.onFailure)
+        case _ =>
+          plan
+      }
+
+      /** Extractor for Let/NonEmptyTest combos that represent unapplies */
+      object UnappTestPlan {
+        def unapply(plan: Plan): Option[TestPlan] = plan match {
+          case LetPlan(sym, body: TestPlan) if !sym.is(Label) =>
+            val RHS = rhs(sym)
+            normalize(body) match {
+              case normPlan @ TestPlan(UnappTest, RHS, _, _, _) => Some(normPlan)
+              case _ => None
+            }
+          case _ => None
+        }
+      }
+
+      def intersect(tests1: SeenTests, tests2: SeenTests) =
+        tests1.filter { case(test, outcome) => tests2.get(test) == Some(outcome) }
+
+      /** The tests with known outcomes valid at entry to label */
+      val seenAtLabel = mutable.HashMap[Symbol, SeenTests]()
+
+      def recur(plan: Plan, seenTests: SeenTests): Plan = plan match {
+        case plan: TestPlan =>
+          val normPlan = normalize(plan)
+          seenTests.get(normPlan) match {
+            case Some(outcome) =>
+              recur(if (outcome) plan.onSuccess else plan.onFailure, seenTests)
+            case None =>
+              plan.onSuccess = recur(plan.onSuccess, seenTests + (normPlan -> true))
+              plan.onFailure = recur(plan.onFailure, seenTests + (normPlan -> false))
+              plan
+          }
+        case plan: LetPlan =>
+          val sym = plan.sym
+          plan.body = recur(plan.body, seenTests)
+          for (seenTests1 <- seenAtLabel.get(sym))
+            binding(sym) = recur(labelled(sym), seenTests1)
+          plan
+        case plan: CallPlan =>
+          val label = plan.label
+          def redirect(target: Plan): Plan = {
+            def forward(tst: TestPlan) = seenTests.get(tst) match {
+              case Some(true) => redirect(tst.onSuccess)
+              case Some(false) => redirect(tst.onFailure)
+              case none => target
+            }
+            target match {
+              case tst: TestPlan => forward(tst)
+              case UnappTestPlan(tst) => forward(tst)
+              case _ => target
+            }
+          }
+          redirect(labelled(label)) match {
+            case target: CallPlan =>
+              recur(target, seenTests)
+            case _ =>
+              seenAtLabel(label) = seenAtLabel.get(label) match {
+                case Some(seenTests1) => intersect(seenTests1, seenTests)
+                case none => seenTests
+              }
+              plan
+          }
+        case _: CodePlan =>
+          plan
+      }
+      recur(plan, Map())
+    }
+
+    /** Inline labelled blocks that are referenced only once.
+     *  Drop all labels that are not referenced anymore after this.
+     */
+    private def inlineLabelled(plan: Plan) = {
+      val refCount = referenceCount(plan)
+      def toDrop(sym: Symbol) =
+        binding.contains(sym) && sym.is(Label) && refCount(sym) <= 1
+
+      def transform(plan: Plan): Plan = plan match {
+        case plan: TestPlan =>
+          plan.onSuccess = transform(plan.onSuccess)
+          plan.onFailure = transform(plan.onFailure)
+          plan
+        case plan @ LetPlan(sym, body) =>
+          val body1 = transform(body)
+          if (toDrop(sym)) body1
+          else {
+            if (sym is Label)
+              binding(sym) = transform(labelled(sym))
+            plan.body = body1
+            plan
+          }
+        case CallPlan(label) =>
+          if (refCount(label) == 1) transform(labelled(label))
+          else plan
+        case plan: CodePlan =>
+          plan
+      }
+      transform(plan)
+    }
+
+    /** Merge variables that have the same right hand side
+     */
+    private def mergeVars(plan: Plan): Plan = {
+      class RHS(val tree: Tree) {
+        override def equals(that: Any) = that match {
+          case that: RHS => this.tree === that.tree
+          case _ => false
+        }
+        override def hashCode: Int = tree.hash
+      }
+
+      val treeMap = new TreeMap {
+        override def transform(tree: Tree)(implicit ctx: Context) = tree match {
+          case tree: Ident =>
+            val sym = tree.symbol
+            binding.get(sym) match {
+              case Some(id: Ident @unchecked)
+              if isPatmatGenerated(sym) && isPatmatGenerated(id.symbol) =>
+                transform(id)
+              case none => tree
+            }
+          case _ =>
+            super.transform(tree)
+        }
+      }
+
+      def transform(plan: Plan, seenVars: Map[RHS, Symbol]): Plan = plan match {
+        case plan: TestPlan =>
+          plan.scrutinee = treeMap.transform(plan.scrutinee)
+          plan.onSuccess = transform(plan.onSuccess, seenVars)
+          plan.onFailure = transform(plan.onFailure, seenVars)
+          plan
+        case plan @ LetPlan(sym, body) =>
+          if (sym is Label) {
+            binding(sym) = transform(labelled(sym), seenVars)
+            plan.body = transform(body, seenVars)
+          }
+          else {
+            val seenVars1 =
+              if (isPatmatGenerated(sym)) {
+                val thisRhs = new RHS(rhs(sym))
+                seenVars.get(thisRhs) match {
+                  case Some(seen) =>
+                    //println(i"DUPLICATE $sym ${thisRhs.tree}")
+                    binding(sym) = ref(seen)
+                  case none =>
+                    assert(!seenVars.keys.toList.contains(thisRhs), sym)
+                    //println(i"NODUP $sym ${rhs(sym)} in ${seenVars.keys.toList.map(_.tree)}%, %")
+                }
+                seenVars.updated(thisRhs, sym)
+              }
+              else seenVars
+            binding(sym) = treeMap.transform(rhs(sym))
+            plan.body = transform(body, seenVars1)
+          }
+          plan
+        case _ =>
+          plan
+      }
+
+      transform(plan, Map())
     }
 
     /** Inline let-bound trees and labelled blocks that are referenced only once.
      *  Drop all variables and labels that are not referenced anymore after this.
      *  Also: hoist cases out of tests using `hoistLabelled`.
      */
-    private def optimize(plan: Plan): Plan = {
+    private def inlineVars(plan: Plan): Plan = {
       val refCount = referenceCount(plan)
       val LetPlan(topSym, _) = plan
+
       def toDrop(sym: Symbol) =
-        binding.contains(sym) && isPatmatGenerated(sym) && refCount(sym) <= 1 && sym != topSym
+        binding.contains(sym) && isPatmatGenerated(sym) && !sym.is(Label) &&
+        refCount(sym) <= 1 && sym != topSym
+
       val treeMap = new TreeMap {
-        override def transform(tree: Tree)(implicit ctx: Context) = tree match {
+         override def transform(tree: Tree)(implicit ctx: Context) = tree match {
           case tree: Ident =>
             val sym = tree.symbol
             if (toDrop(sym)) transform(rhs(sym)) else tree
@@ -399,12 +651,13 @@ object PatternMatcher {
             super.transform(tree)
         }
       }
+
       def transform(plan: Plan): Plan = plan match {
         case plan: TestPlan =>
           plan.scrutinee = treeMap.transform(plan.scrutinee)
           plan.onSuccess = transform(plan.onSuccess)
           plan.onFailure = transform(plan.onFailure)
-          hoistLabelled(plan)
+          plan
         case plan @ LetPlan(sym, body) =>
           val body1 = transform(body)
           if (toDrop(sym)) body1
@@ -416,12 +669,8 @@ object PatternMatcher {
             plan.body = body1
             plan
           }
-        case plan @ CodePlan(tree) =>
-          plan.tree = treeMap.transform(tree)
+        case _ =>
           plan
-        case CallPlan(label) =>
-          if (refCount(label) == 1) transform(labelled(label))
-          else plan
       }
       transform(plan)
     }
@@ -431,7 +680,7 @@ object PatternMatcher {
     /** The condition a test plan rewrites to */
     private def emitCondition(plan: TestPlan): Tree = {
       val scrutinee = plan.scrutinee
-      plan.test match {
+      (plan.test: @unchecked) match {
         case NonEmptyTest =>
           scrutinee
             .select(nme.isEmpty, _.info.isParameterless)
@@ -565,7 +814,7 @@ object PatternMatcher {
           sb append s"\n${plan.id}: "
           plan match {
             case TestPlan(test, scrutinee, _, ons, onf) =>
-              sb.append(i"${showTest(test)}(${ons.id}, ${onf.id})")
+              sb.append(i"$scrutinee ? ${showTest(test)}(${ons.id}, ${onf.id})")
               showPlan(ons)
               showPlan(onf)
             case LetPlan(sym, body) =>
@@ -608,10 +857,18 @@ object PatternMatcher {
     /** Translate pattern match to sequence of tests. */
     def translateMatch(tree: Match): Tree = {
       val unoptimized = matchPlan(tree)
-      patmatch.println(i"Plan for $tree:${show(unoptimized)}")
-      val optimized = optimize(unoptimized)
-      patmatch.println(s"Optimized: ${show(optimized)}")
-      val result = emit(optimized)
+      patmatch.println(i"Plan for $tree: ${show(unoptimized)}")
+      val hoisted = hoistLabels(unoptimized)
+      patmatch.println(i"Hoisted: ${show(hoisted)}")
+      val reduced = elimRedundantTests(hoisted)
+      patmatch.println(i"Tests eliminated: ${show(reduced)}")
+      val labelsInlined = inlineLabelled(reduced)
+      patmatch.println(s"Labels inlined: ${show(labelsInlined)}")
+      val varsMerged = mergeVars(labelsInlined)
+      patmatch.println(s"Vars merged: ${show(varsMerged)}")
+      val varsInlined = inlineVars(varsMerged)
+      patmatch.println(s"Vars Inlined: ${show(varsInlined)}")
+      val result = emit(varsInlined)
       checkSwitch(tree, result)
       result
     }

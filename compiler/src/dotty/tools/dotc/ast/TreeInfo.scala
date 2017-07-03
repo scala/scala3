@@ -682,6 +682,17 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
       case _ =>
         false
     }
+    def hash(implicit ctx: Context): Int =
+      t1.getClass.hashCode * 37 + {
+        t1 match {
+          case t1: Ident => t1.symbol.hashCode
+          case t1 @ Select(q1, _) => t1.symbol.hashCode * 41 + q1.hash
+          case Literal(c1) => c1.hashCode
+          case Apply(f1, as1) => (f1.hash /: as1)((h, arg) => h * 41 + arg.hash)
+          case TypeApply(f1, ts1) => (f1.hash /: ts1)((h, arg) => h * 41 + arg.tpe.hash)
+          case _ => t1.hashCode
+        }
+      }
   }
 }
 
