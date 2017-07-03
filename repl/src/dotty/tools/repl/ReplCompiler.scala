@@ -54,19 +54,19 @@ class ReplCompiler(ictx: Context) extends Compiler {
   def definitions(trees: Seq[untpd.Tree], state: State)(implicit ctx: Context): Result[Definitions] = {
     import untpd._
 
-    def freeExpression(t: Tree) =
-      t.isTerm && !t.isInstanceOf[Assign]
-
-    val (exps, other) = trees.partition(freeExpression)
+    val (exps, other) = trees.partition(_.isTerm)
     val show = "show".toTermName
     val resX = exps.zipWithIndex.flatMap { (exp, i) =>
       val resName = s"res${i + state.valIndex}".toTermName
       val showName = resName ++ "Show"
       val showApply = Apply(Select(Ident(resName), show), Nil)
-      List(
-        ValDef(resName, TypeTree(), exp).withPos(exp.pos),
-        ValDef(showName, TypeTree(), showApply).withPos(exp.pos).withFlags(Synthetic)
-      )
+
+      (exp match {
+        case Assign(lhs, rhs) =>
+          List(exp, ValDef(resName, TypeTree(), lhs).withPos(exp.pos))
+        case _ =>
+          List(ValDef(resName, TypeTree(), exp).withPos(exp.pos))
+      }) :+ ValDef(showName, TypeTree(), showApply).withPos(exp.pos).withFlags(Synthetic)
     }
 
     val othersWithShow = other.flatMap {

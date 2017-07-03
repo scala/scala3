@@ -107,4 +107,21 @@ class ReplCompilerTests extends ReplTest with MessageRendering {
       stripColor(storedOutput())
     )
   }
+
+  @Test def rebindVariable = {
+    implicit val ctx = myCtx
+    val parsedImport @ Parsed(_,_) = ParseResult("var x = 5")
+    val newState = compile(parsedImport, initState)
+
+    val mutableUse @ Parsed(_,_) = ParseResult("x = 10")
+
+    compile(mutableUse, newState)
+
+    assertEquals(
+      """|var x: Int = 5
+         |val res0: Int = 10
+         |""".stripMargin,
+      stripColor(storedOutput())
+    )
+  }
 }
