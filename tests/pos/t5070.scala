@@ -3,7 +3,7 @@ trait A {
 }
 
 object O {
-  implicit def b(implicit x: A): x.T = error("")
+  implicit def b(implicit x: A): x.T = sys.error("")
 }
 
 class Test {

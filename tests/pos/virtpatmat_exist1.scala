@@ -1,9 +1,9 @@
 import annotation.unchecked.{ uncheckedVariance=> uV }
-import scala.collection.immutable.{ListMap, HashMap, ListSet, HashSet}
+import scala.collection.mutable.{ListMap, HashMap, HashSet}
 
 object Test {
   class HashMapCollision1[A, +B](var hash: Int, var kvs: ListMap[A, B @uV]) extends HashMap[A, B @uV]
-  class HashSetCollision1[A](var hash: Int, var ks: ListSet[A]) extends HashSet[A]
+  class HashSetCollision1[A](var hash: Int, var ks: Set[A]) extends HashSet[A]
 
   def splitArray[T](ad: Array[Iterable[T]]): Any =
     ad(0) match {
