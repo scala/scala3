@@ -5,7 +5,7 @@ object Test {
   def main(args: Array[String]): Unit = {
     test(collection.mutable.ArrayBuffer[String]())
     test(collection.mutable.ListBuffer[String]())
-    class BBuf(z:ListBuffer[String]) extends BufferProxy[String] {
+    class BBuf(z:ListBuffer[String]) extends BufferProxy[String] { // @odersky - bug here in scala 2.12 trait encoding seems like...
       def self = z
     }
     test(new BBuf(collection.mutable.ListBuffer[String]()))
