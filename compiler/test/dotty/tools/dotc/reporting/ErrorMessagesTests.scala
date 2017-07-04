@@ -893,4 +893,21 @@ class ErrorMessagesTests extends ErrorMessagesTest {
         messages.foreach(assertEquals(_, ImplicitFunctionTypeNeedsNonEmptyParameterList()))
       }
 
+  @Test def wrongNumberOfParameters =
+    checkMessagesAfter("refchecks") {
+      """object NumberOfParams {
+        |  def unary[T](x: T => Unit) = ()
+        |  unary((x, y) => ())
+        |} """.stripMargin
+    }
+      .expect { (ictx, messages) =>
+        implicit val ctx: Context = ictx
+        val defn = ictx.definitions
+
+        assertMessageCount(1, messages)
+        val err :: Nil = messages
+
+        assertEquals(err, WrongNumberOfParameters(1))
+      }
+
 }
