@@ -469,7 +469,7 @@ object Build {
 
       // get libraries onboard
       libraryDependencies ++= Seq("com.typesafe.sbt" % "sbt-interface" % sbtVersion.value,
-                                  "org.scala-lang.modules" %% "scala-xml" % "1.0.6",
+                                  ("org.scala-lang.modules" % "scala-xml_2.12" % "1.0.6").withDottyCompat(),
                                   "com.novocode" % "junit-interface" % "0.11" % "test",
                                   "org.scala-lang" % "scala-library" % scalacVersion % "test"),
 
