@@ -55,15 +55,14 @@ object PatternMatcher {
    *  The pipeline consists of three steps:
    *
    *    - build a plan, using methods `matchPlan`, `caseDefPlan`, `patternPlan`.
-   *    - optimize the plan, using methods `optimize`, `hoistLabelled`, `referenceCount`.
+   *    - optimize the plan, using methods listed in `optimization`,
    *    - emit the translated tree, using methods `emit`, `collectSwitchCases`,
    *      `emitSwitchCases`, and `emitCondition`.
    *
    *  A plan represents the underlying decision graph. It consists
    *  of tests, let and label bindings, calls to labels and code blocks.
    *  It's represented by its own data type. Plans are optimized by
-   *  inlining, hoisting, and dead code elimination. We should also
-   *  do common test elimination but right now this is missing.
+   *  inlining, hoisting, and the elimination of redundant tests and dead code.
    */
   class Translator(resultType: Type, trans: TreeTransform)(implicit ctx: Context, info: TransformerInfo) {
 
@@ -530,7 +529,7 @@ object PatternMatcher {
      */
     private def inlineLabelled(plan: Plan) = {
       val refCount = referenceCount(plan)
-      def toDrop(sym: Symbol) = labelled.contains(sym) && refCount(sym) <= 1
+      def toDrop(sym: Symbol) = labelled.contains(sym) && refCount(symb) <= 1
       def transform(plan: Plan): Plan = plan match {
         case plan: TestPlan =>
           plan.onSuccess = transform(plan.onSuccess)
