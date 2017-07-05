@@ -1697,4 +1697,11 @@ object messages {
     }
   }
 
+  case class WrongNumberOfParameters(expected: Int)(implicit ctx: Context)
+    extends Message(WrongNumberOfParametersID) {
+    val kind = "Syntax"
+    val msg = s"wrong number of parameters, expected: $expected"
+    val explanation = ""
+  }
+
 }

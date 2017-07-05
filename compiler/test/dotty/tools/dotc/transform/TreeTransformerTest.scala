@@ -11,7 +11,7 @@ import core.Contexts.Context
 class TreeTransformerTest extends DottyTest {
 
   @Test
-  def shouldReturnSameTreeIfUnchanged = checkCompile("frontend", "class A{ val d = 1}") {
+  def shouldReturnSameTreeIfUnchanged: Unit = checkCompile("frontend", "class A{ val d = 1}") {
     (tree, context) =>
       implicit val ctx = context
       class EmptyTransform extends MiniPhaseTransform {
@@ -31,7 +31,7 @@ class TreeTransformerTest extends DottyTest {
   }
 
   // Disabled, awaiting resolution. @Test
-  def canReplaceConstant = checkCompile("frontend", "class A{ val d = 1}") {
+  def canReplaceConstant: Unit = checkCompile("frontend", "class A{ val d = 1}") {
     (tree, context) =>
       implicit val ctx = context
       class ConstantTransform extends MiniPhaseTransform {
@@ -53,7 +53,7 @@ class TreeTransformerTest extends DottyTest {
   }
 
   @Test
-  def canOverwrite = checkCompile("frontend", "class A{ val d = 1}") {
+  def canOverwrite: Unit = checkCompile("frontend", "class A{ val d = 1}") {
     (tree, context) =>
       implicit val ctx = context
       class Transformation extends MiniPhaseTransform {
@@ -84,7 +84,7 @@ class TreeTransformerTest extends DottyTest {
   }
 
   @Test
-  def transformationOrder = checkCompile("frontend", "class A{ val d = 1}") {
+  def transformationOrder: Unit = checkCompile("frontend", "class A{ val d = 1}") {
     (tree, context) =>
       implicit val ctx = context
       class Transformation1 extends MiniPhaseTransform {
@@ -130,7 +130,7 @@ class TreeTransformerTest extends DottyTest {
   }
 
   @Test
-  def invocationCount = checkCompile("frontend", "class A{ val d = 1}") {
+  def invocationCount: Unit = checkCompile("frontend", "class A{ val d = 1}") {
     (tree, context) =>
       implicit val ctx = context
       var transformed1 = 0
