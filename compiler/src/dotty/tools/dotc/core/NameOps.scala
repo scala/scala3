@@ -124,6 +124,11 @@ object NameOps {
       name.rewrite { case ExpandedName(_, unexp) => unexp }
     }
 
+    /** Remove the variance from the name. */
+    def invariantName: N = likeSpaced {
+      name.rewrite { case VariantName(invariant, _) => invariant }
+    }
+
     def implClassName: N = likeSpaced(name ++ tpnme.IMPL_CLASS_SUFFIX)
 
     def errorName: N = likeSpaced(name ++ nme.ERROR)
