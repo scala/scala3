@@ -18,7 +18,9 @@ trait DottyTest extends ContextEscapeDetection {
 
   dotc.parsing.Scanners // initialize keywords
 
-  implicit var ctx: Context = {
+  implicit var ctx: Context = initialCtx
+
+  protected def initialCtx: FreshContext = {
     val base = new ContextBase {}
     import base.settings._
     val ctx = base.initialCtx.fresh
@@ -55,18 +57,20 @@ trait DottyTest extends ContextEscapeDetection {
     }
   }
 
-  def checkCompile(checkAfterPhase: String, source: String)(assertion: (tpd.Tree, Context) => Unit): Unit = {
+  def checkCompile(checkAfterPhase: String, source: String)(assertion: (tpd.Tree, Context) => Unit): Context = {
     val c = compilerWithChecker(checkAfterPhase)(assertion)
     c.rootContext(ctx)
     val run = c.newRun
     run.compile(source)
+    run.runContext
   }
 
-  def checkCompile(checkAfterPhase: String, sources: List[String])(assertion: (tpd.Tree, Context) => Unit): Unit = {
+  def checkCompile(checkAfterPhase: String, sources: List[String])(assertion: (tpd.Tree, Context) => Unit): Context = {
     val c = compilerWithChecker(checkAfterPhase)(assertion)
     c.rootContext(ctx)
     val run = c.newRun
     run.compile(sources)
+    run.runContext
   }
 
   def methType(names: String*)(paramTypes: Type*)(resultType: Type = defn.UnitType) =

@@ -23,7 +23,7 @@ class DesugarTests extends DottyTest {
       )
   }
 
-  @Test def caseClassHasCorrectMembers =
+  @Test def caseClassHasCorrectMembers: Unit =
     checkCompile("frontend", "case class Foo(x: Int, y: String)") { (tree, context) =>
       implicit val ctx = context
       val ccTree = tree.find(tree => tree.symbol.name == typeName("Foo")).get
@@ -38,7 +38,7 @@ class DesugarTests extends DottyTest {
       rest.foreach(validSym)
     }
 
-  @Test def caseClassCompanionHasCorrectMembers =
+  @Test def caseClassCompanionHasCorrectMembers: Unit =
     checkCompile("frontend", "case class Foo(x: Int, y: String)") { (tree, context) =>
       implicit val ctx = context
       val ccTree = tree.find(tree => tree.symbol.name == termName("Foo")).get

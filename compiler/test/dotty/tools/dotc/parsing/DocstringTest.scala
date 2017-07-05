@@ -25,7 +25,7 @@ trait DocstringTest extends DottyTest {
       assert(false, s"Couldn't match resulting AST to expected AST in: $x")
   }
 
-  def checkFrontend(source: String)(docAssert: PartialFunction[Tree[Untyped], Unit]) = {
+  def checkFrontend(source: String)(docAssert: PartialFunction[Tree[Untyped], Unit]): Unit = {
     checkCompile("frontend", source) { (_, ctx) =>
       implicit val c: Context = ctx
       (docAssert orElse defaultAssertion)(ctx.compilationUnit.untpdTree)

@@ -101,15 +101,15 @@ class ErrorMessagesTests extends ErrorMessagesTest {
         |}
       """.stripMargin
     }
-      .expect { (ictx, messages) =>
-        implicit val ctx: Context = ictx
-        val defn = ictx.definitions
+    .expect { (ictx, messages) =>
+      implicit val ctx: Context = ictx
+      val defn = ictx.definitions
 
-        assertMessageCount(1, messages)
-        val ForwardReferenceExtendsOverDefinition(value, definition) :: Nil = messages
-        assertEquals("value b", value.show)
-        assertEquals("value a", definition.show)
-      }
+      assertMessageCount(1, messages)
+      val ForwardReferenceExtendsOverDefinition(value, definition) :: Nil = messages
+      assertEquals("value b", value.show)
+      assertEquals("value a", definition.show)
+    }
 
   @Test def unexpectedToken =
     checkMessagesAfter("frontend") {
@@ -306,16 +306,16 @@ class ErrorMessagesTests extends ErrorMessagesTest {
         |}
       """.stripMargin
     }
-      .expect { (ictx, messages) =>
-        implicit val ctx: Context = ictx
-        val defn = ictx.definitions
+    .expect { (ictx, messages) =>
+      implicit val ctx: Context = ictx
+      val defn = ictx.definitions
 
-        assertMessageCount(1, messages)
-        val SuperQualMustBeParent(qual, cls) :: Nil = messages
+      assertMessageCount(1, messages)
+      val SuperQualMustBeParent(qual, cls) :: Nil = messages
 
-        assertEquals("B", qual.show)
-        assertEquals("class C", cls.show)
-      }
+      assertEquals("B", qual.show)
+      assertEquals("class C", cls.show)
+    }
 
   @Test def ambiguousImport =
     checkMessagesAfter("frontend") {
@@ -334,18 +334,18 @@ class ErrorMessagesTests extends ErrorMessagesTest {
         |}
       """.stripMargin
     }
-      .expect { (ictx, messages) =>
-        implicit val ctx: Context = ictx
-        val defn = ictx.definitions
+    .expect { (ictx, messages) =>
+      implicit val ctx: Context = ictx
+      val defn = ictx.definitions
 
-        import typer.Typer.BindingPrec._
+      import typer.Typer.BindingPrec._
 
-        assertMessageCount(1, messages)
-        val AmbiguousImport(name, newPrec, prevPrec, prevCtx) :: Nil = messages
-        assertEquals("ToBeImported", name.show)
-        assertEquals(namedImport, newPrec)
-        assertEquals(namedImport, prevPrec)
-      }
+      assertMessageCount(1, messages)
+      val AmbiguousImport(name, newPrec, prevPrec, prevCtx) :: Nil = messages
+      assertEquals("ToBeImported", name.show)
+      assertEquals(namedImport, newPrec)
+      assertEquals(namedImport, prevPrec)
+    }
 
   @Test def methodDoesNotTakePrameters =
     checkMessagesAfter("frontend") {
@@ -435,14 +435,14 @@ class ErrorMessagesTests extends ErrorMessagesTest {
         |class Extending extends WithOutParams[String]
       """.stripMargin
     }
-      .expect { (ictx, messages) =>
-        implicit val ctx: Context = ictx
-        val defn = ictx.definitions
+    .expect { (ictx, messages) =>
+      implicit val ctx: Context = ictx
+      val defn = ictx.definitions
 
-        assertMessageCount(1, messages)
-        val TypeDoesNotTakeParameters(tpe, params) :: Nil = messages
-        assertEquals("WithOutParams", tpe.show)
-      }
+      assertMessageCount(1, messages)
+      val TypeDoesNotTakeParameters(tpe, params) :: Nil = messages
+      assertEquals("WithOutParams", tpe.show)
+    }
 
   @Test def parameterizedTypeLacksParameters =
     checkMessagesAfter("frontend") {
@@ -451,25 +451,25 @@ class ErrorMessagesTests extends ErrorMessagesTest {
         |class Extending extends WithParams
       """.stripMargin
     }
-      .expect { (ictx, messages) =>
-        implicit val ctx: Context = ictx
-        val defn = ictx.definitions
+    .expect { (ictx, messages) =>
+      implicit val ctx: Context = ictx
+      val defn = ictx.definitions
 
-        assertMessageCount(1, messages)
-        val ParameterizedTypeLacksArguments(symbol) :: Nil = messages
-        assertEquals("trait WithParams", symbol.show)
-      }
+      assertMessageCount(1, messages)
+      val ParameterizedTypeLacksArguments(symbol) :: Nil = messages
+      assertEquals("trait WithParams", symbol.show)
+    }
 
   @Test def varValParametersMayNotBeCallByName =
     checkMessagesAfter("frontend") {
       "trait Trait(val noNoNo: => String)"
     }
-      .expect { (ictx, messages) =>
-        implicit val ctx: Context = ictx
-        assertMessageCount(1, messages)
-        val VarValParametersMayNotBeCallByName(name, false) :: Nil = messages
-        assertEquals("noNoNo", name.show)
-      }
+    .expect { (ictx, messages) =>
+      implicit val ctx: Context = ictx
+      assertMessageCount(1, messages)
+      val VarValParametersMayNotBeCallByName(name, false) :: Nil = messages
+      assertEquals("noNoNo", name.show)
+    }
 
   @Test def missingTypeParameter =
     checkMessagesAfter("frontend") {
@@ -477,12 +477,12 @@ class ErrorMessagesTests extends ErrorMessagesTest {
         |  val value: List = null
         |}""".stripMargin
     }
-      .expect { (ictx, messages) =>
-        implicit val ctx: Context = ictx
-        assertMessageCount(1, messages)
-        val MissingTypeParameterFor(tpe) :: Nil = messages
-        assertEquals("List", tpe.show)
-      }
+    .expect { (ictx, messages) =>
+      implicit val ctx: Context = ictx
+      assertMessageCount(1, messages)
+      val MissingTypeParameterFor(tpe) :: Nil = messages
+      assertEquals("List", tpe.show)
+    }
 
   @Test def doesNotConformToBound =
     checkMessagesAfter("refchecks") {
@@ -491,14 +491,14 @@ class ErrorMessagesTests extends ErrorMessagesTest {
         |  val value: WithParam[Int] = null
         |}""".stripMargin
     }
-      .expect { (ictx, messages) =>
-        implicit val ctx: Context = ictx
-        assertMessageCount(1, messages)
-        val DoesNotConformToBound(tpe, which, bound) :: Nil = messages
-        assertEquals("Int", tpe.show)
-        assertEquals("upper", which)
-        assertEquals("scala.collection.immutable.List[Int]", bound.show)
-      }
+    .expect { (ictx, messages) =>
+      implicit val ctx: Context = ictx
+      assertMessageCount(1, messages)
+      val DoesNotConformToBound(tpe, which, bound) :: Nil = messages
+      assertEquals("Int", tpe.show)
+      assertEquals("upper", which)
+      assertEquals("scala.collection.immutable.List[Int]", bound.show)
+    }
 
   @Test def doesNotConformToSelfType =
     checkMessagesAfter("refchecks") {
@@ -509,17 +509,17 @@ class ErrorMessagesTests extends ErrorMessagesTest {
         |class Blended extends BlendItIn
         |""".stripMargin
     }
-      .expect { (ictx, messages) =>
-        implicit val ctx: Context = ictx
-        assertMessageCount(1, messages)
-        val DoesNotConformToSelfType(category, selfType, cls, otherSelf, relation, other) :: Nil = messages
-        assertEquals("illegal inheritance", category)
-        assertEquals("Blended", selfType.show)
-        assertEquals("class Blended", cls.show)
-        assertEquals("Base", otherSelf.show)
-        assertEquals("parent", relation)
-        assertEquals("trait BlendItIn", other.show)
-      }
+    .expect { (ictx, messages) =>
+      implicit val ctx: Context = ictx
+      assertMessageCount(1, messages)
+      val DoesNotConformToSelfType(category, selfType, cls, otherSelf, relation, other) :: Nil = messages
+      assertEquals("illegal inheritance", category)
+      assertEquals("Blended", selfType.show)
+      assertEquals("class Blended", cls.show)
+      assertEquals("Base", otherSelf.show)
+      assertEquals("parent", relation)
+      assertEquals("trait BlendItIn", other.show)
+    }
 
   @Test def doesNotConformToSelfTypeCantBeInstantiated =
     checkMessagesAfter("refchecks") {
@@ -530,13 +530,13 @@ class ErrorMessagesTests extends ErrorMessagesTest {
         |}
         |""".stripMargin
     }
-      .expect { (ictx, messages) =>
-        implicit val ctx: Context = ictx
-        assertMessageCount(1, messages)
-        val DoesNotConformToSelfTypeCantBeInstantiated(tpe, selfType) :: Nil = messages
-        assertEquals("RequiresBase", tpe.show)
-        assertEquals("Base", selfType.show)
-      }
+    .expect { (ictx, messages) =>
+      implicit val ctx: Context = ictx
+      assertMessageCount(1, messages)
+      val DoesNotConformToSelfTypeCantBeInstantiated(tpe, selfType) :: Nil = messages
+      assertEquals("RequiresBase", tpe.show)
+      assertEquals("Base", selfType.show)
+    }
 
   @Test def abstractValueMayNotHaveFinalModifier =
     checkMessagesAfter("frontend") {
@@ -545,13 +545,13 @@ class ErrorMessagesTests extends ErrorMessagesTest {
         |}
         |""".stripMargin
     }
-      .expect { (ictx, messages) =>
-        implicit val ctx: Context = ictx
-        assertMessageCount(1, messages)
-        val AbstractMemberMayNotHaveModifier(symbol, flags) :: Nil = messages
-        assertEquals("value s", symbol.show)
-        assertEquals("final", flags.toString)
-      }
+    .expect { (ictx, messages) =>
+      implicit val ctx: Context = ictx
+      assertMessageCount(1, messages)
+      val AbstractMemberMayNotHaveModifier(symbol, flags) :: Nil = messages
+      assertEquals("value s", symbol.show)
+      assertEquals("final", flags.toString)
+    }
 
   @Test def topLevelCantBeImplicit =
     checkMessagesAfter("frontend") {
@@ -560,12 +560,12 @@ class ErrorMessagesTests extends ErrorMessagesTest {
         |}
         |""".stripMargin
     }
-      .expect { (ictx, messages) =>
-        implicit val ctx: Context = ictx
-        assertMessageCount(1, messages)
-        val TopLevelCantBeImplicit(symbol) :: Nil = messages
-        assertEquals("object S", symbol.show)
-      }
+    .expect { (ictx, messages) =>
+      implicit val ctx: Context = ictx
+      assertMessageCount(1, messages)
+      val TopLevelCantBeImplicit(symbol) :: Nil = messages
+      assertEquals("object S", symbol.show)
+    }
 
   @Test def typesAndTraitsCantBeImplicit =
     checkMessagesAfter("frontend") {
@@ -574,12 +574,12 @@ class ErrorMessagesTests extends ErrorMessagesTest {
         |}
         |""".stripMargin
     }
-      .expect { (ictx, messages) =>
-        implicit val ctx: Context = ictx
-        assertMessageCount(1, messages)
-        val TypesAndTraitsCantBeImplicit(symbol) :: Nil = messages
-        assertEquals("trait S", symbol.show)
-      }
+    .expect { (ictx, messages) =>
+      implicit val ctx: Context = ictx
+      assertMessageCount(1, messages)
+      val TypesAndTraitsCantBeImplicit(symbol) :: Nil = messages
+      assertEquals("trait S", symbol.show)
+    }
 
   @Test def onlyClassesCanBeAbstract =
     checkMessagesAfter("frontend") {
@@ -588,12 +588,12 @@ class ErrorMessagesTests extends ErrorMessagesTest {
         |}
         |""".stripMargin
     }
-      .expect { (ictx, messages) =>
-        implicit val ctx: Context = ictx
-        assertMessageCount(1, messages)
-        val OnlyClassesCanBeAbstract(symbol) :: Nil = messages
-        assertEquals("value s", symbol.show)
-      }
+    .expect { (ictx, messages) =>
+      implicit val ctx: Context = ictx
+      assertMessageCount(1, messages)
+      val OnlyClassesCanBeAbstract(symbol) :: Nil = messages
+      assertEquals("value s", symbol.show)
+    }
 
   @Test def abstractOverrideOnlyInTraits =
     checkMessagesAfter("frontend") {
@@ -602,23 +602,23 @@ class ErrorMessagesTests extends ErrorMessagesTest {
         |}
         |""".stripMargin
     }
-      .expect { (ictx, messages) =>
-        implicit val ctx: Context = ictx
-        assertMessageCount(1, messages)
-        val AbstractOverrideOnlyInTraits(symbol) :: Nil = messages
-        assertEquals("value s", symbol.show)
-      }
+    .expect { (ictx, messages) =>
+      implicit val ctx: Context = ictx
+      assertMessageCount(1, messages)
+      val AbstractOverrideOnlyInTraits(symbol) :: Nil = messages
+      assertEquals("value s", symbol.show)
+    }
 
   @Test def traitMayNotBeFinal =
     checkMessagesAfter("frontend") {
       """final trait Foo"""
     }
-      .expect { (ictx, messages) =>
-        implicit val ctx: Context = ictx
-        assertMessageCount(1, messages)
-        val TraitsMayNotBeFinal(symbol) :: Nil = messages
-        assertEquals("trait Foo", symbol.show)
-      }
+    .expect { (ictx, messages) =>
+      implicit val ctx: Context = ictx
+      assertMessageCount(1, messages)
+      val TraitsMayNotBeFinal(symbol) :: Nil = messages
+      assertEquals("trait Foo", symbol.show)
+    }
 
   @Test def nativeMemberMayNotHaveImplementation =
     checkMessagesAfter("frontend") {
@@ -627,12 +627,12 @@ class ErrorMessagesTests extends ErrorMessagesTest {
         |}
       """.stripMargin
     }
-      .expect { (ictx, messages) =>
-        implicit val ctx: Context = ictx
-        assertMessageCount(1, messages)
-        val NativeMembersMayNotHaveImplementation(symbol) :: Nil = messages
-        assertEquals("method foo", symbol.show)
-      }
+    .expect { (ictx, messages) =>
+      implicit val ctx: Context = ictx
+      assertMessageCount(1, messages)
+      val NativeMembersMayNotHaveImplementation(symbol) :: Nil = messages
+      assertEquals("method foo", symbol.show)
+    }
 
   @Test def onlyClassesCanHaveDeclaredButUndefinedMembers =
     checkMessagesAfter("frontend") {
@@ -641,23 +641,23 @@ class ErrorMessagesTests extends ErrorMessagesTest {
         |}
         |""".stripMargin
     }
-      .expect { (ictx, messages) =>
-        implicit val ctx: Context = ictx
-        assertMessageCount(1, messages)
-        val OnlyClassesCanHaveDeclaredButUndefinedMembers(symbol) :: Nil = messages
-        assertEquals("method foo", symbol.show)
-      }
+    .expect { (ictx, messages) =>
+      implicit val ctx: Context = ictx
+      assertMessageCount(1, messages)
+      val OnlyClassesCanHaveDeclaredButUndefinedMembers(symbol) :: Nil = messages
+      assertEquals("method foo", symbol.show)
+    }
 
   @Test def cannotExtendAnyval =
     checkMessagesAfter("frontend") {
       """trait Foo extends AnyVal"""
     }
-      .expect { (ictx, messages) =>
-        implicit val ctx: Context = ictx
-        assertMessageCount(1, messages)
-        val CannotExtendAnyVal(symbol) :: Nil = messages
-        assertEquals("trait Foo", symbol.show)
-      }
+    .expect { (ictx, messages) =>
+      implicit val ctx: Context = ictx
+      assertMessageCount(1, messages)
+      val CannotExtendAnyVal(symbol) :: Nil = messages
+      assertEquals("trait Foo", symbol.show)
+    }
 
   @Test def cannotHaveSameNameAs =
     checkMessagesAfter("refchecks") {
@@ -668,13 +668,13 @@ class ErrorMessagesTests extends ErrorMessagesTest {
         |  class A
         |}""".stripMargin
     }
-      .expect { (ictx, messages) =>
-        implicit val ctx: Context = ictx
-        assertMessageCount(1, messages)
-        val CannotHaveSameNameAs(symbol, cls, _) :: Nil = messages
-        assertEquals("class A", symbol.show)
-        assertEquals("class A", cls.show)
-      }
+    .expect { (ictx, messages) =>
+      implicit val ctx: Context = ictx
+      assertMessageCount(1, messages)
+      val CannotHaveSameNameAs(symbol, cls, _) :: Nil = messages
+      assertEquals("class A", symbol.show)
+      assertEquals("class A", cls.show)
+    }
 
   @Test def valueClassesMayNotDefineInner =
     checkMessagesAfter("refchecks") {
@@ -683,13 +683,13 @@ class ErrorMessagesTests extends ErrorMessagesTest {
         |}
         |""".stripMargin
     }
-      .expect { (ictx, messages) =>
-        implicit val ctx: Context = ictx
-        assertMessageCount(1, messages)
-        val ValueClassesMayNotDefineInner(valueClass, inner) :: Nil = messages
-        assertEquals("class MyValue", valueClass.show)
-        assertEquals("class Inner", inner.show)
-      }
+    .expect { (ictx, messages) =>
+      implicit val ctx: Context = ictx
+      assertMessageCount(1, messages)
+      val ValueClassesMayNotDefineInner(valueClass, inner) :: Nil = messages
+      assertEquals("class MyValue", valueClass.show)
+      assertEquals("class Inner", inner.show)
+    }
 
   @Test def valueClassesMayNotDefineNonParameterField =
     checkMessagesAfter("refchecks") {
@@ -698,13 +698,13 @@ class ErrorMessagesTests extends ErrorMessagesTest {
         |}
         |""".stripMargin
     }
-      .expect { (ictx, messages) =>
-        implicit val ctx: Context = ictx
-        assertMessageCount(1, messages)
-        val ValueClassesMayNotDefineNonParameterField(valueClass, field) :: Nil = messages
-        assertEquals("class MyValue", valueClass.show)
-        assertEquals("value illegal", field.show)
-      }
+    .expect { (ictx, messages) =>
+      implicit val ctx: Context = ictx
+      assertMessageCount(1, messages)
+      val ValueClassesMayNotDefineNonParameterField(valueClass, field) :: Nil = messages
+      assertEquals("class MyValue", valueClass.show)
+      assertEquals("value illegal", field.show)
+    }
 
   @Test def valueClassesMayNotDefineASecondaryConstructor =
     checkMessagesAfter("refchecks") {
@@ -713,13 +713,13 @@ class ErrorMessagesTests extends ErrorMessagesTest {
         |}
         |""".stripMargin
     }
-      .expect { (ictx, messages) =>
-        implicit val ctx: Context = ictx
-        assertMessageCount(1, messages)
-        val ValueClassesMayNotDefineASecondaryConstructor(valueClass, constuctor) :: Nil = messages
-        assertEquals("class MyValue", valueClass.show)
-        assertEquals("constructor MyValue", constuctor.show)
-      }
+    .expect { (ictx, messages) =>
+      implicit val ctx: Context = ictx
+      assertMessageCount(1, messages)
+      val ValueClassesMayNotDefineASecondaryConstructor(valueClass, constuctor) :: Nil = messages
+      assertEquals("class MyValue", valueClass.show)
+      assertEquals("constructor MyValue", constuctor.show)
+    }
 
   @Test def valueClassesMayNotContainInitalization =
     checkMessagesAfter("refchecks") {
@@ -728,12 +728,12 @@ class ErrorMessagesTests extends ErrorMessagesTest {
         |}
         |""".stripMargin
     }
-      .expect { (ictx, messages) =>
-        implicit val ctx: Context = ictx
-        assertMessageCount(1, messages)
-        val ValueClassesMayNotContainInitalization(valueClass) :: Nil = messages
-        assertEquals("class MyValue", valueClass.show)
-      }
+    .expect { (ictx, messages) =>
+      implicit val ctx: Context = ictx
+      assertMessageCount(1, messages)
+      val ValueClassesMayNotContainInitalization(valueClass) :: Nil = messages
+      assertEquals("class MyValue", valueClass.show)
+    }
 
   @Test def valueClassesMayNotBeContained =
     checkMessagesAfter("refchecks") {
@@ -742,68 +742,69 @@ class ErrorMessagesTests extends ErrorMessagesTest {
         |}
         |""".stripMargin
     }
-      .expect { (ictx, messages) =>
-        implicit val ctx: Context = ictx
-        assertMessageCount(1, messages)
-        val ValueClassesMayNotBeContainted(valueClass) :: Nil = messages
-        assertEquals("class MyValue", valueClass.show)
-      }
+    .expect { (ictx, messages) =>
+      implicit val ctx: Context = ictx
+      assertMessageCount(1, messages)
+      val ValueClassesMayNotBeContainted(valueClass) :: Nil = messages
+      assertEquals("class MyValue", valueClass.show)
+    }
 
   @Test def valueClassesMayNotWrapItself =
     checkMessagesAfter("refchecks") {
       """class MyValue(i: MyValue) extends AnyVal"""
     }
-      .expect { (ictx, messages) =>
-        implicit val ctx: Context = ictx
-        assertMessageCount(1, messages)
-        val ValueClassesMayNotWrapItself(valueClass) :: Nil = messages
-        assertEquals("class MyValue", valueClass.show)
-      }
+    .expect { (ictx, messages) =>
+      implicit val ctx: Context = ictx
+      assertMessageCount(1, messages)
+      val ValueClassesMayNotWrapItself(valueClass) :: Nil = messages
+      assertEquals("class MyValue", valueClass.show)
+    }
 
   @Test def valueClassParameterMayNotBeVar =
     checkMessagesAfter("refchecks") {
       """class MyValue(var i: Int) extends AnyVal"""
     }
-      .expect { (ictx, messages) =>
-        implicit val ctx: Context = ictx
-        assertMessageCount(1, messages)
-        val ValueClassParameterMayNotBeAVar(valueClass, param) :: Nil = messages
-        assertEquals("class MyValue", valueClass.show)
-        assertEquals("variable i", param.show)
-      }
+    .expect { (ictx, messages) =>
+      implicit val ctx: Context = ictx
+      assertMessageCount(1, messages)
+      val ValueClassParameterMayNotBeAVar(valueClass, param) :: Nil = messages
+      assertEquals("class MyValue", valueClass.show)
+      assertEquals("variable i", param.show)
+    }
 
   @Test def valueClassNeedsExactlyOneVal =
     checkMessagesAfter("refchecks") {
       """class MyValue(var i: Int, j: Int) extends AnyVal"""
     }
-      .expect { (ictx, messages) =>
-        implicit val ctx: Context = ictx
-        assertMessageCount(1, messages)
-        val ValueClassNeedsExactlyOneValParam(valueClass) :: Nil = messages
-        assertEquals("class MyValue", valueClass.show)
-      }
+    .expect { (ictx, messages) =>
+      implicit val ctx: Context = ictx
+      assertMessageCount(1, messages)
+      val ValueClassNeedsExactlyOneValParam(valueClass) :: Nil = messages
+      assertEquals("class MyValue", valueClass.show)
+    }
 
   @Test def onlyCaseClassOrCaseObjectAllowed =
     checkMessagesAfter("frontend") {
       """case Foobar"""
     }
-      .expect { (ictx, messages) =>
-        implicit val ctx: Context = ictx
-        assertMessageCount(1, messages)
-        val err :: Nil = messages
-        assertEquals(err, OnlyCaseClassOrCaseObjectAllowed())
-      }
+    .expect { (ictx, messages) =>
+      implicit val ctx: Context = ictx
+      assertMessageCount(1, messages)
+      val err :: Nil = messages
+      assertEquals(err, OnlyCaseClassOrCaseObjectAllowed())
+    }
 
   @Test def expectedClassOrObjectDef =
     checkMessagesAfter("frontend") {
       """Foo"""
     }
-      .expect { (ictx, messages) =>
-        implicit val ctx: Context = ictx
-        assertMessageCount(1, messages)
-        val err :: Nil = messages
-        assertEquals(err, ExpectedClassOrObjectDef())
-      }
+    .expect { (ictx, messages) =>
+      implicit val ctx: Context = ictx
+      assertMessageCount(1, messages)
+      val err :: Nil = messages
+      assertEquals(err, ExpectedClassOrObjectDef())
+    }
+
   @Test def anonymousFunctionMissingParamType =
     checkMessagesAfter("refchecks") {
       """
@@ -811,16 +812,16 @@ class ErrorMessagesTests extends ErrorMessagesTest {
         |  val f = { case l@List(1,2,3) => Some(l) }
         |}""".stripMargin
     }
-      .expect { (ictx, messages) =>
-        implicit val ctx: Context = ictx
-        val defn = ictx.definitions
+    .expect { (ictx, messages) =>
+      implicit val ctx: Context = ictx
+      val defn = ictx.definitions
 
-        assertMessageCount(1, messages)
-        val AnonymousFunctionMissingParamType(param, args, _, pt) :: Nil = messages
-        assertEquals("x$1", param.show)
-        assertEquals(s"List(ValDef(${param.show},TypeTree,EmptyTree))", args.toString)
-        assertEquals("?", pt.show)
-      }
+      assertMessageCount(1, messages)
+      val AnonymousFunctionMissingParamType(param, args, _, pt) :: Nil = messages
+      assertEquals("x$1", param.show)
+      assertEquals(s"List(ValDef(${param.show},TypeTree,EmptyTree))", args.toString)
+      assertEquals("?", pt.show)
+    }
 
   @Test def superCallsNotAllowedInline =
   checkMessagesAfter("refchecks") {
@@ -834,13 +835,13 @@ class ErrorMessagesTests extends ErrorMessagesTest {
         |}
       """.stripMargin
     }
-      .expect { (ictx, messages) =>
-        implicit val ctx: Context = ictx
-        assertMessageCount(1, messages)
-        val err :: Nil = messages
-        val SuperCallsNotAllowedInline(symbol) = err
-        assertEquals("method bar", symbol.show)
-      }
+    .expect { (ictx, messages) =>
+      implicit val ctx: Context = ictx
+      assertMessageCount(1, messages)
+      val err :: Nil = messages
+      val SuperCallsNotAllowedInline(symbol) = err
+      assertEquals("method bar", symbol.show)
+    }
 
   @Test def modifiersNotAllowed =
     verifyModifiersNotAllowed("lazy trait T", "lazy", Some("trait"))
@@ -868,15 +869,15 @@ class ErrorMessagesTests extends ErrorMessagesTest {
         |  val team = new Team[_]
         |}""".stripMargin
     }
-      .expect { (ictx, messages) =>
-        implicit val ctx: Context = ictx
-        val defn = ictx.definitions
+    .expect { (ictx, messages) =>
+      implicit val ctx: Context = ictx
+      val defn = ictx.definitions
 
-        assertMessageCount(1, messages)
-        val err :: Nil = messages
+      assertMessageCount(1, messages)
+      val err :: Nil = messages
 
-        assertEquals(err, WildcardOnTypeArgumentNotAllowedOnNew())
-      }
+      assertEquals(err, WildcardOnTypeArgumentNotAllowedOnNew())
+    }
 
   @Test def implicitFunctionTypeNeedsNonEmptyParameterList =
     checkMessagesAfter("refchecks") {
@@ -885,13 +886,13 @@ class ErrorMessagesTests extends ErrorMessagesTest {
         |  val x: implicit () => Int
         |}""".stripMargin
     }
-      .expect { (ictx, messages) =>
-        implicit val ctx: Context = ictx
-        val defn = ictx.definitions
+    .expect { (ictx, messages) =>
+      implicit val ctx: Context = ictx
+      val defn = ictx.definitions
 
-        assertMessageCount(2, messages)
-        messages.foreach(assertEquals(_, ImplicitFunctionTypeNeedsNonEmptyParameterList()))
-      }
+      assertMessageCount(2, messages)
+      messages.foreach(assertEquals(_, ImplicitFunctionTypeNeedsNonEmptyParameterList()))
+    }
 
   @Test def wrongNumberOfParameters =
     checkMessagesAfter("refchecks") {
@@ -900,14 +901,13 @@ class ErrorMessagesTests extends ErrorMessagesTest {
         |  unary((x, y) => ())
         |} """.stripMargin
     }
-      .expect { (ictx, messages) =>
-        implicit val ctx: Context = ictx
-        val defn = ictx.definitions
+    .expect { (ictx, messages) =>
+      implicit val ctx: Context = ictx
+      val defn = ictx.definitions
 
-        assertMessageCount(1, messages)
-        val err :: Nil = messages
+      assertMessageCount(1, messages)
+      val err :: Nil = messages
 
-        assertEquals(err, WrongNumberOfParameters(1))
-      }
-
+      assertEquals(err, WrongNumberOfParameters(1))
+    }
 }

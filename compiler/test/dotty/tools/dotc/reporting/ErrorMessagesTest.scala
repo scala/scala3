@@ -11,15 +11,15 @@ import org.junit.Assert._
 
 trait ErrorMessagesTest extends DottyTest {
 
-  ctx = freshReporter(ctx)
-
-  private def freshReporter(ctx: Context) =
-    ctx.fresh.setReporter(new CapturingReporter)
+  private def newContext = {
+    val rep = new StoreReporter(null)
+              with UniqueMessagePositions with HideNonSensicalMessages
+    initialCtx.setReporter(rep)
+  }
 
   class Report(messages: List[Message], ictx: Context) {
-    def expect(f: (Context, List[Message]) => Unit): Unit = {
+    def expect(f: (Context, List[Message]) => Unit): Unit =
       f(ictx, messages)
-    }
 
     def expectNoErrors: Unit =
       assert(this.isInstanceOf[EmptyReport], "errors found when not expected")
@@ -32,35 +32,16 @@ trait ErrorMessagesTest extends DottyTest {
               |there are no errors or the compiler crashes.""".stripMargin)
   }
 
-  class CapturingReporter extends Reporter
-  with UniqueMessagePositions with HideNonSensicalMessages {
-    private[this] val buffer = new mutable.ListBuffer[Message]
-    private[this] var capturedContext: Context = _
-
-    def doReport(m: MessageContainer)(implicit ctx: Context) = {
-      capturedContext = ctx
-      buffer append m.contained()
-    }
-
-    def toReport: Report =
-      if (capturedContext eq null)
-        new EmptyReport
-      else {
-        val xs = buffer.reverse.toList
-        buffer.clear()
-
-        val ctx = capturedContext
-        capturedContext = null
-
-        new Report(xs, ctx)
-      }
-  }
-
   def checkMessagesAfter(checkAfterPhase: String)(source: String): Report = {
-    checkCompile(checkAfterPhase, source) { (_,ictx) => () }
-    val rep = ctx.reporter.asInstanceOf[CapturingReporter].toReport
-    ctx = freshReporter(ctx)
-    rep
+    ctx = newContext
+    val runCtx = checkCompile(checkAfterPhase, source) { (_, _) => () }
+
+    if (!runCtx.reporter.hasErrors) new EmptyReport
+    else {
+      val rep = runCtx.reporter.asInstanceOf[StoreReporter]
+      val msgs = rep.removeBufferedMessages(runCtx).map(_.contained()).reverse
+      new Report(msgs, runCtx)
+    }
   }
 
   def assertMessageCount(expected: Int, messages: List[Message]): Unit =
