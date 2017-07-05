@@ -169,7 +169,8 @@ class PlainPrinter(_ctx: Context) extends Printer {
         changePrec(GlobalPrec) {
           (if (tp.isImplicit) "(implicit " else "(") ~
             Text((tp.paramNames, tp.paramInfos).zipped map paramText, ", ") ~
-          ")" ~ toText(tp.resultType)
+          (if (tp.resultType.isInstanceOf[MethodType]) ")" else "): ") ~
+          toText(tp.resultType)
         }
       case tp: ExprType =>
         changePrec(GlobalPrec) { "=> " ~ toText(tp.resultType) }
