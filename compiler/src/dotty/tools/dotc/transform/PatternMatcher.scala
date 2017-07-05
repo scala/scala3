@@ -336,38 +336,72 @@ object PatternMatcher {
 
     // ----- Optimizing plans ---------------
 
-    /** Reference counts for all variables and labels */
-    private def referenceCount(plan: Plan): collection.Map[Symbol, Int] = {
-      val count = new mutable.HashMap[Symbol, Int] {
-        override def default(key: Symbol) = 0
+    /** A superclass for plan transforms */
+    class PlanTransform extends (Plan => Plan) {
+      protected val treeMap = new TreeMap {
+        override def transform(tree: Tree)(implicit ctx: Context) = tree
       }
-      val refCounter = new TreeTraverser {
-        def traverse(tree: Tree)(implicit ctx: Context) = tree match {
-          case tree: Ident =>
-            if (initializer contains tree.symbol) count(tree.symbol) += 1
-          case _ =>
-            traverseChildren(tree)
+      def apply(tree: Tree): Tree = treeMap.transform(tree)
+      def apply(plan: TestPlan): Plan = {
+        plan.scrutinee = apply(plan.scrutinee)
+        plan.onSuccess = apply(plan.onSuccess)
+        plan.onFailure = apply(plan.onFailure)
+        plan
+      }
+      def apply(plan: LetPlan): Plan = {
+        plan.body = apply(plan.body)
+        initializer(plan.sym) = apply(initializer(plan.sym))
+        plan
+      }
+      def apply(plan: LabelledPlan): Plan = {
+        plan.body = apply(plan.body)
+        labelled(plan.sym) = apply(labelled(plan.sym))
+        plan
+      }
+      def apply(plan: CallPlan): Plan = plan
+      def apply(plan: Plan): Plan = plan match {
+        case plan: TestPlan => apply(plan)
+        case plan: LetPlan => apply(plan)
+        case plan: LabelledPlan => apply(plan)
+        case plan: CallPlan => apply(plan)
+        case plan: CodePlan => plan
+      }
+    }
+
+    /** Reference counts for all variables and labels */
+    def referenceCount(plan: Plan): collection.Map[Symbol, Int] = {
+      object RefCount extends PlanTransform {
+        val count = new mutable.HashMap[Symbol, Int] {
+          override def default(key: Symbol) = 0
+        }
+        override val treeMap = new TreeMap {
+          override def transform(tree: Tree)(implicit ctx: Context) = tree match {
+            case tree: Ident =>
+              if (initializer contains tree.symbol) count(tree.symbol) += 1
+              tree
+            case _ =>
+              super.transform(tree)
+          }
+        }
+        override def apply(plan: LetPlan): Plan = {
+          apply(plan.body)
+          if (count(plan.sym) != 0 || !isPatmatGenerated(plan.sym))
+            apply(initializer(plan.sym))
+          plan
+        }
+        override def apply(plan: LabelledPlan): Plan = {
+          apply(plan.body)
+          if (count(plan.sym) != 0)
+            apply(labelled(plan.sym))
+          plan
+        }
+        override def apply(plan: CallPlan): Plan = {
+          count(plan.label) += 1
+          plan
         }
       }
-      def traverse(plan: Plan): Unit = plan match {
-        case plan: TestPlan =>
-          refCounter.traverse(plan.scrutinee)
-          traverse(plan.onSuccess)
-          traverse(plan.onFailure)
-        case LetPlan(sym, body) =>
-          traverse(body)
-          if (count(sym) != 0 || !isPatmatGenerated(sym))
-            refCounter.traverse(initializer(sym))
-        case LabelledPlan(sym, body) =>
-          traverse(body)
-          if (count(sym) != 0) traverse(labelled(sym))
-        case CodePlan(_) =>
-          ;
-        case CallPlan(label) =>
-          count(label) += 1
-      }
-      traverse(plan)
-      count
+      RefCount(plan)
+      RefCount.count
     }
 
     /** Rewrite everywhere
@@ -384,40 +418,32 @@ object PatternMatcher {
      * -->
      *     let L2 = B2 in let L1 = B1 in E
     */
-    private def hoistLabels(plan: Plan): Plan = plan match {
-      case plan: TestPlan =>
+    object hoistLabels extends PlanTransform {
+      override def apply(plan: TestPlan): Plan =
         plan.onSuccess match {
           case lp @ LabelledPlan(sym, body) =>
             plan.onSuccess = body
             lp.body = plan
-            hoistLabels(lp)
+            apply(lp)
           case _ =>
             plan.onFailure match {
               case lp @ LabelledPlan(sym, body) =>
                 plan.onFailure = body
                 lp.body = plan
-                hoistLabels(lp)
+                apply(lp)
               case _ =>
-                plan.onSuccess = hoistLabels(plan.onSuccess)
-                plan.onFailure = hoistLabels(plan.onFailure)
-                plan
+                super.apply(plan)
             }
         }
-      case plan @ LabelledPlan(sym, body) =>
-        labelled(sym) match {
+      override def apply(plan: LabelledPlan): Plan =
+        labelled(plan.sym) match {
           case plan1: LabelledPlan =>
-            labelled(sym) = plan1.body
+            labelled(plan.sym) = plan1.body
             plan1.body = plan
-            hoistLabels(plan1)
+            apply(plan1)
           case _ =>
-            plan.body = hoistLabels(plan.body)
-            plan
+            super.apply(plan)
         }
-      case plan @ LetPlan(_, body) =>
-        plan.body = hoistLabels(plan.body)
-        plan
-      case _ =>
-        plan
     }
 
     /** Eliminate tests that are redundant (known to be true or false).
@@ -475,26 +501,25 @@ object PatternMatcher {
       /** The tests with known outcomes valid at entry to label */
       val seenAtLabel = mutable.HashMap[Symbol, SeenTests]()
 
-      def transform(plan: Plan, seenTests: SeenTests): Plan = plan match {
-        case plan: TestPlan =>
+      class ElimRedundant(seenTests: SeenTests) extends PlanTransform {
+        override def apply(plan: TestPlan): Plan = {
           val normPlan = normalize(plan)
           seenTests.get(normPlan) match {
             case Some(outcome) =>
-              transform(if (outcome) plan.onSuccess else plan.onFailure, seenTests)
+              apply(if (outcome) plan.onSuccess else plan.onFailure)
             case None =>
-              plan.onSuccess = transform(plan.onSuccess, seenTests + (normPlan -> true))
-              plan.onFailure = transform(plan.onFailure, seenTests + (normPlan -> false))
+              plan.onSuccess = new ElimRedundant(seenTests + (normPlan -> true))(plan.onSuccess)
+              plan.onFailure = new ElimRedundant(seenTests + (normPlan -> false))(plan.onFailure)
               plan
           }
-        case plan @ LetPlan(_, body) =>
-          plan.body = transform(body, seenTests)
+        }
+        override def apply(plan: LabelledPlan): Plan = {
+          plan.body = apply(plan.body)
+          for (seenTests1 <- seenAtLabel.get(plan.sym))
+            labelled(plan.sym) = new ElimRedundant(seenTests1)(labelled(plan.sym))
           plan
-        case plan @ LabelledPlan(label, body) =>
-          plan.body = transform(body, seenTests)
-          for (seenTests1 <- seenAtLabel.get(label))
-            labelled(label) = transform(labelled(label), seenTests1)
-          plan
-        case plan: CallPlan =>
+        }
+        override def apply(plan: CallPlan): Plan = {
           val label = plan.label
           def redirect(target: Plan): Plan = {
             def forward(tst: TestPlan) = seenTests.get(tst) match {
@@ -510,7 +535,7 @@ object PatternMatcher {
           }
           redirect(labelled(label)) match {
             case target: CallPlan =>
-              transform(target, seenTests)
+              apply(target)
             case _ =>
               seenAtLabel(label) = seenAtLabel.get(label) match {
                 case Some(seenTests1) => intersect(seenTests1, seenTests)
@@ -518,10 +543,9 @@ object PatternMatcher {
               }
               plan
           }
-        case _: CodePlan =>
-          plan
+        }
       }
-      transform(plan, Map())
+      new ElimRedundant(Map())(plan)
     }
 
     /** Inline labelled blocks that are referenced only once.
@@ -530,29 +554,15 @@ object PatternMatcher {
     private def inlineLabelled(plan: Plan) = {
       val refCount = referenceCount(plan)
       def toDrop(sym: Symbol) = labelled.contains(sym) && refCount(sym) <= 1
-      def transform(plan: Plan): Plan = plan match {
-        case plan: TestPlan =>
-          plan.onSuccess = transform(plan.onSuccess)
-          plan.onFailure = transform(plan.onFailure)
-          plan
-        case plan @ LetPlan(_, body) =>
-          plan.body = transform(body)
-          plan
-        case plan @ LabelledPlan(label, body) =>
-          val body1 = transform(body)
-          if (toDrop(label)) body1
-          else {
-            labelled(label) = transform(labelled(label))
-            plan.body = body1
-            plan
-          }
-        case CallPlan(label) =>
-          if (refCount(label) == 1) transform(labelled(label))
+      class Inliner extends PlanTransform {
+        override def apply(plan: LabelledPlan): Plan =
+          if (toDrop(plan.sym)) apply(plan.body) else super.apply(plan)
+        override def apply(plan: CallPlan): Plan = {
+          if (refCount(plan.label) == 1) apply(labelled(plan.label))
           else plan
-        case plan: CodePlan =>
-          plan
+        }
       }
-      transform(plan)
+      (new Inliner)(plan)
     }
 
     /** Merge variables that have the same right hand side
@@ -566,51 +576,40 @@ object PatternMatcher {
         override def hashCode: Int = tree.hash
       }
 
-      val treeMap = new TreeMap {
-        override def transform(tree: Tree)(implicit ctx: Context) = tree match {
-          case tree: Ident =>
-            val sym = tree.symbol
-            initializer.get(sym) match {
-              case Some(id: Ident @unchecked)
-              if isPatmatGenerated(sym) && isPatmatGenerated(id.symbol) =>
-                transform(id)
-              case none => tree
-            }
-          case _ =>
-            super.transform(tree)
+      class Merge(seenVars: Map[RHS, Symbol]) extends PlanTransform {
+        override val treeMap = new TreeMap {
+          override def transform(tree: Tree)(implicit ctx: Context) = tree match {
+            case tree: Ident =>
+              val sym = tree.symbol
+              initializer.get(sym) match {
+                case Some(id: Ident @unchecked)
+                if isPatmatGenerated(sym) && isPatmatGenerated(id.symbol) =>
+                  transform(id)
+                case none => tree
+              }
+            case _ =>
+              super.transform(tree)
+          }
         }
-      }
 
-      def transform(plan: Plan, seenVars: Map[RHS, Symbol]): Plan = plan match {
-        case plan: TestPlan =>
-          plan.scrutinee = treeMap.transform(plan.scrutinee)
-          plan.onSuccess = transform(plan.onSuccess, seenVars)
-          plan.onFailure = transform(plan.onFailure, seenVars)
-          plan
-        case plan @ LetPlan(sym, body) =>
+        override def apply(plan: LetPlan): Plan = {
           val seenVars1 =
-            if (isPatmatGenerated(sym)) {
-              val thisRhs = new RHS(initializer(sym))
+            if (isPatmatGenerated(plan.sym)) {
+              val thisRhs = new RHS(initializer(plan.sym))
               seenVars.get(thisRhs) match {
                 case Some(seen) =>
-                  initializer(sym) = ref(seen)
+                  initializer(plan.sym) = ref(seen)
                 case none =>
               }
-              seenVars.updated(thisRhs, sym)
+              seenVars.updated(thisRhs, plan.sym)
             }
             else seenVars
-          initializer(sym) = treeMap.transform(initializer(sym))
-          plan.body = transform(body, seenVars1)
+          initializer(plan.sym) = apply(initializer(plan.sym))
+          plan.body = new Merge(seenVars1)(plan.body)
           plan
-        case plan @ LabelledPlan(label, body) =>
-          labelled(label) = transform(labelled(label), seenVars)
-          plan.body = transform(body, seenVars)
-          plan
-        case _ =>
-          plan
+        }
       }
-
-      transform(plan, Map())
+      (new Merge(Map()))(plan)
     }
 
     /** Inline let-bound trees and labelled blocks that are referenced only once.
@@ -624,38 +623,26 @@ object PatternMatcher {
       def toDrop(sym: Symbol) =
         initializer.contains(sym) && isPatmatGenerated(sym) && refCount(sym) <= 1 && sym != topSym
 
-      val treeMap = new TreeMap {
-         override def transform(tree: Tree)(implicit ctx: Context) = tree match {
-          case tree: Ident =>
-            val sym = tree.symbol
-            if (toDrop(sym)) transform(initializer(sym)) else tree
-          case _ =>
-            super.transform(tree)
+      object Inliner extends PlanTransform {
+        override val treeMap = new TreeMap {
+          override def transform(tree: Tree)(implicit ctx: Context) = tree match {
+            case tree: Ident =>
+              val sym = tree.symbol
+              if (toDrop(sym)) transform(initializer(sym)) else tree
+            case _ =>
+              super.transform(tree)
+          }
         }
-      }
-
-      def transform(plan: Plan): Plan = plan match {
-        case plan: TestPlan =>
-          plan.scrutinee = treeMap.transform(plan.scrutinee)
-          plan.onSuccess = transform(plan.onSuccess)
-          plan.onFailure = transform(plan.onFailure)
-          plan
-        case plan @ LetPlan(sym, body) =>
-          val body1 = transform(body)
-          if (toDrop(sym)) body1
+        override def apply(plan: LetPlan): Plan = {
+          if (toDrop(plan.sym)) apply(plan.body)
           else {
-            initializer(sym) = treeMap.transform(initializer(sym))
-            plan.body = body1
+            initializer(plan.sym) = apply(initializer(plan.sym))
+            plan.body = apply(plan.body)
             plan
           }
-        case plan @ LabelledPlan(label, body) =>
-          labelled(label) = transform(labelled(label))
-          plan.body = transform(plan.body)
-          plan
-        case _ =>
-          plan
+        }
       }
-      transform(plan)
+      Inliner(plan)
     }
 
     // ----- Generating trees from plans ---------------
