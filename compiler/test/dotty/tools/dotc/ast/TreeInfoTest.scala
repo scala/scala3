@@ -14,7 +14,7 @@ class TreeInfoTest extends DottyTest {
   import tpd._
 
   @Test
-  def testDefPath = checkCompile("frontend", "class A { def bar = { val x = { val z = 0; 0} }} ") {
+  def testDefPath: Unit = checkCompile("frontend", "class A { def bar = { val x = { val z = 0; 0} }} ") {
     (tree, context) =>
       implicit val ctx = context
       val xTree = tree.find(tree => tree.symbol.name == termName("x")).get

@@ -49,7 +49,7 @@ class DocstringTests extends DocstringTest {
         checkDocString(t.rawComment.map(_.raw), "/** Hello /* multiple open */ world! */")
     }
   }
-  @Test def multipleClassesInPackage = {
+  @Test def multipleClassesInPackage: Unit = {
     val source =
       """
       |package a
