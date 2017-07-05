@@ -296,7 +296,11 @@ class ClassfileParser(
               if (sig(index) == '<') {
                 accept('<')
                 var tp1: Type = tp
-                var formals = tp.typeParamSymbols
+                var formals: List[Symbol] =
+                  if (skiptvs)
+                    null
+                  else
+                    tp.typeParamSymbols
                 while (sig(index) != '>') {
                   sig(index) match {
                     case variance @ ('+' | '-' | '*') =>
@@ -311,11 +315,15 @@ class ClassfileParser(
                           else TypeBounds.lower(tp)
                         case '*' => TypeBounds.empty
                       }
-                      tp1 = RefinedType(tp1, formals.head.name, bounds)
+                      if (formals != null)
+                        tp1 = RefinedType(tp1, formals.head.name, bounds)
                     case _ =>
-                      tp1 = RefinedType(tp1, formals.head.name, TypeAlias(sig2type(tparams, skiptvs)))
+                      val info = sig2type(tparams, skiptvs)
+                      if (formals != null)
+                        tp1 = RefinedType(tp1, formals.head.name, TypeAlias(info))
                   }
-                  formals = formals.tail
+                  if (formals != null)
+                    formals = formals.tail
                 }
                 accept('>')
                 tp1
