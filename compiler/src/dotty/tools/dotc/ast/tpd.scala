@@ -171,6 +171,13 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   def SyntheticValDef(name: TermName, rhs: Tree)(implicit ctx: Context): ValDef =
     ValDef(ctx.newSymbol(ctx.owner, name, Synthetic, rhs.tpe.widen, coord = rhs.pos), rhs)
 
+  def DefDef(sym: TermSymbol, tparams: List[TypeSymbol], vparamss: List[List[TermSymbol]],
+             resultType: Type, rhs: Tree)(implicit ctx: Context): DefDef =
+    ta.assignType(
+      untpd.DefDef(sym.name, tparams map TypeDef, vparamss.nestedMap(ValDef(_)),
+                   TypeTree(resultType), rhs),
+      sym)
+
   def DefDef(sym: TermSymbol, rhs: Tree = EmptyTree)(implicit ctx: Context): DefDef =
     ta.assignType(DefDef(sym, Function.const(rhs) _), sym)
 
@@ -199,14 +206,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     val (vparamss, rtp) = valueParamss(mtp)
     val targs = tparams map (_.typeRef)
     val argss = vparamss.nestedMap(vparam => Ident(vparam.termRef))
-    ta.assignType(
-      untpd.DefDef(
-        sym.name,
-        tparams map TypeDef,
-        vparamss.nestedMap(ValDef(_)),
-        TypeTree(rtp),
-        rhsFn(targs)(argss)),
-      sym)
+    DefDef(sym, tparams, vparamss, rtp, rhsFn(targs)(argss))
   }
 
   def TypeDef(sym: TypeSymbol)(implicit ctx: Context): TypeDef =
