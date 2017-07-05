@@ -378,7 +378,7 @@ object PatternMatcher {
       }
     }
 
-    /** Reference counts for all variables and labels */
+    /** Reference counts for all labels */
     private def labelRefCount(plan: Plan): collection.Map[Symbol, Int] = {
       object refCounter extends RefCounter {
         override def apply(plan: LabelledPlan): Plan = {
@@ -395,7 +395,7 @@ object PatternMatcher {
       refCounter.count
     }
 
-    /** Reference counts for all variables and labels */
+    /** Reference counts for all variables */
     private def varRefCount(plan: Plan): collection.Map[Symbol, Int] = {
       object refCounter extends RefCounter {
         override val treeMap = new TreeMap {
@@ -589,7 +589,8 @@ object PatternMatcher {
       (new Inliner)(plan)
     }
 
-    /** Merge variables that have the same right hand side
+    /** Merge variables that have the same right hand side.
+     *  Propagate common variable bindings as parameters into case labels.
      */
     private def mergeVars(plan: Plan): Plan = {
       class RHS(val tree: Tree) {
@@ -673,9 +674,8 @@ object PatternMatcher {
       (new Merge(Map()))(plan)
     }
 
-    /** Inline let-bound trees and labelled blocks that are referenced only once.
-     *  Drop all variables and labels that are not referenced anymore after this.
-     *  Also: hoist cases out of tests using `hoistLabelled`.
+    /** Inline let-bound trees that are referenced only once.
+     *  Drop all variables that are not referenced anymore after this.
      */
     private def inlineVars(plan: Plan): Plan = {
       val refCount = varRefCount(plan)
