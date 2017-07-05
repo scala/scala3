@@ -222,11 +222,16 @@ trait ConstraintHandling {
         }
       }
     }
-    assert(constraint.contains(param))
-    val bound = if (fromBelow) constraint.fullLowerBound(param) else constraint.fullUpperBound(param)
-    val inst = avoidParam(bound)
-    typr.println(s"approx ${param.show}, from below = $fromBelow, bound = ${bound.show}, inst = ${inst.show}")
-    inst
+    if (constraint.contains(param)) {
+      val bound = if (fromBelow) constraint.fullLowerBound(param) else constraint.fullUpperBound(param)
+      val inst = avoidParam(bound)
+      typr.println(s"approx ${param.show}, from below = $fromBelow, bound = ${bound.show}, inst = ${inst.show}")
+      inst
+    }
+    else {
+      assert(ctx.mode.is(Mode.Interactive))
+      UnspecifiedErrorType
+    }
   }
 
   /** The instance type of `param` in the current constraint (which contains `param`).
