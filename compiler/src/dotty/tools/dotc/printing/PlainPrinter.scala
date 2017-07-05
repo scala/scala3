@@ -190,13 +190,13 @@ class PlainPrinter(_ctx: Context) extends Printer {
         toTextLocal(tycon) ~ "[" ~ Text(args.map(argText), ", ") ~ "]"
       case tp: TypeVar =>
         if (tp.isInstantiated)
-          toTextLocal(tp.instanceOpt) ~ "^" // debug for now, so that we can see where the TypeVars are.
+          toTextLocal(tp.instanceOpt) ~ ("^" provided ctx.settings.YprintDebug.value)
         else {
           val constr = ctx.typerState.constraint
           val bounds =
             if (constr.contains(tp)) constr.fullBounds(tp.origin)(ctx.addMode(Mode.Printing))
             else TypeBounds.empty
-          if (bounds.isAlias) toText(bounds.lo) ~ "^"
+          if (bounds.isAlias) toText(bounds.lo) ~ ("^" provided ctx.settings.YprintDebug.value)
           else if (ctx.settings.YshowVarBounds.value) "(" ~ toText(tp.origin) ~ "?" ~ toText(bounds) ~ ")"
           else toText(tp.origin)
         }
