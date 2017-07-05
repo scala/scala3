@@ -529,7 +529,7 @@ object PatternMatcher {
      */
     private def inlineLabelled(plan: Plan) = {
       val refCount = referenceCount(plan)
-      def toDrop(sym: Symbol) = labelled.contains(sym) && refCount(symb) <= 1
+      def toDrop(sym: Symbol) = labelled.contains(sym) && refCount(sym) <= 1
       def transform(plan: Plan): Plan = plan match {
         case plan: TestPlan =>
           plan.onSuccess = transform(plan.onSuccess)
