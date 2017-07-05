@@ -4,5 +4,5 @@ scala> val s: Map {type Map$K =String;type Map$V = Int} = null
 -- [E055] Syntax Error: <console>:5:7 ------------------------------------------
 5 |val s: Map {type Map$K =String;type Map$V = Int} = null
   |       ^^^
-  |missing type parameter for [line1$object$$iw$$iw$Map$$K, line1$object$$iw$$iw$Map$$V] => Map[K, V]
+  |       missing type parameter for [K, V] => Map[K, V]
 scala> :quit
