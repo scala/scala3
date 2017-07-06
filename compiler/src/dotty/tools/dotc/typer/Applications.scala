@@ -366,8 +366,12 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
           else if (cx.scope != cx.outer.scope &&
             cx.denotNamed(meth.name).hasAltWith(_.symbol == meth)) {
             val denot = cx.denotNamed(getterName)
-            assert(denot.exists, s"non-existent getter denotation ($denot) for getter($getterName)")
-            ref(TermRef(cx.owner.thisType, getterName, denot))
+            if (denot.exists) ref(TermRef(cx.owner.thisType, getterName, denot))
+            else {
+              assert(ctx.mode.is(Mode.Interactive),
+                s"non-existent getter denotation ($denot) for getter($getterName)")
+              findGetter(cx.outer)
+            }
           } else findGetter(cx.outer)
         }
         findGetter(ctx)
