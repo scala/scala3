@@ -4,4 +4,8 @@ object xfatalWarnings {
   opt match { // error when running with -Xfatal-warnings
     case None =>
   }
+
+  object Test {
+    while (true) {} // should be ok. no "pure expression does nothing in statement position" issued.
+  }
 }
