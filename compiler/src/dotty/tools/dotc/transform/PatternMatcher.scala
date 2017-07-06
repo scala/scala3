@@ -98,10 +98,20 @@ object PatternMatcher {
       sym.is(Synthetic) &&
       (sym.is(Label) || sym.name.is(PatMatStdBinderName))
 
+    private val refersToInternal = new TypeAccumulator[Boolean] {
+      def apply(x: Boolean, tp: Type) =
+        x || {
+          tp match {
+            case tp: TermRef => isPatmatGenerated(tp.symbol)
+            case _ => false
+          }
+        } || foldOver(x, tp)
+    }
+
     /** A type map that eliminates all patternmatcher-generated termrefs that
      *  can be replaced by a source-level alias.
      */
-    private val sanitize = new TypeMap {
+    private val sanitize2 = new TypeMap {
       def apply(t: Type): Type = t.widenExpr match {
         case t: TermRef if isPatmatGenerated(t.symbol) =>
           t.info.widenExpr match {
@@ -110,6 +120,11 @@ object PatternMatcher {
           }
         case t => mapOver(t)
       }
+    }
+
+    private def sanitize(tp: Type): Type = tp.widenExpr match {
+      case tp: TermRef if refersToInternal(false, tp) => sanitize(tp.underlying)
+      case tp => tp
     }
 
     // ------- Plan and test types ------------------------
