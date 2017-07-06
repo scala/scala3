@@ -1145,9 +1145,11 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
     val tp1 = stripImplicit(alt1.widen)
     val tp2 = stripImplicit(alt2.widen)
 
-    def winsOwner1 = nesting1 > nesting2 || isDerived(owner1, owner2)
+    def winsOwner1 =
+      nesting1 > nesting2 || nesting1 == nesting2 && isDerived(owner1, owner2)
     def winsType1  = isAsSpecific(alt1, tp1, alt2, tp2)
-    def winsOwner2 = nesting2 > nesting1 || isDerived(owner2, owner1)
+    def winsOwner2 =
+      nesting2 > nesting1 || nesting1 == nesting2 && isDerived(owner2, owner1)
     def winsType2  = isAsSpecific(alt2, tp2, alt1, tp1)
 
     overload.println(i"isAsGood($alt1, $alt2)? $tp1 $tp2 $winsOwner1 $winsType1 $winsOwner2 $winsType2")
