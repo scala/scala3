@@ -142,6 +142,8 @@ class PlainPrinter(_ctx: Context) extends Printer {
         toTextLocal(tp.underlying) ~ "(" ~ toTextRef(tp) ~ ")"
       case tp: TypeRef =>
         toTextPrefix(tp.prefix) ~ selectionString(tp)
+      case AppliedType(tycon, args) =>
+        (toTextLocal(tycon) ~ "[" ~ Text(args map argText, ", ") ~ "]").close
       case tp: RefinedType =>
         val parent :: (refined: List[RefinedType @unchecked]) =
           refinementChain(tp).reverse
@@ -169,12 +171,13 @@ class PlainPrinter(_ctx: Context) extends Printer {
         changePrec(GlobalPrec) {
           (if (tp.isImplicit) "(implicit " else "(") ~
             Text((tp.paramNames, tp.paramInfos).zipped map paramText, ", ") ~
-          ")" ~ toText(tp.resultType)
+          (if (tp.resultType.isInstanceOf[MethodType]) ")" else "): ") ~
+          toText(tp.resultType)
         }
       case tp: ExprType =>
         changePrec(GlobalPrec) { "=> " ~ toText(tp.resultType) }
       case tp: TypeLambda =>
-        def paramText(name: Name, bounds: TypeBounds): Text = name.toString ~ toText(bounds)
+        def paramText(name: Name, bounds: TypeBounds): Text = name.unexpandedName.toString ~ toText(bounds)
         changePrec(GlobalPrec) {
           "[" ~ Text((tp.paramNames, tp.paramInfos).zipped.map(paramText), ", ") ~
           "]" ~ lambdaHash(tp) ~ (" => " provided !tp.resultType.isInstanceOf[MethodType]) ~
@@ -190,13 +193,13 @@ class PlainPrinter(_ctx: Context) extends Printer {
         toTextLocal(tycon) ~ "[" ~ Text(args.map(argText), ", ") ~ "]"
       case tp: TypeVar =>
         if (tp.isInstantiated)
-          toTextLocal(tp.instanceOpt) ~ "^" // debug for now, so that we can see where the TypeVars are.
+          toTextLocal(tp.instanceOpt) ~ ("^" provided ctx.settings.YprintDebug.value)
         else {
           val constr = ctx.typerState.constraint
           val bounds =
             if (constr.contains(tp)) constr.fullBounds(tp.origin)(ctx.addMode(Mode.Printing))
             else TypeBounds.empty
-          if (bounds.isAlias) toText(bounds.lo) ~ "^"
+          if (bounds.isAlias) toText(bounds.lo) ~ ("^" provided ctx.settings.YprintDebug.value)
           else if (ctx.settings.YshowVarBounds.value) "(" ~ toText(tp.origin) ~ "?" ~ toText(bounds) ~ ")"
           else toText(tp.origin)
         }

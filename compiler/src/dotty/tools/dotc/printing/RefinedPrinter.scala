@@ -155,7 +155,8 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         if (defn.isFunctionClass(cls)) return toTextFunction(args, cls.name.isImplicitFunction)
         if (defn.isTupleClass(cls)) return toTextTuple(args)
         if (isInfixType(tp)) return toTextInfixType(tycon, args)
-        return (toTextLocal(tycon) ~ "[" ~ Text(args map argText, ", ") ~ "]").close
+      case EtaExpansion(tycon) =>
+        return toText(tycon)
       case tp: TypeRef =>
         val hideType = !ctx.settings.debugAlias.value && (tp.symbol.isAliasPreferred)
         if (hideType && !ctx.phase.erasedTypes && !tp.symbol.isCompleting) {
@@ -635,7 +636,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
     if (tree.exists(!_.isEmpty)) encl(blockText(tree)) else ""
 
   override protected def ParamRefNameString(name: Name): String =
-    name.unexpandedName.toString
+    name.unexpandedName.invariantName.toString
 
   override protected def treatAsTypeParam(sym: Symbol): Boolean = sym is TypeParam
 

@@ -384,7 +384,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
       val MethodDoesNotTakeParameters(tree, methodPart) :: Nil = messages
 
       assertEquals("Scope.foo(1)", tree.show)
-      assertEquals("((a: Int)Unit)(Scope.foo)", methodPart.show)
+      assertEquals("((a: Int): Unit)(Scope.foo)", methodPart.show)
     }
 
   @Test def ambiugousOverloadWithWildcard =
@@ -408,7 +408,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
       assertMessageCount(1, messages)
       val AmbiguousOverload(tree, List(alt1, alt2), pt: WildcardType) :: Nil = messages
       assertEquals("method foo", alt1.show)
-      assertEquals("(s: String)String", alt1.info.show)
+      assertEquals("(s: String): String", alt1.info.show)
       assertEquals("method foo", alt2.show)
     }
 
