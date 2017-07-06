@@ -898,9 +898,9 @@ object PatternMatcher {
           case Block(_, Match(_, cases)) => cases
           case _ => Nil
         }
-        def numConsts(cdefs: List[CaseDef]) = {
+        def numConsts(cdefs: List[CaseDef]): Int = {
           val tpes = cdefs.map(_.pat.tpe)
-          tpes.toSet.size
+          tpes.toSet.size: Int // without the type ascription, testPickling fails because of #2840.
         }
         if (numConsts(resultCases) < numConsts(original.cases))
           ctx.warning(i"could not emit switch for @switch annotated match", original.pos)
