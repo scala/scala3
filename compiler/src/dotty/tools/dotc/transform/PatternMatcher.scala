@@ -98,6 +98,7 @@ object PatternMatcher {
       sym.is(Synthetic) &&
       (sym.is(Label) || sym.name.is(PatMatStdBinderName))
 
+    /** Test whether a type refers to a pattern-generated variable */
     private val refersToInternal = new TypeAccumulator[Boolean] {
       def apply(x: Boolean, tp: Type) =
         x || {
@@ -108,20 +109,9 @@ object PatternMatcher {
         } || foldOver(x, tp)
     }
 
-    /** A type map that eliminates all patternmatcher-generated termrefs that
-     *  can be replaced by a source-level alias.
+    /** Widen type as far as necessary so that it does not refer to a pattern-
+     *  generated variable.
      */
-    private val sanitize2 = new TypeMap {
-      def apply(t: Type): Type = t.widenExpr match {
-        case t: TermRef if isPatmatGenerated(t.symbol) =>
-          t.info.widenExpr match {
-            case t1: TermRef => apply(t1)
-            case _ => t
-          }
-        case t => mapOver(t)
-      }
-    }
-
     private def sanitize(tp: Type): Type = tp.widenExpr match {
       case tp: TermRef if refersToInternal(false, tp) => sanitize(tp.underlying)
       case tp => tp
@@ -908,8 +898,12 @@ object PatternMatcher {
           case Block(_, Match(_, cases)) => cases
           case _ => Nil
         }
-        if (resultCases.length < original.cases.length)
-          ctx.warning(s"could not emit switch for @switch annotated match", original.pos)
+        def numConsts(cdefs: List[CaseDef]) = {
+          val tpes = cdefs.map(_.pat.tpe)
+          tpes.toSet.size
+        }
+        if (numConsts(resultCases) < numConsts(original.cases))
+          ctx.warning(i"could not emit switch for @switch annotated match", original.pos)
       case _ =>
     }
 
