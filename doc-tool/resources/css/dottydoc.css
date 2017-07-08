@@ -210,7 +210,7 @@ div#doc-page-container > p + h1 {
 }
 
 div#post-footer > img#author-image {
-    width: 100px;
+    width: auto;
     height: auto;
     border-radius: 50%;
 }
