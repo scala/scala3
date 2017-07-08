@@ -139,9 +139,9 @@ class Erasure extends Phase with DenotTransformer { thisTransformer =>
         i"The type $tp - ${tp.toString} of class ${tp.getClass} of tree $tree : ${tree.tpe} / ${tree.getClass} is illegal after erasure, phase = ${ctx.phase.prev}")
 }
 
-object Erasure extends TypeTestsCasts{
-
+object Erasure {
   import tpd._
+  import TypeTestsCasts._
 
   object Boxing {
 
@@ -172,7 +172,8 @@ object Erasure extends TypeTestsCasts{
     }
 
     def constant(tree: Tree, const: Tree)(implicit ctx: Context) =
-      if (isPureExpr(tree)) const else Block(tree :: Nil, const)
+      (if (isPureExpr(tree)) const else Block(tree :: Nil, const))
+        .withPos(tree.pos)
 
     final def box(tree: Tree, target: => String = "")(implicit ctx: Context): Tree = ctx.traceIndented(i"boxing ${tree.showSummary}: ${tree.tpe} into $target") {
       tree.tpe.widen match {

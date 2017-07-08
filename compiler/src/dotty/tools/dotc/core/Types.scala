@@ -214,12 +214,16 @@ object Types {
       case _ => NoType
     }
 
-    /** Is this type guaranteed not to have `null` as a value?
-     *  For the moment this is only true for modules, but it could
-     *  be refined later.
-     */
-    final def isNotNull(implicit ctx: Context): Boolean =
-      classSymbol is ModuleClass
+    /** Is this type guaranteed not to have `null` as a value? */
+    final def isNotNull(implicit ctx: Context): Boolean = this match {
+      case tp: ConstantType => tp.value.value != null
+      case tp: ClassInfo => !tp.cls.isNullableClass && tp.cls != defn.NothingClass
+      case tp: TypeBounds => tp.lo.isNotNull
+      case tp: TypeProxy => tp.underlying.isNotNull
+      case AndType(tp1, tp2) => tp1.isNotNull || tp2.isNotNull
+      case OrType(tp1, tp2) => tp1.isNotNull && tp2.isNotNull
+      case _ => false
+    }
 
     /** Is this type produced as a repair for an error? */
     final def isError(implicit ctx: Context): Boolean = stripTypeVar match {
@@ -3746,7 +3750,7 @@ object Types {
           if (underlying1 eq underlying) tp
           else derivedAnnotatedType(tp, underlying1, mapOver(annot))
 
-        case tp @ WildcardType =>
+        case tp: WildcardType =>
           derivedWildcardType(tp, mapOver(tp.optBounds))
 
         case tp: JavaArrayType =>

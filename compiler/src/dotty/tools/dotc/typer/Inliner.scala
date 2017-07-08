@@ -15,7 +15,7 @@ import StdNames.nme
 import Contexts.Context
 import Names.{Name, TermName, EmptyTermName}
 import NameOps._
-import NameKinds.{InlineAccessorName, OuterSelectName}
+import NameKinds.InlineAccessorName
 import SymDenotations.SymDenotation
 import Annotations._
 import transform.ExplicitOuter
@@ -412,7 +412,7 @@ class Inliner(call: tpd.Tree, rhs: tpd.Tree)(implicit ctx: Context) {
       lazy val rhsClsSym = selfSym.info.widenDealias.classSymbol
       val rhs =
         if (lastSelf.exists)
-          untpd.Select(ref(lastSelf), OuterSelectName(EmptyTermName, lastLevel - level)).withType(selfSym.info)
+          ref(lastSelf).outerSelect(lastLevel - level, selfSym.info)
         else if (rhsClsSym.is(Module))
           ref(rhsClsSym.sourceModule)
         else
