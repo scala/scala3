@@ -601,7 +601,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     override def TypeApply(tree: Tree)(fun: Tree, args: List[Tree])(implicit ctx: Context): TypeApply =
       ta.assignType(untpd.cpy.TypeApply(tree)(fun, args), fun, args)
       // Same remark as for Apply
-    
+
     override def Closure(tree: Tree)(env: List[Tree], meth: Tree, tpt: Tree)(implicit ctx: Context): Closure =
             ta.assignType(untpd.cpy.Closure(tree)(env, meth, tpt), meth, tpt)
 
@@ -769,6 +769,11 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       if (tree.tpe <:< tp) tree
       else if (!ctx.erasedTypes) asInstance(tp)
       else Erasure.Boxing.adaptToType(tree, tp)
+
+    /** `tree ne null` (might need a cast to be type correct) */
+     def testNotNull(implicit ctx: Context): Tree =
+      tree.ensureConforms(defn.ObjectType)
+        .select(defn.Object_ne).appliedTo(Literal(Constant(null)))
 
     /** If inititializer tree is `_', the default value of its type,
      *  otherwise the tree itself.

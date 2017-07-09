@@ -25,7 +25,7 @@ object Test {
       case _: ExceptionTrait =>
       case _: NoSuchElementException if a <= 1 =>
       case _: NullPointerException | _:IOException =>
-      case e: Int => // error
+      case e: Int => // error: unrelated
       case EX =>
       case IAE(msg) =>
       case e: IllegalArgumentException =>

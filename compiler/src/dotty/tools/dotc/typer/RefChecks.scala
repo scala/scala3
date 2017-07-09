@@ -872,22 +872,6 @@ class RefChecks extends MiniPhase { thisTransformer =>
       currentLevel.enterReference(tree.tpe.typeSymbol, tree.pos)
       tree
     }
-
-    override def transformTypeApply(tree: tpd.TypeApply)(implicit ctx: Context, info: TransformerInfo): tpd.Tree = {
-      tree.fun match {
-        case fun@Select(qual, selector) =>
-          val sym = tree.symbol
-
-          if (sym == defn.Any_isInstanceOf) {
-            val argType = tree.args.head.tpe
-            val qualCls = qual.tpe.widen.classSymbol
-            val argCls = argType.classSymbol
-            if (qualCls.isPrimitiveValueClass && !argCls.isPrimitiveValueClass) ctx.error("isInstanceOf cannot test if value types are references", tree.pos)
-          }
-        case _ =>
-      }
-      tree
-    }
   }
 }
 
