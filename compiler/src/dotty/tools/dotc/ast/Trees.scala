@@ -1110,7 +1110,10 @@ object Trees {
 
     abstract class TreeMap(val cpy: TreeCopier = inst.cpy) {
 
-      def transform(tree: Tree)(implicit ctx: Context): Tree =
+      def transform(tree: Tree)(implicit ctx: Context): Tree = {
+        def localCtx =
+          if (tree.hasType && tree.symbol.exists) ctx.withOwner(tree.symbol) else ctx
+
         if (skipTransform(tree)) tree
         else tree match {
           case Ident(name) =>
@@ -1180,12 +1183,15 @@ object Trees {
           case EmptyValDef =>
             tree
           case tree @ ValDef(name, tpt, _) =>
+            implicit val ctx = localCtx
             val tpt1 = transform(tpt)
             val rhs1 = transform(tree.rhs)
             cpy.ValDef(tree)(name, tpt1, rhs1)
           case tree @ DefDef(name, tparams, vparamss, tpt, _) =>
+            implicit val ctx = localCtx
             cpy.DefDef(tree)(name, transformSub(tparams), vparamss mapConserve (transformSub(_)), transform(tpt), transform(tree.rhs))
           case tree @ TypeDef(name, rhs) =>
+            implicit val ctx = localCtx
             cpy.TypeDef(tree)(name, transform(rhs))
           case tree @ Template(constr, parents, self, _) =>
             cpy.Template(tree)(transformSub(constr), transform(parents), transformSub(self), transformStats(tree.body))
@@ -1201,6 +1207,7 @@ object Trees {
           case _ if ctx.reporter.errorsReported =>
             tree
         }
+      }
 
       def transformStats(trees: List[Tree])(implicit ctx: Context): List[Tree] =
         transform(trees)
