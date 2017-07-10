@@ -557,7 +557,8 @@ trait Checking {
       case tp => tp.widenTermRefExpr match {
         case tp: ConstantType if isPureExpr(tree) => // ok
         case tp if defn.isFunctionType(tp) && isPureExpr(tree) => // ok
-        case _ => ctx.error(em"$what must be a constant expression or a function", tree.pos)
+        case _ =>
+          if (!ctx.erasedTypes) ctx.error(em"$what must be a constant expression or a function", tree.pos)
       }
     }
 
