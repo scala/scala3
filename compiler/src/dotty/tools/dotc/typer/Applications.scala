@@ -575,8 +575,11 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
 
     def normalizedFun = myNormalizedFun
 
+    private def isJavaAnnotConstr(sym: Symbol) =
+      sym.is(JavaDefined) && sym.isConstructor && sym.owner.derivesFrom(defn.AnnotationClass)
+
     override def liftFun(): Unit =
-      if (liftedDefs == null) {
+      if (liftedDefs == null && !isJavaAnnotConstr(methRef.symbol)) {
         liftedDefs = new mutable.ListBuffer[Tree]
         myNormalizedFun = liftApp(liftedDefs, myNormalizedFun)
       }
