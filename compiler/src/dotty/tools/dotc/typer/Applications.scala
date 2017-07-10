@@ -445,6 +445,9 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
                 val harmonizedArgs = harmonizeArgs(typedArgs)
                 if (harmonizedArgs ne typedArgs) {
                   ctx.typerState.constraint = origConstraint
+                    // reset constraint, we will test constraint anyway when we
+                    // compare against the seqliteral. The reset is needed
+                    // otherwise pos/harmonize.scala would fail on line 40.
                   typedArgs = harmonizedArgs
                 }
                 typedArgs.foreach(addArg(_, elemFormal))
@@ -1441,9 +1444,18 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
     }
     val clss = numericClasses(ts, Set())
     if (clss.size > 1) {
+      def isCompatible(cls: Symbol, sup: TypeRef) =
+        defn.isValueSubType(cls.typeRef, sup) &&
+        !(cls == defn.LongClass && sup.isRef(defn.FloatClass))
+          // exclude Long <: Float from list of allowable widenings
       val lub = defn.ScalaNumericValueTypeList.find(lubTpe =>
-        clss.forall(cls => defn.isValueSubType(cls.typeRef, lubTpe))).get
-      ts.mapConserve(adapt(_, lub))
+        clss.forall(cls => isCompatible(cls, lubTpe))).get
+      ts.mapConserve { t =>
+        tpe(t).widenTermRefExpr match {
+          case ct: ConstantType => adapt(t, lub)
+          case _ => t
+        }
+      }
     }
     else ts
   }
@@ -1462,7 +1474,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
   /** If all `types` are numeric value types, and they are not all the same type,
    *  pick a common numeric supertype and return it instead of every original type.
    */
-  def harmonizeTypes(tpes: List[Type])(implicit ctx: Context): List[Type] =
+  private def harmonizeTypes(tpes: List[Type])(implicit ctx: Context): List[Type] =
     harmonizeWith(tpes)(identity, (tp, pt) => pt)
 }
 
