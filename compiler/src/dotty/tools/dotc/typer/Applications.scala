@@ -29,6 +29,7 @@ import config.Printers.{typr, unapp, overload}
 import TypeApplications._
 import language.implicitConversions
 import reporting.diagnostic.Message
+import Constants.{Constant, IntTag, LongTag}
 
 object Applications {
   import tpd._
@@ -441,6 +442,9 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
                 val harmonizedArgs = harmonizeArgs(typedArgs)
                 if (harmonizedArgs ne typedArgs) {
                   ctx.typerState.constraint = origConstraint
+                    // reset constraint, we will re-establish constraint anyway when we
+                    // compare against the seqliteral. The reset is needed
+                    // otherwise pos/harmonize.scala would fail on line 40.
                   typedArgs = harmonizedArgs
                 }
                 typedArgs.foreach(addArg(_, elemFormal))
@@ -1437,15 +1441,35 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
     }
     val clss = numericClasses(ts, Set())
     if (clss.size > 1) {
+      def isCompatible(cls: Symbol, sup: TypeRef) =
+        defn.isValueSubType(cls.typeRef, sup) &&
+        !(cls == defn.LongClass && sup.isRef(defn.FloatClass))
+          // exclude Long <: Float from list of allowable widenings
+          // TODO: should we do this everywhere we ask for isValueSubType?
+
       val lub = defn.ScalaNumericValueTypeList.find(lubTpe =>
-        clss.forall(cls => defn.isValueSubType(cls.typeRef, lubTpe))).get
-      ts.mapConserve(adapt(_, lub))
+        clss.forall(cls => isCompatible(cls, lubTpe))).get
+
+      def lossOfPrecision(ct: Constant): Boolean =
+        ct.tag == IntTag && lub.isRef(defn.FloatClass) &&
+          ct.intValue.toFloat.toInt != ct.intValue ||
+        ct.tag == LongTag && lub.isRef(defn.DoubleClass) &&
+          ct.longValue.toDouble.toLong != ct.longValue
+
+      val ts1 = ts.mapConserve { t =>
+        tpe(t).widenTermRefExpr match {
+          case ct: ConstantType if !lossOfPrecision(ct.value) => adapt(t, lub)
+          case _ => t
+        }
+      }
+      if (numericClasses(ts1, Set()).size == 1) ts1 else ts
     }
     else ts
   }
 
   /** If `trees` all have numeric value types, and they do not have all the same type,
-   *  pick a common numeric supertype and convert all trees to this type.
+   *  pick a common numeric supertype and convert all constant trees to this type.
+   *  If the resulting trees all have the same type, return them instead of the original ones.
    */
   def harmonize(trees: List[Tree])(implicit ctx: Context): List[Tree] = {
     def adapt(tree: Tree, pt: Type): Tree = tree match {
@@ -1456,9 +1480,10 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
   }
 
   /** If all `types` are numeric value types, and they are not all the same type,
-   *  pick a common numeric supertype and return it instead of every original type.
+   *  pick a common numeric supertype and widen any constant types in `tpes` to it.
+   *  If the resulting types are all the same, return them instead of the original ones.
    */
-  def harmonizeTypes(tpes: List[Type])(implicit ctx: Context): List[Type] =
+  private def harmonizeTypes(tpes: List[Type])(implicit ctx: Context): List[Type] =
     harmonizeWith(tpes)(identity, (tp, pt) => pt)
 }
 
