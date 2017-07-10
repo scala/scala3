@@ -95,6 +95,8 @@ sidebar:
               url: docs/reference/dropped/xml.html
             - title: Auto-Application
               url: docs/reference/dropped/auto-apply.html
+            - title: Weak Conformance
+              url: docs/reference/dropped/weak-conformance.html
     - title: Contributing
       subsection:
         - title: Getting Started
