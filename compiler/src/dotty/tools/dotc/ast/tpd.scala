@@ -12,7 +12,7 @@ import Denotations._, Decorators._, DenotTransformers._
 import collection.mutable
 import util.{Property, SourceFile, NoSource}
 import typer.ErrorReporting._
-import NameKinds.TempResultName
+import NameKinds.{TempResultName, OuterSelectName}
 
 import scala.annotation.tailrec
 import scala.io.Codec
@@ -171,6 +171,13 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   def SyntheticValDef(name: TermName, rhs: Tree)(implicit ctx: Context): ValDef =
     ValDef(ctx.newSymbol(ctx.owner, name, Synthetic, rhs.tpe.widen, coord = rhs.pos), rhs)
 
+  def DefDef(sym: TermSymbol, tparams: List[TypeSymbol], vparamss: List[List[TermSymbol]],
+             resultType: Type, rhs: Tree)(implicit ctx: Context): DefDef =
+    ta.assignType(
+      untpd.DefDef(sym.name, tparams map TypeDef, vparamss.nestedMap(ValDef(_)),
+                   TypeTree(resultType), rhs),
+      sym)
+
   def DefDef(sym: TermSymbol, rhs: Tree = EmptyTree)(implicit ctx: Context): DefDef =
     ta.assignType(DefDef(sym, Function.const(rhs) _), sym)
 
@@ -199,14 +206,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     val (vparamss, rtp) = valueParamss(mtp)
     val targs = tparams map (_.typeRef)
     val argss = vparamss.nestedMap(vparam => Ident(vparam.termRef))
-    ta.assignType(
-      untpd.DefDef(
-        sym.name,
-        tparams map TypeDef,
-        vparamss.nestedMap(ValDef(_)),
-        TypeTree(rtp),
-        rhsFn(targs)(argss)),
-      sym)
+    DefDef(sym, tparams, vparamss, rtp, rhsFn(targs)(argss))
   }
 
   def TypeDef(sym: TypeSymbol)(implicit ctx: Context): TypeDef =
@@ -682,6 +682,12 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     def select(name: Name)(implicit ctx: Context): Select =
       Select(tree, name)
 
+    /** A select node with the given selector name such that the designated
+     *  member satisfies predicate `p`. Useful for disambiguating overloaded members.
+     */
+    def select(name: Name, p: Symbol => Boolean)(implicit ctx: Context): Select =
+      select(tree.tpe.member(name).suchThat(p).symbol)
+
     /** A select node with the given type */
     def select(tp: NamedType)(implicit ctx: Context): Select =
       untpd.Select(tree, tp.name).withType(tp)
@@ -751,9 +757,20 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     def ensureApplied(implicit ctx: Context): Tree =
       if (tree.tpe.widen.isParameterless) tree else tree.appliedToNone
 
-    /** `tree.isInstanceOf[tp]` */
-    def isInstance(tp: Type)(implicit ctx: Context): Tree =
-      tree.select(defn.Any_isInstanceOf).appliedToType(tp)
+    /** `tree == that` */
+    def equal(that: Tree)(implicit ctx: Context) =
+      applyOverloaded(tree, nme.EQ, that :: Nil, Nil, defn.BooleanType)
+
+    /** `tree.isInstanceOf[tp]`, with special treatment of singleton types */
+    def isInstance(tp: Type)(implicit ctx: Context): Tree = tp match {
+      case tp: SingletonType =>
+        if (tp.widen.derivesFrom(defn.ObjectClass))
+          tree.ensureConforms(defn.ObjectType).select(defn.Object_eq).appliedTo(singleton(tp))
+        else
+          singleton(tp).equal(tree)
+      case _ =>
+        tree.select(defn.Any_isInstanceOf).appliedToType(tp)
+    }
 
     /** tree.asInstanceOf[`tp`] */
     def asInstance(tp: Type)(implicit ctx: Context): Tree = {
@@ -771,7 +788,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       else Erasure.Boxing.adaptToType(tree, tp)
 
     /** `tree ne null` (might need a cast to be type correct) */
-     def testNotNull(implicit ctx: Context): Tree =
+    def testNotNull(implicit ctx: Context): Tree =
       tree.ensureConforms(defn.ObjectType)
         .select(defn.Object_ne).appliedTo(Literal(Constant(null)))
 
@@ -804,6 +821,13 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
         setr.appliedTo(rhs)
       }
       else Assign(tree, rhs)
+
+    /** A synthetic select with that will be turned into an outer path by ExplicitOuter.
+     *  @param levels  How many outer levels to select
+     *  @param tp      The type of the destination of the outer path.
+     */
+    def outerSelect(levels: Int, tp: Type)(implicit ctx: Context): Tree =
+      untpd.Select(tree, OuterSelectName(EmptyTermName, levels)).withType(tp)
 
     // --- Higher order traversal methods -------------------------------
 

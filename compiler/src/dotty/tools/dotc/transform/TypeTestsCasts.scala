@@ -7,6 +7,7 @@ import ast.Trees._
 import Erasure.Boxing._
 import TypeErasure._
 import ValueClasses._
+import SymUtils._
 import core.Flags._
 import util.Positions._
 
@@ -22,7 +23,7 @@ import util.Positions._
  * Unfortunately this phase ended up being not Y-checkable unless types are erased. A cast to an ConstantType(3) or x.type
  * cannot be rewritten before erasure.
  */
-trait TypeTestsCasts {
+object TypeTestsCasts {
   import ast.tpd._
 
   def interceptTypeApply(tree: TypeApply)(implicit ctx: Context): Tree = ctx.traceIndented(s"transforming ${tree.show}", show = true) {
@@ -132,9 +133,7 @@ trait TypeTestsCasts {
          */
         def transformTypeTest(expr: Tree, testType: Type, flagUnrelated: Boolean): Tree = testType.dealias match {
           case _: SingletonType =>
-            val cmpOp =
-              if (testType derivesFrom defn.AnyValClass) defn.Any_equals else defn.Object_eq
-              expr.select(cmpOp).appliedTo(singleton(testType))
+            expr.isInstance(testType).withPos(tree.pos)
           case OrType(tp1, tp2) =>
             evalOnce(expr) { e =>
               transformTypeTest(e, tp1, flagUnrelated = false)
@@ -157,7 +156,7 @@ trait TypeTestsCasts {
             transformIsInstanceOf(expr, erasure(testType), flagUnrelated)
         }
 
-        if ((sym eq defn.Any_isInstanceOf) || (sym eq defn.Any_typeTest))
+        if (sym.isTypeTest)
           transformTypeTest(expr, tree.args.head.tpe, flagUnrelated = true)
         else if (sym eq defn.Any_asInstanceOf)
           transformAsInstanceOf(erasure(tree.args.head.tpe))

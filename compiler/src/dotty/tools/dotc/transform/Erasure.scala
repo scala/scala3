@@ -139,9 +139,9 @@ class Erasure extends Phase with DenotTransformer { thisTransformer =>
         i"The type $tp - ${tp.toString} of class ${tp.getClass} of tree $tree : ${tree.tpe} / ${tree.getClass} is illegal after erasure, phase = ${ctx.phase.prev}")
 }
 
-object Erasure extends TypeTestsCasts{
-
+object Erasure {
   import tpd._
+  import TypeTestsCasts._
 
   object Boxing {
 

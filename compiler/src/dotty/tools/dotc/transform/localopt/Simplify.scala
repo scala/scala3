@@ -42,7 +42,7 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
     new InlineCaseIntrinsics(this)  ::
     new RemoveUnnecessaryNullChecks ::
     new InlineOptions               ::
-    new InlineLabelsCalledOnce      ::
+    //new InlineLabelsCalledOnce    :: // not needed: new pattern matcher does this already
     new Valify(this)                ::
     new Devalify                    ::
     new Jumpjump                    ::
