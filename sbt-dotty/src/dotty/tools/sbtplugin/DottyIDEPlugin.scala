@@ -234,8 +234,19 @@ object DottyIDEPlugin extends AutoPlugin {
     },
 
     runCode := {
-      runProcess(codeCommand.value ++ Seq("--install-extension", "lampepfl.dotty"), wait = true)
-      runProcess(codeCommand.value ++ Seq("."), directory = baseDirectory.value)
+      try {
+        runProcess(codeCommand.value ++ Seq("--install-extension", "lampepfl.dotty"), wait = true)
+        runProcess(codeCommand.value ++ Seq("."), directory = baseDirectory.value)
+      } catch {
+        case ioex: IOException if ioex.getMessage.startsWith("""Cannot run program "code"""") =>
+          throw new MessageOnlyException(
+            """Could not find Visual Studio Code on your system.
+              |Please download it at (https://code.visualstudio.com/) and add it to your path and then rerun launchIDE
+              |
+              |For Linux: https://code.visualstudio.com/docs/setup/linux
+              |For Windows: https://code.visualstudio.com/docs/setup/windows
+              |For Mac: https://code.visualstudio.com/docs/setup/mac""".stripMargin)
+      }
     }
     
   ) ++ addCommandAlias("launchIDE", ";configureIDE;runCode")
