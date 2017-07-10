@@ -29,6 +29,7 @@ import config.Printers.{typr, unapp, overload}
 import TypeApplications._
 import language.implicitConversions
 import reporting.diagnostic.Message
+import Constants.{Constant, IntTag, LongTag}
 
 object Applications {
   import tpd._
@@ -1449,11 +1450,19 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
         !(cls == defn.LongClass && sup.isRef(defn.FloatClass))
           // exclude Long <: Float from list of allowable widenings
           // TODO: should we do this everywhere we ask for isValueSubType?
+
       val lub = defn.ScalaNumericValueTypeList.find(lubTpe =>
         clss.forall(cls => isCompatible(cls, lubTpe))).get
+
+      def lossOfPrecision(ct: Constant): Boolean =
+        ct.tag == IntTag && lub.isRef(defn.FloatClass) &&
+          ct.intValue.toFloat.toInt != ct.intValue ||
+        ct.tag == LongTag && lub.isRef(defn.DoubleClass) &&
+          ct.longValue.toDouble.toLong != ct.longValue
+
       val ts1 = ts.mapConserve { t =>
         tpe(t).widenTermRefExpr match {
-          case ct: ConstantType => adapt(t, lub)
+          case ct: ConstantType if !lossOfPrecision(ct.value) => adapt(t, lub)
           case _ => t
         }
       }

@@ -40,7 +40,8 @@ assigning a type to a constant expression. The rule is:
    and all expressions have primitive numeric types, but they do not
    all have the same type, then the following is attempted: Every
    constant expression `E` in `Es` is widened to the least primitive
-   numeric value type above the types of all expressions in `Es`. Here
+   numeric value type equal to or above the types of all expressions in `Es`,
+   if that can be done without a loss of precision. Here
    _above_ and _least_ are interpreted according to the ordering given
    below.
 
@@ -55,24 +56,32 @@ assigning a type to a constant expression. The rule is:
                 |
               Byte
 
-    If these widenings lead to all expressions `Es` having the same type,
-    we use the transformed list of expressions instead of `Es`, otherwise
-    we use `Es` unchanged.
+    A loss of precision occurs for an `Int -> Float` conversion of a constant
+    `c` if `c.toFloat.toInt != c`. For a `Long -> Double` conversion it occurs
+    if `c.toDouble.toLong != c`.
+
+    If these widenings lead to all widened expressions having the same type,
+    we use the widened expressions instead of `Es`, otherwise we use `Es` unchanged.
 
 __Examples:__
 
-    inline val b: Byte = 3
-    inline val s: Short = 33
-    def f(): Int = b + s
-    List(b, s, 'a')     : List[Int]
-    List(b, s, 'a', f()): List[Int]
-    List(1.0f, 'a', 0)  : List[Float]
-    List(1.0f, 1L)      : List[Double]
-    List(1.0f, 1L, f()) : List[AnyVal]
+    inline val b = 33
+    def f(): Int = b + 1
+    List(b, 33, 'a')      : List[Int]
+    List(b, 33, 'a', f()) : List[Int]
+    List(1.0f, 'a', 0)    : List[Float]
+    List(1.0f, 1L)        : List[Double]
+    List(1.0f, 1L, f())   : List[AnyVal]
+    List(1.0f, 1234567890): List[AnyVal]
 
-The expression on the last line has type `List[AnyVal]`, since widenings
-only affect constants. Hence, `1.0f` and `1L` are widened to `Double`,
-but `f()` still has type `Int`. The elements don't agree on a type after
-widening, hence the expressions are left unchanged.
+The expression on the second-to-last line has type `List[AnyVal]`,
+since widenings only affect constants. Hence, `1.0f` and `1L` are
+widened to `Double`, but `f()` still has type `Int`. The elements
+don't agree on a type after widening, hence the elements are left
+unchanged.
+
+The expression on the last line has type `List[AnyVal]` because
+`1234567890` cannot be converted to a `Float` without a loss of
+precision.
 
 

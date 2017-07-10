@@ -38,6 +38,21 @@ object Test {
 
     val xs = List(1.0, nn, 'c')
     val ys: List[Double] = xs
+
   }
 
+  inline val b = 33
+  def f(): Int = b + 1
+  val a1 = Array(b, 33, 'a')
+  val b1: Array[Int] = a1
+  val a2 = Array(b, 33, 'a', f())
+  val b2: Array[Int] = a2
+  val a3 = Array(1.0f, 'a', 0)
+  val b3: Array[Float] = a3
+  val a4 = Array(1.0f, 1L)
+  val b4: Array[Double] = a4
+  val a5 = Array(1.0f, 1L, f())
+  val b5: Array[AnyVal] = a5
+  val a6 = Array(1.0f, 1234567890)
+  val b6: Array[AnyVal] = a6
 }
