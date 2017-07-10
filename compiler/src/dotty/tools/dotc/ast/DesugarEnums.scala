@@ -71,7 +71,7 @@ object DesugarEnums {
     else if (isLegalEnumCase(cdef)) cdef.withFlags(cdef.mods.flags | Final)
     else cdef
 
-  private def valuesDot(name: String) = Select(Ident(nme.DOLLAR_VALUES), name.toTermName)
+  private def valuesDot(name: String)(implicit ctx: Context) = Select(Ident(nme.DOLLAR_VALUES), name.toTermName)
   private def registerCall(implicit ctx: Context): List[Tree] =
     if (enumClass.typeParams.nonEmpty) Nil
     else Apply(valuesDot("register"), This(EmptyTypeIdent) :: Nil) :: Nil

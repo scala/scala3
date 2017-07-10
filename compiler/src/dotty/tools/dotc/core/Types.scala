@@ -6,7 +6,8 @@ import util.common._
 import Symbols._
 import Flags._
 import Names._
-import StdNames._, NameOps._
+import StdNames._
+import NameOps._
 import NameKinds.{ShadowedName, SkolemName}
 import Scopes._
 import Constants._
@@ -16,7 +17,7 @@ import SymDenotations._
 import Decorators._
 import Denotations._
 import Periods._
-import util.Positions.{Position, NoPosition}
+import util.Positions.{NoPosition, Position}
 import util.Stats._
 import util.{DotClass, SimpleMap}
 import reporting.diagnostic.Message
@@ -29,13 +30,17 @@ import dotty.tools.dotc.transform.Erasure
 import printing.Printer
 import Hashable._
 import Uniques._
-import collection.{mutable, Seq, breakOut}
+
+import collection.{Seq, breakOut, mutable}
 import config.Config
+
 import annotation.tailrec
 import Flags.FlagSet
+
 import language.implicitConversions
-import scala.util.hashing.{ MurmurHash3 => hashing }
-import config.Printers.{core, typr, cyclicErrors}
+import scala.util.hashing.{MurmurHash3 => hashing}
+import config.Printers.{core, cyclicErrors, typr}
+import dotty.tools.dotc.reporting.AllocationStats
 
 object Types {
 
@@ -2016,7 +2021,7 @@ object Types {
      *  with given prefix, name, and signature
      */
     def withFixedSym(prefix: Type, name: TermName, sym: TermSymbol)(implicit ctx: Context): TermRef =
-      unique(new TermRefWithFixedSym(prefix, name, sym))
+      unique(AllocationStats.registerAllocation(new TermRefWithFixedSym(prefix, name, sym)))
 
     /** Create a term ref referring to given symbol with given name, taking the signature
      *  from the symbol if it is completed, or creating a term ref without
@@ -2046,7 +2051,7 @@ object Types {
 
     /** Create a term ref with given prefix, name and signature */
     def withSig(prefix: Type, name: TermName, sig: Signature)(implicit ctx: Context): TermRef =
-      unique(new TermRefWithSignature(prefix, name, sig))
+      unique(AllocationStats.registerAllocation(new TermRefWithSignature(prefix, name, sig)))
 
     /** Create a term ref with given prefix, name, signature, and initial denotation */
     def withSigAndDenot(prefix: Type, name: TermName, sig: Signature, denot: Denotation)(implicit ctx: Context): TermRef = {
@@ -2070,7 +2075,7 @@ object Types {
      *  with given prefix, name, and symbol.
      */
     def withFixedSym(prefix: Type, name: TypeName, sym: TypeSymbol)(implicit ctx: Context): TypeRef =
-      unique(new TypeRefWithFixedSym(prefix, name, sym))
+      unique(AllocationStats.registerAllocation(new TypeRefWithFixedSym(prefix, name, sym)))
 
     /** Create a type ref referring to given symbol with given name.
      *  This is very similar to TypeRef(Type, Symbol),
@@ -2108,7 +2113,7 @@ object Types {
   object ThisType {
     /** Normally one should use ClassSymbol#thisType instead */
     def raw(tref: TypeRef)(implicit ctx: Context) =
-      unique(new CachedThisType(tref))
+      unique(AllocationStats.registerAllocation(new CachedThisType(tref)))
   }
 
   /** The type of a super reference cls.super where
@@ -2128,7 +2133,7 @@ object Types {
   object SuperType {
     def apply(thistpe: Type, supertpe: Type)(implicit ctx: Context): Type = {
       assert(thistpe != NoPrefix)
-      unique(new CachedSuperType(thistpe, supertpe))
+      unique(AllocationStats.registerAllocation(new CachedSuperType(thistpe, supertpe)))
     }
   }
 
@@ -2143,7 +2148,7 @@ object Types {
   object ConstantType {
     def apply(value: Constant)(implicit ctx: Context) = {
       assertUnerased()
-      unique(new CachedConstantType(value))
+      unique(AllocationStats.registerAllocation(new CachedConstantType(value)))
     }
   }
 
@@ -2285,7 +2290,7 @@ object Types {
      *         of length > 1
      */
     def apply(parentExp: RecType => Type)(implicit ctx: Context): RecType = {
-      val rt = new RecType(parentExp)
+      val rt = AllocationStats.registerAllocation(new RecType(parentExp))
       def normalize(tp: Type): Type = tp.stripTypeVar match {
         case tp: RecType =>
           normalize(tp.parent.substRecThis(tp, RecThis(rt)))
@@ -2375,7 +2380,7 @@ object Types {
 
     def unchecked(tp1: Type, tp2: Type)(implicit ctx: Context): AndType = {
       assertUnerased()
-      unique(new CachedAndType(tp1, tp2))
+      unique(AllocationStats.registerAllocation(new CachedAndType(tp1, tp2)))
     }
 
     /** Make an AndType using `op` unless clearly unnecessary (i.e. without
@@ -2425,7 +2430,7 @@ object Types {
   object OrType {
     def apply(tp1: Type, tp2: Type)(implicit ctx: Context) = {
       assertUnerased()
-      unique(new CachedOrType(tp1, tp2))
+      unique(AllocationStats.registerAllocation(new CachedOrType(tp1, tp2)))
     }
     def make(tp1: Type, tp2: Type)(implicit ctx: Context): Type =
       if (tp1 eq tp2) tp1
@@ -2483,7 +2488,7 @@ object Types {
   object ExprType {
     def apply(resultType: Type)(implicit ctx: Context) = {
       assertUnerased()
-      unique(new CachedExprType(resultType))
+      unique(AllocationStats.registerAllocation(new CachedExprType(resultType)))
     }
   }
 
@@ -2796,17 +2801,17 @@ object Types {
 
   object MethodType extends MethodTypeCompanion {
     def apply(paramNames: List[TermName])(paramInfosExp: MethodType => List[Type], resultTypeExp: MethodType => Type)(implicit ctx: Context): MethodType =
-      checkValid(unique(new CachedMethodType(paramNames)(paramInfosExp, resultTypeExp)))
+      checkValid(unique(AllocationStats.registerAllocation(new CachedMethodType(paramNames)(paramInfosExp, resultTypeExp))))
   }
 
   object JavaMethodType extends MethodTypeCompanion {
     def apply(paramNames: List[TermName])(paramInfosExp: MethodType => List[Type], resultTypeExp: MethodType => Type)(implicit ctx: Context): MethodType =
-      unique(new JavaMethodType(paramNames)(paramInfosExp, resultTypeExp))
+      unique(AllocationStats.registerAllocation(new JavaMethodType(paramNames)(paramInfosExp, resultTypeExp)))
   }
 
   object ImplicitMethodType extends MethodTypeCompanion {
     def apply(paramNames: List[TermName])(paramInfosExp: MethodType => List[Type], resultTypeExp: MethodType => Type)(implicit ctx: Context): MethodType =
-      checkValid(unique(new ImplicitMethodType(paramNames)(paramInfosExp, resultTypeExp)))
+      checkValid(unique(AllocationStats.registerAllocation(new ImplicitMethodType(paramNames)(paramInfosExp, resultTypeExp))))
   }
 
   /** A ternary extractor for MethodType */
@@ -2825,8 +2830,14 @@ object Types {
 
     def newParamRef(n: Int) = TypeParamRef(this, n)
 
-    lazy val typeParams: List[LambdaParam] =
-      paramNames.indices.toList.map(new LambdaParam(this, _))
+    def typeParams(implicit ctx: Context): List[LambdaParam] = {
+      if (myTypeParams eq null) {
+        myTypeParams = paramNames.indices.toList.map(x => AllocationStats.registerAllocation(new LambdaParam(this, x)))
+      }
+      myTypeParams
+    }
+
+    private var myTypeParams: List[LambdaParam] = null
 
     /** Instantiate parameter bounds by substituting parameters with given arguments */
     final def instantiateBounds(argTypes: List[Type])(implicit ctx: Context): List[Type] =
@@ -2912,10 +2923,10 @@ object Types {
     def apply(paramNames: List[TypeName])(
         paramInfosExp: HKTypeLambda => List[TypeBounds],
         resultTypeExp: HKTypeLambda => Type)(implicit ctx: Context): HKTypeLambda = {
-      unique(new HKTypeLambda(paramNames)(paramInfosExp, resultTypeExp))
+      unique(AllocationStats.registerAllocation(new HKTypeLambda(paramNames)(paramInfosExp, resultTypeExp)))
     }
 
-    def unapply(tl: HKTypeLambda): Some[(List[LambdaParam], Type)] =
+    def unapply(tl: HKTypeLambda)(implicit ctx: Context): Some[(List[LambdaParam], Type)] =
       Some((tl.typeParams, tl.resType))
 
     def any(n: Int)(implicit ctx: Context) =
@@ -2949,10 +2960,10 @@ object Types {
     def apply(paramNames: List[TypeName])(
         paramInfosExp: PolyType => List[TypeBounds],
         resultTypeExp: PolyType => Type)(implicit ctx: Context): PolyType = {
-      unique(new PolyType(paramNames)(paramInfosExp, resultTypeExp))
+      unique(AllocationStats.registerAllocation(new PolyType(paramNames)(paramInfosExp, resultTypeExp)))
     }
 
-    def unapply(tl: PolyType): Some[(List[LambdaParam], Type)] =
+    def unapply(tl: PolyType)(implicit ctx: Context): Some[(List[LambdaParam], Type)] =
       Some((tl.typeParams, tl.resType))
 
     def any(n: Int)(implicit ctx: Context) =
@@ -3052,7 +3063,7 @@ object Types {
 
   object HKApply {
     def apply(tycon: Type, args: List[Type])(implicit ctx: Context) =
-      unique(new CachedHKApply(tycon, args)).checkInst
+      unique(AllocationStats.registerAllocation(new CachedHKApply(tycon, args))).checkInst
   }
 
   // ----- BoundTypes: ParamRef, RecThis ----------------------------------------
@@ -3375,7 +3386,7 @@ object Types {
 
   object ClassInfo {
     def apply(prefix: Type, cls: ClassSymbol, classParents: List[TypeRef], decls: Scope, selfInfo: DotClass = NoType)(implicit ctx: Context) =
-      unique(new CachedClassInfo(prefix, cls, classParents, decls, selfInfo))
+      unique(AllocationStats.registerAllocation(new CachedClassInfo(prefix, cls, classParents, decls, selfInfo)))
   }
 
   /** Type bounds >: lo <: hi */
@@ -3484,7 +3495,7 @@ object Types {
 
   object TypeBounds {
     def apply(lo: Type, hi: Type)(implicit ctx: Context): TypeBounds =
-      unique(new RealTypeBounds(lo, hi))
+      unique(AllocationStats.registerAllocation(new RealTypeBounds(lo, hi)))
     def empty(implicit ctx: Context) = apply(defn.NothingType, defn.AnyType)
     def upper(hi: Type)(implicit ctx: Context) = apply(defn.NothingType, hi)
     def lower(lo: Type)(implicit ctx: Context) = apply(lo, defn.AnyType)
@@ -3527,7 +3538,7 @@ object Types {
   }
   final class CachedJavaArrayType(elemType: Type) extends JavaArrayType(elemType)
   object JavaArrayType {
-    def apply(elemType: Type)(implicit ctx: Context) = unique(new CachedJavaArrayType(elemType))
+    def apply(elemType: Type)(implicit ctx: Context) = unique(AllocationStats.registerAllocation(new CachedJavaArrayType(elemType)))
   }
 
   /** The type of an import clause tree */
@@ -3570,7 +3581,7 @@ object Types {
   final class CachedWildcardType(optBounds: Type) extends WildcardType(optBounds)
 
   @sharable object WildcardType extends WildcardType(NoType) {
-    def apply(bounds: TypeBounds)(implicit ctx: Context) = unique(new CachedWildcardType(bounds))
+    def apply(bounds: TypeBounds)(implicit ctx: Context) = unique(AllocationStats.registerAllocation(new CachedWildcardType(bounds)))
   }
 
   /** An extractor for single abstract method types.

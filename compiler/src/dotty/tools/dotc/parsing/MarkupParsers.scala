@@ -3,7 +3,7 @@ package dotc
 package parsing
 
 import scala.collection.mutable
-import mutable.{ Buffer, ArrayBuffer, ListBuffer }
+import mutable.{ArrayBuffer, Buffer, ListBuffer}
 import scala.util.control.ControlThrowable
 import util.Chars.SU
 import Parsers._
@@ -11,6 +11,7 @@ import util.Positions._
 import core._
 import Constants._
 import Utility._
+import dotty.tools.dotc.core.Contexts.Context
 
 
 // XXX/Note: many/most of the functions in here are almost direct cut and pastes
@@ -45,7 +46,7 @@ object MarkupParsers {
     override def getMessage = "input ended while parsing XML"
   }
 
-  class MarkupParser(parser: Parser, final val preserveWS: Boolean) extends MarkupParserCommon {
+  class MarkupParser(parser: Parser, final val preserveWS: Boolean)(implicit ctx: Context) extends MarkupParserCommon {
 
     import Tokens.{ LBRACE, RBRACE }
 

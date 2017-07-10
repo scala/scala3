@@ -87,12 +87,12 @@ object desugar {
   }
 
   /** A type definition copied from `tdef` with a rhs typetree derived from it */
-  def derivedTypeParam(tdef: TypeDef) =
+  def derivedTypeParam(tdef: TypeDef)(implicit ctx: Context) =
     cpy.TypeDef(tdef)(
       rhs = new DerivedFromParamTree() withPos tdef.rhs.pos watching tdef)
 
   /** A value definition copied from `vdef` with a tpt typetree derived from it */
-  def derivedTermParam(vdef: ValDef) =
+  def derivedTermParam(vdef: ValDef)(implicit ctx: Context) =
     cpy.ValDef(vdef)(
       tpt = new DerivedFromParamTree() withPos vdef.tpt.pos watching vdef)
 
@@ -721,11 +721,11 @@ object desugar {
    *
    *  If `inlineable` is true, tag $anonfun with an @inline annotation.
    */
-  def makeClosure(params: List[ValDef], body: Tree, tpt: Tree = TypeTree(), inlineable: Boolean)(implicit ctx: Context) = {
+  def makeClosure(params: List[ValDef], body: Tree, tpt: Tree = null, inlineable: Boolean)(implicit ctx: Context) = {
     var mods = synthetic
     if (inlineable) mods |= Inline
     Block(
-      DefDef(nme.ANON_FUN, Nil, params :: Nil, tpt, body).withMods(mods),
+      DefDef(nme.ANON_FUN, Nil, params :: Nil, if (tpt eq null) TypeTree() else tpt, body).withMods(mods),
       Closure(Nil, Ident(nme.ANON_FUN), EmptyTree))
   }
 
@@ -805,7 +805,7 @@ object desugar {
     mayNeedSetter
    }
 
-  private def derivedDefDef(original: Tree, named: NameTree, tpt: Tree, rhs: Tree, mods: Modifiers) =
+  private def derivedDefDef(original: Tree, named: NameTree, tpt: Tree, rhs: Tree, mods: Modifiers)(implicit ctx: Context) =
     DefDef(named.name.asTermName, Nil, Nil, tpt, rhs)
       .withMods(mods)
       .withPos(original.pos.withPoint(named.pos.start))

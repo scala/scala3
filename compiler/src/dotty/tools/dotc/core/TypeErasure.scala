@@ -2,7 +2,13 @@ package dotty.tools
 package dotc
 package core
 
-import Symbols._, Types._, Contexts._, Flags._, Names._, StdNames._, Decorators._
+import Symbols._
+import Types._
+import Contexts._
+import Flags._
+import Names._
+import StdNames._
+import Decorators._
 import Flags.JavaDefined
 import NameOps._
 import Uniques.unique
@@ -10,6 +16,8 @@ import dotc.transform.ExplicitOuter._
 import dotc.transform.ValueClasses._
 import util.DotClass
 import Definitions.MaxImplementedFunctionArity
+import dotty.tools.dotc.reporting.AllocationStats
+
 import scala.annotation.tailrec
 
 /** Erased types are:
@@ -86,7 +94,7 @@ object TypeErasure {
 
   object ErasedValueType {
     def apply(tycon: TypeRef, erasedUnderlying: Type)(implicit ctx: Context) = {
-      unique(new CachedErasedValueType(tycon, erasedUnderlying))
+      unique(AllocationStats.registerAllocation(new CachedErasedValueType(tycon, erasedUnderlying)))
     }
   }
 

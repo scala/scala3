@@ -3,7 +3,7 @@ package dotc
 package typer
 
 import core._
-import ast.{Trees, untpd, tpd, TreeInfo}
+import ast.{TreeInfo, Trees, tpd, untpd}
 import util.Positions._
 import util.Stats.track
 import Trees.Untyped
@@ -24,9 +24,12 @@ import NameKinds.DefaultGetterName
 import ProtoTypes._
 import EtaExpansion._
 import Inferencing._
+
 import collection.mutable
-import config.Printers.{typr, unapp, overload}
+import config.Printers.{overload, typr, unapp}
 import TypeApplications._
+import dotty.tools.dotc.reporting.AllocationStats
+
 import language.implicitConversions
 import reporting.diagnostic.Message
 
@@ -652,7 +655,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
   def typedApply(tree: untpd.Apply, pt: Type)(implicit ctx: Context): Tree = {
 
     def realApply(implicit ctx: Context): Tree = track("realApply") {
-      val originalProto = new FunProto(tree.args, IgnoredProto(pt), this)(argCtx(tree))
+      val originalProto = AllocationStats.registerAllocation(new FunProto(tree.args, IgnoredProto(pt), this)(argCtx(tree)))
       val fun1 = typedExpr(tree.fun, originalProto)
 
       // Warning: The following lines are dirty and fragile. We record that auto-tupling was demanded as
@@ -857,12 +860,12 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
       // try first for non-overloaded, then for overloaded ocurrences
       def tryWithName(name: TermName)(fallBack: Tree => Tree)(implicit ctx: Context): Tree =
         tryEither { implicit ctx =>
-          val specificProto = new UnapplyFunProto(selType, this)
+          val specificProto = AllocationStats.registerAllocation(new UnapplyFunProto(selType, this))
           typedExpr(untpd.Select(qual, name), specificProto)
         } {
           (sel, _) =>
             tryEither { implicit ctx =>
-              val genericProto = new UnapplyFunProto(WildcardType, this)
+              val genericProto = AllocationStats.registerAllocation(new UnapplyFunProto(WildcardType, this))
               typedExpr(untpd.Select(qual, name), genericProto)
             } {
               (_, _) => fallBack(sel)

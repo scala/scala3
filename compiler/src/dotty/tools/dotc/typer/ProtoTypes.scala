@@ -4,19 +4,29 @@ package typer
 
 import core._
 import ast._
-import Contexts._, Types._, Flags._, Denotations._, Names._, StdNames._, NameOps._, Symbols._
+import Contexts._
+import Types._
+import Flags._
+import Denotations._
+import Names._
+import StdNames._
+import NameOps._
+import Symbols._
 import NameKinds.DepParamName
 import Trees._
 import Constants._
 import Scopes._
+
 import annotation.unchecked
 import util.Positions._
-import util.{Stats, SimpleMap}
+import util.{SimpleMap, Stats}
 import util.common._
 import Decorators._
 import Uniques._
 import ErrorReporting.errorType
 import config.Printers.typr
+import dotty.tools.dotc.reporting.AllocationStats
+
 import collection.mutable
 
 object ProtoTypes {
@@ -136,7 +146,7 @@ object ProtoTypes {
 
   object SelectionProto {
     def apply(name: Name, memberProto: Type, compat: Compatibility, privateOK: Boolean)(implicit ctx: Context): SelectionProto = {
-      val selproto = new CachedSelectionProto(name, memberProto, compat, privateOK)
+      val selproto = AllocationStats.registerAllocation(new CachedSelectionProto(name, memberProto, compat, privateOK))
       if (compat eq NoViewsAllowed) unique(selproto) else selproto
     }
   }
@@ -147,7 +157,7 @@ object ProtoTypes {
   def selectionProto(name: Name, tp: Type, typer: Typer)(implicit ctx: Context) =
     if (name.isConstructorName) WildcardType
     else tp match {
-      case tp: UnapplyFunProto => new UnapplySelectionProto(name)
+      case tp: UnapplyFunProto => AllocationStats.registerAllocation(new UnapplySelectionProto(name))
       case tp => SelectionProto(name, IgnoredProto(tp), typer, privateOK = true)
     }
 
@@ -187,7 +197,7 @@ object ProtoTypes {
 
     def derivedFunProto(args: List[untpd.Tree] = this.args, resultType: Type, typer: Typer = this.typer) =
       if ((args eq this.args) && (resultType eq this.resultType) && (typer eq this.typer)) this
-      else new FunProto(args, resultType, typer)
+      else AllocationStats.registerAllocation(new FunProto(args, resultType, typer))
 
     override def notApplied = WildcardType
 
@@ -251,7 +261,7 @@ object ProtoTypes {
       case pt: FunProto =>
         pt
       case _ =>
-        myTupled = new FunProto(untpd.Tuple(args) :: Nil, resultType, typer)
+        myTupled = AllocationStats.registerAllocation(new FunProto(untpd.Tuple(args) :: Nil, resultType, typer))
         tupled
     }
 
@@ -324,11 +334,11 @@ object ProtoTypes {
 
   object ViewProto {
     def apply(argType: Type, resultType: Type)(implicit ctx: Context) =
-      unique(new CachedViewProto(argType, resultType))
+      unique(AllocationStats.registerAllocation(new CachedViewProto(argType, resultType)))
   }
 
   class UnapplyFunProto(argType: Type, typer: Typer)(implicit ctx: Context) extends FunProto(
-    untpd.TypedSplice(dummyTreeOfType(argType))(ctx) :: Nil, WildcardType, typer)
+    untpd.TypedSplice(dummyTreeOfType(argType)(ctx))(ctx) :: Nil, WildcardType, typer)
 
   /** A prototype for expressions [] that are type-parameterized:
    *
@@ -386,8 +396,8 @@ object ProtoTypes {
     def newTypeVars(tl: TypeLambda): List[TypeTree] =
       for (n <- (0 until tl.paramNames.length).toList)
       yield {
-        val tt = new TypeTree().withPos(owningTree.pos)
-        tt.withType(new TypeVar(TypeParamRef(tl, n), state, tt, ctx.owner))
+        val tt = AllocationStats.registerAllocation(new TypeTree()).withPos(owningTree.pos)
+        tt.withType(AllocationStats.registerAllocation(new TypeVar(TypeParamRef(tl, n), state, tt, ctx.owner)))
       }
 
     val added =
@@ -544,7 +554,7 @@ object ProtoTypes {
 
   /** Dummy tree to be used as an argument of a FunProto or ViewProto type */
   object dummyTreeOfType {
-    def apply(tp: Type): Tree = untpd.Literal(Constant(null)) withTypeUnchecked tp
+    def apply(tp: Type)(implicit ctx: Context): Tree = untpd.Literal(Constant(null)) withTypeUnchecked tp
     def unapply(tree: untpd.Tree): Option[Type] = tree match {
       case Literal(Constant(null)) => Some(tree.typeOpt)
       case _ => None

@@ -708,6 +708,8 @@ object Denotations {
     def history: List[SingleDenotation] = {
       val b = new ListBuffer[SingleDenotation]
       var current = initial
+      if ((this.validFor == Nowhere) && (this.nextInRun.initial ne current))
+        throw new UnsupportedOperationException("history is not supported on invalid denotations") // will go into infinite loop
       do {
         b += (current)
         current = current.nextInRun

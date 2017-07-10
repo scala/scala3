@@ -270,7 +270,7 @@ abstract class SymbolLoader extends LazyType {
         }
       else
         doComplete(root)
-      ctx.informTime("loaded " + description, start)
+      //ctx.informTime("loaded " + description, start)
     } catch {
       case ex: IOException =>
         signalError(ex)

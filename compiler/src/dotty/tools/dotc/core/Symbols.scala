@@ -7,6 +7,7 @@ import Names._
 import Scopes._
 import Flags._
 import java.lang.AssertionError
+
 import Decorators._
 import Symbols._
 import Contexts._
@@ -25,11 +26,14 @@ import tpd.Tree
 import ast.TreeTypeMap
 import Constants.Constant
 import reporting.diagnostic.Message
-import Denotations.{ Denotation, SingleDenotation, MultiDenotation }
+import Denotations.{Denotation, MultiDenotation, SingleDenotation}
+import dotty.tools.dotc.reporting.AllocationStats
+
 import collection.mutable
 import io.AbstractFile
+
 import language.implicitConversions
-import util.{NoSource, DotClass}
+import util.{DotClass, NoSource}
 
 /** Creation methods for symbols */
 trait Symbols { this: Context =>
@@ -43,11 +47,11 @@ trait Symbols { this: Context =>
    *  it's debug-friendlier not to create an anonymous class here.
    */
   def newNakedSymbol[N <: Name](coord: Coord = NoCoord)(implicit ctx: Context): Symbol { type ThisName = N } =
-    new Symbol(coord, ctx.nextId).asInstanceOf[Symbol { type ThisName = N }]
+    AllocationStats.registerAllocation(new Symbol(coord, ctx.nextId).asInstanceOf[Symbol { type ThisName = N }])
 
   /** Create a class symbol without a denotation. */
   def newNakedClassSymbol(coord: Coord = NoCoord, assocFile: AbstractFile = null)(implicit ctx: Context) =
-    new ClassSymbol(coord, assocFile, ctx.nextId)
+    AllocationStats.registerAllocation(new ClassSymbol(coord, assocFile, ctx.nextId))
 
 // ---- Symbol creation methods ----------------------------------
 
@@ -119,14 +123,14 @@ trait Symbols { this: Context =>
       privateWithin: Symbol = NoSymbol,
       coord: Coord = NoCoord,
       assocFile: AbstractFile = null): ClassSymbol = {
-    def completer = new LazyType {
+    def completer = AllocationStats.registerAllocation(new LazyType {
       def complete(denot: SymDenotation)(implicit ctx: Context): Unit = {
         val cls = denot.asClass.classSymbol
         val decls = newScope
         val parentRefs: List[TypeRef] = normalizeToClassRefs(parentTypes, cls, decls)
         denot.info = ClassInfo(owner.thisType, cls, parentRefs, decls)
       }
-    }
+    })
     newClassSymbol(owner, name, flags, completer, privateWithin, coord, assocFile)
   }
 
@@ -155,7 +159,7 @@ trait Symbols { this: Context =>
     val mdenot = SymDenotation(
         module, owner, name, modFlags | ModuleCreationFlags,
         if (cdenot.isCompleted) TypeRef.withSymAndName(owner.thisType, modcls, modclsName)
-        else new ModuleCompleter(modcls))
+        else AllocationStats.registerAllocation(new ModuleCompleter(modcls)))
     module.denot = mdenot
     modcls.denot = cdenot
     module
@@ -221,7 +225,7 @@ trait Symbols { this: Context =>
    *  when attempted to be completed.
    */
   def newStubSymbol(owner: Symbol, name: Name, file: AbstractFile = null): Symbol = {
-    def stubCompleter = new StubInfo()
+    def stubCompleter = AllocationStats.registerAllocation(new StubInfo())
     val normalizedOwner = if (owner is ModuleVal) owner.moduleClass else owner
     println(s"creating stub for ${name.show}, owner = ${normalizedOwner.denot.debugString}, file = $file")
     println(s"decls = ${normalizedOwner.unforcedDecls.toList.map(_.debugString).mkString("\n  ")}") // !!! DEBUG
@@ -298,7 +302,7 @@ trait Symbols { this: Context =>
   def newSkolem(tp: Type) = newSymbol(defn.RootClass, nme.SKOLEM, SyntheticArtifact | Permanent, tp)
 
   def newErrorSymbol(owner: Symbol, name: Name, msg: => Message) = {
-    val errType = new ErrorType(msg)
+    val errType = AllocationStats.registerAllocation(new ErrorType(msg))
     newSymbol(owner, name, SyntheticArtifact,
         if (name.isTypeName) TypeAlias(errType) else errType)
   }
@@ -331,7 +335,7 @@ trait Symbols { this: Context =>
           case oinfo => oinfo
         }
 
-        val completer = new LazyType {
+        val completer = AllocationStats.registerAllocation(new LazyType {
           def complete(denot: SymDenotation)(implicit ctx: Context): Unit = {
             denot.info = oinfo // needed as otherwise we won't be able to go from Sym -> parents & etc
                                // Note that this is a hack, but hack commonly used in Dotty
@@ -339,7 +343,7 @@ trait Symbols { this: Context =>
             denot.info = ttmap1.mapType(oinfo)
             denot.annotations = odenot.annotations.mapConserve(ttmap1.apply)
           }
-        }
+        })
 
         copy.denot = odenot.copySymDenotation(
           symbol = copy,

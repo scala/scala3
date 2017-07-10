@@ -3,10 +3,23 @@ package dotc
 package ast
 
 import core._
-import util.Positions._, Types._, Contexts._, Constants._, Names._, NameOps._, Flags._
-import Denotations._, SymDenotations._, Symbols._, StdNames._, Annotations._, Trees._
+import util.Positions._
+import Types._
+import Contexts._
+import Constants._
+import Names._
+import NameOps._
+import Flags._
+import Denotations._
+import SymDenotations._
+import Symbols._
+import StdNames._
+import Annotations._
+import Trees._
 import Decorators._
+import dotty.tools.dotc.reporting.AllocationStats
 import util.Property
+
 import language.higherKinds
 import collection.mutable.ListBuffer
 import reflect.ClassTag
@@ -241,48 +254,258 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
 
   // ------ Creation methods for untyped only -----------------
 
-  def Ident(name: Name): Ident = new Ident(name)
-  def BackquotedIdent(name: Name): BackquotedIdent = new BackquotedIdent(name)
-  def Select(qualifier: Tree, name: Name): Select = new Select(qualifier, name)
-  def SelectWithSig(qualifier: Tree, name: Name, sig: Signature): Select = new SelectWithSig(qualifier, name, sig)
-  def This(qual: Ident): This = new This(qual)
-  def Super(qual: Tree, mix: Ident): Super = new Super(qual, mix)
-  def Apply(fun: Tree, args: List[Tree]): Apply = new Apply(fun, args)
-  def TypeApply(fun: Tree, args: List[Tree]): TypeApply = new TypeApply(fun, args)
-  def Literal(const: Constant): Literal = new Literal(const)
-  def New(tpt: Tree): New = new New(tpt)
-  def Typed(expr: Tree, tpt: Tree): Typed = new Typed(expr, tpt)
-  def NamedArg(name: Name, arg: Tree): NamedArg = new NamedArg(name, arg)
-  def Assign(lhs: Tree, rhs: Tree): Assign = new Assign(lhs, rhs)
-  def Block(stats: List[Tree], expr: Tree): Block = new Block(stats, expr)
-  def If(cond: Tree, thenp: Tree, elsep: Tree): If = new If(cond, thenp, elsep)
-  def Closure(env: List[Tree], meth: Tree, tpt: Tree): Closure = new Closure(env, meth, tpt)
-  def Match(selector: Tree, cases: List[CaseDef]): Match = new Match(selector, cases)
-  def CaseDef(pat: Tree, guard: Tree, body: Tree): CaseDef = new CaseDef(pat, guard, body)
-  def Return(expr: Tree, from: Tree): Return = new Return(expr, from)
-  def Try(expr: Tree, cases: List[CaseDef], finalizer: Tree): Try = new Try(expr, cases, finalizer)
-  def SeqLiteral(elems: List[Tree], elemtpt: Tree): SeqLiteral = new SeqLiteral(elems, elemtpt)
-  def JavaSeqLiteral(elems: List[Tree], elemtpt: Tree): JavaSeqLiteral = new JavaSeqLiteral(elems, elemtpt)
-  def Inlined(call: tpd.Tree, bindings: List[MemberDef], expansion: Tree): Inlined = new Inlined(call, bindings, expansion)
-  def TypeTree() = new TypeTree()
-  def SingletonTypeTree(ref: Tree): SingletonTypeTree = new SingletonTypeTree(ref)
-  def AndTypeTree(left: Tree, right: Tree): AndTypeTree = new AndTypeTree(left, right)
-  def OrTypeTree(left: Tree, right: Tree): OrTypeTree = new OrTypeTree(left, right)
-  def RefinedTypeTree(tpt: Tree, refinements: List[Tree]): RefinedTypeTree = new RefinedTypeTree(tpt, refinements)
-  def AppliedTypeTree(tpt: Tree, args: List[Tree]): AppliedTypeTree = new AppliedTypeTree(tpt, args)
-  def LambdaTypeTree(tparams: List[TypeDef], body: Tree): LambdaTypeTree = new LambdaTypeTree(tparams, body)
-  def ByNameTypeTree(result: Tree): ByNameTypeTree = new ByNameTypeTree(result)
-  def TypeBoundsTree(lo: Tree, hi: Tree): TypeBoundsTree = new TypeBoundsTree(lo, hi)
-  def Bind(name: Name, body: Tree): Bind = new Bind(name, body)
-  def Alternative(trees: List[Tree]): Alternative = new Alternative(trees)
-  def UnApply(fun: Tree, implicits: List[Tree], patterns: List[Tree]): UnApply = new UnApply(fun, implicits, patterns)
-  def ValDef(name: TermName, tpt: Tree, rhs: LazyTree): ValDef = new ValDef(name, tpt, rhs)
-  def DefDef(name: TermName, tparams: List[TypeDef], vparamss: List[List[ValDef]], tpt: Tree, rhs: LazyTree): DefDef = new DefDef(name, tparams, vparamss, tpt, rhs)
-  def TypeDef(name: TypeName, rhs: Tree): TypeDef = new TypeDef(name, rhs)
-  def Template(constr: DefDef, parents: List[Tree], self: ValDef, body: LazyTreeList): Template = new Template(constr, parents, self, body)
-  def Import(expr: Tree, selectors: List[untpd.Tree]): Import = new Import(expr, selectors)
-  def PackageDef(pid: RefTree, stats: List[Tree]): PackageDef = new PackageDef(pid, stats)
-  def Annotated(arg: Tree, annot: Tree): Annotated = new Annotated(arg, annot)
+  def Ident(name: Name)(implicit ctx: Context): Ident = {
+    val r = new Ident(name)
+    if (AllocationStats.collect)
+      AllocationStats.registerAllocation(r)
+    r
+  }
+  def BackquotedIdent(name: Name)(implicit ctx: Context): BackquotedIdent = {
+    val r = new BackquotedIdent(name)
+    if (AllocationStats.collect)
+      AllocationStats.registerAllocation(r)
+    r
+  }
+  def Select(qualifier: Tree, name: Name)(implicit ctx: Context): Select = {
+    val r = new Select(qualifier, name)
+    if (AllocationStats.collect)
+      AllocationStats.registerAllocation(r)
+    r
+  }
+  def SelectWithSig(qualifier: Tree, name: Name, sig: Signature)(implicit ctx: Context): Select = {
+    val r = new SelectWithSig(qualifier, name, sig)
+    if (AllocationStats.collect)
+      AllocationStats.registerAllocation(r)
+    r
+  }
+  def This(qual: Ident)(implicit ctx: Context): This = {
+    val r = new This(qual)
+    if (AllocationStats.collect)
+      AllocationStats.registerAllocation(r)
+    r
+  }
+  def Super(qual: Tree, mix: Ident)(implicit ctx: Context): Super = {
+    val r = new Super(qual, mix)
+    if (AllocationStats.collect)
+      AllocationStats.registerAllocation(r)
+    r
+  }
+  def Apply(fun: Tree, args: List[Tree])(implicit ctx: Context): Apply = {
+    val r = new Apply(fun, args)
+    if (AllocationStats.collect)
+      AllocationStats.registerAllocation(r)
+    r
+  }
+  def TypeApply(fun: Tree, args: List[Tree])(implicit ctx: Context): TypeApply = {
+    val r = new TypeApply(fun, args)
+    if (AllocationStats.collect)
+      AllocationStats.registerAllocation(r)
+    r
+  }
+  def Literal(const: Constant)(implicit ctx: Context): Literal = {
+    val r = new Literal(const)
+    if (AllocationStats.collect)
+      AllocationStats.registerAllocation(r)
+    r
+  }
+  def New(tpt: Tree)(implicit ctx: Context): New = {
+    val r = new New(tpt)
+    if (AllocationStats.collect)
+      AllocationStats.registerAllocation(r)
+    r
+  }
+  def Typed(expr: Tree, tpt: Tree)(implicit ctx: Context): Typed = {
+    val r = new Typed(expr, tpt)
+    if (AllocationStats.collect)
+      AllocationStats.registerAllocation(r)
+    r
+  }
+  def NamedArg(name: Name, arg: Tree)(implicit ctx: Context): NamedArg = {
+    val r = new NamedArg(name, arg)
+    if (AllocationStats.collect)
+      AllocationStats.registerAllocation(r)
+    r
+  }
+  def Assign(lhs: Tree, rhs: Tree)(implicit ctx: Context): Assign = {
+    val r = new Assign(lhs, rhs)
+    if (AllocationStats.collect)
+      AllocationStats.registerAllocation(r)
+    r
+  }
+  def Block(stats: List[Tree], expr: Tree)(implicit ctx: Context): Block = {
+    val r = new Block(stats, expr)
+    if (AllocationStats.collect)
+      AllocationStats.registerAllocation(r)
+    r
+  }
+  def If(cond: Tree, thenp: Tree, elsep: Tree)(implicit ctx: Context): If = {
+    val r = new If(cond, thenp, elsep)
+    if (AllocationStats.collect)
+      AllocationStats.registerAllocation(r)
+    r
+  }
+  def Closure(env: List[Tree], meth: Tree, tpt: Tree)(implicit ctx: Context): Closure = {
+    val r = new Closure(env, meth, tpt)
+    if (AllocationStats.collect)
+      AllocationStats.registerAllocation(r)
+    r
+  }
+  def Match(selector: Tree, cases: List[CaseDef])(implicit ctx: Context): Match = {
+    val r = new Match(selector, cases)
+    if (AllocationStats.collect)
+      AllocationStats.registerAllocation(r)
+    r
+  }
+  def CaseDef(pat: Tree, guard: Tree, body: Tree)(implicit ctx: Context): CaseDef = {
+    val r = new CaseDef(pat, guard, body)
+    if (AllocationStats.collect)
+      AllocationStats.registerAllocation(r)
+    r
+  }
+  def Return(expr: Tree, from: Tree)(implicit ctx: Context): Return = {
+    val r = new Return(expr, from)
+    if (AllocationStats.collect)
+      AllocationStats.registerAllocation(r)
+    r
+  }
+  def Try(expr: Tree, cases: List[CaseDef], finalizer: Tree)(implicit ctx: Context): Try = {
+    val r = new Try(expr, cases, finalizer)
+    if (AllocationStats.collect)
+      AllocationStats.registerAllocation(r)
+    r
+  }
+  def SeqLiteral(elems: List[Tree], elemtpt: Tree)(implicit ctx: Context): SeqLiteral = {
+    val r = new SeqLiteral(elems, elemtpt)
+    if (AllocationStats.collect)
+      AllocationStats.registerAllocation(r)
+    r
+  }
+  def JavaSeqLiteral(elems: List[Tree], elemtpt: Tree)(implicit ctx: Context): JavaSeqLiteral = {
+    val r = new JavaSeqLiteral(elems, elemtpt)
+    if (AllocationStats.collect)
+      AllocationStats.registerAllocation(r)
+    r
+  }
+  def Inlined(call: tpd.Tree, bindings: List[MemberDef], expansion: Tree)(implicit ctx: Context): Inlined = {
+    val r = new Inlined(call, bindings, expansion)
+    if (AllocationStats.collect)
+      AllocationStats.registerAllocation(r)
+    r
+  }
+  def TypeTree()(implicit ctx: Context): TypeTree = {
+    val r = new TypeTree()
+    if (AllocationStats.collect)
+      AllocationStats.registerAllocation(r)
+    r
+  }
+  def SingletonTypeTree(ref: Tree)(implicit ctx: Context): SingletonTypeTree = {
+    val r = new SingletonTypeTree(ref)
+    if (AllocationStats.collect)
+      AllocationStats.registerAllocation(r)
+    r
+  }
+  def AndTypeTree(left: Tree, right: Tree)(implicit ctx: Context): AndTypeTree = {
+    val r = new AndTypeTree(left, right)
+    if (AllocationStats.collect)
+      AllocationStats.registerAllocation(r)
+    r
+  }
+  def OrTypeTree(left: Tree, right: Tree)(implicit ctx: Context): OrTypeTree = {
+    val r = new OrTypeTree(left, right)
+    if (AllocationStats.collect)
+      AllocationStats.registerAllocation(r)
+    r
+  }
+  def RefinedTypeTree(tpt: Tree, refinements: List[Tree])(implicit ctx: Context): RefinedTypeTree = {
+    val r = new RefinedTypeTree(tpt, refinements)
+    if (AllocationStats.collect)
+      AllocationStats.registerAllocation(r)
+    r
+  }
+  def AppliedTypeTree(tpt: Tree, args: List[Tree])(implicit ctx: Context): AppliedTypeTree = {
+    val r = new AppliedTypeTree(tpt, args)
+    if (AllocationStats.collect)
+      AllocationStats.registerAllocation(r)
+    r
+  }
+  def LambdaTypeTree(tparams: List[TypeDef], body: Tree)(implicit ctx: Context): LambdaTypeTree = {
+    val r = new LambdaTypeTree(tparams, body)
+    if (AllocationStats.collect)
+      AllocationStats.registerAllocation(r)
+    r
+  }
+  def ByNameTypeTree(result: Tree)(implicit ctx: Context): ByNameTypeTree = {
+    val r = new ByNameTypeTree(result)
+    if (AllocationStats.collect)
+      AllocationStats.registerAllocation(r)
+    r
+  }
+  def TypeBoundsTree(lo: Tree, hi: Tree)(implicit ctx: Context): TypeBoundsTree = {
+    val r = new TypeBoundsTree(lo, hi)
+    if (AllocationStats.collect)
+      AllocationStats.registerAllocation(r)
+    r
+  }
+  def Bind(name: Name, body: Tree)(implicit ctx: Context): Bind = {
+    val r = new Bind(name, body)
+    if (AllocationStats.collect)
+      AllocationStats.registerAllocation(r)
+    r
+  }
+  def Alternative(trees: List[Tree])(implicit ctx: Context): Alternative = {
+    val r = new Alternative(trees)
+    if (AllocationStats.collect)
+      AllocationStats.registerAllocation(r)
+    r
+  }
+  def UnApply(fun: Tree, implicits: List[Tree], patterns: List[Tree])(implicit ctx: Context): UnApply = {
+    val r = new UnApply(fun, implicits, patterns)
+    if (AllocationStats.collect)
+      AllocationStats.registerAllocation(r)
+    r
+  }
+  def ValDef(name: TermName, tpt: Tree, rhs: LazyTree)(implicit ctx: Context): ValDef = {
+    val r = new ValDef(name, tpt, rhs)
+    if (AllocationStats.collect)
+      AllocationStats.registerAllocation(r)
+    r
+  }
+  def DefDef(name: TermName, tparams: List[TypeDef], vparamss: List[List[ValDef]], tpt: Tree, rhs: LazyTree)(implicit ctx: Context): DefDef = {
+    val r = new DefDef(name, tparams, vparamss, tpt, rhs)
+    if (AllocationStats.collect)
+      AllocationStats.registerAllocation(r)
+    r
+  }
+  def TypeDef(name: TypeName, rhs: Tree)(implicit ctx: Context): TypeDef = {
+    val r = new TypeDef(name, rhs)
+    if (AllocationStats.collect)
+      AllocationStats.registerAllocation(r)
+    r
+  }
+  def Template(constr: DefDef, parents: List[Tree], self: ValDef, body: LazyTreeList)(implicit ctx: Context): Template = {
+    val r = new Template(constr, parents, self, body)
+    if (AllocationStats.collect)
+      AllocationStats.registerAllocation(r)
+    r
+  }
+  def Import(expr: Tree, selectors: List[untpd.Tree])(implicit ctx: Context): Import = {
+    val r = new Import(expr, selectors)
+    if (AllocationStats.collect)
+      AllocationStats.registerAllocation(r)
+    r
+  }
+  def PackageDef(pid: RefTree, stats: List[Tree])(implicit ctx: Context): PackageDef = {
+    val r = new PackageDef(pid, stats)
+    if (AllocationStats.collect)
+      AllocationStats.registerAllocation(r)
+    r
+  }
+  def Annotated(arg: Tree, annot: Tree)(implicit ctx: Context): Annotated = {
+    val r = new Annotated(arg, annot)
+    if (AllocationStats.collect)
+      AllocationStats.registerAllocation(r)
+    r
+  }
 
   // ------ Additional creation methods for untyped only -----------------
 
@@ -309,31 +532,31 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
     ensureApplied((prefix /: argss)(Apply(_, _)))
   }
 
-  def Block(stat: Tree, expr: Tree): Block =
+  def Block(stat: Tree, expr: Tree)(implicit ctx: Context): Block =
     Block(stat :: Nil, expr)
 
-  def Apply(fn: Tree, arg: Tree): Apply =
+  def Apply(fn: Tree, arg: Tree)(implicit ctx: Context): Apply =
     Apply(fn, arg :: Nil)
 
-  def ensureApplied(tpt: Tree) = tpt match {
+  def ensureApplied(tpt: Tree)(implicit ctx: Context) = tpt match {
     case _: Apply => tpt
     case _ => Apply(tpt, Nil)
   }
 
-  def AppliedTypeTree(tpt: Tree, arg: Tree): AppliedTypeTree =
+  def AppliedTypeTree(tpt: Tree, arg: Tree)(implicit ctx: Context): AppliedTypeTree =
     AppliedTypeTree(tpt, arg :: Nil)
 
   def TypeTree(tpe: Type)(implicit ctx: Context): TypedSplice = TypedSplice(TypeTree().withTypeUnchecked(tpe))
 
-  def unitLiteral = Literal(Constant(()))
+  def unitLiteral(implicit ctx: Context) = Literal(Constant(()))
 
   def ref(tp: NamedType)(implicit ctx: Context): Tree =
     TypedSplice(tpd.ref(tp))
 
-  def rootDot(name: Name) = Select(Ident(nme.ROOTPKG), name)
-  def scalaDot(name: Name) = Select(rootDot(nme.scala_), name)
-  def scalaUnit = scalaDot(tpnme.Unit)
-  def scalaAny = scalaDot(tpnme.Any)
+  def rootDot(name: Name)(implicit ctx: Context) = Select(Ident(nme.ROOTPKG), name)
+  def scalaDot(name: Name)(implicit ctx: Context) = Select(rootDot(nme.scala_), name)
+  def scalaUnit(implicit ctx: Context) = scalaDot(tpnme.Unit)
+  def scalaAny(implicit ctx: Context) = scalaDot(tpnme.Any)
 
   def makeConstructor(tparams: List[TypeDef], vparamss: List[List[ValDef]], rhs: Tree = EmptyTree)(implicit ctx: Context): DefDef =
     DefDef(nme.CONSTRUCTOR, tparams, vparamss, TypeTree(), rhs)
@@ -357,8 +580,9 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   def makeParameter(pname: TermName, tpe: Tree, mods: Modifiers = EmptyModifiers)(implicit ctx: Context): ValDef =
     ValDef(pname, tpe, EmptyTree).withMods(mods | Param)
 
-  def makeSyntheticParameter(n: Int = 1, tpt: Tree = TypeTree())(implicit ctx: Context): ValDef =
-    ValDef(nme.syntheticParamName(n), tpt, EmptyTree).withFlags(SyntheticTermParam)
+  def makeSyntheticParameter(n: Int = 1, tpt: Tree = null)(implicit ctx: Context): ValDef =
+    ValDef(nme.syntheticParamName(n), if (tpt eq null) TypeTree() else tpt, EmptyTree).withFlags(SyntheticTermParam)
+  
 
   def lambdaAbstract(tparams: List[TypeDef], tpt: Tree)(implicit ctx: Context) =
     if (tparams.isEmpty) tpt else LambdaTypeTree(tparams, tpt)
