@@ -23,6 +23,7 @@ class BubbleUpNothing extends Optimisation {
   import ast.tpd._
 
   def visitor(implicit ctx: Context) = NoVisitor
+  def clear(): Unit = ()
 
   def transformer(implicit ctx: Context): Tree => Tree = {
     case t @ Apply(Select(Notathing(qual), _), args) =>

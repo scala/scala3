@@ -20,6 +20,8 @@ class Jumpjump extends Optimisation {
 
   val defined = mutable.HashMap[Symbol, Symbol]()
 
+  def clear(): Unit = defined.clear()
+
   def visitor(implicit ctx: Context): Tree => Unit = {
     case defdef: DefDef if defdef.symbol.is(Label)  =>
       defdef.rhs match {

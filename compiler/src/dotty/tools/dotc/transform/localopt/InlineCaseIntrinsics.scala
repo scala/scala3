@@ -24,6 +24,7 @@ class InlineCaseIntrinsics(val simplifyPhase: Simplify) extends Optimisation {
   import ast.tpd._
 
   def visitor(implicit ctx: Context): Tree => Unit = NoVisitor
+  def clear(): Unit = ()
 
   def transformer(implicit ctx: Context): Tree => Tree = {
     // For synthetic applies on case classes (both dotty/scalac)

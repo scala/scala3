@@ -310,9 +310,8 @@ object NameKinds {
   val PatMatCaseName          = new UniqueNameKind("case")
   val PatMatMatchFailName     = new UniqueNameKind("matchFail")
   val PatMatSelectorName      = new UniqueNameKind("selector")
-  val LocalOptFact            = new UniqueNameKind("fact")
-  val LocalOptSelector        = new UniqueNameKind("selector")
-  val LocalOptFallback        = new UniqueNameKind("fallback")
+
+  val LocalOptInlineLocalObj  = new UniqueNameKind("ilo")
 
   /** The kind of names of default argument getters */
   val DefaultGetterName = new NumberedNameKind(DEFAULTGETTER, "DefaultGetter") {

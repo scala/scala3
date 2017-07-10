@@ -7,6 +7,7 @@ import core.Symbols._
 import core.Types._
 import core.Flags._
 import core.Decorators._
+import core.NameOps._
 import transform.TreeTransforms.{MiniPhaseTransform, TransformerInfo}
 import config.Printers.simplify
 import ast.tpd
@@ -47,7 +48,7 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
     new Jumpjump                    ::
     new DropGoodCasts               ::
     new DropNoEffects(this)         ::
-    // new InlineLocalObjects          :: // followCases needs to be fixed, see ./tests/pos/rbtree.scala
+    new InlineLocalObjects(this)    ::
     // new Varify                      :: // varify could stop other transformations from being applied. postponed.
     // new BubbleUpNothing             ::
     new ConstantFold(this)          ::
@@ -62,6 +63,8 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
     new ConstantFold(this)          ::
     Nil
 
+  var optimisations: List[Optimisation] = Nil
+
   /** Optimisation fuel, for debugging. Decremented every time Simplify
    *  applies an optimisation until fuel == 0. Original idea from Automatic
    *  Isolation of Compiler Errors by David Whalley. Unable with -Yopt-fuel.
@@ -75,9 +78,17 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
   override def prepareForUnit(tree: Tree)(implicit ctx: Context) = {
     SeqFactoryClass = ctx.requiredClass("scala.collection.generic.SeqFactory")
     CommutativePrimitiveOperations = Set(defn.Boolean_&&, defn.Boolean_||, defn.Int_+, defn.Int_*, defn.Long_+, defn.Long_*)
+
     val maxFuel = ctx.settings.YoptFuel.value
     if (fuel < 0 && maxFuel > 0) // Both defaults are at -1
       fuel = maxFuel
+
+    optimisations = {
+      val o = if (ctx.erasedTypes) afterErasure else beforeErasure
+      val p = ctx.settings.YoptPhases.value
+      if (p.isEmpty) o else o.filter(x => p.contains(x.name))
+    }
+
     this
   }
 
@@ -86,18 +97,11 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
     val ctx0 = ctx
     if (ctx.settings.optimise.value && !tree.symbol.is(Label)) {
       implicit val ctx: Context = ctx0.withOwner(tree.symbol(ctx0))
-      val optimisations = {
-        val o = if (ctx.erasedTypes) afterErasure else beforeErasure
-        val p = ctx.settings.YoptPhases.value
-        if (p.isEmpty) o else o.filter(x => p.contains(x.name))
-      }
-
       var rhs0 = tree.rhs
       var rhs1: Tree = null
       while (rhs1 ne rhs0) {
         rhs1 = rhs0
-        val context = ctx.withOwner(tree.symbol)
-        optimisations.foreach { optimisation => // TODO: fuse for performance
+        optimisations.foreach { optimisation =>
           // Visit
           rhs0.foreachSubTree(optimisation.visitor)
 
@@ -109,6 +113,9 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
               printIfDifferent(childOptimizedTree, optimisation.transformer(ctx)(childOptimizedTree), optimisation)
             }
           }.transform(rhs0)
+
+          // Clean
+          optimisation.clear()
         }
       }
       if (rhs0 ne tree.rhs) tpd.cpy.DefDef(tree)(rhs = rhs0)
@@ -122,14 +129,16 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
     else if (fuel == 0)
       tree1 // No more fuel? No more transformations for you!
     else {  // Print the trees if different and consume fuel accordingly.
-      if (tree1 ne tree2) {
-        if (fuel > 0) fuel -= 1
-        if (fuel != -1) {
+      val t2 = tree2
+      if (tree1 ne t2) {
+        if (fuel > 0)
+          fuel -= 1
+        if (fuel != -1 && fuel < 5) {
           println(s"${tree1.symbol} was simplified by ${opt.name} (fuel=$fuel): ${tree1.show}")
-          println(s"became after ${opt.name}: (fuel=$fuel) ${tree2.show}")
+          println(s"became after ${opt.name}: (fuel=$fuel) ${t2.show}")
         }
       }
-      tree2
+      t2
     }
   }
 }
@@ -156,5 +165,16 @@ object Simplify {
     case s: Select => s.symbol.owner == defn.SystemModule
     case i: Ident  => desugarIdent(i).exists(isEffectivelyMutable)
     case _ => false
+  }
+
+  def isImmutableAccessor(t: Tree)(implicit ctx: Context): Boolean = {
+    val isImmutableGetter = t.symbol.isGetter && !t.symbol.is(Mutable | Lazy)
+    val isCaseAccessor    = t.symbol.is(CaseAccessor) && !t.symbol.is(Mutable | Lazy)
+    val isProductAccessor = t.symbol.exists                               &&
+                            t.symbol.owner.derivesFrom(defn.ProductClass) &&
+                            t.symbol.owner.is(CaseClass)                  &&
+                            t.symbol.name.isSelectorName                  &&
+                            !t.symbol.info.decls.exists(_.is(Mutable | Lazy)) // Conservatively covers case class A(var x: Int)
+    isImmutableGetter || isCaseAccessor || isProductAccessor
   }
 }

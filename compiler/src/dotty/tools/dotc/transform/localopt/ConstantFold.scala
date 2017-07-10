@@ -30,6 +30,7 @@ import Simplify.desugarIdent
   import ast.tpd._
 
   def visitor(implicit ctx: Context) = NoVisitor
+  def clear(): Unit = ()
 
   def transformer(implicit ctx: Context): Tree => Tree = { x => preEval(x) match {
     // TODO: include handling of isInstanceOf similar to one in IsInstanceOfEvaluator

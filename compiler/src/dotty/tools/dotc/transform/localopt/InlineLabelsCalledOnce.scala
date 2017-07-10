@@ -18,6 +18,11 @@ class InlineLabelsCalledOnce extends Optimisation {
   val timesUsed = mutable.HashMap[Symbol, Int]()
   val defined   = mutable.HashMap[Symbol, DefDef]()
 
+  def clear(): Unit = {
+    timesUsed.clear()
+    defined.clear()
+  }
+
   def visitor(implicit ctx: Context): Tree => Unit = {
     case d: DefDef if d.symbol.is(Label)  =>
       var isRecursive = false

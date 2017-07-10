@@ -31,6 +31,11 @@ import scala.collection.mutable
 
   val possibleRenames = mutable.HashMap[Symbol, Set[Symbol]]()
 
+  def clear(): Unit = {
+    paramsTimesUsed.clear()
+    possibleRenames.clear()
+  }
+
   def visitor(implicit ctx: Context): Tree => Unit = {
     case t: ValDef if t.symbol.is(Param) =>
       paramsTimesUsed += (t.symbol -> 0)

@@ -24,6 +24,13 @@ class Valify(val simplifyPhase: Simplify) extends Optimisation {
 
   val secondWrite: mutable.Map[Symbol, Assign] = mutable.Map()
 
+  def clear(): Unit = {
+    defined.clear()
+    firstRead.clear()
+    firstWrite.clear()
+    secondWrite.clear()
+  }
+
   def visitor(implicit ctx: Context): Tree => Unit = {
     case t: ValDef if t.symbol.is(Mutable, Lazy) && !t.symbol.is(Method) && !t.symbol.owner.isClass =>
       if (isPureExpr(t.rhs))
