@@ -6,7 +6,7 @@ title: Dropped: Weak Conformance
 In some situations, Scala used a _weak conformance_ relation when
 testing type compatibility or computing the least upper bound of a set
 of types.  The principal motivation behind weak conformance was to
-make as expression like this have type `List[Double]`:
+make an expression like this have type `List[Double]`:
 
     List(1.0, math.sqrt(3.0), 0, -3.3) // : List[Double]
 
@@ -36,6 +36,7 @@ assigning a type to a constant expression. The new rule is:
      - the elements of a vararg parameter, or
      - the alternatives of an if-then-else or match expression, or
      - the body and catch results of a try expression,
+
 
    and all expressions have primitive numeric types, but they do not
    all have the same type, then the following is attempted: Every
