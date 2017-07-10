@@ -49,7 +49,7 @@ class TastyUnpickler(reader: TastyReader) {
       case UTF8 =>
         goto(end)
         termName(bytes, start.index, length)
-      case QUALIFIED | FLATTENED | EXPANDED | EXPANDPREFIX =>
+      case QUALIFIED | FLATTENED | EXPANDED | EXPANDPREFIX | TRAITSETTER =>
         qualifiedNameKindOfTag(tag)(readName(), readName().asSimpleName)
       case UNIQUE =>
         val separator = readName().toString
