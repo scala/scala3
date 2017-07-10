@@ -3,7 +3,7 @@ layout: doc-page
 title: Dropped: Weak Conformance
 ---
 
-In some situations, Scala used a {\em weak conformance} relation when
+In some situations, Scala used a _weak conformance_ relation when
 testing type compatibility or computing the least upper bound of a set
 of types.  The principal motivation behind weak conformance was to
 make as expression like this have type `List[Double]`:
@@ -24,12 +24,12 @@ A less obvious example is the following one, which was also typed as a
     List(n, c, d) // used to be: List[Double], now: List[AnyVal]
 
 Here, it is less clear why the type should be widened to
-`List[Double]`, a `List[AnyVal` seems to be an equally valid -- and
+`List[Double]`, a `List[AnyVal]` seems to be an equally valid -- and
 more principled -- choice.
 
 To simplify the underlying type theory, Dotty drops the notion of weak
 conformance altogether. Instead, it provides more flexibility when
-assigning a type to a constant expression. The rule is:
+assigning a type to a constant expression. The new rule is:
 
  - If a list of expressions `Es` appears as one of
 
