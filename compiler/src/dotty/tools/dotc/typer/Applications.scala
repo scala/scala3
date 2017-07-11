@@ -395,6 +395,10 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
       }
     }
 
+    /** Is `sym` a constructor of a Java-defined annotation? */
+    def isJavaAnnotConstr(sym: Symbol) =
+      sym.is(JavaDefined) && sym.isConstructor && sym.owner.derivesFrom(defn.AnnotationClass)
+
     /** Match re-ordered arguments against formal parameters
      *  @param n   The position of the first parameter in formals in `methType`.
      */
@@ -420,7 +424,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
           }
 
           def tryDefault(n: Int, args1: List[Arg]): Unit = {
-            liftFun()
+            if (!isJavaAnnotConstr(methRef.symbol)) liftFun()
             val getter = findDefaultGetter(n + numArgs(normalizedFun))
             if (getter.isEmpty) missingArg(n)
             else {
@@ -607,7 +611,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
       val app1 =
         if (!success) app0.withType(UnspecifiedErrorType)
         else {
-          if (!sameSeq(args, orderedArgs)) {
+          if (!sameSeq(args, orderedArgs) && !isJavaAnnotConstr(methRef.symbol)) {
             // need to lift arguments to maintain evaluation order in the
             // presence of argument reorderings.
             liftFun()

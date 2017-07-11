@@ -6,6 +6,7 @@ import DenotTransformers._
 import Phases.Phase
 import Contexts.Context
 import SymDenotations.SymDenotation
+import Denotations._
 import Types._
 import Symbols._
 import SymUtils._
@@ -50,7 +51,7 @@ import Decorators._
         if !ddef.symbol.is(Deferred) &&
            !ddef.symbol.isConstructor && // constructors bodies are added later at phase Constructors
            ddef.rhs == EmptyTree =>
-          errorLackImplementation(ddef)
+        errorLackImplementation(ddef)
       case tdef: TypeDef
         if tdef.symbol.isClass && !tdef.symbol.is(Deferred) && tdef.rhs == EmptyTree =>
         errorLackImplementation(tdef)
@@ -76,24 +77,33 @@ import Decorators._
 
       ctx.newSymbol(
         owner = ctx.owner,
-        name = sym.name.asTermName.fieldName,
+        name  = sym.name.asTermName.fieldName,
         flags = Private | (if (sym is Stable) EmptyFlags else Mutable),
-        info = fieldType,
-        coord = tree.pos)
-        .withAnnotationsCarrying(sym, defn.FieldMetaAnnot)
-        .enteredAfter(thisTransform)
+        info  = fieldType,
+        coord = tree.pos
+      ).withAnnotationsCarrying(sym, defn.FieldMetaAnnot)
+       .enteredAfter(thisTransform)
     }
 
-    /** Can be used to filter annotations on getters and setters; not used yet */
-    def keepAnnotations(denot: SymDenotation, meta: ClassSymbol) = {
-      val cpy = sym.copySymDenotation()
-      cpy.filterAnnotations(_.symbol.derivesFrom(meta))
-      if (cpy.annotations ne denot.annotations) cpy.installAfter(thisTransform)
-    }
+    def addAnnotations(denot: Denotation): Unit =
+      denot match {
+        case fieldDenot: SymDenotation if sym.annotations.nonEmpty =>
+          val cpy = fieldDenot.copySymDenotation()
+          cpy.annotations = sym.annotations
+          cpy.installAfter(thisTransform)
+        case _ => ()
+      }
+
+    def removeAnnotations(denot: SymDenotation): Unit =
+      if (sym.annotations.nonEmpty) {
+        val cpy = sym.copySymDenotation()
+        cpy.annotations = Nil
+        cpy.installAfter(thisTransform)
+      }
 
     lazy val field = sym.field.orElse(newField).asTerm
 
-    def adaptToField(tree: Tree) =
+    def adaptToField(tree: Tree): Tree =
       if (tree.isEmpty) tree else tree.ensureConforms(field.info.widen)
 
     val NoFieldNeeded = Lazy | Deferred | JavaDefined | (if (ctx.settings.YnoInline.value) EmptyFlags else Inline)
@@ -125,14 +135,18 @@ import Decorators._
           if (isErasableBottomField(rhsClass)) erasedBottomTree(rhsClass)
           else transformFollowingDeep(ref(field))(ctx.withOwner(sym), info)
         val getterDef = cpy.DefDef(tree)(rhs = getterRhs)
+        addAnnotations(fieldDef.denot)
+        removeAnnotations(sym)
         Thicket(fieldDef, getterDef)
       } else if (sym.isSetter) {
-        if (!sym.is(ParamAccessor)) { val Literal(Constant(())) = tree.rhs } // this is intended as an assertion
-        field.setFlag(Mutable) // necessary for vals mixed in from Scala2 traits
+        if (!sym.is(ParamAccessor)) { val Literal(Constant(())) = tree.rhs } // This is intended as an assertion
+        field.setFlag(Mutable) // Necessary for vals mixed in from Scala2 traits
         if (isErasableBottomField(tree.vparamss.head.head.tpt.tpe.classSymbol)) tree
         else {
           val initializer = Assign(ref(field), adaptToField(ref(tree.vparamss.head.head.symbol)))
-          cpy.DefDef(tree)(rhs = transformFollowingDeep(initializer)(ctx.withOwner(sym), info))
+          val setterDef = cpy.DefDef(tree)(rhs = transformFollowingDeep(initializer)(ctx.withOwner(sym), info))
+          removeAnnotations(sym)
+          setterDef
         }
       }
       else tree // curiously, some accessors from Scala2 have ' ' suffixes. They count as

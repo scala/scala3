@@ -277,7 +277,7 @@ object SymDenotations {
     }
 
     /** Update the annotations of this denotation */
-    private[core] final def annotations_=(annots: List[Annotation]): Unit =
+    final def annotations_=(annots: List[Annotation]): Unit =
       myAnnotations = annots
 
     /** Does this denotation have an annotation matching the given class symbol? */

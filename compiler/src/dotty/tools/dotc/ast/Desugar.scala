@@ -106,22 +106,23 @@ object desugar {
   def valDef(vdef: ValDef)(implicit ctx: Context): Tree = {
     val ValDef(name, tpt, rhs) = vdef
     val mods = vdef.mods
-    def setterNeeded =
+    val setterNeeded =
       (mods is Mutable) && ctx.owner.isClass && (!(mods is PrivateLocal) || (ctx.owner is Trait))
     if (setterNeeded) {
-      // todo: copy of vdef as getter needed?
-      // val getter = ValDef(mods, name, tpt, rhs) withPos vdef.pos ?
+      // TODO: copy of vdef as getter needed?
+      // val getter = ValDef(mods, name, tpt, rhs) withPos vdef.pos?
       // right now vdef maps via expandedTree to a thicket which concerns itself.
       // I don't see a problem with that but if there is one we can avoid it by making a copy here.
       val setterParam = makeSyntheticParameter(tpt = (new SetterParamTree).watching(vdef))
+      // The rhs gets filled in later, when field is generated and getter has parameters (see Memoize miniphase)
       val setterRhs = if (vdef.rhs.isEmpty) EmptyTree else unitLiteral
       val setter = cpy.DefDef(vdef)(
-        name = name.setterName,
-        tparams = Nil,
+        name     = name.setterName,
+        tparams  = Nil,
         vparamss = (setterParam :: Nil) :: Nil,
-        tpt = TypeTree(defn.UnitType),
-        rhs = setterRhs
-      ).withMods((mods | Accessor) &~ CaseAccessor) // rhs gets filled in later, when field is generated and getter has parameters
+        tpt      = TypeTree(defn.UnitType),
+        rhs      = setterRhs
+      ).withMods((mods | Accessor) &~ CaseAccessor)
       Thicket(vdef, setter)
     }
     else vdef
