@@ -152,7 +152,7 @@ object Build {
 
     // Avoid having to run `dotty-sbt-bridge/publishLocal` before compiling a bootstrapped project
     scalaCompilerBridgeSource :=
-      (dottyOrganization %% "dotty-sbt-bridge" % "NOT_PUBLISHED" % Configurations.Component.name)
+      (dottyOrganization %% "dotty-sbt-bridge" % dottyVersion % Configurations.Component.name)
       .artifacts(Artifact.sources("dotty-sbt-bridge").copy(url =
         // We cannot use the `packageSrc` task because a setting cannot depend
         // on a task. Instead, we make `compile` below depend on the bridge `packageSrc`
