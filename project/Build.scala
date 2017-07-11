@@ -1148,7 +1148,7 @@ object Build {
         """.stripMargin)
     }
 
-    // If contents .vscode do not exist yet, initialize them with the contents of .vscode-template/
+    // Copy default configuration from .vscode-template/ unless configuration files already exist in .vscode/
     sbt.IO.copyDirectory(new File(".vscode-template/"), new File(".vscode/"), overwrite = false)
 
     state
