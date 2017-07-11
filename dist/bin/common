@@ -21,7 +21,6 @@ case "`uname`" in
            if [ -z "$JAVA_HOME" ] ; then
              JAVA_HOME=/System/Library/Frameworks/JavaVM.framework/Versions/${JAVA_VERSION}/Home
            fi
-           JAVA_OPTS="$JAVA_OPTS -Xdock:name=\"${PROG_NAME}\" -Xdock:icon=\"$PROG_HOME/icon-mac.png\" -Dapple.laf.useScreenMenuBar=true"
            JAVACMD="`which java`"
            ;;
 esac
