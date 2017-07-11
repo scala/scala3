@@ -798,7 +798,7 @@ object SymDenotations {
      */
     /** The class implementing this module, NoSymbol if not applicable. */
     final def moduleClass(implicit ctx: Context): Symbol = {
-      def notFound = { println(s"missing module class for $name: $myInfo"); NoSymbol }
+      def notFound = { completions.println(s"missing module class for $name: $myInfo"); NoSymbol }
       if (this is ModuleVal)
         myInfo match {
           case info: TypeRef           => info.symbol
