@@ -145,10 +145,7 @@ trait TypeAssigner {
   final def reallyExists(denot: Denotation)(implicit ctx: Context): Boolean = try
     denot match {
       case denot: SymDenotation =>
-        denot.exists && {
-          denot.ensureCompleted()
-          !denot.isAbsent
-        }
+        denot.exists && !denot.isAbsent
       case denot: SingleDenotation =>
         val sym = denot.symbol
         (sym eq NoSymbol) || reallyExists(sym.denot)

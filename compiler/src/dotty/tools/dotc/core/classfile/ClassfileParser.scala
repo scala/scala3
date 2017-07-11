@@ -19,6 +19,10 @@ import scala.util.control.NonFatal
 object ClassfileParser {
   /** Marker trait for unpicklers that can be embedded in classfiles. */
   trait Embedded
+
+  /** Indicate that there is nothing to unpickle and the corresponding symbols can
+    * be invalidated. */
+  object NoEmbedded extends Embedded
 }
 
 class ClassfileParser(
@@ -147,6 +151,15 @@ class ClassfileParser(
 
       setClassInfo(classRoot, classInfo)
       setClassInfo(moduleRoot, staticInfo)
+    } else if (result == Some(NoEmbedded)) {
+      for (sym <- List(moduleRoot.sourceModule.symbol, moduleRoot.symbol, classRoot.symbol)) {
+        classRoot.owner.asClass.delete(sym)
+        if (classRoot.owner == defn.ScalaShadowingPackageClass) {
+          // Symbols in scalaShadowing are also added to scala
+          defn.ScalaPackageClass.delete(sym)
+        }
+        sym.markAbsent()
+      }
     }
 
     // eager load java enum definitions for exhaustivity check of pattern match
@@ -700,6 +713,10 @@ class ClassfileParser(
     }
   }
 
+  // Nothing$ and Null$ were incorrectly emitted with a Scala attribute
+  // instead of ScalaSignature before 2.13.0-M2, see https://github.com/scala/scala/pull/5952
+  private[this] val scalaUnpickleWhitelist = List(tpnme.nothingClass, tpnme.nullClass)
+
   /** Parse inner classes. Expects `in.bp` to point to the superclass entry.
    *  Restores the old `bp`.
    *  @return true iff classfile is from Scala, so no Java info needs to be read.
@@ -758,6 +775,18 @@ class ClassfileParser(
       if (scan(tpnme.TASTYATTR)) {
         val attrLen = in.nextInt
         return unpickleTASTY(in.nextBytes(attrLen))
+      }
+
+      if (scan(tpnme.ScalaATTR) && !scalaUnpickleWhitelist.contains(classRoot.name)) {
+        // To understand the situation, it's helpful to know that:
+        // - Scalac emits the `ScalaSig` attribute for classfiles with pickled information
+        // and the `Scala` attribute for everything else.
+        // - Dotty emits the `TASTY` attribute for classfiles with pickled information
+        // and the `Scala` attribute for _every_ classfile.
+        //
+        // Therefore, if the `Scala` attribute is present but the `TASTY`
+        // attribute isn't, this classfile is a compilation artifact.
+        return Some(NoEmbedded)
       }
 
       if (scan(tpnme.RuntimeAnnotationATTR)) {

@@ -441,10 +441,17 @@ object SymDenotations {
     final def markAbsent(): Unit =
       myInfo = NoType
 
+    /** Is symbol known to not exist, or potentially not completed yet? */
+    final def unforcedIsAbsent(implicit ctx: Context): Boolean =
+      myInfo == NoType ||
+      (this is (ModuleVal, butNot = Package)) && moduleClass.unforcedIsAbsent
+
     /** Is symbol known to not exist? */
-    final def isAbsent(implicit ctx: Context): Boolean =
+    final def isAbsent(implicit ctx: Context): Boolean = {
+      ensureCompleted()
       myInfo == NoType ||
       (this is (ModuleVal, butNot = Package)) && moduleClass.isAbsent
+    }
 
     /** Is this symbol the root class or its companion object? */
     final def isRoot: Boolean =
@@ -563,7 +570,7 @@ object SymDenotations {
     final def isCoDefinedWith(that: Symbol)(implicit ctx: Context) =
       (this.effectiveOwner == that.effectiveOwner) &&
       (  !(this.effectiveOwner is PackageClass)
-        || this.isAbsent || that.isAbsent
+        || this.unforcedIsAbsent || that.unforcedIsAbsent
         || { // check if they are defined in the same file(or a jar)
            val thisFile = this.symbol.associatedFile
            val thatFile = that.symbol.associatedFile

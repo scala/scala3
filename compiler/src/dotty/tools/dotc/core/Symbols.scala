@@ -185,7 +185,7 @@ trait Symbols { this: Context =>
   val companionMethodFlags = Flags.Synthetic | Flags.Private | Flags.Method
 
   def synthesizeCompanionMethod(name: Name, target: SymDenotation, owner: SymDenotation)(implicit ctx: Context) =
-    if (owner.exists && target.exists && !owner.isAbsent && !target.isAbsent) {
+    if (owner.exists && target.exists && !owner.unforcedIsAbsent && !target.unforcedIsAbsent) {
       val existing = owner.unforcedDecls.lookup(name)
 
       existing.orElse{
