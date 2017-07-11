@@ -687,12 +687,12 @@ object PatternMatcher {
       val refCount = varRefCount(plan)
       val LetPlan(topSym, _) = plan
 
-      def toDrop(sym: Symbol) =
-        initializer.contains(sym) &&
-        isPatmatGenerated(sym) &&
-        refCount(sym) <= 1 &&
-        sym != topSym &&
-        isPureExpr(initializer(sym))
+      def toDrop(sym: Symbol) = initializer.get(sym) match {
+        case Some(rhs) =>
+          isPatmatGenerated(sym) && refCount(sym) <= 1 && sym != topSym && isPureExpr(rhs)
+        case none =>
+          false
+      }
 
       object Inliner extends PlanTransform {
         override val treeMap = new TreeMap {
@@ -924,10 +924,11 @@ object PatternMatcher {
     def translateMatch(tree: Match): Tree = {
       var plan = matchPlan(tree)
       patmatch.println(i"Plan for $tree: ${show(plan)}")
-      for ((title, optimization) <- optimizations) {
-        plan = optimization(plan)
-        patmatch.println(s"After $title: ${show(plan)}")
-      }
+      if (!ctx.settings.YnoPatmatOpt.value)
+        for ((title, optimization) <- optimizations) {
+          plan = optimization(plan)
+          patmatch.println(s"After $title: ${show(plan)}")
+        }
       val result = emit(plan)
       checkSwitch(tree, result)
       result
