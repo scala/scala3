@@ -239,13 +239,14 @@ object DottyIDEPlugin extends AutoPlugin {
         runProcess(codeCommand.value ++ Seq("."), directory = baseDirectory.value)
       } catch {
         case ioex: IOException if ioex.getMessage.startsWith("""Cannot run program "code"""") =>
-          throw new MessageOnlyException(
+          val log = streams.value.log
+          log.error(
             """Could not find Visual Studio Code on your system.
-              |Please download it at (https://code.visualstudio.com/) and add it to your path and then rerun launchIDE
-              |
-              |For Linux: https://code.visualstudio.com/docs/setup/linux
-              |For Windows: https://code.visualstudio.com/docs/setup/windows
-              |For Mac: https://code.visualstudio.com/docs/setup/mac""".stripMargin)
+              |Follow the instructions at http://dotty.epfl.ch/docs/usage/ide-support.html
+              |to install it.""".stripMargin)
+          throw new FeedbackProvidedException {
+            override def toString = "Could not find Visual Studio Code on your system."
+          }
       }
     }
     
