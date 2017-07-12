@@ -14,6 +14,7 @@ This release is based on [previous milestone](/blog/2017/05/31/first-dotty-miles
 The highlights of this release are:
  - substantial improvement of quality of generated code for pattern matching
  - improvements in VS Code IDE stability
+ - support Windows in VS Code IDE
  - improved compatibility with scalac 
  - initial support for reproducible builds
 
@@ -39,6 +40,7 @@ This technology preview is geared towards improving stability and reliability. I
   - [Faster Base class sets](https://github.com/lampepfl/dotty/pull/2676) by ([@odersky](https://github.com/odersky) and ([@darkdimius](https://twitter.com/darkdimius) 
   - Huge number of fixes to IDE and Dotty Language Server covering:
    
+     - [Windows support for VS Code plugin](https://github.com/lampepfl/dotty/pull/2776)
      - [Fix hover-on-type for implicitly converted expressions](https://github.com/lampepfl/dotty/pull/2836)
      - [Fixes to find all references in external projects](https://github.com/lampepfl/dotty/pull/2810), [2773](https://github.com/lampepfl/dotty/pull/2773/files)
      - [Fix conflict with  dragos-vscode-scala](https://github.com/lampepfl/dotty/pull/2777)
@@ -320,6 +322,12 @@ We also provide a [homebrew](https://brew.sh/) package that can be installed by 
 brew install lampepfl/brew/dotty
 ```
 
+In case you have already installed Dotty via brew, you should instead update it:
+ 
+```
+brew upgrade dotty
+```
+
 ### Scastie
 
 [Scastie], the online Scala playground,
@@ -334,6 +342,7 @@ Over the coming weeks and months, we plan to work on the following topics:
  - [Add support for using Dotty generated classes with Scala 2.12](https://github.com/lampepfl/dotty/pull/2827)
  - [Add Language-level support for HMaps and HLists](https://github.com/lampepfl/dotty/pull/2199);
  - Upstream more optimizations from Dotty Linker
+ - [Add support for existing in the same classpath with Scala 2.12](https://github.com/lampepfl/dotty/pull/2827)
 
 If you want to get your hands dirty with any of this, now is a good
 moment to get involved! Join the team of contributors, including
