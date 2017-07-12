@@ -3,7 +3,7 @@ layout: blog-page
 title: Announcing Dotty 0.2.0-RC1, with new optimizations, improved stability and IDE support
 author: Dmytro Petrashko
 authorImg: /images/petrashko.jpg
-date: 2017-05-31
+date: 2017-07-12
 ---
 
 Today, we are excited to release Dotty version 0.2.0-RC1. This release
