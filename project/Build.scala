@@ -262,7 +262,7 @@ object Build {
     settings(commonNonBootstrappedSettings).
     settings(
       triggeredMessage in ThisBuild := Watched.clearWhenTriggered,
-      submoduleChecks,
+      dottyProjectFolderChecks,
 
       addCommandAlias("run", "dotty-compiler/run") ++
       addCommandAlias("legacyTests", "dotty-compiler/testOnly dotc.tests")
@@ -1115,7 +1115,7 @@ object Build {
     ))
   }
 
-  lazy val submoduleChecks = onLoad in Global := (onLoad in Global).value andThen { state =>
+  lazy val dottyProjectFolderChecks = onLoad in Global := (onLoad in Global).value andThen { state =>
     val submodules = List(new File("scala-backend"), new File("scala2-library"), new File("collection-strawman"))
     if (!submodules.forall(f => f.exists && f.listFiles().nonEmpty)) {
       sLog.value.log(Level.Error,
@@ -1124,6 +1124,10 @@ object Build {
            |  > git submodule update --init
         """.stripMargin)
     }
+
+    // Copy default configuration from .vscode-template/ unless configuration files already exist in .vscode/
+    sbt.IO.copyDirectory(new File(".vscode-template/"), new File(".vscode/"), overwrite = false)
+
     state
   }
 
