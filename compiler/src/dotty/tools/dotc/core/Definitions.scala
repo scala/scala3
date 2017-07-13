@@ -317,6 +317,8 @@ class Definitions {
     def Predef_conforms(implicit ctx: Context) = Predef_conformsR.symbol
     lazy val Predef_classOfR = ScalaPredefModule.requiredMethodRef("classOf")
     def Predef_classOf(implicit ctx: Context) = Predef_classOfR.symbol
+    lazy val Predef_undefinedR = ScalaPredefModule.requiredMethodRef("???")
+    def Predef_undefined(implicit ctx: Context) = Predef_undefinedR.symbol
 
   lazy val ScalaRuntimeModuleRef = ctx.requiredModuleRef("scala.runtime.ScalaRunTime")
   def ScalaRuntimeModule(implicit ctx: Context) = ScalaRuntimeModuleRef.symbol
