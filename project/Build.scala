@@ -20,6 +20,9 @@ import dotty.tools.sbtplugin.DottyIDEPlugin.autoImport._
 import org.scalajs.sbtplugin.ScalaJSPlugin
 import org.scalajs.sbtplugin.ScalaJSPlugin.autoImport._
 
+import pl.project13.scala.sbt.JmhPlugin
+import JmhPlugin.JmhKeys.Jmh
+
 /* In sbt 0.13 the Build trait would expose all vals to the shell, where you
  * can use them in "set a := b" like expressions. This re-exposes them.
  */
@@ -822,42 +825,22 @@ object Build {
     )))
 
   lazy val `dotty-bench` = project.in(file("bench")).
-    dependsOn(`dotty-compiler` % "compile->test").
+    dependsOn(`dotty-compiler`).
     settings(commonNonBootstrappedSettings).
     settings(
-      baseDirectory in (Test,run) := (baseDirectory in `dotty-compiler`).value,
-
-      libraryDependencies += "com.storm-enroute" %% "scalameter" % "0.6" % Test,
+      mainClass in (Jmh, run) := Some("dotty.tools.benchmarks.Bench"),   // custom main for jmh:run
 
       fork in Test := true,
-      parallelExecution in Test := false,
-
-      // http://grokbase.com/t/gg/simple-build-tool/135ke5y90p/sbt-setting-jvm-boot-paramaters-for-scala
-      javaOptions ++= {
-        val attList = (dependencyClasspath in Runtime).value
-        val bin = (packageBin in Compile).value
-
-        // put the Scala {library, reflect, compiler} in the classpath
-        val path = for {
-          file <- attList.map(_.data)
-          path = file.getAbsolutePath
-          prefix = if (path.endsWith(".jar")) "p" else "a"
-        } yield "-Xbootclasspath/" + prefix + ":" + path
-        // dotty itself needs to be in the bootclasspath
-        val fullpath = ("-Xbootclasspath/a:" + bin) :: path.toList
-        // System.err.println("BOOTPATH: " + fullpath)
-
-        val ci_build = // propagate if this is a ci build
-          if (sys.props.isDefinedAt(JENKINS_BUILD))
-            List(s"-D$JENKINS_BUILD=${sys.props(JENKINS_BUILD)}")
-          else if (sys.props.isDefinedAt(DRONE_MEM))
-            List("-Xmx" + sys.props(DRONE_MEM))
-          else
-            List()
-        val res = agentOptions ::: ci_build ::: fullpath
-        println("Running with javaOptions: " + res)
-        res
-      }
+      parallelExecution in Test := false
+    ).
+    enablePlugins(JmhPlugin).
+    settings(packSettings).
+    settings(
+      publishArtifact := false,
+      packMain := Map("bench" -> "dotty.tools.benchmarks.Bench"),
+      packGenerateWindowsBatFile := false,
+      packExpandedClasspath := true,
+      packBashTemplate := baseDirectory.value + "/templates/launch.mustache"
     )
 
   // Depend on dotty-library so that sbt projects using dotty automatically
