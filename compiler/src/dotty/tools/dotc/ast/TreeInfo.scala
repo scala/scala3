@@ -273,7 +273,7 @@ trait UntypedTreeInfo extends TreeInfo[Untyped] { self: Trees.Instance[Untyped] 
     case _ => false
   }
 
-  def isFunctionWithUnknownParamType(tree: Tree) = tree match {
+  def isFunctionWithUnknownParamType(tree: Tree): Boolean = tree match {
     case Function(args, _) =>
       args.exists {
         case ValDef(_, tpt, _) => tpt.isEmpty
@@ -281,6 +281,8 @@ trait UntypedTreeInfo extends TreeInfo[Untyped] { self: Trees.Instance[Untyped] 
       }
     case Match(EmptyTree, _) =>
       true
+    case Block(Nil, expr) =>
+      isFunctionWithUnknownParamType(expr)
     case _ => false
   }
 
