@@ -58,7 +58,6 @@ case "`uname`" in
            if [ -z "$JAVA_HOME" ] ; then
              JAVA_HOME=/System/Library/Frameworks/JavaVM.framework/Versions/${JAVA_VERSION}/Home
            fi
-           JAVA_OPTS="$JAVA_OPTS -Xdock:name=\"${PROG_NAME}\" -Xdock:icon=\"$PROG_HOME/{{{MAC_ICON_FILE}}}\" -Dapple.laf.useScreenMenuBar=true"
            JAVACMD="`which java`"
            ;;
 esac
@@ -132,17 +131,17 @@ PROG_NAME={{{PROG_NAME}}}
 PROG_VERSION={{{PROG_VERSION}}}
 PROG_REVISION={{{PROG_REVISION}}}
 
+# add default libraries for compilation
+export BOOTSTRAP_APPEND="{{{EXPANDED_CLASSPATH}}}${CLASSPATH_SUFFIX}"
+
 eval exec "\"$JAVACMD\"" \
      {{{JVM_OPTS}}} \
      ${JAVA_OPTS} \
      {{^EXPANDED_CLASSPATH}}
-     -Xbootclasspath/a:"'{{{EXTRA_CLASSPATH}}}${PROG_HOME}/lib/*${CLASSPATH_SUFFIX}'" \
+     -cp "'{{{EXTRA_CLASSPATH}}}${PROG_HOME}/lib/*${CLASSPATH_SUFFIX}'" \
      {{/EXPANDED_CLASSPATH}}
      {{#EXPANDED_CLASSPATH}}
-     -Xbootclasspath/a:"'{{{EXTRA_CLASSPATH}}}{{{EXPANDED_CLASSPATH}}}${CLASSPATH_SUFFIX}'" \
+     -cp "'{{{EXTRA_CLASSPATH}}}{{{EXPANDED_CLASSPATH}}}${CLASSPATH_SUFFIX}'" \
      {{/EXPANDED_CLASSPATH}}
-     -Dprog.home="'${PROG_HOME}'" \
-     -Dprog.version="${PROG_VERSION}" \
-     -Dprog.revision="${PROG_REVISION}" \
      {{{MAIN_CLASS}}} \"\$@\"
 exit $?

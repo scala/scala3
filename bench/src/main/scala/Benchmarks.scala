@@ -5,14 +5,10 @@ import core.Contexts.Context
 
 import org.openjdk.jmh.results.RunResult
 import org.openjdk.jmh.runner.Runner
-import org.openjdk.jmh.runner.options.CommandLineOptions
-import org.openjdk.jmh.annotations.Benchmark
-import org.openjdk.jmh.annotations.State
-import org.openjdk.jmh.annotations.Scope
-
-import org.openjdk.jmh.annotations.Setup
-import org.openjdk.jmh.annotations.TearDown
-
+import org.openjdk.jmh.runner.options.OptionsBuilder
+import org.openjdk.jmh.annotations._
+import org.openjdk.jmh.results.format._
+import java.util.concurrent.TimeUnit
 
 import java.io.{File, FileOutputStream, BufferedWriter, FileWriter}
 import scala.collection.JavaConversions._
@@ -24,20 +20,26 @@ object Bench {
   def main(args: Array[String]): Unit = {
     storeCompileOptions(args)
 
-    val opts = new CommandLineOptions() // parse command line arguments, and then bend them to your will! ;-)
+    val libs = System.getenv("BOOTSTRAP_APPEND")
+
+    val opts = new OptionsBuilder()
+               .jvmArgsPrepend(s"-Xbootclasspath/a:$libs")
+               .mode(Mode.AverageTime)
+               .timeUnit(TimeUnit.MICROSECONDS)
+               .forks(5)
+               .warmupIterations(5)
+               .measurementIterations(10)
+               .resultFormat(ResultFormatType.CSV)
+               .result("result.csv")
+               .build
+
     val runner = new Runner(opts) // full access to all JMH features, you can also provide a custom output Format here
+    runner.run() // actually run the benchmarks
 
-    /*
-    val results = runner.run() // actually run the benchmarks
-
-    val f = new FileOutputStream(new File("custom.out"))
-    results.foreach { result: RunResult ⇒
-      // usually you'd use these results to report into some external aggregation tool for example
-      f.write(s"custom reporting result: ${result.getAggregatedResult.getPrimaryResult}".getBytes("UTF-8"))
-    }
-    f.close()
-    */
+    removeCompileOptions
   }
+
+  def removeCompileOptions: Unit = new File(COMPILE_OPTS_FILE).delete()
 
   def storeCompileOptions(args: Array[String]): Unit = {
     val file = new File(COMPILE_OPTS_FILE)
@@ -65,7 +67,7 @@ class Worker extends Driver {
 
   @Benchmark
   def compile(state: CompilerOptions): Unit = {
-    println("options: " + state.opts.mkString(", "))
-    super.main(state.opts)
+    val res = process(state.opts)
+    if (res.hasErrors) throw new Exception("compilation failed")
   }
 }

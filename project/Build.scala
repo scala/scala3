@@ -828,10 +828,7 @@ object Build {
     dependsOn(`dotty-compiler`).
     settings(commonNonBootstrappedSettings).
     settings(
-      mainClass in (Jmh, run) := Some("dotty.tools.benchmarks.Bench"),   // custom main for jmh:run
-
-      fork in Test := true,
-      parallelExecution in Test := false
+      mainClass in (Jmh, run) := Some("dotty.tools.benchmarks.Bench")   // custom main for jmh:run
     ).
     enablePlugins(JmhPlugin).
     settings(packSettings).
