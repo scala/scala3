@@ -1402,7 +1402,8 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
           case ValDef(_, tpt, _) => tpt.isEmpty
           case _ => false
         }
-        if (untpd.isFunctionWithUnknownParamType(arg)) {
+        val fn = untpd.functionWithUnknownParamType(arg)
+        if (fn.isDefined) {
           def isUniform[T](xs: List[T])(p: (T, T) => Boolean) = xs.forall(p(_, xs.head))
           val formalsForArg: List[Type] = altFormals.map(_.head)
           def argTypesOfFormal(formal: Type): List[Type] =
@@ -1422,7 +1423,9 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
               // type of the i'th parameter of the closure.
               if (isUniform(ps)(ctx.typeComparer.isSameTypeWhenFrozen(_, _))) ps.head
               else WildcardType)
-            def isPartial = formalsForArg.forall(_.isRef(defn.PartialFunctionClass))
+            def isPartial = // we should generate a partial function for the arg
+              fn.get.isInstanceOf[untpd.Match] &&
+              formalsForArg.exists(_.isRef(defn.PartialFunctionClass))
             val commonFormal =
               if (isPartial) defn.PartialFunctionOf(commonParamTypes.head, newTypeVar(TypeBounds.empty))
               else defn.FunctionOf(commonParamTypes, WildcardType)
