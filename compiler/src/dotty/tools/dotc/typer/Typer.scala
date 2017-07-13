@@ -243,8 +243,27 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
         if (ctx.scope == null) previous
         else {
           var result: Type = NoType
+
           val curOwner = ctx.owner
-          if ((ctx.scope ne lastCtx.scope) || (curOwner ne lastCtx.owner)) {
+
+          // Can this scope contain new definitions? This is usually the first
+          // context where either the scope or the owner changes wrt the
+          // context immediately nested in it. But for package contexts, it's
+          // the opposite: the last context before the package changes. This distinction
+          // is made so that top-level imports following a package clause are
+          // logically nested in that package clause. Finally, for the root package
+          // we switch back to the original test. This means that rop-level packages in
+          // the root package take priority over root imports. For instance,
+          // a top-level io package takes priority over scala.io.
+          // It would be nice if we could drop all this complication, and
+          // always use the second condition. Unfortunately compileStdLib breaks
+          // with an error on CI which I cannot replicate locally (not even
+          // with the exact list of files given).
+          val isNewDefScope =
+            if (curOwner.is(Package) && !curOwner.isRoot) curOwner ne ctx.outer.owner
+            else (ctx.scope ne lastCtx.scope) || (curOwner ne lastCtx.owner)
+
+          if (isNewDefScope) {
             val defDenot = ctx.denotNamed(name)
             if (qualifies(defDenot)) {
               val found =
