@@ -238,6 +238,12 @@ object ProtoTypes {
       typer.adapt(targ, formal, arg)
     }
 
+    /** Retype argument, removing any previously cached entries */
+    def retypeArg(arg: untpd.Tree, formal: Type)(implicit ctx: Context): Tree = {
+      myTypedArg = myTypedArg.remove(arg)
+      typedArg(arg, formal)
+    }
+
     /** The type of the argument `arg`.
      *  @pre `arg` has been typed before
      */
@@ -401,14 +407,17 @@ object ProtoTypes {
   /**  Same as `constrained(tl, EmptyTree)`, but returns just the created type lambda */
   def constrained(tl: TypeLambda)(implicit ctx: Context): TypeLambda = constrained(tl, EmptyTree)._1
 
-  /** Create a new TypeVar that represents a dependent method parameter singleton */
-  def newDepTypeVar(tp: Type)(implicit ctx: Context): TypeVar = {
+  def newTypeVar(bounds: TypeBounds)(implicit ctx: Context): TypeVar = {
     val poly = PolyType(DepParamName.fresh().toTypeName :: Nil)(
-        pt => TypeBounds.upper(AndType(tp, defn.SingletonClass.typeRef)) :: Nil,
+        pt => bounds :: Nil,
         pt => defn.AnyType)
     constrained(poly, untpd.EmptyTree, alwaysAddTypeVars = true)
       ._2.head.tpe.asInstanceOf[TypeVar]
   }
+
+  /** Create a new TypeVar that represents a dependent method parameter singleton */
+  def newDepTypeVar(tp: Type)(implicit ctx: Context): TypeVar =
+    newTypeVar(TypeBounds.upper(AndType(tp, defn.SingletonClass.typeRef)))
 
   /** The result type of `mt`, where all references to parameters of `mt` are
    *  replaced by either wildcards (if typevarsMissContext) or TypeParamRefs.

@@ -1405,27 +1405,29 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
         if (untpd.isFunctionWithUnknownParamType(arg)) {
           def isUniform[T](xs: List[T])(p: (T, T) => Boolean) = xs.forall(p(_, xs.head))
           val formalsForArg: List[Type] = altFormals.map(_.head)
-          // For alternatives alt_1, ..., alt_n, test whether formal types for current argument are of the form
-          //   (p_1_1, ..., p_m_1) => r_1
-          //   ...
-          //   (p_1_n, ..., p_m_n) => r_n
-          val decomposedFormalsForArg: List[Option[(List[Type], Type, Boolean)]] =
-            formalsForArg.map(defn.FunctionOf.unapply)
-          if (decomposedFormalsForArg.forall(_.isDefined)) {
-            val formalParamTypessForArg: List[List[Type]] =
-              decomposedFormalsForArg.map(_.get._1)
-            if (isUniform(formalParamTypessForArg)((x, y) => x.length == y.length)) {
-              val commonParamTypes = formalParamTypessForArg.transpose.map(ps =>
-                // Given definitions above, for i = 1,...,m,
-                //   ps(i) = List(p_i_1, ..., p_i_n)  -- i.e. a column
-                // If all p_i_k's are the same, assume the type as formal parameter
-                // type of the i'th parameter of the closure.
-                if (isUniform(ps)(ctx.typeComparer.isSameTypeWhenFrozen(_, _))) ps.head
-                else WildcardType)
-              val commonFormal = defn.FunctionOf(commonParamTypes, WildcardType)
-              overload.println(i"pretype arg $arg with expected type $commonFormal")
-              pt.typedArg(arg, commonFormal)(ctx.addMode(Mode.ImplicitsEnabled))
+          def argTypesOfFormal(formal: Type): List[Type] =
+            formal match {
+              case defn.FunctionOf(args, result, isImplicit) => args
+              case defn.PartialFunctionOf(arg, result) => arg :: Nil
+              case _ => Nil
             }
+          val formalParamTypessForArg: List[List[Type]] =
+            formalsForArg.map(argTypesOfFormal)
+          if (formalParamTypessForArg.forall(_.nonEmpty) &&
+              isUniform(formalParamTypessForArg)((x, y) => x.length == y.length)) {
+            val commonParamTypes = formalParamTypessForArg.transpose.map(ps =>
+              // Given definitions above, for i = 1,...,m,
+              //   ps(i) = List(p_i_1, ..., p_i_n)  -- i.e. a column
+              // If all p_i_k's are the same, assume the type as formal parameter
+              // type of the i'th parameter of the closure.
+              if (isUniform(ps)(ctx.typeComparer.isSameTypeWhenFrozen(_, _))) ps.head
+              else WildcardType)
+            def isPartial = formalsForArg.forall(_.isRef(defn.PartialFunctionClass))
+            val commonFormal =
+              if (isPartial) defn.PartialFunctionOf(commonParamTypes.head, newTypeVar(TypeBounds.empty))
+              else defn.FunctionOf(commonParamTypes, WildcardType)
+            overload.println(i"pretype arg $arg with expected type $commonFormal")
+            pt.typedArg(arg, commonFormal)(ctx.addMode(Mode.ImplicitsEnabled))
           }
         }
         recur(altFormals.map(_.tail), args1)
