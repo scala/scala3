@@ -386,25 +386,28 @@ object Denotations {
         /** Establish a partial order "preference" order between symbols.
          *  Give preference to `sym1` over `sym2` if one of the following
          *  conditions holds, in decreasing order of weight:
-         *   1. sym1 is concrete and sym2 is abstract
-         *   2. The owner of sym1 comes before the owner of sym2 in the linearization
+         *   1. sym2 doesn't exist
+         *   2. sym1 is concrete and sym2 is abstract
+         *   3. The owner of sym1 comes before the owner of sym2 in the linearization
          *      of the type of the prefix `pre`.
-         *   3. The access boundary of sym2 is properly contained in the access
+         *   4. The access boundary of sym2 is properly contained in the access
          *      boundary of sym1. For protected access, we count the enclosing
          *      package as access boundary.
-         *   4. sym1 a method but sym2 is not.
+         *   5. sym1 a method but sym2 is not.
          *  The aim of these criteria is to give some disambiguation on access which
          *   - does not depend on textual order or other arbitrary choices
          *   - minimizes raising of doubleDef errors
          */
         def preferSym(sym1: Symbol, sym2: Symbol) =
           sym1.eq(sym2) ||
-            sym1.isAsConcrete(sym2) &&
-            (!sym2.isAsConcrete(sym1) ||
-              precedes(sym1.owner, sym2.owner) ||
-              accessBoundary(sym2).isProperlyContainedIn(accessBoundary(sym1)) ||
-              sym1.is(Method) && !sym2.is(Method)) ||
-            sym1.info.isErroneous
+          sym1.exists &&
+            (!sym2.exists ||
+              sym1.isAsConcrete(sym2) &&
+              (!sym2.isAsConcrete(sym1) ||
+                precedes(sym1.owner, sym2.owner) ||
+                accessBoundary(sym2).isProperlyContainedIn(accessBoundary(sym1)) ||
+                sym1.is(Method) && !sym2.is(Method)) ||
+              sym1.info.isErroneous)
 
         /** Sym preference provided types also override */
         def prefer(sym1: Symbol, sym2: Symbol, info1: Type, info2: Type) =
@@ -425,9 +428,7 @@ object Denotations {
           else if (isDoubleDef(sym1, sym2)) handleDoubleDef
           else {
             val sym =
-              if (!sym1.exists) sym2
-              else if (!sym2.exists) sym1
-              else if (preferSym(sym2, sym1)) sym2
+              if (preferSym(sym2, sym1)) sym2
               else sym1
             val jointInfo =
               try infoMeet(info1, info2)
