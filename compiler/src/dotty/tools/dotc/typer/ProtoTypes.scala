@@ -238,12 +238,6 @@ object ProtoTypes {
       typer.adapt(targ, formal, arg)
     }
 
-    /** Retype argument, removing any previously cached entries */
-    def retypeArg(arg: untpd.Tree, formal: Type)(implicit ctx: Context): Tree = {
-      myTypedArg = myTypedArg.remove(arg)
-      typedArg(arg, formal)
-    }
-
     /** The type of the argument `arg`.
      *  @pre `arg` has been typed before
      */
