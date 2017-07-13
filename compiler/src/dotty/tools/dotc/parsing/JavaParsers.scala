@@ -107,7 +107,8 @@ object JavaParsers {
     def arrayOf(tpt: Tree) =
       AppliedTypeTree(Ident(nme.Array.toTypeName), List(tpt))
 
-    def unimplementedExpr(implicit ctx: Context) = ref(defn.Predef_undefinedR)
+    def unimplementedExpr(implicit ctx: Context) =
+      Select(Select(rootDot(nme.scala_), nme.Predef), nme.???)
 
     def makeTemplate(parents: List[Tree], stats: List[Tree], tparams: List[TypeDef], needsDummyConstr: Boolean) = {
       def pullOutFirstConstr(stats: List[Tree]): (Tree, List[Tree]) = stats match {
