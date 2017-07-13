@@ -781,7 +781,7 @@ object SymDenotations {
         sym.owner == defn.AnyClass ||
         sym == defn.Object_clone ||
         sym.owner.is(Scala2x)
-      test(symbol) || allOverriddenSymbols.exists(test)
+      this.exists && (test(symbol) || allOverriddenSymbols.exists(test))
     }
 
     // ------ access to related symbols ---------------------------------
