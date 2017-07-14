@@ -30,7 +30,24 @@ class Constructors extends MiniPhaseTransform with IdentityDenotTransformer { th
   import tpd._
 
   override def phaseName: String = "constructors"
-  override def runsAfter: Set[Class[_ <: Phase]] = Set(classOf[Memoize], classOf[HoistSuperArgs])
+  override def runsAfter: Set[Class[_ <: Phase]] = Set(classOf[HoistSuperArgs])
+  override def runsAfterGroupsOf: Set[Class[_ <: Phase]] = Set(classOf[Memoize])
+    // Memoized needs to be finished because we depend on the ownerchain after Memoize
+    // when checking whether an ident is an access in a constructor or outside it.
+    // This test is done in the right-hand side of a value definition. If Memoize
+    // was in the same group as Constructors, the test on the rhs ident would be
+    // performed before the rhs undergoes the owner change. This would lead
+    // to more symbls being retained as parameters. Test case is
+    //
+    //     dotc tests/pos/captuing.scala -Xprint:constr
+    //
+    // `sf` should not be retained as a filed of class `MT`.
+
+  /** The private vals that are known to be retained as class fields */
+  private val retainedPrivateVals = mutable.Set[Symbol]()
+
+  /** The private vals whose definition comes before the current focus */
+  private val seenPrivateVals = mutable.Set[Symbol]()
 
   // Collect all private parameter accessors and value definitions that need
   // to be retained. There are several reasons why a parameter accessor or
@@ -40,14 +57,10 @@ class Constructors extends MiniPhaseTransform with IdentityDenotTransformer { th
   // 3. It is accessed on an object other than `this`
   // 4. It is a mutable parameter accessor
   // 5. It is has a wildcard initializer `_`
-  private val retainedPrivateVals = mutable.Set[Symbol]()
-  private val seenPrivateVals = mutable.Set[Symbol]()
-
   private def markUsedPrivateSymbols(tree: RefTree)(implicit ctx: Context): Unit = {
 
     val sym = tree.symbol
-    def retain() =
-      retainedPrivateVals.add(sym)
+    def retain() = retainedPrivateVals.add(sym)
 
     if (sym.exists && sym.owner.isClass && mightBeDropped(sym)) {
       val owner = sym.owner.asClass
@@ -58,7 +71,8 @@ class Constructors extends MiniPhaseTransform with IdentityDenotTransformer { th
               val method = ctx.owner.enclosingMethod
               method.isPrimaryConstructor && ctx.owner.enclosingClass == owner
             }
-            if (inConstructor && (sym.is(ParamAccessor) || seenPrivateVals.contains(sym))) {
+            if (inConstructor &&
+                (sym.is(ParamAccessor) || seenPrivateVals.contains(sym))) {
               // used inside constructor, accessed on this,
               // could use constructor argument instead, no need to retain field
             }
@@ -79,8 +93,7 @@ class Constructors extends MiniPhaseTransform with IdentityDenotTransformer { th
   }
 
   override def transformValDef(tree: tpd.ValDef)(implicit ctx: Context, info: TransformerInfo): tpd.Tree = {
-    if (mightBeDropped(tree.symbol))
-      (if (isWildcardStarArg(tree.rhs)) retainedPrivateVals else seenPrivateVals) += tree.symbol
+    if (mightBeDropped(tree.symbol)) seenPrivateVals += tree.symbol
     tree
   }
 
