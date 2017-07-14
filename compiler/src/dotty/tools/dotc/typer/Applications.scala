@@ -1379,10 +1379,10 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
   }
 
   /** Try to typecheck any arguments in `pt` that are function values missing a
-   *  parameter type. The expected type for these arguments is the lub of the
-   *  corresponding formal parameter types of all alternatives. Type variables
-   *  in formal parameter types are replaced by wildcards. The result of the
-   *  typecheck is stored in `pt`, to be retrieved when its `typedArgs` are selected.
+   *  parameter type. If the formal parameter types corresponding to a closure argument
+   *  all agree on their argument types, typecheck the argument with an expected
+   *  function or partial function type that contains these argument types,
+   *  The result of the typecheck is stored in `pt`, to be retrieved when its `typedArgs` are selected.
    *  The benefit of doing this is to allow idioms like this:
    *
    *     def map(f: Char => Char): String = ???
@@ -1390,10 +1390,8 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
    *     map(x => x.toUpper)
    *
    *  Without `pretypeArgs` we'd get a "missing parameter type" error for `x`.
-   *  With `pretypeArgs`, we use the union of the two formal parameter types
-   *  `Char => Char` and `Char => ?` as the expected type of the closure `x => x.toUpper`.
-   *  That union is `Char => Char`, so we have an expected parameter type `Char`
-   *  for `x`, and the code typechecks.
+   *  With `pretypeArgs`, we use the `Char => ?` as the expected type of the
+   *  closure `x => x.toUpper`, which makes the code typecheck.
    */
   private def pretypeArgs(alts: List[TermRef], pt: FunProto)(implicit ctx: Context): Unit = {
     def recur(altFormals: List[List[Type]], args: List[untpd.Tree]): Unit = args match {
