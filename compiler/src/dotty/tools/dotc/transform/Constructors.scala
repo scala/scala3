@@ -37,11 +37,7 @@ class Constructors extends MiniPhaseTransform with IdentityDenotTransformer { th
     // This test is done in the right-hand side of a value definition. If Memoize
     // was in the same group as Constructors, the test on the rhs ident would be
     // performed before the rhs undergoes the owner change. This would lead
-    // to more symbls being retained as parameters. Test case is
-    //
-    //     dotc tests/pos/captuing.scala -Xprint:constr
-    //
-    // `sf` should not be retained as a filed of class `MT`.
+    // to more symbols being retained as parameters. Test case in run/capturing.scala.
 
   /** The private vals that are known to be retained as class fields */
   private val retainedPrivateVals = mutable.Set[Symbol]()
