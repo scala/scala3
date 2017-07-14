@@ -567,13 +567,14 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
   def typedAssign(tree: untpd.Assign, pt: Type)(implicit ctx: Context) = track("typedAssign") {
     tree.lhs match {
       case lhs @ Apply(fn, args) =>
-        typed(cpy.Apply(lhs)(untpd.Select(fn, nme.update), args :+ tree.rhs), pt)
+        typed(untpd.Apply(untpd.Select(fn, nme.update), args :+ tree.rhs), pt)
       case untpd.TypedSplice(Apply(MaybePoly(Select(fn, app), targs), args)) if app == nme.apply =>
         val rawUpdate: untpd.Tree = untpd.Select(untpd.TypedSplice(fn), nme.update)
         val wrappedUpdate =
           if (targs.isEmpty) rawUpdate
           else untpd.TypeApply(rawUpdate, targs map (untpd.TypedSplice(_)))
-        val appliedUpdate = cpy.Apply(fn)(wrappedUpdate, (args map (untpd.TypedSplice(_))) :+ tree.rhs)
+        val appliedUpdate =
+          untpd.Apply(wrappedUpdate, (args map (untpd.TypedSplice(_))) :+ tree.rhs)
         typed(appliedUpdate, pt)
       case lhs =>
         val lhsCore = typedUnadapted(lhs, AssignProto)
@@ -604,7 +605,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
                   val setterType = ensureAccessible(setterTypeRaw, isSuperSelection(lhsCore), tree.pos)
                   val lhs2 = healNonvariant(
                     untpd.rename(lhsCore, setterName).withType(setterType), WildcardType)
-                  typedUnadapted(cpy.Apply(tree)(untpd.TypedSplice(lhs2), tree.rhs :: Nil))
+                  typedUnadapted(untpd.Apply(untpd.TypedSplice(lhs2), tree.rhs :: Nil))
                 case _ =>
                   reassignmentToVal
               }
