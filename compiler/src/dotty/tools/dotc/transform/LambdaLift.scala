@@ -66,7 +66,7 @@ class LambdaLift extends MiniPhase with IdentityDenotTransformer { thisTransform
 
   override def relaxedTyping = true
 
-  override def runsAfter: Set[Class[_ <: Phase]] = Set(classOf[Constructors], classOf[HoistSuperArgs])
+  override def runsAfterGroupsOf: Set[Class[_ <: Phase]] = Set(classOf[Constructors], classOf[HoistSuperArgs])
     // Constructors has to happen before LambdaLift because the lambda lift logic
     // becomes simpler if it can assume that parameter accessors have already been
     // converted to parameters in super calls. Without this it is very hard to get
