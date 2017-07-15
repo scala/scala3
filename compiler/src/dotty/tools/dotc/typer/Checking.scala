@@ -349,7 +349,7 @@ object Checking {
     checkNoConflict(Private, Protected)
     checkNoConflict(Abstract, Override)
     checkNoConflict(Lazy, Inline)
-    if (sym.is(Inline)) checkApplicable(Inline, sym.is(Method, butNot = Mutable))
+    if (sym.is(Inline)) checkApplicable(Inline, sym.isTerm && !sym.is(Mutable | Module))
     if (sym.is(Lazy)) checkApplicable(Lazy, !sym.is(Method | Mutable))
     if (sym.isType && !sym.is(Deferred))
       for (cls <- sym.allOverriddenSymbols.filter(_.isClass)) {
