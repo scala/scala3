@@ -704,6 +704,18 @@ class Definitions {
     }
   }
 
+  object PartialFunctionOf {
+    def apply(arg: Type, result: Type)(implicit ctx: Context) =
+      PartialFunctionType.appliedTo(arg :: result :: Nil)
+    def unapply(pft: Type)(implicit ctx: Context) = {
+      if (pft.isRef(PartialFunctionClass)) {
+        val targs = pft.dealias.argInfos
+        if (targs.length == 2) Some((targs.head, targs.tail)) else None
+      }
+      else None
+    }
+  }
+
   object ArrayOf {
     def apply(elem: Type)(implicit ctx: Context) =
       if (ctx.erasedTypes) JavaArrayType(elem)

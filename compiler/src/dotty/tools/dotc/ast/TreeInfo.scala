@@ -273,16 +273,23 @@ trait UntypedTreeInfo extends TreeInfo[Untyped] { self: Trees.Instance[Untyped] 
     case _ => false
   }
 
-  def isFunctionWithUnknownParamType(tree: Tree) = tree match {
+  def functionWithUnknownParamType(tree: Tree): Option[Tree] = tree match {
     case Function(args, _) =>
-      args.exists {
+      if (args.exists {
         case ValDef(_, tpt, _) => tpt.isEmpty
         case _ => false
-      }
+      }) Some(tree)
+      else None
     case Match(EmptyTree, _) =>
-      true
-    case _ => false
+      Some(tree)
+    case Block(Nil, expr) =>
+      functionWithUnknownParamType(expr)
+    case _ =>
+      None
   }
+
+  def isFunctionWithUnknownParamType(tree: Tree): Boolean =
+    functionWithUnknownParamType(tree).isDefined
 
   /** Is `tree` an implicit function or closure, possibly nested in a block? */
   def isImplicitClosure(tree: Tree)(implicit ctx: Context): Boolean = unsplice(tree) match {
