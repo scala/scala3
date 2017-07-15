@@ -111,7 +111,7 @@ object Config {
   /** If this flag is set, it is checked that TypeRefs don't refer directly
    *  to themselves.
    */
-  final val checkTypeRefCycles = true
+  final val checkTypeRefCycles = false
 
   /** The recursion depth for showing a summarized string */
   final val summarizeDepth = 2
