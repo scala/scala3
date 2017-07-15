@@ -243,6 +243,10 @@ class Namer { typer: Typer =>
     def privateWithinClass(mods: Modifiers) =
       enclosingClassNamed(mods.privateWithin, mods.pos)
 
+    /** Check that flags are OK for symbol. This is done early to avoid
+     *  catastrophic failure when we create a TermSymbol with TypeFlags, or vice versa.
+     *  A more complete check is done in checkWellformed.
+     */
     def checkFlags(flags: FlagSet) =
       if (flags.isEmpty) flags
       else {
