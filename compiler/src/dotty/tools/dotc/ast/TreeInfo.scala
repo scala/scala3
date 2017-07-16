@@ -659,10 +659,8 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
           rname == tree.name || hasRefinement(parent)
         case tp: TypeProxy =>
           hasRefinement(tp.underlying)
-        case tp: OrType =>
+        case tp: AndOrType =>
           hasRefinement(tp.tp1) || hasRefinement(tp.tp2)
-        case tp: AndType =>
-          hasRefinement(tp.tp1) && hasRefinement(tp.tp2)
         case _ =>
           false
       }
