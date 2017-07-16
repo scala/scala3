@@ -3175,7 +3175,13 @@ object Types {
   final class TypeVar(val origin: TypeParamRef, creatorState: TyperState, val bindingTree: untpd.Tree, val owner: Symbol) extends CachedProxyType with ValueType {
 
     /** The permanent instance type of the variable, or NoType is none is given yet */
-    private[core] var inst: Type = NoType
+    private[this] var myInst: Type = NoType
+
+    private[core] def inst = myInst
+    private[core] def inst_=(tp: Type) = {
+      myInst = tp
+      if (tp.exists) owningState = null // no longer needed; null out to avoid a memory leak
+    }
 
     /** The state owning the variable. This is at first `creatorState`, but it can
      *  be changed to an enclosing state on a commit.
