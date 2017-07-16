@@ -348,9 +348,9 @@ trait Symbols { this: Context =>
           info = completer,
           privateWithin = ttmap1.mapOwner(odenot.privateWithin), // since this refers to outer symbols, need not include copies (from->to) in ownermap here.
           annotations = odenot.annotations)
-
       }
 
+      copies.foreach(_.ensureCompleted()) // avoid memory leak
       copies
     }
 
