@@ -315,7 +315,10 @@ object Checking {
         fail(AbstractMemberMayNotHaveModifier(sym, flag))
     def checkNoConflict(flag1: FlagSet, flag2: FlagSet) =
       if (sym.is(allOf(flag1, flag2)))
-        fail(i"illegal combination of modifiers: $flag1 and $flag2 for: $sym")
+        fail(i"illegal combination of modifiers: `$flag1` and `$flag2` for: $sym")
+    def checkApplicable(flag: FlagSet, ok: Boolean) =
+      if (!ok && !sym.is(Synthetic))
+        fail(i"modifier `$flag` is not allowed for this definition")
 
     if (sym.is(ImplicitCommon)) {
       if (sym.owner.is(Package))
@@ -345,6 +348,9 @@ object Checking {
     checkNoConflict(Final, Sealed)
     checkNoConflict(Private, Protected)
     checkNoConflict(Abstract, Override)
+    checkNoConflict(Lazy, Inline)
+    if (sym.is(Inline)) checkApplicable(Inline, sym.isTerm && !sym.is(Mutable | Module))
+    if (sym.is(Lazy)) checkApplicable(Lazy, !sym.is(Method | Mutable))
     if (sym.isType && !sym.is(Deferred))
       for (cls <- sym.allOverriddenSymbols.filter(_.isClass)) {
         fail(CannotHaveSameNameAs(sym, cls, CannotHaveSameNameAs.CannotBeOverridden))
