@@ -100,6 +100,15 @@ object Checking {
     checkValidIfHKApply(ctx.addMode(Mode.AllowLambdaWildcardApply))
   }
 
+  def checkKind(arg: Tree, paramBounds: TypeBounds)(implicit ctx: Context): Tree =
+    if (arg.tpe.isHK && !paramBounds.isHK)
+      errorTree(arg, em"${arg.tpe} takes type parameters")
+    else
+      arg
+
+  def checkKinds(args: List[Tree], paramBoundss: List[TypeBounds])(implicit ctx: Context): List[Tree] =
+    args.zipWithConserve(paramBoundss)(checkKind)
+
   /** Check that `tp` refers to a nonAbstract class
    *  and that the instance conforms to the self type of the created class.
    */
