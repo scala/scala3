@@ -100,14 +100,25 @@ object Checking {
     checkValidIfHKApply(ctx.addMode(Mode.AllowLambdaWildcardApply))
   }
 
-  def checkKind(arg: Tree, paramBounds: TypeBounds)(implicit ctx: Context): Tree =
+  /** Check that `arg` has a *-type, unless `paramBounds` is higher-kinded.
+   *  More detailed kind checking is done as part of checkBounds in PostTyper.
+   *  The purpose of checkStarKind is to do a rough test earlier in Typer,
+   *  in order to prevent scenarios that lead to self application of
+   *  types. Self application needs to be avoided since it can lead to stackoverflows.
+   *  A test case is neg/i2771.scala.
+   */
+  def checkStarKind(arg: Tree, paramBounds: TypeBounds)(implicit ctx: Context): Tree =
     if (arg.tpe.isHK && !paramBounds.isHK)
       errorTree(arg, em"${arg.tpe} takes type parameters")
     else
       arg
 
-  def checkKinds(args: List[Tree], paramBoundss: List[TypeBounds])(implicit ctx: Context): List[Tree] =
-    args.zipWithConserve(paramBoundss)(checkKind)
+  def checkStarKinds(args: List[Tree], paramBoundss: List[TypeBounds])(implicit ctx: Context): List[Tree] = {
+    val args1 = args.zipWithConserve(paramBoundss)(checkStarKind)
+    args1 ++ args.drop(paramBoundss.length)
+      // add any arguments that do not correspond to a parameter back,
+      // so the wrong number of parameters is reported afterwards.
+  }
 
   /** Check that `tp` refers to a nonAbstract class
    *  and that the instance conforms to the self type of the created class.

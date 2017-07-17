@@ -838,9 +838,9 @@ class Namer { typer: Typer =>
        * only if parent type contains uninstantiated type parameters.
        */
       def parentType(parent: untpd.Tree)(implicit ctx: Context): Type =
-        if (parent.isType) {
+        if (parent.isType)
           typedAheadType(parent, AnyTypeConstructorProto).tpe
-        } else {
+        else {
           val (core, targs) = stripApply(parent) match {
             case TypeApply(core, targs) => (core, targs)
             case core => (core, Nil)
