@@ -2732,20 +2732,27 @@ object Types {
     protected def paramName(param: ParamInfo.Of[N])(implicit ctx: Context): N =
       param.paramName
 
+    protected def toPInfo(tp: Type)(implicit ctx: Context): PInfo
+
     def fromParams[PI <: ParamInfo.Of[N]](params: List[PI], resultType: Type)(implicit ctx: Context): Type =
       if (params.isEmpty) resultType
       else apply(params.map(paramName))(
-        tl => params.map(param => tl.integrate(params, param.paramInfo).asInstanceOf[PInfo]),
+        tl => params.map(param => toPInfo(tl.integrate(params, param.paramInfo))),
         tl => tl.integrate(params, resultType))
   }
 
   abstract class TermLambdaCompanion[LT <: TermLambda]
   extends LambdaTypeCompanion[TermName, Type, LT] {
+    def toPInfo(tp: Type)(implicit ctx: Context): Type = tp
     def syntheticParamName(n: Int) = nme.syntheticParamName(n)
   }
 
   abstract class TypeLambdaCompanion[LT <: TypeLambda]
   extends LambdaTypeCompanion[TypeName, TypeBounds, LT] {
+    def toPInfo(tp: Type)(implicit ctx: Context): TypeBounds = (tp: @unchecked) match {
+      case tp: TypeBounds => tp
+      case tp: ErrorType => TypeAlias(tp)
+    }
     def syntheticParamName(n: Int) = tpnme.syntheticTypeParamName(n)
   }
 
