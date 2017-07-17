@@ -16,10 +16,10 @@ When saying that they have no effect on the runtime we do not only mean side eff
 like IO, field mutation, exceptions and so on. We also imply that if a function receives 
 a phantom its result will not be affected by this argument.
 
-As phantom do not live at runtime they cannot be subtypes of `scala.Any`, which deffines 
+As phantom do not live at runtime they cannot be subtypes of `scala.Any`, which defines 
 methods such as `hashCode`, `equals`, `getClass`, `asInstanceOf` and `isInstanceOf`. 
 All these operations cannot exist on phantoms as there will not be an underlying object 
-instance at runtime. At first glace this could look like a limitation, but in fact not 
+instance at runtime. At first glance this could look like a limitation, but in fact not 
 having `asInstanceOf` will make constraints more reliable as it will not be possible to 
 downcast a phantom value to fake an evidence.
 
