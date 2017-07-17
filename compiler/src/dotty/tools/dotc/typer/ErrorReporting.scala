@@ -23,7 +23,7 @@ object ErrorReporting {
 
   def errorType(msg: => Message, pos: Position)(implicit ctx: Context): ErrorType = {
     ctx.error(msg, pos)
-    new ErrorType(msg)
+    ErrorType(msg)
   }
 
   def cyclicErrorMsg(ex: CyclicReference)(implicit ctx: Context) = {

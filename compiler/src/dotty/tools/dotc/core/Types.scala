@@ -3553,11 +3553,24 @@ object Types {
    */
   abstract class FlexType extends UncachedGroundType with ValueType
 
-  class ErrorType(_msg: => Message) extends FlexType {
-    def msg = _msg
+  class ErrorType private[Types] () extends FlexType {
+    def msg(implicit ctx: Context): Message =
+      ctx.errorTypeMsg.get(this) match {
+        case Some(msgFun) => msgFun()
+        case None => "error message from previous run no longer available"
+      }
+  }
+  object ErrorType {
+    def apply(msg: => Message)(implicit ctx: Context): ErrorType = {
+      val et = new ErrorType
+      ctx.base.errorTypeMsg(et) = () => msg
+      et
+    }
   }
 
-  object UnspecifiedErrorType extends ErrorType("unspecified error")
+  object UnspecifiedErrorType extends ErrorType() {
+    override def msg(implicit ctx: Context): Message = "unspecified error"
+  }
 
   /* Type used to track Select nodes that could not resolve a member and their qualifier is a scala.Dynamic. */
   object TryDynamicCallType extends FlexType

@@ -1904,7 +1904,7 @@ object SymDenotations {
         case denot: ClassDenotation =>
           ClassInfo(denot.owner.thisType, denot.classSymbol, Nil, EmptyScope)
         case _ =>
-          new ErrorType(errMsg)
+          ErrorType(errMsg)
       }
       denot.privateWithin = NoSymbol
     }
