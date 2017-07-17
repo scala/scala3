@@ -6,8 +6,12 @@ trait D { type M >: B }
 object Test {
   def test(x: C with D): Unit = {
     def f(y: x.M)(z: y.L[y.L]) = z      // error: y.L takes type parameters
-    f(new B { type L[F[_]] = F[F] })(1)
+    f(new B { type L[F[_]] = F[F] })(1) // error: F takes type parameters (follow-on-error)
   }
+
+  type LB[F[_]]
+
+  type LL[F[_]] <: LB[F] // ok
 
   def foo[X[_] <: Any]() = ()
   foo[Int]()  // an error would be raised later, during PostTyper.
@@ -15,6 +19,6 @@ object Test {
   def bar[X, Y]() = ()
   bar[List, Int]()   // error: List takes type parameters
 
-  bar[Y = List, X = Int]  // error: List takes type parameters
+  bar[Y = List, X = Int]()  // error: List takes type parameters
 
 }
