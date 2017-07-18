@@ -110,9 +110,14 @@ object Checking {
    *  A test case is neg/i2771.scala.
    */
   def checkKindRank(arg: Tree, paramBounds: TypeBounds)(implicit ctx: Context): Tree = {
+    def result(tp: Type): Type = tp match {
+      case tp: HKTypeLambda => tp.resultType
+      case tp: TypeProxy => result(tp.superType)
+      case _ => defn.AnyType
+    }
     def kindOK(argType: Type, boundType: Type): Boolean =
       !argType.isHK ||
-        boundType.isHK && kindOK(argType.resultType, boundType.resultType)
+        boundType.isHK && kindOK(result(argType), result(boundType))
     if (kindOK(arg.tpe, paramBounds.hi)) arg
     else errorTree(arg, em"${arg.tpe} takes type parameters")
   }
