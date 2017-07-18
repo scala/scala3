@@ -298,7 +298,7 @@ trait Symbols { this: Context =>
   def newSkolem(tp: Type) = newSymbol(defn.RootClass, nme.SKOLEM, SyntheticArtifact | Permanent, tp)
 
   def newErrorSymbol(owner: Symbol, name: Name, msg: => Message) = {
-    val errType = new ErrorType(msg)
+    val errType = ErrorType(msg)
     newSymbol(owner, name, SyntheticArtifact,
         if (name.isTypeName) TypeAlias(errType) else errType)
   }
@@ -348,9 +348,9 @@ trait Symbols { this: Context =>
           info = completer,
           privateWithin = ttmap1.mapOwner(odenot.privateWithin), // since this refers to outer symbols, need not include copies (from->to) in ownermap here.
           annotations = odenot.annotations)
-
       }
 
+      copies.foreach(_.ensureCompleted()) // avoid memory leak
       copies
     }
 

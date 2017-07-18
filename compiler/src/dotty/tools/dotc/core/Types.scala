@@ -36,6 +36,7 @@ import Flags.FlagSet
 import language.implicitConversions
 import scala.util.hashing.{ MurmurHash3 => hashing }
 import config.Printers.{core, typr, cyclicErrors}
+import java.lang.ref.WeakReference
 
 object Types {
 
@@ -3175,12 +3176,18 @@ object Types {
   final class TypeVar(val origin: TypeParamRef, creatorState: TyperState, val bindingTree: untpd.Tree, val owner: Symbol) extends CachedProxyType with ValueType {
 
     /** The permanent instance type of the variable, or NoType is none is given yet */
-    private[core] var inst: Type = NoType
+    private[this] var myInst: Type = NoType
+
+    private[core] def inst = myInst
+    private[core] def inst_=(tp: Type) = {
+      myInst = tp
+      if (tp.exists) owningState = null // no longer needed; null out to avoid a memory leak
+    }
 
     /** The state owning the variable. This is at first `creatorState`, but it can
      *  be changed to an enclosing state on a commit.
      */
-    private[core] var owningState = creatorState
+    private[core] var owningState = new WeakReference(creatorState)
 
     /** The instance type of this variable, or NoType if the variable is currently
      *  uninstantiated
@@ -3198,7 +3205,7 @@ object Types {
     private def instantiateWith(tp: Type)(implicit ctx: Context): Type = {
       assert(tp ne this, s"self instantiation of ${tp.show}, constraint = ${ctx.typerState.constraint.show}")
       typr.println(s"instantiating ${this.show} with ${tp.show}")
-      if ((ctx.typerState eq owningState) && !ctx.typeComparer.subtypeCheckInProgress)
+      if ((ctx.typerState eq owningState.get) && !ctx.typeComparer.subtypeCheckInProgress)
         inst = tp
       ctx.typerState.constraint = ctx.typerState.constraint.replace(origin, tp)
       tp
@@ -3546,11 +3553,24 @@ object Types {
    */
   abstract class FlexType extends UncachedGroundType with ValueType
 
-  class ErrorType(_msg: => Message) extends FlexType {
-    def msg = _msg
+  class ErrorType private[Types] () extends FlexType {
+    def msg(implicit ctx: Context): Message =
+      ctx.errorTypeMsg.get(this) match {
+        case Some(msgFun) => msgFun()
+        case None => "error message from previous run no longer available"
+      }
+  }
+  object ErrorType {
+    def apply(msg: => Message)(implicit ctx: Context): ErrorType = {
+      val et = new ErrorType
+      ctx.base.errorTypeMsg(et) = () => msg
+      et
+    }
   }
 
-  object UnspecifiedErrorType extends ErrorType("unspecified error")
+  object UnspecifiedErrorType extends ErrorType() {
+    override def msg(implicit ctx: Context): Message = "unspecified error"
+  }
 
   /* Type used to track Select nodes that could not resolve a member and their qualifier is a scala.Dynamic. */
   object TryDynamicCallType extends FlexType

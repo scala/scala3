@@ -11,6 +11,7 @@ import printing.{Showable, Printer}
 import printing.Texts._
 import config.Config
 import collection.mutable
+import java.lang.ref.WeakReference
 
 class TyperState(r: Reporter) extends DotClass with Showable {
 
@@ -143,8 +144,7 @@ extends TyperState(r) {
       if (targetState.constraint eq previousConstraint) constraint
       else targetState.constraint & constraint
     constraint foreachTypeVar { tvar =>
-      if (tvar.owningState eq this)
-        tvar.owningState = targetState
+      if (tvar.owningState.get eq this) tvar.owningState = new WeakReference(targetState)
     }
     targetState.ephemeral |= ephemeral
     targetState.gc()
@@ -157,7 +157,7 @@ extends TyperState(r) {
     constraint foreachTypeVar { tvar =>
       if (!tvar.inst.exists) {
         val inst = instType(tvar)
-        if (inst.exists && (tvar.owningState eq this)) {
+        if (inst.exists && (tvar.owningState.get eq this)) {
           tvar.inst = inst
           val lam = tvar.origin.binder
           if (constraint.isRemovable(lam)) toCollect += lam

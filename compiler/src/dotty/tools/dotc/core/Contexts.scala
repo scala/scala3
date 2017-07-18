@@ -24,6 +24,7 @@ import Implicits.ContextualImplicits
 import config.Settings._
 import config.Config
 import reporting._
+import reporting.diagnostic.Message
 import collection.mutable
 import collection.immutable.BitSet
 import printing._
@@ -636,6 +637,12 @@ object Contexts {
      */
     private[dotty] var unsafeNonvariant: RunId = NoRunId
 
+    /** A map from ErrorType to associated message computation. We use this map
+     *  instead of storing message computations directly in ErrorTypes in order
+     *  to avoid space leaks - the message computation usually captures a context.
+     */
+    private[core] val errorTypeMsg = mutable.Map[ErrorType, () => Message]()
+
     // Phases state
 
     private[core] var phasesPlan: List[List[Phase]] = _
@@ -662,6 +669,7 @@ object Contexts {
 
     def reset() = {
       for ((_, set) <- uniqueSets) set.clear()
+      errorTypeMsg.clear()
     }
 
     // Test that access is single threaded

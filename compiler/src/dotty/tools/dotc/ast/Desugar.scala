@@ -75,7 +75,7 @@ object desugar {
             else {
               def msg =
                 s"no matching symbol for ${tp.symbol.showLocated} in ${defctx.owner} / ${defctx.effectiveScope}"
-              if (ctx.reporter.errorsReported) new ErrorType(msg)
+              if (ctx.reporter.errorsReported) ErrorType(msg)
               else throw new java.lang.Error(msg)
             }
           case _ =>

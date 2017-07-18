@@ -202,6 +202,7 @@ class LambdaLift extends MiniPhase with IdentityDenotTransformer { thisTransform
         ctx.debuglog(i"mark free: ${sym.showLocated} with owner ${sym.maybeOwner} marked free in $enclosure")
         val intermediate =
           if (enclosure.is(PackageClass)) enclosure
+          else if (enclosure.isConstructor) markFree(sym, enclosure.owner.enclosure)
           else markFree(sym, enclosure.enclosure)
         narrowLiftedOwner(enclosure, intermediate orElse sym.enclosingClass)
         if (!intermediate.isRealClass || enclosure.isConstructor) {
