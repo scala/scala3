@@ -62,8 +62,8 @@ object Interactive {
       sourceSymbol(sym.owner)
     else sym
 
-  private def safely[T](default: T)(op: => T) =
-    try op catch { case ex: TypeError => default }
+  private def safely[T](op: => List[T]): List[T] =
+    try op catch { case ex: TypeError => Nil }
 
   /** Possible completions at position `pos` */
   def completions(trees: List[SourceTree], pos: SourcePosition)(implicit ctx: Context): List[Symbol] = {
@@ -89,7 +89,7 @@ object Interactive {
 
   /** Possible completions of members of `prefix` which are accessible when called inside `boundary` */
   def completions(prefix: Type, boundary: Symbol)(implicit ctx: Context): List[Symbol] =
-    safely(Nil) {
+    safely {
       val boundaryCtx = ctx.withOwner(boundary)
       prefix.memberDenots(completionsFilter, (name, buf) =>
         buf ++= prefix.member(name).altsWith(d => !d.isAbsent && d.symbol.isAccessibleFrom(prefix)(boundaryCtx))
@@ -131,7 +131,7 @@ object Interactive {
    *  @param includeReferences  If true, include references and not just definitions
    */
   def namedTrees(trees: List[SourceTree], includeReferences: Boolean, treePredicate: NameTree => Boolean)
-    (implicit ctx: Context): List[SourceTree] = safely(Nil) {
+    (implicit ctx: Context): List[SourceTree] = safely {
     val buf = new mutable.ListBuffer[SourceTree]
 
     trees foreach { case SourceTree(topTree, source) =>
