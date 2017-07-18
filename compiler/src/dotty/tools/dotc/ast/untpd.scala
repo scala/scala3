@@ -29,10 +29,8 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   }
 
   object TypedSplice {
-    def apply(tree: tpd.Tree)(implicit ctx: Context): TypedSplice = {
-      val curOwner = ctx.owner // compute here to avoid space leak with a reference from TypedSplice to Context
-      new TypedSplice(tree)(curOwner) {}
-    }
+    def apply(tree: tpd.Tree)(implicit ctx: Context): TypedSplice =
+      new TypedSplice(tree)(ctx.owner) {}
   }
 
   /** mods object name impl */
