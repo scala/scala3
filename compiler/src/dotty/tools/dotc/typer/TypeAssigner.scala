@@ -14,7 +14,7 @@ import NameOps._
 import collection.mutable
 import reporting.diagnostic.Message
 import reporting.diagnostic.messages._
-import Checking.{checkStarKind, checkStarKinds, checkNoPrivateLeaks}
+import Checking.{checkKindRank, checkKindRanks, checkNoPrivateLeaks}
 
 trait TypeAssigner {
   import tpd._
@@ -358,7 +358,7 @@ trait TypeAssigner {
             else if (!paramNames.contains(name))
               ctx.error(s"undefined parameter name, required: ${paramNames.mkString(" or ")}", arg.pos)
             else
-              namedArgMap(name) = checkStarKind(arg, paramBoundsByName(name.asTypeName)).tpe
+              namedArgMap(name) = checkKindRank(arg, paramBoundsByName(name.asTypeName)).tpe
 
           // Holds indexes of non-named typed arguments in paramNames
           val gapBuf = new mutable.ListBuffer[Int]
@@ -391,7 +391,7 @@ trait TypeAssigner {
           }
         }
         else {
-          val argTypes = checkStarKinds(args, pt.paramInfos).tpes
+          val argTypes = checkKindRanks(args, pt.paramInfos).tpes
           if (sameLength(argTypes, paramNames) || ctx.phase.prev.relaxedTyping) pt.instantiate(argTypes)
           else wrongNumberOfTypeArgs(fn.tpe, pt.typeParams, args, tree.pos)
         }

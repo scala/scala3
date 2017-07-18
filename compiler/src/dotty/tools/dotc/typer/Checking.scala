@@ -100,21 +100,25 @@ object Checking {
     checkValidIfHKApply(ctx.addMode(Mode.AllowLambdaWildcardApply))
   }
 
-  /** Check that `arg` has a *-type, unless `paramBounds` is higher-kinded.
+  /** Check that the rank of the kind of `arg` does not exceed the rank of the
+   *  kind of `paramBounds`. E.g. if `paramBounds` has *-kind, `arg` must have
+   *  *-kind as well, and analogously for higher kinds.
    *  More detailed kind checking is done as part of checkBounds in PostTyper.
-   *  The purpose of checkStarKind is to do a rough test earlier in Typer,
+   *  The purpose of checkKindRank is to do a rough test earlier in Typer,
    *  in order to prevent scenarios that lead to self application of
    *  types. Self application needs to be avoided since it can lead to stackoverflows.
    *  A test case is neg/i2771.scala.
    */
-  def checkStarKind(arg: Tree, paramBounds: TypeBounds)(implicit ctx: Context): Tree =
-    if (arg.tpe.isHK && !paramBounds.isHK)
-      errorTree(arg, em"${arg.tpe} takes type parameters")
-    else
-      arg
+  def checkKindRank(arg: Tree, paramBounds: TypeBounds)(implicit ctx: Context): Tree = {
+    def kindOK(argType: Type, boundType: Type): Boolean =
+      !argType.isHK ||
+        boundType.isHK && kindOK(argType.resultType, boundType.resultType)
+    if (kindOK(arg.tpe, paramBounds.hi)) arg
+    else errorTree(arg, em"${arg.tpe} takes type parameters")
+  }
 
-  def checkStarKinds(args: List[Tree], paramBoundss: List[TypeBounds])(implicit ctx: Context): List[Tree] = {
-    val args1 = args.zipWithConserve(paramBoundss)(checkStarKind)
+  def checkKindRanks(args: List[Tree], paramBoundss: List[TypeBounds])(implicit ctx: Context): List[Tree] = {
+    val args1 = args.zipWithConserve(paramBoundss)(checkKindRank)
     args1 ++ args.drop(paramBoundss.length)
       // add any arguments that do not correspond to a parameter back,
       // so the wrong number of parameters is reported afterwards.
