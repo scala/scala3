@@ -100,6 +100,43 @@ object Checking {
     checkValidIfHKApply(ctx.addMode(Mode.AllowLambdaWildcardApply))
   }
 
+  /** Check that kind of `arg` has the same outline as the kind of paramBounds.
+   *  E.g. if `paramBounds` has kind * -> *, `arg` must have that kind as well,
+   *  and analogously for all other kinds. This kind checking does not take into account
+   *  variances or bounds. The more detailed kind checking is done as part of checkBounds in PostTyper.
+   *  The purpose of preCheckKind is to do a rough test earlier in Typer,
+   *  in order to prevent scenarios that lead to self application of
+   *  types. Self application needs to be avoided since it can lead to stack overflows.
+   *  Test cases are neg/i2771.scala and neg/i2771b.scala.
+   */
+  def preCheckKind(arg: Tree, paramBounds: TypeBounds)(implicit ctx: Context): Tree = {
+    def result(tp: Type): Type = tp match {
+      case tp: HKTypeLambda => tp.resultType
+      case tp: TypeProxy => result(tp.superType)
+      case _ => defn.AnyType
+    }
+    def kindOK(argType: Type, boundType: Type): Boolean = {
+      // println(i"check kind rank2$arg $argType $boundType") // DEBUG
+      val argResult = argType.hkResult
+      val boundResult = argType.hkResult
+      if (argResult.exists)
+        boundResult.exists &&
+        kindOK(boundResult, argResult) &&
+        argType.typeParams.corresponds(boundType.typeParams)((ap, bp) =>
+          kindOK(ap.paramInfo, bp.paramInfo))
+      else !boundResult.exists
+    }
+    if (kindOK(arg.tpe, paramBounds.hi)) arg
+    else errorTree(arg, em"${arg.tpe} has wrong kind")
+  }
+
+  def preCheckKinds(args: List[Tree], paramBoundss: List[TypeBounds])(implicit ctx: Context): List[Tree] = {
+    val args1 = args.zipWithConserve(paramBoundss)(preCheckKind)
+    args1 ++ args.drop(paramBoundss.length)
+      // add any arguments that do not correspond to a parameter back,
+      // so the wrong number of parameters is reported afterwards.
+  }
+
   /** Check that `tp` refers to a nonAbstract class
    *  and that the instance conforms to the self type of the created class.
    */

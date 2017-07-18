@@ -795,10 +795,16 @@ class Namer { typer: Typer =>
         nestedCtx = localContext(sym).setNewScope
         myTypeParams = {
           implicit val ctx = nestedCtx
-          val tparams = original.rhs match {
-            case LambdaTypeTree(tparams, _) => tparams
+          def typeParamTrees(tdef: Tree): List[TypeDef] = tdef match {
+            case TypeDef(_, original) =>
+              original match {
+                case LambdaTypeTree(tparams, _) => tparams
+                case original: DerivedFromParamTree => typeParamTrees(original.watched)
+                case _ => Nil
+              }
             case _ => Nil
           }
+          val tparams = typeParamTrees(original)
           completeParams(tparams)
           tparams.map(symbolOfTree(_).asType)
         }
@@ -832,9 +838,9 @@ class Namer { typer: Typer =>
        * only if parent type contains uninstantiated type parameters.
        */
       def parentType(parent: untpd.Tree)(implicit ctx: Context): Type =
-        if (parent.isType) {
+        if (parent.isType)
           typedAheadType(parent, AnyTypeConstructorProto).tpe
-        } else {
+        else {
           val (core, targs) = stripApply(parent) match {
             case TypeApply(core, targs) => (core, targs)
             case core => (core, Nil)

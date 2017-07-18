@@ -1140,8 +1140,9 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
         }
         args.zipWithConserve(tparams)(typedArg(_, _)).asInstanceOf[List[Tree]]
       }
+      val args2 = preCheckKinds(args1, tparams.map(_.paramInfo.bounds))
       // check that arguments conform to bounds is done in phase PostTyper
-      assignType(cpy.AppliedTypeTree(tree)(tpt1, args1), tpt1, args1)
+      assignType(cpy.AppliedTypeTree(tree)(tpt1, args2), tpt1, args2)
     }
   }
 

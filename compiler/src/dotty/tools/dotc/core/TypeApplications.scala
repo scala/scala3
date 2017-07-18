@@ -251,18 +251,21 @@ class TypeApplications(val self: Type) extends AnyVal {
   }
 
   /** Is self type higher-kinded (i.e. of kind != "*")? */
-  def isHK(implicit ctx: Context): Boolean = self.dealias match {
-    case self: TypeRef => self.info.isHK
-    case self: RefinedType => false
-    case self: HKTypeLambda => true
-    case self: SingletonType => false
+  def isHK(implicit ctx: Context): Boolean = hkResult.exists
+
+  /** If self type is higher-kinded, its result type, otherwise NoType */
+  def hkResult(implicit ctx: Context): Type = self.dealias match {
+    case self: TypeRef => self.info.hkResult
+    case self: RefinedType => NoType
+    case self: HKTypeLambda => self.resultType
+    case self: SingletonType => NoType
     case self: TypeVar =>
       // Using `origin` instead of `underlying`, as is done for typeParams,
       // avoids having to set ephemeral in some cases.
-      self.origin.isHK
-    case self: WildcardType => self.optBounds.isHK
-    case self: TypeProxy => self.superType.isHK
-    case _ => false
+      self.origin.hkResult
+    case self: WildcardType => self.optBounds.hkResult
+    case self: TypeProxy => self.superType.hkResult
+    case _ => NoType
   }
 
   /** Dealias type if it can be done without forcing the TypeRef's info */

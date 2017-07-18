@@ -14,6 +14,7 @@ import NameOps._
 import collection.mutable
 import reporting.diagnostic.Message
 import reporting.diagnostic.messages._
+import Checking.{preCheckKind, preCheckKinds, checkNoPrivateLeaks}
 
 trait TypeAssigner {
   import tpd._
@@ -134,8 +135,7 @@ trait TypeAssigner {
     avoid(expr.tpe, localSyms(bindings).filter(_.isTerm))
 
   def avoidPrivateLeaks(sym: Symbol, pos: Position)(implicit ctx: Context): Type =
-    if (!sym.is(SyntheticOrPrivate) && sym.owner.isClass)
-      Checking.checkNoPrivateLeaks(sym, pos)
+    if (!sym.is(SyntheticOrPrivate) && sym.owner.isClass) checkNoPrivateLeaks(sym, pos)
     else sym.info
 
   def seqToRepeated(tree: Tree)(implicit ctx: Context): Tree =
@@ -348,6 +348,8 @@ trait TypeAssigner {
       case pt: TypeLambda =>
         val paramNames = pt.paramNames
         if (hasNamedArg(args)) {
+          val paramBoundsByName = paramNames.zip(pt.paramInfos).toMap
+
           // Type arguments which are specified by name (immutable after this first loop)
           val namedArgMap = new mutable.HashMap[Name, Type]
           for (NamedArg(name, arg) <- args)
@@ -356,7 +358,7 @@ trait TypeAssigner {
             else if (!paramNames.contains(name))
               ctx.error(s"undefined parameter name, required: ${paramNames.mkString(" or ")}", arg.pos)
             else
-              namedArgMap(name) = arg.tpe
+              namedArgMap(name) = preCheckKind(arg, paramBoundsByName(name.asTypeName)).tpe
 
           // Holds indexes of non-named typed arguments in paramNames
           val gapBuf = new mutable.ListBuffer[Int]
@@ -389,7 +391,7 @@ trait TypeAssigner {
           }
         }
         else {
-          val argTypes = args.tpes
+          val argTypes = preCheckKinds(args, pt.paramInfos).tpes
           if (sameLength(argTypes, paramNames) || ctx.phase.prev.relaxedTyping) pt.instantiate(argTypes)
           else wrongNumberOfTypeArgs(fn.tpe, pt.typeParams, args, tree.pos)
         }
