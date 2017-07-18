@@ -209,6 +209,8 @@ object Erasure {
           val tree1 =
             if (tree.tpe isRef defn.NullClass)
               adaptToType(tree, underlying)
+            else if (wasPhantom(underlying))
+              PhantomErasure.erasedParameterRef
             else if (!(tree.tpe <:< tycon)) {
               assert(!(tree.tpe.typeSymbol.isPrimitiveValueClass))
               val nullTree = Literal(Constant(null))
@@ -418,6 +420,7 @@ object Erasure {
 
     override def typedIdent(tree: untpd.Ident, pt: Type)(implicit ctx: Context): tpd.Tree =
       if (tree.symbol eq defn.Phantom_assume) PhantomErasure.erasedAssume
+      else if (tree.symbol.is(Flags.Param) && wasPhantom(tree.typeOpt)) PhantomErasure.erasedParameterRef
       else super.typedIdent(tree, pt)
 
     override def typedThis(tree: untpd.This)(implicit ctx: Context): Tree =
@@ -475,7 +478,8 @@ object Erasure {
                   .withType(defn.ArrayOf(defn.ObjectType))
                 args0 = bunchedArgs :: Nil
               }
-              val args1 = args0.zipWithConserve(mt.paramInfos)(typedExpr)
+              // Arguments are phantom if an only if the parameters are phantom, guaranteed by the separation of type lattices
+              val args1 = args0.filterConserve(arg => !wasPhantom(arg.typeOpt)).zipWithConserve(mt.paramInfos)(typedExpr)
               untpd.cpy.Apply(tree)(fun1, args1) withType mt.resultType
             case _ =>
               throw new MatchError(i"tree $tree has unexpected type of function ${fun1.tpe.widen}, was ${fun.typeOpt.widen}")
@@ -535,6 +539,11 @@ object Erasure {
         }
         vparamss1 = (tpd.ValDef(bunchedParam) :: Nil) :: Nil
         rhs1 = untpd.Block(paramDefs, rhs1)
+      }
+      vparamss1 = vparamss1.mapConserve(_.filterConserve(vparam => !wasPhantom(vparam.tpe)))
+      if (sym.is(Flags.ParamAccessor) && wasPhantom(ddef.tpt.tpe)) {
+        sym.resetFlag(Flags.ParamAccessor)
+        rhs1 = PhantomErasure.erasedParameterRef
       }
       val ddef1 = untpd.cpy.DefDef(ddef)(
         tparams = Nil,
@@ -619,4 +628,7 @@ object Erasure {
 
   def takesBridges(sym: Symbol)(implicit ctx: Context) =
     sym.isClass && !sym.is(Flags.Trait | Flags.Package)
+
+  private def wasPhantom(tp: Type)(implicit ctx: Context): Boolean =
+    tp.widenDealias.classSymbol eq defn.ErasedPhantomClass
 }
