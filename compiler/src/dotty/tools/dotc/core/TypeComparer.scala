@@ -993,7 +993,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
     case tp: ProtoType => false
     case tp: RefinedOrRecType => isCovered(tp.parent)
     case tp: AnnotatedType => isCovered(tp.underlying)
-    case AndType(tp1, tp2) => isCovered(tp1) && isCovered(tp2)
+    case tp: AndOrType => isCovered(tp.tp1) && isCovered(tp.tp2)
     case _ => false
   }
 
