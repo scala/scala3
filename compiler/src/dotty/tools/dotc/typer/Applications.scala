@@ -217,14 +217,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
         // apply the result type constraint, unless method type is dependent
         val resultApprox = resultTypeApprox(methType)
         val savedConstraint = ctx.typerState.constraint
-        if (!resultApprox.isInstanceOf[PolyType] &&
-              // temporary fix before #2121 is in. The problem here is that errors in the code
-              // can lead to the result type begin higher-kinded. Then normalize gets confused
-              // and we end up with an assertion violation "s"inconsistent: no typevars were
-              // added to committable constraint". Once we distinguish between type lambdas
-              // and polytypes again this should hopefully become unnecessary. The error
-              // was triggered by neg/enums.scala.
-            !constrainResult(resultApprox, resultType))
+        if (!constrainResult(resultApprox, resultType))
           if (ctx.typerState.isCommittable)
             // defer the problem until after the application;
             // it might be healed by an implicit conversion
