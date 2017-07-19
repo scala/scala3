@@ -1131,8 +1131,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
           if (tpt1.symbol.isClass)
             tparam match {
               case tparam: Symbol =>
-                // This is needed to get the test `compileParSetSubset` to work
-                tparam.ensureCompleted()
+                tparam.ensureCompleted() // This is needed to get the test `compileParSetSubset` to work
               case _ =>
             }
           if (desugaredArg.isType) typed(desugaredArg, argPt)
@@ -1140,7 +1139,15 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
         }
         args.zipWithConserve(tparams)(typedArg(_, _)).asInstanceOf[List[Tree]]
       }
-      val args2 = preCheckKinds(args1, tparams.map(_.paramInfo.bounds))
+      val paramBounds = (tparams, args).zipped.map {
+        case (tparam, TypeBoundsTree(EmptyTree, EmptyTree)) =>
+          // if type argument is a wildcard, suppress kind checking since
+          // there is no real argument.
+          TypeBounds.empty
+        case (tparam, _) =>
+          tparam.paramInfo.bounds
+      }
+      val args2 = preCheckKinds(args1, paramBounds)
       // check that arguments conform to bounds is done in phase PostTyper
       assignType(cpy.AppliedTypeTree(tree)(tpt1, args2), tpt1, args2)
     }

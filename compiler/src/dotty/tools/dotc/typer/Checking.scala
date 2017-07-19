@@ -110,7 +110,7 @@ object Checking {
    *  Test cases are neg/i2771.scala and neg/i2771b.scala.
    */
   def preCheckKind(arg: Tree, paramBounds: TypeBounds)(implicit ctx: Context): Tree =
-    if (arg.tpe.hasSameKindAs(paramBounds.hi)) arg
+    if (arg.tpe.widen.isRef(defn.NothingClass) || arg.tpe.hasSameKindAs(paramBounds.hi)) arg
     else errorTree(arg, em"Type argument ${arg.tpe} has not the same kind as its bound $paramBounds")
 
   def preCheckKinds(args: List[Tree], paramBoundss: List[TypeBounds])(implicit ctx: Context): List[Tree] = {
