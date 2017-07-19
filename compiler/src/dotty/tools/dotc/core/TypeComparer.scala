@@ -983,14 +983,10 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
 
   /** A type has been covered previously in subtype checking if it
    *  is some combination of TypeRefs that point to classes, where the
-   *  combiners are RefinedTypes, RecTypes, AndTypes or AnnotatedTypes.
-   *  One exception: Refinements referring to basetype args are never considered
-   *  to be already covered. This is necessary because such refined types might
-   *  still need to be compared with a compareAliasRefined.
+   *  combiners are RefinedTypes, RecTypes, And/Or-Types or AnnotatedTypes.
    */
-  private def isCovered(tp: Type): Boolean = tp.dealias.stripTypeVar match {
+   private def isCovered(tp: Type): Boolean = tp.dealias.stripTypeVar match {
     case tp: TypeRef => tp.symbol.isClass && tp.symbol != NothingClass && tp.symbol != NullClass
-    case tp: ProtoType => false
     case tp: RefinedOrRecType => isCovered(tp.parent)
     case tp: AnnotatedType => isCovered(tp.underlying)
     case tp: AndOrType => isCovered(tp.tp1) && isCovered(tp.tp2)
