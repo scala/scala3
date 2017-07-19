@@ -1159,6 +1159,7 @@ class Namer { typer: Typer =>
     def abstracted(tp: Type): Type = HKTypeLambda.fromParams(tparamSyms, tp)
     val dummyInfo = abstracted(TypeBounds.empty)
     sym.info = dummyInfo
+    sym.setFlag(Provisional)
       // Temporarily set info of defined type T to ` >: Nothing <: Any.
       // This is done to avoid cyclic reference errors for F-bounds.
       // This is subtle: `sym` has now an empty TypeBounds, but is not automatically
