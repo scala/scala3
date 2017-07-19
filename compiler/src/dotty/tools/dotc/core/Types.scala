@@ -2156,16 +2156,14 @@ object Types {
     }
   }
 
-  case class LazyRef(refFn: () => Type) extends UncachedProxyType with ValueType {
-    private var myRefFn: () => Type = refFn
+  case class LazyRef(private var refFn: () => Type) extends UncachedProxyType with ValueType {
     private var myRef: Type = null
     private var computed = false
     def ref = {
       if (computed) assert(myRef != null)
       else {
         computed = true
-        myRef = myRefFn()
-        myRefFn = null // null out to avoid memory leak
+        myRef = refFn()
       }
       myRef
     }
