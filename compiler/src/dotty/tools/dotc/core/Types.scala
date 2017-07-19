@@ -3012,15 +3012,18 @@ object Types {
 
     override def superType(implicit ctx: Context): Type = {
       if (ctx.period != validSuper) {
+        validSuper = ctx.period
         cachedSuper = tycon match {
           case tp: HKTypeLambda => defn.AnyType
           case tp: TypeVar if !tp.inst.exists =>
             // supertype not stable, since underlying might change
-            return tp.underlying.applyIfParameterized(args)
-          case tp: TypeProxy => tp.superType.applyIfParameterized(args)
+            validSuper = Nowhere
+            tp.underlying.applyIfParameterized(args)
+          case tp: TypeProxy =>
+            if (tp.typeSymbol.is(Provisional)) validSuper = Nowhere
+            tp.superType.applyIfParameterized(args)
           case _ => defn.AnyType
         }
-        validSuper = ctx.period
       }
       cachedSuper
     }

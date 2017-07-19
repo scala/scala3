@@ -424,6 +424,9 @@ object Flags {
   /** A method that is known to have no default parameters */
   final val NoDefaultParams = termFlag(61, "<no-default-param>")
 
+  /** A type symbol with provisional empty bounds */
+  final val Provisional = typeFlag(61, "<provisional>")
+
   /** A denotation that is valid in all run-ids */
   final val Permanent = commonFlag(62, "<permanent>")
 
