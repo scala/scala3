@@ -54,20 +54,23 @@ object ProtoTypes {
     /** Check that the result type of the current method
      *  fits the given expected result type.
      */
-    def constrainResult(mt: Type, pt: Type)(implicit ctx: Context): Boolean = pt match {
-      case pt: FunProto =>
-        mt match {
-          case mt: MethodType =>
-            constrainResult(resultTypeApprox(mt), pt.resultType)
-          case _ =>
-            true
-        }
-      case _: ValueTypeOrProto if !disregardProto(pt) =>
-        isCompatible(normalize(mt, pt), pt)
-      case pt: WildcardType if pt.optBounds.exists =>
-        isCompatible(normalize(mt, pt), pt)
-      case _ =>
-        true
+    def constrainResult(mt: Type, pt: Type)(implicit ctx: Context): Boolean = {
+      val savedConstraint = ctx.typerState.constraint
+      val res = pt match {
+        case pt: FunProto =>
+          mt match {
+            case mt: MethodType => constrainResult(resultTypeApprox(mt), pt.resultType)
+            case _ => true
+          }
+        case _: ValueTypeOrProto if !disregardProto(pt) =>
+          isCompatible(normalize(mt, pt), pt)
+        case pt: WildcardType if pt.optBounds.exists =>
+          isCompatible(normalize(mt, pt), pt)
+        case _ =>
+          true
+      }
+      if (!res) ctx.typerState.constraint = savedConstraint
+      res
     }
   }
 

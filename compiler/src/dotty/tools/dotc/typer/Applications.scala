@@ -217,11 +217,11 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
         // apply the result type constraint, unless method type is dependent
         val resultApprox = resultTypeApprox(methType)
         val savedConstraint = ctx.typerState.constraint
-        if (!constrainResult(resultApprox, resultType))
+        if (!constrainResult(resultApprox, resultType) 
           if (ctx.typerState.isCommittable)
             // defer the problem until after the application;
             // it might be healed by an implicit conversion
-            assert(ctx.typerState.constraint eq savedConstraint)
+            ()
           else
             fail(err.typeMismatchMsg(methType.resultType, resultType))
         // match all arguments with corresponding formal parameters
