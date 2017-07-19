@@ -3024,7 +3024,7 @@ object Types {
             tp.superType.applyIfParameterized(args)
           case _ => defn.AnyType
         }
-        validSuper = ctx.period
+        if (canCache) validSuper = ctx.period
       }
       cachedSuper
     }
