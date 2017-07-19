@@ -268,6 +268,19 @@ class TypeApplications(val self: Type) extends AnyVal {
     case _ => NoType
   }
 
+  /** Do self and other have the same kinds (not counting bounds and variances) */
+  def hasSameKindAs(other: Type)(implicit ctx: Context): Boolean = {
+    // println(i"check kind $self $other") // DEBUG
+    val selfResult = self.hkResult
+    val otherResult = other.hkResult
+    if (selfResult.exists)
+      otherResult.exists &&
+      selfResult.hasSameKindAs(otherResult) &&
+      self.typeParams.corresponds(other.typeParams)((sparam, oparam) =>
+        sparam.paramInfo.hasSameKindAs(oparam.paramInfo))
+    else !otherResult.exists
+  }
+
   /** Dealias type if it can be done without forcing the TypeRef's info */
   def safeDealias(implicit ctx: Context): Type = self match {
     case self: TypeRef if self.denot.exists && self.symbol.isAliasType =>

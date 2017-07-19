@@ -183,25 +183,27 @@ object RefChecks {
     def infoString0(sym: Symbol, showLocation: Boolean) = {
       val sym1 = sym.underlyingSymbol
       def info = self.memberInfo(sym1)
-      i"${if (showLocation) sym1.showLocated else sym1}${
+      val infoStr =
         if (sym1.isAliasType) i", which equals ${info.bounds.hi}"
         else if (sym1.isAbstractType) i" with bounds$info"
         else if (sym1.is(Module)) ""
         else if (sym1.isTerm) i" of type $info"
         else ""
-      }"
+      i"${if (showLocation) sym1.showLocated else sym1}$infoStr"
     }
 
     /* Check that all conditions for overriding `other` by `member`
        * of class `clazz` are met.
        */
     def checkOverride(member: Symbol, other: Symbol): Unit = {
-      def memberTp = self.memberInfo(member)
-      def otherTp = self.memberInfo(other)
+      def memberTp(self: Type) =
+        if (member.isClass) TypeAlias(member.typeRef.EtaExpand(member.typeParams))
+        else self.memberInfo(member)
+      def otherTp(self: Type) = self.memberInfo(other)
 
       ctx.debuglog("Checking validity of %s overriding %s".format(member.showLocated, other.showLocated))
 
-      def noErrorType = !memberTp.isErroneous && !otherTp.isErroneous
+      def noErrorType = !memberTp(self).isErroneous && !otherTp(self).isErroneous
 
       def overrideErrorMsg(msg: String): String = {
         val isConcreteOverAbstract =
@@ -212,10 +214,10 @@ object RefChecks {
               infoStringWithLocation(other),
               infoStringWithLocation(member))
           else if (ctx.settings.debug.value)
-            err.typeMismatchMsg(memberTp, otherTp)
+            err.typeMismatchMsg(memberTp(self), otherTp(self))
           else ""
 
-        "overriding %s;\n %s %s%s".format(
+        "error overriding %s;\n %s %s%s".format(
           infoStringWithLocation(other), infoString(member), msg, addendum)
       }
 
@@ -248,13 +250,16 @@ object RefChecks {
 
       def compatibleTypes(memberTp: Type, otherTp: Type): Boolean =
         try
-          if (member.isType) { // intersection of bounds to refined types must be nonempty
+          if (member.isType) // intersection of bounds to refined types must be nonempty
             member.is(BaseTypeArg) ||
-            (memberTp frozen_<:< otherTp) || {
-              val jointBounds = (memberTp.bounds & otherTp.bounds).bounds
-              jointBounds.lo frozen_<:< jointBounds.hi
-            }
-          }
+            memberTp.bounds.hi.hasSameKindAs(otherTp.bounds.hi) &&
+            ((memberTp frozen_<:< otherTp) ||
+             !member.owner.derivesFrom(other.owner) && {
+               // if member and other come from independent classes or traits, their
+               // bounds must have non-empty-intersection
+               val jointBounds = (memberTp.bounds & otherTp.bounds).bounds
+               jointBounds.lo frozen_<:< jointBounds.hi
+             })
           else
             member.name.is(DefaultGetterName) || // default getters are not checked for compatibility
             memberTp.overrides(otherTp,
@@ -367,9 +372,9 @@ object RefChecks {
         overrideError("cannot be used here - term macros cannot override abstract methods")
       } else if (other.is(Macro) && !member.is(Macro)) { // (1.10)
         overrideError("cannot be used here - only term macros can override term macros")
-      } else if (!compatibleTypes(memberTp, otherTp) &&
-                 !compatibleTypes(upwardsSelf.memberInfo(member), upwardsSelf.memberInfo(other))) {
-        overrideError("has incompatible type" + err.whyNoMatchStr(memberTp, otherTp))
+      } else if (!compatibleTypes(memberTp(self), otherTp(self)) &&
+                 !compatibleTypes(memberTp(upwardsSelf), otherTp(upwardsSelf))) {
+        overrideError("has incompatible type" + err.whyNoMatchStr(memberTp(self), otherTp(self)))
       } else {
         checkOverrideDeprecated()
       }

@@ -14,7 +14,7 @@ object Test {
   type LL[F[_]] <: LB[F] // ok
 
   def foo[X[_] <: Any]() = ()
-  foo[Int]()  // an error would be raised later, during PostTyper.
+  foo[Int]()  // error: Int has wrong kind
 
   def bar[X, Y]() = ()
   bar[List, Int]()   // error: List has wrong kind

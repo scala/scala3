@@ -109,26 +109,9 @@ object Checking {
    *  types. Self application needs to be avoided since it can lead to stack overflows.
    *  Test cases are neg/i2771.scala and neg/i2771b.scala.
    */
-  def preCheckKind(arg: Tree, paramBounds: TypeBounds)(implicit ctx: Context): Tree = {
-    def result(tp: Type): Type = tp match {
-      case tp: HKTypeLambda => tp.resultType
-      case tp: TypeProxy => result(tp.superType)
-      case _ => defn.AnyType
-    }
-    def kindOK(argType: Type, boundType: Type): Boolean = {
-      // println(i"check kind rank2$arg $argType $boundType") // DEBUG
-      val argResult = argType.hkResult
-      val boundResult = argType.hkResult
-      if (argResult.exists)
-        boundResult.exists &&
-        kindOK(boundResult, argResult) &&
-        argType.typeParams.corresponds(boundType.typeParams)((ap, bp) =>
-          kindOK(ap.paramInfo, bp.paramInfo))
-      else !boundResult.exists
-    }
-    if (kindOK(arg.tpe, paramBounds.hi)) arg
-    else errorTree(arg, em"${arg.tpe} has wrong kind")
-  }
+  def preCheckKind(arg: Tree, paramBounds: TypeBounds)(implicit ctx: Context): Tree =
+    if (arg.tpe.widen.isRef(defn.NothingClass) || arg.tpe.hasSameKindAs(paramBounds.hi)) arg
+    else errorTree(arg, em"Type argument ${arg.tpe} has not the same kind as its bound $paramBounds")
 
   def preCheckKinds(args: List[Tree], paramBoundss: List[TypeBounds])(implicit ctx: Context): List[Tree] = {
     val args1 = args.zipWithConserve(paramBoundss)(preCheckKind)

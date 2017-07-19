@@ -11,7 +11,7 @@ trait Monad[T <: Bound[T], MyType[x <: Bound[x]], Bound[_]] {
 
 trait Test {
   def moo: MList[Int]
-  class MList[T](el: T) extends Monad[T, List, Any] {  // error: does not conform to upper bound // error
+  class MList[T](el: T) extends Monad[T, List, Any] {  // error: wrong kind
     def flatMap[S <: RBound[S], RContainer[x <: RBound[x]], RBound[_],
             Result[x <: RBound[x]] <: Monad[x, RContainer, RBound]]
             (f: T => Result[S]): Result[S] = sys.error("foo")
@@ -21,5 +21,5 @@ trait Test {
     def flatMap[S]
             (f: T => List[S], foo: Int): List[S]  = sys.error("foo")
   }
-  val l: MList[String] = moo.flatMap[String, List, Any, MList]((x: Int) => new MList("String")) // error: does not conform to upper bound // error
+  val l: MList[String] = moo.flatMap[String, List, Any, MList]((x: Int) => new MList("String")) // error: wrong kind
 }
