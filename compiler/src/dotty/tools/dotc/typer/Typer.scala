@@ -383,7 +383,8 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
    *  prefix. If the result has another unsafe instantiation, raise an error.
    */
   private def healNonvariant[T <: Tree](tree: T, pt: Type)(implicit ctx: Context): T  =
-    if (ctx.unsafeNonvariant == ctx.runId && tree.tpe.widen.hasUnsafeNonvariant)
+    if (ctx.unsafeNonvariant == ctx.runId && tree.tpe.widen.hasUnsafeNonvariant) {
+      println(i"HEAL $tree")
       tree match {
         case tree @ Select(qual, _) if !qual.tpe.isStable =>
           val alt = typedSelect(tree, pt, Typed(qual, TypeTree(SkolemType(qual.tpe.widen))))
@@ -392,7 +393,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
         case _ =>
           ctx.error(ex"unsafe instantiation of type ${tree.tpe}", tree.pos)
           tree
-      }
+      }}
     else tree
 
   def typedSelect(tree: untpd.Select, pt: Type)(implicit ctx: Context): Tree = track("typedSelect") {
@@ -2185,6 +2186,16 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
             case _ =>
           }
         case _ =>
+      }
+      // try to fully instantiate type
+      {
+        val ictx = ctx.fresh.setNewTyperState
+        val constraint = ictx.typerState.constraint
+        if (isFullyDefined(wtp, force = ForceDegree.all)(ictx) &&
+            ictx.typerState.constraint.ne(constraint)) {
+          ictx.typerState.commit()
+          return adapt(tree, pt, original)
+        }
       }
       // try an implicit conversion
       inferView(tree, pt) match {
