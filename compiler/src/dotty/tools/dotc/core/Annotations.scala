@@ -61,7 +61,7 @@ object Annotations {
     def tree(implicit ctx: Context) = body
   }
 
-  case class LazyBodyAnnotation(bodyExpr: Context => Tree) extends BodyAnnotation {
+  case class LazyBodyAnnotation(private var bodyExpr: Context => Tree) extends BodyAnnotation {
     private var evaluated = false
     private var myBody: Tree = _
     def tree(implicit ctx: Context) = {
@@ -69,6 +69,7 @@ object Annotations {
       else {
         evaluated = true
         myBody = bodyExpr(ctx)
+        bodyExpr = null
       }
       myBody
     }

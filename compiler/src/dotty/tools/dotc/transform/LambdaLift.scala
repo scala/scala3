@@ -204,7 +204,7 @@ class LambdaLift extends MiniPhase with IdentityDenotTransformer { thisTransform
           if (enclosure.is(PackageClass)) enclosure
           else if (enclosure.isConstructor) markFree(sym, enclosure.owner.enclosure)
           else markFree(sym, enclosure.enclosure)
-        narrowLiftedOwner(enclosure, intermediate orElse sym.enclosingClass)
+        if (intermediate.exists) narrowLiftedOwner(enclosure, intermediate)
         if (!intermediate.isRealClass || enclosure.isConstructor) {
           // Constructors and methods nested inside traits get the free variables
           // of the enclosing trait or class.
@@ -384,7 +384,7 @@ class LambdaLift extends MiniPhase with IdentityDenotTransformer { thisTransform
         local.copySymDenotation(
           owner = newOwner,
           name = newName(local),
-          initFlags = local.flags &~ Module | Private | maybeStatic,
+          initFlags = local.flags &~ Module &~ Final | Private | maybeStatic,
             // drop Module because class is no longer a singleton in the lifted context.
           info = liftedInfo(local)).installAfter(thisTransform)
       }
