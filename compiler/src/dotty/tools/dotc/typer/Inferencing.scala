@@ -123,7 +123,7 @@ object Inferencing {
   def inferTypeParams(tree: Tree, pt: Type)(implicit ctx: Context): Tree = tree.tpe match {
     case tl: TypeLambda =>
       val (tl1, tvars) = constrained(tl, tree)
-      val tree1 = tree.withType(tl1).appliedToTypeTrees(tvars)
+      var tree1 = AppliedTypeTree(tree.withType(tl1), tvars)
       tree1.tpe <:< pt
       fullyDefinedType(tree1.tpe, "template parent", tree.pos)
       tree1
