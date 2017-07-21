@@ -93,7 +93,8 @@ public enum ErrorMessageID {
     ModifiersNotAllowedID,
     WildcardOnTypeArgumentNotAllowedOnNewID,
     ImplicitFunctionTypeNeedsNonEmptyParameterListID,
-    WrongNumberOfParametersID
+    WrongNumberOfParametersID,
+    DuplicatePrivateProtectedQualifierID,
     ;
 
     public int errorNumber() {

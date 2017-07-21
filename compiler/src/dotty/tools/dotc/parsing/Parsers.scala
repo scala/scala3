@@ -1700,7 +1700,7 @@ object Parsers {
     def accessQualifierOpt(mods: Modifiers): Modifiers =
       if (in.token == LBRACKET) {
         if ((mods is Local) || mods.hasPrivateWithin)
-          syntaxError("duplicate private/protected qualifier")
+          syntaxError(DuplicatePrivateProtectedQualifier())
         inBrackets {
           if (in.token == THIS) { in.nextToken(); mods | Local }
           else mods.withPrivateWithin(ident().toTypeName)

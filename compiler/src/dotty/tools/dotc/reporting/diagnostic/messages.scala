@@ -1694,4 +1694,12 @@ object messages {
     val explanation = ""
   }
 
+  case class DuplicatePrivateProtectedQualifier()(implicit ctx: Context)
+    extends Message(DuplicatePrivateProtectedQualifierID) {
+    val kind = "Syntax"
+    val msg = "duplicate private/protected qualifier"
+    val explanation =
+      hl"It is not allowed to combine `private` and `protected` modifiers even if they are qualified to different scopes"
+  }
+
 }
