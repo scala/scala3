@@ -105,7 +105,7 @@ class ExplicitOuter extends MiniPhaseTransform with InfoTransformer { thisTransf
 
       for (parentTrait <- cls.mixins) {
         if (needsOuterIfReferenced(parentTrait)) {
-          val parentTp = cls.denot.thisType.baseTypeRef(parentTrait)
+          val parentTp = cls.denot.thisType.baseType(parentTrait)
           val outerAccImpl = newOuterAccessor(cls, parentTrait).enteredAfter(thisTransformer)
           newDefs += DefDef(outerAccImpl, singleton(fixThis(outerPrefix(parentTp))))
         }
