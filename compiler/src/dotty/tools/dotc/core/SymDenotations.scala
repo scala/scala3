@@ -699,7 +699,7 @@ object SymDenotations {
                | is not a subclass of ${owner.showLocated} where target is defined""")
         else if (
           !(  isType // allow accesses to types from arbitrary subclasses fixes #4737
-           || pre.baseTypeRef(cls).exists // ??? why not use derivesFrom ???
+           || pre.derivesFrom(cls)
            || isConstructor
            || (owner is ModuleClass) // don't perform this check for static members
            ))
@@ -1269,10 +1269,10 @@ object SymDenotations {
     private[this] var myMemberCache: LRUCache[Name, PreDenotation] = null
     private[this] var myMemberCachePeriod: Period = Nowhere
 
-    /** A cache from types T to baseTypeRef(T, C) */
-    type BaseTypeRefMap = java.util.HashMap[CachedType, Type]
-    private[this] var myBaseTypeRefCache: BaseTypeRefMap = null
-    private[this] var myBaseTypeRefCachePeriod: Period = Nowhere
+    /** A cache from types T to baseType(T, C) */
+    type BaseTypeMap = java.util.HashMap[CachedType, Type]
+    private[this] var myBaseTypeCache: BaseTypeMap = null
+    private[this] var myBaseTypeCachePeriod: Period = Nowhere
 
     private var baseDataCache: BaseData = BaseData.None
     private var memberNamesCache: MemberNames = MemberNames.None
@@ -1285,14 +1285,14 @@ object SymDenotations {
       myMemberCache
     }
 
-    private def baseTypeRefCache(implicit ctx: Context): BaseTypeRefMap = {
-      if (myBaseTypeRefCachePeriod != ctx.period &&
-          (myBaseTypeRefCachePeriod.runId != ctx.runId ||
-           ctx.phases(myBaseTypeRefCachePeriod.phaseId).sameParentsStartId != ctx.phase.sameParentsStartId)) {
-        myBaseTypeRefCache = new BaseTypeRefMap
-        myBaseTypeRefCachePeriod = ctx.period
+    private def baseTypeCache(implicit ctx: Context): BaseTypeMap = {
+      if (myBaseTypeCachePeriod != ctx.period &&
+          (myBaseTypeCachePeriod.runId != ctx.runId ||
+           ctx.phases(myBaseTypeCachePeriod.phaseId).sameParentsStartId != ctx.phase.sameParentsStartId)) {
+        myBaseTypeCache = new BaseTypeMap
+        myBaseTypeCachePeriod = ctx.period
       }
-      myBaseTypeRefCache
+      myBaseTypeCache
     }
 
     private def invalidateBaseDataCache() = {
@@ -1305,9 +1305,9 @@ object SymDenotations {
       memberNamesCache = MemberNames.None
     }
 
-    def invalidateBaseTypeRefCache() = {
-      myBaseTypeRefCache = null
-      myBaseTypeRefCachePeriod = Nowhere
+    def invalidateBaseTypeCache() = {
+      myBaseTypeCache = null
+      myBaseTypeCachePeriod = Nowhere
     }
 
     override def copyCaches(from: SymDenotation, phase: Phase)(implicit ctx: Context): this.type = {
@@ -1316,7 +1316,7 @@ object SymDenotations {
           if (from.memberNamesCache.isValidAt(phase)) memberNamesCache = from.memberNamesCache
           if (from.baseDataCache.isValidAt(phase)) {
             baseDataCache = from.baseDataCache
-            myBaseTypeRefCache = from.baseTypeRefCache
+            myBaseTypeCache = from.baseTypeCache
           }
         case _ =>
       }
@@ -1584,11 +1584,11 @@ object SymDenotations {
       raw.filterExcluded(excluded).asSeenFrom(pre).toDenot(pre)
     }
 
-    /** Compute tp.baseTypeRef(this) */
-    final def baseTypeRefOf(tp: Type)(implicit ctx: Context): Type = {
+    /** Compute tp.baseType(this) */
+    final def baseTypeOf(tp: Type)(implicit ctx: Context): Type = {
 
       def foldGlb(bt: Type, ps: List[Type]): Type = ps match {
-        case p :: ps1 => foldGlb(bt & baseTypeRefOf(p), ps1)
+        case p :: ps1 => foldGlb(bt & baseTypeOf(p), ps1)
         case _ => bt
       }
 
@@ -1600,7 +1600,7 @@ object SymDenotations {
        *    and this changes subtyping relations. As a shortcut, we do not
        *    cache ErasedValueType at all.
        */
-      def isCachable(tp: Type, btrCache: BaseTypeRefMap): Boolean = {
+      def isCachable(tp: Type, btrCache: BaseTypeMap): Boolean = {
         def inCache(tp: Type) = btrCache.containsKey(tp)
         tp match {
           case _: TypeErasure.ErasedValueType => false
@@ -1612,12 +1612,12 @@ object SymDenotations {
         }
       }
 
-      def computeBaseTypeRefOf(tp: Type): Type = {
+      def computeBaseTypeOf(tp: Type): Type = {
         Stats.record("computeBaseTypeOf")
-        if (symbol.isStatic && tp.derivesFrom(symbol))
+        if (symbol.isStatic && tp.derivesFrom(symbol) && symbol.typeParams.isEmpty)
           symbol.typeRef
         else tp match {
-          case tp: TypeRef =>
+          case tp: RefType =>
             val subcls = tp.symbol
             if (subcls eq symbol)
               tp
@@ -1626,14 +1626,14 @@ object SymDenotations {
                 if (cdenot.baseClassSet contains symbol) foldGlb(NoType, tp.parents)
                 else NoType
               case _ =>
-                baseTypeRefOf(tp.superType)
+                baseTypeOf(tp.superType)
             }
           case tp: TypeProxy =>
-            baseTypeRefOf(tp.superType)
+            baseTypeOf(tp.superType)
           case AndType(tp1, tp2) =>
-            baseTypeRefOf(tp1) & baseTypeRefOf(tp2)
+            baseTypeOf(tp1) & baseTypeOf(tp2)
           case OrType(tp1, tp2) =>
-            baseTypeRefOf(tp1) | baseTypeRefOf(tp2)
+            baseTypeOf(tp1) | baseTypeOf(tp2)
           case JavaArrayType(_) if symbol == defn.ObjectClass =>
             this.typeRef
           case _ =>
@@ -1641,16 +1641,16 @@ object SymDenotations {
         }
       }
 
-      /*>|>*/ ctx.debugTraceIndented(s"$tp.baseTypeRef($this)") /*<|<*/ {
+      /*>|>*/ ctx.debugTraceIndented(s"$tp.baseType($this)") /*<|<*/ {
         tp match {
           case tp: CachedType =>
-          val btrCache = baseTypeRefCache
+          val btrCache = baseTypeCache
             try {
               var basetp = btrCache get tp
               if (basetp == null) {
                 btrCache.put(tp, NoPrefix)
-                basetp = computeBaseTypeRefOf(tp)
-                if (isCachable(tp, baseTypeRefCache)) btrCache.put(tp, basetp)
+                basetp = computeBaseTypeOf(tp)
+                if (isCachable(tp, baseTypeCache)) btrCache.put(tp, basetp)
                 else btrCache.remove(tp)
               } else if (basetp == NoPrefix)
                 throw CyclicReference(this)
@@ -1662,7 +1662,7 @@ object SymDenotations {
                 throw ex
             }
           case _ =>
-            computeBaseTypeRefOf(tp)
+            computeBaseTypeOf(tp)
         }
       }
     }
