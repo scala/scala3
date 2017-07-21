@@ -2191,8 +2191,11 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
         val prevConstraint = localCtx.typerState.constraint
         if (isFullyDefined(wtp, force = ForceDegree.all)(localCtx) &&
             localCtx.typerState.constraint.ne(prevConstraint)) {
-          localCtx.typerState.commit()
-          return adapt(tree, pt, original)
+          val tree1 = adapt(tree, pt, original)(localCtx)
+          if (!localCtx.reporter.hasErrors) {
+            localCtx.typerState.commit()
+            return tree1
+          }
         }
       }
       // try an implicit conversion
