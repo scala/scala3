@@ -1284,7 +1284,7 @@ object messages {
     val msg = hl"""|$qual does not name a parent of $cls"""
     val kind = "Reference"
 
-    private val parents: Seq[String] = (cls.info.parents map (_.name.show)).sorted
+    private val parents: Seq[String] = (cls.info.parentRefs map (_.name.show)).sorted
 
     val explanation =
       hl"""|When a qualifier ${"T"} is used in a ${"super"} prefix of the form ${"C.super[T]"},

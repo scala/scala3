@@ -915,7 +915,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
     def isSubTypeOfParent(subtp: Type, tp: Type)(implicit ctx: Context): Boolean =
       if (subtp <:< tp) true
       else tp match {
-        case tp: TypeRef if tp.symbol.isClass => isSubTypeOfParent(subtp, tp.firstParent)
+        case tp: TypeRef if tp.symbol.isClass => isSubTypeOfParent(subtp, tp.firstParentNEW)
         case tp: TypeProxy => isSubTypeOfParent(subtp, tp.superType)
         case _ => false
       }

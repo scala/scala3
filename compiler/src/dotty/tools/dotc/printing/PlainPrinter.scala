@@ -333,7 +333,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
         val declsText =
           if (trueDecls.isEmpty || !ctx.settings.debug.value) Text()
           else dclsText(trueDecls)
-        tparamsText ~ " extends " ~ toTextParents(tp.parents) ~ "{" ~ selfText ~ declsText ~
+        tparamsText ~ " extends " ~ toTextParents(tp.parentsNEW) ~ "{" ~ selfText ~ declsText ~
           "} at " ~ preText
       case tp =>
         ": " ~ toTextGlobal(tp)
@@ -411,7 +411,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
 
   def toText(sym: Symbol): Text =
     (kindString(sym) ~~ {
-      if (sym.isAnonymousClass) toText(sym.info.parents, " with ") ~ "{...}"
+      if (sym.isAnonymousClass) toText(sym.info.parentsNEW, " with ") ~ "{...}"
       else if (hasMeaninglessName(sym)) simpleNameString(sym.owner) + idString(sym)
       else nameString(sym)
     }).close
