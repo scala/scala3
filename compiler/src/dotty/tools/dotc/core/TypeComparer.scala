@@ -368,7 +368,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
     case _ =>
       val cls2 = tp2.symbol
       if (cls2.isClass) {
-        val base = tp1.baseTypeRef(cls2)
+        val base = tp1.baseType(cls2)
         if (base.exists && (base ne tp1)) return isSubType(base, tp2)
         if (cls2 == defn.SingletonClass && tp1.isStable) return true
       }
@@ -716,7 +716,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
             def liftToBase(bcs: List[ClassSymbol]): Boolean = bcs match {
               case bc :: bcs1 =>
                 classBounds.exists(bc.derivesFrom) &&
-                tyconOK(tp1w.baseTypeRef(bc), tp1w.baseArgInfos(bc)) ||
+                tyconOK(tp1w.baseTypeTycon(bc), tp1w.baseArgInfos(bc)) ||
                 liftToBase(bcs1)
               case _ =>
                 false
@@ -774,7 +774,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
     tycon1 match {
       case param1: TypeParamRef =>
         def canInstantiate = tp2 match {
-          case AppliedType(tycon2, args2) =>
+          case AnyAppliedType(tycon2, args2) =>
             tryInstantiate(param1, tycon2.ensureHK) && isSubArgs(args1, args2, tycon2.typeParams)
           case _ =>
             false
@@ -813,7 +813,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
     val classBounds = tp2.classSymbols
     def recur(bcs: List[ClassSymbol]): Boolean = bcs match {
       case bc :: bcs1 =>
-        val baseRef = tp1.baseTypeRef(bc)
+        val baseRef = tp1.baseTypeTycon(bc)
         (classBounds.exists(bc.derivesFrom) &&
          variancesConform(baseRef.typeParams, tparams) &&
          p(baseRef.appliedTo(tp1.baseArgInfos(bc)))
