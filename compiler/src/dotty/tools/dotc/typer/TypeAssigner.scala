@@ -293,7 +293,7 @@ trait TypeAssigner {
       case err: ErrorType => untpd.cpy.Super(tree)(qual, mix).withType(err)
       case qtype @ ThisType(_) =>
         val cls = qtype.cls
-        def findMixinSuper(site: Type): Type = site.parents filter (_.name == mix.name) match {
+        def findMixinSuper(site: Type): Type = site.parentRefs filter (_.name == mix.name) match {
           case p :: Nil =>
             p
           case Nil =>
@@ -304,7 +304,7 @@ trait TypeAssigner {
         val owntype =
           if (mixinClass.exists) mixinClass.typeRef
           else if (!mix.isEmpty) findMixinSuper(cls.info)
-          else if (inConstrCall || ctx.erasedTypes) cls.info.firstParent
+          else if (inConstrCall || ctx.erasedTypes) cls.info.firstParentRef
           else {
             val ps = cls.classInfo.parentsWithArgs
             if (ps.isEmpty) defn.AnyType else ps.reduceLeft((x: Type, y: Type) => x & y)
