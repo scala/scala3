@@ -951,13 +951,6 @@ object Types {
         this
     }
 
-    /** Eliminate anonymous classes */
-    final def deAnonymize(implicit ctx: Context): Type = this match {
-      case tp:TypeRef if tp.symbol.isAnonymousClass =>
-        tp.symbol.asClass.typeRef.asSeenFrom(tp.prefix, tp.symbol.owner)
-      case tp => tp
-    }
-
     private def dealias(keepAnnots: Boolean)(implicit ctx: Context): Type = this match {
       case tp: TypeRef =>
         if (tp.symbol.isClass) tp

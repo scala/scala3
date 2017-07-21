@@ -1202,7 +1202,7 @@ class PatternMatcherOld extends MiniPhaseTransform with DenotTransformer {
     def translateMatch(match_ : Match): Tree = {
       val Match(sel, cases) = match_
 
-      val selectorTp = sel.tpe.widen.deAnonymize/*withoutAnnotations*/
+      val selectorTp = sel.tpe.widen/*withoutAnnotations*/
 
       val selectorSym = freshSym(sel.pos, selectorTp, PatMatSelectorName)
 

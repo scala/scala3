@@ -704,7 +704,7 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
     }
 
     val Match(sel, cases) = tree
-    val res = isCheckable(sel.tpe.widen.deAnonymize.dealiasKeepAnnots)
+    val res = isCheckable(sel.tpe.widen.dealiasKeepAnnots)
     debug.println(s"checkable: ${sel.show} = $res")
     res
   }
@@ -770,7 +770,7 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
 
   def checkExhaustivity(_match: Match): Unit = {
     val Match(sel, cases) = _match
-    val selTyp = sel.tpe.widen.deAnonymize.dealias
+    val selTyp = sel.tpe.widen.dealias
 
 
     val patternSpace = cases.map({ x =>
@@ -787,7 +787,7 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
   def checkRedundancy(_match: Match): Unit = {
     val Match(sel, cases) = _match
     // ignore selector type for now
-    // val selTyp = sel.tpe.widen.deAnonymize.dealias
+    // val selTyp = sel.tpe.widen.dealias
 
     if (cases.length == 1) return
 
