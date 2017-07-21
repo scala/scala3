@@ -1623,7 +1623,7 @@ object SymDenotations {
               tp
             else subcls.denot match {
               case cdenot: ClassDenotation =>
-                if (cdenot.baseClassSet contains symbol) foldGlb(NoType, tp.parents)
+                if (cdenot.baseClassSet contains symbol) foldGlb(NoType, tp.parentsNEW) // !!! change to parents
                 else NoType
               case _ =>
                 baseTypeOf(tp.superType)
