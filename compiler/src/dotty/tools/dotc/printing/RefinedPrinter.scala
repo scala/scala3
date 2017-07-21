@@ -126,7 +126,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       }
 
     def isInfixType(tp: Type): Boolean = tp match {
-      case AppliedType(tycon, args) =>
+      case AnyAppliedType(tycon, args) =>
         args.length == 2 &&
           !Character.isUnicodeIdentifierStart(tycon.typeSymbol.name.toString.head)
           // TODO: Once we use the 2.12 stdlib, also check the @showAsInfix annotation
@@ -149,7 +149,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
     homogenize(tp) match {
       case x: ConstantType if homogenizedView =>
         return toText(x.widen)
-      case AppliedType(tycon, args) =>
+      case AnyAppliedType(tycon, args) =>
         val cls = tycon.typeSymbol
         if (tycon.isRepeatedParam) return toTextLocal(args.head) ~ "*"
         if (defn.isFunctionClass(cls)) return toTextFunction(args, cls.name.isImplicitFunction)

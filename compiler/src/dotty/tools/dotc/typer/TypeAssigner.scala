@@ -6,7 +6,7 @@ import core._
 import ast._
 import Scopes._, Contexts._, Constants._, Types._, Symbols._, Names._, Flags._, Decorators._
 import ErrorReporting._, Annotations._, Denotations._, SymDenotations._, StdNames._, TypeErasure._
-import TypeApplications.AppliedType
+import TypeApplications.AnyAppliedType
 import util.Positions._
 import config.Printers.typr
 import ast.Trees._
@@ -104,7 +104,7 @@ trait TypeAssigner {
           }
         case tp @ HKApply(tycon, args) if toAvoid(tycon) =>
           apply(tp.superType)
-        case tp @ AppliedType(tycon, args) if toAvoid(tycon) =>
+        case tp @ AnyAppliedType(tycon, args) if toAvoid(tycon) =>
           val base = apply(tycon)
           var args = tp.baseArgInfos(base.typeSymbol)
           if (base.typeParams.length != args.length)
