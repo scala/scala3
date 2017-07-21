@@ -194,7 +194,7 @@ object ExplicitOuter {
     needsOuterIfReferenced(cls) &&
     (!hasLocalInstantiation(cls) || // needs outer because we might not know whether outer is referenced or not
      cls.mixins.exists(needsOuterIfReferenced) || // needs outer for parent traits
-     cls.classInfo.parents.exists(parent => // needs outer to potentially pass along to parent
+     cls.info.parentsNEW.exists(parent => // needs outer to potentially pass along to parent
        needsOuterIfReferenced(parent.classSymbol.asClass)))
 
   /** Class is always instantiated in the compilation unit where it is defined */
