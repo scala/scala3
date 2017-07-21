@@ -2186,25 +2186,23 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
           }
         case _ =>
       }
-      // try to fully instantiate type
-      { val localCtx = ctx.fresh.setNewTyperState
-        val prevConstraint = localCtx.typerState.constraint
-        if (isFullyDefined(wtp, force = ForceDegree.all)(localCtx) &&
-            localCtx.typerState.constraint.ne(prevConstraint)) {
-          val tree1 = adapt(tree, pt, original)(localCtx)
-          if (!localCtx.reporter.hasErrors) {
-            localCtx.typerState.commit()
-            return tree1
-          }
-        }
-      }
       // try an implicit conversion
       inferView(tree, pt) match {
         case SearchSuccess(inferred, _, _, _) =>
           adapt(inferred, pt)(ctx.retractMode(Mode.ImplicitsEnabled))
         case failure: SearchFailure =>
           if (pt.isInstanceOf[ProtoType] && !failure.isInstanceOf[AmbiguousImplicits]) tree
-          else err.typeMismatch(tree, pt, failure)
+          else {
+            // try to fully instantiate type
+            val nestedCtx = ctx.fresh.setNewTyperState
+            val prevConstraint = nestedCtx.typerState.constraint
+            if (isFullyDefined(wtp, force = ForceDegree.all)(nestedCtx) &&
+                nestedCtx.typerState.constraint.ne(prevConstraint)) {
+              nestedCtx.typerState.commit()
+              return adapt(tree, pt, original)
+            }
+          }
+          err.typeMismatch(tree, pt, failure)
       }
     }
 
