@@ -76,7 +76,7 @@ object TypeApplications {
     }
 
     def unapply(tp: Type)(implicit ctx: Context): Option[TypeRef] = tp match {
-      case tp @ HKTypeLambda(tparams, AppliedType(fn: TypeRef, args)) if (args == tparams.map(_.toArg)) => Some(fn)
+      case tp @ HKTypeLambda(tparams, AnyAppliedType(fn: TypeRef, args)) if (args == tparams.map(_.toArg)) => Some(fn)
       case _ => None
     }
   }
@@ -87,7 +87,7 @@ object TypeApplications {
    *
    *  where v_i, p_i are the variances and names of the type parameters of T.
    */
-  object AppliedType {
+  object AnyAppliedType {
     def apply(tp: Type, args: List[Type])(implicit ctx: Context): Type = tp.appliedTo(args)
 
     def unapply(tp: Type)(implicit ctx: Context): Option[(Type, List[Type])] = tp match {
@@ -111,6 +111,8 @@ object TypeApplications {
             None
         }
         collectArgs(tycon.typeParams, refinements, new mutable.ListBuffer[Type])
+      case AppliedType(tycon, args) =>
+        Some((tycon, args))
       case HKApply(tycon, args) =>
         Some((tycon, args))
       case _ =>
@@ -408,7 +410,7 @@ class TypeApplications(val self: Type) extends AnyVal {
           if (!args.exists(_.isInstanceOf[TypeBounds])) {
             val followAlias = Config.simplifyApplications && {
               dealiased.resType match {
-                case AppliedType(tyconBody, dealiasedArgs) =>
+                case AnyAppliedType(tyconBody, dealiasedArgs) =>
                   // Reduction should not affect type inference when it's
                   // just eta-reduction (ignoring variance annotations).
                   // See i2201*.scala for examples where more aggressive
@@ -421,7 +423,7 @@ class TypeApplications(val self: Type) extends AnyVal {
             else HKApply(self, args)
           }
           else dealiased.resType match {
-            case AppliedType(tycon, args1) if tycon.safeDealias ne tycon =>
+            case AnyAppliedType(tycon, args1) if tycon.safeDealias ne tycon =>
               // In this case we should always dealias since we cannot handle
               // higher-kinded applications to wildcard arguments.
               dealiased
@@ -521,7 +523,7 @@ class TypeApplications(val self: Type) extends AnyVal {
    *  Existential types in arguments are returned as TypeBounds instances.
    */
   final def baseTypeWithArgs(base: Symbol)(implicit ctx: Context): Type = ctx.traceIndented(s"btwa ${self.show} wrt $base", core, show = true) {
-    def default = self.baseTypeRef(base).appliedTo(baseArgInfos(base))
+    def default = self.baseTypeTycon(base).appliedTo(baseArgInfos(base))
     def isExpandedTypeParam(sym: Symbol) = sym.is(TypeParam) && sym.name.is(ExpandedName)
     self match {
       case tp: TypeRef =>
@@ -573,7 +575,7 @@ class TypeApplications(val self: Type) extends AnyVal {
    *  Existential types in arguments are returned as TypeBounds instances.
    */
   final def argInfos(implicit ctx: Context): List[Type] = self match {
-    case AppliedType(tycon, args) => args
+    case AnyAppliedType(tycon, args) => args
     case _ => Nil
   }
 

@@ -66,7 +66,7 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
       else pre match {
         case pre: SuperType => toPrefix(pre.thistpe, cls, thiscls)
         case _ =>
-          if (thiscls.derivesFrom(cls) && pre.baseTypeRef(thiscls).exists) {
+          if (thiscls.derivesFrom(cls) && pre.baseType(thiscls).exists) { // ??? why not derivesFrom ???
             if (theMap != null && theMap.currentVariance <= 0 && !isLegalPrefix(pre)) {
               ctx.base.unsafeNonvariant = ctx.runId
               pre match {
@@ -79,7 +79,7 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
           else if ((pre.termSymbol is Package) && !(thiscls is Package))
             toPrefix(pre.select(nme.PACKAGE), cls, thiscls)
           else
-            toPrefix(pre.baseTypeRef(cls).normalizedPrefix, cls.owner, thiscls)
+            toPrefix(pre.baseType(cls).normalizedPrefix, cls.owner, thiscls)
       }
     }
 
@@ -256,7 +256,7 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
               val doms = dominators(commonBaseClasses, Nil)
               def baseTp(cls: ClassSymbol): Type = {
                 val base =
-                  if (tp1.typeParams.nonEmpty) tp.baseTypeRef(cls)
+                  if (tp1.typeParams.nonEmpty) tp.baseTypeTycon(cls)
                   else tp.baseTypeWithArgs(cls)
                 base.mapReduceOr(identity)(mergeRefined)
               }
