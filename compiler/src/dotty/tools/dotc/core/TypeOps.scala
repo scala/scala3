@@ -185,7 +185,7 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
               val doms = dominators(commonBaseClasses, Nil)
               def baseTp(cls: ClassSymbol): Type = {
                 val base =
-                  if (tp1.typeParams.nonEmpty) tp.baseTypeRef(cls)
+                  if (tp1.typeParams.nonEmpty) tp.baseTypeTycon(cls)
                   else tp.baseTypeWithArgs(cls)
                 base.mapReduceOr(identity)(mergeRefined)
               }

@@ -573,6 +573,7 @@ object Types {
               try pdenot.info & rinfo
               catch {
                 case ex: CyclicReference =>
+                  // ??? can this still happen? ???
                   // happens for tests/pos/sets.scala. findMember is called from baseTypeRef.
                   // The & causes a subtype check which calls baseTypeRef again with the same
                   // superclass. In the observed case, the superclass was Any, and
@@ -833,12 +834,16 @@ object Types {
     /** The basetype TypeRef of this type with given class symbol,
      *  but without including any type arguments
      */
-    final def baseTypeRef(base: Symbol)(implicit ctx: Context): Type = /*ctx.traceIndented(s"$this baseTypeRef $base")*/ /*>|>*/ track("baseTypeRef") /*<|<*/ {
+    final def baseType(base: Symbol)(implicit ctx: Context): Type = /*ctx.traceIndented(s"$this baseType $base")*/ /*>|>*/ track("baseType") /*<|<*/ {
       base.denot match {
-        case classd: ClassDenotation => classd.baseTypeRefOf(this)
+        case classd: ClassDenotation => classd.baseTypeOf(this)
         case _ => NoType
       }
     }
+
+    /** Temporary replacement for baseTypeRef */
+    final def baseTypeTycon(base: Symbol)(implicit ctx: Context): Type =
+      baseType(base).typeConstructor
 
     def & (that: Type)(implicit ctx: Context): Type = track("&") {
       ctx.typeComparer.glb(this, that)
@@ -1005,6 +1010,12 @@ object Types {
      */
     final def deconst(implicit ctx: Context): Type = stripTypeVar match {
       case tp: ConstantType => tp.value.tpe
+      case _ => this
+    }
+
+    /** The type constructor of an applied type, otherwise the type itself */
+    final def typeConstructor(implicit ctx: Context): Type = this match {
+      case AppliedType(tycon, _) => tycon
       case _ => this
     }
 
@@ -1454,6 +1465,11 @@ object Types {
   /** A marker trait for types that can be types of values or that are higher-kinded  */
   trait ValueType extends ValueTypeOrProto with ValueTypeOrWildcard
 
+  /** A common base trait of NamedType and AppliedType */
+  trait RefType extends CachedProxyType with ValueType {
+    def symbol(implicit ctx: Context): Symbol
+  }
+
   /** A marker trait for types that are guaranteed to contain only a
    *  single non-null value (they might contain null in addition).
    */
@@ -1485,7 +1501,7 @@ object Types {
 // --- NamedTypes ------------------------------------------------------------------
 
   /** A NamedType of the form Prefix # name */
-  abstract class NamedType extends CachedProxyType with ValueType {
+  abstract class NamedType extends CachedProxyType with RefType {
 
     val prefix: Type
     val name: Name
@@ -3010,6 +3026,91 @@ object Types {
     def paramVariance(implicit ctx: Context): Int = tl.paramNames(n).variance
     def toArg: Type = TypeParamRef(tl, n)
     def paramRef(implicit ctx: Context): Type = TypeParamRef(tl, n)
+  }
+
+  /** A type application `C[T_1, ..., T_n]` */
+  abstract case class AppliedType(tycon: Type, args: List[Type])
+  extends CachedProxyType with RefType {
+
+    private var validSuper: Period = Nowhere
+    private var cachedSuper: Type = _
+
+    override def underlying(implicit ctx: Context): Type = tycon
+
+    override def superType(implicit ctx: Context): Type = {
+      def reapply(tp: Type) = tp match {
+        case tp: TypeRef if tp.symbol.isClass => tp
+        case _ => tp.applyIfParameterized(args)
+      }
+      if (ctx.period != validSuper) {
+        validSuper = ctx.period
+        cachedSuper = tycon match {
+          case tp: HKTypeLambda => defn.AnyType
+          case tp: TypeVar if !tp.inst.exists =>
+            // supertype not stable, since underlying might change
+            validSuper = Nowhere
+            reapply(tp.underlying)
+          case tp: TypeProxy =>
+            if (tp.typeSymbol.is(Provisional)) validSuper = Nowhere
+            reapply(tp.superType)
+          case _ => defn.AnyType
+        }
+      }
+      cachedSuper
+    }
+
+    override def symbol(implicit ctx: Context) = tycon.typeSymbol
+
+    def lowerBound(implicit ctx: Context) = tycon.stripTypeVar match {
+      case tycon: TypeRef =>
+        tycon.info match {
+          case TypeBounds(lo, hi) =>
+            if (lo eq hi) superType // optimization, can profit from caching in this case
+            else lo.applyIfParameterized(args)
+          case _ => NoType
+        }
+      case _ =>
+        NoType
+    }
+
+    def typeParams(implicit ctx: Context): List[ParamInfo] = {
+      val tparams = tycon.typeParams
+      if (tparams.isEmpty) HKTypeLambda.any(args.length).typeParams else tparams
+    }
+
+    def derivedAppliedType(tycon: Type, args: List[Type])(implicit ctx: Context): Type =
+      if ((tycon eq this.tycon) && (args eq this.args)) this
+      else tycon.appliedTo(args)
+
+    override def computeHash = doHash(tycon, args)
+
+    protected def checkInst(implicit ctx: Context): this.type = {
+      def check(tycon: Type): Unit = tycon.stripTypeVar match {
+        case tycon: TypeRef =>
+        case _: TypeParamRef | _: ErrorType | _: WildcardType =>
+        case _: TypeLambda =>
+          assert(!args.exists(_.isInstanceOf[TypeBounds]), s"unreduced type apply: $this")
+        case tycon: AnnotatedType =>
+          check(tycon.underlying)
+        case _ =>
+          assert(false, s"illegal type constructor in $this")
+      }
+      if (Config.checkHKApplications) check(tycon)
+      this
+    }
+  }
+
+  final class CachedAppliedType(tycon: Type, args: List[Type]) extends AppliedType(tycon, args)
+
+  object AppliedType {
+    def apply(tycon: Type, args: List[Type])(implicit ctx: Context) =
+      unique(new CachedAppliedType(tycon, args)).checkInst
+  }
+
+  object ClassRef {
+    def unapply(tp: RefType)(implicit ctx: Context): Option[RefType] = { // after bootstrap, drop the Option
+      if (tp.symbol.isClass) Some(tp) else None
+    }
   }
 
   /** A higher kinded type application `C[T_1, ..., T_n]` */
