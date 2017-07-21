@@ -229,7 +229,7 @@ object ASMConverters {
     case x => x.asInstanceOf[Object]
   }
 
-  def unconvertMethodHandle(h: MethodHandle): asm.Handle = new asm.Handle(h.tag, h.owner, h.name, h.desc)
+  def unconvertMethodHandle(h: MethodHandle): asm.Handle = new asm.Handle(h.tag, h.owner, h.name, h.desc, false)
   def unconvertBsmArgs(a: List[Object]): Array[Object] = a.map({
     case h: MethodHandle => unconvertMethodHandle(h)
     case o => o
