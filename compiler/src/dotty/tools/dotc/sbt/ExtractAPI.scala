@@ -179,7 +179,7 @@ private class ExtractAPICollector(implicit val ctx: Context) extends ThunkHolder
         else dt.Module
       } else dt.ClassDef
 
-    val selfType = apiType(sym.classInfo.givenSelfType)
+    val selfType = apiType(sym.givenSelfType)
 
     val name = if (sym.is(ModuleClass)) sym.fullName.sourceModuleName else sym.fullName
 
