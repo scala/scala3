@@ -1382,6 +1382,14 @@ object SymDenotations {
         NoSymbol
     }
 
+    /** The explicitly given self type (self types of modules are assumed to be
+     *  explcitly given here).
+     */
+    def givenSelfType(implicit ctx: Context) = classInfo.selfInfo match {
+      case tp: Type => tp
+      case self: Symbol => self.info
+    }
+
    // ------ class-specific operations -----------------------------------
 
     private[this] var myThisType: Type = null

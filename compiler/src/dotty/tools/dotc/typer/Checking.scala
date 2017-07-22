@@ -133,7 +133,7 @@ object Checking {
           // Create a synthetic singleton type instance, and check whether
           // it conforms to the self type of the class as seen from that instance.
           val stp = SkolemType(tp)
-          val selfType = tref.givenSelfType.asSeenFrom(stp, cls)
+          val selfType = cls.asClass.givenSelfType.asSeenFrom(stp, cls)
           if (selfType.exists && !(stp <:< selfType))
             ctx.error(DoesNotConformToSelfTypeCantBeInstantiated(tp, selfType), pos)
         }
