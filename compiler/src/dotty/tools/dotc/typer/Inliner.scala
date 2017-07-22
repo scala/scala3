@@ -144,9 +144,15 @@ object Inliner {
           case _: Apply | _: TypeApply | _: RefTree if needsAccessor(tree.symbol) =>
             if (tree.isTerm) {
               val (methPart, targs, argss) = decomposeCall(tree)
-              addAccessor(tree, methPart, targs, argss,
-                  accessedType = methPart.tpe.widen,
-                  rhs = (qual, tps, argss) => qual.appliedToTypes(tps).appliedToArgss(argss))
+              val mSym = methPart.symbol
+              if (mSym.isConstructor && (mSym.is(Private) || mSym.privateWithin.exists)) {
+                ctx.error("Cannot use private constructors in inline methods", tree.pos)
+                tree // TODO: create a proper accessor for the private constructor
+              } else {
+                addAccessor(tree, methPart, targs, argss,
+                    accessedType = methPart.tpe.widen,
+                    rhs = (qual, tps, argss) => qual.appliedToTypes(tps).appliedToArgss(argss))
+              }
             } else {
               // TODO: Handle references to non-public types.
               // This is quite tricky, as such types can appear anywhere, including as parts
