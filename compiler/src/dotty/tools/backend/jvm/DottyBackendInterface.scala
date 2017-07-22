@@ -897,7 +897,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
           // to inner symbols of DefDef
           // todo: somehow handle.
 
-    def parents: List[Type] = tp.parents
+    def parents: List[Type] = tp.parentsNEW
   }
 
   object Assign extends AssignDeconstructor {
