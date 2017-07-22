@@ -1216,14 +1216,6 @@ object Types {
       case _ => defn.AnyType
     }
 
-    /** the self type of the underlying classtype */
-    def givenSelfType(implicit ctx: Context): Type = this match {
-      case tp: RefinedType => tp.wrapIfMember(tp.parent.givenSelfType)
-      case tp: ThisType => tp.tref.givenSelfType
-      case tp: TypeProxy => tp.superType.givenSelfType
-      case _ => NoType
-    }
-
     /** The parameter types of a PolyType or MethodType, Empty list for others */
     final def paramInfoss(implicit ctx: Context): List[List[Type]] = stripPoly match {
       case mt: MethodType => mt.paramInfos :: mt.resultType.paramInfoss
@@ -1664,10 +1656,8 @@ object Types {
     }
 
     private def checkSymAssign(sym: Symbol)(implicit ctx: Context) = {
-      def selfTypeOf(sym: Symbol) = sym.owner.info match {
-        case info: ClassInfo => info.givenSelfType
-        case _ => NoType
-      }
+      def selfTypeOf(sym: Symbol) =
+        if (sym.isClass) sym.asClass.givenSelfType else NoType
       assert(
         (lastSymbol eq sym)
         ||
@@ -2265,7 +2255,7 @@ object Types {
       if ((parent eq this.parent) && (refinedName eq this.refinedName) && (refinedInfo eq this.refinedInfo)) this
       else RefinedType(parent, refinedName, refinedInfo)
 
-    /** Add this refinement to `parent`, provided If `refinedName` is a member of `parent`. */
+    /** Add this refinement to `parent`, provided `refinedName` is a member of `parent`. */
     def wrapIfMember(parent: Type)(implicit ctx: Context): Type =
       if (parent.member(refinedName).exists) derivedRefinedType(parent, refinedName, refinedInfo)
       else parent
@@ -3439,7 +3429,7 @@ object Types {
       if (selfTypeCache == null)
         selfTypeCache = {
           def fullRef = fullyAppliedRef
-          val given = givenSelfType
+          val given = cls.givenSelfType
           val raw =
             if (!given.exists) fullRef
             else if (cls is Module) given
@@ -3448,14 +3438,6 @@ object Types {
           raw//.asSeenFrom(prefix, cls.owner)
         }
       selfTypeCache
-    }
-
-    /** The explicitly given self type (self types of modules are assumed to be
-     *  explcitly given here).
-     */
-    override def givenSelfType(implicit ctx: Context): Type = selfInfo match {
-      case tp: Type => tp
-      case self: Symbol => self.info
     }
 
     private var selfTypeCache: Type = null
@@ -4452,7 +4434,7 @@ object Types {
   }
 
   private def otherReason(pre: Type)(implicit ctx: Context): String = pre match {
-    case pre: ThisType if pre.givenSelfType.exists =>
+    case pre: ThisType if pre.cls.givenSelfType.exists =>
       i"\nor the self type of $pre might not contain all transitive dependencies"
     case _ => ""
   }
