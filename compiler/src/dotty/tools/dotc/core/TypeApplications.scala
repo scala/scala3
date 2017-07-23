@@ -185,7 +185,7 @@ object TypeApplications {
           case arg =>
             arg
         }
-      case _: TypeBounds | _: HKApply =>
+      case _: TypeBounds | _: HKApply | _: AppliedType =>
         val saved = available
         available = Set()
         try mapOver(t)
@@ -453,7 +453,8 @@ class TypeApplications(val self: Type) extends AnyVal {
       case _ if typParams.isEmpty || typParams.head.isInstanceOf[LambdaParam] =>
         HKApply(self, args)
       case dealiased =>
-        matchParams(dealiased, typParams, args)
+        if (Config.newScheme) ???
+        else matchParams(dealiased, typParams, args)
     }
   }
 
@@ -593,6 +594,7 @@ class TypeApplications(val self: Type) extends AnyVal {
    */
   final def withoutArgs(typeArgs: List[Type]): Type = self match {
     case HKApply(tycon, args) => tycon
+    case AppliedType(tycon, args) => tycon
     case _ =>
       typeArgs match {
         case _ :: typeArgs1 =>

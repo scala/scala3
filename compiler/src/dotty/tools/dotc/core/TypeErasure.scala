@@ -381,6 +381,8 @@ class TypeErasure(isJava: Boolean, semiEraseVCs: Boolean, isConstructor: Boolean
       else if (defn.isPhantomTerminalClass(sym)) PhantomErasure.erasedPhantomType
       else if (sym eq defn.PhantomClass) defn.ObjectType // To erase the definitions of Phantom.{assume, Any, Nothing}
       else eraseNormalClassRef(tp)
+    case tp: AppliedType =>
+      apply(tp.superType)
     case tp: RefinedType =>
       val parent = tp.parent
       if (parent isRef defn.ArrayClass) eraseArray(tp)
@@ -509,8 +511,6 @@ class TypeErasure(isJava: Boolean, semiEraseVCs: Boolean, isConstructor: Boolean
    */
   private def sigName(tp: Type)(implicit ctx: Context): TypeName = try {
     tp match {
-      case ErasedValueType(_, underlying) =>
-        sigName(underlying)
       case tp: TypeRef =>
         if (!tp.denot.exists) throw new MissingType(tp.prefix, tp.name)
         val sym = tp.symbol
@@ -529,6 +529,10 @@ class TypeErasure(isJava: Boolean, semiEraseVCs: Boolean, isConstructor: Boolean
           sigName(PhantomErasure.erasedPhantomType)
         else
           normalizeClass(sym.asClass).fullName.asTypeName
+      case tp: AppliedType =>
+        sigName(tp.superType)
+      case ErasedValueType(_, underlying) =>
+        sigName(underlying)
       case defn.ArrayOf(elem) =>
         sigName(this(tp))
       case tp: HKApply =>
