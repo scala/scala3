@@ -11,6 +11,7 @@ import NameKinds.DepParamName
 import Decorators._
 import StdNames._
 import Annotations._
+import annotation.tailrec
 import config.Config
 import util.{SimpleMap, Property}
 import collection.mutable
@@ -48,6 +49,18 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
         }
       }
 
+      @tailrec
+      def argForParam(pre: Type, cls: Symbol, pref: TypeParamRef, prefCls: ClassSymbol): Type =
+        if (cls.is(PackageClass)) pref
+        else {
+          val base = pre.baseType(cls)
+          if (cls eq prefCls) {
+            val AppliedType(_, args) = base
+            args(pref.paramNum)
+          }
+          else argForParam(base.normalizedPrefix, cls.owner.enclosingClass, pref, prefCls)
+        }
+
       /*>|>*/ ctx.conditionalTraceIndented(TypeOps.track, s"asSeen ${tp.show} from (${pre.show}, ${cls.show})", show = true) /*<|<*/ { // !!! DEBUG
         // One `case ThisType` is specific to asSeenFrom, all other cases are inlined for performance
         tp match {
@@ -56,6 +69,11 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
             else derivedSelect(tp, atVariance(variance max 0)(this(tp.prefix)))
           case tp: ThisType =>
             toPrefix(pre, cls, tp.cls)
+          case tp: TypeParamRef =>
+            tp.binder.resultType match {
+              case cinfo: ClassInfo => argForParam(pre, cls, tp, cinfo.cls)
+              case _ => tp
+            }
           case _: BoundType | NoPrefix =>
             tp
           case tp: RefinedType =>
@@ -92,7 +110,10 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
         val bounds = ctx.typeComparer.bounds(tp)
         if (bounds.lo.isRef(defn.NothingClass)) bounds.hi else bounds.lo
       }
-      else typerState.constraint.typeVarOfParam(tp) orElse tp
+      else {
+        val tvar = typerState.constraint.typeVarOfParam(tp)
+        if (tvar.exists) tvar else tp
+      }
     case  _: ThisType | _: BoundType | NoPrefix =>
       tp
     case tp: RefinedType =>
@@ -142,14 +163,22 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
         defn.ObjectClass :: Nil
     }
 
-    def mergeRefined(tp1: Type, tp2: Type): Type = {
+    def mergeRefinedOrApplied(tp1: Type, tp2: Type): Type = {
       def fail = throw new AssertionError(i"Failure to join alternatives $tp1 and $tp2")
       tp1 match {
         case tp1 @ RefinedType(parent1, name1, rinfo1) =>
           tp2 match {
             case RefinedType(parent2, `name1`, rinfo2) =>
               tp1.derivedRefinedType(
-                mergeRefined(parent1, parent2), name1, rinfo1 | rinfo2)
+                mergeRefinedOrApplied(parent1, parent2), name1, rinfo1 | rinfo2)
+            case _ => fail
+          }
+        case tp1 @ AppliedType(tycon1, args1) =>
+          tp2 match {
+            case AppliedType(tycon2, args2) =>
+              tp1.derivedAppliedType(
+                mergeRefinedOrApplied(tycon1, tycon2),
+                ctx.typeComparer.lubArgs(args1, args2, tycon1.typeParams))
             case _ => fail
           }
         case tp1 @ TypeRef(pre1, name1) =>
@@ -187,7 +216,7 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
                 val base =
                   if (tp1.typeParams.nonEmpty) tp.baseTypeTycon(cls)
                   else tp.baseTypeWithArgs(cls)
-                base.mapReduceOr(identity)(mergeRefined)
+                base.mapReduceOr(identity)(mergeRefinedOrApplied)
               }
               doms.map(baseTp).reduceLeft(AndType.apply)
           }
@@ -200,35 +229,6 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
       case _ =>
         tp
     }
-  }
-
-  /** Not currently needed:
-   *
-  def liftToRec(f: (Type, Type) => Type)(tp1: Type, tp2: Type)(implicit ctx: Context) = {
-    def f2(tp1: Type, tp2: Type): Type = tp2 match {
-      case tp2: RecType => tp2.rebind(f(tp1, tp2.parent))
-      case _ => f(tp1, tp2)
-    }
-    tp1 match {
-      case tp1: RecType => tp1.rebind(f2(tp1.parent, tp2))
-      case _ => f2(tp1, tp2)
-    }
-  }
-  */
-
-  private def enterArgBinding(formal: Symbol, info: Type, cls: ClassSymbol, decls: Scope) = {
-    val lazyInfo = new LazyType { // needed so we do not force `formal`.
-      def complete(denot: SymDenotation)(implicit ctx: Context): Unit = {
-        denot setFlag formal.flags & RetainedTypeArgFlags
-        denot.info = info
-      }
-    }
-    val sym = ctx.newSymbol(
-      cls, formal.name,
-      formal.flagsUNSAFE & RetainedTypeArgFlags | BaseTypeArg | Override,
-      lazyInfo,
-      coord = cls.coord)
-    cls.enter(sym, decls)
   }
 
   /** If `tpe` is of the form `p.x` where `p` refers to a package
@@ -251,6 +251,21 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
         case pre: TermRef if pre.symbol is Package => tryInsert(pre.symbol.moduleClass)
         case _ => tpe
       }
+  }
+
+  private def enterArgBinding(formal: Symbol, info: Type, cls: ClassSymbol, decls: Scope) = {
+    val lazyInfo = new LazyType { // needed so we do not force `formal`.
+      def complete(denot: SymDenotation)(implicit ctx: Context): Unit = {
+        denot setFlag formal.flags & RetainedTypeArgFlags
+        denot.info = info
+      }
+    }
+    val sym = ctx.newSymbol(
+      cls, formal.name,
+      formal.flagsUNSAFE & RetainedTypeArgFlags | BaseTypeArg | Override,
+      lazyInfo,
+      coord = cls.coord)
+    cls.enter(sym, decls)
   }
 
   /** Normalize a list of parent types of class `cls` that may contain refinements
