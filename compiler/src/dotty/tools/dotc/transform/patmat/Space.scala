@@ -429,6 +429,7 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
   /* Erase a type binding according to erasure semantics in pattern matching */
   def erase(tp: Type): Type = {
     def doErase(tp: Type): Type = tp match {
+      case tp: AppliedType => erase(tp.superType)
       case tp: HKApply => erase(tp.superType)
       case tp: RefinedType => erase(tp.parent)
       case _ => tp
@@ -552,9 +553,13 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
    *
    *  If `tp1` is `path1.A`, `tp2` is `path2.B`, and `path1` is subtype of
    *  `path2`, then return `path1.B`.
+   *
+   *  (MO) I don't really understand what this does. Let's try to find a precise
+   *       definition!
    */
   def refine(tp1: Type, tp2: Type): Type = (tp1, tp2) match {
     case (tp1: RefinedType, _: TypeRef) => tp1.wrapIfMember(refine(tp1.parent, tp2))
+    case (tp1: AppliedType, _) => refine(tp1.superType, tp2)
     case (tp1: HKApply, _) => refine(tp1.superType, tp2)
     case (TypeRef(ref1: TypeProxy, _), tp2 @ TypeRef(ref2: TypeProxy, _)) =>
       if (ref1.underlying <:< ref2.underlying) tp2.derivedSelect(ref1) else tp2

@@ -329,11 +329,11 @@ class ClassfileParser(
                         case '*' => TypeBounds.empty
                       }
                       if (formals != null)
-                        tp1 = RefinedType(tp1, formals.head.name, bounds)
+                        tp1 = RefinedType(tp1, formals.head.name, bounds) // @!!!
                     case _ =>
                       val info = sig2type(tparams, skiptvs)
                       if (formals != null)
-                        tp1 = RefinedType(tp1, formals.head.name, TypeAlias(info))
+                        tp1 = RefinedType(tp1, formals.head.name, TypeAlias(info)) // @!!!
                   }
                   if (formals != null)
                     formals = formals.tail
