@@ -15,6 +15,7 @@ import scala.annotation.switch
 import typer.Checking.checkNonCyclic
 import io.AbstractFile
 import scala.util.control.NonFatal
+import tasty.DottyUnpickler
 
 object ClassfileParser {
   /** Marker trait for unpicklers that can be embedded in classfiles. */
@@ -159,6 +160,16 @@ class ClassfileParser(
           defn.ScalaPackageClass.delete(sym)
         }
         sym.markAbsent()
+      }
+    }
+
+    if (ctx.settings.XlinkOptimise.value) {
+      // Save references to DottyUnpickler to be able to load compilation units from tasty
+      result match {
+        case result@Some(_: DottyUnpickler) =>
+          classRoot.dottyUnpickler = result.asInstanceOf[Option[DottyUnpickler]]
+          moduleRoot.dottyUnpickler = result.asInstanceOf[Option[DottyUnpickler]]
+        case _ =>
       }
     }
 

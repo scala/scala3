@@ -85,13 +85,8 @@ object FromTasty extends Driver {
               case info: ClassfileLoader =>
                 info.load(clsd)
                 val unpickled = clsd.symbol.asClass.tree
-                if (unpickled != null) {
-                    val unit1 = new CompilationUnit(new SourceFile(clsd.symbol.sourceFile, Seq()))
-                    unit1.tpdTree = unpickled
-                    force.traverse(unit1.tpdTree)
-                    unit1
-                } else
-                    cannotUnpickle(s"its class file ${info.classfile} does not have a TASTY attribute")
+                if (unpickled != null) mkUnit(clsd, unpickled)
+                else cannotUnpickle(s"its class file ${info.classfile} does not have a TASTY attribute")
               case info =>
                 cannotUnpickle(s"its info of type ${info.getClass} is not a ClassfileLoader")
             }
@@ -100,5 +95,21 @@ object FromTasty extends Driver {
             unit
         }
     }
+  }
+
+  def loadCompilationUnit(clsd: ClassDenotation)(implicit ctx: Context): Option[CompilationUnit] = {
+    assert(ctx.settings.XlinkOptimise.value)
+    clsd.dottyUnpickler.flatMap { unpickler =>
+      ctx.log("Loading compilation unit for: " + clsd)
+      val body = unpickler.body(ctx.addMode(Mode.ReadPositions))
+      body.headOption.map(unpickled => mkUnit(clsd, unpickled))
+    }
+  }
+
+  private def mkUnit(clsd: ClassDenotation, unpickled: Tree)(implicit ctx: Context): CompilationUnit = {
+    val unit1 = new CompilationUnit(new SourceFile(clsd.symbol.sourceFile, Seq()))
+    unit1.tpdTree = unpickled
+    force.traverse(unit1.tpdTree)
+    unit1
   }
 }
