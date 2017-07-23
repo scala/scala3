@@ -1413,7 +1413,7 @@ object Types {
     /** The closest supertype of this type. This is the same as `underlying`,
      *  except that
      *    - instead of a TyperBounds type it returns its upper bound, and
-     *    - for HKApplys it returns the upper bound of the constructor re-applied to the arguments.
+     *    - for applied types it returns the upper bound of the constructor re-applied to the arguments.
      */
     def superType(implicit ctx: Context): Type = underlying match {
       case TypeBounds(_, hi) => hi
@@ -3758,6 +3758,8 @@ object Types {
         }
         if ((tp.cls is Trait) || zeroParams(tp.cls.primaryConstructor.info)) tp // !!! needs to be adapted once traits have parameters
         else NoType
+      case tp: AppliedType =>
+        zeroParamClass(tp.superType)
       case tp: TypeRef =>
         zeroParamClass(tp.underlying)
       case tp: RefinedType =>
@@ -3835,6 +3837,8 @@ object Types {
       tp.derivedTypeBounds(lo, hi)
     protected def derivedSuperType(tp: SuperType, thistp: Type, supertp: Type): Type =
       tp.derivedSuperType(thistp, supertp)
+    protected def derivedAppliedType(tp: AppliedType, tycon: Type, args: List[Type]): Type =
+      tp.derivedAppliedType(tycon, args)
     protected def derivedAppliedType(tp: HKApply, tycon: Type, args: List[Type]): Type =
       tp.derivedAppliedType(tycon, args)
     protected def derivedAndOrType(tp: AndOrType, tp1: Type, tp2: Type): Type =
@@ -3872,6 +3876,16 @@ object Types {
         case _: ThisType
           | _: BoundType
           | NoPrefix => tp
+
+        case tp: AppliedType => // @!!! use atVariance
+          def mapArg(arg: Type, tparam: ParamInfo): Type = {
+            val saved = variance
+            variance *= tparam.paramVariance
+            try this(arg)
+            finally variance = saved
+          }
+          derivedAppliedType(tp, this(tp.tycon),
+              tp.args.zipWithConserve(tp.typeParams)(mapArg))
 
         case tp: RefinedType =>
           derivedRefinedType(tp, this(tp.parent), this(tp.refinedInfo))
@@ -4119,7 +4133,7 @@ object Types {
       if (isRange(thistp) || isRange(supertp)) range(thistp.bottomType, thistp.topType)
       else tp.derivedSuperType(thistp, supertp)
 
-    override protected def derivedAppliedType(tp: HKApply, tycon: Type, args: List[Type]): Type =
+    override protected def derivedAppliedType(tp: AppliedType, tycon: Type, args: List[Type]): Type =
       tycon match {
         case Range(tyconLo, tyconHi) =>
           range(derivedAppliedType(tp, tyconLo, args), derivedAppliedType(tp, tyconHi, args))
@@ -4160,6 +4174,46 @@ object Types {
           else tp.derivedAppliedType(tycon, args)
       }
 
+    override protected def derivedAppliedType(tp: HKApply, tycon: Type, args: List[Type]): Type =
+      tycon match {
+        case Range(tyconLo, tyconHi) =>
+          range(derivedAppliedType(tp, tyconLo, args), derivedAppliedType(tp, tyconHi, args))
+        case _ =>
+          if (args.exists(isRange)) {
+            if (variance > 0) tp.derivedAppliedType(tycon, args.map(rangeToBounds))
+            else {
+              val loBuf, hiBuf = new mutable.ListBuffer[Type]
+              // Given `C[A1, ..., An]` where sone A's are ranges, try to find
+              // non-range arguments L1, ..., Ln and H1, ..., Hn such that
+              // C[L1, ..., Ln] <: C[H1, ..., Hn] by taking the right limits of
+              // ranges that appear in as co- or contravariant arguments.
+              // Fail for non-variant argument ranges.
+              // If successful, the L-arguments are in loBut, the H-arguments in hiBuf.
+              // @return  operation succeeded for all arguments.
+              def distributeArgs(args: List[Type], tparams: List[ParamInfo]): Boolean = args match {
+                case Range(lo, hi) :: args1 =>
+                  val v = tparams.head.paramVariance
+                  if (v == 0) false
+                  else {
+                    if (v > 0) { loBuf += lo; hiBuf += hi }
+                    else { loBuf += hi; hiBuf += lo }
+                    distributeArgs(args1, tparams.tail)
+                  }
+                case arg :: args1 =>
+                  loBuf += arg; hiBuf += arg
+                  distributeArgs(args1, tparams.tail)
+                case nil =>
+                  true
+              }
+              if (distributeArgs(args, tp.typeParams))
+                range(tp.derivedAppliedType(tycon, loBuf.toList),
+                      tp.derivedAppliedType(tycon, hiBuf.toList))
+              else range(tp.bottomType, tp.topType)
+                // TODO: can we give a better bound than `topType`?
+            }
+          }
+          else tp.derivedAppliedType(tycon, args)
+      }
     override protected def derivedAndOrType(tp: AndOrType, tp1: Type, tp2: Type) =
       if (isRange(tp1) || isRange(tp2))
         if (tp.isAnd) range(lower(tp1) & lower(tp2), upper(tp1) & upper(tp2))
@@ -4235,6 +4289,23 @@ object Types {
       case _: ThisType
          | _: BoundType
          | NoPrefix => x
+
+      case tp @ AppliedType(tycon, args) =>
+        @tailrec def foldArgs(x: T, tparams: List[ParamInfo], args: List[Type]): T =
+          if (args.isEmpty) {
+            assert(tparams.isEmpty)
+            x
+          }
+          else { // @@!!! use atVariance
+            val tparam = tparams.head
+            val saved = variance
+            variance *= tparam.paramVariance
+            val acc =
+              try this(x, args.head)
+              finally variance = saved
+            foldArgs(acc, tparams.tail, args.tail)
+          }
+        foldArgs(this(x, tycon), tp.typeParams, args)
 
       case tp: RefinedType =>
         this(this(x, tp.parent), tp.refinedInfo)
