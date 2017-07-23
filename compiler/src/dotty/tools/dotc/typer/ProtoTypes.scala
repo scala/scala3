@@ -474,6 +474,11 @@ object ProtoTypes {
     case tp: NamedType => // default case, inlined for speed
       if (tp.symbol.isStatic) tp
       else tp.derivedSelect(wildApprox(tp.prefix, theMap, seen))
+    case tp @ AppliedType(tycon, args) =>
+      wildApprox(tycon, theMap, seen) match {
+        case _: WildcardType => WildcardType // this ensures we get a * type
+        case tycon1 => tp.derivedAppliedType(tycon1, args.mapConserve(wildApprox(_, theMap, seen)))
+      }
     case tp: RefinedType => // default case, inlined for speed
       tp.derivedRefinedType(
           wildApprox(tp.parent, theMap, seen),

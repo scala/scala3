@@ -1254,6 +1254,16 @@ object Types {
       case _ => TypeAlias(this)
     }
 
+    final def loBound: Type = this match {
+      case tp: TypeBounds => tp.lo
+      case _ => this
+    }
+
+    final def hiBound: Type = this match {
+      case tp: TypeBounds => tp.hi
+      case _ => this
+    }
+
     /** The type parameter with given `name`. This tries first `decls`
      *  in order not to provoke a cycle by forcing the info. If that yields
      *  no symbol it tries `member` as an alternative.
@@ -1391,7 +1401,7 @@ object Types {
     /** The closest supertype of this type. This is the same as `underlying`,
      *  except that
      *    - instead of a TyperBounds type it returns its upper bound, and
-     *    - for HKApplys it returns the upper bound of the constructor re-applied to the arguments.
+     *    - for applied types it returns the upper bound of the constructor re-applied to the arguments.
      */
     def superType(implicit ctx: Context): Type = underlying match {
       case TypeBounds(_, hi) => hi
@@ -3735,6 +3745,8 @@ object Types {
         }
         if ((tp.cls is Trait) || zeroParams(tp.cls.primaryConstructor.info)) tp // !!! needs to be adapted once traits have parameters
         else NoType
+      case tp: AppliedType =>
+        zeroParamClass(tp.superType)
       case tp: TypeRef =>
         zeroParamClass(tp.underlying)
       case tp: RefinedType =>
@@ -3800,6 +3812,8 @@ object Types {
       tp.derivedTypeBounds(lo, hi)
     protected def derivedSuperType(tp: SuperType, thistp: Type, supertp: Type): Type =
       tp.derivedSuperType(thistp, supertp)
+    protected def derivedAppliedType(tp: AppliedType, tycon: Type, args: List[Type]): Type =
+      tp.derivedAppliedType(tycon, args)
     protected def derivedAppliedType(tp: HKApply, tycon: Type, args: List[Type]): Type =
       tp.derivedAppliedType(tycon, args)
     protected def derivedAndOrType(tp: AndOrType, tp1: Type, tp2: Type): Type =
@@ -3840,6 +3854,16 @@ object Types {
         case _: ThisType
           | _: BoundType
           | NoPrefix => tp
+
+        case tp: AppliedType =>
+          def mapArg(arg: Type, tparam: ParamInfo): Type = {
+            val saved = variance
+            variance *= tparam.paramVariance
+            try this(arg)
+            finally variance = saved
+          }
+          derivedAppliedType(tp, this(tp.tycon),
+              tp.args.zipWithConserve(tp.typeParams)(mapArg))
 
         case tp: RefinedType =>
           derivedRefinedType(tp, this(tp.parent), this(tp.refinedInfo))
@@ -4005,6 +4029,9 @@ object Types {
     override protected def derivedSuperType(tp: SuperType, thistp: Type, supertp: Type) =
       if (thistp.exists && supertp.exists) tp.derivedSuperType(thistp, supertp)
       else NoType
+    override protected def derivedAppliedType(tp: AppliedType, tycon: Type, args: List[Type]): Type =
+      if (tycon.exists && args.forall(_.exists)) tp.derivedAppliedType(tycon, args)
+      else approx() // This is rather coarse, but to do better is a bit complicated
     override protected def derivedAppliedType(tp: HKApply, tycon: Type, args: List[Type]): Type =
       if (tycon.exists && args.forall(_.exists)) tp.derivedAppliedType(tycon, args)
       else approx() // This is rather coarse, but to do better is a bit complicated
@@ -4057,6 +4084,23 @@ object Types {
       case _: ThisType
          | _: BoundType
          | NoPrefix => x
+
+      case tp @ AppliedType(tycon, args) =>
+        @tailrec def foldArgs(x: T, tparams: List[ParamInfo], args: List[Type]): T =
+          if (args.isEmpty) {
+            assert(tparams.isEmpty)
+            x
+          }
+          else {
+            val tparam = tparams.head
+            val saved = variance
+            variance *= tparam.paramVariance
+            val acc =
+              try this(x, args.head)
+              finally variance = saved
+            foldArgs(acc, tparams.tail, args.tail)
+          }
+        foldArgs(this(x, tycon), tp.typeParams, args)
 
       case tp: RefinedType =>
         this(this(x, tp.parent), tp.refinedInfo)

@@ -102,6 +102,8 @@ trait TypeAssigner {
             case _ =>
               mapOver(tp)
           }
+        case tp @ AppliedType(tycon, args) if toAvoid(tycon) =>
+          apply(tp.superType)
         case tp @ HKApply(tycon, args) if toAvoid(tycon) =>
           apply(tp.superType)
         case tp @ AnyAppliedType(tycon, args) if toAvoid(tycon) =>

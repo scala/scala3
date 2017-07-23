@@ -83,7 +83,16 @@ object Checking {
       HKTypeLambda.fromParams(tparams, bound).appliedTo(args)
     checkBounds(orderedArgs, bounds, instantiate)
 
-    def checkWildcardHKApply(tp: Type, pos: Position): Unit = tp match {
+    def checkWildcardApply(tp: Type, pos: Position): Unit = tp match {
+      case tp @ AppliedType(tycon, args) if args.exists(_.isInstanceOf[TypeBounds]) =>
+        tycon match {
+          case tycon: TypeLambda =>
+            ctx.errorOrMigrationWarning(
+              ex"unreducible application of higher-kinded type $tycon to wildcard arguments",
+              pos)
+          case _ =>
+            checkWildcardApply(tp.superType, pos)
+        }
       case tp @ HKApply(tycon, args) if args.exists(_.isInstanceOf[TypeBounds]) =>
         tycon match {
           case tycon: TypeLambda =>
@@ -91,13 +100,13 @@ object Checking {
               ex"unreducible application of higher-kinded type $tycon to wildcard arguments",
               pos)
           case _ =>
-            checkWildcardHKApply(tp.superType, pos)
+            checkWildcardApply(tp.superType, pos)
         }
       case _ =>
     }
-    def checkValidIfHKApply(implicit ctx: Context): Unit =
-      checkWildcardHKApply(tycon.tpe.appliedTo(args.map(_.tpe)), tree.pos)
-    checkValidIfHKApply(ctx.addMode(Mode.AllowLambdaWildcardApply))
+    def checkValidIfApply(implicit ctx: Context): Unit =
+      checkWildcardApply(tycon.tpe.appliedTo(args.map(_.tpe)), tree.pos)
+    checkValidIfApply(ctx.addMode(Mode.AllowLambdaWildcardApply))
   }
 
   /** Check that kind of `arg` has the same outline as the kind of paramBounds.
@@ -213,6 +222,8 @@ object Checking {
       case tp: TermRef =>
         this(tp.info)
         mapOver(tp)
+      case tp @ AppliedType(tycon, args) =>
+        tp.derivedAppliedType(this(tycon), args.map(this(_, nestedCycleOK, nestedCycleOK)))
       case tp @ RefinedType(parent, name, rinfo) =>
         tp.derivedRefinedType(this(parent), name, this(rinfo, nestedCycleOK, nestedCycleOK))
       case tp: RecType =>
@@ -234,7 +245,7 @@ object Checking {
             case SuperType(thistp, _) => isInteresting(thistp)
             case AndType(tp1, tp2) => isInteresting(tp1) || isInteresting(tp2)
             case OrType(tp1, tp2) => isInteresting(tp1) && isInteresting(tp2)
-            case _: RefinedOrRecType | _: HKApply => true
+            case _: RefinedOrRecType | _: HKApply | _: AppliedType => true
             case _ => false
           }
           if (isInteresting(pre)) {
