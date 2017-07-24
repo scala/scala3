@@ -144,8 +144,7 @@ object Inliner {
           case _: Apply | _: TypeApply | _: RefTree if needsAccessor(tree.symbol) =>
             if (tree.isTerm) {
               val (methPart, targs, argss) = decomposeCall(tree)
-              val mSym = methPart.symbol
-              if (mSym.isConstructor && (mSym.is(Private) || mSym.privateWithin.exists)) {
+              if (methPart.symbol.isConstructor && needsAccessor(methPart.symbol)) {
                 ctx.error("Cannot use private constructors in inline methods", tree.pos)
                 tree // TODO: create a proper accessor for the private constructor
               } else {
