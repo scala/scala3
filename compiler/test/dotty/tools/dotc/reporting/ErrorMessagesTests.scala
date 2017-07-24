@@ -910,4 +910,20 @@ class ErrorMessagesTests extends ErrorMessagesTest {
 
       assertEquals(err, WrongNumberOfParameters(1))
     }
+
+  @Test def duplicatePrivateProtectedQualifier =
+    checkMessagesAfter("frontend") {
+      """class Test {
+        |   private[Test] protected[this] def foo(): Unit = ()
+        |} """.stripMargin
+    }
+      .expect { (ictx, messages) =>
+        implicit val ctx: Context = ictx
+        val defn = ictx.definitions
+
+        assertMessageCount(1, messages)
+        val err :: Nil = messages
+
+        assertEquals(DuplicatePrivateProtectedQualifier(), err)
+      }
 }
