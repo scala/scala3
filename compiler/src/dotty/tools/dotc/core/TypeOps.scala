@@ -132,9 +132,11 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
 
   /** Approximate a type `tp` with a type that does not contain skolem types. */
   object deskolemize extends ApproximatingTypeMap {
-    def apply(tp: Type) = tp match {
-      case tp: SkolemType => range(hi = apply(tp.info))
-      case _ => mapOver(tp)
+    def apply(tp: Type) = /*ctx.traceIndented(i"deskolemize($tp) at $variance", show = true)*/ {
+      tp match {
+        case tp: SkolemType => range(hi = atVariance(1)(apply(tp.info)))
+        case _ => mapOver(tp)
+      }
     }
   }
 

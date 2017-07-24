@@ -3888,6 +3888,9 @@ object Types {
   case class Range(lo: Type, hi: Type) extends UncachedGroundType {
     assert(!lo.isInstanceOf[Range])
     assert(!hi.isInstanceOf[Range])
+
+    override def toText(printer: Printer): Text =
+      lo.toText(printer) ~ ".." ~ hi.toText(printer)
   }
 
   /** A type map that approximates TypeBounds types depending on
@@ -3922,14 +3925,23 @@ object Types {
       case _ => tp
     }
 
+    def atVariance[T](v: Int)(op: => T): T = {
+      val saved = variance
+      variance = v
+      try op finally variance = saved
+    }
+
     override protected def derivedSelect(tp: NamedType, pre: Type) =
       if (pre eq tp.prefix) tp
       else pre match {
         case Range(preLo, preHi) =>
           tp.info match {
-            case TypeAlias(alias) => apply(alias)
-            case TypeBounds(lo, hi) => range(apply(lo), apply(hi))
-            case _ => range(tp.derivedSelect(preLo), tp.derivedSelect(preHi))
+            case TypeAlias(alias) =>
+              apply(alias)
+            case TypeBounds(lo, hi) =>
+              range(atVariance(-1)(apply(lo)), atVariance(1)(apply(hi)))
+            case _ =>
+              range(tp.derivedSelect(preLo), tp.derivedSelect(preHi))
           }
         case _ => tp.derivedSelect(pre)
       }
@@ -3947,11 +3959,13 @@ object Types {
               tp.derivedRefinedType(parent, tp.refinedName, rangeToBounds(info))
           }
       }
+
     override protected def derivedRecType(tp: RecType, parent: Type) =
       parent match {
         case Range(lo, hi) => range(tp.rebind(lo), tp.rebind(hi))
         case _ => tp.rebind(parent)
       }
+
     override protected def derivedTypeAlias(tp: TypeAlias, alias: Type) =
       alias match {
         case Range(lo, hi) =>
@@ -3959,11 +3973,13 @@ object Types {
           else range(TypeAlias(lo), TypeAlias(hi))
         case _ => tp.derivedTypeAlias(alias)
       }
+
     override protected def derivedTypeBounds(tp: TypeBounds, lo: Type, hi: Type) =
       if (isRange(lo) || isRange(hi))
         if (variance > 0) TypeBounds(loBound(lo), hiBound(hi))
         else range(TypeBounds(hiBound(lo), loBound(hi)), TypeBounds(loBound(lo), hiBound(hi)))
       else tp.derivedTypeBounds(lo, hi)
+
     override protected def derivedSuperType(tp: SuperType, thistp: Type, supertp: Type) =
       if (isRange(thistp) || isRange(supertp)) range()
       else tp.derivedSuperType(thistp, supertp)
@@ -4003,6 +4019,7 @@ object Types {
         if (tp.isAnd) range(loBound(tp1) & loBound(tp2), hiBound(tp1) & hiBound(tp2))
         else range(loBound(tp1) | loBound(tp2), hiBound(tp1) | hiBound(tp2))
       else tp.derivedAndOrType(tp1, tp2)
+
     override protected def derivedAnnotatedType(tp: AnnotatedType, underlying: Type, annot: Annotation) =
       underlying match {
         case Range(lo, hi) =>
@@ -4014,6 +4031,7 @@ object Types {
     override protected def derivedWildcardType(tp: WildcardType, bounds: Type) = {
       tp.derivedWildcardType(rangeToBounds(bounds))
     }
+
     override protected def derivedClassInfo(tp: ClassInfo, pre: Type): Type = {
       assert(!pre.isInstanceOf[Range])
       tp.derivedClassInfo(pre)
