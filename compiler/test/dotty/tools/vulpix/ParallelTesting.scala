@@ -61,6 +61,14 @@ trait ParallelTesting extends RunnerOrchestration { self =>
         .map(":" + _)
         .getOrElse("")
 
+    def runClassPath = {
+      flags
+        .dropWhile(_ != "-YRunClasspath")
+        .drop(1)
+        .headOption
+        .map(outDir.getAbsolutePath + ":" + _)
+        .getOrElse(classPath)
+    }
 
     def title: String = self match {
       case self: JointCompilationSource =>
@@ -503,7 +511,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
 
     private def verifyOutput(checkFile: Option[JFile], dir: JFile, testSource: TestSource, warnings: Int) = {
       if (Properties.testsNoRun) addNoRunWarning()
-      else runMain(testSource.classPath) match {
+      else runMain(testSource.runClassPath) match {
         case Success(_) if !checkFile.isDefined || !checkFile.get.exists => // success!
         case Success(output) => {
           val outputLines = output.lines.toArray
@@ -1124,8 +1132,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
    *  `testName` since files can be in separate directories and or be otherwise
    *  dissociated
    */
-  def compileList(testName: String, files: List[String], flags: Array[String])(implicit outDirectory: String): CompilationTest = {
-    val callingMethod = getCallingMethod()
+  def compileList(testName: String, files: List[String], flags: Array[String], callingMethod: String = getCallingMethod())(implicit outDirectory: String): CompilationTest = {
     val outDir = outDirectory + callingMethod + "/" + testName + "/"
 
     // Directories in which to compile all containing files with `flags`:
