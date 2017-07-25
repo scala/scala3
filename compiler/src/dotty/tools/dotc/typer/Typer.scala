@@ -2161,6 +2161,11 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
       }
     }
 
+    def toSAM(tree: Tree): Tree = tree match {
+      case tree: Block => tpd.cpy.Block(tree)(tree.stats, toSAM(tree.expr))
+      case tree: Closure => cpy.Closure(tree)(tpt = TypeTree(pt)).withType(pt)
+    }
+
     def adaptToSubType(wtp: Type): Tree = {
       // try converting a constant to the target type
       val folded = ConstFold(tree, pt)
@@ -2172,7 +2177,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
         return tpd.Block(adapt(tree, WildcardType) :: Nil, Literal(Constant(())))
       // convert function literal to SAM closure
       tree match {
-        case Closure(Nil, id @ Ident(nme.ANON_FUN), _)
+        case closure(Nil, id @ Ident(nme.ANON_FUN), _)
         if defn.isFunctionType(wtp) && !defn.isFunctionType(pt) =>
           pt match {
             case SAMType(meth)
@@ -2181,7 +2186,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
               // but this prevents case blocks from implementing polymorphic partial functions,
               // since we do not know the result parameter a priori. Have to wait until the
               // body is typechecked.
-              return cpy.Closure(tree)(Nil, id, TypeTree(pt)).withType(pt)
+              return toSAM(tree)
             case _ =>
           }
         case _ =>

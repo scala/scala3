@@ -474,21 +474,24 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
     type TypedArg = Arg
     type Result = Unit
 
+    protected def argOK(arg: TypedArg, formal: Type) = argType(arg, formal) match {
+      case ref: TermRef if ref.denot.isOverloaded =>
+        // in this case we could not resolve overloading because no alternative
+        // matches expected type
+        false
+      case argtpe =>
+        def SAMargOK = formal match {
+          case SAMType(meth) => argtpe <:< meth.info.toFunctionType()
+          case _ => false
+        }
+        isCompatible(argtpe, formal) || ctx.mode.is(Mode.ImplicitsEnabled) && SAMargOK
+    }
+
     /** The type of the given argument */
     protected def argType(arg: Arg, formal: Type): Type
 
     def typedArg(arg: Arg, formal: Type): Arg = arg
-    def addArg(arg: TypedArg, formal: Type) =
-      ok = ok & {
-        argType(arg, formal) match {
-          case ref: TermRef if ref.denot.isOverloaded =>
-            // in this case we could not resolve overloading because no alternative
-            // matches expected type
-            false
-          case argtpe =>
-            isCompatible(argtpe, formal)
-        }
-      }
+    final def addArg(arg: TypedArg, formal: Type) = ok = ok & argOK(arg, formal)
     def makeVarArg(n: Int, elemFormal: Type) = {}
     def fail(msg: => Message, arg: Arg) =
       ok = false
@@ -512,11 +515,10 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
   }
 
   /** Subclass of Application for applicability tests with type arguments and value
-    *  argument trees.
-    */
+   * argument trees.
+   */
   class ApplicableToTreesDirectly(methRef: TermRef, targs: List[Type], args: List[Tree], resultType: Type)(implicit ctx: Context) extends ApplicableToTrees(methRef, targs, args, resultType)(ctx) {
-    override def addArg(arg: TypedArg, formal: Type) =
-      ok = ok & (argType(arg, formal) <:< formal)
+    override def argOK(arg: TypedArg, formal: Type) = argType(arg, formal) <:< formal
   }
 
   /** Subclass of Application for applicability tests with value argument types. */
@@ -1197,7 +1199,8 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
   /** Resolve overloaded alternative `alts`, given expected type `pt` and
    *  possibly also type argument `targs` that need to be applied to each alternative
    *  to form the method type.
-   *  todo: use techniques like for implicits to pick candidates quickly?
+   *  Two trials: First, without implicits or SAM conversions enabled. Then,
+   *  if the fist finds no eligible candidates, with implicits and SAM conversions enabled.
    */
   def resolveOverloaded(alts: List[TermRef], pt: Type)(implicit ctx: Context): List[TermRef] = track("resolveOverloaded") {
 
@@ -1222,7 +1225,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
      *  fallback to `chosen`.
      *
      *  Note this order of events is done for speed. One might be tempted to
-     *  preselect alternatives by result type. But is slower, because it discriminates
+     *  preselect alternatives by result type. But this is slower, because it discriminates
      *  less. The idea is when searching for a best solution, as is the case in overloading
      *  resolution, we should first try criteria which are cheap and which have a high
      *  probability of pruning the search. result type comparisons are neither cheap nor
@@ -1258,7 +1261,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
   /** This private version of `resolveOverloaded` does the bulk of the work of
    *  overloading resolution, but does not do result adaptation. It might be
    *  called twice from the public `resolveOverloaded` method, once with
-   *  implicits enabled, and once without.
+   *  implicits and SAM conversions enabled, and once without.
    */
   private def resolveOverloaded(alts: List[TermRef], pt: Type, targs: List[Type])(implicit ctx: Context): List[TermRef] = track("resolveOverloaded") {
 
@@ -1338,7 +1341,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
         if (isDetermined(alts1)) alts1
         else {
           val alts2 = narrowByShapes(alts1)
-          //ctx.log(i"narrowed by shape: ${alts1.map(_.symbol.showDcl)}%, %")
+          //ctx.log(i"narrowed by shape: ${alts2.map(_.symbol.showDcl)}%, %")
           if (isDetermined(alts2)) alts2
           else {
             pretypeArgs(alts2, pt)
