@@ -2191,7 +2191,10 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
         case SearchSuccess(inferred, _, _, _) =>
           adapt(inferred, pt)(ctx.retractMode(Mode.ImplicitsEnabled))
         case failure: SearchFailure =>
+          val prevConstraint = ctx.typerState.constraint
           if (pt.isInstanceOf[ProtoType] && !failure.isInstanceOf[AmbiguousImplicits]) tree
+          else if (isFullyDefined(wtp, force = ForceDegree.all) &&
+                   ctx.typerState.constraint.ne(prevConstraint)) adapt(tree, pt, original)
           else err.typeMismatch(tree, pt, failure)
       }
     }

@@ -31,10 +31,9 @@ scala> val a: Inv[String] = new Inv(new Inv(1))
 -- [E007] Type Mismatch Error: <console>:5:33 ----------------------------------
 5 |val a: Inv[String] = new Inv(new Inv(1))
   |                                 ^^^^^
-  |                  found:    Inv[T]
-  |                  required: String
-  |                  
-  |                  where:    T is a type variable with constraint >: Int(1)
+  |                                 found:    Inv[Int]
+  |                                 required: String
+  |                                 
 scala> val b: Inv[String] = new Inv(1)
 -- [E007] Type Mismatch Error: <console>:5:29 ----------------------------------
 5 |val b: Inv[String] = new Inv(1)
