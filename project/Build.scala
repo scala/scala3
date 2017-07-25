@@ -828,7 +828,8 @@ object Build {
     dependsOn(`dotty-compiler`).
     settings(commonNonBootstrappedSettings).
     settings(
-      mainClass in (Jmh, run) := Some("dotty.tools.benchmarks.Bench")   // custom main for jmh:run
+      mainClass in (Jmh, run) := Some("dotty.tools.benchmarks.Bench"), // custom main for jmh:run
+      javaOptions += "-DBENCH_CLASS_PATH=" + Attributed.data((fullClasspath in Compile).value).mkString("", ":", "")
     ).
     enablePlugins(JmhPlugin).
     settings(packSettings).

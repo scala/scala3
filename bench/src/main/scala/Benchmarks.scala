@@ -18,17 +18,25 @@ object Bench {
   val COMPILE_OPTS_FILE = "compile.txt"
 
   def main(args: Array[String]): Unit = {
-    storeCompileOptions(args)
+    if (args.isEmpty) {
+      println("Missing <args>")
+      return
+    }
 
-    val libs = System.getenv("BOOTSTRAP_APPEND")
+    val args2 = args.map { arg =>
+      if (arg.endsWith(".scala")) "../" + arg else arg
+    }
+    storeCompileOptions(args2)
+
+    val libs = System.getProperty("BENCH_CLASS_PATH")
 
     val opts = new OptionsBuilder()
-               .jvmArgsPrepend(s"-Xbootclasspath/a:$libs")
+               .jvmArgsPrepend("-Xbootclasspath/a:" + libs + ":")
                .mode(Mode.AverageTime)
-               .timeUnit(TimeUnit.MICROSECONDS)
-               .forks(5)
-               .warmupIterations(5)
-               .measurementIterations(10)
+               .timeUnit(TimeUnit.MILLISECONDS)
+               .forks(1)
+               .warmupIterations(12)
+               .measurementIterations(20)
                .resultFormat(ResultFormatType.CSV)
                .result("result.csv")
                .build

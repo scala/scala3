@@ -58,6 +58,7 @@ out/
 build/
 !out/.keep
 testlogs/
+bench/result.csv
 
 # Ignore build-file
 .packages
