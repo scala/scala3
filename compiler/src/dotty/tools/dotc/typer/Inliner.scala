@@ -351,6 +351,10 @@ class Inliner(call: tpd.Tree, rhs: tpd.Tree)(implicit ctx: Context) {
       assert(argss.isEmpty)
   }
 
+  private def canElideThis(tpe: ThisType): Boolean =
+    prefix.tpe == tpe && ctx.owner.isContainedIn(tpe.cls) ||
+    tpe.cls.is(Package)
+
   /** Populate `thisProxy` and `paramProxy` as follows:
    *
    *  1a. If given type refers to a static this, thisProxy binds it to corresponding global reference,
@@ -363,9 +367,7 @@ class Inliner(call: tpd.Tree, rhs: tpd.Tree)(implicit ctx: Context) {
    *      and MethodParams, not TypeRefs or TermRefs.
    */
   private def registerType(tpe: Type): Unit = tpe match {
-    case tpe: ThisType
-    if !ctx.owner.isContainedIn(tpe.cls) && !tpe.cls.is(Package) &&
-       !thisProxy.contains(tpe.cls) =>
+    case tpe: ThisType if !canElideThis(tpe) && !thisProxy.contains(tpe.cls) =>
       val proxyName = s"${tpe.cls.name}_this".toTermName
       val proxyType = tpe.asSeenFrom(prefix.tpe, meth.owner)
       thisProxy(tpe.cls) = newSym(proxyName, EmptyFlags, proxyType).termRef
