@@ -99,10 +99,11 @@ object FromTasty extends Driver {
 
   def loadCompilationUnit(clsd: ClassDenotation)(implicit ctx: Context): Option[CompilationUnit] = {
     assert(ctx.settings.XlinkOptimise.value)
-    clsd.dottyUnpickler.flatMap { unpickler =>
+    val tree = clsd.symbol.asClass.unitTree
+    if (tree.isEmpty) None
+    else {
       ctx.log("Loading compilation unit for: " + clsd)
-      val body = unpickler.body(ctx.addMode(Mode.ReadPositions))
-      body.headOption.map(unpickled => mkUnit(clsd, unpickled))
+      Some(mkUnit(clsd, tree))
     }
   }
 

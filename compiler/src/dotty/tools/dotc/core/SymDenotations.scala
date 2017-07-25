@@ -19,8 +19,6 @@ import java.util.WeakHashMap
 import config.Config
 import config.Printers.{completions, incremental, noPrinter}
 
-import dotty.tools.dotc.core.tasty.DottyUnpickler
-
 trait SymDenotations { this: Context =>
   import SymDenotations._
 
@@ -140,8 +138,6 @@ object SymDenotations {
     private[this] var myInfo: Type = initInfo
     private[this] var myPrivateWithin: Symbol = initPrivateWithin
     private[this] var myAnnotations: List[Annotation] = Nil
-
-    private[dotc] var dottyUnpickler: Option[DottyUnpickler] = None
 
     /** The owner of the symbol; overridden in NoDenotation */
     def owner: Symbol = ownerIfExists

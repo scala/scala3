@@ -558,31 +558,43 @@ object Symbols {
     /** If this is a top-level class, and if `-Yretain-trees` is set, return the TypeDef tree
      *  for this class, otherwise EmptyTree. This will force the info of the class.
      */
-    def tree(implicit ctx: Context): tpd.Tree /* tpd.TypeDef | tpd.EmptyTree */ = {
+    def tree(implicit ctx: Context): tpd.Tree /* tpd.TypeDef | tpd.EmptyTree */  = {
+      import ast.Trees._
+      def findTree(tree: tpd.Tree): Option[tpd.TypeDef] = tree match {
+        case PackageDef(_, stats) =>
+          stats.flatMap(findTree).headOption
+        case tree: tpd.TypeDef if tree.symbol == this =>
+          Some(tree)
+        case _ =>
+          None
+      }
+      val t = unitTree
+      if (t.isEmpty) t
+      else findTree(tree).get
+    }
+
+    /** If this is a top-level class, and if `-Yretain-trees` or `-YlinkOptimise` is set,
+      * return the PackageDef tree for this class, otherwise EmptyTree.
+      * This will force the info of the class.
+      */
+    def unitTree(implicit ctx: Context): tpd.Tree /* tpd.PackageDef | tpd.TypeDef | tpd.EmptyTree */ = {
       denot.info
       // TODO: Consider storing this tree like we store lazy trees for inline functions
       if (unpickler != null && !denot.isAbsent) {
         assert(myTree.isEmpty)
-
-        import ast.Trees._
-
-        def findTree(tree: tpd.Tree): Option[tpd.TypeDef] = tree match {
-          case PackageDef(_, stats) =>
-            stats.flatMap(findTree).headOption
-          case tree: tpd.TypeDef if tree.symbol == this =>
-            Some(tree)
-          case _ =>
-              None
-        }
-        val List(unpickledTree) = unpickler.body(ctx.addMode(Mode.ReadPositions))
+        val body = unpickler.body(ctx.addMode(Mode.ReadPositions))
+        myTree = body.headOption.getOrElse(tpd.EmptyTree)
         unpickler = null
-
-        myTree = findTree(unpickledTree).get
       }
       myTree
     }
-    private[dotc] var myTree: tpd.Tree = tpd.EmptyTree
+    private var myTree: tpd.Tree /* tpd.PackageDef | tpd.TypeDef | tpd.EmptyTree */ = tpd.EmptyTree
     private[dotc] var unpickler: tasty.DottyUnpickler = _
+
+    private[dotc] def registerTree(tree: tpd.TypeDef)(implicit ctx: Context): Unit = {
+      if (ctx.settings.YretainTrees.value)
+        myTree = tree
+    }
 
     /** The source or class file from which this class was generated, null if not applicable. */
     override def associatedFile(implicit ctx: Context): AbstractFile =
