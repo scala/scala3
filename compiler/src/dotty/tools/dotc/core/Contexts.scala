@@ -218,7 +218,7 @@ object Contexts {
             else
               outer.implicits
           if (implicitRefs.isEmpty) outerImplicits
-          else new ContextualImplicits(implicitRefs, outerImplicits)(this)
+          else new ContextualImplicits(implicitRefs, outerImplicits, this)
         }
       implicitsCache
     }
@@ -526,7 +526,7 @@ object Contexts {
     sstate = settings.defaultState
     tree = untpd.EmptyTree
     typeAssigner = TypeAssigner
-    runInfo = new RunInfo(this)
+    runInfo = new RunInfo
     diagnostics = None
     freshNames = new FreshNameCreator.Default
     moreProperties = Map.empty
@@ -537,7 +537,7 @@ object Contexts {
 
   @sharable object NoContext extends Context {
     val base = null
-    override val implicits: ContextualImplicits = new ContextualImplicits(Nil, null)(this)
+    override val implicits: ContextualImplicits = new ContextualImplicits(Nil, null, this)
   }
 
   /** A context base defines state and associated methods that exist once per
@@ -690,9 +690,7 @@ object Contexts {
   }
 
   /** Info that changes on each compiler run */
-  class RunInfo(initctx: Context) extends ImplicitRunInfo with ConstraintRunInfo {
-    implicit val ctx: Context = initctx
-  }
+  class RunInfo extends ImplicitRunInfo with ConstraintRunInfo
 
   class GADTMap(initBounds: SimpleMap[Symbol, TypeBounds]) extends util.DotClass {
     private var myBounds = initBounds

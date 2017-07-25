@@ -5,7 +5,7 @@ import core._
 import Texts._, ast.Trees._
 import Types.Type, Symbols.Symbol, Contexts.Context, Scopes.Scope, Constants.Constant,
        Names.Name, Denotations._, Annotations.Annotation
-import typer.Implicits.SearchResult
+import typer.Implicits.{ImplicitRefs, SearchResult}
 import typer.ImportInfo
 
 /** The base class of all printers
@@ -95,6 +95,9 @@ abstract class Printer {
 
   /** Textual representation of tree */
   def toText[T >: Untyped](tree: Tree[T]): Text
+
+  /** Textual representation of implicit references */
+  def toText(irefs: ImplicitRefs): Text
 
   /** Textual representation of implicit search result */
   def toText(result: SearchResult): Text
