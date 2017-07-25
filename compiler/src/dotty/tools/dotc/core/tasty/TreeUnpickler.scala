@@ -293,6 +293,11 @@ class TreeUnpickler(reader: TastyReader, nameAtRef: NameRef => TermName, posUnpi
           RecType(rt => registeringType(rt, readType()))
         case RECthis =>
           RecThis(readTypeRef().asInstanceOf[RecType])
+        case LAZYref =>
+          val rdr = fork
+          def readUnderlying() = rdr.readType()
+          skipTree()
+          LazyRef(readUnderlying)
         case SHARED =>
           val ref = readAddr()
           typeAtAddr.getOrElseUpdate(ref, forkAt(ref).readType())
