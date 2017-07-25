@@ -37,8 +37,6 @@ object Bench {
                .forks(1)
                .warmupIterations(12)
                .measurementIterations(20)
-               .resultFormat(ResultFormatType.CSV)
-               .result("result.csv")
                .build
 
     val runner = new Runner(opts) // full access to all JMH features, you can also provide a custom output Format here
