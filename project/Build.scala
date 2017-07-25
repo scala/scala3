@@ -831,15 +831,7 @@ object Build {
       mainClass in (Jmh, run) := Some("dotty.tools.benchmarks.Bench"), // custom main for jmh:run
       javaOptions += "-DBENCH_CLASS_PATH=" + Attributed.data((fullClasspath in Compile).value).mkString("", ":", "")
     ).
-    enablePlugins(JmhPlugin).
-    settings(packSettings).
-    settings(
-      publishArtifact := false,
-      packMain := Map("bench" -> "dotty.tools.benchmarks.Bench"),
-      packGenerateWindowsBatFile := false,
-      packExpandedClasspath := true,
-      packBashTemplate := baseDirectory.value + "/templates/launch.mustache"
-    )
+    enablePlugins(JmhPlugin)
 
   // Depend on dotty-library so that sbt projects using dotty automatically
   // depend on the dotty-library
