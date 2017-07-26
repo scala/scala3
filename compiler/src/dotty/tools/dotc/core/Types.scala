@@ -1198,8 +1198,6 @@ object Types {
 
     /** The full parent types, including (in new scheme) all type arguments */
     def parentsNEW(implicit ctx: Context): List[Type] = this match {
-      case AppliedType(tycon: HKTypeLambda, args) => // TODO: can be eliminated once ClassInfo is changed, also: cache?
-        tycon.resType.parentsWithArgs.map(_.substParams(tycon, args))
       case tp: TypeProxy => tp.superType.parentsNEW
       case _ => Nil
     }
@@ -2242,7 +2240,8 @@ object Types {
   abstract case class RefinedType(parent: Type, refinedName: Name, refinedInfo: Type) extends RefinedOrRecType {
 
     if (refinedName.isTermName) assert(refinedInfo.isInstanceOf[TermType])
-    else assert(refinedInfo.isInstanceOf[TypeType])
+    else assert(refinedInfo.isInstanceOf[TypeType], this)
+    if (Config.newScheme) assert(!refinedName.is(NameKinds.ExpandedName), this)
 
     override def underlying(implicit ctx: Context) = parent
 
@@ -2558,11 +2557,12 @@ object Types {
     type ThisName <: Name
     type PInfo <: Type
     type This <: LambdaType{type PInfo = self.PInfo}
+    type ParamRefType <: ParamRef
 
     def paramNames: List[ThisName]
     def paramInfos: List[PInfo]
     def resType: Type
-    def newParamRef(n: Int): ParamRef
+    def newParamRef(n: Int): ParamRefType
 
     override def resultType(implicit ctx: Context) = resType
 
@@ -2576,7 +2576,7 @@ object Types {
     final def isTypeLambda = isInstanceOf[TypeLambda]
     final def isHigherKinded = isInstanceOf[TypeProxy]
 
-    lazy val paramRefs: List[ParamRef] = paramNames.indices.toList.map(newParamRef)
+    lazy val paramRefs: List[ParamRefType] = paramNames.indices.toList.map(newParamRef)
 
     protected def computeSignature(implicit ctx: Context) = resultSignature
 
@@ -2647,6 +2647,7 @@ object Types {
     type ThisName = TermName
     type PInfo = Type
     type This <: TermLambda
+    type ParamRefType = TermParamRef
 
     override def resultType(implicit ctx: Context): Type =
       if (dependencyStatus == FalseDeps) { // dealias all false dependencies
@@ -2886,6 +2887,7 @@ object Types {
     type ThisName = TypeName
     type PInfo = TypeBounds
     type This <: TypeLambda
+    type ParamRefType = TypeParamRef
 
     def isDependent(implicit ctx: Context): Boolean = true
     def isParamDependent(implicit ctx: Context): Boolean = true
@@ -3037,7 +3039,7 @@ object Types {
     final val Provisional: DependencyStatus = 4  // set if dependency status can still change due to type variable instantiations
   }
 
-  // ----- HK types: LambdaParam, HKApply ---------------------
+  // ----- HK types: LambdaParam, HKApply, TypeArgRef ---------------------
 
   /** The parameter of a type lambda */
   case class LambdaParam(tl: TypeLambda, n: Int) extends ParamInfo {
@@ -3204,6 +3206,24 @@ object Types {
   object HKApply {
     def apply(tycon: Type, args: List[Type])(implicit ctx: Context) =
       unique(new CachedHKApply(tycon, args)).checkInst
+  }
+
+  /** A reference to wildcard argument `p.<parameter X of class C>`
+   *  where `p: C[... _ ...]`
+   */
+  abstract case class TypeArgRef(prefix: Type, clsRef: TypeRef, idx: Int) extends CachedProxyType {
+    override def underlying(implicit ctx: Context): Type =
+      prefix.baseType(clsRef.symbol).argInfos.apply(idx)
+    def derivedTypeArgRef(prefix: Type)(implicit ctx: Context): Type =
+      if (prefix eq this.prefix) this else TypeArgRef(prefix, clsRef, idx)
+    override def computeHash = doHash(idx, prefix, clsRef)
+  }
+
+  final class CachedTypeArgRef(prefix: Type, clsRef: TypeRef, idx: Int) extends TypeArgRef(prefix, clsRef, idx)
+
+  object TypeArgRef {
+    def apply(prefix: Type, clsRef: TypeRef, idx: Int)(implicit ctx: Context) =
+      unique(new CachedTypeArgRef(prefix, clsRef, idx))
   }
 
   // ----- BoundTypes: ParamRef, RecThis ----------------------------------------
@@ -3417,7 +3437,7 @@ object Types {
   abstract case class ClassInfo(
       prefix: Type,
       cls: ClassSymbol,
-      classParents: List[TypeRef],
+      classParentsNEW: List[Type],
       decls: Scope,
       selfInfo: DotClass /* should be: Type | Symbol */) extends CachedGroundType with TypeType {
 
@@ -3442,14 +3462,16 @@ object Types {
 
     private var selfTypeCache: Type = null
 
-    private def fullyAppliedRef(base: Type, tparams: List[TypeSymbol])(implicit ctx: Context): Type = tparams match {
-      case tparam :: tparams1 =>
-        fullyAppliedRef(
-          RefinedType(base, tparam.name, TypeRef(cls.thisType, tparam).toBounds(tparam)),
-          tparams1)
-      case nil =>
-        base
-    }
+    private def fullyAppliedRef(base: Type, tparams: List[TypeSymbol])(implicit ctx: Context): Type =
+      if (Config.newScheme) base.appliedTo(tparams.map(_.typeRef))
+      else tparams match {
+        case tparam :: tparams1 =>
+          fullyAppliedRef(
+            RefinedType(base, tparam.name, TypeRef(cls.thisType, tparam).toBounds(tparam)),
+            tparams1)
+        case nil =>
+          base
+      }
 
     /** The class type with all type parameters */
     def fullyAppliedRef(implicit ctx: Context): Type = fullyAppliedRef(cls.typeRef, cls.typeParams)
@@ -3468,18 +3490,17 @@ object Types {
     def symbolicTypeRef(implicit ctx: Context): TypeRef = TypeRef(prefix, cls)
 
     // cached because baseType needs parents
-    private var parentsCache: List[TypeRef] = null
+    private var parentsCache: List[Type] = null
 
     /** The parent type refs as seen from the given prefix */
-    override def parentRefs(implicit ctx: Context): List[TypeRef] = {
-      if (parentsCache == null)
-        parentsCache = cls.classParents.mapConserve(_.asSeenFrom(prefix, cls.owner).asInstanceOf[TypeRef])
-      parentsCache
-    }
+    override def parentRefs(implicit ctx: Context): List[TypeRef] =
+      if (Config.newScheme) parentsNEW.map(_.typeConstructor.asInstanceOf[TypeRef])
+      else parentsNEW.mapconserve(_.asInstanceOf[TypeRef])
 
     /** The parent types with all type arguments */
     override def parentsWithArgs(implicit ctx: Context): List[Type] =
-      parentRefs mapConserve { pref =>
+      if (Config.newScheme) parentsNEW
+      else parentRefs mapConserve { pref =>
         ((pref: Type) /: pref.classSymbol.typeParams) { (parent, tparam) =>
           val targSym = decls.lookup(tparam.name)
           if (targSym.exists) RefinedType(parent, targSym.name, targSym.info)
@@ -3487,23 +3508,26 @@ object Types {
         }
       }
 
-    override def parentsNEW(implicit ctx: Context): List[Type] =
-      parentRefs // !!! TODO: change
+    override def parentsNEW(implicit ctx: Context): List[Type] = {
+      if (parentsCache == null)
+        parentsCache = classParentsNEW.mapConserve(_.asSeenFrom(prefix, cls.owner))
+      parentsCache
+    }
 
     def derivedClassInfo(prefix: Type)(implicit ctx: Context) =
       if (prefix eq this.prefix) this
-      else ClassInfo(prefix, cls, classParents, decls, selfInfo)
+      else ClassInfo(prefix, cls, classParentsNEW, decls, selfInfo)
 
-    def derivedClassInfo(prefix: Type = this.prefix, classParents: List[TypeRef] = classParents, decls: Scope = this.decls, selfInfo: DotClass = this.selfInfo)(implicit ctx: Context) =
-      if ((prefix eq this.prefix) && (classParents eq this.classParents) && (decls eq this.decls) && (selfInfo eq this.selfInfo)) this
-      else ClassInfo(prefix, cls, classParents, decls, selfInfo)
+    def derivedClassInfo(prefix: Type = this.prefix, classParentsNEW: List[Type] = this.classParentsNEW, decls: Scope = this.decls, selfInfo: DotClass = this.selfInfo)(implicit ctx: Context) =
+      if ((prefix eq this.prefix) && (classParentsNEW eq this.classParentsNEW) && (decls eq this.decls) && (selfInfo eq this.selfInfo)) this
+      else ClassInfo(prefix, cls, classParentsNEW, decls, selfInfo)
 
     override def computeHash = doHash(cls, prefix)
 
     override def toString = s"ClassInfo($prefix, $cls)"
   }
 
-  class CachedClassInfo(prefix: Type, cls: ClassSymbol, classParents: List[TypeRef], decls: Scope, selfInfo: DotClass)
+  class CachedClassInfo(prefix: Type, cls: ClassSymbol, classParents: List[Type], decls: Scope, selfInfo: DotClass)
     extends ClassInfo(prefix, cls, classParents, decls, selfInfo)
 
   /** A class for temporary class infos where `parents` are not yet known. */
@@ -3519,14 +3543,14 @@ object Types {
     def addSuspension(suspension: Context => Unit): Unit = suspensions ::= suspension
 
     /** Install classinfo with known parents in `denot` and resume all suspensions */
-    def finalize(denot: SymDenotation, parents: List[TypeRef])(implicit ctx: Context) = {
-      denot.info = derivedClassInfo(classParents = parents)
+    def finalize(denot: SymDenotation, parents: List[Type])(implicit ctx: Context) = {
+      denot.info = derivedClassInfo(classParentsNEW = parents)
       suspensions.foreach(_(ctx))
     }
   }
 
   object ClassInfo {
-    def apply(prefix: Type, cls: ClassSymbol, classParents: List[TypeRef], decls: Scope, selfInfo: DotClass = NoType)(implicit ctx: Context) =
+    def apply(prefix: Type, cls: ClassSymbol, classParents: List[Type], decls: Scope, selfInfo: DotClass = NoType)(implicit ctx: Context) =
       unique(new CachedClassInfo(prefix, cls, classParents, decls, selfInfo))
   }
 
@@ -3841,6 +3865,8 @@ object Types {
       tp.derivedAppliedType(tycon, args)
     protected def derivedAppliedType(tp: HKApply, tycon: Type, args: List[Type]): Type =
       tp.derivedAppliedType(tycon, args)
+    protected def derivedTypeArgRef(tp: TypeArgRef, prefix: Type): Type =
+      tp.derivedTypeArgRef(prefix)
     protected def derivedAndOrType(tp: AndOrType, tp1: Type, tp2: Type): Type =
       tp.derivedAndOrType(tp1, tp2)
     protected def derivedAnnotatedType(tp: AnnotatedType, underlying: Type, annot: Annotation): Type =
@@ -3923,6 +3949,13 @@ object Types {
             derivedLambdaType(tp)(ptypes1, this(tp.resultType))
           }
           mapOverLambda
+
+        case tp @ TypeArgRef(prefix, _, _) =>
+          val saved = variance
+          variance = 0
+          val prefix1 = this(prefix)
+          variance = saved
+          derivedTypeArgRef(tp, prefix1)
 
         case tp @ SuperType(thistp, supertp) =>
           derivedSuperType(tp, this(thistp), this(supertp))
@@ -4220,6 +4253,13 @@ object Types {
         else range(lower(tp1) | lower(tp2), upper(tp1) | upper(tp2))
       else tp.derivedAndOrType(tp1, tp2)
 
+    override protected def derivedTypeArgRef(tp: TypeArgRef, prefix: Type): Type =
+      if (prefix.exists) tp.derivedTypeArgRef(prefix)
+      else {
+        val paramBounds = tp.underlying
+        approx(paramBounds.loBound, paramBounds.hiBound)
+      }
+
     override protected def derivedAnnotatedType(tp: AnnotatedType, underlying: Type, annot: Annotation) =
       underlying match {
         case Range(lo, hi) =>
@@ -4362,6 +4402,12 @@ object Types {
 
       case tp: SkolemType =>
         this(x, tp.info)
+
+      case tp @ TypeArgRef(prefix, _, _) =>
+        val saved = variance
+        variance = 0
+        try this(x, prefix)
+        finally variance = saved
 
       case AnnotatedType(underlying, annot) =>
         this(applyToAnnot(x, annot), underlying)

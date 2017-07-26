@@ -164,10 +164,11 @@ Standard-Section: "ASTs" TopLevelStat*
                   BIND           Length boundName_NameRef bounds_Type
                                         // for type-variables defined in a type pattern
                   BYNAMEtype            underlying_Type
+                  PARAMtype      Length binder_ASTref paramNum_Nat
+                  TYPEARGtype    Length prefix_Type clsRef_Type idx_Nat
                   POLYtype       Length result_Type NamesTypes
                   METHODtype     Length result_Type NamesTypes      // needed for refinements
                   TYPELAMBDAtype Length result_Type NamesTypes      // variance encoded in front of name: +/-/(nothing)
-                  PARAMtype      Length binder_ASTref paramNum_Nat  // needed for refinements
                   SHARED                type_ASTRef
   NamesTypes    = NameType*
   NameType      = paramName_NameRef typeOrBounds_ASTRef
@@ -380,6 +381,7 @@ object TastyFormat {
   final val LAMBDAtpt = 173
   final val PARAMtype = 174
   final val ANNOTATION = 175
+  final val TYPEARGtype = 176
 
   final val firstSimpleTreeTag = UNITconst
   final val firstNatTreeTag = SHARED
@@ -562,6 +564,7 @@ object TastyFormat {
     case ENUMconst => "ENUMconst"
     case SINGLETONtpt => "SINGLETONtpt"
     case SUPERtype => "SUPERtype"
+    case TYPEARGtype => "TYPEARGtype"
     case REFINEDtype => "REFINEDtype"
     case REFINEDtpt => "REFINEDtpt"
     case APPLIEDtype => "APPLIEDtype"
