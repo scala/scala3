@@ -25,20 +25,8 @@ object TypeApplications {
   type TypeParamInfo = ParamInfo.Of[TypeName]
 
   /** Assert type is not a TypeBounds instance and return it unchanged */
-  val noBounds = (tp: Type) => tp match {
+  def noBounds(tp: Type) = tp match {
     case tp: TypeBounds => throw new AssertionError("no TypeBounds allowed")
-    case _ => tp
-  }
-
-  /** If `tp` is a TypeBounds instance return its lower bound else return `tp` */
-  val boundsToLo = (tp: Type) => tp match {
-    case tp: TypeBounds => tp.lo
-    case _ => tp
-  }
-
-  /** If `tp` is a TypeBounds instance return its upper bound else return `tp` */
-  val boundsToHi = (tp: Type) => tp match {
-    case tp: TypeBounds => tp.hi
     case _ => tp
   }
 
@@ -226,7 +214,7 @@ class TypeApplications(val self: Type) extends AnyVal {
         else if (!tsym.isCompleting) tsym.info.typeParams
         else Nil
       case self: RefinedType =>
-        self.parent.typeParams.filterNot(_.paramName == self.refinedName)
+        self.parent.typeParams.filterNot(_.paramName == self.refinedName) // @!!!
       case self: RecType =>
         self.parent.typeParams
       case _: SingletonType =>
@@ -259,6 +247,7 @@ class TypeApplications(val self: Type) extends AnyVal {
   def hkResult(implicit ctx: Context): Type = self.dealias match {
     case self: TypeRef => self.info.hkResult
     case self: RefinedType => NoType
+    case self: AppliedType => NoType
     case self: HKTypeLambda => self.resultType
     case self: SingletonType => NoType
     case self: TypeVar =>
@@ -401,6 +390,12 @@ class TypeApplications(val self: Type) extends AnyVal {
         }
       case nil => t
     }
+    def normalizeWildcardArg(arg: Type, tparam: TypeParamInfo): Type = arg match {
+      case TypeBounds(lo, hi) =>
+        val v = tparam.paramVariance
+        if (v > 0) hi else if (v < 0) lo else arg
+      case _ => arg
+    }
     val stripped = self.stripTypeVar
     val dealiased = stripped.safeDealias
     if (args.isEmpty || ctx.erasedTypes) self
@@ -453,8 +448,10 @@ class TypeApplications(val self: Type) extends AnyVal {
       case _ if typParams.isEmpty || typParams.head.isInstanceOf[LambdaParam] =>
         HKApply(self, args)
       case dealiased =>
-        if (Config.newScheme) ???
-        else matchParams(dealiased, typParams, args)
+        if (Config.newScheme)
+          AppliedType(self, args.zipWithConserve(typParams)(normalizeWildcardArg))
+        else
+          matchParams(dealiased, typParams, args)
     }
   }
 
@@ -488,10 +485,12 @@ class TypeApplications(val self: Type) extends AnyVal {
   }
 
   /** The type arguments of this type's base type instance wrt. `base`.
-   *  Existential types in arguments are returned as TypeBounds instances.
+   *  Wildcard types in arguments are returned as TypeBounds instances.
    */
   final def baseArgInfos(base: Symbol)(implicit ctx: Context): List[Type] =
-    if (self derivesFrom base)
+    if (Config.newScheme)
+      self.baseType(base).argInfos
+    else if (self derivesFrom base)
       self.dealias match {
         case self: TypeRef if !self.symbol.isClass => self.superType.baseArgInfos(base)
         case self: HKApply => self.superType.baseArgInfos(base)
@@ -500,30 +499,14 @@ class TypeApplications(val self: Type) extends AnyVal {
     else
       Nil
 
-  /** The type arguments of this type's base type instance wrt.`base`.
-   *  Existential types in arguments are disallowed.
-   */
-  final def baseArgTypes(base: Symbol)(implicit ctx: Context): List[Type] =
-    baseArgInfos(base) mapConserve noBounds
-
-  /** The type arguments of this type's base type instance wrt.`base`.
-   *  Existential types in arguments are approximated by their lower bound.
-   */
-  final def baseArgTypesLo(base: Symbol)(implicit ctx: Context): List[Type] =
-    baseArgInfos(base) mapConserve boundsToLo
-
-  /** The type arguments of this type's base type instance wrt.`base`.
-   *  Existential types in arguments are approximated by their upper bound.
-   */
-  final def baseArgTypesHi(base: Symbol)(implicit ctx: Context): List[Type] =
-    baseArgInfos(base) mapConserve boundsToHi
-
   /** The base type including all type arguments and applicable refinements
    *  of this type. Refinements are applicable if they refine a member of
    *  the parent type which furthermore is not a name-mangled type parameter.
    *  Existential types in arguments are returned as TypeBounds instances.
    */
-  final def baseTypeWithArgs(base: Symbol)(implicit ctx: Context): Type = ctx.traceIndented(s"btwa ${self.show} wrt $base", core, show = true) {
+  final def baseTypeWithArgs(base: Symbol)(implicit ctx: Context): Type =
+    if (Config.newScheme) self.baseType(base)
+    else ctx.traceIndented(s"btwa ${self.show} wrt $base", core, show = true) {
     def default = self.baseTypeTycon(base).appliedTo(baseArgInfos(base))
     def isExpandedTypeParam(sym: Symbol) = sym.is(TypeParam) && sym.name.is(ExpandedName)
     self match {
@@ -557,6 +540,7 @@ class TypeApplications(val self: Type) extends AnyVal {
     case _ =>
       if (self.derivesFrom(from))
         if (ctx.erasedTypes) to.typeRef
+        else if (Config.newScheme) to.typeRef.appliedTo(self.baseType(from).argInfos)
         else RefinedType(to.typeRef, to.typeParams.head.name, self.member(from.typeParams.head.name).info)
       else self
   }
@@ -584,10 +568,10 @@ class TypeApplications(val self: Type) extends AnyVal {
   def argTypes(implicit ctx: Context) = argInfos mapConserve noBounds
 
   /** Argument types where existential types in arguments are approximated by their lower bound */
-  def argTypesLo(implicit ctx: Context) = argInfos mapConserve boundsToLo
+  def argTypesLo(implicit ctx: Context) = argInfos.mapConserve(_.loBound)
 
   /** Argument types where existential types in arguments are approximated by their upper bound  */
-  def argTypesHi(implicit ctx: Context) = argInfos mapConserve boundsToHi
+  def argTypesHi(implicit ctx: Context) = argInfos.mapConserve(_.hiBound)
 
   /** The core type without any type arguments.
    *  @param `typeArgs` must be the type arguments of this type.
@@ -598,7 +582,7 @@ class TypeApplications(val self: Type) extends AnyVal {
     case _ =>
       typeArgs match {
         case _ :: typeArgs1 =>
-          val RefinedType(tycon, _, _) = self
+          val RefinedType(tycon, _, _) = self // @!!!
           tycon.withoutArgs(typeArgs1)
         case nil =>
           self

@@ -98,7 +98,7 @@ object Applications {
     if (unapplyName == nme.unapplySeq) {
       if (unapplyResult derivesFrom defn.SeqClass) seqSelector :: Nil
       else if (isGetMatch(unapplyResult, pos)) {
-        val seqArg = boundsToHi(getTp.elemType)
+        val seqArg = getTp.elemType.hiBound
         if (seqArg.exists) args.map(Function.const(seqArg))
         else fail
       }

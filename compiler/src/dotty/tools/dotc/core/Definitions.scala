@@ -82,7 +82,7 @@ class Definitions {
           if (tpe.typeParams.nonEmpty) tpe.appliedTo(typeParam.typeRef)
           else tpe
         val parents = parentConstrs.toList map instantiate
-        val parentRefs: List[TypeRef] = ctx.normalizeToClassRefs(parents, cls, paramDecls)
+        val parentRefs = ctx.normalizeToClassRefs(parents, cls, paramDecls)
         denot.info = ClassInfo(ScalaPackageClass.thisType, cls, parentRefs, paramDecls)
       }
     }
@@ -719,7 +719,8 @@ class Definitions {
       if (ctx.erasedTypes) JavaArrayType(elem)
       else ArrayType.appliedTo(elem :: Nil)
     def unapply(tp: Type)(implicit ctx: Context): Option[Type] = tp.dealias match {
-      case at: RefinedType if (at isRef ArrayType.symbol) && at.argInfos.length == 1 => Some(at.argInfos.head)
+      case AppliedType(at, arg :: Nil) if at isRef ArrayType.symbol => Some(arg)
+      case at: RefinedType if (at isRef ArrayType.symbol) && at.argInfos.length == 1 => Some(at.argInfos.head) // @!!!
       case _ => None
     }
   }

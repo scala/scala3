@@ -100,7 +100,7 @@ object RefChecks {
           ctx.error(DoesNotConformToSelfType(category, cinfo.selfType, cls, otherSelf, relation, other.classSymbol),
             cls.pos)
       }
-      for (parent <- cinfo.classParents)
+      for (parent <- cinfo.classParentsNEW)
         checkSelfConforms(parent.typeSymbol.asClass, "illegal inheritance", "parent")
       for (reqd <- cinfo.cls.givenSelfType.classSymbols)
         checkSelfConforms(reqd, "missing requirement", "required")
@@ -251,7 +251,7 @@ object RefChecks {
       def compatibleTypes(memberTp: Type, otherTp: Type): Boolean =
         try
           if (member.isType) // intersection of bounds to refined types must be nonempty
-            member.is(BaseTypeArg) ||
+            member.is(BaseTypeArg) || // @!!!
             memberTp.bounds.hi.hasSameKindAs(otherTp.bounds.hi) &&
             ((memberTp frozen_<:< otherTp) ||
              !member.owner.derivesFrom(other.owner) && {

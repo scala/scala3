@@ -250,7 +250,7 @@ object Flags {
    */
   final val ParamAccessor = commonFlag(14, "<paramaccessor>")
   final val TermParamAccessor = ParamAccessor.toTermFlags
-  final val TypeParamAccessor = ParamAccessor.toTypeFlags
+  final val TypeParamAccessor = ParamAccessor.toTypeFlags  // @!!!
 
     /** A value or class implementing a module */
   final val Module = commonFlag(15, "module")
@@ -306,7 +306,7 @@ object Flags {
 
   /** A binding for a type parameter of a base class or trait.
    */
-  final val BaseTypeArg = typeFlag(25, "<basetypearg>")
+  final val BaseTypeArg = typeFlag(25, "<basetypearg>")  // @!!!
 
   final val CaseAccessorOrBaseTypeArg = CaseAccessor.toCommonFlags
 

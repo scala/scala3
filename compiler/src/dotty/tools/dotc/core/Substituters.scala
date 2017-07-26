@@ -16,7 +16,7 @@ trait Substituters { this: Context =>
         else tp.derivedSelect(subst(tp.prefix, from, to, theMap))
       case _: ThisType | NoPrefix =>
         tp
-      case tp: RefinedType =>
+      case tp: RefinedType => // @!!! remove
         tp.derivedRefinedType(subst(tp.parent, from, to, theMap), tp.refinedName, subst(tp.refinedInfo, from, to, theMap))
       case tp: TypeAlias =>
         tp.derivedTypeAlias(subst(tp.alias, from, to, theMap))

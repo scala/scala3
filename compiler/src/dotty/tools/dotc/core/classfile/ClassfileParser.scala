@@ -308,17 +308,12 @@ class ClassfileParser(
             case tp: TypeRef =>
               if (sig(index) == '<') {
                 accept('<')
-                var tp1: Type = tp
-                var formals: List[Symbol] =
-                  if (skiptvs)
-                    null
-                  else
-                    tp.typeParamSymbols
+                val argsBuf = if (skiptvs) null else new ListBuffer[Type]
                 while (sig(index) != '>') {
-                  sig(index) match {
+                  val arg = sig(index) match {
                     case variance @ ('+' | '-' | '*') =>
                       index += 1
-                      val bounds = variance match {
+                      variance match {
                         case '+' => objToAny(TypeBounds.upper(sig2type(tparams, skiptvs)))
                         case '-' =>
                           val tp = sig2type(tparams, skiptvs)
@@ -328,18 +323,24 @@ class ClassfileParser(
                           else TypeBounds.lower(tp)
                         case '*' => TypeBounds.empty
                       }
-                      if (formals != null)
-                        tp1 = RefinedType(tp1, formals.head.name, bounds) // @!!!
-                    case _ =>
-                      val info = sig2type(tparams, skiptvs)
-                      if (formals != null)
-                        tp1 = RefinedType(tp1, formals.head.name, TypeAlias(info)) // @!!!
+                    case _ => sig2type(tparams, skiptvs)
                   }
-                  if (formals != null)
-                    formals = formals.tail
+                  if (argsBuf != null) argsBuf += arg
                 }
                 accept('>')
-                tp1
+                if (skiptvs) tp
+                else if (config.Config.newScheme) tp.appliedTo(argsBuf.toList)
+                else {
+                  var tp1: Type = tp
+                  (argsBuf.toList, tp.typeParamSymbols).zipped.foreach { (arg, formal) =>
+                    val info = arg match {
+                      case arg: TypeBounds => arg
+                      case _ => TypeAlias(arg)
+                    }
+                    tp1 = RefinedType(tp1, formal.name, info)
+                  }
+                  tp1
+                }
               } else tp
             case tp =>
               assert(sig(index) != '<', tp)
