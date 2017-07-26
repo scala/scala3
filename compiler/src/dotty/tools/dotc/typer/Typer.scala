@@ -1421,7 +1421,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
       }
 
       // Check that phantom lattices are defined in a static object
-      if (cls.classParents.exists(_.classSymbol eq defn.PhantomClass) && !cls.isStaticOwner)
+      if (cls.classParentsNEW.exists(_.typeSymbol eq defn.PhantomClass) && !cls.isStaticOwner)
         ctx.error("only static objects can extend scala.Phantom", cdef.pos)
 
       // check value class constraints
@@ -1454,8 +1454,8 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     def realClassParent(cls: Symbol): ClassSymbol =
       if (!cls.isClass) defn.ObjectClass
       else if (!(cls is Trait)) cls.asClass
-      else cls.asClass.classParents match {
-        case parentRef :: _ => realClassParent(parentRef.symbol)
+      else cls.asClass.classParentsNEW match {
+        case parentRef :: _ => realClassParent(parentRef.typeSymbol)
         case nil => defn.ObjectClass
       }
     def improve(candidate: ClassSymbol, parent: Type): ClassSymbol = {
@@ -2040,13 +2040,14 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
         // Follow proxies and approximate type paramrefs by their upper bound
         // in the current constraint in order to figure out robustly
         // whether an expected type is some sort of function type.
-        def underlyingRefined(tp: Type): Type = tp.stripTypeVar match {
+        def underlyingApplied(tp: Type): Type = tp.stripTypeVar match {
           case tp: RefinedType => tp
-          case tp: TypeParamRef => underlyingRefined(ctx.typeComparer.bounds(tp).hi)
-          case tp: TypeProxy => underlyingRefined(tp.superType)
+          case tp: AppliedType => tp
+          case tp: TypeParamRef => underlyingApplied(ctx.typeComparer.bounds(tp).hi)
+          case tp: TypeProxy => underlyingApplied(tp.superType)
           case _ => tp
         }
-        val ptNorm = underlyingRefined(pt)
+        val ptNorm = underlyingApplied(pt)
         val arity =
           if (defn.isFunctionType(ptNorm))
             if (!isFullyDefined(pt, ForceDegree.none) && isFullyDefined(wtp, ForceDegree.none))

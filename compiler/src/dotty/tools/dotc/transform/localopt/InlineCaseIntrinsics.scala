@@ -7,6 +7,7 @@ import core.StdNames._
 import core.Symbols._
 import core.Types._
 import core.Flags._
+import core.TypeApplications.noBounds
 import ast.Trees._
 import transform.SymUtils._
 import Simplify.desugarIdent
@@ -82,7 +83,7 @@ class InlineCaseIntrinsics(val simplifyPhase: Simplify) extends Optimisation {
         def some(e: Tree) = {
           val accessors = e.tpe.widenDealias.classSymbol.caseAccessors.filter(_.is(Method))
           val fields    = accessors.map(x => e.select(x).ensureApplied)
-          val tplType   = a.tpe.baseArgTypes(defn.OptionClass).head
+          val tplType   = noBounds(a.tpe.baseType(defn.OptionClass).argInfos.head)
           val someTpe   = a.tpe.translateParameterized(defn.OptionClass, defn.SomeClass)
 
           if (fields.tail.nonEmpty)

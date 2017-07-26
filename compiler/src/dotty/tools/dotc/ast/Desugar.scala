@@ -245,7 +245,7 @@ object desugar {
    *     class C { type v C$T; type v T = C$T }
    */
   def typeDef(tdef: TypeDef)(implicit ctx: Context): Tree = {
-    if (tdef.mods is PrivateLocalParam) {
+    if (tdef.mods.is(PrivateLocalParam) && !dotty.tools.dotc.config.Config.newScheme) {
       val tparam = cpy.TypeDef(tdef)(name = tdef.name.expandedName(ctx.owner))
         .withMods(tdef.mods &~ PrivateLocal)
       val alias = cpy.TypeDef(tdef)(rhs = refOfDef(tparam))
@@ -1132,7 +1132,8 @@ object desugar {
    */
   def refinedTypeToClass(parent: tpd.Tree, refinements: List[Tree])(implicit ctx: Context): TypeDef = {
     def stripToCore(tp: Type): List[Type] = tp match {
-      case tp: RefinedType if tp.argInfos.nonEmpty => tp :: Nil // parameterized class type
+      case tp: AppliedType => tp :: Nil
+      case tp: RefinedType if !config.Config.newScheme && tp.argInfos.nonEmpty => tp :: Nil // parameterized class type
       case tp: TypeRef if tp.symbol.isClass => tp :: Nil     // monomorphic class type
       case tp: TypeProxy => stripToCore(tp.underlying)
       case AndType(tp1, tp2) => stripToCore(tp1) ::: stripToCore(tp2)

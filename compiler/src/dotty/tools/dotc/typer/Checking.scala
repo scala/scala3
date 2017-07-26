@@ -455,7 +455,7 @@ object Checking {
         case tp: ClassInfo =>
           tp.derivedClassInfo(
             prefix = apply(tp.prefix),
-            classParents =
+            classParentsNEW =
               tp.parentsWithArgs.map { p =>
                 apply(p).underlyingClassRef(refinementOK = false) match {
                   case ref: TypeRef => ref
@@ -580,17 +580,26 @@ trait Checking {
    *  their lower bound conforms to their upper bound. If a type argument is
    *  infeasible, issue and error and continue with upper bound.
    */
-  def checkFeasible(tp: Type, pos: Position, where: => String = "")(implicit ctx: Context): Type = tp match {
-    case tp: RefinedType =>
-      tp.derivedRefinedType(tp.parent, tp.refinedName, checkFeasible(tp.refinedInfo, pos, where))
-    case tp: RecType =>
-      tp.rebind(tp.parent)
-    case tp @ TypeBounds(lo, hi) if !(lo <:< hi) =>
-      ctx.error(ex"no type exists between low bound $lo and high bound $hi$where", pos)
-      TypeAlias(hi)
-    case _ =>
-      tp
-  }
+  def checkFeasible(tp: Type, pos: Position, where: => String = "")(implicit ctx: Context): Type =
+    tp match {
+      case tp @ AppliedType(tycon, args) =>
+        def checkArg(arg: Type) = arg match {
+          case tp @ TypeBounds(lo, hi) if !(lo <:< hi) =>
+            ctx.error(ex"no type exists between low bound $lo and high bound $hi$where", pos)
+            hi
+          case _ => arg
+        }
+        tp.derivedAppliedType(tycon, args.mapConserve(checkArg))
+      case tp: RefinedType => // @!!!
+        tp.derivedRefinedType(tp.parent, tp.refinedName, checkFeasible(tp.refinedInfo, pos, where))
+      case tp: RecType => // @!!!
+        tp.rebind(tp.parent)
+      case tp @ TypeBounds(lo, hi) if !(lo <:< hi) => // @!!!
+        ctx.error(ex"no type exists between low bound $lo and high bound $hi$where", pos)
+        TypeAlias(hi)
+      case _ =>
+        tp
+    }
 
   /** Check that `tree` is a pure expression of constant type */
   def checkInlineConformant(tree: Tree, what: => String)(implicit ctx: Context): Unit =

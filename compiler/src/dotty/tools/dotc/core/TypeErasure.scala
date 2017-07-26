@@ -382,10 +382,11 @@ class TypeErasure(isJava: Boolean, semiEraseVCs: Boolean, isConstructor: Boolean
       else if (sym eq defn.PhantomClass) defn.ObjectType // To erase the definitions of Phantom.{assume, Any, Nothing}
       else eraseNormalClassRef(tp)
     case tp: AppliedType =>
-      apply(tp.superType)
+      if (tp.tycon.isRef(defn.ArrayClass)) eraseArray(tp)
+      else apply(tp.superType)
     case tp: RefinedType =>
       val parent = tp.parent
-      if (parent isRef defn.ArrayClass) eraseArray(tp)
+      if (parent isRef defn.ArrayClass) eraseArray(tp) // @!!!
       else this(parent)
     case _: TermRef | _: ThisType =>
       this(tp.widen)
@@ -414,13 +415,12 @@ class TypeErasure(isJava: Boolean, semiEraseVCs: Boolean, isConstructor: Boolean
       }
     case tp: PolyType =>
       this(tp.resultType)
-    case tp @ ClassInfo(pre, cls, classParents, decls, _) =>
+    case tp @ ClassInfo(pre, cls, parents, decls, _) =>
       if (cls is Package) tp
       else {
-        def eraseTypeRef(p: TypeRef) = this(p).asInstanceOf[TypeRef]
-        val parents: List[TypeRef] =
+        val erasedParents: List[Type] =
           if ((cls eq defn.ObjectClass) || cls.isPrimitiveValueClass) Nil
-          else classParents.mapConserve(eraseTypeRef) match {
+          else parents.mapConserve(apply) match {
             case tr :: trs1 =>
               assert(!tr.classSymbol.is(Trait), cls)
               val tr1 = if (cls is Trait) defn.ObjectType else tr
@@ -428,7 +428,7 @@ class TypeErasure(isJava: Boolean, semiEraseVCs: Boolean, isConstructor: Boolean
             case nil => nil
           }
         val erasedDecls = decls.filteredScope(sym => !sym.isType || sym.isClass)
-        tp.derivedClassInfo(NoPrefix, parents, erasedDecls, erasedRef(tp.selfType))
+        tp.derivedClassInfo(NoPrefix, erasedParents, erasedDecls, erasedRef(tp.selfType))
           // can't replace selftype by NoType because this would lose the sourceModule link
       }
     case NoType | NoPrefix | _: ErrorType | JavaArrayType(_) =>
@@ -439,7 +439,7 @@ class TypeErasure(isJava: Boolean, semiEraseVCs: Boolean, isConstructor: Boolean
       this(tp.underlying)
   }
 
-  private def eraseArray(tp: RefinedType)(implicit ctx: Context) = {
+  private def eraseArray(tp: Type)(implicit ctx: Context) = {
     val defn.ArrayOf(elemtp) = tp
     def arrayErasure(tpToErase: Type) =
       erasureFn(isJava, semiEraseVCs = false, isConstructor, wildcardOK)(tpToErase)
@@ -490,8 +490,10 @@ class TypeErasure(isJava: Boolean, semiEraseVCs: Boolean, isConstructor: Boolean
       // constructor method should not be semi-erased.
       else if (isConstructor && isDerivedValueClass(sym)) eraseNormalClassRef(tp)
       else this(tp)
-    case RefinedType(parent, _, _) if !(parent isRef defn.ArrayClass) =>
+    case RefinedType(parent, _, _) if !(parent isRef defn.ArrayClass) => // @!!!
       eraseResult(parent)
+    case AppliedType(tycon, _) if !(tycon isRef defn.ArrayClass) =>
+      eraseResult(tycon)
     case _ =>
       this(tp)
   }
@@ -530,10 +532,10 @@ class TypeErasure(isJava: Boolean, semiEraseVCs: Boolean, isConstructor: Boolean
         else
           normalizeClass(sym.asClass).fullName.asTypeName
       case tp: AppliedType =>
-        sigName(tp.superType)
+        sigName(if (tp.tycon.isRef(defn.ArrayClass)) this(tp) else tp.superType)
       case ErasedValueType(_, underlying) =>
         sigName(underlying)
-      case defn.ArrayOf(elem) =>
+      case defn.ArrayOf(elem) => // @!!!
         sigName(this(tp))
       case tp: HKApply =>
         sigName(tp.superType)

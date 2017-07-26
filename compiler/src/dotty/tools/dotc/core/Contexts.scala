@@ -610,7 +610,7 @@ object Contexts {
     }
 
     /** A table for hash consing unique refined types */
-    private[dotc] val uniqueRefinedTypes = new RefinedUniques
+    private[dotc] val uniqueRefinedTypes = new RefinedUniques // @!!! replace with uniqueAppliedTypes
 
     /** A table for hash consing unique named types */
     private[core] val uniqueNamedTypes = new NamedTypeUniques

@@ -45,21 +45,37 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
             else if ((pre.termSymbol is Package) && !(thiscls is Package))
               toPrefix(pre.select(nme.PACKAGE), cls, thiscls)
             else
-              toPrefix(pre.baseTypeRef(cls).normalizedPrefix, cls.owner, thiscls)
-        }
+              toPrefix(pre.baseType(cls).normalizedPrefix, cls.owner, thiscls)
+      }
       }
 
-      @tailrec
-      def argForParam(pre: Type, cls: Symbol, pref: TypeParamRef, prefCls: ClassSymbol): Type =
-        if (cls.is(PackageClass)) pref
-        else {
-          val base = pre.baseType(cls)
-          if (cls eq prefCls) {
-            val AppliedType(_, args) = base
-            args(pref.paramNum)
-          }
-          else argForParam(base.normalizedPrefix, cls.owner.enclosingClass, pref, prefCls)
+    @tailrec
+    def argForParam(pre: Type, cls: Symbol, tparam: Symbol): Type = {
+      def fail() = throw new TypeError(ex"$pre contains no matching argument for ${tparam.showLocated} ")
+      if ((pre eq NoType) || (pre eq NoPrefix) || (cls is PackageClass)) fail()
+      val base = pre.baseType(cls)
+      if (cls `eq` tparam.owner) {
+        var tparams = cls.typeParams
+        var args = base.argInfos
+        var idx = 0
+        while (tparams.nonEmpty && args.nonEmpty) {
+          if (tparams.head.eq(tparam))
+            return args.head match {
+              case bounds: TypeBounds =>
+                val v = currentVariance
+                if (v > 0) bounds.hi
+                else if (v < 0) bounds.lo
+                else TypeArgRef(pre, cls.typeRef, idx)
+              case arg => arg
+            }
+          tparams = tparams.tail
+          args = args.tail
+          idx += 1
         }
+        fail()
+      }
+      else argForParam(base.normalizedPrefix, cls.owner.enclosingClass, tparam)
+    }
 
       /*>|>*/ ctx.conditionalTraceIndented(TypeOps.track, s"asSeen ${tp.show} from (${pre.show}, ${cls.show})", show = true) /*<|<*/ { // !!! DEBUG
         // One `case ThisType` is specific to asSeenFrom, all other cases are inlined for performance
@@ -116,7 +132,7 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
       }
     case  _: ThisType | _: BoundType | NoPrefix =>
       tp
-    case tp: RefinedType =>
+    case tp: RefinedType => // @!!!
       tp.derivedRefinedType(simplify(tp.parent, theMap), tp.refinedName, simplify(tp.refinedInfo, theMap))
     case tp: TypeAlias =>
       tp.derivedTypeAlias(simplify(tp.alias, theMap))
@@ -194,6 +210,7 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
     def approximateOr(tp1: Type, tp2: Type): Type = {
       def isClassRef(tp: Type): Boolean = tp match {
         case tp: TypeRef => tp.symbol.isClass
+        case tp: AppliedType => isClassRef(tp.tycon)
         case tp: RefinedType => isClassRef(tp.parent)
         case _ => false
       }
@@ -268,11 +285,11 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
     cls.enter(sym, decls)
   }
 
-  /** Normalize a list of parent types of class `cls` that may contain refinements
-   *  to a list of typerefs referring to classes, by converting all refinements to member
-   *  definitions in scope `decls`. Can add members to `decls` as a side-effect.
+  /** Normalize a list of parent types of class `cls` to make sure they are
+   *  all (possibly applied) references to classes.
    */
-  def normalizeToClassRefs(parents: List[Type], cls: ClassSymbol, decls: Scope): List[TypeRef] = {
+  def normalizeToClassRefs(parents: List[Type], cls: ClassSymbol, decls: Scope): List[Type] = {
+    if (Config.newScheme) return parents.mapConserve(_.dealias)
     // println(s"normalizing $parents of $cls in ${cls.owner}") // !!! DEBUG
 
     // A map consolidating all refinements arising from parent type parameters
@@ -371,15 +388,6 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
 
     paramBindings.foreachBinding(forwardRefs)
   }
-
-  /** Used only for debugging: All BaseTypeArg definitions in
-   *  `cls` and all its base classes.
-   */
-  def allBaseTypeArgs(cls: ClassSymbol)(implicit ctx: Context) =
-    for { bc <- cls.baseClasses
-          sym <- bc.info.decls.toList
-          if sym.is(BaseTypeArg)
-    } yield sym
 
   /** An argument bounds violation is a triple consisting of
    *   - the argument tree
