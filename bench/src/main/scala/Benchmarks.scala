@@ -24,7 +24,8 @@ object Bench {
     }
 
     val args2 = args.map { arg =>
-      if (arg.endsWith(".scala")) "../" + arg else arg
+      if ((arg.endsWith(".scala") || arg.endsWith(".java")) && arg.head != '/') "../" + arg
+      else arg
     }
     storeCompileOptions(args2)
 
