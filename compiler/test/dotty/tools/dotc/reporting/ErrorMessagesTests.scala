@@ -926,4 +926,18 @@ class ErrorMessagesTests extends ErrorMessagesTest {
 
         assertEquals(DuplicatePrivateProtectedQualifier(), err)
       }
+
+  @Test def expectedStartOfTopLevelDefinition =
+    checkMessagesAfter("frontend") {
+      """private Test {}"""
+    }
+      .expect { (ictx, messages) =>
+        implicit val ctx: Context = ictx
+        val defn = ictx.definitions
+
+        assertMessageCount(1, messages)
+        val err :: Nil = messages
+
+        assertEquals(ExpectedStartOfTopLevelDefinition(), err)
+      }
 }

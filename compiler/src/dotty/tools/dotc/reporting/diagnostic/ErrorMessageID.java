@@ -95,6 +95,7 @@ public enum ErrorMessageID {
     ImplicitFunctionTypeNeedsNonEmptyParameterListID,
     WrongNumberOfParametersID,
     DuplicatePrivateProtectedQualifierID,
+    ExpectedStartOfTopLevelDefinitionID,
     ;
 
     public int errorNumber() {
