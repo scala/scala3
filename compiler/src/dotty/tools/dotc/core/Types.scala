@@ -2149,25 +2149,23 @@ object Types {
     }
   }
 
-  case class LazyRef(private var refFn: () => Type) extends UncachedProxyType with ValueType {
+  case class LazyRef(private var refFn: Context => Type) extends UncachedProxyType with ValueType {
     private var myRef: Type = null
     private var computed = false
-    def ref = {
+    def ref(implicit ctx: Context) = {
       if (computed) assert(myRef != null)
       else {
         computed = true
-        myRef = refFn()
+        myRef = refFn(ctx)
+        refFn = null
       }
       myRef
     }
     def evaluating = computed && myRef == null
     override def underlying(implicit ctx: Context) = ref
-    override def toString = s"LazyRef($ref)"
-    override def equals(other: Any) = other match {
-      case other: LazyRef => this.ref.equals(other.ref)
-      case _ => false
-    }
-    override def hashCode = ref.hashCode + 37
+    override def toString = s"LazyRef(...)"
+    override def equals(other: Any) = this eq other.asInstanceOf[AnyRef]
+    override def hashCode = System.identityHashCode(this)
   }
 
   // --- Refined Type and RecType ------------------------------------------------
@@ -3779,7 +3777,7 @@ object Types {
           derivedSuperType(tp, this(thistp), this(supertp))
 
         case tp: LazyRef =>
-          LazyRef(() => this(tp.ref))
+          LazyRef(_ => this(tp.ref))
 
         case tp: ClassInfo =>
           mapClassInfo(tp)
