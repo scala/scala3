@@ -525,6 +525,8 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
         case _ => isSubType(tp1.widenExpr, restpe2)
       }
       compareExpr
+    case tp2: TypeArgRef =>
+      isSubType(tp1, tp2.underlying.loBound) || fourthTry(tp1, tp2)
     case tp2 @ TypeBounds(lo2, hi2) =>
       def compareTypeBounds = tp1 match {
         case tp1 @ TypeBounds(lo1, hi1) =>
@@ -594,6 +596,8 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
       isNewSubType(tp1.parent, tp2)
     case tp1: RecType =>
       isNewSubType(tp1.parent, tp2)
+    case tp1: TypeArgRef =>
+      isSubType(tp1.underlying.hiBound, tp2)
     case tp1 @ HKApply(tycon1, args1) =>
       compareHkApply1(tp1, tycon1, args1, tp2)
     case tp1: HKTypeLambda =>
@@ -848,35 +852,36 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
        *
        *  such that the resulting type application is a supertype of `tp1`.
        */
-      def tyconOK(tycon1a: Type, args1: List[Type]) = {
-        var tycon1b = tycon1a
-        val tparams1a = tycon1a.typeParams
-        val lengthDiff = tparams1a.length - tparams.length
-        lengthDiff >= 0 && {
-          val tparams1 = tparams1a.drop(lengthDiff)
-          variancesConform(tparams1, tparams) && {
-            if (lengthDiff > 0)
-              tycon1b = HKTypeLambda(tparams1.map(_.paramName))(
-                tl => tparams1.map(tparam => tl.integrate(tparams, tparam.paramInfo).bounds),
-                tl => tycon1a.appliedTo(args1.take(lengthDiff) ++
-                        tparams1.indices.toList.map(TypeParamRef(tl, _))))
-            (ctx.mode.is(Mode.TypevarsMissContext) ||
-              tryInstantiate(tycon2, tycon1b.ensureHK)) &&
-              isSubType(tp1, tycon1b.appliedTo(args2))
+      def appOK(tp1base: Type) = tp1base match {
+        case tp1base: AppliedType =>
+          var tycon1 = tp1base.tycon
+          var args1 = tp1base.args
+          val tparams1all = tycon1.typeParams
+          val lengthDiff = tparams1all.length - tparams.length
+          lengthDiff >= 0 && {
+            val tparams1 = tparams1all.drop(lengthDiff)
+            variancesConform(tparams1, tparams) && {
+              if (lengthDiff > 0)
+                tycon1 = HKTypeLambda(tparams1.map(_.paramName))(
+                  tl => tparams1.map(tparam => tl.integrate(tparams, tparam.paramInfo).bounds),
+                  tl => tp1base.tycon.appliedTo(args1.take(lengthDiff) ++
+                          tparams1.indices.toList.map(TypeParamRef(tl, _))))
+              (ctx.mode.is(Mode.TypevarsMissContext) ||
+                tryInstantiate(tycon2, tycon1.ensureHK)) &&
+                isSubType(tp1, tycon1.appliedTo(args2))
+            }
           }
-        }
+        case _ => false
       }
 
       tp1.widen match {
-        case tp1w @ HKApply(tycon1, args1) =>
-          tyconOK(tycon1, args1)
+        case tp1w: AppliedType => appOK(tp1w)
         case tp1w =>
           tp1w.typeSymbol.isClass && {
             val classBounds = tycon2.classSymbols
             def liftToBase(bcs: List[ClassSymbol]): Boolean = bcs match {
               case bc :: bcs1 =>
-                classBounds.exists(bc.derivesFrom) &&
-                tyconOK(tp1w.baseTypeTycon(bc), tp1w.baseArgInfos(bc)) ||
+                classBounds.exists(bc.derivesFrom) && appOK(tp1w.baseType(bc)) ||
                 liftToBase(bcs1)
               case _ =>
                 false
@@ -985,12 +990,20 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
     val classBounds = tp2.classSymbols
     def recur(bcs: List[ClassSymbol]): Boolean = bcs match {
       case bc :: bcs1 =>
-        val baseRef = tp1.baseTypeTycon(bc)
-        (classBounds.exists(bc.derivesFrom) &&
-         variancesConform(baseRef.typeParams, tparams) &&
-         p(baseRef.appliedTo(tp1.baseArgInfos(bc)))
-         ||
-         recur(bcs1))
+        if (Config.newScheme)
+          (classBounds.exists(bc.derivesFrom) &&
+           variancesConform(bc.typeParams, tparams) &&
+           p(tp1.baseType(bc))
+          ||
+          recur(bcs1))
+        else {
+          val baseRef = tp1.baseTypeTycon(bc)
+          (classBounds.exists(bc.derivesFrom) &&
+          variancesConform(baseRef.typeParams, tparams) &&
+          p(baseRef.appliedTo(tp1.baseArgInfos(bc)))
+          ||
+          recur(bcs1))
+        }
       case nil =>
         false
     }
@@ -1557,6 +1570,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
     // opportunistically merge same-named refinements
     // this does not change anything semantically (i.e. merging or not merging
     // gives =:= types), but it keeps the type smaller.
+    // @!!! still needed?
     case tp1: RefinedType =>
       tp2 match {
         case tp2: RefinedType if tp1.refinedName == tp2.refinedName =>

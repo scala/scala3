@@ -236,7 +236,7 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer  { thisTran
 
             // Add Child annotation to sealed parents unless current class is anonymous
             if (!sym.isAnonymousClass) // ignore anonymous class
-              sym.asClass.classInfo.classParents.foreach { parent =>
+              sym.asClass.classParentsNEW.foreach { parent =>
                 val sym2 = if (sym.is(Module)) sym.sourceModule else sym
                 registerChild(sym2, parent)
               }

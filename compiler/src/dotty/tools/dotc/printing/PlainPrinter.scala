@@ -135,7 +135,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
    */
   private def refinementChain(tp: Type): List[Type] =
     tp :: (tp match {
-      case AnyAppliedType(_, _) => Nil
+      case AnyAppliedType(_, _) => Nil // @!!!
       case tp: RefinedType => refinementChain(tp.parent.stripTypeVar)
       case _ => Nil
     })
@@ -166,6 +166,11 @@ class PlainPrinter(_ctx: Context) extends Printer {
           "{" ~ selfRecName(openRecs.length) ~ " => " ~ toTextGlobal(tp.parent) ~ "}"
         }
         finally openRecs = openRecs.tail
+      case TypeArgRef(prefix, clsRef, idx) =>
+        val cls = clsRef.symbol
+        val tparams = cls.typeParams
+        val paramName = if (tparams.length > idx) nameString(tparams(idx)) else "<unknown>"
+        toTextPrefix(prefix) ~ "<parameter $paramName of " ~ toText(cls) ~ ">"
       case AndType(tp1, tp2) =>
         changePrec(AndPrec) { toText(tp1) ~ " & " ~ toText(tp2) }
       case OrType(tp1, tp2) =>

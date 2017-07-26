@@ -220,8 +220,6 @@ class TreeUnpickler(reader: TastyReader, nameAtRef: NameRef => TermName, posUnpi
 
         val result =
           (tag: @switch) match {
-            case SUPERtype =>
-              SuperType(readType(), readType())
             case REFINEDtype =>
               var name: Name = readName()
               val parent = readType()
@@ -247,6 +245,10 @@ class TreeUnpickler(reader: TastyReader, nameAtRef: NameRef => TermName, posUnpi
               AndType(readType(), readType())
             case ORtype =>
               OrType(readType(), readType())
+            case SUPERtype =>
+              SuperType(readType(), readType())
+            case TYPEARGtype =>
+              TypeArgRef(readType(), readType().asInstanceOf[TypeRef], readNat())
             case BIND =>
               val sym = ctx.newSymbol(ctx.owner, readName().toTypeName, BindDefinedType, readType())
               registerSym(start, sym)
@@ -713,7 +715,7 @@ class TreeUnpickler(reader: TastyReader, nameAtRef: NameRef => TermName, posUnpi
     private def readTemplate(implicit ctx: Context): Template = {
       val start = currentAddr
       val cls = ctx.owner.asClass
-      def setClsInfo(parents: List[TypeRef], selfType: Type) =
+      def setClsInfo(parents: List[Type], selfType: Type) =
         cls.info = ClassInfo(cls.owner.thisType, cls, parents, cls.unforcedDecls, selfType)
       val assumedSelfType =
         if (cls.is(Module) && cls.owner.isClass)

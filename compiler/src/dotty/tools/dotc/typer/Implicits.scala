@@ -438,14 +438,14 @@ trait ImplicitRunInfo { self: RunInfo =>
                 else if (compSym.exists)
                   comps += companion.asSeenFrom(pre, compSym.owner).asInstanceOf[TermRef]
               }
-              def addParentScope(parent: TypeRef): Unit = {
-                iscopeRefs(parent) foreach addRef
+              def addParentScope(parent: Type): Unit = {
+                iscopeRefs(parent.typeConstructor) foreach addRef
                 for (param <- parent.typeParamSymbols)
                   comps ++= iscopeRefs(tp.member(param.name).info)
               }
               val companion = cls.companionModule
               if (companion.exists) addRef(companion.valRef)
-              cls.classParents foreach addParentScope
+              cls.classParentsNEW foreach addParentScope
             }
             tp.classSymbols(liftingCtx) foreach addClassScope
           case _ =>
@@ -942,10 +942,12 @@ trait Implicits { self: Typer =>
  */
 class SearchHistory(val searchDepth: Int, val seen: Map[ClassSymbol, Int]) {
 
-  /** The number of RefinementTypes in this type, after all aliases are expanded */
+  /** The number of applications and refinements in this type, after all aliases are expanded */
   private def typeSize(tp: Type)(implicit ctx: Context): Int = {
     val accu = new TypeAccumulator[Int] {
       def apply(n: Int, tp: Type): Int = tp match {
+        case tp: AppliedType =>
+          foldOver(n + 1, tp)
         case tp: RefinedType =>
           foldOver(n + 1, tp)
         case tp: TypeRef if tp.info.isAlias =>
