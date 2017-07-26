@@ -57,6 +57,18 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
    */
   private def asSeenFrom(tp: Type, pre: Type, cls: Symbol, theMap: AsSeenFromMap): Type = {
 
+    def currentVariance = if (theMap != null) theMap.currentVariance else 1
+
+    def markIfUnsafe(pre: Type) =
+      if (currentVariance <= 0 && !isLegalPrefix(pre)) {
+        ctx.base.unsafeNonvariant = ctx.runId
+        pre match {
+          case AnnotatedType(_, ann) if ann.symbol == defn.UnsafeNonvariantAnnot => pre
+          case _ => AnnotatedType(pre, Annotation(defn.UnsafeNonvariantAnnot, Nil))
+        }
+      }
+      else pre
+
     /** Map a `C.this` type to the right prefix. If the prefix is unstable and
      *  the `C.this` occurs in nonvariant or contravariant position, mark the map
      *  to be unstable.
@@ -67,16 +79,8 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
       else pre match {
         case pre: SuperType => toPrefix(pre.thistpe, cls, thiscls)
         case _ =>
-          if (thiscls.derivesFrom(cls) && pre.baseType(thiscls).exists) { // ??? why not derivesFrom ???
-            if (theMap != null && theMap.currentVariance <= 0 && !isLegalPrefix(pre)) {
-              ctx.base.unsafeNonvariant = ctx.runId
-              pre match {
-                case AnnotatedType(_, ann) if ann.symbol == defn.UnsafeNonvariantAnnot => pre
-                case _ => AnnotatedType(pre, Annotation(defn.UnsafeNonvariantAnnot, Nil))
-              }
-            }
-            else pre
-          }
+          if (thiscls.derivesFrom(cls) && pre.baseType(thiscls).exists) // ??? why not derivesFrom ???
+            markIfUnsafe(pre)
           else if ((pre.termSymbol is Package) && !(thiscls is Package))
             toPrefix(pre.select(nme.PACKAGE), cls, thiscls)
           else
@@ -85,16 +89,32 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
     }
 
     @tailrec
-    def argForParam(pre: Type, cls: Symbol, pref: TypeParamRef, prefCls: ClassSymbol): Type =
-      if (cls.is(PackageClass)) pref
-      else {
-        val base = pre.baseType(cls)
-        if (cls eq prefCls) {
-          val AppliedType(_, args) = base
-          args(pref.paramNum)
+    def argForParam(pre: Type, cls: Symbol, tparam: Symbol): Type = {
+      def fail() = throw new TypeError(ex"$pre contains no matching argument for ${tparam.showLocated} ")
+      if ((pre eq NoType) || (pre eq NoPrefix) || (cls is PackageClass)) fail()
+      val base = pre.baseType(cls)
+      if (cls `eq` tparam.owner) {
+        var tparams = cls.typeParams
+        var args = base.argInfos
+        var idx = 0
+        while (tparams.nonEmpty && args.nonEmpty) {
+          if (tparams.head.eq(tparam))
+            return args.head match {
+              case bounds: TypeBounds =>
+                val v = currentVariance
+                if (v > 0) bounds.hi
+                else if (v < 0) bounds.lo
+                else TypeArgRef(pre, cls.typeRef, idx)
+              case arg => arg
+            }
+          tparams = tparams.tail
+          args = args.tail
+          idx += 1
         }
-        else argForParam(base.normalizedPrefix, cls.owner.enclosingClass, pref, prefCls)
+        fail()
       }
+      else argForParam(base.normalizedPrefix, cls.owner.enclosingClass, tparam)
+    }
 
     /*>|>*/ ctx.conditionalTraceIndented(TypeOps.track, s"asSeen ${tp.show} from (${pre.show}, ${cls.show})", show = true) /*<|<*/ { // !!! DEBUG
       tp match {
@@ -103,7 +123,8 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
           if (sym.isStatic) tp
           else {
             val pre1 = asSeenFrom(tp.prefix, pre, cls, theMap)
-            if (pre1.isUnsafeNonvariant) {
+            if (Config.newScheme && sym.is(TypeParam)) argForParam(pre1, cls, sym)
+            else if (pre1.isUnsafeNonvariant) {
               val safeCtx = ctx.withProperty(TypeOps.findMemberLimit, Some(()))
               pre1.member(tp.name)(safeCtx).info match {
                 case TypeAlias(alias) =>
@@ -116,14 +137,9 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
           }
         case tp: ThisType =>
           toPrefix(pre, cls, tp.cls)
-        case tp: TypeParamRef =>
-          tp.binder.resultType match {
-            case cinfo: ClassInfo => argForParam(pre, cls, tp, cinfo.cls)
-            case _ => tp
-          }
         case _: BoundType | NoPrefix =>
           tp
-        case tp: RefinedType =>
+        case tp: RefinedType => //@!!!
           tp.derivedRefinedType(
             asSeenFrom(tp.parent, pre, cls, theMap),
             tp.refinedName,
@@ -187,7 +203,7 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
       }
     case  _: ThisType | _: BoundType | NoPrefix =>
       tp
-    case tp: RefinedType =>
+    case tp: RefinedType => // @!!!
       tp.derivedRefinedType(simplify(tp.parent, theMap), tp.refinedName, simplify(tp.refinedInfo, theMap))
     case tp: TypeAlias =>
       tp.derivedTypeAlias(simplify(tp.alias, theMap))
@@ -265,6 +281,7 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
     def approximateOr(tp1: Type, tp2: Type): Type = {
       def isClassRef(tp: Type): Boolean = tp match {
         case tp: TypeRef => tp.symbol.isClass
+        case tp: AppliedType => isClassRef(tp.tycon)
         case tp: RefinedType => isClassRef(tp.parent)
         case _ => false
       }
@@ -339,11 +356,11 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
     cls.enter(sym, decls)
   }
 
-  /** Normalize a list of parent types of class `cls` that may contain refinements
-   *  to a list of typerefs referring to classes, by converting all refinements to member
-   *  definitions in scope `decls`. Can add members to `decls` as a side-effect.
+  /** Normalize a list of parent types of class `cls` to make sure they are
+   *  all (possibly applied) references to classes.
    */
-  def normalizeToClassRefs(parents: List[Type], cls: ClassSymbol, decls: Scope): List[TypeRef] = {
+  def normalizeToClassRefs(parents: List[Type], cls: ClassSymbol, decls: Scope): List[Type] = {
+    if (Config.newScheme) return parents.mapConserve(_.dealias)
     // println(s"normalizing $parents of $cls in ${cls.owner}") // !!! DEBUG
 
     // A map consolidating all refinements arising from parent type parameters
@@ -442,15 +459,6 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
 
     paramBindings.foreachBinding(forwardRefs)
   }
-
-  /** Used only for debugging: All BaseTypeArg definitions in
-   *  `cls` and all its base classes.
-   */
-  def allBaseTypeArgs(cls: ClassSymbol)(implicit ctx: Context) =
-    for { bc <- cls.baseClasses
-          sym <- bc.info.decls.toList
-          if sym.is(BaseTypeArg)
-    } yield sym
 
   /** An argument bounds violation is a triple consisting of
    *   - the argument tree

@@ -46,8 +46,8 @@ trait SymDenotations { this: Context =>
     else {
       val initial = denot.initial
       val firstPhaseId = initial.validFor.firstPhaseId.max(ctx.typerPhase.id)
-     if ((initial ne denot) || ctx.phaseId != firstPhaseId) {
-       ctx.withPhase(firstPhaseId).stillValidInOwner(initial) ||
+      if ((initial ne denot) || ctx.phaseId != firstPhaseId) {
+        ctx.withPhase(firstPhaseId).stillValidInOwner(initial) ||
          // Workaround #1895: A symbol might not be entered into an owner
          // until the second phase where it exists
          (denot.validFor.containsPhaseId(firstPhaseId + 1)) &&
@@ -1220,7 +1220,7 @@ object SymDenotations {
       info2 match {
         case info2: ClassInfo =>
           info1 match {
-            case info1: ClassInfo => info1.classParents ne info2.classParents
+            case info1: ClassInfo => info1.classParentsNEW ne info2.classParentsNEW
             case _ => completersMatter
           }
         case _ => completersMatter
@@ -1366,13 +1366,24 @@ object SymDenotations {
     }
 
     /** The denotations of all parents in this class. */
-    def classParents(implicit ctx: Context): List[TypeRef] = info match {
-      case classInfo: ClassInfo => classInfo.classParents
+    def classParentRefs(implicit ctx: Context): List[TypeRef] = info match {
+      case classInfo: ClassInfo => classInfo.parentRefs
+      case _ => Nil
+    }
+
+    /** The denotations of all parents in this class. */
+    def classParentsWithArgs(implicit ctx: Context): List[Type] = info match {
+      case classInfo: ClassInfo => classInfo.parentsWithArgs
+      case _ => Nil
+    }
+
+    def classParentsNEW(implicit ctx: Context): List[Type] = info match {
+      case classInfo: ClassInfo => classInfo.parentsNEW
       case _ => Nil
     }
 
     /** The symbol of the superclass, NoSymbol if no superclass exists */
-    def superClass(implicit ctx: Context): Symbol = classParents match {
+    def superClass(implicit ctx: Context): Symbol = classParentsNEW match {
       case parent :: _ =>
         val cls = parent.classSymbol
         if (cls is Trait) NoSymbol else cls
@@ -1438,10 +1449,10 @@ object SymDenotations {
     def computeBaseData(implicit onBehalf: BaseData, ctx: Context): (List[ClassSymbol], BaseClassSet) = {
       def emptyParentsExpected =
         is(Package) || (symbol == defn.AnyClass) || ctx.erasedTypes && (symbol == defn.ObjectClass)
-      if (classParents.isEmpty && !emptyParentsExpected)
+      if (classParentsNEW.isEmpty && !emptyParentsExpected)
         onBehalf.signalProvisional()
       val builder = new BaseDataBuilder
-      for (p <- classParents) builder.addAll(p.symbol.asClass.baseClasses)
+      for (p <- classParentsNEW) builder.addAll(p.typeSymbol.asClass.baseClasses)
       (classSymbol :: builder.baseClasses, builder.baseClassSet)
     }
 
@@ -1567,10 +1578,10 @@ object SymDenotations {
       val ownDenots = info.decls.denotsNamed(name, selectNonPrivate)
       if (debugTrace) // DEBUG
         println(s"$this.member($name), ownDenots = $ownDenots")
-      def collect(denots: PreDenotation, parents: List[TypeRef]): PreDenotation = parents match {
+      def collect(denots: PreDenotation, parents: List[Type]): PreDenotation = parents match {
         case p :: ps =>
           val denots1 = collect(denots, ps)
-          p.symbol.denot match {
+          p.typeSymbol.denot match {
             case parentd: ClassDenotation =>
               denots1 union
                 parentd.nonPrivateMembersNamed(name, inherited = true)
@@ -1582,7 +1593,7 @@ object SymDenotations {
           denots
       }
       if (name.isConstructorName) ownDenots
-      else collect(ownDenots, classParents)
+      else collect(ownDenots, classParentsNEW)
     }
 
     override final def findMember(name: Name, pre: Type, excluded: FlagSet)(implicit ctx: Context): Denotation = {
@@ -1629,7 +1640,7 @@ object SymDenotations {
               tp
             else subcls.denot match {
               case cdenot: ClassDenotation =>
-                if (cdenot.baseClassSet contains symbol) foldGlb(NoType, tp.parentsNEW) // !!! change to parents
+                if (cdenot.baseClassSet contains symbol) foldGlb(NoType, tp.parentsNEW)
                 else NoType
               case _ =>
                 baseTypeOf(tp.superType)
@@ -1684,8 +1695,8 @@ object SymDenotations {
     def computeMemberNames(keepOnly: NameFilter)(implicit onBehalf: MemberNames, ctx: Context): Set[Name] = {
       var names = Set[Name]()
       def maybeAdd(name: Name) = if (keepOnly(thisType, name)) names += name
-      for (p <- classParents)
-        for (name <- p.symbol.asClass.memberNames(keepOnly))
+      for (p <- classParentsNEW)
+        for (name <- p.typeSymbol.asClass.memberNames(keepOnly))
           maybeAdd(name)
       val ownSyms =
         if (keepOnly eq implicitFilter)

@@ -110,7 +110,7 @@ trait TypeAssigner {
           val base = apply(tycon)
           var args = tp.baseArgInfos(base.typeSymbol)
           if (base.typeParams.length != args.length)
-            args = base.typeParams.map(_.paramInfo)
+            args = base.typeParams.map(_.paramInfo) // TODO: not sure we need this
           apply(base.appliedTo(args))
         case tp @ RefinedType(parent, name, rinfo) if variance > 0 =>
           val parent1 = apply(tp.parent)

@@ -6,7 +6,7 @@ import Types._, Contexts._, Symbols._
 import Decorators._
 import config.Config
 import config.Printers.{constr, typr}
-import TypeApplications.EtaExpansion
+import TypeApplications.{EtaExpansion, TypeParamInfo}
 import collection.mutable
 
 /** Methods for adding constraints and solving them.
@@ -194,9 +194,17 @@ trait ConstraintHandling {
   final def approximation(param: TypeParamRef, fromBelow: Boolean): Type = {
     val avoidParam = new TypeMap {
       override def stopAtStatic = true
+      def avoidInArg(arg: Type, formal: TypeParamInfo): Type =
+        if (param.occursIn(arg)) TypeBounds.empty else arg
       def apply(tp: Type) = mapOver {
         tp match {
-          case tp: RefinedType if param occursIn tp.refinedInfo => tp.parent
+          case tp @ AppliedType(tycon, args) =>
+            tp.derivedAppliedType(tycon,
+              args.zipWithConserve(tycon.typeParams)(avoidInArg))
+          case tp: RefinedType if param occursIn tp.refinedInfo =>
+            assert(fromBelow || variance <= 0,
+              "unsound approximation of $param with bounds ${constraint.fullUpperBound(param)}")
+            tp.parent
           case tp: WildcardType =>
             val bounds = tp.optBounds.orElse(TypeBounds.empty).bounds
             // Try to instantiate the wildcard to a type that is known to conform to it.
