@@ -222,7 +222,7 @@ object desugar {
       case evidenceParams =>
         val vparamss1 = meth.vparamss.reverse match {
           case (vparams @ (vparam :: _)) :: rvparamss if vparam.mods is Implicit =>
-            ((vparams ++ evidenceParams) :: rvparamss).reverse
+            ((evidenceParams ++ vparams) :: rvparamss).reverse
           case _ =>
             meth.vparamss :+ evidenceParams
         }
