@@ -414,7 +414,8 @@ object Erasure {
         }
       }
 
-      if (tree.symbol eq defn.Phantom_assume) PhantomErasure.erasedAssume
+      if ((origSym eq defn.Phantom_assume) || (origSym.is(Flags.ParamAccessor) && wasPhantom(pt)))
+        PhantomErasure.erasedAssume
       else recur(typed(tree.qualifier, AnySelectionProto))
     }
 
