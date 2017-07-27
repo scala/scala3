@@ -50,7 +50,7 @@ object TestConfiguration {
     Array("-classpath", paths)
   }
 
-  private val yCheckOptions = Array("-Ycheck:tailrec,resolveSuper,mixin,arrayConstructors,labelDef")
+  private val yCheckOptions = Array("-Ycheck:tailrec,resolveSuper,mixin,getClass,restoreScopes,labelDef")
 
   val defaultUnoptimised = noCheckOptions ++ checkOptions ++ yCheckOptions ++ classPath
   val defaultOptimised = defaultUnoptimised :+ "-optimise"
