@@ -101,7 +101,7 @@ class SuperAccessors(thisTransformer: DenotTransformer) {
       val Select(sup @ Super(_, mix), name) = sel
       val sym   = sel.symbol
       assert(sup.symbol.exists, s"missing symbol in $sel: ${sup.tpe}")
-      val clazz = sup.symbol.asClass
+      val clazz = sup.symbol
 
       if (sym.isTerm && !sym.is(Method, butNot = Accessor) && !ctx.owner.is(ParamForwarder))
         // ParamForwaders as installed ParamForwarding.scala do use super calls to vals
@@ -109,7 +109,7 @@ class SuperAccessors(thisTransformer: DenotTransformer) {
       else if (isDisallowed(sym))
         ctx.error(s"super not allowed here: use this.${sel.name} instead", sel.pos)
       else if (sym is Deferred) {
-        val member = sym.overridingSymbol(clazz)
+        val member = sym.overridingSymbol(clazz.asClass)
         if (!mix.name.isEmpty ||
             !member.exists ||
             !((member is AbsOverride) && member.isIncompleteIn(clazz)))
