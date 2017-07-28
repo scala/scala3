@@ -424,7 +424,7 @@ class ClassfileParser(
       val start = index
       while (sig(index) != '>') {
         val tpname = subName(':'.==).toTypeName
-        val expname = if (owner.isClass) tpname.expandedName(owner) else tpname
+        val expname = if (owner.isClass && !config.Config.newScheme) tpname.expandedName(owner) else tpname
         val s = ctx.newSymbol(
           owner, expname, owner.typeParamCreationFlags,
           typeParamCompleter(index), coord = indexCoord(index))

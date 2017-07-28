@@ -123,17 +123,20 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
           if (sym.isStatic) tp
           else {
             val pre1 = asSeenFrom(tp.prefix, pre, cls, theMap)
-            if (Config.newScheme && sym.is(TypeParam)) argForParam(pre1, cls, sym)
-            else if (pre1.isUnsafeNonvariant) {
-              val safeCtx = ctx.withProperty(TypeOps.findMemberLimit, Some(()))
-              pre1.member(tp.name)(safeCtx).info match {
-                case TypeAlias(alias) =>
-                  // try to follow aliases of this will avoid skolemization.
-                  return alias
-                case _ =>
+            if (Config.newScheme && sym.is(TypeParam))
+              argForParam(pre1, cls, sym)
+            else {
+              if (pre1.isUnsafeNonvariant) {
+                val safeCtx = ctx.withProperty(TypeOps.findMemberLimit, Some(()))
+                pre1.member(tp.name)(safeCtx).info match {
+                  case TypeAlias(alias) =>
+                    // try to follow aliases of this will avoid skolemization.
+                    return alias
+                  case _ =>
+                }
               }
+              tp.derivedSelect(pre1)
             }
-            tp.derivedSelect(pre1)
           }
         case tp: ThisType =>
           toPrefix(pre, cls, tp.cls)
