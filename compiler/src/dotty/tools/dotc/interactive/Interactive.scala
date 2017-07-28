@@ -79,7 +79,7 @@ object Interactive {
         // those from the enclosing class
         boundary.enclosingClass match {
           case csym: ClassSymbol =>
-            val classRef = csym.classInfo.typeRef
+            val classRef = csym.classInfo.appliedRef
             completions(classRef, boundary)
           case _ =>
             Nil

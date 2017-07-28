@@ -202,8 +202,6 @@ trait ConstraintHandling {
             tp.derivedAppliedType(tycon,
               args.zipWithConserve(tycon.typeParams)(avoidInArg))
           case tp: RefinedType if param occursIn tp.refinedInfo =>
-            assert(fromBelow || variance <= 0,
-              "unsound approximation of $param with bounds ${constraint.fullUpperBound(param)}")
             tp.parent
           case tp: WildcardType =>
             val bounds = tp.optBounds.orElse(TypeBounds.empty).bounds
