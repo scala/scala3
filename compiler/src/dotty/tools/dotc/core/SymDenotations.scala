@@ -1731,11 +1731,11 @@ object SymDenotations {
       else constrNamed(nme.CONSTRUCTOR).orElse(constrNamed(nme.TRAIT_CONSTRUCTOR))
     }
 
-    /** The parameter accessors of this class. Term and type accessors,
-     *  getters and setters are all returned int his list
+    /** The term parameter accessors of this class.
+     *  Both getters and setters are returned in this list.
      */
     def paramAccessors(implicit ctx: Context): List[Symbol] =
-      unforcedDecls.filter(_ is ParamAccessor).toList
+      unforcedDecls.filter(_.is(ParamAccessor)).toList
 
     /** If this class has the same `decls` scope reference in `phase` and
      *  `phase.next`, install a new denotation with a cloned scope in `phase.next`.
