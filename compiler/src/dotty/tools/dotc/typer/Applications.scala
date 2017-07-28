@@ -1096,7 +1096,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
         tp1.paramInfos.isEmpty && tp2.isInstanceOf[LambdaType]
       case tp1: PolyType => // (2)
         val tparams = ctx.newTypeParams(alt1.symbol, tp1.paramNames, EmptyFlags, tp1.instantiateBounds)
-        isAsSpecific(alt1, tp1.instantiate(tparams map (_.typeRef)), alt2, tp2)
+        isAsSpecific(alt1, tp1.instantiate(tparams.map(_.typeRef)), alt2, tp2)
       case _ => // (3)
         tp2 match {
           case tp2: MethodType => true // (3a)

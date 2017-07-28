@@ -72,7 +72,7 @@ class FunctionalInterfaces extends MiniPhaseTransform {
           // symbols loaded from classpath aren't defined in periods earlier than when they where loaded
           val interface = ctx.withPhase(ctx.typerPhase).getClassIfDefined(functionPackage ++ interfaceName)
           if (interface.exists) {
-            val tpt = tpd.TypeTree(interface.asType.typeRef)
+            val tpt = tpd.TypeTree(interface.asType.appliedRef)
             tpd.Closure(tree.env, tree.meth, tpt)
           } else tree
         } else tree

@@ -92,7 +92,7 @@ class Splitter extends MiniPhaseTransform { thisTransform =>
     else {
       def choose(qual: Tree, syms: List[Symbol]): Tree = {
         def testOrCast(which: Symbol, mbr: Symbol) =
-          qual.select(which).appliedToType(mbr.owner.typeRef)
+          qual.select(which).appliedToType(mbr.owner.appliedRef)
         def select(sym: Symbol) = {
           val qual1 =
             if (qual.tpe derivesFrom sym.owner) qual
