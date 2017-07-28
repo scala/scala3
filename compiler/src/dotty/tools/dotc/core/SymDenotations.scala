@@ -1427,7 +1427,14 @@ object SymDenotations {
         else ThisType.raw(TypeRef(pre, symbol.asType))
       }
 */
-    private[this] var myTypeRef: TypeRef = null
+    private[this] var myAppliedRef: Type = null // @!!!: Use classInfo.appliedRef instead?
+    private[this] var myTypeRef: TypeRef = null // @!!!: Use classInfo.appliedRef instead?
+
+    override def appliedRef(implicit ctx: Context): Type = {
+      if (myAppliedRef == null) myAppliedRef = super.appliedRef
+      if (ctx.erasedTypes) myAppliedRef.typeConstructor
+      else myAppliedRef
+    }
 
     override def typeRef(implicit ctx: Context): TypeRef = {
       if (myTypeRef == null) myTypeRef = super.typeRef
@@ -1635,7 +1642,7 @@ object SymDenotations {
       def computeBaseTypeOf(tp: Type): Type = {
         Stats.record("computeBaseTypeOf")
         if (symbol.isStatic && tp.derivesFrom(symbol) && symbol.typeParams.isEmpty)
-          symbol.typeRef
+          symbol.appliedRef
         else tp match {
           case tp: RefType =>
             val subcls = tp.symbol

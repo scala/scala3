@@ -644,6 +644,10 @@ object Denotations {
     // ------ Forming types -------------------------------------------
 
     /** The TypeRef representing this type denotation at its original location. */
+    def appliedRef(implicit ctx: Context): Type =
+      if (Config.newScheme) typeRef.appliedTo(symbol.typeParams.map(_.typeRef))
+      else typeRef
+
     def typeRef(implicit ctx: Context): TypeRef =
       TypeRef(symbol.owner.thisType, symbol.name.asTypeName, this)
 

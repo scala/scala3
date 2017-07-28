@@ -297,7 +297,7 @@ class SuperAccessors(thisTransformer: DenotTransformer) {
       val clazz = currentClass
       val host = hostForAccessorOf(sym, clazz)
       def accessibleThroughSubclassing =
-        validCurrentClass && (clazz.classInfo.selfType <:< sym.owner.typeRef) && !clazz.is(Trait)
+        validCurrentClass && (clazz.classInfo.selfType <:< sym.owner.appliedRef) && !clazz.is(Trait)
 
       val isCandidate = (
            sym.is(Protected)
@@ -308,7 +308,7 @@ class SuperAccessors(thisTransformer: DenotTransformer) {
         && (sym.enclosingPackageClass == sym.accessBoundary(sym.enclosingPackageClass))
       )
       val hostSelfType = host.classInfo.selfType
-      def isSelfType = !(host.typeRef <:< hostSelfType) && {
+      def isSelfType = !(host.appliedRef <:< hostSelfType) && {
         if (hostSelfType.typeSymbol.is(JavaDefined))
           ctx.restrictionError(
             s"cannot accesses protected $sym from within $clazz with host self type $hostSelfType", pos)
@@ -332,7 +332,7 @@ class SuperAccessors(thisTransformer: DenotTransformer) {
      */
     private def hostForAccessorOf(sym: Symbol, referencingClass: ClassSymbol)(implicit ctx: Context): ClassSymbol =
       if (referencingClass.derivesFrom(sym.owner)
-          || referencingClass.classInfo.selfType <:< sym.owner.typeRef
+          || referencingClass.classInfo.selfType <:< sym.owner.appliedRef
           || referencingClass.enclosingPackageClass == sym.owner.enclosingPackageClass) {
         assert(referencingClass.isClass, referencingClass)
         referencingClass
