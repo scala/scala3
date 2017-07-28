@@ -653,9 +653,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
 
             typedArgs = liftArgs(liftedDefs, methType, liftable) ++ rest
 
-            val newOrder = (liftedDefs zip indices).sortBy(_._2).unzip._1
-            liftedDefs = ListBuffer.empty
-            liftedDefs ++= newOrder
+            liftedDefs = (liftedDefs zip indices).sortBy(_._2).unzip._1.to
           }
           if (firstDiff(typedArgs, args) < 0) // trick to cut down on tree copying
             typedArgs = args.asInstanceOf[List[Tree]]
