@@ -3,7 +3,7 @@ package dotc
 package typer
 
 import core._
-import ast.{Trees, untpd, tpd, TreeInfo}
+import ast.{TreeInfo, Trees, tpd, untpd}
 import util.Positions._
 import util.Stats.track
 import Trees.Untyped
@@ -24,12 +24,16 @@ import NameKinds.DefaultGetterName
 import ProtoTypes._
 import EtaExpansion._
 import Inferencing._
+
 import collection.mutable
-import config.Printers.{typr, unapp, overload}
+import config.Printers.{overload, typr, unapp}
 import TypeApplications._
+
 import language.implicitConversions
 import reporting.diagnostic.Message
 import Constants.{Constant, IntTag, LongTag}
+
+import scala.collection.mutable.ListBuffer
 
 object Applications {
   import tpd._
@@ -611,7 +615,28 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
             liftFun()
             val eqSuffixLength = firstDiff(app.args.reverse, orderedArgs.reverse)
             val (liftable, rest) = typedArgs splitAt (typedArgs.length - eqSuffixLength)
+
+            var indices = ListBuffer.empty[Int]
+            var nextDefaultParamIndex = args.size
+            var prefixShift = 0
+            if (liftedDefs.nonEmpty) {
+              indices += 0
+              prefixShift = 1
+            }
+            for (l <- liftable) {
+              if (!args.contains(l)) {
+                indices += prefixShift + nextDefaultParamIndex
+                nextDefaultParamIndex += 1
+              }
+              else indices += prefixShift + args.indexOf(l)
+            }
+
             typedArgs = liftArgs(liftedDefs, methType, liftable) ++ rest
+
+            assert(liftedDefs.size == indices.size)
+            val newOrder = (liftedDefs zip indices).sortBy(_._2).unzip._1.toList
+            liftedDefs = ListBuffer.empty
+            liftedDefs ++= newOrder
           }
           if (sameSeq(typedArgs, args)) // trick to cut down on tree copying
             typedArgs = args.asInstanceOf[List[Tree]]
