@@ -590,7 +590,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
     private def firstDiff[T <: Trees.Tree[_]](xs: List[T], ys: List[T], n: Int = 0): Int = xs match {
       case x :: xs1 =>
         ys match {
-          case EmptyTree :: ys1 => firstDiff(xs1, ys1, n)
+          case EmptyTree :: ys1 => firstDiff(xs, ys1, n)
           case y :: ys1 => if (x ne y) n else firstDiff(xs1, ys1, n + 1)
           case nil => n
         }
@@ -609,7 +609,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
       val app1 =
         if (!success) app0.withType(UnspecifiedErrorType)
         else {
-          if (!sameSeq(args, orderedArgs) && !isJavaAnnotConstr(methRef.symbol)) {
+          if (!(sameSeq(args, orderedArgs) && !orderedArgs.contains(EmptyTree)) && !isJavaAnnotConstr(methRef.symbol)) {
             // need to lift arguments to maintain evaluation order in the
             // presence of argument reorderings.
             liftFun()
