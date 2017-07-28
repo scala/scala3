@@ -14,7 +14,6 @@ import NameOps._
 import Uniques._
 import SymDenotations._
 import Comments._
-import Flags.ParamAccessor
 import util.Positions._
 import ast.Trees._
 import ast.untpd
@@ -339,7 +338,9 @@ object Contexts {
      *    from constructor parameters to class parameter accessors.
      */
     def superCallContext: Context = {
-      val locals = newScopeWith(owner.asClass.paramAccessors: _*)
+      val locals = newScopeWith(
+        (if (Config.newScheme) owner.typeParams ++ owner.asClass.paramAccessors
+        else owner.asClass.paramAccessors): _*)
       superOrThisCallContext(owner.primaryConstructor, locals)
     }
 

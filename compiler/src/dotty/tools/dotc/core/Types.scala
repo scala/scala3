@@ -601,6 +601,8 @@ object Types {
         case tl: HKTypeLambda =>
           go(tl.resType).mapInfo(info =>
             tl.derivedLambdaAbstraction(tl.paramNames, tl.paramInfos, info).appliedTo(tp.args))
+        case tc: TypeRef if tc.symbol.isClass =>
+          go(tc)
         case _ =>
           go(tp.superType)
       }
@@ -1198,7 +1200,10 @@ object Types {
 
     /** The full parent types, including (in new scheme) all type arguments */
     def parentsNEW(implicit ctx: Context): List[Type] = this match {
-      case tp: TypeProxy => tp.superType.parentsNEW
+      case tp @ AppliedType(tycon, args) if tycon.typeSymbol.isClass =>
+        tycon.parentsNEW.map(_.subst(tycon.typeSymbol.typeParams, args))
+      case tp: TypeProxy =>
+        tp.superType.parentsNEW
       case _ => Nil
     }
 
