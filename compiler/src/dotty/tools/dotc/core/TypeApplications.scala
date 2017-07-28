@@ -221,6 +221,8 @@ class TypeApplications(val self: Type) extends AnyVal {
         Nil
       case self: WildcardType =>
         self.optBounds.typeParams
+      case self: AppliedType =>
+        Nil
       case self: TypeProxy =>
         self.superType.typeParams
       case _ =>
@@ -292,7 +294,7 @@ class TypeApplications(val self: Type) extends AnyVal {
    */
   def EtaExpand(tparams: List[TypeSymbol])(implicit ctx: Context): Type = {
     val tparamsToUse = if (variancesConform(typeParams, tparams)) tparams else typeParamSymbols
-    HKTypeLambda.fromParams(tparamsToUse, self.appliedTo(tparams map (_.typeRef)))
+    HKTypeLambda.fromParams(tparamsToUse, self.appliedTo(tparams.map(_.typeRef)))
       //.ensuring(res => res.EtaReduce =:= self, s"res = $res, core = ${res.EtaReduce}, self = $self, hc = ${res.hashCode}")
   }
 
@@ -539,7 +541,7 @@ class TypeApplications(val self: Type) extends AnyVal {
       self.derivedExprType(tp.translateParameterized(from, to))
     case _ =>
       if (self.derivesFrom(from))
-        if (ctx.erasedTypes) to.typeRef
+        if (ctx.erasedTypes) to.typeRef // @!!! can be dropped; appliedTo does the right thing anyway
         else if (Config.newScheme) to.typeRef.appliedTo(self.baseType(from).argInfos)
         else RefinedType(to.typeRef, to.typeParams.head.name, self.member(from.typeParams.head.name).info)
       else self

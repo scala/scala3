@@ -306,7 +306,7 @@ trait TypeAssigner {
             errorType("ambiguous parent class qualifier", tree.pos)
         }
         val owntype =
-          if (mixinClass.exists) mixinClass.typeRef
+          if (mixinClass.exists) mixinClass.appliedRef
           else if (!mix.isEmpty) findMixinSuper(cls.info)
           else if (inConstrCall || ctx.erasedTypes) cls.info.firstParentRef
           else {

@@ -214,7 +214,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
 
   def ClassDef(cls: ClassSymbol, constr: DefDef, body: List[Tree], superArgs: List[Tree] = Nil)(implicit ctx: Context): TypeDef = {
     val firstParentRef :: otherParentRefs = cls.info.parentRefs
-    val firstParent = cls.typeRef.baseTypeWithArgs(firstParentRef.symbol)
+    val firstParent = cls.appliedRef.baseTypeWithArgs(firstParentRef.symbol)
     val superRef =
       if (cls is Trait) TypeTree(firstParent)
       else {
