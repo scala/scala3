@@ -584,24 +584,39 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
       }
 
     /** The index of the first difference between lists of trees `xs` and `ys`,
-     *  where `EmptyTree`s in the second list are skipped.
+     *  where initial `EmptyTree`s in the second list are skipped.
      *  -1 if there are no differences.
      */
-    private def firstDiff[T <: Trees.Tree[_]](xs: List[T], ys: List[T], n: Int = 0): Int = xs match {
+    private def firstDiffSkipInitEmptyTrees[T <: Trees.Tree[_]](xs: List[T], ys: List[T], n: Int = 0): Int = xs match {
       case x :: xs1 =>
         ys match {
-          case EmptyTree :: ys1 => firstDiff(xs, ys1, n)
+          case EmptyTree :: ys1 => firstDiffSkipInitEmptyTrees(xs, ys1, n)
           case y :: ys1 => if (x ne y) n else firstDiff(xs1, ys1, n + 1)
           case nil => n
         }
       case nil =>
         ys match {
-          case EmptyTree :: ys1 => firstDiff(xs, ys1, n)
+          case EmptyTree :: ys1 => firstDiffSkipInitEmptyTrees(xs, ys1, n)
           case y :: ys1 => n
           case nil => -1
         }
     }
-    private def sameSeq[T <: Trees.Tree[_]](xs: List[T], ys: List[T]): Boolean = firstDiff(xs, ys) < 0
+
+    /** The index of the first difference between lists of trees `xs` and `ys`
+     *  -1 if there are no differences.
+     */
+    private def firstDiff[T <: Trees.Tree[_]](xs: List[T], ys: List[T], n: Int = 0): Int = xs match {
+      case x :: xs1 =>
+        ys match {
+          case y :: ys1 => if (x ne y) n else firstDiff(xs1, ys1, n + 1)
+          case nil => n
+        }
+      case nil =>
+        ys match {
+          case y :: ys1 => n
+          case nil => -1
+        }
+    }
 
     val result = {
       var typedArgs = typedArgBuf.toList
@@ -609,13 +624,14 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
       val app1 =
         if (!success) app0.withType(UnspecifiedErrorType)
         else {
-          if (!(sameSeq(args, orderedArgs) && !orderedArgs.contains(EmptyTree)) && !isJavaAnnotConstr(methRef.symbol)) {
+          if (firstDiffSkipInitEmptyTrees(args, orderedArgs) >= 0 && !isJavaAnnotConstr(methRef.symbol)) {
             // need to lift arguments to maintain evaluation order in the
             // presence of argument reorderings.
             liftFun()
-            val eqSuffixLength = firstDiff(app.args.reverse, orderedArgs.reverse)
+            val eqSuffixLength = firstDiffSkipInitEmptyTrees(app.args.reverse, orderedArgs.reverse)
             val (liftable, rest) = typedArgs splitAt (typedArgs.length - eqSuffixLength)
 
+            // Mapping of index of each `liftable` into original args ordering
             var indices = ListBuffer.empty[Int]
             var nextDefaultParamIndex = args.size
             var prefixShift = 0
@@ -623,28 +639,25 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
               indices += 0
               prefixShift = 1
             }
-            for (l <- liftable) {
-              val pure = l match {
-                case NamedArg(_, arg) => isPureExpr(arg)
-                case arg => isPureExpr(arg)
-              }
-
-              if (pure) { }
-              else if (!args.contains(l)) {
-                indices += prefixShift + nextDefaultParamIndex
-                nextDefaultParamIndex += 1
-              }
-              else indices += prefixShift + args.indexOf(l)
+            liftable.foreach {
+              case NamedArg(_, arg) if isPureExpr(arg) =>
+              case arg if isPureExpr(arg) =>
+              case arg =>
+                if (args.contains(arg)) {
+                  indices += prefixShift + args.indexOf(arg)
+                } else {
+                  indices += prefixShift + nextDefaultParamIndex
+                  nextDefaultParamIndex += 1
+                }
             }
 
             typedArgs = liftArgs(liftedDefs, methType, liftable) ++ rest
 
-            assert(liftedDefs.size == indices.size)
-            val newOrder = (liftedDefs zip indices).sortBy(_._2).unzip._1.toList
+            val newOrder = (liftedDefs zip indices).sortBy(_._2).unzip._1
             liftedDefs = ListBuffer.empty
             liftedDefs ++= newOrder
           }
-          if (sameSeq(typedArgs, args)) // trick to cut down on tree copying
+          if (firstDiff(typedArgs, args) < 0) // trick to cut down on tree copying
             typedArgs = args.asInstanceOf[List[Tree]]
           assignType(app0, normalizedFun, typedArgs)
         }
