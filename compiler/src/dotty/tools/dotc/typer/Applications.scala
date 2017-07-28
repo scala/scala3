@@ -624,7 +624,13 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
               prefixShift = 1
             }
             for (l <- liftable) {
-              if (!args.contains(l)) {
+              val pure = l match {
+                case NamedArg(_, arg) => isPureExpr(arg)
+                case arg => isPureExpr(arg)
+              }
+
+              if (pure) { }
+              else if (!args.contains(l)) {
                 indices += prefixShift + nextDefaultParamIndex
                 nextDefaultParamIndex += 1
               }
