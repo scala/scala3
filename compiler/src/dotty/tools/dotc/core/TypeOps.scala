@@ -49,43 +49,42 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
       }
       }
 
-    @tailrec
-    def argForParam(pre: Type, cls: Symbol, tparam: Symbol): Type = {
-      def fail() = throw new TypeError(ex"$pre contains no matching argument for ${tparam.showLocated} ")
-      if ((pre eq NoType) || (pre eq NoPrefix) || (cls is PackageClass)) fail()
-      val base = pre.baseType(cls)
-      if (cls `eq` tparam.owner) {
-        var tparams = cls.typeParams
-        var args = base.argInfos
-        var idx = 0
-        while (tparams.nonEmpty && args.nonEmpty) {
-          if (tparams.head.eq(tparam))
-            return args.head match {
-              case bounds: TypeBounds =>
-                val v = currentVariance
-                if (v > 0) bounds.hi
-                else if (v < 0) bounds.lo
-                else TypeArgRef(pre, cls.typeRef, idx)
-              case arg => arg
-            }
-          tparams = tparams.tail
-          args = args.tail
-          idx += 1
-        }
-        fail()
+    def argForParam(pre: Type, tparam: Symbol): Type = {
+      val tparamCls = tparam.owner
+      pre.baseType(tparamCls) match {
+        case AppliedType(_, allArgs) =>
+          var tparams = tparamCls.typeParams
+          var args = allArgs
+          var idx = 0
+          while (tparams.nonEmpty && args.nonEmpty) {
+            if (tparams.head.eq(tparam))
+              return args.head match {
+                case bounds: TypeBounds =>
+                  val v = currentVariance
+                  if (v > 0) bounds.hi
+                  else if (v < 0) bounds.lo
+                  else TypeArgRef(pre, cls.typeRef, idx)
+                case arg => arg
+              }
+            tparams = tparams.tail
+            args = args.tail
+            idx += 1
+          }
+          throw new AssertionError(ex"$pre contains no matching argument for ${tparam.showLocated} ")
+        case OrType(tp1, tp2) => argForParam(tp1, cls) | argForParam(tp2, cls)
+        case AndType(tp1, tp2) => argForParam(tp1, cls) & argForParam(tp2, cls)
+        case _ => tp
       }
-      else argForParam(base.normalizedPrefix, cls.owner.enclosingClass, tparam)
     }
 
       /*>|>*/ ctx.conditionalTraceIndented(TypeOps.track, s"asSeen ${tp.show} from (${pre.show}, ${cls.show})", show = true) /*<|<*/ { // !!! DEBUG
-        // One `case ThisType` is specific to asSeenFrom, all other cases are inlined for performance
         tp match {
           case tp: NamedType =>
             val sym = tp.symbol
             if (sym.isStatic) tp
             else {
               val pre1 = atVariance(variance max 0)(this(tp.prefix))
-              if (Config.newScheme && sym.is(TypeParam)) argForParam(pre1, cls, sym)
+              if (Config.newScheme && sym.is(TypeParam)) argForParam(pre1, sym)
               else derivedSelect(tp, pre1)
             }
           case tp: ThisType =>

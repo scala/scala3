@@ -244,7 +244,7 @@ class TailRec extends MiniPhaseTransform with DenotTransformer with FullParamete
 
         if (isRecursiveCall) {
           if (ctx.tailPos) {
-            val receiverIsSame = enclosingClass.typeRef.widenDealias =:= recvWiden
+            val receiverIsSame = enclosingClass.appliedRef.widenDealias =:= recvWiden
             val receiverIsThis = prefix.tpe =:= thisType || prefix.tpe.widen =:= thisType
 
             def rewriteTailCall(recv: Tree): Tree = {
@@ -282,7 +282,7 @@ class TailRec extends MiniPhaseTransform with DenotTransformer with FullParamete
           }
           else fail(defaultReason)
         } else {
-          val receiverIsSuper = (method.name eq sym) && enclosingClass.typeRef.widen <:< recvWiden
+          val receiverIsSuper = (method.name eq sym) && enclosingClass.appliedRef.widen <:< recvWiden
 
           if (receiverIsSuper) fail("it contains a recursive call targeting a supertype")
           else continue

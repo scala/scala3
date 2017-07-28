@@ -92,7 +92,7 @@ trait NamerContextOps { this: Context =>
    *  type of the constructed instance is returned
    */
   def effectiveResultType(sym: Symbol, typeParams: List[Symbol], given: Type) =
-    if (sym.name == nme.CONSTRUCTOR) sym.owner.typeRef.appliedTo(typeParams map (_.typeRef))
+    if (sym.name == nme.CONSTRUCTOR) sym.owner.typeRef.appliedTo(typeParams.map(_.typeRef))
     else given
 
   /** if isConstructor, make sure it has one non-implicit parameter list */

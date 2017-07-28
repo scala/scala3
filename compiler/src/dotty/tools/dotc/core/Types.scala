@@ -472,7 +472,7 @@ object Types {
       // We need a valid prefix for `asSeenFrom`
       val pre = this match {
         case tp: ClassInfo =>
-          tp.typeRef
+          tp.typeRef // @!!! appliedRef
         case _ =>
           widenIfUnstable
       }
@@ -1258,7 +1258,7 @@ object Types {
     /** This type seen as a TypeBounds */
     final def bounds(implicit ctx: Context): TypeBounds = this match {
       case tp: TypeBounds => tp
-      case ci: ClassInfo => TypeAlias(ci.typeRef)
+      case ci: ClassInfo => TypeAlias(ci.appliedRef)
       case wc: WildcardType =>
         wc.optBounds match {
           case bounds: TypeBounds => bounds
@@ -2024,7 +2024,7 @@ object Types {
 
   // Those classes are non final as Linker extends them.
   class TermRefWithFixedSym(prefix: Type, name: TermName, val fixedSym: TermSymbol) extends TermRef(prefix, name) with WithFixedSym
-  class TypeRefWithFixedSym(prefix: Type, name: TypeName, val fixedSym: TypeSymbol) extends TypeRef(prefix, name) with WithFixedSym
+  class TypeRefWithFixedSym(prefix: Type, name: TypeName, val fixedSym: TypeSymbol) extends TypeRef(prefix, name) with WithFixedSym {
 
   /** Assert current phase does not have erasure semantics */
   private def assertUnerased()(implicit ctx: Context) =
@@ -3072,14 +3072,16 @@ object Types {
       if (ctx.period != validSuper) {
         validSuper = ctx.period
         cachedSuper = tycon match {
-          case tp: HKTypeLambda => defn.AnyType
-          case tp: TypeVar if !tp.inst.exists =>
+          case tycon: HKTypeLambda => defn.AnyType
+          case tycon: TypeVar if !tycon.inst.exists =>
             // supertype not stable, since underlying might change
             validSuper = Nowhere
-            tp.underlying.applyIfParameterized(args)
-          case tp: TypeProxy =>
-            if (tp.typeSymbol.is(Provisional)) validSuper = Nowhere
-            tp.superType.applyIfParameterized(args)
+            tycon.underlying.applyIfParameterized(args)
+          case tycon: TypeProxy =>
+            val sym = tycon.typeSymbol
+            if (sym.is(Provisional)) validSuper = Nowhere
+            if (sym.isClass) tycon
+            else tycon.superType.applyIfParameterized(args)
           case _ => defn.AnyType
         }
       }
@@ -3479,8 +3481,11 @@ object Types {
       }
 
     /** The class type with all type parameters */
-    def fullyAppliedRef(implicit ctx: Context): Type = fullyAppliedRef(cls.typeRef, cls.typeParams)
+    def fullyAppliedRef(implicit ctx: Context): Type =
+      if (Config.newScheme && false) cls.appliedRef
+      else fullyAppliedRef(cls.typeRef, cls.typeParams)
 
+    private var appliedRefCache: Type = null
     private var typeRefCache: TypeRef = null
 
     def typeRef(implicit ctx: Context): TypeRef = {
@@ -3490,6 +3495,19 @@ object Types {
           if ((cls is PackageClass) || cls.owner.isTerm) symbolicTypeRef
           else TypeRef(prefix, cls.name, clsDenot)
       typeRefCache
+    }
+
+    def appliedRef(implicit ctx: Context): Type = {
+      def clsDenot = if (prefix eq cls.owner.thisType) cls.denot else cls.denot.copySymDenotation(info = this)
+      if (appliedRefCache == null) {
+        val tref =
+          if ((cls is PackageClass) || cls.owner.isTerm) symbolicTypeRef
+          else TypeRef(prefix, cls.name, clsDenot)
+        appliedRefCache =
+          if (Config.newScheme) tref.appliedTo(cls.typeParams.map(_.typeRef))
+          else tref
+      }
+      appliedRefCache
     }
 
     def symbolicTypeRef(implicit ctx: Context): TypeRef = TypeRef(prefix, cls)
