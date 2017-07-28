@@ -486,7 +486,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
         var name1 = name.asTypeName
         var flags1 = flags
         if (flags is TypeParam) {
-          name1 = name1.expandedName(owner)
+          if (!dotty.tools.dotc.config.Config.newScheme) name1 = name1.expandedName(owner)
           flags1 |= owner.typeParamCreationFlags
         }
         ctx.newSymbol(owner, name1, flags1, localMemberUnpickler, coord = start)

@@ -426,7 +426,7 @@ object Checking {
        *  @pre  The signature of `sym` refers to `other`
        */
       def isLeaked(other: Symbol) =
-        other.is(Private) && {
+        other.is(Private, butNot = TypeParam) && {
           val otherBoundary = other.owner
           val otherLinkedBoundary = otherBoundary.linkedClass
           !(symBoundary.isContainedIn(otherBoundary) ||
@@ -456,6 +456,14 @@ object Checking {
           tp.derivedClassInfo(
             prefix = apply(tp.prefix),
             classParentsNEW =
+              if (config.Config.newScheme)
+              tp.parentsWithArgs.map { p =>
+                apply(p).stripAnnots match {
+                  case ref: RefType => ref
+                  case _ => defn.ObjectType // can happen if class files are missing
+                }
+              }
+              else
               tp.parentsWithArgs.map { p =>
                 apply(p).underlyingClassRef(refinementOK = false) match {
                   case ref: TypeRef => ref
@@ -498,7 +506,7 @@ object Checking {
         ctx.error(ValueClassesMayNotWrapItself(clazz), clazz.pos)
       else {
         val clParamAccessors = clazz.asClass.paramAccessors.filter { param =>
-          param.isTerm && !param.is(Flags.Accessor)
+          param.isTerm && !param.is(Flags.Accessor) // @!!!
         }
         clParamAccessors match {
           case param :: params =>

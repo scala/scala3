@@ -515,7 +515,7 @@ class TypeApplications(val self: Type) extends AnyVal {
           case TypeBounds(_, hi) => hi.baseTypeWithArgs(base)
           case _ => default
         }
-      case tp @ RefinedType(parent, name, _) if !isExpandedTypeParam(tp.member(name).symbol) =>
+      case tp @ RefinedType(parent, name, _) if !Config.newScheme && !isExpandedTypeParam(tp.member(name).symbol) =>
         tp.wrapIfMember(parent.baseTypeWithArgs(base))
       case tp: TermRef =>
         tp.underlying.baseTypeWithArgs(base)

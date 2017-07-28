@@ -81,18 +81,18 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
         // One `case ThisType` is specific to asSeenFrom, all other cases are inlined for performance
         tp match {
           case tp: NamedType =>
-            if (tp.symbol.isStatic) tp
-            else derivedSelect(tp, atVariance(variance max 0)(this(tp.prefix)))
+            val sym = tp.symbol
+            if (sym.isStatic) tp
+            else {
+              val pre1 = atVariance(variance max 0)(this(tp.prefix))
+              if (Config.newScheme && sym.is(TypeParam)) argForParam(pre1, cls, sym)
+              else derivedSelect(tp, pre1)
+            }
           case tp: ThisType =>
             toPrefix(pre, cls, tp.cls)
-          case tp: TypeParamRef =>
-            tp.binder.resultType match {
-              case cinfo: ClassInfo => argForParam(pre, cls, tp, cinfo.cls)
-              case _ => tp
-            }
           case _: BoundType | NoPrefix =>
             tp
-          case tp: RefinedType =>
+          case tp: RefinedType =>  //@!!!
             derivedRefinedType(tp, apply(tp.parent), apply(tp.refinedInfo))
           case tp: TypeAlias if tp.variance == 1 => // if variance != 1, need to do the variance calculation
             derivedTypeAlias(tp, apply(tp.alias))
@@ -103,7 +103,7 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
     }
 
     override def reapply(tp: Type) =
-      // derives infos have already been subjected to asSeenFrom, hence to need to apply the map again.
+      // derived infos have already been subjected to asSeenFrom, hence to need to apply the map again.
       tp
   }
 
