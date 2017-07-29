@@ -3713,8 +3713,19 @@ object Types {
       tp match {
         case tp: NamedType =>
           if (stopAtStatic && tp.symbol.isStatic) tp
-          else derivedSelect(tp, this(tp.prefix))
-
+          else {
+            val saved = variance
+            variance = variance max 0
+              // A prefix is never contravariant. Even if say `p.A` is used in a contravariant
+              // context, we cannot assume contravariance for `p` because `p`'s lower
+              // bound might not have a binding for `A` (e.g. the lower bound could be `Nothing`).
+              // By contrast, covariance does translate to the prefix, since we have that
+              // if `p <: q` then `p.A <: q.A`, and well-formedness requires that `A` is a member
+              // of `p`'s upper bound.
+            val prefix1 = this(tp.prefix)
+            variance = saved
+            derivedSelect(tp, prefix1)
+          }
         case _: ThisType
           | _: BoundType
           | NoPrefix => tp
