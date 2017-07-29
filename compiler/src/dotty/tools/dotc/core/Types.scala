@@ -3924,9 +3924,9 @@ object Types {
 
     protected var variance = 1
 
-    protected def applyToPrefix(x: T, tp: NamedType) = {
+    protected final def applyToPrefix(x: T, tp: NamedType) = {
       val saved = variance
-      variance = 0
+      variance = variance max 0 // see remark on NamedType case in TypeMap
       val result = this(x, tp.prefix)
       variance = saved
       result
