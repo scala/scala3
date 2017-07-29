@@ -284,7 +284,16 @@ object Parsers {
     }
 
     def acceptStatSepUnlessAtEnd(altEnd: Token = EOF) =
-      if (!isStatSeqEnd && in.token != altEnd) acceptStatSep()
+      if (!isStatSeqEnd)
+        in.token match {
+          case EOF =>
+          case `altEnd` =>
+          case NEWLINE | NEWLINES => in.nextToken()
+          case SEMI => in.nextToken()
+          case _ =>
+            in.nextToken() // needed to ensure progress; otherwise we might cycle forever
+            accept(SEMI)
+        }
 
     def errorTermTree    = atPos(in.offset) { Literal(Constant(null)) }
 

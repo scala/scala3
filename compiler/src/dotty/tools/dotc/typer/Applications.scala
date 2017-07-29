@@ -284,7 +284,8 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
           case (arg: NamedArg @unchecked) :: _ =>
             val nameAssocs = for (arg @ NamedArg(name, _) <- args) yield (name, arg)
             handleNamed(pnames, args, nameAssocs.toMap, Set())
-          case arg :: args1 => arg :: handlePositional(pnames.tail, args1)
+          case arg :: args1 =>
+            arg :: handlePositional(if (pnames.isEmpty) Nil else pnames.tail, args1)
           case Nil => Nil
         }
 
