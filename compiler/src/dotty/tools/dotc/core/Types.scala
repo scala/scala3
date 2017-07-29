@@ -2024,7 +2024,7 @@ object Types {
 
   // Those classes are non final as Linker extends them.
   class TermRefWithFixedSym(prefix: Type, name: TermName, val fixedSym: TermSymbol) extends TermRef(prefix, name) with WithFixedSym
-  class TypeRefWithFixedSym(prefix: Type, name: TypeName, val fixedSym: TypeSymbol) extends TypeRef(prefix, name) with WithFixedSym {
+  class TypeRefWithFixedSym(prefix: Type, name: TypeName, val fixedSym: TypeSymbol) extends TypeRef(prefix, name) with WithFixedSym
 
   /** Assert current phase does not have erasure semantics */
   private def assertUnerased()(implicit ctx: Context) =
@@ -2708,7 +2708,7 @@ object Types {
      *    def f(x: C)(y: x.S)       // dependencyStatus = TrueDeps
      *    def f(x: C)(y: x.T)       // dependencyStatus = FalseDeps, i.e.
      *                              // dependency can be eliminated by dealiasing.
-     */
+      */
     private def dependencyStatus(implicit ctx: Context): DependencyStatus = {
       if (myDependencyStatus != Unknown) myDependencyStatus
       else {
