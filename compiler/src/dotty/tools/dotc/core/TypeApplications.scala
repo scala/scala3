@@ -170,7 +170,7 @@ object TypeApplications {
       case _ =>
         apply(arg)
     }
-    
+
     def apply(t: Type) = t match {
       case t @ TypeAlias(alias) =>
         applyArg(alias) match {
