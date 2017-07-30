@@ -519,7 +519,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     if (untpd.isWildcardStarArg(tree))
       cases(
         ifPat = ascription(TypeTree(defn.RepeatedParamType.appliedTo(pt)), isWildcard = true),
-        ifExpr = seqToRepeated(typedExpr(tree.expr, defn.SeqType)),
+        ifExpr = seqToRepeated(typedExpr(tree.expr, defn.SeqType.appliedTo(defn.AnyType))),
         wildName = nme.WILDCARD_STAR)
     else {
       def typedTpt = checkSimpleKinded(typedType(tree.tpt))
