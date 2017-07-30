@@ -160,10 +160,25 @@ object TypeApplications {
       p.binder == tycon && args(p.paramNum).isInstanceOf[TypeBounds]
     def canReduceWildcard(p: TypeParamRef) =
       !ctx.mode.is(Mode.AllowLambdaWildcardApply) || available.contains(p.paramNum)
-    def apply(t: Type) = t match {
-      case t @ TypeAlias(p: TypeParamRef) if hasWildcardArg(p) && canReduceWildcard(p) =>
+
+    // If this is a reference to a reducable type parameter corresponding to a
+    // wildcard argument, return the wildcard argument, otherwise apply recursively.
+    def applyArg(arg: Type): Type = arg match {
+      case p: TypeParamRef if hasWildcardArg(p) && canReduceWildcard(p) =>
         available -= p.paramNum
         args(p.paramNum)
+      case _ =>
+        apply(arg)
+    }
+
+    def apply(t: Type) = t match {
+      case t @ TypeAlias(alias) =>
+        applyArg(alias) match {
+          case arg1: TypeBounds => arg1
+          case arg1 => t.derivedTypeAlias(arg1)
+        }
+      case t @ AppliedType(tycon, args1) if tycon.typeSymbol.isClass =>
+        t.derivedAppliedType(apply(tycon), args1.mapConserve(applyArg))
       case p: TypeParamRef if p.binder == tycon =>
         args(p.paramNum) match {
           case TypeBounds(lo, hi) =>
