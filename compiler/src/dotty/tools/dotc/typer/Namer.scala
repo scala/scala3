@@ -336,7 +336,7 @@ class Namer { typer: Typer =>
     */
   def enterSymbol(sym: Symbol)(implicit ctx: Context) = {
     if (sym.exists) {
-      typr.println(s"entered: $sym in ${ctx.owner} and ${ctx.effectiveScope}")
+      typr.println(s"entered: $sym in ${ctx.owner}")
       ctx.enter(sym)
     }
     sym

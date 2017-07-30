@@ -83,6 +83,7 @@ object ProtoTypes {
     def isMatchedBy(tp1: Type)(implicit ctx: Context) = true
     def map(tm: TypeMap)(implicit ctx: Context): ProtoType = this
     def fold[T](x: T, ta: TypeAccumulator[T])(implicit ctx: Context): T = x
+    override def toString = getClass.toString
   }
 
   /** A class marking ignored prototypes that can be revealed by `deepenProto` */
