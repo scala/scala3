@@ -741,11 +741,7 @@ object Build {
   lazy val `dotty-sbt-bridge-bootstrapped` = project.in(file("sbt-bridge")).
     dependsOn(`dotty-compiler-bootstrapped`).
     settings(commonBootstrappedSettings).
-    settings(dottySbtBridgeSettings).
-    settings(
-      // Disabled because dotty crashes when compiling the tests
-      sources in Test := Seq()
-    )
+    settings(dottySbtBridgeSettings)
 
   lazy val `dotty-language-server` = project.in(file("language-server")).
     dependsOn(`dotty-compiler-bootstrapped`).
