@@ -242,10 +242,20 @@ trait ParallelTesting extends RunnerOrchestration { self =>
       _errorCount += errors
     }
 
-    private[this] var _failed = false
+    sealed trait Failure
+    case class JavaCompilationFailure(reason: String) extends Failure
+    case class TimeoutFailure(title: String) extends Failure
+    case object Generic extends Failure
+
+    private[this] var _failures = Set.empty[Failure]
     /** Fail the current test */
-    protected[this] final def fail(): Unit = synchronized { _failed = true }
-    def didFail: Boolean = _failed
+    protected[this] final def fail(failure: Failure = Generic): Unit = synchronized {
+      _failures = _failures + failure
+    }
+    def didFail: Boolean = _failures.nonEmpty
+
+    /** A set of the different failures */
+    def failureReasons: Set[Failure] = _failures
 
     protected def logBuildInstructions(reporter: TestReporter, testSource: TestSource, err: Int, war: Int) = {
       val errorMsg = testSource.buildInstructions(reporter.errorCount, reporter.warningCount)
@@ -260,10 +270,14 @@ trait ParallelTesting extends RunnerOrchestration { self =>
 
     /** The test sources that failed according to the implementing subclass */
     private[this] val failedTestSources = mutable.ArrayBuffer.empty[String]
-    protected final def failTestSource(testSource: TestSource, reason: Option[String] = None) = synchronized {
-      val extra = reason.map(" with reason: " + _).getOrElse("")
+    protected final def failTestSource(testSource: TestSource, reason: Failure = Generic) = synchronized {
+      val extra = reason match {
+        case TimeoutFailure(title) => s", test '$title' timed out"
+        case JavaCompilationFailure(msg) => s", java test sources failed to compile with: \n$msg"
+        case Generic => ""
+      }
       failedTestSources.append(testSource.title + s" failed" + extra)
-      fail()
+      fail(reason)
     }
 
     /** Prints to `System.err` if we're not suppressing all output */
@@ -342,12 +356,17 @@ trait ParallelTesting extends RunnerOrchestration { self =>
       def compileWithJavac(fs: Array[String]) = if (fs.nonEmpty) {
         val fullArgs = Array(
           "javac",
+          "-encoding", "UTF-8",
           "-classpath",
           s".:${Jars.scalaLibrary}:${targetDir.getAbsolutePath}"
         ) ++ flags.takeRight(2) ++ fs
 
-        Runtime.getRuntime.exec(fullArgs).waitFor() == 0
-      } else true
+        val process = Runtime.getRuntime.exec(fullArgs)
+        val output = Source.fromInputStream(process.getErrorStream).mkString
+
+        if (process.waitFor() != 0) Some(output)
+        else None
+      } else None
 
       val reporter =
         TestReporter.reporter(realStdout, logLevel =
@@ -377,7 +396,12 @@ trait ParallelTesting extends RunnerOrchestration { self =>
         driver.process(allArgs ++ files.map(_.getAbsolutePath), reporter = reporter)
 
         val javaFiles = files.filter(_.getName.endsWith(".java")).map(_.getAbsolutePath)
-        assert(compileWithJavac(javaFiles), s"java compilation failed for ${javaFiles.mkString(", ")}")
+        val javaErrors = compileWithJavac(javaFiles)
+
+        if (javaErrors.isDefined) {
+          echo(s"\njava compilation failed: \n${ javaErrors.get }")
+          fail(failure = JavaCompilationFailure(javaErrors.get))
+        }
       }
       catch {
         case NonFatal(ex) => reporter.logStackTrace(ex)
@@ -522,7 +546,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
 
         case Timeout =>
           echo("failed because test " + testSource.title + " timed out")
-          failTestSource(testSource, Some("test timed out"))
+          failTestSource(testSource, TimeoutFailure(testSource.title))
       }
     }
 
@@ -803,15 +827,16 @@ trait ParallelTesting extends RunnerOrchestration { self =>
     private[ParallelTesting] val times: Int,
     private[ParallelTesting] val shouldDelete: Boolean,
     private[ParallelTesting] val threadLimit: Option[Int],
-    private[ParallelTesting] val shouldFail: Boolean
+    private[ParallelTesting] val shouldFail: Boolean,
+    private[ParallelTesting] val shouldSuppressOutput: Boolean
   ) {
     import org.junit.Assert.fail
 
     private[ParallelTesting] def this(target: TestSource) =
-      this(List(target), 1, true, None, false)
+      this(List(target), 1, true, None, false, false)
 
     private[ParallelTesting] def this(targets: List[TestSource]) =
-      this(targets, 1, true, None, false)
+      this(targets, 1, true, None, false, false)
 
     /** Compose test targets from `this` with `other`
      *
@@ -831,7 +856,8 @@ trait ParallelTesting extends RunnerOrchestration { self =>
       require(other.times == times, "can't combine tests that are meant to be benchmark compiled")
       require(other.shouldDelete == shouldDelete, "can't combine tests that differ on deleting output")
       require(other.shouldFail == shouldFail, "can't combine tests that have different expectations on outcome")
-      new CompilationTest(targets ++ other.targets, times, shouldDelete, threadLimit, shouldFail)
+      require(other.shouldSuppressOutput == shouldSuppressOutput, "can't combine tests that both suppress and don't suppress output")
+      new CompilationTest(targets ++ other.targets, times, shouldDelete, threadLimit, shouldFail, shouldSuppressOutput)
     }
 
     /** Creates a "pos" test run, which makes sure that all tests pass
@@ -839,10 +865,10 @@ trait ParallelTesting extends RunnerOrchestration { self =>
      *  compiler
      */
     def checkCompile()(implicit summaryReport: SummaryReporting): this.type = {
-      val test = new PosTest(targets, times, threadLimit, shouldFail).executeTestSuite()
+      val test = new PosTest(targets, times, threadLimit, shouldFail || shouldSuppressOutput).executeTestSuite()
 
       if (!shouldFail && test.didFail) {
-        fail(s"Expected no errors when compiling, but found: ${test.errorCount}")
+        fail(s"Expected no errors when compiling, failed for the following reason(s):\n${ reasonsForFailure(test) }")
       }
       else if (shouldFail && !test.didFail) {
         fail("Pos test should have failed, but didn't")
@@ -856,10 +882,10 @@ trait ParallelTesting extends RunnerOrchestration { self =>
      *  that none of these tests crash the compiler
      */
     def checkExpectedErrors()(implicit summaryReport: SummaryReporting): this.type = {
-      val test = new NegTest(targets, times, threadLimit, shouldFail).executeTestSuite()
+      val test = new NegTest(targets, times, threadLimit, shouldFail || shouldSuppressOutput).executeTestSuite()
 
       if (!shouldFail && test.didFail) {
-        fail("Neg test shouldn't have failed, but did")
+        fail(s"Neg test shouldn't have failed, but did. Reasons:\n${ reasonsForFailure(test) }")
       }
       else if (shouldFail && !test.didFail) {
         fail("Neg test should have failed, but did not")
@@ -874,10 +900,10 @@ trait ParallelTesting extends RunnerOrchestration { self =>
      *  expected output
      */
     def checkRuns()(implicit summaryReport: SummaryReporting): this.type = {
-      val test = new RunTest(targets, times, threadLimit, shouldFail).executeTestSuite()
+      val test = new RunTest(targets, times, threadLimit, shouldFail || shouldSuppressOutput).executeTestSuite()
 
       if (!shouldFail && test.didFail) {
-        fail("Run test failed, but should not")
+        fail(s"Run test failed, but should not, reasons:\n${ reasonsForFailure(test) }")
       }
       else if (shouldFail && !test.didFail) {
         fail("Run test should have failed, but did not")
@@ -890,6 +916,20 @@ trait ParallelTesting extends RunnerOrchestration { self =>
     private def cleanup(): this.type = {
       if (shouldDelete) delete()
       this
+    }
+
+    /** Extract `Failure` set and render from `Test` */
+    private[this] def reasonsForFailure(test: Test): String = {
+      val errors =
+        if (test.errorCount == 0) ""
+        else s"\n  - encountered ${test.errorCount} error(s)"
+
+      errors + test.failureReasons.collect {
+        case test.TimeoutFailure(title) =>
+          s"  - test '$title' timed out"
+        case test.JavaCompilationFailure(msg) =>
+          s"  - java compilation failed with:\n${ msg.lines.map("      " + _).mkString("\n") }"
+      }.mkString("\n")
     }
 
     /** Copies `file` to `dir` - taking into account if `file` is a directory,
@@ -913,21 +953,21 @@ trait ParallelTesting extends RunnerOrchestration { self =>
         case target @ SeparateCompilationSource(_, dir, _, outDir) =>
           target.copy(dir = copyToDir(outDir, dir))
       },
-      times, shouldDelete, threadLimit, shouldFail
+      times, shouldDelete, threadLimit, shouldFail, shouldSuppressOutput
     )
 
     /** Builds a `CompilationTest` which performs the compilation `i` times on
      *  each target
      */
     def times(i: Int): CompilationTest =
-      new CompilationTest(targets, i, shouldDelete, threadLimit, shouldFail)
+      new CompilationTest(targets, i, shouldDelete, threadLimit, shouldFail, shouldSuppressOutput)
 
     /** Builds a `Compilationtest` which passes the verbose flag and logs the
      *  classpath
      */
     def verbose: CompilationTest = new CompilationTest(
       targets.map(t => t.withFlags("-verbose", "-Ylog-classpath")),
-      times, shouldDelete, threadLimit, shouldFail
+      times, shouldDelete, threadLimit, shouldFail, shouldSuppressOutput
     )
 
     /** Builds a `CompilationTest` which keeps the generated output files
@@ -937,20 +977,27 @@ trait ParallelTesting extends RunnerOrchestration { self =>
      *  part which depends on the first
      */
     def keepOutput: CompilationTest =
-      new CompilationTest(targets, times, false, threadLimit, shouldFail)
+      new CompilationTest(targets, times, false, threadLimit, shouldFail, shouldSuppressOutput)
 
     /** Builds a `CompilationTest` with a limited level of concurrency with
      *  maximum `i` threads
      */
     def limitThreads(i: Int): CompilationTest =
-      new CompilationTest(targets, times, shouldDelete, Some(i), shouldFail)
+      new CompilationTest(targets, times, shouldDelete, Some(i), shouldFail, shouldSuppressOutput)
 
     /** Builds a `CompilationTest` where the executed test is expected to fail
      *
      *  This behaviour is mainly needed for the tests that test the test suite.
      */
     def expectFailure: CompilationTest =
-      new CompilationTest(targets, times, shouldDelete, threadLimit, true)
+      new CompilationTest(targets, times, shouldDelete, threadLimit, true, shouldSuppressOutput)
+
+    /** Builds a `CompilationTest` where all output is suppressed
+     *
+     *  This behaviour is mainly needed for the tests that test the test suite.
+     */
+    def suppressAllOutput: CompilationTest =
+      new CompilationTest(targets, times, shouldDelete, threadLimit, shouldFail, true)
 
     /** Delete all output files generated by this `CompilationTest` */
     def delete(): Unit = targets.foreach(t => delete(t.outDir))
