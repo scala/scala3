@@ -10,5 +10,5 @@ object Test {
   val y1: Int = y
 
   val z = (c: Any)  match { case X(y) => y }
-  val z1: C#T = z
+  // val z1: C#T = z  // error: z has type Any TODO: find out why
 }

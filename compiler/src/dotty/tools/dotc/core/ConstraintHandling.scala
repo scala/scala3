@@ -362,13 +362,11 @@ trait ConstraintHandling {
       def pruneLambdaParams(tp: Type) =
         if (comparedTypeLambdas.nonEmpty) {
           val approx = new ApproximatingTypeMap {
+            if (fromBelow) variance = -1
             def apply(t: Type): Type = t match {
               case t @ TypeParamRef(tl: TypeLambda, n) if comparedTypeLambdas contains tl =>
-                val effectiveVariance = if (fromBelow) -variance else variance
                 val bounds = tl.paramInfos(n)
-                if (effectiveVariance > 0) bounds.lo
-                else if (effectiveVariance < 0) bounds.hi
-                else NoType
+                range(bounds.lo, bounds.hi)
               case _ =>
                 mapOver(t)
             }

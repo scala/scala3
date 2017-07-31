@@ -139,6 +139,12 @@ object Types {
       case _ => false
     }
 
+    /** Is this type exactly Nothing (no vars, aliases, refinements etc allowed)? */
+    def isBottomType(implicit ctx: Context): Boolean = this match {
+      case tp: TypeRef => tp.symbol eq defn.NothingClass
+      case _ => false
+    }
+
     /** Is this type a (neither aliased nor applied) reference to class `sym`? */
     def isDirectRef(sym: Symbol)(implicit ctx: Context): Boolean = stripTypeVar match {
       case this1: TypeRef =>
@@ -278,7 +284,10 @@ object Types {
     }
 
     /** Is this an alias TypeBounds? */
-    def isAlias: Boolean = this.isInstanceOf[TypeAlias]
+    final def isAlias: Boolean = this.isInstanceOf[TypeAlias]
+
+    /** Is this a non-alias TypeBounds? */
+    final def isRealTypeBounds = this.isInstanceOf[TypeBounds] && !isAlias
 
 // ----- Higher-order combinators -----------------------------------
 
@@ -1223,6 +1232,18 @@ object Types {
       case _ => TypeAlias(this)
     }
 
+    /** The lower bound of a TypeBounds type, the type itself otherwise */
+    def loBound = this match {
+      case tp: TypeBounds => tp.lo
+      case _ => this
+    }
+
+    /** The upper bound of a TypeBounds type, the type itself otherwise */
+    def hiBound = this match {
+      case tp: TypeBounds => tp.hi
+      case _ => this
+    }
+
     /** The type parameter with given `name`. This tries first `decls`
      *  in order not to provoke a cycle by forcing the info. If that yields
      *  no symbol it tries `member` as an alternative.
@@ -1769,6 +1790,7 @@ object Types {
      */
     def derivedSelect(prefix: Type)(implicit ctx: Context): Type =
       if (prefix eq this.prefix) this
+      else if (prefix.isBottomType) prefix
       else if (isType) {
         val res = prefix.lookupRefined(name)
         if (res.exists) res
@@ -3725,6 +3747,18 @@ object Types {
               // of `p`'s upper bound.
             val prefix1 = this(tp.prefix)
             variance = saved
+            /* was:
+            val prefix1 = tp.info match {
+              case info: TypeBounds if !info.isAlias =>
+                // prefix of an abstract type selection is non-variant, since a path
+                // cannot be legally widened to its underlying type, or any supertype.
+                val saved = variance
+                variance = 0
+                try this(tp.prefix) finally variance = saved
+              case _ =>
+                this(tp.prefix)
+            }
+			*/
             derivedSelect(tp, prefix1)
           }
         case _: ThisType
@@ -3854,63 +3888,139 @@ object Types {
     def apply(tp: Type) = tp
   }
 
-  /** A type map that approximates NoTypes by upper or lower known bounds depending on
+  case class Range(lo: Type, hi: Type) extends UncachedGroundType {
+    assert(!lo.isInstanceOf[Range])
+    assert(!hi.isInstanceOf[Range])
+  }
+
+  /** A type map that approximates TypeBounds types depending on
    *  variance.
    *
    *  if variance > 0 : approximate by upper bound
    *     variance < 0 : approximate by lower bound
-   *     variance = 0 : propagate NoType to next outer level
+   *     variance = 0 : propagate bounds to next outer level
    */
   abstract class ApproximatingTypeMap(implicit ctx: Context) extends TypeMap { thisMap =>
-    def approx(lo: Type = defn.NothingType, hi: Type = defn.AnyType) =
-      if (variance == 0) NoType
-      else apply(if (variance < 0) lo else hi)
+
+    def range(lo: Type = defn.NothingType, hi: Type = defn.AnyType) =
+      if (variance > 0) hi
+      else if (variance < 0) lo
+      else Range(loBound(lo), hiBound(hi))
+
+    def isRange(tp: Type) = tp.isInstanceOf[Range]
+
+    def loBound(tp: Type) = tp match {
+      case tp: Range => tp.lo
+      case _ => tp
+    }
+
+    /** The upper bound of a TypeBounds type, the type itself otherwise */
+    def hiBound(tp: Type) = tp match {
+      case tp: Range => tp.hi
+      case _ => tp
+    }
+
+    def rangeToBounds(tp: Type) = tp match {
+      case Range(lo, hi) => TypeBounds(lo, hi)
+      case _ => tp
+    }
 
     override protected def derivedSelect(tp: NamedType, pre: Type) =
       if (pre eq tp.prefix) tp
-      else tp.info match {
-        case TypeAlias(alias) => apply(alias) // try to heal by following aliases
+      else pre match {
+        case Range(preLo, preHi) =>
+          tp.info match {
+            case TypeAlias(alias) => apply(alias)
+            case TypeBounds(lo, hi) => range(apply(lo), apply(hi))
+            case _ => range(tp.derivedSelect(preLo), tp.derivedSelect(preHi))
+          }
+        case _ => tp.derivedSelect(pre)
+      }
+
+    override protected def derivedRefinedType(tp: RefinedType, parent: Type, info: Type) =
+      parent match {
+        case Range(parentLo, parentHi) =>
+          range(derivedRefinedType(tp, parentLo, info), derivedRefinedType(tp, parentHi, info))
         case _ =>
-          if (pre.exists && !pre.isRef(defn.NothingClass) && variance > 0) tp.derivedSelect(pre)
-          else tp.info match {
-            case TypeBounds(lo, hi) => approx(lo, hi)
-            case _ => approx()
+          if (parent.isBottomType) parent
+          else info match {
+            case Range(infoLo, infoHi) if tp.refinedName.isTermName || variance <= 0 =>
+              range(derivedRefinedType(tp, parent, infoLo), derivedRefinedType(tp, parent, infoHi))
+            case _ =>
+              tp.derivedRefinedType(parent, tp.refinedName, rangeToBounds(info))
           }
       }
-    override protected def derivedRefinedType(tp: RefinedType, parent: Type, info: Type) =
-      if (parent.exists && info.exists) tp.derivedRefinedType(parent, tp.refinedName, info)
-      else approx(hi = parent)
     override protected def derivedRecType(tp: RecType, parent: Type) =
-      if (parent.exists) tp.rebind(parent)
-      else approx()
+      parent match {
+        case Range(lo, hi) => range(tp.rebind(lo), tp.rebind(hi))
+        case _ => tp.rebind(parent)
+      }
     override protected def derivedTypeAlias(tp: TypeAlias, alias: Type) =
-      if (alias.exists) tp.derivedTypeAlias(alias)
-      else approx(NoType, TypeBounds.empty)
+      alias match {
+        case Range(lo, hi) =>
+          if (variance > 0) TypeBounds(lo, hi)
+          else range(TypeAlias(lo), TypeAlias(hi))
+        case _ => tp.derivedTypeAlias(alias)
+      }
     override protected def derivedTypeBounds(tp: TypeBounds, lo: Type, hi: Type) =
-      if (lo.exists && hi.exists) tp.derivedTypeBounds(lo, hi)
-      else approx(NoType,
-        if (lo.exists) TypeBounds.lower(lo)
-        else if (hi.exists) TypeBounds.upper(hi)
-        else TypeBounds.empty)
+      if (isRange(lo) || isRange(hi))
+        if (variance > 0) TypeBounds(loBound(lo), hiBound(hi))
+        else range(TypeBounds(hiBound(lo), loBound(hi)), TypeBounds(loBound(lo), hiBound(hi)))
+      else tp.derivedTypeBounds(lo, hi)
     override protected def derivedSuperType(tp: SuperType, thistp: Type, supertp: Type) =
-      if (thistp.exists && supertp.exists) tp.derivedSuperType(thistp, supertp)
-      else NoType
+      if (isRange(thistp) || isRange(supertp)) range()
+      else tp.derivedSuperType(thistp, supertp)
+
     override protected def derivedAppliedType(tp: HKApply, tycon: Type, args: List[Type]): Type =
-      if (tycon.exists && args.forall(_.exists)) tp.derivedAppliedType(tycon, args)
-      else approx() // This is rather coarse, but to do better is a bit complicated
+      tycon match {
+        case Range(tyconLo, tyconHi) =>
+          range(derivedAppliedType(tp, tyconLo, args), derivedAppliedType(tp, tyconHi, args))
+        case _ =>
+          if (args.exists(isRange))
+            if (variance > 0) tp.derivedAppliedType(tycon, args.map(rangeToBounds))
+            else {
+              val loBuf, hiBuf = new mutable.ListBuffer[Type]
+              def distributeArgs(args: List[Type], tparams: List[ParamInfo]): Boolean = args match {
+                case Range(lo, hi) :: args1 =>
+                  val v = tparams.head.paramVariance
+                  if (v == 0) false
+                  else if (v > 0) { loBuf += lo; hiBuf += hi }
+                  else { loBuf += hi; hiBuf += lo }
+                  distributeArgs(args1, tparams.tail)
+                case arg :: args1 =>
+                  loBuf += arg; hiBuf += arg
+                  distributeArgs(args1, tparams.tail)
+                case nil =>
+                  true
+              }
+              if (distributeArgs(args, tp.typeParams))
+                range(tp.derivedAppliedType(tycon, loBuf.toList),
+                      tp.derivedAppliedType(tycon, hiBuf.toList))
+              else range()
+            }
+          else tp.derivedAppliedType(tycon, args)
+      }
+
     override protected def derivedAndOrType(tp: AndOrType, tp1: Type, tp2: Type) =
-      if (tp1.exists && tp2.exists) tp.derivedAndOrType(tp1, tp2)
-      else if (tp.isAnd) approx(hi = tp1 & tp2)  // if one of tp1d, tp2d exists, it is the result of tp1d & tp2d
-      else approx(lo = tp1 & tp2)
+      if (tp1.isInstanceOf[Range] || tp2.isInstanceOf[Range])
+        if (tp.isAnd) range(loBound(tp1) & loBound(tp2), hiBound(tp1) & hiBound(tp2))
+        else range(loBound(tp1) | loBound(tp2), hiBound(tp1) | hiBound(tp2))
+      else tp.derivedAndOrType(tp1, tp2)
     override protected def derivedAnnotatedType(tp: AnnotatedType, underlying: Type, annot: Annotation) =
-      if (underlying.exists) tp.derivedAnnotatedType(underlying, annot)
-      else NoType
-    override protected def derivedWildcardType(tp: WildcardType, bounds: Type) =
-      if (bounds.exists) tp.derivedWildcardType(bounds)
-      else WildcardType
-    override protected def derivedClassInfo(tp: ClassInfo, pre: Type): Type =
-      if (pre.exists) tp.derivedClassInfo(pre)
-      else NoType
+      underlying match {
+        case Range(lo, hi) =>
+          range(tp.derivedAnnotatedType(lo, annot), tp.derivedAnnotatedType(hi, annot))
+        case _ =>
+          if (underlying.isBottomType) underlying
+          else tp.derivedAnnotatedType(underlying, annot)
+      }
+    override protected def derivedWildcardType(tp: WildcardType, bounds: Type) = {
+      tp.derivedWildcardType(rangeToBounds(bounds))
+    }
+    override protected def derivedClassInfo(tp: ClassInfo, pre: Type): Type = {
+      assert(!pre.isInstanceOf[Range])
+      tp.derivedClassInfo(pre)
+    }
   }
 
   // ----- TypeAccumulators ----------------------------------------------------
