@@ -2183,7 +2183,7 @@ object Parsers {
           if (in.token == CLASS) tmplDef(start, addMod(mods, enumMod))
           else enumDef(start, mods, enumMod)
         case _ =>
-          syntaxErrorOrIncomplete("expected start of definition")
+          syntaxErrorOrIncomplete(ExpectedStartOfTopLevelDefinition())
           EmptyTree
       }
     }

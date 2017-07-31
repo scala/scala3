@@ -1702,4 +1702,12 @@ object messages {
       hl"It is not allowed to combine `private` and `protected` modifiers even if they are qualified to different scopes"
   }
 
+  case class ExpectedStartOfTopLevelDefinition()(implicit ctx: Context)
+    extends Message(ExpectedStartOfTopLevelDefinitionID) {
+    val kind = "Syntax"
+    val msg = "expected start of definition"
+    val explanation =
+      hl"you have to provide either ${"class"}, ${"trait"}, ${"object"}, or ${"enum"} definitions after qualifiers"
+  }
+
 }
