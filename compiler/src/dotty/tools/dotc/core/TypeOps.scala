@@ -51,21 +51,14 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
 
       /*>|>*/ ctx.conditionalTraceIndented(TypeOps.track, s"asSeen ${tp.show} from (${pre.show}, ${cls.show})", show = true) /*<|<*/ { // !!! DEBUG
         tp match {
-          case tp: NamedType =>
-            val sym = tp.symbol
-            if (sym.isStatic) tp
+          case tp: NamedType => // inlined for performance; TODO: factor out into inline method
+            if (tp.symbol.isStatic) tp
             else {
-              val pre1 = apply(tp.prefix)
-              if (pre1.isUnsafeNonvariant) {
-                val safeCtx = ctx.withProperty(TypeOps.findMemberLimit, Some(()))
-                pre1.member(tp.name)(safeCtx).info match {
-                  case TypeAlias(alias) =>
-                    // try to follow aliases of this will avoid skolemization.
-                    return alias
-                  case _ =>
-                }
-              }
-              derivedSelect(tp, pre1)
+              val saved = variance
+              variance = variance max 0
+              val prefix1 = this(tp.prefix)
+              variance = saved
+              derivedSelect(tp, prefix1)
             }
           case tp: ThisType =>
             toPrefix(pre, cls, tp.cls)

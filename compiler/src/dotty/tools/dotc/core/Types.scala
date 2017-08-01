@@ -258,16 +258,6 @@ object Types {
     def isRepeatedParam(implicit ctx: Context): Boolean =
       typeSymbol eq defn.RepeatedParamClass
 
-    /** Does this type carry an UnsafeNonvariant annotation? */
-    final def isUnsafeNonvariant(implicit ctx: Context): Boolean = this match {
-      case AnnotatedType(_, annot) => annot.symbol == defn.UnsafeNonvariantAnnot
-      case _ => false
-    }
-
-    /** Does this type have an UnsafeNonvariant annotation on one of its parts? */
-    final def hasUnsafeNonvariant(implicit ctx: Context): Boolean =
-      new HasUnsafeNonAccumulator().apply(false, this)
-
     /** Is this the type of a method that has a repeated parameter type as
      *  last parameter type?
      */
@@ -4176,10 +4166,6 @@ object Types {
 
   class ForeachAccumulator(p: Type => Unit, override val stopAtStatic: Boolean)(implicit ctx: Context) extends TypeAccumulator[Unit] {
     def apply(x: Unit, tp: Type): Unit = foldOver(p(tp), tp)
-  }
-
-  class HasUnsafeNonAccumulator(implicit ctx: Context) extends TypeAccumulator[Boolean] {
-    def apply(x: Boolean, tp: Type) = x || tp.isUnsafeNonvariant || foldOver(x, tp)
   }
 
   class NamedPartsAccumulator(p: NamedType => Boolean, excludeLowerBounds: Boolean = false)
