@@ -3918,7 +3918,9 @@ object Types {
               // hence we can replace with U under all variances
               reapply(alias)
             case TypeBounds(lo, hi) =>
-              range(atVariance(-1)(reapply(lo)), atVariance(1)(reapply(hi)))
+              // If H#T = _ >: S <: U, then for any x in L..H, S <: x.T <: U,
+              // hence we can replace with S..U under all variances
+              range(atVariance(-variance)(reapply(lo)), reapply(hi))
             case info: SingletonType =>
               // if H#x: y.type, then for any x in L..H, x.type =:= y.type,
               // hence we can replace with y.type under all variances
