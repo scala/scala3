@@ -68,6 +68,15 @@ class PlainPrinter(_ctx: Context) extends Printer {
       }
     else tp
 
+  private def sameBound(lo: Type, hi: Type): Boolean =
+    try lo =:= hi
+    catch { case ex: Throwable => false }
+
+  private def homogenizeArg(tp: Type) = tp match {
+    case TypeBounds(lo, hi) if sameBound(lo, hi) => homogenize(hi)
+    case _ => tp
+  }
+
   private def selfRecName(n: Int) = s"z$n"
 
   /** Render elements alternating with `sep` string */
@@ -113,9 +122,9 @@ class PlainPrinter(_ctx: Context) extends Printer {
   protected def toTextRefinement(rt: RefinedType) =
     (refinementNameString(rt) ~ toTextRHS(rt.refinedInfo)).close
 
-  protected def argText(arg: Type): Text = arg match {
+  protected def argText(arg: Type): Text = homogenizeArg(arg) match {
     case arg: TypeBounds => "_" ~ toTextGlobal(arg)
-    case _ => toTextGlobal(arg)
+    case arg => toTextGlobal(arg)
   }
 
   /** The longest sequence of refinement types, starting at given type
