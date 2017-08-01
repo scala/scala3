@@ -283,9 +283,6 @@ object Types {
     /** Is this an alias TypeBounds? */
     final def isAlias: Boolean = this.isInstanceOf[TypeAlias]
 
-    /** Is this a non-alias TypeBounds? */
-    final def isRealTypeBounds = this.isInstanceOf[TypeBounds] && !isAlias
-
 // ----- Higher-order combinators -----------------------------------
 
     /** Returns true if there is a part of this type that satisfies predicate `p`.
@@ -3744,18 +3741,6 @@ object Types {
               // of `p`'s upper bound.
             val prefix1 = this(tp.prefix)
             variance = saved
-            /* was:
-            val prefix1 = tp.info match {
-              case info: TypeBounds if !info.isAlias =>
-                // prefix of an abstract type selection is non-variant, since a path
-                // cannot be legally widened to its underlying type, or any supertype.
-                val saved = variance
-                variance = 0
-                try this(tp.prefix) finally variance = saved
-              case _ =>
-                this(tp.prefix)
-            }
-			*/
             derivedSelect(tp, prefix1)
           }
         case _: ThisType
@@ -3767,7 +3752,7 @@ object Types {
 
         case tp: TypeAlias =>
           val saved = variance
-          variance = variance * tp.variance
+          variance *= tp.variance
           val alias1 = this(tp.alias)
           variance = saved
           derivedTypeAlias(tp, alias1)
@@ -3902,30 +3887,29 @@ object Types {
    */
   abstract class ApproximatingTypeMap(implicit ctx: Context) extends TypeMap { thisMap =>
 
-    def range(lo: Type = defn.NothingType, hi: Type = defn.AnyType) =
+    protected def range(lo: Type, hi: Type) =
       if (variance > 0) hi
       else if (variance < 0) lo
-      else Range(loBound(lo), hiBound(hi))
+      else Range(lower(lo), upper(hi))
 
-    def isRange(tp: Type) = tp.isInstanceOf[Range]
+    private def isRange(tp: Type) = tp.isInstanceOf[Range]
 
-    def loBound(tp: Type) = tp match {
+    private def lower(tp: Type) = tp match {
       case tp: Range => tp.lo
       case _ => tp
     }
 
-    /** The upper bound of a TypeBounds type, the type itself otherwise */
-    def hiBound(tp: Type) = tp match {
+    private def upper(tp: Type) = tp match {
       case tp: Range => tp.hi
       case _ => tp
     }
 
-    def rangeToBounds(tp: Type) = tp match {
+    private def rangeToBounds(tp: Type) = tp match {
       case Range(lo, hi) => TypeBounds(lo, hi)
       case _ => tp
     }
 
-    def atVariance[T](v: Int)(op: => T): T = {
+    protected def atVariance[T](v: Int)(op: => T): T = {
       val saved = variance
       variance = v
       try op finally variance = saved
@@ -3935,11 +3919,17 @@ object Types {
       if (pre eq tp.prefix) tp
       else pre match {
         case Range(preLo, preHi) =>
-          tp.info match {
+          preHi.member(tp.name).info match {
             case TypeAlias(alias) =>
-              apply(alias)
+              // if H#T = U, then for any x in L..H, x.T =:= U,
+              // hence we can replace with U under all variances
+              reapply(alias)
             case TypeBounds(lo, hi) =>
-              range(atVariance(-1)(apply(lo)), atVariance(1)(apply(hi)))
+              range(atVariance(-1)(reapply(lo)), atVariance(1)(reapply(hi)))
+            case info: SingletonType =>
+              // if H#x: y.type, then for any x in L..H, x.type =:= y.type,
+              // hence we can replace with y.type under all variances
+              reapply(info)
             case _ =>
               range(tp.derivedSelect(preLo), tp.derivedSelect(preHi))
           }
@@ -3976,12 +3966,12 @@ object Types {
 
     override protected def derivedTypeBounds(tp: TypeBounds, lo: Type, hi: Type) =
       if (isRange(lo) || isRange(hi))
-        if (variance > 0) TypeBounds(loBound(lo), hiBound(hi))
-        else range(TypeBounds(hiBound(lo), loBound(hi)), TypeBounds(loBound(lo), hiBound(hi)))
+        if (variance > 0) TypeBounds(lower(lo), upper(hi))
+        else range(TypeBounds(upper(lo), lower(hi)), TypeBounds(lower(lo), upper(hi)))
       else tp.derivedTypeBounds(lo, hi)
 
     override protected def derivedSuperType(tp: SuperType, thistp: Type, supertp: Type) =
-      if (isRange(thistp) || isRange(supertp)) range()
+      if (isRange(thistp) || isRange(supertp)) range(thistp.bottomType, thistp.topType)
       else tp.derivedSuperType(thistp, supertp)
 
     override protected def derivedAppliedType(tp: HKApply, tycon: Type, args: List[Type]): Type =
@@ -4009,15 +3999,15 @@ object Types {
               if (distributeArgs(args, tp.typeParams))
                 range(tp.derivedAppliedType(tycon, loBuf.toList),
                       tp.derivedAppliedType(tycon, hiBuf.toList))
-              else range()
+              else range(tp.bottomType, tp.topType)
             }
           else tp.derivedAppliedType(tycon, args)
       }
 
     override protected def derivedAndOrType(tp: AndOrType, tp1: Type, tp2: Type) =
       if (tp1.isInstanceOf[Range] || tp2.isInstanceOf[Range])
-        if (tp.isAnd) range(loBound(tp1) & loBound(tp2), hiBound(tp1) & hiBound(tp2))
-        else range(loBound(tp1) | loBound(tp2), hiBound(tp1) | hiBound(tp2))
+        if (tp.isAnd) range(lower(tp1) & lower(tp2), upper(tp1) & upper(tp2))
+        else range(lower(tp1) | lower(tp2), upper(tp1) | upper(tp2))
       else tp.derivedAndOrType(tp1, tp2)
 
     override protected def derivedAnnotatedType(tp: AnnotatedType, underlying: Type, annot: Annotation) =
@@ -4036,6 +4026,16 @@ object Types {
       assert(!pre.isInstanceOf[Range])
       tp.derivedClassInfo(pre)
     }
+
+    override protected def derivedLambdaType(tp: LambdaType)(formals: List[tp.PInfo], restpe: Type): Type =
+      restpe match {
+        case Range(lo, hi) =>
+          range(derivedLambdaType(tp)(formals, lo), derivedLambdaType(tp)(formals, hi))
+        case _ =>
+          tp.derivedLambdaType(tp.paramNames, formals, restpe)
+      }
+
+    protected def reapply(tp: Type): Type = apply(tp)
   }
 
   // ----- TypeAccumulators ----------------------------------------------------
