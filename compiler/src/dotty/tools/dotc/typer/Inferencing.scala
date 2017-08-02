@@ -319,8 +319,6 @@ object Inferencing {
         case _ =>
           foldOver(vmap, t)
       }
-      override def applyToPrefix(vmap: VarianceMap, t: NamedType) =
-        apply(vmap, t.prefix)
     }
 
     /** Include in `vmap` type variables occurring in the constraints of type variables
