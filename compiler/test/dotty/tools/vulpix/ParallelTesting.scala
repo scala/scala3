@@ -324,7 +324,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
         if (!isInteractive) realStdout.println(testing)
         op
       } catch {
-        case NonFatal(e) => {
+        case e: Throwable => {
           // if an exception is thrown during compilation, the complete test
           // run should fail
           failTestSource(testSource)
