@@ -587,8 +587,13 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
         lhsCore.tpe match {
           case ref: TermRef =>
             val lhsVal = lhsCore.denot.suchThat(!_.is(Method))
-            if (canAssign(lhsVal.symbol))
-              assignType(cpy.Assign(tree)(lhs1, typed(tree.rhs, lhsVal.info)))
+            if (canAssign(lhsVal.symbol)) {
+              // lhsBounds: (T .. Any) as seen from lhs prefix, where T is the type of lhsVal.symbol
+              // This ensures we do the as-seen-from on T with variance -1. Test case neg/i2928.scala
+              val lhsBounds =
+                TypeBounds.lower(lhsVal.symbol.info).asSeenFrom(ref.prefix, lhsVal.symbol.owner)
+              assignType(cpy.Assign(tree)(lhs1, typed(tree.rhs, lhsBounds.loBound)))
+            }
             else {
               val pre = ref.prefix
               val setterName = ref.name.setterName
