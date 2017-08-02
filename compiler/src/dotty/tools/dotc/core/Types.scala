@@ -3882,19 +3882,19 @@ object Types {
       else if (variance < 0) lo
       else Range(lower(lo), upper(hi))
 
-    private def isRange(tp: Type) = tp.isInstanceOf[Range]
+    protected def isRange(tp: Type) = tp.isInstanceOf[Range]
 
-    private def lower(tp: Type) = tp match {
+    protected def lower(tp: Type) = tp match {
       case tp: Range => tp.lo
       case _ => tp
     }
 
-    private def upper(tp: Type) = tp match {
+    protected def upper(tp: Type) = tp match {
       case tp: Range => tp.hi
       case _ => tp
     }
 
-    private def rangeToBounds(tp: Type) = tp match {
+    protected def rangeToBounds(tp: Type) = tp match {
       case Range(lo, hi) => TypeBounds(lo, hi)
       case _ => tp
     }
@@ -3905,11 +3905,14 @@ object Types {
       try op finally variance = saved
     }
 
+    /** Derived selection.
+     *  @pre   the (upper bound of) prefix `pre` has a member named `tp.name`.
+     */
     override protected def derivedSelect(tp: NamedType, pre: Type) =
       if (pre eq tp.prefix) tp
       else pre match {
         case Range(preLo, preHi) =>
-          preHi.member(tp.name).info match {
+          preHi.member(tp.name).info.widenExpr match {
             case TypeAlias(alias) =>
               // if H#T = U, then for any x in L..H, x.T =:= U,
               // hence we can replace with U under all variances
@@ -3935,12 +3938,22 @@ object Types {
         case _ =>
           if (parent.isBottomType) parent
           else info match {
-            case Range(infoLo, infoHi) if tp.refinedName.isTermName || variance <= 0 =>
-              range(derivedRefinedType(tp, parent, infoLo), derivedRefinedType(tp, parent, infoHi))
+            case Range(infoLo, infoHi) =>
+              def propagate(lo: Type, hi: Type) =
+                range(derivedRefinedType(tp, parent, lo), derivedRefinedType(tp, parent, hi))
+              tp.refinedInfo match {
+                case rinfo: TypeBounds =>
+                  val v = if (rinfo.isAlias) rinfo.variance * variance else variance
+                  if (v > 0) tp.derivedRefinedType(parent, tp.refinedName, rangeToBounds(info))
+                  else if (v < 0) propagate(infoHi, infoLo)
+                  else range(tp.bottomType, tp.topType)
+                case _ =>
+                  propagate(infoLo, infoHi)
+              }
             case _ =>
-              tp.derivedRefinedType(parent, tp.refinedName, rangeToBounds(info))
+              tp.derivedRefinedType(parent, tp.refinedName, info)
           }
-      }
+        }
 
     override protected def derivedRecType(tp: RecType, parent: Type) =
       parent match {
@@ -3971,7 +3984,7 @@ object Types {
         case Range(tyconLo, tyconHi) =>
           range(derivedAppliedType(tp, tyconLo, args), derivedAppliedType(tp, tyconHi, args))
         case _ =>
-          if (args.exists(isRange))
+          if (args.exists(isRange)) {
             if (variance > 0) tp.derivedAppliedType(tycon, args.map(rangeToBounds))
             else {
               val loBuf, hiBuf = new mutable.ListBuffer[Type]
@@ -3993,6 +4006,7 @@ object Types {
                       tp.derivedAppliedType(tycon, hiBuf.toList))
               else range(tp.bottomType, tp.topType)
             }
+          }
           else tp.derivedAppliedType(tycon, args)
       }
 
