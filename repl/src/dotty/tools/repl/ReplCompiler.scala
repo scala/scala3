@@ -159,7 +159,7 @@ class ReplCompiler(ictx: Context) extends Compiler {
       tree.symbol.info.show
     }
 
-  def typeCheck(expr: String, state: State, errorsAllowed: Boolean = false): Result[(tpd.Tree, Context)] = {
+  def typeCheck(expr: String, state: State, errorsAllowed: Boolean = false): Result[(tpd.ValDef, Context)] = {
 
     def wrapped(expr: String, sourceFile: SourceFile, state: State)(implicit ctx: Context): Result[untpd.PackageDef] = {
       def wrap(trees: Seq[untpd.Tree]): untpd.PackageDef = {
@@ -193,8 +193,8 @@ class ReplCompiler(ictx: Context) extends Compiler {
       }
     }
 
-    def unwrapped(tree: tpd.Tree, sourceFile: SourceFile)(implicit ctx: Context): Result[tpd.Tree] = {
-      def error: Result[tpd.Tree] =
+    def unwrapped(tree: tpd.Tree, sourceFile: SourceFile)(implicit ctx: Context): Result[tpd.ValDef] = {
+      def error: Result[tpd.ValDef] =
         List(new messages.Error(s"Invalid scala expression",
           sourceFile.atPos(Position(0, sourceFile.content.length)))).errors
 

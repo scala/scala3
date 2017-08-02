@@ -14,6 +14,7 @@ import dotc.ast.tpd
 import dotc.interactive.{ SourceTree, Interactive }
 import dotc.core.Contexts.Context
 import dotc.core.Flags._
+import dotc.core.StdNames._
 import dotc.core.Symbols.Symbol
 import dotc.core.Denotations.Denotation
 import dotc.core.NameKinds.SimpleNameKind
@@ -22,6 +23,7 @@ import dotc.config.CompilerCommand
 import dotc.{ Compiler, Driver }
 import dotc.printing.SyntaxHighlighting
 import dotc.repl.AbstractFileClassLoader // FIXME
+import dotc.util.Positions.Position
 
 import AmmoniteReader._
 import results._
@@ -83,21 +85,42 @@ class Repl(
   resetToInitial()
 
   private[this] def completions(cursor: Int, expr: String, state: State): (Int, Seq[String], Seq[String]) = {
-    def onSuccess(syms: List[Symbol])(implicit ctx: Context) = {
-      val (inCompanion, inInstance) = syms.partition(_.owner.is(Module))
-      (cursor, inInstance.map(_.name.show), inCompanion.map(_.name.show))
+    import tpd._
+
+    // does the `sym` match the prefix in the `tree`?
+    def matchingPrefix(sym: Symbol, tree: Tree)(implicit ctx: Context) =
+      tree match {
+        case Select(_, id) if id != nme.ERROR =>
+          sym.name.startsWith(id.show)
+        case _ => true
+      }
+
+
+    // return the correct cursor position and symbols matching prefix
+    def findMatching(newCursor: Int, tree: Tree, syms: List[Symbol])(implicit ctx: Context) = {
+      val (inCompanion, inInstance) =
+        syms
+          .filter(matchingPrefix(_, tree))
+          .partition(_.owner.is(Module))
+
+      val offset = if (expr.last == '.') 1 else 0
+      (newCursor + offset, inInstance.map(_.name.show), inCompanion.map(_.name.show))
     }
 
     compiler
       .typeCheck(expr, state, errorsAllowed = true)
-      .map { case (tree: tpd.NameTree, ctx) =>
-        val srcFile = new dotc.util.SourceFile("compl", expr)
-        val src = SourceTree(tree, srcFile)
-        val pos = dotc.util.Positions.Position(cursor)
-        val srcPos = dotc.util.SourcePosition(srcFile, pos)
-        (Interactive.completions(src :: Nil, srcPos)(ctx), ctx)
+      .map { (tree, ctx) =>
+        val (newCursor, completedTree) = tree.rhs(ctx) match {
+          case Block(_, sel @ Select(qual, id)) => (sel.pos.point, sel)
+          case _ => (cursor, EmptyTree)
+        }
+        val file = new dotc.util.SourceFile("compl", expr)
+        val srcPos = dotc.util.SourcePosition(file, Position(cursor))
+        val completions = Interactive.completions(SourceTree(tree, file) :: Nil, srcPos)(ctx)
+
+        (newCursor, completedTree, completions, ctx)
       }
-      .fold(_ => (cursor, Nil, Nil), onSuccess(_)(_))
+      .fold(_ => (cursor, Nil, Nil), findMatching(_, _, _)(_))
   }
 
   private def readLine(state: State) =
