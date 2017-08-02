@@ -139,7 +139,7 @@ object messages {
   }
 
   case class EmptyCatchBlock(tryBody: untpd.Tree)(implicit ctx: Context)
- extends EmptyCatchOrFinallyBlock(tryBody, EmptyCatchBlockID) {
+  extends EmptyCatchOrFinallyBlock(tryBody, EmptyCatchBlockID) {
     val kind = "Syntax"
     val msg =
       hl"""|The ${"catch"} block does not contain a valid expression, try

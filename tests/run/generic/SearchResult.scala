@@ -11,7 +11,7 @@ import Shapes._
  */
 sealed trait SearchResult extends Enum
 
-object SearchResult extends {
+object SearchResult {
 
   private val $values = new runtime.EnumValues[SearchResult]
   def valueOf = $values.fromInt

@@ -2321,7 +2321,12 @@ object Parsers {
     /** TemplateOpt = [`extends' Template | TemplateBody]
      */
     def templateOpt(constr: DefDef): Template =
-      if (in.token == EXTENDS) { in.nextToken(); template(constr)._1 }
+      if (in.token == EXTENDS) {
+        val offset = in.skipToken()
+        val (tmpl, _) = template(constr)
+        if (tmpl.parents.isEmpty) syntaxError("parents expected after `extends`", offset)
+        tmpl
+      }
       else {
         newLineOptWhenFollowedBy(LBRACE)
         if (in.token == LBRACE) template(constr)._1
