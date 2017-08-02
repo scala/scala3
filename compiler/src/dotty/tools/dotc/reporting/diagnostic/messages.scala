@@ -23,6 +23,7 @@ import dotty.tools.dotc.ast.Trees
 import dotty.tools.dotc.ast.untpd.Modifiers
 import dotty.tools.dotc.core.Flags.{FlagSet, Mutable}
 import dotty.tools.dotc.core.SymDenotations.SymDenotation
+import scala.util.control.NonFatal
 
 object messages {
 
@@ -708,10 +709,15 @@ object messages {
 
     private val actualArgString = actual.map(_.show).mkString("[", ", ", "]")
 
-    private val prettyName = fntpe.termSymbol match {
-      case NoSymbol => fntpe.show
-      case symbol   => symbol.showFullName
-    }
+    private val prettyName =
+      try
+        fntpe.termSymbol match {
+          case NoSymbol => fntpe.show
+          case symbol   => symbol.showFullName
+        }
+      catch {
+        case NonFatal(ex) => fntpe.show
+      }
 
     val msg =
       hl"""|${NoColor(msgPrefix)} type arguments for $prettyName$expectedArgString

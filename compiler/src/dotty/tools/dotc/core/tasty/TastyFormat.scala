@@ -164,6 +164,7 @@ Standard-Section: "ASTs" TopLevelStat*
                   BIND           Length boundName_NameRef bounds_Type
                                         // for type-variables defined in a type pattern
                   BYNAMEtype            underlying_Type
+                  LAZYref               underlying_Type
                   POLYtype       Length result_Type NamesTypes
                   METHODtype     Length result_Type NamesTypes      // needed for refinements
                   TYPELAMBDAtype Length result_Type NamesTypes      // variance encoded in front of name: +/-/(nothing)
@@ -256,7 +257,7 @@ object TastyFormat {
   final val OBJECTCLASS = 40
 
   final val SIGNED = 63
-  
+
   final val firstInternalTag = 64
   final val IMPLMETH = 64
 
@@ -322,6 +323,7 @@ object TastyFormat {
   final val PROTECTEDqualified = 105
   final val RECtype = 106
   final val SINGLETONtpt = 107
+  final val LAZYref = 108
 
   final val IDENT = 112
   final val IDENTtpt = 113
@@ -512,6 +514,7 @@ object TastyFormat {
     case DOUBLEconst => "DOUBLEconst"
     case STRINGconst => "STRINGconst"
     case RECtype => "RECtype"
+    case LAZYref => "LAZYref"
 
     case IDENT => "IDENT"
     case IDENTtpt => "IDENTtpt"

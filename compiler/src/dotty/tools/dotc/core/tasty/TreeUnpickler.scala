@@ -293,6 +293,10 @@ class TreeUnpickler(reader: TastyReader, nameAtRef: NameRef => TermName, posUnpi
           RecType(rt => registeringType(rt, readType()))
         case RECthis =>
           RecThis(readTypeRef().asInstanceOf[RecType])
+        case LAZYref =>
+          val rdr = fork
+          skipTree()
+          LazyRef(implicit ctx => rdr.readType())
         case SHARED =>
           val ref = readAddr()
           typeAtAddr.getOrElseUpdate(ref, forkAt(ref).readType())
@@ -991,7 +995,12 @@ class TreeUnpickler(reader: TastyReader, nameAtRef: NameRef => TermName, posUnpi
               val refinements = readStats(refineCls, end)(localContext(refineCls))
               RefinedTypeTree(parent, refinements, refineCls)
             case APPLIEDtpt =>
-              AppliedTypeTree(readTpt(), until(end)(readTpt()))
+              // If we do directly a tpd.AppliedType tree we might get a
+              // wrong number of arguments in some scenarios reading F-bounded
+              // types. This came up in #137 of collection strawman.
+              val tycon = readTpt()
+              val args = until(end)(readTpt())
+              untpd.AppliedTypeTree(tycon, args).withType(tycon.tpe.safeAppliedTo(args.tpes))
             case ANDtpt =>
               val tpt1 = readTpt()
               val tpt2 = readTpt()
