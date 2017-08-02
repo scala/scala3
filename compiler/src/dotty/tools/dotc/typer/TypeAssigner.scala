@@ -39,18 +39,84 @@ trait TypeAssigner {
     }
   }
 
+  /** Given a class info, the intersection of its parents, refined by all
+   *  non-private fields, methods, and type members.
+   */
+  def classBound(info: ClassInfo)(implicit ctx: Context): Type = {
+    val parentType = info.parentsWithArgs.reduceLeft(ctx.typeComparer.andType(_, _))
+    def addRefinement(parent: Type, decl: Symbol) = {
+      val inherited =
+        parentType.findMember(decl.name, info.cls.thisType, Private)
+          .suchThat(decl.matches(_))
+      val inheritedInfo = inherited.info
+      if (inheritedInfo.exists && decl.info <:< inheritedInfo && !(inheritedInfo <:< decl.info)) {
+        val r = RefinedType(parent, decl.name, decl.info)
+        typr.println(i"add ref $parent $decl --> " + r)
+        r
+      }
+      else
+        parent
+    }
+    val refinableDecls = info.decls.filter(
+      sym => !(sym.is(TypeParamAccessor | Private) || sym.isConstructor))
+    val raw = (parentType /: refinableDecls)(addRefinement)
+    RecType.closeOver(rt => raw.substThis(info.cls, RecThis(rt)))
+  }
+
   /** An upper approximation of the given type `tp` that does not refer to any symbol in `symsToAvoid`.
-   *  Approximation steps are:
-   *
-   *   - follow aliases and upper bounds if the original refers to a forbidden symbol
-   *   - widen termrefs that refer to a forbidden symbol
-   *   - replace ClassInfos of forbidden classes by the intersection of their parents, refined by all
-   *     non-private fields, methods, and type members.
-   *   - if the prefix of a class refers to a forbidden symbol, first try to replace the prefix,
-   *     if this is not possible, replace the ClassInfo as above.
-   *   - drop refinements referring to a forbidden symbol.
    */
   def avoid(tp: Type, symsToAvoid: => List[Symbol])(implicit ctx: Context): Type = {
+    val wmap = new ApproximatingTypeMap {
+      lazy val forbidden = symsToAvoid.toSet
+      def toAvoid(sym: Symbol) = !sym.isStatic && forbidden.contains(sym)
+      def partsToAvoid = new NamedPartsAccumulator(tp => toAvoid(tp.symbol))
+      def apply(tp: Type): Type = tp match {
+        case tp: TermRef
+        if toAvoid(tp.symbol) || partsToAvoid(mutable.Set.empty, tp.info).nonEmpty =>
+          tp.info.widenExpr match {
+            case info: SingletonType => apply(info)
+            case info => range(tp.info.bottomType, apply(info))
+          }
+        case tp: TypeRef if toAvoid(tp.symbol) =>
+          val avoided = tp.info match {
+            case TypeAlias(alias) =>
+              apply(alias)
+            case TypeBounds(lo, hi) =>
+              range(atVariance(-variance)(apply(lo)), apply(hi))
+            case info: ClassInfo =>
+              range(tp.bottomType, apply(classBound(info)))
+            case _ =>
+              range(tp.bottomType, tp.topType) // should happen only in error cases
+          }
+          avoided
+        case tp: ThisType if toAvoid(tp.cls) =>
+          range(tp.bottomType, apply(classBound(tp.cls.classInfo)))
+        case tp: TypeVar if ctx.typerState.constraint.contains(tp) =>
+          val lo = ctx.typeComparer.instanceType(tp.origin, fromBelow = true)
+          val lo1 = apply(lo)
+          //println(i"INST $tp --> $lo --> $lo1")
+          if (lo1 ne lo) lo1 else tp
+        case tp: TermRef if false =>
+          val saved = variance
+          variance = 0
+          val prefix1 = this(tp.prefix)
+          variance = saved
+          if (isRange(prefix1)) range(tp.bottomType, apply(tp.info.widenExpr))
+          else derivedSelect(tp, prefix1)
+        case _ =>
+          mapOver(tp)
+      }
+
+      /** Needs to handle the case where the prefix type does not have a member
+       *  named `tp.name` anymmore.
+       */
+      override def derivedSelect(tp: NamedType, pre: Type) =
+        if (pre eq tp.prefix) tp
+        else if (tp.isTerm && variance > 0 && !pre.isInstanceOf[SingletonType])
+          apply(tp.info.widenExpr)
+        else if (upper(pre).member(tp.name).exists) super.derivedSelect(tp, pre)
+        else range(tp.bottomType, tp.topType)
+    }
     val widenMap = new TypeMap {
       lazy val forbidden = symsToAvoid.toSet
       def toAvoid(tp: Type): Boolean =
@@ -128,7 +194,10 @@ trait TypeAssigner {
           mapOver(tp)
       }
     }
-    widenMap(tp)
+    //val was = widenMap(tp)
+    val now = wmap(tp)
+    //if (was.show != now.show) println(i"difference for avoid $tp, ${tp.toString}, forbidden = $symsToAvoid%, %, was: $was, now: $now")
+    now
   }
 
   def avoidingType(expr: Tree, bindings: List[Tree])(implicit ctx: Context): Type =
