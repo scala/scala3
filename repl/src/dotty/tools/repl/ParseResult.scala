@@ -12,7 +12,7 @@ import results._
 
 sealed trait ParseResult
 case class Parsed(sourceCode: String, trees: List[untpd.Tree]) extends ParseResult
-case class SyntaxErrors(errors: List[MessageContainer]) extends ParseResult
+case class SyntaxErrors(errors: List[MessageContainer], trees: List[untpd.Tree]) extends ParseResult
 case object Newline extends ParseResult
 case object SigKill extends ParseResult
 
@@ -52,10 +52,6 @@ object ParseResult {
 
   private[this] val CommandExtract = """(:[\S]+)\s*(.*)""".r
 
-  private[this] def storeReporter =
-    new StoreReporter(null)
-    with UniqueMessagePositions with HideNonSensicalMessages
-
   def apply(sourceCode: String)(implicit ctx: Context): ParseResult =
     sourceCode match {
       case "" => Newline
@@ -69,18 +65,15 @@ object ParseResult {
         case _ => UnknownCommand(cmd)
       }
       case _ => {
-        def parse(sourceCode: String): Result[List[untpd.Tree]] = {
-          val reporter = storeReporter
-          val source = new SourceFile("<console>", sourceCode.toCharArray)
-          val parser = new Parser(source)(ctx.fresh.setReporter(reporter))
+        val source = new SourceFile("<console>", sourceCode.toCharArray)
+        val parser = new Parser(source)
 
-          val (_, stats) = parser.templateStatSeq
+        val (_, stats) = parser.templateStatSeq
 
-          if (reporter.hasErrors) reporter.removeBufferedMessages.errors
-          else stats.result
-        }
-
-        parse(sourceCode).fold(SyntaxErrors(_), Parsed(sourceCode, _))
+        if (ctx.reporter.hasErrors)
+          SyntaxErrors(ctx.reporter.asInstanceOf[StoreReporter].removeBufferedMessages, stats)
+        else
+          Parsed(sourceCode, stats)
       }
     }
 

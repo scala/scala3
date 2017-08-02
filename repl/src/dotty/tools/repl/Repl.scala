@@ -82,23 +82,22 @@ class Repl(
 
   resetToInitial()
 
-  private[this] def completions(cursor: Int, snippet: String, state: State): (Int, Seq[String], Seq[String]) = {
+  private[this] def completions(cursor: Int, expr: String, state: State): (Int, Seq[String], Seq[String]) = {
     def onSuccess(syms: List[Symbol])(implicit ctx: Context) = {
       val (inCompanion, inInstance) = syms.partition(_.owner.is(Module))
       (cursor, inInstance.map(_.name.show), inCompanion.map(_.name.show))
     }
 
-    val expr = if (snippet.nonEmpty && snippet.last == '.') snippet.init else snippet
-
-    compiler.typeCheck(expr, state).map { (tree, ctx) =>
-      val ntree = tree.asInstanceOf[tpd.NameTree]
-      val srcFile = new dotc.util.SourceFile("compl", snippet)
-      val src = SourceTree(ntree, srcFile)
-      val pos = dotc.util.Positions.Position(cursor)
-      val srcPos = dotc.util.SourcePosition(srcFile, pos)
-      (Interactive.completions(src :: Nil, srcPos)(ctx), ctx)
-    }
-    .fold(_ => (cursor, Nil, Nil), onSuccess(_)(_))
+    compiler
+      .typeCheck(expr, state, errorsAllowed = true)
+      .map { case (tree: tpd.NameTree, ctx) =>
+        val srcFile = new dotc.util.SourceFile("compl", expr)
+        val src = SourceTree(tree, srcFile)
+        val pos = dotc.util.Positions.Position(cursor)
+        val srcPos = dotc.util.SourcePosition(srcFile, pos)
+        (Interactive.completions(src :: Nil, srcPos)(ctx), ctx)
+      }
+      .fold(_ => (cursor, Nil, Nil), onSuccess(_)(_))
   }
 
   private def readLine(state: State) =
@@ -113,7 +112,7 @@ class Repl(
         val newState = compile(parsed, state)
         run(newState.withHistory(history))
 
-      case (SyntaxErrors(errs), history) =>
+      case (SyntaxErrors(errs, _), history) =>
         displayErrors(errs)(myCtx)
         run(state.withHistory(history))
 
@@ -225,7 +224,7 @@ class Repl(
           case parsed: Parsed =>
             val newState = compile(parsed, state)
             run(newState.withHistory(loadCmd))
-          case SyntaxErrors(errors) =>
+          case SyntaxErrors(errors, _) =>
             displayErrors(errors)(myCtx)
             run(state.withHistory(loadCmd))
           case _ =>

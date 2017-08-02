@@ -118,7 +118,7 @@ class ReplCompiler(ictx: Context) extends Compiler {
   }
 
   def runCompilation(unit: CompilationUnit, state: State)(implicit ctx: Context): Result[(State, Context)] = {
-    val reporter = new StoreReporter(null) with UniqueMessagePositions with HideNonSensicalMessages
+    val reporter = storeReporter
     val run = new Run(this)(ctx.fresh.setReporter(reporter))
     run.compileUnits(unit :: Nil)
 
@@ -159,7 +159,7 @@ class ReplCompiler(ictx: Context) extends Compiler {
       tree.symbol.info.show
     }
 
-  def typeCheck(expr: String, state: State): Result[(tpd.Tree, Context)] = {
+  def typeCheck(expr: String, state: State, errorsAllowed: Boolean = false): Result[(tpd.Tree, Context)] = {
 
     def wrapped(expr: String, sourceFile: SourceFile, state: State)(implicit ctx: Context): Result[untpd.PackageDef] = {
       def wrap(trees: Seq[untpd.Tree]): untpd.PackageDef = {
@@ -181,8 +181,9 @@ class ReplCompiler(ictx: Context) extends Compiler {
       ParseResult(expr) match {
         case Parsed(sourceCode, trees) =>
           wrap(trees).result
-        case SyntaxErrors(reported) =>
-          reported.errors
+        case SyntaxErrors(reported, trees) =>
+          if (errorsAllowed) wrap(trees).result
+          else reported.errors
         case _ => List(
           new messages.Error(
             s"Couldn't parse '$expr' to valid scala",
@@ -199,33 +200,37 @@ class ReplCompiler(ictx: Context) extends Compiler {
 
       import tpd._
       tree match {
-        case PackageDef(_, List(TypeDef(_,tmpl: Template))) =>
+        case PackageDef(_, List(TypeDef(_, tmpl: Template))) =>
           tmpl.body
-              .collectFirst { case dd: DefDef if dd.name.show == "expr" => dd.rhs.result }
+              .collectFirst { case dd: ValDef if dd.name.show == "expr" => dd.result }
               .getOrElse(error)
         case _ =>
           error
       }
     }
 
-
+    val reporter = storeReporter
     implicit val ctx: Context =
-      addMagicImports(state)(rootContext(ictx))
-      .fresh.setSetting(ictx.settings.YstopAfter, List("frontEnd"))
+      addMagicImports(state)(rootContext(ictx)).fresh.setReporter(reporter)
 
-    val reporter = new StoreReporter(null) with UniqueMessagePositions with HideNonSensicalMessages
-    val src  = new SourceFile(s"EvaluateExpr", expr)
+    val src = new SourceFile(s"EvaluateExpr", expr)
 
     wrapped(expr, src, state).flatMap { pkg =>
       val unit = new CompilationUnit(src)
       unit.untpdTree = pkg
-      val run  = new Run(this)(ctx.fresh.setReporter(reporter))
+      val run = new Run(this)(ctx) {
+        override protected def compileUnits() = {
+          val phases = new REPLFrontEnd :: Nil
+          ctx.usePhases(phases)
+          units = phases.head.runOn(units)
+        }
+      }
       run.compileUnits(unit :: Nil)
 
-      if (!reporter.hasErrors) unwrapped(unit.tpdTree, src).map { tree =>
-        (tree, run.runContext)
-      }
-      else reporter.removeBufferedMessages.errors
+      if (errorsAllowed || !reporter.hasErrors)
+        unwrapped(unit.tpdTree, src).map((_, run.runContext))
+      else
+        reporter.removeBufferedMessages.errors
     }
   }
 }
