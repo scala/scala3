@@ -39,7 +39,6 @@ class Bridges(root: ClassSymbol)(implicit ctx: Context) {
    *  before erasure, if the following conditions are satisfied.
    *
    *   - `member` and other have different signatures
-   *   - `member` is not inline
    *   - there is not yet a bridge with the same name and signature in `root`
    *
    *  The bridge has the erased info of `other` and forwards to `member`.
@@ -48,7 +47,7 @@ class Bridges(root: ClassSymbol)(implicit ctx: Context) {
     def bridgeExists =
       bridgesScope.lookupAll(member.name).exists(bridge =>
         bridgeTarget(bridge) == member && bridge.signature == other.signature)
-    if (!(member.is(Inline) || member.signature == other.signature || bridgeExists))
+    if (!(member.signature == other.signature || bridgeExists))
       addBridge(member, other)
   }
 
