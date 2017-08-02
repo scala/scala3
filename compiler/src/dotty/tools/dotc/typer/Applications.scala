@@ -378,12 +378,12 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
           // default getters for class constructors are found in the companion object
           val cls = meth.owner
           val companion = cls.companionModule
-          receiver.tpe.baseTypeRef(cls) match {
-            case tp: TypeRef if companion.isTerm =>
-              selectGetter(ref(TermRef(tp.prefix, companion.asTerm)))
-            case _ =>
-              EmptyTree
+          if (companion.isTerm) {
+            val prefix = receiver.tpe.baseType(cls).normalizedPrefix
+            if (prefix.exists) selectGetter(ref(TermRef(prefix, companion.asTerm)))
+            else EmptyTree
           }
+          else EmptyTree
         }
       }
     }
@@ -894,7 +894,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
     def isSubTypeOfParent(subtp: Type, tp: Type)(implicit ctx: Context): Boolean =
       if (subtp <:< tp) true
       else tp match {
-        case tp: TypeRef if tp.symbol.isClass => isSubTypeOfParent(subtp, tp.firstParent)
+        case tp: TypeRef if tp.symbol.isClass => isSubTypeOfParent(subtp, tp.firstParentNEW)
         case tp: TypeProxy => isSubTypeOfParent(subtp, tp.superType)
         case _ => false
       }

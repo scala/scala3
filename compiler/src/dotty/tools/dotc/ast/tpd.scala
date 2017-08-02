@@ -213,7 +213,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     ta.assignType(untpd.TypeDef(sym.name, TypeTree(sym.info)), sym)
 
   def ClassDef(cls: ClassSymbol, constr: DefDef, body: List[Tree], superArgs: List[Tree] = Nil)(implicit ctx: Context): TypeDef = {
-    val firstParentRef :: otherParentRefs = cls.info.parents
+    val firstParentRef :: otherParentRefs = cls.info.parentRefs
     val firstParent = cls.typeRef.baseTypeWithArgs(firstParentRef.symbol)
     val superRef =
       if (cls is Trait) TypeTree(firstParent)
@@ -261,7 +261,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   def AnonClass(parents: List[Type], fns: List[TermSymbol], methNames: List[TermName])(implicit ctx: Context): Block = {
     val owner = fns.head.owner
     val parents1 =
-      if (parents.head.classSymbol.is(Trait)) parents.head.parents.head :: parents
+      if (parents.head.classSymbol.is(Trait)) parents.head.parentRefs.head :: parents
       else parents
     val cls = ctx.newNormalizedClassSymbol(owner, tpnme.ANON_FUN, Synthetic, parents1,
         coord = fns.map(_.pos).reduceLeft(_ union _))

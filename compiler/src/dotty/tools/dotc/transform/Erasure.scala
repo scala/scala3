@@ -409,7 +409,7 @@ object Erasure {
             cpy.Super(qual)(thisQual, untpd.Ident(sym.owner.asClass.name))
               .withType(SuperType(thisType, sym.owner.typeRef))
           else
-            qual.withType(SuperType(thisType, thisType.firstParent))
+            qual.withType(SuperType(thisType, thisType.firstParentRef))
         case _ =>
           qual
       }

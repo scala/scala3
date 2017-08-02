@@ -94,16 +94,16 @@ object RefChecks {
    */
   private def checkParents(cls: Symbol)(implicit ctx: Context): Unit = cls.info match {
     case cinfo: ClassInfo =>
-      def checkSelfConforms(other: TypeRef, category: String, relation: String) = {
+      def checkSelfConforms(other: ClassSymbol, category: String, relation: String) = {
         val otherSelf = other.givenSelfType.asSeenFrom(cls.thisType, other.classSymbol)
         if (otherSelf.exists && !(cinfo.selfType <:< otherSelf))
           ctx.error(DoesNotConformToSelfType(category, cinfo.selfType, cls, otherSelf, relation, other.classSymbol),
             cls.pos)
       }
       for (parent <- cinfo.classParents)
-        checkSelfConforms(parent, "illegal inheritance", "parent")
-      for (reqd <- cinfo.givenSelfType.classSymbols)
-        checkSelfConforms(reqd.typeRef, "missing requirement", "required")
+        checkSelfConforms(parent.typeSymbol.asClass, "illegal inheritance", "parent")
+      for (reqd <- cinfo.cls.givenSelfType.classSymbols)
+        checkSelfConforms(reqd, "missing requirement", "required")
     case _ =>
   }
 
@@ -285,7 +285,7 @@ object RefChecks {
           //Console.println(infoString(member) + " shadows1 " + infoString(other) " in " + clazz);//DEBUG
           return
         }
-        val parentSymbols = clazz.info.parents.map(_.typeSymbol)
+        val parentSymbols = clazz.info.parentsNEW.map(_.typeSymbol)
         if (parentSymbols exists (p => subOther(p) && subMember(p) && deferredCheck)) {
           //Console.println(infoString(member) + " shadows2 " + infoString(other) + " in " + clazz);//DEBUG
           return

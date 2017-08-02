@@ -4,7 +4,7 @@ package printing
 import core._
 import Texts._, Types._, Flags._, Names._, Symbols._, NameOps._, Constants._, Denotations._
 import Contexts.Context, Scopes.Scope, Denotations.Denotation, Annotations.Annotation
-import TypeApplications.AppliedType
+import TypeApplications.AnyAppliedType
 import StdNames.{nme, tpnme}
 import ast.Trees._, ast._
 import typer.Implicits._
@@ -123,7 +123,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
    */
   private def refinementChain(tp: Type): List[Type] =
     tp :: (tp match {
-      case AppliedType(_, _) => Nil
+      case AnyAppliedType(_, _) => Nil
       case tp: RefinedType => refinementChain(tp.parent.stripTypeVar)
       case _ => Nil
     })
@@ -142,7 +142,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
         toTextLocal(tp.underlying) ~ "(" ~ toTextRef(tp) ~ ")"
       case tp: TypeRef =>
         toTextPrefix(tp.prefix) ~ selectionString(tp)
-      case AppliedType(tycon, args) =>
+      case AnyAppliedType(tycon, args) =>
         (toTextLocal(tycon) ~ "[" ~ Text(args map argText, ", ") ~ "]").close
       case tp: RefinedType =>
         val parent :: (refined: List[RefinedType @unchecked]) =
@@ -323,7 +323,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
         val declsText =
           if (trueDecls.isEmpty || !ctx.settings.debug.value) Text()
           else dclsText(trueDecls)
-        tparamsText ~ " extends " ~ toTextParents(tp.parents) ~ "{" ~ selfText ~ declsText ~
+        tparamsText ~ " extends " ~ toTextParents(tp.parentsNEW) ~ "{" ~ selfText ~ declsText ~
           "} at " ~ preText
       case tp =>
         ": " ~ toTextGlobal(tp)
@@ -401,7 +401,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
 
   def toText(sym: Symbol): Text =
     (kindString(sym) ~~ {
-      if (sym.isAnonymousClass) toText(sym.info.parents, " with ") ~ "{...}"
+      if (sym.isAnonymousClass) toText(sym.info.parentsNEW, " with ") ~ "{...}"
       else if (hasMeaninglessName(sym)) simpleNameString(sym.owner) + idString(sym)
       else nameString(sym)
     }).close

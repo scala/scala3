@@ -6,7 +6,7 @@ import core._
 import ast._
 import Scopes._, Contexts._, Constants._, Types._, Symbols._, Names._, Flags._, Decorators._
 import ErrorReporting._, Annotations._, Denotations._, SymDenotations._, StdNames._, TypeErasure._
-import TypeApplications.AppliedType
+import TypeApplications.AnyAppliedType
 import util.Positions._
 import config.Printers.typr
 import ast.Trees._
@@ -104,7 +104,7 @@ trait TypeAssigner {
           }
         case tp @ HKApply(tycon, args) if toAvoid(tycon) =>
           apply(tp.superType)
-        case tp @ AppliedType(tycon, args) if toAvoid(tycon) =>
+        case tp @ AnyAppliedType(tycon, args) if toAvoid(tycon) =>
           val base = apply(tycon)
           var args = tp.baseArgInfos(base.typeSymbol)
           if (base.typeParams.length != args.length)
@@ -293,7 +293,7 @@ trait TypeAssigner {
       case err: ErrorType => untpd.cpy.Super(tree)(qual, mix).withType(err)
       case qtype @ ThisType(_) =>
         val cls = qtype.cls
-        def findMixinSuper(site: Type): Type = site.parents filter (_.name == mix.name) match {
+        def findMixinSuper(site: Type): Type = site.parentRefs filter (_.name == mix.name) match {
           case p :: Nil =>
             p
           case Nil =>
@@ -304,7 +304,7 @@ trait TypeAssigner {
         val owntype =
           if (mixinClass.exists) mixinClass.typeRef
           else if (!mix.isEmpty) findMixinSuper(cls.info)
-          else if (inConstrCall || ctx.erasedTypes) cls.info.firstParent
+          else if (inConstrCall || ctx.erasedTypes) cls.info.firstParentRef
           else {
             val ps = cls.classInfo.parentsWithArgs
             if (ps.isEmpty) defn.AnyType else ps.reduceLeft((x: Type, y: Type) => x & y)
@@ -513,17 +513,15 @@ trait TypeAssigner {
 
   private def symbolicIfNeeded(sym: Symbol)(implicit ctx: Context) = {
     val owner = sym.owner
-    owner.infoOrCompleter match {
-      case info: ClassInfo if info.givenSelfType.exists =>
-        // In that case a simple typeRef/termWithWithSig could return a member of
-        // the self type, not the symbol itself. To avoid this, we make the reference
-        // symbolic. In general it seems to be faster to keep the non-symblic
-        // reference, since there is less pressure on the uniqueness tables that way
-        // and less work to update all the different references. That's why symbolic references
-        // are only used if necessary.
-        NamedType.withFixedSym(owner.thisType, sym)
-      case _ => NoType
-    }
+    if (owner.isClass && owner.isCompleted && owner.asClass.givenSelfType.exists)
+      // In that case a simple typeRef/termWithWithSig could return a member of
+      // the self type, not the symbol itself. To avoid this, we make the reference
+      // symbolic. In general it seems to be faster to keep the non-symblic
+      // reference, since there is less pressure on the uniqueness tables that way
+      // and less work to update all the different references. That's why symbolic references
+      // are only used if necessary.
+      NamedType.withFixedSym(owner.thisType, sym)
+    else NoType
   }
 
   def assertExists(tp: Type) = { assert(tp != NoType); tp }

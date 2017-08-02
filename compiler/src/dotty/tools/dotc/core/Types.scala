@@ -129,9 +129,10 @@ object Types {
           case TypeAlias(tp) =>
             assert((tp ne this) && (tp ne this1), s"$tp / $this")
             tp.isRef(sym)
-          case _ =>  this1.symbol eq sym
+          case _ => this1.symbol eq sym
         }
       case this1: RefinedOrRecType => this1.parent.isRef(sym)
+      case this1: AppliedType => this1.underlying.isRef(sym)
       case this1: HKApply => this1.superType.isRef(sym)
       case _ => false
     }
@@ -210,7 +211,7 @@ object Types {
       */
     private final def phantomLatticeType(implicit ctx: Context): Type = widen match {
       case tp: ClassInfo if defn.isPhantomTerminalClass(tp.classSymbol) => tp.prefix
-      case tp: TypeProxy if tp.superType ne this => tp.underlying.phantomLatticeType
+      case tp: TypeProxy if tp.superType ne this => tp.underlying.phantomLatticeType // ??? guard needed ???
       case tp: AndOrType => tp.tp1.phantomLatticeType
       case _ => NoType
     }
@@ -483,6 +484,8 @@ object Types {
           })
         case tp: TypeRef =>
           tp.denot.findMember(name, pre, excluded)
+        case tp: AppliedType =>
+          goApplied(tp)
         case tp: ThisType =>
           goThis(tp)
         case tp: RefinedType =>
@@ -494,7 +497,7 @@ object Types {
         case tp: SuperType =>
           goSuper(tp)
         case tp: HKApply =>
-          goApply(tp)
+          goHKApply(tp)
         case tp: TypeProxy =>
           go(tp.underlying)
         case tp: ClassInfo =>
@@ -566,6 +569,7 @@ object Types {
               try pdenot.info & rinfo
               catch {
                 case ex: CyclicReference =>
+                  // ??? can this still happen? ???
                   // happens for tests/pos/sets.scala. findMember is called from baseTypeRef.
                   // The & causes a subtype check which calls baseTypeRef again with the same
                   // superclass. In the observed case, the superclass was Any, and
@@ -583,7 +587,15 @@ object Types {
         }
       }
 
-      def goApply(tp: HKApply) = tp.tycon match {
+      def goApplied(tp: AppliedType) = tp.tycon match {
+        case tl: HKTypeLambda =>
+          go(tl.resType).mapInfo(info =>
+            tl.derivedLambdaAbstraction(tl.paramNames, tl.paramInfos, info).appliedTo(tp.args))
+        case _ =>
+          go(tp.superType)
+      }
+
+      def goHKApply(tp: HKApply) = tp.tycon match {
         case tl: HKTypeLambda =>
           go(tl.resType).mapInfo(info =>
             tl.derivedLambdaAbstraction(tl.paramNames, tl.paramInfos, info).appliedTo(tp.args))
@@ -826,12 +838,16 @@ object Types {
     /** The basetype TypeRef of this type with given class symbol,
      *  but without including any type arguments
      */
-    final def baseTypeRef(base: Symbol)(implicit ctx: Context): Type = /*ctx.traceIndented(s"$this baseTypeRef $base")*/ /*>|>*/ track("baseTypeRef") /*<|<*/ {
+    final def baseType(base: Symbol)(implicit ctx: Context): Type = /*ctx.traceIndented(s"$this baseType $base")*/ /*>|>*/ track("baseType") /*<|<*/ {
       base.denot match {
-        case classd: ClassDenotation => classd.baseTypeRefOf(this)
+        case classd: ClassDenotation => classd.baseTypeOf(this)
         case _ => NoType
       }
     }
+
+    /** Temporary replacement for baseTypeRef */
+    final def baseTypeTycon(base: Symbol)(implicit ctx: Context): Type =
+      baseType(base).typeConstructor
 
     def & (that: Type)(implicit ctx: Context): Type = track("&") {
       ctx.typeComparer.glb(this, that)
@@ -958,6 +974,14 @@ object Types {
           case TypeAlias(tp) => tp.dealias(keepAnnots): @tailrec
           case _ => tp
         }
+      case app @ AppliedType(tycon, args) =>
+        val tycon1 = tycon.dealias(keepAnnots)
+        if (tycon1 ne tycon) app.superType.dealias(keepAnnots): @tailrec
+        else this
+      case app @ HKApply(tycon, args) =>
+        val tycon1 = tycon.dealias(keepAnnots)
+        if (tycon1 ne tycon) app.superType.dealias(keepAnnots): @tailrec
+        else this
       case tp: TypeVar =>
         val tp1 = tp.instanceOpt
         if (tp1.exists) tp1.dealias(keepAnnots): @tailrec else tp
@@ -966,10 +990,6 @@ object Types {
         if (keepAnnots) tp.derivedAnnotatedType(tp1, tp.annot) else tp1
       case tp: LazyRef =>
         tp.ref.dealias(keepAnnots): @tailrec
-      case app @ HKApply(tycon, args) =>
-        val tycon1 = tycon.dealias(keepAnnots)
-        if (tycon1 ne tycon) app.superType.dealias(keepAnnots): @tailrec
-        else this
       case _ => this
     }
 
@@ -1001,6 +1021,12 @@ object Types {
       case _ => this
     }
 
+    /** The type constructor of an applied type, otherwise the type itself */
+    final def typeConstructor(implicit ctx: Context): Type = this match {
+      case AppliedType(tycon, _) => tycon
+      case _ => this
+    }
+
     /** If this is a (possibly aliased, annotated, and/or parameterized) reference to
      *  a class, the class type ref, otherwise NoType.
      *  @param  refinementOK   If `true` we also skip non-parameter refinements.
@@ -1010,6 +1036,8 @@ object Types {
         if (tp.symbol.isClass) tp
         else if (tp.symbol.isAliasType) tp.underlying.underlyingClassRef(refinementOK)
         else NoType
+      case tp: AppliedType =>
+        tp.superType.underlyingClassRef(refinementOK)
       case tp: AnnotatedType =>
         tp.underlying.underlyingClassRef(refinementOK)
       case tp: RefinedType =>
@@ -1147,29 +1175,35 @@ object Types {
      *  Inherited by all type proxies. Empty for all other types.
      *  Overwritten in ClassInfo, where parents is cached.
      */
-    def parents(implicit ctx: Context): List[TypeRef] = this match {
-      case tp: TypeProxy => tp.underlying.parents
-      case _ => List()
+    def parentRefs(implicit ctx: Context): List[TypeRef] = this match {
+      case tp: TypeProxy => tp.underlying.parentRefs
+      case _ => Nil
     }
 
     /** The full parent types, including all type arguments */
     def parentsWithArgs(implicit ctx: Context): List[Type] = this match {
       case tp: TypeProxy => tp.superType.parentsWithArgs
-      case _ => List()
+      case _ => Nil
+    }
+
+    /** The full parent types, including (in new scheme) all type arguments */
+    def parentsNEW(implicit ctx: Context): List[Type] = this match {
+      case AppliedType(tycon: HKTypeLambda, args) => // TODO: can be eliminated once ClassInfo is changed, also: cache?
+        tycon.resType.parentsWithArgs.map(_.substParams(tycon, args))
+      case tp: TypeProxy => tp.superType.parentsNEW
+      case _ => Nil
     }
 
     /** The first parent of this type, AnyRef if list of parents is empty */
-    def firstParent(implicit ctx: Context): TypeRef = parents match {
+    def firstParentRef(implicit ctx: Context): TypeRef = parentRefs match {
       case p :: _ => p
       case _ => defn.AnyType
     }
 
-    /** the self type of the underlying classtype */
-    def givenSelfType(implicit ctx: Context): Type = this match {
-      case tp: RefinedType => tp.wrapIfMember(tp.parent.givenSelfType)
-      case tp: ThisType => tp.tref.givenSelfType
-      case tp: TypeProxy => tp.superType.givenSelfType
-      case _ => NoType
+    /** The first parent of this type, AnyRef if list of parents is empty */
+    def firstParentNEW(implicit ctx: Context): Type = parentsNEW match {
+      case p :: _ => p
+      case _ => defn.AnyType
     }
 
     /** The parameter types of a PolyType or MethodType, Empty list for others */
@@ -1435,6 +1469,11 @@ object Types {
   /** A marker trait for types that can be types of values or that are higher-kinded  */
   trait ValueType extends ValueTypeOrProto with ValueTypeOrWildcard
 
+  /** A common base trait of NamedType and AppliedType */
+  trait RefType extends CachedProxyType with ValueType {
+    def symbol(implicit ctx: Context): Symbol
+  }
+
   /** A marker trait for types that are guaranteed to contain only a
    *  single non-null value (they might contain null in addition).
    */
@@ -1466,7 +1505,7 @@ object Types {
 // --- NamedTypes ------------------------------------------------------------------
 
   /** A NamedType of the form Prefix # name */
-  abstract class NamedType extends CachedProxyType with ValueType {
+  abstract class NamedType extends CachedProxyType with RefType {
 
     val prefix: Type
     val name: Name
@@ -1595,10 +1634,8 @@ object Types {
     }
 
     private def checkSymAssign(sym: Symbol)(implicit ctx: Context) = {
-      def selfTypeOf(sym: Symbol) = sym.owner.info match {
-        case info: ClassInfo => info.givenSelfType
-        case _ => NoType
-      }
+      def selfTypeOf(sym: Symbol) =
+        if (sym.isClass) sym.asClass.givenSelfType else NoType
       assert(
         (lastSymbol eq sym)
         ||
@@ -2195,7 +2232,7 @@ object Types {
       if ((parent eq this.parent) && (refinedName eq this.refinedName) && (refinedInfo eq this.refinedInfo)) this
       else RefinedType(parent, refinedName, refinedInfo)
 
-    /** Add this refinement to `parent`, provided If `refinedName` is a member of `parent`. */
+    /** Add this refinement to `parent`, provided `refinedName` is a member of `parent`. */
     def wrapIfMember(parent: Type)(implicit ctx: Context): Type =
       if (parent.member(refinedName).exists) derivedRefinedType(parent, refinedName, refinedInfo)
       else parent
@@ -2992,6 +3029,87 @@ object Types {
     def paramRef(implicit ctx: Context): Type = TypeParamRef(tl, n)
   }
 
+  /** A type application `C[T_1, ..., T_n]` */
+  abstract case class AppliedType(tycon: Type, args: List[Type])
+  extends CachedProxyType with RefType {
+
+    private var validSuper: Period = Nowhere
+    private var cachedSuper: Type = _
+
+    override def underlying(implicit ctx: Context): Type = tycon
+
+    override def superType(implicit ctx: Context): Type = {
+      if (ctx.period != validSuper) {
+        validSuper = ctx.period
+        cachedSuper = tycon match {
+          case tp: HKTypeLambda => defn.AnyType
+          case tp: TypeVar if !tp.inst.exists =>
+            // supertype not stable, since underlying might change
+            validSuper = Nowhere
+            tp.underlying.applyIfParameterized(args)
+          case tp: TypeProxy =>
+            if (tp.typeSymbol.is(Provisional)) validSuper = Nowhere
+            tp.superType.applyIfParameterized(args)
+          case _ => defn.AnyType
+        }
+      }
+      cachedSuper
+    }
+
+    override def symbol(implicit ctx: Context) = tycon.typeSymbol
+
+    def lowerBound(implicit ctx: Context) = tycon.stripTypeVar match {
+      case tycon: TypeRef =>
+        tycon.info match {
+          case TypeBounds(lo, hi) =>
+            if (lo eq hi) superType // optimization, can profit from caching in this case
+            else lo.applyIfParameterized(args)
+          case _ => NoType
+        }
+      case _ =>
+        NoType
+    }
+
+    def typeParams(implicit ctx: Context): List[ParamInfo] = {
+      val tparams = tycon.typeParams
+      if (tparams.isEmpty) HKTypeLambda.any(args.length).typeParams else tparams
+    }
+
+    def derivedAppliedType(tycon: Type, args: List[Type])(implicit ctx: Context): Type =
+      if ((tycon eq this.tycon) && (args eq this.args)) this
+      else tycon.appliedTo(args)
+
+    override def computeHash = doHash(tycon, args)
+
+    protected def checkInst(implicit ctx: Context): this.type = {
+      def check(tycon: Type): Unit = tycon.stripTypeVar match {
+        case tycon: TypeRef =>
+        case _: TypeParamRef | _: ErrorType | _: WildcardType =>
+        case _: TypeLambda =>
+          assert(!args.exists(_.isInstanceOf[TypeBounds]), s"unreduced type apply: $this")
+        case tycon: AnnotatedType =>
+          check(tycon.underlying)
+        case _ =>
+          assert(false, s"illegal type constructor in $this")
+      }
+      if (Config.checkHKApplications) check(tycon)
+      this
+    }
+  }
+
+  final class CachedAppliedType(tycon: Type, args: List[Type]) extends AppliedType(tycon, args)
+
+  object AppliedType {
+    def apply(tycon: Type, args: List[Type])(implicit ctx: Context) =
+      unique(new CachedAppliedType(tycon, args)).checkInst
+  }
+
+  object ClassRef {
+    def unapply(tp: RefType)(implicit ctx: Context): Option[RefType] = { // after bootstrap, drop the Option
+      if (tp.symbol.isClass) Some(tp) else None
+    }
+  }
+
   /** A higher kinded type application `C[T_1, ..., T_n]` */
   abstract case class HKApply(tycon: Type, args: List[Type])
   extends CachedProxyType with ValueType {
@@ -3288,7 +3406,7 @@ object Types {
       if (selfTypeCache == null)
         selfTypeCache = {
           def fullRef = fullyAppliedRef
-          val given = givenSelfType
+          val given = cls.givenSelfType
           val raw =
             if (!given.exists) fullRef
             else if (cls is Module) given
@@ -3297,14 +3415,6 @@ object Types {
           raw//.asSeenFrom(prefix, cls.owner)
         }
       selfTypeCache
-    }
-
-    /** The explicitly given self type (self types of modules are assumed to be
-     *  explcitly given here).
-     */
-    override def givenSelfType(implicit ctx: Context): Type = selfInfo match {
-      case tp: Type => tp
-      case self: Symbol => self.info
     }
 
     private var selfTypeCache: Type = null
@@ -3338,7 +3448,7 @@ object Types {
     private var parentsCache: List[TypeRef] = null
 
     /** The parent type refs as seen from the given prefix */
-    override def parents(implicit ctx: Context): List[TypeRef] = {
+    override def parentRefs(implicit ctx: Context): List[TypeRef] = {
       if (parentsCache == null)
         parentsCache = cls.classParents.mapConserve(_.asSeenFrom(prefix, cls.owner).asInstanceOf[TypeRef])
       parentsCache
@@ -3346,13 +3456,16 @@ object Types {
 
     /** The parent types with all type arguments */
     override def parentsWithArgs(implicit ctx: Context): List[Type] =
-      parents mapConserve { pref =>
+      parentRefs mapConserve { pref =>
         ((pref: Type) /: pref.classSymbol.typeParams) { (parent, tparam) =>
           val targSym = decls.lookup(tparam.name)
           if (targSym.exists) RefinedType(parent, targSym.name, targSym.info)
           else parent
         }
       }
+
+    override def parentsNEW(implicit ctx: Context): List[Type] =
+      parentRefs // !!! TODO: change
 
     def derivedClassInfo(prefix: Type)(implicit ctx: Context) =
       if (prefix eq this.prefix) this
@@ -3837,12 +3950,12 @@ object Types {
   abstract class DeepTypeMap(implicit ctx: Context) extends TypeMap {
     override def mapClassInfo(tp: ClassInfo) = {
       val prefix1 = this(tp.prefix)
-      val parents1 = (tp.parents mapConserve this).asInstanceOf[List[TypeRef]]
+      val parentRefs1 = (tp.parentRefs mapConserve this).asInstanceOf[List[TypeRef]]
       val selfInfo1 = tp.selfInfo match {
         case selfInfo: Type => this(selfInfo)
         case selfInfo => selfInfo
       }
-      tp.derivedClassInfo(prefix1, parents1, tp.decls, selfInfo1)
+      tp.derivedClassInfo(prefix1, parentRefs1, tp.decls, selfInfo1)
     }
   }
 
@@ -4153,7 +4266,7 @@ object Types {
   }
 
   private def otherReason(pre: Type)(implicit ctx: Context): String = pre match {
-    case pre: ThisType if pre.givenSelfType.exists =>
+    case pre: ThisType if pre.cls.givenSelfType.exists =>
       i"\nor the self type of $pre might not contain all transitive dependencies"
     case _ => ""
   }
