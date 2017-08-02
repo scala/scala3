@@ -724,7 +724,7 @@ class CompilingInterpreter(
            |  if ($fullPath.asInstanceOf[AnyRef] != null) {
            |    (if ($fullPath.toString().contains('\\n')) "\\n" else "") + {
            |      import dotty.Show._
-           |      $fullPath.show /*toString()*/ + "\\n"
+           |      (new ShowValue($fullPath)).show /*toString()*/ + "\\n"
            |    }
            |  } else {
            |    "null\\n"
