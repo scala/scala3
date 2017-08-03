@@ -232,6 +232,11 @@ object Build {
     }
   )
 
+  lazy val commonBenchmarkSettings = Seq(
+    mainClass in (Jmh, run) := Some("dotty.tools.benchmarks.Bench"), // custom main for jmh:run
+    javaOptions += "-DBENCH_CLASS_PATH=" + Attributed.data((fullClasspath in Compile).value).mkString("", ":", "")
+  )
+
   // sbt >= 0.13.12 will automatically rewrite transitive dependencies on
   // any version in any organization of scala{-library,-compiler,-reflect,p}
   // to have organization `scalaOrganization` and version `scalaVersion`
@@ -822,11 +827,13 @@ object Build {
 
   lazy val `dotty-bench` = project.in(file("bench")).
     dependsOn(`dotty-compiler`).
-    settings(commonNonBootstrappedSettings).
-    settings(
-      mainClass in (Jmh, run) := Some("dotty.tools.benchmarks.Bench"), // custom main for jmh:run
-      javaOptions += "-DBENCH_CLASS_PATH=" + Attributed.data((fullClasspath in Compile).value).mkString("", ":", "")
-    ).
+    settings(commonNonBootstrappedSettings ++ commonBenchmarkSettings).
+    enablePlugins(JmhPlugin)
+
+  lazy val `dotty-bench-bootstrapped` = project.in(file("bench-bootstrapped")).
+    dependsOn(`dotty-compiler-bootstrapped`).
+    settings(commonBootstrappedSettings ++ commonBenchmarkSettings).
+    settings(unmanagedSourceDirectories in Compile ++= Seq(baseDirectory.value / ".." / "bench" / "src")).
     enablePlugins(JmhPlugin)
 
   // Depend on dotty-library so that sbt projects using dotty automatically

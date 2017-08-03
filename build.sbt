@@ -14,6 +14,7 @@ val `dotty-sbt-bridge-bootstrapped` = Build.`dotty-sbt-bridge-bootstrapped`
 val `dotty-language-server` = Build.`dotty-language-server`
 val sjsSandbox = Build.sjsSandbox
 val `dotty-bench` = Build.`dotty-bench`
+val `dotty-bench-bootstrapped` = Build.`dotty-bench-bootstrapped`
 val `scala-library` = Build.`scala-library`
 val `scala-compiler` = Build.`scala-compiler`
 val `scala-reflect` = Build.`scala-reflect`
