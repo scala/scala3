@@ -90,10 +90,13 @@ object Interactive {
   /** Possible completions of members of `prefix` which are accessible when called inside `boundary` */
   def completions(prefix: Type, boundary: Symbol)(implicit ctx: Context): List[Symbol] =
     safely {
-      val boundaryCtx = ctx.withOwner(boundary)
-      prefix.memberDenots(completionsFilter, (name, buf) =>
-        buf ++= prefix.member(name).altsWith(d => !d.isAbsent && d.symbol.isAccessibleFrom(prefix)(boundaryCtx))
-      ).map(_.symbol).toList
+      if (boundary != NoSymbol) {
+        val boundaryCtx = ctx.withOwner(boundary)
+        prefix.memberDenots(completionsFilter, (name, buf) =>
+          buf ++= prefix.member(name).altsWith(d => !d.isAbsent && d.symbol.isAccessibleFrom(prefix)(boundaryCtx))
+        ).map(_.symbol).toList
+      }
+      else Nil
     }
 
   /** Filter for names that should appear when looking for completions. */
