@@ -93,7 +93,11 @@ object Interactive {
       if (boundary != NoSymbol) {
         val boundaryCtx = ctx.withOwner(boundary)
         prefix.memberDenots(completionsFilter, (name, buf) =>
-          buf ++= prefix.member(name).altsWith(d => !d.isAbsent && d.symbol.isAccessibleFrom(prefix)(boundaryCtx))
+          buf ++= prefix.member(name).altsWith{ d =>
+            !d.isAbsent &&
+            !d.is(Synthetic) && !d.is(Artifact) &&
+            d.symbol.isAccessibleFrom(prefix)(boundaryCtx)
+          }
         ).map(_.symbol).toList
       }
       else Nil
