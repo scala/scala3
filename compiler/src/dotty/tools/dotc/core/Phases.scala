@@ -348,6 +348,7 @@ object Phases {
     protected[Phases] def init(base: ContextBase, start: Int, end:Int): Unit = {
       if (start >= FirstPhaseId)
         assert(myPeriod == Periods.InvalidPeriod, s"phase $this has already been used once; cannot be reused")
+      assert(start <= Periods.MaxPossiblePhaseId, s"Too many phases, Period bits overflow")
       myBase = base
       myPeriod = Period(NoRunId, start, end)
       myErasedTypes  = prev.getClass == classOf[Erasure]      || prev.erasedTypes
