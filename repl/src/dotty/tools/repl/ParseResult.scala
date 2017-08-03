@@ -68,7 +68,7 @@ object ParseResult {
         val source = new SourceFile("<console>", sourceCode.toCharArray)
         val parser = new Parser(source)
 
-        val (_, stats) = parser.templateStatSeq
+        val (_, stats) = parser.templateStatSeq()
 
         if (ctx.reporter.hasErrors)
           SyntaxErrors(ctx.reporter.asInstanceOf[StoreReporter].removeBufferedMessages, stats)
@@ -86,7 +86,7 @@ object ParseResult {
         reporter.withIncompleteHandler(_ => _ => needsMore = true) {
           val source = new SourceFile("<console>", sourceCode.toCharArray)
           val parser = new Parser(source)(ctx.fresh.setReporter(reporter))
-          parser.templateStatSeq
+          parser.templateStatSeq()
           !reporter.hasErrors && needsMore
         }
       }

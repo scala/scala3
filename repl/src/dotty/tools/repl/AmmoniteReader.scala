@@ -15,7 +15,7 @@ import LazyList._
 import AmmoniteReader._
 
 private[repl] class AmmoniteReader(history: History,
-                                   complete: (Int, String) => (Int, Seq[String], Seq[String]))
+                                   complete: (Int, String) => Completions)
                                   (implicit ctx: Context) {
 
   private[this] val reader = new InputStreamReader(System.in)
@@ -42,7 +42,7 @@ private[repl] class AmmoniteReader(history: History,
 
     val autocompleteFilter: Filter = Filter.action("autocompleteFilter")(SpecialKeys.Tab :: Nil) {
       case TermState(rest, b, c, _) =>
-        val (newCursor, completions, details) = complete(c, b.mkString)
+        val Completions(newCursor, completions, details) = complete(c, b.mkString)
         lazy val prefixDetails = FrontEndUtils.findPrefix(details)
         val details2 = details.map { det =>
           val (left, right) = det.splitAt(prefixDetails.length)
@@ -112,7 +112,7 @@ object AmmoniteReader {
   type History = List[String]
 
   def apply(history: History,
-            complete: (Int, String) => (Int, Seq[String], Seq[String]))
+            complete: (Int, String) => Completions)
            (implicit ctx: Context) =
     new AmmoniteReader(history,complete)
 }

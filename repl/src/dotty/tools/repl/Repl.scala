@@ -14,6 +14,7 @@ import dotc.ast.tpd
 import dotc.interactive.{ SourceTree, Interactive }
 import dotc.core.Contexts.Context
 import dotc.core.Flags._
+import dotc.core.Types._
 import dotc.core.StdNames._
 import dotc.core.Symbols.Symbol
 import dotc.core.Denotations.Denotation
@@ -35,6 +36,10 @@ case class State(objectIndex: Int,
   def withHistory(newEntry: String) = copy(history = newEntry :: history)
   def withHistory(h: History) = copy(history = h)
 }
+
+case class Completions(cursor: Int,
+                       instance: List[String],
+                       companion: List[String])
 
 class Repl(
   settings: Array[String],
@@ -84,7 +89,7 @@ class Repl(
 
   resetToInitial()
 
-  private[this] def completions(cursor: Int, expr: String, state: State): (Int, Seq[String], Seq[String]) = {
+  protected final def completions(cursor: Int, expr: String, state: State): Completions = {
     import tpd._
 
     // does the `sym` match the prefix in the `tree`?
@@ -95,16 +100,30 @@ class Repl(
         case _ => true
       }
 
+    // completing a Module e.g: "List.ra<tab>"?
+    def completingModule(tree: Tree)(implicit ctx: Context) = tree match {
+      case Select(x, _) =>
+        x.tpe match {
+          case tpe: NamedType => tpe.isTerm
+          case _ => false
+        }
+      case _ => false
+    }
 
     // return the correct cursor position and symbols matching prefix
     def findMatching(newCursor: Int, tree: Tree, syms: List[Symbol])(implicit ctx: Context) = {
       val (inCompanion, inInstance) =
         syms
           .filter(matchingPrefix(_, tree))
-          .partition(_.owner.is(Module))
+          .partition(_ => completingModule(tree))
 
       val offset = if (expr.last == '.') 1 else 0
-      (newCursor + offset, inInstance.map(_.name.show), inCompanion.map(_.name.show))
+
+      Completions(
+        newCursor + offset,
+        inInstance.map(_.name.show).distinct,
+        inCompanion.map(_.name.show).distinct
+      )
     }
 
     compiler
@@ -120,7 +139,7 @@ class Repl(
 
         (newCursor, completedTree, completions, ctx)
       }
-      .fold(_ => (cursor, Nil, Nil), findMatching(_, _, _)(_))
+      .fold(_ => Completions(cursor, Nil, Nil), findMatching(_, _, _)(_))
   }
 
   private def readLine(state: State) =
