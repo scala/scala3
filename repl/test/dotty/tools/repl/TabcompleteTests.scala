@@ -46,4 +46,7 @@ class TabcompleteTests extends ReplTest {
     assertTrue(s"""Expected single element "range" got: ${comp.companion}""",
       comp.instance == List("slice", "sliding"))
   }
+
+  @Test def autoCompletValAssign: Unit =
+    autoComplete("val x = 5")
 }

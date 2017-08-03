@@ -13,6 +13,7 @@ import dotc.ast.untpd
 import dotc.ast.tpd
 import dotc.interactive.{ SourceTree, Interactive }
 import dotc.core.Contexts.Context
+import dotc.core.Mode
 import dotc.core.Flags._
 import dotc.core.Types._
 import dotc.core.StdNames._
@@ -55,6 +56,7 @@ class Repl(
     val rootCtx = initCtx.fresh
     val summary = CompilerCommand.distill(settings)(rootCtx)
     val ictx = rootCtx.setSettings(summary.sstate)
+      .addMode(Mode.ReadPositions).addMode(Mode.Interactive)
     ictx.base.initialize()(ictx)
     ictx
   }
