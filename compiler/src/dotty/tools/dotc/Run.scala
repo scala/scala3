@@ -24,7 +24,6 @@ import scala.util.control.NonFatal
 /** A compiler run. Exports various methods to compile source files */
 class Run(comp: Compiler)(implicit ctx: Context) {
 
-  assert(comp.phases.last.last.id <= Periods.MaxPossiblePhaseId)
   assert(ctx.runId <= Periods.MaxPossibleRunId)
 
   var units: List[CompilationUnit] = _
