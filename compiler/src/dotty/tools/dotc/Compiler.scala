@@ -108,13 +108,8 @@ class Compiler {
            new CollectSuperCalls,   // Find classes that are called with super
            new DropInlined,         // Drop Inlined nodes, since backend has no use for them
            new LabelDefs),          // Converts calls to labels to jumps
-      List(checkedIdOverflow(new GenBCode)) // Generate JVM bytecode
+      List(new GenBCode)            // Generate JVM bytecode
     )
-
-  private def checkedIdOverflow(phase: Phase): Phase = {
-    assert(phase.id <= Periods.MaxPossiblePhaseId)
-    phase
-  }
 
   var runId = 1
   def nextRunId = {
