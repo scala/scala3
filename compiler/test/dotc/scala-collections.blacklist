@@ -64,9 +64,6 @@ scala/AnyVal.scala
 #    |illegal redefinition of standard class AnyVal
 # (This is intended)
 
-scala/collection/parallel/Tasks.scala
-# java.lang.StackOverflowError
-
 scala/reflect/package.scala
 # 63 |  private[scala] def materializeClassTag[T](): ClassTag[T] = macro ???
 #    |                                                             ^^^^^
