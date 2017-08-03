@@ -54,7 +54,7 @@ class ReplTest extends Repl(
 
   /** Make sure the context is new before each test */
   @Before def init: Unit = {
-    myCtx = initializeCtx
+    myCtx = initializeCtx.setReporter(storeReporter)
     compiler = new ReplCompiler(myCtx)
   }
 
