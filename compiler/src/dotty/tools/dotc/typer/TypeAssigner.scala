@@ -231,7 +231,9 @@ trait TypeAssigner {
   /** The selection type, which is additionally checked for accessibility.
    */
   def accessibleSelectionType(tree: untpd.RefTree, qual1: Tree)(implicit ctx: Context): Type = {
-    val ownType = selectionType(qual1.tpe.widenIfUnstable, tree.name, tree.pos)
+    var qualType = qual1.tpe.widenIfUnstable
+    if (qualType.isHK) qualType = errorType(em"$qualType takes type parameters", qual1.pos)
+    val ownType = selectionType(qualType, tree.name, tree.pos)
     ensureAccessible(ownType, qual1.isInstanceOf[Super], tree.pos)
   }
 
