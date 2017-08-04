@@ -3924,7 +3924,8 @@ object Types {
       }
 
     override protected def derivedRefinedType(tp: RefinedType, parent: Type, info: Type) =
-      parent match {
+      if ((parent eq tp.parent) && (info eq tp.refinedInfo)) tp
+      else parent match {
         case Range(parentLo, parentHi) =>
           range(derivedRefinedType(tp, parentLo, info), derivedRefinedType(tp, parentHi, info))
         case _ =>
@@ -3948,13 +3949,15 @@ object Types {
         }
 
     override protected def derivedRecType(tp: RecType, parent: Type) =
-      parent match {
+      if (parent eq tp.parent) tp
+      else parent match {
         case Range(lo, hi) => range(tp.rebind(lo), tp.rebind(hi))
         case _ => tp.rebind(parent)
       }
 
     override protected def derivedTypeAlias(tp: TypeAlias, alias: Type) =
-      alias match {
+      if (alias eq tp.alias) tp
+      else alias match {
         case Range(lo, hi) =>
           if (variance > 0) TypeBounds(lo, hi)
           else range(TypeAlias(lo), TypeAlias(hi))
@@ -3962,7 +3965,8 @@ object Types {
       }
 
     override protected def derivedTypeBounds(tp: TypeBounds, lo: Type, hi: Type) =
-      if (isRange(lo) || isRange(hi))
+      if ((lo eq tp.lo) && (hi eq tp.hi)) tp
+      else if (isRange(lo) || isRange(hi))
         if (variance > 0) TypeBounds(lower(lo), upper(hi))
         else range(TypeBounds(upper(lo), lower(hi)), TypeBounds(lower(lo), upper(hi)))
       else tp.derivedTypeBounds(lo, hi)
