@@ -43,13 +43,15 @@ object SourceTree {
         sym.sourceFile == null) // FIXME: We cannot deal with external projects yet
       None
     else {
-      sym.tree match {
-        case tree: tpd.TypeDef =>
+      import ast.Trees._
+      def findTree(tree: tpd.Tree): Option[SourceTree] = tree match {
+        case PackageDef(_, stats) => stats.flatMap(findTree).headOption
+        case tree: tpd.TypeDef if tree.symbol == sym =>
           val sourceFile = new SourceFile(sym.sourceFile, Codec.UTF8)
           Some(SourceTree(tree, sourceFile))
-        case _ =>
-          None
+        case _ => None
       }
+      findTree(sym.tree)
     }
   }
 }

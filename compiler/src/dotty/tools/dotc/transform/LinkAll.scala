@@ -67,7 +67,7 @@ object LinkAll {
 
   private[LinkAll] def loadCompilationUnit(clsd: ClassDenotation)(implicit ctx: Context): Option[CompilationUnit] = {
     assert(ctx.settings.XlinkOptimise.value)
-    val tree = clsd.symbol.asClass.unitTree
+    val tree = clsd.symbol.asClass.tree
     if (tree.isEmpty) None
     else {
       ctx.log("Loading compilation unit for: " + clsd)

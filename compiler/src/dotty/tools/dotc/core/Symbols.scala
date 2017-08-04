@@ -555,29 +555,11 @@ object Symbols {
 
     type ThisName = TypeName
 
-    /** If this is a top-level class, and if `-Yretain-trees` is set, return the TypeDef tree
-     *  for this class, otherwise EmptyTree. This will force the info of the class.
-     */
-    def tree(implicit ctx: Context): tpd.Tree /* tpd.TypeDef | tpd.EmptyTree */  = {
-      import ast.Trees._
-      def findTree(tree: tpd.Tree): Option[tpd.TypeDef] = tree match {
-        case PackageDef(_, stats) =>
-          stats.flatMap(findTree).headOption
-        case tree: tpd.TypeDef if tree.symbol == this =>
-          Some(tree)
-        case _ =>
-          None
-      }
-      val t = unitTree
-      if (t.isEmpty) t
-      else findTree(tree).get
-    }
-
-    /** If this is a top-level class, and if `-Yretain-trees` or `-YlinkOptimise` is set,
-      * return the PackageDef tree for this class, otherwise EmptyTree.
+    /** If this is a top-level class, and if `-Yretain-trees` or `-Xlink-optimise` is set,
+      * return the TypeDef tree (possibly wrapped inside PackageDefs) for this class, otherwise EmptyTree.
       * This will force the info of the class.
       */
-    def unitTree(implicit ctx: Context): tpd.Tree /* tpd.PackageDef | tpd.TypeDef | tpd.EmptyTree */ = {
+    def tree(implicit ctx: Context): tpd.Tree /* tpd.PackageDef | tpd.TypeDef | tpd.EmptyTree */ = {
       denot.info
       // TODO: Consider storing this tree like we store lazy trees for inline functions
       if (unpickler != null && !denot.isAbsent) {
