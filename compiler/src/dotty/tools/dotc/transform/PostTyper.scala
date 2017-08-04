@@ -45,6 +45,8 @@ import reporting.diagnostic.messages.SuperCallsNotAllowedInline
  *  (11) Minimizes `call` fields of `Inline` nodes to just point to the toplevel
  *       class from which code was inlined.
  *
+ *  (12) Converts GADT bounds into normal type bounds
+ *
  *  The reason for making this a macro transform is that some functions (in particular
  *  super and protected accessors and instantiation checks) are naturally top-down and
  *  don't lend themselves to the bottom-up approach of a mini phase. The other two functions
@@ -52,9 +54,16 @@ import reporting.diagnostic.messages.SuperCallsNotAllowedInline
  *  mini-phase or subfunction of a macro phase equally well. But taken by themselves
  *  they do not warrant their own group of miniphases before pickling.
  */
-class PostTyper extends MacroTransform with IdentityDenotTransformer  { thisTransformer =>
+class PostTyper extends MacroTransform with SymTransformer  { thisTransformer =>
+
 
   import tpd._
+
+  def transformSym(sym: SymDenotation)(implicit ctx: Context): SymDenotation = {
+    if (sym.is(BindDefinedType) && ctx.gadt.bounds.contains(sym.symbol)) {
+      sym.copySymDenotation(info = ctx.gadt.bounds.apply(sym.symbol) & sym.info)
+    } else sym
+  }
 
   /** the following two members override abstract members in Transform */
   override def phaseName: String = "posttyper"
