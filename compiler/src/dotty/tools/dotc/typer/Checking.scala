@@ -239,7 +239,8 @@ object Checking {
           }
           if (isInteresting(pre)) {
             val pre1 = this(pre, false, false)
-            if (locked.contains(tp)) throw CyclicReference(tp.symbol)
+            if (locked.contains(tp) || tp.symbol.infoOrCompleter == NoCompleter)
+              throw CyclicReference(tp.symbol)
             locked += tp
             try checkInfo(tp.info)
             finally locked -= tp

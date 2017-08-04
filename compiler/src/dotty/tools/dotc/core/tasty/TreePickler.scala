@@ -246,7 +246,6 @@ class TreePickler(pickler: TastyPickler) {
     case tpe: ParamRef =>
       assert(pickleParamRef(tpe), s"orphan parameter reference: $tpe")
     case tpe: LazyRef =>
-      writeByte(LAZYref)
       pickleType(tpe.ref)
   }
 
