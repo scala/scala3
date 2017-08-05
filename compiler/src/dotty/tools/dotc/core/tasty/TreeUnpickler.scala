@@ -6,6 +6,7 @@ package tasty
 import Contexts._, Symbols._, Types._, Scopes._, SymDenotations._, Names._, NameOps._
 import StdNames._, Denotations._, Flags._, Constants._, Annotations._
 import NameKinds._
+import typer.Checking.checkNonCyclic
 import util.Positions._
 import ast.{tpd, Trees, untpd}
 import Trees._
@@ -293,10 +294,6 @@ class TreeUnpickler(reader: TastyReader, nameAtRef: NameRef => TermName, posUnpi
           RecType(rt => registeringType(rt, readType()))
         case RECthis =>
           RecThis(readTypeRef().asInstanceOf[RecType])
-        case LAZYref =>
-          val rdr = fork
-          skipTree()
-          LazyRef(implicit ctx => rdr.readType())
         case SHARED =>
           val ref = readAddr()
           typeAtAddr.getOrElseUpdate(ref, forkAt(ref).readType())
@@ -678,8 +675,9 @@ class TreeUnpickler(reader: TastyReader, nameAtRef: NameRef => TermName, posUnpi
             TypeDef(readTemplate(localCtx))
           } else {
             val rhs = readTpt()
+            sym.info = NoCompleter
             sym.info = rhs.tpe match {
-              case _: TypeBounds | _: ClassInfo => rhs.tpe
+              case _: TypeBounds | _: ClassInfo => checkNonCyclic(sym, rhs.tpe, reportErrors = false)
               case _ => TypeAlias(rhs.tpe, sym.variance)
             }
             TypeDef(rhs)
