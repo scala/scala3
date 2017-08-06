@@ -1,5 +1,5 @@
 // Intended to be compiled with either 2.11 or 2.12
-class C extends A {
+class C extends A with B {
   x = 4
 
   override def f: Int = super.f
@@ -8,5 +8,5 @@ class C extends A {
 }
 
 object Test extends App {
-  new C().f
+  println(new C().f)
 }
