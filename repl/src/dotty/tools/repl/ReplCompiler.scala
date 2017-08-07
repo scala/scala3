@@ -17,6 +17,14 @@ import io._
 
 import results._
 
+/** This subclass of `Compiler` replaces the appropriate phases in order to
+ *  facilitate the REPL
+ *
+ *  Specifically it replaces the front end with `REPLFrontEnd`, and adds a
+ *  custom subclass of `GenBCode`. The custom `GenBCode`, `REPLGenBCode`, works
+ *  in conjunction with a specialized class loader in order to load virtual
+ *  classfiles.
+ */
 class ReplCompiler(ictx: Context) extends Compiler {
 
   type NextRes = Int

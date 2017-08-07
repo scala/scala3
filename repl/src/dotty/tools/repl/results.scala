@@ -3,6 +3,9 @@ package repl
 
 import dotc.reporting.diagnostic.MessageContainer
 
+/** Contains the different data and type structures used to model results
+ *  in the REPL
+ */
 object results {
   type Errors = List[MessageContainer]
   private case class ErrorContainer(messages: Errors)

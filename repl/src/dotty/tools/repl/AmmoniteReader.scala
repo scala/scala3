@@ -14,6 +14,15 @@ import GUILikeFilters._
 import LazyList._
 import AmmoniteReader._
 
+/** Adaptation of the Ammonite shell emulator to fit the Dotty REPL
+ *
+ *  Credit for the code in the `terminal` goes to Li Haoyi
+ *  who wrote most of it as part of Ammonite.
+ *
+ *  @param history is a list of the previous input with the latest entry as head
+ *  @param complete takes a function from cursor point and input string to
+ *                  `Completions`
+ */
 private[repl] class AmmoniteReader(history: History,
                                    complete: (Int, String) => Completions)
                                   (implicit ctx: Context) {
@@ -33,7 +42,20 @@ private[repl] class AmmoniteReader(history: History,
         Result(source) // short-circuit the filters
   }
 
-  def prompt(): (ParseResult, History) = {
+  /** Blockingly read line from `System.in`
+   *
+   *  This entry point into Ammonite handles everything to do with terminal
+   *  emulation. This includes:
+   *
+   *  - Multiline support
+   *  - Copy-pasting
+   *  - History
+   *  - Syntax highlighting
+   *
+   *  To facilitate this, filters are used. The terminal emulation, however,
+   *  does not render output - simply input.
+   */
+  def prompt: (ParseResult, History) = {
     val historyFilter = new HistoryFilter(
       () => history.toVector,
       Console.BLUE,

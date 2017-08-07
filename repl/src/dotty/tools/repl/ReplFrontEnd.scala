@@ -5,7 +5,13 @@ import dotc.typer.FrontEnd
 import dotc.CompilationUnit
 import dotc.core.Contexts.Context
 
-class REPLFrontEnd extends FrontEnd {
+/** A customized `FrontEnd` for the REPL
+ *
+ *  This customized front end does not perform parsing as part of its `runOn`
+ *  method. This allows us to keep the parsing separate from the rest of the
+ *  compiler pipeline.
+ */
+private[repl] class REPLFrontEnd extends FrontEnd {
   override def phaseName = "replFrontEnd"
 
   override def runOn(units: List[CompilationUnit])(implicit ctx: Context) = {

@@ -10,7 +10,10 @@ import dotc.core.Flags
 import dotc.core.Symbols.Symbol
 
 object Rendering {
-  /** Load the value of the symbol using reflection */
+  /** Load the value of the symbol using reflection
+   *
+   *  Calling this method evaluates the expression using reflection
+   */
   private[this] def valueOf(sym: Symbol, classLoader: ClassLoader)(implicit ctx: Context): Option[String] = {
     val defn = ctx.definitions
     val objectName = sym.owner.fullName.encode.toString.dropRight(1) // gotta drop the '$'
@@ -25,6 +28,7 @@ object Rendering {
     else Some(res)
   }
 
+  /** Render method definition result */
   def renderMethod(d: Denotation)(implicit ctx: Context): String = {
     def params(tpe: Type): String = tpe match {
       case ConstantType(c) => ": " + c.value
@@ -49,6 +53,7 @@ object Rendering {
     s"def ${d.symbol.name.show}${params(d.info)}"
   }
 
+  /** Render value definition result */
   def renderVal(d: Denotation, classLoader: ClassLoader)(implicit ctx: Context): String = {
     val prefix =
       if (d.symbol.is(Flags.Mutable)) "var"
@@ -72,9 +77,7 @@ object Rendering {
       else valueOf(d.symbol, classLoader)
 
     resultValue
-      .map { value =>
-        s"$prefix ${d.symbol.name.show}: $tpe = $value"
-      }
+      .map(value => s"$prefix ${d.symbol.name.show}: $tpe = $value")
       .getOrElse("")
   }
 }

@@ -30,6 +30,7 @@ import dotc.util.Positions.Position
 import AmmoniteReader._
 import results._
 
+/** The state of the REPL */
 case class State(objectIndex: Int,
                  valIndex: Int,
                  history: History,
@@ -38,10 +39,12 @@ case class State(objectIndex: Int,
   def withHistory(h: History) = copy(history = h)
 }
 
+/** A list of possible completions at index `cursor` */
 case class Completions(cursor: Int,
                        instance: List[String],
                        companion: List[String])
 
+/** Main REPL instance, orchestrating input, compilation and presentation */
 class Repl(
   settings: Array[String],
   parentClassLoader: Option[ClassLoader] = None,
@@ -52,6 +55,7 @@ class Repl(
   override protected def newCompiler(implicit ctx: Context): Compiler =
     ???
 
+  /** Create a fresh and initialized context with IDE mode enabled */
   protected[this] def initializeCtx = {
     val rootCtx = initCtx.fresh
     val summary = CompilerCommand.distill(settings)(rootCtx)
@@ -62,7 +66,7 @@ class Repl(
   }
 
   private[this] var _classLoader: ClassLoader = _
-  def classLoader(implicit ctx: Context): ClassLoader = {
+  protected[this] final def classLoader(implicit ctx: Context): ClassLoader = {
     if (_classLoader eq null) _classLoader = {
       /** the compiler's classpath, as URL's */
       val compilerClasspath: Seq[URL] = ctx.platform.classPath(ctx).asURLs
@@ -80,6 +84,12 @@ class Repl(
     _classLoader
   }
 
+  /** Reset state of repl to the initial state
+   *
+   *  This method is responsible for performing an all encompassing reset. As
+   *  such, when the user enters `:reset` this method should be called to reset
+   *  everything properly
+   */
   private[this] def resetToInitial(): Unit = {
     myCtx = initializeCtx
     compiler = new ReplCompiler(myCtx)
@@ -89,9 +99,12 @@ class Repl(
   protected[this] var myCtx: Context         = _
   protected[this] var compiler: ReplCompiler = _
 
+  // initialize the REPL session as part of the constructor so that once `run`
+  // is called, we're in business
   resetToInitial()
 
-  protected final def completions(cursor: Int, expr: String, state: State): Completions = {
+  /** Extract possible completions at the index of `cursor` in `expr` */
+  protected[this] final def completions(cursor: Int, expr: String, state: State): Completions = {
     import tpd._
 
     // does the `sym` match the prefix in the `tree`?
@@ -144,12 +157,19 @@ class Repl(
       .fold(_ => Completions(cursor, Nil, Nil), findMatching(_, _, _)(_))
   }
 
-  private def readLine(state: State) =
-    AmmoniteReader(state.history, completions(_, _, state))(myCtx).prompt()
+  /** Blockingly read a line, getting back a parse result and new history */
+  private def readLine(state: State): (ParseResult, History) =
+    AmmoniteReader(state.history, completions(_, _, state))(myCtx).prompt
 
-  def extractImports(trees: List[untpd.Tree])(implicit context: Context): List[(untpd.Import, String)] =
+  private def extractImports(trees: List[untpd.Tree])(implicit context: Context): List[(untpd.Import, String)] =
     trees.collect { case imp: untpd.Import => (imp, imp.show) }
 
+  /** Run REPL with `state`
+   *
+   *  This method is the main entry point into the REPL. Its effects are not
+   *  observable outside of the CLI, for this reason, most helper methods are
+   *  `protected final` to facilitate testing.
+   */
   @tailrec final def run(state: State = State(0, 0, Nil, Nil)): Unit =
     readLine(state) match {
       case (parsed: Parsed, history) =>
@@ -170,7 +190,8 @@ class Repl(
         interpretCommand(cmd, state)
     }
 
-  def compile(parsed: Parsed, state: State): State = {
+  /** Compile `parsed` trees and evolve `state` in accordance */
+  protected[this] final def compile(parsed: Parsed, state: State): State = {
     implicit val ctx = myCtx
     compiler
       .compile(parsed, state)
@@ -186,7 +207,8 @@ class Repl(
       )
   }
 
-  def displayDefinitions(tree: tpd.Tree)(implicit ctx: Context): Unit = {
+  /** Display definitions from `tree` */
+  private def displayDefinitions(tree: tpd.Tree)(implicit ctx: Context): Unit = {
     def display(tree: tpd.Tree) = if (tree.symbol.info.exists) {
       val info = tree.symbol.info
       val defn = ctx.definitions
@@ -239,7 +261,8 @@ class Repl(
     }
   }
 
-  def interpretCommand(cmd: Command, state: State): Unit = cmd match {
+  /** Interpret `cmd` to action and propagate potentially new `state` */
+  private def interpretCommand(cmd: Command, state: State): Unit = cmd match {
     case UnknownCommand(cmd) => {
       out.println(s"""Unknown command: "$cmd", run ":help" for a list of commands""")
       run(state.withHistory(s":$cmd"))
@@ -306,9 +329,11 @@ class Repl(
     }
   }
 
+  /** Render messages using the `MessageRendering` trait */
   private def renderMessage(cont: MessageContainer): Context => String =
     messageRenderer.messageAndPos(cont.contained(), cont.pos, messageRenderer.diagnosticLevel(cont))
 
-  def displayErrors(errs: Seq[MessageContainer])(implicit ctx: Context): Unit =
+  /** Output errors to `out` */
+  private def displayErrors(errs: Seq[MessageContainer])(implicit ctx: Context): Unit =
     errs.map(renderMessage(_)(ctx)).foreach(out.println)
 }
