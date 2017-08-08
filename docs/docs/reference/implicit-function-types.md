@@ -44,7 +44,7 @@ the aim is to construct tables like this:
         cell("top right")
       }
       row {
-        cell("botttom left")
+        cell("bottom left")
         cell("bottom right")
       }
     }
