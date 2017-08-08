@@ -909,9 +909,9 @@ class Namer { typer: Typer =>
       // the parent types are elaborated.
       index(constr)
       annotate(constr :: params)
-      symbolOfTree(constr).ensureCompleted()
 
       indexAndAnnotate(rest)(inClassContext(selfInfo))
+      symbolOfTree(constr).ensureCompleted()
 
       val parentTypes = ensureFirstIsClass(parents.map(checkedParentType(_)))
       val parentRefs = ctx.normalizeToClassRefs(parentTypes, cls, decls)
