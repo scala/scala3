@@ -635,7 +635,7 @@ object Erasure {
       super.typedStats(stats1, exprOwner).filter(!_.isEmpty)
     }
 
-    override def adapt(tree: Tree, pt: Type, original: untpd.Tree)(implicit ctx: Context): Tree =
+    override def adapt(tree: Tree, pt: Type)(implicit ctx: Context): Tree =
       ctx.traceIndented(i"adapting ${tree.showSummary}: ${tree.tpe} to $pt", show = true) {
         assert(ctx.phase == ctx.erasurePhase.next, ctx.phase)
         if (tree.isEmpty) tree

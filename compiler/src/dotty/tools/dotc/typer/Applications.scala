@@ -546,7 +546,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
     init()
 
     def addArg(arg: Tree, formal: Type): Unit =
-      typedArgBuf += adaptInterpolated(arg, formal.widenExpr, EmptyTree)
+      typedArgBuf += adaptInterpolated(arg, formal.widenExpr)
 
     def makeVarArg(n: Int, elemFormal: Type): Unit = {
       val args = typedArgBuf.takeRight(n).toList
@@ -1477,7 +1477,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
   def harmonize(trees: List[Tree])(implicit ctx: Context): List[Tree] = {
     def adapt(tree: Tree, pt: Type): Tree = tree match {
       case cdef: CaseDef => tpd.cpy.CaseDef(cdef)(body = adapt(cdef.body, pt))
-      case _ => adaptInterpolated(tree, pt, tree)
+      case _ => adaptInterpolated(tree, pt)
     }
     if (ctx.isAfterTyper) trees else harmonizeWith(trees)(_.tpe, adapt)
   }
