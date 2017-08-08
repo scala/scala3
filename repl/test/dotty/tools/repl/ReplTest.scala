@@ -53,7 +53,7 @@ class ReplTest extends Repl(
     out.asInstanceOf[StoringPrintStream].flushStored()
 
   /** Make sure the context is new before each test */
-  @Before def init: Unit = {
+  @Before def init(): Unit = {
     myCtx = initializeCtx.setReporter(storeReporter)
     compiler = new ReplCompiler(myCtx)
   }

@@ -17,7 +17,9 @@ sealed trait ParseResult
 case class Parsed(sourceCode: String, trees: List[untpd.Tree]) extends ParseResult
 
 /** A parsing result containing syntax `errors` */
-case class SyntaxErrors(errors: List[MessageContainer], trees: List[untpd.Tree]) extends ParseResult
+case class SyntaxErrors(sourceCode: String,
+                        errors: List[MessageContainer],
+                        trees: List[untpd.Tree]) extends ParseResult
 
 /** Parsed result is simply a newline */
 case object Newline extends ParseResult
@@ -113,8 +115,11 @@ object ParseResult {
 
         val (_, stats) = parser.templateStatSeq()
 
-        if (ctx.reporter.hasErrors)
-          SyntaxErrors(ctx.reporter.asInstanceOf[StoreReporter].removeBufferedMessages, stats)
+        if (ctx.reporter.hasErrors) {
+          SyntaxErrors(sourceCode,
+                       ctx.reporter.asInstanceOf[StoreReporter].removeBufferedMessages,
+                       stats)
+        }
         else
           Parsed(sourceCode, stats)
       }

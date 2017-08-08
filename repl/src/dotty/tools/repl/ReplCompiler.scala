@@ -189,7 +189,7 @@ class ReplCompiler(ictx: Context) extends Compiler {
       ParseResult(expr) match {
         case Parsed(sourceCode, trees) =>
           wrap(trees).result
-        case SyntaxErrors(reported, trees) =>
+        case SyntaxErrors(_, reported, trees) =>
           if (errorsAllowed) wrap(trees).result
           else reported.errors
         case _ => List(

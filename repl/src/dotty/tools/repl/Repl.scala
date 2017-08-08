@@ -1,7 +1,7 @@
 package dotty.tools
 package repl
 
-import java.io.PrintStream
+import java.io.{ InputStream, PrintStream }
 import java.net.{URL, URLClassLoader}
 import java.lang.ClassLoader
 
@@ -38,6 +38,8 @@ case class State(objectIndex: Int,
   def withHistory(newEntry: String) = copy(history = newEntry :: history)
   def withHistory(h: History) = copy(history = h)
 }
+
+object State { val init = State(0, 0, Nil, Nil) }
 
 /** A list of possible completions at index `cursor` */
 case class Completions(cursor: Int,
@@ -90,7 +92,7 @@ class Repl(
    *  such, when the user enters `:reset` this method should be called to reset
    *  everything properly
    */
-  private[this] def resetToInitial(): Unit = {
+  protected[this] def resetToInitial(): Unit = {
     myCtx = initializeCtx
     compiler = new ReplCompiler(myCtx)
     _classLoader = null
@@ -102,6 +104,24 @@ class Repl(
   // initialize the REPL session as part of the constructor so that once `run`
   // is called, we're in business
   resetToInitial()
+
+  /** Run REPL with `state` until `:quit` command found
+   *
+   *  This method is the main entry point into the REPL. Its effects are not
+   *  observable outside of the CLI, for this reason, most helper methods are
+   *  `protected final` to facilitate testing.
+   */
+  @tailrec final def runUntilQuit(state: State = State.init): State = {
+    val res = readLine(state)
+    if (res.isInstanceOf[Quit.type]) state
+    else runUntilQuit(interpret(res, state))
+  }
+
+  final def run(input: String, state: State): State =
+    run(ParseResult(input)(myCtx), state)
+
+  final def run(res: ParseResult, state: State): State =
+    interpret(res, state)
 
   /** Extract possible completions at the index of `cursor` in `expr` */
   protected[this] final def completions(cursor: Int, expr: String, state: State): Completions = {
@@ -158,35 +178,24 @@ class Repl(
   }
 
   /** Blockingly read a line, getting back a parse result and new history */
-  private def readLine(state: State): (ParseResult, History) =
-    AmmoniteReader(state.history, completions(_, _, state))(myCtx).prompt
+  private def readLine(state: State): ParseResult =
+    AmmoniteReader(out, state.history, completions(_, _, state))(myCtx).prompt
 
   private def extractImports(trees: List[untpd.Tree])(implicit context: Context): List[(untpd.Import, String)] =
     trees.collect { case imp: untpd.Import => (imp, imp.show) }
 
-  /** Run REPL with `state`
-   *
-   *  This method is the main entry point into the REPL. Its effects are not
-   *  observable outside of the CLI, for this reason, most helper methods are
-   *  `protected final` to facilitate testing.
-   */
-  @tailrec final def run(state: State = State(0, 0, Nil, Nil)): Unit =
-    readLine(state) match {
-      case (parsed: Parsed, history) =>
-        val newState = compile(parsed, state)
-        run(newState.withHistory(history))
+  private def interpret(res: ParseResult, state: State): State =
+    res match {
+      case parsed: Parsed =>
+        compile(parsed, state).withHistory(parsed.sourceCode :: state.history)
 
-      case (SyntaxErrors(errs, _), history) =>
+      case SyntaxErrors(src, errs, _) =>
         displayErrors(errs)(myCtx)
-        run(state.withHistory(history))
+        state.withHistory(src :: state.history)
 
-      case (Newline, _) =>
-        run(state)
+      case Newline | SigKill => state
 
-      case (SigKill, _) =>
-        run(state)
-
-      case (cmd: Command, history) =>
+      case cmd: Command =>
         interpretCommand(cmd, state)
     }
 
@@ -262,25 +271,25 @@ class Repl(
   }
 
   /** Interpret `cmd` to action and propagate potentially new `state` */
-  private def interpretCommand(cmd: Command, state: State): Unit = cmd match {
+  private def interpretCommand(cmd: Command, state: State): State = cmd match {
     case UnknownCommand(cmd) => {
       out.println(s"""Unknown command: "$cmd", run ":help" for a list of commands""")
-      run(state.withHistory(s":$cmd"))
+      state.withHistory(s":$cmd")
     }
 
     case Help => {
       out.println(Help.text)
-      run(state.withHistory(Help.command))
+      state.withHistory(Help.command)
     }
 
     case Reset => {
       resetToInitial()
-      run()
+      State.init
     }
 
     case Imports => {
       state.imports foreach { case (_, i) => println(SyntaxHighlighting(i)) }
-      run(state.withHistory(Imports.command))
+      state.withHistory(Imports.command)
     }
 
     case Load(path) =>
@@ -289,18 +298,17 @@ class Repl(
         val contents = scala.io.Source.fromFile(path).mkString
         ParseResult(contents)(myCtx) match {
           case parsed: Parsed =>
-            val newState = compile(parsed, state)
-            run(newState.withHistory(loadCmd))
-          case SyntaxErrors(errors, _) =>
+            compile(parsed, state).withHistory(loadCmd)
+          case SyntaxErrors(_, errors, _) =>
             displayErrors(errors)(myCtx)
-            run(state.withHistory(loadCmd))
+            state.withHistory(loadCmd)
           case _ =>
-            run(state.withHistory(loadCmd))
+            state.withHistory(loadCmd)
         }
       }
       else {
         out.println(s"""Couldn't find file "$path"""")
-        run(state.withHistory(loadCmd))
+        state.withHistory(loadCmd)
       }
 
     case Type(expr) => {
@@ -308,11 +316,12 @@ class Repl(
         errors => displayErrors(errors)(myCtx),
         res    => out.println(SyntaxHighlighting(res))
       )
-      run(state.withHistory(s"${Type.command} $expr"))
+      state.withHistory(s"${Type.command} $expr")
     }
 
     case Quit =>
       // end of the world!
+      state
   }
 
   /** A `MessageRenderer` without file positions */

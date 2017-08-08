@@ -1,7 +1,9 @@
 package dotty.tools
 package repl
 
-import java.io.{ OutputStreamWriter, InputStreamReader }
+import java.io.{
+  InputStream, InputStreamReader, OutputStream, OutputStreamWriter
+}
 
 import dotc.core.Contexts.Context
 import dotc.printing.SyntaxHighlighting
@@ -23,12 +25,13 @@ import AmmoniteReader._
  *  @param complete takes a function from cursor point and input string to
  *                  `Completions`
  */
-private[repl] class AmmoniteReader(history: History,
+private[repl] class AmmoniteReader(out: OutputStream,
+                                   history: History,
                                    complete: (Int, String) => Completions)
                                   (implicit ctx: Context) {
 
   private[this] val reader = new InputStreamReader(System.in)
-  private[this] val writer = new OutputStreamWriter(System.out)
+  private[this] val writer = new OutputStreamWriter(out)
 
   private[this] val cutPasteFilter  = ReadlineFilters.CutPasteFilter()
   private[this] val selectionFilter = GUILikeFilters.SelectionFilter(indent = 2)
@@ -55,7 +58,7 @@ private[repl] class AmmoniteReader(history: History,
    *  To facilitate this, filters are used. The terminal emulation, however,
    *  does not render output - simply input.
    */
-  def prompt: (ParseResult, History) = {
+  def prompt: ParseResult = {
     val historyFilter = new HistoryFilter(
       () => history.toVector,
       Console.BLUE,
@@ -121,20 +124,19 @@ private[repl] class AmmoniteReader(history: History,
     Terminal
       .readLine(prompt, reader, writer, allFilters, displayTransform)
       .map {
-        case Result(source) =>
-          (ParseResult(source), source :: history)
-        case Interrupt =>
-          (SigKill, history)
+        case Result(source) => ParseResult(source)
+        case Interrupt => SigKill
       }
-      .getOrElse((Quit, history))
+      .getOrElse(Quit)
   }
 }
 
 object AmmoniteReader {
   type History = List[String]
 
-  def apply(history: History,
+  def apply(out: OutputStream,
+            history: History,
             complete: (Int, String) => Completions)
            (implicit ctx: Context) =
-    new AmmoniteReader(history,complete)
+    new AmmoniteReader(out, history, complete)
 }
