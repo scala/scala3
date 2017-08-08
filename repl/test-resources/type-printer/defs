@@ -1,0 +1,10 @@
+scala> def foo: Int = 5
+def foo: Int
+scala> def bar(x: Int): Int = x
+def bar(x: Int): Int
+scala> def baz[A](a: A): A = a
+def baz[A](a: A): A
+scala> def qux[A](a: A): a.type = a
+def qux[A](a: A): a.type
+scala> def singleton: 1 = 1
+def singleton: 1

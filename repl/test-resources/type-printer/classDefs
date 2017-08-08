@@ -1,0 +1,4 @@
+scala> class T[A,B,C] { override def toString = getClass.getName.toString }
+// defined class T
+scala> new T[Int, String, Boolean]
+val res0: T[Int, String, Boolean] = T

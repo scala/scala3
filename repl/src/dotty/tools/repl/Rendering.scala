@@ -21,63 +21,31 @@ object Rendering {
 
     val res =
       resObj
-      .getDeclaredMethods.find(_.getName == sym.name.encode.toString + "Show").get
+      .getDeclaredMethods.find(_.getName == sym.name.toString + "Show").get
       .invoke(null).toString
 
-    if (!sym.is(Flags.Method) && sym.info == defn.UnitType) None
-    else Some(res)
+    val shellPrefix = "$none$.ReplSession$"
+    if (!sym.is(Flags.Method) && sym.info == defn.UnitType)
+      None
+    else if (res.startsWith(shellPrefix))
+      Some(res.drop(shellPrefix.length).dropWhile(c => c.isDigit || c == '$'))
+    else
+      Some(res)
   }
 
   /** Render method definition result */
-  def renderMethod(d: Denotation)(implicit ctx: Context): String = {
-    def params(tpe: Type): String = tpe match {
-      case ConstantType(c) => ": " + c.value
-      case tpe: ParamRef => ": " + tpe.paramName + ".type"
-      case tpe: TypeRef => ": " + tpe.show
-      case tpe: ExprType => ": " + tpe.resType.show
-      case mt: MethodType =>
-        val ps = mt.paramNames.zip(mt.paramInfos).map { (name, tpe) =>
-          val tp = tpe match {
-            case ConstantType(c) => c.value.toString
-            case tpe => tpe.show
-          }
-          s"${name.show}: $tp"
-        }
-        val plist =
-          if (mt.resultType.isInstanceOf[ExprType]) ""
-          else "(" + ps.mkString(", ") + ")"
-
-        plist + params(mt.resultType)
-    }
-
-    s"def ${d.symbol.name.show}${params(d.info)}"
-  }
+  def renderMethod(d: Denotation)(implicit ctx: Context): String =
+    d.symbol.showUser
 
   /** Render value definition result */
   def renderVal(d: Denotation, classLoader: ClassLoader)(implicit ctx: Context): String = {
-    val prefix =
-      if (d.symbol.is(Flags.Mutable)) "var"
-      else if (d.symbol.is(Flags.Lazy)) "lazy val"
-      else "val"
-
-    val tpe = d.info match {
-      case ConstantType(c) => c.value.toString
-      case tpe => {
-        val shown = tpe.show
-        val replPrefix = "<none>.ReplSession$"
-        if (shown.startsWith(replPrefix))
-          shown.drop(replPrefix.length).dropWhile(_ != '.').drop(1)
-        else
-          shown
-      }
-    }
-
+    val dcl = d.symbol.showUser
     val resultValue =
       if (d.symbol.is(Flags.Lazy)) Some("<lazy>")
       else valueOf(d.symbol, classLoader)
 
     resultValue
-      .map(value => s"$prefix ${d.symbol.name.show}: $tpe = $value")
+      .map(value => s"$dcl = $value")
       .getOrElse("")
   }
 }

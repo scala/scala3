@@ -241,22 +241,8 @@ class Repl(
       ).foreach(str => out.println(SyntaxHighlighting(str)))
     }
 
-    def displayTypeDef(tree: tpd.TypeDef) = {
-      val sym = tree.symbol
-      val name = tree.name.show.dropRight(if (sym.is(Module)) 1 else 0)
-
-      val kind =
-        if (sym.is(CaseClass)) "case class"
-        else if (sym.is(Trait)) "trait"
-        else if (sym.is(Module)) "object"
-        else "class"
-
-      out.println(
-        SyntaxHighlighting(s"// defined ").toString +
-        SyntaxHighlighting(s"$kind $name").toString
-      )
-    }
-
+    def displayTypeDef(tree: tpd.TypeDef) =
+      out.println("// defined " + tree.symbol.showUser)
 
     tree match {
       case tpd.PackageDef(_, xs) =>
