@@ -53,10 +53,10 @@ class TabcompleteTests extends ReplTest {
 
   @Test def tabCompleteListInstance: Unit = {
     val comp = tabComplete("(null: List[Int]).sli")
-    assertTrue(s"expected empty instance completion, got: ${comp.instance}",
+    assertTrue(s"expected empty instance completion, got: ${comp.companion}",
       comp.companion.isEmpty)
-    assertTrue(s"""Expected single element "range" got: ${comp.companion}""",
-      comp.instance == List("slice", "sliding"))
+    assertTrue(s"""Expected completions "slice" and "sliding": ${comp.instance}""",
+      comp.instance.sorted == List("slice", "sliding"))
   }
 
   @Test def autoCompletValAssign: Unit =
