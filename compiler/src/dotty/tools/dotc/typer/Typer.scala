@@ -60,6 +60,7 @@ object Typer {
       assert(tree.pos.exists, s"position not set for $tree # ${tree.uniqueId}")
 
   private val ExprOwner = new Property.Key[Symbol]
+  private val InsertedApply = new Property.Key[Unit]
 }
 
 class Typer extends Namer with TypeAssigner with Applications with Implicits with Dynamic with Checking with Docstrings {
@@ -1818,9 +1819,17 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
    */
   def tryInsertApplyOrImplicit(tree: Tree, pt: ProtoType)(fallBack: => Tree)(implicit ctx: Context): Tree = {
 
+    def isSyntheticApply(tree: Tree): Boolean = tree match {
+      case tree: Select => tree.getAttachment(InsertedApply).isDefined
+      case Apply(fn, _) => fn.getAttachment(InsertedApply).isDefined
+      case _ => false
+    }
+
     def tryApply(implicit ctx: Context) = {
       val sel = typedSelect(untpd.Select(untpd.TypedSplice(tree), nme.apply), pt)
-      if (sel.tpe.isError) sel else adapt(sel, pt)
+      sel.pushAttachment(InsertedApply, ())
+      if (sel.tpe.isError) sel
+      else try adapt(sel, pt) finally sel.removeAttachment(InsertedApply)
     }
 
     def tryImplicit =
@@ -1832,7 +1841,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
         pt.markAsDropped()
         tree
       case _ =>
-        if (isApplyProto(pt)) tryImplicit
+        if (isApplyProto(pt) || isSyntheticApply(tree)) tryImplicit
         else tryEither(tryApply(_))((_, _) => tryImplicit)
      }
   }
