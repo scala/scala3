@@ -340,10 +340,12 @@ class CompilationTests extends ParallelTesting {
       linkCustomLibTest
     }.keepOutput.checkRuns()
 
-    classFileChecks(linkStramanDir, "linkStrawmanTest")
-    classFileChecks(linkCustomLibDir, "linkCustomLibTest")
-
-    (libraries + tests).delete()
+    try {
+      classFileChecks(linkStramanDir, "linkStrawmanTest")
+      classFileChecks(linkCustomLibDir, "linkCustomLibTest")
+    } finally {
+      (libraries + tests).delete()
+    }
   }
 
   private val (compilerSources, backendSources, backendJvmSources) = {
