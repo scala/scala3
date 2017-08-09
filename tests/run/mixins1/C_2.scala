@@ -1,5 +1,5 @@
 // Intended to be compiled with either 2.11 or 2.12
-class C extends A with B {
+class C extends A[B] with B {
   x = 4
 
   override def f: Int = super.f
