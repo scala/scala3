@@ -35,7 +35,7 @@ object ExposedValues extends AutoPlugin {
 
 object Build {
 
-  val scalacVersion = "2.12.2" // Do not rename, this is grepped in bin/common.
+  val scalacVersion = "2.12.3" // Do not rename, this is grepped in bin/common.
 
   val dottyOrganization = "ch.epfl.lamp"
   val dottyGithubUrl = "https://github.com/lampepfl/dotty"
