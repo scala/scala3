@@ -3860,14 +3860,6 @@ object Types {
     def apply(tp: Type) = tp
   }
 
-  case class Range(lo: Type, hi: Type) extends UncachedGroundType {
-    assert(!lo.isInstanceOf[Range])
-    assert(!hi.isInstanceOf[Range])
-
-    override def toText(printer: Printer): Text =
-      lo.toText(printer) ~ ".." ~ hi.toText(printer)
-  }
-
   /** A type map that approximates TypeBounds types depending on
    *  variance.
    *
@@ -3992,9 +3984,11 @@ object Types {
                 case Range(lo, hi) :: args1 =>
                   val v = tparams.head.paramVariance
                   if (v == 0) false
-                  else if (v > 0) { loBuf += lo; hiBuf += hi }
-                  else { loBuf += hi; hiBuf += lo }
-                  distributeArgs(args1, tparams.tail)
+                  else {
+                    if (v > 0) { loBuf += lo; hiBuf += hi }
+                    else { loBuf += hi; hiBuf += lo }
+                    distributeArgs(args1, tparams.tail)
+                  }
                 case arg :: args1 =>
                   loBuf += arg; hiBuf += arg
                   distributeArgs(args1, tparams.tail)
@@ -4042,6 +4036,17 @@ object Types {
       }
 
     protected def reapply(tp: Type): Type = apply(tp)
+  }
+
+  /** A range of possible types between lower bound `lo` and upper bound `hi`.
+   *  Only used internally in `ApproximatingTypeMap`.
+   */
+  private case class Range(lo: Type, hi: Type) extends UncachedGroundType {
+    assert(!lo.isInstanceOf[Range])
+    assert(!hi.isInstanceOf[Range])
+
+    override def toText(printer: Printer): Text =
+      lo.toText(printer) ~ ".." ~ hi.toText(printer)
   }
 
   // ----- TypeAccumulators ----------------------------------------------------
