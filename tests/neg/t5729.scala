@@ -6,8 +6,8 @@ object Test {
 }
 
 object C {
-  def join(in: Seq[List[_]]): Int = error("TODO")
-  def join[S](in: Seq[List[S]]): String = error("TODO")
+  def join(in: Seq[List[_]]): Int = sys.error("TODO")
+  def join[S](in: Seq[List[S]]): String = sys.error("TODO")
 
   join(Seq[List[Int]]()) // error: ambiguous
   //
