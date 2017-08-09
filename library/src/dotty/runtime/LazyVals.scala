@@ -34,7 +34,7 @@ object LazyVals {
     if (debug)
       println(s"CAS($t, $offset, $e, $v, $ord)")
     val mask = ~(LAZY_VAL_MASK << ord * BITS_PER_LAZY_VAL)
-    val n = (e & mask) | (v << (ord * BITS_PER_LAZY_VAL))
+    val n = (e & mask) | (v.toLong << (ord * BITS_PER_LAZY_VAL))
     compareAndSet(t, offset, e, n)
   }
   @inline def setFlag(t: Object, offset: Long, v: Int, ord: Int) = {
