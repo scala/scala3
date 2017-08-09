@@ -3,7 +3,7 @@ package xsbt
 
 import org.junit.runner.RunWith
 import xsbti.api._
-import xsbt.api.DefaultShowAPI
+import dotty.tools.dotc.sbt.DefaultShowAPI
 import org.specs2.mutable.Specification
 import org.specs2.runner.JUnitRunner
 
