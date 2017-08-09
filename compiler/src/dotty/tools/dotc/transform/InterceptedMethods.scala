@@ -21,7 +21,7 @@ import dotty.tools.dotc.ast.Trees._
 import dotty.tools.dotc.ast.{untpd, tpd}
 import dotty.tools.dotc.core.Constants.Constant
 import dotty.tools.dotc.core.Types.MethodType
-import dotty.tools.dotc.core.Names.Name
+import dotty.tools.dotc.core.Names.{ Name, TermName }
 import scala.collection.mutable.ListBuffer
 import dotty.tools.dotc.core.Denotations.SingleDenotation
 import dotty.tools.dotc.core.SymDenotations.SymDenotation
@@ -64,30 +64,18 @@ class InterceptedMethods extends MiniPhaseTransform {
     else tree
   }
 
+  // TODO: add missing cases from scalac
   private def poundPoundValue(tree: Tree)(implicit ctx: Context) = {
     val s = tree.tpe.widen.typeSymbol
+
+    def staticsCall(methodName: TermName): Tree =
+      ref(defn.staticsMethodRef(methodName)).appliedTo(tree)
+
     if (s == defn.NullClass) Literal(Constant(0))
-    else {
-      // Since we are past typer, we need to avoid creating trees carrying
-      // overloaded types.  This logic is custom (and technically incomplete,
-      // although serviceable) for def hash.  What is really needed is for
-      // the overloading logic presently hidden away in a few different
-      // places to be properly exposed so we can just call "resolveOverload"
-      // after typer.  Until then:
-
-      def alts = defn.ScalaRuntimeModule.info.member(nme.hash_)
-
-      // if tpe is a primitive value type, alt1 will match on the exact value,
-      // taking in account that null.asInstanceOf[Int] == 0
-      def alt1 = alts.suchThat(_.info.firstParamTypes.head =:= tree.tpe.widen)
-
-      // otherwise alt2 will match. alt2 also knows how to handle 'null' runtime value
-      def alt2 = defn.ScalaRuntimeModule.info.member(nme.hash_)
-        .suchThat(_.info.firstParamTypes.head.typeSymbol == defn.AnyClass)
-
-      Ident((if (s.isNumericValueClass) alt1 else alt2).termRef)
-        .appliedTo(tree)
-    }
+    else if (s == defn.DoubleClass) staticsCall(nme.doubleHash)
+    else if (s == defn.LongClass) staticsCall(nme.longHash)
+    else if (s == defn.FloatClass) staticsCall(nme.floatHash)
+    else staticsCall(nme.anyHash)
   }
 
   override def transformApply(tree: Apply)(implicit ctx: Context, info: TransformerInfo): Tree = {

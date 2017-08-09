@@ -51,6 +51,8 @@ object DottyPlugin extends AutoPlugin {
         moduleID.crossVersion match {
           case _: CrossVersion.Binary =>
             moduleID.cross(CrossVersion.binaryMapped {
+              // TODO: this will break on release of >= 0.4
+              case version if version.startsWith("0.3") => "2.12"
               case version if version.startsWith("0.") => "2.11"
               case version => version
             })
