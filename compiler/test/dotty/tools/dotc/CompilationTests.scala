@@ -57,7 +57,7 @@ class CompilationTests extends ParallelTesting {
         "../scala2-library/src/library/scala/collection/SeqLike.scala",
         "../scala2-library/src/library/scala/collection/generic/GenSeqFactory.scala"
       ),
-      defaultOptions
+      scala2Mode
     ) +
     compileFilesInDir("../tests/pos-special/spec-t5545", defaultOptions) +
     compileFilesInDir("../tests/pos-special/strawman-collections", defaultOptions) +
