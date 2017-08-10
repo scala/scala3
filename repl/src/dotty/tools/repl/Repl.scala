@@ -17,7 +17,9 @@ import dotc.core.Mode
 import dotc.core.Flags._
 import dotc.core.Types._
 import dotc.core.StdNames._
-import dotc.core.Symbols.Symbol
+import dotc.core.Names.Name
+import dotc.core.NameOps._
+import dotc.core.Symbols.{ Symbol, NoSymbol, defn }
 import dotc.core.Denotations.Denotation
 import dotc.core.NameKinds.SimpleNameKind
 import dotc.core.Types.{ ExprType, ConstantType }
@@ -201,6 +203,11 @@ class Repl(
 
   /** Compile `parsed` trees and evolve `state` in accordance */
   protected[this] final def compile(parsed: Parsed, state: State): State = {
+    def extractNewestWrapper(tree: untpd.Tree): Name = tree match {
+      case untpd.PackageDef(_, (obj: untpd.ModuleDef) :: Nil) => obj.name.moduleClassName
+      case _ => nme.NO_NAME
+    }
+
     implicit val ctx = myCtx
     compiler
       .compile(parsed, state)
@@ -210,49 +217,68 @@ class Repl(
           state
         },
         (unit, newState, ctx) => {
-          displayDefinitions(unit.tpdTree)(ctx)
-          newState.copy(imports = newState.imports ++ extractImports(parsed.trees)(ctx))
+          val newestWrapper =
+            extractNewestWrapper(unit.untpdTree)
+          val newStateWithImports =
+            newState.copy(imports = newState.imports ++ extractImports(parsed.trees)(ctx))
+
+          displayDefinitions(unit.tpdTree, newestWrapper, newStateWithImports)(ctx)
+          newStateWithImports
         }
       )
   }
 
   /** Display definitions from `tree` */
-  private def displayDefinitions(tree: tpd.Tree)(implicit ctx: Context): Unit = {
-    def display(tree: tpd.Tree) = if (tree.symbol.info.exists) {
-      val info = tree.symbol.info
-      val defn = ctx.definitions
+  private def displayDefinitions(tree: tpd.Tree, newestWrapper: Name, state: State)(implicit ctx: Context): Unit = {
+    def displayMembers(symbol: Symbol) = if (tree.symbol.info.exists) {
+      val info = symbol.info
       val defs =
         info.bounds.hi.finalResultType
-        .membersBasedOnFlags(Method, Accessor | ParamAccessor | Synthetic | Private)
-        .filterNot { denot =>
-          denot.symbol.owner == defn.AnyClass ||
-          denot.symbol.owner == defn.ObjectClass ||
-          denot.symbol.isConstructor
-        }
+          .membersBasedOnFlags(Method, Accessor | ParamAccessor | Synthetic | Private)
+          .filterNot { denot =>
+            denot.symbol.owner == defn.AnyClass ||
+            denot.symbol.owner == defn.ObjectClass ||
+            denot.symbol.isConstructor
+          }
 
       val vals =
         info.fields
-        .filterNot(_.symbol.is(ParamAccessor | Private | Synthetic | Module))
-        .filter(_.symbol.name.is(SimpleNameKind))
+          .filterNot(_.symbol.is(ParamAccessor | Private | Synthetic | Module))
+          .filter(_.symbol.name.is(SimpleNameKind))
+
+      val typeAliases =
+        info.bounds.hi.typeMembers.filter(_.symbol.info.isInstanceOf[TypeAlias])
 
       (
+        typeAliases.map("// defined alias " + _.symbol.showUser) ++
         defs.map(Rendering.renderMethod) ++
         vals.map(Rendering.renderVal(_, classLoader))
       ).foreach(str => out.println(SyntaxHighlighting(str)))
     }
 
-    def displayTypeDef(tree: tpd.TypeDef) =
-      out.println("// defined " + tree.symbol.showUser)
+    def isSyntheticCompanion(sym: Symbol) = sym.is(Module) && sym.is(Synthetic)
 
-    tree match {
-      case tpd.PackageDef(_, xs) =>
-        val allTypeDefs = xs.collect { case td: tpd.TypeDef => td }
-        val (objs, tds) = allTypeDefs.partition(_.name.show.startsWith("ReplSession"))
-        objs
-          .foreach(display)
-        tds
-          .filterNot(t => t.symbol.is(Synthetic) || !t.name.is(SimpleNameKind))
-          .foreach(displayTypeDef)
+    def displayTypeDefs(sym: Symbol) = sym.info.memberClasses
+      .filterNot(x => isSyntheticCompanion(x.symbol))
+      .foreach { td =>
+        out.println(SyntaxHighlighting("// defined " + td.symbol.showUser))
+      }
+
+    ctx.atPhase(ctx.typerPhase.next) { implicit ctx =>
+      tree.symbol.info.memberClasses
+        .find(_.symbol.name == newestWrapper.moduleClassName)
+        .map { wrapperModule =>
+          displayTypeDefs(wrapperModule.symbol)
+          displayMembers(wrapperModule.symbol)
+        }
+        .getOrElse(println(
+          s"""couldn't find wrapper symbol: $newestWrapper, please report this message:
+             |
+             |tree.symbol.info.memberClasses: ${tree.symbol.info.memberClasses}
+             |
+             |${state.history.mkString("\n")}
+           """.stripMargin
+        ))
     }
   }
 
