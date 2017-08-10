@@ -1005,7 +1005,7 @@ object Denotations {
         case _ => if (symbol.exists) symbol.owner else NoSymbol
       }
       if (!owner.membersNeedAsSeenFrom(pre)) this
-      else derivedSingleDenotation(symbol, info.asSeenFrom(pre, owner))
+      else derivedSingleDenotation(symbol, symbol.info.asSeenFrom(pre, owner))
     }
 
     private def overlaps(fs: FlagSet)(implicit ctx: Context): Boolean = this match {
