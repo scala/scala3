@@ -65,26 +65,35 @@ object Interactive {
   private def safely[T](op: => List[T]): List[T] =
     try op catch { case ex: TypeError => Nil }
 
-  /** Possible completions at position `pos` */
-  def completions(trees: List[SourceTree], pos: SourcePosition)(implicit ctx: Context): List[Symbol] = {
+  /** Get possible completions from tree at `pos`
+   *
+   *  @return offset and list of symbols for possible completions
+   */
+  def completions(trees: List[SourceTree], pos: SourcePosition)(implicit ctx: Context): (Int, List[Symbol]) = {
     val path = pathTo(trees, pos)
     val boundary = enclosingDefinitionInPath(path).symbol
 
-    path.take(1).flatMap {
-      case Select(qual, _) =>
+    // FIXME: Get all declarations available in the current scope, not just
+    // those from the enclosing class
+    def scopeCompletions: List[Symbol] =
+      boundary.enclosingClass match {
+        case csym: ClassSymbol =>
+          val classRef = csym.classInfo.typeRef
+          completions(classRef, boundary)
+        case _ =>
+          Nil
+      }
+
+    path.headOption.map {
+      case sel @ Select(qual, name) =>
         // When completing "`a.foo`, return the members of `a`
-        completions(qual.tpe, boundary)
+        (sel.pos.point, completions(qual.tpe, boundary))
+      case id @ Ident(name) =>
+        (id.pos.point, scopeCompletions)
       case _ =>
-        // FIXME: Get all declarations available in the current scope, not just
-        // those from the enclosing class
-        boundary.enclosingClass match {
-          case csym: ClassSymbol =>
-            val classRef = csym.classInfo.typeRef
-            completions(classRef, boundary)
-          case _ =>
-            Nil
-        }
+        (0, scopeCompletions)
     }
+    .getOrElse((0, Nil))
   }
 
   /** Possible completions of members of `prefix` which are accessible when called inside `boundary` */
