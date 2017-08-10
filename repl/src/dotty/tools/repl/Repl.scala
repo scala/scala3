@@ -45,8 +45,8 @@ object State { val init = State(0, 0, Nil, Nil) }
 
 /** A list of possible completions at index `cursor` */
 case class Completions(cursor: Int,
-                       instance: List[String],
-                       companion: List[String])
+                       suggestions: List[String],
+                       details: List[String])
 
 /** Main REPL instance, orchestrating input, compilation and presentation */
 class Repl(
@@ -126,58 +126,29 @@ class Repl(
     interpret(res, state)
 
   /** Extract possible completions at the index of `cursor` in `expr` */
-  protected[this] final def completions(cursor: Int, expr: String, state: State): Completions = {
-    import tpd._
-
-    // does the `sym` match the prefix in the `tree`?
-    def matchingPrefix(sym: Symbol, tree: Tree)(implicit ctx: Context) =
-      tree match {
-        case Select(_, id) if id != nme.ERROR =>
-          sym.name.startsWith(id.show)
-        case _ => true
-      }
-
-    // completing a Module e.g: "List.ra<tab>"?
-    def completingModule(tree: Tree)(implicit ctx: Context) = tree match {
-      case Select(x, _) =>
-        x.tpe match {
-          case tpe: NamedType => tpe.isTerm
-          case _ => false
-        }
-      case _ => false
-    }
-
-    // return the correct cursor position and symbols matching prefix
-    def findMatching(newCursor: Int, tree: Tree, syms: List[Symbol])(implicit ctx: Context) = {
-      val (inCompanion, inInstance) =
-        syms
-          .filter(matchingPrefix(_, tree))
-          .partition(_ => completingModule(tree))
-
-      val offset = if (expr.last == '.') 1 else 0
-
-      Completions(
-        newCursor + offset,
-        inInstance.map(_.name.show).distinct,
-        inCompanion.map(_.name.show).distinct
-      )
-    }
-
+  protected[this] final def completions(cursor: Int, expr: String, state: State): Completions =
+    // TODO move some of this logic to `Interactive`
     compiler
       .typeCheck(expr, state, errorsAllowed = true)
-      .map { (tree, ctx) =>
-        val (newCursor, completedTree) = tree.rhs(ctx) match {
-          case Block(_, sel @ Select(qual, id)) => (sel.pos.point, sel)
-          case _ => (cursor, EmptyTree)
-        }
+      .map { (tree, ictx) =>
+        implicit val ctx: Context = ictx
         val file = new dotc.util.SourceFile("compl", expr)
         val srcPos = dotc.util.SourcePosition(file, Position(cursor))
-        val completions = Interactive.completions(SourceTree(tree, file) :: Nil, srcPos)(ctx)
+        val (startOffset, completions) = Interactive.completions(SourceTree(tree, file) :: Nil, srcPos)(ctx)
+        val query =
+          if (startOffset < cursor) expr.substring(startOffset, cursor) else ""
 
-        (newCursor, completedTree, completions, ctx)
+        def filterCompletions(name: String) =
+          (query == "." || name.startsWith(query)) && name != query
+
+
+        Completions(
+          Math.min(startOffset, cursor) + { if (query == ".") 1 else 0 },
+          completions.map(_.name.show).distinct.filter(filterCompletions),
+          Nil
+        )
       }
-      .fold(_ => Completions(cursor, Nil, Nil), findMatching(_, _, _)(_))
-  }
+      .fold(_ => Completions(cursor, Nil, Nil), x => x)
 
   /** Blockingly read a line, getting back a parse result and new history */
   private def readLine(state: State): ParseResult =

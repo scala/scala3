@@ -163,8 +163,16 @@ class ReplCompiler(ictx: Context) extends Compiler {
 
   def typeOf(expr: String, state: State): Result[String] =
     typeCheck(expr, state).map { (tree, ictx) =>
+      import dotc.ast.Trees._
       implicit val ctx = ictx
-      tree.symbol.info.show
+      tree.rhs match {
+        case Block(xs, _) => xs.last.tpe.widen.show
+        case _ =>
+          """Couldn't compute the type of your expression, so sorry :(
+            |
+            |Please report this to my masters at Github.com/lampepfl/dotty
+          """.stripMargin
+      }
     }
 
   def typeCheck(expr: String, state: State, errorsAllowed: Boolean = false): Result[(tpd.ValDef, Context)] = {
@@ -174,7 +182,7 @@ class ReplCompiler(ictx: Context) extends Compiler {
         import untpd._
 
         val valdef =
-          ValDef("expr".toTermName, TypeTree(), Block(trees.init.toList, trees.last))
+          ValDef("expr".toTermName, TypeTree(), Block(trees.toList, untpd.unitLiteral))
 
         val tmpl =
           Template(emptyConstructor, Ident("Any".toTypeName) :: Nil, EmptyValDef, state.imports.map(_._1) :+ valdef)

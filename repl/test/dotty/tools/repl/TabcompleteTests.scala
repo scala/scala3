@@ -45,18 +45,14 @@ class TabcompleteTests extends ReplTest {
 
   @Test def tabCompleteList: Unit = {
     val comp = tabComplete("List.r")
-    assertTrue(s"expected empty instance completion, got: ${comp.instance}",
-      comp.instance.isEmpty)
-    assertTrue(s"""Expected single element "range" got: ${comp.companion}""",
-      comp.companion.head == "range")
+    assertTrue(s"""Expected single element "range" got: ${comp.suggestions}""",
+      comp.suggestions.head == "range")
   }
 
   @Test def tabCompleteListInstance: Unit = {
     val comp = tabComplete("(null: List[Int]).sli")
-    assertTrue(s"expected empty instance completion, got: ${comp.companion}",
-      comp.companion.isEmpty)
-    assertTrue(s"""Expected completions "slice" and "sliding": ${comp.instance}""",
-      comp.instance.sorted == List("slice", "sliding"))
+    assertTrue(s"""Expected completions "slice" and "sliding": ${comp.suggestions}""",
+      comp.suggestions.sorted == List("slice", "sliding"))
   }
 
   @Test def autoCompletValAssign: Unit =
@@ -64,4 +60,7 @@ class TabcompleteTests extends ReplTest {
 
   @Test def tabCompleteNumberDot: Unit =
     tabCompleteWithErrors("val x = 5 + 5.")
+
+  @Test def tabCompleteInClass: Unit =
+    tabCompleteWithErrors("class Foo { def bar: List[Int] = List.a")
 }
