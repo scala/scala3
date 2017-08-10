@@ -7,16 +7,16 @@ import dotc.core.Constants.Constant
 import dotc.core.Contexts.Context
 import dotc.core.Denotations.{ Denotation, MultiDenotation, SingleDenotation }
 import dotc.core.Flags._
-import dotc.core.TypeApplications.AppliedType
+import dotc.core.TypeApplications.{ AppliedType, EtaExpansion }
 import dotc.core.Names._
+import dotc.core.NameOps._
 import dotc.core.Decorators._
 import dotc.core.Scopes.Scope
 import dotc.core.Symbols.{ Symbol, ClassSymbol, defn }
 import dotc.core.SymDenotations.NoDenotation
 import dotc.core.Types._
 import dotc.printing.Texts._
-import dotc.printing.{ Printer, PlainPrinter }
-import dotc.printing.GlobalPrec
+import dotc.printing.{ GlobalPrec, DotPrec, Printer, PlainPrinter }
 import dotc.typer.Implicits.SearchResult
 import dotc.typer.ImportInfo
 
@@ -44,9 +44,11 @@ class UserFacingPrinter(_ctx: Context) extends Printer {
     val flags = sym.flags
     if (flags is Package) ""
     else if (sym.isPackageObject) "package object"
+    else if (flags.is(Module) && flags.is(Case)) "case object"
     else if (flags is Module) "object"
     else if (flags is ImplClass) "class"
     else if (flags.is(Trait)) "trait"
+    else if (sym.isClass && flags.is(Case)) "case class"
     else if (sym.isClass) "class"
     else if (sym.isType) "type"
     else if (flags.is(Lazy)) "lazy val"
@@ -68,13 +70,17 @@ class UserFacingPrinter(_ctx: Context) extends Printer {
   def toText(name: Name): Text = nameString(name)
 
   def toText(sym: Symbol): Text =
-    kindString(sym) ~~ nameString(sym.name)
+    kindString(sym) ~~ nameString(sym.name.stripModuleClassSuffix)
 
   def dclText(sym: Symbol): Text =
     toText(sym) ~ {
       if (sym.is(Method)) toText(sym.info)
       else if (sym.isClass) ""
-      else ":" ~~ toText(sym.info)
+      else if (sym.isType && sym.info.isInstanceOf[TypeAlias]) " =" ~~ toText(sym.info)
+      else if (sym.isType) ""
+      else {
+        ":" ~~ toText(sym.info)
+      }
     }
 
   def dclText(sd: SingleDenotation): Text = ???
@@ -100,10 +106,18 @@ class UserFacingPrinter(_ctx: Context) extends Printer {
 
   def toText(tp: Type): Text = tp match {
     case tp: ConstantType => toText(tp.value)
-    case tp: ParamRef => {
-      if (tp.isInstanceOf[TermParamRef]) toText(tp.paramName) ~ ".type"
-      else toText(tp.paramName)
+    case tp: TypeAlias => toText(tp.underlying)
+    case ExprType(result) => ":" ~~ toText(result)
+    case tp: TypeRef => tp.info match {
+      case TypeAlias(alias) => toText(alias)
+      case _ => toText(tp.info)
     }
+    case tp: ParamRef => {
+      val name = tp.paramName.unexpandedName.invariantName.toString
+      if (tp.isInstanceOf[TermParamRef]) name ~ ".type"
+      else name
+    }
+    case EtaExpansion(tycon) => toText(tycon)
     case PolyType(params, res) =>
       "[" ~ Fluid(params.map(tl => toText(tl.toArg)).intersperse(Str(", "))) ~ "]" ~ toText(res)
     case tp: MethodType => {
@@ -115,20 +129,31 @@ class UserFacingPrinter(_ctx: Context) extends Printer {
         toText(tp.resultType)
       }
     }
-    case ExprType(result) => ":" ~~ toText(result)
-    case AppliedType(tp, xs) =>
-      toText(tp) ~ "[" ~ Fluid(xs.reverse.map(toText).intersperse(Str(", "))) ~ "]"
-    case tp: TypeRef => tp.info match {
-      case TypeAlias(alias) => toText(alias)
-      case _ => toText(tp.info)
+    case AppliedType(tycon, args) => {
+      def toTextInfixType(tycon: Type, args: List[Type]): Text = {
+        // TODO: blatant copy from `RefinedPrinter`
+        val l :: r :: Nil = args
+        val isRightAssoc = tycon.typeSymbol.name.endsWith(":")
+        val leftArg = if (isRightAssoc && l.isInfixType) "(" ~ toText(l) ~ ")" else toText(l)
+        val rightArg = if (!isRightAssoc && r.isInfixType) "(" ~ toText(r) ~ ")" else toText(r)
+        leftArg ~~ atPrec(DotPrec) { tycon.toText(this) } ~~ rightArg
+      }
+      if (tp.isInfixType) toTextInfixType(tycon, args)
+      else {
+        toText(tycon) ~ "[" ~ Fluid(args.reverse.map(toText).intersperse(Str(", "))) ~ "]"
+      }
     }
-    case tp: ClassInfo => if (wellKnownPkg(tp.cls.owner)) nameString(tp.cls.name) else {
+    case tp: ClassInfo => {
+      if (wellKnownPkg(tp.cls.owner))
+        nameString(tp.cls.name)
+      else {
         def printPkg(sym: ClassSymbol): Text =
           if (sym.owner == defn.RootClass) toText(sym)
           else printPkg(sym.owner.asClass) ~ "." ~ toText(sym)
 
         printPkg(tp.cls.owner.asClass) ~ "." ~ nameString(tp.cls.name)
       }
+    }
   }
 
   def dclsText(syms: List[Symbol], sep: String): Text =

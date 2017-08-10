@@ -1,0 +1,4 @@
+scala> class ~~[A,B]
+// defined class ~~
+scala> def foo: Int ~~ String = ???
+def foo: Int ~~ String

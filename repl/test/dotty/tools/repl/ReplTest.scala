@@ -35,7 +35,7 @@ class ReplTest extends Repl(
   Array(
     // TODO: get rid of this!
     "-classpath",
-      List("../out/bootstrap/dotty-library-bootstrapped/scala-0.2/classes",
+      List("../out/bootstrap/dotty-library-bootstrapped/scala-0.3/classes",
            "../interfaces/target/classes").mkString(":")
   ),
   None, new StoringPrintStream
