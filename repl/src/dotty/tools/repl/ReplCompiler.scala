@@ -67,7 +67,7 @@ class ReplCompiler(ictx: Context) extends Compiler {
     val resX = exps.zipWithIndex.flatMap { (exp, i) =>
       val resName = s"res${i + state.valIndex}".toTermName
       val showName = resName ++ "Show"
-      val showApply = Apply(Select(Ident(resName), show), Nil)
+      val showApply = Select(Ident(resName), show)
 
       (exp match {
         case Assign(lhs, rhs) =>
