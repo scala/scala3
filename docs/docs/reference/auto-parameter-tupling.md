@@ -7,7 +7,7 @@ Say you have a list of pairs
 
      val xs: List[(Int, Int)]
 
-and you want to map `xs` to a list of `Int`s so that eich pair of numbers is mapped to
+and you want to map `xs` to a list of `Int`s so that each pair of numbers is mapped to
 their sum. Previously, the best way to do this was with a pattern-matching decomposition:
 
     xs map {
