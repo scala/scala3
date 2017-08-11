@@ -20,11 +20,9 @@ import dotc.printing.{ GlobalPrec, DotPrec, Printer, PlainPrinter }
 import dotc.typer.Implicits.SearchResult
 import dotc.typer.ImportInfo
 
-class UserFacingPrinter(_ctx: Context) extends Printer {
+class UserFacingPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
 
-  protected[this] implicit def ctx: Context = _ctx
-
-  private def panic(msg: String): Nothing = { assert(false, msg); ??? }
+  private def panic(msg: String): Nothing = throw new AssertionError(msg)
 
   private[this] def getPkgCls(path: String) =
     _ctx.requiredPackage(path).moduleClass.asClass
@@ -40,7 +38,7 @@ class UserFacingPrinter(_ctx: Context) extends Printer {
     case _ => false
   }
 
-  def kindString(sym: Symbol): String = {
+  override def kindString(sym: Symbol): String = {
     val flags = sym.flags
     if (flags is Package) ""
     else if (sym.isPackageObject) "package object"
@@ -54,25 +52,23 @@ class UserFacingPrinter(_ctx: Context) extends Printer {
     else if (flags.is(Lazy)) "lazy val"
     else if (flags.is(Mutable)) "var"
     else if (sym.is(Method)) "def"
-    else if (sym.isTerm) "val"
-    else ???
+    else {
+      assert(sym.isTerm)
+      "val"
+    }
   }
 
-  def nameString(name: Name): String = name match {
-    case name: SimpleName => name.decode.toString
-    case name: TypeName => name.decode.toString
+  override def nameString(name: Name): String = name.decode.toString
+
+  override def toText(sym: Symbol): Text = {
+    val nameStr = nameString(sym.name.stripModuleClassSuffix)
+    if (nameStr.contains("$Assign")) nameStr.takeWhile(_ != '$')
+    else {
+      kindString(sym) ~~ nameString(sym.name.stripModuleClassSuffix)
+    }
   }
 
-  def nameString(sym: Symbol): String = ???
-
-  def fullNameString(sym: Symbol): String = ???
-
-  def toText(name: Name): Text = nameString(name)
-
-  def toText(sym: Symbol): Text =
-    kindString(sym) ~~ nameString(sym.name.stripModuleClassSuffix)
-
-  def dclText(sym: Symbol): Text =
+  override def dclText(sym: Symbol): Text =
     toText(sym) ~ {
       if (sym.is(Method)) toText(sym.info)
       else if (sym.isClass) ""
@@ -83,15 +79,7 @@ class UserFacingPrinter(_ctx: Context) extends Printer {
       }
     }
 
-  def dclText(sd: SingleDenotation): Text = ???
-
-  def locationText(sym: Symbol): Text = ???
-
-  def locatedText(sym: Symbol): Text = ???
-
-  def extendedLocationText(sym: Symbol): Text = ???
-
-  def toText(denot: Denotation): Text = denot match {
+  override def toText(denot: Denotation): Text = denot match {
     case NoDenotation =>
       panic("NoDenotation encountered in UserFacingPrinter")
     case denot: MultiDenotation =>
@@ -100,11 +88,10 @@ class UserFacingPrinter(_ctx: Context) extends Printer {
       toText(denot.symbol)
   }
 
-  def toText(const: Constant): Text = Str(const.value.toString)
+  override def toText(const: Constant): Text = Str(const.value.toString)
 
-  def toText(annot: Annotation): Text = ???
-
-  def toText(tp: Type): Text = tp match {
+  override def toText(tp: Type): Text = tp match {
+    case tp: AnnotatedType => toText(tp.tpe) ~~ toText(tp.annot)
     case tp: ConstantType => toText(tp.value)
     case tp: TypeAlias => toText(tp.underlying)
     case ExprType(result) => ":" ~~ toText(result)
@@ -156,18 +143,5 @@ class UserFacingPrinter(_ctx: Context) extends Printer {
     }
   }
 
-  def dclsText(syms: List[Symbol], sep: String): Text =
-    Text(syms.map(dclText), sep)
-
-  def toText(sc: Scope): Text = ???
-
-  def toText[T >: Untyped](tree: Tree[T]): Text = ???
-
-  def toText(result: SearchResult): Text = ???
-
-  def toText(result: ImportInfo): Text = ???
-
-  def summarized[T](depth: Int)(op: => T): T = ???
-
-  lazy val plain = new PlainPrinter(_ctx)
+  override lazy val plain = new PlainPrinter(_ctx)
 }
