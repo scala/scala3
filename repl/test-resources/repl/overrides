@@ -1,0 +1,10 @@
+scala> class B { override def foo(i: Int): Unit = {}; }
+1 | class B { override def foo(i: Int): Unit = {}; }
+  |                        ^
+  |                        method foo overrides nothing
+scala> class A { def foo: Unit = {}; }
+// defined class A
+scala> class B extends A { override def foo(i: Int): Unit = {}; }
+1 | class B extends A { override def foo(i: Int): Unit = {}; }
+  |                                  ^
+  |      method foo has a different signature than the overridden declaration

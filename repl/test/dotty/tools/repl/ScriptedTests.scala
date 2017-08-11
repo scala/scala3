@@ -79,5 +79,7 @@ class ScriptedTests extends ReplTest with MessageRendering {
                  actualOutput)
   }
 
+  @Test def replTests = scripts("/repl").foreach(testFile)
+
   @Test def typePrinterTests = scripts("/type-printer").foreach(testFile)
 }

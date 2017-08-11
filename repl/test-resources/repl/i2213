@@ -1,0 +1,7 @@
+scala> def x
+1 | def x
+  |      ^
+  |      missing return type
+1 | def x
+  |     ^
+  |     '=' expected, but eof found

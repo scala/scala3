@@ -1,0 +1,4 @@
+scala> trait +[A, B]
+// defined trait +
+scala> type IntAndString = Int + String
+// defined alias type IntAndString = Int + String

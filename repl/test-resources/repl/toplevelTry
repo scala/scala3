@@ -1,0 +1,2 @@
+scala> try { 0 } catch { _: Throwable => 1 }
+val res0: Int = 0
