@@ -38,14 +38,12 @@ object Rendering {
     d.symbol.showUser
 
   /** Render value definition result */
-  def renderVal(d: Denotation, classLoader: ClassLoader)(implicit ctx: Context): String = {
+  def renderVal(d: Denotation, classLoader: ClassLoader)(implicit ctx: Context): Option[String] = {
     val dcl = d.symbol.showUser
     val resultValue =
       if (d.symbol.is(Flags.Lazy)) Some("<lazy>")
       else valueOf(d.symbol, classLoader)
 
-    resultValue
-      .map(value => s"$dcl = $value")
-      .getOrElse("")
+    resultValue.map(value => s"$dcl = $value")
   }
 }

@@ -119,7 +119,7 @@ class ReplCompilerTests extends ReplTest with MessageRendering {
 
     assertEquals(
       """|var x: Int = 5
-         |val res0: Int = 10
+         |x: Int = 10
          |""".stripMargin,
       stripColor(storedOutput())
     )

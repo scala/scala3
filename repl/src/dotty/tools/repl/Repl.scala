@@ -194,13 +194,23 @@ class Repl(
             newState.copy(imports = newState.imports ++ extractImports(parsed.trees)(ctx))
 
           displayDefinitions(unit.tpdTree, newestWrapper, newStateWithImports)(ctx)
-          newStateWithImports
         }
       )
   }
 
   /** Display definitions from `tree` */
-  private def displayDefinitions(tree: tpd.Tree, newestWrapper: Name, state: State)(implicit ctx: Context): Unit = {
+  private def displayDefinitions(tree: tpd.Tree, newestWrapper: Name, state: State)(implicit ctx: Context): State = {
+    def resAndUnit(denot: Denotation) = {
+      import scala.util.{ Try, Success }
+      val sym = denot.symbol
+      val name = sym.name.show
+      val hasValidNumber = Try(name.drop(3).toInt) match {
+        case Success(num) => num < state.valIndex
+        case _ => false
+      }
+      name.startsWith("res") && hasValidNumber && sym.info == defn.UnitType
+    }
+
     def displayMembers(symbol: Symbol) = if (tree.symbol.info.exists) {
       val info = symbol.info
       val defs =
@@ -223,9 +233,12 @@ class Repl(
       (
         typeAliases.map("// defined alias " + _.symbol.showUser) ++
         defs.map(Rendering.renderMethod) ++
-        vals.map(Rendering.renderVal(_, classLoader))
+        vals.map(Rendering.renderVal(_, classLoader)).flatten
       ).foreach(str => out.println(SyntaxHighlighting(str)))
+
+      state.copy(valIndex = state.valIndex - vals.filter(resAndUnit).length)
     }
+    else state
 
     def isSyntheticCompanion(sym: Symbol) = sym.is(Module) && sym.is(Synthetic)
 
@@ -242,14 +255,17 @@ class Repl(
           displayTypeDefs(wrapperModule.symbol)
           displayMembers(wrapperModule.symbol)
         }
-        .getOrElse(println(
-          s"""couldn't find wrapper symbol: $newestWrapper, please report this message:
-             |
-             |tree.symbol.info.memberClasses: ${tree.symbol.info.memberClasses}
-             |
-             |${state.history.mkString("\n")}
-           """.stripMargin
-        ))
+        .getOrElse {
+          println {
+            s"""couldn't find wrapper symbol: $newestWrapper, please report this message:
+               |
+               |tree.symbol.info.memberClasses: ${tree.symbol.info.memberClasses}
+               |
+               |${state.history.mkString("\n")}
+             """.stripMargin
+          }
+          state
+        }
     }
   }
 

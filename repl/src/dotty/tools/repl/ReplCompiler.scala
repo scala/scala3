@@ -10,6 +10,7 @@ import dotc.core.Names._, dotc.core.Contexts._, dotc.core.StdNames.nme
 import dotc.util.SourceFile
 import dotc.typer.{ ImportInfo, FrontEnd }
 import backend.jvm.GenBCode
+import dotc.core.NameOps._
 import dotc.util.Positions._
 import dotc.reporting.diagnostic.{ messages, MessageContainer }
 import dotc.reporting._
@@ -62,33 +63,57 @@ class ReplCompiler(ictx: Context) extends Compiler {
   def definitions(trees: Seq[untpd.Tree], state: State)(implicit ctx: Context): Result[Definitions] = {
     import untpd._
 
+    def createShow(name: TermName, pos: Position) = {
+      val showName = name ++ "Show"
+      val select = Select(Ident(name), "show".toTermName)
+      ValDef(showName, TypeTree(), select).withFlags(Synthetic).withPos(pos)
+    }
+
     val (exps, other) = trees.partition(_.isTerm)
-    val show = "show".toTermName
     val resX = exps.zipWithIndex.flatMap { (exp, i) =>
       val resName = s"res${i + state.valIndex}".toTermName
-      val showName = resName ++ "Show"
-      val showApply = Select(Ident(resName), show)
+      val show = createShow(resName, exp.pos)
 
-      (exp match {
-        case Assign(lhs, rhs) =>
-          List(exp, ValDef(resName, TypeTree(), lhs).withPos(exp.pos))
+      exp match {
+        case exp @ Assign(id: Ident, rhs) =>
+          val assignName = (id.name ++ "$Assign").toTermName
+          val assign = ValDef(assignName, TypeTree(), id).withPos(exp.pos)
+
+          exp :: assign :: createShow(assignName, exp.pos) :: Nil
         case _ =>
-          List(ValDef(resName, TypeTree(), exp).withPos(exp.pos))
-      }) :+ ValDef(showName, TypeTree(), showApply).withPos(exp.pos).withFlags(Synthetic)
+          List(ValDef(resName, TypeTree(), exp).withPos(exp.pos), show)
+      }
     }
 
     val othersWithShow = other.flatMap {
-      case t: ValDef => {
-        val name = t.name ++ "Show"
-        val select = Select(Ident(t.name), show)
-        List(t, ValDef(name, TypeTree(), select).withFlags(Synthetic))
+      case t: ValDef =>
+        List(t, createShow(t.name, t.pos))
+      case t: PatDef => {
+        val variables = t.pats.flatMap {
+          case Ident(name) if name != nme.WILDCARD => List((name.toTermName, t.pos))
+          case pat =>
+            new UntypedDeepFolder[List[(TermName, Position)]](
+            (acc: List[(TermName, Position)], t: Tree) => t match {
+              case _: BackquotedIdent =>
+                acc
+              case Ident(name) if name.isVariableName && name.toString != "_" =>
+                (name.toTermName, t.pos) :: acc
+              case Bind(name, _) if name.isVariableName =>
+                (name.toTermName, t.pos) :: acc
+              case _ =>
+                acc
+            }
+          ).apply(Nil, pat).reverse
+        }
+
+        t :: variables.map(createShow)
       }
       case t => List(t)
     }
 
     Definitions(
       state.imports.map(_._1) ++ resX ++ othersWithShow,
-      state.copy(valIndex = state.valIndex + exps.length)
+      state.copy(valIndex = state.valIndex + exps.filterNot(_.isInstanceOf[Assign]).length)
     ).result
   }
 
