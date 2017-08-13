@@ -4021,7 +4021,7 @@ object Types {
       }
 
     override protected def derivedAndOrType(tp: AndOrType, tp1: Type, tp2: Type) =
-      if (tp1.isInstanceOf[Range] || tp2.isInstanceOf[Range])
+      if (isRange(tp1) || isRange(tp2))
         if (tp.isAnd) range(lower(tp1) & lower(tp2), upper(tp1) & upper(tp2))
         else range(lower(tp1) | lower(tp2), upper(tp1) | upper(tp2))
       else tp.derivedAndOrType(tp1, tp2)
@@ -4039,7 +4039,9 @@ object Types {
     }
 
     override protected def derivedClassInfo(tp: ClassInfo, pre: Type): Type = {
-      assert(!pre.isInstanceOf[Range])
+      assert(!isRange(pre))
+        // we don't know what to do here; this case has to be handled in subclasses
+        // (typically by handling ClassInfo's specially, in case they can be encountered).
       tp.derivedClassInfo(pre)
     }
 
