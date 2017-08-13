@@ -3926,20 +3926,27 @@ object Types {
         case Range(parentLo, parentHi) =>
           range(derivedRefinedType(tp, parentLo, info), derivedRefinedType(tp, parentHi, info))
         case _ =>
+          def propagate(lo: Type, hi: Type) =
+            range(derivedRefinedType(tp, parent, lo), derivedRefinedType(tp, parent, hi))
           if (parent.isBottomType) parent
           else info match {
+            case Range(infoLo: TypeBounds, infoHi: TypeBounds) =>
+              assert(variance == 0)
+              val v1 = infoLo.variance
+              val v2 = infoHi.variance
+              // There's some weirdness coming from the way aliases can have variance
+              // If infoLo and infoHi are both aliases with the same non-zero variance
+              // we can propagate to a range of the refined types. If they are both
+              // non-alias ranges we know that infoLo <:< infoHi and therefore we can
+              // propagate to refined types with infoLo and infoHi as bounds.
+              // In all other cases, Nothing..Any is the only interval that contains
+              // the range. i966.scala is a test case.
+              if (v1 > 0 && v2 > 0) propagate(infoLo, infoHi)
+              else if (v1 < 0 && v2 < 0) propagate(infoHi, infoLo)
+              else if (!infoLo.isAlias && !infoHi.isAlias) propagate(infoLo, infoHi)
+              else range(tp.bottomType, tp.topType)
             case Range(infoLo, infoHi) =>
-              def propagate(lo: Type, hi: Type) =
-                range(derivedRefinedType(tp, parent, lo), derivedRefinedType(tp, parent, hi))
-              tp.refinedInfo match {
-                case rinfo: TypeBounds =>
-                  val v = if (rinfo.isAlias) rinfo.variance * variance else variance
-                  if (v > 0) tp.derivedRefinedType(parent, tp.refinedName, rangeToBounds(info))
-                  else if (v < 0) propagate(infoHi, infoLo)
-                  else range(tp.bottomType, tp.topType)
-                case _ =>
-                  propagate(infoLo, infoHi)
-              }
+              propagate(infoLo, infoHi)
             case _ =>
               tp.derivedRefinedType(parent, tp.refinedName, info)
           }
