@@ -3989,6 +3989,13 @@ object Types {
             if (variance > 0) tp.derivedAppliedType(tycon, args.map(rangeToBounds))
             else {
               val loBuf, hiBuf = new mutable.ListBuffer[Type]
+              // Given `C[A1, ..., An]` where sone A's are ranges, try to find
+              // non-range arguments L1, ..., Ln and H1, ..., Hn such that
+              // C[L1, ..., Ln] <: C[H1, ..., Hn] by taking the right limits of
+              // ranges that appear in as co- or contravariant arguments.
+              // Fail for non-variant argument ranges.
+              // If successful, the L-arguments are in loBut, the H-arguments in hiBuf.
+              // @return  operation succeeded for all arguments.
               def distributeArgs(args: List[Type], tparams: List[ParamInfo]): Boolean = args match {
                 case Range(lo, hi) :: args1 =>
                   val v = tparams.head.paramVariance
