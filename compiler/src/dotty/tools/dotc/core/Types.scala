@@ -3679,13 +3679,25 @@ object Types {
 
   // ----- TypeMaps --------------------------------------------------------------------
 
-  abstract class TypeMap(implicit protected val ctx: Context) extends (Type => Type) { thisMap =>
+  /** Common base class of TypeMap and TypeAccumulator */
+  abstract class VariantTraversal {
+    protected[core] var variance = 1
+
+    @inline protected def atVariance[T](v: Int)(op: => T): T = {
+      val saved = variance
+      variance = v
+      val res = op
+      variance = saved
+      res
+    }
+  }
+
+  abstract class TypeMap(implicit protected val ctx: Context)
+  extends VariantTraversal with (Type => Type) { thisMap =>
 
     protected def stopAtStatic = true
 
     def apply(tp: Type): Type
-
-    protected[core] var variance = 1
 
     protected def derivedSelect(tp: NamedType, pre: Type): Type =
       tp.derivedSelect(pre)
@@ -3724,16 +3736,13 @@ object Types {
         case tp: NamedType =>
           if (stopAtStatic && tp.symbol.isStatic) tp
           else {
-            val saved = variance
-            variance = variance max 0
+            val prefix1 = atVariance(variance max 0)(this(tp.prefix))
               // A prefix is never contravariant. Even if say `p.A` is used in a contravariant
               // context, we cannot assume contravariance for `p` because `p`'s lower
               // bound might not have a binding for `A` (e.g. the lower bound could be `Nothing`).
               // By contrast, covariance does translate to the prefix, since we have that
               // if `p <: q` then `p.A <: q.A`, and well-formedness requires that `A` is a member
               // of `p`'s upper bound.
-            val prefix1 = this(tp.prefix)
-            variance = saved
             derivedSelect(tp, prefix1)
           }
         case _: ThisType
@@ -3744,11 +3753,7 @@ object Types {
           derivedRefinedType(tp, this(tp.parent), this(tp.refinedInfo))
 
         case tp: TypeAlias =>
-          val saved = variance
-          variance *= tp.variance
-          val alias1 = this(tp.alias)
-          variance = saved
-          derivedTypeAlias(tp, alias1)
+          derivedTypeAlias(tp, atVariance(variance * tp.variance)(this(tp.alias)))
 
         case tp: TypeBounds =>
           variance = -variance
@@ -3764,12 +3769,8 @@ object Types {
           if (inst.exists) apply(inst) else tp
 
         case tp: HKApply =>
-          def mapArg(arg: Type, tparam: ParamInfo): Type = {
-            val saved = variance
-            variance *= tparam.paramVariance
-            try this(arg)
-            finally variance = saved
-          }
+          def mapArg(arg: Type, tparam: ParamInfo): Type =
+            atVariance(variance * tparam.paramVariance)(this(arg))
           derivedAppliedType(tp, this(tp.tycon),
               tp.args.zipWithConserve(tp.typeParams)(mapArg))
 
@@ -3892,12 +3893,6 @@ object Types {
     protected def rangeToBounds(tp: Type) = tp match {
       case Range(lo, hi) => TypeBounds(lo, hi)
       case _ => tp
-    }
-
-    protected def atVariance[T](v: Int)(op: => T): T = {
-      val saved = variance
-      variance = v
-      try op finally variance = saved
     }
 
     /** Derived selection.
@@ -4058,7 +4053,8 @@ object Types {
 
   // ----- TypeAccumulators ----------------------------------------------------
 
-  abstract class TypeAccumulator[T](implicit protected val ctx: Context) extends ((T, Type) => T) {
+  abstract class TypeAccumulator[T](implicit protected val ctx: Context)
+  extends VariantTraversal with ((T, Type) => T) {
 
     protected def stopAtStatic = true
 
@@ -4066,15 +4062,8 @@ object Types {
 
     protected def applyToAnnot(x: T, annot: Annotation): T = x // don't go into annotations
 
-    protected var variance = 1
-
-    protected final def applyToPrefix(x: T, tp: NamedType) = {
-      val saved = variance
-      variance = variance max 0 // see remark on NamedType case in TypeMap
-      val result = this(x, tp.prefix)
-      variance = saved
-      result
-    }
+    protected final def applyToPrefix(x: T, tp: NamedType) =
+      atVariance(variance max 0)(this(x, tp.prefix)) // see remark on NamedType case in TypeMap
 
     def foldOver(x: T, tp: Type): T = tp match {
       case tp: TypeRef =>
@@ -4095,13 +4084,7 @@ object Types {
         this(this(x, tp.parent), tp.refinedInfo)
 
       case bounds @ TypeBounds(lo, hi) =>
-        if (lo eq hi) {
-          val saved = variance
-          variance = variance * bounds.variance
-          val result = this(x, lo)
-          variance = saved
-          result
-        }
+        if (lo eq hi) atVariance(variance * bounds.variance)(this(x, lo))
         else {
           variance = -variance
           val y = this(x, lo)
