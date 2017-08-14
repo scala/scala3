@@ -29,10 +29,9 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
 
     def apply(tp: Type): Type = {
 
-      /** Map a `C.this` type to the right prefix. If the prefix is unstable and
-      *  the `C.this` occurs in nonvariant or contravariant position, mark the map
-      *  to be unstable.
-      */
+      /** Map a `C.this` type to the right prefix. If the prefix is unstable, and
+       *  the current variance is <= 0, return a range.
+       */
       def toPrefix(pre: Type, cls: Symbol, thiscls: ClassSymbol): Type = /*>|>*/ ctx.conditionalTraceIndented(TypeOps.track, s"toPrefix($pre, $cls, $thiscls)") /*<|<*/ {
         if ((pre eq NoType) || (pre eq NoPrefix) || (cls is PackageClass))
           tp
@@ -50,16 +49,11 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
       }
 
       /*>|>*/ ctx.conditionalTraceIndented(TypeOps.track, s"asSeen ${tp.show} from (${pre.show}, ${cls.show})", show = true) /*<|<*/ { // !!! DEBUG
+        // One `case ThisType` is specific to asSeenFrom, all other cases are inlined for performance
         tp match {
-          case tp: NamedType => // inlined for performance; TODO: factor out into inline method
+          case tp: NamedType =>
             if (tp.symbol.isStatic) tp
-            else {
-              val saved = variance
-              variance = variance max 0
-              val prefix1 = this(tp.prefix)
-              variance = saved
-              derivedSelect(tp, prefix1)
-            }
+            else derivedSelect(tp, atVariance(variance max 0)(this(tp.prefix)))
           case tp: ThisType =>
             toPrefix(pre, cls, tp.cls)
           case _: BoundType | NoPrefix =>
