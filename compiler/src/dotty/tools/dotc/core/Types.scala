@@ -132,7 +132,10 @@ object Types {
           case _ =>  this1.symbol eq sym
         }
       case this1: RefinedOrRecType => this1.parent.isRef(sym)
-      case this1: HKApply => this1.superType.isRef(sym)
+      case this1: HKApply =>
+        val this2 = this1.dealias
+        if (this2 ne this1) this2.isRef(sym)
+        else this1.underlying.isRef(sym)
       case _ => false
     }
 
