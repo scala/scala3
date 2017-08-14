@@ -3947,7 +3947,7 @@ object Types {
               else if (!infoLo.isAlias && !infoHi.isAlias) propagate(infoLo, infoHi)
               else range(tp.bottomType, tp.topType)
                 // Using `parent` instead of `tp.topType` would be better for normal refinements,
-                // but it would also turn *-types to a hk-types, which is not what we want.
+                // but it would also turn *-types into hk-types, which is not what we want.
                 // We should revisit this point in case we represent applied types not as refinements anymore.
             case Range(infoLo, infoHi) =>
               propagate(infoLo, infoHi)
