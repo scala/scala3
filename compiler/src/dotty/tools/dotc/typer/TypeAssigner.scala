@@ -46,7 +46,7 @@ trait TypeAssigner {
     val parentType = info.parentsWithArgs.reduceLeft(ctx.typeComparer.andType(_, _))
     def addRefinement(parent: Type, decl: Symbol) = {
       val inherited =
-        parentType.findMember(decl.name, info.cls.thisType, Private)
+        parentType.findMember(decl.name, info.cls.thisType, excluded = Private)
           .suchThat(decl.matches(_))
       val inheritedInfo = inherited.info
       if (inheritedInfo.exists && decl.info <:< inheritedInfo && !(inheritedInfo <:< decl.info)) {
@@ -88,7 +88,7 @@ trait TypeAssigner {
             case info => range(tp.info.bottomType, apply(info))
           }
         case tp: TypeRef if toAvoid(tp.symbol) =>
-          val avoided = tp.info match {
+          tp.info match {
             case TypeAlias(alias) =>
               apply(alias)
             case TypeBounds(lo, hi) =>
@@ -98,7 +98,6 @@ trait TypeAssigner {
             case _ =>
               range(tp.bottomType, tp.topType) // should happen only in error cases
           }
-          avoided
         case tp: ThisType if toAvoid(tp.cls) =>
           range(tp.bottomType, apply(classBound(tp.cls.classInfo)))
         case tp: TypeVar if ctx.typerState.constraint.contains(tp) =>
