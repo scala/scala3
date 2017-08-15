@@ -307,6 +307,9 @@ object Build {
     connectInput in run := true,
     outputStrategy := Some(StdoutOutput),
 
+    // enable verbose exception messages for JUnit
+    testOptions in Test += Tests.Argument(TestFrameworks.JUnit, "-a", "-v"),
+
     javaOptions ++= (javaOptions in `dotty-compiler`).value,
     fork in run := true,
     fork in Test := true,
