@@ -108,18 +108,26 @@ trait TypeAssigner {
           mapOver(tp)
       }
 
-      /** Two deviations from standard derivedSelect:
-       *   1. The teh approximation result is a singleton references C#x.type, we
+      /** Three deviations from standard derivedSelect:
+       *   1. We first try a widening conversion to the type's info with
+       *      the original prefix. Since the original prefix is known to
+       *      be a subtype of the returned prefix, this can improve results.
+       *   2. IThen, if the approximation result is a singleton reference C#x.type, we
        *      replace by the widened type, which is usually more natural.
-       *   2. We need to handle the case where the prefix type does not have a member
-       *      named `tp.name` anymmore.
+       *   3. Finally, we need to handle the case where the prefix type does not have a member
+       *      named `tp.name` anymmore. In that case, we need to fall back to Bot..Top.
        */
       override def derivedSelect(tp: NamedType, pre: Type) =
-        if (pre eq tp.prefix) tp
-        else if (tp.isTerm && variance > 0 && !pre.isInstanceOf[SingletonType])
-          apply(tp.info.widenExpr)
-        else if (upper(pre).member(tp.name).exists) super.derivedSelect(tp, pre)
-        else range(tp.bottomType, tp.topType)
+        if (pre eq tp.prefix)
+          tp
+        else tryWiden(tp, tp.prefix) {
+          if (tp.isTerm && variance > 0 && !pre.isInstanceOf[SingletonType])
+          	apply(tp.info.widenExpr)
+          else if (upper(pre).member(tp.name).exists)
+            super.derivedSelect(tp, pre)
+          else
+            range(tp.bottomType, tp.topType)
+        }
     }
 
     widenMap(tp)

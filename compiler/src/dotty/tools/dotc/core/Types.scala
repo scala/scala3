@@ -3895,14 +3895,14 @@ object Types {
       case _ => tp
     }
 
-    /** Derived selection.
-     *  @pre   the (upper bound of) prefix `pre` has a member named `tp.name`.
+    /** Try to widen a named type to its info relative to given prefix `pre`, where possible.
+     *  The possible cases are listed inline in the code. Return `default` if no widening is
+     *  possible.
      */
-    override protected def derivedSelect(tp: NamedType, pre: Type) =
-      if (pre eq tp.prefix) tp
-      else pre match {
-        case Range(preLo, preHi) =>
-          preHi.member(tp.name).info.widenExpr match {
+    def tryWiden(tp: NamedType, pre: Type)(default: => Type): Type =
+      pre.member(tp.name) match {
+        case d: SingleDenotation =>
+          d.info match {
             case TypeAlias(alias) =>
               // if H#T = U, then for any x in L..H, x.T =:= U,
               // hence we can replace with U under all variances
@@ -3916,9 +3916,21 @@ object Types {
               // hence we can replace with y.type under all variances
               reapply(info)
             case _ =>
-              range(tp.derivedSelect(preLo), tp.derivedSelect(preHi))
+              default
           }
-        case _ => tp.derivedSelect(pre)
+        case _ => default
+      }
+
+    /** Derived selection.
+     *  @pre   the (upper bound of) prefix `pre` has a member named `tp.name`.
+     */
+    override protected def derivedSelect(tp: NamedType, pre: Type) =
+      if (pre eq tp.prefix) tp
+      else pre match {
+        case Range(preLo, preHi) =>
+          tryWiden(tp, preHi)(range(tp.derivedSelect(preLo), tp.derivedSelect(preHi)))
+        case _ =>
+          tp.derivedSelect(pre)
       }
 
     override protected def derivedRefinedType(tp: RefinedType, parent: Type, info: Type) =
