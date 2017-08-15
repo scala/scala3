@@ -98,6 +98,9 @@ final class TreeTypeMap(
             case ann => ann
           }
           res
+        case tdef @ LambdaTypeTree(tparams, body) =>
+          val (tmap1, tparams1) = transformDefs(tparams)
+          cpy.LambdaTypeTree(tdef)(tparams1, tmap1.transform(body))
         case blk @ Block(stats, expr) =>
           val (tmap1, stats1) = transformDefs(stats)
           val expr1 = tmap1.transform(expr)
