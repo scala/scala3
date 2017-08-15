@@ -28,4 +28,10 @@ extends ClassLoader(parent)
     val bytes = file.toByteArray
     defineClass(name, bytes, 0, bytes.length)
   }
+
+  override def loadClass(name: String): Class[_] =
+    try findClass(name)
+    catch {
+      case _: ClassNotFoundException => super.loadClass(name)
+    }
 }

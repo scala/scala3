@@ -2,8 +2,6 @@ package dotty.tools
 package repl
 
 import java.io.{ InputStream, PrintStream }
-import java.net.{URL, URLClassLoader}
-import java.lang.ClassLoader
 
 import scala.annotation.tailrec
 
@@ -26,67 +24,72 @@ import dotc.core.Types.{ ExprType, ConstantType }
 import dotc.config.CompilerCommand
 import dotc.{ Compiler, Driver }
 import dotc.printing.SyntaxHighlighting
-import dotc.repl.AbstractFileClassLoader // FIXME
 import dotc.util.Positions.Position
+import io._
 
 import AmmoniteReader._
 import results._
 
-/** The state of the REPL */
-case class State(objectIndex: Int,
-                 valIndex: Int,
+/** The state of the REPL contains necessary bindings instead of having to have
+ *  mutation
+ *
+ *  The compiler in the REPL needs to do some wrapping in order to compile
+ *  valid code. This wrapping occurs when a single `MemberDef` that cannot be
+ *  top-level needs to be compiled. In order to do this, we need some unique
+ *  identifier for each of these wrappers. That identifier is `objectIndex`.
+ *
+ *  Free expressions such as `1 + 1` needs to have an assignment in order to be
+ *  of use. These expressions are therefore given a identifier on the format
+ *  `resX` where `X` starts at 0 and each new expression that needs an
+ *  identifier is given the increment of the old identifier. This identifier is
+ *  `valIndex`.
+ *
+ *  @param objectIndex the index of the next wrapper
+ *  @param valIndex the index of next value binding for free expressions
+ *  @param history a list of user inputs as strings
+ *  @param imports a list of tuples of imports on tree form and shown form
+ *  @param ctx the latest run context created by the compiler. This is needed
+ *             in order to inspect any trees after compilation
+ *
+ */
+case class State(objectIndex: Int, // TODO: document
+                 valIndex: Int,    // TODO: document
                  history: History,
-                 imports: List[(untpd.Import, String)]) {
+                 imports: List[(untpd.Import, String)],
+                 ctx: Context) {
   def withHistory(newEntry: String) = copy(history = newEntry :: history)
   def withHistory(h: History) = copy(history = h)
 }
 
-object State { val init = State(0, 0, Nil, Nil) }
-
-/** A list of possible completions at index `cursor` */
+/** A list of possible completions at the index of `cursor`
+ *
+ *  @param cursor the index of the users cursor in the input
+ *  @param suggestions the suggested completions as a filtered list of strings
+ *  @param details should be a list of signatures for the suggestions, TODO
+ */
 case class Completions(cursor: Int,
                        suggestions: List[String],
-                       details: List[String])
+                       details: List[String]) // TODO: stuff
 
 /** Main REPL instance, orchestrating input, compilation and presentation */
-class Repl(
-  settings: Array[String],
-  parentClassLoader: Option[ClassLoader] = None,
-  protected val out: PrintStream = System.out
-) extends Driver {
+class ReplDriver(settings: Array[String], protected val out: PrintStream = System.out) extends Driver {
 
   // FIXME: Change the Driver API to not require implementing this method
   override protected def newCompiler(implicit ctx: Context): Compiler =
     ???
 
   /** Create a fresh and initialized context with IDE mode enabled */
-  protected[this] def initializeCtx = {
-    val rootCtx = initCtx.fresh
+  private[this] def initialCtx = {
+    val rootCtx = initCtx.fresh.addMode(Mode.ReadPositions).addMode(Mode.Interactive)
     val summary = CompilerCommand.distill(settings)(rootCtx)
     val ictx = rootCtx.setSettings(summary.sstate)
-      .addMode(Mode.ReadPositions).addMode(Mode.Interactive)
     ictx.base.initialize()(ictx)
-    ictx
+    ictx.setReporter(storeReporter)
   }
 
-  private[this] var _classLoader: ClassLoader = _
-  protected[this] final def classLoader(implicit ctx: Context): ClassLoader = {
-    if (_classLoader eq null) _classLoader = {
-      /** the compiler's classpath, as URL's */
-      val compilerClasspath: Seq[URL] = ctx.platform.classPath(ctx).asURLs
-
-      lazy val parent = new URLClassLoader(compilerClasspath.toArray,
-                                           classOf[Repl].getClassLoader)
-
-      new AbstractFileClassLoader(compiler.virtualDirectory,
-                                  parentClassLoader.getOrElse(parent))
-    }
-
-    // Set the current Java "context" class loader to this interpreter's
-    // class loader
-    Thread.currentThread.setContextClassLoader(_classLoader)
-    _classLoader
-  }
+  /** the initial, empty state of the REPL session */
+  protected[this] def initState =
+    State(0, 0, Nil, Nil, rootCtx)
 
   /** Reset state of repl to the initial state
    *
@@ -95,12 +98,17 @@ class Repl(
    *  everything properly
    */
   protected[this] def resetToInitial(): Unit = {
-    myCtx = initializeCtx
-    compiler = new ReplCompiler(myCtx)
-    _classLoader = null
+    rootCtx = initialCtx
+    val outDir: AbstractFile = {
+      if (rootCtx.settings.d.isDefault(rootCtx))
+        new VirtualDirectory("(memory)", None)
+      else
+        new PlainDirectory(new Directory(new JFile(rootCtx.settings.d.value(rootCtx))))
+    }
+    compiler = new ReplCompiler(outDir)
   }
 
-  protected[this] var myCtx: Context         = _
+  protected[this] var rootCtx: Context = _
   protected[this] var compiler: ReplCompiler = _
 
   // initialize the REPL session as part of the constructor so that once `run`
@@ -113,14 +121,14 @@ class Repl(
    *  observable outside of the CLI, for this reason, most helper methods are
    *  `protected final` to facilitate testing.
    */
-  @tailrec final def runUntilQuit(state: State = State.init): State = {
+  @tailrec final def runUntilQuit(state: State = initState): State = {
     val res = readLine(state)
-    if (res.isInstanceOf[Quit.type]) state
+    if (res == Quit) state
     else runUntilQuit(interpret(res, state))
   }
 
   final def run(input: String, state: State): State =
-    run(ParseResult(input)(myCtx), state)
+    run(ParseResult(input)(state.ctx), state)
 
   final def run(res: ParseResult, state: State): State =
     interpret(res, state)
@@ -129,7 +137,7 @@ class Repl(
   protected[this] final def completions(cursor: Int, expr: String, state: State): Completions =
     // TODO move some of this logic to `Interactive`
     compiler
-      .typeCheck(expr, state, errorsAllowed = true)
+      .typeCheck(expr, state, rootCtx, errorsAllowed = true)
       .map { (tree, ictx) =>
         implicit val ctx: Context = ictx
         val file = new dotc.util.SourceFile("compl", expr)
@@ -152,7 +160,7 @@ class Repl(
 
   /** Blockingly read a line, getting back a parse result and new history */
   private def readLine(state: State): ParseResult =
-    AmmoniteReader(out, state.history, completions(_, _, state))(myCtx).prompt
+    AmmoniteReader(out, state.history, completions(_, _, state))(rootCtx).prompt
 
   private def extractImports(trees: List[untpd.Tree])(implicit context: Context): List[(untpd.Import, String)] =
     trees.collect { case imp: untpd.Import => (imp, imp.show) }
@@ -163,7 +171,7 @@ class Repl(
         compile(parsed, state).withHistory(parsed.sourceCode :: state.history)
 
       case SyntaxErrors(src, errs, _) =>
-        displayErrors(errs)(myCtx)
+        displayErrors(errs)(state.ctx)
         state.withHistory(src :: state.history)
 
       case Newline | SigKill => state
@@ -179,21 +187,20 @@ class Repl(
       case _ => nme.NO_NAME
     }
 
-    implicit val ctx = myCtx
     compiler
-      .compile(parsed, state)
+      .compile(parsed, state, rootCtx)
       .fold(
         errors => {
-          displayErrors(errors)
+          displayErrors(errors)(rootCtx)
           state
         },
-        (unit, newState, ctx) => {
+        (unit, newState) => {
           val newestWrapper =
             extractNewestWrapper(unit.untpdTree)
           val newStateWithImports =
-            newState.copy(imports = newState.imports ++ extractImports(parsed.trees)(ctx))
+            newState.copy(imports = newState.imports ++ extractImports(parsed.trees)(newState.ctx))
 
-          displayDefinitions(unit.tpdTree, newestWrapper, newStateWithImports)(ctx)
+          displayDefinitions(unit.tpdTree, newestWrapper, newStateWithImports)(newState.ctx)
         }
       )
   }
@@ -233,22 +240,29 @@ class Repl(
       (
         typeAliases.map("// defined alias " + _.symbol.showUser) ++
         defs.map(Rendering.renderMethod) ++
-        vals.map(Rendering.renderVal(_, classLoader)).flatten
+        vals.map(Rendering.renderVal(_, compiler)).flatten
       ).foreach(str => out.println(SyntaxHighlighting(str)))
 
       state.copy(valIndex = state.valIndex - vals.filter(resAndUnit).length)
     }
     else state
 
-    def isSyntheticCompanion(sym: Symbol) = sym.is(Module) && sym.is(Synthetic)
+    def isSyntheticCompanion(sym: Symbol) =
+      sym.is(Module) && sym.is(Synthetic)
+
+    def isReplSession(name: Name) =
+      name.decode.show.contains("ReplSession$")
 
     def displayTypeDefs(sym: Symbol) = sym.info.memberClasses
-      .filterNot(x => isSyntheticCompanion(x.symbol))
-      .foreach { td =>
-        out.println(SyntaxHighlighting("// defined " + td.symbol.showUser))
+      .collect { case x if !isSyntheticCompanion(x.symbol) && !isReplSession(x.symbol.name) => x.symbol }
+      .foreach { sym =>
+        out.println(SyntaxHighlighting("// defined " + sym.showUser))
       }
 
+
     ctx.atPhase(ctx.typerPhase.next) { implicit ctx =>
+
+      // Display members of wrapped module:
       tree.symbol.info.memberClasses
         .find(_.symbol.name == newestWrapper.moduleClassName)
         .map { wrapperModule =>
@@ -256,14 +270,7 @@ class Repl(
           displayMembers(wrapperModule.symbol)
         }
         .getOrElse {
-          println {
-            s"""couldn't find wrapper symbol: $newestWrapper, please report this message:
-               |
-               |tree.symbol.info.memberClasses: ${tree.symbol.info.memberClasses}
-               |
-               |${state.history.mkString("\n")}
-             """.stripMargin
-          }
+          // user defined a trait/class/object, so no module needed
           state
         }
     }
@@ -283,7 +290,7 @@ class Repl(
 
     case Reset => {
       resetToInitial()
-      State.init
+      initState
     }
 
     case Imports => {
@@ -295,11 +302,11 @@ class Repl(
       val loadCmd = s"${Load.command} $path"
       if ((new java.io.File(path)).exists) {
         val contents = scala.io.Source.fromFile(path).mkString
-        ParseResult(contents)(myCtx) match {
+        ParseResult(contents)(state.ctx) match {
           case parsed: Parsed =>
             compile(parsed, state).withHistory(loadCmd)
           case SyntaxErrors(_, errors, _) =>
-            displayErrors(errors)(myCtx)
+            displayErrors(errors)(rootCtx)
             state.withHistory(loadCmd)
           case _ =>
             state.withHistory(loadCmd)
@@ -311,8 +318,8 @@ class Repl(
       }
 
     case Type(expr) => {
-      compiler.typeOf(expr, state).fold(
-        errors => displayErrors(errors)(myCtx),
+      compiler.typeOf(expr, state, rootCtx).fold(
+        errors => displayErrors(errors)(state.ctx),
         res    => out.println(SyntaxHighlighting(res))
       )
       state.withHistory(s"${Type.command} $expr")
@@ -329,10 +336,12 @@ class Repl(
     import dotc.util._
     override def messageAndPos(msg: Message, pos: SourcePosition, diagnosticLevel: String)(implicit ctx: Context): String = {
       val sb = scala.collection.mutable.StringBuilder.newBuilder
-      val (srcBefore, srcAfter, offset) = sourceLines(pos)
-      val marker = columnMarker(pos, offset)
-      val err = errorMsg(pos, msg.msg, offset)
-      sb.append((srcBefore ::: marker :: err :: outer(pos, " " * (offset - 1)) ::: srcAfter).mkString("\n"))
+      if (pos.exists) {
+        val (srcBefore, srcAfter, offset) = sourceLines(pos)
+        val marker = columnMarker(pos, offset)
+        val err = errorMsg(pos, msg.msg, offset)
+        sb.append((srcBefore ::: marker :: err :: outer(pos, " " * (offset - 1)) ::: srcAfter).mkString("\n"))
+      }
       sb.toString
     }
   }

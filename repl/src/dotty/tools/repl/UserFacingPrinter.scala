@@ -10,6 +10,7 @@ import dotc.core.Flags._
 import dotc.core.TypeApplications.{ AppliedType, EtaExpansion }
 import dotc.core.Names._
 import dotc.core.NameOps._
+import dotc.core.StdNames._
 import dotc.core.Decorators._
 import dotc.core.Scopes.Scope
 import dotc.core.Symbols.{ Symbol, ClassSymbol, defn }
@@ -34,8 +35,9 @@ class UserFacingPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
 
   def wellKnownPkg(pkgSym: Symbol) = pkgSym match {
     case `scalaPkg` | `collectionPkg` | `immutablePkg` | `javaLangPkg` => true
-    case pkgSym if pkgSym.name.decode.show.contains("ReplSession$") => true
-    case _ => false
+    case pkgSym =>
+      pkgSym.name.toTermName == nme.EMPTY_PACKAGE ||
+      pkgSym.name.decode.show.contains("ReplSession$")
   }
 
   override def kindString(sym: Symbol): String = {
@@ -52,10 +54,8 @@ class UserFacingPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
     else if (flags.is(Lazy)) "lazy val"
     else if (flags.is(Mutable)) "var"
     else if (sym.is(Method)) "def"
-    else {
-      assert(sym.isTerm)
-      "val"
-    }
+    else if (sym.isTerm) "val"
+    else super.kindString(sym)
   }
 
   override def nameString(name: Name): String = name.decode.toString

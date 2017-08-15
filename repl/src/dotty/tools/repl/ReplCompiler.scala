@@ -26,22 +26,13 @@ import results._
  *  in conjunction with a specialized class loader in order to load virtual
  *  classfiles.
  */
-class ReplCompiler(ictx: Context) extends Compiler {
-
-  type NextRes = Int
-
-  /** Directory to save class files to */
-  final val virtualDirectory =
-    if (ictx.settings.d.isDefault(ictx))
-      new VirtualDirectory("(memory)", None)
-    else
-      new PlainDirectory(new Directory(new JFile(ictx.settings.d.value(ictx))))
+class ReplCompiler(val directory: AbstractFile) extends Compiler {
 
 
   /** A GenBCode phase that outputs to a virtual directory */
   private class REPLGenBCode extends GenBCode {
     override def phaseName = "replGenBCode"
-    override def outputDir(implicit ctx: Context) = virtualDirectory
+    override def outputDir(implicit ctx: Context) = directory
   }
 
   override def phases = {
@@ -58,9 +49,9 @@ class ReplCompiler(ictx: Context) extends Compiler {
     )
   }
 
-  sealed case class Definitions(trees: Seq[untpd.Tree], state: State)
+  sealed case class Definitions(stats: List[untpd.Tree], state: State)
 
-  def definitions(trees: Seq[untpd.Tree], state: State)(implicit ctx: Context): Result[Definitions] = {
+  def definitions(trees: List[untpd.Tree], state: State)(implicit ctx: Context): Result[Definitions] = {
     import untpd._
 
     def createShow(name: TermName, pos: Position) = {
@@ -111,9 +102,14 @@ class ReplCompiler(ictx: Context) extends Compiler {
       case t => List(t)
     }
 
+    val newObjectIndex = state.objectIndex + {
+      if (resX.nonEmpty || othersWithShow.nonEmpty) 1 else 0
+    }
+    val newValIndex = state.valIndex + exps.filterNot(_.isInstanceOf[Assign]).length
+
     Definitions(
       state.imports.map(_._1) ++ resX ++ othersWithShow,
-      state.copy(valIndex = state.valIndex + exps.filterNot(_.isInstanceOf[Assign]).length)
+      state.copy(objectIndex = newObjectIndex, valIndex = newValIndex)
     ).result
   }
 
@@ -132,45 +128,54 @@ class ReplCompiler(ictx: Context) extends Compiler {
    *  }
    *  ```
    */
-  def wrapped(trees: Seq[untpd.Tree], state: State)(implicit ctx: Context): untpd.PackageDef = {
+  def wrapped(defs: Definitions)(implicit ctx: Context): untpd.PackageDef = {
     import untpd._
     import dotc.core.StdNames._
 
-    val tmpl = Template(emptyConstructor(ctx), Nil, EmptyValDef, trees)
-    PackageDef(Ident(nme.NO_NAME),
-      ModuleDef(s"ReplSession$$${ state.objectIndex }".toTermName, tmpl)
+    val module = {
+      val tmpl = Template(emptyConstructor(ctx), Nil, EmptyValDef, defs.stats)
+      List(
+        ModuleDef(s"ReplSession$$${ defs.state.objectIndex }".toTermName, tmpl)
         .withMods(new Modifiers(Module | Final))
-        .withPos(Position(trees.head.pos.start, trees.last.pos.end)) :: Nil
-    )
+        .withPos(Position(defs.stats.head.pos.start, defs.stats.last.pos.end))
+      )
+    }
+
+    PackageDef(Ident(nme.EMPTY_PACKAGE), module)
   }
 
-  def createUnit(trees: Seq[untpd.Tree], state: State, sourceCode: String)(implicit ctx: Context): Result[CompilationUnit] = {
-    val unit = new CompilationUnit(new SourceFile(s"ReplsSession$$${ state.objectIndex }", sourceCode))
-    unit.untpdTree = wrapped(trees, state)
+  def newRun(state: State, initCtx: Context, reporter: Reporter) = new Run(this, initCtx) {
+    override protected[this] def rootContext(implicit ctx: Context) =
+      addMagicImports(super.rootContext, state).fresh.setReporter(reporter)
+  }
+
+  def createUnit(defs: Definitions, sourceCode: String)(implicit ctx: Context): Result[CompilationUnit] = {
+    val unit = new CompilationUnit(new SourceFile(s"ReplsSession$$${ defs.state.objectIndex }", sourceCode))
+    unit.untpdTree = wrapped(defs)
     unit.result
   }
 
-  def runCompilation(unit: CompilationUnit, state: State)(implicit ctx: Context): Result[(State, Context)] = {
+  def runCompilation(unit: CompilationUnit, state: State, initCtx: Context): Result[State] = {
     val reporter = storeReporter
-    val run = new Run(this)(ctx.fresh.setReporter(reporter))
+
+    val run = newRun(state, initCtx, reporter)
     run.compileUnits(unit :: Nil)
 
     if (!reporter.hasErrors)
-      (state.copy(objectIndex = state.objectIndex + 1), run.runContext).result
+      state.copy(ctx = run.runContext).result
     else
-      reporter.removeBufferedMessages.errors
+      reporter.removeBufferedMessages(state.ctx).errors
   }
 
-  def compile(parsed: Parsed, state: State): Result[(CompilationUnit, State, Context)] = {
-    implicit val ctx: Context = addMagicImports(state)(rootContext(ictx))
+  def compile(parsed: Parsed, state: State, initCtx: Context): Result[(CompilationUnit, State)] = {
     for {
-      defs          <- definitions(parsed.trees, state)
-      unit          <- createUnit(defs.trees, state, parsed.sourceCode)
-      (state, ictx) <- runCompilation(unit, defs.state)
-    } yield (unit, state, ictx)
+      defs  <- definitions(parsed.trees, state)(initCtx)
+      unit  <- createUnit(defs, parsed.sourceCode)(initCtx)
+      state <- runCompilation(unit, defs.state, initCtx)
+    } yield (unit, state)
   }
 
-  def addMagicImports(state: State)(implicit ctx: Context): Context = {
+  private[this] def addMagicImports(initCtx: Context, state: State): Context = {
     def addImport(path: TermName)(implicit ctx: Context) = {
       val ref = tpd.ref(ctx.requiredModuleRef(path.toTermName))
       val symbol = ctx.newImportSymbol(ctx.owner, ref)
@@ -180,14 +185,14 @@ class ReplCompiler(ictx: Context) extends Compiler {
     }
 
     List
-      .range(0, state.objectIndex)
-      .foldLeft(addImport("dotty.Show".toTermName)) { (ictx, i) =>
-        addImport(nme.NO_NAME ++ (".ReplSession$" + i))(ictx)
+      .range(1, state.objectIndex + 1)
+      .foldLeft(addImport("dotty.Show".toTermName)(initCtx)) { (ictx, i) =>
+        addImport(nme.EMPTY_PACKAGE ++ (".ReplSession$" + i))(ictx)
       }
   }
 
-  def typeOf(expr: String, state: State): Result[String] =
-    typeCheck(expr, state).map { (tree, ictx) =>
+  def typeOf(expr: String, state: State, rootCtx: Context): Result[String] =
+    typeCheck(expr, state, rootCtx).map { (tree, ictx) =>
       import dotc.ast.Trees._
       implicit val ctx = ictx
       tree.rhs match {
@@ -200,7 +205,7 @@ class ReplCompiler(ictx: Context) extends Compiler {
       }
     }
 
-  def typeCheck(expr: String, state: State, errorsAllowed: Boolean = false): Result[(tpd.ValDef, Context)] = {
+  def typeCheck(expr: String, state: State, rootCtx: Context, errorsAllowed: Boolean = false): Result[(tpd.ValDef, Context)] = {
 
     def wrapped(expr: String, sourceFile: SourceFile, state: State)(implicit ctx: Context): Result[untpd.PackageDef] = {
       def wrap(trees: Seq[untpd.Tree]): untpd.PackageDef = {
@@ -212,7 +217,7 @@ class ReplCompiler(ictx: Context) extends Compiler {
         val tmpl =
           Template(emptyConstructor, Ident("Any".toTypeName) :: Nil, EmptyValDef, state.imports.map(_._1) :+ valdef)
 
-        PackageDef(Ident(nme.NO_NAME),
+        PackageDef(Ident(nme.EMPTY_PACKAGE),
           TypeDef("EvaluateExpr".toTypeName, tmpl)
             .withMods(new Modifiers(Final))
             .withPos(Position(trees.head.pos.start, trees.last.pos.end)) :: Nil
@@ -250,28 +255,22 @@ class ReplCompiler(ictx: Context) extends Compiler {
       }
     }
 
+
     val reporter = storeReporter
-    implicit val ctx: Context =
-      addMagicImports(state)(rootContext(ictx)).fresh.setReporter(reporter)
-
+    val run = newRun(state, rootCtx.fresh.setSetting(rootCtx.settings.YstopAfter, List("replFrontEnd")), reporter)
     val src = new SourceFile(s"EvaluateExpr", expr)
+    val runCtx = run.runContext
 
-    wrapped(expr, src, state).flatMap { pkg =>
+    wrapped(expr, src, state)(runCtx).flatMap { pkg =>
       val unit = new CompilationUnit(src)
       unit.untpdTree = pkg
-      val run = new Run(this)(ctx) {
-        override protected def compileUnits() = {
-          val phases = new REPLFrontEnd :: Nil
-          ctx.usePhases(phases)
-          units = phases.head.runOn(units)
-        }
-      }
       run.compileUnits(unit :: Nil)
 
       if (errorsAllowed || !reporter.hasErrors)
-        unwrapped(unit.tpdTree, src).map((_, run.runContext))
-      else
-        reporter.removeBufferedMessages.errors
+        unwrapped(unit.tpdTree, src)(runCtx).map((_, runCtx))
+      else {
+        reporter.removeBufferedMessages(runCtx).errors
+      }
     }
   }
 }

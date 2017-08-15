@@ -31,18 +31,15 @@ sealed class StoringPrintStream extends PrintStream(new NullPrintStream) {
   }
 }
 
-class ReplTest extends Repl(
+class ReplTest extends ReplDriver(
   Array(
     // TODO: get rid of this!
     "-classpath",
       List("../out/bootstrap/dotty-library-bootstrapped/scala-0.3/classes",
            "../interfaces/target/classes").mkString(":")
   ),
-  None, new StoringPrintStream
+  new StoringPrintStream
 ) {
-
-  /** An initial state object to throw around :fire: */
-  val initState = State(0, 0, Nil, Nil)
 
   /** Fail if there are errors */
   def onErrors(xs: Seq[MessageContainer]): Unit =
@@ -53,10 +50,8 @@ class ReplTest extends Repl(
     out.asInstanceOf[StoringPrintStream].flushStored()
 
   /** Make sure the context is new before each test */
-  @Before def init(): Unit = {
-    myCtx = initializeCtx.setReporter(storeReporter)
-    compiler = new ReplCompiler(myCtx)
-  }
+  @Before def init(): Unit =
+    resetToInitial()
 
   /** Reset the stored output */
   @After def cleanup: Unit =

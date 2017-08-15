@@ -14,7 +14,7 @@ import ReplTest._
 class TabcompleteTests extends ReplTest {
 
   private[this] def parseString(str: String) = {
-    val res = ParseResult(str)(myCtx)
+    val res = ParseResult(str)(rootCtx)
 
     if (!res.isInstanceOf[Parsed])
       fail(s"""Expected `Parsed("$str", ...)` got: $res""")
@@ -23,7 +23,7 @@ class TabcompleteTests extends ReplTest {
   }
 
   private[this] def parseWithErrors(str: String) = {
-    val res = ParseResult(str)(myCtx)
+    val res = ParseResult(str)(rootCtx)
 
     if (!res.isInstanceOf[SyntaxErrors])
       fail(s"""Expected `SyntaxErrors` got: $res""")
