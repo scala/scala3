@@ -100,7 +100,12 @@ class Run(comp: Compiler, ictx: Context) {
     compileUnits()
   }
 
-  protected def compileUnits() = Stats.monitorHeartBeat {
+  def compileUnits(us: List[CompilationUnit], ctx: Context): Unit = {
+    units = us
+    compileUnits()(ctx)
+  }
+
+  protected def compileUnits()(implicit ctx: Context) = Stats.monitorHeartBeat {
     ctx.checkSingleThreaded()
 
     // If testing pickler, make sure to stop after pickling phase:
