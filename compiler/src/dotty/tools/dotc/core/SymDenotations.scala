@@ -1056,7 +1056,10 @@ object SymDenotations {
       else overriddenFromType(owner.asClass.classInfo.selfType)
 
     private def overriddenFromType(tp: Type)(implicit ctx: Context): Iterator[Symbol] =
-      tp.baseClasses.tail.iterator map overriddenSymbol filter (_.exists)
+      tp.baseClasses match {
+        case _ :: inherited => inherited.iterator map overriddenSymbol filter (_.exists)
+        case Nil => Iterator.empty
+      }
 
     /** The symbol overriding this symbol in given subclass `ofclazz`.
      *

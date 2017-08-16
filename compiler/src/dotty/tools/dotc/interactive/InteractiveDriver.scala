@@ -179,6 +179,21 @@ class InteractiveDriver(settings: List[String]) extends Driver {
 
   private val compiler: Compiler = new InteractiveCompiler
 
+  /** Remove attachments and error out completers. The goal is to avoid
+   *  having a completer hanging in a typed tree which can capture the context
+   *  of a previous run. Note that typed trees can have untyped or partially
+   *  typed children if the source contains errors.
+   */
+  private def cleanup(tree: tpd.Tree)(implicit ctx: Context): Unit = tree.foreachSubTree { t =>
+    if (t.hasType) {
+      if (t.symbol.exists) {
+        if (!t.symbol.isCompleted) t.symbol.info = UnspecifiedErrorType
+        t.symbol.annotations.foreach(annot => cleanup(annot.tree))
+      }
+    }
+    t.removeAllAttachments()
+  }
+
   def run(uri: URI, sourceCode: String): List[MessageContainer] = {
     val previousCtx = myCtx
     try {
@@ -200,6 +215,7 @@ class InteractiveDriver(settings: List[String]) extends Driver {
       run.compileSources(List(source))
       run.printSummary()
       val t = run.units.head.tpdTree
+      cleanup(t)
       myOpenedTrees(uri) = topLevelClassTrees(t, source)
 
       reporter.removeBufferedMessages
