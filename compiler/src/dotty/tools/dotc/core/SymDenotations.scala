@@ -1540,22 +1540,22 @@ object SymDenotations {
      *  have existing symbols.
      *  @param inherited  The method is called on a parent class from computeNPMembersNamed
      */
-    final def nonPrivateMembersNamed(name: Name, inherited: Boolean = false)(implicit ctx: Context): PreDenotation = {
+    final def nonPrivateMembersNamed(name: Name)(implicit ctx: Context): PreDenotation = {
       Stats.record("nonPrivateMembersNamed")
       if (Config.cacheMembersNamed) {
         var denots: PreDenotation = memberCache lookup name
         if (denots == null) {
-          denots = computeNPMembersNamed(name, inherited)
+          denots = computeNPMembersNamed(name)
           memberCache.enter(name, denots)
         } else if (Config.checkCacheMembersNamed) {
-          val denots1 = computeNPMembersNamed(name, inherited)
+          val denots1 = computeNPMembersNamed(name)
           assert(denots.exists == denots1.exists, s"cache inconsistency: cached: $denots, computed $denots1, name = $name, owner = $this")
         }
         denots
-      } else computeNPMembersNamed(name, inherited)
+      } else computeNPMembersNamed(name)
     }
 
-    private[core] def computeNPMembersNamed(name: Name, inherited: Boolean)(implicit ctx: Context): PreDenotation = /*>|>*/ Stats.track("computeNPMembersNamed") /*<|<*/ {
+    private[core] def computeNPMembersNamed(name: Name)(implicit ctx: Context): PreDenotation = /*>|>*/ Stats.track("computeNPMembersNamed") /*<|<*/ {
       Stats.record("computeNPMembersNamed after fingerprint")
       ensureCompleted()
       val ownDenots = info.decls.denotsNamed(name, selectNonPrivate)
@@ -1567,7 +1567,7 @@ object SymDenotations {
           p.symbol.denot match {
             case parentd: ClassDenotation =>
               denots1 union
-                parentd.nonPrivateMembersNamed(name, inherited = true)
+                parentd.nonPrivateMembersNamed(name)
                 .mapInherited(ownDenots, denots1, thisType)
             case _ =>
               denots1
@@ -1771,19 +1771,19 @@ object SymDenotations {
      *  object that hides a class or object in the scala package of the same name, because
      *  the behavior would then be unintuitive for such members.
      */
-    override def computeNPMembersNamed(name: Name, inherited: Boolean)(implicit ctx: Context): PreDenotation =
+    override def computeNPMembersNamed(name: Name)(implicit ctx: Context): PreDenotation =
       packageObj.moduleClass.denot match {
         case pcls: ClassDenotation if !pcls.isCompleting =>
           if (symbol eq defn.ScalaPackageClass) {
-            val denots = super.computeNPMembersNamed(name, inherited)
-            if (denots.exists) denots else pcls.computeNPMembersNamed(name, inherited)
+            val denots = super.computeNPMembersNamed(name)
+            if (denots.exists) denots else pcls.computeNPMembersNamed(name)
           }
           else {
-            val denots = pcls.computeNPMembersNamed(name, inherited)
-            if (denots.exists) denots else super.computeNPMembersNamed(name, inherited)
+            val denots = pcls.computeNPMembersNamed(name)
+            if (denots.exists) denots else super.computeNPMembersNamed(name)
           }
         case _ =>
-          super.computeNPMembersNamed(name, inherited)
+          super.computeNPMembersNamed(name)
       }
 
     /** The union of the member names of the package and the package object */

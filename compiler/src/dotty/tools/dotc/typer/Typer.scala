@@ -387,27 +387,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
   }
 
   private def typedSelect(tree: untpd.Select, pt: Type, qual: Tree)(implicit ctx: Context): Select =
-    healNonvariant(
-      checkValue(assignType(cpy.Select(tree)(qual, tree.name), qual), pt),
-      pt)
-
-  /** Let `tree = p.n` where `p: T`. If tree's type is an unsafe instantiation
-   *  (see TypeOps#asSeenFrom for how this can happen), rewrite the prefix `p`
-   *  to `(p: <unknown skolem of type T>)` and try again with the new (stable)
-   *  prefix. If the result has another unsafe instantiation, raise an error.
-   */
-  private def healNonvariant[T <: Tree](tree: T, pt: Type)(implicit ctx: Context): T  =
-    if (ctx.unsafeNonvariant == ctx.runId && tree.tpe.widen.hasUnsafeNonvariant)
-      tree match {
-        case tree @ Select(qual, _) if !qual.tpe.isStable =>
-          val alt = typedSelect(tree, pt, Typed(qual, TypeTree(SkolemType(qual.tpe.widen))))
-          typr.println(i"healed type: ${tree.tpe} --> $alt")
-          alt.asInstanceOf[T]
-        case _ =>
-          ctx.error(ex"unsafe instantiation of type ${tree.tpe}", tree.pos)
-          tree
-      }
-    else tree
+    checkValue(assignType(cpy.Select(tree)(qual, tree.name), qual), pt)
 
   def typedSelect(tree: untpd.Select, pt: Type)(implicit ctx: Context): Tree = track("typedSelect") {
     def typeSelectOnTerm(implicit ctx: Context): Tree = {
@@ -617,8 +597,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
                 case lhsCore: RefTree if setter.exists =>
                   val setterTypeRaw = pre.select(setterName, setter)
                   val setterType = ensureAccessible(setterTypeRaw, isSuperSelection(lhsCore), tree.pos)
-                  val lhs2 = healNonvariant(
-                    untpd.rename(lhsCore, setterName).withType(setterType), WildcardType)
+                  val lhs2 = untpd.rename(lhsCore, setterName).withType(setterType)
                   typedUnadapted(untpd.Apply(untpd.TypedSplice(lhs2), tree.rhs :: Nil))
                 case _ =>
                   reassignmentToVal
@@ -1428,7 +1407,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
       val impl1 = cpy.Template(impl)(constr1, parents1, self1, body1)
         .withType(dummy.nonMemberTermRef)
       checkVariance(impl1)
-      if (!cls.is(AbstractOrTrait) && !ctx.isAfterTyper) checkRealizableBounds(cls.typeRef, cdef.namePos)
+      if (!cls.is(AbstractOrTrait) && !ctx.isAfterTyper) checkRealizableBounds(cls.thisType, cdef.namePos)
       val cdef1 = assignType(cpy.TypeDef(cdef)(name, impl1), cls)
       if (ctx.phase.isTyper && cdef1.tpe.derivesFrom(defn.DynamicClass) && !ctx.dynamicsEnabled) {
         val isRequired = parents1.exists(_.tpe.isRef(defn.DynamicClass))

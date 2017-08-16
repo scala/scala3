@@ -19,131 +19,76 @@ import ast.tpd._
 trait TypeOps { this: Context => // TODO: Make standalone object.
 
   /** The type `tp` as seen from prefix `pre` and owner `cls`. See the spec
-   *  for what this means. Called very often, so the code is optimized heavily.
-   *
-   *  A tricky aspect is what to do with unstable prefixes. E.g. say we have a class
-   *
-   *    class C { type T; def f(x: T): T }
-   *
-   *  and an expression `e` of type `C`. Then computing the type of `e.f` leads
-   *  to the query asSeenFrom(`C`, `(x: T)T`). What should its result be? The
-   *  naive answer `(x: C#T)C#T` is incorrect given that we treat `C#T` as the existential
-   *  `exists(c: C)c.T`. What we need to do instead is to skolemize the existential. So
-   *  the answer would be `(x: c.T)c.T` for some (unknown) value `c` of type `C`.
-   *  `c.T` is expressed in the compiler as a skolem type `Skolem(C)`.
-   *
-   *  Now, skolemization is messy and expensive, so we want to do it only if we absolutely
-   *  must. Also, skolemizing immediately would mean that asSeenFrom was no longer
-   *  idempotent - each call would return a type with a different skolem.
-   *  Instead we produce an annotated type that marks the prefix as unsafe:
-   *
-   *     (x: (C @ UnsafeNonvariant)#T)C#T
-   *
-   *  We also set a global state flag `unsafeNonvariant` to the current run.
-   *  When typing a Select node, typer will check that flag, and if it
-   *  points to the current run will scan the result type of the select for
-   *  @UnsafeNonvariant annotations. If it finds any, it will introduce a skolem
-   *  constant for the prefix and try again.
-   *
-   *  The scheme is efficient in particular because we expect that unsafe situations are rare;
-   *  most compiles would contain none, so no scanning would be necessary.
+   *  for what this means.
    */
   final def asSeenFrom(tp: Type, pre: Type, cls: Symbol): Type =
-    asSeenFrom(tp, pre, cls, null)
+    new AsSeenFromMap(pre, cls).apply(tp)
 
-  /** Helper method, taking a map argument which is instantiated only for more
-   *  complicated cases of asSeenFrom.
-   */
-  private def asSeenFrom(tp: Type, pre: Type, cls: Symbol, theMap: AsSeenFromMap): Type = {
+  /** The TypeMap handling the asSeenFrom */
+  class AsSeenFromMap(pre: Type, cls: Symbol) extends ApproximatingTypeMap {
 
-    /** Map a `C.this` type to the right prefix. If the prefix is unstable and
-     *  the `C.this` occurs in nonvariant or contravariant position, mark the map
-     *  to be unstable.
-     */
-    def toPrefix(pre: Type, cls: Symbol, thiscls: ClassSymbol): Type = /*>|>*/ ctx.conditionalTraceIndented(TypeOps.track, s"toPrefix($pre, $cls, $thiscls)") /*<|<*/ {
-      if ((pre eq NoType) || (pre eq NoPrefix) || (cls is PackageClass))
-        tp
-      else pre match {
-        case pre: SuperType => toPrefix(pre.thistpe, cls, thiscls)
-        case _ =>
-          if (thiscls.derivesFrom(cls) && pre.baseTypeRef(thiscls).exists) {
-            if (theMap != null && theMap.currentVariance <= 0 && !isLegalPrefix(pre)) {
-              ctx.base.unsafeNonvariant = ctx.runId
-              pre match {
-                case AnnotatedType(_, ann) if ann.symbol == defn.UnsafeNonvariantAnnot => pre
-                case _ => AnnotatedType(pre, Annotation(defn.UnsafeNonvariantAnnot, Nil))
-              }
-            }
-            else pre
-          }
-          else if ((pre.termSymbol is Package) && !(thiscls is Package))
-            toPrefix(pre.select(nme.PACKAGE), cls, thiscls)
-          else
-            toPrefix(pre.baseTypeRef(cls).normalizedPrefix, cls.owner, thiscls)
-      }
-    }
+    def apply(tp: Type): Type = {
 
-    /*>|>*/ ctx.conditionalTraceIndented(TypeOps.track, s"asSeen ${tp.show} from (${pre.show}, ${cls.show})", show = true) /*<|<*/ { // !!! DEBUG
-      tp match {
-        case tp: NamedType =>
-          val sym = tp.symbol
-          if (sym.isStatic) tp
-          else {
-            val pre1 = asSeenFrom(tp.prefix, pre, cls, theMap)
-            if (pre1.isUnsafeNonvariant) {
-              val safeCtx = ctx.withProperty(TypeOps.findMemberLimit, Some(()))
-              pre1.member(tp.name)(safeCtx).info match {
-                case TypeAlias(alias) =>
-                  // try to follow aliases of this will avoid skolemization.
-                  return alias
-                case _ =>
-              }
-            }
-            tp.derivedSelect(pre1)
-          }
-        case tp: ThisType =>
-          toPrefix(pre, cls, tp.cls)
-        case _: BoundType | NoPrefix =>
+      /** Map a `C.this` type to the right prefix. If the prefix is unstable and
+      *  the `C.this` occurs in nonvariant or contravariant position, mark the map
+      *  to be unstable.
+      */
+      def toPrefix(pre: Type, cls: Symbol, thiscls: ClassSymbol): Type = /*>|>*/ ctx.conditionalTraceIndented(TypeOps.track, s"toPrefix($pre, $cls, $thiscls)") /*<|<*/ {
+        if ((pre eq NoType) || (pre eq NoPrefix) || (cls is PackageClass))
           tp
-        case tp: RefinedType =>
-          tp.derivedRefinedType(
-            asSeenFrom(tp.parent, pre, cls, theMap),
-            tp.refinedName,
-            asSeenFrom(tp.refinedInfo, pre, cls, theMap))
-        case tp: TypeAlias if tp.variance == 1 => // if variance != 1, need to do the variance calculation
-          tp.derivedTypeAlias(asSeenFrom(tp.alias, pre, cls, theMap))
-        case _ =>
-          (if (theMap != null) theMap else new AsSeenFromMap(pre, cls))
-            .mapOver(tp)
+        else pre match {
+          case pre: SuperType => toPrefix(pre.thistpe, cls, thiscls)
+          case _ =>
+            if (thiscls.derivesFrom(cls) && pre.baseTypeRef(thiscls).exists)
+              if (variance <= 0 && !isLegalPrefix(pre)) range(pre.bottomType, pre)
+              else pre
+            else if ((pre.termSymbol is Package) && !(thiscls is Package))
+              toPrefix(pre.select(nme.PACKAGE), cls, thiscls)
+            else
+              toPrefix(pre.baseTypeRef(cls).normalizedPrefix, cls.owner, thiscls)
+        }
+      }
+
+      /*>|>*/ ctx.conditionalTraceIndented(TypeOps.track, s"asSeen ${tp.show} from (${pre.show}, ${cls.show})", show = true) /*<|<*/ { // !!! DEBUG
+        tp match {
+          case tp: NamedType => // inlined for performance; TODO: factor out into inline method
+            if (tp.symbol.isStatic) tp
+            else {
+              val saved = variance
+              variance = variance max 0
+              val prefix1 = this(tp.prefix)
+              variance = saved
+              derivedSelect(tp, prefix1)
+            }
+          case tp: ThisType =>
+            toPrefix(pre, cls, tp.cls)
+          case _: BoundType | NoPrefix =>
+            tp
+          case tp: RefinedType =>
+            derivedRefinedType(tp, apply(tp.parent), apply(tp.refinedInfo))
+          case tp: TypeAlias if tp.variance == 1 => // if variance != 1, need to do the variance calculation
+            derivedTypeAlias(tp, apply(tp.alias))
+          case _ =>
+            mapOver(tp)
+        }
       }
     }
+
+    override def reapply(tp: Type) =
+      // derives infos have already been subjected to asSeenFrom, hence to need to apply the map again.
+      tp
   }
 
   private def isLegalPrefix(pre: Type)(implicit ctx: Context) =
     pre.isStable || !ctx.phase.isTyper
 
-  /** The TypeMap handling the asSeenFrom in more complicated cases */
-  class AsSeenFromMap(pre: Type, cls: Symbol) extends TypeMap {
-    def apply(tp: Type) = asSeenFrom(tp, pre, cls, this)
-
-    /** A method to export the current variance of the map */
-    def currentVariance = variance
-  }
-
   /** Approximate a type `tp` with a type that does not contain skolem types. */
   object deskolemize extends ApproximatingTypeMap {
-    private var seen: Set[SkolemType] = Set()
-    def apply(tp: Type) = tp match {
-      case tp: SkolemType =>
-        if (seen contains tp) NoType
-        else {
-          val saved = seen
-          seen += tp
-          try approx(hi = tp.info)
-          finally seen = saved
-        }
-      case _ =>
-        mapOver(tp)
+    def apply(tp: Type) = /*ctx.traceIndented(i"deskolemize($tp) at $variance", show = true)*/ {
+      tp match {
+        case tp: SkolemType => range(tp.bottomType, atVariance(1)(apply(tp.info)))
+        case _ => mapOver(tp)
+      }
     }
   }
 
