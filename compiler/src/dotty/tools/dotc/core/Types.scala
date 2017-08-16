@@ -3926,13 +3926,9 @@ object Types {
           | _: BoundType
           | NoPrefix => tp
 
-        case tp: AppliedType => // @!!! use atVariance
-          def mapArg(arg: Type, tparam: ParamInfo): Type = {
-            val saved = variance
-            variance *= tparam.paramVariance
-            try this(arg)
-            finally variance = saved
-          }
+        case tp: AppliedType =>
+          def mapArg(arg: Type, tparam: ParamInfo): Type =
+            atVariance(variance * tparam.paramVariance)(this(arg))
           derivedAppliedType(tp, this(tp.tycon),
               tp.args.zipWithConserve(tp.typeParams)(mapArg))
 
@@ -3974,11 +3970,7 @@ object Types {
           mapOverLambda
 
         case tp @ TypeArgRef(prefix, _, _) =>
-          val saved = variance
-          variance = 0
-          val prefix1 = this(prefix)
-          variance = saved
-          derivedTypeArgRef(tp, prefix1)
+          derivedTypeArgRef(tp, atVariance(0)(this(prefix)))
 
         case tp @ SuperType(thistp, supertp) =>
           derivedSuperType(tp, this(thistp), this(supertp))
@@ -4359,13 +4351,9 @@ object Types {
             assert(tparams.isEmpty)
             x
           }
-          else { // @@!!! use atVariance
+          else {
             val tparam = tparams.head
-            val saved = variance
-            variance *= tparam.paramVariance
-            val acc =
-              try this(x, args.head)
-              finally variance = saved
+            val acc = atVariance(variance * tparam.paramVariance)(this(x, args.head))
             foldArgs(acc, tparams.tail, args.tail)
           }
         foldArgs(this(x, tycon), tp.typeParams, args)
