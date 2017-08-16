@@ -181,8 +181,10 @@ class InteractiveDriver(settings: List[String]) extends Driver {
 
   private def cleanup(tree: tpd.Tree)(implicit ctx: Context): Unit = tree.foreachSubTree { t =>
     if (t.hasType) {
-      if (t.symbol.exists && !t.symbol.isCompleted)
-        t.symbol.info = UnspecifiedErrorType
+      if (t.symbol.exists) {
+        if (!t.symbol.isCompleted) t.symbol.info = UnspecifiedErrorType
+        t.symbol.annotations.foreach(annot => cleanup(annot.tree))
+      }
     }
     t.removeAllAttachments()
   }
