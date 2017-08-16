@@ -308,12 +308,12 @@ object PatternMatcher {
           if (scrutinee.info.isNotNull || nonNull(scrutinee)) unappPlan
           else TestPlan(NonNullTest, scrutinee, tree.pos, unappPlan, onFailure)
         case Bind(name, body) =>
-          val body1 = patternPlan(scrutinee, body, onSuccess, onFailure)
-          if (name == nme.WILDCARD) body1
+          if (name == nme.WILDCARD) patternPlan(scrutinee, body, onSuccess, onFailure)
           else {
+            // The type of `name` may refer to val in `body`, therefore should come after `body`
             val bound = tree.symbol.asTerm
             initializer(bound) = ref(scrutinee)
-            LetPlan(bound, body1)
+            patternPlan(scrutinee, body, LetPlan(bound, onSuccess), onFailure)
           }
         case Alternative(alts) =>
           labelAbstract(onSuccess) { ons =>
@@ -839,7 +839,12 @@ object PatternMatcher {
           else
             If(emitCondition(plan).withPos(plan.pos), emit(plan.onSuccess), emit(plan.onFailure))
         case LetPlan(sym, body) =>
-          seq(ValDef(sym, initializer(sym).ensureConforms(sym.info)) :: Nil, emit(body))
+          (sym.info, initializer(sym)) match {
+            case (tmref: TermRef, _: RefTree) if tmref.isStable =>                // check #1463, no type cast needed
+              seq(ValDef(sym, ref(tmref)) :: Nil, emit(body))
+            case (_, init) =>
+              seq(ValDef(sym, init.ensureConforms(sym.info)) :: Nil, emit(body))
+          }
         case LabelledPlan(label, body, params) =>
           label.info = MethodType.fromSymbols(params, resultType)
           val labelDef = DefDef(label, Nil, params :: Nil, resultType, emit(labelled(label)))
