@@ -413,6 +413,9 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
               // of an `AndType` can lead to a cascade of subtyping checks
               // This twist is needed to make collection/generic/ParFactory.scala compile
               fourthTry(tp1, tp2) || compareRefinedSlow
+            case tp1: HKTypeLambda =>
+              // HKTypeLambdas do not have members.
+              fourthTry(tp1, tp2)
             case _ =>
               compareRefinedSlow || fourthTry(tp1, tp2)
           }
