@@ -179,6 +179,14 @@ class InteractiveDriver(settings: List[String]) extends Driver {
 
   private val compiler: Compiler = new InteractiveCompiler
 
+  private def cleanup(tree: tpd.Tree)(implicit ctx: Context): Unit = tree.foreachSubTree { t =>
+    if (t.hasType) {
+      if (t.symbol.exists && !t.symbol.isCompleted)
+        t.symbol.info = UnspecifiedErrorType
+    }
+    t.removeAllAttachments()
+  }
+
   def run(uri: URI, sourceCode: String): List[MessageContainer] = {
     val previousCtx = myCtx
     try {
@@ -200,6 +208,7 @@ class InteractiveDriver(settings: List[String]) extends Driver {
       run.compileSources(List(source))
       run.printSummary()
       val t = run.units.head.tpdTree
+      cleanup(t)
       myOpenedTrees(uri) = topLevelClassTrees(t, source)
 
       reporter.removeBufferedMessages

@@ -92,5 +92,8 @@ object Attachment {
       assert(!getAttachment(key).isDefined, s"duplicate attachment for key $key")
       next = new Link(key, value, next)
     }
+
+    final def removeAllAttachments() =
+      next = null
   }
 }
