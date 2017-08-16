@@ -113,7 +113,7 @@ class Run(comp: Compiler, ictx: Context) {
     ctx.usePhases(phases)
     var lastPrintedTree: PrintedTree = NoPrintedTree
     for (phase <- ctx.allPhases)
-      if (!ctx.reporter.hasErrors) {
+      if (phase.isRunnable) {
         val start = System.currentTimeMillis
         units = phase.runOn(units)
         if (ctx.settings.Xprint.value.containsPhase(phase)) {
