@@ -39,7 +39,7 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
         else pre match {
           case pre: SuperType => toPrefix(pre.thistpe, cls, thiscls)
           case _ =>
-            if (thiscls.derivesFrom(cls) && pre.baseTypeRef(thiscls).exists)
+            if (thiscls.derivesFrom(cls) && pre.baseType(thiscls).exists)
               if (variance <= 0 && !isLegalPrefix(pre)) range(pre.bottomType, pre)
               else pre
             else if ((pre.termSymbol is Package) && !(thiscls is Package))
@@ -60,7 +60,7 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
             if (tparams.head.eq(tparam))
               return args.head match {
                 case bounds: TypeBounds =>
-                  val v = currentVariance
+                  val v = variance
                   if (v > 0) bounds.hi
                   else if (v < 0) bounds.lo
                   else TypeArgRef(pre, cls.typeRef, idx)
@@ -288,7 +288,7 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
    *  all (possibly applied) references to classes.
    */
   def normalizeToClassRefs(parents: List[Type], cls: ClassSymbol, decls: Scope): List[Type] = {
-    if (Config.newScheme) return parents.mapConserve(_.dealias)
+    if (Config.newScheme) return parents.mapConserve(_.dealias) // !@@@ track and eliminate usages?
     // println(s"normalizing $parents of $cls in ${cls.owner}") // !!! DEBUG
 
     // A map consolidating all refinements arising from parent type parameters
