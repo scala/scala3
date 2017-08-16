@@ -172,11 +172,9 @@ object TypeApplications {
     }
 
     def apply(t: Type) = t match {
-      case t @ TypeAlias(alias) =>
-        applyArg(alias) match {
-          case arg1: TypeBounds => arg1
-          case arg1 => t.derivedTypeAlias(arg1)
-        }
+      case t @ TypeAlias(p: TypeParamRef) if hasWildcardArg(p) && canReduceWildcard(p) =>
+        available -= p.paramNum // @!!! needed in the future?
+        args(p.paramNum)
       case t @ AppliedType(tycon, args1) if tycon.typeSymbol.isClass =>
         t.derivedAppliedType(apply(tycon), args1.mapConserve(applyArg))
       case p: TypeParamRef if p.binder == tycon =>
