@@ -4044,12 +4044,12 @@ object Types {
   abstract class DeepTypeMap(implicit ctx: Context) extends TypeMap {
     override def mapClassInfo(tp: ClassInfo) = {
       val prefix1 = this(tp.prefix)
-      val parentRefs1 = (tp.parentRefs mapConserve this).asInstanceOf[List[TypeRef]]
+      val parents1 = tp.parentsNEW mapConserve this
       val selfInfo1 = tp.selfInfo match {
         case selfInfo: Type => this(selfInfo)
         case selfInfo => selfInfo
       }
-      tp.derivedClassInfo(prefix1, parentRefs1, tp.decls, selfInfo1)
+      tp.derivedClassInfo(prefix1, parents1, tp.decls, selfInfo1)
     }
   }
 
@@ -4280,7 +4280,7 @@ object Types {
       if (prefix.exists) tp.derivedTypeArgRef(prefix)
       else {
         val paramBounds = tp.underlying
-        approx(paramBounds.loBound, paramBounds.hiBound)
+        range(paramBounds.loBound, paramBounds.hiBound)
       }
 
     override protected def derivedAnnotatedType(tp: AnnotatedType, underlying: Type, annot: Annotation) =
