@@ -3,6 +3,7 @@ package dotty.tools
 import dotc.core.Contexts.Context
 import dotc.core.Symbols.Symbol
 import dotc.core.Denotations.Denotation
+import dotc.reporting.diagnostic.MessageContainer
 
 import dotc.reporting.{
   StoreReporter,
@@ -36,5 +37,13 @@ package object repl {
 
       text.mkString(ctx.settings.pageWidth.value)
     }
+  }
+
+  private[repl] implicit class StoreReporterContext(ctx: Context) extends AnyVal {
+    def flushBufferedMessages(): List[MessageContainer] =
+      ctx.reporter match {
+        case rep: StoreReporter => rep.removeBufferedMessages(ctx)
+        case _ => Nil
+      }
   }
 }

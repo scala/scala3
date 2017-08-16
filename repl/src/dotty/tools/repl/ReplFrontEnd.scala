@@ -14,6 +14,8 @@ import dotc.core.Contexts.Context
 private[repl] class REPLFrontEnd extends FrontEnd {
   override def phaseName = "replFrontEnd"
 
+  override def isRunnable(implicit ctx: Context) = true
+
   override def runOn(units: List[CompilationUnit])(implicit ctx: Context) = {
     val unitContexts = for (unit <- units) yield ctx.fresh.setCompilationUnit(unit)
     var remaining = unitContexts

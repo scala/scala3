@@ -51,8 +51,10 @@ class ReplCompiler(val directory: AbstractFile) extends Compiler {
 
   sealed case class Definitions(stats: List[untpd.Tree], state: State)
 
-  def definitions(trees: List[untpd.Tree], state: State)(implicit ctx: Context): Result[Definitions] = {
+  def definitions(trees: List[untpd.Tree], state: State): Result[Definitions] = {
     import untpd._
+
+    implicit val ctx: Context = state.run.runContext
 
     def createShow(name: TermName, pos: Position) = {
       val showName = name ++ "Show"
@@ -128,9 +130,11 @@ class ReplCompiler(val directory: AbstractFile) extends Compiler {
    *  }
    *  ```
    */
-  def wrapped(defs: Definitions)(implicit ctx: Context): untpd.PackageDef = {
+  def wrapped(defs: Definitions): untpd.PackageDef = {
     import untpd._
     import dotc.core.StdNames._
+
+    implicit val ctx: Context = defs.state.run.runContext
 
     val module = {
       val tmpl = Template(emptyConstructor(ctx), Nil, EmptyValDef, defs.stats)
@@ -144,34 +148,31 @@ class ReplCompiler(val directory: AbstractFile) extends Compiler {
     PackageDef(Ident(nme.EMPTY_PACKAGE), module)
   }
 
-  def newRun(state: State, initCtx: Context, reporter: Reporter) = new Run(this, initCtx) {
+  def newRun(state: State, initCtx: Context) = new Run(this, initCtx) {
     override protected[this] def rootContext(implicit ctx: Context) =
-      addMagicImports(super.rootContext, state).fresh.setReporter(reporter)
+      addMagicImports(super.rootContext.fresh.setReporter(storeReporter), state)
   }
 
-  def createUnit(defs: Definitions, sourceCode: String)(implicit ctx: Context): Result[CompilationUnit] = {
+  def createUnit(defs: Definitions, sourceCode: String): Result[CompilationUnit] = {
     val unit = new CompilationUnit(new SourceFile(s"ReplsSession$$${ defs.state.objectIndex }", sourceCode))
     unit.untpdTree = wrapped(defs)
     unit.result
   }
 
-  def runCompilation(unit: CompilationUnit, state: State, initCtx: Context): Result[State] = {
-    val reporter = storeReporter
-
-    val run = newRun(state, initCtx, reporter)
+  def runCompilation(unit: CompilationUnit, state: State): Result[State] = {
+    val run = state.run
+    val reporter = state.run.runContext.reporter
     run.compileUnits(unit :: Nil)
 
-    if (!reporter.hasErrors)
-      state.copy(ctx = run.runContext).result
-    else
-      reporter.removeBufferedMessages(state.ctx).errors
+    if (!reporter.hasErrors) state.result
+    else run.runContext.flushBufferedMessages().errors
   }
 
-  def compile(parsed: Parsed, state: State, initCtx: Context): Result[(CompilationUnit, State)] = {
+  def compile(parsed: Parsed)(implicit state: State): Result[(CompilationUnit, State)] = {
     for {
-      defs  <- definitions(parsed.trees, state)(initCtx)
-      unit  <- createUnit(defs, parsed.sourceCode)(initCtx)
-      state <- runCompilation(unit, defs.state, initCtx)
+      defs  <- definitions(parsed.trees, state)
+      unit  <- createUnit(defs, parsed.sourceCode)
+      state <- runCompilation(unit, defs.state)
     } yield (unit, state)
   }
 
@@ -191,10 +192,10 @@ class ReplCompiler(val directory: AbstractFile) extends Compiler {
       }
   }
 
-  def typeOf(expr: String, state: State, rootCtx: Context): Result[String] =
-    typeCheck(expr, state, rootCtx).map { (tree, ictx) =>
+  def typeOf(expr: String)(implicit state: State): Result[String] =
+    typeCheck(expr).map { tree =>
       import dotc.ast.Trees._
-      implicit val ctx = ictx
+      implicit val ctx = state.run.runContext
       tree.rhs match {
         case Block(xs, _) => xs.last.tpe.widen.show
         case _ =>
@@ -205,7 +206,7 @@ class ReplCompiler(val directory: AbstractFile) extends Compiler {
       }
     }
 
-  def typeCheck(expr: String, state: State, rootCtx: Context, errorsAllowed: Boolean = false): Result[(tpd.ValDef, Context)] = {
+  def typeCheck(expr: String, errorsAllowed: Boolean = false)(implicit state: State): Result[tpd.ValDef] = {
 
     def wrapped(expr: String, sourceFile: SourceFile, state: State)(implicit ctx: Context): Result[untpd.PackageDef] = {
       def wrap(trees: Seq[untpd.Tree]): untpd.PackageDef = {
@@ -256,18 +257,20 @@ class ReplCompiler(val directory: AbstractFile) extends Compiler {
     }
 
 
-    val reporter = storeReporter
-    val run = newRun(state, rootCtx.fresh.setSetting(rootCtx.settings.YstopAfter, List("replFrontEnd")), reporter)
+    val run = state.run
+    val reporter = state.run.runContext.reporter
     val src = new SourceFile(s"EvaluateExpr", expr)
-    val runCtx = run.runContext
+    val runCtx =
+      run.runContext.fresh
+         .setSetting(run.runContext.settings.YstopAfter, List("replFrontEnd"))
 
     wrapped(expr, src, state)(runCtx).flatMap { pkg =>
       val unit = new CompilationUnit(src)
       unit.untpdTree = pkg
-      run.compileUnits(unit :: Nil)
+      run.compileUnits(unit :: Nil, runCtx.fresh.setReporter(storeReporter))
 
       if (errorsAllowed || !reporter.hasErrors)
-        unwrapped(unit.tpdTree, src)(runCtx).map((_, runCtx))
+        unwrapped(unit.tpdTree, src)(runCtx)
       else {
         reporter.removeBufferedMessages(runCtx).errors
       }

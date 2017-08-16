@@ -11,6 +11,7 @@ import dotc.ast.untpd
 import dotc.ast.tpd
 import dotc.interactive.{ SourceTree, Interactive }
 import dotc.core.Contexts.Context
+import dotc.Run
 import dotc.core.Mode
 import dotc.core.Flags._
 import dotc.core.Types._
@@ -19,8 +20,8 @@ import dotc.core.Names.Name
 import dotc.core.NameOps._
 import dotc.core.Symbols.{ Symbol, NoSymbol, defn }
 import dotc.core.Denotations.Denotation
-import dotc.core.NameKinds.SimpleNameKind
 import dotc.core.Types.{ ExprType, ConstantType }
+import dotc.core.NameKinds.SimpleNameKind
 import dotc.config.CompilerCommand
 import dotc.{ Compiler, Driver }
 import dotc.printing.SyntaxHighlighting
@@ -48,17 +49,21 @@ import results._
  *  @param valIndex the index of next value binding for free expressions
  *  @param history a list of user inputs as strings
  *  @param imports a list of tuples of imports on tree form and shown form
- *  @param ctx the latest run context created by the compiler. This is needed
- *             in order to inspect any trees after compilation
+ *  @param run TODO
  *
  */
-case class State(objectIndex: Int, // TODO: document
-                 valIndex: Int,    // TODO: document
+case class State(objectIndex: Int,
+                 valIndex: Int,
                  history: History,
                  imports: List[(untpd.Import, String)],
-                 ctx: Context) {
+                 run: Run) {
+
   def withHistory(newEntry: String) = copy(history = newEntry :: history)
+
   def withHistory(h: History) = copy(history = h)
+
+  def newRun(comp: ReplCompiler, rootCtx: Context): State =
+    copy(run = comp.newRun(this, rootCtx))
 }
 
 /** A list of possible completions at the index of `cursor`
@@ -69,27 +74,29 @@ case class State(objectIndex: Int, // TODO: document
  */
 case class Completions(cursor: Int,
                        suggestions: List[String],
-                       details: List[String]) // TODO: stuff
+                       details: List[String])
 
 /** Main REPL instance, orchestrating input, compilation and presentation */
 class ReplDriver(settings: Array[String], protected val out: PrintStream = System.out) extends Driver {
 
   // FIXME: Change the Driver API to not require implementing this method
-  override protected def newCompiler(implicit ctx: Context): Compiler =
-    ???
+  override protected def newCompiler(implicit ctx: Context): Compiler = ???
+
+  /** Overridden to `false` in order to not have to give sources on the
+   *  commandline
+   */
+  override def sourcesRequired = false
 
   /** Create a fresh and initialized context with IDE mode enabled */
   private[this] def initialCtx = {
     val rootCtx = initCtx.fresh.addMode(Mode.ReadPositions).addMode(Mode.Interactive)
-    val summary = CompilerCommand.distill(settings)(rootCtx)
-    val ictx = rootCtx.setSettings(summary.sstate)
+    val ictx = setup(settings.toArray, rootCtx)._2.fresh
     ictx.base.initialize()(ictx)
-    ictx.setReporter(storeReporter)
+    ictx
   }
 
   /** the initial, empty state of the REPL session */
-  protected[this] def initState =
-    State(0, 0, Nil, Nil, rootCtx)
+  protected[this] def initState = State(0, 0, Nil, Nil, compiler.newRun(rootCtx))
 
   /** Reset state of repl to the initial state
    *
@@ -122,24 +129,33 @@ class ReplDriver(settings: Array[String], protected val out: PrintStream = Syste
    *  `protected final` to facilitate testing.
    */
   @tailrec final def runUntilQuit(state: State = initState): State = {
-    val res = readLine(state)
+    val res = readLine()(state)
+
     if (res == Quit) state
-    else runUntilQuit(interpret(res, state))
+    else {
+      // readLine potentially destroys the run, so a new one is needed for the
+      // rest of the interpretation:
+      implicit val freshState = state.newRun(compiler, rootCtx)
+      runUntilQuit(interpret(res))
+    }
   }
 
-  final def run(input: String, state: State): State =
-    run(ParseResult(input)(state.ctx), state)
+  final def run(input: String)(implicit state: State): State = {
+    val freshState = state.newRun(compiler, rootCtx)
+    run(ParseResult(input)(freshState.run.runContext))(freshState)
+  }
 
-  final def run(res: ParseResult, state: State): State =
-    interpret(res, state)
+  final def run(res: ParseResult)(implicit state: State): State =
+    interpret(res)
 
   /** Extract possible completions at the index of `cursor` in `expr` */
-  protected[this] final def completions(cursor: Int, expr: String, state: State): Completions =
+  protected[this] final def completions(cursor: Int, expr: String, state0: State): Completions = {
     // TODO move some of this logic to `Interactive`
+    implicit val state = state0.newRun(compiler, rootCtx)
     compiler
-      .typeCheck(expr, state, rootCtx, errorsAllowed = true)
-      .map { (tree, ictx) =>
-        implicit val ctx: Context = ictx
+      .typeCheck(expr, errorsAllowed = true)
+      .map { tree =>
+        implicit val ctx: Context = state.run.runContext
         val file = new dotc.util.SourceFile("compl", expr)
         val srcPos = dotc.util.SourcePosition(file, Position(cursor))
         val (startOffset, completions) = Interactive.completions(SourceTree(tree, file) :: Nil, srcPos)(ctx)
@@ -157,56 +173,54 @@ class ReplDriver(settings: Array[String], protected val out: PrintStream = Syste
         )
       }
       .fold(_ => Completions(cursor, Nil, Nil), x => x)
+  }
 
   /** Blockingly read a line, getting back a parse result and new history */
-  private def readLine(state: State): ParseResult =
-    AmmoniteReader(out, state.history, completions(_, _, state))(rootCtx).prompt
+  private def readLine()(implicit state: State): ParseResult =
+    AmmoniteReader(out, state.history, completions(_, _, state))(state.run.runContext).prompt
 
   private def extractImports(trees: List[untpd.Tree])(implicit context: Context): List[(untpd.Import, String)] =
     trees.collect { case imp: untpd.Import => (imp, imp.show) }
 
-  private def interpret(res: ParseResult, state: State): State =
+  private def interpret(res: ParseResult)(implicit state: State): State =
     res match {
       case parsed: Parsed =>
-        compile(parsed, state).withHistory(parsed.sourceCode :: state.history)
+        compile(parsed).withHistory(parsed.sourceCode :: state.history)
 
       case SyntaxErrors(src, errs, _) =>
-        displayErrors(errs)(state.ctx)
+        displayErrors(errs)
         state.withHistory(src :: state.history)
 
       case Newline | SigKill => state
 
-      case cmd: Command =>
-        interpretCommand(cmd, state)
+      case cmd: Command => interpretCommand(cmd)
     }
 
   /** Compile `parsed` trees and evolve `state` in accordance */
-  protected[this] final def compile(parsed: Parsed, state: State): State = {
+  protected[this] final def compile(parsed: Parsed)(implicit state: State): State = {
     def extractNewestWrapper(tree: untpd.Tree): Name = tree match {
       case untpd.PackageDef(_, (obj: untpd.ModuleDef) :: Nil) => obj.name.moduleClassName
       case _ => nme.NO_NAME
     }
 
     compiler
-      .compile(parsed, state, rootCtx)
+      .compile(parsed)
       .fold(
-        errors => {
-          displayErrors(errors)(rootCtx)
-          state
-        },
+        displayErrors,
         (unit, newState) => {
-          val newestWrapper =
-            extractNewestWrapper(unit.untpdTree)
-          val newStateWithImports =
-            newState.copy(imports = newState.imports ++ extractImports(parsed.trees)(newState.ctx))
+          val newestWrapper = extractNewestWrapper(unit.untpdTree)
+          val newImports = newState.imports ++ extractImports(parsed.trees)(newState.run.runContext)
+          val newStateWithImports = newState.copy(imports = newImports)
 
-          displayDefinitions(unit.tpdTree, newestWrapper, newStateWithImports)(newState.ctx)
+          displayDefinitions(unit.tpdTree, newestWrapper)(newStateWithImports)
         }
       )
   }
 
   /** Display definitions from `tree` */
-  private def displayDefinitions(tree: tpd.Tree, newestWrapper: Name, state: State)(implicit ctx: Context): State = {
+  private def displayDefinitions(tree: tpd.Tree, newestWrapper: Name)(implicit state: State): State = {
+    implicit val ctx = state.run.runContext
+
     def resAndUnit(denot: Denotation) = {
       import scala.util.{ Try, Success }
       val sym = denot.symbol
@@ -277,7 +291,7 @@ class ReplDriver(settings: Array[String], protected val out: PrintStream = Syste
   }
 
   /** Interpret `cmd` to action and propagate potentially new `state` */
-  private def interpretCommand(cmd: Command, state: State): State = cmd match {
+  private def interpretCommand(cmd: Command)(implicit state: State): State = cmd match {
     case UnknownCommand(cmd) => {
       out.println(s"""Unknown command: "$cmd", run ":help" for a list of commands""")
       state.withHistory(s":$cmd")
@@ -302,12 +316,11 @@ class ReplDriver(settings: Array[String], protected val out: PrintStream = Syste
       val loadCmd = s"${Load.command} $path"
       if ((new java.io.File(path)).exists) {
         val contents = scala.io.Source.fromFile(path).mkString
-        ParseResult(contents)(state.ctx) match {
+        ParseResult(contents)(state.run.runContext) match {
           case parsed: Parsed =>
-            compile(parsed, state).withHistory(loadCmd)
+            compile(parsed).withHistory(loadCmd)
           case SyntaxErrors(_, errors, _) =>
-            displayErrors(errors)(rootCtx)
-            state.withHistory(loadCmd)
+            displayErrors(errors).withHistory(loadCmd)
           case _ =>
             state.withHistory(loadCmd)
         }
@@ -318,9 +331,9 @@ class ReplDriver(settings: Array[String], protected val out: PrintStream = Syste
       }
 
     case Type(expr) => {
-      compiler.typeOf(expr, state, rootCtx).fold(
-        errors => displayErrors(errors)(state.ctx),
-        res    => out.println(SyntaxHighlighting(res))
+      compiler.typeOf(expr).fold(
+        displayErrors,
+        res => out.println(SyntaxHighlighting(res))
       )
       state.withHistory(s"${Type.command} $expr")
     }
@@ -351,6 +364,8 @@ class ReplDriver(settings: Array[String], protected val out: PrintStream = Syste
     messageRenderer.messageAndPos(cont.contained(), cont.pos, messageRenderer.diagnosticLevel(cont))
 
   /** Output errors to `out` */
-  private def displayErrors(errs: Seq[MessageContainer])(implicit ctx: Context): Unit =
-    errs.map(renderMessage(_)(ctx)).foreach(out.println)
+  private def displayErrors(errs: Seq[MessageContainer])(implicit state: State): State = {
+    errs.map(renderMessage(_)(state.run.runContext)).foreach(out.println)
+    state
+  }
 }

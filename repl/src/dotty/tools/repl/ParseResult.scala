@@ -117,7 +117,7 @@ object ParseResult {
 
         if (ctx.reporter.hasErrors) {
           SyntaxErrors(sourceCode,
-                       ctx.reporter.asInstanceOf[StoreReporter].removeBufferedMessages,
+                       ctx.flushBufferedMessages(),
                        stats)
         }
         else

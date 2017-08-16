@@ -3,6 +3,7 @@ package repl
 
 import java.io.{ OutputStream, PrintStream, ByteArrayOutputStream }
 import org.junit.{ Before, After }
+import dotc.core.Contexts.Context
 import org.junit.Assert.fail
 
 import dotc.reporting.diagnostic.MessageContainer
@@ -48,6 +49,23 @@ class ReplTest extends ReplDriver(
   /** Get the stored output from `out`, resetting the `StoringPrintStream` */
   def storedOutput(): String =
     out.asInstanceOf[StoringPrintStream].flushStored()
+
+  protected implicit def toParsed(expr: String): implicit Context => Parsed = {
+    ParseResult(expr) match {
+      case pr: Parsed => pr
+      case pr =>
+        throw new java.lang.AssertionError(s"Expected parsed, got: $pr")
+    }
+  }
+
+  protected def withState[A](op: implicit (State, Context) => A): A =
+    fromState(initState)(op)
+
+  protected def fromState[A](state: State)(op: implicit (State, Context) => A): A = {
+    implicit val nState = state.newRun(compiler, rootCtx)
+    implicit val runCtx = nState.run.runContext
+    op
+  }
 
   /** Make sure the context is new before each test */
   @Before def init(): Unit =
