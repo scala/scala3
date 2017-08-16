@@ -436,7 +436,7 @@ class TreeChecker extends Phase with SymTransformer {
     override def ensureNoLocalRefs(tree: Tree, pt: Type, localSyms: => List[Symbol])(implicit ctx: Context): Tree =
       tree
 
-    override def adapt(tree: Tree, pt: Type, original: untpd.Tree = untpd.EmptyTree)(implicit ctx: Context) = {
+    override def adapt(tree: Tree, pt: Type)(implicit ctx: Context) = {
       def isPrimaryConstructorReturn =
         ctx.owner.isPrimaryConstructor && pt.isRef(ctx.owner.owner) && tree.tpe.isRef(defn.UnitClass)
       if (ctx.mode.isExpr &&

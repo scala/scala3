@@ -238,7 +238,7 @@ object ProtoTypes {
      */
     def typedArg(arg: untpd.Tree, formal: Type)(implicit ctx: Context): Tree = {
       val targ = cacheTypedArg(arg, typer.typedUnadapted(_, formal))
-      typer.adapt(targ, formal, arg)
+      typer.adapt(targ, formal)
     }
 
     /** The type of the argument `arg`.
