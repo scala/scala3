@@ -28,8 +28,6 @@ class InteractiveDriver(settings: List[String]) extends Driver {
   import tpd._
   import InteractiveDriver._
 
-  // FIXME: Change the Driver API to not require implementing this method
-  override protected def newCompiler(implicit ctx: Context): Compiler = ???
   override def sourcesRequired = false
 
   private val myInitCtx: Context = {

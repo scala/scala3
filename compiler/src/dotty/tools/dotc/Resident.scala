@@ -27,8 +27,6 @@ class Resident extends Driver {
 
   object residentCompiler extends Compiler
 
-  override def newCompiler(implicit ctx: Context): Compiler = ???
-
   override def sourcesRequired = false
 
   private val quit = ":q"

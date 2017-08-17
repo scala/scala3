@@ -16,8 +16,6 @@ object Bench extends Driver {
 
   @sharable private var numRuns = 1
 
-  def newCompiler(implicit ctx: Context): Compiler = new Compiler
-
   private def ntimes(n: Int)(op: => Reporter): Reporter =
     (emptyReporter /: (0 until n)) ((_, _) => op)
 

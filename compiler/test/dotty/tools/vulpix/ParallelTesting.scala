@@ -373,10 +373,8 @@ trait ParallelTesting extends RunnerOrchestration { self =>
           if (suppressErrors || suppressAllOutput) ERROR + 1 else ERROR)
 
       val driver =
-        if (times == 1) new Driver { def newCompiler(implicit ctx: Context) = new Compiler }
+        if (times == 1) new Driver
         else new Driver {
-          def newCompiler(implicit ctx: Context) = new Compiler
-
           private def ntimes(n: Int)(op: Int => Reporter): Reporter =
             (emptyReporter /: (1 to n)) ((_, i) => op(i))
 
