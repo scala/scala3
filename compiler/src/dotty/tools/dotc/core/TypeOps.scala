@@ -46,47 +46,44 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
               toPrefix(pre.select(nme.PACKAGE), cls, thiscls)
             else
               toPrefix(pre.baseType(cls).normalizedPrefix, cls.owner, thiscls)
-      }
+        }
       }
 
-    def argForParam(pre: Type, tparam: Symbol): Type = {
-      val tparamCls = tparam.owner
-      pre.baseType(tparamCls) match {
-        case AppliedType(_, allArgs) =>
-          var tparams = tparamCls.typeParams
-          var args = allArgs
-          var idx = 0
-          while (tparams.nonEmpty && args.nonEmpty) {
-            if (tparams.head.eq(tparam))
-              return args.head match {
-                case bounds: TypeBounds =>
-                  val v = variance
-                  if (v > 0) bounds.hi
-                  else if (v < 0) bounds.lo
-                  else TypeArgRef(pre, cls.typeRef, idx)
-                case arg => arg
-              }
-            tparams = tparams.tail
-            args = args.tail
-            idx += 1
-          }
-          throw new AssertionError(ex"$pre contains no matching argument for ${tparam.showLocated} ")
-        case OrType(tp1, tp2) => argForParam(tp1, cls) | argForParam(tp2, cls)
-        case AndType(tp1, tp2) => argForParam(tp1, cls) & argForParam(tp2, cls)
-        case _ => tp
+      def argForParam(pre: Type, tparam: Symbol): Type = {
+        val tparamCls = tparam.owner
+        pre.baseType(tparamCls) match {
+          case AppliedType(_, allArgs) =>
+            var tparams = tparamCls.typeParams
+            var args = allArgs
+            var idx = 0
+            while (tparams.nonEmpty && args.nonEmpty) {
+              if (tparams.head.eq(tparam))
+                return args.head match {
+                  case bounds: TypeBounds =>
+                    val v = variance
+                    if (v > 0) bounds.hi
+                    else if (v < 0) bounds.lo
+                    else TypeArgRef(pre, cls.typeRef, idx)
+                  case arg => arg
+                }
+              tparams = tparams.tail
+              args = args.tail
+              idx += 1
+            }
+            throw new AssertionError(ex"$pre contains no matching argument for ${tparam.showLocated} ")
+          case OrType(tp1, tp2) => argForParam(tp1, cls) | argForParam(tp2, cls)
+          case AndType(tp1, tp2) => argForParam(tp1, cls) & argForParam(tp2, cls)
+          case _ => tp
+        }
       }
-    }
 
       /*>|>*/ ctx.conditionalTraceIndented(TypeOps.track, s"asSeen ${tp.show} from (${pre.show}, ${cls.show})", show = true) /*<|<*/ { // !!! DEBUG
         tp match {
           case tp: NamedType =>
             val sym = tp.symbol
             if (sym.isStatic) tp
-            else {
-              val pre1 = atVariance(variance max 0)(this(tp.prefix))
-              if (Config.newScheme && sym.is(TypeParam)) argForParam(pre1, sym)
-              else derivedSelect(tp, pre1)
-            }
+            else if (Config.newScheme && sym.is(TypeParam)) argForParam(pre, sym)
+            else derivedSelect(tp, atVariance(variance max 0)(this(tp.prefix)))
           case tp: ThisType =>
             toPrefix(pre, cls, tp.cls)
           case _: BoundType | NoPrefix =>
