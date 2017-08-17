@@ -73,7 +73,9 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
             throw new AssertionError(ex"$pre contains no matching argument for ${tparam.showLocated} ")
           case OrType(tp1, tp2) => argForParam(tp1, cls) | argForParam(tp2, cls)
           case AndType(tp1, tp2) => argForParam(tp1, cls) & argForParam(tp2, cls)
-          case _ => tp
+          case _ =>
+            if (pre.termSymbol is Package) argForParam(pre.select(nme.PACKAGE), tparam)
+            else throw new AssertionError(ex"$pre contains no matching argument for ${tparam.showLocated} ")
         }
       }
 
