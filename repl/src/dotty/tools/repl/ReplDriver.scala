@@ -64,7 +64,7 @@ case class State(objectIndex: Int,
   def withHistory(h: History) = copy(history = h)
 
   def newRun(comp: ReplCompiler, rootCtx: Context): State =
-    copy(run = comp.newRun(this, rootCtx))
+    copy(run = comp.newRun(rootCtx, objectIndex))
 }
 
 /** A list of possible completions at the index of `cursor`
@@ -93,7 +93,7 @@ class ReplDriver(settings: Array[String], protected val out: PrintStream = Syste
   }
 
   /** the initial, empty state of the REPL session */
-  protected[this] def initState = State(0, 0, Nil, Nil, compiler.newRun(rootCtx))
+  protected[this] def initState = State(0, 0, Nil, Nil, compiler.newRun(rootCtx, 0))
 
   /** Reset state of repl to the initial state
    *
@@ -139,10 +139,8 @@ class ReplDriver(settings: Array[String], protected val out: PrintStream = Syste
     }
   }
 
-  final def run(input: String)(implicit state: State): State = {
-    val freshState = state.newRun(compiler, rootCtx)
-    run(ParseResult(input)(freshState.run.runContext))(freshState)
-  }
+  final def run(input: String)(implicit state: State): State =
+    run(ParseResult(input)(state.run.runContext))(state.newRun(compiler, rootCtx))
 
   final def run(res: ParseResult)(implicit state: State): State =
     interpret(res)
@@ -184,7 +182,9 @@ class ReplDriver(settings: Array[String], protected val out: PrintStream = Syste
   private def interpret(res: ParseResult)(implicit state: State): State =
     res match {
       case parsed: Parsed =>
-        compile(parsed).withHistory(parsed.sourceCode :: state.history)
+        compile(parsed)
+          .withHistory(parsed.sourceCode :: state.history)
+          .newRun(compiler, rootCtx)
 
       case SyntaxErrors(src, errs, _) =>
         displayErrors(errs)

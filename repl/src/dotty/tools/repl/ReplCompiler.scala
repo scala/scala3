@@ -155,9 +155,9 @@ class ReplCompiler(val directory: AbstractFile) extends Compiler {
     PackageDef(Ident(nme.EMPTY_PACKAGE), module)
   }
 
-  def newRun(state: State, initCtx: Context) = new Run(this, initCtx) {
+  def newRun(initCtx: Context, objectIndex: Int) = new Run(this, initCtx) {
     override protected[this] def rootContext(implicit ctx: Context) =
-      addMagicImports(super.rootContext.fresh.setReporter(storeReporter), state)
+      addMagicImports(super.rootContext.fresh.setReporter(storeReporter), objectIndex)
   }
 
   def createUnit(defs: Definitions, sourceCode: String): Result[CompilationUnit] = {
@@ -183,7 +183,7 @@ class ReplCompiler(val directory: AbstractFile) extends Compiler {
     } yield (unit, state)
   }
 
-  private[this] def addMagicImports(initCtx: Context, state: State): Context = {
+  private[this] def addMagicImports(initCtx: Context, objectIndex: Int): Context = {
     def addImport(path: TermName)(implicit ctx: Context) = {
       val ref = tpd.ref(ctx.requiredModuleRef(path.toTermName))
       val symbol = ctx.newImportSymbol(ctx.owner, ref)
@@ -193,7 +193,7 @@ class ReplCompiler(val directory: AbstractFile) extends Compiler {
     }
 
     List
-      .range(1, state.objectIndex + 1)
+      .range(1, objectIndex + 1)
       .foldLeft(addImport("dotty.Show".toTermName)(initCtx)) { (ictx, i) =>
         addImport(nme.EMPTY_PACKAGE ++ "." ++ objectNames(i))(ictx)
       }
