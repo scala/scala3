@@ -7,8 +7,8 @@ scala> import o._
 scala> buf += xs
 1 | buf += xs
   |        ^^
-  | found:    scala.collection.immutable.List[Int](<none>.ReplSession$2.o.xs)
-  | required: Int
+  |        found:    scala.collection.immutable.List[Int](o.xs)
+  |        required: Int
   |
 scala> buf ++= xs
 val res0: scala.collection.mutable.ListBuffer[Int] = ListBuffer(1, 2, 3)

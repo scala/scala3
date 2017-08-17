@@ -37,9 +37,10 @@ class UserFacingPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
     case `scalaPkg` | `collectionPkg` | `immutablePkg` | `javaLangPkg` => true
     case pkgSym =>
       pkgSym.name.toTermName == nme.EMPTY_PACKAGE ||
-      pkgSym.name.decode.show.contains("ReplSession$")
+      pkgSym.name.isReplWrapperName
   }
 
+  // FIXME
   override def kindString(sym: Symbol): String = {
     val flags = sym.flags
     if (flags is Package) ""
@@ -58,15 +59,13 @@ class UserFacingPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
     else super.kindString(sym)
   }
 
-  override def nameString(name: Name): String = name.decode.toString
+  override def nameString(name: Name): String =
+    if (name.isReplAssignName) name.decode.toString.takeWhile(_ != '$')
+    else name.decode.toString
 
-  override def toText(sym: Symbol): Text = {
-    val nameStr = nameString(sym.name.stripModuleClassSuffix)
-    if (nameStr.contains("$Assign")) nameStr.takeWhile(_ != '$')
-    else {
-      kindString(sym) ~~ nameString(sym.name.stripModuleClassSuffix)
-    }
-  }
+  override def toText(sym: Symbol): Text =
+    if (sym.name.isReplAssignName) nameString(sym.name)
+    else kindString(sym) ~~ nameString(sym.name.stripModuleClassSuffix)
 
   override def dclText(sym: Symbol): Text =
     toText(sym) ~ {

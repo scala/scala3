@@ -1,0 +1,10 @@
+scala> case class Foo[A](a: A)
+// defined case class Foo
+scala> Foo(1)
+val res0: Foo[Int] = Foo(1)
+scala> val x: Foo[String] = res0
+1 | val x: Foo[String] = res0
+  |                      ^^^^
+  |                      found:    Foo[Int](res0)
+  |                      required: Foo[String]
+  |

@@ -6,7 +6,7 @@ import java.io.{ File => JFile }
 import dotc.ast.{ untpd, tpd }
 import dotc.{ Run, CompilationUnit, Compiler }
 import dotc.core.Decorators._, dotc.core.Flags._, dotc.core.Phases
-import dotc.core.Names._, dotc.core.Contexts._, dotc.core.StdNames.nme
+import dotc.core.Names._, dotc.core.Contexts._, dotc.core.StdNames._
 import dotc.util.SourceFile
 import dotc.typer.{ ImportInfo, FrontEnd }
 import backend.jvm.GenBCode
@@ -49,6 +49,14 @@ class ReplCompiler(val directory: AbstractFile) extends Compiler {
     )
   }
 
+  private[this] var objectNames = Map.empty[Int, TermName]
+  private def objectName(state: State) =
+    objectNames.get(state.objectIndex).getOrElse {
+      val newName = (str.REPL_SESSION_LINE + state.objectIndex).toTermName
+      objectNames = objectNames + (state.objectIndex -> newName)
+      newName
+    }
+
   sealed case class Definitions(stats: List[untpd.Tree], state: State)
 
   def definitions(trees: List[untpd.Tree], state: State): Result[Definitions] = {
@@ -64,12 +72,12 @@ class ReplCompiler(val directory: AbstractFile) extends Compiler {
 
     val (exps, other) = trees.partition(_.isTerm)
     val resX = exps.zipWithIndex.flatMap { (exp, i) =>
-      val resName = s"res${i + state.valIndex}".toTermName
+      val resName = (str.REPL_RES_PREFIX + (i + state.valIndex)).toTermName
       val show = createShow(resName, exp.pos)
 
       exp match {
         case exp @ Assign(id: Ident, rhs) =>
-          val assignName = (id.name ++ "$Assign").toTermName
+          val assignName = (id.name ++ str.REPL_ASSIGN_SUFFIX).toTermName
           val assign = ValDef(assignName, TypeTree(), id).withPos(exp.pos)
 
           exp :: assign :: createShow(assignName, exp.pos) :: Nil
@@ -121,8 +129,8 @@ class ReplCompiler(val directory: AbstractFile) extends Compiler {
    *
    *  ```
    *  package <none> {
-   *    object ReplSession$nextId {
-   *      import ReplSession${i <- 0 until nextId}._
+   *    object rs$line$nextId {
+   *      import rs$line${i <- 0 until nextId}._
    *      import dotty.Show._
    *
    *      <trees>
@@ -132,14 +140,13 @@ class ReplCompiler(val directory: AbstractFile) extends Compiler {
    */
   def wrapped(defs: Definitions): untpd.PackageDef = {
     import untpd._
-    import dotc.core.StdNames._
 
     implicit val ctx: Context = defs.state.run.runContext
 
     val module = {
       val tmpl = Template(emptyConstructor(ctx), Nil, EmptyValDef, defs.stats)
       List(
-        ModuleDef(s"ReplSession$$${ defs.state.objectIndex }".toTermName, tmpl)
+        ModuleDef(objectName(defs.state), tmpl)
         .withMods(new Modifiers(Module | Final))
         .withPos(Position(defs.stats.head.pos.start, defs.stats.last.pos.end))
       )
@@ -154,7 +161,7 @@ class ReplCompiler(val directory: AbstractFile) extends Compiler {
   }
 
   def createUnit(defs: Definitions, sourceCode: String): Result[CompilationUnit] = {
-    val unit = new CompilationUnit(new SourceFile(s"ReplsSession$$${ defs.state.objectIndex }", sourceCode))
+    val unit = new CompilationUnit(new SourceFile(objectName(defs.state).toString, sourceCode))
     unit.untpdTree = wrapped(defs)
     unit.result
   }
@@ -188,7 +195,7 @@ class ReplCompiler(val directory: AbstractFile) extends Compiler {
     List
       .range(1, state.objectIndex + 1)
       .foldLeft(addImport("dotty.Show".toTermName)(initCtx)) { (ictx, i) =>
-        addImport(nme.EMPTY_PACKAGE ++ (".ReplSession$" + i))(ictx)
+        addImport(nme.EMPTY_PACKAGE ++ "." ++ objectNames(i))(ictx)
       }
   }
 
@@ -215,8 +222,10 @@ class ReplCompiler(val directory: AbstractFile) extends Compiler {
         val valdef =
           ValDef("expr".toTermName, TypeTree(), Block(trees.toList, untpd.unitLiteral))
 
-        val tmpl =
-          Template(emptyConstructor, Ident("Any".toTypeName) :: Nil, EmptyValDef, state.imports.map(_._1) :+ valdef)
+        val tmpl = Template(emptyConstructor,
+                            List(Ident(tpnme.Any)),
+                            EmptyValDef,
+                            state.imports.map(_._1) :+ valdef)
 
         PackageDef(Ident(nme.EMPTY_PACKAGE),
           TypeDef("EvaluateExpr".toTypeName, tmpl)

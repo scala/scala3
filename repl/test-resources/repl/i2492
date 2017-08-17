@@ -3,4 +3,4 @@ scala> class Map[K, V]
 scala> val s: Map {type Map$K = String; type Map$V = Int} = null
 1 | val s: Map {type Map$K = String; type Map$V = Int} = null
   |        ^^^
-  |        missing type parameter for <none>.ReplSession$0.Map
+  |        missing type parameter for Map

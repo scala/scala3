@@ -75,15 +75,16 @@ class ScriptedTests extends ReplTest with MessageRendering {
     }
 
     if (expectedOutput != actualOutput) {
+      println("expected =========>")
       println(expectedOutput)
-      println("<==================")
+      println("actual ===========>")
       println(actualOutput)
 
       fail(s"Error in file $f, expected output did not match actual")
     }
   }
 
-  //@Test def replTests = scripts("/repl").foreach(testFile)
+  @Test def replTests = scripts("/repl").foreach(testFile)
 
   @Test def typePrinterTests = scripts("/type-printer").foreach(testFile)
 }

@@ -26,7 +26,7 @@ scala> val z: (List[String], List[Int]) = (List(1), List("a"))
 scala> val a: Inv[String] = new Inv(new Inv(1))
 1 | val a: Inv[String] = new Inv(new Inv(1))
   |                                  ^^^^^
-  |                                  found:    <none>.ReplSession$0.Inv[Int]
+  |                                  found:    Inv[Int]
   |                                  required: String
   |
 scala> val b: Inv[String] = new Inv(1)
@@ -53,7 +53,7 @@ scala> abstract class C { type T; val x: T; val s: Unit = { type T = String; var
 scala> class Foo() { def bar: Int = 1 }; val foo = new Foo(); foo.barr
 1 | class Foo() { def bar: Int = 1 }; val foo = new Foo(); foo.barr
   |                                                        ^^^^^^^^
-  |value `barr` is not a member of <none>.ReplSession$1.Foo - did you mean `foo.bar`?
+  |             value `barr` is not a member of Foo - did you mean `foo.bar`?
 scala> val x: List[Int] = "foo" :: List(1)
 1 | val x: List[Int] = "foo" :: List(1)
   |                    ^^^^^

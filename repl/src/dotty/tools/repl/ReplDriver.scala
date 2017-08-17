@@ -113,10 +113,12 @@ class ReplDriver(settings: Array[String], protected val out: PrintStream = Syste
         new PlainDirectory(new Directory(new JFile(rootCtx.settings.d.value(rootCtx))))
     }
     compiler = new ReplCompiler(outDir)
+    rendering = new Rendering(compiler)
   }
 
   protected[this] var rootCtx: Context = _
   protected[this] var compiler: ReplCompiler = _
+  protected[this] var rendering: Rendering = _
 
   // initialize the REPL session as part of the constructor so that once `run`
   // is called, we're in business
@@ -229,7 +231,7 @@ class ReplDriver(settings: Array[String], protected val out: PrintStream = Syste
         case Success(num) => num < state.valIndex
         case _ => false
       }
-      name.startsWith("res") && hasValidNumber && sym.info == defn.UnitType
+      name.startsWith(str.REPL_RES_PREFIX) && hasValidNumber && sym.info == defn.UnitType
     }
 
     def displayMembers(symbol: Symbol) = if (tree.symbol.info.exists) {
@@ -253,8 +255,8 @@ class ReplDriver(settings: Array[String], protected val out: PrintStream = Syste
 
       (
         typeAliases.map("// defined alias " + _.symbol.showUser) ++
-        defs.map(Rendering.renderMethod) ++
-        vals.map(Rendering.renderVal(_, compiler)).flatten
+        defs.map(rendering.renderMethod) ++
+        vals.map(rendering.renderVal).flatten
       ).foreach(str => out.println(SyntaxHighlighting(str)))
 
       state.copy(valIndex = state.valIndex - vals.filter(resAndUnit).length)
@@ -264,11 +266,11 @@ class ReplDriver(settings: Array[String], protected val out: PrintStream = Syste
     def isSyntheticCompanion(sym: Symbol) =
       sym.is(Module) && sym.is(Synthetic)
 
-    def isReplSession(name: Name) =
-      name.decode.show.contains("ReplSession$")
-
     def displayTypeDefs(sym: Symbol) = sym.info.memberClasses
-      .collect { case x if !isSyntheticCompanion(x.symbol) && !isReplSession(x.symbol.name) => x.symbol }
+      .collect {
+        case x if !isSyntheticCompanion(x.symbol) && !x.symbol.name.isReplWrapperName =>
+          x.symbol
+      }
       .foreach { sym =>
         out.println(SyntaxHighlighting("// defined " + sym.showUser))
       }

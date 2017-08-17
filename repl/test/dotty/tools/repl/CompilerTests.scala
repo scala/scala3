@@ -39,7 +39,7 @@ class ReplCompilerTests extends ReplTest with MessageRendering {
       onErrors,
       _ match {
         case untpd.PackageDef(_, List(mod: untpd.ModuleDef)) =>
-          assert(mod.name.show == "ReplSession$1", mod.name.show)
+          assert(mod.name.show == "rs$line$1", mod.name.show)
         case tree => fail(s"Unexpected structure: $tree")
       }
     )
