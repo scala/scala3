@@ -925,10 +925,10 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
       case tycon2: TypeRef =>
         isMatchingApply(tp1) || {
           tycon2.info match {
-            case tycon2: TypeBounds =>
-              compareLower(tycon2, tyconIsTypeRef = true)
-            case tycon2: ClassInfo =>
-              val base = tp1.baseType(tycon2.cls)
+            case info2: TypeBounds =>
+              compareLower(info2, tyconIsTypeRef = true)
+            case info2: ClassInfo =>
+              val base = tp1.baseType(info2.cls)
               if (base.exists && base.ne(tp1)) isSubType(base, tp2)
               else fourthTry(tp1, tp2)
             case _ =>
@@ -976,8 +976,13 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
         case tp2: TypeBounds =>
           tp2.contains(tp1)
         case _ =>
-          (v > 0 || isSubType(tp2, tp1)) &&
-          (v < 0 || isSubType(tp1, tp2))
+          tp1 match {
+            case TypeBounds(lo1, hi1) => 
+              hi1 <:< tp2 && tp2 <:< lo1 // this can succeed in case tp2 bounds are bad
+            case _ =>
+              (v > 0 || isSubType(tp2, tp1)) &&
+              (v < 0 || isSubType(tp1, tp2))
+          }
       }
       isSub(args1.head, args2.head)
     } && isSubArgs(args1.tail, args2.tail, tparams.tail)
