@@ -419,31 +419,32 @@ class TypeApplications(val self: Type) extends AnyVal {
      *    - interpolate, so that any (F-bounded) type parameters in the resulting bounds are avoided.
      *  The resulting bounds are joined (via &) with corresponding type bound arguments.
      */
-    def normalizeWildcardArg(arg: Type, tparam: TypeParamInfo): Type = arg match {
+    def normalizeWildcardArg(typParams: List[TypeSymbol])(arg: Type, tparam: TypeSymbol): Type = arg match {
       case TypeBounds(lo, hi) =>
-        val v = tparam.paramVariance
-        val avoidParams = new ApproximatingTypeMap {
+        def avoidParams(seen: Set[Symbol], v: Int): ApproximatingTypeMap = new ApproximatingTypeMap {
           variance = if (v >= 0) 1 else -1
           def apply(t: Type) = t match {
             case t: TypeRef if typParams contains t.symbol =>
-              val bounds = apply(t.info).bounds
-              range(bounds.lo, bounds.hi)
+              val lo = atVariance(-variance)(apply(t.info.loBound))
+              val hi =
+                if (seen.contains(t.symbol)) t.topType
+                else avoidParams(seen + t.symbol, variance)(t.info.hiBound)
+              range(lo, hi)
             case _ => mapOver(t)
           }
         }
+        val v = tparam.paramVariance
         val pbounds = dealiased match {
           case dealiased @ TypeRef(prefix, _) =>
             val (concreteArgs, concreteParams) = // @!!! optimize?
-              args.zip(typeParams.asInstanceOf[List[TypeSymbol]])
-                .filter(!_._1.isInstanceOf[TypeBounds])
-                .unzip
-            avoidParams(
-              tparam.paramInfo.asSeenFrom(prefix, tparam.asInstanceOf[TypeSymbol].owner)
-                .subst(concreteParams, concreteArgs)).orElse(TypeBounds.empty)
+              args.zip(typParams).filter(!_._1.isInstanceOf[TypeBounds]).unzip
+            avoidParams(Set(tparam), v)(
+              tparam.paramInfo.asSeenFrom(prefix, tparam.owner)
+                .subst(concreteParams, concreteArgs))
           case _ =>
             TypeBounds.empty
         }
-        //typr.println(i"normalize arg $arg for $tparam in $self app $args%, %, pbounds, = $pbounds")
+        typr.println(i"normalize arg $arg for $tparam in $self app $args%, %, pbounds, = $pbounds")
         if (v > 0) hi & pbounds.hiBound
         else if (v < 0) lo | pbounds.loBound
         else arg & pbounds
@@ -500,9 +501,10 @@ class TypeApplications(val self: Type) extends AnyVal {
       case _ if typParams.isEmpty || typParams.head.isInstanceOf[LambdaParam] =>
         HKApply(self, args)
       case dealiased =>
-        if (Config.newScheme)
-          AppliedType(self, args.zipWithConserve(typParams)(normalizeWildcardArg))
-        else
+        if (Config.newScheme) {
+          val tparamSyms = typParams.asInstanceOf[List[TypeSymbol]]
+          AppliedType(self, args.zipWithConserve(tparamSyms)(normalizeWildcardArg(tparamSyms)))
+        } else
           matchParams(dealiased, typParams, args)
     }
   }
