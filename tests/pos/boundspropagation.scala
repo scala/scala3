@@ -11,7 +11,9 @@ object test1 {
   }
   class Derived extends Base {
     def g(x: Any): Tree[N] = x match {
-      case y: Tree[_] => y // now succeeds in dotc
+      case y: Tree[_] => y.asInstanceOf
+        // without the cast: fails in scalac and new dotc
+        // used to succeed in dotc if type args are refinements
     }
   }
 }
