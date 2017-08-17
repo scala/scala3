@@ -79,9 +79,6 @@ case class Completions(cursor: Int,
 /** Main REPL instance, orchestrating input, compilation and presentation */
 class ReplDriver(settings: Array[String], protected val out: PrintStream = System.out) extends Driver {
 
-  // FIXME: Change the Driver API to not require implementing this method
-  override protected def newCompiler(implicit ctx: Context): Compiler = ???
-
   /** Overridden to `false` in order to not have to give sources on the
    *  commandline
    */
