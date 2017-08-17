@@ -1,6 +1,7 @@
 package dotty.tools
 package repl
 
+import dotty.Jars
 import java.io.{ OutputStream, PrintStream, ByteArrayOutputStream }
 import org.junit.{ Before, After }
 import dotc.core.Contexts.Context
@@ -33,12 +34,7 @@ sealed class StoringPrintStream extends PrintStream(new NullPrintStream) {
 }
 
 class ReplTest extends ReplDriver(
-  Array(
-    // TODO: get rid of this!
-    "-classpath",
-      List("../out/bootstrap/dotty-library-bootstrapped/scala-0.3/classes",
-           "../interfaces/target/classes").mkString(":")
-  ),
+  Array("-classpath", List(Jars.dottyLib, Jars.dottyInterfaces).mkString(":")),
   new StoringPrintStream
 ) {
 
