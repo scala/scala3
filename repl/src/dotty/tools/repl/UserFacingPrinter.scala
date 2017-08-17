@@ -40,23 +40,15 @@ class UserFacingPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       pkgSym.name.isReplWrapperName
   }
 
-  // FIXME
-  override def kindString(sym: Symbol): String = {
+  override protected def keyString(sym: Symbol): String = {
     val flags = sym.flags
     if (flags is Package) ""
     else if (sym.isPackageObject) "package object"
     else if (flags.is(Module) && flags.is(Case)) "case object"
-    else if (flags is Module) "object"
-    else if (flags is ImplClass) "class"
-    else if (flags.is(Trait)) "trait"
     else if (sym.isClass && flags.is(Case)) "case class"
-    else if (sym.isClass) "class"
-    else if (sym.isType) "type"
     else if (flags.is(Lazy)) "lazy val"
-    else if (flags.is(Mutable)) "var"
-    else if (sym.is(Method)) "def"
-    else if (sym.isTerm) "val"
-    else super.kindString(sym)
+    else if (flags is Module) "object"
+    else super.keyString(sym)
   }
 
   override def nameString(name: Name): String =
@@ -65,7 +57,7 @@ class UserFacingPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
 
   override def toText(sym: Symbol): Text =
     if (sym.name.isReplAssignName) nameString(sym.name)
-    else kindString(sym) ~~ nameString(sym.name.stripModuleClassSuffix)
+    else keyString(sym) ~~ nameString(sym.name.stripModuleClassSuffix)
 
   override def dclText(sym: Symbol): Text =
     toText(sym) ~ {

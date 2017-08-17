@@ -49,8 +49,9 @@ import results._
  *  @param valIndex the index of next value binding for free expressions
  *  @param history a list of user inputs as strings
  *  @param imports a list of tuples of imports on tree form and shown form
- *  @param run TODO
- *
+ *  @param run the latest run initiated at the start of interpretation. This
+ *             run and its context should be used in order to perform any
+ *             manipulation on `Tree`s and `Symbol`s.
  */
 case class State(objectIndex: Int,
                  valIndex: Int,
@@ -70,7 +71,6 @@ case class State(objectIndex: Int,
  *
  *  @param cursor the index of the users cursor in the input
  *  @param suggestions the suggested completions as a filtered list of strings
- *  @param details should be a list of signatures for the suggestions, TODO
  */
 case class Completions(cursor: Int,
                        suggestions: List[String],
