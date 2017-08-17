@@ -405,14 +405,51 @@ class TypeApplications(val self: Type) extends AnyVal {
         }
       case nil => t
     }
+    val stripped = self.stripTypeVar
+    val dealiased = stripped.safeDealias
+
+    /** Normalize a TypeBounds argument. This involves (1) propagating bounds
+     *  from the type parameters into the argument, (2) possibly choosing the argument's
+     *  upper or lower bound according to variance.
+     *
+     *  Bounds propagation works as follows: If the dealiased type constructor is a TypeRef
+     *  `p.c`,
+     *    - take the type paramater bounds of `c` as seen from `p`,
+     *    - substitute concrete (non-bound) arguments for corresponding formal type parameters,
+     *    - interpolate, so that any (F-bounded) type parameters in the resulting bounds are avoided.
+     *  The resulting bounds are joined (via &) with corresponding type bound arguments.
+     */
     def normalizeWildcardArg(arg: Type, tparam: TypeParamInfo): Type = arg match {
       case TypeBounds(lo, hi) =>
         val v = tparam.paramVariance
-        if (v > 0) hi else if (v < 0) lo else arg
+        val avoidParams = new ApproximatingTypeMap {
+          variance = v
+          def apply(t: Type) = t match {
+            case t: TypeRef if typParams contains t.symbol =>
+              val bounds = apply(t.info).bounds
+              range(bounds.lo, bounds.hi)
+            case _ => mapOver(t)
+          }
+        }
+        val pbounds = dealiased match {
+          case dealiased @ TypeRef(prefix, _) =>
+            val (concreteArgs, concreteParams) = // @!!! optimize?
+              args.zip(typeParams.asInstanceOf[List[TypeSymbol]])
+                .filter(!_._1.isInstanceOf[TypeBounds])
+                .unzip
+            avoidParams(
+              tparam.paramInfo.asSeenFrom(prefix, tparam.asInstanceOf[TypeSymbol].owner)
+                .subst(concreteParams, concreteArgs)).orElse(TypeBounds.empty)
+          case _ =>
+            TypeBounds.empty
+        }
+        //typr.println(i"normalize arg $arg for $tparam in $self app $args%, %, pbounds, = $pbounds")
+        if (v > 0) hi & pbounds.hiBound
+        else if (v < 0) lo | pbounds.loBound
+        else arg & pbounds
       case _ => arg
     }
-    val stripped = self.stripTypeVar
-    val dealiased = stripped.safeDealias
+
     if (args.isEmpty || ctx.erasedTypes) self
     else dealiased match {
       case dealiased: HKTypeLambda =>
