@@ -15,7 +15,7 @@ import NameKinds._
 import Flags._
 import StdNames.tpnme
 import util.Positions.Position
-import config.Printers.core
+import config.Printers.{core, typr}
 import collection.mutable
 import dotty.tools.dotc.config.Config
 import java.util.NoSuchElementException
@@ -423,7 +423,7 @@ class TypeApplications(val self: Type) extends AnyVal {
       case TypeBounds(lo, hi) =>
         val v = tparam.paramVariance
         val avoidParams = new ApproximatingTypeMap {
-          variance = v
+          variance = if (v >= 0) 1 else -1
           def apply(t: Type) = t match {
             case t: TypeRef if typParams contains t.symbol =>
               val bounds = apply(t.info).bounds
