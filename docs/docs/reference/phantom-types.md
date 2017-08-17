@@ -68,7 +68,7 @@ package scala
 trait Phantom { // only an `object` can extend this trait
   protected final type Any // not a subtype of scala.Any
   protected final type Nothing // subtype of every subtype of this.Any
-  protected final def assume: this.Nothig
+  protected final def assume: this.Nothing
 }
 ```
 
@@ -81,8 +81,8 @@ New phantom types can be defined using `type XYZ <: OtherPhantom` (where `>: MyP
 will be inferred), this would be the equivalent of `class XYZ extends OtherClass` on a types 
 only (no runtime definitions). Or aliased with `type MyAny = OtherPhantom`. Within `MyPhantoms` 
 it is possible to refer to `MyPhantoms.Any` and `MyPhantoms.Nothing` with `this.Any` and 
-`this.Nothing` (or just `Any` and `Nothing` but not recommended). Using this we will define 
-four the four phantoms: `Inky`, `Blinky`, `Pinky` and `Clyde`.
+`this.Nothing` (or just `Any` and `Nothing` but not recommended). Using this we will define
+the four phantoms: `Inky`, `Blinky`, `Pinky` and `Clyde`.
 
 ```scala
 object MyPhantoms extends Phantom {
@@ -94,7 +94,7 @@ object MyPhantoms extends Phantom {
 ```
 
 Values of phantom type can be created using the `protected def assume`. This value can be 
-used as a value of this phantom type as it's type is `this.Nothig` (or `MyPhantoms.Nothing`). 
+used as a value of this phantom type as it's type is `this.Nothing` (or `MyPhantoms.Nothing`). 
 Usually this value will be used to define a `implicit def` that returns the phantom with a more 
 precise type. In our example we will only create values of type `Pinky` and `Clyde`
 
@@ -109,7 +109,7 @@ object MyPhantoms extends Phantom {
 
 ### Using the phantoms
 
-From the user of the phantom type there is almost no difference, except for stronger type guarantees. 
+For the user of the phantom type there is almost no difference, except for stronger type guarantees. 
 We can look at the following simple application:
 
 ```scala
@@ -123,7 +123,7 @@ object MyApp {
 }
 ```
 
-Note given the way we defined the phantoms it is impossible to call the `hide` as we did not 
+Note that given the way we defined the phantoms it is impossible to call `hide` as we did not 
 expose any value of type `Blinky` to the user. We cannot call `hide(MyPhantoms.assume)` as 
 `assume` is protected, `hide(null.asInstanceOf[Blinky])` does not compile because it is impossible 
 to cast to a phantom and `hide(throw new Exception)` (or `hide(???)`) does not compile as `throw` of
