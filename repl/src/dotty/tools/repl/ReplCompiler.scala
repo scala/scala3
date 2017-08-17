@@ -67,7 +67,7 @@ class ReplCompiler(val directory: AbstractFile) extends Compiler {
     def createShow(name: TermName, pos: Position) = {
       val showName = name ++ "Show"
       val select = Select(Ident(name), "show".toTermName)
-      ValDef(showName, TypeTree(), select).withFlags(Synthetic).withPos(pos)
+      DefDef(showName, Nil, Nil, TypeTree(), select).withFlags(Synthetic).withPos(pos)
     }
 
     val (exps, other) = trees.partition(_.isTerm)
