@@ -1,5 +1,4 @@
 package dotty.tools
-package dotc
 package repl
 
 import io.AbstractFile

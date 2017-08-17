@@ -1,9 +1,0 @@
-scala> class A { def show = "hello"; override def toString = "A" }
-defined class A
-scala> new A
-val res0: A = A
-scala> class B { def show() = "hello"; override def toString = "B" }
-defined class B
-scala> new B
-val res1: B = B
-scala> :quit

@@ -1,6 +1,5 @@
 package dotty.tools.dotc
 
-import repl.TestREPL
 import core.Contexts._
 import interfaces.Diagnostic.ERROR
 import reporting._

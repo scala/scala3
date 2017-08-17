@@ -11,8 +11,6 @@ import dotc.core.Denotations.Denotation
 import dotc.core.Flags
 import dotc.core.Symbols.Symbol
 import dotc.core.StdNames.str
-// FIXME: perhaps `AbstractFileClassLoader` should be moved up a pkg
-import dotc.repl.AbstractFileClassLoader
 
 /** This rendering object uses `ClassLoader`s to accomplish crossing the 4th
  *  wall (i.e. fetching back values from the compiled class files put into a

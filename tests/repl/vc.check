@@ -1,5 +1,0 @@
-scala> class Foo(x: Int) extends AnyVal { def hi: Int = 1 }
-defined class Foo
-scala> new Foo(1).hi
-val res0: Int = 1
-scala> :quit

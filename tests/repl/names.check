@@ -1,5 +1,0 @@
-scala> case class Foo[M[_]](x: M[Int]) 
-defined class Foo
-scala> Foo(Option(1))
-val res0: Foo[Option] = Foo(Some(1))
-scala> :quit
