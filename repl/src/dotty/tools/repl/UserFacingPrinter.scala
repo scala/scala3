@@ -86,6 +86,7 @@ class UserFacingPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
     case tp: ConstantType => toText(tp.value)
     case tp: TypeAlias => toText(tp.underlying)
     case ExprType(result) => ":" ~~ toText(result)
+    case TypeBounds(lo, hi) => "_"
     case tp: TypeRef => tp.info match {
       case TypeAlias(alias) => toText(alias)
       case _ => toText(tp.info)

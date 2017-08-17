@@ -1,0 +1,4 @@
+scala> val xs = List(1)
+val xs: List[Int] = List(1)
+scala> xs.getClass
+val res0: Class[_] = class scala.collection.immutable.$colon$colon
