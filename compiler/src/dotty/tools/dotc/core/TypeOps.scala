@@ -71,11 +71,14 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
               idx += 1
             }
             throw new AssertionError(ex"$pre contains no matching argument for ${tparam.showLocated} ")
-          case OrType(tp1, tp2) => argForParam(tp1, cls) | argForParam(tp2, cls)
-          case AndType(tp1, tp2) => argForParam(tp1, cls) & argForParam(tp2, cls)
-          case _ =>
+          case OrType(tp1, tp2) => argForParam(tp1, tparam) | argForParam(tp2, tparam)
+          case AndType(tp1, tp2) => argForParam(tp1, tparam) & argForParam(tp2, tparam)
+          case base =>
             if (pre.termSymbol is Package) argForParam(pre.select(nme.PACKAGE), tparam)
-            else throw new AssertionError(ex"$pre contains no matching argument for ${tparam.showLocated} ")
+            else {
+              // throw new AssertionError(ex"$pre contains no matching argument for ${tparam.showLocated}, base = $base") // DEBUG
+              tp
+            }
         }
       }
 
