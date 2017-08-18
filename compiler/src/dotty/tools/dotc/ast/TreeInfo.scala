@@ -370,6 +370,8 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
       exprPurity(expr)
     case Block(stats, expr) =>
       minOf(exprPurity(expr), stats.map(statPurity))
+    case NamedArg(_, expr) =>
+      exprPurity(expr)
     case _ =>
       Impure
   }

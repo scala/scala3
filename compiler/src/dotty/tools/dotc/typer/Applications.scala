@@ -617,19 +617,17 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
             typedArgs = liftArgs(argDefBuf, methType, typedArgs)
 
             // Lifted arguments ordered based on the original order of typedArgBuf and
-            // with all non explicit default parameters at the end in declaration order.
+            // with all non-explicit default parameters at the end in declaration order.
             val orderedArgDefs = {
               // List of original arguments that are lifted by liftArgs
-              val impureArgs = typedArgBuf.filterNot {
-                case NamedArg(_, arg) => isPureExpr(arg)
-                case arg => isPureExpr(arg)
-              }
+              val impureArgs = typedArgBuf.filterNot(isPureExpr)
+              // Assuming stable sorting all non-explicit default parameters will remain in the end with the same order
               val defaultParamIndex = args.size
               // Mapping of index of each `liftable` into original args ordering
               val indices = impureArgs.map { arg =>
                 val idx = args.indexOf(arg)
-                if (idx >= 0) idx // original index skipping pure agruments
-                else defaultParamIndex // assuming stable sorting all will remain in the end with the same order
+                if (idx >= 0) idx // original index skipping pure arguments
+                else defaultParamIndex
               }
               scala.util.Sorting.stableSort[(Tree, Int), Int](argDefBuf zip indices, x => x._2).map(_._1)
             }
