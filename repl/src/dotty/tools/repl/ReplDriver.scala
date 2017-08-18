@@ -11,7 +11,7 @@ import dotc.ast.untpd
 import dotc.ast.tpd
 import dotc.interactive.{ SourceTree, Interactive }
 import dotc.core.Contexts.Context
-import dotc.Run
+import dotc.{ CompilationUnit, Run }
 import dotc.core.Mode
 import dotc.core.Flags._
 import dotc.core.Types._
@@ -197,8 +197,10 @@ class ReplDriver(settings: Array[String], protected val out: PrintStream = Syste
 
   /** Compile `parsed` trees and evolve `state` in accordance */
   protected[this] final def compile(parsed: Parsed)(implicit state: State): State = {
+    import dotc.ast.Trees._
+    import dotc.ast.untpd._
     def extractNewestWrapper(tree: untpd.Tree): Name = tree match {
-      case untpd.PackageDef(_, (obj: untpd.ModuleDef) :: Nil) => obj.name.moduleClassName
+      case PackageDef(_, (obj: ModuleDef) :: Nil) => obj.name.moduleClassName
       case _ => nme.NO_NAME
     }
 
@@ -206,12 +208,14 @@ class ReplDriver(settings: Array[String], protected val out: PrintStream = Syste
       .compile(parsed)
       .fold(
         displayErrors,
-        (unit, newState) => {
-          val newestWrapper = extractNewestWrapper(unit.untpdTree)
-          val newImports = newState.imports ++ extractImports(parsed.trees)(newState.run.runContext)
-          val newStateWithImports = newState.copy(imports = newImports)
+        {
+          case (unit: CompilationUnit, newState: State) => {
+            val newestWrapper = extractNewestWrapper(unit.untpdTree)
+            val newImports = newState.imports ++ extractImports(parsed.trees)(newState.run.runContext)
+            val newStateWithImports = newState.copy(imports = newImports)
 
-          displayDefinitions(unit.tpdTree, newestWrapper)(newStateWithImports)
+            displayDefinitions(unit.tpdTree, newestWrapper)(newStateWithImports)
+          }
         }
       )
   }
@@ -329,12 +333,12 @@ class ReplDriver(settings: Array[String], protected val out: PrintStream = Syste
         state.withHistory(loadCmd)
       }
 
-    case Type(expr) => {
+    case TypeOf(expr) => {
       compiler.typeOf(expr).fold(
         displayErrors,
         res => out.println(SyntaxHighlighting(res))
       )
-      state.withHistory(s"${Type.command} $expr")
+      state.withHistory(s"${TypeOf.command} $expr")
     }
 
     case Quit =>
@@ -360,7 +364,7 @@ class ReplDriver(settings: Array[String], protected val out: PrintStream = Syste
 
   /** Render messages using the `MessageRendering` trait */
   private def renderMessage(cont: MessageContainer): Context => String =
-    messageRenderer.messageAndPos(cont.contained(), cont.pos, messageRenderer.diagnosticLevel(cont))
+    messageRenderer.messageAndPos(cont.contained(), cont.pos, messageRenderer.diagnosticLevel(cont))(_)
 
   /** Output errors to `out` */
   private def displayErrors(errs: Seq[MessageContainer])(implicit state: State): State = {

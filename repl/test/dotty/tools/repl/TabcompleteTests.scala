@@ -17,36 +17,39 @@ class TabcompleteTests extends ReplTest {
   private[this] def tabComplete(src: String)(implicit state: State): Completions =
     completions(src.length, src, state)
 
-  @Test def tabCompleteList: Unit = withState {
+  @Test def tabCompleteList: Unit = fromInitialState { implicit s =>
     val comp = tabComplete("List.r")
     assertTrue(s"""Expected single element "range" got: ${comp.suggestions}""",
       comp.suggestions.head == "range")
   }
 
-  @Test def tabCompleteListInstance: Unit = withState {
+  @Test def tabCompleteListInstance: Unit = fromInitialState { implicit s =>
     val comp = tabComplete("(null: List[Int]).sli")
     assertTrue(s"""Expected completions "slice" and "sliding": ${comp.suggestions}""",
       comp.suggestions.sorted == List("slice", "sliding"))
   }
 
-  @Test def autoCompletValAssign =
-    withState[Unit](tabComplete("val x = 5"))
+  @Test def autoCompleteValAssign: Unit =
+    fromInitialState { implicit s => tabComplete("val x = 5") }
 
-  @Test def tabCompleteNumberDot =
-    withState[Unit](tabComplete("val x = 5 + 5."))
+  @Test def tabCompleteNumberDot: Unit =
+    fromInitialState { implicit s => tabComplete("val x = 5 + 5.") }
 
-  @Test def tabCompleteInClass =
-    withState[Unit](tabComplete("class Foo { def bar: List[Int] = List.a"))
+  @Test def tabCompleteInClass: Unit =
+    fromInitialState { implicit s =>
+      tabComplete("class Foo { def bar: List[Int] = List.a")
+    }
 
-  @Test def tabCompleteTwiceIn = {
+  @Test def tabCompleteTwiceIn: Unit = {
     val src1 = "class Foo { def bar: List[Int] = List.a"
     val src2 = "class Foo { def bar: List[Int] = List.app"
 
-    withState {
+    fromInitialState { implicit state =>
       assert(tabComplete(src1).suggestions.nonEmpty)
-      fromState(implicitly[State]) {
-        assert(tabComplete(src2).suggestions.nonEmpty)
-      }
+      state
+    }
+    .andThen { implicit state =>
+      assert(tabComplete(src2).suggestions.nonEmpty)
     }
   }
 }

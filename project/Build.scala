@@ -360,11 +360,10 @@ object Build {
 
   lazy val `dotty-repl` = project.in(file("repl")).
     dependsOn(
-      `dotty-language-server`,
-      `dotty-compiler-bootstrapped`,
-      `dotty-compiler-bootstrapped` % "test->test"
+      `dotty-compiler`,
+      `dotty-compiler` % "test->test"
     ).
-    settings(commonBootstrappedSettings).
+    settings(commonNonBootstrappedSettings).
     settings(
       // set system in/out for repl
       connectInput in run := true,

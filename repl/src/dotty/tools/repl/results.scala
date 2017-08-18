@@ -7,27 +7,38 @@ import dotc.reporting.diagnostic.MessageContainer
  *  in the REPL
  */
 object results {
-  type Errors = List[MessageContainer]
-  private case class ErrorContainer(messages: Errors)
 
-  /** A result of a computation is either a list of errors or the result `A` */
-  class Result[+A] private[results] (result: ErrorContainer | A) { self =>
+  /** Type alias for `List[MessageContainer]` */
+  private type Errors = List[MessageContainer]
+  /** Private ADT instead of using union type, we're not dotty yet... */
+  private sealed trait Disjunction[+A]
+  /** Successful version of `Disjunction[A]` */
+  private case class Success[A](a: A) extends Disjunction[A]
+  /** Erroneous version of `Disjunction[A]` */
+  private case class ErrorContainer(messages: Errors) extends Disjunction[Nothing]
+
+  /** A result of a computation is either a list of errors or the result `A`
+   *
+   *  @note should be replaced by the right-biased `Either` from 2.12.x, TODO
+   */
+  class Result[+A] private[results] (result: Disjunction[A]) { self =>
+
     def flatMap[B](f: A => Result[B]): Result[B] =
       result match {
         case ec: ErrorContainer => new Result(ec)
-        case a: A @unchecked => f(a)
+        case Success(a) => f(a)
       }
 
     def map[B](f: A => B): Result[B] =
       result match {
         case ec: ErrorContainer => new Result(ec)
-        case a: A @unchecked => new Result(f(a))
+        case Success(a) => new Result(Success(f(a)))
       }
 
     def fold[B](onErrors: Errors => B, onResult: A => B): B =
       result match {
         case ErrorContainer(errs) => onErrors(errs)
-        case a: A @unchecked => onResult(a)
+        case Success(a) => onResult(a)
       }
 
     def recoverWith[B >: A](pf: PartialFunction[Errors, Result[B]]): Result[B] =
@@ -51,7 +62,7 @@ object results {
   }
 
   implicit class ResultConversionA[A](val a: A) extends AnyVal {
-    def result: Result[A] = new Result(a)
+    def result: Result[A] = new Result(Success(a))
   }
 
   implicit class ResultConversionErr(val xs: Errors) extends AnyVal {

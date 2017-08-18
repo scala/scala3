@@ -17,7 +17,7 @@ package object repl {
     new StoreReporter(null)
     with UniqueMessagePositions with HideNonSensicalMessages
 
-  private[repl] implicit class ListOps[A](xs: List[A]) extends AnyVal {
+  private[repl] implicit class ListOps[A](val xs: List[A]) extends AnyVal {
     def intersperse(a: A): List[A] = {
       def recur(xs: List[A]): List[A] = xs match {
         case x :: Nil => List(x)
@@ -27,19 +27,15 @@ package object repl {
     }
   }
 
-  private[repl] implicit class ShowUser(ds: Denotation | Symbol) extends AnyVal {
+  private[repl] implicit class ShowUser(val s: Symbol) extends AnyVal {
     def showUser(implicit ctx: Context): String = {
       val printer = new UserFacingPrinter(ctx)
-      val text = ds match {
-        case d: Denotation => printer.dclText(d.symbol)
-        case s: Symbol => printer.dclText(s)
-      }
-
+      val text = printer.dclText(s)
       text.mkString(ctx.settings.pageWidth.value)
     }
   }
 
-  private[repl] implicit class StoreReporterContext(ctx: Context) extends AnyVal {
+  private[repl] implicit class StoreReporterContext(val ctx: Context) extends AnyVal {
     def flushBufferedMessages(): List[MessageContainer] =
       ctx.reporter match {
         case rep: StoreReporter => rep.removeBufferedMessages(ctx)

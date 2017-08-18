@@ -54,8 +54,8 @@ object Load {
  * String
  * ```
  */
-case class Type(expr: String) extends Command
-object Type {
+case class TypeOf(expr: String) extends Command
+object TypeOf {
   val command = ":type"
 }
 
@@ -106,7 +106,7 @@ object ParseResult {
         case Reset.command => Reset
         case Imports.command => Imports
         case Load.command => Load(arg)
-        case Type.command => Type(arg)
+        case TypeOf.command => TypeOf(arg)
         case _ => UnknownCommand(cmd)
       }
       case _ => {

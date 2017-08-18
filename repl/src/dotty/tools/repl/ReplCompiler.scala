@@ -3,6 +3,7 @@ package repl
 
 import java.io.{ File => JFile }
 
+import dotc.ast.Trees._
 import dotc.ast.{ untpd, tpd }
 import dotc.{ Run, CompilationUnit, Compiler }
 import dotc.core.Decorators._, dotc.core.Flags._, dotc.core.Phases
@@ -71,7 +72,7 @@ class ReplCompiler(val directory: AbstractFile) extends Compiler {
     }
 
     val (exps, other) = trees.partition(_.isTerm)
-    val resX = exps.zipWithIndex.flatMap { (exp, i) =>
+    val resX = exps.zipWithIndex.flatMap { case (exp, i) =>
       val resName = (str.REPL_RES_PREFIX + (i + state.valIndex)).toTermName
       val show = createShow(resName, exp.pos)
 
@@ -107,7 +108,7 @@ class ReplCompiler(val directory: AbstractFile) extends Compiler {
           ).apply(Nil, pat).reverse
         }
 
-        t :: variables.map(createShow)
+        t :: variables.map { case (name, pos) => createShow(name, pos) }
       }
       case t => List(t)
     }
