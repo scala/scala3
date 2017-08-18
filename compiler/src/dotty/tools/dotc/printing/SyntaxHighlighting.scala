@@ -260,14 +260,12 @@ object SyntaxHighlighting {
         newBuf appendAll s"'$chr'"
         newBuf append NoColor
         takeChars(3)
-        println(remaining.take(4))
         prev = '\''
       case '\'' #:: '\\' #:: chr #:: '\'' #:: _ => // escaped character
         newBuf append LiteralColor
         newBuf appendAll s"'\\$chr'"
         newBuf append NoColor
-        takeChars(3)
-        println(remaining.take(4))
+        takeChars(4)
         prev = '\''
       case _ => appendWhile(delim, !typeEnders.contains(_), literal)
     }
