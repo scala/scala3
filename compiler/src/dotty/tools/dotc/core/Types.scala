@@ -3222,6 +3222,8 @@ object Types {
    */
   abstract case class TypeArgRef(prefix: Type, clsRef: TypeRef, idx: Int) extends CachedProxyType with ValueType {
     assert(prefix.isInstanceOf[ValueType])
+    assert(idx >= 0)
+
     override def underlying(implicit ctx: Context): Type =
       prefix.baseType(clsRef.symbol).argInfos.apply(idx)
     def derivedTypeArgRef(prefix: Type)(implicit ctx: Context): Type =
@@ -3234,6 +3236,10 @@ object Types {
   object TypeArgRef {
     def apply(prefix: Type, clsRef: TypeRef, idx: Int)(implicit ctx: Context) =
       unique(new CachedTypeArgRef(prefix, clsRef, idx))
+    def fromParam(prefix: Type, tparam: TypeSymbol)(implicit ctx: Context) = {
+      val cls = tparam.owner
+      apply(prefix, cls.typeRef, cls.typeParams.indexOf(tparam))
+    }
   }
 
   // ----- BoundTypes: ParamRef, RecThis ----------------------------------------
