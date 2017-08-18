@@ -659,12 +659,12 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
           case tycon1: TypeParamRef =>
             (tycon1 == tycon2 ||
              canConstrain(tycon1) && tryInstantiate(tycon1, tycon2)) &&
-            isSubArgs(args1, args2, tparams)
+            isSubArgs(args1, args2, tp1, tparams)
           case tycon1: TypeRef =>
             tycon2.dealias match {
               case tycon2: TypeRef if tycon1.symbol == tycon2.symbol =>
                 isSubType(tycon1.prefix, tycon2.prefix) &&
-                isSubArgs(args1, args2, tparams)
+                isSubArgs(args1, args2, tp1, tparams)
               case _ =>
                 false
             }
@@ -786,7 +786,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
       case param1: TypeParamRef =>
         def canInstantiate = tp2 match {
           case AnyAppliedType(tycon2, args2) =>
-            tryInstantiate(param1, tycon2.ensureHK) && isSubArgs(args1, args2, tycon2.typeParams)
+            tryInstantiate(param1, tycon2.ensureHK) && isSubArgs(args1, args2, tp1, tycon2.typeParams)
           case _ =>
             false
         }
@@ -813,12 +813,12 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
           case tycon1: TypeParamRef =>
             (tycon1 == tycon2 ||
              canConstrain(tycon1) && tryInstantiate(tycon1, tycon2)) &&
-            isSubArgs(args1, args2, tparams)
+            isSubArgs(args1, args2, tp1, tparams)
           case tycon1: TypeRef =>
             tycon2.dealias match {
               case tycon2: TypeRef if tycon1.symbol == tycon2.symbol =>
                 isSubType(tycon1.prefix, tycon2.prefix) &&
-                isSubArgs(args1, args2, tparams)
+                isSubArgs(args1, args2, tp1, tparams)
               case _ =>
                 false
             }
@@ -951,7 +951,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
       case param1: TypeParamRef =>
         def canInstantiate = tp2 match {
           case AnyAppliedType(tycon2, args2) =>
-            tryInstantiate(param1, tycon2.ensureHK) && isSubArgs(args1, args2, tycon2.typeParams)
+            tryInstantiate(param1, tycon2.ensureHK) && isSubArgs(args1, args2, tp1, tycon2.typeParams)
           case _ =>
             false
         }
@@ -968,24 +968,35 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
   /** Subtype test for corresponding arguments in `args1`, `args2` according to
    *  variances in type parameters `tparams`.
    */
-  def isSubArgs(args1: List[Type], args2: List[Type], tparams: List[ParamInfo]): Boolean =
+  def isSubArgs(args1: List[Type], args2: List[Type], tp1: Type, tparams: List[ParamInfo]): Boolean =
     if (args1.isEmpty) args2.isEmpty
     else args2.nonEmpty && {
-      val v = tparams.head.paramVariance
-      def isSub(tp1: Type, tp2: Type) = tp2 match {
-        case tp2: TypeBounds =>
-          tp2.contains(tp1)
+      val tparam = tparams.head
+      val v = tparam.paramVariance
+
+      def compareCaptured(arg1: Type, arg2: Type) = arg1 match {
+        case arg1: TypeBounds =>
+          val captured = TypeArgRef.fromParam(SkolemType(tp1), tparam.asInstanceOf[TypeSymbol])
+          isSubType(captured, arg2)
         case _ =>
-          tp1 match {
-            case TypeBounds(lo1, hi1) => 
-              hi1 <:< tp2 && tp2 <:< lo1 // this can succeed in case tp2 bounds are bad
+          false
+      }
+
+      def isSub(arg1: Type, arg2: Type) = arg2 match {
+        case arg2: TypeBounds =>
+          arg2.contains(arg1) || compareCaptured(arg1, arg2)
+        case _ =>
+          arg1 match {
+            case arg1: TypeBounds =>
+              compareCaptured(arg1, arg2)
             case _ =>
-              (v > 0 || isSubType(tp2, tp1)) &&
-              (v < 0 || isSubType(tp1, tp2))
+              (v > 0 || isSubType(arg2, arg1)) &&
+              (v < 0 || isSubType(arg1, arg2))
           }
       }
+
       isSub(args1.head, args2.head)
-    } && isSubArgs(args1.tail, args2.tail, tparams.tail)
+    } && isSubArgs(args1.tail, args2.tail, tp1, tparams.tail)
 
   /** Test whether `tp1` has a base type of the form `B[T1, ..., Tn]` where
    *   - `B` derives from one of the class symbols of `tp2`,
