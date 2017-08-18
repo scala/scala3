@@ -1,4 +1,5 @@
-package dotty.tools.dotc.core
+package dotty.tools.dotc
+package core
 
 import language.implicitConversions
 
@@ -495,7 +496,8 @@ object Flags {
   final val SelfSymFlags = Private | Local | Deferred
 
   /** The flags of a class type parameter */
-  final def ClassTypeParamCreationFlags = TypeParam | Deferred | Protected | Local
+  final val ClassTypeParamCreationFlags =
+    TypeParam | Deferred | (if (config.Config.newScheme) Private else Protected) | Local
 
   /** Flags that can apply to both a module val and a module class, except those that
     *  are added at creation anyway
