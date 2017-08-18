@@ -13,6 +13,7 @@ import scala.collection.{ mutable, immutable }
 import ast._
 import Trees._
 import TreeTransforms._
+import config.Printers.{checks, noPrinter}
 import util.DotClass
 import scala.util.{Try, Success, Failure}
 import config.{ScalaVersion, NoScalaVersion}
@@ -652,7 +653,13 @@ object RefChecks {
     // 4. Check that every defined member with an `override` modifier overrides some other member.
     for (member <- clazz.info.decls)
       if (member.isAnyOverride && !(clazz.thisType.baseClasses exists (hasMatchingSym(_, member)))) {
-        // for (bc <- clazz.info.baseClasses.tail) Console.println("" + bc + " has " + bc.info.decl(member.name) + ":" + bc.info.decl(member.name).tpe);//DEBUG
+        if (checks != noPrinter) {
+          for (bc <- clazz.info.baseClasses.tail) {
+            val sym = bc.info.decl(member.name).symbol
+            if (sym.exists)
+              checks.println(i"$bc has $sym: ${clazz.thisType.memberInfo(sym)}")
+          }
+        }
 
         val nonMatching = clazz.info.member(member.name).altsWith(alt => alt.owner != clazz)
         nonMatching match {

@@ -3,6 +3,6 @@ class Point extends Comparable[Point] {
 }
 
 class ColoredPoint extends Point with Comparable[ColoredPoint] {
-  override def compareTo(other: ColoredPoint): Int = ???
+  override def compareTo(other: ColoredPoint): Int = ??? // error: overridden method has different signature
 }
 
