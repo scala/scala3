@@ -49,9 +49,10 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
         }
       }
 
-      def argForParam(pre: Type, tparam: Symbol): Type = {
+      def argForParam(pre: Type, cls: Symbol, tparam: Symbol): Type = {
         val tparamCls = tparam.owner
-        pre.baseType(tparamCls) match {
+
+        def selectArg(base: Type): Type = base match {
           case AppliedType(_, allArgs) =>
             var tparams = tparamCls.typeParams
             var args = allArgs
@@ -63,7 +64,7 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
                     val v = variance
                     if (v > 0) bounds.hi
                     else if (v < 0) bounds.lo
-                    else TypeArgRef(pre, cls.typeRef, idx)
+                    else TypeArgRef(upper(pre), cls.typeRef, idx)
                   case arg => arg
                 }
               tparams = tparams.tail
@@ -71,15 +72,27 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
               idx += 1
             }
             throw new AssertionError(ex"$pre contains no matching argument for ${tparam.showLocated} ")
-          case OrType(tp1, tp2) => argForParam(tp1, tparam) | argForParam(tp2, tparam)
-          case AndType(tp1, tp2) => argForParam(tp1, tparam) & argForParam(tp2, tparam)
+          case OrType(base1, base2) => selectArg(base1) | selectArg(base2)
+          case AndType(base1, base2) => selectArg(base1) & selectArg(base2)
           case base =>
-            if (pre.termSymbol is Package) argForParam(pre.select(nme.PACKAGE), tparam)
-            else {
-              // throw new AssertionError(ex"$pre contains no matching argument for ${tparam.showLocated}, base = $base") // DEBUG
-              tp
-            }
+            // throw new AssertionError(ex"$pre contains no matching argument for ${tparam.showLocated}, base = $base") // DEBUG
+            tp
         }
+
+        def loop(pre: Type, cls: Symbol): Type = {
+          // println(i"argForParam $pre, $cls, $tparam") // DEBUG
+          val base = pre.baseType(cls)
+          if (pre.termSymbol is Package)
+            loop(pre.select(nme.PACKAGE), cls)
+          else if (cls eq tparamCls)
+            selectArg(base)
+          else if ((pre eq NoType) || (pre eq NoPrefix)|| (cls is PackageClass))
+            tp
+          else
+            loop(base.normalizedPrefix, cls.owner)
+        }
+
+        loop(pre, cls)
       }
 
       /*>|>*/ ctx.conditionalTraceIndented(TypeOps.track, s"asSeen ${tp.show} from (${pre.show}, ${cls.show})", show = true) /*<|<*/ { // !!! DEBUG
@@ -87,7 +100,7 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
           case tp: NamedType =>
             val sym = tp.symbol
             if (sym.isStatic) tp
-            else if (Config.newScheme && sym.is(TypeParam)) argForParam(pre, sym)
+            else if (Config.newScheme && sym.is(TypeParam)) argForParam(pre, cls, sym)
             else derivedSelect(tp, atVariance(variance max 0)(this(tp.prefix)))
           case tp: ThisType =>
             toPrefix(pre, cls, tp.cls)

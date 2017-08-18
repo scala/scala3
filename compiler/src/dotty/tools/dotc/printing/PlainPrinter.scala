@@ -170,7 +170,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
         val cls = clsRef.symbol
         val tparams = cls.typeParams
         val paramName = if (tparams.length > idx) nameString(tparams(idx)) else "<unknown>"
-        toTextPrefix(prefix) ~ "<parameter $paramName of " ~ toText(cls) ~ ">"
+        toTextPrefix(prefix) ~ s"<parameter $paramName of " ~ toText(cls) ~ ">"
       case AndType(tp1, tp2) =>
         changePrec(AndPrec) { toText(tp1) ~ " & " ~ toText(tp2) }
       case OrType(tp1, tp2) =>

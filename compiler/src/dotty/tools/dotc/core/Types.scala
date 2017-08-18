@@ -3220,7 +3220,8 @@ object Types {
   /** A reference to wildcard argument `p.<parameter X of class C>`
    *  where `p: C[... _ ...]`
    */
-  abstract case class TypeArgRef(prefix: Type, clsRef: TypeRef, idx: Int) extends CachedProxyType {
+  abstract case class TypeArgRef(prefix: Type, clsRef: TypeRef, idx: Int) extends CachedProxyType with ValueType {
+    assert(prefix.isInstanceOf[ValueType])
     override def underlying(implicit ctx: Context): Type =
       prefix.baseType(clsRef.symbol).argInfos.apply(idx)
     def derivedTypeArgRef(prefix: Type)(implicit ctx: Context): Type =
@@ -4271,11 +4272,12 @@ object Types {
       else tp.derivedAndOrType(tp1, tp2)
 
     override protected def derivedTypeArgRef(tp: TypeArgRef, prefix: Type): Type =
-      if (prefix.exists) tp.derivedTypeArgRef(prefix)
-      else {
-        val paramBounds = tp.underlying
-        range(paramBounds.loBound, paramBounds.hiBound)
-      }
+      if (isRange(prefix))
+        tp.underlying match {
+          case TypeBounds(lo, hi) => range(atVariance(-variance)(reapply(lo)), reapply(hi))
+          case _ => range(tp.bottomType, tp.topType)
+        }
+      else tp.derivedTypeArgRef(prefix)
 
     override protected def derivedAnnotatedType(tp: AnnotatedType, underlying: Type, annot: Annotation) =
       underlying match {
