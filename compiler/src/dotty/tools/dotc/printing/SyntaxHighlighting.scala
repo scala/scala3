@@ -254,18 +254,18 @@ object SyntaxHighlighting {
       prev = curr
     }
 
-    def appendSingleQuote(delim: Char) = remaining match {
-      case '\'' #:: chr #:: '\'' #:: _ => // single character
+    def appendSingleQuote(delim: Char) = remaining.take(3) match {
+      case chr #:: '\'' #:: _ => // single character
         newBuf append LiteralColor
         newBuf appendAll s"'$chr'"
         newBuf append NoColor
-        takeChars(3)
+        takeChars(2)
         prev = '\''
-      case '\'' #:: '\\' #:: chr #:: '\'' #:: _ => // escaped character
+      case '\\' #:: chr #:: '\'' #:: _ => // escaped character
         newBuf append LiteralColor
         newBuf appendAll s"'\\$chr'"
         newBuf append NoColor
-        takeChars(4)
+        takeChars(3)
         prev = '\''
       case _ => appendWhile(delim, !typeEnders.contains(_), literal)
     }
