@@ -41,10 +41,10 @@ class ExpandSAMs extends MiniPhaseTransform { thisTransformer =>
           checkRefinements(tpe, fn.pos)
           tree
         case tpe =>
-          checkRefinements(tpe, fn.pos)
-          val Seq(samDenot) = tpe.abstractTermMembers.filter(!_.symbol.isSuperAccessor)
+          val tpe1 = checkRefinements(tpe, fn.pos)
+          val Seq(samDenot) = tpe1.abstractTermMembers.filter(!_.symbol.isSuperAccessor)
           cpy.Block(tree)(stats,
-              AnonClass(tpe :: Nil, fn.symbol.asTerm :: Nil, samDenot.symbol.asTerm.name :: Nil))
+              AnonClass(tpe1 :: Nil, fn.symbol.asTerm :: Nil, samDenot.symbol.asTerm.name :: Nil))
       }
     case _ =>
       tree
@@ -88,12 +88,13 @@ class ExpandSAMs extends MiniPhaseTransform { thisTransformer =>
     cpy.Block(tree)(List(applyDef, isDefinedAtDef), anonCls)
   }
 
-  private def checkRefinements(tpe: Type, pos: Position)(implicit ctx: Context): Unit = tpe match {
+  private def checkRefinements(tpe: Type, pos: Position)(implicit ctx: Context): Type = tpe match {
     case RefinedType(parent, name, _) =>
       if (name.isTermName && tpe.member(name).symbol.ownersIterator.isEmpty) // if member defined in the refinement
         ctx.error("Lambda does not define " + name, pos)
       checkRefinements(parent, pos)
     case _ =>
+      tpe
   }
 
 }
