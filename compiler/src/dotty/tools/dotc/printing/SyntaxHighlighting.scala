@@ -6,7 +6,7 @@ import parsing.Tokens._
 import scala.annotation.switch
 import scala.collection.mutable.StringBuilder
 import core.Contexts.Context
-import util.Chars.{ LF, FF, CR, SU }
+import util.Chars
 import Highlighting.{Highlight, HighlightBuffer}
 
 /** This object provides functions for syntax highlighting in the REPL */
@@ -74,7 +74,7 @@ object SyntaxHighlighting {
           newBuf += n
           prev = n
           if (remaining.nonEmpty) takeChar() // drop 1 for appendLiteral
-          appendLiteral('"', next == "\"\"\"")
+          appendString('"', next == "\"\"\"")
         } else {
           if (n.isUpper && keywordStart) {
             appendWhile(n, !typeEnders.contains(_), typeDef)
@@ -115,9 +115,9 @@ object SyntaxHighlighting {
           case '@'  =>
             appendWhile('@', !typeEnders.contains(_), annotation)
           case '\"' =>
-            appendLiteral('\"', multiline = remaining.take(2).mkString == "\"\"")
+            appendString('\"', multiline = remaining.take(2).mkString == "\"\"")
           case '\'' =>
-            appendLiteral('\'')
+            appendSingleQuote('\'')
           case '`'  =>
             appendTo('`', _ == '`', none)
           case _    => {
@@ -169,16 +169,15 @@ object SyntaxHighlighting {
           if (curr == '*') open += 1
         }
 
-        (curr: @switch) match {
-          case LF | FF | CR | SU => newBuf append CommentColor
-          case _ => ()
+        if (Chars.isLineBreakChar(curr)) {
+          newBuf append CommentColor
         }
       }
       prev = curr
       newBuf append NoColor
     }
 
-    def appendLiteral(delim: Char, multiline: Boolean = false) = {
+    def appendString(delim: Char, multiline: Boolean = false) = {
       var curr: Char      = 0
       var continue        = true
       var closing         = 0
@@ -247,13 +246,28 @@ object SyntaxHighlighting {
           closing = 0
         }
 
-        (curr: @switch) match {
-          case LF | FF | CR | SU => newBuf append LiteralColor
-          case _ => ()
+        if (Chars.isLineBreakChar(curr)) {
+          newBuf append LiteralColor
         }
       }
       newBuf append NoColor
       prev = curr
+    }
+
+    def appendSingleQuote(delim: Char) = remaining.take(3) match {
+      case chr #:: '\'' #:: _ => // single character
+        newBuf append LiteralColor
+        newBuf appendAll s"'$chr'"
+        newBuf append NoColor
+        takeChars(2)
+        prev = '\''
+      case '\\' #:: chr #:: '\'' #:: _ => // escaped character
+        newBuf append LiteralColor
+        newBuf appendAll s"'\\$chr'"
+        newBuf append NoColor
+        takeChars(3)
+        prev = '\''
+      case _ => appendWhile(delim, !typeEnders.contains(_), literal)
     }
 
     def append(c: Char, shouldHL: String => Boolean, highlight: String => String) = {
