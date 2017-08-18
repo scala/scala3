@@ -613,21 +613,25 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
             liftFun()
 
             // lift arguments in the definition order
-            val argDefBuff = mutable.ListBuffer.empty[Tree]
-            typedArgs = liftArgs(argDefBuff, methType, typedArgs)
+            val argDefBuf = mutable.ListBuffer.empty[Tree]
+            typedArgs = liftArgs(argDefBuf, methType, typedArgs)
 
-            def orderedArgDefs = {
-              val impureArgs = typedArgBuf.filterNot { // pure are not lifted by liftArgs
+            // Lifted arguments ordered based on the original order of typedArgBuf and
+            // with all non explicit default parameters at the end in declaration order.
+            val orderedArgDefs = {
+              // List of original arguments that are lifted by liftArgs
+              val impureArgs = typedArgBuf.filterNot {
                 case NamedArg(_, arg) => isPureExpr(arg)
                 case arg => isPureExpr(arg)
               }
-              var defaultParamIndex = args.size
+              val defaultParamIndex = args.size
               // Mapping of index of each `liftable` into original args ordering
               val indices = impureArgs.map { arg =>
                 val idx = args.indexOf(arg)
-                if (idx >= 0) idx else defaultParamIndex // assuming stable sorting
+                if (idx >= 0) idx // original index skipping pure agruments
+                else defaultParamIndex // assuming stable sorting all will remain in the end with the same order
               }
-              scala.util.Sorting.stableSort[(Tree, Int), Int](argDefBuff zip indices, x => x._2).map(_._1)
+              scala.util.Sorting.stableSort[(Tree, Int), Int](argDefBuf zip indices, x => x._2).map(_._1)
             }
 
             liftedDefs ++= orderedArgDefs
