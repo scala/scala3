@@ -575,19 +575,7 @@ object Types {
             if (rinfo.isAlias) rinfo
             else if (pdenot.info.isAlias) pdenot.info
             else if (ctx.pendingMemberSearches.contains(name)) pdenot.info safe_& rinfo
-            else
-              try pdenot.info & rinfo
-              catch {
-                case ex: CyclicReference =>
-                  // ??? can this still happen? ???
-                  // happens for tests/pos/sets.scala. findMember is called from baseTypeRef.
-                  // The & causes a subtype check which calls baseTypeRef again with the same
-                  // superclass. In the observed case, the superclass was Any, and
-                  // the special shortcut for Any in derivesFrom was as yet absent. To reproduce,
-                  // remove the special treatment of Any in derivesFrom and compile
-                  // sets.scala.
-                  pdenot.info safe_& rinfo
-              }
+            else pdenot.info recoverable_& rinfo
           pdenot.asSingleDenotation.derivedSingleDenotation(pdenot.symbol, jointInfo)
         } else {
           pdenot & (
@@ -867,16 +855,28 @@ object Types {
 
     /** Safer version of `&`.
      *
-     *  This version does not simplify the upper bound of the intersection of
+     *  This version does not simplify the bounds of the intersection of
      *  two TypeBounds. The simplification done by `&` requires subtyping checks
      *  which may end up calling `&` again, in most cases this should be safe
      *  but because of F-bounded types, this can result in an infinite loop
      *  (which will be masked unless `-Yno-deep-subtypes` is enabled).
+     *  pos/i536 demonstrates that the infinite loop can also invole lower bounds.wait
      */
     def safe_& (that: Type)(implicit ctx: Context): Type = (this, that) match {
-      case (TypeBounds(lo1, hi1), TypeBounds(lo2, hi2)) => TypeBounds(lo1 | lo2, AndType(hi1, hi2))
+      case (TypeBounds(lo1, hi1), TypeBounds(lo2, hi2)) => TypeBounds(OrType(lo1, lo2), AndType(hi1, hi2))
       case _ => this & that
     }
+
+    /** `this & that`, but handle CyclicReferences by falling back to `safe_&`.
+     */
+    def recoverable_&(that: Type)(implicit ctx: Context): Type =
+      try this & that
+      catch {
+        case ex: CyclicReference => this safe_& that
+          // A test case where this happens is tests/pos/i536.scala.
+          // The & causes a subtype check which calls baseTypeRef again with the same
+          // superclass.
+      }
 
     def | (that: Type)(implicit ctx: Context): Type = track("|") {
       ctx.typeComparer.lub(this, that)

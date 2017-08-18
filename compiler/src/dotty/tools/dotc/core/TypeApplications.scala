@@ -447,7 +447,7 @@ class TypeApplications(val self: Type) extends AnyVal {
         typr.println(i"normalize arg $arg for $tparam in $self app $args%, %, pbounds, = $pbounds")
         if (v > 0) hi & pbounds.hiBound
         else if (v < 0) lo | pbounds.loBound
-        else arg & pbounds
+        else arg recoverable_& pbounds
       case _ => arg
     }
 
