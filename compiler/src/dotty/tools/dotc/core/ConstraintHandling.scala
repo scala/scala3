@@ -312,7 +312,12 @@ trait ConstraintHandling {
   /** The current bounds of type parameter `param` */
   final def bounds(param: TypeParamRef): TypeBounds = {
     val e = constraint.entry(param)
-    if (e.exists) e.bounds else param.binder.paramInfos(param.paramNum)
+    if (e.exists) e.bounds
+    else {
+      val pinfos = param.binder.paramInfos
+      if (pinfos != null) pinfos(param.paramNum) // pinfos == null happens in pos/i536.scala
+      else TypeBounds.empty
+    }
   }
 
   /** Add type lambda `tl`, possibly with type variables `tvars`, to current constraint
