@@ -1814,6 +1814,43 @@ object Types {
       ctx.underlyingRecursions -= 1
     }
 
+    // def noArg = throw new AssertionError(s"$pre contains no matching argument for ${sym.showLocated}")
+
+    /** The argument corresponding to class type parameter `tparam` as seen from
+     *  prefix `pre`.
+     */
+    def argForParam(pre: Type)(implicit ctx: Context): Type = {
+      val tparam = symbol
+      val cls = tparam.owner
+      val base = pre.baseType(cls)
+      base match {
+        case AppliedType(_, allArgs) =>
+          var tparams = cls.typeParams
+          var args = allArgs
+          var idx = 0
+          while (tparams.nonEmpty && args.nonEmpty) {
+            if (tparams.head.eq(tparam))
+              return args.head match {
+                case _: TypeBounds => TypeArgRef(pre, cls.typeRef, idx)
+                case arg => arg
+              }
+            tparams = tparams.tail
+            args = args.tail
+            idx += 1
+          }
+          NoType
+        case OrType(base1, base2) => argForParam(base1) | argForParam(base2)
+        case AndType(base1, base2) => argForParam(base1) & argForParam(base2)
+        case _ =>
+          if (pre.termSymbol is Package) argForParam(pre.select(nme.PACKAGE))
+          else if (pre.isBottomType) pre.bottomType
+          else NoType
+      }
+    }
+
+    def isClassParam(implicit ctx: Context) =
+      Config.newScheme && symbol.is(TypeParam) && symbol.owner.isClass
+
     /** A selection of the same kind, but with potentially a different prefix.
      *  The following normalizations are performed for type selections T#A:
      *
@@ -1830,7 +1867,7 @@ object Types {
       if (prefix eq this.prefix) this
       else if (prefix.isBottomType) prefix
       else if (isType) {
-        val res = prefix.lookupRefined(name)
+        val res = if (isClassParam) argForParam(prefix) else prefix.lookupRefined(name)
         if (res.exists) res
         else if (Config.splitProjections)
           prefix match {
@@ -3882,7 +3919,13 @@ object Types {
     def apply(tp: Type): Type
 
     protected def derivedSelect(tp: NamedType, pre: Type): Type =
-      tp.derivedSelect(pre)
+      tp.derivedSelect(pre)  match {
+        case tp: TypeArgRef if variance != 0 =>
+          val tp1 = tp.underlying
+          if (variance > 0) tp1.hiBound else tp1.loBound
+        case tp =>
+          tp
+      }
     protected def derivedRefinedType(tp: RefinedType, parent: Type, info: Type): Type =
       tp.derivedRefinedType(parent, tp.refinedName, info)
     protected def derivedRecType(tp: RecType, parent: Type): Type =
@@ -4094,7 +4137,7 @@ object Types {
      *  The possible cases are listed inline in the code. Return `default` if no widening is
      *  possible.
      */
-    def tryWiden(tp: NamedType, pre: Type)(default: => Type): Type =
+    def tryWiden(tp: NamedType, pre: Type): Type =
       pre.member(tp.name) match {
         case d: SingleDenotation =>
           d.info match {
@@ -4111,9 +4154,9 @@ object Types {
               // hence we can replace with y.type under all variances
               reapply(info)
             case _ =>
-              default
+              NoType
           }
-        case _ => default
+        case _ => NoType
       }
 
     /** Derived selection.
@@ -4123,9 +4166,13 @@ object Types {
       if (pre eq tp.prefix) tp
       else pre match {
         case Range(preLo, preHi) =>
-          tryWiden(tp, preHi)(range(tp.derivedSelect(preLo), tp.derivedSelect(preHi)))
+          val forwarded =
+            if (tp.isClassParam) tp.argForParam(preHi)
+            else tryWiden(tp, preHi)
+          forwarded.orElse(
+            range(super.derivedSelect(tp, preLo), super.derivedSelect(tp, preHi)))
         case _ =>
-          tp.derivedSelect(pre)
+          super.derivedSelect(tp, pre)
       }
 
     override protected def derivedRefinedType(tp: RefinedType, parent: Type, info: Type) =
