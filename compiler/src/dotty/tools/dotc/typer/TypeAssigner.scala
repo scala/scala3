@@ -120,7 +120,7 @@ trait TypeAssigner {
       override def derivedSelect(tp: NamedType, pre: Type) =
         if (pre eq tp.prefix)
           tp
-        else tryWiden(tp, tp.prefix) {
+        else tryWiden(tp, tp.prefix).orElse {
           if (tp.isTerm && variance > 0 && !pre.isInstanceOf[SingletonType])
           	apply(tp.info.widenExpr)
           else if (upper(pre).member(tp.name).exists)
