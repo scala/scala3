@@ -134,6 +134,9 @@ object ErrorReporting {
 
     def typeMismatchMsg(found: Type, expected: Type, postScript: String = "") = {
       // replace constrained TypeParamRefs and their typevars by their bounds where possible
+      // the idea is that if the bounds are also not-subtypes of each other to report
+      // the type mismatch on the bounds instead of the original TypeParamRefs, since
+      // these are usually easier to analyze.
       object reported extends TypeMap {
         def setVariance(v: Int) = variance = v
         val constraint = ctx.typerState.constraint
@@ -154,7 +157,9 @@ object ErrorReporting {
       val found1 = reported(found)
       reported.setVariance(-1)
       val expected1 = reported(expected)
-      TypeMismatch(found1, expected1, whyNoMatchStr(found, expected), postScript)
+      val (found2, expected2) =
+        if (found1 <:< expected1) (found, expected) else (found1, expected1)
+      TypeMismatch(found2, expected2, whyNoMatchStr(found, expected), postScript)
     }
 
     /** Format `raw` implicitNotFound argument, replacing all
