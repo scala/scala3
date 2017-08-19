@@ -49,58 +49,13 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
         }
       }
 
-      def argForParam(pre: Type, cls: Symbol, tparam: Symbol): Type = {
-        val tparamCls = tparam.owner
-
-        def selectArg(base: Type): Type = base match {
-          case AppliedType(_, allArgs) =>
-            var tparams = tparamCls.typeParams
-            var args = allArgs
-            var idx = 0
-            while (tparams.nonEmpty && args.nonEmpty) {
-              if (tparams.head.eq(tparam))
-                return args.head match {
-                  case bounds: TypeBounds =>
-                    val v = variance
-                    if (v > 0) bounds.hi
-                    else if (v < 0) bounds.lo
-                    else TypeArgRef(upper(pre), cls.typeRef, idx)
-                  case arg => arg
-                }
-              tparams = tparams.tail
-              args = args.tail
-              idx += 1
-            }
-            throw new AssertionError(ex"$pre contains no matching argument for ${tparam.showLocated} ")
-          case OrType(base1, base2) => selectArg(base1) | selectArg(base2)
-          case AndType(base1, base2) => selectArg(base1) & selectArg(base2)
-          case base =>
-            // throw new AssertionError(ex"$pre contains no matching argument for ${tparam.showLocated}, base = $base") // DEBUG
-            tp
-        }
-
-        def loop(pre: Type, cls: Symbol): Type = {
-          // println(i"argForParam $pre, $cls, $tparam") // DEBUG
-          val base = pre.baseType(cls)
-          if (pre.termSymbol is Package)
-            loop(pre.select(nme.PACKAGE), cls)
-          else if (cls eq tparamCls)
-            selectArg(base)
-          else if ((pre eq NoType) || (pre eq NoPrefix)|| (cls is PackageClass))
-            tp
-          else
-            loop(base.normalizedPrefix, cls.owner)
-        }
-
-        loop(pre, cls)
-      }
-
       /*>|>*/ ctx.conditionalTraceIndented(TypeOps.track, s"asSeen ${tp.show} from (${pre.show}, ${cls.show})", show = true) /*<|<*/ { // !!! DEBUG
+        // All cases except for ThisType are the same as in Map. Inlined for performance
+        // TODO: generalize the inlining trick?
         tp match {
           case tp: NamedType =>
             val sym = tp.symbol
             if (sym.isStatic) tp
-            else if (Config.newScheme && sym.is(TypeParam)) argForParam(pre, cls, sym)
             else derivedSelect(tp, atVariance(variance max 0)(this(tp.prefix)))
           case tp: ThisType =>
             toPrefix(pre, cls, tp.cls)
