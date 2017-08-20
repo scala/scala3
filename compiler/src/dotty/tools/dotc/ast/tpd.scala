@@ -698,8 +698,10 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
      */
     def select(sym: Symbol)(implicit ctx: Context): Select = {
       val tp =
-        if (sym.isType)
+        if (sym.isType) {
+          assert(!sym.is(TypeParam))
           TypeRef(tree.tpe, sym.name.asTypeName)
+        }
         else
           TermRef.withSigAndDenot(tree.tpe, sym.name.asTermName,
             sym.signature, sym.denot.asSeenFrom(tree.tpe))
