@@ -23,11 +23,12 @@ import collection.mutable.ListBuffer
  *  type parameter, then we can rewrite:
  *    e.foo[X, Y, ...](args)
  *  as:
- *    V.foo$extension[X, Y, ..., e.A, e.B, ...](e)(args)
+ *    V.foo$extension[X, Y, ..., A', B', ...](e)(args)
+ *    where A', B', ... are the class type parameters A, B, ... as seen from `e`.
  *  Otherwise, we need to evaluate e first:
  *    {
  *      val ev = e
- *      V.foo$extension[X, Y, ..., ev.A, ev.B, ...](ev)(args)
+ *      V.foo$extension[X, Y, ..., A', B', ...](ev)(args)
  *    }
  *
  *  This phase needs to be placed after phases which may introduce calls to
@@ -63,12 +64,14 @@ class VCInlineMethods extends MiniPhaseTransform with IdentityDenotTransformer {
         rewire(qual, mtArgs2, mArgss)
       case sel @ Select(qual, _) =>
         val origMeth = sel.symbol
-        val ctParams = origMeth.enclosingClass.typeParams
+        val origCls = origMeth.enclosingClass
+        val ctParams = origCls.typeParams
         val extensionMeth = extensionMethod(origMeth)
 
         if (!ctParams.isEmpty) {
           evalOnce(qual) { ev =>
-            val ctArgs = ctParams map (ev.select(_))
+            val ctArgs = ctParams.map(tparam =>
+              TypeTree(tparam.typeRef.asSeenFrom(ev.tpe, origCls)))
             ref(extensionMeth)
               .appliedToTypeTrees(mtArgs ++ ctArgs)
               .appliedTo(ev)
