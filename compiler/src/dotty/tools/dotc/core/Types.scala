@@ -1584,7 +1584,7 @@ object Types {
     }
 
     /** Hook for adding debug check code when denotations are assigned */
-    final def checkDenot()(implicit ctx: Context) =
+    final def checkDenot()(implicit ctx: Context) = {
       if (Config.checkTypeRefCycles)
         lastDenotation match {
           case d: SingleDenotation =>
@@ -1596,6 +1596,16 @@ object Types {
             }
           case _ =>
         }
+      if (Config.checkTypeParamRefs && Config.newScheme)
+        lastDenotation match {
+          case d: SingleDenotation if d.symbol.is(ClassTypeParam) =>
+            prefix match {
+              case prefix: Types.ThisType => assert(prefix.cls == d.symbol.owner, this)
+              case _ => assert(false, this)
+            }
+          case _ =>
+        }
+    }
 
     /** A second fallback to recompute the denotation if necessary */
     private def computeDenot(implicit ctx: Context): Denotation = {

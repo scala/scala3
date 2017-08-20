@@ -593,6 +593,9 @@ object Flags {
   /** Is valid forever */
   final val ValidForever = Package | Permanent | Scala2ExistentialCommon
 
+  /** A type parameter of a class or trait (works only under Config.newScheme) */
+  final val ClassTypeParam = allOf(TypeParam, Private)
+
   /** Is a default parameter in Scala 2*/
   final val DefaultParameter = allOf(Param, DefaultParameterized)
 
