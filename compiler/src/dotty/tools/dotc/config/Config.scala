@@ -114,9 +114,11 @@ object Config {
   final val checkTypeRefCycles = false
 
   /** If this flag is set, it is checked that class type parameters are
-   *  only references with NoPrefix or ThisTypes as prefixes.
+   *  only references with NoPrefix or ThisTypes as prefixes. This option
+   *  is usally disabled, because there are still some legitimate cases where
+   *  this can arise (e.g. for pos/Map.scala, in LambdaType.integrate).
    */
-  final val checkTypeParamRefs = true
+  final val checkTypeParamRefs = false
 
   /** The recursion depth for showing a summarized string */
   final val summarizeDepth = 2
