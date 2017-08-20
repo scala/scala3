@@ -79,7 +79,7 @@ object Config {
   final val traceDeepSubTypeRecursions = false
 
   /** When explaining subtypes and this flag is set, also show the classes of the compared types. */
-  final val verboseExplainSubtype = true
+  final val verboseExplainSubtype = false
 
   /** If this flag is set, take the fast path when comparing same-named type-aliases and types */
   final val fastPathForRefinedSubtype = true
@@ -112,6 +112,11 @@ object Config {
    *  to themselves.
    */
   final val checkTypeRefCycles = false
+
+  /** If this flag is set, it is checked that class type parameters are
+   *  only references with NoPrefix or ThisTypes as prefixes.
+   */
+  final val checkTypeParamRefs = true
 
   /** The recursion depth for showing a summarized string */
   final val summarizeDepth = 2
