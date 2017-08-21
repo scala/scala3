@@ -661,7 +661,7 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
         else if (scalaListType.isRef(sym))
           if (mergeList) "_*" else "_: List"
         else if (scalaConsType.isRef(sym))
-          if (mergeList) "_" else "List(_)"
+          if (mergeList) "_, _*"  else "List(_, _*)"
         else if (tp.classSymbol.is(CaseClass) && !hasCustomUnapply(tp.classSymbol))
         // use constructor syntax for case class
           showType(tp) + signature(tp).map(_ => "_").mkString("(", ", ", ")")
