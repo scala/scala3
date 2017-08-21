@@ -39,14 +39,19 @@ trait TypeAssigner {
     }
   }
 
-  /** Given a class info, the intersection of its parents, refined by all
-   *  non-private fields, methods, and type members.
+  /** An abstraction of a class info, consisting of
+   *   - the intersection of its parents,
+   *   - refined by all non-private fields, methods, and type members,
+   *   - abstracted over all type parameters (into a type lambda)
+   *   - where all references to `this` of the class are closed over in a RecType.
    */
   def classBound(info: ClassInfo)(implicit ctx: Context): Type = {
+    val cls = info.cls
     val parentType = info.parentsWithArgs.reduceLeft(ctx.typeComparer.andType(_, _))
+
     def addRefinement(parent: Type, decl: Symbol) = {
       val inherited =
-        parentType.findMember(decl.name, info.cls.thisType, excluded = Private)
+        parentType.findMember(decl.name, cls.thisType, excluded = Private)
           .suchThat(decl.matches(_))
       val inheritedInfo = inherited.info
       if (inheritedInfo.exists && decl.info <:< inheritedInfo && !(inheritedInfo <:< decl.info)) {
@@ -57,10 +62,16 @@ trait TypeAssigner {
       else
         parent
     }
+
+    def close(tp: Type) = RecType.closeOver(rt => tp.substThis(cls, RecThis(rt)))
+
     val refinableDecls = info.decls.filter(
       sym => !(sym.is(TypeParamAccessor | Private) || sym.isConstructor))
     val raw = (parentType /: refinableDecls)(addRefinement)
-    RecType.closeOver(rt => raw.substThis(info.cls, RecThis(rt)))
+    HKTypeLambda.fromParams(cls.typeParams, raw) match {
+      case tl: HKTypeLambda => tl.derivedLambdaType(resType = close(tl.resType))
+      case tp => close(tp)
+    }
   }
 
   /** An upper approximation of the given type `tp` that does not refer to any symbol in `symsToAvoid`.
