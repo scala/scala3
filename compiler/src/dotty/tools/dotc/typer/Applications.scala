@@ -1146,12 +1146,18 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
       else {
         val flip = new TypeMap {
           def apply(t: Type) = t match {
-            case t: TypeAlias if variance > 0 && t.variance < 0 => t.derivedTypeAlias(t.alias, 1)
+            case t @ TypeAlias(alias) if variance > 0 && t.variance < 0 && !Config.newScheme =>
+              t.derivedTypeAlias(defn.FunctionOf(alias :: Nil, defn.UnitType))
             case t: TypeBounds => t
+            case t @ AppliedType(tycon, args) if Config.newScheme =>
+              def mapArg(arg: Type, tparam: TypeParamInfo) =
+                if (variance > 0 && tparam.paramVariance < 0) defn.FunctionOf(arg :: Nil, defn.UnitType)
+                else arg
+              mapOver(t.derivedAppliedType(tycon, args.zipWithConserve(tycon.typeParams)(mapArg)))
             case _ => mapOver(t)
           }
         }
-        isCompatible(flip(tp1), flip(tp2))
+        (flip(tp1) relaxed_<:< flip(tp2)) || viewExists(tp1, tp2)
       }
 
     /** Drop any implicit parameter section */
