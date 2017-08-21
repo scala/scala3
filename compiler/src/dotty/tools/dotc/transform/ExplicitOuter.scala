@@ -155,9 +155,28 @@ object ExplicitOuter {
   private def newOuterAccessors(cls: ClassSymbol)(implicit ctx: Context) =
     newOuterAccessor(cls, cls) :: (if (cls is Trait) Nil else newOuterParamAccessor(cls) :: Nil)
 
-  /** A new outer accessor or param accessor */
+  /** A new outer accessor or param accessor.
+   *  @param  owner  The class where the outer accessor is located
+   *  @param  cls    The class relative to which the outer is computed (can be a base class of owner)
+   *  @param  name   The name of the outer access
+   *  @param  flags  The flags of the outer accessor
+   *
+   * The type of the outer accessor is computed as follows:
+   * Let O[X1, .., Xn] be the class eclosing `cls`.
+   *  - if owner == cls, O[X1, ..., Xn]
+   *  - otherwise, if the class P enclosing `owner` derives from O, the
+   *    base type of P.this of class O
+   *  - otherwise O[_, ..., _]
+   */
   private def newOuterSym(owner: ClassSymbol, cls: ClassSymbol, name: TermName, flags: FlagSet)(implicit ctx: Context) = {
-    val target = cls.owner.enclosingClass.appliedRef
+    val outerThis = owner.owner.enclosingClass.thisType
+    val outerCls = cls.owner.enclosingClass
+    val target =
+      if (owner == cls)
+        outerCls.appliedRef
+      else
+        outerThis.baseType(outerCls).orElse(
+  		    outerCls.typeRef.appliedTo(outerCls.typeParams.map(_ => TypeBounds.empty)))
     val info = if (flags.is(Method)) ExprType(target) else target
     ctx.withPhaseNoEarlier(ctx.explicitOuterPhase.next) // outer accessors are entered at explicitOuter + 1, should not be defined before.
        .newSymbol(owner, name, Synthetic | flags, info, coord = cls.coord)
