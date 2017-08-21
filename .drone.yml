@@ -33,6 +33,8 @@ pipeline:
     image: lampepfl/dotty:07-06-2017
     pull: true
     commands:
+      - ./project/scripts/sbt ";clean ;publishLocal" "${CI_PUBLISH}"
+      - ./project/scripts/sbt "sbt-dotty/scripted source-dependencies/*" "${CI_PUBLISH}"
       - RELEASEBUILD="yes" ./project/scripts/sbtPublish ${CI_PUBLISH} $SONATYPE_USER $SONATYPE_PW $PGP_PW ";dotty-bootstrapped/publishSigned ;sonatypeRelease"
     volumes:
       - /home/drone/keys:/keys
