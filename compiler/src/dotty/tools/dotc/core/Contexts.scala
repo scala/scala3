@@ -631,12 +631,6 @@ object Contexts {
      *  of underlying during a controlled operation exists. */
     private[core] val pendingUnderlying = new mutable.HashSet[Type]
 
-    /** A flag that some unsafe nonvariant instantiation was encountered
-     *  in this run. Used as a shortcut to a avoid scans of types in
-     *  Typer.typedSelect.
-     */
-    private[dotty] var unsafeNonvariant: RunId = NoRunId
-
     /** A map from ErrorType to associated message computation. We use this map
      *  instead of storing message computations directly in ErrorTypes in order
      *  to avoid space leaks - the message computation usually captures a context.

@@ -3679,13 +3679,25 @@ object Types {
 
   // ----- TypeMaps --------------------------------------------------------------------
 
-  abstract class TypeMap(implicit protected val ctx: Context) extends (Type => Type) { thisMap =>
+  /** Common base class of TypeMap and TypeAccumulator */
+  abstract class VariantTraversal {
+    protected[core] var variance = 1
+
+    @inline protected def atVariance[T](v: Int)(op: => T): T = {
+      val saved = variance
+      variance = v
+      val res = op
+      variance = saved
+      res
+    }
+  }
+
+  abstract class TypeMap(implicit protected val ctx: Context)
+  extends VariantTraversal with (Type => Type) { thisMap =>
 
     protected def stopAtStatic = true
 
     def apply(tp: Type): Type
-
-    protected[core] var variance = 1
 
     protected def derivedSelect(tp: NamedType, pre: Type): Type =
       tp.derivedSelect(pre)
@@ -3724,16 +3736,13 @@ object Types {
         case tp: NamedType =>
           if (stopAtStatic && tp.symbol.isStatic) tp
           else {
-            val saved = variance
-            variance = variance max 0
+            val prefix1 = atVariance(variance max 0)(this(tp.prefix))
               // A prefix is never contravariant. Even if say `p.A` is used in a contravariant
               // context, we cannot assume contravariance for `p` because `p`'s lower
               // bound might not have a binding for `A` (e.g. the lower bound could be `Nothing`).
               // By contrast, covariance does translate to the prefix, since we have that
               // if `p <: q` then `p.A <: q.A`, and well-formedness requires that `A` is a member
               // of `p`'s upper bound.
-            val prefix1 = this(tp.prefix)
-            variance = saved
             derivedSelect(tp, prefix1)
           }
         case _: ThisType
@@ -3744,11 +3753,7 @@ object Types {
           derivedRefinedType(tp, this(tp.parent), this(tp.refinedInfo))
 
         case tp: TypeAlias =>
-          val saved = variance
-          variance *= tp.variance
-          val alias1 = this(tp.alias)
-          variance = saved
-          derivedTypeAlias(tp, alias1)
+          derivedTypeAlias(tp, atVariance(variance * tp.variance)(this(tp.alias)))
 
         case tp: TypeBounds =>
           variance = -variance
@@ -3764,12 +3769,8 @@ object Types {
           if (inst.exists) apply(inst) else tp
 
         case tp: HKApply =>
-          def mapArg(arg: Type, tparam: ParamInfo): Type = {
-            val saved = variance
-            variance *= tparam.paramVariance
-            try this(arg)
-            finally variance = saved
-          }
+          def mapArg(arg: Type, tparam: ParamInfo): Type =
+            atVariance(variance * tparam.paramVariance)(this(arg))
           derivedAppliedType(tp, this(tp.tycon),
               tp.args.zipWithConserve(tp.typeParams)(mapArg))
 
@@ -3894,20 +3895,14 @@ object Types {
       case _ => tp
     }
 
-    protected def atVariance[T](v: Int)(op: => T): T = {
-      val saved = variance
-      variance = v
-      try op finally variance = saved
-    }
-
-    /** Derived selection.
-     *  @pre   the (upper bound of) prefix `pre` has a member named `tp.name`.
+    /** Try to widen a named type to its info relative to given prefix `pre`, where possible.
+     *  The possible cases are listed inline in the code. Return `default` if no widening is
+     *  possible.
      */
-    override protected def derivedSelect(tp: NamedType, pre: Type) =
-      if (pre eq tp.prefix) tp
-      else pre match {
-        case Range(preLo, preHi) =>
-          preHi.member(tp.name).info.widenExpr match {
+    def tryWiden(tp: NamedType, pre: Type)(default: => Type): Type =
+      pre.member(tp.name) match {
+        case d: SingleDenotation =>
+          d.info match {
             case TypeAlias(alias) =>
               // if H#T = U, then for any x in L..H, x.T =:= U,
               // hence we can replace with U under all variances
@@ -3921,9 +3916,21 @@ object Types {
               // hence we can replace with y.type under all variances
               reapply(info)
             case _ =>
-              range(tp.derivedSelect(preLo), tp.derivedSelect(preHi))
+              default
           }
-        case _ => tp.derivedSelect(pre)
+        case _ => default
+      }
+
+    /** Derived selection.
+     *  @pre   the (upper bound of) prefix `pre` has a member named `tp.name`.
+     */
+    override protected def derivedSelect(tp: NamedType, pre: Type) =
+      if (pre eq tp.prefix) tp
+      else pre match {
+        case Range(preLo, preHi) =>
+          tryWiden(tp, preHi)(range(tp.derivedSelect(preLo), tp.derivedSelect(preHi)))
+        case _ =>
+          tp.derivedSelect(pre)
       }
 
     override protected def derivedRefinedType(tp: RefinedType, parent: Type, info: Type) =
@@ -3932,20 +3939,30 @@ object Types {
         case Range(parentLo, parentHi) =>
           range(derivedRefinedType(tp, parentLo, info), derivedRefinedType(tp, parentHi, info))
         case _ =>
+          def propagate(lo: Type, hi: Type) =
+            range(derivedRefinedType(tp, parent, lo), derivedRefinedType(tp, parent, hi))
           if (parent.isBottomType) parent
           else info match {
+            case Range(infoLo: TypeBounds, infoHi: TypeBounds) =>
+              assert(variance == 0)
+              val v1 = infoLo.variance
+              val v2 = infoHi.variance
+              // There's some weirdness coming from the way aliases can have variance
+              // If infoLo and infoHi are both aliases with the same non-zero variance
+              // we can propagate to a range of the refined types. If they are both
+              // non-alias ranges we know that infoLo <:< infoHi and therefore we can
+              // propagate to refined types with infoLo and infoHi as bounds.
+              // In all other cases, Nothing..Any is the only interval that contains
+              // the range. i966.scala is a test case.
+              if (v1 > 0 && v2 > 0) propagate(infoLo, infoHi)
+              else if (v1 < 0 && v2 < 0) propagate(infoHi, infoLo)
+              else if (!infoLo.isAlias && !infoHi.isAlias) propagate(infoLo, infoHi)
+              else range(tp.bottomType, tp.topType)
+                // Using `parent` instead of `tp.topType` would be better for normal refinements,
+                // but it would also turn *-types into hk-types, which is not what we want.
+                // We should revisit this point in case we represent applied types not as refinements anymore.
             case Range(infoLo, infoHi) =>
-              def propagate(lo: Type, hi: Type) =
-                range(derivedRefinedType(tp, parent, lo), derivedRefinedType(tp, parent, hi))
-              tp.refinedInfo match {
-                case rinfo: TypeBounds =>
-                  val v = if (rinfo.isAlias) rinfo.variance * variance else variance
-                  if (v > 0) tp.derivedRefinedType(parent, tp.refinedName, rangeToBounds(info))
-                  else if (v < 0) propagate(infoHi, infoLo)
-                  else range(tp.bottomType, tp.topType)
-                case _ =>
-                  propagate(infoLo, infoHi)
-              }
+              propagate(infoLo, infoHi)
             case _ =>
               tp.derivedRefinedType(parent, tp.refinedName, info)
           }
@@ -3987,6 +4004,13 @@ object Types {
             if (variance > 0) tp.derivedAppliedType(tycon, args.map(rangeToBounds))
             else {
               val loBuf, hiBuf = new mutable.ListBuffer[Type]
+              // Given `C[A1, ..., An]` where sone A's are ranges, try to find
+              // non-range arguments L1, ..., Ln and H1, ..., Hn such that
+              // C[L1, ..., Ln] <: C[H1, ..., Hn] by taking the right limits of
+              // ranges that appear in as co- or contravariant arguments.
+              // Fail for non-variant argument ranges.
+              // If successful, the L-arguments are in loBut, the H-arguments in hiBuf.
+              // @return  operation succeeded for all arguments.
               def distributeArgs(args: List[Type], tparams: List[ParamInfo]): Boolean = args match {
                 case Range(lo, hi) :: args1 =>
                   val v = tparams.head.paramVariance
@@ -4006,13 +4030,14 @@ object Types {
                 range(tp.derivedAppliedType(tycon, loBuf.toList),
                       tp.derivedAppliedType(tycon, hiBuf.toList))
               else range(tp.bottomType, tp.topType)
+                // TODO: can we give a better bound than `topType`?
             }
           }
           else tp.derivedAppliedType(tycon, args)
       }
 
     override protected def derivedAndOrType(tp: AndOrType, tp1: Type, tp2: Type) =
-      if (tp1.isInstanceOf[Range] || tp2.isInstanceOf[Range])
+      if (isRange(tp1) || isRange(tp2))
         if (tp.isAnd) range(lower(tp1) & lower(tp2), upper(tp1) & upper(tp2))
         else range(lower(tp1) | lower(tp2), upper(tp1) | upper(tp2))
       else tp.derivedAndOrType(tp1, tp2)
@@ -4030,7 +4055,9 @@ object Types {
     }
 
     override protected def derivedClassInfo(tp: ClassInfo, pre: Type): Type = {
-      assert(!pre.isInstanceOf[Range])
+      assert(!isRange(pre))
+        // we don't know what to do here; this case has to be handled in subclasses
+        // (typically by handling ClassInfo's specially, in case they can be encountered).
       tp.derivedClassInfo(pre)
     }
 
@@ -4058,7 +4085,8 @@ object Types {
 
   // ----- TypeAccumulators ----------------------------------------------------
 
-  abstract class TypeAccumulator[T](implicit protected val ctx: Context) extends ((T, Type) => T) {
+  abstract class TypeAccumulator[T](implicit protected val ctx: Context)
+  extends VariantTraversal with ((T, Type) => T) {
 
     protected def stopAtStatic = true
 
@@ -4066,15 +4094,8 @@ object Types {
 
     protected def applyToAnnot(x: T, annot: Annotation): T = x // don't go into annotations
 
-    protected var variance = 1
-
-    protected final def applyToPrefix(x: T, tp: NamedType) = {
-      val saved = variance
-      variance = variance max 0 // see remark on NamedType case in TypeMap
-      val result = this(x, tp.prefix)
-      variance = saved
-      result
-    }
+    protected final def applyToPrefix(x: T, tp: NamedType) =
+      atVariance(variance max 0)(this(x, tp.prefix)) // see remark on NamedType case in TypeMap
 
     def foldOver(x: T, tp: Type): T = tp match {
       case tp: TypeRef =>
@@ -4095,13 +4116,7 @@ object Types {
         this(this(x, tp.parent), tp.refinedInfo)
 
       case bounds @ TypeBounds(lo, hi) =>
-        if (lo eq hi) {
-          val saved = variance
-          variance = variance * bounds.variance
-          val result = this(x, lo)
-          variance = saved
-          result
-        }
+        if (lo eq hi) atVariance(variance * bounds.variance)(this(x, lo))
         else {
           variance = -variance
           val y = this(x, lo)

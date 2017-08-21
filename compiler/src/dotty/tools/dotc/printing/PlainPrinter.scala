@@ -12,6 +12,7 @@ import typer.ImportInfo
 import config.Config
 import java.lang.Integer.toOctalString
 import config.Config.summarizeDepth
+import scala.util.control.NonFatal
 import scala.annotation.switch
 
 class PlainPrinter(_ctx: Context) extends Printer {
@@ -69,11 +70,11 @@ class PlainPrinter(_ctx: Context) extends Printer {
     else tp
 
   private def sameBound(lo: Type, hi: Type): Boolean =
-    try lo =:= hi
-    catch { case ex: Throwable => false }
+    try ctx.typeComparer.isSameTypeWhenFrozen(lo, hi)
+    catch { case NonFatal(ex) => false }
 
   private def homogenizeArg(tp: Type) = tp match {
-    case TypeBounds(lo, hi) if sameBound(lo, hi) => homogenize(hi)
+    case TypeBounds(lo, hi) if homogenizedView && sameBound(lo, hi) => homogenize(hi)
     case _ => tp
   }
 
