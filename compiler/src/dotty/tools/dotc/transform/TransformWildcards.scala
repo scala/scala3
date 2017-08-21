@@ -5,6 +5,7 @@ import TreeTransforms._
 import core.DenotTransformers._
 import core.Contexts._
 import ast.tpd
+import dotty.tools.dotc.core.Phases
 
 /** This phase transforms wildcards in valdefs with their default value.
   *  In particular for every valdef that is declared:
@@ -15,6 +16,8 @@ class TransformWildcards extends MiniPhaseTransform with IdentityDenotTransforme
   import tpd._
 
   override def phaseName = "transformWildcards"
+
+  override def runsAfter: Set[Class[_ <: Phases.Phase]] = Set(classOf[LiftedClasses])
 
   override def checkPostCondition(tree: Tree)(implicit ctx: Context): Unit = {
     tree match {
