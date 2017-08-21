@@ -2,12 +2,8 @@ package dotty
 package tools
 package dotc
 
-import org.junit.{ Test, BeforeClass, AfterClass }
+import org.junit.{ Test, AfterClass }
 
-import java.nio.file._
-import java.util.stream.{ Stream => JStream }
-import scala.collection.JavaConverters._
-import scala.util.matching.Regex
 import scala.concurrent.duration._
 
 import vulpix.{ ParallelTesting, SummaryReport, SummaryReporting, TestConfiguration }
