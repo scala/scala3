@@ -208,12 +208,7 @@ class TypeApplications(val self: Type) extends AnyVal {
    *  For a typeref referring to a Lambda class, the type parameters of
    *    its right hand side or upper bound.
    *  For a refinement type, the type parameters of its parent, dropping
-   *  any type parameter that is-rebound by the refinement. "Re-bind" means:
-   *  The refinement contains a TypeAlias for the type parameter, or
-   *  it introduces bounds for the type parameter, and we are not in the
-   *  special case of a type Lambda, where a LambdaTrait gets refined
-   *  with the bounds on its hk args. See `LambdaAbstract`, where these
-   *  types get introduced, and see `isBoundedLambda` below for the test.
+   *  any type parameter that is-rebound by the refinement.
    */
   final def typeParams(implicit ctx: Context): List[TypeParamInfo] = /*>|>*/ track("typeParams") /*<|<*/ {
     self match {
