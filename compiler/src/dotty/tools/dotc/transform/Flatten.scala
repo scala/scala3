@@ -28,17 +28,17 @@ class Flatten extends MiniPhaseTransform with SymTransformer { thisTransform =>
   }
 
   private var liftedDefs = new mutable.ListBuffer[Tree]
-
-  private lazy val liftedDefsQueue = mutable.Stack.empty.asInstanceOf[mutable.Stack[mutable.ListBuffer[Tree]]]
+  private var liftedDefsQueue = List.empty[mutable.ListBuffer[Tree]]
 
   override def prepareForPackageDef(tree: PackageDef)(implicit ctx: Context) = {
-    liftedDefsQueue.push(liftedDefs)
+    liftedDefsQueue = liftedDefs :: liftedDefsQueue
     liftedDefs = new mutable.ListBuffer[Tree]
     this
   }
 
   override def transformPackageDef(tree: PackageDef)(implicit ctx: Context, info: TransformerInfo) = {
-    liftedDefs = liftedDefsQueue.pop()
+    liftedDefs = liftedDefsQueue.head
+    liftedDefsQueue = liftedDefsQueue.tail
     tree
   }
 
