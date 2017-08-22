@@ -293,30 +293,6 @@ class CompilationTests extends ParallelTesting {
     tests.foreach(_.delete())
   }
 
-  /** Add a `z` so that they run last. TODO: Only run them selectively? */
-  @Test def zBytecodeIdempotency: Unit = {
-    val opt = defaultOptions.and("-YemitTasty")
-
-    def idempotency1() = {
-      compileDir("../collection-strawman/src/main", opt) +
-      compileFilesInDir("../tests/pos", opt)
-    }
-    def idempotency2() = {
-      compileDir("../collection-strawman/src/main", opt) +
-      compileFilesInDir("../tests/pos", opt)
-    }
-
-    val tests = (idempotency1() + idempotency2()).keepOutput.checkCompile()
-
-    assert(new java.io.File("../out/idempotency1/").exists)
-    assert(new java.io.File("../out/idempotency2/").exists)
-
-    compileList("idempotency", List("../tests/idempotency/Checker.scala", "../tests/idempotency/IdempotencyCheck.scala"), defaultOptions).checkRuns()
-
-    tests.delete()
-  }
-
-
   private val (compilerSources, backendSources, backendJvmSources) = {
     def sources(paths: JStream[Path], excludedFiles: List[String] = Nil): List[String] =
       paths.iterator().asScala
