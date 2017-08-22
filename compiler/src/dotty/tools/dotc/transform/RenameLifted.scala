@@ -14,9 +14,9 @@ import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.transform.TreeTransforms.{MiniPhaseTransform, TransformerInfo}
 
 /** Renames lifted classes to local numbering scheme */
-class LiftedClasses extends MiniPhaseTransform with SymTransformer { thisTransformer =>
+class RenameLifted extends MiniPhaseTransform with SymTransformer { thisTransformer =>
 
-  override def phaseName = "liftedClasses"
+  override def phaseName = "renameLifted"
 
   override def runsAfterGroupsOf: Set[Class[_ <: Phases.Phase]] = Set(classOf[Flatten])
 

@@ -100,7 +100,7 @@ class Compiler {
            new ElimStaticThis,      // Replace `this` references to static objects by global identifiers
            new Flatten,             // Lift all inner classes to package scope
            new RestoreScopes),      // Repair scopes rendered invalid by moving definitions in prior phases of the group
-      List(new LiftedClasses,       // Renames lifted classes to local numbering scheme
+      List(new RenameLifted,        // Renames lifted classes to local numbering scheme
            new TransformWildcards,  // Replace wildcards with default values
            new MoveStatics,         // Move static methods to companion classes
            new ExpandPrivate,       // Widen private definitions accessed from nested classes

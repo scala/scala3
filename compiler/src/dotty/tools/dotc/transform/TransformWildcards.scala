@@ -17,7 +17,7 @@ class TransformWildcards extends MiniPhaseTransform with IdentityDenotTransforme
 
   override def phaseName = "transformWildcards"
 
-  override def runsAfter: Set[Class[_ <: Phases.Phase]] = Set(classOf[LiftedClasses])
+  override def runsAfter: Set[Class[_ <: Phases.Phase]] = Set(classOf[RenameLifted])
 
   override def checkPostCondition(tree: Tree)(implicit ctx: Context): Unit = {
     tree match {
