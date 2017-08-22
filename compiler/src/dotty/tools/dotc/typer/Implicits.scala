@@ -385,14 +385,7 @@ trait ImplicitRunInfo { self: RunInfo =>
           (lead /: tp.classSymbols)(joinClass)
         case tp: TypeVar =>
           apply(tp.underlying)
-        case tp: AppliedType =>
-          def applyArg(arg: Type) = arg match {
-            case TypeBounds(lo, hi) => AndType.make(lo, hi)
-            case _: WildcardType => defn.AnyType
-            case _ => arg
-          }
-          (apply(tp.tycon) /: tp.args)((tc, arg) => AndType.make(tc, applyArg(arg)))
-        case tp: HKApply =>
+        case tp: HKApply => // @!!! needed?
           def applyArg(arg: Type) = arg match {
             case TypeBounds(lo, hi) => AndType.make(lo, hi)
             case _: WildcardType => defn.AnyType
@@ -440,7 +433,7 @@ trait ImplicitRunInfo { self: RunInfo =>
               }
               def addParentScope(parent: Type): Unit =
                 if (Config.newScheme)
-                  iscopeRefs(parent) foreach addRef
+                  iscopeRefs(tp.baseType(parent.typeSymbol)) foreach addRef
                 else {
                   iscopeRefs(parent.typeConstructor) foreach addRef
                   for (param <- parent.typeParamSymbols)

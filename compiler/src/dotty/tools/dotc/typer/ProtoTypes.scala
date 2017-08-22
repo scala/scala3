@@ -534,8 +534,6 @@ object ProtoTypes {
           tp.derivedOrType(tp1a, tp2a)
       }
       approxOr
-    case tp: LazyRef =>
-      WildcardType
     case tp: SelectionProto =>
       tp.derivedSelectionProto(tp.name, wildApprox(tp.memberProto, theMap, seen), NoViewsAllowed)
     case tp: ViewProto =>
