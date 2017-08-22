@@ -18,7 +18,7 @@ class RenameLifted extends MiniPhaseTransform with SymTransformer { thisTransfor
 
   override def phaseName = "renameLifted"
 
-  override def runsAfterGroupsOf: Set[Class[_ <: Phases.Phase]] = Set(classOf[Flatten])
+  override def runsAfterGroupsOf: Set[Class[_ <: Phases.Phase]] = Set(classOf[RestoreScopes])
 
   def transformSym(ref: SymDenotation)(implicit ctx: Context): SymDenotation =
     if (needsRefresh(ref.symbol)) ref.copySymDenotation(name = refreshedName(ref.symbol))
@@ -29,7 +29,7 @@ class RenameLifted extends MiniPhaseTransform with SymTransformer { thisTransfor
     else tree
 
   private def needsRefresh(sym: Symbol)(implicit ctx: Context): Boolean =
-    sym.isClass && !sym.is(Package) && sym.name.is(UniqueName)
+    sym.isClass && sym.name.is(UniqueName)
 
   /* Makes a new unique name based on a unique name that was flatten */
   private def refreshedName(sym: Symbol)(implicit ctx: Context): TypeName = {
