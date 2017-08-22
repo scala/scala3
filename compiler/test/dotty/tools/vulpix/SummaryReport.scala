@@ -59,7 +59,7 @@ final class NoSummaryReport extends SummaryReporting {
  *  which outputs to a log file in `./testlogs/`
  */
 final class SummaryReport extends SummaryReporting {
-  import scala.collection.JavaConversions._
+  import scala.collection.JavaConverters._
 
   private val startingMessages = new java.util.concurrent.ConcurrentLinkedDeque[String]
   private val failedTests = new java.util.concurrent.ConcurrentLinkedDeque[String]
@@ -102,9 +102,9 @@ final class SummaryReport extends SummaryReporting {
           |""".stripMargin
     )
 
-    startingMessages.foreach(rep.append)
+    startingMessages.asScala.foreach(rep.append)
 
-    failedTests.map(x => s"    $x\n").foreach(rep.append)
+    failedTests.asScala.map(x => s"    $x\n").foreach(rep.append)
 
     // If we're compiling locally, we don't need instructions on how to
     // reproduce failures
@@ -121,7 +121,7 @@ final class SummaryReport extends SummaryReporting {
 
     rep += '\n'
 
-    reproduceInstructions.foreach(rep.append)
+    reproduceInstructions.asScala.foreach(rep.append)
 
     // If we're on the CI, we want everything
     if (!isInteractive) println(rep.toString)
@@ -129,7 +129,7 @@ final class SummaryReport extends SummaryReporting {
     TestReporter.logPrintln(rep.toString)
 
     // Perform cleanup callback:
-    if (cleanUps.nonEmpty) cleanUps.foreach(_.apply())
+    if (!cleanUps.isEmpty()) cleanUps.asScala.foreach(_.apply())
   }
 
   private def removeColors(msg: String): String =

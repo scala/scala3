@@ -6,6 +6,7 @@ import Settings._
 import core.Contexts._
 import util.DotClass
 import Properties._
+import scala.collection.JavaConverters._
 
 object CompilerCommand extends DotClass {
 
@@ -43,10 +44,9 @@ object CompilerCommand extends DotClass {
       if (!Files.exists(path))
         throw new java.io.FileNotFoundException("argument file %s could not be found" format path.getFileName)
 
-      import scala.collection.JavaConversions._
       val lines = Files.readAllLines(path) // default to UTF-8 encoding
 
-      val params = lines map stripComment mkString " "
+      val params = lines.asScala map stripComment mkString " "
       CommandLineParser.tokenize(params)
     }
 
