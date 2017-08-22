@@ -77,7 +77,9 @@ case class Completions(cursor: Int,
                        details: List[String])
 
 /** Main REPL instance, orchestrating input, compilation and presentation */
-class ReplDriver(settings: Array[String], protected val out: PrintStream = System.out) extends Driver {
+class ReplDriver(settings: Array[String],
+                 protected val out: PrintStream = System.out,
+                 protected val classLoader: Option[ClassLoader] = None) extends Driver {
 
   /** Overridden to `false` in order to not have to give sources on the
    *  commandline
@@ -110,7 +112,7 @@ class ReplDriver(settings: Array[String], protected val out: PrintStream = Syste
         new PlainDirectory(new Directory(new JFile(rootCtx.settings.d.value(rootCtx))))
     }
     compiler = new ReplCompiler(outDir)
-    rendering = new Rendering(compiler)
+    rendering = new Rendering(compiler, classLoader)
   }
 
   protected[this] var rootCtx: Context = _
@@ -197,9 +199,9 @@ class ReplDriver(settings: Array[String], protected val out: PrintStream = Syste
 
   /** Compile `parsed` trees and evolve `state` in accordance */
   protected[this] final def compile(parsed: Parsed)(implicit state: State): State = {
-    import dotc.ast.Trees._
-    import dotc.ast.untpd._
-    def extractNewestWrapper(tree: untpd.Tree): Name = tree match {
+    import dotc.ast.Trees.PackageDef
+    import untpd.{ PackageDef => _, _ }
+    def extractNewestWrapper(tree: Tree): Name = tree match {
       case PackageDef(_, (obj: ModuleDef) :: Nil) => obj.name.moduleClassName
       case _ => nme.NO_NAME
     }

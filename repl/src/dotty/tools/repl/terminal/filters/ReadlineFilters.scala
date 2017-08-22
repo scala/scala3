@@ -161,7 +161,7 @@ object ReadlineFilters {
         allAfterCursor.splitAt(
           nextNewlineIndex
         ) match {
-          case (Vector(), Vector('\n', allAfterNewline@ _*)) =>
+          case (Vector(), ('\n' +: allAfterNewline)) =>
             // if there's only a newline after cursor on line, cut it
             append(Vector('\n'))
             (allBeforeCursor ++ allAfterNewline, c)

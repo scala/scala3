@@ -20,9 +20,8 @@ import dotc.core.StdNames.str
  *       `ReplDriver#resetToInitial` is called, the accompanying instance of
  *       `Rendering` is no longer valid.
  */
-private[repl] class Rendering(compiler: ReplCompiler) {
-
-  private var currentClassLoader: Option[ClassLoader] = None
+private[repl] class Rendering(compiler: ReplCompiler,
+                              private var currentClassLoader: Option[ClassLoader] = None) {
 
   private def classLoader()(implicit ctx: Context) =
     currentClassLoader.getOrElse {
