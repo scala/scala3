@@ -24,12 +24,16 @@ import NameKinds.DefaultGetterName
 import ProtoTypes._
 import EtaExpansion._
 import Inferencing._
+
 import collection.mutable
 import config.Printers.{typr, unapp, overload}
 import TypeApplications._
+
 import language.implicitConversions
 import reporting.diagnostic.Message
 import Constants.{Constant, IntTag, LongTag}
+
+import scala.collection.mutable.ListBuffer
 
 object Applications {
   import tpd._
@@ -580,20 +584,17 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
         myNormalizedFun = liftApp(liftedDefs, myNormalizedFun)
       }
 
-    /** The index of the first difference between lists of trees `xs` and `ys`,
-     *  where `EmptyTree`s in the second list are skipped.
+    /** The index of the first difference between lists of trees `xs` and `ys`
      *  -1 if there are no differences.
      */
     private def firstDiff[T <: Trees.Tree[_]](xs: List[T], ys: List[T], n: Int = 0): Int = xs match {
       case x :: xs1 =>
         ys match {
-          case EmptyTree :: ys1 => firstDiff(xs1, ys1, n)
           case y :: ys1 => if (x ne y) n else firstDiff(xs1, ys1, n + 1)
           case nil => n
         }
       case nil =>
         ys match {
-          case EmptyTree :: ys1 => firstDiff(xs, ys1, n)
           case y :: ys1 => n
           case nil => -1
         }
@@ -606,13 +607,33 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
       val app1 =
         if (!success) app0.withType(UnspecifiedErrorType)
         else {
-          if (!sameSeq(args, orderedArgs) && !isJavaAnnotConstr(methRef.symbol)) {
+          if (!sameSeq(args, orderedArgs.dropWhile(_ eq EmptyTree)) && !isJavaAnnotConstr(methRef.symbol)) {
             // need to lift arguments to maintain evaluation order in the
             // presence of argument reorderings.
+
             liftFun()
-            val eqSuffixLength = firstDiff(app.args.reverse, orderedArgs.reverse)
-            val (liftable, rest) = typedArgs splitAt (typedArgs.length - eqSuffixLength)
-            typedArgs = liftArgs(liftedDefs, methType, liftable) ++ rest
+
+            // lift arguments in the definition order
+            val argDefBuf = mutable.ListBuffer.empty[Tree]
+            typedArgs = liftArgs(argDefBuf, methType, typedArgs)
+
+            // Lifted arguments ordered based on the original order of typedArgBuf and
+            // with all non-explicit default parameters at the end in declaration order.
+            val orderedArgDefs = {
+              // List of original arguments that are lifted by liftArgs
+              val impureArgs = typedArgBuf.filterNot(isPureExpr)
+              // Assuming stable sorting all non-explicit default parameters will remain in the end with the same order
+              val defaultParamIndex = args.size
+              // Mapping of index of each `liftable` into original args ordering
+              val indices = impureArgs.map { arg =>
+                val idx = args.indexOf(arg)
+                if (idx >= 0) idx // original index skipping pure arguments
+                else defaultParamIndex
+              }
+              scala.util.Sorting.stableSort[(Tree, Int), Int](argDefBuf zip indices, x => x._2).map(_._1)
+            }
+
+            liftedDefs ++= orderedArgDefs
           }
           if (sameSeq(typedArgs, args)) // trick to cut down on tree copying
             typedArgs = args.asInstanceOf[List[Tree]]
