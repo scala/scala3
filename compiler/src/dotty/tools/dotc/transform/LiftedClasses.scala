@@ -33,12 +33,13 @@ class LiftedClasses extends MiniPhaseTransform with SymTransformer { thisTransfo
 
   /* Makes a new unique name based on a unique name that was flatten */
   private def refreshedName(sym: Symbol)(implicit ctx: Context): TypeName = {
-    // TODO: Refresh names not only based on their full name?
-    //       Include package to distinguish <class>$anon from <pack>.<class>$anon
+    val packName = sym.owner.fullName.toString
     val name = sym.name
-    val newName = (name.firstPart.toString + str.NAME_JOIN + name.lastPart).toTermName
+    val newName = (packName + name.firstPart + str.NAME_JOIN + name.lastPart).toTermName
 
     var freshName = UniqueName.fresh(newName).toTypeName
+    val prefix = if (sym.owner.isEmptyPackage) "$empty$" else packName
+    freshName = freshName.toString.substring(prefix.length).toTypeName
     if (name.toSimpleName.endsWith(str.MODULE_SUFFIX))
       freshName = (freshName + str.MODULE_SUFFIX).toTypeName
 
