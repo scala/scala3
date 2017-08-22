@@ -6,7 +6,19 @@ import scala.annotation.tailrec
  * Helper methods used in thread-safe lazy vals.
  */
 object LazyVals {
-  private val unsafe = scala.concurrent.util.Unsafe.instance
+  private val unsafe: sun.misc.Unsafe =
+      classOf[sun.misc.Unsafe].getDeclaredFields.find { field =>
+        field.getType == classOf[sun.misc.Unsafe] && {
+          field.setAccessible(true)
+          true
+        }
+      }
+      .map(_.get(null).asInstanceOf[sun.misc.Unsafe])
+      .getOrElse {
+        throw new ExceptionInInitializerError {
+          new IllegalStateException("Can't find instance of sun.misc.Unsafe")
+        }
+      }
 
   final val BITS_PER_LAZY_VAL = 2L
   final val LAZY_VAL_MASK = 3L
@@ -22,7 +34,7 @@ object LazyVals {
     if (debug)
       println(s"CAS($t, $offset, $e, $v, $ord)")
     val mask = ~(LAZY_VAL_MASK << ord * BITS_PER_LAZY_VAL)
-    val n = (e & mask) | (v << (ord * BITS_PER_LAZY_VAL))
+    val n = (e & mask) | (v.toLong << (ord * BITS_PER_LAZY_VAL))
     compareAndSet(t, offset, e, n)
   }
   @inline def setFlag(t: Object, offset: Long, v: Int, ord: Int) = {

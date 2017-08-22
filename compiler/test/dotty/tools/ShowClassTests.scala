@@ -64,14 +64,14 @@ class ShowClassTests extends DottyTest {
     if (blackList contains path)
       debug_println(s"blacklisted package: $path")
     else {
-      for (
-        sym <- pkg.info.decls if sym.owner == pkg.moduleClass && !(sym.name.toString contains '$')
-      ) {
-        debug_println(s"showing $sym in ${pkg.fullName}")
-        if (sym is PackageVal) showPackage(sym.asTerm)
-        else if (sym.isClass && !(sym is Module)) showClass(sym)
-        else if (sym is ModuleVal) showClass(sym.moduleClass)
-      }
+      pkg.info.decls
+        .filter(sym => sym.owner == pkg.moduleClass && !(sym.name.toString contains '$'))
+        .foreach { sym =>
+          debug_println(s"showing $sym in ${pkg.fullName}")
+          if (sym is PackageVal) showPackage(sym.asTerm)
+          else if (sym.isClass && !(sym is Module)) showClass(sym)
+          else if (sym is ModuleVal) showClass(sym.moduleClass)
+        }
     }
   }
 

@@ -60,6 +60,6 @@ object Test {
                   A17, 
                   A18)
     assert(l1.mkString == l2.mkString)
-    assert(!l1.contains(null))
+    assert(!l1.contains(null)) // @odersky - 2.12 encoding seems wonky here as well
   }
 }

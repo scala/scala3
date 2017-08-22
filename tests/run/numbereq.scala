@@ -2,7 +2,9 @@ object Test {
   def mkNumbers(x: Int): List[AnyRef] = {
     val base = List(
       BigDecimal(x),
-      BigInt(x),
+      // FIXME: breaks ycheck, broken type inferencing. Gets a large union type
+      // instead of list of Number
+      (BigInt(x): Number),
       new java.lang.Double(x.toDouble),
       new java.lang.Float(x.toFloat),
       new java.lang.Long(x.toLong),
@@ -19,7 +21,9 @@ object Test {
 
   def mkNumbers(x: BigInt): List[AnyRef] = {
     List(
-      List(BigDecimal(x, java.math.MathContext.UNLIMITED)),
+      // FIXME: breaks ycheck, broken type inferencing. Gets a large union type
+      // instead of list of Number
+      List(BigDecimal(x, java.math.MathContext.UNLIMITED): Number),
       List(x),
       if (x.isValidDouble) List(new java.lang.Double(x.toDouble)) else Nil,
       if (x.isValidFloat) List(new java.lang.Float(x.toFloat)) else Nil,

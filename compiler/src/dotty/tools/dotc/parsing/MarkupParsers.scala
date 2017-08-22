@@ -85,9 +85,9 @@ object MarkupParsers {
 
     var xEmbeddedBlock = false
 
-    private var debugLastStartElement = new mutable.Stack[(Int, String)]
-    private def debugLastPos = debugLastStartElement.top._1
-    private def debugLastElem = debugLastStartElement.top._2
+    private var debugLastStartElement = List.empty[(Int, String)]
+    private def debugLastPos = debugLastStartElement.head._1
+    private def debugLastElem = debugLastStartElement.head._2
 
     private def errorBraces() = {
       reportSyntaxError("in XML content, please use '}}' to express '}'")
@@ -280,10 +280,10 @@ object MarkupParsers {
         if (qname == "xml:unparsed")
           return xUnparsed
 
-        debugLastStartElement.push((start, qname))
+        debugLastStartElement = (start, qname) :: debugLastStartElement
         val ts = content
         xEndTag(qname)
-        debugLastStartElement.pop()
+        debugLastStartElement = debugLastStartElement.tail
         val pos = Position(start, curOffset, start)
         qname match {
           case "xml:group" => handle.group(pos, ts)
@@ -417,7 +417,7 @@ object MarkupParsers {
     def xPattern: Tree = {
       var start = curOffset
       val qname = xName
-      debugLastStartElement.push((start, qname))
+      debugLastStartElement = (start, qname) :: debugLastStartElement
       xSpaceOpt()
 
       val ts = new ArrayBuffer[Tree]
@@ -457,7 +457,7 @@ object MarkupParsers {
 
         while (doPattern) { }  // call until false
         xEndTag(qname)
-        debugLastStartElement.pop()
+        debugLastStartElement = debugLastStartElement.tail
       }
 
       handle.makeXMLpat(Position(start, curOffset, start), qname, ts)

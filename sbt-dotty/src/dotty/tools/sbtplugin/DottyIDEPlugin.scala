@@ -249,6 +249,6 @@ object DottyIDEPlugin extends AutoPlugin {
           }
       }
     }
-    
+
   ) ++ addCommandAlias("launchIDE", ";configureIDE;runCode")
 }

@@ -224,7 +224,7 @@ class tests extends CompilerTest {
         |../scala2-library/src/library/scala/package.scala
         |../scala2-library/src/library/scala/collection/GenSeqLike.scala
         |../scala2-library/src/library/scala/collection/SeqLike.scala
-        |../scala2-library/src/library/scala/collection/generic/GenSeqFactory.scala""".stripMargin)
+        |../scala2-library/src/library/scala/collection/generic/GenSeqFactory.scala""".stripMargin)(scala2mode ++ defaultOptions)
   @Test def compileIndexedSeq = compileLine("../scala2-library/src/library/scala/collection/immutable/IndexedSeq.scala")
   @Test def compileParSetLike = compileLine("../scala2-library/src/library/scala/collection/parallel/mutable/ParSetLike.scala")
   @Test def compileParSetSubset = compileLine(

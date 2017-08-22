@@ -1,3 +1,6 @@
+scala/runtime/ScalaRunTime.scala
+# Doesn't compile since we're not on 2.11 anymore
+
 ## Errors having to do with bootstrap
 
 scala/Function1.scala

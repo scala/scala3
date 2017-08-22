@@ -50,9 +50,18 @@ class LinkScala2Impls extends MiniPhase with IdentityDenotTransformer { thisTran
 
     /** Copy definitions from implementation class to trait itself */
     private def augmentScala_2_12_Trait(mixin: ClassSymbol)(implicit ctx: Context): Unit = {
+      def info_2_12(sym: Symbol) = sym.info match {
+        case mt @ MethodType(paramNames @ nme.SELF :: _) =>
+          // 2.12 seems to always assume the enclsing mixin class as self type parameter,
+          // whereas 2.11 used the self type of this class instead.
+          val selfType :: otherParamTypes = mt.paramInfos
+          MethodType(paramNames, mixin.typeRef :: otherParamTypes, mt.resType)
+        case info => info
+      }
       def newImpl(sym: TermSymbol): Symbol = sym.copy(
         owner = mixin,
-        name = if (sym.isConstructor) sym.name else ImplMethName(sym.name)
+        name = if (sym.isConstructor) sym.name else ImplMethName(sym.name),
+        info = info_2_12(sym)
       )
       for (sym <- mixin.implClass.info.decls)
         newImpl(sym.asTerm).enteredAfter(thisTransform)

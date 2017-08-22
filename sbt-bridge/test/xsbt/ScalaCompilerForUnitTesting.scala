@@ -3,8 +3,6 @@ package xsbt
 
 import xsbti.compile.SingleOutput
 import java.io.File
-import _root_.scala.tools.nsc.reporters.ConsoleReporter
-import _root_.scala.tools.nsc.Settings
 import xsbti._
 import xsbti.api.SourceAPI
 import sbt.IO._
