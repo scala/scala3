@@ -1215,18 +1215,27 @@ object messages {
            |""".stripMargin
   }
 
-  case class OverloadedOrRecursiveMethodNeedsResultType(tree: Names.TermName)(implicit ctx: Context)
+  case class OverloadedOrRecursiveMethodNeedsResultType private (termName: String)(implicit ctx: Context)
   extends Message(OverloadedOrRecursiveMethodNeedsResultTypeID) {
     val kind = "Syntax"
-    val msg = hl"""overloaded or recursive method ${tree} needs return type"""
+    val msg = hl"""overloaded or recursive method $termName needs return type"""
     val explanation =
-      hl"""Case 1: ${tree} is overloaded
-          |If there are multiple methods named `${tree.name}` and at least one definition of
+      hl"""Case 1: $termName is overloaded
+          |If there are multiple methods named `$termName` and at least one definition of
           |it calls another, you need to specify the calling method's return type.
           |
-          |Case 2: ${tree} is recursive
-          |If `${tree.name}` calls itself on any path, you need to specify its return type.
+          |Case 2: $termName is recursive
+          |If `$termName` calls itself on any path, you need to specify its return type.
           |""".stripMargin
+  }
+
+  object OverloadedOrRecursiveMethodNeedsResultType {
+    def apply[T >: Trees.Untyped](tree: NameTree[T])(implicit ctx: Context)
+    : OverloadedOrRecursiveMethodNeedsResultType =
+      OverloadedOrRecursiveMethodNeedsResultType(tree.name.show)(ctx)
+    def apply(symbol: Symbol)(implicit ctx: Context)
+    : OverloadedOrRecursiveMethodNeedsResultType =
+      OverloadedOrRecursiveMethodNeedsResultType(symbol.name.show)(ctx)
   }
 
   case class RecursiveValueNeedsResultType(tree: Names.TermName)(implicit ctx: Context)
@@ -1326,7 +1335,8 @@ object messages {
            |"""
   }
 
-  case class MethodDoesNotTakeParameters(tree: tpd.Tree, methPartType: Types.Type)(err: typer.ErrorReporting.Errors)(implicit ctx: Context)
+  case class MethodDoesNotTakeParameters(tree: tpd.Tree, methPartType: Types.Type)
+  (err: typer.ErrorReporting.Errors)(implicit ctx: Context)
   extends Message(MethodDoesNotTakeParametersId) {
     private val more = tree match {
       case Apply(_, _) => " more"

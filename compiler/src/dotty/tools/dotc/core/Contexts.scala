@@ -127,7 +127,7 @@ object Contexts {
     protected def sstate_=(sstate: SettingsState) = _sstate = sstate
     def sstate: SettingsState = _sstate
 
-    /** The current tree */
+    /** The current compilation unit */
     private[this] var _compilationUnit: CompilationUnit = _
     protected def compilationUnit_=(compilationUnit: CompilationUnit) = _compilationUnit = compilationUnit
     def compilationUnit: CompilationUnit = _compilationUnit
