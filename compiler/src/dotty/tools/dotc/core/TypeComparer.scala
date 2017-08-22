@@ -974,15 +974,15 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
       val tparam = tparams.head
       val v = tparam.paramVariance
 
-      def compareCaptured(arg1: Type, arg2: Type) = arg1 match {
+      def compareCaptured(arg1: Type, arg2: Type): Boolean = arg1 match {
         case arg1: TypeBounds =>
           val captured = TypeArgRef.fromParam(SkolemType(tp1), tparam.asInstanceOf[TypeSymbol])
-          isSubType(captured, arg2)
+          isSubArg(captured, arg2)
         case _ =>
           false
       }
 
-      def isSub(arg1: Type, arg2: Type) = arg2 match {
+      def isSubArg(arg1: Type, arg2: Type): Boolean = arg2 match {
         case arg2: TypeBounds =>
           arg2.contains(arg1) || compareCaptured(arg1, arg2)
         case _ =>
@@ -995,7 +995,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
           }
       }
 
-      isSub(args1.head, args2.head)
+      isSubArg(args1.head, args2.head)
     } && isSubArgs(args1.tail, args2.tail, tp1, tparams.tail)
 
   /** Test whether `tp1` has a base type of the form `B[T1, ..., Tn]` where
