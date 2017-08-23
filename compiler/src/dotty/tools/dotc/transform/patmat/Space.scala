@@ -372,7 +372,8 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
   /* Whether the extractor method type is irrefutable */
   def irrefutable(unapp: tpd.Tree): Boolean = {
     // TODO: optionless patmat
-    unapp.tpe.resultType.isRef(scalaSomeClass) || (unapp.symbol.is(allOf(Synthetic, Case)))
+    unapp.tpe.resultType.isRef(scalaSomeClass) ||
+      (unapp.symbol.is(Synthetic) && unapp.symbol.owner.linkedClass.is(Case))
   }
 
   /** Return the space that represents the pattern `pat`
