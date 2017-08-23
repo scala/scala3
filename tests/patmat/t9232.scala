@@ -11,6 +11,10 @@ case class Node2() extends Tree
 
 object Test {
   def transformTree(tree: Tree): Any = tree match {
-    case Node1(Foo(1)) => ???
+    case Node1(Foo(_: _*)) => ???
+  }
+
+  def transformTree2(tree: Tree): Any = tree match {
+    case Node1(Foo(1, _: _*)) => ???
   }
 }

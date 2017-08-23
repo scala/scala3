@@ -1,1 +1,2 @@
-13: Pattern Match Exhaustivity: Node2(), Node1(Foo(_))
+13: Pattern Match Exhaustivity: Node2()
+17: Pattern Match Exhaustivity: Node2(), Node1(Foo(Nil)), Node1(Foo(List(_, _*)))

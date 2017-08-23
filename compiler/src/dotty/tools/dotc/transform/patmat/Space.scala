@@ -393,7 +393,10 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
     case Bind(_, pat) => project(pat)
     case UnApply(fun, _, pats) =>
       if (fun.symbol.name == nme.unapplySeq)
-        projectSeq(pats)
+        if (fun.symbol.owner == scalaSeqFactoryClass)
+          projectSeq(pats)
+        else
+          Prod(pat.tpe.stripAnnots, fun.tpe.widen, fun.symbol, projectSeq(pats) :: Nil, irrefutable(fun))
       else
         Prod(pat.tpe.stripAnnots, fun.tpe.widen, fun.symbol, pats.map(project), irrefutable(fun))
     case Typed(pat @ UnApply(_, _, _), _) => project(pat)
@@ -484,7 +487,7 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
           .map(_.info.asSeenFrom(mt.resultType, mt.resultType.classSymbol).widen)
       }
       else {
-        val resTp = mt.resultType.select(nme.get).resultType
+        val resTp = mt.resultType.select(nme.get).resultType.widen
         if (isUnapplySeq) scalaListType.appliedTo(resTp.argTypes.head) :: Nil
         else if (argLen == 0) Nil
         else productSelectors(resTp).map(_.info.asSeenFrom(resTp, resTp.classSymbol).widen)
