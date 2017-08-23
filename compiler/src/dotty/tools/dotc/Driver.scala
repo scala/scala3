@@ -13,9 +13,9 @@ import scala.util.control.NonFatal
  *  process, but in most cases you only need to call [[process]] on the
  *  existing object [[Main]].
  */
-abstract class Driver extends DotClass {
+class Driver extends DotClass {
 
-  protected def newCompiler(implicit ctx: Context): Compiler
+  protected def newCompiler(implicit ctx: Context): Compiler = new Compiler
 
   protected def emptyReporter: Reporter = new StoreReporter(null)
 

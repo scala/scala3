@@ -307,6 +307,9 @@ object Build {
     connectInput in run := true,
     outputStrategy := Some(StdoutOutput),
 
+    // enable verbose exception messages for JUnit
+    testOptions in Test += Tests.Argument(TestFrameworks.JUnit, "-a", "-v"),
+
     javaOptions ++= (javaOptions in `dotty-compiler`).value,
     fork in run := true,
     fork in Test := true,
@@ -354,6 +357,47 @@ object Build {
       "nl.big-o" % "liqp" % "0.6.7"
     )
   )
+
+  lazy val `dotty-repl` = project.in(file("repl")).
+    dependsOn(
+      `dotty-compiler`,
+      `dotty-compiler` % "test->test"
+    ).
+    settings(commonNonBootstrappedSettings).
+    settings(
+      // set system in/out for repl
+      connectInput in run := true,
+      outputStrategy := Some(StdoutOutput),
+
+      // enable verbose exception messages for JUnit
+      testOptions in Test += Tests.Argument(TestFrameworks.JUnit, "-a", "-v"),
+
+      resourceDirectory in Test := baseDirectory.value / "test-resources",
+
+      run := Def.inputTaskDyn {
+        val classPath =
+          (packageAll in `dotty-compiler-bootstrapped`).value("dotty-library") + ":" +
+          (packageAll in `dotty-compiler-bootstrapped`).value("dotty-interfaces")
+
+        val args: Seq[String] = spaceDelimited("<arg>").parsed
+
+        val fullArgs = args.span(_ != "-classpath") match {
+          case (beforeCp, Nil) => beforeCp ++ ("-classpath" :: classPath :: Nil)
+          case (beforeCp, rest) => beforeCp ++ rest
+        }
+
+        (runMain in Compile).toTask(
+          s" dotty.tools.repl.Main " + fullArgs.mkString(" ")
+        )
+      }.evaluated,
+
+      repl := run.evaluated,
+
+      javaOptions ++= (javaOptions in `dotty-compiler`).value,
+      fork in run := true,
+      fork in Test := true,
+      parallelExecution in Test := false
+    )
 
   lazy val `dotty-doc` = project.in(file("doc-tool")).
     dependsOn(`dotty-compiler`, `dotty-compiler` % "test->test").
@@ -473,6 +517,13 @@ object Build {
                                   "com.novocode" % "junit-interface" % "0.11" % "test",
                                   "org.scala-lang" % "scala-library" % scalacVersion % "test"),
 
+      // Repl subproject shouldn't be distributed on its own yet, so the
+      // sources need to be included in the dotty compiler to be available to
+      // the sbt bridge
+      unmanagedSourceDirectories in Compile += baseDirectory.value / ".." / "repl" / "src",
+      unmanagedSourceDirectories in Test += baseDirectory.value / ".." / "repl" / "test",
+      unmanagedResourceDirectories in Test += baseDirectory.value / ".." / "repl" / "test-resources",
+
       // enable improved incremental compilation algorithm
       incOptions := incOptions.value.withNameHashing(true),
 
@@ -480,14 +531,6 @@ object Build {
       baseDirectory in (Compile, run) := baseDirectory.value / "..",
       // .. but not when running test
       baseDirectory in (Test, run) := baseDirectory.value,
-
-      repl := Def.inputTaskDyn {
-        val args: Seq[String] = spaceDelimited("<arg>").parsed
-        val dottyLib = packageAll.value("dotty-library")
-        (runMain in Compile).toTask(
-          s" dotty.tools.dotc.repl.Main -classpath $dottyLib " + args.mkString(" ")
-        )
-      }.evaluated,
 
       test in Test := {
         // Exclude legacy tests by default

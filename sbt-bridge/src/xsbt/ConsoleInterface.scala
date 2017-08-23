@@ -6,8 +6,7 @@ package xsbt
 import xsbti.Logger
 
 import dotty.tools.dotc.core.Contexts.Context
-import dotty.tools.dotc.repl.REPL
-import dotty.tools.dotc.repl.REPL.Config
+import dotty.tools.repl.ReplDriver
 
 class ConsoleInterface {
   def commandArguments(
@@ -20,6 +19,24 @@ class ConsoleInterface {
   def run(args: Array[String],
           bootClasspathString: String,
           classpathString: String,
+          // TODO: initial commands needs to be run under some form of special
+          // "silent" mode in the REPL. I.e. the effects should be had without
+          // any visual output.
+          //
+          // To do this we can use the `run` interface to the `ReplDriver` and
+          // pass it a special instance of `ParseResult` like `Silently(res: ParseResult)`
+          // and then observe the effects without printing to `ReplDriver#out`
+          //
+          // This way, the REPL can offer feedback on invalid commands but
+          // still function without stringly logic.
+          //
+          // This same principle can be applied to `cleanupCommands` and
+          // `bindValues`
+          //
+          // Steps:
+          //
+          // 1. Introduce `case class Silent(res: ParseResult) extends ParseResult`
+          // 2. Perform all steps in `interpret` as usual without printing to `out`
           initialCommands: String,
           cleanupCommands: String,
           loader: ClassLoader,
@@ -28,42 +45,12 @@ class ConsoleInterface {
           log: Logger
   ): Unit = {
     val completeArgs =
-      args                                    :+
-      "-bootclasspath" :+ bootClasspathString :+
-      "-classpath"     :+ classpathString
+      args ++ {
+        if (bootClasspathString.isEmpty) Array.empty[String]
+        else Array("-bootclasspath", bootClasspathString)
+      } ++
+      Array("-classpath", classpathString)
 
-    println("Starting dotty interpreter...")
-    val repl = ConsoleInterface.customRepl(
-      initialCommands :: Nil,
-      cleanupCommands :: Nil,
-      bindNames zip bindValues,
-      loader
-    )
-    repl.process(completeArgs)
+    new ReplDriver(completeArgs, classLoader = Some(loader)).runUntilQuit()
   }
-}
-
-object ConsoleInterface {
-  def customConfig(
-    initCmds: List[String],
-    cleanupCmds: List[String],
-    boundVals: Array[(String, Any)],
-    loader: ClassLoader
-  ) = new Config {
-    override val initialCommands: List[String] = initCmds
-    override val cleanupCommands: List[String] = cleanupCmds
-    override val boundValues: Array[(String, Any)] = boundVals
-    override val classLoader: Option[ClassLoader] = Option(loader)
-  }
-
-  def customRepl(cfg: Config): REPL = new REPL {
-    override lazy val config = cfg
-  }
-
-  def customRepl(
-    initCmds: List[String],
-    cleanupCmds: List[String],
-    boundVals: Array[(String, Any)],
-    loader: ClassLoader
-  ): REPL = customRepl(customConfig(initCmds, cleanupCmds, boundVals, loader))
 }

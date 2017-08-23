@@ -1,0 +1,7 @@
+scala> var x = 0
+var x: Int = 0
+scala> x = x + 1
+x: Int = 1
+scala> x *= 2
+scala> x
+val res0: Int = 2

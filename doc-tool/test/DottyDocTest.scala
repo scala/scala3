@@ -80,21 +80,18 @@ trait DottyDocTest extends MessageRendering {
 
   def checkSource(source: String)(assertion: Map[String, Package] => Unit): Unit = {
     val c = compilerWithChecker(assertion)
-    c.rootContext(ctx)
     val run = c.newRun
     run.compileSources(sourceFileFromString(callingMethod, source) :: Nil)
   }
 
   def checkFiles(sources: List[String])(assertion: Map[String, Package] => Unit): Unit = {
     val c = compilerWithChecker(assertion)
-    c.rootContext(ctx)
     val run = c.newRun
     run.compile(sources)
   }
 
   def checkSources(sourceFiles: List[SourceFile])(assertion: Map[String, Package] => Unit): Unit = {
     val c = compilerWithChecker(assertion)
-    c.rootContext(ctx)
     val run = c.newRun
     run.compileSources(sourceFiles)
   }

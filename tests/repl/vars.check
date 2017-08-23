@@ -1,8 +1,0 @@
-scala> var x = 0
-var x: Int = 0
-scala> x = x + 1
-x: Int = 1
-scala> x *= 2
-scala> x
-val res2: Int = 2
-scala> :quit

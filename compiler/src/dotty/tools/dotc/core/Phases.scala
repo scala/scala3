@@ -272,11 +272,16 @@ object Phases {
      */
     def phaseName: String
 
+    def isRunnable(implicit ctx: Context): Boolean =
+      !ctx.reporter.hasErrors
+
     /** List of names of phases that should precede this phase */
     def runsAfter: Set[Class[_ <: Phase]] = Set.empty
 
+    /** @pre `isRunnable` returns true */
     def run(implicit ctx: Context): Unit
 
+    /** @pre `isRunnable` returns true */
     def runOn(units: List[CompilationUnit])(implicit ctx: Context): List[CompilationUnit] =
       units.map { unit =>
         val unitCtx = ctx.fresh.setPhase(this.start).setCompilationUnit(unit)

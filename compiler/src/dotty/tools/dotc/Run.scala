@@ -6,6 +6,9 @@ import Contexts._
 import Periods._
 import Symbols._
 import Phases._
+import Types._
+import Scopes._
+import typer.{FrontEnd, Typer, ImportInfo, RefChecks}
 import Decorators._
 import dotty.tools.dotc.transform.TreeTransforms.TreeTransformer
 import io.PlainFile
@@ -22,11 +25,40 @@ import dotty.tools.io.VirtualFile
 import scala.util.control.NonFatal
 
 /** A compiler run. Exports various methods to compile source files */
-class Run(comp: Compiler)(implicit ctx: Context) {
-
-  assert(ctx.runId <= Periods.MaxPossibleRunId)
+class Run(comp: Compiler, ictx: Context) {
 
   var units: List[CompilationUnit] = _
+
+  /** Produces the following contexts, from outermost to innermost
+   *
+   *    bootStrap:   A context with next available runId and a scope consisting of
+   *                 the RootPackage _root_
+   *    start        A context with RootClass as owner and the necessary initializations
+   *                 for type checking.
+   *    imports      For each element of RootImports, an import context
+   */
+  protected[this] def rootContext(implicit ctx: Context): Context = {
+    ctx.initialize()(ctx)
+    ctx.setPhasePlan(comp.phases)
+    val rootScope = new MutableScope
+    val bootstrap = ctx.fresh
+      .setPeriod(Period(comp.nextRunId, FirstPhaseId))
+      .setScope(rootScope)
+    rootScope.enter(ctx.definitions.RootPackage)(bootstrap)
+    val start = bootstrap.fresh
+      .setOwner(defn.RootClass)
+      .setTyper(new Typer)
+      .addMode(Mode.ImplicitsEnabled)
+      .setTyperState(new MutableTyperState(ctx.typerState, ctx.typerState.reporter, isCommittable = true))
+      .setFreshNames(new FreshNameCreator.Default)
+    ctx.initialize()(start) // re-initialize the base context with start
+    def addImport(ctx: Context, refFn: () => TermRef) =
+      ctx.fresh.setImportInfo(ImportInfo.rootImport(refFn)(ctx))
+    (start.setRunInfo(new RunInfo(start)) /: defn.RootImportFns)(addImport)
+  }
+
+  protected[this] implicit val ctx: Context = rootContext(ictx)
+  assert(ctx.runId <= Periods.MaxPossibleRunId)
 
   def getSource(fileName: String): SourceFile = {
     val f = new PlainFile(fileName)
@@ -63,7 +95,17 @@ class Run(comp: Compiler)(implicit ctx: Context) {
       compileUnits()
     }
 
-  protected def compileUnits() = Stats.monitorHeartBeat {
+  def compileUnits(us: List[CompilationUnit]): Unit = {
+    units = us
+    compileUnits()
+  }
+
+  def compileUnits(us: List[CompilationUnit], ctx: Context): Unit = {
+    units = us
+    compileUnits()(ctx)
+  }
+
+  protected def compileUnits()(implicit ctx: Context) = Stats.monitorHeartBeat {
     ctx.checkSingleThreaded()
 
     // If testing pickler, make sure to stop after pickling phase:
@@ -76,7 +118,7 @@ class Run(comp: Compiler)(implicit ctx: Context) {
     ctx.usePhases(phases)
     var lastPrintedTree: PrintedTree = NoPrintedTree
     for (phase <- ctx.allPhases)
-      if (!ctx.reporter.hasErrors) {
+      if (phase.isRunnable) {
         val start = System.currentTimeMillis
         units = phase.runOn(units)
         if (ctx.settings.Xprint.value.containsPhase(phase)) {

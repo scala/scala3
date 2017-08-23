@@ -71,14 +71,12 @@ trait DottyBytecodeTest extends DottyTest {
   /** Checks source code from raw string */
   def checkBCode(source: String)(assertion: Directory => Unit) = {
     val comp = bCodeCheckingComp(new TestGenBCode(outPath(source)))(assertion)
-    comp.rootContext(ctx)
     comp.newRun.compile(source)
   }
 
   /** Checks actual _files_ referenced in `sources` list */
   def checkBCode(sources: List[String])(assertion: Directory => Unit) = {
     val comp = bCodeCheckingComp(new TestGenBCode(outPath(sources)))(assertion)
-    comp.rootContext(ctx)
     comp.newRun.compile(sources)
   }
 

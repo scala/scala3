@@ -1,0 +1,12 @@
+scala> 	class Foo extends Bar // with one tab
+1 | 	class Foo extends Bar // with one tab
+  | 	                  ^^^
+  | 	                  not found: type Bar
+scala>                                                                               class Foo extends Bar // with spaces
+1 |                                                                               class Foo extends Bar // with spaces
+  |                                                                                                 ^^^
+  |                                                       not found: type Bar
+scala>                                                                                  class Foo extends Bar // with tabs
+1 |                                                                                  class Foo extends Bar // with tabs
+  |                                                                                                    ^^^
+  |                                                       not found: type Bar

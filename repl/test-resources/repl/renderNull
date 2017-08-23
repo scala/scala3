@@ -1,0 +1,2 @@
+scala> val x: String = null
+val x: String = null

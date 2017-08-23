@@ -116,34 +116,6 @@ class Compiler {
     runId += 1; runId
   }
 
-  /** Produces the following contexts, from outermost to innermost
-   *
-   *    bootStrap:   A context with next available runId and a scope consisting of
-   *                 the RootPackage _root_
-   *    start        A context with RootClass as owner and the necessary initializations
-   *                 for type checking.
-   *    imports      For each element of RootImports, an import context
-   */
-  def rootContext(implicit ctx: Context): Context = {
-    ctx.initialize()(ctx)
-    ctx.setPhasePlan(phases)
-    val rootScope = new MutableScope
-    val bootstrap = ctx.fresh
-      .setPeriod(Period(nextRunId, FirstPhaseId))
-      .setScope(rootScope)
-    rootScope.enter(ctx.definitions.RootPackage)(bootstrap)
-    val start = bootstrap.fresh
-      .setOwner(defn.RootClass)
-      .setTyper(new Typer)
-      .addMode(Mode.ImplicitsEnabled)
-      .setTyperState(new MutableTyperState(ctx.typerState, ctx.typerState.reporter, isCommittable = true))
-      .setFreshNames(new FreshNameCreator.Default)
-    ctx.initialize()(start) // re-initialize the base context with start
-    def addImport(ctx: Context, refFn: () => TermRef) =
-      ctx.fresh.setImportInfo(ImportInfo.rootImport(refFn)(ctx))
-    (start.setRunInfo(new RunInfo(start)) /: defn.RootImportFns)(addImport)
-  }
-
   def reset()(implicit ctx: Context): Unit = {
     ctx.base.reset()
     ctx.runInfo.clear()
@@ -151,6 +123,6 @@ class Compiler {
 
   def newRun(implicit ctx: Context): Run = {
     reset()
-    new Run(this)(rootContext)
+    new Run(this, ctx)
   }
 }

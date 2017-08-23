@@ -1,0 +1,6 @@
+scala> val xs = scala.collection.mutable.ListBuffer[Int]
+1 | val xs = scala.collection.mutable.ListBuffer[Int]
+  |          ^
+  |          missing parameter type for parameter elems, expected = ?
+scala> val xs = scala.collection.mutable.ListBuffer[Int]()
+val xs: scala.collection.mutable.ListBuffer[Int] = ListBuffer()

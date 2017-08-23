@@ -64,7 +64,8 @@ object NameOps {
     def isConstructorName = name == CONSTRUCTOR || name == TRAIT_CONSTRUCTOR
     def isStaticConstructorName = name == STATIC_CONSTRUCTOR
     def isLocalDummyName = name startsWith str.LOCALDUMMY_PREFIX
-    def isReplWrapperName = name.toString contains str.INTERPRETER_IMPORT_WRAPPER
+    def isReplWrapperName = name.toString contains str.REPL_SESSION_LINE
+    def isReplAssignName = name.toString contains str.REPL_ASSIGN_SUFFIX
     def isSetterName = name endsWith str.SETTER_SUFFIX
     def isScala2LocalSuffix = testSimple(_.endsWith(" "))
     def isSelectorName = testSimple(n => n.startsWith("_") && n.drop(1).forall(_.isDigit))

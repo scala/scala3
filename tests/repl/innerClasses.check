@@ -1,5 +1,0 @@
-scala> class A { class Inner }
-defined class A
-scala> class B extends A { class Inner2 extends super.Inner }
-defined class B
-scala> :quit

@@ -30,10 +30,10 @@ object StdNames {
     final val ANON_CLASS               = "$anon"
     final val ANON_FUN                 = "$anonfun"
 
-    final val INTERPRETER_IMPORT_WRAPPER = "$iw"
-    final val INTERPRETER_LINE_PREFIX    = "line"
-    final val INTERPRETER_VAR_PREFIX     = "res"
-    final val INTERPRETER_WRAPPER_SUFFIX = "$object"
+    final val REPL_SESSION_LINE  = "rs$line$"
+    final val REPL_ASSIGN_SUFFIX = "$assign"
+    final val REPL_RES_PREFIX    = "res"
+
     final val MODULE_INSTANCE_FIELD      = "MODULE$"
 
     final val Function                   = "Function"

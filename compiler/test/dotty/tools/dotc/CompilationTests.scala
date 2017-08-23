@@ -197,7 +197,7 @@ class CompilationTests extends ParallelTesting {
     compileDir("../compiler/src/dotty/tools/dotc/config", picklingOptions) +
     compileDir("../compiler/src/dotty/tools/dotc/parsing", picklingOptions) +
     compileDir("../compiler/src/dotty/tools/dotc/printing", picklingOptions) +
-    compileDir("../compiler/src/dotty/tools/dotc/repl", picklingOptions) +
+    compileDir("../repl/src/dotty/tools/repl", picklingOptions) +
     compileDir("../compiler/src/dotty/tools/dotc/rewrite", picklingOptions) +
     compileDir("../compiler/src/dotty/tools/dotc/transform", picklingOptions) +
     compileDir("../compiler/src/dotty/tools/dotc/typer", picklingOptions) +
@@ -275,7 +275,6 @@ class CompilationTests extends ParallelTesting {
         compileShallowFilesInDir("../compiler/src/dotty/tools/dotc/config", opt) +
         compileShallowFilesInDir("../compiler/src/dotty/tools/dotc/parsing", opt) +
         compileShallowFilesInDir("../compiler/src/dotty/tools/dotc/printing", opt) +
-        compileShallowFilesInDir("../compiler/src/dotty/tools/dotc/repl", opt) +
         compileShallowFilesInDir("../compiler/src/dotty/tools/dotc/reporting", opt) +
         compileShallowFilesInDir("../compiler/src/dotty/tools/dotc/rewrite", opt) +
         compileShallowFilesInDir("../compiler/src/dotty/tools/dotc/transform", opt) +

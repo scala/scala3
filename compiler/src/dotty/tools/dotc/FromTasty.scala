@@ -45,11 +45,11 @@ object FromTasty extends Driver {
 
     override def newRun(implicit ctx: Context): Run = {
       reset()
-      new TASTYRun(this)(rootContext)
+      new TASTYRun(this, ctx)
     }
   }
 
-  class TASTYRun(comp: Compiler)(implicit ctx: Context) extends Run(comp) {
+  class TASTYRun(comp: Compiler, ictx: Context) extends Run(comp, ictx) {
     override def compile(classNames: List[String]) = {
       units = classNames.map(new TASTYCompilationUnit(_))
       compileUnits()

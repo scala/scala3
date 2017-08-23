@@ -1994,7 +1994,9 @@ object SymDenotations {
     }
 
     def isValidAt(phase: Phase)(implicit ctx: Context) =
-      createdAt.runId == ctx.runId && sameGroup(ctx.phases(createdAt.phaseId), phase)
+      createdAt.runId == ctx.runId &&
+      createdAt.phaseId < ctx.phases.length &&
+      sameGroup(ctx.phases(createdAt.phaseId), phase)
   }
 
   private class InvalidCache extends InheritedCache {
