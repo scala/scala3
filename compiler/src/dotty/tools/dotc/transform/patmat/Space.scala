@@ -137,13 +137,15 @@ trait SpaceLogic {
   /** Flatten space to get rid of `Or` for pretty print */
   def flatten(space: Space): List[Space] = space match {
     case Prod(tp, fun, sym, spaces, full) =>
-      val flats = spaces.map(flatten _)
-
-      flats.foldLeft(List[Prod]()) { (acc, flat) =>
-        if (acc.isEmpty) flat.map(s => Prod(tp, fun, sym, s :: Nil, full))
-        else for (Prod(tp, fun, sym, ss, full) <- acc; s <- flat) yield Prod(tp, fun, sym, ss :+ s, full)
+      spaces.map(flatten) match {
+        case Nil => Prod(tp, fun, sym, Nil, full) :: Nil
+        case ss  =>
+          ss.foldLeft(List[Prod]()) { (acc, flat) =>
+            if (acc.isEmpty) flat.map(s => Prod(tp, fun, sym, s :: Nil, full))
+            else for (Prod(tp, fun, sym, ss, full) <- acc; s <- flat) yield Prod(tp, fun, sym, ss :+ s, full)
+          }
       }
-    case Or(spaces) =>
+   case Or(spaces) =>
       spaces.flatMap(flatten _)
     case _ => List(space)
   }
@@ -166,7 +168,7 @@ trait SpaceLogic {
         simplify(minus(a, b)) == Empty
       case (Prod(tp1, _, _, _, _), Typ(tp2, _)) =>
         isSubType(tp1, tp2)
-      case (Typ(tp2, _), Prod(tp1, fun, sym, ss, full)) =>
+      case (Typ(tp1, _), Prod(tp2, fun, sym, ss, full)) =>
         // approximation: a type can never be fully matched by a partial extractor
         full && isSubType(tp1, tp2) && isSubspace(Prod(tp2, fun, sym, signature(fun, sym, ss.length).map(Typ(_, false)), full), b)
       case (Prod(_, fun1, sym1, ss1, _), Prod(_, fun2, sym2, ss2, _)) =>
@@ -393,10 +395,11 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
       if (fun.symbol.name == nme.unapplySeq)
         projectSeq(pats)
       else
-        Prod(pat.tpe.stripAnnots, fun.tpe, fun.symbol, pats.map(pat => project(pat)), irrefutable(fun))
+        Prod(pat.tpe.stripAnnots, fun.tpe.widen, fun.symbol, pats.map(pat => project(pat)), irrefutable(fun))
     case Typed(pat @ UnApply(_, _, _), _) => project(pat)
     case Typed(expr, _) => Typ(expr.tpe.stripAnnots, true)
     case _ =>
+      debug.println(s"unknown pattern: $pat")
       Empty
   }
 
