@@ -297,7 +297,7 @@ class SuperAccessors(thisTransformer: DenotTransformer) {
       val clazz = currentClass
       val host = hostForAccessorOf(sym, clazz)
       def accessibleThroughSubclassing =
-        validCurrentClass && (clazz.classInfo.selfType <:< sym.owner.appliedRef) && !clazz.is(Trait)
+        validCurrentClass && clazz.classInfo.selfType.derivesFrom(sym.owner) && !clazz.is(Trait)
 
       val isCandidate = (
            sym.is(Protected)
