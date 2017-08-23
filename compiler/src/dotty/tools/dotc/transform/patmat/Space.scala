@@ -145,7 +145,7 @@ trait SpaceLogic {
             else for (Prod(tp, fun, sym, ss, full) <- acc; s <- flat) yield Prod(tp, fun, sym, ss :+ s, full)
           }
       }
-   case Or(spaces) =>
+    case Or(spaces) =>
       spaces.flatMap(flatten _)
     case _ => List(space)
   }
@@ -374,7 +374,7 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
   /* Whether the extractor method type is irrefutable */
   def irrefutable(unapp: tpd.Tree): Boolean = {
     // TODO: optionless patmat
-    unapp.tpe.resultType.isRef(scalaSomeClass) ||
+    unapp.tpe.widen.resultType.isRef(scalaSomeClass) ||
       (unapp.symbol.is(Synthetic) && unapp.symbol.owner.linkedClass.is(Case))
   }
 
@@ -395,7 +395,7 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
       if (fun.symbol.name == nme.unapplySeq)
         projectSeq(pats)
       else
-        Prod(pat.tpe.stripAnnots, fun.tpe.widen, fun.symbol, pats.map(pat => project(pat)), irrefutable(fun))
+        Prod(pat.tpe.stripAnnots, fun.tpe.widen, fun.symbol, pats.map(project), irrefutable(fun))
     case Typed(pat @ UnApply(_, _, _), _) => project(pat)
     case Typed(expr, _) => Typ(expr.tpe.stripAnnots, true)
     case _ =>
