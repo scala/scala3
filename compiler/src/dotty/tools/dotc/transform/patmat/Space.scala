@@ -370,8 +370,9 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
   }
 
   /* Whether the extractor method type is irrefutable */
-  def irrefutable(mt: Type): Boolean = {
-    mt.resultType.isRef(scalaSomeClass) // TODO: optionless patmat
+  def irrefutable(unapp: tpd.Tree): Boolean = {
+    // TODO: optionless patmat
+    unapp.tpe.resultType.isRef(scalaSomeClass) || (unapp.symbol.is(allOf(Synthetic, Case)))
   }
 
   /** Return the space that represents the pattern `pat`
@@ -391,7 +392,7 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
       if (fun.symbol.name == nme.unapplySeq)
         projectSeq(pats)
       else
-        Prod(pat.tpe.stripAnnots, fun.tpe, fun.symbol, pats.map(pat => project(pat)), irrefutable(fun.tpe))
+        Prod(pat.tpe.stripAnnots, fun.tpe, fun.symbol, pats.map(pat => project(pat)), irrefutable(fun))
     case Typed(pat @ UnApply(_, _, _), _) => project(pat)
     case Typed(expr, _) => Typ(expr.tpe.stripAnnots, true)
     case _ =>
