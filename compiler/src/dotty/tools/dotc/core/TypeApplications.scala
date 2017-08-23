@@ -433,7 +433,8 @@ class TypeApplications(val self: Type) extends AnyVal {
           case dealiased @ TypeRef(prefix, _) =>
             val (concreteArgs, concreteParams) = // @!!! optimize?
               args.zip(typParams).filter(!_._1.isInstanceOf[TypeBounds]).unzip
-            avoidParams(Set(tparam), v)(
+            if (tparam.isCompleting) TypeBounds.empty
+            else avoidParams(Set(tparam), v)(
               tparam.paramInfo.asSeenFrom(prefix, tparam.owner)
                 .subst(concreteParams, concreteArgs))
           case _ =>
