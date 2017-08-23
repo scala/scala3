@@ -166,13 +166,10 @@ class DottyLanguageServer extends LanguageServer
     // from this method and thus let the client know our capabilities.
     CompletableFuture.supplyAsync(() => drivers)
       .exceptionally {
-        // Can't use a function literal here because of #2367
-        new Function[Throwable, Nothing] {
-          def apply(ex: Throwable) = {
+        (ex: Throwable) => {
             ex.printStackTrace
             sys.exit(1)
           }
-        }
       }
 
     new InitializeResult(c)

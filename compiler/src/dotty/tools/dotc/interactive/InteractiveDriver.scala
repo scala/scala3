@@ -128,17 +128,11 @@ class InteractiveDriver(val settings: List[String]) extends Driver {
 
   // Like in `ZipArchiveFileLookup` we assume that zips are immutable
   private val zipClassPathClasses: Seq[String] = zipClassPaths.flatMap { zipCp =>
-    // Working with Java 8 stream without SAMs and scala-java8-compat is awful.
-    val entries = new ZipFile(zipCp.zipFile)
+    new ZipFile(zipCp.zipFile)
       .stream
-      .toArray(new IntFunction[Array[ZipEntry]] { def apply(size: Int) = new Array(size) })
-      .toSeq
-    for {
-      entry <- entries
-      name = entry.getName
-      tastySuffix <- tastySuffixes
-      if name.endsWith(tastySuffix)
-    } yield name.replace("/", ".").stripSuffix(tastySuffix)
+      .toArray((size: Int) => new Array[ZipEntry](size))
+      .map((e: ZipEntry) => e.getName)
+      .flatMap((name: String) => tastySuffixes.find(name.endsWith).map(name.replace("/", ".").stripSuffix))
   }
 
   // FIXME: classfiles in directories may change at any point, so we retraverse
