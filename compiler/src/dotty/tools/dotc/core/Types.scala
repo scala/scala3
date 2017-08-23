@@ -3989,8 +3989,10 @@ object Types {
           | NoPrefix => tp
 
         case tp: AppliedType =>
-          def mapArg(arg: Type, tparam: ParamInfo): Type =
-            atVariance(variance * tparam.paramVariance)(this(arg))
+          def mapArg(arg: Type, tparam: ParamInfo): Type = arg match {
+            case arg: TypeBounds => this(arg)
+            case _ => atVariance(variance * tparam.paramVariance)(this(arg))
+          }
           derivedAppliedType(tp, this(tp.tycon),
               tp.args.zipWithConserve(tp.typeParams)(mapArg))
 
@@ -4420,7 +4422,10 @@ object Types {
           }
           else {
             val tparam = tparams.head
-            val acc = atVariance(variance * tparam.paramVariance)(this(x, args.head))
+            val acc = args.head match {
+              case arg: TypeBounds => this(x, arg)
+              case arg => atVariance(variance * tparam.paramVariance)(this(x, arg))
+            }
             foldArgs(acc, tparams.tail, args.tail)
           }
         foldArgs(this(x, tycon), tp.typeParams, args)
