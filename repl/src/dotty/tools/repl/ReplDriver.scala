@@ -299,7 +299,7 @@ class ReplDriver(settings: Array[String],
   private def interpretCommand(cmd: Command)(implicit state: State): State = cmd match {
     case UnknownCommand(cmd) => {
       out.println(s"""Unknown command: "$cmd", run ":help" for a list of commands""")
-      state.withHistory(s":$cmd")
+      state.withHistory(s"$cmd")
     }
 
     case Help => {
@@ -319,7 +319,8 @@ class ReplDriver(settings: Array[String],
 
     case Load(path) =>
       val loadCmd = s"${Load.command} $path"
-      if ((new java.io.File(path)).exists) {
+      val file = new java.io.File(path)
+      if (file.exists) {
         val contents = scala.io.Source.fromFile(path).mkString
         ParseResult(contents)(state.run.runContext) match {
           case parsed: Parsed =>
@@ -331,7 +332,7 @@ class ReplDriver(settings: Array[String],
         }
       }
       else {
-        out.println(s"""Couldn't find file "$path"""")
+        out.println(s"""Couldn't find file "${file.getCanonicalPath}"""")
         state.withHistory(loadCmd)
       }
 

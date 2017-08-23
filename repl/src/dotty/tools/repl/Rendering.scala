@@ -52,8 +52,8 @@ private[repl] class Rendering(compiler: ReplCompiler,
 
     val res =
       resObj
-      .getDeclaredMethods.find(_.getName == sym.name.toString + "Show").get
-      .invoke(null).toString
+        .getDeclaredMethods.find(_.getName == sym.name.toString + "Show").get
+        .invoke(null).toString
 
     if (!sym.is(Flags.Method) && sym.info == defn.UnitType)
       None

@@ -17,14 +17,9 @@ package object repl {
     new StoreReporter(null)
     with UniqueMessagePositions with HideNonSensicalMessages
 
-  private[repl] implicit class ListOps[A](val xs: List[A]) extends AnyVal {
-    def intersperse(a: A): List[A] = {
-      def recur(xs: List[A]): List[A] = xs match {
-        case x :: Nil => List(x)
-        case xs => List(xs.head, a) ++ recur(xs.tail)
-      }
-      recur(xs)
-    }
+  private[repl] implicit class ListOps[A](val nel: List[A]) extends AnyVal {
+    def intersperse(a: A): List[A] =
+      nel.flatMap(a :: _ :: Nil).tail
   }
 
   private[repl] implicit class ShowUser(val s: Symbol) extends AnyVal {

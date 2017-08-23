@@ -155,8 +155,8 @@ class ReplCompiler(val directory: AbstractFile) extends Compiler {
       val tmpl = Template(emptyConstructor(ctx), Nil, EmptyValDef, defs.stats)
       List(
         ModuleDef(objectName(defs.state), tmpl)
-        .withMods(new Modifiers(Module | Final))
-        .withPos(Position(defs.stats.head.pos.start, defs.stats.last.pos.end))
+          .withMods(new Modifiers(Module | Final))
+          .withPos(Position(defs.stats.head.pos.start, defs.stats.last.pos.end))
       )
     }
 

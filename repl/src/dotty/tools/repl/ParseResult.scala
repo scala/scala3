@@ -84,10 +84,11 @@ case object Help extends Command {
   val text =
     """The REPL has several commands available:
       |
-      |:help                    print this summary or command-specific help
+      |:help                    print this summary
       |:load <path>             interpret lines in a file
       |:quit                    exit the interpreter
       |:type <expression>       evaluate the type of the given expression
+      |:imports                 show import history
       |:reset                   reset the repl to its initial state, forgetting all session entries
     """.stripMargin
 }
