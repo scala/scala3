@@ -388,9 +388,10 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
     case Alternative(trees) => Or(trees.map(project(_)))
     case Bind(_, pat) => project(pat)
     case UnApply(fun, _, pats) =>
-      // if (fun.symbol.owner == scalaSeqFactoryClass && fun.symbol.name == nme.unapplySeq)
-      //  projectList(pats)
-      Prod(pat.tpe.stripAnnots, fun.tpe, fun.symbol, pats.map(pat => project(pat)), irrefutable(fun.tpe))
+      if (fun.symbol.name == nme.unapplySeq)
+        projectSeq(pats)
+      else
+        Prod(pat.tpe.stripAnnots, fun.tpe, fun.symbol, pats.map(pat => project(pat)), irrefutable(fun.tpe))
     case Typed(pat @ UnApply(_, _, _), _) => project(pat)
     case Typed(expr, _) => Typ(expr.tpe.stripAnnots, true)
     case _ =>
@@ -398,9 +399,9 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
   }
 
 
-  /** Space of the pattern: List(a, b, c: _*)
+  /** Space of the pattern: unapplySeq(a, b, c: _*)
    */
-  def projectList(pats: List[Tree]): Space = {
+  def projectSeq(pats: List[Tree]): Space = {
     if (pats.isEmpty) return Typ(scalaNilType, false)
 
     val (items, zero) = if (pats.last.tpe.isRepeatedParam)
@@ -409,7 +410,10 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
       (pats, Typ(scalaNilType, false))
 
     items.foldRight[Space](zero) { (pat, acc) =>
-      Prod(scalaConsType.appliedTo(pats.head.tpe.widen), null, null, project(pat) :: acc :: Nil, true) // TODO
+      val consTp = scalaConsType.appliedTo(pats.head.tpe.widen)
+      val unapplySym = consTp.classSymbol.linkedClass.info.member(nme.unapply).symbol
+      val unapplyTp = unapplySym.info.appliedTo(pats.head.tpe.widen)
+      Prod(consTp, unapplyTp, unapplySym, project(pat) :: acc :: Nil, true)
     }
   }
 
@@ -476,8 +480,7 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
       }
       else {
         val resTp = mt.resultType.select(nme.get).resultType
-        if (isUnapplySeq)
-          Nil // TODO
+        if (isUnapplySeq) scalaListType.appliedTo(resTp.argTypes.head) :: Nil
         else if (argLen == 0) Nil
         else productSelectors(resTp).map(_.info.asSeenFrom(resTp, resTp.classSymbol).widen)
       }
