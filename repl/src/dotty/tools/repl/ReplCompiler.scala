@@ -8,6 +8,7 @@ import dotc.ast.{ untpd, tpd }
 import dotc.{ Run, CompilationUnit, Compiler }
 import dotc.core.Decorators._, dotc.core.Flags._, dotc.core.Phases
 import dotc.core.Names._, dotc.core.Contexts._, dotc.core.StdNames._
+import dotc.core.Constants.Constant
 import dotc.util.SourceFile
 import dotc.typer.{ ImportInfo, FrontEnd }
 import backend.jvm.GenBCode
@@ -68,7 +69,13 @@ class ReplCompiler(val directory: AbstractFile) extends Compiler {
     def createShow(name: TermName, pos: Position) = {
       val showName = name ++ "Show"
       val select = Select(Ident(name), "show".toTermName)
-      DefDef(showName, Nil, Nil, TypeTree(), select).withFlags(Synthetic).withPos(pos)
+      val valAsAnyRef = TypeApply(Select(Ident(name), nme.asInstanceOf_),
+                                  List(Ident(tpnme.AnyRef)))
+      val cond = InfixOp(valAsAnyRef,
+                         Ident(nme.EQ),
+                         Literal(Constant(null)))
+      val showWithNullCheck = If(cond, Literal(Constant("null")), select)
+      DefDef(showName, Nil, Nil, TypeTree(), showWithNullCheck).withFlags(Synthetic).withPos(pos)
     }
 
     val (exps, other) = trees.partition(_.isTerm)
