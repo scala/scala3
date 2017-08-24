@@ -371,7 +371,7 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
     }
   }
 
-  /* Whether the extractor method type is irrefutable */
+  /* Whether the extractor is irrefutable */
   def irrefutable(unapp: tpd.Tree): Boolean = {
     // TODO: optionless patmat
     unapp.tpe.widen.resultType.isRef(scalaSomeClass) ||
@@ -466,7 +466,7 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
 
   def isEqualType(tp1: Type, tp2: Type): Boolean = tp1 =:= tp2
 
-  /** Parameter types of the case class type `tp`  */
+  /** Parameter types of the case class type `tp`. Adapted from `unapplyPlan` in patternMatcher  */
   def signature(unapp: Type, unappSym: Symbol, argLen: Int): List[Type] = {
     def caseClass = unappSym.owner.linkedClass
     lazy val caseAccessors = caseClass.caseAccessors.filter(_.is(Method))
