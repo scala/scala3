@@ -493,7 +493,7 @@ object Checking {
             if (param.is(Mutable))
               ctx.error(ValueClassParameterMayNotBeAVar(clazz, param), param.pos)
             if (param.info.isPhantom)
-              ctx.error("value class first parameter must not be phantom.", param.pos)
+              ctx.error("value class first parameter must not be phantom", param.pos)
             else {
               for (p <- params if !p.info.isPhantom)
                 ctx.error("value class can only have one non phantom parameter", p.pos)
