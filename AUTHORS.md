@@ -1,3 +1,6 @@
+Test-bot
+
+
 The dotty compiler frontend has been developed since November 2012 by Martin Odersky. It is expected and hoped for
 that the list of contributors to the codebase will grow quickly. Dotty draws inspiration and code from the original
 Scala compiler "nsc", which is developed at [scala/scala](https://github.com/scala/scala).
