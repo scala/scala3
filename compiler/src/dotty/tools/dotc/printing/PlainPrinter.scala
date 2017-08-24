@@ -317,17 +317,15 @@ class PlainPrinter(_ctx: Context) extends Printer {
   /** String representation of a definition's type following its name */
   protected def toTextRHS(tp: Type): Text = controlled {
     homogenize(tp) match {
+      case tp: TypeAlias =>
+        val eql =
+          if (tp.variance == 1) " =+ "
+          else if (tp.variance == -1) " =- "
+          else " = "
+        eql ~ toText(tp.alias)      	
       case tp @ TypeBounds(lo, hi) =>
-        if (lo eq hi) {
-          val eql =
-            if (tp.variance == 1) " =+ "
-            else if (tp.variance == -1) " =- "
-            else " = "
-          eql ~ toText(lo)
-        }
-        else
-          (if (lo isRef defn.NothingClass) Text() else " >: " ~ toText(lo)) ~
-            (if (hi isRef defn.AnyClass) Text() else " <: " ~ toText(hi))
+        (if (lo isRef defn.NothingClass) Text() else " >: " ~ toText(lo)) ~
+          (if (hi isRef defn.AnyClass) Text() else " <: " ~ toText(hi))
       case tp @ ClassInfo(pre, cls, cparents, decls, selfInfo) =>
         val preText = toTextLocal(pre)
         val (tparams, otherDecls) = decls.toList partition treatAsTypeParam
