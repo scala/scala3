@@ -143,12 +143,6 @@ object Types {
       case _ => false
     }
 
-    /** Is this type exactly Nothing (no vars, aliases, refinements etc allowed)? */
-    def isBottomType(implicit ctx: Context): Boolean = this match {
-      case tp: TypeRef => tp.symbol eq defn.NothingClass
-      case _ => false
-    }
-
     /** Is this type a (neither aliased nor applied) reference to class `sym`? */
     def isDirectRef(sym: Symbol)(implicit ctx: Context): Boolean = stripTypeVar match {
       case this1: TypeRef =>
@@ -223,6 +217,22 @@ object Types {
       val lattice = phantomLatticeType
       if (lattice.exists) lattice.select(tpnme.Nothing)
       else defn.NothingType
+    }
+
+    /** Is this type exactly Nothing (no vars, aliases, refinements etc allowed)? */
+    def isBottomType(implicit ctx: Context): Boolean = this match {
+      case tp: TypeRef =>
+        val sym = tp.symbol
+        (sym eq defn.NothingClass) || (sym eq defn.Phantom_NothingClass)
+      case _ => false
+    }
+
+      /** Is this type exactly Any (no vars, aliases, refinements etc allowed)? */
+    def isTopType(implicit ctx: Context): Boolean = this match {
+      case tp: TypeRef =>
+        val sym = tp.symbol
+        (sym eq defn.AnyClass) || (sym eq defn.Phantom_AnyClass)
+      case _ => false
     }
 
     /** Returns the type of the phantom lattice (i.e. the prefix of the phantom type)
@@ -1202,6 +1212,12 @@ object Types {
     def parentsNEW(implicit ctx: Context): List[Type] = this match {
       case tp @ AppliedType(tycon, args) if tycon.typeSymbol.isClass =>
         tycon.parentsNEW.map(_.subst(tycon.typeSymbol.typeParams, args))
+      case tp: TypeRef =>
+        if (tp.info.isInstanceOf[TempClassInfo]) {
+          tp.reloadDenot()
+          assert(!tp.info.isInstanceOf[TempClassInfo])
+        }
+        tp.info.parentsNEW
       case tp: TypeProxy =>
         tp.superType.parentsNEW
       case _ => Nil
@@ -1760,6 +1776,8 @@ object Types {
       }
     }
 
+    def reloadDenot()(implicit ctx: Context) = setDenot(loadDenot)
+
     protected def asMemberOf(prefix: Type, allowPrivate: Boolean)(implicit ctx: Context): Denotation =
       if (name.is(ShadowedName)) prefix.nonPrivateMember(name.exclude(ShadowedName))
       else if (!allowPrivate) prefix.nonPrivateMember(name)
@@ -1853,7 +1871,7 @@ object Types {
         case AndType(base1, base2) => argForParam(base1) & argForParam(base2)
         case _ =>
           if (pre.termSymbol is Package) argForParam(pre.select(nme.PACKAGE))
-          else if (pre.isBottomType) pre.bottomType
+          else if (pre.isBottomType) pre
           else NoType
       }
     }
@@ -3271,8 +3289,36 @@ object Types {
     assert(prefix.isInstanceOf[ValueType])
     assert(idx >= 0)
 
+    private[this] var underlyingCache: Type = _
+    private[this] var underlyingCachePeriod = Nowhere
+
+    def computeUnderlying(implicit ctx: Context): Type = {
+      val cls = clsRef.symbol
+      val args = prefix.baseType(cls).argInfos
+      val typeParams = cls.typeParams
+
+      val concretized = TypeArgRef.concretizeArgs(args, prefix, clsRef)
+      def rebase(arg: Type) = arg.subst(typeParams, concretized)
+
+      val arg = args(idx)
+      val tparam = typeParams(idx)
+      val v = tparam.paramVariance
+      val pbounds = tparam.paramInfo
+      if (v > 0 && pbounds.loBound.dealias.isBottomType) arg.hiBound & rebase(pbounds.hiBound)
+      else if (v < 0 && pbounds.hiBound.dealias.isTopType) arg.loBound | rebase(pbounds.loBound)
+      else arg recoverable_& rebase(pbounds)
+    }
+
     override def underlying(implicit ctx: Context): Type =
-      prefix.baseType(clsRef.symbol).argInfos.apply(idx)
+      if (Config.newBoundsScheme) {
+        if (!ctx.hasSameBaseTypesAs(underlyingCachePeriod)) {
+          underlyingCache = computeUnderlying
+          underlyingCachePeriod = ctx.period
+        }
+        underlyingCache
+      }
+      else prefix.baseType(clsRef.symbol).argInfos.apply(idx)
+
     def derivedTypeArgRef(prefix: Type)(implicit ctx: Context): Type =
       if (prefix eq this.prefix) this else TypeArgRef(prefix, clsRef, idx)
     override def computeHash = doHash(idx, prefix, clsRef)
@@ -3286,6 +3332,14 @@ object Types {
     def fromParam(prefix: Type, tparam: TypeSymbol)(implicit ctx: Context) = {
       val cls = tparam.owner
       apply(prefix, cls.typeRef, cls.typeParams.indexOf(tparam))
+    }
+
+    def concretizeArgs(args: List[Type], prefix: Type, clsRef: TypeRef)(implicit ctx: Context): List[Type] = {
+      def concretize(arg: Type, j: Int) = arg match {
+        case arg: TypeBounds => TypeArgRef(prefix, clsRef, j)
+        case arg => arg
+      }
+      args.zipWithConserve(args.indices.toList)(concretize)
     }
   }
 
@@ -3603,7 +3657,7 @@ object Types {
 
     override def computeHash = doHash(cls, prefix)
 
-    override def toString = s"ClassInfo($prefix, $cls)"
+    override def toString = s"ClassInfo($prefix, $cls, $classParentsNEW)"
   }
 
   class CachedClassInfo(prefix: Type, cls: ClassSymbol, classParents: List[Type], decls: Scope, selfInfo: DotClass)
@@ -3626,6 +3680,12 @@ object Types {
       denot.info = derivedClassInfo(classParentsNEW = parents)
       suspensions.foreach(_(ctx))
     }
+
+    override def derivedClassInfo(prefix: Type)(implicit ctx: Context) =
+      if (prefix eq this.prefix) this
+      else new TempClassInfo(prefix, cls, decls, selfInfo)
+
+    override def toString = s"TempClassInfo($prefix, $cls)"
   }
 
   object ClassInfo {

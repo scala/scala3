@@ -416,6 +416,8 @@ class TypeApplications(val self: Type) extends AnyVal {
      */
     def normalizeWildcardArg(typParams: List[TypeSymbol])(arg: Type, tparam: TypeSymbol): Type = arg match {
       case TypeBounds(lo, hi) =>
+        if (Config.newBoundsScheme) arg
+        else {
         def avoidParams(seen: Set[Symbol], v: Int): ApproximatingTypeMap = new ApproximatingTypeMap {
           variance = if (v >= 0) 1 else -1
           def apply(t: Type) = t match {
@@ -444,6 +446,7 @@ class TypeApplications(val self: Type) extends AnyVal {
         if (v > 0) hi & pbounds.hiBound
         else if (v < 0) lo | pbounds.loBound
         else arg recoverable_& pbounds
+        }
       case _ => arg
     }
 
