@@ -1287,9 +1287,7 @@ object SymDenotations {
     }
 
     private def baseTypeCache(implicit ctx: Context): BaseTypeMap = {
-      if (myBaseTypeCachePeriod != ctx.period &&
-          (myBaseTypeCachePeriod.runId != ctx.runId ||
-           ctx.phases(myBaseTypeCachePeriod.phaseId).sameParentsStartId != ctx.phase.sameParentsStartId)) {
+      if (!ctx.hasSameBaseTypesAs(myBaseTypeCachePeriod)) {
         myBaseTypeCache = new BaseTypeMap
         myBaseTypeCachePeriod = ctx.period
       }
