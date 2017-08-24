@@ -387,7 +387,12 @@ trait ConstraintHandling {
         else tp
 
       def addParamBound(bound: TypeParamRef) =
-        if (fromBelow) addLess(bound, param) else addLess(param, bound)
+        constraint.entry(param) match {
+          case _: TypeBounds =>
+            if (fromBelow) addLess(bound, param) else addLess(param, bound)
+          case tp =>
+            if (fromBelow) isSubType(bound, tp) else isSubType(tp, bound)
+        }
 
       /** Drop all constrained parameters that occur at the toplevel in `bound` and
        *  handle them by `addLess` calls.
