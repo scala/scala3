@@ -715,13 +715,11 @@ class TreeUnpickler(reader: TastyReader, nameAtRef: NameRef => TermName, posUnpi
     private def readTemplate(implicit ctx: Context): Template = {
       val start = currentAddr
       val cls = ctx.owner.asClass
-      def setClsInfo(parents: List[Type], selfType: Type) =
-        cls.info = ClassInfo(cls.owner.thisType, cls, parents, cls.unforcedDecls, selfType)
       val assumedSelfType =
         if (cls.is(Module) && cls.owner.isClass)
           TermRef.withSig(cls.owner.thisType, cls.name.sourceModuleName, Signature.NotAMethod)
         else NoType
-      setClsInfo(Nil, assumedSelfType)
+      cls.info = new TempClassInfo(cls.owner.thisType, cls, cls.unforcedDecls, assumedSelfType)
       val localDummy = symbolAtCurrent()
       assert(readByte() == TEMPLATE)
       val end = readEnd()
@@ -740,7 +738,8 @@ class TreeUnpickler(reader: TastyReader, nameAtRef: NameRef => TermName, posUnpi
           untpd.ValDef(readName(), readTpt(), EmptyTree).withType(NoType)
         }
         else EmptyValDef
-      setClsInfo(parentRefs, if (self.isEmpty) NoType else self.tpt.tpe)
+      cls.info = ClassInfo(cls.owner.thisType, cls, parentRefs, cls.unforcedDecls,
+        if (self.isEmpty) NoType else self.tpt.tpe)
       cls.setNoInitsFlags(fork.indexStats(end))
       val constr = readIndexedDef().asInstanceOf[DefDef]
 

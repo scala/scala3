@@ -182,5 +182,6 @@ object Config {
   /** When in IDE, turn StaleSymbol errors into warnings instead of crashing */
   final val ignoreStaleInIDE = true
 
-  val newScheme = false
+  val newScheme = true
+  val newBoundsScheme = true
 }
