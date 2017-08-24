@@ -558,7 +558,16 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
    *       definition!
    */
   def refine(tp1: Type, tp2: Type): Type = (tp1, tp2) match {
-    case (tp1: RefinedType, _: TypeRef) => tp1.wrapIfMember(refine(tp1.parent, tp2))
+    case (tp1: RefinedType, _: TypeRef) =>
+      val res = tp1.wrapIfMember(refine(tp1.parent, tp2))
+      debug.println(i"refine($tp1, $tp2) = $res")
+      res
+    case (tp1 @ AppliedType(tycon, args), tp2: TypeRef)
+    if config.Config.newScheme && tp2.symbol.typeParams.nonEmpty && tp2.symbol.derivesFrom(tycon.typeSymbol) =>
+      val tp1a = tp1.derivedAppliedType(refine(tycon, tp2), args)
+      val res = derivingType(tp1a.asInstanceOf[AppliedType], tp2)
+      debug.println(i"refine($tp1, $tp2) = $res")
+      res
     case (tp1: AppliedType, _) => refine(tp1.superType, tp2)
     case (tp1: HKApply, _) => refine(tp1.superType, tp2)
     case (TypeRef(ref1: TypeProxy, _), tp2 @ TypeRef(ref2: TypeProxy, _)) =>
@@ -566,6 +575,42 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
     case (TypeRef(ref1: TypeProxy, _), tp2 @ TermRef(ref2: TypeProxy, _)) =>
       if (ref1.underlying <:< ref2.underlying) tp2.derivedSelect(ref1) else tp2
     case _ => tp2
+  }
+
+  def derivingType(tp1: AppliedType, clsRef: TypeRef): Type = {
+    val cls = clsRef.symbol
+    val typeParams = cls.typeParams
+    if (tp1.tycon.typeSymbol == cls) tp1
+    else {
+      val abstracted = PolyType.fromParams(
+        cls.typeParams, clsRef.appliedTo(typeParams.map(_.typeRef))).asInstanceOf[PolyType]
+      val (schema, _) = constrained(abstracted, untpd.EmptyTree)
+      schema <:< tp1
+      val constraint = ctx.typerState.constraint
+      def avoidParamRefs(seen: Set[TypeParamRef], v: Int): ApproximatingTypeMap = new ApproximatingTypeMap {
+        variance = if (v >= 0) 1 else -1
+        def apply(t: Type) = t match {
+          case t: TypeParamRef if schema.paramRefs contains t =>
+            val lo = atVariance(-variance)(apply(constraint.fullLowerBound(t)))
+            val hi =
+              if (seen.contains(t)) t.topType
+              else avoidParamRefs(seen + t, variance)(constraint.fullUpperBound(t))
+              range(lo, hi)
+            case _ => mapOver(t)
+          }
+        }
+      val boundss = abstracted.paramRefs.map(constraint.fullBounds)
+      def boundsToArg(bounds: TypeBounds, tparam: TypeSymbol): Type = {
+        val v = tparam.paramVariance
+        val arg =
+          if (v < 0 || (bounds.hi frozen_<:< bounds.lo)) bounds.lo
+          else if (v > 0) bounds.hi
+          else bounds
+        avoidParamRefs(Set.empty, v)(arg)
+      }
+      val args = (boundss, typeParams).zipped.map(boundsToArg)
+      clsRef.appliedTo(args)
+    }
   }
 
   /** Abstract sealed types, or-types, Boolean and Java enums can be decomposed */
