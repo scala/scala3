@@ -628,15 +628,7 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
 
   /** Display spaces */
   def show(s: Space): String = {
-    def params(tp: Type): List[Type] = {
-      val ktor = tp.classSymbol.primaryConstructor.info
-      val meth = ktor match {
-        case ktor: PolyType =>
-          ktor.instantiate(tp.classSymbol.typeParams.map(_.typeRef)).asSeenFrom(tp, tp.classSymbol)
-        case _ => ktor
-      }
-      meth.firstParamTypes.map(_.asSeenFrom(tp, tp.classSymbol))
-    }
+    def params(tp: Type): List[Type] = tp.classSymbol.primaryConstructor.info.firstParamTypes
 
     /** does the companion object of the given symbol have custom unapply */
     def hasCustomUnapply(sym: Symbol): Boolean = {
