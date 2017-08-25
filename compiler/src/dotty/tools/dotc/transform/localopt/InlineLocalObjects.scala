@@ -34,11 +34,11 @@ class InlineLocalObjects(val simplifyPhase: Simplify) extends Optimisation {
   val gettersCalled = mutable.HashSet[Symbol]()
 
   // Map from class to new fields, initialised between visitor and transformer.
-  var newFieldsMapping: Map[Symbol, Map[Symbol, Symbol]] = null
-  //                   |           |       |
-  //                   |           |       New fields, replacements these getters
-  //                   |           Usages of getters of these classes
-  //                   ValDefs of the classes that are being torn apart; = candidates.intersect(gettersCalled)
+  var newFieldsMapping: Map[Symbol, List[(Symbol, Symbol)]] = null
+  //                          |             |       |
+  //                          |             |       New fields, replacements these getters
+  //                          |             Usages of getters of these classes
+  //                          ValDefs of the classes that are being torn apart; = candidates.intersect(gettersCalled)
 
   def clear(): Unit = {
     candidates.clear()
@@ -57,7 +57,7 @@ class InlineLocalObjects(val simplifyPhase: Simplify) extends Optimisation {
           val info:  Type    = x.asSeenFrom(refVal.info).info.finalResultType.widenDealias
           ctx.newSymbol(owner, name, flags, info)
         }
-        (refVal, accessors.zip(newLocals).toMap)
+        (refVal, accessors.zip(newLocals))
       }.toMap
     }
 
@@ -89,7 +89,7 @@ class InlineLocalObjects(val simplifyPhase: Simplify) extends Optimisation {
     initNewFieldsMapping();
     {
       case t @ NewCaseClassValDef(fun, args) if newFieldsMapping.contains(t.symbol) =>
-        val newFields     = newFieldsMapping(t.symbol).values.toList
+        val newFields     = newFieldsMapping(t.symbol).map(_._2)
         val newFieldsDefs = newFields.zip(args).map { case (nf, arg) =>
           val rhs = arg.changeOwnerAfter(t.symbol, nf.symbol, simplifyPhase)
           ValDef(nf.asTerm, rhs)
@@ -99,10 +99,9 @@ class InlineLocalObjects(val simplifyPhase: Simplify) extends Optimisation {
         Thicket(newFieldsDefs :+ recreate)
 
       case t @ Select(rec, _) if isImmutableAccessor(t) =>
-        newFieldsMapping.getOrElse(rec.symbol, Map.empty).get(t.symbol) match {
-          case None         => t
-          case Some(newSym) => ref(newSym)
-        }
+        newFieldsMapping.getOrElse(rec.symbol, Nil).collect {
+          case ((oldSym, newSym)) if oldSym == t.symbol => ref(newSym)
+        }.headOption.getOrElse(t)
 
       case t => t
     }
