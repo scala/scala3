@@ -2205,16 +2205,24 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
         case _ =>
       }
       // try an implicit conversion
-      inferView(tree, pt) match {
-        case SearchSuccess(inferred, _, _, _) =>
-          adapt(inferred, pt)(ctx.retractMode(Mode.ImplicitsEnabled))
-        case failure: SearchFailure =>
-          val prevConstraint = ctx.typerState.constraint
-          if (pt.isInstanceOf[ProtoType] && !failure.isInstanceOf[AmbiguousImplicits]) tree
-          else if (isFullyDefined(wtp, force = ForceDegree.all) &&
-                   ctx.typerState.constraint.ne(prevConstraint)) adapt(tree, pt)
-          else err.typeMismatch(tree, pt, failure)
-      }
+      val prevConstraint = ctx.typerState.constraint
+      def recover(failure: SearchFailure) =
+        if (isFullyDefined(wtp, force = ForceDegree.all) &&
+            ctx.typerState.constraint.ne(prevConstraint)) adapt(tree, pt)
+        else err.typeMismatch(tree, pt, failure)
+      if (ctx.mode.is(Mode.ImplicitsEnabled))
+        inferView(tree, pt) match {
+          case SearchSuccess(inferred, _, _, _) =>
+            adapt(inferred, pt)(ctx.retractMode(Mode.ImplicitsEnabled))
+          case failure: SearchFailure =>
+            if (pt.isInstanceOf[ProtoType] && !failure.isInstanceOf[AmbiguousImplicits])
+              // don't report the failure but return the tree unchanged. This
+              // wil cause a failure at the next level out, which usually gives
+              // a better error message.
+              tree
+            else recover(failure)
+        }
+      else recover(NoImplicitMatches)
     }
 
     def adaptType(tp: Type): Tree = {
