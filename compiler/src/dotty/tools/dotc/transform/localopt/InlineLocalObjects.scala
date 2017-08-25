@@ -12,6 +12,7 @@ import core.Symbols._
 import core.Flags._
 import ast.Trees._
 import scala.collection.mutable
+import scala.collection.mutable.LinkedHashMap
 import transform.SymUtils._
 import config.Printers.simplify
 import Simplify._
@@ -33,11 +34,11 @@ class InlineLocalObjects(val simplifyPhase: Simplify) extends Optimisation {
   // ValDefs whose lhs is used with `._1` (or any getter call).
   val gettersCalled = mutable.HashSet[Symbol]()
 
-  // Map from class to new fields, initialised between visitor and transformer.
-  var newFieldsMapping: Map[Symbol, List[(Symbol, Symbol)]] = null
-  //                          |             |       |
-  //                          |             |       New fields, replacements these getters
-  //                          |             Usages of getters of these classes
+  // Immutable sorted map from class to new fields, initialized between visitor and transformer.
+  var newFieldsMapping: Map[Symbol, LinkedHashMap[Symbol, Symbol]] = null
+  //                          |                     |       |
+  //                          |                     |       New fields, replacements these getters
+  //                          |                     Usages of getters of these classes
   //                          ValDefs of the classes that are being torn apart; = candidates.intersect(gettersCalled)
 
   def clear(): Unit = {
@@ -57,7 +58,7 @@ class InlineLocalObjects(val simplifyPhase: Simplify) extends Optimisation {
           val info:  Type    = x.asSeenFrom(refVal.info).info.finalResultType.widenDealias
           ctx.newSymbol(owner, name, flags, info)
         }
-        (refVal, accessors.zip(newLocals))
+        (refVal, LinkedHashMap[Symbol, Symbol](accessors.zip(newLocals): _*))
       }.toMap
     }
 
@@ -89,7 +90,7 @@ class InlineLocalObjects(val simplifyPhase: Simplify) extends Optimisation {
     initNewFieldsMapping();
     {
       case t @ NewCaseClassValDef(fun, args) if newFieldsMapping.contains(t.symbol) =>
-        val newFields     = newFieldsMapping(t.symbol).map(_._2)
+        val newFields     = newFieldsMapping(t.symbol).values.toList
         val newFieldsDefs = newFields.zip(args).map { case (nf, arg) =>
           val rhs = arg.changeOwnerAfter(t.symbol, nf.symbol, simplifyPhase)
           ValDef(nf.asTerm, rhs)
@@ -99,11 +100,13 @@ class InlineLocalObjects(val simplifyPhase: Simplify) extends Optimisation {
         Thicket(newFieldsDefs :+ recreate)
 
       case t @ Select(rec, _) if isImmutableAccessor(t) =>
-        newFieldsMapping.getOrElse(rec.symbol, Nil).collect {
-          case ((oldSym, newSym)) if oldSym == t.symbol => ref(newSym)
-        }.headOption.getOrElse(t)
+        newFieldsMapping.getOrElse(rec.symbol, Map.empty[Symbol, Symbol]).get(t.symbol) match {
+          case None         => t
+          case Some(newSym) => ref(newSym)
+        }
 
       case t => t
     }
   }
 }
+
