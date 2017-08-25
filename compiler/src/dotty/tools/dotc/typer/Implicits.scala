@@ -100,10 +100,11 @@ object Implicits {
             // nothing since it only relates subtype with supertype.
             //
             // We keep the old behavior under -language:Scala2.
-            val isFunctionInS2 = ctx.scala2Mode && tpw.derivesFrom(defn.FunctionClass(1))
+            val isFunctionInS2 =
+              ctx.scala2Mode && tpw.derivesFrom(defn.FunctionClass(1)) && ref.symbol != defn.Predef_conforms
             val isImplicitConverter = tpw.derivesFrom(defn.Predef_ImplicitConverter)
-            val isConforms =
-              tpw.derivesFrom(defn.Predef_Conforms) && ref.symbol != defn.Predef_conforms
+            val isConforms = // An implementation of <:< counts as a view, except that $conforms is always omitted
+                tpw.derivesFrom(defn.Predef_Conforms) && ref.symbol != defn.Predef_conforms
             !(isFunctionInS2 || isImplicitConverter || isConforms)
         }
 
