@@ -33,12 +33,16 @@ class UserFacingPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
   private lazy val scalaPkg      = defn.ScalaPackageClass
   private lazy val javaLangPkg   = defn.JavaLangPackageVal.moduleClass.asClass
 
-  def wellKnownPkg(pkgSym: Symbol) = pkgSym match {
+  def standardPkg(pkgSym: Symbol) = pkgSym match {
     case `scalaPkg` | `collectionPkg` | `immutablePkg` | `javaLangPkg` => true
-    case pkgSym =>
-      pkgSym.name.toTermName == nme.EMPTY_PACKAGE ||
-      pkgSym.name.isReplWrapperName
+    case _ => false
   }
+
+  def wrappedName(pkgSym: Symbol) =
+    pkgSym.name.toTermName == nme.EMPTY_PACKAGE ||
+    pkgSym.name.isReplWrapperName
+
+  def wellKnownPkg(pkgSym: Symbol) = standardPkg(pkgSym) || wrappedName(pkgSym)
 
   override protected def keyString(sym: Symbol): String = {
     val flags = sym.flags
@@ -48,6 +52,7 @@ class UserFacingPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
     else if (sym.isClass && flags.is(Case)) "case class"
     else if (flags.is(Lazy)) "lazy val"
     else if (flags is Module) "object"
+    else if (sym.isTerm && !flags.is(Param) && flags.is(Implicit)) "implicit val"
     else super.keyString(sym)
   }
 
@@ -86,7 +91,9 @@ class UserFacingPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
     case tp: ConstantType => toText(tp.value)
     case tp: TypeAlias => toText(tp.underlying)
     case ExprType(result) => ":" ~~ toText(result)
-    case TypeBounds(lo, hi) => "_"
+    case TypeBounds(lo, hi) =>
+      { if (lo != defn.NothingType) toText(lo) ~~ ">: _" else Str("_") } ~~
+      { if (hi != defn.AnyType) "<:" ~~ toText(hi) else Text() }
     case tp: TypeRef => tp.info match {
       case TypeAlias(alias) => toText(alias)
       case _ => toText(tp.info)
@@ -127,8 +134,10 @@ class UserFacingPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         nameString(tp.cls.name)
       else {
         def printPkg(sym: ClassSymbol): Text =
-          if (sym.owner == defn.RootClass) toText(sym)
-          else printPkg(sym.owner.asClass) ~ "." ~ toText(sym)
+          if (sym.owner == defn.RootClass || wrappedName(sym.owner))
+            nameString(sym.name.stripModuleClassSuffix)
+          else
+            printPkg(sym.owner.asClass) ~ "." ~ toText(sym)
 
         printPkg(tp.cls.owner.asClass) ~ "." ~ nameString(tp.cls.name)
       }
