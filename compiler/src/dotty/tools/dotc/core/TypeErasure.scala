@@ -532,7 +532,7 @@ class TypeErasure(isJava: Boolean, semiEraseVCs: Boolean, isConstructor: Boolean
         else
           normalizeClass(sym.asClass).fullName.asTypeName
       case tp: AppliedType =>
-        sigName(if (tp.tycon.isRef(defn.ArrayClass)) this(tp) else tp.superType)
+        sigName(if (tp.tycon.isRef(defn.ArrayClass)) this(tp) else tp.underlying)
       case ErasedValueType(_, underlying) =>
         sigName(underlying)
       case defn.ArrayOf(elem) => // @!!!
