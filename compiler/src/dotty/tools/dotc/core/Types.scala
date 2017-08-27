@@ -2634,7 +2634,7 @@ object Types {
     def paramNames: List[ThisName]
     def paramInfos: List[PInfo]
     def resType: Type
-    def newParamRef(n: Int): ParamRefType
+    def newParamRef(n: Int)(implicit ctx: Context): ParamRefType
 
     override def resultType(implicit ctx: Context) = resType
 
@@ -2648,7 +2648,12 @@ object Types {
     final def isTypeLambda = isInstanceOf[TypeLambda]
     final def isHigherKinded = isInstanceOf[TypeProxy]
 
-    lazy val paramRefs: List[ParamRefType] = paramNames.indices.toList.map(newParamRef)
+    private var myParamRefs: List[ParamRefType] = null
+
+    def paramRefs(implicit ctx: Context): List[ParamRefType] = {
+      if (myParamRefs == null) myParamRefs = paramNames.indices.toList.map(newParamRef)
+      myParamRefs
+    }
 
     protected def computeSignature(implicit ctx: Context) = resultSignature
 
@@ -2809,7 +2814,7 @@ object Types {
      */
     def isParamDependent(implicit ctx: Context): Boolean = paramDependencyStatus == TrueDeps
 
-    def newParamRef(n: Int) = TermParamRef(this, n)
+    def newParamRef(n: Int)(implicit ctx: Context) = TermParamRef(this, n)
   }
 
   abstract case class MethodType(paramNames: List[TermName])(
@@ -2964,7 +2969,7 @@ object Types {
     def isDependent(implicit ctx: Context): Boolean = true
     def isParamDependent(implicit ctx: Context): Boolean = true
 
-    def newParamRef(n: Int) = TypeParamRef(this, n)
+    def newParamRef(n: Int)(implicit ctx: Context) = TypeParamRef(this, n)
 
     lazy val typeParams: List[LambdaParam] =
       paramNames.indices.toList.map(new LambdaParam(this, _))
@@ -3122,7 +3127,7 @@ object Types {
     def paramInfoAsSeenFrom(pre: Type)(implicit ctx: Context) = paramInfo
     def paramInfoOrCompleter(implicit ctx: Context): Type = paramInfo
     def paramVariance(implicit ctx: Context): Int = tl.paramNames(n).variance
-    def toArg: Type = TypeParamRef(tl, n)
+    def toArg(implicit ctx: Context): Type = TypeParamRef(tl, n)
     def paramRef(implicit ctx: Context): Type = TypeParamRef(tl, n)
   }
 
@@ -3336,7 +3341,7 @@ object Types {
   abstract class BoundType extends CachedProxyType with ValueType {
     type BT <: Type
     val binder: BT
-    def copyBoundType(bt: BT): Type
+    def copyBoundType(bt: BT)(implicit ctx: Context): Type
   }
 
   abstract class ParamRef extends BoundType {
@@ -3365,14 +3370,21 @@ object Types {
       }
   }
 
-  case class TermParamRef(binder: TermLambda, paramNum: Int) extends ParamRef {
+  abstract case class TermParamRef(binder: TermLambda, paramNum: Int) extends ParamRef {
     type BT = TermLambda
-    def copyBoundType(bt: BT) = TermParamRef(bt, paramNum)
+    def copyBoundType(bt: BT)(implicit ctx: Context) = TermParamRef(bt, paramNum)
   }
 
-  case class TypeParamRef(binder: TypeLambda, paramNum: Int) extends ParamRef {
+  class CachedTermParamRef(binder: TermLambda, paramNum: Int) extends TermParamRef(binder, paramNum)
+
+  object TermParamRef {
+    def apply(binder: TermLambda, paramNum: Int)(implicit ctx: Context) =
+      unique(new CachedTermParamRef(binder, paramNum))
+  }
+
+  abstract case class TypeParamRef(binder: TypeLambda, paramNum: Int) extends ParamRef {
     type BT = TypeLambda
-    def copyBoundType(bt: BT) = TypeParamRef(bt, paramNum)
+    def copyBoundType(bt: BT)(implicit ctx: Context) = TypeParamRef(bt, paramNum)
 
     /** Looking only at the structure of `bound`, is one of the following true?
      *     - fromBelow and param <:< bound
@@ -3388,11 +3400,21 @@ object Types {
     }
   }
 
+  class ConcreteTypeParamRef(binder: TypeLambda, paramNum: Int) extends TypeParamRef(binder, paramNum)
+
+  object TypeParamRef {
+    def apply(binder: TypeLambda, paramNum: Int)(implicit ctx: Context) =
+      unique(new ConcreteTypeParamRef(binder, paramNum))
+      
+    def uncached(binder: TypeLambda, paramNum: Int) =
+      new ConcreteTypeParamRef(binder: TypeLambda, paramNum: Int)
+  }
+
   /** a self-reference to an enclosing recursive type. */
   case class RecThis(binder: RecType) extends BoundType with SingletonType {
     type BT = RecType
     override def underlying(implicit ctx: Context) = binder
-    def copyBoundType(bt: BT) = RecThis(bt)
+    def copyBoundType(bt: BT)(implicit ctx: Context) = RecThis(bt)
 
     // need to customize hashCode and equals to prevent infinite recursion
     // between RecTypes and RecRefs.
