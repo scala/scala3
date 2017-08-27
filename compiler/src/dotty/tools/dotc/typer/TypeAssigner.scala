@@ -468,10 +468,10 @@ trait TypeAssigner {
     tree.withType(ref.tpe)
 
   def assignType(tree: untpd.AndTypeTree, left: Tree, right: Tree)(implicit ctx: Context) =
-    tree.withType(inSameUniverse(_ & _, left.tpe, right, "an `&`"))
+    tree.withType(inSameUniverse(AndType(_, _), left.tpe, right, "an `&`"))
 
   def assignType(tree: untpd.OrTypeTree, left: Tree, right: Tree)(implicit ctx: Context) =
-    tree.withType(inSameUniverse(_ | _, left.tpe, right, "an `|`"))
+    tree.withType(inSameUniverse(OrType(_, _), left.tpe, right, "an `|`"))
 
   /** Assign type of RefinedType.
    *  Refinements are typed as if they were members of refinement class `refineCls`.
