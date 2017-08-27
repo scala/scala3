@@ -91,6 +91,37 @@ object Uniques {
     }
   }
 
+
+  final class AppliedUniques extends HashSet[AppliedType](Config.initialUniquesCapacity) with Hashable {
+    override def hash(x: AppliedType): Int = x.hash
+
+    private def findPrevious(h: Int, tycon: Type, args: List[Type]): AppliedType = {
+      var e = findEntryByHash(h)
+      while (e != null) {
+        def sameArgs(args1: List[Type], args2: List[Type]): Boolean = {
+          val empty1 = args1.isEmpty
+          val empty2 = args2.isEmpty
+          if (empty1) empty2
+          else (!empty2 && (args1.head eq args2.head) && sameArgs(args1.tail, args2.tail))
+        }
+        if ((e.tycon eq tycon) && sameArgs(e.args, args)) return e
+        e = nextEntryByHash(h)
+      }
+      e
+    }
+
+    def enterIfNew(tycon: Type, args: List[Type]): AppliedType = {
+      val h = doHash(tycon, args)
+      def newType = new CachedAppliedType(tycon, args, h)
+      if (monitored) recordCaching(h, classOf[CachedAppliedType])
+      if (h == NotCached) newType
+      else {
+        val r = findPrevious(h, tycon, args)
+        if (r ne null) r else addEntryAfterScan(newType)
+      }
+    }
+  }
+
   final class RefinedUniques extends HashSet[RefinedType](Config.initialUniquesCapacity) with Hashable {
     override val hashSeed = classOf[CachedRefinedType].hashCode // some types start life as CachedRefinedTypes, need to have same hash seed
     override def hash(x: RefinedType): Int = x.hash

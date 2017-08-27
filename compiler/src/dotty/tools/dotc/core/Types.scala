@@ -3177,30 +3177,18 @@ object Types {
     def derivedAppliedType(tycon: Type, args: List[Type])(implicit ctx: Context): Type =
       if ((tycon eq this.tycon) && (args eq this.args)) this
       else tycon.appliedTo(args)
-
-    override def computeHash = doHash(tycon, args)
-
-    protected def checkInst(implicit ctx: Context): this.type = {
-      def check(tycon: Type): Unit = tycon.stripTypeVar match {
-        case tycon: TypeRef =>
-        case _: TypeParamRef | _: ErrorType | _: WildcardType =>
-        case _: TypeLambda =>
-          assert(!args.exists(_.isInstanceOf[TypeBounds]), s"unreduced type apply: $this")
-        case tycon: AnnotatedType =>
-          check(tycon.underlying)
-        case _ =>
-          assert(false, s"illegal type constructor in $this")
-      }
-      if (Config.checkHKApplications) check(tycon)
-      this
-    }
   }
 
-  final class CachedAppliedType(tycon: Type, args: List[Type]) extends AppliedType(tycon, args)
+  final class CachedAppliedType(tycon: Type, args: List[Type], hc: Int) extends AppliedType(tycon, args) {
+    myHash = hc
+    override def computeHash = unsupported("computeHash")
+  }
 
   object AppliedType {
-    def apply(tycon: Type, args: List[Type])(implicit ctx: Context) =
-      unique(new CachedAppliedType(tycon, args)).checkInst
+    def apply(tycon: Type, args: List[Type])(implicit ctx: Context) = {
+      assertUnerased()
+      ctx.base.uniqueAppliedTypes.enterIfNew(tycon, args)
+    }
   }
 
   object ClassRef {
