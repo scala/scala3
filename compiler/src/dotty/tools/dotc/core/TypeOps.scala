@@ -105,9 +105,9 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
       tp.derivedRefinedType(simplify(tp.parent, theMap), tp.refinedName, simplify(tp.refinedInfo, theMap))
     case tp: TypeAlias =>
       tp.derivedTypeAlias(simplify(tp.alias, theMap))
-    case AndType(l, r) =>
+    case AndType(l, r) if !ctx.mode.is(Mode.Type) =>
       simplify(l, theMap) & simplify(r, theMap)
-    case OrType(l, r) =>
+    case OrType(l, r) if !ctx.mode.is(Mode.Type) =>
       simplify(l, theMap) | simplify(r, theMap)
     case _ =>
       (if (theMap != null) theMap else new SimplifyMap).mapOver(tp)
