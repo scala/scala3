@@ -371,7 +371,10 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
       val cls2 = tp2.symbol
       if (cls2.isClass) {
         val base = tp1.baseType(cls2)
-        if (base.exists && (base ne tp1)) return isSubType(base, tp2)
+        if (base.exists) {
+          if (cls2.is(JavaDefined)) return base.typeSymbol == cls2
+          if (base ne tp1) return isSubType(base, tp2)
+        }
         if (cls2 == defn.SingletonClass && tp1.isStable) return true
       }
       fourthTry(tp1, tp2)
