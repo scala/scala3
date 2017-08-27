@@ -118,20 +118,21 @@ class Run(comp: Compiler, ictx: Context) {
     ctx.usePhases(phases)
     var lastPrintedTree: PrintedTree = NoPrintedTree
     for (phase <- ctx.allPhases)
-      if (phase.isRunnable) {
-        val start = System.currentTimeMillis
-        units = phase.runOn(units)
-        if (ctx.settings.Xprint.value.containsPhase(phase)) {
-          for (unit <- units) {
-            lastPrintedTree =
-              printTree(lastPrintedTree)(ctx.fresh.setPhase(phase.next).setCompilationUnit(unit))
+      if (phase.isRunnable)
+        Stats.trackTime(s"$phase ms ") {
+          val start = System.currentTimeMillis
+          units = phase.runOn(units)
+          if (ctx.settings.Xprint.value.containsPhase(phase)) {
+            for (unit <- units) {
+              lastPrintedTree =
+                printTree(lastPrintedTree)(ctx.fresh.setPhase(phase.next).setCompilationUnit(unit))
+            }
           }
+          ctx.informTime(s"$phase ", start)
+          Stats.record(s"total trees at end of $phase", ast.Trees.ntrees)
+          for (unit <- units)
+            Stats.record(s"retained typed trees at end of $phase", unit.tpdTree.treeSize)
         }
-        ctx.informTime(s"$phase ", start)
-        Stats.record(s"total trees at end of $phase", ast.Trees.ntrees)
-        for (unit <- units)
-          Stats.record(s"retained typed trees at end of $phase", unit.tpdTree.treeSize)
-      }
     if (!ctx.reporter.hasErrors) Rewrites.writeBack()
   }
 

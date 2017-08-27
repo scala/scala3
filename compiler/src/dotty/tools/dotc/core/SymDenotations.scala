@@ -1638,7 +1638,10 @@ object SymDenotations {
       }
 
       def computeBaseTypeOf(tp: Type): Type = {
-        Stats.record("computeBaseTypeOf")
+        if (Stats.monitored) {
+          Stats.record("computeBaseType, total")
+          Stats.record(s"computeBaseType, ${tp.getClass}")
+        }
         if (symbol.isStatic && tp.derivesFrom(symbol) && symbol.typeParams.isEmpty)
           symbol.appliedRef
         else tp match {
@@ -1675,7 +1678,11 @@ object SymDenotations {
               if (basetp == null) {
                 btrCache.put(tp, NoPrefix)
                 basetp = computeBaseTypeOf(tp)
-                if (isCachable(tp, baseTypeCache)) btrCache.put(tp, basetp)
+                if (!basetp.exists) Stats.record("base type miss")
+                if (isCachable(tp, baseTypeCache)) {
+                  if (!basetp.exists) Stats.record("cached base type miss")
+                  btrCache.put(tp, basetp)
+                }
                 else btrCache.remove(tp)
               } else if (basetp == NoPrefix)
                 throw CyclicReference(this)
