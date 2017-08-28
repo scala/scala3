@@ -1037,7 +1037,7 @@ object Build {
       Developer(
         id = "nicolasstucki",
         name = "Nicolas Stucki",
-        email = "nicolas.stucki@epfl.ch",
+        email = "nicolas.stucki@gmail.com",
         url = url("https://github.com/nicolasstucki")
       ),
       Developer(
