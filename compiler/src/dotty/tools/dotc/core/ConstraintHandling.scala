@@ -329,7 +329,7 @@ trait ConstraintHandling {
       checkPropagated(i"initialized $tl") {
         constraint = constraint.add(tl, tvars)
         tl.paramNames.indices.forall { i =>
-          val param = TypeParamRef(tl, i)
+          val param = tl.paramRefs(i)
           val bounds = constraint.nonParamBounds(param)
           val lower = constraint.lower(param)
           val upper = constraint.upper(param)
