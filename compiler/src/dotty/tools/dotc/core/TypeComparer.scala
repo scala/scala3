@@ -434,7 +434,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
     case tp2: RecType =>
       def compareRec = tp1.safeDealias match {
         case tp1: RecType =>
-          val rthis1 = RecThis(tp1)
+          val rthis1 = tp1.recThis
           isSubType(tp1.parent, tp2.parent.substRecThis(tp2, rthis1))
         case _ =>
           val tp1stable = ensureStableSingleton(tp1)
@@ -729,7 +729,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
               tycon1b = HKTypeLambda(tparams1.map(_.paramName))(
                 tl => tparams1.map(tparam => tl.integrate(tparams, tparam.paramInfo).bounds),
                 tl => tycon1a.appliedTo(args1.take(lengthDiff) ++
-                        tparams1.indices.toList.map(TypeParamRef(tl, _))))
+                        tparams1.indices.toList.map(tl.paramRefs(_))))
             (ctx.mode.is(Mode.TypevarsMissContext) ||
               tryInstantiate(tycon2, tycon1b.ensureHK)) &&
               isSubType(tp1, tycon1b.appliedTo(args2))
@@ -885,7 +885,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
                 tycon1 = HKTypeLambda(tparams1.map(_.paramName))(
                   tl => tparams1.map(tparam => tl.integrate(tparams, tparam.paramInfo).bounds),
                   tl => tp1base.tycon.appliedTo(args1.take(lengthDiff) ++
-                          tparams1.indices.toList.map(TypeParamRef(tl, _))))
+                          tparams1.indices.toList.map(tl.paramRefs(_))))
               (ctx.mode.is(Mode.TypevarsMissContext) ||
                 tryInstantiate(tycon2, tycon1.ensureHK)) &&
                 isSubType(tp1, tycon1.appliedTo(args2))

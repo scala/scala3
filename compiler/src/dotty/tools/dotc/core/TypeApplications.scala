@@ -64,7 +64,7 @@ object TypeApplications {
     }
 
     def unapply(tp: Type)(implicit ctx: Context): Option[TypeRef] = tp match {
-      case tp @ HKTypeLambda(tparams, AnyAppliedType(fn: TypeRef, args)) if (args == tparams.map(_.toArg)) => Some(fn)
+      case tp @ HKTypeLambda(tparams, AnyAppliedType(fn: TypeRef, args)) if (args == tparams.map(_.paramRef)) => Some(fn)
       case _ => None
     }
   }
