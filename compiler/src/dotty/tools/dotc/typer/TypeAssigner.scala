@@ -63,7 +63,7 @@ trait TypeAssigner {
         parent
     }
 
-    def close(tp: Type) = RecType.closeOver(rt => tp.substThis(cls, RecThis(rt)))
+    def close(tp: Type) = RecType.closeOver(rt => tp.substThis(cls, rt.recThis))
 
     val refinableDecls = info.decls.filter(
       sym => !(sym.is(TypeParamAccessor | Private) || sym.isConstructor))
@@ -381,7 +381,7 @@ trait TypeAssigner {
             val newIndex = gapBuf.length
             gapBuf += idx
             // Re-index unassigned type arguments that remain after transformation
-            TypeParamRef(pt, newIndex)
+            pt.paramRefs(newIndex)
           }
 
           // Type parameters after naming assignment, conserving paramNames order
@@ -485,7 +485,7 @@ trait TypeAssigner {
       else RefinedType(parent, rsym.name, rinfo)
     }
     val refined = (parent.tpe /: refinements)(addRefinement)
-    tree.withType(RecType.closeOver(rt => refined.substThis(refineCls, RecThis(rt))))
+    tree.withType(RecType.closeOver(rt => refined.substThis(refineCls, rt.recThis)))
   }
 
   def assignType(tree: untpd.AppliedTypeTree, tycon: Tree, args: List[Tree])(implicit ctx: Context) = {

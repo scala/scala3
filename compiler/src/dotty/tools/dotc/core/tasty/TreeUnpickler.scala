@@ -262,7 +262,7 @@ class TreeUnpickler(reader: TastyReader, nameAtRef: NameRef => TermName, posUnpi
               readMethodic(HKTypeLambda, _.toTypeName)
             case PARAMtype =>
               readTypeRef() match {
-                case binder: LambdaType => binder.newParamRef(readNat())
+                case binder: LambdaType => binder.paramRefs(readNat())
               }
             case CLASSconst =>
               ConstantType(Constant(readType()))
@@ -295,7 +295,7 @@ class TreeUnpickler(reader: TastyReader, nameAtRef: NameRef => TermName, posUnpi
         case RECtype =>
           RecType(rt => registeringType(rt, readType()))
         case RECthis =>
-          RecThis(readTypeRef().asInstanceOf[RecType])
+          readTypeRef().asInstanceOf[RecType].recThis
         case SHARED =>
           val ref = readAddr()
           typeAtAddr.getOrElseUpdate(ref, forkAt(ref).readType())

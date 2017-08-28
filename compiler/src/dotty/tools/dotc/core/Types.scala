@@ -568,7 +568,7 @@ object Types {
           val rt =
             if (tp.opened) { // defensive copy
               tp.openedTwice = true
-              RecType(rt => tp.parent.substRecThis(tp, RecThis(rt)))
+              RecType(rt => tp.parent.substRecThis(tp, rt.recThis))
             } else tp
           rt.opened = true
           try go(rt.parent).mapInfo(_.substRecThis(rt, pre))
@@ -2368,15 +2368,22 @@ object Types {
 
     val parent = parentExp(this)
 
+    private[this] var myRecThis: RecThis = null
+
+    def recThis: RecThis = {
+      if (myRecThis == null) myRecThis = new RecThis(this) {}
+      myRecThis
+    }
+
     override def underlying(implicit ctx: Context): Type = parent
 
     def derivedRecType(parent: Type)(implicit ctx: Context): RecType =
       if (parent eq this.parent) this
-      else RecType(rt => parent.substRecThis(this, RecThis(rt)))
+      else RecType(rt => parent.substRecThis(this, rt.recThis))
 
     def rebind(parent: Type)(implicit ctx: Context): Type =
       if (parent eq this.parent) this
-      else RecType.closeOver(rt => parent.substRecThis(this, RecThis(rt)))
+      else RecType.closeOver(rt => parent.substRecThis(this, rt.recThis))
 
     override def equals(other: Any) = other match {
       case other: RecType => other.parent == this.parent
@@ -2419,7 +2426,7 @@ object Types {
       val rt = new RecType(parentExp)
       def normalize(tp: Type): Type = tp.stripTypeVar match {
         case tp: RecType =>
-          normalize(tp.parent.substRecThis(tp, RecThis(rt)))
+          normalize(tp.parent.substRecThis(tp, rt.recThis))
         case tp @ RefinedType(parent, rname, rinfo) =>
           val rinfo1 = rinfo match {
             case TypeAlias(TypeRef(RecThis(`rt`), `rname`)) => TypeBounds.empty
@@ -2634,7 +2641,7 @@ object Types {
     def paramNames: List[ThisName]
     def paramInfos: List[PInfo]
     def resType: Type
-    def newParamRef(n: Int): ParamRefType
+    protected def newParamRef(n: Int): ParamRefType
 
     override def resultType(implicit ctx: Context) = resType
 
@@ -2648,7 +2655,12 @@ object Types {
     final def isTypeLambda = isInstanceOf[TypeLambda]
     final def isHigherKinded = isInstanceOf[TypeProxy]
 
-    lazy val paramRefs: List[ParamRefType] = paramNames.indices.toList.map(newParamRef)
+    private var myParamRefs: List[ParamRefType] = null
+
+    def paramRefs: List[ParamRefType] = {
+      if (myParamRefs == null) myParamRefs = paramNames.indices.toList.map(newParamRef)
+      myParamRefs
+    }
 
     protected def computeSignature(implicit ctx: Context) = resultSignature
 
@@ -2809,7 +2821,7 @@ object Types {
      */
     def isParamDependent(implicit ctx: Context): Boolean = paramDependencyStatus == TrueDeps
 
-    def newParamRef(n: Int) = TermParamRef(this, n)
+    def newParamRef(n: Int) = new TermParamRef(this, n) {}
   }
 
   abstract case class MethodType(paramNames: List[TermName])(
@@ -2964,7 +2976,7 @@ object Types {
     def isDependent(implicit ctx: Context): Boolean = true
     def isParamDependent(implicit ctx: Context): Boolean = true
 
-    def newParamRef(n: Int) = TypeParamRef(this, n)
+    def newParamRef(n: Int) = new TypeParamRef(this, n) {}
 
     lazy val typeParams: List[LambdaParam] =
       paramNames.indices.toList.map(new LambdaParam(this, _))
@@ -3033,16 +3045,16 @@ object Types {
      */
     def flatten(implicit ctx: Context): PolyType = resType match {
       case that: PolyType =>
-        val shift = new TypeMap {
+        val shiftedSubst = (x: PolyType) => new TypeMap {
           def apply(t: Type) = t match {
-            case TypeParamRef(`that`, n) => TypeParamRef(that, n + paramNames.length)
+            case TypeParamRef(`that`, n) => x.paramRefs(n + paramNames.length)
             case t => mapOver(t)
           }
         }
         PolyType(paramNames ++ that.paramNames)(
           x => this.paramInfos.mapConserve(_.subst(this, x).bounds) ++
-               that.paramInfos.mapConserve(shift(_).subst(that, x).bounds),
-          x => shift(that.resultType).subst(that, x).subst(this, x))
+               that.paramInfos.mapConserve(shiftedSubst(x)(_).bounds),
+          x => shiftedSubst(x)(that.resultType).subst(this, x))
       case _ => this
     }
 
@@ -3122,8 +3134,7 @@ object Types {
     def paramInfoAsSeenFrom(pre: Type)(implicit ctx: Context) = paramInfo
     def paramInfoOrCompleter(implicit ctx: Context): Type = paramInfo
     def paramVariance(implicit ctx: Context): Int = tl.paramNames(n).variance
-    def toArg: Type = TypeParamRef(tl, n)
-    def paramRef(implicit ctx: Context): Type = TypeParamRef(tl, n)
+    def paramRef(implicit ctx: Context): Type = tl.paramRefs(n)
   }
 
   /** A type application `C[T_1, ..., T_n]` */
@@ -3365,14 +3376,20 @@ object Types {
       }
   }
 
-  case class TermParamRef(binder: TermLambda, paramNum: Int) extends ParamRef {
+  /** Only created in `binder.paramRefs`. Use `binder.paramRefs(paramNum)` to
+   *  refer to `TermParamRef(binder, paramNum)`.
+   */
+  abstract case class TermParamRef(binder: TermLambda, paramNum: Int) extends ParamRef {
     type BT = TermLambda
-    def copyBoundType(bt: BT) = TermParamRef(bt, paramNum)
+    def copyBoundType(bt: BT) = bt.paramRefs(paramNum)
   }
 
-  case class TypeParamRef(binder: TypeLambda, paramNum: Int) extends ParamRef {
+  /** Only created in `binder.paramRefs`. Use `binder.paramRefs(paramNum)` to
+   *  refer to `TypeParamRef(binder, paramNum)`.
+   */
+  abstract case class TypeParamRef(binder: TypeLambda, paramNum: Int) extends ParamRef {
     type BT = TypeLambda
-    def copyBoundType(bt: BT) = TypeParamRef(bt, paramNum)
+    def copyBoundType(bt: BT) = bt.paramRefs(paramNum)
 
     /** Looking only at the structure of `bound`, is one of the following true?
      *     - fromBelow and param <:< bound
@@ -3388,11 +3405,13 @@ object Types {
     }
   }
 
-  /** a self-reference to an enclosing recursive type. */
-  case class RecThis(binder: RecType) extends BoundType with SingletonType {
+  /** a self-reference to an enclosing recursive type. The only creation method is
+   *  `binder.recThis`, returning `RecThis(binder)`.
+   */
+  abstract case class RecThis(binder: RecType) extends BoundType with SingletonType {
     type BT = RecType
     override def underlying(implicit ctx: Context) = binder
-    def copyBoundType(bt: BT) = RecThis(bt)
+    def copyBoundType(bt: BT) = bt.recThis
 
     // need to customize hashCode and equals to prevent infinite recursion
     // between RecTypes and RecRefs.
