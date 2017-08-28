@@ -32,7 +32,7 @@ bootcp=true
 
 CompilerMain=dotty.tools.dotc.Main
 FromTasty=dotty.tools.dotc.FromTasty
-ReplMain=dotty.tools.dotc.repl.Main
+ReplMain=dotty.tools.repl.Main
 
 PROG_NAME=$CompilerMain
 
