@@ -987,13 +987,12 @@ object Build {
    lazy val publishSettings = Seq(
      publishMavenStyle := true,
      isSnapshot := version.value.contains("SNAPSHOT"),
-     publishTo := {
-       val nexus = "https://oss.sonatype.org/"
+     publishTo := Some(
        if (isSnapshot.value)
-         Some("snapshots" at nexus + "content/repositories/snapshots")
+         Opts.resolver.sonatypeSnapshots
        else
-         Some("releases"  at nexus + "service/local/staging/deploy/maven2")
-     },
+         Opts.resolver.sonatypeStaging
+     ),
      publishArtifact in Test := false,
      homepage := Some(url(dottyGithubUrl)),
      licenses += ("BSD New",
