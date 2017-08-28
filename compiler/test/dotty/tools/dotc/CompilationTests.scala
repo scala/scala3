@@ -63,6 +63,7 @@ class CompilationTests extends ParallelTesting {
     compileFilesInDir("../tests/pos-special/strawman-collections", defaultOptions) +
     compileFile("../scala2-library/src/library/scala/collection/immutable/IndexedSeq.scala", defaultOptions) +
     compileFile("../scala2-library/src/library/scala/collection/parallel/mutable/ParSetLike.scala", defaultOptions) +
+    compileFile("../tests/pos/t2171.scala", defaultOptimised) +
     compileList(
       "parSetSubset",
       List(
@@ -177,8 +178,15 @@ class CompilationTests extends ParallelTesting {
 
   // Run tests -----------------------------------------------------------------
 
-  @Test def runAll: Unit =
-    compileFilesInDir("../tests/run", defaultOptions).checkRuns()
+  @Test def runAll: Unit = {
+    compileFilesInDir("../tests/run", defaultOptions) +
+    compileFile("../tests/run/i3018.scala", defaultOptimised) +
+    compileFile("../tests/run/blame_eye_triple_eee-double.scala", defaultOptimised) +
+    compileFile("../tests/run/blame_eye_triple_eee-float.scala", defaultOptimised) +
+    compileFile("../tests/run/run-bug4840.scala", defaultOptimised) +
+    compileFile("../tests/run/optimizer-array-load.scala", defaultOptimised) +
+    compileFile("../tests/run/constant-optimization.scala", defaultOptimised)
+  }.checkRuns()
 
   // Pickling Tests ------------------------------------------------------------
   //
