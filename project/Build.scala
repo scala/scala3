@@ -984,60 +984,82 @@ object Build {
     )
 
 
-   lazy val publishSettings = Seq(
-     publishMavenStyle := true,
-     isSnapshot := version.value.contains("SNAPSHOT"),
-     publishTo := Some(
-       if (isSnapshot.value)
-         Opts.resolver.sonatypeSnapshots
-       else
-         Opts.resolver.sonatypeStaging
-     ),
-     publishArtifact in Test := false,
-     homepage := Some(url(dottyGithubUrl)),
-     licenses += ("BSD New",
-       url(s"$dottyGithubUrl/blob/master/LICENSE.md")),
-     scmInfo := Some(
-       ScmInfo(
-         url(dottyGithubUrl),
-         "scm:git:git@github.com:lampepfl/dotty.git"
-       )
-     ),
-     pomExtra := (
-       <developers>
-         <developer>
-           <id>odersky</id>
-           <name>Martin Odersky</name>
-           <email>martin.odersky@epfl.ch</email>
-           <url>https://github.com/odersky</url>
-         </developer>
-         <developer>
-           <id>DarkDimius</id>
-           <name>Dmitry Petrashko</name>
-           <email>me@d-d.me</email>
-           <url>https://d-d.me</url>
-         </developer>
-         <developer>
-           <id>smarter</id>
-           <name>Guillaume Martres</name>
-           <email>smarter@ubuntu.com</email>
-           <url>http://guillaume.martres.me</url>
-         </developer>
-         <developer>
-           <id>felixmulder</id>
-           <name>Felix Mulder</name>
-           <email>felix.mulder@gmail.com</email>
-           <url>http://felixmulder.com</url>
-         </developer>
-         <developer>
-           <id>liufengyun</id>
-           <name>Liu Fengyun</name>
-           <email>liufengyun@chaos-lab.com</email>
-           <url>http://chaos-lab.com</url>
-         </developer>
-       </developers>
-     )
-   )
+  lazy val publishSettings = Seq(
+    publishMavenStyle := true,
+    isSnapshot := version.value.contains("SNAPSHOT"),
+    publishTo := Some(
+      if (isSnapshot.value)
+        Opts.resolver.sonatypeSnapshots
+      else
+        Opts.resolver.sonatypeStaging
+    ),
+    publishArtifact in Test := false,
+    homepage := Some(url(dottyGithubUrl)),
+    licenses += ("BSD New",
+      url(s"$dottyGithubUrl/blob/master/LICENSE.md")),
+    scmInfo := Some(
+      ScmInfo(
+        url(dottyGithubUrl),
+        "scm:git:git@github.com:lampepfl/dotty.git"
+      )
+    ),
+    developers := List(
+      Developer(
+        id = "odersky",
+        name = "Martin Odersky",
+        email = "martin.odersky@epfl.ch",
+        url = url("https://github.com/odersky")
+      ),
+      Developer(
+        id = "DarkDimius",
+        name = "Dmitry Petrashko",
+        email = "me@d-d.me",
+        url = url("https://d-d.me")
+      ),
+      Developer(
+        id = "smarter",
+        name = "Guillaume Martres",
+        email = "smarter@ubuntu.com",
+        url = url("http://guillaume.martres.me")
+      ),
+      Developer(
+        id = "felixmulder",
+        name = "Felix Mulder",
+        email = "felix.mulder@gmail.com",
+        url = url("http://felixmulder.com")
+      ),
+      Developer(
+        id = "liufengyun",
+        name = "Liu Fengyun",
+        email = "liufengyun@chaos-lab.com",
+        url = url("http://chaos-lab.com")
+      ),
+      Developer(
+        id = "nicolasstucki",
+        name = "Nicolas Stucki",
+        email = "nicolas.stucki@epfl.ch",
+        url = url("https://github.com/nicolasstucki")
+      ),
+      Developer(
+        id = "OlivierBlanvillain",
+        name = "Olivier Blanvillain",
+        email = "olivier.blanvillain@gmail.com",
+        url = url("https://github.com/OlivierBlanvillain")
+      ),
+      Developer(
+        id = "biboudis",
+        name = "Aggelos Biboudis",
+        email = "aggelos.biboudis@epfl.ch",
+        url = url("http://biboudis.github.io")
+      ),
+      Developer(
+        id = "allanrenucci",
+        name = "Allan Renucci",
+        email = "allan.renucci@gmail.com",
+        url = url("https://github.com/allanrenucci")
+      )
+    )
+  )
 
   // Compile with dotty
   lazy val compileWithDottySettings = {
