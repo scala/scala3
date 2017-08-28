@@ -182,14 +182,24 @@ class InteractiveDriver(settings: List[String]) extends Driver {
    *  of a previous run. Note that typed trees can have untyped or partially
    *  typed children if the source contains errors.
    */
-  private def cleanup(tree: tpd.Tree)(implicit ctx: Context): Unit = tree.foreachSubTree { t =>
-    if (t.hasType) {
-      if (t.symbol.exists) {
-        if (!t.symbol.isCompleted) t.symbol.info = UnspecifiedErrorType
-        t.symbol.annotations.foreach(annot => cleanup(annot.tree))
+  private def cleanup(tree: tpd.Tree)(implicit ctx: Context): Unit = {
+    val cleanedTree = mutable.Set.empty[tpd.Tree]
+    def cleanupTree(tree: tpd.Tree): Unit = {
+      cleanedTree += tree
+      tree.foreachSubTree { t =>
+        if (t.hasType) {
+          if (t.symbol.exists) {
+            if (!t.symbol.isCompleted) t.symbol.info = UnspecifiedErrorType
+            t.symbol.annotations.foreach { annot =>
+              if (!cleanedTree(annot.tree))
+                cleanupTree(annot.tree)
+            }
+          }
+        }
+        t.removeAllAttachments()
       }
     }
-    t.removeAllAttachments()
+    cleanupTree(tree)
   }
 
   def run(uri: URI, sourceCode: String): List[MessageContainer] = {
