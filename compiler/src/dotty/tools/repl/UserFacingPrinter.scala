@@ -17,11 +17,11 @@ import dotc.core.Symbols.{ Symbol, ClassSymbol, defn }
 import dotc.core.SymDenotations.NoDenotation
 import dotc.core.Types._
 import dotc.printing.Texts._
-import dotc.printing.{ GlobalPrec, DotPrec, Printer, PlainPrinter }
+import dotc.printing.{ GlobalPrec, DotPrec, Printer, PlainPrinter, RefinedPrinter }
 import dotc.typer.Implicits.SearchResult
 import dotc.typer.ImportInfo
 
-class UserFacingPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
+class UserFacingPrinter(_ctx: Context) extends RefinedPrinter(_ctx) {
 
   private def panic(msg: String): Nothing = throw new AssertionError(msg)
 
@@ -74,15 +74,6 @@ class UserFacingPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         ":" ~~ toText(sym.info)
       }
     }
-
-  override def toText(denot: Denotation): Text = denot match {
-    case NoDenotation =>
-      panic("NoDenotation encountered in UserFacingPrinter")
-    case denot: MultiDenotation =>
-      panic("MultiDenotation not allowed in UserFacingPrinter")
-    case _ =>
-      toText(denot.symbol)
-  }
 
   override def toText(const: Constant): Text = Str(const.value.toString)
 
@@ -142,7 +133,6 @@ class UserFacingPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         printPkg(tp.cls.owner.asClass) ~ "." ~ nameString(tp.cls.name)
       }
     }
+    case tp => super.toText(tp)
   }
-
-  override lazy val plain = new PlainPrinter(_ctx)
 }

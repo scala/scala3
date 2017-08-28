@@ -130,6 +130,7 @@ object Build {
     javaSource        in Compile    := baseDirectory.value / "src",
     javaSource        in Test       := baseDirectory.value / "test",
     resourceDirectory in Compile    := baseDirectory.value / "resources",
+    resourceDirectory in Test       := baseDirectory.value / "test-resources",
 
     // Prevent sbt from rewriting our dependencies
     ivyScala ~= (_ map (_ copy (overrideScalaVersion = false)))
@@ -406,7 +407,6 @@ object Build {
     dependsOn(`dotty-compiler-bootstrapped`, `dotty-compiler-bootstrapped` % "test->test").
     settings(commonBootstrappedSettings).
     settings(dottyDocSettings)
-
 
   lazy val `dotty-bot` = project.in(file("bot")).
     settings(commonScala2Settings).

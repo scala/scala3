@@ -95,7 +95,7 @@ case object Help extends Command {
 
 object ParseResult {
 
-  private[this] val CommandExtract = """(:[\S]+)\s*(.*)""".r
+  @sharable private[this] val CommandExtract = """(:[\S]+)\s*(.*)""".r
 
   /** Extract a `ParseResult` from the string `sourceCode` */
   def apply(sourceCode: String)(implicit ctx: Context): ParseResult =
