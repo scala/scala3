@@ -298,7 +298,7 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
     val loBuf, hiBuf = new mutable.ListBuffer[TypeParamRef]
     var i = 0
     while (i < poly.paramNames.length) {
-      val param = TypeParamRef(poly, i)
+      val param = poly.paramRefs(i)
       val bounds = nonParamBounds(param)
       val lo = normalizedType(bounds.lo, loBuf, isUpper = false)
       val hi = normalizedType(bounds.hi, hiBuf, isUpper = true)
@@ -463,12 +463,12 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
       (poly, entries) <- boundsMap.toList
       n <- 0 until paramCount(entries)
       if entries(n).exists
-    } yield TypeParamRef(poly, n)
+    } yield poly.paramRefs(n)
 
   def forallParams(p: TypeParamRef => Boolean): Boolean = {
     boundsMap.foreachBinding { (poly, entries) =>
       for (i <- 0 until paramCount(entries))
-        if (isBounds(entries(i)) && !p(TypeParamRef(poly, i))) return false
+        if (isBounds(entries(i)) && !p(poly.paramRefs(i))) return false
     }
     true
   }
