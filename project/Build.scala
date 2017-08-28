@@ -391,8 +391,6 @@ object Build {
         )
       }.evaluated,
 
-      repl := run.evaluated,
-
       javaOptions ++= (javaOptions in `dotty-compiler`).value,
       fork in run := true,
       fork in Test := true,
@@ -580,6 +578,20 @@ object Build {
         )
       }.evaluated,
       dotc := run.evaluated,
+
+      repl := Def.inputTaskDyn {
+        val dottyLib = packageAll.value("dotty-library")
+        val args: Seq[String] = spaceDelimited("<arg>").parsed
+
+        val fullArgs = args.span(_ != "-classpath") match {
+          case (beforeCp, Nil) => beforeCp ++ ("-classpath" :: dottyLib :: Nil)
+          case (beforeCp, rest) => beforeCp ++ rest
+        }
+
+        (runMain in Compile).toTask(
+          s" dotty.tools.repl.Main " + fullArgs.mkString(" ")
+        )
+      }.evaluated,
 
       // enable verbose exception messages for JUnit
       testOptions in Test += Tests.Argument(
