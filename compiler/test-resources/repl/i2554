@@ -4,6 +4,4 @@ scala> import foo._
 scala> implicit val shape: Shape[_ <: FlatShapeLevel, Int, Int, _] = null
 implicit val shape: foo.Shape[_ <: foo.FlatShapeLevel, Int, Int, _] = null
 scala> def hint = Shape.tuple2Shape(shape, shape)
-def hint: foo.Shape[foo.FlatShapeLevel, Tuple2[Int, Int], Tuple2[Int, Int],
-  Tuple2
-[_, _]]
+def hint: foo.Shape[foo.FlatShapeLevel, (Int, Int), (Int, Int), ()]
