@@ -1631,8 +1631,10 @@ object SymDenotations {
           case _: TypeErasure.ErasedValueType => false
           case tp: TypeRef if tp.symbol.isClass => true
           case tp: TypeVar => tp.inst.exists && inCache(tp.inst)
-          case tp: TypeProxy => inCache(tp.underlying)
-          case tp: AndOrType => inCache(tp.tp1) && inCache(tp.tp2)
+          //case tp: TypeProxy => inCache(tp.underlying) // disabled, can re-enable insyead of last two lines for performance testing
+          //case tp: AndOrType => inCache(tp.tp1) && inCache(tp.tp2)
+          case tp: TypeProxy => isCachable(tp.underlying, btrCache) 
+          case tp: AndOrType => isCachable(tp.tp1, btrCache) && isCachable(tp.tp2, btrCache)
           case _ => true
         }
       }
@@ -1643,16 +1645,33 @@ object SymDenotations {
           Stats.record(s"computeBaseType, ${tp.getClass}")
         }
         if (symbol.isStatic && tp.derivesFrom(symbol) && symbol.typeParams.isEmpty)
-          symbol.appliedRef
+          symbol.typeRef
         else tp match {
-          case tp: RefType =>
-            val subcls = tp.symbol
-            if (subcls eq symbol)
-              tp
-            else subcls.denot match {
-              case cdenot: ClassDenotation =>
-                if (cdenot.baseClassSet contains symbol) foldGlb(NoType, tp.parentsNEW)
-                else NoType
+          case tp @ TypeRef(prefix, _) =>
+            val subsym = tp.symbol
+            if (subsym eq symbol) tp
+            else subsym.denot match {
+              case clsd: ClassDenotation =>
+                val owner = clsd.owner
+                val isOwnThis = prefix match {
+                  case prefix: ThisType => prefix.cls eq owner
+                  case NoPrefix => true
+                  case _ => false
+                }
+                if (isOwnThis)
+                  if (clsd.baseClassSet.contains(symbol)) foldGlb(NoType, clsd.classParentsNEW)
+                  else NoType
+                else
+                  baseTypeOf(clsd.typeRef).asSeenFrom(prefix, owner)
+              case _ =>
+                baseTypeOf(tp.superType)
+            }
+          case tp @ AppliedType(tycon, args) =>
+            val subsym = tycon.typeSymbol
+            if (subsym eq symbol) tp
+            else subsym.denot match {
+              case clsd: ClassDenotation =>
+                baseTypeOf(tycon).subst(clsd.typeParams, args)
               case _ =>
                 baseTypeOf(tp.superType)
             }
@@ -1671,7 +1690,7 @@ object SymDenotations {
 
       /*>|>*/ ctx.debugTraceIndented(s"$tp.baseType($this)") /*<|<*/ {
         Stats.record("baseTypeOf")
-        tp match {
+        tp.stripTypeVar match { // @!!! dealias?
           case tp: CachedType =>
           val btrCache = baseTypeCache
             try {
@@ -1695,7 +1714,7 @@ object SymDenotations {
                 btrCache.put(tp, null)
                 throw ex
             }
-          case _ =>
+          case tp =>
             computeBaseTypeOf(tp)
         }
       }
