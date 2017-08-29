@@ -848,7 +848,7 @@ object Types {
     /** The basetype TypeRef of this type with given class symbol,
      *  but without including any type arguments
      */
-    final def baseType(base: Symbol)(implicit ctx: Context): Type = /*ctx.traceIndented(s"$this baseType $base")*/ /*>|>*/ track("baseType") /*<|<*/ {
+    final def baseType(base: Symbol)(implicit ctx: Context): Type = /*ctx.traceIndented(s"$this baseType $base")*/ /*>|>*/ track("base type") /*<|<*/ {
       base.denot match {
         case classd: ClassDenotation => classd.baseTypeOf(this)
         case _ => NoType
