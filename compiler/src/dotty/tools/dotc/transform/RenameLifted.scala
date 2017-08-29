@@ -31,12 +31,16 @@ class RenameLifted extends MiniPhaseTransform with SymTransformer { thisTransfor
 
   /** Refreshes the number of the name based on the full name of the symbol */
   private def refreshedName(sym: Symbol)(implicit ctx: Context): Name = {
-    sym.name.rewrite {
+    lazy val rewriteUnique: PartialFunction[Name, Name] = {
       case name: DerivedName if name.info.kind == UniqueName =>
         val fullName = (sym.owner.fullName.toString + name.underlying).toTermName
         val freshName = UniqueName.fresh(fullName)
         val info = freshName.asInstanceOf[DerivedName].info
-        DerivedName(name.underlying, info)
+        DerivedName(name.underlying.rewrite(rewriteUnique), info)
+      case DerivedName(underlying, info: QualifiedInfo) =>
+        underlying.rewrite(rewriteUnique).derived(info)
     }
+
+    sym.name.rewrite(rewriteUnique)
   }
 }
