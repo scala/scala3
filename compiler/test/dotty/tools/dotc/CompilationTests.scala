@@ -28,6 +28,11 @@ class CompilationTests extends ParallelTesting {
 
   // Positive tests ------------------------------------------------------------
 
+  // @Test  // enable to test compileStdLib separately with detailed stats
+  def compileStdLib: Unit = {
+    compileList("compileStdLib", StdLibSources.whitelisted, scala2Mode.and("-migration", "-Yno-inline", "-Ydetailed-stats"))
+  }.checkCompile()
+
   @Test def compilePos: Unit = {
     compileList("compileStdLib", StdLibSources.whitelisted, scala2Mode.and("-migration", "-Yno-inline")) +
     compileDir("../compiler/src/dotty/tools/dotc/ast", defaultOptions) +
@@ -86,6 +91,7 @@ class CompilationTests extends ParallelTesting {
     compileFilesInDir("../tests/new", defaultOptions) +
     compileFilesInDir("../tests/pos-scala2", scala2Mode) +
     compileFilesInDir("../tests/pos", defaultOptions) +
+    compileFilesInDir("../tests/pos-deep-subtype", allowDeepSubtypes) +
     compileFile(
       // succeeds despite -Xfatal-warnings because of -nowarn
       "../tests/neg/customArgs/xfatalWarnings.scala",

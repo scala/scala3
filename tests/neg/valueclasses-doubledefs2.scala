@@ -7,4 +7,4 @@ trait B {
   def apply(x: Meter) = x.toString
 }
 
-object Test extends A with B // error: double def
+object Test extends A with B // error: double definition
