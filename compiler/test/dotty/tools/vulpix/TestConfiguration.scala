@@ -62,6 +62,7 @@ object TestConfiguration {
     "-Ytest-pickler",
     "-Yprintpos"
   )
+  val picklingOptionsAllowDeepSubTypes = picklingOptions diff Array("-Yno-deep-subtypes")
   val scala2Mode = defaultOptions ++ Array("-language:Scala2")
   val explicitUTF8 = defaultOptions ++ Array("-encoding", "UTF8")
   val explicitUTF16 = defaultOptions ++ Array("-encoding", "UTF16")
