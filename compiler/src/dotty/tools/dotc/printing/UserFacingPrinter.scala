@@ -1,25 +1,25 @@
-package dotty.tools
-package repl
+package dotty.tools.dotc
+package printing
 
-import dotc.ast.Trees.{ Untyped, Tree }
-import dotc.core.Annotations.Annotation
-import dotc.core.Constants.Constant
-import dotc.core.Contexts.Context
-import dotc.core.Denotations.{ Denotation, MultiDenotation, SingleDenotation }
-import dotc.core.Flags._
-import dotc.core.TypeApplications.{ AppliedType, EtaExpansion }
-import dotc.core.Names._
-import dotc.core.NameOps._
-import dotc.core.StdNames._
-import dotc.core.Decorators._
-import dotc.core.Scopes.Scope
-import dotc.core.Symbols.{ Symbol, ClassSymbol, defn }
-import dotc.core.SymDenotations.NoDenotation
-import dotc.core.Types._
-import dotc.printing.Texts._
-import dotc.printing.{ GlobalPrec, DotPrec, Printer, PlainPrinter, RefinedPrinter }
-import dotc.typer.Implicits.SearchResult
-import dotc.typer.ImportInfo
+import ast.Trees.{ Untyped, Tree }
+import core._
+import Annotations.Annotation
+import Constants.Constant
+import Contexts.Context
+import Denotations.{ Denotation, MultiDenotation, SingleDenotation }
+import Flags._
+import TypeApplications.{ AppliedType, EtaExpansion }
+import Names._
+import NameOps._
+import StdNames._
+import Decorators._
+import Scopes.Scope
+import Symbols.{ Symbol, ClassSymbol, defn }
+import SymDenotations.NoDenotation
+import Types._
+import Texts._
+import typer.Implicits.SearchResult
+import typer.ImportInfo
 
 class UserFacingPrinter(_ctx: Context) extends RefinedPrinter(_ctx) {
 

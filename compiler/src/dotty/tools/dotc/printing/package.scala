@@ -20,4 +20,10 @@ package object printing {
    *  -Xprint will print `sym.name` instead of `sym.originalName`
    */
   val XprintMode = new Key[Unit]
+
+  /** @pre `nel` is non-empty list */
+  private[printing] implicit class ListOps[A](val nel: List[A]) extends AnyVal {
+    def intersperse(a: A): List[A] =
+      nel.flatMap(a :: _ :: Nil).tail
+  }
 }

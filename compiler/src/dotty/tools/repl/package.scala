@@ -4,6 +4,7 @@ import dotc.core.Contexts.Context
 import dotc.core.Symbols.Symbol
 import dotc.core.Denotations.Denotation
 import dotc.reporting.diagnostic.MessageContainer
+import dotc.printing.UserFacingPrinter
 
 import dotc.reporting.{
   StoreReporter,
@@ -16,11 +17,6 @@ package object repl {
   private[repl] def storeReporter: StoreReporter =
     new StoreReporter(null)
     with UniqueMessagePositions with HideNonSensicalMessages
-
-  private[repl] implicit class ListOps[A](val nel: List[A]) extends AnyVal {
-    def intersperse(a: A): List[A] =
-      nel.flatMap(a :: _ :: Nil).tail
-  }
 
   private[repl] implicit class ShowUser(val s: Symbol) extends AnyVal {
     def showUser(implicit ctx: Context): String = {
