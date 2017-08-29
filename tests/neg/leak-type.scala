@@ -1,13 +1,13 @@
 trait A {
-  private type Foo = Int
+  private class Foo
 
 
-  class Inner[T <: Foo] { // error: non-private type T refers to private type Foo in its type signature
+  class Inner[T <: Foo] { // error: non-private type T refers to private class Foo in its type signature
     def get: T = ???
   }
 }
 class B extends A {
   def foo(x: Inner[_]): Unit = {
-    val a = x.get // error: cannot resolve reference to type B(B.this).Foo
+    val a = x.get
   }
 }
