@@ -44,7 +44,7 @@ class TestX {
   type D[X] <: C[X]
 
   type DD = [X] => D[D[X]]
-  val z: DD[_] = ??? // error: unreducible
+  //val z: DD[_] = ??? // error: unreducible
 
   val g = x.get
 
