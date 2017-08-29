@@ -365,7 +365,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
   @Test def methodDoesNotTakePrameters =
     checkMessagesAfter("frontend") {
       """
-        |object Scope{
+        |object Scope {
         |  def foo = ()
         |  foo()
         |}

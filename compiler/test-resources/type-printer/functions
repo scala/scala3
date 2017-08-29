@@ -1,0 +1,2 @@
+scala> val toInt: Any => Int = new { def apply(a: Any) = 1; override def toString() = "<func1>" }
+val toInt: Any => Int = <func1>

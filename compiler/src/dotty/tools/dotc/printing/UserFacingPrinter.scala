@@ -5,8 +5,6 @@ import core._
 import Constants.Constant, Contexts.Context, Denotations._, Flags._, Names._
 import NameOps._, StdNames._, Decorators._, Scopes.Scope, Types._, Texts._
 import SymDenotations.NoDenotation, Symbols.{ Symbol, ClassSymbol, defn }
-import typer.Implicits.SearchResult
-import typer.ImportInfo
 
 class UserFacingPrinter(_ctx: Context) extends RefinedPrinter(_ctx) {
 
@@ -29,17 +27,8 @@ class UserFacingPrinter(_ctx: Context) extends RefinedPrinter(_ctx) {
 
   def wellKnownPkg(pkgSym: Symbol) = standardPkg(pkgSym) || wrappedName(pkgSym)
 
-  override protected def keyString(sym: Symbol): String = {
-    val flags = sym.flagsUNSAFE
-    if (flags is Package) ""
-    else if (sym.isPackageObject) "package object"
-    else if (flags.is(Module) && flags.is(Case)) "case object"
-    else if (sym.isClass && flags.is(Case)) "case class"
-    else if (flags.is(Lazy)) "lazy val"
-    else if (flags is Module) "object"
-    else if (sym.isTerm && !flags.is(Param) && flags.is(Implicit)) "implicit val"
-    else super.keyString(sym)
-  }
+  override protected def keyString(sym: Symbol): String =
+    if (sym.flagsUNSAFE is Package) "" else super.keyString(sym)
 
   override def nameString(name: Name): String =
     if (name.isReplAssignName) name.decode.toString.takeWhile(_ != '$')
@@ -49,34 +38,24 @@ class UserFacingPrinter(_ctx: Context) extends RefinedPrinter(_ctx) {
     if (sym.name.isReplAssignName) nameString(sym.name)
     else keyString(sym) ~~ nameString(sym.name.stripModuleClassSuffix)
 
-  override def dclText(sym: Symbol): Text =
-    toText(sym) ~ {
-      if (sym.is(Method)) toText(sym.info)
-      else if (sym.isClass) ""
-      else if (sym.isType && sym.info.isInstanceOf[TypeAlias]) toText(sym.info)
-      else if (sym.isType) ""
-      else {
-        ":" ~~ toText(sym.info)
-      }
-    }
+  override def dclText(sym: Symbol): Text = toText(sym) ~ {
+    if (sym.is(Method)) toText(sym.info)
+    else if (sym.isType && sym.info.isInstanceOf[TypeAlias]) toText(sym.info)
+    else if (sym.isType || sym.isClass) ""
+    else ":" ~~ toText(sym.info)
+  }
 
   override def toText(const: Constant): Text = Str(const.value.toString)
 
   override def toText(tp: Type): Text = tp match {
-    case tp: ConstantType => toText(tp.value)
     case ExprType(result) => ":" ~~ toText(result)
+    case tp: ConstantType => toText(tp.value)
     case tp: TypeRef => tp.info match {
       case TypeAlias(alias) => toText(alias)
       case _ => toText(tp.info)
     }
-    case tp: ParamRef => {
-      val name = ParamRefNameString(tp.paramName)
-      if (tp.isInstanceOf[TermParamRef]) name ~ ".type"
-      else name
-    }
     case tp: ClassInfo => {
-      if (wellKnownPkg(tp.cls.owner))
-        nameString(tp.cls.name)
+      if (wellKnownPkg(tp.cls.owner)) nameString(tp.cls.name)
       else {
         def printPkg(sym: ClassSymbol): Text =
           if (sym.owner == defn.RootClass || wrappedName(sym.owner))
