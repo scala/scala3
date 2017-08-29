@@ -1670,6 +1670,7 @@ object SymDenotations {
       }
 
       /*>|>*/ ctx.debugTraceIndented(s"$tp.baseType($this)") /*<|<*/ {
+        Stats.record("baseTypeOf")
         tp match {
           case tp: CachedType =>
           val btrCache = baseTypeCache
@@ -1679,8 +1680,9 @@ object SymDenotations {
                 btrCache.put(tp, NoPrefix)
                 basetp = computeBaseTypeOf(tp)
                 if (!basetp.exists) Stats.record("base type miss")
-                if (isCachable(tp, baseTypeCache)) {
-                  if (!basetp.exists) Stats.record("cached base type miss")
+                if (isCachable(tp, btrCache)) {
+                  if (basetp.exists) Stats.record("cached base type hit")
+                  else Stats.record("cached base type miss")
                   btrCache.put(tp, basetp)
                 }
                 else btrCache.remove(tp)
