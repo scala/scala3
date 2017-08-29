@@ -86,11 +86,24 @@ class ElimErasedValueType extends MiniPhaseTransform with InfoTransformer {
       val site = root.thisType
       val info1 = site.memberInfo(sym1)
       val info2 = site.memberInfo(sym2)
-      if (!info1.matchesLoosely(info2))
+      if (!info1.matchesLoosely(info2) &&
+          info1.signature != info2.signature)
+        // there is a problem here that sometimes we generate too many forwarders. For instance,
+        // in compileStdLib, compiling scala.immutable.SetProxy, line 29:
+        //    new AbstractSet[B] with SetProxy[B] { val self = newSelf }
+        // double definition:
+        // method map: [B, That]
+        //   (f: B => B)(implicit bf: scala.collection.generic.CanBuildFrom[scala.collection.immutable.Set[B], B, That]): That override <method> <touched> in anonymous class scala.collection.AbstractSet[B] with scala.collection.immutable.SetProxy[B]{...} and
+        // method map: [B, That](f: B => B)(implicit bf: scala.collection.generic.CanBuildFrom[scala.collection.Set[B], B, That]): That override <method> <touched> in class AbstractSet
+        // have same type after erasure: (f: Function1, bf: scala.collection.generic.CanBuildFrom): Object
+        //
+        // The problem is that `map` was forwarded twice, with different instantiated types.
+        // It's unclear how to fix this at present (maybe move mixin forwarding after erasure?)
+        // The added 2nd condition is a rather crude patch.
         ctx.error(
             em"""double definition:
-                |$sym1: $info1 in ${sym1.owner} and
-                |$sym2: $info2 in ${sym2.owner}
+                |$sym1: $info1 ${sym1.flags} in ${sym1.owner} and
+                |$sym2: $info2 ${sym2.flags} in ${sym2.owner}
                 |have same type after erasure: $info""",
             root.pos)
     }
