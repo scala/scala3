@@ -9,7 +9,6 @@
 pipeline:
   test:
     image: lampepfl/dotty:2017-08-30
-    pull: true
     commands:
       - ./project/scripts/sbt "${CI_TEST}"
     when:
@@ -18,7 +17,6 @@ pipeline:
 
   publish_nightly:
     image: lampepfl/dotty:2017-08-30
-    pull: true
     commands:
       - ./project/scripts/sbt ";clean ;publishLocal" "${CI_PUBLISH}"
       - ./project/scripts/sbt "sbt-dotty/scripted source-dependencies/*" "${CI_PUBLISH}"
@@ -31,7 +29,6 @@ pipeline:
 
   publish_release:
     image: lampepfl/dotty:2017-08-30
-    pull: true
     commands:
       - ./project/scripts/sbt ";clean ;publishLocal" "${CI_PUBLISH}"
       - ./project/scripts/sbt "sbt-dotty/scripted source-dependencies/*" "${CI_PUBLISH}"
@@ -44,7 +41,6 @@ pipeline:
 
   publish_sbt_release:
     image: lampepfl/dotty:2017-08-30
-    pull: true
     commands:
       - RELEASEBUILD="yes" ./project/scripts/sbtPublish ${CI_PUBLISH} $SONATYPE_USER $SONATYPE_PW $PGP_PW ";sbt-dotty/publishSigned ;sonatypeRelease"
     volumes:
@@ -55,7 +51,6 @@ pipeline:
 
   documentation:
     image: lampepfl/dotty:2017-08-30
-    pull: true
     commands:
       - ./project/scripts/genDocs "${CI_PUBLISH}" $BOT_PASS
     when:
