@@ -551,10 +551,10 @@ trait Checking {
     if (!tp.isStable) ctx.error(ex"$tp is not stable", pos)
 
   /** Check that all type members of `tp` have realizable bounds */
-  def checkRealizableBounds(tp: Type, pos: Position)(implicit ctx: Context): Unit = {
-    val rstatus = boundsRealizability(tp)
+  def checkRealizableBounds(cls: Symbol, pos: Position)(implicit ctx: Context): Unit = {
+    val rstatus = boundsRealizability(cls.thisType)
     if (rstatus ne Realizable)
-      ctx.error(ex"$tp cannot be instantiated since it${rstatus.msg}", pos)
+      ctx.error(ex"$cls cannot be instantiated since it${rstatus.msg}", pos)
   }
 
  /**  Check that `tp` is a class type.
