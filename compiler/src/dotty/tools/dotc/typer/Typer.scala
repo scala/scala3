@@ -1413,7 +1413,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
         .withType(dummy.nonMemberTermRef)
       checkVariance(impl1)
       if (!cls.is(AbstractOrTrait) && !ctx.isAfterTyper)
-        checkRealizableBounds(cls.thisType, cdef.namePos) // !@@@ adapt
+        checkRealizableBounds(cls, cdef.namePos) // !@@@ adapt
       val cdef1 = assignType(cpy.TypeDef(cdef)(name, impl1), cls)
       if (ctx.phase.isTyper && cdef1.tpe.derivesFrom(defn.DynamicClass) && !ctx.dynamicsEnabled) {
         val isRequired = parents1.exists(_.tpe.isRef(defn.DynamicClass))
