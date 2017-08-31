@@ -198,12 +198,8 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
             case _ =>
               val commonBaseClasses = tp.mapReduceOr(_.baseClasses)(intersect)
               val doms = dominators(commonBaseClasses, Nil)
-              def baseTp(cls: ClassSymbol): Type = {
-                val base =
-                  if (tp1.typeParams.nonEmpty) tp.baseTypeTycon(cls)
-                  else tp.baseTypeWithArgs(cls)
-                base.mapReduceOr(identity)(mergeRefinedOrApplied)
-              }
+              def baseTp(cls: ClassSymbol): Type =
+                tp.baseType(cls).mapReduceOr(identity)(mergeRefinedOrApplied)
               doms.map(baseTp).reduceLeft(AndType.apply)
           }
       }
@@ -252,13 +248,6 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
       lazyInfo,
       coord = cls.coord)
     cls.enter(sym, decls)
-  }
-
-  /** Normalize a list of parent types of class `cls` to make sure they are
-   *  all (possibly applied) references to classes.
-   */
-  def normalizeToClassRefs(parents: List[Type], cls: ClassSymbol, decls: Scope): List[Type] = {
-    parents.mapConserve(_.dealias) // !@@@ track and eliminate usages?
   }
 
   /** An argument bounds violation is a triple consisting of

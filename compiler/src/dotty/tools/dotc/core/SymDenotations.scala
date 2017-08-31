@@ -1366,14 +1366,8 @@ object SymDenotations {
       super.info_=(tp)
     }
 
-   /** The denotations of all parents in this class. */
-    def classParentsWithArgs(implicit ctx: Context): List[Type] = info match {
-      case classInfo: ClassInfo => classInfo.parentsWithArgs
-      case _ => Nil
-    }
-
     def classParents(implicit ctx: Context): List[Type] = info match {
-      case classInfo: ClassInfo => classInfo.parentsNEW
+      case classInfo: ClassInfo => classInfo.parents
       case _ => Nil
     }
 

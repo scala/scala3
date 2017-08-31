@@ -1467,9 +1467,8 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
       case p :: _ if p.classSymbol.isRealClass => parents
       case _ =>
         val pcls = (defn.ObjectClass /: parents)(improve)
-        typr.println(i"ensure first is class $parents%, % --> ${parents map (_ baseTypeWithArgs pcls)}%, %")
-        val first = ctx.typeComparer.glb(
-            defn.ObjectType :: (parents map (_ baseTypeWithArgs pcls)))
+        typr.println(i"ensure first is class $parents%, % --> ${parents map (_ baseType pcls)}%, %")
+        val first = ctx.typeComparer.glb(defn.ObjectType :: parents.map(_.baseType(pcls)))
         checkFeasibleParent(first, pos, em" in inferred superclass $first") :: parents
     }
   }
