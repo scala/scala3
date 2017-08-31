@@ -1394,7 +1394,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
 
     completeAnnotations(cdef, cls)
     val constr1 = typed(constr).asInstanceOf[DefDef]
-    val parentsWithClass = ensureFirstIsClass(parents mapconserve typedParent, cdef.namePos)
+    val parentsWithClass = ensureFirstTreeIsClass(parents mapconserve typedParent, cdef.namePos)
     val parents1 = ensureConstrCall(cls, parentsWithClass)(superCtx)
     val self1 = typed(self)(ctx.outer).asInstanceOf[ValDef] // outer context where class members are not visible
     if (self1.tpt.tpe.isError || classExistsOnSelf(cls.unforcedDecls, self1)) {
@@ -1451,7 +1451,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
    *  - has C as its class symbol, and
    *  - for all parents P_i: If P_i derives from C then P_i <:< CT.
    */
-  def ensureFirstIsClass(parents: List[Type])(implicit ctx: Context): List[Type] = {
+  def ensureFirstIsClass(parents: List[Type], pos: Position)(implicit ctx: Context): List[Type] = {
     def realClassParent(cls: Symbol): ClassSymbol =
       if (!cls.isClass) defn.ObjectClass
       else if (!(cls is Trait)) cls.asClass
@@ -1468,19 +1468,16 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
       case _ =>
         val pcls = (defn.ObjectClass /: parents)(improve)
         typr.println(i"ensure first is class $parents%, % --> ${parents map (_ baseTypeWithArgs pcls)}%, %")
-        val ptype = ctx.typeComparer.glb(
+        val first = ctx.typeComparer.glb(
             defn.ObjectType :: (parents map (_ baseTypeWithArgs pcls)))
-        ptype :: parents
+        checkFeasibleParent(first, pos, em" in inferred superclass $first") :: parents
     }
   }
 
   /** Ensure that first parent tree refers to a real class. */
-  def ensureFirstIsClass(parents: List[Tree], pos: Position)(implicit ctx: Context): List[Tree] = parents match {
+  def ensureFirstTreeIsClass(parents: List[Tree], pos: Position)(implicit ctx: Context): List[Tree] = parents match {
     case p :: ps if p.tpe.classSymbol.isRealClass => parents
-    case _ =>
-      // add synthetic class type
-      val first :: _ = ensureFirstIsClass(parents.tpes)
-      TypeTree(checkFeasible(first, pos, em"\n in inferred parent $first")).withPos(pos) :: parents
+    case _ => TypeTree(ensureFirstIsClass(parents.tpes, pos).head).withPos(pos) :: parents
   }
 
   /** If this is a real class, make sure its first parent is a

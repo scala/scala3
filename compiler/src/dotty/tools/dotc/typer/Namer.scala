@@ -913,7 +913,7 @@ class Namer { typer: Typer =>
       indexAndAnnotate(rest)(inClassContext(selfInfo))
       symbolOfTree(constr).ensureCompleted()
 
-      val parentTypes = ensureFirstIsClass(parents.map(checkedParentType(_)))
+      val parentTypes = ensureFirstIsClass(parents.map(checkedParentType(_)), cls.pos)
       val parentRefs = ctx.normalizeToClassRefs(parentTypes, cls, decls)
       typr.println(i"completing $denot, parents = $parents%, %, parentTypes = $parentTypes%, %, parentRefs = $parentRefs%, %")
 
