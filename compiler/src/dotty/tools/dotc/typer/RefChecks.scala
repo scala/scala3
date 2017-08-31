@@ -287,7 +287,7 @@ object RefChecks {
           //Console.println(infoString(member) + " shadows1 " + infoString(other) " in " + clazz);//DEBUG
           return
         }
-        val parentSymbols = clazz.info.parentsNEW.map(_.typeSymbol)
+        val parentSymbols = clazz.info.parents.map(_.typeSymbol)
         if (parentSymbols exists (p => subOther(p) && subMember(p) && deferredCheck)) {
           //Console.println(infoString(member) + " shadows2 " + infoString(other) + " in " + clazz);//DEBUG
           return

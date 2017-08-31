@@ -1359,7 +1359,7 @@ class PatternMatcherOld extends MiniPhaseTransform with DenotTransformer {
       // don't go looking for selectors if we only expect one pattern
       def rawSubPatTypes = aligner.extractedTypes
 
-      def typeArgOfBaseTypeOr(tp: Type, baseClass: Symbol)(or: => Type): Type = (tp.baseTypeWithArgs(baseClass)).argInfos match {
+      def typeArgOfBaseTypeOr(tp: Type, baseClass: Symbol)(or: => Type): Type = (tp.baseType(baseClass)).argInfos match {
         case x :: Nil => x
         case _        => or
       }

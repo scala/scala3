@@ -236,7 +236,7 @@ private class ExtractAPICollector(implicit val ctx: Context) extends ThunkHolder
   def linearizedAncestorTypes(info: ClassInfo): List[Type] = {
     val ref = info.fullyAppliedRef
     // Note that the ordering of classes in `baseClasses` is important.
-    info.baseClasses.tail.map(ref.baseTypeWithArgs)
+    info.baseClasses.tail.map(ref.baseType)
   }
 
   def apiDefinitions(defs: List[Symbol]): List[api.Definition] = {
