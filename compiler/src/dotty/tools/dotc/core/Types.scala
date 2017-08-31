@@ -1612,7 +1612,7 @@ object Types {
             }
           case _ =>
         }
-      if (Config.checkTypeParamRefs && Config.newScheme)
+      if (Config.checkTypeParamRefs)
         lastDenotation match {
           case d: SingleDenotation if d.symbol.is(ClassTypeParam) =>
             prefix match {
@@ -1876,8 +1876,8 @@ object Types {
       }
     }
 
-    def isClassParam(implicit ctx: Context) =
-      Config.newScheme && symbol.is(TypeParam) && symbol.owner.isClass
+    def isClassParam(implicit ctx: Context) = // @!!! test flag combination instead?
+      symbol.is(TypeParam) && symbol.owner.isClass
 
     /** A selection of the same kind, but with potentially a different prefix.
      *  The following normalizations are performed for type selections T#A:
@@ -2313,7 +2313,7 @@ object Types {
 
     if (refinedName.isTermName) assert(refinedInfo.isInstanceOf[TermType])
     else assert(refinedInfo.isInstanceOf[TypeType], this)
-    if (Config.newScheme) assert(!refinedName.is(NameKinds.ExpandedName), this)
+    assert(!refinedName.is(NameKinds.ExpandedName), this)
 
     override def underlying(implicit ctx: Context) = parent
 
@@ -3123,7 +3123,7 @@ object Types {
     final val Provisional: DependencyStatus = 4  // set if dependency status can still change due to type variable instantiations
   }
 
-  // ----- HK types: LambdaParam, HKApply, TypeArgRef ---------------------
+  // ----- Type application: LambdaParam, AppliedType, TypeArgRef ---------------------
 
   /** The parameter of a type lambda */
   case class LambdaParam(tl: TypeLambda, n: Int) extends ParamInfo {
@@ -3308,15 +3308,13 @@ object Types {
       else arg recoverable_& rebase(pbounds)
     }
 
-    override def underlying(implicit ctx: Context): Type =
-      if (Config.newBoundsScheme) {
-        if (!ctx.hasSameBaseTypesAs(underlyingCachePeriod)) {
-          underlyingCache = computeUnderlying
-          underlyingCachePeriod = ctx.period
-        }
-        underlyingCache
+    override def underlying(implicit ctx: Context): Type = {
+      if (!ctx.hasSameBaseTypesAs(underlyingCachePeriod)) {
+        underlyingCache = computeUnderlying
+        underlyingCachePeriod = ctx.period
       }
-      else prefix.baseType(clsRef.symbol).argInfos.apply(idx)
+      underlyingCache
+    }
 
     def derivedTypeArgRef(prefix: Type)(implicit ctx: Context): Type =
       if (prefix eq this.prefix) this else TypeArgRef(prefix, clsRef, idx)
@@ -3586,21 +3584,14 @@ object Types {
 
     private var selfTypeCache: Type = null
 
-    private def fullyAppliedRef(base: Type, tparams: List[TypeSymbol])(implicit ctx: Context): Type =
-      if (Config.newScheme) base.appliedTo(tparams.map(_.typeRef))
-      else tparams match {
-        case tparam :: tparams1 =>
-          fullyAppliedRef(
-            RefinedType(base, tparam.name, TypeRef(cls.thisType, tparam).toBounds(tparam)),
-            tparams1)
-        case nil =>
-          base
-      }
+    //private def fullyAppliedRef(base: Type, tparams: List[TypeSymbol])(implicit ctx: Context): Type =
+    //  base.appliedTo(tparams.map(_.typeRef))
 
     /** The class type with all type parameters */
-    def fullyAppliedRef(implicit ctx: Context): Type =
-      if (Config.newScheme && false) cls.appliedRef
-      else fullyAppliedRef(cls.typeRef, cls.typeParams)
+    def fullyAppliedRef(implicit ctx: Context): Type = // @!!! eliminate
+      //if (true)
+        cls.appliedRef
+      //else fullyAppliedRef(cls.typeRef, cls.typeParams)
 
     private var appliedRefCache: Type = null
     private var typeRefCache: TypeRef = null
@@ -3621,8 +3612,7 @@ object Types {
           if ((cls is PackageClass) || cls.owner.isTerm) symbolicTypeRef
           else TypeRef(prefix, cls.name, clsDenot)
         appliedRefCache =
-          if (Config.newScheme) tref.appliedTo(cls.typeParams.map(_.typeRef))
-          else tref
+          tref.appliedTo(cls.typeParams.map(_.typeRef)) // @!!! cache?
       }
       appliedRefCache
     }
@@ -3634,19 +3624,10 @@ object Types {
 
     /** The parent type refs as seen from the given prefix */
     override def parentRefs(implicit ctx: Context): List[TypeRef] =
-      if (Config.newScheme) parentsNEW.map(_.typeConstructor.asInstanceOf[TypeRef])
-      else parentsNEW.mapconserve(_.asInstanceOf[TypeRef])
+      parentsNEW.map(_.typeConstructor.asInstanceOf[TypeRef])
 
     /** The parent types with all type arguments */
-    override def parentsWithArgs(implicit ctx: Context): List[Type] =
-      if (Config.newScheme) parentsNEW
-      else parentRefs mapConserve { pref =>
-        ((pref: Type) /: pref.classSymbol.typeParams) { (parent, tparam) =>
-          val targSym = decls.lookup(tparam.name)
-          if (targSym.exists) RefinedType(parent, targSym.name, targSym.info)
-          else parent
-        }
-      }
+    override def parentsWithArgs(implicit ctx: Context): List[Type] = parentsNEW
 
     override def parentsNEW(implicit ctx: Context): List[Type] = {
       if (parentsCache == null)
@@ -3774,6 +3755,7 @@ object Types {
 
   class RealTypeBounds(lo: Type, hi: Type) extends TypeBounds(lo, hi)
 
+  // @!!! get rid of variance
   abstract class TypeAlias(val alias: Type, override val variance: Int) extends TypeBounds(alias, alias) {
     /** pre: this is a type alias */
     def derivedTypeAlias(alias: Type, variance: Int = this.variance)(implicit ctx: Context) =

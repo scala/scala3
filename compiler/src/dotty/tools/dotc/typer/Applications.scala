@@ -1146,10 +1146,8 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
       else {
         val flip = new TypeMap {
           def apply(t: Type) = t match {
-            case t @ TypeAlias(alias) if variance > 0 && t.variance < 0 && !Config.newScheme =>
-              t.derivedTypeAlias(defn.FunctionOf(alias :: Nil, defn.UnitType))
             case t: TypeBounds => t
-            case t @ AppliedType(tycon, args) if Config.newScheme =>
+            case t @ AppliedType(tycon, args) =>
               def mapArg(arg: Type, tparam: TypeParamInfo) =
                 if (variance > 0 && tparam.paramVariance < 0) defn.FunctionOf(arg :: Nil, defn.UnitType)
                 else arg
