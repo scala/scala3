@@ -434,8 +434,7 @@ object TastyFormat {
        | ANDtpt
        | ORtpt
        | BYNAMEtpt
-       | BIND => true // Dmitry: binds are "shared" as type trees would be shared, see https://github.com/lampepfl/dotty/pull/2510
-                      // But they are not type trees, as you can't have them inside TypeApply. See i2944a.scala
+       | BIND => true
     case _ => false
   }
 
