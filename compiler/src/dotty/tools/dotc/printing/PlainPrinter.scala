@@ -64,8 +64,6 @@ class PlainPrinter(_ctx: Context) extends Printer {
           homogenize(tp.ref)
         case AppliedType(tycon, args) =>
           tycon.dealias.appliedTo(args)
-        case HKApply(tycon, args) =>
-          tycon.dealias.appliedTo(args)
         case _ =>
           tp
       }
@@ -207,8 +205,6 @@ class PlainPrinter(_ctx: Context) extends Printer {
       case AnnotatedType(tpe, annot) =>
         toTextLocal(tpe) ~ " " ~ toText(annot)
       case AppliedType(tycon, args) =>
-        toTextLocal(tycon) ~ "[" ~ Text(args.map(argText), ", ") ~ "]"
-      case HKApply(tycon, args) =>
         toTextLocal(tycon) ~ "[" ~ Text(args.map(argText), ", ") ~ "]"
       case tp: TypeVar =>
         if (tp.isInstantiated)

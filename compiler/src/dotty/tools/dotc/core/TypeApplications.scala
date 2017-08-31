@@ -75,7 +75,7 @@ object TypeApplications {
    *
    *  where v_i, p_i are the variances and names of the type parameters of T.
    */
-  object AnyAppliedType {
+  object AnyAppliedType { // @!!! drop
     def apply(tp: Type, args: List[Type])(implicit ctx: Context): Type = tp.appliedTo(args)
 
     def unapply(tp: Type)(implicit ctx: Context): Option[(Type, List[Type])] = tp match {
@@ -100,8 +100,6 @@ object TypeApplications {
         }
         collectArgs(tycon.typeParams, refinements, new mutable.ListBuffer[Type])
       case AppliedType(tycon, args) =>
-        Some((tycon, args))
-      case HKApply(tycon, args) =>
         Some((tycon, args))
       case _ =>
         None
@@ -186,7 +184,7 @@ object TypeApplications {
           case arg =>
             arg
         }
-      case _: TypeBounds | _: HKApply | _: AppliedType =>
+      case _: TypeBounds | _: AppliedType =>
         val saved = available
         available = Set()
         try mapOver(t)
@@ -229,7 +227,7 @@ class TypeApplications(val self: Type) extends AnyVal {
         Nil
       case self: WildcardType =>
         self.optBounds.typeParams
-      case self: AppliedType =>
+      case self: AppliedType if self.tycon.typeSymbol.isClass =>
         Nil
       case self: TypeProxy =>
         self.superType.typeParams
@@ -412,7 +410,7 @@ class TypeApplications(val self: Type) extends AnyVal {
               }
             }
             if ((dealiased eq stripped) || followAlias) dealiased.instantiate(args)
-            else HKApply(self, args)
+            else AppliedType(self, args)
           }
           else dealiased.resType match {
             case AnyAppliedType(tycon, args1) if tycon.safeDealias ne tycon =>
@@ -425,7 +423,7 @@ class TypeApplications(val self: Type) extends AnyVal {
               val reducer = new Reducer(dealiased, args)
               val reduced = reducer(dealiased.resType)
               if (reducer.allReplaced) reduced
-              else HKApply(dealiased, args)
+              else AppliedType(dealiased, args)
           }
         tryReduce
       case dealiased: PolyType =>
@@ -442,8 +440,6 @@ class TypeApplications(val self: Type) extends AnyVal {
         WildcardType(dealiased.optBounds.appliedTo(args).bounds)
       case dealiased: TypeRef if dealiased.symbol == defn.NothingClass =>
         dealiased
-      case _ if typParams.isEmpty || typParams.head.isInstanceOf[LambdaParam] =>
-        HKApply(self, args)
       case dealiased =>
         AppliedType(self, args)
     }
@@ -462,7 +458,7 @@ class TypeApplications(val self: Type) extends AnyVal {
    */
   final def safeAppliedTo(args: List[Type])(implicit ctx: Context) = self match {
     case self: TypeRef if !self.symbol.isClass && self.symbol.isCompleting =>
-      HKApply(self, args)
+      AppliedType(self, args)
     case _ =>
       appliedTo(args)
   }
@@ -529,8 +525,7 @@ class TypeApplications(val self: Type) extends AnyVal {
   /** The core type without any type arguments.
    *  @param `typeArgs` must be the type arguments of this type.
    */
-  final def withoutArgs(typeArgs: List[Type]): Type = self match {
-    case HKApply(tycon, args) => tycon
+  final def withoutArgs(typeArgs: List[Type]): Type = self match { // @!!! replace with typeConstructor?
     case AppliedType(tycon, args) => tycon
     case _ =>
       typeArgs match {
