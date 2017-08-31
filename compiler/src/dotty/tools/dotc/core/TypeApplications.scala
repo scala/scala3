@@ -382,7 +382,7 @@ class TypeApplications(val self: Type) extends AnyVal {
       case arg :: args1 =>
         try {
           val tparam :: tparams1 = tparams
-          matchParams(RefinedType(t, tparam.paramName, arg.toBounds(tparam)), tparams1, args1)
+          matchParams(RefinedType(t, tparam.paramName, arg.toBounds), tparams1, args1)
         } catch {
           case ex: MatchError =>
             println(s"applied type mismatch: $self with underlying ${self.underlyingIfProxy}, args = $args, typeParams = $typParams") // !!! DEBUG
@@ -463,15 +463,10 @@ class TypeApplications(val self: Type) extends AnyVal {
       appliedTo(args)
   }
 
-  /** Turn this type, which is used as an argument for
-   *  type parameter `tparam`, into a TypeBounds RHS
-   */
-  final def toBounds(tparam: ParamInfo)(implicit ctx: Context): TypeBounds = self match {
-    case self: TypeBounds => // this can happen for wildcard args
-      self
-    case _ =>
-      val v = tparam.paramVariance
-      TypeAlias(self, v)
+  /** Turns non-bounds types to type aliases */
+  final def toBounds(implicit ctx: Context): TypeBounds = self match {
+    case self: TypeBounds => self // this can happen for wildcard args
+    case _ => TypeAlias(self)
   }
 
   /** The type arguments of this type's base type instance wrt. `base`.

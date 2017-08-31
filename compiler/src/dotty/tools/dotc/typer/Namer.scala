@@ -1189,10 +1189,7 @@ class Namer { typer: Typer =>
     }
     val rhsBodyType = typedAheadType(rhs).tpe
     val rhsType = if (isDerived) rhsBodyType else abstracted(rhsBodyType)
-    val unsafeInfo = rhsType match {
-      case bounds: TypeBounds => bounds
-      case alias => TypeAlias(alias, if (sym is Local) sym.variance else 0)
-    }
+    val unsafeInfo = rhsType.toBounds
     if (isDerived) sym.info = unsafeInfo
     else {
       sym.info = NoCompleter
