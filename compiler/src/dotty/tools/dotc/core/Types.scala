@@ -2293,23 +2293,11 @@ object Types {
       if (parent.member(refinedName).exists) derivedRefinedType(parent, refinedName, refinedInfo)
       else parent
 
-    override def equals(that: Any) = that match {
-      case that: RefinedType =>
-        this.parent == that.parent &&
-        this.refinedName == that.refinedName &&
-        this.refinedInfo == that.refinedInfo
-      case _ =>
-        false
-    }
     override def computeHash = doHash(refinedName, refinedInfo, parent)
-    override def toString = s"RefinedType($parent, $refinedName, $refinedInfo)"
   }
 
-  class CachedRefinedType(parent: Type, refinedName: Name, refinedInfo: Type, hc: Int)
-  extends RefinedType(parent, refinedName, refinedInfo) {
-    myHash = hc
-    override def computeHash = unsupported("computeHash")
-  }
+  class CachedRefinedType(parent: Type, refinedName: Name, refinedInfo: Type)
+  extends RefinedType(parent, refinedName, refinedInfo)
 
   object RefinedType {
     @tailrec def make(parent: Type, names: List[Name], infos: List[Type])(implicit ctx: Context): Type =
@@ -2318,7 +2306,7 @@ object Types {
 
     def apply(parent: Type, name: Name, info: Type)(implicit ctx: Context): RefinedType = {
       assert(!ctx.erasedTypes)
-      ctx.base.uniqueRefinedTypes.enterIfNew(parent, name, info).checkInst
+      unique(new CachedRefinedType(parent, name, info)).checkInst
     }
   }
 
@@ -3662,11 +3650,11 @@ object Types {
       if (variance == 0) this
       else if (variance < 0) TypeBounds.lower(alias)
       else TypeBounds.upper(alias)
+
+    override def computeHash = doHash(variance, alias)
   }
 
-  class CachedTypeAlias(alias: Type, variance: Int, hc: Int) extends TypeAlias(alias, variance) {
-    myHash = hc
-  }
+  class CachedTypeAlias(alias: Type, variance: Int) extends TypeAlias(alias, variance)
 
   object TypeBounds {
     def apply(lo: Type, hi: Type)(implicit ctx: Context): TypeBounds =
@@ -3678,7 +3666,7 @@ object Types {
 
   object TypeAlias {
     def apply(alias: Type, variance: Int = 0)(implicit ctx: Context) =
-      ctx.uniqueTypeAliases.enterIfNew(alias, variance)
+      unique(new CachedTypeAlias(alias, variance))
     def unapply(tp: TypeAlias): Option[Type] = Some(tp.alias)
   }
 
