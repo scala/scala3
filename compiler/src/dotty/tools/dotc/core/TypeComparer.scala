@@ -1448,10 +1448,13 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
         val arg2 :: args2Rest = args2
         val v = tparam.paramVariance
         val glbArg =
-          if (v > 0) glb(arg1.hiBound, arg2.hiBound)
+          if (isSameTypeWhenFrozen(arg1, arg2)) arg1
+          else if (v > 0) glb(arg1.hiBound, arg2.hiBound)
           else if (v < 0) lub(arg1.loBound, arg2.loBound)
-          else TypeBounds(lub(arg1.loBound, arg2.loBound),
-                          glb(arg1.hiBound, arg2.hiBound))
+          else if (arg1.isInstanceOf[TypeBounds] || arg2.isInstanceOf[TypeBounds])
+            TypeBounds(lub(arg1.loBound, arg2.loBound),
+                       glb(arg1.hiBound, arg2.hiBound))
+          else NoType
         glbArg :: glbArgs(args1Rest, args2Rest, tparamsRest)
       case nil =>
         Nil
@@ -1599,7 +1602,9 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
     case tp1 @ AppliedType(tycon1, args1) =>
       tp2 match {
         case AppliedType(tycon2, args2) if tycon1.typeSymbol == tycon2.typeSymbol =>
-          (tycon1 & tycon2).appliedTo(glbArgs(args1, args2, tycon1.typeParams))
+          val jointArgs = glbArgs(args1, args2, tycon1.typeParams)
+          if (jointArgs.forall(_.exists)) (tycon1 & tycon2).appliedTo(jointArgs)
+          else NoType
         case _ =>
           NoType
       }
@@ -1730,15 +1735,17 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
 
   /** Show subtype goal that led to an assertion failure */
   def showGoal(tp1: Type, tp2: Type)(implicit ctx: Context) = {
-    println(ex"assertion failure for $tp1 <:< $tp2, frozen = $frozenConstraint")
+    println(i"assertion failure for $tp1 <:< $tp2, frozen = $frozenConstraint")
     def explainPoly(tp: Type) = tp match {
       case tp: TypeParamRef => ctx.echo(s"TypeParamRef ${tp.show} found in ${tp.binder.show}")
       case tp: TypeRef if tp.symbol.exists => ctx.echo(s"typeref ${tp.show} found in ${tp.symbol.owner.show}")
       case tp: TypeVar => ctx.echo(s"typevar ${tp.show}, origin = ${tp.origin}")
       case _ => ctx.echo(s"${tp.show} is a ${tp.getClass}")
     }
-    explainPoly(tp1)
-    explainPoly(tp2)
+    if (Config.verboseExplainSubtype) {
+      explainPoly(tp1)
+      explainPoly(tp2)
+    }
   }
 
   /** Record statistics about the total number of subtype checks
