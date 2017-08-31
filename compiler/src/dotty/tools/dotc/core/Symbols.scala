@@ -123,8 +123,7 @@ trait Symbols { this: Context =>
       def complete(denot: SymDenotation)(implicit ctx: Context): Unit = {
         val cls = denot.asClass.classSymbol
         val decls = newScope
-        val parentRefs = normalizeToClassRefs(parentTypes, cls, decls)
-        denot.info = ClassInfo(owner.thisType, cls, parentRefs, decls)
+        denot.info = ClassInfo(owner.thisType, cls, parentTypes.map(_.dealias), decls)
       }
     }
     newClassSymbol(owner, name, flags, completer, privateWithin, coord, assocFile)

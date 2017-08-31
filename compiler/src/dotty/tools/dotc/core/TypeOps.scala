@@ -261,54 +261,6 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
     parents.mapConserve(_.dealias) // !@@@ track and eliminate usages?
   }
 
-  /** Forward parameter bindings in baseclasses to argument types of
-   *  class `cls` if possible.
-   *  If there have member definitions
-   *
-   *     type param v= middle
-   *     type middle v= to
-   *
-   *  where the variances of both alias are the same, then enter a new definition
-   *
-   *     type param v= to
-   *
-   *  If multiple forwarders would be generated, join their `to` types with an `&`.
-   *
-   *  @param cls           The class for which parameter bindings should be forwarded
-   *  @param decls	       Its scope
-   *  @param parentRefs    The parent type references of `cls`
-   *  @param paramBindings The type parameter bindings generated for `cls`
-   *
-   */
-  def forwardParamBindings(parentRefs: List[TypeRef],
-                           paramBindings: SimpleMap[TypeName, Type],
-                           cls: ClassSymbol, decls: Scope)(implicit ctx: Context) = {
-
-    def forwardRef(argSym: Symbol, from: TypeName, to: TypeAlias) = argSym.info match {
-      case info @ TypeAlias(TypeRef(_: ThisType, `from`)) if info.variance == to.variance =>
-        val existing = decls.lookup(argSym.name)
-        if (existing.exists) existing.info = existing.info & to
-        else enterArgBinding(argSym, to, cls, decls)
-      case _ =>
-    }
-
-    def forwardRefs(from: TypeName, to: Type) = to match {
-      case to: TypeAlias =>
-        for (pref <- parentRefs) {
-          def forward()(implicit ctx: Context): Unit =
-            for (argSym <- pref.decls)
-              if (argSym is BaseTypeArg) forwardRef(argSym, from, to)
-          pref.info match {
-            case info: TempClassInfo => info.addSuspension(implicit ctx => forward())
-            case _ => forward()
-          }
-        }
-      case _ =>
-    }
-
-    paramBindings.foreachBinding(forwardRefs)
-  }
-
   /** An argument bounds violation is a triple consisting of
    *   - the argument tree
    *   - a string "upper" or "lower" indicating which bound is violated
