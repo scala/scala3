@@ -314,11 +314,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
   protected def toTextRHS(tp: Type): Text = controlled {
     homogenize(tp) match {
       case tp: TypeAlias =>
-        val eql =
-          if (tp.variance == 1) " =+ "
-          else if (tp.variance == -1) " =- "
-          else " = "
-        eql ~ toText(tp.alias)
+        " = " ~ toText(tp.alias)
       case tp @ TypeBounds(lo, hi) =>
         (if (lo isRef defn.NothingClass) Text() else " >: " ~ toText(lo)) ~
           (if (hi isRef defn.AnyClass) Text() else " <: " ~ toText(hi))

@@ -153,11 +153,11 @@ Standard-Section: "ASTs" TopLevelStat*
                   TYPEREFpkg            fullyQualified_NameRef
                   TYPEREF               possiblySigned_NameRef qual_Type
                   RECtype               parent_Type
+                  TYPEALIAS             alias_Type
                   SUPERtype      Length this_Type underlying_Type
                   REFINEDtype    Length underlying_Type refinement_NameRef info_Type
                   APPLIEDtype    Length tycon_Type arg_Type*
                   TYPEBOUNDS     Length low_Type high_Type
-                  TYPEALIAS      Length alias_Type (COVARIANT | CONTRAVARIANT)?
                   ANNOTATEDtype  Length underlying_Type fullAnnotation_Term
                   ANDtype        Length left_Type right_Type
                   ORtype         Length left_Type right_Type
@@ -322,7 +322,8 @@ object TastyFormat {
   final val PRIVATEqualified = 104
   final val PROTECTEDqualified = 105
   final val RECtype = 106
-  final val SINGLETONtpt = 107
+  final val TYPEALIAS = 107
+  final val SINGLETONtpt = 108
 
   final val IDENT = 112
   final val IDENTtpt = 113
@@ -370,7 +371,6 @@ object TastyFormat {
   final val APPLIEDtpt = 162
   final val TYPEBOUNDS = 163
   final val TYPEBOUNDStpt = 164
-  final val TYPEALIAS = 165
   final val ANDtype = 166
   final val ANDtpt = 167
   final val ORtype = 168

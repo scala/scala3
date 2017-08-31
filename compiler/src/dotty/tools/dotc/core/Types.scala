@@ -3557,22 +3557,12 @@ object Types {
     assert(lo.isInstanceOf[TermType])
     assert(hi.isInstanceOf[TermType])
 
-    def variance: Int = 0
-
     override def underlying(implicit ctx: Context): Type = hi
 
     /** The non-alias type bounds type with given bounds */
     def derivedTypeBounds(lo: Type, hi: Type)(implicit ctx: Context) =
-      if ((lo eq this.lo) && (hi eq this.hi) && (variance == 0)) this
+      if ((lo eq this.lo) && (hi eq this.hi)) this
       else TypeBounds(lo, hi)
-
-    /** If this is an alias, a derived alias with the new variance,
-     *  Otherwise the type itself.
-     */
-    def withVariance(variance: Int)(implicit ctx: Context) = this match {
-      case tp: TypeAlias => tp.derivedTypeAlias(tp.alias, variance)
-      case _ => this
-    }
 
     def contains(tp: Type)(implicit ctx: Context): Boolean = tp match {
       case tp: TypeBounds => lo <:< tp.lo && tp.hi <:< hi
@@ -3603,58 +3593,31 @@ object Types {
       case _ => super.| (that)
     }
 
-    /** The implied bounds, where aliases are mapped to intervals from
-     *  Nothing/Any
-     */
-    def boundsInterval(implicit ctx: Context): TypeBounds = this
+    override def computeHash = doHash(lo, hi)
 
-    /** If this type and that type have the same variance, this variance, otherwise 0 */
-    final def commonVariance(that: TypeBounds): Int = (this.variance + that.variance) / 2
-
-    override def computeHash = doHash(variance, lo, hi)
+    // @!!! we are not systematic when we do referntial vs structural comparisons.
+    // Do referential everywhere?
     override def equals(that: Any): Boolean = that match {
       case that: TypeBounds =>
-        (this.lo eq that.lo) && (this.hi eq that.hi) && (this.variance == that.variance)
+        (this.lo eq that.lo) && (this.hi eq that.hi)
       case _ =>
         false
     }
-
-    override def toString =
-      if (lo eq hi) s"TypeAlias($lo, $variance)" else s"TypeBounds($lo, $hi)"
   }
 
   class RealTypeBounds(lo: Type, hi: Type) extends TypeBounds(lo, hi)
 
   // @!!! get rid of variance
-  abstract class TypeAlias(val alias: Type, override val variance: Int) extends TypeBounds(alias, alias) {
+  abstract class TypeAlias(val alias: Type) extends TypeBounds(alias, alias) {
+
     /** pre: this is a type alias */
-    def derivedTypeAlias(alias: Type, variance: Int = this.variance)(implicit ctx: Context) =
-      if ((alias eq this.alias) && (variance == this.variance)) this
-      else TypeAlias(alias, variance)
+    def derivedTypeAlias(alias: Type)(implicit ctx: Context) =
+      if (alias eq this.alias) this else TypeAlias(alias)
 
-    override def & (that: TypeBounds)(implicit ctx: Context): TypeBounds = {
-      val v = this commonVariance that
-      if (v > 0) derivedTypeAlias(this.hi & that.hi, v)
-      else if (v < 0) derivedTypeAlias(this.lo | that.lo, v)
-      else super.& (that)
-    }
-
-    override def | (that: TypeBounds)(implicit ctx: Context): TypeBounds = {
-      val v = this commonVariance that
-      if (v > 0) derivedTypeAlias(this.hi | that.hi, v)
-      else if (v < 0) derivedTypeAlias(this.lo & that.lo, v)
-      else super.| (that)
-    }
-
-    override def boundsInterval(implicit ctx: Context): TypeBounds =
-      if (variance == 0) this
-      else if (variance < 0) TypeBounds.lower(alias)
-      else TypeBounds.upper(alias)
-
-    override def computeHash = doHash(variance, alias)
+    override def computeHash = doHash(alias)
   }
 
-  class CachedTypeAlias(alias: Type, variance: Int) extends TypeAlias(alias, variance)
+  class CachedTypeAlias(alias: Type) extends TypeAlias(alias)
 
   object TypeBounds {
     def apply(lo: Type, hi: Type)(implicit ctx: Context): TypeBounds =
@@ -3665,8 +3628,8 @@ object Types {
   }
 
   object TypeAlias {
-    def apply(alias: Type, variance: Int = 0)(implicit ctx: Context) =
-      unique(new CachedTypeAlias(alias, variance))
+    def apply(alias: Type)(implicit ctx: Context) =
+      unique(new CachedTypeAlias(alias))
     def unapply(tp: TypeAlias): Option[Type] = Some(tp.alias)
   }
 
@@ -3915,7 +3878,7 @@ object Types {
           derivedRefinedType(tp, this(tp.parent), this(tp.refinedInfo))
 
         case tp: TypeAlias =>
-          derivedTypeAlias(tp, atVariance(variance * tp.variance)(this(tp.alias)))
+          derivedTypeAlias(tp, atVariance(0)(this(tp.alias)))
 
         case tp: TypeBounds =>
           variance = -variance
@@ -4108,22 +4071,12 @@ object Types {
           else info match {
             case Range(infoLo: TypeBounds, infoHi: TypeBounds) =>
               assert(variance == 0)
-              val v1 = infoLo.variance
-              val v2 = infoHi.variance
-              // There's some weirdness coming from the way aliases can have variance
-              // If infoLo and infoHi are both aliases with the same non-zero variance
-              // we can propagate to a range of the refined types. If they are both
-              // non-alias ranges we know that infoLo <:< infoHi and therefore we can
-              // propagate to refined types with infoLo and infoHi as bounds.
-              // In all other cases, Nothing..Any is the only interval that contains
-              // the range. i966.scala is a test case.
-              if (v1 > 0 && v2 > 0) propagate(infoLo, infoHi)
-              else if (v1 < 0 && v2 < 0) propagate(infoHi, infoLo)
-              else if (!infoLo.isAlias && !infoHi.isAlias) propagate(infoLo, infoHi)
+              if (!infoLo.isAlias && !infoHi.isAlias) propagate(infoLo, infoHi)
               else range(tp.bottomType, tp.topType)
                 // Using `parent` instead of `tp.topType` would be better for normal refinements,
                 // but it would also turn *-types into hk-types, which is not what we want.
                 // We should revisit this point in case we represent applied types not as refinements anymore.
+                // @!!! revisit
             case Range(infoLo, infoHi) =>
               propagate(infoLo, infoHi)
             case _ =>
@@ -4303,7 +4256,7 @@ object Types {
         this(this(x, tp.parent), tp.refinedInfo)
 
       case bounds @ TypeBounds(lo, hi) =>
-        if (lo eq hi) atVariance(variance * bounds.variance)(this(x, lo))
+        if (lo eq hi) atVariance(0)(this(x, lo))
         else {
           variance = -variance
           val y = this(x, lo)

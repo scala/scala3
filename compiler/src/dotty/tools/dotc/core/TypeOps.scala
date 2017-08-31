@@ -63,8 +63,6 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
             tp
           case tp: RefinedType =>  //@!!!
             derivedRefinedType(tp, apply(tp.parent), apply(tp.refinedInfo))
-          case tp: TypeAlias if tp.variance == 1 => // if variance != 1, need to do the variance calculation
-            derivedTypeAlias(tp, apply(tp.alias))
           case _ =>
             mapOver(tp)
         }

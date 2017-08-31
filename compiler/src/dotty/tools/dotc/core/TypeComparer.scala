@@ -525,8 +525,8 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
     case tp2 @ TypeBounds(lo2, hi2) =>
       def compareTypeBounds = tp1 match {
         case tp1 @ TypeBounds(lo1, hi1) =>
-          (tp2.variance > 0 && tp1.variance >= 0 || (lo2 eq NothingType) || isSubType(lo2, lo1)) &&
-          (tp2.variance < 0 && tp1.variance <= 0 || (hi2 eq AnyType) || isSubType(hi1, hi2))
+          ((lo2 eq NothingType) || isSubType(lo2, lo1)) &&
+          ((hi2 eq AnyType) || isSubType(hi1, hi2))
         case tp1: ClassInfo =>
           tp2 contains tp1
         case _ =>
@@ -963,8 +963,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
           tp2.refinedInfo match {
             case rinfo2: TypeBounds =>
               val ref1 = tp1.widenExpr.select(name)
-              (rinfo2.variance > 0 || isSubType(rinfo2.lo, ref1)) &&
-              (rinfo2.variance < 0 || isSubType(ref1, rinfo2.hi))
+              isSubType(rinfo2.lo, ref1) && isSubType(ref1, rinfo2.hi)
             case _ =>
               false
           }
@@ -1447,13 +1446,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
           val rinfo1 = tp1.refinedInfo
           val rinfo2 = tp2.refinedInfo
           val parent = tp1.parent & tp2.parent
-
-          def isNonvariantAlias(tp: Type) = tp match {
-            case tp: TypeAlias => tp.variance == 0
-            case _ => false
-          }
-          if (homogenizeArgs &&
-              isNonvariantAlias(rinfo1) && isNonvariantAlias(rinfo2))
+          if (homogenizeArgs && rinfo1.isAlias && rinfo2.isAlias) // @!!! probably drop this case?
             isSameType(rinfo1, rinfo2) // establish new constraint
 
           tp1.derivedRefinedType(parent, tp1.refinedName, rinfo1 & rinfo2)
