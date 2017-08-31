@@ -59,10 +59,10 @@ class PostTyper extends MacroTransform with SymTransformer  { thisTransformer =>
 
   import tpd._
 
-  def transformSym(sym: SymDenotation)(implicit ctx: Context): SymDenotation = {
-    if (sym.is(BindDefinedType) && ctx.gadt.bounds.contains(sym.symbol)) {
-      sym.copySymDenotation(info = ctx.gadt.bounds.apply(sym.symbol) & sym.info)
-    } else sym
+  def transformSym(ref: SymDenotation)(implicit ctx: Context): SymDenotation = {
+    if (ref.is(BindDefinedType) && ctx.gadt.bounds.contains(ref.symbol)) {
+      ref.copySymDenotation(info = ctx.gadt.bounds.apply(ref.symbol) & ref.info)
+    } else ref
   }
 
   /** the following two members override abstract members in Transform */
