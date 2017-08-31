@@ -328,19 +328,7 @@ class ClassfileParser(
                   if (argsBuf != null) argsBuf += arg
                 }
                 accept('>')
-                if (skiptvs) tp
-                else if (config.Config.newScheme) tp.appliedTo(argsBuf.toList)
-                else {
-                  var tp1: Type = tp
-                  (argsBuf.toList, tp.typeParamSymbols).zipped.foreach { (arg, formal) =>
-                    val info = arg match {
-                      case arg: TypeBounds => arg
-                      case _ => TypeAlias(arg)
-                    }
-                    tp1 = RefinedType(tp1, formal.name, info)
-                  }
-                  tp1
-                }
+                if (skiptvs) tp else tp.appliedTo(argsBuf.toList)
               } else tp
             case tp =>
               assert(sig(index) != '<', tp)
@@ -424,9 +412,8 @@ class ClassfileParser(
       val start = index
       while (sig(index) != '>') {
         val tpname = subName(':'.==).toTypeName
-        val expname = if (owner.isClass && !config.Config.newScheme) tpname.expandedName(owner) else tpname
         val s = ctx.newSymbol(
-          owner, expname, owner.typeParamCreationFlags,
+          owner, tpname, owner.typeParamCreationFlags,
           typeParamCompleter(index), coord = indexCoord(index))
         if (owner.isClass) owner.asClass.enter(s)
         tparams = tparams + (tpname -> s)

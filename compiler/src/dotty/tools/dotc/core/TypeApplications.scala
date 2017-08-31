@@ -402,54 +402,6 @@ class TypeApplications(val self: Type) extends AnyVal {
     }
     val stripped = self.stripTypeVar
     val dealiased = stripped.safeDealias
-
-    /** Normalize a TypeBounds argument. This involves (1) propagating bounds
-     *  from the type parameters into the argument, (2) possibly choosing the argument's
-     *  upper or lower bound according to variance.
-     *
-     *  Bounds propagation works as follows: If the dealiased type constructor is a TypeRef
-     *  `p.c`,
-     *    - take the type paramater bounds of `c` as seen from `p`,
-     *    - substitute concrete (non-bound) arguments for corresponding formal type parameters,
-     *    - interpolate, so that any (F-bounded) type parameters in the resulting bounds are avoided.
-     *  The resulting bounds are joined (via &) with corresponding type bound arguments.
-     */
-    def normalizeWildcardArg(typParams: List[TypeSymbol])(arg: Type, tparam: TypeSymbol): Type = arg match {
-      case TypeBounds(lo, hi) =>
-        if (Config.newBoundsScheme) arg
-        else {
-        def avoidParams(seen: Set[Symbol], v: Int): ApproximatingTypeMap = new ApproximatingTypeMap {
-          variance = if (v >= 0) 1 else -1
-          def apply(t: Type) = t match {
-            case t: TypeRef if typParams contains t.symbol =>
-              val lo = atVariance(-variance)(apply(t.info.loBound))
-              val hi =
-                if (seen.contains(t.symbol)) t.topType
-                else avoidParams(seen + t.symbol, variance)(t.info.hiBound)
-              range(lo, hi)
-            case _ => mapOver(t)
-          }
-        }
-        val v = tparam.paramVariance
-        val pbounds = dealiased match {
-          case dealiased @ TypeRef(prefix, _) =>
-            val (concreteArgs, concreteParams) = // @!!! optimize?
-              args.zip(typParams).filter(!_._1.isInstanceOf[TypeBounds]).unzip
-            if (tparam.isCompleting) TypeBounds.empty
-            else avoidParams(Set(tparam), v)(
-              tparam.paramInfo.asSeenFrom(prefix, tparam.owner)
-                .subst(concreteParams, concreteArgs))
-          case _ =>
-            TypeBounds.empty
-        }
-        typr.println(i"normalize arg $arg for $tparam in $self app $args%, %, pbounds, = $pbounds")
-        if (v > 0) hi & pbounds.hiBound
-        else if (v < 0) lo | pbounds.loBound
-        else arg recoverable_& pbounds
-        }
-      case _ => arg
-    }
-
     if (args.isEmpty || ctx.erasedTypes) self
     else dealiased match {
       case dealiased: HKTypeLambda =>
@@ -500,11 +452,7 @@ class TypeApplications(val self: Type) extends AnyVal {
       case _ if typParams.isEmpty || typParams.head.isInstanceOf[LambdaParam] =>
         HKApply(self, args)
       case dealiased =>
-        if (Config.newScheme) {
-          val tparamSyms = typParams.asInstanceOf[List[TypeSymbol]]
-          AppliedType(self, args.zipWithConserve(tparamSyms)(normalizeWildcardArg(tparamSyms)))
-        } else
-          matchParams(dealiased, typParams, args)
+        AppliedType(self, args)
     }
   }
 
@@ -540,48 +488,16 @@ class TypeApplications(val self: Type) extends AnyVal {
   /** The type arguments of this type's base type instance wrt. `base`.
    *  Wildcard types in arguments are returned as TypeBounds instances.
    */
-  final def baseArgInfos(base: Symbol)(implicit ctx: Context): List[Type] =
-    if (Config.newScheme)
-      self.baseType(base).argInfos
-    else if (self derivesFrom base)
-      self.dealias match {
-        case self: TypeRef if !self.symbol.isClass => self.superType.baseArgInfos(base)
-        case self: HKApply => self.superType.baseArgInfos(base)
-        case _ => base.typeParams.map(param => self.member(param.name).info.argInfo)
-      }
-    else
-      Nil
+  final def baseArgInfos(base: Symbol)(implicit ctx: Context): List[Type] = // @!!! drop
+    self.baseType(base).argInfos
 
   /** The base type including all type arguments and applicable refinements
    *  of this type. Refinements are applicable if they refine a member of
    *  the parent type which furthermore is not a name-mangled type parameter.
    *  Existential types in arguments are returned as TypeBounds instances.
    */
-  final def baseTypeWithArgs(base: Symbol)(implicit ctx: Context): Type =
-    if (Config.newScheme) self.baseType(base)
-    else ctx.traceIndented(s"btwa ${self.show} wrt $base", core, show = true) {
-    def default = self.baseTypeTycon(base).appliedTo(baseArgInfos(base))
-    def isExpandedTypeParam(sym: Symbol) = sym.is(TypeParam) && sym.name.is(ExpandedName)
-    self match {
-      case tp: TypeRef =>
-        tp.info match {
-          case TypeBounds(_, hi) => hi.baseTypeWithArgs(base)
-          case _ => default
-        }
-      case tp @ RefinedType(parent, name, _) if !Config.newScheme && !isExpandedTypeParam(tp.member(name).symbol) =>
-        tp.wrapIfMember(parent.baseTypeWithArgs(base))
-      case tp: TermRef =>
-        tp.underlying.baseTypeWithArgs(base)
-      case tp: HKApply =>
-        tp.superType.baseTypeWithArgs(base)
-      case AndType(tp1, tp2) =>
-        tp1.baseTypeWithArgs(base) & tp2.baseTypeWithArgs(base)
-      case OrType(tp1, tp2) =>
-        tp1.baseTypeWithArgs(base) | tp2.baseTypeWithArgs(base)
-      case _ =>
-        default
-    }
-  }
+  final def baseTypeWithArgs(base: Symbol)(implicit ctx: Context): Type = // @!!! drop
+    self.baseType(base)
 
   /** Translate a type of the form From[T] to To[T], keep other types as they are.
    *  `from` and `to` must be static classes, both with one type parameter, and the same variance.
@@ -593,8 +509,7 @@ class TypeApplications(val self: Type) extends AnyVal {
     case _ =>
       if (self.derivesFrom(from))
         if (ctx.erasedTypes) to.typeRef // @!!! can be dropped; appliedTo does the right thing anyway
-        else if (Config.newScheme) to.typeRef.appliedTo(self.baseType(from).argInfos)
-        else RefinedType(to.typeRef, to.typeParams.head.name, self.member(from.typeParams.head.name).info)
+        else to.typeRef.appliedTo(self.baseType(from).argInfos)
       else self
   }
 

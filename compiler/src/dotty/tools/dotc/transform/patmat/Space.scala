@@ -563,7 +563,7 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
       debug.println(i"refine($tp1, $tp2) = $res")
       res
     case (tp1 @ AppliedType(tycon, args), tp2: TypeRef)
-    if config.Config.newScheme && tp2.symbol.typeParams.nonEmpty && tp2.symbol.derivesFrom(tycon.typeSymbol) =>
+    if tp2.symbol.typeParams.nonEmpty && tp2.symbol.derivesFrom(tycon.typeSymbol) =>
       val tp1a = tp1.derivedAppliedType(refine(tycon, tp2), args)
       val res = derivingType(tp1a.asInstanceOf[AppliedType], tp2)
       debug.println(i"refine($tp1, $tp2) = $res")

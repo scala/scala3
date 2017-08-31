@@ -497,7 +497,7 @@ object Flags {
 
   /** The flags of a class type parameter */
   final val ClassTypeParamCreationFlags =
-    TypeParam | Deferred | (if (config.Config.newScheme) Private else Protected) | Local
+    TypeParam | Deferred | Private | Local
 
   /** Flags that can apply to both a module val and a module class, except those that
     *  are added at creation anyway
@@ -593,7 +593,7 @@ object Flags {
   /** Is valid forever */
   final val ValidForever = Package | Permanent | Scala2ExistentialCommon
 
-  /** A type parameter of a class or trait (works only under Config.newScheme) */
+  /** A type parameter of a class or trait */
   final val ClassTypeParam = allOf(TypeParam, Private)
 
   /** Is a default parameter in Scala 2*/

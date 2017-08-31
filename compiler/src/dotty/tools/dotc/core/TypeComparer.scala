@@ -1026,20 +1026,11 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
     val classBounds = tp2.classSymbols
     def recur(bcs: List[ClassSymbol]): Boolean = bcs match {
       case bc :: bcs1 =>
-        if (Config.newScheme)
-          (classBounds.exists(bc.derivesFrom) &&
-           variancesConform(bc.typeParams, tparams) &&
-           p(tp1.baseType(bc))
-          ||
-          recur(bcs1))
-        else {
-          val baseRef = tp1.baseTypeTycon(bc)
-          (classBounds.exists(bc.derivesFrom) &&
-          variancesConform(baseRef.typeParams, tparams) &&
-          p(baseRef.appliedTo(tp1.baseArgInfos(bc)))
-          ||
-          recur(bcs1))
-        }
+        (classBounds.exists(bc.derivesFrom) &&
+          variancesConform(bc.typeParams, tparams) &&
+          p(tp1.baseType(bc))
+        ||
+        recur(bcs1))
       case nil =>
         false
     }
