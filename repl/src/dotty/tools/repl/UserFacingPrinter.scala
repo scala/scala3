@@ -21,6 +21,7 @@ import dotc.printing.{ GlobalPrec, DotPrec, Printer, PlainPrinter }
 import dotc.typer.Implicits.SearchResult
 import dotc.typer.ImportInfo
 
+// TODO: Avoid code duplication between userfacing and refined printers
 class UserFacingPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
 
   private def panic(msg: String): Nothing = throw new AssertionError(msg)
@@ -92,7 +93,7 @@ class UserFacingPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
     case tp: TypeAlias => toText(tp.underlying)
     case ExprType(result) => ":" ~~ toText(result)
     case TypeBounds(lo, hi) =>
-      { if (lo != defn.NothingType) toText(lo) ~~ ">: _" else Str("_") } ~~
+      { if (lo != defn.NothingType) toText(lo) ~~ ">: _" else Str("_") } ~~ // TODO: that's different from how args are written in source!
       { if (hi != defn.AnyType) "<:" ~~ toText(hi) else Text() }
     case tp: TypeRef => tp.info match {
       case TypeAlias(alias) => toText(alias)
@@ -116,19 +117,28 @@ class UserFacingPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       }
     }
     case AnyAppliedType(tycon, args) => {
+      def argText(tp: Type) =
+        toText {
+          tp match {
+            case tp: TypeArgRef => tp.underlying
+            case _ => tp
+          }
+        }
       def toTextInfixType(tycon: Type, args: List[Type]): Text = {
         // TODO: blatant copy from `RefinedPrinter`
         val l :: r :: Nil = args
         val isRightAssoc = tycon.typeSymbol.name.endsWith(":")
-        val leftArg = if (isRightAssoc && l.isInfixType) "(" ~ toText(l) ~ ")" else toText(l)
-        val rightArg = if (!isRightAssoc && r.isInfixType) "(" ~ toText(r) ~ ")" else toText(r)
+        val leftArg = if (isRightAssoc && l.isInfixType) "(" ~ argText(l) ~ ")" else argText(l)
+        val rightArg = if (!isRightAssoc && r.isInfixType) "(" ~ argText(r) ~ ")" else argText(r)
         leftArg ~~ atPrec(DotPrec) { tycon.toText(this) } ~~ rightArg
       }
       if (tp.isInfixType) toTextInfixType(tycon, args)
       else {
-        toText(tycon) ~ "[" ~ Fluid(args.reverse.map(toText).intersperse(Str(", "))) ~ "]"
+        toText(tycon) ~ "[" ~ Fluid(args.reverse.map(argText).intersperse(Str(", "))) ~ "]"
       }
     }
+    case tp: TypeArgRef =>
+      super.toText(tp)
     case tp: ClassInfo => {
       if (wellKnownPkg(tp.cls.owner))
         nameString(tp.cls.name)
