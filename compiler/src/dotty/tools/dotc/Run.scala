@@ -118,7 +118,7 @@ class Run(comp: Compiler, ictx: Context) {
     ctx.usePhases(phases)
     var lastPrintedTree: PrintedTree = NoPrintedTree
     for (phase <- ctx.allPhases)
-      if (phase.isRunnable) // @!!! check? was: !ctx.reporter.hasErrors
+      if (phase.isRunnable)
         Stats.trackTime(s"$phase ms ") {
           val start = System.currentTimeMillis
           units = phase.runOn(units)

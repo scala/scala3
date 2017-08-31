@@ -456,17 +456,9 @@ object Checking {
           tp.derivedClassInfo(
             prefix = apply(tp.prefix),
             classParentsNEW =
-              if (config.Config.newScheme)
               tp.parentsWithArgs.map { p =>
                 apply(p).stripAnnots match {
                   case ref: RefType => ref
-                  case _ => defn.ObjectType // can happen if class files are missing
-                }
-              }
-              else
-              tp.parentsWithArgs.map { p =>
-                apply(p).underlyingClassRef(refinementOK = false) match {
-                  case ref: TypeRef => ref
                   case _ => defn.ObjectType // can happen if class files are missing
                 }
               }

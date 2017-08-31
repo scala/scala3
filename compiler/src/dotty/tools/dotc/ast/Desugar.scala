@@ -238,23 +238,6 @@ object desugar {
         Nil
     }
 
-  /** Fill in empty type bounds with Nothing/Any. Expand private local type parameters as follows:
-   *
-   *     class C[v T]
-   * ==>
-   *     class C { type v C$T; type v T = C$T }
-   */
-  def typeDef(tdef: TypeDef)(implicit ctx: Context): Tree = {
-    if (tdef.mods.is(PrivateLocalParam) && !dotty.tools.dotc.config.Config.newScheme) {
-      val tparam = cpy.TypeDef(tdef)(name = tdef.name.expandedName(ctx.owner))
-        .withMods(tdef.mods &~ PrivateLocal)
-      val alias = cpy.TypeDef(tdef)(rhs = refOfDef(tparam))
-        .withMods(tdef.mods & VarianceFlags | PrivateLocalParamAccessor | Synthetic)
-      Thicket(tparam, alias)
-    }
-    else tdef
-  }
-
   @sharable private val synthetic = Modifiers(Synthetic)
 
   private def toDefParam(tparam: TypeDef): TypeDef =
@@ -696,7 +679,7 @@ object desugar {
 
   def defTree(tree: Tree)(implicit ctx: Context): Tree = tree match {
     case tree: ValDef => valDef(tree)
-    case tree: TypeDef => if (tree.isClassDef) classDef(tree) else typeDef(tree)
+    case tree: TypeDef => if (tree.isClassDef) classDef(tree) else tree
     case tree: DefDef => defDef(tree)
     case tree: ModuleDef => moduleDef(tree)
     case tree: PatDef => patDef(tree)
@@ -1133,7 +1116,6 @@ object desugar {
   def refinedTypeToClass(parent: tpd.Tree, refinements: List[Tree])(implicit ctx: Context): TypeDef = {
     def stripToCore(tp: Type): List[Type] = tp match {
       case tp: AppliedType => tp :: Nil
-      case tp: RefinedType if !config.Config.newScheme && tp.argInfos.nonEmpty => tp :: Nil // parameterized class type
       case tp: TypeRef if tp.symbol.isClass => tp :: Nil     // monomorphic class type
       case tp: TypeProxy => stripToCore(tp.underlying)
       case AndType(tp1, tp2) => stripToCore(tp1) ::: stripToCore(tp2)

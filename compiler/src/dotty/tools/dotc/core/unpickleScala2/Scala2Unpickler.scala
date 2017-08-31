@@ -485,10 +485,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
       case TYPEsym | ALIASsym =>
         var name1 = name.asTypeName
         var flags1 = flags
-        if (flags is TypeParam) {
-          if (!dotty.tools.dotc.config.Config.newScheme) name1 = name1.expandedName(owner)
-          flags1 |= owner.typeParamCreationFlags
-        }
+        if (flags is TypeParam) flags1 |= owner.typeParamCreationFlags
         ctx.newSymbol(owner, name1, flags1, localMemberUnpickler, coord = start)
       case CLASSsym =>
         var infoRef = readNat()

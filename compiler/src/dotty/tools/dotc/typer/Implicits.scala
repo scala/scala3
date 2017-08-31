@@ -433,13 +433,7 @@ trait ImplicitRunInfo { self: RunInfo =>
                   comps += companion.asSeenFrom(pre, compSym.owner).asInstanceOf[TermRef]
               }
               def addParentScope(parent: Type): Unit =
-                if (Config.newScheme)
-                  iscopeRefs(tp.baseType(parent.typeSymbol)) foreach addRef
-                else {
-                  iscopeRefs(parent.typeConstructor) foreach addRef
-                  for (param <- parent.typeParamSymbols)
-                    comps ++= iscopeRefs(tp.member(param.name).info)
-                }
+                iscopeRefs(tp.baseType(parent.typeSymbol)) foreach addRef
               val companion = cls.companionModule
               if (companion.exists) addRef(companion.valRef)
               cls.classParentsNEW foreach addParentScope
