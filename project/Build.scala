@@ -359,45 +359,6 @@ object Build {
     )
   )
 
-  lazy val `dotty-repl` = project.in(file("repl")).
-    dependsOn(
-      `dotty-compiler`,
-      `dotty-compiler` % "test->test"
-    ).
-    settings(commonNonBootstrappedSettings).
-    settings(
-      // set system in/out for repl
-      connectInput in run := true,
-      outputStrategy := Some(StdoutOutput),
-
-      // enable verbose exception messages for JUnit
-      testOptions in Test += Tests.Argument(TestFrameworks.JUnit, "-a", "-v"),
-
-      resourceDirectory in Test := baseDirectory.value / "test-resources",
-
-      run := Def.inputTaskDyn {
-        val classPath =
-          (packageAll in `dotty-compiler-bootstrapped`).value("dotty-library") + ":" +
-          (packageAll in `dotty-compiler-bootstrapped`).value("dotty-interfaces")
-
-        val args: Seq[String] = spaceDelimited("<arg>").parsed
-
-        val fullArgs = args.span(_ != "-classpath") match {
-          case (beforeCp, Nil) => beforeCp ++ ("-classpath" :: classPath :: Nil)
-          case (beforeCp, rest) => beforeCp ++ rest
-        }
-
-        (runMain in Compile).toTask(
-          s" dotty.tools.repl.Main " + fullArgs.mkString(" ")
-        )
-      }.evaluated,
-
-      javaOptions ++= (javaOptions in `dotty-compiler`).value,
-      fork in run := true,
-      fork in Test := true,
-      parallelExecution in Test := false
-    )
-
   lazy val `dotty-doc` = project.in(file("doc-tool")).
     dependsOn(`dotty-compiler`, `dotty-compiler` % "test->test").
     settings(commonNonBootstrappedSettings).
