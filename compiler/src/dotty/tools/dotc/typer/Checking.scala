@@ -584,12 +584,15 @@ trait Checking {
     case _ =>
   }
 
-  /** Check that any top-level type arguments in this type are feasible, i.e. that
-   *  their lower bound conforms to their upper bound. If a type argument is
-   *  infeasible, issue and error and continue with upper bound.
+  /** Check that `tp` is a class type and that any top-level type arguments in this type
+   *  are feasible, i.e. that their lower bound conforms to their upper bound. If a type
+   *  argument is infeasible, issue and error and continue with upper bound.
    */
-  def checkFeasible(tp: Type, pos: Position, where: => String = "")(implicit ctx: Context): Type =
+  def checkFeasibleParent(tp: Type, pos: Position, where: => String = "")(implicit ctx: Context): Type =
     tp match {
+      case tp @ AndType(tp1, tp2) =>
+        ctx.error(s"conflicting type arguments$where", pos)
+        tp1
       case tp @ AppliedType(tycon, args) =>
         def checkArg(arg: Type) = arg match {
           case tp @ TypeBounds(lo, hi) if !(lo <:< hi) =>
@@ -599,7 +602,7 @@ trait Checking {
         }
         tp.derivedAppliedType(tycon, args.mapConserve(checkArg))
       case tp: RefinedType => // @!!!
-        tp.derivedRefinedType(tp.parent, tp.refinedName, checkFeasible(tp.refinedInfo, pos, where))
+        tp.derivedRefinedType(tp.parent, tp.refinedName, checkFeasibleParent(tp.refinedInfo, pos, where))
       case tp: RecType => // @!!!
         tp.rebind(tp.parent)
       case tp @ TypeBounds(lo, hi) if !(lo <:< hi) => // @!!!
@@ -749,7 +752,7 @@ trait NoChecking extends Checking {
   override def checkStable(tp: Type, pos: Position)(implicit ctx: Context): Unit = ()
   override def checkClassType(tp: Type, pos: Position, traitReq: Boolean, stablePrefixReq: Boolean)(implicit ctx: Context): Type = tp
   override def checkImplicitParamsNotSingletons(vparamss: List[List[ValDef]])(implicit ctx: Context): Unit = ()
-  override def checkFeasible(tp: Type, pos: Position, where: => String = "")(implicit ctx: Context): Type = tp
+  override def checkFeasibleParent(tp: Type, pos: Position, where: => String = "")(implicit ctx: Context): Type = tp
   override def checkInlineConformant(tree: Tree, what: => String)(implicit ctx: Context) = ()
   override def checkNoDoubleDefs(cls: Symbol)(implicit ctx: Context): Unit = ()
   override def checkParentCall(call: Tree, caller: ClassSymbol)(implicit ctx: Context) = ()
