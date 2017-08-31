@@ -1223,7 +1223,7 @@ object SymDenotations {
       info2 match {
         case info2: ClassInfo =>
           info1 match {
-            case info1: ClassInfo => info1.classParentsNEW ne info2.classParentsNEW
+            case info1: ClassInfo => info1.classParents ne info2.classParents
             case _ => completersMatter
           }
         case _ => completersMatter
@@ -1366,25 +1366,19 @@ object SymDenotations {
       super.info_=(tp)
     }
 
-    /** The denotations of all parents in this class. */
-    def classParentRefs(implicit ctx: Context): List[TypeRef] = info match {
-      case classInfo: ClassInfo => classInfo.parentRefs
-      case _ => Nil
-    }
-
-    /** The denotations of all parents in this class. */
+   /** The denotations of all parents in this class. */
     def classParentsWithArgs(implicit ctx: Context): List[Type] = info match {
       case classInfo: ClassInfo => classInfo.parentsWithArgs
       case _ => Nil
     }
 
-    def classParentsNEW(implicit ctx: Context): List[Type] = info match {
+    def classParents(implicit ctx: Context): List[Type] = info match {
       case classInfo: ClassInfo => classInfo.parentsNEW
       case _ => Nil
     }
 
     /** The symbol of the superclass, NoSymbol if no superclass exists */
-    def superClass(implicit ctx: Context): Symbol = classParentsNEW match {
+    def superClass(implicit ctx: Context): Symbol = classParents match {
       case parent :: _ =>
         val cls = parent.classSymbol
         if (cls is Trait) NoSymbol else cls
@@ -1457,10 +1451,13 @@ object SymDenotations {
     def computeBaseData(implicit onBehalf: BaseData, ctx: Context): (List[ClassSymbol], BaseClassSet) = {
       def emptyParentsExpected =
         is(Package) || (symbol == defn.AnyClass) || ctx.erasedTypes && (symbol == defn.ObjectClass)
-      if (classParentsNEW.isEmpty && !emptyParentsExpected)
+      if (classParents.isEmpty && !emptyParentsExpected)
         onBehalf.signalProvisional()
       val builder = new BaseDataBuilder
-      for (p <- classParentsNEW) builder.addAll(p.typeSymbol.asClass.baseClasses)
+      for (p <- classParents) {
+        assert(p.typeSymbol.isClass, s"$this has $p")
+        builder.addAll(p.typeSymbol.asClass.baseClasses)
+      }
       (classSymbol :: builder.baseClasses, builder.baseClassSet)
     }
 
@@ -1601,7 +1598,7 @@ object SymDenotations {
           denots
       }
       if (name.isConstructorName) ownDenots
-      else collect(ownDenots, classParentsNEW)
+      else collect(ownDenots, classParents)
     }
 
     override final def findMember(name: Name, pre: Type, excluded: FlagSet)(implicit ctx: Context): Denotation = {
@@ -1659,7 +1656,7 @@ object SymDenotations {
                   case _ => false
                 }
                 if (isOwnThis)
-                  if (clsd.baseClassSet.contains(symbol)) foldGlb(NoType, clsd.classParentsNEW)
+                  if (clsd.baseClassSet.contains(symbol)) foldGlb(NoType, clsd.classParents)
                   else NoType
                 else
                   baseTypeOf(clsd.typeRef).asSeenFrom(prefix, owner)
@@ -1737,7 +1734,7 @@ object SymDenotations {
     def computeMemberNames(keepOnly: NameFilter)(implicit onBehalf: MemberNames, ctx: Context): Set[Name] = {
       var names = Set[Name]()
       def maybeAdd(name: Name) = if (keepOnly(thisType, name)) names += name
-      for (p <- classParentsNEW)
+      for (p <- classParents)
         for (name <- p.typeSymbol.asClass.memberNames(keepOnly))
           maybeAdd(name)
       val ownSyms =

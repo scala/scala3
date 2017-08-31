@@ -1193,15 +1193,6 @@ object Types {
         NoType
     }
 
-    /** For a ClassInfo type, its parents,
-     *  Inherited by all type proxies. Empty for all other types.
-     *  Overwritten in ClassInfo, where parents is cached.
-     */
-    def parentRefs(implicit ctx: Context): List[TypeRef] = this match {
-      case tp: TypeProxy => tp.underlying.parentRefs
-      case _ => Nil
-    }
-
     /** The full parent types, including all type arguments */
     def parentsWithArgs(implicit ctx: Context): List[Type] = this match {
       case tp: TypeProxy => tp.superType.parentsWithArgs
@@ -1224,8 +1215,8 @@ object Types {
     }
 
     /** The first parent of this type, AnyRef if list of parents is empty */
-    def firstParentRef(implicit ctx: Context): TypeRef = parentRefs match {
-      case p :: _ => p
+    def firstParentRef(implicit ctx: Context): TypeRef = parentsNEW match { // @!!! needed?
+      case p :: _ => p.typeConstructor.asInstanceOf[TypeRef]
       case _ => defn.AnyType
     }
 
@@ -3559,7 +3550,7 @@ object Types {
   abstract case class ClassInfo(
       prefix: Type,
       cls: ClassSymbol,
-      classParentsNEW: List[Type],
+      classParents: List[Type],
       decls: Scope,
       selfInfo: DotClass /* should be: Type | Symbol */) extends CachedGroundType with TypeType {
 
@@ -3622,30 +3613,26 @@ object Types {
     // cached because baseType needs parents
     private var parentsCache: List[Type] = null
 
-    /** The parent type refs as seen from the given prefix */
-    override def parentRefs(implicit ctx: Context): List[TypeRef] =
-      parentsNEW.map(_.typeConstructor.asInstanceOf[TypeRef])
-
     /** The parent types with all type arguments */
     override def parentsWithArgs(implicit ctx: Context): List[Type] = parentsNEW
 
     override def parentsNEW(implicit ctx: Context): List[Type] = {
       if (parentsCache == null)
-        parentsCache = classParentsNEW.mapConserve(_.asSeenFrom(prefix, cls.owner))
+        parentsCache = classParents.mapConserve(_.asSeenFrom(prefix, cls.owner))
       parentsCache
     }
 
     def derivedClassInfo(prefix: Type)(implicit ctx: Context) =
       if (prefix eq this.prefix) this
-      else ClassInfo(prefix, cls, classParentsNEW, decls, selfInfo)
+      else ClassInfo(prefix, cls, classParents, decls, selfInfo)
 
-    def derivedClassInfo(prefix: Type = this.prefix, classParentsNEW: List[Type] = this.classParentsNEW, decls: Scope = this.decls, selfInfo: DotClass = this.selfInfo)(implicit ctx: Context) =
-      if ((prefix eq this.prefix) && (classParentsNEW eq this.classParentsNEW) && (decls eq this.decls) && (selfInfo eq this.selfInfo)) this
-      else ClassInfo(prefix, cls, classParentsNEW, decls, selfInfo)
+    def derivedClassInfo(prefix: Type = this.prefix, classParents: List[Type] = this.classParents, decls: Scope = this.decls, selfInfo: DotClass = this.selfInfo)(implicit ctx: Context) =
+      if ((prefix eq this.prefix) && (classParents eq this.classParents) && (decls eq this.decls) && (selfInfo eq this.selfInfo)) this
+      else ClassInfo(prefix, cls, classParents, decls, selfInfo)
 
     override def computeHash = doHash(cls, prefix)
 
-    override def toString = s"ClassInfo($prefix, $cls, $classParentsNEW)"
+    override def toString = s"ClassInfo($prefix, $cls, $classParents)"
   }
 
   class CachedClassInfo(prefix: Type, cls: ClassSymbol, classParents: List[Type], decls: Scope, selfInfo: DotClass)
@@ -3663,9 +3650,9 @@ object Types {
 
     def addSuspension(suspension: Context => Unit): Unit = suspensions ::= suspension
 
-    /** Install classinfo with known parents in `denot` and resume all suspensions */
+    /** Install classinfo with known parents in `denot` and resume all suspensions */ // @!!! elim
     def finalize(denot: SymDenotation, parents: List[Type])(implicit ctx: Context) = {
-      denot.info = derivedClassInfo(classParentsNEW = parents)
+      denot.info = derivedClassInfo(classParents = parents)
       suspensions.foreach(_(ctx))
     }
 

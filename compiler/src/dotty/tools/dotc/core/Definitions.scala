@@ -80,10 +80,9 @@ class Definitions {
         val typeParam = enterSyntheticTypeParam(cls, paramFlags, paramDecls)
         def instantiate(tpe: Type) =
           if (tpe.typeParams.nonEmpty) tpe.appliedTo(typeParam.typeRef)
-          else tpe
-        val parents = parentConstrs.toList map instantiate
-        val parentRefs = ctx.normalizeToClassRefs(parents, cls, paramDecls)
-        denot.info = ClassInfo(ScalaPackageClass.thisType, cls, parentRefs, paramDecls)
+          else tpe.dealias
+        val parents = parentConstrs.toList
+        denot.info = ClassInfo(ScalaPackageClass.thisType, cls, parents, paramDecls)
       }
     }
     newClassSymbol(ScalaPackageClass, name, EmptyFlags, completer).entered
@@ -123,7 +122,7 @@ class Definitions {
           if (name.firstPart.startsWith(str.ImplicitFunction)) {
             val superTrait =
               FunctionType(arity).appliedTo(argParams.map(_.typeRef) ::: resParam.typeRef :: Nil)
-            (ImplicitMethodType, ctx.normalizeToClassRefs(superTrait :: Nil, cls, decls))
+            (ImplicitMethodType, superTrait :: Nil)
           }
           else (MethodType, Nil)
         val applyMeth =

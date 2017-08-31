@@ -308,9 +308,9 @@ trait TypeAssigner {
       case err: ErrorType => untpd.cpy.Super(tree)(qual, mix).withType(err)
       case qtype @ ThisType(_) =>
         val cls = qtype.cls
-        def findMixinSuper(site: Type): Type = site.parentRefs filter (_.name == mix.name) match {
+        def findMixinSuper(site: Type): Type = site.parentsNEW filter (_.typeSymbol.name == mix.name) match {
           case p :: Nil =>
-            p
+            p.typeConstructor
           case Nil =>
             errorType(SuperQualMustBeParent(mix, cls), tree.pos)
           case p :: q :: _ =>

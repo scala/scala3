@@ -455,7 +455,7 @@ object Checking {
         case tp: ClassInfo =>
           tp.derivedClassInfo(
             prefix = apply(tp.prefix),
-            classParentsNEW =
+            classParents =
               tp.parentsWithArgs.map { p =>
                 apply(p).stripAnnots match {
                   case ref: RefType => ref
