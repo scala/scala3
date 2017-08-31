@@ -164,7 +164,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       case ErasedValueType(tycon, underlying) =>
         return "ErasedValueType(" ~ toText(tycon) ~ ", " ~ toText(underlying) ~ ")"
       case tp: ClassInfo =>
-        return toTextParents(tp.parentsWithArgs) ~ "{...}"
+        return toTextParents(tp.parents) ~ "{...}"
       case JavaArrayType(elemtp) =>
         return toText(elemtp) ~ "[]"
       case tp: AnnotatedType if homogenizedView =>

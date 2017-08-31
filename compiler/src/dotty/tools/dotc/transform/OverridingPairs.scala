@@ -35,7 +35,7 @@ object OverridingPairs {
      *  pair has already been treated in a parent class.
      *  This may be refined in subclasses. @see Bridges for a use case.
      */
-    protected def parents: Array[Symbol] = base.info.parentsNEW.toArray map (_.typeSymbol)
+    protected def parents: Array[Symbol] = base.info.parents.toArray map (_.typeSymbol)
 
     /** Does `sym1` match `sym2` so that it qualifies as overriding.
      *  Types always match. Term symbols match if their membertypes

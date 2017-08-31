@@ -856,7 +856,7 @@ object Types {
     }
 
     /** Temporary replacement for baseTypeRef */
-    final def baseTypeTycon(base: Symbol)(implicit ctx: Context): Type =
+    final def baseTypeTycon(base: Symbol)(implicit ctx: Context): Type = // @!!! drop
       baseType(base).typeConstructor
 
     def & (that: Type)(implicit ctx: Context): Type = track("&") {
@@ -1194,34 +1194,22 @@ object Types {
     }
 
     /** The full parent types, including all type arguments */
-    def parentsWithArgs(implicit ctx: Context): List[Type] = this match {
-      case tp: TypeProxy => tp.superType.parentsWithArgs
-      case _ => Nil
-    }
-
-    /** The full parent types, including (in new scheme) all type arguments */
-    def parentsNEW(implicit ctx: Context): List[Type] = this match {
+    def parents(implicit ctx: Context): List[Type] = this match {
       case tp @ AppliedType(tycon, args) if tycon.typeSymbol.isClass =>
-        tycon.parentsNEW.map(_.subst(tycon.typeSymbol.typeParams, args))
+        tycon.parents.map(_.subst(tycon.typeSymbol.typeParams, args)) // !@@@ cache?
       case tp: TypeRef =>
         if (tp.info.isInstanceOf[TempClassInfo]) {
           tp.reloadDenot()
           assert(!tp.info.isInstanceOf[TempClassInfo])
         }
-        tp.info.parentsNEW
+        tp.info.parents
       case tp: TypeProxy =>
-        tp.superType.parentsNEW
+        tp.superType.parents
       case _ => Nil
     }
 
     /** The first parent of this type, AnyRef if list of parents is empty */
-    def firstParentRef(implicit ctx: Context): TypeRef = parentsNEW match { // @!!! needed?
-      case p :: _ => p.typeConstructor.asInstanceOf[TypeRef]
-      case _ => defn.AnyType
-    }
-
-    /** The first parent of this type, AnyRef if list of parents is empty */
-    def firstParentNEW(implicit ctx: Context): Type = parentsNEW match {
+    def firstParent(implicit ctx: Context): Type = parents match {
       case p :: _ => p
       case _ => defn.AnyType
     }
@@ -3613,10 +3601,7 @@ object Types {
     // cached because baseType needs parents
     private var parentsCache: List[Type] = null
 
-    /** The parent types with all type arguments */
-    override def parentsWithArgs(implicit ctx: Context): List[Type] = parentsNEW
-
-    override def parentsNEW(implicit ctx: Context): List[Type] = {
+    override def parents(implicit ctx: Context): List[Type] = {
       if (parentsCache == null)
         parentsCache = classParents.mapConserve(_.asSeenFrom(prefix, cls.owner))
       parentsCache
@@ -4136,7 +4121,7 @@ object Types {
   abstract class DeepTypeMap(implicit ctx: Context) extends TypeMap {
     override def mapClassInfo(tp: ClassInfo) = {
       val prefix1 = this(tp.prefix)
-      val parents1 = tp.parentsNEW mapConserve this
+      val parents1 = tp.parents mapConserve this
       val selfInfo1 = tp.selfInfo match {
         case selfInfo: Type => this(selfInfo)
         case selfInfo => selfInfo
