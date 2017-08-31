@@ -577,6 +577,18 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
     case _ => tp2
   }
 
+/** This might be useful for adapting to the new applied type scheme: */
+
+  import TypeApplications._
+  import typer.ProtoTypes.constrained
+  import ast.untpd
+
+  /** If `clsRef` is a subclass of `tp1`, the largest class type of the form
+   *
+   *      pre.<clsRef>[args]
+   *
+   *  which is a subtype of `tp1`.
+   */
   def derivingType(tp1: AppliedType, clsRef: TypeRef): Type = {
     val cls = clsRef.symbol
     val typeParams = cls.typeParams
