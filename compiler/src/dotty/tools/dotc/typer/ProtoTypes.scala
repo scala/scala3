@@ -507,11 +507,6 @@ object ProtoTypes {
       WildcardType(TypeBounds.upper(wildApprox(mt.paramInfos(pnum), theMap, seen)))
     case tp: TypeVar =>
       wildApprox(tp.underlying, theMap, seen)
-    case tp @ HKApply(tycon, args) =>
-      wildApprox(tycon, theMap, seen) match {
-        case _: WildcardType => WildcardType // this ensures we get a * type
-        case tycon1 => tp.derivedAppliedType(tycon1, args.mapConserve(wildApprox(_, theMap, seen)))
-      }
     case tp: AndType =>
       def approxAnd = {
         val tp1a = wildApprox(tp.tp1, theMap, seen)

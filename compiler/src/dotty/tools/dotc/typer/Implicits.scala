@@ -386,7 +386,7 @@ trait ImplicitRunInfo { self: RunInfo =>
           (lead /: tp.classSymbols)(joinClass)
         case tp: TypeVar =>
           apply(tp.underlying)
-        case tp: HKApply => // @!!! needed?
+        case tp: AppliedType if !tp.tycon.typeSymbol.isClass =>
           def applyArg(arg: Type) = arg match {
             case TypeBounds(lo, hi) => AndType.make(lo, hi)
             case _: WildcardType => defn.AnyType

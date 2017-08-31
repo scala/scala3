@@ -93,15 +93,6 @@ object Checking {
           case _ =>
             checkWildcardApply(tp.superType, pos)
         }
-      case tp @ HKApply(tycon, args) if args.exists(_.isInstanceOf[TypeBounds]) =>
-        tycon match {
-          case tycon: TypeLambda =>
-            ctx.errorOrMigrationWarning(
-              ex"unreducible application of higher-kinded type $tycon to wildcard arguments",
-              pos)
-          case _ =>
-            checkWildcardApply(tp.superType, pos)
-        }
       case _ =>
     }
     def checkValidIfApply(implicit ctx: Context): Unit =
@@ -228,8 +219,6 @@ object Checking {
         tp.derivedRefinedType(this(parent), name, this(rinfo, nestedCycleOK, nestedCycleOK))
       case tp: RecType =>
         tp.rebind(this(tp.parent))
-      case tp @ HKApply(tycon, args) =>
-        tp.derivedAppliedType(this(tycon), args.map(this(_, nestedCycleOK, nestedCycleOK)))
       case tp @ TypeRef(pre, name) =>
         try {
           // A prefix is interesting if it might contain (transitively) a reference
@@ -245,7 +234,7 @@ object Checking {
             case SuperType(thistp, _) => isInteresting(thistp)
             case AndType(tp1, tp2) => isInteresting(tp1) || isInteresting(tp2)
             case OrType(tp1, tp2) => isInteresting(tp1) && isInteresting(tp2)
-            case _: RefinedOrRecType | _: HKApply | _: AppliedType => true
+            case _: RefinedOrRecType | _: AppliedType => true
             case _ => false
           }
           if (isInteresting(pre)) {
