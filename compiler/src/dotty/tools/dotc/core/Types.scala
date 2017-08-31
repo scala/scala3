@@ -62,7 +62,7 @@ object Types {
    *        |              +- TypeParamRef
    *        |              +- RefinedOrRecType -+-- RefinedType
    *        |              |                   -+-- RecType
-   *        |              +- HKApply
+   *        |              +- AppliedType
    *        |              +- TypeBounds
    *        |              +- ExprType
    *        |              +- AnnotatedType
@@ -131,12 +131,9 @@ object Types {
             tp.isRef(sym)
           case _ => this1.symbol eq sym
         }
-      case this1: RefinedOrRecType => this1.parent.isRef(sym)
+      case this1: RefinedOrRecType =>
+        this1.parent.isRef(sym)
       case this1: AppliedType =>
-        val this2 = this1.dealias
-        if (this2 ne this1) this2.isRef(sym)
-        else this1.underlying.isRef(sym)
-      case this1: HKApply =>
         val this2 = this1.dealias
         if (this2 ne this1) this2.isRef(sym)
         else this1.underlying.isRef(sym)
@@ -516,8 +513,6 @@ object Types {
           goParam(tp)
         case tp: SuperType =>
           goSuper(tp)
-        case tp: HKApply =>
-          goHKApply(tp)
         case tp: TypeProxy =>
           go(tp.underlying)
         case tp: ClassInfo =>
@@ -601,14 +596,6 @@ object Types {
             tl.derivedLambdaAbstraction(tl.paramNames, tl.paramInfos, info).appliedTo(tp.args))
         case tc: TypeRef if tc.symbol.isClass =>
           go(tc)
-        case _ =>
-          go(tp.superType)
-      }
-
-      def goHKApply(tp: HKApply) = tp.tycon match {
-        case tl: HKTypeLambda =>
-          go(tl.resType).mapInfo(info =>
-            tl.derivedLambdaAbstraction(tl.paramNames, tl.paramInfos, info).appliedTo(tp.args))
         case _ =>
           go(tp.superType)
       }
@@ -997,10 +984,6 @@ object Types {
           case _ => tp
         }
       case app @ AppliedType(tycon, args) =>
-        val tycon1 = tycon.dealias(keepAnnots)
-        if (tycon1 ne tycon) app.superType.dealias(keepAnnots): @tailrec
-        else this
-      case app @ HKApply(tycon, args) =>
         val tycon1 = tycon.dealias(keepAnnots)
         if (tycon1 ne tycon) app.superType.dealias(keepAnnots): @tailrec
         else this
@@ -3134,11 +3117,11 @@ object Types {
             // supertype not stable, since underlying might change
             validSuper = Nowhere
             tycon.underlying.applyIfParameterized(args)
+          case tycon: TypeRef if tycon.symbol.isClass =>
+            tycon
           case tycon: TypeProxy =>
-            val sym = tycon.typeSymbol
-            if (sym.is(Provisional)) validSuper = Nowhere
-            if (sym.isClass) tycon
-            else tycon.superType.applyIfParameterized(args)
+            if (tycon.typeSymbol.is(Provisional)) validSuper = Nowhere
+            tycon.superType.applyIfParameterized(args)
           case _ => defn.AnyType
         }
       }
@@ -3185,79 +3168,6 @@ object Types {
     def unapply(tp: RefType)(implicit ctx: Context): Option[RefType] = { // after bootstrap, drop the Option
       if (tp.symbol.isClass) Some(tp) else None
     }
-  }
-
-  /** A higher kinded type application `C[T_1, ..., T_n]` */
-  abstract case class HKApply(tycon: Type, args: List[Type])
-  extends CachedProxyType with ValueType {
-
-    private var validSuper: Period = Nowhere
-    private var cachedSuper: Type = _
-
-    override def underlying(implicit ctx: Context): Type = tycon
-
-    override def superType(implicit ctx: Context): Type = {
-      if (ctx.period != validSuper) {
-        validSuper = ctx.period
-        cachedSuper = tycon match {
-          case tp: HKTypeLambda => defn.AnyType
-          case tp: TypeVar if !tp.inst.exists =>
-            // supertype not stable, since underlying might change
-            validSuper = Nowhere
-            tp.underlying.applyIfParameterized(args)
-          case tp: TypeProxy =>
-            if (tp.typeSymbol.is(Provisional)) validSuper = Nowhere
-            tp.superType.applyIfParameterized(args)
-          case _ => defn.AnyType
-        }
-      }
-      cachedSuper
-    }
-
-    def lowerBound(implicit ctx: Context) = tycon.stripTypeVar match {
-      case tycon: TypeRef =>
-        tycon.info match {
-          case TypeBounds(lo, hi) =>
-            if (lo eq hi) superType // optimization, can profit from caching in this case
-            else lo.applyIfParameterized(args)
-          case _ => NoType
-        }
-      case _ =>
-        NoType
-    }
-
-    def typeParams(implicit ctx: Context): List[ParamInfo] = {
-      val tparams = tycon.typeParams
-      if (tparams.isEmpty) HKTypeLambda.any(args.length).typeParams else tparams
-    }
-
-    def derivedAppliedType(tycon: Type, args: List[Type])(implicit ctx: Context): Type =
-      if ((tycon eq this.tycon) && (args eq this.args)) this
-      else tycon.appliedTo(args)
-
-    override def computeHash = doHash(tycon, args)
-
-    protected def checkInst(implicit ctx: Context): this.type = {
-      def check(tycon: Type): Unit = tycon.stripTypeVar match {
-        case tycon: TypeRef if !tycon.symbol.isClass =>
-        case _: TypeParamRef | _: ErrorType | _: WildcardType =>
-        case _: TypeLambda =>
-          assert(!args.exists(_.isInstanceOf[TypeBounds]), s"unreduced type apply: $this")
-        case tycon: AnnotatedType =>
-          check(tycon.underlying)
-        case _ =>
-          assert(false, s"illegal type constructor in $this")
-      }
-      if (Config.checkHKApplications) check(tycon)
-      this
-    }
-  }
-
-  final class CachedHKApply(tycon: Type, args: List[Type]) extends HKApply(tycon, args)
-
-  object HKApply {
-    def apply(tycon: Type, args: List[Type])(implicit ctx: Context) =
-      unique(new CachedHKApply(tycon, args)).checkInst
   }
 
   /** A reference to wildcard argument `p.<parameter X of class C>`
@@ -3892,8 +3802,6 @@ object Types {
         zeroParamClass(tp.underlying)
       case tp: TypeVar =>
         zeroParamClass(tp.underlying)
-      case tp: HKApply =>
-        zeroParamClass(tp.superType)
       case _ =>
         NoType
     }
@@ -3969,8 +3877,6 @@ object Types {
       tp.derivedSuperType(thistp, supertp)
     protected def derivedAppliedType(tp: AppliedType, tycon: Type, args: List[Type]): Type =
       tp.derivedAppliedType(tycon, args)
-    protected def derivedAppliedType(tp: HKApply, tycon: Type, args: List[Type]): Type =
-      tp.derivedAppliedType(tycon, args)
     protected def derivedTypeArgRef(tp: TypeArgRef, prefix: Type): Type =
       tp.derivedTypeArgRef(prefix)
     protected def derivedAndOrType(tp: AndOrType, tp1: Type, tp2: Type): Type =
@@ -4035,12 +3941,6 @@ object Types {
         case tp: TypeVar =>
           val inst = tp.instanceOpt
           if (inst.exists) apply(inst) else tp
-
-        case tp: HKApply =>
-          def mapArg(arg: Type, tparam: ParamInfo): Type =
-            atVariance(variance * tparam.paramVariance)(this(arg))
-          derivedAppliedType(tp, this(tp.tycon),
-              tp.args.zipWithConserve(tp.typeParams)(mapArg))
 
         case tp: ExprType =>
           derivedExprType(tp, this(tp.resultType))
@@ -4311,46 +4211,6 @@ object Types {
           else tp.derivedAppliedType(tycon, args)
       }
 
-    override protected def derivedAppliedType(tp: HKApply, tycon: Type, args: List[Type]): Type =
-      tycon match {
-        case Range(tyconLo, tyconHi) =>
-          range(derivedAppliedType(tp, tyconLo, args), derivedAppliedType(tp, tyconHi, args))
-        case _ =>
-          if (args.exists(isRange)) {
-            if (variance > 0) tp.derivedAppliedType(tycon, args.map(rangeToBounds))
-            else {
-              val loBuf, hiBuf = new mutable.ListBuffer[Type]
-              // Given `C[A1, ..., An]` where sone A's are ranges, try to find
-              // non-range arguments L1, ..., Ln and H1, ..., Hn such that
-              // C[L1, ..., Ln] <: C[H1, ..., Hn] by taking the right limits of
-              // ranges that appear in as co- or contravariant arguments.
-              // Fail for non-variant argument ranges.
-              // If successful, the L-arguments are in loBut, the H-arguments in hiBuf.
-              // @return  operation succeeded for all arguments.
-              def distributeArgs(args: List[Type], tparams: List[ParamInfo]): Boolean = args match {
-                case Range(lo, hi) :: args1 =>
-                  val v = tparams.head.paramVariance
-                  if (v == 0) false
-                  else {
-                    if (v > 0) { loBuf += lo; hiBuf += hi }
-                    else { loBuf += hi; hiBuf += lo }
-                    distributeArgs(args1, tparams.tail)
-                  }
-                case arg :: args1 =>
-                  loBuf += arg; hiBuf += arg
-                  distributeArgs(args1, tparams.tail)
-                case nil =>
-                  true
-              }
-              if (distributeArgs(args, tp.typeParams))
-                range(tp.derivedAppliedType(tycon, loBuf.toList),
-                      tp.derivedAppliedType(tycon, hiBuf.toList))
-              else range(tp.bottomType, tp.topType)
-                // TODO: can we give a better bound than `topType`?
-            }
-          }
-          else tp.derivedAppliedType(tycon, args)
-      }
     override protected def derivedAndOrType(tp: AndOrType, tp1: Type, tp2: Type) =
       if (isRange(tp1) || isRange(tp2))
         if (tp.isAnd) range(lower(tp1) & lower(tp2), upper(tp1) & upper(tp2))
@@ -4477,23 +4337,6 @@ object Types {
 
       case tp @ ClassInfo(prefix, _, _, _, _) =>
         this(x, prefix)
-
-      case tp @ HKApply(tycon, args) =>
-        @tailrec def foldArgs(x: T, tparams: List[ParamInfo], args: List[Type]): T =
-          if (args.isEmpty) {
-            assert(tparams.isEmpty)
-            x
-          }
-          else {
-            val tparam = tparams.head
-            val saved = variance
-            variance *= tparam.paramVariance
-            val acc =
-              try this(x, args.head)
-              finally variance = saved
-            foldArgs(acc, tparams.tail, args.tail)
-          }
-        foldArgs(this(x, tycon), tp.typeParams, args)
 
       case tp: LambdaType =>
         variance = -variance

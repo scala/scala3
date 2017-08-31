@@ -430,7 +430,6 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
   def erase(tp: Type): Type = {
     def doErase(tp: Type): Type = tp match {
       case tp: AppliedType => erase(tp.superType)
-      case tp: HKApply => erase(tp.superType)
       case tp: RefinedType => erase(tp.parent)
       case _ => tp
     }
@@ -569,7 +568,6 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
       debug.println(i"refine($tp1, $tp2) = $res")
       res
     case (tp1: AppliedType, _) => refine(tp1.superType, tp2)
-    case (tp1: HKApply, _) => refine(tp1.superType, tp2)
     case (TypeRef(ref1: TypeProxy, _), tp2 @ TypeRef(ref2: TypeProxy, _)) =>
       if (ref1.underlying <:< ref2.underlying) tp2.derivedSelect(ref1) else tp2
     case (TypeRef(ref1: TypeProxy, _), tp2 @ TermRef(ref2: TypeProxy, _)) =>
