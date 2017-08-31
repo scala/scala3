@@ -608,24 +608,16 @@ object Contexts {
       override def hash(x: Type): Int = x.hash
     }
 
-    /** A table for hash consing unique refined types */
-    private[dotc] val uniqueRefinedTypes = new RefinedUniques // @!!! replace with uniqueAppliedTypes
-
-    /** A table for hash consing unique refined types */
+    /** A table for hash consing unique applied types */
     private[dotc] val uniqueAppliedTypes = new AppliedUniques
 
     /** A table for hash consing unique named types */
     private[core] val uniqueNamedTypes = new NamedTypeUniques
 
-    /** A table for hash consing unique type bounds */
-    private[core] val uniqueTypeAliases = new TypeAliasUniques // @!!! replace
-
     private def uniqueSets = Map(
         "uniques" -> uniques,
-        "uniqueRefinedTypes" -> uniqueRefinedTypes,
         "uniqueAppliedTypes" -> uniqueAppliedTypes,
-        "uniqueNamedTypes" -> uniqueNamedTypes,
-        "uniqueTypeAliases" -> uniqueTypeAliases)
+        "uniqueNamedTypes" -> uniqueNamedTypes)
 
     /** A map that associates label and size of all uniques sets */
     def uniquesSizes: Map[String, Int] = uniqueSets.mapValues(_.size)
