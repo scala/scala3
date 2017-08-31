@@ -232,13 +232,6 @@ class TreeUnpickler(reader: TastyReader, nameAtRef: NameRef => TermName, posUnpi
               readType().appliedTo(until(end)(readType()))
             case TYPEBOUNDS =>
               TypeBounds(readType(), readType())
-            case TYPEALIAS =>
-              val alias = readType()
-              val variance =
-                if (nextByte == COVARIANT) { readByte(); 1 }
-                else if (nextByte == CONTRAVARIANT) { readByte(); -1 }
-                else 0
-              TypeAlias(alias, variance)
             case ANNOTATEDtype =>
               AnnotatedType(readType(), Annotation(readTerm()))
             case ANDtype =>
@@ -296,6 +289,8 @@ class TreeUnpickler(reader: TastyReader, nameAtRef: NameRef => TermName, posUnpi
           RecType(rt => registeringType(rt, readType()))
         case RECthis =>
           readTypeRef().asInstanceOf[RecType].recThis
+        case TYPEALIAS =>
+          TypeAlias(readType())
         case SHARED =>
           val ref = readAddr()
           typeAtAddr.getOrElseUpdate(ref, forkAt(ref).readType())
@@ -680,7 +675,7 @@ class TreeUnpickler(reader: TastyReader, nameAtRef: NameRef => TermName, posUnpi
             sym.info = NoCompleter
             sym.info = rhs.tpe match {
               case _: TypeBounds | _: ClassInfo => checkNonCyclic(sym, rhs.tpe, reportErrors = false)
-              case _ => TypeAlias(rhs.tpe, sym.variance)
+              case _ => TypeAlias(rhs.tpe)
             }
             TypeDef(rhs)
           }

@@ -379,7 +379,7 @@ private class ExtractAPICollector(implicit val ctx: Context) extends ThunkHolder
               val name = "_"
               val ref = new api.ParameterRef(name)
               new api.Existential(ref,
-                Array(apiTypeParameter(name, arg.variance, lo, hi)))
+                Array(apiTypeParameter(name, 0, lo, hi)))
             }
           case _ =>
             apiType(arg)

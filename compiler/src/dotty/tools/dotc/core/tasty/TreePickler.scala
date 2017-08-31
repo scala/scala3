@@ -220,14 +220,7 @@ class TreePickler(pickler: TastyPickler) {
       pickleType(tpe.parent)
     case tpe: TypeAlias =>
       writeByte(TYPEALIAS)
-      withLength {
-        pickleType(tpe.alias, richTypes)
-        tpe.variance match {
-          case 1 => writeByte(COVARIANT)
-          case -1 => writeByte(CONTRAVARIANT)
-          case 0 =>
-        }
-      }
+      pickleType(tpe.alias, richTypes)
     case tpe: TypeBounds =>
       writeByte(TYPEBOUNDS)
       withLength { pickleType(tpe.lo, richTypes); pickleType(tpe.hi, richTypes) }
