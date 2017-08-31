@@ -446,8 +446,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
     case tp2: HKTypeLambda =>
       def compareTypeLambda: Boolean = tp1.stripTypeVar match {
         case tp1: HKTypeLambda =>
-          /* Don't compare bounds or variances of lambdas under language:Scala2.
-           * (1) If we compare bounds, t2994 will fail.
+          /* Don't compare bounds of lambdas under language:Scala2, or t2994 will fail.
            * The issue is that, logically, bounds should compare contravariantly,
            * but that would invalidate a pattern exploited in t2994:
            *
@@ -459,32 +458,17 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
            *
            * Note: it would be nice if this could trigger a migration warning, but I
            * am not sure how, since the code is buried so deep in subtyping logic.
-           *
-           * (2) If we compare variances, compilation of scala.collection.mutable.Set wil fail.
-           * The issue is the following:
-           *
-           * Error overriding method companion in trait Iterable of type
-           * => scala.collection.generic.GenericCompanion[[+A] => scala.collection.Iterable[A]];
-           * method companion of type
-           * => scala.collection.generic.GenericCompanion[[A] => scala.collection.mutable.Set[A]]
-           * has incompatible type.
-           *
-           * Indeed, a non-variant Set is not a legal substitute for a covariant Iterable.
-           * Every instantiated Set is an Iterable, but the type constructor Iterable can be
-           * passed to a covariant type constructor CC[+X] whereas a non-variant Set cannot.
            */
           def boundsOK =
             ctx.scala2Mode ||
             tp1.typeParams.corresponds(tp2.typeParams)((tparam1, tparam2) =>
               isSubType(tparam2.paramInfo.subst(tp2, tp1), tparam1.paramInfo))
-          def variancesOK =
-            ctx.scala2Mode ||
-            variancesConform(tp1.typeParams, tp2.typeParams)
           val saved = comparedTypeLambdas
           comparedTypeLambdas += tp1
           comparedTypeLambdas += tp2
           try
-            variancesOK && boundsOK &&
+            variancesConform(tp1.typeParams, tp2.typeParams) &&
+            boundsOK &&
             isSubType(tp1.resType, tp2.resType.subst(tp2, tp1))
           finally comparedTypeLambdas = saved
         case _ =>
@@ -1014,7 +998,14 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
           }
       }
 
-      isSubArg(args1.head, args2.head)
+      val arg1 = args1.head
+      val arg2 = args2.head
+      isSubArg(arg1, arg2) || {
+        // last effort: try to adapt variances of higher-kinded types if this is sound.
+        // TODO: Move this to eta-expansion?
+        val adapted2 = arg2.adaptHkVariances(tparam.paramInfo)
+        adapted2.ne(arg2) && isSubArg(arg1, adapted2)
+      }
     } && isSubArgs(args1.tail, args2.tail, tp1, tparams.tail)
 
   /** Test whether `tp1` has a base type of the form `B[T1, ..., Tn]` where
@@ -1186,6 +1177,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
     def hasSubRefinement(tp1: RefinedType, refine2: Type): Boolean = {
       isSubType(tp1.refinedInfo, refine2) || {
         // last effort: try to adapt variances of higher-kinded types if this is sound.
+        // TODO: Move this to eta-expansion?
         val adapted2 = refine2.adaptHkVariances(tp1.parent.member(tp1.refinedName).symbol.info)
         adapted2.ne(refine2) && hasSubRefinement(tp1, adapted2)
       }
