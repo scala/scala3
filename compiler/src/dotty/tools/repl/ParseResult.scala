@@ -11,8 +11,13 @@ import dotc.reporting._
 
 import results._
 
+sealed trait Parsing
+
 /** A parsing result from string input */
-sealed trait ParseResult
+sealed trait ParseResult extends Parsing
+
+/** Suppress visual output when this is passed */
+case class Silent(underlying: ParseResult) extends Parsing
 
 /** An error free parsing resulting in a list of untyped trees */
 case class Parsed(sourceCode: String, trees: List[untpd.Tree]) extends ParseResult
