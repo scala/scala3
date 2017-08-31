@@ -1199,7 +1199,10 @@ object Denotations {
             val alt =
               if (generateStubs) missingHook(owner.symbol.moduleClass, selector)
               else NoSymbol
-            if (alt.exists) alt.denot else MissingRef(owner, selector)
+            if (alt.exists) alt.denot
+            else if (owner.symbol == defn.RootClass && (selector == nme.scala_ || selector == nme.scalaShadowing))
+              throw new MissingCoreLibraryException(selector.toString)
+            else MissingRef(owner, selector)
           }
         }
         else owner

@@ -212,7 +212,7 @@ class Definitions {
    *  in `scalaShadowing` so they don't clash with the same-named `scala`
    *  members at runtime.
    */
-  lazy val ScalaShadowingPackageVal = ctx.requiredPackage("scalaShadowing")
+  lazy val ScalaShadowingPackageVal = ctx.requiredPackage(nme.scalaShadowing)
   lazy val ScalaShadowingPackageClass = ScalaShadowingPackageVal.moduleClass.asClass
 
   /** Note: We cannot have same named methods defined in Object and Any (and AnyVal, for that matter)
