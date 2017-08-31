@@ -456,7 +456,7 @@ object Checking {
           tp.derivedClassInfo(
             prefix = apply(tp.prefix),
             classParents =
-              tp.parentsWithArgs.map { p =>
+              tp.parents.map { p =>
                 apply(p).stripAnnots match {
                   case ref: RefType => ref
                   case _ => defn.ObjectType // can happen if class files are missing

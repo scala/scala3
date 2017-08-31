@@ -24,7 +24,7 @@ class CrossCastAnd extends MiniPhaseTransform { thisTransform =>
     lazy val qtype = tree.qualifier.tpe.widen
     val sym = tree.symbol
     if (sym.is(Flags.Private) && qtype.typeSymbol != sym.owner)
-      cpy.Select(tree)(tree.qualifier.asInstance(AndType(qtype.baseTypeWithArgs(sym.owner), tree.qualifier.tpe)), tree.name)
+      cpy.Select(tree)(tree.qualifier.asInstance(AndType(qtype.baseType(sym.owner), tree.qualifier.tpe)), tree.name)
     else tree
   }
 }

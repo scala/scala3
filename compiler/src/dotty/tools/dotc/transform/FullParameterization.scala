@@ -163,7 +163,7 @@ trait FullParameterization {
         def rewireCall(thisArg: Tree): Tree = {
           val rewired = rewiredTarget(tree, derived)
           if (rewired.exists) {
-            val base = thisArg.tpe.baseTypeWithArgs(origClass)
+            val base = thisArg.tpe.baseType(origClass)
             assert(base.exists)
             ref(rewired.termRef)
               .appliedToTypeTrees(targs ++ base.argInfos.map(TypeTree(_)))

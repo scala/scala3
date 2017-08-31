@@ -491,14 +491,6 @@ class TypeApplications(val self: Type) extends AnyVal {
   final def baseArgInfos(base: Symbol)(implicit ctx: Context): List[Type] = // @!!! drop
     self.baseType(base).argInfos
 
-  /** The base type including all type arguments and applicable refinements
-   *  of this type. Refinements are applicable if they refine a member of
-   *  the parent type which furthermore is not a name-mangled type parameter.
-   *  Existential types in arguments are returned as TypeBounds instances.
-   */
-  final def baseTypeWithArgs(base: Symbol)(implicit ctx: Context): Type = // @!!! drop
-    self.baseType(base)
-
   /** Translate a type of the form From[T] to To[T], keep other types as they are.
    *  `from` and `to` must be static classes, both with one type parameter, and the same variance.
    *  Do the same for by name types => From[T] and => To[T]

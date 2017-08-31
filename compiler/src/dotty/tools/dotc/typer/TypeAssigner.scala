@@ -47,7 +47,7 @@ trait TypeAssigner {
    */
   def classBound(info: ClassInfo)(implicit ctx: Context): Type = {
     val cls = info.cls
-    val parentType = info.parentsWithArgs.reduceLeft(ctx.typeComparer.andType(_, _))
+    val parentType = info.parents.reduceLeft(ctx.typeComparer.andType(_, _))
 
     def addRefinement(parent: Type, decl: Symbol) = {
       val inherited =
@@ -308,7 +308,7 @@ trait TypeAssigner {
       case err: ErrorType => untpd.cpy.Super(tree)(qual, mix).withType(err)
       case qtype @ ThisType(_) =>
         val cls = qtype.cls
-        def findMixinSuper(site: Type): Type = site.parentsNEW filter (_.typeSymbol.name == mix.name) match {
+        def findMixinSuper(site: Type): Type = site.parents filter (_.typeSymbol.name == mix.name) match {
           case p :: Nil =>
             p.typeConstructor
           case Nil =>
@@ -319,9 +319,9 @@ trait TypeAssigner {
         val owntype =
           if (mixinClass.exists) mixinClass.appliedRef
           else if (!mix.isEmpty) findMixinSuper(cls.info)
-          else if (inConstrCall || ctx.erasedTypes) cls.info.firstParentRef
+          else if (inConstrCall || ctx.erasedTypes) cls.info.firstParent.typeConstructor
           else {
-            val ps = cls.classInfo.parentsWithArgs
+            val ps = cls.classInfo.parents
             if (ps.isEmpty) defn.AnyType else ps.reduceLeft((x: Type, y: Type) => x & y)
           }
         tree.withType(SuperType(cls.thisType, owntype))

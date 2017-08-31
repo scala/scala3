@@ -733,7 +733,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
             if (sym.owner != thispre.cls) {
               val overriding = thispre.cls.info.decls.lookup(sym.name)
               if (overriding.exists && overriding != sym) {
-                val base = pre.baseTypeWithArgs(sym.owner)
+                val base = pre.baseType(sym.owner)
                 assert(base.exists)
                 pre = SuperType(thispre, base)
               }
