@@ -721,19 +721,6 @@ object Build {
       }
     )
 
-  /* Contains unit tests for the scripts */
-  lazy val `dotty-bin-tests` = project.in(file("bin")).
-    settings(commonNonBootstrappedSettings).
-    settings(
-      publishArtifact := false,
-      parallelExecution in Test := false,
-      // Increase verbosity of test output, started and passed tests are
-      // logged with:
-      testOptions in Test += Tests.Argument(TestFrameworks.JUnit, "-a", "-v"),
-      libraryDependencies +=
-        "com.novocode" % "junit-interface" % "0.11" % "test"
-    )
-
   // Settings shared between dotty-library and dotty-library-bootstrapped
   lazy val dottyLibrarySettings = Seq(
       libraryDependencies ++= Seq(

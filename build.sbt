@@ -6,7 +6,6 @@ val `dotty-doc-bootstrapped` = Build.`dotty-doc-bootstrapped`
 val `dotty-bot` = Build.`dotty-bot`
 val `dotty-compiler` = Build.`dotty-compiler`
 val `dotty-compiler-bootstrapped` = Build.`dotty-compiler-bootstrapped`
-val `dotty-bin-tests` = Build.`dotty-bin-tests`
 val `dotty-library` = Build.`dotty-library`
 val `dotty-library-bootstrapped` = Build.`dotty-library-bootstrapped`
 val `dotty-sbt-bridge` = Build.`dotty-sbt-bridge`
