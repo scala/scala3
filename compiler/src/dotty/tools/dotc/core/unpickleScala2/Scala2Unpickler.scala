@@ -99,8 +99,9 @@ object Scala2Unpickler {
       else selfInfo
     val tempInfo = new TempClassInfo(denot.owner.thisType, denot.classSymbol, decls, ost)
     denot.info = tempInfo // first rough info to avoid CyclicReferences
-    var parentRefs = ctx.normalizeToClassRefs(parents, cls, decls)
-    if (parentRefs.isEmpty) parentRefs = defn.ObjectType :: Nil
+    val normalizedParents =
+    	if (parents.isEmpty) defn.ObjectType :: Nil
+    	else parents.map(_.dealias)
     for (tparam <- tparams) {
       val tsym = decls.lookup(tparam.name)
       if (tsym.exists) tsym.setFlag(TypeParam)
@@ -124,7 +125,7 @@ object Scala2Unpickler {
       registerCompanionPair(scalacCompanion, denot.classSymbol)
     }
 
-    tempInfo.finalize(denot, parentRefs) // install final info, except possibly for typeparams ordering
+    tempInfo.finalize(denot, normalizedParents) // install final info, except possibly for typeparams ordering
     denot.ensureTypeParamsInCorrectOrder()
   }
 }
