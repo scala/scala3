@@ -1,156 +1,23 @@
 #!/usr/bin/env bash
 
-# Finds in dotty build file a line containing PATTERN
-# returns last "" escaped string in this line
-function getLastStringOnLineWith {
-    PATTERN="$1"
-    grep "$PATTERN" "$DOTTY_ROOT/project/Build.scala"|sed -n 's/.*\"\(.*\)\".*/\1/'p
-}
+# Wrapper for the published dotc/dotr script that check for file changes
+# and use sbt to re build the compiler as needed.
 
-# Configuration
-SCALA_VERSION=$(getLastStringOnLineWith "val scalacVersion")
-SCALA_BINARY_VERSION=2.11
-SCALA_ASM_VERSION=$(getLastStringOnLineWith "% \"scala-asm\" %")
-SBT_VERSION=$(grep "sbt.version=" "$DOTTY_ROOT/project/build.properties" | sed 's/sbt.version=//')
-bootcp=true
-bootstrapped=false
-default_java_opts="-Xmx768m -Xms768m"
-programName=$(basename "$0")
-# uncomment next line to enable debug output
-#debug=true
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" >& /dev/null && pwd)/.."
 
-declare -a java_args scala_args residual_args
-unset verbose quiet cygwin toolcp colors saved_stty CDPATH
+target="$1"
 
-function find_jar {
-    # Usage:
-    #   find_jar path/to/location file.jar
-    local artifact="$1/$2"
+shift # Mutates $@ by deleting the first element ($1)
 
-    if [ ! -f "$artifact" ]; then
-        artifact=$(find "$HOME/.coursier/cache" -iname "$2" 2> /dev/null)
-    fi
+# Marker file used to obtain the date of latest call to sbt-back
+version="$ROOT/dist-bootstrapped/target/pack/VERSION"
 
-    echo "$artifact"
-}
+# Create the target if absent or if file changed in ROOT/compiler
+new_files="$(find "$ROOT/compiler" \( -iname "*.scala" -o -iname "*.java" \) -newer "$version" >& /dev/null)"
 
-# Log used to communicate errors from a command substitution, for example:
-#   $(sbt package || (echo msg >> $ERROR_LOG; kill -SIGTERM $$))
-ERROR_LOG=error.log
-trap onTerminate SIGTERM
-
-onTerminate() {
-  if [ -f "$ERROR_LOG" ]; then
-    cat "$ERROR_LOG"
-    rm -f "$ERROR_LOG"
-  fi
-  exit 1 # $? is lost from subprocess in command substitution.
-}
-
-function build_jar {
-    # Usage:
-    #   build_jar package path/to/jar/dir ['/some/sed/command']
-    #
-    #   Last arg is optional
-    cd "$DOTTY_ROOT" >& /dev/null
-    local build_output=$(sbt "$1" || (echo "failed to run: sbt $1" >> $ERROR_LOG; kill -SIGTERM $$))
-    local jar=$(echo $build_output | sed -n 's/.*Packaging //g; s/ \.\.\..*//g; /^\/.*/p')
-
-    local sedjar="$3"
-    if [ "$sedjar" == "" ]; then
-        sedjar="/tests/d; /javadoc/d; /.*\.jar/p"
-    fi
-
-    if [ "$jar" == "" ]; then
-        # Didn't build a jar - could've run sbt by oneself, get latest jar in target:
-        jar="$DOTTY_ROOT/$2/$(ls -1t "$2" | sed -n "$sedjar" | awk 'NR==1')"
-    fi
-
-    cd - >& /dev/null
-
-    echo "$jar"
-}
-
-function update_packages {
-    echo "$INTERFACES_JAR" >  "$DOTTY_ROOT/.packages"
-    echo "$MAIN_JAR"       >> "$DOTTY_ROOT/.packages"
-    echo "$DOTTY_LIB_JAR"  >> "$DOTTY_ROOT/.packages"
-    echo "$TEST_JAR"       >> "$DOTTY_ROOT/.packages"
-}
-
-function build_all {
-    echo "The script is going to build the required jar files"
-
-    printf "Building dotty-interfaces..."
-    INTERFACES_JAR=$(build_jar dotty-interfaces/package interfaces/target)
-    printf "done\n"
-
-    printf "Building dotty-compiler..."
-    MAIN_JAR=$(build_jar dotty-compiler/package "compiler/target/scala-$SCALA_BINARY_VERSION")
-    printf "done\n"
-
-    printf "Building dotty library..."
-    DOTTY_LIB_JAR=$(build_jar dotty-library/package "library/target/scala-$SCALA_BINARY_VERSION")
-    printf "done\n"
-
-    printf "Building tests..."
-    TEST_JAR=$(build_jar test:package "compiler/target/scala-$SCALA_BINARY_VERSION" '/dotty.*-tests\.jar/p')
-    printf "done\n"
-
-    update_packages
-}
-
-# Check if .packages file does not exist - if so assume old build and rebuild all
-if  [ ! -f "$DOTTY_ROOT/.packages" ]; then
-    build_all
-else
-    IFS=$'\r\n' GLOBIGNORE='*' command eval 'JARS=($(cat $DOTTY_ROOT/.packages))'
-
-    if [ "${#JARS[@]}" == "4" ]; then
-        INTERFACES_JAR="${JARS[0]}"
-        MAIN_JAR="${JARS[1]}"
-        DOTTY_LIB_JAR="${JARS[2]}"
-        TEST_JAR="${JARS[3]}"
-    else
-        echo "Failed to parse .packages file"
-        build_all
-    fi
-
-    if [ ! -f "$INTERFACES_JAR" -o ! -f "$MAIN_JAR" -o ! -f "$DOTTY_LIB_JAR" -o ! -f "$TEST_JAR" ]; then
-        echo ".packages file corrupted, rebuilding"
-        build_all
-    fi
+if [ ! -f "$target" ] || [ ! -z "$new_files" ]; then
+  echo "Building Dotty..."
+  sbt "dist-bootstrapped/pack"
 fi
 
-################# After this point, jar variables will be set #################
-function check_jar {
-    # Usage:
-    #   check_jar "name" "path/to/package.jar" "sources/dir" 'lambda to exec on failure'
-    local new_files="$(find "$DOTTY_ROOT/$3" \( -iname "*.scala" -o -iname "*.java" \) -newer "$2")"
-    # If the find failed, or if it found new files...
-    if [ "$?" -ne 0 ] || [ ! -z "$new_files" ]; then
-        printf "New files detected in $1, rebuilding..."
-        rm "$2"
-        eval "$4"
-        printf "done\n"
-        update_packages
-    fi
-}
-
-check_jar "dotty-interfaces" "$INTERFACES_JAR" "interfaces/src" 'INTERFACES_JAR=$(build_jar dotty-interfaces/package interfaces/target)'
-check_jar "dotty-compiler"   "$MAIN_JAR"       "compiler/src"   'MAIN_JAR=$(build_jar dotty-compiler/package compiler/target/scala-$SCALA_BINARY_VERSION)'
-check_jar "dotty-library"    "$DOTTY_LIB_JAR"  "library/src"    'DOTTY_LIB_JAR=$(build_jar dotty-library/package library/target/scala-$SCALA_BINARY_VERSION)'
-check_jar "dotty-tests"      "$TEST_JAR"       "compiler/test"  'TEST_JAR=$(build_jar dotty-compiler/test:package compiler/target/scala-$SCALA_BINARY_VERSION /dotty.*-tests\.jar/p)'
-
-# Autodetecting the scala-library location, in case it wasn't provided by an environment variable
-if [ "$SCALA_LIBRARY_JAR" == "" ]; then
-    SCALA_LIBRARY_JAR=$(find_jar "$HOME/.ivy2/cache/org.scala-lang/scala-library/jars" "scala-library-$SCALA_VERSION.jar")
-fi
-
-if [ "$SCALA_ASM_JAR" == "" ]; then
-    SCALA_ASM_JAR=$(find_jar "$HOME/.ivy2/cache/org.scala-lang.modules/scala-asm/bundles" "scala-asm-$SCALA_ASM_VERSION.jar")
-fi
-
-if [ "$SBT_INTERFACE_JAR" == "" ]; then
-    SBT_INTERFACE_JAR=$(find_jar "$HOME/.ivy2/cache/org.scala-sbt/interface/jars" "interface-$SBT_VERSION.jar")
-fi
+eval "$target" "$@"

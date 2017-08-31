@@ -65,8 +65,6 @@ pipeline:
 
 matrix:
   include:
-    - CI_TEST: dotty-bin-tests/test
-      CI_PUBLISH: true
     - CI_TEST: legacyTests
       CI_PUBLISH: false
     - CI_TEST: ;test;sbt-dotty/scripted compilerReporter/*;sbt-dotty/scripted discovery/*;sbt-dotty/scripted sbt-dotty/*

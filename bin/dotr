@@ -1,55 +1,5 @@
 #!/usr/bin/env bash
 
-# Try to autodetect real location of the script
-DOTTY_ROOT="$(readlink "$0")"              #  relative, symbolic links resolved
-if [[ "$DOTTY_ROOT" == "" ]]; then
-  DOTTY_ROOT="$0"
-fi
-DOTTY_ROOT="$(dirname "$DOTTY_ROOT")"
-DOTTY_ROOT="$( cd "$DOTTY_ROOT" >& /dev/null && pwd )/.."  # absolute
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" >& /dev/null && pwd)/.."
 
-# debug
-DEBUG_STR=-agentlib:jdwp=transport=dt_socket,server=y,suspend=y,address=5005
-DEBUG=
-
-# Load common functions and variables
-source "$DOTTY_ROOT"/bin/common
-
-CLASS_PATH="-classpath .:$DOTTY_LIB_JAR:.:$SCALA_LIBRARY_JAR"
-
-function runMain {
-    local jbin=$(which "java")
-
-    if [ ! -z "$JAVA_BIN" ]; then
-        jbin="$JAVA_BIN"
-    fi
-
-    if [ "$jbin" == "" ]; then
-        echo "java bin not detected - please specify with \$JAVA_BIN or install java to a default location"
-        exit 1
-    else
-        eval "$jbin $DEBUG $CLASS_PATH $@"
-    fi
-}
-
-# parse command line params -d to enable debugging
-while getopts "dx" opt; do
- case "$opt" in
-    d)
-      DEBUG="$DEBUG_STR"
-      ;;
-  esac
-done
-
-shift $((OPTIND-1))
-
-first_arg="$1"
-
-if [ -z "$1" ]; then
-    echo "Starting dotty REPL..."
-    eval "$DOTTY_ROOT/bin/dotc -repl"
-elif [[ ${first_arg:0:1} == "-" ]]; then
-    eval "$DOTTY_ROOT/bin/dotc -repl $@"
-else
-    runMain "$@"
-fi
+eval "$ROOT/bin/common" "$ROOT/dist-bootstrapped/target/pack/bin/dotr" "$@"
