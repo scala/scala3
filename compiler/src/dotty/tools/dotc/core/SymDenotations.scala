@@ -1633,7 +1633,7 @@ object SymDenotations {
           case tp: TypeVar => tp.inst.exists && inCache(tp.inst)
           //case tp: TypeProxy => inCache(tp.underlying) // disabled, can re-enable insyead of last two lines for performance testing
           //case tp: AndOrType => inCache(tp.tp1) && inCache(tp.tp2)
-          case tp: TypeProxy => isCachable(tp.underlying, btrCache) 
+          case tp: TypeProxy => isCachable(tp.underlying, btrCache)
           case tp: AndOrType => isCachable(tp.tp1, btrCache) && isCachable(tp.tp2, btrCache)
           case _ => true
         }
@@ -1678,9 +1678,15 @@ object SymDenotations {
           case tp: TypeProxy =>
             baseTypeOf(tp.superType)
           case AndType(tp1, tp2) =>
-            baseTypeOf(tp1) & baseTypeOf(tp2)
+            baseTypeOf(tp1) & baseTypeOf(tp2) match {
+              case AndType(tp1a, tp2a) if (tp1a eq tp1) && (tp2a eq tp2) => tp
+              case res => res
+            }
           case OrType(tp1, tp2) =>
-            baseTypeOf(tp1) | baseTypeOf(tp2)
+            baseTypeOf(tp1) | baseTypeOf(tp2) match {
+              case OrType(tp1a, tp2a) if (tp1a eq tp1) && (tp2a eq tp2) => tp
+              case res => res
+            }
           case JavaArrayType(_) if symbol == defn.ObjectClass =>
             this.typeRef
           case _ =>
