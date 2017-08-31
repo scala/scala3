@@ -1661,7 +1661,9 @@ object SymDenotations {
             if (subsym eq symbol) tp
             else subsym.denot match {
               case clsd: ClassDenotation =>
-                baseTypeOf(tycon).subst(clsd.typeParams, args)
+                val tparams = clsd.typeParams
+                if (tparams.hasSameLengthAs(args)) baseTypeOf(tycon).subst(tparams, args)
+                else NoType
               case _ =>
                 baseTypeOf(tp.superType)
             }
