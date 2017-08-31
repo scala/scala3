@@ -2,6 +2,9 @@ package dotty
 package tools
 package dotc
 
+import java.io.{ File => JFile }
+import java.nio.file.{ Files, Paths, Path }
+
 import org.junit.{ Test, AfterClass }
 
 import scala.concurrent.duration._
@@ -22,25 +25,57 @@ class IdempotencyTests extends ParallelTesting {
   def testFilter = Properties.testsFilter
 
   /* TODO: Only run them selectively? */
-  @Test def bytecodeIdempotency: Unit = {
+  @Test def idempotency: Unit = {
     val opt = defaultOptions.and("-YemitTasty")
 
-    def idempotency1() = {
-      compileDir("../collection-strawman/src/main", opt) +
-      compileFilesInDir("../tests/pos", opt)
+    def sourcesFrom(dir: Path) = CompilationTests.sources(Files.walk(dir))
+
+    val strawmanSources = sourcesFrom(Paths.get("../collection-strawman/src/main"))
+    val strawmanSourcesSorted = strawmanSources.sorted
+    val strawmanSourcesRevSorted = strawmanSourcesSorted.reverse
+
+    val posIdempotency = {
+      def posIdempotency1 = compileFilesInDir("../tests/pos", opt)
+      def posIdempotency2 = compileFilesInDir("../tests/pos", opt)
+      posIdempotency1 + posIdempotency2
     }
-    def idempotency2() = {
-      compileDir("../collection-strawman/src/main", opt) +
-      compileFilesInDir("../tests/pos", opt)
+
+    val orderIdempotency = {
+      (for {
+        testDir <- new JFile("../tests/order-idempotency").listFiles() if testDir.isDirectory
+      } yield {
+        val sources = sourcesFrom(testDir.toPath)
+        def orderIdempotency1 = compileList(testDir.getName, sources, opt)
+        def orderIdempotency2 = compileList(testDir.getName, sources.reverse, opt)
+        orderIdempotency1 + orderIdempotency2
+      }).reduce(_ + _)
     }
 
-    val tests = (idempotency1() + idempotency2()).keepOutput.checkCompile()
+    val strawmanIdempotency = {
+      compileList("strawman0", strawmanSources, opt) +
+      compileList("strawman1", strawmanSources, opt) +
+      compileList("strawman2", strawmanSourcesSorted, opt) +
+      compileList("strawman3", strawmanSourcesRevSorted, opt)
+    }
 
-    assert(new java.io.File("../out/idempotency1/").exists)
-    assert(new java.io.File("../out/idempotency2/").exists)
+    def check(name: String) = {
+      val files = List(s"../tests/idempotency/$name.scala", "../tests/idempotency/IdempotencyCheck.scala")
+      compileList(name, files, defaultOptions)
+    }
+    val allChecks = {
+      check("CheckOrderIdempotency") +
+      check("CheckStrawmanIdempotency") +
+      check("CheckPosIdempotency")
+    }
 
-    compileList("idempotency", List("../tests/idempotency/Checker.scala", "../tests/idempotency/IdempotencyCheck.scala"), defaultOptions).checkRuns()
+    val allTests = {
+      strawmanIdempotency +
+      orderIdempotency +
+      posIdempotency
+    }
 
+    val tests = allTests.keepOutput.checkCompile()
+    allChecks.checkRuns()
     tests.delete()
   }
 

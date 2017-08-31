@@ -236,13 +236,6 @@ class CompilationTests extends ParallelTesting {
       compileDir("../library/src",
         allowDeepSubtypes.and("-Ycheck-reentrant", "-strict", "-priorityclasspath", defaultOutputDir))
 
-    def sources(paths: JStream[Path], excludedFiles: List[String] = Nil): List[String] =
-      paths.iterator().asScala
-        .filter(path =>
-          (path.toString.endsWith(".scala") || path.toString.endsWith(".java"))
-            && !excludedFiles.contains(path.getFileName.toString))
-        .map(_.toString).toList
-
     val compilerDir = Paths.get("../compiler/src")
     val compilerSources = sources(Files.walk(compilerDir))
 
@@ -301,13 +294,6 @@ class CompilationTests extends ParallelTesting {
   }
 
   private val (compilerSources, backendSources, backendJvmSources) = {
-    def sources(paths: JStream[Path], excludedFiles: List[String] = Nil): List[String] =
-      paths.iterator().asScala
-        .filter(path =>
-          (path.toString.endsWith(".scala") || path.toString.endsWith(".java"))
-            && !excludedFiles.contains(path.getFileName.toString))
-        .map(_.toString).toList
-
     val compilerDir = Paths.get("../compiler/src")
     val compilerSources0 = sources(Files.walk(compilerDir))
 
@@ -332,4 +318,11 @@ class CompilationTests extends ParallelTesting {
 object CompilationTests {
   implicit val summaryReport: SummaryReporting = new SummaryReport
   @AfterClass def cleanup(): Unit = summaryReport.echoSummary()
+
+  def sources(paths: JStream[Path], excludedFiles: List[String] = Nil): List[String] =
+    paths.iterator().asScala
+      .filter(path =>
+        (path.toString.endsWith(".scala") || path.toString.endsWith(".java"))
+          && !excludedFiles.contains(path.getFileName.toString))
+      .map(_.toString).toList
 }

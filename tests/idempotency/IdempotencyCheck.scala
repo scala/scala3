@@ -13,31 +13,32 @@ object IdempotencyCheck {
     "pos/i2345/Whatever"
   )
 
-  def checkIdempotency(dirPrefix: String): Unit = {
+  def checkIdempotency(dir1: String, dir2: String): Unit = {
     var failed = 0
     var total = 0
 
     val groupedBytecodeFiles: List[(JPath, JPath, JPath, JPath)] = {
       val bytecodeFiles = {
-        def bytecodeFiles(paths: JStream[JPath]): List[JPath] = {
+        def bytecodeFiles(paths: JStream[JPath], dir: String): List[(String, JPath)] = {
           def isBytecode(file: String) = file.endsWith(".class") || file.endsWith(".tasty")
-          paths.iterator.asScala.filter(path => isBytecode(path.toString)).toList
+          def tupleWithName(f: JPath) = (f.toString.substring(dir.length + 1, f.toString.length - 6), f)
+          paths.iterator.asScala.filter(path => isBytecode(path.toString)).map(tupleWithName).toList
         }
-        val compilerDir1 = JPaths.get(dirPrefix + 1)
-        val compilerDir2 = JPaths.get(dirPrefix + 2)
-        bytecodeFiles(JFiles.walk(compilerDir1)) ++ bytecodeFiles(JFiles.walk(compilerDir2))
+        val compilerDir1 = JPaths.get(dir1)
+        val compilerDir2 = JPaths.get(dir2)
+        bytecodeFiles(JFiles.walk(compilerDir1), dir1) ++ bytecodeFiles(JFiles.walk(compilerDir2), dir2)
       }
-      val groups = bytecodeFiles.groupBy(f => f.toString.substring(dirPrefix.length + 1, f.toString.length - 6))
+      val groups = bytecodeFiles.groupBy(_._1).mapValues(_.map(_._2))
 
       groups.filterNot(x => blacklisted(x._1)).valuesIterator.flatMap { g =>
-        def pred(f: JPath, i: Int, isTasty: Boolean) =
-          f.toString.contains(dirPrefix + i) && f.toString.endsWith(if (isTasty) ".tasty" else ".class")
-        val class1 = g.find(f => pred(f, 1, isTasty = false))
-        val class2 = g.find(f => pred(f, 2, isTasty = false))
-        val tasty1 = g.find(f => pred(f, 1, isTasty = true))
-        val tasty2 = g.find(f => pred(f, 2, isTasty = true))
-        assert(class1.isDefined, s"Could not find class in ${dirPrefix + 1} for $class2")
-        assert(class2.isDefined, s"Could not find class in ${dirPrefix + 2} for $class1")
+        def pred(f: JPath, dir: String, isTasty: Boolean) =
+          f.toString.contains(dir) && f.toString.endsWith(if (isTasty) ".tasty" else ".class")
+        val class1 = g.find(f => pred(f, dir1, isTasty = false))
+        val class2 = g.find(f => pred(f, dir2, isTasty = false))
+        val tasty1 = g.find(f => pred(f, dir1, isTasty = true))
+        val tasty2 = g.find(f => pred(f, dir2, isTasty = true))
+        assert(class1.isDefined, s"Could not find class in ${dir1} for $class2")
+        assert(class2.isDefined, s"Could not find class in ${dir2} for $class1")
         if (tasty1.isEmpty || tasty2.isEmpty) Nil
         else List(Tuple4(class1.get, tasty1.get, class2.get, tasty2.get))
       }.toList
