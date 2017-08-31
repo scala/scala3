@@ -294,60 +294,6 @@ class CompilationTests extends ParallelTesting {
     tests.foreach(_.delete())
   }
 
-  @Test def linkAll: Unit = {
-    // Setup and compile libraries
-    def strawmanLibrary =
-      compileDir("../collection-strawman/src/main", defaultOptions)
-    def linkCustomLib =
-      compileDir("../tests/link/custom-lib", defaultOptions)
-
-    val libraries = {
-      strawmanLibrary +
-      linkCustomLib
-    }.keepOutput.checkCompile()
-
-    // Setup class paths
-    def mkLinkClassPath(libPath: String) =
-      mkClassPath(libPath :: Jars.dottyTestDeps) ++ mkClassPath(Jars.dottyTestDeps, "-YRunClasspath")
-    val strawmanClassPath = mkLinkClassPath(defaultOutputDir + "strawmanLibrary/main/")
-    val customLibClassPath = mkLinkClassPath(defaultOutputDir + "linkCustomLib/custom-lib")
-
-    // Link tests
-    val linkDir = "../tests/link"
-    val linkStramanDir = linkDir + "/strawman"
-    val linkCustomLibDir = linkDir + "/on-custom-lib"
-    def linkStrawmanTest = compileFilesInDir(linkStramanDir, basicLinkOptimise ++ strawmanClassPath)
-    def linkCustomLibTest = compileFilesInDir(linkCustomLibDir, basicLinkOptimise ++ customLibClassPath)
-
-    def classFileChecks(sourceDir: String, testName: String) = {
-      val checkExt = ".classcheck"
-      for (check <- new JFile(sourceDir).listFiles().filter(_.toString.endsWith(checkExt))) {
-        val outDir = {
-          def path(str: String) = str.substring(linkDir.length, str.length - checkExt.length)
-          defaultOutputDir + testName + path(check.toString) + "/"
-        }
-        val expectedClasses = scala.io.Source.fromFile(check).getLines().toSet
-        val actualClasses = Files.walk(Paths.get(outDir)).iterator().asScala.collect {
-          case f if f.toString.endsWith(".class") => f.toString.substring(outDir.length, f.toString.length - ".class".length)
-        }.toSet
-        assertEquals(check.toString, expectedClasses, actualClasses)
-      }
-    }
-
-    // Run all tests
-    val tests = {
-      linkStrawmanTest +
-      linkCustomLibTest
-    }.keepOutput.checkRuns()
-
-    try {
-      classFileChecks(linkStramanDir, "linkStrawmanTest")
-      classFileChecks(linkCustomLibDir, "linkCustomLibTest")
-    } finally {
-      (libraries + tests).delete()
-    }
-  }
-
   private val (compilerSources, backendSources, backendJvmSources) = {
     val compilerDir = Paths.get("../compiler/src")
     val compilerSources0 = sources(Files.walk(compilerDir))
