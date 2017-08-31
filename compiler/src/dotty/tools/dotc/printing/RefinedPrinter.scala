@@ -662,6 +662,11 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
   override protected def keyString(sym: Symbol): String = {
     val flags = sym.flagsUNSAFE
     if (sym.isType && sym.owner.isTerm) ""
+    else if (sym.isPackageObject) "package object"
+    else if (flags.is(Module) && flags.is(Case)) "case object"
+    else if (sym.isClass && flags.is(Case)) "case class"
+    else if (flags is Module) "object"
+    else if (sym.isTerm && !flags.is(Param) && flags.is(Implicit)) "implicit val"
     else super.keyString(sym)
   }
 

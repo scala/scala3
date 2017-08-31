@@ -205,7 +205,7 @@ class CompilationTests extends ParallelTesting {
     compileDir("../compiler/src/dotty/tools/dotc/config", picklingOptions) +
     compileDir("../compiler/src/dotty/tools/dotc/parsing", picklingOptions) +
     compileDir("../compiler/src/dotty/tools/dotc/printing", picklingOptions) +
-    compileDir("../repl/src/dotty/tools/repl", picklingOptions) +
+    compileDir("../compiler/src/dotty/tools/repl", picklingOptions) +
     compileDir("../compiler/src/dotty/tools/dotc/rewrite", picklingOptions) +
     compileDir("../compiler/src/dotty/tools/dotc/transform", picklingOptions) +
     compileDir("../compiler/src/dotty/tools/dotc/typer", picklingOptions) +
