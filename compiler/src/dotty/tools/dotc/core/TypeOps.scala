@@ -258,56 +258,7 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
    *  all (possibly applied) references to classes.
    */
   def normalizeToClassRefs(parents: List[Type], cls: ClassSymbol, decls: Scope): List[Type] = {
-    if (Config.newScheme) return parents.mapConserve(_.dealias) // !@@@ track and eliminate usages?
-    // println(s"normalizing $parents of $cls in ${cls.owner}") // !!! DEBUG
-
-    // A map consolidating all refinements arising from parent type parameters
-    var refinements: SimpleMap[TypeName, Type] = SimpleMap.Empty
-
-    // A map of all formal type parameters of base classes that get refined
-    var formals: SimpleMap[TypeName, Symbol] = SimpleMap.Empty // A map of all formal parent parameter
-
-    // Strip all refinements from parent type, populating `refinements` and `formals` maps.
-    def normalizeToRef(tp: Type): TypeRef = {
-      def fail = throw new TypeError(s"unexpected parent type: $tp")
-      tp.dealias match {
-        case tp: TypeRef =>
-          tp
-        case tp @ RefinedType(tp1, name: TypeName, rinfo) =>
-          val prevInfo = refinements(name)
-          refinements = refinements.updated(name,
-            if (prevInfo == null) tp.refinedInfo else prevInfo & tp.refinedInfo)
-          formals = formals.updated(name, tp1.typeParamNamed(name))
-          normalizeToRef(tp1)
-        case tp @ RefinedType(tp1, _: TermName, _) =>
-            normalizeToRef(tp1)
-        case _: ErrorType =>
-          defn.AnyType
-        case AnnotatedType(tpe, _) =>
-          normalizeToRef(tpe)
-        case HKApply(tycon: TypeRef, args) =>
-          tycon.info match {
-            case TypeAlias(alias) => normalizeToRef(alias.appliedTo(args))
-            case _ => fail
-          }
-        case _ =>
-          fail
-      }
-    }
-
-    val parentRefs = parents map normalizeToRef
-
-    // Enter all refinements into current scope.
-    refinements foreachBinding { (name, refinedInfo) =>
-      assert(decls.lookup(name) == NoSymbol, // DEBUG
-        s"redefinition of ${decls.lookup(name).debugString} in ${cls.showLocated}")
-      enterArgBinding(formals(name), refinedInfo, cls, decls)
-    }
-
-    if (Config.forwardTypeParams)
-      forwardParamBindings(parentRefs, refinements, cls, decls)
-
-    parentRefs
+    parents.mapConserve(_.dealias) // !@@@ track and eliminate usages?
   }
 
   /** Forward parameter bindings in baseclasses to argument types of
