@@ -3598,6 +3598,8 @@ object Types {
     // @!!! we are not systematic when we do referntial vs structural comparisons.
     // Do referential everywhere?
     override def equals(that: Any): Boolean = that match {
+      case that: TypeAlias =>
+        false
       case that: TypeBounds =>
         (this.lo eq that.lo) && (this.hi eq that.hi)
       case _ =>
@@ -3615,6 +3617,13 @@ object Types {
       if (alias eq this.alias) this else TypeAlias(alias)
 
     override def computeHash = doHash(alias)
+
+    override def equals(that: Any): Boolean = that match {
+      case that: TypeAlias =>
+        this.alias eq that.alias
+      case _ =>
+        false
+    }
   }
 
   class CachedTypeAlias(alias: Type) extends TypeAlias(alias)
