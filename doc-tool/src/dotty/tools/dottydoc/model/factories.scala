@@ -198,7 +198,7 @@ object factories {
         case _ => false
       }
 
-      cd.classParentRefs.collect {
+      cd.classParents.map(_.typeConstructor).collect {
         case t: TypeRef if !isJavaLangObject(t) && !isProductWithArity(t) =>
           UnsetLink(t.name.toString, path(t.symbol).mkString("."))
       }

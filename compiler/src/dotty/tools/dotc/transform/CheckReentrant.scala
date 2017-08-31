@@ -81,7 +81,7 @@ class CheckReentrant extends MiniPhaseTransform { thisTransformer =>
                 sym.info.widenExpr.classSymbols.foreach(addVars)
               }
             }
-        for (parent <- cls.classInfo.classParentsNEW)
+        for (parent <- cls.classInfo.classParents)
           addVars(parent.typeSymbol.asClass)
       }
     }

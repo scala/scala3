@@ -1422,7 +1422,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
       }
 
       // Check that phantom lattices are defined in a static object
-      if (cls.classParentsNEW.exists(_.typeSymbol eq defn.PhantomClass) && !cls.isStaticOwner)
+      if (cls.classParents.exists(_.typeSymbol eq defn.PhantomClass) && !cls.isStaticOwner)
         ctx.error("only static objects can extend scala.Phantom", cdef.pos)
 
       // check value class constraints
@@ -1455,7 +1455,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     def realClassParent(cls: Symbol): ClassSymbol =
       if (!cls.isClass) defn.ObjectClass
       else if (!(cls is Trait)) cls.asClass
-      else cls.asClass.classParentsNEW match {
+      else cls.asClass.classParents match {
         case parentRef :: _ => realClassParent(parentRef.typeSymbol)
         case nil => defn.ObjectClass
       }
