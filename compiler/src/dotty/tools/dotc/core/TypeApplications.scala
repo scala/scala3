@@ -290,15 +290,8 @@ class TypeApplications(val self: Type) extends AnyVal {
       self
   }
 
-  /** Convert a type constructor `TC` which has type parameters `T1, ..., Tn`
-   *  in a context where type parameters `U1,...,Un` are expected to
-   *
-   *     LambdaXYZ { Apply = TC[hk$0, ..., hk$n] }
-   *
-   *  Here, XYZ corresponds to the variances of
-   *   - `U1,...,Un` if the variances of `T1,...,Tn` are pairwise compatible with `U1,...,Un`,
-   *   - `T1,...,Tn` otherwise.
-   *  v1 is compatible with v2, if v1 = v2 or v2 is non-variant.
+  /** Convert a type constructor `TC` which has type parameters `X1, ..., Xn`
+   *  to `[X1, ..., Xn] -> TC[X1, ..., Xn]`.
    */
   def EtaExpand(tparams: List[TypeSymbol])(implicit ctx: Context): Type = {
     val tparamsToUse = if (variancesConform(typeParams, tparams)) tparams else typeParamSymbols
