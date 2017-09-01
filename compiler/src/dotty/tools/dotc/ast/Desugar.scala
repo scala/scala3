@@ -5,7 +5,7 @@ package ast
 import core._
 import util.Positions._, Types._, Contexts._, Constants._, Names._, NameOps._, Flags._
 import SymDenotations._, Symbols._, StdNames._, Annotations._, Trees._
-import Decorators._
+import Decorators._, transform.SymUtils._
 import NameKinds.{UniqueName, EvidenceParamName, DefaultGetterName}
 import language.higherKinds
 import typer.FrontEnd
@@ -70,7 +70,7 @@ object desugar {
         def apply(tp: Type) = tp match {
           case tp: NamedType if tp.symbol.exists && (tp.symbol.owner eq originalOwner) =>
             val defctx = ctx.outersIterator.dropWhile(_.scope eq ctx.scope).next()
-            var local = defctx.denotNamed(tp.name).suchThat(_ is ParamOrAccessor).symbol
+            var local = defctx.denotNamed(tp.name).suchThat(_.isParamOrAccessor).symbol
             if (local.exists) (defctx.owner.thisType select local).dealias
             else {
               def msg =

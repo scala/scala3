@@ -64,8 +64,8 @@ trait TypeAssigner {
 
     def close(tp: Type) = RecType.closeOver(rt => tp.substThis(cls, rt.recThis))
 
-    val refinableDecls = info.decls.filter(
-      sym => !(sym.is(TypeParamAccessor | Private) || sym.isConstructor))
+    def isRefinable(sym: Symbol) = !sym.is(Private) && !sym.isConstructor
+    val refinableDecls = info.decls.filter(isRefinable)
     val raw = (parentType /: refinableDecls)(addRefinement)
     HKTypeLambda.fromParams(cls.typeParams, raw) match {
       case tl: HKTypeLambda => tl.derivedLambdaType(resType = close(tl.resType))
@@ -208,8 +208,6 @@ trait TypeAssigner {
             else errorType(ex"$what cannot be accessed as a member of $pre$where.$whyNot", pos)
           }
         }
-        else if (d.symbol is TypeParamAccessor)
-          ensureAccessible(d.info.bounds.hi, superAccess, pos)
         else
           ctx.makePackageObjPrefixExplicit(tpe withDenot d)
       case _ =>
