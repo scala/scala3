@@ -158,14 +158,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       case EtaExpansion(tycon) =>
         return toText(tycon)
       case tp: TypeRef =>
-        val hideType = !ctx.settings.debugAlias.value && (tp.symbol.isAliasPreferred)
-        if (hideType && !ctx.phase.erasedTypes && !tp.symbol.isCompleting) {
-          tp.info match {
-            case TypeAlias(alias) => return toText(alias)
-            case _ => if (tp.prefix.isInstanceOf[ThisType]) return nameString(tp.symbol)
-          }
-        }
-        else if (tp.symbol.isAnonymousClass && !ctx.settings.uniqid.value)
+        if (tp.symbol.isAnonymousClass && !ctx.settings.uniqid.value)
           return toText(tp.info)
       case ExprType(result) =>
         return "=> " ~ toText(result)

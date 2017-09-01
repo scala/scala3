@@ -303,12 +303,6 @@ object Flags {
   /** A case parameter accessor */
   final val CaseAccessor = termFlag(25, "<caseaccessor>")
 
-  /** A binding for a type parameter of a base class or trait.
-   */
-  final val BaseTypeArg = typeFlag(25, "<basetypearg>")  // @!!!
-
-  final val CaseAccessorOrBaseTypeArg = CaseAccessor.toCommonFlags
-
   /** A super accessor */
   final val Scala2SuperAccessor = termFlag(26, "<superaccessor>")
 
@@ -451,7 +445,7 @@ object Flags {
   final val FromStartFlags =
     Module | Package | Deferred | MethodOrHKCommon | Param | ParamAccessor.toCommonFlags |
     Scala2ExistentialCommon | Mutable.toCommonFlags | Touched | JavaStatic |
-    CovariantOrOuter | ContravariantOrLabel | CaseAccessorOrBaseTypeArg |
+    CovariantOrOuter | ContravariantOrLabel | CaseAccessor.toCommonFlags |
     Fresh | Erroneous | ImplicitCommon | Permanent | Synthetic |
     SuperAccessorOrScala2x | Inline
 
@@ -572,9 +566,6 @@ object Flags {
 
   /** value that's final or inline */
   final val FinalOrInline = Final | Inline
-
-  /** If symbol of a type alias has these flags, prefer the alias */
-  final val AliasPreferred = TypeParam | BaseTypeArg
 
   /** A covariant type parameter instance */
   final val LocalCovariant = allOf(Local, Covariant)
