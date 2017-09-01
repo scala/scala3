@@ -1412,19 +1412,14 @@ object SymDenotations {
         else ThisType.raw(TypeRef(pre, symbol.asType))
       }
 */
-    private[this] var myAppliedRef: Type = null // @!!!: Use classInfo.appliedRef instead?
-    private[this] var myTypeRef: TypeRef = null // @!!!: Use classInfo.appliedRef instead?
-
-    override def appliedRef(implicit ctx: Context): Type = {
-      if (myAppliedRef == null) myAppliedRef = super.appliedRef
-      if (ctx.erasedTypes) myAppliedRef.typeConstructor
-      else myAppliedRef
-    }
+    private[this] var myTypeRef: TypeRef = null   
 
     override def typeRef(implicit ctx: Context): TypeRef = {
       if (myTypeRef == null) myTypeRef = super.typeRef
       myTypeRef
     }
+
+    override def appliedRef(implicit ctx: Context): Type = classInfo.appliedRef
 
     private def baseData(implicit onBehalf: BaseData, ctx: Context): (List[ClassSymbol], BaseClassSet) = {
       if (!baseDataCache.isValid) baseDataCache = BaseData.newCache()
