@@ -1260,6 +1260,20 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
         Nil
     }
 
+  /** Try to produce joint arguments for a glb `A[T_1, ..., T_n] & A[T_1', ..., T_n']` using
+   *  the following strategies:
+   *
+   *    - if corresponding parameter variance is co/contra-variant, the glb/lub.
+   *    - if arguments are the same, that argument.
+   *    - if at least one of the arguments if a TypeBounds, the union of
+   *      the bounds.
+   *    - if homogenizeArgs is set, and arguments can be unified by instantiating
+   *      type parameters, the unified argument.
+   *    - otherwise NoType
+   *
+   *  The unification rule is contentious because it cuts the constraint set.
+   *  Therefore it is subject to Config option `alignArgsInAnd`.
+   */
   def glbArgs(args1: List[Type], args2: List[Type], tparams: List[TypeParamInfo]): List[Type] =
     tparams match {
       case tparam :: tparamsRest =>
@@ -1273,6 +1287,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
           else if (arg1.isInstanceOf[TypeBounds] || arg2.isInstanceOf[TypeBounds])
             TypeBounds(lub(arg1.loBound, arg2.loBound),
                        glb(arg1.hiBound, arg2.hiBound))
+          else if (homogenizeArgs && !frozenConstraint && isSameType(arg1, arg2)) arg1
           else NoType
         glbArg :: glbArgs(args1Rest, args2Rest, tparamsRest)
       case nil =>
@@ -1430,26 +1445,11 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
     // opportunistically merge same-named refinements
     // this does not change anything semantically (i.e. merging or not merging
     // gives =:= types), but it keeps the type smaller.
-    // @!!! still needed?
     case tp1: RefinedType =>
       tp2 match {
         case tp2: RefinedType if tp1.refinedName == tp2.refinedName =>
-          // Given two refinements `T1 { X = S1 }` and `T2 { X = S2 }` rewrite to
-          // `T1 & T2 { X B }` where `B` is the conjunction of the bounds of `X` in `T1` and `T2`.
-          //
-          // However, if `homogenizeArgs` is set, and both aliases `X = Si` are
-          // nonvariant, and `S1 =:= S2` (possibly by instantiating type parameters),
-          // rewrite instead to `T1 & T2 { X = S1 }`. This rule is contentious because
-          // it cuts the constraint set. On the other hand, without it we would replace
-          // the two aliases by `T { X >: S1 | S2 <: S1 & S2 }`, which looks weird
-          // and is probably not what's intended.
-          val rinfo1 = tp1.refinedInfo
-          val rinfo2 = tp2.refinedInfo
-          val parent = tp1.parent & tp2.parent
-          if (homogenizeArgs && rinfo1.isAlias && rinfo2.isAlias) // @!!! probably drop this case?
-            isSameType(rinfo1, rinfo2) // establish new constraint
-
-          tp1.derivedRefinedType(parent, tp1.refinedName, rinfo1 & rinfo2)
+          tp1.derivedRefinedType(tp1.parent & tp2.parent, tp1.refinedName,
+            tp1.refinedInfo & tp2.refinedInfo)
         case _ =>
           NoType
       }
