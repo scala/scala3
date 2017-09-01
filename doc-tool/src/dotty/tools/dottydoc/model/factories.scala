@@ -57,7 +57,7 @@ object factories {
     }
 
     def expandTpe(t: Type, params: List[Reference] = Nil): Reference = t match {
-      case AnyAppliedType(tycon, args) => {
+      case AppliedType(tycon, args) => {
         val cls = tycon.typeSymbol
 
         if (defn.isFunctionClass(cls))
