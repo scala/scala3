@@ -173,17 +173,17 @@ class TypeApplications(val self: Type) extends AnyVal {
    */
   final def typeParams(implicit ctx: Context): List[TypeParamInfo] = /*>|>*/ track("typeParams") /*<|<*/ {
     self match {
-      case self: ClassInfo =>
-        self.cls.typeParams
-      case self: HKTypeLambda =>
-        self.typeParams
       case self: TypeRef =>
         val tsym = self.symbol
         if (tsym.isClass) tsym.typeParams
         else if (!tsym.isCompleting) tsym.info.typeParams
         else Nil
+      case self: ClassInfo =>
+        self.cls.typeParams
+      case self: HKTypeLambda =>
+        self.typeParams
       case self: RefinedType =>
-        self.parent.typeParams.filterNot(_.paramName == self.refinedName) // @!!!
+        self.parent.typeParams
       case self: RecType =>
         self.parent.typeParams
       case _: SingletonType =>
@@ -432,12 +432,6 @@ class TypeApplications(val self: Type) extends AnyVal {
     case _ => TypeAlias(self)
   }
 
-  /** The type arguments of this type's base type instance wrt. `base`.
-   *  Wildcard types in arguments are returned as TypeBounds instances.
-   */
-  final def baseArgInfos(base: Symbol)(implicit ctx: Context): List[Type] = // @!!! drop
-    self.baseType(base).argInfos
-
   /** Translate a type of the form From[T] to To[T], keep other types as they are.
    *  `from` and `to` must be static classes, both with one type parameter, and the same variance.
    *  Do the same for by name types => From[T] and => To[T]
@@ -446,9 +440,7 @@ class TypeApplications(val self: Type) extends AnyVal {
     case self @ ExprType(tp) =>
       self.derivedExprType(tp.translateParameterized(from, to))
     case _ =>
-      if (self.derivesFrom(from))
-        if (ctx.erasedTypes) to.typeRef // @!!! can be dropped; appliedTo does the right thing anyway
-        else to.typeRef.appliedTo(self.baseType(from).argInfos)
+      if (self.derivesFrom(from)) to.typeRef.appliedTo(self.baseType(from).argInfos)
       else self
   }
 
@@ -480,21 +472,6 @@ class TypeApplications(val self: Type) extends AnyVal {
   /** Argument types where existential types in arguments are approximated by their upper bound  */
   def argTypesHi(implicit ctx: Context) = argInfos.mapConserve(_.hiBound)
 
-  /** The core type without any type arguments.
-   *  @param `typeArgs` must be the type arguments of this type.
-   */
-  final def withoutArgs(typeArgs: List[Type]): Type = self match { // @!!! replace with typeConstructor?
-    case AppliedType(tycon, args) => tycon
-    case _ =>
-      typeArgs match {
-        case _ :: typeArgs1 =>
-          val RefinedType(tycon, _, _) = self // @!!!
-          tycon.withoutArgs(typeArgs1)
-        case nil =>
-          self
-      }
-  }
-
   /** If this is the image of a type argument; recover the type argument,
    *  otherwise NoType.
    */
@@ -514,6 +491,6 @@ class TypeApplications(val self: Type) extends AnyVal {
   def elemType(implicit ctx: Context): Type = self match {
     case defn.ArrayOf(elemtp) => elemtp
     case JavaArrayType(elemtp) => elemtp
-    case _ => baseArgInfos(defn.SeqClass).headOption.getOrElse(NoType)
+    case _ => self.baseType(defn.SeqClass).argInfos.headOption.getOrElse(NoType)
   }
 }
