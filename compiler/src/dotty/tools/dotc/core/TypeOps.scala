@@ -233,21 +233,6 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
       }
   }
 
-  private def enterArgBinding(formal: Symbol, info: Type, cls: ClassSymbol, decls: Scope) = {
-    val lazyInfo = new LazyType { // needed so we do not force `formal`.
-      def complete(denot: SymDenotation)(implicit ctx: Context): Unit = {
-        denot setFlag formal.flags & RetainedTypeArgFlags
-        denot.info = info
-      }
-    }
-    val sym = ctx.newSymbol(
-      cls, formal.name,
-      formal.flagsUNSAFE & RetainedTypeArgFlags | BaseTypeArg | Override,
-      lazyInfo,
-      coord = cls.coord)
-    cls.enter(sym, decls)
-  }
-
   /** An argument bounds violation is a triple consisting of
    *   - the argument tree
    *   - a string "upper" or "lower" indicating which bound is violated

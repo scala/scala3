@@ -253,7 +253,6 @@ object RefChecks {
       def compatibleTypes(memberTp: Type, otherTp: Type): Boolean =
         try
           if (member.isType) // intersection of bounds to refined types must be nonempty
-            member.is(BaseTypeArg) || // @!!!
             memberTp.bounds.hi.hasSameKindAs(otherTp.bounds.hi) &&
             ((memberTp frozen_<:< otherTp) ||
              !member.owner.derivesFrom(other.owner) && {

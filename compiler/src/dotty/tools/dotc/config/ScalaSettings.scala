@@ -67,7 +67,6 @@ class ScalaSettings extends Settings.SettingGroup {
   val Ycheck = PhasesSetting("-Ycheck", "Check the tree at the end of")
   val YcheckMods = BooleanSetting("-Ycheck-mods", "Check that symbols and their defining trees have modifiers in sync")
   val debug = BooleanSetting("-Ydebug", "Increase the quantity of debugging output.")
-  val debugAlias = BooleanSetting("-Ydebug-alias", "Never follow alias when printing types")
   val debugTrace = BooleanSetting("-Ydebug-trace", "Trace core operations")
   val debugFlags = BooleanSetting("-Ydebug-flags", "Print all flags of definitions")
   val debugNames = BooleanSetting("-Ydebug-names", "Show internal representation of names")
