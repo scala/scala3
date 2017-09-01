@@ -64,45 +64,8 @@ object TypeApplications {
     }
 
     def unapply(tp: Type)(implicit ctx: Context): Option[TypeRef] = tp match {
-      case tp @ HKTypeLambda(tparams, AnyAppliedType(fn: TypeRef, args)) if (args == tparams.map(_.paramRef)) => Some(fn)
+      case tp @ HKTypeLambda(tparams, AppliedType(fn: TypeRef, args)) if (args == tparams.map(_.paramRef)) => Some(fn)
       case _ => None
-    }
-  }
-
-  /** Extractor for type application T[U_1, ..., U_n]. This is the refined type
-   *
-   *     T { type p_1 v_1= U_1; ...; type p_n v_n= U_n }
-   *
-   *  where v_i, p_i are the variances and names of the type parameters of T.
-   */
-  object AnyAppliedType { // @!!! drop
-    def apply(tp: Type, args: List[Type])(implicit ctx: Context): Type = tp.appliedTo(args)
-
-    def unapply(tp: Type)(implicit ctx: Context): Option[(Type, List[Type])] = tp match {
-      case tp: RefinedType =>
-        var refinements: List[RefinedType] = Nil
-        var tycon = tp.stripTypeVar
-        while (tycon.isInstanceOf[RefinedType]) {
-          val rt = tycon.asInstanceOf[RefinedType]
-          refinements = rt :: refinements
-          tycon = rt.parent.stripTypeVar
-        }
-        def collectArgs(tparams: List[TypeParamInfo],
-                        refinements: List[RefinedType],
-                        argBuf: mutable.ListBuffer[Type]): Option[(Type, List[Type])] = refinements match {
-          case Nil if tparams.isEmpty && argBuf.nonEmpty =>
-            Some((tycon, argBuf.toList))
-          case RefinedType(_, rname, rinfo) :: refinements1
-          if tparams.nonEmpty && rname == tparams.head.paramName =>
-            collectArgs(tparams.tail, refinements1, argBuf += rinfo.argInfo)
-          case _ =>
-            None
-        }
-        collectArgs(tycon.typeParams, refinements, new mutable.ListBuffer[Type])
-      case AppliedType(tycon, args) =>
-        Some((tycon, args))
-      case _ =>
-        None
     }
   }
 
@@ -400,7 +363,7 @@ class TypeApplications(val self: Type) extends AnyVal {
           if (!args.exists(_.isInstanceOf[TypeBounds])) {
             val followAlias = Config.simplifyApplications && {
               dealiased.resType match {
-                case AnyAppliedType(tyconBody, dealiasedArgs) =>
+                case AppliedType(tyconBody, dealiasedArgs) =>
                   // Reduction should not affect type inference when it's
                   // just eta-reduction (ignoring variance annotations).
                   // See i2201*.scala for examples where more aggressive
@@ -413,7 +376,7 @@ class TypeApplications(val self: Type) extends AnyVal {
             else AppliedType(self, args)
           }
           else dealiased.resType match {
-            case AnyAppliedType(tycon, args1) if tycon.safeDealias ne tycon =>
+            case AppliedType(tycon, args1) if tycon.safeDealias ne tycon =>
               // In this case we should always dealias since we cannot handle
               // higher-kinded applications to wildcard arguments.
               dealiased
@@ -504,7 +467,7 @@ class TypeApplications(val self: Type) extends AnyVal {
    *  Existential types in arguments are returned as TypeBounds instances.
    */
   final def argInfos(implicit ctx: Context): List[Type] = self match {
-    case AnyAppliedType(tycon, args) => args
+    case AppliedType(tycon, args) => args
     case _ => Nil
   }
 
