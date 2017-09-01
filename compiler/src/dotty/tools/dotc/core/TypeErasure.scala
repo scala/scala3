@@ -384,16 +384,14 @@ class TypeErasure(isJava: Boolean, semiEraseVCs: Boolean, isConstructor: Boolean
     case tp: AppliedType =>
       if (tp.tycon.isRef(defn.ArrayClass)) eraseArray(tp)
       else apply(tp.superType)
-    case tp: RefinedType =>
-      val parent = tp.parent
-      if (parent isRef defn.ArrayClass) eraseArray(tp) // @!!!
-      else this(parent)
     case _: TermRef | _: ThisType =>
       this(tp.widen)
     case SuperType(thistpe, supertpe) =>
       SuperType(this(thistpe), this(supertpe))
     case ExprType(rt) =>
       defn.FunctionType(0)
+    case tp: TypeProxy =>
+      this(tp.underlying)
     case AndType(tp1, tp2) =>
       erasedGlb(this(tp1), this(tp2), isJava)
     case OrType(tp1, tp2) =>
@@ -433,8 +431,6 @@ class TypeErasure(isJava: Boolean, semiEraseVCs: Boolean, isConstructor: Boolean
       tp
     case tp: WildcardType if wildcardOK =>
       tp
-    case tp: TypeProxy =>
-      this(tp.underlying)
   }
 
   private def eraseArray(tp: Type)(implicit ctx: Context) = {
@@ -549,8 +545,6 @@ class TypeErasure(isJava: Boolean, semiEraseVCs: Boolean, isConstructor: Boolean
         if (inst.exists) sigName(inst) else tpnme.Uninstantiated
       case tp: TypeProxy =>
         sigName(tp.underlying)
-      case tp: PolyType =>
-        sigName(tp.resultType)
       case _: ErrorType | WildcardType =>
         tpnme.WILDCARD
       case tp: WildcardType =>
