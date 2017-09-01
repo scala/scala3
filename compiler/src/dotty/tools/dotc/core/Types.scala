@@ -470,10 +470,8 @@ object Types {
     final def memberExcluding(name: Name, excluding: FlagSet)(implicit ctx: Context): Denotation = {
       // We need a valid prefix for `asSeenFrom`
       val pre = this match {
-        case tp: ClassInfo =>
-          tp.typeRef // @!!! appliedRef
-        case _ =>
-          widenIfUnstable
+        case tp: ClassInfo => tp.appliedRef
+        case _ => widenIfUnstable
       }
       findMember(name, pre, excluding)
     }
@@ -3432,6 +3430,9 @@ object Types {
       decls: Scope,
       selfInfo: DotClass /* should be: Type | Symbol */) extends CachedGroundType with TypeType {
 
+    private var selfTypeCache: Type = null
+    private var appliedRefCache: Type = null
+
     /** The self type of a class is the conjunction of
      *   - the explicit self type if given (or the info of a given self symbol), and
      *   - the fully applied reference to the class itself.
@@ -3439,39 +3440,13 @@ object Types {
     def selfType(implicit ctx: Context): Type = {
       if (selfTypeCache == null)
         selfTypeCache = {
-          def fullRef = fullyAppliedRef
           val given = cls.givenSelfType
-          val raw =
-            if (!given.exists) fullRef
-            else if (cls is Module) given
-            else if (ctx.erasedTypes) fullRef
-            else AndType(given, fullRef)
-          raw//.asSeenFrom(prefix, cls.owner)
+          if (!given.exists) appliedRef
+          else if (cls is Module) given
+          else if (ctx.erasedTypes) appliedRef
+          else AndType(given, appliedRef)
         }
       selfTypeCache
-    }
-
-    private var selfTypeCache: Type = null
-
-    //private def fullyAppliedRef(base: Type, tparams: List[TypeSymbol])(implicit ctx: Context): Type =
-    //  base.appliedTo(tparams.map(_.typeRef))
-
-    /** The class type with all type parameters */
-    def fullyAppliedRef(implicit ctx: Context): Type = // @!!! eliminate
-      //if (true)
-        cls.appliedRef
-      //else fullyAppliedRef(cls.typeRef, cls.typeParams)
-
-    private var appliedRefCache: Type = null
-    private var typeRefCache: TypeRef = null
-
-    def typeRef(implicit ctx: Context): TypeRef = {
-      def clsDenot = if (prefix eq cls.owner.thisType) cls.denot else cls.denot.copySymDenotation(info = this)
-      if (typeRefCache == null)
-        typeRefCache =
-          if ((cls is PackageClass) || cls.owner.isTerm) symbolicTypeRef
-          else TypeRef(prefix, cls.name, clsDenot)
-      typeRefCache
     }
 
     def appliedRef(implicit ctx: Context): Type = {
