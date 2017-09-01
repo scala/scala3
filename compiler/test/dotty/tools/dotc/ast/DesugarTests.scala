@@ -15,8 +15,6 @@ class DesugarTests extends DottyTest {
       assert(
         // remaining symbols must be either synthetic:
         sym.is(Synthetic) ||
-        // or be a type argument from product:
-        (sym.isType && sym.is(BaseTypeArg)) ||
         // or be a constructor:
         sym.name == nme.CONSTRUCTOR,
         s"found: $sym (${sym.flags})"
