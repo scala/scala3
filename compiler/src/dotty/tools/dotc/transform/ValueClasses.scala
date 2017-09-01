@@ -31,7 +31,7 @@ object ValueClasses {
   /** The member of a derived value class that unboxes it. */
   def valueClassUnbox(d: ClassDenotation)(implicit ctx: Context): Symbol =
     // (info.decl(nme.unbox)).orElse(...)      uncomment once we accept unbox methods
-    d.classInfo.decls.find(_.is(TermParamAccessor))
+    d.classInfo.decls.find(_.is(ParamAccessor))
 
   /** For a value class `d`, this returns the synthetic cast from the underlying type to
    *  ErasedValueType defined in the companion module. This method is added to the module
