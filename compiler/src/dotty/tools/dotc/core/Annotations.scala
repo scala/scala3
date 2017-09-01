@@ -103,7 +103,7 @@ object Annotations {
 
     private def resolveConstructor(atp: Type, args:List[Tree])(implicit ctx: Context): Tree = {
       val targs = atp.argTypes
-      tpd.applyOverloaded(New(atp withoutArgs targs), nme.CONSTRUCTOR, args, targs, atp, isAnnotConstructor = true)
+      tpd.applyOverloaded(New(atp.typeConstructor), nme.CONSTRUCTOR, args, targs, atp, isAnnotConstructor = true)
     }
 
     def applyResolve(atp: Type, args: List[Tree])(implicit ctx: Context): Annotation = {

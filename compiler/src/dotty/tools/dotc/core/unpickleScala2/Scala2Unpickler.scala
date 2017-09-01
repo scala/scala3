@@ -62,7 +62,7 @@ object Scala2Unpickler {
     case tp: MethodType =>
       val lastArg = tp.paramInfos.last
       assert(lastArg isRef defn.ArrayClass)
-      val elemtp0 :: Nil = lastArg.baseArgInfos(defn.ArrayClass)
+      val elemtp0 :: Nil = lastArg.baseType(defn.ArrayClass).argInfos
       val elemtp = elemtp0 match {
         case AndType(t1, t2) if t1.typeSymbol.isAbstractType && (t2 isRef defn.ObjectClass) =>
           t1 // drop intersection with Object for abstract types in varargs. UnCurry can handle them.
@@ -927,7 +927,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
     // println(atp)
     val targs = atp.argTypes
 
-    tpd.applyOverloaded(tpd.New(atp withoutArgs targs), nme.CONSTRUCTOR, args, targs, atp)
+    tpd.applyOverloaded(tpd.New(atp.typeConstructor), nme.CONSTRUCTOR, args, targs, atp)
 }
 
   /** Read an annotation and as a side effect store it into

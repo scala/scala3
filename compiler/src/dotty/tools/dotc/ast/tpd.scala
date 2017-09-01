@@ -380,7 +380,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   /** new C(args), calling given constructor `constr` of C */
   def New(tp: Type, constr: TermSymbol, args: List[Tree])(implicit ctx: Context): Apply = {
     val targs = tp.argTypes
-    val tycon = tp.withoutArgs(targs)
+    val tycon = tp.typeConstructor
     New(tycon)
       .select(TermRef.withSig(tycon, constr))
       .appliedToTypes(targs)

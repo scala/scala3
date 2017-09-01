@@ -536,19 +536,15 @@ object RefChecks {
                     def subclassMsg(c1: Symbol, c2: Symbol) =
                       s": ${c1.showLocated} is a subclass of ${c2.showLocated}, but method parameter types must match exactly."
                     val addendum =
-                      if (abstractSym == concreteSym) {
-                        val paArgs = pa.argInfos
-                        val pcArgs = pc.argInfos
-                        val paConstr = pa.withoutArgs(paArgs)
-                        val pcConstr = pc.withoutArgs(pcArgs)
-                        (paConstr, pcConstr) match {
+                      if (abstractSym == concreteSym)
+                        (pa.typeConstructor, pc.typeConstructor) match {
                           case (TypeRef(pre1, _), TypeRef(pre2, _)) =>
                             if (pre1 =:= pre2) ": their type parameters differ"
                             else ": their prefixes (i.e. enclosing instances) differ"
                           case _ =>
                             ""
                         }
-                      } else if (abstractSym isSubClass concreteSym)
+                      else if (abstractSym isSubClass concreteSym)
                         subclassMsg(abstractSym, concreteSym)
                       else if (concreteSym isSubClass abstractSym)
                         subclassMsg(concreteSym, abstractSym)
