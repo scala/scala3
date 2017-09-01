@@ -64,7 +64,7 @@ class HoistSuperArgs extends MiniPhaseTransform with IdentityDenotTransformer { 
       val constr = cdef.symbol
       lazy val origParams = // The parameters that can be accessed in the supercall
         if (constr == cls.primaryConstructor)
-          cls.info.decls.filter(d => d.is(TypeParam) || d.is(TermParamAccessor))
+          cls.info.decls.filter(d => d.is(TypeParam) || d.is(ParamAccessor))
         else
           (cdef.tparams ::: cdef.vparamss.flatten).map(_.symbol)
 
@@ -127,7 +127,7 @@ class HoistSuperArgs extends MiniPhaseTransform with IdentityDenotTransformer { 
                 def apply(tp: Type) = tp match {
                   case tp: NamedType
                   if (tp.symbol.owner == cls || tp.symbol.owner == constr) &&
-                     tp.symbol.is(ParamOrAccessor) =>
+                     tp.symbol.isParamOrAccessor =>
                     val mappedSym = origToParam(tp.symbol)
                     if (tp.symbol.isType) mappedSym.typeRef else mappedSym.termRef
                   case _ =>

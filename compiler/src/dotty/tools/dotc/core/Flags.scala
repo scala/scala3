@@ -249,9 +249,7 @@ object Flags {
   /** A field generated for a primary constructor parameter (no matter if it's a 'val' or not),
    *  or an accessor of such a field.
    */
-  final val ParamAccessor = commonFlag(14, "<paramaccessor>")
-  final val TermParamAccessor = ParamAccessor.toTermFlags
-  final val TypeParamAccessor = ParamAccessor.toTypeFlags  // @!!!
+  final val ParamAccessor = termFlag(14, "<paramaccessor>")
 
     /** A value or class implementing a module */
   final val Module = commonFlag(15, "module")
@@ -451,7 +449,7 @@ object Flags {
 
   /** Flags guaranteed to be set upon symbol creation */
   final val FromStartFlags =
-    Module | Package | Deferred | MethodOrHKCommon | Param | ParamAccessor |
+    Module | Package | Deferred | MethodOrHKCommon | Param | ParamAccessor.toCommonFlags |
     Scala2ExistentialCommon | Mutable.toCommonFlags | Touched | JavaStatic |
     CovariantOrOuter | ContravariantOrLabel | CaseAccessorOrBaseTypeArg |
     Fresh | Erroneous | ImplicitCommon | Permanent | Synthetic |
@@ -557,8 +555,8 @@ object Flags {
   /** An inline parameter */
   final val InlineParam = allOf(Inline, Param)
 
-  /** A parameter or parameter accessor */
-  final val ParamOrAccessor = Param | ParamAccessor
+  /** A term parameter or parameter accessor */
+  final val TermParamOrAccessor = Param | ParamAccessor
 
   /** A lazy or deferred value */
   final val LazyOrDeferred = Lazy | Deferred
@@ -568,9 +566,6 @@ object Flags {
 
   /** A synthetic or private definition */
   final val SyntheticOrPrivate = Synthetic | Private
-
-  /** A type parameter or type parameter accessor */
-  final val TypeParamOrAccessor = TypeParam | TypeParamAccessor
 
   /** A deferred member or a parameter accessor (these don't have right hand sides) */
   final val DeferredOrParamAccessor = Deferred | ParamAccessor
