@@ -484,8 +484,6 @@ object TreeChecker {
           assert(definedBinders.get(tp.binder) != null, s"orphan param: ${tp.show}, hash of binder = ${System.identityHashCode(tp.binder)}, tree = ${tree.show}, type = $tp0")
         case tp: TypeVar =>
           apply(tp.underlying)
-        case tp: TypeRef if tp.info.isAlias && tp.symbol.isAliasPreferred =>
-          apply(tp.superType)
         case _ =>
           mapOver(tp)
       }

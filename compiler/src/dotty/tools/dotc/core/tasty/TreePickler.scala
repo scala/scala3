@@ -144,8 +144,6 @@ class TreePickler(pickler: TastyPickler) {
       withLength { pickleType(tycon); args.foreach(pickleType(_)) }
     case ConstantType(value) =>
       pickleConstant(value)
-    case tpe: TypeRef if tpe.info.isAlias && tpe.symbol.isAliasPreferred =>
-      pickleType(tpe.superType)
     case tpe: WithFixedSym =>
       val sym = tpe.symbol
       def pickleRef() =

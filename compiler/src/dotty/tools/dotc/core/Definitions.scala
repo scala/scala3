@@ -719,7 +719,6 @@ class Definitions {
       else ArrayType.appliedTo(elem :: Nil)
     def unapply(tp: Type)(implicit ctx: Context): Option[Type] = tp.dealias match {
       case AppliedType(at, arg :: Nil) if at isRef ArrayType.symbol => Some(arg)
-      case at: RefinedType if (at isRef ArrayType.symbol) && at.argInfos.length == 1 => Some(at.argInfos.head) // @!!!
       case _ => None
     }
   }
