@@ -60,6 +60,10 @@ class SymUtils(val self: Symbol) extends AnyVal {
 
   def isSuperAccessor(implicit ctx: Context) = self.name.is(SuperAccessorName)
 
+  /** A type or term parameter or a term parameter accessor */
+  def isParamOrAccessor(implicit ctx: Context) =
+    self.is(Param) || self.is(ParamAccessor)
+
   /** If this is a constructor, its owner: otherwise this. */
   final def skipConstructor(implicit ctx: Context): Symbol =
     if (self.isConstructor) self.owner else self
@@ -87,8 +91,8 @@ class SymUtils(val self: Symbol) extends AnyVal {
   def accessorNamed(name: TermName)(implicit ctx: Context): Symbol =
     self.owner.info.decl(name).suchThat(_ is Accessor).symbol
 
-  def termParamAccessors(implicit ctx: Context): List[Symbol] =
-    self.info.decls.filter(_ is TermParamAccessor).toList
+  def paramAccessors(implicit ctx: Context): List[Symbol] =
+    self.info.decls.filter(_ is ParamAccessor).toList
 
   def caseAccessors(implicit ctx:Context) =
     self.info.decls.filter(_ is CaseAccessor).toList
