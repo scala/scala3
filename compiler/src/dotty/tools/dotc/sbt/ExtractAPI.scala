@@ -370,7 +370,7 @@ private class ExtractAPICollector(implicit val ctx: Context) extends ThunkHolder
         else
           tp.prefix
         new api.Projection(simpleType(prefix), sym.name.toString)
-      case TypeApplications.AnyAppliedType(tycon, args) =>
+      case AppliedType(tycon, args) =>
         def processArg(arg: Type): api.Type = arg match {
           case arg @ TypeBounds(lo, hi) => // Handle wildcard parameters
             if (lo.isDirectRef(defn.NothingClass) && hi.isDirectRef(defn.AnyClass))

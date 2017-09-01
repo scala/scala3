@@ -141,7 +141,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
     homogenize(tp) match {
       case x: ConstantType if homogenizedView =>
         return toText(x.widen)
-      case AnyAppliedType(tycon, args) =>
+      case AppliedType(tycon, args) =>
         val cls = tycon.typeSymbol
         if (tycon.isRepeatedParam) return toTextLocal(args.head) ~ "*"
         if (defn.isFunctionClass(cls)) return toTextFunction(args, cls.name.isImplicitFunction)

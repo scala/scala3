@@ -150,7 +150,7 @@ object Types {
     }
 
     def isInfixType(implicit ctx: Context): Boolean = this match {
-      case TypeApplications.AnyAppliedType(tycon, args) =>
+      case AppliedType(tycon, args) =>
         args.length == 2 &&
           !Character.isUnicodeIdentifierStart(tycon.typeSymbol.name.toString.head)
           // TODO: Once we use the 2.12 stdlib, also check the @showAsInfix annotation

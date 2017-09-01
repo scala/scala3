@@ -6,7 +6,6 @@ import core._
 import ast._
 import Scopes._, Contexts._, Constants._, Types._, Symbols._, Names._, Flags._, Decorators._
 import ErrorReporting._, Annotations._, Denotations._, SymDenotations._, StdNames._, TypeErasure._
-import TypeApplications.AnyAppliedType
 import util.Positions._
 import config.Printers.typr
 import ast.Trees._

@@ -790,7 +790,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
     tycon1 match {
       case param1: TypeParamRef =>
         def canInstantiate = tp2 match {
-          case AnyAppliedType(tycon2, args2) =>
+          case AppliedType(tycon2, args2) =>
             tryInstantiate(param1, tycon2.ensureHK) && isSubArgs(args1, args2, tp1, tycon2.typeParams)
           case _ =>
             false
