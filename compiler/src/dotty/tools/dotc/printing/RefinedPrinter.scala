@@ -125,6 +125,14 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         ("implicit " provided isImplicit) ~ argStr ~ " => " ~ argText(args.last)
       }
 
+    def isInfixType(tp: Type): Boolean = tp match {
+      case AppliedType(tycon, args) =>
+        args.length == 2 &&
+          !Character.isUnicodeIdentifierStart(tycon.typeSymbol.name.toString.head)
+          // TODO: Once we use the 2.12 stdlib, also check the @showAsInfix annotation
+      case _ => false
+    }
+
     def toTextInfixType(op: Type, args: List[Type]): Text = {
       /* SLS 3.2.8: all infix types have the same precedence.
        * In A op B op' C, op and op' need the same associativity.
@@ -132,8 +140,8 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
        * needs to be parenthesized if it's an infix type, and vice versa. */
       val l :: r :: Nil = args
       val isRightAssoc = op.typeSymbol.name.endsWith(":")
-      val leftArg = if (isRightAssoc && l.isInfixType) "(" ~ toText(l) ~ ")" else toText(l)
-      val rightArg = if (!isRightAssoc && r.isInfixType) "(" ~ toText(r) ~ ")" else toText(r)
+      val leftArg = if (isRightAssoc && isInfixType(l)) "(" ~ argText(l) ~ ")" else argText(l)
+      val rightArg = if (!isRightAssoc && isInfixType(r)) "(" ~ argText(r) ~ ")" else argText(r)
 
       leftArg ~ " " ~ toTextLocal(op) ~ " " ~ rightArg
     }
@@ -146,7 +154,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         if (tycon.isRepeatedParam) return toTextLocal(args.head) ~ "*"
         if (defn.isFunctionClass(cls)) return toTextFunction(args, cls.name.isImplicitFunction)
         if (defn.isTupleClass(cls)) return toTextTuple(args)
-        if (tp.isInfixType) return toTextInfixType(tycon, args)
+        if (isInfixType(tp)) return toTextInfixType(tycon, args)
       case EtaExpansion(tycon) =>
         return toText(tycon)
       case tp: TypeRef =>
