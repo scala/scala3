@@ -3452,7 +3452,7 @@ object Types {
           if ((cls is PackageClass) || cls.owner.isTerm) symbolicTypeRef
           else TypeRef(prefix, cls.name, clsDenot)
         appliedRefCache =
-          tref.appliedTo(cls.typeParams.map(_.typeRef)) // @!!! cache?
+          tref.appliedTo(cls.typeParams.map(_.typeRef))
       }
       appliedRefCache
     }
@@ -3562,7 +3562,6 @@ object Types {
 
   class RealTypeBounds(lo: Type, hi: Type) extends TypeBounds(lo, hi)
 
-  // @!!! get rid of variance
   abstract class TypeAlias(val alias: Type) extends TypeBounds(alias, alias) {
 
     /** pre: this is a type alias */
@@ -3829,12 +3828,17 @@ object Types {
           | NoPrefix => tp
 
         case tp: AppliedType =>
-          def mapArg(arg: Type, tparam: ParamInfo): Type = arg match {
-            case arg: TypeBounds => this(arg)
-            case _ => atVariance(variance * tparam.paramVariance)(this(arg))
+          def mapArgs(args: List[Type], tparams: List[ParamInfo]): List[Type] = args match {
+            case arg :: args1 =>
+              val arg1 = arg match {
+                case arg: TypeBounds => this(arg)
+                case arg => atVariance(variance * tparams.head.paramVariance)(this(arg))
+              }
+              arg1 :: mapArgs(args1, tparams.tail)
+            case nil =>
+              nil
           }
-          derivedAppliedType(tp, this(tp.tycon),
-              tp.args.zipWithConserve(tp.typeParams)(mapArg))
+          derivedAppliedType(tp, this(tp.tycon), mapArgs(tp.args, tp.typeParams))
 
         case tp: RefinedType =>
           derivedRefinedType(tp, this(tp.parent), this(tp.refinedInfo))
