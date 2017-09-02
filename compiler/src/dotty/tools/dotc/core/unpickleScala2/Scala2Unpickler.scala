@@ -97,7 +97,7 @@ object Scala2Unpickler {
         // `denot.sourceModule.exists` provision i859.scala crashes in the backend.
         denot.owner.thisType select denot.sourceModule
       else selfInfo
-    val tempInfo = new TempClassInfo(denot.owner.thisType, denot.classSymbol, decls, ost)
+    val tempInfo = new TempClassInfo(denot.owner.thisType, cls, decls, ost)
     denot.info = tempInfo // first rough info to avoid CyclicReferences
     val normalizedParents =
     	if (parents.isEmpty) defn.ObjectType :: Nil

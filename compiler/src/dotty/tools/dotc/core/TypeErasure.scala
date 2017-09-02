@@ -532,8 +532,6 @@ class TypeErasure(isJava: Boolean, semiEraseVCs: Boolean, isConstructor: Boolean
           else tp.superType)
       case ErasedValueType(_, underlying) =>
         sigName(underlying)
-      case defn.ArrayOf(elem) => // @!!!
-        sigName(this(tp))
       case JavaArrayType(elem) =>
         sigName(elem) ++ "[]"
       case tp: TermRef =>

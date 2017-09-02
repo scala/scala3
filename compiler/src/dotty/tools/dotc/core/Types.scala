@@ -832,10 +832,6 @@ object Types {
       }
     }
 
-    /** Temporary replacement for baseTypeRef */
-    final def baseTypeTycon(base: Symbol)(implicit ctx: Context): Type = // @!!! drop
-      baseType(base).typeConstructor
-
     def & (that: Type)(implicit ctx: Context): Type = track("&") {
       ctx.typeComparer.glb(this, that)
     }
@@ -3488,23 +3484,13 @@ object Types {
   class CachedClassInfo(prefix: Type, cls: ClassSymbol, classParents: List[Type], decls: Scope, selfInfo: DotClass)
     extends ClassInfo(prefix, cls, classParents, decls, selfInfo)
 
-  /** A class for temporary class infos where `parents` are not yet known. */
+  /** A class for temporary class infos where `parents` are not yet known */
   final class TempClassInfo(prefix: Type, cls: ClassSymbol, decls: Scope, selfInfo: DotClass)
   extends CachedClassInfo(prefix, cls, Nil, decls, selfInfo) {
 
-    /** A list of actions that were because they rely on the class info of `cls` to
-     *  be no longer temporary. These actions will be performed once `cls` gets a real
-     *  ClassInfo.
-     */
-    private var suspensions: List[Context => Unit] = Nil
-
-    def addSuspension(suspension: Context => Unit): Unit = suspensions ::= suspension
-
-    /** Install classinfo with known parents in `denot` and resume all suspensions */ // @!!! elim
-    def finalize(denot: SymDenotation, parents: List[Type])(implicit ctx: Context) = {
-      denot.info = derivedClassInfo(classParents = parents)
-      suspensions.foreach(_(ctx))
-    }
+    /** Install classinfo with known parents in `denot` s */
+    def finalize(denot: SymDenotation, parents: List[Type])(implicit ctx: Context) =
+      denot.info = ClassInfo(prefix, cls, parents, decls, selfInfo)
 
     override def derivedClassInfo(prefix: Type)(implicit ctx: Context) =
       if (prefix eq this.prefix) this

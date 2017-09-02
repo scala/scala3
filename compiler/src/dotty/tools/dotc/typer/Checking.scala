@@ -487,7 +487,7 @@ object Checking {
         ctx.error(ValueClassesMayNotWrapItself(clazz), clazz.pos)
       else {
         val clParamAccessors = clazz.asClass.paramAccessors.filter { param =>
-          param.isTerm && !param.is(Flags.Accessor) // @!!!
+          param.isTerm && !param.is(Flags.Accessor)
         }
         clParamAccessors match {
           case param :: params =>
@@ -569,29 +569,26 @@ trait Checking {
    *  are feasible, i.e. that their lower bound conforms to their upper bound. If a type
    *  argument is infeasible, issue and error and continue with upper bound.
    */
-  def checkFeasibleParent(tp: Type, pos: Position, where: => String = "")(implicit ctx: Context): Type =
+  def checkFeasibleParent(tp: Type, pos: Position, where: => String = "")(implicit ctx: Context): Type = {
+    def checkGoodBounds(tp: Type) = tp match {
+      case tp @ TypeBounds(lo, hi) if !(lo <:< hi) =>
+        ctx.error(ex"no type exists between low bound $lo and high bound $hi$where", pos)
+        TypeBounds(hi, hi)
+      case _ =>
+        tp
+    }
     tp match {
       case tp @ AndType(tp1, tp2) =>
         ctx.error(s"conflicting type arguments$where", pos)
         tp1
       case tp @ AppliedType(tycon, args) =>
-        def checkArg(arg: Type) = arg match {
-          case tp @ TypeBounds(lo, hi) if !(lo <:< hi) =>
-            ctx.error(ex"no type exists between low bound $lo and high bound $hi$where", pos)
-            hi
-          case _ => arg
-        }
-        tp.derivedAppliedType(tycon, args.mapConserve(checkArg))
-      case tp: RefinedType => // @!!!
-        tp.derivedRefinedType(tp.parent, tp.refinedName, checkFeasibleParent(tp.refinedInfo, pos, where))
-      case tp: RecType => // @!!!
-        tp.rebind(tp.parent)
-      case tp @ TypeBounds(lo, hi) if !(lo <:< hi) => // @!!!
-        ctx.error(ex"no type exists between low bound $lo and high bound $hi$where", pos)
-        TypeAlias(hi)
+        tp.derivedAppliedType(tycon, args.mapConserve(checkGoodBounds))
+      case tp: RefinedType =>
+        tp.derivedRefinedType(tp.parent, tp.refinedName, checkGoodBounds(tp.refinedInfo))
       case _ =>
         tp
     }
+  }
 
   /** Check that `tree` is a pure expression of constant type */
   def checkInlineConformant(tree: Tree, what: => String)(implicit ctx: Context): Unit =

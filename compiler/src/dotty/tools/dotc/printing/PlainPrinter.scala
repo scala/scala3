@@ -128,11 +128,10 @@ class PlainPrinter(_ctx: Context) extends Printer {
   }
 
   /** The longest sequence of refinement types, starting at given type
-   *  and following parents, but stopping at applied types.
+   *  and following parents.
    */
   private def refinementChain(tp: Type): List[Type] =
     tp :: (tp match {
-      case AppliedType(_, _) => Nil // @!!!
       case tp: RefinedType => refinementChain(tp.parent.stripTypeVar)
       case _ => Nil
     })
