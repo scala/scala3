@@ -1402,17 +1402,10 @@ object SymDenotations {
     }
 
     private def computeThisType(implicit ctx: Context): Type =
-      ThisType.raw(
-        TypeRef(if (this is Package) NoPrefix else owner.thisType, symbol.asType))
-/*      else {
-        val pre = owner.thisType
-        if (this is Module)
-          if (isMissing(pre)) TermRef(pre, sourceModule.asTerm)
-          else TermRef.withSig(pre, name.sourceModuleName, Signature.NotAMethod)
-        else ThisType.raw(TypeRef(pre, symbol.asType))
-      }
-*/
-    private[this] var myTypeRef: TypeRef = null   
+      ThisType.raw(TypeRef(
+          if (this is Package) NoPrefix else owner.thisType, symbol.asType))
+
+    private[this] var myTypeRef: TypeRef = null
 
     override def typeRef(implicit ctx: Context): TypeRef = {
       if (myTypeRef == null) myTypeRef = super.typeRef
