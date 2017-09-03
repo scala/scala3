@@ -66,7 +66,7 @@ current implementation of structural types. The main difference is
 that to get reflection-based structural access one now has to add an
 import:
 
-    import scala.relect.Selectable.reflectiveSelectable
+    import scala.reflect.Selectable.reflectiveSelectable
 
 On the other hand, the previously required language feature import of
 `reflectiveCalls` is now redundant and is therefore dropped.
