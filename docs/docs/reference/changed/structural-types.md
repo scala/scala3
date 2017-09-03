@@ -92,7 +92,7 @@ For illustration, let's define a record value and cast it to a
 structural type `Person`:
 
     type Person = Record { val name: String; val age: Int }
-    val person = Record(("name" -> "Emma", "age" -> 42)).asInstanceOf[Person]
+    val person = Record("name" -> "Emma", "age" -> 42).asInstanceOf[Person]
 
 Then `person.name` will have static type `String`, and will produce `"Emma"` as result.
 
