@@ -2020,7 +2020,7 @@ object Types {
       case that: WithFixedSym => this.prefix == that.prefix && (this.fixedSym eq that.fixedSym)
       case _ => false
     }
-    override def computeHash = doHash(fixedSym, prefix)
+    override def computeHash = unsupported("computeHash")
   }
 
   final class CachedTermRef(prefix: Type, name: TermName, hc: Int) extends TermRef(prefix, name) {
@@ -2036,8 +2036,12 @@ object Types {
   }
 
   // Those classes are non final as Linker extends them.
-  class TermRefWithFixedSym(prefix: Type, name: TermName, val fixedSym: TermSymbol) extends TermRef(prefix, name) with WithFixedSym
-  class TypeRefWithFixedSym(prefix: Type, name: TypeName, val fixedSym: TypeSymbol) extends TypeRef(prefix, name) with WithFixedSym
+  class TermRefWithFixedSym(prefix: Type, name: TermName, val fixedSym: TermSymbol, hc: Int) extends TermRef(prefix, name) with WithFixedSym {
+    myHash = hc
+  }
+  class TypeRefWithFixedSym(prefix: Type, name: TypeName, val fixedSym: TypeSymbol, hc: Int) extends TypeRef(prefix, name) with WithFixedSym {
+    myHash = hc
+  }
 
   /** Assert current phase does not have erasure semantics */
   private def assertUnerased()(implicit ctx: Context) =
@@ -2094,7 +2098,7 @@ object Types {
      *  with given prefix, name, and signature
      */
     def withFixedSym(prefix: Type, name: TermName, sym: TermSymbol)(implicit ctx: Context): TermRef =
-      unique(new TermRefWithFixedSym(prefix, name, sym))
+      ctx.uniqueWithFixedSyms.enterIfNew(prefix, name, sym).asInstanceOf[TermRef]
 
     /** Create a term ref referring to given symbol with given name, taking the signature
      *  from the symbol if it is completed, or creating a term ref without
@@ -2148,7 +2152,7 @@ object Types {
      *  with given prefix, name, and symbol.
      */
     def withFixedSym(prefix: Type, name: TypeName, sym: TypeSymbol)(implicit ctx: Context): TypeRef =
-      unique(new TypeRefWithFixedSym(prefix, name, sym))
+      ctx.uniqueWithFixedSyms.enterIfNew(prefix, name, sym).asInstanceOf[TypeRef]
 
     /** Create a type ref referring to given symbol with given name.
      *  This is very similar to TypeRef(Type, Symbol),
