@@ -1,6 +1,6 @@
 package dotty.tools.dotc.transform
 
-import dotty.tools.dotc.{CompilationUnit, FromTasty}
+import dotty.tools.dotc.CompilationUnit
 import dotty.tools.dotc.ast.Trees._
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.core.Contexts._
@@ -20,6 +20,7 @@ class LinkAll extends MiniPhaseTransform {
 
   override def phaseName = "linkAll"
 
+  /** Do not transform the any tree, runOn will traverse the trees and reload compilation units if needed */
   override def prepareForUnit(tree: tpd.Tree)(implicit ctx: Context): TreeTransform = NoTransform
 
   override def runOn(units: List[CompilationUnit])(implicit ctx: Context): List[CompilationUnit] = {
@@ -31,7 +32,6 @@ class LinkAll extends MiniPhaseTransform {
         val classesToLoad = unprocessed.foldLeft(Set.empty[ClassDenotation])((acc, unit) => accum.apply(acc, unit.tpdTree)) -- loadedClasses
         val loadedUnits = classesToLoad.flatMap(cls => loadCompilationUnit(cls))
         allUnits(processed ++ unprocessed, loadedUnits, loadedClasses ++ classesToLoad)
-
       }
     }
 
