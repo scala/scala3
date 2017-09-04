@@ -292,27 +292,6 @@ class CompilationTests extends ParallelTesting {
 
     tests.foreach(_.delete())
   }
-
-  private val (compilerSources, backendSources, backendJvmSources) = {
-    val compilerDir = Paths.get("../compiler/src")
-    val compilerSources0 = sources(Files.walk(compilerDir))
-
-    val backendDir = Paths.get("../scala-backend/src/compiler/scala/tools/nsc/backend")
-    val backendJvmDir = Paths.get("../scala-backend/src/compiler/scala/tools/nsc/backend/jvm")
-
-    // NOTE: Keep these exclusions synchronized with the ones in the sbt build (Build.scala)
-    val backendExcluded =
-      List("JavaPlatform.scala", "Platform.scala", "ScalaPrimitives.scala")
-    val backendJvmExcluded =
-      List("BCodeICodeCommon.scala", "GenASM.scala", "GenBCode.scala", "ScalacBackendInterface.scala", "BackendStats.scala")
-
-    val backendSources0 =
-      sources(Files.list(backendDir), excludedFiles = backendExcluded)
-    val backendJvmSources0 =
-      sources(Files.list(backendJvmDir), excludedFiles = backendJvmExcluded)
-
-    (compilerSources0, backendSources0, backendJvmSources0)
-  }
 }
 
 object CompilationTests {
