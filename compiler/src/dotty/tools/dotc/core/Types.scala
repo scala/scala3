@@ -1374,7 +1374,7 @@ object Types {
      *  after the type variables are instantiated. Finally, it
      *  maps poly params in the current constraint set back to their type vars.
      */
-    def simplified(implicit ctx: Context) = ctx.simplify(this, null)
+    def simplified(implicit ctx: Context) = ctx.simplify(this)
 
     /** customized hash code of this type.
      *  NotCached for uncached types. Cached types

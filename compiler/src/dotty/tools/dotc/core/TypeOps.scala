@@ -109,41 +109,62 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
   }
 
   /** Implementation of Types#simplified */
-  final def simplify(tp: Type, theMap: SimplifyMap): Type = tp match {
-    case tp: NamedType =>
-      if (tp.symbol.isStatic) tp
-      else tp.derivedSelect(simplify(tp.prefix, theMap)) match {
-        case tp1: NamedType if tp1.denotationIsCurrent =>
-          val tp2 = tp1.reduceProjection
-          //if (tp2 ne tp1) println(i"simplified $tp1 -> $tp2")
-          tp2
-        case tp1 => tp1
-      }
-    case tp: TypeParamRef =>
-      if (tp.paramName.is(DepParamName)) {
-        val bounds = ctx.typeComparer.bounds(tp)
-        if (bounds.lo.isRef(defn.NothingClass)) bounds.hi else bounds.lo
-      }
-      else {
-        val tvar = typerState.constraint.typeVarOfParam(tp)
-        if (tvar.exists) tvar else tp
-      }
-    case  _: ThisType | _: BoundType | NoPrefix =>
-      tp
-    case tp: RefinedType => // @!!!
-      tp.derivedRefinedType(simplify(tp.parent, theMap), tp.refinedName, simplify(tp.refinedInfo, theMap))
-    case tp: TypeAlias =>
-      tp.derivedTypeAlias(simplify(tp.alias, theMap))
-    case AndType(l, r) if !ctx.mode.is(Mode.Type) =>
-      simplify(l, theMap) & simplify(r, theMap)
-    case OrType(l, r) if !ctx.mode.is(Mode.Type) =>
-      simplify(l, theMap) | simplify(r, theMap)
-    case _ =>
-      (if (theMap != null) theMap else new SimplifyMap).mapOver(tp)
+  final def simplify(tp: Type): Type = tp match {
+    case tp: NamedType => simplifyNamed(tp)
+    case _: ThisType => tp
+    case _ => new SimplifyMap().mapOver2(tp)
   }
 
-  class SimplifyMap extends TypeMap {
-    def apply(tp: Type) = simplify(tp, this)
+  def simplifyNamed(tp: NamedType) =
+    if (tp.symbol.isStatic) tp
+    else tp.derivedSelect(simplify(tp.prefix)) match {
+      case tp1: NamedType if tp1.denotationIsCurrent => tp1.reduceProjection
+      case tp1 => tp1
+    }
+
+  private class SimplifyMap extends TypeMap {
+    def apply(tp: Type): Type = tp match {
+      case tp: NamedType => simplifyNamed(tp)
+      case _: ThisType => tp
+      case _ => mapOver2(tp)
+    }
+
+    // Specialize mapOver2 to get monomorphic dispatch for handling AppliedTypes
+    override def mapOver2(tp: Type) = tp match {
+      case tp: AppliedType =>
+        def mapArgs(args: List[Type]): List[Type] = args match {
+          case arg :: otherArgs =>
+            val arg1 = this(arg)
+            val otherArgs1 = mapArgs(otherArgs)
+            if ((arg1 eq arg) && (otherArgs1 eq otherArgs)) args
+            else arg1 :: otherArgs1
+          case nil =>
+            nil
+        }
+        derivedAppliedType(tp, this(tp.tycon), mapArgs(tp.args))
+      case _ =>
+        mapOver3(tp)
+    }
+
+    override def mapOver3(tp: Type) = tp match {
+      case tp: TypeParamRef =>
+        if (tp.paramName.is(DepParamName)) {
+          val bounds = ctx.typeComparer.bounds(tp)
+          if (bounds.lo.isRef(defn.NothingClass)) bounds.hi else bounds.lo
+        }
+        else {
+          val tvar = typerState.constraint.typeVarOfParam(tp)
+          if (tvar.exists) tvar else tp
+        }
+      case _: BoundType | NoPrefix | NoType =>
+        tp
+      case AndType(l, r) if !ctx.mode.is(Mode.Type) => // TODO: Drop all simplifications if mode isType?
+        this(l) & this(r)
+      case OrType(l, r) if !ctx.mode.is(Mode.Type) =>
+        this(l) | this(r)
+      case _ =>
+        super.mapOver3(tp)
+    }
   }
 
   /** Approximate union type by intersection of its dominators.
