@@ -70,6 +70,7 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
         }
       }
 
+    // Specialize mapOver2 to get monomorphic dispatch for handling AppliedTypes
     override def mapOver2(tp: Type) = tp match {
       case tp: AppliedType =>
         def mapArgs(args: List[Type], tparams: List[ParamInfo]): List[Type] = args match {

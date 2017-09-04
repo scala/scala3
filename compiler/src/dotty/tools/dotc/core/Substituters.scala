@@ -190,6 +190,7 @@ trait Substituters { this: Context =>
       case _ => mapOver2(tp)
     }
 
+    // Specialize mapOver2 to get monomorphic dispatch for handling AppliedTypes
     override def mapOver2(tp: Type) = tp match {
       case tp: AppliedType =>
         def mapArgs(args: List[Type]): List[Type] = args match {
@@ -214,6 +215,7 @@ trait Substituters { this: Context =>
       case _ => mapOver2(tp)
     }
 
+    // Specialize mapOver2 to get monomorphic dispatch for handling AppliedTypes
     override def mapOver2(tp: Type) = tp match {
       case tp: AppliedType =>
         def mapArgs(args: List[Type]): List[Type] = args match {

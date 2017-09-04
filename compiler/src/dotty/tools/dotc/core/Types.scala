@@ -3853,6 +3853,7 @@ object Types {
         mapOver2(tp)
     }
 
+    // Broken out so that it can be specialized in frequently used type maps
     def mapOver2(tp: Type) = tp match {
       case tp: AppliedType =>
         record(s"mapOver2 AppliedType")
