@@ -25,7 +25,7 @@ object TestConfiguration {
 
   val classPath = mkClassPath(Jars.dottyTestDeps)
 
-  def mkClassPath(deps: List[String]) = {
+  def mkClassPath(deps: List[String]): Array[String] = {
     val paths = deps map { p =>
       val file = new java.io.File(p)
       assert(
