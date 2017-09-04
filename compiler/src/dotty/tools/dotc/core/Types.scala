@@ -3833,12 +3833,14 @@ object Types {
 
         case tp: AppliedType =>
           def mapArgs(args: List[Type], tparams: List[ParamInfo]): List[Type] = args match {
-            case arg :: args1 =>
+            case arg :: otherArgs =>
               val arg1 = arg match {
                 case arg: TypeBounds => this(arg)
                 case arg => atVariance(variance * tparams.head.paramVariance)(this(arg))
               }
-              arg1 :: mapArgs(args1, tparams.tail)
+              val otherArgs1 = mapArgs(otherArgs, tparams.tail)
+              if ((arg1 eq arg) && (otherArgs1 eq otherArgs)) args
+              else arg1 :: otherArgs1
             case nil =>
               nil
           }
