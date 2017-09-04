@@ -563,7 +563,7 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
 
     val childTp  = if (child.isTerm) child.termRef else child.typeRef
 
-    val resTp = instantiate(childTp, expose(parent))
+    val resTp = instantiate(childTp, expose(parent))(ctx.fresh.setNewTyperState)
 
     if (!resTp.exists)  {
       debug.println(s"[refine] unqualified child ousted: ${childTp.show} !< ${parent.show}")
@@ -583,9 +583,7 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
    *  Otherwise, return NoType.
    *
    */
-  def instantiate(tp1: Type, tp2: Type): Type = {
-    implicit val inferCtx = ctx.fresh.setNewTyperState
-
+  def instantiate(tp1: Type, tp2: Type)(implicit ctx: Context): Type = {
     val approx = new TypeMap {
       def apply(t: Type): Type = t match {
         case t @ ThisType(tref) if !tref.symbol.isStaticOwner && !tref.symbol.is(Module)  =>
