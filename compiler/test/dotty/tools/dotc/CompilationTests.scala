@@ -10,8 +10,7 @@ import java.util.stream.{ Stream => JStream }
 import scala.collection.JavaConverters._
 import scala.util.matching.Regex
 import scala.concurrent.duration._
-
-import vulpix.{ ParallelTesting, SummaryReport, SummaryReporting, TestConfiguration }
+import vulpix._
 import dotty.tools.io.JFile
 
 
@@ -41,7 +40,7 @@ class CompilationTests extends ParallelTesting {
     compileDir("../compiler/src/dotty/tools/dotc/typer", defaultOptions) +
     compileDir("../compiler/src/dotty/tools/dotc/util", defaultOptions) +
     compileDir("../compiler/src/dotty/tools/io", defaultOptions) +
-    compileDir("../compiler/src/dotty/tools/dotc/core", noCheckOptions ++ classPath) +
+    compileDir("../compiler/src/dotty/tools/dotc/core", TestFlags(classPath, noCheckOptions)) +
     compileFile("../tests/pos/nullarify.scala", defaultOptions.and("-Ycheck:nullarify")) +
     compileFile("../tests/pos-scala2/rewrites.scala", scala2Mode.and("-rewrite")).copyToTarget() +
     compileFile("../tests/pos-special/t8146a.scala", allowDeepSubtypes) +
@@ -223,14 +222,13 @@ class CompilationTests extends ParallelTesting {
    *  version of Dotty
    */
   @Test def tastyBootstrap: Unit = {
-    val opt = Array(
-      "-classpath",
+    val opt = TestFlags(
       // compile with bootstrapped library on cp:
       defaultOutputDir + "lib/src/:" +
       // as well as bootstrapped compiler:
       defaultOutputDir + "dotty1/dotty/:" +
       Jars.dottyInterfaces,
-      "-Ycheck-reentrant"
+      Array("-Ycheck-reentrant")
     )
 
     def lib =

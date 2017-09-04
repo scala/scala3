@@ -7,7 +7,7 @@ import java.nio.file.{Files, Path, Paths}
 
 import org.junit.{AfterClass, Test}
 import org.junit.Assert._
-import vulpix.{ParallelTesting, SummaryReport, SummaryReporting, TestConfiguration}
+import vulpix._
 
 import scala.concurrent.duration._
 import scala.collection.JavaConverters._
@@ -38,17 +38,17 @@ class LinkOptimiseTests extends ParallelTesting {
     }.keepOutput.checkCompile()
 
     // Setup class paths
-    def mkLinkClassPath(libPath: String) =
-      mkClassPath(libPath :: Jars.dottyTestDeps) ++ mkClassPath(Jars.dottyTestDeps, "-YRunClasspath")
-    val strawmanClassPath = mkLinkClassPath(defaultOutputDir + "strawmanLibrary/main/")
-    val customLibClassPath = mkLinkClassPath(defaultOutputDir + "linkCustomLib/custom-lib")
+    def mkLinkClassFlags(libPath: String) =
+      TestFlags(mkClassPath(libPath :: Jars.dottyTestDeps), mkClassPath(Jars.dottyTestDeps), basicDefaultOptions :+ "-Xlink-optimise")
+    val strawmanClassPath = mkLinkClassFlags(defaultOutputDir + "strawmanLibrary/main/")
+    val customLibClassFlags = mkLinkClassFlags(defaultOutputDir + "linkCustomLib/custom-lib")
 
     // Link tests
     val linkDir = "../tests/link"
     val linkStramanDir = linkDir + "/strawman"
     val linkCustomLibDir = linkDir + "/on-custom-lib"
-    def linkStrawmanTest = compileFilesInDir(linkStramanDir, basicLinkOptimise ++ strawmanClassPath)
-    def linkCustomLibTest = compileFilesInDir(linkCustomLibDir, basicLinkOptimise ++ customLibClassPath)
+    def linkStrawmanTest = compileFilesInDir(linkStramanDir, strawmanClassPath)
+    def linkCustomLibTest = compileFilesInDir(linkCustomLibDir, customLibClassFlags)
 
     def classFileChecks(sourceDir: String, testName: String) = {
       val checkExt = ".classcheck"

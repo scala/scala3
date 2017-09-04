@@ -102,7 +102,6 @@ class ScalaSettings extends Settings.SettingGroup {
   val YcheckAllPatmat = BooleanSetting("-Ycheck-all-patmat", "Check exhaustivity and redundancy of all pattern matching (used for testing the algorithm)")
   val YretainTrees = BooleanSetting("-Yretain-trees", "Retain trees for top-level classes, accessible from ClassSymbol#tree")
   val YshowTreeIds = BooleanSetting("-Yshow-tree-ids", "Uniquely tag all tree nodes in debugging output.")
-  val YRunClasspath = PathSetting("-YRunClasspath", "Specify where to find user class files while executing run tests.", defaultClasspath)
 
   /** Area-specific debug output */
   val Yexplainlowlevel = BooleanSetting("-Yexplain-lowlevel", "When explaining type errors, show types at a lower level.")
