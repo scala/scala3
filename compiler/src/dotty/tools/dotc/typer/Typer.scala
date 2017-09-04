@@ -1001,9 +1001,7 @@ class Typer extends Namer
     cases mapconserve (typedCase(_, pt, selType, gadtSyms))
   }
 
-  /** Type a case. Overridden in ReTyper, that's why it's separate from
-   *  typedCases.
-   */
+  /** Type a case. */
   def typedCase(tree: untpd.CaseDef, pt: Type, selType: Type, gadtSyms: Set[Symbol])(implicit ctx: Context): CaseDef = track("typedCase") {
     val originalCtx = ctx
 
