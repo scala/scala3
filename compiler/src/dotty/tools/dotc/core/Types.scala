@@ -1264,11 +1264,11 @@ object Types {
       if (from.isEmpty) this
       else {
         val from1 = from.tail
-        if (from1.isEmpty) ctx.subst1(this, from.head, to.head, null)
+        if (from1.isEmpty) ctx.subst1(this, from.head, to.head)
         else {
           val from2 = from1.tail
-          if (from2.isEmpty) ctx.subst2(this, from.head, to.head, from1.head, to.tail.head, null)
-          else ctx.subst(this, from, to, null)
+          if (from2.isEmpty) ctx.subst2(this, from.head, to.head, from1.head, to.tail.head)
+          else ctx.subst(this, from, to)
         }
       }
 
@@ -1281,38 +1281,38 @@ object Types {
      *  the type parameters.
      */
     final def substDealias(from: List[Symbol], to: List[Type])(implicit ctx: Context): Type =
-      ctx.substDealias(this, from, to, null)
+      ctx.substDealias(this, from, to)
 
     /** Substitute all types of the form `TypeParamRef(from, N)` by
      *  `TypeParamRef(to, N)`.
      */
     final def subst(from: BindingType, to: BindingType)(implicit ctx: Context): Type =
-      ctx.subst(this, from, to, null)
+      ctx.subst(this, from, to)
 
     /** Substitute all occurrences of `This(cls)` by `tp` */
     final def substThis(cls: ClassSymbol, tp: Type)(implicit ctx: Context): Type =
-      ctx.substThis(this, cls, tp, null)
+      ctx.substThis(this, cls, tp)
 
     /** As substThis, but only is class is a static owner (i.e. a globally accessible object) */
     final def substThisUnlessStatic(cls: ClassSymbol, tp: Type)(implicit ctx: Context): Type =
-      if (cls.isStaticOwner) this else ctx.substThis(this, cls, tp, null)
+      if (cls.isStaticOwner) this else ctx.substThis(this, cls, tp)
 
     /** Substitute all occurrences of `RecThis(binder)` by `tp` */
     final def substRecThis(binder: RecType, tp: Type)(implicit ctx: Context): Type =
-      ctx.substRecThis(this, binder, tp, null)
+      ctx.substRecThis(this, binder, tp)
 
     /** Substitute a bound type by some other type */
     final def substParam(from: ParamRef, to: Type)(implicit ctx: Context): Type =
-      ctx.substParam(this, from, to, null)
+      ctx.substParam(this, from, to)
 
     /** Substitute bound types by some other types */
     final def substParams(from: BindingType, to: List[Type])(implicit ctx: Context): Type =
-      ctx.substParams(this, from, to, null)
+      ctx.substParams(this, from, to)
 
     /** Substitute all occurrences of symbols in `from` by references to corresponding symbols in `to`
      */
     final def substSym(from: List[Symbol], to: List[Symbol])(implicit ctx: Context): Type =
-      ctx.substSym(this, from, to, null)
+      ctx.substSym(this, from, to)
 
 // ----- misc -----------------------------------------------------------
 
@@ -3812,40 +3812,48 @@ object Types {
       tp.derivedLambdaType(tp.paramNames, formals, restpe)
 
     /** Map this function over given type */
-    def mapOver(tp: Type): Type = {
+    def mapOver(tp: Type): Type = tp match {
+      case tp: NamedType =>
+        if (stopAtStatic && tp.symbol.isStatic) tp
+        else {
+          val prefix1 = atVariance(variance max 0)(this(tp.prefix))
+            // A prefix is never contravariant. Even if say `p.A` is used in a contravariant
+            // context, we cannot assume contravariance for `p` because `p`'s lower
+            // bound might not have a binding for `A` (e.g. the lower bound could be `Nothing`).
+            // By contrast, covariance does translate to the prefix, since we have that
+            // if `p <: q` then `p.A <: q.A`, and well-formedness requires that `A` is a member
+            // of `p`'s upper bound.
+          derivedSelect(tp, prefix1)
+        }
+      case _: ThisType
+        | _: BoundType
+        | NoPrefix => tp
+      case _ =>
+        mapOver2(tp)
+    }
+
+    def mapOver2(tp: Type) = tp match {
+      case tp: AppliedType =>
+        def mapArgs(args: List[Type], tparams: List[ParamInfo]): List[Type] = args match {
+          case arg :: otherArgs =>
+            val arg1 = arg match {
+              case arg: TypeBounds => this(arg)
+              case arg => atVariance(variance * tparams.head.paramVariance)(this(arg))
+            }
+            val otherArgs1 = mapArgs(otherArgs, tparams.tail)
+            if ((arg1 eq arg) && (otherArgs1 eq otherArgs)) args
+            else arg1 :: otherArgs1
+          case nil =>
+            nil
+        }
+        derivedAppliedType(tp, this(tp.tycon), mapArgs(tp.args, tp.typeParams))
+      case _ =>
+        mapOver3(tp)
+    }
+
+    def mapOver3(tp: Type) = {
       implicit val ctx = this.ctx
       tp match {
-        case tp: NamedType =>
-          if (stopAtStatic && tp.symbol.isStatic) tp
-          else {
-            val prefix1 = atVariance(variance max 0)(this(tp.prefix))
-              // A prefix is never contravariant. Even if say `p.A` is used in a contravariant
-              // context, we cannot assume contravariance for `p` because `p`'s lower
-              // bound might not have a binding for `A` (e.g. the lower bound could be `Nothing`).
-              // By contrast, covariance does translate to the prefix, since we have that
-              // if `p <: q` then `p.A <: q.A`, and well-formedness requires that `A` is a member
-              // of `p`'s upper bound.
-            derivedSelect(tp, prefix1)
-          }
-        case _: ThisType
-          | _: BoundType
-          | NoPrefix => tp
-
-        case tp: AppliedType =>
-          def mapArgs(args: List[Type], tparams: List[ParamInfo]): List[Type] = args match {
-            case arg :: otherArgs =>
-              val arg1 = arg match {
-                case arg: TypeBounds => this(arg)
-                case arg => atVariance(variance * tparams.head.paramVariance)(this(arg))
-              }
-              val otherArgs1 = mapArgs(otherArgs, tparams.tail)
-              if ((arg1 eq arg) && (otherArgs1 eq otherArgs)) args
-              else arg1 :: otherArgs1
-            case nil =>
-              nil
-          }
-          derivedAppliedType(tp, this(tp.tycon), mapArgs(tp.args, tp.typeParams))
-
         case tp: RefinedType =>
           derivedRefinedType(tp, this(tp.parent), this(tp.refinedInfo))
 
@@ -3876,6 +3884,9 @@ object Types {
             derivedLambdaType(tp)(ptypes1, this(tp.resultType))
           }
           mapOverLambda
+
+        case NoPrefix | NoType =>
+          tp
 
         case tp @ TypeArgRef(prefix, _, _) =>
           derivedTypeArgRef(tp, atVariance(0)(this(prefix)))
