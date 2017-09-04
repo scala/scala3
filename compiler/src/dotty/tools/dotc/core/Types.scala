@@ -735,7 +735,10 @@ object Types {
      */
     final def asSeenFrom(pre: Type, cls: Symbol)(implicit ctx: Context): Type = track("asSeenFrom") {
       if (!cls.membersNeedAsSeenFrom(pre)) this
-      else ctx.asSeenFrom(this, pre, cls)
+      else {
+        record("asSeenFrom")
+        ctx.asSeenFrom(this, pre, cls)
+      }
     }
 
 // ----- Subtype-related --------------------------------------------
@@ -1260,7 +1263,8 @@ object Types {
     /** Substitute all types that refer in their symbol attribute to
      *  one of the symbols in `from` by the corresponding types in `to`.
      */
-    final def subst(from: List[Symbol], to: List[Type])(implicit ctx: Context): Type =
+    final def subst(from: List[Symbol], to: List[Type])(implicit ctx: Context): Type = {
+      record("substSymsTypes")
       if (from.isEmpty) this
       else {
         val from1 = from.tail
@@ -1271,6 +1275,7 @@ object Types {
           else ctx.subst(this, from, to)
         }
       }
+    }
 
     /** Same as `subst` but follows aliases as a fallback. When faced with a reference
      *  to an alias type, where normal substitution does not yield a new type, the
@@ -1280,39 +1285,53 @@ object Types {
      *  of a class and also wants to substitute any parameter accessors that alias
      *  the type parameters.
      */
-    final def substDealias(from: List[Symbol], to: List[Type])(implicit ctx: Context): Type =
+    final def substDealias(from: List[Symbol], to: List[Type])(implicit ctx: Context): Type = {
+      record("substDealias")
       ctx.substDealias(this, from, to)
+    }
 
     /** Substitute all types of the form `TypeParamRef(from, N)` by
      *  `TypeParamRef(to, N)`.
      */
-    final def subst(from: BindingType, to: BindingType)(implicit ctx: Context): Type =
+    final def subst(from: BindingType, to: BindingType)(implicit ctx: Context): Type = {
+      record("substBindings")
       ctx.subst(this, from, to)
+    }
 
     /** Substitute all occurrences of `This(cls)` by `tp` */
-    final def substThis(cls: ClassSymbol, tp: Type)(implicit ctx: Context): Type =
+    final def substThis(cls: ClassSymbol, tp: Type)(implicit ctx: Context): Type = {
+      record("substThis")
       ctx.substThis(this, cls, tp)
+    }
 
-    /** As substThis, but only is class is a static owner (i.e. a globally accessible object) */
+    /** As substThis, but only is class is not a static owner (i.e. a globally accessible object) */
     final def substThisUnlessStatic(cls: ClassSymbol, tp: Type)(implicit ctx: Context): Type =
-      if (cls.isStaticOwner) this else ctx.substThis(this, cls, tp)
-
+      if (cls.isStaticOwner) this else {
+        record("substThis")
+        ctx.substThis(this, cls, tp)
+      }
     /** Substitute all occurrences of `RecThis(binder)` by `tp` */
     final def substRecThis(binder: RecType, tp: Type)(implicit ctx: Context): Type =
       ctx.substRecThis(this, binder, tp)
 
     /** Substitute a bound type by some other type */
-    final def substParam(from: ParamRef, to: Type)(implicit ctx: Context): Type =
+    final def substParam(from: ParamRef, to: Type)(implicit ctx: Context): Type = {
+      record("substParam")
       ctx.substParam(this, from, to)
+    }
 
     /** Substitute bound types by some other types */
-    final def substParams(from: BindingType, to: List[Type])(implicit ctx: Context): Type =
+    final def substParams(from: BindingType, to: List[Type])(implicit ctx: Context): Type = {
+      record("substParams")
       ctx.substParams(this, from, to)
+    }
 
     /** Substitute all occurrences of symbols in `from` by references to corresponding symbols in `to`
      */
-    final def substSym(from: List[Symbol], to: List[Symbol])(implicit ctx: Context): Type =
+    final def substSym(from: List[Symbol], to: List[Symbol])(implicit ctx: Context): Type = {
+      record("substSym")
       ctx.substSym(this, from, to)
+    }
 
 // ----- misc -----------------------------------------------------------
 
@@ -3769,6 +3788,8 @@ object Types {
   abstract class TypeMap(implicit protected val ctx: Context)
   extends VariantTraversal with (Type => Type) { thisMap =>
 
+    record("all typemaps")
+    record(s"typemap: $getClass")
     protected def stopAtStatic = true
 
     def apply(tp: Type): Type
@@ -3834,6 +3855,7 @@ object Types {
 
     def mapOver2(tp: Type) = tp match {
       case tp: AppliedType =>
+        record(s"mapOver2 AppliedType")
         def mapArgs(args: List[Type], tparams: List[ParamInfo]): List[Type] = args match {
           case arg :: otherArgs =>
             val arg1 = arg match {
@@ -3852,6 +3874,7 @@ object Types {
     }
 
     def mapOver3(tp: Type) = {
+      record(s"mapOver3 ${tp.getClass}")
       implicit val ctx = this.ctx
       tp match {
         case tp: RefinedType =>
@@ -3978,7 +4001,7 @@ object Types {
    */
   abstract class ApproximatingTypeMap(implicit ctx: Context) extends TypeMap { thisMap =>
 
-    protected def range(lo: Type, hi: Type) =
+    def range(lo: Type, hi: Type) =
       if (variance > 0) hi
       else if (variance < 0) lo
       else Range(lower(lo), upper(hi))
