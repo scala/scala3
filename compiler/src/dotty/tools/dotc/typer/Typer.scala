@@ -2125,7 +2125,8 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
           tree match {
             case _: RefTree | _: Literal
             if !isVarPattern(tree) &&
-               !(tree.tpe <:< pt)(ctx.addMode(Mode.GADTflexible)) =>
+               !(tree.tpe <:< pt)(ctx.addMode(Mode.GADTflexible)) &&
+               !this.isInstanceOf[ReTyper] =>
               val cmp =
                 untpd.Apply(
                   untpd.Select(untpd.TypedSplice(tree), nme.EQ),
