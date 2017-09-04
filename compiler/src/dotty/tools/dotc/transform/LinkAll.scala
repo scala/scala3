@@ -71,7 +71,7 @@ object LinkAll {
     if (tree.isEmpty) None
     else {
       ctx.log("Loading compilation unit for: " + clsd)
-      Some(CompilationUnit.mkCompilationUnit(clsd, tree))
+      Some(CompilationUnit.mkCompilationUnit(clsd, tree, forceTrees = false))
     }
   }
 

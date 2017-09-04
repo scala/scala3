@@ -81,7 +81,7 @@ object FromTasty extends Driver {
               case info: ClassfileLoader =>
                 info.load(clsd)
                 val unpickled = clsd.symbol.asClass.tree
-                if (unpickled != null) CompilationUnit.mkCompilationUnit(clsd, unpickled)
+                if (unpickled != null) CompilationUnit.mkCompilationUnit(clsd, unpickled, forceTrees = true)
                 else cannotUnpickle(s"its class file ${info.classfile} does not have a TASTY attribute")
               case info =>
                 cannotUnpickle(s"its info of type ${info.getClass} is not a ClassfileLoader")
