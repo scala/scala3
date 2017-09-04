@@ -22,19 +22,21 @@ class LinkAll extends MiniPhaseTransform {
 
   override def prepareForUnit(tree: tpd.Tree)(implicit ctx: Context): TreeTransform = NoTransform
 
-  override def runOn(units: List[CompilationUnit])(implicit ctx: Context): List[CompilationUnit] =
+  override def runOn(units: List[CompilationUnit])(implicit ctx: Context): List[CompilationUnit] = {
+    /** Loads and processes new compilation units, possibly loading more units. */
+    def allUnits(processed: Set[CompilationUnit], unprocessed: Set[CompilationUnit], loadedClasses: Set[ClassDenotation])(implicit ctx: Context): List[CompilationUnit] = {
+      if (unprocessed.isEmpty) processed.toList
+      else {
+        val accum = new ClassesToLoadAccumulator
+        val classesToLoad = unprocessed.foldLeft(Set.empty[ClassDenotation])((acc, unit) => accum.apply(acc, unit.tpdTree)) -- loadedClasses
+        val loadedUnits = classesToLoad.flatMap(cls => loadCompilationUnit(cls))
+        allUnits(processed ++ unprocessed, loadedUnits, loadedClasses ++ classesToLoad)
+
+      }
+    }
+
     if (ctx.settings.XlinkOptimise.value) super.runOn(allUnits(Set.empty, units.toSet, Set.empty))
     else super.runOn(units)
-
-  /** Loads and processes new compilation units, possibly loading more units. */
-  private def allUnits(processed: Set[CompilationUnit], unprocessed: Set[CompilationUnit], loadedClasses: Set[ClassDenotation])(implicit ctx: Context): List[CompilationUnit] = {
-    if (unprocessed.isEmpty) processed.toList
-    else {
-      val accum = new ClassesToLoadAccumulator
-      val classesToLoad = unprocessed.foldLeft(Set.empty[ClassDenotation])((acc, unit) => accum.apply(acc, unit.tpdTree)) -- loadedClasses
-      val loadedUnits = classesToLoad.flatMap(cls => loadCompilationUnit(cls))
-      allUnits(processed ++ unprocessed, loadedUnits, loadedClasses ++ classesToLoad)
-    }
   }
 
   /** Collects all class denotations that may need to be loaded. */

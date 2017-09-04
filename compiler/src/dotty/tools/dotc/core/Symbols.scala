@@ -555,8 +555,10 @@ object Symbols {
 
     type ThisName = TypeName
 
-    /** If this is a top-level class, and if `-Yretain-trees` or `-Xlink-optimise` is set,
-      * return the TypeDef tree (possibly wrapped inside PackageDefs) for this class, otherwise EmptyTree.
+    /** If this is either:
+      *   - a top-level class and `-Yretain-trees` is set
+     *    - a top-level class loaded from TASTY and `-Xlink-optimise` is set
+      * then return the TypeDef tree (possibly wrapped inside PackageDefs) for this class, otherwise EmptyTree.
       * This will force the info of the class.
       */
     def tree(implicit ctx: Context): tpd.Tree /* tpd.PackageDef | tpd.TypeDef | tpd.EmptyTree */ = {
@@ -570,7 +572,7 @@ object Symbols {
       }
       myTree
     }
-    private var myTree: tpd.Tree /* tpd.PackageDef | tpd.TypeDef | tpd.EmptyTree */ = tpd.EmptyTree
+    private[this] var myTree: tpd.Tree /* tpd.PackageDef | tpd.TypeDef | tpd.EmptyTree */ = tpd.EmptyTree
     private[dotc] var unpickler: tasty.DottyUnpickler = _
 
     private[dotc] def registerTree(tree: tpd.TypeDef)(implicit ctx: Context): Unit = {

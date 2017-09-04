@@ -44,14 +44,14 @@ object SourceTree {
       None
     else {
       import ast.Trees._
-      def findTree(tree: tpd.Tree): Option[SourceTree] = tree match {
-        case PackageDef(_, stats) => stats.flatMap(findTree).headOption
+      def sourceTreeOfClass(tree: tpd.Tree): Option[SourceTree] = tree match {
+        case PackageDef(_, stats) => stats.flatMap(sourceTreeOfClass).headOption
         case tree: tpd.TypeDef if tree.symbol == sym =>
           val sourceFile = new SourceFile(sym.sourceFile, Codec.UTF8)
           Some(SourceTree(tree, sourceFile))
         case _ => None
       }
-      findTree(sym.tree)
+      sourceTreeOfClass(sym.tree)
     }
   }
 }
