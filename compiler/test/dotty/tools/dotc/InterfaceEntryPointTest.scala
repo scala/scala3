@@ -5,6 +5,7 @@ import org.junit.Test
 import org.junit.Assert._
 import interfaces._
 import scala.collection.mutable.ListBuffer
+import java.nio.file._
 
 /** Test that demonstrates how to use dotty-interfaces
  *
@@ -20,8 +21,12 @@ import scala.collection.mutable.ListBuffer
 class InterfaceEntryPointTest {
   @Test def runCompilerFromInterface = {
     val sources =
-      List("../tests/pos/HelloWorld.scala").map(p => new java.io.File(p).getPath())
-    val args = sources ++ List("-d", "../out/", "-usejavacp")
+      List("../tests/pos/HelloWorld.scala").map(p => Paths.get(p).toAbsolutePath().toString)
+    val out = Paths.get("../out/").toAbsolutePath()
+    if (Files.notExists(out))
+      Files.createDirectory(out)
+
+    val args = sources ++ List("-d", out.toString, "-usejavacp")
 
     val mainClass = Class.forName("dotty.tools.dotc.Main")
     val process = mainClass.getMethod("process",
