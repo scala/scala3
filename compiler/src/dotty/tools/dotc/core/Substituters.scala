@@ -192,16 +192,16 @@ trait Substituters { this: Context =>
 
     override def mapOver2(tp: Type) = tp match {
       case tp: AppliedType =>
-        def mapArgs(args: List[Type], tparams: List[ParamInfo]): List[Type] = args match {
+        def mapArgs(args: List[Type]): List[Type] = args match {
           case arg :: otherArgs =>
             val arg1 = this(arg)
-            val otherArgs1 = mapArgs(otherArgs, tparams.tail)
+            val otherArgs1 = mapArgs(otherArgs)
             if ((arg1 eq arg) && (otherArgs1 eq otherArgs)) args
             else arg1 :: otherArgs1
           case nil =>
             nil
         }
-        derivedAppliedType(tp, this(tp.tycon), mapArgs(tp.args, tp.typeParams))
+        derivedAppliedType(tp, this(tp.tycon), mapArgs(tp.args))
       case _ =>
         mapOver3(tp)
     }
@@ -212,6 +212,22 @@ trait Substituters { this: Context =>
       case tp: NamedType => subst1Named(tp, from, to)
       case _: ThisType | _: BoundType => tp
       case _ => mapOver2(tp)
+    }
+
+    override def mapOver2(tp: Type) = tp match {
+      case tp: AppliedType =>
+        def mapArgs(args: List[Type]): List[Type] = args match {
+          case arg :: otherArgs =>
+            val arg1 = this(arg)
+            val otherArgs1 = mapArgs(otherArgs)
+            if ((arg1 eq arg) && (otherArgs1 eq otherArgs)) args
+            else arg1 :: otherArgs1
+          case nil =>
+            nil
+        }
+        derivedAppliedType(tp, this(tp.tycon), mapArgs(tp.args))
+      case _ =>
+        mapOver3(tp)
     }
   }
 
