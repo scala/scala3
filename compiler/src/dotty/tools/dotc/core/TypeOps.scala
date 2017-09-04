@@ -22,51 +22,71 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
   /** The type `tp` as seen from prefix `pre` and owner `cls`. See the spec
    *  for what this means.
    */
-  final def asSeenFrom(tp: Type, pre: Type, cls: Symbol): Type =
-    new AsSeenFromMap(pre, cls).apply(tp)
+  final def asSeenFrom(tp: Type, pre: Type, cls: Symbol): Type = tp match {
+    case tp: NamedType =>
+      if (tp.symbol.isStatic) tp
+      else
+        tp.derivedSelect(asSeenFrom(tp.prefix, pre, cls)) match {
+          case tp1: TypeArgRef => tp1.underlying.hiBound
+          case tp1 => tp1
+        }
+    case tp: ThisType => toPrefix(tp, pre, cls, tp.cls, 1)
+    case _: BoundType => tp
+    case _ => new AsSeenFromMap(pre, cls, 1).mapOver2(tp)
+  }
+
+  /** Map a `C.this` type to the right prefix. If the prefix is unstable, and
+    *  the current variance is <= 0, return a range.
+    */
+  def toPrefix(tp: Type, pre: Type, cls: Symbol, thiscls: ClassSymbol, variance: Int): Type = /*>|>*/ ctx.conditionalTraceIndented(TypeOps.track, s"toPrefix($pre, $cls, $thiscls)") /*<|<*/ {
+    if ((pre eq NoType) || (pre eq NoPrefix) || (cls is PackageClass))
+      tp
+    else pre match {
+      case pre: SuperType => toPrefix(tp, pre.thistpe, cls, thiscls, variance)
+      case _ =>
+        if (thiscls.derivesFrom(cls) && pre.baseType(thiscls).exists)
+          if (variance > 0 || isLegalPrefix(pre)) pre
+          else new AsSeenFromMap(pre, cls, variance).range(pre.bottomType, pre)
+        else if ((pre.termSymbol is Package) && !(thiscls is Package))
+          toPrefix(tp, pre.select(nme.PACKAGE), cls, thiscls, variance)
+        else
+          toPrefix(tp, pre.baseType(cls).normalizedPrefix, cls.owner, thiscls, variance)
+    }
+  }
 
   /** The TypeMap handling the asSeenFrom */
-  class AsSeenFromMap(pre: Type, cls: Symbol) extends ApproximatingTypeMap {
+  class AsSeenFromMap(pre: Type, cls: Symbol, v: Int) extends ApproximatingTypeMap {
+    variance = v
 
-    def apply(tp: Type): Type = {
-
-      /** Map a `C.this` type to the right prefix. If the prefix is unstable, and
-       *  the current variance is <= 0, return a range.
-       */
-      def toPrefix(pre: Type, cls: Symbol, thiscls: ClassSymbol): Type = /*>|>*/ ctx.conditionalTraceIndented(TypeOps.track, s"toPrefix($pre, $cls, $thiscls)") /*<|<*/ {
-        if ((pre eq NoType) || (pre eq NoPrefix) || (cls is PackageClass))
-          tp
-        else pre match {
-          case pre: SuperType => toPrefix(pre.thistpe, cls, thiscls)
-          case _ =>
-            if (thiscls.derivesFrom(cls) && pre.baseType(thiscls).exists)
-              if (variance <= 0 && !isLegalPrefix(pre)) range(pre.bottomType, pre)
-              else pre
-            else if ((pre.termSymbol is Package) && !(thiscls is Package))
-              toPrefix(pre.select(nme.PACKAGE), cls, thiscls)
-            else
-              toPrefix(pre.baseType(cls).normalizedPrefix, cls.owner, thiscls)
-        }
-      }
-
-      /*>|>*/ ctx.conditionalTraceIndented(TypeOps.track, s"asSeen ${tp.show} from (${pre.show}, ${cls.show})", show = true) /*<|<*/ { // !!! DEBUG
-        // All cases except for ThisType are the same as in Map. Inlined for performance
-        // TODO: generalize the inlining trick?
+    def apply(tp: Type): Type =
+      /*>|> ctx.conditionalTraceIndented(TypeOps.track, s"asSeen ${tp.show} from (${pre.show}, ${cls.show})", show = true) <|<*/ { // !!! DEBUG
         tp match {
           case tp: NamedType =>
-            val sym = tp.symbol
-            if (sym.isStatic) tp
+            if (tp.symbol.isStatic) tp
             else derivedSelect(tp, atVariance(variance max 0)(this(tp.prefix)))
-          case tp: ThisType =>
-            toPrefix(pre, cls, tp.cls)
-          case _: BoundType | NoPrefix =>
-            tp
-          case tp: RefinedType =>  //@!!!
-            derivedRefinedType(tp, apply(tp.parent), apply(tp.refinedInfo))
-          case _ =>
-            mapOver(tp)
+          case tp: ThisType => toPrefix(tp, pre, cls, tp.cls, variance)
+          case _: BoundType => tp
+          case _ => mapOver2(tp)
         }
       }
+
+    override def mapOver2(tp: Type) = tp match {
+      case tp: AppliedType =>
+        def mapArgs(args: List[Type], tparams: List[ParamInfo]): List[Type] = args match {
+          case arg :: otherArgs =>
+            val arg1 = arg match {
+              case arg: TypeBounds => this(arg)
+              case arg => atVariance(variance * tparams.head.paramVariance)(this(arg))
+            }
+            val otherArgs1 = mapArgs(otherArgs, tparams.tail)
+            if ((arg1 eq arg) && (otherArgs1 eq otherArgs)) args
+            else arg1 :: otherArgs1
+          case nil =>
+            nil
+        }
+        derivedAppliedType(tp, this(tp.tycon), mapArgs(tp.args, tp.typeParams))
+      case _ =>
+        mapOver3(tp)
     }
 
     override def reapply(tp: Type) =
