@@ -6,7 +6,7 @@ import collection.immutable.BitSet
 import core.Decorators._
 
 abstract class TokensCommon {
-  val maxToken: Int
+  def maxToken: Int
 
   type Token = Int
   type TokenSet = BitSet
@@ -145,7 +145,7 @@ abstract class TokensCommon {
 
 object Tokens extends TokensCommon {
   final val minToken = EMPTY
-  final val maxToken = XMLSTART
+  final def maxToken = XMLSTART
 
   final val INTERPOLATIONID = 10;  enter(INTERPOLATIONID, "string interpolator")
   final val SYMBOLLIT = 11;        enter(SYMBOLLIT, "symbol literal") // TODO: deprecate
