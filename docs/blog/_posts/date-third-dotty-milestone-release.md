@@ -1,14 +1,21 @@
 ---
 layout: blog-page
-title: Announcing Dotty 0.3.0-RC1
+title: Announcing Dotty 0.3.0-RC2
 author: Allan Renucci
 authorImg: /images/allan.jpg
 date: ???
 ---
 
-Today, we are excited to release Dotty version 0.3.0-RC1. This release
+Today, we are excited to release Dotty version 0.3.0-RC2. This release
 serves as a technology preview that demonstrates new language features
 and the compiler supporting them.
+
+If you’re not familiar with Dotty, it's a platform to try out new language concepts and compiler
+technologies for Scala. The focus is mainly on simplification. We remove extraneous syntax
+(e.g. no XML literals), and try to boil down Scala’s types into a smaller set of more fundamental
+constructors. The theory behind these constructors is researched in
+[DOT](https://infoscience.epfl.ch/record/215280), a calculus for dependent object types.
+You can learn more about Dotty on our [website](http://dotty.epfl.ch).
 
 This release is based on the [previous milestone](/blog/2017/07/12/second-dotty-milestone-release.html).
 The highlights of this release are:
@@ -18,8 +25,6 @@ The highlights of this release are:
 <!--more-->
 
 This is our third scheduled release according to our [6-week release schedule](http://dotty.epfl.ch/docs/usage/version-numbers.html).
-
-## What’s in the 0.3.0-RC1 technology preview?
 The [previous technology preview](/blog/2017/07/12/second-dotty-milestone-release.html) improved
 stability and reliability:
  - substantial improvement of quality of generated code for pattern matching
@@ -28,6 +33,7 @@ stability and reliability:
  - improved compatibility with scalac
  - initial support for reproducible builds
 
+## What’s in the 0.3.0-RC2 technology preview?
 This technology preview further improves stability and reliability. Some highlighted PRs are:
  - IDE bug fixes:
  [#2986](https://github.com/lampepfl/dotty/pull/2986),
@@ -36,7 +42,6 @@ This technology preview further improves stability and reliability. Some highlig
  [#2876](https://github.com/lampepfl/dotty/pull/2876),
  [#2870](https://github.com/lampepfl/dotty/pull/2870),
  [#2872](https://github.com/lampepfl/dotty/pull/2872) by [@odersky] and [@smarter].
- - Making erasure pass Ycheck, [#2927](https://github.com/lampepfl/dotty/pull/2927) by [@smarter].
 
 
 ## How can you try it out?
