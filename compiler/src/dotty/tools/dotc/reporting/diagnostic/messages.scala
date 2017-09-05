@@ -1636,9 +1636,9 @@ object messages {
           |"""
   }
 
-  case class ValueClassNeedsExactlyOneValParam(valueClass: Symbol)(implicit ctx: Context)
+  case class ValueClassNeedsOneValParam(valueClass: Symbol)(implicit ctx: Context)
     extends Message(ValueClassNeedsExactlyOneValParamID) {
-    val msg = hl"""value class needs to have exactly one ${"val"} parameter"""
+    val msg = hl"""value class needs one ${"val"} parameter"""
     val kind = "Syntax"
     val explanation = ""
   }

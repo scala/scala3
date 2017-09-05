@@ -129,7 +129,7 @@ class Constructors extends MiniPhaseTransform with IdentityDenotTransformer { th
     // Produce aligned accessors and constructor parameters. We have to adjust
     // for any outer parameters, which are last in the sequence of original
     // parameter accessors but come first in the constructor parameter list.
-    val accessors = cls.paramAccessors.filterNot(_.isSetter)
+    val accessors = cls.paramAccessors.filterNot(x => x.isSetter || x.info.resultType.classSymbol == defn.ErasedPhantomClass)
     val vparamsWithOuterLast = vparams match {
       case vparam :: rest if vparam.name == nme.OUTER => rest ::: vparam :: Nil
       case _ => vparams

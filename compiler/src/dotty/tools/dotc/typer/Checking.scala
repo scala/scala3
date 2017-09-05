@@ -490,13 +490,17 @@ object Checking {
           param.isTerm && !param.is(Flags.Accessor)
         }
         clParamAccessors match {
-          case List(param) =>
+          case param :: params =>
             if (param.is(Mutable))
               ctx.error(ValueClassParameterMayNotBeAVar(clazz, param), param.pos)
             if (param.info.isPhantom)
-              ctx.error("value class parameter must not be phantom", param.pos)
-          case _ =>
-            ctx.error(ValueClassNeedsExactlyOneValParam(clazz), clazz.pos)
+              ctx.error("value class first parameter must not be phantom", param.pos)
+            else {
+              for (p <- params if !p.info.isPhantom)
+                ctx.error("value class can only have one non phantom parameter", p.pos)
+            }
+          case Nil =>
+            ctx.error(ValueClassNeedsOneValParam(clazz), clazz.pos)
         }
       }
       stats.foreach(checkValueClassMember)

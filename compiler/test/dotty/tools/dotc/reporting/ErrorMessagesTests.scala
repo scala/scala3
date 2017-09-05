@@ -787,14 +787,14 @@ class ErrorMessagesTests extends ErrorMessagesTest {
       assertEquals("variable i", param.show)
     }
 
-  @Test def valueClassNeedsExactlyOneVal =
+  @Test def valueClassNeedsOneVal =
     checkMessagesAfter("refchecks") {
-      """class MyValue(var i: Int, j: Int) extends AnyVal"""
+      """class MyValue() extends AnyVal"""
     }
     .expect { (ictx, messages) =>
       implicit val ctx: Context = ictx
       assertMessageCount(1, messages)
-      val ValueClassNeedsExactlyOneValParam(valueClass) :: Nil = messages
+      val ValueClassNeedsOneValParam(valueClass) :: Nil = messages
       assertEquals("class MyValue", valueClass.show)
     }
 

@@ -503,7 +503,7 @@ object desugar {
         companionDefs(anyRef, companionMeths)
       else if (isValueClass) {
         constr0.vparamss match {
-          case List(_ :: Nil) => companionDefs(anyRef, Nil)
+          case (_ :: Nil) :: _ => companionDefs(anyRef, Nil)
           case _ => Nil // error will be emitted in typer
         }
       }
