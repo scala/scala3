@@ -6,7 +6,7 @@ import collection.immutable.BitSet
 
 object JavaTokens extends TokensCommon {
   final val minToken = EMPTY
-  final val maxToken = DOUBLE
+  final def maxToken = DOUBLE
 
   final val javaOnlyKeywords = tokenRange(INSTANCEOF, ASSERT)
   final val sharedKeywords = BitSet( IF, FOR, ELSE, THIS, NULL, NEW, SUPER, ABSTRACT, FINAL, PRIVATE, PROTECTED,
