@@ -924,7 +924,7 @@ object PatternMatcher {
     def translateMatch(tree: Match): Tree = {
       var plan = matchPlan(tree)
       patmatch.println(i"Plan for $tree: ${show(plan)}")
-      if (!ctx.settings.YnoPatmatOpt.value)
+      if (false)
         for ((title, optimization) <- optimizations) {
           plan = optimization(plan)
           patmatch.println(s"After $title: ${show(plan)}")
