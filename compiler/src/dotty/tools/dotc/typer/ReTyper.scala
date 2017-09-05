@@ -58,9 +58,7 @@ class ReTyper extends Typer {
   }
 
   override def typedUnApply(tree: untpd.UnApply, selType: Type)(implicit ctx: Context): UnApply = {
-    val funProto = new UnapplyFunProto(WildcardType, this)
-
-    val fun1 = typedExpr(tree.fun, funProto)
+    val fun1 = typedUnadapted(tree.fun, AnyFunctionProto)
     val implicits1 = tree.implicits.map(typedExpr(_))
     val patterns1 = tree.patterns.mapconserve(pat => typed(pat, pat.tpe))
     untpd.cpy.UnApply(tree)(fun1, implicits1, patterns1).withType(tree.tpe)
