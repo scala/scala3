@@ -1,11 +1,11 @@
 pipeline:
   test:
-    image: lampepfl/dotty:2017-08-30
+    image: lampepfl/dotty:2017-09-05
     commands:
       - ./project/scripts/sbt "${CI_TEST}"
 
   publish_nightly:
-    image: lampepfl/dotty:2017-08-30
+    image: lampepfl/dotty:2017-09-05
     environment:
       - NIGHTLYBUILD=yes
     commands:
@@ -20,7 +20,7 @@ pipeline:
       environment: nightly
 
   publish_release:
-    image: lampepfl/dotty:2017-08-30
+    image: lampepfl/dotty:2017-09-05
     environment:
       - RELEASEBUILD=yes
     commands:
@@ -35,7 +35,7 @@ pipeline:
       environment: release
 
   publish_sbt_release:
-    image: lampepfl/dotty:2017-08-30
+    image: lampepfl/dotty:2017-09-05
     environment:
       - RELEASEBUILD=yes
     commands:
@@ -48,7 +48,7 @@ pipeline:
       environment: sbt_release
 
   documentation:
-    image: lampepfl/dotty:2017-08-30
+    image: lampepfl/dotty:2017-09-05
     commands:
       - ./project/scripts/genDocs "${CI_PUBLISH}" "$BOT_PASS"
     secrets: [ bot_pass ]
