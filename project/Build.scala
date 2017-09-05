@@ -8,7 +8,8 @@ import java.util.Calendar
 
 import scala.reflect.io.Path
 import sbtassembly.AssemblyKeys.assembly
-import xerial.sbt.Pack._
+import xerial.sbt.pack.PackPlugin._
+import autoImport._
 
 import sbt.Package.ManifestAttributes
 
@@ -1142,6 +1143,7 @@ object Build {
     settings(
       publishArtifact := false,
       // packMain := Map("dummy" -> "dotty.tools.dotc.Main"),
+      packGenerateMakefile := false,
       packExpandedClasspath := true,
       packResourceDir += (baseDirectory.value / "bin" -> "bin"),
       packArchiveName := "dotty-" + dottyVersion
@@ -1160,7 +1162,7 @@ object Build {
       publishArtifact := false,
       // packMain := Map("dummy" -> "dotty.tools.dotc.Main"),
       packExpandedClasspath := true,
-      // packExcludeJars := Seq("scala-library-.*\\.jar"),
+      packGenerateMakefile := false,
       packResourceDir += (baseDirectory.value / "bin" -> "bin"),
       packArchiveName := "dotty-" + dottyVersion
     )
