@@ -23,8 +23,10 @@ object TestConfiguration {
     "-Yforce-sbt-phases"
   )
 
-  val classPath = {
-    val paths = Jars.dottyTestDeps map { p =>
+  val classPath = mkClassPath(Jars.dottyTestDeps)
+
+  def mkClassPath(deps: List[String]): Array[String] = {
+    val paths = deps map { p =>
       val file = new java.io.File(p)
       assert(
         file.exists,
@@ -50,7 +52,7 @@ object TestConfiguration {
     Array("-classpath", paths)
   }
 
-  private val yCheckOptions = Array("-Ycheck:tailrec,resolveSuper,erasure,mixin,getClass,restoreScopes,labelDef")
+  val yCheckOptions = Array("-Ycheck:tailrec,resolveSuper,erasure,mixin,getClass,restoreScopes,labelDef")
 
   val defaultUnoptimised = noCheckOptions ++ checkOptions ++ yCheckOptions ++ classPath
   val defaultOptimised = defaultUnoptimised :+ "-optimise"

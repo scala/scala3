@@ -491,6 +491,7 @@ object StdNames {
     val runtimeMirror: N        = "runtimeMirror"
     val sameElements: N         = "sameElements"
     val scala_ : N              = "scala"
+    val scalaShadowing : N      = "scalaShadowing"
     val selectDynamic: N        = "selectDynamic"
     val selectDynamicMethod: N  = "selectDynamicMethod"
     val selectOverloadedMethod: N = "selectOverloadedMethod"

@@ -1192,6 +1192,13 @@ object Denotations {
     def staticRef(path: Name, generateStubs: Boolean = true, isPackage: Boolean = false)(implicit ctx: Context): Denotation = {
       def select(prefix: Denotation, selector: Name): Denotation = {
         val owner = prefix.disambiguate(_.info.isParameterless)
+        def isPackageFromCoreLibMissing: Boolean = {
+          owner.symbol == defn.RootClass &&
+          (
+            selector == nme.scala_ || // if the scala package is missing, the stdlib must be missing
+            selector == nme.scalaShadowing // if the scalaShadowing package is missing, the dotty library must be missing
+          )
+        }
         if (owner.exists) {
           val result = if (isPackage) owner.info.decl(selector) else owner.info.member(selector)
           if (result.exists) result
@@ -1199,7 +1206,9 @@ object Denotations {
             val alt =
               if (generateStubs) missingHook(owner.symbol.moduleClass, selector)
               else NoSymbol
-            if (alt.exists) alt.denot else MissingRef(owner, selector)
+            if (alt.exists) alt.denot
+            else if (isPackageFromCoreLibMissing) throw new MissingCoreLibraryException(selector.toString)
+            else MissingRef(owner, selector)
           }
         }
         else owner

@@ -1,0 +1,2 @@
+// nopos-error
+class Foo
