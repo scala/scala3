@@ -85,23 +85,29 @@ class LinkScala2Impls extends MiniPhase with IdentityDenotTransformer { thisTran
           val impl = implMethod(sel.symbol)
           if (impl.exists) Apply(ref(impl), This(currentClass) :: args).withPos(app.pos)
           else app // could have been an abstract method in a trait linked to from a super constructor
+        case Apply(sel, args)
+        if sel.symbol.maybeOwner.is(ImplClass) && sel.symbol.owner.traitOfImplClass.is(Scala_2_12_Trait) =>
+          val impl = implMethod(sel.symbol)
+          cpy.Apply(app)(ref(impl), args)
         case _ =>
           app
       }
     }
 
+    /** The 2.12 implementation method of a super call or implementation class target */
     private def implMethod(meth: Symbol)(implicit ctx: Context): Symbol = {
-      val (implInfo, implName) =
-        if (meth.owner.is(Scala_2_12_Trait))
-          (meth.owner.info, ImplMethName(meth.name.asTermName))
+      val implName = ImplMethName(meth.name.asTermName)
+      val cls = meth.owner
+      if (cls.is(ImplClass))
+        cls.traitOfImplClass.info.decl(implName).atSignature(meth.signature).symbol
+      else if (cls.is(Scala_2_12_Trait))
+        if (meth.isConstructor)
+          cls.info.decl(nme.TRAIT_CONSTRUCTOR).symbol
         else
-          (meth.owner.implClass.info, meth.name)
-      if (meth.isConstructor)
-        implInfo.decl(nme.TRAIT_CONSTRUCTOR).symbol
-      else
-        implInfo.decl(implName)
-          .suchThat(c => FullParameterization.memberSignature(c.info) == meth.signature)
-          .symbol
+          cls.info.decl(implName)
+            .suchThat(c => FullParameterization.memberSignature(c.info) == meth.signature)
+            .symbol
+      else throw new AssertionError(i"no impl method for $meth")
     }
   }
 
