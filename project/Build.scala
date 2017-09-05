@@ -1133,21 +1133,21 @@ object Build {
     state
   }
 
+  lazy val commonDistSettings = packSettings ++ Seq(
+    publishArtifact := false,
+    packGenerateMakefile := false,
+    packExpandedClasspath := true,
+    packResourceDir += (baseDirectory.value / "bin" -> "bin"),
+    packArchiveName := "dotty-" + dottyVersion
+  )
+
   lazy val dist = project.
     dependsOn(`dotty-interfaces`).
     dependsOn(`dotty-compiler`).
     dependsOn(`dotty-library`).
     dependsOn(`dotty-doc`).
     settings(commonNonBootstrappedSettings).
-    settings(packSettings).
-    settings(
-      publishArtifact := false,
-      // packMain := Map("dummy" -> "dotty.tools.dotc.Main"),
-      packGenerateMakefile := false,
-      packExpandedClasspath := true,
-      packResourceDir += (baseDirectory.value / "bin" -> "bin"),
-      packArchiveName := "dotty-" + dottyVersion
-    )
+    settings(commonDistSettings)
 
    // Same as `dist` but using bootstrapped projects.
   lazy val `dist-bootstrapped` = project.
@@ -1156,14 +1156,8 @@ object Build {
     dependsOn(`dotty-compiler-bootstrapped`).
     dependsOn(`dotty-doc-bootstrapped`).
     settings(commonBootstrappedSettings).
-    settings(packSettings).
+    settings(commonDistSettings).
     settings(
-      target := baseDirectory.value / "target",                    // override setting in commonBootstrappedSettings
-      publishArtifact := false,
-      // packMain := Map("dummy" -> "dotty.tools.dotc.Main"),
-      packExpandedClasspath := true,
-      packGenerateMakefile := false,
-      packResourceDir += (baseDirectory.value / "bin" -> "bin"),
-      packArchiveName := "dotty-" + dottyVersion
+      target := baseDirectory.value / "target" // override setting in commonBootstrappedSettings
     )
 }
