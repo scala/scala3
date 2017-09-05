@@ -19,8 +19,8 @@ class ConsoleInterface {
   def run(args: Array[String],
           bootClasspathString: String,
           classpathString: String,
-          initialCommands: Array[String],
-          cleanupCommands: Array[String],
+          initialCommands: String,
+          cleanupCommands: String,
           loader: ClassLoader,
           bindNames: Array[String],
           bindValues: Array[Any],
@@ -33,6 +33,6 @@ class ConsoleInterface {
       } ++
       Array("-classpath", classpathString)
 
-    new ReplDriver(completeArgs, classLoader = Some(loader), initialCommands = initialCommands, cleanupCommands = cleanupCommands).runUntilQuit()
+    new ReplDriver(completeArgs, classLoader = Some(loader), initialCommands = Some(initialCommands), cleanupCommands = Some(cleanupCommands)).runUntilQuit()
   }
 }

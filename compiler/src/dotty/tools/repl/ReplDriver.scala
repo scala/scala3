@@ -78,8 +78,8 @@ case class Completions(cursor: Int,
 class ReplDriver(settings: Array[String],
                  protected val out: PrintStream = System.out,
                  protected val classLoader: Option[ClassLoader] = None,
-                 initialCommands: Array[String] = Array.empty,
-                 cleanupCommands: Array[String] = Array.empty) extends Driver {
+                 initialCommands: Option[String] = None,
+                 cleanupCommands: Option[String] = None) extends Driver {
 
   /** Overridden to `false` in order to not have to give sources on the
    *  commandline
@@ -156,7 +156,7 @@ class ReplDriver(settings: Array[String],
   final def run(res: ParseResult)(implicit state: State): State =
     interpret(res)
 
-  final def runBootstrapCommands(cmds: Array[String])(implicit state: State): State = {
+  final def runBootstrapCommands(cmds: Option[String])(implicit state: State): State = {
     cmds.map(ParseResult.apply(_)(rootCtx)).map(Silent.apply(_)).foldLeft(state) { (s, cmd) =>
       interpret(cmd)(s)
     }
