@@ -104,4 +104,6 @@ class ReTyper extends Typer {
     Implicits.NoImplicitMatches
   override def checkCanEqual(ltp: Type, rtp: Type, pos: Position)(implicit ctx: Context): Unit = ()
   override def inlineExpansion(mdef: DefDef)(implicit ctx: Context): List[Tree] = mdef :: Nil
+
+  override protected def checkEqualityEvidence(tree: tpd.Tree, pt: Type)(implicit ctx: Context): Unit = ()
 }
