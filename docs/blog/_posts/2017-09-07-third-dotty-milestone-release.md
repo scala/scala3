@@ -3,7 +3,7 @@ layout: blog-page
 title: Announcing Dotty 0.3.0-RC2
 author: Allan Renucci
 authorImg: /images/allan.jpg
-date: ???
+date: 2017-09-07
 ---
 
 Today, we are excited to release Dotty version 0.3.0-RC2. This release
