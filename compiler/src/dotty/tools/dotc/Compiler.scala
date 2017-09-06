@@ -51,7 +51,6 @@ class Compiler {
            new CheckReentrant,      // Internal use only: Check that compiled program has no data races involving global vars
            new ElimJavaPackages),   // Eliminate syntactic references to Java packages
       List(new CheckStatic,         // Check restrictions that apply to @static members
-           new CheckPhantomCast,    // Checks that no Phantom types in are in casts
            new ElimRepeated,        // Rewrite vararg parameters and arguments
            new RefChecks,           // Various checks mostly related to abstract members and overriding
            new NormalizeFlags,      // Rewrite some definition flags
