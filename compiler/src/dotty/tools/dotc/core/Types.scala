@@ -1458,11 +1458,6 @@ object Types {
   /** A marker trait for types that can be types of values or that are higher-kinded  */
   trait ValueType extends ValueTypeOrProto with ValueTypeOrWildcard
 
-  /** A common base trait of NamedType and AppliedType */
-  trait RefType extends CachedProxyType with ValueType {
-    def symbol(implicit ctx: Context): Symbol
-  }
-
   /** A marker trait for types that are guaranteed to contain only a
    *  single non-null value (they might contain null in addition).
    */
@@ -1494,7 +1489,7 @@ object Types {
 // --- NamedTypes ------------------------------------------------------------------
 
   /** A NamedType of the form Prefix # name */
-  abstract class NamedType extends CachedProxyType with RefType {
+  abstract class NamedType extends CachedProxyType with ValueType {
 
     val prefix: Type
     val name: Name
@@ -3079,7 +3074,7 @@ object Types {
 
   /** A type application `C[T_1, ..., T_n]` */
   abstract case class AppliedType(tycon: Type, args: List[Type])
-  extends CachedProxyType with RefType {
+  extends CachedProxyType with ValueType {
 
     private var validSuper: Period = Nowhere
     private var cachedSuper: Type = _
@@ -3105,8 +3100,6 @@ object Types {
       }
       cachedSuper
     }
-
-    override def symbol(implicit ctx: Context) = tycon.typeSymbol
 
     def lowerBound(implicit ctx: Context) = tycon.stripTypeVar match {
       case tycon: TypeRef =>
@@ -3139,12 +3132,6 @@ object Types {
     def apply(tycon: Type, args: List[Type])(implicit ctx: Context) = {
       assertUnerased()
       ctx.base.uniqueAppliedTypes.enterIfNew(tycon, args)
-    }
-  }
-
-  object ClassRef {
-    def unapply(tp: RefType)(implicit ctx: Context): Option[RefType] = { // after bootstrap, drop the Option
-      if (tp.symbol.isClass) Some(tp) else None
     }
   }
 
