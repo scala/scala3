@@ -447,7 +447,8 @@ object Checking {
             classParents =
               tp.parents.map { p =>
                 apply(p).stripAnnots match {
-                  case ref: RefType => ref
+                  case ref: TypeRef => ref
+                  case ref: AppliedType => ref
                   case _ => defn.ObjectType // can happen if class files are missing
                 }
               }
