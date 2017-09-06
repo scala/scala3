@@ -509,7 +509,7 @@ trait Implicits { self: Typer =>
     && from.isValueType
     && (  from.isValueSubType(to)
        || inferView(dummyTreeOfType(from), to)
-            (ctx.fresh.addMode(Mode.ImplicitExploration).setExploreTyperState)
+            (ctx.fresh.addMode(Mode.ImplicitExploration).setExploreTyperState())
             .isInstanceOf[SearchSuccess]
           // TODO: investigate why we can't TyperState#test here
        )
@@ -787,7 +787,7 @@ trait Implicits { self: Typer =>
         val generated1 = adapt(generated, pt)
         lazy val shadowing =
           typed(untpd.Ident(ref.name) withPos pos.toSynthetic, funProto)(
-            nestedContext.addMode(Mode.ImplicitShadowing).setExploreTyperState)
+            nestedContext.addMode(Mode.ImplicitShadowing).setExploreTyperState())
         def refSameAs(shadowing: Tree): Boolean =
           ref.symbol == closureBody(shadowing).symbol || {
             shadowing match {
@@ -819,7 +819,7 @@ trait Implicits { self: Typer =>
           val history = ctx.searchHistory nest wildProto
           val result =
             if (history eq ctx.searchHistory) divergingImplicit(cand.ref)
-            else typedImplicit(cand)(nestedContext.setNewTyperState.setSearchHistory(history))
+            else typedImplicit(cand)(nestedContext.setNewTyperState().setSearchHistory(history))
           result match {
             case fail: SearchFailure =>
               rankImplicits(pending1, acc)

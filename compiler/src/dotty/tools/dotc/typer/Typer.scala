@@ -1755,7 +1755,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     typed(tree, selType)(ctx addMode Mode.Pattern)
 
   def tryEither[T](op: Context => T)(fallBack: (T, TyperState) => T)(implicit ctx: Context) = {
-    val nestedCtx = ctx.fresh.setNewTyperState
+    val nestedCtx = ctx.fresh.setNewTyperState()
     val result = op(nestedCtx)
     if (nestedCtx.reporter.hasErrors)
       fallBack(result, nestedCtx.typerState)
