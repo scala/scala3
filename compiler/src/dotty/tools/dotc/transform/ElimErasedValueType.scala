@@ -103,8 +103,8 @@ class ElimErasedValueType extends MiniPhaseTransform with InfoTransformer {
         // Maybe we should move mixin forwarding after erasure to avoid redundant forwarders like these.
         ctx.error(
             em"""double definition:
-                |$sym1: $info1 ${sym1.flags} in ${sym1.owner} and
-                |$sym2: $info2 ${sym2.flags} in ${sym2.owner}
+                |$sym1: $info1 in ${sym1.owner} and
+                |$sym2: $info2 in ${sym2.owner}
                 |have same type after erasure: $info""",
             root.pos)
     }

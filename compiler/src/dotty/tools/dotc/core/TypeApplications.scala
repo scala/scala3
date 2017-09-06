@@ -341,19 +341,6 @@ class TypeApplications(val self: Type) extends AnyVal {
    */
   final def appliedTo(args: List[Type])(implicit ctx: Context): Type = /*>|>*/ track("appliedTo") /*<|<*/ {
     val typParams = self.typeParams
-    def matchParams(t: Type, tparams: List[ParamInfo], args: List[Type])(implicit ctx: Context): Type = args match {
-      case arg :: args1 =>
-        try {
-          val tparam :: tparams1 = tparams
-          matchParams(RefinedType(t, tparam.paramName, arg.toBounds), tparams1, args1)
-        } catch {
-          case ex: MatchError =>
-            println(s"applied type mismatch: $self with underlying ${self.underlyingIfProxy}, args = $args, typeParams = $typParams") // !!! DEBUG
-            //println(s"precomplete decls = ${self.typeSymbol.unforcedDecls.toList.map(_.denot).mkString("\n  ")}")
-            throw ex
-        }
-      case nil => t
-    }
     val stripped = self.stripTypeVar
     val dealiased = stripped.safeDealias
     if (args.isEmpty || ctx.erasedTypes) self
