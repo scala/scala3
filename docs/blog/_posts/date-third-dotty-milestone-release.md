@@ -17,11 +17,6 @@ constructors. The theory behind these constructors is researched in
 [DOT](https://infoscience.epfl.ch/record/215280), a calculus for dependent object types.
 You can learn more about Dotty on our [website](http://dotty.epfl.ch).
 
-This release is based on the [previous milestone](/blog/2017/07/12/second-dotty-milestone-release.html).
-The highlights of this release are:
- - improvements in VS Code IDE stability
- - making erasure pass `Ycheck`
-
 <!--more-->
 
 This is our third scheduled release according to our [6-week release schedule](http://dotty.epfl.ch/docs/usage/version-numbers.html).
