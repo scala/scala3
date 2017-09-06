@@ -265,7 +265,6 @@ trait TypeAssigner {
    *   - typed child trees it needs to access to cpmpute that type,
    *   - any further information it needs to access to compute that type.
    */
-
   def assignType(tree: untpd.Ident, tp: Type)(implicit ctx: Context) =
     tree.withType(tp)
 
