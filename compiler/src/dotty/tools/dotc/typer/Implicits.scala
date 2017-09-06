@@ -67,7 +67,7 @@ object Implicits {
           case mt: MethodType =>
             mt.isImplicit ||
             mt.paramInfos.length != 1 ||
-            !(argType relaxed_<:< mt.paramInfos.head)(ctx.fresh.setExploreTyperState)
+            !ctx.typerState.test(argType relaxed_<:< mt.paramInfos.head)
           case poly: PolyType =>
             // We do not need to call ProtoTypes#constrained on `poly` because
             // `refMatches` is always called with mode TypevarsMissContext enabled.
@@ -75,7 +75,7 @@ object Implicits {
               case mt: MethodType =>
                 mt.isImplicit ||
                 mt.paramInfos.length != 1 ||
-                !(argType relaxed_<:< wildApprox(mt.paramInfos.head, null, Set.empty)(ctx.fresh.setExploreTyperState))
+                !ctx.typerState.test(argType relaxed_<:< wildApprox(mt.paramInfos.head, null, Set.empty))
               case rtp =>
                 discardForView(wildApprox(rtp, null, Set.empty), argType)
             }
@@ -131,8 +131,12 @@ object Implicits {
       }
 
       if (refs.isEmpty) Nil
-      else refs.filter(refMatches(_)(ctx.fresh.addMode(Mode.TypevarsMissContext).setExploreTyperState)) // create a defensive copy of ctx to avoid constraint pollution
-               .map(Candidate(_, level))
+      else {
+        val nestedCtx = ctx.fresh.addMode(Mode.TypevarsMissContext)
+        refs
+          .filter(ref => nestedCtx.typerState.test(refMatches(ref)(nestedCtx)))
+          .map(Candidate(_, level))
+      }
     }
   }
 
@@ -507,6 +511,7 @@ trait Implicits { self: Typer =>
        || inferView(dummyTreeOfType(from), to)
             (ctx.fresh.addMode(Mode.ImplicitExploration).setExploreTyperState)
             .isInstanceOf[SearchSuccess]
+          // TODO: investigate why we can't TyperState#test here
        )
     )
 
@@ -578,7 +583,7 @@ trait Implicits { self: Typer =>
       formal.argTypes match {
         case args @ (arg1 :: arg2 :: Nil)
         if !ctx.featureEnabled(defn.LanguageModuleClass, nme.strictEquality) &&
-           validEqAnyArgs(arg1, arg2)(ctx.fresh.setExploreTyperState) =>
+           ctx.typerState.test(validEqAnyArgs(arg1, arg2)) =>
           ref(defn.Eq_eqAny).appliedToTypes(args).withPos(pos)
         case _ =>
           EmptyTree
@@ -822,7 +827,7 @@ trait Implicits { self: Typer =>
               if (ctx.mode.is(Mode.ImplicitExploration) || isCoherent) best :: Nil
               else {
                 val newPending = pending1.filter(cand1 =>
-                  isAsGood(cand1.ref, best.ref, cand1.level, best.level)(nestedContext.setExploreTyperState))
+                  ctx.typerState.test(isAsGood(cand1.ref, best.ref, cand1.level, best.level)(nestedContext)))
                 rankImplicits(newPending, best :: acc)
               }
           }
@@ -851,7 +856,8 @@ trait Implicits { self: Typer =>
       /** Convert a (possibly empty) list of search successes into a single search result */
       def condense(hits: List[SearchSuccess]): SearchResult = hits match {
         case best :: alts =>
-          alts find (alt => isAsGood(alt.ref, best.ref, alt.level, best.level)(ctx.fresh.setExploreTyperState)) match {
+          alts.find(alt =>
+            ctx.typerState.test(isAsGood(alt.ref, best.ref, alt.level, best.level))) match {
             case Some(alt) =>
               typr.println(i"ambiguous implicits for $pt: ${best.ref} @ ${best.level}, ${alt.ref} @ ${alt.level}")
             /* !!! DEBUG

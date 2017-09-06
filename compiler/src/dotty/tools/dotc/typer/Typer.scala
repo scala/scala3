@@ -1977,7 +1977,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
       val constraint = ctx.typerState.constraint
       def inst(tp: Type): Type = tp match {
         case TypeBounds(lo, hi)
-        if (lo eq hi) || (hi <:< lo)(ctx.fresh.setExploreTyperState) =>
+        if (lo eq hi) || ctx.typerState.test(hi <:< lo) =>
           inst(lo)
         case tp: TypeParamRef =>
           constraint.typeVarOfParam(tp).orElse(tp)

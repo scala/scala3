@@ -73,9 +73,13 @@ class TyperState(r: Reporter) extends DotClass with Showable {
 
   /** Is it allowed to commit this state? */
   def isCommittable: Boolean = false
+  def isCommittable_=(b: Boolean) = ()
 
   /** Can this state be transitively committed until the top-level? */
   def isGlobalCommittable: Boolean = false
+
+  /** Test using `op`, restoring typerState to previous state afterwards */
+  def test(op: => Boolean): Boolean = op
 
   override def toText(printer: Printer): Text = "ImmutableTyperState"
 
@@ -83,7 +87,7 @@ class TyperState(r: Reporter) extends DotClass with Showable {
   def hashesStr: String = ""
 }
 
-class MutableTyperState(previous: TyperState, r: Reporter, override val isCommittable: Boolean)
+class MutableTyperState(previous: TyperState, r: Reporter, override var isCommittable: Boolean)
 extends TyperState(r) {
 
   private var myReporter = r
@@ -118,6 +122,21 @@ extends TyperState(r) {
 
   override def uncommittedAncestor: TyperState =
     if (isCommitted) previous.uncommittedAncestor else this
+
+  override def test(op: => Boolean): Boolean = {
+    val savedReporter = myReporter
+    val savedConstraint = myConstraint
+    val savedCommitted = isCommitted
+    val savedCommittable = isCommittable
+    isCommittable = false
+    try op
+    finally {
+      myReporter = savedReporter
+      myConstraint = savedConstraint
+      isCommitted = savedCommitted
+      isCommittable = savedCommittable
+    }
+  }
 
   /** Commit typer state so that its information is copied into current typer state
    *  In addition (1) the owning state of undetermined or temporarily instantiated
