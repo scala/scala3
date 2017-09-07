@@ -2270,6 +2270,12 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     }
   }
 
+  /** Check that `tree == x: pt` is typeable. Used when checking a pattern
+    * against a selector of type `pt`. This implementation accounts for
+    * user-defined definitions of `==`.
+    *
+    * Overwritten to no-op in ReTyper.
+    */
   protected def checkEqualityEvidence(tree: tpd.Tree, pt: Type)(implicit ctx: Context) : Unit = {
     tree match {
       case _: RefTree | _: Literal
@@ -2279,7 +2285,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
           untpd.Apply(
             untpd.Select(untpd.TypedSplice(tree), nme.EQ),
             untpd.TypedSplice(dummyTreeOfType(pt)))
-        typedExpr(cmp, defn.BooleanType)(ctx.retractMode(Mode.Pattern))
+        typedExpr(cmp, defn.BooleanType)
       case _ =>
     }
   }
