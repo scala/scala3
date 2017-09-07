@@ -92,26 +92,27 @@ class FirstTransform extends MiniPhaseTransform with InfoTransformer with Annota
   private def reorderAndComplete(stats: List[Tree])(implicit ctx: Context): List[Tree] = {
     val moduleClassDefs, singleClassDefs = mutable.Map[Name, Tree]()
 
-    def reorder(stats: List[Tree]): List[Tree] = stats match {
+    def reorder(stats: List[Tree], revPrefix: List[Tree] = Nil): List[Tree] = stats match {
       case (stat: TypeDef) :: stats1 if stat.symbol.isClass =>
         if (stat.symbol is Flags.Module) {
           moduleClassDefs += (stat.name -> stat)
           singleClassDefs -= stat.name.stripModuleClassSuffix
           val stats1r = reorder(stats1)
-          if (moduleClassDefs contains stat.name) stat :: stats1r else stats1r
+          revPrefix.reverse ::: (if (moduleClassDefs contains stat.name) stat :: stats1r else stats1r)
         } else {
-          def stats1r = reorder(stats1)
-          val normalized = moduleClassDefs remove stat.name.moduleClassName match {
-            case Some(mcdef) =>
-              mcdef :: stats1r
-            case None =>
-              singleClassDefs += (stat.name -> stat)
-              stats1r
-          }
-          stat :: normalized
+          reorder(
+            stats1,
+            moduleClassDefs remove stat.name.moduleClassName match {
+              case Some(mcdef) =>
+                mcdef :: stat :: revPrefix
+              case None =>
+                singleClassDefs += (stat.name -> stat)
+                stat :: revPrefix
+            }
+          )
         }
-      case stat :: stats1 => stat :: reorder(stats1)
-      case Nil => Nil
+      case stat :: stats1 => reorder(stats1, stat :: revPrefix)
+      case Nil => revPrefix.reverse
     }
 
     def registerCompanion(name: TermName, forClass: Symbol): TermSymbol = {

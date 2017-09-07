@@ -1,2006 +1,1029 @@
 
 object Test {
   def foo: Unit = {
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-    bar()
-
-
-    // TODO: Make Larger !!!
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
+    bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar(); bar();
   }
 
   def bar(): Unit = ()
