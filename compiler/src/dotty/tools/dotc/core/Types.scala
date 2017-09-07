@@ -347,33 +347,7 @@ object Types {
      *  instance, or NoSymbol if none exists (either because this type is not a
      *  value type, or because superclasses are ambiguous).
      */
-    final def classSymbol(implicit ctx: Context): Symbol = this match {
-      case ConstantType(constant) =>
-        constant.tpe.classSymbol: @tailrec
-      case tp: TypeRef =>
-        val sym = tp.symbol
-        if (sym.isClass) sym else tp.superType.classSymbol: @tailrec
-      case tp: ClassInfo =>
-        tp.cls
-      case tp: SingletonType =>
-        NoSymbol
-      case tp: TypeProxy =>
-        tp.underlying.classSymbol: @tailrec
-      case AndType(l, r) =>
-        val lsym = l.classSymbol
-        val rsym = r.classSymbol
-        if (lsym isSubClass rsym) lsym
-        else if (rsym isSubClass lsym) rsym
-        else NoSymbol
-      case OrType(l, r) => // TODO does not conform to spec
-        val lsym = l.classSymbol
-        val rsym = r.classSymbol
-        if (lsym isSubClass rsym) rsym
-        else if (rsym isSubClass lsym) lsym
-        else NoSymbol
-      case _ =>
-        NoSymbol
-    }
+    def classSymbol(implicit ctx: Context): Symbol = NoSymbol
 
     /** The least (wrt <:<) set of class symbols of which this type is a subtype
      */
@@ -1369,6 +1343,8 @@ object Types {
     /** The type to which this proxy forwards operations. */
     def underlying(implicit ctx: Context): Type
 
+    override def classSymbol(implicit ctx: Context): Symbol = underlying.classSymbol
+
     /** The closest supertype of this type. This is the same as `underlying`,
      *  except that
      *    - instead of a TyperBounds type it returns its upper bound, and
@@ -1454,6 +1430,7 @@ object Types {
    *  single non-null value (they might contain null in addition).
    */
   trait SingletonType extends TypeProxy with ValueType {
+    override def classSymbol(implicit ctx: Context): Symbol = NoSymbol
     def isOverloaded(implicit ctx: Context) = false
   }
 
@@ -2001,6 +1978,11 @@ object Types {
     type ThisType = TypeRef
     type ThisName = TypeName
 
+    override def classSymbol(implicit ctx: Context): Symbol = {
+      val sym = symbol
+      if (sym.isClass) sym else superType.classSymbol
+    }
+
     override def underlying(implicit ctx: Context): Type = info
 
     def newLikeThis(prefix: Type)(implicit ctx: Context): NamedType =
@@ -2144,6 +2126,7 @@ object Types {
   abstract case class ConstantType(value: Constant) extends CachedProxyType with SingletonType {
     override def underlying(implicit ctx: Context) = value.tpe
     override def computeHash = doHash(value)
+    override def classSymbol(implicit ctx: Context): Symbol = value.tpe.classSymbol
   }
 
   final class CachedConstantType(value: Constant) extends ConstantType(value)
@@ -2363,6 +2346,14 @@ object Types {
     def derivedAndOrType(tp1: Type, tp2: Type)(implicit ctx: Context): Type =
       derivedAndType(tp1, tp2)
 
+    override def classSymbol(implicit ctx: Context): Symbol = {
+      val lsym = tp1.classSymbol
+      val rsym = tp2.classSymbol
+      if (lsym isSubClass rsym) lsym
+      else if (rsym isSubClass lsym) rsym
+      else NoSymbol
+    }
+
     override def computeHash = doHash(tp1, tp2)
   }
 
@@ -2415,6 +2406,14 @@ object Types {
     def derivedOrType(tp1: Type, tp2: Type)(implicit ctx: Context): Type =
       if ((tp1 eq this.tp1) && (tp2 eq this.tp2)) this
       else OrType.make(tp1, tp2)
+
+    override def classSymbol(implicit ctx: Context): Symbol = {
+      val lsym = tp1.classSymbol
+      val rsym = tp2.classSymbol
+      if (lsym isSubClass rsym) rsym
+      else if (rsym isSubClass lsym) lsym
+      else NoSymbol
+    }
 
     def derivedAndOrType(tp1: Type, tp2: Type)(implicit ctx: Context): Type =
       derivedOrType(tp1, tp2)
@@ -3364,6 +3363,8 @@ object Types {
         }
       selfTypeCache
     }
+
+    override def classSymbol(implicit ctx: Context): Symbol = cls
 
     def appliedRef(implicit ctx: Context): Type = {
       def clsDenot = if (prefix eq cls.owner.thisType) cls.denot else cls.denot.copySymDenotation(info = this)
