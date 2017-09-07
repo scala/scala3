@@ -542,7 +542,7 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
 
     val childTp  = if (child.isTerm) child.termRef else child.typeRef
 
-    var resTp = instantiate(childTp, expose(parent))(ctx.fresh.setNewTyperState)
+    val resTp = instantiate(childTp, expose(parent))(ctx.fresh.setNewTyperState)
 
     if (!resTp.exists)  {
       debug.println(s"[refine] unqualified child ousted: ${childTp.show} !< ${parent.show}")
