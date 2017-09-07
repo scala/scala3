@@ -7,16 +7,19 @@ import Types._
 import Contexts._
 import Flags._
 import ast.Trees._
-import ast.tpd
+import ast.{tpd, untpd}
 import Decorators._
 import Symbols._
 import StdNames._
 import NameOps._
 import Constants._
-import typer.Applications._
+import typer._
+import Applications._
+import Inferencing._
+import ProtoTypes._
 import transform.SymUtils._
 import reporting.diagnostic.messages._
-import config.Printers.{ exhaustivity => debug }
+import config.Printers.{exhaustivity => debug}
 
 /** Space logic for checking exhaustivity and unreachability of pattern matching
  *
@@ -524,20 +527,10 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
       case tp =>
         val parts = children.map { sym =>
           if (sym.is(ModuleClass))
-            refine(tp, sym.sourceModule.termRef)
-          else if (sym.isTerm)
-            refine(tp, sym.termRef)
-          else if (sym.info.typeParams.length > 0 || tp.isInstanceOf[TypeRef])
-            refine(tp, sym.typeRef)
+            refine(tp, sym.sourceModule)
           else
-            sym.typeRef
-        } filter { tpe =>
-          // Child class may not always be subtype of parent:
-          // GADT & path-dependent types
-          val res = tpe <:< expose(tp)
-          if (!res) debug.println(s"unqualified child ousted: ${tpe.show} !< ${tp.show}")
-          res
-        }
+            refine(tp, sym)
+        } filter(_.exists)
 
         debug.println(s"${tp.show} decomposes to [${parts.map(_.show).mkString(", ")}]")
 
@@ -545,25 +538,71 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
     }
   }
 
-  /** Refine tp2 based on tp1
+  /** Refine child based on parent
    *
-   *  E.g. if `tp1` is `Option[Int]`, `tp2` is `Some`, then return
-   *  `Some[Int]`.
+   *  In child class definition, we have:
    *
-   *  If `tp1` is `path1.A`, `tp2` is `path2.B`, and `path1` is subtype of
-   *  `path2`, then return `path1.B`.
+   *      class Child[Ts] extends path.Parent[Us] with Es
+   *      object Child extends path.Parent[Us] with Es
+   *      val child = new path.Parent[Us] with Es           // enum values
    *
-   *  (MO) I don't really understand what this does. Let's try to find a precise
-   *       definition!
+   *  Given a parent type `parent` and a child symbol `child`, we infer the prefix
+   *  and type parameters for the child:
+   *
+   *      prefix.child[Vs] <:< parent
+   *
+   *  where `Vs` are fresh type variables and `prefix` is the symbol prefix with all
+   *  non-module and non-package `ThisType` replaced by fresh type variables.
+   *
+   *  If the subtyping is true, the instantiated type `p.child[Vs]` is
+   *  returned. Otherwise, `NoType` is returned.
+   *
    */
-  def refine(tp1: Type, tp2: Type): Type = (tp1, tp2) match {
-    case (tp1: RefinedType, _: TypeRef) => tp1.wrapIfMember(refine(tp1.parent, tp2))
-    case (tp1: AppliedType, _) => refine(tp1.superType, tp2)
-    case (TypeRef(ref1: TypeProxy, _), tp2 @ TypeRef(ref2: TypeProxy, _)) =>
-      if (ref1.underlying <:< ref2.underlying) tp2.derivedSelect(ref1) else tp2
-    case (TypeRef(ref1: TypeProxy, _), tp2 @ TermRef(ref2: TypeProxy, _)) =>
-      if (ref1.underlying <:< ref2.underlying) tp2.derivedSelect(ref1) else tp2
-    case _ => tp2
+  def refine(parent: Type, child: Symbol): Type = {
+    if (child.isTerm && child.is(Case, butNot = Module)) return child.termRef // enum vals always match
+
+    val childTp  = if (child.isTerm) child.termRef else child.typeRef
+
+    val resTp = instantiate(childTp, expose(parent))(ctx.fresh.setNewTyperState)
+
+    if (!resTp.exists)  {
+      debug.println(s"[refine] unqualified child ousted: ${childTp.show} !< ${parent.show}")
+      NoType
+    }
+    else {
+      debug.println(s"$child instantiated ------> $resTp")
+      resTp
+    }
+  }
+
+  /** Instantiate type `tp1` to be a subtype of `tp2`
+   *
+   *  Return the instantiated type if type parameters and this type
+   *  in `tp1` can be instantiated such that `tp1 <:< tp2`.
+   *
+   *  Otherwise, return NoType.
+   *
+   */
+  def instantiate(tp1: Type, tp2: Type)(implicit ctx: Context): Type = {
+    // map `ThisType` of `tp1` to a type variable
+    // precondition: `tp1` should have the shape `path.Child`, thus `ThisType` is always covariant
+    val thisTypeMap = new TypeMap {
+      def apply(t: Type): Type = t match {
+        case t @ ThisType(tref) if !tref.symbol.isStaticOwner && !tref.symbol.is(Module)  =>
+          newTypeVar(TypeBounds.upper(mapOver(tref & tref.givenSelfType)))
+        case _ =>
+          mapOver(t)
+      }
+    }
+
+    val tvars = tp1.typeParams.map { tparam => newTypeVar(tparam.paramInfo.bounds) }
+    val protoTp1 = thisTypeMap(tp1.appliedTo(tvars))
+
+    if (protoTp1 <:< tp2 && isFullyDefined(protoTp1, ForceDegree.all)) protoTp1
+    else {
+      debug.println(s"$protoTp1 <:< $tp2 = false")
+      NoType
+    }
   }
 
   /** Abstract sealed types, or-types, Boolean and Java enums can be decomposed */
@@ -593,13 +632,13 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
    *
    */
   def showType(tp: Type): String = {
-    val enclosingCls = ctx.owner.enclosingClass.asClass.classInfo.symbolicTypeRef
+    val enclosingCls = ctx.owner.enclosingClass
 
     def isOmittable(sym: Symbol) =
       sym.isEffectiveRoot || sym.isAnonymousClass || sym.name.isReplWrapperName ||
         ctx.definitions.UnqualifiedOwnerTypes.exists(_.symbol == sym) ||
         sym.showFullName.startsWith("scala.") ||
-        sym == enclosingCls.typeSymbol
+        sym == enclosingCls || sym == enclosingCls.sourceModule
 
     def refinePrefix(tp: Type): String = tp match {
       case NoPrefix => ""
@@ -607,6 +646,8 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
       case tp: ThisType => refinePrefix(tp.tref)
       case tp: RefinedType => refinePrefix(tp.parent)
       case tp: NamedType => tp.name.show.stripSuffix("$")
+      case tp: TypeVar => refinePrefix(tp.instanceOpt)
+      case _ => tp.show
     }
 
     def refine(tp: Type): String = tp match {
