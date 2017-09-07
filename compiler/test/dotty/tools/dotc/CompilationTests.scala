@@ -95,7 +95,7 @@ class CompilationTests extends ParallelTesting {
     compileFile(
       // succeeds despite -Xfatal-warnings because of -nowarn
       "../tests/neg/customArgs/xfatalWarnings.scala",
-      defaultOptions //.and("-nowarn", "-Xfatal-warnings") // !!! TODO: re-enable when exchaustivity is fixed
+      defaultOptions.and("-nowarn", "-Xfatal-warnings")
     )
   }.checkCompile()
 
