@@ -128,11 +128,11 @@ class Run(comp: Compiler, ictx: Context) {
           }
         }
         ctx.informTime(s"$phase ", start)
+        Stats.record(s"total trees at end of $phase", ast.Trees.ntrees)
+        for (unit <- units)
+          Stats.record(s"retained typed trees at end of $phase", unit.tpdTree.treeSize)
       }
     if (!ctx.reporter.hasErrors) Rewrites.writeBack()
-    for (unit <- units)
-      Stats.record("retained typed trees at end", unit.tpdTree.treeSize)
-    Stats.record("total trees at end", ast.Trees.ntrees)
   }
 
   private sealed trait PrintedTree
