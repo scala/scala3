@@ -1,17 +1,48 @@
 pipeline:
-  test:
+  test_legacy:
+    group: test
     image: lampepfl/dotty:2017-09-05
     commands:
-      - ./project/scripts/sbt "${CI_TEST}"
+      - ./project/scripts/sbt legacyTests
+
+  test:
+    group: test
+    image: lampepfl/dotty:2017-09-05
+    commands:
+      - ./project/scripts/sbt dotty-bootstrapped/test
+
+  test_bootstrapped:
+    group: test
+    image: lampepfl/dotty:2017-09-05
+    commands:
+      - ./project/scripts/sbt test
+
+  test_optimised:
+    group: test
+    image: lampepfl/dotty:2017-09-05
+    commands:
+      - ./project/scripts/sbt "set bootstrapOptimised in ThisBuild := true ;dotty-bootstrapped/test"
+
+  test_sbt:
+    group: test
+    image: lampepfl/dotty:2017-09-05
+    commands:
+      - ./project/scripts/sbt sbt-dotty/scripted
+
+  documentation:
+    image: lampepfl/dotty:2017-09-05
+    commands:
+      - ./project/scripts/genDocs
+    secrets: [ bot_pass ]
+    when:
+      event: push
 
   publish_nightly:
     image: lampepfl/dotty:2017-09-05
     environment:
       - NIGHTLYBUILD=yes
     commands:
-      - ./project/scripts/sbt ";clean ;publishLocal" "${CI_PUBLISH}"
-      - ./project/scripts/sbt "sbt-dotty/scripted source-dependencies/*" "${CI_PUBLISH}"
-      - ./project/scripts/sbtPublish "${CI_PUBLISH}" "$SONATYPE_USER" "$SONATYPE_PW" "$PGP_PW" ";dotty-bootstrapped/publishSigned ;sonatypeRelease"
+      - ./project/scripts/sbtPublish ";dotty-bootstrapped/publishSigned ;sonatypeRelease"
     volumes:
       - /home/drone/keys:/keys
     secrets: [ sonatype_user, sonatype_pw, pgp_pw ]
@@ -24,9 +55,7 @@ pipeline:
     environment:
       - RELEASEBUILD=yes
     commands:
-      - ./project/scripts/sbt ";clean ;publishLocal" "${CI_PUBLISH}"
-      - ./project/scripts/sbt "sbt-dotty/scripted source-dependencies/*" "${CI_PUBLISH}"
-      - ./project/scripts/sbtPublish "${CI_PUBLISH}" "$SONATYPE_USER" "$SONATYPE_PW" "$PGP_PW" ";dotty-bootstrapped/publishSigned ;sonatypeRelease"
+      - ./project/scripts/sbtPublish ";dotty-bootstrapped/publishSigned ;sonatypeRelease"
     volumes:
       - /home/drone/keys:/keys
     secrets: [ sonatype_user, sonatype_pw, pgp_pw ]
@@ -39,21 +68,13 @@ pipeline:
     environment:
       - RELEASEBUILD=yes
     commands:
-      - ./project/scripts/sbtPublish "${CI_PUBLISH}" "$SONATYPE_USER" "$SONATYPE_PW" "$PGP_PW" ";sbt-dotty/publishSigned ;sonatypeRelease"
+      - ./project/scripts/sbtPublish ";sbt-dotty/publishSigned ;sonatypeRelease"
     volumes:
       - /home/drone/keys:/keys
     secrets: [ sonatype_user, sonatype_pw, pgp_pw ]
     when:
       event: deployment
       environment: sbt_release
-
-  documentation:
-    image: lampepfl/dotty:2017-09-05
-    commands:
-      - ./project/scripts/genDocs "${CI_PUBLISH}" "$BOT_PASS"
-    secrets: [ bot_pass ]
-    when:
-      event: push
 
   slack:
     image: plugins/slack
@@ -63,15 +84,6 @@ pipeline:
       status: [ success, failure ]
       event: [ push, deployment ]
 
-branches: master
 
-matrix:
-  include:
-    - CI_TEST: legacyTests
-      CI_PUBLISH: true
-    - CI_TEST: ;test;sbt-dotty/scripted compilerReporter/*;sbt-dotty/scripted discovery/*;sbt-dotty/scripted sbt-dotty/*
-      CI_PUBLISH: false
-    - CI_TEST: dotty-bootstrapped/test
-      CI_PUBLISH: false
-    - CI_TEST: ;set bootstrapOptimised in ThisBuild := true ;dotty-bootstrapped/test
-      CI_PUBLISH: false
+
+branches: master
