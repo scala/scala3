@@ -59,19 +59,19 @@ object Iter2 {
       if (isEmpty) 0 else 1 + tail.length
   }
 
-  case class Cons[A](x: A, xs: List[A]) extends List[A] {
+  case class Cons[A](x: A, xs: List[A]) extends List[A] { // error: cannot be instantiated
     def isEmpty = false
     def head = x
     def tail = xs
   }
 
-  case object Nil extends List[Nothing] {
+  case object Nil extends List[Nothing] { // error: cannot be instantiated
     def isEmpty = true
     def head = ???
     def tail = ???
   }
 
-  class ArrayBuffer[A] private (initElems: Array[AnyRef], initLen: Int) extends Seq[A] with FromIterator[ArrayBuffer] {
+  class ArrayBuffer[A] private (initElems: Array[AnyRef], initLen: Int) extends Seq[A] with FromIterator[ArrayBuffer] { // error: cannot be instantiated
     def this() = this(new Array[AnyRef](16), 0)
     def this(it: ArrayIterator[A]) = this(it.elems, it.len)
     private var elems: Array[AnyRef] = initElems

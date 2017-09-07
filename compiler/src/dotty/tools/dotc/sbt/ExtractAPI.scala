@@ -179,7 +179,7 @@ private class ExtractAPICollector(implicit val ctx: Context) extends ThunkHolder
         else dt.Module
       } else dt.ClassDef
 
-    val selfType = apiType(sym.classInfo.givenSelfType)
+    val selfType = apiType(sym.givenSelfType)
 
     val name = if (sym.is(ModuleClass)) sym.fullName.sourceModuleName else sym.fullName
 
@@ -234,9 +234,9 @@ private class ExtractAPICollector(implicit val ctx: Context) extends ThunkHolder
   }
 
   def linearizedAncestorTypes(info: ClassInfo): List[Type] = {
-    val ref = info.fullyAppliedRef
+    val ref = info.appliedRef
     // Note that the ordering of classes in `baseClasses` is important.
-    info.baseClasses.tail.map(ref.baseTypeWithArgs)
+    info.baseClasses.tail.map(ref.baseType)
   }
 
   def apiDefinitions(defs: List[Symbol]): List[api.Definition] = {
@@ -370,7 +370,7 @@ private class ExtractAPICollector(implicit val ctx: Context) extends ThunkHolder
         else
           tp.prefix
         new api.Projection(simpleType(prefix), sym.name.toString)
-      case TypeApplications.AppliedType(tycon, args) =>
+      case AppliedType(tycon, args) =>
         def processArg(arg: Type): api.Type = arg match {
           case arg @ TypeBounds(lo, hi) => // Handle wildcard parameters
             if (lo.isDirectRef(defn.NothingClass) && hi.isDirectRef(defn.AnyClass))
@@ -379,7 +379,7 @@ private class ExtractAPICollector(implicit val ctx: Context) extends ThunkHolder
               val name = "_"
               val ref = new api.ParameterRef(name)
               new api.Existential(ref,
-                Array(apiTypeParameter(name, arg.variance, lo, hi)))
+                Array(apiTypeParameter(name, 0, lo, hi)))
             }
           case _ =>
             apiType(arg)

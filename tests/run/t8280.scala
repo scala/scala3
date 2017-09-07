@@ -83,7 +83,8 @@ object Moop3 {
     implicit val f1: ImplicitConverter[Int, String]  = _ => "Int"
     implicit val f2: ImplicitConverter[Long, String] = _ => "Long"
 
-    println(5: String)
+    println((5: Int): String)
+    // println(5: String)  // error: ambiguity, since both f1 and f2 are applicable to 5.
   }
 }
 

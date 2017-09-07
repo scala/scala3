@@ -296,9 +296,9 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
         (tycon, targs)
       case TypedSplice(AppliedTypeTree(tycon, targs)) =>
         (TypedSplice(tycon), targs map (TypedSplice(_)))
-      case TypedSplice(tpt1: Tree) =>
+      case TypedSplice(tpt1: tpd.Tree) =>
+        val tycon = tpt1.tpe.typeConstructor
         val argTypes = tpt1.tpe.argTypesLo
-        val tycon = tpt1.tpe.withoutArgs(argTypes)
         def wrap(tpe: Type) = TypeTree(tpe) withPos tpt.pos
         (wrap(tycon), argTypes map wrap)
       case _ =>

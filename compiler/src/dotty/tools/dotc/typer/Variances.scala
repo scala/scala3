@@ -73,7 +73,7 @@ object Variances {
     case tp @ TypeRef(pre, _) =>
       if (tp.symbol == tparam) Covariant else varianceInType(pre)(tparam)
     case tp @ TypeBounds(lo, hi) =>
-      if (lo eq hi) compose(varianceInType(hi)(tparam), tp.variance)
+      if (lo eq hi) cut(varianceInType(hi)(tparam))
       else flip(varianceInType(lo)(tparam)) & varianceInType(hi)(tparam)
     case tp @ RefinedType(parent, _, rinfo) =>
       varianceInType(parent)(tparam) & varianceInType(rinfo)(tparam)
@@ -83,7 +83,7 @@ object Variances {
       flip(varianceInTypes(tp.paramInfos)(tparam)) & varianceInType(tp.resultType)(tparam)
     case ExprType(restpe) =>
       varianceInType(restpe)(tparam)
-    case tp @ HKApply(tycon, args) =>
+    case tp @ AppliedType(tycon, args) =>
       def varianceInArgs(v: Variance, args: List[Type], tparams: List[ParamInfo]): Variance =
         args match {
           case arg :: args1 =>

@@ -38,6 +38,15 @@ abstract class Periods extends DotClass { self: Context =>
     }
     Period(runId, first, nxTrans)
   }
+
+  /** Are all base types in the current period guaranteed to be the same as in period `p`? */
+  def hasSameBaseTypesAs(p: Period) = {
+    val period = this.period
+    period == p ||
+    period.runId == p.runId &&
+      this.phases(period.phaseId).sameParentsStartId ==
+      this.phases(p.phaseId).sameParentsStartId
+  }
 }
 
 object Periods {

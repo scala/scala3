@@ -84,19 +84,12 @@ object Config {
   /** If this flag is set, take the fast path when comparing same-named type-aliases and types */
   final val fastPathForRefinedSubtype = true
 
-  /** If this flag is set, `TypeOps.normalizeToClassRefs` will insert forwarders
-   *  for type parameters of base classes. This is an optimization, which avoids
-   *  long alias chains. We should  not rely on the optimization, though. So changing
-   *  the flag to false can be used for checking that everything works OK without it.
-   */
-  final val forwardTypeParams = true
-
-  /** If this flag is set, and we compute `T1 { X = S1 }` & `T2 { X = S2 }` as a new
-   *  upper bound of a constrained parameter, try to align the refinements by computing
+  /** If this flag is set, and we compute `T1[X1]` & `T2[X2]` as a new
+   *  upper bound of a constrained parameter, try to align the arguments by computing
    *  `S1 =:= S2` (which might instantiate type parameters).
    *  This rule is contentious because it cuts the constraint set.
    *
-   *  For more info, see the comment in `TypeComparer#distributeAnd`.
+   *  For more info, see the comment in `TypeComparer#glbArgs`.
    */
   final val alignArgsInAnd = true
 
@@ -112,6 +105,13 @@ object Config {
    *  to themselves.
    */
   final val checkTypeRefCycles = false
+
+  /** If this flag is set, it is checked that class type parameters are
+   *  only references with NoPrefix or ThisTypes as prefixes. This option
+   *  is usally disabled, because there are still some legitimate cases where
+   *  this can arise (e.g. for pos/Map.scala, in LambdaType.integrate).
+   */
+  final val checkTypeParamRefs = false
 
   /** The recursion depth for showing a summarized string */
   final val summarizeDepth = 2

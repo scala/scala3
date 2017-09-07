@@ -6,7 +6,6 @@ import core._
 import ast._
 import Scopes._, Contexts._, Constants._, Types._, Symbols._, Names._, Flags._, Decorators._
 import ErrorReporting._, Annotations._, Denotations._, SymDenotations._, StdNames._, TypeErasure._
-import TypeApplications.AppliedType
 import util.Positions._
 import config.Printers.typr
 import ast.Trees._
@@ -39,14 +38,19 @@ trait TypeAssigner {
     }
   }
 
-  /** Given a class info, the intersection of its parents, refined by all
-   *  non-private fields, methods, and type members.
+  /** An abstraction of a class info, consisting of
+   *   - the intersection of its parents,
+   *   - refined by all non-private fields, methods, and type members,
+   *   - abstracted over all type parameters (into a type lambda)
+   *   - where all references to `this` of the class are closed over in a RecType.
    */
   def classBound(info: ClassInfo)(implicit ctx: Context): Type = {
-    val parentType = info.parentsWithArgs.reduceLeft(ctx.typeComparer.andType(_, _))
+    val cls = info.cls
+    val parentType = info.parents.reduceLeft(ctx.typeComparer.andType(_, _))
+
     def addRefinement(parent: Type, decl: Symbol) = {
       val inherited =
-        parentType.findMember(decl.name, info.cls.thisType, excluded = Private)
+        parentType.findMember(decl.name, cls.thisType, excluded = Private)
           .suchThat(decl.matches(_))
       val inheritedInfo = inherited.info
       if (inheritedInfo.exists && decl.info <:< inheritedInfo && !(inheritedInfo <:< decl.info)) {
@@ -57,10 +61,16 @@ trait TypeAssigner {
       else
         parent
     }
-    val refinableDecls = info.decls.filter(
-      sym => !(sym.is(TypeParamAccessor | Private) || sym.isConstructor))
+
+    def close(tp: Type) = RecType.closeOver(rt => tp.substThis(cls, rt.recThis))
+
+    def isRefinable(sym: Symbol) = !sym.is(Private) && !sym.isConstructor
+    val refinableDecls = info.decls.filter(isRefinable)
     val raw = (parentType /: refinableDecls)(addRefinement)
-    RecType.closeOver(rt => raw.substThis(info.cls, RecThis(rt)))
+    HKTypeLambda.fromParams(cls.typeParams, raw) match {
+      case tl: HKTypeLambda => tl.derivedLambdaType(resType = close(tl.resType))
+      case tp => close(tp)
+    }
   }
 
   /** An upper approximation of the given type `tp` that does not refer to any symbol in `symsToAvoid`.
@@ -120,7 +130,7 @@ trait TypeAssigner {
       override def derivedSelect(tp: NamedType, pre: Type) =
         if (pre eq tp.prefix)
           tp
-        else tryWiden(tp, tp.prefix) {
+        else tryWiden(tp, tp.prefix).orElse {
           if (tp.isTerm && variance > 0 && !pre.isInstanceOf[SingletonType])
           	apply(tp.info.widenExpr)
           else if (upper(pre).member(tp.name).exists)
@@ -198,8 +208,6 @@ trait TypeAssigner {
             else errorType(ex"$what cannot be accessed as a member of $pre$where.$whyNot", pos)
           }
         }
-        else if (d.symbol is TypeParamAccessor)
-          ensureAccessible(d.info.bounds.hi, superAccess, pos)
         else
           ctx.makePackageObjPrefixExplicit(tpe withDenot d)
       case _ =>
@@ -297,20 +305,20 @@ trait TypeAssigner {
       case err: ErrorType => untpd.cpy.Super(tree)(qual, mix).withType(err)
       case qtype @ ThisType(_) =>
         val cls = qtype.cls
-        def findMixinSuper(site: Type): Type = site.parents filter (_.name == mix.name) match {
+        def findMixinSuper(site: Type): Type = site.parents filter (_.typeSymbol.name == mix.name) match {
           case p :: Nil =>
-            p
+            p.typeConstructor
           case Nil =>
             errorType(SuperQualMustBeParent(mix, cls), tree.pos)
           case p :: q :: _ =>
             errorType("ambiguous parent class qualifier", tree.pos)
         }
         val owntype =
-          if (mixinClass.exists) mixinClass.typeRef
+          if (mixinClass.exists) mixinClass.appliedRef
           else if (!mix.isEmpty) findMixinSuper(cls.info)
-          else if (inConstrCall || ctx.erasedTypes) cls.info.firstParent
+          else if (inConstrCall || ctx.erasedTypes) cls.info.firstParent.typeConstructor
           else {
-            val ps = cls.classInfo.parentsWithArgs
+            val ps = cls.classInfo.parents
             if (ps.isEmpty) defn.AnyType else ps.reduceLeft((x: Type, y: Type) => x & y)
           }
         tree.withType(SuperType(cls.thisType, owntype))
@@ -370,7 +378,7 @@ trait TypeAssigner {
             val newIndex = gapBuf.length
             gapBuf += idx
             // Re-index unassigned type arguments that remain after transformation
-            TypeParamRef(pt, newIndex)
+            pt.paramRefs(newIndex)
           }
 
           // Type parameters after naming assignment, conserving paramNames order
@@ -457,10 +465,10 @@ trait TypeAssigner {
     tree.withType(ref.tpe)
 
   def assignType(tree: untpd.AndTypeTree, left: Tree, right: Tree)(implicit ctx: Context) =
-    tree.withType(inSameUniverse(_ & _, left.tpe, right, "an `&`"))
+    tree.withType(inSameUniverse(AndType(_, _), left.tpe, right, "an `&`"))
 
   def assignType(tree: untpd.OrTypeTree, left: Tree, right: Tree)(implicit ctx: Context) =
-    tree.withType(inSameUniverse(_ | _, left.tpe, right, "an `|`"))
+    tree.withType(inSameUniverse(OrType(_, _), left.tpe, right, "an `|`"))
 
   /** Assign type of RefinedType.
    *  Refinements are typed as if they were members of refinement class `refineCls`.
@@ -474,7 +482,7 @@ trait TypeAssigner {
       else RefinedType(parent, rsym.name, rinfo)
     }
     val refined = (parent.tpe /: refinements)(addRefinement)
-    tree.withType(RecType.closeOver(rt => refined.substThis(refineCls, RecThis(rt))))
+    tree.withType(RecType.closeOver(rt => refined.substThis(refineCls, rt.recThis)))
   }
 
   def assignType(tree: untpd.AppliedTypeTree, tycon: Tree, args: List[Tree])(implicit ctx: Context) = {
@@ -517,17 +525,15 @@ trait TypeAssigner {
 
   private def symbolicIfNeeded(sym: Symbol)(implicit ctx: Context) = {
     val owner = sym.owner
-    owner.infoOrCompleter match {
-      case info: ClassInfo if info.givenSelfType.exists =>
-        // In that case a simple typeRef/termWithWithSig could return a member of
-        // the self type, not the symbol itself. To avoid this, we make the reference
-        // symbolic. In general it seems to be faster to keep the non-symblic
-        // reference, since there is less pressure on the uniqueness tables that way
-        // and less work to update all the different references. That's why symbolic references
-        // are only used if necessary.
-        NamedType.withFixedSym(owner.thisType, sym)
-      case _ => NoType
-    }
+    if (owner.isClass && owner.isCompleted && owner.asClass.givenSelfType.exists)
+      // In that case a simple typeRef/termWithWithSig could return a member of
+      // the self type, not the symbol itself. To avoid this, we make the reference
+      // symbolic. In general it seems to be faster to keep the non-symblic
+      // reference, since there is less pressure on the uniqueness tables that way
+      // and less work to update all the different references. That's why symbolic references
+      // are only used if necessary.
+      NamedType.withFixedSym(owner.thisType, sym)
+    else NoType
   }
 
   def assertExists(tp: Type) = { assert(tp != NoType); tp }

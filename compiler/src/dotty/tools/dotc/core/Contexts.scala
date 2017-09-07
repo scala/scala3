@@ -14,7 +14,6 @@ import NameOps._
 import Uniques._
 import SymDenotations._
 import Comments._
-import Flags.ParamAccessor
 import util.Positions._
 import ast.Trees._
 import ast.untpd
@@ -28,6 +27,7 @@ import reporting.diagnostic.Message
 import collection.mutable
 import collection.immutable.BitSet
 import printing._
+import util.Stats.record
 import config.{Settings, ScalaSettings, Platform, JavaPlatform}
 import language.implicitConversions
 import DenotTransformers.DenotTransformer
@@ -335,7 +335,7 @@ object Contexts {
      *    from constructor parameters to class parameter accessors.
      */
     def superCallContext: Context = {
-      val locals = newScopeWith(owner.asClass.paramAccessors: _*)
+      val locals = newScopeWith(owner.typeParams ++ owner.asClass.paramAccessors: _*)
       superOrThisCallContext(owner.primaryConstructor, locals)
     }
 
@@ -419,7 +419,10 @@ object Contexts {
     }
 
     /** A fresh clone of this context. */
-    def fresh: FreshContext = clone.asInstanceOf[FreshContext].init(this)
+    def fresh: FreshContext = {
+      record("context")
+      clone.asInstanceOf[FreshContext].init(this)
+    }
 
     final def withOwner(owner: Symbol): Context =
       if (owner ne this.owner) fresh.setOwner(owner) else this
@@ -450,32 +453,32 @@ object Contexts {
    *  of its attributes using the with... methods.
    */
   abstract class FreshContext extends Context {
-    def setPeriod(period: Period): this.type = { this.period = period; this }
-    def setMode(mode: Mode): this.type = { this.mode = mode; this }
+    def setPeriod(period: Period): this.type = { record("context-period"); this.period = period; this }
+    def setMode(mode: Mode): this.type = { record("context-mode"); this.mode = mode; this }
     def setCompilerCallback(callback: CompilerCallback): this.type = { this.compilerCallback = callback; this }
     def setSbtCallback(callback: AnalysisCallback): this.type = { this.sbtCallback = callback; this }
-    def setTyperState(typerState: TyperState): this.type = { this.typerState = typerState; this }
+    def setTyperState(typerState: TyperState): this.type = { record("context-typerState"); this.typerState = typerState; this }
     def setReporter(reporter: Reporter): this.type = setTyperState(typerState.withReporter(reporter))
-    def setNewTyperState: this.type = setTyperState(typerState.fresh(isCommittable = true))
-    def setExploreTyperState: this.type = setTyperState(typerState.fresh(isCommittable = false))
+    def setNewTyperState: this.type = { record("new typerState"); setTyperState(typerState.fresh(isCommittable = true)) }
+    def setExploreTyperState: this.type = { record("explore typerState"); setTyperState(typerState.fresh(isCommittable = false)) }
     def setPrinterFn(printer: Context => Printer): this.type = { this.printerFn = printer; this }
-    def setOwner(owner: Symbol): this.type = { assert(owner != NoSymbol); this.owner = owner; this }
+    def setOwner(owner: Symbol): this.type = { record("context-owner"); assert(owner != NoSymbol); this.owner = owner; this }
     def setSettings(sstate: SettingsState): this.type = { this.sstate = sstate; this }
     def setCompilationUnit(compilationUnit: CompilationUnit): this.type = { this.compilationUnit = compilationUnit; this }
-    def setTree(tree: Tree[_ >: Untyped]): this.type = { this.tree = tree; this }
-    def setScope(scope: Scope): this.type = { this.scope = scope; this }
+    def setTree(tree: Tree[_ >: Untyped]): this.type = { record("context-tree"); this.tree = tree; this }
+    def setScope(scope: Scope): this.type = { record("context-scope"); this.scope = scope; this }
     def setNewScope: this.type = { this.scope = newScope; this }
     def setTypeAssigner(typeAssigner: TypeAssigner): this.type = { this.typeAssigner = typeAssigner; this }
     def setTyper(typer: Typer): this.type = { this.scope = typer.scope; setTypeAssigner(typer) }
     def setImportInfo(importInfo: ImportInfo): this.type = { this.importInfo = importInfo; this }
-    def setImplicits(implicits: ContextualImplicits): this.type = { this.implicitsCache = implicits; this }
+    def setImplicits(implicits: ContextualImplicits): this.type = { record("context-implicits"); this.implicitsCache = implicits; this }
     def setRunInfo(runInfo: RunInfo): this.type = { this.runInfo = runInfo; this }
     def setDiagnostics(diagnostics: Option[StringBuilder]): this.type = { this.diagnostics = diagnostics; this }
-    def setGadt(gadt: GADTMap): this.type = { this.gadt = gadt; this }
+    def setGadt(gadt: GADTMap): this.type = { record("context-gadt"); this.gadt = gadt; this }
     def setTypeComparerFn(tcfn: Context => TypeComparer): this.type = { this.typeComparer = tcfn(this); this }
     def setSearchHistory(searchHistory: SearchHistory): this.type = { this.searchHistory = searchHistory; this }
     def setFreshNames(freshNames: FreshNameCreator): this.type = { this.freshNames = freshNames; this }
-    def setMoreProperties(moreProperties: Map[Key[Any], Any]): this.type = { this.moreProperties = moreProperties; this }
+    def setMoreProperties(moreProperties: Map[Key[Any], Any]): this.type = { record("context-moreProps"); this.moreProperties = moreProperties; this }
 
     def setProperty[T](key: Key[T], value: T): this.type =
       setMoreProperties(moreProperties.updated(key, value))
@@ -604,20 +607,20 @@ object Contexts {
       override def hash(x: Type): Int = x.hash
     }
 
-    /** A table for hash consing unique refined types */
-    private[dotc] val uniqueRefinedTypes = new RefinedUniques
+    /** A table for hash consing unique applied types */
+    private[dotc] val uniqueAppliedTypes = new AppliedUniques
 
     /** A table for hash consing unique named types */
     private[core] val uniqueNamedTypes = new NamedTypeUniques
 
-    /** A table for hash consing unique type bounds */
-    private[core] val uniqueTypeAliases = new TypeAliasUniques
+    /** A table for hash consing unique symbolic named types */
+    private[core] val uniqueWithFixedSyms = new WithFixedSymUniques
 
     private def uniqueSets = Map(
         "uniques" -> uniques,
-        "uniqueRefinedTypes" -> uniqueRefinedTypes,
-        "uniqueNamedTypes" -> uniqueNamedTypes,
-        "uniqueTypeAliases" -> uniqueTypeAliases)
+        "uniqueAppliedTypes" -> uniqueAppliedTypes,
+        "uniqueWithFixedSyms" -> uniqueWithFixedSyms,
+        "uniqueNamedTypes" -> uniqueNamedTypes)
 
     /** A map that associates label and size of all uniques sets */
     def uniquesSizes: Map[String, Int] = uniqueSets.mapValues(_.size)

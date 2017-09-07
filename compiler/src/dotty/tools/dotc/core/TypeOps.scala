@@ -11,6 +11,7 @@ import NameKinds.DepParamName
 import Decorators._
 import StdNames._
 import Annotations._
+import annotation.tailrec
 import config.Config
 import util.{SimpleMap, Property}
 import collection.mutable
@@ -21,55 +22,76 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
   /** The type `tp` as seen from prefix `pre` and owner `cls`. See the spec
    *  for what this means.
    */
-  final def asSeenFrom(tp: Type, pre: Type, cls: Symbol): Type =
-    new AsSeenFromMap(pre, cls).apply(tp)
+  final def asSeenFrom(tp: Type, pre: Type, cls: Symbol): Type = tp match {
+    case tp: NamedType =>
+      if (tp.symbol.isStatic) tp
+      else
+        tp.derivedSelect(asSeenFrom(tp.prefix, pre, cls)) match {
+          case tp1: TypeArgRef => tp1.underlying.hiBound
+          case tp1 => tp1
+        }
+    case tp: ThisType => toPrefix(tp, pre, cls, tp.cls, 1)
+    case _: BoundType => tp
+    case _ => new AsSeenFromMap(pre, cls, 1).mapOver2(tp)
+  }
+
+  /** Map a `C.this` type to the right prefix. If the prefix is unstable, and
+    *  the current variance is <= 0, return a range.
+    */
+  def toPrefix(tp: Type, pre: Type, cls: Symbol, thiscls: ClassSymbol, variance: Int): Type = /*>|>*/ ctx.conditionalTraceIndented(TypeOps.track, s"toPrefix($pre, $cls, $thiscls)") /*<|<*/ {
+    if ((pre eq NoType) || (pre eq NoPrefix) || (cls is PackageClass))
+      tp
+    else pre match {
+      case pre: SuperType => toPrefix(tp, pre.thistpe, cls, thiscls, variance)
+      case _ =>
+        if (thiscls.derivesFrom(cls) && pre.baseType(thiscls).exists)
+          if (variance > 0 || isLegalPrefix(pre)) pre
+          else new AsSeenFromMap(pre, cls, variance).range(pre.bottomType, pre)
+        else if ((pre.termSymbol is Package) && !(thiscls is Package))
+          toPrefix(tp, pre.select(nme.PACKAGE), cls, thiscls, variance)
+        else
+          toPrefix(tp, pre.baseType(cls).normalizedPrefix, cls.owner, thiscls, variance)
+    }
+  }
 
   /** The TypeMap handling the asSeenFrom */
-  class AsSeenFromMap(pre: Type, cls: Symbol) extends ApproximatingTypeMap {
+  class AsSeenFromMap(pre: Type, cls: Symbol, v: Int) extends ApproximatingTypeMap {
+    variance = v
 
-    def apply(tp: Type): Type = {
-
-      /** Map a `C.this` type to the right prefix. If the prefix is unstable, and
-       *  the current variance is <= 0, return a range.
-       */
-      def toPrefix(pre: Type, cls: Symbol, thiscls: ClassSymbol): Type = /*>|>*/ ctx.conditionalTraceIndented(TypeOps.track, s"toPrefix($pre, $cls, $thiscls)") /*<|<*/ {
-        if ((pre eq NoType) || (pre eq NoPrefix) || (cls is PackageClass))
-          tp
-        else pre match {
-          case pre: SuperType => toPrefix(pre.thistpe, cls, thiscls)
-          case _ =>
-            if (thiscls.derivesFrom(cls) && pre.baseTypeRef(thiscls).exists)
-              if (variance <= 0 && !isLegalPrefix(pre)) range(pre.bottomType, pre)
-              else pre
-            else if ((pre.termSymbol is Package) && !(thiscls is Package))
-              toPrefix(pre.select(nme.PACKAGE), cls, thiscls)
-            else
-              toPrefix(pre.baseTypeRef(cls).normalizedPrefix, cls.owner, thiscls)
-        }
-      }
-
-      /*>|>*/ ctx.conditionalTraceIndented(TypeOps.track, s"asSeen ${tp.show} from (${pre.show}, ${cls.show})", show = true) /*<|<*/ { // !!! DEBUG
-        // One `case ThisType` is specific to asSeenFrom, all other cases are inlined for performance
+    def apply(tp: Type): Type =
+      /*>|> ctx.conditionalTraceIndented(TypeOps.track, s"asSeen ${tp.show} from (${pre.show}, ${cls.show})", show = true) <|<*/ { // !!! DEBUG
         tp match {
           case tp: NamedType =>
             if (tp.symbol.isStatic) tp
             else derivedSelect(tp, atVariance(variance max 0)(this(tp.prefix)))
-          case tp: ThisType =>
-            toPrefix(pre, cls, tp.cls)
-          case _: BoundType | NoPrefix =>
-            tp
-          case tp: RefinedType =>
-            derivedRefinedType(tp, apply(tp.parent), apply(tp.refinedInfo))
-          case tp: TypeAlias if tp.variance == 1 => // if variance != 1, need to do the variance calculation
-            derivedTypeAlias(tp, apply(tp.alias))
-          case _ =>
-            mapOver(tp)
+          case tp: ThisType => toPrefix(tp, pre, cls, tp.cls, variance)
+          case _: BoundType => tp
+          case _ => mapOver2(tp)
         }
       }
+
+    // Specialize mapOver2 to get monomorphic dispatch for handling AppliedTypes
+    override def mapOver2(tp: Type) = tp match {
+      case tp: AppliedType =>
+        def mapArgs(args: List[Type], tparams: List[ParamInfo]): List[Type] = args match {
+          case arg :: otherArgs =>
+            val arg1 = arg match {
+              case arg: TypeBounds => this(arg)
+              case arg => atVariance(variance * tparams.head.paramVariance)(this(arg))
+            }
+            val otherArgs1 = mapArgs(otherArgs, tparams.tail)
+            if ((arg1 eq arg) && (otherArgs1 eq otherArgs)) args
+            else arg1 :: otherArgs1
+          case nil =>
+            nil
+        }
+        derivedAppliedType(tp, this(tp.tycon), mapArgs(tp.args, tp.typeParams))
+      case _ =>
+        mapOver3(tp)
     }
 
     override def reapply(tp: Type) =
-      // derives infos have already been subjected to asSeenFrom, hence to need to apply the map again.
+      // derived infos have already been subjected to asSeenFrom, hence to need to apply the map again.
       tp
   }
 
@@ -87,38 +109,62 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
   }
 
   /** Implementation of Types#simplified */
-  final def simplify(tp: Type, theMap: SimplifyMap): Type = tp match {
-    case tp: NamedType =>
-      if (tp.symbol.isStatic) tp
-      else tp.derivedSelect(simplify(tp.prefix, theMap)) match {
-        case tp1: NamedType if tp1.denotationIsCurrent =>
-          val tp2 = tp1.reduceProjection
-          //if (tp2 ne tp1) println(i"simplified $tp1 -> $tp2")
-          tp2
-        case tp1 => tp1
-      }
-    case tp: TypeParamRef =>
-      if (tp.paramName.is(DepParamName)) {
-        val bounds = ctx.typeComparer.bounds(tp)
-        if (bounds.lo.isRef(defn.NothingClass)) bounds.hi else bounds.lo
-      }
-      else typerState.constraint.typeVarOfParam(tp) orElse tp
-    case  _: ThisType | _: BoundType | NoPrefix =>
-      tp
-    case tp: RefinedType =>
-      tp.derivedRefinedType(simplify(tp.parent, theMap), tp.refinedName, simplify(tp.refinedInfo, theMap))
-    case tp: TypeAlias =>
-      tp.derivedTypeAlias(simplify(tp.alias, theMap))
-    case AndType(l, r) =>
-      simplify(l, theMap) & simplify(r, theMap)
-    case OrType(l, r) =>
-      simplify(l, theMap) | simplify(r, theMap)
-    case _ =>
-      (if (theMap != null) theMap else new SimplifyMap).mapOver(tp)
+  final def simplify(tp: Type): Type = tp match {
+    case tp: NamedType => simplifyNamed(tp)
+    case _: ThisType => tp
+    case _ => new SimplifyMap().mapOver2(tp)
   }
 
-  class SimplifyMap extends TypeMap {
-    def apply(tp: Type) = simplify(tp, this)
+  def simplifyNamed(tp: NamedType) =
+    if (tp.symbol.isStatic) tp
+    else tp.derivedSelect(simplify(tp.prefix)) match {
+      case tp1: NamedType if tp1.denotationIsCurrent => tp1.reduceProjection
+      case tp1 => tp1
+    }
+
+  private class SimplifyMap extends TypeMap {
+    def apply(tp: Type): Type = tp match {
+      case tp: NamedType => simplifyNamed(tp)
+      case _: ThisType => tp
+      case _ => mapOver2(tp)
+    }
+
+    // Specialize mapOver2 to get monomorphic dispatch for handling AppliedTypes
+    override def mapOver2(tp: Type) = tp match {
+      case tp: AppliedType =>
+        def mapArgs(args: List[Type]): List[Type] = args match {
+          case arg :: otherArgs =>
+            val arg1 = this(arg)
+            val otherArgs1 = mapArgs(otherArgs)
+            if ((arg1 eq arg) && (otherArgs1 eq otherArgs)) args
+            else arg1 :: otherArgs1
+          case nil =>
+            nil
+        }
+        derivedAppliedType(tp, this(tp.tycon), mapArgs(tp.args))
+      case _ =>
+        mapOver3(tp)
+    }
+
+    override def mapOver3(tp: Type) = tp match {
+      case tp: TypeParamRef =>
+        if (tp.paramName.is(DepParamName)) {
+          val bounds = ctx.typeComparer.bounds(tp)
+          if (bounds.lo.isRef(defn.NothingClass)) bounds.hi else bounds.lo
+        }
+        else {
+          val tvar = typerState.constraint.typeVarOfParam(tp)
+          if (tvar.exists) tvar else tp
+        }
+      case _: BoundType | NoPrefix | NoType =>
+        tp
+      case AndType(l, r) if !ctx.mode.is(Mode.Type) => // TODO: Drop all simplifications if mode isType?
+        this(l) & this(r)
+      case OrType(l, r) if !ctx.mode.is(Mode.Type) =>
+        this(l) | this(r)
+      case _ =>
+        super.mapOver3(tp)
+    }
   }
 
   /** Approximate union type by intersection of its dominators.
@@ -152,14 +198,22 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
         defn.ObjectClass :: Nil
     }
 
-    def mergeRefined(tp1: Type, tp2: Type): Type = {
+    def mergeRefinedOrApplied(tp1: Type, tp2: Type): Type = {
       def fail = throw new AssertionError(i"Failure to join alternatives $tp1 and $tp2")
       tp1 match {
         case tp1 @ RefinedType(parent1, name1, rinfo1) =>
           tp2 match {
             case RefinedType(parent2, `name1`, rinfo2) =>
               tp1.derivedRefinedType(
-                mergeRefined(parent1, parent2), name1, rinfo1 | rinfo2)
+                mergeRefinedOrApplied(parent1, parent2), name1, rinfo1 | rinfo2)
+            case _ => fail
+          }
+        case tp1 @ AppliedType(tycon1, args1) =>
+          tp2 match {
+            case AppliedType(tycon2, args2) =>
+              tp1.derivedAppliedType(
+                mergeRefinedOrApplied(tycon1, tycon2),
+                ctx.typeComparer.lubArgs(args1, args2, tycon1.typeParams))
             case _ => fail
           }
         case tp1 @ TypeRef(pre1, name1) =>
@@ -175,6 +229,7 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
     def approximateOr(tp1: Type, tp2: Type): Type = {
       def isClassRef(tp: Type): Boolean = tp match {
         case tp: TypeRef => tp.symbol.isClass
+        case tp: AppliedType => isClassRef(tp.tycon)
         case tp: RefinedType => isClassRef(tp.parent)
         case _ => false
       }
@@ -193,12 +248,8 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
             case _ =>
               val commonBaseClasses = tp.mapReduceOr(_.baseClasses)(intersect)
               val doms = dominators(commonBaseClasses, Nil)
-              def baseTp(cls: ClassSymbol): Type = {
-                val base =
-                  if (tp1.typeParams.nonEmpty) tp.baseTypeRef(cls)
-                  else tp.baseTypeWithArgs(cls)
-                base.mapReduceOr(identity)(mergeRefined)
-              }
+              def baseTp(cls: ClassSymbol): Type =
+                tp.baseType(cls).mapReduceOr(identity)(mergeRefinedOrApplied)
               doms.map(baseTp).reduceLeft(AndType.apply)
           }
       }
@@ -210,35 +261,6 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
       case _ =>
         tp
     }
-  }
-
-  /** Not currently needed:
-   *
-  def liftToRec(f: (Type, Type) => Type)(tp1: Type, tp2: Type)(implicit ctx: Context) = {
-    def f2(tp1: Type, tp2: Type): Type = tp2 match {
-      case tp2: RecType => tp2.rebind(f(tp1, tp2.parent))
-      case _ => f(tp1, tp2)
-    }
-    tp1 match {
-      case tp1: RecType => tp1.rebind(f2(tp1.parent, tp2))
-      case _ => f2(tp1, tp2)
-    }
-  }
-  */
-
-  private def enterArgBinding(formal: Symbol, info: Type, cls: ClassSymbol, decls: Scope) = {
-    val lazyInfo = new LazyType { // needed so we do not force `formal`.
-      def complete(denot: SymDenotation)(implicit ctx: Context): Unit = {
-        denot setFlag formal.flags & RetainedTypeArgFlags
-        denot.info = info
-      }
-    }
-    val sym = ctx.newSymbol(
-      cls, formal.name,
-      formal.flagsUNSAFE & RetainedTypeArgFlags | BaseTypeArg | Override,
-      lazyInfo,
-      coord = cls.coord)
-    cls.enter(sym, decls)
   }
 
   /** If `tpe` is of the form `p.x` where `p` refers to a package
@@ -262,119 +284,6 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
         case _ => tpe
       }
   }
-
-  /** Normalize a list of parent types of class `cls` that may contain refinements
-   *  to a list of typerefs referring to classes, by converting all refinements to member
-   *  definitions in scope `decls`. Can add members to `decls` as a side-effect.
-   */
-  def normalizeToClassRefs(parents: List[Type], cls: ClassSymbol, decls: Scope): List[TypeRef] = {
-    // println(s"normalizing $parents of $cls in ${cls.owner}") // !!! DEBUG
-
-    // A map consolidating all refinements arising from parent type parameters
-    var refinements: SimpleMap[TypeName, Type] = SimpleMap.Empty
-
-    // A map of all formal type parameters of base classes that get refined
-    var formals: SimpleMap[TypeName, Symbol] = SimpleMap.Empty // A map of all formal parent parameter
-
-    // Strip all refinements from parent type, populating `refinements` and `formals` maps.
-    def normalizeToRef(tp: Type): TypeRef = {
-      def fail = throw new TypeError(s"unexpected parent type: $tp")
-      tp.dealias match {
-        case tp: TypeRef =>
-          tp
-        case tp @ RefinedType(tp1, name: TypeName, rinfo) =>
-          val prevInfo = refinements(name)
-          refinements = refinements.updated(name,
-            if (prevInfo == null) tp.refinedInfo else prevInfo & tp.refinedInfo)
-          formals = formals.updated(name, tp1.typeParamNamed(name))
-          normalizeToRef(tp1)
-        case tp @ RefinedType(tp1, _: TermName, _) =>
-            normalizeToRef(tp1)
-        case _: ErrorType =>
-          defn.AnyType
-        case AnnotatedType(tpe, _) =>
-          normalizeToRef(tpe)
-        case HKApply(tycon: TypeRef, args) =>
-          tycon.info match {
-            case TypeAlias(alias) => normalizeToRef(alias.appliedTo(args))
-            case _ => fail
-          }
-        case _ =>
-          fail
-      }
-    }
-
-    val parentRefs = parents map normalizeToRef
-
-    // Enter all refinements into current scope.
-    refinements foreachBinding { (name, refinedInfo) =>
-      assert(decls.lookup(name) == NoSymbol, // DEBUG
-        s"redefinition of ${decls.lookup(name).debugString} in ${cls.showLocated}")
-      enterArgBinding(formals(name), refinedInfo, cls, decls)
-    }
-
-    if (Config.forwardTypeParams)
-      forwardParamBindings(parentRefs, refinements, cls, decls)
-
-    parentRefs
-  }
-
-  /** Forward parameter bindings in baseclasses to argument types of
-   *  class `cls` if possible.
-   *  If there have member definitions
-   *
-   *     type param v= middle
-   *     type middle v= to
-   *
-   *  where the variances of both alias are the same, then enter a new definition
-   *
-   *     type param v= to
-   *
-   *  If multiple forwarders would be generated, join their `to` types with an `&`.
-   *
-   *  @param cls           The class for which parameter bindings should be forwarded
-   *  @param decls	       Its scope
-   *  @param parentRefs    The parent type references of `cls`
-   *  @param paramBindings The type parameter bindings generated for `cls`
-   *
-   */
-  def forwardParamBindings(parentRefs: List[TypeRef],
-                           paramBindings: SimpleMap[TypeName, Type],
-                           cls: ClassSymbol, decls: Scope)(implicit ctx: Context) = {
-
-    def forwardRef(argSym: Symbol, from: TypeName, to: TypeAlias) = argSym.info match {
-      case info @ TypeAlias(TypeRef(_: ThisType, `from`)) if info.variance == to.variance =>
-        val existing = decls.lookup(argSym.name)
-        if (existing.exists) existing.info = existing.info & to
-        else enterArgBinding(argSym, to, cls, decls)
-      case _ =>
-    }
-
-    def forwardRefs(from: TypeName, to: Type) = to match {
-      case to: TypeAlias =>
-        for (pref <- parentRefs) {
-          def forward()(implicit ctx: Context): Unit =
-            for (argSym <- pref.decls)
-              if (argSym is BaseTypeArg) forwardRef(argSym, from, to)
-          pref.info match {
-            case info: TempClassInfo => info.addSuspension(implicit ctx => forward())
-            case _ => forward()
-          }
-        }
-      case _ =>
-    }
-
-    paramBindings.foreachBinding(forwardRefs)
-  }
-
-  /** Used only for debugging: All BaseTypeArg definitions in
-   *  `cls` and all its base classes.
-   */
-  def allBaseTypeArgs(cls: ClassSymbol)(implicit ctx: Context) =
-    for { bc <- cls.baseClasses
-          sym <- bc.info.decls.toList
-          if sym.is(BaseTypeArg)
-    } yield sym
 
   /** An argument bounds violation is a triple consisting of
    *   - the argument tree
