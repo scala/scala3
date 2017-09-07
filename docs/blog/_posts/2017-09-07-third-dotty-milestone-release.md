@@ -61,7 +61,6 @@ using Dotty with sbt, see the
 [example project](https://github.com/lampepfl/dotty-example-project).
 
 ### Standalone installation
-
 Releases are available for download on the _Releases_
 section of the Dotty repository:
 [https://github.com/lampepfl/dotty/releases](https://github.com/lampepfl/dotty/releases)
@@ -79,13 +78,11 @@ brew upgrade dotty
 ```
 
 ### Scastie
-
 [Scastie], the online Scala playground, supports Dotty.
 You can try it out there without installing anything.
 
 
 ## What are the next steps?
-
 Over the coming weeks and months, we plan to work on the following topics:
 
  - [Add support for using Dotty generated classes with Scala 2.12](https://github.com/lampepfl/dotty/pull/2827)
@@ -94,26 +91,42 @@ Over the coming weeks and months, we plan to work on the following topics:
  - [Add support for existing in the same classpath with Scala 2.12](https://github.com/lampepfl/dotty/pull/2827)
  - [Add native Dotty REPL](https://github.com/lampepfl/dotty/pull/2991)
 
-If you want to get your hands dirty with any of this, now is a good
-moment to get involved! Join the team of contributors, including
-Martin Odersky ([@odersky])
-Dmitry Petrashko ([@DarkDimius]),
-Guillaume Martres ([@smarter]),
-Felix Mulder ([@felixmulder]),
-Nicolas Stucki ([@nicolasstucki]),
-Liu Fengyun ([@liufengyun]),
-Olivier Blanvillain ([@OlivierBlanvillain]),
-Aggelos Biboudis ([@biboudis]),
-Allan Renucci ([@allanrenucci]),
-and others!
+## Reporting Bugs
+If you encounter a bug, please [open an issue](https://github.com/lampepfl/dotty/issues/new).
+
+## Contributing
+Thank you to all the contributors who made this release possible!
+
+According to `git shortlog -sn --no-merges 0.2.0-RC1..0.3.0-RC2` these are:
+
+```
+   138  Martin Odersky
+    36  Nicolas Stucki
+    12  Guillaume Martres
+     7  Dmitry Petrashko
+     5  liu fengyun
+     4  Allan Renucci
+     4  Felix Mulder
+     2  Lorand Szakacs
+     1  Lukas Ciszewski
+     1  Max Ovsiankin
+     1  Lanny Ripple
+     1  Serhii Pererva
+     1  Georg Schmid
+```
+
+If you want to get your hands dirty with any of this, now is a good moment to get involved!
+You can have a look at our [Error Messages](http://scala-lang.org/blog/2016/10/14/dotty-errors.html)
+and some simple [Dotty issues](https://github.com/lampepfl/dotty/issues?q=is%3Aissue+is%3Aopen+label%3Aexp%3Anovice).
+They make perfect entry-points into hacking on the compiler.
+
+We are looking forward to having you join the team of contributors.
 
 ## Library authors: Join our community build
-
 Dotty now has a set of libraries that are built against every nightly snapshot.
 Currently this includes scalatest, squants and algebra.
 Join our [community build](https://github.com/lampepfl/dotty-community-build)
 to make sure that our regression suite includes your library.
-
 
 To get started, see [https://github.com/lampepfl/dotty](https://github.com/lampepfl/dotty).
 
