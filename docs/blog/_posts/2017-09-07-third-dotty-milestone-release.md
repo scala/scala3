@@ -91,8 +91,10 @@ Over the coming weeks and months, we plan to work on the following topics:
  - [Add support for existing in the same classpath with Scala 2.12](https://github.com/lampepfl/dotty/pull/2827)
  - [Add native Dotty REPL](https://github.com/lampepfl/dotty/pull/2991)
 
-## Reporting Bugs
-If you encounter a bug, please [open an issue](https://github.com/lampepfl/dotty/issues/new).
+## Questions / Reporting Bugs
+If you have questions or any sort of feedback, feel free to send us a message on our
+[Gitter channel](https://gitter.im/lampepfl/dotty). If you encounter a bug, please
+[open an issue on GitHub](https://github.com/lampepfl/dotty/issues/new).
 
 ## Contributing
 Thank you to all the contributors who made this release possible!
@@ -116,8 +118,9 @@ According to `git shortlog -sn --no-merges 0.2.0-RC1..0.3.0-RC2` these are:
 ```
 
 If you want to get your hands dirty with any of this, now is a good moment to get involved!
-You can have a look at our [Error Messages](http://scala-lang.org/blog/2016/10/14/dotty-errors.html)
-and some simple [Dotty issues](https://github.com/lampepfl/dotty/issues?q=is%3Aissue+is%3Aopen+label%3Aexp%3Anovice).
+You can have a look at our [Getting Started page](http://dotty.epfl.ch/docs/contributing/getting-started.html),
+our [Awesome Error Messages](http://scala-lang.org/blog/2016/10/14/dotty-errors.html) or some of
+the simple [Dotty issues](https://github.com/lampepfl/dotty/issues?q=is%3Aissue+is%3Aopen+label%3Aexp%3Anovice).
 They make perfect entry-points into hacking on the compiler.
 
 We are looking forward to having you join the team of contributors.
