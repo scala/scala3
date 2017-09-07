@@ -21,6 +21,9 @@ if [ -z "$RELEASE_CMD" ]; then
   exit 1
 fi
 
+# get the ivy2 cache
+ln -s /var/cache/drone/ivy2 "$HOME/.ivy2"
+
 CMD="     ;set credentials in ThisBuild := Seq(Credentials(\"Sonatype Nexus Repository Manager\", \"oss.sonatype.org\", \"$2\", \"$3\"))"
 CMD="$CMD ;set pgpPassphrase := Some(\"\"\"$4\"\"\".toCharArray)"
 CMD="$CMD ;set pgpSecretRing := file(\"/keys/secring.asc\")"

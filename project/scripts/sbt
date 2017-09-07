@@ -10,6 +10,9 @@ if [ -z "$CMD" ]; then
   exit 1
 fi
 
+# get the ivy2 cache
+ln -s /var/cache/drone/ivy2 "$HOME/.ivy2"
+
 # run sbt with the supplied arg:
 sbt -J-Xmx4096m \
     -J-XX:ReservedCodeCacheSize=512m \

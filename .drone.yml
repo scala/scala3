@@ -1,10 +1,4 @@
 pipeline:
-  init:
-    image: lampepfl/dotty:2017-09-05
-    commands:
-      # get the ivy2 cache
-      - ln -s /var/cache/drone/ivy2 "$HOME/.ivy2"
-
   # We run tests in parallel. Tests run in a copy of the working directory to avoid conflict
   test_legacy:
     group: test

@@ -15,6 +15,9 @@ fi
 
 echo "Working directory: $PWD"
 
+# get the ivy2 cache
+ln -s /var/cache/drone/ivy2 "$HOME/.ivy2"
+
 # this command will generate docs in $PWD/docs/_site
 sbt -J-Xmx4096m \
     -J-XX:ReservedCodeCacheSize=512m \
