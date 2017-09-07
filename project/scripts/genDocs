@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 
-# Usage: ./genDocs <dotty-bot password>
+# Usage:
+# BOT_PASS=<dotty-bot password> ./genDocs
 
 set -e
 # set extended glob, needed for rm everything but x

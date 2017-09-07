@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
 
+# Usage:
+# SONATYPE_USER=<sonatype user> SONATYPE_PW=<sonatype pw> PGP_PW=<pgp pw> ./sbtPublish <publish cmd>
+
 # Release command:
 RELEASE_CMD="$1"
 

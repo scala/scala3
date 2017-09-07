@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
 
+# Usage:
+# ./sbt <cmd>
+
 CMD="$1"
 
 if [ -z "$CMD" ]; then
