@@ -62,7 +62,7 @@ class VarianceChecker()(implicit ctx: Context) {
     /** Check variance of abstract type `tvar` when referred from `base`. */
     private def checkVarianceOfSymbol(tvar: Symbol): Option[VarianceError] = {
       val relative = relativeVariance(tvar, base)
-      if (relative == Bivariant || tvar.is(BaseTypeArg)) None
+      if (relative == Bivariant) None
       else {
         val required = compose(relative, this.variance)
         def tvar_s = s"$tvar (${varianceString(tvar.flags)} ${tvar.showLocated})"

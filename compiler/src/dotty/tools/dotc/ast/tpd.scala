@@ -213,8 +213,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     ta.assignType(untpd.TypeDef(sym.name, TypeTree(sym.info)), sym)
 
   def ClassDef(cls: ClassSymbol, constr: DefDef, body: List[Tree], superArgs: List[Tree] = Nil)(implicit ctx: Context): TypeDef = {
-    val firstParentRef :: otherParentRefs = cls.info.parents
-    val firstParent = cls.typeRef.baseTypeWithArgs(firstParentRef.symbol)
+    val firstParent :: otherParents = cls.info.parents
     val superRef =
       if (cls is Trait) TypeTree(firstParent)
       else {
@@ -229,7 +228,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
         val constr = firstParent.decl(nme.CONSTRUCTOR).suchThat(constr => isApplicable(constr.info))
         New(firstParent, constr.symbol.asTerm, superArgs)
       }
-    val parents = superRef :: otherParentRefs.map(TypeTree(_))
+    val parents = superRef :: otherParents.map(TypeTree(_))
 
     val selfType =
       if (cls.classInfo.selfInfo ne NoType) ValDef(ctx.newSelfSym(cls))
@@ -305,7 +304,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
         true
       case pre: ThisType =>
         pre.cls.isStaticOwner ||
-          tp.symbol.is(ParamOrAccessor) && !pre.cls.is(Trait) && ctx.owner.enclosingClass == pre.cls
+          tp.symbol.isParamOrAccessor && !pre.cls.is(Trait) && ctx.owner.enclosingClass == pre.cls
           // was ctx.owner.enclosingClass.derivesFrom(pre.cls) which was not tight enough
           // and was spuriously triggered in case inner class would inherit from outer one
           // eg anonymous TypeMap inside TypeMap.andThen
@@ -381,7 +380,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   /** new C(args), calling given constructor `constr` of C */
   def New(tp: Type, constr: TermSymbol, args: List[Tree])(implicit ctx: Context): Apply = {
     val targs = tp.argTypes
-    val tycon = tp.withoutArgs(targs)
+    val tycon = tp.typeConstructor
     New(tycon)
       .select(TermRef.withSig(tycon, constr))
       .appliedToTypes(targs)
@@ -698,8 +697,10 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
      */
     def select(sym: Symbol)(implicit ctx: Context): Select = {
       val tp =
-        if (sym.isType)
+        if (sym.isType) {
+          assert(!sym.is(TypeParam))
           TypeRef(tree.tpe, sym.name.asTypeName)
+        }
         else
           TermRef.withSigAndDenot(tree.tpe, sym.name.asTermName,
             sym.signature, sym.denot.asSeenFrom(tree.tpe))

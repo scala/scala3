@@ -1,4 +1,5 @@
-package dotty.tools.dotc.core
+package dotty.tools.dotc
+package core
 
 import language.implicitConversions
 
@@ -248,9 +249,7 @@ object Flags {
   /** A field generated for a primary constructor parameter (no matter if it's a 'val' or not),
    *  or an accessor of such a field.
    */
-  final val ParamAccessor = commonFlag(14, "<paramaccessor>")
-  final val TermParamAccessor = ParamAccessor.toTermFlags
-  final val TypeParamAccessor = ParamAccessor.toTypeFlags
+  final val ParamAccessor = termFlag(14, "<paramaccessor>")
 
     /** A value or class implementing a module */
   final val Module = commonFlag(15, "module")
@@ -303,12 +302,6 @@ object Flags {
 
   /** A case parameter accessor */
   final val CaseAccessor = termFlag(25, "<caseaccessor>")
-
-  /** A binding for a type parameter of a base class or trait.
-   */
-  final val BaseTypeArg = typeFlag(25, "<basetypearg>")
-
-  final val CaseAccessorOrBaseTypeArg = CaseAccessor.toCommonFlags
 
   /** A super accessor */
   final val Scala2SuperAccessor = termFlag(26, "<superaccessor>")
@@ -450,9 +443,9 @@ object Flags {
 
   /** Flags guaranteed to be set upon symbol creation */
   final val FromStartFlags =
-    Module | Package | Deferred | MethodOrHKCommon | Param | ParamAccessor |
+    Module | Package | Deferred | MethodOrHKCommon | Param | ParamAccessor.toCommonFlags |
     Scala2ExistentialCommon | Mutable.toCommonFlags | Touched | JavaStatic |
-    CovariantOrOuter | ContravariantOrLabel | CaseAccessorOrBaseTypeArg |
+    CovariantOrOuter | ContravariantOrLabel | CaseAccessor.toCommonFlags |
     Fresh | Erroneous | ImplicitCommon | Permanent | Synthetic |
     SuperAccessorOrScala2x | Inline
 
@@ -495,7 +488,8 @@ object Flags {
   final val SelfSymFlags = Private | Local | Deferred
 
   /** The flags of a class type parameter */
-  final def ClassTypeParamCreationFlags = TypeParam | Deferred | Protected | Local
+  final val ClassTypeParamCreationFlags =
+    TypeParam | Deferred | Private | Local
 
   /** Flags that can apply to both a module val and a module class, except those that
     *  are added at creation anyway
@@ -555,8 +549,8 @@ object Flags {
   /** An inline parameter */
   final val InlineParam = allOf(Inline, Param)
 
-  /** A parameter or parameter accessor */
-  final val ParamOrAccessor = Param | ParamAccessor
+  /** A term parameter or parameter accessor */
+  final val TermParamOrAccessor = Param | ParamAccessor
 
   /** A lazy or deferred value */
   final val LazyOrDeferred = Lazy | Deferred
@@ -567,17 +561,11 @@ object Flags {
   /** A synthetic or private definition */
   final val SyntheticOrPrivate = Synthetic | Private
 
-  /** A type parameter or type parameter accessor */
-  final val TypeParamOrAccessor = TypeParam | TypeParamAccessor
-
   /** A deferred member or a parameter accessor (these don't have right hand sides) */
   final val DeferredOrParamAccessor = Deferred | ParamAccessor
 
   /** value that's final or inline */
   final val FinalOrInline = Final | Inline
-
-  /** If symbol of a type alias has these flags, prefer the alias */
-  final val AliasPreferred = TypeParam | BaseTypeArg
 
   /** A covariant type parameter instance */
   final val LocalCovariant = allOf(Local, Covariant)
@@ -590,6 +578,9 @@ object Flags {
 
   /** Is valid forever */
   final val ValidForever = Package | Permanent | Scala2ExistentialCommon
+
+  /** A type parameter of a class or trait */
+  final val ClassTypeParam = allOf(TypeParam, Private)
 
   /** Is a default parameter in Scala 2*/
   final val DefaultParameter = allOf(Param, DefaultParameterized)

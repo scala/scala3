@@ -220,8 +220,6 @@ class TreeUnpickler(reader: TastyReader, nameAtRef: NameRef => TermName, posUnpi
 
         val result =
           (tag: @switch) match {
-            case SUPERtype =>
-              SuperType(readType(), readType())
             case REFINEDtype =>
               var name: Name = readName()
               val parent = readType()
@@ -234,19 +232,16 @@ class TreeUnpickler(reader: TastyReader, nameAtRef: NameRef => TermName, posUnpi
               readType().appliedTo(until(end)(readType()))
             case TYPEBOUNDS =>
               TypeBounds(readType(), readType())
-            case TYPEALIAS =>
-              val alias = readType()
-              val variance =
-                if (nextByte == COVARIANT) { readByte(); 1 }
-                else if (nextByte == CONTRAVARIANT) { readByte(); -1 }
-                else 0
-              TypeAlias(alias, variance)
             case ANNOTATEDtype =>
               AnnotatedType(readType(), Annotation(readTerm()))
             case ANDtype =>
               AndType(readType(), readType())
             case ORtype =>
               OrType(readType(), readType())
+            case SUPERtype =>
+              SuperType(readType(), readType())
+            case TYPEARGtype =>
+              TypeArgRef(readType(), readType().asInstanceOf[TypeRef], readNat())
             case BIND =>
               val sym = ctx.newSymbol(ctx.owner, readName().toTypeName, BindDefinedType, readType())
               registerSym(start, sym)
@@ -260,7 +255,7 @@ class TreeUnpickler(reader: TastyReader, nameAtRef: NameRef => TermName, posUnpi
               readMethodic(HKTypeLambda, _.toTypeName)
             case PARAMtype =>
               readTypeRef() match {
-                case binder: LambdaType => binder.newParamRef(readNat())
+                case binder: LambdaType => binder.paramRefs(readNat())
               }
             case CLASSconst =>
               ConstantType(Constant(readType()))
@@ -293,7 +288,9 @@ class TreeUnpickler(reader: TastyReader, nameAtRef: NameRef => TermName, posUnpi
         case RECtype =>
           RecType(rt => registeringType(rt, readType()))
         case RECthis =>
-          RecThis(readTypeRef().asInstanceOf[RecType])
+          readTypeRef().asInstanceOf[RecType].recThis
+        case TYPEALIAS =>
+          TypeAlias(readType())
         case SHARED =>
           val ref = readAddr()
           typeAtAddr.getOrElseUpdate(ref, forkAt(ref).readType())
@@ -370,7 +367,7 @@ class TreeUnpickler(reader: TastyReader, nameAtRef: NameRef => TermName, posUnpi
     private def normalizeFlags(tag: Int, givenFlags: FlagSet, name: Name, isAbsType: Boolean, rhsIsEmpty: Boolean)(implicit ctx: Context): FlagSet = {
       val lacksDefinition =
         rhsIsEmpty &&
-          name.isTermName && !name.isConstructorName && !givenFlags.is(ParamOrAccessor) ||
+          name.isTermName && !name.isConstructorName && !givenFlags.is(TermParamOrAccessor) ||
         isAbsType
       var flags = givenFlags
       if (lacksDefinition && tag != PARAM) flags |= Deferred
@@ -678,7 +675,7 @@ class TreeUnpickler(reader: TastyReader, nameAtRef: NameRef => TermName, posUnpi
             sym.info = NoCompleter
             sym.info = rhs.tpe match {
               case _: TypeBounds | _: ClassInfo => checkNonCyclic(sym, rhs.tpe, reportErrors = false)
-              case _ => TypeAlias(rhs.tpe, sym.variance)
+              case _ => TypeAlias(rhs.tpe)
             }
             TypeDef(rhs)
           }
@@ -713,13 +710,11 @@ class TreeUnpickler(reader: TastyReader, nameAtRef: NameRef => TermName, posUnpi
     private def readTemplate(implicit ctx: Context): Template = {
       val start = currentAddr
       val cls = ctx.owner.asClass
-      def setClsInfo(parents: List[TypeRef], selfType: Type) =
-        cls.info = ClassInfo(cls.owner.thisType, cls, parents, cls.unforcedDecls, selfType)
       val assumedSelfType =
         if (cls.is(Module) && cls.owner.isClass)
           TermRef.withSig(cls.owner.thisType, cls.name.sourceModuleName, Signature.NotAMethod)
         else NoType
-      setClsInfo(Nil, assumedSelfType)
+      cls.info = new TempClassInfo(cls.owner.thisType, cls, cls.unforcedDecls, assumedSelfType)
       val localDummy = symbolAtCurrent()
       assert(readByte() == TEMPLATE)
       val end = readEnd()
@@ -731,14 +726,15 @@ class TreeUnpickler(reader: TastyReader, nameAtRef: NameRef => TermName, posUnpi
           case _ => readTpt()
         }
       }
-      val parentRefs = ctx.normalizeToClassRefs(parents.map(_.tpe), cls, cls.unforcedDecls)
+      val parentTypes = parents.map(_.tpe.dealias)
       val self =
         if (nextByte == SELFDEF) {
           readByte()
           untpd.ValDef(readName(), readTpt(), EmptyTree).withType(NoType)
         }
         else EmptyValDef
-      setClsInfo(parentRefs, if (self.isEmpty) NoType else self.tpt.tpe)
+      cls.info = ClassInfo(cls.owner.thisType, cls, parentTypes, cls.unforcedDecls,
+        if (self.isEmpty) NoType else self.tpt.tpe)
       cls.setNoInitsFlags(fork.indexStats(end))
       val constr = readIndexedDef().asInstanceOf[DefDef]
 

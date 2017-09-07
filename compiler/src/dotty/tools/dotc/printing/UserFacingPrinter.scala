@@ -47,6 +47,11 @@ class UserFacingPrinter(_ctx: Context) extends RefinedPrinter(_ctx) {
 
   override def toText(const: Constant): Text = Str(const.value.toString)
 
+  override def argText(tp: Type): Text = tp match {
+    case arg: TypeArgRef => argText(arg.underlying)
+    case _ => super.argText(tp)
+  }
+
   override def toText(tp: Type): Text = tp match {
     case ExprType(result) => ":" ~~ toText(result)
     case tp: ConstantType => toText(tp.value)
