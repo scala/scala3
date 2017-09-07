@@ -3,7 +3,6 @@ pipeline:
     image: lampepfl/dotty:2017-09-05
     commands:
       - ln -s /var/cache/drone/ivy2 "$HOME/.ivy2"
-      - ./project/scripts/sbt update
 
   test_legacy:
     group: test
