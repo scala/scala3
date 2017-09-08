@@ -22,8 +22,15 @@ object Bench {
       println("Missing <args>")
       return
     }
+    val (intArgs, args1) = args.span(x => try { x.toInt; true } catch { case _: Throwable => false } )
 
-    val args2 = args.map { arg =>
+    var warmup = 30
+    var iterations = 20
+
+    if (intArgs.length > 0) warmup = intArgs(0).toInt
+    if (intArgs.length > 1) iterations = intArgs(1).toInt
+
+    val args2 = args1.map { arg =>
       if ((arg.endsWith(".scala") || arg.endsWith(".java")) && arg.head != '/') "../" + arg
       else arg
     }
@@ -36,8 +43,8 @@ object Bench {
                .mode(Mode.AverageTime)
                .timeUnit(TimeUnit.MILLISECONDS)
                .forks(1)
-               .warmupIterations(30)
-               .measurementIterations(20)
+               .warmupIterations(warmup)
+               .measurementIterations(iterations)
                .build
 
     val runner = new Runner(opts) // full access to all JMH features, you can also provide a custom output Format here
