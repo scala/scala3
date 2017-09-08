@@ -3,4 +3,4 @@
 31: Pattern Match Exhaustivity: _: Trait & OpenClass
 35: Pattern Match Exhaustivity: _: Trait & OpenTrait & OpenClass
 43: Pattern Match Exhaustivity: _: Trait & OpenAbstractClass
-47: Pattern Match Exhaustivity: _: Trait & OpenTrait & OpenClassSubclass
+47: Pattern Match Exhaustivity: _: Trait & OpenClass & OpenTrait & OpenClassSubclass
