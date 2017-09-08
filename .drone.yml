@@ -35,7 +35,7 @@ pipeline:
       - cp -R . /tmp/4/ && cd /tmp/4/
       - ./project/scripts/sbt sbt-dotty/scripted
     when:
-      event: push
+      event: [ push, tag, deployment ]
 
   documentation:
     image: lampepfl/dotty:2017-09-05
@@ -90,8 +90,7 @@ pipeline:
     secrets: [ slack_webhook ]
     when:
       status: [ success, failure ]
-      event: [ push, deployment ]
-
+      event: [ push, tag, deployment ]
 
 
 branches: master
