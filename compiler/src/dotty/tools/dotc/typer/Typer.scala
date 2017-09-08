@@ -1279,7 +1279,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     }
     val sym = vdef.symbol
     sym.info match {
-      case info: ConstantType if isFinalInlinableVal(sym) && !ctx.settings.YnoInline.value => sym.setFlag(Inline)
+      case info: ConstantType if isFinalInlinableVal(sym) && false => sym.setFlag(Inline)
       case _ =>
     }
   }
@@ -2140,7 +2140,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
             checkInlineConformant(tree, "argument to inline parameter")
           if (Inliner.hasBodyToInline(tree.symbol) &&
               !ctx.owner.ownersIterator.exists(_.isInlineMethod) &&
-              !ctx.settings.YnoInline.value &&
+              false &&
               !ctx.isAfterTyper &&
               !ctx.reporter.hasErrors)
             adapt(Inliner.inlineCall(tree, pt), pt)

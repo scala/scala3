@@ -106,7 +106,7 @@ import Decorators._
     def adaptToField(tree: Tree): Tree =
       if (tree.isEmpty) tree else tree.ensureConforms(field.info.widen)
 
-    val NoFieldNeeded = Lazy | Deferred | JavaDefined | (if (ctx.settings.YnoInline.value) EmptyFlags else Inline)
+    val NoFieldNeeded = Lazy | Deferred | JavaDefined | (if (true) EmptyFlags else Inline)
 
     def isErasableBottomField(cls: Symbol): Boolean = {
       // TODO: For Scala.js, return false if this field is in a js.Object unless it is an ErasedPhantomClass.
