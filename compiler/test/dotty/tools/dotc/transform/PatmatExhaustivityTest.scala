@@ -65,7 +65,7 @@ class PatmatExhaustivityTest {
     (file, checkContent, actual)
   }
 
-  // @Test // TODO: reenable when exchaustivity is fixed
+  @Test
   def patmatExhaustivity: Unit = {
     val res = Directory(testsDir).list.toList
       .filter(f => f.extension == "scala" || f.isDirectory)
