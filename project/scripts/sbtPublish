@@ -23,9 +23,6 @@ if [ -z "$RELEASE_CMD" ]; then
   exit 1
 fi
 
-# get the ivy2 cache
-ln -s /var/cache/drone/ivy2 "$HOME/.ivy2"
-
 CMD="     ;set credentials in ThisBuild := Seq(Credentials(\"Sonatype Nexus Repository Manager\", \"oss.sonatype.org\", \"$2\", \"$3\"))"
 CMD="$CMD ;set pgpPassphrase := Some(\"\"\"$4\"\"\".toCharArray)"
 CMD="$CMD ;set pgpSecretRing := file(\"/keys/secring.asc\")"
@@ -33,8 +30,5 @@ CMD="$CMD ;set pgpPublicRing := file(\"/keys/pubring.asc\")"
 CMD="$CMD $RELEASE_CMD"
 
 # run sbt with the supplied arg
-sbt -J-Xmx4096m \
-    -J-XX:ReservedCodeCacheSize=512m \
-    -J-XX:MaxMetaspaceSize=1024m \
-    -Ddotty.drone.mem=4096m \
-    "$CMD"
+SBT="$(cd "$(dirname "${BASH_SOURCE[0]}")" >& /dev/null && pwd)/sbt"
+eval "$SBT" "$CMD"
