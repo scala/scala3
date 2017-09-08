@@ -411,9 +411,9 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
 
   /* Erase a type binding according to erasure semantics in pattern matching */
   def erase(tp: Type): Type = tp match {
-    case tp@AppliedType(tycon, args) => erase(tp.superType)
+    case tp @ AppliedType(tycon, args) =>
       if (tycon.isRef(defn.ArrayClass)) tp.derivedAppliedType(tycon, args.map(erase))
-      else tp.derivedAppliedType(tycon, args.map(t => WildcardType(TypeBounds.empty)))
+      else tp.derivedAppliedType(tycon, args.map(t => WildcardType))
     case OrType(tp1, tp2) =>
       OrType(erase(tp1), erase(tp2))
     case AndType(tp1, tp2) =>
@@ -583,7 +583,7 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
     val typeParamMap = new TypeMap {
       def apply(t: Type): Type = t match {
 
-        case tp: TypeRef if tp.underlying.isInstanceOf[TypeBounds] =>
+        case tp: TypeRef if tp.symbol.is(TypeParam) && tp.underlying.isInstanceOf[TypeBounds] =>
           // See tests/patmat/gadt.scala  tests/patmat/exhausting.scala
           val bound =
             if (variance == 0) tp.underlying.bounds      // non-variant case is not well-founded
