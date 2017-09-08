@@ -92,13 +92,21 @@ class FirstTransform extends MiniPhaseTransform with InfoTransformer with Annota
   private def reorderAndComplete(stats: List[Tree])(implicit ctx: Context): List[Tree] = {
     val moduleClassDefs, singleClassDefs = mutable.Map[Name, Tree]()
 
-    def reorder(stats: List[Tree], revPrefix: List[Tree] = Nil): List[Tree] = stats match {
+    /* Returns the result of reordering stats and prepending revPrefix in reverse order to it.
+     * The result of reorder is equivalent to reorder(stats, revPrefix) = revPrefix.reverse ::: reorder(stats, Nil).
+     * This implementation is tail recursive as long as the element is not a module TypeDef.
+     */
+    def reorder(stats: List[Tree], revPrefix: List[Tree]): List[Tree] = stats match {
       case (stat: TypeDef) :: stats1 if stat.symbol.isClass =>
         if (stat.symbol is Flags.Module) {
+          def pushOnTop(xs: List[Tree], ys: List[Tree]): List[Tree] = xs match {
+            case x :: xs1 => pushOnTop(xs1, x :: ys)
+            case Nil => ys
+          }
           moduleClassDefs += (stat.name -> stat)
           singleClassDefs -= stat.name.stripModuleClassSuffix
-          val stats1r = reorder(stats1)
-          revPrefix.reverse ::: (if (moduleClassDefs contains stat.name) stat :: stats1r else stats1r)
+          val stats1r = reorder(stats1, Nil)
+          pushOnTop(revPrefix, if (moduleClassDefs contains stat.name) stat :: stats1r else stats1r)
         } else {
           reorder(
             stats1,
@@ -137,7 +145,7 @@ class FirstTransform extends MiniPhaseTransform with InfoTransformer with Annota
       case stat => stat
     }
 
-    addMissingCompanions(reorder(stats))
+    addMissingCompanions(reorder(stats, Nil))
   }
 
   private def newCompanion(name: TermName, forClass: Symbol)(implicit ctx: Context) = {
