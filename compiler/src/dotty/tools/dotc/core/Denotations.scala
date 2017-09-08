@@ -33,11 +33,11 @@ import Decorators.SymbolIteratorDecorator
  *
  *  Lines ending in a horizontal line mean subtying (right is a subtype of left).
  *
- *  NamedType------TermRefWithSignature
- *    |                    |                     Symbol---------ClassSymbol
- *    |                    |                       |                |
- *    | denot              | denot                 | denot          | denot
- *    v                    v                       v                v
+ *  NamedType
+ *    |                                          Symbol---------ClassSymbol
+ *    |                                            |                |
+ *    | denot                                      | denot          | denot
+ *    v                                            v                v
  *  Denotation-+-----SingleDenotation-+------SymDenotation-+----ClassDenotation
  *             |                      |
  *             +-----MultiDenotation  |
@@ -51,8 +51,6 @@ import Decorators.SymbolIteratorDecorator
  *                              prefix: Type
  *                              name: Name
  *                           It has two subtypes: TermRef and TypeRef
- *  TermRefWithSignature     A TermRef that has in addition a signature to select an overloaded variant, with new field
- *                              sig: Signature
  *  Symbol                   A label for a definition or declaration in one compiler run
  *  ClassSymbol              A symbol representing a class
  *  Denotation               The meaning of a named type or symbol during a period
