@@ -1325,7 +1325,7 @@ object Types {
     }
 
     /** The signature of this type. This is by default NotAMethod,
-     *  but is overridden for PolyTypes, MethodTypes, and TermRefWithSignature types.
+     *  but is overridden for PolyTypes, MethodTypes, and TermRef types.
      *  (the reason why we deviate from the "final-method-with-pattern-match-in-base-class"
      *   pattern is that method signatures use caching, so encapsulation
      *   is improved using an OO scheme).

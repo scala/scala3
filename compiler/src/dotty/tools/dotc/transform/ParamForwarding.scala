@@ -91,12 +91,15 @@ class ParamForwarding(thisTransformer: DenotTransformer) {
   }
 
   def adaptRef[T <: RefTree](tree: T)(implicit ctx: Context): T = tree.tpe match {
-    case tpe: TermRefWithSignature
-    if tpe.sig == Signature.NotAMethod && tpe.symbol.is(Method) =>
-      // It's a param forwarder; adapt the signature
-      tree.withType(
-        TermRef.withSig(tpe.prefix, tpe.name, tpe.prefix.memberInfo(tpe.symbol).signature))
-        .asInstanceOf[T]
+    case tpe: TermRef
+    if tpe.signature == Signature.NotAMethod && tpe.symbol.is(Method) =>
+      // It could be a param forwarder; adapt the signature
+      val newSig = tpe.prefix.memberInfo(tpe.symbol).signature
+      if (newSig != Signature.NotAMethod)
+        tree.withType(
+          TermRef.withSig(tpe.prefix, tpe.name, tpe.prefix.memberInfo(tpe.symbol).signature))
+          .asInstanceOf[T]
+      else tree
     case _ =>
       tree
   }
