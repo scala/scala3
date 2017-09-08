@@ -1708,7 +1708,8 @@ object Types {
     protected def loadDenot(implicit ctx: Context): Denotation = {
       val d = asMemberOf(prefix, allowPrivate = true)
       if (d.exists || ctx.phaseId == FirstPhaseId || !lastDenotation.isInstanceOf[SymDenotation])
-        d
+        if (sig eq Signature.OverloadedSignature) d
+        else d.atSignature(sig).checkUnique
       else { // name has changed; try load in earlier phase and make current
         val d = loadDenot(ctx.withPhase(ctx.phaseId - 1)).current
         if (d.exists) d
@@ -1976,11 +1977,6 @@ object Types {
     }
 
     override def signature(implicit ctx: Context) = sig
-    override def loadDenot(implicit ctx: Context): Denotation = {
-      val d = super.loadDenot
-      if (sig eq Signature.OverloadedSignature) d
-      else d.atSignature(sig).checkUnique
-    }
 
     private def fixDenot(candidate: TermRef, prefix: Type)(implicit ctx: Context): TermRef =
       if (symbol.exists && !candidate.symbol.exists) { // recompute from previous symbol
@@ -2004,7 +2000,7 @@ object Types {
     }
 
     override def shadowed(implicit ctx: Context): NamedType =
-      fixDenot(TermRef.withSig(prefix, designator.derived(ShadowedName), sig), prefix)
+      fixDenot(super.shadowed.asInstanceOf[TermRef], prefix)
 
     override def equals(that: Any) = that match {
       case that: TermRefWithSignature =>
