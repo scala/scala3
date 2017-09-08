@@ -3,6 +3,8 @@
 # Usage:
 # SONATYPE_USER=<sonatype user> SONATYPE_PW=<sonatype pw> PGP_PW=<pgp pw> ./sbtPublish <publish cmd>
 
+set -ex
+
 # Release command:
 RELEASE_CMD="$1"
 
@@ -30,6 +32,7 @@ CMD="$CMD ;set pgpSecretRing := file(\"/keys/secring.asc\")"
 CMD="$CMD ;set pgpPublicRing := file(\"/keys/pubring.asc\")"
 CMD="$CMD $RELEASE_CMD"
 
+# run sbt with the supplied arg
 sbt -J-Xmx4096m \
     -J-XX:ReservedCodeCacheSize=512m \
     -J-XX:MaxMetaspaceSize=1024m \

@@ -3,6 +3,8 @@
 # Usage:
 # ./sbt <cmd>
 
+set -ex
+
 CMD="$1"
 
 if [ -z "$CMD" ]; then
@@ -13,7 +15,7 @@ fi
 # get the ivy2 cache
 ln -s /var/cache/drone/ivy2 "$HOME/.ivy2"
 
-# run sbt with the supplied arg:
+# run sbt with the supplied arg
 sbt -J-Xmx4096m \
     -J-XX:ReservedCodeCacheSize=512m \
     -J-XX:MaxMetaspaceSize=1024m \

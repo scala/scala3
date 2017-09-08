@@ -1,4 +1,5 @@
 pipeline:
+  # TESTS:
   # We run tests in parallel. Tests run in a copy of the working directory to avoid conflict
   test_legacy:
     group: test
@@ -35,8 +36,10 @@ pipeline:
       - cp -R . /tmp/4/ && cd /tmp/4/
       - ./project/scripts/sbt sbt-dotty/scripted
     when:
+      # sbt scripted tests are slow and don't run on PRs
       event: [ push, tag, deployment ]
 
+  # DOCUMENTATION:
   documentation:
     image: lampepfl/dotty:2017-09-05
     commands:
@@ -45,6 +48,8 @@ pipeline:
     when:
       event: push
 
+  # PUBLISHING:
+  # Publishing expect NIGHTLYBUILD or RELEASEBUILD to be set. See dottyVersion in Build.scala
   publish_nightly:
     image: lampepfl/dotty:2017-09-05
     environment:
@@ -84,6 +89,7 @@ pipeline:
       event: deployment
       environment: sbt_release
 
+  # NOTIFICATIONS:
   slack:
     image: plugins/slack
     channel: dotty
@@ -92,5 +98,5 @@ pipeline:
       status: [ success, failure ]
       event: [ push, tag, deployment ]
 
-
+# CI runs only for the master branch (including PRs)
 branches: master

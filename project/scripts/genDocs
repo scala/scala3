@@ -3,7 +3,8 @@
 # Usage:
 # BOT_PASS=<dotty-bot password> ./genDocs
 
-set -e
+set -ex
+
 # set extended glob, needed for rm everything but x
 shopt -s extglob
 
