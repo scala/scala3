@@ -1875,8 +1875,7 @@ object Types {
 
     /** Create a NamedType of the same kind as this type, but with a new prefix.
      */
-    def newLikeThis(prefix: Type)(implicit ctx: Context): NamedType =
-      NamedType(prefix, designator)
+    def newLikeThis(prefix: Type)(implicit ctx: Context): NamedType
 
     /** Create a NamedType of the same kind as this type, but with a "inherited name".
      *  This is necessary to in situations like the following:
@@ -1948,6 +1947,34 @@ object Types {
 
     def altsWith(p: Symbol => Boolean)(implicit ctx: Context): List[TermRef] =
       denot.altsWith(p) map rewrap
+
+    private def fixDenot(candidate: TermRef, prefix: Type)(implicit ctx: Context): TermRef =
+      if (symbol.exists && !candidate.symbol.exists) { // recompute from previous symbol
+        val ownSym = symbol
+        val newd = asMemberOf(prefix, allowPrivate = ownSym.is(Private))
+        candidate.withDenot(newd.suchThat(_.signature == ownSym.signature))
+      }
+      else candidate
+
+    def newLikeThis(prefix: Type)(implicit ctx: Context): NamedType = {
+      // If symbol exists, the new signature is the symbol's signature as seen
+      // from the new prefix, modulo consistency
+      val newSig =
+        if (sig == Signature.NotAMethod || !symbol.exists)
+          sig
+        else
+          sig.updateWith(symbol.info.asSeenFrom(prefix, symbol.owner).signature)
+      val candidate =
+        if (newSig ne sig) {
+          core.println(i"sig change at ${ctx.phase} for $this, pre = $prefix, sig: $sig --> $newSig")
+          TermRef.withSig(prefix, designator, newSig)
+        }
+        else TermRef.all(prefix, designator)
+      fixDenot(candidate, prefix)
+    }
+
+    override def shadowed(implicit ctx: Context): NamedType =
+      fixDenot(super.shadowed.asInstanceOf[TermRef], prefix)
   }
 
   abstract case class TypeRef(override val prefix: Type, designator: TypeName) extends NamedType {
@@ -1957,6 +1984,9 @@ object Types {
     override def name: TypeName = designator
 
     override def underlying(implicit ctx: Context): Type = info
+
+    def newLikeThis(prefix: Type)(implicit ctx: Context): NamedType =
+      TypeRef(prefix, designator)
   }
 
   final class TermRefWithSignature(prefix: Type, designator: TermName) extends TermRef(prefix, designator) {
@@ -1982,30 +2012,6 @@ object Types {
     }
 
     override def signature(implicit ctx: Context) = sig
-
-    private def fixDenot(candidate: TermRef, prefix: Type)(implicit ctx: Context): TermRef =
-      if (symbol.exists && !candidate.symbol.exists) { // recompute from previous symbol
-        val ownSym = symbol
-        val newd = asMemberOf(prefix, allowPrivate = ownSym.is(Private))
-        candidate.withDenot(newd.suchThat(_.signature == ownSym.signature))
-      }
-      else candidate
-
-    override def newLikeThis(prefix: Type)(implicit ctx: Context): TermRef = {
-      // If symbol exists, the new signature is the symbol's signature as seen
-      // from the new prefix, modulo consistency
-      val newSig =
-        if (sig == Signature.NotAMethod || !symbol.exists)
-          sig
-        else
-          sig.updateWith(symbol.info.asSeenFrom(prefix, symbol.owner).signature)
-      if (newSig ne sig)
-        core.println(i"sig change at ${ctx.phase} for $this, pre = $prefix, sig: $sig --> $newSig")
-      fixDenot(TermRef.withSig(prefix, designator, newSig), prefix)
-    }
-
-    override def shadowed(implicit ctx: Context): NamedType =
-      fixDenot(super.shadowed.asInstanceOf[TermRef], prefix)
 
     override def equals(that: Any) = that match {
       case that: TermRefWithSignature =>
