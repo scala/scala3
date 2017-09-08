@@ -112,14 +112,6 @@ object Decorators {
         else x1 :: xs1
       }
 
-    def foldRightBN[U](z: => U)(op: (T, => U) => U): U = {
-      @tailrec def foldLeftBN(xs: List[T], acc: => U): U = xs match {
-        case x :: xs1 => foldLeftBN(xs1, op(x, acc))
-        case Nil => acc
-      }
-      foldLeftBN(xs.reverse, z)
-    }
-
     final def hasSameLengthAs[U](ys: List[U]): Boolean = {
       @tailrec def loop(xs: List[T], ys: List[U]): Boolean =
         if (xs.isEmpty) ys.isEmpty

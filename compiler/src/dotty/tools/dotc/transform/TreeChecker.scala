@@ -147,51 +147,40 @@ class TreeChecker extends Phase with SymTransformer {
     // don't check value classes after typer, as the constraint about constructors doesn't hold after transform
     override def checkDerivedValueClass(clazz: Symbol, stats: List[Tree])(implicit ctx: Context) = ()
 
-    def withDefinedSym[T](tree: untpd.Tree)(op: => T)(implicit ctx: Context): T = tree match {
-      case tree: untpd.DefTree =>
-        preWithDefinedSym(tree)
-        postWithDefinedSym(tree)(op)
-      case _ => op
-    }
-
-    private def preWithDefinedSym[T](tree: untpd.DefTree)(implicit ctx: Context): Unit = {
-      val sym = tree.symbol
-      assert(isValidJVMName(sym.name.encode), s"${sym.name.debugString} name is invalid on jvm")
-      everDefinedSyms.get(sym) match {
-        case Some(t)  =>
-          if (t ne tree)
-            ctx.warning(i"symbol ${sym.fullName} is defined at least twice in different parts of AST")
-        // should become an error
-        case None =>
-          everDefinedSyms(sym) = tree
-      }
-      assert(!nowDefinedSyms.contains(sym), i"doubly defined symbol: ${sym.fullName} in $tree")
-
-      if (ctx.settings.YcheckMods.value) {
+    def withDefinedSyms[T](trees: List[untpd.Tree])(op: => T)(implicit ctx: Context) = {
+      var locally = List.empty[Symbol]
+      for (tree <- trees) {
+        val sym = tree.symbol
         tree match {
-          case t: untpd.MemberDef =>
-            if (t.name ne sym.name) ctx.warning(s"symbol ${sym.fullName} name doesn't correspond to AST: ${t}")
-          // todo: compare trees inside annotations
+          case tree: untpd.DefTree =>
+            assert(isValidJVMName(sym.name.encode), s"${sym.name.debugString} name is invalid on jvm")
+            everDefinedSyms.get(sym) match {
+              case Some(t)  =>
+                if (t ne tree)
+                  ctx.warning(i"symbol ${sym.fullName} is defined at least twice in different parts of AST")
+              // should become an error
+              case None =>
+                everDefinedSyms(sym) = tree
+            }
+            assert(!nowDefinedSyms.contains(sym), i"doubly defined symbol: ${sym.fullName} in $tree")
+
+            if (ctx.settings.YcheckMods.value) {
+              tree match {
+                case t: untpd.MemberDef =>
+                  if (t.name ne sym.name) ctx.warning(s"symbol ${sym.fullName} name doesn't correspond to AST: ${t}")
+                // todo: compare trees inside annotations
+                case _ =>
+              }
+            }
+            locally = sym :: locally
+            nowDefinedSyms += sym
           case _ =>
         }
       }
-    }
-
-    private def postWithDefinedSym[T](tree: untpd.DefTree)(op: => T)(implicit ctx: Context): T = {
-      val sym = tree.symbol
-      nowDefinedSyms += sym
-      //ctx.echo(i"defined: ${tree.symbol}")
       val res = op
-      nowDefinedSyms -= sym
-      //ctx.echo(i"undefined: ${tree.symbol}")
+      nowDefinedSyms --= locally
       res
     }
-
-    def withDefinedSyms[T](trees: List[untpd.Tree])(op: => T)(implicit ctx: Context) =
-      trees.foldRightBN(op)(withDefinedSym(_)(_))
-
-    def withDefinedSymss[T](vparamss: List[List[untpd.ValDef]])(op: => T)(implicit ctx: Context): T =
-      vparamss.foldRightBN(op)(withDefinedSyms(_)(_))
 
     def assertDefined(tree: untpd.Tree)(implicit ctx: Context) =
       if (
@@ -396,7 +385,7 @@ class TreeChecker extends Phase with SymTransformer {
 
     override def typedDefDef(ddef: untpd.DefDef, sym: Symbol)(implicit ctx: Context) =
       withDefinedSyms(ddef.tparams) {
-        withDefinedSymss(ddef.vparamss) {
+        withDefinedSyms(ddef.vparamss.flatten) {
           if (!sym.isClassConstructor && !(sym.name eq nme.STATIC_CONSTRUCTOR))
             assert(isValidJVMMethodName(sym.name.encode), s"${sym.name.debugString} name is invalid on jvm")
 
@@ -419,21 +408,8 @@ class TreeChecker extends Phase with SymTransformer {
       }
     }
 
-    override def typedBlock(tree: untpd.Block, pt: Type)(implicit ctx: Context) = {
-      var locally = List.empty[Symbol]
-      for (stat <- tree.stats) {
-        stat match {
-          case stat: untpd.DefTree =>
-            preWithDefinedSym(stat)
-            locally = stat.symbol :: locally
-            nowDefinedSyms += stat.symbol
-          case _ =>
-        }
-      }
-      val res = super.typedBlock(tree, pt)
-      nowDefinedSyms --= locally
-      res
-    }
+    override def typedBlock(tree: untpd.Block, pt: Type)(implicit ctx: Context) =
+      withDefinedSyms(tree.stats) { super.typedBlock(tree, pt) }
 
     override def typedInlined(tree: untpd.Inlined, pt: Type)(implicit ctx: Context) =
       withDefinedSyms(tree.bindings) { super.typedInlined(tree, pt) }
