@@ -34,6 +34,8 @@ pipeline:
     commands:
       - cp -R . /tmp/4/ && cd /tmp/4/
       - ./project/scripts/sbt sbt-dotty/scripted
+    when:
+      event: push
 
   documentation:
     image: lampepfl/dotty:2017-09-05
