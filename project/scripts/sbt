@@ -3,7 +3,7 @@
 # Usage:
 # ./sbt <cmd>
 
-set -ex
+set -e
 
 CMD="$1"
 
