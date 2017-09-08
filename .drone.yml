@@ -13,14 +13,14 @@ pipeline:
     image: lampepfl/dotty:2017-09-05
     commands:
       - cp -R . /tmp/1/ && cd /tmp/1/
-      - ./project/scripts/sbt dotty-bootstrapped/test
+      - ./project/scripts/sbt test
 
   test_bootstrapped:
     group: test
     image: lampepfl/dotty:2017-09-05
     commands:
       - cp -R . /tmp/2/ && cd /tmp/2/
-      - ./project/scripts/sbt test
+      - ./project/scripts/sbt dotty-bootstrapped/test
 
   test_optimised:
     group: test
