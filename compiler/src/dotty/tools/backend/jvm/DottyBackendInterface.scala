@@ -424,18 +424,26 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
   }.bits
 
   def isQualifierSafeToElide(qual: Tree): Boolean = tpd.isIdempotentExpr(qual)
+
+  private val desugared = new java.util.IdentityHashMap[Type, tpd.Select]
+
   def desugarIdent(i: Ident): Option[tpd.Select] = {
-    i.tpe match {
-      case TermRef(prefix: TermRef, name) =>
-        Some(tpd.ref(prefix).select(i.symbol))
-      case TermRef(prefix: ThisType, name) =>
-        Some(tpd.This(prefix.cls).select(i.symbol))
-      case TermRef(NoPrefix, name) =>
-        if (i.symbol is Flags.Method) Some(This(i.symbol.topLevelClass).select(i.symbol)) // workaround #342 todo: remove after fixed
-        else None
-      case _ => None
+    var found = desugared.get(i.tpe)
+    if (found == null) {
+      i.tpe match {
+        case TermRef(prefix: TermRef, name) =>
+          found = tpd.ref(prefix).select(i.symbol)
+        case TermRef(prefix: ThisType, name) =>
+          found = tpd.This(prefix.cls).select(i.symbol)
+        case TermRef(NoPrefix, name) =>
+          if (i.symbol is Flags.Method) found = This(i.symbol.topLevelClass).select(i.symbol) // workaround #342 todo: remove after fixed
+        case _ =>
+      }
+      if (found != null) desugared.put(i.tpe, found)
     }
+    if (found == null) None else Some(found)
   }
+
   def getLabelDefOwners(tree: Tree): Map[Tree, List[LabelDef]] = {
     // for each rhs of a defdef returns LabelDefs inside this DefDef
     val res = new collection.mutable.HashMap[Tree, List[LabelDef]]()
@@ -891,8 +899,6 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
 
     def parents: List[Type] = tp.parents
   }
-
-
 
   object Assign extends AssignDeconstructor {
     def _1: Tree = field.lhs
