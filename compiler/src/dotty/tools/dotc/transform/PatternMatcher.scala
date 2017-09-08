@@ -922,14 +922,15 @@ object PatternMatcher {
 
     /** Translate pattern match to sequence of tests. */
     def translateMatch(tree: Match): Tree = {
-      var plan = matchPlan(tree)
+      val origPlan = matchPlan(tree)
+      var plan = origPlan
       patmatch.println(i"Plan for $tree: ${show(plan)}")
       if (!ctx.settings.YnoPatmatOpt.value)
         for ((title, optimization) <- optimizations) {
           plan = optimization(plan)
           patmatch.println(s"After $title: ${show(plan)}")
         }
-      val result = emit(plan)
+      val result = emit(origPlan)
       checkSwitch(tree, result)
       result
     }
