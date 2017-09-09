@@ -1,26 +1,32 @@
 #!/usr/bin/env bash
 
-# Usage:
-# SONATYPE_USER=<sonatype user> SONATYPE_PW=<sonatype pw> PGP_PW=<pgp pw> ./sbtPublish <publish cmd>
+# If the script should publish to maven:
+SHOULD_RUN=$1
 
-set -e
+# Sonatype credentials:
+SONATYPE_USER=$2
+SONATYPE_PW=$3
+
+# PGP Credentials:
+PGP_PW=$4
 
 # Release command:
-RELEASE_CMD="$1"
+RELEASE_CMD=$5
 
-if [ -z "$SONATYPE_USER" ] || [ -z "$SONATYPE_PW" ] || [ -z "$PGP_PW" ]; then
-    echo "Error: SONATYPE_USER, SONATYPE_PW or PGP_PW env unset"
+if [ $SHOULD_RUN = false ]; then
+  exit 0
+fi
+
+if [ -z "$2" -o -z "$3" -o -z "$4" ]; then
+    echo "invalid args: this script takes 4 args, usage:"
+    echo ""
+    echo "    ./project/scripts/sbt SHOULD_RUN SONATYPE_USER SONATYPE_PW PGP_PW"
     exit 1
 fi
 
 if [ ! "$NIGHTLYBUILD" = "yes" ] && [ ! "$RELEASEBUILD" = "yes" ]; then
-    echo "Neither NIGHTLYBUILD nor RELEASEBUILD env var set to \"yes\""
+    echo "Neither NIGHTLYBUILD or RELEASEBUILD env var set to \"yes\""
     exit 1
-fi
-
-if [ -z "$RELEASE_CMD" ]; then
-  echo "Error: missing publish command"
-  exit 1
 fi
 
 CMD="     ;set credentials in ThisBuild := Seq(Credentials(\"Sonatype Nexus Repository Manager\", \"oss.sonatype.org\", \"$2\", \"$3\"))"
@@ -29,6 +35,8 @@ CMD="$CMD ;set pgpSecretRing := file(\"/keys/secring.asc\")"
 CMD="$CMD ;set pgpPublicRing := file(\"/keys/pubring.asc\")"
 CMD="$CMD $RELEASE_CMD"
 
-# run sbt with the supplied arg
-SBT="$(cd "$(dirname "${BASH_SOURCE[0]}")" >& /dev/null && pwd)/sbt"
-eval "$SBT" "$CMD"
+sbt -J-Xmx4096m \
+    -J-XX:ReservedCodeCacheSize=512m \
+    -J-XX:MaxMetaspaceSize=1024m \
+    -Ddotty.drone.mem=4096m \
+    "$CMD"
