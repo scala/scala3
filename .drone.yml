@@ -35,9 +35,9 @@ pipeline:
     commands:
       - cp -R . /tmp/4/ && cd /tmp/4/
       - ./project/scripts/sbt sbt-dotty/scripted
-    # when:
-    #   # sbt scripted tests are slow and don't run on PRs
-    #   event: [ push, tag, deployment ]
+    when:
+      # sbt scripted tests are slow and don't run on PRs
+      event: [ push, tag, deployment ]
 
   # DOCUMENTATION:
   documentation:
