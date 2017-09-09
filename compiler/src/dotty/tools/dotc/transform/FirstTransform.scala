@@ -99,10 +99,8 @@ class FirstTransform extends MiniPhaseTransform with InfoTransformer with Annota
     def reorder(stats: List[Tree], revPrefix: List[Tree]): List[Tree] = stats match {
       case (stat: TypeDef) :: stats1 if stat.symbol.isClass =>
         if (stat.symbol is Flags.Module) {
-          def pushOnTop(xs: List[Tree], ys: List[Tree]): List[Tree] = xs match {
-            case x :: xs1 => pushOnTop(xs1, x :: ys)
-            case Nil => ys
-          }
+          def pushOnTop(xs: List[Tree], ys: List[Tree]): List[Tree] =
+            (ys /: xs)((ys, x) => x :: ys)
           moduleClassDefs += (stat.name -> stat)
           singleClassDefs -= stat.name.stripModuleClassSuffix
           val stats1r = reorder(stats1, Nil)
