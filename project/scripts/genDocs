@@ -1,57 +1,68 @@
 #!/usr/bin/env bash
 
-# Usage:
-# BOT_PASS=<dotty-bot password> ./genDocs
+# Usage: ./genDocs <true/false> <dotty-bot password>
 
 set -e
-
 # set extended glob, needed for rm everything but x
 shopt -s extglob
 
-# make sure that BOT_PASS is set
-if [ -z "$BOT_PASS" ]; then
-    echo "Error: BOT_PASS env unset, unable to push without password" 1>&2
-    exit 1
+if [ $1 = true ]; then
+
+    # make sure that BOT_PASS is set
+    if [ -z ${2+x} ]; then
+        echo "BOT_PASS unset, unable to push without password" 1>&2
+        exit 1
+    else
+        BOT_PASS=$2
+    fi
+
+    echo "Working directory: $PWD"
+
+    # this command will generate docs in $PWD/docs/_site
+    sbt -J-Xmx4096m \
+        -J-XX:ReservedCodeCacheSize=512m \
+        -J-XX:MaxMetaspaceSize=1024m \
+        -Ddotty.drone.mem=4096m \
+        -ivy /var/cache/drone/ivy2 \
+        "genDocs"
+
+    # make sure that the previous command actually succeeded
+    if [ ! -d "$PWD/docs/_site" ]; then
+        echo "Output directory did not exist: $PWD/docs/_site" 1>&2
+        exit 1
+    fi
+
+    # save current head for commit message in gh-pages
+    GIT_HEAD=$(git rev-parse HEAD)
+
+    # check out correct branch
+    git fetch origin gh-pages:gh-pages
+    git checkout gh-pages
+
+    # move newly generated _site dir to $PWD
+    mv $PWD/docs/_site .
+
+    # remove everything BUT _site dir
+    rm -rf !(_site)
+
+    # copy new contents to $PWD
+    mv _site/* .
+
+    # remove now empty _site dir
+    rm -rf _site
+
+    # set github credentials
+    git config user.name "dotty-bot"
+    git config user.email "felix.mulder@epfl.ch"
+
+    # add all contents of $PWD to commit
+    git add -A
+    git commit -m "Update gh-pages site for $GIT_HEAD" || echo "nothing new to commit"
+
+    # push using dotty-bot to origin
+    git push https://dotty-bot:$BOT_PASS@github.com/lampepfl/dotty.git || echo "couldn't push, since nothing was added"
+else
+    # wrong parameter passed, should only generate docs if argument is "test"
+    # to avoid multiple site gens
+    echo "Not generating docs for $1"
 fi
-
-echo "Working directory: $PWD"
-
-# this command will generate docs in $PWD/docs/_site
-SBT="$(cd "$(dirname "${BASH_SOURCE[0]}")" >& /dev/null && pwd)/sbt"
-eval "$SBT" "genDocs"
-
-# make sure that the previous command actually succeeded
-if [ ! -d "$PWD/docs/_site" ]; then
-    echo "Output directory did not exist: $PWD/docs/_site" 1>&2
-    exit 1
-fi
-
-# save current head for commit message in gh-pages
-GIT_HEAD=$(git rev-parse HEAD)
-
-# check out correct branch
-git fetch origin gh-pages:gh-pages
-git checkout gh-pages
-
-# move newly generated _site dir to $PWD
-mv $PWD/docs/_site .
-
-# remove everything BUT _site dir
-rm -rf !(_site)
-
-# copy new contents to $PWD
-mv _site/* .
-
-# remove now empty _site dir
-rm -rf _site
-
-# set github credentials
-git config user.name "dotty-bot"
-git config user.email "felix.mulder@epfl.ch"
-
-# add all contents of $PWD to commit
-git add -A
-git commit -m "Update gh-pages site for $GIT_HEAD" || echo "nothing new to commit"
-
-# push using dotty-bot to origin
-git push https://dotty-bot:$BOT_PASS@github.com/lampepfl/dotty.git || echo "couldn't push, since nothing was added"
