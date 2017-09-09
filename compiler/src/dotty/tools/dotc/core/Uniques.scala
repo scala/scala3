@@ -43,24 +43,24 @@ object Uniques {
   final class NamedTypeUniques extends HashSet[NamedType](Config.initialUniquesCapacity) with Hashable {
     override def hash(x: NamedType): Int = x.hash
 
-    private def findPrevious(h: Int, prefix: Type, name: Name): NamedType = {
+    private def findPrevious(h: Int, prefix: Type, designator: Name): NamedType = {
       var e = findEntryByHash(h)
       while (e != null) {
-        if ((e.prefix eq prefix) && (e.name eq name)) return e
+        if ((e.prefix eq prefix) && (e.designator eq designator)) return e
         e = nextEntryByHash(h)
       }
       e
     }
 
-    def enterIfNew(prefix: Type, name: Name): NamedType = {
-      val h = doHash(name, prefix)
+    def enterIfNew(prefix: Type, designator: Name): NamedType = {
+      val h = doHash(designator, prefix)
       if (monitored) recordCaching(h, classOf[NamedType])
       def newType =
-        if (name.isTypeName) new CachedTypeRef(prefix, name.asTypeName, h)
-        else new CachedTermRef(prefix, name.asTermName, h)
+        if (designator.isTypeName) new CachedTypeRef(prefix, designator.asTypeName, h)
+        else new CachedTermRef(prefix, designator.asTermName, h)
       if (h == NotCached) newType
       else {
-        val r = findPrevious(h, prefix, name)
+        val r = findPrevious(h, prefix, designator)
         if (r ne null) r else addEntryAfterScan(newType)
       }
     }

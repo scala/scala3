@@ -1902,7 +1902,6 @@ object Types {
       case that: NamedType =>
         this.designator == that.designator &&
         this.prefix == that.prefix &&
-        !that.isInstanceOf[TermRefWithSignature] &&
         !that.isInstanceOf[WithFixedSym]
       case _ =>
         false
@@ -1928,9 +1927,30 @@ object Types {
       if (d.isOverloaded) NoType else d.info
     }
 
-    override def name: TermName = designator
+    private var mySig: Signature = null
+    private var myName: TermName = null
 
-    override def signature(implicit ctx: Context): Signature = denot.signature
+    private def decomposeDesignator() = designator match {
+      case DerivedName(underlying, info: SignedName.SignedInfo) =>
+        mySig = info.sig
+        myName = underlying
+      case _ =>
+        myName = designator
+        mySig = Signature.NotAMethod
+    }
+
+    override def sig: Signature = {
+      if (mySig == null) decomposeDesignator()
+      mySig
+    }
+
+    override final def name: TermName = {
+      if (myName == null) decomposeDesignator()
+      myName
+    }
+
+    override final def signature(implicit ctx: Context): Signature =
+      if (name eq designator) denot.signature else sig
 
     override def isOverloaded(implicit ctx: Context) = denot.isOverloaded
 
@@ -1984,39 +2004,6 @@ object Types {
       TypeRef(prefix, designator)
   }
 
-  final class TermRefWithSignature(prefix: Type, designator: TermName) extends TermRef(prefix, designator) {
-    assert(prefix ne NoPrefix)
-
-    private var mySig: Signature = null
-    private var myName: TermName = null
-
-    private def decomposeDesignator() = designator match {
-      case DerivedName(underlying, info: SignedName.SignedInfo) =>
-        mySig = info.sig
-        myName = underlying
-      }
-
-    override def sig = {
-      if (mySig == null) decomposeDesignator()
-      mySig
-    }
-
-    override def name = {
-      if (myName == null) decomposeDesignator()
-      myName
-    }
-
-    override def signature(implicit ctx: Context) = sig
-
-    override def equals(that: Any) = that match {
-      case that: TermRefWithSignature =>
-        this.prefix == that.prefix &&
-        this.designator == that.designator
-      case _ =>
-        false
-    }
-    override def computeHash = doHash(designator, prefix)
-  }
 
   trait WithFixedSym extends NamedType {
     def fixedSym: Symbol
@@ -2150,7 +2137,7 @@ object Types {
     def withSig(prefix: Type, designator: TermName, sig: Signature)(implicit ctx: Context): TermRef =
       designator match {
         case DerivedName(underlying, _: SignedName.SignedInfo) => withSig(prefix, underlying, sig)
-        case name => unique(new TermRefWithSignature(prefix, SignedName(name, sig)))
+        case name => ctx.uniqueNamedTypes.enterIfNew(prefix, SignedName(name, sig)).asInstanceOf[TermRef]
       }
 
     /** Create a term ref with given prefix, name, signature, and initial denotation */
