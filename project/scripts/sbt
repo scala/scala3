@@ -1,26 +1,19 @@
 #!/usr/bin/env bash
 
-CI_TEST=$1
+# Usage:
+# ./sbt <cmd>
 
-if [ -n "$2" ]; then
-  if [ $2 = true ]; then
-    SHOULD_RUN=true
-  else
-    SHOULD_RUN=false
-  fi
-else
-  SHOULD_RUN=true
+CMD="$1"
+
+if [ -z "$CMD" ]; then
+  echo "Error: missing sbt command"
+  exit 1
 fi
 
-if [ $SHOULD_RUN = true ]; then
-  # get the ivy2 cache:
-  ln -s /var/cache/drone/ivy2 "$HOME/.ivy2" || true
-
-  # run sbt with the supplied arg:
-  sbt -J-Xmx4096m \
-      -J-XX:ReservedCodeCacheSize=512m \
-      -J-XX:MaxMetaspaceSize=1024m \
-      -Ddotty.drone.mem=4096m "$CI_TEST"
-else
-  echo "Not running, \$2=$2, SHOULD_RUN=$SHOULD_RUN"
-fi
+# run sbt with the supplied arg
+sbt -J-Xmx4096m \
+    -J-XX:ReservedCodeCacheSize=512m \
+    -J-XX:MaxMetaspaceSize=1024m \
+    -Ddotty.drone.mem=4096m \
+    -ivy /var/cache/drone/ivy2 \
+    "$CMD"
