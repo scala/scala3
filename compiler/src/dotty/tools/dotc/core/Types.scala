@@ -1128,7 +1128,7 @@ object Types {
 
     /** The type <this . name> , reduced if possible */
     def select(name: Name)(implicit ctx: Context): Type = name match {
-      case name: TermName => TermRef.all(this, name)
+      case name: TermName => TermRef(this, name)
       case name: TypeName => TypeRef(this, name).reduceProjection
     }
 
@@ -1989,7 +1989,7 @@ object Types {
           core.println(i"sig change at ${ctx.phase} for $this, pre = $prefix, sig: $sig --> $newSig")
           TermRef.withSig(prefix, designator, newSig)
         }
-        else TermRef.all(prefix, designator)
+        else TermRef(prefix, designator)
       fixDenot(candidate, prefix)
     }
 
@@ -2060,7 +2060,7 @@ object Types {
 
   object NamedType {
     def apply(prefix: Type, designator: Name)(implicit ctx: Context) =
-      if (designator.isTermName) TermRef.all(prefix, designator.asTermName)
+      if (designator.isTermName) TermRef(prefix, designator.asTermName)
       else TypeRef(prefix, designator.asTypeName)
     def apply(prefix: Type, designator: Name, denot: Denotation)(implicit ctx: Context) =
       if (designator.isTermName) TermRef(prefix, designator.asTermName, denot)
@@ -2081,10 +2081,8 @@ object Types {
      *  Its meaning is the (potentially multi-) denotation of the member(s)
      *  of prefix with given name.
      */
-    def all(prefix: Type, designator: TermName)(implicit ctx: Context): TermRef = designator match {
-      case SignedName(underlying, sig) => withSig(prefix, underlying, sig)
-      case _ => ctx.uniqueNamedTypes.enterIfNew(prefix, designator).asInstanceOf[TermRef]
-    }
+    def apply(prefix: Type, designator: TermName)(implicit ctx: Context): TermRef =
+      ctx.uniqueNamedTypes.enterIfNew(prefix, designator).asInstanceOf[TermRef]
 
     /** Create term ref referring to given symbol, taking the signature
      *  from the symbol if it is completed, or creating a term ref without
@@ -2102,7 +2100,7 @@ object Types {
         apply(prefix, denot.symbol.asTerm)
       else denot match {
         case denot: SymDenotation if denot.isCompleted => withSig(prefix, designator, denot.signature)
-        case _ => all(prefix, designator)
+        case _ => apply(prefix, designator)
       }
     } withDenot denot
 
@@ -2129,7 +2127,7 @@ object Types {
         // that could have symbol already set making withSym trigger a double-binding error
         // ./tests/run/absoverride.scala demonstates this
       else
-        all(prefix, name) withSym (sym, Signature.NotAMethod)
+        apply(prefix, name) withSym (sym, Signature.NotAMethod)
 
     /** Create a term ref to given symbol, taking the signature from the symbol
      *  (which must be completed).
@@ -2140,10 +2138,7 @@ object Types {
 
     /** Create a term ref with given prefix, name and signature */
     def withSig(prefix: Type, designator: TermName, sig: Signature)(implicit ctx: Context): TermRef =
-      designator match {
-        case DerivedName(underlying, _: SignedName.SignedInfo) => withSig(prefix, underlying, sig)
-        case name => ctx.uniqueNamedTypes.enterIfNew(prefix, SignedName(name, sig)).asInstanceOf[TermRef]
-      }
+      apply(prefix, designator.withSig(sig))
 
     /** Create a term ref with given prefix, name, signature, and initial denotation */
     def withSigAndDenot(prefix: Type, name: TermName, sig: Signature, denot: Denotation)(implicit ctx: Context): TermRef = {
