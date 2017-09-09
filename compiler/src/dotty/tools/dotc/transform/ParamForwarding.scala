@@ -95,11 +95,8 @@ class ParamForwarding(thisTransformer: DenotTransformer) {
     if tpe.signature == Signature.NotAMethod && tpe.symbol.is(Method) =>
       // It could be a param forwarder; adapt the signature
       val newSig = tpe.prefix.memberInfo(tpe.symbol).signature
-      if (newSig != Signature.NotAMethod)
-        tree.withType(
-          TermRef.withSig(tpe.prefix, tpe.name, tpe.prefix.memberInfo(tpe.symbol).signature))
-          .asInstanceOf[T]
-      else tree
+      if (newSig == Signature.NotAMethod) tree
+      else tree.withType(TermRef.withSig(tpe.prefix, tpe.name, newSig)).asInstanceOf[T]
     case _ =>
       tree
   }

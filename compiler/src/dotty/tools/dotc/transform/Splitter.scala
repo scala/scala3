@@ -56,7 +56,6 @@ class Splitter extends MiniPhaseTransform { thisTransform =>
       if (!mbr.isOverloaded) mbr.asSingleDenotation
       else tree.tpe match {
         case tref: TermRef if !tref.signature.isOverloaded =>
-          assert(tref.isInstanceOf[TermRefWithSignature])
           mbr.atSignature(tref.sig).checkUnique
         case _ =>
           def alts = mbr.alternatives.map(alt => i"$alt: ${alt.info}").mkString(", ")
