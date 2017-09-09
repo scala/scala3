@@ -477,13 +477,6 @@ object Build {
                                   "com.novocode" % "junit-interface" % "0.11" % "test",
                                   "org.scala-lang" % "scala-library" % scalacVersion % "test"),
 
-      // Repl subproject shouldn't be distributed on its own yet, so the
-      // sources need to be included in the dotty compiler to be available to
-      // the sbt bridge
-      unmanagedSourceDirectories in Compile += baseDirectory.value / ".." / "repl" / "src",
-      unmanagedSourceDirectories in Test += baseDirectory.value / ".." / "repl" / "test",
-      unmanagedResourceDirectories in Test += baseDirectory.value / ".." / "repl" / "test-resources",
-
       // enable improved incremental compilation algorithm
       incOptions := incOptions.value.withNameHashing(true),
 
