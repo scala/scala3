@@ -18,7 +18,7 @@ echo "Working directory: $PWD"
 
 # this command will generate docs in $PWD/docs/_site
 SBT="$(cd "$(dirname "${BASH_SOURCE[0]}")" >& /dev/null && pwd)/sbt"
-eval "$SBT" "genDocs"
+"$SBT" "genDocs"
 
 # make sure that the previous command actually succeeded
 if [ ! -d "$PWD/docs/_site" ]; then

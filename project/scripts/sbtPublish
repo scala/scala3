@@ -23,12 +23,12 @@ if [ -z "$RELEASE_CMD" ]; then
   exit 1
 fi
 
-CMD="     ;set credentials in ThisBuild := Seq(Credentials(\"Sonatype Nexus Repository Manager\", \"oss.sonatype.org\", \"$2\", \"$3\"))"
-CMD="$CMD ;set pgpPassphrase := Some(\"\"\"$4\"\"\".toCharArray)"
+CMD="     ;set credentials in ThisBuild := Seq(Credentials(\"Sonatype Nexus Repository Manager\", \"oss.sonatype.org\", \"$SONATYPE_USER\", \"$SONATYPE_PW\"))"
+CMD="$CMD ;set pgpPassphrase := Some(\"\"\"$PGP_PW\"\"\".toCharArray)"
 CMD="$CMD ;set pgpSecretRing := file(\"/keys/secring.asc\")"
 CMD="$CMD ;set pgpPublicRing := file(\"/keys/pubring.asc\")"
 CMD="$CMD $RELEASE_CMD"
 
 # run sbt with the supplied arg
 SBT="$(cd "$(dirname "${BASH_SOURCE[0]}")" >& /dev/null && pwd)/sbt"
-eval "$SBT" "$CMD"
+"$SBT" "$CMD"
