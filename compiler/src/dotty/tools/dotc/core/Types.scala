@@ -1663,7 +1663,7 @@ object Types {
     }
 
     private[dotc] def withDenot(denot: Denotation)(implicit ctx: Context): ThisType =
-      if (signature != denot.signature)
+      if (signature != denot.signature && denot.signature.ne(Signature.OverloadedSignature))
         withSig(denot.signature).withDenot(denot).asInstanceOf[ThisType]
       else {
         setDenot(denot)
@@ -1707,11 +1707,7 @@ object Types {
     protected def loadDenot(implicit ctx: Context): Denotation = {
       val d = asMemberOf(prefix, allowPrivate = true)
       if (d.exists || ctx.phaseId == FirstPhaseId || !lastDenotation.isInstanceOf[SymDenotation])
-        if (hasExplicitSignature) {
-          val sig = signature
-          if (sig eq Signature.OverloadedSignature) d
-          else d.atSignature(sig).checkUnique
-        }
+        if (hasExplicitSignature) d.atSignature(signature).checkUnique
         else d
       else { // name has changed; try load in earlier phase and make current
         val d = loadDenot(ctx.withPhase(ctx.phaseId - 1)).current
@@ -1944,6 +1940,7 @@ object Types {
         designator match {
           case DerivedName(underlying, info: SignedName.SignedInfo) =>
             mySig = info.sig
+            assert(mySig ne Signature.OverloadedSignature)
             myName = underlying
           case designator: TermName =>
             myName = designator
