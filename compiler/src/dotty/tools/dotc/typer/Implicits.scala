@@ -671,6 +671,8 @@ trait Implicits { self: Typer =>
             case TypeBounds(lo, hi) if lo ne hi => apply(hi)
             case _ => t
           }
+        case t: RefinedType =>
+          apply(t.parent)
         case _ =>
           if (variance > 0) mapOver(t) else t
       }
