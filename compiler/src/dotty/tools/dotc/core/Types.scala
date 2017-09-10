@@ -16,6 +16,7 @@ import SymDenotations._
 import Decorators._
 import Denotations._
 import Periods._
+import Designators._
 import util.Positions.{Position, NoPosition}
 import util.Stats._
 import util.{DotClass, SimpleMap}
@@ -1488,9 +1489,11 @@ object Types {
   abstract class NamedType extends CachedProxyType with ValueType {
 
     val prefix: Type
-    val designator: Name
+    val designator: Designator
 
-    def name: Name = designator
+    def designatorName: Name = designator.asInstanceOf[Name]
+
+    def name(implicit ctx: Context): Name = designatorName
     protected def sig: Signature = Signature.NotAMethod
 
     type ThisType >: this.type <: NamedType
@@ -1725,7 +1728,7 @@ object Types {
         else if (desig.is(ShadowedName)) prefix.nonPrivateMember(desig.exclude(ShadowedName))
         else if (!allowPrivate) prefix.nonPrivateMember(desig)
         else prefix.member(desig)
-      recur(designator)
+      recur(designatorName)
     }
 
     /** (1) Reduce a type-ref `W # X` or `W { ... } # U`, where `W` is a wildcard type
@@ -1896,7 +1899,7 @@ object Types {
      *  the public name.
      */
     def shadowed(implicit ctx: Context): NamedType =
-      NamedType(prefix, designator.derived(ShadowedName))
+      NamedType(prefix, designatorName.derived(ShadowedName))
 
     override def equals(that: Any) = that match {
       case that: NamedType =>
@@ -1917,7 +1920,7 @@ object Types {
     */
   }
 
-  abstract case class TermRef(override val prefix: Type, designator: TermName) extends NamedType with SingletonType {
+  abstract case class TermRef(override val prefix: Type, designator: TermDesignator) extends NamedType with SingletonType {
 
     type ThisType = TermRef
 
@@ -1934,9 +1937,12 @@ object Types {
       case DerivedName(underlying, info: SignedName.SignedInfo) =>
         mySig = info.sig
         myName = underlying
-      case _ =>
+      case designator: TermName =>
         myName = designator
         mySig = Signature.NotAMethod
+      case designator: TermSymbol @unchecked =>
+        myName = ???
+        mySig = ???
     }
 
     override def sig: Signature = {
@@ -1944,7 +1950,7 @@ object Types {
       mySig
     }
 
-    override final def name: TermName = {
+    override final def name(implicit ctx: Context): TermName = {
       if (myName == null) decomposeDesignator()
       myName
     }
@@ -1955,7 +1961,7 @@ object Types {
     override def isOverloaded(implicit ctx: Context) = denot.isOverloaded
 
     private def rewrap(sd: SingleDenotation)(implicit ctx: Context) =
-      TermRef.withSigAndDenot(prefix, designator, sd.signature, sd)
+      TermRef.withSigAndDenot(prefix, name, sd.signature, sd)
 
     def alternatives(implicit ctx: Context): List[TermRef] =
       denot.alternatives map rewrap
@@ -1982,9 +1988,9 @@ object Types {
       val candidate =
         if (newSig ne sig) {
           core.println(i"sig change at ${ctx.phase} for $this, pre = $prefix, sig: $sig --> $newSig")
-          TermRef.withSig(prefix, designator, newSig)
+          TermRef.withSig(prefix, name, newSig)
         }
-        else TermRef(prefix, designator)
+        else TermRef(prefix, designatorName.asTermName) // ###
       fixDenot(candidate, prefix)
     }
 
@@ -1992,16 +1998,25 @@ object Types {
       fixDenot(super.shadowed.asInstanceOf[TermRef], prefix)
   }
 
-  abstract case class TypeRef(override val prefix: Type, designator: TypeName) extends NamedType {
+  abstract case class TypeRef(override val prefix: Type, designator: TypeDesignator) extends NamedType {
 
     type ThisType = TypeRef
 
-    override def name: TypeName = designator
+    private var myName: TypeName = null
+
+    override def name(implicit ctx: Context): TypeName = {
+      if (myName == null)
+        myName = designator match {
+          case name: TypeName => name
+          case sym: TypeSymbol @unchecked => sym.name
+        }
+      myName
+    }
 
     override def underlying(implicit ctx: Context): Type = info
 
     def newLikeThis(prefix: Type)(implicit ctx: Context): NamedType =
-      TypeRef(prefix, designator)
+      TypeRef(prefix, name) // ###
   }
 
 

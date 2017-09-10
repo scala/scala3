@@ -10,6 +10,7 @@ import java.lang.AssertionError
 import Decorators._
 import Symbols._
 import Contexts._
+import Designators._
 import SymDenotations._
 import printing.Texts._
 import printing.Printer
@@ -385,7 +386,7 @@ object Symbols {
    *  @param coord  The coordinates of the symbol (a position or an index)
    *  @param id     A unique identifier of the symbol (unique per ContextBase)
    */
-  class Symbol private[Symbols] (val coord: Coord, val id: Int) extends DotClass with ParamInfo with printing.Showable {
+  class Symbol private[Symbols] (val coord: Coord, val id: Int) extends Designator with ParamInfo with printing.Showable {
 
     type ThisName <: Name
 
@@ -422,6 +423,9 @@ object Symbols {
 
     final def isValidInCurrentRun(implicit ctx: Context): Boolean =
       lastDenot.validFor.runId == ctx.runId || ctx.stillValid(lastDenot)
+
+    /** Overridden from Designator */
+    override def isSymbol = true
 
     /** Subclass tests and casts */
     final def isTerm(implicit ctx: Context): Boolean =
