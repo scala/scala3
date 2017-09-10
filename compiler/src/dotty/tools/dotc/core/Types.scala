@@ -1494,7 +1494,6 @@ object Types {
     def designatorName: Name = designator.asInstanceOf[Name]
 
     def name(implicit ctx: Context): Name = designatorName
-    protected def sig: Signature = Signature.NotAMethod
 
     type ThisType >: this.type <: NamedType
 
@@ -1664,7 +1663,7 @@ object Types {
     }
 
     private[dotc] def withDenot(denot: Denotation)(implicit ctx: Context): ThisType =
-      if (sig != denot.signature)
+      if (signature != denot.signature)
         withSig(denot.signature).withDenot(denot).asInstanceOf[ThisType]
       else {
         setDenot(denot)
@@ -1708,8 +1707,12 @@ object Types {
     protected def loadDenot(implicit ctx: Context): Denotation = {
       val d = asMemberOf(prefix, allowPrivate = true)
       if (d.exists || ctx.phaseId == FirstPhaseId || !lastDenotation.isInstanceOf[SymDenotation])
-        if (sig eq Signature.OverloadedSignature) d
-        else d.atSignature(sig).checkUnique
+        if (hasExplicitSignature) {
+          val sig = signature
+          if (sig eq Signature.OverloadedSignature) d
+          else d.atSignature(sig).checkUnique
+        }
+        else d
       else { // name has changed; try load in earlier phase and make current
         val d = loadDenot(ctx.withPhase(ctx.phaseId - 1)).current
         if (d.exists) d
@@ -1747,6 +1750,10 @@ object Types {
       else
         denot.symbol
 
+    override def signature(implicit ctx: Context): Signature =
+      if (isType || lastDenotation == null) Signature.NotAMethod
+      else denot.signature
+
     /** Retrieves currently valid symbol without necessarily updating denotation.
      *  Assumes that symbols do not change between periods in the same run.
      *  Used to get the class underlying a ThisType.
@@ -1759,6 +1766,8 @@ object Types {
 
     def isType = isInstanceOf[TypeRef]
     def isTerm = isInstanceOf[TermRef]
+
+    protected def hasExplicitSignature(implicit ctx: Context) = false
 
     /** Guard against cycles that can arise if given `op`
      *  follows info. The problematic cases are a type alias to itself or
@@ -1930,30 +1939,30 @@ object Types {
     private var mySig: Signature = null
     private var myName: TermName = null
 
-    private def decomposeDesignator() = designator match {
-      case DerivedName(underlying, info: SignedName.SignedInfo) =>
-        mySig = info.sig
-        myName = underlying
-      case designator: TermName =>
-        myName = designator
-        mySig = Signature.NotAMethod
-      case designator: TermSymbol @unchecked =>
-        myName = ???
-        mySig = ???
-    }
-
-    override def sig: Signature = {
-      if (mySig == null) decomposeDesignator()
-      mySig
-    }
+    private def ensureInitialized()(implicit ctx: Context): Unit =
+      if (myName == null)
+        designator match {
+          case DerivedName(underlying, info: SignedName.SignedInfo) =>
+            mySig = info.sig
+            myName = underlying
+          case designator: TermName =>
+            myName = designator
+          case designator: TermSymbol @unchecked =>
+            myName = designator.name
+        }
 
     override final def name(implicit ctx: Context): TermName = {
-      if (myName == null) decomposeDesignator()
+      ensureInitialized()
       myName
     }
 
+    override def hasExplicitSignature(implicit ctx: Context): Boolean = {
+      ensureInitialized()
+      mySig != null
+    }
+
     override final def signature(implicit ctx: Context): Signature =
-      if (name eq designator) denot.signature else sig
+      if (hasExplicitSignature) mySig else super.signature
 
     override def isOverloaded(implicit ctx: Context) = denot.isOverloaded
 
@@ -1977,14 +1986,15 @@ object Types {
     def newLikeThis(prefix: Type)(implicit ctx: Context): NamedType = {
       // If symbol exists, the new signature is the symbol's signature as seen
       // from the new prefix, modulo consistency
+      val curSig = signature
       val newSig =
-        if (sig == Signature.NotAMethod || !symbol.exists)
-          sig
+        if (curSig == Signature.NotAMethod || !symbol.exists)
+          curSig
         else
-          sig.updateWith(symbol.info.asSeenFrom(prefix, symbol.owner).signature)
+          curSig.updateWith(symbol.info.asSeenFrom(prefix, symbol.owner).signature)
       val candidate =
-        if (newSig ne sig) {
-          core.println(i"sig change at ${ctx.phase} for $this, pre = $prefix, sig: $sig --> $newSig")
+        if (newSig ne curSig) {
+          core.println(i"sig change at ${ctx.phase} for $this, pre = $prefix, sig: $curSig --> $newSig")
           TermRef.withSig(prefix, name, newSig)
         }
         else TermRef(prefix, designatorName.asTermName) // ###
