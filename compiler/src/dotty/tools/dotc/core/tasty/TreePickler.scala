@@ -54,8 +54,6 @@ class TreePickler(pickler: TastyPickler) {
   }
 
   private def pickleName(name: Name): Unit = writeNat(nameIndex(name).index)
-  private def pickleNameAndSig(name: Name, sig: Signature) =
-    pickleName(SignedName(name.toTermName, sig))
 
   private def pickleSymRef(sym: Symbol)(implicit ctx: Context) = symRefs.get(sym) match {
     case Some(label) =>
@@ -181,7 +179,7 @@ class TreePickler(pickler: TastyPickler) {
         pickleSymRef(tpe.symbol); pickleType(tpe.prefix)
       } else {
         writeByte(if (tpe.isType) TYPEREF else TERMREF)
-        pickleName(tpe.designator); pickleType(tpe.prefix)
+        pickleName(tpe.designatorName); pickleType(tpe.prefix)
       }
     case tpe: ThisType =>
       if (tpe.cls.is(Flags.Package) && !tpe.cls.isEffectiveRoot)
@@ -338,8 +336,9 @@ class TreePickler(pickler: TastyPickler) {
             case _ => name
           }
           val sig = tree.tpe.signature
-          if (name.isTypeName || sig == Signature.NotAMethod) pickleName(realName)
-          else pickleNameAndSig(realName, sig)
+          pickleName(
+            if (name.isTypeName || sig == Signature.NotAMethod) realName
+            else SignedName(realName.toTermName, sig))
           pickleTree(qual)
         case Apply(fun, args) =>
           writeByte(APPLY)
