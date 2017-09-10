@@ -89,7 +89,9 @@ The precise rules for equality checking are as follows.
 
  1. A comparison using `x == y` or `x != y` between values `x: T` and `y: U`
     is legal if either `T` and `U` are the same, or one of the types is a subtype
-    of the other, or an implicit value of type `scala.Eq[T, U]` is found.
+    of the "lifted" version of the other type, or an implicit value of type `scala.Eq[T, U]` is found.
+    See the [description on Github](https://github.com/lampepfl/dotty/issues/1247) for
+    a definition of lifting.
 
  2. The usual rules for implicit search apply also to `Eq` instances,
     with one modification: An instance of `scala.Eq.eqAny[T, U]` is
@@ -97,6 +99,11 @@ The precise rules for equality checking are as follows.
     instance themselves. Here, a type `T` has a reflexive `Eq`
     instance if the implicit search for `Eq[T, T]` succeeds
     and constructs an instance different from `eqAny`.
+
+    Here _lifting_ a type `S` means replacing all references to  abstract types
+    in covariant positions of `S` by their upper bound, and to replacing
+    all refinement types in in covariant positions of `S` by their parent.
+    The purpose if lifte
 
 More on multiversal equality is found in a [blog post](http://www.scala-lang.org/blog/2016/05/06/multiversal-equality.html)
 and a [Github issue](https://github.com/lampepfl/dotty/issues/1247).
