@@ -246,7 +246,7 @@ class TreeUnpickler(reader: TastyReader, nameAtRef: NameRef => TermName, posUnpi
               val sym = ctx.newSymbol(ctx.owner, readName().toTypeName, BindDefinedType, readType())
               registerSym(start, sym)
               if (currentAddr != end) readType()
-              TypeRef.withFixedSym(NoPrefix, sym.name, sym)
+              TypeRef.withFixedSym(NoPrefix, sym)
             case POLYtype =>
               readMethodic(PolyType, _.toTypeName)
             case METHODtype =>

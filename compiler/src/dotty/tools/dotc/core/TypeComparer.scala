@@ -198,8 +198,8 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
                 (  (tp1.name eq tp2.name)
                 && isSubType(tp1.prefix, tp2.prefix)
                 && tp1.signature == tp2.signature
-                && !tp1.isInstanceOf[WithFixedSym]
-                && !tp2.isInstanceOf[WithFixedSym]
+                && !tp1.hasFixedSym
+                && !tp2.hasFixedSym
                 ) ||
                 thirdTryNamed(tp1, tp2)
             case _ =>
