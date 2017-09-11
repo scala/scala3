@@ -1508,7 +1508,7 @@ object Types {
 
     def designatorName: Name = designator.asInstanceOf[Name] // ### todo: remove
 
-    private[dotc] def init()(implicit ctx: Context): this.type = {
+    private[dotc] def init(givenName: Name)(implicit ctx: Context): this.type = {
       (designator: Designator) match { // dotty shortcoming: need the upcast
         case DerivedName(underlying, info: SignedName.SignedInfo) =>
           myName = underlying.asInstanceOf[ThisName]
@@ -1517,8 +1517,7 @@ object Types {
         case designator: Name =>
           myName = designator.asInstanceOf[ThisName]
         case designator: Symbol =>
-          assert(designator.exists)
-          myName = designator.name.asInstanceOf[ThisName]
+          myName = givenName.asInstanceOf[ThisName]
           uncheckedSetSym(designator)
       }
       this
