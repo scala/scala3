@@ -1486,18 +1486,45 @@ object Types {
 // --- NamedTypes ------------------------------------------------------------------
 
   /** A NamedType of the form Prefix # name */
-  abstract class NamedType extends CachedProxyType with ValueType {
-
-    val prefix: Type
-    val designator: Designator
-
-    def designatorName: Name = designator.asInstanceOf[Name]
-
-    def name(implicit ctx: Context): Name = designatorName
+  abstract class NamedType extends CachedProxyType with ValueType { self =>
 
     type ThisType >: this.type <: NamedType
+    type ThisName <: Name
+
+    val prefix: Type
+    val designator: Designator { type ThisName = self.ThisName }
 
     assert(prefix.isValueType || (prefix eq NoPrefix), s"invalid prefix $prefix")
+
+    def isType = isInstanceOf[TypeRef]
+    def isTerm = isInstanceOf[TermRef]
+
+    private[this] var myName: ThisName = _
+    private[this] var mySig: Signature = null
+
+    def designatorName: Name = designator.asInstanceOf[Name] // ### todo: remove 
+
+    private[dotc] def init()(implicit ctx: Context): this.type = {
+      (designator: Designator) match { // dotty shortcoming: need the upcast
+        case DerivedName(underlying, info: SignedName.SignedInfo) =>
+          myName = underlying.asInstanceOf[ThisName]
+          mySig = info.sig
+          assert(mySig ne Signature.OverloadedSignature)
+        case designator: Name =>
+          myName = designator.asInstanceOf[ThisName]
+        case designator: Symbol =>
+          myName = designator.name.asInstanceOf[ThisName]
+          uncheckedSetSym(designator)
+      }
+      this
+    }
+
+    final def name: ThisName = myName
+
+    final override def signature(implicit ctx: Context): Signature =
+      if (mySig != null) mySig
+      else if (isType || lastDenotation == null) Signature.NotAMethod
+      else denot.signature
 
     private[this] var lastDenotation: Denotation = _
     private[this] var lastSymbol: Symbol = _
@@ -1707,7 +1734,7 @@ object Types {
     protected def loadDenot(implicit ctx: Context): Denotation = {
       val d = asMemberOf(prefix, allowPrivate = true)
       if (d.exists || ctx.phaseId == FirstPhaseId || !lastDenotation.isInstanceOf[SymDenotation])
-        if (hasExplicitSignature) d.atSignature(signature).checkUnique
+        if (mySig != null) d.atSignature(mySig).checkUnique
         else d
       else { // name has changed; try load in earlier phase and make current
         val d = loadDenot(ctx.withPhase(ctx.phaseId - 1)).current
@@ -1746,9 +1773,6 @@ object Types {
       else
         denot.symbol
 
-    override def signature(implicit ctx: Context): Signature =
-      if (isType || lastDenotation == null) Signature.NotAMethod
-      else denot.signature
 
     /** Retrieves currently valid symbol without necessarily updating denotation.
      *  Assumes that symbols do not change between periods in the same run.
@@ -1759,11 +1783,6 @@ object Types {
       else symbol
 
     def info(implicit ctx: Context): Type = denot.info
-
-    def isType = isInstanceOf[TypeRef]
-    def isTerm = isInstanceOf[TermRef]
-
-    protected def hasExplicitSignature(implicit ctx: Context) = false
 
     /** Guard against cycles that can arise if given `op`
      *  follows info. The problematic cases are a type alias to itself or
@@ -1925,41 +1944,13 @@ object Types {
   abstract case class TermRef(override val prefix: Type, designator: TermDesignator) extends NamedType with SingletonType {
 
     type ThisType = TermRef
+    type ThisName = TermName
 
     //assert(name.toString != "<local Coder>")
     override def underlying(implicit ctx: Context): Type = {
       val d = denot
       if (d.isOverloaded) NoType else d.info
     }
-
-    private var mySig: Signature = null
-    private var myName: TermName = null
-
-    private def ensureInitialized()(implicit ctx: Context): Unit =
-      if (myName == null)
-        designator match {
-          case DerivedName(underlying, info: SignedName.SignedInfo) =>
-            mySig = info.sig
-            assert(mySig ne Signature.OverloadedSignature)
-            myName = underlying
-          case designator: TermName =>
-            myName = designator
-          case designator: TermSymbol @unchecked =>
-            myName = designator.name
-        }
-
-    override final def name(implicit ctx: Context): TermName = {
-      ensureInitialized()
-      myName
-    }
-
-    override def hasExplicitSignature(implicit ctx: Context): Boolean = {
-      ensureInitialized()
-      mySig != null
-    }
-
-    override final def signature(implicit ctx: Context): Signature =
-      if (hasExplicitSignature) mySig else super.signature
 
     override def isOverloaded(implicit ctx: Context) = denot.isOverloaded
 
@@ -2005,17 +1996,7 @@ object Types {
   abstract case class TypeRef(override val prefix: Type, designator: TypeDesignator) extends NamedType {
 
     type ThisType = TypeRef
-
-    private var myName: TypeName = null
-
-    override def name(implicit ctx: Context): TypeName = {
-      if (myName == null)
-        myName = designator match {
-          case name: TypeName => name
-          case sym: TypeSymbol @unchecked => sym.name
-        }
-      myName
-    }
+    type ThisName = TypeName
 
     override def underlying(implicit ctx: Context): Type = info
 

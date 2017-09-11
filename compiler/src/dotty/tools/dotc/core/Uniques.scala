@@ -52,12 +52,13 @@ object Uniques {
       e
     }
 
-    def enterIfNew(prefix: Type, designator: Name): NamedType = {
+    def enterIfNew(prefix: Type, designator: Name)(implicit ctx: Context): NamedType = {
       val h = doHash(designator, prefix)
       if (monitored) recordCaching(h, classOf[NamedType])
-      def newType =
+      def newType = {
         if (designator.isTypeName) new CachedTypeRef(prefix, designator.asTypeName, h)
         else new CachedTermRef(prefix, designator.asTermName, h)
+      }.init()
       if (h == NotCached) newType
       else {
         val r = findPrevious(h, prefix, designator)
@@ -78,12 +79,13 @@ object Uniques {
       e
     }
 
-    def enterIfNew(prefix: Type, name: Name, sym: Symbol): NamedType = {
+    def enterIfNew(prefix: Type, name: Name, sym: Symbol)(implicit ctx: Context): NamedType = {
       val h = doHash(sym, prefix)
       if (monitored) recordCaching(h, classOf[WithFixedSym])
-      def newType =
+      def newType = {
         if (name.isTypeName) new TypeRefWithFixedSym(prefix, name.asTypeName, sym.asInstanceOf[TypeSymbol], h)
         else new TermRefWithFixedSym(prefix, name.asTermName, sym.asInstanceOf[TermSymbol], h)
+      }.init()
       if (h == NotCached) newType
       else {
         val r = findPrevious(h, prefix, sym)
