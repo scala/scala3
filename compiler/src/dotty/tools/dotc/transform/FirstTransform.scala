@@ -92,26 +92,33 @@ class FirstTransform extends MiniPhaseTransform with InfoTransformer with Annota
   private def reorderAndComplete(stats: List[Tree])(implicit ctx: Context): List[Tree] = {
     val moduleClassDefs, singleClassDefs = mutable.Map[Name, Tree]()
 
-    def reorder(stats: List[Tree]): List[Tree] = stats match {
+    /* Returns the result of reordering stats and prepending revPrefix in reverse order to it.
+     * The result of reorder is equivalent to reorder(stats, revPrefix) = revPrefix.reverse ::: reorder(stats, Nil).
+     * This implementation is tail recursive as long as the element is not a module TypeDef.
+     */
+    def reorder(stats: List[Tree], revPrefix: List[Tree]): List[Tree] = stats match {
       case (stat: TypeDef) :: stats1 if stat.symbol.isClass =>
         if (stat.symbol is Flags.Module) {
+          def pushOnTop(xs: List[Tree], ys: List[Tree]): List[Tree] =
+            (ys /: xs)((ys, x) => x :: ys)
           moduleClassDefs += (stat.name -> stat)
           singleClassDefs -= stat.name.stripModuleClassSuffix
-          val stats1r = reorder(stats1)
-          if (moduleClassDefs contains stat.name) stat :: stats1r else stats1r
+          val stats1r = reorder(stats1, Nil)
+          pushOnTop(revPrefix, if (moduleClassDefs contains stat.name) stat :: stats1r else stats1r)
         } else {
-          def stats1r = reorder(stats1)
-          val normalized = moduleClassDefs remove stat.name.moduleClassName match {
-            case Some(mcdef) =>
-              mcdef :: stats1r
-            case None =>
-              singleClassDefs += (stat.name -> stat)
-              stats1r
-          }
-          stat :: normalized
+          reorder(
+            stats1,
+            moduleClassDefs remove stat.name.moduleClassName match {
+              case Some(mcdef) =>
+                mcdef :: stat :: revPrefix
+              case None =>
+                singleClassDefs += (stat.name -> stat)
+                stat :: revPrefix
+            }
+          )
         }
-      case stat :: stats1 => stat :: reorder(stats1)
-      case Nil => Nil
+      case stat :: stats1 => reorder(stats1, stat :: revPrefix)
+      case Nil => revPrefix.reverse
     }
 
     def registerCompanion(name: TermName, forClass: Symbol): TermSymbol = {
@@ -136,7 +143,7 @@ class FirstTransform extends MiniPhaseTransform with InfoTransformer with Annota
       case stat => stat
     }
 
-    addMissingCompanions(reorder(stats))
+    addMissingCompanions(reorder(stats, Nil))
   }
 
   private def newCompanion(name: TermName, forClass: Symbol)(implicit ctx: Context) = {
