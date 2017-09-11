@@ -424,20 +424,23 @@ object Symbols {
     final def isValidInCurrentRun(implicit ctx: Context): Boolean =
       lastDenot.validFor.runId == ctx.runId || ctx.stillValid(lastDenot)
 
-    /** Overridden from Designator */
-    override def isSymbol = true
-
-    /** Subclass tests and casts */
-    final def isTerm(implicit ctx: Context): Boolean =
+    /** Designator overrides */
+    final override def isSymbol = true
+    final override def isTerm(implicit ctx: Context): Boolean =
       (if (defRunId == ctx.runId) lastDenot else denot).isTerm
-
-    final def isType(implicit ctx: Context): Boolean =
+    final override def isType(implicit ctx: Context): Boolean =
       (if (defRunId == ctx.runId) lastDenot else denot).isType
+    final override def asTerm(implicit ctx: Context): TermSymbol = {
+      assert(isTerm, s"asTerm called on not-a-Term $this" );
+      asInstanceOf[TermSymbol]
+    }
+    final override def asType(implicit ctx: Context): TypeSymbol = {
+      assert(isType, s"isType called on not-a-Type $this");
+      asInstanceOf[TypeSymbol]
+    }
+
 
     final def isClass: Boolean = isInstanceOf[ClassSymbol]
-
-    final def asTerm(implicit ctx: Context): TermSymbol = { assert(isTerm, s"asTerm called on not-a-Term $this" ); asInstanceOf[TermSymbol] }
-    final def asType(implicit ctx: Context): TypeSymbol = { assert(isType, s"isType called on not-a-Type $this"); asInstanceOf[TypeSymbol] }
     final def asClass: ClassSymbol = asInstanceOf[ClassSymbol]
 
     final def isFresh(implicit ctx: Context) =
