@@ -52,43 +52,24 @@ object Uniques {
       e
     }
 
-    def enterIfNew(prefix: Type, designator: Designator)(implicit ctx: Context): NamedType = {
+    def enterIfNew(prefix: Type, designator: Designator, isTerm: Boolean)(implicit ctx: Context): NamedType = {
       val h = doHash(designator, prefix)
       if (monitored) recordCaching(h, classOf[NamedType])
       def newType = {
-        if (designator.isType) new CachedTypeRef(prefix, designator.asType, h)
-        else new CachedTermRef(prefix, designator.asTerm, h)
+        if (isTerm)
+          designator match {
+            case designator: TermSymbol => new TermRefWithFixedSym(prefix, designator, h)
+            case _ => new CachedTermRef(prefix, designator.asTerm, h)
+          }
+        else
+          designator match {
+            case designator: TypeSymbol => new TypeRefWithFixedSym(prefix, designator, h)
+            case _ => new CachedTypeRef(prefix, designator.asType, h)
+          }
       }.init()
       if (h == NotCached) newType
       else {
         val r = findPrevious(h, prefix, designator)
-        if (r ne null) r else addEntryAfterScan(newType)
-      }
-    }
-  }
-
-  final class WithFixedSymUniques extends HashSet[WithFixedSym](Config.initialUniquesCapacity) with Hashable {
-    override def hash(x: WithFixedSym): Int = x.hash
-
-    private def findPrevious(h: Int, prefix: Type, sym: Symbol): NamedType = {
-      var e = findEntryByHash(h)
-      while (e != null) {
-        if ((e.prefix eq prefix) && (e.fixedSym eq sym)) return e
-        e = nextEntryByHash(h)
-      }
-      e
-    }
-
-    def enterIfNew(prefix: Type, name: Name, sym: Symbol)(implicit ctx: Context): NamedType = {
-      val h = doHash(sym, prefix)
-      if (monitored) recordCaching(h, classOf[WithFixedSym])
-      def newType = {
-        if (name.isTypeName) new TypeRefWithFixedSym(prefix, sym.asInstanceOf[TypeSymbol], h)
-        else new TermRefWithFixedSym(prefix, sym.asInstanceOf[TermSymbol], h)
-      }.init()
-      if (h == NotCached) newType
-      else {
-        val r = findPrevious(h, prefix, sym)
         if (r ne null) r else addEntryAfterScan(newType)
       }
     }
