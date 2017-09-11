@@ -630,7 +630,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
     // unless names match up.
     val isBound = (tp: Type) => {
       def refersTo(tp: Type, sym: Symbol): Boolean = tp match {
-        case tp @ TypeRef(_, name) => sym.name == name && sym == tp.symbol
+        case tp: TypeRef => sym.name == tp.name && sym == tp.symbol
         case tp: TypeVar => refersTo(tp.underlying, sym)
         case tp : LazyRef => refersTo(tp.ref, sym)
         case _ => false

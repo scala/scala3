@@ -219,7 +219,7 @@ object Checking {
         tp.derivedRefinedType(this(parent), name, this(rinfo, nestedCycleOK, nestedCycleOK))
       case tp: RecType =>
         tp.rebind(this(tp.parent))
-      case tp @ TypeRef(pre, name) =>
+      case tp @ TypeRef(pre, _) =>
         try {
           // A prefix is interesting if it might contain (transitively) a reference
           // to symbol `sym` itself. We only check references with interesting
