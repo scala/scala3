@@ -1504,7 +1504,7 @@ object Types {
 
     def designatorName: Name = designator.asInstanceOf[Name] // ### todo: remove
 
-    private[dotc] def init(givenName: Name)(implicit ctx: Context): this.type = {
+    private[dotc] def init()(implicit ctx: Context): this.type = {
       (designator: Designator) match { // dotty shortcoming: need the upcast
         case DerivedName(underlying, info: SignedName.SignedInfo) =>
           myName = underlying.asInstanceOf[ThisName]
@@ -1513,13 +1513,15 @@ object Types {
         case designator: Name =>
           myName = designator.asInstanceOf[ThisName]
         case designator: Symbol =>
-          myName = givenName.asInstanceOf[ThisName]
           uncheckedSetSym(designator)
       }
       this
     }
 
-    final def name: ThisName = myName
+    final def name(implicit ctx: Context): ThisName = {
+      if (myName == null) myName = designator.asInstanceOf[Symbol].name.asInstanceOf[ThisName]
+      myName
+    }
 
     final override def signature(implicit ctx: Context): Signature =
       if (mySig != null) mySig
@@ -1745,13 +1747,10 @@ object Types {
 
     def reloadDenot()(implicit ctx: Context) = setDenot(loadDenot)
 
-    protected def asMemberOf(prefix: Type, allowPrivate: Boolean)(implicit ctx: Context): Denotation = {
-      def recur(name: Name): Denotation =
-        if (name.is(ShadowedName)) prefix.nonPrivateMember(name.exclude(ShadowedName))
-        else if (!allowPrivate) prefix.nonPrivateMember(name)
-        else prefix.member(name)
-      recur(name)
-    }
+    protected def asMemberOf(prefix: Type, allowPrivate: Boolean)(implicit ctx: Context): Denotation =
+      if (name.is(ShadowedName)) prefix.nonPrivateMember(name.exclude(ShadowedName))
+      else if (!allowPrivate) prefix.nonPrivateMember(name)
+      else prefix.member(name)
 
     /** (1) Reduce a type-ref `W # X` or `W { ... } # U`, where `W` is a wildcard type
      *  to an (unbounded) wildcard type.
@@ -2006,9 +2005,6 @@ object Types {
 
   trait WithFixedSym extends NamedType {
     def fixedSym: Symbol = designator.asInstanceOf[Symbol]
-    assert(fixedSym ne null)
-    assert(fixedSym ne NoSymbol)
-    uncheckedSetSym(fixedSym)
 
     override def withDenot(denot: Denotation)(implicit ctx: Context): ThisType = {
       assert(denot.symbol eq fixedSym)
@@ -2027,13 +2023,6 @@ object Types {
       case _ => false
     }
     override def computeHash = unsupported("computeHash")
-
-    def checkInst(n: Name, sym: Symbol)(implicit ctx: Context): this.type = {
-      //assert(name == n, i"bad name: ${name.debugString}, expected: ${n.debugString}, ${System.identityHashCode(name)}, ${System.identityHashCode(n)}")
-      //assert(fixedSym eq sym)
-      //assert(symbol eq sym)
-      this
-    }
   }
 
   final class CachedTermRef(prefix: Type, designator: TermDesignator, hc: Int) extends TermRef(prefix, designator) {
@@ -2049,10 +2038,10 @@ object Types {
   }
 
   // Those classes are non final as Linker extends them.
-  class TermRefWithFixedSym(prefix: Type, d: Name, designator: TermSymbol, hc: Int) extends TermRef(prefix, designator) with WithFixedSym {
+  class TermRefWithFixedSym(prefix: Type, designator: TermSymbol, hc: Int) extends TermRef(prefix, designator) with WithFixedSym {
     myHash = hc
   }
-  class TypeRefWithFixedSym(prefix: Type, d: Name, designator: TypeSymbol, hc: Int) extends TypeRef(prefix, designator) with WithFixedSym {
+  class TypeRefWithFixedSym(prefix: Type, designator: TypeSymbol, hc: Int) extends TypeRef(prefix, designator) with WithFixedSym {
     myHash = hc
   }
 
@@ -2110,7 +2099,7 @@ object Types {
      *  with given prefix, name, and signature
      */
     def withFixedSym(prefix: Type, name: TermName, sym: TermSymbol)(implicit ctx: Context): TermRef =
-      ctx.uniqueWithFixedSyms.enterIfNew(prefix, name, sym).asInstanceOf[TermRefWithFixedSym].checkInst(name, sym)
+      ctx.uniqueWithFixedSyms.enterIfNew(prefix, name, sym).asInstanceOf[TermRef]
 
     /** Create a term ref referring to given symbol with given name, taking the signature
      *  from the symbol if it is completed, or creating a term ref without
@@ -2164,7 +2153,7 @@ object Types {
      *  with given prefix, name, and symbol.
      */
     def withFixedSym(prefix: Type, name: TypeName, sym: TypeSymbol)(implicit ctx: Context): TypeRef =
-      ctx.uniqueWithFixedSyms.enterIfNew(prefix, name, sym).asInstanceOf[TypeRefWithFixedSym].checkInst(name, sym)
+      ctx.uniqueWithFixedSyms.enterIfNew(prefix, name, sym).asInstanceOf[TypeRef]
 
     /** Create a type ref referring to given symbol with given name.
      *  This is very similar to TypeRef(Type, Symbol),
@@ -4438,7 +4427,7 @@ object Types {
   val watchList = List[String](
   ) map (_.toTypeName)
 
-  def isWatched(tp: Type) = tp match {
+  def isWatched(tp: Type)(implicit ctx: Context) = tp match {
     case ref: TypeRef => watchList contains ref.name
     case _ => false
   }

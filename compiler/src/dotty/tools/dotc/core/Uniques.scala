@@ -58,7 +58,7 @@ object Uniques {
       def newType = {
         if (designator.isType) new CachedTypeRef(prefix, designator.asType, h)
         else new CachedTermRef(prefix, designator.asTerm, h)
-      }.init(null)
+      }.init()
       if (h == NotCached) newType
       else {
         val r = findPrevious(h, prefix, designator)
@@ -83,9 +83,9 @@ object Uniques {
       val h = doHash(sym, prefix)
       if (monitored) recordCaching(h, classOf[WithFixedSym])
       def newType = {
-        if (name.isTypeName) new TypeRefWithFixedSym(prefix, name.asTypeName, sym.asInstanceOf[TypeSymbol], h)
-        else new TermRefWithFixedSym(prefix, name.asTermName, sym.asInstanceOf[TermSymbol], h)
-      }.init(name)
+        if (name.isTypeName) new TypeRefWithFixedSym(prefix, sym.asInstanceOf[TypeSymbol], h)
+        else new TermRefWithFixedSym(prefix, sym.asInstanceOf[TermSymbol], h)
+      }.init()
       if (h == NotCached) newType
       else {
         val r = findPrevious(h, prefix, sym)
