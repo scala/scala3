@@ -25,7 +25,7 @@ object Bench {
     val (intArgs, args1) = args.span(x => try { x.toInt; true } catch { case _: Throwable => false } )
 
     val warmup = if (intArgs.length > 0) intArgs(0).toInt else 30
-    val iteration warmup = if (intArgs.length > 1) intArgs(1).toInt else 20
+    val iterations = if (intArgs.length > 1) intArgs(1).toInt else 20
 
     val args2 = args1.map { arg =>
       if ((arg.endsWith(".scala") || arg.endsWith(".java")) && arg.head != '/') "../" + arg
