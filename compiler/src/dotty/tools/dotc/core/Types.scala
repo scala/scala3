@@ -1506,7 +1506,7 @@ object Types {
     private[this] var myName: ThisName = _
     private[this] var mySig: Signature = null
 
-    def designatorName: Name = designator.asInstanceOf[Name] // ### todo: remove 
+    def designatorName: Name = designator.asInstanceOf[Name] // ### todo: remove
 
     private[dotc] def init()(implicit ctx: Context): this.type = {
       (designator: Designator) match { // dotty shortcoming: need the upcast
@@ -1517,6 +1517,7 @@ object Types {
         case designator: Name =>
           myName = designator.asInstanceOf[ThisName]
         case designator: Symbol =>
+          assert(designator.exists)
           myName = designator.name.asInstanceOf[ThisName]
           uncheckedSetSym(designator)
       }
@@ -2034,13 +2035,13 @@ object Types {
     override def computeHash = unsupported("computeHash")
   }
 
-  final class CachedTermRef(prefix: Type, designator: TermName, hc: Int) extends TermRef(prefix, designator) {
+  final class CachedTermRef(prefix: Type, designator: TermDesignator, hc: Int) extends TermRef(prefix, designator) {
     assert(prefix ne NoPrefix)
     myHash = hc
     override def computeHash = unsupported("computeHash")
   }
 
-  final class CachedTypeRef(prefix: Type, designator: TypeName, hc: Int) extends TypeRef(prefix, designator) {
+  final class CachedTypeRef(prefix: Type, designator: TypeDesignator, hc: Int) extends TypeRef(prefix, designator) {
     assert(prefix ne NoPrefix)
     myHash = hc
     override def computeHash = unsupported("computeHash")

@@ -1,7 +1,7 @@
 package dotty.tools.dotc
 package core
 
-import Types._, Symbols._, Contexts._, util.Stats._, Hashable._, Names._
+import Types._, Symbols._, Contexts._, util.Stats._, Hashable._, Names._, Designators._
 import config.Config
 import util.HashSet
 
@@ -43,7 +43,7 @@ object Uniques {
   final class NamedTypeUniques extends HashSet[NamedType](Config.initialUniquesCapacity) with Hashable {
     override def hash(x: NamedType): Int = x.hash
 
-    private def findPrevious(h: Int, prefix: Type, designator: Name): NamedType = {
+    private def findPrevious(h: Int, prefix: Type, designator: Designator): NamedType = {
       var e = findEntryByHash(h)
       while (e != null) {
         if ((e.prefix eq prefix) && (e.designator eq designator)) return e
@@ -52,12 +52,12 @@ object Uniques {
       e
     }
 
-    def enterIfNew(prefix: Type, designator: Name)(implicit ctx: Context): NamedType = {
+    def enterIfNew(prefix: Type, designator: Designator)(implicit ctx: Context): NamedType = {
       val h = doHash(designator, prefix)
       if (monitored) recordCaching(h, classOf[NamedType])
       def newType = {
-        if (designator.isTypeName) new CachedTypeRef(prefix, designator.asTypeName, h)
-        else new CachedTermRef(prefix, designator.asTermName, h)
+        if (designator.isType) new CachedTypeRef(prefix, designator.asType, h)
+        else new CachedTermRef(prefix, designator.asTerm, h)
       }.init()
       if (h == NotCached) newType
       else {
