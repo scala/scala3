@@ -1923,11 +1923,12 @@ object Types {
     override def equals(that: Any) = that match {
       case that: NamedType =>
         this.designator == that.designator &&
-        this.prefix == that.prefix &&
-        !that.isInstanceOf[WithFixedSym]
+        this.prefix == that.prefix
       case _ =>
         false
     }
+
+    override def computeHash = unsupported("computeHash")
 
     /* A version of toString which also prints aliases. Can be used for debugging
     override def toString =
@@ -2017,24 +2018,16 @@ object Types {
 
     override def newLikeThis(prefix: Type)(implicit ctx: Context): NamedType =
       NamedType.withFixedSym(prefix, fixedSym)
-
-    override def equals(that: Any) = that match {
-      case that: WithFixedSym => this.prefix == that.prefix && (this.fixedSym eq that.fixedSym)
-      case _ => false
-    }
-    override def computeHash = unsupported("computeHash")
   }
 
   final class CachedTermRef(prefix: Type, designator: TermDesignator, hc: Int) extends TermRef(prefix, designator) {
     assert(prefix ne NoPrefix)
     myHash = hc
-    override def computeHash = unsupported("computeHash")
   }
 
   final class CachedTypeRef(prefix: Type, designator: TypeDesignator, hc: Int) extends TypeRef(prefix, designator) {
     assert(prefix ne NoPrefix)
     myHash = hc
-    override def computeHash = unsupported("computeHash")
   }
 
   // Those classes are non final as Linker extends them.
@@ -2073,7 +2066,7 @@ object Types {
      *  of prefix with given name.
      */
     def apply(prefix: Type, designator: TermName)(implicit ctx: Context): TermRef =
-      ctx.uniqueNamedTypes.enterIfNew(prefix, designator).asInstanceOf[TermRef]
+      ctx.uniqueNamedTypes.enterIfNew(prefix, designator, isTerm = true).asInstanceOf[TermRef]
 
     /** Create term ref referring to given symbol, taking the signature
      *  from the symbol if it is completed, or creating a term ref without
@@ -2099,7 +2092,7 @@ object Types {
      *  with given prefix, name, and signature
      */
     def withFixedSym(prefix: Type, name: TermName, sym: TermSymbol)(implicit ctx: Context): TermRef =
-      ctx.uniqueWithFixedSyms.enterIfNew(prefix, name, sym).asInstanceOf[TermRef]
+      ctx.uniqueNamedTypes.enterIfNew(prefix, sym, isTerm = true).asInstanceOf[TermRef]
 
     /** Create a term ref referring to given symbol with given name, taking the signature
      *  from the symbol if it is completed, or creating a term ref without
@@ -2143,7 +2136,7 @@ object Types {
   object TypeRef {
     /** Create type ref with given prefix and name */
     def apply(prefix: Type, name: TypeName)(implicit ctx: Context): TypeRef =
-      ctx.uniqueNamedTypes.enterIfNew(prefix, name).asInstanceOf[TypeRef]
+      ctx.uniqueNamedTypes.enterIfNew(prefix, name, isTerm = false).asInstanceOf[TypeRef]
 
     /** Create type ref to given symbol */
     def apply(prefix: Type, sym: TypeSymbol)(implicit ctx: Context): TypeRef =
@@ -2153,7 +2146,7 @@ object Types {
      *  with given prefix, name, and symbol.
      */
     def withFixedSym(prefix: Type, name: TypeName, sym: TypeSymbol)(implicit ctx: Context): TypeRef =
-      ctx.uniqueWithFixedSyms.enterIfNew(prefix, name, sym).asInstanceOf[TypeRef]
+      ctx.uniqueNamedTypes.enterIfNew(prefix, sym, isTerm = false).asInstanceOf[TypeRef]
 
     /** Create a type ref referring to given symbol with given name.
      *  This is very similar to TypeRef(Type, Symbol),
