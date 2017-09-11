@@ -154,8 +154,12 @@ object Names {
     /** Does (the last part of) this name end with `str`? */
     def endsWith(str: String): Boolean = lastPart.endsWith(str)
 
-    /** Designator override */
+    /** Designator overrides */
     override def isName = true
+    override def isTerm(implicit ctx: Context) = isTermName
+    override def isType(implicit ctx: Context) = isTypeName
+    override def asTerm(implicit ctx: Context) = asTermName
+    override def asType(implicit ctx: Context) = asTypeName
 
     override def hashCode = System.identityHashCode(this)
     override def equals(that: Any) = this eq that.asInstanceOf[AnyRef]
