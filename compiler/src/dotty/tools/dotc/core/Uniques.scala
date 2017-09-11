@@ -56,16 +56,8 @@ object Uniques {
       val h = doHash(designator, prefix)
       if (monitored) recordCaching(h, classOf[NamedType])
       def newType = {
-        if (isTerm)
-          designator match {
-            case designator: TermSymbol => new TermRefWithFixedSym(prefix, designator, h)
-            case _ => new CachedTermRef(prefix, designator.asTerm, h)
-          }
-        else
-          designator match {
-            case designator: TypeSymbol => new TypeRefWithFixedSym(prefix, designator, h)
-            case _ => new CachedTypeRef(prefix, designator.asType, h)
-          }
+        if (isTerm) new CachedTermRef(prefix, designator.asInstanceOf[TermDesignator], h)
+        else new CachedTypeRef(prefix, designator.asInstanceOf[TypeDesignator], h)
       }.init()
       if (h == NotCached) newType
       else {

@@ -142,7 +142,7 @@ class TreePickler(pickler: TastyPickler) {
       withLength { pickleType(tycon); args.foreach(pickleType(_)) }
     case ConstantType(value) =>
       pickleConstant(value)
-    case tpe: WithFixedSym =>
+    case tpe: NamedType =>
       val sym = tpe.symbol
       def pickleRef() =
         if (tpe.prefix == NoPrefix) {
@@ -169,21 +169,21 @@ class TreePickler(pickler: TastyPickler) {
           pickleRef()
         }
       }
-      else pickleRef()
-    case tpe: NamedType =>
-      val sym = tpe.symbol
-      if (sym.is(Flags.Package) && tpe.isTerm)
-        picklePackageRef(sym)
-      else if (isLocallyDefined(tpe.symbol) && tpe.signature.eq(Signature.NotAMethod)) {
+      else if (tpe.hasFixedSym) {
+        pickleRef()
+      }
+      else if (isLocallyDefined(sym) && tpe.signature.eq(Signature.NotAMethod)) {
         writeByte(if (tpe.isType) TYPEREFsymbol else TERMREFsymbol)
-        pickleSymRef(tpe.symbol); pickleType(tpe.prefix)
+        pickleSymRef(sym); pickleType(tpe.prefix)
       } else {
         writeByte(if (tpe.isType) TYPEREF else TERMREF)
         pickleName(tpe.designatorName); pickleType(tpe.prefix)
       }
     case tpe: ThisType =>
-      if (tpe.cls.is(Flags.Package) && !tpe.cls.isEffectiveRoot)
-        picklePackageRef(tpe.cls)
+      if (tpe.cls.is(Flags.Package) && !tpe.cls.isEffectiveRoot) {
+        writeByte(TERMREFpkg)
+        pickleName(tpe.cls.fullName)
+      }
       else {
         writeByte(THIS)
         pickleType(tpe.tref)
@@ -236,11 +236,6 @@ class TreePickler(pickler: TastyPickler) {
       assert(pickleParamRef(tpe), s"orphan parameter reference: $tpe")
     case tpe: LazyRef =>
       pickleType(tpe.ref)
-  }
-
-  def picklePackageRef(pkg: Symbol)(implicit ctx: Context): Unit = {
-    writeByte(TERMREFpkg)
-    pickleName(pkg.fullName)
   }
 
   def pickleMethodic(tag: Int, tpe: LambdaType)(implicit ctx: Context) = {
