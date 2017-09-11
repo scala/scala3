@@ -431,11 +431,11 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
     var found = desugared.get(i.tpe)
     if (found == null) {
       i.tpe match {
-        case TermRef(prefix: TermRef, name) =>
+        case TermRef(prefix: TermRef, _) =>
           found = tpd.ref(prefix).select(i.symbol)
-        case TermRef(prefix: ThisType, name) =>
+        case TermRef(prefix: ThisType, _) =>
           found = tpd.This(prefix.cls).select(i.symbol)
-        case TermRef(NoPrefix, name) =>
+        case TermRef(NoPrefix, _) =>
           if (i.symbol is Flags.Method) found = This(i.symbol.topLevelClass).select(i.symbol) // workaround #342 todo: remove after fixed
         case _ =>
       }

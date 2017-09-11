@@ -164,9 +164,9 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
                 ctx.typeComparer.lubArgs(args1, args2, tycon1.typeParams))
             case _ => fail
           }
-        case tp1 @ TypeRef(pre1, name1) =>
+        case tp1 @ TypeRef(pre1, _) =>
           tp2 match {
-            case tp2 @ TypeRef(pre2, `name1`) =>
+            case tp2 @ TypeRef(pre2, _) if tp1.name eq tp2.name =>
               tp1.derivedSelect(pre1 | pre2)
             case _ => fail
           }

@@ -1746,12 +1746,11 @@ object Types {
     def reloadDenot()(implicit ctx: Context) = setDenot(loadDenot)
 
     protected def asMemberOf(prefix: Type, allowPrivate: Boolean)(implicit ctx: Context): Denotation = {
-      def recur(desig: Name): Denotation =
-        if (desig.is(SignedName)) recur(name)
-        else if (desig.is(ShadowedName)) prefix.nonPrivateMember(desig.exclude(ShadowedName))
-        else if (!allowPrivate) prefix.nonPrivateMember(desig)
-        else prefix.member(desig)
-      recur(designatorName)
+      def recur(name: Name): Denotation =
+        if (name.is(ShadowedName)) prefix.nonPrivateMember(name.exclude(ShadowedName))
+        else if (!allowPrivate) prefix.nonPrivateMember(name)
+        else prefix.member(name)
+      recur(name)
     }
 
     /** (1) Reduce a type-ref `W # X` or `W { ... } # U`, where `W` is a wildcard type
@@ -2006,7 +2005,8 @@ object Types {
 
 
   trait WithFixedSym extends NamedType {
-    def fixedSym: Symbol
+    def fixedSym: Symbol = designator.asInstanceOf[Symbol]
+    assert(fixedSym ne null)
     assert(fixedSym ne NoSymbol)
     uncheckedSetSym(fixedSym)
 
@@ -2027,6 +2027,13 @@ object Types {
       case _ => false
     }
     override def computeHash = unsupported("computeHash")
+
+    def checkInst(n: Name, sym: Symbol)(implicit ctx: Context): this.type = {
+      //assert(name == n, i"bad name: ${name.debugString}, expected: ${n.debugString}, ${System.identityHashCode(name)}, ${System.identityHashCode(n)}")
+      //assert(fixedSym eq sym)
+      //assert(symbol eq sym)
+      this
+    }
   }
 
   final class CachedTermRef(prefix: Type, designator: TermDesignator, hc: Int) extends TermRef(prefix, designator) {
@@ -2042,10 +2049,10 @@ object Types {
   }
 
   // Those classes are non final as Linker extends them.
-  class TermRefWithFixedSym(prefix: Type, designator: TermName, val fixedSym: TermSymbol, hc: Int) extends TermRef(prefix, designator) with WithFixedSym {
+  class TermRefWithFixedSym(prefix: Type, d: Name, designator: TermSymbol, hc: Int) extends TermRef(prefix, designator) with WithFixedSym {
     myHash = hc
   }
-  class TypeRefWithFixedSym(prefix: Type, designator: TypeName, val fixedSym: TypeSymbol, hc: Int) extends TypeRef(prefix, designator) with WithFixedSym {
+  class TypeRefWithFixedSym(prefix: Type, d: Name, designator: TypeSymbol, hc: Int) extends TypeRef(prefix, designator) with WithFixedSym {
     myHash = hc
   }
 
@@ -2103,7 +2110,7 @@ object Types {
      *  with given prefix, name, and signature
      */
     def withFixedSym(prefix: Type, name: TermName, sym: TermSymbol)(implicit ctx: Context): TermRef =
-      ctx.uniqueWithFixedSyms.enterIfNew(prefix, name, sym).asInstanceOf[TermRef]
+      ctx.uniqueWithFixedSyms.enterIfNew(prefix, name, sym).asInstanceOf[TermRefWithFixedSym].checkInst(name, sym)
 
     /** Create a term ref referring to given symbol with given name, taking the signature
      *  from the symbol if it is completed, or creating a term ref without
@@ -2157,7 +2164,7 @@ object Types {
      *  with given prefix, name, and symbol.
      */
     def withFixedSym(prefix: Type, name: TypeName, sym: TypeSymbol)(implicit ctx: Context): TypeRef =
-      ctx.uniqueWithFixedSyms.enterIfNew(prefix, name, sym).asInstanceOf[TypeRef]
+      ctx.uniqueWithFixedSyms.enterIfNew(prefix, name, sym).asInstanceOf[TypeRefWithFixedSym].checkInst(name, sym)
 
     /** Create a type ref referring to given symbol with given name.
      *  This is very similar to TypeRef(Type, Symbol),
@@ -2374,7 +2381,7 @@ object Types {
           normalize(tp.parent.substRecThis(tp, rt.recThis))
         case tp @ RefinedType(parent, rname, rinfo) =>
           val rinfo1 = rinfo match {
-            case TypeAlias(TypeRef(RecThis(`rt`), `rname`)) => TypeBounds.empty
+            case TypeAlias(ref @ TypeRef(RecThis(`rt`), _)) if ref.name == rname => TypeBounds.empty
             case _ => rinfo
           }
           tp.derivedRefinedType(normalize(parent), rname, rinfo1)
@@ -2682,7 +2689,7 @@ object Types {
       if (dependencyStatus == FalseDeps) { // dealias all false dependencies
         val dealiasMap = new TypeMap {
           def apply(tp: Type) = tp match {
-            case tp @ TypeRef(pre, name) =>
+            case tp @ TypeRef(pre, _) =>
               tp.info match {
                 case TypeAlias(alias) if depStatus(NoDeps, pre) == TrueDeps => apply(alias)
                 case _ => mapOver(tp)
@@ -4432,7 +4439,7 @@ object Types {
   ) map (_.toTypeName)
 
   def isWatched(tp: Type) = tp match {
-    case TypeRef(_, name) => watchList contains name
+    case ref: TypeRef => watchList contains ref.name
     case _ => false
   }
 

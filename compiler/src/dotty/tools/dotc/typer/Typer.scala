@@ -924,9 +924,9 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     val indexPattern = new TreeMap {
       val elimWildcardSym = new TypeMap {
         def apply(t: Type) = t match {
-          case ref @ TypeRef(_, tpnme.WILDCARD) if ctx.gadt.bounds.contains(ref.symbol) =>
+          case ref: TypeRef if ref.name == tpnme.WILDCARD && ctx.gadt.bounds.contains(ref.symbol) =>
             ctx.gadt.bounds(ref.symbol)
-          case TypeAlias(ref @ TypeRef(_, tpnme.WILDCARD)) if ctx.gadt.bounds.contains(ref.symbol) =>
+          case TypeAlias(ref: TypeRef) if ref.name == tpnme.WILDCARD && ctx.gadt.bounds.contains(ref.symbol) =>
             ctx.gadt.bounds(ref.symbol)
           case _ =>
             mapOver(t)
