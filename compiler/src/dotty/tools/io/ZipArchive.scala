@@ -24,7 +24,7 @@ import scala.annotation.tailrec
  *  ''Note:  This library is considered experimental and should not be used unless you know what you are doing.''
  */
 object ZipArchive {
-  private[io] val closeZipFile = sys.props.get("scala.classpath.closeZip").map(_.toBoolean).getOrElse(false)
+  private[io] val closeZipFile = sys.props.get("scala.classpath.closeZip").exists(_.toBoolean)
 
   /**
    * @param   file  a File
@@ -82,8 +82,8 @@ abstract class ZipArchive(override val file: JFile) extends AbstractFile with Eq
     override def isDirectory = true
     override def iterator: Iterator[Entry] = entries.valuesIterator
     override def lookupName(name: String, directory: Boolean): Entry = {
-      if (directory) entries(name + "/")
-      else entries(name)
+      if (directory) entries.get(name + "/").orNull
+      else entries.get(name).orNull
     }
   }
 
