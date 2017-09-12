@@ -506,7 +506,7 @@ trait TypeAssigner {
         else inSameUniverse(TypeBounds(_, _), lo.tpe, hi, "type bounds"))
 
   def assignType(tree: untpd.Bind, sym: Symbol)(implicit ctx: Context) =
-    tree.withType(NamedType.withFixedSym(NoPrefix, sym))
+    tree.withType(NamedType(NoPrefix, sym))
 
   def assignType(tree: untpd.Alternative, trees: List[Tree])(implicit ctx: Context) =
     tree.withType(ctx.typeComparer.lub(trees.tpes))
@@ -532,7 +532,7 @@ trait TypeAssigner {
       // reference, since there is less pressure on the uniqueness tables that way
       // and less work to update all the different references. That's why symbolic references
       // are only used if necessary.
-      NamedType.withFixedSym(owner.thisType, sym)
+      NamedType(owner.thisType, sym)
     else NoType
   }
 

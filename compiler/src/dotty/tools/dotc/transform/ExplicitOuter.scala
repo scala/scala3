@@ -321,7 +321,7 @@ object ExplicitOuter {
    */
   private def fixThis(tpe: Type)(implicit ctx: Context): Type = tpe match {
     case tpe: ThisType if tpe.cls.is(Module) && !ctx.owner.isContainedIn(tpe.cls) =>
-      fixThis(TermRef(tpe.cls.owner.thisType, tpe.cls.sourceModule.asTerm))
+      fixThis(TermRef.withSym(tpe.cls.owner.thisType, tpe.cls.sourceModule.asTerm))
     case tpe: TermRef =>
       tpe.derivedSelect(fixThis(tpe.prefix))
     case _ =>

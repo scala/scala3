@@ -150,7 +150,7 @@ object TypeErasure {
       assert(tp.symbol.exists, tp)
       val tp1 = ctx.makePackageObjPrefixExplicit(tp)
       if (tp1 ne tp) erasedRef(tp1)
-      else TermRef(erasedRef(tp.prefix), tp.symbol.asTerm)
+      else TermRef.withSym(erasedRef(tp.prefix), tp.symbol.asTerm)
     case tp: ThisType =>
       tp
     case tp =>
