@@ -246,7 +246,7 @@ trait Symbols { this: Context =>
    *  would be `fld2`. There is a single local dummy per template.
    */
   def newLocalDummy(cls: Symbol, coord: Coord = NoCoord) =
-    newSymbol(cls, nme.localDummyName(cls), Fresh, NoType)
+    newSymbol(cls, nme.localDummyName(cls), NonMember, NoType)
 
   /** Create an import symbol pointing back to given qualifier `expr`. */
   def newImportSymbol(owner: Symbol, expr: Tree, coord: Coord = NoCoord): TermSymbol =
@@ -254,7 +254,7 @@ trait Symbols { this: Context =>
 
   /** Create an import symbol with given `info`. */
   def newImportSymbol(owner: Symbol, info: Type, coord: Coord): TermSymbol =
-    newSymbol(owner, nme.IMPORT, Synthetic | Fresh, info, coord = coord)
+    newSymbol(owner, nme.IMPORT, Synthetic | NonMember, info, coord = coord)
 
   /** Create a class constructor symbol for given class `cls`. */
   def newConstructor(cls: ClassSymbol, flags: FlagSet, paramNames: List[TermName], paramTypes: List[Type], privateWithin: Symbol = NoSymbol, coord: Coord = NoCoord) =
@@ -348,7 +348,7 @@ trait Symbols { this: Context =>
         copy.denot = odenot.copySymDenotation(
           symbol = copy,
           owner = ttmap1.mapOwner(odenot.owner),
-          initFlags = odenot.flags &~ Touched,// | Fresh,
+          initFlags = odenot.flags &~ Touched,
           info = completer,
           privateWithin = ttmap1.mapOwner(odenot.privateWithin), // since this refers to outer symbols, need not include copies (from->to) in ownermap here.
           annotations = odenot.annotations)
@@ -447,8 +447,14 @@ object Symbols {
     final def isClass: Boolean = isInstanceOf[ClassSymbol]
     final def asClass: ClassSymbol = asInstanceOf[ClassSymbol]
 
-    final def isFresh(implicit ctx: Context) =
-      lastDenot != null && (lastDenot is Fresh)
+    final def isReferencedSymbolically(implicit ctx: Context) = {
+      val sym = lastDenot
+      sym != null && (
+           (sym is NonMember)
+        || sym.isClass && sym.is(Scala2x) && !sym.owner.is(Package)
+        || sym.isTerm && ctx.phase.symbolicRefs
+        )
+    }
 
     /** Special cased here, because it may be used on naked symbols in substituters */
     final def isStatic(implicit ctx: Context): Boolean =
