@@ -1398,9 +1398,11 @@ object SymDenotations {
       myThisType
     }
 
-    private def computeThisType(implicit ctx: Context): Type =
-      ThisType.raw(TypeRef.withSym(
-          if (this is Package) NoPrefix else owner.thisType, symbol.asType))
+    private def computeThisType(implicit ctx: Context): Type = {
+      val cls = symbol.asType
+      val pre = if (this is Package) NoPrefix else owner.thisType
+      ThisType.raw(TypeRef(pre, cls, cls.name))
+    }
 
     private[this] var myTypeRef: TypeRef = null
 

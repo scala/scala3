@@ -989,7 +989,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
         else if (!owner.isCompleted)
           (EmptyTree, errorType(MissingReturnTypeWithReturnStatement(owner), tree.pos))
         else {
-          val from = Ident(TermRef.withSym(NoPrefix, owner.asTerm))
+          val from = Ident(TermRef(NoPrefix, owner.asTerm))
           val proto = returnProto(owner, cx.scope)
           (from, proto)
         }

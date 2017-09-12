@@ -97,8 +97,8 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   def Closure(meth: TermSymbol, rhsFn: List[List[Tree]] => Tree, targs: List[Tree] = Nil, targetType: Type = NoType)(implicit ctx: Context): Block = {
     val targetTpt = if (targetType.exists) TypeTree(targetType) else EmptyTree
     val call =
-      if (targs.isEmpty) Ident(TermRef.withSym(NoPrefix, meth))
-      else TypeApply(Ident(TermRef.withSym(NoPrefix, meth)), targs)
+      if (targs.isEmpty) Ident(TermRef(NoPrefix, meth))
+      else TypeApply(Ident(TermRef(NoPrefix, meth)), targs)
     Block(
       DefDef(meth, rhsFn) :: Nil,
       Closure(Nil, call, targetTpt))
