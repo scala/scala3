@@ -1135,9 +1135,6 @@ object SymDenotations {
     override def termRefWithSig(implicit ctx: Context): TermRef =
       TermRef.withSigAndDenot(owner.thisType, name.asTermName, signature, this)
 
-    def nonMemberTermRef(implicit ctx: Context): TermRef =
-      TermRef(owner.thisType, symbol.asTerm)
-
     /** The variance of this type parameter or type member as an Int, with
      *  +1 = Covariant, -1 = Contravariant, 0 = Nonvariant, or not a type parameter
      */

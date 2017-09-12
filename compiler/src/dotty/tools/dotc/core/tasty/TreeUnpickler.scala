@@ -753,7 +753,7 @@ class TreeUnpickler(reader: TastyReader, nameAtRef: NameRef => TermName, posUnpi
       })
       setPos(start,
         untpd.Template(constr, parents, self, lazyStats)
-          .withType(localDummy.nonMemberTermRef))
+          .withType(localDummy.termRef))
     }
 
     def skipToplevel()(implicit ctx: Context): Unit= {

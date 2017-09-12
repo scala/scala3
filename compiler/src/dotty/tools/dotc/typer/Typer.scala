@@ -1410,7 +1410,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
 
       checkNoDoubleDefs(cls)
       val impl1 = cpy.Template(impl)(constr1, parents1, self1, body1)
-        .withType(dummy.nonMemberTermRef)
+        .withType(dummy.termRef)
       checkVariance(impl1)
       if (!cls.is(AbstractOrTrait) && !ctx.isAfterTyper)
         checkRealizableBounds(cls, cdef.namePos)

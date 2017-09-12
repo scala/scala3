@@ -249,8 +249,12 @@ trait Symbols { this: Context =>
     newSymbol(cls, nme.localDummyName(cls), Fresh, NoType)
 
   /** Create an import symbol pointing back to given qualifier `expr`. */
-  def newImportSymbol(owner: Symbol, expr: Tree, coord: Coord = NoCoord) =
-    newSymbol(owner, nme.IMPORT, EmptyFlags, ImportType(expr), coord = coord)
+  def newImportSymbol(owner: Symbol, expr: Tree, coord: Coord = NoCoord): TermSymbol =
+    newImportSymbol(owner, ImportType(expr), coord = coord)
+
+  /** Create an import symbol with given `info`. */
+  def newImportSymbol(owner: Symbol, info: Type, coord: Coord): TermSymbol =
+    newSymbol(owner, nme.IMPORT, Synthetic | Fresh, info, coord = coord)
 
   /** Create a class constructor symbol for given class `cls`. */
   def newConstructor(cls: ClassSymbol, flags: FlagSet, paramNames: List[TermName], paramTypes: List[Type], privateWithin: Symbol = NoSymbol, coord: Coord = NoCoord) =
