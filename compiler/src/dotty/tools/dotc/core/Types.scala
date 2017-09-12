@@ -1124,21 +1124,16 @@ object Types {
     }
 
     /** The type <this . name> , reduced if possible */
-    def select(name: Name)(implicit ctx: Context): Type = name match {
-      case name: TermName => TermRef(this, name)
-      case name: TypeName => TypeRef(this, name).reduceProjection
-    }
+    def select(name: Name)(implicit ctx: Context): Type =
+      NamedType(this, name).reduceProjection
 
     /** The type <this . name> , reduced if possible, with given denotation if unreduced */
-    def select(name: Name, denot: Denotation)(implicit ctx: Context): Type = name match {
-      case name: TermName => TermRef(this, name, denot)
-      case name: TypeName => TypeRef(this, name, denot).reduceProjection
-    }
+    def select(name: Name, denot: Denotation)(implicit ctx: Context): Type =
+      NamedType(this, name, denot).reduceProjection
 
-    /** The type <this . name> with given symbol, reduced if possible */
+    /** The type <this . name> with either `sym` or its signed name as designator, reduced if possible */
     def select(sym: Symbol)(implicit ctx: Context): Type =
-      if (sym.isTerm) TermRef.withSym(this, sym.asTerm)
-      else TypeRef.withSym(this, sym.asType).reduceProjection
+      NamedType(this, sym, sym.name).reduceProjection
 
 // ----- Access to parts --------------------------------------------
 
@@ -1762,10 +1757,12 @@ object Types {
      *  provided `U` does not refer with a RecThis to the
      *  refinement type `T { X = U; ... }`
      */
-    def reduceProjection(implicit ctx: Context): Type = {
-      val reduced = prefix.lookupRefined(name)
-      if (reduced.exists) reduced else this
-    }
+    def reduceProjection(implicit ctx: Context): Type =
+      if (isType) {
+        val reduced = prefix.lookupRefined(name)
+        if (reduced.exists) reduced else this
+      }
+      else this
 
     def symbol(implicit ctx: Context): Symbol =
       if (checkedPeriod == ctx.period ||
@@ -2033,14 +2030,12 @@ object Types {
     def apply(prefix: Type, designator: Name, denot: Denotation)(implicit ctx: Context) =
       if (designator.isTermName) TermRef(prefix, designator.asTermName, denot)
       else TypeRef(prefix, designator.asTypeName, denot)
-    def withSymAndName(prefix: Type, sym: Symbol, name: Name)(implicit ctx: Context): NamedType =
-      if (sym.isType) TypeRef.withSymAndName(prefix, sym.asType, name.asTypeName)
-      else TermRef.withSymAndName(prefix, sym.asTerm, name.asTermName)
+    def apply(prefix: Type, sym: Symbol, name: Name)(implicit ctx: Context): NamedType =
+      if (sym.isType) TypeRef.apply(prefix, sym.asType, name.asTypeName)
+      else TermRef.apply(prefix, sym.asTerm, name.asTermName)
   }
 
   object TermRef {
-
-    private def symbolicRefs(implicit ctx: Context) = ctx.phase.symbolicRefs
 
     /** Create term ref with given name, without specifying a signature.
      *  Its meaning is the (potentially multi-) denotation of the member(s)
@@ -2049,59 +2044,44 @@ object Types {
     def apply(prefix: Type, designator: TermDesignator)(implicit ctx: Context): TermRef =
       ctx.uniqueNamedTypes.enterIfNew(prefix, designator, isTerm = true).asInstanceOf[TermRef]
 
-    /** Create term ref referring to given symbol, taking the signature
-     *  from the symbol if it is completed, or creating a term ref without
-     *  signature, if symbol is not yet completed.
+    /** Create a term ref referring to given symbol with given name.
+     *  This is similar to TermRef(Type, Symbol), except:
+     *  (1) the symbol might not yet have a denotation, so the name needs to be given explicitly.
+     *  (2) the designator of the TermRef is either the symbol or its name & unforced signature.
      */
-    def withSym(prefix: Type, sym: TermSymbol)(implicit ctx: Context): TermRef =
-      withSymAndName(prefix, sym, sym.name)
+    def apply(prefix: Type, sym: TermSymbol, name: TermName)(implicit ctx: Context): TermRef =
+      if ((prefix eq NoPrefix) || sym.isReferencedSymbolically)
+        apply(prefix, sym)
+      else
+        withSig(prefix, name.asTermName, sym.unforcedSignature).withSym(sym)
 
     /** Create term ref to given initial denotation, taking the signature
      *  from the denotation if it is completed, or creating a term ref without
      *  signature, if denotation is not yet completed.
      */
     def apply(prefix: Type, designator: TermName, denot: Denotation)(implicit ctx: Context): TermRef = {
-      if ((prefix eq NoPrefix) || denot.symbol.isReferencedSymbolically || symbolicRefs)
-        withSym(prefix, denot.symbol.asTerm)
+      if ((prefix eq NoPrefix) || denot.symbol.isReferencedSymbolically)
+        apply(prefix, denot.symbol.asTerm)
       else denot match {
         case denot: SymDenotation if denot.isCompleted => withSig(prefix, designator, denot.signature)
         case _ => apply(prefix, designator)
       }
     } withDenot denot
 
-    /** Create a term ref referring to given symbol with given name, taking the signature
-     *  from the symbol if it is completed, or creating a term ref without
-     *  signature, if symbol is not yet completed. This is very similar to TermRef(Type, Symbol),
-     *  except for two differences:
-     *  (1) The symbol might not yet have a denotation, so the name needs to be given explicitly.
-     *  (2) The name in the term ref need not be the same as the name of the Symbol.
-     */
-    def withSymAndName(prefix: Type, sym: TermSymbol, name: TermName)(implicit ctx: Context): TermRef =
-      if ((prefix eq NoPrefix) || sym.isReferencedSymbolically|| symbolicRefs)
-        apply(prefix, sym)
-      else if (sym.defRunId != NoRunId && sym.isCompleted)
-        withSig(prefix, name, sym.signature).withSym(sym)
-        // Linker note:
-        // this is problematic, as withSig method could return a hash-consed refference
-        // that could have symbol already set making withSym trigger a double-binding error
-        // ./tests/run/absoverride.scala demonstates this
-      else
-        withSig(prefix, name, Signature.NotAMethod).withSym(sym)
-
     /** Create a term ref to given symbol, taking the signature from the symbol
      *  (which must be completed).
      */
     def withSig(prefix: Type, sym: TermSymbol)(implicit ctx: Context): TermRef =
-      if ((prefix eq NoPrefix) || sym.isReferencedSymbolically || symbolicRefs) apply(prefix, sym)
+      if ((prefix eq NoPrefix) || sym.isReferencedSymbolically) apply(prefix, sym)
       else withSig(prefix, sym.name, sym.signature).withSym(sym)
 
     /** Create a term ref with given prefix, name and signature */
-    def withSig(prefix: Type, designator: TermName, sig: Signature)(implicit ctx: Context): TermRef =
-      apply(prefix, designator.withSig(sig))
+    def withSig(prefix: Type, name: TermName, sig: Signature)(implicit ctx: Context): TermRef =
+      apply(prefix, name.withSig(sig))
 
     /** Create a term ref with given prefix, name, signature, and initial denotation */
     def withSigAndDenot(prefix: Type, name: TermName, sig: Signature, denot: Denotation)(implicit ctx: Context): TermRef = {
-      if ((prefix eq NoPrefix) || denot.symbol.isReferencedSymbolically || symbolicRefs)
+      if ((prefix eq NoPrefix) || denot.symbol.isReferencedSymbolically)
         apply(prefix, denot.symbol.asTerm)
       else
         withSig(prefix, name, sig)
@@ -2109,27 +2089,23 @@ object Types {
   }
 
   object TypeRef {
+
     /** Create type ref with given prefix and name */
     def apply(prefix: Type, desig: TypeDesignator)(implicit ctx: Context): TypeRef =
       ctx.uniqueNamedTypes.enterIfNew(prefix, desig, isTerm = false).asInstanceOf[TypeRef]
 
-    /** Create type ref to given symbol */
-    def withSym(prefix: Type, sym: TypeSymbol)(implicit ctx: Context): TypeRef =
-      withSymAndName(prefix, sym, sym.name)
-
-    /** Create a type ref referring to given symbol with given name.
-     *  This is very similar to TypeRef(Type, Symbol),
-     *  except for two differences:
-     *  (1) The symbol might not yet have a denotation, so the name needs to be given explicitly.
-     *  (2) The name in the type ref need not be the same as the name of the Symbol.
+    /** Create a type ref referring to either a given symbol or its name.
+     *  This is similar to TypeRef(prefix, sym), except:
+     *  (1) the symbol might not yet have a denotation, so the name needs to be given explicitly.
+     *  (2) the designator of the TypeRef is either the symbol or its name
      */
-    def withSymAndName(prefix: Type, sym: TypeSymbol, name: TypeName)(implicit ctx: Context): TypeRef =
+    def apply(prefix: Type, sym: TypeSymbol, name: TypeName)(implicit ctx: Context): TypeRef =
       if ((prefix eq NoPrefix) || sym.isReferencedSymbolically) apply(prefix, sym)
       else apply(prefix, name).withSym(sym)
 
     /** Create a type ref with given name and initial denotation */
     def apply(prefix: Type, name: TypeName, denot: Denotation)(implicit ctx: Context): TypeRef = {
-      if ((prefix eq NoPrefix) || denot.symbol.isReferencedSymbolically) withSym(prefix, denot.symbol.asType)
+      if ((prefix eq NoPrefix) || denot.symbol.isReferencedSymbolically) apply(prefix, denot.symbol.asType)
       else apply(prefix, name)
     } withDenot denot
   }
@@ -3416,7 +3392,7 @@ object Types {
       appliedRefCache
     }
 
-    def symbolicTypeRef(implicit ctx: Context): TypeRef = TypeRef.withSym(prefix, cls)
+    def symbolicTypeRef(implicit ctx: Context): TypeRef = TypeRef(prefix, cls, cls.name)
 
     // cached because baseType needs parents
     private[this] var parentsCache: List[Type] = null

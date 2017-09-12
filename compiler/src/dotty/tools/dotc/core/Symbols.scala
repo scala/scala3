@@ -154,7 +154,7 @@ trait Symbols { this: Context =>
         infoFn(module, modcls), privateWithin)
     val mdenot = SymDenotation(
         module, owner, name, modFlags | ModuleCreationFlags,
-        if (cdenot.isCompleted) TypeRef.withSymAndName(owner.thisType, modcls, modclsName)
+        if (cdenot.isCompleted) TypeRef(owner.thisType, modcls, modclsName)
         else new ModuleCompleter(modcls))
     module.denot = mdenot
     modcls.denot = cdenot
@@ -179,7 +179,7 @@ trait Symbols { this: Context =>
     newModuleSymbol(
         owner, name, modFlags, clsFlags,
         (module, modcls) => ClassInfo(
-          owner.thisType, modcls, parents, decls, TermRef.withSymAndName(owner.thisType, module, name)),
+          owner.thisType, modcls, parents, decls, TermRef(owner.thisType, module, name)),
         privateWithin, coord, assocFile)
 
   val companionMethodFlags = Flags.Synthetic | Flags.Private | Flags.Method
@@ -287,7 +287,7 @@ trait Symbols { this: Context =>
     for (name <- names) {
       val tparam = newNakedSymbol[TypeName](NoCoord)
       tparamBuf += tparam
-      trefBuf += TypeRef.withSymAndName(owner.thisType, tparam, name)
+      trefBuf += TypeRef(owner.thisType, tparam, name)
     }
     val tparams = tparamBuf.toList
     val bounds = boundsFn(trefBuf.toList)
@@ -443,18 +443,22 @@ object Symbols {
       asInstanceOf[TypeSymbol]
     }
 
-
     final def isClass: Boolean = isInstanceOf[ClassSymbol]
     final def asClass: ClassSymbol = asInstanceOf[ClassSymbol]
 
     final def isReferencedSymbolically(implicit ctx: Context) = {
-      val sym = lastDenot
-      sym != null && (
-           (sym is NonMember)
-        || sym.isClass && sym.is(Scala2x) && !sym.owner.is(Package)
-        || sym.isTerm && ctx.phase.symbolicRefs
+      val d = lastDenot
+      d != null && (
+           (d is NonMember)
+        || d.isClass && d.is(Scala2x) && !d.owner.is(Package)
+        || d.isTerm && ctx.phase.symbolicRefs
         )
     }
+
+    /** The symbol's signature if it is completed, NotAMethod otherwise. */
+    final def unforcedSignature(implicit ctx: Context) =
+      if (lastDenot != null && lastDenot.isCompleted) lastDenot.signature
+      else Signature.NotAMethod
 
     /** Special cased here, because it may be used on naked symbols in substituters */
     final def isStatic(implicit ctx: Context): Boolean =
