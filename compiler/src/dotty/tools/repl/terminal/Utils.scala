@@ -199,8 +199,9 @@ object FrontEndUtils {
               .grouped(math.ceil(snippets.length * 1.0 / columns).toInt)
               .toList
 
-    transpose(grouped).iterator.flatMap {
-      case first :+ last => first.map(
+    transpose(grouped).iterator.flatMap { group =>
+      val last = group.last
+      group.init.map(
         x => x ++ " " * (width / columns - x.length)
       ) :+ last :+ Ansi.Str.parse(newLine)
     }
