@@ -1126,6 +1126,7 @@ object Build {
   }
 
   lazy val commonDistSettings = packSettings ++ Seq(
+    packMain := Map(),
     publishArtifact := false,
     packGenerateMakefile := false,
     packExpandedClasspath := true,
