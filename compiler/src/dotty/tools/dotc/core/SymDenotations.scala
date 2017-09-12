@@ -1136,7 +1136,7 @@ object SymDenotations {
       TermRef.withSigAndDenot(owner.thisType, name.asTermName, signature, this)
 
     def nonMemberTermRef(implicit ctx: Context): TermRef =
-      TermRef.withFixedSym(owner.thisType, symbol.asTerm)
+      TermRef(owner.thisType, symbol.asTerm)
 
     /** The variance of this type parameter or type member as an Int, with
      *  +1 = Covariant, -1 = Contravariant, 0 = Nonvariant, or not a type parameter
@@ -1402,7 +1402,7 @@ object SymDenotations {
     }
 
     private def computeThisType(implicit ctx: Context): Type =
-      ThisType.raw(TypeRef(
+      ThisType.raw(TypeRef.withSym(
           if (this is Package) NoPrefix else owner.thisType, symbol.asType))
 
     private[this] var myTypeRef: TypeRef = null

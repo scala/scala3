@@ -17,7 +17,7 @@ class MixinOps(cls: ClassSymbol, thisTransform: DenotTransformer)(implicit ctx: 
   lazy val JUnit4Annotations: List[Symbol] = List("Test", "Ignore", "Before", "After", "BeforeClass", "AfterClass").
     map(n => ctx.getClassIfDefined("org.junit." + n)).
     filter(_.exists)
-  
+
   def implementation(member: TermSymbol): TermSymbol = {
     val res = member.copy(
       owner = cls,
@@ -35,7 +35,7 @@ class MixinOps(cls: ClassSymbol, thisTransform: DenotTransformer)(implicit ctx: 
       Super(This(cls), target.owner.name.asTypeName, false, target.owner)
     //println(i"super ref $target on $sup")
     ast.untpd.Select(sup.withPos(pos), target.name)
-      .withType(NamedType.withFixedSym(sup.tpe, target))
+      .withType(NamedType(sup.tpe, target))
     //sup.select(target)
   }
 

@@ -246,7 +246,7 @@ trait Symbols { this: Context =>
    *  would be `fld2`. There is a single local dummy per template.
    */
   def newLocalDummy(cls: Symbol, coord: Coord = NoCoord) =
-    newSymbol(cls, nme.localDummyName(cls), EmptyFlags, NoType)
+    newSymbol(cls, nme.localDummyName(cls), Fresh, NoType)
 
   /** Create an import symbol pointing back to given qualifier `expr`. */
   def newImportSymbol(owner: Symbol, expr: Tree, coord: Coord = NoCoord) =

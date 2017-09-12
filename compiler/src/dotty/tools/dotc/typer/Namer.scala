@@ -325,7 +325,7 @@ class Namer { typer: Typer =>
           privateWithinClass(tree.mods), tree.namePos), tree)
       case tree: Import =>
         recordSym(ctx.newSymbol(
-          ctx.owner, nme.IMPORT, Synthetic, new Completer(tree), NoSymbol, tree.pos), tree)
+          ctx.owner, nme.IMPORT, Synthetic | Fresh, new Completer(tree), NoSymbol, tree.pos), tree)
       case _ =>
         NoSymbol
     }
