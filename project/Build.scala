@@ -228,9 +228,8 @@ object Build {
         .filterNot(_.get(artifact.key).exists(_.name == "dotty-library"))
         .map(_.data)
 
-      // This ScalaInstance#apply overload is deprecated in sbt 0.13, but the non-deprecated
-      // constructor in sbt 1.0 does not exist in sbt 0.13
-      ScalaInstance(scalaVersion.value, libraryJar, compilerJar, otherDependencies: _*)(state.value.classLoaderCache.apply)
+      val loader = state.value.classLoaderCache(libraryJar :: compilerJar :: otherDependencies.toList)
+      new ScalaInstance(scalaVersion.value, loader, libraryJar, compilerJar, otherDependencies, None)
     }
   )
 
