@@ -26,6 +26,7 @@ object Bench {
 
     val warmup = if (intArgs.length > 0) intArgs(0).toInt else 30
     val iterations = if (intArgs.length > 1) intArgs(1).toInt else 20
+    val forks = if (intArgs.length > 2) intArgs(2).toInt else 1
 
     val args2 = args1.map { arg =>
       if ((arg.endsWith(".scala") || arg.endsWith(".java")) && arg.head != '/') "../" + arg
@@ -39,9 +40,9 @@ object Bench {
                .jvmArgsPrepend("-Xbootclasspath/a:" + libs + ":")
                .mode(Mode.AverageTime)
                .timeUnit(TimeUnit.MILLISECONDS)
-               .forks(1)
                .warmupIterations(warmup)
                .measurementIterations(iterations)
+               .forks(forks)
                .build
 
     val runner = new Runner(opts) // full access to all JMH features, you can also provide a custom output Format here
