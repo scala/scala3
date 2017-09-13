@@ -710,7 +710,7 @@ class TreeUnpickler(reader: TastyReader, nameAtRef: NameRef => TermName, posUnpi
       val cls = ctx.owner.asClass
       val assumedSelfType =
         if (cls.is(Module) && cls.owner.isClass)
-          TermRef.withSig(cls.owner.thisType, cls.name.sourceModuleName, Signature.NotAMethod)
+          TermRef(cls.owner.thisType, cls.name.sourceModuleName.withSig(Signature.NotAMethod))
         else NoType
       cls.info = new TempClassInfo(cls.owner.thisType, cls, cls.unforcedDecls, assumedSelfType)
       val localDummy = symbolAtCurrent()
@@ -871,7 +871,7 @@ class TreeUnpickler(reader: TastyReader, nameAtRef: NameRef => TermName, posUnpi
           untpd.Ident(readName().toTypeName).withType(readType())
         case SELECT =>
           def readRest(name: Name, sig: Signature) =
-            completeSelect(name, TermRef.withSig(_, name.asTermName, sig))
+            completeSelect(name, TermRef(_, name.asTermName.withSig(sig)))
           readName() match {
             case SignedName(name, sig) => readRest(name, sig)
             case name => readRest(name, Signature.NotAMethod)
