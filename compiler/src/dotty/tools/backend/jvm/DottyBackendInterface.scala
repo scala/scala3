@@ -554,7 +554,17 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
     def mangledString: String = n.mangledString
   }
 
-  implicit def symHelper(sym: Symbol): SymbolHelper = new SymbolHelper {
+  implicit def symHelper(sym: Symbol): SymbolHelper = {
+    if (symHelpers.containsKey(sym)) {
+      symHelpers.get(sym)
+    } else {
+      val symHelper = new SymHelper(sym)
+      symHelpers.put(sym, symHelper)
+      symHelper
+    }
+  }
+  private lazy val symHelpers = new java.util.IdentityHashMap[Symbol, SymbolHelper]
+  private class SymHelper(sym: Symbol) extends SymbolHelper {
     // names
     def fullName(sep: Char): String = sym.showFullName
     def fullName: String = sym.showFullName
