@@ -455,10 +455,12 @@ object Symbols {
         )
     }
 
-    /** The symbol's signature if it is completed, NotAMethod otherwise. */
-    final def unforcedSignature(implicit ctx: Context) =
-      if (lastDenot != null && lastDenot.isCompleted) lastDenot.signature
-      else Signature.NotAMethod
+    /** The symbol's signature if it is completed or a method, NotAMethod otherwise. */
+    final def signature(implicit ctx: Context) =
+      if (lastDenot != null && (lastDenot.isCompleted || lastDenot.is(Method)))
+        denot.signature
+      else
+        Signature.NotAMethod
 
     /** Special cased here, because it may be used on naked symbols in substituters */
     final def isStatic(implicit ctx: Context): Boolean =

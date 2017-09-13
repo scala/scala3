@@ -428,7 +428,7 @@ trait ImplicitRunInfo { self: RunInfo =>
               def addRef(companion: TermRef): Unit = {
                 val compSym = companion.symbol
                 if (compSym is Package)
-                  addRef(TermRef.withSig(companion, nme.PACKAGE, Signature.NotAMethod))
+                  addRef(TermRef(companion, nme.PACKAGE.withSig(Signature.NotAMethod)))
                 else if (compSym.exists)
                   comps += companion.asSeenFrom(pre, compSym.owner).asInstanceOf[TermRef]
               }

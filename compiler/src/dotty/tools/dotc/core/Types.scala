@@ -707,7 +707,10 @@ object Types {
     final def implicitMembers(implicit ctx: Context): List[TermRef] = track("implicitMembers") {
       memberDenots(implicitFilter,
           (name, buf) => buf ++= member(name).altsWith(_ is Implicit))
-        .toList.map(d => TermRef.withSig(this, d.symbol.asTerm))
+        .toList.map { d =>
+          val mbr = d.symbol.asTerm
+          TermRef(this, mbr, mbr.name)
+        }
     }
 
     /** The set of member classes of this type */
@@ -1729,7 +1732,7 @@ object Types {
     }
 
     private def withSig(sig: Signature)(implicit ctx: Context): NamedType =
-      TermRef.withSig(prefix, name.asTermName, sig)
+      TermRef(prefix, name.asTermName.withSig(sig))
 
     protected def loadDenot(implicit ctx: Context): Denotation = {
       val d = asMemberOf(prefix, allowPrivate = true)
@@ -1985,7 +1988,7 @@ object Types {
         val candidate =
           if (newSig ne curSig) {
             core.println(i"sig change at ${ctx.phase} for $this, pre = $prefix, sig: $curSig --> $newSig")
-            TermRef.withSig(prefix, name, newSig)
+            TermRef(prefix, name.withSig(newSig))
           }
           else TermRef(prefix, designator)
         fixDenot(candidate, prefix)
@@ -2050,41 +2053,30 @@ object Types {
      *  (2) the designator of the TermRef is either the symbol or its name & unforced signature.
      */
     def apply(prefix: Type, sym: TermSymbol, name: TermName)(implicit ctx: Context): TermRef =
-      if ((prefix eq NoPrefix) || sym.isReferencedSymbolically)
-        apply(prefix, sym)
-      else
-        withSig(prefix, name.asTermName, sym.unforcedSignature).withSym(sym)
+      if ((prefix eq NoPrefix) || sym.isReferencedSymbolically) apply(prefix, sym)
+      else apply(prefix, name.withSig(sym.signature)).withSym(sym)
 
     /** Create term ref to given initial denotation, taking the signature
      *  from the denotation if it is completed, or creating a term ref without
      *  signature, if denotation is not yet completed.
      */
-    def apply(prefix: Type, designator: TermName, denot: Denotation)(implicit ctx: Context): TermRef = {
+    def apply(prefix: Type, name: TermName, denot: Denotation)(implicit ctx: Context): TermRef = {
       if ((prefix eq NoPrefix) || denot.symbol.isReferencedSymbolically)
         apply(prefix, denot.symbol.asTerm)
       else denot match {
-        case denot: SymDenotation if denot.isCompleted => withSig(prefix, designator, denot.signature)
-        case _ => apply(prefix, designator)
+        case denot: SymDenotation if denot.isCompleted =>
+          apply(prefix, name.withSig(denot.signature))
+        case _ =>
+          apply(prefix, name)
       }
     } withDenot denot
-
-    /** Create a term ref to given symbol, taking the signature from the symbol
-     *  (which must be completed).
-     */
-    def withSig(prefix: Type, sym: TermSymbol)(implicit ctx: Context): TermRef =
-      if ((prefix eq NoPrefix) || sym.isReferencedSymbolically) apply(prefix, sym)
-      else withSig(prefix, sym.name, sym.signature).withSym(sym)
-
-    /** Create a term ref with given prefix, name and signature */
-    def withSig(prefix: Type, name: TermName, sig: Signature)(implicit ctx: Context): TermRef =
-      apply(prefix, name.withSig(sig))
 
     /** Create a term ref with given prefix, name, signature, and initial denotation */
     def withSigAndDenot(prefix: Type, name: TermName, sig: Signature, denot: Denotation)(implicit ctx: Context): TermRef = {
       if ((prefix eq NoPrefix) || denot.symbol.isReferencedSymbolically)
         apply(prefix, denot.symbol.asTerm)
       else
-        withSig(prefix, name, sig)
+        apply(prefix, name.withSig(sig))
     } withDenot denot
   }
 

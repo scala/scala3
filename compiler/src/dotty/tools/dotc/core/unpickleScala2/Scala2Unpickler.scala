@@ -704,8 +704,8 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
       case SINGLEtpe =>
         val pre = readTypeRef()
         val sym = readDisambiguatedSymbolRef(_.info.isParameterless)
-        if (isLocal(sym) || (pre == NoPrefix)) pre select sym
-        else TermRef.withSig(pre, sym.name.asTermName, Signature.NotAMethod) // !!! should become redundant
+        if (isLocal(sym) || (pre eq NoPrefix)) pre select sym
+        else TermRef(pre, sym.name.asTermName.withSig(Signature.NotAMethod)) // !!! should become redundant
       case SUPERtpe =>
         val thistpe = readTypeRef()
         val supertpe = readTypeRef()
