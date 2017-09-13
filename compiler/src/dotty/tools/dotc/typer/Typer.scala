@@ -1904,7 +1904,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     def adaptOverloaded(ref: TermRef) = {
       val altDenots = ref.denot.alternatives
       typr.println(i"adapt overloaded $ref with alternatives ${altDenots map (_.info)}%, %")
-      val alts = altDenots.map(TermRef.withSigAndDenot(ref.prefix, ref.name, _))
+      val alts = altDenots.map(TermRef(ref.prefix, ref.name, _))
       resolveOverloaded(alts, pt) match {
         case alt :: Nil =>
           adapt(tree.withType(alt), pt)
