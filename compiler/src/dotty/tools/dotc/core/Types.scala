@@ -1957,7 +1957,7 @@ object Types {
     override def isOverloaded(implicit ctx: Context) = denot.isOverloaded
 
     private def rewrap(sd: SingleDenotation)(implicit ctx: Context) =
-      TermRef.withSigAndDenot(prefix, name, sd.signature, sd)
+      TermRef.withSigAndDenot(prefix, name, sd)
 
     def alternatives(implicit ctx: Context): List[TermRef] =
       denot.alternatives map rewrap
@@ -2072,11 +2072,11 @@ object Types {
     } withDenot denot
 
     /** Create a term ref with given prefix, name, signature, and initial denotation */
-    def withSigAndDenot(prefix: Type, name: TermName, sig: Signature, denot: Denotation)(implicit ctx: Context): TermRef = {
+    def withSigAndDenot(prefix: Type, name: TermName, denot: Denotation)(implicit ctx: Context): TermRef = {
       if ((prefix eq NoPrefix) || denot.symbol.isReferencedSymbolically)
         apply(prefix, denot.symbol.asTerm)
       else
-        apply(prefix, name.withSig(sig))
+        apply(prefix, name.withSig(denot.signature))
     } withDenot denot
   }
 

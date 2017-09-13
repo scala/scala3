@@ -703,7 +703,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
         }
         else
           TermRef.withSigAndDenot(tree.tpe, sym.name.asTermName,
-            sym.signature, sym.denot.asSeenFrom(tree.tpe))
+            sym.denot.asSeenFrom(tree.tpe))
       untpd.Select(tree, sym.name).withType(tp)
     }
 

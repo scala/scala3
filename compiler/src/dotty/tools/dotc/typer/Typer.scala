@@ -1516,7 +1516,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
           ctx
         }
       val stats1 = typedStats(tree.stats, pkg.moduleClass)(packageContext)
-      cpy.PackageDef(tree)(pid1.asInstanceOf[RefTree], stats1) withType pkg.valRef
+      cpy.PackageDef(tree)(pid1.asInstanceOf[RefTree], stats1) withType pkg.termRef
     } else errorTree(tree, i"package ${tree.pid.name} does not exist")
   }
 
@@ -1904,8 +1904,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     def adaptOverloaded(ref: TermRef) = {
       val altDenots = ref.denot.alternatives
       typr.println(i"adapt overloaded $ref with alternatives ${altDenots map (_.info)}%, %")
-      val alts = altDenots map (alt =>
-        TermRef.withSigAndDenot(ref.prefix, ref.name, alt.info.signature, alt))
+      val alts = altDenots.map(TermRef.withSigAndDenot(ref.prefix, ref.name, _))
       resolveOverloaded(alts, pt) match {
         case alt :: Nil =>
           adapt(tree.withType(alt), pt)

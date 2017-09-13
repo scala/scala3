@@ -102,7 +102,7 @@ class ImportInfo(symf: Context => Symbol, val selectors: List[untpd.Tree],
       for {
         renamed <- reverseMapping.keys
         denot <- pre.member(reverseMapping(renamed)).altsWith(_ is Implicit)
-      } yield TermRef.withSigAndDenot(pre, renamed, denot.signature, denot)
+      } yield TermRef.withSigAndDenot(pre, renamed, denot)
   }
 
   /** The root import symbol hidden by this symbol, or NoSymbol if no such symbol is hidden.

@@ -515,10 +515,10 @@ trait TypeAssigner {
     tree.withType(proto)
 
   def assignType(tree: untpd.ValDef, sym: Symbol)(implicit ctx: Context) =
-    tree.withType(if (sym.exists) assertExists(symbolicIfNeeded(sym).orElse(sym.valRef)) else NoType)
+    tree.withType(if (sym.exists) assertExists(symbolicIfNeeded(sym).orElse(sym.termRef)) else NoType)
 
   def assignType(tree: untpd.DefDef, sym: Symbol)(implicit ctx: Context) =
-    tree.withType(symbolicIfNeeded(sym).orElse(sym.termRefWithSig))
+    tree.withType(symbolicIfNeeded(sym).orElse(sym.termRef))
 
   def assignType(tree: untpd.TypeDef, sym: Symbol)(implicit ctx: Context) =
     tree.withType(symbolicIfNeeded(sym).orElse(sym.typeRef))
@@ -545,7 +545,7 @@ trait TypeAssigner {
     tree.withType(AnnotatedType(arg.tpe.widen, Annotation(annot)))
 
   def assignType(tree: untpd.PackageDef, pid: Tree)(implicit ctx: Context) =
-    tree.withType(pid.symbol.valRef)
+    tree.withType(pid.symbol.termRef)
 
   /** Ensure that `tree2`'s type is in the same universe as `tree1`. If that's the case, return
    *  `op` applied to both types.

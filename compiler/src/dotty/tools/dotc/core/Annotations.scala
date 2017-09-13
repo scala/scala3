@@ -140,7 +140,7 @@ object Annotations {
 
     def makeAlias(sym: TermSymbol)(implicit ctx: Context) =
       apply(defn.AliasAnnot, List(
-        ref(TermRef.withSigAndDenot(sym.owner.thisType, sym.name, sym.signature, sym))))
+        ref(TermRef.withSigAndDenot(sym.owner.thisType, sym.name, sym))))
 
     def makeChild(delayedSym: Context => Symbol)(implicit ctx: Context): Annotation = {
       def makeChildLater(implicit ctx: Context) = {
