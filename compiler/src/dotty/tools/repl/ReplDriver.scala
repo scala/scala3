@@ -109,7 +109,7 @@ class ReplDriver(settings: Array[String],
       if (rootCtx.settings.d.isDefault(rootCtx))
         new VirtualDirectory("(memory)", None)
       else
-        new PlainDirectory(new Directory(new JFile(rootCtx.settings.d.value(rootCtx))))
+        new PlainDirectory(rootCtx.settings.d.value(rootCtx))
     }
     compiler = new ReplCompiler(outDir)
     rendering = new Rendering(compiler, classLoader)
