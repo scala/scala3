@@ -1501,8 +1501,6 @@ object Types {
     private[this] var myName: ThisName = _
     private[this] var mySig: Signature = null
 
-    def designatorName: Name = designator.asInstanceOf[Name] // ### todo: remove
-
     private[dotc] def init()(implicit ctx: Context): this.type = {
       (designator: Designator) match { // dotty shortcoming: need the upcast
         case DerivedName(underlying, info: SignedName.SignedInfo) =>
@@ -1921,7 +1919,10 @@ object Types {
      *  the public name.
      */
     def shadowed(implicit ctx: Context): NamedType =
-      NamedType(prefix, designatorName.derived(ShadowedName))
+      designator match {
+        case designator: Symbol => this
+        case designator: Name => NamedType(prefix, designator.derived(ShadowedName))
+      }
 
     override def equals(that: Any) = that match {
       case that: NamedType =>

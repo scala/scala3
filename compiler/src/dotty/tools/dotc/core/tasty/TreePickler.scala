@@ -144,39 +144,41 @@ class TreePickler(pickler: TastyPickler) {
       pickleConstant(value)
     case tpe: NamedType =>
       val sym = tpe.symbol
-      def pickleDirectRef() = {
-        writeByte(if (tpe.isType) TYPEREFdirect else TERMREFdirect)
-        pickleSymRef(sym)
-      }
       if (sym.is(Flags.Package)) {
         writeByte(if (tpe.isType) TYPEREFpkg else TERMREFpkg)
         pickleName(sym.fullName)
       }
-      else if (sym is Flags.BindDefinedType) {
-        registerDef(sym)
-        writeByte(BIND)
-        withLength {
-          pickleName(sym.name)
-          pickleType(sym.info)
-          pickleDirectRef()
-        }
-      }
       else if (tpe.prefix == NoPrefix) {
-        pickleDirectRef()
+        def pickleDirectRef() = {
+          writeByte(if (tpe.isType) TYPEREFdirect else TERMREFdirect)
+          pickleSymRef(sym)
+        }
+        if (sym is Flags.BindDefinedType) {
+          registerDef(sym)
+          writeByte(BIND)
+          withLength {
+            pickleName(sym.name)
+            pickleType(sym.info)
+            pickleDirectRef()
+          }
+        }
+        else pickleDirectRef()
       }
       else if (isLocallyDefined(sym)) {
         writeByte(if (tpe.isType) TYPEREFsymbol else TERMREFsymbol)
         pickleSymRef(sym); pickleType(tpe.prefix)
       }
-      else if (tpe.hasFixedSym) {
-        assert(tpe.symbol.isClass && tpe.symbol.is(Flags.Scala2x), tpe.symbol.showLocated)
-        writeByte(TYPEREF) // should be changed to a new entry that keeps track of prefix, symbol & owner
-        pickleName(tpe.name)
-        pickleType(tpe.prefix)
-      }
       else {
+        val name = tpe.designator match {
+          case designator: Symbol =>
+            assert(tpe.symbol.isClass && tpe.symbol.is(Flags.Scala2x), tpe.symbol.showLocated)
+            // Note: vulnerability here, since Scala2x allows several classes with same name and prefix
+            designator.name
+          case designator: Name =>
+            designator
+        }
         writeByte(if (tpe.isType) TYPEREF else TERMREF)
-        pickleName(tpe.designatorName); pickleType(tpe.prefix)
+        pickleName(name); pickleType(tpe.prefix)
       }
     case tpe: ThisType =>
       if (tpe.cls.is(Flags.Package) && !tpe.cls.isEffectiveRoot) {
