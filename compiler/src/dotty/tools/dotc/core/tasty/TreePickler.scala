@@ -144,18 +144,10 @@ class TreePickler(pickler: TastyPickler) {
       pickleConstant(value)
     case tpe: NamedType =>
       val sym = tpe.symbol
-      def pickleRef() =
-        if (tpe.prefix == NoPrefix) {
-          writeByte(if (tpe.isType) TYPEREFdirect else TERMREFdirect)
-          pickleSymRef(sym)
-        }
-        else {
-          assert(tpe.symbol.isClass)
-          assert(tpe.symbol.is(Flags.Scala2x), tpe.symbol.showLocated)
-          writeByte(TYPEREF) // should be changed to a new entry that keeps track of prefix, symbol & owner
-          pickleName(tpe.name)
-          pickleType(tpe.prefix)
-        }
+      def pickleDirectRef() = {
+        writeByte(if (tpe.isType) TYPEREFdirect else TERMREFdirect)
+        pickleSymRef(sym)
+      }
       if (sym.is(Flags.Package)) {
         writeByte(if (tpe.isType) TYPEREFpkg else TERMREFpkg)
         pickleName(sym.fullName)
@@ -166,16 +158,23 @@ class TreePickler(pickler: TastyPickler) {
         withLength {
           pickleName(sym.name)
           pickleType(sym.info)
-          pickleRef()
+          pickleDirectRef()
         }
       }
-      else if (tpe.hasFixedSym) {
-        pickleRef()
+      else if (tpe.prefix == NoPrefix) {
+        pickleDirectRef()
       }
-      else if (isLocallyDefined(sym) && tpe.signature.eq(Signature.NotAMethod)) {
+      else if (isLocallyDefined(sym)) {
         writeByte(if (tpe.isType) TYPEREFsymbol else TERMREFsymbol)
         pickleSymRef(sym); pickleType(tpe.prefix)
-      } else {
+      }
+      else if (tpe.hasFixedSym) {
+        assert(tpe.symbol.isClass && tpe.symbol.is(Flags.Scala2x), tpe.symbol.showLocated)
+        writeByte(TYPEREF) // should be changed to a new entry that keeps track of prefix, symbol & owner
+        pickleName(tpe.name)
+        pickleType(tpe.prefix)
+      }
+      else {
         writeByte(if (tpe.isType) TYPEREF else TERMREF)
         pickleName(tpe.designatorName); pickleType(tpe.prefix)
       }
