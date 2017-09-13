@@ -97,7 +97,7 @@ pipeline:
     channel: dotty
     secrets: [ slack_webhook ]
     when:
-      status: [ success, failure ]
+      status: [ failure ]
       event: [ push, tag, deployment ]
 
 # CI runs only for the master branch (including PRs)
