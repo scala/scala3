@@ -435,7 +435,7 @@ trait ImplicitRunInfo { self: RunInfo =>
               def addParentScope(parent: Type): Unit =
                 iscopeRefs(tp.baseType(parent.typeSymbol)) foreach addRef
               val companion = cls.companionModule
-              if (companion.exists) addRef(companion.valRef)
+              if (companion.exists) addRef(companion.termRef)
               cls.classParents foreach addParentScope
             }
             tp.classSymbols(liftingCtx) foreach addClassScope
