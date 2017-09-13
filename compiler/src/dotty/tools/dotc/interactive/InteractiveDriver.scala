@@ -183,17 +183,15 @@ class InteractiveDriver(settings: List[String]) extends Driver {
    *  typed children if the source contains errors.
    */
   private def cleanup(tree: tpd.Tree)(implicit ctx: Context): Unit = {
-    val cleanedTree = mutable.Set.empty[tpd.Tree]
+    val seen = mutable.Set.empty[tpd.Tree]
     def cleanupTree(tree: tpd.Tree): Unit = {
-      cleanedTree += tree
+      seen += tree
       tree.foreachSubTree { t =>
-        if (t.hasType) {
-          if (t.symbol.exists) {
-            if (!t.symbol.isCompleted) t.symbol.info = UnspecifiedErrorType
-            t.symbol.annotations.foreach { annot =>
-              if (!cleanedTree(annot.tree))
-                cleanupTree(annot.tree)
-            }
+        if (t.symbol.exists && t.hasType) {
+          if (!t.symbol.isCompleted) t.symbol.info = UnspecifiedErrorType
+          t.symbol.annotations.foreach { annot =>
+            if (!seen(annot.tree))
+              cleanupTree(annot.tree)
           }
         }
         t.removeAllAttachments()
