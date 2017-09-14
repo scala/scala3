@@ -230,7 +230,7 @@ object Types {
       */
     private final def phantomLatticeType(implicit ctx: Context): Type = widen match {
       case tp: ClassInfo if defn.isPhantomTerminalClass(tp.classSymbol) => tp.prefix
-      case tp: TypeProxy if tp.superType ne this => tp.underlying.phantomLatticeType // ??? guard needed ???
+      case tp: TypeProxy => tp.underlying.phantomLatticeType
       case tp: AndOrType => tp.tp1.phantomLatticeType
       case _ => NoType
     }
@@ -822,9 +822,7 @@ object Types {
         (this eq thisResult) != (that eq thatResult) && (thisResult matchesLoosely thatResult)
       }
 
-    /** The basetype TypeRef of this type with given class symbol,
-     *  but without including any type arguments
-     */
+    /** The basetype of this type with given class symbol, NoType is `base` is not a class. */
     final def baseType(base: Symbol)(implicit ctx: Context): Type = /*ctx.traceIndented(s"$this baseType $base")*/ /*>|>*/ track("base type") /*<|<*/ {
       base.denot match {
         case classd: ClassDenotation => classd.baseTypeOf(this)
@@ -843,7 +841,7 @@ object Types {
      *  which may end up calling `&` again, in most cases this should be safe
      *  but because of F-bounded types, this can result in an infinite loop
      *  (which will be masked unless `-Yno-deep-subtypes` is enabled).
-     *  pos/i536 demonstrates that the infinite loop can also invole lower bounds.wait
+     *  pos/i536 demonstrates that the infinite loop can also involve lower bounds.
      */
     def safe_& (that: Type)(implicit ctx: Context): Type = (this, that) match {
       case (TypeBounds(lo1, hi1), TypeBounds(lo2, hi2)) => TypeBounds(OrType(lo1, lo2), AndType(hi1, hi2))
@@ -1020,7 +1018,7 @@ object Types {
 
     /** If this is a (possibly aliased, annotated, and/or parameterized) reference to
      *  a class, the class type ref, otherwise NoType.
-     *  @param  refinementOK   If `true` we also skip non-parameter refinements.
+     *  @param  refinementOK   If `true` we also skip refinements.
      */
     def underlyingClassRef(refinementOK: Boolean)(implicit ctx: Context): Type = dealias match {
       case tp: TypeRef =>
@@ -1477,7 +1475,7 @@ object Types {
 
   /** Implementations of this trait cache the results of `narrow`. */
   trait NarrowCached extends Type {
-    private var myNarrow: TermRef = null
+    private[this] var myNarrow: TermRef = null
     override def narrow(implicit ctx: Context): TermRef = {
       if (myNarrow eq null) myNarrow = super.narrow
       myNarrow
@@ -1817,9 +1815,6 @@ object Types {
       }
     }
 
-    def isClassParam(implicit ctx: Context) = // @!!! test flag combination instead?
-      symbol.is(TypeParam) && symbol.owner.isClass
-
     /** A selection of the same kind, but with potentially a different prefix.
      *  The following normalizations are performed for type selections T#A:
      *
@@ -1836,7 +1831,9 @@ object Types {
       if (prefix eq this.prefix) this
       else if (prefix.isBottomType) prefix
       else if (isType) {
-        val res = if (isClassParam) argForParam(prefix) else prefix.lookupRefined(name)
+        val res =
+          if (symbol.is(ClassTypeParam)) argForParam(prefix)
+          else prefix.lookupRefined(name)
         if (res.exists) res
         else if (Config.splitProjections)
           prefix match {
@@ -2225,8 +2222,8 @@ object Types {
   }
 
   case class LazyRef(private var refFn: Context => Type) extends UncachedProxyType with ValueType {
-    private var myRef: Type = null
-    private var computed = false
+    private[this] var myRef: Type = null
+    private[this] var computed = false
     def ref(implicit ctx: Context) = {
       if (computed) assert(myRef != null)
       else {
@@ -2588,7 +2585,7 @@ object Types {
     final def isTypeLambda = isInstanceOf[TypeLambda]
     final def isHigherKinded = isInstanceOf[TypeProxy]
 
-    private var myParamRefs: List[ParamRefType] = null
+    private[this] var myParamRefs: List[ParamRefType] = null
 
     def paramRefs: List[ParamRefType] = {
       if (myParamRefs == null) myParamRefs = paramNames.indices.toList.map(newParamRef)
@@ -2683,8 +2680,8 @@ object Types {
       }
       else resType
 
-    private var myDependencyStatus: DependencyStatus = Unknown
-    private var myParamDependencyStatus: DependencyStatus = Unknown
+    private[this] var myDependencyStatus: DependencyStatus = Unknown
+    private[this] var myParamDependencyStatus: DependencyStatus = Unknown
 
     private def depStatus(initial: DependencyStatus, tp: Type)(implicit ctx: Context): DependencyStatus = {
       def combine(x: DependencyStatus, y: DependencyStatus) = {
@@ -3074,8 +3071,8 @@ object Types {
   abstract case class AppliedType(tycon: Type, args: List[Type])
   extends CachedProxyType with ValueType {
 
-    private var validSuper: Period = Nowhere
-    private var cachedSuper: Type = _
+    private[this] var validSuper: Period = Nowhere
+    private[this] var cachedSuper: Type = _
 
     override def underlying(implicit ctx: Context): Type = tycon
 
@@ -3289,7 +3286,7 @@ object Types {
 
     def withName(name: Name): this.type = { myRepr = name; this }
 
-    private var myRepr: Name = null
+    private[this] var myRepr: Name = null
     def repr(implicit ctx: Context): Name = {
       if (myRepr == null) myRepr = SkolemName.fresh()
       myRepr
@@ -3415,8 +3412,8 @@ object Types {
       decls: Scope,
       selfInfo: DotClass /* should be: Type | Symbol */) extends CachedGroundType with TypeType {
 
-    private var selfTypeCache: Type = null
-    private var appliedRefCache: Type = null
+    private[this] var selfTypeCache: Type = null
+    private[this] var appliedRefCache: Type = null
 
     /** The self type of a class is the conjunction of
      *   - the explicit self type if given (or the info of a given self symbol), and
@@ -3449,7 +3446,7 @@ object Types {
     def symbolicTypeRef(implicit ctx: Context): TypeRef = TypeRef(prefix, cls)
 
     // cached because baseType needs parents
-    private var parentsCache: List[Type] = null
+    private[this] var parentsCache: List[Type] = null
 
     override def parents(implicit ctx: Context): List[Type] = {
       if (parentsCache == null)
@@ -3975,8 +3972,7 @@ object Types {
     }
 
     /** Try to widen a named type to its info relative to given prefix `pre`, where possible.
-     *  The possible cases are listed inline in the code. Return `default` if no widening is
-     *  possible.
+     *  The possible cases are listed inline in the code.
      */
     def tryWiden(tp: NamedType, pre: Type): Type =
       pre.member(tp.name) match {
@@ -4008,7 +4004,7 @@ object Types {
       else pre match {
         case Range(preLo, preHi) =>
           val forwarded =
-            if (tp.isClassParam) tp.argForParam(preHi)
+            if (tp.symbol.is(ClassTypeParam)) tp.argForParam(preHi)
             else tryWiden(tp, preHi)
           forwarded.orElse(
             range(super.derivedSelect(tp, preLo), super.derivedSelect(tp, preHi)))
