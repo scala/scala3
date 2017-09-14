@@ -158,7 +158,7 @@ object ErrorReporting {
       reported.setVariance(-1)
       val expected1 = reported(expected)
       val (found2, expected2) =
-        if (found1 <:< expected1) (found, expected) else (found1, expected1)
+        if (found1 frozen_<:< expected1) (found, expected) else (found1, expected1)
       TypeMismatch(found2, expected2, whyNoMatchStr(found, expected), postScript)
     }
 

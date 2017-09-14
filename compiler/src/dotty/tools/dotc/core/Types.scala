@@ -4025,11 +4025,7 @@ object Types {
             case Range(infoLo: TypeBounds, infoHi: TypeBounds) =>
               assert(variance == 0)
               if (!infoLo.isAlias && !infoHi.isAlias) propagate(infoLo, infoHi)
-              else range(tp.bottomType, tp.topType)
-                // Using `parent` instead of `tp.topType` would be better for normal refinements,
-                // but it would also turn *-types into hk-types, which is not what we want.
-                // We should revisit this point in case we represent applied types not as refinements anymore.
-                // @!!! revisit
+              else range(tp.bottomType, tp.parent)
             case Range(infoLo, infoHi) =>
               propagate(infoLo, infoHi)
             case _ =>
@@ -4112,7 +4108,7 @@ object Types {
       else tp.derivedAndOrType(tp1, tp2)
 
     override protected def derivedTypeArgRef(tp: TypeArgRef, prefix: Type): Type =
-      if (isRange(prefix))
+      if (isRange(prefix)) // TODO: explain
         tp.underlying match {
           case TypeBounds(lo, hi) => range(atVariance(-variance)(reapply(lo)), reapply(hi))
           case _ => range(tp.bottomType, tp.topType)
@@ -4245,10 +4241,7 @@ object Types {
         this(x, tp.info)
 
       case tp @ TypeArgRef(prefix, _, _) =>
-        val saved = variance
-        variance = 0
-        try this(x, prefix)
-        finally variance = saved
+        atVariance(0)(this(x, prefix))
 
       case AnnotatedType(underlying, annot) =>
         this(applyToAnnot(x, annot), underlying)

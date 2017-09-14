@@ -162,10 +162,10 @@ object ExplicitOuter {
    *  @param  flags  The flags of the outer accessor
    *
    * The type of the outer accessor is computed as follows:
-   * Let O[X1, .., Xn] be the class eclosing `cls`.
+   * Let O[X1, .., Xn] be the class enclosing `cls`.
    *  - if owner == cls, O[X1, ..., Xn]
    *  - otherwise, if the class P enclosing `owner` derives from O, the
-   *    base type of P.this of class O
+   *    base type of P.this wrt class O
    *  - otherwise O[_, ..., _]
    */
   private def newOuterSym(owner: ClassSymbol, cls: ClassSymbol, name: TermName, flags: FlagSet)(implicit ctx: Context) = {
