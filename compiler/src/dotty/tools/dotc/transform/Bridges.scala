@@ -33,7 +33,7 @@ class Bridges(root: ClassSymbol)(implicit ctx: Context) {
   private[this] var toBeRemoved = immutable.Set[Symbol]()
   private val bridges = mutable.ListBuffer[Tree]()
   private val bridgesScope = newScope
-  private val bridgeTarget = mutable.HashMap[Symbol, Symbol]()
+  private val bridgeTarget = newMutableSymbolMap[Symbol]
 
   /** Add a bridge between `member` and `other`, where `member` overrides `other`
    *  before erasure, if the following conditions are satisfied.

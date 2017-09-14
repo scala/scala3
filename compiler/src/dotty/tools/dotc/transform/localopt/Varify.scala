@@ -27,9 +27,9 @@ import scala.collection.mutable
  class Varify extends Optimisation {
   import ast.tpd._
 
-  val paramsTimesUsed = mutable.HashMap[Symbol, Int]()
+  val paramsTimesUsed = newMutableSymbolMap[Int]
 
-  val possibleRenames = mutable.HashMap[Symbol, Set[Symbol]]()
+  val possibleRenames = newMutableSymbolMap[Set[Symbol]]
 
   def clear(): Unit = {
     paramsTimesUsed.clear()
@@ -38,7 +38,7 @@ import scala.collection.mutable
 
   def visitor(implicit ctx: Context): Tree => Unit = {
     case t: ValDef if t.symbol.is(Param) =>
-      paramsTimesUsed += (t.symbol -> 0)
+      paramsTimesUsed.put(t.symbol, 0)
 
     case t: ValDef if t.symbol.is(Mutable) =>
       t.rhs.foreachSubTree { subtree =>
@@ -52,7 +52,7 @@ import scala.collection.mutable
     case t: RefTree if paramsTimesUsed.contains(t.symbol) =>
       val param = t.symbol
       val current = paramsTimesUsed.get(param)
-      current foreach { c => paramsTimesUsed += (param -> (c + 1)) }
+      current foreach { c => paramsTimesUsed.put(param, c + 1) }
 
     case _ =>
   }

@@ -24,7 +24,7 @@ import scala.collection.mutable
 
   val initializedVals = mutable.HashSet[Symbol]()
 
-  val checkGood = mutable.HashMap[Symbol, Set[Symbol]]()
+  val checkGood = newMutableSymbolMap[Set[Symbol]]
 
   def clear(): Unit = {
     initializedVals.clear()

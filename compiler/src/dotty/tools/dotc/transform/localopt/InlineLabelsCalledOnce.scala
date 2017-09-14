@@ -15,8 +15,8 @@ import config.Printers.simplify
 class InlineLabelsCalledOnce extends Optimisation {
   import ast.tpd._
 
-  val timesUsed = mutable.HashMap[Symbol, Int]()
-  val defined   = mutable.HashMap[Symbol, DefDef]()
+  val timesUsed = newMutableSymbolMap[Int]
+  val defined   = newMutableSymbolMap[DefDef]
 
   def clear(): Unit = {
     timesUsed.clear()
