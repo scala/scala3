@@ -81,26 +81,22 @@ object TypeApplications {
    *  `>: L <: H` is substituted for a type lambda parameter `X` only under certain conditions.
    *
    *  1. If Mode.AllowLambdaWildcardApply is set:
-   *  The wildcard argument is substituted only if `X` appears in a toplevel refinement of the form
+   *  The wildcard argument is substituted only if `X` appears in a toplevel application of the form
    *
-   *        { type A = X }
+   *        C[..., X, ...]
    *
    *  and there are no other occurrences of `X` in the reduced type. In that case
    *  the refinement above is replaced by
    *
-   *        { type A >: L <: U }
+   *        C[..., _ >: L <: H, ...]
    *
    *  The `allReplaced` field indicates whether all occurrences of type lambda parameters
    *  in the reduced type have been replaced with arguments.
    *
    *  2. If Mode.AllowLambdaWildcardApply is not set:
-   *  All refinements of the form
+   *  All `X` arguments are replaced by:
    *
-   *        { type A = X }
-   *
-   *  are replaced by:
-   *
-   *        { type A >: L <: U }
+   *        _ >: L <: H
    *
    *  Any other occurrence of `X` in `tycon` is replaced by `U`, if the
    *  occurrence of `X` in `tycon` is covariant, or nonvariant, or by `L`,
@@ -121,6 +117,12 @@ object TypeApplications {
       p.binder == tycon && args(p.paramNum).isInstanceOf[TypeBounds]
     def canReduceWildcard(p: TypeParamRef) =
       !ctx.mode.is(Mode.AllowLambdaWildcardApply) || available.contains(p.paramNum)
+    def atNestedLevel(op: => Type): Type = {
+      val saved = available
+      available = Set()
+      try op
+      finally available = saved
+    }
 
     // If this is a reference to a reducable type parameter corresponding to a
     // wildcard argument, return the wildcard argument, otherwise apply recursively.
@@ -129,13 +131,10 @@ object TypeApplications {
         available -= p.paramNum
         args(p.paramNum)
       case _ =>
-        apply(arg)
+        atNestedLevel(apply(arg))
     }
 
     def apply(t: Type) = t match {
-      case t @ TypeAlias(p: TypeParamRef) if hasWildcardArg(p) && canReduceWildcard(p) =>
-        available -= p.paramNum // @!!! needed in the future?
-        args(p.paramNum)
       case t @ AppliedType(tycon, args1) if tycon.typeSymbol.isClass =>
         t.derivedAppliedType(apply(tycon), args1.mapConserve(applyArg))
       case p: TypeParamRef if p.binder == tycon =>
@@ -148,10 +147,7 @@ object TypeApplications {
             arg
         }
       case _: TypeBounds | _: AppliedType =>
-        val saved = available
-        available = Set()
-        try mapOver(t)
-        finally available = saved
+        atNestedLevel(mapOver(t))
       case _ =>
         mapOver(t)
     }
