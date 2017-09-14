@@ -1032,9 +1032,7 @@ object Types {
       case tp: AnnotatedType =>
         tp.underlying.underlyingClassRef(refinementOK)
       case tp: RefinedType =>
-        def isParamName = tp.classSymbol.typeParams.exists(_.name == tp.refinedName)
-        if (refinementOK || isParamName) tp.underlying.underlyingClassRef(refinementOK)
-        else NoType
+        if (refinementOK) tp.underlying.underlyingClassRef(refinementOK) else NoType
       case tp: RecType =>
         tp.underlying.underlyingClassRef(refinementOK)
       case _ =>
@@ -3498,8 +3496,8 @@ object Types {
   /** Type bounds >: lo <: hi */
   abstract case class TypeBounds(lo: Type, hi: Type) extends CachedProxyType with TypeType {
 
-    assert(lo.isInstanceOf[TermType])
-    assert(hi.isInstanceOf[TermType])
+    assert(lo.isInstanceOf[TermType], lo)
+    assert(hi.isInstanceOf[TermType], hi)
 
     override def underlying(implicit ctx: Context): Type = hi
 

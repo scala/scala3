@@ -101,6 +101,9 @@ class CheckRealizable(implicit ctx: Context) {
    *    - all type members have good bounds
    *    - all base types are class types, and if their arguments are wildcards
    *      they have good bounds.
+   *    - base types do not appear in multiple instances with different arguments.
+   *      (depending on the simplification scheme for AndTypes employed, this could
+   *       also lead to base types with bad bounds).
    */
   private def boundsRealizability(tp: Type) = {
     val mbrProblems =
@@ -109,7 +112,7 @@ class CheckRealizable(implicit ctx: Context) {
         if !(mbr.info.loBound <:< mbr.info.hiBound)
       }
       yield new HasProblemBounds(mbr)
-      
+
     def baseTypeProblems(base: Type) = base match {
       case AndType(base1, base2) =>
         new HasProblemBase(base1, base2) :: Nil
@@ -121,7 +124,7 @@ class CheckRealizable(implicit ctx: Context) {
     }
     val baseProblems =
       tp.baseClasses.map(_.baseTypeOf(tp)).flatMap(baseTypeProblems)
-      
+
     (((Realizable: Realizability)
       /: mbrProblems)(_ andAlso _)
       /: baseProblems)(_ andAlso _)

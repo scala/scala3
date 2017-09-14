@@ -194,13 +194,12 @@ trait ConstraintHandling {
   final def approximation(param: TypeParamRef, fromBelow: Boolean): Type = {
     val avoidParam = new TypeMap {
       override def stopAtStatic = true
-      def avoidInArg(arg: Type, formal: TypeParamInfo): Type =
+      def avoidInArg(arg: Type): Type =
         if (param.occursIn(arg)) TypeBounds.empty else arg
       def apply(tp: Type) = mapOver {
         tp match {
           case tp @ AppliedType(tycon, args) =>
-            tp.derivedAppliedType(tycon,
-              args.zipWithConserve(tycon.typeParams)(avoidInArg))
+            tp.derivedAppliedType(tycon, args.mapConserve(avoidInArg))
           case tp: RefinedType if param occursIn tp.refinedInfo =>
             tp.parent
           case tp: WildcardType =>

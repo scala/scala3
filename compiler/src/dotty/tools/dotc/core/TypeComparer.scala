@@ -337,6 +337,10 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
     case tp1 @ OrType(tp11, tp12) =>
       def joinOK = tp2.dealias match {
         case tp2: AppliedType if !tp2.tycon.typeSymbol.isClass =>
+          // If we apply the default algorithm for `A[X] | B[Y] <: C[Z]` where `C` is a
+          // type parameter, we will instantiate `C` to `A` and then fail when comparing
+          // with `B[Y]`. To do the right thing, we need to instantiate `C` to the
+          // common superclass of `A` and `B`.
           isSubType(tp1.join, tp2)
         case _ =>
           false
@@ -366,7 +370,9 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
       if (cls2.isClass) {
         val base = tp1.baseType(cls2)
         if (base.exists) {
-          if (cls2.is(JavaDefined)) return base.typeSymbol == cls2
+          if (cls2.is(JavaDefined))
+            // If `cls2` is parameterized, we are seeing a raw type, so we need to compare only the symbol
+            return base.typeSymbol == cls2
           if (base ne tp1) return isSubType(base, tp2)
         }
         if (cls2 == defn.SingletonClass && tp1.isStable) return true
@@ -689,14 +695,14 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
        *
        *  Returns `true` iff `d >= 0` and `tycon2` can be instantiated to
        *
-       *      [tparams1_d, ... tparams1_n-1] -> tycon1a[args_1, ..., args_d-1, tparams_d, ... tparams_n-1]
+       *      [tparams1_d, ... tparams1_n-1] -> tycon1[args_1, ..., args_d-1, tparams_d, ... tparams_n-1]
        *
        *  such that the resulting type application is a supertype of `tp1`.
        */
       def appOK(tp1base: Type) = tp1base match {
         case tp1base: AppliedType =>
           var tycon1 = tp1base.tycon
-          var args1 = tp1base.args
+          val args1 = tp1base.args
           val tparams1all = tycon1.typeParams
           val lengthDiff = tparams1all.length - tparams.length
           lengthDiff >= 0 && {
@@ -1244,6 +1250,13 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
   final def lub(tps: List[Type]): Type =
     ((defn.NothingType: Type) /: tps)(lub(_,_, canConstrain = false))
 
+  /** Try to produce joint arguments for a lub `A[T_1, ..., T_n] | A[T_1', ..., T_n']` using
+   *  the following strategies:
+   *
+   *    - if arguments are the same, that argument.
+   *    - if corresponding parameter variance is co/contra-variant, the lub/glb.
+   *    - otherwise a TypeBounds containing both arguments
+   */
   def lubArgs(args1: List[Type], args2: List[Type], tparams: List[TypeParamInfo], canConstrain: Boolean = false): List[Type] =
     tparams match {
       case tparam :: tparamsRest =>
@@ -1251,7 +1264,8 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
         val arg2 :: args2Rest = args2
         val v = tparam.paramVariance
         val lubArg =
-          if (v > 0) lub(arg1.hiBound, arg2.hiBound, canConstrain)
+          if (isSameTypeWhenFrozen(arg1, arg2)) arg1
+          else if (v > 0) lub(arg1.hiBound, arg2.hiBound, canConstrain)
           else if (v < 0) glb(arg1.loBound, arg2.loBound)
           else TypeBounds(glb(arg1.loBound, arg2.loBound),
                           lub(arg1.hiBound, arg2.hiBound, canConstrain))
@@ -1263,8 +1277,8 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
   /** Try to produce joint arguments for a glb `A[T_1, ..., T_n] & A[T_1', ..., T_n']` using
    *  the following strategies:
    *
-   *    - if corresponding parameter variance is co/contra-variant, the glb/lub.
    *    - if arguments are the same, that argument.
+   *    - if corresponding parameter variance is co/contra-variant, the glb/lub.
    *    - if at least one of the arguments if a TypeBounds, the union of
    *      the bounds.
    *    - if homogenizeArgs is set, and arguments can be unified by instantiating
@@ -1435,7 +1449,8 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
   private def distributeAnd(tp1: Type, tp2: Type): Type = tp1 match {
     case tp1 @ AppliedType(tycon1, args1) =>
       tp2 match {
-        case AppliedType(tycon2, args2) if tycon1.typeSymbol == tycon2.typeSymbol =>
+        case AppliedType(tycon2, args2)
+        if tycon1.typeSymbol == tycon2.typeSymbol && tycon1 =:= tycon2 =>
           val jointArgs = glbArgs(args1, args2, tycon1.typeParams)
           if (jointArgs.forall(_.exists)) (tycon1 & tycon2).appliedTo(jointArgs)
           else NoType

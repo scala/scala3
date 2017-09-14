@@ -554,7 +554,7 @@ trait Checking {
       case _ =>
         ctx.error(ex"$tp is not a class type", pos)
         defn.ObjectType
-  }
+    }
 
   /** Check that a non-implicit parameter making up the first parameter section of an
    *  implicit conversion is not a singleton type.
