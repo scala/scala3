@@ -8,8 +8,7 @@ import java.util.Calendar
 
 import scala.reflect.io.Path
 import sbtassembly.AssemblyKeys.assembly
-import xerial.sbt.pack.PackPlugin._
-import autoImport._
+import xerial.sbt.Pack._
 
 import sbt.Package.ManifestAttributes
 
@@ -1128,7 +1127,6 @@ object Build {
   lazy val commonDistSettings = packSettings ++ Seq(
     packMain := Map(),
     publishArtifact := false,
-    packGenerateMakefile := false,
     packExpandedClasspath := true,
     packResourceDir += (baseDirectory.value / "bin" -> "bin"),
     packArchiveName := "dotty-" + dottyVersion
