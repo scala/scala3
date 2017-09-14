@@ -955,4 +955,19 @@ class ErrorMessagesTests extends ErrorMessagesTest {
 
         assertEquals(ExpectedStartOfTopLevelDefinition(), err)
       }
+
+  @Test def missingReturnTypeWithReturnStatement =
+    checkMessagesAfter("frontend") {
+      """class BadFunction {
+        |  def bad() = { return "fail" }
+        |}
+      """.stripMargin
+    }.expect { (ictx, messages) =>
+      implicit val ctx: Context = ictx
+
+      assertMessageCount(1, messages)
+
+      val MissingReturnTypeWithReturnStatement(method) :: Nil = messages
+      assertEquals(method.name.show, "bad")
+    }
 }

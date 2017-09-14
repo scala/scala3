@@ -96,6 +96,7 @@ public enum ErrorMessageID {
     WrongNumberOfParametersID,
     DuplicatePrivateProtectedQualifierID,
     ExpectedStartOfTopLevelDefinitionID,
+    MissingReturnTypeWithReturnStatementID,
     ;
 
     public int errorNumber() {

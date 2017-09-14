@@ -598,6 +598,17 @@ object messages {
            |}"""
   }
 
+  case class MissingReturnTypeWithReturnStatement(method: Symbol)(implicit ctx: Context)
+  extends Message(MissingReturnTypeWithReturnStatementID) {
+    val kind = "Syntax"
+    val msg = hl"$method has a return statement; it needs a result type"
+    val explanation =
+      hl"""|If a method contains a ${"return"} statement, it must have an
+           |explicit return type. For example:
+           |
+           |${"def good: Int /* explicit return type */ = return 1"}"""
+  }
+
   case class YieldOrDoExpectedInForComprehension()(implicit ctx: Context)
   extends Message(YieldOrDoExpectedInForComprehensionID) {
     val kind = "Syntax"
