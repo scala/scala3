@@ -178,20 +178,17 @@ class TypeApplications(val self: Type) extends AnyVal {
         if (tsym.isClass) tsym.typeParams
         else if (!tsym.isCompleting) tsym.info.typeParams
         else Nil
+      case self: AppliedType =>
+        if (self.tycon.typeSymbol.isClass) Nil
+        else self.superType.typeParams
       case self: ClassInfo =>
         self.cls.typeParams
       case self: HKTypeLambda =>
         self.typeParams
-      case self: RefinedType =>
-        self.parent.typeParams
-      case self: RecType =>
-        self.parent.typeParams
-      case _: SingletonType =>
+      case _: SingletonType | _: RefinedType | _: RecType =>
         Nil
       case self: WildcardType =>
         self.optBounds.typeParams
-      case self: AppliedType if self.tycon.typeSymbol.isClass =>
-        Nil
       case self: TypeProxy =>
         self.superType.typeParams
       case _ =>
@@ -217,15 +214,15 @@ class TypeApplications(val self: Type) extends AnyVal {
   /** If self type is higher-kinded, its result type, otherwise NoType */
   def hkResult(implicit ctx: Context): Type = self.dealias match {
     case self: TypeRef => self.info.hkResult
-    case self: RefinedType => NoType
-    case self: AppliedType => NoType
+    case self: AppliedType =>
+      if (self.tycon.typeSymbol.isClass) NoType else self.superType.hkResult
     case self: HKTypeLambda => self.resultType
-    case self: SingletonType => NoType
+    case _: SingletonType | _: RefinedType | _: RecType => NoType
+    case self: WildcardType => self.optBounds.hkResult
     case self: TypeVar =>
       // Using `origin` instead of `underlying`, as is done for typeParams,
       // avoids having to set ephemeral in some cases.
       self.origin.hkResult
-    case self: WildcardType => self.optBounds.hkResult
     case self: TypeProxy => self.superType.hkResult
     case _ => NoType
   }
