@@ -963,9 +963,11 @@ class ErrorMessagesTests extends ErrorMessagesTest {
         |}
       """.stripMargin
     }.expect { (ictx, messages) =>
+      implicit val ctx: Context = ictx
+
       assertMessageCount(1, messages)
 
       val MissingReturnTypeWithReturnStatement(method) :: Nil = messages
-      assertEquals(method.show, "bad")
+      assertEquals(method.name.show, "bad")
     }
 }
