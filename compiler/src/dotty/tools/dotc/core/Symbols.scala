@@ -448,11 +448,7 @@ object Symbols {
 
     final def isReferencedSymbolically(implicit ctx: Context) = {
       val d = lastDenot
-      d != null && (
-           (d is NonMember)
-        || d.isClass && d.is(Scala2x) && !d.owner.is(Package)
-        || d.isTerm && ctx.phase.symbolicRefs
-        )
+      d != null && (d.is(NonMember) || d.isTerm && ctx.phase.symbolicRefs)
     }
 
     /** The symbol's signature if it is completed or a method, NotAMethod otherwise. */
