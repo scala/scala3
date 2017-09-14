@@ -603,14 +603,10 @@ object messages {
     val kind = "Syntax"
     val msg = hl"$method has a return statement; it needs a result type"
     val explanation =
-      hl"""|If a method contains a ${"return"} statement, it must have a return
-           |type explicitly given to it. For example:
+      hl"""|If a method contains a ${"return"} statement, it must have an
+           |explicit return type. For example:
            |
-           |${"def bad() = { return \"fail\" }"}
-           |
-           |This is illegal because bad does not have a return type given
-           |to it. Giving bad a return type of ${"String"} will resolve
-           |this error."""
+           |${"def good: Int /* explicit return type */ = return 1"}"""
   }
 
   case class YieldOrDoExpectedInForComprehension()(implicit ctx: Context)
