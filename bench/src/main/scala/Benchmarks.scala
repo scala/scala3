@@ -20,7 +20,7 @@ object Bench {
   def main(args: Array[String]): Unit = {
     if (args.isEmpty) {
       println("Missing <args>")
-      return
+      throw new Exception("No args")
     }
     val (intArgs, args1) = args.span(x => try { x.toInt; true } catch { case _: Throwable => false } )
 
@@ -28,11 +28,7 @@ object Bench {
     val iterations = if (intArgs.length > 1) intArgs(1).toInt else 20
     val forks = if (intArgs.length > 2) intArgs(2).toInt else 1
 
-    val args2 = args1.map { arg =>
-      if ((arg.endsWith(".scala") || arg.endsWith(".java")) && arg.head != '/') "../" + arg
-      else arg
-    }
-    storeCompileOptions(args2)
+    storeCompileOptions(args1)
 
     val libs = System.getProperty("BENCH_CLASS_PATH")
 
