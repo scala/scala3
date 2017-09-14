@@ -41,16 +41,19 @@ class SyntheticMethods(thisTransformer: DenotTransformer) {
 
   private var myValueSymbols: List[Symbol] = Nil
   private var myCaseSymbols: List[Symbol] = Nil
+  private var myCaseModuleSymbols: List[Symbol] = Nil
 
   private def initSymbols(implicit ctx: Context) =
     if (myValueSymbols.isEmpty) {
       myValueSymbols = List(defn.Any_hashCode, defn.Any_equals)
       myCaseSymbols = myValueSymbols ++ List(defn.Any_toString, defn.Product_canEqual,
         defn.Product_productArity, defn.Product_productPrefix, defn.Product_productElement)
+      myCaseModuleSymbols = myCaseSymbols.filter(_ ne defn.Any_equals)
     }
 
   def valueSymbols(implicit ctx: Context) = { initSymbols; myValueSymbols }
   def caseSymbols(implicit ctx: Context) = { initSymbols; myCaseSymbols }
+  def caseModuleSymbols(implicit ctx: Context) = { initSymbols; myCaseModuleSymbols }
 
   /** The synthetic methods of the case or value class `clazz`. */
   def syntheticMethods(clazz: ClassSymbol)(implicit ctx: Context): List[Tree] = {
@@ -62,7 +65,10 @@ class SyntheticMethods(thisTransformer: DenotTransformer) {
         clazz.caseAccessors
 
     val symbolsToSynthesize: List[Symbol] =
-      if (clazz.is(Case)) caseSymbols
+      if (clazz.is(Case)) {
+        if (clazz.is(Module)) caseModuleSymbols
+        else caseSymbols
+      }
       else if (isDerivedValueClass(clazz)) valueSymbols
       else Nil
 
