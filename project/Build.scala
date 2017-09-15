@@ -84,7 +84,7 @@ object Build {
     inputKey[Unit]("run compiled binary using the correct classpath, or the user supplied classpath")
 
   // Compiles the documentation and static site
-  lazy val genDocs = inputKey[Unit]("run dottydoc to generate static documentation site")
+  lazy val genDocs = taskKey[Unit]("run dottydoc to generate static documentation site")
 
   // Shorthand for compiling a docs site
   lazy val dottydoc = inputKey[Unit]("run dottydoc")
@@ -315,7 +315,7 @@ object Build {
     fork in Test := true,
     parallelExecution in Test := false,
 
-    genDocs := Def.inputTaskDyn {
+    genDocs := Def.taskDyn {
       val dottyLib = (packageAll in `dotty-compiler`).value("dotty-library")
       val dottyInterfaces = (packageAll in `dotty-compiler`).value("dotty-interfaces")
       val otherDeps = (dependencyClasspath in Compile).value.map(_.data).mkString(":")
@@ -332,7 +332,7 @@ object Build {
         (runMain in Compile).toTask(
           s""" dotty.tools.dottydoc.Main ${args.mkString(" ")} ${sources.mkString(" ")}"""
         )
-    }.evaluated,
+    }.value,
 
     dottydoc := Def.inputTaskDyn {
       val args: Seq[String] = spaceDelimited("<arg>").parsed
