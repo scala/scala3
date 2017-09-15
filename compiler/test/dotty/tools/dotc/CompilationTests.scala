@@ -3,14 +3,15 @@ package tools
 package dotc
 
 import org.junit.{ Test, BeforeClass, AfterClass }
+import org.junit.Assert._
 
 import java.nio.file._
 import java.util.stream.{ Stream => JStream }
 import scala.collection.JavaConverters._
 import scala.util.matching.Regex
 import scala.concurrent.duration._
-
-import vulpix.{ ParallelTesting, SummaryReport, SummaryReporting, TestConfiguration }
+import vulpix._
+import dotty.tools.io.JFile
 
 
 class CompilationTests extends ParallelTesting {
@@ -29,7 +30,6 @@ class CompilationTests extends ParallelTesting {
 
   @Test def compilePos: Unit = {
     compileList("compileStdLib", StdLibSources.whitelisted, scala2Mode.and("-migration", "-Yno-inline")) +
-    compileDir("../collection-strawman/src/main", defaultOptions) +
     compileDir("../compiler/src/dotty/tools/dotc/ast", defaultOptions) +
     compileDir("../compiler/src/dotty/tools/dotc/config", defaultOptions) +
     compileDir("../compiler/src/dotty/tools/dotc/core", allowDeepSubtypes) +
@@ -40,7 +40,7 @@ class CompilationTests extends ParallelTesting {
     compileDir("../compiler/src/dotty/tools/dotc/typer", defaultOptions) +
     compileDir("../compiler/src/dotty/tools/dotc/util", defaultOptions) +
     compileDir("../compiler/src/dotty/tools/io", defaultOptions) +
-    compileDir("../compiler/src/dotty/tools/dotc/core", noCheckOptions ++ classPath) +
+    compileDir("../compiler/src/dotty/tools/dotc/core", TestFlags(classPath, noCheckOptions)) +
     compileFile("../tests/pos/nullarify.scala", defaultOptions.and("-Ycheck:nullarify")) +
     compileFile("../tests/pos-scala2/rewrites.scala", scala2Mode.and("-rewrite")).copyToTarget() +
     compileFile("../tests/pos-special/t8146a.scala", allowDeepSubtypes) +
@@ -222,14 +222,13 @@ class CompilationTests extends ParallelTesting {
    *  version of Dotty
    */
   @Test def tastyBootstrap: Unit = {
-    val opt = Array(
-      "-classpath",
+    val opt = TestFlags(
       // compile with bootstrapped library on cp:
       defaultOutputDir + "lib/src/:" +
       // as well as bootstrapped compiler:
       defaultOutputDir + "dotty1/dotty/:" +
       Jars.dottyInterfaces,
-      "-Ycheck-reentrant"
+      Array("-Ycheck-reentrant")
     )
 
     def lib =
@@ -291,6 +290,27 @@ class CompilationTests extends ParallelTesting {
     compileList("idempotency", List("../tests/idempotency/BootstrapChecker.scala", "../tests/idempotency/IdempotencyCheck.scala"), defaultOptions).checkRuns()
 
     tests.foreach(_.delete())
+  }
+
+  private val (compilerSources, backendSources, backendJvmSources) = {
+    val compilerDir = Paths.get("../compiler/src")
+    val compilerSources0 = sources(Files.walk(compilerDir))
+
+    val backendDir = Paths.get("../scala-backend/src/compiler/scala/tools/nsc/backend")
+    val backendJvmDir = Paths.get("../scala-backend/src/compiler/scala/tools/nsc/backend/jvm")
+
+    // NOTE: Keep these exclusions synchronized with the ones in the sbt build (Build.scala)
+    val backendExcluded =
+      List("JavaPlatform.scala", "Platform.scala", "ScalaPrimitives.scala")
+    val backendJvmExcluded =
+      List("BCodeICodeCommon.scala", "GenASM.scala", "GenBCode.scala", "ScalacBackendInterface.scala", "BackendStats.scala")
+
+    val backendSources0 =
+      sources(Files.list(backendDir), excludedFiles = backendExcluded)
+    val backendJvmSources0 =
+      sources(Files.list(backendJvmDir), excludedFiles = backendJvmExcluded)
+
+    (compilerSources0, backendSources0, backendJvmSources0)
   }
 }
 

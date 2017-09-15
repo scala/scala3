@@ -323,11 +323,15 @@ class ClassfileLoader(val classfile: AbstractFile) extends SymbolLoader {
 
   def load(root: SymDenotation)(implicit ctx: Context): Unit = {
     val (classRoot, moduleRoot) = rootDenots(root.asClass)
-    (new ClassfileParser(classfile, classRoot, moduleRoot)(ctx)).run() match {
-      case Some(unpickler: tasty.DottyUnpickler) if ctx.settings.YretainTrees.value =>
-        classRoot.symbol.asClass.unpickler = unpickler
-        moduleRoot.symbol.asClass.unpickler = unpickler
-      case _ =>
+    val classfileParser = new ClassfileParser(classfile, classRoot, moduleRoot)(ctx)
+    val result = classfileParser.run()
+    if (ctx.settings.YretainTrees.value || ctx.settings.XlinkOptimise.value) {
+      result match {
+        case Some(unpickler: tasty.DottyUnpickler) =>
+          classRoot.symbol.asClass.unpickler = unpickler
+          moduleRoot.symbol.asClass.unpickler = unpickler
+        case _ =>
+      }
     }
   }
 }

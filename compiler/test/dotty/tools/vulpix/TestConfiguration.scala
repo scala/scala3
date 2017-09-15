@@ -5,13 +5,6 @@ package vulpix
 object TestConfiguration {
   implicit val defaultOutputDir: String = "../out/"
 
-  implicit class RichStringArray(val xs: Array[String]) extends AnyVal {
-    def and(args: String*): Array[String] = {
-      val argsArr: Array[String] = args.toArray
-      xs ++ argsArr
-    }
-  }
-
   val noCheckOptions = Array(
     "-pagewidth", "120",
     "-color:never"
@@ -25,8 +18,8 @@ object TestConfiguration {
 
   val classPath = mkClassPath(Jars.dottyTestDeps)
 
-  def mkClassPath(deps: List[String]): Array[String] = {
-    val paths = deps map { p =>
+  def mkClassPath(classPaths: List[String]): String = {
+    classPaths map { p =>
       val file = new java.io.File(p)
       assert(
         file.exists,
@@ -47,24 +40,23 @@ object TestConfiguration {
             |it in extras."""
       )
       file.getAbsolutePath
-    } mkString (":")
-
-    Array("-classpath", paths)
+    } mkString(":")
   }
 
   val yCheckOptions = Array("-Ycheck:tailrec,resolveSuper,erasure,mixin,getClass,restoreScopes,labelDef")
 
-  val defaultUnoptimised = noCheckOptions ++ checkOptions ++ yCheckOptions ++ classPath
-  val defaultOptimised = defaultUnoptimised :+ "-optimise"
+  val basicDefaultOptions = checkOptions ++ noCheckOptions ++ yCheckOptions
+  val defaultUnoptimised = TestFlags(classPath, basicDefaultOptions)
+  val defaultOptimised = defaultUnoptimised and "-optimise"
   val defaultOptions = defaultUnoptimised
-  val allowDeepSubtypes = defaultOptions diff Array("-Yno-deep-subtypes")
-  val allowDoubleBindings = defaultOptions diff Array("-Yno-double-bindings")
-  val picklingOptions = defaultUnoptimised ++ Array(
+  val allowDeepSubtypes = defaultOptions without "-Yno-deep-subtypes"
+  val allowDoubleBindings = defaultOptions without "-Yno-double-bindings"
+  val picklingOptions = defaultUnoptimised and (
     "-Xprint-types",
     "-Ytest-pickler",
     "-Yprintpos"
   )
-  val scala2Mode = defaultOptions ++ Array("-language:Scala2")
-  val explicitUTF8 = defaultOptions ++ Array("-encoding", "UTF8")
-  val explicitUTF16 = defaultOptions ++ Array("-encoding", "UTF16")
+  val scala2Mode = defaultOptions and "-language:Scala2"
+  val explicitUTF8 = defaultOptions and ("-encoding", "UTF8")
+  val explicitUTF16 = defaultOptions and ("-encoding", "UTF16")
 }

@@ -555,34 +555,30 @@ object Symbols {
 
     type ThisName = TypeName
 
-    /** If this is a top-level class, and if `-Yretain-trees` is set, return the TypeDef tree
-     *  for this class, otherwise EmptyTree. This will force the info of the class.
-     */
-    def tree(implicit ctx: Context): tpd.Tree /* tpd.TypeDef | tpd.EmptyTree */ = {
+    /** If this is either:
+      *   - a top-level class and `-Yretain-trees` is set
+     *    - a top-level class loaded from TASTY and `-Xlink-optimise` is set
+      * then return the TypeDef tree (possibly wrapped inside PackageDefs) for this class, otherwise EmptyTree.
+      * This will force the info of the class.
+      */
+    def tree(implicit ctx: Context): tpd.Tree /* tpd.PackageDef | tpd.TypeDef | tpd.EmptyTree */ = {
       denot.info
       // TODO: Consider storing this tree like we store lazy trees for inline functions
       if (unpickler != null && !denot.isAbsent) {
         assert(myTree.isEmpty)
-
-        import ast.Trees._
-
-        def findTree(tree: tpd.Tree): Option[tpd.TypeDef] = tree match {
-          case PackageDef(_, stats) =>
-            stats.flatMap(findTree).headOption
-          case tree: tpd.TypeDef if tree.symbol == this =>
-            Some(tree)
-          case _ =>
-              None
-        }
-        val List(unpickledTree) = unpickler.body(ctx.addMode(Mode.ReadPositions))
+        val body = unpickler.body(ctx.addMode(Mode.ReadPositions))
+        myTree = body.headOption.getOrElse(tpd.EmptyTree)
         unpickler = null
-
-        myTree = findTree(unpickledTree).get
       }
       myTree
     }
-    private[dotc] var myTree: tpd.Tree = tpd.EmptyTree
+    private[this] var myTree: tpd.Tree /* tpd.PackageDef | tpd.TypeDef | tpd.EmptyTree */ = tpd.EmptyTree
     private[dotc] var unpickler: tasty.DottyUnpickler = _
+
+    private[dotc] def registerTree(tree: tpd.TypeDef)(implicit ctx: Context): Unit = {
+      if (ctx.settings.YretainTrees.value)
+        myTree = tree
+    }
 
     /** The source or class file from which this class was generated, null if not applicable. */
     override def associatedFile(implicit ctx: Context): AbstractFile =

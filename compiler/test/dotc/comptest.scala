@@ -1,6 +1,6 @@
 package dotc
 
-import dotty.tools.vulpix.ParallelTesting
+import dotty.tools.vulpix.{ParallelTesting, TestFlags}
 
 import scala.concurrent.duration._
 
@@ -26,9 +26,6 @@ object comptest extends ParallelTesting {
         dotcDir + "tools/dotc/core/Types.scala",
         dotcDir + "tools/dotc/ast/Trees.scala"
       ),
-      Array(
-        "-Ylog:frontend",
-        "-Xprompt"
-      )
+      TestFlags("", Array("-Ylog:frontend", "-Xprompt"))
   )
 }

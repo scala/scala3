@@ -60,10 +60,6 @@ object FromTasty extends Driver {
     override def toString = s"class file $className"
   }
 
-  object force extends TreeTraverser {
-    def traverse(tree: Tree)(implicit ctx: Context): Unit = traverseChildren(tree)
-  }
-
   class ReadTastyTreesFromClasses extends FrontEnd {
 
     override def isTyper = false
@@ -85,13 +81,8 @@ object FromTasty extends Driver {
               case info: ClassfileLoader =>
                 info.load(clsd)
                 val unpickled = clsd.symbol.asClass.tree
-                if (unpickled != null) {
-                    val unit1 = new CompilationUnit(new SourceFile(clsd.symbol.sourceFile, Seq()))
-                    unit1.tpdTree = unpickled
-                    force.traverse(unit1.tpdTree)
-                    unit1
-                } else
-                    cannotUnpickle(s"its class file ${info.classfile} does not have a TASTY attribute")
+                if (unpickled != null) CompilationUnit.mkCompilationUnit(clsd, unpickled, forceTrees = true)
+                else cannotUnpickle(s"its class file ${info.classfile} does not have a TASTY attribute")
               case info =>
                 cannotUnpickle(s"its info of type ${info.getClass} is not a ClassfileLoader")
             }

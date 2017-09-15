@@ -2,9 +2,8 @@ package dotty
 package tools
 package dotc
 
-import org.junit.{ Test, AfterClass }
-
-import vulpix.{ ParallelTesting, SummaryReport, SummaryReporting, TestConfiguration }
+import org.junit.{AfterClass, Test}
+import vulpix._
 
 import scala.concurrent.duration._
 
@@ -22,8 +21,8 @@ class MissingCoreLibTests extends ParallelTesting {
 
   @Test def missingDottyLib: Unit = {
     val classPath = mkClassPath(Jars.dottyCompiler :: Jars.dottyInterfaces :: Jars.dottyExtras) // missing Jars.dottyLib
-    val options = noCheckOptions ++ checkOptions ++ yCheckOptions ++ classPath
-    compileFile("../tests/neg/nolib/Foo.scala", options).checkExpectedErrors()
+    val options = noCheckOptions ++ checkOptions ++ yCheckOptions
+    compileFile("../tests/neg/nolib/Foo.scala", TestFlags(classPath, options)).checkExpectedErrors()
   }
 
 }
