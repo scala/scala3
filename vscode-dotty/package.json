@@ -43,12 +43,12 @@
   ],
   "dependencies": {
     "child-process-promise": "^2.2.1",
-    "vscode-languageclient": "^3.2.1",
-    "vscode-languageserver": "^3.2.1"
+    "vscode-languageclient": "3.2.1",
+    "vscode-languageserver": "3.2.1"
   },
   "devDependencies": {
-    "typescript": "^2.3.2",
-    "vscode": "^1.1.0",
-    "@types/node": "^7.0.12"
+    "@types/node": "^8.0.34",
+    "typescript": "^2.5.3",
+    "vscode": "^1.1.5"
   }
 }
