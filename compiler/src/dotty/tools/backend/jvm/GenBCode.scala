@@ -47,7 +47,7 @@ class GenBCode extends Phase {
   }
 
   def outputDir(implicit ctx: Context): AbstractFile =
-    new PlainDirectory(ctx.settings.d.value)
+    new PlainDirectory(ctx.settings.outputDir.value)
 
   def run(implicit ctx: Context): Unit = {
     new GenBCodePipeline(entryPoints.toList,

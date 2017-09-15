@@ -163,7 +163,7 @@ object Settings {
           }
         case (DirectoryTag, arg :: args) =>
           val path = Path(arg)
-          if (path.isDirectory) update(arg, args)
+          if (path.isDirectory) update(Directory(path), args)
           else fail(s"'$arg' does not exist or is not a directory", args)
         case (_, Nil) =>
           missingArg
