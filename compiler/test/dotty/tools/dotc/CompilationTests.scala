@@ -40,8 +40,8 @@ class CompilationTests extends ParallelTesting {
     compileList("compileStdLib", StdLibSources.whitelisted, scala2Mode.and("-migration", "-Yno-inline")) +
     compileDir("../compiler/src/dotty/tools/dotc/ast", defaultOptions) +
     compileDir("../compiler/src/dotty/tools/dotc/config", defaultOptions) +
-    compileDir("../compiler/src/dotty/tools/dotc/core", allowDeepSubtypes) +
-    compileDir("../compiler/src/dotty/tools/dotc/transform", allowDeepSubtypes) +
+    compileDir("../compiler/src/dotty/tools/dotc/core", defaultOptions) +
+    compileDir("../compiler/src/dotty/tools/dotc/transform", defaultOptions) +
     compileDir("../compiler/src/dotty/tools/dotc/parsing", defaultOptions) +
     compileDir("../compiler/src/dotty/tools/dotc/printing", defaultOptions) +
     compileDir("../compiler/src/dotty/tools/dotc/reporting", defaultOptions) +
@@ -51,7 +51,6 @@ class CompilationTests extends ParallelTesting {
     compileDir("../compiler/src/dotty/tools/dotc/core", TestFlags(classPath, noCheckOptions)) +
     compileFile("../tests/pos/nullarify.scala", defaultOptions.and("-Ycheck:nullarify")) +
     compileFile("../tests/pos-scala2/rewrites.scala", scala2Mode.and("-rewrite")).copyToTarget() +
-    compileFile("../tests/pos-special/t8146a.scala", allowDeepSubtypes) +
     compileFile("../tests/pos-special/utf8encoded.scala", explicitUTF8) +
     compileFile("../tests/pos-special/utf16encoded.scala", explicitUTF16) +
     compileList(
@@ -198,8 +197,8 @@ class CompilationTests extends ParallelTesting {
   // lower level of concurrency as to not kill their running VMs
 
   @Test def testPickling: Unit = {
-    compileDir("../compiler/src/dotty/tools", picklingOptionsAllowDeepSubTypes) +
-    compileDir("../compiler/src/dotty/tools/dotc", picklingOptionsAllowDeepSubTypes) +
+    compileDir("../compiler/src/dotty/tools", picklingOptions) +
+    compileDir("../compiler/src/dotty/tools/dotc", picklingOptions) +
     compileFilesInDir("../tests/new", picklingOptions) +
     compileFilesInDir("../tests/pickling", picklingOptions) +
     compileDir("../library/src/dotty/runtime", picklingOptions) +
@@ -211,7 +210,7 @@ class CompilationTests extends ParallelTesting {
     compileDir("../compiler/src/dotty/tools/dotc/printing", picklingOptions) +
     compileDir("../compiler/src/dotty/tools/repl", picklingOptions) +
     compileDir("../compiler/src/dotty/tools/dotc/rewrite", picklingOptions) +
-    compileDir("../compiler/src/dotty/tools/dotc/transform", picklingOptionsAllowDeepSubTypes) +
+    compileDir("../compiler/src/dotty/tools/dotc/transform", picklingOptions) +
     compileDir("../compiler/src/dotty/tools/dotc/typer", picklingOptions) +
     compileDir("../compiler/src/dotty/tools/dotc/util", picklingOptions) +
     compileDir("../compiler/src/dotty/tools/io", picklingOptions) +
@@ -237,7 +236,7 @@ class CompilationTests extends ParallelTesting {
 
     def lib =
       compileDir("../library/src",
-        allowDeepSubtypes.and("-Ycheck-reentrant", "-strict", "-priorityclasspath", defaultOutputDir))
+        defaultOptions.and("-Ycheck-reentrant", "-strict", "-priorityclasspath", defaultOutputDir))
 
     val compilerDir = Paths.get("../compiler/src")
     val compilerSources = sources(Files.walk(compilerDir))
