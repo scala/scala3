@@ -78,8 +78,6 @@ object Trees {
     /** The type  constructor at the root of the tree */
     type ThisTree[T >: Untyped] <: Tree[T]
 
-    private[this] var myTpe: T = _
-
     var x1: Int = _
     var x2: Int = _
     var x3: Int = _
@@ -88,6 +86,9 @@ object Trees {
     var x6: Int = _
     var x7: Int = _
     var x8: Int = _
+
+    private[this] var myTpe: T = _
+
     var x9: Int = _
     var x10: Int = _
     var x11: Int = _
