@@ -76,16 +76,6 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
   private def isLegalPrefix(pre: Type)(implicit ctx: Context) =
     pre.isStable || !ctx.phase.isTyper
 
-  /** Approximate a type `tp` with a type that does not contain skolem types. */
-  object deskolemize extends ApproximatingTypeMap {
-    def apply(tp: Type) = /*ctx.traceIndented(i"deskolemize($tp) at $variance", show = true)*/ {
-      tp match {
-        case tp: SkolemType => range(tp.bottomType, atVariance(1)(apply(tp.info)))
-        case _ => mapOver(tp)
-      }
-    }
-  }
-
   /** Implementation of Types#simplified */
   final def simplify(tp: Type, theMap: SimplifyMap): Type = tp match {
     case tp: NamedType =>

@@ -263,6 +263,9 @@ object Contexts {
     final def withPhaseNoEarlier(phase: Phase) =
       if (phase.exists && ctx.phase.id < phase.id) withPhase(phase) else ctx
 
+    // `creationTrace`-related code. To enable, uncomment the code below and the
+    // call to `setCreationTrace()` in this file.
+    /*
     /** If -Ydebug is on, the top of the stack trace where this context
      *  was created, otherwise `null`.
      */
@@ -281,6 +284,7 @@ object Contexts {
       }
       println("=== end context creation trace ===")
     }
+    */
 
     /** The current reporter */
     def reporter: Reporter = typerState.reporter
@@ -414,7 +418,8 @@ object Contexts {
       this.implicitsCache = null
       this.phasedCtx = this
       this.phasedCtxs = null
-      setCreationTrace()
+      // See comment related to `creationTrace` in this file
+      // setCreationTrace()
       this
     }
 

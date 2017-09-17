@@ -1061,7 +1061,18 @@ class Namer { typer: Typer =>
 
       val rhsCtx = ctx.addMode(Mode.InferringReturnType)
       def rhsType = typedAheadExpr(mdef.rhs, inherited orElse rhsProto)(rhsCtx).tpe
-      def cookedRhsType = ctx.deskolemize(dealiasIfUnit(widenRhs(rhsType)))
+
+      // Approximate a type `tp` with a type that does not contain skolem types.
+      val deskolemize = new ApproximatingTypeMap {
+        def apply(tp: Type) = /*ctx.traceIndented(i"deskolemize($tp) at $variance", show = true)*/ {
+          tp match {
+            case tp: SkolemType => range(tp.bottomType, atVariance(1)(apply(tp.info)))
+            case _ => mapOver(tp)
+          }
+        }
+      }
+
+      def cookedRhsType = deskolemize(dealiasIfUnit(widenRhs(rhsType)))
       lazy val lhsType = fullyDefinedType(cookedRhsType, "right-hand side", mdef.pos)
       //if (sym.name.toString == "y") println(i"rhs = $rhsType, cooked = $cookedRhsType")
       if (inherited.exists)
