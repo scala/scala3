@@ -86,9 +86,6 @@ object Trees {
     var x6: Int = _
     var x7: Int = _
     var x8: Int = _
-
-    private[this] var myTpe: T = _
-
     var x9: Int = _
     var x10: Int = _
     var x11: Int = _
@@ -97,6 +94,9 @@ object Trees {
     var x14: Int = _
     var x15: Int = _
     var x16: Int = _
+
+
+    private[this] var myTpe: T = _
 
     /** Destructively set the type of the tree. This should be called only when it is known that
      *  it is safe under sharing to do so. One use-case is in the withType method below
