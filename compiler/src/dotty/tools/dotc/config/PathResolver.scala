@@ -5,7 +5,7 @@ package config
 import java.net.{ URL, MalformedURLException }
 import WrappedProperties.AccessControl
 import io.{ ClassPath, File, Directory, Path, AbstractFile }
-import classpath.{AggregateClassPath, ClassPathFactory }
+import classpath.{AggregateClassPath, ClassPathFactory, JrtClassPath }
 import ClassPath.{ JavaContext, join, split }
 import PartialFunction.condOpt
 import scala.language.postfixOps
@@ -225,13 +225,14 @@ class PathResolver(implicit ctx: Context) {
     // priority class path takes precedence
     def basis = List[Traversable[ClassPath]](
       classesInExpandedPath(priorityClassPath),     // 0. The priority class path (for testing).
-      classesInPath(javaBootClassPath),             // 1. The Java bootstrap class path.
-      contentsOfDirsInPath(javaExtDirs),            // 2. The Java extension class path.
-      classesInExpandedPath(javaUserClassPath),     // 3. The Java application class path.
-      classesInPath(scalaBootClassPath),            // 4. The Scala boot class path.
-      contentsOfDirsInPath(scalaExtDirs),           // 5. The Scala extension class path.
-      classesInExpandedPath(userClassPath),         // 6. The Scala application class path.
-      sourcesInPath(sourcePath)                     // 7. The Scala source path.
+      JrtClassPath.apply(),                         // 1. The Java 9 classpath (backed by the jrt:/ virtual system, if available)
+      classesInPath(javaBootClassPath),             // 2. The Java bootstrap class path.
+      contentsOfDirsInPath(javaExtDirs),            // 3. The Java extension class path.
+      classesInExpandedPath(javaUserClassPath),     // 4. The Java application class path.
+      classesInPath(scalaBootClassPath),            // 5. The Scala boot class path.
+      contentsOfDirsInPath(scalaExtDirs),           // 6. The Scala extension class path.
+      classesInExpandedPath(userClassPath),         // 7. The Scala application class path.
+      sourcesInPath(sourcePath)                     // 8. The Scala source path.
     )
 
     lazy val containers = basis.flatten.distinct
