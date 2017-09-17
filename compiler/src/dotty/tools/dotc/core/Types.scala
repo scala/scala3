@@ -1504,9 +1504,10 @@ object Types {
 
     private[this] var myName: ThisName = _
     private[this] var mySig: Signature = null
+    private[this] var myNameSpace: Symbol = NoSymbol
 
     private[dotc] def init()(implicit ctx: Context): this.type = {
-      (designator: Designator) match { // dotty shortcoming: need the upcast
+      def decompose(designator: Designator): Unit = designator match {
         case DerivedName(underlying, info: SignedName.SignedInfo) =>
           myName = underlying.asInstanceOf[ThisName]
           mySig = info.sig
@@ -1515,7 +1516,11 @@ object Types {
           myName = designator.asInstanceOf[ThisName]
         case designator: Symbol =>
           uncheckedSetSym(designator)
+        case QualifiedDesignator(qual, name) =>
+          myNameSpace = qual.symbol
+          decompose(name)
       }
+      decompose(designator)
       this
     }
 
@@ -1528,6 +1533,8 @@ object Types {
       if (mySig != null) mySig
       else if (isType || lastDenotation == null) Signature.NotAMethod
       else denot.signature
+
+    final def nameSpace: Symbol = myNameSpace
 
     private[this] var lastDenotation: Denotation = _
     private[this] var lastSymbol: Symbol = _
@@ -1734,7 +1741,7 @@ object Types {
     }
 
     private def withSig(sig: Signature)(implicit ctx: Context): NamedType =
-      TermRef(prefix, name.asTermName.withSig(sig))
+      TermRef(prefix, name.asTermName.withSig(sig).withNameSpace(nameSpace).asInstanceOf[TermDesignator])
 
     protected def loadDenot(implicit ctx: Context): Denotation = {
       val d = asMemberOf(prefix, allowPrivate = true)
@@ -1752,6 +1759,7 @@ object Types {
 
     protected def asMemberOf(prefix: Type, allowPrivate: Boolean)(implicit ctx: Context): Denotation =
       if (name.is(ShadowedName)) prefix.nonPrivateMember(name.exclude(ShadowedName))
+      else if (nameSpace.exists) prefix.decl(name)
       else if (!allowPrivate) prefix.nonPrivateMember(name)
       else prefix.member(name)
 
@@ -1925,8 +1933,8 @@ object Types {
      */
     def shadowed(implicit ctx: Context): NamedType =
       designator match {
-        case designator: Symbol => this
         case designator: Name => NamedType(prefix, designator.derived(ShadowedName))
+        case _ => this
       }
 
     override def equals(that: Any) = that match {
@@ -1991,13 +1999,13 @@ object Types {
             curSig
           else
             curSig.updateWith(symbol.info.asSeenFrom(prefix, symbol.owner).signature)
-        val candidate =
+        val designator1 =
           if (newSig ne curSig) {
             core.println(i"sig change at ${ctx.phase} for $this, pre = $prefix, sig: $curSig --> $newSig")
-            TermRef(prefix, name.withSig(newSig))
+            name.withSig(newSig).withNameSpace(nameSpace).asInstanceOf[TermDesignator]
           }
-          else TermRef(prefix, designator)
-        fixDenot(candidate, prefix)
+          else designator
+        fixDenot(TermRef(prefix, designator1), prefix)
     }
 
     override def shadowed(implicit ctx: Context): NamedType =
@@ -2069,7 +2077,10 @@ object Types {
     def apply(prefix: Type, name: TermName, denot: Denotation)(implicit ctx: Context): TermRef = {
       if ((prefix eq NoPrefix) || denot.symbol.isReferencedSymbolically) apply(prefix, denot.symbol.asTerm)
       else denot match {
-        case denot: SingleDenotation => apply(prefix, name.withSig(denot.signature))
+        case denot: SingleDenotation =>
+          var desig = name.withSig(denot.signature)
+          //if (denot.symbol.is(Private)) desig = desig.withNameSpace(denot.symbol.owner)
+          apply(prefix, desig)
         case _ => apply(prefix, name)
       }
     } withDenot denot

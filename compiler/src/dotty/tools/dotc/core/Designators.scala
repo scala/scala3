@@ -2,8 +2,9 @@ package dotty.tools
 package dotc
 package core
 
-import Names._
+import Names._, NameOps._
 import Contexts.Context
+import Types.TypeRef
 
 /** Defines a common superclass of Name and Symbol and its Term/Type variants
  *  Designators are used in reference type to identity what is referred to.
@@ -27,4 +28,10 @@ object Designators {
 
   type TermDesignator = Designator { type ThisName = TermName }
   type TypeDesignator = Designator { type ThisName = TypeName }
+
+  case class QualifiedDesignator(qual: TypeRef, name: Name) extends Designator {
+    def derivedDesignator(qual: TypeRef, name: Name) =
+      if ((qual eq this.qual) && (name eq this.name)) this
+      else QualifiedDesignator(qual, name)
+  }
 }

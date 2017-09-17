@@ -9,6 +9,7 @@ import Decorators.PreNamedString
 import util.{Chars, NameTransformer}
 import Chars.isOperatorPart
 import Definitions._
+import Designators._
 import config.Config
 
 object NameOps {
@@ -272,6 +273,9 @@ object NameOps {
       val unmangled = (name /: kinds)(_.unmangle(_))
       if (unmangled eq name) name else unmangled.unmangle(kinds)
     }
+
+    def withNameSpace(owner: Symbol)(implicit ctx: Context): Designator =
+      if (owner.exists) QualifiedDesignator(owner.typeRef, name) else name
   }
 
   implicit class TermNameDecorator(val name: TermName) extends AnyVal {

@@ -5,7 +5,7 @@ package tasty
 
 import Contexts._, Symbols._, Types._, Scopes._, SymDenotations._, Names._, NameOps._
 import StdNames._, Denotations._, Flags._, Constants._, Annotations._
-import NameKinds._
+import NameKinds._, Designators._
 import typer.Checking.checkNonCyclic
 import util.Positions._
 import ast.{tpd, Trees, untpd}
@@ -220,6 +220,16 @@ class TreeUnpickler(reader: TastyReader, nameAtRef: NameRef => TermName, posUnpi
 
         val result =
           (tag: @switch) match {
+            case TERMREFin =>
+              val name = readName()
+              val prefix = readType()
+              val owner = readType()
+              TermRef(prefix, name.withNameSpace(owner.typeSymbol).asInstanceOf[TermDesignator])
+            case TYPEREFin =>
+              val name = readName()
+              val prefix = readType()
+              val owner = readType()
+              TypeRef(prefix, name.toTypeName.withNameSpace(owner.typeSymbol).asInstanceOf[TypeDesignator])
             case REFINEDtype =>
               var name: Name = readName()
               val parent = readType()

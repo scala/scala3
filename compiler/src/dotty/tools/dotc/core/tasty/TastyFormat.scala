@@ -127,6 +127,7 @@ Standard-Section: "ASTs" TopLevelStat*
                   TERMREFdirect         sym_ASTRef
                   TERMREFsymbol         sym_ASTRef qual_Type
                   TERMREFpkg            fullyQualified_NameRef
+                  TERMREFin      Length possiblySigned_NameRef qual_Type namespace_Type
                   TERMREF               possiblySigned_NameRef qual_Type
                   THIS                  clsRef_Type
                   RECthis               recType_ASTRef
@@ -151,7 +152,8 @@ Standard-Section: "ASTs" TopLevelStat*
                   TYPEREFdirect         sym_ASTRef
                   TYPEREFsymbol         sym_ASTRef qual_Type
                   TYPEREFpkg            fullyQualified_NameRef
-                  TYPEREF               possiblySigned_NameRef qual_Type
+                  TYPEREFin      Length NameRef qual_Type namespace_Type
+                  TYPEREF               NameRef qual_Type
                   RECtype               parent_Type
                   TYPEALIAS             alias_Type
                   SUPERtype      Length this_Type underlying_Type
@@ -262,6 +264,7 @@ object TastyFormat {
   final val IMPLMETH = 64
 
   // AST tags
+  // Cat. 1:    tag
 
   final val UNITconst = 2
   final val FALSEconst = 3
@@ -294,6 +297,8 @@ object TastyFormat {
   final val DEFAULTparameterized = 30
   final val STABLE = 31
 
+  // Cat. 2:    tag Nat
+
   final val SHARED = 64
   final val TERMREFdirect = 65
   final val TYPEREFdirect = 66
@@ -311,6 +316,8 @@ object TastyFormat {
   final val IMPORTED = 78
   final val RENAMED = 79
 
+  // Cat. 3:    tag AST
+
   final val THIS = 96
   final val QUALTHIS = 97
   final val CLASSconst = 98
@@ -325,6 +332,8 @@ object TastyFormat {
   final val TYPEALIAS = 107
   final val SINGLETONtpt = 108
 
+  // Cat. 4:    tag Nat AST
+
   final val IDENT = 112
   final val IDENTtpt = 113
   final val SELECT = 114
@@ -334,6 +343,8 @@ object TastyFormat {
   final val TYPEREFsymbol = 118
   final val TYPEREF = 119
   final val SELFDEF = 120
+
+  // Cat. 5:    tag Length ...
 
   final val PACKAGE = 128
   final val VALDEF = 129
@@ -382,6 +393,8 @@ object TastyFormat {
   final val PARAMtype = 174
   final val ANNOTATION = 175
   final val TYPEARGtype = 176
+  final val TERMREFin = 177
+  final val TYPEREFin = 178
 
   final val firstSimpleTreeTag = UNITconst
   final val firstNatTreeTag = SHARED
@@ -565,6 +578,8 @@ object TastyFormat {
     case SINGLETONtpt => "SINGLETONtpt"
     case SUPERtype => "SUPERtype"
     case TYPEARGtype => "TYPEARGtype"
+    case TERMREFin => "TERMREFin"
+    case TYPEREFin => "TYPEREFin"
     case REFINEDtype => "REFINEDtype"
     case REFINEDtpt => "REFINEDtpt"
     case APPLIEDtype => "APPLIEDtype"
@@ -593,7 +608,7 @@ object TastyFormat {
    */
   def numRefs(tag: Int) = tag match {
     case VALDEF | DEFDEF | TYPEDEF | TYPEPARAM | PARAM | NAMEDARG | RETURN | BIND |
-         SELFDEF | REFINEDtype => 1
+         SELFDEF | REFINEDtype | TERMREFin | TYPEREFin => 1
     case RENAMED | PARAMtype => 2
     case POLYtype | METHODtype | TYPELAMBDAtype => -1
     case _ => 0

@@ -168,6 +168,14 @@ class TreePickler(pickler: TastyPickler) {
         writeByte(if (tpe.isType) TYPEREFsymbol else TERMREFsymbol)
         pickleSymRef(sym); pickleType(tpe.prefix)
       }
+      else if (tpe.nameSpace.exists) {
+        writeByte(if (tpe.isType) TYPEREFin else TERMREFin)
+        withLength {
+          pickleName(sym.name)
+          pickleType(tpe.prefix)
+          pickleType(tpe.nameSpace.typeRef)
+        }
+      }
       else {
         val name = tpe.designator match {
           case designator: Symbol =>
