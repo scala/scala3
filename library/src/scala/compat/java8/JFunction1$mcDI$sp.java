@@ -9,5 +9,5 @@ package scala.compat.java8;
 public interface JFunction1$mcDI$sp extends JFunction1 {
     abstract double apply$mcDI$sp(int v1);
 
-    default Object apply(Object t) { return (Double) apply$mcDI$sp((Integer) t); }
+    default Object apply(Object t) { return (Double) apply$mcDI$sp(scala.runtime.BoxesRunTime.unboxToInt(t)); }
 }

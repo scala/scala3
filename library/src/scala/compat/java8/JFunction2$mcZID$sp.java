@@ -9,5 +9,5 @@ package scala.compat.java8;
 public interface JFunction2$mcZID$sp extends JFunction2 {
     abstract boolean apply$mcZID$sp(int v1, double v2);
 
-    default Object apply(Object v1, Object v2) { return (Boolean) apply$mcZID$sp((Integer) v1, (Double) v2); }
+    default Object apply(Object v1, Object v2) { return (Boolean) apply$mcZID$sp(scala.runtime.BoxesRunTime.unboxToInt(v1), scala.runtime.BoxesRunTime.unboxToDouble(v2)); }
 }
