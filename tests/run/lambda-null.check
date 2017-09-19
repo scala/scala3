@@ -6,4 +6,5 @@ generic Function3: 0 0 0
 # Generic calls
 specialized Function1: 0
 generic Function1: null
+unspecialized Function3: 0 0 0
 generic Function3: null null null

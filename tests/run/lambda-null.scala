@@ -49,9 +49,9 @@ object Test {
     //   implement the only abstract method in Function3: `apply` which has
     //   type (Object, Object, Object): Object
     //
-    // FIXME: This means that LambdaMetaFactory will generate a bridge from
-    // `apply` to the closure method. this work most of the time, but LMF does
-    // not unbox null to 0 as required by Scala semantics, instead it throws an NPE.
+    // Erasure will replace the closure method by a bridge method with the
+    // correct type that forwards to the original closure method with
+    // appropriate boxing/unboxing.
     val if3_unspecialized: (Int, Int, Int) => Int = (x, y, z) => {
       println("unspecialized Function3: " + x + " " + y + " " + z)
       x + y + z
@@ -74,8 +74,7 @@ object Test {
     println("# Generic calls")
     assert(genericCall1(if1_specialized) == 0)
     assert(genericCall1(if1_generic) == 0)
-    // FIXME: throws NullPointerException, see above
-    // assert(genericCall3(if3_unspecialized) == 0)
+    assert(genericCall3(if3_unspecialized) == 0)
     assert(genericCall3(if3_generic) == 0)
   }
 }
