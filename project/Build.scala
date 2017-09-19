@@ -232,6 +232,8 @@ object Build {
     }
   )
 
+  lazy val commonOptimisedSettings = commonBootstrappedSettings ++ Seq(bootstrapOptimised := true)
+
   lazy val commonBenchmarkSettings = Seq(
     mainClass in (Jmh, run) := Some("dotty.tools.benchmarks.Bench"), // custom main for jmh:run
     javaOptions += "-DBENCH_CLASS_PATH=" + Attributed.data((fullClasspath in Compile).value).mkString("", ":", "")
@@ -285,6 +287,16 @@ object Build {
     dependsOn(`dotty-compiler-bootstrapped`).
     dependsOn(`dotty-library-bootstrapped`).
     settings(commonBootstrappedSettings)
+
+  lazy val `dotty-optimised` = project.
+    aggregate(`dotty-interfaces`, `dotty-library-optimised`, `dotty-compiler-optimised`, `dotty-doc-bootstrapped`,
+      `dotty-language-server`,
+      dottySbtBridgeBootstrappedRef,
+      `scala-library`, `scala-compiler`, `scala-reflect`, scalap).
+    dependsOn(`dotty-compiler-optimised`).
+    dependsOn(`dotty-library-optimised`).
+    settings(commonOptimisedSettings)
+
 
   lazy val `dotty-interfaces` = project.in(file("interfaces")).
     settings(commonScala2Settings). // Java-only project, so this is fine
@@ -674,6 +686,20 @@ object Build {
       }
     )
 
+  lazy val `dotty-compiler-optimised` = project.in(file("compiler")).
+    dependsOn(`dotty-interfaces`).
+    dependsOn(`dotty-library-optimised`).
+    settings(commonOptimisedSettings).
+    settings(dottyCompilerSettings).
+    settings(
+      packageAll := {
+        (packageAll in `dotty-compiler`).value ++ Seq(
+          ("dotty-compiler" -> (packageBin in Compile).value.getAbsolutePath),
+          ("dotty-library" -> (packageBin in (`dotty-library-optimised`, Compile)).value.getAbsolutePath)
+        )
+      }
+    )
+
   // Settings shared between dotty-library and dotty-library-bootstrapped
   lazy val dottyLibrarySettings = Seq(
       libraryDependencies ++= Seq(
@@ -688,6 +714,14 @@ object Build {
 
   lazy val `dotty-library-bootstrapped`: Project = project.in(file("library")).
     settings(commonBootstrappedSettings).
+    settings(dottyLibrarySettings).
+    settings(
+      // Needed so that the library sources are visible when `dotty.tools.dotc.core.Definitions#init` is called.
+      scalacOptions in Compile ++= Seq("-sourcepath", (scalaSource in Compile).value.getAbsolutePath)
+    )
+
+  lazy val `dotty-library-optimised`: Project = project.in(file("library")).
+    settings(commonOptimisedSettings).
     settings(dottyLibrarySettings).
     settings(
       // Needed so that the library sources are visible when `dotty.tools.dotc.core.Definitions#init` is called.
@@ -829,6 +863,12 @@ object Build {
   lazy val `dotty-bench-bootstrapped` = project.in(file("bench-bootstrapped")).
     dependsOn(`dotty-compiler-bootstrapped`).
     settings(commonBootstrappedSettings ++ commonBenchmarkSettings).
+    settings(unmanagedSourceDirectories in Compile ++= Seq(baseDirectory.value / ".." / "bench" / "src")).
+    enablePlugins(JmhPlugin)
+
+  lazy val `dotty-bench-optimised` = project.in(file("bench-optimised")).
+    dependsOn(`dotty-compiler-optimised`).
+    settings(commonOptimisedSettings ++ commonBenchmarkSettings).
     settings(unmanagedSourceDirectories in Compile ++= Seq(baseDirectory.value / ".." / "bench" / "src")).
     enablePlugins(JmhPlugin)
 
@@ -1147,6 +1187,17 @@ object Build {
     dependsOn(`dotty-compiler-bootstrapped`).
     dependsOn(`dotty-doc-bootstrapped`).
     settings(commonBootstrappedSettings).
+    settings(commonDistSettings).
+    settings(
+      target := baseDirectory.value / "target" // override setting in commonBootstrappedSettings
+    )
+
+  lazy val `dist-optimised` = project.
+    dependsOn(`dotty-interfaces`).
+    dependsOn(`dotty-library-optimised`).
+    dependsOn(`dotty-compiler-optimised`).
+    dependsOn(`dotty-doc-bootstrapped`).
+    settings(commonOptimisedSettings).
     settings(commonDistSettings).
     settings(
       target := baseDirectory.value / "target" // override setting in commonBootstrappedSettings

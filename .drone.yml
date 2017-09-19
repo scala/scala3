@@ -29,7 +29,7 @@ pipeline:
     image: lampepfl/dotty:2017-09-08
     commands:
       - cp -R . /tmp/3/ && cd /tmp/3/
-      - ./project/scripts/sbt ";set bootstrapOptimised in ThisBuild := true ;dotty-bootstrapped/test"
+      - ./project/scripts/sbt dotty-optimised/test
 
   test_sbt:
     group: test
