@@ -55,14 +55,14 @@ trait ParallelTesting extends RunnerOrchestration { self =>
 
     def runClassPath: String = outDir.getAbsolutePath + ":" + flags.runClassPath
 
-    def title: String = self match {
+    def title: String = (self match {
       case self: JointCompilationSource =>
         if (self.files.length > 1) name
         else self.files.head.getPath
 
       case self: SeparateCompilationSource =>
         self.dir.getPath
-    }
+    }).stripPrefix("../")
 
     /** Adds the flags specified in `newFlags0` if they do not already exist */
     def withFlags(newFlags0: String*) = {
