@@ -29,7 +29,6 @@ import JmhPlugin.JmhKeys.Jmh
 object ExposedValues extends AutoPlugin {
   object autoImport {
     val bootstrapFromPublishedJars = Build.bootstrapFromPublishedJars
-    val bootstrapOptimised = Build.bootstrapOptimised
   }
 }
 
@@ -90,14 +89,11 @@ object Build {
   lazy val dottydoc = inputKey[Unit]("run dottydoc")
 
   lazy val bootstrapFromPublishedJars = settingKey[Boolean]("If true, bootstrap dotty from published non-bootstrapped dotty")
-  lazy val bootstrapOptimised = settingKey[Boolean]("Bootstrap with -optimise")
 
   // Used in build.sbt
   lazy val thisBuildSettings = Def.settings(
     // Change this to true if you want to bootstrap using a published non-bootstrapped compiler
     bootstrapFromPublishedJars := false,
-
-    bootstrapOptimised := false,
 
     // Override `runCode` from sbt-dotty to use the language-server and
     // vscode extension from the source repository of dotty instead of a
@@ -184,13 +180,6 @@ object Build {
     // ...but scala-library is
     libraryDependencies += "org.scala-lang" % "scala-library" % scalacVersion,
 
-    scalacOptions ++= {
-      if (bootstrapOptimised.value)
-        Seq("-optimise")
-      else
-        Seq()
-    },
-
     ivyConfigurations ++= {
       if (bootstrapFromPublishedJars.value)
         Seq(Configurations.ScalaTool)
@@ -232,7 +221,9 @@ object Build {
     }
   )
 
-  lazy val commonOptimisedSettings = commonBootstrappedSettings ++ Seq(bootstrapOptimised := true)
+
+  // Bootstrap with -optimise
+  lazy val commonOptimisedSettings = commonBootstrappedSettings ++ Seq(scalacOptions ++= Seq("-optimise"))
 
   lazy val commonBenchmarkSettings = Seq(
     mainClass in (Jmh, run) := Some("dotty.tools.benchmarks.Bench"), // custom main for jmh:run
