@@ -182,14 +182,28 @@ class InteractiveDriver(settings: List[String]) extends Driver {
    *  of a previous run. Note that typed trees can have untyped or partially
    *  typed children if the source contains errors.
    */
-  private def cleanup(tree: tpd.Tree)(implicit ctx: Context): Unit = tree.foreachSubTree { t =>
-    if (t.hasType) {
-      if (t.symbol.exists) {
-        if (!t.symbol.isCompleted) t.symbol.info = UnspecifiedErrorType
-        t.symbol.annotations.foreach(annot => cleanup(annot.tree))
+  private def cleanup(tree: tpd.Tree)(implicit ctx: Context): Unit = {
+    val seen = mutable.Set.empty[tpd.Tree]
+    def cleanupTree(tree: tpd.Tree): Unit = {
+      seen += tree
+      tree.foreachSubTree { t =>
+        if (t.symbol.exists && t.hasType) {
+          if (!t.symbol.isCompleted) t.symbol.info = UnspecifiedErrorType
+          t.symbol.annotations.foreach { annot =>
+            /* In some cases annotations are are used on themself (possibly larger cycles).
+            *  This is the case with the java.lang.annotation.Target annotation, would end 
+            *  in an infinite loop while cleaning. The `seen` is added to ensure that those 
+            *  trees are not cleand twice.
+            *  TODO: Find a less expensive way to check for those cycles.
+            */
+            if (!seen(annot.tree))
+              cleanupTree(annot.tree)
+          }
+        }
+        t.removeAllAttachments()
       }
     }
-    t.removeAllAttachments()
+    cleanupTree(tree)
   }
 
   def run(uri: URI, sourceCode: String): List[MessageContainer] = {
