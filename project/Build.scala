@@ -280,7 +280,7 @@ object Build {
     settings(commonBootstrappedSettings)
 
   lazy val `dotty-optimised` = project.
-    aggregate(`dotty-interfaces`, `dotty-library-optimised`, `dotty-compiler-optimised`, `dotty-doc-bootstrapped`,
+    aggregate(`dotty-interfaces`, `dotty-library-optimised`, `dotty-compiler-optimised`, `dotty-doc-optimised`,
       `dotty-language-server`,
       dottySbtBridgeBootstrappedRef,
       `scala-library`, `scala-compiler`, `scala-reflect`, scalap).
@@ -369,6 +369,11 @@ object Build {
   lazy val `dotty-doc-bootstrapped` = project.in(file("doc-tool")).
     dependsOn(`dotty-compiler-bootstrapped`, `dotty-compiler-bootstrapped` % "test->test").
     settings(commonBootstrappedSettings).
+    settings(dottyDocSettings)
+
+  lazy val `dotty-doc-optimised` = project.in(file("doc-tool")).
+    dependsOn(`dotty-compiler-bootstrapped`, `dotty-compiler-bootstrapped` % "test->test").
+    settings(commonOptimisedSettings).
     settings(dottyDocSettings)
 
   lazy val `dotty-bot` = project.in(file("bot")).
@@ -1187,7 +1192,7 @@ object Build {
     dependsOn(`dotty-interfaces`).
     dependsOn(`dotty-library-optimised`).
     dependsOn(`dotty-compiler-optimised`).
-    dependsOn(`dotty-doc-bootstrapped`).
+    dependsOn(`dotty-doc-optimised`).
     settings(commonOptimisedSettings).
     settings(commonDistSettings).
     settings(
