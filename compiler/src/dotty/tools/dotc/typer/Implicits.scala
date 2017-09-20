@@ -1008,7 +1008,7 @@ class TermRefSet(implicit ctx: Context) extends mutable.Traversable[TermRef] {
   override def foreach[U](f: TermRef => U): Unit =
     for (sym <- elems.keysIterator)
       for (pre <- elems(sym))
-        f(TermRef(pre, sym, sym.name))
+        f(TermRef.withSym(pre, sym))
 }
 
 @sharable object EmptyTermRefSet extends TermRefSet()(NoContext)

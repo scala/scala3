@@ -154,7 +154,7 @@ trait Symbols { this: Context =>
         infoFn(module, modcls), privateWithin)
     val mdenot = SymDenotation(
         module, owner, name, modFlags | ModuleCreationFlags,
-        if (cdenot.isCompleted) TypeRef(owner.thisType, modcls, modclsName)
+        if (cdenot.isCompleted) TypeRef.withSym(owner.thisType, modcls, modclsName)
         else new ModuleCompleter(modcls))
     module.denot = mdenot
     modcls.denot = cdenot
@@ -179,7 +179,7 @@ trait Symbols { this: Context =>
     newModuleSymbol(
         owner, name, modFlags, clsFlags,
         (module, modcls) => ClassInfo(
-          owner.thisType, modcls, parents, decls, TermRef(owner.thisType, module, name)),
+          owner.thisType, modcls, parents, decls, TermRef.withSym(owner.thisType, module, name)),
         privateWithin, coord, assocFile)
 
   val companionMethodFlags = Flags.Synthetic | Flags.Private | Flags.Method
@@ -287,7 +287,7 @@ trait Symbols { this: Context =>
     for (name <- names) {
       val tparam = newNakedSymbol[TypeName](NoCoord)
       tparamBuf += tparam
-      trefBuf += TypeRef(owner.thisType, tparam, name)
+      trefBuf += TypeRef.withSym(owner.thisType, tparam, name)
     }
     val tparams = tparamBuf.toList
     val bounds = boundsFn(trefBuf.toList)

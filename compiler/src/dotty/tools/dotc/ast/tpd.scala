@@ -382,7 +382,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     val targs = tp.argTypes
     val tycon = tp.typeConstructor
     New(tycon)
-      .select(TermRef(tycon, constr, constr.name))
+      .select(TermRef.withSym(tycon, constr))
       .appliedToTypes(targs)
       .appliedToArgs(args)
   }
@@ -916,9 +916,8 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
         alternatives.head
       }
       else denot.asSingleDenotation.termRef
-    val selectedSym = selected.termSymbol.asTerm
     val fun = receiver
-      .select(TermRef(receiver.tpe, selectedSym, selectedSym.name))
+      .select(TermRef.withSym(receiver.tpe, selected.termSymbol.asTerm))
       .appliedToTypes(targs)
 
     def adaptLastArg(lastParam: Tree, expectedType: Type) = {
