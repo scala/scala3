@@ -1,7 +1,7 @@
 package dotty.tools.dotc
 package core
 
-import Types._, Contexts._, util.Stats._, Hashable._, Names._
+import Types._, Symbols._, Contexts._, util.Stats._, Hashable._, Names._, Designators._
 import config.Config
 import util.HashSet
 
@@ -43,85 +43,56 @@ object Uniques {
   final class NamedTypeUniques extends HashSet[NamedType](Config.initialUniquesCapacity) with Hashable {
     override def hash(x: NamedType): Int = x.hash
 
-    private def findPrevious(h: Int, prefix: Type, name: Name): NamedType = {
+    private def findPrevious(h: Int, prefix: Type, designator: Designator): NamedType = {
       var e = findEntryByHash(h)
       while (e != null) {
-        if ((e.prefix eq prefix) && (e.name eq name)) return e
+        if ((e.prefix eq prefix) && (e.designator eq designator)) return e
         e = nextEntryByHash(h)
       }
       e
     }
 
-    def enterIfNew(prefix: Type, name: Name): NamedType = {
-      val h = doHash(name, prefix)
-      if (monitored) recordCaching(h, classOf[CachedTermRef])
-      def newType =
-        if (name.isTypeName) new CachedTypeRef(prefix, name.asTypeName, h)
-        else new CachedTermRef(prefix, name.asTermName, h)
+    def enterIfNew(prefix: Type, designator: Designator, isTerm: Boolean)(implicit ctx: Context): NamedType = {
+      val h = doHash(designator, prefix)
+      if (monitored) recordCaching(h, classOf[NamedType])
+      def newType = {
+        if (isTerm) new CachedTermRef(prefix, designator.asInstanceOf[TermDesignator], h)
+        else new CachedTypeRef(prefix, designator.asInstanceOf[TypeDesignator], h)
+      }.init()
       if (h == NotCached) newType
       else {
-        val r = findPrevious(h, prefix, name)
+        val r = findPrevious(h, prefix, designator)
         if (r ne null) r else addEntryAfterScan(newType)
       }
     }
   }
 
-  final class TypeAliasUniques extends HashSet[TypeAlias](Config.initialUniquesCapacity) with Hashable {
-    override def hash(x: TypeAlias): Int = x.hash
+  final class AppliedUniques extends HashSet[AppliedType](Config.initialUniquesCapacity) with Hashable {
+    override def hash(x: AppliedType): Int = x.hash
 
-    private def findPrevious(h: Int, alias: Type, variance: Int): TypeAlias = {
+    private def findPrevious(h: Int, tycon: Type, args: List[Type]): AppliedType = {
       var e = findEntryByHash(h)
       while (e != null) {
-        if ((e.alias eq alias) && (e.variance == variance)) return e
+        def sameArgs(args1: List[Type], args2: List[Type]): Boolean = {
+          val empty1 = args1.isEmpty
+          val empty2 = args2.isEmpty
+          if (empty1) empty2
+          else (!empty2 && (args1.head eq args2.head) && sameArgs(args1.tail, args2.tail))
+        }
+        if ((e.tycon eq tycon) && sameArgs(e.args, args)) return e
         e = nextEntryByHash(h)
       }
       e
     }
 
-    def enterIfNew(alias: Type, variance: Int): TypeAlias = {
-      val h = doHash(variance, alias)
-      if (monitored) recordCaching(h, classOf[TypeAlias])
-      def newAlias = new CachedTypeAlias(alias, variance, h)
-      if (h == NotCached) newAlias
-      else {
-        val r = findPrevious(h, alias, variance)
-        if (r ne null) r
-        else addEntryAfterScan(newAlias)
-      }
-    }
-  }
-
-  final class RefinedUniques extends HashSet[RefinedType](Config.initialUniquesCapacity) with Hashable {
-    override val hashSeed = classOf[CachedRefinedType].hashCode // some types start life as CachedRefinedTypes, need to have same hash seed
-    override def hash(x: RefinedType): Int = x.hash
-
-    private def findPrevious(h: Int, parent: Type, refinedName: Name, refinedInfo: Type): RefinedType = {
-      var e = findEntryByHash(h)
-      while (e != null) {
-        if ((e.parent eq parent) && (e.refinedName eq refinedName) && (e.refinedInfo eq refinedInfo))
-          return e
-        e = nextEntryByHash(h)
-      }
-      e
-    }
-
-    def enterIfNew(parent: Type, refinedName: Name, refinedInfo: Type): RefinedType = {
-      val h = doHash(refinedName, refinedInfo, parent)
-      def newType = new CachedRefinedType(parent, refinedName, refinedInfo, h)
-      if (monitored) recordCaching(h, classOf[CachedRefinedType])
+    def enterIfNew(tycon: Type, args: List[Type]): AppliedType = {
+      val h = doHash(tycon, args)
+      def newType = new CachedAppliedType(tycon, args, h)
+      if (monitored) recordCaching(h, classOf[CachedAppliedType])
       if (h == NotCached) newType
       else {
-        val r = findPrevious(h, parent, refinedName, refinedInfo)
+        val r = findPrevious(h, tycon, args)
         if (r ne null) r else addEntryAfterScan(newType)
-      }
-    }
-
-    def enterIfNew(rt: RefinedType) = {
-      if (monitored) recordCaching(rt)
-      if (rt.hash == NotCached) rt
-      else {
-        val r = findPrevious(rt.hash, rt.parent, rt.refinedName, rt.refinedInfo)
-        if (r ne null) r else addEntryAfterScan(rt)
       }
     }
   }

@@ -62,7 +62,7 @@ object Scala2Unpickler {
     case tp: MethodType =>
       val lastArg = tp.paramInfos.last
       assert(lastArg isRef defn.ArrayClass)
-      val elemtp0 :: Nil = lastArg.baseArgInfos(defn.ArrayClass)
+      val elemtp0 :: Nil = lastArg.baseType(defn.ArrayClass).argInfos
       val elemtp = elemtp0 match {
         case AndType(t1, t2) if t1.typeSymbol.isAbstractType && (t2 isRef defn.ObjectClass) =>
           t1 // drop intersection with Object for abstract types in varargs. UnCurry can handle them.
@@ -97,10 +97,11 @@ object Scala2Unpickler {
         // `denot.sourceModule.exists` provision i859.scala crashes in the backend.
         denot.owner.thisType select denot.sourceModule
       else selfInfo
-    val tempInfo = new TempClassInfo(denot.owner.thisType, denot.classSymbol, decls, ost)
+    val tempInfo = new TempClassInfo(denot.owner.thisType, cls, decls, ost)
     denot.info = tempInfo // first rough info to avoid CyclicReferences
-    var parentRefs = ctx.normalizeToClassRefs(parents, cls, decls)
-    if (parentRefs.isEmpty) parentRefs = defn.ObjectType :: Nil
+    val normalizedParents =
+    	if (parents.isEmpty) defn.ObjectType :: Nil
+    	else parents.map(_.dealias)
     for (tparam <- tparams) {
       val tsym = decls.lookup(tparam.name)
       if (tsym.exists) tsym.setFlag(TypeParam)
@@ -124,7 +125,7 @@ object Scala2Unpickler {
       registerCompanionPair(scalacCompanion, denot.classSymbol)
     }
 
-    tempInfo.finalize(denot, parentRefs) // install final info, except possibly for typeparams ordering
+    tempInfo.finalize(denot, normalizedParents) // install final info, except possibly for typeparams ordering
     denot.ensureTypeParamsInCorrectOrder()
   }
 }
@@ -485,10 +486,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
       case TYPEsym | ALIASsym =>
         var name1 = name.asTypeName
         var flags1 = flags
-        if (flags is TypeParam) {
-          name1 = name1.expandedName(owner)
-          flags1 |= owner.typeParamCreationFlags
-        }
+        if (flags is TypeParam) flags1 |= owner.typeParamCreationFlags
         ctx.newSymbol(owner, name1, flags1, localMemberUnpickler, coord = start)
       case CLASSsym =>
         var infoRef = readNat()
@@ -632,7 +630,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
     // unless names match up.
     val isBound = (tp: Type) => {
       def refersTo(tp: Type, sym: Symbol): Boolean = tp match {
-        case tp @ TypeRef(_, name) => sym.name == name && sym == tp.symbol
+        case tp: TypeRef => sym.name == tp.name && sym == tp.symbol
         case tp: TypeVar => refersTo(tp.underlying, sym)
         case tp : LazyRef => refersTo(tp.ref, sym)
         case _ => false
@@ -662,7 +660,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
           case info =>
             tp.derivedRefinedType(parent1, name, info)
         }
-      case tp @ HKApply(tycon, args) =>
+      case tp @ AppliedType(tycon, args) =>
         val tycon1 = tycon.safeDealias
         def mapArg(arg: Type) = arg match {
           case arg: TypeRef if isBound(arg) => arg.symbol.info
@@ -706,8 +704,8 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
       case SINGLEtpe =>
         val pre = readTypeRef()
         val sym = readDisambiguatedSymbolRef(_.info.isParameterless)
-        if (isLocal(sym) || (pre == NoPrefix)) pre select sym
-        else TermRef.withSig(pre, sym.name.asTermName, Signature.NotAMethod) // !!! should become redundant
+        if (isLocal(sym) || (pre eq NoPrefix)) pre select sym
+        else TermRef(pre, sym.name.asTermName.withSig(Signature.NotAMethod)) // !!! should become redundant
       case SUPERtpe =>
         val thistpe = readTypeRef()
         val supertpe = readTypeRef()
@@ -727,7 +725,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
             if (sym.owner != thispre.cls) {
               val overriding = thispre.cls.info.decls.lookup(sym.name)
               if (overriding.exists && overriding != sym) {
-                val base = pre.baseTypeWithArgs(sym.owner)
+                val base = pre.baseType(sym.owner)
                 assert(base.exists)
                 pre = SuperType(thispre, base)
               }
@@ -736,8 +734,8 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
         }
         val tycon =
           if (sym.isClass && sym.is(Scala2x) && !sym.owner.is(Package))
-            // used fixed sym for Scala 2 inner classes, because they might be shadowed
-            TypeRef.withFixedSym(pre, sym.name.asTypeName, sym.asType)
+            // use fixed sym for Scala 2 inner classes, because they might be shadowed
+            TypeRef(pre, sym.asType)
           else if (isLocal(sym) || pre == NoPrefix) {
             val pre1 = if ((pre eq NoPrefix) && (sym is TypeParam)) sym.owner.thisType else pre
             pre1 select sym
@@ -759,7 +757,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
         if (decls.isEmpty) parent
         else {
           def subst(info: Type, rt: RecType) =
-            if (clazz.isClass) info.substThis(clazz.asClass, RecThis(rt))
+            if (clazz.isClass) info.substThis(clazz.asClass, rt.recThis)
             else info // turns out some symbols read into `clazz` are not classes, not sure why this is the case.
           def addRefinement(tp: Type, sym: Symbol) = RefinedType(tp, sym.name, sym.info)
           val refined = (parent /: decls.toList)(addRefinement)
@@ -929,7 +927,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
     // println(atp)
     val targs = atp.argTypes
 
-    tpd.applyOverloaded(tpd.New(atp withoutArgs targs), nme.CONSTRUCTOR, args, targs, atp)
+    tpd.applyOverloaded(tpd.New(atp.typeConstructor), nme.CONSTRUCTOR, args, targs, atp)
 }
 
   /** Read an annotation and as a side effect store it into

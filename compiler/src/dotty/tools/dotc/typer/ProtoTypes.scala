@@ -83,6 +83,7 @@ object ProtoTypes {
     def isMatchedBy(tp1: Type)(implicit ctx: Context) = true
     def map(tm: TypeMap)(implicit ctx: Context): ProtoType = this
     def fold[T](x: T, ta: TypeAccumulator[T])(implicit ctx: Context): T = x
+    override def toString = getClass.toString
   }
 
   /** A class marking ignored prototypes that can be revealed by `deepenProto` */
@@ -390,7 +391,7 @@ object ProtoTypes {
       for (n <- (0 until tl.paramNames.length).toList)
       yield {
         val tt = new TypeTree().withPos(owningTree.pos)
-        tt.withType(new TypeVar(TypeParamRef(tl, n), state, tt, ctx.owner))
+        tt.withType(new TypeVar(tl.paramRefs(n), state, tt, ctx.owner))
       }
 
     val added =
@@ -474,6 +475,11 @@ object ProtoTypes {
     case tp: NamedType => // default case, inlined for speed
       if (tp.symbol.isStatic) tp
       else tp.derivedSelect(wildApprox(tp.prefix, theMap, seen))
+    case tp @ AppliedType(tycon, args) =>
+      wildApprox(tycon, theMap, seen) match {
+        case _: WildcardType => WildcardType // this ensures we get a * type
+        case tycon1 => tp.derivedAppliedType(tycon1, args.mapConserve(wildApprox(_, theMap, seen)))
+      }
     case tp: RefinedType => // default case, inlined for speed
       tp.derivedRefinedType(
           wildApprox(tp.parent, theMap, seen),
@@ -501,11 +507,6 @@ object ProtoTypes {
       WildcardType(TypeBounds.upper(wildApprox(mt.paramInfos(pnum), theMap, seen)))
     case tp: TypeVar =>
       wildApprox(tp.underlying, theMap, seen)
-    case tp @ HKApply(tycon, args) =>
-      wildApprox(tycon, theMap, seen) match {
-        case _: WildcardType => WildcardType // this ensures we get a * type
-        case tycon1 => tp.derivedAppliedType(tycon1, args.mapConserve(wildApprox(_, theMap, seen)))
-      }
     case tp: AndType =>
       def approxAnd = {
         val tp1a = wildApprox(tp.tp1, theMap, seen)
@@ -528,8 +529,6 @@ object ProtoTypes {
           tp.derivedOrType(tp1a, tp2a)
       }
       approxOr
-    case tp: LazyRef =>
-      WildcardType
     case tp: SelectionProto =>
       tp.derivedSelectionProto(tp.name, wildApprox(tp.memberProto, theMap, seen), NoViewsAllowed)
     case tp: ViewProto =>

@@ -42,6 +42,16 @@ import collection.mutable
       finally stack = stack.tail
     } else op
 
+  @inline
+  def trackTime[T](fn: String)(op: => T) =
+    if (enabled) doTrackTime(fn)(op) else op
+
+  def doTrackTime[T](fn: String)(op: => T) =
+    if (monitored) {
+      val start = System.nanoTime
+      try op finally record(fn, ((System.nanoTime - start) / 1000).toInt)
+    } else op
+
   class HeartBeat extends Thread() {
     @volatile private[Stats] var continue = true
 
@@ -61,10 +71,10 @@ import collection.mutable
     }
   }
 
-  def monitorHeartBeat[T](op: => T)(implicit ctx: Context) = {
-    if (ctx.settings.Yheartbeat.value) {
-      var hb = new HeartBeat()
-      hb.start()
+  def maybeMonitored[T](op: => T)(implicit ctx: Context) = {
+    if (ctx.settings.YdetailedStats.value) {
+      val hb = new HeartBeat()
+      if (ctx.settings.Yheartbeat.value) hb.start()
       monitored = true
       try op
       finally {

@@ -55,10 +55,11 @@ class SymUtils(val self: Symbol) extends AnyVal {
   def isAnyOverride(implicit ctx: Context) = self.is(Override) || self.is(AbsOverride)
     // careful: AbsOverride is a term only flag. combining with Override would catch only terms.
 
-  def isAliasPreferred(implicit ctx: Context) =
-    self.is(AliasPreferred) || self.name.is(ExpandedName)
-
   def isSuperAccessor(implicit ctx: Context) = self.name.is(SuperAccessorName)
+
+  /** A type or term parameter or a term parameter accessor */
+  def isParamOrAccessor(implicit ctx: Context) =
+    self.is(Param) || self.is(ParamAccessor)
 
   /** If this is a constructor, its owner: otherwise this. */
   final def skipConstructor(implicit ctx: Context): Symbol =
@@ -87,8 +88,8 @@ class SymUtils(val self: Symbol) extends AnyVal {
   def accessorNamed(name: TermName)(implicit ctx: Context): Symbol =
     self.owner.info.decl(name).suchThat(_ is Accessor).symbol
 
-  def termParamAccessors(implicit ctx: Context): List[Symbol] =
-    self.info.decls.filter(_ is TermParamAccessor).toList
+  def paramAccessors(implicit ctx: Context): List[Symbol] =
+    self.info.decls.filter(_ is ParamAccessor).toList
 
   def caseAccessors(implicit ctx:Context) =
     self.info.decls.filter(_ is CaseAccessor).toList

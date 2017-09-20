@@ -391,7 +391,7 @@ object Erasure {
           case _ => sym.name
         }
         untpd.cpy.Select(tree)(qual, sym.name)
-          .withType(NamedType.withFixedSym(qual.tpe, sym))
+          .withType(NamedType(qual.tpe, sym))
       }
 
       def selectArrayMember(qual: Tree, erasedPre: Type): Tree =
@@ -409,7 +409,7 @@ object Erasure {
             cpy.Super(qual)(thisQual, untpd.Ident(sym.owner.asClass.name))
               .withType(SuperType(thisType, sym.owner.typeRef))
           else
-            qual.withType(SuperType(thisType, thisType.firstParent))
+            qual.withType(SuperType(thisType, thisType.firstParent.typeConstructor))
         case _ =>
           qual
       }

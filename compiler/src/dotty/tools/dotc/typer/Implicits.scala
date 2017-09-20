@@ -100,10 +100,11 @@ object Implicits {
             // nothing since it only relates subtype with supertype.
             //
             // We keep the old behavior under -language:Scala2.
-            val isFunctionInS2 = ctx.scala2Mode && tpw.derivesFrom(defn.FunctionClass(1))
+            val isFunctionInS2 =
+              ctx.scala2Mode && tpw.derivesFrom(defn.FunctionClass(1)) && ref.symbol != defn.Predef_conforms
             val isImplicitConverter = tpw.derivesFrom(defn.Predef_ImplicitConverter)
-            val isConforms =
-              tpw.derivesFrom(defn.Predef_Conforms) && ref.symbol != defn.Predef_conforms
+            val isConforms = // An implementation of <:< counts as a view, except that $conforms is always omitted
+                tpw.derivesFrom(defn.Predef_Conforms) && ref.symbol != defn.Predef_conforms
             !(isFunctionInS2 || isImplicitConverter || isConforms)
         }
 
@@ -385,7 +386,7 @@ trait ImplicitRunInfo { self: RunInfo =>
           (lead /: tp.classSymbols)(joinClass)
         case tp: TypeVar =>
           apply(tp.underlying)
-        case tp: HKApply =>
+        case tp: AppliedType if !tp.tycon.typeSymbol.isClass =>
           def applyArg(arg: Type) = arg match {
             case TypeBounds(lo, hi) => AndType.make(lo, hi)
             case _: WildcardType => defn.AnyType
@@ -427,17 +428,14 @@ trait ImplicitRunInfo { self: RunInfo =>
               def addRef(companion: TermRef): Unit = {
                 val compSym = companion.symbol
                 if (compSym is Package)
-                  addRef(TermRef.withSig(companion, nme.PACKAGE, Signature.NotAMethod))
+                  addRef(TermRef(companion, nme.PACKAGE.withSig(Signature.NotAMethod)))
                 else if (compSym.exists)
                   comps += companion.asSeenFrom(pre, compSym.owner).asInstanceOf[TermRef]
               }
-              def addParentScope(parent: TypeRef): Unit = {
-                iscopeRefs(parent) foreach addRef
-                for (param <- parent.typeParamSymbols)
-                  comps ++= iscopeRefs(tp.member(param.name).info)
-              }
+              def addParentScope(parent: Type): Unit =
+                iscopeRefs(tp.baseType(parent.typeSymbol)) foreach addRef
               val companion = cls.companionModule
-              if (companion.exists) addRef(companion.valRef)
+              if (companion.exists) addRef(companion.termRef)
               cls.classParents foreach addParentScope
             }
             tp.classSymbols(liftingCtx) foreach addClassScope
@@ -673,6 +671,8 @@ trait Implicits { self: Typer =>
             case TypeBounds(lo, hi) if lo ne hi => apply(hi)
             case _ => t
           }
+        case t: RefinedType =>
+          apply(t.parent)
         case _ =>
           if (variance > 0) mapOver(t) else t
       }
@@ -935,10 +935,12 @@ trait Implicits { self: Typer =>
  */
 class SearchHistory(val searchDepth: Int, val seen: Map[ClassSymbol, Int]) {
 
-  /** The number of RefinementTypes in this type, after all aliases are expanded */
+  /** The number of applications and refinements in this type, after all aliases are expanded */
   private def typeSize(tp: Type)(implicit ctx: Context): Int = {
     val accu = new TypeAccumulator[Int] {
       def apply(n: Int, tp: Type): Int = tp match {
+        case tp: AppliedType =>
+          foldOver(n + 1, tp)
         case tp: RefinedType =>
           foldOver(n + 1, tp)
         case tp: TypeRef if tp.info.isAlias =>
@@ -1006,7 +1008,7 @@ class TermRefSet(implicit ctx: Context) extends mutable.Traversable[TermRef] {
   override def foreach[U](f: TermRef => U): Unit =
     for (sym <- elems.keysIterator)
       for (pre <- elems(sym))
-        f(TermRef(pre, sym))
+        f(TermRef(pre, sym, sym.name))
 }
 
 @sharable object EmptyTermRefSet extends TermRefSet()(NoContext)

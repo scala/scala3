@@ -127,6 +127,7 @@ Standard-Section: "ASTs" TopLevelStat*
                   TERMREFdirect         sym_ASTRef
                   TERMREFsymbol         sym_ASTRef qual_Type
                   TERMREFpkg            fullyQualified_NameRef
+                  TERMREFin      Length possiblySigned_NameRef qual_Type namespace_Type
                   TERMREF               possiblySigned_NameRef qual_Type
                   THIS                  clsRef_Type
                   RECthis               recType_ASTRef
@@ -151,23 +152,25 @@ Standard-Section: "ASTs" TopLevelStat*
                   TYPEREFdirect         sym_ASTRef
                   TYPEREFsymbol         sym_ASTRef qual_Type
                   TYPEREFpkg            fullyQualified_NameRef
-                  TYPEREF               possiblySigned_NameRef qual_Type
+                  TYPEREFin      Length NameRef qual_Type namespace_Type
+                  TYPEREF               NameRef qual_Type
                   RECtype               parent_Type
+                  TYPEALIAS             alias_Type
                   SUPERtype      Length this_Type underlying_Type
                   REFINEDtype    Length underlying_Type refinement_NameRef info_Type
                   APPLIEDtype    Length tycon_Type arg_Type*
                   TYPEBOUNDS     Length low_Type high_Type
-                  TYPEALIAS      Length alias_Type (COVARIANT | CONTRAVARIANT)?
                   ANNOTATEDtype  Length underlying_Type fullAnnotation_Term
                   ANDtype        Length left_Type right_Type
                   ORtype         Length left_Type right_Type
                   BIND           Length boundName_NameRef bounds_Type
                                         // for type-variables defined in a type pattern
                   BYNAMEtype            underlying_Type
+                  PARAMtype      Length binder_ASTref paramNum_Nat
+                  TYPEARGtype    Length prefix_Type clsRef_Type idx_Nat
                   POLYtype       Length result_Type NamesTypes
                   METHODtype     Length result_Type NamesTypes      // needed for refinements
                   TYPELAMBDAtype Length result_Type NamesTypes      // variance encoded in front of name: +/-/(nothing)
-                  PARAMtype      Length binder_ASTref paramNum_Nat  // needed for refinements
                   SHARED                type_ASTRef
   NamesTypes    = NameType*
   NameType      = paramName_NameRef typeOrBounds_ASTRef
@@ -261,6 +264,7 @@ object TastyFormat {
   final val IMPLMETH = 64
 
   // AST tags
+  // Cat. 1:    tag
 
   final val UNITconst = 2
   final val FALSEconst = 3
@@ -293,6 +297,8 @@ object TastyFormat {
   final val DEFAULTparameterized = 30
   final val STABLE = 31
 
+  // Cat. 2:    tag Nat
+
   final val SHARED = 64
   final val TERMREFdirect = 65
   final val TYPEREFdirect = 66
@@ -310,6 +316,8 @@ object TastyFormat {
   final val IMPORTED = 78
   final val RENAMED = 79
 
+  // Cat. 3:    tag AST
+
   final val THIS = 96
   final val QUALTHIS = 97
   final val CLASSconst = 98
@@ -321,7 +329,10 @@ object TastyFormat {
   final val PRIVATEqualified = 104
   final val PROTECTEDqualified = 105
   final val RECtype = 106
-  final val SINGLETONtpt = 107
+  final val TYPEALIAS = 107
+  final val SINGLETONtpt = 108
+
+  // Cat. 4:    tag Nat AST
 
   final val IDENT = 112
   final val IDENTtpt = 113
@@ -332,6 +343,8 @@ object TastyFormat {
   final val TYPEREFsymbol = 118
   final val TYPEREF = 119
   final val SELFDEF = 120
+
+  // Cat. 5:    tag Length ...
 
   final val PACKAGE = 128
   final val VALDEF = 129
@@ -369,7 +382,6 @@ object TastyFormat {
   final val APPLIEDtpt = 162
   final val TYPEBOUNDS = 163
   final val TYPEBOUNDStpt = 164
-  final val TYPEALIAS = 165
   final val ANDtype = 166
   final val ANDtpt = 167
   final val ORtype = 168
@@ -380,6 +392,9 @@ object TastyFormat {
   final val LAMBDAtpt = 173
   final val PARAMtype = 174
   final val ANNOTATION = 175
+  final val TYPEARGtype = 176
+  final val TERMREFin = 177
+  final val TYPEREFin = 178
 
   final val firstSimpleTreeTag = UNITconst
   final val firstNatTreeTag = SHARED
@@ -562,6 +577,9 @@ object TastyFormat {
     case ENUMconst => "ENUMconst"
     case SINGLETONtpt => "SINGLETONtpt"
     case SUPERtype => "SUPERtype"
+    case TYPEARGtype => "TYPEARGtype"
+    case TERMREFin => "TERMREFin"
+    case TYPEREFin => "TYPEREFin"
     case REFINEDtype => "REFINEDtype"
     case REFINEDtpt => "REFINEDtpt"
     case APPLIEDtype => "APPLIEDtype"
@@ -590,7 +608,7 @@ object TastyFormat {
    */
   def numRefs(tag: Int) = tag match {
     case VALDEF | DEFDEF | TYPEDEF | TYPEPARAM | PARAM | NAMEDARG | RETURN | BIND |
-         SELFDEF | REFINEDtype => 1
+         SELFDEF | REFINEDtype | TERMREFin | TYPEREFin => 1
     case RENAMED | PARAMtype => 2
     case POLYtype | METHODtype | TYPELAMBDAtype => -1
     case _ => 0

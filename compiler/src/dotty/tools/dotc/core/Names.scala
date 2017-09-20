@@ -9,6 +9,7 @@ import Texts.Text
 import Decorators._
 import Contexts.Context
 import StdNames.str
+import Designators._
 import util.Chars.isIdentifierStart
 import collection.IndexedSeqOptimized
 import collection.generic.CanBuildFrom
@@ -37,7 +38,7 @@ object Names {
    *  in a name table. A derived term name adds a tag, and possibly a number
    *  or a further simple name to some other name.
    */
-  abstract class Name extends DotClass with PreName {
+  abstract class Name extends Designator with PreName {
 
     /** A type for names of the same kind as this name */
     type ThisName <: Name
@@ -152,6 +153,13 @@ object Names {
 
     /** Does (the last part of) this name end with `str`? */
     def endsWith(str: String): Boolean = lastPart.endsWith(str)
+
+    /** Designator overrides */
+    override def isName = true
+    override def isTerm(implicit ctx: Context) = isTermName
+    override def isType(implicit ctx: Context) = isTypeName
+    override def asTerm(implicit ctx: Context) = asTermName
+    override def asType(implicit ctx: Context) = asTypeName
 
     override def hashCode = System.identityHashCode(this)
     override def equals(that: Any) = this eq that.asInstanceOf[AnyRef]

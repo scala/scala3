@@ -12,5 +12,5 @@ object templateParentsNeg1 {
   trait D extends C[String]
   trait E extends C[Int]
 
-  val x = new D with E // error no type fits between inferred bounds
+  val x = new D with E // error: conflicting type arguments inferred type
 }

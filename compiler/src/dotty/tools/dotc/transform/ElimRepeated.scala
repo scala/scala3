@@ -11,6 +11,7 @@ import Flags._
 import Contexts.Context
 import Symbols._
 import Constants._
+import Decorators._
 import Denotations._, SymDenotations._
 import Decorators.StringInterpolators
 import dotty.tools.dotc.ast.tpd
@@ -73,18 +74,23 @@ class ElimRepeated extends MiniPhaseTransform with InfoTransformer with Annotati
     transformTypeOfTree(tree)
 
   override def transformApply(tree: Apply)(implicit ctx: Context, info: TransformerInfo): Tree = {
-    val args1 = tree.args.map {
-      case arg: Typed if isWildcardStarArg(arg) =>
-        if (tree.fun.symbol.is(JavaDefined) && arg.expr.tpe.derivesFrom(defn.SeqClass))
-          seqToArray(arg.expr)
-        else arg.expr
-      case arg => arg
+    val formals = (tree.fun.tpe.widen: @unchecked) match {
+      case mt: MethodType => mt.paramInfos
+    }
+    val args1 = tree.args.zipWithConserve(formals) { (arg, formal) =>
+      arg match {
+        case arg: Typed if isWildcardStarArg(arg) =>
+          if (tree.fun.symbol.is(JavaDefined) && arg.expr.tpe.derivesFrom(defn.SeqClass))
+            seqToArray(arg.expr, formal.translateParameterized(defn.RepeatedParamClass, defn.ArrayClass))
+          else arg.expr
+        case arg => arg
+      }
     }
     transformTypeOfTree(cpy.Apply(tree)(tree.fun, args1))
   }
 
-  /** Convert sequence argument to Java array */
-  private def seqToArray(tree: Tree)(implicit ctx: Context): Tree = tree match {
+  /** Convert sequence argument to Java array of type `pt` */
+  private def seqToArray(tree: Tree, pt: Type)(implicit ctx: Context): Tree = tree match {
     case SeqLiteral(elems, elemtpt) =>
       JavaSeqLiteral(elems, elemtpt)
     case _ =>
@@ -95,7 +101,7 @@ class ElimRepeated extends MiniPhaseTransform with InfoTransformer with Annotati
         .select(nme.seqToArray)
         .appliedToType(elemType)
         .appliedTo(tree, Literal(Constant(elemClass.typeRef)))
-        .ensureConforms(defn.ArrayOf(elemType))
+        .ensureConforms(pt)
           // Because of phantomclasses, the Java array's type might not conform to the return type
   }
 

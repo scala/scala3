@@ -320,8 +320,12 @@ class TreeChecker extends Phase with SymTransformer {
       assert(tree.isTerm || !ctx.isAfterTyper, tree.show + " at " + ctx.phase)
       val tpe = tree.typeOpt
       val sym = tree.symbol
-      if (!tpe.isInstanceOf[WithFixedSym] &&
-          sym.exists && !sym.is(Private) &&
+      val symIsFixed = tpe match {
+        case tpe: TermRef => tpe.hasFixedSym
+        case _ => false
+      }
+      if (sym.exists && !sym.is(Private) &&
+          !symIsFixed &&
           !tree.name.is(OuterSelectName) // outer selects have effectively fixed symbols
           ) {
         val qualTpe = tree.qualifier.typeOpt
@@ -484,8 +488,6 @@ object TreeChecker {
           assert(definedBinders.get(tp.binder) != null, s"orphan param: ${tp.show}, hash of binder = ${System.identityHashCode(tp.binder)}, tree = ${tree.show}, type = $tp0")
         case tp: TypeVar =>
           apply(tp.underlying)
-        case tp: TypeRef if tp.info.isAlias && tp.symbol.isAliasPreferred =>
-          apply(tp.superType)
         case _ =>
           mapOver(tp)
       }

@@ -4,7 +4,6 @@ package printing
 import core._
 import Texts._, Types._, Flags._, Names._, Symbols._, NameOps._, Constants._, Denotations._
 import Contexts.Context, Scopes.Scope, Denotations.Denotation, Annotations.Annotation
-import TypeApplications.AppliedType
 import StdNames.{nme, tpnme}
 import ast.Trees._, ast._
 import typer.Implicits._
@@ -62,7 +61,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
           homogenize(tp.info)
         case tp: LazyRef =>
           homogenize(tp.ref)
-        case HKApply(tycon, args) =>
+        case AppliedType(tycon, args) =>
           tycon.dealias.appliedTo(args)
         case _ =>
           tp
@@ -129,11 +128,10 @@ class PlainPrinter(_ctx: Context) extends Printer {
   }
 
   /** The longest sequence of refinement types, starting at given type
-   *  and following parents, but stopping at applied types.
+   *  and following parents.
    */
   private def refinementChain(tp: Type): List[Type] =
     tp :: (tp match {
-      case AppliedType(_, _) => Nil
       case tp: RefinedType => refinementChain(tp.parent.stripTypeVar)
       case _ => Nil
     })
@@ -164,6 +162,11 @@ class PlainPrinter(_ctx: Context) extends Printer {
           "{" ~ selfRecName(openRecs.length) ~ " => " ~ toTextGlobal(tp.parent) ~ "}"
         }
         finally openRecs = openRecs.tail
+      case TypeArgRef(prefix, clsRef, idx) =>
+        val cls = clsRef.symbol
+        val tparams = cls.typeParams
+        val paramName = if (tparams.length > idx) nameString(tparams(idx)) else "<unknown>"
+        toTextPrefix(prefix) ~ s"<parameter $paramName of " ~ toText(cls) ~ ">"
       case AndType(tp1, tp2) =>
         changePrec(AndPrec) { toText(tp1) ~ " & " ~ toText(tp2) }
       case OrType(tp1, tp2) =>
@@ -199,7 +202,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
         ParamRefNameString(tp) ~ ".type"
       case AnnotatedType(tpe, annot) =>
         toTextLocal(tpe) ~ " " ~ toText(annot)
-      case HKApply(tycon, args) =>
+      case AppliedType(tycon, args) =>
         toTextLocal(tycon) ~ "[" ~ Text(args.map(argText), ", ") ~ "]"
       case tp: TypeVar =>
         if (tp.isInstantiated)
@@ -308,17 +311,11 @@ class PlainPrinter(_ctx: Context) extends Printer {
   /** String representation of a definition's type following its name */
   protected def toTextRHS(tp: Type): Text = controlled {
     homogenize(tp) match {
+      case tp: TypeAlias =>
+        " = " ~ toText(tp.alias)
       case tp @ TypeBounds(lo, hi) =>
-        if (lo eq hi) {
-          val eql =
-            if (tp.variance == 1) " =+ "
-            else if (tp.variance == -1) " =- "
-            else " = "
-          eql ~ toText(lo)
-        }
-        else
-          (if (lo isRef defn.NothingClass) Text() else " >: " ~ toText(lo)) ~
-            (if (hi isRef defn.AnyClass) Text() else " <: " ~ toText(hi))
+        (if (lo isRef defn.NothingClass) Text() else " >: " ~ toText(lo)) ~
+          (if (hi isRef defn.AnyClass) Text() else " <: " ~ toText(hi))
       case tp @ ClassInfo(pre, cls, cparents, decls, selfInfo) =>
         val preText = toTextLocal(pre)
         val (tparams, otherDecls) = decls.toList partition treatAsTypeParam

@@ -55,7 +55,8 @@ class Splitter extends MiniPhaseTransform { thisTransform =>
       val mbr = tp.member(name)
       if (!mbr.isOverloaded) mbr.asSingleDenotation
       else tree.tpe match {
-        case tref: TermRefWithSignature => mbr.atSignature(tref.sig).checkUnique
+        case tref: TermRef if !tref.signature.isOverloaded =>
+          mbr.atSignature(tref.sig).checkUnique
         case _ =>
           def alts = mbr.alternatives.map(alt => i"$alt: ${alt.info}").mkString(", ")
           ctx.error(s"cannot disambiguate overloaded members $alts", tree.pos)
@@ -92,7 +93,7 @@ class Splitter extends MiniPhaseTransform { thisTransform =>
     else {
       def choose(qual: Tree, syms: List[Symbol]): Tree = {
         def testOrCast(which: Symbol, mbr: Symbol) =
-          qual.select(which).appliedToType(mbr.owner.typeRef)
+          qual.select(which).appliedToType(mbr.owner.appliedRef)
         def select(sym: Symbol) = {
           val qual1 =
             if (qual.tpe derivesFrom sym.owner) qual

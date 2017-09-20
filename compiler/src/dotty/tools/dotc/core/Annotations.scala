@@ -103,7 +103,7 @@ object Annotations {
 
     private def resolveConstructor(atp: Type, args:List[Tree])(implicit ctx: Context): Tree = {
       val targs = atp.argTypes
-      tpd.applyOverloaded(New(atp withoutArgs targs), nme.CONSTRUCTOR, args, targs, atp, isAnnotConstructor = true)
+      tpd.applyOverloaded(New(atp.typeConstructor), nme.CONSTRUCTOR, args, targs, atp, isAnnotConstructor = true)
     }
 
     def applyResolve(atp: Type, args: List[Tree])(implicit ctx: Context): Annotation = {
@@ -140,7 +140,7 @@ object Annotations {
 
     def makeAlias(sym: TermSymbol)(implicit ctx: Context) =
       apply(defn.AliasAnnot, List(
-        ref(TermRef.withSigAndDenot(sym.owner.thisType, sym.name, sym.signature, sym))))
+        ref(TermRef(sym.owner.thisType, sym.name, sym))))
 
     def makeChild(delayedSym: Context => Symbol)(implicit ctx: Context): Annotation = {
       def makeChildLater(implicit ctx: Context) = {

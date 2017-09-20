@@ -799,7 +799,7 @@ class PatternMatcherOld extends MiniPhaseTransform with DenotTransformer {
         // See the test for SI-7214 for motivation for dealias. Later `treeCondStrategy#outerTest`
         // generates an outer test based on `patType.prefix` with automatically dealises.
         expectedTp.dealias match {
-          case tref @ TypeRef(pre: SingletonType, name) =>
+          case tref @ TypeRef(pre: SingletonType, _) =>
             val s = tref
             s.symbol.isClass &&
             ExplicitOuter.needsOuterIfReferenced(s.symbol.asClass)
@@ -1359,7 +1359,7 @@ class PatternMatcherOld extends MiniPhaseTransform with DenotTransformer {
       // don't go looking for selectors if we only expect one pattern
       def rawSubPatTypes = aligner.extractedTypes
 
-      def typeArgOfBaseTypeOr(tp: Type, baseClass: Symbol)(or: => Type): Type = (tp.baseTypeWithArgs(baseClass)).argInfos match {
+      def typeArgOfBaseTypeOr(tp: Type, baseClass: Symbol)(or: => Type): Type = (tp.baseType(baseClass)).argInfos match {
         case x :: Nil => x
         case _        => or
       }

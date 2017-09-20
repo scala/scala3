@@ -104,8 +104,8 @@ class tests extends CompilerTest {
   val typerDir  = dotcDir + "typer/"
   val libDir = "../library/src/"
 
-  def dottyBootedLib = compileDir(libDir, ".", List("-deep", "-Ycheck-reentrant", "-strict") ::: defaultOptions)(allowDeepSubtypes) // note the -deep argument
-  def dottyDependsOnBootedLib = compileDir(dottyDir, ".", List("-deep", "-Ycheck-reentrant") ::: defaultOptions)(allowDeepSubtypes) // note the -deep argument
+  def dottyBootedLib = compileDir(libDir, ".", List("-deep", "-Ycheck-reentrant", "-strict"))(allowDeepSubtypes) // note the -deep argument
+  def dottyDependsOnBootedLib = compileDir(dottyDir, ".", List("-deep", "-Ycheck-reentrant"))(allowDeepSubtypes) // note the -deep argument
 
   @Before def cleanup(): Unit = {
     // remove class files from stdlib and tests compilation
@@ -195,7 +195,6 @@ class tests extends CompilerTest {
   @Test def neg_i1240 = compileFile(negCustomArgs, "i1240")(allowDoubleBindings)
   @Test def neg_i2002 = compileFile(negCustomArgs, "i2002")(allowDoubleBindings)
   @Test def neg_valueclasses_doubledefs = compileFile(negCustomArgs, "valueclasses-doubledefs")(allowDoubleBindings)
-  @Test def neg_valueclasses_doubledefs2 = compileFile(negCustomArgs, "valueclasses-doubledefs2")(allowDoubleBindings)
   @Test def neg_valueclasses_pavlov = compileFile(negCustomArgs, "valueclasses-pavlov")(allowDoubleBindings)
   @Test def neg_trailingUnderscore = compileFile(negCustomArgs, "trailingUnderscore", args = "-strict" :: Nil)
 

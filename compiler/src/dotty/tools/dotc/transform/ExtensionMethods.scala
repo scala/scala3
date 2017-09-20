@@ -102,7 +102,7 @@ class ExtensionMethods extends MiniPhaseTransform with DenotTransformer with Ful
           moduleClassSym.copySymDenotation(info =
             cinfo.derivedClassInfo(
               // FIXME: use of VC*Companion superclasses is disabled until the conflicts with SyntheticMethods are solved.
-              //classParents = ctx.normalizeToClassRefs(List(newSuperClass), moduleSym, decls1),
+              //classParents = List(newSuperClass)
               decls = decls1))
         case _ =>
           moduleClassSym

@@ -16,7 +16,7 @@ trait Substituters { this: Context =>
         else tp.derivedSelect(subst(tp.prefix, from, to, theMap))
       case _: ThisType | NoPrefix =>
         tp
-      case tp: RefinedType =>
+      case tp: RefinedType => // @!!! remove
         tp.derivedRefinedType(subst(tp.parent, from, to, theMap), tp.refinedName, subst(tp.refinedInfo, from, to, theMap))
       case tp: TypeAlias =>
         tp.derivedTypeAlias(subst(tp.alias, from, to, theMap))
@@ -130,9 +130,9 @@ trait Substituters { this: Context =>
         var ts = to
         while (fs.nonEmpty) {
           if (fs.head eq sym)
-            return tp match {
-              case tp: WithFixedSym => NamedType.withFixedSym(tp.prefix, ts.head)
-              case _ => substSym(tp.prefix, from, to, theMap) select ts.head
+            return {
+              if (tp.hasFixedSym) NamedType(tp.prefix, ts.head) // ### why the different treatement of prefix?
+              else substSym(tp.prefix, from, to, theMap) select ts.head
             }
           fs = fs.tail
           ts = ts.tail

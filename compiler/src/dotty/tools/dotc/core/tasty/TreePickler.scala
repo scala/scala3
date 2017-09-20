@@ -54,8 +54,6 @@ class TreePickler(pickler: TastyPickler) {
   }
 
   private def pickleName(name: Name): Unit = writeNat(nameIndex(name).index)
-  private def pickleNameAndSig(name: Name, sig: Signature) =
-    pickleName(SignedName(name.toTermName, sig))
 
   private def pickleSymRef(sym: Symbol)(implicit ctx: Context) = symRefs.get(sym) match {
     case Some(label) =>
@@ -144,60 +142,67 @@ class TreePickler(pickler: TastyPickler) {
       withLength { pickleType(tycon); args.foreach(pickleType(_)) }
     case ConstantType(value) =>
       pickleConstant(value)
-    case tpe: TypeRef if tpe.info.isAlias && tpe.symbol.isAliasPreferred =>
-      pickleType(tpe.superType)
-    case tpe: WithFixedSym =>
+    case tpe: NamedType =>
       val sym = tpe.symbol
-      def pickleRef() =
-        if (tpe.prefix == NoPrefix) {
-          writeByte(if (tpe.isType) TYPEREFdirect else TERMREFdirect)
-          pickleSymRef(sym)
-        }
-        else {
-          assert(tpe.symbol.isClass)
-          assert(tpe.symbol.is(Flags.Scala2x), tpe.symbol.showLocated)
-          writeByte(TYPEREF) // should be changed to a new entry that keeps track of prefix, symbol & owner
-          pickleName(tpe.name)
-          pickleType(tpe.prefix)
-        }
       if (sym.is(Flags.Package)) {
         writeByte(if (tpe.isType) TYPEREFpkg else TERMREFpkg)
         pickleName(sym.fullName)
       }
-      else if (sym is Flags.BindDefinedType) {
-        registerDef(sym)
-        writeByte(BIND)
+      else if (tpe.prefix == NoPrefix) {
+        def pickleDirectRef() = {
+          writeByte(if (tpe.isType) TYPEREFdirect else TERMREFdirect)
+          pickleSymRef(sym)
+        }
+        if (sym is Flags.BindDefinedType) {
+          registerDef(sym)
+          writeByte(BIND)
+          withLength {
+            pickleName(sym.name)
+            pickleType(sym.info)
+            pickleDirectRef()
+          }
+        }
+        else pickleDirectRef()
+      }
+      else if (isLocallyDefined(sym)) {
+        writeByte(if (tpe.isType) TYPEREFsymbol else TERMREFsymbol)
+        pickleSymRef(sym); pickleType(tpe.prefix)
+      }
+      else if (tpe.nameSpace.exists) {
+        writeByte(if (tpe.isType) TYPEREFin else TERMREFin)
         withLength {
           pickleName(sym.name)
-          pickleType(sym.info)
-          pickleRef()
+          pickleType(tpe.prefix)
+          pickleType(tpe.nameSpace.typeRef)
         }
       }
-      else pickleRef()
-    case tpe: TermRefWithSignature =>
-      if (tpe.symbol.is(Flags.Package)) picklePackageRef(tpe.symbol)
       else {
-        writeByte(TERMREF)
-        pickleNameAndSig(tpe.name, tpe.signature); pickleType(tpe.prefix)
-      }
-    case tpe: NamedType =>
-      if (isLocallyDefined(tpe.symbol)) {
-        writeByte(if (tpe.isType) TYPEREFsymbol else TERMREFsymbol)
-        pickleSymRef(tpe.symbol); pickleType(tpe.prefix)
-      } else {
+        val name = tpe.designator match {
+          case designator: Symbol =>
+            assert(tpe.symbol.isClass && tpe.symbol.is(Flags.Scala2x), tpe.symbol.showLocated)
+            // Note: vulnerability here, since Scala2x allows several classes with same name and prefix
+            designator.name
+          case designator: Name =>
+            designator
+        }
         writeByte(if (tpe.isType) TYPEREF else TERMREF)
-        pickleName(tpe.name); pickleType(tpe.prefix)
+        pickleName(name); pickleType(tpe.prefix)
       }
     case tpe: ThisType =>
-      if (tpe.cls.is(Flags.Package) && !tpe.cls.isEffectiveRoot)
-        picklePackageRef(tpe.cls)
+      if (tpe.cls.is(Flags.Package) && !tpe.cls.isEffectiveRoot) {
+        writeByte(TERMREFpkg)
+        pickleName(tpe.cls.fullName)
+      }
       else {
         writeByte(THIS)
         pickleType(tpe.tref)
       }
     case tpe: SuperType =>
       writeByte(SUPERtype)
-      withLength { pickleType(tpe.thistpe); pickleType(tpe.supertpe)}
+      withLength { pickleType(tpe.thistpe); pickleType(tpe.supertpe) }
+    case tpe: TypeArgRef =>
+      writeByte(TYPEARGtype)
+      withLength { pickleType(tpe.prefix); pickleType(tpe.clsRef); writeNat(tpe.idx) }
     case tpe: RecThis =>
       writeByte(RECthis)
       val binderAddr = pickledTypes.get(tpe.binder)
@@ -217,14 +222,7 @@ class TreePickler(pickler: TastyPickler) {
       pickleType(tpe.parent)
     case tpe: TypeAlias =>
       writeByte(TYPEALIAS)
-      withLength {
-        pickleType(tpe.alias, richTypes)
-        tpe.variance match {
-          case 1 => writeByte(COVARIANT)
-          case -1 => writeByte(CONTRAVARIANT)
-          case 0 =>
-        }
-      }
+      pickleType(tpe.alias, richTypes)
     case tpe: TypeBounds =>
       writeByte(TYPEBOUNDS)
       withLength { pickleType(tpe.lo, richTypes); pickleType(tpe.hi, richTypes) }
@@ -247,11 +245,6 @@ class TreePickler(pickler: TastyPickler) {
       assert(pickleParamRef(tpe), s"orphan parameter reference: $tpe")
     case tpe: LazyRef =>
       pickleType(tpe.ref)
-  }
-
-  def picklePackageRef(pkg: Symbol)(implicit ctx: Context): Unit = {
-    writeByte(TERMREFpkg)
-    pickleName(pkg.fullName)
   }
 
   def pickleMethodic(tag: Int, tpe: LambdaType)(implicit ctx: Context) = {
@@ -347,8 +340,9 @@ class TreePickler(pickler: TastyPickler) {
             case _ => name
           }
           val sig = tree.tpe.signature
-          if (name.isTypeName || sig == Signature.NotAMethod) pickleName(realName)
-          else pickleNameAndSig(realName, sig)
+          pickleName(
+            if (name.isTypeName || sig == Signature.NotAMethod) realName
+            else SignedName(realName.toTermName, sig))
           pickleTree(qual)
         case Apply(fun, args) =>
           writeByte(APPLY)
@@ -595,7 +589,8 @@ class TreePickler(pickler: TastyPickler) {
 
   def pickle(trees: List[Tree])(implicit ctx: Context) = {
     trees.foreach(tree => if (!tree.isEmpty) pickleTree(tree))
-    assert(forwardSymRefs.isEmpty, i"unresolved symbols: ${forwardSymRefs.keySet.toList}%, % when pickling ${ctx.source}")
+    def missing = forwardSymRefs.keySet.toList.map(_.showLocated)
+    assert(forwardSymRefs.isEmpty, i"unresolved symbols: $missing%, % when pickling ${ctx.source}")
   }
 
   def compactify() = {

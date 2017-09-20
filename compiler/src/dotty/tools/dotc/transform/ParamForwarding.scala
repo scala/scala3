@@ -4,7 +4,7 @@ package transform
 import core._
 import ast.Trees._
 import Contexts._, Types._, Symbols._, Flags._, TypeUtils._, DenotTransformers._, StdNames._
-import Decorators._
+import Decorators._, NameOps._
 import config.Printers.typr
 
 /** For all parameter accessors
@@ -91,12 +91,12 @@ class ParamForwarding(thisTransformer: DenotTransformer) {
   }
 
   def adaptRef[T <: RefTree](tree: T)(implicit ctx: Context): T = tree.tpe match {
-    case tpe: TermRefWithSignature
-    if tpe.sig == Signature.NotAMethod && tpe.symbol.is(Method) =>
-      // It's a param forwarder; adapt the signature
-      tree.withType(
-        TermRef.withSig(tpe.prefix, tpe.name, tpe.prefix.memberInfo(tpe.symbol).signature))
-        .asInstanceOf[T]
+    case tpe: TermRef
+    if tpe.prefix.ne(NoPrefix) && tpe.signature == Signature.NotAMethod && tpe.symbol.is(Method) =>
+      // It could be a param forwarder; adapt the signature
+      val newSig = tpe.prefix.memberInfo(tpe.symbol).signature
+      if (newSig == Signature.NotAMethod) tree
+      else tree.withType(TermRef(tpe.prefix, tpe.name.withSig(newSig))).asInstanceOf[T]
     case _ =>
       tree
   }
