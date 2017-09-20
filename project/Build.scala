@@ -227,12 +227,6 @@ object Build {
   // Bootstrap with -optimise
   lazy val commonOptimisedSettings = commonBootstrappedSettings ++ Seq(scalacOptions ++= Seq("-optimise"))
 
-  def commonDottySettings(implicit mode: Mode): Seq[sbt.Def.Setting[_]] = mode match {
-    case NonBootstrapped => commonNonBootstrappedSettings
-    case Bootstrapped => commonBootstrappedSettings
-    case BootstrappedOptimised => commonOptimisedSettings
-  }
-
   lazy val commonBenchmarkSettings = Seq(
     mainClass in (Jmh, run) := Some("dotty.tools.benchmarks.Bench"), // custom main for jmh:run
     javaOptions += "-DBENCH_CLASS_PATH=" + Attributed.data((fullClasspath in Compile).value).mkString("", ":", "")
@@ -245,7 +239,7 @@ object Build {
   // This means that we need to provide dummy artefacts for these projects,
   // otherwise users will get compilation errors if they happen to transitively
   // depend on one of these projects.
-  lazy val commonDummySettings = commonDottySettings(Bootstrapped) ++ Seq(
+  lazy val commonDummySettings = commonBootstrappedSettings ++ Seq(
     crossPaths := false,
     libraryDependencies := Seq()
   )
@@ -726,7 +720,7 @@ object Build {
 
   lazy val `dotty-language-server` = project.in(file("language-server")).
     dependsOn(dottyCompiler(Bootstrapped)).
-    settings(commonDottySettings(Bootstrapped)).
+    settings(commonBootstrappedSettings).
     settings(
       // Sources representing the shared configuration file used to communicate between the sbt-dotty
       // plugin and the language server
@@ -770,7 +764,7 @@ object Build {
    */
   lazy val sjsSandbox = project.in(file("sandbox/scalajs")).
     enablePlugins(ScalaJSPlugin).
-    settings(commonDottySettings(NonBootstrapped)).
+    settings(commonNonBootstrappedSettings).
     settings(
       /* Remove the Scala.js compiler plugin for scalac, and enable the
        * Scala.js back-end of dotty instead.
@@ -1112,12 +1106,11 @@ object Build {
   implicit class ProjectDefinitions(val project: Project) extends AnyVal {
 
     // FIXME: we do not aggregate `bin` because its tests delete jars, thus breaking other tests
-    def asDottyRoot(implicit mode: Mode): Project = project.
+    def asDottyRoot(implicit mode: Mode): Project = project.withCommonSettings.
       aggregate(`dotty-interfaces`, dottyLibrary, dottyCompiler, dottyDoc, `dotty-language-server`, dottySbtBridgeReference).
       bootstrappedAggregate(`scala-library`, `scala-compiler`, `scala-reflect`, scalap).
       dependsOn(dottyCompiler).
       dependsOn(dottyLibrary).
-      settings(commonDottySettings).
       nonBootstrappedSettings(
         triggeredMessage in ThisBuild := Watched.clearWhenTriggered,
         dottyProjectFolderChecks,
@@ -1126,45 +1119,45 @@ object Build {
         addCommandAlias("legacyTests", "dotty-compiler/testOnly dotc.tests")
       )
 
-    def asDottyCompiler(implicit mode: Mode): Project = project.
+    def asDottyCompiler(implicit mode: Mode): Project = project.withCommonSettings.
       dependsOn(`dotty-interfaces`).
       dependsOn(dottyLibrary).
-      settings(commonDottySettings).
       settings(dottyCompilerSettings)
 
-    def asDottyLibrary(implicit mode: Mode): Project = project.
-      settings(commonDottySettings).
+    def asDottyLibrary(implicit mode: Mode): Project = project.withCommonSettings.
       settings(dottyLibrarySettings).
       bootstrappedSettings(
         // Needed so that the library sources are visible when `dotty.tools.dotc.core.Definitions#init` is called.
         scalacOptions in Compile ++= Seq("-sourcepath", (scalaSource in Compile).value.getAbsolutePath)
       )
 
-    def asDottyDoc(implicit mode: Mode): Project = project.
+    def asDottyDoc(implicit mode: Mode): Project = project.withCommonSettings.
       dependsOn(dottyCompiler, dottyCompiler % "test->test").
-      settings(commonDottySettings).
       settings(dottyDocSettings)
 
-    def asDottySbtBridge(implicit mode: Mode): Project = project.
+    def asDottySbtBridge(implicit mode: Mode): Project = project.withCommonSettings.
       dependsOn(dottyCompiler).
-      settings(commonDottySettings).
       settings(dottySbtBridgeSettings)
 
-    def asDottyBench(implicit mode: Mode): Project = project.
+    def asDottyBench(implicit mode: Mode): Project = project.withCommonSettings.
       dependsOn(dottyCompiler).
-      settings(commonDottySettings).
       settings(commonBenchmarkSettings).
       bootstrappedSettings(unmanagedSourceDirectories in Compile ++= Seq(baseDirectory.value / ".." / "bench" / "src")).
       enablePlugins(JmhPlugin)
 
-    def asDist(implicit mode: Mode): Project = project.
+    def asDist(implicit mode: Mode): Project = project.withCommonSettings.
       dependsOn(`dotty-interfaces`).
       dependsOn(dottyCompiler).
       dependsOn(dottyLibrary).
       dependsOn(dottyDoc).
-      settings(commonDottySettings).
       settings(commonDistSettings).
-      bootstrappedSettings(target := baseDirectory.value / "target") // override setting in commonDottySettings)
+      bootstrappedSettings(target := baseDirectory.value / "target") // override setting in commonBootstrappedSettings
+
+    def withCommonSettings(implicit mode: Mode): Project = project.settings(mode match {
+      case NonBootstrapped => commonNonBootstrappedSettings
+      case Bootstrapped => commonBootstrappedSettings
+      case BootstrappedOptimised => commonOptimisedSettings
+    })
   }
 
 }
