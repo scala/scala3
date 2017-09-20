@@ -31,11 +31,11 @@ class InlineLabelsCalledOnce extends Optimisation {
           isRecursive = true
       }
       if (!isRecursive)
-        defined.put(d.symbol, d)
+        defined.update(d.symbol, d)
 
     case t: Apply if t.symbol.is(Label) =>
       val b4 = timesUsed.getOrElseUpdate(t.symbol, 0)
-      timesUsed.put(t.symbol, b4 + 1)
+      timesUsed.update(t.symbol, b4 + 1)
 
     case _ =>
   }
@@ -55,7 +55,7 @@ class InlineLabelsCalledOnce extends Optimisation {
 
     case d: DefDef if usedOnce(d) =>
       simplify.println(s"Dropping labeldef (used once) ${d.name} ${timesUsed.get(d.symbol)}")
-      defined.put(d.symbol, d)
+      defined.update(d.symbol, d)
       EmptyTree
 
     case d: DefDef if neverUsed(d) =>

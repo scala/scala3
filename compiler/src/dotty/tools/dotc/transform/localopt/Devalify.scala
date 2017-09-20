@@ -43,7 +43,7 @@ class Devalify extends Optimisation {
     tp.foreachPart(x => x match {
       case TermRef(NoPrefix, _) =>
         val b4 = timesUsedAsType.getOrElseUpdate(x.termSymbol, 0)
-        timesUsedAsType.put(x.termSymbol, b4 + 1)
+        timesUsedAsType.update(x.termSymbol, b4 + 1)
       case _ =>
     })
   }
@@ -55,7 +55,7 @@ class Devalify extends Optimisation {
 
       dropCasts(valdef.rhs) match {
         case t: Tree if readingOnlyVals(t) =>
-          copies.put(valdef.symbol, valdef.rhs)
+          copies.update(valdef.symbol, valdef.rhs)
         case _ =>
       }
       visitType(valdef.symbol.info)
@@ -77,7 +77,7 @@ class Devalify extends Optimisation {
     case t: TypeApply   => t.args.foreach(x => visitType(x.tpe))
     case t: RefTree =>
       val b4 = used.getOrElseUpdate(t.symbol, 0)
-      used.put(t.symbol, b4 + 1)
+      used.update(t.symbol, b4 + 1)
     case _ =>
   }
 

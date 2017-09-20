@@ -62,11 +62,11 @@ import scala.collection.mutable
           case t: Literal => t.const.value != null
 
           case t: Ident if !t.symbol.owner.isClass =>
-            checkGood.put(target, checkGood.getOrElse(target, Set.empty) + t.symbol)
+            checkGood.update(target, checkGood.getOrElse(target, Set.empty) + t.symbol)
             true
 
           case t: Apply if !t.symbol.owner.isClass =>
-            checkGood.put(target, checkGood.getOrElse(target, Set.empty) + t.symbol)
+            checkGood.update(target, checkGood.getOrElse(target, Set.empty) + t.symbol)
             true
 
           case t: Typed =>

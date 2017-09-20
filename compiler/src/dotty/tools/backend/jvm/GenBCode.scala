@@ -43,7 +43,7 @@ class GenBCode extends Phase {
   private val superCallsMap = newMutableSymbolMap[Set[ClassSymbol]]
   def registerSuperCall(sym: Symbol, calls: ClassSymbol) = {
     val old = superCallsMap.getOrElse(sym, Set.empty)
-    superCallsMap.put(sym, old + calls)
+    superCallsMap.update(sym, old + calls)
   }
 
   def outputDir(implicit ctx: Context): AbstractFile =

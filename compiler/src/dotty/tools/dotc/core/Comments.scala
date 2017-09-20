@@ -33,7 +33,7 @@ object Comments {
     def docstring(sym: Symbol): Option[Comment] = _docstrings.get(sym)
 
     def addDocstring(sym: Symbol, doc: Option[Comment]): Unit =
-      doc.map(d => _docstrings.put(sym, d))
+      doc.map(d => _docstrings.update(sym, d))
   }
 
   /** A `Comment` contains the unformatted docstring as well as a position
