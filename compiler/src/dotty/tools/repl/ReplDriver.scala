@@ -106,10 +106,10 @@ class ReplDriver(settings: Array[String],
   protected[this] def resetToInitial(): Unit = {
     rootCtx = initialCtx
     val outDir: AbstractFile = {
-      if (rootCtx.settings.d.isDefault(rootCtx))
+      if (rootCtx.settings.outputDir.isDefault(rootCtx))
         new VirtualDirectory("(memory)", None)
       else
-        new PlainDirectory(new Directory(new JFile(rootCtx.settings.d.value(rootCtx))))
+        new PlainDirectory(rootCtx.settings.outputDir.value(rootCtx))
     }
     compiler = new ReplCompiler(outDir)
     rendering = new Rendering(compiler, classLoader)

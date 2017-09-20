@@ -111,6 +111,7 @@ class tests extends CompilerTest {
     // remove class files from stdlib and tests compilation
     Directory(defaultOutputDir + "scala").deleteRecursively()
     Directory(defaultOutputDir + "java").deleteRecursively()
+    Directory(defaultOutputDir).createDirectory()
   }
 
   @Test def pickle_pickleOK = compileFiles(testsDir + "pickling/", testPickling)

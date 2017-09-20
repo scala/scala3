@@ -2,6 +2,7 @@ package dotty.tools.dotc
 package config
 
 import java.io.File
+import dotty.tools.io.{ Directory, Path }
 
 import PathResolver.Defaults
 import rewrite.Rewrites
@@ -17,7 +18,7 @@ class ScalaSettings extends Settings.SettingGroup {
   val javaextdirs = PathSetting("-javaextdirs", "Override java extdirs classpath.", Defaults.javaExtDirs)
   val sourcepath = PathSetting("-sourcepath", "Specify location(s) of source files.", "") // Defaults.scalaSourcePath
   val classpath = PathSetting("-classpath", "Specify where to find user class files.", defaultClasspath) withAbbreviation "-cp"
-  val d = StringSetting("-d", "directory|jar", "destination for generated classfiles.", ".")
+  val outputDir = DirectorySetting("-d", "directory|jar", "destination for generated classfiles.", Directory(Path(".")))
   val priorityclasspath = PathSetting("-priorityclasspath", "class path that takes precedence over all other paths (or testing only)", "")
 
   /** Other settings */
