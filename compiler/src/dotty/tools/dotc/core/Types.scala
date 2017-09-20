@@ -1570,7 +1570,7 @@ object Types {
         val d = lastDenotation match {
           case null =>
             val sym = lastSymbol
-            if (sym == null) loadDenot else denotOfSym(sym)
+            if (sym != null && sym.isValidInCurrentRun) denotOfSym(sym) else loadDenot
           case d: SymDenotation =>
             if (this.isInstanceOf[WithFixedSym]) d.current
             else if (d.validFor.runId == ctx.runId || ctx.stillValid(d))
@@ -1734,14 +1734,12 @@ object Types {
       if (reduced.exists) reduced else this
     }
 
-    def symbol(implicit ctx: Context): Symbol = {
-      val now = ctx.period
-      if (checkedPeriod == now ||
-          lastDenotation == null && lastSymbol != null &&
-          (checkedPeriod.runId == now.runId || ctx.stillValid(lastSymbol)))
+    def symbol(implicit ctx: Context): Symbol =
+      if (checkedPeriod == ctx.period ||
+          lastDenotation == null && lastSymbol != null && lastSymbol.isValidInCurrentRun)
         lastSymbol
-      else denot.symbol
-    }
+      else
+        denot.symbol
 
     /** Retrieves currently valid symbol without necessarily updating denotation.
      *  Assumes that symbols do not change between periods in the same run.

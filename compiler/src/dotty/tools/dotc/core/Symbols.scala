@@ -420,6 +420,9 @@ object Symbols {
       pos.exists && defRunId == ctx.runId
     }
 
+    final def isValidInCurrentRun(implicit ctx: Context): Boolean =
+      lastDenot.validFor.runId == ctx.runId || ctx.stillValid(lastDenot)
+
     /** Subclass tests and casts */
     final def isTerm(implicit ctx: Context): Boolean =
       (if (defRunId == ctx.runId) lastDenot else denot).isTerm
