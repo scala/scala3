@@ -1737,7 +1737,9 @@ object Types {
     def symbol(implicit ctx: Context): Symbol = {
       val now = ctx.period
       if (checkedPeriod == now ||
-          lastDenotation == null && lastSymbol != null) lastSymbol
+          lastDenotation == null && lastSymbol != null &&
+          (checkedPeriod.runId == now.runId || ctx.stillValid(lastSymbol)))
+        lastSymbol
       else denot.symbol
     }
 
