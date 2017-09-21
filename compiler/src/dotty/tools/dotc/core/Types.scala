@@ -1679,13 +1679,10 @@ object Types {
       checkedPeriod = Nowhere
     }
 
-    private[dotc] def withSym(sym: Symbol, signature: Signature)(implicit ctx: Context): ThisType =
-      if (sig != signature)
-        withSig(signature).withSym(sym, signature).asInstanceOf[ThisType]
-      else {
-        setSym(sym)
-        this
-      }
+    private[Types] def withSym(sym: Symbol)(implicit ctx: Context): ThisType = {
+      setSym(sym)
+      this
+    }
 
     private[dotc] final def setSym(sym: Symbol)(implicit ctx: Context): Unit = {
       if (Config.checkNoDoubleBindings)
@@ -1999,7 +1996,7 @@ object Types {
       this
     }
 
-    override def withSym(sym: Symbol, signature: Signature)(implicit ctx: Context): ThisType =
+    override def withSym(sym: Symbol)(implicit ctx: Context): ThisType =
       unsupported("withSym")
 
     override def newLikeThis(prefix: Type)(implicit ctx: Context): NamedType =
@@ -2098,20 +2095,20 @@ object Types {
       if ((prefix eq NoPrefix) || sym.isReferencedSymbolically)
         withFixedSym(prefix, name, sym)
       else if (sym.defRunId != NoRunId && sym.isCompleted)
-        withSig(prefix, name, sym.signature) withSym (sym, sym.signature)
+        withSig(prefix, name, sym.signature).withSym(sym)
         // Linker note:
         // this is problematic, as withSig method could return a hash-consed refference
         // that could have symbol already set making withSym trigger a double-binding error
         // ./tests/run/absoverride.scala demonstates this
       else
-        all(prefix, name) withSym (sym, Signature.NotAMethod)
+        all(prefix, name) withSym (sym)
 
     /** Create a term ref to given symbol, taking the signature from the symbol
      *  (which must be completed).
      */
     def withSig(prefix: Type, sym: TermSymbol)(implicit ctx: Context): TermRef =
       if ((prefix eq NoPrefix) || sym.isReferencedSymbolically) withFixedSym(prefix, sym.name, sym)
-      else withSig(prefix, sym.name, sym.signature).withSym(sym, sym.signature)
+      else withSig(prefix, sym.name, sym.signature).withSym(sym)
 
     /** Create a term ref with given prefix, name and signature */
     def withSig(prefix: Type, name: TermName, sig: Signature)(implicit ctx: Context): TermRef =
@@ -2149,7 +2146,7 @@ object Types {
      */
     def withSymAndName(prefix: Type, sym: TypeSymbol, name: TypeName)(implicit ctx: Context): TypeRef =
       if ((prefix eq NoPrefix) || sym.isReferencedSymbolically) withFixedSym(prefix, name, sym)
-      else apply(prefix, name).withSym(sym, Signature.NotAMethod)
+      else apply(prefix, name).withSym(sym)
 
     /** Create a type ref with given name and initial denotation */
     def apply(prefix: Type, name: TypeName, denot: Denotation)(implicit ctx: Context): TypeRef = {
