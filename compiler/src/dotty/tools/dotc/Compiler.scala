@@ -69,7 +69,7 @@ class Compiler {
            new ShortcutImplicits,   // Allow implicit functions without creating closures
            new CrossCastAnd,        // Normalize selections involving intersection types.
            new Splitter),           // Expand selections involving union types into conditionals
-      List(new PhantomArgLift, // Extracts the evaluation of phantom arguments placing them before the call.
+      List(new PhantomArgLift,      // Extracts the evaluation of phantom arguments placing them before the call.
            new VCInlineMethods,     // Inlines calls to value class methods
            new SeqLiterals,         // Express vararg arguments as arrays
            new InterceptedMethods,  // Special handling of `==`, `|=`, `getClass` methods
@@ -95,6 +95,7 @@ class Compiler {
            new GetClass,            // Rewrites getClass calls on primitive types.
            new Simplify),           // Perform local optimizations, simplified versions of what linker does.
       List(new LinkScala2Impls,     // Redirect calls to trait methods defined by Scala 2.x, so that they now go to their implementations
+           new PhantomDefs,         // Remove method definitions that return phantom values
            new LambdaLift,          // Lifts out nested functions to class scope, storing free variables in environments
                                        // Note: in this mini-phase block scopes are incorrect. No phases that rely on scopes should be here
            new ElimStaticThis,      // Replace `this` references to static objects by global identifiers

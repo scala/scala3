@@ -1,5 +1,7 @@
 import dotty.runtime.ErasedPhantom
 
+import scala.util.Try
+
 object Test {
   import Boo._
 
@@ -11,7 +13,7 @@ object Test {
     foo.getClass.getDeclaredMethod("fun1")
     foo.getClass.getDeclaredMethod("fun2", classOf[String])
 
-    assert(foo.getClass.getDeclaredMethod("fun3").getReturnType == classOf[ErasedPhantom])
+    assert(Try(foo.getClass.getDeclaredMethod("fun3")).isFailure)
   }
 }
 

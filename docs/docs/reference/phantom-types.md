@@ -163,7 +163,6 @@ will be compiled to
 
 ```scala
 object MyOtherPhantom {
-  def myPhantom(): <ErasedPhantom> = <ErasedPhantom.UNIT>
 
   def f1(a: Int, c: Int): Int = a + c
 
