@@ -417,7 +417,7 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
       else {
         val ignoreWarning = args.forall(p => p.typeSymbol.is(BindDefinedType) || p.isInstanceOf[TypeBounds])
         if (!ignoreWarning)
-          ctx.warning(UncheckedTypePattern("type arguments are not unchecked since they are eliminated by erasure"), pos)
+          ctx.warning(UncheckedTypePattern("type arguments are not checked since they are eliminated by erasure"), pos)
 
         tp.derivedAppliedType(tycon, args.map(t => WildcardType))
       }
@@ -426,7 +426,7 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
     case AndType(tp1, tp2) =>
       AndType(erase(tp1), erase(tp2))
     case tp: RefinedType =>
-      ctx.warning(UncheckedTypePattern("type refinement is not unchecked since it is eliminated by erasure"), pos)
+      ctx.warning(UncheckedTypePattern("type refinement is not checked since it is eliminated by erasure"), pos)
       tp.derivedRefinedType(erase(tp.parent), tp.refinedName, WildcardType)
     case _ => tp
   }
