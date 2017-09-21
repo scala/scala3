@@ -1,13 +1,3 @@
-/* This is a example of how to implement =:= using erasable phantom types.
- *
- * Run this test with
- *   `run tests/neg/phantomEvidence-1.scala -Xprint-diff-del -Xprint:arrayConstructors,phantomTermErasure,phantomTypeErasure,erasure`
- * to see the the diffs after PhantomRefErasure, PhantomDeclErasure and Erasure.
- *
- * See also: ../pos/phantomEvidence-1.scala
- */
-
-
 /** In this implementation variant of =:= (called =::=) we erase all instantiations and definitions of =::= */
 object WithNormalState extends Phantom {
 
