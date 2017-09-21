@@ -12,6 +12,8 @@ import transform.TreeTransforms.{MiniPhaseTransform, TransformerInfo}
 import config.Printers.simplify
 import ast.tpd
 
+import scala.annotation.tailrec
+
 /** This phase consists of a series of small, simple, local optimisations
  *  applied as a fix point transformation over Dotty Trees.
  *
@@ -160,10 +162,14 @@ object Simplify {
    *  System members are the only static final fields that are mutable.
    *  See https://docs.oracle.com/javase/specs/jls/se8/html/jls-17.html#jls-17.5.4
    */
-  def isEffectivelyMutable(t: Tree)(implicit ctx: Context): Boolean = t match {
+  @tailrec def isEffectivelyMutable(t: Tree)(implicit ctx: Context): Boolean = t match {
     case _ if t.symbol.is(Mutable) => true
     case s: Select => s.symbol.owner == defn.SystemModule
-    case i: Ident  => desugarIdent(i).exists(isEffectivelyMutable)
+    case i: Ident  =>
+      desugarIdent(i) match {
+        case Some(ident) => isEffectivelyMutable(ident)
+        case None => false
+      }
     case _ => false
   }
 
