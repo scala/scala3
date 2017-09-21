@@ -2054,8 +2054,6 @@ object Types {
 
   object TermRef {
 
-    private def symbolicRefs(implicit ctx: Context) = ctx.phase.symbolicRefs
-
     /** Create term ref with given name, without specifying a signature.
      *  Its meaning is the (potentially multi-) denotation of the member(s)
      *  of prefix with given name.
@@ -2076,7 +2074,7 @@ object Types {
      *  signature, if denotation is not yet completed.
      */
     def apply(prefix: Type, name: TermName, denot: Denotation)(implicit ctx: Context): TermRef = {
-      if ((prefix eq NoPrefix) || denot.symbol.isFresh || symbolicRefs)
+      if ((prefix eq NoPrefix) || denot.symbol.isReferencedSymbolically)
         apply(prefix, denot.symbol.asTerm)
       else denot match {
         case denot: SymDenotation if denot.isCompleted => withSig(prefix, name, denot.signature)
@@ -2098,7 +2096,7 @@ object Types {
      *  (2) The name in the term ref need not be the same as the name of the Symbol.
      */
     def withSymAndName(prefix: Type, sym: TermSymbol, name: TermName)(implicit ctx: Context): TermRef =
-      if ((prefix eq NoPrefix) || sym.isFresh || symbolicRefs)
+      if ((prefix eq NoPrefix) || sym.isReferencedSymbolically)
         withFixedSym(prefix, name, sym)
       else if (sym.defRunId != NoRunId && sym.isCompleted)
         withSig(prefix, name, sym.signature) withSym (sym, sym.signature)
@@ -2113,7 +2111,7 @@ object Types {
      *  (which must be completed).
      */
     def withSig(prefix: Type, sym: TermSymbol)(implicit ctx: Context): TermRef =
-      if ((prefix eq NoPrefix) || sym.isFresh || symbolicRefs) withFixedSym(prefix, sym.name, sym)
+      if ((prefix eq NoPrefix) || sym.isReferencedSymbolically) withFixedSym(prefix, sym.name, sym)
       else withSig(prefix, sym.name, sym.signature).withSym(sym, sym.signature)
 
     /** Create a term ref with given prefix, name and signature */
@@ -2122,7 +2120,7 @@ object Types {
 
     /** Create a term ref with given prefix, name, signature, and initial denotation */
     def withSigAndDenot(prefix: Type, name: TermName, sig: Signature, denot: Denotation)(implicit ctx: Context): TermRef = {
-      if ((prefix eq NoPrefix) || denot.symbol.isFresh || symbolicRefs)
+      if ((prefix eq NoPrefix) || denot.symbol.isReferencedSymbolically)
         withFixedSym(prefix, denot.symbol.asTerm.name, denot.symbol.asTerm)
       else
         withSig(prefix, name, sig)
@@ -2151,12 +2149,12 @@ object Types {
      *  (2) The name in the type ref need not be the same as the name of the Symbol.
      */
     def withSymAndName(prefix: Type, sym: TypeSymbol, name: TypeName)(implicit ctx: Context): TypeRef =
-      if ((prefix eq NoPrefix) || sym.isFresh) withFixedSym(prefix, name, sym)
+      if ((prefix eq NoPrefix) || sym.isReferencedSymbolically) withFixedSym(prefix, name, sym)
       else apply(prefix, name).withSym(sym, Signature.NotAMethod)
 
     /** Create a type ref with given name and initial denotation */
     def apply(prefix: Type, name: TypeName, denot: Denotation)(implicit ctx: Context): TypeRef = {
-      if ((prefix eq NoPrefix) || denot.symbol.isFresh) apply(prefix, denot.symbol.asType)
+      if ((prefix eq NoPrefix) || denot.symbol.isReferencedSymbolically) apply(prefix, denot.symbol.asType)
       else apply(prefix, name)
     } withDenot denot
   }
