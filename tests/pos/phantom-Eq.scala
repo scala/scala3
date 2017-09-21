@@ -1,13 +1,3 @@
-
-/* This is a example of how to implement Eq using erasable phantom types.
- *
- * Run this test with
- *   `run tests/pos/phantomEq.scala -Xprint-diff-del -Xprint:arrayConstructors,phantomTermErasure,phantomTypeErasure,erasure`
- * to see the the diffs after PhantomRefErasure, PhantomDeclErasure and Erasure.
- *
- * See also: ../neg/phantomEq.scala
- */
-
 object PhantomEq {
   import EqUtil._
 
