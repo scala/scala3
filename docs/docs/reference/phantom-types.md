@@ -169,13 +169,10 @@ object MyOtherPhantom {
 
   def f2 = {
     val a$ = 3
-    myPhantom()
     val b$ = 3
     f1(a$, b$)
   }
 }
 ```
 
-Note that `myPhantom` is not removed as it could have some side effect before returning the phantom. 
-To remove it just use `inline def myPhantom` instead this will remove the call and allow the 
-`<ErasedPhantom.UNIT>` to be optimized away.
+Note that `myPhantom` is removed and any side effect of it's body will be erased.

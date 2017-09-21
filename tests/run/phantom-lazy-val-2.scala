@@ -20,7 +20,7 @@ class Foo {
   import Boo._
 
   lazy val foo = {
-    println("foo")
+    println("foo") // in erased function
     any
   }
 }
