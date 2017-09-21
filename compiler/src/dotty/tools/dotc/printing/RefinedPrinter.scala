@@ -574,7 +574,29 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         tree.fallbackToText(this)
     }
 
+    def toTextDummy(tree: Tree): Text = {
+      "x1 = " ~ tree.x1.toString ~ "\n" ~
+      "x2 = " ~ tree.x2.toString ~ "\n" ~
+      "x3 = " ~ tree.x3.toString ~ "\n" ~
+      "x4 = " ~ tree.x4.toString ~ "\n" ~
+      "x5 = " ~ tree.x5.toString ~ "\n" ~
+      "x6 = " ~ tree.x6.toString ~ "\n" ~
+      "x7 = " ~ tree.x7.toString ~ "\n" ~
+      "x8 = " ~ tree.x8.toString ~ "\n" ~
+      "x9 = " ~ tree.x9.toString ~ "\n" ~
+      "x10 = " ~ tree.x10.toString ~ "\n" ~
+      "x11 = " ~ tree.x11.toString ~ "\n" ~
+      "x12 = " ~ tree.x12.toString ~ "\n" ~
+      "x13 = " ~ tree.x13.toString ~ "\n" ~
+      "x14 = " ~ tree.x14.toString ~ "\n" ~
+      "x15 = " ~ tree.x15.toString ~ "\n" ~
+      "x16 = " ~ tree.x16.toString ~ "\n"
+    }
+
     var txt = toTextCore(tree)
+
+    if (ctx.settings.verbose.value)
+      txt = txt ~ "\n" ~ toTextDummy(tree)
 
     def suppressTypes =
       tree.isType || tree.isDef || // don't print types of types or defs

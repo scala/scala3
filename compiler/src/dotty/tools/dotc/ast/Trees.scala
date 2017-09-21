@@ -78,6 +78,24 @@ object Trees {
     /** The type  constructor at the root of the tree */
     type ThisTree[T >: Untyped] <: Tree[T]
 
+    var x1: Int = _
+    var x2: Int = _
+    var x3: Int = _
+    var x4: Int = _
+    var x5: Int = _
+    var x6: Int = _
+    var x7: Int = _
+    var x8: Int = _
+    var x9: Int = _
+    var x10: Int = _
+    var x11: Int = _
+    var x12: Int = _
+    var x13: Int = _
+    var x14: Int = _
+    var x15: Int = _
+    var x16: Int = _
+
+
     private[this] var myTpe: T = _
 
     /** Destructively set the type of the tree. This should be called only when it is known that
