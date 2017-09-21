@@ -453,6 +453,12 @@ object SymDenotations {
       (this is (ModuleVal, butNot = Package)) && moduleClass.isAbsent
     }
 
+    final def isValidInCurrentRun(implicit ctx: Context): Boolean =
+      validFor.runId == ctx.runId || ctx.stillValid(this)
+
+    final def isReferencedSymbolically(implicit ctx: Context) =
+      (this is NonMember) || isTerm && ctx.phase.symbolicRefs
+
     /** Is this symbol the root class or its companion object? */
     final def isRoot: Boolean =
       (name.toTermName == nme.ROOT || name == nme.ROOTPKG) && (owner eq NoSymbol)

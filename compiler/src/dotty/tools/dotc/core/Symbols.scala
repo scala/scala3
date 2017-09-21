@@ -425,7 +425,7 @@ object Symbols {
     }
 
     final def isValidInCurrentRun(implicit ctx: Context): Boolean =
-      lastDenot.validFor.runId == ctx.runId || ctx.stillValid(lastDenot)
+      lastDenot.isValidInCurrentRun
 
     /** Subclass tests and casts */
     final def isTerm(implicit ctx: Context): Boolean =
@@ -440,10 +440,8 @@ object Symbols {
     final def asType(implicit ctx: Context): TypeSymbol = { assert(isType, s"isType called on not-a-Type $this"); asInstanceOf[TypeSymbol] }
     final def asClass: ClassSymbol = asInstanceOf[ClassSymbol]
 
-    final def isReferencedSymbolically(implicit ctx: Context) = {
-      val sym = lastDenot
-      sym != null && ((sym is NonMember) || sym.isTerm && ctx.phase.symbolicRefs)
-    }
+    final def isReferencedSymbolically(implicit ctx: Context) =
+      lastDenot != null && lastDenot.isReferencedSymbolically
 
     /** Special cased here, because it may be used on naked symbols in substituters */
     final def isStatic(implicit ctx: Context): Boolean =

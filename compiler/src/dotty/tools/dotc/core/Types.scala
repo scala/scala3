@@ -1562,6 +1562,12 @@ object Types {
         }
     }
 
+    private def keepSymbol(d: SymDenotation)(implicit ctx: Context) =
+      d.is(Private) ||
+      d.isConstructor ||
+      d.isReferencedSymbolically ||
+      d.exists && (d.owner.isTerm || prefix.isTightPrefix(d.owner))
+
     /** A second fallback to recompute the denotation if necessary */
     private def computeDenot(implicit ctx: Context): Denotation = {
       val savedEphemeral = ctx.typerState.ephemeral
@@ -1572,9 +1578,8 @@ object Types {
             val sym = lastSymbol
             if (sym != null && sym.isValidInCurrentRun) denotOfSym(sym) else loadDenot
           case d: SymDenotation =>
-            if (this.isInstanceOf[WithFixedSym]) d.current
-            else if (d.validFor.runId == ctx.runId || ctx.stillValid(d))
-              if (d.exists && prefix.isTightPrefix(d.owner) || d.isConstructor) d.current
+            if (d.isValidInCurrentRun)
+              if (keepSymbol(d)) d.current
               else recomputeMember(d) // symbol could have been overridden, recompute membership
             else {
               val newd = loadDenot
