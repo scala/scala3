@@ -46,8 +46,8 @@ trait SymDenotations { this: Context =>
     else {
       val initial = denot.initial
       val firstPhaseId = initial.validFor.firstPhaseId.max(ctx.typerPhase.id)
-     if ((initial ne denot) || ctx.phaseId != firstPhaseId) {
-       ctx.withPhase(firstPhaseId).stillValidInOwner(initial) ||
+      if ((initial ne denot) || ctx.phaseId != firstPhaseId) {
+        ctx.withPhase(firstPhaseId).stillValidInOwner(initial) ||
          // Workaround #1895: A symbol might not be entered into an owner
          // until the second phase where it exists
          (denot.validFor.containsPhaseId(firstPhaseId + 1)) &&
@@ -699,7 +699,7 @@ object SymDenotations {
                | is not a subclass of ${owner.showLocated} where target is defined""")
         else if (
           !(  isType // allow accesses to types from arbitrary subclasses fixes #4737
-           || pre.baseTypeRef(cls).exists // ??? why not use derivesFrom ???
+           || pre.derivesFrom(cls)
            || isConstructor
            || (owner is ModuleClass) // don't perform this check for static members
            ))
@@ -1174,7 +1174,7 @@ object SymDenotations {
       case tp: TypeBounds => hasSkolems(tp.lo) || hasSkolems(tp.hi)
       case tp: TypeVar => hasSkolems(tp.inst)
       case tp: ExprType => hasSkolems(tp.resType)
-      case tp: HKApply => hasSkolems(tp.tycon) || tp.args.exists(hasSkolems)
+      case tp: AppliedType => hasSkolems(tp.tycon) || tp.args.exists(hasSkolems)
       case tp: LambdaType => tp.paramInfos.exists(hasSkolems) || hasSkolems(tp.resType)
       case tp: AndOrType => hasSkolems(tp.tp1) || hasSkolems(tp.tp2)
       case tp: AnnotatedType => hasSkolems(tp.tpe)
@@ -1269,10 +1269,10 @@ object SymDenotations {
     private[this] var myMemberCache: LRUCache[Name, PreDenotation] = null
     private[this] var myMemberCachePeriod: Period = Nowhere
 
-    /** A cache from types T to baseTypeRef(T, C) */
-    type BaseTypeRefMap = java.util.HashMap[CachedType, Type]
-    private[this] var myBaseTypeRefCache: BaseTypeRefMap = null
-    private[this] var myBaseTypeRefCachePeriod: Period = Nowhere
+    /** A cache from types T to baseType(T, C) */
+    type BaseTypeMap = java.util.HashMap[CachedType, Type]
+    private[this] var myBaseTypeCache: BaseTypeMap = null
+    private[this] var myBaseTypeCachePeriod: Period = Nowhere
 
     private var baseDataCache: BaseData = BaseData.None
     private var memberNamesCache: MemberNames = MemberNames.None
@@ -1285,14 +1285,12 @@ object SymDenotations {
       myMemberCache
     }
 
-    private def baseTypeRefCache(implicit ctx: Context): BaseTypeRefMap = {
-      if (myBaseTypeRefCachePeriod != ctx.period &&
-          (myBaseTypeRefCachePeriod.runId != ctx.runId ||
-           ctx.phases(myBaseTypeRefCachePeriod.phaseId).sameParentsStartId != ctx.phase.sameParentsStartId)) {
-        myBaseTypeRefCache = new BaseTypeRefMap
-        myBaseTypeRefCachePeriod = ctx.period
+    private def baseTypeCache(implicit ctx: Context): BaseTypeMap = {
+      if (!ctx.hasSameBaseTypesAs(myBaseTypeCachePeriod)) {
+        myBaseTypeCache = new BaseTypeMap
+        myBaseTypeCachePeriod = ctx.period
       }
-      myBaseTypeRefCache
+      myBaseTypeCache
     }
 
     private def invalidateBaseDataCache() = {
@@ -1305,9 +1303,9 @@ object SymDenotations {
       memberNamesCache = MemberNames.None
     }
 
-    def invalidateBaseTypeRefCache() = {
-      myBaseTypeRefCache = null
-      myBaseTypeRefCachePeriod = Nowhere
+    def invalidateBaseTypeCache() = {
+      myBaseTypeCache = null
+      myBaseTypeCachePeriod = Nowhere
     }
 
     override def copyCaches(from: SymDenotation, phase: Phase)(implicit ctx: Context): this.type = {
@@ -1316,7 +1314,7 @@ object SymDenotations {
           if (from.memberNamesCache.isValidAt(phase)) memberNamesCache = from.memberNamesCache
           if (from.baseDataCache.isValidAt(phase)) {
             baseDataCache = from.baseDataCache
-            myBaseTypeRefCache = from.baseTypeRefCache
+            myBaseTypeCache = from.baseTypeCache
           }
         case _ =>
       }
@@ -1367,9 +1365,8 @@ object SymDenotations {
       super.info_=(tp)
     }
 
-    /** The denotations of all parents in this class. */
-    def classParents(implicit ctx: Context): List[TypeRef] = info match {
-      case classInfo: ClassInfo => classInfo.classParents
+    def classParents(implicit ctx: Context): List[Type] = info match {
+      case classInfo: ClassInfo => classInfo.parents
       case _ => Nil
     }
 
@@ -1380,6 +1377,14 @@ object SymDenotations {
         if (cls is Trait) NoSymbol else cls
       case _ =>
         NoSymbol
+    }
+
+    /** The explicitly given self type (self types of modules are assumed to be
+     *  explcitly given here).
+     */
+    def givenSelfType(implicit ctx: Context) = classInfo.selfInfo match {
+      case tp: Type => tp
+      case self: Symbol => self.info
     }
 
    // ------ class-specific operations -----------------------------------
@@ -1397,22 +1402,17 @@ object SymDenotations {
     }
 
     private def computeThisType(implicit ctx: Context): Type =
-      ThisType.raw(
-        TypeRef(if (this is Package) NoPrefix else owner.thisType, symbol.asType))
-/*      else {
-        val pre = owner.thisType
-        if (this is Module)
-          if (isMissing(pre)) TermRef(pre, sourceModule.asTerm)
-          else TermRef.withSig(pre, name.sourceModuleName, Signature.NotAMethod)
-        else ThisType.raw(TypeRef(pre, symbol.asType))
-      }
-*/
+      ThisType.raw(TypeRef(
+          if (this is Package) NoPrefix else owner.thisType, symbol.asType))
+
     private[this] var myTypeRef: TypeRef = null
 
     override def typeRef(implicit ctx: Context): TypeRef = {
       if (myTypeRef == null) myTypeRef = super.typeRef
       myTypeRef
     }
+
+    override def appliedRef(implicit ctx: Context): Type = classInfo.appliedRef
 
     private def baseData(implicit onBehalf: BaseData, ctx: Context): (List[ClassSymbol], BaseClassSet) = {
       if (!baseDataCache.isValid) baseDataCache = BaseData.newCache()
@@ -1435,7 +1435,10 @@ object SymDenotations {
       if (classParents.isEmpty && !emptyParentsExpected)
         onBehalf.signalProvisional()
       val builder = new BaseDataBuilder
-      for (p <- classParents) builder.addAll(p.symbol.asClass.baseClasses)
+      for (p <- classParents) {
+        assert(p.typeSymbol.isClass, s"$this has $p")
+        builder.addAll(p.typeSymbol.asClass.baseClasses)
+      }
       (classSymbol :: builder.baseClasses, builder.baseClassSet)
     }
 
@@ -1561,10 +1564,10 @@ object SymDenotations {
       val ownDenots = info.decls.denotsNamed(name, selectNonPrivate)
       if (debugTrace) // DEBUG
         println(s"$this.member($name), ownDenots = $ownDenots")
-      def collect(denots: PreDenotation, parents: List[TypeRef]): PreDenotation = parents match {
+      def collect(denots: PreDenotation, parents: List[Type]): PreDenotation = parents match {
         case p :: ps =>
           val denots1 = collect(denots, ps)
-          p.symbol.denot match {
+          p.typeSymbol.denot match {
             case parentd: ClassDenotation =>
               denots1 union
                 parentd.nonPrivateMembersNamed(name)
@@ -1584,11 +1587,11 @@ object SymDenotations {
       raw.filterExcluded(excluded).asSeenFrom(pre).toDenot(pre)
     }
 
-    /** Compute tp.baseTypeRef(this) */
-    final def baseTypeRefOf(tp: Type)(implicit ctx: Context): Type = {
+    /** Compute tp.baseType(this) */
+    final def baseTypeOf(tp: Type)(implicit ctx: Context): Type = {
 
       def foldGlb(bt: Type, ps: List[Type]): Type = ps match {
-        case p :: ps1 => foldGlb(bt & baseTypeRefOf(p), ps1)
+        case p :: ps1 => foldGlb(bt & baseTypeOf(p), ps1)
         case _ => bt
       }
 
@@ -1600,40 +1603,70 @@ object SymDenotations {
        *    and this changes subtyping relations. As a shortcut, we do not
        *    cache ErasedValueType at all.
        */
-      def isCachable(tp: Type, btrCache: BaseTypeRefMap): Boolean = {
+      def isCachable(tp: Type, btrCache: BaseTypeMap): Boolean = {
         def inCache(tp: Type) = btrCache.containsKey(tp)
         tp match {
           case _: TypeErasure.ErasedValueType => false
           case tp: TypeRef if tp.symbol.isClass => true
           case tp: TypeVar => tp.inst.exists && inCache(tp.inst)
-          case tp: TypeProxy => inCache(tp.underlying)
-          case tp: AndOrType => inCache(tp.tp1) && inCache(tp.tp2)
+          //case tp: TypeProxy => inCache(tp.underlying) // disabled, can re-enable insyead of last two lines for performance testing
+          //case tp: AndOrType => inCache(tp.tp1) && inCache(tp.tp2)
+          case tp: TypeProxy => isCachable(tp.underlying, btrCache)
+          case tp: AndOrType => isCachable(tp.tp1, btrCache) && isCachable(tp.tp2, btrCache)
           case _ => true
         }
       }
 
-      def computeBaseTypeRefOf(tp: Type): Type = {
-        Stats.record("computeBaseTypeOf")
-        if (symbol.isStatic && tp.derivesFrom(symbol))
+      def computeBaseTypeOf(tp: Type): Type = {
+        if (Stats.monitored) {
+          Stats.record("computeBaseType, total")
+          Stats.record(s"computeBaseType, ${tp.getClass}")
+        }
+        if (symbol.isStatic && tp.derivesFrom(symbol) && symbol.typeParams.isEmpty)
           symbol.typeRef
         else tp match {
-          case tp: TypeRef =>
-            val subcls = tp.symbol
-            if (subcls eq symbol)
-              tp
-            else subcls.denot match {
-              case cdenot: ClassDenotation =>
-                if (cdenot.baseClassSet contains symbol) foldGlb(NoType, tp.parents)
+          case tp @ TypeRef(prefix, _) =>
+            val subsym = tp.symbol
+            if (subsym eq symbol) tp
+            else subsym.denot match {
+              case clsd: ClassDenotation =>
+                val owner = clsd.owner
+                val isOwnThis = prefix match {
+                  case prefix: ThisType => prefix.cls eq owner
+                  case NoPrefix => true
+                  case _ => false
+                }
+                if (isOwnThis)
+                  if (clsd.baseClassSet.contains(symbol)) foldGlb(NoType, clsd.classParents)
+                  else NoType
+                else
+                  baseTypeOf(clsd.typeRef).asSeenFrom(prefix, owner)
+              case _ =>
+                baseTypeOf(tp.superType)
+            }
+          case tp @ AppliedType(tycon, args) =>
+            val subsym = tycon.typeSymbol
+            if (subsym eq symbol) tp
+            else subsym.denot match {
+              case clsd: ClassDenotation =>
+                val tparams = clsd.typeParams
+                if (tparams.hasSameLengthAs(args)) baseTypeOf(tycon).subst(tparams, args)
                 else NoType
               case _ =>
-                baseTypeRefOf(tp.superType)
+                baseTypeOf(tp.superType)
             }
           case tp: TypeProxy =>
-            baseTypeRefOf(tp.superType)
+            baseTypeOf(tp.superType)
           case AndType(tp1, tp2) =>
-            baseTypeRefOf(tp1) & baseTypeRefOf(tp2)
+            baseTypeOf(tp1) & baseTypeOf(tp2) match {
+              case AndType(tp1a, tp2a) if (tp1a eq tp1) && (tp2a eq tp2) => tp
+              case res => res
+            }
           case OrType(tp1, tp2) =>
-            baseTypeRefOf(tp1) | baseTypeRefOf(tp2)
+            baseTypeOf(tp1) | baseTypeOf(tp2) match {
+              case OrType(tp1a, tp2a) if (tp1a eq tp1) && (tp2a eq tp2) => tp
+              case res => res
+            }
           case JavaArrayType(_) if symbol == defn.ObjectClass =>
             this.typeRef
           case _ =>
@@ -1641,16 +1674,22 @@ object SymDenotations {
         }
       }
 
-      /*>|>*/ ctx.debugTraceIndented(s"$tp.baseTypeRef($this)") /*<|<*/ {
-        tp match {
+      /*>|>*/ ctx.debugTraceIndented(s"$tp.baseType($this)") /*<|<*/ {
+        Stats.record("baseTypeOf")
+        tp.stripTypeVar match { // @!!! dealias?
           case tp: CachedType =>
-          val btrCache = baseTypeRefCache
+          val btrCache = baseTypeCache
             try {
               var basetp = btrCache get tp
               if (basetp == null) {
                 btrCache.put(tp, NoPrefix)
-                basetp = computeBaseTypeRefOf(tp)
-                if (isCachable(tp, baseTypeRefCache)) btrCache.put(tp, basetp)
+                basetp = computeBaseTypeOf(tp)
+                if (!basetp.exists) Stats.record("base type miss")
+                if (isCachable(tp, btrCache)) {
+                  if (basetp.exists) Stats.record("cached base type hit")
+                  else Stats.record("cached base type miss")
+                  btrCache.put(tp, basetp)
+                }
                 else btrCache.remove(tp)
               } else if (basetp == NoPrefix)
                 throw CyclicReference(this)
@@ -1661,8 +1700,8 @@ object SymDenotations {
                 btrCache.put(tp, null)
                 throw ex
             }
-          case _ =>
-            computeBaseTypeRefOf(tp)
+          case tp =>
+            computeBaseTypeOf(tp)
         }
       }
     }
@@ -1679,7 +1718,7 @@ object SymDenotations {
       var names = Set[Name]()
       def maybeAdd(name: Name) = if (keepOnly(thisType, name)) names += name
       for (p <- classParents)
-        for (name <- p.symbol.asClass.memberNames(keepOnly))
+        for (name <- p.typeSymbol.asClass.memberNames(keepOnly))
           maybeAdd(name)
       val ownSyms =
         if (keepOnly eq implicitFilter)
@@ -1711,11 +1750,11 @@ object SymDenotations {
       else constrNamed(nme.CONSTRUCTOR).orElse(constrNamed(nme.TRAIT_CONSTRUCTOR))
     }
 
-    /** The parameter accessors of this class. Term and type accessors,
-     *  getters and setters are all returned int his list
+    /** The term parameter accessors of this class.
+     *  Both getters and setters are returned in this list.
      */
     def paramAccessors(implicit ctx: Context): List[Symbol] =
-      unforcedDecls.filter(_ is ParamAccessor).toList
+      unforcedDecls.filter(_.is(ParamAccessor)).toList
 
     /** If this class has the same `decls` scope reference in `phase` and
      *  `phase.next`, install a new denotation with a cloned scope in `phase.next`.

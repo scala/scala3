@@ -153,21 +153,22 @@ Standard-Section: "ASTs" TopLevelStat*
                   TYPEREFpkg            fullyQualified_NameRef
                   TYPEREF               possiblySigned_NameRef qual_Type
                   RECtype               parent_Type
+                  TYPEALIAS             alias_Type
                   SUPERtype      Length this_Type underlying_Type
                   REFINEDtype    Length underlying_Type refinement_NameRef info_Type
                   APPLIEDtype    Length tycon_Type arg_Type*
                   TYPEBOUNDS     Length low_Type high_Type
-                  TYPEALIAS      Length alias_Type (COVARIANT | CONTRAVARIANT)?
                   ANNOTATEDtype  Length underlying_Type fullAnnotation_Term
                   ANDtype        Length left_Type right_Type
                   ORtype         Length left_Type right_Type
                   BIND           Length boundName_NameRef bounds_Type
                                         // for type-variables defined in a type pattern
                   BYNAMEtype            underlying_Type
+                  PARAMtype      Length binder_ASTref paramNum_Nat
+                  TYPEARGtype    Length prefix_Type clsRef_Type idx_Nat
                   POLYtype       Length result_Type NamesTypes
                   METHODtype     Length result_Type NamesTypes      // needed for refinements
                   TYPELAMBDAtype Length result_Type NamesTypes      // variance encoded in front of name: +/-/(nothing)
-                  PARAMtype      Length binder_ASTref paramNum_Nat  // needed for refinements
                   SHARED                type_ASTRef
   NamesTypes    = NameType*
   NameType      = paramName_NameRef typeOrBounds_ASTRef
@@ -321,7 +322,8 @@ object TastyFormat {
   final val PRIVATEqualified = 104
   final val PROTECTEDqualified = 105
   final val RECtype = 106
-  final val SINGLETONtpt = 107
+  final val TYPEALIAS = 107
+  final val SINGLETONtpt = 108
 
   final val IDENT = 112
   final val IDENTtpt = 113
@@ -369,7 +371,6 @@ object TastyFormat {
   final val APPLIEDtpt = 162
   final val TYPEBOUNDS = 163
   final val TYPEBOUNDStpt = 164
-  final val TYPEALIAS = 165
   final val ANDtype = 166
   final val ANDtpt = 167
   final val ORtype = 168
@@ -380,6 +381,7 @@ object TastyFormat {
   final val LAMBDAtpt = 173
   final val PARAMtype = 174
   final val ANNOTATION = 175
+  final val TYPEARGtype = 176
 
   final val firstSimpleTreeTag = UNITconst
   final val firstNatTreeTag = SHARED
@@ -562,6 +564,7 @@ object TastyFormat {
     case ENUMconst => "ENUMconst"
     case SINGLETONtpt => "SINGLETONtpt"
     case SUPERtype => "SUPERtype"
+    case TYPEARGtype => "TYPEARGtype"
     case REFINEDtype => "REFINEDtype"
     case REFINEDtpt => "REFINEDtpt"
     case APPLIEDtype => "APPLIEDtype"

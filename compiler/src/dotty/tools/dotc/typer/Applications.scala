@@ -98,7 +98,7 @@ object Applications {
     if (unapplyName == nme.unapplySeq) {
       if (unapplyResult derivesFrom defn.SeqClass) seqSelector :: Nil
       else if (isGetMatch(unapplyResult, pos)) {
-        val seqArg = boundsToHi(getTp.elemType)
+        val seqArg = getTp.elemType.hiBound
         if (seqArg.exists) args.map(Function.const(seqArg))
         else fail
       }
@@ -382,12 +382,12 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
           // default getters for class constructors are found in the companion object
           val cls = meth.owner
           val companion = cls.companionModule
-          receiver.tpe.baseTypeRef(cls) match {
-            case tp: TypeRef if companion.isTerm =>
-              selectGetter(ref(TermRef(tp.prefix, companion.asTerm)))
-            case _ =>
-              EmptyTree
+          if (companion.isTerm) {
+            val prefix = receiver.tpe.baseType(cls).normalizedPrefix
+            if (prefix.exists) selectGetter(ref(TermRef(prefix, companion.asTerm)))
+            else EmptyTree
           }
+          else EmptyTree
         }
       }
     }
@@ -1096,7 +1096,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
         tp1.paramInfos.isEmpty && tp2.isInstanceOf[LambdaType]
       case tp1: PolyType => // (2)
         val tparams = ctx.newTypeParams(alt1.symbol, tp1.paramNames, EmptyFlags, tp1.instantiateBounds)
-        isAsSpecific(alt1, tp1.instantiate(tparams map (_.typeRef)), alt2, tp2)
+        isAsSpecific(alt1, tp1.instantiate(tparams.map(_.typeRef)), alt2, tp2)
       case _ => // (3)
         tp2 match {
           case tp2: MethodType => true // (3a)
@@ -1146,12 +1146,16 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
       else {
         val flip = new TypeMap {
           def apply(t: Type) = t match {
-            case t: TypeAlias if variance > 0 && t.variance < 0 => t.derivedTypeAlias(t.alias, 1)
             case t: TypeBounds => t
+            case t @ AppliedType(tycon, args) =>
+              def mapArg(arg: Type, tparam: TypeParamInfo) =
+                if (variance > 0 && tparam.paramVariance < 0) defn.FunctionOf(arg :: Nil, defn.UnitType)
+                else arg
+              mapOver(t.derivedAppliedType(tycon, args.zipWithConserve(tycon.typeParams)(mapArg)))
             case _ => mapOver(t)
           }
         }
-        isCompatible(flip(tp1), flip(tp2))
+        (flip(tp1) relaxed_<:< flip(tp2)) || viewExists(tp1, tp2)
       }
 
     /** Drop any implicit parameter section */

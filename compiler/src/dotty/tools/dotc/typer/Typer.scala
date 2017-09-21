@@ -519,7 +519,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     if (untpd.isWildcardStarArg(tree))
       cases(
         ifPat = ascription(TypeTree(defn.RepeatedParamType.appliedTo(pt)), isWildcard = true),
-        ifExpr = seqToRepeated(typedExpr(tree.expr, defn.SeqType)),
+        ifExpr = seqToRepeated(typedExpr(tree.expr, defn.SeqType.appliedTo(defn.AnyType))),
         wildName = nme.WILDCARD_STAR)
     else {
       def typedTpt = checkSimpleKinded(typedType(tree.tpt))
@@ -1394,7 +1394,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
 
     completeAnnotations(cdef, cls)
     val constr1 = typed(constr).asInstanceOf[DefDef]
-    val parentsWithClass = ensureFirstIsClass(parents mapconserve typedParent, cdef.namePos)
+    val parentsWithClass = ensureFirstTreeIsClass(parents mapconserve typedParent, cdef.namePos)
     val parents1 = ensureConstrCall(cls, parentsWithClass)(superCtx)
     val self1 = typed(self)(ctx.outer).asInstanceOf[ValDef] // outer context where class members are not visible
     if (self1.tpt.tpe.isError || classExistsOnSelf(cls.unforcedDecls, self1)) {
@@ -1412,7 +1412,8 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
       val impl1 = cpy.Template(impl)(constr1, parents1, self1, body1)
         .withType(dummy.nonMemberTermRef)
       checkVariance(impl1)
-      if (!cls.is(AbstractOrTrait) && !ctx.isAfterTyper) checkRealizableBounds(cls.thisType, cdef.namePos)
+      if (!cls.is(AbstractOrTrait) && !ctx.isAfterTyper)
+        checkRealizableBounds(cls, cdef.namePos)
       val cdef1 = assignType(cpy.TypeDef(cdef)(name, impl1), cls)
       if (ctx.phase.isTyper && cdef1.tpe.derivesFrom(defn.DynamicClass) && !ctx.dynamicsEnabled) {
         val isRequired = parents1.exists(_.tpe.isRef(defn.DynamicClass))
@@ -1421,7 +1422,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
       }
 
       // Check that phantom lattices are defined in a static object
-      if (cls.classParents.exists(_.classSymbol eq defn.PhantomClass) && !cls.isStaticOwner)
+      if (cls.classParents.exists(_.typeSymbol eq defn.PhantomClass) && !cls.isStaticOwner)
         ctx.error("only static objects can extend scala.Phantom", cdef.pos)
 
       // check value class constraints
@@ -1450,12 +1451,12 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
    *  - has C as its class symbol, and
    *  - for all parents P_i: If P_i derives from C then P_i <:< CT.
    */
-  def ensureFirstIsClass(parents: List[Type])(implicit ctx: Context): List[Type] = {
+  def ensureFirstIsClass(parents: List[Type], pos: Position)(implicit ctx: Context): List[Type] = {
     def realClassParent(cls: Symbol): ClassSymbol =
       if (!cls.isClass) defn.ObjectClass
       else if (!(cls is Trait)) cls.asClass
       else cls.asClass.classParents match {
-        case parentRef :: _ => realClassParent(parentRef.symbol)
+        case parentRef :: _ => realClassParent(parentRef.typeSymbol)
         case nil => defn.ObjectClass
       }
     def improve(candidate: ClassSymbol, parent: Type): ClassSymbol = {
@@ -1466,20 +1467,16 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
       case p :: _ if p.classSymbol.isRealClass => parents
       case _ =>
         val pcls = (defn.ObjectClass /: parents)(improve)
-        typr.println(i"ensure first is class $parents%, % --> ${parents map (_ baseTypeWithArgs pcls)}%, %")
-        val ptype = ctx.typeComparer.glb(
-            defn.ObjectType :: (parents map (_ baseTypeWithArgs pcls)))
-        ptype :: parents
+        typr.println(i"ensure first is class $parents%, % --> ${parents map (_ baseType pcls)}%, %")
+        val first = ctx.typeComparer.glb(defn.ObjectType :: parents.map(_.baseType(pcls)))
+        checkFeasibleParent(first, pos, em" in inferred superclass $first") :: parents
     }
   }
 
   /** Ensure that first parent tree refers to a real class. */
-  def ensureFirstIsClass(parents: List[Tree], pos: Position)(implicit ctx: Context): List[Tree] = parents match {
+  def ensureFirstTreeIsClass(parents: List[Tree], pos: Position)(implicit ctx: Context): List[Tree] = parents match {
     case p :: ps if p.tpe.classSymbol.isRealClass => parents
-    case _ =>
-      // add synthetic class type
-      val first :: _ = ensureFirstIsClass(parents.tpes)
-      TypeTree(checkFeasible(first, pos, em"\n in inferred parent $first")).withPos(pos) :: parents
+    case _ => TypeTree(ensureFirstIsClass(parents.tpes, pos).head).withPos(pos) :: parents
   }
 
   /** If this is a real class, make sure its first parent is a
@@ -2040,13 +2037,14 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
         // Follow proxies and approximate type paramrefs by their upper bound
         // in the current constraint in order to figure out robustly
         // whether an expected type is some sort of function type.
-        def underlyingRefined(tp: Type): Type = tp.stripTypeVar match {
+        def underlyingApplied(tp: Type): Type = tp.stripTypeVar match {
           case tp: RefinedType => tp
-          case tp: TypeParamRef => underlyingRefined(ctx.typeComparer.bounds(tp).hi)
-          case tp: TypeProxy => underlyingRefined(tp.superType)
+          case tp: AppliedType => tp
+          case tp: TypeParamRef => underlyingApplied(ctx.typeComparer.bounds(tp).hi)
+          case tp: TypeProxy => underlyingApplied(tp.superType)
           case _ => tp
         }
-        val ptNorm = underlyingRefined(pt)
+        val ptNorm = underlyingApplied(pt)
         val arity =
           if (defn.isFunctionType(ptNorm))
             if (!isFullyDefined(pt, ForceDegree.none) && isFullyDefined(wtp, ForceDegree.none))
@@ -2203,16 +2201,24 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
         case _ =>
       }
       // try an implicit conversion
-      inferView(tree, pt) match {
-        case SearchSuccess(inferred, _, _, _) =>
-          adapt(inferred, pt)(ctx.retractMode(Mode.ImplicitsEnabled))
-        case failure: SearchFailure =>
-          val prevConstraint = ctx.typerState.constraint
-          if (pt.isInstanceOf[ProtoType] && !failure.isInstanceOf[AmbiguousImplicits]) tree
-          else if (isFullyDefined(wtp, force = ForceDegree.all) &&
-                   ctx.typerState.constraint.ne(prevConstraint)) adapt(tree, pt)
-          else err.typeMismatch(tree, pt, failure)
-      }
+      val prevConstraint = ctx.typerState.constraint
+      def recover(failure: SearchFailure) =
+        if (isFullyDefined(wtp, force = ForceDegree.all) &&
+            ctx.typerState.constraint.ne(prevConstraint)) adapt(tree, pt)
+        else err.typeMismatch(tree, pt, failure)
+      if (ctx.mode.is(Mode.ImplicitsEnabled))
+        inferView(tree, pt) match {
+          case SearchSuccess(inferred, _, _, _) =>
+            adapt(inferred, pt)(ctx.retractMode(Mode.ImplicitsEnabled))
+          case failure: SearchFailure =>
+            if (pt.isInstanceOf[ProtoType] && !failure.isInstanceOf[AmbiguousImplicits])
+              // don't report the failure but return the tree unchanged. This
+              // wil cause a failure at the next level out, which usually gives
+              // a better error message.
+              tree
+            else recover(failure)
+        }
+      else recover(NoImplicitMatches)
     }
 
     def adaptType(tp: Type): Tree = {

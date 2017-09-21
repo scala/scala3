@@ -1,11 +1,17 @@
+// See also neg/i1181c.scala for a variant which doe not compile
 class Foo[A]
 
 trait Bar[DD[_,_]] {
   val x: DD[Int, Int]
 }
 
-trait Baz extends Bar[[X,Y] => Foo[X]] {
-  def foo[M[_,_]](x: M[Int, Int]) = x
+object Test {
+  type F[X, Y] = Foo[X]
 
-  foo(x)
+  type LAMBDA[X,Y] = Foo[X]
+  trait Baz extends Bar[LAMBDA] {
+    def foo[M[_,_]](x: M[Int, Int]) = x
+
+    foo(x) // error: found: Foo[Int](Baz.this.x) required: M[Int, Int]
+  }
 }

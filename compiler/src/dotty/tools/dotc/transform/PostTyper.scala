@@ -94,7 +94,15 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer  { thisTran
 
     private var inJavaAnnot: Boolean = false
 
-    private var parentNews: Set[New] = Set()
+    private var noCheckNews: Set[New] = Set()
+
+    def withNoCheckNews[T](ts: List[New])(op: => T): T = {
+      val saved = noCheckNews
+      noCheckNews ++= ts
+      try op finally noCheckNews = saved
+    }
+
+    def isCheckable(t: New) = !inJavaAnnot && !noCheckNews.contains(t)
 
     private def transformAnnot(annot: Tree)(implicit ctx: Context): Tree = {
       val saved = inJavaAnnot
@@ -185,6 +193,16 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer  { thisTran
           if (ctx.owner.enclosingMethod.isInlineMethod)
             ctx.error(SuperCallsNotAllowedInline(ctx.owner), tree.pos)
           super.transform(tree)
+        case tree: Apply =>
+          methPart(tree) match {
+            case Select(nu: New, nme.CONSTRUCTOR) if isCheckable(nu) =>
+              // need to check instantiability here, because the type of the New itself
+              // might be a type constructor.
+              Checking.checkInstantiable(tree.tpe, nu.pos)
+              withNoCheckNews(nu :: Nil)(super.transform(tree))
+            case _ =>
+              super.transform(tree)
+          }
         case tree: TypeApply =>
           val tree1 @ TypeApply(fn, args) = normalizeTypeArgs(tree)
           Checking.checkBounds(args, fn.tpe.widen.asInstanceOf[PolyType])
@@ -212,15 +230,12 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer  { thisTran
           val callTrace = Ident(call.symbol.topLevelClass.typeRef).withPos(call.pos)
           cpy.Inlined(tree)(callTrace, transformSub(bindings), transform(expansion))
         case tree: Template =>
-          val saved = parentNews
-          parentNews ++= tree.parents.flatMap(newPart)
-          try {
+          withNoCheckNews(tree.parents.flatMap(newPart)) {
             val templ1 = paramFwd.forwardParamAccessors(tree)
             synthMth.addSyntheticMethods(
                 superAcc.wrapTemplate(templ1)(
                   super.transform(_).asInstanceOf[Template]))
           }
-          finally parentNews = saved
         case tree: DefDef =>
           transformMemberDef(tree)
           superAcc.wrapDefDef(tree)(super.transform(tree).asInstanceOf[DefDef])
@@ -236,7 +251,7 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer  { thisTran
 
             // Add Child annotation to sealed parents unless current class is anonymous
             if (!sym.isAnonymousClass) // ignore anonymous class
-              sym.asClass.classInfo.classParents.foreach { parent =>
+              sym.asClass.classParents.foreach { parent =>
                 val sym2 = if (sym.is(Module)) sym.sourceModule else sym
                 registerChild(sym2, parent)
               }
@@ -247,7 +262,7 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer  { thisTran
         case tree: MemberDef =>
           transformMemberDef(tree)
           super.transform(tree)
-        case tree: New if !inJavaAnnot && !parentNews.contains(tree) =>
+        case tree: New if isCheckable(tree) =>
           Checking.checkInstantiable(tree.tpe, tree.pos)
           super.transform(tree)
         case tree @ Annotated(annotated, annot) =>

@@ -13,6 +13,7 @@ import scala.collection.{ mutable, immutable }
 import ast._
 import Trees._
 import TreeTransforms._
+import config.Printers.{checks, noPrinter}
 import util.DotClass
 import scala.util.{Try, Success, Failure}
 import config.{ScalaVersion, NoScalaVersion}
@@ -94,16 +95,16 @@ object RefChecks {
    */
   private def checkParents(cls: Symbol)(implicit ctx: Context): Unit = cls.info match {
     case cinfo: ClassInfo =>
-      def checkSelfConforms(other: TypeRef, category: String, relation: String) = {
+      def checkSelfConforms(other: ClassSymbol, category: String, relation: String) = {
         val otherSelf = other.givenSelfType.asSeenFrom(cls.thisType, other.classSymbol)
         if (otherSelf.exists && !(cinfo.selfType <:< otherSelf))
           ctx.error(DoesNotConformToSelfType(category, cinfo.selfType, cls, otherSelf, relation, other.classSymbol),
             cls.pos)
       }
       for (parent <- cinfo.classParents)
-        checkSelfConforms(parent, "illegal inheritance", "parent")
-      for (reqd <- cinfo.givenSelfType.classSymbols)
-        checkSelfConforms(reqd.typeRef, "missing requirement", "required")
+        checkSelfConforms(parent.typeSymbol.asClass, "illegal inheritance", "parent")
+      for (reqd <- cinfo.cls.givenSelfType.classSymbols)
+        checkSelfConforms(reqd, "missing requirement", "required")
     case _ =>
   }
 
@@ -251,7 +252,6 @@ object RefChecks {
       def compatibleTypes(memberTp: Type, otherTp: Type): Boolean =
         try
           if (member.isType) // intersection of bounds to refined types must be nonempty
-            member.is(BaseTypeArg) ||
             memberTp.bounds.hi.hasSameKindAs(otherTp.bounds.hi) &&
             ((memberTp frozen_<:< otherTp) ||
              !member.owner.derivesFrom(other.owner) && {
@@ -535,19 +535,15 @@ object RefChecks {
                     def subclassMsg(c1: Symbol, c2: Symbol) =
                       s": ${c1.showLocated} is a subclass of ${c2.showLocated}, but method parameter types must match exactly."
                     val addendum =
-                      if (abstractSym == concreteSym) {
-                        val paArgs = pa.argInfos
-                        val pcArgs = pc.argInfos
-                        val paConstr = pa.withoutArgs(paArgs)
-                        val pcConstr = pc.withoutArgs(pcArgs)
-                        (paConstr, pcConstr) match {
+                      if (abstractSym == concreteSym)
+                        (pa.typeConstructor, pc.typeConstructor) match {
                           case (TypeRef(pre1, _), TypeRef(pre2, _)) =>
                             if (pre1 =:= pre2) ": their type parameters differ"
                             else ": their prefixes (i.e. enclosing instances) differ"
                           case _ =>
                             ""
                         }
-                      } else if (abstractSym isSubClass concreteSym)
+                      else if (abstractSym isSubClass concreteSym)
                         subclassMsg(abstractSym, concreteSym)
                       else if (concreteSym isSubClass abstractSym)
                         subclassMsg(concreteSym, abstractSym)
@@ -651,7 +647,13 @@ object RefChecks {
     // 4. Check that every defined member with an `override` modifier overrides some other member.
     for (member <- clazz.info.decls)
       if (member.isAnyOverride && !(clazz.thisType.baseClasses exists (hasMatchingSym(_, member)))) {
-        // for (bc <- clazz.info.baseClasses.tail) Console.println("" + bc + " has " + bc.info.decl(member.name) + ":" + bc.info.decl(member.name).tpe);//DEBUG
+        if (checks != noPrinter) {
+          for (bc <- clazz.info.baseClasses.tail) {
+            val sym = bc.info.decl(member.name).symbol
+            if (sym.exists)
+              checks.println(i"$bc has $sym: ${clazz.thisType.memberInfo(sym)}")
+          }
+        }
 
         val nonMatching = clazz.info.member(member.name).altsWith(alt => alt.owner != clazz)
         nonMatching match {

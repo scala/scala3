@@ -86,7 +86,21 @@ class ElimErasedValueType extends MiniPhaseTransform with InfoTransformer {
       val site = root.thisType
       val info1 = site.memberInfo(sym1)
       val info2 = site.memberInfo(sym2)
-      if (!info1.matchesLoosely(info2))
+      def isDefined(sym: Symbol) = sym.initialDenot.validFor.firstPhaseId <= ctx.phaseId
+      if (isDefined(sym1) && isDefined(sym2) && !info1.matchesLoosely(info2))
+        // The reason for the `isDefined` condition is that we need to exclude mixin forwarders
+        // from the tests. For instance, in compileStdLib, compiling scala.immutable.SetProxy, line 29:
+        //    new AbstractSet[B] with SetProxy[B] { val self = newSelf }
+        // This generates two forwarders, one in AbstractSet, the other in the anonymous class itself.
+        // Their signatures are:
+        // method map: [B, That]
+        //   (f: B => B)(implicit bf: scala.collection.generic.CanBuildFrom[scala.collection.immutable.Set[B], B, That]): That override <method> <touched> in anonymous class scala.collection.AbstractSet[B] with scala.collection.immutable.SetProxy[B]{...} and
+        // method map: [B, That](f: B => B)(implicit bf: scala.collection.generic.CanBuildFrom[scala.collection.Set[B], B, That]): That override <method> <touched> in class AbstractSet
+        // These have same type after erasure:
+        //   (f: Function1, bf: scala.collection.generic.CanBuildFrom): Object
+        //
+        // The problem is that `map` was forwarded twice, with different instantiated types.
+        // Maybe we should move mixin forwarding after erasure to avoid redundant forwarders like these.
         ctx.error(
             em"""double definition:
                 |$sym1: $info1 in ${sym1.owner} and

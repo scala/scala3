@@ -144,8 +144,6 @@ class TreePickler(pickler: TastyPickler) {
       withLength { pickleType(tycon); args.foreach(pickleType(_)) }
     case ConstantType(value) =>
       pickleConstant(value)
-    case tpe: TypeRef if tpe.info.isAlias && tpe.symbol.isAliasPreferred =>
-      pickleType(tpe.superType)
     case tpe: WithFixedSym =>
       val sym = tpe.symbol
       def pickleRef() =
@@ -197,7 +195,10 @@ class TreePickler(pickler: TastyPickler) {
       }
     case tpe: SuperType =>
       writeByte(SUPERtype)
-      withLength { pickleType(tpe.thistpe); pickleType(tpe.supertpe)}
+      withLength { pickleType(tpe.thistpe); pickleType(tpe.supertpe) }
+    case tpe: TypeArgRef =>
+      writeByte(TYPEARGtype)
+      withLength { pickleType(tpe.prefix); pickleType(tpe.clsRef); writeNat(tpe.idx) }
     case tpe: RecThis =>
       writeByte(RECthis)
       val binderAddr = pickledTypes.get(tpe.binder)
@@ -217,14 +218,7 @@ class TreePickler(pickler: TastyPickler) {
       pickleType(tpe.parent)
     case tpe: TypeAlias =>
       writeByte(TYPEALIAS)
-      withLength {
-        pickleType(tpe.alias, richTypes)
-        tpe.variance match {
-          case 1 => writeByte(COVARIANT)
-          case -1 => writeByte(CONTRAVARIANT)
-          case 0 =>
-        }
-      }
+      pickleType(tpe.alias, richTypes)
     case tpe: TypeBounds =>
       writeByte(TYPEBOUNDS)
       withLength { pickleType(tpe.lo, richTypes); pickleType(tpe.hi, richTypes) }

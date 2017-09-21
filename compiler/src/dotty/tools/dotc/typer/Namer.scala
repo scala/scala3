@@ -92,7 +92,7 @@ trait NamerContextOps { this: Context =>
    *  type of the constructed instance is returned
    */
   def effectiveResultType(sym: Symbol, typeParams: List[Symbol], given: Type) =
-    if (sym.name == nme.CONSTRUCTOR) sym.owner.typeRef.appliedTo(typeParams map (_.typeRef))
+    if (sym.name == nme.CONSTRUCTOR) sym.owner.typeRef.appliedTo(typeParams.map(_.typeRef))
     else given
 
   /** if isConstructor, make sure it has one non-implicit parameter list */
@@ -336,7 +336,7 @@ class Namer { typer: Typer =>
     */
   def enterSymbol(sym: Symbol)(implicit ctx: Context) = {
     if (sym.exists) {
-      typr.println(s"entered: $sym in ${ctx.owner} and ${ctx.effectiveScope}")
+      typr.println(s"entered: $sym in ${ctx.owner}")
       ctx.enter(sym)
     }
     sym
@@ -860,7 +860,7 @@ class Namer { typer: Typer =>
        * (4) If the class is sealed, it is defined in the same compilation unit as the current class
        */
       def checkedParentType(parent: untpd.Tree): Type = {
-        val ptype = parentType(parent)(ctx.superCallContext)
+        val ptype = parentType(parent)(ctx.superCallContext).dealias
         if (cls.isRefinementClass) ptype
         else {
           val pt = checkClassType(ptype, parent.pos,
@@ -913,16 +913,15 @@ class Namer { typer: Typer =>
       indexAndAnnotate(rest)(inClassContext(selfInfo))
       symbolOfTree(constr).ensureCompleted()
 
-      val parentTypes = ensureFirstIsClass(parents.map(checkedParentType(_)))
-      val parentRefs = ctx.normalizeToClassRefs(parentTypes, cls, decls)
-      typr.println(s"completing $denot, parents = $parents, parentTypes = $parentTypes, parentRefs = $parentRefs")
+      val parentTypes = ensureFirstIsClass(parents.map(checkedParentType(_)), cls.pos)
+      typr.println(i"completing $denot, parents = $parents%, %, parentTypes = $parentTypes%, %")
 
-      tempInfo.finalize(denot, parentRefs)
+      tempInfo.finalize(denot, parentTypes)
 
       Checking.checkWellFormed(cls)
       if (isDerivedValueClass(cls)) cls.setFlag(Final)
       cls.info = avoidPrivateLeaks(cls, cls.pos)
-      cls.baseClasses.foreach(_.invalidateBaseTypeRefCache()) // we might have looked before and found nothing
+      cls.baseClasses.foreach(_.invalidateBaseTypeCache()) // we might have looked before and found nothing
     }
   }
 
@@ -1190,10 +1189,7 @@ class Namer { typer: Typer =>
     }
     val rhsBodyType = typedAheadType(rhs).tpe
     val rhsType = if (isDerived) rhsBodyType else abstracted(rhsBodyType)
-    val unsafeInfo = rhsType match {
-      case bounds: TypeBounds => bounds
-      case alias => TypeAlias(alias, if (sym is Local) sym.variance else 0)
-    }
+    val unsafeInfo = rhsType.toBounds
     if (isDerived) sym.info = unsafeInfo
     else {
       sym.info = NoCompleter

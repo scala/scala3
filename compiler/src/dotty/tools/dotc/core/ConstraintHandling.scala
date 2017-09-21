@@ -6,7 +6,7 @@ import Types._, Contexts._, Symbols._
 import Decorators._
 import config.Config
 import config.Printers.{constr, typr}
-import TypeApplications.EtaExpansion
+import TypeApplications.{EtaExpansion, TypeParamInfo}
 import collection.mutable
 
 /** Methods for adding constraints and solving them.
@@ -194,9 +194,14 @@ trait ConstraintHandling {
   final def approximation(param: TypeParamRef, fromBelow: Boolean): Type = {
     val avoidParam = new TypeMap {
       override def stopAtStatic = true
+      def avoidInArg(arg: Type): Type =
+        if (param.occursIn(arg)) TypeBounds.empty else arg
       def apply(tp: Type) = mapOver {
         tp match {
-          case tp: RefinedType if param occursIn tp.refinedInfo => tp.parent
+          case tp @ AppliedType(tycon, args) =>
+            tp.derivedAppliedType(tycon, args.mapConserve(avoidInArg))
+          case tp: RefinedType if param occursIn tp.refinedInfo =>
+            tp.parent
           case tp: WildcardType =>
             val bounds = tp.optBounds.orElse(TypeBounds.empty).bounds
             // Try to instantiate the wildcard to a type that is known to conform to it.
@@ -306,7 +311,12 @@ trait ConstraintHandling {
   /** The current bounds of type parameter `param` */
   final def bounds(param: TypeParamRef): TypeBounds = {
     val e = constraint.entry(param)
-    if (e.exists) e.bounds else param.binder.paramInfos(param.paramNum)
+    if (e.exists) e.bounds
+    else {
+      val pinfos = param.binder.paramInfos
+      if (pinfos != null) pinfos(param.paramNum) // pinfos == null happens in pos/i536.scala
+      else TypeBounds.empty
+    }
   }
 
   /** Add type lambda `tl`, possibly with type variables `tvars`, to current constraint
@@ -318,7 +328,7 @@ trait ConstraintHandling {
       checkPropagated(i"initialized $tl") {
         constraint = constraint.add(tl, tvars)
         tl.paramNames.indices.forall { i =>
-          val param = TypeParamRef(tl, i)
+          val param = tl.paramRefs(i)
           val bounds = constraint.nonParamBounds(param)
           val lower = constraint.lower(param)
           val upper = constraint.upper(param)
@@ -376,7 +386,12 @@ trait ConstraintHandling {
         else tp
 
       def addParamBound(bound: TypeParamRef) =
-        if (fromBelow) addLess(bound, param) else addLess(param, bound)
+        constraint.entry(param) match {
+          case _: TypeBounds =>
+            if (fromBelow) addLess(bound, param) else addLess(param, bound)
+          case tp =>
+            if (fromBelow) isSubType(bound, tp) else isSubType(tp, bound)
+        }
 
       /** Drop all constrained parameters that occur at the toplevel in `bound` and
        *  handle them by `addLess` calls.

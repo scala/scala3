@@ -14,7 +14,6 @@ import NameOps._
 import Uniques._
 import SymDenotations._
 import Comments._
-import Flags.ParamAccessor
 import util.Positions._
 import ast.Trees._
 import ast.untpd
@@ -339,7 +338,7 @@ object Contexts {
      *    from constructor parameters to class parameter accessors.
      */
     def superCallContext: Context = {
-      val locals = newScopeWith(owner.asClass.paramAccessors: _*)
+      val locals = newScopeWith(owner.typeParams ++ owner.asClass.paramAccessors: _*)
       superOrThisCallContext(owner.primaryConstructor, locals)
     }
 
@@ -609,20 +608,20 @@ object Contexts {
       override def hash(x: Type): Int = x.hash
     }
 
-    /** A table for hash consing unique refined types */
-    private[dotc] val uniqueRefinedTypes = new RefinedUniques
+    /** A table for hash consing unique applied types */
+    private[dotc] val uniqueAppliedTypes = new AppliedUniques
 
     /** A table for hash consing unique named types */
     private[core] val uniqueNamedTypes = new NamedTypeUniques
 
-    /** A table for hash consing unique type bounds */
-    private[core] val uniqueTypeAliases = new TypeAliasUniques
+    /** A table for hash consing unique symbolic named types */
+    private[core] val uniqueWithFixedSyms = new WithFixedSymUniques
 
     private def uniqueSets = Map(
         "uniques" -> uniques,
-        "uniqueRefinedTypes" -> uniqueRefinedTypes,
-        "uniqueNamedTypes" -> uniqueNamedTypes,
-        "uniqueTypeAliases" -> uniqueTypeAliases)
+        "uniqueAppliedTypes" -> uniqueAppliedTypes,
+        "uniqueWithFixedSyms" -> uniqueWithFixedSyms,
+        "uniqueNamedTypes" -> uniqueNamedTypes)
 
     /** A map that associates label and size of all uniques sets */
     def uniquesSizes: Map[String, Int] = uniqueSets.mapValues(_.size)

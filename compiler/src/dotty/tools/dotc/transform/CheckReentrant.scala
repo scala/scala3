@@ -82,7 +82,7 @@ class CheckReentrant extends MiniPhaseTransform { thisTransformer =>
               }
             }
         for (parent <- cls.classInfo.classParents)
-          addVars(parent.symbol.asClass)
+          addVars(parent.typeSymbol.asClass)
       }
     }
   }

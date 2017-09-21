@@ -113,7 +113,7 @@ trait FullParameterization {
     /** Replace class type parameters by the added type parameters of the polytype `pt` */
     def mapClassParams(tp: Type, pt: PolyType): Type = {
       val classParamsRange = (mtparamCount until mtparamCount + ctparams.length).toList
-      tp.substDealias(ctparams, classParamsRange map (TypeParamRef(pt, _)))
+      tp.substDealias(ctparams, classParamsRange map (pt.paramRefs(_)))
     }
 
     /** The bounds for the added type parameters of the polytype `pt` */
@@ -163,7 +163,7 @@ trait FullParameterization {
         def rewireCall(thisArg: Tree): Tree = {
           val rewired = rewiredTarget(tree, derived)
           if (rewired.exists) {
-            val base = thisArg.tpe.baseTypeWithArgs(origClass)
+            val base = thisArg.tpe.baseType(origClass)
             assert(base.exists)
             ref(rewired.termRef)
               .appliedToTypeTrees(targs ++ base.argInfos.map(TypeTree(_)))

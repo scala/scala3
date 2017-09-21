@@ -123,8 +123,7 @@ trait Symbols { this: Context =>
       def complete(denot: SymDenotation)(implicit ctx: Context): Unit = {
         val cls = denot.asClass.classSymbol
         val decls = newScope
-        val parentRefs: List[TypeRef] = normalizeToClassRefs(parentTypes, cls, decls)
-        denot.info = ClassInfo(owner.thisType, cls, parentRefs, decls)
+        denot.info = ClassInfo(owner.thisType, cls, parentTypes.map(_.dealias), decls)
       }
     }
     newClassSymbol(owner, name, flags, completer, privateWithin, coord, assocFile)
@@ -420,6 +419,9 @@ object Symbols {
     final def isDefinedInCurrentRun(implicit ctx: Context): Boolean = {
       pos.exists && defRunId == ctx.runId
     }
+
+    final def isValidInCurrentRun(implicit ctx: Context): Boolean =
+      lastDenot.validFor.runId == ctx.runId || ctx.stillValid(lastDenot)
 
     /** Subclass tests and casts */
     final def isTerm(implicit ctx: Context): Boolean =

@@ -308,17 +308,12 @@ class ClassfileParser(
             case tp: TypeRef =>
               if (sig(index) == '<') {
                 accept('<')
-                var tp1: Type = tp
-                var formals: List[Symbol] =
-                  if (skiptvs)
-                    null
-                  else
-                    tp.typeParamSymbols
+                val argsBuf = if (skiptvs) null else new ListBuffer[Type]
                 while (sig(index) != '>') {
-                  sig(index) match {
+                  val arg = sig(index) match {
                     case variance @ ('+' | '-' | '*') =>
                       index += 1
-                      val bounds = variance match {
+                      variance match {
                         case '+' => objToAny(TypeBounds.upper(sig2type(tparams, skiptvs)))
                         case '-' =>
                           val tp = sig2type(tparams, skiptvs)
@@ -328,18 +323,12 @@ class ClassfileParser(
                           else TypeBounds.lower(tp)
                         case '*' => TypeBounds.empty
                       }
-                      if (formals != null)
-                        tp1 = RefinedType(tp1, formals.head.name, bounds)
-                    case _ =>
-                      val info = sig2type(tparams, skiptvs)
-                      if (formals != null)
-                        tp1 = RefinedType(tp1, formals.head.name, TypeAlias(info))
+                    case _ => sig2type(tparams, skiptvs)
                   }
-                  if (formals != null)
-                    formals = formals.tail
+                  if (argsBuf != null) argsBuf += arg
                 }
                 accept('>')
-                tp1
+                if (skiptvs) tp else tp.appliedTo(argsBuf.toList)
               } else tp
             case tp =>
               assert(sig(index) != '<', tp)
@@ -423,9 +412,8 @@ class ClassfileParser(
       val start = index
       while (sig(index) != '>') {
         val tpname = subName(':'.==).toTypeName
-        val expname = if (owner.isClass) tpname.expandedName(owner) else tpname
         val s = ctx.newSymbol(
-          owner, expname, owner.typeParamCreationFlags,
+          owner, tpname, owner.typeParamCreationFlags,
           typeParamCompleter(index), coord = indexCoord(index))
         if (owner.isClass) owner.asClass.enter(s)
         tparams = tparams + (tpname -> s)

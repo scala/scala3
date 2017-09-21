@@ -83,21 +83,21 @@ object Checking {
       HKTypeLambda.fromParams(tparams, bound).appliedTo(args)
     checkBounds(orderedArgs, bounds, instantiate)
 
-    def checkWildcardHKApply(tp: Type, pos: Position): Unit = tp match {
-      case tp @ HKApply(tycon, args) if args.exists(_.isInstanceOf[TypeBounds]) =>
+    def checkWildcardApply(tp: Type, pos: Position): Unit = tp match {
+      case tp @ AppliedType(tycon, args) if args.exists(_.isInstanceOf[TypeBounds]) =>
         tycon match {
           case tycon: TypeLambda =>
             ctx.errorOrMigrationWarning(
               ex"unreducible application of higher-kinded type $tycon to wildcard arguments",
               pos)
           case _ =>
-            checkWildcardHKApply(tp.superType, pos)
+            checkWildcardApply(tp.superType, pos)
         }
       case _ =>
     }
-    def checkValidIfHKApply(implicit ctx: Context): Unit =
-      checkWildcardHKApply(tycon.tpe.appliedTo(args.map(_.tpe)), tree.pos)
-    checkValidIfHKApply(ctx.addMode(Mode.AllowLambdaWildcardApply))
+    def checkValidIfApply(implicit ctx: Context): Unit =
+      checkWildcardApply(tycon.tpe.appliedTo(args.map(_.tpe)), tree.pos)
+    checkValidIfApply(ctx.addMode(Mode.AllowLambdaWildcardApply))
   }
 
   /** Check that kind of `arg` has the same outline as the kind of paramBounds.
@@ -133,7 +133,7 @@ object Checking {
           // Create a synthetic singleton type instance, and check whether
           // it conforms to the self type of the class as seen from that instance.
           val stp = SkolemType(tp)
-          val selfType = tref.givenSelfType.asSeenFrom(stp, cls)
+          val selfType = cls.asClass.givenSelfType.asSeenFrom(stp, cls)
           if (selfType.exists && !(stp <:< selfType))
             ctx.error(DoesNotConformToSelfTypeCantBeInstantiated(tp, selfType), pos)
         }
@@ -213,12 +213,12 @@ object Checking {
       case tp: TermRef =>
         this(tp.info)
         mapOver(tp)
+      case tp @ AppliedType(tycon, args) =>
+        tp.derivedAppliedType(this(tycon), args.map(this(_, nestedCycleOK, nestedCycleOK)))
       case tp @ RefinedType(parent, name, rinfo) =>
         tp.derivedRefinedType(this(parent), name, this(rinfo, nestedCycleOK, nestedCycleOK))
       case tp: RecType =>
         tp.rebind(this(tp.parent))
-      case tp @ HKApply(tycon, args) =>
-        tp.derivedAppliedType(this(tycon), args.map(this(_, nestedCycleOK, nestedCycleOK)))
       case tp @ TypeRef(pre, name) =>
         try {
           // A prefix is interesting if it might contain (transitively) a reference
@@ -234,7 +234,7 @@ object Checking {
             case SuperType(thistp, _) => isInteresting(thistp)
             case AndType(tp1, tp2) => isInteresting(tp1) || isInteresting(tp2)
             case OrType(tp1, tp2) => isInteresting(tp1) && isInteresting(tp2)
-            case _: RefinedOrRecType | _: HKApply => true
+            case _: RefinedOrRecType | _: AppliedType => true
             case _ => false
           }
           if (isInteresting(pre)) {
@@ -415,7 +415,7 @@ object Checking {
        *  @pre  The signature of `sym` refers to `other`
        */
       def isLeaked(other: Symbol) =
-        other.is(Private) && {
+        other.is(Private, butNot = TypeParam) && {
           val otherBoundary = other.owner
           val otherLinkedBoundary = otherBoundary.linkedClass
           !(symBoundary.isContainedIn(otherBoundary) ||
@@ -445,9 +445,10 @@ object Checking {
           tp.derivedClassInfo(
             prefix = apply(tp.prefix),
             classParents =
-              tp.parentsWithArgs.map { p =>
-                apply(p).underlyingClassRef(refinementOK = false) match {
+              tp.parents.map { p =>
+                apply(p).stripAnnots match {
                   case ref: TypeRef => ref
+                  case ref: AppliedType => ref
                   case _ => defn.ObjectType // can happen if class files are missing
                 }
               }
@@ -532,10 +533,10 @@ trait Checking {
     if (!tp.isStable) ctx.error(ex"$tp is not stable", pos)
 
   /** Check that all type members of `tp` have realizable bounds */
-  def checkRealizableBounds(tp: Type, pos: Position)(implicit ctx: Context): Unit = {
-    val rstatus = boundsRealizability(tp)
+  def checkRealizableBounds(cls: Symbol, pos: Position)(implicit ctx: Context): Unit = {
+    val rstatus = boundsRealizability(cls.thisType)
     if (rstatus ne Realizable)
-      ctx.error(ex"$tp cannot be instantiated since it${rstatus.msg}", pos)
+      ctx.error(ex"$cls cannot be instantiated since it${rstatus.msg}", pos)
   }
 
  /**  Check that `tp` is a class type.
@@ -553,7 +554,7 @@ trait Checking {
       case _ =>
         ctx.error(ex"$tp is not a class type", pos)
         defn.ObjectType
-  }
+    }
 
   /** Check that a non-implicit parameter making up the first parameter section of an
    *  implicit conversion is not a singleton type.
@@ -565,20 +566,29 @@ trait Checking {
     case _ =>
   }
 
-  /** Check that any top-level type arguments in this type are feasible, i.e. that
-   *  their lower bound conforms to their upper bound. If a type argument is
-   *  infeasible, issue and error and continue with upper bound.
+  /** Check that `tp` is a class type and that any top-level type arguments in this type
+   *  are feasible, i.e. that their lower bound conforms to their upper bound. If a type
+   *  argument is infeasible, issue and error and continue with upper bound.
    */
-  def checkFeasible(tp: Type, pos: Position, where: => String = "")(implicit ctx: Context): Type = tp match {
-    case tp: RefinedType =>
-      tp.derivedRefinedType(tp.parent, tp.refinedName, checkFeasible(tp.refinedInfo, pos, where))
-    case tp: RecType =>
-      tp.rebind(tp.parent)
-    case tp @ TypeBounds(lo, hi) if !(lo <:< hi) =>
-      ctx.error(ex"no type exists between low bound $lo and high bound $hi$where", pos)
-      TypeAlias(hi)
-    case _ =>
-      tp
+  def checkFeasibleParent(tp: Type, pos: Position, where: => String = "")(implicit ctx: Context): Type = {
+    def checkGoodBounds(tp: Type) = tp match {
+      case tp @ TypeBounds(lo, hi) if !(lo <:< hi) =>
+        ctx.error(ex"no type exists between low bound $lo and high bound $hi$where", pos)
+        TypeBounds(hi, hi)
+      case _ =>
+        tp
+    }
+    tp match {
+      case tp @ AndType(tp1, tp2) =>
+        ctx.error(s"conflicting type arguments$where", pos)
+        tp1
+      case tp @ AppliedType(tycon, args) =>
+        tp.derivedAppliedType(tycon, args.mapConserve(checkGoodBounds))
+      case tp: RefinedType =>
+        tp.derivedRefinedType(tp.parent, tp.refinedName, checkGoodBounds(tp.refinedInfo))
+      case _ =>
+        tp
+    }
   }
 
   /** Check that `tree` is a pure expression of constant type */
@@ -721,7 +731,7 @@ trait NoChecking extends Checking {
   override def checkStable(tp: Type, pos: Position)(implicit ctx: Context): Unit = ()
   override def checkClassType(tp: Type, pos: Position, traitReq: Boolean, stablePrefixReq: Boolean)(implicit ctx: Context): Type = tp
   override def checkImplicitParamsNotSingletons(vparamss: List[List[ValDef]])(implicit ctx: Context): Unit = ()
-  override def checkFeasible(tp: Type, pos: Position, where: => String = "")(implicit ctx: Context): Type = tp
+  override def checkFeasibleParent(tp: Type, pos: Position, where: => String = "")(implicit ctx: Context): Type = tp
   override def checkInlineConformant(tree: Tree, what: => String)(implicit ctx: Context) = ()
   override def checkNoDoubleDefs(cls: Symbol)(implicit ctx: Context): Unit = ()
   override def checkParentCall(call: Tree, caller: ClassSymbol)(implicit ctx: Context) = ()

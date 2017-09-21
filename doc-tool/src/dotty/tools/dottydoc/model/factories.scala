@@ -176,7 +176,7 @@ object factories {
       paramLists(annot.tpe)
 
     case (_: TypeParamRef | _: RefinedType | _: TypeRef | _: ThisType |
-          _: ExprType  | _: OrType      | _: AndType | _: HKApply  |
+          _: ExprType  | _: OrType      | _: AndType | _: AppliedType |
           _: TermRef   | _: ConstantType) =>
       Nil // return types should not be in the paramlist
   }
@@ -198,7 +198,7 @@ object factories {
         case _ => false
       }
 
-      cd.classParents.collect {
+      cd.classParents.map(_.typeConstructor).collect {
         case t: TypeRef if !isJavaLangObject(t) && !isProductWithArity(t) =>
           UnsetLink(t.name.toString, path(t.symbol).mkString("."))
       }

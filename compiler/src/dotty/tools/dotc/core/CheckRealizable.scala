@@ -33,6 +33,12 @@ object CheckRealizable {
   class HasProblemBounds(typ: SingleDenotation)(implicit ctx: Context)
   extends Realizability(i" has a member $typ with possibly conflicting bounds ${typ.info.bounds.lo} <: ... <: ${typ.info.bounds.hi}")
 
+  class HasProblemBaseArg(typ: Type, argBounds: TypeBounds)(implicit ctx: Context)
+  extends Realizability(i" has a base type $typ with possibly conflicting parameter bounds ${argBounds.lo} <: ... <: ${argBounds.hi}")
+
+  class HasProblemBase(base1: Type, base2: Type)(implicit ctx: Context)
+  extends Realizability(i" has conflicting base types $base1 and $base2")
+
   class HasProblemField(fld: SingleDenotation, problem: Realizability)(implicit ctx: Context)
   extends Realizability(i" has a member $fld which is not a legal path\n since ${fld.symbol.name}: ${fld.info}${problem.msg}")
 
@@ -89,18 +95,39 @@ class CheckRealizable(implicit ctx: Context) {
       else boundsRealizability(tp).andAlso(memberRealizability(tp))
   }
 
-  /** `Realizable` if `tp` has good bounds, a `HasProblemBounds` instance
-   *  pointing to a bad bounds member otherwise.
+  /** `Realizable` if `tp` has good bounds, a `HasProblem...` instance
+   *  pointing to a bad bounds member otherwise. "Has good bounds" means:
+   *
+   *    - all type members have good bounds
+   *    - all base types are class types, and if their arguments are wildcards
+   *      they have good bounds.
+   *    - base types do not appear in multiple instances with different arguments.
+   *      (depending on the simplification scheme for AndTypes employed, this could
+   *       also lead to base types with bad bounds).
    */
   private def boundsRealizability(tp: Type) = {
-    def hasBadBounds(mbr: SingleDenotation) = {
-      val bounds = mbr.info.bounds
-      !(bounds.lo <:< bounds.hi)
+    val mbrProblems =
+      for {
+        mbr <- tp.nonClassTypeMembers
+        if !(mbr.info.loBound <:< mbr.info.hiBound)
+      }
+      yield new HasProblemBounds(mbr)
+
+    def baseTypeProblems(base: Type) = base match {
+      case AndType(base1, base2) =>
+        new HasProblemBase(base1, base2) :: Nil
+      case base =>
+        base.argInfos.collect {
+          case bounds @ TypeBounds(lo, hi) if !(lo <:< hi) =>
+            new HasProblemBaseArg(base, bounds)
+        }
     }
-    tp.nonClassTypeMembers.find(hasBadBounds) match {
-      case Some(mbr) => new HasProblemBounds(mbr)
-      case _ => Realizable
-    }
+    val baseProblems =
+      tp.baseClasses.map(_.baseTypeOf(tp)).flatMap(baseTypeProblems)
+
+    (((Realizable: Realizability)
+      /: mbrProblems)(_ andAlso _)
+      /: baseProblems)(_ andAlso _)
   }
 
   /** `Realizable` if all of `tp`'s non-struct fields have realizable types,
