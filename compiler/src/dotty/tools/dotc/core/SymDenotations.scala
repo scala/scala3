@@ -457,7 +457,10 @@ object SymDenotations {
       validFor.runId == ctx.runId || ctx.stillValid(this)
 
     final def isReferencedSymbolically(implicit ctx: Context) =
-      (this is NonMember) || isTerm && ctx.phase.symbolicRefs
+      is(NonMember) || isTerm && ctx.phase.symbolicRefs
+
+    final def isOverridable(implicit ctx: Context) =
+      !(isReferencedSymbolically || is(Private) || isConstructor || maybeOwner.isTerm)
 
     /** Is this symbol the root class or its companion object? */
     final def isRoot: Boolean =

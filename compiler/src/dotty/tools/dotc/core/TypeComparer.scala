@@ -189,7 +189,8 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
                   tp1.symbol.companionModule
                 else
                   tp1.symbol
-              if ((sym1 ne NoSymbol) && (sym1 eq tp2.symbol))
+              val sym2 = tp2.symbol
+              if ((sym1 ne NoSymbol) && (sym1 eq sym2))
                 ctx.erasedTypes ||
                 sym1.isStaticOwner ||
                 isSubType(tp1.prefix, tp2.prefix) ||
@@ -198,8 +199,8 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
                 (  (tp1.name eq tp2.name)
                 && isSubType(tp1.prefix, tp2.prefix)
                 && tp1.signature == tp2.signature
-                && !tp1.isInstanceOf[WithFixedSym]
-                && !tp2.isInstanceOf[WithFixedSym]
+                && sym1.isOverridable
+                && sym2.isOverridable
                 ) ||
                 thirdTryNamed(tp1, tp2)
             case _ =>
