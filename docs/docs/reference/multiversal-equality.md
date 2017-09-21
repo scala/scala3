@@ -89,7 +89,9 @@ The precise rules for equality checking are as follows.
 
  1. A comparison using `x == y` or `x != y` between values `x: T` and `y: U`
     is legal if either `T` and `U` are the same, or one of the types is a subtype
-    of the other, or an implicit value of type `scala.Eq[T, U]` is found.
+    of the "lifted" version of the other type, or an implicit value of type `scala.Eq[T, U]` is found.
+    See the [description on Github](https://github.com/lampepfl/dotty/issues/1247) for
+    a definition of lifting.
 
  2. The usual rules for implicit search apply also to `Eq` instances,
     with one modification: An instance of `scala.Eq.eqAny[T, U]` is
