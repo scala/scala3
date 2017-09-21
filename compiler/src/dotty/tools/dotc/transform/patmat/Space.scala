@@ -7,7 +7,7 @@ import Types._
 import Contexts._
 import Flags._
 import ast.Trees._
-import ast.{tpd, untpd}
+import ast.tpd
 import Decorators._
 import Symbols._
 import StdNames._
@@ -20,6 +20,7 @@ import ProtoTypes._
 import transform.SymUtils._
 import reporting.diagnostic.messages._
 import config.Printers.{exhaustivity => debug}
+import util.Positions.Position
 
 /** Space logic for checking exhaustivity and unreachability of pattern matching
  *
@@ -403,21 +404,30 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
       else
         Prod(pat.tpe.stripAnnots, fun.tpe.widen, fun.symbol, pats.map(project), irrefutable(fun))
     case Typed(pat @ UnApply(_, _, _), _) => project(pat)
-    case Typed(expr, _) => Typ(erase(expr.tpe.stripAnnots), true)
+    case Typed(expr, tp) => Typ(erase(expr.tpe.stripAnnots)(tp.pos), true)
     case _ =>
       debug.println(s"unknown pattern: $pat")
       Empty
   }
 
   /* Erase a type binding according to erasure semantics in pattern matching */
-  def erase(tp: Type): Type = tp match {
+  def erase(tp: Type)(implicit pos: Position): Type = tp match {
     case tp @ AppliedType(tycon, args) =>
       if (tycon.isRef(defn.ArrayClass)) tp.derivedAppliedType(tycon, args.map(erase))
-      else tp.derivedAppliedType(tycon, args.map(t => WildcardType))
+      else {
+        val ignoreWarning = args.forall(p => p.typeSymbol.is(BindDefinedType) || p.isInstanceOf[TypeBounds])
+        if (!ignoreWarning)
+          ctx.warning(UncheckedTypePattern("type arguments are not unchecked since they are eliminated by erasure"), pos)
+
+        tp.derivedAppliedType(tycon, args.map(t => WildcardType))
+      }
     case OrType(tp1, tp2) =>
       OrType(erase(tp1), erase(tp2))
     case AndType(tp1, tp2) =>
       AndType(erase(tp1), erase(tp2))
+    case tp: RefinedType =>
+      ctx.warning(UncheckedTypePattern("type refinement is not unchecked since it is eliminated by erasure"), pos)
+      tp.derivedRefinedType(erase(tp.parent), tp.refinedName, WildcardType)
     case _ => tp
   }
 

@@ -99,6 +99,7 @@ public enum ErrorMessageID {
     MissingReturnTypeWithReturnStatementID,
     NoReturnFromInlineID,
     ReturnOutsideMethodDefinitionID,
+    UncheckedTypePatternID,
     ;
 
     public int errorNumber() {

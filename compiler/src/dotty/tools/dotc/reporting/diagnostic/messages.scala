@@ -880,6 +880,16 @@ object messages {
            |"""
   }
 
+  case class UncheckedTypePattern(msg: String)(implicit ctx: Context)
+    extends Message(UncheckedTypePatternID) {
+    val kind = "Unchecked Type Pattern"
+
+    val explanation =
+      hl"""|Type arguments and type refinements are erased during compile time, thus it's
+           |impossible to check them at run-time.
+           |"""
+  }
+
   case class MatchCaseUnreachable()(implicit ctx: Context)
   extends Message(MatchCaseUnreachableID) {
     val kind = s"""Match ${hl"case"} Unreachable"""
