@@ -877,6 +877,8 @@ object Build {
       ScriptedPlugin.scriptedBufferLog := false,
       ScriptedPlugin.scriptedLaunchOpts += "-Dplugin.version=" + version.value,
       ScriptedPlugin.scriptedLaunchOpts += "-Dplugin.scalaVersion=" + dottyVersion,
+     // By default scripted tests use $HOME/.ivy2 for the ivy cache. We need to override this value for the CI.
+      ScriptedPlugin.scriptedLaunchOpts ++= ivyPaths.value.ivyHome.map("-Dsbt.ivy.home=" + _.getAbsolutePath).toList,
       ScriptedPlugin.scripted := ScriptedPlugin.scripted.dependsOn(Def.task {
         val x0 = (publishLocal in `dotty-sbt-bridge-bootstrapped`).value
         val x1 = (publishLocal in `dotty-interfaces`).value
