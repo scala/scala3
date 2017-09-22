@@ -91,6 +91,7 @@ class CompilationTests extends ParallelTesting {
     compileFilesInDir("../tests/new", defaultOptions) +
     compileFilesInDir("../tests/pos-scala2", scala2Mode) +
     compileFilesInDir("../tests/pos", defaultOptions) +
+    compileFilesInDir("../tests/pos", defaultOptimised) +
     compileFilesInDir("../tests/pos-deep-subtype", allowDeepSubtypes) +
     compileFile(
       // succeeds despite -Xfatal-warnings because of -nowarn
@@ -159,6 +160,8 @@ class CompilationTests extends ParallelTesting {
 
   @Test def compileNeg: Unit = {
     compileShallowFilesInDir("../tests/neg", defaultOptions) +
+    compileShallowFilesInDir("../tests/neg/no-optimise", defaultOptions) +
+    compileShallowFilesInDir("../tests/neg", defaultOptimised) +
     compileFile("../tests/neg/customArgs/typers.scala", allowDoubleBindings) +
     compileFile("../tests/neg/customArgs/overrideClass.scala", scala2Mode) +
     compileFile("../tests/neg/customArgs/autoTuplingTest.scala", defaultOptions.and("-language:noAutoTupling")) +
@@ -186,6 +189,7 @@ class CompilationTests extends ParallelTesting {
 
   @Test def runAll: Unit = {
     compileFilesInDir("../tests/run", defaultOptions) +
+    compileFilesInDir("../tests/run", defaultOptimised) +
     compileFile("../tests/run/i3018.scala", defaultOptimised) +
     compileFile("../tests/run/blame_eye_triple_eee-double.scala", defaultOptimised) +
     compileFile("../tests/run/blame_eye_triple_eee-float.scala", defaultOptimised) +
