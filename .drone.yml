@@ -7,11 +7,6 @@ pipeline:
     volumes:
       - /tmp/cache:/cache
 
-  init:
-    image: lampepfl/dotty:2017-09-20
-    commands:
-      - ./project/scripts/sbt ";test:update ;dotty-bootstrapped/test:update"
-
   # TESTS:
   # We run tests in parallel. Tests run in a copy of the working directory to avoid conflict
   test_legacy:
