@@ -733,12 +733,10 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
   }
 
   def checkable(tree: Match): Boolean = {
-    def isCheckable(tp: Type): Boolean = tp match {
-      case AnnotatedType(tp, annot) =>
-        (ctx.definitions.UncheckedAnnot != annot.symbol) && isCheckable(tp)
-      case _ =>
-        // Possible to check everything, but be compatible with scalac by default
-        ctx.settings.YcheckAllPatmat.value ||
+    // Possible to check everything, but be compatible with scalac by default
+    def isCheckable(tp: Type): Boolean =
+        !tp.hasAnnotation(defn.UncheckedAnnot) && (
+          ctx.settings.YcheckAllPatmat.value ||
           tp.typeSymbol.is(Sealed) ||
           tp.isInstanceOf[OrType] ||
           (tp.isInstanceOf[AndType] && {
@@ -749,7 +747,7 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
           tp.typeSymbol.is(Enum) ||
           canDecompose(tp) ||
           (defn.isTupleType(tp) && tp.dealias.argInfos.exists(isCheckable(_)))
-    }
+        )
 
     val Match(sel, cases) = tree
     val res = isCheckable(sel.tpe.widen.dealiasKeepAnnots)
