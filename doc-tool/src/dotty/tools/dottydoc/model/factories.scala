@@ -120,6 +120,9 @@ object factories {
 
       case ref @ RefinedType(parent, rn, info) =>
         expandTpe(parent) //FIXME: will be a refined HK, aka class Foo[X] { def bar: List[X] } or similar
+
+      case ref: TypeArgRef =>
+        expandTpe(ref.underlying)
     }
 
     expandTpe(t)
