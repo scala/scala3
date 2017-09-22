@@ -62,6 +62,7 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
     new Devalify                    ::
     new Jumpjump                    ::
     new DropGoodCasts               ::
+    new DropNoEffects(this)         ::
     new ConstantFold(this)          ::
     Nil
 
