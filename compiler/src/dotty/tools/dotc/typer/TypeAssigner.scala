@@ -506,7 +506,7 @@ trait TypeAssigner {
         else inSameUniverse(TypeBounds(_, _), lo.tpe, hi, "type bounds"))
 
   def assignType(tree: untpd.Bind, sym: Symbol)(implicit ctx: Context) =
-    tree.withType(NamedType.withFixedSym(NoPrefix, sym))
+    tree.withType(NamedType(NoPrefix, sym))
 
   def assignType(tree: untpd.Alternative, trees: List[Tree])(implicit ctx: Context) =
     tree.withType(ctx.typeComparer.lub(trees.tpes))
@@ -515,37 +515,37 @@ trait TypeAssigner {
     tree.withType(proto)
 
   def assignType(tree: untpd.ValDef, sym: Symbol)(implicit ctx: Context) =
-    tree.withType(if (sym.exists) assertExists(symbolicIfNeeded(sym).orElse(sym.valRef)) else NoType)
+    tree.withType(if (sym.exists) assertExists(symbolicIfNeeded(sym).orElse(sym.termRef)) else NoType)
 
   def assignType(tree: untpd.DefDef, sym: Symbol)(implicit ctx: Context) =
-    tree.withType(symbolicIfNeeded(sym).orElse(sym.termRefWithSig))
+    tree.withType(symbolicIfNeeded(sym).orElse(sym.termRef))
 
   def assignType(tree: untpd.TypeDef, sym: Symbol)(implicit ctx: Context) =
     tree.withType(symbolicIfNeeded(sym).orElse(sym.typeRef))
 
-  private def symbolicIfNeeded(sym: Symbol)(implicit ctx: Context) = {
+  private def symbolicIfNeeded(sym: Symbol)(implicit ctx: Context) = { // ??? can we drop this?
     val owner = sym.owner
     if (owner.isClass && owner.isCompleted && owner.asClass.givenSelfType.exists)
       // In that case a simple typeRef/termWithWithSig could return a member of
       // the self type, not the symbol itself. To avoid this, we make the reference
-      // symbolic. In general it seems to be faster to keep the non-symblic
+      // symbolic. In general it seems to be faster to keep the non-symbolic
       // reference, since there is less pressure on the uniqueness tables that way
       // and less work to update all the different references. That's why symbolic references
       // are only used if necessary.
-      NamedType.withFixedSym(owner.thisType, sym)
+      NamedType(owner.thisType, sym)
     else NoType
   }
 
   def assertExists(tp: Type) = { assert(tp != NoType); tp }
 
   def assignType(tree: untpd.Import, sym: Symbol)(implicit ctx: Context) =
-    tree.withType(sym.nonMemberTermRef)
+    tree.withType(sym.termRef)
 
   def assignType(tree: untpd.Annotated, arg: Tree, annot: Tree)(implicit ctx: Context) =
     tree.withType(AnnotatedType(arg.tpe.widen, Annotation(annot)))
 
   def assignType(tree: untpd.PackageDef, pid: Tree)(implicit ctx: Context) =
-    tree.withType(pid.symbol.valRef)
+    tree.withType(pid.symbol.termRef)
 
   /** Ensure that `tree2`'s type is in the same universe as `tree1`. If that's the case, return
    *  `op` applied to both types.

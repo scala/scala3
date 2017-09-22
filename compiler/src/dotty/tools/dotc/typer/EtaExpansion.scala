@@ -29,7 +29,7 @@ object EtaExpansion {
       val liftedType = fullyDefinedType(expr.tpe.widen, "lifted expression", expr.pos)
       val sym = ctx.newSymbol(ctx.owner, name, EmptyFlags, liftedType, coord = positionCoord(expr.pos))
       defs += ValDef(sym, expr)
-      ref(sym.valRef)
+      ref(sym.termRef)
     }
 
   /** Lift out common part of lhs tree taking part in an operator assignment such as

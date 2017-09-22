@@ -6,7 +6,7 @@ import dotty.tools.dotc.transform.{ExplicitOuter, Erasure}
 import dotty.tools.dotc.typer.ProtoTypes.FunProtoTyped
 import transform.SymUtils._
 import core._
-import util.Positions._, Types._, Contexts._, Constants._, Names._, Flags._
+import util.Positions._, Types._, Contexts._, Constants._, Names._, Flags._, NameOps._
 import SymDenotations._, Symbols._, StdNames._, Annotations._, Trees._, Symbols._
 import Denotations._, Decorators._, DenotTransformers._
 import collection.mutable
@@ -243,7 +243,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     val localDummy = ((NoSymbol: Symbol) /: body)(findLocalDummy.apply)
       .orElse(ctx.newLocalDummy(cls))
     val impl = untpd.Template(constr, parents, selfType, newTypeParams ++ body)
-      .withType(localDummy.nonMemberTermRef)
+      .withType(localDummy.termRef)
     ta.assignType(untpd.TypeDef(cls.name, impl), cls)
   }
 
@@ -382,7 +382,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     val targs = tp.argTypes
     val tycon = tp.typeConstructor
     New(tycon)
-      .select(TermRef.withSig(tycon, constr))
+      .select(TermRef.withSym(tycon, constr))
       .appliedToTypes(targs)
       .appliedToArgs(args)
   }
@@ -702,16 +702,14 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
           TypeRef(tree.tpe, sym.name.asTypeName)
         }
         else
-          TermRef.withSigAndDenot(tree.tpe, sym.name.asTermName,
-            sym.signature, sym.denot.asSeenFrom(tree.tpe))
-      untpd.Select(tree, sym.name)
-        .withType(tp)
+          TermRef(tree.tpe, sym.name.asTermName, sym.denot.asSeenFrom(tree.tpe))
+      untpd.Select(tree, sym.name).withType(tp)
     }
 
     /** A select node with the given selector name and signature and a computed type */
     def selectWithSig(name: Name, sig: Signature)(implicit ctx: Context): Tree =
       untpd.SelectWithSig(tree, name, sig)
-        .withType(TermRef.withSig(tree.tpe, name.asTermName, sig))
+        .withType(TermRef(tree.tpe, name.asTermName.withSig(sig)))
 
     /** A select node with selector name and signature taken from `sym`.
      *  Note: Use this method instead of select(sym) if the referenced symbol
@@ -919,7 +917,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       }
       else denot.asSingleDenotation.termRef
     val fun = receiver
-      .select(TermRef.withSig(receiver.tpe, selected.termSymbol.asTerm))
+      .select(TermRef.withSym(receiver.tpe, selected.termSymbol.asTerm))
       .appliedToTypes(targs)
 
     def adaptLastArg(lastParam: Tree, expectedType: Type) = {

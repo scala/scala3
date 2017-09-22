@@ -614,13 +614,9 @@ object Contexts {
     /** A table for hash consing unique named types */
     private[core] val uniqueNamedTypes = new NamedTypeUniques
 
-    /** A table for hash consing unique symbolic named types */
-    private[core] val uniqueWithFixedSyms = new WithFixedSymUniques
-
     private def uniqueSets = Map(
         "uniques" -> uniques,
         "uniqueAppliedTypes" -> uniqueAppliedTypes,
-        "uniqueWithFixedSyms" -> uniqueWithFixedSyms,
         "uniqueNamedTypes" -> uniqueNamedTypes)
 
     /** A map that associates label and size of all uniques sets */

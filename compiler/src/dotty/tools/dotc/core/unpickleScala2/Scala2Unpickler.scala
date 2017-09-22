@@ -630,7 +630,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
     // unless names match up.
     val isBound = (tp: Type) => {
       def refersTo(tp: Type, sym: Symbol): Boolean = tp match {
-        case tp @ TypeRef(_, name) => sym.name == name && sym == tp.symbol
+        case tp: TypeRef => sym.name == tp.name && sym == tp.symbol
         case tp: TypeVar => refersTo(tp.underlying, sym)
         case tp : LazyRef => refersTo(tp.ref, sym)
         case _ => false
@@ -704,8 +704,8 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
       case SINGLEtpe =>
         val pre = readTypeRef()
         val sym = readDisambiguatedSymbolRef(_.info.isParameterless)
-        if (isLocal(sym) || (pre == NoPrefix)) pre select sym
-        else TermRef.withSig(pre, sym.name.asTermName, Signature.NotAMethod) // !!! should become redundant
+        if (isLocal(sym) || (pre eq NoPrefix)) pre select sym
+        else TermRef(pre, sym.name.asTermName.withSig(Signature.NotAMethod)) // !!! should become redundant
       case SUPERtpe =>
         val thistpe = readTypeRef()
         val supertpe = readTypeRef()
@@ -734,8 +734,8 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
         }
         val tycon =
           if (sym.isClass && sym.is(Scala2x) && !sym.owner.is(Package))
-            // used fixed sym for Scala 2 inner classes, because they might be shadowed
-            TypeRef.withFixedSym(pre, sym.name.asTypeName, sym.asType)
+            // use fixed sym for Scala 2 inner classes, because they might be shadowed
+            TypeRef(pre, sym.asType)
           else if (isLocal(sym) || pre == NoPrefix) {
             val pre1 = if ((pre eq NoPrefix) && (sym is TypeParam)) sym.owner.thisType else pre
             pre1 select sym

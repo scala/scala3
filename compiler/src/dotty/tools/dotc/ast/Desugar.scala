@@ -1057,7 +1057,7 @@ object desugar {
         } else if (arity == 1) ts.head
         else if (ctx.mode is Mode.Type) AppliedTypeTree(ref(tupleTypeRef), ts)
         else if (arity == 0) unitLiteral
-        else Apply(ref(tupleTypeRef.classSymbol.companionModule.valRef), ts)
+        else Apply(ref(tupleTypeRef.classSymbol.companionModule.termRef), ts)
       case WhileDo(cond, body) =>
         // { <label> def while$(): Unit = if (cond) { body; while$() } ; while$() }
         val call = Apply(Ident(nme.WHILE_PREFIX), Nil).withPos(tree.pos)

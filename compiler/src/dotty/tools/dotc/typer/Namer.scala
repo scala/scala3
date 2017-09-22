@@ -324,8 +324,7 @@ class Namer { typer: Typer =>
           adjustIfModule(completer, tree),
           privateWithinClass(tree.mods), tree.namePos), tree)
       case tree: Import =>
-        recordSym(ctx.newSymbol(
-          ctx.owner, nme.IMPORT, Synthetic, new Completer(tree), NoSymbol, tree.pos), tree)
+        recordSym(ctx.newImportSymbol(ctx.owner, new Completer(tree), tree.pos), tree)
       case _ =>
         NoSymbol
     }

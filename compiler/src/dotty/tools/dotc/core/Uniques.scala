@@ -1,7 +1,7 @@
 package dotty.tools.dotc
 package core
 
-import Types._, Symbols._, Contexts._, util.Stats._, Hashable._, Names._
+import Types._, Symbols._, Contexts._, util.Stats._, Hashable._, Names._, Designators._
 import config.Config
 import util.HashSet
 
@@ -43,50 +43,25 @@ object Uniques {
   final class NamedTypeUniques extends HashSet[NamedType](Config.initialUniquesCapacity) with Hashable {
     override def hash(x: NamedType): Int = x.hash
 
-    private def findPrevious(h: Int, prefix: Type, name: Name): NamedType = {
+    private def findPrevious(h: Int, prefix: Type, designator: Designator): NamedType = {
       var e = findEntryByHash(h)
       while (e != null) {
-        if ((e.prefix eq prefix) && (e.name eq name)) return e
+        if ((e.prefix eq prefix) && (e.designator eq designator)) return e
         e = nextEntryByHash(h)
       }
       e
     }
 
-    def enterIfNew(prefix: Type, name: Name): NamedType = {
-      val h = doHash(name, prefix)
+    def enterIfNew(prefix: Type, designator: Designator, isTerm: Boolean)(implicit ctx: Context): NamedType = {
+      val h = doHash(designator, prefix)
       if (monitored) recordCaching(h, classOf[NamedType])
-      def newType =
-        if (name.isTypeName) new CachedTypeRef(prefix, name.asTypeName, h)
-        else new CachedTermRef(prefix, name.asTermName, h)
+      def newType = {
+        if (isTerm) new CachedTermRef(prefix, designator.asInstanceOf[TermDesignator], h)
+        else new CachedTypeRef(prefix, designator.asInstanceOf[TypeDesignator], h)
+      }.init()
       if (h == NotCached) newType
       else {
-        val r = findPrevious(h, prefix, name)
-        if (r ne null) r else addEntryAfterScan(newType)
-      }
-    }
-  }
-
-  final class WithFixedSymUniques extends HashSet[WithFixedSym](Config.initialUniquesCapacity) with Hashable {
-    override def hash(x: WithFixedSym): Int = x.hash
-
-    private def findPrevious(h: Int, prefix: Type, sym: Symbol): NamedType = {
-      var e = findEntryByHash(h)
-      while (e != null) {
-        if ((e.prefix eq prefix) && (e.fixedSym eq sym)) return e
-        e = nextEntryByHash(h)
-      }
-      e
-    }
-
-    def enterIfNew(prefix: Type, name: Name, sym: Symbol): NamedType = {
-      val h = doHash(sym, prefix)
-      if (monitored) recordCaching(h, classOf[WithFixedSym])
-      def newType =
-        if (name.isTypeName) new TypeRefWithFixedSym(prefix, name.asTypeName, sym.asInstanceOf[TypeSymbol], h)
-        else new TermRefWithFixedSym(prefix, name.asTermName, sym.asInstanceOf[TermSymbol], h)
-      if (h == NotCached) newType
-      else {
-        val r = findPrevious(h, prefix, sym)
+        val r = findPrevious(h, prefix, designator)
         if (r ne null) r else addEntryAfterScan(newType)
       }
     }

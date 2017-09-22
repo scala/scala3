@@ -86,7 +86,10 @@ object Trees {
      *  where we overwrite with a simplified version of the type itself.
      */
     private[dotc] def overwriteType(tpe: T) = {
-      if (this.isInstanceOf[Template[_]]) assert(tpe.isInstanceOf[WithFixedSym], s"$this <--- $tpe")
+      if (this.isInstanceOf[Template[_]])
+        tpe match {
+          case tpe: TermRef => assert(tpe.hasFixedSym , s"$this <--- $tpe")
+        }
       myTpe = tpe
     }
 

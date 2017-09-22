@@ -428,14 +428,14 @@ trait ImplicitRunInfo { self: RunInfo =>
               def addRef(companion: TermRef): Unit = {
                 val compSym = companion.symbol
                 if (compSym is Package)
-                  addRef(TermRef.withSig(companion, nme.PACKAGE, Signature.NotAMethod))
+                  addRef(TermRef(companion, nme.PACKAGE.withSig(Signature.NotAMethod)))
                 else if (compSym.exists)
                   comps += companion.asSeenFrom(pre, compSym.owner).asInstanceOf[TermRef]
               }
               def addParentScope(parent: Type): Unit =
                 iscopeRefs(tp.baseType(parent.typeSymbol)) foreach addRef
               val companion = cls.companionModule
-              if (companion.exists) addRef(companion.valRef)
+              if (companion.exists) addRef(companion.termRef)
               cls.classParents foreach addParentScope
             }
             tp.classSymbols(liftingCtx) foreach addClassScope
@@ -671,6 +671,8 @@ trait Implicits { self: Typer =>
             case TypeBounds(lo, hi) if lo ne hi => apply(hi)
             case _ => t
           }
+        case t: RefinedType =>
+          apply(t.parent)
         case _ =>
           if (variance > 0) mapOver(t) else t
       }
@@ -1006,7 +1008,7 @@ class TermRefSet(implicit ctx: Context) extends mutable.Traversable[TermRef] {
   override def foreach[U](f: TermRef => U): Unit =
     for (sym <- elems.keysIterator)
       for (pre <- elems(sym))
-        f(TermRef(pre, sym))
+        f(TermRef.withSym(pre, sym))
 }
 
 @sharable object EmptyTermRefSet extends TermRefSet()(NoContext)

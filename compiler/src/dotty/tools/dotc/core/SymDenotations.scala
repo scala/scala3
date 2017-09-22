@@ -1129,15 +1129,6 @@ object SymDenotations {
     override def termRef(implicit ctx: Context): TermRef =
       TermRef(owner.thisType, name.asTermName, this)
 
-    override def valRef(implicit ctx: Context): TermRef =
-      TermRef.withSigAndDenot(owner.thisType, name.asTermName, Signature.NotAMethod, this)
-
-    override def termRefWithSig(implicit ctx: Context): TermRef =
-      TermRef.withSigAndDenot(owner.thisType, name.asTermName, signature, this)
-
-    def nonMemberTermRef(implicit ctx: Context): TermRef =
-      TermRef.withFixedSym(owner.thisType, name.asTermName, symbol.asTerm)
-
     /** The variance of this type parameter or type member as an Int, with
      *  +1 = Covariant, -1 = Contravariant, 0 = Nonvariant, or not a type parameter
      */
@@ -1401,9 +1392,11 @@ object SymDenotations {
       myThisType
     }
 
-    private def computeThisType(implicit ctx: Context): Type =
-      ThisType.raw(TypeRef(
-          if (this is Package) NoPrefix else owner.thisType, symbol.asType))
+    private def computeThisType(implicit ctx: Context): Type = {
+      val cls = symbol.asType
+      val pre = if (this is Package) NoPrefix else owner.thisType
+      ThisType.raw(TypeRef.withSym(pre, cls))
+    }
 
     private[this] var myTypeRef: TypeRef = null
 

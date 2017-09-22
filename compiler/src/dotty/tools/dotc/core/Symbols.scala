@@ -10,6 +10,7 @@ import java.lang.AssertionError
 import Decorators._
 import Symbols._
 import Contexts._
+import Designators._
 import SymDenotations._
 import printing.Texts._
 import printing.Printer
@@ -153,7 +154,7 @@ trait Symbols { this: Context =>
         infoFn(module, modcls), privateWithin)
     val mdenot = SymDenotation(
         module, owner, name, modFlags | ModuleCreationFlags,
-        if (cdenot.isCompleted) TypeRef.withSymAndName(owner.thisType, modcls, modclsName)
+        if (cdenot.isCompleted) TypeRef.withSym(owner.thisType, modcls, modclsName)
         else new ModuleCompleter(modcls))
     module.denot = mdenot
     modcls.denot = cdenot
@@ -178,7 +179,7 @@ trait Symbols { this: Context =>
     newModuleSymbol(
         owner, name, modFlags, clsFlags,
         (module, modcls) => ClassInfo(
-          owner.thisType, modcls, parents, decls, TermRef.withSymAndName(owner.thisType, module, name)),
+          owner.thisType, modcls, parents, decls, TermRef.withSym(owner.thisType, module, name)),
         privateWithin, coord, assocFile)
 
   val companionMethodFlags = Flags.Synthetic | Flags.Private | Flags.Method
@@ -245,11 +246,15 @@ trait Symbols { this: Context =>
    *  would be `fld2`. There is a single local dummy per template.
    */
   def newLocalDummy(cls: Symbol, coord: Coord = NoCoord) =
-    newSymbol(cls, nme.localDummyName(cls), EmptyFlags, NoType)
+    newSymbol(cls, nme.localDummyName(cls), NonMember, NoType)
 
   /** Create an import symbol pointing back to given qualifier `expr`. */
-  def newImportSymbol(owner: Symbol, expr: Tree, coord: Coord = NoCoord) =
-    newSymbol(owner, nme.IMPORT, EmptyFlags, ImportType(expr), coord = coord)
+  def newImportSymbol(owner: Symbol, expr: Tree, coord: Coord = NoCoord): TermSymbol =
+    newImportSymbol(owner, ImportType(expr), coord = coord)
+
+  /** Create an import symbol with given `info`. */
+  def newImportSymbol(owner: Symbol, info: Type, coord: Coord): TermSymbol =
+    newSymbol(owner, nme.IMPORT, Synthetic | NonMember, info, coord = coord)
 
   /** Create a class constructor symbol for given class `cls`. */
   def newConstructor(cls: ClassSymbol, flags: FlagSet, paramNames: List[TermName], paramTypes: List[Type], privateWithin: Symbol = NoSymbol, coord: Coord = NoCoord) =
@@ -282,7 +287,7 @@ trait Symbols { this: Context =>
     for (name <- names) {
       val tparam = newNakedSymbol[TypeName](NoCoord)
       tparamBuf += tparam
-      trefBuf += TypeRef.withSymAndName(owner.thisType, tparam, name)
+      trefBuf += TypeRef.withSym(owner.thisType, tparam, name)
     }
     val tparams = tparamBuf.toList
     val bounds = boundsFn(trefBuf.toList)
@@ -343,7 +348,7 @@ trait Symbols { this: Context =>
         copy.denot = odenot.copySymDenotation(
           symbol = copy,
           owner = ttmap1.mapOwner(odenot.owner),
-          initFlags = odenot.flags &~ Touched | Fresh,
+          initFlags = odenot.flags &~ Touched,
           info = completer,
           privateWithin = ttmap1.mapOwner(odenot.privateWithin), // since this refers to outer symbols, need not include copies (from->to) in ownermap here.
           annotations = odenot.annotations)
@@ -385,7 +390,7 @@ object Symbols {
    *  @param coord  The coordinates of the symbol (a position or an index)
    *  @param id     A unique identifier of the symbol (unique per ContextBase)
    */
-  class Symbol private[Symbols] (val coord: Coord, val id: Int) extends DotClass with ParamInfo with printing.Showable {
+  class Symbol private[Symbols] (val coord: Coord, val id: Int) extends Designator with ParamInfo with printing.Showable {
 
     type ThisName <: Name
 
@@ -423,21 +428,35 @@ object Symbols {
     final def isValidInCurrentRun(implicit ctx: Context): Boolean =
       lastDenot.validFor.runId == ctx.runId || ctx.stillValid(lastDenot)
 
-    /** Subclass tests and casts */
-    final def isTerm(implicit ctx: Context): Boolean =
+    /** Designator overrides */
+    final override def isSymbol = true
+    final override def isTerm(implicit ctx: Context): Boolean =
       (if (defRunId == ctx.runId) lastDenot else denot).isTerm
-
-    final def isType(implicit ctx: Context): Boolean =
+    final override def isType(implicit ctx: Context): Boolean =
       (if (defRunId == ctx.runId) lastDenot else denot).isType
+    final override def asTerm(implicit ctx: Context): TermSymbol = {
+      assert(isTerm, s"asTerm called on not-a-Term $this" );
+      asInstanceOf[TermSymbol]
+    }
+    final override def asType(implicit ctx: Context): TypeSymbol = {
+      assert(isType, s"isType called on not-a-Type $this");
+      asInstanceOf[TypeSymbol]
+    }
 
     final def isClass: Boolean = isInstanceOf[ClassSymbol]
-
-    final def asTerm(implicit ctx: Context): TermSymbol = { assert(isTerm, s"asTerm called on not-a-Term $this" ); asInstanceOf[TermSymbol] }
-    final def asType(implicit ctx: Context): TypeSymbol = { assert(isType, s"isType called on not-a-Type $this"); asInstanceOf[TypeSymbol] }
     final def asClass: ClassSymbol = asInstanceOf[ClassSymbol]
 
-    final def isFresh(implicit ctx: Context) =
-      lastDenot != null && (lastDenot is Fresh)
+    final def isReferencedSymbolically(implicit ctx: Context) = {
+      val d = lastDenot
+      d != null && (d.is(NonMember) || d.isTerm && ctx.phase.symbolicRefs)
+    }
+
+    /** The symbol's signature if it is completed or a method, NotAMethod otherwise. */
+    final def signature(implicit ctx: Context) =
+      if (lastDenot != null && (lastDenot.isCompleted || lastDenot.is(Method)))
+        denot.signature
+      else
+        Signature.NotAMethod
 
     /** Special cased here, because it may be used on naked symbols in substituters */
     final def isStatic(implicit ctx: Context): Boolean =

@@ -359,7 +359,7 @@ object Phases {
       myErasedTypes  = prev.getClass == classOf[Erasure]      || prev.erasedTypes
       myFlatClasses  = prev.getClass == classOf[Flatten]      || prev.flatClasses
       myRefChecked   = prev.getClass == classOf[RefChecks]    || prev.refChecked
-      mySymbolicRefs = prev.getClass == classOf[ResolveSuper] || prev.symbolicRefs
+      mySymbolicRefs = getClass == classOf[Erasure] || prev.symbolicRefs
       myLabelsReordered = prev.getClass == classOf[LabelDefs] || prev.labelsReordered
       mySameMembersStartId = if (changesMembers) id else prev.sameMembersStartId
       mySameParentsStartId = if (changesParents) id else prev.sameMembersStartId

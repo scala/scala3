@@ -148,9 +148,9 @@ object Simplify {
   // TODO: This function is duplicated in jvm/DottyBackendInterface.scala, let's factor these out!
   def desugarIdent(i: Ident)(implicit ctx: Context): Option[Select] = {
     i.tpe match {
-      case TermRef(prefix: TermRef, name) =>
+      case TermRef(prefix: TermRef, _) =>
         Some(ref(prefix).select(i.symbol))
-      case TermRef(prefix: ThisType, name) =>
+      case TermRef(prefix: ThisType, _) =>
         Some(This(prefix.cls).select(i.symbol))
       case _ => None
     }

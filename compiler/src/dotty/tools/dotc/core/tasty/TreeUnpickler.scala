@@ -246,7 +246,7 @@ class TreeUnpickler(reader: TastyReader, nameAtRef: NameRef => TermName, posUnpi
               val sym = ctx.newSymbol(ctx.owner, readName().toTypeName, BindDefinedType, readType())
               registerSym(start, sym)
               if (currentAddr != end) readType()
-              TypeRef.withFixedSym(NoPrefix, sym.name, sym)
+              TypeRef(NoPrefix, sym)
             case POLYtype =>
               readMethodic(PolyType, _.toTypeName)
             case METHODtype =>
@@ -268,7 +268,7 @@ class TreeUnpickler(reader: TastyReader, nameAtRef: NameRef => TermName, posUnpi
 
       def readSimpleType(): Type = (tag: @switch) match {
         case TYPEREFdirect | TERMREFdirect =>
-          NamedType.withFixedSym(NoPrefix, readSymRef())
+          NamedType(NoPrefix, readSymRef())
         case TYPEREFsymbol | TERMREFsymbol =>
           readSymNameRef()
         case TYPEREFpkg =>
@@ -279,10 +279,8 @@ class TreeUnpickler(reader: TastyReader, nameAtRef: NameRef => TermName, posUnpi
           val name =  readName().toTypeName
           TypeRef(readType(), name)
         case TERMREF =>
-          readName() match {
-            case SignedName(name, sig) => TermRef.withSig(readType(), name, sig)
-            case name => TermRef.all(readType(), name)
-          }
+          val name = readName()
+          TermRef(readType(), name)
         case THIS =>
           ThisType.raw(readType().asInstanceOf[TypeRef])
         case RECtype =>
@@ -332,7 +330,7 @@ class TreeUnpickler(reader: TastyReader, nameAtRef: NameRef => TermName, posUnpi
     private def readSymNameRef()(implicit ctx: Context): Type = {
       val sym = readSymRef()
       val prefix = readType()
-      val res = NamedType.withSymAndName(prefix, sym, sym.name)
+      val res = NamedType.withSym(prefix, sym)
       prefix match {
         case prefix: ThisType if prefix.cls eq sym.owner => res.withDenot(sym.denot)
           // without this precaution we get an infinite cycle when unpickling pos/extmethods.scala
@@ -712,7 +710,7 @@ class TreeUnpickler(reader: TastyReader, nameAtRef: NameRef => TermName, posUnpi
       val cls = ctx.owner.asClass
       val assumedSelfType =
         if (cls.is(Module) && cls.owner.isClass)
-          TermRef.withSig(cls.owner.thisType, cls.name.sourceModuleName, Signature.NotAMethod)
+          TermRef(cls.owner.thisType, cls.name.sourceModuleName.withSig(Signature.NotAMethod))
         else NoType
       cls.info = new TempClassInfo(cls.owner.thisType, cls, cls.unforcedDecls, assumedSelfType)
       val localDummy = symbolAtCurrent()
@@ -755,7 +753,7 @@ class TreeUnpickler(reader: TastyReader, nameAtRef: NameRef => TermName, posUnpi
       })
       setPos(start,
         untpd.Template(constr, parents, self, lazyStats)
-          .withType(localDummy.nonMemberTermRef))
+          .withType(localDummy.termRef))
     }
 
     def skipToplevel()(implicit ctx: Context): Unit= {
@@ -873,7 +871,7 @@ class TreeUnpickler(reader: TastyReader, nameAtRef: NameRef => TermName, posUnpi
           untpd.Ident(readName().toTypeName).withType(readType())
         case SELECT =>
           def readRest(name: Name, sig: Signature) =
-            completeSelect(name, TermRef.withSig(_, name.asTermName, sig))
+            completeSelect(name, TermRef(_, name.asTermName.withSig(sig)))
           readName() match {
             case SignedName(name, sig) => readRest(name, sig)
             case name => readRest(name, Signature.NotAMethod)
@@ -983,7 +981,7 @@ class TreeUnpickler(reader: TastyReader, nameAtRef: NameRef => TermName, posUnpi
               UnApply(fn, implicitArgs, argPats, patType)
             case REFINEDtpt =>
               val refineCls = ctx.newCompleteClassSymbol(
-                ctx.owner, tpnme.REFINE_CLASS, Fresh, parents = Nil)
+                ctx.owner, tpnme.REFINE_CLASS, NonMember, parents = Nil)
               typeAtAddr(start) = refineCls.typeRef
               val parent = readTpt()
               val refinements = readStats(refineCls, end)(localContext(refineCls))

@@ -924,9 +924,9 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     val indexPattern = new TreeMap {
       val elimWildcardSym = new TypeMap {
         def apply(t: Type) = t match {
-          case ref @ TypeRef(_, tpnme.WILDCARD) if ctx.gadt.bounds.contains(ref.symbol) =>
+          case ref: TypeRef if ref.name == tpnme.WILDCARD && ctx.gadt.bounds.contains(ref.symbol) =>
             ctx.gadt.bounds(ref.symbol)
-          case TypeAlias(ref @ TypeRef(_, tpnme.WILDCARD)) if ctx.gadt.bounds.contains(ref.symbol) =>
+          case TypeAlias(ref: TypeRef) if ref.name == tpnme.WILDCARD && ctx.gadt.bounds.contains(ref.symbol) =>
             ctx.gadt.bounds(ref.symbol)
           case _ =>
             mapOver(t)
@@ -1410,7 +1410,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
 
       checkNoDoubleDefs(cls)
       val impl1 = cpy.Template(impl)(constr1, parents1, self1, body1)
-        .withType(dummy.nonMemberTermRef)
+        .withType(dummy.termRef)
       checkVariance(impl1)
       if (!cls.is(AbstractOrTrait) && !ctx.isAfterTyper)
         checkRealizableBounds(cls, cdef.namePos)
@@ -1516,7 +1516,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
           ctx
         }
       val stats1 = typedStats(tree.stats, pkg.moduleClass)(packageContext)
-      cpy.PackageDef(tree)(pid1.asInstanceOf[RefTree], stats1) withType pkg.valRef
+      cpy.PackageDef(tree)(pid1.asInstanceOf[RefTree], stats1) withType pkg.termRef
     } else errorTree(tree, i"package ${tree.pid.name} does not exist")
   }
 
@@ -1904,8 +1904,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     def adaptOverloaded(ref: TermRef) = {
       val altDenots = ref.denot.alternatives
       typr.println(i"adapt overloaded $ref with alternatives ${altDenots map (_.info)}%, %")
-      val alts = altDenots map (alt =>
-        TermRef.withSigAndDenot(ref.prefix, ref.name, alt.info.signature, alt))
+      val alts = altDenots.map(TermRef(ref.prefix, ref.name, _))
       resolveOverloaded(alts, pt) match {
         case alt :: Nil =>
           adapt(tree.withType(alt), pt)

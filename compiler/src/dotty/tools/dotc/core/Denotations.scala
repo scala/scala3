@@ -33,11 +33,11 @@ import Decorators.SymbolIteratorDecorator
  *
  *  Lines ending in a horizontal line mean subtying (right is a subtype of left).
  *
- *  NamedType------TermRefWithSignature
- *    |                    |                     Symbol---------ClassSymbol
- *    |                    |                       |                |
- *    | denot              | denot                 | denot          | denot
- *    v                    v                       v                v
+ *  NamedType
+ *    |                                          Symbol---------ClassSymbol
+ *    |                                            |                |
+ *    | denot                                      | denot          | denot
+ *    v                                            v                v
  *  Denotation-+-----SingleDenotation-+------SymDenotation-+----ClassDenotation
  *             |                      |
  *             +-----MultiDenotation  |
@@ -51,8 +51,6 @@ import Decorators.SymbolIteratorDecorator
  *                              prefix: Type
  *                              name: Name
  *                           It has two subtypes: TermRef and TypeRef
- *  TermRefWithSignature     A TermRef that has in addition a signature to select an overloaded variant, with new field
- *                              sig: Signature
  *  Symbol                   A label for a definition or declaration in one compiler run
  *  ClassSymbol              A symbol representing a class
  *  Denotation               The meaning of a named type or symbol during a period
@@ -655,25 +653,11 @@ object Denotations {
     def termRef(implicit ctx: Context): TermRef =
       TermRef(symbol.owner.thisType, symbol.name.asTermName, this)
 
-    /** The TermRef representing this term denotation at its original location
-     *  and at signature `NotAMethod`.
-     */
-    def valRef(implicit ctx: Context): TermRef =
-      TermRef.withSigAndDenot(symbol.owner.thisType, symbol.name.asTermName, Signature.NotAMethod, this)
-
-    /** The TermRef representing this term denotation at its original location
-     *  at the denotation's signature.
-     *  @note  Unlike `valRef` and `termRef`, this will force the completion of the
-     *         denotation via a call to `info`.
-     */
-    def termRefWithSig(implicit ctx: Context): TermRef =
-      TermRef.withSigAndDenot(symbol.owner.thisType, symbol.name.asTermName, signature, this)
-
     /** The NamedType representing this denotation at its original location.
-     *  Same as either `typeRef` or `termRefWithSig` depending whether this denotes a type or not.
+     *  Same as either `typeRef` or `termRef` depending whether this denotes a type or not.
      */
     def namedType(implicit ctx: Context): NamedType =
-      if (isType) typeRef else termRefWithSig
+      if (isType) typeRef else termRef
 
     // ------ Transformations -----------------------------------------
 

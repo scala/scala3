@@ -88,14 +88,14 @@ class PostTyper extends MacroTransform with SymTransformer  { thisTransformer =>
     // TODO fill in
   }
 
-  /** If the type of `tree` is a TermRefWithSignature with an underdefined
+  /** If the type of `tree` is a TermRef with an underdefined
    *  signature, narrow the type by re-computing the signature (which should
    *  be fully-defined by now).
    */
   private def fixSignature[T <: Tree](tree: T)(implicit ctx: Context): T = tree.tpe match {
-    case tpe: TermRefWithSignature if tpe.signature.isUnderDefined =>
+    case tpe: TermRef if tpe.signature.isUnderDefined =>
       typr.println(i"fixing $tree with type ${tree.tpe.widen.toString} with sig ${tpe.signature} to ${tpe.widen.signature}")
-      tree.withType(TermRef.withSig(tpe.prefix, tpe.name, tpe.widen.signature)).asInstanceOf[T]
+      tree.withType(TermRef(tpe.prefix, tpe.name.withSig(tpe.widen.signature))).asInstanceOf[T]
     case _ => tree
   }
 
