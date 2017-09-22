@@ -417,7 +417,11 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
     case tp @ AppliedType(tycon, args) =>
       if (tycon.isRef(defn.ArrayClass)) tp.derivedAppliedType(tycon, args.map(erase))
       else {
-        val ignoreWarning = args.forall(p => p.typeSymbol.is(BindDefinedType) || p.isInstanceOf[TypeBounds])
+        val ignoreWarning = args.forall { p =>
+          p.typeSymbol.is(BindDefinedType) ||
+            p.hasAnnotation(defn.UncheckedAnnot) ||
+            p.isInstanceOf[TypeBounds]
+        }
         if (!ignoreWarning)
           warn("type arguments are not checked since they are eliminated by erasure")
 
