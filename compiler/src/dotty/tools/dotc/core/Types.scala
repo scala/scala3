@@ -7,7 +7,7 @@ import Symbols._
 import Flags._
 import Names._
 import StdNames._, NameOps._
-import NameKinds.{ShadowedName, SkolemName, SignedName}
+import NameKinds.{SkolemName, SignedName}
 import Scopes._
 import Constants._
 import Contexts._
@@ -1764,8 +1764,7 @@ object Types {
     def reloadDenot()(implicit ctx: Context) = setDenot(loadDenot)
 
     protected def asMemberOf(prefix: Type, allowPrivate: Boolean)(implicit ctx: Context): Denotation =
-      if (name.is(ShadowedName)) prefix.nonPrivateMember(name.exclude(ShadowedName))
-      else if (nameSpace != noNameSpace) nameSpace.findMember(name, prefix, EmptyFlags)
+      if (nameSpace != noNameSpace) nameSpace.findMember(name, prefix, EmptyFlags)
       else if (allowPrivate) prefix.member(name)
       else prefix.nonPrivateMember(name)
 
@@ -1918,31 +1917,10 @@ object Types {
       if (nameSpace == this.nameSpace) this
       else NamedType(prefix, designator.withNameSpace(nameSpace))
 
-    /** Create a NamedType of the same kind as this type, but with a "inherited name".
-     *  This is necessary to in situations like the following:
-     *
-     *    class B { def m: T1 }
-     *    class C extends B { private def m: T2; ... C.m }
-     *    object C extends C
-     *    object X { ... C.m }
-     *
-     *  The two references of C.m in class C and object X refer to different
-     *  definitions: The one in C refers to C#m whereas the one in X refers to B#m.
-     *  But the type C.m must have only one denotation, so it can't refer to two
-     *  members depending on context.
-     *
-     *  In situations like this, the reference in X would get the type
-     *  `<C.m>.shadowed` to make clear that we mean the inherited member, not
-     *  the private one.
-     *
-     *  Note: An alternative, possibly more robust scheme would be to give
-     *  private members special names. A private definition would have a special
-     *  name (say m' in the example above), but would be entered in its enclosing
-     *  under both private and public names, so it could still be found by looking up
-     *  the public name.
+    /** Create a NamedType of the same kind as this type, but without a namespace
      */
-    def shadowed(implicit ctx: Context): NamedType =
-	    (designator: Designator) match { // Dotty deviation: need the widening
+    def withoutNameSpace(implicit ctx: Context): NamedType =
+      (designator: Designator) match { // Dotty deviation: need the widening
         case LocalName(underlying, _) => NamedType(prefix, underlying)
         case _ => this
       }
@@ -2018,8 +1996,8 @@ object Types {
         fixDenot(TermRef(prefix, designator1), prefix)
     }
 
-    override def shadowed(implicit ctx: Context): NamedType =
-      fixDenot(super.shadowed.asInstanceOf[TermRef], prefix)
+    override def withoutNameSpace(implicit ctx: Context): NamedType =
+      fixDenot(super.withoutNameSpace.asInstanceOf[TermRef], prefix)
   }
 
   abstract case class TypeRef(override val prefix: Type, designator: TypeDesignator) extends NamedType {
