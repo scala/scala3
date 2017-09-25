@@ -13,6 +13,7 @@ import scala.concurrent.duration._
 import scala.collection.JavaConverters._
 
 class LinkOptimiseTests extends ParallelTesting {
+  import ParallelTesting._
   import TestConfiguration._
   import LinkOptimiseTests._
 

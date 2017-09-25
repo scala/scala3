@@ -15,6 +15,7 @@ import dotty.tools.io.JFile
 
 
 class CompilationTests extends ParallelTesting {
+  import ParallelTesting._
   import TestConfiguration._
   import CompilationTests._
 

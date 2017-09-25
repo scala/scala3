@@ -3,7 +3,6 @@ package tools
 package vulpix
 
 object TestConfiguration {
-  implicit val defaultOutputDir: String = "../out/"
 
   val noCheckOptions = Array(
     "-pagewidth", "120",
