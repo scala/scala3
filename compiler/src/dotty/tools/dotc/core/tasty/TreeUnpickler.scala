@@ -220,6 +220,16 @@ class TreeUnpickler(reader: TastyReader, nameAtRef: NameRef => TermName, posUnpi
 
         val result =
           (tag: @switch) match {
+            case TERMREFin =>
+              var name = readName()
+              val prefix = readType()
+              val space = readType().asInstanceOf[TypeRef]
+              TermRef(prefix, name.withNameSpace(space))
+            case TYPEREFin =>
+              val name = readName().toTypeName
+              val prefix = readType()
+              val space = readType().asInstanceOf[TypeRef]
+              TypeRef(prefix, name.withNameSpace(space))
             case REFINEDtype =>
               var name: Name = readName()
               val parent = readType()
@@ -710,7 +720,9 @@ class TreeUnpickler(reader: TastyReader, nameAtRef: NameRef => TermName, posUnpi
       val cls = ctx.owner.asClass
       val assumedSelfType =
         if (cls.is(Module) && cls.owner.isClass)
-          TermRef(cls.owner.thisType, cls.name.sourceModuleName.withSig(Signature.NotAMethod))
+          TermRef(
+            cls.owner.thisType,
+            cls.name.sourceModuleName.withSig(Signature.NotAMethod).localizeIfPrivate(cls))
         else NoType
       cls.info = new TempClassInfo(cls.owner.thisType, cls, cls.unforcedDecls, assumedSelfType)
       val localDummy = symbolAtCurrent()
@@ -849,7 +861,7 @@ class TreeUnpickler(reader: TastyReader, nameAtRef: NameRef => TermName, posUnpi
         }
       }
 
-      def completeSelect(name: Name, tpf: Type => Type): Select = {
+      def completeSelect(name: Name, tpf: Type => NamedType): Select = {
         val localCtx =
           if (name == nme.CONSTRUCTOR) ctx.addMode(Mode.InSuperCall) else ctx
         val qual = readTerm()(localCtx)
@@ -862,6 +874,12 @@ class TreeUnpickler(reader: TastyReader, nameAtRef: NameRef => TermName, posUnpi
          (untpd.Ident(qual.name).withPos(qual.pos), qual.tpe.asInstanceOf[TypeRef])
       }
 
+      def accessibleDenot(pre: Type, name: Name, sig: Signature) = {
+        val d = pre.member(name).atSignature(sig)
+        if (!d.symbol.exists || d.symbol.isAccessibleFrom(pre)) d
+        else pre.nonPrivateMember(name).atSignature(sig)
+      }
+
       def readSimpleTerm(): Tree = tag match {
         case SHARED =>
           forkAt(readAddr()).readTerm()
@@ -870,15 +888,15 @@ class TreeUnpickler(reader: TastyReader, nameAtRef: NameRef => TermName, posUnpi
         case IDENTtpt =>
           untpd.Ident(readName().toTypeName).withType(readType())
         case SELECT =>
-          def readRest(name: Name, sig: Signature) =
-            completeSelect(name, TermRef(_, name.asTermName.withSig(sig)))
+          def readRest(name: TermName, sig: Signature): Tree =
+            completeSelect(name, pre => TermRef(pre, name, accessibleDenot(pre, name, sig)))
           readName() match {
             case SignedName(name, sig) => readRest(name, sig)
             case name => readRest(name, Signature.NotAMethod)
           }
         case SELECTtpt =>
           val name = readName().toTypeName
-          completeSelect(name, TypeRef(_, name))
+          completeSelect(name, pre => TypeRef(pre, name, accessibleDenot(pre, name, Signature.NotAMethod)))
         case QUALTHIS =>
           val (qual, tref) = readQualId()
           untpd.This(qual).withType(ThisType.raw(tref))

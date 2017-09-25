@@ -244,7 +244,7 @@ object Checking {
             locked += tp
             try checkInfo(tp.info)
             finally locked -= tp
-            if (pre1 eq pre) tp else tp.newLikeThis(pre1)
+            if (pre1 eq pre) tp else tp.withPrefix(pre1)
           }
           else tp
         } catch {

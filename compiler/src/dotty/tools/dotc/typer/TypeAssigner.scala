@@ -188,6 +188,7 @@ trait TypeAssigner {
           // an inherited non-private member with the same name and signature.
           val d2 = pre.nonPrivateMember(name)
           if (reallyExists(d2) && firstTry)
+            // test(NamedType(pre, name, d2), false)
             test(tpe.shadowed.withDenot(d2), false)
           else if (pre.derivesFrom(defn.DynamicClass)) {
             TryDynamicCallType
@@ -350,6 +351,7 @@ trait TypeAssigner {
         else
           errorType(i"wrong number of arguments for $fntpe: ${fn.tpe}, expected: ${fntpe.paramInfos.length}, found: ${args.length}", tree.pos)
       case t =>
+        println(i"bad tree: $fn, ${fn.uniqueId}: ${fn.tpe}")
         errorType(err.takesNoParamsStr(fn, ""), tree.pos)
     }
     tree.withType(ownType)
