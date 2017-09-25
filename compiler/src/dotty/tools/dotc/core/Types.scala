@@ -823,7 +823,7 @@ object Types {
         (this eq thisResult) != (that eq thatResult) && (thisResult matchesLoosely thatResult)
       }
 
-    /** The basetype of this type with given class symbol, NoType is `base` is not a class. */
+    /** The basetype of this type with given class symbol, NoType if `base` is not a class. */
     final def baseType(base: Symbol)(implicit ctx: Context): Type = /*ctx.traceIndented(s"$this baseType $base")*/ /*>|>*/ track("base type") /*<|<*/ {
       base.denot match {
         case classd: ClassDenotation => classd.baseTypeOf(this)
@@ -1480,6 +1480,9 @@ object Types {
 
 // --- NamedTypes ------------------------------------------------------------------
 
+  type NameSpace = TypeRef /* | Null */
+  @sharable val noNameSpace: NameSpace = null
+
   /** A NamedType of the form Prefix # name */
   abstract class NamedType extends CachedProxyType with ValueType { self =>
 
@@ -1497,18 +1500,23 @@ object Types {
 
     private[this] var myName: ThisName = _
     private[this] var mySig: Signature = null
+    private[this] var myNameSpace: NameSpace = noNameSpace
 
     private[dotc] def init()(implicit ctx: Context): this.type = {
-      (designator: Designator) match { // dotty shortcoming: need the upcast
+      def decompose(designator: Designator): Unit = designator match {
         case DerivedName(underlying, info: SignedName.SignedInfo) =>
-          myName = underlying.asInstanceOf[ThisName]
           mySig = info.sig
           assert(mySig ne Signature.OverloadedSignature)
+          decompose(underlying)
         case designator: Name =>
           myName = designator.asInstanceOf[ThisName]
         case designator: Symbol =>
           uncheckedSetSym(designator)
+        case LocalName(underlying, space) =>
+          myNameSpace = space
+          decompose(underlying)
       }
+      decompose(designator)
       this
     }
 
@@ -1521,6 +1529,8 @@ object Types {
       if (mySig != null) mySig
       else if (isType || lastDenotation == null) Signature.NotAMethod
       else denot.signature
+
+    final def nameSpace: NameSpace = myNameSpace
 
     private[this] var lastDenotation: Denotation = _
     private[this] var lastSymbol: Symbol = _
@@ -1602,8 +1612,11 @@ object Types {
           case d: SymDenotation =>
             if (hasFixedSym) d.current
             else if (d.validFor.runId == ctx.runId || ctx.stillValid(d))
-              if (d.exists && prefix.isTightPrefix(d.owner) || d.isConstructor) d.current
-              else recomputeMember(d) // symbol could have been overridden, recompute membership
+              if (nameSpace != noNameSpace ||
+                  d.exists && prefix.isTightPrefix(d.owner) ||
+                  d.isConstructor) d.current
+              else
+                recomputeMember(d) // symbol could have been overridden, recompute membership
             else {
               val newd = loadDenot
               if (newd.exists) newd
@@ -1685,15 +1698,22 @@ object Types {
            |period = ${ctx.phase} at run ${ctx.runId}""")
     }
 
-    private[dotc] def withDenot(denot: Denotation)(implicit ctx: Context): ThisType =
-      if (!hasFixedSym &&
-          signature != denot.signature &&
-          denot.signature.ne(Signature.OverloadedSignature))
-        withSig(denot.signature).withDenot(denot).asInstanceOf[ThisType]
+    private[dotc] def withDenot(denot: Denotation)(implicit ctx: Context): ThisType = {
+      val adapted =
+      	if (hasFixedSym)
+      	  this
+      	else if (signature != denot.signature && denot.signature.ne(Signature.OverloadedSignature))
+          withSig(denot.signature)
+        else if (denot.symbol.isPrivate)
+          withNameSpace(denot.symbol.owner.typeRef)
+        else
+          this
+      if (adapted ne this) adapted.withDenot(denot).asInstanceOf[ThisType]
       else {
         setDenot(denot)
         this
       }
+    }
 
     private[dotc] final def setDenot(denot: Denotation)(implicit ctx: Context): Unit = {
       if (Config.checkNoDoubleBindings)
@@ -1727,10 +1747,10 @@ object Types {
     }
 
     private def withSig(sig: Signature)(implicit ctx: Context): NamedType =
-      TermRef(prefix, name.asTermName.withSig(sig))
+      TermRef(prefix, designator.withSig(sig))
 
     protected def loadDenot(implicit ctx: Context): Denotation = {
-      val d = asMemberOf(prefix, allowPrivate = true)
+      val d = asMemberOf(prefix, allowPrivate = false) // allowPrivate needed?
       if (d.exists || ctx.phaseId == FirstPhaseId || !lastDenotation.isInstanceOf[SymDenotation])
         if (mySig != null) d.atSignature(mySig).checkUnique
         else d
@@ -1745,8 +1765,9 @@ object Types {
 
     protected def asMemberOf(prefix: Type, allowPrivate: Boolean)(implicit ctx: Context): Denotation =
       if (name.is(ShadowedName)) prefix.nonPrivateMember(name.exclude(ShadowedName))
-      else if (!allowPrivate) prefix.nonPrivateMember(name)
-      else prefix.member(name)
+      else if (nameSpace != noNameSpace) nameSpace.findMember(name, prefix, EmptyFlags)
+      else if (allowPrivate) prefix.member(name)
+      else prefix.nonPrivateMember(name)
 
     /** (1) Reduce a type-ref `W # X` or `W { ... } # U`, where `W` is a wildcard type
      *  to an (unbounded) wildcard type.
@@ -1768,7 +1789,6 @@ object Types {
         lastSymbol
       else
         denot.symbol
-
 
     /** Retrieves currently valid symbol without necessarily updating denotation.
      *  Assumes that symbols do not change between periods in the same run.
@@ -1879,18 +1899,24 @@ object Types {
               val derived2 = derivedSelect(prefix.tp2)
               return prefix.derivedOrType(derived1, derived2)
             case _ =>
-              newLikeThis(prefix)
+              withPrefix(prefix)
           }
-        else newLikeThis(prefix)
+        else withPrefix(prefix)
       }
       else prefix match {
         case _: WildcardType => WildcardType
-        case _ => newLikeThis(prefix)
+        case _ => withPrefix(prefix)
       }
 
     /** Create a NamedType of the same kind as this type, but with a new prefix.
      */
-    def newLikeThis(prefix: Type)(implicit ctx: Context): NamedType
+    def withPrefix(prefix: Type)(implicit ctx: Context): NamedType
+
+    /** Create a NamedType of the same kind as this type, but with a new namespace.
+     */
+    def withNameSpace(nameSpace: NameSpace)(implicit ctx: Context): NamedType =
+      if (nameSpace == this.nameSpace) this
+      else NamedType(prefix, designator.withNameSpace(nameSpace))
 
     /** Create a NamedType of the same kind as this type, but with a "inherited name".
      *  This is necessary to in situations like the following:
@@ -1916,9 +1942,9 @@ object Types {
      *  the public name.
      */
     def shadowed(implicit ctx: Context): NamedType =
-      designator match {
-        case designator: Symbol => this
-        case designator: Name => NamedType(prefix, designator.derived(ShadowedName))
+	    (designator: Designator) match { // Dotty deviation: need the widening
+        case LocalName(underlying, _) => NamedType(prefix, underlying)
+        case _ => this
       }
 
     override def equals(that: Any) = that match {
@@ -1971,10 +1997,10 @@ object Types {
       }
       else candidate
 
-    def newLikeThis(prefix: Type)(implicit ctx: Context): NamedType = designator match {
+    def withPrefix(prefix: Type)(implicit ctx: Context): NamedType = designator match {
       case designator: TermSymbol =>
         TermRef(prefix, designator)
-      case designator: TermName =>
+      case _ =>
         // If symbol exists, the new signature is the symbol's signature as seen
         // from the new prefix, modulo consistency
         val curSig = signature
@@ -1983,13 +2009,13 @@ object Types {
             curSig
           else
             curSig.updateWith(symbol.info.asSeenFrom(prefix, symbol.owner).signature)
-        val candidate =
+        val designator1 =
           if (newSig ne curSig) {
             core.println(i"sig change at ${ctx.phase} for $this, pre = $prefix, sig: $curSig --> $newSig")
-            TermRef(prefix, name.withSig(newSig))
+            designator.withSig(newSig)
           }
-          else TermRef(prefix, designator)
-        fixDenot(candidate, prefix)
+          else designator
+        fixDenot(TermRef(prefix, designator1), prefix)
     }
 
     override def shadowed(implicit ctx: Context): NamedType =
@@ -2003,7 +2029,7 @@ object Types {
 
     override def underlying(implicit ctx: Context): Type = info
 
-    def newLikeThis(prefix: Type)(implicit ctx: Context): NamedType =
+    def withPrefix(prefix: Type)(implicit ctx: Context): NamedType =
       TypeRef(prefix, designator)
   }
 
@@ -2022,12 +2048,12 @@ object Types {
     if (Config.checkUnerased) assert(!ctx.phase.erasedTypes)
 
   object NamedType {
-    def apply(prefix: Type, designator: Name)(implicit ctx: Context) =
+    def apply(prefix: Type, designator: Name)(implicit ctx: Context) = // ### needed?
       if (designator.isTermName) TermRef(prefix, designator.asTermName)
       else TypeRef(prefix, designator.asTypeName)
-    def apply(prefix: Type, sym: Symbol)(implicit ctx: Context) =
-      if (sym.isType) TypeRef(prefix, sym.asType)
-      else TermRef(prefix, sym.asTerm)
+    def apply(prefix: Type, designator: Designator)(implicit ctx: Context) =
+      if (designator.isType) TypeRef(prefix, designator.asType)
+      else TermRef(prefix, designator.asTerm)
     def apply(prefix: Type, designator: Name, denot: Denotation)(implicit ctx: Context) =
       if (designator.isTermName) TermRef(prefix, designator.asTermName, denot)
       else TypeRef(prefix, designator.asTypeName, denot)
@@ -2052,7 +2078,8 @@ object Types {
     def apply(prefix: Type, name: TermName, denot: Denotation)(implicit ctx: Context): TermRef = {
       if ((prefix eq NoPrefix) || denot.symbol.isReferencedSymbolically) apply(prefix, denot.symbol.asTerm)
       else denot match {
-        case denot: SingleDenotation => apply(prefix, name.withSig(denot.signature))
+        case denot: SingleDenotation =>
+          apply(prefix, name.withSig(denot.signature).localizeIfPrivate(denot.symbol))
         case _ => apply(prefix, name)
       }
     } withDenot denot
@@ -2064,7 +2091,7 @@ object Types {
      */
     def withSym(prefix: Type, sym: TermSymbol, name: TermName)(implicit ctx: Context): TermRef =
       if ((prefix eq NoPrefix) || sym.isReferencedSymbolically) apply(prefix, sym)
-      else apply(prefix, name.withSig(sym.signature)).withSym(sym)
+      else apply(prefix, name.withSig(sym.signature).localizeIfPrivate(sym)).withSym(sym)
 
     def withSym(prefix: Type, sym: TermSymbol)(implicit ctx: Context): TermRef =
       withSym(prefix, sym, sym.name)
@@ -2079,7 +2106,7 @@ object Types {
     /** Create a type ref with given name and initial denotation */
     def apply(prefix: Type, name: TypeName, denot: Denotation)(implicit ctx: Context): TypeRef = {
       if ((prefix eq NoPrefix) || denot.symbol.isReferencedSymbolically) apply(prefix, denot.symbol.asType)
-      else apply(prefix, name)
+      else apply(prefix, name.localizeIfPrivate(denot.symbol))
     } withDenot denot
 
     /** Create a type ref referring to either a given symbol or its name.
@@ -2089,7 +2116,7 @@ object Types {
      */
     def withSym(prefix: Type, sym: TypeSymbol, name: TypeName)(implicit ctx: Context): TypeRef =
       if ((prefix eq NoPrefix) || sym.isReferencedSymbolically) apply(prefix, sym)
-      else apply(prefix, name).withSym(sym)
+      else apply(prefix, name.localizeIfPrivate(sym)).withSym(sym)
 
     def withSym(prefix: Type, sym: TypeSymbol)(implicit ctx: Context): TypeRef =
       withSym(prefix, sym, sym.name)
@@ -2169,7 +2196,7 @@ object Types {
     }
     def evaluating = computed && myRef == null
     override def underlying(implicit ctx: Context) = ref
-    override def toString = s"LazyRef(...)"
+    override def toString = s"LazyRef(${if (computed) myRef else "..."})"
     override def equals(other: Any) = this eq other.asInstanceOf[AnyRef]
     override def hashCode = System.identityHashCode(this)
   }
