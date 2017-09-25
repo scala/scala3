@@ -847,7 +847,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
     def followTypeAlias(tree: untpd.Tree): untpd.Tree = {
       tree match {
         case tree: untpd.RefTree =>
-          val nestedCtx = ctx.fresh.setNewTyperState()
+          val nestedCtx = ctx.fresh.setNewTyperState
           val ttree =
             typedType(untpd.rename(tree, tree.name.toTypeName))(nestedCtx)
           ttree.tpe match {
@@ -1002,20 +1002,26 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
   /** Is given method reference applicable to type arguments `targs` and argument trees `args`?
    *  @param  resultType   The expected result type of the application
    */
-  def isApplicable(methRef: TermRef, targs: List[Type], args: List[Tree], resultType: Type)(implicit ctx: Context): Boolean =
-    ctx.typerState.test(new ApplicableToTrees(methRef, targs, args, resultType).success)
+  def isApplicable(methRef: TermRef, targs: List[Type], args: List[Tree], resultType: Type)(implicit ctx: Context): Boolean = {
+    val nestedContext = ctx.fresh.setExploreTyperState
+    new ApplicableToTrees(methRef, targs, args, resultType)(nestedContext).success
+  }
 
   /** Is given method reference applicable to type arguments `targs` and argument trees `args` without inferring views?
     *  @param  resultType   The expected result type of the application
     */
-  def isDirectlyApplicable(methRef: TermRef, targs: List[Type], args: List[Tree], resultType: Type)(implicit ctx: Context): Boolean =
-    ctx.typerState.test(new ApplicableToTreesDirectly(methRef, targs, args, resultType).success)
+  def isDirectlyApplicable(methRef: TermRef, targs: List[Type], args: List[Tree], resultType: Type)(implicit ctx: Context): Boolean = {
+    val nestedContext = ctx.fresh.setExploreTyperState
+    new ApplicableToTreesDirectly(methRef, targs, args, resultType)(nestedContext).success
+  }
 
   /** Is given method reference applicable to argument types `args`?
    *  @param  resultType   The expected result type of the application
    */
-  def isApplicable(methRef: TermRef, args: List[Type], resultType: Type)(implicit ctx: Context): Boolean =
-    ctx.typerState.test(new ApplicableToTypes(methRef, args, resultType).success)
+  def isApplicable(methRef: TermRef, args: List[Type], resultType: Type)(implicit ctx: Context): Boolean = {
+    val nestedContext = ctx.fresh.setExploreTyperState
+    new ApplicableToTypes(methRef, args, resultType)(nestedContext).success
+  }
 
   /** Is given type applicable to type arguments `targs` and argument trees `args`,
    *  possibly after inserting an `apply`?
@@ -1096,7 +1102,12 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
           case tp2: MethodType => true // (3a)
           case tp2: PolyType if tp2.resultType.isInstanceOf[MethodType] => true // (3a)
           case tp2: PolyType => // (3b)
-            ctx.typerState.test(isAsSpecificValueType(tp1, constrained(tp2).resultType))
+            val nestedCtx = ctx.fresh.setExploreTyperState
+
+            {
+              implicit val ctx = nestedCtx
+              isAsSpecificValueType(tp1, constrained(tp2).resultType)
+            }
           case _ => // (3b)
             isAsSpecificValueType(tp1, tp2)
         }
@@ -1246,20 +1257,22 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
      *  probability of pruning the search. result type comparisons are neither cheap nor
      *  do they prune much, on average.
      */
-    def adaptByResult(chosen: TermRef) = pt match {
-      case pt: FunProto if !ctx.typerState.test(resultConforms(chosen, pt.resultType)) =>
-        val conformingAlts = alts.filter(alt =>
-          (alt ne chosen) && ctx.typerState.test(resultConforms(alt, pt.resultType)))
-        conformingAlts match {
-          case Nil => chosen
-          case alt2 :: Nil => alt2
-          case alts2 =>
-            resolveOverloaded(alts2, pt) match {
-              case alt2 :: Nil => alt2
-              case _ => chosen
-            }
-        }
-      case _ => chosen
+    def adaptByResult(chosen: TermRef) = {
+      def nestedCtx = ctx.fresh.setExploreTyperState
+      pt match {
+        case pt: FunProto if !resultConforms(chosen, pt.resultType)(nestedCtx) =>
+          alts.filter(alt =>
+            (alt ne chosen) && resultConforms(alt, pt.resultType)(nestedCtx)) match {
+            case Nil => chosen
+            case alt2 :: Nil => alt2
+            case alts2 =>
+              resolveOverloaded(alts2, pt) match {
+                case alt2 :: Nil => alt2
+                case _ => chosen
+              }
+          }
+        case _ => chosen
+      }
     }
 
     var found = resolveOverloaded(alts, pt, Nil)(ctx.retractMode(Mode.ImplicitsEnabled))

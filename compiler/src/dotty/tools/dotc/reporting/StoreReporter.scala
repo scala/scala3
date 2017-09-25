@@ -22,8 +22,6 @@ class StoreReporter(outer: Reporter) extends Reporter {
 
   private var infos: mutable.ListBuffer[MessageContainer] = null
 
-  def reset() = infos = null
-
   def doReport(m: MessageContainer)(implicit ctx: Context): Unit = {
     typr.println(s">>>> StoredError: ${m.message}") // !!! DEBUG
     if (infos == null) infos = new mutable.ListBuffer
