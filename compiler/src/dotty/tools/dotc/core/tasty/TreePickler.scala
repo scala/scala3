@@ -333,14 +333,10 @@ class TreePickler(pickler: TastyPickler) {
           }
         case Select(qual, name) =>
           writeByte(if (name.isTypeName) SELECTtpt else SELECT)
-          val realName = tree.tpe match {
-            case tp: NamedType if tp.name.is(ShadowedName) => tp.name
-            case _ => name
-          }
           val sig = tree.tpe.signature
           pickleName(
-            if (name.isTypeName || sig == Signature.NotAMethod) realName
-            else SignedName(realName.toTermName, sig))
+            if (name.isTypeName || sig == Signature.NotAMethod) name
+            else SignedName(name.toTermName, sig))
           pickleTree(qual)
         case Apply(fun, args) =>
           writeByte(APPLY)

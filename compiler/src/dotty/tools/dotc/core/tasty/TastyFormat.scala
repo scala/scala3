@@ -249,7 +249,6 @@ object TastyFormat {
   final val PROTECTEDACCESSOR = 21
   final val PROTECTEDSETTER = 22
   final val INITIALIZER = 23
-  final val SHADOWED = 24
   final val AVOIDCLASH = 30
   final val DIRECT = 31
   final val FIELD = 32
@@ -468,7 +467,6 @@ object TastyFormat {
     case PROTECTEDACCESSOR => "PROTECTEDACCESSOR"
     case PROTECTEDSETTER => "PROTECTEDSETTER"
     case INITIALIZER => "INITIALIZER"
-    case SHADOWED => "SHADOWED"
     case AVOIDCLASH => "AVOIDCLASH"
     case DIRECT => "DIRECT"
     case FIELD => "FIELD"
