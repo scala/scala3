@@ -16,6 +16,7 @@ import Contexts.Context
 import Names.{Name, TermName, EmptyTermName}
 import NameOps._
 import NameKinds.InlineAccessorName
+import ProtoTypes.selectionProto
 import SymDenotations.SymDenotation
 import Annotations._
 import transform.ExplicitOuter
@@ -524,7 +525,9 @@ class Inliner(call: tpd.Tree, rhs: tpd.Tree)(implicit ctx: Context) {
     }
 
     override def typedSelect(tree: untpd.Select, pt: Type)(implicit ctx: Context): Tree = {
-      val res = super.typedSelect(tree, pt)
+      assert(tree.hasType, tree)
+      val qual1 = typed(tree.qualifier, selectionProto(tree.name, pt, this))
+      val res = untpd.cpy.Select(tree)(qual1, tree.name).withType(tree.typeOpt)
       ensureAccessible(res.tpe, tree.qualifier.isInstanceOf[untpd.Super], tree.pos)
       res
     }
