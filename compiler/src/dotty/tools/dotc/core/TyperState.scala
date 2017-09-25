@@ -13,31 +13,18 @@ import config.Config
 import collection.mutable
 import java.lang.ref.WeakReference
 
-class TyperState(previous: TyperState /* | Null */) extends DotClass with Showable {
+class TyperState(r: Reporter) extends DotClass with Showable {
 
-  private var myReporter =
-    if (previous == null) new ConsoleReporter() else previous.reporter
+  /** The current reporter */
+  def reporter = r
 
-  def reporter: Reporter = myReporter
+  /** The current constraint set */
+  def constraint: Constraint =
+    new OrderingConstraint(SimpleMap.Empty, SimpleMap.Empty, SimpleMap.Empty)
+  def constraint_=(c: Constraint)(implicit ctx: Context): Unit = {}
 
-  /** A fresh type state with the same constraint as this one and the given reporter */
-  def setReporter(reporter: Reporter): this.type = { myReporter = reporter; this }
-
-  private var myConstraint: Constraint =
-    if (previous == null) new OrderingConstraint(SimpleMap.Empty, SimpleMap.Empty, SimpleMap.Empty)
-    else previous.constraint
-
-  def constraint = myConstraint
-  def constraint_=(c: Constraint)(implicit ctx: Context) = {
-    if (Config.debugCheckConstraintsClosed && isGlobalCommittable) c.checkClosed()
-    myConstraint = c
-  }
-
-  private val previousConstraint =
-    if (previous == null) constraint else previous.constraint
-
-  private var myEphemeral: Boolean =
-    if (previous == null) false else previous.ephemeral
+  /** The uninstantiated variables */
+  def uninstVars = constraint.uninstVars
 
   /** The ephemeral flag is set as a side effect if an operation accesses
    *  the underlying type of a type variable. The reason we need this flag is
@@ -46,26 +33,8 @@ class TyperState(previous: TyperState /* | Null */) extends DotClass with Showab
    *  check the ephemeral flag; If the flag is set during an operation, the result
    *  of that operation should not be cached.
    */
-  def ephemeral = myEphemeral
-  def ephemeral_=(x: Boolean): Unit = { myEphemeral = x }
-
-  private var myIsCommittable = true
-
-  def isCommittable = myIsCommittable
-
-  def setCommittable(committable: Boolean): this.type = { this.myIsCommittable = committable; this }
-
-  def isGlobalCommittable: Boolean =
-    isCommittable && (previous == null || previous.isGlobalCommittable)
-
-  private var isCommitted = false
-
-  /** A fresh typer state with the same constraint as this one. */
-  def fresh(): TyperState =
-    new TyperState(this).setReporter(new StoreReporter(reporter)).setCommittable(isCommittable)
-
-  /** The uninstantiated variables */
-  def uninstVars = constraint.uninstVars
+  def ephemeral: Boolean = false
+  def ephemeral_=(x: Boolean): Unit = ()
 
   /** Gives for each instantiated type var that does not yet have its `inst` field
    *  set, the instance value stored in the constraint. Storing instances in constraints
@@ -80,35 +49,75 @@ class TyperState(previous: TyperState /* | Null */) extends DotClass with Showab
     case tp => tp
   }
 
+  /** A fresh typer state with the same constraint as this one.
+   *  @param isCommittable  The constraint can be committed to an enclosing context.
+   */
+  def fresh(isCommittable: Boolean): TyperState = this
+
+  /** A fresh type state with the same constraint as this one and the given reporter */
+  def withReporter(reporter: Reporter) = new TyperState(reporter)
+
+  /** Commit state so that it gets propagated to enclosing context */
+  def commit()(implicit ctx: Context): Unit = unsupported("commit")
+
   /** The closest ancestor of this typer state (including possibly this typer state itself)
    *  which is not yet committed, or which does not have a parent.
    */
-  def uncommittedAncestor: TyperState =
-    if (isCommitted) previous.uncommittedAncestor else this
+  def uncommittedAncestor: TyperState = this
 
-  private var testReporter: StoreReporter = null
+  /** Make type variable instances permanent by assigning to `inst` field if
+   *  type variable instantiation cannot be retracted anymore. Then, remove
+   *  no-longer needed constraint entries.
+   */
+  def gc()(implicit ctx: Context): Unit = ()
 
-  /** Test using `op`, restoring typerState to previous state afterwards */
-  def test(op: => Boolean): Boolean = {
-    val savedReporter = myReporter
-    val savedConstraint = myConstraint
-    val savedCommittable = myIsCommittable
-    val savedCommitted = isCommitted
-    myIsCommittable = false
-    myReporter =
-      if (testReporter == null) new StoreReporter(reporter)
-      else {
-        testReporter.reset()
-        testReporter
-      }
-    try op
-    finally {
-      myReporter = savedReporter
-      myConstraint = savedConstraint
-      myIsCommittable = savedCommittable
-      isCommitted = savedCommitted
-    }
+  /** Is it allowed to commit this state? */
+  def isCommittable: Boolean = false
+
+  /** Can this state be transitively committed until the top-level? */
+  def isGlobalCommittable: Boolean = false
+
+  override def toText(printer: Printer): Text = "ImmutableTyperState"
+
+  /** A string showing the hashes of all nested mutable typerstates */
+  def hashesStr: String = ""
+}
+
+class MutableTyperState(previous: TyperState, r: Reporter, override val isCommittable: Boolean)
+extends TyperState(r) {
+
+  private var myReporter = r
+
+  override def reporter = myReporter
+
+  private val previousConstraint = previous.constraint
+  private var myConstraint: Constraint = previousConstraint
+
+  override def constraint = myConstraint
+  override def constraint_=(c: Constraint)(implicit ctx: Context) = {
+    if (Config.debugCheckConstraintsClosed && isGlobalCommittable) c.checkClosed()
+    myConstraint = c
   }
+
+  private var myEphemeral: Boolean = previous.ephemeral
+
+  override def ephemeral = myEphemeral
+  override def ephemeral_=(x: Boolean): Unit = { myEphemeral = x }
+
+  override def fresh(isCommittable: Boolean): TyperState =
+    new MutableTyperState(this, new StoreReporter(reporter), isCommittable)
+
+  override def withReporter(reporter: Reporter) =
+    new MutableTyperState(this, reporter, isCommittable)
+
+  override val isGlobalCommittable =
+    isCommittable &&
+    (!previous.isInstanceOf[MutableTyperState] || previous.isGlobalCommittable)
+
+  private var isCommitted = false
+
+  override def uncommittedAncestor: TyperState =
+    if (isCommitted) previous.uncommittedAncestor else this
 
   /** Commit typer state so that its information is copied into current typer state
    *  In addition (1) the owning state of undetermined or temporarily instantiated
@@ -128,7 +137,7 @@ class TyperState(previous: TyperState /* | Null */) extends DotClass with Showab
    * isApplicableSafe but also for (e.g. erased-lubs.scala) as well as
    * many parts of dotty itself.
    */
-  def commit()(implicit ctx: Context) = {
+  override def commit()(implicit ctx: Context) = {
     val targetState = ctx.typerState
     assert(isCommittable)
     targetState.constraint =
@@ -143,11 +152,7 @@ class TyperState(previous: TyperState /* | Null */) extends DotClass with Showab
     isCommitted = true
   }
 
-  /** Make type variable instances permanent by assigning to `inst` field if
-   *  type variable instantiation cannot be retracted anymore. Then, remove
-   *  no-longer needed constraint entries.
-   */
-  def gc()(implicit ctx: Context): Unit = {
+  override def gc()(implicit ctx: Context): Unit = {
     val toCollect = new mutable.ListBuffer[TypeLambda]
     constraint foreachTypeVar { tvar =>
       if (!tvar.inst.exists) {
@@ -165,5 +170,6 @@ class TyperState(previous: TyperState /* | Null */) extends DotClass with Showab
 
   override def toText(printer: Printer): Text = constraint.toText(printer)
 
-  def hashesStr: String = hashCode.toString + " -> " + previous.hashesStr
+  override def hashesStr: String = hashCode.toString + " -> " + previous.hashesStr
+
 }
