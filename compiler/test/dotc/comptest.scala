@@ -12,8 +12,6 @@ object comptest extends ParallelTesting {
   def isInteractive = true
   def testFilter = None
 
-  implicit val defaultOutputDir: String = "."
-
   val posDir = "./tests/pos/"
   val negDir = "./tests/neg/"
   val dotcDir = "./src/dotty/"
@@ -26,6 +24,7 @@ object comptest extends ParallelTesting {
         dotcDir + "tools/dotc/core/Types.scala",
         dotcDir + "tools/dotc/ast/Trees.scala"
       ),
-      TestFlags("", Array("-Ylog:frontend", "-Xprompt"))
+      TestFlags("", Array("-Ylog:frontend", "-Xprompt")),
+      outDirectory = "."
   )
 }
