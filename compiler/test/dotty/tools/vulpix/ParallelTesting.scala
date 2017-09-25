@@ -411,7 +411,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
 
         if (isInteractive && !suppressAllOutput) pool.submit(createProgressMonitor)
 
-        filteredSources.foreach { target =>
+        val eventualResults = filteredSources.map { target =>
           pool.submit(encapsulatedCompilation(target))
         }
 
@@ -422,6 +422,8 @@ trait ParallelTesting extends RunnerOrchestration { self =>
           System.setErr(realStderr)
           throw new TimeoutException("Compiling targets timed out")
         }
+
+        eventualResults.foreach(_.get)
 
         if (didFail) {
           reportFailed()
