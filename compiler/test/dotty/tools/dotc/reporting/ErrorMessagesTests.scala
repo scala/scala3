@@ -970,4 +970,17 @@ class ErrorMessagesTests extends ErrorMessagesTest {
       val MissingReturnTypeWithReturnStatement(method) :: Nil = messages
       assertEquals(method.name.show, "bad")
     }
+
+  @Test def returnOutsideMethodDefinition =
+    checkMessagesAfter("frontend") {
+      """object A {
+        |  return 5
+        |}
+      """.stripMargin
+    }.expect { (ictx, messages) =>
+      implicit val ctx: Context = ictx
+      assertMessageCount(1, messages)
+      val ReturnOutsideMethodDefinition() :: Nil = messages
+    }
+
 }

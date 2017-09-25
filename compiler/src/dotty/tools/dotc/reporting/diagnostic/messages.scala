@@ -1737,4 +1737,12 @@ object messages {
       hl"you have to provide either ${"class"}, ${"trait"}, ${"object"}, or ${"enum"} definitions after qualifiers"
   }
 
+  case class ReturnOutsideMethodDefinition()(implicit ctx: Context)
+    extends Message(ReturnOutsideMethodDefinitionID) {
+    val kind = "Syntax"
+    val msg = s"return outside method definition"
+    val explanation =
+      hl"${"return"} is a keyword and may only be used within methods"
+  }
+
 }
