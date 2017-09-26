@@ -97,6 +97,7 @@ public enum ErrorMessageID {
     DuplicatePrivateProtectedQualifierID,
     ExpectedStartOfTopLevelDefinitionID,
     MissingReturnTypeWithReturnStatementID,
+    NoReturnFromInlineID,
     ReturnOutsideMethodDefinitionID,
     ;
 

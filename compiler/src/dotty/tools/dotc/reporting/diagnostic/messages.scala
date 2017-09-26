@@ -1737,6 +1737,17 @@ object messages {
       hl"you have to provide either ${"class"}, ${"trait"}, ${"object"}, or ${"enum"} definitions after qualifiers"
   }
 
+  case class NoReturnFromInline(owner: Symbol)(implicit ctx: Context)
+    extends Message(NoReturnFromInlineID) {
+    val kind = "Syntax"
+    val msg = hl"no explicit ${"return"} allowed from inline $owner"
+    val explanation =
+      hl"""Methods marked with ${"@inline"} may not use ${"return"} statements.
+          |Instead, you should rely on the last expression's value being
+          |returned from a method.
+          |"""
+  }
+
   case class ReturnOutsideMethodDefinition()(implicit ctx: Context)
     extends Message(ReturnOutsideMethodDefinitionID) {
     val kind = "Syntax"
@@ -1744,5 +1755,4 @@ object messages {
     val explanation =
       hl"${"return"} is a keyword and may only be used within methods"
   }
-
 }
