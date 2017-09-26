@@ -2465,7 +2465,7 @@ object Types {
   extends CachedProxyType with TermType with MethodicType {
     override def resultType(implicit ctx: Context): Type = resType
     override def underlying(implicit ctx: Context): Type = resType
-    protected def computeSignature(implicit ctx: Context): Signature = resultSignature
+    def computeSignature(implicit ctx: Context): Signature = resultSignature
     def derivedExprType(resType: Type)(implicit ctx: Context) =
       if (resType eq this.resType) this else ExprType(resType)
     override def computeHash = doHash(resType)
@@ -2487,7 +2487,7 @@ object Types {
    *    HKLambda     |   HKTermLambda    |   HKTypeLambda
    *    MethodOrPoly |   MethodType	     |   PolyType
    */
-  trait LambdaType extends BindingType with MethodicType { self =>
+  trait LambdaType extends BindingType with TermType { self =>
     type ThisName <: Name
     type PInfo <: Type
     type This <: LambdaType{type PInfo = self.PInfo}
@@ -2516,8 +2516,6 @@ object Types {
       if (myParamRefs == null) myParamRefs = paramNames.indices.toList.map(newParamRef)
       myParamRefs
     }
-
-    protected def computeSignature(implicit ctx: Context) = resultSignature
 
     final def instantiate(argTypes: => List[Type])(implicit ctx: Context): Type =
       if (isDependent) resultType.substParams(this, argTypes)
@@ -2566,7 +2564,7 @@ object Types {
     }
   }
 
-  abstract class MethodOrPoly extends CachedGroundType with LambdaType with TermType {
+  abstract class MethodOrPoly extends CachedGroundType with LambdaType with MethodicType {
     final override def computeHash = doHash(paramNames, resType, paramInfos)
 
     // Defined here instead of in LambdaType for efficiency
@@ -2691,7 +2689,7 @@ object Types {
     val resType = resultTypeExp(this)
     assert(resType.exists)
 
-    override def computeSignature(implicit ctx: Context): Signature =
+    def computeSignature(implicit ctx: Context): Signature =
       resultSignature.prepend(paramInfos, isJava)
 
     protected def prefixString = "MethodType"
@@ -2894,6 +2892,8 @@ object Types {
 
     assert(resType.isInstanceOf[TermType], this)
     assert(paramNames.nonEmpty)
+
+    def computeSignature(implicit ctx: Context) = resultSignature
 
     /** Merge nested polytypes into one polytype. nested polytypes are normally not supported
      *  but can arise as temporary data structures.
