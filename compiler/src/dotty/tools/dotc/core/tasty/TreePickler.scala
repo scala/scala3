@@ -144,10 +144,6 @@ class TreePickler(pickler: TastyPickler) {
       pickleConstant(value)
     case tpe: NamedType =>
       val sym = tpe.symbol
-      def pickleStdRef(name: Name) = {
-        writeByte(if (tpe.isType) TYPEREF else TERMREF)
-        pickleName(name); pickleType(tpe.prefix)
-      }
       def pickleDirectRef() = {
         writeByte(if (tpe.isType) TYPEREFdirect else TERMREFdirect)
         pickleSymRef(sym)
@@ -172,12 +168,9 @@ class TreePickler(pickler: TastyPickler) {
         pickleSymRef(sym); pickleType(tpe.prefix)
       }
       else tpe.designator match {
-        case sym: Symbol =>
-          assert(tpe.symbol.isClass && tpe.symbol.is(Flags.Scala2x), tpe.symbol.showLocated)
-          // Note: vulnerability here, since Scala2x allows several classes with same name and prefix
-          pickleStdRef(sym.name)
         case name: Name =>
-          pickleStdRef(name)
+          writeByte(if (tpe.isType) TYPEREF else TERMREF)
+          pickleName(name); pickleType(tpe.prefix)
         case LocalName(name, space) =>
           writeByte(if (tpe.isType) TYPEREFin else TERMREFin)
           withLength {
