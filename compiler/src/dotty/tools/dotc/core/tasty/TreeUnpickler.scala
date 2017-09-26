@@ -720,9 +720,7 @@ class TreeUnpickler(reader: TastyReader, nameAtRef: NameRef => TermName, posUnpi
       val cls = ctx.owner.asClass
       val assumedSelfType =
         if (cls.is(Module) && cls.owner.isClass)
-          TermRef(
-            cls.owner.thisType,
-            cls.name.sourceModuleName.withSig(Signature.NotAMethod).localizeIfPrivate(cls))
+          TermRef(cls.owner.thisType, cls.name.sourceModuleName.localizeIfPrivate(cls))
         else NoType
       cls.info = new TempClassInfo(cls.owner.thisType, cls, cls.unforcedDecls, assumedSelfType)
       val localDummy = symbolAtCurrent()

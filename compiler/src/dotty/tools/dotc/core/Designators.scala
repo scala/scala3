@@ -35,8 +35,10 @@ object Designators {
     def localizeIfPrivate(sym: Symbol)(implicit ctx: Context): Designator { type ThisName = self.ThisName } =
       if (sym.isPrivate) withNameSpace(sym.owner.typeRef) else this
 
-    def withSig(sig: Signature): Designator{ type ThisName = TermName } =
-      SignedName(this.asInstanceOf[TermName].exclude(SignedName), sig)
+    def withSig(sig: Signature): Designator{ type ThisName = TermName } = {
+      val unsigned = this.asInstanceOf[TermName].exclude(SignedName)
+      if (sig eq Signature.NotAMethod) unsigned else SignedName(unsigned, sig)
+    }
   }
 
   type TermDesignator = Designator { type ThisName = TermName }

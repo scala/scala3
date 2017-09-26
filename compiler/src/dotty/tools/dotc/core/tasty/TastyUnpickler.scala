@@ -64,8 +64,8 @@ class TastyUnpickler(reader: TastyReader) {
         val result = readName().toTypeName
         val params = until(end)(readName().toTypeName)
         var sig = Signature(params, result)
-        if (sig == Signature.NotAMethod) sig = Signature.NotAMethod
-        SignedName(original, sig)
+        if (sig == Signature.NotAMethod) sig = Signature.NotAMethod // needed temporarily, as long as we read old tasty
+        original.withSig(sig).asInstanceOf[TermName]
       case _ =>
         simpleNameKindOfTag(tag)(readName())
     }
