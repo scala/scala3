@@ -15,6 +15,7 @@ import dotty.tools.io.JFile
 
 
 class CompilationTests extends ParallelTesting {
+  import ParallelTesting._
   import TestConfiguration._
   import CompilationTests._
 
@@ -68,7 +69,6 @@ class CompilationTests extends ParallelTesting {
     compileFilesInDir("../tests/pos-special/strawman-collections", defaultOptions) +
     compileFile("../scala2-library/src/library/scala/collection/immutable/IndexedSeq.scala", defaultOptions) +
     compileFile("../scala2-library/src/library/scala/collection/parallel/mutable/ParSetLike.scala", defaultOptions) +
-    compileFile("../tests/pos/t2171.scala", defaultOptimised) +
     compileList(
       "parSetSubset",
       List(
@@ -159,6 +159,7 @@ class CompilationTests extends ParallelTesting {
 
   @Test def compileNeg: Unit = {
     compileShallowFilesInDir("../tests/neg", defaultOptions) +
+    compileShallowFilesInDir("../tests/neg/no-optimise", defaultOptions) +
     compileFile("../tests/neg/customArgs/typers.scala", allowDoubleBindings) +
     compileFile("../tests/neg/customArgs/overrideClass.scala", scala2Mode) +
     compileFile("../tests/neg/customArgs/autoTuplingTest.scala", defaultOptions.and("-language:noAutoTupling")) +
@@ -186,12 +187,7 @@ class CompilationTests extends ParallelTesting {
 
   @Test def runAll: Unit = {
     compileFilesInDir("../tests/run", defaultOptions) +
-    compileFile("../tests/run/i3018.scala", defaultOptimised) +
-    compileFile("../tests/run/blame_eye_triple_eee-double.scala", defaultOptimised) +
-    compileFile("../tests/run/blame_eye_triple_eee-float.scala", defaultOptimised) +
-    compileFile("../tests/run/run-bug4840.scala", defaultOptimised) +
-    compileFile("../tests/run/optimizer-array-load.scala", defaultOptimised) +
-    compileFile("../tests/run/constant-optimization.scala", defaultOptimised)
+    compileFilesInDir("../tests/run-no-optimise", defaultOptions)
   }.checkRuns()
 
   // Pickling Tests ------------------------------------------------------------
@@ -296,6 +292,13 @@ class CompilationTests extends ParallelTesting {
     compileList("idempotency", List("../tests/idempotency/BootstrapChecker.scala", "../tests/idempotency/IdempotencyCheck.scala"), defaultOptions).checkRuns()
 
     tests.foreach(_.delete())
+  }
+
+  @Test def testOptimised: Unit = {
+    val outputDir = defaultOutputDir + "optimised/"
+    compileFilesInDir("../tests/pos", defaultOptimised, outputDir).checkCompile()
+    compileFilesInDir("../tests/run", defaultOptimised, outputDir).checkRuns()
+    compileShallowFilesInDir("../tests/neg", defaultOptimised, outputDir).checkExpectedErrors()
   }
 
   private val (compilerSources, backendSources, backendJvmSources) = {
