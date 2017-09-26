@@ -4,7 +4,7 @@ package reporting
 package diagnostic
 
 import dotc.core._
-import Contexts.Context
+import Contexts.{Context, NoContext}
 import Decorators._
 import Symbols._
 import Names._
@@ -23,6 +23,7 @@ import dotty.tools.dotc.ast.Trees
 import dotty.tools.dotc.ast.untpd.Modifiers
 import dotty.tools.dotc.core.Flags.{FlagSet, Mutable}
 import dotty.tools.dotc.core.SymDenotations.SymDenotation
+
 import scala.util.control.NonFatal
 
 object messages {
@@ -1748,11 +1749,16 @@ object messages {
           |"""
   }
 
-  case class ReturnOutsideMethodDefinition()(implicit ctx: Context)
+  case class ReturnOutsideMethodDefinition(checkedContext: Context)(implicit ctx: Context)
     extends Message(ReturnOutsideMethodDefinitionID) {
     val kind = "Syntax"
-    val msg = s"return outside method definition"
+    val msg = hl"${"return"} outside method definition"
+    private val contextInfo =
+      if (checkedContext == NoContext) "outside any declaration"
+      else s"in ${checkedContext.owner.show}"
     val explanation =
-      hl"${"return"} is a keyword and may only be used within methods"
+      hl"""You used ${"return"} $contextInfo.
+          |${"return"} is a keyword and may only be used within method declarations.
+          |"""
   }
 }

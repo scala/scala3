@@ -995,7 +995,8 @@ class ErrorMessagesTests extends ErrorMessagesTest {
     }.expect { (ictx, messages) =>
       implicit val ctx: Context = ictx
       assertMessageCount(1, messages)
-      val ReturnOutsideMethodDefinition() :: Nil = messages
+      val ReturnOutsideMethodDefinition(checkedContext) :: Nil = messages
+      assertEquals("object A", checkedContext.owner.show)
     }
 
 }
