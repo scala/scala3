@@ -23,6 +23,8 @@ import classpath._
 import reporting._, reporting.diagnostic.MessageContainer
 import util._
 
+import dotty.uoption._
+
 /** A Driver subclass designed to be used from IDEs */
 class InteractiveDriver(settings: List[String]) extends Driver {
   import tpd._
@@ -84,9 +86,9 @@ class InteractiveDriver(settings: List[String]) extends Driver {
 
     classReps
       .filter((classRep: ClassRepresentation) => classRep.binary match {
-        case None =>
+        case UNone =>
           true
-        case Some(binFile) =>
+        case USome(binFile) =>
           val prefix =
             if (binFile.name.endsWith(".class"))
               binFile.name.stripSuffix(".class")

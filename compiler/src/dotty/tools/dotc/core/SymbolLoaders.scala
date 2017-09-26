@@ -19,6 +19,8 @@ import util.Stats
 import scala.util.control.NonFatal
 import ast.Trees._
 
+import dotty.uoption._
+
 object SymbolLoaders {
   /** A marker trait for a completer that replaces the original
    *  Symbol loader for an unpickled root.
@@ -129,13 +131,13 @@ class SymbolLoaders {
    */
   def initializeFromClassPath(owner: Symbol, classRep: ClassRepresentation)(implicit ctx: Context): Unit = {
     ((classRep.binary, classRep.source): @unchecked) match {
-      case (Some(bin), Some(src)) if needCompile(bin, src) && !binaryOnly(owner, classRep.name) =>
+      case (USome(bin), USome(src)) if needCompile(bin, src) && !binaryOnly(owner, classRep.name) =>
         if (ctx.settings.verbose.value) ctx.inform("[symloader] picked up newer source file for " + src.path)
         enterToplevelsFromSource(owner, classRep.name, src)
-      case (None, Some(src)) =>
+      case (UNone, USome(src)) =>
         if (ctx.settings.verbose.value) ctx.inform("[symloader] no class, picked up source file for " + src.path)
         enterToplevelsFromSource(owner, classRep.name, src)
-      case (Some(bin), _) =>
+      case (USome(bin), _) =>
         enterClassAndModule(owner, classRep.name, ctx.platform.newClassLoader(bin))
     }
   }

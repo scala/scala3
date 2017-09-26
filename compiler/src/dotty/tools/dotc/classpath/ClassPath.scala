@@ -6,6 +6,8 @@ package dotty.tools.dotc.classpath
 import dotty.tools.io.AbstractFile
 import dotty.tools.io.ClassRepresentation
 
+import dotty.uoption._
+
 case class ClassPathEntries(packages: Seq[PackageEntry], classesAndSources: Seq[ClassRepresentation])
 
 object ClassPathEntries {
@@ -29,22 +31,22 @@ trait PackageEntry {
 private[dotty] case class ClassFileEntryImpl(file: AbstractFile) extends ClassFileEntry {
   override def name = FileUtils.stripClassExtension(file.name) // class name
 
-  override def binary: Option[AbstractFile] = Some(file)
-  override def source: Option[AbstractFile] = None
+  override def binary: UOption[AbstractFile] = USome(file)
+  override def source: UOption[AbstractFile] = UNone
 }
 
 private[dotty] case class SourceFileEntryImpl(file: AbstractFile) extends SourceFileEntry {
   override def name = FileUtils.stripSourceExtension(file.name)
 
-  override def binary: Option[AbstractFile] = None
-  override def source: Option[AbstractFile] = Some(file)
+  override def binary: UOption[AbstractFile] = UNone
+  override def source: UOption[AbstractFile] = USome(file)
 }
 
 private[dotty] case class ClassAndSourceFilesEntry(classFile: AbstractFile, srcFile: AbstractFile) extends ClassRepresentation {
   override def name = FileUtils.stripClassExtension(classFile.name)
 
-  override def binary: Option[AbstractFile] = Some(classFile)
-  override def source: Option[AbstractFile] = Some(srcFile)
+  override def binary: UOption[AbstractFile] = USome(classFile)
+  override def source: UOption[AbstractFile] = USome(srcFile)
 }
 
 private[dotty] case class PackageEntryImpl(name: String) extends PackageEntry
@@ -55,6 +57,6 @@ private[dotty] trait NoSourcePaths {
 }
 
 private[dotty] trait NoClassPaths {
-  def findClassFile(className: String): Option[AbstractFile] = None
+  def findClassFile(className: String): UOption[AbstractFile] = UNone
   private[dotty] def classes(inPackage: String): Seq[ClassFileEntry] = Seq.empty
 }

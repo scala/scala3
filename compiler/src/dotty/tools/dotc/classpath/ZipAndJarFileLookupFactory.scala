@@ -13,6 +13,8 @@ import dotty.tools.io.{AbstractFile, ClassPath, ClassRepresentation, FileZipArch
 import dotty.tools.dotc.core.Contexts.Context
 import FileUtils._
 
+import dotty.uoption._
+
 /**
  * A trait providing an optional cache for classpath entries obtained from zip and jar files.
  * It allows us to e.g. reduce significantly memory used by PresentationCompilers in Scala IDE
@@ -41,13 +43,13 @@ object ZipAndJarClassPathFactory extends ZipAndJarFileLookupFactory {
     extends ZipArchiveFileLookup[ClassFileEntryImpl]
     with NoSourcePaths {
 
-    override def findClassFile(className: String): Option[AbstractFile] = {
+    override def findClassFile(className: String): UOption[AbstractFile] = {
       val (pkg, simpleClassName) = PackageNameUtils.separatePkgAndClassNames(className)
       file(pkg, simpleClassName + ".class").map(_.file)
     }
 
     // This method is performance sensitive as it is used by SBT's ExtractDependencies phase.
-    override def findClass(className: String): Option[ClassRepresentation] = {
+    override def findClass(className: String): UOption[ClassRepresentation] = {
       val (pkg, simpleClassName) = PackageNameUtils.separatePkgAndClassNames(className)
       file(pkg, simpleClassName + ".class")
     }
@@ -66,9 +68,9 @@ object ZipAndJarClassPathFactory extends ZipAndJarFileLookupFactory {
    * Name: scala/Function2$mcFJD$sp.class
    */
   private case class ManifestResourcesClassPath(file: ManifestResources) extends ClassPath with NoSourcePaths {
-    override def findClassFile(className: String): Option[AbstractFile] = {
+    override def findClassFile(className: String): UOption[AbstractFile] = {
       val (pkg, simpleClassName) = PackageNameUtils.separatePkgAndClassNames(className)
-      classes(pkg).find(_.name == simpleClassName).map(_.file)
+      classes(pkg).find(_.name == simpleClassName).toUOption.map(_.file)
     }
 
     override def asClassPathStrings: Seq[String] = Seq(file.path)

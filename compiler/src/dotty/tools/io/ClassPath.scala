@@ -14,6 +14,8 @@ import java.util.regex.PatternSyntaxException
 import File.pathSeparator
 import Jar.isJarOrZip
 
+import dotty.uoption._
+
 /**
   * A representation of the compiler's class- or sourcepath.
   */
@@ -58,13 +60,13 @@ trait ClassPath {
     * https://github.com/sbt/sbt/blob/v0.13.15/compile/interface/src/main/scala/xsbt/CompilerInterface.scala#L249
     * Jason has some improvements for that in the works (https://github.com/scala/bug/issues/10289#issuecomment-310022699)
     */
-  def findClass(className: String): Option[ClassRepresentation] = {
+  def findClass(className: String): UOption[ClassRepresentation] = {
     // A default implementation which should be overridden, if we can create the more efficient
     // solution for a given type of ClassPath
     val (pkg, simpleClassName) = PackageNameUtils.separatePkgAndClassNames(className)
 
-    val foundClassFromClassFiles = classes(pkg).find(_.name == simpleClassName)
-    def findClassInSources = sources(pkg).find(_.name == simpleClassName)
+    val foundClassFromClassFiles = classes(pkg).find(_.name == simpleClassName).toUOption
+    def findClassInSources = sources(pkg).find(_.name == simpleClassName).toUOption
 
     foundClassFromClassFiles orElse findClassInSources
   }
@@ -78,7 +80,7 @@ trait ClassPath {
    * It is also used in the backend, by the inliner, to obtain the bytecode when inlining from the
    * classpath. It's also used by scalap.
    */
-  def findClassFile(className: String): Option[AbstractFile]
+  def findClassFile(className: String): UOption[AbstractFile]
 
   def asClassPathStrings: Seq[String]
 
@@ -152,9 +154,9 @@ object ClassPath {
     )
   }
 
-  def specToURL(spec: String): Option[URL] =
-    try Some(new URL(spec))
-    catch { case _: MalformedURLException => None }
+  def specToURL(spec: String): UOption[URL] =
+    try USome(new URL(spec))
+    catch { case _: MalformedURLException => UNone }
 
   def manifests: List[java.net.URL] = {
     import scala.collection.JavaConverters._
@@ -171,8 +173,8 @@ object ClassPath {
 
 trait ClassRepresentation {
   def name: String
-  def binary: Option[AbstractFile]
-  def source: Option[AbstractFile]
+  def binary: UOption[AbstractFile]
+  def source: UOption[AbstractFile]
 }
 
 @deprecated("shim for sbt's compiler interface", since = "2.12.0")

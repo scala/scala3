@@ -10,6 +10,8 @@ import dotty.tools.io.{ AbstractFile, FileZipArchive }
 import FileUtils.AbstractFileOps
 import dotty.tools.io.{ClassPath, ClassRepresentation}
 
+import dotty.uoption._
+
 /**
  * A trait allowing to look for classpath entries of given type in zip and jar files.
  * It provides common logic for classes handling class and source files.
@@ -39,10 +41,10 @@ trait ZipArchiveFileLookup[FileEntryType <: ClassRepresentation] extends ClassPa
       entry <- dirEntry.iterator if isRequiredFileType(entry)
     } yield createFileEntry(entry)
 
-  protected def file(inPackage: String, name: String): Option[FileEntryType] =
+  protected def file(inPackage: String, name: String): UOption[FileEntryType] =
     for {
       dirEntry <- findDirEntry(inPackage)
-      entry <- Option(dirEntry.lookupName(name, directory = false))
+      entry <- UOption(dirEntry.lookupName(name, directory = false))
       if isRequiredFileType(entry)
     } yield createFileEntry(entry)
 
@@ -65,9 +67,9 @@ trait ZipArchiveFileLookup[FileEntryType <: ClassRepresentation] extends ClassPa
     } getOrElse ClassPathEntries(Seq.empty, Seq.empty)
   }
 
-  private def findDirEntry(pkg: String): Option[archive.DirEntry] = {
+  private def findDirEntry(pkg: String): UOption[archive.DirEntry] = {
     val dirName = s"${FileUtils.dirPath(pkg)}/"
-    archive.allDirs.get(dirName)
+    archive.allDirs.get(dirName).toUOption
   }
 
   protected def createFileEntry(file: FileZipArchive#Entry): FileEntryType

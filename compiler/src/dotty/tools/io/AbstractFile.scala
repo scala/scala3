@@ -11,6 +11,8 @@ import java.io.{
 }
 import java.net.URL
 
+import dotty.uoption._
+
 /**
  * An abstraction over files for use in the reflection/compiler libraries.
  *
@@ -110,7 +112,7 @@ abstract class AbstractFile extends Iterable[AbstractFile] {
   def file: JFile
 
   /** An underlying source, if known.  Mostly, a zip/jar file. */
-  def underlyingSource: Option[AbstractFile] = None
+  def underlyingSource: UOption[AbstractFile] = UNone
 
   /** Does this abstract file denote an existing file? */
   def exists: Boolean = {
@@ -145,7 +147,7 @@ abstract class AbstractFile extends Iterable[AbstractFile] {
   def bufferedOutput: BufferedOutputStream = new BufferedOutputStream(output)
 
   /** size of this file if it is a concrete file. */
-  def sizeOption: Option[Int] = None
+  def sizeOption: UOption[Int] = UNone
 
   def toURL: URL = if (file == null) null else file.toURI.toURL
 
@@ -162,7 +164,7 @@ abstract class AbstractFile extends Iterable[AbstractFile] {
   def toByteArray: Array[Byte] = {
     val in = input
     sizeOption match {
-      case Some(size) =>
+      case USome(size) =>
         var rest = size
         val arr = new Array[Byte](rest)
         while (rest > 0) {
@@ -173,7 +175,7 @@ abstract class AbstractFile extends Iterable[AbstractFile] {
         }
         in.close()
         arr
-      case None =>
+      case UNone =>
         val out = new ByteArrayOutputStream()
         var c = in.read()
         while(c != -1) {

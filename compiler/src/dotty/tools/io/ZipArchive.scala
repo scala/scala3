@@ -13,6 +13,8 @@ import scala.collection.mutable
 import scala.collection.JavaConverters._
 import scala.annotation.tailrec
 
+import dotty.uoption._
+
 /** An abstraction for zip files and streams.  Everything is written the way
  *  it is for performance: we come through here a lot on every run.  Be careful
  *  about changing it.
@@ -57,7 +59,7 @@ import ZipArchive._
 abstract class ZipArchive(override val file: JFile) extends AbstractFile with Equals {
   self =>
 
-  override def underlyingSource = Some(this)
+  override def underlyingSource = USome(this)
   def isDirectory = true
   def lookupName(name: String, directory: Boolean) = unsupported()
   def lookupNameUnchecked(name: String, directory: Boolean) = unsupported()
@@ -71,7 +73,7 @@ abstract class ZipArchive(override val file: JFile) extends AbstractFile with Eq
   sealed abstract class Entry(path: String) extends VirtualFile(baseName(path), path) {
     // have to keep this name for compat with sbt's compiler-interface
     def getArchive: ZipFile = null
-    override def underlyingSource = Some(self)
+    override def underlyingSource = USome(self)
     override def toString = self.path + "(" + path + ")"
   }
 
@@ -133,7 +135,7 @@ final class FileZipArchive(file: JFile) extends ZipArchive(file) {
         override def close(): Unit = { zipFile.close() }
       }
     }
-    override def sizeOption: Option[Int] = Some(size) // could be stale
+    override def sizeOption: UOption[Int] = USome(size) // could be stale
   }
 
   // keeps a file handle open to ZipFile, which forbids file mutation
@@ -146,7 +148,7 @@ final class FileZipArchive(file: JFile) extends ZipArchive(file) {
   ) extends Entry(zipEntry.getName) {
     override def lastModified: Long = zipEntry.getTime
     override def input: InputStream = zipFile.getInputStream(zipEntry)
-    override def sizeOption: Option[Int] = Some(zipEntry.getSize.toInt)
+    override def sizeOption: UOption[Int] = USome(zipEntry.getSize.toInt)
   }
 
   @volatile lazy val (root, allDirs) = {
@@ -187,7 +189,7 @@ final class FileZipArchive(file: JFile) extends ZipArchive(file) {
   def input        = File(file).inputStream()
   def lastModified = file.lastModified
 
-  override def sizeOption = Some(file.length.toInt)
+  override def sizeOption = USome(file.length.toInt)
   override def canEqual(other: Any) = other.isInstanceOf[FileZipArchive]
   override def hashCode() = file.hashCode
   override def equals(that: Any) = that match {
@@ -209,7 +211,7 @@ final class ManifestResources(val url: URL) extends ZipArchive(null) {
         val f = new Entry(zipEntry.getName) {
           override def lastModified = zipEntry.getTime()
           override def input        = resourceInputStream(path)
-          override def sizeOption   = None
+          override def sizeOption   = UNone
         }
         dir.entries(f.name) = f
       }

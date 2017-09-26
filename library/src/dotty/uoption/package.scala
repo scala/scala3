@@ -71,13 +71,53 @@ package object uoption {
       if (isEmpty) self.asInstanceOf[UOption[B]]
       else USome(f(forceGet))
 
+    @inline def flatMap[B](f: A => UOption[B]): UOption[B] =
+      if (isEmpty) UNone else f(forceGet)
+
+    @inline def filter(p: A => Boolean): UOption[A] =
+      if (isEmpty || p(forceGet)) self else UNone
+
+    @inline def withFilter(p: A => Boolean): WithFilter[A] = new WithFilter[A](self, p)
+
     @inline def getOrElse[B >: A](ifEmpty: => B): B =
-      if (isEmpty) ifEmpty
-      else forceGet
+      if (isEmpty) ifEmpty else forceGet
+
+    @inline final def orElse[B >: A](alternative: => UOption[B]): UOption[B] =
+      if (isEmpty) alternative else self.asInstanceOf[UOption[B]]
+
+    @inline def foreach[U](f: A => U): Unit = {
+      if (isDefined) f(forceGet)
+    }
+
+    @inline def toSeq: Seq[A] = iterator.toSeq
+
+    @inline def iterator: Iterator[A] =
+      if (isEmpty) Iterator.empty
+      else Iterator.single(forceGet)
 
     @deprecated("", "")
     def toOption: Option[A] =
       if (isEmpty) None
       else Some(forceGet)
+  }
+
+  implicit class OptionOps[A](private val self: Option[A]) extends AnyVal {
+    @deprecated("", "")
+    def toUOption: UOption[A] =
+      if (self.isEmpty) UNone
+      else USome(self.get)
+  }
+
+  implicit class SomeOps[A](private val self: Some[A]) extends AnyVal {
+    @deprecated("", "")
+    def toUSome: USome[A] = USome(self.get)
+  }
+
+
+  class WithFilter[A](self: UOption[A], p: A => Boolean) {
+    def map[B](f: A => B): UOption[B] = self filter p map f
+    def flatMap[B](f: A => UOption[B]): UOption[B] = self filter p flatMap f
+    def foreach[U](f: A => U): Unit = self filter p foreach f
+    def withFilter(q: A => Boolean): WithFilter[A] = new WithFilter[A](self, x => p(x) && q(x))
   }
 }

@@ -9,6 +9,8 @@ import scala.annotation.tailrec
 import scala.collection.mutable.ArrayBuffer
 import dotty.tools.io.{ AbstractFile, ClassPath, ClassRepresentation }
 
+import dotty.uoption._
+
 /**
  * A classpath unifying multiple class- and sourcepath entries.
  * The Classpath can obtain entries for classes and sources independently
@@ -18,33 +20,33 @@ import dotty.tools.io.{ AbstractFile, ClassPath, ClassRepresentation }
  * @param aggregates classpath instances containing entries which this class processes
  */
 case class AggregateClassPath(aggregates: Seq[ClassPath]) extends ClassPath {
-  override def findClassFile(className: String): Option[AbstractFile] = {
+  override def findClassFile(className: String): UOption[AbstractFile] = {
     val (pkg, _) = PackageNameUtils.separatePkgAndClassNames(className)
     aggregatesForPackage(pkg).iterator.map(_.findClassFile(className)).collectFirst {
-      case Some(x) => x
-    }
+      case USome(x) => x
+    }.toUOption
   }
   private[this] val packageIndex: collection.mutable.Map[String, Seq[ClassPath]] = collection.mutable.Map()
   private def aggregatesForPackage(pkg: String): Seq[ClassPath] = packageIndex.synchronized {
     packageIndex.getOrElseUpdate(pkg, aggregates.filter(_.hasPackage(pkg)))
   }
 
-  override def findClass(className: String): Option[ClassRepresentation] = {
+  override def findClass(className: String): UOption[ClassRepresentation] = {
     val (pkg, _) = PackageNameUtils.separatePkgAndClassNames(className)
 
-    def findEntry(isSource: Boolean): Option[ClassRepresentation] = {
+    def findEntry(isSource: Boolean): UOption[ClassRepresentation] = {
       aggregatesForPackage(pkg).iterator.map(_.findClass(className)).collectFirst {
         case Some(s: SourceFileEntry) if isSource => s
         case Some(s: ClassFileEntry) if !isSource => s
-      }
+      }.toUOption
     }
 
     val classEntry = findEntry(isSource = false)
     val sourceEntry = findEntry(isSource = true)
 
     (classEntry, sourceEntry) match {
-      case (Some(c: ClassFileEntry), Some(s: SourceFileEntry)) => Some(ClassAndSourceFilesEntry(c.file, s.file))
-      case (c @ Some(_), _) => c
+      case (USome(c: ClassFileEntry), USome(s: SourceFileEntry)) => USome(ClassAndSourceFilesEntry(c.file, s.file))
+      case (c @ USome(_), _) => c
       case (_, s) => s
     }
   }
