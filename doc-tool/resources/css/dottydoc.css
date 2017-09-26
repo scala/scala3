@@ -270,3 +270,7 @@ aside.success {
     border-left: 3px solid #36bf1d;
     background-color: #ebfddd;
 }
+
+.gitter-open-chat-button {
+  background-color: gray;
+}
