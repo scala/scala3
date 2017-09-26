@@ -985,7 +985,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
       }
       else if (owner != cx.outer.owner && owner.isRealMethod) {
         if (owner.isInlineMethod)
-          (EmptyTree, errorType(em"no explicit return allowed from inline $owner", tree.pos))
+          (EmptyTree, errorType(NoReturnFromInline(owner), tree.pos))
         else if (!owner.isCompleted)
           (EmptyTree, errorType(MissingReturnTypeWithReturnStatement(owner), tree.pos))
         else {
