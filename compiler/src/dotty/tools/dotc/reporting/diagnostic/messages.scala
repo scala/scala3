@@ -1753,7 +1753,7 @@ object messages {
     extends Message(ReturnOutsideMethodDefinitionID) {
     val kind = "Syntax"
     val msg = hl"${"return"} outside method definition"
-    private val contextInfo =
+    private def contextInfo =
       if (checkedContext == NoContext) "outside any declaration"
       else s"in ${checkedContext.owner.show}"
     val explanation =
