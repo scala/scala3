@@ -11,6 +11,7 @@ import core.NameOps._
 import transform.TreeTransforms.{MiniPhaseTransform, TransformerInfo}
 import config.Printers.simplify
 import ast.tpd
+import dotty.tools.dotc.core.PhantomErasure
 
 import scala.annotation.tailrec
 
@@ -175,13 +176,16 @@ object Simplify {
   }
 
   def isImmutableAccessor(t: Tree)(implicit ctx: Context): Boolean = {
-    val isImmutableGetter = t.symbol.isGetter && !t.symbol.is(Mutable | Lazy)
-    val isCaseAccessor    = t.symbol.is(CaseAccessor) && !t.symbol.is(Mutable | Lazy)
-    val isProductAccessor = t.symbol.exists                               &&
-                            t.symbol.owner.derivesFrom(defn.ProductClass) &&
-                            t.symbol.owner.is(CaseClass)                  &&
-                            t.symbol.name.isSelectorName                  &&
-                            !t.symbol.info.decls.exists(_.is(Mutable | Lazy)) // Conservatively covers case class A(var x: Int)
-    isImmutableGetter || isCaseAccessor || isProductAccessor
+    val sym = t.symbol
+    val isImmutableGetter = sym.isGetter && !sym.is(Mutable | Lazy)
+    val isCaseAccessor    = sym.is(CaseAccessor) && !sym.is(Mutable | Lazy)
+    val isProductAccessor = sym.exists                               &&
+                            sym.owner.derivesFrom(defn.ProductClass) &&
+                            sym.owner.is(CaseClass)                  &&
+                            sym.name.isSelectorName                  &&
+                            !sym.info.decls.exists(_.is(Mutable | Lazy)) // Conservatively covers case class A(var x: Int)
+    val isErasedPhantom   = PhantomErasure.isErasedPhantom(sym)
+
+    isImmutableGetter || isCaseAccessor || isProductAccessor || isErasedPhantom
   }
 }
