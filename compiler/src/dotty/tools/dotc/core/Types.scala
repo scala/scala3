@@ -1509,6 +1509,7 @@ object Types {
           decompose(underlying)
         case designator: Name =>
           myName = designator.asInstanceOf[ThisName]
+          if (mySig == null) mySig = Signature.NotAMethod
         case designator: Symbol =>
           uncheckedSetSym(designator)
         case LocalName(underlying, space) =>
@@ -1524,10 +1525,10 @@ object Types {
       myName
     }
 
-    final override def signature(implicit ctx: Context): Signature =
-      if (mySig != null) mySig
-      else if (isType || lastDenotation == null) Signature.NotAMethod
-      else denot.signature
+    final override def signature(implicit ctx: Context): Signature = {
+      if (mySig == null) mySig = denot.signature
+      mySig
+    }
 
     final def nameSpace: NameSpace = myNameSpace
 
@@ -1974,7 +1975,7 @@ object Types {
         // from the new prefix, modulo consistency
         val curSig = signature
         val newSig =
-          if (curSig == Signature.NotAMethod || !symbol.exists)
+          if (curSig.eq(Signature.NotAMethod) || !symbol.exists)
             curSig
           else
             curSig.updateWith(symbol.info.asSeenFrom(prefix, symbol.owner).signature)
