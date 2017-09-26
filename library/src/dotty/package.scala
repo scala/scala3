@@ -1,3 +1,5 @@
+package dotty
+
 import scala.language.higherKinds
 
 /**
@@ -72,5 +74,10 @@ package object uoption {
     @inline def getOrElse[B >: A](ifEmpty: => B): B =
       if (isEmpty) ifEmpty
       else forceGet
+
+    @deprecated("", "")
+    def toOption: Option[A] =
+      if (isEmpty) None
+      else Some(forceGet)
   }
 }
