@@ -72,7 +72,8 @@ class ParamForwarding(thisTransformer: DenotTransformer) {
                     if (alias.owner != currentClass.superClass)
                       // need to use shadowed in order not to accidentally address an
                       // intervening private forwarder in the superclass
-                      superAcc = superAcc.withType(superAcc.tpe.asInstanceOf[TermRef].withoutNameSpace)
+                      superAcc = superAcc.withType(
+                        superAcc.tpe.asInstanceOf[TermRef].withNameSpace(noNameSpace))
                     typr.println(i"adding param forwarder $superAcc")
                     DefDef(sym, superAcc.ensureConforms(sym.info.widen))
                   }

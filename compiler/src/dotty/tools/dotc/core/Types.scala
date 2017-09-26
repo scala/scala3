@@ -1917,14 +1917,6 @@ object Types {
       if (nameSpace == this.nameSpace) this
       else NamedType(prefix, designator.withNameSpace(nameSpace))
 
-    /** Create a NamedType of the same kind as this type, but without a namespace
-     */
-    def withoutNameSpace(implicit ctx: Context): NamedType =
-      (designator: Designator) match { // Dotty deviation: need the widening
-        case LocalName(underlying, _) => NamedType(prefix, underlying)
-        case _ => this
-      }
-
     override def equals(that: Any) = that match {
       case that: NamedType =>
         this.designator == that.designator &&
@@ -1995,9 +1987,6 @@ object Types {
           else designator
         fixDenot(TermRef(prefix, designator1), prefix)
     }
-
-    override def withoutNameSpace(implicit ctx: Context): NamedType =
-      fixDenot(super.withoutNameSpace.asInstanceOf[TermRef], prefix)
   }
 
   abstract case class TypeRef(override val prefix: Type, designator: TypeDesignator) extends NamedType {
