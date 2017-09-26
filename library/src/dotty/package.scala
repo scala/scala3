@@ -39,7 +39,7 @@ package object uoption {
   object USome {
     //  @inline // only for Scala.js?
     def apply[A](value: A): USome[A] = value match {
-      case value @ UNone      => value.wrap.asInstanceOf[USome[A]]
+      case value: UNone.type  => value.wrap.asInstanceOf[USome[A]]
       case value: WrappedNone => value.wrap.asInstanceOf[USome[A]]
       case _                  => value.asInstanceOf[USome[A]]
     }
