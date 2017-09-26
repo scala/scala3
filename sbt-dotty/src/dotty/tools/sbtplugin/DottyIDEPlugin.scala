@@ -1,6 +1,7 @@
 package dotty.tools.sbtplugin
 
 import sbt._
+import sbt.Def.Initialize
 import sbt.Keys._
 import java.io._
 import java.lang.ProcessBuilder
@@ -196,34 +197,38 @@ object DottyIDEPlugin extends AutoPlugin {
     origState
   }
 
+  private def projectConfigTask(config: Configuration): Initialize[Task[Option[ProjectConfig]]] = Def.task {
+    if ((sources in config).value.isEmpty) None
+    else {
+      // Not needed to generate the config, but this guarantees that the
+      // generated config is usable by an IDE without any extra compilation
+      // step.
+      val _ = (compile in config).value
+
+      val id = s"${thisProject.value.id}/${config.name}"
+      val compilerVersion = (scalaVersion in config).value
+      val compilerArguments = (scalacOptions in config).value
+      val sourceDirectories = (unmanagedSourceDirectories in config).value ++ (managedSourceDirectories in config).value
+      val depClasspath = Attributed.data((dependencyClasspath in config).value)
+      val classDir = (classDirectory in config).value
+
+      Some(new ProjectConfig(
+        id,
+        compilerVersion,
+        compilerArguments.toArray,
+        sourceDirectories.toArray,
+        depClasspath.toArray,
+        classDir
+      ))
+    }
+  }
+
   override def projectSettings: Seq[Setting[_]] = Seq(
-    // Use Def.derive so `projectConfig` is only defined in the configurations where the
-    // tasks/settings it depends on are defined.
-    Def.derive(projectConfig := {
-      if (sources.value.isEmpty) None
-      else {
-        // Not needed to generate the config, but this guarantees that the
-        // generated config is usable by an IDE without any extra compilation
-        // step.
-        val _ = compile.value
-
-        val id = s"${thisProject.value.id}/${configuration.value.name}"
-        val compilerVersion = scalaVersion.value
-        val compilerArguments = scalacOptions.value
-        val sourceDirectories = unmanagedSourceDirectories.value ++ managedSourceDirectories.value
-        val depClasspath = Attributed.data(dependencyClasspath.value)
-        val classDir = classDirectory.value
-
-        Some(new ProjectConfig(
-          id,
-          compilerVersion,
-          compilerArguments.toArray,
-          sourceDirectories.toArray,
-          depClasspath.toArray,
-          classDir
-        ))
-      }
-    })
+    // TODO: It would be better to use Def.derive to define projectConfig in
+    // every configuration where the keys it depends on exist, however this
+    // currently breaks aggregated tasks: https://github.com/sbt/sbt/issues/3580
+    projectConfig in Compile := projectConfigTask(Compile).value,
+    projectConfig in Test := projectConfigTask(Test).value
   )
 
   override def buildSettings: Seq[Setting[_]] = Seq(
