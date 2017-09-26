@@ -35,7 +35,7 @@ package object uoption {
   type USome[+A] <: UOption[A]
 
   object USome {
-    @inline // only for Scala.js?
+    //  @inline // only for Scala.js?
     def apply[A](value: A): USome[A] = value match {
       case value @ UNone      => value.wrap.asInstanceOf[USome[A]]
       case value: WrappedNone => value.wrap.asInstanceOf[USome[A]]
@@ -52,7 +52,7 @@ package object uoption {
     @inline def isDefined: Boolean = !isEmpty
 
     /** Must not be called when `isEmpty` is `true`! */
-    @inline // only for Scala.js?
+    // @inline // only for Scala.js?
     private def forceGet: A = (self: Any) match {
       case none: WrappedNone =>
         none.unwrap.asInstanceOf[A]
