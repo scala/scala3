@@ -54,7 +54,8 @@ object NameKinds {
     def unmangle(name: SimpleName): TermName = name
 
     /** Turn a name of this kind consisting of an `underlying` prefix
-     *  and the given `info` into a string.
+     *  and the given `info` into a string. Used to turn structured into
+     *  simple name.
      */
     def mkString(underlying: TermName, info: ThisInfo): String
 
@@ -120,7 +121,7 @@ object NameKinds {
   class QualifiedNameKind(tag: Int, val separator: String)
   extends NameKind(tag) {
     type ThisInfo = QualInfo
-    case class QualInfo(val name: SimpleName) extends Info with QualifiedInfo {
+    case class QualInfo(name: SimpleName) extends Info with QualifiedInfo {
       override def map(f: SimpleName => SimpleName): NameInfo = new QualInfo(f(name))
       override def toString = s"$infoString $name"
     }
@@ -349,7 +350,6 @@ object NameKinds {
 
   val SuperAccessorName = new PrefixNameKind(SUPERACCESSOR, "super$")
   val InitializerName = new PrefixNameKind(INITIALIZER, "initial$")
-  val ShadowedName = new PrefixNameKind(SHADOWED, "(shadowed)")
   val ProtectedAccessorName = new PrefixNameKind(PROTECTEDACCESSOR, "protected$")
   val ProtectedSetterName = new PrefixNameKind(PROTECTEDSETTER, "protected$set") // dubious encoding, kept for Scala2 compatibility
   val AvoidClashName = new SuffixNameKind(AVOIDCLASH, "$_avoid_name_clash_$")
@@ -363,9 +363,10 @@ object NameKinds {
   val ImplMethName = new SuffixNameKind(IMPLMETH, "$")
 
   /** A name together with a signature. Used in Tasty trees. */
-  object SignedName extends NameKind(63) {
+  object SignedName extends NameKind(SIGNED) {
 
     case class SignedInfo(sig: Signature) extends Info {
+      assert(sig ne Signature.NotAMethod)
       override def toString = s"$infoString $sig"
     }
     type ThisInfo = SignedInfo

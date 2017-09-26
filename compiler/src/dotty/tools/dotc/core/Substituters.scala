@@ -295,7 +295,7 @@ trait Substituters { this: Context =>
             fs = fs.tail
             ts = ts.tail
           }
-          tp.newLikeThis(apply(tp.prefix))
+          tp.withPrefix(apply(tp.prefix))
         }
         catch {
           case ex: CyclicReference => tp.derivedSelect(apply(tp.prefix))
