@@ -1750,7 +1750,7 @@ object Types {
       TermRef(prefix, designator.withSig(sig))
 
     protected def loadDenot(implicit ctx: Context): Denotation = {
-      val d = asMemberOf(prefix, allowPrivate = false) // allowPrivate needed?
+      val d = asMemberOf(prefix, allowPrivate = false)
       if (d.exists || ctx.phaseId == FirstPhaseId || !lastDenotation.isInstanceOf[SymDenotation])
         if (mySig != null) d.atSignature(mySig).checkUnique
         else d
@@ -2026,9 +2026,6 @@ object Types {
     if (Config.checkUnerased) assert(!ctx.phase.erasedTypes)
 
   object NamedType {
-    def apply(prefix: Type, designator: Name)(implicit ctx: Context) = // ### needed?
-      if (designator.isTermName) TermRef(prefix, designator.asTermName)
-      else TypeRef(prefix, designator.asTypeName)
     def apply(prefix: Type, designator: Designator)(implicit ctx: Context) =
       if (designator.isType) TypeRef(prefix, designator.asType)
       else TermRef(prefix, designator.asTerm)
