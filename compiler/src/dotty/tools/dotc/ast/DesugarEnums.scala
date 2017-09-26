@@ -10,6 +10,8 @@ import collection.mutable.ListBuffer
 import util.Property
 import typer.ErrorReporting._
 
+import dotty.uoption._
+
 /** Helper methods to desugar enums */
 object DesugarEnums {
   import untpd._

@@ -24,6 +24,8 @@ import TypeApplications._
 import language.implicitConversions
 import reporting.diagnostic.messages._
 
+import dotty.uoption._
+
 trait NamerContextOps { this: Context =>
   import NamerContextOps._
 
@@ -69,8 +71,8 @@ trait NamerContextOps { this: Context =>
       ctx.typeAssigner match {
         case typer: Typer =>
           tree.getAttachment(typer.SymOfTree) match {
-            case Some(sym) => sym
-            case None =>
+            case USome(sym) => sym
+            case UNone =>
               var cx = ctx.outer
               while (cx.typeAssigner eq typer) cx = cx.outer
               go(cx)
@@ -209,8 +211,8 @@ class Namer { typer: Typer =>
   def symbolOfTree(tree: Tree)(implicit ctx: Context): Symbol = {
     val xtree = expanded(tree)
     xtree.getAttachment(TypedAhead) match {
-      case Some(ttree) => ttree.symbol
-      case none => xtree.attachment(SymOfTree)
+      case USome(ttree) => ttree.symbol
+      case uNone => xtree.attachment(SymOfTree)
     }
   }
 
@@ -650,7 +652,7 @@ class Namer { typer: Typer =>
         annotate(pcl.stats)
       case stat: untpd.MemberDef =>
         stat.getAttachment(SymOfTree) match {
-          case Some(sym) =>
+          case USome(sym) =>
             sym.infoOrCompleter match {
               case info: Completer if !defn.isPredefClass(sym.owner) =>
                 // Annotate Predef methods only when they are completed;
@@ -660,7 +662,7 @@ class Namer { typer: Typer =>
               case _ =>
                 // Annotations were already added as part of the symbol's completion
             }
-          case none =>
+          case uNone =>
             assert(stat.typeOpt.exists, i"no symbol for $stat")
         }
       case stat: untpd.Thicket =>
@@ -928,8 +930,8 @@ class Namer { typer: Typer =>
   def typedAheadImpl(tree: Tree, typed: untpd.Tree => tpd.Tree)(implicit ctx: Context): tpd.Tree = {
     val xtree = expanded(tree)
     xtree.getAttachment(TypedAhead) match {
-      case Some(ttree) => ttree
-      case none =>
+      case USome(ttree) => ttree
+      case uNone =>
         val ttree = typed(tree)
         xtree.putAttachment(TypedAhead, ttree)
         ttree

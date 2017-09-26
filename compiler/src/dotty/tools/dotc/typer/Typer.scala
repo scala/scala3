@@ -40,6 +40,9 @@ import transform.SymUtils._
 import language.implicitConversions
 import printing.SyntaxHighlighting._
 
+
+import dotty.uoption._
+
 object Typer {
 
   /** The precedence of bindings which determines which of several bindings will be
@@ -1577,7 +1580,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
 
   /** Retrieve symbol attached to given tree */
   protected def retrieveSym(tree: untpd.Tree)(implicit ctx: Context) = tree.removeAttachment(SymOfTree) match {
-    case Some(sym) =>
+    case USome(sym) =>
       sym.ensureCompleted()
       sym
     case none =>
@@ -1599,7 +1602,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     record("typedUnadapted")
     val xtree = expanded(initTree)
     xtree.removeAttachment(TypedAhead) match {
-      case Some(ttree) => ttree
+      case USome(ttree) => ttree
       case none =>
 
         def typedNamed(tree: untpd.NameTree, pt: Type)(implicit ctx: Context): Tree = {
@@ -1706,7 +1709,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
         traverse(rest)(importContext(imp, imp1.symbol))
       case (mdef: untpd.DefTree) :: rest =>
         mdef.removeAttachment(ExpandedTree) match {
-          case Some(xtree) =>
+          case USome(xtree) =>
             traverse(xtree :: rest)
           case none =>
             typed(mdef) match {
