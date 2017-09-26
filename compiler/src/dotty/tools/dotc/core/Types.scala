@@ -1506,7 +1506,6 @@ object Types {
       def decompose(designator: Designator): Unit = designator match {
         case DerivedName(underlying, info: SignedName.SignedInfo) =>
           mySig = info.sig
-          assert(mySig ne Signature.OverloadedSignature)
           decompose(underlying)
         case designator: Name =>
           myName = designator.asInstanceOf[ThisName]
@@ -1702,7 +1701,7 @@ object Types {
       val adapted =
       	if (hasFixedSym)
       	  this
-      	else if (signature != denot.signature && denot.signature.ne(Signature.OverloadedSignature))
+      	else if (signature != denot.signature)
           withSig(denot.signature)
         else if (denot.symbol.isPrivate)
           withNameSpace(denot.symbol.owner.typeRef)
@@ -1752,7 +1751,7 @@ object Types {
     protected def loadDenot(implicit ctx: Context): Denotation = {
       val d = asMemberOf(prefix, allowPrivate = false)
       if (d.exists || ctx.phaseId == FirstPhaseId || !lastDenotation.isInstanceOf[SymDenotation])
-        if (mySig != null) d.atSignature(mySig).checkUnique
+        if (mySig != null && mySig.ne(Signature.OverloadedSignature)) d.atSignature(mySig).checkUnique
         else d
       else { // name has changed; try load in earlier phase and make current
         val d = loadDenot(ctx.withPhase(ctx.phaseId - 1)).current
