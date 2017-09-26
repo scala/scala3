@@ -1,5 +1,8 @@
 import scala.language.higherKinds
 
+/**
+ * @author Sébastien Doeraene
+ */
 package object uoption {
   private[uoption] final class WrappedNone(
     depth: Int,
