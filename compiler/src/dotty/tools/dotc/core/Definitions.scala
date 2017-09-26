@@ -911,6 +911,34 @@ class Definitions {
     arity >= 0 && isFunctionClass(sym) && tp.isRef(FunctionType(arity, sym.name.isImplicitFunction).typeSymbol)
   }
 
+  // Specialized type parameters defined for scala.Function{0,1,2}.
+  private lazy val Function1SpecializedParams: collection.Set[Type] =
+    Set(IntType, LongType, FloatType, DoubleType)
+  private lazy val Function2SpecializedParams: collection.Set[Type] =
+    Set(IntType, LongType, DoubleType)
+  private lazy val Function0SpecializedReturns: collection.Set[Type] =
+    ScalaNumericValueTypeList.toSet[Type] + UnitType + BooleanType
+  private lazy val Function1SpecializedReturns: collection.Set[Type] =
+    Set(UnitType, BooleanType, IntType, FloatType, LongType, DoubleType)
+  private lazy val Function2SpecializedReturns: collection.Set[Type] =
+    Function1SpecializedReturns
+
+  def isSpecializableFunction(cls: ClassSymbol, paramTypes: List[Type], retType: Type)(implicit ctx: Context) =
+    isFunctionClass(cls) && (paramTypes match {
+      case Nil =>
+        Function0SpecializedReturns.contains(retType)
+      case List(paramType0) =>
+        Function1SpecializedParams.contains(paramType0) &&
+        Function1SpecializedReturns.contains(retType)
+      case List(paramType0, paramType1) =>
+        Function2SpecializedParams.contains(paramType0) &&
+        Function2SpecializedParams.contains(paramType1) &&
+        Function2SpecializedReturns.contains(retType)
+      case _ =>
+        false
+    })
+
+
   def functionArity(tp: Type)(implicit ctx: Context) = tp.dealias.argInfos.length - 1
 
   def isImplicitFunctionType(tp: Type)(implicit ctx: Context) =
