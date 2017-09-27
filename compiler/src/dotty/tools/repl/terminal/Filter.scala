@@ -46,7 +46,7 @@ object Filter {
       val matchingPrefixOpt =
         prefixes.iterator
                 .map{ s => ti.ts.inputs.dropPrefix(s.map(_.toInt)) }
-                .collectFirst{case Some(s) => s}.toUOption
+                .collectFirst{case USome(s) => s}.toUOption
       matchingPrefixOpt.map{ rest =>
         val (buffer1, cursor1) = f(ti.ts.buffer, ti.ts.cursor, ti)
         TermState(
@@ -65,7 +65,7 @@ object Filter {
     def op(ti: TermInfo) = {
       prefixes.iterator
               .map{ prefix => ti.ts.inputs.dropPrefix(prefix.map(_.toInt)) }
-              .collectFirst { case Some(rest) if filter(ti) => action(ti.ts.copy(inputs = rest)) }.toUOption
+              .collectFirst { case USome(rest) if filter(ti) => action(ti.ts.copy(inputs = rest)) }.toUOption
     }
     def identifier: String = id
   }

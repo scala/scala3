@@ -8,14 +8,16 @@
 
 package dotty.tools.io
 
+import dotty.uoption._
+
 /**
  * ''Note:  This library is considered experimental and should not be used unless you know what you are doing.''
  */
 object Directory {
   import scala.util.Properties.userDir
 
-  private def normalizePath(s: String) = Some(apply(Path(s).normalize))
-  def Current: Option[Directory]  = if (userDir == "") None else normalizePath(userDir)
+  private def normalizePath(s: String) = USome(apply(Path(s).normalize))
+  def Current: UOption[Directory]  = if (userDir == "") UNone else normalizePath(userDir)
 
   def apply(path: Path): Directory = path.toDirectory
 

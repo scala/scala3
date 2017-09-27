@@ -5,6 +5,8 @@
  */
 package dotty.tools.dotc.util
 
+import dotty.uoption._
+
 /** The comment parsing in `dotc` is used by both the comment cooking and the
   * dottydoc tool.
   *
@@ -148,15 +150,15 @@ object CommentParsing {
 
   /** Optionally start and end index of return section in `str`, or `None`
    *  if `str` does not have a @group. */
-  def groupDoc(str: String, sections: List[(Int, Int)]): Option[(Int, Int)] =
-    sections find (startsWithTag(str, _, "@group"))
+  def groupDoc(str: String, sections: List[(Int, Int)]): UOption[(Int, Int)] =
+    sections find (startsWithTag(str, _, "@group")) toUOption
 
 
   /** Optionally start and end index of return section in `str`, or `None`
    *  if `str` does not have a @return.
    */
-  def returnDoc(str: String, sections: List[(Int, Int)]): Option[(Int, Int)] =
-    sections find (startsWithTag(str, _, "@return"))
+  def returnDoc(str: String, sections: List[(Int, Int)]): UOption[(Int, Int)] =
+    sections find (startsWithTag(str, _, "@return")) toUOption
 
   /** Extracts variable name from a string, stripping any pair of surrounding braces */
   def variableName(str: String): String =

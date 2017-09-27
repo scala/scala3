@@ -17,9 +17,11 @@ import scala.tools.asm.{ClassWriter, ClassReader}
 import scala.tools.asm.tree._
 import java.io.{File => JFile, InputStream}
 
+import dotty.uoption._
+
 class TestGenBCode(val outDir: String) extends GenBCode {
   override def phaseName: String = "testGenBCode"
-  val virtualDir = new Directory(outDir, None)
+  val virtualDir = new Directory(outDir, UNone)
   override def outputDir(implicit ctx: Context) = virtualDir
 }
 

@@ -1832,17 +1832,17 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
   /** If this tree is a select node `qual.name`, try to insert an implicit conversion
    *  `c` around `qual` so that `c(qual).name` conforms to `pt`.
    */
-  def tryInsertImplicitOnQualifier(tree: Tree, pt: Type)(implicit ctx: Context): Option[Tree] = ctx.traceIndented(i"try insert impl on qualifier $tree $pt") {
+  def tryInsertImplicitOnQualifier(tree: Tree, pt: Type)(implicit ctx: Context): UOption[Tree] = ctx.traceIndented(i"try insert impl on qualifier $tree $pt") {
     tree match {
       case Select(qual, name) =>
         val qualProto = SelectionProto(name, pt, NoViewsAllowed, privateOK = false)
-        tryEither { implicit ctx =>
+        tryEither[UOption[Tree]] { implicit ctx =>
           val qual1 = adaptInterpolated(qual, qualProto)
-          if ((qual eq qual1) || ctx.reporter.hasErrors) None
-          else Some(typed(cpy.Select(tree)(untpd.TypedSplice(qual1), name), pt))
-        } { (_, _) => None
+          if ((qual eq qual1) || ctx.reporter.hasErrors) UNone
+          else USome(typed(cpy.Select(tree)(untpd.TypedSplice(qual1), name), pt))
+        } { (_, _) => UNone
         }
-      case _ => None
+      case _ => UNone
     }
   }
 

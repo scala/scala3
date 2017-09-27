@@ -5,6 +5,8 @@ package terminal
 import java.io.{FileOutputStream, Writer, File => JFile}
 import scala.annotation.tailrec
 
+import dotty.uoption._
+
 /**
  * Prints stuff to an ad-hoc logging file when running the repl or terminal in
  * development mode
@@ -131,10 +133,10 @@ case class LazyList[T](headThunk: () => T, tailThunk: () => LazyList[T]) {
   lazy val tail = tailThunk()
 
   def dropPrefix(prefix: Seq[T]) = {
-    @tailrec def rec(n: Int, l: LazyList[T]): Option[LazyList[T]] = {
-      if (n >= prefix.length) Some(l)
+    @tailrec def rec(n: Int, l: LazyList[T]): UOption[LazyList[T]] = {
+      if (n >= prefix.length) USome(l)
       else if (prefix(n) == l.head) rec(n + 1, l.tail)
-      else None
+      else UNone
     }
     rec(0, this)
   }
@@ -161,7 +163,7 @@ object LazyList {
     val base = ctx.parts.mkString
     object p {
       def unapply(s: LazyList[Int]): Option[LazyList[Int]] = {
-        s.dropPrefix(base.map(_.toInt))
+        s.dropPrefix(base.map(_.toInt)).toOption
       }
     }
   }

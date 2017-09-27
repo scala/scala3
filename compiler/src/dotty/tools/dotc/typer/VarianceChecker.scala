@@ -10,6 +10,8 @@ import util.Positions._
 import rewrite.Rewrites.patch
 import config.Printers.variances
 
+import dotty.uoption._
+
 /** Provides `check` method to check that all top-level definitions
  *  in tree are variance correct. Does not recurse inside methods.
  *  The method should be invoked once for each Template.
@@ -24,7 +26,7 @@ class VarianceChecker()(implicit ctx: Context) {
   import VarianceChecker._
   import tpd._
 
-  private object Validator extends TypeAccumulator[Option[VarianceError]] {
+  private object Validator extends TypeAccumulator[UOption[VarianceError]] {
     private var base: Symbol = _
 
     /** Is no variance checking needed within definition of `base`? */
@@ -60,9 +62,9 @@ class VarianceChecker()(implicit ctx: Context) {
       if (meth.isConstructor) meth.owner.owner else meth.owner
 
     /** Check variance of abstract type `tvar` when referred from `base`. */
-    private def checkVarianceOfSymbol(tvar: Symbol): Option[VarianceError] = {
+    private def checkVarianceOfSymbol(tvar: Symbol): UOption[VarianceError] = {
       val relative = relativeVariance(tvar, base)
-      if (relative == Bivariant) None
+      if (relative == Bivariant) UNone
       else {
         val required = compose(relative, this.variance)
         def tvar_s = s"$tvar (${varianceString(tvar.flags)} ${tvar.showLocated})"
@@ -71,8 +73,8 @@ class VarianceChecker()(implicit ctx: Context) {
         ctx.log(s"relative variance: ${varianceString(relative)}")
         ctx.log(s"current variance: ${this.variance}")
         ctx.log(s"owner chain: ${base.ownersIterator.toList}")
-        if (tvar is required) None
-        else Some(VarianceError(tvar, required))
+        if (tvar is required) UNone
+        else USome(VarianceError(tvar, required))
       }
     }
 
@@ -80,7 +82,7 @@ class VarianceChecker()(implicit ctx: Context) {
      *  explicitly (their TypeDefs will be passed here.) For MethodTypes, the
      *  same is true of the parameters (ValDefs).
      */
-    def apply(status: Option[VarianceError], tp: Type): Option[VarianceError] = ctx.traceIndented(s"variance checking $tp of $base at $variance", variances) {
+    def apply(status: UOption[VarianceError], tp: Type): UOption[VarianceError] = ctx.traceIndented(s"variance checking $tp of $base at $variance", variances) {
       if (status.isDefined) status
       else tp match {
         case tp: TypeRef =>
@@ -99,24 +101,24 @@ class VarianceChecker()(implicit ctx: Context) {
       }
     }
 
-    def validateDefinition(base: Symbol): Option[VarianceError] = {
+    def validateDefinition(base: Symbol): UOption[VarianceError] = {
       val saved = this.base
       this.base = base
-      try apply(None, base.info)
+      try apply(UNone, base.info)
       finally this.base = saved
     }
   }
 
   private object Traverser extends TreeTraverser {
     def checkVariance(sym: Symbol, pos: Position) = Validator.validateDefinition(sym) match {
-      case Some(VarianceError(tvar, required)) =>
+      case USome(VarianceError(tvar, required)) =>
         def msg = i"${varianceString(tvar.flags)} $tvar occurs in ${varianceString(required)} position in type ${sym.info} of $sym"
         if (ctx.scala2Mode && sym.owner.isConstructor) {
           ctx.migrationWarning(s"According to new variance rules, this is no longer accepted; need to annotate with @uncheckedVariance:\n$msg", pos)
           patch(Position(pos.end), " @scala.annotation.unchecked.uncheckedVariance") // TODO use an import or shorten if possible
         }
         else ctx.error(msg, pos)
-      case None =>
+      case UNone =>
     }
 
     override def traverse(tree: Tree)(implicit ctx: Context) = {

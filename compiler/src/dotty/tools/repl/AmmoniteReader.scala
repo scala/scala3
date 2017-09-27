@@ -16,6 +16,8 @@ import GUILikeFilters._
 import LazyList._
 import AmmoniteReader._
 
+import dotty.uoption._
+
 /** Adaptation of the Ammonite shell emulator to fit the Dotty REPL
  *
  *  Credit for the code in the `terminal` goes to Li Haoyi

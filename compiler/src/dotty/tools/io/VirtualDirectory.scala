@@ -6,6 +6,8 @@ package dotty.tools.io
 
 import scala.collection.mutable
 
+import dotty.uoption._
+
 /**
  * An in-memory directory.
  *
@@ -13,12 +15,12 @@ import scala.collection.mutable
  *
  * ''Note:  This library is considered experimental and should not be used unless you know what you are doing.''
  */
-class VirtualDirectory(val name: String, maybeContainer: Option[VirtualDirectory])
+class VirtualDirectory(val name: String, maybeContainer: UOption[VirtualDirectory])
 extends AbstractFile {
   def path: String =
     maybeContainer match {
-      case None => name
-      case Some(parent) => parent.path+'/'+ name
+      case UNone => name
+      case USome(parent) => parent.path+'/'+ name
     }
 
   def absolute = this
@@ -61,7 +63,7 @@ extends AbstractFile {
 
   override def subdirectoryNamed(name: String): AbstractFile =
     Option(lookupName(name, directory = true)) getOrElse {
-      val dir = new VirtualDirectory(name, Some(this))
+      val dir = new VirtualDirectory(name, USome(this))
       files(name) = dir
       dir
     }
