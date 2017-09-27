@@ -33,7 +33,7 @@ object DesugarEnums {
   /** Is enum case `tree` situated in a companion object of an enum class? */
   def enumCaseIsLegal(tree: Tree)(implicit ctx: Context): Boolean = (
     ctx.owner.is(ModuleClass) && enumClass.derivesFrom(defn.EnumClass)
-    || { ctx.error(EnumCaseDefinitionInNonEnumOwner(), tree.pos)
+    || { ctx.error(EnumCaseDefinitionInNonEnumOwner(ctx.owner), tree.pos)
          false
        }
     )

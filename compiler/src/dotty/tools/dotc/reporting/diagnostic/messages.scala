@@ -1777,11 +1777,10 @@ object messages {
     val explanation =
       hl"""A class marked with the ${"final"} keyword cannot be extended"""
   }
-
-  case class EnumCaseDefinitionInNonEnumOwner()(implicit ctx: Context)
+  case class EnumCaseDefinitionInNonEnumOwner(owner: Symbol)(implicit ctx: Context)
     extends Message(EnumCaseDefinitionInNonEnumOwnerID) {
       val kind = "Syntax"
-      val msg = em"case not allowed here, since owner ${ctx.owner} is not an `enum' object"
+      val msg = em"case not allowed here, since owner ${owner} is not an `enum' object"
       val explanation = {
 
         hl"""

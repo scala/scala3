@@ -998,6 +998,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
       val ReturnOutsideMethodDefinition(owner) :: Nil = messages
       assertEquals("object A", owner.show)
     }
+
   @Test def extendFinalClass = checkMessagesAfter("refchecks") {
     """final class A
       |
@@ -1010,4 +1011,17 @@ class ErrorMessagesTests extends ErrorMessagesTest {
     assertEquals(extender.show, "class B")
     assertEquals(parent.show, "class A")
   }
+
+  @Test def enumCaseDefinitionInNonEnumOwner =
+    checkMessagesAfter("frontend") {
+      """object Qux {
+        |  case Foo
+        |}
+      """.stripMargin
+    }.expect { (ictx, messages) =>
+      implicit val ctx: Context = ictx
+      assertMessageCount(1, messages)
+      val EnumCaseDefinitionInNonEnumOwner(owner) :: Nil = messages
+      assertEquals("object Qux", owner.show)
+    }
 }
