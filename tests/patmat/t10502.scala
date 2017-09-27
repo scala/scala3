@@ -32,3 +32,16 @@ object Multi {
      case Multi(Some(i), x) =>
   }
 }
+
+object Prod {
+  def unapply(str: String): (Option[Int], Int) = ???
+
+  "hello" match {
+     case Prod(Some(i), x) =>
+     case Prod(None, x) =>
+  }
+
+  "hello" match {
+     case Prod(Some(i), x) =>
+  }
+}
