@@ -1799,6 +1799,11 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
    */
   def tryInsertApplyOrImplicit(tree: Tree, pt: ProtoType)(fallBack: => Tree)(implicit ctx: Context): Tree = {
 
+    def isMethod(tree: Tree) = tree.tpe match {
+      case ref: TermRef => ref.denot.alternatives.forall(_.info.widen.isInstanceOf[MethodicType])
+      case _ => false
+    }
+
     def isSyntheticApply(tree: Tree): Boolean = tree match {
       case tree: Select => tree.getAttachment(InsertedApply).isDefined
       case Apply(fn, _) => fn.getAttachment(InsertedApply).isDefined
@@ -1821,7 +1826,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
         pt.markAsDropped()
         tree
       case _ =>
-        if (isApplyProto(pt) || isSyntheticApply(tree)) tryImplicit
+        if (isApplyProto(pt) || isMethod(tree) || isSyntheticApply(tree)) tryImplicit
         else tryEither(tryApply(_))((_, _) => tryImplicit)
      }
   }
