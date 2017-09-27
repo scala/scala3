@@ -55,7 +55,7 @@ class AugmentScala2Traits extends MiniPhaseTransform with IdentityDenotTransform
       val implClass = ctx.newCompleteClassSymbol(
         owner = mixin.owner,
         name = mixin.name.implClassName,
-        flags = Abstract | Scala2x,
+        flags = Abstract | Scala2x | ImplClass,
         parents = defn.ObjectType :: Nil,
         assocFile = mixin.assocFile).enteredAfter(thisTransform)
 

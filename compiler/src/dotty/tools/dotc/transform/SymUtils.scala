@@ -115,6 +115,9 @@ class SymUtils(val self: Symbol) extends AnyVal {
   def implClass(implicit ctx: Context): Symbol =
     self.owner.info.decl(self.name.implClassName).symbol
 
+  def traitOfImplClass(implicit ctx: Context): Symbol =
+    self.owner.info.decl(self.name.traitOfImplClassName).symbol
+
   def annotationsCarrying(meta: ClassSymbol)(implicit ctx: Context): List[Annotation] =
     self.annotations.filter(_.symbol.hasAnnotation(meta))
 
