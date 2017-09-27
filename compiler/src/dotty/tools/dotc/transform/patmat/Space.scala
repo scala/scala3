@@ -7,7 +7,7 @@ import Types._
 import Contexts._
 import Flags._
 import ast.Trees._
-import ast.{tpd, untpd}
+import ast.tpd
 import Decorators._
 import Symbols._
 import StdNames._
@@ -404,21 +404,37 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
       else
         Prod(pat.tpe.stripAnnots, fun.tpe.widen, fun.symbol, pats.map(project), irrefutable(fun))
     case Typed(pat @ UnApply(_, _, _), _) => project(pat)
-    case Typed(expr, _) => Typ(erase(expr.tpe.stripAnnots), true)
+    case Typed(expr, tpt) =>
+      val unchecked = expr.tpe.hasAnnotation(ctx.definitions.UncheckedAnnot)
+      def warn(msg: String): Unit = if (!unchecked) ctx.warning(UncheckedTypePattern(msg), tpt.pos)
+      Typ(erase(expr.tpe.stripAnnots)(warn), true)
     case _ =>
       debug.println(s"unknown pattern: $pat")
       Empty
   }
 
   /* Erase a type binding according to erasure semantics in pattern matching */
-  def erase(tp: Type): Type = tp match {
+  def erase(tp: Type)(implicit warn: String => Unit): Type = tp match {
     case tp @ AppliedType(tycon, args) =>
       if (tycon.isRef(defn.ArrayClass)) tp.derivedAppliedType(tycon, args.map(erase))
-      else tp.derivedAppliedType(tycon, args.map(t => WildcardType))
+      else {
+        val ignoreWarning = args.forall { p =>
+          p.typeSymbol.is(BindDefinedType) ||
+            p.hasAnnotation(defn.UncheckedAnnot) ||
+            p.isInstanceOf[TypeBounds]
+        }
+        if (!ignoreWarning)
+          warn("type arguments are not checked since they are eliminated by erasure")
+
+        tp.derivedAppliedType(tycon, args.map(t => WildcardType))
+      }
     case OrType(tp1, tp2) =>
       OrType(erase(tp1), erase(tp2))
     case AndType(tp1, tp2) =>
       AndType(erase(tp1), erase(tp2))
+    case tp: RefinedType =>
+      warn("type refinement is not checked since it is eliminated by erasure")
+      tp.derivedRefinedType(erase(tp.parent), tp.refinedName, WildcardType)
     case _ => tp
   }
 
@@ -740,12 +756,10 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
   }
 
   def checkable(tree: Match): Boolean = {
-    def isCheckable(tp: Type): Boolean = tp match {
-      case AnnotatedType(tp, annot) =>
-        (ctx.definitions.UncheckedAnnot != annot.symbol) && isCheckable(tp)
-      case _ =>
-        // Possible to check everything, but be compatible with scalac by default
-        ctx.settings.YcheckAllPatmat.value ||
+    // Possible to check everything, but be compatible with scalac by default
+    def isCheckable(tp: Type): Boolean =
+        !tp.hasAnnotation(defn.UncheckedAnnot) && (
+          ctx.settings.YcheckAllPatmat.value ||
           tp.typeSymbol.is(Sealed) ||
           tp.isInstanceOf[OrType] ||
           (tp.isInstanceOf[AndType] && {
@@ -756,7 +770,7 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
           tp.typeSymbol.is(Enum) ||
           canDecompose(tp) ||
           (defn.isTupleType(tp) && tp.dealias.argInfos.exists(isCheckable(_)))
-    }
+        )
 
     val Match(sel, cases) = tree
     val res = isCheckable(sel.tpe.widen.dealiasKeepAnnots)
