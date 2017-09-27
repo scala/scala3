@@ -1758,4 +1758,17 @@ object messages {
           |"""
   }
 
+  case class OnlyStaticObjectCanExtendPhantom()(implicit ctx: Context)
+    extends Message(OnlyStaticObjectCanExtendPhantomID) {
+    val kind = "Inheritance"
+    val msg = hl"only static ${"object"}s can extend ${"scala.Phantom"}"
+    val explanation =
+      hl"""To declare a phantom type, you need to declare a static object
+          |extending ${"scala.Phantom"}. Being "static" means, the object
+          |must be top-level or member of an object.
+          |
+          |See ${Blue("http://dotty.epfl.ch/docs/reference/phantom-types.html")}
+          |"""
+  }
+
 }

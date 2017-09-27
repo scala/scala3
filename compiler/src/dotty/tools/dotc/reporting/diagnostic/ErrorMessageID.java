@@ -99,6 +99,7 @@ public enum ErrorMessageID {
     MissingReturnTypeWithReturnStatementID,
     NoReturnFromInlineID,
     ReturnOutsideMethodDefinitionID,
+    OnlyStaticObjectCanExtendPhantomID,
     ;
 
     public int errorNumber() {
