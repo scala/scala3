@@ -128,8 +128,10 @@ class HoistSuperArgs extends MiniPhaseTransform with IdentityDenotTransformer { 
                   case tp: NamedType
                   if (tp.symbol.owner == cls || tp.symbol.owner == constr) &&
                      tp.symbol.isParamOrAccessor =>
-                    val mappedSym = origToParam(tp.symbol)
-                    if (tp.symbol.isType) mappedSym.typeRef else mappedSym.termRef
+                    origToParam.get(tp.symbol) match {
+                      case Some(mappedSym) => if (tp.symbol.isType) mappedSym.typeRef else mappedSym.termRef
+                      case None => mapOver(tp)
+                    }
                   case _ =>
                     mapOver(tp)
                 }
