@@ -1747,4 +1747,15 @@ object messages {
           |returned from a method.
           |"""
   }
+
+  case class ReturnOutsideMethodDefinition(owner: Symbol)(implicit ctx: Context)
+    extends Message(ReturnOutsideMethodDefinitionID) {
+    val kind = "Syntax"
+    val msg = hl"${"return"} outside method definition"
+    val explanation =
+      hl"""You used ${"return"} in ${owner}.
+          |${"return"} is a keyword and may only be used within method declarations.
+          |"""
+  }
+
 }
