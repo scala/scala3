@@ -5,6 +5,8 @@ package config
 import java.io.{ IOException, PrintWriter }
 import java.util.jar.Attributes.{ Name => AttributeName }
 
+import dotty.uoption._
+
 /** Loads `library.properties` from the jar. */
 object Properties extends PropertiesTrait {
   protected def propCategory    = "compiler"
@@ -44,18 +46,18 @@ trait PropertiesTrait {
   def propOrElse(name: String, alt: String)     = System.getProperty(name, alt)
   def propOrEmpty(name: String)                 = propOrElse(name, "")
   def propOrNull(name: String)                  = propOrElse(name, null)
-  def propOrNone(name: String)                  = Option(propOrNull(name))
+  def propOrNone(name: String)                  = UOption(propOrNull(name))
   def propOrFalse(name: String)                 = propOrNone(name) exists (x => List("yes", "on", "true") contains x.toLowerCase)
   def setProp(name: String, value: String)      = System.setProperty(name, value)
   def clearProp(name: String)                   = System.clearProperty(name)
 
-  def envOrElse(name: String, alt: String)      = Option(System getenv name) getOrElse alt
-  def envOrNone(name: String)                   = Option(System getenv name)
+  def envOrElse(name: String, alt: String)      = UOption(System getenv name) getOrElse alt
+  def envOrNone(name: String)                   = UOption(System getenv name)
 
   // for values based on propFilename
   def scalaPropOrElse(name: String, alt: String): String = scalaProps.getProperty(name, alt)
   def scalaPropOrEmpty(name: String): String             = scalaPropOrElse(name, "")
-  def scalaPropOrNone(name: String): Option[String]      = Option(scalaProps.getProperty(name))
+  def scalaPropOrNone(name: String): UOption[String]     = UOption(scalaProps.getProperty(name))
   
   /** Either the development or release version if known, otherwise
    *  the empty string.

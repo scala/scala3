@@ -8,6 +8,8 @@ import Names._, Types._ , Symbols._, StdNames._, Flags._, Contexts._
 import org.junit.Test
 import org.junit.Assert._
 
+import dotty.uoption._
+
 class DesugarTests extends DottyTest {
   import tpd._
 

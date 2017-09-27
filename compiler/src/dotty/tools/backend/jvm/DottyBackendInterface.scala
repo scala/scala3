@@ -38,6 +38,8 @@ import dotty.tools.dotc.core.Names.TypeName
 
 import scala.annotation.tailrec
 
+import dotty.uoption._
+
 class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Map[Symbol, Set[ClassSymbol]])(implicit ctx: Context) extends BackendInterface{
   import Symbols.{toDenot, toClassDenot}
     // Dotty deviation: Need to (re-)import implicit decorators here because otherwise

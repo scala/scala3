@@ -35,6 +35,8 @@ import Constants.{Constant, IntTag, LongTag}
 
 import scala.collection.mutable.ListBuffer
 
+import dotty.uoption._
+
 object Applications {
   import tpd._
 

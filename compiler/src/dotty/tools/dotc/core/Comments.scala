@@ -11,6 +11,8 @@ import util.Property.Key
 import parsing.Parsers.Parser
 import reporting.diagnostic.messages.ProperDefinitionNotFound
 
+import dotty.uoption._
+
 object Comments {
   val ContextDoc = new Key[ContextDocstrings]
 
@@ -34,7 +36,7 @@ object Comments {
 
     def docstring(sym: Symbol): Option[Comment] = _docstrings.get(sym)
 
-    def addDocstring(sym: Symbol, doc: Option[Comment]): Unit =
+    def addDocstring(sym: Symbol, doc: UOption[Comment]): Unit =
       doc.map(d => _docstrings += (sym -> d))
   }
 

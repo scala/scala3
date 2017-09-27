@@ -7,6 +7,8 @@ import Contexts._, Symbols._, Decorators._, Comments._
 import util.Positions._
 import ast.tpd
 
+import dotty.uoption._
+
 trait Docstrings { self: Typer =>
 
   /** The Docstrings typer will handle the expansion of `@define` and
@@ -44,7 +46,7 @@ trait Docstrings { self: Typer =>
             .expand(tplExp.expandedDocComment(sym, owner, _))
             .withUsecases
 
-          docCtx.addDocstring(sym, Some(newCmt))
+          docCtx.addDocstring(sym, USome(newCmt))
         }
 
         if (sym ne NoSymbol) {

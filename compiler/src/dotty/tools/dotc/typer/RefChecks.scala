@@ -21,6 +21,8 @@ import Decorators._
 import typer.ErrorReporting._
 import DenotTransformers._
 
+import dotty.uoption._
+
 object RefChecks {
   import tpd._
   import reporting.diagnostic.Message

@@ -34,6 +34,8 @@ import config.Config
 import config.Printers.{implicits, implicitsDetailed, typr}
 import collection.mutable
 
+import dotty.uoption._
+
 /** Implicit resolution */
 object Implicits {
 

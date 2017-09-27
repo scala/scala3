@@ -74,16 +74,27 @@ package object uoption {
     @inline def flatMap[B](f: A => UOption[B]): UOption[B] =
       if (isEmpty) UNone else f(forceGet)
 
+    def flatten[B](implicit ev: A <:< UOption[B]): UOption[B] =
+      if (isEmpty) UNone else ev(forceGet)
+
+    @inline final def fold[B](ifEmpty: => B)(f: A => B): B =
+      if (isEmpty) ifEmpty else f(forceGet)
+
     @inline def filter(p: A => Boolean): UOption[A] =
       if (isEmpty || p(forceGet)) self else UNone
 
     @inline def withFilter(p: A => Boolean): WithFilter[A] = new WithFilter[A](self, p)
+
+    @inline def exists(p: A => Boolean): Boolean =
+      !isEmpty && p(forceGet)
 
     @inline def getOrElse[B >: A](ifEmpty: => B): B =
       if (isEmpty) ifEmpty else forceGet
 
     @inline final def orElse[B >: A](alternative: => UOption[B]): UOption[B] =
       if (isEmpty) alternative else self.asInstanceOf[UOption[B]]
+
+    @inline final def orNull[A1 >: A](implicit ev: Null <:< A1): A1 = getOrElse(ev(null))
 
     @inline def foreach[U](f: A => U): Unit = {
       if (isDefined) f(forceGet)

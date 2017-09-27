@@ -8,6 +8,8 @@ import dotty.tools.dotc.ast.Trees._
 import org.junit.Assert._
 import org.junit.Test
 
+import dotty.uoption._
+
 class DocstringTests extends DocstringTest {
 
   @Test def noComment = {
@@ -16,7 +18,7 @@ class DocstringTests extends DocstringTest {
 
     checkFrontend(source) {
       case PackageDef(_, Seq(c: TypeDef)) =>
-        assert(c.rawComment.map(_.raw) == None, "Should not have a comment, mainly used for exhaustive tests")
+        assert(c.rawComment.map(_.raw) == UNone, "Should not have a comment, mainly used for exhaustive tests")
     }
   }
 
@@ -501,7 +503,7 @@ class DocstringTests extends DocstringTest {
     import dotty.tools.dotc.ast.untpd._
     checkFrontend(source) {
       case p @ PackageDef(_, Seq(_, c: TypeDef)) =>
-        assert(c.rawComment == None, s"class C is not supposed to have a docstring (${c.rawComment.get}) in:$source")
+        assert(c.rawComment == UNone, s"class C is not supposed to have a docstring (${c.rawComment.get}) in:$source")
     }
   }
 
@@ -515,7 +517,7 @@ class DocstringTests extends DocstringTest {
     import dotty.tools.dotc.ast.untpd._
     checkFrontend(source) {
       case p @ PackageDef(_, Seq(c: TypeDef)) =>
-        assert(c.rawComment == None, s"class C is not supposed to have a docstring (${c.rawComment.get}) in:$source")
+        assert(c.rawComment == UNone, s"class C is not supposed to have a docstring (${c.rawComment.get}) in:$source")
     }
   }
 } /* End class */

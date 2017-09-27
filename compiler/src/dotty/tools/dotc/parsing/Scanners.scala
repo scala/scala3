@@ -16,6 +16,8 @@ import mutable.ListBuffer
 import Utility.isNameStart
 import rewrite.Rewrites.patch
 
+import dotty.uoption._
+
 object Scanners {
 
   /** Offset into source character array */
@@ -192,7 +194,7 @@ object Scanners {
     }
 
     /** Returns the closest docstring preceding the position supplied */
-    def getDocComment(pos: Int): Option[Comment] = docstringMap.get(pos)
+    def getDocComment(pos: Int): UOption[Comment] = docstringMap.get(pos).toUOption
 
     /** A buffer for comments */
     val commentBuf = new StringBuilder

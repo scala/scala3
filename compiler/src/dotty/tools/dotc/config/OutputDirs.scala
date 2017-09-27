@@ -4,6 +4,8 @@ package config
 
 import io._
 
+import dotty.uoption._
+
 /** A class for holding mappings from source directories to
  *  their output location. This functionality can be accessed
  *  only programmatically. The command line compiler uses a
@@ -17,7 +19,7 @@ class OutputDirs {
   /** If this is not None, the output location where all
    *  classes should go.
    */
-  private var singleOutDir: Option[AbstractFile] = None
+  private var singleOutDir: UOption[AbstractFile] = UNone
 
   /** Add a destination directory for sources found under srcdir.
    *  Both directories should exits.
@@ -44,17 +46,17 @@ class OutputDirs {
     setSingleOutput(checkDir(dst, outDir, true))
   }
 
-  def getSingleOutput: Option[AbstractFile] = singleOutDir
+  def getSingleOutput: UOption[AbstractFile] = singleOutDir
 
   /** Set the single output directory. From now on, all files will
    *  be dumped in there, regardless of previous calls to 'add'.
    */
   def setSingleOutput(dir: AbstractFile): Unit = {
-    singleOutDir = Some(dir)
+    singleOutDir = USome(dir)
   }
 
   def add(src: AbstractFile, dst: AbstractFile): Unit = {
-    singleOutDir = None
+    singleOutDir = UNone
     outputDirs ::= ((src, dst))
   }
 
@@ -68,8 +70,8 @@ class OutputDirs {
       src.path.startsWith(srcDir.path)
 
     singleOutDir match {
-      case Some(d) => d
-      case None =>
+      case USome(d) => d
+      case UNone =>
         (outputs find (isBelow _).tupled) match {
           case Some((_, d)) => d
           case _ =>
@@ -101,12 +103,12 @@ class OutputDirs {
       classFile.path.startsWith(outDir.path)
 
     singleOutDir match {
-      case Some(d) =>
+      case USome(d) =>
         d match {
           case _: VirtualDirectory | _: io.ZipArchive => Nil
           case _ => List(d.lookupPathUnchecked(srcPath, false))
         }
-      case None =>
+      case UNone =>
         (outputs filter (isBelow _).tupled) match {
           case Nil => Nil
           case matches => matches.map(_._1.lookupPathUnchecked(srcPath, false))

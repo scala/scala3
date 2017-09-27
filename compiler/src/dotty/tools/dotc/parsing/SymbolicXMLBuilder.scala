@@ -13,6 +13,8 @@ import util.Positions._
 import Parsers.Parser
 import scala.language.implicitConversions
 
+import dotty.uoption._
+
 /** This class builds instance of `Tree` that represent XML.
  *
  *  Note from martin: This needs to have its position info reworked. I don't
@@ -132,7 +134,7 @@ class SymbolicXMLBuilder(parser: Parser, preserveWS: Boolean)(implicit ctx: Cont
   /** @todo: attributes */
   def makeXMLpat(pos: Position, n: String, args: Seq[Tree]): Tree = {
     val (prepat, labpat) = splitPrefix(n) match {
-      case (Some(pre), rest)  => (const(pre), const(rest))
+      case (USome(pre), rest)  => (const(pre), const(rest))
       case _                  => (wild, const(n))
     }
     mkXML(pos, true, prepat, labpat, null, null, false, args)
@@ -171,9 +173,9 @@ class SymbolicXMLBuilder(parser: Parser, preserveWS: Boolean)(implicit ctx: Cont
   }
 
   /** Returns (Some(prefix) | None, rest) based on position of ':' */
-  def splitPrefix(name: String): (Option[String], String) = name.splitWhere(_ == ':', doDropIndex = true) match {
-    case Some((pre, rest))  => (Some(pre), rest)
-    case _                  => (None, name)
+  def splitPrefix(name: String): (UOption[String], String) = name.splitWhere(_ == ':', doDropIndex = true) match {
+    case USome((pre, rest))  => (USome(pre), rest)
+    case _                  => (UNone, name)
   }
 
   /** Various node constructions. */
@@ -210,8 +212,8 @@ class SymbolicXMLBuilder(parser: Parser, preserveWS: Boolean)(implicit ctx: Cont
       }
 
     val (pre, newlabel) = splitPrefix(qname) match {
-      case (Some(p), x) => (p, x)
-      case (None, x)    => (null, x)
+      case (USome(p), x) => (p, x)
+      case (UNone, x)    => (null, x)
     }
 
     def mkAttributeTree(pre: String, key: String, value: Tree) = atPos(pos.toSynthetic) {
@@ -230,8 +232,8 @@ class SymbolicXMLBuilder(parser: Parser, preserveWS: Boolean)(implicit ctx: Cont
 
     val attributes: List[Tree] =
       for ((k, v) <- attrMap.toList.reverse) yield splitPrefix(k) match {
-        case (Some(pre), rest)  => handlePrefixedAttribute(pre, rest, v)
-        case _                  => handleUnprefixedAttribute(k, v)
+        case (USome(pre), rest)  => handlePrefixedAttribute(pre, rest, v)
+        case _                   => handleUnprefixedAttribute(k, v)
       }
 
     lazy val scopeDef     = ValDef(_scope, _scala_xml_NamespaceBinding, Ident(_tmpscope))

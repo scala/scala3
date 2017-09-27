@@ -19,6 +19,8 @@ import java.util.WeakHashMap
 import config.Config
 import config.Printers.{completions, incremental, noPrinter}
 
+import dotty.uoption._
+
 trait SymDenotations { this: Context =>
   import SymDenotations._
 
@@ -293,10 +295,10 @@ object SymDenotations {
       annotations = annotations.filterConserve(p)
 
     /** Optionally, the annotation matching the given class symbol */
-    final def getAnnotation(cls: Symbol)(implicit ctx: Context): Option[Annotation] =
+    final def getAnnotation(cls: Symbol)(implicit ctx: Context): UOption[Annotation] =
       dropOtherAnnotations(annotations, cls) match {
-        case annot :: _ => Some(annot)
-        case nil => None
+        case annot :: _ => USome(annot)
+        case nil => UNone
       }
 
     /** The same as getAnnotation, but without ensuring
