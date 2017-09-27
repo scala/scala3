@@ -1786,7 +1786,7 @@ object messages {
 
         hl"""
             | ${"case"} is only allowed at this place if the surrounding object is the companion object of an `enum class`.
-            | If you wanted to create an enumeration, make sure that the corresponding class has the `enum` keyword.
+            | If you wanted to create an enumeration make sure that the corresponding class has the `enum` keyword.
             | Otherwise you might have forgotten `class` or `object` after this `enum`.
             |
             | See http://dotty.epfl.ch/docs/reference/enums/enums.html for more details on enumerations.
