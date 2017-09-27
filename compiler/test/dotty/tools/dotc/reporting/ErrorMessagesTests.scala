@@ -985,4 +985,18 @@ class ErrorMessagesTests extends ErrorMessagesTest {
       val NoReturnFromInline(method) :: Nil = messages
       assertEquals("method usesReturn", method.show)
     }
+
+  @Test def returnOutsideMethodDefinition =
+    checkMessagesAfter("frontend") {
+      """object A {
+        |  return 5
+        |}
+      """.stripMargin
+    }.expect { (ictx, messages) =>
+      implicit val ctx: Context = ictx
+      assertMessageCount(1, messages)
+      val ReturnOutsideMethodDefinition(checkedContext) :: Nil = messages
+      assertEquals("object A", checkedContext.owner.show)
+    }
+
 }

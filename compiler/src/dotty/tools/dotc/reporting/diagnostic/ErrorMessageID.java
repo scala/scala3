@@ -98,6 +98,7 @@ public enum ErrorMessageID {
     ExpectedStartOfTopLevelDefinitionID,
     MissingReturnTypeWithReturnStatementID,
     NoReturnFromInlineID,
+    ReturnOutsideMethodDefinitionID,
     ;
 
     public int errorNumber() {
