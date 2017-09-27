@@ -1423,7 +1423,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
 
       // Check that phantom lattices are defined in a static object
       if (cls.classParents.exists(_.typeSymbol eq defn.PhantomClass) && !cls.isStaticOwner)
-        ctx.error("only static objects can extend scala.Phantom", cdef.pos)
+        ctx.error(OnlyStaticObjectCanExtendPhantom(), cdef.pos)
 
       // check value class constraints
       checkDerivedValueClass(cls, body1)

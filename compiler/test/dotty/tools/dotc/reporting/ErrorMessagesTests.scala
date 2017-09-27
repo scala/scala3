@@ -998,4 +998,16 @@ class ErrorMessagesTests extends ErrorMessagesTest {
       val ReturnOutsideMethodDefinition(owner) :: Nil = messages
       assertEquals("object A", owner.show)
     }
+
+  @Test def onlyStaticObjectCanExtendPhantom =
+    checkMessagesAfter("frontend") {
+      "class Dont extends scala.Phantom"
+    }.expect { (ictx, messages) =>
+      implicit val ctx: Context = ictx
+
+      assertMessageCount(1, messages)
+
+      val OnlyStaticObjectCanExtendPhantom() :: Nil = messages
+    }
+
 }
