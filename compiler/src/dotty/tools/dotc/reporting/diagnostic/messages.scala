@@ -1757,7 +1757,7 @@ object messages {
       hl"""Methods marked with ${"@inline"} may not use ${"return"} statements.
           |Instead, you should rely on the last expression's value being
           |returned from a method.
-          |"""
+          |""".stripMargin
   }
 
   case class ReturnOutsideMethodDefinition(owner: Symbol)(implicit ctx: Context)
@@ -1767,7 +1767,7 @@ object messages {
     val explanation =
       hl"""You used ${"return"} in ${owner}.
           |${"return"} is a keyword and may only be used within method declarations.
-          |"""
+          |""".stripMargin
   }
 
 }
