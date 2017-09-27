@@ -1748,7 +1748,7 @@ object messages {
     val explanation =
       hl"you have to provide either ${"class"}, ${"trait"}, ${"object"}, or ${"enum"} definitions after qualifiers"
   }
-
+  
   case class NoReturnFromInline(owner: Symbol)(implicit ctx: Context)
     extends Message(NoReturnFromInlineID) {
     val kind = "Syntax"
@@ -1777,5 +1777,22 @@ object messages {
     val explanation =
       hl"""A class marked with the ${"final"} keyword cannot be extended"""
   }
+
+  case class EnumCaseDefinitionInNonEnumOwner()(implicit ctx: Context)
+    extends Message(EnumCaseDefinitionInNonEnumOwnerID) {
+      val kind = "Syntax"
+      val msg = em"case not allowed here, since owner ${ctx.owner} is not an `enum' object"
+      val explanation = {
+
+        hl"""
+            | ${"case"} is only allowed at this place if the surrounding object is the companion object of an `enum class`.
+            | If you wanted to create an enumeration, make sure that the corresponding class has the `enum` keyword.
+            | Otherwise you might have forgotten `class` or `object` after this `enum`.
+            |
+            | See http://dotty.epfl.ch/docs/reference/enums/enums.html for more details on enumerations.
+          """.stripMargin
+      }
+
+    }
 
 }
