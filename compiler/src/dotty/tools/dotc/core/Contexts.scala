@@ -459,9 +459,9 @@ object Contexts {
     def setCompilerCallback(callback: CompilerCallback): this.type = { this.compilerCallback = callback; this }
     def setSbtCallback(callback: AnalysisCallback): this.type = { this.sbtCallback = callback; this }
     def setTyperState(typerState: TyperState): this.type = { this.typerState = typerState; this }
-    def setReporter(reporter: Reporter): this.type = setTyperState(typerState.withReporter(reporter))
-    def setNewTyperState: this.type = setTyperState(typerState.fresh(isCommittable = true))
-    def setExploreTyperState: this.type = setTyperState(typerState.fresh(isCommittable = false))
+    def setReporter(reporter: Reporter): this.type = setTyperState(typerState.fresh().setReporter(reporter))
+    def setNewTyperState(): this.type = setTyperState(typerState.fresh().setCommittable(true))
+    def setExploreTyperState(): this.type = setTyperState(typerState.fresh().setCommittable(false))
     def setPrinterFn(printer: Context => Printer): this.type = { this.printerFn = printer; this }
     def setOwner(owner: Symbol): this.type = { assert(owner != NoSymbol); this.owner = owner; this }
     def setSettings(sstate: SettingsState): this.type = { this.sstate = sstate; this }
@@ -520,7 +520,7 @@ object Contexts {
     outer = NoContext
     period = InitialPeriod
     mode = Mode.None
-    typerState = new TyperState(new ConsoleReporter())
+    typerState = new TyperState(null)
     printerFn = new RefinedPrinter(_)
     owner = NoSymbol
     sstate = settings.defaultState
