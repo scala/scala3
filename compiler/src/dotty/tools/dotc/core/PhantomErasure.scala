@@ -2,7 +2,7 @@ package dotty.tools.dotc.core
 
 import dotty.tools.dotc.ast.tpd._
 import dotty.tools.dotc.core.Contexts.Context
-import dotty.tools.dotc.core.Symbols.defn
+import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.core.Types.Type
 
 /** Phantom erasure erases:
@@ -26,5 +26,8 @@ object PhantomErasure {
 
   /** Returns the default erased tree for a phantom parameter ref */
   def erasedParameterRef(implicit ctx: Context): Tree = ref(defn.ErasedPhantom_UNIT)
+
+  /** Is it a pure term inserted by the phantom erasure? */
+  def isErasedPhantom(sym: Symbol)(implicit ctx: Context): Boolean = sym eq defn.ErasedPhantom_UNIT
 
 }
