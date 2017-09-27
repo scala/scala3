@@ -1748,15 +1748,12 @@ object messages {
           |"""
   }
 
-  case class ReturnOutsideMethodDefinition(checkedContext: Context)(implicit ctx: Context)
+  case class ReturnOutsideMethodDefinition(owner: Symbol)(implicit ctx: Context)
     extends Message(ReturnOutsideMethodDefinitionID) {
     val kind = "Syntax"
     val msg = hl"${"return"} outside method definition"
-    private def contextInfo =
-      if (checkedContext == NoContext) "outside any declaration"
-      else s"in ${checkedContext.owner.show}"
     val explanation =
-      hl"""You used ${"return"} $contextInfo.
+      hl"""You used ${"return"} in ${owner}.
           |${"return"} is a keyword and may only be used within method declarations.
           |"""
   }
