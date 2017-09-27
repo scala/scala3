@@ -17,6 +17,24 @@ object Message {
     new NoExplanation(str)
 }
 
+sealed trait DocumentationLink {
+  def text: String
+  def url: String
+}
+
+object DocumentationLink {
+  case class LanguageSpec(text: String = "Language Specification", suffix: String) extends DocumentationLink {
+    val url = s"https://www.scala-lang.org/files/archive/spec/2.13/$suffix"
+  }
+  case class TourUrl(text: String, suffix: String) extends DocumentationLink {
+    val url = s"http://docs.scala-lang.org/overviews/$suffix"
+  }
+  case class DottyDocs(text: String = "Dotty documentation", suffix: String) extends DocumentationLink {
+    val url = s"http://dotty.epfl.ch/docs/$suffix"
+  }
+  case class FullUrl(text: String, url: String) extends DocumentationLink
+}
+
 /** A `Message` contains all semantic information necessary to easily
   * comprehend what caused the message to be logged. Each message can be turned
   * into a `MessageContainer` which contains the log level and can later be
@@ -56,6 +74,8 @@ abstract class Message(val errorId: ErrorMessageID) { self =>
     */
   def explanation: String
 
+  def links: List[DocumentationLink] = Nil
+
   /** The implicit `Context` in messages is a large thing that we don't want
     * persisted. This method gets around that by duplicating the message
     * without the implicit context being passed along.
@@ -64,6 +84,8 @@ abstract class Message(val errorId: ErrorMessageID) { self =>
     val msg         = self.msg
     val kind        = self.kind
     val explanation = self.explanation
+    private val persistedLinks = self.links
+    override def links = persistedLinks
   }
 }
 

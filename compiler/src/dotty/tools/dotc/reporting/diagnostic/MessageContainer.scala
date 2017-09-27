@@ -15,10 +15,7 @@ object MessageContainer {
   implicit class MessageContext(val c: Context) extends AnyVal {
     def shouldExplain(cont: MessageContainer): Boolean = {
       implicit val ctx = c
-      cont.contained().explanation match {
-        case "" => false
-        case _ => ctx.settings.explain.value
-      }
+      cont.contained().explanation.nonEmpty && c.settings.explain.value
     }
   }
 }

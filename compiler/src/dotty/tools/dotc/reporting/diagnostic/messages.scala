@@ -23,6 +23,8 @@ import dotty.tools.dotc.ast.Trees
 import dotty.tools.dotc.config.ScalaVersion
 import dotty.tools.dotc.core.Flags._
 import dotty.tools.dotc.core.SymDenotations.SymDenotation
+import dotty.tools.dotc.reporting.diagnostic.DocumentationLink.{DottyDocs, LanguageSpec}
+
 import scala.util.control.NonFatal
 
 object messages {
@@ -137,6 +139,10 @@ object messages {
            |It is recommended to use the ${"NonFatal"} extractor to catch all exceptions as it
            |correctly handles transfer functions like ${"return"}."""
     }
+
+    override def links: List[DocumentationLink] = List(
+      LanguageSpec(suffix = "06-expressions.html#try-expressions")
+    )
   }
 
   case class EmptyCatchBlock(tryBody: untpd.Tree)(implicit ctx: Context)
@@ -164,6 +170,10 @@ object messages {
       hl"""|Dotty introduces intersection types - `&' types. These replace the
            |use of the ${"with"} keyword. There are a few differences in
            |semantics between intersection types and using `${"with"}'."""
+
+    override def links = List(
+      DottyDocs(suffix = "reference/intersection-types.html")
+    )
   }
 
   case class CaseClassMissingParamList(cdef: untpd.TypeDef)(implicit ctx: Context)
@@ -176,6 +186,10 @@ object messages {
       hl"""|${cdef.name} must have at least one parameter list, if you would rather
            |have a singleton representation of ${cdef.name}, use a "${"case object"}".
            |Or, add an explicit `()' as a parameter list to ${cdef.name}."""
+
+    override def links = List(
+      LanguageSpec(suffix = "05-classes-and-objects.html#case-classes")
+    )
   }
 
   case class AnonymousFunctionMissingParamType(param: untpd.ValDef,
@@ -208,6 +222,10 @@ object messages {
            |Make sure you give it a type of what you expect to match and help the type inference system:
            |
            |${"val f: Any => Int = { case x: Int => x + 1 }"} """
+
+    override def links = List(
+      LanguageSpec(suffix = "06-expressions.html#anonymous-functions")
+    )
   }
 
   case class WildcardOnTypeArgumentNotAllowedOnNew()(implicit ctx: Context)
@@ -409,7 +427,12 @@ object messages {
            |
            |$code2
            |"""
+
     }
+
+    override def links = List(
+      DottyDocs(suffix = "reference/trait-parameters.html")
+    )
   }
 
   case class TopLevelImplicitClass(cdef: untpd.TypeDef)(implicit ctx: Context)
@@ -1711,6 +1734,10 @@ object messages {
          |In this instance, the modifier combination is not supported
         """
     }
+
+    override def links: List[DocumentationLink] = List(
+      LanguageSpec("Please see the official Scala Language Specification section on modifiers",
+        "05-classes-and-objects.html#modifiers"))
   }
 
   case class FunctionTypeNeedsNonEmptyParameterList(isImplicit: Boolean = true, isErased: Boolean = true)(implicit ctx: Context)

@@ -47,8 +47,9 @@ final class DelegatingReporter(delegate: xsbti.Reporter) extends Reporter
 
     val sb = new StringBuilder()
     sb.append(messageAndPos(cont.contained(), cont.pos, diagnosticLevel(cont)))
-    if (ctx.shouldExplain(cont) && cont.contained().explanation.nonEmpty) {
+    if (ctx.shouldExplain(cont)) {
       sb.append(explanation(cont.contained()))
+      if (cont.contained().links.nonEmpty) sb.append(documentationLinks(cont.contained()))
     }
 
     delegate.log(position, sb.toString(), severity)

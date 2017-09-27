@@ -4,14 +4,14 @@ package reporting
 
 import core.Contexts.Context
 import core.Decorators._
-import printing.Highlighting.{Blue, Red}
+import printing.Highlighting.{Blue, Red, Yellow}
 import printing.SyntaxHighlighting
 import diagnostic.{ErrorMessageID, Message, MessageContainer, NoExplanation}
 import diagnostic.messages._
 import util.SourcePosition
-import util.Chars.{ LF, CR, FF, SU }
-import scala.annotation.switch
+import util.Chars.{CR, FF, LF, SU}
 
+import scala.annotation.switch
 import scala.collection.mutable
 
 trait MessageRendering {
@@ -130,12 +130,28 @@ trait MessageRendering {
     val sb = new StringBuilder(
       hl"""|
            |${Blue("Explanation")}
-           |${Blue("===========")}"""
+           |${Blue("===========")}
+           |"""
     )
-    sb.append('\n').append(m.explanation)
-    if (m.explanation.lastOption != Some('\n')) sb.append('\n')
+    sb.append(m.explanation)
+    if (!m.explanation.endsWith("\n")) sb.append('\n')
     sb.toString
   }
+
+  /** Documentation links rendered under "Further reading" header */
+  def documentationLinks(m: Message)(implicit ctx: Context): String = {
+    val sb = new StringBuilder(
+      hl"""|
+           |${Blue("Further reading")}
+           |${Blue("===============")}
+           |"""
+    )
+    for (link <- m.links) {
+      sb.append(link.text).append(hl" ${Yellow(link.url)}\n")
+    }
+    sb.append('\n').toString
+  }
+
 
   /** The whole message rendered from `msg` */
   def messageAndPos(msg: Message, pos: SourcePosition, diagnosticLevel: String)(implicit ctx: Context): String = {

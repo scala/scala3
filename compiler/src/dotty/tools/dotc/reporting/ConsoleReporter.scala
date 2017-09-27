@@ -34,8 +34,10 @@ class ConsoleReporter(
         true
     }
 
-    if (didPrint && ctx.shouldExplain(m))
+    if (didPrint && ctx.shouldExplain(m)) {
       printMessage(explanation(m.contained()))
+      if (m.contained().links.nonEmpty) printMessage(documentationLinks(m.contained()))
+    }
     else if (didPrint && m.contained().explanation.nonEmpty)
       printMessage("\nlonger explanation available when compiling with `-explain`")
   }
