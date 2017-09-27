@@ -4,6 +4,7 @@ package dotc
 
 import org.junit.{ Test, BeforeClass, AfterClass }
 import org.junit.Assert._
+import org.junit.Assume._
 
 import java.nio.file._
 import java.util.stream.{ Stream => JStream }
@@ -295,6 +296,7 @@ class CompilationTests extends ParallelTesting {
   }
 
   @Test def testOptimised: Unit = {
+    assumeTrue("Only executes on Drone", dotty.Properties.isRunByDrone)
     val outputDir = defaultOutputDir + "optimised/"
     compileFilesInDir("../tests/pos", defaultOptimised, outputDir).checkCompile()
     compileFilesInDir("../tests/run", defaultOptimised, outputDir).checkRuns()
