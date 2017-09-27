@@ -979,7 +979,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
       }
     def enclMethInfo(cx: Context): (Tree, Type) = {
       val owner = cx.owner
-      if (cx == NoContext || owner.isType) {
+      if (owner.isType) {
         ctx.error("return outside method definition", tree.pos)
         (EmptyTree, WildcardType)
       }
