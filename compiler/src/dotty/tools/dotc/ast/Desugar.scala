@@ -13,6 +13,8 @@ import collection.mutable.ListBuffer
 import util.Property
 import reporting.diagnostic.messages._
 
+import dotty.uoption._
+
 object desugar {
   import untpd._
   import DesugarEnums._
@@ -1133,10 +1135,10 @@ object desugar {
  /** If tree is of the form `id` or `id: T`, return its name and type, otherwise return None.
    */
   private object IdPattern {
-    def unapply(tree: Tree)(implicit ctx: Context): Option[VarInfo] = tree match {
-      case id: Ident => Some(id, TypeTree())
-      case Typed(id: Ident, tpt) => Some((id, tpt))
-      case _ => None
+    def unapply(tree: Tree)(implicit ctx: Context): UOptionUnapply[VarInfo] = tree match {
+      case id: Ident => USome(id, TypeTree())
+      case Typed(id: Ident, tpt) => USome((id, tpt))
+      case _ => UNone
     }
   }
 

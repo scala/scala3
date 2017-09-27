@@ -3513,7 +3513,7 @@ object Types {
   object TypeAlias {
     def apply(alias: Type)(implicit ctx: Context) =
       unique(new CachedTypeAlias(alias))
-    def unapply(tp: TypeAlias): Option[Type] = Some(tp.alias)
+    def unapply(tp: TypeAlias): UOptionUnapply[Type] = USome(tp.alias)
   }
 
   // ----- Annotated and Import types -----------------------------------------------
@@ -3647,14 +3647,14 @@ object Types {
       case _ =>
         false
     }
-    def unapply(tp: Type)(implicit ctx: Context): Option[SingleDenotation] =
+    def unapply(tp: Type)(implicit ctx: Context): UOptionUnapply[SingleDenotation] =
       if (isInstantiatable(tp)) {
         val absMems = tp.abstractTermMembers
         // println(s"absMems: ${absMems map (_.show) mkString ", "}")
         if (absMems.size == 1)
           absMems.head.info match {
-            case mt: MethodType if !mt.isDependent => Some(absMems.head)
-            case _ => None
+            case mt: MethodType if !mt.isDependent => USome(absMems.head)
+            case _ => UNone
           }
         else if (tp isRef defn.PartialFunctionClass)
           // To maintain compatibility with 2.x, we treat PartialFunction specially,
@@ -3663,10 +3663,10 @@ object Types {
           //     def isDefinedAt(x: T) = true
           // and overwrite that method whenever the function body is a sequence of
           // case clauses.
-          absMems.find(_.symbol.name == nme.apply)
-        else None
+          absMems.find(_.symbol.name == nme.apply).toUOption
+        else UNone
       }
-      else None
+      else UNone
   }
 
   // ----- TypeMaps --------------------------------------------------------------------

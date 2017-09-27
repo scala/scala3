@@ -248,7 +248,7 @@ abstract class CompilerTest {
   /** Asserts that the expected and found number of errors correspond, and
     * otherwise throws an error with the filename, plus optionally a line
     * number if available. */
-  def errorMsg(fileName: String, lineNumber: Option[Int], exp: Int, found: Int) = {
+  def errorMsg(fileName: String, lineNumber: UOption[Int], exp: Int, found: Int) = {
     val i = lineNumber.map({ i => ":" + (i + 1) }).getOrElse("")
     assert(found == exp, s"Wrong # of errors for $fileName$i. Expected (file): $exp, found (compiler): $found")
   }
@@ -263,7 +263,7 @@ abstract class CompilerTest {
           found.find(_.fileName == fileName) match {
             case None =>
               // expected some errors, but none found for this file
-              errorMsg(fileName, None, expectedLines.map(_._2).sum, 0)
+              errorMsg(fileName, UNone, expectedLines.map(_._2).sum, 0)
             case Some(ErrorsInFile(_,_,foundLines)) =>
               // found wrong number/location of markers for this file
               compareLines(fileName, expectedLines, foundLines)
@@ -276,7 +276,7 @@ abstract class CompilerTest {
           expected.find(_.fileName == fileName) match {
             case None =>
               // found some errors, but none expected for this file
-              errorMsg(fileName, None, 0, foundLines.map(_._2).sum)
+              errorMsg(fileName, UNone, 0, foundLines.map(_._2).sum)
             case Some(ErrorsInFile(_,_,expectedLines)) =>
               // found wrong number/location of markers for this file
               compareLines(fileName, expectedLines, foundLines)
@@ -291,19 +291,19 @@ abstract class CompilerTest {
       case (line, expNr) =>
         foundLines.find(_._1 == line) match {
           case Some((_, `expNr`)) => // this line is ok
-          case Some((_, foundNr)) => errorMsg(fileName, Some(line), expNr, foundNr)
+          case Some((_, foundNr)) => errorMsg(fileName, USome(line), expNr, foundNr)
           case None               =>
             println(s"expected lines = $expectedLines%, %")
             println(s"found lines = $foundLines%, %")
-            errorMsg(fileName, Some(line), expNr, 0)
+            errorMsg(fileName, USome(line), expNr, 0)
         }
     }
     foundLines foreach {
       case (line, foundNr) =>
         expectedLines.find(_._1 == line) match {
           case Some((_, `foundNr`)) => // this line is ok
-          case Some((_, expNr))     => errorMsg(fileName, Some(line), expNr, foundNr)
-          case None                 => errorMsg(fileName, Some(line), 0,     foundNr)
+          case Some((_, expNr))     => errorMsg(fileName, USome(line), expNr, foundNr)
+          case None                 => errorMsg(fileName, USome(line), 0,     foundNr)
         }
     }
   }
@@ -408,12 +408,12 @@ abstract class CompilerTest {
   import scala.util.matching.Regex
   val nrFinder = """(.*_v)(\d+)""".r
   /** Changes the version number suffix in the name (without extension). */
-  private def replaceVersion(name: String, nr: Int): Option[String] = {
+  private def replaceVersion(name: String, nr: Int): UOption[String] = {
     val nrString = nr.toString
     name match {
-      case nrFinder(prefix, `nrString`) => Some(prefix + (nr + 1))
-      case _ if nr != 0 => None
-      case _ => Some(name + "_v1")
+      case nrFinder(prefix, `nrString`) => USome(prefix + (nr + 1))
+      case _ if nr != 0 => UNone
+      case _ => USome(name + "_v1")
     }
   }
 

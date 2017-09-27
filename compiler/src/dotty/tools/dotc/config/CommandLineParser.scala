@@ -4,6 +4,8 @@ package config
 import scala.annotation.tailrec
 import dotty.tools.sharable
 
+import dotty.uoption._
+
 /** A simple (overly so) command line parser.
  *  !!! This needs a thorough test suite to make sure quoting is
  *  done correctly and portably.
@@ -13,7 +15,7 @@ object CommandLineParser {
   // taking escaping into account (using \)
   // `"abc"def` will match as `DoubleQuoted(abc, def)`
   private class QuotedExtractor(quote: Char) {
-    def unapply(in: String): Option[(String, String)] = {
+    def unapply(in: String): UOptionUnapply[(String, String)] = {
       val del = quote.toString
       if (in startsWith del) {
         var escaped = false
@@ -24,9 +26,9 @@ object CommandLineParser {
         }
         // the only way to get out of the above loop is with an empty next or !escaped
         // require(next.isEmpty || !escaped)
-        if (next startsWith del) Some((quoted, next substring 1))
-        else None
-      } else None
+        if (next startsWith del) USome((quoted, next substring 1))
+        else UNone
+      } else UNone
     }
   }
   private object DoubleQuoted extends QuotedExtractor('"')

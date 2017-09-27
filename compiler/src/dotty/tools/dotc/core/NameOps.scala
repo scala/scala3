@@ -11,6 +11,8 @@ import Chars.isOperatorPart
 import Definitions._
 import config.Config
 
+import dotty.uoption._
+
 object NameOps {
 
   final object compactify {

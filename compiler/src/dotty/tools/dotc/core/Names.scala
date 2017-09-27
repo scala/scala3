@@ -20,6 +20,8 @@ import util.{DotClass, SimpleMap}
 import config.Config
 import java.util.HashMap
 
+import dotty.uoption._
+
 object Names {
   import NameKinds._
 
@@ -86,7 +88,7 @@ object Names {
      *  in a Some, otherwise None.
      *  Stops at derived names whose kind has `definesNewName = true`.
      */
-    def collect[T](f: PartialFunction[Name, T]): Option[T]
+    def collect[T](f: PartialFunction[Name, T]): UOption[T]
 
     /** Apply `f` to last simple term name making up this name */
     def mapLast(f: SimpleName => SimpleName): ThisName
@@ -354,7 +356,7 @@ object Names {
 
     override def rewrite(f: PartialFunction[Name, Name]): ThisName =
       if (f.isDefinedAt(this)) likeSpaced(f(this)) else this
-    override def collect[T](f: PartialFunction[Name, T]): Option[T] = f.lift(this)
+    override def collect[T](f: PartialFunction[Name, T]): UOption[T] = f.uLift(this)
     override def mapLast(f: SimpleName => SimpleName) = f(this)
     override def mapParts(f: SimpleName => SimpleName) = f(this)
     override def split = (EmptyTermName, this, "")
@@ -451,7 +453,7 @@ object Names {
     override def mangledString = toTermName.mangledString
 
     override def rewrite(f: PartialFunction[Name, Name]): ThisName = toTermName.rewrite(f).toTypeName
-    override def collect[T](f: PartialFunction[Name, T]): Option[T] = toTermName.collect(f)
+    override def collect[T](f: PartialFunction[Name, T]): UOption[T] = toTermName.collect(f)
     override def mapLast(f: SimpleName => SimpleName) = toTermName.mapLast(f).toTypeName
     override def mapParts(f: SimpleName => SimpleName) = toTermName.mapParts(f).toTypeName
 
@@ -490,10 +492,10 @@ object Names {
         case _ => underlying.rewrite(f).derived(info)
       }
 
-    override def collect[T](f: PartialFunction[Name, T]): Option[T] =
-      if (f.isDefinedAt(this)) Some(f(this))
+    override def collect[T](f: PartialFunction[Name, T]): UOption[T] =
+      if (f.isDefinedAt(this)) USome(f(this))
       else info match {
-        case qual: QualifiedInfo => None
+        case qual: QualifiedInfo => UNone
         case _ => underlying.collect(f)
       }
 
