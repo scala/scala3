@@ -451,30 +451,36 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
   /** Parameter types of the case class type `tp`. Adapted from `unapplyPlan` in patternMatcher  */
   def signature(unapp: Type, unappSym: Symbol, argLen: Int): List[Type] = {
     def caseClass = unappSym.owner.linkedClass
+
     lazy val caseAccessors = caseClass.caseAccessors.filter(_.is(Method))
 
     def isSyntheticScala2Unapply(sym: Symbol) =
       sym.is(SyntheticCase) && sym.owner.is(Scala2x)
 
-    val mt @ MethodType(_) = unapp.widen
+    val mt@MethodType(_) = unapp.widen
 
-    if (isSyntheticScala2Unapply(unappSym) && caseAccessors.length == argLen)
-      caseAccessors.map(_.info.asSeenFrom(mt.paramInfos.head, caseClass).widen)
-    else if (mt.resultType.isRef(defn.BooleanClass))
-      List()
-    else {
-      val isUnapplySeq = unappSym.name == nme.unapplySeq
-      if (isProductMatch(mt.resultType, argLen) && !isUnapplySeq) {
-        productSelectors(mt.resultType).take(argLen)
-          .map(_.info.asSeenFrom(mt.resultType, mt.resultType.classSymbol).widen)
-      }
+    val sig =
+      if (isSyntheticScala2Unapply(unappSym) && caseAccessors.length == argLen)
+        caseAccessors.map(_.info.asSeenFrom(mt.paramInfos.head, caseClass).widen)
+      else if (mt.resultType.isRef(defn.BooleanClass))
+        List()
       else {
-        val resTp = mt.resultType.select(nme.get).resultType.widen
-        if (isUnapplySeq) scalaListType.appliedTo(resTp.argTypes.head) :: Nil
-        else if (argLen == 0) Nil
-        else productSelectors(resTp).map(_.info.asSeenFrom(resTp, resTp.classSymbol).widen)
+        val isUnapplySeq = unappSym.name == nme.unapplySeq
+        if (isProductMatch(mt.resultType, argLen) && !isUnapplySeq) {
+          productSelectors(mt.resultType).take(argLen)
+            .map(_.info.asSeenFrom(mt.resultType, mt.resultType.classSymbol).widen)
+        }
+        else {
+          val resTp = mt.resultType.select(nme.get).resultType.widen
+          if (isUnapplySeq) scalaListType.appliedTo(resTp.argTypes.head) :: Nil
+          else if (argLen == 0) Nil
+          else resTp :: Nil
+        }
       }
-    }
+
+    debug.println(s"signature of ${unappSym.showFullName} ----> ${sig.map(_.show).mkString(", ")}")
+
+    sig
   }
 
   /** Decompose a type into subspaces -- assume the type can be decomposed */
