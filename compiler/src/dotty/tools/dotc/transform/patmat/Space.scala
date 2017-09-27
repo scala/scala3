@@ -377,8 +377,9 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
   /* Whether the extractor is irrefutable */
   def irrefutable(unapp: tpd.Tree): Boolean = {
     // TODO: optionless patmat
-    unapp.tpe.widen.resultType.isRef(scalaSomeClass) ||
-      (unapp.symbol.is(Synthetic) && unapp.symbol.owner.linkedClass.is(Case))
+    unapp.tpe.widen.finalResultType.isRef(scalaSomeClass) ||
+      (unapp.symbol.is(Synthetic) && unapp.symbol.owner.linkedClass.is(Case)) ||
+      productArity(unapp.tpe.widen.finalResultType) > 0
   }
 
   /** Return the space that represents the pattern `pat`
@@ -451,6 +452,7 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
   /** Parameter types of the case class type `tp`. Adapted from `unapplyPlan` in patternMatcher  */
   def signature(unapp: Type, unappSym: Symbol, argLen: Int): List[Type] = {
     def caseClass = unappSym.owner.linkedClass
+
     lazy val caseAccessors = caseClass.caseAccessors.filter(_.is(Method))
 
     def isSyntheticScala2Unapply(sym: Symbol) =
@@ -458,23 +460,40 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
 
     val mt @ MethodType(_) = unapp.widen
 
-    if (isSyntheticScala2Unapply(unappSym) && caseAccessors.length == argLen)
-      caseAccessors.map(_.info.asSeenFrom(mt.paramInfos.head, caseClass).widen)
-    else if (mt.resultType.isRef(defn.BooleanClass))
-      List()
-    else {
-      val isUnapplySeq = unappSym.name == nme.unapplySeq
-      if (isProductMatch(mt.resultType, argLen) && !isUnapplySeq) {
-        productSelectors(mt.resultType).take(argLen)
-          .map(_.info.asSeenFrom(mt.resultType, mt.resultType.classSymbol).widen)
-      }
+    // Case unapply:
+    // 1. return types of constructor fields if the extractor is synthesized for Scala2 case classes & length match
+    // 2. return Nil if unapply returns Boolean  (boolean pattern)
+    // 3. return product selector types if unapply returns a product type (product pattern)
+    // 4. return product selectors of `T` where `def get: T` is a member of the return type of unapply & length match (named-based pattern)
+    // 5. otherwise, return `T` where `def get: T` is a member of the return type of unapply
+    //
+    // Case unapplySeq:
+    // 1. return the type `List[T]` where `T` is the element type of the unapplySeq return type `Seq[T]`
+
+    val sig =
+      if (isSyntheticScala2Unapply(unappSym) && caseAccessors.length == argLen)
+        caseAccessors.map(_.info.asSeenFrom(mt.paramInfos.head, caseClass).widen)
+      else if (mt.finalResultType.isRef(defn.BooleanClass))
+        List()
       else {
-        val resTp = mt.resultType.select(nme.get).resultType.widen
-        if (isUnapplySeq) scalaListType.appliedTo(resTp.argTypes.head) :: Nil
-        else if (argLen == 0) Nil
-        else productSelectors(resTp).map(_.info.asSeenFrom(resTp, resTp.classSymbol).widen)
+        val isUnapplySeq = unappSym.name == nme.unapplySeq
+        if (isProductMatch(mt.finalResultType, argLen) && !isUnapplySeq) {
+          productSelectors(mt.finalResultType).take(argLen)
+            .map(_.info.asSeenFrom(mt.finalResultType, mt.resultType.classSymbol).widen)
+        }
+        else {
+          val resTp = mt.finalResultType.select(nme.get).finalResultType.widen
+          if (isUnapplySeq) scalaListType.appliedTo(resTp.argTypes.head) :: Nil
+          else if (argLen == 0) Nil
+          else if (isProductMatch(resTp, argLen))
+            productSelectors(resTp).map(_.info.asSeenFrom(resTp, resTp.classSymbol).widen)
+          else resTp :: Nil
+        }
       }
-    }
+
+    debug.println(s"signature of ${unappSym.showFullName} ----> ${sig.map(_.show).mkString(", ")}")
+
+    sig
   }
 
   /** Decompose a type into subspaces -- assume the type can be decomposed */
@@ -705,14 +724,14 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
           showType(tp) + params(tp).map(_ => "_").mkString("(", ", ", ")")
         else if (decomposed) "_: " + showType(tp)
         else "_"
-      case Prod(tp, fun, _, params, _) =>
+      case Prod(tp, fun, sym, params, _) =>
         if (ctx.definitions.isTupleType(tp))
           "(" + params.map(doShow(_)).mkString(", ") + ")"
         else if (tp.isRef(scalaConsType.symbol))
           if (mergeList) params.map(doShow(_, mergeList)).mkString(", ")
           else params.map(doShow(_, true)).filter(_ != "Nil").mkString("List(", ", ", ")")
         else
-          showType(tp) + params.map(doShow(_)).mkString("(", ", ", ")")
+          showType(sym.owner.typeRef) + params.map(doShow(_)).mkString("(", ", ", ")")
       case Or(_) =>
         throw new Exception("incorrect flatten result " + s)
     }
