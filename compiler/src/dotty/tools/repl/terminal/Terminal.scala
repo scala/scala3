@@ -5,6 +5,8 @@ package terminal
 import scala.annotation.tailrec
 import scala.collection.mutable
 
+import dotty.uoption._
+
 /**
  * The core logic around a terminal; it defines the base `filters` API
  * through which anything (including basic cursor-navigation and typing)

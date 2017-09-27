@@ -25,6 +25,8 @@ import dotty.tools.dotc.core.Flags.{FlagSet, Mutable}
 import dotty.tools.dotc.core.SymDenotations.SymDenotation
 import scala.util.control.NonFatal
 
+import dotty.uoption._
+
 object messages {
 
   // `MessageContainer`s to be consumed by `Reporter` ---------------------- //
@@ -1675,7 +1677,7 @@ object messages {
     val explanation = "Method inlining prohibits calling superclass methods, as it may lead to confusion about which super is being called."
   }
 
-  case class ModifiersNotAllowed(flags: FlagSet, printableType: Option[String])(implicit ctx: Context)
+  case class ModifiersNotAllowed(flags: FlagSet, printableType: UOption[String])(implicit ctx: Context)
     extends Message(ModifiersNotAllowedID) {
     val kind = "Syntax"
     val msg = s"modifier(s) `$flags' not allowed for ${printableType.getOrElse("combination")}"

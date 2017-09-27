@@ -8,6 +8,8 @@ import typer.ConstFold
 import ast.Trees._
 import Simplify.desugarIdent
 
+import dotty.uoption._
+
 /** Various constant folding.
  *
  *  - Starts/ends with the constant folding implemented in typer (ConstFold).
@@ -189,21 +191,21 @@ import Simplify.desugarIdent
       }
     case t1: Ident =>
       desugarIdent(t1) match {
-        case Some(t) =>
+        case USome(t) =>
           val t2i = t2 match {
             case t2: Ident => desugarIdent(t2).getOrElse(t2)
             case _ => t2
           }
           isSimilar(t, t2i)
-        case None => t1.symbol eq t2.symbol
+        case UNone => t1.symbol eq t2.symbol
       }
     case t1: Select => t2 match {
       case t2: Select =>
         (t1.symbol eq t2.symbol) &&
         isSimilar(t1.qualifier, t2.qualifier)
       case t2: Ident => desugarIdent(t2) match {
-        case Some(t2) => isSimilar(t1, t2)
-        case None => false
+        case USome(t2) => isSimilar(t1, t2)
+        case UNone => false
       }
       case _ => false
     }

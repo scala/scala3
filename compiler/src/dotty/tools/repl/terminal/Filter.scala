@@ -2,6 +2,8 @@ package dotty.tools
 package repl
 package terminal
 
+import dotty.uoption._
+
 /**
   * The way you configure your terminal behavior; a trivial wrapper around a
   * function, though you should provide a good `.toString` method to make
@@ -15,7 +17,7 @@ package terminal
   * and mutate it whenever, even when returning `None` to continue the cascade.
   */
 trait Filter {
-  def op(ti: TermInfo): Option[TermAction]
+  def op(ti: TermInfo): UOption[TermAction]
 
   /**
     * the `.toString` of this object, except by making it separate we force
@@ -44,7 +46,7 @@ object Filter {
       val matchingPrefixOpt =
         prefixes.iterator
                 .map{ s => ti.ts.inputs.dropPrefix(s.map(_.toInt)) }
-                .collectFirst{case Some(s) => s}
+                .collectFirst{case Some(s) => s}.toUOption
       matchingPrefixOpt.map{ rest =>
         val (buffer1, cursor1) = f(ti.ts.buffer, ti.ts.cursor, ti)
         TermState(
@@ -63,18 +65,18 @@ object Filter {
     def op(ti: TermInfo) = {
       prefixes.iterator
               .map{ prefix => ti.ts.inputs.dropPrefix(prefix.map(_.toInt)) }
-              .collectFirst { case Some(rest) if filter(ti) => action(ti.ts.copy(inputs = rest)) }
+              .collectFirst { case Some(rest) if filter(ti) => action(ti.ts.copy(inputs = rest)) }.toUOption
     }
     def identifier: String = id
   }
 
   def partial(id: String)(f: PartialFunction[TermInfo, TermAction]): Filter =
     new Filter {
-      def op(ti: TermInfo) = f.lift(ti)
+      def op(ti: TermInfo) = f.uLift(ti)
       def identifier = id
     }
 
-  def wrap(id: String)(f: TermInfo => Option[TermAction]): Filter =
+  def wrap(id: String)(f: TermInfo => UOption[TermAction]): Filter =
     new Filter {
       def op(ti: TermInfo) = f(ti)
       def identifier = id
@@ -85,7 +87,7 @@ object Filter {
     */
   def merge(pfs: Filter*) = new Filter {
 
-    def op(v1: TermInfo) = pfs.iterator.map(_.op(v1)).find(_.isDefined).flatten
+    def op(v1: TermInfo) = pfs.iterator.map(_.op(v1)).find(_.isDefined).toUOption.flatten
 
     def identifier = pfs.iterator.map(_.identifier).mkString(":")
   }

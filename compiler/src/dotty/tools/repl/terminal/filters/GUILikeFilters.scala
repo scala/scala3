@@ -10,6 +10,9 @@ import terminal.DelegateFilter
 import terminal._
 
 import Filter._
+
+import dotty.uoption._
+
 /**
  * Filters have hook into the various {Ctrl,Shift,Fn,Alt}x{Up,Down,Left,Right}
  * combination keys, and make them behave similarly as they would on a normal
@@ -18,11 +21,11 @@ import Filter._
  */
 object GUILikeFilters {
   case class SelectionFilter(indent: Int) extends DelegateFilter("SelectionFilter") {
-    var mark: Option[Int] = None
+    var mark: UOption[Int] = UNone
 
     def setMark(c: Int) = {
       Debug("setMark\t" + mark + "\t->\t" + c)
-      if (mark == None) mark = Some(c)
+      if (mark == UNone) mark = USome(c)
     }
 
     def doIndent(
@@ -60,7 +63,7 @@ object GUILikeFilters {
         if (mark.get > c) (mark.get + deeperOffset, c + firstOffset)
         else (mark.get + firstOffset, c + deeperOffset)
 
-      mark = Some(newMark)
+      mark = USome(newMark)
       TS(rest, flattened, newC)
     }
 
@@ -94,13 +97,13 @@ object GUILikeFilters {
               char != 127 /*backspace*/ &&
               char != 13 /*enter*/ &&
               char != 10 /*enter*/) {
-            mark = None
+            mark = UNone
             TS(char ~: inputs, buffer, cursor)
           } else {
             // If it's a  printable character, delete the current
             // selection and write the printable character.
             val Seq(min, max) = Seq(mark.get, cursor).sorted
-            mark = None
+            mark = UNone
             val newBuffer = buffer.take(min) ++ buffer.drop(max)
             val newInputs =
               if (char == 127) inputs
@@ -119,7 +122,7 @@ object GUILikeFilters {
       startColor: Ansi.Attr
     ) = {
       selectionFilter.mark match {
-        case Some(mark) if mark != cursor =>
+        case USome(mark) if mark != cursor =>
           val Seq(min, max) = Seq(cursor, mark).sorted
           val displayOffset = if (cursor < mark) 0 else -1
           val newStr = string.overlay(startColor, min, max)

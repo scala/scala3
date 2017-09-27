@@ -10,6 +10,8 @@ import model.internal._
 import model.references._
 import util.syntax._
 
+import dotty.uoption._
+
 class UsecaseTest extends DottyDocTest {
   @Test def simpleUsecase = {
     val source = new SourceFile(

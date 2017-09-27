@@ -12,6 +12,8 @@ import dotc.core.Types.{PolyType, NoType}
 import dotc.core.Phases.Phase
 import dotc.core.Symbols.{ Symbol, NoSymbol }
 
+import dotty.uoption._
+
 class DocASTPhase extends Phase {
   import model._
   import model.factories._
@@ -115,7 +117,7 @@ class DocASTPhase extends Phase {
       /** class / case class */
       case c @ TypeDef(n, rhs) if c.symbol.isClass =>
         //TODO: should not `collectMember` from `rhs` - instead: get from symbol, will get inherited members as well
-        (c.symbol, annotations(c.symbol), n.show, collectMembers(rhs), flags(c), path(c.symbol), typeParams(c.symbol), constructors(c.symbol), superTypes(c), None, Nil, NonEntity) match {
+        (c.symbol, annotations(c.symbol), n.show, collectMembers(rhs), flags(c), path(c.symbol), typeParams(c.symbol), constructors(c.symbol), superTypes(c), UNone, Nil, NonEntity) match {
           case x if c.symbol.is(Flags.CaseClass) => CaseClassImpl.tupled(x)
           case x => ClassImpl.tupled(x)
         }

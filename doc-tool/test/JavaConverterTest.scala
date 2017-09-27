@@ -31,6 +31,8 @@ import model.comment.Comment
 import dotty.tools.dotc.core.Symbols.NoSymbol
 import java.util.{Optional => JOptional, Map => JMap, List => JList}
 
+import dotty.uoption._
+
 class JavaConverterTest {
   import model.JavaConverters._
   import scala.collection.JavaConverters._
@@ -41,7 +43,7 @@ class JavaConverterTest {
       def symbol = NoSymbol
       def name = "test"
       def path = "path" :: "to" :: "def" :: Nil
-      def comment = None
+      def comment = UNone
       def annotations = List("test")
       def parent = NonEntity
       def modifiers = "private" :: Nil
@@ -56,7 +58,7 @@ class JavaConverterTest {
       def symbol = NoSymbol
       def name = "someTrait"
       def path = "path" :: "to" :: "trait" :: Nil
-      def comment = None
+      def comment = UNone
       def annotations = List("test")
       def parent = NonEntity
       def modifiers = "protected" :: Nil
@@ -72,7 +74,7 @@ class JavaConverterTest {
       def symbol = NoSymbol
       def name = "test"
       def path = "path" :: "to" :: "test" :: Nil
-      def comment = None
+      def comment = UNone
       def annotations = List("test")
       def parent = NonEntity
       def modifiers = "private" :: Nil
@@ -88,7 +90,7 @@ class JavaConverterTest {
       def symbol = NoSymbol
       def name = "test"
       def path = "path" :: "to" :: "test" :: Nil
-      def comment = None
+      def comment = UNone
       def annotations = List("test")
       def parent = NonEntity
       def modifiers = "private" :: Nil
@@ -104,7 +106,7 @@ class JavaConverterTest {
       def symbol = NoSymbol
       def name = "someObject"
       def path = "path" :: "to" :: "object" :: Nil
-      def comment = None
+      def comment = UNone
       def annotations = List("test")
       def parent = NonEntity
       def modifiers = "protected" :: Nil
@@ -119,7 +121,7 @@ class JavaConverterTest {
       def symbol = NoSymbol
       def name = "typeAlias"
       def path = "path" :: "to" :: "typeAlias" :: Nil
-      def comment = None
+      def comment = UNone
       def annotations = List("test")
       def parent = NonEntity
       def modifiers = "private" :: Nil
@@ -132,7 +134,7 @@ class JavaConverterTest {
       def symbol = NoSymbol
       def name = "val"
       def path = "path" :: "to" :: "val" :: Nil
-      def comment = None
+      def comment = UNone
       def annotations = List("test")
       def parent = NonEntity
       def modifiers = "private" :: Nil
@@ -145,7 +147,7 @@ class JavaConverterTest {
       def symbol = NoSymbol
       def name = "test"
       def path = "path" :: "to" :: "test" :: Nil
-      def comment = None
+      def comment = UNone
       def annotations = List("test")
       def parent = NonEntity
       def members = trt :: typeAlias :: Nil

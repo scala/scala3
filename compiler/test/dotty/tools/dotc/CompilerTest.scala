@@ -12,6 +12,7 @@ import dotty.tools.io.{ Path, Directory, File => SFile, AbstractFile }
 import scala.annotation.tailrec
 import java.io.{ RandomAccessFile, File => JFile }
 
+import dotty.uoption._
 
 /** Legacy compiler tests that run single threaded */
 abstract class CompilerTest {
@@ -371,12 +372,12 @@ abstract class CompilerTest {
     }, { sdir =>
       dest.jfile.mkdirs
       sdir.list.foreach(path => recCopyFiles(path, dest / path.name))
-    }, Some("DPCompilerTest.recCopyFiles: sourceFile not found: " + sourceFile))
+    }, USome("DPCompilerTest.recCopyFiles: sourceFile not found: " + sourceFile))
   }
 
   /** Reads the existing files for the given test source if any. */
   private def getExisting(dest: Path): ExistingFiles = {
-    val content: Option[Option[String]] = processFileDir(dest, f => try Some(f.slurp("UTF8")) catch {case io: java.io.IOException => Some(io.toString())}, d => Some(""))
+    val content: UOption[UOption[String]] = processFileDir(dest, f => try USome(f.slurp("UTF8")) catch {case io: java.io.IOException => USome(io.toString())}, d => USome(""))
     if (content.isDefined && content.get.isDefined) {
       val flags = (dest changeExtension "flags").toFile.safeSlurp()
       val nerr = (dest changeExtension "nerr").toFile.safeSlurp()
@@ -385,17 +386,17 @@ abstract class CompilerTest {
   }
 
   /** Encapsulates existing generated test files. */
-  case class ExistingFiles(genSrc: Option[String] = None, flags: Option[String] = None, nerr: Option[String] = None) {
+  case class ExistingFiles(genSrc: UOption[String] = UNone, flags: UOption[String] = UNone, nerr: UOption[String] = UNone) {
     def isDifferent(sourceFile: JFile, otherFlags: List[String], otherNerr: String): Difference = {
       if (!genSrc.isDefined) {
         NotExists
       } else {
-        val source = processFileDir(sourceFile, { f => try Some(f.slurp("UTF8")) catch {case _: java.io.IOException => None} }, { d => Some("") },
-            Some("DPCompilerTest sourceFile doesn't exist: " + sourceFile)).get
+        val source = processFileDir(sourceFile, { f => try USome(f.slurp("UTF8")) catch {case _: java.io.IOException => UNone} }, { d => USome("") },
+            USome("DPCompilerTest sourceFile doesn't exist: " + sourceFile)).get
         if (source == genSrc) {
           nerr match {
-            case Some(n) if (n != otherNerr) => ExistsDifferent
-            case None if (otherNerr != "0") => ExistsDifferent
+            case USome(n) if (n != otherNerr) => ExistsDifferent
+            case UNone if (otherNerr != "0") => ExistsDifferent
             case _ if (flags.map(_ == otherFlags.mkString(" ")).getOrElse(otherFlags.isEmpty)) => ExistsSame
             case _ => ExistsDifferent
           }
@@ -420,10 +421,10 @@ abstract class CompilerTest {
     * applying either processFile or processDir, depending on what the path
     * refers to in the file system. If failMsgOnNone is defined, this function
     * asserts that the file exists using the provided message. */
-  private def processFileDir[T](input: Path, processFile: SFile => T, processDir: Directory => T, failMsgOnNone: Option[String] = None): Option[T] = {
+  private def processFileDir[T](input: Path, processFile: SFile => T, processDir: Directory => T, failMsgOnNone: UOption[String] = UNone): UOption[T] = {
     val res = input.ifFile(f => processFile(f)).orElse(input.ifDirectory(d => processDir(d)))
     (failMsgOnNone, res) match {
-      case (Some(msg), None) => assert(false, msg); None
+      case (USome(msg), UNone) => assert(false, msg); UNone
       case _ => res
     }
   }

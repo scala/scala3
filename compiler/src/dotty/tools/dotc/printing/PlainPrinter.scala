@@ -14,6 +14,8 @@ import config.Config.summarizeDepth
 import scala.util.control.NonFatal
 import scala.annotation.switch
 
+import dotty.uoption._
+
 class PlainPrinter(_ctx: Context) extends Printer {
   protected[this] implicit def ctx: Context = _ctx.addMode(Mode.Printing)
 
@@ -303,9 +305,9 @@ class PlainPrinter(_ctx: Context) extends Printer {
   /** String representation of a definition's type following its name,
    *  if symbol is completed, "?" otherwise.
    */
-  protected def toTextRHS(optType: Option[Type]): Text = optType match {
-    case Some(tp) => toTextRHS(tp)
-    case None => "?"
+  protected def toTextRHS(optType: UOption[Type]): Text = optType match {
+    case USome(tp) => toTextRHS(tp)
+    case UNone => "?"
   }
 
   /** String representation of a definition's type following its name */
@@ -400,9 +402,9 @@ class PlainPrinter(_ctx: Context) extends Printer {
 
   def dclText(sym: Symbol): Text = dclTextWithInfo(sym, sym.unforcedInfo)
 
-  def dclText(d: SingleDenotation): Text = dclTextWithInfo(d.symbol, Some(d.info))
+  def dclText(d: SingleDenotation): Text = dclTextWithInfo(d.symbol, USome(d.info))
 
-  private def dclTextWithInfo(sym: Symbol, info: Option[Type]): Text =
+  private def dclTextWithInfo(sym: Symbol, info: UOption[Type]): Text =
     (toTextFlags(sym) ~~ keyString(sym) ~~
       (varianceString(sym) ~ nameString(sym)) ~ toTextRHS(info)).close
 

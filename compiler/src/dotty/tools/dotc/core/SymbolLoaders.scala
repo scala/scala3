@@ -152,7 +152,7 @@ class SymbolLoaders {
     override def sourceModule(implicit ctx: Context) = _sourceModule
     def description(implicit ctx: Context) = "package loader " + sourceModule.fullName
 
-    private var enterFlatClasses: Option[Context => Unit] = None
+    private var enterFlatClasses: UOption[Context => Unit] = UNone
 
     Stats.record("package scopes")
 
@@ -222,8 +222,8 @@ class SymbolLoaders {
 
       val packageName = if (root.isEffectiveRoot) "" else root.fullName.mangledString
 
-      enterFlatClasses = Some { ctx =>
-        enterFlatClasses = None
+      enterFlatClasses = USome { ctx =>
+        enterFlatClasses = UNone
         enterClasses(root, packageName, flat = true)(ctx)
       }
       enterClasses(root, packageName, flat = false)

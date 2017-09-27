@@ -13,6 +13,8 @@ import transform.SymUtils._
 import Simplify.desugarIdent
 import dotty.tools.dotc.ast.tpd
 
+import dotty.uoption._
+
 /** Inline case class specific methods using desugarings assumptions.
  *
  *  Note: to run this optimisation after erasure one would need to specialize
@@ -110,7 +112,7 @@ class InlineCaseIntrinsics(val simplifyPhase: Simplify) extends Optimisation {
         case t: Apply     => receiver(t.fun)
         case t: TypeApply => receiver(t.fun)
         case t: Ident     => desugarIdent(t) match {
-          case Some(t) => receiver(t)
+          case USome(t) => receiver(t)
           case _ => NoType
         }
         case t: Select => t.qualifier.tpe.widenDealias

@@ -59,12 +59,13 @@ class InteractiveDriver(settings: List[String]) extends Driver {
     val fromSource = openedTrees.values.flatten.toList
     val fromClassPath = (dirClassPathClasses ++ zipClassPathClasses).flatMap { cls =>
       val className = cls.toTypeName
+      implicit def uOption2GenTraversableOnce[A](uoption: UOption[A]): GenTraversableOnce[A] = uoption.iterator // TODO abstract away
       List(tree(className), tree(className.moduleClassName)).flatten
     }
     (fromSource ++ fromClassPath).distinct
   }
 
-  private def tree(className: TypeName)(implicit ctx: Context): Option[SourceTree] = {
+  private def tree(className: TypeName)(implicit ctx: Context): UOption[SourceTree] = {
     val clsd = ctx.base.staticRef(className)
     clsd match {
       case clsd: ClassDenotation =>

@@ -9,6 +9,8 @@ import core.Flags._
 import ast.Trees._
 import Simplify._
 
+import dotty.uoption._
+
 /** Removes side effect free statements in blocks and Defdef.
  *  Flattens blocks (except Closure-blocks)
  *  Note: BoxedUnit currently messes up this phase when run after erasure
@@ -101,7 +103,7 @@ class DropNoEffects(val simplifyPhase: Simplify) extends Optimisation {
 
     case t: Ident if !t.symbol.is(Method | Lazy) && !t.symbol.info.isInstanceOf[ExprType] || effectsDontEscape(t) =>
       desugarIdent(t) match {
-        case Some(t) if !(t.qualifier.symbol.is(JavaDefined) && t.qualifier.symbol.is(Package)) => t
+        case USome(t) if !(t.qualifier.symbol.is(JavaDefined) && t.qualifier.symbol.is(Package)) => t
         case _ => EmptyTree
       }
 

@@ -11,6 +11,8 @@ import dotty.tools.dotc.parsing.Tokens
 import org.junit.Assert._
 import org.junit.Test
 
+import dotty.uoption._
+
 class ErrorMessagesTests extends ErrorMessagesTest {
   // In the case where there are no errors, we can do "expectNoErrors" in the
   // `Report`
@@ -859,13 +861,13 @@ class ErrorMessagesTests extends ErrorMessagesTest {
     }
 
   @Test def modifiersNotAllowed =
-    verifyModifiersNotAllowed("lazy trait T", "lazy", Some("trait"))
+    verifyModifiersNotAllowed("lazy trait T", "lazy", USome("trait"))
 
   @Test def modifiersOtherThanTraitMethodVariable =
     verifyModifiersNotAllowed("sealed lazy class x", "sealed")
 
   private def verifyModifiersNotAllowed(code: String, modifierAssertion: String,
-                                        typeAssertion: Option[String] = None) = {
+                                        typeAssertion: UOption[String] = UNone) = {
     checkMessagesAfter("refchecks")(code)
       .expect { (ictx, messages) =>
         implicit val ctx: Context = ictx

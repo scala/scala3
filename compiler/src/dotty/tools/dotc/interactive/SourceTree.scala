@@ -9,6 +9,10 @@ import core._, core.Decorators.{sourcePos => _, _}
 import Contexts._, NameOps._, Symbols._
 import util._, util.Positions._
 
+import dotty.uoption._
+
+import scala.collection.GenTraversableOnce
+
 /** A typechecked named `tree` coming from `source` */
 case class SourceTree(tree: tpd.NameTree, source: SourceFile) {
   /** The position of `tree` */
@@ -38,18 +42,19 @@ case class SourceTree(tree: tpd.NameTree, source: SourceFile) {
   }
 }
 object SourceTree {
-  def fromSymbol(sym: ClassSymbol)(implicit ctx: Context): Option[SourceTree] = {
+  def fromSymbol(sym: ClassSymbol)(implicit ctx: Context): UOption[SourceTree] = {
     if (sym == defn.SourceFileAnnot || // FIXME: No SourceFile annotation on SourceFile itself
         sym.sourceFile == null) // FIXME: We cannot deal with external projects yet
-      None
+      UNone
     else {
       import ast.Trees._
-      def sourceTreeOfClass(tree: tpd.Tree): Option[SourceTree] = tree match {
-        case PackageDef(_, stats) => stats.flatMap(sourceTreeOfClass).headOption
+      implicit def uOption2GenTraversableOnce[A](uoption: UOption[A]): GenTraversableOnce[A] = uoption.iterator // TODO abstract away
+      def sourceTreeOfClass(tree: tpd.Tree): UOption[SourceTree] = tree match {
+        case PackageDef(_, stats) => stats.flatMap(sourceTreeOfClass).headOption.toUOption
         case tree: tpd.TypeDef if tree.symbol == sym =>
           val sourceFile = new SourceFile(sym.sourceFile, Codec.UTF8)
-          Some(SourceTree(tree, sourceFile))
-        case _ => None
+          USome(SourceTree(tree, sourceFile))
+        case _ => UNone
       }
       sourceTreeOfClass(sym.tree)
     }

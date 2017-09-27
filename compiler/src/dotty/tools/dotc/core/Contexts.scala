@@ -33,6 +33,8 @@ import DenotTransformers.DenotTransformer
 import util.Property.Key
 import xsbti.AnalysisCallback
 
+import dotty.uoption._
+
 object Contexts {
 
   /** A context is passed basically everywhere in dotc.
@@ -160,9 +162,9 @@ object Contexts {
     /** An optional diagostics buffer than is used by some checking code
      *  to provide more information in the buffer if it exists.
      */
-    private var _diagnostics: Option[StringBuilder] = _
-    protected def diagnostics_=(diagnostics: Option[StringBuilder]) = _diagnostics = diagnostics
-    def diagnostics: Option[StringBuilder] = _diagnostics
+    private var _diagnostics: UOption[StringBuilder] = _
+    protected def diagnostics_=(diagnostics: UOption[StringBuilder]) = _diagnostics = diagnostics
+    def diagnostics: UOption[StringBuilder] = _diagnostics
 
     /** The current bounds in force for type parameters appearing in a GADT */
     private var _gadt: GADTMap = _
@@ -179,8 +181,8 @@ object Contexts {
     protected def moreProperties_=(moreProperties: Map[Key[Any], Any]) = _moreProperties = moreProperties
     def moreProperties: Map[Key[Any], Any] = _moreProperties
 
-    def property[T](key: Key[T]): Option[T] =
-      moreProperties.get(key).asInstanceOf[Option[T]]
+    def property[T](key: Key[T]): UOption[T] =
+      moreProperties.get(key).asInstanceOf[Option[T]].toUOption
 
     private var _typeComparer: TypeComparer = _
     protected def typeComparer_=(typeComparer: TypeComparer) = _typeComparer = typeComparer
@@ -428,11 +430,11 @@ object Contexts {
     final def withOwner(owner: Symbol): Context =
       if (owner ne this.owner) fresh.setOwner(owner) else this
 
-    final def withProperty[T](key: Key[T], value: Option[T]): Context =
+    final def withProperty[T](key: Key[T], value: UOption[T]): Context =
       if (property(key) == value) this
       else value match {
-        case Some(v) => fresh.setProperty(key, v)
-        case None => fresh.dropProperty(key)
+        case USome(v) => fresh.setProperty(key, v)
+        case UNone => fresh.dropProperty(key)
       }
 
     override def toString = {
@@ -474,7 +476,7 @@ object Contexts {
     def setImportInfo(importInfo: ImportInfo): this.type = { this.importInfo = importInfo; this }
     def setImplicits(implicits: ContextualImplicits): this.type = { this.implicitsCache = implicits; this }
     def setRunInfo(runInfo: RunInfo): this.type = { this.runInfo = runInfo; this }
-    def setDiagnostics(diagnostics: Option[StringBuilder]): this.type = { this.diagnostics = diagnostics; this }
+    def setDiagnostics(diagnostics: UOption[StringBuilder]): this.type = { this.diagnostics = diagnostics; this }
     def setGadt(gadt: GADTMap): this.type = { this.gadt = gadt; this }
     def setTypeComparerFn(tcfn: Context => TypeComparer): this.type = { this.typeComparer = tcfn(this); this }
     def setSearchHistory(searchHistory: SearchHistory): this.type = { this.searchHistory = searchHistory; this }
@@ -527,7 +529,7 @@ object Contexts {
     tree = untpd.EmptyTree
     typeAssigner = TypeAssigner
     runInfo = new RunInfo(this)
-    diagnostics = None
+    diagnostics = UNone
     freshNames = new FreshNameCreator.Default
     moreProperties = Map.empty
     typeComparer = new TypeComparer(this)

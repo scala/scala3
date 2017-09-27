@@ -14,6 +14,9 @@ import java.io.{
 }
 
 import scala.io.Codec
+
+import dotty.uoption._
+
 /**
  * ''Note:  This library is considered experimental and should not be used unless you know what you are doing.''
  */
@@ -96,9 +99,9 @@ class File(jfile: JFile)(implicit constructorCodec: Codec) extends Path(jfile) w
     finally out.close()
   }
 
-  def safeSlurp(): Option[String] =
-    try Some(slurp())
-    catch { case _: IOException => None }
+  def safeSlurp(): UOption[String] =
+    try USome(slurp())
+    catch { case _: IOException => UNone }
 
   /** Reflection since we're into the java 6+ API.
    */

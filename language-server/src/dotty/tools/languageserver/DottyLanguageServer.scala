@@ -29,6 +29,8 @@ import languageserver.config.ProjectConfig
 
 import lsp4j.services._
 
+import dotty.uoption._
+
 /** An implementation of the Language Server Protocol for Dotty.
  *
  *  You should not have to directly this class, instead see `dotty.tools.languageserver.Main`.

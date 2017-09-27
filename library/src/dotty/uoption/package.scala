@@ -1,6 +1,7 @@
 package dotty
 
 import scala.language.higherKinds
+import scala.collection.GenTraversableOnce
 
 /**
  * @author Sébastien Doeraene
@@ -51,6 +52,7 @@ package object uoption {
 
   implicit class UOptionOps[A](private val self: UOption[A]) extends AnyVal {
     @inline def isEmpty: Boolean = self eq UNone
+    @inline def nonEmpty: Boolean = !isEmpty
     @inline def isDefined: Boolean = !isEmpty
 
     /** Must not be called when `isEmpty` is `true`! */
@@ -85,8 +87,13 @@ package object uoption {
 
     @inline def withFilter(p: A => Boolean): WithFilter[A] = new WithFilter[A](self, p)
 
+    @inline def find(p: A => Boolean): UOption[A] = filter(p)
+
     @inline def exists(p: A => Boolean): Boolean =
       !isEmpty && p(forceGet)
+
+    @inline def forall(p: A => Boolean): Boolean =
+      isEmpty || p(forceGet)
 
     @inline def getOrElse[B >: A](ifEmpty: => B): B =
       if (isEmpty) ifEmpty else forceGet
@@ -101,6 +108,7 @@ package object uoption {
     }
 
     @inline def toSeq: Seq[A] = iterator.toSeq
+    @inline def toList: List[A] = iterator.toList
 
     @inline def iterator: Iterator[A] =
       if (isEmpty) Iterator.empty
@@ -124,11 +132,22 @@ package object uoption {
     def toUSome: USome[A] = USome(self.get)
   }
 
+  implicit class PartialFunctionOps[A, B](private val pf: PartialFunction[A, B]) extends AnyVal {
+    def uLift: A => UOption[B] = new Lifted[A, B](pf)
+  }
 
   class WithFilter[A](self: UOption[A], p: A => Boolean) {
     def map[B](f: A => B): UOption[B] = self filter p map f
     def flatMap[B](f: A => UOption[B]): UOption[B] = self filter p flatMap f
     def foreach[U](f: A => U): Unit = self filter p foreach f
     def withFilter(q: A => Boolean): WithFilter[A] = new WithFilter[A](self, x => p(x) && q(x))
+  }
+
+  private class Lifted[-A, +B] (val pf: PartialFunction[A, B])
+    extends scala.runtime.AbstractFunction1[A, UOption[B]] with Serializable {
+
+    def apply(x: A): UOption[B] = {
+      if (pf.isDefinedAt(x)) USome(pf.apply(x)) else UNone
+    }
   }
 }

@@ -8,6 +8,8 @@ import terminal.LazyList.~:
 import terminal._
 import scala.collection.mutable
 
+import dotty.uoption._
+
 /**
   * A filter that implements "undo" functionality in the ammonite REPL. It
   * shares the same `Ctrl -` hotkey that the bash undo, but shares behavior
@@ -127,7 +129,7 @@ case class UndoFilter(maxUndo: Int = 25) extends DelegateFilter("UndoFilter") {
     Filter.wrap("undoFilterWrapped") {
       case TS(q ~: rest, b, c, _) =>
         pushUndos(b, c)
-        None
+        UNone
     },
     Filter.partial("undoFilter") {
       case TS(31 ~: rest, b, c, _) => wrap(undo(b, c), rest)

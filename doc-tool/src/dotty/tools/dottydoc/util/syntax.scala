@@ -12,6 +12,8 @@ import dotc.util.{ SourcePosition, SourceFile }
 import dotc.util.Positions.Position
 import scala.io.Codec
 
+import dotty.uoption._
+
 object syntax {
   implicit class ContextWithContextDottydoc(val ctx: Context) extends AnyVal {
     def docbase: ContextDottydoc = ctx.docCtx.getOrElse {

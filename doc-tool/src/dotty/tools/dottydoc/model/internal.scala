@@ -5,6 +5,8 @@ import comment.Comment
 import references._
 import dotty.tools.dotc.core.Symbols.{ Symbol, NoSymbol }
 
+import dotty.uoption._
+
 object internal {
 
   final case class PackageImpl(
@@ -14,7 +16,7 @@ object internal {
     var members: List[Entity],
     var path: List[String],
     var superTypes: List[MaterializableLink] = Nil,
-    var comment: Option[Comment] = None,
+    var comment: UOption[Comment] = UNone,
     var parent: Entity = NonEntity
   ) extends Package
 
@@ -32,7 +34,7 @@ object internal {
     path: List[String],
     alias: Option[Reference],
     typeParams: List[String] = Nil,
-    var comment: Option[Comment] = None,
+    var comment: UOption[Comment] = UNone,
     var parent: Entity = NonEntity
   ) extends TypeAlias
 
@@ -46,7 +48,7 @@ object internal {
     typeParams: List[String] = Nil,
     constructors: List[List[ParamList]] = Nil,
     superTypes: List[MaterializableLink] = Nil,
-    var comment: Option[Comment] = None,
+    var comment: UOption[Comment] = UNone,
     var companionPath: List[String] = Nil,
     var parent: Entity = NonEntity
   ) extends Class
@@ -61,7 +63,7 @@ object internal {
     typeParams: List[String] = Nil,
     constructors: List[List[ParamList]] = Nil,
     superTypes: List[MaterializableLink] = Nil,
-    var comment: Option[Comment] = None,
+    var comment: UOption[Comment] = UNone,
     var companionPath: List[String] = Nil,
     var parent: Entity = NonEntity
   ) extends CaseClass
@@ -76,7 +78,7 @@ object internal {
     typeParams: List[String] = Nil,
     traitParams: List[ParamList] = Nil,
     superTypes: List[MaterializableLink] = Nil,
-    var comment: Option[Comment] = None,
+    var comment: UOption[Comment] = UNone,
     var companionPath: List[String] = Nil,
     var parent: Entity = NonEntity
   ) extends Trait
@@ -89,7 +91,7 @@ object internal {
     private val mods: List[String],
     path: List[String],
     superTypes: List[MaterializableLink] = Nil,
-    var comment: Option[Comment] = None,
+    var comment: UOption[Comment] = UNone,
     var companionPath: List[String] = Nil,
     var parent: Entity = NonEntity
   ) extends Object {
@@ -105,7 +107,7 @@ object internal {
     returnValue: Reference,
     typeParams: List[String] = Nil,
     paramLists: List[ParamList] = Nil,
-    var comment: Option[Comment] = None,
+    var comment: UOption[Comment] = UNone,
     implicitlyAddedFrom: Option[Reference] = None,
     var parent: Entity = NonEntity
   ) extends Def
@@ -118,7 +120,7 @@ object internal {
     path: List[String],
     returnValue: Reference,
     kind: String,
-    var comment: Option[Comment] = None,
+    var comment: UOption[Comment] = UNone,
     implicitlyAddedFrom: Option[Reference] = None,
     var parent: Entity = NonEntity
   ) extends Val

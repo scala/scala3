@@ -17,6 +17,9 @@ import config.Printers.typr
 import Symbols._, TypeUtils._
 import reporting.diagnostic.messages.SuperCallsNotAllowedInline
 
+import scala.collection.GenTraversableOnce
+import dotty.uoption._
+
 /** A macro transform that runs immediately after typer and that performs the following functions:
  *
  *  (1) Add super accessors and protected accessors (@see SuperAccessors)
@@ -79,9 +82,9 @@ class PostTyper extends MacroTransform with SymTransformer  { thisTransformer =>
   val paramFwd = new ParamForwarding(thisTransformer)
   val synthMth = new SyntheticMethods(thisTransformer)
 
-  private def newPart(tree: Tree): Option[New] = methPart(tree) match {
-    case Select(nu: New, _) => Some(nu)
-    case _ => None
+  private def newPart(tree: Tree): UOption[New] = methPart(tree) match {
+    case Select(nu: New, _) => USome(nu)
+    case _ => UNone
   }
 
   private def checkValidJavaAnnotation(annot: Tree)(implicit ctx: Context): Unit = {
@@ -239,6 +242,7 @@ class PostTyper extends MacroTransform with SymTransformer  { thisTransformer =>
           val callTrace = Ident(call.symbol.topLevelClass.typeRef).withPos(call.pos)
           cpy.Inlined(tree)(callTrace, transformSub(bindings), transform(expansion))
         case tree: Template =>
+          implicit def uOption2GenTraversable[A](uOption: UOption[A]): GenTraversableOnce[A] = uOption.iterator // TODO abstract away
           withNoCheckNews(tree.parents.flatMap(newPart)) {
             val templ1 = paramFwd.forwardParamAccessors(tree)
             synthMth.addSyntheticMethods(

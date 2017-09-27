@@ -39,6 +39,8 @@ import scala.util.hashing.{ MurmurHash3 => hashing }
 import config.Printers.{core, typr, cyclicErrors}
 import java.lang.ref.WeakReference
 
+import dotty.uoption._
+
 object Types {
 
   @sharable private var nextId = 0

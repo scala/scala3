@@ -24,6 +24,8 @@ import scala.annotation.tailrec
 import dotty.tools.io.VirtualFile
 import scala.util.control.NonFatal
 
+import dotty.uoption._
+
 /** A compiler run. Exports various methods to compile source files */
 class Run(comp: Compiler, ictx: Context) {
 
@@ -144,7 +146,7 @@ class Run(comp: Compiler, ictx: Context) {
     val unit = ctx.compilationUnit
     val prevPhase = ctx.phase.prev // can be a mini-phase
     val squashedPhase = ctx.squashed(prevPhase)
-    val treeString = unit.tpdTree.show(ctx.withProperty(XprintMode, Some(())))
+    val treeString = unit.tpdTree.show(ctx.withProperty(XprintMode, USome(())))
 
     ctx.echo(s"result of $unit after $squashedPhase:")
 

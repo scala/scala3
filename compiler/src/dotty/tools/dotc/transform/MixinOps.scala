@@ -8,6 +8,8 @@ import SymUtils._
 import StdNames._, NameOps._
 import Decorators._
 
+import dotty.uoption._
+
 class MixinOps(cls: ClassSymbol, thisTransform: DenotTransformer)(implicit ctx: Context) {
   import ast.tpd._
 
@@ -77,7 +79,7 @@ class MixinOps(cls: ClassSymbol, thisTransform: DenotTransformer)(implicit ctx: 
     *   - there is a trait that defines a primitive version of implemented polymorphic method.
     *   - there is a trait that defines a polymorphic version of implemented primitive method.
     */
-  def needsPrimitiveForwarderTo(meth: Symbol): Option[Symbol] = {
+  def needsPrimitiveForwarderTo(meth: Symbol): UOption[Symbol] = {
     def hasPrimitiveMissMatch(tp1: Type, tp2: Type): Boolean = (tp1, tp2) match {
       case (tp1: MethodicType, tp2: MethodicType) =>
         hasPrimitiveMissMatch(tp1.resultType, tp2.resultType) ||
@@ -90,8 +92,8 @@ class MixinOps(cls: ClassSymbol, thisTransform: DenotTransformer)(implicit ctx: 
     def needsPrimitiveForwarder(m: Symbol): Boolean =
       m.owner != cls && !m.is(Deferred) && hasPrimitiveMissMatch(meth.info, m.info)
 
-    if (!meth.is(Method | Deferred, butNot = PrivateOrAccessor) || meth.overriddenSymbol(cls).exists || needsForwarder(meth)) None
-    else competingMethodsIterator(meth).find(needsPrimitiveForwarder)
+    if (!meth.is(Method | Deferred, butNot = PrivateOrAccessor) || meth.overriddenSymbol(cls).exists || needsForwarder(meth)) UNone
+    else competingMethodsIterator(meth).find(needsPrimitiveForwarder).toUOption
   }
 
   final val PrivateOrAccessor = Private | Accessor
