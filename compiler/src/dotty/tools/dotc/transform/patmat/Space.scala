@@ -474,6 +474,8 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
           val resTp = mt.resultType.select(nme.get).resultType.widen
           if (isUnapplySeq) scalaListType.appliedTo(resTp.argTypes.head) :: Nil
           else if (argLen == 0) Nil
+          else if (isProductMatch(resTp, argLen))
+            productSelectors(resTp).map(_.info.asSeenFrom(resTp, resTp.classSymbol).widen)
           else resTp :: Nil
         }
       }
@@ -711,14 +713,14 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
           showType(tp) + params(tp).map(_ => "_").mkString("(", ", ", ")")
         else if (decomposed) "_: " + showType(tp)
         else "_"
-      case Prod(tp, fun, _, params, _) =>
+      case Prod(tp, fun, sym, params, _) =>
         if (ctx.definitions.isTupleType(tp))
           "(" + params.map(doShow(_)).mkString(", ") + ")"
         else if (tp.isRef(scalaConsType.symbol))
           if (mergeList) params.map(doShow(_, mergeList)).mkString(", ")
           else params.map(doShow(_, true)).filter(_ != "Nil").mkString("List(", ", ", ")")
         else
-          showType(tp) + params.map(doShow(_)).mkString("(", ", ", ")")
+          showType(sym.owner.typeRef) + params.map(doShow(_)).mkString("(", ", ", ")")
       case Or(_) =>
         throw new Exception("incorrect flatten result " + s)
     }

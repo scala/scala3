@@ -17,4 +17,18 @@ object Perhaps {
     case Perhaps(None   ) :: t => ()
     // case Nil                   => ()
   }
+
+}
+
+object Multi {
+  def unapply(str: String): Some[(Option[Int], Int)] = ???
+
+  "hello" match {
+     case Multi(Some(i), x) =>
+     case Multi(None, x) =>
+  }
+
+  "hello" match {
+     case Multi(Some(i), x) =>
+  }
 }

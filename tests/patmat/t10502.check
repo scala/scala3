@@ -1,2 +1,4 @@
-5: Pattern Match Exhaustivity: Option(None)
+5: Pattern Match Exhaustivity: Perhaps(None)
 15: Pattern Match Exhaustivity: Nil
+31: Pattern Match Exhaustivity: Multi(None, _)
+
