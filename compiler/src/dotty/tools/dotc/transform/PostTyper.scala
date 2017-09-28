@@ -252,9 +252,6 @@ class PostTyper extends MacroTransform with SymTransformer  { thisTransformer =>
               ctx.compilationUnit.source.exists &&
               sym != defn.SourceFileAnnot)
               sym.addAnnotation(Annotation.makeSourceFile(ctx.compilationUnit.source.file.path))
-
-            // Add Child annotation to sealed parents unless current class is anonymous
-            sym.registerIfChild()
             tree
           }
           super.transform(tree)
