@@ -11,6 +11,7 @@ import core.Types._
 import core.Names._
 import core.StdNames._
 import core.NameOps._
+import core.NameKinds.AdaptedClosureName
 import core.Decorators._
 import core.Constants._
 import core.Definitions._
@@ -634,7 +635,7 @@ object Erasure {
                   if (resultAdaptationNeeded) sam.info
                   else implType.derivedLambdaType(paramInfos = samParamTypes)
                 } else implType.derivedLambdaType(resType = samResultType)
-              val bridge = ctx.newSymbol(ctx.owner, nme.ANON_FUN, Flags.Synthetic | Flags.Method, bridgeType)
+              val bridge = ctx.newSymbol(ctx.owner, AdaptedClosureName(meth.symbol.name.asTermName), Flags.Synthetic | Flags.Method, bridgeType)
               val bridgeCtx = ctx.withOwner(bridge)
               Closure(bridge, bridgeParamss => {
                 implicit val ctx = bridgeCtx
