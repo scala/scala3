@@ -705,7 +705,7 @@ class TreeUnpickler(reader: TastyReader, nameAtRef: NameRef => TermName, posUnpi
       if ((sym.isClass || sym.is(CaseVal)) && sym.isLocal)
         // Child annotations for local classes and enum values are not pickled, so
         // need to be re-established here.
-        sym.registerIfChild()
+        sym.registerIfChild(late = true)
       tree
     }
 
