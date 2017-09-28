@@ -142,15 +142,28 @@ object Annotations {
       apply(defn.AliasAnnot, List(
         ref(TermRef(sym.owner.thisType, sym.name, sym))))
 
-    def makeChild(delayedSym: Context => Symbol)(implicit ctx: Context): Annotation = {
-      def makeChildLater(implicit ctx: Context) = {
-        val sym = delayedSym(ctx)
-        New(defn.ChildAnnotType.appliedTo(sym.owner.thisType.select(sym.name, sym)), Nil)
-      }
-      deferred(defn.ChildAnnot, implicit ctx => makeChildLater(ctx))
-    }
+    /** Extractor for child annotations */
+    object Child {
 
-    def makeChild(sym: Symbol)(implicit ctx: Context): Annotation = makeChild(_ => sym)
+      /** A deferred annotation to the result of a given child computation */
+      def apply(delayedSym: Context => Symbol)(implicit ctx: Context): Annotation = {
+        def makeChildLater(implicit ctx: Context) = {
+          val sym = delayedSym(ctx)
+          New(defn.ChildAnnotType.appliedTo(sym.owner.thisType.select(sym.name, sym)), Nil)
+        }
+        deferred(defn.ChildAnnot, implicit ctx => makeChildLater(ctx))
+      }
+
+      /** A regular, non-deferred Child annotation */
+      def apply(sym: Symbol)(implicit ctx: Context): Annotation = apply(_ => sym)
+
+      def unapply(ann: Annotation)(implicit ctx: Context): Option[Symbol] =
+        if (ann.symbol == defn.ChildAnnot) {
+          val AppliedType(tycon, (arg: NamedType) :: Nil) = ann.tree.tpe
+          Some(arg.symbol)
+        }
+        else None
+    }
 
     def makeSourceFile(path: String)(implicit ctx: Context) =
       apply(defn.SourceFileAnnot, Literal(Constant(path)))
