@@ -683,10 +683,12 @@ object Build {
   )
 
   lazy val `dotty-library` = project.in(file("library")).
+    settings(unmanagedSourceDirectories in Compile += baseDirectory.value / "src_non_bootstrapped").
     settings(commonNonBootstrappedSettings).
     settings(dottyLibrarySettings)
 
   lazy val `dotty-library-bootstrapped`: Project = project.in(file("library")).
+    settings(unmanagedSourceDirectories in Compile += baseDirectory.value / "src_bootstrapped").
     settings(commonBootstrappedSettings).
     settings(dottyLibrarySettings).
     settings(
