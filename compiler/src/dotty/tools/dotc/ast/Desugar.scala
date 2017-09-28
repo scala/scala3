@@ -149,7 +149,7 @@ object desugar {
    *      def f$default$1[T] = 1
    *      def f$default$2[T](x: Int) = x + "m"
    */
-  def defDef(meth: DefDef, isPrimaryConstructor: Boolean = false)(implicit ctx: Context): Tree = {
+  private def defDef(meth: DefDef, isPrimaryConstructor: Boolean = false)(implicit ctx: Context): Tree = {
     val DefDef(name, tparams, vparamss, tpt, rhs) = meth
     val mods = meth.mods
     val epbuf = new ListBuffer[ValDef]
@@ -254,10 +254,16 @@ object desugar {
         .withFlags((mods.flags & AccessFlags).toCommonFlags)
         .withMods(Nil)
 
-    val (constr1, defaultGetters) = defDef(constr0, isPrimaryConstructor = true) match {
-      case meth: DefDef => (meth, Nil)
-      case Thicket((meth: DefDef) :: defaults) => (meth, defaults)
+    var defaultGetters: List[Tree] = Nil
+
+    def decompose(ddef: Tree): DefDef = ddef match {
+      case meth: DefDef => meth
+      case Thicket((meth: DefDef) :: defaults) =>
+        defaultGetters = defaults
+        meth
     }
+
+    val constr1 = decompose(defDef(constr0, isPrimaryConstructor = true))
 
     // The original type and value parameters in the constructor already have the flags
     // needed to be type members (i.e. param, and possibly also private and local unless
@@ -299,9 +305,11 @@ object desugar {
     // to auxiliary constructors
     val normalizedBody = impl.body map {
       case ddef: DefDef if ddef.name.isConstructorName =>
-        addEvidenceParams(
-          cpy.DefDef(ddef)(tparams = constrTparams),
-          evidenceParams(constr1).map(toDefParam))
+        decompose(
+          defDef(
+            addEvidenceParams(
+              cpy.DefDef(ddef)(tparams = constrTparams),
+              evidenceParams(constr1).map(toDefParam))))
       case stat =>
         stat
     }
@@ -680,7 +688,9 @@ object desugar {
   def defTree(tree: Tree)(implicit ctx: Context): Tree = tree match {
     case tree: ValDef => valDef(tree)
     case tree: TypeDef => if (tree.isClassDef) classDef(tree) else tree
-    case tree: DefDef => defDef(tree)
+    case tree: DefDef =>
+      if (tree.name.isConstructorName) tree // was already handled by enclosing classDef
+      else defDef(tree)
     case tree: ModuleDef => moduleDef(tree)
     case tree: PatDef => patDef(tree)
   }
