@@ -43,7 +43,7 @@ class PhantomArgLift extends MiniPhaseTransform {
   override def transformApply(tree: Apply)(implicit ctx: Context, info: TransformerInfo): Tree = tree.tpe.widen match {
     case _: MethodType => tree // Do the transformation higher in the tree if needed
     case _ =>
-      if (!hasImpurePhantomArgs(tree)) tree
+      if (!tree.tpe.finalResultType.isPhantom && !hasImpurePhantomArgs(tree)) tree
       else {
         val buffer = ListBuffer.empty[Tree]
         val app = EtaExpansion.liftApp(buffer, tree)
