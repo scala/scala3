@@ -625,7 +625,7 @@ trait Checking {
           else doubleDefError(decl, other)
         }
         if ((decl is HasDefaultParams) && (other is HasDefaultParams)) {
-          ctx.error(em"two or more overloaded variants of $decl have default arguments")
+          ctx.error(em"two or more overloaded variants of $decl have default arguments", decl.pos)
           decl resetFlag HasDefaultParams
         }
       }
