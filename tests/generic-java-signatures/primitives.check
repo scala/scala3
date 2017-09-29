@@ -1,0 +1,9 @@
+A <: byte[]
+B <: char[]
+C <: double[]
+D <: float[]
+E <: int[]
+F <: long[]
+G <: short[]
+H <: boolean[]
+I <: java.lang.Object

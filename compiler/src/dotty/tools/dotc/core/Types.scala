@@ -745,6 +745,24 @@ object Types {
       else ctx.asSeenFrom(this, pre, cls)
     }
 
+    /** The JVM tag for this type, if it's a primitive, `java.lang.Object` otherwise. */
+    final def toTag(implicit ctx: Context): Name = {
+      classSymbol match {
+        case t if t eq defn.IntClass     => nme.specializedTypeNames.Int
+        case t if t eq defn.BooleanClass => nme.specializedTypeNames.Boolean
+        case t if t eq defn.ByteClass    => nme.specializedTypeNames.Byte
+        case t if t eq defn.LongClass    => nme.specializedTypeNames.Long
+        case t if t eq defn.ShortClass   => nme.specializedTypeNames.Short
+        case t if t eq defn.FloatClass   => nme.specializedTypeNames.Float
+        case t if t eq defn.UnitClass    => nme.specializedTypeNames.Void
+        case t if t eq defn.DoubleClass  => nme.specializedTypeNames.Double
+        case t if t eq defn.CharClass    => nme.specializedTypeNames.Char
+        case _                           => nme.specializedTypeNames.Object
+      }
+    }
+
+
+
 // ----- Subtype-related --------------------------------------------
 
     /** Is this type a subtype of that type? */

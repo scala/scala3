@@ -300,9 +300,11 @@ class Definitions {
   lazy val NothingClass: ClassSymbol = enterCompleteClassSymbol(
     ScalaPackageClass, tpnme.Nothing, AbstractFinal, List(AnyClass.typeRef))
   def NothingType = NothingClass.typeRef
+  lazy val RuntimeNothingModuleRef = ctx.requiredModuleRef("scala.runtime.Nothing")
   lazy val NullClass: ClassSymbol = enterCompleteClassSymbol(
     ScalaPackageClass, tpnme.Null, AbstractFinal, List(ObjectClass.typeRef))
   def NullType = NullClass.typeRef
+  lazy val RuntimeNullModuleRef = ctx.requiredModuleRef("scala.runtime.Null")
 
   lazy val ScalaPredefModuleRef = ctx.requiredModuleRef("scala.Predef")
   def ScalaPredefModule(implicit ctx: Context) = ScalaPredefModuleRef.symbol

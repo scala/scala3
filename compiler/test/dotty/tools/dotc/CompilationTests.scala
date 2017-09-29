@@ -192,6 +192,12 @@ class CompilationTests extends ParallelTesting {
     compileFilesInDir("../tests/run-no-optimise", defaultOptions)
   }.checkRuns()
 
+  // Generic java signatures tests ---------------------------------------------
+
+  @Test def genericJavaSignatures: Unit = {
+    compileFilesInDir("../tests/generic-java-signatures", checkGenericJavaSignaturesOptions)
+  }.checkRuns()
+
   // Pickling Tests ------------------------------------------------------------
   //
   // Pickling tests are very memory intensive and as such need to be run with a

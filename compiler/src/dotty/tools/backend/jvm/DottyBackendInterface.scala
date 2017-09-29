@@ -489,8 +489,86 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
 
   def getSingleOutput: Option[AbstractFile] = None // todo: implement
 
+  // @M don't generate java generics sigs for (members of) implementation
+  // classes, as they are monomorphic (TODO: ok?)
+  private final def needsGenericSignature(sym: Symbol): Boolean = !(
+    // pp: this condition used to include sym.hasexpandedname, but this leads
+    // to the total loss of generic information if a private member is
+    // accessed from a closure: both the field and the accessor were generated
+    // without it.  This is particularly bad because the availability of
+    // generic information could disappear as a consequence of a seemingly
+    // unrelated change.
+       ctx.base.settings.YnoGenericSig.value
+    || sym.is(Flags.Artifact)
+    || sym.is(Flags.allOf(Flags.Method, Flags.Lifted))
+    || sym.is(Flags.Bridge)
+  )
 
-  def getGenericSignature(sym: Symbol, owner: Symbol): String = null // todo: implement
+  private def verifySignature(sym: Symbol, sig: String)(implicit ctx: Context): Unit = {
+    import scala.tools.asm.util.CheckClassAdapter
+    def wrap(body: => Unit): Boolean =
+      try { body; true }
+      catch { case ex: Throwable => println(ex.getMessage); false }
+
+    val valid = wrap {
+      if (sym.is(Flags.Method)) {
+        CheckClassAdapter.checkMethodSignature(sig)
+      }
+      else if (sym.isTerm) {
+        CheckClassAdapter.checkFieldSignature(sig)
+      }
+      else {
+        CheckClassAdapter.checkClassSignature(sig)
+      }
+    }
+
+    if(!valid) {
+      ctx.warning(
+        i"""|compiler bug: created invalid generic signature for $sym in ${sym.denot.owner.showFullName}
+            |signature: $sig
+            |if this is reproducible, please report bug at https://github.com/lampepfl/dotty/issues
+        """.trim, sym.pos)
+    }
+  }
+
+  /**
+   * Generates the generic signature for `sym` before erasure.
+   *
+   * @param sym   The symbol for which to generate a signature.
+   * @param owner The owner of `sym`.
+   * @return The generic signature of `sym` before erasure, as specified in the Java Virtual
+   *         Machine Specification, §4.3.4, or `null` if `sym` doesn't need a generic signature.
+   * @see https://docs.oracle.com/javase/specs/jvms/se7/html/jvms-4.html#jvms-4.3.4
+   */
+  def getGenericSignature(sym: Symbol, owner: Symbol): String = {
+    ctx.atPhase(ctx.erasurePhase) { implicit ctx =>
+      val memberTpe =
+        if (sym.is(Flags.Method)) sym.denot.info
+        else owner.denot.thisType.memberInfo(sym)
+      getGenericSignature(sym, owner, memberTpe).orNull
+    }
+  }
+
+  private def getGenericSignature(sym: Symbol, owner: Symbol, memberTpe: Type)(implicit ctx: Context): Option[String] =
+    if (needsGenericSignature(sym)) {
+      val erasedTypeSym = sym.denot.info.typeSymbol
+      if (erasedTypeSym.isPrimitiveValueClass) {
+        None
+      } else {
+        val jsOpt =
+          ctx.atPhase(ctx.erasurePhase) { implicit ctx =>
+            Erasure.javaSig(sym, memberTpe, _ => ())
+          }
+
+        if (ctx.settings.XverifySignatures.value) {
+          jsOpt.foreach(verifySignature(sym, _))
+        }
+
+        jsOpt
+      }
+    } else {
+      None
+    }
 
   def getStaticForwarderGenericSignature(sym: Symbol, moduleClass: Symbol): String = null // todo: implement
 

@@ -58,4 +58,5 @@ object TestConfiguration {
   val scala2Mode = defaultOptions and "-language:Scala2"
   val explicitUTF8 = defaultOptions and ("-encoding", "UTF8")
   val explicitUTF16 = defaultOptions and ("-encoding", "UTF16")
+  val checkGenericJavaSignaturesOptions = defaultOptions and "-Xverify-signatures"
 }
