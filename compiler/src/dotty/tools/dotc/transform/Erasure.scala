@@ -1035,10 +1035,22 @@ object Erasure {
     else None
   }
 
-  // TODO: Port from scalac
-  private object ThrownException {
-    def unapply(ann: Annotation): Option[Type] = None
+  /** Extracts the type of the thrown exception from an AnnotationInfo.
+    *
+    * Supports both “old-style” `@throws(classOf[Exception])`
+    * as well as “new-style” `@throws[Exception]("cause")` annotations.
+    */
+  object ThrownException {
+    def unapply(ann: Annotation)(implicit ctx: Context): Option[Type] = {
+      ann.tree match {
+        case Apply(TypeApply(fun, List(tpe)), _) if tpe.isType && fun.symbol.owner == defn.ThrowsAnnot && fun.symbol.isConstructor =>
+          Some(tpe.typeOpt)
+        case _ =>
+          None
+      }
+    }
   }
+
 
   class UnknownSig extends Exception
 
