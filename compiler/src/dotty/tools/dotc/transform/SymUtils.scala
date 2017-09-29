@@ -134,4 +134,45 @@ class SymUtils(val self: Symbol) extends AnyVal {
       }
     }
   }
+
+  /** If this symbol is an enum value or a named class, register it as a child
+   *  in all direct parent classes which are sealed.
+   *   @param  @late  If true, register only inaccessible children (all others are already
+   *                  entered at this point).
+   */
+  def registerIfChild(late: Boolean = false)(implicit ctx: Context): Unit = {
+    def register(child: Symbol, parent: Type) = {
+      val cls = parent.classSymbol
+      if (cls.is(Sealed) && (!late || child.isInaccessibleChildOf(cls)))
+        cls.addAnnotation(Annotation.Child(child))
+    }
+    if (self.isClass && !self.isAnonymousClass)
+      self.asClass.classParents.foreach { parent =>
+        val child = if (self.is(Module)) self.sourceModule else self
+        register(child, parent)
+      }
+    else if (self.is(CaseVal, butNot = Method | Module))
+      register(self, self.info)
+  }
+
+  /** Is this symbol defined locally (i.e. at some level owned by a term) and
+   *  defined in a different toplevel class than its supposed parent class `cls`?
+   *  Such children are not pickled, and have to be reconstituted manually.
+   */
+  def isInaccessibleChildOf(cls: Symbol)(implicit ctx: Context) =
+    self.isLocal && !cls.topLevelClass.isLinkedWith(self.topLevelClass)
+
+  /** If this is a sealed class, its known children */
+  def children(implicit ctx: Context): List[Symbol] =
+    self.annotations.collect {
+      case Annotation.Child(child) => child
+    }
+
+  /** Is symbol directly or indirectly owned by a term symbol? */
+  @tailrec def isLocal(implicit ctx: Context): Boolean = {
+    val owner = self.owner
+    if (owner.isTerm) true
+    else if (owner.is(Package)) false
+    else owner.isLocal
+  }
 }

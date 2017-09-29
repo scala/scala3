@@ -14,7 +14,7 @@ import SymDenotations._, Symbols._, StdNames._, Annotations._, Trees._, Scopes._
 import util.Positions._
 import Decorators._
 import config.Printers.typr
-import Symbols._, TypeUtils._
+import Symbols._, TypeUtils._, SymUtils._
 import reporting.diagnostic.messages.SuperCallsNotAllowedInline
 
 /** A macro transform that runs immediately after typer and that performs the following functions:
@@ -124,14 +124,9 @@ class PostTyper extends MacroTransform with SymTransformer  { thisTransformer =>
     private def transformAnnot(annot: Annotation)(implicit ctx: Context): Annotation =
       annot.derivedAnnotation(transformAnnot(annot.tree))
 
-    private def registerChild(sym: Symbol, tp: Type)(implicit ctx: Context) = {
-      val cls = tp.classSymbol
-      if (cls.is(Sealed)) cls.addAnnotation(Annotation.makeChild(sym))
-    }
-
     private def transformMemberDef(tree: MemberDef)(implicit ctx: Context): Unit = {
       val sym = tree.symbol
-      if (sym.is(CaseVal, butNot = Method | Module)) registerChild(sym, sym.info)
+      sym.registerIfChild()
       sym.transformAnnotations(transformAnnot)
     }
 
@@ -257,14 +252,6 @@ class PostTyper extends MacroTransform with SymTransformer  { thisTransformer =>
               ctx.compilationUnit.source.exists &&
               sym != defn.SourceFileAnnot)
               sym.addAnnotation(Annotation.makeSourceFile(ctx.compilationUnit.source.file.path))
-
-            // Add Child annotation to sealed parents unless current class is anonymous
-            if (!sym.isAnonymousClass) // ignore anonymous class
-              sym.asClass.classParents.foreach { parent =>
-                val sym2 = if (sym.is(Module)) sym.sourceModule else sym
-                registerChild(sym2, parent)
-              }
-
             tree
           }
           super.transform(tree)

@@ -570,11 +570,21 @@ class TreePickler(pickler: TastyPickler) {
       if (flags is Covariant) writeByte(COVARIANT)
       if (flags is Contravariant) writeByte(CONTRAVARIANT)
     }
-    sym.annotations.foreach(pickleAnnotation)
+    sym.annotations.foreach(pickleAnnotation(sym, _))
   }
 
-  def pickleAnnotation(ann: Annotation)(implicit ctx: Context) =
-    if (ann.symbol != defn.BodyAnnot) { // inline bodies are reconstituted automatically when unpickling
+  private def isUnpicklable(owner: Symbol, ann: Annotation)(implicit ctx: Context) = ann match {
+    case Annotation.Child(sym) => sym.isInaccessibleChildOf(owner)
+      // If child annotation refers to a local class or enum value under
+      // a different toplevel class, it is impossible to pickle a reference to it.
+      // Such annotations will be reconstituted when unpickling the child class.
+      // See tests/pickling/i3149.scala
+    case _ => ann.symbol == defn.BodyAnnot
+      // inline bodies are reconstituted automatically when unpickling
+  }
+
+  def pickleAnnotation(owner: Symbol, ann: Annotation)(implicit ctx: Context) =
+    if (!isUnpicklable(owner, ann)) {
       writeByte(ANNOTATION)
       withLength { pickleType(ann.symbol.typeRef); pickleTree(ann.tree) }
     }

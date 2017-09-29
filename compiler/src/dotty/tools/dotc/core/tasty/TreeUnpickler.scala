@@ -11,6 +11,7 @@ import util.Positions._
 import ast.{tpd, Trees, untpd}
 import Trees._
 import Decorators._
+import transform.SymUtils._
 import TastyUnpickler._, TastyBuffer._
 import scala.annotation.{tailrec, switch}
 import scala.collection.mutable.ListBuffer
@@ -663,7 +664,6 @@ class TreeUnpickler(reader: TastyReader, nameAtRef: NameRef => TermName, posUnpi
             def isCodefined =
               roots.contains(companion.denot) == seenRoots.contains(companion)
             if (companion.exists && isCodefined) {
-              import transform.SymUtils._
               if (sym is Flags.ModuleClass) sym.registerCompanionMethod(nme.COMPANION_CLASS_METHOD, companion)
               else sym.registerCompanionMethod(nme.COMPANION_MODULE_METHOD, companion)
             }
@@ -702,6 +702,10 @@ class TreeUnpickler(reader: TastyReader, nameAtRef: NameRef => TermName, posUnpi
       if (!sym.isType) { // Only terms might have leaky aliases, see the documentation of `checkNoPrivateLeaks`
         sym.info = ta.avoidPrivateLeaks(sym, tree.pos)
       }
+      if ((sym.isClass || sym.is(CaseVal)) && sym.isLocal)
+        // Child annotations for local classes and enum values are not pickled, so
+        // need to be re-established here.
+        sym.registerIfChild(late = true)
       tree
     }
 
