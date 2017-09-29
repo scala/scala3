@@ -421,11 +421,12 @@ class Inliner(call: tpd.Tree, rhs: tpd.Tree)(implicit ctx: Context) {
       val rhs =
         if (lastSelf.exists)
           ref(lastSelf).outerSelect(lastLevel - level, selfSym.info)
-        else if (rhsClsSym.is(Module))
+        else if (rhsClsSym.is(Module) && rhsClsSym.isStatic)
           ref(rhsClsSym.sourceModule)
         else
           prefix
       bindingsBuf += ValDef(selfSym.asTerm, rhs)
+      inlining.println(i"proxy at $level: $selfSym = ${bindingsBuf.last}")
       lastSelf = selfSym
       lastLevel = level
     }
