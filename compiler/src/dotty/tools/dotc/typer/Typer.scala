@@ -663,7 +663,8 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
       val ptDefined = isFullyDefined(pt, ForceDegree.none)
       if (ptDefined && !(avoidingType <:< pt)) avoidingType = pt
       val tree1 = ascribeType(tree, avoidingType)
-      assert(ptDefined || noLeaks(tree1), // `ptDefined` needed because of special case of anonymous classes
+      assert(ptDefined || noLeaks(tree1) || tree1.tpe.widen.isErroneous,
+          // `ptDefined` needed because of special case of anonymous classes
           i"leak: ${escapingRefs(tree1, localSyms).toList}%, % in $tree1")
       tree1
     }

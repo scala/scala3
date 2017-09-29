@@ -21,7 +21,6 @@ object StdNames {
     final val TRAIT_SETTER_SEPARATOR   = "$_setter_$"
     final val SUPER_PREFIX             = "super$"
     final val INITIALIZER_PREFIX       = "initial$"
-    final val SHADOWED_PREFIX          = "(shadowed)"
     final val AVOID_CLASH_SUFFIX       = "$_avoid_name_clash_$"
     final val MODULE_SUFFIX            = "$"
     final val NAME_JOIN                = "$"

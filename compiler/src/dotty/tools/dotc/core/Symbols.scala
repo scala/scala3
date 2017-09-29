@@ -394,7 +394,7 @@ object Symbols {
 
     type ThisName <: Name
 
-    //assert(id != 4285)
+    //assert(id != 723)
 
     /** The last denotation of this symbol */
     private[this] var lastDenot: SymDenotation = _
@@ -446,9 +446,21 @@ object Symbols {
     final def isClass: Boolean = isInstanceOf[ClassSymbol]
     final def asClass: ClassSymbol = asInstanceOf[ClassSymbol]
 
+    /** Test whether symbol is referenced symbolically. This
+     *  conservatively returns `false` if symbol does not yet have a denotation
+     */
     final def isReferencedSymbolically(implicit ctx: Context) = {
       val d = lastDenot
       d != null && (d.is(NonMember) || d.isTerm && ctx.phase.symbolicRefs)
+    }
+
+    /** Test whether symbol is private. This
+     *  conservatively returns `false` if symbol does not yet have a denotation, or denotation
+     *  is a class that is not yet read.
+     */
+    final def isPrivate(implicit ctx: Context) = {
+      val d = lastDenot
+      d != null && d.flagsUNSAFE.is(Private)
     }
 
     /** The symbol's signature if it is completed or a method, NotAMethod otherwise. */
@@ -489,7 +501,7 @@ object Symbols {
           if (this is Module) this.moduleClass.validFor |= InitialPeriod
         }
         else this.owner.asClass.ensureFreshScopeAfter(phase)
-        if (!this.flagsUNSAFE.is(Private))
+        if (!isPrivate)
           assert(phase.changesMembers, i"$this entered in ${this.owner} at undeclared phase $phase")
         entered
       }

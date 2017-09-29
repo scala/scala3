@@ -311,7 +311,5 @@ object NameOps {
       case raw.BANG  => UNARY_!
       case _ => name
     }
-
-    def withSig(sig: Signature) = SignedName(name.exclude(SignedName), sig)
   }
 }
