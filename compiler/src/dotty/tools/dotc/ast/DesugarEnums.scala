@@ -6,7 +6,7 @@ import core._
 import util.Positions._, Types._, Contexts._, Constants._, Names._, NameOps._, Flags._
 import SymDenotations._, Symbols._, StdNames._, Annotations._, Trees._
 import Decorators._
-import dotty.tools.dotc.reporting.diagnostic.messages.EnumCaseDefinitionInNonEnumOwner
+import reporting.diagnostic.messages.EnumCaseDefinitionInNonEnumOwner
 import collection.mutable.ListBuffer
 import util.Property
 import typer.ErrorReporting._
