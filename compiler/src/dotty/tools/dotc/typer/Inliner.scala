@@ -39,11 +39,12 @@ object Inliner {
    */
   private def makeInlineable(tree: Tree)(implicit ctx: Context) = {
 
+    val inlineMethod = ctx.owner
+
     /** A tree map which inserts accessors for all non-public term members accessed
      *  from inlined code. Accessors are collected in the `accessors` buffer.
      */
     object addAccessors extends TreeMap {
-      val inlineMethod = ctx.owner
       val accessors = new mutable.ListBuffer[MemberDef]
 
       /** A definition needs an accessor if it is private, protected, or qualified private
@@ -180,8 +181,14 @@ object Inliner {
       }
     }
 
-    val tree1 = addAccessors.transform(tree)
-    flatTree(tree1 :: addAccessors.accessors.toList)
+    if (inlineMethod.owner.isTerm)
+      // Inline methods in local scopes can only be called in the scope they are defined,
+      // so no accessors are needed for them.
+      tree
+    else {
+      val tree1 = addAccessors.transform(tree)
+      flatTree(tree1 :: addAccessors.accessors.toList)
+    }
   }
 
   /** Register inline info for given inline method `sym`.
