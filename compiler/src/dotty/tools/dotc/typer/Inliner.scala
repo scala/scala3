@@ -446,6 +446,7 @@ class Inliner(call: tpd.Tree, rhs: tpd.Tree)(implicit ctx: Context) {
         case t: SingletonType => paramProxy.getOrElse(t, mapOver(t))
         case t => mapOver(t)
       }
+      override def mapClassInfo(tp: ClassInfo) = mapFullClassInfo(tp)
     }
 
     // The tree map to apply to the inlined tree. This maps references to this-types

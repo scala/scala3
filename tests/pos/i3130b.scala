@@ -1,5 +1,5 @@
-trait F { def f(): Int }
 class Outer {
+  trait F { def f(): Int }
   inline def inner: F = {
     class InnerClass(x: Int) extends F {
       def this() = this(3)

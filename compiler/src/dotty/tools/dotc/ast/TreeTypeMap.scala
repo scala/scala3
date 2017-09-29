@@ -80,7 +80,7 @@ final class TreeTypeMap(
       val tmap = withMappedSyms(localSyms(impl :: self :: Nil))
       cpy.Template(impl)(
           constr = tmap.transformSub(constr),
-          parents = parents mapconserve transform,
+          parents = parents.mapconserve(transform),
           self = tmap.transformSub(self),
           body = impl.body mapconserve
             (tmap.transform(_)(ctx.withOwner(mapOwner(impl.symbol.owner))))
