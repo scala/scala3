@@ -1748,7 +1748,7 @@ object messages {
     val explanation =
       hl"you have to provide either ${"class"}, ${"trait"}, ${"object"}, or ${"enum"} definitions after qualifiers"
   }
-  
+
   case class NoReturnFromInline(owner: Symbol)(implicit ctx: Context)
     extends Message(NoReturnFromInlineID) {
     val kind = "Syntax"
