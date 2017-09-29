@@ -1077,15 +1077,15 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
   }
 
   def typedAndTypeTree(tree: untpd.AndTypeTree)(implicit ctx: Context): AndTypeTree = track("typedAndTypeTree") {
-    val left1 = typed(tree.left)
-    val right1 = typed(tree.right)
+    val left1 = checkSimpleKinded(typed(tree.left))
+    val right1 = checkSimpleKinded(typed(tree.right))
     assignType(cpy.AndTypeTree(tree)(left1, right1), left1, right1)
   }
 
   def typedOrTypeTree(tree: untpd.OrTypeTree)(implicit ctx: Context): OrTypeTree = track("typedOrTypeTree") {
     val where = "in a union type"
-    val left1 = checkNotSingleton(typed(tree.left), where)
-    val right1 = checkNotSingleton(typed(tree.right), where)
+    val left1 = checkNotSingleton(checkSimpleKinded(typed(tree.left)), where)
+    val right1 = checkNotSingleton(checkSimpleKinded(typed(tree.right)), where)
     assignType(cpy.OrTypeTree(tree)(left1, right1), left1, right1)
   }
 
