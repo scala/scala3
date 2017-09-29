@@ -549,6 +549,20 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
     }
   }
 
+  def getStaticForwarderGenericSignature(sym: Symbol, moduleClass: Symbol): String = {
+    // scala/bug#3452 Static forwarder generation uses the same erased signature as the method if forwards to.
+    // By rights, it should use the signature as-seen-from the module class, and add suitable
+    // primitive and value-class boxing/unboxing.
+    // But for now, just like we did in mixin, we just avoid writing a wrong generic signature
+    // (one that doesn't erase to the actual signature). See run/t3452b for a test case.
+
+    val memberTpe = ctx.atPhase(ctx.erasurePhase) { implicit ctx => moduleClass.denot.thisType.memberInfo(sym) }
+    val erasedMemberType = TypeErasure.erasure(memberTpe)
+    if (erasedMemberType =:= sym.denot.info)
+      getGenericSignature(sym, moduleClass, memberTpe).orNull
+    else null
+  }
+
   private def getGenericSignature(sym: Symbol, owner: Symbol, memberTpe: Type)(implicit ctx: Context): Option[String] =
     if (needsGenericSignature(sym)) {
       val erasedTypeSym = sym.denot.info.typeSymbol
@@ -570,7 +584,6 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
       None
     }
 
-  def getStaticForwarderGenericSignature(sym: Symbol, moduleClass: Symbol): String = null // todo: implement
 
 
   def sourceFileFor(cu: CompilationUnit): String = cu.source.file.name
