@@ -173,6 +173,7 @@ trait TreeInfo[T >: Untyped <: Type] { self: Trees.Instance[T] =>
     case Typed(Ident(nme.WILDCARD_STAR), _) => true
     case Typed(_, Ident(tpnme.WILDCARD_STAR)) => true
     case Typed(_, tpt: TypeTree) => tpt.hasType && tpt.tpe.isRepeatedParam
+    case NamedArg(_, arg) => isWildcardStarArg(arg)
     case _ => false
   }
 
