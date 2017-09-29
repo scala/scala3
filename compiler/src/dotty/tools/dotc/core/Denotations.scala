@@ -325,7 +325,7 @@ object Denotations {
                 if (tp1.isInstanceOf[PolyType] && tp2.isInstanceOf[MethodType]) tp2
                 else if (tp2.isInstanceOf[PolyType] && tp1.isInstanceOf[MethodType]) tp1
                 else if (ctx.typeComparer.matchingParams(tp1, tp2) &&
-                         tp1.isImplicit == tp2.isImplicit)
+                         tp1.isImplicitMethod == tp2.isImplicitMethod)
                   tp1.derivedLambdaType(
                     mergeParamNames(tp1, tp2), tp1.paramInfos,
                     infoMeet(tp1.resultType, tp2.resultType.subst(tp2, tp1)))
@@ -481,7 +481,7 @@ object Denotations {
           tp2 match {
             case tp2: MethodOrPoly
             if ctx.typeComparer.matchingParams(tp1, tp2) &&
-               tp1.isImplicit == tp2.isImplicit =>
+               tp1.isImplicitMethod == tp2.isImplicitMethod =>
               tp1.derivedLambdaType(
                 mergeParamNames(tp1, tp2), tp1.paramInfos,
                 tp1.resultType | tp2.resultType.subst(tp2, tp1))

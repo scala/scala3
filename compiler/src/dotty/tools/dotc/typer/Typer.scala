@@ -1345,7 +1345,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
      *  @param cinfo The info of its constructor
      */
     def maybeCall(ref: Tree, psym: Symbol, cinfo: Type): Tree = cinfo.stripPoly match {
-      case cinfo @ MethodType(Nil) if cinfo.resultType.isInstanceOf[ImplicitMethodType] =>
+      case cinfo @ MethodType(Nil) if cinfo.resultType.isImplicitMethod =>
         val icall = New(ref).select(nme.CONSTRUCTOR).appliedToNone
         typedExpr(untpd.TypedSplice(icall))(superCtx)
       case cinfo @ MethodType(Nil) if !cinfo.resultType.isInstanceOf[MethodType] =>
@@ -1990,7 +1990,8 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
       }
     }
 
-    def adaptNoArgsImplicitMethod(wtp: ImplicitMethodType): Tree = {
+    def adaptNoArgsImplicitMethod(wtp: MethodType): Tree = {
+      assert(wtp.isImplicitMethod)
       val tvarsToInstantiate = tvarsInParams(tree)
       wtp.paramInfos.foreach(instantiateSelected(_, tvarsToInstantiate))
       val constr = ctx.typerState.constraint
@@ -2085,7 +2086,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
         typed(etaExpand(tree, wtp, arity), pt)
       else if (wtp.paramInfos.isEmpty && isAutoApplied(tree.symbol))
         adaptInterpolated(tpd.Apply(tree, Nil), pt)
-      else if (wtp.isImplicit)
+      else if (wtp.isImplicitMethod)
         err.typeMismatch(tree, pt)
       else
         missingArgs(wtp)
@@ -2148,8 +2149,8 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
       wtp match {
         case wtp: ExprType =>
           adaptInterpolated(tree.withType(wtp.resultType), pt)
-        case wtp: ImplicitMethodType
-        if constrainResult(wtp, followAlias(pt)) || !functionExpected =>
+        case wtp: MethodType
+        if wtp.isImplicitMethod && constrainResult(wtp, followAlias(pt)) || !functionExpected =>
           adaptNoArgsImplicitMethod(wtp)
         case wtp: MethodType if !pt.isInstanceOf[SingletonType] =>
           val arity =

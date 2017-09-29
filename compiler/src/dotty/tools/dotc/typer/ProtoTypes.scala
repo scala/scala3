@@ -446,7 +446,7 @@ object ProtoTypes {
       case poly: PolyType =>
         normalize(constrained(poly).resultType, pt)
       case mt: MethodType =>
-        if (mt.isImplicit) normalize(resultTypeApprox(mt), pt)
+        if (mt.isImplicitMethod) normalize(resultTypeApprox(mt), pt)
         else if (mt.isDependent) tp
         else {
           val rt = normalize(mt.resultType, pt)

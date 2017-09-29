@@ -508,7 +508,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
         case tp1: MethodOrPoly =>
           (tp1.signature consistentParams tp2.signature) &&
             matchingParams(tp1, tp2) &&
-            tp1.isImplicit == tp2.isImplicit &&
+            tp1.isImplicitMethod == tp2.isImplicitMethod &&
             isSubType(tp1.resultType, tp2.resultType.subst(tp2, tp1))
         case _ =>
           false
@@ -1136,8 +1136,8 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
           case formal2 :: rest2 =>
             val formal2a = if (lam2.isParamDependent) formal2.subst(lam2, lam1) else formal2
             (isSameTypeWhenFrozen(formal1, formal2a)
-            || lam1.isJava && (formal2 isRef ObjectClass) && (formal1 isRef AnyClass)
-            || lam2.isJava && (formal1 isRef ObjectClass) && (formal2 isRef AnyClass)) &&
+            || lam1.isJavaMethod && (formal2 isRef ObjectClass) && (formal1 isRef AnyClass)
+            || lam2.isJavaMethod && (formal1 isRef ObjectClass) && (formal2 isRef AnyClass)) &&
             loop(rest1, rest2)
           case nil =>
             false

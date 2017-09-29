@@ -308,7 +308,7 @@ private class ExtractAPICollector(implicit val ctx: Context) extends ThunkHolder
         val params = (pnames, ptypes, defaults).zipped.map((pname, ptype, isDefault) =>
           new api.MethodParameter(pname.toString, apiType(ptype),
             isDefault, api.ParameterModifier.Plain))
-        new api.ParameterList(params.toArray, mt.isImplicit) :: paramLists(restpe, params.length)
+        new api.ParameterList(params.toArray, mt.isImplicitMethod) :: paramLists(restpe, params.length)
       case _ =>
         Nil
     }

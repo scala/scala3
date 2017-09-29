@@ -288,6 +288,12 @@ object Types {
     /** Is this an alias TypeBounds? */
     final def isAlias: Boolean = this.isInstanceOf[TypeAlias]
 
+    /** Is this a MethodType which is from Java */
+    def isJavaMethod: Boolean = false
+
+    /** Is this a MethodType which has implicit parameters */
+    def isImplicitMethod: Boolean = false
+
 // ----- Higher-order combinators -----------------------------------
 
     /** Returns true if there is a part of this type that satisfies predicate `p`.
@@ -1317,7 +1323,7 @@ object Types {
       case mt: MethodType if !mt.isDependent || ctx.mode.is(Mode.AllowDependentFunctions) =>
         val formals1 = if (dropLast == 0) mt.paramInfos else mt.paramInfos dropRight dropLast
         defn.FunctionOf(
-          formals1 mapConserve (_.underlyingIfRepeated(mt.isJava)), mt.resultType, mt.isImplicit && !ctx.erasedTypes)
+          formals1 mapConserve (_.underlyingIfRepeated(mt.isJavaMethod)), mt.resultType, mt.isImplicitMethod && !ctx.erasedTypes)
     }
 
     /** The signature of this type. This is by default NotAMethod,
@@ -2552,9 +2558,6 @@ object Types {
 
     override def resultType(implicit ctx: Context) = resType
 
-    def isJava: Boolean = false
-    def isImplicit = false
-
     def isDependent(implicit ctx: Context): Boolean
     def isParamDependent(implicit ctx: Context): Boolean
 
@@ -2708,12 +2711,17 @@ object Types {
 
     type This = MethodType
 
+    def companion: MethodTypeCompanion
+
+    final override def isJavaMethod: Boolean = companion.isJava
+    final override def isImplicitMethod: Boolean = companion.isImplicit
+
     val paramInfos = paramInfosExp(this)
     val resType = resultTypeExp(this)
     assert(resType.exists)
 
     def computeSignature(implicit ctx: Context): Signature =
-      resultSignature.prepend(paramInfos, isJava)
+      resultSignature.prepend(paramInfos, isJavaMethod)
 
     final override def computeHash = doHash(paramNames, resType, paramInfos)
 
@@ -2740,24 +2748,8 @@ object Types {
     protected def prefixString = "MethodType"
   }
 
-  final class CachedMethodType(paramNames: List[TermName])(paramInfosExp: MethodType => List[Type], resultTypeExp: MethodType => Type)
-    extends MethodType(paramNames)(paramInfosExp, resultTypeExp) {
-    def companion = MethodType
-  }
-
-  final class JavaMethodType(paramNames: List[TermName])(paramInfosExp: MethodType => List[Type], resultTypeExp: MethodType => Type)
-    extends MethodType(paramNames)(paramInfosExp, resultTypeExp) {
-    def companion = JavaMethodType
-    override def isJava = true
-    override protected def prefixString = "JavaMethodType"
-  }
-
-  final class ImplicitMethodType(paramNames: List[TermName])(paramInfosExp: MethodType => List[Type], resultTypeExp: MethodType => Type)
-    extends MethodType(paramNames)(paramInfosExp, resultTypeExp) {
-    def companion = ImplicitMethodType
-    override def isImplicit = true
-    override protected def prefixString = "ImplicitMethodType"
-  }
+  final class CachedMethodType(paramNames: List[TermName])(paramInfosExp: MethodType => List[Type], resultTypeExp: MethodType => Type, val companion: MethodTypeCompanion)
+    extends MethodType(paramNames)(paramInfosExp, resultTypeExp)
 
   abstract class LambdaTypeCompanion[N <: Name, PInfo <: Type, LT <: LambdaType] {
     def syntheticParamName(n: Int): N
@@ -2802,7 +2794,10 @@ object Types {
     def syntheticParamName(n: Int) = tpnme.syntheticTypeParamName(n)
   }
 
-  abstract class MethodTypeCompanion extends TermLambdaCompanion[MethodType] {
+  abstract class MethodTypeCompanion extends TermLambdaCompanion[MethodType] { self =>
+
+    def isJava: Boolean = false
+    def isImplicit: Boolean = false
 
     /** Produce method type from parameter symbols, with special mappings for repeated
      *  and inline parameters:
@@ -2833,6 +2828,9 @@ object Types {
          tl => tl.integrate(params, resultType))
     }
 
+    final def apply(paramNames: List[TermName])(paramInfosExp: MethodType => List[Type], resultTypeExp: MethodType => Type)(implicit ctx: Context): MethodType =
+      checkValid(new CachedMethodType(paramNames)(paramInfosExp, resultTypeExp, self))
+
     def checkValid(mt: MethodType)(implicit ctx: Context): mt.type = {
       if (Config.checkMethodTypes)
         for ((paramInfo, idx) <- mt.paramInfos.zipWithIndex)
@@ -2845,18 +2843,19 @@ object Types {
   }
 
   object MethodType extends MethodTypeCompanion {
-    def apply(paramNames: List[TermName])(paramInfosExp: MethodType => List[Type], resultTypeExp: MethodType => Type)(implicit ctx: Context): MethodType =
-      checkValid(unique(new CachedMethodType(paramNames)(paramInfosExp, resultTypeExp)))
+    def withKind(isJava: Boolean = false, isImplicit: Boolean = false): MethodTypeCompanion = {
+      if (isJava) JavaMethodType
+      else if (isImplicit) ImplicitMethodType
+      else MethodType
+    }
   }
 
   object JavaMethodType extends MethodTypeCompanion {
-    def apply(paramNames: List[TermName])(paramInfosExp: MethodType => List[Type], resultTypeExp: MethodType => Type)(implicit ctx: Context): MethodType =
-      unique(new JavaMethodType(paramNames)(paramInfosExp, resultTypeExp))
+    override def isJava: Boolean = true
   }
 
   object ImplicitMethodType extends MethodTypeCompanion {
-    def apply(paramNames: List[TermName])(paramInfosExp: MethodType => List[Type], resultTypeExp: MethodType => Type)(implicit ctx: Context): MethodType =
-      checkValid(unique(new ImplicitMethodType(paramNames)(paramInfosExp, resultTypeExp)))
+    override def isImplicit: Boolean = true
   }
 
   /** A ternary extractor for MethodType */

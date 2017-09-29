@@ -267,7 +267,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
         toDenot(fun.symbol).owner == defn.ArrayClass.linkedClass && fun.symbol.name == nme_apply =>
         val arrAnnotV: AnnotationVisitor = av.visitArray(name)
 
-        var actualArgs = if (fun.tpe.isInstanceOf[ImplicitMethodType]) {
+        var actualArgs = if (fun.tpe.isImplicitMethod) {
           // generic array method, need to get implicit argument out of the way
           fun.asInstanceOf[Apply].args
         } else args

@@ -774,8 +774,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
         def isImplicit =
           tag == IMPLICITMETHODtpe ||
           params.nonEmpty && (params.head is Implicit)
-        val maker = if (isImplicit) ImplicitMethodType else MethodType
-        maker.fromSymbols(params, restpe)
+        MethodType.withKind(isImplicit = isImplicit).fromSymbols(params, restpe)
       case POLYtpe =>
         val restpe = readTypeRef()
         val typeParams = until(end, readSymbolRef)

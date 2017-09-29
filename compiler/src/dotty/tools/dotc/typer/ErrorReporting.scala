@@ -116,7 +116,7 @@ object ErrorReporting {
       def dropJavaMethod(tp: Type): Type = tp match {
         case tp: PolyType =>
           tp.derivedLambdaType(resType = dropJavaMethod(tp.resultType))
-        case tp: JavaMethodType =>
+        case tp: MethodType if tp.isJavaMethod =>
           MethodType(tp.paramNames, tp.paramInfos, dropJavaMethod(tp.resultType))
         case tp => tp
       }
