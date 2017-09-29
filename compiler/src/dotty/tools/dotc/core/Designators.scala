@@ -44,6 +44,10 @@ object Designators {
   type TermDesignator = Designator { type ThisName = TermName }
   type TypeDesignator = Designator { type ThisName = TypeName }
 
+  /** Names that come with the namespace where they are defined.
+   *  Used to give a stable reference to private names, and also to
+   *  Scala 2x inner classes.
+   */
   case class LocalName[N <: Name](name: N, nameSpace: TypeRef) extends Designator {
     type ThisName = N
 
