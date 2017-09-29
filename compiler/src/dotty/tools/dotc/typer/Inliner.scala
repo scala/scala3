@@ -120,7 +120,8 @@ object Inliner {
 
             // The types that are local to the inlined method, and that therefore have
             // to be abstracted out in the accessor, which is external to the inlined method
-            val localRefs = qualType.namedPartsWith(_.symbol.isContainedIn(inlineMethod)).toList
+            val localRefs = qualType.namedPartsWith(ref =>
+              ref.isType && ref.symbol.isContainedIn(inlineMethod)).toList
 
             // Abstract accessed type over local refs
             def abstractQualType(mtpe: Type): Type =
