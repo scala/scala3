@@ -21,7 +21,7 @@ import collection.mutable
   }
 
   @inline
-  def record(fn: String, n: Int = 1) =
+  def record(fn: => String, n: => Int = 1) =
     if (enabled) doRecord(fn, n)
 
   private def doRecord(fn: String, n: Int) =

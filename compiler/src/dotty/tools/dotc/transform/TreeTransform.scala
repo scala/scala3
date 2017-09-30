@@ -210,9 +210,16 @@ object TreeTransforms {
    */
   class NXTransformations {
 
-    private def hasRedefinedMethod(cls: Class[_], name: String): Boolean =
-      if (cls.getDeclaredMethods.exists(_.getName == name)) cls != classOf[TreeTransform]
-      else hasRedefinedMethod(cls.getSuperclass, name)
+    private def hasRedefinedMethod(cls: Class[_], name: String): Boolean = {
+      val clsMethods = cls.getDeclaredMethods
+      var i = clsMethods.length - 1
+      while (i >= 0) {
+        if (clsMethods(i).getName == name)
+          return cls != classOf[TreeTransform]
+        i -= 1
+      }
+      hasRedefinedMethod(cls.getSuperclass, name)
+    }
 
     /** Create an index array `next` of size one larger than the size of `transforms` such that
      *  for each index i, `next(i)` is the smallest index j such that

@@ -147,8 +147,10 @@ object Config {
   /** Initial size of superId table */
   final val InitialSuperIdsSize = 4096
 
-  /** Initial capacity of uniques HashMap */
-  final val initialUniquesCapacity = 40000
+  /** Initial capacity of uniques HashMap.
+   *  Note: This MUST BE a power of two to work with util.HashSet
+   */
+  final val initialUniquesCapacity = 65536
 
   /** How many recursive calls to NamedType#underlying are performed before logging starts. */
   final val LogPendingUnderlyingThreshold = 50

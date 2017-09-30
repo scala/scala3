@@ -2,7 +2,7 @@ package dotty.tools.dotc.util
 
 /** A hash set that allows some privileged protected access to its internals
  */
-class HashSet[T >: Null <: AnyRef](initialCapacity: Int, loadFactor: Float = 0.25f) extends Set[T] {
+class HashSet[T >: Null <: AnyRef](powerOfTwoInitialCapacity: Int, loadFactor: Float = 0.25f) extends Set[T] {
   private var used: Int = _
   private var limit: Int = _
   private var table: Array[AnyRef] = _
@@ -20,11 +20,11 @@ class HashSet[T >: Null <: AnyRef](initialCapacity: Int, loadFactor: Float = 0.2
   /** Remove all elements from this set and set back to initial configuration */
   def clear(): Unit = {
     used = 0
-    allocate(initialCapacity)
+    allocate(powerOfTwoInitialCapacity)
   }
 
-  /** Turn hashode `x` into a table index */
-  private def index(x: Int): Int = math.abs(x % table.length)
+  /** Turn hashcode `x` into a table index */
+  private def index(x: Int): Int = x & (table.length - 1)
 
   /** Hashcode, can be overridden */
   def hash(x: T): Int = x.hashCode
