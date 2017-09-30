@@ -16,10 +16,6 @@ trait Substituters { this: Context =>
         else tp.derivedSelect(subst(tp.prefix, from, to, theMap))
       case _: ThisType | NoPrefix =>
         tp
-      case tp: RefinedType => // @!!! remove
-        tp.derivedRefinedType(subst(tp.parent, from, to, theMap), tp.refinedName, subst(tp.refinedInfo, from, to, theMap))
-      case tp: TypeAlias =>
-        tp.derivedTypeAlias(subst(tp.alias, from, to, theMap))
       case _ =>
         (if (theMap != null) theMap else new SubstBindingMap(from, to))
           .mapOver(tp)
@@ -34,10 +30,6 @@ trait Substituters { this: Context =>
         else tp.derivedSelect(subst1(tp.prefix, from, to, theMap))
       case _: ThisType | _: BoundType | NoPrefix =>
         tp
-      case tp: RefinedType =>
-        tp.derivedRefinedType(subst1(tp.parent, from, to, theMap), tp.refinedName, subst1(tp.refinedInfo, from, to, theMap))
-      case tp: TypeAlias =>
-        tp.derivedTypeAlias(subst1(tp.alias, from, to, theMap))
       case _ =>
         (if (theMap != null) theMap else new Subst1Map(from, to))
           .mapOver(tp)
@@ -54,10 +46,6 @@ trait Substituters { this: Context =>
         else tp.derivedSelect(subst2(tp.prefix, from1, to1, from2, to2, theMap))
       case _: ThisType | _: BoundType | NoPrefix =>
         tp
-      case tp: RefinedType =>
-        tp.derivedRefinedType(subst2(tp.parent, from1, to1, from2, to2, theMap), tp.refinedName, subst2(tp.refinedInfo, from1, to1, from2, to2, theMap))
-      case tp: TypeAlias =>
-        tp.derivedTypeAlias(subst2(tp.alias, from1, to1, from2, to2, theMap))
       case _ =>
         (if (theMap != null) theMap else new Subst2Map(from1, to1, from2, to2))
           .mapOver(tp)
@@ -79,10 +67,6 @@ trait Substituters { this: Context =>
         else tp.derivedSelect(subst(tp.prefix, from, to, theMap))
       case _: ThisType | _: BoundType | NoPrefix =>
         tp
-      case tp: RefinedType =>
-        tp.derivedRefinedType(subst(tp.parent, from, to, theMap), tp.refinedName, subst(tp.refinedInfo, from, to, theMap))
-      case tp: TypeAlias =>
-        tp.derivedTypeAlias(subst(tp.alias, from, to, theMap))
       case _ =>
         (if (theMap != null) theMap else new SubstMap(from, to))
           .mapOver(tp)
@@ -112,10 +96,6 @@ trait Substituters { this: Context =>
         }
       case _: ThisType | _: BoundType | NoPrefix =>
         tp
-      case tp: RefinedType =>
-        tp.derivedRefinedType(substDealias(tp.parent, from, to, theMap), tp.refinedName, substDealias(tp.refinedInfo, from, to, theMap))
-      case tp: TypeAlias =>
-        tp.derivedTypeAlias(substDealias(tp.alias, from, to, theMap))
       case _ =>
         (if (theMap != null) theMap else new SubstDealiasMap(from, to))
           .mapOver(tp)
@@ -151,10 +131,6 @@ trait Substituters { this: Context =>
         tp
       case _: ThisType | _: BoundType | NoPrefix =>
         tp
-      case tp: RefinedType =>
-        tp.derivedRefinedType(substSym(tp.parent, from, to, theMap), tp.refinedName, substSym(tp.refinedInfo, from, to, theMap))
-      case tp: TypeAlias =>
-        tp.derivedTypeAlias(substSym(tp.alias, from, to, theMap))
       case _ =>
         (if (theMap != null) theMap else new SubstSymMap(from, to))
           .mapOver(tp)
@@ -169,10 +145,6 @@ trait Substituters { this: Context =>
         else tp.derivedSelect(substThis(tp.prefix, from, to, theMap))
       case _: BoundType | NoPrefix =>
         tp
-      case tp: RefinedType =>
-        tp.derivedRefinedType(substThis(tp.parent, from, to, theMap), tp.refinedName, substThis(tp.refinedInfo, from, to, theMap))
-      case tp: TypeAlias =>
-        tp.derivedTypeAlias(substThis(tp.alias, from, to, theMap))
       case _ =>
         (if (theMap != null) theMap else new SubstThisMap(from, to))
           .mapOver(tp)
@@ -187,10 +159,6 @@ trait Substituters { this: Context =>
         else tp.derivedSelect(substRecThis(tp.prefix, from, to, theMap))
       case _: ThisType | _: BoundType | NoPrefix =>
         tp
-      case tp: RefinedType =>
-        tp.derivedRefinedType(substRecThis(tp.parent, from, to, theMap), tp.refinedName, substRecThis(tp.refinedInfo, from, to, theMap))
-      case tp: TypeAlias =>
-        tp.derivedTypeAlias(substRecThis(tp.alias, from, to, theMap))
       case _ =>
         (if (theMap != null) theMap else new SubstRecThisMap(from, to))
           .mapOver(tp)
@@ -205,10 +173,6 @@ trait Substituters { this: Context =>
         else tp.derivedSelect(substParam(tp.prefix, from, to, theMap))
       case _: ThisType | NoPrefix =>
         tp
-      case tp: RefinedType =>
-        tp.derivedRefinedType(substParam(tp.parent, from, to, theMap), tp.refinedName, substParam(tp.refinedInfo, from, to, theMap))
-      case tp: TypeAlias =>
-        tp.derivedTypeAlias(substParam(tp.alias, from, to, theMap))
       case _ =>
         (if (theMap != null) theMap else new SubstParamMap(from, to))
           .mapOver(tp)
@@ -223,10 +187,6 @@ trait Substituters { this: Context =>
         else tp.derivedSelect(substParams(tp.prefix, from, to, theMap))
       case _: ThisType | NoPrefix =>
         tp
-      case tp: RefinedType =>
-        tp.derivedRefinedType(substParams(tp.parent, from, to, theMap), tp.refinedName, substParams(tp.refinedInfo, from, to, theMap))
-      case tp: TypeAlias =>
-        tp.derivedTypeAlias(substParams(tp.alias, from, to, theMap))
       case _ =>
         (if (theMap != null) theMap else new SubstParamsMap(from, to))
           .mapOver(tp)
@@ -275,32 +235,5 @@ trait Substituters { this: Context =>
 
   final class SubstParamsMap(from: BindingType, to: List[Type]) extends DeepTypeMap {
     def apply(tp: Type) = substParams(tp, from, to, this)
-  }
-
-  /** A map for "cycle safe substitutions" which do not force the denotation
-   *  of a TypeRef unless the name matches up with one of the substituted symbols.
-   */
-  final class SafeSubstMap(from: List[Symbol], to: List[Type]) extends TypeMap {
-    def apply(tp: Type): Type = tp match {
-      case tp: NamedType =>
-        try {
-          var sym: Symbol = null
-          var fs = from
-          var ts = to
-          while (fs.nonEmpty) {
-            if (fs.head.name == tp.name) {
-              if (sym == null) sym = tp.symbol
-              if (fs.head eq sym) return ts.head
-            }
-            fs = fs.tail
-            ts = ts.tail
-          }
-          tp.withPrefix(apply(tp.prefix))
-        }
-        catch {
-          case ex: CyclicReference => tp.derivedSelect(apply(tp.prefix))
-        }
-      case _ => mapOver(tp)
-    }
   }
 }
