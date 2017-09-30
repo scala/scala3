@@ -1157,7 +1157,7 @@ object Types {
     /** The full parent types, including all type arguments */
     def parents(implicit ctx: Context): List[Type] = this match {
       case tp @ AppliedType(tycon, args) if tycon.typeSymbol.isClass =>
-        tycon.parents.map(_.subst(tycon.typeSymbol.typeParams, args)) // @!!! cache?
+        tycon.parents.map(_.subst(tycon.typeSymbol.typeParams, args))
       case tp: TypeRef =>
         if (tp.info.isInstanceOf[TempClassInfo]) {
           tp.reloadDenot()
