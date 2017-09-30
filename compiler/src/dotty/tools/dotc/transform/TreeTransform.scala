@@ -196,9 +196,11 @@ object TreeTransforms {
       }
   }
 
-  @sharable val NoTransform = new TreeTransform {
+  private class NoTreeTransform extends TreeTransform {
     def phase = unsupported("phase")
   }
+
+  @sharable val NoTransform: TreeTransform = new NoTreeTransform
 
   type Mutator[T] = (TreeTransform, T, Context) => TreeTransform
 
@@ -209,15 +211,29 @@ object TreeTransforms {
    *  @see NXTransformations.index for format of plan
    */
   class NXTransformations {
+    private val clsMethodsCache = new java.util.IdentityHashMap[Class[_], Array[java.lang.reflect.Method]]
 
+    // TODO: We spend too much time here. See if we can call it less or make it faster,
+    // e.g. by checking `cls.getMethod(name, ...).getDeclaringClass != classOf[TreeTransform]` instead.
     private def hasRedefinedMethod(cls: Class[_], name: String): Boolean = {
-      val clsMethods = cls.getDeclaredMethods
+      if (cls.eq(classOf[TreeTransform]) || cls.eq(classOf[NoTreeTransform]) ||
+          cls.eq(classOf[MiniPhaseTransform]))
+        return false
+
+      // Class#getDeclaredMethods is slow, so we cache its output
+      var clsMethods = clsMethodsCache.get(cls)
+      if (clsMethods eq null) {
+        clsMethods = cls.getDeclaredMethods
+        clsMethodsCache.put(cls, clsMethods)
+      }
+
       var i = clsMethods.length - 1
       while (i >= 0) {
         if (clsMethods(i).getName == name)
-          return cls != classOf[TreeTransform]
+          return true
         i -= 1
       }
+
       hasRedefinedMethod(cls.getSuperclass, name)
     }
 
