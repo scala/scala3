@@ -36,7 +36,7 @@ class LinkAll extends MiniPhaseTransform {
     }
 
     if (ctx.settings.XlinkOptimise.value) super.runOn(allUnits(Set.empty, units.toSet, Set.empty))
-    else super.runOn(units)
+    else units
   }
 
   /** Collects all class denotations that may need to be loaded. */
