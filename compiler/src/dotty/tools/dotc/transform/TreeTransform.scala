@@ -1183,6 +1183,7 @@ object TreeTransforms {
     def transform(tree: Tree, info: TransformerInfo, cur: Int)(implicit ctx: Context): Tree = ctx.traceIndented(s"transforming ${tree.show} at ${ctx.phase}", transforms, show = true) {
       try
         if (cur < info.transformers.length) {
+          util.Stats.record("TreeTransform.transform")
           // if cur > 0 then some of the symbols can be created by already performed transformations
           // this means that their denotations could not exists in previous period
           val pctx = ctx.withPhase(info.transformers(cur).treeTransformPhase)

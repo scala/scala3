@@ -1687,6 +1687,8 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
   }
 
   def typed(tree: untpd.Tree, pt: Type = WildcardType)(implicit ctx: Context): Tree = /*>|>*/ ctx.traceIndented (i"typing $tree", typr, show = true) /*<|<*/ {
+    record(s"typed $getClass")
+    record("typed total")
     assertPositioned(tree)
     try adapt(typedUnadapted(tree, pt), pt)
     catch {

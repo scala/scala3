@@ -3720,6 +3720,8 @@ object Types {
 
     /** Map this function over given type */
     def mapOver(tp: Type): Type = {
+      record(s"mapOver ${getClass}")
+      record("mapOver total")
       implicit val ctx = this.ctx
       tp match {
         case tp: NamedType =>
@@ -4095,7 +4097,10 @@ object Types {
     protected final def applyToPrefix(x: T, tp: NamedType) =
       atVariance(variance max 0)(this(x, tp.prefix)) // see remark on NamedType case in TypeMap
 
-    def foldOver(x: T, tp: Type): T = tp match {
+    def foldOver(x: T, tp: Type): T = {
+      record(s"foldOver $getClass")
+      record(s"foldOver total")
+      tp match {
       case tp: TypeRef =>
         if (stopAtStatic && tp.symbol.isStatic) x
         else {
@@ -4184,7 +4189,7 @@ object Types {
         tp.fold(x, this)
 
       case _ => x
-    }
+    }}
 
     @tailrec final def foldOver(x: T, ts: List[Type]): T = ts match {
       case t :: ts1 => foldOver(apply(x, t), ts1)
