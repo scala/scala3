@@ -9,5 +9,5 @@ package scala.compat.java8;
 public interface JFunction1$mcFF$sp extends JFunction1 {
     abstract float apply$mcFF$sp(float v1);
 
-    default Object apply(Object t) { return (Float) apply$mcFF$sp((Float) t); }
+    default Object apply(Object t) { return (Float) apply$mcFF$sp(scala.runtime.BoxesRunTime.unboxToFloat(t)); }
 }

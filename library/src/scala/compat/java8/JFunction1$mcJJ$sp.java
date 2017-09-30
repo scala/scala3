@@ -9,5 +9,5 @@ package scala.compat.java8;
 public interface JFunction1$mcJJ$sp extends JFunction1 {
     abstract long apply$mcJJ$sp(long v1);
 
-    default Object apply(Object t) { return (Long) apply$mcJJ$sp((Long) t); }
+    default Object apply(Object t) { return (Long) apply$mcJJ$sp(scala.runtime.BoxesRunTime.unboxToLong(t)); }
 }

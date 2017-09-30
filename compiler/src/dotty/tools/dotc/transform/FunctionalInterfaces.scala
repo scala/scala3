@@ -26,58 +26,26 @@ class FunctionalInterfaces extends MiniPhaseTransform {
 
   def phaseName: String = "functionalInterfaces"
 
-  private var allowedReturnTypes: Set[Symbol] = _ // moved here to make it explicit what specializations are generated
-  private var allowedArgumentTypes: Set[Symbol] = _
-  val maxArgsCount = 2
-
-  def shouldSpecialize(m: MethodType)(implicit ctx: Context) =
-    (m.paramInfos.size <= maxArgsCount) &&
-      m.paramInfos.forall(x => allowedArgumentTypes.contains(x.typeSymbol)) &&
-      allowedReturnTypes.contains(m.resultType.typeSymbol)
-
   val functionName = "JFunction".toTermName
   val functionPackage = "scala.compat.java8.".toTermName
 
-  override def prepareForUnit(tree: tpd.Tree)(implicit ctx: Context): TreeTransform = {
-    allowedReturnTypes   = Set(defn.UnitClass,
-                               defn.BooleanClass,
-                               defn.IntClass,
-                               defn.FloatClass,
-                               defn.LongClass,
-                               defn.DoubleClass,
-     /* only for Function0: */ defn.ByteClass,
-                               defn.ShortClass,
-                               defn.CharClass)
-
-    allowedArgumentTypes = Set(defn.IntClass,
-                               defn.LongClass,
-                               defn.DoubleClass,
-     /* only for Function1: */ defn.FloatClass)
-
-    this
-  }
-
   override def transformClosure(tree: Closure)(implicit ctx: Context, info: TransformerInfo): Tree = {
-    tree.tpt match {
-      case EmptyTree =>
-        val m = tree.meth.tpe.widen.asInstanceOf[MethodType]
+    val cls = tree.tpe.widen.classSymbol.asClass
 
-        if (shouldSpecialize(m)) {
-          val functionSymbol = tree.tpe.widenDealias.classSymbol
-          val names = ctx.atPhase(ctx.erasurePhase) {
-            implicit ctx => functionSymbol.typeParams.map(_.name)
-          }
-          val interfaceName = (functionName ++ m.paramInfos.length.toString).specializedFor(m.paramInfos ::: m.resultType :: Nil, names, Nil, Nil)
+    val implType = tree.meth.tpe.widen
+    val List(implParamTypes) = implType.paramInfoss
+    val implResultType = implType.resultType
 
-          // symbols loaded from classpath aren't defined in periods earlier than when they where loaded
-          val interface = ctx.withPhase(ctx.typerPhase).getClassIfDefined(functionPackage ++ interfaceName)
-          if (interface.exists) {
-            val tpt = tpd.TypeTree(interface.asType.appliedRef)
-            tpd.Closure(tree.env, tree.meth, tpt)
-          } else tree
-        } else tree
-      case _ =>
-        tree
-    }
+    if (defn.isSpecializableFunction(cls, implParamTypes, implResultType)) {
+      val names = ctx.atPhase(ctx.erasurePhase) {
+        implicit ctx => cls.typeParams.map(_.name)
+      }
+      val interfaceName = (functionName ++ implParamTypes.length.toString).specializedFor(implParamTypes ::: implResultType :: Nil, names, Nil, Nil)
+
+      // symbols loaded from classpath aren't defined in periods earlier than when they where loaded
+      val interface = ctx.withPhase(ctx.typerPhase).requiredClass(functionPackage ++ interfaceName)
+      val tpt = tpd.TypeTree(interface.asType.appliedRef)
+      tpd.Closure(tree.env, tree.meth, tpt)
+    } else tree
   }
 }

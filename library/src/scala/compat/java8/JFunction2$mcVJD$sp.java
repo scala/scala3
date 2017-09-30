@@ -9,5 +9,5 @@ package scala.compat.java8;
 public interface JFunction2$mcVJD$sp extends JFunction2 {
     abstract void apply$mcVJD$sp(long v1, double v2);
 
-    default Object apply(Object v1, Object v2) { apply$mcVJD$sp((Long) v1, (Double) v2); return scala.runtime.BoxedUnit.UNIT; }
+    default Object apply(Object v1, Object v2) { apply$mcVJD$sp(scala.runtime.BoxesRunTime.unboxToLong(v1), scala.runtime.BoxesRunTime.unboxToDouble(v2)); return scala.runtime.BoxedUnit.UNIT; }
 }

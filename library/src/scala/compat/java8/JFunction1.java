@@ -26,23 +26,23 @@ public interface JFunction1<T1, R> extends scala.Function1<T1, R> {
     }
     @SuppressWarnings("unchecked")
     default boolean apply$mcZI$sp(int v1) {
-        return (Boolean) apply((T1) ((Integer) v1));
+        return scala.runtime.BoxesRunTime.unboxToBoolean(apply((T1) ((Integer) v1)));
     }
     @SuppressWarnings("unchecked")
     default int apply$mcII$sp(int v1) {
-        return (Integer) apply((T1) ((Integer) v1));
+        return scala.runtime.BoxesRunTime.unboxToInt(apply((T1) ((Integer) v1)));
     }
     @SuppressWarnings("unchecked")
     default float apply$mcFI$sp(int v1) {
-        return (Float) apply((T1) ((Integer) v1));
+        return scala.runtime.BoxesRunTime.unboxToFloat(apply((T1) ((Integer) v1)));
     }
     @SuppressWarnings("unchecked")
     default long apply$mcJI$sp(int v1) {
-        return (Long) apply((T1) ((Integer) v1));
+        return scala.runtime.BoxesRunTime.unboxToLong(apply((T1) ((Integer) v1)));
     }
     @SuppressWarnings("unchecked")
     default double apply$mcDI$sp(int v1) {
-        return (Double) apply((T1) ((Integer) v1));
+        return scala.runtime.BoxesRunTime.unboxToDouble(apply((T1) ((Integer) v1)));
     }
     @SuppressWarnings("unchecked")
     default void apply$mcVJ$sp(long v1) {
@@ -50,23 +50,23 @@ public interface JFunction1<T1, R> extends scala.Function1<T1, R> {
     }
     @SuppressWarnings("unchecked")
     default boolean apply$mcZJ$sp(long v1) {
-        return (Boolean) apply((T1) ((Long) v1));
+        return scala.runtime.BoxesRunTime.unboxToBoolean(apply((T1) ((Long) v1)));
     }
     @SuppressWarnings("unchecked")
     default int apply$mcIJ$sp(long v1) {
-        return (Integer) apply((T1) ((Long) v1));
+        return scala.runtime.BoxesRunTime.unboxToInt(apply((T1) ((Long) v1)));
     }
     @SuppressWarnings("unchecked")
     default float apply$mcFJ$sp(long v1) {
-        return (Float) apply((T1) ((Long) v1));
+        return scala.runtime.BoxesRunTime.unboxToFloat(apply((T1) ((Long) v1)));
     }
     @SuppressWarnings("unchecked")
     default long apply$mcJJ$sp(long v1) {
-        return (Long) apply((T1) ((Long) v1));
+        return scala.runtime.BoxesRunTime.unboxToLong(apply((T1) ((Long) v1)));
     }
     @SuppressWarnings("unchecked")
     default double apply$mcDJ$sp(long v1) {
-        return (Double) apply((T1) ((Long) v1));
+        return scala.runtime.BoxesRunTime.unboxToDouble(apply((T1) ((Long) v1)));
     }
     @SuppressWarnings("unchecked")
     default void apply$mcVF$sp(float v1) {
@@ -74,23 +74,23 @@ public interface JFunction1<T1, R> extends scala.Function1<T1, R> {
     }
     @SuppressWarnings("unchecked")
     default boolean apply$mcZF$sp(float v1) {
-        return (Boolean) apply((T1) ((Float) v1));
+        return scala.runtime.BoxesRunTime.unboxToBoolean(apply((T1) ((Float) v1)));
     }
     @SuppressWarnings("unchecked")
     default int apply$mcIF$sp(float v1) {
-        return (Integer) apply((T1) ((Float) v1));
+        return scala.runtime.BoxesRunTime.unboxToInt(apply((T1) ((Float) v1)));
     }
     @SuppressWarnings("unchecked")
     default float apply$mcFF$sp(float v1) {
-        return (Float) apply((T1) ((Float) v1));
+        return scala.runtime.BoxesRunTime.unboxToFloat(apply((T1) ((Float) v1)));
     }
     @SuppressWarnings("unchecked")
     default long apply$mcJF$sp(float v1) {
-        return (Long) apply((T1) ((Float) v1));
+        return scala.runtime.BoxesRunTime.unboxToLong(apply((T1) ((Float) v1)));
     }
     @SuppressWarnings("unchecked")
     default double apply$mcDF$sp(float v1) {
-        return (Double) apply((T1) ((Float) v1));
+        return scala.runtime.BoxesRunTime.unboxToDouble(apply((T1) ((Float) v1)));
     }
     @SuppressWarnings("unchecked")
     default void apply$mcVD$sp(double v1) {
@@ -98,23 +98,23 @@ public interface JFunction1<T1, R> extends scala.Function1<T1, R> {
     }
     @SuppressWarnings("unchecked")
     default boolean apply$mcZD$sp(double v1) {
-        return (Boolean) apply((T1) ((Double) v1));
+        return scala.runtime.BoxesRunTime.unboxToBoolean(apply((T1) ((Double) v1)));
     }
     @SuppressWarnings("unchecked")
     default int apply$mcID$sp(double v1) {
-        return (Integer) apply((T1) ((Double) v1));
+        return scala.runtime.BoxesRunTime.unboxToInt(apply((T1) ((Double) v1)));
     }
     @SuppressWarnings("unchecked")
     default float apply$mcFD$sp(double v1) {
-        return (Float) apply((T1) ((Double) v1));
+        return scala.runtime.BoxesRunTime.unboxToFloat(apply((T1) ((Double) v1)));
     }
     @SuppressWarnings("unchecked")
     default long apply$mcJD$sp(double v1) {
-        return (Long) apply((T1) ((Double) v1));
+        return scala.runtime.BoxesRunTime.unboxToLong(apply((T1) ((Double) v1)));
     }
     @SuppressWarnings("unchecked")
     default double apply$mcDD$sp(double v1) {
-        return (Double) apply((T1) ((Double) v1));
+        return scala.runtime.BoxesRunTime.unboxToDouble(apply((T1) ((Double) v1)));
     }
 
     @SuppressWarnings("unchecked")

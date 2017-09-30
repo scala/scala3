@@ -48,6 +48,7 @@ Macro-format:
                   DIRECT            Length underlying_NameRef
                   FIELD             Length underlying_NameRef
                   EXTMETH           Length underlying_NameRef
+                  ADAPTEDCLOSURE    Length underlying_NameRef
                   OBJECTVAR         Length underlying_NameRef
                   OBJECTCLASS       Length underlying_NameRef
                   SIGNED            Length original_NameRef resultSig_NameRef paramSig_NameRef*
@@ -253,6 +254,7 @@ object TastyFormat {
   final val DIRECT = 31
   final val FIELD = 32
   final val EXTMETH = 33
+  final val ADAPTEDCLOSURE = 34
   final val OBJECTVAR = 39
   final val OBJECTCLASS = 40
 
@@ -471,6 +473,7 @@ object TastyFormat {
     case DIRECT => "DIRECT"
     case FIELD => "FIELD"
     case EXTMETH => "EXTMETH"
+    case ADAPTEDCLOSURE => "ADAPTEDCLOSURE"
     case OBJECTVAR => "OBJECTVAR"
     case OBJECTCLASS => "OBJECTCLASS"
 

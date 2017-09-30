@@ -13,27 +13,27 @@ public interface JFunction0<R> extends scala.Function0<R> {
         apply();
     }
     default byte apply$mcB$sp() {
-        return (Byte) apply();
+        return scala.runtime.BoxesRunTime.unboxToByte(apply());
     }
     default short apply$mcS$sp() {
-        return (Short) apply();
+        return scala.runtime.BoxesRunTime.unboxToShort(apply());
     }
     default int apply$mcI$sp() {
-        return (Integer) apply();
+        return scala.runtime.BoxesRunTime.unboxToInt(apply());
     }
     default long apply$mcJ$sp() {
-        return (Long) apply();
+        return scala.runtime.BoxesRunTime.unboxToLong(apply());
     }
     default char apply$mcC$sp() {
-        return (Character) apply();
+        return scala.runtime.BoxesRunTime.unboxToChar(apply());
     }
     default float apply$mcF$sp() {
-        return (Float) apply();
+        return scala.runtime.BoxesRunTime.unboxToFloat(apply());
     }
     default double apply$mcD$sp() {
-        return (Double) apply();
+        return scala.runtime.BoxesRunTime.unboxToDouble(apply());
     }
     default boolean apply$mcZ$sp() {
-        return (Boolean) apply();
+        return scala.runtime.BoxesRunTime.unboxToBoolean(apply());
     }
 }
