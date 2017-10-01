@@ -606,6 +606,7 @@ object Contexts {
     /** A table for hash consing unique types */
     private[core] val uniques = new util.HashSet[Type](Config.initialUniquesCapacity) {
       override def hash(x: Type): Int = x.hash
+      override def isEqual(x: Type, y: Type) = x.eql(y)
     }
 
     /** A table for hash consing unique applied types */

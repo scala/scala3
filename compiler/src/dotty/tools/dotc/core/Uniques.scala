@@ -3,6 +3,7 @@ package core
 
 import Types._, Symbols._, Contexts._, util.Stats._, Hashable._, Names._, Designators._
 import config.Config
+import Decorators._
 import util.HashSet
 
 /** Defines operation `unique` for hash-consing types.
@@ -73,13 +74,7 @@ object Uniques {
     private def findPrevious(h: Int, tycon: Type, args: List[Type]): AppliedType = {
       var e = findEntryByHash(h)
       while (e != null) {
-        def sameArgs(args1: List[Type], args2: List[Type]): Boolean = {
-          val empty1 = args1.isEmpty
-          val empty2 = args2.isEmpty
-          if (empty1) empty2
-          else (!empty2 && (args1.head eq args2.head) && sameArgs(args1.tail, args2.tail))
-        }
-        if ((e.tycon eq tycon) && sameArgs(e.args, args)) return e
+        if ((e.tycon eq tycon) && e.args.eqElements(args)) return e
         e = nextEntryByHash(h)
       }
       e

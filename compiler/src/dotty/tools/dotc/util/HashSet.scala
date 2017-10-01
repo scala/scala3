@@ -7,6 +7,8 @@ class HashSet[T >: Null <: AnyRef](powerOfTwoInitialCapacity: Int, loadFactor: F
   private var limit: Int = _
   private var table: Array[AnyRef] = _
 
+  protected def isEqual(x: T, y: T): Boolean = x.equals(y)
+
   clear()
 
   /** The number of elements in the set */
@@ -29,16 +31,18 @@ class HashSet[T >: Null <: AnyRef](powerOfTwoInitialCapacity: Int, loadFactor: F
   /** Hashcode, can be overridden */
   def hash(x: T): Int = x.hashCode
 
-  /** Find entry such that `x equals entry`. If it exists, return it.
+  private def entryAt(idx: Int) = table.apply(idx).asInstanceOf[T]
+
+  /** Find entry such that `isEqual(x, entry)`. If it exists, return it.
    *  If not, enter `x` in set and return `x`.
    */
   def findEntryOrUpdate(x: T): T = {
     var h = index(hash(x))
-    var entry = table(h)
+    var entry = entryAt(h)
     while (entry ne null) {
-      if (x equals entry) return entry.asInstanceOf[T]
+      if (isEqual(x, entry)) return entry
       h = index(h + 1)
-      entry = table(h)
+      entry = entryAt(h)
     }
     addEntryAt(h, x)
   }
@@ -51,13 +55,13 @@ class HashSet[T >: Null <: AnyRef](powerOfTwoInitialCapacity: Int, loadFactor: F
     x
   }
 
-  /** The entry in the set such that `x equals entry`, or else `null`. */
+  /** The entry in the set such that `isEqual(x, entry)`, or else `null`. */
   def findEntry(x: T): T = {
     var h = index(hash(x))
-    var entry = table(h)
-    while ((entry ne null) && !(x equals entry)) {
+    var entry = entryAt(h)
+    while ((entry ne null) && !isEqual(x, entry)) {
       h = index(h + 1)
-      entry = table(h)
+      entry = entryAt(h)
     }
     entry.asInstanceOf[T]
   }
@@ -67,11 +71,11 @@ class HashSet[T >: Null <: AnyRef](powerOfTwoInitialCapacity: Int, loadFactor: F
   /** Add entry `x` to set */
   def addEntry(x: T): Unit = {
     var h = index(hash(x))
-    var entry = table(h)
+    var entry = entryAt(h)
     while (entry ne null) {
-      if (x equals entry) return
+      if (isEqual(x, entry)) return
       h = index(h + 1)
-      entry = table(h)
+      entry = entryAt(h)
     }
     table(h) = x
     used += 1
@@ -123,10 +127,10 @@ class HashSet[T >: Null <: AnyRef](powerOfTwoInitialCapacity: Int, loadFactor: F
 
   private def addOldEntry(x: T): Unit = {
     var h = index(hash(x))
-    var entry = table(h)
+    var entry = entryAt(h)
     while (entry ne null) {
       h = index(h + 1)
-      entry = table(h)
+      entry = entryAt(h)
     }
     table(h) = x
   }
