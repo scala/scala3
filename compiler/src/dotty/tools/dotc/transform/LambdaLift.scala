@@ -234,15 +234,20 @@ class LambdaLift extends MiniPhase with IdentityDenotTransformer { thisTransform
       if (callee.enclosingClass != caller.enclosingClass) calledFromInner += callee
     }
 
-    private class CollectDependencies extends EnclosingMethodTraverser {
-      def traverse(enclosure: Symbol, tree: Tree)(implicit ctx: Context) = try { //debug
+    private class CollectDependencies extends TreeTraverser {
+      def traverse(tree: Tree)(implicit ctx: Context) = try { //debug
         val sym = tree.symbol
+
+        def enclosure = ctx.owner.enclosingMethod.symbol
+
         def narrowTo(thisClass: ClassSymbol) = {
-          val enclClass = enclosure.enclosingClass
-          narrowLiftedOwner(enclosure,
+          val enclMethod = enclosure
+          val enclClass = enclMethod.enclosingClass
+          narrowLiftedOwner(enclMethod,
             if (enclClass.isContainedIn(thisClass)) thisClass
             else enclClass) // unknown this reference, play it safe and assume the narrowest possible owner
         }
+
         tree match {
           case tree: Ident =>
             if (isLocal(sym)) {
@@ -290,7 +295,7 @@ class LambdaLift extends MiniPhase with IdentityDenotTransformer { thisTransform
             liftedDefs(tree.symbol.owner) = new mutable.ListBuffer
           case _ =>
         }
-        foldOver(enclosure, tree)
+        traverseChildren(tree)
       } catch { //debug
         case ex: Exception =>
           println(i"$ex while traversing $tree")
@@ -394,7 +399,7 @@ class LambdaLift extends MiniPhase with IdentityDenotTransformer { thisTransform
     }
 
     private def init(implicit ctx: Context) = {
-      (new CollectDependencies).traverse(NoSymbol, ctx.compilationUnit.tpdTree)
+      (new CollectDependencies).traverse(ctx.compilationUnit.tpdTree)
       computeFreeVars()
       computeLiftedOwners()
       generateProxies()(ctx.withPhase(thisTransform.next))
