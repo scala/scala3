@@ -3,25 +3,24 @@ package dotty.tools.dotc.transform
 import dotty.tools.dotc.CompilationUnit
 import dotty.tools.dotc.ast.Trees._
 import dotty.tools.dotc.ast.tpd
+import dotty.tools.dotc.core.Phases.Phase
 import dotty.tools.dotc.core.Contexts._
 import dotty.tools.dotc.core.SymDenotations.ClassDenotation
 import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.core.Flags._
-import dotty.tools.dotc.transform.TreeTransforms._
 
 /** Loads all potentially reachable trees from tasty. ▲
  *  Only performed on whole world optimization mode. ▲ ▲
  *
  *  TODO: Next step is to only load compilation units reachable in the call graph
  */
-class LinkAll extends MiniPhaseTransform {
+class LinkAll extends Phase {
   import tpd._
   import LinkAll._
 
-  override def phaseName = "linkAll"
+  def phaseName: String = "linkAll"
 
-  /** Do not transform the any tree, runOn will traverse the trees and reload compilation units if needed */
-  override def prepareForUnit(tree: tpd.Tree)(implicit ctx: Context): TreeTransform = NoTransform
+  def run(implicit ctx: Context): Unit = ()
 
   override def runOn(units: List[CompilationUnit])(implicit ctx: Context): List[CompilationUnit] = {
     /** Loads and processes new compilation units, possibly loading more units. */
@@ -35,7 +34,7 @@ class LinkAll extends MiniPhaseTransform {
       }
     }
 
-    if (ctx.settings.XlinkOptimise.value) super.runOn(allUnits(Set.empty, units.toSet, Set.empty))
+    if (ctx.settings.XlinkOptimise.value) allUnits(Set.empty, units.toSet, Set.empty)
     else units
   }
 
