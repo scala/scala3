@@ -465,13 +465,13 @@ object Build {
 
       test in Test := {
         // Exclude legacy tests by default
-        (testOnly in Test).toTask(" -- --exclude-categories=java.lang.Exception").value
+        (testOnly in Test).toTask(" -- --exclude-categories=java.lang.Exception,dotty.tools.dotc.SlowTests").value
       },
 
       vulpix := Def.inputTaskDyn {
         val args: Seq[String] = spaceDelimited("<arg>").parsed
-        val cmd = " dotty.tools.dotc.CompilationTests" + {
-          if (args.nonEmpty) " -- -Ddotty.tests.filter=" + args.mkString(" ")
+        val cmd = " dotty.tools.dotc.CompilationTests -- --exclude-categories=dotty.tools.dotc.SlowTests" + {
+          if (args.nonEmpty) " -Ddotty.tests.filter=" + args.mkString(" ")
           else ""
         }
         (testOnly in Test).toTask(cmd)
