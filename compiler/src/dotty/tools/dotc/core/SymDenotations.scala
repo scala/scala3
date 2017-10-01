@@ -1756,8 +1756,9 @@ object SymDenotations {
       if (ctx.phaseId != phase.next.id) ensureFreshScopeAfter(phase)(ctx.withPhase(phase.next))
       else {
         val prevCtx = ctx.withPhase(phase)
+        val prevClassInfo = current(prevCtx).asInstanceOf[ClassDenotation].classInfo(prevCtx)
         val ClassInfo(pre, _, ps, decls, selfInfo) = classInfo
-        if (classInfo(prevCtx).decls eq decls)
+        if (prevClassInfo.decls eq decls)
           copySymDenotation(info = ClassInfo(pre, classSymbol, ps, decls.cloneScope, selfInfo))
             .copyCaches(this, phase.next)
             .installAfter(phase)
