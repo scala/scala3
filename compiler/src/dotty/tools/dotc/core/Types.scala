@@ -1354,6 +1354,11 @@ object Types {
      *  compute hash and use it as the type's hashCode.
      */
     def hash: Int
+
+    /** Equality used for hash-consing; uses `eq` on all recursive invocations.
+     */
+    def eql(that: Type): Boolean = this.equals(that)
+
   } // end Type
 
 // ----- Type categories ----------------------------------------------
@@ -1927,6 +1932,8 @@ object Types {
 
     override def computeHash = unsupported("computeHash")
 
+    override def eql(that: Type) = this eq that // safe because named types are hash-consed separately
+
     /* A version of toString which also prints aliases. Can be used for debugging
     override def toString =
       if (isTerm) s"TermRef($prefix, $name)"
@@ -2097,7 +2104,13 @@ object Types {
     def cls(implicit ctx: Context): ClassSymbol = tref.stableInRunSymbol.asClass
     override def underlying(implicit ctx: Context): Type =
       if (ctx.erasedTypes) tref else cls.classInfo.selfType
+
     override def computeHash = doHash(tref)
+
+    override def eql(that: Type) = that match {
+      case that: ThisType => tref.eq(that.tref)
+      case _ => false
+    }
   }
 
   final class CachedThisType(tref: TypeRef) extends ThisType(tref)
@@ -2119,7 +2132,13 @@ object Types {
     def derivedSuperType(thistpe: Type, supertpe: Type)(implicit ctx: Context) =
       if ((thistpe eq this.thistpe) && (supertpe eq this.supertpe)) this
       else SuperType(thistpe, supertpe)
+
     override def computeHash = doHash(thistpe, supertpe)
+
+    override def eql(that: Type) = that match {
+      case that: SuperType => thistpe.eq(that.thistpe) && supertpe.eq(that.supertpe)
+      case _ => false
+    }
   }
 
   final class CachedSuperType(thistpe: Type, supertpe: Type) extends SuperType(thistpe, supertpe)
@@ -2134,6 +2153,7 @@ object Types {
   /** A constant type with  single `value`. */
   abstract case class ConstantType(value: Constant) extends CachedProxyType with SingletonType {
     override def underlying(implicit ctx: Context) = value.tpe
+
     override def computeHash = doHash(value)
   }
 
@@ -2161,7 +2181,7 @@ object Types {
     def evaluating = computed && myRef == null
     override def underlying(implicit ctx: Context) = ref
     override def toString = s"LazyRef(${if (computed) myRef else "..."})"
-    override def equals(other: Any) = this eq other.asInstanceOf[AnyRef]
+    override def equals(other: Any) = this.eq(other.asInstanceOf[AnyRef])
     override def hashCode = System.identityHashCode(this)
   }
 
@@ -2199,6 +2219,14 @@ object Types {
       else parent
 
     override def computeHash = doHash(refinedName, refinedInfo, parent)
+
+    override def eql(that: Type) = that match {
+      case that: RefinedType =>
+        refinedName.eq(that.refinedName) &&
+        refinedInfo.eq(that.refinedInfo) &&
+        parent.eq(that.parent)
+      case _ => false
+    }
   }
 
   class CachedRefinedType(parent: Type, refinedName: Name, refinedInfo: Type)
@@ -2240,11 +2268,6 @@ object Types {
       if (parent eq this.parent) this
       else RecType.closeOver(rt => parent.substRecThis(this, rt.recThis))
 
-    override def equals(other: Any) = other match {
-      case other: RecType => other.parent == this.parent
-      case _ => false
-    }
-
     def isReferredToBy(tp: Type)(implicit ctx: Context): Boolean = {
       val refacc = new TypeAccumulator[Boolean] {
         override def apply(x: Boolean, tp: Type) = x || {
@@ -2260,6 +2283,17 @@ object Types {
     }
 
     override def computeHash = doHash(parent)
+
+    override def equals(that: Any) = that match {
+      case that: RecType => parent == that.parent
+      case _ => false
+    }
+
+    override def eql(that: Type) = that match {
+      case that: RecType => parent.eq(that.parent)
+      case _ => false
+    }
+
     override def toString = s"RecType($parent | $hashCode)"
 
     private def checkInst(implicit ctx: Context): this.type = this // debug hook
@@ -2355,6 +2389,11 @@ object Types {
       derivedAndType(tp1, tp2)
 
     override def computeHash = doHash(tp1, tp2)
+
+    override def eql(that: Type) = that match {
+      case that: AndType => tp1.eq(that.tp1) && tp2.eq(that.tp2)
+      case _ => false
+    }
   }
 
   final class CachedAndType(tp1: Type, tp2: Type) extends AndType(tp1, tp2)
@@ -2411,6 +2450,11 @@ object Types {
       derivedOrType(tp1, tp2)
 
     override def computeHash = doHash(tp1, tp2)
+
+    override def eql(that: Type) = that match {
+      case that: OrType => tp1.eq(that.tp1) && tp2.eq(that.tp2)
+      case _ => false
+    }
   }
 
   final class CachedOrType(tp1: Type, tp2: Type) extends OrType(tp1, tp2)
@@ -2465,10 +2509,18 @@ object Types {
   extends CachedProxyType with TermType with MethodicType {
     override def resultType(implicit ctx: Context): Type = resType
     override def underlying(implicit ctx: Context): Type = resType
+
     def computeSignature(implicit ctx: Context): Signature = resultSignature
+
     def derivedExprType(resType: Type)(implicit ctx: Context) =
       if (resType eq this.resType) this else ExprType(resType)
+
     override def computeHash = doHash(resType)
+
+    override def eql(that: Type) = that match {
+      case that: ExprType => resType.eq(that.resType)
+      case _ => false
+    }
   }
 
   final class CachedExprType(resultType: Type) extends ExprType(resultType)
@@ -2555,10 +2607,20 @@ object Types {
     // Defined here instead of in LambdaType for efficiency
     final override def equals(that: Any) = that match {
       case that: HKLambda =>
-        this.paramNames == that.paramNames &&
-        this.paramInfos == that.paramInfos &&
-        this.resType == that.resType &&
-        (this.companion eq that.companion)
+        paramNames == that.paramNames &&
+        paramInfos == that.paramInfos &&
+        resType == that.resType &&
+        companion.eq(that.companion)
+      case _ =>
+        false
+    }
+
+    final override def eql(that: Type) = that match {
+      case that: HKLambda =>
+        paramNames.equals(that.paramNames) &&
+        paramInfos.equals(that.paramInfos) &&
+        resType.equals(that.resType) &&
+        companion.eq(that.companion)
       case _ =>
         false
     }
@@ -2570,10 +2632,20 @@ object Types {
     // Defined here instead of in LambdaType for efficiency
     final override def equals(that: Any) = that match {
       case that: MethodOrPoly =>
-        this.paramNames == that.paramNames &&
-        this.paramInfos == that.paramInfos &&
-        this.resType == that.resType &&
-        (this.companion eq that.companion)
+        paramNames == that.paramNames &&
+        paramInfos == that.paramInfos &&
+        resType == that.resType &&
+        companion.eq(that.companion)
+      case _ =>
+        false
+    }
+
+    final override def eql(that: Type) = that match {
+      case that: MethodOrPoly =>
+        paramNames.eqElements(that.paramNames) &&
+        paramInfos.eqElements(that.paramInfos) &&
+        resType.eq(that.resType) &&
+        companion.eq(that.companion)
       case _ =>
         false
     }
@@ -3046,6 +3118,7 @@ object Types {
   final class CachedAppliedType(tycon: Type, args: List[Type], hc: Int) extends AppliedType(tycon, args) {
     myHash = hc
     override def computeHash = unsupported("computeHash")
+    override def eql(that: Type) = this eq that // safe because applied types are hash-consed separately
   }
 
   object AppliedType {
@@ -3093,6 +3166,11 @@ object Types {
     def derivedTypeArgRef(prefix: Type)(implicit ctx: Context): Type =
       if (prefix eq this.prefix) this else TypeArgRef(prefix, clsRef, idx)
     override def computeHash = doHash(idx, prefix, clsRef)
+
+    override def eql(that: Type) = that match {
+      case that: TypeArgRef => prefix.eq(that.prefix) && clsRef.eq(that.clsRef) && idx == that.idx
+      case _ => false
+    }
   }
 
   final class CachedTypeArgRef(prefix: Type, clsRef: TypeRef, idx: Int) extends TypeArgRef(prefix, clsRef, idx)
@@ -3134,11 +3212,10 @@ object Types {
     }
 
     override def computeHash = doHash(paramNum, binder.identityHash)
+
     override def equals(that: Any) = that match {
-      case that: ParamRef =>
-        (this.binder eq that.binder) && this.paramNum == that.paramNum
-      case _ =>
-        false
+      case that: ParamRef => binder.eq(that.binder) && paramNum == that.paramNum
+      case _ => false
     }
 
     override def toString =
@@ -3188,10 +3265,12 @@ object Types {
     // need to customize hashCode and equals to prevent infinite recursion
     // between RecTypes and RecRefs.
     override def computeHash = addDelta(binder.identityHash, 41)
+
     override def equals(that: Any) = that match {
-      case that: RecThis => this.binder eq that.binder
+      case that: RecThis => binder.eq(that.binder)
       case _ => false
     }
+
     override def toString =
       try s"RecThis(${binder.hashCode})"
       catch {
@@ -3207,7 +3286,7 @@ object Types {
     def derivedSkolemType(info: Type)(implicit ctx: Context) =
       if (info eq this.info) this else SkolemType(info)
     override def hashCode: Int = identityHash
-    override def equals(that: Any) = this eq that.asInstanceOf[AnyRef]
+    override def equals(that: Any) = this.eq(that.asInstanceOf[AnyRef])
 
     def withName(name: Name): this.type = { myRepr = name; this }
 
@@ -3309,7 +3388,7 @@ object Types {
     }
 
     override def computeHash: Int = identityHash
-    override def equals(that: Any) = this eq that.asInstanceOf[AnyRef]
+    override def equals(that: Any) = this.eq(that.asInstanceOf[AnyRef])
 
     override def toString = {
       def instStr = if (inst.exists) s" -> $inst" else ""
@@ -3389,6 +3468,16 @@ object Types {
 
     override def computeHash = doHash(cls, prefix)
 
+    override def eql(that: Type) = that match {
+      case that: ClassInfo =>
+        prefix.eq(that.prefix) &&
+        cls.eq(that.cls) &&
+        classParents.eqElements(that.classParents) &&
+        decls.eq(that.decls) &&
+        selfInfo.eq(that.selfInfo)
+      case _ => false
+    }
+
     override def toString = s"ClassInfo($prefix, $cls, $classParents)"
   }
 
@@ -3459,15 +3548,16 @@ object Types {
 
     override def computeHash = doHash(lo, hi)
 
-    // @!!! we are not systematic when we do referntial vs structural comparisons.
-    // Do referential everywhere?
     override def equals(that: Any): Boolean = that match {
-      case that: TypeAlias =>
-        false
-      case that: TypeBounds =>
-        (this.lo eq that.lo) && (this.hi eq that.hi)
-      case _ =>
-        false
+      case that: TypeAlias => false
+      case that: TypeBounds => lo == that.lo && hi == that.hi
+      case _ => false
+    }
+
+    override def eql(that: Type) = that match {
+      case that: TypeAlias => false
+      case that: TypeBounds => lo.eq(that.lo) && hi.eq(that.hi)
+      case _ => false
     }
   }
 
@@ -3482,10 +3572,13 @@ object Types {
     override def computeHash = doHash(alias)
 
     override def equals(that: Any): Boolean = that match {
-      case that: TypeAlias =>
-        this.alias eq that.alias
-      case _ =>
-        false
+      case that: TypeAlias => alias == that.alias
+      case _ => false
+    }
+
+    override def eql(that: Type): Boolean = that match {
+      case that: TypeAlias => alias.eq(that.alias)
+      case _ => false
     }
   }
 
@@ -3530,9 +3623,15 @@ object Types {
 
   /** The type of an erased array */
   abstract case class JavaArrayType(elemType: Type) extends CachedGroundType with ValueType {
-    override def computeHash = doHash(elemType)
     def derivedJavaArrayType(elemtp: Type)(implicit ctx: Context) =
       if (elemtp eq this.elemType) this else JavaArrayType(elemtp)
+
+    override def computeHash = doHash(elemType)
+
+    override def eql(that: Type) = that match {
+      case that: JavaArrayType => elemType.eq(that.elemType)
+      case _ => false
+    }
   }
   final class CachedJavaArrayType(elemType: Type) extends JavaArrayType(elemType)
   object JavaArrayType {
@@ -3586,7 +3685,13 @@ object Types {
       if (optBounds eq this.optBounds) this
       else if (!optBounds.exists) WildcardType
       else WildcardType(optBounds.asInstanceOf[TypeBounds])
+
     override def computeHash = doHash(optBounds)
+
+    override def eql(that: Type) = that match {
+      case that: WildcardType => optBounds.eq(that.optBounds)
+      case _ => false
+    }
   }
 
   final class CachedWildcardType(optBounds: Type) extends WildcardType(optBounds)

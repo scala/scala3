@@ -119,6 +119,17 @@ object Decorators {
       loop(xs, ys)
     }
 
+    @tailrec final def eqElements(ys: List[AnyRef]): Boolean = xs match {
+      case x :: _ =>
+        ys match {
+          case y :: _ =>
+            x.asInstanceOf[AnyRef].eq(y) &&
+            xs.tail.eqElements(ys.tail)
+          case _ => false
+        }
+      case nil => ys.isEmpty
+    }
+
     /** Union on lists seen as sets */
     def | (ys: List[T]): List[T] = xs ++ (ys filterNot (xs contains _))
 
