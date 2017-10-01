@@ -978,22 +978,6 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     }
   }
 
-  /** A traverser that passes the enclosing class or method as an argument
-   *  to the traverse method.
-   */
-  abstract class EnclosingMethodTraverser extends TreeAccumulator[Symbol] {
-    def traverse(enclMeth: Symbol, tree: Tree)(implicit ctx: Context): Unit
-    def apply(enclMeth: Symbol, tree: Tree)(implicit ctx: Context) = {
-      tree match {
-        case _: DefTree if tree.symbol.exists =>
-          traverse(tree.symbol.enclosingMethod, tree)
-        case _ =>
-          traverse(enclMeth, tree)
-      }
-      enclMeth
-    }
-  }
-
   /** A key to be used in a context property that tracks enclosing inlined calls */
   private val InlinedCalls = new Property.Key[List[Tree]]
 

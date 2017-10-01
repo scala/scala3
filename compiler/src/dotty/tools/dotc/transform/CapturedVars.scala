@@ -52,27 +52,30 @@ class CapturedVars extends MiniPhase with IdentityDenotTransformer { thisTransfo
       myRefInfo
     }
 
-    private class CollectCaptured(implicit ctx: Context) extends EnclosingMethodTraverser {
+    private class CollectCaptured extends TreeTraverser {
       private val captured = mutable.HashSet[Symbol]()
-      def traverse(enclMeth: Symbol, tree: Tree)(implicit ctx: Context) = tree match {
+      def traverse(tree: Tree)(implicit ctx: Context) = tree match {
         case id: Ident =>
           val sym = id.symbol
-          if (sym.is(Mutable, butNot = Method) && sym.owner.isTerm && sym.enclosingMethod != enclMeth) {
-            ctx.log(i"capturing $sym in ${sym.enclosingMethod}, referenced from $enclMeth")
-            captured += sym
+          if (sym.is(Mutable, butNot = Method) && sym.owner.isTerm) {
+            val enclMeth = ctx.owner.enclosingMethod
+            if (sym.enclosingMethod != enclMeth) {
+              ctx.log(i"capturing $sym in ${sym.enclosingMethod}, referenced from $enclMeth")
+              captured += sym
+            }
           }
         case _ =>
-          foldOver(enclMeth, tree)
+          traverseChildren(tree)
       }
-      def runOver(tree: Tree): collection.Set[Symbol] = {
-        apply(NoSymbol, tree)
+      def runOver(tree: Tree)(implicit ctx: Context): collection.Set[Symbol] = {
+        traverse(tree)
         captured
       }
     }
 
     override def prepareForUnit(tree: Tree)(implicit ctx: Context) = {
-      val captured = (new CollectCaptured)(ctx.withPhase(thisTransform))
-        .runOver(ctx.compilationUnit.tpdTree)
+      val captured = (new CollectCaptured)
+        .runOver(ctx.compilationUnit.tpdTree)(ctx.withPhase(thisTransform))
       new Transform(captured)
     }
 
