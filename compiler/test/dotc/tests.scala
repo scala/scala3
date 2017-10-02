@@ -181,34 +181,34 @@ class tests extends CompilerTest {
 
   @Test def new_all = compileFiles(newDir, twice)
 
-  @Test def neg_all = compileFiles(negDir, verbose = true, compileSubDirs = false)
-  @Test def neg_typedIdents() = compileDir(negDir, "typedIdents")
+  // @Test def neg_all = compileFiles(negDir, verbose = true, compileSubDirs = false)
+  // @Test def neg_typedIdents() = compileDir(negDir, "typedIdents")
 
-  @Test def negVarargsT1625 = compileFiles(negDir + "varargsInMethodsT1625/")
+  // @Test def negVarargsT1625 = compileFiles(negDir + "varargsInMethodsT1625/")
 
-  val negCustomArgs = negDir + "customArgs/"
+  // val negCustomArgs = negDir + "customArgs/"
 
-  @Test def neg_typers() = compileFile(negCustomArgs, "typers")(allowDoubleBindings)
-  @Test def neg_overrideClass = compileFile(negCustomArgs, "overrideClass", scala2mode)
-  @Test def neg_autoTupling = compileFile(negCustomArgs, "autoTuplingTest", args = "-language:noAutoTupling" :: Nil)
-  @Test def neg_i1050 = compileFile(negCustomArgs, "i1050", List("-strict"))
-  @Test def neg_i1240 = compileFile(negCustomArgs, "i1240")(allowDoubleBindings)
-  @Test def neg_i2002 = compileFile(negCustomArgs, "i2002")(allowDoubleBindings)
-  @Test def neg_valueclasses_doubledefs = compileFile(negCustomArgs, "valueclasses-doubledefs")(allowDoubleBindings)
-  @Test def neg_valueclasses_pavlov = compileFile(negCustomArgs, "valueclasses-pavlov")(allowDoubleBindings)
-  @Test def neg_trailingUnderscore = compileFile(negCustomArgs, "trailingUnderscore", args = "-strict" :: Nil)
+  // @Test def neg_typers() = compileFile(negCustomArgs, "typers")(allowDoubleBindings)
+  // @Test def neg_overrideClass = compileFile(negCustomArgs, "overrideClass", scala2mode)
+  // @Test def neg_autoTupling = compileFile(negCustomArgs, "autoTuplingTest", args = "-language:noAutoTupling" :: Nil)
+  // @Test def neg_i1050 = compileFile(negCustomArgs, "i1050", List("-strict"))
+  // @Test def neg_i1240 = compileFile(negCustomArgs, "i1240")(allowDoubleBindings)
+  // @Test def neg_i2002 = compileFile(negCustomArgs, "i2002")(allowDoubleBindings)
+  // @Test def neg_valueclasses_doubledefs = compileFile(negCustomArgs, "valueclasses-doubledefs")(allowDoubleBindings)
+  // @Test def neg_valueclasses_pavlov = compileFile(negCustomArgs, "valueclasses-pavlov")(allowDoubleBindings)
+  // @Test def neg_trailingUnderscore = compileFile(negCustomArgs, "trailingUnderscore", args = "-strict" :: Nil)
 
-  val negTailcallDir = negDir + "tailcall/"
-  @Test def neg_tailcall_t1672b = compileFile(negTailcallDir, "t1672b")
-  @Test def neg_tailcall_t3275 = compileFile(negTailcallDir, "t3275")
-  @Test def neg_tailcall_t6574 = compileFile(negTailcallDir, "t6574")
-  @Test def neg_tailcall = compileFile(negTailcallDir, "tailrec")
-  @Test def neg_tailcall2 = compileFile(negTailcallDir, "tailrec-2")
-  @Test def neg_tailcall3 = compileFile(negTailcallDir, "tailrec-3")
+  // val negTailcallDir = negDir + "tailcall/"
+  // @Test def neg_tailcall_t1672b = compileFile(negTailcallDir, "t1672b")
+  // @Test def neg_tailcall_t3275 = compileFile(negTailcallDir, "t3275")
+  // @Test def neg_tailcall_t6574 = compileFile(negTailcallDir, "t6574")
+  // @Test def neg_tailcall = compileFile(negTailcallDir, "tailrec")
+  // @Test def neg_tailcall2 = compileFile(negTailcallDir, "tailrec-2")
+  // @Test def neg_tailcall3 = compileFile(negTailcallDir, "tailrec-3")
 
-  @Test def neg_nopredef = compileFile(negCustomArgs, "nopredef", List("-Yno-predef"))
-  @Test def neg_noimports = compileFile(negCustomArgs, "noimports", List("-Yno-imports"))
-  @Test def neg_noimpots2 = compileFile(negCustomArgs, "noimports2", List("-Yno-imports"))
+  // @Test def neg_nopredef = compileFile(negCustomArgs, "nopredef", List("-Yno-predef"))
+  // @Test def neg_noimports = compileFile(negCustomArgs, "noimports", List("-Yno-imports"))
+  // @Test def neg_noimpots2 = compileFile(negCustomArgs, "noimports2", List("-Yno-imports"))
 
   @Test def run_all = runFiles(runDir)
 

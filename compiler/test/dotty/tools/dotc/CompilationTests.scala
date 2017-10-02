@@ -158,7 +158,7 @@ class CompilationTests extends ParallelTesting {
 
   // Negative tests ------------------------------------------------------------
 
-  @Test def compileNeg: Unit = {
+  /*@Test*/ def compileNeg: Unit = {
     compileShallowFilesInDir("../tests/neg", defaultOptions) +
     compileShallowFilesInDir("../tests/neg/no-optimise", defaultOptions) +
     compileFile("../tests/neg/customArgs/typers.scala", allowDoubleBindings) +

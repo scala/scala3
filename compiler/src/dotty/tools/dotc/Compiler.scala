@@ -53,7 +53,7 @@ class Compiler {
            new ElimJavaPackages),   // Eliminate syntactic references to Java packages
       List(new CheckStatic,         // Check restrictions that apply to @static members
            new ElimRepeated,        // Rewrite vararg parameters and arguments
-           new RefChecks,           // Various checks mostly related to abstract members and overriding
+           // new RefChecks,           // Various checks mostly related to abstract members and overriding
            new NormalizeFlags,      // Rewrite some definition flags
            new ExtensionMethods,    // Expand methods of value classes with extension methods
            new ExpandSAMs,          // Expand single abstract method closures to anonymous classes
