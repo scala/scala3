@@ -1566,17 +1566,17 @@ object Types {
     /** The denotation currently denoted by this type */
     final def denot(implicit ctx: Context): Denotation = {
       val now = ctx.period
-      if (checkedPeriod == now) lastDenotation else denotAt(now)
+      val lastd = lastDenotation
+      if (checkedPeriod == now) lastd else denotAt(lastd, now)
     }
 
     /** A first fall back to do a somewhat more expensive calculation in case the first
      *  attempt in `denot` does not yield a denotation.
      */
-    private def denotAt(now: Period)(implicit ctx: Context): Denotation = {
-      val d = lastDenotation
-      if (d != null && (d.validFor contains now)) {
+    private def denotAt(lastd: Denotation, now: Period)(implicit ctx: Context): Denotation = {
+      if (lastd != null && (lastd.validFor contains now)) {
         checkedPeriod = now
-        d
+        lastd
       }
       else computeDenot
     }
