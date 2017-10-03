@@ -11,7 +11,7 @@ import transform.ExplicitOuter, transform.SymUtils._
 
 class JavaPlatform extends Platform {
 
-  private var currentClassPath: Option[ClassPath] = None
+  private[this] var currentClassPath: Option[ClassPath] = None
 
   def classPath(implicit ctx: Context): ClassPath = {
     if (currentClassPath.isEmpty)

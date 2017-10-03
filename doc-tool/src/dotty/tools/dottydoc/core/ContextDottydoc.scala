@@ -27,7 +27,7 @@ class ContextDottydoc extends ContextDocstrings {
   def statistics: Map[String, Statistics] = _statistics
 
   /** Should perhaps factorize this into caches that get flushed */
-  private var _defs: Map[Symbol, Set[Symbol]] = Map.empty
+  private[this] var _defs: Map[Symbol, Set[Symbol]] = Map.empty
   def defs(sym: Symbol): Set[Symbol] = _defs.get(sym).getOrElse(Set.empty)
 
   def addDef(s: Symbol, d: Symbol): Unit = _defs = (_defs + {

@@ -535,9 +535,9 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
   extends Application(methRef, fun.tpe, args, resultType) {
     type TypedArg = Tree
     def isVarArg(arg: Trees.Tree[T]): Boolean = untpd.isWildcardStarArg(arg)
-    private var typedArgBuf = new mutable.ListBuffer[Tree]
-    private var liftedDefs: mutable.ListBuffer[Tree] = null
-    private var myNormalizedFun: Tree = fun
+    private[this] var typedArgBuf = new mutable.ListBuffer[Tree]
+    private[this] var liftedDefs: mutable.ListBuffer[Tree] = null
+    private[this] var myNormalizedFun: Tree = fun
     init()
 
     def addArg(arg: Tree, formal: Type): Unit =

@@ -62,7 +62,7 @@ trait RunnerOrchestration {
     def runMain(classPath: String)(implicit summaryReport: SummaryReporting): Status =
       withRunner(_.runMain(classPath))
 
-    private class Runner(private var process: Process) {
+    private class Runner(private[this] var process: Process) {
       private[this] var childStdout: BufferedReader = _
       private[this] var childStdin: PrintStream = _
 

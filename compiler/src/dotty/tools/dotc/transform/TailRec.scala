@@ -180,7 +180,7 @@ class TailRec extends MiniPhaseTransform with DenotTransformer with FullParamete
 
     private val defaultReason = "it contains a recursive call not in tail position"
 
-    private var ctx: TailContext = yesTailContext
+    private[this] var ctx: TailContext = yesTailContext
 
     /** Rewrite this tree to contain no tail recursive calls */
     def transform(tree: Tree, nctx: TailContext)(implicit c: Context): Tree = {

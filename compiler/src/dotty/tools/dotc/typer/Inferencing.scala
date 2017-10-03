@@ -74,7 +74,7 @@ object Inferencing {
       typr.println(i"forced instantiation of ${tvar.origin} = $inst")
       inst
     }
-    private var toMaximize: Boolean = false
+    private[this] var toMaximize: Boolean = false
     def apply(x: Boolean, tp: Type): Boolean = tp.dealias match {
       case _: WildcardType | _: ProtoType =>
         false

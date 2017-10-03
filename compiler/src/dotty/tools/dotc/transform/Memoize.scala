@@ -26,7 +26,7 @@ import Decorators._
  *           <accessor> <stable> <mods> def x(): T = x
  *
  *    <accessor> <mods> def x(): T = e
- *      -->  private var x: T = e
+ *      -->  private[this] var x: T = e
  *           <accessor> <mods> def x(): T = x
  *
  *    <accessor> <mods> def x_=(y: T): Unit = ()

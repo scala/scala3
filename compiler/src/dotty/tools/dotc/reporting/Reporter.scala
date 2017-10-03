@@ -190,7 +190,7 @@ abstract class Reporter extends interfaces.ReporterResult {
    *  debugging information (like printing the classpath) is not rendered
    *  invisible due to the max message length.
    */
-  private var _truncationOK: Boolean = true
+  private[this] var _truncationOK: Boolean = true
   def truncationOK = _truncationOK
   def withoutTruncating[T](body: => T): T = {
     val saved = _truncationOK
@@ -200,7 +200,7 @@ abstract class Reporter extends interfaces.ReporterResult {
   }
 
   type ErrorHandler = MessageContainer => Context => Unit
-  private var incompleteHandler: ErrorHandler = d => c => report(d)(c)
+  private[this] var incompleteHandler: ErrorHandler = d => c => report(d)(c)
   def withIncompleteHandler[T](handler: ErrorHandler)(op: => T): T = {
     val saved = incompleteHandler
     incompleteHandler = handler
@@ -212,7 +212,7 @@ abstract class Reporter extends interfaces.ReporterResult {
   var warningCount = 0
   def hasErrors = errorCount > 0
   def hasWarnings = warningCount > 0
-  private var errors: List[Error] = Nil
+  private[this] var errors: List[Error] = Nil
   def allErrors = errors
 
   /** Have errors been reported by this reporter, or in the

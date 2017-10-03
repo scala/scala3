@@ -1194,7 +1194,7 @@ object TreeTransforms {
           goOther(tree, info.nx.nxTransOther(cur))
       }
 
-    private var crashingTree: Tree = EmptyTree
+    private[this] var crashingTree: Tree = EmptyTree
 
     def transform(tree: Tree, info: TransformerInfo, cur: Int)(implicit ctx: Context): Tree = ctx.traceIndented(s"transforming ${tree.show} at ${ctx.phase}", transforms, show = true) {
       try

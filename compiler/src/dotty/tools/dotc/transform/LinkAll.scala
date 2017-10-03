@@ -40,7 +40,7 @@ class LinkAll extends Phase {
 
   /** Collects all class denotations that may need to be loaded. */
   private class ClassesToLoadAccumulator extends TreeAccumulator[Set[ClassDenotation]] {
-    private var inParents = false
+    private[this] var inParents = false
     override def apply(acc: Set[ClassDenotation], tree: tpd.Tree)(implicit ctx: Context): Set[ClassDenotation] = tree match {
       case New(tpt) => accum(acc, tpt.tpe.classSymbol)
       case AppliedTypeTree(tpt, _) if inParents => accum(acc, tpt.symbol)

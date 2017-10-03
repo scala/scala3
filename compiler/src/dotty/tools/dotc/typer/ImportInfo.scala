@@ -60,10 +60,10 @@ class ImportInfo(symf: Context => Symbol, val selectors: List[untpd.Tree],
   /** Does the import clause end with wildcard? */
   def isWildcardImport = { ensureInitialized(); myWildcardImport }
 
-  private var myExcluded: Set[TermName] = null
-  private var myMapped: SimpleIdentityMap[TermName, TermName] = null
-  private var myOriginals: Set[TermName] = null
-  private var myWildcardImport: Boolean = false
+  private[this] var myExcluded: Set[TermName] = null
+  private[this] var myMapped: SimpleIdentityMap[TermName, TermName] = null
+  private[this] var myOriginals: Set[TermName] = null
+  private[this] var myWildcardImport: Boolean = false
 
   /** Compute info relating to the selector list */
   private def ensureInitialized(): Unit = if (myExcluded == null) {

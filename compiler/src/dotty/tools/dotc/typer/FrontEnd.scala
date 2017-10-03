@@ -20,7 +20,7 @@ class FrontEnd extends Phase {
   import ast.tpd
 
   /** The contexts for compilation units that are parsed but not yet entered */
-  private var remaining: List[Context] = Nil
+  private[this] var remaining: List[Context] = Nil
 
   /** Does a source file ending with `<name>.scala` belong to a compilation unit
    *  that is parsed but not yet entered?

@@ -59,7 +59,7 @@ class ClassfileParser(
   protected var currentClassName: SimpleName = _      // JVM name of the current class
   protected var classTParams = Map[Name,Symbol]()
 
-  private var Scala2UnpicklingMode = Mode.Scala2Unpickling
+  private[this] var Scala2UnpicklingMode = Mode.Scala2Unpickling
 
   classRoot.info = (new NoCompleter).withDecls(instanceScope)
   moduleRoot.info = (new NoCompleter).withDecls(staticScope).withSourceModule(_ => staticModule)

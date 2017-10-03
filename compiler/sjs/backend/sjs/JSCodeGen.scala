@@ -72,7 +72,7 @@ class JSCodeGen()(implicit ctx: Context) {
   /* See genSuperCall()
    * TODO Can we avoid this unscoped var?
    */
-  private var isModuleInitialized: Boolean = false
+  private[this] var isModuleInitialized: Boolean = false
 
   private def currentClassType = encodeClassType(currentClassSym)
 

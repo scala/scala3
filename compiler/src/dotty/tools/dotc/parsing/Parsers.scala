@@ -34,7 +34,7 @@ object Parsers {
   case class OpInfo(operand: Tree, operator: Ident, offset: Offset)
 
   class ParensCounters {
-    private var parCounts = new Array[Int](lastParen - firstParen)
+    private[this] var parCounts = new Array[Int](lastParen - firstParen)
 
     def count(tok: Token) = parCounts(tok - firstParen)
     def change(tok: Token, delta: Int) = parCounts(tok - firstParen) += delta
@@ -175,7 +175,7 @@ object Parsers {
     /** The offset of the last time when a statement on a new line was definitely
      *  encountered in the current scope or an outer scope.
      */
-    private var lastStatOffset = -1
+    private[this] var lastStatOffset = -1
 
     def setLastStatOffset() =
       if (mustStartStat && in.isAfterLineEnd())
@@ -297,7 +297,7 @@ object Parsers {
 
     def errorTermTree    = atPos(in.offset) { Literal(Constant(null)) }
 
-    private var inFunReturnType = false
+    private[this] var inFunReturnType = false
     private def fromWithinReturnType[T](body: => T): T = {
       val saved = inFunReturnType
       try {
@@ -312,7 +312,7 @@ object Parsers {
     /** A flag indicating we are parsing in the annotations of a primary
      *  class constructor
      */
-    private var inClassConstrAnnots = false
+    private[this] var inClassConstrAnnots = false
 
     private def fromWithinClassConstr[T](body: => T): T = {
       val saved = inClassConstrAnnots
@@ -332,7 +332,7 @@ object Parsers {
      *  We store tokens in lookahead as long as they can form a valid prefix
      *  of a class parameter clause.
      */
-    private var lookaheadTokens = new ListBuffer[TokenData]
+    private[this] var lookaheadTokens = new ListBuffer[TokenData]
 
     /** Copy current token to end of lookahead */
     private def saveLookahead() = {

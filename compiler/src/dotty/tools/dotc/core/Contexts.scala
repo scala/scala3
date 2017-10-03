@@ -160,12 +160,12 @@ object Contexts {
     /** An optional diagostics buffer than is used by some checking code
      *  to provide more information in the buffer if it exists.
      */
-    private var _diagnostics: Option[StringBuilder] = _
+    private[this] var _diagnostics: Option[StringBuilder] = _
     protected def diagnostics_=(diagnostics: Option[StringBuilder]) = _diagnostics = diagnostics
     def diagnostics: Option[StringBuilder] = _diagnostics
 
     /** The current bounds in force for type parameters appearing in a GADT */
-    private var _gadt: GADTMap = _
+    private[this] var _gadt: GADTMap = _
     protected def gadt_=(gadt: GADTMap) = _gadt = gadt
     def gadt: GADTMap = _gadt
 
@@ -175,14 +175,14 @@ object Contexts {
     def freshNames: FreshNameCreator = _freshNames
 
     /** A map in which more contextual properties can be stored */
-    private var _moreProperties: Map[Key[Any], Any] = _
+    private[this] var _moreProperties: Map[Key[Any], Any] = _
     protected def moreProperties_=(moreProperties: Map[Key[Any], Any]) = _moreProperties = moreProperties
     def moreProperties: Map[Key[Any], Any] = _moreProperties
 
     def property[T](key: Key[T]): Option[T] =
       moreProperties.get(key).asInstanceOf[Option[T]]
 
-    private var _typeComparer: TypeComparer = _
+    private[this] var _typeComparer: TypeComparer = _
     protected def typeComparer_=(typeComparer: TypeComparer) = _typeComparer = typeComparer
     def typeComparer: TypeComparer = {
       if (_typeComparer.ctx ne this)
@@ -224,7 +224,7 @@ object Contexts {
     }
 
     /** The history of implicit searches that are currently active */
-    private var _searchHistory: SearchHistory = null
+    private[this] var _searchHistory: SearchHistory = null
     protected def searchHistory_= (searchHistory: SearchHistory) = _searchHistory = searchHistory
     def searchHistory: SearchHistory = _searchHistory
 
@@ -233,8 +233,8 @@ object Contexts {
       * phasedCtxs is array that uses phaseId's as indexes,
       * contexts are created only on request and cached in this array
       */
-    private var phasedCtx: Context = _
-    private var phasedCtxs: Array[Context] = _
+    private[this] var phasedCtx: Context = _
+    private[this] var phasedCtxs: Array[Context] = _
 
     /** This context at given phase.
      *  This method will always return a phase period equal to phaseId, thus will never return squashed phases
@@ -268,7 +268,7 @@ object Contexts {
     /** If -Ydebug is on, the top of the stack trace where this context
      *  was created, otherwise `null`.
      */
-    private var creationTrace: Array[StackTraceElement] = _
+    private[this] var creationTrace: Array[StackTraceElement] = _
 
     private def setCreationTrace() =
       if (this.settings.YtraceContextCreation.value)
@@ -393,7 +393,7 @@ object Contexts {
 
     /** A condensed context containing essential information of this but
      *  no outer contexts except the initial context.
-    private var _condensed: CondensedContext = null
+    private[this] var _condensed: CondensedContext = null
     def condensed: CondensedContext = {
       if (_condensed eq outer.condensed)
         _condensed = base.initialCtx.fresh
@@ -557,7 +557,7 @@ object Contexts {
     val loaders = new SymbolLoaders
 
     /** The platform, initialized by `initPlatform()`. */
-    private var _platform: Platform = _
+    private[this] var _platform: Platform = _
 
     /** The platform */
     def platform: Platform = {
@@ -670,7 +670,7 @@ object Contexts {
     // Test that access is single threaded
 
     /** The thread on which `checkSingleThreaded was invoked last */
-    @sharable private var thread: Thread = null
+    @sharable private[this] var thread: Thread = null
 
     /** Check that we are on the same thread as before */
     def checkSingleThreaded() =
@@ -695,7 +695,7 @@ object Contexts {
   }
 
   class GADTMap(initBounds: SimpleIdentityMap[Symbol, TypeBounds]) extends util.DotClass {
-    private var myBounds = initBounds
+    private[this] var myBounds = initBounds
     def setBounds(sym: Symbol, b: TypeBounds): Unit =
       myBounds = myBounds.updated(sym, b)
     def bounds = myBounds

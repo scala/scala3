@@ -318,16 +318,16 @@ object Phases {
 
     def exists: Boolean = true
 
-    private var myPeriod: Period = Periods.InvalidPeriod
-    private var myBase: ContextBase = null
-    private var myErasedTypes = false
-    private var myFlatClasses = false
-    private var myRefChecked = false
-    private var mySymbolicRefs = false
-    private var myLabelsReordered = false
+    private[this] var myPeriod: Period = Periods.InvalidPeriod
+    private[this] var myBase: ContextBase = null
+    private[this] var myErasedTypes = false
+    private[this] var myFlatClasses = false
+    private[this] var myRefChecked = false
+    private[this] var mySymbolicRefs = false
+    private[this] var myLabelsReordered = false
 
-    private var mySameMembersStartId = NoPhaseId
-    private var mySameParentsStartId = NoPhaseId
+    private[this] var mySameMembersStartId = NoPhaseId
+    private[this] var mySameParentsStartId = NoPhaseId
 
     /** The sequence position of this phase in the given context where 0
      * is reserved for NoPhase and the first real phase is at position 1.

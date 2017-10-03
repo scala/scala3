@@ -46,7 +46,7 @@ class CapturedVars extends MiniPhase with IdentityDenotTransformer { thisTransfo
   class Transform(captured: collection.Set[Symbol]) extends TreeTransform {
     def phase = thisTransform
 
-    private var myRefInfo: RefInfo = null
+    private[this] var myRefInfo: RefInfo = null
     private def refInfo(implicit ctx: Context) = {
       if (myRefInfo == null) myRefInfo = new RefInfo()
       myRefInfo

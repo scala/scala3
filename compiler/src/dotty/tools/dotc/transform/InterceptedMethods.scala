@@ -43,7 +43,7 @@ class InterceptedMethods extends MiniPhaseTransform {
 
   override def phaseName: String = "intercepted"
 
-  private var primitiveGetClassMethods: Set[Symbol] = _
+  private[this] var primitiveGetClassMethods: Set[Symbol] = _
 
   var Any_## : Symbol = _ // cached for performance reason
 

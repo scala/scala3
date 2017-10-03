@@ -1122,9 +1122,9 @@ object Denotations {
      */
     def filterExcluded(excluded: FlagSet)(implicit ctx: Context): PreDenotation
 
-    private var cachedPrefix: Type = _
-    private var cachedAsSeenFrom: AsSeenFromResult = _
-    private var validAsSeenFrom: Period = Nowhere
+    private[this] var cachedPrefix: Type = _
+    private[this] var cachedAsSeenFrom: AsSeenFromResult = _
+    private[this] var validAsSeenFrom: Period = Nowhere
     type AsSeenFromResult <: PreDenotation
 
     /** The denotation with info(s) as seen from prefix type */

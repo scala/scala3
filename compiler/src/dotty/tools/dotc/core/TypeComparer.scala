@@ -21,10 +21,10 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
   val state = ctx.typerState
   import state.constraint
 
-  private var pendingSubTypes: mutable.Set[(Type, Type)] = null
-  private var recCount = 0
+  private[this] var pendingSubTypes: mutable.Set[(Type, Type)] = null
+  private[this] var recCount = 0
 
-  private var needsGc = false
+  private[this] var needsGc = false
 
   /** Is a subtype check in progress? In that case we may not
    *  permanently instantiate type variables, because the corresponding
@@ -41,16 +41,16 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
   }
 
   /** For statistics: count how many isSubTypes are part of successful comparisons */
-  private var successCount = 0
-  private var totalCount = 0
+  private[this] var successCount = 0
+  private[this] var totalCount = 0
 
-  private var myAnyClass: ClassSymbol = null
-  private var myNothingClass: ClassSymbol = null
-  private var myNullClass: ClassSymbol = null
-  private var myPhantomNothingClass: ClassSymbol = null
-  private var myObjectClass: ClassSymbol = null
-  private var myAnyType: TypeRef = null
-  private var myNothingType: TypeRef = null
+  private[this] var myAnyClass: ClassSymbol = null
+  private[this] var myNothingClass: ClassSymbol = null
+  private[this] var myNullClass: ClassSymbol = null
+  private[this] var myPhantomNothingClass: ClassSymbol = null
+  private[this] var myObjectClass: ClassSymbol = null
+  private[this] var myAnyType: TypeRef = null
+  private[this] var myNothingType: TypeRef = null
 
   def AnyClass = {
     if (myAnyClass == null) myAnyClass = defn.AnyClass
@@ -1605,10 +1605,10 @@ object TypeComparer {
 
 /** A type comparer that can record traces of subtype operations */
 class ExplainingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
-  private var indent = 0
+  private[this] var indent = 0
   private val b = new StringBuilder
 
-  private var skipped = false
+  private[this] var skipped = false
 
   override def traceIndented[T](str: String)(op: => T): T =
     if (skipped) op

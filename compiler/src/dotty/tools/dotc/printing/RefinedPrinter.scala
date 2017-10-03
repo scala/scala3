@@ -20,9 +20,9 @@ import language.implicitConversions
 class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
 
   /** A stack of enclosing DefDef, TypeDef, or ClassDef, or ModuleDefs nodes */
-  private var enclosingDef: untpd.Tree = untpd.EmptyTree
-  private var myCtx: Context = _ctx
-  private var printPos = ctx.settings.Yprintpos.value
+  private[this] var enclosingDef: untpd.Tree = untpd.EmptyTree
+  private[this] var myCtx: Context = _ctx
+  private[this] var printPos = ctx.settings.Yprintpos.value
   override protected[this] implicit def ctx: Context = myCtx
 
   def withEnclosingDef(enclDef: Tree[_ >: Untyped])(op: => Text): Text = {

@@ -93,9 +93,9 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisTrans
 
   class PostTyperTransformer extends Transformer {
 
-    private var inJavaAnnot: Boolean = false
+    private[this] var inJavaAnnot: Boolean = false
 
-    private var noCheckNews: Set[New] = Set()
+    private[this] var noCheckNews: Set[New] = Set()
 
     def withNoCheckNews[T](ts: List[New])(op: => T): T = {
       val saved = noCheckNews

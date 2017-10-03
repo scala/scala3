@@ -14,7 +14,7 @@ import collection.mutable
 
   var monitored = false
 
-  @volatile private var stack: List[String] = Nil
+  @volatile private[this] var stack: List[String] = Nil
 
   val hits = new mutable.HashMap[String, Int] {
     override def default(key: String): Int = 0

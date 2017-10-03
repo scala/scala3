@@ -785,8 +785,8 @@ class Namer { typer: Typer =>
   }
 
   class TypeDefCompleter(original: TypeDef)(ictx: Context) extends Completer(original)(ictx) with TypeParamsCompleter {
-    private var myTypeParams: List[TypeSymbol] = null
-    private var nestedCtx: Context = null
+    private[this] var myTypeParams: List[TypeSymbol] = null
+    private[this] var nestedCtx: Context = null
     assert(!original.isClassDef)
 
     def completerTypeParams(sym: Symbol)(implicit ctx: Context): List[TypeSymbol] = {

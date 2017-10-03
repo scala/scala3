@@ -41,7 +41,7 @@ import java.lang.ref.WeakReference
 
 object Types {
 
-  @sharable private var nextId = 0
+  @sharable private[this] var nextId = 0
 
   implicit def eqType: Eq[Type, Type] = Eq
 
