@@ -101,18 +101,7 @@ import Decorators._
         cpy.installAfter(thisTransform)
       }
 
-    lazy val field = sym.field.orElse(newField).asTerm
-
-    def adaptToField(tree: Tree): Tree =
-      if (tree.isEmpty) tree else tree.ensureConforms(field.info.widen)
-
     val NoFieldNeeded = Lazy | Deferred | JavaDefined | (if (ctx.settings.YnoInline.value) EmptyFlags else Inline)
-
-    def isErasableBottomField(cls: Symbol): Boolean = {
-      // TODO: For Scala.js, return false if this field is in a js.Object unless it is an ErasedPhantomClass.
-      !field.isVolatile &&
-      ((cls eq defn.NothingClass) || (cls eq defn.NullClass) || (cls eq defn.BoxedUnitClass) || (cls eq defn.ErasedPhantomClass))
-    }
 
     def erasedBottomTree(sym: Symbol) = {
       if (sym eq defn.NothingClass) Throw(Literal(Constant(null)))
@@ -125,7 +114,18 @@ import Decorators._
       }
     }
 
-    if (sym.is(Accessor, butNot = NoFieldNeeded))
+    if (sym.is(Accessor, butNot = NoFieldNeeded)) {
+      val field = sym.field.orElse(newField).asTerm
+
+      def adaptToField(tree: Tree): Tree =
+        if (tree.isEmpty) tree else tree.ensureConforms(field.info.widen)
+
+      def isErasableBottomField(cls: Symbol): Boolean = {
+        // TODO: For Scala.js, return false if this field is in a js.Object unless it is an ErasedPhantomClass.
+        !field.isVolatile &&
+        ((cls eq defn.NothingClass) || (cls eq defn.NullClass) || (cls eq defn.BoxedUnitClass) || (cls eq defn.ErasedPhantomClass))
+      }
+
       if (sym.isGetter) {
         var rhs = tree.rhs.changeOwnerAfter(sym, field, thisTransform)
         if (isWildcardArg(rhs)) rhs = EmptyTree
@@ -151,6 +151,7 @@ import Decorators._
       }
       else tree // curiously, some accessors from Scala2 have ' ' suffixes. They count as
                 // neither getters nor setters
+    }
     else tree
   }
 }
