@@ -468,12 +468,12 @@ object Build {
 
       test in Test := {
         // Exclude legacy tests by default
-        (testOnly in Test).toTask(" -- --exclude-categories=java.lang.Exception,dotty.tools.dotc.SlowTests").value
+        (testOnly in Test).toTask(" -- --exclude-categories=dotc.LegacyTests,dotty.tools.dotc.SlowTests").value
       },
 
       testAll in Test := {
         // Exclude legacy tests by default
-        (testOnly in Test).toTask(" -- --exclude-categories=java.lang.Exception").value
+        (testOnly in Test).toTask(" -- --exclude-categories=dotc.LegacyTests").value
       },
 
       vulpix := Def.inputTaskDyn {

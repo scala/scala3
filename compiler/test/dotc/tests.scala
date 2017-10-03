@@ -15,7 +15,7 @@ import scala.io.Source
  *  =======
  *  These are legacy, do not add tests here, see `CompilationTests.scala`
  */
-@Category(Array(classOf[java.lang.Exception]))
+@Category(Array(classOf[LegacyTests]))
 class tests extends CompilerTest {
 
   // tests that match regex '(pos|dotc|run|java|compileStdLib)\.*' would be
