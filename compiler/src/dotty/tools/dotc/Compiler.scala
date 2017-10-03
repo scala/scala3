@@ -75,6 +75,7 @@ class Compiler {
            new InterceptedMethods,  // Special handling of `==`, `|=`, `getClass` methods
            new Getters,             // Replace non-private vals and vars with getter defs (fields are added later)
            new ElimByName,          // Expand by-name parameter references
+           new ElimOuterSelect,     // Expand outer selections
            new AugmentScala2Traits, // Expand traits defined in Scala 2.x to simulate old-style rewritings
            new ResolveSuper,        // Implement super accessors and add forwarders to trait methods
            new Simplify,            // Perform local optimizations, simplified versions of what linker does.

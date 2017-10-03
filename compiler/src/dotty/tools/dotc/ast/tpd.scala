@@ -826,7 +826,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
      *  @param tp      The type of the destination of the outer path.
      */
     def outerSelect(levels: Int, tp: Type)(implicit ctx: Context): Tree =
-      untpd.Select(tree, OuterSelectName(EmptyTermName, levels)).withType(tp)
+      untpd.Select(tree, OuterSelectName(EmptyTermName, levels)).withType(SkolemType(tp))
 
     // --- Higher order traversal methods -------------------------------
 

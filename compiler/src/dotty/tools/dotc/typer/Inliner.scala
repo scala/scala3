@@ -39,16 +39,21 @@ object Inliner {
    */
   private def makeInlineable(tree: Tree)(implicit ctx: Context) = {
 
+    val inlineMethod = ctx.owner
+
     /** A tree map which inserts accessors for all non-public term members accessed
-     *  from inlined code. Accesors are collected in the `accessors` buffer.
+     *  from inlined code. Accessors are collected in the `accessors` buffer.
      */
     object addAccessors extends TreeMap {
-      val inlineMethod = ctx.owner
       val accessors = new mutable.ListBuffer[MemberDef]
 
-      /** A definition needs an accessor if it is private, protected, or qualified private */
+      /** A definition needs an accessor if it is private, protected, or qualified private
+       *  and it is not part of the tree that gets inlined. The latter test is implemented
+       *  by excluding all symbols properly contained in the inlined method.
+       */
       def needsAccessor(sym: Symbol)(implicit ctx: Context) =
-        sym.is(AccessFlags) || sym.privateWithin.exists
+        (sym.is(AccessFlags) || sym.privateWithin.exists) &&
+        !sym.owner.isContainedIn(inlineMethod)
 
       /** The name of the next accessor to be generated */
       def accessorName(implicit ctx: Context) = InlineAccessorName.fresh(inlineMethod.name.asTermName)
@@ -116,7 +121,8 @@ object Inliner {
 
             // The types that are local to the inlined method, and that therefore have
             // to be abstracted out in the accessor, which is external to the inlined method
-            val localRefs = qualType.namedPartsWith(_.symbol.isContainedIn(inlineMethod)).toList
+            val localRefs = qualType.namedPartsWith(ref =>
+              ref.isType && ref.symbol.isContainedIn(inlineMethod)).toList
 
             // Abstract accessed type over local refs
             def abstractQualType(mtpe: Type): Type =
@@ -175,8 +181,14 @@ object Inliner {
       }
     }
 
-    val tree1 = addAccessors.transform(tree)
-    flatTree(tree1 :: addAccessors.accessors.toList)
+    if (inlineMethod.owner.isTerm)
+      // Inline methods in local scopes can only be called in the scope they are defined,
+      // so no accessors are needed for them.
+      tree
+    else {
+      val tree1 = addAccessors.transform(tree)
+      flatTree(tree1 :: addAccessors.accessors.toList)
+    }
   }
 
   /** Register inline info for given inline method `sym`.
@@ -359,13 +371,15 @@ class Inliner(call: tpd.Tree, rhs: tpd.Tree)(implicit ctx: Context) {
 
   private def canElideThis(tpe: ThisType): Boolean =
     prefix.tpe == tpe && ctx.owner.isContainedIn(tpe.cls) ||
+    tpe.cls.isContainedIn(meth) ||
     tpe.cls.is(Package)
 
   /** Populate `thisProxy` and `paramProxy` as follows:
    *
    *  1a. If given type refers to a static this, thisProxy binds it to corresponding global reference,
-   *  1b. If given type refers to an instance this, create a proxy symbol and bind the thistype to
-   *      refer to the proxy. The proxy is not yet entered in `bindingsBuf` that will come later.
+   *  1b. If given type refers to an instance this to a class that is not contained in the
+   *      inlined method, create a proxy symbol and bind the thistype to refer to the proxy.
+   *      The proxy is not yet entered in `bindingsBuf`; that will come later.
    *  2.  If given type refers to a parameter, make `paramProxy` refer to the entry stored
    *      in `paramNames` under the parameter's name. This roundabout way to bind parameter
    *      references to proxies is done because  we not known a priori what the parameter
@@ -421,11 +435,12 @@ class Inliner(call: tpd.Tree, rhs: tpd.Tree)(implicit ctx: Context) {
       val rhs =
         if (lastSelf.exists)
           ref(lastSelf).outerSelect(lastLevel - level, selfSym.info)
-        else if (rhsClsSym.is(Module))
+        else if (rhsClsSym.is(Module) && rhsClsSym.isStatic)
           ref(rhsClsSym.sourceModule)
         else
           prefix
       bindingsBuf += ValDef(selfSym.asTerm, rhs)
+      inlining.println(i"proxy at $level: $selfSym = ${bindingsBuf.last}")
       lastSelf = selfSym
       lastLevel = level
     }
@@ -439,6 +454,7 @@ class Inliner(call: tpd.Tree, rhs: tpd.Tree)(implicit ctx: Context) {
         case t: SingletonType => paramProxy.getOrElse(t, mapOver(t))
         case t => mapOver(t)
       }
+      override def mapClassInfo(tp: ClassInfo) = mapFullClassInfo(tp)
     }
 
     // The tree map to apply to the inlined tree. This maps references to this-types

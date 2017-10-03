@@ -3948,6 +3948,17 @@ object Types {
     protected def mapClassInfo(tp: ClassInfo): Type =
       derivedClassInfo(tp, this(tp.prefix))
 
+    /** A version of mapClassInfo which also maps parents and self type */
+    protected def mapFullClassInfo(tp: ClassInfo) =
+      tp.derivedClassInfo(
+        prefix = this(tp.prefix),
+        classParents = tp.classParents.mapConserve(this),
+        selfInfo = tp.selfInfo match {
+          case tp: Type => this(tp)
+          case sym => sym
+        }
+      )
+
     def andThen(f: Type => Type): TypeMap = new TypeMap {
       override def stopAtStatic = thisMap.stopAtStatic
       def apply(tp: Type) = f(thisMap(tp))
