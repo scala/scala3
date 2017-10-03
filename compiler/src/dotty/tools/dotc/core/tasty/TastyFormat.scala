@@ -230,8 +230,8 @@ Standard Section: "Positions" Assoc*
 object TastyFormat {
 
   final val header = Array(0x5C, 0xA1, 0xAB, 0x1F)
-  final val MajorVersion = 0
-  final val MinorVersion = 5
+  final val MajorVersion = 1
+  final val MinorVersion = 0
 
   // Name tags
 
