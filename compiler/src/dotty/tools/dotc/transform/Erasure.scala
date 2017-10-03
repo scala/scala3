@@ -981,7 +981,8 @@ object Erasure {
           methodResultSig(restpe)
 
         case mtpe: MethodType =>
-          val params = mtpe.paramInfos
+          // phantom method parameters do not make it to the bytecode.
+          val params = mtpe.paramInfos.filterNot(_.isPhantom)
           val restpe = mtpe.resultType
           builder.append('(')
           // TODO: Update once we support varargs
