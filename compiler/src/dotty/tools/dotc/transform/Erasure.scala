@@ -768,11 +768,11 @@ object Erasure {
       )
   }
 
-  final def javaSig(sym0: Symbol, info: Type, markClassUsed: Symbol => Unit)(implicit ctx: Context): Option[String] =
-    ctx.atPhase(ctx.erasurePhase) { implicit ctx => javaSig0(sym0, info, markClassUsed) }
+  final def javaSig(sym0: Symbol, info: Type)(implicit ctx: Context): Option[String] =
+    ctx.atPhase(ctx.erasurePhase) { implicit ctx => javaSig0(sym0, info) }
 
   @noinline
-  private final def javaSig0(sym0: Symbol, info: Type, markClassUsed: Symbol => Unit)(implicit ctx: Context): Option[String] = {
+  private final def javaSig0(sym0: Symbol, info: Type)(implicit ctx: Context): Option[String] = {
     val builder = new StringBuilder(64)
     val isTraitSignature = sym0.enclosingClass.is(Flags.Trait)
 
@@ -860,7 +860,7 @@ object Erasure {
     }
 
     @noinline
-    def jsig(tp0: Type, existentiallyBound: List[Symbol] = Nil, toplevel: Boolean = false, primitiveOK: Boolean = true): Unit = {
+    def jsig(tp0: Type, toplevel: Boolean = false, primitiveOK: Boolean = true): Unit = {
 
       val tp = tp0.dealias
       tp match {
@@ -890,11 +890,10 @@ object Erasure {
                 boxedSig(tp)
             }
           def classSig: Unit = {
-            markClassUsed(sym)
             val preRebound = pre.baseType(sym.owner) // #2585
             if (needsJavaSig(preRebound, Nil)) {
               val i = builder.length()
-              jsig(preRebound, existentiallyBound)
+              jsig(preRebound)
               if (builder.charAt(i) == 'L') {
                 builder.delete(builder.length() - 1, builder.length())// delete ';'
                 // If the prefix is a module, drop the '$'. Classes (or modules) nested in modules
@@ -952,14 +951,14 @@ object Erasure {
             if (unboxedSeen.isPrimitiveValueType && !primitiveOK)
               classSig
             else
-              jsig(unboxedSeen, existentiallyBound, toplevel, primitiveOK)
+              jsig(unboxedSeen, toplevel, primitiveOK)
           }
           else if (tp.isPhantom)
             jsig(defn.ErasedPhantomType)
           else if (sym.isClass)
             classSig
           else
-            jsig(erasure(tp), existentiallyBound, toplevel, primitiveOK)
+            jsig(erasure(tp), toplevel, primitiveOK)
 
         case ExprType(restpe) if toplevel =>
           builder.append("()")
@@ -1010,7 +1009,7 @@ object Erasure {
           superSig(ci.typeSymbol, ci.parents)
 
         case AnnotatedType(atp, _) =>
-          jsig(atp, existentiallyBound, toplevel, primitiveOK)
+          jsig(atp, toplevel, primitiveOK)
 
         case hktl: HKTypeLambda =>
           jsig(hktl.finalResultType)

@@ -569,7 +569,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
       if (erasedTypeSym.isPrimitiveValueClass) {
         None
       } else {
-        val jsOpt = Erasure.javaSig(sym, memberTpe, _ => ())
+        val jsOpt = Erasure.javaSig(sym, memberTpe)
         if (ctx.settings.XverifySignatures.value) {
           jsOpt.foreach(verifySignature(sym, _))
         }
