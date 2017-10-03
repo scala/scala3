@@ -45,7 +45,7 @@ class VCInlineMethods extends MiniPhaseTransform with IdentityDenotTransformer {
   override def phaseName: String = "vcInlineMethods"
 
   override def runsAfter: Set[Class[_ <: Phase]] =
-    Set(classOf[ExtensionMethods], classOf[PatternMatcher], classOf[PhantomArgLift])
+    Set(classOf[ExtensionMethods], classOf[PatternMatcher], classOf[UnusedArgLift])
 
   /** Replace a value class method call by a call to the corresponding extension method.
    *

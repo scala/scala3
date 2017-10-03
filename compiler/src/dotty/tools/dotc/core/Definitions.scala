@@ -653,6 +653,8 @@ class Definitions {
   def UncheckedStableAnnot(implicit ctx: Context) = UncheckedStableAnnotType.symbol.asClass
   lazy val UncheckedVarianceAnnotType = ctx.requiredClassRef("scala.annotation.unchecked.uncheckedVariance")
   def UncheckedVarianceAnnot(implicit ctx: Context) = UncheckedVarianceAnnotType.symbol.asClass
+  lazy val UnusedAnnotType = ctx.requiredClassRef("dotty.unused")
+  def UnusedAnnot(implicit ctx: Context) = UnusedAnnotType.symbol.asClass
   lazy val VolatileAnnotType = ctx.requiredClassRef("scala.volatile")
   def VolatileAnnot(implicit ctx: Context) = VolatileAnnotType.symbol.asClass
   lazy val FieldMetaAnnotType = ctx.requiredClassRef("scala.annotation.meta.field")

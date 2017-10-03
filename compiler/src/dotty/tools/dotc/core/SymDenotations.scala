@@ -625,6 +625,9 @@ object SymDenotations {
     /** Is this a local template dummmy? */
     final def isLocalDummy: Boolean = name.isLocalDummyName
 
+    /** Is this symbol marked as usused */
+    final def isUnused(implicit ctx: Context): Boolean = hasAnnotation(defn.UnusedAnnot)
+
     /** Does this symbol denote the primary constructor of its enclosing class? */
     final def isPrimaryConstructor(implicit ctx: Context) =
       isConstructor && owner.primaryConstructor == symbol
