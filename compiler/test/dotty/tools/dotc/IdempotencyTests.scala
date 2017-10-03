@@ -7,6 +7,7 @@ import java.nio.file.{Files, Path, Paths}
 
 import org.junit.Assume.assumeTrue
 import org.junit.{AfterClass, Test}
+import org.junit.experimental.categories.Category
 
 import scala.concurrent.duration._
 import vulpix.{ParallelTesting, SummaryReport, SummaryReporting, TestConfiguration}
@@ -24,9 +25,8 @@ class IdempotencyTests extends ParallelTesting {
   def isInteractive = SummaryReport.isInteractive
   def testFilter = Properties.testsFilter
 
-  /* TODO: Only run them selectively? */
+  @Category(Array(classOf[SlowTests]))
   @Test def idempotency: Unit = {
-    assumeTrue("Only executes on Drone", dotty.Properties.isRunByDrone)
 
     val opt = defaultOptions.and("-YemitTasty")
 

@@ -1,6 +1,7 @@
 package dotc
 
 import dotty.Jars
+import dotty.LegacyTests
 import dotty.tools.dotc.CompilerTest
 import dotty.tools.StdLibSources
 import org.junit.experimental.categories.Category
@@ -15,7 +16,7 @@ import scala.io.Source
  *  =======
  *  These are legacy, do not add tests here, see `CompilationTests.scala`
  */
-@Category(Array(classOf[java.lang.Exception]))
+@Category(Array(classOf[LegacyTests]))
 class tests extends CompilerTest {
 
   // tests that match regex '(pos|dotc|run|java|compileStdLib)\.*' would be

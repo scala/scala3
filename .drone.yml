@@ -13,7 +13,7 @@ pipeline:
     image: lampepfl/dotty:2017-09-27
     commands:
       - cp -R . /tmp/1/ && cd /tmp/1/
-      - ./project/scripts/sbt test
+      - ./project/scripts/sbt testAll
       - ./project/scripts/sbt ";dotty-bench/jmh:run 1 1 tests/run/arrays.scala"
 
   test_bootstrapped:
@@ -21,7 +21,7 @@ pipeline:
     image: lampepfl/dotty:2017-09-27
     commands:
       - cp -R . /tmp/2/ && cd /tmp/2/
-      - ./project/scripts/sbt dotty-bootstrapped/test
+      - ./project/scripts/sbt dotty-bootstrapped/testAll
       - ./project/scripts/sbt ";dotty-bench-bootstrapped/jmh:run 1 1 tests/run/arrays.scala"
 
   test_optimised:
@@ -29,7 +29,7 @@ pipeline:
     image: lampepfl/dotty:2017-09-27
     commands:
       - cp -R . /tmp/3/ && cd /tmp/3/
-      - ./project/scripts/sbt dotty-optimised/test
+      - ./project/scripts/sbt dotty-optimised/testAll
 
   test_sbt:
     group: test
