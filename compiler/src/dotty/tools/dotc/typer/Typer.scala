@@ -3,7 +3,7 @@ package dotc
 package typer
 
 import core._
-import ast._
+import ast.{tpd, _}
 import Trees._
 import Constants._
 import StdNames._
@@ -28,15 +28,17 @@ import EtaExpansion.etaExpand
 import dotty.tools.dotc.transform.Erasure.Boxing
 import util.Positions._
 import util.common._
-import util.{SourcePosition, Property}
+import util.{Property, SourcePosition}
+
 import collection.mutable
 import annotation.tailrec
 import Implicits._
-import util.Stats.{track, record}
-import config.Printers.{typr, gadts}
+import util.Stats.{record, track}
+import config.Printers.{gadts, typr}
 import rewrite.Rewrites.patch
 import NavigateAST._
 import transform.SymUtils._
+
 import language.implicitConversions
 import printing.SyntaxHighlighting._
 
@@ -2126,17 +2128,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
           typed(untpd.Select(untpd.TypedSplice(tree), nme.apply), pt)
         }
         else if (ctx.mode is Mode.Pattern) {
-          tree match {
-            case _: RefTree | _: Literal
-            if !isVarPattern(tree) &&
-               !(tree.tpe <:< pt)(ctx.addMode(Mode.GADTflexible)) =>
-              val cmp =
-                untpd.Apply(
-                  untpd.Select(untpd.TypedSplice(tree), nme.EQ),
-                  untpd.TypedSplice(dummyTreeOfType(pt)))
-              typedExpr(cmp, defn.BooleanType)(ctx.retractMode(Mode.Pattern))
-            case _ =>
-          }
+          checkEqualityEvidence(tree, pt)
           tree
         }
         else if (tree.tpe <:< pt) {
@@ -2287,6 +2279,26 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
               else adaptNoArgs(wtp)
           }
       }
+    }
+  }
+
+  /** Check that `tree == x: pt` is typeable. Used when checking a pattern
+    * against a selector of type `pt`. This implementation accounts for
+    * user-defined definitions of `==`.
+    *
+    * Overwritten to no-op in ReTyper.
+    */
+  protected def checkEqualityEvidence(tree: tpd.Tree, pt: Type)(implicit ctx: Context) : Unit = {
+    tree match {
+      case _: RefTree | _: Literal
+        if !isVarPattern(tree) &&
+          !(tree.tpe <:< pt) (ctx.addMode(Mode.GADTflexible)) =>
+        val cmp =
+          untpd.Apply(
+            untpd.Select(untpd.TypedSplice(tree), nme.EQ),
+            untpd.TypedSplice(dummyTreeOfType(pt)))
+        typedExpr(cmp, defn.BooleanType)
+      case _ =>
     }
   }
 }

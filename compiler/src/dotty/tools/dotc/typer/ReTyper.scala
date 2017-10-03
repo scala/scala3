@@ -58,7 +58,7 @@ class ReTyper extends Typer {
   }
 
   override def typedUnApply(tree: untpd.UnApply, selType: Type)(implicit ctx: Context): UnApply = {
-    val fun1 = typedExpr(tree.fun, AnyFunctionProto)
+    val fun1 = typedUnadapted(tree.fun, AnyFunctionProto)
     val implicits1 = tree.implicits.map(typedExpr(_))
     val patterns1 = tree.patterns.mapconserve(pat => typed(pat, pat.tpe))
     untpd.cpy.UnApply(tree)(fun1, implicits1, patterns1).withType(tree.tpe)
@@ -104,4 +104,6 @@ class ReTyper extends Typer {
     Implicits.NoImplicitMatches
   override def checkCanEqual(ltp: Type, rtp: Type, pos: Position)(implicit ctx: Context): Unit = ()
   override def inlineExpansion(mdef: DefDef)(implicit ctx: Context): List[Tree] = mdef :: Nil
+
+  override protected def checkEqualityEvidence(tree: tpd.Tree, pt: Type)(implicit ctx: Context): Unit = ()
 }
