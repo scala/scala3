@@ -49,6 +49,8 @@ pipeline:
     secrets: [ bot_pass ]
     when:
       event: push
+      # We only generate the documentation for the master branch
+      branch: master
 
   # PUBLISHING:
   # Publishing expect NIGHTLYBUILD or RELEASEBUILD to be set. See dottyVersion in Build.scala
@@ -100,5 +102,6 @@ pipeline:
       status: [ failure ]
       event: [ push, tag, deployment ]
 
-# CI runs only for the master branch (including PRs)
-branches: master
+branches:
+  # The gh-pages branch holds the documentation and don't need to be built
+  exclude: gh-pages
