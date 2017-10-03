@@ -76,6 +76,9 @@ object Build {
   // Run tests with filter through vulpix test suite
   lazy val vulpix = inputKey[Unit]("runs integration test with the supplied filter")
 
+  // Run all tests including tests marked with SlowTests
+  lazy val testAll = inputKey[Unit]("runs all tests including SlowTests")
+
   // Used to compile files similar to ./bin/dotc script
   lazy val dotc =
     inputKey[Unit]("run the compiler using the correct classpath, or the user supplied classpath")
@@ -466,6 +469,11 @@ object Build {
       test in Test := {
         // Exclude legacy tests by default
         (testOnly in Test).toTask(" -- --exclude-categories=java.lang.Exception,dotty.tools.dotc.SlowTests").value
+      },
+
+      testAll in Test := {
+        // Exclude legacy tests by default
+        (testOnly in Test).toTask(" -- --exclude-categories=java.lang.Exception").value
       },
 
       vulpix := Def.inputTaskDyn {
