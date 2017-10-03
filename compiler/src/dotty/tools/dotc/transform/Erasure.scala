@@ -839,17 +839,17 @@ object Erasure {
       }
     }
 
-    // TODO: Find how to encode names
-    def sanitizeName(name: Name): String =
-      name.toString.replaceAll("""\!""", """\$bang""")
-        .replaceAll("""=""", """\$eq""")
-        .replaceAll("""~""", """\$tilde""")
-        .replace("-", "$minus")
-        .replace("+", "$plus")
-        .replace(">", "$greater")
-        .replace("<", "$less")
-        .replace(":", "$colon")
-        .replace(";", "$u003B")
+    // This will reject any name that has characters that cannot appear in
+    // names on the JVM. Interop with Java is not guaranteed for those, so we
+    // dont need to generate signatures for them.
+    def sanitizeName(name: Name): String = {
+      val nameString = name.mangledString
+      if (nameString.forall(c => c == '.' || Character.isJavaIdentifierPart(c))) {
+        nameString
+      } else {
+        throw new UnknownSig
+      }
+    }
 
     // Anything which could conceivably be a module (i.e. isn't known to be
     // a type parameter or similar) must go through here or the signature is
