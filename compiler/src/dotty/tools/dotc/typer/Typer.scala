@@ -921,16 +921,21 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
   def typedCase(tree: untpd.CaseDef, pt: Type, selType: Type, gadtSyms: Set[Symbol])(implicit ctx: Context): CaseDef = track("typedCase") {
     val originalCtx = ctx
 
+    val gadtCtx = ctx.fresh.setFreshGADTBounds
+    for (sym <- gadtSyms)
+      if (!gadtCtx.gadt.bounds.contains(sym))
+        gadtCtx.gadt.setBounds(sym, TypeBounds.empty)
+
     /** - replace all references to symbols associated with wildcards by their GADT bounds
      *  - enter all symbols introduced by a Bind in current scope
      */
     val indexPattern = new TreeMap {
       val elimWildcardSym = new TypeMap {
         def apply(t: Type) = t match {
-          case ref: TypeRef if ref.name == tpnme.WILDCARD && ctx.gadt.bounds.contains(ref.symbol) =>
-            ctx.gadt.bounds(ref.symbol)
-          case TypeAlias(ref: TypeRef) if ref.name == tpnme.WILDCARD && ctx.gadt.bounds.contains(ref.symbol) =>
-            ctx.gadt.bounds(ref.symbol)
+          case ref: TypeRef if ref.name == tpnme.WILDCARD && gadtCtx.gadt.bounds.contains(ref.symbol) =>
+            gadtCtx.gadt.bounds(ref.symbol)
+          case TypeAlias(ref: TypeRef) if ref.name == tpnme.WILDCARD && gadtCtx.gadt.bounds.contains(ref.symbol) =>
+            gadtCtx.gadt.bounds(ref.symbol)
           case _ =>
             mapOver(t)
         }
@@ -955,15 +960,6 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
       assignType(cpy.CaseDef(tree)(pat1, guard1, body1), body1)
     }
 
-    val gadtCtx =
-      if (gadtSyms.isEmpty) ctx
-      else {
-        val c = ctx.fresh.setFreshGADTBounds
-        for (sym <- gadtSyms)
-          if (!c.gadt.bounds.contains(sym))
-            c.gadt.setBounds(sym, TypeBounds.empty)
-        c
-      }
     val pat1 = typedPattern(tree.pat, selType)(gadtCtx)
     caseRest(pat1)(gadtCtx.fresh.setNewScope)
   }

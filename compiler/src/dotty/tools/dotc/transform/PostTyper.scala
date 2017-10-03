@@ -54,16 +54,8 @@ import reporting.diagnostic.messages.SuperCallsNotAllowedInline
  *  mini-phase or subfunction of a macro phase equally well. But taken by themselves
  *  they do not warrant their own group of miniphases before pickling.
  */
-class PostTyper extends MacroTransform with SymTransformer  { thisTransformer =>
-
-
+class PostTyper extends MacroTransform with IdentityDenotTransformer { thisTransformer =>
   import tpd._
-
-  def transformSym(ref: SymDenotation)(implicit ctx: Context): SymDenotation = {
-    if (ref.is(BindDefinedType) && ctx.gadt.bounds.contains(ref.symbol)) {
-      ref.copySymDenotation(info = ctx.gadt.bounds.apply(ref.symbol) & ref.info)
-    } else ref
-  }
 
   /** the following two members override abstract members in Transform */
   override def phaseName: String = "posttyper"
@@ -289,6 +281,8 @@ class PostTyper extends MacroTransform with SymTransformer  { thisTransformer =>
             case _                                  =>
           }
           super.transform(tree)
+        case Typed(Ident(nme.WILDCARD), _) =>
+          tree // skip checking pattern type
         case tree =>
           super.transform(tree)
       }
