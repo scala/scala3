@@ -1,6 +1,7 @@
 package dotc
 
 import dotty.Jars
+import dotty.LegacyTests
 import dotty.tools.dotc.CompilerTest
 import dotty.tools.StdLibSources
 import org.junit.experimental.categories.Category

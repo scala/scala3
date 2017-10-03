@@ -468,17 +468,17 @@ object Build {
 
       test in Test := {
         // Exclude legacy tests by default
-        (testOnly in Test).toTask(" -- --exclude-categories=dotc.LegacyTests,dotty.tools.dotc.SlowTests").value
+        (testOnly in Test).toTask(" -- --exclude-categories=dotty.LegacyTests,dotty.SlowTests").value
       },
 
       testAll in Test := {
         // Exclude legacy tests by default
-        (testOnly in Test).toTask(" -- --exclude-categories=dotc.LegacyTests").value
+        (testOnly in Test).toTask(" -- --exclude-categories=dotty.LegacyTests").value
       },
 
       vulpix := Def.inputTaskDyn {
         val args: Seq[String] = spaceDelimited("<arg>").parsed
-        val cmd = " dotty.tools.dotc.CompilationTests -- --exclude-categories=dotty.tools.dotc.SlowTests" + {
+        val cmd = " dotty.tools.dotc.CompilationTests -- --exclude-categories=dotty.SlowTests" + {
           if (args.nonEmpty) " -Ddotty.tests.filter=" + args.mkString(" ")
           else ""
         }
