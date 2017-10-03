@@ -700,7 +700,8 @@ object Contexts {
       myBounds = myBounds.updated(sym, b)
     def bounds = myBounds
   }
-  object EmptyGADTMap extends GADTMap(SimpleMap.Empty) {
-    override def setBounds(sym: Symbol, b: TypeBounds) = unsupported("EmptyGADTMap.setBound")
+
+  @sharable object EmptyGADTMap extends GADTMap(SimpleMap.Empty) {
+    override def setBounds(sym: Symbol, b: TypeBounds) = unsupported("EmptyGADTMap.setBounds")
   }
 }
