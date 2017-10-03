@@ -307,6 +307,9 @@ object Types {
     /** Is this a MethodType which has implicit parameters */
     def isImplicitMethod: Boolean = false
 
+    /** Is this a MethodType for which the parameters will not be used */
+    def isUnusedMethod: Boolean = false
+
 // ----- Higher-order combinators -----------------------------------
 
     /** Returns true if there is a part of this type that satisfies predicate `p`.
@@ -1354,9 +1357,11 @@ object Types {
     def toFunctionType(dropLast: Int = 0)(implicit ctx: Context): Type = this match {
       case mt: MethodType if !mt.isParamDependent =>
         val formals1 = if (dropLast == 0) mt.paramInfos else mt.paramInfos dropRight dropLast
+        val isImplicit = mt.isImplicitMethod && !ctx.erasedTypes
+        val isUnused = mt.isUnusedMethod && !ctx.erasedTypes
         val funType = defn.FunctionOf(
           formals1 mapConserve (_.underlyingIfRepeated(mt.isJavaMethod)),
-          mt.nonDependentResultApprox, mt.isImplicitMethod && !ctx.erasedTypes)
+          mt.nonDependentResultApprox, isImplicit, isUnused)
         if (mt.isDependent) RefinedType(funType, nme.apply, mt)
         else funType
     }
@@ -2791,14 +2796,17 @@ object Types {
     def companion: MethodTypeCompanion
 
     final override def isJavaMethod: Boolean = companion eq JavaMethodType
-    final override def isImplicitMethod: Boolean = companion eq ImplicitMethodType
+    final override def isImplicitMethod: Boolean = companion.eq(ImplicitMethodType) || companion.eq(UnusedImplicitMethodType)
+    final override def isUnusedMethod: Boolean = companion.eq(UnusedMethodType) || companion.eq(UnusedImplicitMethodType)
 
     val paramInfos = paramInfosExp(this)
     val resType = resultTypeExp(this)
     assert(resType.exists)
 
-    def computeSignature(implicit ctx: Context): Signature =
-      resultSignature.prepend(paramInfos, isJavaMethod)
+    def computeSignature(implicit ctx: Context): Signature = {
+      val params = if (isUnusedMethod) Nil else paramInfos
+      resultSignature.prepend(params, isJavaMethod)
+    }
 
     final override def computeHash = doHash(paramNames, resType, paramInfos)
 
@@ -2907,9 +2915,23 @@ object Types {
     }
   }
 
-  object MethodType extends MethodTypeCompanion
+  object MethodType extends MethodTypeCompanion {
+    def maker(isJava: Boolean = false, isImplicit: Boolean = false, isUnused: Boolean = false): MethodTypeCompanion = {
+      if (isJava) {
+        assert(!isImplicit)
+        assert(!isUnused)
+        JavaMethodType
+      }
+      else if (isImplicit && isUnused) UnusedImplicitMethodType
+      else if (isImplicit) ImplicitMethodType
+      else if (isUnused) UnusedMethodType
+      else MethodType
+    }
+  }
   object JavaMethodType extends MethodTypeCompanion
   object ImplicitMethodType extends MethodTypeCompanion
+  object UnusedMethodType extends MethodTypeCompanion
+  object UnusedImplicitMethodType extends MethodTypeCompanion
 
   /** A ternary extractor for MethodType */
   object MethodTpe {

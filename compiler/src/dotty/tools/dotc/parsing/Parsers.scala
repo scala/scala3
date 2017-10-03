@@ -712,21 +712,25 @@ object Parsers {
       }
     }
 
-    /** Type        ::=  [`implicit'] FunArgTypes `=>' Type
+    /** Type        ::=  [FunArgMods] FunArgTypes `=>' Type
      *                |  HkTypeParamClause `->' Type
      *                |  InfixType
+     *  FunArgMods  ::=  `implicit' FunArgMods
+     *                |  `unused' FunArgMods
      *  FunArgTypes ::=  InfixType
      *                |  `(' [ FunArgType {`,' FunArgType } ] `)'
      *                |  '(' TypedFunParam {',' TypedFunParam } ')'
      */
     def typ(): Tree = {
       val start = in.offset
-      val isImplicit = in.token == IMPLICIT
-      if (isImplicit) in.nextToken()
+      val imods = allFunctionMods(EmptyModifiers)
       def functionRest(params: List[Tree]): Tree =
         atPos(start, accept(ARROW)) {
           val t = typ()
-          if (isImplicit) new ImplicitFunction(params, t) else Function(params, t)
+          if (imods.is(Implicit) && imods.is(Unused)) new UnusedImplicitFunction(params, t)
+          else if (imods.is(Implicit)) new ImplicitFunction(params, t)
+          else if (imods.is(Unused)) new UnusedFunction(params, t)
+          else Function(params, t)
         }
       def funArgTypesRest(first: Tree, following: () => Tree) = {
         val buf = new ListBuffer[Tree] += first
@@ -759,7 +763,7 @@ object Parsers {
             }
             openParens.change(LPAREN, -1)
             accept(RPAREN)
-            if (isImplicit || isValParamList || in.token == ARROW) functionRest(ts)
+            if (imods.is(Implicit) || isValParamList || in.token == ARROW) functionRest(ts)
             else {
               for (t <- ts)
                 if (t.isInstanceOf[ByNameTypeTree])
@@ -786,7 +790,7 @@ object Parsers {
         case ARROW => functionRest(t :: Nil)
         case FORSOME => syntaxError(ExistentialTypesNoLongerSupported()); t
         case _ =>
-          if (isImplicit && !t.isInstanceOf[ImplicitFunction])
+          if (imods.is(Implicit) && !t.isInstanceOf[ImplicitFunction])
             syntaxError("Types with implicit keyword can only be function types", Position(start, start + nme.IMPLICITkw.asSimpleName.length))
           t
       }
@@ -1026,14 +1030,16 @@ object Parsers {
       }
     }
 
-    /** Expr              ::=  [`implicit'] FunParams `=>' Expr
+    /** Expr              ::=  [FunArgMods] FunParams =>' Expr
      *                      |  Expr1
+     *  FunArgMods        ::=  `implicit' FunArgMods
+     *                      |  `unused' FunArgMods
      *  FunParams         ::=  Bindings
      *                      |  id
      *                      |  `_'
      *  ExprInParens      ::=  PostfixExpr `:' Type
      *                      |  Expr
-     *  BlockResult       ::=  [`implicit'] FunParams `=>' Block
+     *  BlockResult       ::=  [FunArgMods] FunParams =>' Block
      *                      |  Expr1
      *  Expr1             ::=  `if' `(' Expr `)' {nl} Expr [[semi] else Expr]
      *                      |  `if' Expr `then' Expr [[semi] else Expr]
@@ -1061,9 +1067,10 @@ object Parsers {
 
     def expr(location: Location.Value): Tree = {
       val start = in.offset
-      if (in.token == IMPLICIT)
-        implicitClosure(start, location, implicitMods())
-      else {
+      if (in.token == IMPLICIT || in.token == UNUSED) {
+        val imods = allFunctionMods(EmptyModifiers)
+        implicitClosure(start, location, imods)
+      } else {
         val saved = placeholderParams
         placeholderParams = Nil
 
@@ -1634,6 +1641,7 @@ object Parsers {
       case ABSTRACT  => Mod.Abstract()
       case FINAL     => Mod.Final()
       case IMPLICIT  => Mod.Implicit()
+      case UNUSED    => Mod.Unused()
       case INLINE    => Mod.Inline()
       case LAZY      => Mod.Lazy()
       case OVERRIDE  => Mod.Override()
@@ -1722,8 +1730,14 @@ object Parsers {
       normalize(loop(start))
     }
 
-    def implicitMods(): Modifiers =
-      addMod(EmptyModifiers, atPos(accept(IMPLICIT)) { Mod.Implicit() })
+    def allFunctionMods(imods: Modifiers, doIfImplicit: () => Unit = () => ()): Modifiers = {
+      if (in.token == IMPLICIT) {
+        doIfImplicit()
+        allFunctionMods(addMod(imods, atPos(accept(IMPLICIT)) { Mod.Implicit() }), doIfImplicit)
+      } else if (in.token == UNUSED)
+        allFunctionMods(addMod(imods, atPos(accept(UNUSED)) { Mod.Unused() }), doIfImplicit)
+      else imods
+    }
 
     /** Wrap annotation or constructor in New(...).<init> */
     def wrapNew(tpt: Tree) = Select(New(tpt), nme.CONSTRUCTOR)
@@ -1811,12 +1825,12 @@ object Parsers {
     def typeParamClauseOpt(ownerKind: ParamOwner.Value): List[TypeDef] =
       if (in.token == LBRACKET) typeParamClause(ownerKind) else Nil
 
-    /** ClsParamClauses   ::=  {ClsParamClause} [[nl] `(' `implicit' ClsParams `)']
-     *  ClsParamClause    ::=  [nl] `(' [ClsParams] ')'
+    /** ClsParamClauses   ::=  {ClsParamClause} [[nl] `(' [`unused'] `implicit' [`unused'] ClsParams `)']
+     *  ClsParamClause    ::=  [nl] `(' [`unused'] [ClsParams] ')'
      *  ClsParams         ::=  ClsParam {`' ClsParam}
      *  ClsParam          ::=  {Annotation} [{Modifier} (`val' | `var') | `inline'] Param
-     *  DefParamClauses   ::=  {DefParamClause} [[nl] `(' `implicit' DefParams `)']
-     *  DefParamClause    ::=  [nl] `(' [DefParams] ')'
+     *  DefParamClauses   ::=  {DefParamClause} [[nl] `(' [`unused'] `implicit' DefParams `)']
+     *  DefParamClause    ::=  [nl] `(' [`unused'] [DefParams] ')'
      *  DefParams         ::=  DefParam {`,' DefParam}
      *  DefParam          ::=  {Annotation} [`inline'] Param
      *  Param             ::=  id `:' ParamType [`=' Expr]
@@ -1869,21 +1883,20 @@ object Parsers {
       def paramClause(): List[ValDef] = inParens {
         if (in.token == RPAREN) Nil
         else {
-          if (in.token == IMPLICIT) {
-            implicitOffset = in.offset
-            imods = implicitMods()
-          }
+          if (in.token == IMPLICIT || in.token == UNUSED)
+            imods = allFunctionMods(imods, () => implicitOffset = in.offset)
           commaSeparated(() => param())
         }
       }
       def clauses(): List[List[ValDef]] = {
         newLineOptWhenFollowedBy(LPAREN)
-        if (in.token == LPAREN)
+        if (in.token == LPAREN) {
+          imods = EmptyModifiers
           paramClause() :: {
             firstClauseOfCaseClass = false
-            if (imods.hasFlags) Nil else clauses()
+            if (imods is Implicit) Nil else clauses()
           }
-        else Nil
+        } else Nil
       }
       val start = in.offset
       val result = clauses()
@@ -1949,7 +1962,8 @@ object Parsers {
         }
       }
     }
-   /** ImportSelector ::= id [`=>' id | `=>' `_']
+
+    /** ImportSelector ::= id [`=>' id | `=>' `_']
      */
     def importSelector(): Tree = {
       val from = termIdentOrWildcard()
@@ -2464,9 +2478,9 @@ object Parsers {
         else if (isExprIntro)
           stats += expr(Location.InBlock)
         else if (isDefIntro(localModifierTokens))
-          if (in.token == IMPLICIT) {
+          if (in.token == IMPLICIT || in.token == UNUSED) {
             val start = in.offset
-            val imods = implicitMods()
+            var imods = allFunctionMods(EmptyModifiers)
             if (isBindingIntro) stats += implicitClosure(start, Location.InBlock, imods)
             else stats +++= localDef(start, imods)
           } else {

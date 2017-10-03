@@ -229,14 +229,17 @@ trait FullParameterization {
         .appliedToTypes(allInstanceTypeParams(originalDef, abstractOverClass).map(_.typeRef))
         .appliedTo(This(originalDef.symbol.enclosingClass.asClass))
 
+    def refOrDefault(tree: Tree): Tree = // use deafult values for
+      if (tree.symbol is Flags.Unused) tpd.defaultValue(tree.tpe) else ref(tree.symbol)
+
     (if (!liftThisType)
-      fun.appliedToArgss(originalDef.vparamss.nestedMap(vparam => ref(vparam.symbol)))
+      fun.appliedToArgss(originalDef.vparamss.nestedMap(vparam => refOrDefault(vparam)))
     else {
       // this type could have changed on forwarding. Need to insert a cast.
       val args = (originalDef.vparamss, fun.tpe.paramInfoss).zipped.map((vparams, paramTypes) =>
         (vparams, paramTypes).zipped.map((vparam, paramType) => {
           assert(vparam.tpe <:< paramType.widen) // type should still conform to widened type
-          ref(vparam.symbol).ensureConforms(paramType)
+          refOrDefault(vparam).ensureConforms(paramType)
         })
       )
       fun.appliedToArgss(args)

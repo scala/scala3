@@ -93,4 +93,9 @@ object Mode {
 
   /** We are in the IDE */
   val Interactive = newMode(20, "Interactive")
+
+  /** We are currently in code that will not be used at runtime.
+   *  It can be in an argument to an unused parameter or a type selection.
+   */
+  val Unused = newMode(21, "Unused")
 }

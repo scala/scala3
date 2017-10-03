@@ -883,7 +883,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
       implicit val ctx: Context = ictx
 
       assertMessageCount(2, messages)
-      messages.foreach(assertEquals(_, ImplicitFunctionTypeNeedsNonEmptyParameterList()))
+      messages.foreach(assertEquals(_, FunctionTypeNeedsNonEmptyParameterList()))
     }
 
   @Test def wrongNumberOfParameters =

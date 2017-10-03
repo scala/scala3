@@ -29,7 +29,7 @@ class FromTastyTests extends ParallelTesting {
     val (step1, step2, step3) = compileTastyInDir("tests/pos", defaultOptions,
       blacklist = Set(
         "macro-deprecate-dont-touch-backquotedidents.scala",
-        
+
         // Compiles wrong class
         "simpleClass.scala",
 
@@ -137,6 +137,13 @@ class FromTastyTests extends ParallelTesting {
          "phantom-poly-3.scala",
          "phantom-poly-4.scala",
 
+         // Issue with JFunction1$mcI$sp/T
+         "unused-15.scala",
+         "unused-17.scala",
+         "unused-20.scala",
+         "unused-21.scala",
+         "unused-23.scala",
+         "unused-value-class.scala",
        )
     )
     step1.checkCompile() // Compile all files to generate the class files with tasty

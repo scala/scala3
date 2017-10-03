@@ -759,16 +759,16 @@ class Typer extends Namer
 
   def typedFunctionType(tree: untpd.Function, pt: Type)(implicit ctx: Context) = {
     val untpd.Function(args, body) = tree
-    val isImplicit = tree match {
-      case _: untpd.ImplicitFunction =>
-        if (args.length == 0) {
-          ctx.error(ImplicitFunctionTypeNeedsNonEmptyParameterList(), tree.pos)
-          false
-        }
-        else true
-      case _ => false
+    val (isImplicit, isUnused) = tree match {
+      case _: untpd.NonEmptyFunction if args.isEmpty =>
+        ctx.error(FunctionTypeNeedsNonEmptyParameterList(), tree.pos)
+        (false, false)
+      case _: untpd.UnusedImplicitFunction => (true, true)
+      case _: untpd.ImplicitFunction => (true, false)
+      case _: untpd.UnusedFunction => (false, true)
+      case _ => (false, false)
     }
-    val funCls = defn.FunctionClass(args.length, isImplicit)
+    val funCls = defn.FunctionClass(args.length, isImplicit, isUnused)
 
     /** Typechecks dependent function type with given parameters `params` */
     def typedDependent(params: List[ValDef])(implicit ctx: Context): Tree = {
@@ -940,11 +940,13 @@ class Typer extends Namer
                   ctx.error(ex"result type of closure is an underspecified SAM type $pt", tree.pos)
                 TypeTree(pt)
               case _ =>
-                if (!mt.isParamDependent) EmptyTree
-                else throw new java.lang.Error(
-                  i"""internal error: cannot turn method type $mt into closure
+                if (mt.isParamDependent) {
+                  throw new java.lang.Error(
+                    i"""internal error: cannot turn method type $mt into closure
                      |because it has internal parameter dependencies,
                      |position = ${tree.pos}, raw type = ${mt.toString}""") // !!! DEBUG. Eventually, convert to an error?
+                } else if (mt.isUnusedMethod) TypeTree(mt.toFunctionType(env1.length))
+                else EmptyTree
             }
           case tp =>
             throw new java.lang.Error(i"internal error: closing over non-method $tp, pos = ${tree.pos}")
@@ -1791,7 +1793,7 @@ class Typer extends Namer
   }
 
   protected def makeImplicitFunction(tree: untpd.Tree, pt: Type)(implicit ctx: Context): Tree = {
-    val defn.FunctionOf(formals, _, true) = pt.dropDependentRefinement
+    val defn.FunctionOf(formals, _, true, _) = pt.dropDependentRefinement
     val ifun = desugar.makeImplicitFunction(formals, tree)
     typr.println(i"make implicit function $tree / $pt ---> $ifun")
     typed(ifun, pt)
