@@ -258,6 +258,6 @@ class SymbolicXMLBuilder(parser: Parser, preserveWS: Boolean)(implicit ctx: Cont
       args
     )
 
-    atPos(pos.toSynthetic)( Block(nsResult, Block(attrResult, body)) )
+    atPos(pos.toSynthetic)(new XMLBlock(nsResult, new XMLBlock(attrResult, body)))
   }
 }
