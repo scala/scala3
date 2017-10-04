@@ -10,7 +10,7 @@ import NameKinds._
 import java.util.UUID
 
 object TastyUnpickler {
-  class UnpickleException(msg: String) extends Exception(msg)
+  class UnpickleException(msg: String) extends RuntimeException(msg)
 
   abstract class SectionUnpickler[R](val name: String) {
     def unpickle(reader: TastyReader, nameAtRef: NameTable): R

@@ -54,7 +54,7 @@ class ClassfileParser(
   private def currentIsTopLevel(implicit ctx: Context) = classRoot.owner is Flags.PackageClass
 
   private def mismatchError(className: SimpleName) =
-    throw new IOException(s"class file '${in.file}' has location not matching its contents: contains class $className")
+    throw new IOException(s"class file '${in.file.file.getAbsolutePath}' has location not matching its contents: contains class $className")
 
   def run()(implicit ctx: Context): Option[Embedded] = try {
     ctx.debuglog("[class] >> " + classRoot.fullName)
@@ -65,7 +65,7 @@ class ClassfileParser(
     case e: RuntimeException =>
       if (ctx.debug) e.printStackTrace()
       throw new IOException(
-        i"""class file $classfile is broken, reading aborted with ${e.getClass}
+        i"""class file ${classfile.file.getAbsolutePath} is broken, reading aborted with ${e.getClass}
            |${Option(e.getMessage).getOrElse("")}""")
   }
 
