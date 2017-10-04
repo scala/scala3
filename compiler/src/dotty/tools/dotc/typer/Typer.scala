@@ -1994,7 +1994,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
       }
     }
 
-    def adaptImplicitMethod(wtp: ImplicitMethodType): Tree = {
+    def adaptNoArgsImplicitMethod(wtp: ImplicitMethodType): Tree = {
       val tvarsToInstantiate = tvarsInParams(tree)
       wtp.paramInfos.foreach(instantiateSelected(_, tvarsToInstantiate))
       val constr = ctx.typerState.constraint
@@ -2041,6 +2041,100 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
       addImplicitArgs(argCtx(tree))
     }
 
+    /** A synthetic apply should be eta-expanded if it is the apply of an implicit function
+      *  class, and the expected type is a function type. This rule is needed so we can pass
+      *  an implicit function to a regular function type. So the following is OK
+      *
+      *     val f: implicit A => B  =  ???
+      *     val g: A => B = f
+      *
+      *  and the last line expands to
+      *
+      *     val g: A => B  =  (x$0: A) => f.apply(x$0)
+      *
+      *  One could be tempted not to eta expand the rhs, but that would violate the invariant
+      *  that expressions of implicit function types are always implicit closures, which is
+      *  exploited by ShortcutImplicits.
+      *
+      *  On the other hand, the following would give an error if there is no implicit
+      *  instance of A available.
+      *
+      *     val x: AnyRef = f
+      *
+      *  That's intentional, we want to fail here, otherwise some unsuccesful implicit searches
+      *  would go undetected.
+      *
+      *  Examples for these cases are found in run/implicitFuns.scala and neg/i2006.scala.
+      */
+    def adaptNoArgsUnappliedMethod(wtp: MethodType, functionExpected: Boolean, arity: Int): Tree = {
+      def isExpandableApply =
+        defn.isImplicitFunctionClass(tree.symbol.maybeOwner) && functionExpected
+
+      /** Is reference to this symbol `f` automatically expanded to `f()`? */
+      def isAutoApplied(sym: Symbol): Boolean = {
+        sym.isConstructor ||
+        sym.matchNullaryLoosely ||
+        ctx.testScala2Mode(em"${sym.showLocated} requires () argument", tree.pos,
+            patch(tree.pos.endPos, "()"))
+      }
+
+      // Reasons NOT to eta expand:
+      //  - we reference a constructor
+      //  - we are in a pattern
+      //  - the current tree is a synthetic apply which is not expandable (eta-expasion would simply undo that)
+      if (arity >= 0 &&
+          !tree.symbol.isConstructor &&
+          !ctx.mode.is(Mode.Pattern) &&
+          !(isSyntheticApply(tree) && !isExpandableApply))
+        typed(etaExpand(tree, wtp, arity), pt)
+      else if (wtp.paramInfos.isEmpty && isAutoApplied(tree.symbol))
+        adaptInterpolated(tpd.Apply(tree, Nil), pt)
+      else if (wtp.isImplicit)
+        err.typeMismatch(tree, pt)
+      else
+        missingArgs(wtp)
+    }
+
+    def adaptNoArgsOther(wtp: Type) = {
+      ctx.typeComparer.GADTused = false
+      if (defn.isImplicitFunctionClass(wtp.underlyingClassRef(refinementOK = false).classSymbol) &&
+          !untpd.isImplicitClosure(tree) &&
+          !isApplyProto(pt) &&
+          !ctx.isAfterTyper) {
+        typr.println(i"insert apply on implicit $tree")
+        typed(untpd.Select(untpd.TypedSplice(tree), nme.apply), pt)
+      }
+      else if (ctx.mode is Mode.Pattern) {
+        checkEqualityEvidence(tree, pt)
+        tree
+      }
+      else if (tree.tpe <:< pt) {
+        if (pt.hasAnnotation(defn.InlineParamAnnot))
+          checkInlineConformant(tree, "argument to inline parameter")
+        if (Inliner.hasBodyToInline(tree.symbol) &&
+            !ctx.owner.ownersIterator.exists(_.isInlineMethod) &&
+            !ctx.settings.YnoInline.value &&
+            !ctx.isAfterTyper &&
+            !ctx.reporter.hasErrors)
+          adapt(Inliner.inlineCall(tree, pt), pt)
+        else if (ctx.typeComparer.GADTused && pt.isValueType)
+          // Insert an explicit cast, so that -Ycheck in later phases succeeds.
+          // I suspect, but am not 100% sure that this might affect inferred types,
+          // if the expected type is a supertype of the GADT bound. It would be good to come
+          // up with a test case for this.
+          tree.asInstance(pt)
+        else
+          tree
+      }
+      else wtp match {
+        case wtp: MethodType => missingArgs(wtp)
+        case _ =>
+          typr.println(i"adapt to subtype ${tree.tpe} !<:< $pt")
+          //typr.println(TypeComparer.explained(implicit ctx => tree.tpe <:< pt))
+          adaptToSubType(wtp)
+      }
+    }
+
     // Follow proxies and approximate type paramrefs by their upper bound
     // in the current constraint in order to figure out robustly
     // whether an expected type is some sort of function type.
@@ -2060,111 +2154,25 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
           adaptInterpolated(tree.withType(wtp.resultType), pt)
         case wtp: ImplicitMethodType
         if constrainResult(wtp, followAlias(pt)) || !functionExpected =>
-          adaptImplicitMethod(wtp)
+          adaptNoArgsImplicitMethod(wtp)
         case wtp: MethodType if !pt.isInstanceOf[SingletonType] =>
-        val arity =
-          if (functionExpected)
-            if (!isFullyDefined(pt, ForceDegree.none) && isFullyDefined(wtp, ForceDegree.none))
-              // if method type is fully defined, but expected type is not,
-              // prioritize method parameter types as parameter types of the eta-expanded closure
-              0
-            else defn.functionArity(ptNorm)
-          else {
-            val nparams = wtp.paramInfos.length
-            if (nparams > 0 || pt.eq(AnyFunctionProto)) nparams
-            else -1 // no eta expansion in this case
-          }
-
-        /** A synthetic apply should be eta-expanded if it is the apply of an implicit function
-         *  class, and the expected type is a function type. This rule is needed so we can pass
-         *  an implicit function to a regular function type. So the following is OK
-         *
-         *     val f: implicit A => B  =  ???
-         *     val g: A => B = f
-         *
-         *  and the last line expands to
-         *
-         *     val g: A => B  =  (x$0: A) => f.apply(x$0)
-         *
-         *  One could be tempted not to eta expand the rhs, but that would violate the invariant
-         *  that expressions of implicit function types are always implicit closures, which is
-         *  exploited by ShortcutImplicits.
-         *
-         *  On the other hand, the following would give an error if there is no implicit
-         *  instance of A available.
-         *
-         *     val x: AnyRef = f
-         *
-         *  That's intentional, we want to fail here, otherwise some unsuccesful implicit searches
-         *  would go undetected.
-         *
-         *  Examples for these cases are found in run/implicitFuns.scala and neg/i2006.scala.
-         */
-        def isExpandableApply =
-          defn.isImplicitFunctionClass(tree.symbol.maybeOwner) && defn.isFunctionType(ptNorm)
-
-        /** Is reference to this symbol `f` automatically expanded to `f()`? */
-        def isAutoApplied(sym: Symbol): Boolean = {
-          sym.isConstructor ||
-          sym.matchNullaryLoosely ||
-          ctx.testScala2Mode(em"${sym.showLocated} requires () argument", tree.pos,
-              patch(tree.pos.endPos, "()"))
-        }
-
-        // Reasons NOT to eta expand:
-        //  - we reference a constructor
-        //  - we are in a pattern
-        //  - the current tree is a synthetic apply which is not expandable (eta-expasion would simply undo that)
-        if (arity >= 0 &&
-            !tree.symbol.isConstructor &&
-            !ctx.mode.is(Mode.Pattern) &&
-            !(isSyntheticApply(tree) && !isExpandableApply))
-          typed(etaExpand(tree, wtp, arity), pt)
-        else if (wtp.paramInfos.isEmpty && isAutoApplied(tree.symbol))
-          adaptInterpolated(tpd.Apply(tree, Nil), pt)
-        else if (wtp.isImplicit)
-          err.typeMismatch(tree, pt)
-        else
-          missingArgs(wtp)
-      case _ =>
-        ctx.typeComparer.GADTused = false
-        if (defn.isImplicitFunctionClass(wtp.underlyingClassRef(refinementOK = false).classSymbol) &&
-            !untpd.isImplicitClosure(tree) &&
-            !isApplyProto(pt) &&
-            !ctx.isAfterTyper) {
-          typr.println(i"insert apply on implicit $tree")
-          typed(untpd.Select(untpd.TypedSplice(tree), nme.apply), pt)
-        }
-        else if (ctx.mode is Mode.Pattern) {
-          checkEqualityEvidence(tree, pt)
-          tree
-        }
-        else if (tree.tpe <:< pt) {
-          if (pt.hasAnnotation(defn.InlineParamAnnot))
-            checkInlineConformant(tree, "argument to inline parameter")
-          if (Inliner.hasBodyToInline(tree.symbol) &&
-              !ctx.owner.ownersIterator.exists(_.isInlineMethod) &&
-              !ctx.settings.YnoInline.value &&
-              !ctx.isAfterTyper &&
-              !ctx.reporter.hasErrors)
-            adapt(Inliner.inlineCall(tree, pt), pt)
-          else if (ctx.typeComparer.GADTused && pt.isValueType)
-            // Insert an explicit cast, so that -Ycheck in later phases succeeds.
-            // I suspect, but am not 100% sure that this might affect inferred types,
-            // if the expected type is a supertype of the GADT bound. It would be good to come
-            // up with a test case for this.
-            tree.asInstance(pt)
-          else
-            tree
-        }
-        else wtp match {
-          case wtp: MethodType => missingArgs(wtp)
-          case _ =>
-            typr.println(i"adapt to subtype ${tree.tpe} !<:< $pt")
-            //typr.println(TypeComparer.explained(implicit ctx => tree.tpe <:< pt))
-            adaptToSubType(wtp)
-        }
-    }}
+          val arity =
+            if (functionExpected)
+              if (!isFullyDefined(pt, ForceDegree.none) && isFullyDefined(wtp, ForceDegree.none))
+                // if method type is fully defined, but expected type is not,
+                // prioritize method parameter types as parameter types of the eta-expanded closure
+                0
+              else defn.functionArity(ptNorm)
+            else {
+              val nparams = wtp.paramInfos.length
+              if (nparams > 0 || pt.eq(AnyFunctionProto)) nparams
+              else -1 // no eta expansion in this case
+            }
+            adaptNoArgsUnappliedMethod(wtp, functionExpected, arity)
+        case _ =>
+          adaptNoArgsOther(wtp)
+      }
+    }
 
     /** Adapt an expression of constant type to a different constant type `tpe`. */
     def adaptConstant(tree: Tree, tpe: ConstantType): Tree = {
