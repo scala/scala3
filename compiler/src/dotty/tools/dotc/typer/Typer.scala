@@ -1994,68 +1994,76 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
       }
     }
 
-    def adaptNoArgs(wtp: Type): Tree = wtp match {
-      case wtp: ExprType =>
-        adaptInterpolated(tree.withType(wtp.resultType), pt)
-      case wtp: ImplicitMethodType if constrainResult(wtp, followAlias(pt)) =>
-        val tvarsToInstantiate = tvarsInParams(tree)
-        wtp.paramInfos.foreach(instantiateSelected(_, tvarsToInstantiate))
-        val constr = ctx.typerState.constraint
-        def addImplicitArgs(implicit ctx: Context) = {
-          val errors = new mutable.ListBuffer[() => String]
-          def implicitArgError(msg: => String) = {
-            errors += (() => msg)
-            EmptyTree
-          }
-          def issueErrors() = {
-            for (err <- errors) ctx.error(err(), tree.pos.endPos)
-            tree.withType(wtp.resultType)
-          }
-          val args = (wtp.paramNames, wtp.paramInfos).zipped map { (pname, formal) =>
-            def implicitArgError(msg: String => String) =
-              errors += (() => msg(em"parameter $pname of $methodStr"))
-            if (errors.nonEmpty) EmptyTree
-            else inferImplicitArg(formal, implicitArgError, tree.pos.endPos)
-          }
-          if (errors.nonEmpty) {
-            // If there are several arguments, some arguments might already
-            // have influenced the context, binding variables, but later ones
-            // might fail. In that case the constraint needs to be reset.
-            ctx.typerState.constraint = constr
+    def adaptImplicitMethod(wtp: ImplicitMethodType): Tree = {
+      val tvarsToInstantiate = tvarsInParams(tree)
+      wtp.paramInfos.foreach(instantiateSelected(_, tvarsToInstantiate))
+      val constr = ctx.typerState.constraint
+      def addImplicitArgs(implicit ctx: Context) = {
+        val errors = new mutable.ListBuffer[() => String]
+        def implicitArgError(msg: => String) = {
+          errors += (() => msg)
+          EmptyTree
+        }
+        def issueErrors() = {
+          for (err <- errors) ctx.error(err(), tree.pos.endPos)
+          tree.withType(wtp.resultType)
+        }
+        val args = (wtp.paramNames, wtp.paramInfos).zipped map { (pname, formal) =>
+          def implicitArgError(msg: String => String) =
+            errors += (() => msg(em"parameter $pname of $methodStr"))
+          if (errors.nonEmpty) EmptyTree
+          else inferImplicitArg(formal, implicitArgError, tree.pos.endPos)
+        }
+        if (errors.nonEmpty) {
+          // If there are several arguments, some arguments might already
+          // have influenced the context, binding variables, but later ones
+          // might fail. In that case the constraint needs to be reset.
+          ctx.typerState.constraint = constr
 
-            // If method has default params, fall back to regular application
-            // where all inferred implicits are passed as named args.
-            if (tree.symbol.hasDefaultParams) {
-              val namedArgs = (wtp.paramNames, args).zipped.flatMap { (pname, arg) =>
-                arg match {
-                  case EmptyTree => Nil
-                  case _ => untpd.NamedArg(pname, untpd.TypedSplice(arg)) :: Nil
-                }
+          // If method has default params, fall back to regular application
+          // where all inferred implicits are passed as named args.
+          if (tree.symbol.hasDefaultParams) {
+            val namedArgs = (wtp.paramNames, args).zipped.flatMap { (pname, arg) =>
+              arg match {
+                case EmptyTree => Nil
+                case _ => untpd.NamedArg(pname, untpd.TypedSplice(arg)) :: Nil
               }
-              tryEither { implicit ctx =>
-                typed(untpd.Apply(untpd.TypedSplice(tree), namedArgs), pt)
-              } { (_, _) =>
-                issueErrors()
-              }
-            } else issueErrors()
-          }
-          else adapt(tpd.Apply(tree, args), pt)
+            }
+            tryEither { implicit ctx =>
+              typed(untpd.Apply(untpd.TypedSplice(tree), namedArgs), pt)
+            } { (_, _) =>
+              issueErrors()
+            }
+          } else issueErrors()
         }
-        addImplicitArgs(argCtx(tree))
-      case wtp: MethodType if !pt.isInstanceOf[SingletonType] =>
-        // Follow proxies and approximate type paramrefs by their upper bound
-        // in the current constraint in order to figure out robustly
-        // whether an expected type is some sort of function type.
-        def underlyingApplied(tp: Type): Type = tp.stripTypeVar match {
-          case tp: RefinedType => tp
-          case tp: AppliedType => tp
-          case tp: TypeParamRef => underlyingApplied(ctx.typeComparer.bounds(tp).hi)
-          case tp: TypeProxy => underlyingApplied(tp.superType)
-          case _ => tp
-        }
-        val ptNorm = underlyingApplied(pt)
+        else adapt(tpd.Apply(tree, args), pt)
+      }
+      addImplicitArgs(argCtx(tree))
+    }
+
+    // Follow proxies and approximate type paramrefs by their upper bound
+    // in the current constraint in order to figure out robustly
+    // whether an expected type is some sort of function type.
+    def underlyingApplied(tp: Type): Type = tp.stripTypeVar match {
+      case tp: RefinedType => tp
+      case tp: AppliedType => tp
+      case tp: TypeParamRef => underlyingApplied(ctx.typeComparer.bounds(tp).hi)
+      case tp: TypeProxy => underlyingApplied(tp.superType)
+      case _ => tp
+    }
+
+    def adaptNoArgs(wtp: Type): Tree = {
+      val ptNorm = underlyingApplied(pt)
+      val functionExpected = defn.isFunctionType(ptNorm)
+      wtp match {
+        case wtp: ExprType =>
+          adaptInterpolated(tree.withType(wtp.resultType), pt)
+        case wtp: ImplicitMethodType
+        if constrainResult(wtp, followAlias(pt)) || !functionExpected =>
+          adaptImplicitMethod(wtp)
+        case wtp: MethodType if !pt.isInstanceOf[SingletonType] =>
         val arity =
-          if (defn.isFunctionType(ptNorm))
+          if (functionExpected)
             if (!isFullyDefined(pt, ForceDegree.none) && isFullyDefined(wtp, ForceDegree.none))
               // if method type is fully defined, but expected type is not,
               // prioritize method parameter types as parameter types of the eta-expanded closure
@@ -2156,7 +2164,8 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
             //typr.println(TypeComparer.explained(implicit ctx => tree.tpe <:< pt))
             adaptToSubType(wtp)
         }
-    }
+    }}
+
     /** Adapt an expression of constant type to a different constant type `tpe`. */
     def adaptConstant(tree: Tree, tpe: ConstantType): Tree = {
       def lit = Literal(tpe.value).withPos(tree.pos)
