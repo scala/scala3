@@ -202,9 +202,11 @@ object SymDenotations {
      *  The info is an instance of TypeType iff this is a type denotation
      *  Uncompleted denotations set myInfo to a LazyType.
      */
-    final def info(implicit ctx: Context): Type = myInfo match {
-      case myInfo: LazyType => completeFrom(myInfo); info
-      case _ => myInfo
+    final def info(implicit ctx: Context): Type = {
+      def completeInfo = {
+        completeFrom(myInfo.asInstanceOf[LazyType]); info
+      }
+      if (myInfo.isInstanceOf[LazyType]) completeInfo else myInfo
     }
 
     /** The type info, or, if symbol is not yet completed, the completer */
