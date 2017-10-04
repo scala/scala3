@@ -95,12 +95,14 @@ class TyperState(previous: TyperState /* | Null */) extends DotClass with Showab
     val savedCommittable = myIsCommittable
     val savedCommitted = isCommitted
     myIsCommittable = false
-    myReporter =
-      if (testReporter == null) new StoreReporter(reporter)
-      else {
+    myReporter = {
+      if (testReporter == null) {
+        testReporter = new StoreReporter(reporter)
+      } else {
         testReporter.reset()
-        testReporter
       }
+      testReporter
+    }
     try op
     finally {
       myReporter = savedReporter
