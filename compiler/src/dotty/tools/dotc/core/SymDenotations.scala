@@ -1241,13 +1241,13 @@ object SymDenotations {
    */
   class ClassDenotation private[SymDenotations] (
     symbol: Symbol,
-    ownerIfExists: Symbol,
+    maybeOwner: Symbol,
     name: Name,
     initFlags: FlagSet,
     initInfo: Type,
     initPrivateWithin: Symbol,
     initRunId: RunId)
-    extends SymDenotation(symbol, ownerIfExists, name, initFlags, initInfo, initPrivateWithin) {
+    extends SymDenotation(symbol, maybeOwner, name, initFlags, initInfo, initPrivateWithin) {
 
     import util.LRUCache
 
@@ -2011,6 +2011,7 @@ object SymDenotations {
     protected def sameGroup(p1: Phase, p2: Phase): Boolean
 
     private[this] var dependent: WeakHashMap[InheritedCache, Unit] = null
+    private[this] var checkedPeriod: Period = Nowhere
 
     protected def invalidateDependents() = {
       if (dependent != null) {
@@ -2026,9 +2027,11 @@ object SymDenotations {
     }
 
     def isValidAt(phase: Phase)(implicit ctx: Context) =
-      createdAt.runId == ctx.runId &&
-      createdAt.phaseId < ctx.phases.length &&
-      sameGroup(ctx.phases(createdAt.phaseId), phase)
+      checkedPeriod == ctx.period ||
+        createdAt.runId == ctx.runId &&
+        createdAt.phaseId < ctx.phases.length &&
+        sameGroup(ctx.phases(createdAt.phaseId), phase) &&
+        { checkedPeriod = ctx.period; true }
   }
 
   private class InvalidCache extends InheritedCache {
