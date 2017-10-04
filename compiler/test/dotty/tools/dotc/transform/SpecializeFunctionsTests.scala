@@ -60,8 +60,8 @@ class SpecializeFunctionsTests extends DottyBytecodeTest {
         apps.length == 3,
         s"Wrong number of specialized applys, actual length: ${apps.length} - $apps"
       )
-      assert(apps.contains("apply"), "Func3 did not contain `apply` forwarder method")
-      assert(apps.contains("apply$mcIII$sp"), "Func3 did not contain specialized apply")
+      assert(apps.contains("apply"), "Func2 did not contain `apply` forwarder method")
+      assert(apps.contains("apply$mcIII$sp"), "Func2 did not contain specialized apply")
     }
   }
 
@@ -91,6 +91,7 @@ class SpecializeFunctionsTests extends DottyBytecodeTest {
          |}""".stripMargin
 
     checkBCode(source) { dir =>
+      // No specialization for Function1[Char, Int]
       assertBoxing("<init>", findClass("Test$", dir).methods)
     }
   }
@@ -136,7 +137,93 @@ class SpecializeFunctionsTests extends DottyBytecodeTest {
          |}""".stripMargin
 
     checkBCode(source) { dir =>
+      // No specialization for Function2[Char, Char, Char]
       assertBoxing("<init>", findClass("Test$", dir).methods)
+    }
+  }
+
+  @Test def multipleParentsNoBoxing = {
+    implicit val source: String =
+      """|object Test {
+         |  class Func01 extends Function0[Int] with Function1[Int, Int] {
+         |    def apply(): Int = 0
+         |    def apply(x: Int): Int = x
+         |  }
+         |  (new Func01: Function0[Int])()
+         |  (new Func01: Function1[Int, Int])(1)
+         |}""".stripMargin
+
+    checkBCode(source) { dir =>
+      assertNoBoxing("<init>", findClass("Test$", dir).methods)
+    }
+  }
+
+  @Test def multipleLevelInheritanceNoBoxing = {
+    implicit val source: String =
+      """|object Test {
+         |  class Func1[T](fn: T => Int) extends Function1[T, Int] {
+         |    def apply(x: T): Int = fn(x)
+         |  }
+         |  class Fn extends Func1(identity[Int])
+         |  (new Fn: Function1[Int, Int])(123)
+         |}""".stripMargin
+
+    checkBCode(source) { dir =>
+      assertNoBoxing("<init>", findClass("Test$", dir).methods)
+    }
+  }
+
+  @Test def lambdaNoBoxing1 = {
+    implicit val source: String =
+      """|object Test {
+         |  val fn = (x: Int) => x + 1
+         |  fn(2)
+         |}""".stripMargin
+
+    checkBCode(source) { dir =>
+      assertNoBoxing("<init>", findClass("Test$", dir).methods)
+    }
+  }
+
+  @Test def lambdaNoBoxing2 = {
+    implicit val source: String =
+      """|object Test {
+         |  def fn[T, U, V](op0: T => U, op1: U => V): T => V = (x: T) => op1(op0(x))
+         |  val f0: Int => Double = _.toDouble
+         |  val f1: Double => Int = _.toInt
+         |  val id = fn(f0, f1)
+         |  id(2)
+         |}""".stripMargin
+
+    checkBCode(source) { dir =>
+      assertNoBoxing("<init>", findClass("Test$", dir).methods)
+    }
+  }
+
+  @Test def classWithFieldBoxing = {
+    implicit val source: String =
+      """|object Test {
+         |  class Func0[T](x: T) extends Function0[T] {
+         |    def apply(): T = x
+         |  }
+         |  (new Func0(2): Function0[Int])()
+         |}""".stripMargin
+
+    checkBCode(source) { dir =>
+      // Boxing happens because of the field of `Func0`.
+      assertBoxing("<init>", findClass("Test$", dir).methods)
+    }
+  }
+
+  @Test def passByNameNoBoxing = {
+    implicit val source: String =
+      """|object Test {
+         |  def fn(x: => Int): Int = x
+         |  fn(2)
+         |}""".stripMargin
+
+    checkBCode(source) { dir =>
+      assertNoBoxing("fn", findClass("Test$", dir).methods)
     }
   }
 }
