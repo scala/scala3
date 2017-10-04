@@ -638,7 +638,11 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
   /** Subclass of Application for type checking an Apply node with untyped arguments. */
   class ApplyToUntyped(app: untpd.Apply, fun: Tree, methRef: TermRef, proto: FunProto, resultType: Type)(implicit ctx: Context)
   extends TypedApply(app, fun, methRef, proto.args, resultType) {
-    def typedArg(arg: untpd.Tree, formal: Type): TypedArg = proto.typedArg(arg, formal.widenExpr)
+    def typedArg(arg: untpd.Tree, formal: Type): TypedArg = {
+      val formal0 = formal.widenExpr
+      val formal1 = if (methRef.symbol.isUnused || fun.tpe.widen.isUnusedMethod) UnusedProto(formal0) else formal0
+      proto.typedArg(arg, formal1)
+    }
     def treeToArg(arg: Tree): untpd.Tree = untpd.TypedSplice(arg)
     def typeOfArg(arg: untpd.Tree) = proto.typeOfArg(arg)
   }
@@ -771,7 +775,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
             checkCanEqual(left.tpe.widen, right.tpe.widen, app.pos)
         case _ =>
       }
-      app
+      checkUnused(app, pt)
     }
   }
 

@@ -391,11 +391,12 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
    *  @DarkDimius: need to make sure that lazy accessor methods have Lazy and Stable
    *               flags set.
    */
-  private def refPurity(tree: Tree)(implicit ctx: Context): PurityLevel =
-    if (!tree.tpe.widen.isParameterless) Pure
+  private def refPurity(tree: Tree)(implicit ctx: Context): PurityLevel = {
+    if (tree.symbol.isUnused || !tree.tpe.widen.isParameterless) Pure
     else if (!tree.symbol.isStable) Impure
     else if (tree.symbol.is(Lazy)) Idempotent // TODO add Module flag, sinxce Module vals or not Lazy from the start.
     else Pure
+  }
 
   def isPureRef(tree: Tree)(implicit ctx: Context) =
     refPurity(tree) == Pure

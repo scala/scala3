@@ -96,4 +96,7 @@ object Mode {
 
   /** We are in the IDE */
   val Interactive = newMode(20, "Interactive")
+
+  /* This code will not be used */
+  val Unused = newMode(21, "Unused")
 }
