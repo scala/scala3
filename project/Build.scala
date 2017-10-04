@@ -228,7 +228,15 @@ object Build {
 
 
   // Bootstrap with -optimise
-  lazy val commonOptimisedSettings = commonBootstrappedSettings ++ Seq(scalacOptions ++= Seq("-optimise"))
+  lazy val commonOptimisedSettings = commonBootstrappedSettings ++ Seq(
+    scalacOptions ++= Seq("-optimise"),
+
+    // The *-bootstrapped and *-optimised projects contain the same sources, so
+    // we only need to import one set in the IDE. We prefer to import the
+    // non-optimized projects because optimize is slower to compile and we do
+    // not trust its output yet.
+    excludeFromIDE := true
+  )
 
   lazy val commonBenchmarkSettings = Seq(
     mainClass in (Jmh, run) := Some("dotty.tools.benchmarks.Bench"), // custom main for jmh:run
