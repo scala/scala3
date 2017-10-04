@@ -15,6 +15,16 @@ import scala.collection.mutable.ListBuffer
 import DottyPlugin.autoImport._
 
 object DottyIDEPlugin extends AutoPlugin {
+  object autoImport {
+    val excludeFromIDE = settingKey[Boolean]("If true, do not import this project or configuration in the Dotty IDE")
+
+    val codeCommand = taskKey[Seq[String]]("Command to start VSCode")
+    val runCode = taskKey[Unit]("Start VSCode, usually called from launchIDE")
+    val launchIDE = taskKey[Unit]("Configure and run VSCode on this project")
+  }
+
+  import autoImport._
+
   // Adapted from scala-reflect
   private def distinctBy[A, B](xs: Seq[A])(f: A => B): Seq[A] = {
     val buf = new mutable.ListBuffer[A]
@@ -111,14 +121,20 @@ object DottyIDEPlugin extends AutoPlugin {
     }
   }
 
-  /** Run task `key` in all configurations in all projects in `projRefs`, using state `state` */
-  private def runInAllConfigurations[T](key: TaskKey[T], projRefs: Seq[ProjectRef], state: State): Seq[T] = {
+  /** Run task `key` in all configurations in all projects in `projRefs`, using state `state`,
+   *  configurations where `excludeFromIDE` is `true` are skipped. */
+  private def runInAllIDEConfigurations[T](key: TaskKey[T], projRefs: Seq[ProjectRef], state: State): Seq[T] = {
     val structure = Project.structure(state)
     val settings = structure.data
     val joinedTask = projRefs.flatMap { projRef =>
       val project = Project.getProjectForReference(projRef, structure).get
       project.configurations.flatMap { config =>
-        key.in(projRef, config).get(settings)
+        excludeFromIDE.in(projRef, config).get(settings) match {
+          case Some(true) =>
+            None // skip this configuration
+          case _ =>
+            key.in(projRef, config).get(settings)
+        }
       }
     }.join
 
@@ -151,20 +167,12 @@ object DottyIDEPlugin extends AutoPlugin {
 
   private val projectConfig = taskKey[Option[ProjectConfig]]("")
 
-  object autoImport {
-    val codeCommand = taskKey[Seq[String]]("Command to start VSCode")
-    val runCode = taskKey[Unit]("Start VSCode, usually called from launchIDE")
-    val launchIDE = taskKey[Unit]("Configure and run VSCode on this project")
-  }
-
-  import autoImport._
-
   override def requires: Plugins = plugins.JvmPlugin
   override def trigger = allRequirements
 
   def configureIDE = Command.command("configureIDE") { origState =>
     val (dottyVersion, projRefs, dottyState) = dottySetup(origState)
-    val configs0 = runInAllConfigurations(projectConfig, projRefs, dottyState).flatten
+    val configs0 = runInAllIDEConfigurations(projectConfig, projRefs, dottyState).flatten
 
     // Drop configurations that do not define their own sources, but just
     // inherit their sources from some other configuration.
@@ -192,7 +200,7 @@ object DottyIDEPlugin extends AutoPlugin {
 
   def compileForIDE = Command.command("compileForIDE") { origState =>
     val (dottyVersion, projRefs, dottyState) = dottySetup(origState)
-    runInAllConfigurations(compile, projRefs, dottyState)
+    runInAllIDEConfigurations(compile, projRefs, dottyState)
 
     origState
   }
@@ -233,6 +241,8 @@ object DottyIDEPlugin extends AutoPlugin {
 
   override def buildSettings: Seq[Setting[_]] = Seq(
     commands ++= Seq(configureIDE, compileForIDE),
+
+    excludeFromIDE := false,
 
     codeCommand := {
       Seq("code", "-n")
