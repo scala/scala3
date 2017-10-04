@@ -532,7 +532,7 @@ object Contexts {
     moreProperties = Map.empty
     typeComparer = new TypeComparer(this)
     searchHistory = new SearchHistory(0, Map())
-    gadt = new GADTMap(SimpleMap.Empty) // EmptyGADTMap
+    gadt = EmptyGADTMap
   }
 
   @sharable object NoContext extends Context {

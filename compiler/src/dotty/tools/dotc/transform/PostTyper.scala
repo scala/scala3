@@ -256,7 +256,7 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisTrans
         case tree @ Annotated(annotated, annot) =>
           cpy.Annotated(tree)(transform(annotated), transformAnnot(annot))
         case tree: AppliedTypeTree =>
-          Checking.checkAppliedType(tree)
+          Checking.checkAppliedType(tree, boundsCheck = !ctx.mode.is(Mode.Pattern))
           super.transform(tree)
         case SingletonTypeTree(ref) =>
           Checking.checkRealizable(ref.tpe, ref.pos.focus)
@@ -282,7 +282,14 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisTrans
           }
           super.transform(tree)
         case Typed(Ident(nme.WILDCARD), _) =>
-          tree // skip checking pattern type
+          super.transform(tree)(ctx.addMode(Mode.Pattern))
+            // The added mode signals that bounds in a pattern need not
+            // conform to selector bounds. I.e. assume
+            //     type Tree[T >: Null <: Type]
+            // One is still allowed to write
+            //     case x: Tree[_]
+            // (which translates to)
+            //     case x: (_: Tree[_])
         case tree =>
           super.transform(tree)
       }
