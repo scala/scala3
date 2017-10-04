@@ -54,16 +54,8 @@ import reporting.diagnostic.messages.SuperCallsNotAllowedInline
  *  mini-phase or subfunction of a macro phase equally well. But taken by themselves
  *  they do not warrant their own group of miniphases before pickling.
  */
-class PostTyper extends MacroTransform with SymTransformer  { thisTransformer =>
-
-
+class PostTyper extends MacroTransform with IdentityDenotTransformer { thisTransformer =>
   import tpd._
-
-  def transformSym(ref: SymDenotation)(implicit ctx: Context): SymDenotation = {
-    if (ref.is(BindDefinedType) && ctx.gadt.bounds.contains(ref.symbol)) {
-      ref.copySymDenotation(info = ctx.gadt.bounds.apply(ref.symbol) & ref.info)
-    } else ref
-  }
 
   /** the following two members override abstract members in Transform */
   override def phaseName: String = "posttyper"
@@ -264,7 +256,7 @@ class PostTyper extends MacroTransform with SymTransformer  { thisTransformer =>
         case tree @ Annotated(annotated, annot) =>
           cpy.Annotated(tree)(transform(annotated), transformAnnot(annot))
         case tree: AppliedTypeTree =>
-          Checking.checkAppliedType(tree)
+          Checking.checkAppliedType(tree, boundsCheck = !ctx.mode.is(Mode.Pattern))
           super.transform(tree)
         case SingletonTypeTree(ref) =>
           Checking.checkRealizable(ref.tpe, ref.pos.focus)
@@ -289,6 +281,15 @@ class PostTyper extends MacroTransform with SymTransformer  { thisTransformer =>
             case _                                  =>
           }
           super.transform(tree)
+        case Typed(Ident(nme.WILDCARD), _) =>
+          super.transform(tree)(ctx.addMode(Mode.Pattern))
+            // The added mode signals that bounds in a pattern need not
+            // conform to selector bounds. I.e. assume
+            //     type Tree[T >: Null <: Type]
+            // One is still allowed to write
+            //     case x: Tree[_]
+            // (which translates to)
+            //     case x: (_: Tree[_])
         case tree =>
           super.transform(tree)
       }

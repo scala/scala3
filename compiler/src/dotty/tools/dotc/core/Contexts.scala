@@ -476,6 +476,7 @@ object Contexts {
     def setRunInfo(runInfo: RunInfo): this.type = { this.runInfo = runInfo; this }
     def setDiagnostics(diagnostics: Option[StringBuilder]): this.type = { this.diagnostics = diagnostics; this }
     def setGadt(gadt: GADTMap): this.type = { this.gadt = gadt; this }
+    def setFreshGADTBounds: this.type = setGadt(new GADTMap(gadt.bounds))
     def setTypeComparerFn(tcfn: Context => TypeComparer): this.type = { this.typeComparer = tcfn(this); this }
     def setSearchHistory(searchHistory: SearchHistory): this.type = { this.searchHistory = searchHistory; this }
     def setFreshNames(freshNames: FreshNameCreator): this.type = { this.freshNames = freshNames; this }
@@ -493,7 +494,6 @@ object Contexts {
     def setSetting[T](setting: Setting[T], value: T): this.type =
       setSettings(setting.updateIn(sstate, value))
 
-    def setFreshGADTBounds: this.type = { this.gadt = new GADTMap(gadt.bounds); this }
 
     def setDebug = setSetting(base.settings.debug, true)
   }
@@ -532,7 +532,7 @@ object Contexts {
     moreProperties = Map.empty
     typeComparer = new TypeComparer(this)
     searchHistory = new SearchHistory(0, Map())
-    gadt = new GADTMap(SimpleMap.Empty)
+    gadt = EmptyGADTMap
   }
 
   @sharable object NoContext extends Context {
@@ -694,10 +694,14 @@ object Contexts {
     implicit val ctx: Context = initctx
   }
 
-  class GADTMap(initBounds: SimpleMap[Symbol, TypeBounds]) {
+  class GADTMap(initBounds: SimpleMap[Symbol, TypeBounds]) extends util.DotClass {
     private var myBounds = initBounds
     def setBounds(sym: Symbol, b: TypeBounds): Unit =
       myBounds = myBounds.updated(sym, b)
     def bounds = myBounds
+  }
+
+  @sharable object EmptyGADTMap extends GADTMap(SimpleMap.Empty) {
+    override def setBounds(sym: Symbol, b: TypeBounds) = unsupported("EmptyGADTMap.setBounds")
   }
 }

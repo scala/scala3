@@ -68,7 +68,7 @@ object Checking {
    *     Unreducible applications correspond to general existentials, and we
    *     cannot handle those.
    */
-  def checkAppliedType(tree: AppliedTypeTree)(implicit ctx: Context) = {
+  def checkAppliedType(tree: AppliedTypeTree, boundsCheck: Boolean)(implicit ctx: Context) = {
     val AppliedTypeTree(tycon, args) = tree
     // If `args` is a list of named arguments, return corresponding type parameters,
     // otherwise return type parameters unchanged
@@ -81,7 +81,7 @@ object Checking {
     val bounds = tparams.map(_.paramInfoAsSeenFrom(tycon.tpe).bounds)
     def instantiate(bound: Type, args: List[Type]) =
       HKTypeLambda.fromParams(tparams, bound).appliedTo(args)
-    checkBounds(orderedArgs, bounds, instantiate)
+    if (boundsCheck) checkBounds(orderedArgs, bounds, instantiate)
 
     def checkWildcardApply(tp: Type, pos: Position): Unit = tp match {
       case tp @ AppliedType(tycon, args) if args.exists(_.isInstanceOf[TypeBounds]) =>

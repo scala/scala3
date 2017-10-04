@@ -491,7 +491,10 @@ trait ImplicitRunInfo { self: RunInfo =>
     override def default(key: TermRef) = 0
   }
 
-  def clear() = implicitScopeCache.clear()
+  def clear() = {
+    implicitScopeCache.clear()
+    useCount.clear()
+  }
 }
 
 /** The implicit resolution part of type checking */
