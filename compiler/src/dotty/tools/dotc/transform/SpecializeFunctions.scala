@@ -37,7 +37,7 @@ class SpecializeFunctions extends MiniPhaseTransform with InfoTransformer {
           val func = defn.FunctionClass(arity)
           if (!parent.derivesFrom(func)) Nil
           else {
-            val typeParams = tp.typeRef.baseArgInfos(func)
+            val typeParams = tp.cls.typeRef.baseType(func).argInfos
             val interface = specInterface(typeParams)
 
             if (interface.exists) {
@@ -132,13 +132,13 @@ class SpecializeFunctions extends MiniPhaseTransform with InfoTransformer {
 
       if (!tr.parents.exists(_.isRef(func))) Nil
       else {
-        val typeParams = tr.baseArgInfos(func)
+        val typeParams = tr.baseType(func).argInfos
         val interface = specInterface(typeParams)
 
         if (interface.exists) List(interface.info)
         else Nil
       }
-    }.map(TypeTree)
+    }.map(TypeTree _)
 
     cpy.Template(tree)(
       parents = tree.parents ++ missing,
