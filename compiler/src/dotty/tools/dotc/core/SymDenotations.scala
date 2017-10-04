@@ -115,7 +115,7 @@ object SymDenotations {
    */
   class SymDenotation private[SymDenotations] (
     symbol: Symbol,
-    ownerIfExists: Symbol,
+    final val maybeOwner: Symbol,
     final val name: Name,
     initFlags: FlagSet,
     initInfo: Type,
@@ -140,10 +140,7 @@ object SymDenotations {
     private[this] var myAnnotations: List[Annotation] = Nil
 
     /** The owner of the symbol; overridden in NoDenotation */
-    def owner: Symbol = ownerIfExists
-
-    /** Same as owner, except returns NoSymbol for NoSymbol */
-    def maybeOwner: Symbol = if (exists) owner else NoSymbol
+    def owner: Symbol = maybeOwner
 
     /** The flag set */
     final def flags(implicit ctx: Context): FlagSet = { ensureCompleted(); myFlags }
@@ -178,9 +175,8 @@ object SymDenotations {
         else AfterLoadFlags)
 
     /** Has this denotation one of the flags in `fs` set? */
-    final def is(fs: FlagSet)(implicit ctx: Context) = {
+    final def is(fs: FlagSet)(implicit ctx: Context) =
       (if (isCurrent(fs)) myFlags else flags) is fs
-    }
 
     /** Has this denotation one of the flags in `fs` set, whereas none of the flags
      *  in `butNot` are set?
@@ -457,7 +453,7 @@ object SymDenotations {
 
     /** Is this symbol the root class or its companion object? */
     final def isRoot: Boolean =
-      (name.toTermName == nme.ROOT || name == nme.ROOTPKG) && (owner eq NoSymbol)
+      (maybeOwner eq NoSymbol) && (name.toTermName == nme.ROOT || name == nme.ROOTPKG)
 
     /** Is this symbol the empty package class or its companion object? */
     final def isEmptyPackage(implicit ctx: Context): Boolean =
@@ -562,11 +558,12 @@ object SymDenotations {
 
     /** Is this denotation static (i.e. with no outer instance)? */
     final def isStatic(implicit ctx: Context) =
-      (this is JavaStatic) || this.exists && owner.isStaticOwner || this.isRoot
+      (if (maybeOwner eq NoSymbol) isRoot else maybeOwner.isStaticOwner) ||
+        myFlags.is(JavaStatic)
 
     /** Is this a package class or module class that defines static symbols? */
     final def isStaticOwner(implicit ctx: Context): Boolean =
-      (this is PackageClass) || (this is ModuleClass) && isStatic
+      myFlags.is(ModuleClass) && (myFlags.is(PackageClass) || isStatic)
 
     /** Is this denotation defined in the same scope and compilation unit as that symbol? */
     final def isCoDefinedWith(that: Symbol)(implicit ctx: Context) =
