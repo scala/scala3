@@ -2599,57 +2599,8 @@ object Types {
     final override def toString = s"$prefixString($paramNames, $paramInfos, $resType)"
   }
 
-  abstract class HKLambda extends CachedProxyType with LambdaType {
-    final override def underlying(implicit ctx: Context) = resType
-
-    final override def computeHash = doHash(paramNames, resType, paramInfos)
-
-    // Defined here instead of in LambdaType for efficiency
-    final override def equals(that: Any) = that match {
-      case that: HKLambda =>
-        paramNames == that.paramNames &&
-        paramInfos == that.paramInfos &&
-        resType == that.resType &&
-        companion.eq(that.companion)
-      case _ =>
-        false
-    }
-
-    final override def eql(that: Type) = that match {
-      case that: HKLambda =>
-        paramNames.equals(that.paramNames) &&
-        paramInfos.equals(that.paramInfos) &&
-        resType.equals(that.resType) &&
-        companion.eq(that.companion)
-      case _ =>
-        false
-    }
-  }
-
-  abstract class MethodOrPoly extends CachedGroundType with LambdaType with MethodicType {
-    final override def computeHash = doHash(paramNames, resType, paramInfos)
-
-    // Defined here instead of in LambdaType for efficiency
-    final override def equals(that: Any) = that match {
-      case that: MethodOrPoly =>
-        paramNames == that.paramNames &&
-        paramInfos == that.paramInfos &&
-        resType == that.resType &&
-        companion.eq(that.companion)
-      case _ =>
-        false
-    }
-
-    final override def eql(that: Type) = that match {
-      case that: MethodOrPoly =>
-        paramNames.eqElements(that.paramNames) &&
-        paramInfos.eqElements(that.paramInfos) &&
-        resType.eq(that.resType) &&
-        companion.eq(that.companion)
-      case _ =>
-        false
-    }
-  }
+  trait HKLambda extends LambdaType
+  trait MethodOrPoly extends LambdaType with MethodicType
 
   trait TermLambda extends LambdaType { thisLambdaType =>
     import DepStatus._
@@ -2752,7 +2703,7 @@ object Types {
   abstract case class MethodType(paramNames: List[TermName])(
       paramInfosExp: MethodType => List[Type],
       resultTypeExp: MethodType => Type)
-    extends MethodOrPoly with TermLambda with NarrowCached { thisMethodType =>
+    extends CachedGroundType with MethodOrPoly with TermLambda with NarrowCached { thisMethodType =>
     import MethodType._
 
     type This = MethodType
@@ -2763,6 +2714,28 @@ object Types {
 
     def computeSignature(implicit ctx: Context): Signature =
       resultSignature.prepend(paramInfos, isJava)
+
+    final override def computeHash = doHash(paramNames, resType, paramInfos)
+
+    final override def equals(that: Any) = that match {
+      case that: MethodType =>
+        paramNames == that.paramNames &&
+        paramInfos == that.paramInfos &&
+        resType == that.resType &&
+        companion.eq(that.companion)
+      case _ =>
+        false
+    }
+
+    final override def eql(that: Type) = that match {
+      case that: MethodType =>
+        paramNames.eqElements(that.paramNames) &&
+        paramInfos.eqElements(that.paramInfos) &&
+        resType.eq(that.resType) &&
+        companion.eq(that.companion)
+      case _ =>
+        false
+    }
 
     protected def prefixString = "MethodType"
   }
@@ -2936,7 +2909,7 @@ object Types {
    */
   class HKTypeLambda(val paramNames: List[TypeName])(
       paramInfosExp: HKTypeLambda => List[TypeBounds], resultTypeExp: HKTypeLambda => Type)
-  extends HKLambda with TypeLambda {
+  extends UncachedProxyType with HKLambda with TypeLambda {
     type This = HKTypeLambda
     def companion = HKTypeLambda
 
@@ -2946,6 +2919,8 @@ object Types {
     assert(resType.isInstanceOf[TermType], this)
     assert(paramNames.nonEmpty)
 
+    final override def underlying(implicit ctx: Context) = resType
+
     protected def prefixString = "HKTypeLambda"
   }
 
@@ -2954,7 +2929,7 @@ object Types {
    */
   class PolyType(val paramNames: List[TypeName])(
       paramInfosExp: PolyType => List[TypeBounds], resultTypeExp: PolyType => Type)
-  extends MethodOrPoly with TypeLambda {
+  extends UncachedGroundType with MethodOrPoly with TypeLambda {
 
     type This = PolyType
     def companion = PolyType
