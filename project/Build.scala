@@ -342,8 +342,8 @@ object Build {
   )
 
   lazy val `dotty-doc` = project.in(file("doc-tool")).asDottyDoc(NonBootstrapped)
-  lazy val `dotty-doc-bootstrapped` = project.in(file("doc-tool-bootstrapped")).asDottyDoc(Bootstrapped)
-  lazy val `dotty-doc-optimised` = project.in(file("doc-tool-optimised")).asDottyDoc(BootstrappedOptimised)
+  lazy val `dotty-doc-bootstrapped` = project.in(file("doc-tool")).asDottyDoc(Bootstrapped)
+  lazy val `dotty-doc-optimised` = project.in(file("doc-tool")).asDottyDoc(BootstrappedOptimised)
 
   def dottyDoc(implicit mode: Mode): Project = mode match {
     case NonBootstrapped => `dotty-doc`
@@ -804,8 +804,8 @@ object Build {
     )))
 
   lazy val `dotty-bench` = project.in(file("bench")).asDottyBench(NonBootstrapped)
-  lazy val `dotty-bench-bootstrapped` = project.in(file("bench-bootstrapped")).asDottyBench(Bootstrapped)
-  lazy val `dotty-bench-optimised` = project.in(file("bench-optimised")).asDottyBench(BootstrappedOptimised)
+  lazy val `dotty-bench-bootstrapped` = project.in(file("bench")).asDottyBench(Bootstrapped)
+  lazy val `dotty-bench-optimised` = project.in(file("bench")).asDottyBench(BootstrappedOptimised)
 
   // Depend on dotty-library so that sbt projects using dotty automatically
   // depend on the dotty-library
@@ -1152,7 +1152,6 @@ object Build {
     def asDottyBench(implicit mode: Mode): Project = project.withCommonSettings.
       dependsOn(dottyCompiler).
       settings(commonBenchmarkSettings).
-      bootstrappedSettings(unmanagedSourceDirectories in Compile ++= Seq(baseDirectory.value / ".." / "bench" / "src")).
       enablePlugins(JmhPlugin)
 
     def asDist(implicit mode: Mode): Project = project.withCommonSettings.
