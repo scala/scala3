@@ -2713,8 +2713,8 @@ object Types {
 
     def companion: MethodTypeCompanion
 
-    final override def isJavaMethod: Boolean = companion.isJava
-    final override def isImplicitMethod: Boolean = companion.isImplicit
+    final override def isJavaMethod: Boolean = companion eq JavaMethodType
+    final override def isImplicitMethod: Boolean = companion eq ImplicitMethodType
 
     val paramInfos = paramInfosExp(this)
     val resType = resultTypeExp(this)
@@ -2796,9 +2796,6 @@ object Types {
 
   abstract class MethodTypeCompanion extends TermLambdaCompanion[MethodType] { self =>
 
-    def isJava: Boolean = false
-    def isImplicit: Boolean = false
-
     /** Produce method type from parameter symbols, with special mappings for repeated
      *  and inline parameters:
      *   - replace @repeated annotations on Seq or Array types by <repeated> types
@@ -2842,21 +2839,9 @@ object Types {
     }
   }
 
-  object MethodType extends MethodTypeCompanion {
-    def withKind(isJava: Boolean = false, isImplicit: Boolean = false): MethodTypeCompanion = {
-      if (isJava) JavaMethodType
-      else if (isImplicit) ImplicitMethodType
-      else MethodType
-    }
-  }
-
-  object JavaMethodType extends MethodTypeCompanion {
-    override def isJava: Boolean = true
-  }
-
-  object ImplicitMethodType extends MethodTypeCompanion {
-    override def isImplicit: Boolean = true
-  }
+  object MethodType extends MethodTypeCompanion
+  object JavaMethodType extends MethodTypeCompanion
+  object ImplicitMethodType extends MethodTypeCompanion
 
   /** A ternary extractor for MethodType */
   object MethodTpe {
