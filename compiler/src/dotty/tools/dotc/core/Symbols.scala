@@ -415,18 +415,19 @@ object Symbols {
       else computeDenot(lastd)
     }
 
-    protected def computeDenot(lastd: SymDenotation)(implicit ctx: Context): SymDenotation = {
+    private def computeDenot(lastd: SymDenotation)(implicit ctx: Context): SymDenotation = {
       val now = ctx.period
       checkedPeriod = now
-      if (lastd.validFor contains now) {
-        lastd
-      } else {
-        val newd = lastd.current.asInstanceOf[SymDenotation]
-        lastDenot = newd
-        newd
-      }
+      if (lastd.validFor contains now) lastd else recomputeDenot(lastd)
     }
-    
+
+    /** Overridden in NoSymbol */
+    protected def recomputeDenot(lastd: SymDenotation)(implicit ctx: Context) = {
+      val newd = lastd.current.asInstanceOf[SymDenotation]
+      lastDenot = newd
+      newd
+    }
+
     /** The initial denotation of this symbol, without going through `current` */
     final def initialDenot(implicit ctx: Context): SymDenotation =
       lastDenot.initial
@@ -646,7 +647,7 @@ object Symbols {
   @sharable object NoSymbol extends Symbol(NoCoord, 0) {
     denot = NoDenotation
     override def associatedFile(implicit ctx: Context): AbstractFile = NoSource.file
-    override def computeDenot(lastd: SymDenotation)(implicit ctx: Context): SymDenotation = NoDenotation
+    override def recomputeDenot(lastd: SymDenotation)(implicit ctx: Context): SymDenotation = NoDenotation
   }
 
   implicit class Copier[N <: Name](sym: Symbol { type ThisName = N })(implicit ctx: Context) {
