@@ -72,14 +72,14 @@ object Phases {
       override def lastPhaseId(implicit ctx: Context) = id
     }
 
-    def phasePlan = this.phasesPlan
-    def setPhasePlan(phasess: List[List[Phase]]) = this.phasesPlan = phasess
+    final def phasePlan = this.phasesPlan
+    final def setPhasePlan(phasess: List[List[Phase]]) = this.phasesPlan = phasess
 
     /** Squash TreeTransform's beloning to same sublist to a single TreeTransformer
       * Each TreeTransform gets own period,
       * whereas a combined TreeTransformer gets period equal to union of periods of it's TreeTransforms
       */
-    def squashPhases(phasess: List[List[Phase]],
+    final def squashPhases(phasess: List[List[Phase]],
                              phasesToSkip: List[String], stopBeforePhases: List[String], stopAfterPhases: List[String], YCheckAfter: List[String]): List[Phase] = {
       val squashedPhases = ListBuffer[Phase]()
       var prevPhases: Set[Class[_ <: Phase]] = Set.empty
@@ -139,7 +139,7 @@ object Phases {
      *  The list should never contain NoPhase.
      *  if squashing is enabled, phases in same subgroup will be squashed to single phase.
      */
-    def usePhases(phasess: List[Phase], squash: Boolean = true) = {
+    final def usePhases(phasess: List[Phase], squash: Boolean = true) = {
 
       val flatPhases = collection.mutable.ListBuffer[Phase]()
 
@@ -212,33 +212,33 @@ object Phases {
       config.println(s"nextDenotTransformerId = ${nextDenotTransformerId.deep}")
     }
 
-    private var myTyperPhase: Phase = _
-    private var myPicklerPhase: Phase = _
-    private var myRefChecksPhase: Phase = _
-    private var myPatmatPhase: Phase = _
-    private var myElimRepeatedPhase: Phase = _
-    private var myExtensionMethodsPhase: Phase = _
-    private var myExplicitOuterPhase: Phase = _
-    private var myGettersPhase: Phase = _
-    private var myErasurePhase: Phase = _
-    private var myElimErasedValueTypePhase: Phase = _
-    private var myLambdaLiftPhase: Phase = _
-    private var myFlattenPhase: Phase = _
-    private var myGenBCodePhase: Phase = _
+    private[this] var myTyperPhase: Phase = _
+    private[this] var myPicklerPhase: Phase = _
+    private[this] var myRefChecksPhase: Phase = _
+    private[this] var myPatmatPhase: Phase = _
+    private[this] var myElimRepeatedPhase: Phase = _
+    private[this] var myExtensionMethodsPhase: Phase = _
+    private[this] var myExplicitOuterPhase: Phase = _
+    private[this] var myGettersPhase: Phase = _
+    private[this] var myErasurePhase: Phase = _
+    private[this] var myElimErasedValueTypePhase: Phase = _
+    private[this] var myLambdaLiftPhase: Phase = _
+    private[this] var myFlattenPhase: Phase = _
+    private[this] var myGenBCodePhase: Phase = _
 
-    def typerPhase = myTyperPhase
-    def picklerPhase = myPicklerPhase
-    def refchecksPhase = myRefChecksPhase
-    def patmatPhase = myPatmatPhase
-    def elimRepeatedPhase = myElimRepeatedPhase
-    def extensionMethodsPhase = myExtensionMethodsPhase
-    def explicitOuterPhase = myExplicitOuterPhase
-    def gettersPhase = myGettersPhase
-    def erasurePhase = myErasurePhase
-    def elimErasedValueTypePhase = myElimErasedValueTypePhase
-    def lambdaLiftPhase = myLambdaLiftPhase
-    def flattenPhase = myFlattenPhase
-    def genBCodePhase = myGenBCodePhase
+    final def typerPhase = myTyperPhase
+    final def picklerPhase = myPicklerPhase
+    final def refchecksPhase = myRefChecksPhase
+    final def patmatPhase = myPatmatPhase
+    final def elimRepeatedPhase = myElimRepeatedPhase
+    final def extensionMethodsPhase = myExtensionMethodsPhase
+    final def explicitOuterPhase = myExplicitOuterPhase
+    final def gettersPhase = myGettersPhase
+    final def erasurePhase = myErasurePhase
+    final def elimErasedValueTypePhase = myElimErasedValueTypePhase
+    final def lambdaLiftPhase = myLambdaLiftPhase
+    final def flattenPhase = myFlattenPhase
+    final def genBCodePhase = myGenBCodePhase
 
     private def setSpecificPhases() = {
       def phaseOfClass(pclass: Class[_]) = phases.find(pclass.isInstance).getOrElse(NoPhase)
@@ -258,7 +258,7 @@ object Phases {
       myGenBCodePhase =  phaseOfClass(classOf[GenBCode])
     }
 
-    def isAfterTyper(phase: Phase): Boolean = phase.id > typerPhase.id
+    final def isAfterTyper(phase: Phase): Boolean = phase.id > typerPhase.id
   }
 
   trait Phase extends DotClass {
