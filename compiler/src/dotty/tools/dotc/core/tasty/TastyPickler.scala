@@ -83,8 +83,7 @@ class TastyPickler {
     while (i < data.length) {
       h = (h << 4) + data(i)
       high = h & 0xF0000000L
-      if (high != 0)
-        h ^= high >> 24
+      h ^= high >> 24
       h &= ~high
       i += 1
     }
