@@ -142,7 +142,7 @@ class DropNoEffects(val simplifyPhase: Simplify) extends Optimisation {
         case _ =>
           rec :: args.map(keepOnlySideEffects)
       }
-      Block(prefix, unitLiteral)
+      seq(prefix, unitLiteral)
 
     case t => t
   }
