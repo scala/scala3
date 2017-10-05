@@ -24,4 +24,18 @@ object DottyPredef {
    *  `discardForView` from two to one.
    */
   abstract class ImplicitConverter[-T, +U] extends Function1[T, U]
+
+  @inline final def assert(assertion: Boolean, message: => Any): Unit = {
+    if (!assertion)
+      assertFail(message)
+  }
+
+  @inline final def assert(assertion: Boolean): Unit = {
+    if (!assertion)
+      assertFail()
+  }
+
+  final def assertFail(): Unit = throw new java.lang.AssertionError("assertion failed")
+  final def assertFail(message: => Any): Unit = throw new java.lang.AssertionError("assertion failed: " + message)
+
 }
