@@ -167,5 +167,6 @@ class TyperState(previous: TyperState /* | Null */) extends DotClass with Showab
 
   override def toText(printer: Printer): Text = constraint.toText(printer)
 
-  def hashesStr: String = hashCode.toString + " -> " + previous.hashesStr
+  def hashesStr: String =
+    if (previous == null) "" else hashCode.toString + " -> " + previous.hashesStr
 }
