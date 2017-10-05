@@ -22,8 +22,17 @@ sealed trait DocumentationLink {
   def url: String
 }
 
+/** A documentation link can be rendered by tooling to direct the programmer to
+  * good resources for more details related to the compiler error or warning.
+  *
+  * To keep base links at a single place use the cases classes to share a common
+  * prefix.
+  *
+  * Links are checked for existence in tests in `dotty.tools.dotc.reporting.ErrorMessagesTests`
+  * if the error class is tested there.
+  */
 object DocumentationLink {
-  case class LanguageSpec(text: String = "Language Specification", suffix: String) extends DocumentationLink {
+  case class LanguageSpec(text: String = "Scala Language Specification", suffix: String) extends DocumentationLink {
     val url = s"https://www.scala-lang.org/files/archive/spec/2.13/$suffix"
   }
   case class TourUrl(text: String, suffix: String) extends DocumentationLink {

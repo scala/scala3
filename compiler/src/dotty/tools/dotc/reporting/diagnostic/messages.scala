@@ -23,7 +23,7 @@ import dotty.tools.dotc.ast.Trees
 import dotty.tools.dotc.config.ScalaVersion
 import dotty.tools.dotc.core.Flags._
 import dotty.tools.dotc.core.SymDenotations.SymDenotation
-import dotty.tools.dotc.reporting.diagnostic.DocumentationLink.{DottyDocs, LanguageSpec}
+import diagnostic.DocumentationLink.{DottyDocs, LanguageSpec, TourUrl}
 
 import scala.util.control.NonFatal
 
@@ -99,10 +99,13 @@ object messages {
   import ast.tpd
 
   /** Helper methods for messages */
-  def implicitClassRestrictionsText(implicit ctx: Context) =
-    hl"""|${NoColor("For a full list of restrictions on implicit classes visit")}
-         |${Blue("http://docs.scala-lang.org/overviews/core/implicit-classes.html")}"""
+  private def tryExpressionLinks = List(
+    LanguageSpec(suffix = "06-expressions.html#try-expressions")
+  )
 
+  private def implicitClassLinks = List(
+    TourUrl("More information on implicit classes", "core/implicit-classes.html")
+  )
 
   // Syntax Errors ---------------------------------------------------------- //
   abstract class EmptyCatchOrFinallyBlock(tryBody: untpd.Tree, errNo: ErrorMessageID)(implicit ctx: Context)
@@ -140,9 +143,7 @@ object messages {
            |correctly handles transfer functions like ${"return"}."""
     }
 
-    override def links: List[DocumentationLink] = List(
-      LanguageSpec(suffix = "06-expressions.html#try-expressions")
-    )
+    override def links = tryExpressionLinks
   }
 
   case class EmptyCatchBlock(tryBody: untpd.Tree)(implicit ctx: Context)
@@ -151,6 +152,8 @@ object messages {
     val msg =
       hl"""|The ${"catch"} block does not contain a valid expression, try
            |adding a case like - `${"case e: Exception =>"}` to the block"""
+
+    override def links = tryExpressionLinks
   }
 
   case class EmptyCatchAndFinallyBlock(tryBody: untpd.Tree)(implicit ctx: Context)
@@ -159,6 +162,8 @@ object messages {
     val msg =
       hl"""|A ${"try"} without ${"catch"} or ${"finally"} is equivalent to putting
            |its body in a block; no exceptions are handled."""
+
+    override def links = tryExpressionLinks
   }
 
   case class DeprecatedWithOperator()(implicit ctx: Context)
@@ -452,8 +457,6 @@ object messages {
            |the same name created by the compiler which would cause a naming conflict if it
            |were allowed.
            |
-           |""" + implicitClassRestrictionsText + hl"""|
-           |
            |To resolve the conflict declare ${cdef.name} inside of an ${"object"} then import the class
            |from the object at the use site if needed, for example:
            |
@@ -462,8 +465,10 @@ object messages {
            |}
            |
            |// At the use site:
-           |import Implicits.${cdef.name}"""
+           |${"import Implicits"}.${cdef.name}"""
     }
+
+    override def links = implicitClassLinks
   }
 
   case class ImplicitCaseClass(cdef: untpd.TypeDef)(implicit ctx: Context)
@@ -474,9 +479,10 @@ object messages {
     val explanation =
       hl"""|implicit classes may not be case classes. Instead use a plain class:
            |
-           |implicit class ${cdef.name}...
-           |
-           |""" + implicitClassRestrictionsText
+           |${"implicit class"} ${cdef.name}...
+           |"""
+
+    override def links = implicitClassLinks
   }
 
   case class ImplicitClassPrimaryConstructorArity()(implicit ctx: Context)
@@ -491,7 +497,7 @@ object messages {
           |
           |While it’s possible to create an implicit class with more than one non-implicit argument,
           |such classes aren’t used during implicit lookup.
-          |""" + implicitClassRestrictionsText
+          |"""
     }
   }
 
@@ -556,17 +562,19 @@ object messages {
     val kind = "Syntax"
     val msg = "error in interpolated string: identifier or block expected"
     val explanation = {
-      val code1 = "s\"$new Point(0, 0)\""
-      val code2 = "s\"${new Point(0, 0)}\""
       hl"""|This usually happens when you forget to place your expressions inside curly braces.
            |
-           |$code1
+           |${"s\"$new Point(0, 0)\""}
            |
            |should be written as
            |
-           |$code2
+           |${"s\"${new Point(0, 0)}\""}
            |"""
     }
+
+    override def links = List(
+      TourUrl("More on String Interpolation", "core/string-interpolation.html")
+    )
   }
 
   case class UnboundPlaceholderParameter()(implicit ctx:Context)
@@ -1720,19 +1728,13 @@ object messages {
     val kind = "Syntax"
     val msg = s"modifier(s) `$flags' not allowed for ${printableType.getOrElse("combination")}"
     val explanation = {
-      val first = "sealed def y: Int = 1"
-      val second = "sealed lazy class z"
       hl"""You tried to use a modifier that is inapplicable for the type of item under modification
          |
-         |  Please see the official Scala Language Specification section on modifiers:
-         |  https://www.scala-lang.org/files/archive/spec/2.11/05-classes-and-objects.html#modifiers
-         |
          |Consider the following example:
-         |$first
+         |${"sealed def y: Int = 1"}
          |In this instance, the modifier 'sealed' is not applicable to the item type 'def' (method)
-         |$second
-         |In this instance, the modifier combination is not supported
-        """
+         |${"sealed lazy class z"}
+         |In this instance, the modifier combination is not supported"""
     }
 
     override def links: List[DocumentationLink] = List(
