@@ -72,14 +72,14 @@ object Phases {
       override def lastPhaseId(implicit ctx: Context) = id
     }
 
-    def phasePlan = this.phasesPlan
-    def setPhasePlan(phasess: List[List[Phase]]) = this.phasesPlan = phasess
+    final def phasePlan = this.phasesPlan
+    final def setPhasePlan(phasess: List[List[Phase]]) = this.phasesPlan = phasess
 
     /** Squash TreeTransform's beloning to same sublist to a single TreeTransformer
       * Each TreeTransform gets own period,
       * whereas a combined TreeTransformer gets period equal to union of periods of it's TreeTransforms
       */
-    def squashPhases(phasess: List[List[Phase]],
+    final def squashPhases(phasess: List[List[Phase]],
                              phasesToSkip: List[String], stopBeforePhases: List[String], stopAfterPhases: List[String], YCheckAfter: List[String]): List[Phase] = {
       val squashedPhases = ListBuffer[Phase]()
       var prevPhases: Set[Class[_ <: Phase]] = Set.empty
@@ -139,7 +139,7 @@ object Phases {
      *  The list should never contain NoPhase.
      *  if squashing is enabled, phases in same subgroup will be squashed to single phase.
      */
-    def usePhases(phasess: List[Phase], squash: Boolean = true) = {
+    final def usePhases(phasess: List[Phase], squash: Boolean = true) = {
 
       val flatPhases = collection.mutable.ListBuffer[Phase]()
 
@@ -149,6 +149,7 @@ object Phases {
       })
 
       phases = (NoPhase :: flatPhases.toList ::: new TerminalPhase :: Nil).toArray
+      setSpecificPhases()
       var phasesAfter:Set[Class[_ <: Phase]] = Set.empty
       nextDenotTransformerId = new Array[Int](phases.length)
       denotTransformers = new Array[DenotTransformer](phases.length)
@@ -211,54 +212,53 @@ object Phases {
       config.println(s"nextDenotTransformerId = ${nextDenotTransformerId.deep}")
     }
 
-    def phaseOfClass(pclass: Class[_]) = phases.find(pclass.isInstance).getOrElse(NoPhase)
+    private[this] var myTyperPhase: Phase = _
+    private[this] var myPicklerPhase: Phase = _
+    private[this] var myRefChecksPhase: Phase = _
+    private[this] var myPatmatPhase: Phase = _
+    private[this] var myElimRepeatedPhase: Phase = _
+    private[this] var myExtensionMethodsPhase: Phase = _
+    private[this] var myExplicitOuterPhase: Phase = _
+    private[this] var myGettersPhase: Phase = _
+    private[this] var myErasurePhase: Phase = _
+    private[this] var myElimErasedValueTypePhase: Phase = _
+    private[this] var myLambdaLiftPhase: Phase = _
+    private[this] var myFlattenPhase: Phase = _
+    private[this] var myGenBCodePhase: Phase = _
 
-    private val cachedPhases = collection.mutable.Set[PhaseCache]()
-    private def cleanPhaseCache = cachedPhases.foreach(_.myPhase = NoPhase)
+    final def typerPhase = myTyperPhase
+    final def picklerPhase = myPicklerPhase
+    final def refchecksPhase = myRefChecksPhase
+    final def patmatPhase = myPatmatPhase
+    final def elimRepeatedPhase = myElimRepeatedPhase
+    final def extensionMethodsPhase = myExtensionMethodsPhase
+    final def explicitOuterPhase = myExplicitOuterPhase
+    final def gettersPhase = myGettersPhase
+    final def erasurePhase = myErasurePhase
+    final def elimErasedValueTypePhase = myElimErasedValueTypePhase
+    final def lambdaLiftPhase = myLambdaLiftPhase
+    final def flattenPhase = myFlattenPhase
+    final def genBCodePhase = myGenBCodePhase
 
-    /** A cache to compute the phase with given name, which
-     *  stores the phase as soon as phaseNamed returns something
-     *  different from NoPhase.
-     */
-    private class PhaseCache(pclass: Class[_ <: Phase]) {
-      var myPhase: Phase = NoPhase
-      def phase = {
-        if (myPhase eq NoPhase) myPhase = phaseOfClass(pclass)
-        myPhase
-      }
-      cachedPhases += this
+    private def setSpecificPhases() = {
+      def phaseOfClass(pclass: Class[_]) = phases.find(pclass.isInstance).getOrElse(NoPhase)
+
+      myTyperPhase = phaseOfClass(classOf[FrontEnd])
+      myPicklerPhase = phaseOfClass(classOf[Pickler])
+      myRefChecksPhase = phaseOfClass(classOf[RefChecks])
+      myElimRepeatedPhase = phaseOfClass(classOf[ElimRepeated])
+      myExtensionMethodsPhase = phaseOfClass(classOf[ExtensionMethods])
+      myErasurePhase = phaseOfClass(classOf[Erasure])
+      myElimErasedValueTypePhase = phaseOfClass(classOf[ElimErasedValueType])
+      myPatmatPhase = phaseOfClass(classOf[PatternMatcher])
+      myLambdaLiftPhase = phaseOfClass(classOf[LambdaLift])
+      myFlattenPhase = phaseOfClass(classOf[Flatten])
+      myExplicitOuterPhase = phaseOfClass(classOf[ExplicitOuter])
+      myGettersPhase = phaseOfClass(classOf[Getters])
+      myGenBCodePhase =  phaseOfClass(classOf[GenBCode])
     }
 
-    private val typerCache = new PhaseCache(classOf[FrontEnd])
-    private val picklerCache = new PhaseCache(classOf[Pickler])
-
-    private val refChecksCache = new PhaseCache(classOf[RefChecks])
-    private val elimRepeatedCache = new PhaseCache(classOf[ElimRepeated])
-    private val extensionMethodsCache = new PhaseCache(classOf[ExtensionMethods])
-    private val erasureCache = new PhaseCache(classOf[Erasure])
-    private val elimErasedValueTypeCache = new PhaseCache(classOf[ElimErasedValueType])
-    private val patmatCache = new PhaseCache(classOf[PatternMatcher])
-    private val lambdaLiftCache = new PhaseCache(classOf[LambdaLift])
-    private val flattenCache = new PhaseCache(classOf[Flatten])
-    private val explicitOuterCache = new PhaseCache(classOf[ExplicitOuter])
-    private val gettersCache = new PhaseCache(classOf[Getters])
-    private val genBCodeCache = new PhaseCache(classOf[GenBCode])
-
-    def typerPhase = typerCache.phase
-    def picklerPhase = picklerCache.phase
-    def refchecksPhase = refChecksCache.phase
-    def elimRepeatedPhase = elimRepeatedCache.phase
-    def extensionMethodsPhase = extensionMethodsCache.phase
-    def erasurePhase = erasureCache.phase
-    def elimErasedValueTypePhase = elimErasedValueTypeCache.phase
-    def patmatPhase = patmatCache.phase
-    def lambdaLiftPhase = lambdaLiftCache.phase
-    def flattenPhase = flattenCache.phase
-    def explicitOuterPhase = explicitOuterCache.phase
-    def gettersPhase = gettersCache.phase
-    def genBCodePhase = genBCodeCache.phase
-
-    def isAfterTyper(phase: Phase): Boolean = phase.id > typerPhase.id
+    final def isAfterTyper(phase: Phase): Boolean = phase.id > typerPhase.id
   }
 
   trait Phase extends DotClass {
