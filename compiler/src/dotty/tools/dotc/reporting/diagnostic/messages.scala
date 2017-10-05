@@ -107,6 +107,12 @@ object messages {
     TourUrl("More information on implicit classes", "core/implicit-classes.html")
   )
 
+  private def patternMatchingLinks = List(
+    LanguageSpec(suffix = "08-pattern-matching.html"),
+    DottyDocs(suffix = "reference/changed/pattern-matching.html")
+  )
+
+
   // Syntax Errors ---------------------------------------------------------- //
   abstract class EmptyCatchOrFinallyBlock(tryBody: untpd.Tree, errNo: ErrorMessageID)(implicit ctx: Context)
   extends Message(EmptyCatchOrFinallyBlockID) {
@@ -143,7 +149,7 @@ object messages {
            |correctly handles transfer functions like ${"return"}."""
     }
 
-    override def links = tryExpressionLinks
+    override val links = tryExpressionLinks
   }
 
   case class EmptyCatchBlock(tryBody: untpd.Tree)(implicit ctx: Context)
@@ -153,7 +159,7 @@ object messages {
       hl"""|The ${"catch"} block does not contain a valid expression, try
            |adding a case like - `${"case e: Exception =>"}` to the block"""
 
-    override def links = tryExpressionLinks
+    override val links = tryExpressionLinks
   }
 
   case class EmptyCatchAndFinallyBlock(tryBody: untpd.Tree)(implicit ctx: Context)
@@ -163,7 +169,7 @@ object messages {
       hl"""|A ${"try"} without ${"catch"} or ${"finally"} is equivalent to putting
            |its body in a block; no exceptions are handled."""
 
-    override def links = tryExpressionLinks
+    override val links = tryExpressionLinks
   }
 
   case class DeprecatedWithOperator()(implicit ctx: Context)
@@ -176,7 +182,7 @@ object messages {
            |use of the ${"with"} keyword. There are a few differences in
            |semantics between intersection types and using `${"with"}'."""
 
-    override def links = List(
+    override val links = List(
       DottyDocs(suffix = "reference/intersection-types.html")
     )
   }
@@ -192,7 +198,7 @@ object messages {
            |have a singleton representation of ${cdef.name}, use a "${"case object"}".
            |Or, add an explicit `()' as a parameter list to ${cdef.name}."""
 
-    override def links = List(
+    override val links = List(
       LanguageSpec(suffix = "05-classes-and-objects.html#case-classes")
     )
   }
@@ -228,7 +234,7 @@ object messages {
            |
            |${"val f: Any => Int = { case x: Int => x + 1 }"} """
 
-    override def links = List(
+    override val links = List(
       LanguageSpec(suffix = "06-expressions.html#anonymous-functions")
     )
   }
@@ -435,7 +441,7 @@ object messages {
 
     }
 
-    override def links = List(
+    override val links = List(
       DottyDocs(suffix = "reference/trait-parameters.html")
     )
   }
@@ -468,7 +474,7 @@ object messages {
            |${"import Implicits"}.${cdef.name}"""
     }
 
-    override def links = implicitClassLinks
+    override val links = implicitClassLinks
   }
 
   case class ImplicitCaseClass(cdef: untpd.TypeDef)(implicit ctx: Context)
@@ -482,7 +488,7 @@ object messages {
            |${"implicit class"} ${cdef.name}...
            |"""
 
-    override def links = implicitClassLinks
+    override val links = implicitClassLinks
   }
 
   case class ImplicitClassPrimaryConstructorArity()(implicit ctx: Context)
@@ -572,7 +578,7 @@ object messages {
            |"""
     }
 
-    override def links = List(
+    override val links = List(
       TourUrl("More on String Interpolation", "core/string-interpolation.html")
     )
   }
@@ -828,6 +834,7 @@ object messages {
            |
            |$fixedVarInAlternative"""
     }
+    override val links = patternMatchingLinks
   }
 
   case class IdentifierExpected(identifier: String)(implicit ctx: Context)
@@ -907,6 +914,10 @@ object messages {
            | - String Literals: "Hello, World!"
            | - null
            |"""
+
+    override val links = List(
+      LanguageSpec(suffix = "01-lexical-syntax.html#literals")
+    )
   }
 
   case class PatternMatchExhaustivity(uncovered: String)(implicit ctx: Context)
@@ -924,6 +935,8 @@ object messages {
            | - If an extractor always return 'Some(...)', write 'Some[X]' for its return type
            | - Add a 'case _ => ...' at the end to match all remaining cases
            |"""
+
+    override val links = patternMatchingLinks
   }
 
   case class UncheckedTypePattern(msg: String)(implicit ctx: Context)
@@ -943,6 +956,7 @@ object messages {
     val kind = s"""Match ${hl"case"} Unreachable"""
     val msg = "unreachable code"
     val explanation = ""
+    override val links = patternMatchingLinks
   }
 
   case class SeqWildcardPatternPos()(implicit ctx: Context)
@@ -967,6 +981,7 @@ object messages {
            |
            |would give 3 as a result"""
     }
+    override val links = patternMatchingLinks
   }
 
   case class IllegalStartOfSimplePattern()(implicit ctx: Context)
@@ -1077,6 +1092,9 @@ object messages {
            |
            |${"List[_]"}
            |"""
+    override val links = List(
+      DottyDocs(suffix = "reference/dropped/existential-types.html")
+    )
   }
 
   case class UnboundWildcardType()(implicit ctx: Context)
@@ -1263,6 +1281,9 @@ object messages {
           |  (all other special characters)
           |Operators starting with a letter have lowest precedence, followed by operators starting with `|`, etc.
           |""".stripMargin
+    override val links = List(
+      LanguageSpec(suffix = "06-expressions.html#infix-operations")
+    )
   }
 
   case class CantInstantiateAbstractClassOrTrait(cls: Symbol, isTrait: Boolean)(implicit ctx: Context)
@@ -1737,7 +1758,7 @@ object messages {
          |In this instance, the modifier combination is not supported"""
     }
 
-    override def links: List[DocumentationLink] = List(
+    override val links = List(
       LanguageSpec("Please see the official Scala Language Specification section on modifiers",
         "05-classes-and-objects.html#modifiers"))
   }
@@ -1759,6 +1780,9 @@ object messages {
          |
          |$code2""".stripMargin
     }
+    override val links = List(
+      DottyDocs(suffix = "reference/implicit-function-types.html")
+    )
   }
 
   case class WrongNumberOfParameters(expected: Int)(implicit ctx: Context)
@@ -1782,6 +1806,9 @@ object messages {
     val msg = "expected start of definition"
     val explanation =
       hl"you have to provide either ${"class"}, ${"trait"}, ${"object"}, or ${"enum"} definitions after qualifiers"
+    override val links = List(
+      LanguageSpec(suffix = "09-top-level-definitions.html")
+    )
   }
 
   case class NoReturnFromInline(owner: Symbol)(implicit ctx: Context)

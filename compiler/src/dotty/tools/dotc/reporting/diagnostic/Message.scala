@@ -38,6 +38,9 @@ object DocumentationLink {
   case class TourUrl(text: String, suffix: String) extends DocumentationLink {
     val url = s"http://docs.scala-lang.org/overviews/$suffix"
   }
+  case class Sip(text: String, suffix: String) extends DocumentationLink {
+    val url = s"http://docs.scala-lang.org/sips/$suffix"
+  }
   case class DottyDocs(text: String = "Dotty documentation", suffix: String) extends DocumentationLink {
     val url = s"http://dotty.epfl.ch/docs/$suffix"
   }
@@ -83,7 +86,10 @@ abstract class Message(val errorId: ErrorMessageID) { self =>
     */
   def explanation: String
 
-  def links: List[DocumentationLink] = Nil
+  /** Links may list URLs to Internet resources related to the error
+    * e.g. the Scala Language Specification.
+    */
+  val links: List[DocumentationLink] = Nil
 
   /** The implicit `Context` in messages is a large thing that we don't want
     * persisted. This method gets around that by duplicating the message
@@ -93,8 +99,7 @@ abstract class Message(val errorId: ErrorMessageID) { self =>
     val msg         = self.msg
     val kind        = self.kind
     val explanation = self.explanation
-    private val persistedLinks = self.links
-    override def links = persistedLinks
+    override val links = self.links
   }
 }
 
