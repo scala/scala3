@@ -4198,13 +4198,6 @@ object Types {
           val tp1 = tp.prefix.lookupRefined(tp.name)
           if (tp1.exists) this(x, tp1) else applyToPrefix(x, tp)
         }
-      case tp: TermRef =>
-        if (stopAtStatic && tp.currentSymbol.isStatic) x
-        else applyToPrefix(x, tp)
-
-      case _: ThisType
-         | _: BoundType
-         | NoPrefix => x
 
       case tp @ AppliedType(tycon, args) =>
         @tailrec def foldArgs(x: T, tparams: List[ParamInfo], args: List[Type]): T =
@@ -4222,8 +4215,25 @@ object Types {
           }
         foldArgs(this(x, tycon), tp.typeParams, args)
 
-      case tp: RefinedType =>
-        this(this(x, tp.parent), tp.refinedInfo)
+      case _: BoundType | _: ThisType => x
+
+      case tp: LambdaType =>
+        variance = -variance
+        val y = foldOver(x, tp.paramInfos)
+        variance = -variance
+        this(y, tp.resultType)
+
+      case NoPrefix => x
+
+      case tp: TermRef =>
+        if (stopAtStatic && tp.currentSymbol.isStatic) x
+        else applyToPrefix(x, tp)
+
+      case tp: TypeVar =>
+        this(x, tp.underlying)
+
+      case ExprType(restpe) =>
+        this(x, restpe)
 
       case bounds @ TypeBounds(lo, hi) =>
         if (lo eq hi) atVariance(0)(this(x, lo))
@@ -4234,29 +4244,26 @@ object Types {
           this(y, hi)
         }
 
-      case tp: RecType =>
-        this(x, tp.parent)
+      case tp: AndOrType =>
+        this(this(x, tp.tp1), tp.tp2)
 
-      case ExprType(restpe) =>
-        this(x, restpe)
+      case AnnotatedType(underlying, annot) =>
+        this(applyToAnnot(x, annot), underlying)
 
-      case tp: TypeVar =>
-        this(x, tp.underlying)
+      case tp: ProtoType =>
+        tp.fold(x, this)
 
-      case SuperType(thistp, supertp) =>
-        this(this(x, thistp), supertp)
+      case tp: RefinedType =>
+        this(this(x, tp.parent), tp.refinedInfo)
+
+      case tp: WildcardType =>
+        this(x, tp.optBounds)
 
       case tp @ ClassInfo(prefix, _, _, _, _) =>
         this(x, prefix)
 
-      case tp: LambdaType =>
-        variance = -variance
-        val y = foldOver(x, tp.paramInfos)
-        variance = -variance
-        this(y, tp.resultType)
-
-      case tp: AndOrType =>
-        this(this(x, tp.tp1), tp.tp2)
+      case tp: JavaArrayType =>
+        this(x, tp.elemType)
 
       case tp: SkolemType =>
         this(x, tp.info)
@@ -4264,20 +4271,14 @@ object Types {
       case tp @ TypeArgRef(prefix, _, _) =>
         atVariance(0)(this(x, prefix))
 
-      case AnnotatedType(underlying, annot) =>
-        this(applyToAnnot(x, annot), underlying)
-
-      case tp: WildcardType =>
-        this(x, tp.optBounds)
-
-      case tp: JavaArrayType =>
-        this(x, tp.elemType)
+      case SuperType(thistp, supertp) =>
+        this(this(x, thistp), supertp)
 
       case tp: LazyRef =>
         this(x, tp.ref)
 
-      case tp: ProtoType =>
-        tp.fold(x, this)
+      case tp: RecType =>
+        this(x, tp.parent)
 
       case _ => x
     }}
