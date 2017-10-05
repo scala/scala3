@@ -16,7 +16,7 @@ import annotation.tailrec
 import ErrorReporting._
 import tpd.ListOfTreeDecorator
 import config.Config
-import config.Printers.{typr, completions, noPrinter}
+import config.Printers.{typr, noPrinter}
 import Annotations._
 import Inferencing._
 import transform.ValueClasses._
@@ -746,14 +746,13 @@ class Namer { typer: Typer =>
     }
 
     final override def complete(denot: SymDenotation)(implicit ctx: Context) = {
-      if (completions != noPrinter && ctx.typerState != this.ctx.typerState) {
-        completions.println(completions.getClass.toString)
+      if (Config.showCompletions && ctx.typerState != this.ctx.typerState) {
         def levels(c: Context): Int =
           if (c.typerState eq this.ctx.typerState) 0
           else if (c.typerState == null) -1
           else if (c.outer.typerState == c.typerState) levels(c.outer)
           else levels(c.outer) + 1
-        completions.println(s"!!!completing ${denot.symbol.showLocated} in buried typerState, gap = ${levels(ctx)}")
+        println(s"!!!completing ${denot.symbol.showLocated} in buried typerState, gap = ${levels(ctx)}")
       }
       assert(ctx.runId == creationContext.runId, "completing $denot in wrong run ${ctx.runId}, was created in ${creationContext.runId}")
       completeInCreationContext(denot)

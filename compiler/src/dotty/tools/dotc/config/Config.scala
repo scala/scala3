@@ -144,6 +144,9 @@ object Config {
    */
   final val simplifyApplications = true
 
+  /** If set, prints a trace of all symbol completions */
+  final val showCompletions = false
+
   /** Initial size of superId table */
   final val InitialSuperIdsSize = 4096
 
