@@ -5,6 +5,8 @@ import java.io.{File, RandomAccessFile}
 import java.nio.channels.FileLock
 import java.nio.file.{ Files, FileSystemException }
 import java.util.Calendar
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
 
 import scala.reflect.io.Path
 import sbtassembly.AssemblyKeys.assembly
@@ -40,9 +42,9 @@ object Build {
 
   val dottyOrganization = "ch.epfl.lamp"
   val dottyGithubUrl = "https://github.com/lampepfl/dotty"
+  val isNightly = sys.env.get("NIGHTLYBUILD") == Some("yes")
   val dottyVersion = {
     val baseVersion = "0.4.0"
-    val isNightly = sys.env.get("NIGHTLYBUILD") == Some("yes")
     val isRelease = sys.env.get("RELEASEBUILD") == Some("yes")
     if (isNightly)
       baseVersion + "-bin-" + VersionUtil.commitDate + "-" + VersionUtil.gitHash + "-NIGHTLY"
@@ -931,6 +933,7 @@ object Build {
         Opts.resolver.sonatypeStaging
     ),
     publishArtifact in Test := false,
+    publishArtifact := !isNightly || LocalDate.now().isBefore(LocalDate.parse(VersionUtil.commitDate, DateTimeFormatter.ofPattern("yyyyMMdd")).plusDays(1)),
     homepage := Some(url(dottyGithubUrl)),
     licenses += ("BSD New",
       url(s"$dottyGithubUrl/blob/master/LICENSE.md")),
