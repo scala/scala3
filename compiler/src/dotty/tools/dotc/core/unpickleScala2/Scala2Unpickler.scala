@@ -28,6 +28,7 @@ import classfile.ClassfileParser
 import scala.collection.{ mutable, immutable }
 import scala.collection.mutable.ListBuffer
 import scala.annotation.switch
+import reporting.trace
 
 object Scala2Unpickler {
 
@@ -571,7 +572,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
             } else {
               assert(denot.is(ParamAccessor) || denot.isSuperAccessor, denot)
               def disambiguate(alt: Symbol) = { // !!! DEBUG
-                ctx.debugTraceIndented(s"disambiguating ${denot.info} =:= ${denot.owner.thisType.memberInfo(alt)} ${denot.owner}") {
+                trace.onDebug(s"disambiguating ${denot.info} =:= ${denot.owner.thisType.memberInfo(alt)} ${denot.owner}") {
                   denot.info matches denot.owner.thisType.memberInfo(alt)
                 }
               }

@@ -18,6 +18,7 @@ import util.Stats
 import java.util.WeakHashMap
 import config.Config
 import config.Printers.{incremental, noPrinter}
+import reporting.trace
 
 trait SymDenotations { this: Context =>
   import SymDenotations._
@@ -1672,7 +1673,7 @@ object SymDenotations {
         }
       }
 
-      /*>|>*/ ctx.debugTraceIndented(s"$tp.baseType($this)") /*<|<*/ {
+      /*>|>*/ trace.onDebug(s"$tp.baseType($this)") /*<|<*/ {
         Stats.record("baseTypeOf")
         tp.stripTypeVar match { // @!!! dealias?
           case tp: CachedType =>

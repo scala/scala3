@@ -1061,7 +1061,7 @@ class Namer { typer: Typer =>
 
       // Approximate a type `tp` with a type that does not contain skolem types.
       val deskolemize = new ApproximatingTypeMap {
-        def apply(tp: Type) = /*ctx.traceIndented(i"deskolemize($tp) at $variance", show = true)*/ {
+        def apply(tp: Type) = /*trace(i"deskolemize($tp) at $variance", show = true)*/ {
           tp match {
             case tp: SkolemType => range(tp.bottomType, atVariance(1)(apply(tp.info)))
             case _ => mapOver(tp)

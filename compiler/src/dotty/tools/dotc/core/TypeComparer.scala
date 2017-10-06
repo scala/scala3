@@ -12,6 +12,7 @@ import config.Printers.{typr, constr, subtyping, noPrinter}
 import TypeErasure.{erasedLub, erasedGlb}
 import TypeApplications._
 import scala.util.control.NonFatal
+import reporting.trace
 
 /** Provides methods to compare types.
  */
@@ -105,7 +106,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
         assert(isSatisfiable, constraint.show)
   }
 
-  protected def isSubType(tp1: Type, tp2: Type): Boolean = ctx.traceIndented(s"isSubType ${traceInfo(tp1, tp2)}", subtyping) {
+  protected def isSubType(tp1: Type, tp2: Type): Boolean = trace(s"isSubType ${traceInfo(tp1, tp2)}", subtyping) {
     if (tp2 eq NoType) false
     else if (tp1 eq tp2) true
     else {
@@ -948,7 +949,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
    *  rebase both itself and the member info of `tp` on a freshly created skolem type.
    */
   protected def hasMatchingMember(name: Name, tp1: Type, tp2: RefinedType): Boolean =
-    /*>|>*/ ctx.traceIndented(i"hasMatchingMember($tp1 . $name :? ${tp2.refinedInfo}), mbr: ${tp1.member(name).info}", subtyping) /*<|<*/ {
+    /*>|>*/ trace(i"hasMatchingMember($tp1 . $name :? ${tp2.refinedInfo}), mbr: ${tp1.member(name).info}", subtyping) /*<|<*/ {
       val rinfo2 = tp2.refinedInfo
 
       // If the member is an abstract type, compare the member itself
@@ -1159,7 +1160,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
   /** Same as `isSameType` but also can be applied to overloaded TermRefs, where
    *  two overloaded refs are the same if they have pairwise equal alternatives
    */
-  def isSameRef(tp1: Type, tp2: Type): Boolean = ctx.traceIndented(s"isSameRef($tp1, $tp2") {
+  def isSameRef(tp1: Type, tp2: Type): Boolean = trace(s"isSameRef($tp1, $tp2") {
     def isSubRef(tp1: Type, tp2: Type): Boolean = tp1 match {
       case tp1: TermRef if tp1.isOverloaded =>
         tp1.alternatives forall (isSubRef(_, tp2))
@@ -1175,7 +1176,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
   }
 
   /** The greatest lower bound of two types */
-  def glb(tp1: Type, tp2: Type): Type = /*>|>*/ ctx.traceIndented(s"glb(${tp1.show}, ${tp2.show})", subtyping, show = true) /*<|<*/ {
+  def glb(tp1: Type, tp2: Type): Type = /*>|>*/ trace(s"glb(${tp1.show}, ${tp2.show})", subtyping, show = true) /*<|<*/ {
     if (tp1 eq tp2) tp1
     else if (!tp1.exists) tp2
     else if (!tp2.exists) tp1
@@ -1224,7 +1225,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
    *  @param canConstrain  If true, new constraints might be added to simplify the lub.
    *  @note  We do not admit singleton types in or-types as lubs.
    */
-  def lub(tp1: Type, tp2: Type, canConstrain: Boolean = false): Type = /*>|>*/ ctx.traceIndented(s"lub(${tp1.show}, ${tp2.show}, canConstrain=$canConstrain)", subtyping, show = true) /*<|<*/ {
+  def lub(tp1: Type, tp2: Type, canConstrain: Boolean = false): Type = /*>|>*/ trace(s"lub(${tp1.show}, ${tp2.show}, canConstrain=$canConstrain)", subtyping, show = true) /*<|<*/ {
     if (tp1 eq tp2) tp1
     else if (!tp1.exists) tp1
     else if (!tp2.exists) tp2
@@ -1383,7 +1384,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
    *
    *  In these cases, a MergeError is thrown.
    */
-  final def andType(tp1: Type, tp2: Type, erased: Boolean = ctx.erasedTypes) = ctx.traceIndented(s"glb(${tp1.show}, ${tp2.show})", subtyping, show = true) {
+  final def andType(tp1: Type, tp2: Type, erased: Boolean = ctx.erasedTypes) = trace(s"glb(${tp1.show}, ${tp2.show})", subtyping, show = true) {
     val t1 = distributeAnd(tp1, tp2)
     if (t1.exists) t1
     else {

@@ -25,6 +25,7 @@ import config.Printers.inlining
 import ErrorReporting.errorTree
 import collection.mutable
 import transform.TypeUtils._
+import reporting.trace
 
 object Inliner {
   import tpd._
@@ -486,7 +487,7 @@ class Inliner(call: tpd.Tree, rhs: tpd.Tree)(implicit ctx: Context) {
     val inliner = new TreeTypeMap(typeMap, treeMap, meth :: Nil, ctx.owner :: Nil)(inlineCtx)
 
     val expansion = inliner(rhs.withPos(call.pos))
-    ctx.traceIndented(i"inlining $call\n, BINDINGS =\n${bindingsBuf.toList}%\n%\nEXPANSION =\n$expansion", inlining, show = true) {
+    trace(i"inlining $call\n, BINDINGS =\n${bindingsBuf.toList}%\n%\nEXPANSION =\n$expansion", inlining, show = true) {
 
       // The final expansion runs a typing pass over the inlined tree. See InlineTyper for details.
       val expansion1 = InlineTyper.typed(expansion, pt)(inlineCtx)

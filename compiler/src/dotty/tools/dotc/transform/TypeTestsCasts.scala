@@ -10,6 +10,7 @@ import ValueClasses._
 import SymUtils._
 import core.Flags._
 import util.Positions._
+import reporting.trace
 
 
 /** This transform normalizes type tests and type casts,
@@ -26,7 +27,7 @@ import util.Positions._
 object TypeTestsCasts {
   import ast.tpd._
 
-  def interceptTypeApply(tree: TypeApply)(implicit ctx: Context): Tree = ctx.traceIndented(s"transforming ${tree.show}", show = true) {
+  def interceptTypeApply(tree: TypeApply)(implicit ctx: Context): Tree = trace(s"transforming ${tree.show}", show = true) {
     tree.fun match {
       case fun @ Select(expr, selector) =>
         val sym = tree.symbol

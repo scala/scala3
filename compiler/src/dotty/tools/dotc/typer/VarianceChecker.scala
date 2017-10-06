@@ -9,6 +9,7 @@ import Variances._
 import util.Positions._
 import rewrite.Rewrites.patch
 import config.Printers.variances
+import reporting.trace
 
 /** Provides `check` method to check that all top-level definitions
  *  in tree are variance correct. Does not recurse inside methods.
@@ -38,7 +39,7 @@ class VarianceChecker()(implicit ctx: Context) {
      *  The search proceeds from `base` to the owner of `tvar`.
      *  Initially the state is covariant, but it might change along the search.
      */
-    def relativeVariance(tvar: Symbol, base: Symbol, v: Variance = Covariant): Variance = /*ctx.traceIndented(i"relative variance of $tvar wrt $base, so far: $v")*/ {
+    def relativeVariance(tvar: Symbol, base: Symbol, v: Variance = Covariant): Variance = /*trace(i"relative variance of $tvar wrt $base, so far: $v")*/ {
       if (base == tvar.owner) v
       else if ((base is Param) && base.owner.isTerm)
         relativeVariance(tvar, paramOuter(base.owner), flip(v))
@@ -80,7 +81,7 @@ class VarianceChecker()(implicit ctx: Context) {
      *  explicitly (their TypeDefs will be passed here.) For MethodTypes, the
      *  same is true of the parameters (ValDefs).
      */
-    def apply(status: Option[VarianceError], tp: Type): Option[VarianceError] = ctx.traceIndented(s"variance checking $tp of $base at $variance", variances) {
+    def apply(status: Option[VarianceError], tp: Type): Option[VarianceError] = trace(s"variance checking $tp of $base at $variance", variances) {
       if (status.isDefined) status
       else tp match {
         case tp: TypeRef =>
