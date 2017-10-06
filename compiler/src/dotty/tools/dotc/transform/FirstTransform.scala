@@ -203,7 +203,7 @@ class FirstTransform extends MiniPhaseTransform with InfoTransformer with Annota
     constToLiteral(tree)
 
   override def transformApply(tree: Apply)(implicit ctx: Context, info: TransformerInfo) =
-    constToLiteral(tree)
+    constToLiteral(foldCondition(tree))
 
   override def transformTyped(tree: Typed)(implicit ctx: Context, info: TransformerInfo) =
     constToLiteral(tree)
@@ -216,6 +216,20 @@ class FirstTransform extends MiniPhaseTransform with InfoTransformer with Annota
       case Literal(Constant(c: Boolean)) => if (c) tree.thenp else tree.elsep
       case _ => tree
     }
+
+  private def foldCondition(tree: Apply)(implicit ctx: Context) = tree.fun match {
+    case Select(x @ Literal(Constant(c: Boolean)), op) =>
+      tree.args match {
+        case y :: Nil if y.tpe.widen.isRef(defn.BooleanClass) =>
+          op match {
+            case nme.ZAND => if (c) y else x
+            case nme.ZOR  => if (c) x else y
+            case _ => tree
+          }
+        case _ => tree
+      }
+    case _ => tree
+  }
 
   // invariants: all modules have companion objects
   // all types are TypeTrees
