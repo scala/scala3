@@ -462,6 +462,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
     def completeRoot(denot: ClassDenotation, completer: LazyType): Symbol = {
       denot.setFlag(flags)
       denot.resetFlag(Touched) // allow one more completion
+      denot.setCompletionStatus(null) // allow one more completion
       denot.info = completer
       denot.symbol
     }

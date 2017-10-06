@@ -134,6 +134,11 @@ object SymDenotations {
 
     // ------ Getting and setting fields -----------------------------
 
+    @volatile private[this] var completionStatus: AnyRef /* Thread | SymDenotation */ =
+      if (initInfo.isInstanceOf[LazyType]) null else this
+
+    def setCompletionStatus(status: AnyRef) = { completionStatus = status }
+
     private[this] var myFlags: FlagSet = adaptFlags(initFlags)
     private[this] var myInfo: Type = initInfo
     private[this] var myPrivateWithin: Symbol = initPrivateWithin
@@ -202,7 +207,15 @@ object SymDenotations {
       def completeInfo = {
         completeFrom(myInfo.asInstanceOf[LazyType]); info
       }
-      if (myInfo.isInstanceOf[LazyType]) completeInfo else myInfo
+      val status = completionStatus
+      if (myInfo.isInstanceOf[LazyType]) {
+        assert(status ne this)
+      	completeInfo
+      }
+      else {
+        assert(status eq this)
+      	myInfo
+      }
     }
 
     /** The type info, or, if symbol is not yet completed, the completer */
@@ -221,6 +234,7 @@ object SymDenotations {
       }
       if (myFlags is Touched) throw CyclicReference(this)
       myFlags |= Touched
+      completionStatus = Thread.currentThread()
 
       // completions.println(s"completing ${this.debugString}")
       try completer.complete(this)(ctx.withPhase(validFor.firstPhaseId))
@@ -249,6 +263,10 @@ object SymDenotations {
         }
         */
       if (Config.checkNoSkolemsInInfo) assertNoSkolems(tp)
+      if (tp.isInstanceOf[LazyType]) {
+        if (completionStatus.isInstanceOf[SymDenotation]) completionStatus = null
+      }
+      else completionStatus = this
       myInfo = tp
     }
 
@@ -331,10 +349,20 @@ object SymDenotations {
     }
 
     /** The denotation is completed: info is not a lazy type and attributes have defined values */
-    final def isCompleted: Boolean = !myInfo.isInstanceOf[LazyType]
+    final def isCompleted: Boolean = {
+      val res = !myInfo.isInstanceOf[LazyType]
+      assert(res == completionStatus.eq(this))
+      res
+    }
 
     /** The denotation is in train of being completed */
-    final def isCompleting: Boolean = (myFlags is Touched) && !isCompleted
+    final def isCompleting: Boolean = {
+      val res = (myFlags is Touched) && myInfo.isInstanceOf[LazyType]
+      val status = completionStatus
+      if (res) assert(status ne this)
+      //assert(res == (status.ne(null) && status.ne(this)), s"discrepancy for $this, res = $res, status = $completionStatus")
+      res
+    }
 
     /** The completer of this denotation. @pre: Denotation is not yet completed */
     final def completer: LazyType = myInfo.asInstanceOf[LazyType]
@@ -436,8 +464,10 @@ object SymDenotations {
     def isError: Boolean = false
 
     /** Make denotation not exist */
-    final def markAbsent(): Unit =
+    final def markAbsent(): Unit = {
       myInfo = NoType
+      completionStatus = this
+    }
 
     /** Is symbol known to not exist, or potentially not completed yet? */
     final def unforcedIsAbsent(implicit ctx: Context): Boolean =
@@ -1197,6 +1227,11 @@ object SymDenotations {
       val annotations1 = if (annotations != null) annotations else this.annotations
       val d = ctx.SymDenotation(symbol, owner, name, initFlags1, info1, privateWithin1)
       d.annotations = annotations1
+      val status = completionStatus
+      d.setCompletionStatus(
+        if (status.ne(this)) status
+        else if (info1.isInstanceOf[LazyType]) null
+        else d)
       d
     }
 
