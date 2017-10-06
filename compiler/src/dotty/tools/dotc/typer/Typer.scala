@@ -2150,7 +2150,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
         case wtp: ExprType =>
           adaptInterpolated(tree.withType(wtp.resultType), pt)
         case wtp: MethodType
-        if wtp.isImplicitMethod && constrainResult(wtp, followAlias(pt)) || !functionExpected =>
+        if wtp.isImplicitMethod && (constrainResult(wtp, followAlias(pt)) || !functionExpected) =>
           adaptNoArgsImplicitMethod(wtp)
         case wtp: MethodType if !pt.isInstanceOf[SingletonType] =>
           val arity =
