@@ -2251,7 +2251,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
      *  tree that went unreported. A scenario where this happens is i1802.scala.
      */
     def ensureReported(tp: Type) = tp match {
-      case err: ErrorType if !ctx.reporter.hasErrors => ctx.error(err.msg, tree.pos)
+      case err: ErrorType if !ctx.reporter.errorsReported => ctx.error(err.msg, tree.pos)
       case _ =>
     }
 
