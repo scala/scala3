@@ -668,8 +668,10 @@ object Denotations {
     private[this] var myValidFor: Period = Nowhere
 
     def validFor = myValidFor
-    def validFor_=(p: Period) =
+    def validFor_=(p: Period) = {
       myValidFor = p
+      symbol.invalidateDenotCache()
+    }
 
     /** The next SingleDenotation in this run, with wrap-around from last to first.
      *
