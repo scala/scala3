@@ -1,0 +1,4 @@
+> compile
+$ copy-file changes/A1.scala A.scala
+# Compilation of B.scala should fail because the signature of A#param has changed
+-> compile

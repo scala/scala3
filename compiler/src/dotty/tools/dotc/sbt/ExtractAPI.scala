@@ -147,6 +147,7 @@ private class ExtractAPICollector(implicit val ctx: Context) extends ThunkHolder
     new api.Annotated(tp, Array(marker))
   private def marker(name: String) =
     new api.Annotation(new api.Constant(Constants.emptyType, name), Array())
+  val typeArgRefMarker = marker("TypeArgRef")
   val orMarker = marker("Or")
   val byNameMarker = marker("ByName")
 
@@ -343,6 +344,12 @@ private class ExtractAPICollector(implicit val ctx: Context) extends ThunkHolder
     }
   }
 
+  // Hack to represent dotty types which don't have an equivalent in xsbti
+  def combineApiTypes(apiTps: api.Type*): api.Type = {
+    new api.Structure(strict2lzy(apiTps.toArray),
+      strict2lzy(Array()), strict2lzy(Array()))
+  }
+
   def apiType(tp: Type): api.Type = {
     typeCache.getOrElseUpdate(tp, computeType(tp))
   }
@@ -450,7 +457,7 @@ private class ExtractAPICollector(implicit val ctx: Context) extends ThunkHolder
         // TODO: Add a real representation for AndOrTypes in xsbti. The order of
         // types in an `AndOrType` does not change the API, so the API hash should
         // be symmetric.
-        val s = new api.Structure(strict2lzy(parents.toArray), strict2lzy(Array()), strict2lzy(Array()))
+        val s = combineApiTypes(apiType(tp.tp1), apiType(tp.tp2))
         if (tp.isAnd)
           s
         else
@@ -471,6 +478,9 @@ private class ExtractAPICollector(implicit val ctx: Context) extends ThunkHolder
         apiType(tp.ref)
       case tp: TypeVar =>
         apiType(tp.underlying)
+      case TypeArgRef(prefix, clsRef, idx) =>
+        val apiClsWithIdx = withMarker(apiType(clsRef), marker(idx.toString))
+        withMarker(combineApiTypes(apiType(prefix), apiClsWithIdx), typeArgRefMarker)
       case _ => {
         ctx.warning(i"sbt-api: Unhandled type ${tp.getClass} : $tp")
         Constants.emptyType
