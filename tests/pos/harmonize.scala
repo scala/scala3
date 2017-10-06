@@ -55,4 +55,19 @@ object Test {
   val b5: Array[AnyVal] = a5
   val a6 = Array(1.0f, 1234567890)
   val b6: Array[AnyVal] = a6
+
+  def totalDuration(results: List[Long], cond: Boolean): Long =
+    results.map(r => if (cond) r else 0).sum
+  def totalDuration2(results: List[Long], cond: Boolean): Long =
+    results.map{ r =>
+      cond match {
+        case true => r
+        case false => 0
+      }
+    }.sum
+  def totalDuration3(results: List[Long], cond: Boolean): Long =
+    results.map{ r =>
+      try r
+      catch { case ex: Exception => 0 }
+    }.sum
 }

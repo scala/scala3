@@ -674,9 +674,11 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
 
   def typedIf(tree: untpd.If, pt: Type)(implicit ctx: Context): Tree = track("typedIf") {
     val cond1 = typed(tree.cond, defn.BooleanType)
-    val thenp1 = typed(tree.thenp, pt.notApplied)
-    val elsep1 = typed(tree.elsep orElse (untpd.unitLiteral withPos tree.pos), pt.notApplied)
-    val thenp2 :: elsep2 :: Nil = harmonize(thenp1 :: elsep1 :: Nil)
+    val thenp2 :: elsep2 :: Nil = harmonic(harmonize) {
+      val thenp1 = typed(tree.thenp, pt.notApplied)
+      val elsep1 = typed(tree.elsep orElse (untpd.unitLiteral withPos tree.pos), pt.notApplied)
+      thenp1 :: elsep1 :: Nil
+    }
     assignType(cpy.If(tree)(cond1, thenp2, elsep2), thenp2, elsep2)
   }
 
@@ -884,9 +886,9 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
         val sel1 = typedExpr(tree.selector)
         val selType = fullyDefinedType(sel1.tpe, "pattern selector", tree.pos).widen
 
-        val cases1 = typedCases(tree.cases, selType, pt.notApplied)
-        val cases2 = harmonize(cases1).asInstanceOf[List[CaseDef]]
-        assignType(cpy.Match(tree)(sel1, cases2), cases2)
+        val cases1 = harmonic(harmonize)(typedCases(tree.cases, selType, pt.notApplied))
+          .asInstanceOf[List[CaseDef]]
+        assignType(cpy.Match(tree)(sel1, cases1), cases1)
     }
   }
 
@@ -1011,10 +1013,12 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
   }
 
   def typedTry(tree: untpd.Try, pt: Type)(implicit ctx: Context): Try = track("typedTry") {
-    val expr1 = typed(tree.expr, pt.notApplied)
-    val cases1 = typedCases(tree.cases, defn.ThrowableType, pt.notApplied)
+    val expr2 :: cases2x = harmonic(harmonize) {
+      val expr1 = typed(tree.expr, pt.notApplied)
+      val cases1 = typedCases(tree.cases, defn.ThrowableType, pt.notApplied)
+      expr1 :: cases1
+    }
     val finalizer1 = typed(tree.finalizer, defn.UnitType)
-    val expr2 :: cases2x = harmonize(expr1 :: cases1)
     val cases2 = cases2x.asInstanceOf[List[CaseDef]]
     assignType(cpy.Try(tree)(expr2, cases2, finalizer1), expr2, cases2)
   }

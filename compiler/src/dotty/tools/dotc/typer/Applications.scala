@@ -438,16 +438,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
                 addTyped(arg, formal)
               case _ =>
                 val elemFormal = formal.widenExpr.argTypesLo.head
-                val origConstraint = ctx.typerState.constraint
-                var typedArgs = args.map(typedArg(_, elemFormal))
-                val harmonizedArgs = harmonizeArgs(typedArgs)
-                if (harmonizedArgs ne typedArgs) {
-                  ctx.typerState.constraint = origConstraint
-                    // reset constraint, we will re-establish constraint anyway when we
-                    // compare against the seqliteral. The reset is needed
-                    // otherwise pos/harmonize.scala would fail on line 40.
-                  typedArgs = harmonizedArgs
-                }
+                val typedArgs = harmonic(harmonizeArgs)(args.map(typedArg(_, elemFormal)))
                 typedArgs.foreach(addArg(_, elemFormal))
                 makeVarArg(args.length, elemFormal)
             }
@@ -1492,6 +1483,23 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
       case _ => adaptInterpolated(tree, pt)
     }
     if (ctx.isAfterTyper) trees else harmonizeWith(trees)(_.tpe, adapt)
+  }
+
+  /** Apply a transformation `harmonize` on the results of operation `op`.
+   *  If the result is different (wrt eq) from the original results of `op`,
+   *  revert back to the constraint in force before computing `op`.
+   *  This reset is needed because otherwise the original results might
+   *  have added constraints to type parameters which are no longer
+   *  implied after harmonization. No essential constraints are lost by this because
+   *  the result of harmomization will be compared again with the expected type.
+   *  Test cases where this matters are in pos/harmomize.scala.
+   */
+  def harmonic[T](harmonize: List[T] => List[T])(op: => List[T])(implicit ctx: Context) = {
+    val origConstraint = ctx.typerState.constraint
+    val origElems = op
+    val harmonizedElems = harmonize(origElems)
+    if (harmonizedElems ne origElems) ctx.typerState.constraint = origConstraint
+    harmonizedElems
   }
 
   /** If all `types` are numeric value types, and they are not all the same type,
