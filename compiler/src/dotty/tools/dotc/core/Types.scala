@@ -4315,18 +4315,22 @@ object Types {
       else {
         seen += tp
         tp match {
-          case tp: TermRef =>
-            apply(foldOver(maybeAdd(x, tp), tp), tp.underlying)
           case tp: TypeRef =>
             foldOver(maybeAdd(x, tp), tp)
+          case tp: ThisType =>
+            apply(x, tp.tref)
+          case NoPrefix =>
+            foldOver(x, tp)
+          case tp: TermRef =>
+            apply(foldOver(maybeAdd(x, tp), tp), tp.underlying)
+          case tp: AppliedType =>
+            foldOver(x, tp)
           case TypeBounds(lo, hi) =>
             if (!excludeLowerBounds) apply(x, lo)
             apply(x, hi)
-          case tp: ThisType =>
-            apply(x, tp.tref)
-          case tp: ConstantType =>
-            apply(x, tp.underlying)
           case tp: ParamRef =>
+            apply(x, tp.underlying)
+          case tp: ConstantType =>
             apply(x, tp.underlying)
           case _ =>
             foldOver(x, tp)
