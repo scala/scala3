@@ -38,7 +38,7 @@ object Names {
   abstract class Name extends Designator with PreName { self =>
 
     /** A type for names of the same kind as this name */
-    type ThisName <: Name { type ThisName = self.ThisName }
+    type ThisName <: Name
 
     /** Is this name a type name? */
     def isTypeName: Boolean
