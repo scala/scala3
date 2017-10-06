@@ -878,7 +878,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     tree.selector match {
       case EmptyTree =>
         val (protoFormals, _) = decomposeProtoFunction(pt, 1)
-        val unchecked = pt <:< defn.PartialFunctionType
+        val unchecked = pt.isRef(defn.PartialFunctionClass)
         typed(desugar.makeCaseLambda(tree.cases, protoFormals.length, unchecked) withPos tree.pos, pt)
       case _ =>
         val sel1 = typedExpr(tree.selector)
