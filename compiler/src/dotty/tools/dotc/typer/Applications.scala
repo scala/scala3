@@ -1089,8 +1089,20 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
         isApplicable(alt2, formals1, WildcardType) ||
         tp1.paramInfos.isEmpty && tp2.isInstanceOf[LambdaType]
       case tp1: PolyType => // (2)
-        val tparams = ctx.newTypeParams(alt1.symbol, tp1.paramNames, EmptyFlags, tp1.instantiateBounds)
-        isAsSpecific(alt1, tp1.instantiate(tparams.map(_.typeRef)), alt2, tp2)
+        val nestedCtx = ctx.fresh.setExploreTyperState()
+
+        {
+          implicit val ctx = nestedCtx
+
+          // Fully define the type so that the types of the tparams created
+          // below never contain TypeRefs whose underling types contain
+          // uninstantiated TypeVars, this could lead to cycles in `isSubType`
+          // as a TypeVar might get constrained by a TypeRef it's part of.
+          val tp1a = fullyDefinedType(tp1, "alternative", alt1.symbol.pos).asInstanceOf[PolyType]
+
+          val tparams = ctx.newTypeParams(alt1.symbol, tp1.paramNames, EmptyFlags, tp1a.instantiateBounds)
+          isAsSpecific(alt1, tp1a.instantiate(tparams.map(_.typeRef)), alt2, tp2)
+        }
       case _ => // (3)
         tp2 match {
           case tp2: MethodType => true // (3a)

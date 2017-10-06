@@ -168,7 +168,6 @@ class tests extends CompilerTest {
 
   @Test def rewrites = compileFile(posScala2Dir, "rewrites", "-rewrite" :: scala2mode)
 
-  @Test def pos_t8146a = compileFile(posSpecialDir, "t8146a")(allowDeepSubtypes)
   @Test def pos_jon = compileFile(posSpecialDir, "jon")(allowDeepSubtypes)
 
   @Test def pos_t5545 = {
