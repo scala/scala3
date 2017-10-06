@@ -32,49 +32,39 @@ class SpecializeFunctions extends MiniPhaseTransform with InfoTransformer {
     case tp: ClassInfo if !sym.is(Flags.Package) && (tp.decls ne EmptyScope) => {
       var newApplys = Map.empty[Name, Symbol]
 
-      val newParents = tp.parents.mapConserve { parent =>
-        List(0, 1, 2, 3).flatMap { arity =>
+      tp.parents.foreach { parent =>
+        List(0, 1, 2, 3).foreach { arity =>
           val func = defn.FunctionClass(arity)
           if (!parent.derivesFrom(func)) Nil
           else {
             val typeParams = tp.cls.typeRef.baseType(func).argInfos
-            val interface = specInterface(typeParams)
+            val interface  = specInterface(typeParams)
 
             if (interface.exists) {
               if (tp.decls.lookup(nme.apply).exists) {
                 val specializedMethodName = nme.apply.specializedFunction(typeParams.last, typeParams.init)
-                newApplys = newApplys + (specializedMethodName -> interface)
+                newApplys += (specializedMethodName -> interface)
               }
-
-              if (parent.isRef(func)) List(interface.typeRef)
-              else Nil
             }
-            else Nil
           }
         }
-        .headOption
-        .getOrElse(parent)
       }
 
       def newDecls =
-        if (newApplys.isEmpty) tp.decls
-        else
-          newApplys.toList.map { case (name, interface) =>
-            ctx.newSymbol(
-              sym,
-              name,
-              Flags.Override | Flags.Method,
-              interface.info.decls.lookup(name).info
-            )
-          }
-          .foldLeft(tp.decls.cloneScope) {
-            (scope, sym) => scope.enter(sym); scope
-          }
+        newApplys.toList.map { case (name, interface) =>
+          ctx.newSymbol(
+            sym,
+            name,
+            Flags.Override | Flags.Method,
+            interface.info.decls.lookup(name).info
+          )
+        }
+        .foldLeft(tp.decls.cloneScope) {
+          (scope, sym) => scope.enter(sym); scope
+        }
 
-      tp.derivedClassInfo(
-        classParents = newParents,
-        decls = newDecls
-      )
+      if (newApplys.isEmpty) tp
+      else tp.derivedClassInfo(decls = newDecls)
     }
 
     case _ => tp
@@ -95,15 +85,6 @@ class SpecializeFunctions extends MiniPhaseTransform with InfoTransformer {
         )
 
         val specializedApply = tree.symbol.enclosingClass.info.decls.lookup(specName)//member(specName).symbol
-        //val specializedApply = tree.symbol.enclosingClass.info.member(specName).symbol
-
-        if (false) {
-          println(tree.symbol.enclosingClass.show)
-          println("'" + specName.show + "'")
-          println(specializedApply)
-          println(specializedApply.exists)
-        }
-
 
         if (specializedApply.exists) {
           val apply = specializedApply.asTerm
@@ -126,22 +107,7 @@ class SpecializeFunctions extends MiniPhaseTransform with InfoTransformer {
       case x => x
     }
 
-    val missing: List[TypeTree] = List(0, 1, 2, 3).flatMap { arity =>
-      val func = defn.FunctionClass(arity)
-      val tr = tree.symbol.enclosingClass.typeRef
-
-      if (!tr.parents.exists(_.isRef(func))) Nil
-      else {
-        val typeParams = tr.baseType(func).argInfos
-        val interface = specInterface(typeParams)
-
-        if (interface.exists) List(interface.info)
-        else Nil
-      }
-    }.map(TypeTree _)
-
     cpy.Template(tree)(
-      parents = tree.parents ++ missing,
       body = applyBuf.toList ++ newBody
     )
   }

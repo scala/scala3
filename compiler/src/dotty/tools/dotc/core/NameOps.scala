@@ -295,7 +295,7 @@ object NameOps {
     /** This method is to be used on **type parameters** from a class, since
      *  this method does sorting based on their names
      */
-    def specializedFor(classTargs: List[Types.Type], classTargsNames: List[Name], methodTargs: List[Types.Type], methodTarsNames: List[Name])(implicit ctx: Context): name.ThisName = {
+    def specializedFor(classTargs: List[Types.Type], classTargsNames: List[Name], methodTargs: List[Types.Type], methodTarsNames: List[Name])(implicit ctx: Context): Name = {
       val methodTags: Seq[Name] = (methodTargs zip methodTarsNames).sortBy(_._2).map(x => typeToTag(x._1))
       val classTags: Seq[Name] = (classTargs zip classTargsNames).sortBy(_._2).map(x => typeToTag(x._1))
 
@@ -310,7 +310,7 @@ object NameOps {
      *
      *  `<return type><first type><second type><...>`
      */
-    def specializedFunction(ret: Types.Type, args: List[Types.Type])(implicit ctx: Context): name.ThisName =
+    def specializedFunction(ret: Types.Type, args: List[Types.Type])(implicit ctx: Context): Name =
       name ++ nme.specializedTypeNames.prefix ++
       nme.specializedTypeNames.separator ++ typeToTag(ret) ++
       args.map(typeToTag).fold(nme.EMPTY)(_ ++ _) ++ nme.specializedTypeNames.suffix
