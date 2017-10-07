@@ -18,8 +18,8 @@ object Message {
 }
 
 sealed trait DocumentationLink {
-  def text: String
   def url: String
+  def text: String
 }
 
 /** A documentation link can be rendered by tooling to direct the programmer to
@@ -32,19 +32,19 @@ sealed trait DocumentationLink {
   * if the error class is tested there.
   */
 object DocumentationLink {
-  case class LanguageSpec(text: String = "Scala Language Specification", suffix: String) extends DocumentationLink {
+  case class LanguageSpec(suffix: String, text: String = "Scala Language Specification") extends DocumentationLink {
     val url = s"https://www.scala-lang.org/files/archive/spec/2.13/$suffix"
   }
-  case class TourUrl(text: String, suffix: String) extends DocumentationLink {
+  case class TourUrl(suffix: String, text: String) extends DocumentationLink {
     val url = s"http://docs.scala-lang.org/overviews/$suffix"
   }
-  case class Sip(text: String, suffix: String) extends DocumentationLink {
+  case class Sip(suffix: String, text: String) extends DocumentationLink {
     val url = s"http://docs.scala-lang.org/sips/$suffix"
   }
-  case class DottyDocs(text: String = "Dotty documentation", suffix: String) extends DocumentationLink {
+  case class DottyDocs(suffix: String, text: String = "Dotty documentation") extends DocumentationLink {
     val url = s"http://dotty.epfl.ch/docs/$suffix"
   }
-  case class FullUrl(text: String, url: String) extends DocumentationLink
+  case class FullUrl(url: String, text: String) extends DocumentationLink
 }
 
 /** A `Message` contains all semantic information necessary to easily
