@@ -876,7 +876,7 @@ class Namer { typer: Typer =>
           else {
             val pclazz = pt.typeSymbol
             if (pclazz.is(Final))
-              ctx.error(em"cannot extend final $pclazz", cls.pos)
+              ctx.error(ExtendFinalClass(cls, pclazz), cls.pos)
             if (pclazz.is(Sealed) && pclazz.associatedFile != cls.associatedFile)
               ctx.error(em"cannot extend sealed $pclazz in different compilation unit", cls.pos)
             pt
