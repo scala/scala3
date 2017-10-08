@@ -13,7 +13,7 @@ import StdNames._
 import Annotations._
 import annotation.tailrec
 import config.Config
-import util.{SimpleMap, Property}
+import util.Property
 import collection.mutable
 import ast.tpd._
 

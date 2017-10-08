@@ -12,11 +12,8 @@ import StdNames.str
 import Designators._
 import util.Chars.isIdentifierStart
 import collection.IndexedSeqOptimized
-import collection.generic.CanBuildFrom
-import collection.mutable.{ Builder, StringBuilder, AnyRefMap }
-import collection.immutable.WrappedString
-import collection.generic.CanBuildFrom
-import util.{DotClass, SimpleMap}
+import collection.immutable
+import util.{DotClass}
 import config.Config
 import java.util.HashMap
 
@@ -193,24 +190,24 @@ object Names {
     def underlying: TermName = unsupported("underlying")
 
     @sharable // because of synchronized block in `and`
-    private var derivedNames: AnyRef /* SimpleMap | j.u.HashMap */ =
-      SimpleMap.Empty[NameInfo]
+    private var derivedNames: AnyRef /* immutable.Map[NameInfo, DerivedName] | j.u.HashMap */ =
+      immutable.Map.empty[NameInfo, DerivedName]
 
     private def getDerived(info: NameInfo): DerivedName /* | Null */= derivedNames match {
-      case derivedNames: SimpleMap[NameInfo, DerivedName] @unchecked =>
-        derivedNames(info)
+      case derivedNames: immutable.AbstractMap[NameInfo, DerivedName] @unchecked =>
+        if (derivedNames.contains(info)) derivedNames(info) else null
       case derivedNames: HashMap[NameInfo, DerivedName] @unchecked =>
         derivedNames.get(info)
     }
 
     private def putDerived(info: NameInfo, name: DerivedName): name.type = {
       derivedNames match {
-        case derivedNames: SimpleMap[NameInfo, DerivedName] @unchecked =>
+        case derivedNames: immutable.Map[NameInfo, DerivedName] @unchecked =>
           if (derivedNames.size < 4)
             this.derivedNames = derivedNames.updated(info, name)
           else {
             val newMap = new HashMap[NameInfo, DerivedName]
-            derivedNames.foreachBinding(newMap.put(_, _))
+            derivedNames.foreach { case (k, v) => newMap.put(k, v) }
             newMap.put(info, name)
             this.derivedNames = newMap
           }

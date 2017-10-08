@@ -41,13 +41,13 @@ object SimpleMap {
   class Map1[K <: AnyRef, +V >: Null <: AnyRef] (k1: K, v1: V) extends SimpleMap[K, V] {
     def size = 1
     def apply(k: K) =
-      if (k == k1) v1
+      if (k eq k1) v1
       else null
     def remove(k: K) =
-      if (k == k1) Empty.asInstanceOf[SimpleMap[K, V]]
+      if (k eq k1) Empty.asInstanceOf[SimpleMap[K, V]]
       else this
     def updated[V1 >: V <: AnyRef](k: K, v: V1) =
-      if (k == k1) new Map1(k, v)
+      if (k eq k1) new Map1(k, v)
       else new Map2(k1, v1, k, v)
     def mapValuesNow[V1 >: V <: AnyRef](f: (K, V1) => V1) = {
       val w1 = f(k1, v1)
@@ -59,16 +59,16 @@ object SimpleMap {
   class Map2[K <: AnyRef, +V >: Null <: AnyRef] (k1: K, v1: V, k2: K, v2: V) extends SimpleMap[K, V] {
     def size = 2
     def apply(k: K) =
-      if (k == k1) v1
-      else if (k == k2) v2
+      if (k eq k1) v1
+      else if (k eq k2) v2
       else null
     def remove(k: K) =
-      if (k == k1) new Map1(k2, v2)
-      else if (k == k2) new Map1(k1, v1)
+      if (k eq k1) new Map1(k2, v2)
+      else if (k eq k2) new Map1(k1, v1)
       else this
     def updated[V1 >: V <: AnyRef](k: K, v: V1) =
-      if (k == k1) new Map2(k, v, k2, v2)
-      else if (k == k2) new Map2(k1, v1, k, v)
+      if (k eq k1) new Map2(k, v, k2, v2)
+      else if (k eq k2) new Map2(k1, v1, k, v)
       else new Map3(k1, v1, k2, v2, k, v)
     def mapValuesNow[V1 >: V <: AnyRef](f: (K, V1) => V1) = {
       val w1 = f(k1, v1); val w2 = f(k2, v2)
@@ -81,19 +81,19 @@ object SimpleMap {
   class Map3[K <: AnyRef, +V >: Null <: AnyRef] (k1: K, v1: V, k2: K, v2: V, k3: K, v3: V) extends SimpleMap[K, V] {
     def size = 3
     def apply(k: K) =
-      if (k == k1) v1
-      else if (k == k2) v2
-      else if (k == k3) v3
+      if (k eq k1) v1
+      else if (k eq k2) v2
+      else if (k eq k3) v3
       else null
     def remove(k: K) =
-      if (k == k1) new Map2(k2, v2, k3, v3)
-      else if (k == k2) new Map2(k1, v1, k3, v3)
-      else if (k == k3) new Map2(k1, v1, k2, v2)
+      if (k eq k1) new Map2(k2, v2, k3, v3)
+      else if (k eq k2) new Map2(k1, v1, k3, v3)
+      else if (k eq k3) new Map2(k1, v1, k2, v2)
       else this
     def updated[V1 >: V <: AnyRef](k: K, v: V1) =
-      if (k == k1) new Map3(k, v, k2, v2, k3, v3)
-      else if (k == k2) new Map3(k1, v1, k, v, k3, v3)
-      else if (k == k3) new Map3(k1, v1, k2, v2, k, v)
+      if (k eq k1) new Map3(k, v, k2, v2, k3, v3)
+      else if (k eq k2) new Map3(k1, v1, k, v, k3, v3)
+      else if (k eq k3) new Map3(k1, v1, k2, v2, k, v)
       else new Map4(k1, v1, k2, v2, k3, v3, k, v)
     def mapValuesNow[V1 >: V <: AnyRef](f: (K, V1) => V1) = {
       val w1 = f(k1, v1); val w2 = f(k2, v2); val w3 = f(k3, v3)
@@ -106,22 +106,22 @@ object SimpleMap {
   class Map4[K <: AnyRef, +V >: Null <: AnyRef] (k1: K, v1: V, k2: K, v2: V, k3: K, v3: V, k4: K, v4: V) extends SimpleMap[K, V] {
     def size = 4
     def apply(k: K) =
-      if (k == k1) v1
-      else if (k == k2) v2
-      else if (k == k3) v3
-      else if (k == k4) v4
+      if (k eq k1) v1
+      else if (k eq k2) v2
+      else if (k eq k3) v3
+      else if (k eq k4) v4
       else null
     def remove(k: K) =
-      if (k == k1) new Map3(k2, v2, k3, v3, k4, v4)
-      else if (k == k2) new Map3(k1, v1, k3, v3, k4, v4)
-      else if (k == k3) new Map3(k1, v1, k2, v2, k4, v4)
-      else if (k == k4) new Map3(k1, v1, k2, v2, k3, v3)
+      if (k eq k1) new Map3(k2, v2, k3, v3, k4, v4)
+      else if (k eq k2) new Map3(k1, v1, k3, v3, k4, v4)
+      else if (k eq k3) new Map3(k1, v1, k2, v2, k4, v4)
+      else if (k eq k4) new Map3(k1, v1, k2, v2, k3, v3)
       else this
     def updated[V1 >: V <: AnyRef](k: K, v: V1) =
-      if (k == k1) new Map4(k, v, k2, v2, k3, v3, k4, v4)
-      else if (k == k2) new Map4(k1, v1, k, v, k3, v3, k4, v4)
-      else if (k == k3) new Map4(k1, v1, k2, v2, k, v, k4, v4)
-      else if (k == k4) new Map4(k1, v1, k2, v2, k3, v3, k, v)
+      if (k eq k1) new Map4(k, v, k2, v2, k3, v3, k4, v4)
+      else if (k eq k2) new Map4(k1, v1, k, v, k3, v3, k4, v4)
+      else if (k eq k3) new Map4(k1, v1, k2, v2, k, v, k4, v4)
+      else if (k eq k4) new Map4(k1, v1, k2, v2, k3, v3, k, v)
       else new MapMore(Array[AnyRef](k1, v1, k2, v2, k3, v3, k4, v4, k, v))
     def mapValuesNow[V1 >: V <: AnyRef](f: (K, V1) => V1) = {
       val w1 = f(k1, v1); val w2 = f(k2, v2); val w3 = f(k3, v3); val w4 = f(k4, v4)

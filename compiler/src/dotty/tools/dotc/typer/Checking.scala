@@ -21,7 +21,7 @@ import ErrorReporting.errorTree
 
 import annotation.unchecked
 import util.Positions._
-import util.{SimpleMap, Stats}
+import util.Stats
 import util.common._
 import transform.SymUtils._
 import Decorators._

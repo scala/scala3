@@ -19,7 +19,7 @@ import Periods._
 import Designators._
 import util.Positions.{Position, NoPosition}
 import util.Stats._
-import util.{DotClass, SimpleMap}
+import util.DotClass
 import reporting.diagnostic.Message
 import reporting.diagnostic.messages.CyclicReferenceInvolving
 import ast.tpd._
