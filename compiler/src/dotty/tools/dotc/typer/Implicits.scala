@@ -65,7 +65,7 @@ object Implicits {
 
         def discardForView(tpw: Type, argType: Type): Boolean = tpw match {
           case mt: MethodType =>
-            mt.isImplicit ||
+            mt.isImplicitMethod ||
             mt.paramInfos.length != 1 ||
             !ctx.typerState.test(argType relaxed_<:< mt.paramInfos.head)
           case poly: PolyType =>
@@ -73,7 +73,7 @@ object Implicits {
             // `refMatches` is always called with mode TypevarsMissContext enabled.
             poly.resultType match {
               case mt: MethodType =>
-                mt.isImplicit ||
+                mt.isImplicitMethod ||
                 mt.paramInfos.length != 1 ||
                 !ctx.typerState.test(argType relaxed_<:< wildApprox(mt.paramInfos.head, null, Set.empty))
               case rtp =>
@@ -109,7 +109,7 @@ object Implicits {
         }
 
         def discardForValueType(tpw: Type): Boolean = tpw.stripPoly match {
-          case tpw: MethodType => !tpw.isImplicit
+          case tpw: MethodType => !tpw.isImplicitMethod
           case _ => false
         }
 

@@ -145,7 +145,7 @@ object EtaExpansion {
       ids = ids.init :+ repeated(ids.last)
     var body: Tree = Apply(lifted, ids)
     mt.resultType match {
-      case rt: MethodType if !rt.isImplicit => body = PostfixOp(body, Ident(nme.WILDCARD))
+      case rt: MethodType if !rt.isImplicitMethod => body = PostfixOp(body, Ident(nme.WILDCARD))
       case _ =>
     }
     val fn = untpd.Function(params, body)

@@ -182,7 +182,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
       case tp: MethodType =>
         def paramText(name: TermName, tp: Type) = toText(name) ~ ": " ~ toText(tp)
         changePrec(GlobalPrec) {
-          (if (tp.isImplicit) "(implicit " else "(") ~
+          (if (tp.isImplicitMethod) "(implicit " else "(") ~
             Text((tp.paramNames, tp.paramInfos).zipped map paramText, ", ") ~
           (if (tp.resultType.isInstanceOf[MethodType]) ")" else "): ") ~
           toText(tp.resultType)

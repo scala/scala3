@@ -170,7 +170,7 @@ object factories {
           isByName = tpe.isInstanceOf[ExprType],
           isRepeated = tpe.isRepeatedParam
         )
-      }, mt.isImplicit) :: paramLists(mt.resultType)
+      }, mt.isImplicitMethod) :: paramLists(mt.resultType)
 
     case mp: TermParamRef =>
       paramLists(mp.underlying)

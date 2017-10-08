@@ -450,7 +450,8 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
    */
   def mayBeVarGetter(sym: Symbol)(implicit ctx: Context): Boolean = {
     def maybeGetterType(tpe: Type): Boolean = tpe match {
-      case _: ExprType | _: ImplicitMethodType => true
+      case _: ExprType => true
+      case tpe: MethodType => tpe.isImplicitMethod
       case tpe: PolyType => maybeGetterType(tpe.resultType)
       case _ => false
     }

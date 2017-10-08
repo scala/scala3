@@ -557,7 +557,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
       typedArgBuf.trimEnd(n)
       val elemtpt = TypeTree(elemFormal)
       val seqLit =
-        if (methodType.isJava) JavaSeqLiteral(args, elemtpt)
+        if (methodType.isJavaMethod) JavaSeqLiteral(args, elemtpt)
         else SeqLiteral(args, elemtpt)
       typedArgBuf += seqToRepeated(seqLit)
     }
@@ -1161,7 +1161,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
 
     /** Drop any implicit parameter section */
     def stripImplicit(tp: Type): Type = tp match {
-      case mt: ImplicitMethodType =>
+      case mt: MethodType if mt.isImplicitMethod =>
         resultTypeApprox(mt)
       case pt: PolyType =>
         pt.derivedLambdaType(pt.paramNames, pt.paramInfos, stripImplicit(pt.resultType))
