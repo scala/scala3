@@ -24,7 +24,7 @@ object ClassfileParser {
     * be invalidated. */
   object NoEmbedded extends Embedded
 
-  /** Replace raw types with wildcad applications */
+  /** Replace raw types with wildcard applications */
   def cook(implicit ctx: Context) = new TypeMap {
     def apply(tp: Type): Type = tp match {
       case tp: TypeRef if tp.symbol.typeParams.nonEmpty =>
