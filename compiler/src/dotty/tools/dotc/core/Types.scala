@@ -2599,7 +2599,32 @@ object Types {
     final override def toString = s"$prefixString($paramNames, $paramInfos, $resType)"
   }
 
-  trait HKLambda extends LambdaType
+  abstract class HKLambda extends CachedProxyType with LambdaType {
+    final override def underlying(implicit ctx: Context) = resType
+
+    final override def computeHash = doHash(paramNames, resType, paramInfos)
+
+    final override def equals(that: Any) = that match {
+      case that: HKLambda =>
+        paramNames == that.paramNames &&
+        paramInfos == that.paramInfos &&
+        resType == that.resType &&
+        companion.eq(that.companion)
+      case _ =>
+        false
+    }
+
+    final override def eql(that: Type) = that match {
+      case that: HKLambda =>
+        paramNames.equals(that.paramNames) &&
+        paramInfos.equals(that.paramInfos) &&
+        resType.equals(that.resType) &&
+        companion.eq(that.companion)
+      case _ =>
+        false
+    }
+  }
+
   trait MethodOrPoly extends LambdaType with MethodicType
 
   trait TermLambda extends LambdaType { thisLambdaType =>
@@ -2909,7 +2934,7 @@ object Types {
    */
   class HKTypeLambda(val paramNames: List[TypeName])(
       paramInfosExp: HKTypeLambda => List[TypeBounds], resultTypeExp: HKTypeLambda => Type)
-  extends UncachedProxyType with HKLambda with TypeLambda {
+  extends HKLambda with TypeLambda {
     type This = HKTypeLambda
     def companion = HKTypeLambda
 
@@ -2918,8 +2943,6 @@ object Types {
 
     assert(resType.isInstanceOf[TermType], this)
     assert(paramNames.nonEmpty)
-
-    final override def underlying(implicit ctx: Context) = resType
 
     protected def prefixString = "HKTypeLambda"
   }
