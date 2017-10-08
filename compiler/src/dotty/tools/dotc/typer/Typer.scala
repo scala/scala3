@@ -690,7 +690,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
       val MethodTpe(_, formals, restpe) = meth.info
       (formals, restpe)
     case _ =>
-      (List.range(0, defaultArity) map alwaysWildcardType, WildcardType)
+      (List.tabulate(defaultArity)(alwaysWildcardType), WildcardType)
   }
 
   def typedFunction(tree: untpd.Function, pt: Type)(implicit ctx: Context) = track("typedFunction") {

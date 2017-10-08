@@ -26,11 +26,12 @@ extends interfaces.SourcePosition {
     source.content.slice(source.startOfLine(start), source.nextLine(end))
 
   /** The lines of the position */
-  def lines: List[Int] =
-    List.range(source.offsetToLine(start), source.offsetToLine(end + 1)) match {
-      case Nil => line :: Nil
-      case xs => xs
-    }
+  def lines: List[Int] = {
+    val startOffset = source.offsetToLine(start)
+    val endOffest = source.offsetToLine(end + 1)
+    if (startOffset >= endOffest) line :: Nil
+    else List.tabulate(endOffest - startOffset)(i => i + startOffset)
+  }
 
   def lineOffsets: List[Int] =
     lines.map(source.lineToOffset(_))
