@@ -1,3 +1,12 @@
+clone:
+  default:
+    image: plugins/git
+    recursive: false
+  submodules:
+    image: docker:git
+    commands:
+     - git submodule update --init --recursive --depth 1
+
 pipeline:
   # TESTS:
   # We run tests in parallel. Tests run in a copy of the working directory to avoid conflict
