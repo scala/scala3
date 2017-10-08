@@ -429,7 +429,7 @@ object Build {
       }.taskValue,
 
       // Used by the backend
-      libraryDependencies += "org.scala-lang.modules" % "scala-asm" % "5.2.0-scala-1",
+      libraryDependencies += "org.scala-lang.modules" % "scala-asm" % "5.2.0-scala-2",
 
       // set system in/out for repl
       connectInput in run := true,
