@@ -23,6 +23,19 @@ object ClassfileParser {
   /** Indicate that there is nothing to unpickle and the corresponding symbols can
     * be invalidated. */
   object NoEmbedded extends Embedded
+
+  /** Replace raw types with wildcad applications */
+  def cook(implicit ctx: Context) = new TypeMap {
+    def apply(tp: Type): Type = tp match {
+      case tp: TypeRef if tp.symbol.typeParams.nonEmpty =>
+        AppliedType(tp, tp.symbol.typeParams.map(Function.const(TypeBounds.empty)))
+      case tp @ AppliedType(tycon, args) =>
+        // disregard tycon itself, but map over it to visit the prefix
+        tp.derivedAppliedType(mapOver(tycon), args.mapConserve(this))
+      case _ =>
+        mapOver(tp)
+    }
+  }
 }
 
 class ClassfileParser(
@@ -241,7 +254,7 @@ class ClassfileParser(
           addConstructorTypeParams(denot)
         }
 
-        denot.info = pool.getType(in.nextChar)
+        denot.info = cook.apply(pool.getType(in.nextChar))
         if (isEnum) denot.info = ConstantType(Constant(sym))
         if (isConstructor) normalizeConstructorParams()
         setPrivateWithin(denot, jflags)
