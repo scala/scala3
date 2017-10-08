@@ -28,7 +28,7 @@ import ValueClasses._
 import TypeUtils._
 import ExplicitOuter._
 import core.Mode
-import core.PhantomErasure
+import core.PhantomErasure._
 
 class Erasure extends Phase with DenotTransformer { thisTransformer =>
 
@@ -210,7 +210,7 @@ object Erasure {
             if (tree.tpe isRef defn.NullClass)
               adaptToType(tree, underlying)
             else if (wasPhantom(underlying))
-              PhantomErasure.erasedParameterRef
+              erasedPhantomTerm
             else if (!(tree.tpe <:< tycon)) {
               assert(!(tree.tpe.typeSymbol.isPrimitiveValueClass))
               val nullTree = Literal(Constant(null))
@@ -426,15 +426,11 @@ object Erasure {
         }
       }
 
-      if ((origSym eq defn.Phantom_assume) || (origSym.is(Flags.ParamAccessor) && wasPhantom(pt)))
-        PhantomErasure.erasedAssume
-      else recur(typed(tree.qualifier, AnySelectionProto))
+      eraseIfWasPhantom(recur(typed(tree.qualifier, AnySelectionProto)), pt)
     }
 
     override def typedIdent(tree: untpd.Ident, pt: Type)(implicit ctx: Context): tpd.Tree =
-      if (tree.symbol eq defn.Phantom_assume) PhantomErasure.erasedAssume
-      else if (tree.symbol.is(Flags.Param) && wasPhantom(tree.typeOpt)) PhantomErasure.erasedParameterRef
-      else super.typedIdent(tree, pt)
+      eraseIfWasPhantom(super.typedIdent(tree, pt), pt)
 
     override def typedThis(tree: untpd.This)(implicit ctx: Context): Tree =
       if (tree.symbol == ctx.owner.lexicallyEnclosingClass || tree.symbol.isStaticOwner) promote(tree)
@@ -457,8 +453,7 @@ object Erasure {
 
     override def typedTypeApply(tree: untpd.TypeApply, pt: Type)(implicit ctx: Context) = {
       val ntree = interceptTypeApply(tree.asInstanceOf[TypeApply])(ctx.withPhase(ctx.erasurePhase))
-
-      ntree match {
+      val res = ntree match {
         case TypeApply(fun, args) =>
           val fun1 = typedExpr(fun, WildcardType)
           fun1.tpe.widen match {
@@ -469,6 +464,7 @@ object Erasure {
           }
         case _ => typedExpr(ntree, pt)
       }
+      eraseIfWasPhantom(res, pt)
     }
 
 	/** Besides normal typing, this method collects all arguments
@@ -476,7 +472,7 @@ object Erasure {
 	 */
     override def typedApply(tree: untpd.Apply, pt: Type)(implicit ctx: Context): Tree = {
       val Apply(fun, args) = tree
-      if (fun.symbol == defn.cbnArg)
+      val res = if (fun.symbol == defn.cbnArg)
         typedUnadapted(args.head, pt)
       else typedExpr(fun, FunProto(args, pt, this)) match {
         case fun1: Apply => // arguments passed in prototype were already passed
@@ -498,6 +494,7 @@ object Erasure {
               throw new MatchError(i"tree $tree has unexpected type of function ${fun1.tpe.widen}, was ${fun.typeOpt.widen}")
           }
       }
+      eraseIfWasPhantom(res, pt)
     }
 
     // The following four methods take as the proto-type the erasure of the pre-existing type,
@@ -556,7 +553,7 @@ object Erasure {
       vparamss1 = vparamss1.mapConserve(_.filterConserve(vparam => !wasPhantom(vparam.tpe)))
       if (sym.is(Flags.ParamAccessor) && wasPhantom(ddef.tpt.tpe)) {
         sym.resetFlag(Flags.ParamAccessor)
-        rhs1 = PhantomErasure.erasedParameterRef
+        rhs1 = erasedPhantomTerm
       }
       val ddef1 = untpd.cpy.DefDef(ddef)(
         tparams = Nil,
@@ -673,6 +670,19 @@ object Erasure {
   def takesBridges(sym: Symbol)(implicit ctx: Context) =
     sym.isClass && !sym.is(Flags.Trait | Flags.Package)
 
-  private def wasPhantom(tp: Type)(implicit ctx: Context): Boolean =
-    tp.widenDealias.classSymbol eq defn.ErasedPhantomClass
+  private def eraseIfWasPhantom(tree: tpd.Tree, pt: Type)(implicit ctx: Context): tpd.Tree = pt match {
+    case _: FunProto => tree
+    case _ =>
+      if ((tree.symbol eq defn.Phantom_assume) || wasPhantom(tree.tpe)) erasedPhantomTerm
+      else tree
+  }
+
+  private def wasPhantom(tp: Type)(implicit ctx: Context): Boolean = {
+    val cls = tp.widenDealias.classSymbol
+    if (cls.exists) cls eq defn.ErasedPhantomClass(ctx)
+    else {
+      val ctx2 = ctx.withPhase(ctx.erasurePhase)
+      tp.widenDealias(ctx2).isPhantom(ctx2)
+    }
+  }
 }

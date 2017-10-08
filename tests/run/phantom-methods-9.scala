@@ -10,7 +10,7 @@ object Test {
   }
 
   def inky: Inky = {
-    println("inky")
+    println("inky") // in erased function
     boo[Inky]
   }
 

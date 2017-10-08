@@ -9,7 +9,7 @@ object Test {
   }
 
   lazy val foo = {
-    println("foo")
+    println("foo") // in erased function
     any
   }
 

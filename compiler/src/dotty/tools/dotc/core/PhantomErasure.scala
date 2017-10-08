@@ -21,11 +21,8 @@ object PhantomErasure {
   /** Returns the default erased type of a phantom type */
   def erasedPhantomType(implicit ctx: Context): Type = defn.ErasedPhantomType
 
-  /** Returns the default erased tree for a call to Phantom.assume */
-  def erasedAssume(implicit ctx: Context): Tree = ref(defn.ErasedPhantom_UNIT)
-
-  /** Returns the default erased tree for a phantom parameter ref */
-  def erasedParameterRef(implicit ctx: Context): Tree = ref(defn.ErasedPhantom_UNIT)
+  /** Returns the default erased tree for a phantom term */
+  def erasedPhantomTerm(implicit ctx: Context): Tree = ref(defn.ErasedPhantom_UNIT)
 
   /** Is it a pure term inserted by the phantom erasure? */
   def isErasedPhantom(sym: Symbol)(implicit ctx: Context): Boolean = sym eq defn.ErasedPhantom_UNIT

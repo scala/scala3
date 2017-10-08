@@ -163,19 +163,15 @@ will be compiled to
 
 ```scala
 object MyOtherPhantom {
-  def myPhantom(): <ErasedPhantom> = <ErasedPhantom.UNIT>
 
   def f1(a: Int, c: Int): Int = a + c
 
   def f2 = {
     val a$ = 3
-    myPhantom()
     val b$ = 3
     f1(a$, b$)
   }
 }
 ```
 
-Note that `myPhantom` is not removed as it could have some side effect before returning the phantom. 
-To remove it just use `inline def myPhantom` instead this will remove the call and allow the 
-`<ErasedPhantom.UNIT>` to be optimized away.
+Note that `myPhantom` is removed and any side effect of it's body will be erased.
