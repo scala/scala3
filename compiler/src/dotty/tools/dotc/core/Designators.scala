@@ -18,14 +18,11 @@ object Designators {
     type ThisName <: Name
 
     /** Classifiers and casts, to be overridden in implemetations */
-    def isName: Boolean = false
-    def isSymbol: Boolean = false
-
     def isTerm(implicit ctx: Context) = false
     def isType(implicit ctx: Context) = false
 
-    def asTerm(implicit ctx: Context): TermDesignator = unsupported("asTerm")
-    def asType(implicit ctx: Context): TypeDesignator = unsupported("asType")
+    def asTerm(implicit ctx: Context): TermDesignator
+    def asType(implicit ctx: Context): TypeDesignator
 
     def withNameSpace(space: NameSpace)(implicit ctx: Context): Designator { type ThisName = self.ThisName } =
       if (space == noNameSpace) this

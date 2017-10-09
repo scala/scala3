@@ -444,7 +444,6 @@ object Symbols {
       lastDenot.validFor.runId == ctx.runId || ctx.stillValid(lastDenot)
 
     /** Designator overrides */
-    final override def isSymbol = true
     final override def isTerm(implicit ctx: Context): Boolean =
       (if (defRunId == ctx.runId) lastDenot else denot).isTerm
     final override def isType(implicit ctx: Context): Boolean =
