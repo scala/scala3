@@ -227,7 +227,8 @@ object SymDenotations {
       case _ => Some(myInfo)
     }
 
-    private def completeFrom(completer: LazyType)(implicit ctx: Context): Unit = {
+    private def completeFrom(completer: LazyType)(implicit ctx: Context): Unit = synchronized {
+      if (completionStatus eq this) return
       if (completions ne noPrinter) {
         completions.println(i"${"  " * indent}completing ${if (isType) "type" else "val"} $name")
         indent += 1
