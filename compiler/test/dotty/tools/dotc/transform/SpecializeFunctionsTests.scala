@@ -60,8 +60,8 @@ class SpecializeFunctionsTests extends DottyBytecodeTest {
         apps.length == 3,
         s"Wrong number of specialized applys, actual length: ${apps.length} - $apps"
       )
-      assert(apps.contains("apply"), "Func3 did not contain `apply` forwarder method")
-      assert(apps.contains("apply$mcIII$sp"), "Func3 did not contain specialized apply")
+      assert(apps.contains("apply"), "Func2 did not contain `apply` forwarder method")
+      assert(apps.contains("apply$mcIII$sp"), "Func2 did not contain specialized apply")
     }
   }
 
@@ -91,6 +91,7 @@ class SpecializeFunctionsTests extends DottyBytecodeTest {
          |}""".stripMargin
 
     checkBCode(source) { dir =>
+      // No specialization for Function1[Char, Int]
       assertBoxing("<init>", findClass("Test$", dir).methods)
     }
   }
@@ -136,6 +137,7 @@ class SpecializeFunctionsTests extends DottyBytecodeTest {
          |}""".stripMargin
 
     checkBCode(source) { dir =>
+      // No specialization for Function2[Char, Char, Char]
       assertBoxing("<init>", findClass("Test$", dir).methods)
     }
   }
