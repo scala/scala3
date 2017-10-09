@@ -22,7 +22,8 @@ object Flags {
       else if (that.bits == 0) this
       else {
         val tbits = bits & that.bits & KINDFLAGS
-        assert(tbits != 0, s"illegal flagset combination: $this and $that")
+        if (tbits == 0)
+          assert(false, s"illegal flagset combination: $this and $that")
         FlagSet(tbits | ((this.bits | that.bits) & ~KINDFLAGS))
       }
 
