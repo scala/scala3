@@ -28,9 +28,9 @@ extends interfaces.SourcePosition {
   /** The lines of the position */
   def lines: List[Int] = {
     val startOffset = source.offsetToLine(start)
-    val endOffest = source.offsetToLine(end + 1)
-    if (startOffset >= endOffest) line :: Nil
-    else List.tabulate(endOffest - startOffset)(i => i + startOffset)
+    val endOffset = source.offsetToLine(end + 1)
+    if (startOffset >= endOffset) line :: Nil
+    else List.tabulate(endOffset - startOffset)(i => i + startOffset)
   }
 
   def lineOffsets: List[Int] =
