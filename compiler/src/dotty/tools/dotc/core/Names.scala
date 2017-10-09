@@ -18,7 +18,7 @@ import collection.immutable.WrappedString
 import collection.generic.CanBuildFrom
 import util.{DotClass, SimpleMap}
 import config.Config
-import java.util.HashMap
+import java.util.concurrent.{ConcurrentHashMap => HashMap}
 
 object Names {
   import NameKinds._

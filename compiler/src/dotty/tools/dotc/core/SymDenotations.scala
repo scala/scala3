@@ -1296,7 +1296,7 @@ object SymDenotations {
     private[this] var myMemberCachePeriod: Period = Nowhere
 
     /** A cache from types T to baseType(T, C) */
-    type BaseTypeMap = java.util.HashMap[CachedType, Type]
+    type BaseTypeMap = java.util.concurrent.ConcurrentHashMap[CachedType, Type]
     private[this] var myBaseTypeCache: BaseTypeMap = null
     private[this] var myBaseTypeCachePeriod: Period = Nowhere
 
