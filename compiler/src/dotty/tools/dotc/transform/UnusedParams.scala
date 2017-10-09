@@ -42,13 +42,13 @@ class UnusedParams extends MiniPhaseTransform with InfoTransformer {
   /* Tree transform */
 
   override def transformDefDef(tree: DefDef)(implicit ctx: Context, info: TransformerInfo): Tree =
-    if (hadUnusedParams(tree.symbol.termRef)) removeUnusedParams(tree)
+    if (hadUnusedParams(tree.symbol)) removeUnusedParams(tree)
     else tree
 
   override def transformApply(tree: Apply)(implicit ctx: Context, info: TransformerInfo): Tree = tree.tpe.widen match {
     case _: MethodType => tree // Do the transformation higher in the tree if needed
     case _ =>
-      if (hadUnusedParams(tree.symbol.termRef)) removeUnusedApplies(tree)
+      if (hadUnusedParams(tree.symbol)) removeUnusedApplies(tree)
       else tree
   }
 
@@ -67,8 +67,8 @@ class UnusedParams extends MiniPhaseTransform with InfoTransformer {
 
   /* private methods */
 
-  private def hadUnusedParams(tp: TermRef)(implicit ctx: Context): Boolean =
-    hasUnusedParams(widenInPreviousPhase(tp))
+  private def hadUnusedParams(sym: Symbol)(implicit ctx: Context): Boolean =
+    sym.exists && hasUnusedParams(widenInPreviousPhase(sym.termRef))
 
   private def hasUnusedParams(tp: Type): Boolean = tp match {
     case tp: MethodType if tp.isUnusedMethod => true
