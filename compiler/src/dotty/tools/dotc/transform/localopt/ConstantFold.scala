@@ -21,10 +21,11 @@ import Simplify.desugarIdent
  *    out (nested) if with equivalent branches wrt to isSimilar. For example:
  *      - if (b) exp else exp → b; exp
  *      - if (b1) e1 else if (b2) e1 else e2 → if (b1 || b2) e1 else e2
+ *      - if(!b) e1 else e2 → if(b) e2 else e1
  *
  *  - Constant propagation over pattern matching.
  *
- *  @author DarkDimius, OlivierBlanvillain
+ *  @author DarkDimius, OlivierBlanvillain, gan74
  */
  class ConstantFold(val simplifyPhase: Simplify) extends Optimisation {
   import ast.tpd._
@@ -32,7 +33,7 @@ import Simplify.desugarIdent
   def visitor(implicit ctx: Context) = NoVisitor
   def clear(): Unit = ()
 
-  def transformer(implicit ctx: Context): Tree => Tree = { x => preEval(x) match {
+  def transformer(implicit ctx: Context): Tree => Tree = { x => x match {
     // TODO: include handling of isInstanceOf similar to one in IsInstanceOfEvaluator
     // TODO: include methods such as Int.int2double(see ./tests/pos/harmonize.scala)
     case If(cond1, thenp, elsep) if isSimilar(thenp, elsep) =>
@@ -75,9 +76,6 @@ import Simplify.desugarIdent
     //    isBool(ift.tpe) && !elsep.const.booleanValue =>
     //       cond.select(defn.Boolean_&&).appliedTo(elsep)
     //   the other case ins't handled intentionally. See previous case for explanation
-
-    case If(t @ Select(recv, _), thenp, elsep) if t.symbol eq defn.Boolean_! =>
-      If(recv, elsep, thenp)
 
     case If(t @ Apply(Select(recv, _), Nil), thenp, elsep) if t.symbol eq defn.Boolean_! =>
       If(recv, elsep, thenp)
@@ -141,7 +139,16 @@ import Simplify.desugarIdent
         //   Block(List(lhs),
         //     ref(defn.throwMethod).appliedTo(New(defn.ArithmeticExceptionClass.typeRef, defn.ArithmeticExceptionClass_stringConstructor, Literal(Constant("/ by zero")) :: Nil)))
 
-        case _ => t
+        case _ =>
+          val lhType = lhs.tpe.widenTermRefExpr
+          val rhType = rhs.tpe.widenTermRefExpr
+          (lhType, rhType) match {
+            case (ConstantType(_), ConstantType(_)) => 
+              val s = ConstFold.apply(t)
+              if ((s ne null) && s.tpe.isInstanceOf[ConstantType]) Literal(s.tpe.asInstanceOf[ConstantType].value)
+              else t
+            case _ => t
+          }
       }
 
     // This case can only be triggered when running Simplify before pattern matching:
@@ -157,26 +164,11 @@ import Simplify.desugarIdent
 
     case t: Literal => t
     case t: CaseDef => t
-    case t if !isPureExpr(t) => t
-    case t =>
-      val s = ConstFold.apply(t)
-      if ((s ne null) && s.tpe.isInstanceOf[ConstantType]) {
-        val constant = s.tpe.asInstanceOf[ConstantType].value
-        Literal(constant)
-      } else t
+    case t => t
     }
   }
 
-  def preEval(t: Tree)(implicit ctx: Context) = {
-    if (t.isInstanceOf[Literal] || t.isInstanceOf[CaseDef] || !isPureExpr(t)) t
-    else {
-      val s = ConstFold.apply(t)
-      if ((s ne null) && s.tpe.isInstanceOf[ConstantType]) {
-        val constant = s.tpe.asInstanceOf[ConstantType].value
-        Literal(constant)
-      } else t
-    }
-  }
+
 
   def isSimilar(t1: Tree, t2: Tree)(implicit ctx: Context): Boolean = t1 match {
     case t1: Apply =>
