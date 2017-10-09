@@ -100,6 +100,7 @@ public enum ErrorMessageID {
     NoReturnFromInlineID,
     ReturnOutsideMethodDefinitionID,
     UncheckedTypePatternID,
+    ExtendFinalClassID,
     ;
 
     public int errorNumber() {

@@ -1770,4 +1770,12 @@ object messages {
           |"""
   }
 
+  case class ExtendFinalClass(clazz:Symbol, finalClazz: Symbol)(implicit ctx: Context) 
+    extends Message(ExtendFinalClassID) {
+    val kind = "Syntax"
+    val msg = hl"$clazz cannot extend ${"final"} $finalClazz"
+    val explanation =
+      hl"""A class marked with the ${"final"} keyword cannot be extended"""
+  }
+
 }
