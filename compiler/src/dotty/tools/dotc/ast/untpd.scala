@@ -60,6 +60,14 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
     override def toString = s"ImplicitFunction($args, $body)"
   }
 
+  class UnusedFunction(args: List[Tree], body: Tree) extends Function(args, body) {
+    override def toString = s"UnusedFunction($args, $body)"
+  }
+
+  class UnusedImplicitFunction(args: List[Tree], body: Tree) extends Function(args, body) {
+    override def toString = s"UnusedImplicitFunction($args, $body)"
+  }
+
   /** A function created from a wildcard expression
    *  @param  placeHolderParams  a list of definitions of synthetic parameters
    *  @param  body               the function body where wildcards are replaced by

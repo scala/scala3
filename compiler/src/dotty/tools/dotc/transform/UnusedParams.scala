@@ -1,10 +1,16 @@
 package dotty.tools.dotc.transform
 
 import dotty.tools.dotc.ast.tpd
+import dotty.tools.dotc.ast.Trees._
 import dotty.tools.dotc.core.Contexts._
 import dotty.tools.dotc.core.DenotTransformers.InfoTransformer
+import dotty.tools.dotc.core.Designators._
 import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.core.Types._
+import dotty.tools.dotc.core.Names._
+import dotty.tools.dotc.core.NameOps._
+import dotty.tools.dotc.core.Decorators._
+import dotty.tools.dotc.core.StdNames._
 import dotty.tools.dotc.core.Flags._
 import dotty.tools.dotc.transform.TreeTransforms.{MiniPhaseTransform, TransformerInfo}
 
@@ -47,9 +53,12 @@ class UnusedParams extends MiniPhaseTransform with InfoTransformer {
 
   override def transformApply(tree: Apply)(implicit ctx: Context, info: TransformerInfo): Tree = tree.tpe.widen match {
     case _: MethodType => tree // Do the transformation higher in the tree if needed
-    case _ =>
-      if (hadUnusedParams(tree.symbol)) removeUnusedApplies(tree)
-      else tree
+    case _ if hadUnusedParams(tree.symbol) =>
+      removeUnusedApplies(tree) match {
+        case t: RefTree => Apply(t, Nil)
+        case t => t
+      }
+    case _ => tree
   }
 
 
@@ -59,8 +68,7 @@ class UnusedParams extends MiniPhaseTransform with InfoTransformer {
     if (!tp.hasUnusedParams) tp
     else tp.withoutUnusedParams match {
       case mt: MethodOrPoly => mt
-      case tpe if sym.isConstructor => MethodType(Nil, Nil, tpe)
-      case tpe => ExprType(tpe)
+      case tpe => UnusedMethodType(Nil, Nil, tpe)
     }
   }
 
@@ -92,7 +100,10 @@ class UnusedParams extends MiniPhaseTransform with InfoTransformer {
       val newFun = removeUnusedApplies(tree.fun)
       if (widenInPreviousPhase(tree.fun.tpe).isUnusedMethod) newFun
       else cpy.Apply(tree)(newFun, tree.args)
-    case _ => tree
+    case Select(qual, name) if name == nme.apply && defn.isUnusedFunctionClass(tree.symbol.owner) =>
+      qual.select(nme.apply)
+    case _ =>
+      tree
   }
 
   private def widenInPreviousPhase(tpe: Type)(implicit ctx: Context): Type =

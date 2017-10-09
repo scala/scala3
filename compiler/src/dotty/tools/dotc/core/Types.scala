@@ -1337,8 +1337,10 @@ object Types {
     def toFunctionType(dropLast: Int = 0)(implicit ctx: Context): Type = this match {
       case mt: MethodType if !mt.isDependent || ctx.mode.is(Mode.AllowDependentFunctions) =>
         val formals1 = if (dropLast == 0) mt.paramInfos else mt.paramInfos dropRight dropLast
+        val isImplicit = mt.isImplicitMethod && !ctx.erasedTypes
+        val isUnused = mt.isUnusedMethod && !ctx.erasedTypes
         defn.FunctionOf(
-          formals1 mapConserve (_.underlyingIfRepeated(mt.isJavaMethod)), mt.resultType, mt.isImplicitMethod && !ctx.erasedTypes)
+          formals1 mapConserve (_.underlyingIfRepeated(mt.isJavaMethod)), mt.resultType, isImplicit, isUnused)
     }
 
     /** The signature of this type. This is by default NotAMethod,

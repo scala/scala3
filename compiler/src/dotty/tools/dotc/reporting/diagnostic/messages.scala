@@ -1708,8 +1708,9 @@ object messages {
     }
   }
 
-  case class ImplicitFunctionTypeNeedsNonEmptyParameterList()(implicit ctx: Context)
-    extends Message(ImplicitFunctionTypeNeedsNonEmptyParameterListID) {
+  case class FunctionTypeNeedsNonEmptyParameterList(isImplicit: Boolean = true, isUnused: Boolean = true)(implicit ctx: Context)
+    extends Message(FunctionTypeNeedsNonEmptyParameterListID) {
+    // TODO use isImplicit and isUnused
     val kind = "Syntax"
     val msg = "implicit function type needs non-empty parameter list"
     val explanation = {

@@ -743,7 +743,14 @@ object Parsers {
       def functionRest(params: List[Tree]): Tree =
         atPos(start, accept(ARROW)) {
           val t = typ()
-          if (isImplicit) new ImplicitFunction(params, t) else Function(params, t)
+          val isUnused = params.nonEmpty && (params.head match { // TODO make `unused` keyword
+            case Annotated(_, Apply(Select(New(Ident(name)), nme.CONSTRUCTOR), Nil)) => name.toString == "unused"
+            case _ => false
+          })
+          if (isImplicit && isUnused) new UnusedImplicitFunction(params, t)
+          else if (isImplicit) new ImplicitFunction(params, t)
+          else if (isUnused) new UnusedFunction(params, t)
+          else Function(params, t)
         }
       val t =
         if (in.token == LPAREN) {

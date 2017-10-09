@@ -109,6 +109,14 @@ trait NamerContextOps { this: Context =>
       (valueParamss :\ resultType) { (params, resultType) =>
         lazy val isImplicit = params.nonEmpty && (params.head is Implicit)
         lazy val isUnused = params.nonEmpty && params.head.isUnused
+        if (isUnused) {
+          def adapt(p: Symbol): Unit = {
+            p.setFlag(Unused)
+            p.removeAnnotation(defn.UnusedAnnot)
+          }
+          params.foreach(adapt)
+        }
+
         val make =
           if (isJava) JavaMethodType
           else if (isImplicit && isUnused) UnusedImplicitMethodType

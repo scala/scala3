@@ -1377,7 +1377,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
         val alts1 = alts filter pt.isMatchedBy
         resolveOverloaded(alts1, pt1, targs1)
 
-      case defn.FunctionOf(args, resultType, _) =>
+      case defn.FunctionOf(args, resultType, _, _) =>
         narrowByTypes(alts, args, resultType)
 
       case pt =>
@@ -1424,7 +1424,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
           val formalsForArg: List[Type] = altFormals.map(_.head)
           def argTypesOfFormal(formal: Type): List[Type] =
             formal match {
-              case defn.FunctionOf(args, result, isImplicit) => args
+              case defn.FunctionOf(args, result, isImplicit, isUnused) => args
               case defn.PartialFunctionOf(arg, result) => arg :: Nil
               case _ => Nil
             }

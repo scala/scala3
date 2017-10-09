@@ -113,14 +113,14 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
   override def toText(tp: Type): Text = controlled {
     def toTextTuple(args: List[Type]): Text =
       "(" ~ Text(args.map(argText), ", ") ~ ")"
-    def toTextFunction(args: List[Type], isImplicit: Boolean): Text =
+    def toTextFunction(args: List[Type], isImplicit: Boolean, isUnused: Boolean): Text =
       changePrec(GlobalPrec) {
         val argStr: Text =
           if (args.length == 2 && !defn.isTupleType(args.head))
             atPrec(InfixPrec) { argText(args.head) }
           else
             toTextTuple(args.init)
-        ("implicit " provided isImplicit) ~ argStr ~ " => " ~ argText(args.last)
+        ("unused " provided isUnused) ~ ("implicit2 " provided isImplicit) ~ argStr ~ " => " ~ argText(args.last)
       }
 
     def isInfixType(tp: Type): Boolean = tp match {
@@ -150,7 +150,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       case AppliedType(tycon, args) =>
         val cls = tycon.typeSymbol
         if (tycon.isRepeatedParam) return toTextLocal(args.head) ~ "*"
-        if (defn.isFunctionClass(cls)) return toTextFunction(args, cls.name.isImplicitFunction)
+        if (defn.isFunctionClass(cls)) return toTextFunction(args, cls.name.isImplicitFunction, cls.name.isUnusedFunction)
         if (defn.isTupleClass(cls)) return toTextTuple(args)
         if (isInfixType(tp)) return toTextInfixType(tycon, args)
       case EtaExpansion(tycon) =>
@@ -666,6 +666,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
     else if (sym.isClass && flags.is(Case)) "case class"
     else if (flags is Module) "object"
     else if (sym.isTerm && !flags.is(Param) && flags.is(Implicit)) "implicit val"
+    else if (sym.isTerm && !flags.is(Param) && sym.isUnused) "unused val"
     else super.keyString(sym)
   }
 
