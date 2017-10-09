@@ -152,7 +152,6 @@ object Names {
     def endsWith(str: String): Boolean = lastPart.endsWith(str)
 
     /** Designator overrides */
-    override def isName = true
     override def isTerm(implicit ctx: Context) = isTermName
     override def isType(implicit ctx: Context) = isTypeName
     override def asTerm(implicit ctx: Context) = asTermName
