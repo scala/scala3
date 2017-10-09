@@ -30,7 +30,7 @@ extends interfaces.SourcePosition {
     val startOffset = source.offsetToLine(start)
     val endOffset = source.offsetToLine(end + 1)
     if (startOffset >= endOffset) line :: Nil
-    else List.tabulate(endOffset - startOffset)(i => i + startOffset)
+    else (startOffset until endOffset).toList
   }
 
   def lineOffsets: List[Int] =
