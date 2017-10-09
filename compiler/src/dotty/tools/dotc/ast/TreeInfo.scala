@@ -5,7 +5,6 @@ package ast
 import core._
 import Flags._, Trees._, Types._, Contexts._
 import Names._, StdNames._, NameOps._, Decorators._, Symbols._
-import util.HashSet
 import typer.ConstFold
 
 trait TreeInfo[T >: Untyped <: Type] { self: Trees.Instance[T] =>

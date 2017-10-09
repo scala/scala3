@@ -15,7 +15,7 @@ import collection.IndexedSeqOptimized
 import collection.immutable
 import util.{DotClass}
 import config.Config
-import java.util.HashMap
+import java.util.concurrent.{ConcurrentHashMap => HashMap}
 
 object Names {
   import NameKinds._
