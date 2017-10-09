@@ -17,7 +17,7 @@ import Comments._
 import util.Positions._
 import ast.Trees._
 import ast.untpd
-import util.{FreshNameCreator, SimpleMap, SourceFile, NoSource}
+import util.{FreshNameCreator, SimpleIdentityMap, SourceFile, NoSource}
 import typer.{Implicits, ImplicitRunInfo, ImportInfo, Inliner, NamerContextOps, SearchHistory, TypeAssigner, Typer}
 import Implicits.ContextualImplicits
 import config.Settings._
@@ -694,14 +694,14 @@ object Contexts {
     implicit val ctx: Context = initctx
   }
 
-  class GADTMap(initBounds: SimpleMap[Symbol, TypeBounds]) extends util.DotClass {
+  class GADTMap(initBounds: SimpleIdentityMap[Symbol, TypeBounds]) extends util.DotClass {
     private var myBounds = initBounds
     def setBounds(sym: Symbol, b: TypeBounds): Unit =
       myBounds = myBounds.updated(sym, b)
     def bounds = myBounds
   }
 
-  @sharable object EmptyGADTMap extends GADTMap(SimpleMap.Empty) {
+  @sharable object EmptyGADTMap extends GADTMap(SimpleIdentityMap.Empty) {
     override def setBounds(sym: Symbol, b: TypeBounds) = unsupported("EmptyGADTMap.setBounds")
   }
 }

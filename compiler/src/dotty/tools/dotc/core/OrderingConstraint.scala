@@ -3,7 +3,7 @@ package dotc
 package core
 
 import Types._, Contexts._, Symbols._, Decorators._
-import util.SimpleMap
+import util.SimpleIdentityMap
 import collection.mutable
 import printing.{Printer, Showable}
 import printing.Texts._
@@ -14,7 +14,7 @@ import annotation.tailrec
 
 object OrderingConstraint {
 
-  type ArrayValuedMap[T] = SimpleMap[TypeLambda, Array[T]]
+  type ArrayValuedMap[T] = SimpleIdentityMap[TypeLambda, Array[T]]
 
   /** The type of `OrderingConstraint#boundsMap` */
   type ParamBounds = ArrayValuedMap[Type]

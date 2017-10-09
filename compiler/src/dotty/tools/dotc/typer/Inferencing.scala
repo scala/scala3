@@ -11,7 +11,7 @@ import Scopes._
 import ProtoTypes._
 import annotation.unchecked
 import util.Positions._
-import util.{Stats, SimpleMap}
+import util.{Stats, SimpleIdentityMap}
 import util.common._
 import Decorators._
 import Uniques._
@@ -286,7 +286,7 @@ object Inferencing {
     result
   }
 
-  type VarianceMap = SimpleMap[TypeVar, Integer]
+  type VarianceMap = SimpleIdentityMap[TypeVar, Integer]
 
   /** All occurrences of type vars in this type that satisfy predicate
    *  `include` mapped to their variances (-1/0/1) in this type, where
@@ -350,7 +350,7 @@ object Inferencing {
       if (vmap1 eq vmap) vmap else propagate(vmap1)
     }
 
-    propagate(accu(SimpleMap.Empty, tp))
+    propagate(accu(SimpleIdentityMap.Empty, tp))
   }
 }
 
