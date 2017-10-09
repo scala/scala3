@@ -132,7 +132,10 @@ class ReplDriver(settings: Array[String],
   @tailrec final def runUntilQuit(state: State = initState): State = {
     val res = readLine()(state)
 
-    if (res == Quit) state
+    if (res == Quit) {
+      out.println()
+      state
+    }
     else {
       // readLine potentially destroys the run, so a new one is needed for the
       // rest of the interpretation:
