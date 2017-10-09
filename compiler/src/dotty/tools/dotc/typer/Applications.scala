@@ -35,6 +35,8 @@ import Constants.{Constant, IntTag, LongTag}
 
 import scala.collection.mutable.ListBuffer
 
+import dotty.uoption._
+
 object Applications {
   import tpd._
 
@@ -701,14 +703,16 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
       /** Try same application with an implicit inserted around the qualifier of the function
        *  part. Return an optional value to indicate success.
        */
-      def tryWithImplicitOnQualifier(fun1: Tree, proto: FunProto)(implicit ctx: Context): Option[Tree] =
+      def tryWithImplicitOnQualifier(fun1: Tree, proto: FunProto)(implicit ctx: Context): UOption[Tree] = {
+        implicit def uOption2GenTraversable[A](uOption: UOption[A]): scala.collection.GenTraversableOnce[A] = uOption.iterator // TODO abstract away
         tryInsertImplicitOnQualifier(fun1, proto) flatMap { fun2 =>
           tryEither {
-            implicit ctx => Some(simpleApply(fun2, proto)): Option[Tree]
+            implicit ctx => USome(simpleApply(fun2, proto)): UOption[Tree]
           } {
-            (_, _) => None
+            (_, _) => UNone
           }
         }
+      }
 
       fun1.tpe match {
         case err: ErrorType => untpd.cpy.Apply(tree)(fun1, tree.args).withType(err)

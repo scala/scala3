@@ -17,6 +17,8 @@ import config.Config
 import annotation.unchecked.uncheckedVariance
 import language.implicitConversions
 
+import dotty.uoption._
+
 object Trees {
 
   // Note: it would be more logical to make Untyped = Nothing.
@@ -314,7 +316,7 @@ object Trees {
     private[dotc] def rawMods: untpd.Modifiers =
       if (myMods == null) untpd.EmptyModifiers else myMods
 
-    def rawComment: Option[Comment] = getAttachment(DocComment)
+    def rawComment: UOption[Comment] = getAttachment(DocComment)
 
     def withMods(mods: untpd.Modifiers): ThisTree[Untyped] = {
       val tree = if (myMods == null || (myMods == mods)) this else clone.asInstanceOf[MemberDef[Untyped]]
@@ -324,8 +326,8 @@ object Trees {
 
     def withFlags(flags: FlagSet): ThisTree[Untyped] = withMods(untpd.Modifiers(flags))
 
-    def setComment(comment: Option[Comment]): ThisTree[Untyped] = {
-      comment.map(putAttachment(DocComment, _))
+    def setComment(comment: UOption[Comment]): ThisTree[Untyped] = {
+      comment.foreach(putAttachment(DocComment, _))
       asInstanceOf[ThisTree[Untyped]]
     }
 

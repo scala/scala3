@@ -5,6 +5,8 @@ package terminal
 import scala.annotation.tailrec
 import scala.collection.mutable
 
+import dotty.uoption._
+
 /**
  * The core logic around a terminal; it defines the base `filters` API
  * through which anything (including basic cursor-navigation and typing)
@@ -120,7 +122,7 @@ object Terminal {
                writer: java.io.Writer,
                filters: Filter,
                displayTransform: (Vector[Char], Int) => (Ansi.Str, Int) = noTransform)
-               : Option[TermAction] = {
+               : UOption[TermAction] = {
 
     /**
       * Erases the previous line and re-draws it with the new buffer and
@@ -210,7 +212,7 @@ object Terminal {
     }
 
     @tailrec
-    def readChar(lastState: TermState, ups: Int, fullPrompt: Boolean = true): Option[TermAction] = {
+    def readChar(lastState: TermState, ups: Int, fullPrompt: Boolean = true): UOption[TermAction] = {
       val moreInputComing = reader.ready()
 
       lazy val (transformedBuffer0, cursorOffset) = displayTransform(
@@ -282,11 +284,11 @@ object Terminal {
 
         case res: Result =>
           redrawAndNewline()
-          Some(res)
+          USome(res)
 
         case Interrupt =>
           redrawAndNewline()
-          Some(Interrupt)
+          USome(Interrupt)
 
         case ClearScreen(ts) =>
           ansi.clearScreen(2)
@@ -294,7 +296,7 @@ object Terminal {
           ansi.left(9999)
           readChar(ts, ups)
         case Exit =>
-          None
+          UNone
       }
     }
 

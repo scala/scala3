@@ -12,6 +12,8 @@ import scala.language.postfixOps
 import core.Contexts._
 import Settings._
 
+import dotty.uoption._
+
 // Loosely based on the draft specification at:
 // https://wiki.scala-lang.org/display/SW/Classpath
 
@@ -86,10 +88,10 @@ object PathResolver {
     def scalaLibAsJar     = File(scalaLibDir / "scala-library.jar")
     def scalaLibAsDir     = Directory(scalaClassesDir / "library")
 
-    def scalaLibDirFound: Option[Directory] =
-      if (scalaLibAsJar.isFile) Some(scalaLibDir)
-      else if (scalaLibAsDir.isDirectory) Some(scalaClassesDir)
-      else None
+    def scalaLibDirFound: UOption[Directory] =
+      if (scalaLibAsJar.isFile) USome(scalaLibDir)
+      else if (scalaLibAsDir.isDirectory) USome(scalaClassesDir)
+      else UNone
 
     def scalaLibFound =
       if (scalaLibAsJar.isFile) scalaLibAsJar.path

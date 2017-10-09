@@ -27,6 +27,8 @@ import util.Positions._
 import annotation.switch
 import scala.collection.mutable.ListBuffer
 
+import dotty.uoption._
+
 object JavaParsers {
 
   import ast.untpd._
@@ -227,8 +229,8 @@ object JavaParsers {
     /** Convert (qual)ident to type identifier
       */
     def convertToTypeId(tree: Tree): Tree = convertToTypeName(tree) match {
-      case Some(t)  => t withPos tree.pos
-      case _        => tree match {
+      case USome(t)  => t withPos tree.pos
+      case _         => tree match {
         case AppliedTypeTree(_, _) | Select(_, _) =>
           tree
         case _ =>
@@ -239,10 +241,10 @@ object JavaParsers {
 
     /** Translate names in Select/Ident nodes to type names.
       */
-    def convertToTypeName(tree: Tree): Option[RefTree] = tree match {
-      case Select(qual, name) => Some(Select(qual, name.toTypeName))
-      case Ident(name)        => Some(Ident(name.toTypeName))
-      case _                  => None
+    def convertToTypeName(tree: Tree): UOption[RefTree] = tree match {
+      case Select(qual, name) => USome(Select(qual, name.toTypeName))
+      case Ident(name)        => USome(Ident(name.toTypeName))
+      case _                  => UNone
     }
     // -------------------- specific parsing routines ------------------
 
@@ -877,8 +879,8 @@ object JavaParsers {
           Ident(nme.EMPTY_PACKAGE)
         }
       thisPackageName = convertToTypeName(pkg) match {
-        case Some(t)  => t.name.toTypeName
-        case _        => tpnme.EMPTY
+        case USome(t)  => t.name.toTypeName
+        case _         => tpnme.EMPTY
       }
       val buf = new ListBuffer[Tree]
       while (in.token == IMPORT)

@@ -2,13 +2,15 @@ package dotty.tools.dottydoc
 package util
 package internal
 
+import dotty.uoption._
+
 object setters {
   import model._
   import comment.Comment
   import model.references._
   import internal._
 
-  def setComment(ent: Entity, to: Option[Comment]) = ent match {
+  def setComment(ent: Entity, to: UOption[Comment]) = ent match {
     case x: PackageImpl   => x.comment = to
     case x: ClassImpl     => x.comment = to
     case x: CaseClassImpl => x.comment = to

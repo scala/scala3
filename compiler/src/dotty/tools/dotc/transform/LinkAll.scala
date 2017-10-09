@@ -9,6 +9,10 @@ import dotty.tools.dotc.core.SymDenotations.ClassDenotation
 import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.core.Flags._
 
+import dotty.uoption._
+
+import scala.collection.GenTraversableOnce
+
 /** Loads all potentially reachable trees from tasty. ▲
  *  Only performed on whole world optimization mode. ▲ ▲
  *
@@ -29,6 +33,7 @@ class LinkAll extends Phase {
       else {
         val accum = new ClassesToLoadAccumulator
         val classesToLoad = unprocessed.foldLeft(Set.empty[ClassDenotation])((acc, unit) => accum.apply(acc, unit.tpdTree)) -- loadedClasses
+        implicit def uOption2GenTraversable[A](uOption: UOption[A]): GenTraversableOnce[A] = uOption.iterator // TODO abstract away
         val loadedUnits = classesToLoad.flatMap(cls => loadCompilationUnit(cls))
         allUnits(processed ++ unprocessed, loadedUnits, loadedClasses ++ classesToLoad)
       }
@@ -66,13 +71,13 @@ class LinkAll extends Phase {
 
 object LinkAll {
 
-  private[LinkAll] def loadCompilationUnit(clsd: ClassDenotation)(implicit ctx: Context): Option[CompilationUnit] = {
+  private[LinkAll] def loadCompilationUnit(clsd: ClassDenotation)(implicit ctx: Context): UOption[CompilationUnit] = {
     assert(ctx.settings.XlinkOptimise.value)
     val tree = clsd.symbol.asClass.tree
-    if (tree.isEmpty) None
+    if (tree.isEmpty) UNone
     else {
       ctx.log("Loading compilation unit for: " + clsd)
-      Some(CompilationUnit.mkCompilationUnit(clsd, tree, forceTrees = false))
+      USome(CompilationUnit.mkCompilationUnit(clsd, tree, forceTrees = false))
     }
   }
 

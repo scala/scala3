@@ -25,6 +25,8 @@ import scala.annotation.{tailrec, switch}
 import util.DotClass
 import rewrite.Rewrites.patch
 
+import dotty.uoption._
+
 object Parsers {
 
   import ast.untpd._
@@ -723,10 +725,10 @@ object Parsers {
     def toplevelTyp(): Tree = {
       val t = typ()
       findWildcardType(t) match {
-        case Some(wildcardPos) =>
+        case USome(wildcardPos) =>
           syntaxError(UnboundWildcardType(), wildcardPos)
           scalaAny
-        case None => t
+        case UNone => t
       }
     }
 
@@ -983,11 +985,11 @@ object Parsers {
      *  If it is, returns the [[Position]] where the wildcard occurs.
      */
     @tailrec
-    private final def findWildcardType(t: Tree): Option[Position] = t match {
-      case TypeBoundsTree(_, _) => Some(t.pos)
+    private final def findWildcardType(t: Tree): UOption[Position] = t match {
+      case TypeBoundsTree(_, _) => USome(t.pos)
       case Parens(t1) => findWildcardType(t1)
       case Annotated(t1, _) => findWildcardType(t1)
-      case _ => None
+      case _ => UNone
     }
 
 /* ----------- EXPRESSIONS ------------------------------------------------ */
@@ -1690,7 +1692,7 @@ object Parsers {
 
     def addFlag(mods: Modifiers, flag: FlagSet): Modifiers = {
       def getPrintableTypeFromFlagSet =
-        Map(Trait -> "trait", Method -> "method", Mutable -> "variable").get(flag)
+        Map(Trait -> "trait", Method -> "method", Mutable -> "variable").get(flag).toUOption
 
       if (compatible(mods.flags, flag)) mods | flag
       else {

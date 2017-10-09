@@ -12,6 +12,8 @@ import dotc.core.Flags
 import dotc.core.Symbols.Symbol
 import dotc.core.StdNames.str
 
+import dotty.uoption._
+
 /** This rendering object uses `ClassLoader`s to accomplish crossing the 4th
  *  wall (i.e. fetching back values from the compiled class files put into a
  *  specific class loader capable of loading from memory) and rendering them.
@@ -21,7 +23,7 @@ import dotc.core.StdNames.str
  *       `Rendering` is no longer valid.
  */
 private[repl] class Rendering(compiler: ReplCompiler,
-                              private var currentClassLoader: Option[ClassLoader] = None) {
+                              private var currentClassLoader: UOption[ClassLoader] = UNone) {
 
   private def classLoader()(implicit ctx: Context) =
     currentClassLoader.getOrElse {
@@ -37,7 +39,7 @@ private[repl] class Rendering(compiler: ReplCompiler,
                                   currentClassLoader.getOrElse(parent))
 
       Thread.currentThread.setContextClassLoader(newClsLoader)
-      currentClassLoader = Some(newClsLoader)
+      currentClassLoader = USome(newClsLoader)
       newClsLoader
     }
 

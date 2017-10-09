@@ -13,6 +13,9 @@ import java.util.{ Map => JMap, List => JList }
 import model._
 import util.syntax._
 
+import dotty.uoption._
+import scala.collection.GenTraversableOnce
+
 object tags {
 
   sealed trait ParamConverter {
@@ -207,12 +210,14 @@ object tags {
     * ```
     */
   case class Docstring(params: Map[String, AnyRef]) extends Tag("docstring") {
-    private def find(xs: List[String], ent: Entity with Members): Option[Entity] = xs match {
-      case Nil => None
+    implicit def uoption2GenTraversabelOnce[A](a: UOption[A]): GenTraversableOnce[A] = a.iterator // TODO abstract away
+
+    private def find(xs: List[String], ent: Entity with Members): UOption[Entity] = xs match {
+      case Nil => UNone
       case x :: Nil =>
-        ent.members collect { case e: Entity with Members => e } find (_.path.last == x)
+        ent.members.collectFirst { case e: Entity with Members  if e.path.last == x => e }.toUOption
       case x :: xs =>
-        ent.members collect { case e: Entity with Members => e } find (_.path.last == x) flatMap (find(xs, _))
+        ent.members.collectFirst { case e: Entity with Members if e.path.last == x => e }.toUOption.flatMap(x => find(xs, x))
     }
 
     override def render(ctx: TemplateContext, nodes: LNode*): AnyRef = nodes(0).render(ctx) match {

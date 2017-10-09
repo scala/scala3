@@ -11,12 +11,14 @@ import util.Property.Key
 import parsing.Parsers.Parser
 import reporting.diagnostic.messages.ProperDefinitionNotFound
 
+import dotty.uoption._
+
 object Comments {
   val ContextDoc = new Key[ContextDocstrings]
 
   /** Decorator for getting docbase out of context */
   implicit class CommentsContext(val ctx: Context) extends AnyVal {
-    def docCtx: Option[ContextDocstrings] = ctx.property(ContextDoc)
+    def docCtx: UOption[ContextDocstrings] = ctx.property(ContextDoc)
   }
 
   /** Context for Docstrings, contains basic functionality for getting
@@ -32,9 +34,9 @@ object Comments {
 
     def docstrings: Map[Symbol, Comment] = _docstrings.toMap
 
-    def docstring(sym: Symbol): Option[Comment] = _docstrings.get(sym)
+    def docstring(sym: Symbol): UOption[Comment] = _docstrings.get(sym).toUOption
 
-    def addDocstring(sym: Symbol, doc: Option[Comment]): Unit =
+    def addDocstring(sym: Symbol, doc: UOption[Comment]): Unit =
       doc.map(d => _docstrings += (sym -> d))
   }
 
@@ -179,8 +181,8 @@ object Comments {
       docStr.replaceAll("""\{@inheritDoc\p{Zs}*\}""", "@inheritdoc")
 
     /** The cooked doc comment of an overridden symbol */
-    protected def superComment(sym: Symbol)(implicit ctx: Context): Option[String] =
-      allInheritedOverriddenSymbols(sym).iterator map (x => cookedDocComment(x)) find (_ != "")
+    protected def superComment(sym: Symbol)(implicit ctx: Context): UOption[String] =
+      allInheritedOverriddenSymbols(sym).iterator map (x => cookedDocComment(x)) find (_ != "") toUOption
 
     private val cookedDocComments = mutable.HashMap[Symbol, String]()
 
@@ -196,12 +198,12 @@ object Comments {
       ownComment = replaceInheritDocToInheritdoc(ownComment)
 
       superComment(sym) match {
-        case None =>
+        case UNone =>
           // SI-8210 - The warning would be false negative when this symbol is a setter
           if (ownComment.indexOf("@inheritdoc") != -1 && ! sym.isSetter)
             dottydoc.println(s"${sym.pos}: the comment for ${sym} contains @inheritdoc, but no parent comment is available to inherit from.")
           ownComment.replaceAllLiterally("@inheritdoc", "<invalid inheritdoc annotation>")
-        case Some(sc) =>
+        case USome(sc) =>
           if (ownComment == "") sc
           else expandInheritdoc(sc, merge(sc, ownComment, sym), sym)
       }
@@ -231,18 +233,18 @@ object Comments {
         tocopy = 3
       }
 
-      def mergeSection(srcSec: Option[(Int, Int)], dstSec: Option[(Int, Int)]) = dstSec match {
-        case Some((start, end)) =>
+      def mergeSection(srcSec: UOption[(Int, Int)], dstSec: UOption[(Int, Int)]) = dstSec match {
+        case USome((start, end)) =>
           if (end > tocopy) tocopy = end
-        case None =>
+        case UNone =>
           srcSec match {
-            case Some((start1, end1)) => {
+            case USome((start1, end1)) => {
               out append dst.substring(copied, tocopy).trim
               out append "\n"
               copied = tocopy
               out append src.substring(start1, end1).trim
             }
-            case None =>
+            case UNone =>
           }
       }
 
@@ -379,8 +381,8 @@ object Comments {
               case "" => idx += 1
               case vname  =>
                 lookupVariable(vname, site) match {
-                  case Some(replacement) => replaceWith(replacement)
-                  case None              =>
+                  case USome(replacement) => replaceWith(replacement)
+                  case UNone              =>
                     dottydoc.println(s"Variable $vname undefined in comment for $sym in $site")
                 }
               }
@@ -424,15 +426,15 @@ object Comments {
      *  @param vble  The variable for which a definition is searched
      *  @param site  The class for which doc comments are generated
      */
-    def lookupVariable(vble: String, site: Symbol)(implicit ctx: Context): Option[String] = site match {
-      case NoSymbol => None
+    def lookupVariable(vble: String, site: Symbol)(implicit ctx: Context): UOption[String] = site match {
+      case NoSymbol => UNone
       case _        =>
         val searchList =
           if (site.flags.is(Flags.Module)) site :: site.info.baseClasses
           else site.info.baseClasses
 
-        searchList collectFirst { case x if defs(x) contains vble => defs(x)(vble) } match {
-          case Some(str) if str startsWith "$" => lookupVariable(str.tail, site)
+        searchList collectFirst { case x if defs(x) contains vble => defs(x)(vble) } toUOption match {
+          case USome(str) if str startsWith "$" => lookupVariable(str.tail, site)
           case res                             => res orElse lookupVariable(vble, site.owner)
         }
     }

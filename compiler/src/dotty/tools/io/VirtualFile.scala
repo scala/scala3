@@ -7,6 +7,8 @@ package dotty.tools.io
 
 import java.io.{ ByteArrayInputStream, ByteArrayOutputStream, InputStream, OutputStream }
 
+import dotty.uoption._
+
 /** This class implements an in-memory file.
  *
  *  @author  Philippe Altherr
@@ -37,7 +39,7 @@ class VirtualFile(val name: String, override val path: String) extends AbstractF
   /** Returns null. */
   def file: JFile = null
 
-  override def sizeOption: Option[Int] = Some(content.length)
+  override def sizeOption: UOption[Int] = USome(content.length)
 
   def input : InputStream = new ByteArrayInputStream(content)
 

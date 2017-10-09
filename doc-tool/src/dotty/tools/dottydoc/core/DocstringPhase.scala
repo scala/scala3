@@ -12,10 +12,14 @@ import model.comment._
 import HtmlParsers._
 import util.syntax._
 
+import dotty.uoption._
+
+import scala.collection.GenTraversableOnce
+
 /** Phase to add docstrings to the Dottydoc AST */
 class DocstringPhase extends DocMiniPhase with CommentParser with CommentCleaner {
-
-  private def getComment(sym: Symbol)(implicit ctx: Context): Option[CompilerComment] =
+  implicit def uOption2GenTraversable[A](uOption: UOption[A]): GenTraversableOnce[A] = uOption.iterator // TODO abstract away
+  private def getComment(sym: Symbol)(implicit ctx: Context): UOption[CompilerComment] =
     ctx.docbase.docstring(sym)
     .orElse {
       // If the symbol doesn't have a docstring, look for an overridden
@@ -23,11 +27,11 @@ class DocstringPhase extends DocMiniPhase with CommentParser with CommentCleaner
       sym.allOverriddenSymbols.collectFirst {
         case parentSym if ctx.docbase.docstring(parentSym).isDefined =>
           parentSym
-      }
+      }.toUOption
       .flatMap(ctx.docbase.docstring)
     }
 
-  private def parsedComment(ent: Entity)(implicit ctx: Context): Option[Comment] =
+  private def parsedComment(ent: Entity)(implicit ctx: Context): UOption[Comment] =
     getComment(ent.symbol).map { cmt =>
       val parsed = parse(ent, ctx.docbase.packages, clean(cmt.raw), cmt.raw, cmt.pos)
 

@@ -11,6 +11,8 @@ import ast.tpd._
 import scala.language.implicitConversions
 import printing.Formatting._
 
+import dotty.uoption._
+
 /** This object provides useful implicit decorators for types defined elsewhere */
 object Decorators {
 
@@ -22,10 +24,10 @@ object Decorators {
   }
 
   implicit class StringDecorator(val s: String) extends AnyVal {
-    def splitWhere(f: Char => Boolean, doDropIndex: Boolean): Option[(String, String)] = {
-      def splitAt(idx: Int, doDropIndex: Boolean): Option[(String, String)] =
-        if (idx == -1) None
-        else Some((s.take(idx), s.drop(if (doDropIndex) idx + 1 else idx)))
+    def splitWhere(f: Char => Boolean, doDropIndex: Boolean): UOption[(String, String)] = {
+      def splitAt(idx: Int, doDropIndex: Boolean): UOption[(String, String)] =
+        if (idx == -1) UNone
+        else USome((s.take(idx), s.drop(if (doDropIndex) idx + 1 else idx)))
 
       splitAt(s.indexWhere(f), doDropIndex)
     }

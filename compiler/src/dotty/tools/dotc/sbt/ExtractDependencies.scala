@@ -15,6 +15,8 @@ import java.util.{Arrays, Comparator}
 
 import xsbti.DependencyContext
 
+import dotty.uoption._
+
 /** This phase sends information on classes' dependencies to sbt via callbacks.
  *
  *  This is used by sbt for incremental recompilation. Briefly, when a file

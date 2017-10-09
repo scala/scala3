@@ -32,6 +32,8 @@ import io.AbstractFile
 import language.implicitConversions
 import util.{NoSource, DotClass}
 
+import dotty.uoption._
+
 /** Creation methods for symbols */
 trait Symbols { this: Context =>
 
@@ -550,8 +552,8 @@ object Symbols {
       else {
         val topLevelCls = denot.topLevelClass(ctx.withPhaseNoLater(ctx.flattenPhase))
         topLevelCls.getAnnotation(defn.SourceFileAnnot) match {
-          case Some(sourceAnnot) => sourceAnnot.argumentConstant(0) match {
-            case Some(Constant(path: String)) => AbstractFile.getFile(path)
+          case USome(sourceAnnot) => sourceAnnot.argumentConstant(0) match {
+            case USome(Constant(path: String)) => AbstractFile.getFile(path)
             case none => null
           }
           case none => null

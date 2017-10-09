@@ -6,6 +6,8 @@
 package dotty.tools
 package io
 
+import dotty.uoption._
+
 /** ''Note:  This library is considered experimental and should not be used unless you know what you are doing.'' */
 class PlainDirectory(givenPath: Directory) extends PlainFile(givenPath) {
   override def isDirectory = true
@@ -21,7 +23,7 @@ class PlainFile(val givenPath: Path) extends AbstractFile {
   assert(path ne null)
 
   val file = givenPath.jfile
-  override def underlyingSource = Some(this)
+  override def underlyingSource = USome(this)
 
   private val fpath = givenPath.toAbsolute
 
@@ -37,7 +39,7 @@ class PlainFile(val givenPath: Path) extends AbstractFile {
   override def container: AbstractFile = new PlainFile(givenPath.parent)
   override def input = givenPath.toFile.inputStream()
   override def output = givenPath.toFile.outputStream()
-  override def sizeOption = Some(givenPath.length.toInt)
+  override def sizeOption = USome(givenPath.length.toInt)
 
   override def hashCode(): Int = fpath.hashCode()
   override def equals(that: Any): Boolean = that match {
@@ -102,7 +104,7 @@ private[dotty] class PlainNioFile(nioPath: java.nio.file.Path) extends AbstractF
     case _: UnsupportedOperationException => null
   }
 
-  override def underlyingSource  = Some(this)
+  override def underlyingSource  = USome(this)
 
   private val fpath = nioPath.toAbsolutePath.toString
 
@@ -118,7 +120,7 @@ private[dotty] class PlainNioFile(nioPath: java.nio.file.Path) extends AbstractF
   override def container: AbstractFile = new PlainNioFile(nioPath.getParent)
   override def input = Files.newInputStream(nioPath)
   override def output = Files.newOutputStream(nioPath)
-  override def sizeOption = Some(Files.size(nioPath).toInt)
+  override def sizeOption = USome(Files.size(nioPath).toInt)
   override def hashCode(): Int = fpath.hashCode()
   override def equals(that: Any): Boolean = that match {
     case x: PlainNioFile => fpath == x.fpath

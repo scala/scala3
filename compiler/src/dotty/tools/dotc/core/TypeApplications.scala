@@ -20,6 +20,8 @@ import collection.mutable
 import dotty.tools.dotc.config.Config
 import java.util.NoSuchElementException
 
+import dotty.uoption._
+
 object TypeApplications {
 
   type TypeParamInfo = ParamInfo.Of[TypeName]
@@ -63,9 +65,9 @@ object TypeApplications {
       tycon.EtaExpand(tycon.typeParamSymbols)
     }
 
-    def unapply(tp: Type)(implicit ctx: Context): Option[TypeRef] = tp match {
-      case tp @ HKTypeLambda(tparams, AppliedType(fn: TypeRef, args)) if (args == tparams.map(_.paramRef)) => Some(fn)
-      case _ => None
+    def unapply(tp: Type)(implicit ctx: Context): UOptionUnapply[TypeRef] = tp match {
+      case tp @ HKTypeLambda(tparams, AppliedType(fn: TypeRef, args)) if (args == tparams.map(_.paramRef)) => USome(fn)
+      case _ => UNone
     }
   }
 

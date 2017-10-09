@@ -11,6 +11,8 @@ import java.io.RandomAccessFile
 import java.net.{ URI, URL }
 import scala.util.Random.alphanumeric
 
+import dotty.uoption._
+
 /** An abstraction for filesystem paths.  The differences between
  *  Path, File, and Directory are primarily to communicate intent.
  *  Since the filesystem can change at any time, there is no way to
@@ -179,8 +181,8 @@ class Path private[io] (val jfile: JFile) {
   )
 
   // conditionally execute
-  def ifFile[T](f: File => T): Option[T] = if (isFile) Some(f(toFile)) else None
-  def ifDirectory[T](f: Directory => T): Option[T] = if (isDirectory) Some(f(toDirectory)) else None
+  def ifFile[T](f: File => T): UOption[T] = if (isFile) USome(f(toFile)) else UNone
+  def ifDirectory[T](f: Directory => T): UOption[T] = if (isDirectory) USome(f(toDirectory)) else UNone
 
   // Boolean tests
   def canRead = jfile.canRead()

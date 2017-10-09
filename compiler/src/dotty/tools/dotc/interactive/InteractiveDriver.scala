@@ -23,6 +23,8 @@ import classpath._
 import reporting._, reporting.diagnostic.MessageContainer
 import util._
 
+import dotty.uoption._
+
 /** A Driver subclass designed to be used from IDEs */
 class InteractiveDriver(settings: List[String]) extends Driver {
   import tpd._
@@ -57,12 +59,13 @@ class InteractiveDriver(settings: List[String]) extends Driver {
     val fromSource = openedTrees.values.flatten.toList
     val fromClassPath = (dirClassPathClasses ++ zipClassPathClasses).flatMap { cls =>
       val className = cls.toTypeName
+      implicit def uOption2GenTraversableOnce[A](uoption: UOption[A]): GenTraversableOnce[A] = uoption.iterator // TODO abstract away
       List(tree(className), tree(className.moduleClassName)).flatten
     }
     (fromSource ++ fromClassPath).distinct
   }
 
-  private def tree(className: TypeName)(implicit ctx: Context): Option[SourceTree] = {
+  private def tree(className: TypeName)(implicit ctx: Context): UOption[SourceTree] = {
     val clsd = ctx.base.staticRef(className)
     clsd match {
       case clsd: ClassDenotation =>
@@ -84,9 +87,9 @@ class InteractiveDriver(settings: List[String]) extends Driver {
 
     classReps
       .filter((classRep: ClassRepresentation) => classRep.binary match {
-        case None =>
+        case UNone =>
           true
-        case Some(binFile) =>
+        case USome(binFile) =>
           val prefix =
             if (binFile.name.endsWith(".class"))
               binFile.name.stripSuffix(".class")

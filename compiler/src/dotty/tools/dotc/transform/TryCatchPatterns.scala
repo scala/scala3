@@ -12,6 +12,8 @@ import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.transform.TreeTransforms.{MiniPhaseTransform, TransformerInfo}
 import dotty.tools.dotc.util.Positions.Position
 
+import dotty.uoption._
+
 /** Compiles the cases that can not be handled by primitive catch cases as a common pattern match.
  *
  *  The following code:
@@ -61,7 +63,7 @@ class TryCatchPatterns extends MiniPhaseTransform {
   override def transformTry(tree: Try)(implicit ctx: Context, info: TransformerInfo): Tree = {
     val (tryCases, patternMatchCases) = tree.cases.span(isCatchCase)
     val fallbackCase = mkFallbackPatterMatchCase(patternMatchCases, tree.pos)
-    cpy.Try(tree)(cases = tryCases ++ fallbackCase)
+    cpy.Try(tree)(cases = tryCases ++ fallbackCase.iterator)
   }
 
   /** Is this pattern node a catch-all or type-test pattern? */
@@ -81,15 +83,15 @@ class TryCatchPatterns extends MiniPhaseTransform {
   }
 
   private def mkFallbackPatterMatchCase(patternMatchCases: List[CaseDef], pos: Position)(
-      implicit ctx: Context, info: TransformerInfo): Option[CaseDef] = {
-    if (patternMatchCases.isEmpty) None
+      implicit ctx: Context, info: TransformerInfo): UOption[CaseDef] = {
+    if (patternMatchCases.isEmpty) UNone
     else {
       val exName = ExceptionBinderName.fresh()
       val fallbackSelector =
         ctx.newSymbol(ctx.owner, exName, Flags.Synthetic | Flags.Case, defn.ThrowableType, coord = pos)
       val sel = Ident(fallbackSelector.termRef).withPos(pos)
       val rethrow = CaseDef(EmptyTree, EmptyTree, Throw(ref(fallbackSelector)))
-      Some(CaseDef(
+      USome(CaseDef(
           Bind(fallbackSelector, Underscore(fallbackSelector.info).withPos(pos)),
           EmptyTree,
           transformFollowing(Match(sel, patternMatchCases ::: rethrow :: Nil)))

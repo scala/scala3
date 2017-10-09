@@ -9,6 +9,8 @@ import core.Types._
 import core.Symbols._
 import org.junit.Assert._
 
+import dotty.uoption._
+
 class TreeInfoTest extends DottyTest {
 
   import tpd._

@@ -9,6 +9,8 @@ import terminal.{DelegateFilter, Filter, Terminal}
 
 import Filter._
 
+import dotty.uoption._
+
 /**
  * Filters for injection of readline-specific hotkeys, the sort that
  * are available in bash, python and most other interactive command-lines
@@ -202,7 +204,7 @@ object ReadlineFilters {
 
       // If some command goes through that's not appending/prepending to the
       // kill ring, stop appending and allow the next kill to override it
-      Filter.wrap(identifier) { _ => accumulating = false; None },
+      Filter.wrap(identifier) { _ => accumulating = false; UNone },
       simple(Ctrl('h'))((b, c, m) => cutCharLeft(b, c)),
       simple(Ctrl('y'))((b, c, m) => paste(b, c))
     )

@@ -16,6 +16,8 @@ import typer.Checking.checkNonCyclic
 import io.AbstractFile
 import scala.util.control.NonFatal
 
+import dotty.uoption._
+
 object ClassfileParser {
   /** Marker trait for unpicklers that can be embedded in classfiles. */
   trait Embedded

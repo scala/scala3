@@ -13,6 +13,8 @@ import dottydoc.util.traversing._
 
 import model._
 
+import dotty.uoption._
+
 object Statistics {
   implicit class MapTotals(val map: Map[String, Statistics]) extends AnyVal {
     def totalEntities =

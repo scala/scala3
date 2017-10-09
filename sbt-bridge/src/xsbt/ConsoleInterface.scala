@@ -8,6 +8,8 @@ import xsbti.Logger
 import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.repl.ReplDriver
 
+import dotty.uoption._
+
 class ConsoleInterface {
   def commandArguments(
     args: Array[String],
@@ -51,6 +53,6 @@ class ConsoleInterface {
       } ++
       Array("-classpath", classpathString)
 
-    new ReplDriver(completeArgs, classLoader = Some(loader)).runUntilQuit()
+    new ReplDriver(completeArgs, classLoader = USome(loader)).runUntilQuit()
   }
 }

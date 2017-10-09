@@ -5,17 +5,19 @@ package parsing
 import ast.Trees._
 import core.Contexts.Context
 
+import dotty.uoption._
+
 trait DocstringTest extends DottyTest {
   ctx = ctx.fresh.setSetting(ctx.settings.YkeepComments, true)
 
-  def checkDocString(actual: Option[String], expected: String): Unit = actual match {
-    case Some(str) =>
+  def checkDocString(actual: UOption[String], expected: String): Unit = actual match {
+    case USome(str) =>
       assert(str == expected, s"""Docstring: "$str" didn't match expected "$expected"""")
-    case None =>
+    case UNone =>
       assert(false, s"""No docstring found, expected: "$expected"""")
   }
 
-  def expectNoDocString(doc: Option[String]): Unit =
+  def expectNoDocString(doc: UOption[String]): Unit =
     doc.fold(()) { d => assert(false, s"""Expected not to find a docstring, but found: "$d"""") }
 
   def defaultAssertion: PartialFunction[Any, Unit] = {

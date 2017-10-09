@@ -19,6 +19,9 @@ import Names._
 import collection.mutable
 import ResolveSuper._
 
+import dotty.uoption._
+import collection.GenTraversableOnce
+
 /** This phase adds forwarder where mixedin generic and primitive typed methods have a missmatch.
   *  In particular for every method that is declared both as generic with a primitive type and with a primitive type
   *    `<mods> def f[Ts](ps1)...(psN): U` in trait M` and
@@ -39,11 +42,12 @@ class PrimitiveForwarders extends MiniPhaseTransform with IdentityDenotTransform
 
   override def changesMembers = true   // the phase adds primitive forwarders
 
+  implicit def uOption2GenTraversable[A](uOption: UOption[A]): GenTraversableOnce[A] = uOption.iterator // TODO abstract away
+
   override def transformTemplate(impl: Template)(implicit ctx: Context, info: TransformerInfo) = {
     val cls = impl.symbol.owner.asClass
     val ops = new MixinOps(cls, thisTransform)
     import ops._
-
     def methodPrimitiveForwarders: List[Tree] =
       for (meth <- mixins.flatMap(_.info.decls.toList.flatMap(needsPrimitiveForwarderTo)).distinct)
         yield polyDefDef(implementation(meth.asTerm), forwarder(meth))

@@ -8,7 +8,10 @@ import dotc.core.Contexts.{ Context, ContextBase, FreshContext }
 import dotc.core.Comments.{ ContextDoc, ContextDocstrings }
 import dottydoc.core.ContextDottydoc
 
+import dotty.uoption._
+
 class MarkdownTests extends DottyDocTest {
+
   override implicit val ctx: FreshContext = {
     // TODO: check if can reuse parent instead of copy-paste
     val base = new ContextBase
@@ -41,7 +44,7 @@ class MarkdownTests extends DottyDocTest {
       val traitCmt =
         packages("scala")
         .children.find(_.path.mkString(".") == "scala.HelloWorld")
-        .flatMap(_.comment.map(_.body))
+        .flatMap(_.comment.map(_.body).toOption)
         .get
         .trim
 
@@ -62,7 +65,7 @@ class MarkdownTests extends DottyDocTest {
       val traitCmt =
         packages("scala")
         .children.find(_.path.mkString(".") == "scala.HelloWorld")
-        .flatMap(_.comment.map(_.body))
+        .flatMap(_.comment.map(_.body).toOption)
         .get
         .trim
 
@@ -85,7 +88,7 @@ class MarkdownTests extends DottyDocTest {
       val traitCmt =
         packages("scala")
         .children.find(_.path.mkString(".") == "scala.HelloWorld")
-        .flatMap(_.comment.map(_.body))
+        .flatMap(_.comment.map(_.body).toOption)
         .get
         .trim
 
@@ -108,7 +111,7 @@ class MarkdownTests extends DottyDocTest {
       val traitCmt =
         packages("scala")
         .children.find(_.path.mkString(".") == "scala.HelloWorld")
-        .flatMap(_.comment.map(_.body))
+        .flatMap(_.comment.map(_.body).toOption)
         .get
         .trim
 
@@ -134,7 +137,7 @@ class MarkdownTests extends DottyDocTest {
       val traitCmt =
         packages("scala")
         .children.find(_.path.mkString(".") == "scala.HelloWorld")
-        .flatMap(_.comment.map(_.body))
+        .flatMap(_.comment.map(_.body).toOption)
         .get
         .trim
 
@@ -167,7 +170,7 @@ class MarkdownTests extends DottyDocTest {
       val traitCmt =
         packages("scala")
         .children.find(_.path.mkString(".") == "scala.HelloWorld")
-        .flatMap(_.comment.map(_.body))
+        .flatMap(_.comment.map(_.body).toOption)
         .get
         .trim
 
@@ -203,7 +206,7 @@ class MarkdownTests extends DottyDocTest {
       val traitCmt =
         packages("scala")
         .children.find(_.path.mkString(".") == "scala.HelloWorld")
-        .flatMap(_.comment.map(_.body))
+        .flatMap(_.comment.map(_.body).toOption)
         .get
         .trim
 
@@ -234,7 +237,7 @@ class MarkdownTests extends DottyDocTest {
       val traitCmt =
         packages("scala")
         .children.find(_.path.mkString(".") == "scala.HelloWorld")
-        .flatMap(_.comment.map(_.body))
+        .flatMap(_.comment.map(_.body).toOption)
         .get
         .trim
 
@@ -263,7 +266,7 @@ class MarkdownTests extends DottyDocTest {
       val traitCmt =
         packages("scala")
         .children.find(_.path.mkString(".") == "scala.HelloWorld")
-        .flatMap(_.comment.map(_.short))
+        .flatMap(_.comment.map(_.short).toOption)
         .get
         .trim
 
@@ -293,7 +296,7 @@ class MarkdownTests extends DottyDocTest {
       val traitCmt =
         packages("scala")
         .children.find(_.path.mkString(".") == "scala.HelloWorld")
-        .flatMap(_.comment.map(_.short))
+        .flatMap(_.comment.map(_.short).toOption)
         .get
         .trim
 

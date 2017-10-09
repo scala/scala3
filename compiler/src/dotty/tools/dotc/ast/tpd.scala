@@ -17,6 +17,8 @@ import NameKinds.{TempResultName, OuterSelectName}
 import scala.annotation.tailrec
 import scala.io.Codec
 
+import dotty.uoption._
+
 /** Some creators for typed trees */
 object tpd extends Trees.Instance[Type] with TypedTreeInfo {
 
@@ -632,8 +634,8 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     def deepFold[T](z: T)(op: (T, tpd.Tree) => T)(implicit ctx: Context) =
       new DeepFolder(op).apply(z, tree)
 
-    def find[T](pred: (tpd.Tree) => Boolean)(implicit ctx: Context): Option[tpd.Tree] =
-      shallowFold[Option[tpd.Tree]](None)((accum, tree) => if (pred(tree)) Some(tree) else accum)
+    def find[T](pred: (tpd.Tree) => Boolean)(implicit ctx: Context): UOption[tpd.Tree] =
+      shallowFold[UOption[tpd.Tree]](UNone)((accum, tree) => if (pred(tree)) USome(tree) else accum)
 
     def subst(from: List[Symbol], to: List[Symbol])(implicit ctx: Context): ThisTree =
       new TreeTypeMap(substFrom = from, substTo = to).apply(tree)
@@ -972,9 +974,9 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
 
   /** An extractor that pulls out type arguments */
   object MaybePoly {
-    def unapply(tree: Tree): Option[(Tree, List[Tree])] = tree match {
-      case TypeApply(tree, targs) => Some(tree, targs)
-      case _ => Some(tree, Nil)
+    def unapply(tree: Tree): UOptionUnapply[(Tree, List[Tree])] = tree match {
+      case TypeApply(tree, targs) => USome(tree, targs)
+      case _ => USome(tree, Nil)
     }
   }
 

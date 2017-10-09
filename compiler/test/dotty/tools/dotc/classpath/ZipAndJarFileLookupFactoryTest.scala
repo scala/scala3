@@ -7,7 +7,7 @@ import java.nio.file.attribute.FileTime
 import dotty.tools.dotc.core.Contexts.{Context, ContextBase}
 import dotty.tools.io.AbstractFile
 
-
+import dotty.uoption._
 
 class ZipAndJarFileLookupFactoryTest {
   @Test def cacheInvalidation(): Unit = {

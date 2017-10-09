@@ -7,6 +7,8 @@ import java.net.URL
 
 import dotty.tools.io.ClassPath
 
+import dotty.uoption._
+
 case class VirtualDirectoryClassPath(dir: VirtualDirectory) extends ClassPath with DirectoryLookup[ClassFileEntryImpl] with NoSourcePaths {
   type F = AbstractFile
 
@@ -23,10 +25,10 @@ case class VirtualDirectoryClassPath(dir: VirtualDirectory) extends ClassPath wi
   }
 
   protected def emptyFiles: Array[AbstractFile] = Array.empty
-  protected def getSubDir(packageDirName: String): Option[AbstractFile] =
-    Option(lookupPath(dir)(packageDirName.split('/'), directory = true))
-  protected def listChildren(dir: AbstractFile, filter: Option[AbstractFile => Boolean] = None): Array[F] = filter match {
-    case Some(f) => dir.iterator.filter(f).toArray
+  protected def getSubDir(packageDirName: String): UOption[AbstractFile] =
+    UOption(lookupPath(dir)(packageDirName.split('/'), directory = true))
+  protected def listChildren(dir: AbstractFile, filter: UOption[AbstractFile => Boolean] = UNone): Array[F] = filter match {
+    case USome(f) => dir.iterator.filter(f).toArray
     case _ => dir.toArray
   }
   def getName(f: AbstractFile): String = f.name
@@ -37,11 +39,11 @@ case class VirtualDirectoryClassPath(dir: VirtualDirectory) extends ClassPath wi
   def asURLs: Seq[URL] = Seq(new URL(dir.name))
   def asClassPathStrings: Seq[String] = Seq(dir.path)
 
-  override def findClass(className: String): Option[ClassRepresentation] = findClassFile(className) map ClassFileEntryImpl
+  override def findClass(className: String): UOption[ClassRepresentation] = findClassFile(className) map ClassFileEntryImpl
 
-  def findClassFile(className: String): Option[AbstractFile] = {
+  def findClassFile(className: String): UOption[AbstractFile] = {
     val relativePath = FileUtils.dirPath(className) + ".class"
-    Option(lookupPath(dir)(relativePath split '/', directory = false))
+    UOption(lookupPath(dir)(relativePath split '/', directory = false))
   }
 
   private[dotty] def classes(inPackage: String): Seq[ClassFileEntry] = files(inPackage)

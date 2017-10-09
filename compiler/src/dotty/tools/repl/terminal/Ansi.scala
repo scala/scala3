@@ -2,6 +2,8 @@ package dotty.tools
 package repl
 package terminal
 
+import dotty.uoption._
+
 object Ansi {
 
   /**
@@ -10,7 +12,7 @@ object Ansi {
     *
     * @param escape the actual ANSI escape sequence corresponding to this Attr
     */
-  case class Attr private[Ansi](escape: Option[String], resetMask: Int, applyMask: Int) {
+  case class Attr private[Ansi](escape: UOption[String], resetMask: Int, applyMask: Int) {
     override def toString = escape.getOrElse("") + Console.RESET
     def transform(state: Short) = ((state & ~resetMask) | applyMask).toShort
 
@@ -19,7 +21,7 @@ object Ansi {
   }
 
   object Attr {
-    val Reset = new Attr(Some(Console.RESET), Short.MaxValue, 0)
+    val Reset = new Attr(USome(Console.RESET), Short.MaxValue, 0)
 
     /**
       * Quickly convert string-colors into [[Ansi.Attr]]s
@@ -28,7 +30,7 @@ object Ansi {
       val pairs = for {
         cat <- categories
         color <- cat.all
-        str <- color.escape
+        str <- color.escape.toOption
       } yield (str, color)
       (pairs :+ (Console.RESET -> Reset)).toMap
     }
@@ -42,7 +44,7 @@ object Ansi {
     val mask: Int
     val all: Seq[Attr]
     lazy val bitsMap = all.map{ m => m.applyMask -> m}.toMap
-    def makeAttr(s: Option[String], applyMask: Int) = {
+    def makeAttr(s: UOption[String], applyMask: Int) = {
       new Attr(s, mask, applyMask)
     }
   }
@@ -50,15 +52,15 @@ object Ansi {
   object Color extends Category {
 
     val mask = 15 << 7
-    val Reset     = makeAttr(Some("\u001b[39m"),     0 << 7)
-    val Black     = makeAttr(Some(Console.BLACK),    1 << 7)
-    val Red       = makeAttr(Some(Console.RED),      2 << 7)
-    val Green     = makeAttr(Some(Console.GREEN),    3 << 7)
-    val Yellow    = makeAttr(Some(Console.YELLOW),   4 << 7)
-    val Blue      = makeAttr(Some(Console.BLUE),     5 << 7)
-    val Magenta   = makeAttr(Some(Console.MAGENTA),  6 << 7)
-    val Cyan      = makeAttr(Some(Console.CYAN),     7 << 7)
-    val White     = makeAttr(Some(Console.WHITE),    8 << 7)
+    val Reset     = makeAttr(USome("\u001b[39m"),     0 << 7)
+    val Black     = makeAttr(USome(Console.BLACK),    1 << 7)
+    val Red       = makeAttr(USome(Console.RED),      2 << 7)
+    val Green     = makeAttr(USome(Console.GREEN),    3 << 7)
+    val Yellow    = makeAttr(USome(Console.YELLOW),   4 << 7)
+    val Blue      = makeAttr(USome(Console.BLUE),     5 << 7)
+    val Magenta   = makeAttr(USome(Console.MAGENTA),  6 << 7)
+    val Cyan      = makeAttr(USome(Console.CYAN),     7 << 7)
+    val White     = makeAttr(USome(Console.WHITE),    8 << 7)
 
     val all = Vector(
       Reset, Black, Red, Green, Yellow,
@@ -69,15 +71,15 @@ object Ansi {
   object Back extends Category {
     val mask = 15 << 3
 
-    val Reset    = makeAttr(Some("\u001b[49m"),       0 << 3)
-    val Black    = makeAttr(Some(Console.BLACK_B),    1 << 3)
-    val Red      = makeAttr(Some(Console.RED_B),      2 << 3)
-    val Green    = makeAttr(Some(Console.GREEN_B),    3 << 3)
-    val Yellow   = makeAttr(Some(Console.YELLOW_B),   4 << 3)
-    val Blue     = makeAttr(Some(Console.BLUE_B),     5 << 3)
-    val Magenta  = makeAttr(Some(Console.MAGENTA_B),  6 << 3)
-    val Cyan     = makeAttr(Some(Console.CYAN_B),     7 << 3)
-    val White    = makeAttr(Some(Console.WHITE_B),    8 << 3)
+    val Reset    = makeAttr(USome("\u001b[49m"),       0 << 3)
+    val Black    = makeAttr(USome(Console.BLACK_B),    1 << 3)
+    val Red      = makeAttr(USome(Console.RED_B),      2 << 3)
+    val Green    = makeAttr(USome(Console.GREEN_B),    3 << 3)
+    val Yellow   = makeAttr(USome(Console.YELLOW_B),   4 << 3)
+    val Blue     = makeAttr(USome(Console.BLUE_B),     5 << 3)
+    val Magenta  = makeAttr(USome(Console.MAGENTA_B),  6 << 3)
+    val Cyan     = makeAttr(USome(Console.CYAN_B),     7 << 3)
+    val White    = makeAttr(USome(Console.WHITE_B),    8 << 3)
 
     val all = Seq(
       Reset, Black, Red, Green, Yellow,
@@ -87,22 +89,22 @@ object Ansi {
 
   object Bold extends Category {
     val mask = 1 << 0
-    val On  = makeAttr(Some(Console.BOLD), 1 << 0)
-    val Off = makeAttr(None              , 0 << 0)
+    val On  = makeAttr(USome(Console.BOLD), 1 << 0)
+    val Off = makeAttr(UNone              , 0 << 0)
     val all = Seq(On, Off)
   }
 
   object Underlined extends Category {
     val mask = 1 << 1
-    val On  = makeAttr(Some(Console.UNDERLINED), 1 << 1)
-    val Off = makeAttr(None,                     0 << 1)
+    val On  = makeAttr(USome(Console.UNDERLINED), 1 << 1)
+    val Off = makeAttr(UNone,                     0 << 1)
     val all = Seq(On, Off)
   }
 
   object Reversed extends Category {
     val mask = 1 << 2
-    val On  = makeAttr(Some(Console.REVERSED),   1 << 2)
-    val Off = makeAttr(None,                     0 << 2)
+    val On  = makeAttr(USome(Console.REVERSED),   1 << 2)
+    val Off = makeAttr(UNone,                     0 << 2)
     val all = Seq(On, Off)
   }
 

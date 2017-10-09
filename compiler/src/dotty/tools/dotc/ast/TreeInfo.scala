@@ -8,6 +8,8 @@ import Names._, StdNames._, NameOps._, Decorators._, Symbols._
 import util.HashSet
 import typer.ConstFold
 
+import dotty.uoption._
+
 trait TreeInfo[T >: Untyped <: Type] { self: Trees.Instance[T] =>
   import TreeInfo._
 
@@ -274,19 +276,19 @@ trait UntypedTreeInfo extends TreeInfo[Untyped] { self: Trees.Instance[Untyped] 
     case _ => false
   }
 
-  def functionWithUnknownParamType(tree: Tree): Option[Tree] = tree match {
+  def functionWithUnknownParamType(tree: Tree): UOption[Tree] = tree match {
     case Function(args, _) =>
       if (args.exists {
         case ValDef(_, tpt, _) => tpt.isEmpty
         case _ => false
-      }) Some(tree)
-      else None
+      }) USome(tree)
+      else UNone
     case Match(EmptyTree, _) =>
-      Some(tree)
+      USome(tree)
     case Block(Nil, expr) =>
       functionWithUnknownParamType(expr)
     case _ =>
-      None
+      UNone
   }
 
   def isFunctionWithUnknownParamType(tree: Tree): Boolean =
@@ -523,10 +525,10 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
   /** An extractor for closures, either contained in a block or standalone.
    */
   object closure {
-    def unapply(tree: Tree): Option[(List[Tree], Tree, Tree)] = tree match {
+    def unapply(tree: Tree): UOptionUnapply[(List[Tree], Tree, Tree)] = tree match {
       case Block(_, expr) => unapply(expr)
-      case Closure(env, meth, tpt) => Some(env, meth, tpt)
-      case _ => None
+      case Closure(env, meth, tpt) => USome(env, meth, tpt)
+      case _ => UNone
     }
   }
 

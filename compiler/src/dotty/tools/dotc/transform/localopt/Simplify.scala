@@ -15,6 +15,8 @@ import dotty.tools.dotc.core.PhantomErasure
 
 import scala.annotation.tailrec
 
+import dotty.uoption._
+
 /** This phase consists of a series of small, simple, local optimisations
  *  applied as a fix point transformation over Dotty Trees.
  *
@@ -150,13 +152,13 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
 object Simplify {
   import tpd._
   // TODO: This function is duplicated in jvm/DottyBackendInterface.scala, let's factor these out!
-  def desugarIdent(i: Ident)(implicit ctx: Context): Option[Select] = {
+  def desugarIdent(i: Ident)(implicit ctx: Context): UOption[Select] = {
     i.tpe match {
       case TermRef(prefix: TermRef, _) =>
-        Some(ref(prefix).select(i.symbol))
+        USome(ref(prefix).select(i.symbol))
       case TermRef(prefix: ThisType, _) =>
-        Some(This(prefix.cls).select(i.symbol))
-      case _ => None
+        USome(This(prefix.cls).select(i.symbol))
+      case _ => UNone
     }
   }
 
@@ -169,8 +171,8 @@ object Simplify {
     case s: Select => s.symbol.owner == defn.SystemModule
     case i: Ident  =>
       desugarIdent(i) match {
-        case Some(ident) => isEffectivelyMutable(ident)
-        case None => false
+        case USome(ident) => isEffectivelyMutable(ident)
+        case UNone => false
       }
     case _ => false
   }

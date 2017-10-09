@@ -4,6 +4,8 @@ package dottydoc
 import org.junit.Test
 import org.junit.Assert._
 
+import dotty.uoption._
+
 class TestWhitelistedCollections extends DottyDocTest {
 
   @Test def arrayAndImmutableHasDocumentation =

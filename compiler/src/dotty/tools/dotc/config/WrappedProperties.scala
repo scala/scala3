@@ -4,12 +4,14 @@ package config
 
 import java.security.AccessControlException
 
+import dotty.uoption._
+
 /** For placing a wrapper function around property functions.
  *  Motivated by places like google app engine throwing exceptions
  *  on property lookups.
  */
 trait WrappedProperties extends PropertiesTrait {
-  def wrap[T](body: => T): Option[T]
+  def wrap[T](body: => T): UOption[T]
 
   protected def propCategory   = "wrapped"
   protected def pickJarBasedOn = this.getClass
@@ -29,6 +31,6 @@ trait WrappedProperties extends PropertiesTrait {
 
 object WrappedProperties {
   object AccessControl extends WrappedProperties {
-    def wrap[T](body: => T) = try Some(body) catch { case _: AccessControlException => None }
+    def wrap[T](body: => T) = try USome(body) catch { case _: AccessControlException => UNone }
   }
 }

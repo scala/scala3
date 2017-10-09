@@ -31,6 +31,8 @@ import io._
 import AmmoniteReader._
 import results._
 
+import dotty.uoption._
+
 /** The state of the REPL contains necessary bindings instead of having to have
  *  mutation
  *
@@ -79,7 +81,7 @@ case class Completions(cursor: Int,
 /** Main REPL instance, orchestrating input, compilation and presentation */
 class ReplDriver(settings: Array[String],
                  protected val out: PrintStream = System.out,
-                 protected val classLoader: Option[ClassLoader] = None) extends Driver {
+                 protected val classLoader: UOption[ClassLoader] = UNone) extends Driver {
 
   /** Overridden to `false` in order to not have to give sources on the
    *  commandline
@@ -107,7 +109,7 @@ class ReplDriver(settings: Array[String],
     rootCtx = initialCtx
     val outDir: AbstractFile = {
       if (rootCtx.settings.outputDir.isDefault(rootCtx))
-        new VirtualDirectory("(memory)", None)
+        new VirtualDirectory("(memory)", UNone)
       else
         new PlainDirectory(rootCtx.settings.outputDir.value(rootCtx))
     }

@@ -6,6 +6,8 @@ import config.ScalaVersion
 import StdNames._
 import dotty.tools.dotc.ast.{tpd, untpd}
 
+import dotty.uoption._
+
 object Annotations {
 
   abstract class Annotation {
@@ -20,11 +22,11 @@ object Annotations {
       if (tree eq this.tree) this else Annotation(tree)
 
     def arguments(implicit ctx: Context) = ast.tpd.arguments(tree)
-    def argument(i: Int)(implicit ctx: Context): Option[Tree] = {
+    def argument(i: Int)(implicit ctx: Context): UOption[Tree] = {
       val args = arguments
-      if (i < args.length) Some(args(i)) else None
+      if (i < args.length) USome(args(i)) else UNone
     }
-    def argumentConstant(i: Int)(implicit ctx: Context): Option[Constant] =
+    def argumentConstant(i: Int)(implicit ctx: Context): UOption[Constant] =
       for (ConstantType(c) <- argument(i) map (_.tpe)) yield c
 
     def ensureCompleted(implicit ctx: Context): Unit = tree

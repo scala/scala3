@@ -17,6 +17,8 @@ import transform.SymUtils._
 import scala.annotation.switch
 import language.implicitConversions
 
+import dotty.uoption._
+
 class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
 
   /** A stack of enclosing DefDef, TypeDef, or ClassDef, or ModuleDefs nodes */

@@ -12,6 +12,8 @@ import config.Printers.simplify
 import Simplify._
 import transform.SymUtils._
 
+import dotty.uoption._
+
 /** Inline vals and remove vals that are aliases to other vals
  *
  *  Notion of alias is a by-value notion, so "good" casts are ignored.

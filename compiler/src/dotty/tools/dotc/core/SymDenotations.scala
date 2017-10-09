@@ -19,6 +19,8 @@ import java.util.WeakHashMap
 import config.Config
 import config.Printers.{completions, incremental, noPrinter}
 
+import dotty.uoption._
+
 trait SymDenotations { this: Context =>
   import SymDenotations._
 
@@ -209,9 +211,9 @@ object SymDenotations {
     final def infoOrCompleter = myInfo
 
     /** Optionally, the info if it is completed */
-    final def unforcedInfo: Option[Type] = myInfo match {
-      case myInfo: LazyType => None
-      case _ => Some(myInfo)
+    final def unforcedInfo: UOption[Type] = myInfo match {
+      case myInfo: LazyType => UNone
+      case _ => USome(myInfo)
     }
 
     private def completeFrom(completer: LazyType)(implicit ctx: Context): Unit = {
@@ -291,19 +293,19 @@ object SymDenotations {
       annotations = annotations.filterConserve(p)
 
     /** Optionally, the annotation matching the given class symbol */
-    final def getAnnotation(cls: Symbol)(implicit ctx: Context): Option[Annotation] =
+    final def getAnnotation(cls: Symbol)(implicit ctx: Context): UOption[Annotation] =
       dropOtherAnnotations(annotations, cls) match {
-        case annot :: _ => Some(annot)
-        case nil => None
+        case annot :: _ => USome(annot)
+        case nil => UNone
       }
 
     /** The same as getAnnotation, but without ensuring
      *  that the symbol carrying the annotation is completed
      */
-    final def unforcedAnnotation(cls: Symbol)(implicit ctx: Context): Option[Annotation] =
+    final def unforcedAnnotation(cls: Symbol)(implicit ctx: Context): UOption[Annotation] =
       dropOtherAnnotations(myAnnotations, cls) match {
-        case annot :: _ => Some(annot)
-        case nil => None
+        case annot :: _ => USome(annot)
+        case nil => UNone
       }
 
     /** Add given annotation to the annotations of this denotation */

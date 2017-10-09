@@ -11,6 +11,8 @@ import PartialFunction._
 import collection.mutable
 import util.common.alwaysZero
 
+import dotty.uoption._
+
 object Definitions {
 
   /** The maximum number of elements in a tuple or product.
@@ -703,12 +705,12 @@ class Definitions {
   object PartialFunctionOf {
     def apply(arg: Type, result: Type)(implicit ctx: Context) =
       PartialFunctionType.appliedTo(arg :: result :: Nil)
-    def unapply(pft: Type)(implicit ctx: Context) = {
+    def unapply(pft: Type)(implicit ctx: Context): UOptionUnapply[(Type, List[Type])] = {
       if (pft.isRef(PartialFunctionClass)) {
         val targs = pft.dealias.argInfos
-        if (targs.length == 2) Some((targs.head, targs.tail)) else None
+        if (targs.length == 2) USome((targs.head, targs.tail)) else UNone
       }
-      else None
+      else UNone
     }
   }
 
@@ -716,9 +718,9 @@ class Definitions {
     def apply(elem: Type)(implicit ctx: Context) =
       if (ctx.erasedTypes) JavaArrayType(elem)
       else ArrayType.appliedTo(elem :: Nil)
-    def unapply(tp: Type)(implicit ctx: Context): Option[Type] = tp.dealias match {
-      case AppliedType(at, arg :: Nil) if at isRef ArrayType.symbol => Some(arg)
-      case _ => None
+    def unapply(tp: Type)(implicit ctx: Context): UOptionUnapply[Type] = tp.dealias match {
+      case AppliedType(at, arg :: Nil) if at isRef ArrayType.symbol => USome(arg)
+      case _ => UNone
     }
   }
 
@@ -735,16 +737,16 @@ class Definitions {
   object MultiArrayOf {
     def apply(elem: Type, ndims: Int)(implicit ctx: Context): Type =
       if (ndims == 0) elem else ArrayOf(apply(elem, ndims - 1))
-    def unapply(tp: Type)(implicit ctx: Context): Option[(Type, Int)] = tp match {
+    def unapply(tp: Type)(implicit ctx: Context): UOptionUnapply[(Type, Int)] = tp match {
       case ArrayOf(elemtp) =>
-        def recur(elemtp: Type): Option[(Type, Int)] = elemtp.dealias match {
+        def recur(elemtp: Type): UOption[(Type, Int)] = elemtp.dealias match {
           case TypeBounds(lo, hi) => recur(hi)
-          case MultiArrayOf(finalElemTp, n) => Some(finalElemTp, n + 1)
-          case _ => Some(elemtp, 1)
+          case MultiArrayOf(finalElemTp, n) => USome(finalElemTp, n + 1)
+          case _ => USome(elemtp, 1)
         }
         recur(elemtp)
       case _ =>
-        None
+        UNone
     }
   }
 

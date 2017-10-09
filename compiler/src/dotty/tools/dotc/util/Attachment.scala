@@ -1,5 +1,7 @@
 package dotty.tools.dotc.util
 
+import dotty.uoption._
+
 /** A class inheriting from Attachment.Container supports
  *  adding, removing and lookup of attachments. Attachments are typed key/value pairs.
  */
@@ -13,10 +15,10 @@ object Attachment {
     private[Attachment] var next: Link[_]
 
     /** Optionally get attachment corresponding to `key` */
-    final def getAttachment[V](key: Key[V]): Option[V] = {
+    final def getAttachment[V](key: Key[V]): UOption[V] = {
       val nx = next
-      if (nx == null) None
-      else if (nx.key eq key) Some(nx.value.asInstanceOf[V])
+      if (nx == null) UNone
+      else if (nx.key eq key) USome(nx.value.asInstanceOf[V])
       else nx.getAttachment[V](key)
     }
 
@@ -45,15 +47,15 @@ object Attachment {
      *  The new attachment is added at the position of the old one, or at the end
      *  if no attachment with same `key` existed.
      */
-    final def putAttachment[V](key: Key[V], value: V): Option[V] = {
+    final def putAttachment[V](key: Key[V], value: V): UOption[V] = {
       val nx = next
       if (nx == null) {
         next = new Link(key, value, null)
-        None
+        UNone
       }
       else if (nx.key eq key) {
         next = new Link(key, value, nx.next)
-        Some(nx.value.asInstanceOf[V])
+        USome(nx.value.asInstanceOf[V])
       }
       else nx.putAttachment(key, value)
     }
@@ -61,13 +63,13 @@ object Attachment {
     /** Remove attachment with given `key`, if it exists.
      *  @return  Optionally, the removed attachment with given `key` if one existed before.
      */
-    final def removeAttachment[V](key: Key[V]): Option[V] = {
+    final def removeAttachment[V](key: Key[V]): UOption[V] = {
       val nx = next
       if (nx == null)
-        None
+        UNone
       else if (nx.key eq key) {
         next = nx.next
-        Some(nx.value.asInstanceOf[V])
+        USome(nx.value.asInstanceOf[V])
       }
       else nx.removeAttachment(key)
     }

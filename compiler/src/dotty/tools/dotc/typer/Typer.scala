@@ -42,6 +42,9 @@ import transform.SymUtils._
 import language.implicitConversions
 import printing.SyntaxHighlighting._
 
+
+import dotty.uoption._
+
 object Typer {
 
   /** The precedence of bindings which determines which of several bindings will be
@@ -1225,7 +1228,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     lazy val annotCtx = {
       val c = ctx.outersIterator.dropWhile(_.owner == sym).next()
       c.property(ExprOwner) match {
-        case Some(exprOwner) if c.owner.isClass =>
+        case USome(exprOwner) if c.owner.isClass =>
           // We need to evaluate annotation arguments in an expression context, since
           // classes defined in a such arguments should not be entered into the
           // enclosing class.
@@ -1580,7 +1583,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
 
   /** Retrieve symbol attached to given tree */
   protected def retrieveSym(tree: untpd.Tree)(implicit ctx: Context) = tree.removeAttachment(SymOfTree) match {
-    case Some(sym) =>
+    case USome(sym) =>
       sym.ensureCompleted()
       sym
     case none =>
@@ -1602,7 +1605,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     record("typedUnadapted")
     val xtree = expanded(initTree)
     xtree.removeAttachment(TypedAhead) match {
-      case Some(ttree) => ttree
+      case USome(ttree) => ttree
       case none =>
 
         def typedNamed(tree: untpd.NameTree, pt: Type)(implicit ctx: Context): Tree = {
@@ -1711,7 +1714,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
         traverse(rest)(importContext(imp, imp1.symbol))
       case (mdef: untpd.DefTree) :: rest =>
         mdef.removeAttachment(ExpandedTree) match {
-          case Some(xtree) =>
+          case USome(xtree) =>
             traverse(xtree :: rest)
           case none =>
             typed(mdef) match {
@@ -1734,7 +1737,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
         buf.toList
     }
     val localCtx = {
-      val exprOwnerOpt = if (exprOwner == ctx.owner) None else Some(exprOwner)
+      val exprOwnerOpt: UOption[Symbol] = if (exprOwner == ctx.owner) UNone else USome(exprOwner)
       ctx.withProperty(ExprOwner, exprOwnerOpt)
     }
     traverse(stats)(localCtx)
@@ -1839,17 +1842,17 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
   /** If this tree is a select node `qual.name`, try to insert an implicit conversion
    *  `c` around `qual` so that `c(qual).name` conforms to `pt`.
    */
-  def tryInsertImplicitOnQualifier(tree: Tree, pt: Type)(implicit ctx: Context): Option[Tree] = ctx.traceIndented(i"try insert impl on qualifier $tree $pt") {
+  def tryInsertImplicitOnQualifier(tree: Tree, pt: Type)(implicit ctx: Context): UOption[Tree] = ctx.traceIndented(i"try insert impl on qualifier $tree $pt") {
     tree match {
       case Select(qual, name) =>
         val qualProto = SelectionProto(name, pt, NoViewsAllowed, privateOK = false)
-        tryEither { implicit ctx =>
+        tryEither[UOption[Tree]] { implicit ctx =>
           val qual1 = adaptInterpolated(qual, qualProto)
-          if ((qual eq qual1) || ctx.reporter.hasErrors) None
-          else Some(typed(cpy.Select(tree)(untpd.TypedSplice(qual1), name), pt))
-        } { (_, _) => None
+          if ((qual eq qual1) || ctx.reporter.hasErrors) UNone
+          else USome(typed(cpy.Select(tree)(untpd.TypedSplice(qual1), name), pt))
+        } { (_, _) => UNone
         }
-      case _ => None
+      case _ => UNone
     }
   }
 

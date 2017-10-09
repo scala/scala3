@@ -8,6 +8,8 @@ import java.lang.Double.longBitsToDouble
 import core.unpickleScala2.PickleBuffer
 import core.Names._
 
+import dotty.uoption._
+
 object ShowPickled {
   import core.unpickleScala2.PickleFormat._
 
@@ -140,7 +142,7 @@ object ShowPickled {
       printNameRef()
       printSymbolRef()
       val pflags = buf.readLongNat()
-      def printFlags(privateWithin: Option[Int]) = {
+      def printFlags(privateWithin: UOption[Int]) = {
         val accessBoundary = (
           for (idx <- privateWithin) yield {
             val s = entryList nameAt idx
@@ -154,11 +156,11 @@ object ShowPickled {
       /** Might be info or privateWithin */
       val x = buf.readNat()
       if (buf.readIndex == end) {
-        printFlags(None)
+        printFlags(UNone)
         printReadNat(x)
       }
       else {
-        printFlags(Some(x))
+        printFlags(USome(x))
         printTypeRef()
       }
     }

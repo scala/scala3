@@ -6,6 +6,8 @@ import references._
 
 import java.util.LinkedList
 
+import dotty.uoption._
+
 object JavaConverters {
   import scala.collection.JavaConverters._
   import java.util.{ Map => JMap }
@@ -150,7 +152,7 @@ object JavaConverters {
       "name" -> ent.name,
       "path" -> ent.path.asJava,
       "children" -> ent.children.map(_.asJava).asJava,
-      "comment" -> ent.comment.map(_.asJava).asJava,
+      "comment" -> ent.comment.map(_.asJava).toOption.asJava,
       "signature" -> ent.signature
     )
     val members = ent match {

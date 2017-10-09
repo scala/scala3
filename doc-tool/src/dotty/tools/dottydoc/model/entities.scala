@@ -5,6 +5,8 @@ import comment._
 import references._
 import dotty.tools.dotc.core.Symbols.{ Symbol, NoSymbol }
 
+import dotty.uoption._
+
 trait Entity { entity =>
   def symbol: Symbol
 
@@ -13,7 +15,7 @@ trait Entity { entity =>
   /** Path from root, i.e. `scala.Option$` */
   def path: List[String]
 
-  def comment: Option[Comment]
+  def comment: UOption[Comment]
 
   def kind: String
 
@@ -140,7 +142,7 @@ sealed trait NonEntity extends Package with TypeAlias with Class with CaseClass 
   val annotations = Nil
   val name = ""
   val symbol = NoSymbol
-  val comment = None
+  val comment = UNone
   val path = Nil
   val parent = NonEntity
   val constructors = Nil

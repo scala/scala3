@@ -26,6 +26,8 @@ import ErrorReporting.errorTree
 import collection.mutable
 import transform.TypeUtils._
 
+import dotty.uoption._
+
 object Inliner {
   import tpd._
 
@@ -202,8 +204,8 @@ object Inliner {
   def registerInlineInfo(
       sym: SymDenotation, treeExpr: Context => Tree)(implicit ctx: Context): Unit = {
     sym.unforcedAnnotation(defn.BodyAnnot) match {
-      case Some(ann: ConcreteBodyAnnotation) =>
-      case Some(ann: LazyBodyAnnotation) if ann.isEvaluated =>
+      case USome(ann: ConcreteBodyAnnotation) =>
+      case USome(ann: LazyBodyAnnotation) if ann.isEvaluated =>
       case _ =>
         if (!ctx.isAfterTyper) {
           val inlineCtx = ctx

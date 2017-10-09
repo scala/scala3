@@ -4,6 +4,8 @@ package dottydoc
 import org.junit.Test
 import org.junit.Assert._
 
+import dotty.uoption._
+
 class TestSimpleComments extends DottyDocTest {
 
   @Test def simpleComment = {
@@ -19,7 +21,7 @@ class TestSimpleComments extends DottyDocTest {
       val traitCmt =
         packages("scala")
         .children.find(_.path.mkString(".") == "scala.HelloWorld")
-        .flatMap(_.comment.map(_.body))
+        .flatMap(_.comment.map(_.body).toOption)
         .get
 
       assertEquals(traitCmt, "<p>Hello, world!</p>")

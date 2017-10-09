@@ -14,6 +14,8 @@ import dotty.tools.io.{ Directory, Path }
   // us a package, which is not what was intended anyway).
 import language.existentials
 
+import dotty.uoption._
+
 object Settings {
 
   val BooleanTag = ClassTag.Boolean
@@ -66,7 +68,7 @@ object Settings {
     prefix: String = "",
     aliases: List[String] = Nil,
     depends: List[(Setting[_], Any)] = Nil,
-    propertyClass: Option[Class[_]] = None)(private[Settings] val idx: Int) {
+    propertyClass: UOption[Class[_]] = UNone)(private[Settings] val idx: Int) {
 
     private var changed: Boolean = false
 
@@ -284,7 +286,7 @@ object Settings {
       publish(Setting(name, descr, default))
 
     def OptionSetting[T: ClassTag](name: String, descr: String): Setting[Option[T]] =
-      publish(Setting(name, descr, None, propertyClass = Some(implicitly[ClassTag[T]].runtimeClass)))
+      publish(Setting(name, descr, None, propertyClass = USome(implicitly[ClassTag[T]].runtimeClass)))
 
     def DirectorySetting(name: String, helpArg: String, descr: String, default: Directory): Setting[Directory] =
       publish(Setting(name, descr, default, helpArg))

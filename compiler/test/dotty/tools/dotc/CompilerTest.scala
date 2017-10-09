@@ -12,6 +12,7 @@ import dotty.tools.io.{ Path, Directory, File => SFile, AbstractFile }
 import scala.annotation.tailrec
 import java.io.{ RandomAccessFile, File => JFile }
 
+import dotty.uoption._
 
 /** Legacy compiler tests that run single threaded */
 abstract class CompilerTest {
@@ -247,7 +248,7 @@ abstract class CompilerTest {
   /** Asserts that the expected and found number of errors correspond, and
     * otherwise throws an error with the filename, plus optionally a line
     * number if available. */
-  def errorMsg(fileName: String, lineNumber: Option[Int], exp: Int, found: Int) = {
+  def errorMsg(fileName: String, lineNumber: UOption[Int], exp: Int, found: Int) = {
     val i = lineNumber.map({ i => ":" + (i + 1) }).getOrElse("")
     assert(found == exp, s"Wrong # of errors for $fileName$i. Expected (file): $exp, found (compiler): $found")
   }
@@ -262,7 +263,7 @@ abstract class CompilerTest {
           found.find(_.fileName == fileName) match {
             case None =>
               // expected some errors, but none found for this file
-              errorMsg(fileName, None, expectedLines.map(_._2).sum, 0)
+              errorMsg(fileName, UNone, expectedLines.map(_._2).sum, 0)
             case Some(ErrorsInFile(_,_,foundLines)) =>
               // found wrong number/location of markers for this file
               compareLines(fileName, expectedLines, foundLines)
@@ -275,7 +276,7 @@ abstract class CompilerTest {
           expected.find(_.fileName == fileName) match {
             case None =>
               // found some errors, but none expected for this file
-              errorMsg(fileName, None, 0, foundLines.map(_._2).sum)
+              errorMsg(fileName, UNone, 0, foundLines.map(_._2).sum)
             case Some(ErrorsInFile(_,_,expectedLines)) =>
               // found wrong number/location of markers for this file
               compareLines(fileName, expectedLines, foundLines)
@@ -290,19 +291,19 @@ abstract class CompilerTest {
       case (line, expNr) =>
         foundLines.find(_._1 == line) match {
           case Some((_, `expNr`)) => // this line is ok
-          case Some((_, foundNr)) => errorMsg(fileName, Some(line), expNr, foundNr)
+          case Some((_, foundNr)) => errorMsg(fileName, USome(line), expNr, foundNr)
           case None               =>
             println(s"expected lines = $expectedLines%, %")
             println(s"found lines = $foundLines%, %")
-            errorMsg(fileName, Some(line), expNr, 0)
+            errorMsg(fileName, USome(line), expNr, 0)
         }
     }
     foundLines foreach {
       case (line, foundNr) =>
         expectedLines.find(_._1 == line) match {
           case Some((_, `foundNr`)) => // this line is ok
-          case Some((_, expNr))     => errorMsg(fileName, Some(line), expNr, foundNr)
-          case None                 => errorMsg(fileName, Some(line), 0,     foundNr)
+          case Some((_, expNr))     => errorMsg(fileName, USome(line), expNr, foundNr)
+          case None                 => errorMsg(fileName, USome(line), 0,     foundNr)
         }
     }
   }
@@ -371,12 +372,12 @@ abstract class CompilerTest {
     }, { sdir =>
       dest.jfile.mkdirs
       sdir.list.foreach(path => recCopyFiles(path, dest / path.name))
-    }, Some("DPCompilerTest.recCopyFiles: sourceFile not found: " + sourceFile))
+    }, USome("DPCompilerTest.recCopyFiles: sourceFile not found: " + sourceFile))
   }
 
   /** Reads the existing files for the given test source if any. */
   private def getExisting(dest: Path): ExistingFiles = {
-    val content: Option[Option[String]] = processFileDir(dest, f => try Some(f.slurp("UTF8")) catch {case io: java.io.IOException => Some(io.toString())}, d => Some(""))
+    val content: UOption[UOption[String]] = processFileDir(dest, f => try USome(f.slurp("UTF8")) catch {case io: java.io.IOException => USome(io.toString())}, d => USome(""))
     if (content.isDefined && content.get.isDefined) {
       val flags = (dest changeExtension "flags").toFile.safeSlurp()
       val nerr = (dest changeExtension "nerr").toFile.safeSlurp()
@@ -385,17 +386,17 @@ abstract class CompilerTest {
   }
 
   /** Encapsulates existing generated test files. */
-  case class ExistingFiles(genSrc: Option[String] = None, flags: Option[String] = None, nerr: Option[String] = None) {
+  case class ExistingFiles(genSrc: UOption[String] = UNone, flags: UOption[String] = UNone, nerr: UOption[String] = UNone) {
     def isDifferent(sourceFile: JFile, otherFlags: List[String], otherNerr: String): Difference = {
       if (!genSrc.isDefined) {
         NotExists
       } else {
-        val source = processFileDir(sourceFile, { f => try Some(f.slurp("UTF8")) catch {case _: java.io.IOException => None} }, { d => Some("") },
-            Some("DPCompilerTest sourceFile doesn't exist: " + sourceFile)).get
+        val source = processFileDir(sourceFile, { f => try USome(f.slurp("UTF8")) catch {case _: java.io.IOException => UNone} }, { d => USome("") },
+            USome("DPCompilerTest sourceFile doesn't exist: " + sourceFile)).get
         if (source == genSrc) {
           nerr match {
-            case Some(n) if (n != otherNerr) => ExistsDifferent
-            case None if (otherNerr != "0") => ExistsDifferent
+            case USome(n) if (n != otherNerr) => ExistsDifferent
+            case UNone if (otherNerr != "0") => ExistsDifferent
             case _ if (flags.map(_ == otherFlags.mkString(" ")).getOrElse(otherFlags.isEmpty)) => ExistsSame
             case _ => ExistsDifferent
           }
@@ -407,12 +408,12 @@ abstract class CompilerTest {
   import scala.util.matching.Regex
   val nrFinder = """(.*_v)(\d+)""".r
   /** Changes the version number suffix in the name (without extension). */
-  private def replaceVersion(name: String, nr: Int): Option[String] = {
+  private def replaceVersion(name: String, nr: Int): UOption[String] = {
     val nrString = nr.toString
     name match {
-      case nrFinder(prefix, `nrString`) => Some(prefix + (nr + 1))
-      case _ if nr != 0 => None
-      case _ => Some(name + "_v1")
+      case nrFinder(prefix, `nrString`) => USome(prefix + (nr + 1))
+      case _ if nr != 0 => UNone
+      case _ => USome(name + "_v1")
     }
   }
 
@@ -420,10 +421,10 @@ abstract class CompilerTest {
     * applying either processFile or processDir, depending on what the path
     * refers to in the file system. If failMsgOnNone is defined, this function
     * asserts that the file exists using the provided message. */
-  private def processFileDir[T](input: Path, processFile: SFile => T, processDir: Directory => T, failMsgOnNone: Option[String] = None): Option[T] = {
+  private def processFileDir[T](input: Path, processFile: SFile => T, processDir: Directory => T, failMsgOnNone: UOption[String] = UNone): UOption[T] = {
     val res = input.ifFile(f => processFile(f)).orElse(input.ifDirectory(d => processDir(d)))
     (failMsgOnNone, res) match {
-      case (Some(msg), None) => assert(false, msg); None
+      case (USome(msg), UNone) => assert(false, msg); UNone
       case _ => res
     }
   }

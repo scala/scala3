@@ -14,6 +14,8 @@ import Attributes.Name
 import scala.language.{postfixOps, implicitConversions}
 import scala.annotation.tailrec
 
+import dotty.uoption._
+
 // Attributes.Name instances:
 //
 // static Attributes.Name   CLASS_PATH
@@ -43,14 +45,14 @@ class Jar(file: File) extends Iterable[JarEntry] {
   private implicit def enrichManifest(m: JManifest): Jar.WManifest = Jar.WManifest(m)
 
   lazy val jarFile  = new JarFile(file.jfile)
-  lazy val manifest = withJarInput(s => Option(s.getManifest))
+  lazy val manifest = withJarInput(s => UOption(s.getManifest))
 
   def mainClass     = manifest map (f => f(Name.MAIN_CLASS))
   /** The manifest-defined classpath String if available. */
-  def classPathString: Option[String] =
-    for (m <- manifest ; cp <- m.attrs get Name.CLASS_PATH) yield cp
+  def classPathString: UOption[String] =
+    for (m <- manifest ; cp <- m.attrs get Name.CLASS_PATH toUOption) yield cp
   def classPathElements: List[String] = classPathString match {
-    case Some(s)  => s split "\\s+" toList
+    case USome(s)  => s split "\\s+" toList
     case _        => Nil
   }
 

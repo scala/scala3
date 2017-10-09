@@ -7,6 +7,8 @@ import terminal.FilterTools._
 import terminal.LazyList._
 import terminal._
 
+import dotty.uoption._
+
 /**
   * Provides history navigation up and down, saving the current line, a well
   * as history-search functionality (`Ctrl R` in bash) letting you quickly find
@@ -37,20 +39,20 @@ class HistoryFilter(
     *   start searching and delete things, or if you `Ctrl-R` on an empty
     *   prompt
     */
-  var searchTerm: Option[Vector[Char]] = None
+  var searchTerm: UOption[Vector[Char]] = UNone
 
   /**
     * Records the last buffer that the filter has observed while it's in
     * search/history mode. If the new buffer differs from this, assume that
     * some other filter modified the buffer and drop out of search/history
     */
-  var prevBuffer: Option[Vector[Char]] = None
+  var prevBuffer: UOption[Vector[Char]] = UNone
 
   /**
     * Kicks the HistoryFilter from passive-mode into search-history mode
     */
   def startHistory(b: Vector[Char], c: Int): (Vector[Char], Int, String) = {
-    if (b.nonEmpty) searchTerm = Some(b)
+    if (b.nonEmpty) searchTerm = USome(b)
     up(Vector(), c)
   }
 
@@ -68,12 +70,12 @@ class HistoryFilter(
     val (newHistoryIndex, newBuffer, newMsg, newCursor) = searchTerm match {
       // We're not searching for anything, just browsing history.
       // Pass in Vector.empty so we scroll through all items
-      case None =>
+      case UNone =>
         val (i, b, c) = nextHistoryIndexFor(Vector.empty)
         (i, b, "", 99999)
 
       // We're searching for some item with a particular search term
-      case Some(b) if b.nonEmpty =>
+      case USome(b) if b.nonEmpty =>
         val (i, b1, c) = nextHistoryIndexFor(b)
 
         val msg =
@@ -84,10 +86,10 @@ class HistoryFilter(
 
       // We're searching for nothing in particular; in this case,
       // show a help message instead of an unhelpful, empty buffer
-      case Some(b) if b.isEmpty =>
+      case USome(b) if b.isEmpty =>
         val msg = commentStartColor + HistoryFilter.emptySearchMessage + commentEndColor
         // The cursor in this case always goes to zero
-        (Some(start), Vector(), msg, 0)
+        (USome(start), Vector(), msg, 0)
 
     }
 
@@ -111,7 +113,7 @@ class HistoryFilter(
   def ctrlR(b: Vector[Char], c: Int) =
     if (activeSearch) up(b, c)
     else {
-      searchTerm = Some(b)
+      searchTerm = USome(b)
       up(Vector(), c)
     }
 
@@ -142,18 +144,18 @@ class HistoryFilter(
 
   def endHistory() = {
     historyIndex = -1
-    searchTerm = None
+    searchTerm = UNone
   }
 
   def filter = Filter.wrap("historyFilterWrap1") {
     (ti: TermInfo) => {
       prelude.op(ti) match {
-        case None =>
-          prevBuffer = Some(ti.ts.buffer)
+        case UNone =>
+          prevBuffer = USome(ti.ts.buffer)
           filter0.op(ti) match {
-            case Some(ts: TermState) =>
-              prevBuffer = Some(ts.buffer)
-              Some(ts)
+            case USome(ts: TermState) =>
+              prevBuffer = USome(ts.buffer)
+              USome(ts)
             case x => x
           }
         case some => some
@@ -164,7 +166,7 @@ class HistoryFilter(
   def prelude: Filter = Filter.partial("historyPrelude") {
     case TS(inputs, b, c, _) if activeHistory && prevBuffer.exists(_ != b) =>
       endHistory()
-      prevBuffer = None
+      prevBuffer = UNone
       TS(inputs, b, c)
   }
 
@@ -298,26 +300,26 @@ object HistoryFilter {
       * `None` means we couldn't find anything, and should show a not-found
       * error to the user
       */
-    def rec(i: Int): Option[Int] = history.lift(i) match {
+    def rec(i: Int): UOption[Int] = history.uLift(i) match {
       // If i < 0, it means the user is pressing `down` too many times, which
       // means it doesn't show anything but we shouldn't show an error
-      case None if i < 0 => Some(-1)
-      case None => None
-      case Some(s) if s.contains(searchTerm) && !s.contentEquals(skipped) =>
-        Some(i)
+      case UNone if i < 0 => USome(-1)
+      case UNone => UNone
+      case USome(s) if s.contains(searchTerm) && !s.contentEquals(skipped) =>
+        USome(i)
       case _ => rec(i + indexIncrement)
     }
 
     val newHistoryIndex = rec(startIndex)
     val foundIndex = newHistoryIndex.find(_ != -1)
     val newBuffer = foundIndex match {
-      case None => searchTerm
-      case Some(i) => history(i).toVector
+      case UNone => searchTerm
+      case USome(i) => history(i).toVector
     }
 
     val newCursor = foundIndex match {
-      case None => newBuffer.length
-      case Some(i) => history(i).indexOfSlice(searchTerm) + searchTerm.length
+      case UNone => newBuffer.length
+      case USome(i) => history(i).indexOfSlice(searchTerm) + searchTerm.length
     }
 
     (newHistoryIndex, newBuffer, newCursor)

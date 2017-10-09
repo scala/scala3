@@ -11,6 +11,8 @@ import Decorators._
 import Contexts.Context
 import collection.mutable
 
+import dotty.uoption._
+
 /** Defines possible kinds of NameInfo of a derived name */
 object NameKinds {
 
@@ -80,9 +82,9 @@ object NameKinds {
     def apply(underlying: TermName) = underlying.derived(info)
 
     /** Extractor operation for names of this kind */
-    def unapply(name: DerivedName): Option[TermName] =  name match {
-      case DerivedName(underlying, `info`) => Some(underlying)
-      case _ => None
+    def unapply(name: DerivedName): UOptionUnapply[TermName] =  name match {
+      case DerivedName(underlying, `info`) => USome(underlying)
+      case _ => UNone
     }
 
     simpleNameKinds(tag) = this
@@ -138,9 +140,9 @@ object NameKinds {
       case AnyQualifiedName(_, _) => apply(qual, name.toSimpleName)
     }
 
-    def unapply(name: DerivedName): Option[(TermName, SimpleName)] = name match {
-      case DerivedName(qual, info: this.QualInfo) => Some((qual, info.name))
-      case _ => None
+    def unapply(name: DerivedName): UOptionUnapply[(TermName, SimpleName)] = name match {
+      case DerivedName(qual, info: this.QualInfo) => USome((qual, info.name))
+      case _ => UNone
     }
 
     override def definesNewName = true
@@ -156,10 +158,10 @@ object NameKinds {
 
   /** An extractor for qualified names of an arbitrary kind */
   object AnyQualifiedName {
-    def unapply(name: DerivedName): Option[(TermName, SimpleName)] = name match {
+    def unapply(name: DerivedName): UOptionUnapply[(TermName, SimpleName)] = name match {
       case DerivedName(qual, info: QualifiedInfo) =>
-        Some((name.underlying, info.name))
-      case _ => None
+        USome((name.underlying, info.name))
+      case _ => UNone
     }
   }
 
@@ -176,9 +178,9 @@ object NameKinds {
     }
     def apply(qual: TermName, num: Int) =
       qual.derived(new NumberedInfo(num))
-    def unapply(name: DerivedName): Option[(TermName, Int)] = name match {
-      case DerivedName(underlying, info: this.NumberedInfo) => Some((underlying, info.num))
-      case _ => None
+    def unapply(name: DerivedName): UOptionUnapply[(TermName, Int)] = name match {
+      case DerivedName(underlying, info: this.NumberedInfo) => USome((underlying, info.num))
+      case _ => UNone
     }
     protected def skipSeparatorAndNum(name: SimpleName, separator: String): Int = {
       var i = name.length
@@ -193,9 +195,9 @@ object NameKinds {
 
   /** An extractor for numbered names of arbitrary kind */
   object AnyNumberedName {
-    def unapply(name: DerivedName): Option[(TermName, Int)] = name match {
-      case DerivedName(qual, info: NumberedInfo) => Some((qual, info.num))
-      case _ => None
+    def unapply(name: DerivedName): UOptionUnapply[(TermName, Int)] = name match {
+      case DerivedName(qual, info: NumberedInfo) => USome((qual, info.num))
+      case _ => UNone
     }
   }
 
@@ -222,13 +224,13 @@ object NameKinds {
 
   /** An extractor for unique names of arbitrary kind */
   object AnyUniqueName {
-    def unapply(name: DerivedName): Option[(TermName, String, Int)] = name match {
+    def unapply(name: DerivedName): UOptionUnapply[(TermName, String, Int)] = name match {
       case DerivedName(qual, info: NumberedInfo) =>
         info.kind match {
-          case unique: UniqueNameKind => Some((qual, unique.separator, info.num))
-          case _ => None
+          case unique: UniqueNameKind => USome((qual, unique.separator, info.num))
+          case _ => UNone
         }
-      case _ => None
+      case _ => UNone
     }
   }
 
@@ -374,9 +376,9 @@ object NameKinds {
 
     def apply(qual: TermName, sig: Signature) =
       qual.derived(new SignedInfo(sig))
-    def unapply(name: DerivedName): Option[(TermName, Signature)] = name match {
-      case DerivedName(underlying, info: SignedInfo) => Some((underlying, info.sig))
-      case _ => None
+    def unapply(name: DerivedName): UOptionUnapply[(TermName, Signature)] = name match {
+      case DerivedName(underlying, info: SignedInfo) => USome((underlying, info.sig))
+      case _ => UNone
     }
 
     def mkString(underlying: TermName, info: ThisInfo): String = s"$underlying[with sig ${info.sig}]"
