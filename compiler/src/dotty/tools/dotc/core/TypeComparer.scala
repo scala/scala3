@@ -6,7 +6,7 @@ import Types._, Contexts._, Symbols._, Flags._, Names._, NameOps._, Denotations.
 import Decorators._
 import StdNames.{nme, tpnme}
 import collection.mutable
-import util.{Stats, DotClass, SimpleMap}
+import util.{Stats, DotClass}
 import config.Config
 import config.Printers.{typr, constr, subtyping, noPrinter}
 import TypeErasure.{erasedLub, erasedGlb}

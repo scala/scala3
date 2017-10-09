@@ -11,7 +11,7 @@ import Constants._
 import Scopes._
 import annotation.unchecked
 import util.Positions._
-import util.{Stats, SimpleMap}
+import util.{Stats, SimpleIdentityMap}
 import util.common._
 import Decorators._
 import Uniques._
@@ -179,10 +179,10 @@ object ProtoTypes {
     override def resultType(implicit ctx: Context) = resType
 
     /** A map in which typed arguments can be stored to be later integrated in `typedArgs`. */
-    private var myTypedArg: SimpleMap[untpd.Tree, Tree] = SimpleMap.Empty
+    private var myTypedArg: SimpleIdentityMap[untpd.Tree, Tree] = SimpleIdentityMap.Empty
 
     /** A map recording the typer states in which arguments stored in myTypedArg were typed */
-    private var evalState: SimpleMap[untpd.Tree, TyperState] = SimpleMap.Empty
+    private var evalState: SimpleIdentityMap[untpd.Tree, TyperState] = SimpleIdentityMap.Empty
 
     def isMatchedBy(tp: Type)(implicit ctx: Context) =
       typer.isApplicable(tp, Nil, typedArgs, resultType)

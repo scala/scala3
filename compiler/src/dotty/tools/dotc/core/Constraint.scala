@@ -3,7 +3,6 @@ package dotc
 package core
 
 import Types._, Contexts._, Symbols._
-import util.SimpleMap
 import collection.mutable
 import printing.{Printer, Showable}
 import printing.Texts._

@@ -6,7 +6,7 @@ import ast.{tpd, untpd}
 import ast.Trees._
 import core._
 import printing.{Printer, Showable}
-import util.SimpleMap
+import util.SimpleIdentityMap
 import Symbols._, Names._, Denotations._, Types._, Contexts._, StdNames._, Flags._
 import Decorators.StringInterpolators
 
@@ -52,7 +52,7 @@ class ImportInfo(symf: Context => Symbol, val selectors: List[untpd.Tree],
   def excluded: Set[TermName] = { ensureInitialized(); myExcluded }
 
   /** A mapping from renamed to original names */
-  def reverseMapping: SimpleMap[TermName, TermName] = { ensureInitialized(); myMapped }
+  def reverseMapping: SimpleIdentityMap[TermName, TermName] = { ensureInitialized(); myMapped }
 
   /** The original names imported by-name before renaming */
   def originals: Set[TermName] = { ensureInitialized(); myOriginals }
@@ -61,14 +61,14 @@ class ImportInfo(symf: Context => Symbol, val selectors: List[untpd.Tree],
   def isWildcardImport = { ensureInitialized(); myWildcardImport }
 
   private var myExcluded: Set[TermName] = null
-  private var myMapped: SimpleMap[TermName, TermName] = null
+  private var myMapped: SimpleIdentityMap[TermName, TermName] = null
   private var myOriginals: Set[TermName] = null
   private var myWildcardImport: Boolean = false
 
   /** Compute info relating to the selector list */
   private def ensureInitialized(): Unit = if (myExcluded == null) {
     myExcluded = Set()
-    myMapped = SimpleMap.Empty
+    myMapped = SimpleIdentityMap.Empty
     myOriginals = Set()
     def recur(sels: List[untpd.Tree]): Unit = sels match {
       case sel :: sels1 =>

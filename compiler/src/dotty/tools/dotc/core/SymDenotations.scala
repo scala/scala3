@@ -13,7 +13,7 @@ import Decorators.SymbolIteratorDecorator
 import ast._
 import annotation.tailrec
 import CheckRealizable._
-import util.SimpleMap
+import util.SimpleIdentityMap
 import util.Stats
 import java.util.WeakHashMap
 import config.Config
@@ -1254,7 +1254,7 @@ object SymDenotations {
     // ----- caches -------------------------------------------------------
 
     private[this] var myTypeParams: List[TypeSymbol] = null
-    private[this] var fullNameCache: SimpleMap[QualifiedNameKind, Name] = SimpleMap.Empty
+    private[this] var fullNameCache: SimpleIdentityMap[QualifiedNameKind, Name] = SimpleIdentityMap.Empty
 
     private[this] var myMemberCache: LRUCache[Name, PreDenotation] = null
     private[this] var myMemberCachePeriod: Period = Nowhere
@@ -2041,7 +2041,7 @@ object SymDenotations {
   }
 
   private class MemberNamesImpl(createdAt: Period) extends InheritedCacheImpl(createdAt) with MemberNames {
-    private[this] var cache: SimpleMap[NameFilter, Set[Name]] = SimpleMap.Empty
+    private[this] var cache: SimpleIdentityMap[NameFilter, Set[Name]] = SimpleIdentityMap.Empty
 
     final def isValid(implicit ctx: Context): Boolean =
       cache != null && isValidAt(ctx.phase)
@@ -2054,7 +2054,7 @@ object SymDenotations {
      */
     def invalidate(): Unit =
       if (cache != null)
-        if (locked) cache = SimpleMap.Empty
+        if (locked) cache = SimpleIdentityMap.Empty
         else {
           cache = null
           invalidateDependents()

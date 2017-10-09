@@ -5,7 +5,7 @@ package core
 import Types._
 import Flags._
 import Contexts._
-import util.{SimpleMap, DotClass}
+import util.{SimpleIdentityMap, DotClass}
 import reporting._
 import printing.{Showable, Printer}
 import printing.Texts._
@@ -24,7 +24,7 @@ class TyperState(previous: TyperState /* | Null */) extends DotClass with Showab
   def setReporter(reporter: Reporter): this.type = { myReporter = reporter; this }
 
   private var myConstraint: Constraint =
-    if (previous == null) new OrderingConstraint(SimpleMap.Empty, SimpleMap.Empty, SimpleMap.Empty)
+    if (previous == null) new OrderingConstraint(SimpleIdentityMap.Empty, SimpleIdentityMap.Empty, SimpleIdentityMap.Empty)
     else previous.constraint
 
   def constraint = myConstraint
