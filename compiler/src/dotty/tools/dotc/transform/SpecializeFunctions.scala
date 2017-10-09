@@ -15,16 +15,6 @@ class SpecializeFunctions extends MiniPhaseTransform with InfoTransformer {
   import ast.tpd._
   val phaseName = "specializeFunctions"
 
-  private[this] var _blacklistedSymbols: List[Symbol] = _
-
-  private def blacklistedSymbols(implicit ctx: Context): List[Symbol] = {
-    if (_blacklistedSymbols eq null) _blacklistedSymbols = List(
-      ctx.getClassIfDefined("scala.math.Ordering").asClass.membersNamed("Ops".toTypeName).first.symbol
-    )
-
-    _blacklistedSymbols
-  }
-
   /** Transforms the type to include decls for specialized applys and replace
    *  the class parents with specialized versions.
    */
@@ -84,7 +74,7 @@ class SpecializeFunctions extends MiniPhaseTransform with InfoTransformer {
           dt.vparamss.head.map(_.symbol.info)
         )
 
-        val specializedApply = tree.symbol.enclosingClass.info.decls.lookup(specName)//member(specName).symbol
+        val specializedApply = tree.symbol.enclosingClass.info.decls.lookup(specName)
 
         if (specializedApply.exists) {
           val apply = specializedApply.asTerm
