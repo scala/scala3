@@ -111,21 +111,21 @@ class Definitions {
         val decls = newScope
         val arity = name.functionArity
         val paramNamePrefix = tpnme.scala_ ++ str.NAME_JOIN ++ name ++ str.EXPAND_SEPARATOR
-        val argParams = List.tabulate(arity) { i =>
+        val argParamRefs = List.tabulate(arity) { i =>
           enterTypeParam(cls, paramNamePrefix ++ "T" ++ (i + 1).toString, Contravariant, decls).typeRef
         }
         val resParam = enterTypeParam(cls, paramNamePrefix ++ "R", Covariant, decls)
         val (methodType, parentTraits) =
           if (name.firstPart.startsWith(str.ImplicitFunction)) {
             val superTrait =
-              FunctionType(arity).appliedTo(argParams ::: resParam.typeRef :: Nil)
+              FunctionType(arity).appliedTo(argParamRefs ::: resParam.typeRef :: Nil)
             (ImplicitMethodType, superTrait :: Nil)
           }
           else (MethodType, Nil)
         val applyMeth =
           decls.enter(
             newMethod(cls, nme.apply,
-              methodType(argParams, resParam.typeRef), Deferred))
+              methodType(argParamRefs, resParam.typeRef), Deferred))
         denot.info =
           ClassInfo(ScalaPackageClass.thisType, cls, ObjectType :: parentTraits, decls)
       }
