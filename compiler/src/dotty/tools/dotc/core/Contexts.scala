@@ -381,6 +381,8 @@ object Contexts {
     /** Does current phase use an erased types interpretation? */
     def erasedTypes: Boolean = phase.erasedTypes
 
+    def erasedUnused: Boolean = phase.erasedUnused
+
     /** Is the debug option set? */
     def debug: Boolean = base.settings.debug.value
 

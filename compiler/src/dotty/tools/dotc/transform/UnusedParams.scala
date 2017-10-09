@@ -33,7 +33,7 @@ class UnusedParams extends MiniPhaseTransform with InfoTransformer {
 
   /** Check what the phase achieves, to be called at any point after it is finished. */
   override def checkPostCondition(tree: Tree)(implicit ctx: Context): Unit = tree match {
-    case tree: DefDef => assert(!hasUnusedParams(tree.tpe))
+    case tree: DefDef => assert(!tree.tpe.hasUnusedParams)
     case tree: ValDef if tree.symbol.is(Param) => assert(!tree.symbol.isUnused)
     case _ =>
   }
@@ -56,8 +56,8 @@ class UnusedParams extends MiniPhaseTransform with InfoTransformer {
   /* Info transform */
 
   override def transformInfo(tp: Type, sym: Symbol)(implicit ctx: Context): Type = {
-    if (!hasUnusedParams(tp)) tp
-    else removeUnusedMethodTypes(tp) match {
+    if (!tp.hasUnusedParams) tp
+    else tp.withoutUnusedParams match {
       case mt: MethodOrPoly => mt
       case tpe if sym.isConstructor => MethodType(Nil, Nil, tpe)
       case tpe => ExprType(tpe)
@@ -68,19 +68,7 @@ class UnusedParams extends MiniPhaseTransform with InfoTransformer {
   /* private methods */
 
   private def hadUnusedParams(sym: Symbol)(implicit ctx: Context): Boolean =
-    sym.exists && hasUnusedParams(widenInPreviousPhase(sym.termRef))
-
-  private def hasUnusedParams(tp: Type): Boolean = tp match {
-    case tp: MethodType if tp.isUnusedMethod => true
-    case tp: MethodOrPoly => hasUnusedParams(tp.resType)
-    case _ => false
-  }
-
-  private def removeUnusedMethodTypes(tp: Type)(implicit ctx: Context): Type = tp match {
-    case tp: MethodType if tp.isUnusedMethod => removeUnusedMethodTypes(tp.resType)
-    case tp: MethodOrPoly => tp.derivedLambdaType(resType = removeUnusedMethodTypes(tp.resType))
-    case _ => tp
-  }
+    sym.exists && widenInPreviousPhase(sym.termRef).hasUnusedParams
 
   private def removeUnusedParams(tree: DefDef)(implicit ctx: Context): DefDef = {
     def removeUnused(args: List[List[ValDef]], tp: Type): List[List[ValDef]] = args match {
