@@ -21,24 +21,24 @@ import dotc.core.StdNames.str
  *       `Rendering` is no longer valid.
  */
 private[repl] class Rendering(compiler: ReplCompiler,
-                              private var currentClassLoader: Option[ClassLoader] = None) {
+                              parentClassLoader: Option[ClassLoader] = None) {
 
-  private def classLoader()(implicit ctx: Context) =
-    currentClassLoader.getOrElse {
-      import java.net.{URL, URLClassLoader}
+  private[this] var myClassLoader: ClassLoader = _
 
-      /** the compiler's classpath, as URL's */
-      val compilerClasspath: Seq[URL] = ctx.platform.classPath(ctx).asURLs
+  /** Class loader used to load compiled code */
+  private[this] def classLoader()(implicit ctx: Context) =
+    if (myClassLoader != null) myClassLoader
+    else {
+      val parent = parentClassLoader.getOrElse {
+        // the compiler's classpath, as URL's
+        val compilerClasspath = ctx.platform.classPath(ctx).asURLs
+        new java.net.URLClassLoader(compilerClasspath.toArray, classOf[ReplDriver].getClassLoader)
+      }
 
-      def parent = new URLClassLoader(compilerClasspath.toArray,
-                                      classOf[ReplDriver].getClassLoader)
-
-      val newClsLoader = new AbstractFileClassLoader(compiler.directory,
-                                  currentClassLoader.getOrElse(parent))
-
-      Thread.currentThread.setContextClassLoader(newClsLoader)
-      currentClassLoader = Some(newClsLoader)
-      newClsLoader
+      myClassLoader = new AbstractFileClassLoader(compiler.directory, parent)
+      // Set the current Java "context" class loader to this rendering class loader
+      Thread.currentThread.setContextClassLoader(myClassLoader)
+      myClassLoader
     }
 
   /** Load the value of the symbol using reflection

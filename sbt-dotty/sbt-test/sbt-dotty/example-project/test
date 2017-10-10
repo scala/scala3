@@ -1,1 +1,3 @@
 > run
+> 'set initialCommands := "1 + 1" '
+> console
