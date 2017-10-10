@@ -5,7 +5,7 @@ import dotty.tools.dotc.ast.Trees
 import dotty.tools.dotc
 import dotty.tools.dotc.backend.jvm.DottyPrimitives
 import dotty.tools.dotc.core.Flags.FlagSet
-import dotty.tools.dotc.transform.Erasure
+import dotty.tools.dotc.transform.{Erasure, GenericSignatures}
 import dotty.tools.dotc.transform.SymUtils._
 import java.io.{File => JFile}
 
@@ -569,7 +569,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
       if (erasedTypeSym.isPrimitiveValueClass) {
         None
       } else {
-        val jsOpt = Erasure.javaSig(sym, memberTpe)
+        val jsOpt = GenericSignatures.javaSig(sym, memberTpe)
         if (ctx.settings.XverifySignatures.value) {
           jsOpt.foreach(verifySignature(sym, _))
         }
