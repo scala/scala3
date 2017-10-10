@@ -751,7 +751,7 @@ object Erasure {
     case GenericArray(level, core) if !(core <:< defn.AnyRefType) =>
       level
     case AndType(tp1, tp2) =>
-      Math.max(unboundedGenericArrayLevel(tp1), unboundedGenericArrayLevel(tp2))
+      unboundedGenericArrayLevel(tp1) max unboundedGenericArrayLevel(tp2)
     case _ =>
       0
   }
@@ -761,15 +761,15 @@ object Erasure {
   // * type parameters appearing in method parameters
   // * type members not visible in an enclosing template
   private def isTypeParameterInSig(sym: Symbol, initialSymbol: Symbol)(implicit ctx: Context) = {
-    !sym.isHigherOrderTypeParameter &&
-      sym.isTypeParameterOrSkolem && (
-      (initialSymbol.enclClassChain.exists(sym isContainedIn _)) ||
+    !sym.maybeOwner.isTypeParam &&
+      sym.isTypeParam && (
+      sym.isContainedIn(initialSymbol.topLevelClass) ||
         (initialSymbol.is(Flags.Method) && initialSymbol.typeParams.contains(sym))
       )
   }
 
   final def javaSig(sym0: Symbol, info: Type)(implicit ctx: Context): Option[String] =
-    ctx.atPhase(ctx.erasurePhase) { implicit ctx => javaSig0(sym0, info) }
+    javaSig0(sym0, info)(ctx.withPhase(ctx.erasurePhase))
 
   @noinline
   private final def javaSig0(sym0: Symbol, info: Type)(implicit ctx: Context): Option[String] = {
@@ -945,9 +945,9 @@ object Erasure {
             else if (sym == defn.UnitClass) jsig(defn.BoxedUnitType)
             else builder.append(sym.info.toTag)
           }
-          else if (sym.isDerivedValueClass) {
-            val unboxed     = sym.derivedValueClassUnbox.info.finalResultType
-            val unboxedSeen = (tp.memberInfo(sym.derivedValueClassUnbox)).finalResultType
+          else if (ValueClasses.isDerivedValueClass(sym)) {
+            val unboxed     = ValueClasses.valueClassUnbox(sym.asClass).info.finalResultType
+            val unboxedSeen = tp.memberInfo(ValueClasses.valueClassUnbox(sym.asClass)).finalResultType
             if (unboxedSeen.isPrimitiveValueType && !primitiveOK)
               classSig
             else

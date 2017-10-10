@@ -530,18 +530,6 @@ object Symbols {
     /** The current name of this symbol */
     final def name(implicit ctx: Context): ThisName = denot.name.asInstanceOf[ThisName]
 
-    def isHigherOrderTypeParameter(implicit ctx: Context): Boolean = this.maybeOwner.isTypeParameterOrSkolem
-    def isTypeParameterOrSkolem(implicit ctx: Context): Boolean = this.isTypeParam
-    def enclClassChain(implicit ctx: Context): List[Symbol] = this.maybeOwner.enclClassChain
-    final def isDerivedValueClass(implicit ctx: Context): Boolean =
-      isClass && !denot.is(Flags.Package) && !denot.is(Flags.Trait) &&
-        !ctx.phase.erasedTypes && denot.info.firstParent.typeSymbol == defn.AnyValClass && !denot.isPrimitiveValueClass
-
-    /** If this is a derived value class, return its unbox method
-     *  or NoSymbol if it does not exist.
-     */
-    def derivedValueClassUnbox(implicit ctx: Context): Symbol = NoSymbol
-
     /** The source or class file from which this class or
      *  the class containing this symbol was generated, null if not applicable.
      *  Overridden in ClassSymbol
@@ -648,30 +636,17 @@ object Symbols {
       denot.asInstanceOf[ClassDenotation]
 
     override protected def prefixString = "ClassSymbol"
-
-    override def enclClassChain(implicit ctx: Context): List[Symbol] =
-      if (this.is(Flags.PackageClass)) Nil
-      else this :: denot.owner.enclClassChain
-
-    override def derivedValueClassUnbox(implicit ctx: Context): Symbol =
-    // (info.decl(nme.unbox)) orElse      uncomment once we accept unbox methods
-      (denot.info.decls.find(_.denot.is(Flags.ParamAccessor | Flags.Method)))
-
   }
 
   class ErrorSymbol(val underlying: Symbol, msg: => String)(implicit ctx: Context) extends Symbol(NoCoord, ctx.nextId) {
     type ThisName = underlying.ThisName
     denot = underlying.denot
-
-    override def enclClassChain(implicit ctx: Context): List[Symbol] = Nil
   }
 
   @sharable object NoSymbol extends Symbol(NoCoord, 0) {
     denot = NoDenotation
     override def associatedFile(implicit ctx: Context): AbstractFile = NoSource.file
     override def recomputeDenot(lastd: SymDenotation)(implicit ctx: Context): SymDenotation = NoDenotation
-
-    override def enclClassChain(implicit ctx: Context): List[Symbol] = Nil
   }
 
   implicit class Copier[N <: Name](sym: Symbol { type ThisName = N })(implicit ctx: Context) {
