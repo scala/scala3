@@ -3189,7 +3189,7 @@ object Types {
 
     private[this] var cachedUnderlying: Type = null
     override def underlying(implicit ctx: Context): Type = {
-      if (cachedUnderlying ne null) {
+      if (cachedUnderlying == null) {
         val infos = binder.paramInfos
         if (infos == null) NoType // this can happen if the referenced generic type is not initialized yet
         else {
