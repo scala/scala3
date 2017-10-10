@@ -363,7 +363,7 @@ object GenericSignatures {
     *  e.g. with "tagged types" like Array[Int] with T.
     */
   private def unboundedGenericArrayLevel(tp: Type)(implicit ctx: Context): Int = tp match {
-    case GenericArray(level, core) if !(core <:< defn.AnyRefType) =>
+    case GenericArray(core, level) if !(core <:< defn.AnyRefType) =>
       level
     case AndType(tp1, tp2) =>
       unboundedGenericArrayLevel(tp1) max unboundedGenericArrayLevel(tp2)
@@ -426,8 +426,7 @@ object GenericSignatures {
        * In short, members of an existential type (e.g. `T` in `forSome { type T }`) can have pretty arbitrary
        * owners (e.g. when computing lubs, <root> is used). All packageClass symbols have `isJavaDefined == true`.
        */
-      case _: TypeRef =>
-        val sym = tp.typeSymbol
+      case RefOrAppliedType(sym, tp, _) =>
         if (sym.isAbstractType && (!sym.owner.is(JavaDefined) || sym.is(Scala2Existential)))
           tp
         else
@@ -435,13 +434,6 @@ object GenericSignatures {
 
       case bounds: TypeBounds =>
         bounds
-
-      case AppliedType(tp, _) =>
-        val sym = tp.typeSymbol
-        if (sym.isAbstractType && (!sym.owner.is(JavaDefined) || sym.is(Scala2Existential)))
-          tp
-        else
-          NoType
 
       case _ =>
         NoType
@@ -451,18 +443,16 @@ object GenericSignatures {
       *  then Some((N, T)) where N is the number of Array constructors enclosing `T`,
       *  otherwise None. Existentials on any level are ignored.
       */
-    def unapply(tp: Type)(implicit ctx: Context): Option[(Int, Type)] = tp.widenDealias match {
-      case AppliedType(tp, arg :: Nil) =>
-        val test = tp.typeSymbol == defn.ArrayClass
-        if (!test) return None
+    def unapply(tp: Type)(implicit ctx: Context): Option[(Type, Int)] = tp.widenDealias match {
+      case defn.ArrayOf(arg) =>
         genericCore(arg) match {
           case NoType =>
-            unapply(arg) match {
-              case Some((level, core)) => Some((level + 1, core))
-              case None => None
+            arg match {
+              case GenericArray(core, level) => Some((core, level + 1))
+              case _ => None
             }
           case core =>
-            Some((1, core))
+            Some((core, 1))
         }
       case _ =>
         None
