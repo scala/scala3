@@ -202,7 +202,7 @@ object GenericSignatures {
           else if (sym.isPrimitiveValueClass) {
             if (!primitiveOK) jsig(defn.ObjectType)
             else if (sym == defn.UnitClass) jsig(defn.BoxedUnitType)
-            else builder.append(sym.info.toTag)
+            else builder.append(defn.typeTag(sym.info))
           }
           else if (ValueClasses.isDerivedValueClass(sym)) {
             val unboxed     = ValueClasses.valueClassUnbox(sym.asClass).info.finalResultType
