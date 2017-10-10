@@ -740,7 +740,7 @@ object Erasure {
   }
 
   private def hiBounds(bounds: TypeBounds)(implicit ctx: Context): List[Type] = bounds.hi.widenDealias match {
-    case AndType(tp1, tp2) => tp1 :: tp2 :: Nil
+    case AndType(tp1, tp2) => hiBounds(tp1.bounds) ::: hiBounds(tp2.bounds)
     case tp => tp :: Nil
   }
 
