@@ -12,12 +12,12 @@ import io._
  */
 class OutputDirs {
   /** Pairs of source directory - destination directory. */
-  private var outputDirs: List[(AbstractFile, AbstractFile)] = Nil
+  private[this] var outputDirs: List[(AbstractFile, AbstractFile)] = Nil
 
   /** If this is not None, the output location where all
    *  classes should go.
    */
-  private var singleOutDir: Option[AbstractFile] = None
+  private[this] var singleOutDir: Option[AbstractFile] = None
 
   /** Add a destination directory for sources found under srcdir.
    *  Both directories should exits.

@@ -45,9 +45,9 @@ class CheckReentrant extends MiniPhaseTransform { thisTransformer =>
 
   override def phaseName = "checkReentrant"
 
-  private var shared: Set[Symbol] = Set()
-  private var seen: Set[ClassSymbol] = Set()
-  private var indent: Int = 0
+  private[this] var shared: Set[Symbol] = Set()
+  private[this] var seen: Set[ClassSymbol] = Set()
+  private[this] var indent: Int = 0
 
   private val sharableAnnot = new CtxLazy(implicit ctx =>
     ctx.requiredClass("dotty.tools.sharable"))

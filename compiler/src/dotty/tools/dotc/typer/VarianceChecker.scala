@@ -25,7 +25,7 @@ class VarianceChecker()(implicit ctx: Context) {
   import tpd._
 
   private object Validator extends TypeAccumulator[Option[VarianceError]] {
-    private var base: Symbol = _
+    private[this] var base: Symbol = _
 
     /** Is no variance checking needed within definition of `base`? */
     def ignoreVarianceIn(base: Symbol): Boolean = (

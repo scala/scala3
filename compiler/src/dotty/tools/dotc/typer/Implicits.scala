@@ -914,7 +914,7 @@ trait Implicits { self: Typer =>
 
   final class ExplainedImplicitSearch(pt: Type, argument: Tree, pos: Position)(implicit ctx: Context)
   extends ImplicitSearch(pt, argument, pos) {
-    private var myFailures = new mutable.ListBuffer[ExplainedSearchFailure]
+    private[this] var myFailures = new mutable.ListBuffer[ExplainedSearchFailure]
     private def record(fail: ExplainedSearchFailure) = {
       myFailures += fail
       fail

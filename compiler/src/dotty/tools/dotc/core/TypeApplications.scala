@@ -111,7 +111,7 @@ object TypeApplications {
    *  produce a higher-kinded application with a type lambda as type constructor.
    */
   class Reducer(tycon: TypeLambda, args: List[Type])(implicit ctx: Context) extends TypeMap {
-    private var available = (0 until args.length).toSet
+    private[this] var available = (0 until args.length).toSet
     var allReplaced = true
     def hasWildcardArg(p: TypeParamRef) =
       p.binder == tycon && args(p.paramNum).isInstanceOf[TypeBounds]

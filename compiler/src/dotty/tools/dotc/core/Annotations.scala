@@ -38,7 +38,7 @@ object Annotations {
     override def symbol(implicit ctx: Context): Symbol
     def complete(implicit ctx: Context): Tree
 
-    private var myTree: Tree = null
+    private[this] var myTree: Tree = null
     def tree(implicit ctx: Context) = {
       if (myTree == null) myTree = complete(ctx)
       myTree
@@ -62,8 +62,8 @@ object Annotations {
   }
 
   case class LazyBodyAnnotation(private var bodyExpr: Context => Tree) extends BodyAnnotation {
-    private var evaluated = false
-    private var myBody: Tree = _
+    private[this] var evaluated = false
+    private[this] var myBody: Tree = _
     def tree(implicit ctx: Context) = {
       if (evaluated) assert(myBody != null)
       else {

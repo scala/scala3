@@ -174,15 +174,15 @@ object ProtoTypes {
    */
   case class FunProto(args: List[untpd.Tree], resType: Type, typer: Typer)(implicit ctx: Context)
   extends UncachedGroundType with ApplyingProto {
-    private var myTypedArgs: List[Tree] = Nil
+    private[this] var myTypedArgs: List[Tree] = Nil
 
     override def resultType(implicit ctx: Context) = resType
 
     /** A map in which typed arguments can be stored to be later integrated in `typedArgs`. */
-    private var myTypedArg: SimpleIdentityMap[untpd.Tree, Tree] = SimpleIdentityMap.Empty
+    private[this] var myTypedArg: SimpleIdentityMap[untpd.Tree, Tree] = SimpleIdentityMap.Empty
 
     /** A map recording the typer states in which arguments stored in myTypedArg were typed */
-    private var evalState: SimpleIdentityMap[untpd.Tree, TyperState] = SimpleIdentityMap.Empty
+    private[this] var evalState: SimpleIdentityMap[untpd.Tree, TyperState] = SimpleIdentityMap.Empty
 
     def isMatchedBy(tp: Type)(implicit ctx: Context) =
       typer.isApplicable(tp, Nil, typedArgs, resultType)
@@ -246,7 +246,7 @@ object ProtoTypes {
     def typeOfArg(arg: untpd.Tree)(implicit ctx: Context): Type =
       myTypedArg(arg).tpe
 
-    private var myTupled: Type = NoType
+    private[this] var myTupled: Type = NoType
 
     /** The same proto-type but with all arguments combined in a single tuple */
     def tupled: FunProto = myTupled match {
@@ -261,7 +261,7 @@ object ProtoTypes {
     def isTupled: Boolean = myTupled.isInstanceOf[FunProto]
 
     /** If true, the application of this prototype was canceled. */
-    private var toDrop: Boolean = false
+    private[this] var toDrop: Boolean = false
 
     /** Cancel the application of this prototype. This can happen for a nullary
      *  application `f()` if `f` refers to a symbol that exists both in parameterless

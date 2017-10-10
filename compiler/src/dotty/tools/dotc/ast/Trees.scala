@@ -33,7 +33,7 @@ object Trees {
   /** Property key for trees with documentation strings attached */
   val DocComment = new Property.Key[Comment]
 
-  @sharable private var nextId = 0 // for debugging
+  @sharable private[this] var nextId = 0 // for debugging
 
   type LazyTree = AnyRef     /* really: Tree | Lazy[Tree] */
   type LazyTreeList = AnyRef /* really: List[Tree] | Lazy[List[Tree]] */

@@ -39,7 +39,7 @@ object JavaParsers {
     val in: JavaScanner = new JavaScanner(source)
 
     /** The simple name of the package of the currently parsed file */
-    private var thisPackageName: TypeName = tpnme.EMPTY
+    private[this] var thisPackageName: TypeName = tpnme.EMPTY
 
     /** This is the general parse entry point.
      *  Overridden by ScriptParser

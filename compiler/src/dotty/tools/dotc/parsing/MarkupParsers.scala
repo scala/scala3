@@ -85,7 +85,7 @@ object MarkupParsers {
 
     var xEmbeddedBlock = false
 
-    private var debugLastStartElement = List.empty[(Int, String)]
+    private[this] var debugLastStartElement = List.empty[(Int, String)]
     private def debugLastPos = debugLastStartElement.head._1
     private def debugLastElem = debugLastStartElement.head._2
 

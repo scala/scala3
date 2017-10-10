@@ -18,7 +18,7 @@ class TastyReader(val bytes: Array[Byte], start: Int, end: Int, val base: Int = 
 
   def this(bytes: Array[Byte]) = this(bytes, 0, bytes.length)
 
-  private var bp: Int = start
+  private[this] var bp: Int = start
 
   def addr(idx: Int) = Addr(idx - base)
   def index(addr: Addr) = addr.index + base

@@ -12,8 +12,8 @@ import core.Contexts.Context
  *  the expression intiializing the lazy val depends only on the root context, but not any changes afterwards.
  */
 class CtxLazy[T](expr: Context => T) {
-  private var myValue: T = _
-  private var forced = false
+  private[this] var myValue: T = _
+  private[this] var forced = false
   def apply()(implicit ctx: Context): T = {
     if (!forced) {
       myValue = expr(ctx)

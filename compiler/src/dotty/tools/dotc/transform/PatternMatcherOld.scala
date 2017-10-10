@@ -45,7 +45,7 @@ class PatternMatcherOld extends MiniPhaseTransform with DenotTransformer {
 
   override def phaseName = "patternMatcher"
 
-  private var _id = 0 // left for debuging
+  private[this] var _id = 0 // left for debuging
 
   override def transformMatch(tree: Match)(implicit ctx: Context, info: TransformerInfo): Tree = {
     val translated = new Translator()(ctx).translator.translateMatch(tree)

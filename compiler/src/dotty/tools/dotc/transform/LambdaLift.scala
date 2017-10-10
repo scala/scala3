@@ -109,10 +109,10 @@ class LambdaLift extends MiniPhase with IdentityDenotTransformer { thisTransform
     private val liftedDefs = new HashMap[Symbol, mutable.ListBuffer[Tree]]
 
     /** A flag to indicate whether new free variables have been found */
-    private var changedFreeVars: Boolean = _
+    private[this] var changedFreeVars: Boolean = _
 
     /** A flag to indicate whether lifted owners have changed */
-    private var changedLiftedOwner: Boolean = _
+    private[this] var changedLiftedOwner: Boolean = _
 
     private val ord: Ordering[Symbol] = Ordering.by((_: Symbol).id) // Dotty deviation: Type annotation needed. TODO: figure out why
     private def newSymSet = TreeSet.empty[Symbol](ord)

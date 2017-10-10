@@ -31,7 +31,7 @@ class CollectEntryPoints extends MiniPhaseTransform {
     this
   }
 
-  private var entryPoints: Set[Symbol] = _
+  private[this] var entryPoints: Set[Symbol] = _
 
   def getEntryPoints = entryPoints.toList
 

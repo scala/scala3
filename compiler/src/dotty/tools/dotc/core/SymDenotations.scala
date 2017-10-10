@@ -1874,9 +1874,9 @@ object SymDenotations {
     def apply(sym: Symbol) = this
     def apply(module: TermSymbol, modcls: ClassSymbol) = this
 
-    private var myDecls: Scope = EmptyScope
-    private var mySourceModuleFn: Context => Symbol = NoSymbolFn
-    private var myModuleClassFn: Context => Symbol = NoSymbolFn
+    private[this] var myDecls: Scope = EmptyScope
+    private[this] var mySourceModuleFn: Context => Symbol = NoSymbolFn
+    private[this] var myModuleClassFn: Context => Symbol = NoSymbolFn
 
     /** A proxy to this lazy type that keeps the complete operation
      *  but provides fresh slots for scope/sourceModule/moduleClass
@@ -2046,7 +2046,7 @@ object SymDenotations {
     final def isValid(implicit ctx: Context): Boolean =
       cache != null && isValidAt(ctx.phase)
 
-    private var locked = false
+    private[this] var locked = false
 
     /** Computing parent member names might force parents, which could invalidate
      *  the cache itself. In that case we should cancel invalidation and
@@ -2144,9 +2144,9 @@ object SymDenotations {
 
   /** A class to combine base data from parent types */
   class BaseDataBuilder {
-    private var classes: List[ClassSymbol] = Nil
-    private var classIds = new Array[Int](32)
-    private var length = 0
+    private[this] var classes: List[ClassSymbol] = Nil
+    private[this] var classIds = new Array[Int](32)
+    private[this] var length = 0
 
     private def resize(size: Int) = {
       val classIds1 = new Array[Int](size)
@@ -2182,5 +2182,5 @@ object SymDenotations {
     def baseClasses: List[ClassSymbol] = classes
   }
 
-  @sharable private var indent = 0 // for completions printing
+  @sharable private[this] var indent = 0 // for completions printing
 }

@@ -30,7 +30,7 @@ abstract class CharArrayReader { self =>
   /** The start offset of the line before the current one */
   var lastLineStartOffset: Int = startFrom
 
-  private var lastUnicodeOffset = -1
+  private[this] var lastUnicodeOffset = -1
 
   /** Is last character a unicode escape \\uxxxx? */
   def isUnicodeEscape = charOffset == lastUnicodeOffset

@@ -189,7 +189,7 @@ object Names {
     def underlying: TermName = unsupported("underlying")
 
     @sharable // because of synchronized block in `and`
-    private var derivedNames: AnyRef /* immutable.Map[NameInfo, DerivedName] | j.u.HashMap */ =
+    private[this] var derivedNames: AnyRef /* immutable.Map[NameInfo, DerivedName] | j.u.HashMap */ =
       immutable.Map.empty[NameInfo, DerivedName]
 
     private def getDerived(info: NameInfo): DerivedName /* | Null */= derivedNames match {
@@ -537,15 +537,15 @@ object Names {
 
   /** The number of characters filled. */
   @sharable // because it's only mutated in synchronized block of termName
-  private var nc = 0
+  private[this] var nc = 0
 
   /** Hashtable for finding term names quickly. */
   @sharable // because it's only mutated in synchronized block of termName
-  private var table = new Array[SimpleName](InitialHashSize)
+  private[this] var table = new Array[SimpleName](InitialHashSize)
 
   /** The number of defined names. */
   @sharable // because it's only mutated in synchronized block of termName
-  private var size = 1
+  private[this] var size = 1
 
   /** The hash of a name made of from characters cs[offset..offset+len-1].  */
   private def hashValue(cs: Array[Char], offset: Int, len: Int): Int =

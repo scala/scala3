@@ -950,8 +950,8 @@ class Definitions {
 
   /** This class would also be obviated by the implicit function type design */
   class PerRun[T](generate: Context => T) {
-    private var current: RunId = NoRunId
-    private var cached: T = _
+    private[this] var current: RunId = NoRunId
+    private[this] var cached: T = _
     def apply()(implicit ctx: Context): T = {
       if (current != ctx.runId) {
         cached = generate(ctx)

@@ -224,7 +224,7 @@ object Scanners {
     /** The parser can also add more lookahead tokens via `insertTokens`.
      *  Tokens beyond `next` are stored in `following`.
      */
-    private var following: List[TokenData] = Nil
+    private[this] var following: List[TokenData] = Nil
 
     /** Push a copy of token data `td` to `following` */
     private def pushCopy(td: TokenData) = {

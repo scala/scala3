@@ -30,7 +30,7 @@ trait ConstraintHandling {
   val state: TyperState
   import state.constraint
 
-  private var addConstraintInvocations = 0
+  private[this] var addConstraintInvocations = 0
 
   /** If the constraint is frozen we cannot add new bounds to the constraint. */
   protected var frozenConstraint = false

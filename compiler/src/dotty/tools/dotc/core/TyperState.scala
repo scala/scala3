@@ -15,7 +15,7 @@ import java.lang.ref.WeakReference
 
 class TyperState(previous: TyperState /* | Null */) extends DotClass with Showable {
 
-  private var myReporter =
+  private[this] var myReporter =
     if (previous == null) new ConsoleReporter() else previous.reporter
 
   def reporter: Reporter = myReporter
@@ -23,7 +23,7 @@ class TyperState(previous: TyperState /* | Null */) extends DotClass with Showab
   /** A fresh type state with the same constraint as this one and the given reporter */
   def setReporter(reporter: Reporter): this.type = { myReporter = reporter; this }
 
-  private var myConstraint: Constraint =
+  private[this] var myConstraint: Constraint =
     if (previous == null) new OrderingConstraint(SimpleIdentityMap.Empty, SimpleIdentityMap.Empty, SimpleIdentityMap.Empty)
     else previous.constraint
 
@@ -36,7 +36,7 @@ class TyperState(previous: TyperState /* | Null */) extends DotClass with Showab
   private val previousConstraint =
     if (previous == null) constraint else previous.constraint
 
-  private var myEphemeral: Boolean =
+  private[this] var myEphemeral: Boolean =
     if (previous == null) false else previous.ephemeral
 
   /** The ephemeral flag is set as a side effect if an operation accesses
@@ -49,7 +49,7 @@ class TyperState(previous: TyperState /* | Null */) extends DotClass with Showab
   def ephemeral = myEphemeral
   def ephemeral_=(x: Boolean): Unit = { myEphemeral = x }
 
-  private var myIsCommittable = true
+  private[this] var myIsCommittable = true
 
   def isCommittable = myIsCommittable
 
@@ -58,7 +58,7 @@ class TyperState(previous: TyperState /* | Null */) extends DotClass with Showab
   def isGlobalCommittable: Boolean =
     isCommittable && (previous == null || previous.isGlobalCommittable)
 
-  private var isCommitted = false
+  private[this] var isCommitted = false
 
   /** A fresh typer state with the same constraint as this one. */
   def fresh(): TyperState =
@@ -86,7 +86,7 @@ class TyperState(previous: TyperState /* | Null */) extends DotClass with Showab
   def uncommittedAncestor: TyperState =
     if (isCommitted) previous.uncommittedAncestor else this
 
-  private var testReporter: StoreReporter = null
+  private[this] var testReporter: StoreReporter = null
 
   /** Test using `op`, restoring typerState to previous state afterwards */
   def test(op: => Boolean): Boolean = {

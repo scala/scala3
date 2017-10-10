@@ -40,7 +40,7 @@ class FirstTransform extends MiniPhaseTransform with InfoTransformer with Annota
 
   override def phaseName = "firstTransform"
 
-  private var addCompanionPhases: List[NeedsCompanions] = _
+  private[this] var addCompanionPhases: List[NeedsCompanions] = _
 
   override def changesMembers = true // the phase adds companion objects
 

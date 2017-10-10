@@ -39,9 +39,9 @@ import scala.language.postfixOps
 class SyntheticMethods(thisTransformer: DenotTransformer) {
   import ast.tpd._
 
-  private var myValueSymbols: List[Symbol] = Nil
-  private var myCaseSymbols: List[Symbol] = Nil
-  private var myCaseModuleSymbols: List[Symbol] = Nil
+  private[this] var myValueSymbols: List[Symbol] = Nil
+  private[this] var myCaseSymbols: List[Symbol] = Nil
+  private[this] var myCaseModuleSymbols: List[Symbol] = Nil
 
   private def initSymbols(implicit ctx: Context) =
     if (myValueSymbols.isEmpty) {

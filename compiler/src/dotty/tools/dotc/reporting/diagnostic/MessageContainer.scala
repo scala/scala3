@@ -29,9 +29,9 @@ class MessageContainer(
   val level: Int
 ) extends Exception with interfaces.Diagnostic {
   import MessageContainer._
-  private var myMsg: String = null
-  private var myIsNonSensical: Boolean = false
-  private var myContained: Message = null
+  private[this] var myMsg: String = null
+  private[this] var myIsNonSensical: Boolean = false
+  private[this] var myContained: Message = null
 
   override def position: Optional[interfaces.SourcePosition] =
     if (pos.exists && pos.source.exists) Optional.of(pos) else Optional.empty()

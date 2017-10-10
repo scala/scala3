@@ -121,7 +121,7 @@ object PatternMatcher {
     // ------- Plan and test types ------------------------
 
     /** Counter to display plans nicely, for debugging */
-    private var nxId = 0
+    private[this] var nxId = 0
 
     /** The different kinds of plans */
     sealed abstract class Plan { val id = nxId; nxId += 1 }
