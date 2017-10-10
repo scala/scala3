@@ -3187,10 +3187,16 @@ object Types {
     def paramNum: Int
     def paramName: binder.ThisName = binder.paramNames(paramNum)
 
+    private[this] var cachedUnderlying: Type = null
     override def underlying(implicit ctx: Context): Type = {
-      val infos = binder.paramInfos
-      if (infos == null) NoType // this can happen if the referenced generic type is not initialized yet
-      else infos(paramNum)
+      if (cachedUnderlying ne null) {
+        val infos = binder.paramInfos
+        if (infos == null) NoType // this can happen if the referenced generic type is not initialized yet
+        else {
+          cachedUnderlying = infos(paramNum)
+          cachedUnderlying
+        }
+      } else cachedUnderlying
     }
 
     override def computeHash = doHash(paramNum, binder.identityHash)
