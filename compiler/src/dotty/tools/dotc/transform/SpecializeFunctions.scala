@@ -22,7 +22,7 @@ class SpecializeFunctions extends MiniPhaseTransform with InfoTransformer {
       var newApplys = Map.empty[Name, Symbol]
 
       tp.parents.foreach { parent =>
-        List(0, 1, 2, 3).foreach { arity =>
+        List(0, 1, 2).foreach { arity =>
           val func = defn.FunctionClass(arity)
           if (parent.derivesFrom(func)) {
             val typeParams = tp.cls.typeRef.baseType(func).argInfos
