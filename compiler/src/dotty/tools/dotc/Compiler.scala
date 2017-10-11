@@ -68,14 +68,14 @@ class Compiler {
            new ExplicitSelf,        // Make references to non-trivial self types explicit as casts
            new ShortcutImplicits,   // Allow implicit functions without creating closures
            new CrossCastAnd,        // Normalize selections involving intersection types.
-           new Splitter,            // Expand selections involving union types into conditionals
-           new SpecializeFunctions), // Specialized Function1 by replacing super with specialized super
+           new Splitter),           // Expand selections involving union types into conditionals
       List(new PhantomArgLift, // Extracts the evaluation of phantom arguments placing them before the call.
            new VCInlineMethods,     // Inlines calls to value class methods
            new SeqLiterals,         // Express vararg arguments as arrays
            new InterceptedMethods,  // Special handling of `==`, `|=`, `getClass` methods
            new Getters,             // Replace non-private vals and vars with getter defs (fields are added later)
-           new ElimByName,          // Expand by-name parameter references
+           new ElimByName),         // Expand by-name parameter references
+      List(new SpecializeFunctions, // Specialized Function{0,1,2} by replacing super with specialized super
            new ElimOuterSelect,     // Expand outer selections
            new AugmentScala2Traits, // Expand traits defined in Scala 2.x to simulate old-style rewritings
            new ResolveSuper,        // Implement super accessors and add forwarders to trait methods
