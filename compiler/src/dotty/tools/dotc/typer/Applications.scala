@@ -47,7 +47,7 @@ object Applications {
     val ref = extractorMember(tp, name)
     if (ref.isOverloaded)
       errorType(i"Overloaded reference to $ref is not allowed in extractor", errorPos)
-    ref.info.widenExpr.dealias
+    ref.info.widenExpr.annotatedToRepeated.dealias
   }
 
   /** Does `tp` fit the "product match" conditions as an unapply result type
@@ -93,7 +93,10 @@ object Applications {
     def getTp = extractorMemberType(unapplyResult, nme.get, pos)
 
     def fail = {
-      ctx.error(i"$unapplyResult is not a valid result type of an $unapplyName method of an extractor", pos)
+      val addendum =
+        if (ctx.scala2Mode && unapplyName == nme.unapplySeq)
+          "\n You might want to try to rewrite the extractor to use `unapply` instead."
+      ctx.error(em"$unapplyResult is not a valid result type of an $unapplyName method of an extractor$addendum", pos)
       Nil
     }
 
@@ -959,13 +962,19 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
 
         var argTypes = unapplyArgs(unapplyApp.tpe, unapplyFn, args, tree.pos)
         for (argType <- argTypes) assert(!argType.isInstanceOf[TypeBounds], unapplyApp.tpe.show)
-        val bunchedArgs = argTypes match {
-          case argType :: Nil =>
-            if (argType.isRepeatedParam) untpd.SeqLiteral(args, untpd.TypeTree()) :: Nil
-            else if (args.lengthCompare(1) > 0 && ctx.canAutoTuple) untpd.Tuple(args) :: Nil
-            else args
-          case _ => args
-        }
+        val bunchedArgs =
+          if (argTypes.nonEmpty && argTypes.last.isRepeatedParam)
+            args.lastOption match {
+              case Some(arg @ Typed(argSeq, _)) if untpd.isWildcardStarArg(arg) =>
+                args.init :+ argSeq
+              case _ =>
+                val (regularArgs, varArgs) = args.splitAt(argTypes.length - 1)
+                regularArgs :+ untpd.SeqLiteral(varArgs, untpd.TypeTree())
+            }
+          else if (argTypes.lengthCompare(1) == 0 && args.lengthCompare(1) > 0 && ctx.canAutoTuple)
+            untpd.Tuple(args) :: Nil
+          else
+            args
         if (argTypes.length != bunchedArgs.length) {
           ctx.error(UnapplyInvalidNumberOfArguments(qual, argTypes), tree.pos)
           argTypes = argTypes.take(args.length) ++

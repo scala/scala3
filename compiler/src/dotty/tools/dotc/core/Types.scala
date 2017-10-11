@@ -1363,6 +1363,15 @@ object Types {
      */
     def signature(implicit ctx: Context): Signature = Signature.NotAMethod
 
+    def annotatedToRepeated(implicit ctx: Context): Type = this match {
+      case tp @ ExprType(tp1) => tp.derivedExprType(tp1.annotatedToRepeated)
+      case AnnotatedType(tp, annot) if annot matches defn.RepeatedAnnot =>
+        val typeSym = tp.typeSymbol.asClass
+        assert(typeSym == defn.SeqClass || typeSym == defn.ArrayClass)
+        tp.translateParameterized(typeSym, defn.RepeatedParamClass)
+      case _ => this
+    }
+
     /** Convert to text */
     def toText(printer: Printer): Text = printer.toText(this)
 
@@ -2860,21 +2869,12 @@ object Types {
      *   - add @inlineParam to inline call-by-value parameters
      */
     def fromSymbols(params: List[Symbol], resultType: Type)(implicit ctx: Context) = {
-      def translateRepeated(tp: Type): Type = tp match {
-        case tp @ ExprType(tp1) => tp.derivedExprType(translateRepeated(tp1))
-        case AnnotatedType(tp, annot) if annot matches defn.RepeatedAnnot =>
-          val typeSym = tp.typeSymbol.asClass
-          assert(typeSym == defn.SeqClass || typeSym == defn.ArrayClass)
-          tp.translateParameterized(typeSym, defn.RepeatedParamClass)
-        case tp =>
-          tp
-      }
       def translateInline(tp: Type): Type = tp match {
         case _: ExprType => tp
         case _ => AnnotatedType(tp, Annotation(defn.InlineParamAnnot))
       }
       def paramInfo(param: Symbol) = {
-        val paramType = translateRepeated(param.info)
+        val paramType = param.info.annotatedToRepeated
         if (param.is(Inline)) translateInline(paramType) else paramType
       }
 
