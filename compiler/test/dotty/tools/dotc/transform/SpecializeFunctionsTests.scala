@@ -214,4 +214,16 @@ class SpecializeFunctionsTests extends DottyBytecodeTest {
       assertBoxing("<init>", findClass("Test$", dir).methods)
     }
   }
+
+  @Test def passByNameNoBoxing = {
+    implicit val source: String =
+      """|object Test {
+         |  def fn(x: => Int): Int = x
+         |  fn(2)
+         |}""".stripMargin
+
+    checkBCode(source) { dir =>
+      assertNoBoxing("fn", findClass("Test$", dir).methods)
+    }
+  }
 }
