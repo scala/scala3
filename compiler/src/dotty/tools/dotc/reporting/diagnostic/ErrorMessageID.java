@@ -101,6 +101,7 @@ public enum ErrorMessageID {
     ReturnOutsideMethodDefinitionID,
     UncheckedTypePatternID,
     ExtendFinalClassID,
+    EnumCaseDefinitionInNonEnumOwnerID,
     ;
 
     public int errorNumber() {
