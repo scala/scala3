@@ -32,8 +32,8 @@ import StdNames._
  *   - collapses all type trees to trees of class TypeTree
  *   - converts idempotent expressions with constant types
  *   - drops branches of ifs using the rules
- *          if (true) A else B  --> A
- *          if (false) A else B --> B
+ *          if (true) A else B    ==> A
+ *          if (false) A else B   ==> B
  */
 class FirstTransform extends MiniPhaseTransform with InfoTransformer with AnnotationTransformer { thisTransformer =>
   import ast.tpd._
@@ -217,6 +217,13 @@ class FirstTransform extends MiniPhaseTransform with InfoTransformer with Annota
       case _ => tree
     }
 
+  /** Perform one of the following simplification if applicable:
+   *
+   *      true  && y   ==>  y
+   *      false && y   ==>  false
+   *      true  || y   ==>  true
+   *      false || y   ==>  y
+   */
   private def foldCondition(tree: Apply)(implicit ctx: Context) = tree.fun match {
     case Select(x @ Literal(Constant(c: Boolean)), op) =>
       tree.args match {
