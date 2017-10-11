@@ -1780,12 +1780,10 @@ object messages {
   case class EnumCaseDefinitionInNonEnumOwner(owner: Symbol)(implicit ctx: Context)
     extends Message(EnumCaseDefinitionInNonEnumOwnerID) {
       val kind = "Syntax"
-      val msg = em"case not allowed here, since owner `${owner}` is not an `${"enum"}` object"
+      val msg = em"case not allowed here, since owner ${owner} is not an ${"enum"} object"
       val explanation =
-        hl"""
-            | `${"case"}` is only allowed at this place if the surrounding object is the companion object of an `${"enum"} ${"class"}`.
-            | If you wanted to create an enumeration make sure that the corresponding class has the `${"enum"}` keyword.
-            | Otherwise you might have forgotten `${"class"}` or `${"object"}` after this `${"case"}` here.
-          """
-    }
+        hl"""${"enum"} cases are only allowed within the companion ${"object"} of an ${"enum class"}.
+            |If you want to create an ${"enum"} case, make sure the corresponding ${"enum class"} exists
+            |and has the ${"enum"} keyword."""
+  }
 }
