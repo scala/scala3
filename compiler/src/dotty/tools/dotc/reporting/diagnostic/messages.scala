@@ -1777,6 +1777,7 @@ object messages {
     val explanation =
       hl"""A class marked with the ${"final"} keyword cannot be extended"""
   }
+
   case class EnumCaseDefinitionInNonEnumOwner(owner: Symbol)(implicit ctx: Context)
     extends Message(EnumCaseDefinitionInNonEnumOwnerID) {
       val kind = "Syntax"
@@ -1816,5 +1817,15 @@ object messages {
            |  - ${cls.owner} defines ${cls}
            |  - ${other.owner} defines ${other}"""
       }
+  }
+
+  case class TailrecNotApplicableNeitherPrivateNorFinal(owner: Symbol)(implicit ctx: Context)
+    extends Message(TailrecNotApplicableNeitherPrivateNorFinalID) {
+      val kind = "Syntax"
+      val msg = hl"TailRec optimisation not applicable, ${owner} is neither `private` nor `final` so can be overridden"
+      val explanation =
+        hl"""
+            |The `@tailrec` annotation can only be used on methods that are either `private` or `final`.
+          """
   }
 }
