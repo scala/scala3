@@ -61,6 +61,14 @@ if [ ! -x "$JAVACMD" ] ; then
   exit 1
 fi
 
+# parses 1.7, 1.8, 9, etc out of java version "1.8.0_91"
+JAVA_VERSION=$("$JAVACMD" -version 2>&1 | grep ' version "' | sed 's/.*version "\([0-9]*\)\(\.[0-9]*\)\{0,1\}\(.*\)*"/\1\2/; 1q')
+
+if [ "$JAVA_VERSION" != "1.8" ] ; then
+  echo "Error: Java 8 is required, actual $JAVA_VERSION"
+  exit 1
+fi
+
 if [ -z "$JAVA_HOME" ] ; then
   echo "Warning: JAVA_HOME environment variable is not set."
 fi
