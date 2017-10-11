@@ -5,3 +5,5 @@ object Test extends dotty.runtime.LegacyApp {
   m.removeBinding(6, "Foo")
   println(m.contains(6))
 }
+
+

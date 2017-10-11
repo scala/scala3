@@ -14,27 +14,23 @@ import scala.collection.mutable
 class SpecializeFunctions extends MiniPhaseTransform with InfoTransformer {
   import ast.tpd._
   val phaseName = "specializeFunctions"
+  override def runsAfter = Set(classOf[ElimByName])
 
-  /** Transforms the type to include decls for specialized applys and replace
-   *  the class parents with specialized versions.
-   */
+  /** Transforms the type to include decls for specialized applys  */
   def transformInfo(tp: Type, sym: Symbol)(implicit ctx: Context) = tp match {
-    case tp: ClassInfo if !sym.is(Flags.Package) && (tp.decls ne EmptyScope) => {
+    case tp: ClassInfo if !sym.is(Flags.Package) && (tp.decls ne EmptyScope) =>
       var newApplys = Map.empty[Name, Symbol]
 
       tp.parents.foreach { parent =>
         List(0, 1, 2, 3).foreach { arity =>
           val func = defn.FunctionClass(arity)
-          if (!parent.derivesFrom(func)) Nil
-          else {
+          if (parent.derivesFrom(func)) {
             val typeParams = tp.cls.typeRef.baseType(func).argInfos
             val interface  = specInterface(typeParams)
 
-            if (interface.exists) {
-              if (tp.decls.lookup(nme.apply).exists) {
-                val specializedMethodName = nme.apply.specializedFunction(typeParams.last, typeParams.init)
-                newApplys += (specializedMethodName -> interface)
-              }
+            if (interface.exists && tp.decls.lookup(nme.apply).exists) {
+              val specializedMethodName = nme.apply.specializedFunction(typeParams.last, typeParams.init)
+              newApplys += (specializedMethodName -> interface)
             }
           }
         }
@@ -45,7 +41,7 @@ class SpecializeFunctions extends MiniPhaseTransform with InfoTransformer {
           ctx.newSymbol(
             sym,
             name,
-            Flags.Override | Flags.Method,
+            Flags.Override | Flags.Method | Flags.Synthetic,
             interface.info.decls.lookup(name).info
           )
         }
@@ -55,20 +51,18 @@ class SpecializeFunctions extends MiniPhaseTransform with InfoTransformer {
 
       if (newApplys.isEmpty) tp
       else tp.derivedClassInfo(decls = newDecls)
-    }
 
     case _ => tp
   }
 
   /** Transforms the `Template` of the classes to contain forwarders from the
-   *  generic applys to the specialized ones. Also replaces parents of the
-   *  class on the tree level and inserts the specialized applys in the
-   *  template body.
+   *  generic applys to the specialized ones. Also inserts the specialized applys
+   *  in the template body.
    */
   override def transformTemplate(tree: Template)(implicit ctx: Context, info: TransformerInfo) = {
     val applyBuf = new mutable.ListBuffer[Tree]
     val newBody = tree.body.mapConserve {
-      case dt: DefDef if dt.name == nme.apply && dt.vparamss.length == 1 => {
+      case dt: DefDef if dt.name == nme.apply && dt.vparamss.length == 1 =>
         val specName = nme.apply.specializedFunction(
           dt.tpe.widen.finalResultType,
           dt.vparamss.head.map(_.symbol.info)
@@ -93,7 +87,7 @@ class SpecializeFunctions extends MiniPhaseTransform with InfoTransformer {
             .appliedToArgs(dt.vparamss.head.map(vparam => ref(vparam.symbol)))
           })
         } else dt
-      }
+
       case x => x
     }
 
@@ -105,10 +99,10 @@ class SpecializeFunctions extends MiniPhaseTransform with InfoTransformer {
   /** Dispatch to specialized `apply`s in user code when available */
   override def transformApply(tree: Apply)(implicit ctx: Context, info: TransformerInfo) =
     tree match {
-      case app @ Apply(fun, args)
+      case Apply(fun, args)
         if fun.symbol.name == nme.apply &&
         fun.symbol.owner.derivesFrom(defn.FunctionClass(args.length))
-      => {
+      =>
         val params = (fun.tpe.widen.firstParamTypes :+ tree.tpe).map(_.widenSingleton.dealias)
         val specializedApply = specializedName(nme.apply, params)
 
@@ -116,20 +110,19 @@ class SpecializeFunctions extends MiniPhaseTransform with InfoTransformer {
           val newSel = fun match {
             case Select(qual, _) =>
               qual.select(specializedApply)
-            case _ => {
+            case _ =>
               (fun.tpe: @unchecked) match {
                 case TermRef(prefix: ThisType, name) =>
                   tpd.This(prefix.cls).select(specializedApply)
                 case TermRef(prefix: NamedType, name) =>
                   tpd.ref(prefix).select(specializedApply)
               }
-            }
           }
 
           newSel.appliedToArgs(args)
         }
         else tree
-      }
+
       case _ => tree
     }
 
