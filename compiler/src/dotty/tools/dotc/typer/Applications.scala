@@ -663,7 +663,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
   def typedApply(tree: untpd.Apply, pt: Type)(implicit ctx: Context): Tree = {
 
     def realApply(implicit ctx: Context): Tree = track("realApply") {
-      val originalProto = new FunProto(tree.args, IgnoredProto(pt), this)(argCtx(tree))
+      val originalProto = new FunProto(tree.args, IgnoredProto(pt), this, untpd.isSelfConstrCall(tree))
       val fun1 = typedExpr(tree.fun, originalProto)
 
       // Warning: The following lines are dirty and fragile. We record that auto-tupling was demanded as
@@ -681,7 +681,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
       // help sharpen the inferred parameter types for the argument function literal(s).
       // This tweak is needed to make i1378 compile.
       if (tree.args.exists(untpd.isFunctionWithUnknownParamType(_)))
-        if (!constrainResult(fun1.tpe.widen, proto.derivedFunProto(resultType = pt)))
+        if (!constrainResult(fun1.tpe.widen, proto.derivedFunProto(resType = pt)))
           typr.println(i"result failure for $tree with type ${fun1.tpe.widen}, expected = $pt")
 
       /** Type application where arguments come from prototype, and no implicits are inserted */
@@ -692,7 +692,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
               if (proto.allArgTypesAreCurrent())
                 new ApplyToTyped(tree, fun1, funRef, proto.typedArgs, pt)
               else
-                new ApplyToUntyped(tree, fun1, funRef, proto, pt)(argCtx(tree))
+                new ApplyToUntyped(tree, fun1, funRef, proto, pt)
             convertNewGenericArray(ConstFold(app.result))
           case _ =>
             handleUnexpectedFunType(tree, fun1)
@@ -1310,7 +1310,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
       alts filter (isApplicable(_, argTypes, resultType))
 
     val candidates = pt match {
-      case pt @ FunProto(args, resultType, _) =>
+      case pt @ FunProto(args, resultType, _, _) =>
         val numArgs = args.length
         val normArgs = args.mapConserve {
           case Block(Nil, expr) => expr
@@ -1363,7 +1363,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
           if (isDetermined(alts2)) alts2
           else {
             pretypeArgs(alts2, pt)
-            narrowByTrees(alts2, pt.typedArgs, resultType)
+            narrowByTrees(alts2, pt.typedArgs(ctx.addMode(Mode.ImplicitsEnabled)), resultType)
           }
         }
 

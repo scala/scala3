@@ -48,15 +48,12 @@ object Implicits {
   /** A common base class of contextual implicits and of-type implicits which
    *  represents a set of implicit references.
    */
-  abstract class ImplicitRefs(initctx: Context) {
-    implicit val ctx: Context =
-      if (initctx == NoContext) initctx else initctx retractMode Mode.ImplicitsEnabled
-
+  abstract class ImplicitRefs extends Showable {
     /** The nesting level of this context. Non-zero only in ContextialImplicits */
     def level: Int = 0
 
     /** The implicit references */
-    def refs: List[TermRef]
+    def refs(implicit ctx: Context): List[TermRef]
 
     /** Return those references in `refs` that are compatible with type `pt`. */
     protected def filterMatching(pt: Type)(implicit ctx: Context): List[Candidate] = track("filterMatching") {
@@ -133,48 +130,58 @@ object Implicits {
 
       if (refs.isEmpty) Nil
       else {
-        val nestedCtx = ctx.fresh.addMode(Mode.TypevarsMissContext)
+        val nestedCtx = ctx.fresh
+          .retractMode(Mode.ImplicitsEnabled)
+          .addMode(Mode.TypevarsMissContext)
         refs
           .filter(ref => nestedCtx.typerState.test(refMatches(ref)(nestedCtx)))
           .map(Candidate(_, level))
       }
     }
+
+    def toText(printer: Printer): Text = printer.toText(this)
   }
 
   /** The implicit references coming from the implicit scope of a type.
    *  @param tp              the type determining the implicit scope
    *  @param companionRefs   the companion objects in the implicit scope.
    */
-  class OfTypeImplicits(tp: Type, val companionRefs: TermRefSet)(initctx: Context) extends ImplicitRefs(initctx) {
-    assert(initctx.typer != null)
-    lazy val refs: List[TermRef] = {
-      val buf = new mutable.ListBuffer[TermRef]
-      for (companion <- companionRefs) buf ++= companion.implicitMembers
-      buf.toList
+  class OfTypeImplicits(val tp: Type, val companionRefs: TermRefSet) extends ImplicitRefs {
+    private[this] var myRefs: List[TermRef] = _
+    def refs(implicit ctx: Context): List[TermRef] = {
+      if (myRefs == null) {
+        val buf = new mutable.ListBuffer[TermRef]
+        for (companion <- companionRefs) buf ++= companion.implicitMembers
+        myRefs = buf.toList
+      }
+      myRefs
     }
 
+    private[this] var myEligible: List[Candidate] = _
     /** The candidates that are eligible for expected type `tp` */
-    lazy val eligible: List[Candidate] =
-      /*>|>*/ track("eligible in tpe") /*<|<*/ {
-        /*>|>*/ ctx.traceIndented(i"eligible($tp), companions = ${companionRefs.toList}%, %", implicitsDetailed, show = true) /*<|<*/ {
-          if (refs.nonEmpty && monitored) record(s"check eligible refs in tpe", refs.length)
-          filterMatching(tp)
+    def eligible(implicit ctx: Context): List[Candidate] = {
+      if (myEligible == null) {
+        /*>|>*/ track("eligible in tpe") /*<|<*/ {
+          /*>|>*/ ctx.traceIndented(i"eligible($tp), companions = ${companionRefs.toList}%, %", implicitsDetailed, show = true) /*<|<*/ {
+            if (refs.nonEmpty && monitored) record(s"check eligible refs in tpe", refs.length)
+            myEligible = filterMatching(tp)
+          }
         }
       }
-
-    override def toString =
-      i"OfTypeImplicits($tp), companions = ${companionRefs.toList}%, %; refs = $refs%, %."
+      myEligible
+    }
   }
 
   /** The implicit references coming from the context.
-   *  @param refs      the implicit references made visible by the current context.
+   *  @param myRefs    the implicit references made visible by the current context.
    *                   Note: The name of the reference might be different from the name of its symbol.
    *                   In the case of a renaming import a => b, the name of the reference is the renamed
    *                   name, b, whereas the name of the symbol is the original name, a.
-   *  @param outerCtx  the next outer context that makes visible further implicits
    */
-  class ContextualImplicits(val refs: List[TermRef], val outerImplicits: ContextualImplicits)(initctx: Context) extends ImplicitRefs(initctx) {
+  class ContextualImplicits(myRefs: List[TermRef], val outerImplicits: ContextualImplicits, private val ictx: Context) extends ImplicitRefs {
     private val eligibleCache = new mutable.AnyRefMap[Type, List[Candidate]]
+
+    override def refs(implicit ctx: Context) = myRefs
 
     /** The level increases if current context has a different owner or scope than
      *  the context of the next-outer ImplicitRefs. This is however disabled under
@@ -182,21 +189,21 @@ object Implicits {
      */
     override val level: Int =
       if (outerImplicits == null) 1
-      else if (ctx.scala2Mode ||
-               (ctx.owner eq outerImplicits.ctx.owner) &&
-               (ctx.scope eq outerImplicits.ctx.scope)) outerImplicits.level
+      else if (ictx.scala2Mode ||
+               (ictx.owner eq outerImplicits.ictx.owner) &&
+               (ictx.scope eq outerImplicits.ictx.scope)) outerImplicits.level
       else outerImplicits.level + 1
 
     /** Is this the outermost implicits? This is the case if it either the implicits
      *  of NoContext, or the last one before it.
      */
-    private def isOuterMost = {
+    def isOuterMost = {
       val finalImplicits = NoContext.implicits
       (this eq finalImplicits) || (outerImplicits eq finalImplicits)
     }
 
     /** The implicit references that are eligible for type `tp`. */
-    def eligible(tp: Type): List[Candidate] = /*>|>*/ track(s"eligible in ctx") /*<|<*/ {
+    def eligible(tp: Type)(implicit ctx: Context): List[Candidate] = /*>|>*/ track(s"eligible in ctx") /*<|<*/ {
       if (tp.hash == NotCached) computeEligible(tp)
       else eligibleCache get tp match {
         case Some(eligibles) =>
@@ -208,7 +215,7 @@ object Implicits {
           if (monitored) record(s"elided eligible refs", elided(this))
           eligibles
         case None =>
-          if (ctx eq NoContext) Nil
+          if (ictx eq NoContext) Nil
           else {
             val savedEphemeral = ctx.typerState.ephemeral
             ctx.typerState.ephemeral = false
@@ -222,19 +229,14 @@ object Implicits {
       }
     }
 
-    private def computeEligible(tp: Type): List[Candidate] = /*>|>*/ ctx.traceIndented(i"computeEligible $tp in $refs%, %", implicitsDetailed) /*<|<*/ {
-      if (monitored) record(s"check eligible refs in ctx", refs.length)
+    private def computeEligible(tp: Type)(implicit ctx: Context): List[Candidate] = /*>|>*/ ctx.traceIndented(i"computeEligible $tp in $refs%, %", implicitsDetailed) /*<|<*/ {
+      if (monitored) record(s"check eligible refs in ictx", refs.length)
       val ownEligible = filterMatching(tp)
       if (isOuterMost) ownEligible
       else ownEligible ::: {
         val shadowed = ownEligible.map(_.ref.name).toSet
         outerImplicits.eligible(tp).filterNot(cand => shadowed.contains(cand.ref.name))
       }
-    }
-
-    override def toString = {
-      val own = i"(implicits: $refs%, %)"
-      if (isOuterMost) own else own + "\n " + outerImplicits
     }
 
     /** This context, or a copy, ensuring root import from symbol `root`
@@ -244,9 +246,9 @@ object Implicits {
       if (this == NoContext.implicits) this
       else {
         val outerExcluded = outerImplicits exclude root
-        if (ctx.importInfo.site.termSymbol == root) outerExcluded
+        if (ictx.importInfo.site(ictx).termSymbol(ictx) == root) outerExcluded
         else if (outerExcluded eq outerImplicits) this
-        else new ContextualImplicits(refs, outerExcluded)(ctx)
+        else new ContextualImplicits(myRefs, outerExcluded, ictx)
       }
   }
 
@@ -360,14 +362,8 @@ trait ImplicitRunInfo { self: RunInfo =>
 
   private val implicitScopeCache = mutable.AnyRefMap[Type, OfTypeImplicits]()
 
-  /** The implicit scope of a type `tp`
-   *  @param liftingCtx   A context to be used when computing the class symbols of
-   *                      a type. Types may contain type variables with their instances
-   *                      recorded in the current context. To find out the instance of
-   *                      a type variable, we need the current context, the current
-   *                      runinfo context does not do.
-   */
-  def implicitScope(rootTp: Type, liftingCtx: Context): OfTypeImplicits = {
+  /** The implicit scope of a type `tp` */
+  def implicitScope(rootTp: Type)(implicit ctx: Context): OfTypeImplicits = {
 
     val seen: mutable.Set[Type] = mutable.Set()
     val incomplete: mutable.Set[Type] = mutable.Set()
@@ -379,7 +375,6 @@ trait ImplicitRunInfo { self: RunInfo =>
      *  abstract types are eliminated.
      */
     object liftToClasses extends TypeMap {
-      override implicit protected val ctx: Context = liftingCtx
       override def stopAtStatic = true
       def apply(tp: Type) = tp match {
         case tp: TypeRef if tp.symbol.isAbstractOrAliasType =>
@@ -442,7 +437,7 @@ trait ImplicitRunInfo { self: RunInfo =>
               if (companion.exists) addRef(companion.termRef)
               cls.classParents foreach addParentScope
             }
-            tp.classSymbols(liftingCtx) foreach addClassScope
+            tp.classSymbols foreach addClassScope
           case _ =>
             // We exclude lower bounds to conform to SLS 7.2:
             // "The parts of a type T are: [...] if T is an abstract type, the parts of its upper bound"
@@ -468,7 +463,8 @@ trait ImplicitRunInfo { self: RunInfo =>
               iscope(liftedTp, isLifted = true).companionRefs
             else
               collectCompanions(tp)
-          val result = new OfTypeImplicits(tp, refs)(ctx)
+          val result = new OfTypeImplicits(tp, refs)
+
           if (ctx.typerState.ephemeral)
             record("ephemeral cache miss: implicitScope")
           else if (canCache &&
@@ -606,7 +602,7 @@ trait Implicits { self: Typer =>
     def lazyImplicitCtx(lazyImplicit: Symbol): Context = {
       val lctx = ctx.fresh
       for (delayedRef <- ctx.property(DelayedImplicit))
-        lctx.setImplicits(new ContextualImplicits(delayedRef :: Nil, ctx.implicits)(ctx))
+        lctx.setImplicits(new ContextualImplicits(delayedRef :: Nil, ctx.implicits, ctx))
       lctx.setProperty(DelayedImplicit, lazyImplicit.termRef)
     }
 
@@ -761,7 +757,7 @@ trait Implicits { self: Typer =>
 
     lazy val funProto = fullProto match {
       case proto: ViewProto =>
-        FunProto(untpd.TypedSplice(dummyTreeOfType(proto.argType)) :: Nil, proto.resultType, self)
+        FunProto(untpd.TypedSplice(dummyTreeOfType(proto.argType)) :: Nil, proto.resultType, self, isSelfConstrCall = false)
       case proto => proto
     }
 
@@ -909,7 +905,7 @@ trait Implicits { self: Typer =>
       }
     }
 
-    def implicitScope(tp: Type): OfTypeImplicits = ctx.runInfo.implicitScope(tp, ctx)
+    def implicitScope(tp: Type): OfTypeImplicits = ctx.runInfo.implicitScope(tp)
   }
 
   final class ExplainedImplicitSearch(pt: Type, argument: Tree, pos: Position)(implicit ctx: Context)

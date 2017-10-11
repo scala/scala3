@@ -178,7 +178,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
            ": " ~ toText(tp.memberProto) ~ " }"
       case tp: ViewProto =>
         return toText(tp.argType) ~ " ?=>? " ~ toText(tp.resultType)
-      case tp @ FunProto(args, resultType, _) =>
+      case tp @ FunProto(args, resultType, _, _) =>
         val argsText = args match {
           case dummyTreeOfType(tp) :: Nil if !(tp isRef defn.NullClass) => "null: " ~ toText(tp)
           case _ => toTextGlobal(args, ", ")
