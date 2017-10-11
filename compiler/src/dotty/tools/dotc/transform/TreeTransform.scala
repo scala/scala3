@@ -17,6 +17,7 @@ import dotty.tools.dotc.util.DotClass
 import scala.annotation.tailrec
 import config.Printers.transforms
 import scala.util.control.NonFatal
+import reporting.trace
 
 object TreeTransforms {
   import tpd._
@@ -1196,7 +1197,7 @@ object TreeTransforms {
 
     private[this] var crashingTree: Tree = EmptyTree
 
-    def transform(tree: Tree, info: TransformerInfo, cur: Int)(implicit ctx: Context): Tree = ctx.traceIndented(s"transforming ${tree.show} at ${ctx.phase}", transforms, show = true) {
+    def transform(tree: Tree, info: TransformerInfo, cur: Int)(implicit ctx: Context): Tree = trace(s"transforming ${tree.show} at ${ctx.phase}", transforms, show = true) {
       try
         if (cur < info.transformers.length) {
           util.Stats.record("TreeTransform.transform")

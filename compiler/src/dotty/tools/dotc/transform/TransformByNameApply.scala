@@ -12,6 +12,7 @@ import Decorators._
 import DenotTransformers._
 import core.StdNames.nme
 import ast.Trees._
+import reporting.trace
 
 /** Abstract base class of ByNameClosures and ElimByName, factoring out the
  *  common functionality to transform arguments of by-name parameters.
@@ -35,7 +36,7 @@ abstract class TransformByNameApply extends MiniPhaseTransform { thisTransformer
   def mkByNameClosure(arg: Tree, argType: Type)(implicit ctx: Context): Tree = unsupported(i"mkClosure($arg)")
 
   override def transformApply(tree: Apply)(implicit ctx: Context, info: TransformerInfo): Tree =
-    ctx.traceIndented(s"transforming ${tree.show} at phase ${ctx.phase}", show = true) {
+    trace(s"transforming ${tree.show} at phase ${ctx.phase}", show = true) {
 
     def transformArg(arg: Tree, formal: Type): Tree = formal.dealias match {
       case formalExpr: ExprType =>

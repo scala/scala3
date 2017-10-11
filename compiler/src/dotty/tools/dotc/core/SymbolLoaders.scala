@@ -18,6 +18,7 @@ import classfile.ClassfileParser
 import util.Stats
 import scala.util.control.NonFatal
 import ast.Trees._
+import reporting.trace
 
 object SymbolLoaders {
   /** A marker trait for a completer that replaces the original
@@ -265,7 +266,7 @@ abstract class SymbolLoader extends LazyType {
     try {
       val start = currentTime
       if (ctx.settings.debugTrace.value)
-        ctx.doTraceIndented(s">>>> loading ${root.debugString}", _ => s"<<<< loaded ${root.debugString}") {
+        trace(s">>>> loading ${root.debugString}", _ => s"<<<< loaded ${root.debugString}") {
           doComplete(root)
         }
       else

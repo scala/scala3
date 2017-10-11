@@ -144,8 +144,11 @@ object Config {
    */
   final val simplifyApplications = true
 
-  /** Initial size of superId table */
-  final val InitialSuperIdsSize = 4096
+  /** If set, prints a trace of all symbol completions */
+  final val showCompletions = false
+
+  /** If set, enables tracing */
+  final val tracingEnabled = false
 
   /** Initial capacity of uniques HashMap.
    *  Note: This MUST BE a power of two to work with util.HashSet

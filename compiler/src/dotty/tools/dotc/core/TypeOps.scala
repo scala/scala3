@@ -16,6 +16,7 @@ import config.Config
 import util.Property
 import collection.mutable
 import ast.tpd._
+import reporting.trace
 
 trait TypeOps { this: Context => // TODO: Make standalone object.
 
@@ -33,7 +34,7 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
       /** Map a `C.this` type to the right prefix. If the prefix is unstable, and
        *  the current variance is <= 0, return a range.
        */
-      def toPrefix(pre: Type, cls: Symbol, thiscls: ClassSymbol): Type = /*>|>*/ ctx.conditionalTraceIndented(TypeOps.track, s"toPrefix($pre, $cls, $thiscls)") /*<|<*/ {
+      def toPrefix(pre: Type, cls: Symbol, thiscls: ClassSymbol): Type = /*>|>*/ trace.conditionally(TypeOps.track, s"toPrefix($pre, $cls, $thiscls)", show = true) /*<|<*/ {
         if ((pre eq NoType) || (pre eq NoPrefix) || (cls is PackageClass))
           tp
         else pre match {
@@ -49,7 +50,7 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
         }
       }
 
-      /*>|>*/ ctx.conditionalTraceIndented(TypeOps.track, s"asSeen ${tp.show} from (${pre.show}, ${cls.show})", show = true) /*<|<*/ { // !!! DEBUG
+      /*>|>*/ trace.conditionally(TypeOps.track, s"asSeen ${tp.show} from (${pre.show}, ${cls.show})", show = true) /*<|<*/ { // !!! DEBUG
         // All cases except for ThisType are the same as in Map. Inlined for performance
         // TODO: generalize the inlining trick?
         tp match {

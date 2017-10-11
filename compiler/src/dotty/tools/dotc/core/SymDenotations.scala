@@ -17,7 +17,8 @@ import util.SimpleIdentityMap
 import util.Stats
 import java.util.WeakHashMap
 import config.Config
-import config.Printers.{completions, incremental, noPrinter}
+import config.Printers.{incremental, noPrinter}
+import reporting.trace
 
 trait SymDenotations { this: Context =>
   import SymDenotations._
@@ -214,28 +215,31 @@ object SymDenotations {
       case _ => Some(myInfo)
     }
 
-    private def completeFrom(completer: LazyType)(implicit ctx: Context): Unit = {
-      if (completions ne noPrinter) {
-        completions.println(i"${"  " * indent}completing ${if (isType) "type" else "val"} $name")
+    private def completeFrom(completer: LazyType)(implicit ctx: Context): Unit =
+      if (Config.showCompletions) {
+        println(i"${"  " * indent}completing ${if (isType) "type" else "val"} $name")
         indent += 1
-      }
-      if (myFlags is Touched) throw CyclicReference(this)
-      myFlags |= Touched
 
-      // completions.println(s"completing ${this.debugString}")
-      try completer.complete(this)(ctx.withPhase(validFor.firstPhaseId))
-      catch {
-        case ex: CyclicReference =>
-          completions.println(s"error while completing ${this.debugString}")
-          throw ex
-      }
-      finally
-        if (completions ne noPrinter) {
-          indent -= 1
-          completions.println(i"${"  " * indent}completed $name in $owner")
+        if (myFlags is Touched) throw CyclicReference(this)
+        myFlags |= Touched
+
+        // completions.println(s"completing ${this.debugString}")
+        try completer.complete(this)(ctx.withPhase(validFor.firstPhaseId))
+        catch {
+          case ex: CyclicReference =>
+            println(s"error while completing ${this.debugString}")
+            throw ex
         }
-      // completions.println(s"completed ${this.debugString}")
-    }
+        finally {
+          indent -= 1
+          println(i"${"  " * indent}completed $name in $owner")
+        }
+      }
+      else {
+        if (myFlags is Touched) throw CyclicReference(this)
+        myFlags |= Touched
+        completer.complete(this)(ctx.withPhase(validFor.firstPhaseId))
+      }
 
     protected[dotc] def info_=(tp: Type) = {
       /* // DEBUG
@@ -797,7 +801,10 @@ object SymDenotations {
      */
     /** The class implementing this module, NoSymbol if not applicable. */
     final def moduleClass(implicit ctx: Context): Symbol = {
-      def notFound = { completions.println(s"missing module class for $name: $myInfo"); NoSymbol }
+      def notFound = {
+      	if (Config.showCompletions) println(s"missing module class for $name: $myInfo")
+      	NoSymbol
+      }
       if (this is ModuleVal)
         myInfo match {
           case info: TypeRef           => info.symbol
@@ -1666,7 +1673,7 @@ object SymDenotations {
         }
       }
 
-      /*>|>*/ ctx.debugTraceIndented(s"$tp.baseType($this)") /*<|<*/ {
+      /*>|>*/ trace.onDebug(s"$tp.baseType($this)") /*<|<*/ {
         Stats.record("baseTypeOf")
         tp.stripTypeVar match { // @!!! dealias?
           case tp: CachedType =>

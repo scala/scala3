@@ -33,6 +33,7 @@ import util.Property
 import config.Config
 import config.Printers.{implicits, implicitsDetailed, typr}
 import collection.mutable
+import reporting.trace
 
 /** Implicit resolution */
 object Implicits {
@@ -61,7 +62,7 @@ object Implicits {
     /** Return those references in `refs` that are compatible with type `pt`. */
     protected def filterMatching(pt: Type)(implicit ctx: Context): List[Candidate] = track("filterMatching") {
 
-      def refMatches(ref: TermRef)(implicit ctx: Context) = /*ctx.traceIndented(i"refMatches $ref $pt")*/ {
+      def refMatches(ref: TermRef)(implicit ctx: Context) = /*trace(i"refMatches $ref $pt")*/ {
 
         def discardForView(tpw: Type, argType: Type): Boolean = tpw match {
           case mt: MethodType =>
@@ -156,7 +157,7 @@ object Implicits {
     /** The candidates that are eligible for expected type `tp` */
     lazy val eligible: List[Candidate] =
       /*>|>*/ track("eligible in tpe") /*<|<*/ {
-        /*>|>*/ ctx.traceIndented(i"eligible($tp), companions = ${companionRefs.toList}%, %", implicitsDetailed, show = true) /*<|<*/ {
+        /*>|>*/ trace(i"eligible($tp), companions = ${companionRefs.toList}%, %", implicitsDetailed, show = true) /*<|<*/ {
           if (refs.nonEmpty && monitored) record(s"check eligible refs in tpe", refs.length)
           filterMatching(tp)
         }
@@ -222,7 +223,7 @@ object Implicits {
       }
     }
 
-    private def computeEligible(tp: Type): List[Candidate] = /*>|>*/ ctx.traceIndented(i"computeEligible $tp in $refs%, %", implicitsDetailed) /*<|<*/ {
+    private def computeEligible(tp: Type): List[Candidate] = /*>|>*/ trace(i"computeEligible $tp in $refs%, %", implicitsDetailed) /*<|<*/ {
       if (monitored) record(s"check eligible refs in ctx", refs.length)
       val ownEligible = filterMatching(tp)
       if (isOuterMost) ownEligible
@@ -406,7 +407,7 @@ trait ImplicitRunInfo { self: RunInfo =>
 
     // todo: compute implicits directly, without going via companionRefs?
     def collectCompanions(tp: Type): TermRefSet = track("computeImplicitScope") {
-      ctx.traceIndented(i"collectCompanions($tp)", implicits) {
+      trace(i"collectCompanions($tp)", implicits) {
 
         def iscopeRefs(t: Type): TermRefSet = implicitScopeCache.get(t) match {
           case Some(is) =>
@@ -708,7 +709,7 @@ trait Implicits { self: Typer =>
       if (argument.isEmpty) i"missing implicit parameter of type $pt after typer"
       else i"type error: ${argument.tpe} does not conform to $pt${err.whyNoMatchStr(argument.tpe, pt)}")
     val prevConstr = ctx.typerState.constraint
-    ctx.traceIndented(s"search implicit ${pt.show}, arg = ${argument.show}: ${argument.tpe.show}", implicits, show = true) {
+    trace(s"search implicit ${pt.show}, arg = ${argument.show}: ${argument.tpe.show}", implicits, show = true) {
       assert(!pt.isInstanceOf[ExprType])
       val isearch =
         if (ctx.settings.explainImplicits.value) new ExplainedImplicitSearch(pt, argument, pos)
@@ -779,7 +780,7 @@ trait Implicits { self: Typer =>
       val constr = ctx.typerState.constraint
 
       /** Try to typecheck an implicit reference */
-      def typedImplicit(cand: Candidate)(implicit ctx: Context): SearchResult = track("typedImplicit") { ctx.traceIndented(i"typed implicit ${cand.ref}, pt = $pt, implicitsEnabled == ${ctx.mode is ImplicitsEnabled}", implicits, show = true) {
+      def typedImplicit(cand: Candidate)(implicit ctx: Context): SearchResult = track("typedImplicit") { trace(i"typed implicit ${cand.ref}, pt = $pt, implicitsEnabled == ${ctx.mode is ImplicitsEnabled}", implicits, show = true) {
         assert(constr eq ctx.typerState.constraint)
         val ref = cand.ref
         var generated: Tree = tpd.ref(ref).withPos(pos.startPos)

@@ -38,6 +38,7 @@ import config.Printers.{gadts, typr}
 import rewrite.Rewrites.patch
 import NavigateAST._
 import transform.SymUtils._
+import reporting.trace
 
 import language.implicitConversions
 import printing.SyntaxHighlighting._
@@ -899,7 +900,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
      *              which appear with variances +1 and -1 (in different
      *              places) be considered as well?
      */
-    val gadtSyms: Set[Symbol] = ctx.traceIndented(i"GADT syms of $selType", gadts) {
+    val gadtSyms: Set[Symbol] = trace(i"GADT syms of $selType", gadts) {
       val accu = new TypeAccumulator[Set[Symbol]] {
         def apply(tsyms: Set[Symbol], t: Type): Set[Symbol] = {
           val tsyms1 = t match {
@@ -1688,7 +1689,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     typed(ifun, pt)
   }
 
-  def typed(tree: untpd.Tree, pt: Type = WildcardType)(implicit ctx: Context): Tree = /*>|>*/ ctx.traceIndented (i"typing $tree", typr, show = true) /*<|<*/ {
+  def typed(tree: untpd.Tree, pt: Type = WildcardType)(implicit ctx: Context): Tree = /*>|>*/ trace(i"typing $tree", typr, show = true) /*<|<*/ {
     record(s"typed $getClass")
     record("typed total")
     assertPositioned(tree)
@@ -1839,7 +1840,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
   /** If this tree is a select node `qual.name`, try to insert an implicit conversion
    *  `c` around `qual` so that `c(qual).name` conforms to `pt`.
    */
-  def tryInsertImplicitOnQualifier(tree: Tree, pt: Type)(implicit ctx: Context): Option[Tree] = ctx.traceIndented(i"try insert impl on qualifier $tree $pt") {
+  def tryInsertImplicitOnQualifier(tree: Tree, pt: Type)(implicit ctx: Context): Option[Tree] = trace(i"try insert impl on qualifier $tree $pt") {
     tree match {
       case Select(qual, name) =>
         val qualProto = SelectionProto(name, pt, NoViewsAllowed, privateOK = false)
@@ -1854,7 +1855,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
   }
 
   def adapt(tree: Tree, pt: Type)(implicit ctx: Context): Tree = /*>|>*/ track("adapt") /*<|<*/ {
-    /*>|>*/ ctx.traceIndented(i"adapting $tree of type ${tree.tpe} to $pt", typr, show = true) /*<|<*/ {
+    /*>|>*/ trace(i"adapting $tree of type ${tree.tpe} to $pt", typr, show = true) /*<|<*/ {
       if (tree.isDef) interpolateUndetVars(tree, tree.symbol)
       else if (!tree.tpe.widen.isInstanceOf[LambdaType]) interpolateUndetVars(tree, NoSymbol)
       tree.overwriteType(tree.tpe.simplified)

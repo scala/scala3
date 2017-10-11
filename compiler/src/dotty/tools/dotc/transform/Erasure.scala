@@ -29,6 +29,7 @@ import TypeUtils._
 import ExplicitOuter._
 import core.Mode
 import core.PhantomErasure
+import reporting.trace
 
 class Erasure extends Phase with DenotTransformer { thisTransformer =>
 
@@ -175,7 +176,7 @@ object Erasure {
       (if (isPureExpr(tree)) const else Block(tree :: Nil, const))
         .withPos(tree.pos)
 
-    final def box(tree: Tree, target: => String = "")(implicit ctx: Context): Tree = ctx.traceIndented(i"boxing ${tree.showSummary}: ${tree.tpe} into $target") {
+    final def box(tree: Tree, target: => String = "")(implicit ctx: Context): Tree = trace(i"boxing ${tree.showSummary}: ${tree.tpe} into $target") {
       tree.tpe.widen match {
         case ErasedValueType(tycon, _) =>
           New(tycon, cast(tree, underlyingOfValueClass(tycon.symbol.asClass)) :: Nil) // todo: use adaptToType?
@@ -195,7 +196,7 @@ object Erasure {
       }
     }
 
-    def unbox(tree: Tree, pt: Type)(implicit ctx: Context): Tree = ctx.traceIndented(i"unboxing ${tree.showSummary}: ${tree.tpe} as a $pt") {
+    def unbox(tree: Tree, pt: Type)(implicit ctx: Context): Tree = trace(i"unboxing ${tree.showSummary}: ${tree.tpe} as a $pt") {
       pt match {
         case ErasedValueType(tycon, underlying) =>
           def unboxedTree(t: Tree) =
@@ -239,7 +240,7 @@ object Erasure {
      *  Casts from and to ErasedValueType are special, see the explanation
      *  in ExtensionMethods#transform.
      */
-    def cast(tree: Tree, pt: Type)(implicit ctx: Context): Tree = ctx.traceIndented(i"cast ${tree.tpe.widen} --> $pt", show = true) {
+    def cast(tree: Tree, pt: Type)(implicit ctx: Context): Tree = trace(i"cast ${tree.tpe.widen} --> $pt", show = true) {
       def wrap(tycon: TypeRef) =
         ref(u2evt(tycon.typeSymbol.asClass)).appliedTo(tree)
       def unwrap(tycon: TypeRef) =
@@ -662,7 +663,7 @@ object Erasure {
     }
 
     override def adapt(tree: Tree, pt: Type)(implicit ctx: Context): Tree =
-      ctx.traceIndented(i"adapting ${tree.showSummary}: ${tree.tpe} to $pt", show = true) {
+      trace(i"adapting ${tree.showSummary}: ${tree.tpe} to $pt", show = true) {
         assert(ctx.phase == ctx.erasurePhase.next, ctx.phase)
         if (tree.isEmpty) tree
         else if (ctx.mode is Mode.Pattern) tree // TODO: replace with assertion once pattern matcher is active
