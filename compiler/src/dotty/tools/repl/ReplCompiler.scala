@@ -146,7 +146,7 @@ class ReplCompiler(val directory: AbstractFile) extends Compiler {
    *  }
    *  ```
    */
-  def wrapped(defs: Definitions): untpd.PackageDef = {
+  def wrapped(defs: Definitions, sourceCode: String): untpd.PackageDef = {
     import untpd._
 
     implicit val ctx: Context = defs.state.run.runContext
@@ -156,7 +156,7 @@ class ReplCompiler(val directory: AbstractFile) extends Compiler {
       List(
         ModuleDef(objectName(defs.state), tmpl)
           .withMods(new Modifiers(Module | Final))
-          .withPos(Position(defs.stats.head.pos.start, defs.stats.last.pos.end))
+          .withPos(Position(0, sourceCode.length))
       )
     }
 
@@ -170,7 +170,7 @@ class ReplCompiler(val directory: AbstractFile) extends Compiler {
 
   def createUnit(defs: Definitions, sourceCode: String): Result[CompilationUnit] = {
     val unit = new CompilationUnit(new SourceFile(objectName(defs.state).toString, sourceCode))
-    unit.untpdTree = wrapped(defs)
+    unit.untpdTree = wrapped(defs, sourceCode)
     unit.result
   }
 

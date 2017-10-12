@@ -44,7 +44,7 @@ class ScriptedTests extends ReplTest with MessageRendering {
     def evaluate(state: State, input: String, prompt: String) =
       try {
         val nstate = run(input.drop(prompt.length))(state)
-        val out = input + "\n" + stripColor(storedOutput())
+        val out = input + "\n" + storedOutput()
         (out, nstate)
       }
       catch {
