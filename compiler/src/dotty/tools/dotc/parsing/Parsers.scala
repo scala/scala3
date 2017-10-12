@@ -253,7 +253,7 @@ object Parsers {
     /** If at end of file, issue an incompleteInputError.
      *  Otherwise issue a syntax error and skip to next safe point.
      */
-   def syntaxErrorOrIncomplete(msg: => Message) =
+    def syntaxErrorOrIncomplete(msg: => Message) =
       if (in.token == EOF) incompleteInputError(msg)
       else {
         syntaxError(msg)
