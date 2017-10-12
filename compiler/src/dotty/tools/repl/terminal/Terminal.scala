@@ -122,6 +122,9 @@ object Terminal {
                displayTransform: (Vector[Char], Int) => (Ansi.Str, Int) = noTransform)
                : Option[TermAction] = {
 
+    lazy val ansi = new AnsiNav(writer)
+    val (width, _, initialConfig) = TTY.init()
+
     /**
       * Erases the previous line and re-draws it with the new buffer and
       * cursor.
@@ -298,8 +301,7 @@ object Terminal {
       }
     }
 
-    lazy val ansi = new AnsiNav(writer)
-    lazy val (width, _, initialConfig) = TTY.init()
+
     try {
       readChar(TermState(LazyList.continually(reader.read()), Vector.empty, 0, ""), 0)
     }
