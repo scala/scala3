@@ -9,7 +9,7 @@ import reporting._
 import reporting.diagnostic.MessageContainer
 import reporting.diagnostic.messages
 import core.Contexts._
-import xsbti.Position
+import xsbti.{Position, Severity}
 import java.util.Optional
 
 final class DelegatingReporter(delegate: xsbti.Reporter) extends Reporter
@@ -23,9 +23,9 @@ final class DelegatingReporter(delegate: xsbti.Reporter) extends Reporter
   def doReport(cont: MessageContainer)(implicit ctx: Context): Unit = {
     val severity =
       cont match {
-        case _: messages.Error   => xsbti.Severity.Error
-        case _: messages.Warning => xsbti.Severity.Warn
-        case _                   => xsbti.Severity.Info
+        case _: messages.Error   => Severity.Error
+        case _: messages.Warning => Severity.Warn
+        case _                   => Severity.Info
       }
 
     val position =
@@ -52,7 +52,7 @@ final class DelegatingReporter(delegate: xsbti.Reporter) extends Reporter
       sb.append(explanation(cont.contained()))
     }
 
-    delegate.log(position, sb.toString(), severity)
+    delegate.log(Problem(position, sb.toString(), severity))
   }
 
   private[this] def maybe[T](opt: Option[T]): Optional[T] = opt match {

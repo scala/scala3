@@ -51,38 +51,35 @@ object DottyPlugin extends AutoPlugin {
       nightly
     }
 
-    // implicit class DottyCompatModuleID(moduleID: ModuleID) {
-    //   /** If this ModuleID cross-version is a Dotty version, replace it
-    //    *  by the Scala 2.x version that the Dotty version is retro-compatible with,
-    //    *  otherwise do nothing.
-    //    *
-    //    *  This setting is useful when your build contains dependencies that have only
-    //    *  been published with Scala 2.x, if you have:
-    //    *  {{{
-    //    *  libraryDependencies += "a" %% "b" % "c"
-    //    *  }}}
-    //    *  you can replace it by:
-    //    *  {{{
-    //    *  libraryDependencies += ("a" %% "b" % "c").withDottyCompat()
-    //    *  }}}
-    //    *  This will have no effect when compiling with Scala 2.x, but when compiling
-    //    *  with Dotty this will change the cross-version to a Scala 2.x one. This
-    //    *  works because Dotty is currently retro-compatible with Scala 2.x.
-    //    *
-    //    *  NOTE: Dotty's retro-compatibility with Scala 2.x will be dropped before
-    //    *  Dotty is released, you should not rely on it.
-    //    */
-    //   def withDottyCompat(): ModuleID =
-    //     moduleID.crossVersion match {
-    //       case _: librarymanagement.Binary =>
-    //         moduleID.cross(CrossVersion.binaryMapped {
-    //           case version if version.startsWith("0.") => "2.11"
-    //           case version => version
-    //         })
-    //       case _ =>
-    //         moduleID
-    //     }
-    // }
+     implicit class DottyCompatModuleID(moduleID: ModuleID) {
+       /** If this ModuleID cross-version is a Dotty version, replace it
+        *  by the Scala 2.x version that the Dotty version is retro-compatible with,
+        *  otherwise do nothing.
+        *
+        *  This setting is useful when your build contains dependencies that have only
+        *  been published with Scala 2.x, if you have:
+        *  {{{
+        *  libraryDependencies += "a" %% "b" % "c"
+        *  }}}
+        *  you can replace it by:
+        *  {{{
+        *  libraryDependencies += ("a" %% "b" % "c").withDottyCompat(scalaVersion.value)
+        *  }}}
+        *  This will have no effect when compiling with Scala 2.x, but when compiling
+        *  with Dotty this will change the cross-version to a Scala 2.x one. This
+        *  works because Dotty is currently retro-compatible with Scala 2.x.
+        *
+        *  NOTE: Dotty's retro-compatibility with Scala 2.x will be dropped before
+        *  Dotty is released, you should not rely on it.
+        */
+       def withDottyCompat(scalaVersion: String): ModuleID =
+       moduleID.crossVersion match {
+           case _: librarymanagement.Binary if scalaVersion.startsWith("0.") =>
+             moduleID.cross(CrossVersion.constant("2.12"))
+           case _ =>
+             moduleID
+         }
+     }
   }
 
   import autoImport._
@@ -90,7 +87,7 @@ object DottyPlugin extends AutoPlugin {
   override def requires: Plugins = plugins.JvmPlugin
   override def trigger = allRequirements
 
-  // Adapted from CrossVersionUtil#sbtApiVersion
+  // Adapted from CrossVersioconstant nUtil#sbtApiVersion
   private def sbtFullVersion(v: String): Option[(Int, Int, Int)] =
   {
     val ReleaseV = """(\d+)\.(\d+)\.(\d+)(-\d+)?""".r
@@ -101,27 +98,6 @@ object DottyPlugin extends AutoPlugin {
       case CandidateV(x, y, z, ht)  => Some((x.toInt, y.toInt, z.toInt))
       case NonReleaseV(x, y, z, ht) if z.toInt > 0 => Some((x.toInt, y.toInt, z.toInt))
       case _ => None
-    }
-  }
-
-  // Copy-pasted from sbt where it's private
-  private case class WrappedClassFileManager(internal: ClassFileManager,
-                                             external: Option[ClassFileManager])
-      extends ClassFileManager {
-
-    override def delete(classes: Array[File]): Unit = {
-      external.foreach(_.delete(classes))
-      internal.delete(classes)
-    }
-
-    override def complete(success: Boolean): Unit = {
-      external.foreach(_.complete(success))
-      internal.complete(success)
-    }
-
-    override def generated(classes: Array[File]): Unit = {
-      external.foreach(_.generated(classes))
-      internal.generated(classes)
     }
   }
 
@@ -154,15 +130,14 @@ object DottyPlugin extends AutoPlugin {
       def complete(success: Boolean): Unit = {}
     }
     val inheritedHooks = incOptions.externalHooks
-    val hooks = new ExternalHooks {
-      override def externalClassFileManager() = Option(inheritedHooks.externalClassFileManager.orElse(null)) match {
+    val externalClassFileManager: Optional[ClassFileManager] = Option(inheritedHooks.getExternalClassFileManager.orElse(null)) match {
         case Some(prevManager) =>
-          Optional.of(WrappedClassFileManager(prevManager, Some(tastyFileManager)))
+          Optional.of(WrappedClassFileManager.of(prevManager, Optional.of(tastyFileManager)))
         case None =>
           Optional.of(tastyFileManager)
       }
-      override def externalLookup() = inheritedHooks.externalLookup()
-    }
+
+    val hooks = new DefaultExternalHooks(inheritedHooks.getExternalLookup, externalClassFileManager)
     incOptions.withExternalHooks(hooks)
   }
 
@@ -192,6 +167,15 @@ object DottyPlugin extends AutoPlugin {
           dottyPatchIncOptions(inc)
         else
           inc
+      },
+
+      scalaCompilerBridgeSource := {
+        val scalaBridge = scalaCompilerBridgeSource.value
+        val dottyBridge = (scalaOrganization.value % "dotty-sbt-bridge" % scalaVersion.value).withConfigurations(Some(Configurations.Compile.name)).sources()
+        if (isDotty.value)
+          dottyBridge
+        else
+          scalaBridge
       },
 
       scalaBinaryVersion := {

@@ -3,6 +3,8 @@
  */
 package xsbt
 
+import java.util.function.Supplier
+
 object Message {
-  def apply[T](s: => T) = new xsbti.F0[T] { def apply() = s }
+  def apply[T](s: => T) = new Supplier[T] { def get() = s }
 }

@@ -4,29 +4,26 @@ package xsbt
 import xsbti.compile.SingleOutput
 import java.io.File
 import xsbti._
-import xsbti.api.SourceAPI
-import sbt.IO._
-import xsbti.api.ClassLike
-import xsbti.api.Definition
-import xsbti.api.Def
+import sbt.io.IO
+import xsbti.api.{ ClassLike, Def, DependencyContext }
+import DependencyContext._
 import xsbt.api.SameAPI
-import sbt.ConsoleLogger
-import xsbti.DependencyContext._
+import sbt.internal.util.ConsoleLogger
 
-import ScalaCompilerForUnitTesting.ExtractedSourceDependencies
+import TestCallback.ExtractedClassDependencies
 
 /**
  * Provides common functionality needed for unit tests that require compiling
  * source code using Scala compiler.
  */
-class ScalaCompilerForUnitTesting(nameHashing: Boolean, includeSynthToNameHashing: Boolean = false) {
+class ScalaCompilerForUnitTesting {
   import scala.language.reflectiveCalls
 
   /**
    * Compiles given source code using Scala compiler and returns API representation
    * extracted by ExtractAPI class.
    */
-  def extractApiFromSrc(src: String): SourceAPI = {
+  def extractApiFromSrc(src: String): Seq[ClassLike] = {
     val (Seq(tempSrcFile), analysisCallback) = compileSrcs(src)
     analysisCallback.apis(tempSrcFile)
   }
@@ -35,27 +32,50 @@ class ScalaCompilerForUnitTesting(nameHashing: Boolean, includeSynthToNameHashin
    * Compiles given source code using Scala compiler and returns API representation
    * extracted by ExtractAPI class.
    */
-  def extractApisFromSrcs(reuseCompilerInstance: Boolean)(srcs: List[String]*): Seq[SourceAPI] = {
+  def extractApisFromSrcs(reuseCompilerInstance: Boolean)(srcs: List[String]*): Seq[Seq[ClassLike]] = {
     val (tempSrcFiles, analysisCallback) = compileSrcs(srcs.toList, reuseCompilerInstance)
     tempSrcFiles.map(analysisCallback.apis)
   }
 
-  def extractUsedNamesFromSrc(src: String): Set[String] = {
-    val (Seq(tempSrcFile), analysisCallback) = compileSrcs(src)
-    analysisCallback.usedNames(tempSrcFile)
-  }
-
   /**
    * Extract used names from src provided as the second argument.
+   * If `assertDefaultScope` is set to true it will fail if there is any name used in scope other then Default
    *
    * The purpose of the first argument is to define names that the second
    * source is going to refer to. Both files are compiled in the same compiler
    * Run but only names used in the second src file are returned.
    */
-  def extractUsedNamesFromSrc(definitionSrc: String, actualSrc: String): Set[String] = {
+  def extractUsedNamesFromSrc(
+      definitionSrc: String,
+      actualSrc: String,
+      assertDefaultScope: Boolean = true
+  ): Map[String, Set[String]] = {
     // we drop temp src file corresponding to the definition src file
     val (Seq(_, tempSrcFile), analysisCallback) = compileSrcs(definitionSrc, actualSrc)
-    analysisCallback.usedNames(tempSrcFile)
+
+    if (assertDefaultScope) for {
+      (className, used) <- analysisCallback.usedNamesAndScopes
+      analysisCallback.TestUsedName(name, scopes) <- used
+    } assert(scopes.size() == 1 && scopes.contains(UseScope.Default), s"$className uses $name in $scopes")
+
+    val classesInActualSrc = analysisCallback.classNames(tempSrcFile).map(_._1)
+    classesInActualSrc.map(className => className -> analysisCallback.usedNames(className)).toMap
+  }
+
+  /**
+   * Extract used names from the last source file in `sources`.
+   *
+   * The previous source files are provided to successfully compile examples.
+   * Only the names used in the last src file are returned.
+   */
+  def extractUsedNamesFromSrc(sources: String*): Map[String, Set[String]] = {
+    val (srcFiles, analysisCallback) = compileSrcs(sources: _*)
+    srcFiles
+      .map { srcFile =>
+        val classesInSrc = analysisCallback.classNames(srcFile).map(_._1)
+        classesInSrc.map(className => className -> analysisCallback.usedNames(className)).toMap
+      }
+      .reduce(_ ++ _)
   }
 
   /**
@@ -70,42 +90,23 @@ class ScalaCompilerForUnitTesting(nameHashing: Boolean, includeSynthToNameHashin
    * Symbols are used to express extracted dependencies between source code snippets. This way we have
    * file system-independent way of testing dependencies between source code "files".
    */
-  def extractDependenciesFromSrcs(srcs: List[Map[Symbol, String]]): ExtractedSourceDependencies = {
-    val rawGroupedSrcs = srcs.map(_.values.toList)
-    val symbols = srcs.flatMap(_.keys)
-    val (tempSrcFiles, testCallback) = compileSrcs(rawGroupedSrcs, reuseCompilerInstance = true)
-    val fileToSymbol = (tempSrcFiles zip symbols).toMap
+  def extractDependenciesFromSrcs(srcs: List[List[String]]): ExtractedClassDependencies = {
+    val (_, testCallback) = compileSrcs(srcs, reuseCompilerInstance = true)
 
-    val memberRefFileDeps = testCallback.sourceDependencies collect {
-      // false indicates that those dependencies are not introduced by inheritance
+    val memberRefDeps = testCallback.classDependencies collect {
       case (target, src, DependencyByMemberRef) => (src, target)
     }
-    val inheritanceFileDeps = testCallback.sourceDependencies collect {
-      // true indicates that those dependencies are introduced by inheritance
+    val inheritanceDeps = testCallback.classDependencies collect {
       case (target, src, DependencyByInheritance) => (src, target)
     }
-    def toSymbols(src: File, target: File): (Symbol, Symbol) = (fileToSymbol(src), fileToSymbol(target))
-    val memberRefDeps = memberRefFileDeps map { case (src, target) => toSymbols(src, target) }
-    val inheritanceDeps = inheritanceFileDeps map { case (src, target) => toSymbols(src, target) }
-    def pairsToMultiMap[A, B](pairs: Seq[(A, B)]): Map[A, Set[B]] = {
-      import scala.collection.mutable.{ HashMap, MultiMap }
-      val emptyMultiMap = new HashMap[A, scala.collection.mutable.Set[B]] with MultiMap[A, B]
-      val multiMap = pairs.foldLeft(emptyMultiMap) {
-        case (acc, (key, value)) =>
-          acc.addBinding(key, value)
-      }
-      // convert all collections to immutable variants
-      multiMap.toMap.mapValues(_.toSet).withDefaultValue(Set.empty)
+    val localInheritanceDeps = testCallback.classDependencies collect {
+      case (target, src, LocalDependencyByInheritance) => (src, target)
     }
-
-    ExtractedSourceDependencies(pairsToMultiMap(memberRefDeps), pairsToMultiMap(inheritanceDeps))
+    ExtractedClassDependencies.fromPairs(memberRefDeps, inheritanceDeps, localInheritanceDeps)
   }
 
-  def extractDependenciesFromSrcs(srcs: (Symbol, String)*): ExtractedSourceDependencies = {
-    val symbols = srcs.map(_._1)
-    assert(symbols.distinct.size == symbols.size,
-      s"Duplicate symbols for srcs detected: $symbols")
-    extractDependenciesFromSrcs(List(srcs.toMap))
+  def extractDependenciesFromSrcs(srcs: String*): ExtractedClassDependencies = {
+    extractDependenciesFromSrcs(List(srcs.toList))
   }
 
   /**
@@ -124,12 +125,12 @@ class ScalaCompilerForUnitTesting(nameHashing: Boolean, includeSynthToNameHashin
    * The sequence of temporary files corresponding to passed snippets and analysis
    * callback is returned as a result.
    */
-  private def compileSrcs(groupedSrcs: List[List[String]],
+  def compileSrcs(groupedSrcs: List[List[String]],
     reuseCompilerInstance: Boolean): (Seq[File], TestCallback) = {
     // withTemporaryDirectory { temp =>
     {
-      val temp = createTemporaryDirectory
-      val analysisCallback = new TestCallback(nameHashing, includeSynthToNameHashing)
+      val temp = IO.createTemporaryDirectory
+      val analysisCallback = new TestCallback
       val classesDir = new File(temp, "classes")
       classesDir.mkdir()
 
@@ -158,13 +159,13 @@ class ScalaCompilerForUnitTesting(nameHashing: Boolean, includeSynthToNameHashin
     }
   }
 
-  private def compileSrcs(srcs: String*): (Seq[File], TestCallback) = {
+  def compileSrcs(srcs: String*): (Seq[File], TestCallback) = {
     compileSrcs(List(srcs.toList), reuseCompilerInstance = true)
   }
 
   private def prepareSrcFile(baseDir: File, fileName: String, src: String): File = {
     val srcFile = new File(baseDir, fileName)
-    sbt.IO.write(srcFile, src)
+    IO.write(srcFile, src)
     srcFile
   }
 
@@ -184,14 +185,11 @@ class ScalaCompilerForUnitTesting(nameHashing: Boolean, includeSynthToNameHashin
     def hasErrors: Boolean = false
     def hasWarnings: Boolean = false
     def printWarnings(): Unit = ()
-    def problems: Array[Problem] = Array.empty
-    def log(pos: Position, msg: String, sev: Severity): Unit = println(msg)
+    def problems(): Array[xsbti.Problem] = Array.empty
+    def log(problem: xsbti.Problem): Unit = println(problem.message)
     def comment(pos: Position, msg: String): Unit = ()
     def printSummary(): Unit = ()
   }
 
 }
 
-object ScalaCompilerForUnitTesting {
-  case class ExtractedSourceDependencies(memberRef: Map[Symbol, Set[Symbol]], inheritance: Map[Symbol, Set[Symbol]])
-}

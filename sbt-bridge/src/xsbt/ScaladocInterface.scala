@@ -13,12 +13,12 @@ class ScaladocInterface {
 }
 
 class DottydocRunner(args: Array[String], log: Logger, delegate: xsbti.Reporter) {
-  def run(): Unit = delegate.log(
+  def run(): Unit = delegate.log(Problem(
     NoPosition,
     """|The dotty sbt-bridge currently does not support doc generation directly
        |via sbt. Please see the dotty documentation at dotty.epfl.ch""".stripMargin,
     Severity.Error
-  )
+  ))
 
   private[this] val NoPosition = new xsbti.Position {
     val line = Optional.empty[Integer]
