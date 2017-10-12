@@ -1,5 +1,4 @@
-
-import dotty.unused
+import dotty.unused2
 
 object Test {
 
@@ -18,11 +17,11 @@ object Test {
     "abc"
   }
 
-  def fun(a: Int)(@unused b: String): Unit = {
+  def fun(a: Int)(unused b: String): Unit = {
     println("fun")
   }
 
-  def fun2(@unused a: Int)(b: String): Unit = {
+  def fun2(@unused2 a: Int)(b: String): Unit = {
     println("fun2")
   }
 }

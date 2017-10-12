@@ -1,5 +1,3 @@
-import dotty.unused
-
 object Test {
 
   def main(args: Array[String]): Unit = {
@@ -9,7 +7,7 @@ object Test {
 }
 
 class Foo {
-  @unused val x: Int = {
+  unused val x: Int = {
     println("x")
     42
   }

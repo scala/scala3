@@ -1,4 +1,3 @@
-import dotty.unused
 
 object Test {
 
@@ -10,7 +9,9 @@ object Test {
     println("foo")
     42
   }
-  def fun(@unused boo: Int): Unit = {
+  def fun(unused boo: Int): Unit = {
     println("fun")
   }
+
+  def fun2(implicit boo2: Int): Unit = 42
 }

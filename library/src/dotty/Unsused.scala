@@ -1,3 +1,3 @@
 package dotty
 
-class unused extends scala.annotation.StaticAnnotation
+class unused2 extends scala.annotation.StaticAnnotation

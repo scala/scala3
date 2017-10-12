@@ -89,8 +89,8 @@ object ProtoTypes {
     override def deepenProto(implicit ctx: Context): Type = ignored
   }
 
-  case class UnusedProto(unused: Type) extends UncachedGroundType with MatchAlways {
-    override def deepenProto(implicit ctx: Context): Type = unused
+  case class UnusedProto(unusedTpe: Type) extends UncachedGroundType with MatchAlways {
+    override def deepenProto(implicit ctx: Context): Type = unusedTpe
   }
 
   /** A prototype for expressions [] that are part of a selection operation:

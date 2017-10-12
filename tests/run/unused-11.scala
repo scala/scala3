@@ -1,4 +1,4 @@
-import dotty.unused
+import dotty.unused2
 
 object Test {
 
@@ -11,22 +11,22 @@ object Test {
     (new Fun2().fun)({ println("z1"); boo })({ println("z2"); boo })
   }
 
-  def fun(@unused x1: Int)(@unused x2: Int) = {
+  def fun(@unused2 x1: Int)(unused x2: Int) = {
     println("fun")
   }
 
-  class Fun(@unused y1: Int)(@unused y2: Int) {
+  class Fun(@unused2 y1: Int)(@unused2 y2: Int) {
     println("Fun")
   }
 
   class Fun2 {
     println("Fun2")
-    def fun(@unused z1: Int)(@unused z2: Int) = {
+    def fun(@unused2 z1: Int)(@unused2 z2: Int) = {
       println("Fun2fun")
     }
   }
 
-  @unused def boo: Int = {
+  unused def boo: Int = {
     println("boo")
     42
   }

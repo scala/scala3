@@ -1,5 +1,3 @@
-import dotty.unused
-
 object Test {
 
   def main(args: Array[String]): Unit = {
@@ -13,6 +11,6 @@ object Test {
 
 }
 
-case class Foo(a: Int)(@unused b: Int) {
+case class Foo(a: Int)(unused b: Int) {
   println("Foo")
 }

@@ -744,7 +744,7 @@ object Parsers {
         atPos(start, accept(ARROW)) {
           val t = typ()
           val isUnused = params.nonEmpty && (params.head match { // TODO make `unused` keyword
-            case Annotated(_, Apply(Select(New(Ident(name)), nme.CONSTRUCTOR), Nil)) => name.toString == "unused"
+            case Annotated(_, Apply(Select(New(Ident(name)), nme.CONSTRUCTOR), Nil)) => name.toString == "unused2"
             case _ => false
           })
           if (isImplicit && isUnused) new UnusedImplicitFunction(params, t)
@@ -1661,6 +1661,7 @@ object Parsers {
       case ABSTRACT  => Mod.Abstract()
       case FINAL     => Mod.Final()
       case IMPLICIT  => Mod.Implicit()
+      case UNUSED    => Mod.Unused()
       case INLINE    => Mod.Inline()
       case LAZY      => Mod.Lazy()
       case OVERRIDE  => Mod.Override()
@@ -1751,6 +1752,9 @@ object Parsers {
 
     def implicitMods(): Modifiers =
       addMod(EmptyModifiers, atPos(accept(IMPLICIT)) { Mod.Implicit() })
+
+    def unusedMods(): Modifiers =
+      addMod(EmptyModifiers, atPos(accept(UNUSED)) { Mod.Unused() })
 
     /** Wrap annotation or constructor in New(...).<init> */
     def wrapNew(tpt: Tree) = Select(New(tpt), nme.CONSTRUCTOR)
@@ -1850,6 +1854,7 @@ object Parsers {
      */
     def paramClauses(owner: Name, ofCaseClass: Boolean = false): List[List[ValDef]] = {
       var imods: Modifiers = EmptyModifiers
+      var unusedOffset = -1 // use once
       var implicitOffset = -1 // use once
       var firstClauseOfCaseClass = ofCaseClass
       def param(): ValDef = {
@@ -1890,6 +1895,10 @@ object Parsers {
           val default =
             if (in.token == EQUALS) { in.nextToken(); expr() }
             else EmptyTree
+          if (unusedOffset >= 0) {
+            mods = mods.withPos(mods.pos.union(Position(unusedOffset, unusedOffset)))
+            unusedOffset = -1
+          }
           if (implicitOffset >= 0) {
             mods = mods.withPos(mods.pos.union(Position(implicitOffset, implicitOffset)))
             implicitOffset = -1
@@ -1901,6 +1910,10 @@ object Parsers {
       def paramClause(): List[ValDef] = inParens {
         if (in.token == RPAREN) Nil
         else {
+          if (in.token == UNUSED) {
+            unusedOffset = in.offset
+            imods = unusedMods()
+          }
           if (in.token == IMPLICIT) {
             implicitOffset = in.offset
             imods = implicitMods()

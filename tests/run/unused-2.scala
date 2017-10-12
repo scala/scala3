@@ -1,11 +1,9 @@
-import dotty.unused
-
 object Test {
 
   def main(args: Array[String]): Unit = {
 
     def !!! : Nothing = ???
-    @unused def &&& : Nothing = ???
+    unused def &&& : Nothing = ???
 
     fun(&&&)
     try {
@@ -15,7 +13,7 @@ object Test {
     }
   }
 
-  def fun(@unused bottom: Nothing): Unit = {
+  def fun(unused bottom: Nothing): Unit = {
     println("fun")
   }
 }

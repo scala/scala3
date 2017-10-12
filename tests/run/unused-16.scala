@@ -1,5 +1,3 @@
-import dotty.unused
-
 object Test {
 
   def main(args: Array[String]): Unit = {
@@ -13,11 +11,11 @@ object Test {
 }
 
 class Foo {
-  def foo(@unused x: Int): Int = 42
+  def foo(unused x: Int): Int = 42
 }
 
 class Bar extends Foo {
-  override def foo(@unused x: Int): Int = {
+  override def foo(unused x: Int): Int = {
     println("Bar.foo")
     42
   }

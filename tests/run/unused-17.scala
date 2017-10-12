@@ -1,10 +1,10 @@
-import dotty.unused
+import dotty.unused2
 
 object Test {
 
   def main(args: Array[String]): Unit = {
-    val f: (Int @unused) => Int =
-     (x: Int @unused) => { println("lambda"); 42 }
+    val f: (Int @unused2) => Int =
+      (x: Int @unused2) => { println("lambda"); 42 }
     f(foo)
   }
 

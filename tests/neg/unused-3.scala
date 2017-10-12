@@ -1,8 +1,6 @@
-import dotty.unused
-
 object Test {
   def foo0(a: Int): Int = a
-  def foo1(@unused a: Int): Int = {
+  def foo1(unused a: Int): Int = {
     foo0(u()) // error
     foo1(u()) // OK
     foo2(u()) // OK
@@ -10,7 +8,7 @@ object Test {
     u() // warn
     u() // error
   }
-  @unused def foo2(a: Int): Int = {
+  unused def foo2(a: Int): Int = {
     foo0(u()) // OK
     foo1(u()) // OK
     foo2(u()) // OK
@@ -18,16 +16,7 @@ object Test {
     u() // warn
     u() // OK
   }
-  @unused def foo3(@unused  a: Int): Int = {
-    foo0(u()) // OK
-    foo1(u()) // OK
-    foo2(u()) // OK
-    foo3(u()) // OK
-    u() // warn
-    u() // OK
-  }
-
-  @unused val foo4: Int = {
+  unused def foo3(unused  a: Int): Int = {
     foo0(u()) // OK
     foo1(u()) // OK
     foo2(u()) // OK
@@ -36,5 +25,14 @@ object Test {
     u() // OK
   }
 
-  @unused def u(): Int = 42
+  unused val foo4: Int = {
+    foo0(u()) // OK
+    foo1(u()) // OK
+    foo2(u()) // OK
+    foo3(u()) // OK
+    u() // warn
+    u() // OK
+  }
+
+  unused def u(): Int = 42
 }
