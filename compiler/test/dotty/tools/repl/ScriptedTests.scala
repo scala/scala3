@@ -11,7 +11,7 @@ import scala.io.Source
 
 import dotc.reporting.MessageRendering
 
-/** Runs all tests contained in `/repl/test-resources/scripts` */
+/** Runs all tests contained in `compiler/test-resources/repl/` */
 class ScriptedTests extends ReplTest with MessageRendering {
 
   private def scripts(path: String): Array[JFile] = {

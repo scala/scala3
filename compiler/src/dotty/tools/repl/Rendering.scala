@@ -1,7 +1,9 @@
 package dotty.tools
 package repl
 
-import java.lang.ClassLoader
+import java.io.{ StringWriter, PrintWriter }
+import java.lang.{ ClassLoader, ExceptionInInitializerError }
+import java.lang.reflect.InvocationTargetException
 
 import scala.util.control.NonFatal
 
@@ -70,10 +72,26 @@ private[repl] class Rendering(compiler: ReplCompiler,
   /** Render value definition result */
   def renderVal(d: Denotation)(implicit ctx: Context): Option[String] = {
     val dcl = d.symbol.showUser
-    val resultValue =
-      if (d.symbol.is(Flags.Lazy)) Some("<lazy>")
-      else valueOf(d.symbol)
 
-    resultValue.map(value => s"$dcl = $value")
+    try {
+      val resultValue =
+        if (d.symbol.is(Flags.Lazy)) Some("<lazy>")
+        else valueOf(d.symbol)
+
+      resultValue.map(value => s"$dcl = $value")
+    }
+    catch { case ex: InvocationTargetException => Some(renderError(ex)) }
+  }
+
+  /** Render the stack trace of the underlying exception */
+  private def renderError(ex: InvocationTargetException): String = {
+    val cause = ex.getCause match {
+      case ex: ExceptionInInitializerError => ex.getCause
+      case ex => ex
+    }
+    val sw = new StringWriter()
+    val pw = new PrintWriter(sw)
+    cause.printStackTrace(pw)
+    sw.toString
   }
 }
