@@ -75,7 +75,7 @@ class ExpandPrivate extends MiniPhaseTransform with IdentityDenotTransformer { t
   private def ensurePrivateAccessible(d: SymDenotation)(implicit ctx: Context) =
     if (isVCPrivateParamAccessor(d))
       d.ensureNotPrivate.installAfter(thisTransform)
-    else if (d.is(PrivateTerm) && d.owner != ctx.owner.enclosingClass) {
+    else if (d.is(PrivateTerm) && !d.owner.is(Package) && d.owner != ctx.owner.enclosingClass) {
       // Paths `p1` and `p2` are similar if they have a common suffix that follows
       // possibly different directory paths. That is, their common suffix extends
       // in both cases either to the start of the path or to a file separator character.
