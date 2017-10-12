@@ -238,7 +238,7 @@ class ReplCompiler(val directory: AbstractFile) extends Compiler {
         PackageDef(Ident(nme.EMPTY_PACKAGE),
           TypeDef("EvaluateExpr".toTypeName, tmpl)
             .withMods(new Modifiers(Final))
-            .withPos(Position(trees.head.pos.start, trees.last.pos.end)) :: Nil
+            .withPos(Position(0, expr.length)) :: Nil
         )
       }
 
