@@ -8,8 +8,11 @@ import util.Util.dble
 object TastyBuffer {
 
   /** The number of digits of the natural number `nat`, written in base 128 format. */
-  def natSize(nat: Int): Int =
-    if (nat < 128) 1 else natSize(nat >>> 7) + 1
+  def natSize(nat: Int): Int = {
+    def loop(n: Int, acc: Int): Int =
+      if (n < 128) acc else loop(n >>> 7, acc + 1)
+    loop(nat, 1)
+  }
 
   /** An address pointing to an index in a Tasty buffer's byte array */
   case class Addr(index: Int) extends AnyVal {
