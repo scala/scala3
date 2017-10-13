@@ -186,7 +186,7 @@ class ReplDriver(settings: Array[String],
 
   private def interpret(res: ParseResult)(implicit state: State): State =
     res match {
-      case parsed: Parsed =>
+      case parsed: Parsed if parsed.trees.nonEmpty =>
         compile(parsed)
           .withHistory(parsed.sourceCode :: state.history)
           .newRun(compiler, rootCtx)
@@ -195,9 +195,13 @@ class ReplDriver(settings: Array[String],
         displayErrors(errs)
         state.withHistory(src :: state.history)
 
-      case Newline | SigKill => state
-
       case cmd: Command => interpretCommand(cmd)
+
+      case SigKill => // TODO
+        state
+
+      case _ => // new line, empty tree
+        state
     }
 
   /** Compile `parsed` trees and evolve `state` in accordance */

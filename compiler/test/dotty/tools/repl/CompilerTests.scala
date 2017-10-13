@@ -92,4 +92,27 @@ class ReplCompilerTests extends ReplTest {
         storedOutput()
       )
     }
+
+  @Test def i3305: Unit = {
+    fromInitialState { implicit s =>
+      compile("null.toString")
+      storedOutput().startsWith("java.lang.NullPointerException")
+    }
+
+    fromInitialState { implicit s =>
+      compile("def foo: Int = 1 + foo; foo")
+      storedOutput().startsWith("def foo: Int\njava.lang.StackOverflowError")
+    }
+
+    fromInitialState { implicit s =>
+      compile("""throw new IllegalArgumentException("Hello")""")
+      storedOutput().startsWith("java.lang.IllegalArgumentException: Hello")
+    }
+
+    // FIXME
+    // fromInitialState { implicit s =>
+    //   compile("val (x, y) = null")
+    //   storedOutput().startsWith("scala.MatchError: null")
+    // }
+  }
 }

@@ -52,4 +52,10 @@ class TabcompleteTests extends ReplTest {
       assert(tabComplete(src2).suggestions.nonEmpty)
     }
   }
+
+  @Test def i3309: Unit =
+    fromInitialState { implicit s =>
+      List("\"", "#", ")", "=", "'", "¨", "£", ".", ":", ",", ";", "@", "}", "[", "]")
+        .foreach(src => assertTrue(tabComplete(src).suggestions.isEmpty))
+    }
 }

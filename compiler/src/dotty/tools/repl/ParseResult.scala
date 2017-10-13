@@ -4,6 +4,7 @@ package repl
 import dotc.reporting.diagnostic.MessageContainer
 import dotc.core.Contexts.Context
 import dotc.parsing.Parsers.Parser
+import dotc.parsing.Tokens
 import dotc.util.SourceFile
 import dotc.ast.untpd
 import dotc.reporting._
@@ -97,6 +98,12 @@ object ParseResult {
 
   @sharable private[this] val CommandExtract = """(:[\S]+)\s*(.*)""".r
 
+  private def parseStats(parser: Parser): List[untpd.Tree] = {
+    val stats = parser.blockStatSeq()
+    parser.accept(Tokens.EOF)
+    stats
+  }
+
   /** Extract a `ParseResult` from the string `sourceCode` */
   def apply(sourceCode: String)(implicit ctx: Context): ParseResult =
     sourceCode match {
@@ -114,7 +121,7 @@ object ParseResult {
         val source = new SourceFile("<console>", sourceCode.toCharArray)
         val parser = new Parser(source)
 
-        val (_, stats) = parser.templateStatSeq()
+        val stats = parseStats(parser)
 
         if (ctx.reporter.hasErrors) {
           SyntaxErrors(sourceCode,
@@ -140,7 +147,7 @@ object ParseResult {
         reporter.withIncompleteHandler(_ => _ => needsMore = true) {
           val source = new SourceFile("<console>", sourceCode.toCharArray)
           val parser = new Parser(source)(ctx.fresh.setReporter(reporter))
-          parser.templateStatSeq()
+          parseStats(parser)
           !reporter.hasErrors && needsMore
         }
       }
