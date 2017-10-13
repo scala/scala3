@@ -28,14 +28,6 @@ object references {
   }
   final case class NoLink(title: String, target: String) extends MaterializableLink
 
-  object AndOrTypeReference {
-    def unapply(ref: Reference): Option[(Reference, String, Reference)] = ref match {
-      case OrTypeReference(left, right) => Some((left, "|", right))
-      case AndTypeReference(left, right) => Some((left, "&amp;", right))
-      case _ => None
-    }
-  }
-
   implicit class ReferenceShower(val ref: Reference) extends AnyVal {
     def showReference: String = ref match {
       case TypeReference(title, _, tparams) =>
@@ -44,8 +36,10 @@ object references {
           else ""
         }
 
-      case AndOrTypeReference(left, part, right) =>
-        left.showReference + s" $part " + right.showReference
+      case OrTypeReference(left, right) =>
+        left.showReference + " | " + right.showReference
+      case AndTypeReference(left, right) =>
+        left.showReference + " &amp; " + right.showReference
 
       case FunctionReference(args, ret) =>
         if (args.isEmpty)
@@ -67,6 +61,7 @@ object references {
         s"$title: $byName${ref.showReference}$repeated"
 
       case ConstantReference(title) => title
+      case EmptyReference => ""
     }
   }
 }
