@@ -76,7 +76,7 @@ class UnusedParams extends MiniPhaseTransform with InfoTransformer {
   /* private methods */
 
   private def hadUnusedParams(sym: Symbol)(implicit ctx: Context): Boolean =
-    sym.exists && widenInPreviousPhase(sym.termRef).hasUnusedParams
+    !ctx.scala2Mode && sym.exists && widenInPreviousPhase(sym.termRef).hasUnusedParams
 
   private def removeUnusedParams(tree: DefDef)(implicit ctx: Context): DefDef = {
     def removeUnused(args: List[List[ValDef]], tp: Type): List[List[ValDef]] = args match {
