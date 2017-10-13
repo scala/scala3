@@ -1,45 +1,10 @@
 pipeline:
-  # TESTS:
-  # We run tests in parallel. Tests run in a copy of the working directory to avoid conflict
-  test_legacy:
-    group: test
-    image: lampepfl/dotty:2017-10-07
-    commands:
-      - cp -R . /tmp/0/ && cd /tmp/0/
-      - ./project/scripts/sbt legacyTests
-
-  test:
-    group: test
-    image: lampepfl/dotty:2017-10-07
-    commands:
-      - cp -R . /tmp/1/ && cd /tmp/1/
-      - ./project/scripts/sbt testAll
-      - ./project/scripts/sbt ";dotty-bench/jmh:run 1 1 tests/run/arrays.scala"
-
-  test_bootstrapped:
-    group: test
-    image: lampepfl/dotty:2017-10-07
-    commands:
-      - cp -R . /tmp/2/ && cd /tmp/2/
-      - ./project/scripts/sbt dotty-bootstrapped/testAll
-      - ./project/scripts/sbt ";dotty-bench-bootstrapped/jmh:run 1 1 tests/run/arrays.scala"
-
-  test_optimised:
-    group: test
-    image: lampepfl/dotty:2017-10-07
-    commands:
-      - cp -R . /tmp/3/ && cd /tmp/3/
-      - ./project/scripts/sbt dotty-optimised/testAll
-
   test_sbt:
     group: test
     image: lampepfl/dotty:2017-10-07
     commands:
       - cp -R . /tmp/4/ && cd /tmp/4/
-      - ./project/scripts/sbt sbt-dotty/scripted
-    when:
-      # sbt scripted tests are slow and don't run on PRs
-      event: [ push, tag, deployment ]
+      - ./project/scripts/sbt "sbt-dotty/scripted sbt-dotty/*"
 
   # DOCUMENTATION:
   documentation:
