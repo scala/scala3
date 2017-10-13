@@ -1,10 +1,8 @@
-import dotty.unused2
-
 object Test {
 
   def main(args: Array[String]): Unit = {
     (
-      (x: Int @unused2) => {
+      unused (x: Int) => {
        println("lambda")
        42
      }

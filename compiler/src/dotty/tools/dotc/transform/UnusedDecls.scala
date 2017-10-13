@@ -27,7 +27,7 @@ class UnusedDecls extends MiniPhaseTransform with InfoTransformer {
 
   /** Check what the phase achieves, to be called at any point after it is finished. */
   override def checkPostCondition(tree: Tree)(implicit ctx: Context): Unit = tree match {
-    case tree: ValOrDefDef => assert(!tree.symbol.isUnused)
+    case tree: ValOrDefDef => assert(!tree.symbol.is(Unused))
     case _ =>
   }
 
@@ -35,11 +35,11 @@ class UnusedDecls extends MiniPhaseTransform with InfoTransformer {
   /* Tree transform */
 
   override def transformDefDef(tree: DefDef)(implicit ctx: Context, info: TransformerInfo): Tree =
-    if (tree.symbol.isUnused) EmptyTree
+    if (tree.symbol.is(Unused)) EmptyTree
     else tree
 
   override def transformValDef(tree: ValDef)(implicit ctx: Context, info: TransformerInfo): Tree =
-    if (tree.symbol.isUnused) EmptyTree
+    if (tree.symbol.is(Unused)) EmptyTree
     else tree
 
 
@@ -47,8 +47,8 @@ class UnusedDecls extends MiniPhaseTransform with InfoTransformer {
 
   override def transformInfo(tp: Type, sym: Symbol)(implicit ctx: Context): Type = tp match {
     case tp: ClassInfo =>
-      if (tp.classSymbol.is(JavaDefined) || !tp.decls.iterator.exists(_.isUnused)) tp
-      else tp.derivedClassInfo(decls = tp.decls.filteredScope(!_.isUnused))
+      if (tp.classSymbol.is(JavaDefined) || !tp.decls.iterator.exists(_.is(Unused))) tp
+      else tp.derivedClassInfo(decls = tp.decls.filteredScope(!_.is(Unused)))
     case _ => tp
   }
 

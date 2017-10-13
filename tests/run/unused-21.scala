@@ -1,14 +1,16 @@
 object Test {
 
+  type UU[T] = unused T => Int
+
   def main(args: Array[String]): Unit = {
-    fun { unused (x: Int) =>
+    fun { unused x =>
       println("lambda")
-      "abc"
+      42
     }
 
   }
 
-  def fun(f: unused Int => String): String = {
+  def fun(f: UU[Int]): Int = {
     f(35)
   }
 }

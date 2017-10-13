@@ -282,8 +282,6 @@ class TreeChecker extends Phase with SymTransformer {
                |                ${tree.typeOpt.uniqId}
                |Original tree : ${tree.typeOpt}
                |After checking: ${tree1.tpe}
-               |Original tree : ${tree.typeOpt.isUnusedMethod}
-               |After checking: ${tree1.tpe.isUnusedMethod}
                |Why different :
              """.stripMargin + core.TypeComparer.explained((tp1 <:< tp2)(_))
           val tp2 = if (ctx.erasedUnused) tree.typeOpt.withoutUnusedParams else tree.tpe

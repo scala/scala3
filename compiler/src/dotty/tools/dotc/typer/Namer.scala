@@ -107,16 +107,8 @@ trait NamerContextOps { this: Context =>
   def methodType(typeParams: List[Symbol], valueParamss: List[List[Symbol]], resultType: Type, isJava: Boolean = false)(implicit ctx: Context): Type = {
     val monotpe =
       (valueParamss :\ resultType) { (params, resultType) =>
-        lazy val isImplicit = params.nonEmpty && (params.head is Implicit)
-        lazy val isUnused = params.nonEmpty && params.head.isUnused
-        if (isUnused) {
-          def adapt(p: Symbol): Unit = {
-            p.setFlag(Unused)
-            p.removeAnnotation(defn.UnusedAnnot)
-          }
-          params.foreach(adapt)
-        }
-
+        val isImplicit = params.nonEmpty && (params.head is Implicit)
+        val isUnused = params.nonEmpty && params.head.is(Unused)
         val make =
           if (isJava) JavaMethodType
           else if (isImplicit && isUnused) UnusedImplicitMethodType

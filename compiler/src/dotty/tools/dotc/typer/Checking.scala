@@ -496,9 +496,11 @@ object Checking {
               ctx.error(ValueClassParameterMayNotBeAVar(clazz, param), param.pos)
             if (param.info.isPhantom)
               ctx.error("value class first parameter must not be phantom", param.pos)
+            else if (param.is(Unused))
+              ctx.error("value class first parameter cannot be `unused`", param.pos)
             else {
-              for (p <- params if !p.info.isPhantom)
-                ctx.error("value class can only have one non phantom parameter", p.pos)
+              for (p <- params if !(p.info.isPhantom || p.is(Unused)))
+                ctx.error("value class can only have one non `unused` parameter", p.pos)
             }
           case Nil =>
             ctx.error(ValueClassNeedsOneValParam(clazz), clazz.pos)
@@ -528,10 +530,18 @@ trait Checking {
     tree
   }
 
-  /** Check that @unused values are not used in a context without @unused */
+  /** Check that unused values are not used in a context without unused */
   def checkUnused(tree: Tree, proto: Type)(implicit ctx: Context): tree.type = {
-    if (tree.symbol.isUnused && !ctx.mode.is(Mode.Unused) && !(proto =:= defn.UnitType) && !proto.isInstanceOf[FunProto] && !proto.isInstanceOf[UnusedProto] && !proto.isInstanceOf[WildcardType])
-      ctx.error(s"Cannot use @unused value in a context that is not @unused", tree.pos)
+    proto match {
+      case _ if !tree.symbol.is(Unused) => // It is not unused
+      case _ if ctx.mode.is(Mode.Unused) => // Inside of code that will not be used
+      case _: WildcardType => // Unused statements
+      case _: FunProto => // Function not completely applied
+      case _: UnusedProto => // Is an argument to an unused parameter
+      case _ if proto =:= defn.UnitType => // Inside of code that will not be used
+      case _ =>
+        ctx.error(s"Cannot use @unused value in a context that is not @unused", tree.pos)
+    }
     tree
   }
 

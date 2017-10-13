@@ -1,4 +1,3 @@
-
 object Test {
 
   def main(args: Array[String]): Unit = {
@@ -12,6 +11,4 @@ object Test {
   def fun(unused boo: Int): Unit = {
     println("fun")
   }
-
-  def fun2(implicit boo2: Int): Unit = 42
 }

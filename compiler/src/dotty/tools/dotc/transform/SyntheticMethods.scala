@@ -191,7 +191,7 @@ class SyntheticMethods(thisTransformer: DenotTransformer) {
      */
     def valueHashCodeBody(implicit ctx: Context): Tree = {
       assert(accessors.nonEmpty)
-      assert(accessors.tail.forall(_.info.isPhantom))
+      assert(accessors.tail.forall(a => a.info.isPhantom || a.is(Unused)))
       ref(accessors.head).select(nme.hashCode_).ensureApplied
     }
 

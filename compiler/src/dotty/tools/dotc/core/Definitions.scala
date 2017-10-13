@@ -114,15 +114,15 @@ class Definitions {
         val argParamRefs = List.tabulate(arity) { i =>
           enterTypeParam(cls, paramNamePrefix ++ "T" ++ (i + 1).toString, Contravariant, decls).typeRef
         }
-        val resParam = enterTypeParam(cls, paramNamePrefix ++ "R", Covariant, decls)
+        val resParamRef = enterTypeParam(cls, paramNamePrefix ++ "R", Covariant, decls).typeRef
         val (methodType, parentTraits) =
           if (name.firstPart.startsWith(str.UnusedImplicitFunction)) {
             val superTrait =
-              FunctionType(arity, isUnused = true).appliedTo(argParams.map(_.typeRef) ::: resParam.typeRef :: Nil)
+              FunctionType(arity, isUnused = true).appliedTo(argParamRefs ::: resParamRef :: Nil)
             (UnusedImplicitMethodType, superTrait :: Nil)
           } else if (name.firstPart.startsWith(str.ImplicitFunction)) {
             val superTrait =
-              FunctionType(arity).appliedTo(argParamRefs ::: resParam.typeRef :: Nil)
+              FunctionType(arity).appliedTo(argParamRefs ::: resParamRef :: Nil)
             (ImplicitMethodType, superTrait :: Nil)
           }
           else if (name.firstPart.startsWith(str.UnusedFunction)) (UnusedMethodType, Nil)
@@ -130,7 +130,7 @@ class Definitions {
         val applyMeth =
           decls.enter(
             newMethod(cls, nme.apply,
-              methodType(argParamRefs, resParam.typeRef), Deferred))
+              methodType(argParamRefs, resParamRef), Deferred))
         denot.info =
           ClassInfo(ScalaPackageClass.thisType, cls, ObjectType :: parentTraits, decls)
       }
@@ -658,8 +658,6 @@ class Definitions {
   def UncheckedStableAnnot(implicit ctx: Context) = UncheckedStableAnnotType.symbol.asClass
   lazy val UncheckedVarianceAnnotType = ctx.requiredClassRef("scala.annotation.unchecked.uncheckedVariance")
   def UncheckedVarianceAnnot(implicit ctx: Context) = UncheckedVarianceAnnotType.symbol.asClass
-  lazy val UnusedAnnotType = ctx.requiredClassRef("dotty.unused2")
-  def UnusedAnnot(implicit ctx: Context) = UnusedAnnotType.symbol.asClass
   lazy val VolatileAnnotType = ctx.requiredClassRef("scala.volatile")
   def VolatileAnnot(implicit ctx: Context) = VolatileAnnotType.symbol.asClass
   lazy val FieldMetaAnnotType = ctx.requiredClassRef("scala.annotation.meta.field")

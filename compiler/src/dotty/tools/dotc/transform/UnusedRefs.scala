@@ -3,6 +3,7 @@ package dotty.tools.dotc.transform
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.ast.Trees._
 import dotty.tools.dotc.core.Contexts._
+import dotty.tools.dotc.core.Flags._
 import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.core.Types._
 import dotty.tools.dotc.transform.TreeTransforms.{MiniPhaseTransform, TransformerInfo}
@@ -22,7 +23,7 @@ class UnusedRefs extends MiniPhaseTransform {
 
   /** Check what the phase achieves, to be called at any point after it is finished. */
   override def checkPostCondition(tree: Tree)(implicit ctx: Context): Unit = tree match {
-    case _: Apply | _: RefTree => assert(!tree.symbol.isUnused)
+    case _: Apply | _: RefTree => assert(!tree.symbol.is(Unused))
     case _ =>
   }
 
@@ -33,7 +34,7 @@ class UnusedRefs extends MiniPhaseTransform {
   override def transformSelect(tree: tpd.Select)(implicit ctx: Context, info: TransformerInfo): tpd.Tree = transformUnused(tree)
 
   private def transformUnused(tree: tpd.Tree)(implicit ctx: Context): tpd.Tree = {
-    if (!tree.symbol.isUnused) tree
+    if (!tree.symbol.is(Unused)) tree
     else {
       tree.tpe.widen match {
         case _: MethodType => tree // Do the transformation higher in the tree if needed

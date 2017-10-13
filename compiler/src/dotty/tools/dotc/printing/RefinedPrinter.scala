@@ -666,7 +666,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
     else if (sym.isClass && flags.is(Case)) "case class"
     else if (flags is Module) "object"
     else if (sym.isTerm && !flags.is(Param) && flags.is(Implicit)) "implicit val"
-    else if (sym.isTerm && !flags.is(Param) && sym.isUnused) "unused val"
+    else if (sym.isTerm && !flags.is(Param) && sym.is(Unused)) "unused val"
     else super.keyString(sym)
   }
 

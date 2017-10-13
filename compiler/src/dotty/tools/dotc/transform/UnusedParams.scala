@@ -40,7 +40,7 @@ class UnusedParams extends MiniPhaseTransform with InfoTransformer {
   /** Check what the phase achieves, to be called at any point after it is finished. */
   override def checkPostCondition(tree: Tree)(implicit ctx: Context): Unit = tree match {
     case tree: DefDef => assert(!tree.tpe.hasUnusedParams)
-    case tree: ValDef if tree.symbol.is(Param) => assert(!tree.symbol.isUnused)
+    case tree: ValDef if tree.symbol.is(Param) => assert(!tree.symbol.is(Unused))
     case _ =>
   }
 

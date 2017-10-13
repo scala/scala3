@@ -1250,11 +1250,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     val rhs1 = vdef.rhs match {
       case rhs @ Ident(nme.WILDCARD) => rhs withType tpt1.tpe
       case rhs =>
-        if (sym.hasAnnotation(defn.UnusedAnnot) || sym.info.hasAnnotation(defn.UnusedAnnot)) {
-          sym.setFlag(Unused)
-          sym.removeAnnotation(defn.UnusedAnnot)
-        }
-        val rhsCtx = if (sym.isUnused) ctx.addMode(Mode.Unused) else ctx
+        val rhsCtx = if (sym.is(Unused)) ctx.addMode(Mode.Unused) else ctx
         typedExpr(rhs, tpt1.tpe)(rhsCtx)
     }
     val vdef1 = assignType(cpy.ValDef(vdef)(name, tpt1, rhs1), sym)
@@ -1313,11 +1309,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
       (tparams1, sym.owner.typeParams).zipped.foreach ((tdef, tparam) =>
         rhsCtx.gadt.setBounds(tdef.symbol, TypeAlias(tparam.typeRef)))
     }
-    if (sym.hasAnnotation(defn.UnusedAnnot)) {
-      sym.setFlag(Unused)
-      sym.removeAnnotation(defn.UnusedAnnot)
-    }
-    if (sym.isUnused) rhsCtx = rhsCtx.addMode(Mode.Unused)
+    if (sym.is(Unused)) rhsCtx = rhsCtx.addMode(Mode.Unused)
     val rhs1 = typedExpr(ddef.rhs, tpt1.tpe)(rhsCtx)
 
     // Overwrite inline body to make sure it is not evaluated twice

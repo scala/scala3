@@ -640,7 +640,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
   extends TypedApply(app, fun, methRef, proto.args, resultType) {
     def typedArg(arg: untpd.Tree, formal: Type): TypedArg = {
       val formal0 = formal.widenExpr
-      val formal1 = if (methRef.symbol.isUnused || fun.tpe.widen.isUnusedMethod) UnusedProto(formal0) else formal0
+      val formal1 = if (methRef.symbol.is(Unused) || fun.tpe.widen.isUnusedMethod) UnusedProto(formal0) else formal0
       proto.typedArg(arg, formal1)
     }
     def treeToArg(arg: Tree): untpd.Tree = untpd.TypedSplice(arg)

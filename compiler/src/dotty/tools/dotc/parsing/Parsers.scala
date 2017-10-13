@@ -730,7 +730,7 @@ object Parsers {
       }
     }
 
-    /** Type        ::=  [`implicit'] FunArgTypes `=>' Type
+    /** Type        ::=  [`implicit'] [`unused'] FunArgTypes `=>' Type
      *                |  HkTypeParamClause `->' Type
      *                |  InfixType
      *  FunArgTypes ::=  InfixType
@@ -740,13 +740,11 @@ object Parsers {
       val start = in.offset
       val isImplicit = in.token == IMPLICIT
       if (isImplicit) in.nextToken()
+      val isUnused = in.token == UNUSED
+      if (isUnused) in.nextToken()
       def functionRest(params: List[Tree]): Tree =
         atPos(start, accept(ARROW)) {
           val t = typ()
-          val isUnused = params.nonEmpty && (params.head match { // TODO make `unused` keyword
-            case Annotated(_, Apply(Select(New(Ident(name)), nme.CONSTRUCTOR), Nil)) => name.toString == "unused2"
-            case _ => false
-          })
           if (isImplicit && isUnused) new UnusedImplicitFunction(params, t)
           else if (isImplicit) new ImplicitFunction(params, t)
           else if (isUnused) new UnusedFunction(params, t)
@@ -1053,9 +1051,12 @@ object Parsers {
 
     def expr(location: Location.Value): Tree = {
       val start = in.offset
-      if (in.token == IMPLICIT)
-        implicitClosure(start, location, implicitMods())
-      else {
+      if (in.token == IMPLICIT || in.token == UNUSED) {
+        var imods = EmptyModifiers
+        if (in.token == IMPLICIT) imods = implicitMods(imods)
+        if (in.token == UNUSED) imods = unusedMods(imods)
+        implicitClosure(start, location, imods)
+      } else {
         val saved = placeholderParams
         placeholderParams = Nil
 
@@ -1750,11 +1751,11 @@ object Parsers {
       normalize(loop(start))
     }
 
-    def implicitMods(): Modifiers =
-      addMod(EmptyModifiers, atPos(accept(IMPLICIT)) { Mod.Implicit() })
+    def implicitMods(imods: Modifiers = EmptyModifiers): Modifiers =
+      addMod(imods, atPos(accept(IMPLICIT)) { Mod.Implicit() })
 
-    def unusedMods(): Modifiers =
-      addMod(EmptyModifiers, atPos(accept(UNUSED)) { Mod.Unused() })
+    def unusedMods(imods: Modifiers = EmptyModifiers): Modifiers =
+      addMod(imods, atPos(accept(UNUSED)) { Mod.Unused() })
 
     /** Wrap annotation or constructor in New(...).<init> */
     def wrapNew(tpt: Tree) = Select(New(tpt), nme.CONSTRUCTOR)
@@ -1854,7 +1855,6 @@ object Parsers {
      */
     def paramClauses(owner: Name, ofCaseClass: Boolean = false): List[List[ValDef]] = {
       var imods: Modifiers = EmptyModifiers
-      var unusedOffset = -1 // use once
       var implicitOffset = -1 // use once
       var firstClauseOfCaseClass = ofCaseClass
       def param(): ValDef = {
@@ -1895,10 +1895,6 @@ object Parsers {
           val default =
             if (in.token == EQUALS) { in.nextToken(); expr() }
             else EmptyTree
-          if (unusedOffset >= 0) {
-            mods = mods.withPos(mods.pos.union(Position(unusedOffset, unusedOffset)))
-            unusedOffset = -1
-          }
           if (implicitOffset >= 0) {
             mods = mods.withPos(mods.pos.union(Position(implicitOffset, implicitOffset)))
             implicitOffset = -1
@@ -1910,13 +1906,14 @@ object Parsers {
       def paramClause(): List[ValDef] = inParens {
         if (in.token == RPAREN) Nil
         else {
-          if (in.token == UNUSED) {
-            unusedOffset = in.offset
-            imods = unusedMods()
-          }
-          if (in.token == IMPLICIT) {
-            implicitOffset = in.offset
-            imods = implicitMods()
+          if (in.token == IMPLICIT || in.token == UNUSED) {
+            imods = EmptyModifiers
+            if (in.token == IMPLICIT) {
+              implicitOffset = in.offset
+              imods = implicitMods(imods)
+            }
+            if (in.token == UNUSED)
+              imods = unusedMods(imods)
           }
           commaSeparated(param)
         }
@@ -1926,7 +1923,7 @@ object Parsers {
         if (in.token == LPAREN)
           paramClause() :: {
             firstClauseOfCaseClass = false
-            if (imods.hasFlags) Nil else clauses()
+            if (imods is Implicit) Nil else clauses()
           }
         else Nil
       }
@@ -1994,7 +1991,7 @@ object Parsers {
         }
       }
 
-   /** ImportSelector ::= id [`=>' id | `=>' `_']
+    /** ImportSelector ::= id [`=>' id | `=>' `_']
      */
     def importSelector(): Tree = {
       val from = termIdentOrWildcard()
@@ -2505,16 +2502,18 @@ object Parsers {
           stats ++= importClause()
         else if (isExprIntro)
           stats += expr(Location.InBlock)
-        else if (isDefIntro(localModifierTokens))
-          if (in.token == IMPLICIT) {
+        else if (isDefIntro(localModifierTokens)) {
+          if (in.token == IMPLICIT || in.token == UNUSED) {
             val start = in.offset
-            val imods = implicitMods()
+            var imods = EmptyModifiers
+            if (in.token == IMPLICIT) imods = implicitMods(imods)
+            if (in.token == UNUSED) imods = unusedMods(imods)
             if (isBindingIntro) stats += implicitClosure(start, Location.InBlock, imods)
             else stats +++= localDef(start, imods)
           } else {
             stats +++= localDef(in.offset)
           }
-        else if (!isStatSep && (in.token != CASE)) {
+        } else if (!isStatSep && (in.token != CASE)) {
           exitOnError = mustStartStat
           val addendum = if (isModifier) " (no modifiers allowed here)" else ""
           syntaxErrorOrIncomplete("illegal start of statement" + addendum)
