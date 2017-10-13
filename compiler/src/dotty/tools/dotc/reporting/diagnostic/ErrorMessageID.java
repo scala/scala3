@@ -102,6 +102,7 @@ public enum ErrorMessageID {
     UncheckedTypePatternID,
     ExtendFinalClassID,
     EnumCaseDefinitionInNonEnumOwnerID,
+    ExpectedTypeBoundID,
     ;
 
     public int errorNumber() {
