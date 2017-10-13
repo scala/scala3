@@ -857,7 +857,6 @@ object Build {
       version := "0.1.6-SNAPSHOT",
       ScriptedPlugin.scriptedSettings,
       ScriptedPlugin.sbtTestDirectory := baseDirectory.value / "sbt-test",
-      ScriptedPlugin.scriptedBufferLog := false,
       ScriptedPlugin.scriptedLaunchOpts += "-Dplugin.version=" + version.value,
       ScriptedPlugin.scriptedLaunchOpts += "-Dplugin.scalaVersion=" + dottyVersion,
      // By default scripted tests use $HOME/.ivy2 for the ivy cache. We need to override this value for the CI.
