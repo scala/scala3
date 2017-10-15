@@ -72,13 +72,26 @@ pipeline:
     environment:
       - RELEASEBUILD=yes
     commands:
+      # Produces dotty-version.{tar.gz, zip}
+      - ./project/scripts/sbt dist-bootstrapped/packArchive
       - ./project/scripts/sbtPublish ";dotty-bootstrapped/publishSigned ;sonatypeRelease"
     volumes:
       - /home/drone/keys:/keys
     secrets: [ sonatype_user, sonatype_pw, pgp_pw ]
     when:
-      event: deployment
-      environment: release
+      event: tag
+
+  # Publish dotty-version.{tar.gz, zip} to GitHub Release
+  github_release:
+    image: plugins/github-release
+    secrets: [ github_token ]
+    draft: true
+    files:
+      - dist-bootstrapped/target/dotty-*
+    checksum:
+      - sha256
+    when:
+      event: tag
 
   publish_sbt_release:
     image: lampepfl/dotty:2017-10-07
