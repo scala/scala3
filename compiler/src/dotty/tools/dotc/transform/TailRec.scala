@@ -70,7 +70,6 @@ class TailRec extends MiniPhaseTransform with DenotTransformer with FullParamete
   override def transform(ref: SingleDenotation)(implicit ctx: Context): SingleDenotation = ref
 
   override def phaseName: String = "tailrec"
-  override def treeTransformPhase = thisTransform // TODO Make sure tailrec runs at next phase.
 
   final val labelFlags = Flags.Synthetic | Flags.Label
 
