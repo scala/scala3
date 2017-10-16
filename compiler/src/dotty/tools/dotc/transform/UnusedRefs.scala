@@ -3,6 +3,7 @@ package dotty.tools.dotc.transform
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.ast.Trees._
 import dotty.tools.dotc.core.Contexts._
+import dotty.tools.dotc.core.DenotTransformers.InfoTransformer
 import dotty.tools.dotc.core.Flags._
 import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.core.Types._
@@ -16,15 +17,28 @@ import dotty.tools.dotc.transform.TreeTransforms.{MiniPhaseTransform, Transforme
  *   if   `@unused val x: T = ...` including parameters
  *   then `x` --> `(default value for T)`
  */
-class UnusedRefs extends MiniPhaseTransform {
+class UnusedRefs extends MiniPhaseTransform with InfoTransformer {
   import tpd._
 
-  override def phaseName: String = "removeUnusedCalls"
+  override def phaseName: String = "unusedRefs"
 
   /** Check what the phase achieves, to be called at any point after it is finished. */
-  override def checkPostCondition(tree: Tree)(implicit ctx: Context): Unit = tree match {
-    case _: Apply | _: RefTree => assert(!tree.symbol.is(Unused))
-    case _ =>
+  override def checkPostCondition(tree: Tree)(implicit ctx: Context): Unit = {
+    val checker = new TypeMap {
+      override def apply(tp: Type): Type = tp match {
+        case tp: TermParamRef => assert(!tp.binder.isUnusedMethod); tp
+        case tp: TermRef if !tp.symbol.is(Method) => assert(!tp.symbol.is(Unused)); tp
+        case _ => mapOver(tp)
+      }
+    }
+    tree match {
+      case _: ValDef =>
+      case _: Apply | _: RefTree =>
+        assert(!tree.symbol.is(Unused))
+        checker.apply(tree.tpe)
+      case _ =>
+        checker.apply(tree.tpe)
+    }
   }
 
   /* Tree transform */
@@ -48,4 +62,26 @@ class UnusedRefs extends MiniPhaseTransform {
     }
   }
 
+  override def transformTypeTree(tree: tpd.TypeTree)(implicit ctx: Context, info: TransformerInfo): tpd.Tree = {
+    val newType = removeUnusedPaths(tree.tpe)
+    if (tree.tpe == newType) tree
+    else TypeTree(newType)
+  }
+
+
+  /* Tree info */
+
+  override def transformInfo(tp: Type, sym: Symbol)(implicit ctx: Context): Type =
+    removeUnusedPaths(tp)
+
+  private def removeUnusedPaths(tp: Type)(implicit ctx: Context): Type = {
+    // TODO: handle variance
+    new TypeMap {
+      override def apply(tp: Type): Type = tp match {
+        case tp: TermParamRef if tp.binder.isUnusedMethod => tp.classSymbol.typeRef
+        case tp: TermRef if tp.symbol.is(Unused) => tp.widen
+        case _ => mapOver(tp)
+      }
+    }.apply(tp)
+  }
 }
