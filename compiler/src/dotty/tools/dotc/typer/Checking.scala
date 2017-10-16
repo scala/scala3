@@ -530,21 +530,6 @@ trait Checking {
     tree
   }
 
-  /** Check that unused values are not used in a context without unused */
-  def checkUnused(tree: Tree, proto: Type)(implicit ctx: Context): tree.type = {
-    proto match {
-      case _ if !tree.symbol.is(Unused) => // It is not unused
-      case _ if ctx.mode.is(Mode.Unused) => // Inside of code that will not be used
-      case _: WildcardType => // Unused statements
-      case _: FunProto => // Function not completely applied
-      case _: UnusedProto => // Is an argument to an unused parameter
-      case _ if proto =:= defn.UnitType => // Inside of code that will not be used
-      case _ =>
-        ctx.error(s"Cannot use @unused value in a context that is not @unused", tree.pos)
-    }
-    tree
-  }
-
   /** Check that type `tp` is stable. */
   def checkStable(tp: Type, pos: Position)(implicit ctx: Context): Unit =
     if (!tp.isStable) ctx.error(ex"$tp is not stable", pos)
