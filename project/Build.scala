@@ -41,7 +41,7 @@ object Build {
   val dottyOrganization = "ch.epfl.lamp"
   val dottyGithubUrl = "https://github.com/lampepfl/dotty"
   val dottyVersion = {
-    val baseVersion = "0.4.0"
+    val baseVersion = "0.5.0"
     val isNightly = sys.env.get("NIGHTLYBUILD") == Some("yes")
     val isRelease = sys.env.get("RELEASEBUILD") == Some("yes")
     if (isNightly)
@@ -854,7 +854,7 @@ object Build {
 
 
       sbtPlugin := true,
-      version := "0.1.6-SNAPSHOT",
+      version := "0.1.6",
       ScriptedPlugin.scriptedSettings,
       ScriptedPlugin.sbtTestDirectory := baseDirectory.value / "sbt-test",
       ScriptedPlugin.scriptedLaunchOpts += "-Dplugin.version=" + version.value,
