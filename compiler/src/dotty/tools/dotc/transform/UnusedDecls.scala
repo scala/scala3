@@ -13,7 +13,7 @@ import dotty.tools.dotc.transform.TreeTransforms.{MiniPhaseTransform, Transforme
  *    - Unused defs and vals are not used
  *    - There are no unused parameter declarations
  *
- *  `@unused def f(...) = ...` and  `@unused val x = ...` are removed
+ *  `unused def f(...) = ...` and  `unused val x = ...` are removed
  */
 class UnusedDecls extends MiniPhaseTransform with InfoTransformer {
   import tpd._

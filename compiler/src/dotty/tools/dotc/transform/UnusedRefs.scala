@@ -5,22 +5,27 @@ import dotty.tools.dotc.ast.Trees._
 import dotty.tools.dotc.core.Contexts._
 import dotty.tools.dotc.core.DenotTransformers.InfoTransformer
 import dotty.tools.dotc.core.Flags._
+import dotty.tools.dotc.core.Phases
 import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.core.Types._
 import dotty.tools.dotc.transform.TreeTransforms.{MiniPhaseTransform, TransformerInfo}
 
 /** This phase removes all references and calls to unused methods or vals
  *
- *   if `@unused def f(x1,...,xn): T = ...`
+ *   if `unused def f(x1,...,xn): T = ...`
  *   then `f(y1,...,yn)` --> `y1; ...; yn; (default value for T)`
  *
- *   if   `@unused val x: T = ...` including parameters
+ *   if   `unused val x: T = ...` including parameters
  *   then `x` --> `(default value for T)`
  */
 class UnusedRefs extends MiniPhaseTransform with InfoTransformer {
   import tpd._
 
   override def phaseName: String = "unusedRefs"
+
+  override def runsAfterGroupsOf: Set[Class[_ <: Phases.Phase]] = Set(
+    classOf[UnusedChecks]
+  )
 
   /** Check what the phase achieves, to be called at any point after it is finished. */
   override def checkPostCondition(tree: Tree)(implicit ctx: Context): Unit = {

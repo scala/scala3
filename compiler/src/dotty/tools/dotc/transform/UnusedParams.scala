@@ -19,11 +19,11 @@ import dotty.tools.dotc.transform.TreeTransforms.{MiniPhaseTransform, Transforme
  *    - arguments are pure and can just be dropped
  *    - parameters not never used
  *
- *  `f(x1,...)(@unused y1,...)` with at least one unused argument list (might not be at the end)
+ *  `f(x1,...)(unused y1,...)` with at least one unused argument list (might not be at the end)
  *    -->
  *  `f(x1,...)`
  *
- *  `def f(x1: T1,...)(@unused y1: U1,...) = ...`
+ *  `def f(x1: T1,...)(unused y1: U1,...) = ...`
  *    -->
  *  `def f(x1: T1,...) = ...`
  */
