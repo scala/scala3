@@ -297,18 +297,6 @@ object Types {
     /** Is this a MethodType for which the parameters will not be used */
     def isUnusedMethod: Boolean = false
 
-    def hasUnusedParams: Boolean = this match {
-      case tp: MethodType if tp.isUnusedMethod => true
-      case tp: MethodOrPoly => tp.resType.hasUnusedParams
-      case _ => false
-    }
-
-    def withoutUnusedParams(implicit ctx: Context): Type = this match {
-      case tp: MethodType if tp.isUnusedMethod => tp.resType.withoutUnusedParams
-      case tp: MethodOrPoly => tp.derivedLambdaType(resType = tp.resType.withoutUnusedParams)
-      case _ => this
-    }
-
 // ----- Higher-order combinators -----------------------------------
 
     /** Returns true if there is a part of this type that satisfies predicate `p`.

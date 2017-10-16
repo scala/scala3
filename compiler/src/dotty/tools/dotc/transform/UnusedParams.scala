@@ -28,6 +28,7 @@ import dotty.tools.dotc.transform.TreeTransforms.{MiniPhaseTransform, Transforme
  *  `def f(x1: T1,...) = ...`
  */
 class UnusedParams extends MiniPhaseTransform with InfoTransformer {
+  import UnusedParams._
   import tpd._
 
   override def phaseName: String = "unusedParams"
@@ -39,7 +40,7 @@ class UnusedParams extends MiniPhaseTransform with InfoTransformer {
 
   /** Check what the phase achieves, to be called at any point after it is finished. */
   override def checkPostCondition(tree: Tree)(implicit ctx: Context): Unit = tree match {
-    case tree: DefDef => assert(!tree.tpe.hasUnusedParams)
+    case tree: DefDef => assert(!hasUnusedParams(tree.tpe))
     case tree: ValDef if tree.symbol.is(Param) => assert(!tree.symbol.is(Unused))
     case _ =>
   }
@@ -65,8 +66,8 @@ class UnusedParams extends MiniPhaseTransform with InfoTransformer {
   /* Info transform */
 
   override def transformInfo(tp: Type, sym: Symbol)(implicit ctx: Context): Type = {
-    if (!tp.hasUnusedParams) tp
-    else tp.withoutUnusedParams match {
+    if (!hasUnusedParams(tp)) tp
+    else withoutUnusedParams(tp) match {
       case mt: MethodOrPoly => mt
       case tpe => UnusedMethodType(Nil, Nil, tpe)
     }
@@ -76,7 +77,7 @@ class UnusedParams extends MiniPhaseTransform with InfoTransformer {
   /* private methods */
 
   private def hadUnusedParams(sym: Symbol)(implicit ctx: Context): Boolean =
-    !ctx.scala2Mode && sym.exists && widenInPreviousPhase(sym.termRef).hasUnusedParams
+    !ctx.scala2Mode && sym.exists && hasUnusedParams(widenInPreviousPhase(sym.termRef))
 
   private def removeUnusedParams(tree: DefDef)(implicit ctx: Context): DefDef = {
     def removeUnused(args: List[List[ValDef]], tp: Type): List[List[ValDef]] = args match {
@@ -109,4 +110,17 @@ class UnusedParams extends MiniPhaseTransform with InfoTransformer {
   private def widenInPreviousPhase(tpe: Type)(implicit ctx: Context): Type =
     tpe.widen(ctx.withPhase(ctx.phase.prev))
 
+  private def hasUnusedParams(tp: Type): Boolean = tp match {
+    case tp: MethodType if tp.isUnusedMethod => true
+    case tp: MethodOrPoly => hasUnusedParams(tp.resType)
+    case _ => false
+  }
+}
+
+object UnusedParams {
+  def withoutUnusedParams(tp: Type)(implicit ctx: Context): Type = tp match {
+    case tp: MethodType if tp.isUnusedMethod => withoutUnusedParams(tp.resType)
+    case tp: MethodOrPoly => tp.derivedLambdaType(resType = withoutUnusedParams(tp.resType))
+    case _ => tp
+  }
 }

@@ -284,7 +284,7 @@ class TreeChecker extends Phase with SymTransformer {
                |After checking: ${tree1.tpe}
                |Why different :
              """.stripMargin + core.TypeComparer.explained((tp1 <:< tp2)(_))
-          val tp2 = if (ctx.erasedUnused) tree.typeOpt.withoutUnusedParams else tree.tpe
+          val tp2 = if (ctx.erasedUnused) UnusedParams.withoutUnusedParams(tree.typeOpt) else tree.tpe
           if (tree.hasType) // it might not be typed because Typer sometimes constructs new untyped trees and resubmits them to typedUnadapted
             assert(isSubType(tree1.tpe, tp2), divergenceMsg(tree1.tpe, tree.typeOpt))
           tree1
