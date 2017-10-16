@@ -28,7 +28,6 @@ import dotty.tools.dotc.transform.TreeTransforms.{MiniPhaseTransform, Transforme
  *  `def f(x1: T1,...) = ...`
  */
 class UnusedParams extends MiniPhaseTransform with InfoTransformer {
-  import UnusedParams._
   import tpd._
 
   override def phaseName: String = "unusedParams"
@@ -57,6 +56,7 @@ class UnusedParams extends MiniPhaseTransform with InfoTransformer {
     case _ if hadUnusedParams(tree.symbol) =>
       removeUnusedApplies(tree) match {
         case t: RefTree => Apply(t, Nil)
+        case TypeApply(fun: RefTree, args) => Apply(TypeApply(fun, args), Nil)
         case t => t
       }
     case _ => tree
@@ -68,6 +68,8 @@ class UnusedParams extends MiniPhaseTransform with InfoTransformer {
   override def transformInfo(tp: Type, sym: Symbol)(implicit ctx: Context): Type = {
     if (!hasUnusedParams(tp)) tp
     else withoutUnusedParams(tp) match {
+      case pt: PolyType if !pt.resType.isInstanceOf[MethodType] =>
+        pt.derivedLambdaType(resType = UnusedMethodType(Nil, Nil, pt.resType))
       case mt: MethodOrPoly => mt
       case tpe => UnusedMethodType(Nil, Nil, tpe)
     }
@@ -115,10 +117,8 @@ class UnusedParams extends MiniPhaseTransform with InfoTransformer {
     case tp: MethodOrPoly => hasUnusedParams(tp.resType)
     case _ => false
   }
-}
 
-object UnusedParams {
-  def withoutUnusedParams(tp: Type)(implicit ctx: Context): Type = tp match {
+  private def withoutUnusedParams(tp: Type)(implicit ctx: Context): Type = tp match {
     case tp: MethodType if tp.isUnusedMethod => withoutUnusedParams(tp.resType)
     case tp: MethodOrPoly => tp.derivedLambdaType(resType = withoutUnusedParams(tp.resType))
     case _ => tp
