@@ -18,20 +18,26 @@ final case class R[K <: String, V](v: V)
 trait Selector[L <: HList, K, V]
 
 object Selector {
-  implicit unused def caseFound[T <: HList, K <: String, V]
-  : Selector[R[K, V] :: T, K, V] = null
+  implicit def caseFound[T <: HList, K <: String, V]
+  : Selector[R[K, V] :: T, K, V] = {
+    println("Selector.caseFound")
+    null
+  }
 
-  implicit unused def caseRecur[H, T <: HList, K <: String, V]
+  implicit def caseRecur[H, T <: HList, K <: String, V]
   (implicit i: Selector[T, K, V])
-  : Selector[H :: T, K, V] = null
+  : Selector[H :: T, K, V] = {
+    println("Selector.caseRecur")
+    null
+  }
 }
 
 // Subset of Frameless
 // ----------------------------------------------------------------------------
 
 trait Dataset[T] {
-  def select[A](unused c: Column[T, A]): Dataset[A] =
-    ??? // Use c.label to do an untyped select on actual Spark Dataset, and
+  def select[A](c: Column[T, A]): Dataset[A] =
+    this.asInstanceOf[Dataset[A]] // Use c.label to do an untyped select on actual Spark Dataset, and
   // cast the result to TypedDataset[A]
 
   def col[S <: String, A](s: S)(implicit unused ev: Exists[T, s.type, A]) =
@@ -39,12 +45,11 @@ trait Dataset[T] {
   // never used at runtime!
 
   def collect(): Vector[T] =
-    ??? // Uses collect of the underlying Spark structure plus a cast
+    Vector.empty[T] // Uses collect of the underlying Spark structure plus a cast
 }
 
 object Dataset {
-  def create[T](values: Seq[T]): Dataset[T] =
-    ???
+  def create[T](values: Seq[T]): Dataset[T] = new Dataset[T] { }
 }
 
 /** Expression used in `select`-like constructions.
@@ -61,10 +66,24 @@ trait Exists[T, K, V]
 
 object Exists {
   implicit def derive[T, H <: HList, K, V]
-  (implicit unused
+  (implicit
    g: LabelledGeneric[T] { type Repr = H },
    s: Selector[H, K, V]
-  ): Exists[T, K, V] = null
+  ): Exists[T, K, V] = {
+    println("Exists.derive")
+    null
+  }
+}
+
+object UnusedExists {
+  implicit unused def derive[T, H <: HList, K, V]
+  (implicit
+   g: LabelledGeneric[T] { type Repr = H },
+   s: Selector[H, K, V]
+  ): Exists[T, K, V] = {
+    println("UnusedExists.derive")
+    null
+  }
 }
 
 // X4 Example
@@ -76,20 +95,36 @@ object X4 {
   // Macro generated
   implicit def x4Repr[A, B, C, D]: LabelledGeneric[X4[A, B, C, D]] {
     type Repr = R["a", A] :: R["b", B] :: R["c", C] :: R["d", D] :: HNil
-  } = null
+  } = {
+    println("X4.x4Repr")
+    null
+  }
 }
 
-object Demo {
-  val source: Vector[X4[Int, String, Double, Boolean]] =
-    Vector(X4(1, "s", 1.1, true), X4(2, "t", 1.2, false))
+object Test {
+  def main(args: Array[String]): Unit = {
+    val source: Vector[X4[Int, String, Double, Boolean]] =
+      Vector(X4(1, "s", 1.1, true), X4(2, "t", 1.2, false))
+    val outColl : Vector[Boolean] = source.map(_.d)
 
-  val ds: Dataset[X4[Int, String, Double, Boolean]] =
-    Dataset.create(source)
+    val ds: Dataset[X4[Int, String, Double, Boolean]] =
+      Dataset.create(source)
 
-  val D = ds.col("d")
+    {
+      import UnusedExists._
+      println("unused")
+      val unusedD = ds.col("d")
+      val outSpark1: Vector[Boolean] = ds.select(unusedD).collect()
+      // FIXME implement Dataset opertations
+      // assert(outSpark1 == outColl)
+    }
 
-  val outSpark: Vector[Boolean] = ds.select(D).collect()
-  val outColl : Vector[Boolean] = source.map(_.d)
+    println("used")
+    val usedD = ds.col("d")
+    val outSpark2: Vector[Boolean] = ds.select(usedD).collect()
+    // FIXME implement Dataset opertations
+    // assert(outSpark2 == outColl)
 
-  assert(outSpark == outColl)
+    println("end")
+  }
 }
