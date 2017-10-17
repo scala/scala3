@@ -16,6 +16,12 @@
   "categories": [
     "Languages"
   ],
+  "keywords": [
+    "scala",
+    "dotty",
+    "jvm",
+    "language-server"
+  ],
   "main": "./out/src/extension",
   "activationEvents": [
     "workspaceContains:.dotty-ide.json"
