@@ -61,7 +61,8 @@ object TreeTransforms {
 
     def phase: MiniPhase
 
-    def treeTransformPhase: Phase = phase.next
+    /** The phase at which the tree is transformed */
+    final def treeTransformPhase: Phase = phase.next
 
     val cpy: TypedTreeCopier = cpyBetweenPhases
 
@@ -172,30 +173,6 @@ object TreeTransforms {
     def treeTransform = this
     def phase = this
  }
-
-  /** A helper trait to transform annotations on MemberDefs */
-  trait AnnotationTransformer extends MiniPhaseTransform with DenotTransformer {
-
-    val annotationTransformer = mkTreeTransformer
-    override final def treeTransformPhase = this
-      // need to run at own phase because otherwise we get ahead of ourselves in transforming denotations
-
-    abstract override def transform(ref: SingleDenotation)(implicit ctx: Context): SingleDenotation =
-      super.transform(ref) match {
-        case ref1: SymDenotation if ref1.symbol.isDefinedInCurrentRun =>
-          val annots = ref1.annotations
-          val annotTrees = annots.map(_.tree)
-          val annotTrees1 = annotTrees.mapConserve(annotationTransformer.macroTransform)
-          if (annotTrees eq annotTrees1) ref1
-          else {
-            val derivedAnnots = (annots, annotTrees1).zipped.map((annot, annotTree1) =>
-              annot.derivedAnnotation(annotTree1))
-            ref1.copySymDenotation(annotations = derivedAnnots).copyCaches(ref1, ctx.phase.next)
-          }
-        case ref1 =>
-          ref1
-      }
-  }
 
   private class NoTreeTransform extends TreeTransform {
     def phase = unsupported("phase")
