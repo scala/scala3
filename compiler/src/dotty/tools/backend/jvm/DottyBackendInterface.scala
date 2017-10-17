@@ -1,6 +1,7 @@
 package dotty.tools.backend.jvm
 
 import dotty.tools.dotc.ast.tpd
+import dotty.tools.dotc.ast.Trees
 import dotty.tools.dotc
 import dotty.tools.dotc.backend.jvm.DottyPrimitives
 import dotty.tools.dotc.core.Flags.FlagSet
@@ -251,12 +252,14 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
       case t: TypeApply if (t.fun.symbol == Predef_classOf) =>
         av.visit(name, t.args.head.tpe.classSymbol.denot.info.toTypeKind(bcodeStore)(innerClasesStore).toASMType)
       case t: tpd.Select =>
-        if (t.symbol.denot.is(Flags.Enum)) {
+        if (t.symbol.denot.is(Flags.Enum) ||
+            t.symbol.denot.owner.is(Flags.Enum)) {
           val edesc = innerClasesStore.typeDescriptor(t.tpe.asInstanceOf[bcodeStore.int.Type]) // the class descriptor of the enumeration class.
           val evalue = t.symbol.name.mangledString // value the actual enumeration value.
           av.visitEnum(name, edesc, evalue)
         } else {
-          assert(toDenot(t.symbol).name.is(DefaultGetterName), toDenot(t.symbol).name.debugString) // this should be default getter. do not emmit.
+            assert(toDenot(t.symbol).name.is(DefaultGetterName),
+              s"${toDenot(t.symbol).name.debugString}") // this should be default getter. do not emmit.
         }
       case t: SeqLiteral =>
         val arrAnnotV: AnnotationVisitor = av.visitArray(name)
@@ -278,6 +281,10 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
         }
         for(arg <- flatArgs) { emitArgument(arrAnnotV, null, arg, bcodeStore)(innerClasesStore) }
         arrAnnotV.visitEnd()
+      case Trees.NamedArg(_, arg1) =>
+        emitArgument(av, name, arg1, bcodeStore)(innerClasesStore)
+      case Trees.Typed(arg1, _) =>
+        emitArgument(av, name, arg1, bcodeStore)(innerClasesStore)
 /*
       case sb @ ScalaSigBytes(bytes) =>
         // see http://www.scala-lang.org/sid/10 (Storage of pickled Scala signatures in class files)
