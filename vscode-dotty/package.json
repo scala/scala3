@@ -37,6 +37,14 @@
       ]
     }
   ],
+  "contributes": {
+    "configurationDefaults": {
+      "[scala]": {
+        "editor.tabSize": 2,
+        "editor.insertSpaces": true
+      }
+    }
+  },
   "scripts": {
     "tsc": "./node_modules/.bin/tsc",
     "vscode:prepublish": "npm run update-all && ./node_modules/.bin/tsc -p ./",
