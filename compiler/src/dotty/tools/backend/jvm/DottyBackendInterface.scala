@@ -268,7 +268,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
         }
       case t: SeqLiteral =>
         val arrAnnotV: AnnotationVisitor = av.visitArray(name)
-        for(arg <- t.elems) { emitArgument(arrAnnotV, null, arg, bcodeStore)(innerClasesStore) }
+        for (arg <- t.elems) { emitArgument(arrAnnotV, null, arg, bcodeStore)(innerClasesStore) }
         arrAnnotV.visitEnd()
 
       case Apply(fun, args) if fun.symbol == defn.ArrayClass.primaryConstructor ||
@@ -280,11 +280,15 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
           fun.asInstanceOf[Apply].args
         } else args
 
-        val flatArgs = actualArgs.flatMap {
-          case t: tpd.SeqLiteral => t.elems
-          case e => List(e)
+        val flatArgs = actualArgs.flatMap { arg =>
+          normalizeArgument(arg) match {
+            case t: tpd.SeqLiteral => t.elems
+            case e => List(e)
+          }
         }
-        for(arg <- flatArgs) { emitArgument(arrAnnotV, null, arg, bcodeStore)(innerClasesStore) }
+        for(arg <- flatArgs) {
+          emitArgument(arrAnnotV, null, arg, bcodeStore)(innerClasesStore)
+        }
         arrAnnotV.visitEnd()
 /*
       case sb @ ScalaSigBytes(bytes) =>
