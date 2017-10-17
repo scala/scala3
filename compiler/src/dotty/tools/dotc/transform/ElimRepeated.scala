@@ -25,7 +25,7 @@ import TypeUtils._
 /** A transformer that removes repeated parameters (T*) from all types, replacing
  *  them with Seq types.
  */
-class ElimRepeated extends MiniPhaseTransform with InfoTransformer with AnnotationTransformer { thisTransformer =>
+class ElimRepeated extends MiniPhaseTransform with InfoTransformer { thisTransformer =>
   import ast.tpd._
 
   override def phaseName = "elimRepeated"
@@ -74,9 +74,12 @@ class ElimRepeated extends MiniPhaseTransform with InfoTransformer with Annotati
     transformTypeOfTree(tree)
 
   override def transformApply(tree: Apply)(implicit ctx: Context, info: TransformerInfo): Tree = {
-    val formals = (tree.fun.tpe.widen: @unchecked) match {
-      case mt: MethodType => mt.paramInfos
-    }
+    val formals =
+      ctx.atPhase(thisTransformer) { implicit ctx =>
+        (tree.fun.tpe.widen: @unchecked) match {
+          case mt: MethodType => mt.paramInfos
+        }
+      }
     val args1 = tree.args.zipWithConserve(formals) { (arg, formal) =>
       arg match {
         case arg: Typed if isWildcardStarArg(arg) =>
@@ -111,13 +114,13 @@ class ElimRepeated extends MiniPhaseTransform with InfoTransformer with Annotati
   /** If method overrides a Java varargs method, add a varargs bridge.
    *  Also transform trees inside method annotation
    */
-  override def transformDefDef(tree: DefDef)(implicit ctx: Context, info: TransformerInfo): Tree = {
-    assert(ctx.phase == thisTransformer)
-    if (tree.symbol.info.isVarArgsMethod && overridesJava(tree.symbol))
-      addVarArgsBridge(tree)
-    else
-      tree
-  }
+  override def transformDefDef(tree: DefDef)(implicit ctx: Context, info: TransformerInfo): Tree =
+    ctx.atPhase(thisTransformer) { implicit ctx =>
+      if (tree.symbol.info.isVarArgsMethod && overridesJava(tree.symbol))
+        addVarArgsBridge(tree)
+      else
+        tree
+    }
 
   /** Add a Java varargs bridge
    *  @param  ddef  the original method definition which is assumed to override
