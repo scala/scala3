@@ -2872,7 +2872,19 @@ object Types {
     }
   }
 
-  object MethodType extends MethodTypeCompanion
+  object MethodType extends MethodTypeCompanion {
+    def maker(isJava: Boolean = false, isImplicit: Boolean = false, isUnused: Boolean = false): MethodTypeCompanion = {
+      if (isJava) {
+        assert(!isImplicit)
+        assert(!isUnused)
+        JavaMethodType
+      }
+      else if (isImplicit && isUnused) UnusedImplicitMethodType
+      else if (isImplicit) ImplicitMethodType
+      else if (isUnused) UnusedMethodType
+      else MethodType
+    }
+  }
   object JavaMethodType extends MethodTypeCompanion
   object ImplicitMethodType extends MethodTypeCompanion
   object UnusedMethodType extends MethodTypeCompanion

@@ -50,21 +50,27 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
    */
   case class InterpolatedString(id: TermName, segments: List[Tree]) extends TermTree
 
+  /** An function type */
   case class Function(args: List[Tree], body: Tree) extends Tree {
     override def isTerm = body.isTerm
     override def isType = body.isType
   }
 
+  /** An function type that should have non empty args */
+  abstract class NonEmptyFunction(args: List[Tree], body: Tree) extends Function(args, body)
+
   /** An implicit function type */
-  class ImplicitFunction(args: List[Tree], body: Tree) extends Function(args, body) {
+  class ImplicitFunction(args: List[Tree], body: Tree) extends NonEmptyFunction(args, body) {
     override def toString = s"ImplicitFunction($args, $body)"
   }
 
-  class UnusedFunction(args: List[Tree], body: Tree) extends Function(args, body) {
+  /** An function type with unused arguments */
+  class UnusedFunction(args: List[Tree], body: Tree) extends NonEmptyFunction(args, body) {
     override def toString = s"UnusedFunction($args, $body)"
   }
 
-  class UnusedImplicitFunction(args: List[Tree], body: Tree) extends Function(args, body) {
+  /** An implicit function type with unused arguments */
+  class UnusedImplicitFunction(args: List[Tree], body: Tree) extends NonEmptyFunction(args, body) {
     override def toString = s"UnusedImplicitFunction($args, $body)"
   }
 

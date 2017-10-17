@@ -115,22 +115,11 @@ class Definitions {
           enterTypeParam(cls, paramNamePrefix ++ "T" ++ (i + 1).toString, Contravariant, decls).typeRef
         }
         val resParamRef = enterTypeParam(cls, paramNamePrefix ++ "R", Covariant, decls).typeRef
-        val (methodType, parentTraits) =
-          if (name.firstPart.startsWith(str.UnusedImplicitFunction)) {
-            val superTrait =
-              FunctionType(arity, isUnused = true).appliedTo(argParamRefs ::: resParamRef :: Nil)
-            (UnusedImplicitMethodType, superTrait :: Nil)
-          } else if (name.firstPart.startsWith(str.ImplicitFunction)) {
-            val superTrait =
-              FunctionType(arity).appliedTo(argParamRefs ::: resParamRef :: Nil)
-            (ImplicitMethodType, superTrait :: Nil)
-          }
-          else if (name.firstPart.startsWith(str.UnusedFunction)) (UnusedMethodType, Nil)
-          else (MethodType, Nil)
-        val applyMeth =
-          decls.enter(
-            newMethod(cls, nme.apply,
-              methodType(argParamRefs, resParamRef), Deferred))
+        val methodType = MethodType.maker(isJava = false, name.isImplicitFunction, name.isUnusedFunction)
+        val parentTraits =
+          if (!name.isImplicitFunction) Nil
+          else FunctionType(arity, isUnused = name.isUnusedFunction).appliedTo(argParamRefs ::: resParamRef :: Nil) :: Nil
+        decls.enter(newMethod(cls, nme.apply, methodType(argParamRefs, resParamRef), Deferred))
         denot.info =
           ClassInfo(ScalaPackageClass.thisType, cls, ObjectType :: parentTraits, decls)
       }

@@ -120,7 +120,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
             atPrec(InfixPrec) { argText(args.head) }
           else
             toTextTuple(args.init)
-        ("unused " provided isUnused) ~ ("implicit2 " provided isImplicit) ~ argStr ~ " => " ~ argText(args.last)
+        ("implicit " provided isImplicit) ~ ("unused " provided isUnused) ~ argStr ~ " => " ~ argText(args.last)
       }
 
     def isInfixType(tp: Type): Boolean = tp match {

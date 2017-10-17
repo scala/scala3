@@ -58,10 +58,10 @@ class SyntheticMethods(thisTransformer: DenotTransformer) {
   /** The synthetic methods of the case or value class `clazz`. */
   def syntheticMethods(clazz: ClassSymbol)(implicit ctx: Context): List[Tree] = {
     val clazzType = clazz.appliedRef
-    lazy val accessors =
-      if (isDerivedValueClass(clazz)) clazz.paramAccessors.filterConserve(!_.is(Unused))
-      else clazz.caseAccessors.filterConserve(!_.is(Unused))
-
+    lazy val accessors = {
+      val allAccessors = if (isDerivedValueClass(clazz)) clazz.paramAccessors else clazz.caseAccessors
+      allAccessors.filterConserve(!_.is(Unused))
+    }
     val symbolsToSynthesize: List[Symbol] =
       if (clazz.is(Case)) {
         if (clazz.is(Module)) caseModuleSymbols
