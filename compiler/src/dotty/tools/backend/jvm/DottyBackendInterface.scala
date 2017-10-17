@@ -232,11 +232,16 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
     annot.atp.typeSymbol.getAnnotation(AnnotationRetentionAttr).
       flatMap(_.argumentConstant(0).map(_.symbolValue)).getOrElse(AnnotationRetentionClassAttr)
 
+  private def normalizeArgument(arg: Tree): Tree = arg match {
+    case Trees.NamedArg(_, arg1) => normalizeArgument(arg1)
+    case Trees.Typed(arg1, _) => normalizeArgument(arg1)
+    case _ => arg
+  }
+
   private def emitArgument(av:   AnnotationVisitor,
                            name: String,
                            arg:  Tree, bcodeStore: BCodeHelpers)(innerClasesStore: bcodeStore.BCInnerClassGen): Unit = {
-    (arg: @unchecked) match {
-
+    (normalizeArgument(arg): @unchecked) match {
       case Literal(const @ Constant(_)) =>
         const.tag match {
           case BooleanTag | ByteTag | ShortTag | CharTag | IntTag | LongTag | FloatTag | DoubleTag => av.visit(name, const.value)
@@ -252,12 +257,12 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
       case t: TypeApply if (t.fun.symbol == Predef_classOf) =>
         av.visit(name, t.args.head.tpe.classSymbol.denot.info.toTypeKind(bcodeStore)(innerClasesStore).toASMType)
       case t: tpd.Select =>
-        if (t.symbol.denot.is(Flags.Enum) ||
-            t.symbol.denot.owner.is(Flags.Enum)) {
+        if (t.symbol.denot.owner.is(Flags.Enum)) {
           val edesc = innerClasesStore.typeDescriptor(t.tpe.asInstanceOf[bcodeStore.int.Type]) // the class descriptor of the enumeration class.
           val evalue = t.symbol.name.mangledString // value the actual enumeration value.
           av.visitEnum(name, edesc, evalue)
         } else {
+            // println(i"not an enum: ${t.symbol} / ${t.symbol.denot.owner} / ${t.symbol.denot.owner.isTerm} / ${t.symbol.denot.owner.flags}")
             assert(toDenot(t.symbol).name.is(DefaultGetterName),
               s"${toDenot(t.symbol).name.debugString}") // this should be default getter. do not emmit.
         }
@@ -281,10 +286,6 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
         }
         for(arg <- flatArgs) { emitArgument(arrAnnotV, null, arg, bcodeStore)(innerClasesStore) }
         arrAnnotV.visitEnd()
-      case Trees.NamedArg(_, arg1) =>
-        emitArgument(av, name, arg1, bcodeStore)(innerClasesStore)
-      case Trees.Typed(arg1, _) =>
-        emitArgument(av, name, arg1, bcodeStore)(innerClasesStore)
 /*
       case sb @ ScalaSigBytes(bytes) =>
         // see http://www.scala-lang.org/sid/10 (Storage of pickled Scala signatures in class files)
