@@ -38,7 +38,7 @@ Start using the Dotty IDE in any Dotty project by following the
 [IDE guide](http://dotty.epfl.ch/docs/usage/ide-support.html).
 
 ### Standalone installation
-Releases are available for download on the [Releases section](https://github.com/lampepfl/dotty/releases))
+Releases are available for download on the [Releases Section](https://github.com/lampepfl/dotty/releases)
 of the Dotty repository. Releases include three executables: `dotc` the Dotty compiler,
 `dotd` the [Dotty Documentation tool](http://dotty.epfl.ch/docs/usage/dottydoc.html) and `dotr` the Dotty REPL.
 
