@@ -52,13 +52,16 @@ class UnusedRefs extends MiniPhaseTransform with InfoTransformer {
   override def transformIdent(tree: tpd.Ident)(implicit ctx: Context, info: TransformerInfo): tpd.Tree = transformUnused(tree)
   override def transformSelect(tree: tpd.Select)(implicit ctx: Context, info: TransformerInfo): tpd.Tree = transformUnused(tree)
 
-  private def transformUnused(tree: tpd.Tree)(implicit ctx: Context): tpd.Tree = {
+  private def transformUnused(tree: tpd.Tree)(implicit ctx: Context, info: TransformerInfo): tpd.Tree = {
     if (!tree.symbol.is(Unused)) tree
     else {
       tree.tpe.widen match {
         case _: MethodType => tree // Do the transformation higher in the tree if needed
         case _ =>
-          val result = tpd.defaultValue(tree.tpe)
+          val result = tpd.defaultValue(tree.tpe) match {
+            case t @ TypeApply(fun, args) => cpy.TypeApply(t)(fun = fun, args = args.map(transform)) // asInstanceOf inserted by defaultValue
+            case t => t
+          }
           tree match {
             case _: RefTree => result
             case Apply(_ , args) => seq(args, result)
