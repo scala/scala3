@@ -707,7 +707,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
     private def definedClasses(phase: Phase) =
       if (sym.isDefinedInCurrentRun)
         ctx.atPhase(phase) { implicit ctx =>
-          toDenot(sym).info.decls.filter(_.isClass).toList
+          toDenot(sym).info.decls.filter(_.isClass)
         }
       else Nil
 
@@ -719,7 +719,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
       else Nil
     }
     def fieldSymbols: List[Symbol] = {
-      toDenot(sym).info.decls.filter(p => p.isTerm && !p.is(Flags.Method)).toList
+      toDenot(sym).info.decls.filter(p => p.isTerm && !p.is(Flags.Method))
     }
     def methodSymbols: List[Symbol] =
       for (f <- toDenot(sym).info.decls.toList if f.isMethod && f.isTerm && !f.isModule) yield f

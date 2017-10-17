@@ -1753,7 +1753,7 @@ object SymDenotations {
      *  Both getters and setters are returned in this list.
      */
     def paramAccessors(implicit ctx: Context): List[Symbol] =
-      unforcedDecls.filter(_.is(ParamAccessor)).toList
+      unforcedDecls.filter(_.is(ParamAccessor))
 
     /** If this class has the same `decls` scope reference in `phase` and
      *  `phase.next`, install a new denotation with a cloned scope in `phase.next`.

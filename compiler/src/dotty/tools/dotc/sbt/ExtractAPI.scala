@@ -215,7 +215,7 @@ private class ExtractAPICollector(implicit val ctx: Context) extends ThunkHolder
     // and can therefore be ignored.
     def alwaysPresent(s: Symbol) =
       s.isCompanionMethod || (csym.is(ModuleClass) && s.isConstructor)
-    val decls = cinfo.decls.filter(!alwaysPresent(_)).toList
+    val decls = cinfo.decls.filter(!alwaysPresent(_))
     val apiDecls = apiDefinitions(decls)
 
     val declSet = decls.toSet
