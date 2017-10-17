@@ -496,9 +496,11 @@ object Checking {
               ctx.error(ValueClassParameterMayNotBeAVar(clazz, param), param.pos)
             if (param.info.isPhantom)
               ctx.error("value class first parameter must not be phantom", param.pos)
+            else if (param.is(Unused))
+              ctx.error("value class first parameter cannot be `unused`", param.pos)
             else {
-              for (p <- params if !p.info.isPhantom)
-                ctx.error("value class can only have one non phantom parameter", p.pos)
+              for (p <- params if !(p.info.isPhantom || p.is(Unused)))
+                ctx.error("value class can only have one non `unused` parameter", p.pos)
             }
           case Nil =>
             ctx.error(ValueClassNeedsOneValParam(clazz), clazz.pos)

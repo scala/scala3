@@ -358,6 +358,10 @@ object Flags {
   /** Symbol is a Java enum */
   final val Enum = commonFlag(40, "<enum>")
 
+  /** Labeled with `unused` modifier (unused value)  */
+  final val UnusedCommon = commonFlag(42, "unused")
+  final val Unused = UnusedCommon.toTermFlags
+
   // Flags following this one are not pickled
 
   /** Symbol is not a member of its owner */
@@ -429,7 +433,7 @@ object Flags {
   /** Flags representing source modifiers */
   final val SourceModifierFlags =
     commonFlags(Private, Protected, Abstract, Final, Inline,
-     Sealed, Case, Implicit, Override, AbsOverride, Lazy, JavaStatic)
+     Sealed, Case, Implicit, Override, AbsOverride, Lazy, JavaStatic, Unused)
 
   /** Flags representing modifiers that can appear in trees */
   final val ModifierFlags =

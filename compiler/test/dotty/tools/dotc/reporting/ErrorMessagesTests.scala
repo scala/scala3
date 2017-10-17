@@ -906,7 +906,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
       val defn = ictx.definitions
 
       assertMessageCount(2, messages)
-      messages.foreach(assertEquals(_, ImplicitFunctionTypeNeedsNonEmptyParameterList()))
+      messages.foreach(assertEquals(_, FunctionTypeNeedsNonEmptyParameterList()))
     }
 
   @Test def wrongNumberOfParameters =
