@@ -2,19 +2,25 @@
   "name": "dotty",
   "displayName": "Dotty Language Server",
   "description": "IDE integration for Dotty, the experimental Scala compiler",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "license": "BSD-3-Clause",
   "publisher": "lampepfl",
   "repository": {
     "type": "git",
     "url": "https://github.com/lampepfl/dotty.git"
   },
-  "icon": "images/dotty-logo.svg",
+  "icon": "images/dotty-logo.png",
   "engines": {
     "vscode": "^1.12.0"
   },
   "categories": [
     "Languages"
+  ],
+  "keywords": [
+    "scala",
+    "dotty",
+    "jvm",
+    "language-server"
   ],
   "main": "./out/src/extension",
   "activationEvents": [
@@ -31,6 +37,14 @@
       ]
     }
   ],
+  "contributes": {
+    "configurationDefaults": {
+      "[scala]": {
+        "editor.tabSize": 2,
+        "editor.insertSpaces": true
+      }
+    }
+  },
   "scripts": {
     "tsc": "./node_modules/.bin/tsc",
     "vscode:prepublish": "npm run update-all && ./node_modules/.bin/tsc -p ./",
