@@ -9,7 +9,7 @@
     "type": "git",
     "url": "https://github.com/lampepfl/dotty.git"
   },
-  "icon": "images/dotty-logo.svg",
+  "icon": "images/dotty-logo.png",
   "engines": {
     "vscode": "^1.12.0"
   },
