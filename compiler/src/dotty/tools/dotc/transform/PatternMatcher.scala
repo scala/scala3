@@ -768,7 +768,7 @@ object PatternMatcher {
           def outerTest: Tree = trans.transformFollowingDeep {
             val expectedOuter = singleton(expectedTp.normalizedPrefix)
             val expectedClass = expectedTp.dealias.classSymbol.asClass
-            ExplicitOuter.ensureOuterAccessors(expectedClass)(ctx.withPhase(ctx.explicitOuterPhase.next))
+            ExplicitOuter.ensureOuterAccessors(expectedClass)
             scrutinee.ensureConforms(expectedTp)
               .outerSelect(1, expectedOuter.tpe.widen)
               .select(defn.Object_eq)

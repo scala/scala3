@@ -132,15 +132,11 @@ object ExplicitOuter {
   import ast.tpd._
 
   /** Ensure that class `cls` has outer accessors */
-  def ensureOuterAccessors(cls: ClassSymbol)(implicit ctx: Context): Unit = {
-    //todo: implementing  #165 would simplify this logic
-    val prevPhase = ctx.phase.prev
-    assert(prevPhase.id <= ctx.explicitOuterPhase.id, "can add $outer symbols only before ExplicitOuter")
-    assert(prevPhase.isInstanceOf[DenotTransformer], "adding outerAccessors requires being DenotTransformer")
-    if (!hasOuter(cls)) {
-      newOuterAccessors(cls).foreach(_.enteredAfter(prevPhase.asInstanceOf[DenotTransformer]))
+  def ensureOuterAccessors(cls: ClassSymbol)(implicit ctx: Context): Unit =
+    ctx.atPhase(ctx.explicitOuterPhase.next) { implicit ctx =>
+      if (!hasOuter(cls))
+        newOuterAccessors(cls).foreach(_.enteredAfter(ctx.explicitOuterPhase.asInstanceOf[DenotTransformer]))
     }
-  }
 
   /** The outer accessor and potentially outer param accessor needed for class `cls` */
   private def newOuterAccessors(cls: ClassSymbol)(implicit ctx: Context) =
