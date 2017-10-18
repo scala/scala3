@@ -143,11 +143,10 @@ div#header li.nav-item > a.nav-link {
 }
 
 div.scala-logo-container {
-    width: 232px;
-    height: calc(400px + 13em);
+    height: calc(100vh - 80px);
     margin: auto;
     position: absolute;
-    top: 0; right: 0; bottom: 0; left: 0;
+    top: 80px; right: 0; bottom: 0; left: 0;
 }
 
 div.scala-logo-container > p {
@@ -158,21 +157,25 @@ div.scala-logo-container > p {
 }
 
 div.scala-logo-container > p > img {
-    width: 100%;
-    height: auto;
+    max-width: 100%;
+    height: 60%;
+    display: block;
 }
 
 h1#dotty {
     font-family: 'Source Sans Pro', sans-serif;
     font-weight: 700;
     text-align: center;
-    font-size: 3.5em;
+    font-size: 10vh;
     margin-top: 20px;
 }
 
 div.centered-subtitle {
     text-align: center;
     font-family: 'Source Sans Pro', sans-serif;
+    position: absolute;
+    bottom: 0;
+    width: 100%;
 }
 
 div.centered-subtitle > a {
@@ -181,6 +184,10 @@ div.centered-subtitle > a {
 
 div.centered-subtitle > a > i#scroll-down-arrow {
     font-size: 3em;
+}
+
+div.centered-subtitle > p {
+    font-size: 3vh;
 }
 
 pre {
@@ -446,6 +453,10 @@ screen /* Most mobile devices  */
 and (max-device-width: 480px)
 and (orientation: portrait)
 ,
+screen /* Most mobile devices, landscape */
+and (max-device-height: 450px)
+and (orientation: landscape)
+,
 only screen /* iPhone 6 */
 and (max-device-width: 667px)
 and (-webkit-device-pixel-ratio: 2)
@@ -510,13 +521,12 @@ and (-webkit-device-pixel-ratio: 2)
     }
 
     div.scala-logo-container {
-        width: 40%;
         height: 84%;
         top: 70px;
     }
 
-    #content > div.page.red.exactly-one-page > div.scala-logo-container > div > p {
-        font-size: 0.8em;
+    div.scala-logo-container > p > img {
+        height: 50%;
     }
 
     /* Feature */
