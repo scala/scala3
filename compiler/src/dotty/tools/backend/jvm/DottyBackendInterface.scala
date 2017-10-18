@@ -1,6 +1,7 @@
 package dotty.tools.backend.jvm
 
 import dotty.tools.dotc.ast.tpd
+import dotty.tools.dotc.ast.Trees
 import dotty.tools.dotc
 import dotty.tools.dotc.backend.jvm.DottyPrimitives
 import dotty.tools.dotc.core.Flags.FlagSet
@@ -231,11 +232,16 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
     annot.atp.typeSymbol.getAnnotation(AnnotationRetentionAttr).
       flatMap(_.argumentConstant(0).map(_.symbolValue)).getOrElse(AnnotationRetentionClassAttr)
 
+  private def normalizeArgument(arg: Tree): Tree = arg match {
+    case Trees.NamedArg(_, arg1) => normalizeArgument(arg1)
+    case Trees.Typed(arg1, _) => normalizeArgument(arg1)
+    case _ => arg
+  }
+
   private def emitArgument(av:   AnnotationVisitor,
                            name: String,
                            arg:  Tree, bcodeStore: BCodeHelpers)(innerClasesStore: bcodeStore.BCInnerClassGen): Unit = {
-    (arg: @unchecked) match {
-
+    (normalizeArgument(arg): @unchecked) match {
       case Literal(const @ Constant(_)) =>
         const.tag match {
           case BooleanTag | ByteTag | ShortTag | CharTag | IntTag | LongTag | FloatTag | DoubleTag => av.visit(name, const.value)
@@ -251,16 +257,18 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
       case t: TypeApply if (t.fun.symbol == Predef_classOf) =>
         av.visit(name, t.args.head.tpe.classSymbol.denot.info.toTypeKind(bcodeStore)(innerClasesStore).toASMType)
       case t: tpd.Select =>
-        if (t.symbol.denot.is(Flags.Enum)) {
+        if (t.symbol.denot.owner.is(Flags.Enum)) {
           val edesc = innerClasesStore.typeDescriptor(t.tpe.asInstanceOf[bcodeStore.int.Type]) // the class descriptor of the enumeration class.
           val evalue = t.symbol.name.mangledString // value the actual enumeration value.
           av.visitEnum(name, edesc, evalue)
         } else {
-          assert(toDenot(t.symbol).name.is(DefaultGetterName), toDenot(t.symbol).name.debugString) // this should be default getter. do not emmit.
+            // println(i"not an enum: ${t.symbol} / ${t.symbol.denot.owner} / ${t.symbol.denot.owner.isTerm} / ${t.symbol.denot.owner.flags}")
+            assert(toDenot(t.symbol).name.is(DefaultGetterName),
+              s"${toDenot(t.symbol).name.debugString}") // this should be default getter. do not emmit.
         }
       case t: SeqLiteral =>
         val arrAnnotV: AnnotationVisitor = av.visitArray(name)
-        for(arg <- t.elems) { emitArgument(arrAnnotV, null, arg, bcodeStore)(innerClasesStore) }
+        for (arg <- t.elems) { emitArgument(arrAnnotV, null, arg, bcodeStore)(innerClasesStore) }
         arrAnnotV.visitEnd()
 
       case Apply(fun, args) if fun.symbol == defn.ArrayClass.primaryConstructor ||
@@ -272,11 +280,15 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
           fun.asInstanceOf[Apply].args
         } else args
 
-        val flatArgs = actualArgs.flatMap {
-          case t: tpd.SeqLiteral => t.elems
-          case e => List(e)
+        val flatArgs = actualArgs.flatMap { arg =>
+          normalizeArgument(arg) match {
+            case t: tpd.SeqLiteral => t.elems
+            case e => List(e)
+          }
         }
-        for(arg <- flatArgs) { emitArgument(arrAnnotV, null, arg, bcodeStore)(innerClasesStore) }
+        for(arg <- flatArgs) {
+          emitArgument(arrAnnotV, null, arg, bcodeStore)(innerClasesStore)
+        }
         arrAnnotV.visitEnd()
 /*
       case sb @ ScalaSigBytes(bytes) =>

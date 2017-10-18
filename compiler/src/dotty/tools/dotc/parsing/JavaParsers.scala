@@ -601,7 +601,7 @@ object JavaParsers {
       atPos(cdef.pos) {
         assert(cdef.pos.exists)
         ModuleDef(cdef.name.toTermName,
-          makeTemplate(List(), statics, List(), false)).withMods((cdef.mods & (Flags.AccessFlags | Flags.JavaDefined)).toTermFlags)
+          makeTemplate(List(), statics, List(), false)).withMods((cdef.mods & Flags.RetainedModuleClassFlags).toTermFlags)
       }
 
     def importCompanionObject(cdef: TypeDef): Tree =

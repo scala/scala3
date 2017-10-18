@@ -506,7 +506,7 @@ object Flags {
     Accessor | AbsOverride | Stable | Captured | Synchronized
 
   /** Flags that can apply to a module class */
-  final val RetainedModuleClassFlags: FlagSet = RetainedModuleValAndClassFlags | ImplClass
+  final val RetainedModuleClassFlags: FlagSet = RetainedModuleValAndClassFlags | ImplClass | Enum
 
   /** Packages and package classes always have these flags set */
   final val PackageCreationFlags =

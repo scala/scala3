@@ -35,7 +35,7 @@ import StdNames._
  *          if (true) A else B    ==> A
  *          if (false) A else B   ==> B
  */
-class FirstTransform extends MiniPhaseTransform with InfoTransformer with AnnotationTransformer { thisTransformer =>
+class FirstTransform extends MiniPhaseTransform with InfoTransformer { thisTransformer =>
   import ast.tpd._
 
   override def phaseName = "firstTransform"
