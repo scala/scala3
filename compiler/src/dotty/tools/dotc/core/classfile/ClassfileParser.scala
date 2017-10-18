@@ -32,6 +32,12 @@ object ClassfileParser {
       case tp @ AppliedType(tycon, args) =>
         // disregard tycon itself, but map over it to visit the prefix
         tp.derivedAppliedType(mapOver(tycon), args.mapConserve(this))
+      case tp @ TempPolyType(_, tpe) =>
+        val tpe1 = this(tpe)
+        if (tpe1 eq tpe) tp else tp.copy(tpe = tpe1)
+      case tp @ TempClassInfoType(parents, _, _) =>
+        val parents1 = parents.mapConserve(this)
+        if (parents eq parents1) tp else tp.copy(parentTypes = parents1)
       case _ =>
         mapOver(tp)
     }
@@ -154,7 +160,7 @@ class ClassfileParser(
 
       for (i <- 0 until in.nextChar) parseMember(method = false)
       for (i <- 0 until in.nextChar) parseMember(method = true)
-      classInfo = parseAttributes(classRoot.symbol, classInfo)
+      classInfo = cook.apply(parseAttributes(classRoot.symbol, classInfo))
       if (isAnnotation) addAnnotationConstructor(classInfo)
 
       val companionClassMethod = ctx.synthesizeCompanionMethod(nme.COMPANION_CLASS_METHOD, classRoot, moduleRoot)

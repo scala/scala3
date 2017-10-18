@@ -66,6 +66,7 @@ class CompilationTests extends ParallelTesting {
       ),
       scala2Mode
     ) +
+    compileFilesInDir("../tests/pos-special/i3273", defaultOptions) +
     compileFilesInDir("../tests/pos-special/spec-t5545", defaultOptions) +
     compileFilesInDir("../tests/pos-special/strawman-collections", defaultOptions) +
     compileFile("../scala2-library/src/library/scala/collection/immutable/IndexedSeq.scala", defaultOptions) +
