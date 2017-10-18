@@ -76,9 +76,7 @@ class ElimRepeated extends MiniPhaseTransform with InfoTransformer { thisTransfo
   override def transformApply(tree: Apply)(implicit ctx: Context, info: TransformerInfo): Tree = {
     val formals =
       ctx.atPhase(thisTransformer) { implicit ctx =>
-        (tree.fun.tpe.widen: @unchecked) match {
-          case mt: MethodType => mt.paramInfos
-        }
+        tree.fun.tpe.widen.asInstanceOf[MethodType].paramInfos
       }
     val args1 = tree.args.zipWithConserve(formals) { (arg, formal) =>
       arg match {
