@@ -1787,22 +1787,21 @@ object messages {
             |and has the ${"enum"} keyword."""
   }
 
-  case class ExpectedTypeBoundOrEquals()(implicit ctx: Context)
+  case class ExpectedTypeBoundOrEquals(found: Token)(implicit ctx: Context)
     extends Message(ExpectedTypeBoundOrEqualsID) {
     val kind = "Syntax"
-    val msg =
-        hl"""`=', `>:', or `<:' expected"""
+    val msg = hl"${"="}, ${">:"}, or ${"<:"} expected, but ${Tokens.showToken(found)} found"
 
     val explanation =
-      hl"""|In Scala, type parameters and abstract types may be constrained by a type bound.
+      hl"""Type parameters and abstract types may be constrained by a type bound.
            |Such type bounds limit the concrete values of the type variables and possibly
            |reveal more information about the members of such types.
            |
-           |A lower type bound `B >: A` expresses that the type variable `B`
-           |refers to a supertype of type `A`.
+           |A lower type bound ${"B >: A"} expresses that the type variable ${"B"}
+           |refers to a supertype of type ${"A"}.
            |
-           |An upper type bound `T <: A` declares that type variable `T`
-           |refers to a subtype of type `A`.
+           |An upper type bound ${"T <: A"} declares that type variable ${"T"}
+           |refers to a subtype of type ${"A"}.
            |"""
   }
 }
