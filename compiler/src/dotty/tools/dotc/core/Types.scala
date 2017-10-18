@@ -3717,16 +3717,8 @@ object Types {
       case _ =>
         NoType
     }
-    def isInstantiatable(tp: Type)(implicit ctx: Context): Boolean = zeroParamClass(tp) match {
-      case cinfo: ClassInfo =>
-        val tref = tp.narrow
-        val selfType = cinfo.selfType.asSeenFrom(tref, cinfo.cls)
-        tref <:< selfType
-      case _ =>
-        false
-    }
     def unapply(tp: Type)(implicit ctx: Context): Option[SingleDenotation] =
-      if (isInstantiatable(tp)) {
+      if (zeroParamClass(tp).exists) {
         val absMems = tp.abstractTermMembers
         // println(s"absMems: ${absMems map (_.show) mkString ", "}")
         if (absMems.size == 1)
