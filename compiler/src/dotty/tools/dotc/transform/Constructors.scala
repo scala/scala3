@@ -39,6 +39,9 @@ class Constructors extends MiniPhaseTransform with IdentityDenotTransformer { th
     // performed before the rhs undergoes the owner change. This would lead
     // to more symbols being retained as parameters. Test case in run/capturing.scala.
 
+  override def treeTransformPhase(implicit ctx: Context, info: TransformerInfo) =
+    groupEndPhase
+
   /** The private vals that are known to be retained as class fields */
   private val retainedPrivateVals = mutable.Set[Symbol]()
 

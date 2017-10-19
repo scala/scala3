@@ -20,6 +20,9 @@ class VCElideAllocations extends MiniPhaseTransform with IdentityDenotTransforme
 
   override def phaseName: String = "vcElideAllocations"
 
+  override def treeTransformPhase(implicit ctx: Context, info: TransformerInfo) =
+    groupEndPhase
+
   override def runsAfter: Set[Class[_ <: Phase]] = Set(classOf[ElimErasedValueType])
 
   override def transformApply(tree: Apply)(implicit ctx: Context, info: TransformerInfo): Tree =

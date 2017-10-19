@@ -23,6 +23,9 @@ class ElimErasedValueType extends MiniPhaseTransform with InfoTransformer {
 
   override def runsAfter: Set[Class[_ <: Phase]] = Set(classOf[Erasure])
 
+  //override def treeTransformPhase(implicit ctx: Context, info: TransformerInfo) =
+  //  groupEndPhase
+
   def transformInfo(tp: Type, sym: Symbol)(implicit ctx: Context): Type = sym match {
     case sym: ClassSymbol if sym is ModuleClass =>
       sym.companionClass match {

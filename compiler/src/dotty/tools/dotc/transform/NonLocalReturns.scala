@@ -24,6 +24,9 @@ class NonLocalReturns extends MiniPhaseTransform { thisTransformer =>
 
   override def runsAfter: Set[Class[_ <: Phase]] = Set(classOf[ElimByName])
 
+  override def treeTransformPhase(implicit ctx: Context, info: TransformerInfo) =
+    groupEndPhase
+
   private def ensureConforms(tree: Tree, pt: Type)(implicit ctx: Context) =
     if (tree.tpe <:< pt) tree
     else Erasure.Boxing.adaptToType(tree, pt)
