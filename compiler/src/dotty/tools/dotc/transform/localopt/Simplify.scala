@@ -35,6 +35,9 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
   private[localopt] var SeqFactoryClass: Symbol = null
   private[localopt] var CommutativePrimitiveOperations: Set[Symbol] = null
 
+  override def treeTransformPhase(implicit ctx: Context, info: TransformerInfo) =
+    groupEndPhase
+
   /** The original intention is to run most optimizations both before and after erasure.
    *  Erasure creates new inefficiencies as well as new optimization opportunities.
    *

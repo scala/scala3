@@ -29,6 +29,9 @@ class PhantomArgLift extends MiniPhaseTransform {
 
   override def phaseName: String = "phantomArgLift"
 
+  override def treeTransformPhase(implicit ctx: Context, info: TransformerInfo) =
+    groupEndPhase
+
   /** Check what the phase achieves, to be called at any point after it is finished. */
   override def checkPostCondition(tree: Tree)(implicit ctx: Context): Unit = tree match {
     case tree: Apply =>
