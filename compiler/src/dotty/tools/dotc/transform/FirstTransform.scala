@@ -40,6 +40,9 @@ class FirstTransform extends MiniPhaseTransform with InfoTransformer { thisTrans
 
   override def phaseName = "firstTransform"
 
+  override def treeTransformPhase(implicit ctx: Context, info: TransformerInfo) =
+    groupEndPhase
+
   private[this] var addCompanionPhases: List[NeedsCompanions] = _
 
   override def changesMembers = true // the phase adds companion objects
