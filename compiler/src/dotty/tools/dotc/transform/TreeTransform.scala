@@ -62,7 +62,8 @@ object TreeTransforms {
     def phase: MiniPhase
 
     /** The phase at which the tree is transformed */
-    final def treeTransformPhase: Phase = phase.next
+    def treeTransformPhase(implicit ctx: Context, info: TransformerInfo): Phase =
+      phase.next
 
     val cpy: TypedTreeCopier = cpyBetweenPhases
 
@@ -140,10 +141,11 @@ object TreeTransforms {
     /** Transform single node using all transforms following the current one in this group */
     def transformFollowing(tree: Tree)(implicit ctx: Context, info: TransformerInfo): Tree = info.group.transformSingle(tree, phase.idx + 1)
 
-    def atGroupEnd[T](action : Context => T)(implicit ctx: Context, info: TransformerInfo) = {
-      val last = info.transformers(info.transformers.length - 1)
-      action(ctx.withPhase(last.phase.next))
-    }
+    def atGroupEnd[T](action : Context => T)(implicit ctx: Context, info: TransformerInfo) =
+      action(ctx.withPhase(groupEndPhase))
+
+    def groupEndPhase(implicit ctx: Context, info: TransformerInfo) =
+      info.transformers(info.transformers.length - 1).phase.next
   }
 
   /** A phase that defines a TreeTransform to be used in a group */
@@ -494,7 +496,7 @@ object TreeTransforms {
       var allDone = i < l
       while (i < l) {
         val oldTransform = result(i)
-        val newTransform = mutator(oldTransform, tree, ctx.withPhase(oldTransform.treeTransformPhase))
+        val newTransform = mutator(oldTransform, tree, ctx.withPhase(oldTransform.treeTransformPhase(ctx, info)))
         allDone = allDone && (newTransform eq NoTransform)
         if (!(oldTransform eq newTransform)) {
           if (!transformersCopied) result = result.clone()
@@ -1180,7 +1182,7 @@ object TreeTransforms {
           util.Stats.record("TreeTransform.transform")
           // if cur > 0 then some of the symbols can be created by already performed transformations
           // this means that their denotations could not exists in previous period
-          val pctx = ctx.withPhase(info.transformers(cur).treeTransformPhase)
+          val pctx = ctx.withPhase(info.transformers(cur).treeTransformPhase(ctx, info))
           tree match {
             //split one big match into 2 smaller ones
             case tree: NameTree => transformNamed(tree, info, cur)(pctx)
