@@ -511,13 +511,14 @@ trait ParallelTesting extends RunnerOrchestration { self =>
 
           if (outputLines.length != checkLines.length || !linesMatch) {
             // Print diff to files and summary:
-            val diff = outputLines.zip(checkLines).map { case (act, exp) =>
-              DiffUtil.mkColoredLineDiff(exp, act)
+            import DiffUtil._
+            val diff = (outputLines :+ NO_NEW_LINE).zip(checkLines :+ NO_NEW_LINE).map { case (act, exp) =>
+              mkColoredLineDiff(exp, act)
             }.mkString("\n")
 
             val msg =
               s"""|Output from '$sourceTitle' did not match check file.
-                  |Diff ('e' is expected, 'a' is actual):
+                  |Diff (expected on the left, actual right):
                   |""".stripMargin + diff + "\n"
             echo(msg)
             addFailureInstruction(msg)
