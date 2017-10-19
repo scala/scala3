@@ -24,6 +24,9 @@ import dotty.tools.dotc.util.Positions.Position
 class ExpandSAMs extends MiniPhaseTransform { thisTransformer =>
   override def phaseName = "expandSAMs"
 
+  override def treeTransformPhase(implicit ctx: Context, info: TransformerInfo) =
+    groupEndPhase
+
   import ast.tpd._
 
   /** Is the SAMType `cls` also a SAM under the rules of the platform? */

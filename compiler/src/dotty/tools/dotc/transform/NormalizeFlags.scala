@@ -6,7 +6,7 @@ import DenotTransformers.SymTransformer
 import Phases.Phase
 import Contexts.Context
 import SymDenotations.SymDenotation
-import TreeTransforms.MiniPhaseTransform
+import TreeTransforms.{MiniPhaseTransform, TransformerInfo}
 import Flags._, Symbols._
 
 /** 1. Widens all private[this] and protected[this] qualifiers to just private/protected
@@ -16,6 +16,9 @@ import Flags._, Symbols._
  */
 class NormalizeFlags extends MiniPhaseTransform with SymTransformer { thisTransformer =>
   override def phaseName = "normalizeFlags"
+
+  override def treeTransformPhase(implicit ctx: Context, info: TransformerInfo) =
+    groupEndPhase
 
   def transformSym(ref: SymDenotation)(implicit ctx: Context) = {
     var newFlags = ref.flags &~ Local

@@ -32,6 +32,9 @@ class LiftTry extends MiniPhase with IdentityDenotTransformer { thisTransform =>
   class Transform(needLift: Boolean) extends TreeTransform {
     def phase = thisTransform
 
+    override def treeTransformPhase(implicit ctx: Context, info: TransformerInfo) =
+      groupEndPhase
+
     override def prepareForApply(tree: Apply)(implicit ctx: Context) =
       if (tree.fun.symbol.is(Label)) this
       else liftingTransform

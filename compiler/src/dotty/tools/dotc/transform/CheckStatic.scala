@@ -39,6 +39,9 @@ class CheckStatic extends MiniPhaseTransform { thisTransformer =>
 
   override def phaseName = "checkStatic"
 
+  override def treeTransformPhase(implicit ctx: Context, info: TransformerInfo) =
+    groupEndPhase
+
   override def transformTemplate(tree: tpd.Template)(implicit ctx: Context, info: TransformerInfo): tpd.Tree = {
     val defns = tree.body.collect{case t: ValOrDefDef => t}
     var hadNonStaticField = false

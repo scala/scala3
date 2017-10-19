@@ -30,6 +30,10 @@ class ElimRepeated extends MiniPhaseTransform with InfoTransformer { thisTransfo
 
   override def phaseName = "elimRepeated"
 
+  override def treeTransformPhase(implicit ctx: Context, info: TransformerInfo) =
+    groupEndPhase
+
+
   override def changesMembers = true // the phase adds vararg bridges
 
   def transformInfo(tp: Type, sym: Symbol)(implicit ctx: Context): Type =
