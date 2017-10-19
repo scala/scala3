@@ -25,7 +25,7 @@ import dotty.tools.dotc.core.Phases.Phase
 /** Make private term members that are accessed from another class
  *  non-private by resetting the Private flag and expanding their name.
  *
- *  Make private accessor in value class not-private. Ihis is necessary to unbox
+ *  Make private accessor in value class not-private. This is necessary to unbox
  *  the value class when accessing it from separate compilation units
  *
  *  Also, make non-private any private parameter forwarders that forward to an inherited
@@ -40,6 +40,9 @@ class ExpandPrivate extends MiniPhaseTransform with IdentityDenotTransformer { t
   import ast.tpd._
 
   override def phaseName: String = "expandPrivate"
+
+  override def treeTransformPhase(implicit ctx: Context, info: TransformerInfo) =
+    groupEndPhase
 
   // This phase moves methods around (in infotransform) so it may need to make other methods public
   override def runsAfter: Set[Class[_ <: Phase]] = Set(classOf[MoveStatics])

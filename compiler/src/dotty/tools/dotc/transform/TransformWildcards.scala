@@ -16,6 +16,9 @@ class TransformWildcards extends MiniPhaseTransform with IdentityDenotTransforme
 
   override def phaseName = "transformWildcards"
 
+  override def treeTransformPhase(implicit ctx: Context, info: TransformerInfo) =
+    groupEndPhase
+
   override def checkPostCondition(tree: Tree)(implicit ctx: Context): Unit = {
     tree match {
       case vDef: ValDef => assert(!tpd.isWildcardArg(vDef.rhs))

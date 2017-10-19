@@ -9,7 +9,7 @@ import dotty.tools.dotc.core.Names._
 import dotty.tools.dotc.core.Phases
 import dotty.tools.dotc.core.SymDenotations.SymDenotation
 import dotty.tools.dotc.core.Symbols._
-import dotty.tools.dotc.transform.TreeTransforms.MiniPhaseTransform
+import dotty.tools.dotc.transform.TreeTransforms.{MiniPhaseTransform, TransformerInfo}
 
 /** Renames lifted classes to local numbering scheme */
 class RenameLifted extends MiniPhaseTransform with SymTransformer { thisTransformer =>
@@ -17,6 +17,9 @@ class RenameLifted extends MiniPhaseTransform with SymTransformer { thisTransfor
   override def phaseName = "renameLifted"
 
   override def runsAfterGroupsOf: Set[Class[_ <: Phases.Phase]] = Set(classOf[RestoreScopes])
+
+  override def treeTransformPhase(implicit ctx: Context, info: TransformerInfo) =
+    groupEndPhase
 
   def transformSym(ref: SymDenotation)(implicit ctx: Context): SymDenotation =
     if (needsRefresh(ref.symbol)) ref.copySymDenotation(name = refreshedName(ref.symbol))

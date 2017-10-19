@@ -21,6 +21,9 @@ class MoveStatics extends MiniPhaseTransform with SymTransformer { thisTransform
   import tpd._
   override def phaseName = "moveStatic"
 
+  override def treeTransformPhase(implicit ctx: Context, info: TransformerInfo) =
+    groupEndPhase
+
   def transformSym(sym: SymDenotation)(implicit ctx: Context): SymDenotation = {
     if (sym.hasAnnotation(defn.ScalaStaticAnnot) && sym.owner.is(Flags.Module) && sym.owner.companionClass.exists) {
       sym.owner.asClass.delete(sym.symbol)
