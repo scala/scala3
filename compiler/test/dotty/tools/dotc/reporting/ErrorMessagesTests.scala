@@ -1024,4 +1024,18 @@ class ErrorMessagesTests extends ErrorMessagesTest {
       val EnumCaseDefinitionInNonEnumOwner(owner) :: Nil = messages
       assertEquals("object Qux", owner.show)
     }
+
+    @Test def expectedTypeBoundOrEquals =
+      checkMessagesAfter("frontend") {
+        """object typedef {
+          |  type asd > Seq
+          |}
+        """.stripMargin
+      }.expect { (ictx, messages) =>
+        implicit val ctx: Context = ictx
+
+        assertMessageCount(1, messages)
+        val ExpectedTypeBoundOrEquals(found) :: Nil = messages
+        assertEquals(Tokens.IDENTIFIER, found)
+      }
 }

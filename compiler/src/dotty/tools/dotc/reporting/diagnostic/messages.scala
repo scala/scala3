@@ -1770,7 +1770,7 @@ object messages {
           |"""
   }
 
-  case class ExtendFinalClass(clazz:Symbol, finalClazz: Symbol)(implicit ctx: Context) 
+  case class ExtendFinalClass(clazz:Symbol, finalClazz: Symbol)(implicit ctx: Context)
     extends Message(ExtendFinalClassID) {
     val kind = "Syntax"
     val msg = hl"$clazz cannot extend ${"final"} $finalClazz"
@@ -1785,5 +1785,23 @@ object messages {
         hl"""${"enum"} cases are only allowed within the companion ${"object"} of an ${"enum class"}.
             |If you want to create an ${"enum"} case, make sure the corresponding ${"enum class"} exists
             |and has the ${"enum"} keyword."""
+  }
+
+  case class ExpectedTypeBoundOrEquals(found: Token)(implicit ctx: Context)
+    extends Message(ExpectedTypeBoundOrEqualsID) {
+    val kind = "Syntax"
+    val msg = hl"${"="}, ${">:"}, or ${"<:"} expected, but ${Tokens.showToken(found)} found"
+
+    val explanation =
+      hl"""Type parameters and abstract types may be constrained by a type bound.
+           |Such type bounds limit the concrete values of the type variables and possibly
+           |reveal more information about the members of such types.
+           |
+           |A lower type bound ${"B >: A"} expresses that the type variable ${"B"}
+           |refers to a supertype of type ${"A"}.
+           |
+           |An upper type bound ${"T <: A"} declares that type variable ${"T"}
+           |refers to a subtype of type ${"A"}.
+           |"""
   }
 }

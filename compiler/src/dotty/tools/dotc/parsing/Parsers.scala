@@ -2156,7 +2156,7 @@ object Parsers {
           case SUPERTYPE | SUBTYPE | SEMI | NEWLINE | NEWLINES | COMMA | RBRACE | EOF =>
             TypeDef(name, lambdaAbstract(tparams, typeBounds())).withMods(mods).setComment(in.getDocComment(start))
           case _ =>
-            syntaxErrorOrIncomplete("`=', `>:', or `<:' expected")
+            syntaxErrorOrIncomplete(ExpectedTypeBoundOrEquals(in.token))
             EmptyTree
         }
       }
