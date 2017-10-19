@@ -19,6 +19,9 @@ class CrossCastAnd extends MiniPhaseTransform { thisTransform =>
 
   override def phaseName: String = "crossCast"
 
+  override def treeTransformPhase(implicit ctx: Context, info: TransformerInfo) =
+    groupEndPhase
+
   override def transformSelect(tree: tpd.Select)(implicit ctx: Context, info: TransformerInfo): tpd.Tree = {
 
     lazy val qtype = tree.qualifier.tpe.widen

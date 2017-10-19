@@ -13,6 +13,9 @@ class Splitter extends MiniPhaseTransform { thisTransform =>
 
   override def phaseName: String = "splitter"
 
+  override def treeTransformPhase(implicit ctx: Context, info: TransformerInfo) =
+    groupEndPhase
+
   /** Distribute arguments among splitted branches */
   def distribute(tree: GenericApply[Type], rebuild: (Tree, List[Tree]) => Context => Tree)(implicit ctx: Context) = {
     def recur(fn: Tree): Tree = fn match {

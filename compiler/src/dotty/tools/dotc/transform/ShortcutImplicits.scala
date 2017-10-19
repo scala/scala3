@@ -64,6 +64,9 @@ class ShortcutImplicits extends MiniPhase with IdentityDenotTransformer { thisTr
   class Transform extends TreeTransform {
     def phase = thisTransform
 
+    override def treeTransformPhase(implicit ctx: Context, info: TransformerInfo) =
+      groupEndPhase
+
     override def prepareForUnit(tree: Tree)(implicit ctx: Context) = new Transform
 
     /** A map to cache mapping local methods to their direct counterparts.

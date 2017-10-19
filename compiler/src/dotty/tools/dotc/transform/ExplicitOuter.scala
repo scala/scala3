@@ -42,6 +42,9 @@ class ExplicitOuter extends MiniPhaseTransform with InfoTransformer { thisTransf
 
   override def phaseName: String = "explicitOuter"
 
+  override def treeTransformPhase(implicit ctx: Context, info: TransformerInfo) =
+    groupEndPhase
+
   /** List of names of phases that should have finished their processing of all compilation units
     * before this phase starts
     */
