@@ -1033,7 +1033,6 @@ class ErrorMessagesTests extends ErrorMessagesTest {
         """.stripMargin
       }.expect { (ictx, messages) =>
         implicit val ctx: Context = ictx
-        val defn = ictx.definitions
 
         assertMessageCount(1, messages)
         val ExpectedTypeBoundOrEquals(found) :: Nil = messages
