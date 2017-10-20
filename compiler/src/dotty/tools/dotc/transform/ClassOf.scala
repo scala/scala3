@@ -21,6 +21,9 @@ class ClassOf extends MiniPhaseTransform {
 
   override def phaseName: String = "classOf"
 
+  override def treeTransformPhase(implicit ctx: Context, info: TransformerInfo) =
+    groupEndPhase
+
   override def transformTypeApply(tree: TypeApply)(implicit ctx: Context, info: TransformerInfo): Tree =
     if (tree.symbol eq defn.Predef_classOf) {
       val targ = tree.args.head.tpe

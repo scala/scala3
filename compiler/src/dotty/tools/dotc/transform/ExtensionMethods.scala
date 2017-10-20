@@ -134,7 +134,7 @@ class ExtensionMethods extends MiniPhaseTransform with DenotTransformer with Ful
   private def createExtensionMethod(imeth: Symbol, staticClass: Symbol)(implicit ctx: Context): TermSymbol = {
     val extensionName = extensionNames(imeth).head.toTermName
     val extensionMeth = ctx.newSymbol(staticClass, extensionName,
-      imeth.flags | Final &~ (Override | Protected | AbsOverride),
+      (imeth.flags | Final) &~ (Override | Protected | AbsOverride),
       fullyParameterizedType(imeth.info, imeth.owner.asClass),
       privateWithin = imeth.privateWithin, coord = imeth.coord)
     extensionMeth.addAnnotations(imeth.annotations)(ctx.withPhase(thisTransformer))
