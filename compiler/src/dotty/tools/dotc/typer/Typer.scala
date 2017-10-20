@@ -2224,9 +2224,11 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
         if (isFullyDefined(wtp, force = ForceDegree.all) &&
             ctx.typerState.constraint.ne(prevConstraint)) adapt(tree, pt)
         else err.typeMismatch(tree, pt, failure)
-      if (ctx.mode.is(Mode.ImplicitsEnabled))
-        inferView(tree, pt) match {
+      if (ctx.mode.is(Mode.ImplicitsEnabled)) {
+        val nestedCtx = ctx.fresh.setNewTyperState()
+        inferView(tree, pt)(nestedCtx) match {
           case SearchSuccess(inferred, _, _, _) =>
+            nestedCtx.typerState.commit()
             adapt(inferred, pt)(ctx.retractMode(Mode.ImplicitsEnabled))
           case failure: SearchFailure =>
             if (pt.isInstanceOf[ProtoType] && !failure.isInstanceOf[AmbiguousImplicits])
@@ -2236,6 +2238,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
               tree
             else recover(failure)
         }
+      }
       else recover(NoImplicitMatches)
     }
 
