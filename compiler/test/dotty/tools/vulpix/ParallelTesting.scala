@@ -511,8 +511,9 @@ trait ParallelTesting extends RunnerOrchestration { self =>
 
           if (outputLines.length != checkLines.length || !linesMatch) {
             // Print diff to files and summary:
+            val expectedSize = DiffUtil.EOF.length max outputLines.map(_.length).max
             val diff = (outputLines :+ DiffUtil.EOF).zip(checkLines :+ DiffUtil.EOF).map { case (act, exp) =>
-              DiffUtil.mkColoredLineDiff(exp, act)
+              DiffUtil.mkColoredLineDiff(exp, act, expectedSize)
             }.mkString("\n")
 
             val msg =
