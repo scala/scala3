@@ -42,15 +42,16 @@ class ElimByName extends TransformByNameApply with InfoTransformer { thisTransfo
 
   override def phaseName: String = "elimByName"
 
-  //override def treeTransformPhase(implicit ctx: Context, info: TransformerInfo) =
-  //  groupEndPhase
+  override def treeTransformPhase(implicit ctx: Context, info: TransformerInfo) =
+    groupEndPhase
 
  override def runsAfterGroupsOf = Set(classOf[Splitter])
     // I got errors running this phase in an earlier group, but I did not track them down.
 
   /** Map `tree` to `tree.apply()` is `ftree` was of ExprType and becomes now a function */
   private def applyIfFunction(tree: Tree, ftree: Tree)(implicit ctx: Context) =
-    if (isByNameRef(ftree)) tree.select(defn.Function0_apply).appliedToNone
+    if (isByNameRef(ftree))
+      ctx.atPhase(next) { implicit ctx => tree.select(defn.Function0_apply).appliedToNone }
     else tree
 
   override def transformIdent(tree: Ident)(implicit ctx: Context, info: TransformerInfo): Tree =
@@ -68,9 +69,11 @@ class ElimByName extends TransformByNameApply with InfoTransformer { thisTransfo
   }
 
   override def transformValDef(tree: ValDef)(implicit ctx: Context, info: TransformerInfo): Tree =
-    if (exprBecomesFunction(tree.symbol))
-      cpy.ValDef(tree)(tpt = tree.tpt.withType(tree.symbol.info))
-    else tree
+    ctx.atPhase(next) { implicit ctx =>
+      if (exprBecomesFunction(tree.symbol))
+        cpy.ValDef(tree)(tpt = tree.tpt.withType(tree.symbol.info))
+      else tree
+    }
 
   def transformInfo(tp: Type, sym: Symbol)(implicit ctx: Context): Type = tp match {
     case ExprType(rt) if exprBecomesFunction(sym) => defn.FunctionOf(Nil, rt)
