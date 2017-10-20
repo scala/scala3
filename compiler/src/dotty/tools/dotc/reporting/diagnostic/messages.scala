@@ -1804,4 +1804,14 @@ object messages {
            |refers to a subtype of type ${"A"}.
            |"""
   }
+
+  case class ClassAndCompanionNameClash(cls: Symbol)(implicit ctx: Context)
+    extends Message(ClassAndCompanionNameClashID) {
+    val kind = "Syntax"
+    val msg = hl"Naming clash, ${cls.owner} and it's companion object defines $cls"
+    val explanation =
+      s"""It is not allowed to define a class or module with the same
+        |name inside a class and companion object.
+      """
+  }
 }

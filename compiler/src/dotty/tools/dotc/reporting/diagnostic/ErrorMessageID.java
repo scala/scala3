@@ -103,6 +103,7 @@ public enum ErrorMessageID {
     ExtendFinalClassID,
     EnumCaseDefinitionInNonEnumOwnerID,
     ExpectedTypeBoundOrEqualsID,
+    ClassAndCompanionNameClashID,
     ;
 
     public int errorNumber() {
