@@ -2,16 +2,27 @@ package dotty.tools.dotc
 package sbt
 
 import ast.{Trees, tpd}
-import core._, core.Decorators._
-import Annotations._, Contexts._, Flags._, Phases._, Trees._, Types._, Symbols._
-import Names._, NameOps._, StdNames._
+import core._
+import core.Decorators._
+import Annotations._
+import Contexts._
+import Flags._
+import Phases._
+import Trees._
+import Types._
+import Symbols._
+import Names._
+import NameOps._
+import StdNames._
 import NameKinds.DefaultGetterName
 import typer.Inliner
 import typer.ErrorReporting.cyclicErrorMsg
 import transform.SymUtils._
-
 import dotty.tools.io.Path
 import java.io.PrintWriter
+
+import dotty.tools.dotc.config.JavaPlatform
+import xsbti.api.DefinitionType
 
 import scala.collection.mutable
 
@@ -51,6 +62,7 @@ class ExtractAPI extends Phase {
 
       val apiTraverser = new ExtractAPICollector
       val sources = apiTraverser.apiSource(unit.tpdTree)
+      val mainClasses = apiTraverser.mainClasses
 
       if (dumpInc) {
         // Append to existing file that should have been created by ExtractDependencies
@@ -61,8 +73,10 @@ class ExtractAPI extends Phase {
         } finally pw.close()
       }
 
-      if (ctx.sbtCallback != null)
+      if (ctx.sbtCallback != null) {
         sources.foreach(ctx.sbtCallback.api(sourceFile.file, _))
+        mainClasses.foreach(ctx.sbtCallback.mainClass(sourceFile.file, _))
+      }
     }
   }
 }
@@ -127,6 +141,7 @@ private class ExtractAPICollector(implicit val ctx: Context) extends ThunkHolder
   private[this] val refinedTypeCache = new mutable.HashMap[(api.Type, api.Definition), api.Structure]
 
   private[this] val allNonLocalClassesInSrc = new mutable.HashSet[xsbti.api.ClassLike]
+  private[this] val _mainClasses = new mutable.HashSet[String]
 
   private[this] object Constants {
     val emptyStringArray = Array[String]()
@@ -177,6 +192,11 @@ private class ExtractAPICollector(implicit val ctx: Context) extends ThunkHolder
   def apiClass(sym: ClassSymbol): api.ClassLikeDef =
     classLikeCache.getOrElseUpdate(sym, computeClass(sym))
 
+  def mainClasses: Set[String] = {
+    forceThunks()
+    _mainClasses.toSet
+  }
+
   private def computeClass(sym: ClassSymbol): api.ClassLikeDef = {
     import xsbti.api.{DefinitionType => dt}
     val defType =
@@ -219,6 +239,11 @@ private class ExtractAPICollector(implicit val ctx: Context) extends ThunkHolder
     // }
 
     allNonLocalClassesInSrc += cl
+
+    val javaPlatform = ctx.platform.asInstanceOf[JavaPlatform]
+    if (sym.isStatic && defType == DefinitionType.Module && javaPlatform.hasJavaMainMethod(sym)) {
+      _mainClasses += name
+    }
 
     api.ClassLikeDef.of(name, acc, modifiers, anns, tparams, defType)
   }
