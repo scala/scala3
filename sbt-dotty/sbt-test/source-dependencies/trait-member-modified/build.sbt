@@ -3,25 +3,22 @@
  *  b) checks overall number of compilations performed
  */
 TaskKey[Unit]("check-compilations") := {
-  val analysis = (compile in Compile).value
-  val srcDir = (scalaSource in Compile).value
-  def relative(f: java.io.File): java.io.File =  f.relativeTo(srcDir) getOrElse f
+  val analysis = (compile in Compile).value.asInstanceOf[sbt.internal.inc.Analysis]
   val allCompilations = analysis.compilations.allCompilations
-  val recompiledFiles: Seq[Set[java.io.File]] = allCompilations map { c =>
-    val recompiledFiles = analysis.apis.internal.collect {
-      case (file, api) if api.compilation.startTime == c.startTime => relative(file)
+  val recompiledClasses: Seq[Set[String]] = allCompilations map { c =>
+    val recompiledClasses = analysis.apis.internal.collect {
+      case (clazz, api) if api.compilationTimestamp() == c.getStartTime() => clazz
     }
-    recompiledFiles.toSet
+    recompiledClasses.toSet
   }
-  def recompiledFilesInIteration(iteration: Int, fileNames: Set[String]) = {
-    val files = fileNames.map(new java.io.File(_))
-    assert(recompiledFiles(iteration) == files, "%s != %s".format(recompiledFiles(iteration), files))
+  def recompiledFilesInIteration(iteration: Int, classNames: Set[String]): Unit = {
+    assert(recompiledClasses(iteration) == classNames, "%s != %s".format(recompiledClasses(iteration), classNames))
   }
   assert(allCompilations.size == 2)
   // B.scala is just compiled at the beginning
-  recompiledFilesInIteration(0, Set("B.scala"))
+  recompiledFilesInIteration(0, Set("B"))
   // A.scala is changed and recompiled
-  recompiledFilesInIteration(1, Set("A.scala"))
+  recompiledFilesInIteration(1, Set("A"))
 }
 
 logLevel := Level.Debug
