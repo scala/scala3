@@ -8,11 +8,12 @@ object DiffUtil {
   private final val ANSI_DEFAULT = "\u001B[0m"
   private final val ANSI_RED = "\u001B[31m"
   private final val ANSI_GREEN = "\u001B[32m"
+  private final val ANSI_EOF = "\u001B[2m"
 
   private final val DELETION_COLOR = ANSI_RED
   private final val ADDITION_COLOR = ANSI_GREEN
 
-  val NO_NEW_LINE = new String() // Unique string up to reference
+  val EOF = new String("EOF") // Unique string up to reference
 
   @tailrec private def splitTokens(str: String, acc: List[String] = Nil): List[String] = {
       if (str == "") {
@@ -61,19 +62,15 @@ object DiffUtil {
   }
 
   def mkColoredLineDiff(expected: String, actual: String): String = {
-    if (expected.eq(NO_NEW_LINE) && actual.eq(NO_NEW_LINE)) {
-      "EOF" + (" " * 57) + "|   EOF"
-    } else if (expected.eq(NO_NEW_LINE)) {
-      ADDITION_COLOR + "EOF" + ANSI_DEFAULT + (" " * 57) + "|   " + ANSI_RED + actual + ANSI_DEFAULT
-    } else if (actual.eq(NO_NEW_LINE)) {
-      ADDITION_COLOR + expected + ANSI_DEFAULT + (" " * (60 - expected.length).max(0)) + "|   " + ANSI_RED + "EOF" + ANSI_DEFAULT
-    } else {
+    lazy val diff = {
       val tokens = splitTokens(expected, Nil).toArray
       val lastTokens = splitTokens(actual, Nil).toArray
+      hirschberg(lastTokens, tokens)
+    }
 
-      val diff = hirschberg(lastTokens, tokens)
-
-      val expectedDiff = diff.collect {
+    val expectedDiff =
+      if (expected eq EOF) ANSI_EOF + expected + ANSI_DEFAULT
+      else diff.collect {
         case Unmodified(str) => str
         case Inserted(str) =>
           ADDITION_COLOR + str + ANSI_DEFAULT
@@ -82,7 +79,9 @@ object DiffUtil {
         case Deleted(_) => ""
       }.mkString
 
-      val actualDiff = diff.collect {
+    val actualDiff =
+      if (actual eq EOF) ANSI_EOF + actual + ANSI_DEFAULT
+      else diff.collect {
         case Unmodified(str) => str
         case Inserted(_) => ""
         case Modified(str, _) =>
@@ -91,8 +90,9 @@ object DiffUtil {
           DELETION_COLOR + str + ANSI_DEFAULT
       }.mkString
 
-      expectedDiff + (" " * (60 - expected.length).max(0)) + "|   " + actualDiff
-    }
+    val pad = " " * (60 - expected.length).max(0)
+
+    expectedDiff + pad + "| " + actualDiff
   }
 
   def mkColoredCodeDiff(code: String, lastCode: String, printDiffDel: Boolean): String = {
