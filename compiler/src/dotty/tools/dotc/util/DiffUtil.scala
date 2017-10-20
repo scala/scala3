@@ -82,13 +82,6 @@ object DiffUtil {
         case Deleted(_) => ""
       }.mkString
 
-      val expectedDiffSize = diff.collect {
-        case Unmodified(str) => str.length
-        case Inserted(str) => str.length
-        case Modified(_, str) => str.length
-        case Deleted(_) => 0
-      }.sum
-
       val actualDiff = diff.collect {
         case Unmodified(str) => str
         case Inserted(_) => ""
@@ -98,7 +91,7 @@ object DiffUtil {
           DELETION_COLOR + str + ANSI_DEFAULT
       }.mkString
 
-      expectedDiff + (" " * (60 - expectedDiffSize).max(0)) + "|   " + actualDiff
+      expectedDiff + (" " * (60 - expected.length).max(0)) + "|   " + actualDiff
     }
   }
 
