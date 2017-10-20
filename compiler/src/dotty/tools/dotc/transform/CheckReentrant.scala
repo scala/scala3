@@ -45,9 +45,6 @@ class CheckReentrant extends MiniPhaseTransform { thisTransformer =>
 
   override def phaseName = "checkReentrant"
 
-  override def treeTransformPhase(implicit ctx: Context, info: TransformerInfo) =
-    groupEndPhase
-
   private[this] var shared: Set[Symbol] = Set()
   private[this] var seen: Set[ClassSymbol] = Set()
   private[this] var indent: Int = 0

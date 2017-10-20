@@ -806,9 +806,6 @@ class RefChecks extends MiniPhase { thisTransformer =>
   class Transform(currentLevel: RefChecks.OptLevelInfo = RefChecks.NoLevelInfo) extends TreeTransform {
     def phase = thisTransformer
 
-    override def treeTransformPhase(implicit ctx: Context, info: TransformerInfo) =
-      groupEndPhase
-
     override def prepareForStats(trees: List[Tree])(implicit ctx: Context) = {
       // println(i"preparing for $trees%; %, owner = ${ctx.owner}")
       if (ctx.owner.isTerm) new Transform(new LevelInfo(currentLevel.levelAndIndex, trees))

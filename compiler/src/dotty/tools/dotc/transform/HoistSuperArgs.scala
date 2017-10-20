@@ -42,9 +42,6 @@ class HoistSuperArgs extends MiniPhaseTransform with IdentityDenotTransformer { 
 
   def phaseName = "hoistSuperArgs"
 
-  override def treeTransformPhase(implicit ctx: Context, info: TransformerInfo) =
-    groupEndPhase
-
   override def runsAfter = Set(classOf[ByNameClosures])
     // By name closures need to be introduced first in order to be hoisted out here.
     // There's an interaction with by name closures in that the <cbn-arg> marker

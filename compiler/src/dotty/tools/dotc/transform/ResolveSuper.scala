@@ -50,9 +50,6 @@ class ResolveSuper extends MiniPhaseTransform with IdentityDenotTransformer { th
 
   override def phaseName: String = "resolveSuper"
 
-  override def treeTransformPhase(implicit ctx: Context, info: TransformerInfo) =
-    groupEndPhase
-
   override def runsAfter = Set(classOf[ElimByName], // verified empirically, need to figure out what the reason is.
                                classOf[AugmentScala2Traits])
 

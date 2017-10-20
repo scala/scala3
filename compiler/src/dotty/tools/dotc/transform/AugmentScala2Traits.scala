@@ -35,9 +35,6 @@ class AugmentScala2Traits extends MiniPhaseTransform with IdentityDenotTransform
 
   override def phaseName: String = "augmentScala2Traits"
 
-  override def treeTransformPhase(implicit ctx: Context, info: TransformerInfo) =
-    groupEndPhase
-
   override def rewiredTarget(referenced: Symbol, derived: Symbol)(implicit ctx: Context) = NoSymbol
 
   override def transformTemplate(impl: Template)(implicit ctx: Context, info: TransformerInfo) = {

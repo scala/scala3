@@ -26,9 +26,6 @@ class FunctionalInterfaces extends MiniPhaseTransform {
 
   def phaseName: String = "functionalInterfaces"
 
-  override def treeTransformPhase(implicit ctx: Context, info: TransformerInfo) =
-    groupEndPhase
-
   val functionName = "JFunction".toTermName
   val functionPackage = "scala.compat.java8.".toTermName
 

@@ -6,6 +6,7 @@ import ast.{TreeTypeMap, tpd}
 import core._
 import Contexts.Context
 import Decorators._
+import DenotTransformers.IdentityDenotTransformer
 import Denotations.SingleDenotation
 import Symbols._
 import Types._
@@ -68,9 +69,6 @@ class TailRec extends MiniPhaseTransform with FullParameterization { thisTransfo
 
   override def phaseName: String = "tailrec"
 
-  override def treeTransformPhase(implicit ctx: Context, info: TransformerInfo) =
-    groupEndPhase
-
   final val labelFlags = Flags.Synthetic | Flags.Label
 
   /** Symbols of methods that have @tailrec annotatios inside */
@@ -95,7 +93,6 @@ class TailRec extends MiniPhaseTransform with FullParameterization { thisTransfo
     else ctx.newSymbol(method, name.toTermName, labelFlags, method.info)
   }
 
-  /** Note: This method should be run atGroupEnd */
   override def transformDefDef(tree: tpd.DefDef)(implicit ctx: Context, info: TransformerInfo): tpd.Tree = {
     val sym = tree.symbol
     tree match {

@@ -10,9 +10,6 @@ class DropInlined extends MiniPhaseTransform {
   import ast.tpd._
   override def phaseName = "dropInlined"
 
-  override def treeTransformPhase(implicit ctx: Context, info: TransformerInfo) =
-    groupEndPhase
-
   override def transformInlined(tree: Inlined)(implicit ctx: Context, info: TransformerInfo): Tree =
     Inliner.dropInlined(tree)
 }

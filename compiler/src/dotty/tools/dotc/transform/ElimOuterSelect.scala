@@ -17,9 +17,6 @@ class ElimOuterSelect extends MiniPhaseTransform { thisTransform =>
 
   override def phaseName: String = "elimOuterSelect"
 
-  override def treeTransformPhase(implicit ctx: Context, info: TransformerInfo) =
-    groupEndPhase
-
   override def runsAfterGroupsOf = Set(classOf[ExplicitOuter])
     // ExplicitOuter needs to have run to completion before so that all classes
     // that need an outer accessor have one.

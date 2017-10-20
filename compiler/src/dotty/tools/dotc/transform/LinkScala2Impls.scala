@@ -48,9 +48,6 @@ class LinkScala2Impls extends MiniPhase with IdentityDenotTransformer { thisTran
   class Transform extends TreeTransform {
     def phase = thisTransform
 
-    override def treeTransformPhase(implicit ctx: Context, info: TransformerInfo) =
-      groupEndPhase
-
     /** Copy definitions from implementation class to trait itself */
     private def augmentScala_2_12_Trait(mixin: ClassSymbol)(implicit ctx: Context): Unit = {
       def info_2_12(sym: Symbol) = sym.info match {

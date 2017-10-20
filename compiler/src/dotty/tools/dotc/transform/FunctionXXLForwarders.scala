@@ -27,9 +27,6 @@ class FunctionXXLForwarders extends MiniPhaseTransform with IdentityDenotTransfo
 
   override def phaseName: String = "functionXXLForwarders"
 
-  override def treeTransformPhase(implicit ctx: Context, info: TransformerInfo) =
-    groupEndPhase
-
   override def transformTemplate(impl: Template)(implicit ctx: Context, info: TransformerInfo): Template = {
 
     def forwarderRhs(receiver: Tree, xsTree: Tree): Tree =  {

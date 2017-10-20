@@ -24,9 +24,6 @@ class SeqLiterals extends MiniPhaseTransform {
   override def phaseName = "seqLiterals"
   override def runsAfter: Set[Class[_ <: Phase]] = Set(classOf[PatternMatcher])
 
-  override def treeTransformPhase(implicit ctx: Context, info: TransformerInfo) =
-    groupEndPhase
-
   override def checkPostCondition(tree: Tree)(implicit ctx: Context): Unit = tree match {
     case tpd: SeqLiteral => assert(tpd.isInstanceOf[JavaSeqLiteral])
     case _ =>

@@ -45,9 +45,6 @@ class TryCatchPatterns extends MiniPhaseTransform {
 
   def phaseName: String = "tryCatchPatterns"
 
-  override def treeTransformPhase(implicit ctx: Context, info: TransformerInfo) =
-    groupEndPhase
-
   override def runsAfter = Set(classOf[ElimRepeated])
 
   override def checkPostCondition(tree: Tree)(implicit ctx: Context): Unit = tree match {

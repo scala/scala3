@@ -28,9 +28,6 @@ class ExplicitSelf extends MiniPhaseTransform { thisTransform =>
 
   override def phaseName = "explicitSelf"
 
-  override def treeTransformPhase(implicit ctx: Context, info: TransformerInfo) =
-    groupEndPhase
-
   override def transformIdent(tree: Ident)(implicit ctx: Context, info: TransformerInfo) = tree.tpe match {
     case tp: ThisType =>
       ctx.debuglog(s"owner = ${ctx.owner}, context = ${ctx}")

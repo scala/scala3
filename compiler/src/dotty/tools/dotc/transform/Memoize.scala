@@ -37,9 +37,6 @@ import Decorators._
 
   override def phaseName = "memoize"
 
-  override def treeTransformPhase(implicit ctx: Context, info: TransformerInfo) =
-    groupEndPhase
-
   /* Makes sure that, after getters and constructors gen, there doesn't
    * exist non-deferred definitions that are not implemented. */
   override def checkPostCondition(tree: Tree)(implicit ctx: Context): Unit = {

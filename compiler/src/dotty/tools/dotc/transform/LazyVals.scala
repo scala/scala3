@@ -38,9 +38,6 @@ class LazyVals extends MiniPhaseTransform with IdentityDenotTransformer {
 
   override def phaseName: String = "LazyVals"
 
-  override def treeTransformPhase(implicit ctx: Context, info: TransformerInfo) =
-    groupEndPhase
-
   /** List of names of phases that should have finished processing of tree
     * before this phase starts processing same tree */
   override def runsAfter = Set(classOf[Mixin])

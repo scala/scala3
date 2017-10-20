@@ -22,9 +22,6 @@ class CollectSuperCalls extends MiniPhaseTransform {
 
   def phaseName: String = "collectSuperCalls"
 
-  override def treeTransformPhase(implicit ctx: Context, info: TransformerInfo) =
-    groupEndPhase
-
   override def transformSelect(tree: Select)(implicit ctx: Context, info: TransformerInfo): Tree = {
     tree.qualifier match {
       case sup: Super =>

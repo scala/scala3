@@ -20,9 +20,6 @@ class SelectStatic extends MiniPhaseTransform with IdentityDenotTransformer { th
 
   override def phaseName: String = "selectStatic"
 
-  override def treeTransformPhase(implicit ctx: Context, info: TransformerInfo) =
-    groupEndPhase
-
   override def transformSelect(tree: tpd.Select)(implicit ctx: Context, info: TransformerInfo): tpd.Tree = {
     val sym = tree.symbol
     def isStaticMember =

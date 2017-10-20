@@ -24,9 +24,6 @@ import dotty.tools.dotc.config.JavaPlatform
 
 class CollectEntryPoints extends MiniPhaseTransform {
 
-  override def treeTransformPhase(implicit ctx: Context, info: TransformerInfo) =
-    groupEndPhase
-
   /** perform context-dependant initialization */
   override def prepareForUnit(tree: tpd.Tree)(implicit ctx: Context) = {
     entryPoints = collection.immutable.TreeSet.empty[Symbol](new SymbolOrdering())

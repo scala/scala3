@@ -42,9 +42,6 @@ class ExtensionMethods extends MiniPhaseTransform with DenotTransformer with Ful
   import tpd._
   import ExtensionMethods._
 
-  override def treeTransformPhase(implicit ctx: Context, info: TransformerInfo) =
-    groupEndPhase
-
   /** the following two members override abstract members in Transform */
   override def phaseName: String = "extmethods"
 

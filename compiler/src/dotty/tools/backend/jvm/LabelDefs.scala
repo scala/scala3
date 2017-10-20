@@ -88,9 +88,6 @@ class LabelDefs extends MiniPhaseTransform {
   val beingAppended = new mutable.HashSet[Symbol]()
   var labelLevel = 0
 
-  override def treeTransformPhase(implicit ctx: Context, info: TransformerInfo) =
-    groupEndPhase
-
   override def transformDefDef(tree: tpd.DefDef)(implicit ctx: Context, info: TransformerInfo): tpd.Tree = {
     if (tree.symbol is Flags.Label) tree
     else {

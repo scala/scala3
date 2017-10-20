@@ -24,9 +24,6 @@ class RestoreScopes extends MiniPhaseTransform with IdentityDenotTransformer { t
 
   override def changesMembers = true // the phase affects scopes, applying tree transformations of previous phases
 
-  override def treeTransformPhase(implicit ctx: Context, info: TransformerInfo) =
-    groupEndPhase
-
   /* Note: We need to wait until we see a package definition because
    * DropEmptyConstructors changes template members when analyzing the
    * enclosing package definitions. So by the time RestoreScopes gets to

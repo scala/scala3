@@ -29,9 +29,6 @@ class ByNameClosures extends TransformByNameApply with IdentityDenotTransformer 
 
   override def phaseName: String = "byNameClosures"
 
-  override def treeTransformPhase(implicit ctx: Context, info: TransformerInfo) =
-    groupEndPhase
-
   override def mkByNameClosure(arg: Tree, argType: Type)(implicit ctx: Context): Tree = {
     val meth = ctx.newSymbol(
       ctx.owner, nme.ANON_FUN, Synthetic | Method, MethodType(Nil, Nil, argType))

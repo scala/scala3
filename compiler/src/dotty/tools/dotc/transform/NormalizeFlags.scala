@@ -17,9 +17,6 @@ import Flags._, Symbols._
 class NormalizeFlags extends MiniPhaseTransform with SymTransformer { thisTransformer =>
   override def phaseName = "normalizeFlags"
 
-  override def treeTransformPhase(implicit ctx: Context, info: TransformerInfo) =
-    groupEndPhase
-
   def transformSym(ref: SymDenotation)(implicit ctx: Context) = {
     var newFlags = ref.flags &~ Local
     if (newFlags != ref.flags) ref.copySymDenotation(initFlags = newFlags)
