@@ -500,8 +500,8 @@ trait ParallelTesting extends RunnerOrchestration { self =>
       else runMain(testSource.runClassPath) match {
         case Success(_) if !checkFile.isDefined || !checkFile.get.exists => // success!
         case Success(output) => {
-          val outputLines = output.lines.toArray
-          val checkLines: Array[String] = Source.fromFile(checkFile.get).getLines().toArray
+          val outputLines = output.lines.toArray :+ DiffUtil.EOF
+          val checkLines: Array[String] = Source.fromFile(checkFile.get).getLines().toArray :+ DiffUtil.EOF
           val sourceTitle = testSource.title
 
           def linesMatch =
@@ -512,7 +512,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
           if (outputLines.length != checkLines.length || !linesMatch) {
             // Print diff to files and summary:
             val expectedSize = DiffUtil.EOF.length max outputLines.map(_.length).max
-            val diff = (outputLines :+ DiffUtil.EOF).zip(checkLines :+ DiffUtil.EOF).map { case (act, exp) =>
+            val diff = outputLines.padTo(checkLines.length, "").zip(checkLines.padTo(outputLines.length, "")).map { case (act, exp) =>
               DiffUtil.mkColoredLineDiff(exp, act, expectedSize)
             }.mkString("\n")
 
