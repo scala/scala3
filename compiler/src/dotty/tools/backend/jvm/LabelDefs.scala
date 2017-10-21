@@ -6,6 +6,7 @@ import dotty.tools.dotc.transform._
 import dotty.tools.dotc.transform.TreeTransforms._
 
 import scala.collection.mutable
+import dotty.tools.dotc.core.StdNames._
 import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.core.Decorators._
 import dotty.tools.dotc.core.Flags._
@@ -68,7 +69,8 @@ class LabelDefs extends MiniPhaseTransform {
   private val labelDefs: mutable.HashMap[Symbol, DefDef] = new mutable.HashMap[Symbol, DefDef]()
 
   override def prepareForDefDef(tree: DefDef)(implicit ctx: Context): TreeTransform = {
-    if (tree.symbol.is(Label)) NoTransform // transformation is done in transformApply
+    if (isWhileDef(tree)) this
+    else if (tree.symbol.is(Label)) NoTransform // transformation is done in transformApply
     else {
       collectLabelDefs(tree.rhs)
       this
@@ -103,11 +105,16 @@ class LabelDefs extends MiniPhaseTransform {
     assert(labelDefs.isEmpty)
     override def traverse(tree: Tree)(implicit ctx: Context): Unit = tree match {
       case _: Template =>
-      case tree: DefDef =>
+      case tree: DefDef if !isWhileDef(tree) =>
         assert(tree.symbol.is(Label))
         labelDefs(tree.symbol) = tree
         traverseChildren(tree)
       case _ => traverseChildren(tree)
     }
   }.traverse(tree)
+
+  private def isWhileDef(ddef: DefDef)(implicit ctx: Context): Boolean = {
+    ddef.symbol.is(Label) &&
+    (ddef.name == nme.WHILE_PREFIX || ddef.name == nme.DO_WHILE_PREFIX)
+  }
 }
