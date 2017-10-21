@@ -137,12 +137,6 @@ object TreeTransforms {
 
     /** Transform single node using all transforms following the current one in this group */
     def transformFollowing(tree: Tree)(implicit ctx: Context, info: TransformerInfo): Tree = info.group.transformSingle(tree, phase.idx + 1)
-
-    def atGroupEnd[T](action : Context => T)(implicit ctx: Context, info: TransformerInfo) =
-      action(ctx.withPhase(groupEndPhase))
-
-    def groupEndPhase(implicit ctx: Context, info: TransformerInfo) =
-      info.transformers(info.transformers.length - 1).phase.next
   }
 
   /** A phase that defines a TreeTransform to be used in a group */

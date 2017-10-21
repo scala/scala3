@@ -115,7 +115,7 @@ class TailRec extends MiniPhaseTransform with FullParameterization { thisTransfo
           // now this speculatively transforms tree and throws away result in many cases
           val rhsSemiTransformed = {
             val transformer = new TailRecElimination(origMeth, dd.tparams, owner, thisTpe, mandatory, label, abstractOverClass = defIsTopLevel)
-            val rhs = atGroupEnd(implicit ctx => transformer.transform(dd.rhs))
+            val rhs = transformer.transform(dd.rhs)
             rewrote = transformer.rewrote
             rhs
           }

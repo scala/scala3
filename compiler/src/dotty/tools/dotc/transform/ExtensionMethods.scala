@@ -175,8 +175,8 @@ class ExtensionMethods extends MiniPhaseTransform with DenotTransformer with Ful
           extensionDefs(staticClass) = newC
           newC
       }
-      store += atGroupEnd(fullyParameterizedDef(extensionMeth, tree)(_))
-      cpy.DefDef(tree)(rhs = atGroupEnd(forwarder(extensionMeth, tree)(_)))
+      store += fullyParameterizedDef(extensionMeth, tree)
+      cpy.DefDef(tree)(rhs = forwarder(extensionMeth, tree))
     } else tree
   }
 }
