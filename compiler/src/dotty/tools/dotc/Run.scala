@@ -10,7 +10,6 @@ import Types._
 import Scopes._
 import typer.{FrontEnd, Typer, ImportInfo, RefChecks}
 import Decorators._
-import dotty.tools.dotc.transform.TreeTransforms.TreeTransformer
 import io.PlainFile
 import scala.io.Codec
 import util._

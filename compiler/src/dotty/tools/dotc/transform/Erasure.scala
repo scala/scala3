@@ -31,7 +31,7 @@ import core.Mode
 import core.PhantomErasure
 import reporting.trace
 
-class Erasure extends Phase with DenotTransformer { thisTransformer =>
+class Erasure extends Phase with DenotTransformer {
 
   override def phaseName: String = "erasure"
 

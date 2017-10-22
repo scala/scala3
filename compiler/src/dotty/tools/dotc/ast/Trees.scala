@@ -63,6 +63,8 @@ object Trees {
     final val Annotated = 38
     final val Thicket = 39
 
+    final val NumTypedTreeTags = 40
+
     final val TypedSplice = 40
     final val ModuleDef = 41
     final val ParsedTry = 42
@@ -83,6 +85,8 @@ object Trees {
     final val GenAlias = 47
     final val ContextBounds = 48
     final val PatDef = 49
+
+    final val NumTags = 50
   }
 
   // Note: it would be more logical to make Untyped = Nothing.

@@ -121,7 +121,7 @@ object SuperPhase {
     def transformFollowing(tree: Tree)(implicit ctx: Context): Tree =
       superPhase.transformNode(tree, idxInGroup + 1)
 
-    protected def singletonGroup = new SuperPhase(phaseName, Array(this))
+    protected def singletonGroup = new SuperPhase(Array(this))
 
     override def run(implicit ctx: Context): Unit =
       singletonGroup.run
@@ -135,8 +135,12 @@ object SuperPhase {
 }
 import SuperPhase._
 
-class SuperPhase(override val phaseName: String, val miniPhases: Array[MiniPhase]) extends Phase {
+class SuperPhase(val miniPhases: Array[MiniPhase]) extends Phase {
   import ast.tpd._
+
+  override val phaseName =
+    if (miniPhases.length == 1) miniPhases(0).phaseName
+    else miniPhases.map(_.phaseName).mkString("SuperPhase{", ", ", "}")
 
   private val cpy: TypedTreeCopier = cpyBetweenPhases
 
@@ -216,7 +220,7 @@ class SuperPhase(override val phaseName: String, val miniPhases: Array[MiniPhase
           trans(cpy.Match(tree1)(selector, cases))
         case Tag.CaseDef =>
           val tree1 = tree.asInstanceOf[CaseDef]
-          val pat = transformTree(tree1.pat, start)
+          val pat = transformTree(tree1.pat, start)(ctx.addMode(Mode.Pattern))
           val guard = transformTree(tree1.guard, start)
           val body = transformTree(tree1.body, start)
           trans(cpy.CaseDef(tree1)(pat, guard, body))
@@ -258,45 +262,42 @@ class SuperPhase(override val phaseName: String, val miniPhases: Array[MiniPhase
           trans(cpy.UnApply(tree1)(fun, implicits, patterns))
         case Tag.ValDef =>
           val tree1 = tree.asInstanceOf[ValDef]
-          def transformValDef(implicit ctx: Context) = {
+          def mapValDef(implicit ctx: Context) = {
             val tpt = transformTree(tree1.tpt, start)
             val rhs = transformTree(tree1.rhs, start)
-            trans(cpy.ValDef(tree1)(tree1.name, tpt, rhs))
+            cpy.ValDef(tree1)(tree1.name, tpt, rhs)
           }
           if (tree1.isEmpty) tree1
-          else transformValDef(if (tree.symbol.exists) localContext else ctx)
+          else trans(mapValDef(if (tree.symbol.exists) localContext else ctx))
         case Tag.DefDef =>
           val tree1 = tree.asInstanceOf[DefDef]
-          def transformDefDef(implicit ctx: Context) = {
+          def mapDefDef(implicit ctx: Context) = {
             val tparams = transformSpecificTrees(tree1.tparams, start)
             val vparamss = tree1.vparamss.mapConserve(transformSpecificTrees(_, start))
             val tpt = transformTree(tree1.tpt, start)
             val rhs = transformTree(tree1.rhs, start)
-            trans(cpy.DefDef(tree1)(tree1.name, tparams, vparamss, tpt, rhs))
+            cpy.DefDef(tree1)(tree1.name, tparams, vparamss, tpt, rhs)
           }
-          transformDefDef(localContext)
+          trans(mapDefDef(localContext))
         case Tag.TypeDef =>
           val tree1 = tree.asInstanceOf[TypeDef]
-          def transformTypeDef(implicit ctx: Context) = {
-            val rhs = transformTree(tree1.rhs, start)
-            trans(cpy.TypeDef(tree1)(tree1.name, rhs))
-          }
-          transformTypeDef(localContext)
+          val rhs = transformTree(tree1.rhs, start)(localContext)
+          trans(cpy.TypeDef(tree1)(tree1.name, rhs))
         case Tag.Template =>
           val tree1 = tree.asInstanceOf[Template]
           val constr = transformSpecificTree(tree1.constr, start)
-          val parents = transformTrees(tree1.parents, start)
+          val parents = transformTrees(tree1.parents, start)(ctx.superCallContext)
           val self = transformSpecificTree(tree1.self, start)
           val body = transformStats(tree1.body, tree1.symbol, start)
           trans(cpy.Template(tree1)(constr, parents, self, body))
         case Tag.PackageDef =>
           val tree1 = tree.asInstanceOf[PackageDef]
-          def transformPackage(implicit ctx: Context) = {
+          def mapPackage(implicit ctx: Context) = {
             val pid = transformSpecificTree(tree1.pid, start)
             val stats = transformStats(tree1.stats, tree.symbol, start)
-            trans(cpy.PackageDef(tree1)(pid, stats))
+            cpy.PackageDef(tree1)(pid, stats)
           }
-          transformPackage(localContext)
+          trans(mapPackage(localContext))
         case Tag.Thicket =>
           val tree1 = tree.asInstanceOf[Thicket]
           cpy.Thicket(tree1)(transformTrees(tree1.trees, start))
@@ -333,7 +334,8 @@ class SuperPhase(override val phaseName: String, val miniPhases: Array[MiniPhase
     transformTrees(trees, start).asInstanceOf[List[T]]
 
   override def run(implicit ctx: Context): Unit =
-    ctx.compilationUnit.tpdTree = transformUnit(ctx.compilationUnit.tpdTree)
+    ctx.compilationUnit.tpdTree =
+      transformUnit(ctx.compilationUnit.tpdTree)(ctx.withPhase(miniPhases.last.next))
 
   // The rest of this class is all made up by initialization code
 
@@ -401,7 +403,8 @@ class SuperPhase(override val phaseName: String, val miniPhases: Array[MiniPhase
   private val nodeTransformer: Array[Array[Transformer[Tree, Tree]]] =
     Array.fill(Tag.NumTags)(otherNodeTransformer)
 
-  private def init(name: String, tag: TreeTag, ctf: IndexedTransformer[_, Context], ntf: IndexedTransformer[_, Tree]): Unit = {
+  // Dotty problem, replace T with _ in the line below, and you get an irreducible application errpr
+  private def init[T](name: String, tag: TreeTag, ctf: IndexedTransformer[T, Context], ntf: IndexedTransformer[T, Tree]): Unit = {
     if (miniPhases.exists(defines(_, "prepareFor" + name)))
       contextTransformer(tag) = newContextTransformerArray(name, ctf.asInstanceOf[IndexedTransformer[Tree, Context]])
     if (miniPhases.exists(defines(_, "transform" + name)))

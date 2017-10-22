@@ -4,7 +4,7 @@ import dotty.tools.dotc.ast.Trees.Thicket
 import dotty.tools.dotc.ast.{Trees, tpd}
 import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.Types
-import dotty.tools.dotc.transform.TreeTransforms.{TransformerInfo, TreeTransform, MiniPhase, MiniPhaseTransform}
+import dotty.tools.dotc.transform.SuperPhase._
 import dotty.tools.dotc
 import dotty.tools.dotc.backend.jvm.DottyPrimitives
 import dotty.tools.dotc.core.Flags.FlagSet
@@ -81,14 +81,14 @@ import StdNames.nme
  *
  * @author Dmitry Petrashko
  */
-class LabelDefs extends MiniPhaseTransform {
+class LabelDefs extends MiniPhase {
   def phaseName: String = "labelDef"
 
   val queue = new ArrayBuffer[Tree]()
   val beingAppended = new mutable.HashSet[Symbol]()
   var labelLevel = 0
 
-  override def transformDefDef(tree: tpd.DefDef)(implicit ctx: Context, info: TransformerInfo): tpd.Tree = {
+  override def transformDefDef(tree: tpd.DefDef)(implicit ctx: Context): tpd.Tree = {
     if (tree.symbol is Flags.Label) tree
     else {
       collectLabelDefs.clear

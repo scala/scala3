@@ -12,7 +12,7 @@ import Symbols._
 import Types._
 import NameKinds.TailLabelName
 import TreeTransforms.{MiniPhaseTransform, TransformerInfo}
-import reporting.diagnostic.messages.TailrecNotApplicable
+import SuperPhase.MiniPhase
 
 /**
  * A Tail Rec Transformer
@@ -63,7 +63,7 @@ import reporting.diagnostic.messages.TailrecNotApplicable
  *             self recursive functions, that's why it's renamed to tailrec
  *             </p>
  */
-class TailRec extends MiniPhaseTransform with FullParameterization { thisTransform =>
+class TailRec extends MiniPhase with FullParameterization {
   import TailRec._
 
   import dotty.tools.dotc.ast.tpd._
@@ -75,12 +75,12 @@ class TailRec extends MiniPhaseTransform with FullParameterization { thisTransfo
   /** Symbols of methods that have @tailrec annotatios inside */
   private val methodsWithInnerAnnots = new collection.mutable.HashSet[Symbol]()
 
-  override def transformUnit(tree: Tree)(implicit ctx: Context, info: TransformerInfo): Tree = {
+  override def transformUnit(tree: Tree)(implicit ctx: Context): Tree = {
     methodsWithInnerAnnots.clear()
     tree
   }
 
-  override def transformTyped(tree: Typed)(implicit ctx: Context, info: TransformerInfo): Tree = {
+  override def transformTyped(tree: Typed)(implicit ctx: Context): Tree = {
     if (tree.tpt.tpe.hasAnnotation(defn.TailrecAnnot))
       methodsWithInnerAnnots += ctx.owner.enclosingMethod
     tree
@@ -94,7 +94,7 @@ class TailRec extends MiniPhaseTransform with FullParameterization { thisTransfo
     else ctx.newSymbol(method, name.toTermName, labelFlags, method.info)
   }
 
-  override def transformDefDef(tree: tpd.DefDef)(implicit ctx: Context, info: TransformerInfo): tpd.Tree = {
+  override def transformDefDef(tree: tpd.DefDef)(implicit ctx: Context): tpd.Tree = {
     val sym = tree.symbol
     tree match {
       case dd@DefDef(name, tparams, vparamss0, tpt, _)

@@ -12,7 +12,8 @@ import util.Positions._
 import scala.collection.{ mutable, immutable }
 import ast._
 import Trees._
-import TreeTransforms._
+import SuperPhase._
+import util.Property
 import config.Printers.{checks, noPrinter}
 import util.DotClass
 import scala.util.{Try, Success, Failure}
@@ -760,6 +761,11 @@ object RefChecks {
   }
 
   val NoLevelInfo = new OptLevelInfo()
+
+  val LevelInfo = new Property.Key[OptLevelInfo]
+
+  def currentLevel(implicit ctx: Context): OptLevelInfo =
+    ctx.property(LevelInfo).getOrElse(NoLevelInfo)
 }
 import RefChecks._
 
@@ -793,7 +799,7 @@ import RefChecks._
  *  todo: But RefChecks is not done yet. It's still a somewhat dirty port from the Scala 2 version.
  *  todo: move untrivial logic to their own mini-phases
  */
-class RefChecks extends MiniPhase { thisTransformer =>
+class RefChecks extends MiniPhase { thisPhase =>
 
   import tpd._
   import reporting.diagnostic.messages.ForwardReferenceExtendsOverDefinition
@@ -804,84 +810,75 @@ class RefChecks extends MiniPhase { thisTransformer =>
   // Needs to run after ElimRepeated for override checks involving varargs methods
   override def runsAfter = Set(classOf[ElimRepeated])
 
-  val treeTransform = new Transform(NoLevelInfo)
+  override def prepareForStats(trees: List[Tree])(implicit ctx: Context) =
+    if (ctx.owner.isTerm)
+      ctx.fresh.setProperty(LevelInfo, new LevelInfo(currentLevel.levelAndIndex, trees))
+    else ctx
 
-  class Transform(currentLevel: RefChecks.OptLevelInfo = RefChecks.NoLevelInfo) extends TreeTransform {
-    def phase = thisTransformer
-
-    override def prepareForStats(trees: List[Tree])(implicit ctx: Context) = {
-      // println(i"preparing for $trees%; %, owner = ${ctx.owner}")
-      if (ctx.owner.isTerm) new Transform(new LevelInfo(currentLevel.levelAndIndex, trees))
-      else this
-    }
-
-    override def transformStats(trees: List[Tree])(implicit ctx: Context, info: TransformerInfo): List[Tree] = trees
-
-    override def transformValDef(tree: ValDef)(implicit ctx: Context, info: TransformerInfo) = {
-      checkDeprecatedOvers(tree)
-      val sym = tree.symbol
-      if (sym.exists && sym.owner.isTerm) {
-        tree.rhs match {
-          case Ident(nme.WILDCARD) => ctx.error(UnboundPlaceholderParameter(), sym.pos)
+  override def transformValDef(tree: ValDef)(implicit ctx: Context) = {
+    checkDeprecatedOvers(tree)
+    val sym = tree.symbol
+    if (sym.exists && sym.owner.isTerm) {
+      tree.rhs match {
+        case Ident(nme.WILDCARD) => ctx.error(UnboundPlaceholderParameter(), sym.pos)
+        case _ =>
+      }
+      if (!sym.is(Lazy)) {
+        currentLevel.levelAndIndex.get(sym) match {
+          case Some((level, symIdx)) if symIdx <= level.maxIndex =>
+            ctx.error(ForwardReferenceExtendsOverDefinition(sym, level.refSym), level.refPos)
           case _ =>
         }
-        if (!sym.is(Lazy)) {
-          currentLevel.levelAndIndex.get(sym) match {
-            case Some((level, symIdx)) if symIdx <= level.maxIndex =>
-              ctx.error(ForwardReferenceExtendsOverDefinition(sym, level.refSym), level.refPos)
-            case _ =>
-          }
-        }
       }
+    }
+    tree
+  }
+
+  override def transformDefDef(tree: DefDef)(implicit ctx: Context) = {
+    checkDeprecatedOvers(tree)
+    if (tree.symbol is Macro) EmptyTree else tree
+  }
+
+  override def transformTemplate(tree: Template)(implicit ctx: Context) = try {
+    val cls = ctx.owner
+    checkOverloadedRestrictions(cls)
+    checkParents(cls)
+    checkCompanionNameClashes(cls)
+    checkAllOverrides(cls)
+    tree
+  } catch {
+    case ex: MergeError =>
+      ctx.error(ex.getMessage, tree.pos)
       tree
-    }
+  }
 
-    override def transformDefDef(tree: DefDef)(implicit ctx: Context, info: TransformerInfo) = {
-      checkDeprecatedOvers(tree)
-      if (tree.symbol is Macro) EmptyTree else tree
-    }
+  override def transformIdent(tree: Ident)(implicit ctx: Context) = {
+    checkUndesiredProperties(tree.symbol, tree.pos)
+    currentLevel.enterReference(tree.symbol, tree.pos)
+    tree
+  }
 
-    override def transformTemplate(tree: Template)(implicit ctx: Context, info: TransformerInfo) = try {
-      val cls = ctx.owner
-      checkOverloadedRestrictions(cls)
-      checkParents(cls)
-      checkCompanionNameClashes(cls)
-      checkAllOverrides(cls)
-      tree
-    } catch {
-      case ex: MergeError =>
-        ctx.error(ex.getMessage, tree.pos)
-        tree
-    }
+  override def transformSelect(tree: Select)(implicit ctx: Context) = {
+    checkUndesiredProperties(tree.symbol, tree.pos)
+    tree
+  }
 
-    override def transformIdent(tree: Ident)(implicit ctx: Context, info: TransformerInfo) = {
-      checkUndesiredProperties(tree.symbol, tree.pos)
-      currentLevel.enterReference(tree.symbol, tree.pos)
-      tree
-    }
-
-    override def transformSelect(tree: Select)(implicit ctx: Context, info: TransformerInfo) = {
-      checkUndesiredProperties(tree.symbol, tree.pos)
-      tree
-    }
-
-    override def transformApply(tree: Apply)(implicit ctx: Context, info: TransformerInfo) = {
-      if (isSelfConstrCall(tree)) {
-        assert(currentLevel.isInstanceOf[LevelInfo], ctx.owner + "/" + i"$tree")
-        val level = currentLevel.asInstanceOf[LevelInfo]
-        if (level.maxIndex > 0) {
-          // An implementation restriction to avoid VerifyErrors and lazyvals mishaps; see SI-4717
-          ctx.debuglog("refsym = " + level.refSym)
-          ctx.error("forward reference not allowed from self constructor invocation", level.refPos)
-        }
+  override def transformApply(tree: Apply)(implicit ctx: Context) = {
+    if (isSelfConstrCall(tree)) {
+      assert(currentLevel.isInstanceOf[LevelInfo], ctx.owner + "/" + i"$tree")
+      val level = currentLevel.asInstanceOf[LevelInfo]
+      if (level.maxIndex > 0) {
+        // An implementation restriction to avoid VerifyErrors and lazyvals mishaps; see SI-4717
+        ctx.debuglog("refsym = " + level.refSym)
+        ctx.error("forward reference not allowed from self constructor invocation", level.refPos)
       }
-      tree
     }
+    tree
+  }
 
-    override def transformNew(tree: New)(implicit ctx: Context, info: TransformerInfo) = {
-      currentLevel.enterReference(tree.tpe.typeSymbol, tree.pos)
-      tree
-    }
+  override def transformNew(tree: New)(implicit ctx: Context) = {
+    currentLevel.enterReference(tree.tpe.typeSymbol, tree.pos)
+    tree
   }
 }
 
@@ -1379,7 +1376,7 @@ class RefChecks extends MiniPhase { thisTransformer =>
             checkAllOverrides(ctx.owner)
             checkAnyValSubclass(ctx.owner)
             if (ctx.owner.isDerivedValueClass)
-              ctx.owner.primaryConstructor.makeNotPrivateAfter(NoSymbol, thisTransformer) // SI-6601, must be done *after* pickler!
+              ctx.owner.primaryConstructor.makeNotPrivateAfter(NoSymbol, thisPhase) // SI-6601, must be done *after* pickler!
             tree
 
 
@@ -1408,7 +1405,7 @@ class RefChecks extends MiniPhase { thisTransformer =>
             checkAllOverrides(ctx.owner)
             checkAnyValSubclass(ctx.owner)
             if (ctx.owner.isDerivedValueClass)
-              ctx.owner.primaryConstructor.makeNotPrivateAfter(NoSymbol, thisTransformer) // SI-6601, must be done *after* pickler!
+              ctx.owner.primaryConstructor.makeNotPrivateAfter(NoSymbol, thisPhase) // SI-6601, must be done *after* pickler!
             tree
 
           case tpt: TypeTree =>

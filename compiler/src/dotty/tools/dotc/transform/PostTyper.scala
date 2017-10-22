@@ -1,7 +1,6 @@
 package dotty.tools.dotc
 package transform
 
-import dotty.tools.dotc.transform.TreeTransforms.{TransformerInfo, TreeTransform, TreeTransformer}
 import dotty.tools.dotc.ast.{Trees, tpd, untpd}
 import scala.collection.{ mutable, immutable }
 import ValueClasses._
@@ -54,7 +53,7 @@ import reporting.diagnostic.messages.SuperCallsNotAllowedInline
  *  mini-phase or subfunction of a macro phase equally well. But taken by themselves
  *  they do not warrant their own group of miniphases before pickling.
  */
-class PostTyper extends MacroTransform with IdentityDenotTransformer { thisTransformer =>
+class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase =>
   import tpd._
 
   /** the following two members override abstract members in Transform */
@@ -62,14 +61,14 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisTrans
 
   override def changesMembers = true // the phase adds super accessors and synthetic methods
 
-  override def transformPhase(implicit ctx: Context) = thisTransformer.next
+  override def transformPhase(implicit ctx: Context) = thisPhase.next
 
   protected def newTransformer(implicit ctx: Context): Transformer =
     new PostTyperTransformer
 
-  val superAcc = new SuperAccessors(thisTransformer)
-  val paramFwd = new ParamForwarding(thisTransformer)
-  val synthMth = new SyntheticMethods(thisTransformer)
+  val superAcc = new SuperAccessors(thisPhase)
+  val paramFwd = new ParamForwarding(thisPhase)
+  val synthMth = new SyntheticMethods(thisPhase)
 
   private def newPart(tree: Tree): Option[New] = methPart(tree) match {
     case Select(nu: New, _) => Some(nu)

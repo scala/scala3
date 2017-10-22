@@ -8,12 +8,20 @@ import Contexts.Context
 import Flags._
 import SymDenotations.SymDenotation
 import collection.mutable
-import TreeTransforms.MiniPhaseTransform
-import dotty.tools.dotc.transform.TreeTransforms.TransformerInfo
+import SuperPhase.MiniPhase
+import util.Property
+
+object Flatten {
+  import ast.tpd._
+  val LiftedDefs = new Property.Key[mutable.ListBuffer[Tree]]
+  def liftedDefs(implicit ctx: Context) = ctx.property(LiftedDefs).get
+}
 
 /** Lift nested classes to toplevel */
-class Flatten extends MiniPhaseTransform with SymTransformer { thisTransform =>
+class Flatten extends MiniPhase with SymTransformer {
   import ast.tpd._
+  import Flatten._
+
   override def phaseName = "flatten"
 
   override def changesMembers = true // the phase removes inner classes
@@ -27,29 +35,17 @@ class Flatten extends MiniPhaseTransform with SymTransformer { thisTransform =>
     else ref
   }
 
-  private[this] var liftedDefs = new mutable.ListBuffer[Tree]
-  private[this] var liftedDefsQueue = List.empty[mutable.ListBuffer[Tree]]
+  override def prepareForPackageDef(tree: PackageDef)(implicit ctx: Context) =
+    ctx.fresh.setProperty(LiftedDefs, new mutable.ListBuffer[Tree])
 
-  override def prepareForPackageDef(tree: PackageDef)(implicit ctx: Context) = {
-    liftedDefsQueue = liftedDefs :: liftedDefsQueue
-    liftedDefs = new mutable.ListBuffer[Tree]
-    this
-  }
-
-  override def transformPackageDef(tree: PackageDef)(implicit ctx: Context, info: TransformerInfo) = {
-    liftedDefs = liftedDefsQueue.head
-    liftedDefsQueue = liftedDefsQueue.tail
-    tree
-  }
-
-  private def liftIfNested(tree: Tree)(implicit ctx: Context, info: TransformerInfo) =
+  private def liftIfNested(tree: Tree)(implicit ctx: Context) =
     if (ctx.owner is Package) tree
     else {
       transformFollowing(tree).foreachInThicket(liftedDefs += _)
       EmptyTree
     }
 
-  override def transformStats(stats: List[Tree])(implicit ctx: Context, info: TransformerInfo) =
+  override def transformStats(stats: List[Tree])(implicit ctx: Context) =
     if (ctx.owner is Package) {
       val liftedStats = stats ++ liftedDefs
       liftedDefs.clear()
@@ -57,6 +53,6 @@ class Flatten extends MiniPhaseTransform with SymTransformer { thisTransform =>
     }
     else stats
 
-  override def transformTypeDef(tree: TypeDef)(implicit ctx: Context, info: TransformerInfo) =
+  override def transformTypeDef(tree: TypeDef)(implicit ctx: Context) =
     liftIfNested(tree)
 }

@@ -2,7 +2,7 @@ package dotty.tools.dotc
 package transform
 
 import core._
-import TreeTransforms._
+import SuperPhase._
 import collection.mutable
 import SymDenotations._, Symbols._, Contexts._, Types._, Names._, StdNames._, NameOps._
 import ast.Trees._
@@ -19,7 +19,7 @@ import config.Printers.patmatch
  *  After this phase, the only Match nodes remaining in the code are simple switches
  *  where every pattern is an integer constant
  */
-class PatternMatcher extends MiniPhaseTransform {
+class PatternMatcher extends MiniPhase {
   import ast.tpd._
   import PatternMatcher._
 
@@ -27,7 +27,7 @@ class PatternMatcher extends MiniPhaseTransform {
   override def runsAfter = Set(classOf[ElimRepeated])
   override def runsAfterGroupsOf = Set(classOf[TailRec]) // tailrec is not capable of reversing the patmat tranformation made for tree
 
-  override def transformMatch(tree: Match)(implicit ctx: Context, info: TransformerInfo): Tree = {
+  override def transformMatch(tree: Match)(implicit ctx: Context): Tree = {
     val translated = new Translator(tree.tpe, this).translateMatch(tree)
 
     // check exhaustivity and unreachability
@@ -69,7 +69,7 @@ object PatternMatcher {
    *  It's represented by its own data type. Plans are optimized by
    *  inlining, hoisting, and the elimination of redundant tests and dead code.
    */
-  class Translator(resultType: Type, trans: TreeTransform)(implicit ctx: Context, info: TransformerInfo) {
+  class Translator(resultType: Type, thisPhase: MiniPhase)(implicit ctx: Context) {
 
     // ------- Bindings for variables and labels ---------------------
 
@@ -765,7 +765,7 @@ object PatternMatcher {
             }
           }
 
-          def outerTest: Tree = trans.transformFollowingDeep {
+          def outerTest: Tree = thisPhase.transformFollowingDeep {
             val expectedOuter = singleton(expectedTp.normalizedPrefix)
             val expectedClass = expectedTp.dealias.classSymbol.asClass
             ExplicitOuter.ensureOuterAccessors(expectedClass)

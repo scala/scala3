@@ -13,7 +13,6 @@ import Symbols._
 import Types._
 import Decorators._
 import Trees._
-import TreeTransforms.{TreeTransform, TreeTransformer}
 
 class PostTyperTransformerTest extends DottyTest {
   /* FIXME: re-enable after adapting to new scheme
