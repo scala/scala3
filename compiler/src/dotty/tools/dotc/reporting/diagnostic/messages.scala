@@ -1804,4 +1804,17 @@ object messages {
            |refers to a subtype of type ${"A"}.
            |"""
   }
+
+  case class ClassAndCompanionNameClash(cls: Symbol, other: Symbol)(implicit ctx: Context)
+    extends Message(ClassAndCompanionNameClashID) {
+    val kind = "Naming"
+    val msg = hl"Name clash: both ${cls.owner} and its companion object defines ${cls.name}"
+    val explanation = {
+      val kind = if (cls.owner.is(Flags.Trait)) "trait" else "class"
+
+      hl"""|A $kind and its companion object cannot both define a ${"class"}, ${"trait"} or ${"object"} with the same name:
+           |  - ${cls.owner} defines ${cls}
+           |  - ${other.owner} defines ${other}"""
+      }
+  }
 }

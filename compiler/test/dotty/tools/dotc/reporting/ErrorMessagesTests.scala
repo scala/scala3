@@ -1038,4 +1038,27 @@ class ErrorMessagesTests extends ErrorMessagesTest {
         val ExpectedTypeBoundOrEquals(found) :: Nil = messages
         assertEquals(Tokens.IDENTIFIER, found)
       }
+
+  @Test def classAndCompanionNameClash =
+    checkMessagesAfter("refchecks") {
+      """
+        |class T {
+        |  class G
+        |}
+        |object T {
+        |  trait G
+        |}
+      """.stripMargin
+    }.expect { (ictx, messages) =>
+      implicit val ctx: Context = ictx
+
+      assertMessageCount(1, messages)
+      val ClassAndCompanionNameClash(cls, other) :: Nil = messages
+
+      assertEquals("class T", cls.owner.show)
+      assertEquals("class G", cls.show)
+      assertEquals("object T", other.owner.show)
+      assertEquals("trait G", other.show)
+
+    }
 }

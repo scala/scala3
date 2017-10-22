@@ -113,11 +113,9 @@ object RefChecks {
    */
   private def checkCompanionNameClashes(cls: Symbol)(implicit ctx: Context): Unit =
     if (!(cls.owner is ModuleClass)) {
-      val other = cls.owner.linkedClass.info.decl(cls.name)
-      if (other.symbol.isClass)
-        ctx.error(s"name clash: ${cls.owner} defines $cls" + "\n" +
-          s"and its companion ${cls.owner.companionModule} also defines $other",
-          cls.pos)
+      val other = cls.owner.linkedClass.info.decl(cls.name).symbol
+      if (other.isClass)
+        ctx.error(ClassAndCompanionNameClash(cls, other), cls.pos)
     }
 
   // Override checking ------------------------------------------------------------
