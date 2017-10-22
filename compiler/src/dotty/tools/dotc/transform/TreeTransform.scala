@@ -471,6 +471,8 @@ object TreeTransforms {
       myGroupEndId
     }
 
+    val cpy: TypedTreeCopier = cpyBetweenPhases
+
     override def run(implicit ctx: Context): Unit = {
       val curTree = ctx.compilationUnit.tpdTree
       val newTree = macroTransform(curTree)
