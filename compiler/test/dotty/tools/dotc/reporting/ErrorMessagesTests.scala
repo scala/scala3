@@ -1043,7 +1043,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
     checkMessagesAfter("refchecks") {
       """
         |class T {
-        |  trait G
+        |  class G
         |}
         |object T {
         |  trait G
@@ -1055,9 +1055,10 @@ class ErrorMessagesTests extends ErrorMessagesTest {
       assertMessageCount(1, messages)
       val ClassAndCompanionNameClash(cls, other) :: Nil = messages
 
-      assertEquals("trait G", cls.show)
-      assertEquals("trait G", other.show)
       assertEquals("class T", cls.owner.show)
+      assertEquals("class G", cls.show)
       assertEquals("object T", other.owner.show)
+      assertEquals("trait G", other.show)
+
     }
 }
