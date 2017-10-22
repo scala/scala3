@@ -84,14 +84,10 @@ import StdNames.nme
 class LabelDefs extends MiniPhase {
   def phaseName: String = "labelDef"
 
-  val queue = new ArrayBuffer[Tree]()
-  val beingAppended = new mutable.HashSet[Symbol]()
-  var labelLevel = 0
-
   override def transformDefDef(tree: tpd.DefDef)(implicit ctx: Context): tpd.Tree = {
-    if (tree.symbol is Flags.Label) tree
+    if (tree.symbol is Label) tree
     else {
-      collectLabelDefs.clear
+      collectLabelDefs.clear()
       val newRhs = collectLabelDefs.transform(tree.rhs)
       var labelDefs = collectLabelDefs.labelDefs
 
@@ -117,12 +113,12 @@ class LabelDefs extends MiniPhase {
     }
   }
 
-  object collectLabelDefs extends TreeMap() {
+  private object collectLabelDefs extends TreeMap() {
 
     // labelSymbol -> Defining tree
     val labelDefs = new mutable.HashMap[Symbol, Tree]()
 
-    def clear = {
+    def clear(): Unit = {
       labelDefs.clear()
     }
 
@@ -135,13 +131,10 @@ class LabelDefs extends MiniPhase {
           case _ => r
         }
       case t: DefDef =>
-        assert(t.symbol is Flags.Label)
+        assert(t.symbol is Label)
         val r = super.transform(tree)
         labelDefs(r.symbol) = r
         EmptyTree
-      case t: Apply if t.symbol is Flags.Label =>
-        val sym = t.symbol
-        super.transform(tree)
       case _ =>
         super.transform(tree)
     }
