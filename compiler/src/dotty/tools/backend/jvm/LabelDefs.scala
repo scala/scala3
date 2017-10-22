@@ -87,56 +87,42 @@ class LabelDefs extends MiniPhase {
   override def transformDefDef(tree: tpd.DefDef)(implicit ctx: Context): tpd.Tree = {
     if (tree.symbol is Label) tree
     else {
-      collectLabelDefs.clear()
-      val newRhs = collectLabelDefs.transform(tree.rhs)
-      var labelDefs = collectLabelDefs.labelDefs
+      val labelDefs = collectLabelDefs(tree.rhs)
 
       def putLabelDefsNearCallees = new TreeMap() {
-
         override def transform(tree: tpd.Tree)(implicit ctx: Context): tpd.Tree = {
           tree match {
+            case t: Template => t
             case t: Apply if labelDefs.contains(t.symbol) =>
               val labelDef = labelDefs(t.symbol)
               labelDefs -= t.symbol
-
-              val labelDef2 = transform(labelDef)
+              val labelDef2 = cpy.DefDef(labelDef)(rhs = transform(labelDef.rhs))
               Block(labelDef2:: Nil, t)
-
+            case t: DefDef =>
+              assert(t.symbol is Label)
+              EmptyTree
             case _ => if (labelDefs.nonEmpty) super.transform(tree) else tree
           }
         }
       }
 
-      val res = cpy.DefDef(tree)(rhs = putLabelDefsNearCallees.transform(newRhs))
-
-      res
+      cpy.DefDef(tree)(rhs = putLabelDefsNearCallees.transform(tree.rhs))
     }
   }
 
-  private object collectLabelDefs extends TreeMap() {
-
+  private def collectLabelDefs(tree: Tree)(implicit ctx: Context): mutable.HashMap[Symbol, DefDef] = {
     // labelSymbol -> Defining tree
-    val labelDefs = new mutable.HashMap[Symbol, Tree]()
-
-    def clear(): Unit = {
-      labelDefs.clear()
-    }
-
-    override def transform(tree: tpd.Tree)(implicit ctx: Context): tpd.Tree = tree match {
-      case t: Template => t
-      case t: Block =>
-        val r = super.transform(t)
-        r match {
-          case t: Block if t.stats.isEmpty => t.expr
-          case _ => r
-        }
-      case t: DefDef =>
-        assert(t.symbol is Label)
-        val r = super.transform(tree)
-        labelDefs(r.symbol) = r
-        EmptyTree
-      case _ =>
-        super.transform(tree)
-    }
+    val labelDefs = new mutable.HashMap[Symbol, DefDef]()
+    new TreeTraverser {
+      override def traverse(tree: tpd.Tree)(implicit ctx: Context): Unit = tree match {
+        case _: Template =>
+        case t: DefDef =>
+          assert(t.symbol is Label)
+          labelDefs(t.symbol) = t
+          traverseChildren(t)
+        case _ => traverseChildren(tree)
+      }
+    }.traverse(tree)
+    labelDefs
   }
 }
