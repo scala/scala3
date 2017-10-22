@@ -1043,19 +1043,21 @@ class ErrorMessagesTests extends ErrorMessagesTest {
     checkMessagesAfter("refchecks") {
       """
         |class T {
-        |  class G {}
+        |  trait G
         |}
         |object T {
-        |  class G {}
+        |  trait G
         |}
       """.stripMargin
     }.expect { (ictx, messages) =>
       implicit val ctx: Context = ictx
 
       assertMessageCount(1, messages)
-      val ClassAndCompanionNameClash(symbol) :: Nil = messages
+      val ClassAndCompanionNameClash(cls, other) :: Nil = messages
 
-      assertEquals("class T", symbol.owner.show)
-      assertEquals("class G", symbol.show)
+      assertEquals("trait G", cls.show)
+      assertEquals("trait G", other.show)
+      assertEquals("class T", cls.owner.show)
+      assertEquals("object T", other.owner.show)
     }
 }

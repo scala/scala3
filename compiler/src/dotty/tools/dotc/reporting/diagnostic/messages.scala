@@ -1805,13 +1805,16 @@ object messages {
            |"""
   }
 
-  case class ClassAndCompanionNameClash(cls: Symbol)(implicit ctx: Context)
+  case class ClassAndCompanionNameClash(cls: Symbol, other: Symbol)(implicit ctx: Context)
     extends Message(ClassAndCompanionNameClashID) {
-    val kind = "Syntax"
-    val msg = hl"Naming clash, ${cls.owner} and it's companion object defines $cls"
-    val explanation =
-      s"""It is not allowed to define a class or module with the same
-        |name inside a class and companion object.
-      """
+    val kind = "Naming"
+    val msg = hl"Name clash: both ${cls.owner} and its companion object defines ${cls.name}"
+    val explanation = {
+      val kind = if (cls.owner.is(Flags.Trait)) "trait" else "class"
+
+      hl"""|A $kind and its companion object cannot both define a ${"class"}, ${"trait"} or ${"object"} with the same name:
+           |  - ${cls.owner} defines ${cls}
+           |  - ${other.owner} defines ${other}"""
+      }
   }
 }
