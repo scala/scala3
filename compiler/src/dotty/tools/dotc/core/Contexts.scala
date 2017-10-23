@@ -485,6 +485,12 @@ object Contexts {
       loc
     }
 
+    def addLocation[T](): Store.Location[T] = {
+      val (loc, store1) = store.newLocation[T]()
+      setStore(store1)
+      loc
+    }
+
     def updateStore[T](loc: Store.Location[T], value: T): this.type =
       setStore(store.updated(loc, value))
 

@@ -9,11 +9,11 @@ import StdNames._, Denotations._, Scopes._, Constants.Constant, SymUtils._
 import NameKinds.DefaultGetterName
 import Annotations._
 import util.Positions._
+import util.Store
 import scala.collection.{ mutable, immutable }
 import ast._
 import Trees._
 import SuperPhase._
-import util.Property
 import config.Printers.{checks, noPrinter}
 import util.DotClass
 import scala.util.{Try, Success, Failure}
@@ -761,11 +761,6 @@ object RefChecks {
   }
 
   val NoLevelInfo = new OptLevelInfo()
-
-  val LevelInfo = new Property.Key[OptLevelInfo]
-
-  def currentLevel(implicit ctx: Context): OptLevelInfo =
-    ctx.property(LevelInfo).getOrElse(NoLevelInfo)
 }
 import RefChecks._
 
@@ -810,9 +805,15 @@ class RefChecks extends MiniPhase { thisPhase =>
   // Needs to run after ElimRepeated for override checks involving varargs methods
   override def runsAfter = Set(classOf[ElimRepeated])
 
+  private var LevelInfo: Store.Location[OptLevelInfo] = _
+  private def currentLevel(implicit ctx: Context): OptLevelInfo = ctx.store(LevelInfo)
+
+  override def initContext(ctx: FreshContext) =
+    LevelInfo = ctx.addLocation(NoLevelInfo)
+
   override def prepareForStats(trees: List[Tree])(implicit ctx: Context) =
     if (ctx.owner.isTerm)
-      ctx.fresh.setProperty(LevelInfo, new LevelInfo(currentLevel.levelAndIndex, trees))
+      ctx.fresh.updateStore(LevelInfo, new LevelInfo(currentLevel.levelAndIndex, trees))
     else ctx
 
   override def transformValDef(tree: ValDef)(implicit ctx: Context) = {

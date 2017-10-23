@@ -501,7 +501,7 @@ class LambdaLift extends MiniPhase with IdentityDenotTransformer { thisPhase =>
   private def lifter(implicit ctx: Context) = ctx.store(Lifter)
 
   override def initContext(ctx: FreshContext) =
-    Lifter = ctx.addLocation[Lifter](null)
+    Lifter = ctx.addLocation[Lifter]()
 
   override def prepareForUnit(tree: Tree)(implicit ctx: Context) =
     ctx.fresh.updateStore(Lifter, new Lifter(thisPhase))
