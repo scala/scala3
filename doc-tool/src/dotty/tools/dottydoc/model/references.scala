@@ -61,7 +61,9 @@ object references {
         s"$title: $byName${ref.showReference}$repeated"
 
       case ConstantReference(title) => title
-      case EmptyReference => ""
+      case EmptyReference => 
+        assert(false, "unexpected empty reference")
+        "<empty reference>"
     }
   }
 }
