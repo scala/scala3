@@ -12,7 +12,8 @@ object TestConfiguration {
   val checkOptions = Array(
     "-Yno-deep-subtypes",
     "-Yno-double-bindings",
-    "-Yforce-sbt-phases"
+    "-Yforce-sbt-phases",
+    "-Xverify-signatures"
   )
 
   val classPath = mkClassPath(Jars.dottyTestDeps)
@@ -58,5 +59,4 @@ object TestConfiguration {
   val scala2Mode = defaultOptions and "-language:Scala2"
   val explicitUTF8 = defaultOptions and ("-encoding", "UTF8")
   val explicitUTF16 = defaultOptions and ("-encoding", "UTF16")
-  val checkGenericJavaSignaturesOptions = defaultOptions and "-Xverify-signatures"
 }

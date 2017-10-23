@@ -195,7 +195,7 @@ class CompilationTests extends ParallelTesting {
   // Generic java signatures tests ---------------------------------------------
 
   @Test def genericJavaSignatures: Unit = {
-    compileFilesInDir("../tests/generic-java-signatures", checkGenericJavaSignaturesOptions)
+    compileFilesInDir("../tests/generic-java-signatures", defaultOptions)
   }.checkRuns()
 
   // Pickling Tests ------------------------------------------------------------
