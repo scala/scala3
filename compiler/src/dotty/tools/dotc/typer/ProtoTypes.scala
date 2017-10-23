@@ -41,7 +41,15 @@ object ProtoTypes {
     /** Test compatibility after normalization in a fresh typerstate. */
     def normalizedCompatible(tp: Type, pt: Type)(implicit ctx: Context) = ctx.typerState.test {
       val normTp = normalize(tp, pt)
-      isCompatible(normTp, pt) || pt.isRef(defn.UnitClass) && normTp.isParameterless
+      isCompatible(normTp, pt) ||
+        pt.isRef(defn.UnitClass) && normTp.isParameterless ||
+        pt.isInstanceOf[ApplyingProto] && isCompatible(tp, pt)
+        // Note for the last line:
+        // Avoid widening of `tp` if the expected type is `ApplyingProto`, as
+        // default parameters require a TermRef to insert the default values,
+        // widening to MethodType will incorrectly disqualify a valid candidate.
+        //
+        // Check note in `SelectionProto.isMatchedBy` and tests/pos/i3352.scala
     }
 
     private def disregardProto(pt: Type)(implicit ctx: Context): Boolean = pt.dealias match {
@@ -101,7 +109,19 @@ object ProtoTypes {
         val mbr = if (privateOK) tp1.member(name) else tp1.nonPrivateMember(name)
         def qualifies(m: SingleDenotation) =
           memberProto.isRef(defn.UnitClass) ||
-          compat.normalizedCompatible(m.info, memberProto)
+            compat.normalizedCompatible(m.info, memberProto) ||
+            memberProto.isInstanceOf[ApplyingProto] && compat.normalizedCompatible(m.namedType, memberProto)
+            // Note for the last line:
+            // If the expected type is an applying type and `m` refers to a method,
+            // `m.info` will get a method type, which loses the information about default
+            // parameters for methods. When the expected type is an application taking
+            // default values, compatibility check will fail due to mismatch in the number
+            // of parameters.
+            //
+            // To make `TestApplication` succeed, we need to try `m.namedType` here so
+            // that default parameters will be inserted.
+            //
+            // check tests/pos/i3352.scala
         mbr match { // hasAltWith inlined for performance
           case mbr: SingleDenotation => mbr.exists && qualifies(mbr)
           case _ => mbr hasAltWith qualifies
