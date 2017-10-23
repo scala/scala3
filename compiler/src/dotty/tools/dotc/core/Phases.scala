@@ -310,6 +310,8 @@ object Phases {
 
     def exists: Boolean = true
 
+    def initContext(ctx: FreshContext): Unit = ()
+
     private[this] var myPeriod: Period = Periods.InvalidPeriod
     private[this] var myBase: ContextBase = null
     private[this] var myErasedTypes = false
