@@ -79,8 +79,11 @@ object tags {
         else renderLink(baseurl, tpeLink)
       }
 
-      case AndOrTypeReference(left, sep, right) =>
-        s"""${renderReference(left)}<span class="and-or-separator"> $sep </span>${renderReference(right)}"""
+      case OrTypeReference(left, right) =>
+        s"""${renderReference(left)}<span class="and-or-separator"> | </span>${renderReference(right)}"""
+
+      case AndTypeReference(left, right) =>
+        s"""${renderReference(left)}<span class="and-or-separator"> &amp; </span>${renderReference(right)}"""
 
       case FunctionReference(args, returnValue) => {
         val params =

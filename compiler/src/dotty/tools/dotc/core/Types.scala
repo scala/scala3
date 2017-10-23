@@ -1523,9 +1523,9 @@ object Types {
           if (mySig == null) mySig = Signature.NotAMethod
         case designator: Symbol =>
           uncheckedSetSym(designator)
-        case LocalName(underlying, space) =>
-          myNameSpace = space
-          decompose(underlying)
+        case designator: LocalName[_] =>
+          myNameSpace = designator.nameSpace
+          decompose(designator.name)
       }
       decompose(designator)
       this
