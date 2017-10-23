@@ -1,11 +1,11 @@
 package dotty.tools.dotc
 package transform.localopt
 
-import core.TypeErasure
 import core.Contexts.Context
 import core.Symbols._
 import core.Types._
 import core.Flags._
+import core.StdNames._
 import ast.Trees._
 import Simplify._
 
@@ -36,7 +36,7 @@ class DropNoEffects(val simplifyPhase: Simplify) extends Optimisation {
         case t => t :: Nil
       }
       val (newStats2, newExpr) = a.expr match {
-        case Block(stats2, expr) => (newStats1 ++ stats2, expr)
+        case Block(stats2, expr) if !isWhileLabel(expr.symbol) => (newStats1 ++ stats2, expr)
         case _ => (newStats1, a.expr)
       }
 
@@ -201,4 +201,7 @@ class DropNoEffects(val simplifyPhase: Simplify) extends Optimisation {
     case _ =>
       false
   }
+
+  private def isWhileLabel(sym: Symbol)(implicit ctx: Context): Boolean =
+    sym.is(Label) && (sym.name == nme.WHILE_PREFIX || sym.name == nme.DO_WHILE_PREFIX)
 }

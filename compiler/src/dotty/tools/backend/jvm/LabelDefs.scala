@@ -1,38 +1,15 @@
 package dotty.tools.backend.jvm
 
-import dotty.tools.dotc.ast.Trees.Thicket
-import dotty.tools.dotc.ast.{Trees, tpd}
+import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.core.Contexts.Context
-import dotty.tools.dotc.core.Types
-import dotty.tools.dotc.transform.TreeTransforms.{TransformerInfo, TreeTransform, MiniPhase, MiniPhaseTransform}
-import dotty.tools.dotc
-import dotty.tools.dotc.backend.jvm.DottyPrimitives
-import dotty.tools.dotc.core.Flags.FlagSet
-import dotty.tools.dotc.transform.Erasure
-import dotty.tools.dotc.transform.SymUtils._
-import java.io.{File => JFile}
+import dotty.tools.dotc.transform._
+import dotty.tools.dotc.transform.TreeTransforms._
 
-import scala.collection.generic.Clearable
 import scala.collection.mutable
-import scala.collection.mutable.{ListBuffer, ArrayBuffer}
-import scala.reflect.ClassTag
-import dotty.tools.io.{Directory, PlainDirectory, AbstractFile}
-import scala.tools.asm.{ClassVisitor, FieldVisitor, MethodVisitor}
-import scala.tools.nsc.backend.jvm.{BCodeHelpers, BackendInterface}
-import dotty.tools.dotc.core._
-import Periods._
-import SymDenotations._
-import Contexts._
-import Types._
-import Symbols._
-import Denotations._
-import Phases._
-import java.lang.AssertionError
-import dotty.tools.dotc.util.Positions.Position
-import Decorators._
-import tpd._
-import Flags._
-import StdNames.nme
+import dotty.tools.dotc.core.StdNames._
+import dotty.tools.dotc.core.Symbols._
+import dotty.tools.dotc.core.Decorators._
+import dotty.tools.dotc.core.Flags._
 
 /**
  * Verifies that each Label DefDef has only a single address to jump back and
@@ -80,70 +57,64 @@ import StdNames.nme
  * This is modified by setting `labelsReordered` flag in Phases.
  *
  * @author Dmitry Petrashko
+ * @author Nicolas Stucki
  */
 class LabelDefs extends MiniPhaseTransform {
+  import tpd._
+
   def phaseName: String = "labelDef"
 
-  val queue = new ArrayBuffer[Tree]()
-  val beingAppended = new mutable.HashSet[Symbol]()
-  var labelLevel = 0
+  override def runsAfterGroupsOf = Set(classOf[Flatten])
 
-  override def transformDefDef(tree: tpd.DefDef)(implicit ctx: Context, info: TransformerInfo): tpd.Tree = {
-    if (tree.symbol is Flags.Label) tree
+  private val labelDefs: mutable.HashMap[Symbol, DefDef] = new mutable.HashMap[Symbol, DefDef]()
+
+  override def prepareForDefDef(tree: DefDef)(implicit ctx: Context): TreeTransform = {
+    if (isWhileDef(tree)) this
+    else if (tree.symbol.is(Label)) NoTransform // transformation is done in transformApply
     else {
-      collectLabelDefs.clear
-      val newRhs = collectLabelDefs.transform(tree.rhs)
-      var labelDefs = collectLabelDefs.labelDefs
-
-      def putLabelDefsNearCallees = new TreeMap() {
-
-        override def transform(tree: tpd.Tree)(implicit ctx: Context): tpd.Tree = {
-          tree match {
-            case t: Apply if labelDefs.contains(t.symbol) =>
-              val labelDef = labelDefs(t.symbol)
-              labelDefs -= t.symbol
-
-              val labelDef2 = transform(labelDef)
-              Block(labelDef2:: Nil, t)
-
-            case _ => if (labelDefs.nonEmpty) super.transform(tree) else tree
-          }
-        }
-      }
-
-      val res = cpy.DefDef(tree)(rhs = putLabelDefsNearCallees.transform(newRhs))
-
-      res
+      collectLabelDefs(tree.rhs)
+      this
     }
   }
 
-  object collectLabelDefs extends TreeMap() {
-
-    // labelSymbol -> Defining tree
-    val labelDefs = new mutable.HashMap[Symbol, Tree]()
-
-    def clear = {
-      labelDefs.clear()
+  override def transformApply(tree: Apply)(implicit ctx: Context, info: TransformerInfo): Tree = {
+    if (!tree.symbol.is(Label)) tree
+    else labelDefs.get(tree.symbol) match {
+      case Some(labelDef) =>
+        labelDefs -= tree.symbol
+        val newRhs = transform(labelDef.rhs) // transform the body of the label def
+        val transformedLabelDef = cpy.DefDef(labelDef)(rhs = newRhs)
+        Block(transformedLabelDef :: Nil, tree)
+      case None => tree
     }
+  }
 
-    override def transform(tree: tpd.Tree)(implicit ctx: Context): tpd.Tree = tree match {
-      case t: Template => t
-      case t: Block =>
-        val r = super.transform(t)
-        r match {
-          case t: Block if t.stats.isEmpty => t.expr
-          case _ => r
-        }
-      case t: DefDef =>
-        assert(t.symbol is Flags.Label)
-        val r = super.transform(tree)
-        labelDefs(r.symbol) = r
-        EmptyTree
-      case t: Apply if t.symbol is Flags.Label =>
-        val sym = t.symbol
-        super.transform(tree)
-      case _ =>
-        super.transform(tree)
+  override def transformBlock(tree: Block)(implicit ctx: Context, info: TransformerInfo): Tree = {
+    if (tree.stats.isEmpty || !tree.stats.exists(_.symbol.is(Label))) tree
+    else {
+      // Only keep label defs if they are followed by their applies
+      val newStats = tree.stats.zipWithConserve(tree.stats.tail :+ tree.expr) { (stat, next) =>
+        if (!stat.symbol.is(Label) || stat.symbol == next.symbol) stat
+        else EmptyTree
+      }.filterNot(_.isEmpty)
+      seq(newStats, tree.expr)
     }
+  }
+
+  private def collectLabelDefs(tree: Tree)(implicit ctx: Context): Unit = new TreeTraverser() {
+    assert(labelDefs.isEmpty)
+    override def traverse(tree: Tree)(implicit ctx: Context): Unit = tree match {
+      case _: Template =>
+      case tree: DefDef if !isWhileDef(tree) =>
+        assert(tree.symbol.is(Label))
+        labelDefs(tree.symbol) = tree
+        traverseChildren(tree)
+      case _ => traverseChildren(tree)
+    }
+  }.traverse(tree)
+
+  private def isWhileDef(ddef: DefDef)(implicit ctx: Context): Boolean = {
+    ddef.symbol.is(Label) &&
+    (ddef.name == nme.WHILE_PREFIX || ddef.name == nme.DO_WHILE_PREFIX)
   }
 }
