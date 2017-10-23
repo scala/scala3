@@ -10,13 +10,7 @@ import core.Flags._
 import core.Decorators._
 import core.NameKinds.LiftedTreeName
 import NonLocalReturns._
-import util.Property
-
-object LiftTry {
-  val NeedLift = new Property.Key[Boolean]
-  def needLift(implicit ctx: Context) = ctx.property(NeedLift).getOrElse(false)
-  def liftingCtx(p: Boolean)(implicit ctx: Context) = ctx.withProperty(NeedLift, Some(p))
-}
+import util.Store
 
 /** Lifts try's that might be executed on non-empty expression stacks
  *  to their own methods. I.e.
@@ -29,10 +23,18 @@ object LiftTry {
  */
 class LiftTry extends MiniPhase with IdentityDenotTransformer { thisPhase =>
   import ast.tpd._
-  import LiftTry._
 
   /** the following two members override abstract members in Transform */
   val phaseName: String = "liftTry"
+
+  private var NeedLift: Store.Location[Boolean] = _
+  private def needLift(implicit ctx: Context): Boolean = ctx.store(NeedLift)
+
+  override def initContext(ctx: FreshContext) =
+    NeedLift = ctx.addLocation(false)
+
+  private def liftingCtx(p: Boolean)(implicit ctx: Context) =
+    if (needLift == p) ctx else ctx.fresh.updateStore(NeedLift, p)
 
   override def prepareForApply(tree: Apply)(implicit ctx: Context) =
     if (tree.fun.symbol.is(Label)) ctx

@@ -15,24 +15,24 @@ import core.NameOps._
 import core.NameKinds.TempResultName
 import ast.Trees._
 import SymUtils._
-import util.Property
+import util.Store
 import collection.{ mutable, immutable }
 import collection.mutable.{ LinkedHashMap, LinkedHashSet, TreeSet }
-
-object CapturedVars {
-  val Captured = new Property.Key[collection.Set[Symbol]]
-  def captured(implicit ctx: Context) = ctx.property(Captured).getOrElse(Set.empty)
-}
 
 /** This phase translates variables that are captured in closures to
  *  heap-allocated refs.
  */
 class CapturedVars extends MiniPhase with IdentityDenotTransformer { thisPhase =>
-  import CapturedVars._
   import ast.tpd._
 
   /** the following two members override abstract members in Transform */
   val phaseName: String = "capturedVars"
+
+  private var Captured: Store.Location[collection.Set[Symbol]] = _
+  private def captured(implicit ctx: Context) = ctx.store(Captured)
+
+  override def initContext(ctx: FreshContext) =
+    Captured = ctx.addLocation(Set.empty)
 
   private class RefInfo(implicit ctx: Context) {
     /** The classes for which a Ref type exists. */
@@ -79,7 +79,7 @@ class CapturedVars extends MiniPhase with IdentityDenotTransformer { thisPhase =
   override def prepareForUnit(tree: Tree)(implicit ctx: Context) = {
     val captured = (new CollectCaptured)
       .runOver(ctx.compilationUnit.tpdTree)(ctx.withPhase(thisPhase))
-    ctx.fresh.setProperty(Captured, captured)
+    ctx.fresh.updateStore(Captured, captured)
   }
 
   /** The {Volatile|}{Int|Double|...|Object}Ref class corresponding to the class `cls`,

@@ -4,27 +4,26 @@ package transform
 import core._
 import DenotTransformers.SymTransformer
 import Phases.Phase
-import Contexts.Context
+import Contexts.{Context, FreshContext}
 import Flags._
 import SymDenotations.SymDenotation
 import collection.mutable
 import SuperPhase.MiniPhase
-import util.Property
-
-object Flatten {
-  import ast.tpd._
-  val LiftedDefs = new Property.Key[mutable.ListBuffer[Tree]]
-  def liftedDefs(implicit ctx: Context) = ctx.property(LiftedDefs).get
-}
+import util.Store
 
 /** Lift nested classes to toplevel */
 class Flatten extends MiniPhase with SymTransformer {
   import ast.tpd._
-  import Flatten._
 
   override def phaseName = "flatten"
 
   override def changesMembers = true // the phase removes inner classes
+
+  private var LiftedDefs: Store.Location[mutable.ListBuffer[Tree]] = _
+  private def liftedDefs(implicit ctx: Context) = ctx.store(LiftedDefs)
+
+  override def initContext(ctx: FreshContext) =
+    LiftedDefs = ctx.addLocation[mutable.ListBuffer[Tree]](null)
 
   def transformSym(ref: SymDenotation)(implicit ctx: Context) = {
     if (ref.isClass && !ref.is(Package) && !ref.owner.is(Package)) {
@@ -36,7 +35,7 @@ class Flatten extends MiniPhase with SymTransformer {
   }
 
   override def prepareForPackageDef(tree: PackageDef)(implicit ctx: Context) =
-    ctx.fresh.setProperty(LiftedDefs, new mutable.ListBuffer[Tree])
+    ctx.fresh.updateStore(LiftedDefs, new mutable.ListBuffer[Tree])
 
   private def liftIfNested(tree: Tree)(implicit ctx: Context) =
     if (ctx.owner is Package) tree

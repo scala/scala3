@@ -16,7 +16,7 @@ import core.Phases._
 import ast.Trees._
 import SymUtils._
 import ExplicitOuter.outer
-import util.Property
+import util.Store
 import util.Positions._
 import collection.{ mutable, immutable }
 import collection.mutable.{ HashMap, HashSet, LinkedHashMap, LinkedHashSet, TreeSet }
@@ -450,9 +450,6 @@ object LambdaLift {
 
     def needsLifting(sym: Symbol) = liftedOwner contains sym
   }
-
-  val Lifter = new Property.Key[Lifter]
-  def lifter(implicit ctx: Context) = ctx.property(Lifter).get
 }
 
 /** This phase performs the necessary rewritings to eliminate classes and methods
@@ -500,8 +497,14 @@ class LambdaLift extends MiniPhase with IdentityDenotTransformer { thisPhase =>
     // lambda lift for super calls right. Witness the implementation restrictions to
     // this effect in scalac.
 
+  private var Lifter: Store.Location[Lifter] = _
+  private def lifter(implicit ctx: Context) = ctx.store(Lifter)
+
+  override def initContext(ctx: FreshContext) =
+    Lifter = ctx.addLocation[Lifter](null)
+
   override def prepareForUnit(tree: Tree)(implicit ctx: Context) =
-    ctx.fresh.setProperty(Lifter, new Lifter(thisPhase))
+    ctx.fresh.updateStore(Lifter, new Lifter(thisPhase))
 
   override def transformIdent(tree: Ident)(implicit ctx: Context) = {
     val sym = tree.symbol
