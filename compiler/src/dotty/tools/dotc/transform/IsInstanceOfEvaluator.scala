@@ -2,7 +2,7 @@ package dotty.tools.dotc
 package transform
 
 import dotty.tools.dotc.util.Positions._
-import SuperPhase.MiniPhase
+import MegaPhase.MiniPhase
 import core._
 import Contexts.Context, Types._, Constants._, Decorators._, Symbols._
 import TypeUtils._, TypeErasure._, Flags._

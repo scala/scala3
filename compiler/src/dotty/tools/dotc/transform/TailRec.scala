@@ -11,8 +11,7 @@ import Denotations.SingleDenotation
 import Symbols._
 import Types._
 import NameKinds.TailLabelName
-import TreeTransforms.{MiniPhaseTransform, TransformerInfo}
-import SuperPhase.MiniPhase
+import MegaPhase.MiniPhase
 
 /**
  * A Tail Rec Transformer

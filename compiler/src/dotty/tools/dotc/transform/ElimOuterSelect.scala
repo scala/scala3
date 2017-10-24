@@ -2,7 +2,7 @@ package dotty.tools.dotc
 package transform
 
 import core._
-import SuperPhase.MiniPhase
+import MegaPhase.MiniPhase
 import Contexts.Context
 import Types._
 import Decorators._

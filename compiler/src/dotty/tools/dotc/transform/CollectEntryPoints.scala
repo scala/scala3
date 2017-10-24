@@ -8,7 +8,7 @@ import dotty.tools.dotc.core.Symbols.NoSymbol
 import scala.annotation.tailrec
 import dotty.tools.dotc.core._
 import Symbols._
-import dotty.tools.dotc.transform.SuperPhase._
+import dotty.tools.dotc.transform.MegaPhase._
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.core.Contexts.Context
 import scala.collection.mutable

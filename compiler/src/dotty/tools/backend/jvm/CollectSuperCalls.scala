@@ -5,7 +5,7 @@ import dotty.tools.dotc.ast.Trees._
 import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.core.Flags.Trait
-import dotty.tools.dotc.transform.SuperPhase.MiniPhase
+import dotty.tools.dotc.transform.MegaPhase.MiniPhase
 
 /** Collect all super calls to trait members.
  *

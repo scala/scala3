@@ -1,7 +1,7 @@
 package dotty.tools.dotc
 package transform
 
-import SuperPhase._
+import MegaPhase._
 import core.Names.Name
 import core.DenotTransformers._
 import core.Denotations._
@@ -106,7 +106,7 @@ class TreeChecker extends Phase with SymTransformer {
   }
 
   private def previousPhases(phases: List[Phase])(implicit ctx: Context): List[Phase] = phases match {
-    case (phase: SuperPhase) :: phases1 =>
+    case (phase: MegaPhase) :: phases1 =>
       val subPhases = phase.miniPhases
       val previousSubPhases = previousPhases(subPhases.toList)
       if (previousSubPhases.length == subPhases.length) previousSubPhases ::: previousPhases(phases1)

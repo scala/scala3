@@ -2,7 +2,7 @@ package dotty.tools.dotc
 package transform
 
 import core._
-import SuperPhase._
+import MegaPhase._
 import collection.mutable
 import SymDenotations._, Symbols._, Contexts._, Types._, Names._, StdNames._, NameOps._
 import ast.Trees._

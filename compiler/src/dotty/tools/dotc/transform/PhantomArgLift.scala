@@ -4,7 +4,7 @@ import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.core.Contexts._
 import dotty.tools.dotc.core.NameKinds._
 import dotty.tools.dotc.core.Types._
-import dotty.tools.dotc.transform.SuperPhase.MiniPhase
+import dotty.tools.dotc.transform.MegaPhase.MiniPhase
 import dotty.tools.dotc.typer.EtaExpansion
 
 import scala.collection.mutable.ListBuffer

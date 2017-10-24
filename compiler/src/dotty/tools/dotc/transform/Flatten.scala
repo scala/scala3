@@ -8,7 +8,7 @@ import Contexts.{Context, FreshContext}
 import Flags._
 import SymDenotations.SymDenotation
 import collection.mutable
-import SuperPhase.MiniPhase
+import MegaPhase.MiniPhase
 import util.Store
 
 /** Lift nested classes to toplevel */

@@ -13,7 +13,7 @@ import util.Store
 import scala.collection.{ mutable, immutable }
 import ast._
 import Trees._
-import SuperPhase._
+import MegaPhase._
 import config.Printers.{checks, noPrinter}
 import util.DotClass
 import scala.util.{Try, Success, Failure}

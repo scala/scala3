@@ -8,7 +8,7 @@ import dotty.tools.dotc.core.DenotTransformers.IdentityDenotTransformer
 import dotty.tools.dotc.core.Flags._
 import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.core._
-import dotty.tools.dotc.transform.SuperPhase._
+import dotty.tools.dotc.transform.MegaPhase._
 
 /** Removes selects that would be compiled into GetStatic
  * otherwise backend needs to be aware that some qualifiers need to be dropped.

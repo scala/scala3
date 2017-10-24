@@ -3,7 +3,7 @@ package transform
 
 import typer.Inliner
 import core.Contexts.Context
-import SuperPhase.MiniPhase
+import MegaPhase.MiniPhase
 
 /** Drop Inlined nodes */
 class DropInlined extends MiniPhase {

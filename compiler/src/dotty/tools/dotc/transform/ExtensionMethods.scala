@@ -5,7 +5,7 @@
 package dotty.tools.dotc
 package transform
 
-import dotty.tools.dotc.transform.SuperPhase._
+import dotty.tools.dotc.transform.MegaPhase._
 import ValueClasses._
 import dotty.tools.dotc.ast.{Trees, tpd}
 import scala.collection.{ mutable, immutable }

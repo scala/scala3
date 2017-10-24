@@ -11,7 +11,7 @@ import Denotations._
 import Decorators._
 import config.Printers.config
 import scala.collection.mutable.{ListBuffer, ArrayBuffer}
-import dotty.tools.dotc.transform.SuperPhase._
+import dotty.tools.dotc.transform.MegaPhase._
 import dotty.tools.dotc.transform._
 import Periods._
 import typer.{FrontEnd, RefChecks}
@@ -111,7 +111,7 @@ object Phases {
                     assert(false, s"Only tree transforms can be squashed, ${phase.phaseName} can not be squashed")
                 }
               }
-              val superPhase = new SuperPhase(filteredPhaseBlock.asInstanceOf[List[MiniPhase]].toArray)
+              val superPhase = new MegaPhase(filteredPhaseBlock.asInstanceOf[List[MiniPhase]].toArray)
               prevPhases ++= filteredPhaseBlock.map(_.getClazz)
               superPhase
             } else { // block of a single phase, no squashing
@@ -141,7 +141,7 @@ object Phases {
       val flatPhases = collection.mutable.ListBuffer[Phase]()
 
       phasess.foreach(p => p match {
-        case p: SuperPhase => flatPhases ++= p.miniPhases
+        case p: MegaPhase => flatPhases ++= p.miniPhases
         case _ => flatPhases += p
       })
 
@@ -169,7 +169,7 @@ object Phases {
       while (i < phasess.length) {
         val phase = phasess(i)
         phase match {
-          case p: SuperPhase =>
+          case p: MegaPhase =>
             val miniPhases = p.miniPhases
             miniPhases.foreach{ phase =>
               checkRequirements(phase)

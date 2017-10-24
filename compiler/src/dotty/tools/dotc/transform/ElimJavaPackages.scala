@@ -4,7 +4,7 @@ import dotty.tools.dotc.ast.tpd._
 import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.Flags._
 import dotty.tools.dotc.core.Types.{Type, TypeRef}
-import dotty.tools.dotc.transform.SuperPhase.MiniPhase
+import dotty.tools.dotc.transform.MegaPhase.MiniPhase
 
 /**
   * Eliminates syntactic references to Java packages, so that there's no chance

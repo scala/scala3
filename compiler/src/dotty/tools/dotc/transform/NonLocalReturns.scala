@@ -3,7 +3,7 @@ package transform
 
 import core._
 import Contexts._, Symbols._, Types._, Flags._, Decorators._, StdNames._, Constants._, Phases._
-import SuperPhase._
+import MegaPhase._
 import ast.Trees._
 import NameKinds.NonLocalReturnKeyName
 import collection.mutable

@@ -2,7 +2,7 @@ package dotty.tools.dotc
 package transform
 
 import core._
-import SuperPhase._
+import MegaPhase._
 import Contexts.Context
 import Flags._
 import SymUtils._

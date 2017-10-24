@@ -1,7 +1,7 @@
 package dotty.tools.dotc
 package transform
 
-import SuperPhase._
+import MegaPhase._
 import core.DenotTransformers._
 import core.Contexts._
 import ast.tpd

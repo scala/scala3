@@ -14,7 +14,7 @@ import NameKinds._
 import StdNames.nme
 import rewrite.Rewrites.patch
 import util.Positions.Position
-import dotty.tools.dotc.transform.SuperPhase._
+import dotty.tools.dotc.transform.MegaPhase._
 import dotty.tools.dotc.ast.Trees._
 import dotty.tools.dotc.ast.{untpd, tpd}
 import dotty.tools.dotc.core.Constants.Constant

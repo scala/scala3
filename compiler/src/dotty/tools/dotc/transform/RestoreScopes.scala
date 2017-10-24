@@ -7,7 +7,7 @@ import Contexts.Context
 import Symbols._
 import Scopes._
 import collection.mutable
-import SuperPhase.MiniPhase
+import MegaPhase.MiniPhase
 import SymDenotations._
 import ast.Trees._
 import NameOps._

@@ -9,7 +9,7 @@ import Definitions._
 import DenotTransformers._
 import StdNames._
 import Symbols._
-import SuperPhase._
+import MegaPhase._
 import Types._
 
 

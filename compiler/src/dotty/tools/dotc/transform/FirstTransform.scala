@@ -5,7 +5,7 @@ import core._
 import Names._
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.core.Phases.NeedsCompanions
-import dotty.tools.dotc.transform.SuperPhase._
+import dotty.tools.dotc.transform.MegaPhase._
 import ast.Trees._
 import Flags._
 import Types._

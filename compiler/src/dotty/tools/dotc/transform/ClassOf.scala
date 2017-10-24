@@ -7,7 +7,7 @@ import core.Contexts.Context
 import core.StdNames.nme
 import core.Symbols.{defn,TermSymbol}
 import core.TypeErasure
-import SuperPhase._
+import MegaPhase._
 
 /** Rewrite `classOf` calls as follow:
  *

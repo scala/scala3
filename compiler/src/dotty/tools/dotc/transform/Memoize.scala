@@ -12,7 +12,7 @@ import Symbols._
 import SymUtils._
 import Constants._
 import ast.Trees._
-import SuperPhase._
+import MegaPhase._
 import NameOps._
 import Flags._
 import Decorators._

@@ -10,14 +10,15 @@ import scala.annotation.tailrec
 import config.Printers.transforms
 import scala.util.control.NonFatal
 import reporting.trace
+import annotation.switch
 
-/** A SuperPhase combines a number of mini-phases which are all executed in
+/** A MegaPhase combines a number of mini-phases which are all executed in
  *  a single tree traversal.
  *
  *  This is an evolution of the previous "TreeTransformers.scala", which was written by @DarkDimius and
  *  is described in his thesis.
  */
-object SuperPhase {
+object MegaPhase {
   import ast.tpd._
 
   /** The base class of tree transforms. For each kind of tree K, there are
@@ -35,8 +36,8 @@ object SuperPhase {
    */
   abstract class MiniPhase extends Phase {
 
-    private[SuperPhase] var superPhase: SuperPhase = _
-    private[SuperPhase] var idxInGroup: Int = _
+    private[MegaPhase] var superPhase: MegaPhase = _
+    private[MegaPhase] var idxInGroup: Int = _
 
     /** List of names of phases that should have finished their processing of all compilation units
      *  before this phase starts
@@ -121,7 +122,7 @@ object SuperPhase {
     def transformFollowing(tree: Tree)(implicit ctx: Context): Tree =
       superPhase.transformNode(tree, idxInGroup + 1)
 
-    protected def singletonGroup = new SuperPhase(Array(this))
+    protected def singletonGroup = new MegaPhase(Array(this))
 
     override def run(implicit ctx: Context): Unit =
       singletonGroup.run
@@ -133,14 +134,14 @@ object SuperPhase {
   private val idNodeTransformer: Transformer[AnyRef, AnyRef] = (t, ctx) => t
   private val idContextTransformer: Transformer[AnyRef, Context] = (t, ctx) => ctx
 }
-import SuperPhase._
+import MegaPhase._
 
-class SuperPhase(val miniPhases: Array[MiniPhase]) extends Phase {
+class MegaPhase(val miniPhases: Array[MiniPhase]) extends Phase {
   import ast.tpd._
 
   override val phaseName =
     if (miniPhases.length == 1) miniPhases(0).phaseName
-    else miniPhases.map(_.phaseName).mkString("SuperPhase{", ", ", "}")
+    else miniPhases.map(_.phaseName).mkString("MegaPhase{", ", ", "}")
 
   private val cpy: TypedTreeCopier = cpyBetweenPhases
 
@@ -163,7 +164,7 @@ class SuperPhase(val miniPhases: Array[MiniPhase]) extends Phase {
     }
 
     { implicit val ctx = nestedCtx
-      tag match {
+      (tag: @switch) match {
         case Tag.Select =>
           val tree1 = tree.asInstanceOf[Select]
           val qual = transformTree(tree1.qualifier, start)

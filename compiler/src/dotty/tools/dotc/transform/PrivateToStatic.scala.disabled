@@ -11,10 +11,10 @@ import StdNames._
 import SymDenotations._
 import Types._
 import collection.mutable
-import SuperPhase._
+import MegaPhase._
 import Decorators._
 import ast.Trees._
-import SuperPhase.TransformerInfo
+import MegaPhase.TransformerInfo
 
 /** Makes private methods static, provided they not deferred, accessors, or static,
  *  by rewriting a method `m` in class `C` as follows:

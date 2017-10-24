@@ -3,7 +3,7 @@ package transform
 
 import scala.language.postfixOps
 
-import SuperPhase._
+import MegaPhase._
 import core.Denotations._
 import core.SymDenotations._
 import core.Contexts._

@@ -4,7 +4,7 @@ package transform
 import ast.{Trees, tpd}
 import core._, core.Decorators._
 import Contexts._, Trees._, StdNames._, Symbols._
-import DenotTransformers._, SuperPhase._, Phases.Phase
+import DenotTransformers._, MegaPhase._, Phases.Phase
 import ExtensionMethods._, TreeExtractors._, ValueClasses._
 
 /** This phase elides unnecessary value class allocations

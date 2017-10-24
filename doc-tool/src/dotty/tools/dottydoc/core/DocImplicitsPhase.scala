@@ -2,7 +2,7 @@ package dotty.tools
 package dottydoc
 package core
 
-import dotty.tools.dotc.transform.SuperPhase.MiniPhase
+import dotty.tools.dotc.transform.MegaPhase.MiniPhase
 import dotty.tools.dotc.core.Flags
 import dotc.core.Contexts.Context
 import util.syntax._

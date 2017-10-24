@@ -2,7 +2,7 @@ package dotty.tools.dotc
 package transform
 
 import core._
-import SuperPhase._
+import MegaPhase._
 import dotty.tools.dotc.ast.tpd._
 import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.StdNames._

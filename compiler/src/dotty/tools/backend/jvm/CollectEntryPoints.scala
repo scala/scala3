@@ -3,7 +3,7 @@ package dotty.tools.backend.jvm
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.Types
-import dotty.tools.dotc.transform.SuperPhase._
+import dotty.tools.dotc.transform.MegaPhase._
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc
 import dotty.tools.dotc.backend.jvm.DottyPrimitives

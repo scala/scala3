@@ -6,7 +6,7 @@ import core.Contexts.Context
 import core.StdNames.nme
 import core.Phases.Phase
 import TypeUtils._
-import SuperPhase.MiniPhase
+import MegaPhase.MiniPhase
 
 /** Rewrite `getClass` calls as follow:
   *

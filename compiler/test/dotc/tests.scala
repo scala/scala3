@@ -348,7 +348,7 @@ class tests extends CompilerTest {
     "NormalizeFlags.scala", "OverridingPairs.scala", "ParamForwarding.scala", "Pickler.scala", "PostTyper.scala",
     "ResolveSuper.scala", "RestoreScopes.scala", "SeqLiterals.scala", "Splitter.scala", "SuperAccessors.scala",
     "SymUtils.scala", "SyntheticMethods.scala", "TailRec.scala", "TreeChecker.scala", "TreeExtractors.scala",
-    "TreeGen.scala", "SuperPhase.scala", "TypeTestsCasts.scala", "TypeUtils.scala", "ValueClasses.scala",
+    "TreeGen.scala", "MegaPhase.scala", "TypeTestsCasts.scala", "TypeUtils.scala", "ValueClasses.scala",
     "VCElideAllocations.scala", "VCInlineMethods.scala"
   ) map (s"${dotcDir}transform/" + _), testPickling)
 

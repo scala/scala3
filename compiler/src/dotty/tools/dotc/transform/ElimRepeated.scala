@@ -5,7 +5,7 @@ import core._
 import Names._
 import StdNames.nme
 import Types._
-import dotty.tools.dotc.transform.SuperPhase._
+import dotty.tools.dotc.transform.MegaPhase._
 import ast.Trees._
 import Flags._
 import Contexts.Context

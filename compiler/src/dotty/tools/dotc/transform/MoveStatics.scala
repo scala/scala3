@@ -13,7 +13,7 @@ import dotty.tools.dotc.core.StdNames.nme
 import dotty.tools.dotc.core.Phases.Phase
 import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.core.Types.MethodType
-import dotty.tools.dotc.transform.SuperPhase.MiniPhase
+import dotty.tools.dotc.transform.MegaPhase.MiniPhase
 
 /** Move static methods from companion to the class itself */
 class MoveStatics extends MiniPhase with SymTransformer {

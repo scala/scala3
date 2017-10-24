@@ -9,7 +9,7 @@ import core.NameKinds.ExceptionBinderName
 import dotty.tools.dotc.core.Decorators._
 import dotty.tools.dotc.core.Flags
 import dotty.tools.dotc.core.Contexts.Context
-import dotty.tools.dotc.transform.SuperPhase.MiniPhase
+import dotty.tools.dotc.transform.MegaPhase.MiniPhase
 import dotty.tools.dotc.util.Positions.Position
 
 /** Compiles the cases that can not be handled by primitive catch cases as a common pattern match.

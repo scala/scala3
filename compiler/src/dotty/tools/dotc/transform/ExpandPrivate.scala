@@ -15,7 +15,7 @@ import Types._
 import collection.mutable
 import Decorators._
 import ast.Trees._
-import SuperPhase._
+import MegaPhase._
 import java.io.File.separatorChar
 
 import ValueClasses._

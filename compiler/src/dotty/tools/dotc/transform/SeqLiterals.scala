@@ -3,7 +3,7 @@ package transform
 
 import core._
 import Types._
-import dotty.tools.dotc.transform.SuperPhase._
+import dotty.tools.dotc.transform.MegaPhase._
 import Contexts.Context
 import Symbols._
 import Phases._

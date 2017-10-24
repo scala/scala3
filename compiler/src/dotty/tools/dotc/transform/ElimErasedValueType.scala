@@ -3,7 +3,7 @@ package transform
 
 import ast.{Trees, tpd}
 import core._, core.Decorators._
-import SuperPhase._, Phases.Phase
+import MegaPhase._, Phases.Phase
 import Types._, Contexts._, Constants._, Names._, NameOps._, Flags._, DenotTransformers._
 import SymDenotations._, Symbols._, StdNames._, Annotations._, Trees._, Scopes._, Denotations._
 import TypeErasure.ErasedValueType, ValueClasses._

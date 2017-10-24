@@ -3,7 +3,7 @@ package dotc
 package transform
 
 import org.junit.{Assert, Test}
-import SuperPhase._
+import MegaPhase._
 import ast.tpd
 import core.Constants.Constant
 import core.Contexts.Context
@@ -18,7 +18,7 @@ class TreeTransformerTest extends DottyTest {
         override def phaseName: String = "empty"
         init(ctx, ctx.period.firstPhaseId, ctx.period.lastPhaseId)
       }
-      val transformer = new SuperPhase(Array(new EmptyTransform))
+      val transformer = new MegaPhase(Array(new EmptyTransform))
       val transformed = transformer.transformUnit(tree)
 
       Assert.assertTrue("returns same tree if unmodified",
@@ -36,7 +36,7 @@ class TreeTransformerTest extends DottyTest {
         override def phaseName: String = "canReplaceConstant"
         init(ctx, ctx.period.firstPhaseId, ctx.period.lastPhaseId)
       }
-      val transformer = new SuperPhase(Array(new ConstantTransform))
+      val transformer = new MegaPhase(Array(new ConstantTransform))
       val transformed = transformer.transformUnit(tree)
 
       Assert.assertTrue("returns same tree if unmodified",
@@ -62,7 +62,7 @@ class TreeTransformerTest extends DottyTest {
 
         init(ctx, ctx.period.firstPhaseId, ctx.period.lastPhaseId)
       }
-      val transformer = new SuperPhase(Array(new Transformation))
+      val transformer = new MegaPhase(Array(new Transformation))
       val tr = transformer.transformUnit(tree).toString
 
       Assert.assertTrue("node can rewrite children",
@@ -104,7 +104,7 @@ class TreeTransformerTest extends DottyTest {
 
         init(ctx, ctx.period.firstPhaseId, ctx.period.lastPhaseId)
       }
-      val transformer = new SuperPhase(Array(new Transformation1, new Transformation2))
+      val transformer = new MegaPhase(Array(new Transformation1, new Transformation2))
       val tr = transformer.transformUnit(tree).toString
 
       Assert.assertTrue("node can rewrite children",
@@ -168,7 +168,7 @@ class TreeTransformerTest extends DottyTest {
 
         init(ctx, ctx.period.firstPhaseId, ctx.period.lastPhaseId)
       }
-      val transformer = new SuperPhase(Array(new Transformation1, new Transformation2))
+      val transformer = new MegaPhase(Array(new Transformation1, new Transformation2))
       val tr = transformer.transformUnit(tree).toString
       Assert.assertTrue("transformations aren't invoked multiple times",
         transformed1 == 2 && transformed2 == 3

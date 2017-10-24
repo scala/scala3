@@ -9,7 +9,7 @@ import Types._
 import Symbols._
 import SymUtils._
 import Constants._
-import SuperPhase._
+import MegaPhase._
 import Flags._
 import Decorators._
 import ValueClasses._

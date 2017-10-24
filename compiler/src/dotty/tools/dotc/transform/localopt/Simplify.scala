@@ -8,7 +8,7 @@ import core.Types._
 import core.Flags._
 import core.Decorators._
 import core.NameOps._
-import transform.SuperPhase.MiniPhase
+import transform.MegaPhase.MiniPhase
 import config.Printers.simplify
 import ast.tpd
 import dotty.tools.dotc.core.PhantomErasure

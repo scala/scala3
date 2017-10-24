@@ -4,7 +4,7 @@ package transform
 import core._
 import Contexts.Context
 import Types._
-import SuperPhase._
+import MegaPhase._
 import Decorators._
 import ast.Trees._
 import Flags._

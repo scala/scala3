@@ -5,7 +5,7 @@ import core._
 import Symbols._, Types._, Contexts._, Names._, StdNames._, Constants._, SymUtils._
 import scala.collection.{ mutable, immutable }
 import Flags._
-import SuperPhase._
+import MegaPhase._
 import DenotTransformers._
 import ast.Trees._
 import ast.untpd
