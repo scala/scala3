@@ -34,7 +34,7 @@ class LinkAll extends Phase {
       }
     }
 
-    if (ctx.settings.Xlink.value) allUnits(Set.empty, units.toSet, Set.empty)
+    if (doLink) allUnits(Set.empty, units.toSet, Set.empty)
     else units
   }
 
@@ -61,6 +61,16 @@ class LinkAll extends Phase {
       if (topClass.is(JavaDefined) || topClass.is(Scala2x) || topClass.symbol == defn.ObjectClass) acc
       else acc + topClass
     }
+  }
+
+  private def doLink(implicit ctx: Context): Boolean = {
+    val link = ctx.settings.Xlink
+    if (link.value) {
+      val out = ctx.settings.outputDir
+      if (out.value.endsWith(".jar"))
+        ctx.error("With " + link.name + " the output directory " + out.name + " should be a .jar\n" + out.value)
+      true
+    } else false
   }
 }
 

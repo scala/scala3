@@ -2,6 +2,8 @@ package dotty
 package tools
 package dotc
 
+import dotty.tools.io.Jar
+
 import java.io.{File => JFile}
 import java.nio.file.{Files, Path, Paths}
 
@@ -61,11 +63,11 @@ class LinkTests extends ParallelTesting {
       for (check <- new JFile(sourceDir).listFiles().filter(_.toString.endsWith(checkExt))) {
         val outDir = {
           def path(str: String) = str.substring(linkDir.length, str.length - checkExt.length)
-          defaultOutputDir + testName + path(check.toString) + "/"
+          defaultOutputDir + testName + path(check.toString) + "/linked.jar"
         }
         val expectedClasses = scala.io.Source.fromFile(check).getLines().toSet
-        val actualClasses = Files.walk(Paths.get(outDir)).iterator().asScala.collect {
-          case f if f.toString.endsWith(".class") => f.toString.substring(outDir.length, f.toString.length - ".class".length)
+        val actualClasses = new Jar(outDir).iterator.collect {
+          case f if f.toString.endsWith(".class") => f.toString.substring(0, f.toString.length - ".class".length)
         }.toSet
         assertEquals(check.toString, expectedClasses, actualClasses)
       }
