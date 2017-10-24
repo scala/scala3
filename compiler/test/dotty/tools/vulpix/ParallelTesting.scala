@@ -98,8 +98,8 @@ trait ParallelTesting extends RunnerOrchestration { self =>
       }
 
       self match {
-        case JointCompilationSource(_, files, _, _) => {
-          files.map(_.getAbsolutePath).foreach { path =>
+        case source: JointCompilationSource => {
+          source.sourceFiles.map(_.getAbsolutePath).foreach { path =>
             sb.append("\\\n        ")
             sb.append(path)
             sb += ' '
