@@ -1808,7 +1808,7 @@ object messages {
   case class ClassAndCompanionNameClash(cls: Symbol, other: Symbol)(implicit ctx: Context)
     extends Message(ClassAndCompanionNameClashID) {
     val kind = "Naming"
-    val msg = hl"Name clash: both ${cls.owner} and its companion object defines ${cls.name}"
+    val msg = hl"Name clash: both ${cls.owner} and its companion object defines ${cls.name.stripModuleClassSuffix}"
     val explanation = {
       val kind = if (cls.owner.is(Flags.Trait)) "trait" else "class"
 
