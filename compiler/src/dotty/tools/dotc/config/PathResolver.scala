@@ -263,7 +263,7 @@ class PathResolver(implicit ctx: Context) {
     val cp = AggregateClassPath(containers.toIndexedSeq)
 
     if (settings.Ylogcp.value) {
-      Console.println("Classpath built from " + settings.toConciseString(ctx.sstate))
+      Console.println("Classpath built from " + settings.toConciseString(ctx.settingsState))
       Console.println("Defaults: " + PathResolver.Defaults)
       Console.println("Calculated: " + Calculated)
 

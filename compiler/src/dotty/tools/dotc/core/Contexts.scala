@@ -36,6 +36,15 @@ import xsbti.AnalysisCallback
 
 object Contexts {
 
+  private val (compilerCallbackLoc, store1) = Store.empty.newLocation[CompilerCallback]()
+  private val (sbtCallbackLoc,      store2) = store1.newLocation[AnalysisCallback]()
+  private val (printerFnLoc,        store3) = store2.newLocation[Context => Printer](new RefinedPrinter(_))
+  private val (settingsStateLoc,    store4) = store3.newLocation[SettingsState]()
+  private val (freshNamesLoc,       store5) = store4.newLocation[FreshNameCreator](new FreshNameCreator.Default)
+  private val (compilationUnitLoc,  store6) = store5.newLocation[CompilationUnit]()
+  private val (runInfoLoc,          store7) = store6.newLocation[RunInfo]()
+  private val initialStore = store7
+
   /** A context is passed basically everywhere in dotc.
    *  This is convenient but carries the risk of captured contexts in
    *  objects that turn into space leaks. To combat this risk, here are some
@@ -82,18 +91,6 @@ object Contexts {
     protected def outer_=(outer: Context) = _outer = outer
     def outer: Context = _outer
 
-    /** The compiler callback implementation, or null if no callback will be called. */
-    private[this] var _compilerCallback: CompilerCallback = _
-    protected def compilerCallback_=(callback: CompilerCallback) =
-      _compilerCallback = callback
-    def compilerCallback: CompilerCallback = _compilerCallback
-
-    /** The sbt callback implementation if we are run from sbt, null otherwise */
-    private[this] var _sbtCallback: AnalysisCallback = _
-    protected def sbtCallback_=(callback: AnalysisCallback) =
-      _sbtCallback = callback
-    def sbtCallback: AnalysisCallback = _sbtCallback
-
     /** The current context */
     private[this] var _period: Period = _
     protected def period_=(period: Period) = {
@@ -107,30 +104,10 @@ object Contexts {
     protected def mode_=(mode: Mode) = _mode = mode
     def mode: Mode = _mode
 
-    /** The current type comparer */
-    private[this] var _typerState: TyperState = _
-    protected def typerState_=(typerState: TyperState) = _typerState = typerState
-    def typerState: TyperState = _typerState
-
-    /** The current plain printer */
-    private[this] var _printerFn: Context => Printer = _
-    protected def printerFn_=(printerFn: Context => Printer) = _printerFn = printerFn
-    def printerFn: Context => Printer = _printerFn
-
     /** The current owner symbol */
     private[this] var _owner: Symbol = _
     protected def owner_=(owner: Symbol) = _owner = owner
     def owner: Symbol = _owner
-
-    /** The current settings values */
-    private[this] var _sstate: SettingsState = _
-    protected def sstate_=(sstate: SettingsState) = _sstate = sstate
-    def sstate: SettingsState = _sstate
-
-    /** The current compilation unit */
-    private[this] var _compilationUnit: CompilationUnit = _
-    protected def compilationUnit_=(compilationUnit: CompilationUnit) = _compilationUnit = compilationUnit
-    def compilationUnit: CompilationUnit = _compilationUnit
 
     /** The current tree */
     private[this] var _tree: Tree[_ >: Untyped]= _
@@ -141,6 +118,11 @@ object Contexts {
     private[this] var _scope: Scope = _
     protected def scope_=(scope: Scope) = _scope = scope
     def scope: Scope = _scope
+
+    /** The current type comparer */
+    private[this] var _typerState: TyperState = _
+    protected def typerState_=(typerState: TyperState) = _typerState = typerState
+    def typerState: TyperState = _typerState
 
     /** The current type assigner or typer */
     private[this] var _typeAssigner: TypeAssigner = _
@@ -153,34 +135,19 @@ object Contexts {
     protected def importInfo_=(importInfo: ImportInfo) = _importInfo = importInfo
     def importInfo: ImportInfo = _importInfo
 
-    /** The current compiler-run specific Info */
-    private[this] var _runInfo: RunInfo = _
-    protected def runInfo_=(runInfo: RunInfo) = _runInfo = runInfo
-    def runInfo: RunInfo = _runInfo
-
     /** The current bounds in force for type parameters appearing in a GADT */
     private[this] var _gadt: GADTMap = _
     protected def gadt_=(gadt: GADTMap) = _gadt = gadt
     def gadt: GADTMap = _gadt
 
-    /**The current fresh name creator */
-    private[this] var _freshNames: FreshNameCreator = _
-    protected def freshNames_=(freshNames: FreshNameCreator) = _freshNames = freshNames
-    def freshNames: FreshNameCreator = _freshNames
+    /** The history of implicit searches that are currently active */
+    private[this] var _searchHistory: SearchHistory = null
+    protected def searchHistory_= (searchHistory: SearchHistory) = _searchHistory = searchHistory
+    def searchHistory: SearchHistory = _searchHistory
 
-    /** A store that can be used by sub-components */
-    private var _store: Store = _
-    protected def store_=(store: Store) = _store = store
-    def store: Store = _store
-
-    /** A map in which more contextual properties can be stored */
-    private[this] var _moreProperties: Map[Key[Any], Any] = _
-    protected def moreProperties_=(moreProperties: Map[Key[Any], Any]) = _moreProperties = moreProperties
-    def moreProperties: Map[Key[Any], Any] = _moreProperties
-
-    def property[T](key: Key[T]): Option[T] =
-      moreProperties.get(key).asInstanceOf[Option[T]]
-
+    /** The current type comparer. This ones updates itself automatically for
+     *  each new context.
+     */
     private[this] var _typeComparer: TypeComparer = _
     protected def typeComparer_=(typeComparer: TypeComparer) = _typeComparer = typeComparer
     def typeComparer: TypeComparer = {
@@ -189,13 +156,45 @@ object Contexts {
       _typeComparer
     }
 
-    /** Number of findMember calls on stack */
-    private[core] var findMemberCount: Int = 0
-
-    /** List of names which have a findMemberCall on stack,
-     *  after Config.LogPendingFindMemberThreshold is reached.
+    /** A map in which more contextual properties can be stored
+     *  Typically used for attributes that are read and written only in special situations.
      */
-    private[core] var pendingMemberSearches: List[Name] = Nil
+    private[this] var _moreProperties: Map[Key[Any], Any] = _
+    protected def moreProperties_=(moreProperties: Map[Key[Any], Any]) = _moreProperties = moreProperties
+    def moreProperties: Map[Key[Any], Any] = _moreProperties
+
+    def property[T](key: Key[T]): Option[T] =
+      moreProperties.get(key).asInstanceOf[Option[T]]
+
+    /** A store that can be used by sub-components.
+     *  Typically used for attributes that are defined only once per compilation unit.
+     *  Access to store entries is much faster than access to properties, and only
+     *  slightly slower than a normal field access would be.
+     */
+    private var _store: Store = _
+    protected def store_=(store: Store) = _store = store
+    def store: Store = _store
+
+    /** The compiler callback implementation, or null if no callback will be called. */
+    def compilerCallback: CompilerCallback = store(compilerCallbackLoc)
+
+    /** The sbt callback implementation if we are run from sbt, null otherwise */
+    def sbtCallback: AnalysisCallback = store(sbtCallbackLoc)
+
+    /** The current plain printer */
+    def printerFn: Context => Printer = store(printerFnLoc)
+
+    /** The current settings values */
+    def settingsState: SettingsState = store(settingsStateLoc)
+
+    /** The current fresh name creator */
+    def freshNames: FreshNameCreator = store(freshNamesLoc)
+
+    /** The current compilation unit */
+    def compilationUnit: CompilationUnit = store(compilationUnitLoc)
+
+    /** The current compiler-run specific Info */
+    def runInfo: RunInfo = store(runInfoLoc)
 
     /** The new implicit references that are introduced by this scope */
     protected var implicitsCache: ContextualImplicits = null
@@ -221,11 +220,6 @@ object Contexts {
         }
       implicitsCache
     }
-
-    /** The history of implicit searches that are currently active */
-    private[this] var _searchHistory: SearchHistory = null
-    protected def searchHistory_= (searchHistory: SearchHistory) = _searchHistory = searchHistory
-    def searchHistory: SearchHistory = _searchHistory
 
     /** Those fields are used to cache phases created in withPhase.
       * phasedCtx is first phase with altered phase ever requested.
@@ -383,26 +377,6 @@ object Contexts {
     def useColors: Boolean =
       base.settings.color.value == "always"
 
-    /** A condensed context containing essential information of this but
-     *  no outer contexts except the initial context.
-    private[this] var _condensed: CondensedContext = null
-    def condensed: CondensedContext = {
-      if (_condensed eq outer.condensed)
-        _condensed = base.initialCtx.fresh
-          .withPeriod(period)
-          .withNewMode(mode)
-          // typerState and its constraint is not preserved in condensed
-          // reporter is always ThrowingReporter
-          .withPrinterFn(printerFn)
-          .withOwner(owner)
-          .withSettings(sstate)
-          // tree is not preserved in condensed
-          .withRunInfo(runInfo)
-          .withMoreProperties(moreProperties)
-      _condensed
-    }
-    */
-
     protected def init(outer: Context): this.type = {
       this.outer = outer
       this.implicitsCache = null
@@ -447,31 +421,32 @@ object Contexts {
   abstract class FreshContext extends Context {
     def setPeriod(period: Period): this.type = { this.period = period; this }
     def setMode(mode: Mode): this.type = { this.mode = mode; this }
-    def setCompilerCallback(callback: CompilerCallback): this.type = { this.compilerCallback = callback; this }
-    def setSbtCallback(callback: AnalysisCallback): this.type = { this.sbtCallback = callback; this }
-    def setTyperState(typerState: TyperState): this.type = { this.typerState = typerState; this }
-    def setReporter(reporter: Reporter): this.type = setTyperState(typerState.fresh().setReporter(reporter))
-    def setNewTyperState(): this.type = setTyperState(typerState.fresh().setCommittable(true))
-    def setExploreTyperState(): this.type = setTyperState(typerState.fresh().setCommittable(false))
-    def setPrinterFn(printer: Context => Printer): this.type = { this.printerFn = printer; this }
     def setOwner(owner: Symbol): this.type = { assert(owner != NoSymbol); this.owner = owner; this }
-    def setSettings(sstate: SettingsState): this.type = { this.sstate = sstate; this }
-    def setCompilationUnit(compilationUnit: CompilationUnit): this.type = { this.compilationUnit = compilationUnit; this }
     def setTree(tree: Tree[_ >: Untyped]): this.type = { this.tree = tree; this }
     def setScope(scope: Scope): this.type = { this.scope = scope; this }
     def setNewScope: this.type = { this.scope = newScope; this }
+    def setTyperState(typerState: TyperState): this.type = { this.typerState = typerState; this }
+    def setNewTyperState(): this.type = setTyperState(typerState.fresh().setCommittable(true))
+    def setExploreTyperState(): this.type = setTyperState(typerState.fresh().setCommittable(false))
+    def setReporter(reporter: Reporter): this.type = setTyperState(typerState.fresh().setReporter(reporter))
     def setTypeAssigner(typeAssigner: TypeAssigner): this.type = { this.typeAssigner = typeAssigner; this }
     def setTyper(typer: Typer): this.type = { this.scope = typer.scope; setTypeAssigner(typer) }
     def setImportInfo(importInfo: ImportInfo): this.type = { this.importInfo = importInfo; this }
-    def setImplicits(implicits: ContextualImplicits): this.type = { this.implicitsCache = implicits; this }
-    def setRunInfo(runInfo: RunInfo): this.type = { this.runInfo = runInfo; this }
     def setGadt(gadt: GADTMap): this.type = { this.gadt = gadt; this }
     def setFreshGADTBounds: this.type = setGadt(new GADTMap(gadt.bounds))
-    def setTypeComparerFn(tcfn: Context => TypeComparer): this.type = { this.typeComparer = tcfn(this); this }
     def setSearchHistory(searchHistory: SearchHistory): this.type = { this.searchHistory = searchHistory; this }
-    def setFreshNames(freshNames: FreshNameCreator): this.type = { this.freshNames = freshNames; this }
-    def setStore(store: Store): this.type = { this.store = store; this }
-    def setMoreProperties(moreProperties: Map[Key[Any], Any]): this.type = { this.moreProperties = moreProperties; this }
+    def setTypeComparerFn(tcfn: Context => TypeComparer): this.type = { this.typeComparer = tcfn(this); this }
+    private def setMoreProperties(moreProperties: Map[Key[Any], Any]): this.type = { this.moreProperties = moreProperties; this }
+    private def setStore(store: Store): this.type = { this.store = store; this }
+    def setImplicits(implicits: ContextualImplicits): this.type = { this.implicitsCache = implicits; this }
+
+    def setCompilerCallback(callback: CompilerCallback): this.type = updateStore(compilerCallbackLoc, callback)
+    def setSbtCallback(callback: AnalysisCallback): this.type = updateStore(sbtCallbackLoc, callback)
+    def setPrinterFn(printer: Context => Printer): this.type = updateStore(printerFnLoc, printer)
+    def setSettings(settingsState: SettingsState): this.type = updateStore(settingsStateLoc, settingsState)
+    def setCompilationUnit(compilationUnit: CompilationUnit): this.type = updateStore(compilationUnitLoc, compilationUnit)
+    def setRunInfo(runInfo: RunInfo): this.type = updateStore(runInfoLoc, runInfo)
+    def setFreshNames(freshNames: FreshNameCreator): this.type = updateStore(freshNamesLoc, freshNames)
 
     def setProperty[T](key: Key[T], value: T): this.type =
       setMoreProperties(moreProperties.updated(key, value))
@@ -498,7 +473,7 @@ object Contexts {
     def setPhase(phase: Phase): this.type = setPeriod(Period(runId, phase.start, phase.end))
 
     def setSetting[T](setting: Setting[T], value: T): this.type =
-      setSettings(setting.updateIn(sstate, value))
+      setSettings(setting.updateIn(settingsState, value))
 
     def setDebug = setSetting(base.settings.debug, true)
   }
@@ -526,15 +501,13 @@ object Contexts {
     period = InitialPeriod
     mode = Mode.None
     typerState = new TyperState(null)
-    printerFn = new RefinedPrinter(_)
     owner = NoSymbol
-    sstate = settings.defaultState
     tree = untpd.EmptyTree
     typeAssigner = TypeAssigner
-    runInfo = new RunInfo(this)
-    freshNames = new FreshNameCreator.Default
     moreProperties = Map.empty
-    store = Store.empty
+    store = initialStore
+              .updated(settingsStateLoc, settings.defaultState)
+              .updated(runInfoLoc, new RunInfo(this))
     typeComparer = new TypeComparer(this)
     searchHistory = new SearchHistory(0, Map())
     gadt = EmptyGADTMap
@@ -627,6 +600,14 @@ object Contexts {
 
     /** A map that associates label and size of all uniques sets */
     def uniquesSizes: Map[String, Int] = uniqueSets.mapValues(_.size)
+
+    /** Number of findMember calls on stack */
+    private[core] var findMemberCount: Int = 0
+
+    /** List of names which have a findMemberCall on stack,
+     *  after Config.LogPendingFindMemberThreshold is reached.
+     */
+    private[core] var pendingMemberSearches: List[Name] = Nil
 
     /** The number of recursive invocation of underlying on a NamedType
      *  during a controlled operation.

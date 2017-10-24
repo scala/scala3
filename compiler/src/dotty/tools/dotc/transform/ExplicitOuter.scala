@@ -15,7 +15,6 @@ import ast.Trees._
 import SymUtils._
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.core.Phases.Phase
-import util.Property
 
 import collection.mutable
 import scala.annotation.tailrec
@@ -37,8 +36,6 @@ import scala.annotation.tailrec
 class ExplicitOuter extends MiniPhase with InfoTransformer { thisPhase =>
   import ExplicitOuter._
   import ast.tpd._
-
-  val Outer = new Property.Key[Tree]
 
   override def phaseName: String = "explicitOuter"
 
