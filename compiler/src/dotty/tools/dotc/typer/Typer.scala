@@ -1549,15 +1549,17 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     val untpd.PostfixOp(qual, Ident(nme.WILDCARD)) = tree
     val pt1 = if (defn.isFunctionType(pt)) pt else AnyFunctionProto
     val nestedCtx = ctx.fresh.setNewTyperState()
-    var res = typed(qual, pt1)(nestedCtx)
-    if (!defn.isFunctionClass(res.tpe.classSymbol)) {
-      ctx.errorOrMigrationWarning(OnlyFunctionsCanBeFollowedByUnderscore(res.tpe), tree.pos)
-      if (ctx.scala2Mode) {
-        // Under -rewrite, patch `x _` to `(() => x)`
-        patch(Position(tree.pos.start), "(() => ")
-        patch(Position(qual.pos.end, tree.pos.end), ")")
-        return typed(untpd.Function(Nil, res))
-      }
+    val res = typed(qual, pt1)(nestedCtx)
+    res match {
+      case res @ closure(_, _, _) =>
+      case _ =>
+        ctx.errorOrMigrationWarning(OnlyFunctionsCanBeFollowedByUnderscore(res.tpe), tree.pos)
+        if (ctx.scala2Mode) {
+          // Under -rewrite, patch `x _` to `(() => x)`
+          patch(Position(tree.pos.start), "(() => ")
+          patch(Position(qual.pos.end, tree.pos.end), ")")
+          return typed(untpd.Function(Nil, qual), pt)
+        }
     }
     nestedCtx.typerState.commit()
     if (ctx.settings.strict.value) {
