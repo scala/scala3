@@ -519,7 +519,7 @@ object Build {
 
         val fullArgs = args.span(_ != "-classpath") match {
           case (beforeCp, "-classpath" :: cp :: rest) => beforeCp ++ List("-classpath", cp + ":" + dottyLib) ++ rest
-          case (beforeCp, _) => beforeCp ++ ("-classpath" :: dottyLib :: Nil)
+          case (beforeCp, _) => beforeCp ++ List("-classpath", dottyLib)
         }
 
         (runMain in Compile).toTask(
@@ -534,7 +534,7 @@ object Build {
 
         val fullArgs = args.span(_ != "-classpath") match {
           case (beforeCp, "-classpath" :: cp :: rest) => beforeCp ++ List("-classpath", cp + ":" + dottyLib) ++ rest
-          case (beforeCp, _) => beforeCp ++ ("-classpath" :: dottyLib :: Nil)
+          case (beforeCp, _) => beforeCp ++ List("-classpath", dottyLib)
         }
 
         (runMain in Compile).toTask(
