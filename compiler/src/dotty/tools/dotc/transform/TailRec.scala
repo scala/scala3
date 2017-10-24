@@ -12,6 +12,7 @@ import Symbols._
 import Types._
 import NameKinds.TailLabelName
 import TreeTransforms.{MiniPhaseTransform, TransformerInfo}
+import reporting.diagnostic.messages.TailrecNotApplicable
 
 /**
  * A Tail Rec Transformer
@@ -161,7 +162,7 @@ class TailRec extends MiniPhaseTransform with DenotTransformer with FullParamete
           })
         }
       case d: DefDef if d.symbol.hasAnnotation(defn.TailrecAnnot) || methodsWithInnerAnnots.contains(d.symbol) =>
-        ctx.error("TailRec optimisation not applicable, method is neither private nor final so can be overridden", sym.pos)
+        ctx.error(TailrecNotApplicable(sym), sym.pos)
         d
       case d if d.symbol.hasAnnotation(defn.TailrecAnnot) || methodsWithInnerAnnots.contains(d.symbol) =>
         ctx.error("TailRec optimisation not applicable, not a method", sym.pos)

@@ -1000,6 +1000,21 @@ class ErrorMessagesTests extends ErrorMessagesTest {
       assertEquals("object Qux", owner.show)
     }
 
+  @Test def tailrecNotApplicableNeitherPrivateNorFinal =
+    checkMessagesAfter("tailrec") {
+    """
+      |class Foo {
+      |  @scala.annotation.tailrec
+      |  def foo: Unit = foo
+      |}
+    """.stripMargin
+    }.expect { (ictx, messages) =>
+      implicit val ctx: Context = ictx
+      assertMessageCount(1, messages)
+      val TailrecNotApplicable(method) :: Nil = messages
+      assertEquals(method.show, "method foo")
+    }
+
     @Test def expectedTypeBoundOrEquals =
       checkMessagesAfter("frontend") {
         """object typedef {
