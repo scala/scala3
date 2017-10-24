@@ -1023,22 +1023,21 @@ class ErrorMessagesTests extends ErrorMessagesTest {
       assertMessageCount(1, messages)
       val EnumCaseDefinitionInNonEnumOwner(owner) :: Nil = messages
       assertEquals("object Qux", owner.show)
+    }
 
   @Test def tailrecNotApplicableNeitherPrivateNorFinal =
     checkMessagesAfter("tailrec") {
     """
       |class Foo {
-      |
       |  @scala.annotation.tailrec
       |  def foo: Unit = foo
-      |
       |}
     """.stripMargin
     }.expect { (ictx, messages) =>
       implicit val ctx: Context = ictx
       assertMessageCount(1, messages)
-      val TailrecNotApplicableNeitherPrivateNorFinal(symbol) :: Nil = messages
-      assertEquals(symbol.show, "method foo")
+      val TailrecNotApplicable(method) :: Nil = messages
+      assertEquals(method.show, "method foo")
     }
 
     @Test def expectedTypeBoundOrEquals =

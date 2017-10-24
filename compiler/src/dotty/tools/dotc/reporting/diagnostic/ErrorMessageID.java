@@ -104,7 +104,7 @@ public enum ErrorMessageID {
     EnumCaseDefinitionInNonEnumOwnerID,
     ExpectedTypeBoundOrEqualsID,
     ClassAndCompanionNameClashID,
-    TailrecNotApplicableNeitherPrivateNorFinalID,
+    TailrecNotApplicableID,
     ;
 
     public int errorNumber() {
