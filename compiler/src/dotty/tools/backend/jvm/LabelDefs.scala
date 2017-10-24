@@ -92,9 +92,6 @@ class LabelDefs extends MiniPhase {
       def putLabelDefsNearCallees = new TreeMap() {
         override def transform(tree: tpd.Tree)(implicit ctx: Context): tpd.Tree = {
           tree match {
-            case t: Template => 
-              assert(false)
-              t
             case t: Apply if labelDefs.contains(t.symbol) =>
               val labelDef = labelDefs(t.symbol)
               labelDefs -= t.symbol
@@ -117,7 +114,6 @@ class LabelDefs extends MiniPhase {
     val labelDefs = new mutable.HashMap[Symbol, DefDef]()
     new TreeTraverser {
       override def traverse(tree: tpd.Tree)(implicit ctx: Context): Unit = tree match {
-        case _: Template => assert(false)
         case t: DefDef =>
           assert(t.symbol is Label)
           labelDefs(t.symbol) = t
