@@ -56,7 +56,6 @@ class ErrorMessagesTests extends ErrorMessagesTest {
     }
     .expect { (ictx, messages) =>
       implicit val ctx: Context = ictx
-      val defn = ictx.definitions
 
       assertMessageCount(1, messages)
       val OverridesNothing(member) :: Nil = messages
@@ -78,7 +77,6 @@ class ErrorMessagesTests extends ErrorMessagesTest {
     }
     .expect { (ictx, messages) =>
       implicit val ctx: Context = ictx
-      val defn = ictx.definitions
 
       assertMessageCount(1, messages)
       val OverridesNothingButNameExists(member, sameName) :: Nil = messages
@@ -103,7 +101,6 @@ class ErrorMessagesTests extends ErrorMessagesTest {
     }
     .expect { (ictx, messages) =>
       implicit val ctx: Context = ictx
-      val defn = ictx.definitions
 
       assertMessageCount(1, messages)
       val ForwardReferenceExtendsOverDefinition(value, definition) :: Nil = messages
@@ -121,7 +118,6 @@ class ErrorMessagesTests extends ErrorMessagesTest {
     }
     .expect { (ictx, messages) =>
       implicit val ctx: Context = ictx
-      val defn = ictx.definitions
 
       assertMessageCount(1, messages)
       val ExpectedTokenButFound(expected, found) :: Nil = messages
@@ -153,7 +149,6 @@ class ErrorMessagesTests extends ErrorMessagesTest {
     }
     .expect { (ictx, messages) =>
       implicit val ctx: Context = ictx
-      val defn = ictx.definitions
 
       assertMessageCount(1, messages)
       val MixedLeftAndRightAssociativeOps(op1, op2, op2LeftAssoc) :: Nil = messages
@@ -173,7 +168,6 @@ class ErrorMessagesTests extends ErrorMessagesTest {
     }
     .expect { (ictx, messages) =>
       implicit val ctx: Context = ictx
-      val defn = ictx.definitions
 
       assertMessageCount(1, messages)
       val CantInstantiateAbstractClassOrTrait(cls, isTrait) :: Nil = messages
@@ -192,7 +186,6 @@ class ErrorMessagesTests extends ErrorMessagesTest {
     }
     .expect { (ictx, messages) =>
       implicit val ctx: Context = ictx
-      val defn = ictx.definitions
 
       assertMessageCount(1, messages)
       val CantInstantiateAbstractClassOrTrait(cls, isTrait) :: Nil = messages
@@ -211,7 +204,6 @@ class ErrorMessagesTests extends ErrorMessagesTest {
     }
     .expect { (ictx, messages) =>
       implicit val ctx: Context = ictx
-      val defn = ictx.definitions
 
       assertMessageCount(1, messages)
       val OverloadedOrRecursiveMethodNeedsResultType(treeName) :: Nil = messages
@@ -243,7 +235,6 @@ class ErrorMessagesTests extends ErrorMessagesTest {
     }
     .expect { (ictx, messages) =>
       implicit val ctx: Context = ictx
-      val defn = ictx.definitions
 
       assertMessageCount(1, messages)
       val OverloadedOrRecursiveMethodNeedsResultType(treeName) :: Nil = messages
@@ -260,7 +251,6 @@ class ErrorMessagesTests extends ErrorMessagesTest {
     }
     .expect { (ictx, messages) =>
       implicit val ctx: Context = ictx
-      val defn = ictx.definitions
 
       assertMessageCount(1, messages)
       val RecursiveValueNeedsResultType(tree) :: Nil = messages
@@ -278,7 +268,6 @@ class ErrorMessagesTests extends ErrorMessagesTest {
     }
     .expect { (ictx, messages) =>
       implicit val ctx: Context = ictx
-      val defn = ictx.definitions
 
       assertMessageCount(1, messages)
       val CyclicReferenceInvolving(denot) :: Nil = messages
@@ -299,7 +288,6 @@ class ErrorMessagesTests extends ErrorMessagesTest {
     }
     .expect { (ictx, messages) =>
       implicit val ctx: Context = ictx
-      val defn = ictx.definitions
 
       assertMessageCount(1, messages)
       val CyclicReferenceInvolvingImplicit(tree) :: Nil = messages
@@ -323,7 +311,6 @@ class ErrorMessagesTests extends ErrorMessagesTest {
     }
     .expect { (ictx, messages) =>
       implicit val ctx: Context = ictx
-      val defn = ictx.definitions
 
       assertMessageCount(1, messages)
       val SuperQualMustBeParent(qual, cls) :: Nil = messages
@@ -351,7 +338,6 @@ class ErrorMessagesTests extends ErrorMessagesTest {
     }
     .expect { (ictx, messages) =>
       implicit val ctx: Context = ictx
-      val defn = ictx.definitions
 
       import typer.Typer.BindingPrec._
 
@@ -373,7 +359,6 @@ class ErrorMessagesTests extends ErrorMessagesTest {
     }
     .expect { (ictx, messages) =>
       implicit val ctx: Context = ictx
-      val defn = ictx.definitions
 
       assertMessageCount(1, messages)
       val MethodDoesNotTakeParameters(tree, methodPart) :: Nil = messages
@@ -393,7 +378,6 @@ class ErrorMessagesTests extends ErrorMessagesTest {
     }
     .expect { (ictx, messages) =>
       implicit val ctx: Context = ictx
-      val defn = ictx.definitions
 
       assertMessageCount(1, messages)
       val MethodDoesNotTakeParameters(tree, methodPart) :: Nil = messages
@@ -418,7 +402,6 @@ class ErrorMessagesTests extends ErrorMessagesTest {
     }
     .expect { (ictx, messages) =>
       implicit val ctx: Context = ictx
-      val defn = ictx.definitions
 
       assertMessageCount(1, messages)
       val AmbiguousOverload(tree, List(alt1, alt2), pt: WildcardType) :: Nil = messages
@@ -452,7 +435,6 @@ class ErrorMessagesTests extends ErrorMessagesTest {
     }
     .expect { (ictx, messages) =>
       implicit val ctx: Context = ictx
-      val defn = ictx.definitions
 
       assertMessageCount(1, messages)
       val TypeDoesNotTakeParameters(tpe, params) :: Nil = messages
@@ -468,7 +450,6 @@ class ErrorMessagesTests extends ErrorMessagesTest {
     }
     .expect { (ictx, messages) =>
       implicit val ctx: Context = ictx
-      val defn = ictx.definitions
 
       assertMessageCount(1, messages)
       val ParameterizedTypeLacksArguments(symbol) :: Nil = messages
@@ -829,7 +810,6 @@ class ErrorMessagesTests extends ErrorMessagesTest {
     }
     .expect { (ictx, messages) =>
       implicit val ctx: Context = ictx
-      val defn = ictx.definitions
 
       assertMessageCount(1, messages)
       val AnonymousFunctionMissingParamType(param, args, _, pt) :: Nil = messages
@@ -886,7 +866,6 @@ class ErrorMessagesTests extends ErrorMessagesTest {
     }
     .expect { (ictx, messages) =>
       implicit val ctx: Context = ictx
-      val defn = ictx.definitions
 
       assertMessageCount(1, messages)
       val err :: Nil = messages
@@ -903,7 +882,6 @@ class ErrorMessagesTests extends ErrorMessagesTest {
     }
     .expect { (ictx, messages) =>
       implicit val ctx: Context = ictx
-      val defn = ictx.definitions
 
       assertMessageCount(2, messages)
       messages.foreach(assertEquals(_, ImplicitFunctionTypeNeedsNonEmptyParameterList()))
@@ -918,7 +896,6 @@ class ErrorMessagesTests extends ErrorMessagesTest {
     }
     .expect { (ictx, messages) =>
       implicit val ctx: Context = ictx
-      val defn = ictx.definitions
 
       assertMessageCount(1, messages)
       val err :: Nil = messages
@@ -934,7 +911,6 @@ class ErrorMessagesTests extends ErrorMessagesTest {
     }
       .expect { (ictx, messages) =>
         implicit val ctx: Context = ictx
-        val defn = ictx.definitions
 
         assertMessageCount(1, messages)
         val err :: Nil = messages
@@ -948,7 +924,6 @@ class ErrorMessagesTests extends ErrorMessagesTest {
     }
       .expect { (ictx, messages) =>
         implicit val ctx: Context = ictx
-        val defn = ictx.definitions
 
         assertMessageCount(1, messages)
         val err :: Nil = messages
