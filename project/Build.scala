@@ -518,8 +518,8 @@ object Build {
         val args: Seq[String] = spaceDelimited("<arg>").parsed
 
         val fullArgs = args.span(_ != "-classpath") match {
-          case (beforeCp, Nil) => beforeCp ++ ("-classpath" :: dottyLib :: Nil)
-          case (beforeCp, rest) => beforeCp ++ rest
+          case (beforeCp, "-classpath" :: cp :: rest) => beforeCp ++ List("-classpath", cp + ":" + dottyLib) ++ rest
+          case (beforeCp, _) => beforeCp ++ ("-classpath" :: dottyLib :: Nil)
         }
 
         (runMain in Compile).toTask(
@@ -533,8 +533,8 @@ object Build {
         val args: Seq[String] = spaceDelimited("<arg>").parsed
 
         val fullArgs = args.span(_ != "-classpath") match {
-          case (beforeCp, Nil) => beforeCp ++ ("-classpath" :: dottyLib :: Nil)
-          case (beforeCp, rest) => beforeCp ++ rest
+          case (beforeCp, "-classpath" :: cp :: rest) => beforeCp ++ List("-classpath", cp + ":" + dottyLib) ++ rest
+          case (beforeCp, _) => beforeCp ++ ("-classpath" :: dottyLib :: Nil)
         }
 
         (runMain in Compile).toTask(
