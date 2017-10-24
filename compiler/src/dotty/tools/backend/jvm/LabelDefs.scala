@@ -1,38 +1,12 @@
 package dotty.tools.backend.jvm
 
-import dotty.tools.dotc.ast.Trees.Thicket
-import dotty.tools.dotc.ast.{Trees, tpd}
+import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.core.Contexts.Context
-import dotty.tools.dotc.core.Types
+import dotty.tools.dotc.core.Flags._
+import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.transform.MegaPhase._
-import dotty.tools.dotc
-import dotty.tools.dotc.backend.jvm.DottyPrimitives
-import dotty.tools.dotc.core.Flags.FlagSet
-import dotty.tools.dotc.transform.Erasure
-import dotty.tools.dotc.transform.SymUtils._
-import java.io.{File => JFile}
 
-import scala.collection.generic.Clearable
 import scala.collection.mutable
-import scala.collection.mutable.{ListBuffer, ArrayBuffer}
-import scala.reflect.ClassTag
-import dotty.tools.io.{Directory, PlainDirectory, AbstractFile}
-import scala.tools.asm.{ClassVisitor, FieldVisitor, MethodVisitor}
-import scala.tools.nsc.backend.jvm.{BCodeHelpers, BackendInterface}
-import dotty.tools.dotc.core._
-import Periods._
-import SymDenotations._
-import Contexts._
-import Types._
-import Symbols._
-import Denotations._
-import Phases._
-import java.lang.AssertionError
-import dotty.tools.dotc.util.Positions.Position
-import Decorators._
-import tpd._
-import Flags._
-import StdNames.nme
 
 /**
  * Verifies that each Label DefDef has only a single address to jump back and
@@ -82,6 +56,8 @@ import StdNames.nme
  * @author Dmitry Petrashko
  */
 class LabelDefs extends MiniPhase {
+  import tpd._
+
   def phaseName: String = "labelDef"
 
   override def transformDefDef(tree: DefDef)(implicit ctx: Context): Tree = {
