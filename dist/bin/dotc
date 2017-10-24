@@ -27,7 +27,7 @@ fi
 
 source "$PROG_HOME/bin/common"
 
-default_java_opts="-Xmx1024m -Xms1024m -XX:MaxInlineLevel=35"
+default_java_opts="-Xmx768m -Xms768m"
 bootcp=true
 
 CompilerMain=dotty.tools.dotc.Main
