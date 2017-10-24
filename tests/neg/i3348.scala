@@ -1,6 +1,6 @@
 class Test {
   import Test.test
-  "Hello".toto     // error
+  "Hello".toto
 }
 
 object Test {

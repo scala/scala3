@@ -708,7 +708,6 @@ trait Implicits { self: Typer =>
     assert(!ctx.isAfterTyper,
       if (argument.isEmpty) i"missing implicit parameter of type $pt after typer"
       else i"type error: ${argument.tpe} does not conform to $pt${err.whyNoMatchStr(argument.tpe, pt)}")
-    val prevConstr = ctx.typerState.constraint
     trace(s"search implicit ${pt.show}, arg = ${argument.show}: ${argument.tpe.show}", implicits, show = true) {
       assert(!pt.isInstanceOf[ExprType])
       val isearch =
@@ -737,7 +736,6 @@ trait Implicits { self: Typer =>
           }
           else result
         case _ =>
-          assert(prevConstr eq ctx.typerState.constraint)
           result
       }
     }
