@@ -84,13 +84,13 @@ import StdNames.nme
 class LabelDefs extends MiniPhase {
   def phaseName: String = "labelDef"
 
-  override def transformDefDef(tree: tpd.DefDef)(implicit ctx: Context): tpd.Tree = {
+  override def transformDefDef(tree: DefDef)(implicit ctx: Context): Tree = {
     if (tree.symbol is Label) tree
     else {
       val labelDefs = collectLabelDefs(tree.rhs)
 
       def putLabelDefsNearCallees = new TreeMap() {
-        override def transform(tree: tpd.Tree)(implicit ctx: Context): tpd.Tree = {
+        override def transform(tree: Tree)(implicit ctx: Context): Tree = {
           tree match {
             case t: Apply if labelDefs.contains(t.symbol) =>
               val labelDef = labelDefs(t.symbol)
@@ -113,7 +113,7 @@ class LabelDefs extends MiniPhase {
     // labelSymbol -> Defining tree
     val labelDefs = new mutable.HashMap[Symbol, DefDef]()
     new TreeTraverser {
-      override def traverse(tree: tpd.Tree)(implicit ctx: Context): Unit = tree match {
+      override def traverse(tree: Tree)(implicit ctx: Context): Unit = tree match {
         case t: DefDef =>
           assert(t.symbol is Label)
           labelDefs(t.symbol) = t
