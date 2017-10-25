@@ -101,7 +101,9 @@ object ProtoTypes {
         val mbr = if (privateOK) tp1.member(name) else tp1.nonPrivateMember(name)
         def qualifies(m: SingleDenotation) =
           memberProto.isRef(defn.UnitClass) ||
-          compat.normalizedCompatible(m.info, memberProto)
+          compat.normalizedCompatible(NamedType(tp1, name, m), memberProto)
+            // Note: can't use `m.info` here because if `m` is a method, `m.info`
+            //       loses knowledge about `m`'s default arguments.
         mbr match { // hasAltWith inlined for performance
           case mbr: SingleDenotation => mbr.exists && qualifies(mbr)
           case _ => mbr hasAltWith qualifies
@@ -431,6 +433,7 @@ object ProtoTypes {
    *   - skips implicit parameters of methods and functions;
    *     if result type depends on implicit parameter, replace with fresh type dependent parameter.
    *   - converts non-dependent method types to the corresponding function types
+   *     unless the expected type is an ApplyingProto or IgnoredProto.
    *   - dereferences parameterless method types
    *   - dereferences nullary method types provided the corresponding function type
    *     is not a subtype of the expected type.
@@ -451,8 +454,11 @@ object ProtoTypes {
         else {
           val rt = normalize(mt.resultType, pt)
           pt match {
-            case pt: IgnoredProto  => mt
-            case pt: ApplyingProto => mt.derivedLambdaType(mt.paramNames, mt.paramInfos, rt)
+            case pt: IgnoredProto  =>
+              tp
+            case pt: ApplyingProto =>
+              if (rt eq mt.resultType) tp
+              else mt.derivedLambdaType(mt.paramNames, mt.paramInfos, rt)
             case _ =>
               val ft = defn.FunctionOf(mt.paramInfos, rt)
               if (mt.paramInfos.nonEmpty || ft <:< pt) ft else rt
