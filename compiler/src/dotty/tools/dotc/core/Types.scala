@@ -632,16 +632,14 @@ object Types {
         go(l) & (go(r), pre, safeIntersection = ctx.pendingMemberSearches.contains(name))
       }
 
-      { val recCount = ctx.findMemberCount + 1
-        ctx.findMemberCount = recCount
-        if (recCount >= Config.LogPendingFindMemberThreshold) {
-          ctx.pendingMemberSearches = name :: ctx.pendingMemberSearches
-          if (ctx.property(TypeOps.findMemberLimit).isDefined &&
-              ctx.findMemberCount > Config.PendingFindMemberLimit)
-            return NoDenotation
-        }
+      val recCount = ctx.findMemberCount
+      if (recCount >= Config.LogPendingFindMemberThreshold) {
+        if (ctx.property(TypeOps.findMemberLimit).isDefined &&
+            ctx.findMemberCount > Config.PendingFindMemberLimit)
+          return NoDenotation
+        ctx.pendingMemberSearches = name :: ctx.pendingMemberSearches
       }
-
+      ctx.findMemberCount = recCount + 1
       //assert(ctx.findMemberCount < 20)
       try go(this)
       catch {
@@ -650,10 +648,9 @@ object Types {
           throw ex // DEBUG
       }
       finally {
-        val recCount = ctx.findMemberCount
         if (recCount >= Config.LogPendingFindMemberThreshold)
           ctx.pendingMemberSearches = ctx.pendingMemberSearches.tail
-        ctx.findMemberCount = recCount - 1
+        ctx.findMemberCount = recCount
       }
     }
 
