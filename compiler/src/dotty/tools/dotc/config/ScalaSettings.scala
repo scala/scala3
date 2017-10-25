@@ -116,7 +116,7 @@ class ScalaSettings extends Settings.SettingGroup {
   val YoptPhases = PhasesSetting("-Yopt-phases", "Restrict the optimisation phases to execute under -optimise.")
   val YoptFuel = IntSetting("-Yopt-fuel", "Maximum number of optimisations performed under -optimise.", -1)
   val optimise = BooleanSetting("-optimise", "Generates faster bytecode by applying local optimisations to the .program") withAbbreviation "-optimize"
-  val XlinkOptimise = BooleanSetting("-Xlink-optimise", "Recompile library code with the application.").withAbbreviation("-Xlink-optimize")
+  val Xlink = BooleanSetting("-Xlink", "Recompile library code with the application.")
 
   /** Dottydoc specific settings */
   val siteRoot = StringSetting(
