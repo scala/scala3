@@ -22,7 +22,7 @@ object Settings {
   val ListTag = ClassTag(classOf[List[_]])
   val VersionTag = ClassTag(classOf[ScalaVersion])
   val OptionTag = ClassTag(classOf[Option[_]])
-  val DirectoryTag = ClassTag(classOf[Directory])
+  val DirectoryJarTag = ClassTag(classOf[Path])
 
   class SettingsState(initialValues: Seq[Any]) {
     private[this] var values = ArrayBuffer(initialValues: _*)
@@ -161,9 +161,10 @@ object Settings {
             case Success(v) => update(v, args)
             case Failure(ex) => fail(ex.getMessage, args)
           }
-        case (DirectoryTag, arg :: args) =>
+        case (DirectoryJarTag, arg :: args) =>
           val path = Path(arg)
           if (path.isDirectory) update(Directory(path), args)
+          else if (path.extension == "jar") update(path, args)
           else fail(s"'$arg' does not exist or is not a directory", args)
         case (_, Nil) =>
           missingArg
@@ -286,7 +287,7 @@ object Settings {
     def OptionSetting[T: ClassTag](name: String, descr: String): Setting[Option[T]] =
       publish(Setting(name, descr, None, propertyClass = Some(implicitly[ClassTag[T]].runtimeClass)))
 
-    def DirectorySetting(name: String, helpArg: String, descr: String, default: Directory): Setting[Directory] =
+    def DirectoryJarSetting(name: String, helpArg: String, descr: String, default: Directory): Setting[Path] =
       publish(Setting(name, descr, default, helpArg))
   }
 }

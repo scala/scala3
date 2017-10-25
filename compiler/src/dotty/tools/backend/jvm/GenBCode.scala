@@ -26,6 +26,7 @@ import Denotations._
 import Phases._
 import java.lang.AssertionError
 import java.io.{DataOutputStream, File => JFile}
+import dotty.tools.io.{Jar, File, Directory}
 
 import scala.tools.asm
 import scala.tools.asm.tree._
@@ -33,7 +34,7 @@ import dotty.tools.dotc.util.{DotClass, Positions}
 import tpd._
 import StdNames._
 
-import dotty.tools.io.{AbstractFile, Directory, PlainDirectory}
+import dotty.tools.io._
 
 class GenBCode extends Phase {
   def phaseName: String = "genBCode"
@@ -46,13 +47,36 @@ class GenBCode extends Phase {
     superCallsMap.put(sym, old + calls)
   }
 
-  def outputDir(implicit ctx: Context): AbstractFile =
-    new PlainDirectory(ctx.settings.outputDir.value)
+  def outputDir(implicit ctx: Context): AbstractFile = {
+    val path = ctx.settings.outputDir.value
+    if (path.isDirectory) new PlainDirectory(Directory(path))
+    else new PlainFile(path)
+  }
+
+  private[this] var classOutput: AbstractFile = _
 
   def run(implicit ctx: Context): Unit = {
     new GenBCodePipeline(entryPoints.toList,
-        new DottyBackendInterface(outputDir, superCallsMap.toMap)(ctx))(ctx).run(ctx.compilationUnit.tpdTree)
+        new DottyBackendInterface(classOutput, superCallsMap.toMap)(ctx))(ctx).run(ctx.compilationUnit.tpdTree)
     entryPoints.clear()
+  }
+
+  override def runOn(units: List[CompilationUnit])(implicit ctx: Context) = {
+    val output = outputDir
+    if (output.isDirectory) {
+      classOutput = output
+      val res = super.runOn(units)
+      classOutput = null
+      res
+    } else {
+      assert(output.hasExtension("jar"))
+      classOutput = new PlainDirectory(Path(Path(output.file).parent + "/tmp-jar-" + System.currentTimeMillis().toHexString).createDirectory())
+      val res = super.runOn(units)
+      Jar.create(new File(ctx.settings.outputDir.value.jfile), new Directory(classOutput.file), mainClass = "")
+      classOutput.delete()
+      classOutput = null
+      res
+    }
   }
 }
 

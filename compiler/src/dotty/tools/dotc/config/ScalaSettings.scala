@@ -18,7 +18,7 @@ class ScalaSettings extends Settings.SettingGroup {
   val javaextdirs = PathSetting("-javaextdirs", "Override java extdirs classpath.", Defaults.javaExtDirs)
   val sourcepath = PathSetting("-sourcepath", "Specify location(s) of source files.", "") // Defaults.scalaSourcePath
   val classpath = PathSetting("-classpath", "Specify where to find user class files.", defaultClasspath) withAbbreviation "-cp"
-  val outputDir = DirectorySetting("-d", "directory|jar", "destination for generated classfiles.", Directory(Path(".")))
+  val outputDir = DirectoryJarSetting("-d", "directory|jar", "destination for generated classfiles.", Directory(Path(".")))
   val priorityclasspath = PathSetting("-priorityclasspath", "class path that takes precedence over all other paths (or testing only)", "")
 
   /** Other settings */
