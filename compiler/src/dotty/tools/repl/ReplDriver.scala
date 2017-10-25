@@ -89,7 +89,7 @@ class ReplDriver(settings: Array[String],
   /** Create a fresh and initialized context with IDE mode enabled */
   private[this] def initialCtx = {
     val rootCtx = initCtx.fresh.addMode(Mode.ReadPositions).addMode(Mode.Interactive)
-    val ictx = setup(settings.toArray, rootCtx)._2.fresh
+    val ictx = setup(settings, rootCtx)._2.fresh
     ictx.base.initialize()(ictx)
     ictx
   }
