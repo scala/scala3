@@ -43,25 +43,28 @@ object Trees {
     final val SeqLiteral = 18
     final val Inlined = 19
     final val TypeTree = 20
-    final val SingletonTypeTree = 21
-    final val AndTypeTree = 22
-    final val OrTypeTree = 23
-    final val RefinedTypeTree = 24
-    final val AppliedTypeTree = 25
-    final val LambdaTypeTree = 26
-    final val ByNameTypeTree = 27
-    final val TypeBoundsTree = 28
-    final val Bind = 29
-    final val Alternative = 30
-    final val UnApply = 31
-    final val ValDef = 32
-    final val DefDef = 33
-    final val TypeDef = 34
-    final val Template = 35
-    final val Import = 36
-    final val PackageDef = 37
-    final val Annotated = 38
-    final val Thicket = 39
+    final val Bind = 21
+    final val Alternative = 22
+    final val UnApply = 23
+    final val ValDef = 24
+    final val DefDef = 25
+    final val TypeDef = 26
+    final val Template = 27
+    final val Import = 28
+    final val PackageDef = 29
+    final val Thicket = 30
+
+    final val NumPickledTreeTags = 31
+    
+    final val Annotated = 31
+    final val SingletonTypeTree = 32
+    final val AndTypeTree = 33
+    final val OrTypeTree = 34
+    final val RefinedTypeTree = 35
+    final val AppliedTypeTree = 36
+    final val LambdaTypeTree = 37
+    final val ByNameTypeTree = 38
+    final val TypeBoundsTree = 39
 
     final val NumTypedTreeTags = 40
 
