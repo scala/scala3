@@ -239,6 +239,7 @@ object Build {
   )
 
   lazy val commonBenchmarkSettings = Seq(
+    outputStrategy := Some(StdoutOutput),
     mainClass in (Jmh, run) := Some("dotty.tools.benchmarks.Bench"), // custom main for jmh:run
     javaOptions += "-DBENCH_CLASS_PATH=" + Attributed.data((fullClasspath in Compile).value).mkString("", ":", "")
   )
