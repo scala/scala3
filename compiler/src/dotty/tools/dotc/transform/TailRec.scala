@@ -12,6 +12,7 @@ import Symbols._
 import Types._
 import NameKinds.TailLabelName
 import MegaPhase.MiniPhase
+import reporting.diagnostic.messages.TailrecNotApplicable
 
 /**
  * A Tail Rec Transformer
