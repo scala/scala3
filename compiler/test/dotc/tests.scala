@@ -69,8 +69,8 @@ class tests extends CompilerTest {
   }
 
   implicit val defaultOptions: List[String] = noCheckOptions ++ {
-    if (dotty.Properties.isRunByDrone) List("-Ycheck:tailrec,resolveSuper,erasure,mixin,getClass,restoreScopes,labelDef") // should be Ycheck:all, but #725
-    else List("-Ycheck:tailrec,resolveSuper,mixin,restoreScopes,labelDef,simplify")
+    if (dotty.Properties.isRunByDrone) List("-Ycheck:tailrec,resolveSuper,erasure,mixin,getClass,elimStaticThis,labelDef") // should be Ycheck:all, but #725
+    else List("-Ycheck:tailrec,resolveSuper,mixin,elimStaticThis,labelDef,simplify")
   } ++ checkOptions ++ classPath
 
   val testPickling = List("-Xprint-types", "-Ytest-pickler", "-Ystop-after:pickler", "-Yprintpos")

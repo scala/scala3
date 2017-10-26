@@ -25,7 +25,7 @@ import dotty.tools.dotc.core.Phases.Phase
 /** Make private term members that are accessed from another class
  *  non-private by resetting the Private flag and expanding their name.
  *
- *  Make private accessor in value class not-private. Ihis is necessary to unbox
+ *  Make private accessor in value class not-private. This is necessary to unbox
  *  the value class when accessing it from separate compilation units
  *
  *  Also, make non-private any private parameter forwarders that forward to an inherited

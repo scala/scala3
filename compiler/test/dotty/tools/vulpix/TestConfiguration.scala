@@ -42,7 +42,7 @@ object TestConfiguration {
     } mkString(":")
   }
 
-  val yCheckOptions = Array("-Ycheck:tailrec,resolveSuper,erasure,mixin,getClass,restoreScopes,labelDef")
+  val yCheckOptions = Array("-Ycheck:tailrec,resolveSuper,erasure,mixin,getClass,elimStaticThis,labelDef")
 
   val basicDefaultOptions = checkOptions ++ noCheckOptions ++ yCheckOptions
   val defaultUnoptimised = TestFlags(classPath, basicDefaultOptions)

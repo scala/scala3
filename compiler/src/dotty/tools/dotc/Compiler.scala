@@ -53,7 +53,6 @@ class Compiler {
            new ElimJavaPackages),   // Eliminate syntactic references to Java packages
       List(new CheckStatic,         // Check restrictions that apply to @static members
            new ElimRepeated,        // Rewrite vararg parameters and arguments
-           new RefChecks,           // Various checks mostly related to abstract members and overriding
            new NormalizeFlags,      // Rewrite some definition flags
            new ExtensionMethods,    // Expand methods of value classes with extension methods
            new ExpandSAMs,          // Expand single abstract method closures to anonymous classes
@@ -61,7 +60,8 @@ class Compiler {
            new ByNameClosures,      // Expand arguments to by-name parameters to closures
            new LiftTry,             // Put try expressions that might execute on non-empty stacks into their own methods
            new HoistSuperArgs,      // Hoist complex arguments of supercalls to enclosing scope
-           new ClassOf),            // Expand `Predef.classOf` calls.
+           new ClassOf,            // Expand `Predef.classOf` calls.
+           new RefChecks),           // Various checks mostly related to abstract members and overriding
       List(new TryCatchPatterns,    // Compile cases in try/catch
            new PatternMatcher,      // Compile pattern matches
            new ExplicitOuter,       // Add accessors to outer classes from nested ones.
@@ -98,10 +98,10 @@ class Compiler {
       List(new LinkScala2Impls,     // Redirect calls to trait methods defined by Scala 2.x, so that they now go to their implementations
            new LambdaLift,          // Lifts out nested functions to class scope, storing free variables in environments
                                        // Note: in this mini-phase block scopes are incorrect. No phases that rely on scopes should be here
-           new ElimStaticThis,      // Replace `this` references to static objects by global identifiers
-           new Flatten,             // Lift all inner classes to package scope
-           new RestoreScopes),      // Repair scopes rendered invalid by moving definitions in prior phases of the group
-      List(new RenameLifted,        // Renames lifted classes to local numbering scheme
+           new ElimStaticThis),      // Replace `this` references to static objects by global identifiers
+      List(new Flatten,             // Lift all inner classes to package scope
+           new RestoreScopes,      // Repair scopes rendered invalid by moving definitions in prior phases of the group
+           new RenameLifted,        // Renames lifted classes to local numbering scheme
            new TransformWildcards,  // Replace wildcards with default values
            new MoveStatics,         // Move static methods to companion classes
            new ExpandPrivate,       // Widen private definitions accessed from nested classes

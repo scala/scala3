@@ -298,11 +298,6 @@ object Phases {
      */
     def checkPostCondition(tree: tpd.Tree)(implicit ctx: Context): Unit = ()
 
-    /** If set, allow missing or superfluous arguments in applications
-     *  and type applications.
-     */
-    def relaxedTyping: Boolean = false
-
     /** Is this phase the standard typerphase? True for FrontEnd, but
      *  not for other first phases (such as FromTasty). The predicate
      *  is tested in some places that perform checks and corrections. It's

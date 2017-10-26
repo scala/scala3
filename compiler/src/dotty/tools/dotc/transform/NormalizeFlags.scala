@@ -6,7 +6,7 @@ import DenotTransformers.SymTransformer
 import Phases.Phase
 import Contexts.Context
 import SymDenotations.SymDenotation
-import TreeTransforms.MiniPhaseTransform
+import TreeTransforms.{MiniPhaseTransform, TransformerInfo}
 import Flags._, Symbols._
 
 /** 1. Widens all private[this] and protected[this] qualifiers to just private/protected

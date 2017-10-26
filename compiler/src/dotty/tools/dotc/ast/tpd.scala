@@ -656,26 +656,27 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     /** After phase `trans`, set the owner of every definition in this tree that was formerly
      *  owner by `from` to `to`.
      */
-    def changeOwnerAfter(from: Symbol, to: Symbol, trans: DenotTransformer)(implicit ctx: Context): ThisTree = {
-      assert(ctx.phase == trans.next)
-      val traverser = new TreeTraverser {
-        def traverse(tree: Tree)(implicit ctx: Context) = tree match {
-          case tree: DefTree =>
-            val sym = tree.symbol
-            val prevDenot = sym.denot(ctx.withPhase(trans))
-            if (prevDenot.effectiveOwner == from.skipWeakOwner) {
-              val d = sym.copySymDenotation(owner = to)
-              d.installAfter(trans)
-              d.transformAfter(trans, d => if (d.owner eq from) d.copySymDenotation(owner = to) else d)
-            }
-            if (sym.isWeakOwner) traverseChildren(tree)
-          case _ =>
-            traverseChildren(tree)
+    def changeOwnerAfter(from: Symbol, to: Symbol, trans: DenotTransformer)(implicit ctx: Context): ThisTree =
+      if (ctx.phase == trans.next) {
+        val traverser = new TreeTraverser {
+          def traverse(tree: Tree)(implicit ctx: Context) = tree match {
+            case tree: DefTree =>
+              val sym = tree.symbol
+              val prevDenot = sym.denot(ctx.withPhase(trans))
+              if (prevDenot.effectiveOwner == from.skipWeakOwner) {
+                val d = sym.copySymDenotation(owner = to)
+                d.installAfter(trans)
+                d.transformAfter(trans, d => if (d.owner eq from) d.copySymDenotation(owner = to) else d)
+              }
+              if (sym.isWeakOwner) traverseChildren(tree)
+            case _ =>
+              traverseChildren(tree)
+          }
         }
+        traverser.traverse(tree)
+        tree
       }
-      traverser.traverse(tree)
-      tree
-    }
+      else changeOwnerAfter(from, to, trans)(ctx.withPhase(trans.next))
 
     /** A select node with the given selector name and a computed type */
     def select(name: Name)(implicit ctx: Context): Select =
