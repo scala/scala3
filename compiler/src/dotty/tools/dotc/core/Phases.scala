@@ -272,7 +272,11 @@ object Phases {
     def isRunnable(implicit ctx: Context): Boolean =
       !ctx.reporter.hasErrors
 
-    /** List of names of phases that should precede this phase */
+    /** If set, allow missing or superfluous arguments in applications
+     *  and type applications.
+     */
+    def relaxedTyping: Boolean = false
+     /** List of names of phases that should precede this phase */
     def runsAfter: Set[Class[_ <: Phase]] = Set.empty
 
     /** @pre `isRunnable` returns true */

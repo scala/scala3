@@ -490,6 +490,8 @@ class LambdaLift extends MiniPhase with IdentityDenotTransformer { thisPhase =>
   /** the following two members override abstract members in Transform */
   val phaseName: String = "lambdaLift"
 
+  override def relaxedTypingInGroup = true
+
   override def runsAfterGroupsOf: Set[Class[_ <: Phase]] = Set(classOf[Constructors], classOf[HoistSuperArgs])
     // Constructors has to happen before LambdaLift because the lambda lift logic
     // becomes simpler if it can assume that parameter accessors have already been

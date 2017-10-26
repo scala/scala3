@@ -44,6 +44,11 @@ object MegaPhase {
      */
     def runsAfterGroupsOf: Set[Class[_ <: Phase]] = Set.empty
 
+    final override def relaxedTyping = superPhase.relaxedTyping
+
+    /** If set, use relaxed typing for all phases in group */
+    def relaxedTypingInGroup = false
+
     val cpy: TypedTreeCopier = cpyBetweenPhases
 
     def prepareForIdent(tree: Ident)(implicit ctx: Context): Context = ctx
@@ -142,6 +147,17 @@ class MegaPhase(val miniPhases: Array[MiniPhase]) extends Phase {
   override val phaseName =
     if (miniPhases.length == 1) miniPhases(0).phaseName
     else miniPhases.map(_.phaseName).mkString("MegaPhase{", ", ", "}")
+
+  private var relaxedTypingCache: Boolean = _
+  private var relaxedTypingKnown = false
+
+  override final def relaxedTyping = {
+    if (!relaxedTypingKnown) {
+      relaxedTypingCache = miniPhases.exists(_.relaxedTypingInGroup)
+      relaxedTypingKnown = true
+    }
+    relaxedTypingCache
+  }
 
   private val cpy: TypedTreeCopier = cpyBetweenPhases
 
