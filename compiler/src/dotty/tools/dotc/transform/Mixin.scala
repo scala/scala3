@@ -96,6 +96,9 @@ class Mixin extends MiniPhase with SymTransformer { thisPhase =>
 
   override def phaseName: String = "mixin"
 
+  override def relaxedTypingInGroup = true
+    // Because it changes number of parameters in trait initializers
+
   override def runsAfter: Set[Class[_ <: Phase]] = Set(classOf[Erasure])
 
   override def changesMembers = true  // the phase adds implementions of mixin accessors
