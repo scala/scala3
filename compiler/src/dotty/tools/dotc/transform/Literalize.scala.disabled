@@ -1,7 +1,7 @@
 package dotty.tools.dotc
 package transform
 
-import TreeTransforms._
+import MegaPhase._
 import core.DenotTransformers._
 import core.Symbols._
 import core.Contexts._
@@ -20,7 +20,7 @@ import dotty.tools.dotc.core.Constants._
  *  The phase also makes sure that the constant of a literal is the same as the constant
  *  in the type of the literal.
  */
-class Literalize extends MiniPhaseTransform { thisTransform =>
+class Literalize extends MiniPhase { thisTransform =>
   import ast.tpd._
 
   override def phaseName: String = "literalize"
@@ -60,19 +60,19 @@ class Literalize extends MiniPhaseTransform { thisTransform =>
     recur(tree.tpe)
   }
 
-  override def transformIdent(tree: Ident)(implicit ctx: Context, info: TransformerInfo): Tree =
+  override def transformIdent(tree: Ident)(implicit ctx: Context): Tree =
     literalize(tree)
 
-  override def transformSelect(tree: Select)(implicit ctx: Context, info: TransformerInfo): Tree =
+  override def transformSelect(tree: Select)(implicit ctx: Context): Tree =
     literalize(tree)
 
-  override def transformApply(tree: Apply)(implicit ctx: Context, info: TransformerInfo): Tree =
+  override def transformApply(tree: Apply)(implicit ctx: Context): Tree =
     literalize(tree)
 
-  override def transformTypeApply(tree: TypeApply)(implicit ctx: Context, info: TransformerInfo): Tree =
+  override def transformTypeApply(tree: TypeApply)(implicit ctx: Context): Tree =
     literalize(tree)
 
-  override def transformLiteral(tree: Literal)(implicit ctx: Context, info: TransformerInfo): Tree = tree.tpe match {
+  override def transformLiteral(tree: Literal)(implicit ctx: Context): Tree = tree.tpe match {
     case ConstantType(const) if tree.const.value != const.value || (tree.const.tag != const.tag) => Literal(const)
     case _ => tree
   }

@@ -5,7 +5,7 @@ import core._
 import Names._
 import StdNames.nme
 import Types._
-import dotty.tools.dotc.transform.TreeTransforms.{TransformerInfo, MiniPhaseTransform, TreeTransformer}
+import dotty.tools.dotc.transform.MegaPhase._
 import ast.Trees._
 import Flags._
 import Contexts.Context
@@ -34,12 +34,12 @@ import TypeUtils._
   *     Java8 supports those, but not vars, and JavaScript does not have interfaces at all.
   *  6. `@static` Lazy vals are currently unsupported.
   */
-class CheckStatic extends MiniPhaseTransform { thisTransformer =>
+class CheckStatic extends MiniPhase {
   import ast.tpd._
 
   override def phaseName = "checkStatic"
 
-  override def transformTemplate(tree: tpd.Template)(implicit ctx: Context, info: TransformerInfo): tpd.Tree = {
+  override def transformTemplate(tree: tpd.Template)(implicit ctx: Context): tpd.Tree = {
     val defns = tree.body.collect{case t: ValOrDefDef => t}
     var hadNonStaticField = false
     for(defn <- defns) {
@@ -72,7 +72,7 @@ class CheckStatic extends MiniPhaseTransform { thisTransformer =>
     tree
   }
 
-  override def transformSelect(tree: tpd.Select)(implicit ctx: Context, info: TransformerInfo): tpd.Tree = {
+  override def transformSelect(tree: tpd.Select)(implicit ctx: Context): tpd.Tree = {
     if (tree.symbol.hasAnnotation(defn.ScalaStaticAnnot)) {
       val symbolWhitelist = tree.symbol.ownersIterator.flatMap(x => if (x.is(Flags.Module)) List(x, x.companionModule) else List(x)).toSet
       def isSafeQual(t: Tree): Boolean = { // follow the desugared paths created by typer

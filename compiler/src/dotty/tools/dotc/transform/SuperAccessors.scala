@@ -1,7 +1,7 @@
 package dotty.tools.dotc
 package transform
 
-import dotty.tools.dotc.transform.TreeTransforms.{TransformerInfo, TreeTransform, TreeTransformer}
+import dotty.tools.dotc.transform.MegaPhase._
 import dotty.tools.dotc.ast.{Trees, tpd}
 import scala.collection.{ mutable, immutable }
 import ValueClasses._
@@ -35,7 +35,7 @@ import Symbols._, TypeUtils._, SymUtils._
  *
  *  (4) Super calls do not go to synthetic field accessors
  */
-class SuperAccessors(thisTransformer: DenotTransformer) {
+class SuperAccessors(thisPhase: DenotTransformer) {
 
   import tpd._
 
@@ -83,7 +83,7 @@ class SuperAccessors(thisTransformer: DenotTransformer) {
           val deferredOrPrivate = if (clazz is Trait) Deferred else Private
           val acc = ctx.newSymbol(
               clazz, superName, Artifact | Method | deferredOrPrivate,
-              superInfo, coord = sym.coord).enteredAfter(thisTransformer)
+              superInfo, coord = sym.coord).enteredAfter(thisPhase)
           // Diagnostic for SI-7091
           if (!accDefs.contains(clazz))
             ctx.error(s"Internal error: unable to store accessor definition in ${clazz}. clazz.hasPackageFlag=${clazz is Package}. Accessor required for ${sel} (${sel.show})", sel.pos)
@@ -130,7 +130,7 @@ class SuperAccessors(thisTransformer: DenotTransformer) {
         }
       if (name.isTermName && mix.name.isEmpty &&
           ((clazz is Trait) || clazz != ctx.owner.enclosingClass || !validCurrentClass))
-        superAccessorCall(sel)(ctx.withPhase(thisTransformer.next))
+        superAccessorCall(sel)(ctx.withPhase(thisPhase.next))
       else sel
     }
 
@@ -183,7 +183,7 @@ class SuperAccessors(thisTransformer: DenotTransformer) {
       }
       val protectedAccessor = clazz.info.decl(accName).suchThat(_.signature == accType.signature).symbol orElse {
         val newAcc = ctx.newSymbol(
-          clazz, accName, Artifact | Method, accType, coord = sel.pos).enteredAfter(thisTransformer)
+          clazz, accName, Artifact | Method, accType, coord = sel.pos).enteredAfter(thisPhase)
         val code = polyDefDef(newAcc, trefs => vrefss => {
           val (receiver :: _) :: tail = vrefss
           val base = receiver.select(sym).appliedToTypes(trefs)
@@ -235,7 +235,7 @@ class SuperAccessors(thisTransformer: DenotTransformer) {
       val accType = accTypeOf(sym.info)
       val protectedAccessor = clazz.info.decl(accName).suchThat(_.signature == accType.signature).symbol orElse {
         val newAcc = ctx.newSymbol(
-            clazz, accName, Artifact, accType, coord = tree.pos).enteredAfter(thisTransformer)
+            clazz, accName, Artifact, accType, coord = tree.pos).enteredAfter(thisPhase)
         val code = polyDefDef(newAcc, trefs => vrefss => {
           val (receiver :: _) :: tail = vrefss
           val base = receiver.select(sym).appliedToTypes(trefs)
@@ -267,7 +267,7 @@ class SuperAccessors(thisTransformer: DenotTransformer) {
       val accType = MethodType(clazz.classInfo.selfType :: field.info :: Nil, defn.UnitType)
       val protectedAccessor = clazz.info.decl(accName).symbol orElse {
         val newAcc = ctx.newSymbol(
-            clazz, accName, Artifact, accType, coord = tree.pos).enteredAfter(thisTransformer)
+            clazz, accName, Artifact, accType, coord = tree.pos).enteredAfter(thisPhase)
         val code = DefDef(newAcc, vrefss => {
           val (receiver :: value :: Nil) :: Nil = vrefss
           Assign(receiver.select(field), value).withPos(tree.pos)

@@ -3,7 +3,7 @@ package transform
 
 import core._
 import Types._
-import dotty.tools.dotc.transform.TreeTransforms._
+import dotty.tools.dotc.transform.MegaPhase._
 import Contexts.Context
 import Symbols._
 import Phases._
@@ -18,7 +18,7 @@ import Decorators._
  *  is called directly. The reason for this step is that JavaSeqLiterals, being arrays
  *  keep a precise type after erasure, whereas SeqLiterals only get the erased type `Seq`,
  */
-class SeqLiterals extends MiniPhaseTransform {
+class SeqLiterals extends MiniPhase {
   import ast.tpd._
 
   override def phaseName = "seqLiterals"
@@ -29,7 +29,7 @@ class SeqLiterals extends MiniPhaseTransform {
     case _ =>
   }
 
-  override def transformSeqLiteral(tree: SeqLiteral)(implicit ctx: Context, info: TransformerInfo): Tree = tree match {
+  override def transformSeqLiteral(tree: SeqLiteral)(implicit ctx: Context): Tree = tree match {
     case tree: JavaSeqLiteral => tree
     case _ =>
       val arr = JavaSeqLiteral(tree.elems, tree.elemtpt)

@@ -12,7 +12,6 @@ import reporting.{Reporter, ConsoleReporter}
 import Phases.Phase
 import transform._
 import util.FreshNameCreator
-import transform.TreeTransforms.{TreeTransform, TreeTransformer}
 import core.DenotTransformers.DenotTransformer
 import core.Denotations.SingleDenotation
 

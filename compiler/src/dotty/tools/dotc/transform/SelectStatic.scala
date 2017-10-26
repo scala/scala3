@@ -8,19 +8,19 @@ import dotty.tools.dotc.core.DenotTransformers.IdentityDenotTransformer
 import dotty.tools.dotc.core.Flags._
 import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.core._
-import dotty.tools.dotc.transform.TreeTransforms._
+import dotty.tools.dotc.transform.MegaPhase._
 
 /** Removes selects that would be compiled into GetStatic
  * otherwise backend needs to be aware that some qualifiers need to be dropped.
  * Similar transformation seems to be performed by flatten in nsc
  * @author Dmytro Petrashko
  */
-class SelectStatic extends MiniPhaseTransform with IdentityDenotTransformer { thisTransform =>
+class SelectStatic extends MiniPhase with IdentityDenotTransformer {
   import ast.tpd._
 
   override def phaseName: String = "selectStatic"
 
-  override def transformSelect(tree: tpd.Select)(implicit ctx: Context, info: TransformerInfo): tpd.Tree = {
+  override def transformSelect(tree: tpd.Select)(implicit ctx: Context): tpd.Tree = {
     val sym = tree.symbol
     def isStaticMember =
       (sym is Flags.Module) && sym.initial.maybeOwner.initial.isStaticOwner ||
@@ -48,15 +48,15 @@ class SelectStatic extends MiniPhaseTransform with IdentityDenotTransformer { th
     case _ => t
   }
 
-  override def transformApply(tree: tpd.Apply)(implicit ctx: Context, info: TransformerInfo): tpd.Tree = {
+  override def transformApply(tree: tpd.Apply)(implicit ctx: Context): tpd.Tree = {
     normalize(tree)
   }
 
-  override def transformTypeApply(tree: tpd.TypeApply)(implicit ctx: Context, info: TransformerInfo): tpd.Tree = {
+  override def transformTypeApply(tree: tpd.TypeApply)(implicit ctx: Context): tpd.Tree = {
     normalize(tree)
   }
 
-  override def transformClosure(tree: tpd.Closure)(implicit ctx: Context, info: TransformerInfo): tpd.Tree = {
+  override def transformClosure(tree: tpd.Closure)(implicit ctx: Context): tpd.Tree = {
     normalize(tree)
   }
 }

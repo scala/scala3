@@ -12,7 +12,7 @@ import Symbols._
 import SymUtils._
 import Constants._
 import ast.Trees._
-import TreeTransforms._
+import MegaPhase._
 import NameOps._
 import Flags._
 import Decorators._
@@ -32,7 +32,7 @@ import Decorators._
  *    <accessor> <mods> def x_=(y: T): Unit = ()
  *      --> <accessor> <mods> def x_=(y: T): Unit = x = y
  */
- class Memoize extends MiniPhaseTransform with IdentityDenotTransformer { thisTransform =>
+ class Memoize extends MiniPhase with IdentityDenotTransformer { thisPhase =>
   import ast.tpd._
 
   override def phaseName = "memoize"
@@ -66,7 +66,7 @@ import Decorators._
    */
   override def runsAfter: Set[Class[_ <: Phase]] = Set(classOf[Mixin])
 
-  override def transformDefDef(tree: DefDef)(implicit ctx: Context, info: TransformerInfo): Tree = {
+  override def transformDefDef(tree: DefDef)(implicit ctx: Context): Tree = {
     val sym = tree.symbol
 
     def newField = {
@@ -82,7 +82,7 @@ import Decorators._
         info  = fieldType,
         coord = tree.pos
       ).withAnnotationsCarrying(sym, defn.FieldMetaAnnot)
-       .enteredAfter(thisTransform)
+       .enteredAfter(thisPhase)
     }
 
     def addAnnotations(denot: Denotation): Unit =
@@ -90,7 +90,7 @@ import Decorators._
         case fieldDenot: SymDenotation if sym.annotations.nonEmpty =>
           val cpy = fieldDenot.copySymDenotation()
           cpy.annotations = sym.annotations
-          cpy.installAfter(thisTransform)
+          cpy.installAfter(thisPhase)
         case _ => ()
       }
 
@@ -98,7 +98,7 @@ import Decorators._
       if (sym.annotations.nonEmpty) {
         val cpy = sym.copySymDenotation()
         cpy.annotations = Nil
-        cpy.installAfter(thisTransform)
+        cpy.installAfter(thisPhase)
       }
 
     val NoFieldNeeded = Lazy | Deferred | JavaDefined | (if (ctx.settings.YnoInline.value) EmptyFlags else Inline)
@@ -127,13 +127,13 @@ import Decorators._
       }
 
       if (sym.isGetter) {
-        var rhs = tree.rhs.changeOwnerAfter(sym, field, thisTransform)
+        var rhs = tree.rhs.changeOwnerAfter(sym, field, thisPhase)
         if (isWildcardArg(rhs)) rhs = EmptyTree
         val fieldDef = transformFollowing(ValDef(field, adaptToField(rhs)))
         val rhsClass = tree.tpt.tpe.widenDealias.classSymbol
         val getterRhs =
           if (isErasableBottomField(rhsClass)) erasedBottomTree(rhsClass)
-          else transformFollowingDeep(ref(field))(ctx.withOwner(sym), info)
+          else transformFollowingDeep(ref(field))(ctx.withOwner(sym))
         val getterDef = cpy.DefDef(tree)(rhs = getterRhs)
         addAnnotations(fieldDef.denot)
         removeAnnotations(sym)
@@ -144,7 +144,7 @@ import Decorators._
         if (isErasableBottomField(tree.vparamss.head.head.tpt.tpe.classSymbol)) tree
         else {
           val initializer = Assign(ref(field), adaptToField(ref(tree.vparamss.head.head.symbol)))
-          val setterDef = cpy.DefDef(tree)(rhs = transformFollowingDeep(initializer)(ctx.withOwner(sym), info))
+          val setterDef = cpy.DefDef(tree)(rhs = transformFollowingDeep(initializer)(ctx.withOwner(sym)))
           removeAnnotations(sym)
           setterDef
         }

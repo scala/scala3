@@ -349,8 +349,11 @@ trait TypeAssigner {
   def assignType(tree: untpd.Apply, fn: Tree, args: List[Tree])(implicit ctx: Context) = {
     val ownType = fn.tpe.widen match {
       case fntpe: MethodType =>
-        if (fntpe.isDependent) safeSubstParams(fntpe.resultType, fntpe.paramRefs, args.tpes)
-        else fntpe.resultType
+        if (sameLength(fntpe.paramInfos, args) || ctx.phase.prev.relaxedTyping || true)
+          if (fntpe.isDependent) safeSubstParams(fntpe.resultType, fntpe.paramRefs, args.tpes)
+          else fntpe.resultType
+        else
+          errorType(i"wrong number of arguments at ${ctx.phase.prev} for $fntpe: ${fn.tpe}, expected: ${fntpe.paramInfos.length}, found: ${args.length}", tree.pos)
       case t =>
         errorType(err.takesNoParamsStr(fn, ""), tree.pos)
     }

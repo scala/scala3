@@ -6,7 +6,7 @@ import core.Contexts.Context
 import core.StdNames.nme
 import core.Phases.Phase
 import TypeUtils._
-import TreeTransforms.{MiniPhaseTransform, TransformerInfo}
+import MegaPhase.MiniPhase
 
 /** Rewrite `getClass` calls as follow:
   *
@@ -15,7 +15,7 @@ import TreeTransforms.{MiniPhaseTransform, TransformerInfo}
   *  For every instance of non-primitive class D:
   *    instanceD.getClass    -> instanceD.getClass
   */
-class GetClass extends MiniPhaseTransform {
+class GetClass extends MiniPhase {
   import tpd._
 
   override def phaseName: String = "getClass"
@@ -23,7 +23,7 @@ class GetClass extends MiniPhaseTransform {
   // getClass transformation should be applied to specialized methods
   override def runsAfter: Set[Class[_ <: Phase]] = Set(classOf[Erasure], classOf[FunctionalInterfaces])
 
-  override def transformApply(tree: Apply)(implicit ctx: Context, info: TransformerInfo): Tree = {
+  override def transformApply(tree: Apply)(implicit ctx: Context): Tree = {
     import ast.Trees._
     tree match {
       case Apply(Select(qual, nme.getClass_), Nil) if qual.tpe.widen.isPrimitiveValueType =>

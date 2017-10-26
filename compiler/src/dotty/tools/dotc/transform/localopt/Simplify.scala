@@ -8,7 +8,7 @@ import core.Types._
 import core.Flags._
 import core.Decorators._
 import core.NameOps._
-import transform.TreeTransforms.{MiniPhaseTransform, TransformerInfo}
+import transform.MegaPhase.MiniPhase
 import config.Printers.simplify
 import ast.tpd
 import dotty.tools.dotc.core.PhantomErasure
@@ -27,7 +27,7 @@ import scala.annotation.tailrec
  *   - running this phase late allows to eliminate inefficiencies created by previous phase
  *   - different patters are easier to optimize at different moments of pipeline
  */
-class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
+class Simplify extends MiniPhase with IdentityDenotTransformer {
   import tpd._
   override def phaseName: String = "simplify"
   override val cpy = tpd.cpy
@@ -93,11 +93,11 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
       if (p.isEmpty) o else o.filter(x => p.contains(x.name))
     }
 
-    this
+    ctx
   }
 
   // The entry point of local optimisation: DefDefs
-  override def transformDefDef(tree: DefDef)(implicit ctx: Context, info: TransformerInfo): Tree = {
+  override def transformDefDef(tree: DefDef)(implicit ctx: Context): Tree = {
     val ctx0 = ctx
     if (ctx.settings.optimise.value && !tree.symbol.is(Label)) {
       implicit val ctx: Context = ctx0.withOwner(tree.symbol(ctx0))

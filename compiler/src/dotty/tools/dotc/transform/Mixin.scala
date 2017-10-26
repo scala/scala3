@@ -2,7 +2,7 @@ package dotty.tools.dotc
 package transform
 
 import core._
-import TreeTransforms._
+import MegaPhase._
 import Contexts.Context
 import Flags._
 import SymUtils._
@@ -91,10 +91,13 @@ import collection.mutable
  *  into enclosing classes where they are not visible. This can only be done if all references
  *  are symbolic.
  */
-class Mixin extends MiniPhaseTransform with SymTransformer { thisTransform =>
+class Mixin extends MiniPhase with SymTransformer { thisPhase =>
   import ast.tpd._
 
   override def phaseName: String = "mixin"
+
+  override def relaxedTypingInGroup = true
+    // Because it changes number of parameters in trait initializers
 
   override def runsAfter: Set[Class[_ <: Phase]] = Set(classOf[Erasure])
 
@@ -125,13 +128,13 @@ class Mixin extends MiniPhaseTransform with SymTransformer { thisTransform =>
             initName,
             Protected | Synthetic | Method,
             sym.info,
-            coord = sym.symbol.coord).enteredAfter(thisTransform))
+            coord = sym.symbol.coord).enteredAfter(thisPhase))
     }
   }.asTerm
 
-  override def transformTemplate(impl: Template)(implicit ctx: Context, info: TransformerInfo) = {
+  override def transformTemplate(impl: Template)(implicit ctx: Context) = {
     val cls = impl.symbol.owner.asClass
-    val ops = new MixinOps(cls, thisTransform)
+    val ops = new MixinOps(cls, thisPhase)
     import ops._
 
     def traitDefs(stats: List[Tree]): List[Tree] = {
@@ -143,8 +146,8 @@ class Mixin extends MiniPhaseTransform with SymTransformer { thisTransform =>
           val vsym = stat.symbol
           val isym = initializer(vsym)
           val rhs = Block(
-            initBuf.toList.map(_.changeOwnerAfter(impl.symbol, isym, thisTransform)),
-            stat.rhs.changeOwnerAfter(vsym, isym, thisTransform).wildcardToDefault)
+            initBuf.toList.map(_.changeOwnerAfter(impl.symbol, isym, thisPhase)),
+            stat.rhs.changeOwnerAfter(vsym, isym, thisPhase).wildcardToDefault)
           initBuf.clear()
           cpy.DefDef(stat)(rhs = EmptyTree) :: DefDef(isym, rhs) :: Nil
         case stat: DefDef if stat.symbol.isSetter =>
@@ -186,7 +189,7 @@ class Mixin extends MiniPhaseTransform with SymTransformer { thisTransform =>
     }
 
     def was(sym: Symbol, flags: FlagSet) =
-      ctx.atPhase(thisTransform) { implicit ctx => sym is flags }
+      ctx.atPhase(thisPhase) { implicit ctx => sym is flags }
 
     def traitInits(mixin: ClassSymbol): List[Tree] = {
       var argNum = 0

@@ -9,10 +9,10 @@ import dotty.tools.dotc.core.Names._
 import dotty.tools.dotc.core.Phases
 import dotty.tools.dotc.core.SymDenotations.SymDenotation
 import dotty.tools.dotc.core.Symbols._
-import dotty.tools.dotc.transform.TreeTransforms.{MiniPhaseTransform, TransformerInfo}
+import dotty.tools.dotc.transform.MegaPhase.MiniPhase
 
 /** Renames lifted classes to local numbering scheme */
-class RenameLifted extends MiniPhaseTransform with SymTransformer { thisTransformer =>
+class RenameLifted extends MiniPhase with SymTransformer {
 
   override def phaseName = "renameLifted"
 

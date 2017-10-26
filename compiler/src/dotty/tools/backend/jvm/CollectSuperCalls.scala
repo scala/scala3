@@ -5,7 +5,7 @@ import dotty.tools.dotc.ast.Trees._
 import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.core.Flags.Trait
-import dotty.tools.dotc.transform.TreeTransforms.{MiniPhaseTransform, TransformerInfo}
+import dotty.tools.dotc.transform.MegaPhase.MiniPhase
 
 /** Collect all super calls to trait members.
  *
@@ -17,12 +17,12 @@ import dotty.tools.dotc.transform.TreeTransforms.{MiniPhaseTransform, Transforme
  *  methods in a redundant mixin class could be implemented with a default abstract method,
  *  the redundant mixin class could be required as a parent by the JVM.
  */
-class CollectSuperCalls extends MiniPhaseTransform {
+class CollectSuperCalls extends MiniPhase {
   import tpd._
 
   def phaseName: String = "collectSuperCalls"
 
-  override def transformSelect(tree: Select)(implicit ctx: Context, info: TransformerInfo): Tree = {
+  override def transformSelect(tree: Select)(implicit ctx: Context): Tree = {
     tree.qualifier match {
       case sup: Super =>
         if (tree.symbol.owner.is(Trait))

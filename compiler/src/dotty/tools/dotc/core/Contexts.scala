@@ -31,6 +31,7 @@ import config.{Settings, ScalaSettings, Platform, JavaPlatform}
 import language.implicitConversions
 import DenotTransformers.DenotTransformer
 import util.Property.Key
+import util.Store
 import xsbti.AnalysisCallback
 
 object Contexts {
@@ -157,13 +158,6 @@ object Contexts {
     protected def runInfo_=(runInfo: RunInfo) = _runInfo = runInfo
     def runInfo: RunInfo = _runInfo
 
-    /** An optional diagostics buffer than is used by some checking code
-     *  to provide more information in the buffer if it exists.
-     */
-    private[this] var _diagnostics: Option[StringBuilder] = _
-    protected def diagnostics_=(diagnostics: Option[StringBuilder]) = _diagnostics = diagnostics
-    def diagnostics: Option[StringBuilder] = _diagnostics
-
     /** The current bounds in force for type parameters appearing in a GADT */
     private[this] var _gadt: GADTMap = _
     protected def gadt_=(gadt: GADTMap) = _gadt = gadt
@@ -173,6 +167,11 @@ object Contexts {
     private[this] var _freshNames: FreshNameCreator = _
     protected def freshNames_=(freshNames: FreshNameCreator) = _freshNames = freshNames
     def freshNames: FreshNameCreator = _freshNames
+
+    /** A store that can be used by sub-components */
+    private var _store: Store = _
+    protected def store_=(store: Store) = _store = store
+    def store: Store = _store
 
     /** A map in which more contextual properties can be stored */
     private[this] var _moreProperties: Map[Key[Any], Any] = _
@@ -300,13 +299,6 @@ object Contexts {
     def isNonEmptyScopeContext: Boolean =
       (this.scope ne outer.scope) && !this.scope.isEmpty
 
-    /** Leave message in diagnostics buffer if it exists */
-    def diagnose(str: => String) =
-      for (sb <- diagnostics) {
-        sb.setLength(0)
-        sb.append(str)
-      }
-
     /** The next outer context whose tree is a template or package definition
      *  Note: Currently unused
     def enclTemplate: Context = {
@@ -406,7 +398,6 @@ object Contexts {
           .withSettings(sstate)
           // tree is not preserved in condensed
           .withRunInfo(runInfo)
-          .withDiagnostics(diagnostics)
           .withMoreProperties(moreProperties)
       _condensed
     }
@@ -474,12 +465,12 @@ object Contexts {
     def setImportInfo(importInfo: ImportInfo): this.type = { this.importInfo = importInfo; this }
     def setImplicits(implicits: ContextualImplicits): this.type = { this.implicitsCache = implicits; this }
     def setRunInfo(runInfo: RunInfo): this.type = { this.runInfo = runInfo; this }
-    def setDiagnostics(diagnostics: Option[StringBuilder]): this.type = { this.diagnostics = diagnostics; this }
     def setGadt(gadt: GADTMap): this.type = { this.gadt = gadt; this }
     def setFreshGADTBounds: this.type = setGadt(new GADTMap(gadt.bounds))
     def setTypeComparerFn(tcfn: Context => TypeComparer): this.type = { this.typeComparer = tcfn(this); this }
     def setSearchHistory(searchHistory: SearchHistory): this.type = { this.searchHistory = searchHistory; this }
     def setFreshNames(freshNames: FreshNameCreator): this.type = { this.freshNames = freshNames; this }
+    def setStore(store: Store): this.type = { this.store = store; this }
     def setMoreProperties(moreProperties: Map[Key[Any], Any]): this.type = { this.moreProperties = moreProperties; this }
 
     def setProperty[T](key: Key[T], value: T): this.type =
@@ -488,12 +479,26 @@ object Contexts {
     def dropProperty(key: Key[_]): this.type =
       setMoreProperties(moreProperties - key)
 
+    def addLocation[T](initial: T): Store.Location[T] = {
+      val (loc, store1) = store.newLocation(initial)
+      setStore(store1)
+      loc
+    }
+
+    def addLocation[T](): Store.Location[T] = {
+      val (loc, store1) = store.newLocation[T]()
+      setStore(store1)
+      loc
+    }
+
+    def updateStore[T](loc: Store.Location[T], value: T): this.type =
+      setStore(store.updated(loc, value))
+
     def setPhase(pid: PhaseId): this.type = setPeriod(Period(runId, pid))
     def setPhase(phase: Phase): this.type = setPeriod(Period(runId, phase.start, phase.end))
 
     def setSetting[T](setting: Setting[T], value: T): this.type =
       setSettings(setting.updateIn(sstate, value))
-
 
     def setDebug = setSetting(base.settings.debug, true)
   }
@@ -527,9 +532,9 @@ object Contexts {
     tree = untpd.EmptyTree
     typeAssigner = TypeAssigner
     runInfo = new RunInfo(this)
-    diagnostics = None
     freshNames = new FreshNameCreator.Default
     moreProperties = Map.empty
+    store = Store.empty
     typeComparer = new TypeComparer(this)
     searchHistory = new SearchHistory(0, Map())
     gadt = EmptyGADTMap
@@ -643,7 +648,7 @@ object Contexts {
     private[core] var phasesPlan: List[List[Phase]] = _
 
     /** Phases by id */
-    private[core] var phases: Array[Phase] = _
+    private[dotc] var phases: Array[Phase] = _
 
     /** Phases with consecutive Transforms grouped into a single phase, Empty array if squashing is disabled */
     private[core] var squashedPhases: Array[Phase] = Array.empty[Phase]

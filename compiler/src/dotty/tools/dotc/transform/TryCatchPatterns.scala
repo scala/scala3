@@ -9,7 +9,7 @@ import core.NameKinds.ExceptionBinderName
 import dotty.tools.dotc.core.Decorators._
 import dotty.tools.dotc.core.Flags
 import dotty.tools.dotc.core.Contexts.Context
-import dotty.tools.dotc.transform.TreeTransforms.{MiniPhaseTransform, TransformerInfo}
+import dotty.tools.dotc.transform.MegaPhase.MiniPhase
 import dotty.tools.dotc.util.Positions.Position
 
 /** Compiles the cases that can not be handled by primitive catch cases as a common pattern match.
@@ -40,7 +40,7 @@ import dotty.tools.dotc.util.Positions.Position
  *   - `case _: T =>` where `T` is not `Throwable`
  *
  */
-class TryCatchPatterns extends MiniPhaseTransform {
+class TryCatchPatterns extends MiniPhase {
   import dotty.tools.dotc.ast.tpd._
 
   def phaseName: String = "tryCatchPatterns"
@@ -58,7 +58,7 @@ class TryCatchPatterns extends MiniPhaseTransform {
     case _ =>
   }
 
-  override def transformTry(tree: Try)(implicit ctx: Context, info: TransformerInfo): Tree = {
+  override def transformTry(tree: Try)(implicit ctx: Context): Tree = {
     val (tryCases, patternMatchCases) = tree.cases.span(isCatchCase)
     val fallbackCase = mkFallbackPatterMatchCase(patternMatchCases, tree.pos)
     cpy.Try(tree)(cases = tryCases ++ fallbackCase)
@@ -81,7 +81,7 @@ class TryCatchPatterns extends MiniPhaseTransform {
   }
 
   private def mkFallbackPatterMatchCase(patternMatchCases: List[CaseDef], pos: Position)(
-      implicit ctx: Context, info: TransformerInfo): Option[CaseDef] = {
+      implicit ctx: Context): Option[CaseDef] = {
     if (patternMatchCases.isEmpty) None
     else {
       val exName = ExceptionBinderName.fresh()

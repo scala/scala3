@@ -4,7 +4,7 @@ package transform
 import ast.{Trees, tpd}
 import core._, core.Decorators._
 import Contexts._, Trees._, StdNames._, Symbols._
-import DenotTransformers._, TreeTransforms._, Phases.Phase
+import DenotTransformers._, MegaPhase._, Phases.Phase
 import ExtensionMethods._, TreeExtractors._, ValueClasses._
 
 /** This phase elides unnecessary value class allocations
@@ -15,14 +15,14 @@ import ExtensionMethods._, TreeExtractors._, ValueClasses._
  *     new V(u1) == new V(u2) => u1 == u2
  *    (new V(u)).underlying() => u
  */
-class VCElideAllocations extends MiniPhaseTransform with IdentityDenotTransformer {
+class VCElideAllocations extends MiniPhase with IdentityDenotTransformer {
   import tpd._
 
   override def phaseName: String = "vcElideAllocations"
 
   override def runsAfter: Set[Class[_ <: Phase]] = Set(classOf[ElimErasedValueType])
 
-  override def transformApply(tree: Apply)(implicit ctx: Context, info: TransformerInfo): Tree =
+  override def transformApply(tree: Apply)(implicit ctx: Context): Tree =
     tree match {
       // new V(u1) == new V(u2) => u1 == u2
       // (We don't handle != because it has been eliminated by InterceptedMethods)

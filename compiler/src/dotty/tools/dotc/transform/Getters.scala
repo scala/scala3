@@ -9,7 +9,7 @@ import Types._
 import Symbols._
 import SymUtils._
 import Constants._
-import TreeTransforms._
+import MegaPhase._
 import Flags._
 import Decorators._
 import ValueClasses._
@@ -46,7 +46,7 @@ import ValueClasses._
  *
  *  No fields are generated yet. This is done later in phase Memoize.
  */
-class Getters extends MiniPhaseTransform with SymTransformer { thisTransform =>
+class Getters extends MiniPhase with SymTransformer {
   import ast.tpd._
 
   override def phaseName = "getters"
@@ -68,9 +68,9 @@ class Getters extends MiniPhaseTransform with SymTransformer { thisTransform =>
   }
   private val NoGetterNeeded = Method | Param | JavaDefined | JavaStatic
 
-  override def transformValDef(tree: ValDef)(implicit ctx: Context, info: TransformerInfo): Tree =
+  override def transformValDef(tree: ValDef)(implicit ctx: Context): Tree =
     if (tree.symbol is Method) DefDef(tree.symbol.asTerm, tree.rhs).withPos(tree.pos) else tree
 
-  override def transformAssign(tree: Assign)(implicit ctx: Context, info: TransformerInfo): Tree =
+  override def transformAssign(tree: Assign)(implicit ctx: Context): Tree =
     if (tree.lhs.symbol is Method) tree.lhs.becomes(tree.rhs).withPos(tree.pos) else tree
 }

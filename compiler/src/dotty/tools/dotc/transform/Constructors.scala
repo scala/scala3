@@ -2,7 +2,7 @@ package dotty.tools.dotc
 package transform
 
 import core._
-import TreeTransforms._
+import MegaPhase._
 import dotty.tools.dotc.ast.tpd._
 import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.StdNames._
@@ -26,7 +26,7 @@ import collection.mutable
  *   - also moves private fields that are accessed only from constructor
  *     into the constructor if possible.
  */
-class Constructors extends MiniPhaseTransform with IdentityDenotTransformer { thisTransform =>
+class Constructors extends MiniPhase with IdentityDenotTransformer { thisPhase =>
   import tpd._
 
   override def phaseName: String = "constructors"
@@ -78,17 +78,17 @@ class Constructors extends MiniPhaseTransform with IdentityDenotTransformer { th
     }
   }
 
-  override def transformIdent(tree: tpd.Ident)(implicit ctx: Context, info: TransformerInfo): tpd.Tree = {
+  override def transformIdent(tree: tpd.Ident)(implicit ctx: Context): tpd.Tree = {
     markUsedPrivateSymbols(tree)
     tree
   }
 
-  override def transformSelect(tree: tpd.Select)(implicit ctx: Context, info: TransformerInfo): tpd.Tree = {
+  override def transformSelect(tree: tpd.Select)(implicit ctx: Context): tpd.Tree = {
     markUsedPrivateSymbols(tree)
     tree
   }
 
-  override def transformValDef(tree: tpd.ValDef)(implicit ctx: Context, info: TransformerInfo): tpd.Tree = {
+  override def transformValDef(tree: tpd.ValDef)(implicit ctx: Context): tpd.Tree = {
     if (mightBeDropped(tree.symbol)) seenPrivateVals += tree.symbol
     tree
   }
@@ -121,7 +121,7 @@ class Constructors extends MiniPhaseTransform with IdentityDenotTransformer { th
 
   private final val MutableParamAccessor = allOf(Mutable, ParamAccessor)
 
-  override def transformTemplate(tree: Template)(implicit ctx: Context, info: TransformerInfo): Tree = {
+  override def transformTemplate(tree: Template)(implicit ctx: Context): Tree = {
     val cls = ctx.owner.asClass
 
     val constr @ DefDef(nme.CONSTRUCTOR, Nil, vparams :: Nil, _, EmptyTree) = tree.constr
@@ -158,7 +158,7 @@ class Constructors extends MiniPhaseTransform with IdentityDenotTransformer { th
       }
 
       def apply(tree: Tree, prevOwner: Symbol)(implicit ctx: Context): Tree = {
-        transform(tree).changeOwnerAfter(prevOwner, constr.symbol, thisTransform)
+        transform(tree).changeOwnerAfter(prevOwner, constr.symbol, thisPhase)
       }
     }
 
@@ -200,7 +200,7 @@ class Constructors extends MiniPhaseTransform with IdentityDenotTransformer { th
               dropped += sym
               sym.copySymDenotation(
                 initFlags = sym.flags &~ Private,
-                owner = constr.symbol).installAfter(thisTransform)
+                owner = constr.symbol).installAfter(thisPhase)
               constrStats += intoConstr(stat, sym)
             }
           case DefDef(nme.CONSTRUCTOR, _, ((outerParam @ ValDef(nme.OUTER, _, _)) :: _) :: Nil, _, _) =>

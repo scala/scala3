@@ -11,7 +11,7 @@ import Denotations._
 import Decorators._
 import config.Printers.config
 import scala.collection.mutable.{ListBuffer, ArrayBuffer}
-import dotty.tools.dotc.transform.TreeTransforms.{TreeTransformer, MiniPhase, TreeTransform}
+import dotty.tools.dotc.transform.MegaPhase._
 import dotty.tools.dotc.transform._
 import Periods._
 import typer.{FrontEnd, RefChecks}
@@ -111,12 +111,9 @@ object Phases {
                     assert(false, s"Only tree transforms can be squashed, ${phase.phaseName} can not be squashed")
                 }
               }
-              val block = new TreeTransformer {
-                override def phaseName: String = miniPhases.map(_.phaseName).mkString("TreeTransform:{", ", ", "}")
-                override def miniPhases: Array[MiniPhase] = filteredPhaseBlock.asInstanceOf[List[MiniPhase]].toArray
-              }
+              val superPhase = new MegaPhase(filteredPhaseBlock.asInstanceOf[List[MiniPhase]].toArray)
               prevPhases ++= filteredPhaseBlock.map(_.getClazz)
-              block
+              superPhase
             } else { // block of a single phase, no squashing
               val phase = filteredPhaseBlock.head
               prevPhases += phase.getClazz
@@ -144,7 +141,7 @@ object Phases {
       val flatPhases = collection.mutable.ListBuffer[Phase]()
 
       phasess.foreach(p => p match {
-        case t: TreeTransformer => flatPhases ++= t.miniPhases
+        case p: MegaPhase => flatPhases ++= p.miniPhases
         case _ => flatPhases += p
       })
 
@@ -172,12 +169,12 @@ object Phases {
       while (i < phasess.length) {
         val phase = phasess(i)
         phase match {
-          case t: TreeTransformer =>
-            val miniPhases = t.miniPhases
+          case p: MegaPhase =>
+            val miniPhases = p.miniPhases
             miniPhases.foreach{ phase =>
               checkRequirements(phase)
               phase.init(this, nextPhaseId)}
-            t.init(this, miniPhases.head.id, miniPhases.last.id)
+            p.init(this, miniPhases.head.id, miniPhases.last.id)
           case _ =>
             phase.init(this, nextPhaseId)
             checkRequirements(phase)
@@ -275,7 +272,11 @@ object Phases {
     def isRunnable(implicit ctx: Context): Boolean =
       !ctx.reporter.hasErrors
 
-    /** List of names of phases that should precede this phase */
+    /** If set, allow missing or superfluous arguments in applications
+     *  and type applications.
+     */
+    def relaxedTyping: Boolean = false
+     /** List of names of phases that should precede this phase */
     def runsAfter: Set[Class[_ <: Phase]] = Set.empty
 
     /** @pre `isRunnable` returns true */
@@ -313,6 +314,8 @@ object Phases {
 
     def exists: Boolean = true
 
+    def initContext(ctx: FreshContext): Unit = ()
+
     private[this] var myPeriod: Period = Periods.InvalidPeriod
     private[this] var myBase: ContextBase = null
     private[this] var myErasedTypes = false
@@ -345,7 +348,7 @@ object Phases {
     final def sameParentsStartId = mySameParentsStartId
       // id of first phase where all symbols are guaranteed to have the same parents as in this phase
 
-    protected[Phases] def init(base: ContextBase, start: Int, end:Int): Unit = {
+    protected[Phases] def init(base: ContextBase, start: Int, end: Int): Unit = {
       if (start >= FirstPhaseId)
         assert(myPeriod == Periods.InvalidPeriod, s"phase $this has already been used once; cannot be reused")
       assert(start <= Periods.MaxPossiblePhaseId, s"Too many phases, Period bits overflow")

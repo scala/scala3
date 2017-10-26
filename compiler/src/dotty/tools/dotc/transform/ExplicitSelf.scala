@@ -4,7 +4,7 @@ package transform
 import core._
 import Contexts.Context
 import Types._
-import TreeTransforms._
+import MegaPhase._
 import Decorators._
 import ast.Trees._
 import Flags._
@@ -23,19 +23,19 @@ import Flags._
  *
  *  Also replaces idents referring to the self type with ThisTypes.
  */
-class ExplicitSelf extends MiniPhaseTransform { thisTransform =>
+class ExplicitSelf extends MiniPhase {
   import ast.tpd._
 
   override def phaseName = "explicitSelf"
 
-  override def transformIdent(tree: Ident)(implicit ctx: Context, info: TransformerInfo) = tree.tpe match {
+  override def transformIdent(tree: Ident)(implicit ctx: Context) = tree.tpe match {
     case tp: ThisType =>
       ctx.debuglog(s"owner = ${ctx.owner}, context = ${ctx}")
       This(tp.cls) withPos tree.pos
     case _ => tree
   }
 
-  override def transformSelect(tree: Select)(implicit ctx: Context, info: TransformerInfo): Tree = tree match {
+  override def transformSelect(tree: Select)(implicit ctx: Context): Tree = tree match {
     case Select(thiz: This, name) if name.isTermName =>
       val cls = thiz.symbol.asClass
       if (cls.givenSelfType.exists && !cls.derivesFrom(tree.symbol.owner))

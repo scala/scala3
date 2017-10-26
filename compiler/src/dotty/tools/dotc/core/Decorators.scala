@@ -6,7 +6,7 @@ import Symbols._
 import Contexts._, Names._, Phases._, printing.Texts._, printing.Printer, printing.Showable
 import util.Positions.Position, util.SourcePosition
 import collection.mutable.ListBuffer
-import dotty.tools.dotc.transform.TreeTransforms._
+import dotty.tools.dotc.transform.MegaPhase
 import ast.tpd._
 import scala.language.implicitConversions
 import printing.Formatting._
@@ -152,7 +152,7 @@ object Decorators {
    */
   implicit class PhaseListDecorator(val names: List[String]) extends AnyVal {
     def containsPhase(phase: Phase): Boolean = phase match {
-      case phase: TreeTransformer => phase.miniPhases.exists(containsPhase)
+      case phase: MegaPhase => phase.miniPhases.exists(containsPhase)
       case _ =>
         names exists { name =>
           name == "all" || {

@@ -25,6 +25,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
    *  @param owner  The current owner at the time the tree was defined
    */
   abstract case class TypedSplice(tree: tpd.Tree)(val owner: Symbol) extends ProxyTree {
+    final def tag = Tag.TypedSplice
     def forwardTo = tree
   }
 
@@ -37,20 +38,28 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   case class ModuleDef(name: TermName, impl: Template)
     extends MemberDef {
     type ThisTree[-T >: Untyped] <: Trees.NameTree[T] with Trees.MemberDef[T] with ModuleDef
+    final def tag = Tag.ModuleDef
     def withName(name: Name)(implicit ctx: Context) = cpy.ModuleDef(this)(name.toTermName, impl)
   }
 
-  case class ParsedTry(expr: Tree, handler: Tree, finalizer: Tree) extends TermTree
+  case class ParsedTry(expr: Tree, handler: Tree, finalizer: Tree) extends TermTree {
+    final def tag = Tag.ParsedTry
+  }
 
-  case class SymbolLit(str: String) extends TermTree
+  case class SymbolLit(str: String) extends TermTree {
+    final def tag = Tag.SymbolLit
+  }
 
   /** An interpolated string
    *  @param segments  a list of two element tickets consisting of string literal and argument tree,
    *                   possibly with a simple string literal as last element of the list
    */
-  case class InterpolatedString(id: TermName, segments: List[Tree]) extends TermTree
+  case class InterpolatedString(id: TermName, segments: List[Tree]) extends TermTree {
+    final def tag = Tag.InterpolatedString
+  }
 
   case class Function(args: List[Tree], body: Tree) extends Tree {
+    final def tag = Tag.Function
     override def isTerm = body.isTerm
     override def isType = body.isType
   }
@@ -67,25 +76,51 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
    */
   class WildcardFunction(placeholderParams: List[ValDef], body: Tree) extends Function(placeholderParams, body)
 
-  case class InfixOp(left: Tree, op: Ident, right: Tree) extends OpTree
-  case class PostfixOp(od: Tree, op: Ident) extends OpTree
-  case class PrefixOp(op: Ident, od: Tree) extends OpTree
+  case class InfixOp(left: Tree, op: Ident, right: Tree) extends OpTree {
+    final def tag = Tag.InfixOp
+  }
+  case class PostfixOp(od: Tree, op: Ident) extends OpTree {
+    final def tag = Tag.PostfixOp
+  }
+  case class PrefixOp(op: Ident, od: Tree) extends OpTree {
+    final def tag = Tag.PrefixOp
+  }
   case class Parens(t: Tree) extends ProxyTree {
+    final def tag = Tag.Parens
     def forwardTo = t
   }
   case class Tuple(trees: List[Tree]) extends Tree {
+    final def tag = Tag.Tuple
     override def isTerm = trees.isEmpty || trees.head.isTerm
     override def isType = !isTerm
   }
-  case class Throw(expr: Tree) extends TermTree
-  case class WhileDo(cond: Tree, body: Tree) extends TermTree
-  case class DoWhile(body: Tree, cond: Tree) extends TermTree
-  case class ForYield(enums: List[Tree], expr: Tree) extends TermTree
-  case class ForDo(enums: List[Tree], body: Tree) extends TermTree
-  case class GenFrom(pat: Tree, expr: Tree) extends Tree
-  case class GenAlias(pat: Tree, expr: Tree) extends Tree
-  case class ContextBounds(bounds: TypeBoundsTree, cxBounds: List[Tree]) extends TypTree
-  case class PatDef(mods: Modifiers, pats: List[Tree], tpt: Tree, rhs: Tree) extends DefTree
+  case class Throw(expr: Tree) extends TermTree {
+    final def tag = Tag.Throw
+  }
+  case class WhileDo(cond: Tree, body: Tree) extends TermTree {
+    final def tag = Tag.WhileDo
+  }
+  case class DoWhile(body: Tree, cond: Tree) extends TermTree {
+    final def tag = Tag.DoWhile
+  }
+  case class ForYield(enums: List[Tree], expr: Tree) extends TermTree {
+    final def tag = Tag.ForYield
+  }
+  case class ForDo(enums: List[Tree], body: Tree) extends TermTree {
+    final def tag = Tag.ForDo
+  }
+  case class GenFrom(pat: Tree, expr: Tree) extends Tree {
+    final def tag = Tag.GenFrom
+  }
+  case class GenAlias(pat: Tree, expr: Tree) extends Tree {
+    final def tag = Tag.GenAlias
+  }
+  case class ContextBounds(bounds: TypeBoundsTree, cxBounds: List[Tree]) extends TypTree {
+    final def tag = Tag.ContextBounds
+  }
+  case class PatDef(mods: Modifiers, pats: List[Tree], tpt: Tree, rhs: Tree) extends DefTree {
+    final def tag = Tag.PatDef
+  }
 
   @sharable object EmptyTypeIdent extends Ident(tpnme.EMPTY) with WithoutTypeOrPos[Untyped] {
     override def isEmpty = true

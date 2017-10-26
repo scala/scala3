@@ -1,7 +1,7 @@
 package dotty.tools.dotc
 package transform
 
-import TreeTransforms._
+import MegaPhase._
 import core._
 import Symbols._
 import SymDenotations._
@@ -17,12 +17,12 @@ import reporting.trace
 /** Abstract base class of ByNameClosures and ElimByName, factoring out the
  *  common functionality to transform arguments of by-name parameters.
  */
-abstract class TransformByNameApply extends MiniPhaseTransform { thisTransformer: DenotTransformer =>
+abstract class TransformByNameApply extends MiniPhase { thisPhase: DenotTransformer =>
   import ast.tpd._
 
   /** The info of the tree's symbol before it is potentially transformed in this phase */
   private def originalDenotation(tree: Tree)(implicit ctx: Context) =
-    tree.symbol.denot(ctx.withPhase(thisTransformer))
+    tree.symbol.denot(ctx.withPhase(thisPhase))
 
   /** If denotation had an ExprType before, it now gets a function type */
   protected def exprBecomesFunction(symd: SymDenotation)(implicit ctx: Context) =
@@ -35,7 +35,7 @@ abstract class TransformByNameApply extends MiniPhaseTransform { thisTransformer
 
   def mkByNameClosure(arg: Tree, argType: Type)(implicit ctx: Context): Tree = unsupported(i"mkClosure($arg)")
 
-  override def transformApply(tree: Apply)(implicit ctx: Context, info: TransformerInfo): Tree =
+  override def transformApply(tree: Apply)(implicit ctx: Context): Tree =
     trace(s"transforming ${tree.show} at phase ${ctx.phase}", show = true) {
 
     def transformArg(arg: Tree, formal: Type): Tree = formal.dealias match {

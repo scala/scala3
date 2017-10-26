@@ -1,6 +1,5 @@
 package dotty.tools.dotc.transform
 
-import dotty.tools.dotc.transform.TreeTransforms.{TransformerInfo, TreeTransform, TreeTransformer, MiniPhaseTransform}
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.core.Contexts.Context
 import scala.collection.mutable.ListBuffer
@@ -9,7 +8,7 @@ import dotty.tools.dotc.core.Symbols.NoSymbol
 import scala.annotation.tailrec
 import dotty.tools.dotc.core._
 import Symbols._
-import dotty.tools.dotc.transform.TreeTransforms.{NXTransformations, TransformerInfo, TreeTransform, TreeTransformer}
+import dotty.tools.dotc.transform.MegaPhase._
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.core.Contexts.Context
 import scala.collection.mutable
@@ -22,13 +21,13 @@ import StdNames._
 import dotty.tools.dotc.util.Positions.Position
 import dotty.tools.dotc.config.JavaPlatform
 
-class CollectEntryPoints extends MiniPhaseTransform {
+class CollectEntryPoints extends MiniPhase {
 
   /** perform context-dependant initialization */
   override def prepareForUnit(tree: tpd.Tree)(implicit ctx: Context) = {
     entryPoints = collection.immutable.TreeSet.empty[Symbol](new SymbolOrdering())
     assert(ctx.platform.isInstanceOf[JavaPlatform], "Java platform specific phase")
-    this
+    ctx
   }
 
   private[this] var entryPoints: Set[Symbol] = _
@@ -36,7 +35,7 @@ class CollectEntryPoints extends MiniPhaseTransform {
   def getEntryPoints = entryPoints.toList
 
   override def phaseName: String = "collectEntryPoints"
-  override def transformDefDef(tree: tpd.DefDef)(implicit ctx: Context, info: TransformerInfo): tpd.Tree = {
+  override def transformDefDef(tree: tpd.DefDef)(implicit ctx: Context): tpd.Tree = {
     if (tree.symbol.owner.isClass && isJavaEntryPoint(tree.symbol)) {
       // collecting symbols for entry points here (as opposed to GenBCode where they are used)
       // has the advantage of saving an additional pass over all ClassDefs.

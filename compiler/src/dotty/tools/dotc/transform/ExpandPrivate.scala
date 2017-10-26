@@ -13,10 +13,9 @@ import SymDenotations._
 import Types._
 
 import collection.mutable
-import TreeTransforms._
 import Decorators._
 import ast.Trees._
-import TreeTransforms._
+import MegaPhase._
 import java.io.File.separatorChar
 
 import ValueClasses._
@@ -36,7 +35,7 @@ import dotty.tools.dotc.core.Phases.Phase
  *  See discussion in https://github.com/lampepfl/dotty/pull/784
  *  and https://github.com/lampepfl/dotty/issues/783
  */
-class ExpandPrivate extends MiniPhaseTransform with IdentityDenotTransformer { thisTransform =>
+class ExpandPrivate extends MiniPhase with IdentityDenotTransformer { thisPhase =>
   import ast.tpd._
 
   override def phaseName: String = "expandPrivate"
@@ -74,7 +73,7 @@ class ExpandPrivate extends MiniPhaseTransform with IdentityDenotTransformer { t
    */
   private def ensurePrivateAccessible(d: SymDenotation)(implicit ctx: Context) =
     if (isVCPrivateParamAccessor(d))
-      d.ensureNotPrivate.installAfter(thisTransform)
+      d.ensureNotPrivate.installAfter(thisPhase)
     else if (d.is(PrivateTerm) && !d.owner.is(Package) && d.owner != ctx.owner.enclosingClass) {
       // Paths `p1` and `p2` are similar if they have a common suffix that follows
       // possibly different directory paths. That is, their common suffix extends
@@ -93,28 +92,28 @@ class ExpandPrivate extends MiniPhaseTransform with IdentityDenotTransformer { t
       assert(d.symbol.sourceFile != null &&
              isSimilar(d.symbol.sourceFile.path, ctx.source.file.path),
           s"private ${d.symbol.showLocated} in ${d.symbol.sourceFile} accessed from ${ctx.owner.showLocated} in ${ctx.source.file}")
-      d.ensureNotPrivate.installAfter(thisTransform)
+      d.ensureNotPrivate.installAfter(thisPhase)
     }
 
-  override def transformIdent(tree: Ident)(implicit ctx: Context, info: TransformerInfo) = {
+  override def transformIdent(tree: Ident)(implicit ctx: Context) = {
     ensurePrivateAccessible(tree.symbol)
     tree
   }
 
-  override def transformSelect(tree: Select)(implicit ctx: Context, info: TransformerInfo) = {
+  override def transformSelect(tree: Select)(implicit ctx: Context) = {
     ensurePrivateAccessible(tree.symbol)
     tree
   }
 
-  override def transformDefDef(tree: DefDef)(implicit ctx: Context, info: TransformerInfo) = {
+  override def transformDefDef(tree: DefDef)(implicit ctx: Context) = {
     val sym = tree.symbol
     tree.rhs match {
       case Apply(sel @ Select(_: Super, _), _)
       if sym.is(PrivateParamAccessor) && sel.symbol.is(ParamAccessor) && sym.name == sel.symbol.name =>
-        sym.ensureNotPrivate.installAfter(thisTransform)
+        sym.ensureNotPrivate.installAfter(thisPhase)
       case _ =>
         if (isVCPrivateParamAccessor(sym))
-          sym.ensureNotPrivate.installAfter(thisTransform)
+          sym.ensureNotPrivate.installAfter(thisPhase)
     }
     tree
   }

@@ -11,10 +11,10 @@ import StdNames._
 import SymDenotations._
 import Types._
 import collection.mutable
-import TreeTransforms._
+import MegaPhase._
 import Decorators._
 import ast.Trees._
-import TreeTransforms.TransformerInfo
+import MegaPhase.TransformerInfo
 
 /** Makes private methods static, provided they not deferred, accessors, or static,
  *  by rewriting a method `m` in class `C` as follows:
@@ -56,7 +56,7 @@ class PrivateToStatic extends MiniPhase with SymTransformer { thisTransform =>
       }
       else this
 
-    override def transformDefDef(tree: DefDef)(implicit ctx: Context, info: TransformerInfo) =
+    override def transformDefDef(tree: DefDef)(implicit ctx: Context) =
       if (shouldBeStatic(tree.symbol)) {
         val thisParamDef = ValDef(thisParam.asTerm)
         val vparams :: Nil = tree.vparamss
@@ -64,7 +64,7 @@ class PrivateToStatic extends MiniPhase with SymTransformer { thisTransform =>
       }
       else tree
 
-    override def transformThis(tree: This)(implicit ctx: Context, info: TransformerInfo) =
+    override def transformThis(tree: This)(implicit ctx: Context) =
       if (shouldBeStatic(ctx.owner.enclosingMethod)) ref(thisParam).withPos(tree.pos)
       else tree
 
@@ -72,7 +72,7 @@ class PrivateToStatic extends MiniPhase with SymTransformer { thisTransform =>
      *
      *    qual.m(args)  -->  m(qual, args)
      */
-    override def transformApply(tree: Apply)(implicit ctx: Context, info: TransformerInfo) =
+    override def transformApply(tree: Apply)(implicit ctx: Context) =
       tree.fun match {
         case fun @ Select(qual, name) if shouldBeStatic(fun.symbol) =>
           ctx.debuglog(i"mapping $tree to ${cpy.Ident(fun)(name)} (${qual :: tree.args}%, %)")
@@ -81,7 +81,7 @@ class PrivateToStatic extends MiniPhase with SymTransformer { thisTransform =>
           tree
       }
 
-    override def transformClosure(tree: Closure)(implicit ctx: Context, info: TransformerInfo) =
+    override def transformClosure(tree: Closure)(implicit ctx: Context) =
       tree.meth match {
         case meth @ Select(qual, name) if shouldBeStatic(meth.symbol) =>
           cpy.Closure(tree)(

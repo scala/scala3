@@ -3,7 +3,7 @@ package dotty.tools.backend.jvm
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.Types
-import dotty.tools.dotc.transform.TreeTransforms.{TransformerInfo, TreeTransform, MiniPhase, MiniPhaseTransform}
+import dotty.tools.dotc.transform.MegaPhase._
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc
 import dotty.tools.dotc.backend.jvm.DottyPrimitives
@@ -35,10 +35,10 @@ import StdNames.nme
 /**
  * Created by dark on 26/11/14.
  */
-class CollectEntryPoints extends MiniPhaseTransform {
+class CollectEntryPoints extends MiniPhase {
   def phaseName: String = "Collect entry points"
 
-  override def transformDefDef(tree: tpd.DefDef)(implicit ctx: Context, info: TransformerInfo): tpd.Tree = {
+  override def transformDefDef(tree: tpd.DefDef)(implicit ctx: Context): tpd.Tree = {
     if ((tree.symbol ne NoSymbol) && CollectEntryPoints.isJavaEntryPoint(tree.symbol)) {
       ctx.genBCodePhase.asInstanceOf[GenBCode].registerEntryPoint(tree.symbol)
     }

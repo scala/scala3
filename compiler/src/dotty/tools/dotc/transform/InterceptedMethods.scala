@@ -1,7 +1,7 @@
 package dotty.tools.dotc
 package transform
 
-import TreeTransforms._
+import MegaPhase._
 import core.Denotations._
 import core.SymDenotations._
 import core.Contexts._
@@ -16,7 +16,6 @@ import Contexts._
 import Symbols._
 import Decorators._
 import NameOps._
-import dotty.tools.dotc.transform.TreeTransforms.{TransformerInfo, TreeTransformer, TreeTransform}
 import dotty.tools.dotc.ast.Trees._
 import dotty.tools.dotc.ast.{untpd, tpd}
 import dotty.tools.dotc.core.Constants.Constant
@@ -36,9 +35,7 @@ import Phases.Phase
   *     using the most precise overload available
   * - `x.getClass` for getClass in primitives becomes `x.getClass` with getClass in class Object.
   */
-class InterceptedMethods extends MiniPhaseTransform {
-  thisTransform =>
-
+class InterceptedMethods extends MiniPhase {
   import tpd._
 
   override def phaseName: String = "intercepted"
@@ -51,11 +48,11 @@ class InterceptedMethods extends MiniPhaseTransform {
   override def prepareForUnit(tree: Tree)(implicit ctx: Context) = {
     this.Any_## = defn.Any_##
     primitiveGetClassMethods = Set[Symbol]() ++ defn.ScalaValueClasses().map(x => x.requiredMethod(nme.getClass_))
-    this
+    ctx
   }
 
   // this should be removed if we have guarantee that ## will get Apply node
-  override def transformSelect(tree: tpd.Select)(implicit ctx: Context, info: TransformerInfo): Tree = {
+  override def transformSelect(tree: tpd.Select)(implicit ctx: Context): Tree = {
     if (tree.symbol.isTerm && (Any_## eq tree.symbol.asTerm)) {
       val rewrite = poundPoundValue(tree.qualifier)
       ctx.log(s"$phaseName rewrote $tree to $rewrite")
@@ -78,7 +75,7 @@ class InterceptedMethods extends MiniPhaseTransform {
     else staticsCall(nme.anyHash)
   }
 
-  override def transformApply(tree: Apply)(implicit ctx: Context, info: TransformerInfo): Tree = {
+  override def transformApply(tree: Apply)(implicit ctx: Context): Tree = {
     def unknown = {
       assert(false, s"The symbol '${tree.fun.symbol.showLocated}' was intercepted but didn't match any cases, " +
         s"that means the intercepted methods set doesn't match the code")

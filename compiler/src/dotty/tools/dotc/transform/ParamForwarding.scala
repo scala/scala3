@@ -21,7 +21,7 @@ import config.Printers.typr
  *  Do the same also if there are intermediate inaccessible parameter accessor forwarders.
  *  The aim of this transformation is to avoid redundant parameter accessor fields.
  */
-class ParamForwarding(thisTransformer: DenotTransformer) {
+class ParamForwarding(thisPhase: DenotTransformer) {
   import ast.tpd._
 
   def forwardParamAccessors(impl: Template)(implicit ctx: Context): Template = {
@@ -66,7 +66,7 @@ class ParamForwarding(thisTransformer: DenotTransformer) {
                 if (alias.exists) {
                   def forwarder(implicit ctx: Context) = {
                     sym.copySymDenotation(initFlags = sym.flags | Method | Stable, info = sym.info.ensureMethodic)
-                      .installAfter(thisTransformer)
+                      .installAfter(thisPhase)
                     var superAcc =
                       Super(This(currentClass), tpnme.EMPTY, inConstrCall = false).select(alias)
                     if (alias.owner != currentClass.superClass)
@@ -77,7 +77,7 @@ class ParamForwarding(thisTransformer: DenotTransformer) {
                     typr.println(i"adding param forwarder $superAcc")
                     DefDef(sym, superAcc.ensureConforms(sym.info.widen))
                   }
-                  return forwarder(ctx.withPhase(thisTransformer.next))
+                  return forwarder(ctx.withPhase(thisPhase.next))
                 }
               }
             }
@@ -88,7 +88,7 @@ class ParamForwarding(thisTransformer: DenotTransformer) {
       stats map forwardParamAccessor
     }
 
-    cpy.Template(impl)(body = fwd(impl.body)(ctx.withPhase(thisTransformer)))
+    cpy.Template(impl)(body = fwd(impl.body)(ctx.withPhase(thisPhase)))
   }
 
   def adaptRef[T <: RefTree](tree: T)(implicit ctx: Context): T = tree.tpe match {

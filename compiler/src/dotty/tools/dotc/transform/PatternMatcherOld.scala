@@ -3,7 +3,7 @@ package transform
 
 import scala.language.postfixOps
 
-import TreeTransforms._
+import MegaPhase._
 import core.Denotations._
 import core.SymDenotations._
 import core.Contexts._
@@ -34,7 +34,7 @@ import dotty.tools.dotc.core.Flags
 /** This phase rewrites pattern matches.
  *  FIXME: A more detailed explanation would be good.
  */
-class PatternMatcherOld extends MiniPhaseTransform with DenotTransformer {
+class PatternMatcherOld extends MiniPhase with DenotTransformer {
   import dotty.tools.dotc.ast.tpd._
 
   override def transform(ref: SingleDenotation)(implicit ctx: Context): SingleDenotation = ref
@@ -47,7 +47,7 @@ class PatternMatcherOld extends MiniPhaseTransform with DenotTransformer {
 
   private[this] var _id = 0 // left for debuging
 
-  override def transformMatch(tree: Match)(implicit ctx: Context, info: TransformerInfo): Tree = {
+  override def transformMatch(tree: Match)(implicit ctx: Context): Tree = {
     val translated = new Translator()(ctx).translator.translateMatch(tree)
 
     // check exhaustivity and unreachability

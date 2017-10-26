@@ -2,7 +2,7 @@ package dotty.tools.dotc
 package transform
 
 import dotty.tools.dotc.util.Positions._
-import TreeTransforms.{MiniPhaseTransform, TransformerInfo}
+import MegaPhase.MiniPhase
 import core._
 import Contexts.Context, Types._, Constants._, Decorators._, Symbols._
 import TypeUtils._, TypeErasure._, Flags._
@@ -29,7 +29,7 @@ import TypeUtils._, TypeErasure._, Flags._
  *      - leave as is (`happens`)
  *  2. Rewrite according to steps taken in 1
  */
-class IsInstanceOfEvaluator extends MiniPhaseTransform { thisTransformer =>
+class IsInstanceOfEvaluator extends MiniPhase {
 
   import dotty.tools.dotc.ast.tpd._
 
@@ -38,7 +38,7 @@ class IsInstanceOfEvaluator extends MiniPhaseTransform { thisTransformer =>
   /** Transforms a [TypeApply](dotty.tools.dotc.ast.Trees.TypeApply) in order to
    *  evaluate an `isInstanceOf` check according to the rules defined above.
    */
-  override def transformTypeApply(tree: TypeApply)(implicit ctx: Context, info: TransformerInfo): Tree = {
+  override def transformTypeApply(tree: TypeApply)(implicit ctx: Context): Tree = {
     val defn = ctx.definitions
 
     /** Handles the four cases of statically known `isInstanceOf`s and gives

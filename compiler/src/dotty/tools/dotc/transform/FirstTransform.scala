@@ -5,7 +5,7 @@ import core._
 import Names._
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.core.Phases.NeedsCompanions
-import dotty.tools.dotc.transform.TreeTransforms._
+import dotty.tools.dotc.transform.MegaPhase._
 import ast.Trees._
 import Flags._
 import Types._
@@ -35,7 +35,7 @@ import StdNames._
  *          if (true) A else B    ==> A
  *          if (false) A else B   ==> B
  */
-class FirstTransform extends MiniPhaseTransform with InfoTransformer { thisTransformer =>
+class FirstTransform extends MiniPhase with InfoTransformer { thisPhase =>
   import ast.tpd._
 
   override def phaseName = "firstTransform"
@@ -47,9 +47,9 @@ class FirstTransform extends MiniPhaseTransform with InfoTransformer { thisTrans
   def needsCompanion(cls: ClassSymbol)(implicit ctx: Context) =
     addCompanionPhases.exists(_.isCompanionNeeded(cls))
 
-  override def prepareForUnit(tree: tpd.Tree)(implicit ctx: Context): TreeTransform = {
+  override def prepareForUnit(tree: Tree)(implicit ctx: Context) = {
     addCompanionPhases = ctx.phasePlan.flatMap(_ collect { case p: NeedsCompanions => p })
-    this
+    ctx
   }
 
   /** eliminate self symbol in ClassInfo */
@@ -123,9 +123,9 @@ class FirstTransform extends MiniPhaseTransform with InfoTransformer { thisTrans
 
     def registerCompanion(name: TermName, forClass: Symbol): TermSymbol = {
       val (modul, mcCompanion, classCompanion) = newCompanion(name, forClass)
-      if (ctx.owner.isClass) modul.enteredAfter(thisTransformer)
-      mcCompanion.enteredAfter(thisTransformer)
-      classCompanion.enteredAfter(thisTransformer)
+      if (ctx.owner.isClass) modul.enteredAfter(thisPhase)
+      mcCompanion.enteredAfter(thisPhase)
+      classCompanion.enteredAfter(thisPhase)
       modul
     }
 
@@ -157,15 +157,15 @@ class FirstTransform extends MiniPhaseTransform with InfoTransformer { thisTrans
   }
 
   /** elimiate self in Template */
-  override def transformTemplate(impl: Template)(implicit ctx: Context, info: TransformerInfo): Tree = {
+  override def transformTemplate(impl: Template)(implicit ctx: Context): Tree = {
     cpy.Template(impl)(self = EmptyValDef)
   }
 
   /** Eliminate empty package definitions that may have been stored in the TASTY trees */
-  override def transformPackageDef(tree: PackageDef)(implicit ctx: Context, info: TransformerInfo): Tree =
+  override def transformPackageDef(tree: PackageDef)(implicit ctx: Context): Tree =
     if (tree.stats.isEmpty) EmptyTree else tree
 
-  override def transformDefDef(ddef: DefDef)(implicit ctx: Context, info: TransformerInfo) = {
+  override def transformDefDef(ddef: DefDef)(implicit ctx: Context) = {
     if (ddef.symbol.hasAnnotation(defn.NativeAnnot)) {
       ddef.symbol.resetFlag(Deferred)
       DefDef(ddef.symbol.asTerm,
@@ -174,7 +174,7 @@ class FirstTransform extends MiniPhaseTransform with InfoTransformer { thisTrans
     } else ddef
   }
 
-  override def transformValDef(vdef: tpd.ValDef)(implicit ctx: Context, info: TransformerInfo): tpd.Tree = {
+  override def transformValDef(vdef: tpd.ValDef)(implicit ctx: Context): tpd.Tree = {
     if (vdef.tpt.tpe.isPhantom) {
       if (vdef.symbol.is(Mutable)) ctx.error("var fields cannot have Phantom types", vdef.pos)
       else if (vdef.symbol.hasAnnotation(defn.VolatileAnnot)) ctx.error("Phantom fields cannot be @volatile", vdef.pos)
@@ -182,36 +182,36 @@ class FirstTransform extends MiniPhaseTransform with InfoTransformer { thisTrans
     vdef
   }
 
-  override def transformStats(trees: List[Tree])(implicit ctx: Context, info: TransformerInfo): List[Tree] =
-    ast.Trees.flatten(reorderAndComplete(trees)(ctx.withPhase(thisTransformer.next)))
+  override def transformStats(trees: List[Tree])(implicit ctx: Context): List[Tree] =
+    ast.Trees.flatten(reorderAndComplete(trees)(ctx.withPhase(thisPhase.next)))
 
-  override def transformOther(tree: Tree)(implicit ctx: Context, info: TransformerInfo) = tree match {
+  override def transformOther(tree: Tree)(implicit ctx: Context) = tree match {
     case tree: Import => EmptyTree
-    case tree: NamedArg => transform(tree.arg)
+    case tree: NamedArg => transformAllDeep(tree.arg)
     case tree => if (tree.isType) TypeTree(tree.tpe).withPos(tree.pos) else tree
   }
 
-  override def transformIdent(tree: Ident)(implicit ctx: Context, info: TransformerInfo) =
+  override def transformIdent(tree: Ident)(implicit ctx: Context) =
     if (tree.isType) TypeTree(tree.tpe).withPos(tree.pos)
     else constToLiteral(tree)
 
-  override def transformSelect(tree: Select)(implicit ctx: Context, info: TransformerInfo) =
+  override def transformSelect(tree: Select)(implicit ctx: Context) =
     if (tree.isType) TypeTree(tree.tpe).withPos(tree.pos)
     else constToLiteral(tree)
 
-  override def transformTypeApply(tree: TypeApply)(implicit ctx: Context, info: TransformerInfo) =
+  override def transformTypeApply(tree: TypeApply)(implicit ctx: Context) =
     constToLiteral(tree)
 
-  override def transformApply(tree: Apply)(implicit ctx: Context, info: TransformerInfo) =
+  override def transformApply(tree: Apply)(implicit ctx: Context) =
     constToLiteral(foldCondition(tree))
 
-  override def transformTyped(tree: Typed)(implicit ctx: Context, info: TransformerInfo) =
+  override def transformTyped(tree: Typed)(implicit ctx: Context) =
     constToLiteral(tree)
 
-  override def transformBlock(tree: Block)(implicit ctx: Context, info: TransformerInfo) =
+  override def transformBlock(tree: Block)(implicit ctx: Context) =
     constToLiteral(tree)
 
-  override def transformIf(tree: If)(implicit ctx: Context, info: TransformerInfo) =
+  override def transformIf(tree: If)(implicit ctx: Context) =
     tree.cond match {
       case Literal(Constant(c: Boolean)) => if (c) tree.thenp else tree.elsep
       case _ => tree
