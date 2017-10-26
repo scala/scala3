@@ -68,7 +68,7 @@ trait PullRequestService {
           BadRequest("Missing header: X-Github-Event")
 
         case event =>
-          BadRequest("Unsupported event: $event")
+          BadRequest(s"Unsupported event: $event")
 
       }
   }
