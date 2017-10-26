@@ -1427,12 +1427,13 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
   private def liftIfHK(tp1: Type, tp2: Type, op: (Type, Type) => Type, original: (Type, Type) => Type) = {
     val tparams1 = tp1.typeParams
     val tparams2 = tp2.typeParams
+    def applied(tp: Type) = tp.appliedTo(tp.typeParams.map(_.paramInfoAsSeenFrom(tp)))
     if (tparams1.isEmpty)
       if (tparams2.isEmpty) op(tp1, tp2)
-      else original(tp1, tp2.appliedTo(tp2.typeParams.map(_.paramInfoAsSeenFrom(tp2))))
+      else original(tp1, applied(tp2))
     else if (tparams2.isEmpty)
-      original(tp1.appliedTo(tp1.typeParams.map(_.paramInfoAsSeenFrom(tp1))), tp2)
-    else
+      original(applied(tp1), tp2)
+    else if (tparams1.hasSameLengthAs(tparams2))
       HKTypeLambda(
         paramNames = (HKTypeLambda.syntheticParamNames(tparams1.length), tparams1, tparams2)
           .zipped.map((pname, tparam1, tparam2) =>
@@ -1442,6 +1443,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
           tl.integrate(tparams2, tparam2.paramInfoAsSeenFrom(tp2)).bounds),
         resultTypeExp = tl =>
           original(tp1.appliedTo(tl.paramRefs), tp2.appliedTo(tl.paramRefs)))
+    else original(applied(tp1), applied(tp2))
   }
 
   /** Try to distribute `&` inside type, detect and handle conflicts
