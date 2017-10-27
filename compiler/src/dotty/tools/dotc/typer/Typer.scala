@@ -1908,7 +1908,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     def methodStr = err.refStr(methPart(tree).tpe)
 
     def missingArgs(mt: MethodType) = {
-      ctx.error(em"missing arguments for $methodStr", tree.pos)
+      ctx.error(MissingEmptyArgumentListForMethod(methPart(tree).symbol, methodStr), tree.pos)
       tree.withType(mt.resultType)
     }
 

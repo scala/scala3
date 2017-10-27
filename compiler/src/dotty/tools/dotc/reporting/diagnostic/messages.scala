@@ -1847,4 +1847,35 @@ object messages {
       hl"""The syntax ${"x _"} is no longer supported if ${"x"} is not a function.
           |To convert to a function value, you need to explicitly write ${"() => x"}"""
   }
+
+  case class MissingEmptyArgumentListForMethod(method: Symbol, methodStr: String)(implicit ctx: Context)
+    extends Message(MissingArgumentsForMethodID) {
+    val kind: String = "Syntax"
+    val msg: String = hl"$methodStr must be called with an empty argument list"
+    val explanation: String = {
+      val codeExample =
+        """
+          |def next(): T = ...
+          |next     // is expanded to next()
+        """
+      val errorMessage =
+        """
+          |next
+          |^^^^
+          |method next must be called with an empty argument list
+        """
+      hl"""
+          |Previously an empty argument list () was implicitly inserted when calling a nullary method without arguments. E.g.
+          |
+          |$codeExample
+          |
+          |In Dotty, this idiom is an error which leads to the following message:
+          |
+          |$errorMessage
+          |
+          |In Dotty, the application syntax has to follow exactly the parameter syntax.
+          |Excluded from this rule are methods that are defined in Java or that override methods defined in Java.
+        """
+    }
+  }
 }
