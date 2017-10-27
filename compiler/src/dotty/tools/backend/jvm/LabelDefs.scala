@@ -81,7 +81,8 @@ class LabelDefs extends MiniPhase {
         }
       }
 
-      cpy.DefDef(tree)(rhs = putLabelDefsNearCallees.transform(tree.rhs))
+      if (labelDefs.isEmpty) tree
+      else cpy.DefDef(tree)(rhs = putLabelDefsNearCallees.transform(tree.rhs))
     }
   }
 
