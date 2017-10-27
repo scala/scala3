@@ -860,7 +860,7 @@ object Build {
 
 
       sbtPlugin := true,
-      version := "0.1.6",
+      version := "0.1.7",
       ScriptedPlugin.scriptedSettings,
       ScriptedPlugin.sbtTestDirectory := baseDirectory.value / "sbt-test",
       ScriptedPlugin.scriptedLaunchOpts += "-Dplugin.version=" + version.value,
