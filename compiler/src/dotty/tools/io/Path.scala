@@ -7,7 +7,7 @@ package dotty.tools.io
 
 import scala.language.implicitConversions
 import java.io.RandomAccessFile
-import java.nio.file.{FileAlreadyExistsException, Files}
+import java.nio.file.{DirectoryNotEmptyException, FileAlreadyExistsException, Files, NoSuchFileException}
 import java.net.{URI, URL}
 
 import scala.util.Random.alphanumeric
@@ -206,25 +206,23 @@ class Path private[io] (val jpath: JPath) {
 
   // creations
   def createDirectory(force: Boolean = true, failIfExists: Boolean = false): Directory = {
-    val res = try {
-      if (force) Files.createDirectories(jpath) else Files.createDirectory(jpath)
-      true
-    } catch {
-      case _: FileAlreadyExistsException => false
-    }
+    val res = tryCreate(if (force) Files.createDirectories(jpath) else Files.createDirectory(jpath))
     if (!res && failIfExists && exists) fail("Directory '%s' already exists." format name)
     else if (isDirectory) toDirectory
     else new Directory(jpath)
   }
   def createFile(failIfExists: Boolean = false): File = {
-    val res = try { Files.createFile(jpath); true } catch { case e: FileAlreadyExistsException => false}
+    val res = tryCreate(Files.createFile(jpath))
     if (!res && failIfExists && exists) fail("File '%s' already exists." format name)
     else if (isFile) toFile
     else new File(jpath)
   }
 
+  private def tryCreate(create: => JPath): Boolean =
+    try { create; true } catch { case _: FileAlreadyExistsException => false }
+
   // deletions
-  def delete(): Unit = Files.delete(jpath)
+  def delete(): Unit = delete(jpath)
 
   /** Deletes the path recursively. Returns false on failure.
    *  Use with caution!
@@ -234,11 +232,11 @@ class Path private[io] (val jpath: JPath) {
     import scala.collection.JavaConverters._
     if (Files.isDirectory(p))
       Files.list(p).iterator().asScala.foreach(deleteRecursively)
-    try {
-      Files.delete(p)
-      true
-    } catch { case _: Throwable => false }
+    delete(p)
   }
+
+  private def delete(path: JPath): Boolean =
+    try { Files.delete(path); true } catch { case _: DirectoryNotEmptyException | _: NoSuchFileException => false }
 
   def truncate() =
     isFile && {
