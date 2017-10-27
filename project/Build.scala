@@ -36,12 +36,12 @@ object ExposedValues extends AutoPlugin {
 
 object Build {
 
+  val baseVersion = "0.5.0"
   val scalacVersion = "2.12.4"
 
   val dottyOrganization = "ch.epfl.lamp"
   val dottyGithubUrl = "https://github.com/lampepfl/dotty"
   val dottyVersion = {
-    val baseVersion = "0.5.0"
     val isNightly = sys.env.get("NIGHTLYBUILD") == Some("yes")
     val isRelease = sys.env.get("RELEASEBUILD") == Some("yes")
     if (isNightly)
@@ -308,6 +308,11 @@ object Build {
     parallelExecution in Test := false,
 
     genDocs := Def.taskDyn {
+      // Make majorVersion available at dotty.epfl.ch/versions/latest-nightly-base
+      // Used by sbt-dotty to resolve the latest nightly
+      val majorVersion = baseVersion.take(baseVersion.lastIndexOf('.'))
+      IO.write(file("./docs/_site/versions/latest-nightly-base"), majorVersion)
+
       val dottyLib = (packageAll in `dotty-compiler`).value("dotty-library")
       val dottyInterfaces = (packageAll in `dotty-compiler`).value("dotty-interfaces")
       val otherDeps = (dependencyClasspath in Compile).value.map(_.data).mkString(":")
@@ -321,9 +326,9 @@ object Build {
         "-project-url", dottyGithubUrl,
         "-classpath", s"$dottyLib:$dottyInterfaces:$otherDeps"
       )
-        (runMain in Compile).toTask(
-          s""" dotty.tools.dottydoc.Main ${args.mkString(" ")} ${sources.mkString(" ")}"""
-        )
+      (runMain in Compile).toTask(
+        s""" dotty.tools.dottydoc.Main ${args.mkString(" ")} ${sources.mkString(" ")}"""
+      )
     }.value,
 
     dottydoc := Def.inputTaskDyn {
