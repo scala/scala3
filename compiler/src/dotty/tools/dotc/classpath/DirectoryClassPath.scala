@@ -119,7 +119,7 @@ trait JFileDirectoryLookup[FileEntryType <: ClassRepresentation] extends Directo
     } else Array()
   }
   protected def getName(f: File): String = f.getName
-  protected def toAbstractFile(f: File): AbstractFile = new PlainFile(new dotty.tools.io.File(f))
+  protected def toAbstractFile(f: File): AbstractFile = new PlainFile(new dotty.tools.io.File(f.toPath))
   protected def isPackage(f: File): Boolean = f.isPackage
 
   assert(dir != null, "Directory file in DirectoryFileLookup cannot be null")
@@ -212,7 +212,7 @@ case class DirectoryClassPath(dir: File) extends JFileDirectoryLookup[ClassFileE
     val relativePath = FileUtils.dirPath(className)
     val classFile = new File(s"$dir/$relativePath.class")
     if (classFile.exists) {
-      val wrappedClassFile = new dotty.tools.io.File(classFile)
+      val wrappedClassFile = new dotty.tools.io.File(classFile.toPath)
       val abstractClassFile = new PlainFile(wrappedClassFile)
       Some(abstractClassFile)
     } else None
@@ -239,7 +239,7 @@ case class DirectorySourcePath(dir: File) extends JFileDirectoryLookup[SourceFil
       .collectFirst { case file if file.exists() => file }
 
     sourceFile.map { file =>
-      val wrappedSourceFile = new dotty.tools.io.File(file)
+      val wrappedSourceFile = new dotty.tools.io.File(file.toPath)
       val abstractSourceFile = new PlainFile(wrappedSourceFile)
       abstractSourceFile
     }

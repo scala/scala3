@@ -54,7 +54,7 @@ object ZipArchive {
 }
 import ZipArchive._
 /** ''Note:  This library is considered experimental and should not be used unless you know what you are doing.'' */
-abstract class ZipArchive(override val file: JFile) extends AbstractFile with Equals {
+abstract class ZipArchive(override val jpath: JPath) extends AbstractFile with Equals {
   self =>
 
   override def underlyingSource = Some(this)
@@ -112,7 +112,7 @@ abstract class ZipArchive(override val file: JFile) extends AbstractFile with Eq
   }
 }
 /** ''Note:  This library is considered experimental and should not be used unless you know what you are doing.'' */
-final class FileZipArchive(file: JFile) extends ZipArchive(file) {
+final class FileZipArchive(file: JFile) extends ZipArchive(file.toPath) {
   private[this] def openZipFile(): ZipFile = try {
     new ZipFile(file)
   } catch {

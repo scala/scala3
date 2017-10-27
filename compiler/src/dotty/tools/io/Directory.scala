@@ -34,10 +34,10 @@ object Directory {
  *
  *  ''Note:  This is library is considered experimental and should not be used unless you know what you are doing.''
  */
-class Directory(jfile: JFile) extends Path(jfile) {
+class Directory(jpath: JPath) extends Path(jpath) {
   override def toAbsolute: Directory = if (isAbsolute) this else super.toAbsolute.toDirectory
   override def toDirectory: Directory = this
-  override def toFile: File = new File(jfile)
+  override def toFile: File = new File(jpath)
   override def normalize: Directory = super.normalize.toDirectory
 
   /** An iterator over the contents of this directory.

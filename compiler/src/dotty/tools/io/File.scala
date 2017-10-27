@@ -20,7 +20,7 @@ import scala.io.Codec
 object File {
   def pathSeparator = java.io.File.pathSeparator
   def separator     = java.io.File.separator
-  def apply(path: Path)(implicit codec: Codec) = new File(path.jfile)(codec)
+  def apply(path: Path)(implicit codec: Codec) = new File(path.jpath)(codec)
 
   // Create a temporary file, which will be deleted upon jvm exit.
   def makeTemp(prefix: String = Path.randomPrefix, suffix: String = null, dir: JFile = null) = {
@@ -41,12 +41,12 @@ object File {
  *
  *  ''Note:  This is library is considered experimental and should not be used unless you know what you are doing.''
  */
-class File(jfile: JFile)(implicit constructorCodec: Codec) extends Path(jfile) with Streamable.Chars {
+class File(jpath: JPath)(implicit constructorCodec: Codec) extends Path(jpath) with Streamable.Chars {
   override val creationCodec = constructorCodec
 
   override def addExtension(ext: String): File = super.addExtension(ext).toFile
   override def toAbsolute: File = if (isAbsolute) this else super.toAbsolute.toFile
-  override def toDirectory: Directory = new Directory(jfile)
+  override def toDirectory: Directory = new Directory(jfile.toPath)
   override def toFile: File = this
   override def normalize: File = super.normalize.toFile
   override def length = super[Path].length

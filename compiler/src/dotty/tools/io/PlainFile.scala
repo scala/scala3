@@ -20,7 +20,7 @@ class PlainDirectory(givenPath: Directory) extends PlainFile(givenPath) {
 class PlainFile(val givenPath: Path) extends AbstractFile {
   assert(path ne null)
 
-  val file = givenPath.jfile
+  val jpath = givenPath.jpath
   override def underlyingSource = Some(this)
 
   private val fpath = givenPath.toAbsolute
@@ -49,7 +49,7 @@ class PlainFile(val givenPath: Path) extends AbstractFile {
   def isDirectory: Boolean = givenPath.isDirectory
 
   /** Returns the time that this abstract file was last modified. */
-  def lastModified: Long = givenPath.lastModified
+  def lastModified: Long = givenPath.lastModified.toMillis
 
   /** Returns all abstract subfiles of this abstract directory. */
   def iterator: Iterator[AbstractFile] = {
@@ -95,12 +95,7 @@ private[dotty] class PlainNioFile(nioPath: java.nio.file.Path) extends AbstractF
 
   assert(nioPath ne null)
 
-  /** Returns the underlying File if any and null otherwise. */
-  override def file: java.io.File = try {
-    nioPath.toFile
-  } catch {
-    case _: UnsupportedOperationException => null
-  }
+  def jpath = nioPath
 
   override def underlyingSource  = Some(this)
 
@@ -160,7 +155,7 @@ private[dotty] class PlainNioFile(nioPath: java.nio.file.Path) extends AbstractF
   /** Delete the underlying file or directory (recursively). */
   def delete(): Unit =
     if (Files.isRegularFile(nioPath)) Files.deleteIfExists(nioPath)
-    else if (Files.isDirectory(nioPath)) new Directory(nioPath.toFile).deleteRecursively()
+    else if (Files.isDirectory(nioPath)) new Directory(nioPath).deleteRecursively()
 
   /** Returns a plain file with the given name. It does not
     *  check that it exists.
