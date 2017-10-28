@@ -2,10 +2,10 @@ package dotty.tools
 package dottydoc
 package staticsite
 
-import java.nio.file.{ Files, FileSystems }
+import java.nio.file.{FileSystems, Files}
 import java.nio.file.StandardCopyOption.REPLACE_EXISTING
-import java.io.{ File => JFile, OutputStreamWriter, BufferedWriter, ByteArrayInputStream }
-import java.util.{ List => JList, Map => JMap, Arrays }
+import java.io.{BufferedWriter, ByteArrayInputStream, OutputStreamWriter, File => JFile}
+import java.util.{Arrays, List => JList, Map => JMap}
 import java.nio.file.Path
 import java.nio.charset.StandardCharsets
 
@@ -18,13 +18,14 @@ import com.vladsch.flexmark.ext.emoji.EmojiExtension
 import com.vladsch.flexmark.ext.autolink.AutolinkExtension
 import com.vladsch.flexmark.ext.anchorlink.AnchorLinkExtension
 import com.vladsch.flexmark.ext.front.matter.YamlFrontMatterExtension
-import com.vladsch.flexmark.util.options.{ DataHolder, MutableDataSet }
-
+import com.vladsch.flexmark.util.options.{DataHolder, MutableDataSet}
 import dotc.core.Contexts.Context
-import dotc.util.SourceFile
+import dotc.util.{NameTransformer, SourceFile}
 import model.Package
-import scala.io.{ Codec, Source }
-import io.{ AbstractFile, VirtualFile, File }
+
+import scala.io.{Codec, Source}
+import io.{AbstractFile, File, VirtualFile}
+
 import scala.collection.mutable.ArrayBuffer
 import util.syntax._
 
@@ -192,6 +193,7 @@ case class Site(
   def generateApiDocs(outDir: JFile = new JFile(root.getAbsolutePath + "/_site"))(implicit ctx: Context): this.type =
     createOutput(outDir) {
       def genDoc(e: model.Entity): Unit = {
+
         ctx.docbase.echo(s"Generating doc page for: ${e.path.mkString(".")}")
         // Suffix is index.html for packages and therefore the additional depth
         // is increased by 1
@@ -199,7 +201,16 @@ case class Site(
           if (e.kind == "package") ("/index.html", -1)
           else (".html", 0)
 
-        val target = mkdirs(fs.getPath(outDir.getAbsolutePath +  "/api/" + e.path.mkString("/") + suffix))
+        // Mangle last path element
+        def genPath(path: List[String]): String = {
+          def loop(path: List[String], acc: String): String = path match {
+            case h :: Nil => s"$acc/${NameTransformer.encodeSting(h)}"
+            case h :: t => loop(t, s"$acc/$h")
+          }
+          loop(path, "")
+        }
+
+        val target: Path = mkdirs(fs.getPath(outDir.getAbsolutePath +  "/api/" + genPath(e.path) + suffix))
         val params = defaultParams(target.toFile, -1).withPosts(blogInfo).withEntity(e).toMap
         val page = new HtmlPage("_layouts/api-page.html", layouts("api-page").content, params, includes)
 
