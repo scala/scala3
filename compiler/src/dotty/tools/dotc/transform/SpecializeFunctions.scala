@@ -1,23 +1,23 @@
 package dotty.tools.dotc
 package transform
 
-import TreeTransforms.{ MiniPhaseTransform, TransformerInfo }
 import ast.Trees._, ast.tpd, core._
 import Contexts.Context, Types._, Decorators._, Symbols._, DenotTransformers._
 import SymDenotations._, Scopes._, StdNames._, NameOps._, Names._
+import MegaPhase.MiniPhase
 
 import scala.collection.mutable
 
 /** Specializes classes that inherit from `FunctionN` where there exists a
  *  specialized form.
  */
-class SpecializeFunctions extends MiniPhaseTransform with InfoTransformer {
+class SpecializeFunctions extends MiniPhase with InfoTransformer {
   import ast.tpd._
   val phaseName = "specializeFunctions"
   override def runsAfter = Set(classOf[ElimByName])
 
   /** Transforms the type to include decls for specialized applys  */
-  def transformInfo(tp: Type, sym: Symbol)(implicit ctx: Context) = tp match {
+  override def transformInfo(tp: Type, sym: Symbol)(implicit ctx: Context) = tp match {
     case tp: ClassInfo if !sym.is(Flags.Package) && (tp.decls ne EmptyScope) =>
       var newApplys = Map.empty[Name, Symbol]
 
@@ -59,7 +59,7 @@ class SpecializeFunctions extends MiniPhaseTransform with InfoTransformer {
    *  generic applys to the specialized ones. Also inserts the specialized applys
    *  in the template body.
    */
-  override def transformTemplate(tree: Template)(implicit ctx: Context, info: TransformerInfo) = {
+  override def transformTemplate(tree: Template)(implicit ctx: Context) = {
     val applyBuf = new mutable.ListBuffer[Tree]
     val newBody = tree.body.mapConserve {
       case dt: DefDef if dt.name == nme.apply && dt.vparamss.length == 1 =>
@@ -97,7 +97,7 @@ class SpecializeFunctions extends MiniPhaseTransform with InfoTransformer {
   }
 
   /** Dispatch to specialized `apply`s in user code when available */
-  override def transformApply(tree: Apply)(implicit ctx: Context, info: TransformerInfo) =
+  override def transformApply(tree: Apply)(implicit ctx: Context) =
     tree match {
       case Apply(fun, args)
         if fun.symbol.name == nme.apply &&

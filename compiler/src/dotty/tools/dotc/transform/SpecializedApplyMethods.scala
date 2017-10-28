@@ -1,10 +1,10 @@
 package dotty.tools.dotc
 package transform
 
-import TreeTransforms.{ MiniPhaseTransform, TransformerInfo }
 import ast.Trees._, ast.tpd, core._
 import Contexts.Context, Types._, Decorators._, Symbols._, DenotTransformers._
 import SymDenotations._, Scopes._, StdNames._, NameOps._, Names._
+import MegaPhase.MiniPhase
 
 /** This phase synthesizes specialized methods for FunctionN, this is done
  *  since there are no scala signatures in the bytecode for the specialized
@@ -14,7 +14,7 @@ import SymDenotations._, Scopes._, StdNames._, NameOps._, Names._
  *  can hardcode them. This should, however be removed once we're using a
  *  different standard library.
  */
-class SpecializedApplyMethods extends MiniPhaseTransform with InfoTransformer {
+class SpecializedApplyMethods extends MiniPhase with InfoTransformer {
   import ast.tpd._
 
   val phaseName = "specializedApplyMethods"
@@ -53,7 +53,7 @@ class SpecializedApplyMethods extends MiniPhaseTransform with InfoTransformer {
   }
 
   /** Add symbols for specialized methods to FunctionN */
-  def transformInfo(tp: Type, sym: Symbol)(implicit ctx: Context) = tp match {
+  override def transformInfo(tp: Type, sym: Symbol)(implicit ctx: Context) = tp match {
     case tp: ClassInfo if defn.isPlainFunctionClass(sym) => {
       init()
       val newDecls = sym.name.functionArity match {
@@ -75,7 +75,7 @@ class SpecializedApplyMethods extends MiniPhaseTransform with InfoTransformer {
   }
 
   /** Create bridge methods for FunctionN with specialized applys */
-  override def transformTemplate(tree: Template)(implicit ctx: Context, info: TransformerInfo) = {
+  override def transformTemplate(tree: Template)(implicit ctx: Context) = {
     val owner = tree.symbol.owner
     val additionalSymbols =
       if (owner eq func0) func0Applys
