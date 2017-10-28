@@ -41,18 +41,6 @@ object NameTransformer {
   enterOp('?', "$qmark")
   enterOp('@', "$at")
 
-
-  /* Encode characters that are illegal */
-  def encodeSting(value: String): String = {
-    val builder = new java.lang.StringBuilder
-    value.foreach{ chr =>
-      lazy val t = op2code(chr)
-      if(chr < nops && t != null) builder.append(t) else builder.append(chr)
-    }
-    builder.toString
-  }
-
-
   /** Expand characters that are illegal as JVM method names by `$u`, followed
    *  by the character's unicode expansion.
    */

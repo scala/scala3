@@ -92,7 +92,7 @@ object NameKinds {
   class PrefixNameKind(tag: Int, prefix: String, optInfoString: String = "")
   extends ClassifiedNameKind(tag, if (optInfoString.isEmpty) s"Prefix $prefix" else optInfoString) {
     def mkString(underlying: TermName, info: ThisInfo) =
-      underlying.qualToString(_.toString, n => prefix + n.toString)
+      underlying.qualToString(_.mangledString, n => prefix + n.mangled.toString)
     override def unmangle(name: SimpleName): TermName =
       if (name.startsWith(prefix)) apply(name.drop(prefix.length).asSimpleName)
       else name
@@ -102,7 +102,7 @@ object NameKinds {
   class SuffixNameKind(tag: Int, suffix: String, optInfoString: String = "")
   extends ClassifiedNameKind(tag, if (optInfoString.isEmpty) s"Suffix $suffix" else optInfoString) {
     def mkString(underlying: TermName, info: ThisInfo) =
-      underlying.qualToString(_.toString, n => n.toString + suffix)
+      underlying.qualToString(_.mangledString, n => n.mangled.toString + suffix)
     override def unmangle(name: SimpleName): TermName =
       if (name.endsWith(suffix)) apply(name.take(name.length - suffix.length).asSimpleName)
       else name

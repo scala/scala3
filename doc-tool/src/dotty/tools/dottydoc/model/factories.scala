@@ -31,7 +31,7 @@ object factories {
 
   def path(sym: Symbol)(implicit ctx: Context): List[String] = sym match {
     case sym if sym.name.decode.toString == "<root>" => Nil
-    case sym => path(sym.owner) :+ sym.name.show
+    case sym => path(sym.owner) :+ sym.name.mangledString
   }
 
   def annotations(sym: Symbol)(implicit ctx: Context): List[String] =
