@@ -12,18 +12,41 @@ object DottyPlugin extends AutoPlugin {
     // - this is a def to support `scalaVersion := dottyLatestNightlyBuild`
     // - if this was a taskKey, then you couldn't do `scalaVersion := dottyLatestNightlyBuild`
     // - if this was a settingKey, then this would evaluate even if you don't use it.
-    def dottyLatestNightlyBuild: Option[String] = {
-      println("Fetching latest Dotty nightly version (requires an internet connection)...")
-      val Version = """      <version>(0.5\..*-bin.*)</version>""".r
-      val latest = scala.io.Source
-          .fromURL(
-            "http://repo1.maven.org/maven2/ch/epfl/lamp/dotty_0.5/maven-metadata.xml")
+    def dottyLatestNightlyBuild(): Option[String] = {
+      import scala.io.Source
+
+      println("Fetching latest Dotty nightly version...")
+
+      val nightly = try {
+        // get majorVersion from dotty.epfl.ch
+        val source0 = Source.fromURL("http://dotty.epfl.ch/versions/latest-nightly-base")
+        val majorVersion = source0.getLines().toSeq.head
+        source0.close()
+
+        // get latest nightly version from maven
+        val source1 =
+          Source.fromURL(s"http://repo1.maven.org/maven2/ch/epfl/lamp/dotty_$majorVersion/maven-metadata.xml")
+        val Version = s"      <version>($majorVersion\\..*-bin.*)</version>".r
+        val nightly = source1
           .getLines()
           .collect { case Version(version) => version }
           .toSeq
           .lastOption
-      println(s"Latest Dotty nightly build version: $latest")
-      latest
+        source1.close()
+        nightly
+      } catch {
+        case _:java.net.UnknownHostException =>
+          None
+      }
+
+      nightly match {
+        case Some(version) =>
+          println(s"Latest Dotty nightly build version: $version")
+        case None =>
+          println(s"Unable to get Dotty latest nightly build version. Make sure you are connected to internet")
+      }
+
+      nightly
     }
 
     implicit class DottyCompatModuleID(moduleID: ModuleID) {
