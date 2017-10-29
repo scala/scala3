@@ -1051,4 +1051,17 @@ class ErrorMessagesTests extends ErrorMessagesTest {
       assertEquals("trait G", other.show)
 
     }
+
+  @Test def onlyStaticObjectsCanExtendPhantom =
+    checkMessagesAfter("frontend") {
+      "class T extends Phantom"
+    }.expect { (ictx, messages) =>
+      implicit val ctx: Context = ictx
+
+      assertMessageCount(1, messages)
+
+      val OnlyStaticObjectsCanExtendPhantom(cls) :: Nil = messages
+
+      assertEquals("class T", cls.show)
+    }
 }
