@@ -23,7 +23,7 @@ import Simplify._
  * 
  *  @author gan74
  */
-class Valify extends Optimisation {
+class Valify(val simplifyPhase: Simplify) extends Optimisation {
   import ast.tpd._
 
   def clear(): Unit = {
@@ -117,7 +117,7 @@ class Valify extends Optimisation {
     }
     
     // same as visitTree but does the replacing immediatly: returns a new modified tree instead
-    def transform(tree: Tree) = {
+    def transform(newSym: Symbol, oldSym: Symbol, tree: Tree) = {
       findWritten(tree)
       new TreeMap() {
         override def transform(tree: Tree)(implicit ctx: Context): Tree = {
@@ -130,7 +130,10 @@ class Valify extends Optimisation {
                   ref(sym)
                 case _ => id
               }
-            case t => t
+            case t => 
+              if (t.symbol.exists && t.symbol.owner == oldSym) {
+                t.changeOwnerAfter(oldSym, newSym, simplifyPhase) 
+              } else t
           }
         }
       }.transform(tree)
@@ -143,12 +146,12 @@ class Valify extends Optimisation {
       case t: Assign if isVar(t.lhs.symbol) => 
         symbolReplaced(t.lhs.symbol)
         val newSym = valifiedSymbol(t.lhs.symbol)
-        replaceAssigns(t) = List(ValDef(newSym.asTerm, transform(t.rhs)), Assign(t.lhs, ref(newSym)))
+        replaceAssigns(t) = List(ValDef(newSym.asTerm, transform(newSym, t.symbol, t.rhs)), Assign(t.lhs, ref(newSym)))
         symbolMap(t.lhs.symbol) = newSym
 
       case t: ValDef if isVar(t.symbol) => 
         val newSym = valifiedSymbol(t.symbol)
-        replaceDefs(t) = List(ValDef(newSym.asTerm, transform(t.rhs)), ValDef(t.symbol.asTerm, ref(newSym)))
+        replaceDefs(t) = List(ValDef(newSym.asTerm, transform(newSym, t.symbol, t.rhs)), ValDef(t.symbol.asTerm, ref(newSym)))
         symbolMap(t.symbol) = newSym
 
       case t: Assign => 

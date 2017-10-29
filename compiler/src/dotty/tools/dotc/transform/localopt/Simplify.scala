@@ -46,7 +46,7 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
     new RemoveUnnecessaryNullChecks ::
     new InlineOptions               ::
     //new InlineLabelsCalledOnce    :: // not needed: new pattern matcher does this already
-    new Valify                      ::
+    new Valify(this)                ::
     new DropNoEffects(this)         ::
     new Devalify                    :: 
     new Jumpjump                    ::
@@ -59,7 +59,7 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
 
   /** See comment on beforeErasure */
   private def afterErasure: List[Optimisation] =
-    new Valify                      ::
+    new Valify(this)                ::
     new DropNoEffects(this)         ::
     new Devalify                    :: 
     new Jumpjump                    ::
