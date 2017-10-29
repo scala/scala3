@@ -1550,7 +1550,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     val pt1 = if (defn.isFunctionType(pt)) pt else AnyFunctionProto
     var res = typed(qual, pt1)
     if (pt1.eq(AnyFunctionProto) && !defn.isFunctionClass(res.tpe.classSymbol)) {
-      ctx.errorOrMigrationWarning(i"not a function: ${res.tpe}; cannot be followed by `_'", tree.pos)
+      ctx.errorOrMigrationWarning(OnlyFunctionsCanBeFollowedByUnderscore(res.tpe), tree.pos)
       if (ctx.scala2Mode) {
         // Under -rewrite, patch `x _` to `(() => x)`
         patch(Position(tree.pos.start), "(() => ")

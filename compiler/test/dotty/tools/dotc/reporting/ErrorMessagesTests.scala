@@ -1051,4 +1051,24 @@ class ErrorMessagesTests extends ErrorMessagesTest {
       assertEquals("trait G", other.show)
 
     }
+
+  @Test def onlyFunctionsCanBeFollowedByUnderscore =
+    checkMessagesAfter("frontend") {
+      """
+        |class T {
+        |  def main(args: Array[String]): Unit = {
+        |   val n = "T"
+        |   val func = n _
+        |  }
+        |}
+      """.stripMargin
+    }.expect { (ictx, messages) =>
+      implicit val ctx: Context = ictx
+
+      assertMessageCount(1, messages)
+
+      val OnlyFunctionsCanBeFollowedByUnderscore(pt) :: Nil = messages
+
+      assertEquals("String(n)", pt.show)
+    }
 }

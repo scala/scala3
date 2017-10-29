@@ -1838,4 +1838,11 @@ object messages {
           |type used instead: $tp2"""
     }
   }
+
+  case class OnlyFunctionsCanBeFollowedByUnderscore(pt: Type)(implicit ctx: Context)
+    extends Message(OnlyFunctionsCanBeFollowedByUnderscoreID) {
+    val kind = "Syntax"
+    val msg = hl"not a function: $pt; cannot be followed by `_'"
+    val explanation = ""
+  }
 }
