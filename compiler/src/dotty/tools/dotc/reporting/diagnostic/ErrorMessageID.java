@@ -105,7 +105,8 @@ public enum ErrorMessageID {
     ExpectedTypeBoundOrEqualsID,
     ClassAndCompanionNameClashID,
     TailrecNotApplicableID,
-    FailureToEliminateExistentialID
+    FailureToEliminateExistentialID,
+    OnlyFunctionsCanBeFollowedByUnderscoreID
     ;
 
     public int errorNumber() {

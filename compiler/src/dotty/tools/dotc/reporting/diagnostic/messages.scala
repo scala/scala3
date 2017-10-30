@@ -1838,4 +1838,13 @@ object messages {
           |type used instead: $tp2"""
     }
   }
+
+  case class OnlyFunctionsCanBeFollowedByUnderscore(pt: Type)(implicit ctx: Context)
+    extends Message(OnlyFunctionsCanBeFollowedByUnderscoreID) {
+    val kind = "Syntax"
+    val msg = hl"Not a function: $pt: cannot be followed by ${"_"}"
+    val explanation =
+      hl"""The syntax ${"x _"} is no longer supported if ${"x"} is not a function.
+          |To convert to a function value, you need to explicitly write ${"() => x"}"""
+  }
 }
