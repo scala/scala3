@@ -1821,9 +1821,21 @@ object messages {
 
   case class TailrecNotApplicable(method: Symbol)(implicit ctx: Context)
     extends Message(TailrecNotApplicableID) {
-      val kind = "Syntax"
-      val msg = hl"TailRec optimisation not applicable, $method is neither ${"private"} nor ${"final"}."
-      val explanation =
-       hl"A method annotated ${"@tailrec"} must be declared ${"private"} or ${"final"} so it can't be overridden."
+    val kind = "Syntax"
+    val msg = hl"TailRec optimisation not applicable, $method is neither ${"private"} nor ${"final"}."
+    val explanation =
+      hl"A method annotated ${"@tailrec"} must be declared ${"private"} or ${"final"} so it can't be overridden."
+  }
+
+  case class FailureToEliminateExistential(tp: Type, tp1: Type, tp2: Type, boundSyms: List[Symbol])(implicit ctx: Context)
+    extends Message(FailureToEliminateExistentialID) {
+    val kind = "Compatibility"
+    val msg = "Failure to eliminate existential type. Proceed at own risk."
+    val explanation = {
+      val originalType = ctx.dclsText(boundSyms, "; ").show
+      hl"""original type    : $tp forSome ${originalType}
+          |reduces to       : $tp1
+          |type used instead: $tp2"""
+    }
   }
 }

@@ -29,6 +29,7 @@ import scala.collection.{ mutable, immutable }
 import scala.collection.mutable.ListBuffer
 import scala.annotation.switch
 import reporting.trace
+import dotty.tools.dotc.reporting.diagnostic.messages.FailureToEliminateExistential
 
 object Scala2Unpickler {
 
@@ -627,7 +628,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
    */
   def elimExistentials(boundSyms: List[Symbol], tp: Type)(implicit ctx: Context): Type = {
     // Need to be careful not to run into cyclic references here (observed when
-    // comiling t247.scala). That's why we avoiud taking `symbol` of a TypeRef
+    // compiling t247.scala). That's why we avoid taking `symbol` of a TypeRef
     // unless names match up.
     val isBound = (tp: Type) => {
       def refersTo(tp: Type, sym: Symbol): Boolean = tp match {
@@ -677,11 +678,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
       val anyTypes = boundSyms map (_ => defn.AnyType)
       val boundBounds = boundSyms map (_.info.bounds.hi)
       val tp2 = tp1.subst(boundSyms, boundBounds).subst(boundSyms, anyTypes)
-      ctx.warning(s"""failure to eliminate existential
-                      |original type    : $tp forSome {${ctx.dclsText(boundSyms, "; ").show}
-                      |reduces to       : $tp1
-                      |type used instead: $tp2
-                      |proceed at own risk.""".stripMargin)
+      ctx.warning(FailureToEliminateExistential(tp, tp1, tp2, boundSyms))
       tp2
     } else tp1
   }
