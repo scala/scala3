@@ -1830,12 +1830,12 @@ object messages {
   case class FailureToEliminateExistential(tp: Type, tp1: Type, tp2: Type, boundSyms: List[Symbol])(implicit ctx: Context)
     extends Message(FailureToEliminateExistentialID) {
     val kind = "Compatibility"
-    val msg = hl"Failure to eliminate existential type. Proceed at own risk."
-    private val originalType = ctx.dclsText(boundSyms, "; ").show
-    val explanation =
-      hl"""original type    : $tp forSome {${originalType}
+    val msg = "Failure to eliminate existential type. Proceed at own risk."
+    val explanation = {
+      val originalType = ctx.dclsText(boundSyms, "; ").show
+      hl"""original type    : $tp forSome ${originalType}
           |reduces to       : $tp1
-          |type used instead: $tp2
-          |"""
+          |type used instead: $tp2"""
+    }
   }
 }
