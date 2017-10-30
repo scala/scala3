@@ -1848,34 +1848,21 @@ object messages {
           |To convert to a function value, you need to explicitly write ${"() => x"}"""
   }
 
-  case class MissingEmptyArgumentListForMethod(method: Symbol, methodStr: String)(implicit ctx: Context)
-    extends Message(MissingArgumentsForMethodID) {
-    val kind: String = "Syntax"
-    val msg: String = hl"$methodStr must be called with an empty argument list"
-    val explanation: String = {
+  case class MissingEmptyArgumentList(method: Symbol)(implicit ctx: Context)
+    extends Message(MissingEmptyArgumentListID) {
+    val kind = "Syntax"
+    val msg = hl"$method must be called with ${"()"} argument"
+    val explanation = {
       val codeExample =
-        """
-          |def next(): T = ...
-          |next     // is expanded to next()
-        """
-      val errorMessage =
-        """
-          |next
-          |^^^^
-          |method next must be called with an empty argument list
-        """
-      hl"""
-          |Previously an empty argument list () was implicitly inserted when calling a nullary method without arguments. E.g.
+        """def next(): T = ...
+          |next     // is expanded to next()"""
+
+      hl"""Previously an empty argument list () was implicitly inserted when calling a nullary method without arguments. E.g.
           |
           |$codeExample
           |
-          |In Dotty, this idiom is an error which leads to the following message:
-          |
-          |$errorMessage
-          |
-          |In Dotty, the application syntax has to follow exactly the parameter syntax.
-          |Excluded from this rule are methods that are defined in Java or that override methods defined in Java.
-        """
+          |In Dotty, this idiom is an error. The application syntax has to follow exactly the parameter syntax.
+          |Excluded from this rule are methods that are defined in Java or that override methods defined in Java."""
     }
   }
 }

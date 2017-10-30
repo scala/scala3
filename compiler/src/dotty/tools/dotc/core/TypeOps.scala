@@ -17,6 +17,7 @@ import util.Property
 import collection.mutable
 import ast.tpd._
 import reporting.trace
+import reporting.diagnostic.Message
 
 trait TypeOps { this: Context => // TODO: Make standalone object.
 
@@ -315,7 +316,7 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
   def dynamicsEnabled =
     featureEnabled(defn.LanguageModuleClass, nme.dynamics)
 
-  def testScala2Mode(msg: => String, pos: Position, rewrite: => Unit = ()) = {
+  def testScala2Mode(msg: => Message, pos: Position, rewrite: => Unit = ()) = {
     if (scala2Mode) {
       migrationWarning(msg, pos)
       rewrite

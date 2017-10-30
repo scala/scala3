@@ -1070,7 +1070,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
       assertEquals("String(n)", pt.show)
     }
 
-  @Test def missingEmptyArgumentListForMethod =
+  @Test def missingEmptyArgumentList =
     checkMessagesAfter("frontend") {
       """
         |class Test {
@@ -1085,9 +1085,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
       implicit val ctx: Context = ictx
 
       assertMessageCount(1, messages)
-
-      val MissingEmptyArgumentListForMethod(method, _) :: Nil = messages
-
+      val MissingEmptyArgumentList(method) :: Nil = messages
       assertEquals("method greet", method.show)
     }
 }
