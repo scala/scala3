@@ -1908,7 +1908,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     def methodStr = err.refStr(methPart(tree).tpe)
 
     def missingArgs(mt: MethodType) = {
-      ctx.error(em"missing arguments for $methodStr", tree.pos)
+      ctx.error(MissingEmptyArgumentList(methPart(tree).symbol), tree.pos)
       tree.withType(mt.resultType)
     }
 
@@ -2076,7 +2076,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
       def isAutoApplied(sym: Symbol): Boolean = {
         sym.isConstructor ||
         sym.matchNullaryLoosely ||
-        ctx.testScala2Mode(em"${sym.showLocated} requires () argument", tree.pos,
+        ctx.testScala2Mode(MissingEmptyArgumentList(sym), tree.pos,
             patch(tree.pos.endPos, "()"))
       }
 
