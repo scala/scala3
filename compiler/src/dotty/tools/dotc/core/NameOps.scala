@@ -229,23 +229,8 @@ object NameOps {
 
     def specializedFor(classTargs: List[Types.Type], classTargsNames: List[Name], methodTargs: List[Types.Type], methodTarsNames: List[Name])(implicit ctx: Context): name.ThisName = {
 
-      def typeToTag(tp: Types.Type): Name = {
-        tp.classSymbol match {
-          case t if t eq defn.IntClass     => nme.specializedTypeNames.Int
-          case t if t eq defn.BooleanClass => nme.specializedTypeNames.Boolean
-          case t if t eq defn.ByteClass    => nme.specializedTypeNames.Byte
-          case t if t eq defn.LongClass    => nme.specializedTypeNames.Long
-          case t if t eq defn.ShortClass   => nme.specializedTypeNames.Short
-          case t if t eq defn.FloatClass   => nme.specializedTypeNames.Float
-          case t if t eq defn.UnitClass    => nme.specializedTypeNames.Void
-          case t if t eq defn.DoubleClass  => nme.specializedTypeNames.Double
-          case t if t eq defn.CharClass    => nme.specializedTypeNames.Char
-          case _                           => nme.specializedTypeNames.Object
-        }
-      }
-
-      val methodTags: Seq[Name] = (methodTargs zip methodTarsNames).sortBy(_._2).map(x => typeToTag(x._1))
-      val classTags: Seq[Name] = (classTargs zip classTargsNames).sortBy(_._2).map(x => typeToTag(x._1))
+      val methodTags: Seq[Name] = (methodTargs zip methodTarsNames).sortBy(_._2).map(x => defn.typeTag(x._1))
+      val classTags: Seq[Name] = (classTargs zip classTargsNames).sortBy(_._2).map(x => defn.typeTag(x._1))
 
       name.likeSpaced(name ++ nme.specializedTypeNames.prefix ++
         methodTags.fold(nme.EMPTY)(_ ++ _) ++ nme.specializedTypeNames.separator ++

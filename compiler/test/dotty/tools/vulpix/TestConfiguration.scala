@@ -12,7 +12,8 @@ object TestConfiguration {
   val checkOptions = Array(
     "-Yno-deep-subtypes",
     "-Yno-double-bindings",
-    "-Yforce-sbt-phases"
+    "-Yforce-sbt-phases",
+    "-Xverify-signatures"
   )
 
   val classPath = mkClassPath(Jars.dottyTestDeps)
