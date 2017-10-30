@@ -105,6 +105,7 @@ public enum ErrorMessageID {
     ExpectedTypeBoundOrEqualsID,
     ClassAndCompanionNameClashID,
     TailrecNotApplicableID,
+    OnlyStaticObjectsCanExtendPhantomID,
     ;
 
     public int errorNumber() {

@@ -1826,4 +1826,22 @@ object messages {
       val explanation =
        hl"A method annotated ${"@tailrec"} must be declared ${"private"} or ${"final"} so it can't be overridden."
   }
+
+  case class OnlyStaticObjectsCanExtendPhantom(symbol: Symbol)(implicit ctx: Context)
+    extends Message(OnlyStaticObjectsCanExtendPhantomID) {
+    val kind = "Syntax"
+    val msg = "only static objects can extend scala.Phantom"
+    val explanation = {
+      val codeExample = "object MyPhantoms extends Phantom"
+
+      hl"""
+        |Phantom types are definded by an object extending scala.Phantom.
+        |This object will represent a universe of phantom types that is completely separated from types in scala.Any or other phantom universes.
+        |We can define our phantom universe MyPhantoms:
+        |
+        |$codeExample
+        |
+      """.stripMargin
+    }
+  }
 }
