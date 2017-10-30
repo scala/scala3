@@ -1052,6 +1052,25 @@ class ErrorMessagesTests extends ErrorMessagesTest {
 
     }
 
+  @Test def missingEmptyArgumentListForMethod =
+    checkMessagesAfter("frontend") {
+      """
+        |class Test {
+        |  def greet(): String = "Hello"
+        |  def main(args: Array[String]): Unit = {
+        |    greet
+        |  }
+        |}
+      """.stripMargin
+    }
+    .expect { (ictx, messages) =>
+      implicit val ctx: Context = ictx
+
+      assertMessageCount(1, messages)
+      val MissingEmptyArgumentListForMethod(method, _) :: Nil = messages
+      assertEquals("method greet", method.show)
+    }
+
   @Test def onlyFunctionsCanBeFollowedByUnderscore =
     checkMessagesAfter("frontend") {
       """

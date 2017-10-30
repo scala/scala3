@@ -105,6 +105,7 @@ public enum ErrorMessageID {
     ExpectedTypeBoundOrEqualsID,
     ClassAndCompanionNameClashID,
     TailrecNotApplicableID,
+    MissingEmptyArgumentListForMethodID,
     FailureToEliminateExistentialID,
     OnlyFunctionsCanBeFollowedByUnderscoreID
     ;
