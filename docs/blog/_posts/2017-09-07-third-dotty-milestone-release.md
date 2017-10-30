@@ -13,7 +13,7 @@ and the compiler supporting them.
 If you’re not familiar with Dotty, it's a platform to try out new language concepts and compiler
 technologies for Scala. The focus is mainly on simplification. We remove extraneous syntax
 (e.g. no XML literals), and try to boil down Scala’s types into a smaller set of more fundamental
-constructors. The theory behind these constructors is researched in
+constructs. The theory behind these constructs is researched in
 [DOT](https://infoscience.epfl.ch/record/215280), a calculus for dependent object types.
 You can learn more about Dotty on our [website](http://dotty.epfl.ch).
 
