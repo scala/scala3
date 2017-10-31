@@ -240,8 +240,8 @@ object GenericSignatures {
 
         case mtpe: MethodType =>
           // phantom method parameters do not make it to the bytecode.
-          val params = mtpe.paramInfos.filterNot(_.isPhantom)
-          val restpe = mtpe.resultType
+          val params = mtpe.paramInfoss.flatten.filterNot(_.isPhantom)
+          val restpe = mtpe.finalResultType
           builder.append('(')
           // TODO: Update once we support varargs
           params.foreach { tp =>
