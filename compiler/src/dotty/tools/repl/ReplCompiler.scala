@@ -78,56 +78,63 @@ class ReplCompiler(val directory: AbstractFile) extends Compiler {
       DefDef(showName, Nil, Nil, TypeTree(), showWithNullCheck).withFlags(Synthetic).withPos(pos)
     }
 
-    val (exps, other) = trees.partition(_.isTerm)
-    val resX = exps.zipWithIndex.flatMap { case (exp, i) =>
-      val resName = (str.REPL_RES_PREFIX + (i + state.valIndex)).toTermName
-      val show = createShow(resName, exp.pos)
+    def createPatDefShows(patDef: PatDef) = {
+      def createDeepShows(tree: untpd.Tree) = {
+        object PatFolder extends UntypedDeepFolder[List[DefDef]] (
+          (acc, tree) => tree match {
+            case Ident(name) if name.isVariableName && name != nme.WILDCARD =>
+              createShow(name.toTermName, tree.pos) :: acc
+            case Bind(name, _) if name.isVariableName && name != nme.WILDCARD =>
+              createShow(name.toTermName, tree.pos) :: acc
+            case _ =>
+              acc
+          }
+        )
+        PatFolder.apply(Nil, tree).reverse
+      }
 
-      exp match {
-        case exp @ Assign(id: Ident, rhs) =>
-          val assignName = (id.name ++ str.REPL_ASSIGN_SUFFIX).toTermName
-          val assign = ValDef(assignName, TypeTree(), id).withPos(exp.pos)
-
-          exp :: assign :: createShow(assignName, exp.pos) :: Nil
-        case _ =>
-          List(ValDef(resName, TypeTree(), exp).withPos(exp.pos), show)
+      // cannot fold over the whole tree because we need to generate show methods
+      // for top level identifier starting with an uppercase (e.g. val X, Y = 2)
+      patDef.pats.flatMap {
+        case id @ Ident(name) if name != nme.WILDCARD =>
+          List(createShow(name.toTermName, id.pos))
+        case bd @ Bind(name, body) if name != nme.WILDCARD =>
+          createShow(name.toTermName, bd.pos) :: createDeepShows(body)
+        case other =>
+          createDeepShows(other)
       }
     }
 
-    val othersWithShow = other.flatMap {
-      case t: ValDef =>
-        List(t, createShow(t.name, t.pos))
-      case t: PatDef => {
-        val variables = t.pats.flatMap {
-          case Ident(name) if name != nme.WILDCARD => List((name.toTermName, t.pos))
-          case pat =>
-            new UntypedDeepFolder[List[(TermName, Position)]](
-            (acc: List[(TermName, Position)], t: Tree) => t match {
-              case _: BackquotedIdent =>
-                acc
-              case Ident(name) if name.isVariableName && name.toString != "_" =>
-                (name.toTermName, t.pos) :: acc
-              case Bind(name, _) if name.isVariableName =>
-                (name.toTermName, t.pos) :: acc
-              case _ =>
-                acc
-            }
-          ).apply(Nil, pat).reverse
-        }
+    var valIdx = state.valIndex
 
-        t :: variables.map { case (name, pos) => createShow(name, pos) }
-      }
-      case t => List(t)
+    val defs = trees.flatMap {
+      case vd: ValDef =>
+        List(vd, createShow(vd.name, vd.pos))
+      case pd: PatDef =>
+        pd :: createPatDefShows(pd)
+      case expr @ Assign(id: Ident, rhs) =>
+        // special case simple reassignment (e.g. x = 3)
+        // in order to print the new value in the REPL
+        val assignName = (id.name ++ str.REPL_ASSIGN_SUFFIX).toTermName
+        val assign = ValDef(assignName, TypeTree(), id).withPos(expr.pos)
+        val show = createShow(assignName, expr.pos)
+        List(expr, assign, show)
+      case expr if expr.isTerm =>
+        val resName = (str.REPL_RES_PREFIX + valIdx).toTermName
+        valIdx += 1
+        val show = createShow(resName, expr.pos)
+        val vd = ValDef(resName, TypeTree(), expr).withPos(expr.pos)
+        List(vd, show)
+      case other =>
+        List(other)
     }
-
-    val newObjectIndex = state.objectIndex + {
-      if (resX.nonEmpty || othersWithShow.nonEmpty) 1 else 0
-    }
-    val newValIndex = state.valIndex + exps.filterNot(_.isInstanceOf[Assign]).length
 
     Definitions(
-      state.imports.map(_._1) ++ resX ++ othersWithShow,
-      state.copy(objectIndex = newObjectIndex, valIndex = newValIndex)
+      state.imports.map(_._1) ++ defs,
+      state.copy(
+        objectIndex = state.objectIndex + (if (defs.isEmpty) 0 else 1),
+        valIndex = valIdx
+      )
     ).result
   }
 
