@@ -2,10 +2,10 @@ package dotty.tools
 package dottydoc
 package staticsite
 
-import java.nio.file.{ Files, FileSystems }
+import java.nio.file.{FileSystems, Files}
 import java.nio.file.StandardCopyOption.REPLACE_EXISTING
-import java.io.{ File => JFile, OutputStreamWriter, BufferedWriter, ByteArrayInputStream }
-import java.util.{ List => JList, Map => JMap, Arrays }
+import java.io.{BufferedWriter, ByteArrayInputStream, OutputStreamWriter, File => JFile}
+import java.util.{Arrays, List => JList}
 import java.nio.file.Path
 import java.nio.charset.StandardCharsets
 
@@ -18,13 +18,14 @@ import com.vladsch.flexmark.ext.emoji.EmojiExtension
 import com.vladsch.flexmark.ext.autolink.AutolinkExtension
 import com.vladsch.flexmark.ext.anchorlink.AnchorLinkExtension
 import com.vladsch.flexmark.ext.front.matter.YamlFrontMatterExtension
-import com.vladsch.flexmark.util.options.{ DataHolder, MutableDataSet }
-
+import com.vladsch.flexmark.util.options.{DataHolder, MutableDataSet}
 import dotc.core.Contexts.Context
 import dotc.util.SourceFile
 import model.Package
-import scala.io.{ Codec, Source }
-import io.{ AbstractFile, VirtualFile, File }
+
+import scala.io.{Codec, Source}
+import io.{AbstractFile, File, VirtualFile}
+
 import scala.collection.mutable.ArrayBuffer
 import util.syntax._
 
@@ -199,7 +200,7 @@ case class Site(
           if (e.kind == "package") ("/index.html", -1)
           else (".html", 0)
 
-        val target = mkdirs(fs.getPath(outDir.getAbsolutePath +  "/api/" + e.path.mkString("/") + suffix))
+        val target: Path = mkdirs(fs.getPath(outDir.getAbsolutePath +  "/api/" + e.path.mkString("/") + suffix))
         val params = defaultParams(target.toFile, -1).withPosts(blogInfo).withEntity(e).toMap
         val page = new HtmlPage("_layouts/api-page.html", layouts("api-page").content, params, includes)
 
