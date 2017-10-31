@@ -1557,10 +1557,10 @@ object Parsers {
       else p
     }
 
-    /**  Pattern2    ::=  [varid `@'] InfixPattern
+    /**  Pattern2    ::=  [id `@'] InfixPattern
      */
     val pattern2 = () => infixPattern() match {
-      case p @ Ident(name) if isVarPattern(p) && in.token == AT =>
+      case p @ Ident(name) if in.token == AT =>
         val offset = in.skipToken()
 
         // compatibility for Scala2 `x @ _*` syntax

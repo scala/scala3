@@ -220,7 +220,7 @@ CaseClause        ::=  ‘case’ (Pattern [Guard] ‘=>’ Block | INT)
 Pattern           ::=  Pattern1 { ‘|’ Pattern1 }                                Alternative(pats)
 Pattern1          ::=  PatVar ‘:’ RefinedType                                   Bind(name, Typed(Ident(wildcard), tpe))
                     |  Pattern2
-Pattern2          ::=  [varid ‘@’] InfixPattern                                 Bind(name, pat)
+Pattern2          ::=  [id ‘@’] InfixPattern                                    Bind(name, pat)
 InfixPattern      ::=  SimplePattern { id [nl] SimplePattern }                  InfixOp(pat, op, pat)
 SimplePattern     ::=  PatVar                                                   Ident(wildcard)
                     |  Literal                                                  Bind(name, Ident(wildcard))
