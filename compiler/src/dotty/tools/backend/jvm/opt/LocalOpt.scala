@@ -13,7 +13,7 @@ import scala.tools.asm.tree.analysis.{Analyzer, BasicValue, BasicInterpreter}
 import scala.tools.asm.tree._
 import scala.collection.convert.decorateAsScala._
 import scala.tools.nsc.backend.jvm.opt.BytecodeUtils._
-import scala.tools.nsc.settings.ScalaSettings
+// import scala.tools.nsc.settings.ScalaSettings
 
 /**
  * Optimizations within a single method.
@@ -46,7 +46,7 @@ import scala.tools.nsc.settings.ScalaSettings
  * stale labels
  *   - eliminate labels that are not referenced, merge sequences of label definitions.
  */
-class LocalOpt(settings: ScalaSettings) {
+class LocalOpt(/*settings: ScalaSettings*/) {
   /**
    * Remove unreachable instructions from all (non-abstract) methods and apply various other
    * cleanups to the bytecode.
@@ -55,7 +55,8 @@ class LocalOpt(settings: ScalaSettings) {
    * @return      `true` if unreachable code was elminated in some method, `false` otherwise.
    */
   def methodOptimizations(clazz: ClassNode): Boolean = {
-    settings.Yopt.value.nonEmpty && clazz.methods.asScala.foldLeft(false) {
+    // settings.Yopt.value.nonEmpty
+    true && clazz.methods.asScala.foldLeft(false) {
       case (changed, method) => methodOptimizations(method, clazz.name) || changed
     }
   }
@@ -106,7 +107,7 @@ class LocalOpt(settings: ScalaSettings) {
     var codeHandlersOrJumpsChanged = false
     while (recurse) {
       // unreachable-code, empty-handlers and simplify-jumps run until reaching a fixpoint (see doc on class LocalOpt)
-      val (codeRemoved, handlersRemoved, liveHandlerRemoved) = if (settings.YoptUnreachableCode) {
+      val (codeRemoved, handlersRemoved, liveHandlerRemoved) = if (true /*settings.YoptUnreachableCode*/) {
         val (codeRemoved, liveLabels) = removeUnreachableCodeImpl(method, ownerClassName)
         val removedHandlers = removeEmptyExceptionHandlers(method)
         (codeRemoved, removedHandlers.nonEmpty, removedHandlers.exists(h => liveLabels(h.start)))
@@ -114,23 +115,23 @@ class LocalOpt(settings: ScalaSettings) {
         (false, false, false)
       }
 
-      val jumpsChanged = if (settings.YoptSimplifyJumps) simplifyJumps(method) else false
+      val jumpsChanged = if (true /*settings.YoptSimplifyJumps*/) simplifyJumps(method) else false
 
       codeHandlersOrJumpsChanged ||= (codeRemoved || handlersRemoved || jumpsChanged)
 
       // The doc comment of class LocalOpt explains why we recurse if jumpsChanged || liveHandlerRemoved
-      recurse = settings.YoptRecurseUnreachableJumps && (jumpsChanged || liveHandlerRemoved)
+      recurse = /*settings.YoptRecurseUnreachableJumps &&*/ (jumpsChanged || liveHandlerRemoved)
     }
 
     // (*) Removing stale local variable descriptors is required for correctness of unreachable-code
     val localsRemoved =
-      if (settings.YoptCompactLocals) compactLocalVariables(method)
-      else if (settings.YoptUnreachableCode) removeUnusedLocalVariableNodes(method)() // (*)
+      if (true /*settings.YoptCompactLocals*/) compactLocalVariables(method)
+      else if (true /*settings.YoptUnreachableCode*/) removeUnusedLocalVariableNodes(method)() // (*)
       else false
 
-    val lineNumbersRemoved = if (settings.YoptEmptyLineNumbers) removeEmptyLineNumbers(method) else false
+    val lineNumbersRemoved = if (true /*settings.YoptEmptyLineNumbers*/) removeEmptyLineNumbers(method) else false
 
-    val labelsRemoved = if (settings.YoptEmptyLabels) removeEmptyLabelNodes(method) else false
+    val labelsRemoved = if (true /*settings.YoptEmptyLabels*/) removeEmptyLabelNodes(method) else false
 
     // assert that local variable annotations are empty (we don't emit them) - otherwise we'd have
     // to eliminate those covering an empty range, similar to removeUnusedLocalVariableNodes.
@@ -332,7 +333,7 @@ class LocalOpt(settings: ScalaSettings) {
    * to create a separate visitor for computing those values, duplicating the functionality from the
    * MethodWriter.
    */
-  private def computeMaxLocalsMaxStack(method: MethodNode) {
+  private def computeMaxLocalsMaxStack(method: MethodNode): Unit = {
     val cw = new ClassWriter(ClassWriter.COMPUTE_MAXS)
     val excs = method.exceptions.asScala.toArray
     val mw = cw.visitMethod(method.access, method.name, method.desc, method.signature, excs).asInstanceOf[MethodWriter]

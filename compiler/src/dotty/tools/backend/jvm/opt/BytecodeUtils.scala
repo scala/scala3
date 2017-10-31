@@ -9,7 +9,7 @@ package opt
 
 import scala.annotation.{tailrec, switch}
 import scala.collection.mutable
-import scala.reflect.internal.util.Collections._
+// import scala.reflect.internal.util.Collections._
 import scala.tools.asm.Opcodes
 import scala.tools.asm.tree._
 import scala.collection.convert.decorateAsScala._
@@ -83,7 +83,7 @@ object BytecodeUtils {
     nextExecutableInstruction(a.label) == nextExecutableInstruction(b.label)
   }
 
-  def removeJumpAndAdjustStack(method: MethodNode, jump: JumpInsnNode) {
+  def removeJumpAndAdjustStack(method: MethodNode, jump: JumpInsnNode): Unit = {
     val instructions = method.instructions
     val op = jump.getOpcode
     if ((op >= Opcodes.IFEQ && op <= Opcodes.IFGE) || op == Opcodes.IFNULL || op == Opcodes.IFNONNULL) {
@@ -163,7 +163,7 @@ object BytecodeUtils {
 
   def substituteLabel(reference: AnyRef, from: LabelNode, to: LabelNode): Unit = {
     def substList(list: java.util.List[LabelNode]) = {
-      foreachWithIndex(list.asScala.toList) { case (l, i) =>
+      list.asScala.toList.zipWithIndex.foreach { case (l, i) =>
         if (l == from) list.set(i, to)
       }
     }
