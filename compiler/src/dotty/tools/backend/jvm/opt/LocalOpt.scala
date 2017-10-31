@@ -13,6 +13,8 @@ import scala.tools.asm.tree.analysis.{Analyzer, BasicValue, BasicInterpreter}
 import scala.tools.asm.tree._
 import scala.collection.convert.decorateAsScala._
 import scala.tools.nsc.backend.jvm.opt.BytecodeUtils._
+import dotty.tools.dotc.core.Contexts.Context
+
 // import scala.tools.nsc.settings.ScalaSettings
 
 /**
@@ -46,7 +48,7 @@ import scala.tools.nsc.backend.jvm.opt.BytecodeUtils._
  * stale labels
  *   - eliminate labels that are not referenced, merge sequences of label definitions.
  */
-class LocalOpt(/*settings: ScalaSettings*/) {
+class LocalOpt(implicit ctx: Context) {
   /**
    * Remove unreachable instructions from all (non-abstract) methods and apply various other
    * cleanups to the bytecode.
@@ -56,7 +58,7 @@ class LocalOpt(/*settings: ScalaSettings*/) {
    */
   def methodOptimizations(clazz: ClassNode): Boolean = {
     // settings.Yopt.value.nonEmpty
-    true && clazz.methods.asScala.foldLeft(false) {
+    ctx.settings.YbackendOpt.value && clazz.methods.asScala.foldLeft(false) {
       case (changed, method) => methodOptimizations(method, clazz.name) || changed
     }
   }
@@ -107,7 +109,7 @@ class LocalOpt(/*settings: ScalaSettings*/) {
     var codeHandlersOrJumpsChanged = false
     while (recurse) {
       // unreachable-code, empty-handlers and simplify-jumps run until reaching a fixpoint (see doc on class LocalOpt)
-      val (codeRemoved, handlersRemoved, liveHandlerRemoved) = if (true /*settings.YoptUnreachableCode*/) {
+      val (codeRemoved, handlersRemoved, liveHandlerRemoved) = if (ctx.settings.YbackendOpt.value) {
         val (codeRemoved, liveLabels) = removeUnreachableCodeImpl(method, ownerClassName)
         val removedHandlers = removeEmptyExceptionHandlers(method)
         (codeRemoved, removedHandlers.nonEmpty, removedHandlers.exists(h => liveLabels(h.start)))
@@ -115,23 +117,23 @@ class LocalOpt(/*settings: ScalaSettings*/) {
         (false, false, false)
       }
 
-      val jumpsChanged = if (true /*settings.YoptSimplifyJumps*/) simplifyJumps(method) else false
+      val jumpsChanged = if (ctx.settings.YbackendOpt.value) simplifyJumps(method) else false
 
       codeHandlersOrJumpsChanged ||= (codeRemoved || handlersRemoved || jumpsChanged)
 
       // The doc comment of class LocalOpt explains why we recurse if jumpsChanged || liveHandlerRemoved
-      recurse = /*settings.YoptRecurseUnreachableJumps &&*/ (jumpsChanged || liveHandlerRemoved)
+      recurse = ctx.settings.YbackendOpt.value && (jumpsChanged || liveHandlerRemoved)
     }
 
     // (*) Removing stale local variable descriptors is required for correctness of unreachable-code
     val localsRemoved =
-      if (true /*settings.YoptCompactLocals*/) compactLocalVariables(method)
-      else if (true /*settings.YoptUnreachableCode*/) removeUnusedLocalVariableNodes(method)() // (*)
+      if (ctx.settings.YbackendOpt.value) compactLocalVariables(method)
+      else if (ctx.settings.YbackendOpt.value) removeUnusedLocalVariableNodes(method)() // (*)
       else false
 
-    val lineNumbersRemoved = if (true /*settings.YoptEmptyLineNumbers*/) removeEmptyLineNumbers(method) else false
+    val lineNumbersRemoved = if (ctx.settings.YbackendOpt.value) removeEmptyLineNumbers(method) else false
 
-    val labelsRemoved = if (true /*settings.YoptEmptyLabels*/) removeEmptyLabelNodes(method) else false
+    val labelsRemoved = if (ctx.settings.YbackendOpt.value) removeEmptyLabelNodes(method) else false
 
     // assert that local variable annotations are empty (we don't emit them) - otherwise we'd have
     // to eliminate those covering an empty range, similar to removeUnusedLocalVariableNodes.

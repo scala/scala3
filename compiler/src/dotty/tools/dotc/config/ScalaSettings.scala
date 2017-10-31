@@ -110,7 +110,7 @@ class ScalaSettings extends Settings.SettingGroup {
   val YshowVarBounds = BooleanSetting("-Yshow-var-bounds", "Print type variables with their bounds")
   val YnoInline = BooleanSetting("-Yno-inline", "Suppress inlining.")
 
-  /** Linker specific flags */
+  val YbackendOpt = BooleanSetting("-Ybackend-opt", "Enable backend optimisations")
   val YoptPhases = PhasesSetting("-Yopt-phases", "Restrict the optimisation phases to execute under -optimise.")
   val YoptFuel = IntSetting("-Yopt-fuel", "Maximum number of optimisations performed under -optimise.", -1)
   val optimise = BooleanSetting("-optimise", "Generates faster bytecode by applying local optimisations to the .program") withAbbreviation "-optimize"
