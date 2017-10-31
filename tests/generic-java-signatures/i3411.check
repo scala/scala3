@@ -1,0 +1,1 @@
+public <U> float Foo$.foo(int,java.lang.String,long,boolean,U,java.lang.String,java.lang.Object)
