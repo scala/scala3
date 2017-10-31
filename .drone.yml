@@ -1,3 +1,10 @@
+clone:
+  custom:
+    image: plugins/git
+    commands:
+      - git clone https://github.com/lampepfl/dotty.git .
+      - git fetch $DRONE_COMMIT_REF
+      - git checkout $DRONE_COMMIT_SHA
 pipeline:
   # TESTS:
   # We run tests in parallel. Tests run in a copy of the working directory to avoid conflict
