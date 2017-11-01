@@ -7,3 +7,11 @@ object Main {
     }
   }
 }
+
+// #1612
+object Test {
+  def g(p:(Int,Int)) = p match {
+    case (10,n) | (n,10) => println(n) // error // error (Illegal variable in pattern alternative)
+    case _ => println("nope")
+  }
+}
