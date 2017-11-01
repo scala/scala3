@@ -2159,7 +2159,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
           if (resultMatch || ctx.mode.is(Mode.ImplicitsEnabled)) adaptNoArgsImplicitMethod(wtp)
           else {
             // Don't proceed with implicit search if result type cannot match - the search
-            // will likely by under-constrained, which means that an unbounded number of alternatives
+            // will likely be under-constrained, which means that an unbounded number of alternatives
             // is tried. See strawman-contrib MapDecoratorTest.scala for an example where this happens.
             err.typeMismatch(tree, pt)
           }
