@@ -2150,13 +2150,19 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
 
     def adaptNoArgs(wtp: Type): Tree = {
       val ptNorm = underlyingApplied(pt)
-      val functionExpected = defn.isFunctionType(ptNorm)
+      lazy val functionExpected = defn.isFunctionType(ptNorm)
+      lazy val resultMatch = constrainResult(wtp, followAlias(pt))
       wtp match {
         case wtp: ExprType =>
           adaptInterpolated(tree.withType(wtp.resultType), pt)
-        case wtp: MethodType
-        if wtp.isImplicitMethod && (constrainResult(wtp, followAlias(pt)) || !functionExpected) =>
-          adaptNoArgsImplicitMethod(wtp)
+        case wtp: MethodType if wtp.isImplicitMethod && (resultMatch || !functionExpected) =>
+          if (resultMatch || ctx.mode.is(Mode.ImplicitsEnabled)) adaptNoArgsImplicitMethod(wtp)
+          else {
+            // Don't proceed with implicit search if result type cannot match - the search
+            // will likely by under-constrained, which means that an unbounded number of alternatives
+            // is tried. See strawman-contrib MapDecoratorTest.scala for an example where this happens.
+            err.typeMismatch(tree, pt)
+          }
         case wtp: MethodType if !pt.isInstanceOf[SingletonType] =>
           val arity =
             if (functionExpected)
