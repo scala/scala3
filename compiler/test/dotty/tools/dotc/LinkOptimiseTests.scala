@@ -29,7 +29,7 @@ class LinkOptimiseTests extends ParallelTesting {
   @Test def linkOptimise: Unit = {
     // Setup and compile libraries
     def strawmanLibrary =
-      compileDir("../collection-strawman/src/main", defaultOptions)
+      compileDir("../collection-strawman/collections/src/main", defaultOptions)
     def linkCustomLib =
       compileDir("../tests/link/custom-lib", defaultOptions)
 
