@@ -369,14 +369,18 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
     case _ =>
       val cls2 = tp2.symbol
       if (cls2.isClass) {
-        val base = tp1.baseType(cls2)
-        if (base.exists) {
-          if (cls2.is(JavaDefined))
-            // If `cls2` is parameterized, we are seeing a raw type, so we need to compare only the symbol
-            return base.typeSymbol == cls2
-          if (base ne tp1) return isSubType(base, tp2)
+        if (cls2.typeParams.nonEmpty && tp1.isHK)
+          isSubType(tp1, EtaExpansion(cls2.typeRef))
+        else {
+          val base = tp1.baseType(cls2)
+          if (base.exists) {
+            if (cls2.is(JavaDefined))
+              // If `cls2` is parameterized, we are seeing a raw type, so we need to compare only the symbol
+              return base.typeSymbol == cls2
+            if (base ne tp1) return isSubType(base, tp2)
+          }
+          if (cls2 == defn.SingletonClass && tp1.isStable) return true
         }
-        if (cls2 == defn.SingletonClass && tp1.isStable) return true
       }
       fourthTry(tp1, tp2)
   }
