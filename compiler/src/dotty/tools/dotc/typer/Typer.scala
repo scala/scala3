@@ -1548,17 +1548,21 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
   def typedAsFunction(tree: untpd.PostfixOp, pt: Type)(implicit ctx: Context): Tree = {
     val untpd.PostfixOp(qual, Ident(nme.WILDCARD)) = tree
     val pt1 = if (defn.isFunctionType(pt)) pt else AnyFunctionProto
-    var res = typed(qual, pt1)
-    if (pt1.eq(AnyFunctionProto) && !defn.isFunctionClass(res.tpe.classSymbol)) {
-      ctx.errorOrMigrationWarning(OnlyFunctionsCanBeFollowedByUnderscore(res.tpe), tree.pos)
-      if (ctx.scala2Mode) {
-        // Under -rewrite, patch `x _` to `(() => x)`
-        patch(Position(tree.pos.start), "(() => ")
-        patch(Position(qual.pos.end, tree.pos.end), ")")
-        res = typed(untpd.Function(Nil, untpd.TypedSplice(res)))
-      }
+    val nestedCtx = ctx.fresh.setNewTyperState()
+    val res = typed(qual, pt1)(nestedCtx)
+    res match {
+      case res @ closure(_, _, _) =>
+      case _ =>
+        ctx.errorOrMigrationWarning(OnlyFunctionsCanBeFollowedByUnderscore(res.tpe), tree.pos)
+        if (ctx.scala2Mode) {
+          // Under -rewrite, patch `x _` to `(() => x)`
+          patch(Position(tree.pos.start), "(() => ")
+          patch(Position(qual.pos.end, tree.pos.end), ")")
+          return typed(untpd.Function(Nil, qual), pt)
+        }
     }
-    else if (ctx.settings.strict.value) {
+    nestedCtx.typerState.commit()
+    if (ctx.settings.strict.value) {
       lazy val (prefix, suffix) = res match {
         case Block(mdef @ DefDef(_, _, vparams :: Nil, _, _) :: Nil, _: Closure) =>
           val arity = vparams.length
