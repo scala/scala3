@@ -13,16 +13,14 @@ pipeline:
     image: lampepfl/dotty:2017-10-20
     commands:
       - cp -R . /tmp/1/ && cd /tmp/1/
-      - ./project/scripts/sbt testAll
-      - ./project/scripts/sbt ";dotty-bench/jmh:run 1 1 tests/run/arrays.scala"
+      - ./project/scripts/sbt ";compile ;testAll ;dotty-bench/jmh:run 1 1 tests/run/arrays.scala"
 
   test_bootstrapped:
     group: test
     image: lampepfl/dotty:2017-10-20
     commands:
       - cp -R . /tmp/2/ && cd /tmp/2/
-      - ./project/scripts/sbt dotty-bootstrapped/testAll
-      - ./project/scripts/sbt ";dotty-bench-bootstrapped/jmh:run 1 1 tests/run/arrays.scala"
+      - ./project/scripts/sbt ";dotty-bootstrapped/compile ;dotty-bootstrapped/testAll ;dotty-bench-bootstrapped/jmh:run 1 1 tests/run/arrays.scala"
 
   test_optimised:
     group: test
