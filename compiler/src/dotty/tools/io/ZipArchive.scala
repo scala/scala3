@@ -7,6 +7,7 @@ package dotty.tools.io
 
 import java.net.URL
 import java.io.{ IOException, InputStream, ByteArrayInputStream, FilterInputStream }
+import java.nio.file.Files
 import java.util.zip.{ ZipEntry, ZipFile, ZipInputStream }
 import java.util.jar.Manifest
 import scala.collection.mutable
@@ -32,7 +33,7 @@ object ZipArchive {
    */
   def fromFile(file: File): FileZipArchive = fromFile(file.jfile)
   def fromFile(file: JFile): FileZipArchive =
-    try   { new FileZipArchive(file) }
+    try   { new FileZipArchive(file.toPath) }
     catch { case _: IOException => null }
 
   def fromManifestURL(url: URL): AbstractFile = new ManifestResources(url)
@@ -112,7 +113,7 @@ abstract class ZipArchive(override val jpath: JPath) extends AbstractFile with E
   }
 }
 /** ''Note:  This library is considered experimental and should not be used unless you know what you are doing.'' */
-final class FileZipArchive(file: JFile) extends ZipArchive(file.toPath) {
+final class FileZipArchive(jpath: JPath) extends ZipArchive(jpath) {
   private[this] def openZipFile(): ZipFile = try {
     new ZipFile(file)
   } catch {
@@ -182,16 +183,16 @@ final class FileZipArchive(file: JFile) extends ZipArchive(file.toPath) {
 
   def iterator: Iterator[Entry] = root.iterator
 
-  def name         = file.getName
-  def path         = file.getPath
-  def input        = File(file).inputStream()
-  def lastModified = file.lastModified
+  def name         = jpath.getFileName.toString
+  def path         = jpath.toString
+  def input        = Files.newInputStream(jpath)
+  def lastModified = Files.getLastModifiedTime(jpath).toMillis
 
-  override def sizeOption = Some(file.length.toInt)
+  override def sizeOption = Some(Files.size(jpath).toInt)
   override def canEqual(other: Any) = other.isInstanceOf[FileZipArchive]
-  override def hashCode() = file.hashCode
+  override def hashCode() = jpath.hashCode
   override def equals(that: Any) = that match {
-    case x: FileZipArchive => file.getAbsoluteFile == x.file.getAbsoluteFile
+    case x: FileZipArchive => jpath.toAbsolutePath == x.jpath.toAbsolutePath
     case _                 => false
   }
 }

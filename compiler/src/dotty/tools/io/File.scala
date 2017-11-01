@@ -46,7 +46,7 @@ class File(jpath: JPath)(implicit constructorCodec: Codec) extends Path(jpath) w
 
   override def addExtension(ext: String): File = super.addExtension(ext).toFile
   override def toAbsolute: File = if (isAbsolute) this else super.toAbsolute.toFile
-  override def toDirectory: Directory = new Directory(jfile.toPath)
+  override def toDirectory: Directory = new Directory(jpath)
   override def toFile: File = this
   override def normalize: File = super.normalize.toFile
   override def length = super[Path].length

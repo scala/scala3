@@ -7,7 +7,7 @@ package dotty.tools.io
 
 import scala.language.implicitConversions
 import java.io.RandomAccessFile
-import java.nio.file.{DirectoryNotEmptyException, FileAlreadyExistsException, Files, NoSuchFileException}
+import java.nio.file.{DirectoryNotEmptyException, FileAlreadyExistsException, Files, NoSuchFileException, Paths}
 import java.net.{URI, URL}
 
 import scala.util.Random.alphanumeric
@@ -45,20 +45,20 @@ object Path {
 
   // not certain these won't be problematic, but looks good so far
   implicit def string2path(s: String): Path = apply(s)
-  implicit def jfile2path(jfile: JFile): Path = apply(jfile)
+  implicit def jfile2path(jfile: JFile): Path = apply(jfile.toPath)
 
   def onlyDirs(xs: Iterator[Path]): Iterator[Directory] = xs filter (_.isDirectory) map (_.toDirectory)
   def onlyDirs(xs: List[Path]): List[Directory] = xs filter (_.isDirectory) map (_.toDirectory)
   def onlyFiles(xs: Iterator[Path]): Iterator[File] = xs filter (_.isFile) map (_.toFile)
 
-  def roots: List[Path] = java.io.File.listRoots().toList map Path.apply
+  def roots: List[Path] = java.io.File.listRoots().toList.map(r => Path.apply(r.toPath))
 
-  def apply(path: String): Path = apply(new JFile(path))
-  def apply(jfile: JFile): Path = try {
-    if (jfile.isFile) new File(jfile.toPath)
-    else if (jfile.isDirectory) new Directory(jfile.toPath)
-    else new Path(jfile.toPath)
-  } catch { case ex: SecurityException => new Path(jfile.toPath) }
+  def apply(path: String): Path = apply(Paths.get(path))
+  def apply(jpath: JPath): Path = try {
+    if (Files.isRegularFile(jpath)) new File(jpath)
+    else if (Files.isDirectory(jpath)) new Directory(jpath)
+    else new Path(jpath)
+  } catch { case ex: SecurityException => new Path(jpath) }
 
   /** Avoiding any shell/path issues by only using alphanumerics. */
   private[io] def randomPrefix = alphanumeric take 6 mkString ""
@@ -149,7 +149,7 @@ class Path private[io] (val jpath: JPath) {
           if (isAbsolute) toDirectory // it should be a root. BTW, don't need to worry about relative pathed root
           else Directory(".")         // a dir under pwd
         case x    =>
-          Directory(x.toFile)
+          Directory(x)
       }
   }
   def parents: List[Directory] = {
@@ -213,6 +213,7 @@ class Path private[io] (val jpath: JPath) {
   }
   def createFile(failIfExists: Boolean = false): File = {
     val res = tryCreate(Files.createFile(jpath))
+    jfile.createNewFile()
     if (!res && failIfExists && exists) fail("File '%s' already exists." format name)
     else if (isFile) toFile
     else new File(jpath)
@@ -236,7 +237,7 @@ class Path private[io] (val jpath: JPath) {
   }
 
   private def delete(path: JPath): Boolean =
-    try { Files.delete(path); true } catch { case _: DirectoryNotEmptyException | _: NoSuchFileException => false }
+    try { Files.deleteIfExists(path); true } catch { case _: DirectoryNotEmptyException => false }
 
   def truncate() =
     isFile && {

@@ -95,7 +95,7 @@ abstract class AbstractFile extends Iterable[AbstractFile] {
   def path: String
 
   /** Returns the path of this abstract file in a canonical form. */
-  def canonicalPath: String = if (jpath == null) path else jpath.toFile.getCanonicalPath
+  def canonicalPath: String = if (jpath == null) path else jpath.normalize.toString
 
   /** Checks extension case insensitively. */
   def hasExtension(other: String) = extension == other.toLowerCase
@@ -241,13 +241,10 @@ abstract class AbstractFile extends Iterable[AbstractFile] {
     val lookup = lookupName(name, isDir)
     if (lookup != null) lookup
     else {
+      Files.createDirectories(jpath)
       val path = jpath.resolve(name)
-      try {
-        if (isDir) Files.createDirectories(path)
-        else Files.createFile(path)
-      } catch {
-        case _: FileAlreadyExistsException =>
-      }
+      if (isDir) Files.createDirectory(path)
+      else Files.createFile(path)
       new PlainNioFile(path)
     }
   }

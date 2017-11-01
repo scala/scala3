@@ -45,13 +45,13 @@ class ExtractAPI extends Phase {
     val dumpInc = ctx.settings.YdumpSbtInc.value
     val forceRun = dumpInc || ctx.settings.YforceSbtPhases.value
     if ((ctx.sbtCallback != null || forceRun) && !unit.isJava) {
-      val sourceFile = unit.source.file.file
+      val sourceFile = unit.source.file
       val apiTraverser = new ExtractAPICollector
       val source = apiTraverser.apiSource(unit.tpdTree)
 
       if (dumpInc) {
         // Append to existing file that should have been created by ExtractDependencies
-        val pw = new PrintWriter(Path(sourceFile).changeExtension("inc").toFile
+        val pw = new PrintWriter(Path(sourceFile.jpath).changeExtension("inc").toFile
           .bufferedWriter(append = true), true)
         try {
           pw.println(DefaultShowAPI(source))
@@ -59,7 +59,7 @@ class ExtractAPI extends Phase {
       }
 
       if (ctx.sbtCallback != null)
-        ctx.sbtCallback.api(sourceFile, source)
+        ctx.sbtCallback.api(sourceFile.file, source)
     }
   }
 }

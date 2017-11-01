@@ -8,6 +8,11 @@
 
 package dotty.tools.io
 
+import java.nio.file.Files
+import java.util.stream.Collectors
+
+import scala.collection.JavaConverters._
+
 /**
  * ''Note:  This library is considered experimental and should not be used unless you know what you are doing.''
  */
@@ -18,6 +23,7 @@ object Directory {
   def Current: Option[Directory]  = if (userDir == "") None else normalizePath(userDir)
 
   def apply(path: Path): Directory = path.toDirectory
+  def apply(jpath: JPath): Directory = new Directory(jpath)
 
   // Like File.makeTemp but creates a directory instead
   def makeTemp(prefix: String = Path.randomPrefix, suffix: String = null, dir: JFile = null): Directory = {
@@ -42,11 +48,13 @@ class Directory(jpath: JPath) extends Path(jpath) {
 
   /** An iterator over the contents of this directory.
    */
-  def list: Iterator[Path] =
-    jfile.listFiles match {
-      case null   => Iterator.empty
-      case xs     => xs.iterator map Path.apply
+  def list: Iterator[Path] = {
+    try {
+      Files.list(jpath).toArray[JPath](n => new Array(n)).iterator.map(Path.apply)
+    } catch {
+      case _: java.nio.file.NoSuchFileException => Iterator.empty
     }
+  }
 
   def dirs: Iterator[Directory] = list collect { case x: Directory => x }
   def files: Iterator[File] = list collect { case x: File => x }

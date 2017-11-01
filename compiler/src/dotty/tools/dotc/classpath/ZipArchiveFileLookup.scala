@@ -23,7 +23,7 @@ trait ZipArchiveFileLookup[FileEntryType <: ClassRepresentation] extends ClassPa
   override def asURLs: Seq[URL] = Seq(zipFile.toURI.toURL)
   override def asClassPathStrings: Seq[String] = Seq(zipFile.getPath)
 
-  private val archive = new FileZipArchive(zipFile)
+  private val archive = new FileZipArchive(zipFile.toPath)
 
   override private[dotty] def packages(inPackage: String): Seq[PackageEntry] = {
     val prefix = PackageNameUtils.packagePrefix(inPackage)

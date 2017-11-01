@@ -6,6 +6,8 @@
 package dotty.tools
 package io
 
+import java.nio.file.{Files, NotDirectoryException}
+
 /** ''Note:  This library is considered experimental and should not be used unless you know what you are doing.'' */
 class PlainDirectory(givenPath: Directory) extends PlainFile(givenPath) {
   override def isDirectory = true
@@ -35,8 +37,8 @@ class PlainFile(val givenPath: Path) extends AbstractFile {
   def absolute = new PlainFile(givenPath.toAbsolute)
 
   override def container: AbstractFile = new PlainFile(givenPath.parent)
-  override def input = givenPath.toFile.inputStream()
-  override def output = givenPath.toFile.outputStream()
+  override def input = Files.newInputStream(jpath)
+  override def output = Files.newOutputStream(jpath)
   override def sizeOption = Some(givenPath.length.toInt)
 
   override def hashCode(): Int = fpath.hashCode()
@@ -53,14 +55,13 @@ class PlainFile(val givenPath: Path) extends AbstractFile {
 
   /** Returns all abstract subfiles of this abstract directory. */
   def iterator: Iterator[AbstractFile] = {
-    // Optimization: Assume that the file was not deleted and did not have permissions changed
-    // between the call to `list` and the iteration. This saves a call to `exists`.
-    def existsFast(path: Path) = path match {
-      case (_: Directory | _: io.File) => true
-      case _                           => path.exists
+    try {
+      import scala.collection.JavaConverters._
+      val it = Files.newDirectoryStream(jpath).iterator()
+      it.asScala.map(new PlainNioFile(_))
+    } catch {
+      case _: NotDirectoryException => Iterator.empty
     }
-    if (!isDirectory) Iterator.empty
-    else givenPath.toDirectory.list filter existsFast map (new PlainFile(_))
   }
 
   /**
@@ -91,7 +92,6 @@ class PlainFile(val givenPath: Path) extends AbstractFile {
 }
 
 private[dotty] class PlainNioFile(nioPath: java.nio.file.Path) extends AbstractFile {
-  import java.nio.file._
 
   assert(nioPath ne null)
 
