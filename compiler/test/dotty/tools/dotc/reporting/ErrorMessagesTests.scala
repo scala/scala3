@@ -1108,4 +1108,27 @@ class ErrorMessagesTests extends ErrorMessagesTest {
       assertEquals("A", n1.show)
       assertEquals("B", n2.show)
     }
+
+  @Test def undefinedNamedTypeArgument =
+    checkMessagesAfter("frontend") {
+      """
+        |object Test {
+        |  def f[A, B]() = ???
+        |  f[A=Any, C=Any]()
+        |  f[C=Any, B=Any]()
+        |}
+        |
+      """.stripMargin
+    }
+      .expect { (ictx, messages) =>
+        implicit val ctx: Context = ictx
+
+        assertMessageCount(2, messages)
+        val UndefinedNamedTypeArgument(n2, l2) :: UndefinedNamedTypeArgument(n1, l1) :: Nil = messages
+        assertEquals("C", n1.show)
+        assertEquals("A"::"B"::Nil, l1.map(_.show))
+        assertEquals("C", n2.show)
+        assertEquals("A"::"B"::Nil, l2.map(_.show))
+
+      }
 }

@@ -1872,4 +1872,11 @@ object messages {
     val msg = hl"Type parameter $name was defined multiple times."
     val explanation = ""
   }
+
+  case class UndefinedNamedTypeArgument(undefinedName: Name, definedNames: List[Name])(implicit ctx: Context)
+    extends Message(UndefinedNamedTypeArgumentID) {
+    val kind = "Syntax"
+    val msg = hl"The type parameter $undefinedName is undefined. Expected one of ${definedNames.mkString(",")}."
+    val explanation = ""
+  }
 }
