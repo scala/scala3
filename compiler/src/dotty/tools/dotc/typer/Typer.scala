@@ -1211,12 +1211,14 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
             typed(untpd.Bind(tree.name, untpd.TypedSplice(arg)).withPos(tree.pos), arg.tpe) :: Nil)
       case _ =>
         val sym = newPatternBoundSym(tree.name, body1.tpe, tree.pos)
+        if (ctx.mode.is(Mode.InPatternAlternative)) ctx.error("Illegal variable in pattern alternative", tree.pos)
         assignType(cpy.Bind(tree)(tree.name, body1), sym)
     }
   }
 
   def typedAlternative(tree: untpd.Alternative, pt: Type)(implicit ctx: Context): Alternative = track("typedAlternative") {
-    val trees1 = tree.trees mapconserve (typed(_, pt))
+    val nestedCtx = ctx.addMode(Mode.InPatternAlternative)
+    val trees1 = tree.trees.mapconserve(typed(_, pt)(nestedCtx))
     assignType(cpy.Alternative(tree)(trees1), trees1)
   }
 
@@ -1754,7 +1756,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
         Inliner.removeInlineAccessors(mdef.symbol)
 
   def typedExpr(tree: untpd.Tree, pt: Type = WildcardType)(implicit ctx: Context): Tree =
-    typed(tree, pt)(ctx retractMode Mode.PatternOrType)
+    typed(tree, pt)(ctx retractMode Mode.PatternOrTypeBits)
   def typedType(tree: untpd.Tree, pt: Type = WildcardType)(implicit ctx: Context): Tree = // todo: retract mode between Type and Pattern?
     typed(tree, pt)(ctx addMode Mode.Type)
   def typedPattern(tree: untpd.Tree, selType: Type = WildcardType)(implicit ctx: Context): Tree =
