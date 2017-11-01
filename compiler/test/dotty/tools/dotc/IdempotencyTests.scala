@@ -32,7 +32,7 @@ class IdempotencyTests extends ParallelTesting {
 
     def sourcesFrom(dir: Path) = CompilationTests.sources(Files.walk(dir))
 
-    val strawmanSources = sourcesFrom(Paths.get("../collection-strawman/src/main"))
+    val strawmanSources = sourcesFrom(Paths.get("../collection-strawman/collections/src/main"))
     val strawmanSourcesSorted = strawmanSources.sorted
     val strawmanSourcesRevSorted = strawmanSourcesSorted.reverse
 
