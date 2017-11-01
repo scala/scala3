@@ -1876,7 +1876,7 @@ object messages {
   case class UndefinedNamedTypeArgument(undefinedName: Name, definedNames: List[Name])(implicit ctx: Context)
     extends Message(UndefinedNamedTypeArgumentID) {
     val kind = "Syntax"
-    val msg = hl"The type parameter $undefinedName is undefined. Expected one of ${definedNames.mkString(",")}."
+    val msg = hl"The type parameter $undefinedName is undefined. Expected one of ${definedNames.mkString(", ")}."
     val explanation = ""
   }
 }
