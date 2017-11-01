@@ -1865,4 +1865,11 @@ object messages {
           |Excluded from this rule are methods that are defined in Java or that override methods defined in Java."""
     }
   }
+
+  case class DuplicateNamedTypeArgument(name: Name)(implicit ctx: Context)
+    extends Message(DuplicateNamedTypeArgumentID) {
+    val kind = "Syntax"
+    val msg = hl"Type parameter $name was defined multiple times."
+    val explanation = ""
+  }
 }
