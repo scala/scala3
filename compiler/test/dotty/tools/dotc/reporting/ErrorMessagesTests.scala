@@ -1088,4 +1088,24 @@ class ErrorMessagesTests extends ErrorMessagesTest {
       val MissingEmptyArgumentList(method) :: Nil = messages
       assertEquals("method greet", method.show)
     }
+
+  @Test def duplicateNamedTypeArgument =
+    checkMessagesAfter("frontend") {
+      """
+        |object Test {
+        |  def f[A, B]() = ???
+        |  f[A=Any, A=Any]()
+        |  f[B=Any, B=Any]()
+        |}
+        |
+      """.stripMargin
+    }
+    .expect { (ictx, messages) =>
+      implicit val ctx: Context = ictx
+
+      assertMessageCount(2, messages)
+      val DuplicateNamedTypeArgument(n2) :: DuplicateNamedTypeArgument(n1) :: Nil = messages
+      assertEquals("A", n1.show)
+      assertEquals("B", n2.show)
+    }
 }
