@@ -1210,9 +1210,13 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
         tpd.cpy.UnApply(body1)(fn, Nil,
             typed(untpd.Bind(tree.name, untpd.TypedSplice(arg)).withPos(tree.pos), arg.tpe) :: Nil)
       case _ =>
-        val sym = newPatternBoundSym(tree.name, body1.tpe, tree.pos)
-        if (ctx.mode.is(Mode.InPatternAlternative)) ctx.error("Illegal variable in pattern alternative", tree.pos)
-        assignType(cpy.Bind(tree)(tree.name, body1), sym)
+        if (tree.name == nme.WILDCARD) body1
+        else {
+          val sym = newPatternBoundSym(tree.name, body1.tpe, tree.pos)
+          if (ctx.mode.is(Mode.InPatternAlternative))
+            ctx.error(i"Illegal variable ${sym.name} in pattern alternative", tree.pos)
+          assignType(cpy.Bind(tree)(tree.name, body1), sym)
+        }
     }
   }
 
