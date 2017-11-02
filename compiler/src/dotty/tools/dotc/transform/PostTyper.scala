@@ -14,7 +14,7 @@ import util.Positions._
 import Decorators._
 import config.Printers.typr
 import Symbols._, TypeUtils._, SymUtils._
-import reporting.diagnostic.messages.SuperCallsNotAllowedInline
+import reporting.diagnostic.messages.{NotAMember, SuperCallsNotAllowedInline}
 
 /** A macro transform that runs immediately after typer and that performs the following functions:
  *
@@ -272,7 +272,7 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
           def checkIdent(ident: untpd.Ident): Unit = {
             val name = ident.name.asTermName
             if (name != nme.WILDCARD && !exprTpe.member(name).exists && !exprTpe.member(name.toTypeName).exists)
-              ctx.error(s"${ident.name} is not a member of ${expr.show}", ident.pos)
+              ctx.error(NotAMember(exprTpe, name, "value"), ident.pos)
           }
           selectors.foreach {
             case ident: untpd.Ident                 => checkIdent(ident)
