@@ -371,9 +371,9 @@ trait TypeAssigner {
           val namedArgMap = new mutable.HashMap[Name, Type]
           for (NamedArg(name, arg) <- args)
             if (namedArgMap.contains(name))
-              ctx.error("duplicate name", arg.pos)
+              ctx.error(DuplicateNamedTypeParameter(name), arg.pos)
             else if (!paramNames.contains(name))
-              ctx.error(s"undefined parameter name, required: ${paramNames.mkString(" or ")}", arg.pos)
+              ctx.error(UndefinedNamedTypeParameter(name, paramNames), arg.pos)
             else
               namedArgMap(name) = preCheckKind(arg, paramBoundsByName(name.asTypeName)).tpe
 

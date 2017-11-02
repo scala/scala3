@@ -107,7 +107,9 @@ public enum ErrorMessageID {
     TailrecNotApplicableID,
     FailureToEliminateExistentialID,
     OnlyFunctionsCanBeFollowedByUnderscoreID,
-    MissingEmptyArgumentListID
+    MissingEmptyArgumentListID,
+    DuplicateNamedTypeParameterID,
+    UndefinedNamedTypeParameterID
     ;
 
     public int errorNumber() {

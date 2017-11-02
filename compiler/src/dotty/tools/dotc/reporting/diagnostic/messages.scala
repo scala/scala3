@@ -1865,4 +1865,18 @@ object messages {
           |Excluded from this rule are methods that are defined in Java or that override methods defined in Java."""
     }
   }
+
+  case class DuplicateNamedTypeParameter(name: Name)(implicit ctx: Context)
+    extends Message(DuplicateNamedTypeParameterID) {
+    val kind = "Syntax"
+    val msg = hl"Type parameter $name was defined multiple times."
+    val explanation = ""
+  }
+
+  case class UndefinedNamedTypeParameter(undefinedName: Name, definedNames: List[Name])(implicit ctx: Context)
+    extends Message(UndefinedNamedTypeParameterID) {
+    val kind = "Syntax"
+    val msg = hl"Type parameter $undefinedName is undefined. Expected one of ${definedNames.map(_.show).mkString(", ")}."
+    val explanation = ""
+  }
 }

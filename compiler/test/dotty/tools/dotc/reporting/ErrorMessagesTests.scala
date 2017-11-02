@@ -1088,4 +1088,48 @@ class ErrorMessagesTests extends ErrorMessagesTest {
       val MissingEmptyArgumentList(method) :: Nil = messages
       assertEquals("method greet", method.show)
     }
+
+  @Test def duplicateNamedTypeParameter =
+    checkMessagesAfter("frontend") {
+      """
+        |object Test {
+        |  def f[A, B]() = ???
+        |  f[A=Any, A=Any]()
+        |  f[B=Any, B=Any]()
+        |}
+        |
+      """.stripMargin
+    }
+    .expect { (ictx, messages) =>
+      implicit val ctx: Context = ictx
+
+      assertMessageCount(2, messages)
+      val DuplicateNamedTypeParameter(n2) :: DuplicateNamedTypeParameter(n1) :: Nil = messages
+      assertEquals("A", n1.show)
+      assertEquals("B", n2.show)
+    }
+
+  @Test def undefinedNamedTypeParameter =
+    checkMessagesAfter("frontend") {
+      """
+        |object Test {
+        |  def f[A, B]() = ???
+        |  f[A=Any, C=Any]()
+        |  f[C=Any, B=Any]()
+        |}
+        |
+      """.stripMargin
+    }
+      .expect { (ictx, messages) =>
+        implicit val ctx: Context = ictx
+
+        assertMessageCount(2, messages)
+        val UndefinedNamedTypeParameter(n2, l2) :: UndefinedNamedTypeParameter(n1, l1) :: Nil = messages
+        val tpParams = List("A", "B")
+        assertEquals("C", n1.show)
+        assertEquals(tpParams, l1.map(_.show))
+        assertEquals("C", n2.show)
+        assertEquals(tpParams, l2.map(_.show))
+
+      }
 }
