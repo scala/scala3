@@ -1089,7 +1089,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
       assertEquals("method greet", method.show)
     }
 
-  @Test def duplicateNamedTypeArgument =
+  @Test def duplicateNamedTypeParameter =
     checkMessagesAfter("frontend") {
       """
         |object Test {
@@ -1104,12 +1104,12 @@ class ErrorMessagesTests extends ErrorMessagesTest {
       implicit val ctx: Context = ictx
 
       assertMessageCount(2, messages)
-      val DuplicateNamedTypeArgument(n2) :: DuplicateNamedTypeArgument(n1) :: Nil = messages
+      val DuplicateNamedTypeParameter(n2) :: DuplicateNamedTypeParameter(n1) :: Nil = messages
       assertEquals("A", n1.show)
       assertEquals("B", n2.show)
     }
 
-  @Test def undefinedNamedTypeArgument =
+  @Test def undefinedNamedTypeParameter =
     checkMessagesAfter("frontend") {
       """
         |object Test {
@@ -1124,11 +1124,12 @@ class ErrorMessagesTests extends ErrorMessagesTest {
         implicit val ctx: Context = ictx
 
         assertMessageCount(2, messages)
-        val UndefinedNamedTypeArgument(n2, l2) :: UndefinedNamedTypeArgument(n1, l1) :: Nil = messages
+        val UndefinedNamedTypeParameter(n2, l2) :: UndefinedNamedTypeParameter(n1, l1) :: Nil = messages
+        val tpParams = List("A", "B")
         assertEquals("C", n1.show)
-        assertEquals("A"::"B"::Nil, l1.map(_.show))
+        assertEquals(tpParams, l1.map(_.show))
         assertEquals("C", n2.show)
-        assertEquals("A"::"B"::Nil, l2.map(_.show))
+        assertEquals(tpParams, l2.map(_.show))
 
       }
 }

@@ -1866,17 +1866,17 @@ object messages {
     }
   }
 
-  case class DuplicateNamedTypeArgument(name: Name)(implicit ctx: Context)
-    extends Message(DuplicateNamedTypeArgumentID) {
+  case class DuplicateNamedTypeParameter(name: Name)(implicit ctx: Context)
+    extends Message(DuplicateNamedTypeParameterID) {
     val kind = "Syntax"
     val msg = hl"Type parameter $name was defined multiple times."
     val explanation = ""
   }
 
-  case class UndefinedNamedTypeArgument(undefinedName: Name, definedNames: List[Name])(implicit ctx: Context)
-    extends Message(UndefinedNamedTypeArgumentID) {
+  case class UndefinedNamedTypeParameter(undefinedName: Name, definedNames: List[Name])(implicit ctx: Context)
+    extends Message(UndefinedNamedTypeParameterID) {
     val kind = "Syntax"
-    val msg = hl"Type parameter $undefinedName is undefined. Expected one of ${definedNames.mkString(", ")}."
+    val msg = hl"Type parameter $undefinedName is undefined. Expected one of ${definedNames.map(_.show).mkString(", ")}."
     val explanation = ""
   }
 }

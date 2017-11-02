@@ -108,8 +108,8 @@ public enum ErrorMessageID {
     FailureToEliminateExistentialID,
     OnlyFunctionsCanBeFollowedByUnderscoreID,
     MissingEmptyArgumentListID,
-    DuplicateNamedTypeArgumentID,
-    UndefinedNamedTypeArgumentID
+    DuplicateNamedTypeParameterID,
+    UndefinedNamedTypeParameterID
     ;
 
     public int errorNumber() {
