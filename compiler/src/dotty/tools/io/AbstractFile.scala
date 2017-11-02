@@ -245,7 +245,7 @@ abstract class AbstractFile extends Iterable[AbstractFile] {
       val path = jpath.resolve(name)
       if (isDir) Files.createDirectory(path)
       else Files.createFile(path)
-      new PlainNioFile(path)
+      new PlainFile(new File(path))
     }
   }
 

@@ -3,14 +3,14 @@
  */
 package dotty.tools.dotc.classpath
 
-import java.io.File
+import java.io.File // TODO rename to JFile for consistency
 import java.net.{URI, URL}
 import java.nio.file.{FileSystems, Files, SimpleFileVisitor}
 import java.util.function.IntFunction
 import java.util
 import java.util.Comparator
 
-import dotty.tools.io.{AbstractFile, PlainFile, ClassPath, ClassRepresentation, PlainNioFile}
+import dotty.tools.io.{AbstractFile, PlainFile, ClassPath, ClassRepresentation}
 import FileUtils._
 import scala.collection.JavaConverters._
 
@@ -178,7 +178,7 @@ final class JrtClassPath(fs: java.nio.file.FileSystem) extends ClassPath with No
     else {
       packageToModuleBases.getOrElse(inPackage, Nil).flatMap(x =>
         Files.list(x.resolve(inPackage.replace('.', '/'))).iterator().asScala.filter(_.getFileName.toString.endsWith(".class"))).map(x =>
-        ClassFileEntryImpl(new PlainNioFile(x))).toVector
+        ClassFileEntryImpl(new PlainFile(new dotty.tools.io.File(x)))).toVector
     }
   }
 
@@ -197,7 +197,7 @@ final class JrtClassPath(fs: java.nio.file.FileSystem) extends ClassPath with No
       val inPackage = packageOf(className)
       packageToModuleBases.getOrElse(inPackage, Nil).iterator.flatMap{x =>
         val file = x.resolve(className.replace('.', '/') + ".class")
-        if (Files.exists(file)) new PlainNioFile(file) :: Nil else Nil
+        if (Files.exists(file)) new PlainFile(new dotty.tools.io.File(file)) :: Nil else Nil
       }.take(1).toList.headOption
     }
   }
