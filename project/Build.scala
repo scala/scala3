@@ -521,34 +521,9 @@ object Build {
           s"""$java -classpath .:$dottyLib:$scalaLib ${args.mkString(" ")}""".!
         }
       },
-      run := Def.inputTaskDyn {
-        val dottyLib = packageAll.value("dotty-library")
-        val args: Seq[String] = spaceDelimited("<arg>").parsed
-
-        val fullArgs = args.span(_ != "-classpath") match {
-          case (beforeCp, "-classpath" :: cp :: rest) => beforeCp ++ List("-classpath", cp + ":" + dottyLib) ++ rest
-          case (beforeCp, _) => beforeCp ++ List("-classpath", dottyLib)
-        }
-
-        (runMain in Compile).toTask(
-          s" dotty.tools.dotc.Main " + fullArgs.mkString(" ")
-        )
-      }.evaluated,
-      dotc := run.evaluated,
-
-      repl := Def.inputTaskDyn {
-        val dottyLib = packageAll.value("dotty-library")
-        val args: Seq[String] = spaceDelimited("<arg>").parsed
-
-        val fullArgs = args.span(_ != "-classpath") match {
-          case (beforeCp, "-classpath" :: cp :: rest) => beforeCp ++ List("-classpath", cp + ":" + dottyLib) ++ rest
-          case (beforeCp, _) => beforeCp ++ List("-classpath", dottyLib)
-        }
-
-        (runMain in Compile).toTask(
-          s" dotty.tools.repl.Main " + fullArgs.mkString(" ")
-        )
-      }.evaluated,
+      run := dotc.evaluated,
+      dotc := dotDynTask("dotty.tools.dotc.Main").evaluated,
+      repl := dotDynTask("dotty.tools.repl.Main").evaluated,
 
       // enable verbose exception messages for JUnit
       testOptions in Test += Tests.Argument(
@@ -641,6 +616,20 @@ object Build {
         jars ::: tuning ::: agentOptions ::: ci_build ::: path.toList
       }
   )
+
+  def dotDynTask(main: String) = Def.inputTaskDyn {
+    val dottyLib = packageAll.value("dotty-library")
+    val args: Seq[String] = spaceDelimited("<arg>").parsed
+
+    val fullArgs = main +: {
+      args.span(_ != "-classpath") match {
+        case (beforeCp, "-classpath" :: cp :: rest) => beforeCp ++ List("-classpath", cp + ":" + dottyLib) ++ rest
+        case (beforeCp, _) => beforeCp ++ List("-classpath", dottyLib)
+      }
+    }
+
+    (runMain in Compile).toTask(fullArgs.mkString(" ", " ", ""))
+  }
 
   lazy val nonBootstrapedDottyCompilerSettings = commonDottyCompilerSettings ++ Seq(
     // Disable scaladoc generation, it's way too slow and we'll replace it
