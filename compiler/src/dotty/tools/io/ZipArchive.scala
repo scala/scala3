@@ -32,9 +32,7 @@ object ZipArchive {
    * @return  A ZipArchive if `file` is a readable zip file, otherwise null.
    */
   def fromFile(file: File): FileZipArchive = fromPath(file.jpath)
-  def fromPath(jpath: JPath): FileZipArchive =
-    try   { new FileZipArchive(jpath) }
-    catch { case _: IOException => null }
+  def fromPath(jpath: JPath): FileZipArchive = new FileZipArchive(jpath)
 
   def fromManifestURL(url: URL): AbstractFile = new ManifestResources(url)
 
