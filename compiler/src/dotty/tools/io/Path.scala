@@ -7,8 +7,12 @@ package dotty.tools.io
 
 import scala.language.implicitConversions
 import java.io.RandomAccessFile
-import java.nio.file.{DirectoryNotEmptyException, FileAlreadyExistsException, Files, NoSuchFileException, Paths}
+import java.nio.file._
 import java.net.{URI, URL}
+import java.nio.file.attribute.BasicFileAttributes
+import java.io.IOException
+
+import scala.collection.JavaConverters._
 
 import scala.util.Random.alphanumeric
 
@@ -51,7 +55,7 @@ object Path {
   def onlyDirs(xs: List[Path]): List[Directory] = xs filter (_.isDirectory) map (_.toDirectory)
   def onlyFiles(xs: Iterator[Path]): Iterator[File] = xs filter (_.isFile) map (_.toFile)
 
-  def roots: List[Path] = java.io.File.listRoots().toList.map(r => Path.apply(r.toPath))
+  def roots: List[Path] = FileSystems.getDefault.getRootDirectories.iterator().asScala.map(Path.apply).toList
 
   def apply(path: String): Path = apply(Paths.get(path))
   def apply(jpath: JPath): Path = try {
@@ -221,21 +225,29 @@ class Path private[io] (val jpath: JPath) {
     try { create; true } catch { case _: FileAlreadyExistsException => false }
 
   // deletions
-  def delete(): Unit = delete(jpath)
+  def delete(): Unit =
+    try { Files.deleteIfExists(jpath) } catch { case _: DirectoryNotEmptyException => }
 
   /** Deletes the path recursively. Returns false on failure.
    *  Use with caution!
    */
-  def deleteRecursively(): Boolean = deleteRecursively(jpath)
-  private def deleteRecursively(p: JPath): Boolean = {
-    import scala.collection.JavaConverters._
-    if (Files.isDirectory(p))
-      Files.list(p).iterator().asScala.foreach(deleteRecursively)
-    delete(p)
-  }
+  def deleteRecursively(): Boolean = {
+    if (!exists) false
+    else {
+      Files.walkFileTree(jpath, new SimpleFileVisitor[JPath]() {
+        override def visitFile(file: JPath, attrs: BasicFileAttributes) = {
+          Files.delete(file)
+          FileVisitResult.CONTINUE
+        }
 
-  private def delete(path: JPath): Boolean =
-    try { Files.deleteIfExists(path); true } catch { case _: DirectoryNotEmptyException => false }
+        override def postVisitDirectory(dir: JPath, exc: IOException) = {
+          Files.delete(dir)
+          FileVisitResult.CONTINUE
+        }
+      })
+      true
+    }
+  }
 
   def truncate() =
     isFile && {
