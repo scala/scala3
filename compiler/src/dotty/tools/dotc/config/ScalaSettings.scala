@@ -50,6 +50,14 @@ class ScalaSettings extends Settings.SettingGroup {
   val printTasty = BooleanSetting("-print-tasty", "Prints the raw tasty when decompiling.")
   val printLines = BooleanSetting("-print-lines", "Show source code line numbers.")
 
+  /** Plugin-related setting */
+  val plugin             = MultiStringSetting  ("-Xplugin", "paths", "Load a plugin from each classpath.")
+  val disable            = MultiStringSetting  ("-Xplugin-disable", "plugin", "Disable plugins by name.")
+  val require            = MultiStringSetting  ("-Xplugin-require", "plugin", "Abort if a named plugin is not loaded.")
+  val showPlugins        = BooleanSetting      ("-Xplugin-list", "Print a synopsis of loaded plugins.")
+  val pluginsDir         = StringSetting       ("-Xpluginsdir", "path", "Path to search for plugin archives.", Defaults.scalaPluginPath)
+  val pluginOptions      = MultiStringSetting  ("-P", "plugin:opt", "Pass an option to a plugin, e.g. -P:<plugin>:<opt>")
+
   /** -X "Advanced" settings
    */
   val Xhelp = BooleanSetting("-X", "Print a synopsis of advanced options.")

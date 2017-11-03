@@ -35,6 +35,7 @@ import dotty.tools.dotc.profile.Profiler
 import util.Property.Key
 import util.Store
 import xsbti.AnalysisCallback
+import plugins._
 
 object Contexts {
 
@@ -76,6 +77,7 @@ object Contexts {
                             with SymDenotations
                             with Reporting
                             with NamerContextOps
+                            with Plugins
                             with Cloneable { thiscontext =>
     implicit def ctx: Context = this
 
