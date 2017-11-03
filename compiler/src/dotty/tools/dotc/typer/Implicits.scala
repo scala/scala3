@@ -915,6 +915,27 @@ trait Implicits { self: Typer =>
 
       def ranking(cand: Candidate) = -ctx.runInfo.useCount(cand.ref)
 
+      /** Prefer `cand1` over `cand2` if they are in the same compilation unit
+       *  and `cand1` is defined before `cand2`, or they are in different units and
+       *  `cand1` has been selected as an implicit more often than `cand2`.
+       */
+      def prefer(cand1: Candidate, cand2: Candidate): Boolean = {
+        val sym1 = cand1.ref.symbol
+        val sym2 = cand2.ref.symbol
+        if (sym1.associatedFile == sym2.associatedFile) {
+          val coord1 = sym1.coord
+          val coord2 = sym2.coord
+          if (coord1.isPosition && coord2.isPosition) {
+            val pos1 = coord1.toPosition
+            val pos2 = coord2.toPosition
+            return pos1.exists && (!pos2.exists || pos1.start < pos2.start)
+          }
+          if (coord1.isIndex && coord2.isIndex)
+            return coord1.toIndex < coord2.toIndex
+        }
+        ranking(cand1) < ranking(cand2)
+      }
+
       /** Sort list of implicit references according to their popularity
        *  (# of times each was picked in current run).
        */
@@ -922,9 +943,9 @@ trait Implicits { self: Typer =>
         case Nil => eligible
         case e1 :: Nil => eligible
         case e1 :: e2 :: Nil =>
-          if (ranking(e2) < ranking(e1)) e2 :: e1 :: Nil
+          if (prefer(e2, e1)) e2 :: e1 :: Nil
           else eligible
-        case _ => eligible.sortBy(ranking)
+        case _ => eligible.sortWith(prefer)
       }
 
       val (successes, failures) = rankImplicits(sort(eligible), Nil, new mutable.ListBuffer)
