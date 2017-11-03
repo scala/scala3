@@ -29,7 +29,7 @@ import scala.util.Random.alphanumeric
  *  ''Note:  This library is considered experimental and should not be used unless you know what you are doing.''
  */
 object Path {
-  def isExtensionJarOrZip(jfile: JFile): Boolean = isExtensionJarOrZip(jfile.getName)
+  def isExtensionJarOrZip(jpath: JPath): Boolean = isExtensionJarOrZip(jpath.getFileName.toString)
   def isExtensionJarOrZip(name: String): Boolean = {
     val ext = extension(name)
     ext == "jar" || ext == "zip"
@@ -79,7 +79,7 @@ class Path private[io] (val jpath: JPath) {
   def toFile: File = new File(jpath)
   def toDirectory: Directory = new Directory(jpath)
   def toAbsolute: Path = if (isAbsolute) this else new Path(jpath.toAbsolutePath)
-  def toCanonical: Path = Path(jfile.getCanonicalPath())
+  def toCanonical: Path = normalize.toAbsolute
   def toURI: URI = jpath.toUri()
   def toURL: URL = toURI.toURL()
 
@@ -112,12 +112,10 @@ class Path private[io] (val jpath: JPath) {
    */
   def walk: Iterator[Path] = walkFilter(_ => true)
 
-  def jfile: JFile = jpath.toFile
-
   // identity
   def name: String = jpath.getFileName().toString
   def path: String = jpath.toString
-  def normalize: Path = Path(jfile.getAbsolutePath())
+  def normalize: Path = Path(jpath.normalize)
 
   def resolve(other: Path) = if (other.isAbsolute || isEmpty) other else /(other)
   def relativize(other: Path) = {
@@ -213,7 +211,7 @@ class Path private[io] (val jpath: JPath) {
   }
   def createFile(failIfExists: Boolean = false): File = {
     val res = tryCreate(Files.createFile(jpath))
-    jfile.createNewFile()
+    Files.createFile(jpath)
     if (!res && failIfExists && exists) fail("File '%s' already exists." format name)
     else if (isFile) toFile
     else new File(jpath)
@@ -241,7 +239,7 @@ class Path private[io] (val jpath: JPath) {
 
   def truncate() =
     isFile && {
-      val raf = new RandomAccessFile(jfile, "rw")
+      val raf = new RandomAccessFile(jpath.toFile, "rw")
       raf setLength 0
       raf.close()
       length == 0

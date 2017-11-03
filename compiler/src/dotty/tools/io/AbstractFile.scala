@@ -42,7 +42,7 @@ object AbstractFile {
    */
   def getDirectory(file: File): AbstractFile =
     if (file.isDirectory) new PlainFile(file)
-    else if (file.isFile && Path.isExtensionJarOrZip(file.jfile)) ZipArchive fromFile file
+    else if (file.isFile && Path.isExtensionJarOrZip(file.jpath)) ZipArchive fromFile file
     else null
 
   /**

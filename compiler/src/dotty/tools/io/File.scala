@@ -12,6 +12,8 @@ import java.io.{
   FileInputStream, FileOutputStream, BufferedWriter, OutputStreamWriter,
   BufferedOutputStream, IOException, PrintWriter
 }
+import java.nio.file.Files
+import java.nio.file.StandardOpenOption._
 
 import scala.io.Codec
 /**
@@ -54,10 +56,10 @@ class File(jpath: JPath)(implicit constructorCodec: Codec) extends Path(jpath) w
     if (cond(this)) Iterator.single(this) else Iterator.empty
 
   /** Obtains an InputStream. */
-  def inputStream() = new FileInputStream(jfile)
+  def inputStream() = Files.newInputStream(jpath)
 
   /** Obtains a OutputStream. */
-  def outputStream(append: Boolean = false) = new FileOutputStream(jfile, append)
+  def outputStream(append: Boolean = false) = Files.newOutputStream(jpath, APPEND)
   def bufferedOutput(append: Boolean = false) = new BufferedOutputStream(outputStream(append))
 
   /** Obtains an OutputStreamWriter wrapped around a FileOutputStream.
@@ -108,7 +110,7 @@ class File(jpath: JPath)(implicit constructorCodec: Codec) extends Path(jpath) w
       try classOf[JFile].getMethod("setExecutable", classOf[Boolean], classOf[Boolean])
       catch { case _: NoSuchMethodException => return false }
 
-    try method.invoke(jfile, executable: JBoolean, ownerOnly: JBoolean).asInstanceOf[JBoolean].booleanValue
+    try method.invoke(jpath.toFile, executable: JBoolean, ownerOnly: JBoolean).asInstanceOf[JBoolean].booleanValue
     catch { case _: Exception => false }
   }
 }
