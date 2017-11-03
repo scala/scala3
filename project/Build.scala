@@ -619,13 +619,12 @@ object Build {
 
   def dotDynTask(main: String) = Def.inputTaskDyn {
     val dottyLib = packageAll.value("dotty-library")
-    val args: Seq[String] = spaceDelimited("<arg>").parsed
+    val args: List[String] = spaceDelimited("<arg>").parsed.toList
 
-    val fullArgs = main +: {
-      args.span(_ != "-classpath") match {
-        case (beforeCp, "-classpath" :: cp :: rest) => beforeCp ++ List("-classpath", cp + ":" + dottyLib) ++ rest
-        case (beforeCp, _) => beforeCp ++ List("-classpath", dottyLib)
-      }
+    val fullArgs = main :: {
+      val (beforeCp, fromCp) = args.span(_ != "-classpath")
+      val classpath = fromCp.drop(1).headOption.fold(dottyLib)(_ + ":" + dottyLib)
+      beforeCp ::: "-classpath" :: classpath :: fromCp.drop(2)
     }
 
     (runMain in Compile).toTask(fullArgs.mkString(" ", " ", ""))
