@@ -1922,4 +1922,12 @@ object messages {
     val msg = hl"Traits cannot redefine final $method from ${"class AnyRef"}."
     val explanation = ""
   }
+
+  case class PackageNameAlreadyDefined(pkg: Symbol)(implicit ctx: Context) extends Message(PackageNameAlreadyDefinedID) {
+
+    override def msg: String = hl"${pkg} is already defined, cannot be a package"
+    override def kind: String = "Syntax"
+    override def explanation: String =
+      "An object cannot have the same name as an existing package. Rename ${pkg} or the package with the same name."
+  }
 }

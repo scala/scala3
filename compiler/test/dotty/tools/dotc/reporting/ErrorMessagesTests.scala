@@ -1189,4 +1189,18 @@ class ErrorMessagesTests extends ErrorMessagesTest {
       assertEquals("method wait", method.show)
     }
 
+
+  @Test def packageNameAlreadyDefined =
+    checkMessagesAfter("frontend") {
+      """
+        |package bar { }
+        |object bar { }
+        |
+      """.stripMargin
+    }.expect { (ictx, messages) =>
+      implicit val ctx: Context = ictx
+
+      assertMessageCount(1, messages)
+      assert(messages.head.isInstanceOf[PackageNameAlreadyDefined])
+    }
 }
