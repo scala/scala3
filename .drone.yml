@@ -1,3 +1,15 @@
+# We override the default clone step to workaround a bug with GitHub (see #3415)
+clone:
+  custom:
+    image: plugins/git
+    commands:
+      - sleep 5s
+      - git init
+      - git remote add origin $DRONE_REMOTE_URL
+      - git fetch --no-tags origin $DRONE_COMMIT_REF
+      - if [ $DRONE_BUILD_EVENT = "push" ]; then git reset --hard -q $DRONE_COMMIT_SHA; else git checkout -qf FETCH_HEAD; fi
+      - git submodule update --init --recursive
+
 pipeline:
   # TESTS:
   # We run tests in parallel. Tests run in a copy of the working directory to avoid conflict
