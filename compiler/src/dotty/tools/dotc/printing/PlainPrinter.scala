@@ -503,7 +503,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
       "SearchSuccess: " ~ toText(result.ref) ~ " via " ~ toText(result.tree)
     case _: NonMatchingImplicit | NoImplicitMatches =>
       "NoImplicitMatches"
-    case _: DivergingImplicit | DivergingImplicit =>
+    case _: DivergingImplicit =>
       "Diverging Implicit"
     case result: ShadowedImplicit =>
       "Shadowed Implicit"

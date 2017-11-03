@@ -2001,35 +2001,60 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
       wtp.paramInfos.foreach(instantiateSelected(_, tvarsToInstantiate))
       val constr = ctx.typerState.constraint
       def addImplicitArgs(implicit ctx: Context) = {
-        val errors = new mutable.ListBuffer[() => String]
-        def implicitArgError(msg: => String) = {
-          errors += (() => msg)
-          EmptyTree
+        def implicitArgs(formals: List[Type]): List[Tree] = formals match {
+          case Nil => Nil
+          case formal :: formals1 =>
+            inferImplicitArg(formal, tree.pos.endPos) match {
+              case arg: FailedSearch
+              if !arg.failure.isInstanceOf[AmbiguousImplicits] && !tree.symbol.hasDefaultParams =>
+                // no need to search further, the adapt fails in any case
+                // the reason why we continue inferring in case of an AmbiguousImplicits
+                // is that we need to know whether there are further errors.
+                // If there are none, we have to propagate the ambiguity to the caller.
+                arg :: Nil
+              case arg =>
+                arg :: implicitArgs(formals1)
+            }
         }
-        def issueErrors() = {
-          for (err <- errors) ctx.error(err(), tree.pos.endPos)
-          tree.withType(wtp.resultType)
-        }
-        val args = (wtp.paramNames, wtp.paramInfos).zipped map { (pname, formal) =>
-          def implicitArgError(msg: String => String) =
-            errors += (() => msg(em"parameter $pname of $methodStr"))
-          if (errors.nonEmpty) EmptyTree
-          else inferImplicitArg(formal, implicitArgError, tree.pos.endPos)
-        }
-        if (errors.nonEmpty) {
+        val args = implicitArgs(wtp.paramInfos)
+
+        val failedArgs = new mutable.ListBuffer[Tree]
+        val ambiguousArgs = new mutable.ListBuffer[Tree]
+        for (arg @ FailedSearch(failure, _) <- args)
+          (if (failure.isInstanceOf[AmbiguousImplicits]) ambiguousArgs else failedArgs) += arg
+
+        if (ambiguousArgs.isEmpty && failedArgs.isEmpty)
+          adapt(tpd.Apply(tree, args), pt)
+        else {
           // If there are several arguments, some arguments might already
           // have influenced the context, binding variables, but later ones
           // might fail. In that case the constraint needs to be reset.
           ctx.typerState.constraint = constr
 
+          def issueErrors() = {
+            def recur(paramNames: List[TermName], remainingArgs: List[Tree]): Tree = remainingArgs match {
+              case Nil =>
+                tree.withType(wtp.resultType)
+              case (arg @ FailedSearch(failure, msgFn)) :: args1 =>
+                val msg = msgFn(em"parameter ${paramNames.head} of $methodStr")
+                def closedArg = FailedSearch(failure, _ => msg)
+                ctx.error(msg, tree.pos.endPos)
+                failure match {
+                  case _: AmbiguousImplicits if failedArgs.isEmpty => closedArg // propagate
+                  case _: DivergingImplicit => closedArg  // propagate
+                  case _ => tree.withType(wtp.resultType)   // show error at enclosing level instead
+                }
+              case arg :: args1 =>
+                recur(paramNames.tail, args1)
+            }
+            recur(wtp.paramNames, args)
+          }
+
           // If method has default params, fall back to regular application
           // where all inferred implicits are passed as named args.
-          if (tree.symbol.hasDefaultParams) {
+          if (failedArgs.nonEmpty && tree.symbol.hasDefaultParams) {
             val namedArgs = (wtp.paramNames, args).zipped.flatMap { (pname, arg) =>
-              arg match {
-                case EmptyTree => Nil
-                case _ => untpd.NamedArg(pname, untpd.TypedSplice(arg)) :: Nil
-              }
+              if (arg.isEmpty) Nil else untpd.NamedArg(pname, untpd.TypedSplice(arg)) :: Nil
             }
             tryEither { implicit ctx =>
               typed(untpd.Apply(untpd.TypedSplice(tree), namedArgs), pt)
@@ -2038,7 +2063,6 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
             }
           } else issueErrors()
         }
-        else adapt(tpd.Apply(tree, args), pt)
       }
       addImplicitArgs(argCtx(tree))
     }

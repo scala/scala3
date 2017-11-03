@@ -63,7 +63,11 @@ object Test extends dotty.runtime.LegacyApp {
     testSet(immutable.TreeSet(keys:_*), keys)
     testSet(mutable.TreeSet(keys:_*), keys)
     val days = keys map {n => Weekday(n % Weekday.values.size)}
-    testSet(Weekday.ValueSet(days:_*), days)
+
+    // The following does not work with the implicit change that propagates nested ambiguous errors to the top.
+    // We get ambiguous implicits because Predef.$conforms and convertIfView both fit WeekDay.Value => Ordered[WeekDay.Value].
+    // It does not work in scalac either; there we get a divergent implicit.
+    // testSet(Weekday.ValueSet(days:_*), days)
 
     val treeMap = immutable.TreeMap(keyValues:_*)
     testMap(treeMap, keyValues)
