@@ -15,6 +15,7 @@ import TypeErasure.{erasure, hasStableErasure}
 import Mode.ImplicitsEnabled
 import Denotations._
 import NameOps._
+import NameKinds.LazyImplicitName
 import SymDenotations._
 import Symbols._
 import Types._
@@ -185,7 +186,8 @@ object Implicits {
       if (outerImplicits == null) 1
       else if (ctx.scala2Mode ||
                (ctx.owner eq outerImplicits.ctx.owner) &&
-               (ctx.scope eq outerImplicits.ctx.scope)) outerImplicits.level
+               (ctx.scope eq outerImplicits.ctx.scope) &&
+               !refs.head.name.is(LazyImplicitName)) outerImplicits.level
       else outerImplicits.level + 1
 
     /** Is this the outermost implicits? This is the case if it either the implicits
