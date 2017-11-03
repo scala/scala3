@@ -506,11 +506,16 @@ trait ParallelTesting extends RunnerOrchestration { self =>
       val outputLines = reporter.writer.toString.trim.replaceAll("\\s+\n", "\n")
 
       if (outputLines != checkLines) {
-        val msg = s"Output from '${source.title}' did not match check file '${checkFile.getName}'."
-        println("===============================")
-        println("expected: \n" + checkLines)
-        println("actual: \n" + outputLines)
-        println("===============================")
+        val msg =
+          s"""|Output from '${source.title}' did not match check file '${checkFile.getName}'.
+              |-------------------------------------
+              |expected:
+              |$checkLines
+              |
+              |actual:
+              |$outputLines
+              |-------------------------------------
+           """.stripMargin
 
         echo(msg)
         addFailureInstruction(msg)
