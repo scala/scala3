@@ -2,12 +2,11 @@ package dotty.tools
 package dotc
 package reporting
 
-import java.io.{ PrintStream, PrintWriter, File => JFile, FileOutputStream }
+import java.io.{ FileOutputStream, PrintStream, PrintWriter, StringWriter, File => JFile }
 import java.text.SimpleDateFormat
 import java.util.Date
 
 import scala.collection.mutable
-
 import util.SourcePosition
 import core.Contexts._
 import Reporter._
@@ -79,6 +78,23 @@ extends Reporter with UniqueMessagePositions with HideNonSensicalMessages with M
   }
 }
 
+class StoredTestReporter (val writer: StringWriter, val superWriter: PrintWriter, filePrintln: String => Unit, logLevel: Int)
+extends TestReporter(superWriter, filePrintln, logLevel) {
+  override def doReport(m: MessageContainer)(implicit ctx: Context): Unit = {
+    super.doReport(m)
+
+    val msg =
+      if (m.pos.exists)
+        "[" + diagnosticLevel(m) + "] Line " + (m.pos.line + 1) + ": " + m.contained().msg
+      else
+        "[" + diagnosticLevel(m) + "] " + m.contained().msg
+
+    writer.write(msg + "\n")
+  }
+
+  override def summary: String = ""
+}
+
 object TestReporter {
   private[this] var outFile: JFile = _
   private[this] var logWriter: PrintWriter = _
@@ -114,6 +130,9 @@ object TestReporter {
 
   def reporter(ps: PrintStream, logLevel: Int): TestReporter =
     new TestReporter(new PrintWriter(ps, true), logPrintln, logLevel)
+
+  def storedReporter(ps: PrintStream, logLevel: Int): TestReporter =
+    new StoredTestReporter(new StringWriter(), new PrintWriter(ps, true), logPrintln, logLevel)
 
   def simplifiedReporter(writer: PrintWriter): TestReporter = {
     val rep = new TestReporter(writer, logPrintln, WARNING) {
