@@ -504,15 +504,17 @@ object Build {
         val args: Seq[String] = spaceDelimited("<arg>").parsed
         val java: String = Process("which" :: "java" :: Nil).!!
         val attList = (dependencyClasspath in Runtime).value
-        val _  = packageAll.value
+        val _ = packageAll.value
         val scalaLib = attList
           .map(_.data.getAbsolutePath)
           .find(_.contains("scala-library"))
           .toList.mkString(":")
 
-        if (java == "")
+        if (args.isEmpty) {
+          println("Couldn't run `dotr` without args. Use `repl` to run the repl or add args to run the dotty application")
+        } else if (java == "") {
           println("Couldn't find java executable on path, please install java to a default location")
-        else if (scalaLib == "") {
+        } else if (scalaLib == "") {
           println("Couldn't find scala-library on classpath, please run using script in bin dir instead")
         } else {
           val dottyLib = packageAll.value("dotty-library")
