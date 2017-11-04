@@ -1140,7 +1140,6 @@ class ErrorMessagesTests extends ErrorMessagesTest {
         |  { ) }
         |  { private ) }
         |}
-        |
       """.stripMargin
     }
       .expect { (ictx, messages) =>

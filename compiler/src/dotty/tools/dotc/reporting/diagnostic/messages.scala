@@ -1882,12 +1882,10 @@ object messages {
 
   case class IllegalStartOfStatement(isModifier: Boolean)(implicit ctx: Context) extends Message(IllegalStartOfStatementID) {
     val kind = "Syntax"
-    private val addendum = if(isModifier) "(no modifiers allowed here)" else ""
-    val msg = hl"Illegal start of statement $addendum"
-    val explanation = hl"""
-      | Expected an import, a statement or an expression at the start of a statement.
-      | For a detailed list of allowed statements, please consult the syntax of BlockStat at http://dotty.epfl.ch/docs/internals/syntax.html#expressions
-    """
-
+    val msg = {
+      val addendum = if(isModifier) "(no modifiers allowed here)" else ""
+      hl"Illegal start of statement $addendum"
+    }
+    val explanation = hl"A statement is either an import, a definition or an expression."
   }
 }

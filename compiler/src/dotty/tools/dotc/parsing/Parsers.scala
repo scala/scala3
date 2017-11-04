@@ -2496,7 +2496,7 @@ object Parsers {
           }
         else if (!isStatSep && (in.token != CASE)) {
           exitOnError = mustStartStat
-          syntaxErrorOrIncomplete(IllegalStartOfStatement(isModifier = isModifier))
+          syntaxErrorOrIncomplete(IllegalStartOfStatement(isModifier))
         }
         acceptStatSepUnlessAtEnd(CASE)
       }
