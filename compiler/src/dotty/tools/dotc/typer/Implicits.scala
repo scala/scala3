@@ -310,9 +310,9 @@ object Implicits {
       em"no implicit values were found that $qualify"
   }
 
-  object NoMatchingImplicits extends NoMatchingImplicits(NoType, tpd.EmptyTree)
+  @sharable object NoMatchingImplicits extends NoMatchingImplicits(NoType, tpd.EmptyTree)
 
-  val NoMatchingImplicitsFailure: SearchFailure =
+  @sharable val NoMatchingImplicitsFailure: SearchFailure =
     SearchFailure(NoMatchingImplicits)
 
   /** An ambiguous implicits failure */
