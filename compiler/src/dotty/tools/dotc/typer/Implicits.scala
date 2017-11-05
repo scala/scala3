@@ -920,7 +920,7 @@ trait Implicits { self: Typer =>
        *  `cand1` has been selected as an implicit more often than `cand2`.
        */
       def prefer(cand1: Candidate, cand2: Candidate): Boolean = {
-        val sym1 = cand1.ref.symbol
+        /*val sym1 = cand1.ref.symbol
         val sym2 = cand2.ref.symbol
         if (sym1.associatedFile == sym2.associatedFile) {
           val coord1 = sym1.coord
@@ -933,6 +933,7 @@ trait Implicits { self: Typer =>
           if (coord1.isIndex && coord2.isIndex)
             return coord1.toIndex < coord2.toIndex
         }
+        */
         ranking(cand1) < ranking(cand2)
       }
 
