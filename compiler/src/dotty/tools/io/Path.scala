@@ -95,7 +95,7 @@ class Path private[io] (val jpath: JPath) {
   /** Creates a new Path with the specified path appended.  Assumes
    *  the type of the new component implies the type of the result.
    */
-  def /(child: Path): Path = if (isEmpty) child else new Path(jpath.resolve(child.path))
+  def /(child: Path): Path = resolve(child)
   def /(child: Directory): Directory = /(child: Path).toDirectory
   def /(child: File): File = /(child: Path).toFile
 
@@ -121,19 +121,8 @@ class Path private[io] (val jpath: JPath) {
   def path: String = jpath.toString
   def normalize: Path = Path(jpath.normalize)
 
-  def resolve(other: Path) = if (other.isAbsolute || isEmpty) other else /(other)
-  def relativize(other: Path) = {
-    assert(isAbsolute == other.isAbsolute, "Paths not of same type: "+this+", "+other)
-
-    def createRelativePath(baseSegs: List[String], otherSegs: List[String]) : String = {
-      (baseSegs, otherSegs) match {
-        case (b :: bs, o :: os) if b == o => createRelativePath(bs, os)
-        case (bs, os) => ((".."+separator)*bs.length)+os.mkString(separatorStr)
-      }
-    }
-
-    Path(createRelativePath(segments, other.segments))
-  }
+  def resolve(other: Path) = Path(jpath.resolve(other.jpath))
+  def relativize(other: Path) = Path(jpath.relativize(other.jpath))
 
   def segments: List[String] = (path split separator).toList filterNot (_.length == 0)
 
