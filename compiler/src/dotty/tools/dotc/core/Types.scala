@@ -1981,7 +1981,7 @@ object Types {
       else candidate
 
     def withPrefix(prefix: Type)(implicit ctx: Context): NamedType = designator match {
-      case designator: TermSymbol =>
+      case designator: TermSymbol @unchecked =>
         TermRef(prefix, designator)
       case _ =>
         // If symbol exists, the new signature is the symbol's signature as seen
@@ -3641,22 +3641,25 @@ object Types {
    */
   abstract class FlexType extends UncachedGroundType with ValueType
 
-  class ErrorType private[Types] () extends FlexType {
-    def msg(implicit ctx: Context): Message =
-      ctx.errorTypeMsg.get(this) match {
-        case Some(msgFun) => msgFun()
-        case None => "error message from previous run no longer available"
-      }
+  abstract class ErrorType extends FlexType {
+    def msg(implicit ctx: Context): Message
   }
+
   object ErrorType {
     def apply(msg: => Message)(implicit ctx: Context): ErrorType = {
-      val et = new ErrorType
+      val et = new ErrorType {
+        def msg(implicit ctx: Context): Message =
+          ctx.errorTypeMsg.get(this) match {
+            case Some(msgFun) => msgFun()
+            case None => "error message from previous run no longer available"
+          }
+      }
       ctx.base.errorTypeMsg(et) = () => msg
       et
     }
   }
 
-  object UnspecifiedErrorType extends ErrorType() {
+  object UnspecifiedErrorType extends ErrorType {
     override def msg(implicit ctx: Context): Message = "unspecified error"
   }
 

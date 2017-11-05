@@ -101,7 +101,7 @@ class ReTyper extends Typer {
 
   override def checkVariance(tree: Tree)(implicit ctx: Context) = ()
   override def inferView(from: Tree, to: Type)(implicit ctx: Context): Implicits.SearchResult =
-    Implicits.NoImplicitMatches
+    Implicits.NoMatchingImplicitsFailure
   override def checkCanEqual(ltp: Type, rtp: Type, pos: Position)(implicit ctx: Context): Unit = ()
   override def inlineExpansion(mdef: DefDef)(implicit ctx: Context): List[Tree] = mdef :: Nil
 

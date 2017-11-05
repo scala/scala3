@@ -548,7 +548,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
       require(ctx.mode.is(Mode.Pattern))
       inferImplicit(defn.ClassTagType.appliedTo(tref),
                     EmptyTree, tree.tpt.pos)(ctx.retractMode(Mode.Pattern)) match {
-        case SearchSuccess(clsTag, _, _, _) =>
+        case SearchSuccess(clsTag, _, _) =>
           typed(untpd.Apply(untpd.TypedSplice(clsTag), untpd.TypedSplice(tree.expr)), pt)
         case _ =>
           tree
@@ -2000,61 +2000,68 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
       val tvarsToInstantiate = tvarsInParams(tree)
       wtp.paramInfos.foreach(instantiateSelected(_, tvarsToInstantiate))
       val constr = ctx.typerState.constraint
+
+      def dummyArg(tp: Type) = untpd.Ident(nme.???).withTypeUnchecked(tp)
+
       def addImplicitArgs(implicit ctx: Context) = {
         def implicitArgs(formals: List[Type]): List[Tree] = formals match {
           case Nil => Nil
           case formal :: formals1 =>
-            inferImplicitArg(formal, tree.pos.endPos) match {
-              case arg: FailedSearch
-              if !arg.failure.isInstanceOf[AmbiguousImplicits] && !tree.symbol.hasDefaultParams =>
+            val arg = inferImplicitArg(formal, tree.pos.endPos)
+            arg.tpe match {
+              case failed: SearchFailureType
+              if !failed.isInstanceOf[AmbiguousImplicits] && !tree.symbol.hasDefaultParams =>
                 // no need to search further, the adapt fails in any case
-                // the reason why we continue inferring in case of an AmbiguousImplicits
+                // the reason why we continue inferring arguments in case of an AmbiguousImplicits
                 // is that we need to know whether there are further errors.
                 // If there are none, we have to propagate the ambiguity to the caller.
-                arg :: Nil
-              case arg =>
+                arg :: formals1.map(dummyArg)
+              case _ =>
                 arg :: implicitArgs(formals1)
             }
         }
         val args = implicitArgs(wtp.paramInfos)
 
-        val failedArgs = new mutable.ListBuffer[Tree]
-        val ambiguousArgs = new mutable.ListBuffer[Tree]
-        for (arg @ FailedSearch(failure, _) <- args)
-          (if (failure.isInstanceOf[AmbiguousImplicits]) ambiguousArgs else failedArgs) += arg
+        def propagatedFailure(args: List[Tree]): Type = args match {
+          case arg :: args1 =>
+            arg.tpe match {
+              case ambi: AmbiguousImplicits =>
+                propagatedFailure(args1) match {
+                  case NoType | (_: AmbiguousImplicits) => ambi
+                  case failed => failed
+                }
+              case failed: SearchFailureType => failed
+              case _ => propagatedFailure(args1)
+            }
+          case Nil => NoType
+        }
 
-        if (ambiguousArgs.isEmpty && failedArgs.isEmpty)
-          adapt(tpd.Apply(tree, args), pt)
-        else {
+        val propFail = propagatedFailure(args)
+
+        def issueErrors(): Tree = {
+          (wtp.paramNames, wtp.paramInfos, args).zipped.foreach { (paramName, formal, arg) =>
+            arg.tpe match {
+              case failure: SearchFailureType =>
+                ctx.error(
+                  missingArgMsg(arg, formal, em"parameter ${paramName} of $methodStr"),
+                  tree.pos.endPos)
+              case _ =>
+            }
+          }
+          untpd.Apply(tree, args).withType(propFail)
+        }
+
+        if (propFail.exists) {
           // If there are several arguments, some arguments might already
           // have influenced the context, binding variables, but later ones
           // might fail. In that case the constraint needs to be reset.
           ctx.typerState.constraint = constr
 
-          def issueErrors() = {
-            def recur(paramNames: List[TermName], remainingArgs: List[Tree]): Tree = remainingArgs match {
-              case Nil =>
-                tree.withType(wtp.resultType)
-              case (arg @ FailedSearch(failure, msgFn)) :: args1 =>
-                val msg = msgFn(em"parameter ${paramNames.head} of $methodStr")
-                def closedArg = FailedSearch(failure, _ => msg)
-                ctx.error(msg, tree.pos.endPos)
-                failure match {
-                  case _: AmbiguousImplicits if failedArgs.isEmpty => closedArg // propagate
-                  case _: DivergingImplicit => closedArg  // propagate
-                  case _ => tree.withType(wtp.resultType)   // show error at enclosing level instead
-                }
-              case arg :: args1 =>
-                recur(paramNames.tail, args1)
-            }
-            recur(wtp.paramNames, args)
-          }
-
           // If method has default params, fall back to regular application
           // where all inferred implicits are passed as named args.
-          if (failedArgs.nonEmpty && tree.symbol.hasDefaultParams) {
+          if (tree.symbol.hasDefaultParams && !propFail.isInstanceOf[AmbiguousImplicits]) {
             val namedArgs = (wtp.paramNames, args).zipped.flatMap { (pname, arg) =>
-              if (arg.isEmpty) Nil else untpd.NamedArg(pname, untpd.TypedSplice(arg)) :: Nil
+              if (arg.tpe.isError) Nil else untpd.NamedArg(pname, untpd.TypedSplice(arg)) :: Nil
             }
             tryEither { implicit ctx =>
               typed(untpd.Apply(untpd.TypedSplice(tree), namedArgs), pt)
@@ -2063,6 +2070,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
             }
           } else issueErrors()
         }
+        else adapt(tpd.Apply(tree, args), pt)
       }
       addImplicitArgs(argCtx(tree))
     }
@@ -2250,23 +2258,23 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
       }
       // try an implicit conversion
       val prevConstraint = ctx.typerState.constraint
-      def recover(failure: SearchFailure) =
+      def recover(failure: SearchFailureType) =
         if (isFullyDefined(wtp, force = ForceDegree.all) &&
             ctx.typerState.constraint.ne(prevConstraint)) adapt(tree, pt)
         else err.typeMismatch(tree, pt, failure)
       if (ctx.mode.is(Mode.ImplicitsEnabled))
         inferView(tree, pt) match {
-          case SearchSuccess(inferred, _, _, _) =>
+          case SearchSuccess(inferred, _, _) =>
             adapt(inferred, pt)(ctx.retractMode(Mode.ImplicitsEnabled))
           case failure: SearchFailure =>
-            if (pt.isInstanceOf[ProtoType] && !failure.isInstanceOf[AmbiguousImplicits])
+            if (pt.isInstanceOf[ProtoType] && !failure.reason.isInstanceOf[AmbiguousImplicits])
               // don't report the failure but return the tree unchanged. This
-              // wil cause a failure at the next level out, which usually gives
+              // will cause a failure at the next level out, which usually gives
               // a better error message.
               tree
-            else recover(failure)
+            else recover(failure.reason)
         }
-      else recover(NoImplicitMatches)
+      else recover(NoMatchingImplicits)
     }
 
     def adaptType(tp: Type): Tree = {

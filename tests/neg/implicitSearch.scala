@@ -12,7 +12,7 @@ object Test {
     sort(xs)
 
   def f[T](xs: List[List[List[T]]]) =
-    sort(xs)  // error TODO: improve the -explain-implicts diagnostic
+    sort(xs)  // error (with a partially constructed implicit argument shown)
 
     listOrd(listOrd(implicitly[Ord[T]] /*not found*/)) // error
 }
