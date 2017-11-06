@@ -657,7 +657,7 @@ trait Implicits { self: Typer =>
     arg.tpe match {
       case ambi: AmbiguousImplicits =>
         msg(s"ambiguous implicit arguments: ${ambi.explanation} of $where")(
-            s"ambiguous implicit arguments of type $pt found for $where")
+            s"ambiguous implicit arguments of type ${pt.show} found for $where")
       case _ =>
         val userDefined =
           for {
