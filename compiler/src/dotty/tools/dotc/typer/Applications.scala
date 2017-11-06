@@ -1195,9 +1195,6 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
       if (winsType2) -1 else 0
   }}
 
-  def isAsGood(alt1: TermRef, alt2: TermRef, nesting1: Int = 0, nesting2: Int = 0)(implicit ctx: Context): Boolean =
-    compare(alt1, alt2, nesting1, nesting2) >= 0
-
   def narrowMostSpecific(alts: List[TermRef])(implicit ctx: Context): List[TermRef] = track("narrowMostSpecific") {
     alts match {
       case Nil => alts

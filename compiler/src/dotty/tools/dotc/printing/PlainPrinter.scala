@@ -505,7 +505,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
         case _: DivergingImplicit => "Diverging Implicit"
         case _: ShadowedImplicit => "Shadowed Implicit"
         case result: AmbiguousImplicits =>
-          "Ambiguous Implicit: " ~ toText(result.alt1) ~ " and " ~ toText(result.alt2)
+          "Ambiguous Implicit: " ~ toText(result.alt1.ref) ~ " and " ~ toText(result.alt2.ref)
         case _ =>
           "?Unknown Implicit Result?" + result.getClass
     }

@@ -30,7 +30,7 @@ import reporting.diagnostic.{Message, MessageContainer}
 import Inferencing.fullyDefinedType
 import Trees._
 import Hashable._
-import util.{Property, PriorityGraph}
+import util.Property
 import config.Config
 import config.Printers.{implicits, implicitsDetailed, typr}
 import collection.mutable

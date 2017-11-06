@@ -2267,7 +2267,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
           case SearchSuccess(inferred, _, _) =>
             adapt(inferred, pt)(ctx.retractMode(Mode.ImplicitsEnabled))
           case failure: SearchFailure =>
-            if (pt.isInstanceOf[ProtoType] && !failure.reason.isInstanceOf[AmbiguousImplicits])
+            if (pt.isInstanceOf[ProtoType] && !failure.isAmbiguous)
               // don't report the failure but return the tree unchanged. This
               // will cause a failure at the next level out, which usually gives
               // a better error message.
