@@ -1047,7 +1047,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
     else if (sym1 is Module) compareOwner(sym1.companionClass, sym2)
     else 0
 
-  /** Compare to alternatives of an overloaded call or an implicit search.  forIn a set of overloaded applicable alternatives, is `alt1` at least as good as
+  /** Compare to alternatives of an overloaded call or an implicit search.
    *
    *  @param  alt1, alt2      Non-overloaded references indicating the two choices
    *  @param  level1, level2  If alternatives come from a comparison of two contextual
