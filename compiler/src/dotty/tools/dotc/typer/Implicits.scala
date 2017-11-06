@@ -30,7 +30,7 @@ import reporting.diagnostic.{Message, MessageContainer}
 import Inferencing.fullyDefinedType
 import Trees._
 import Hashable._
-import util.Property
+import util.{Property, PriorityGraph}
 import config.Config
 import config.Printers.{implicits, implicitsDetailed, typr}
 import collection.mutable
@@ -257,6 +257,10 @@ object Implicits {
   sealed abstract class SearchResult extends Showable {
     def tree: tpd.Tree
     def toText(printer: Printer): Text = printer.toText(this)
+    def orElse(other: => SearchResult) = this match {
+      case _: SearchSuccess => this
+      case _ => other
+    }
   }
 
   /** A successful search
@@ -316,9 +320,9 @@ object Implicits {
     SearchFailure(NoMatchingImplicits)
 
   /** An ambiguous implicits failure */
-  class AmbiguousImplicits(val alt1: TermRef, val alt2: TermRef, val expectedType: Type, val argument: tpd.Tree) extends SearchFailureType {
+  class AmbiguousImplicits(val alt1: SearchSuccess, val alt2: SearchSuccess, val expectedType: Type, val argument: tpd.Tree) extends SearchFailureType {
     def explanation(implicit ctx: Context): String =
-      em"both ${err.refStr(alt1)} and ${err.refStr(alt2)} $qualify"
+      em"both ${err.refStr(alt1.ref)} and ${err.refStr(alt2.ref)} $qualify"
     override def whyNoConversion(implicit ctx: Context) =
       "\nNote that implicit conversions cannot be applied because they are ambiguous;" +
       "\n " + explanation
@@ -750,8 +754,10 @@ trait Implicits { self: Typer =>
 
   /** An implicit search; parameters as in `inferImplicit` */
   class ImplicitSearch(protected val pt: Type, protected val argument: Tree, pos: Position)(implicit ctx: Context) {
+    assert(argument.isEmpty || argument.tpe.isValueType || argument.tpe.isInstanceOf[ExprType],
+        em"found: $argument: ${argument.tpe}, expected: $pt")
 
-    private def nestedContext = ctx.fresh.setMode(ctx.mode &~ Mode.ImplicitsEnabled)
+    private def nestedContext() = ctx.fresh.setMode(ctx.mode &~ Mode.ImplicitsEnabled)
 
     private def implicitProto(resultType: Type, f: Type => Type) =
       if (argument.isEmpty) f(resultType) else ViewProto(f(argument.tpe.widen), f(resultType))
@@ -759,8 +765,8 @@ trait Implicits { self: Typer =>
 
     private def isCoherent = pt.isRef(defn.EqClass)
 
-    assert(argument.isEmpty || argument.tpe.isValueType || argument.tpe.isInstanceOf[ExprType],
-        em"found: $argument: ${argument.tpe}, expected: $pt")
+    private val cmpContext = nestedContext()
+    private val cmpCandidates = (c1: Candidate, c2: Candidate) => compare(c1.ref, c2.ref, c1.level, c2.level)(cmpContext)
 
     /** The expected type for the searched implicit */
     lazy val fullProto = implicitProto(pt, identity)
@@ -778,6 +784,8 @@ trait Implicits { self: Typer =>
     def searchImplicits(eligible: List[Candidate], contextual: Boolean): SearchResult = {
       val constr = ctx.typerState.constraint
 
+      //println(i"search implicits $pt / ${eligible.map(_.ref)}")
+
       /** Try to typecheck an implicit reference */
       def typedImplicit(cand: Candidate)(implicit ctx: Context): SearchResult = track("typedImplicit") { trace(i"typed implicit ${cand.ref}, pt = $pt, implicitsEnabled == ${ctx.mode is ImplicitsEnabled}", implicits, show = true) {
         assert(constr eq ctx.typerState.constraint)
@@ -790,7 +798,7 @@ trait Implicits { self: Typer =>
         val generated1 = adapt(generated, pt)
         lazy val shadowing =
           typed(untpd.Ident(ref.name) withPos pos.toSynthetic, funProto)(
-            nestedContext.addMode(Mode.ImplicitShadowing).setExploreTyperState())
+            nestedContext().addMode(Mode.ImplicitShadowing).setExploreTyperState())
         def refSameAs(shadowing: Tree): Boolean =
           ref.symbol == closureBody(shadowing).symbol || {
             shadowing match {
@@ -820,6 +828,126 @@ trait Implicits { self: Typer =>
           SearchSuccess(generated1, ref, cand.level)(ctx.typerState)
       }}
 
+      def tryImplicit(cand: Candidate): SearchResult = {
+        val history = ctx.searchHistory nest wildProto
+        if (history eq ctx.searchHistory)
+          SearchFailure(new DivergingImplicit(cand.ref, pt, argument))
+        else
+          typedImplicit(cand)(nestedContext().setNewTyperState().setSearchHistory(history))
+      }
+
+      def tryInOrder(cand1: Candidate, cand2: Candidate) =
+        tryImplicit(cand1) match {
+          case success: SearchSuccess => success
+          case _ => tryImplicit(cand2)
+        }
+
+      def compareCandidate(prev: SearchSuccess, ref: TermRef, level: Int): Int =
+        if (prev.ref eq ref) 0
+        else ctx.typerState.test(compare(prev.ref, ref, prev.level, level)(nestedContext()))
+
+      def disambiguate(alt1: SearchResult, alt2: SearchSuccess) = alt1 match {
+        case alt1: SearchSuccess =>
+          def isNumeric(tp: Type) = tp.typeSymbol.isNumericValueClass
+          def isProperSubType(tp1: Type, tp2: Type) =
+            tp1.isValueSubType(tp2) && !tp2.isValueSubType(tp1)
+            val rpt = pt.resultType
+            val rt1 = alt1.ref.widen.resultType
+            val rt2 = alt2.ref.widen.resultType
+          def ambi = SearchFailure(new AmbiguousImplicits(alt1, alt2, pt, argument))
+          val diff = compareCandidate(alt1, alt2.ref, alt2.level)
+          assert(diff <= 0)
+          if (diff < 0) alt2
+          else if (isNumeric(rpt) && isNumeric(rt1) && isNumeric(rt2))
+            if (isProperSubType(rt1, rt2)) alt2
+            else if (isProperSubType(rt2, rt1)) alt1
+            else ambi
+          else ambi
+        case _: SearchFailure => alt2
+      }
+
+      def rank(pending: List[Candidate], found: SearchResult, rfailures: List[SearchFailure]): SearchResult = pending match {
+        case cand :: pending1 =>
+          tryImplicit(cand) match {
+            case fail: SearchFailure =>
+              if (fail.isAmbiguous) healAmbiguous(pending1, fail)
+              else rank(pending1, found, fail :: rfailures)
+            case best: SearchSuccess =>
+              if (ctx.mode.is(Mode.ImplicitExploration) || isCoherent)
+                best
+              else disambiguate(found, best) match {
+                case retained: SearchSuccess =>
+                  val newPending =
+                    if (retained eq found) pending1
+                    else pending1.filter(cand =>
+                      compareCandidate(retained, cand.ref, cand.level) <= 0)
+                  rank(newPending, retained, rfailures)
+                case fail: SearchFailure =>
+                  healAmbiguous(pending1, fail)
+              }
+          }
+        case nil =>
+          if (rfailures.isEmpty) found
+          else found.orElse(rfailures.reverse.maxBy(_.tree.treeSize))
+      }
+
+      def healAmbiguous(pending: List[Candidate], fail: SearchFailure) = {
+        val ambi = fail.reason.asInstanceOf[AmbiguousImplicits]
+        val newPending = pending.filter(cand =>
+          compareCandidate(ambi.alt1, cand.ref, cand.level) < 0 &&
+          compareCandidate(ambi.alt2, cand.ref, cand.level) < 0)
+        rank(newPending, fail, Nil).orElse(fail)
+      }
+
+      def go: SearchResult = eligible match {
+        case Nil =>
+          SearchFailure(new NoMatchingImplicits(pt, argument))
+        case cand :: Nil =>
+          tryImplicit(cand)
+        case cand1 :: cand2 :: Nil =>
+          def compareTwo = cmpCandidates(cand1, cand2) match {
+            case  1 => tryInOrder(cand1, cand2)
+            case -1 => tryInOrder(cand2, cand1)
+            case  0 =>
+              val alt1 = tryImplicit(cand1)
+              val alt2 = tryImplicit(cand2)
+              alt2 match {
+                case alt2: SearchSuccess => disambiguate(alt1, alt2)
+                case _ =>
+                  alt1 match {
+                    case alt1: SearchSuccess => alt1
+                    case _ => if (alt1.tree.treeSize < alt2.tree.treeSize) alt2 else alt1
+                  }
+              }
+          }
+          compareTwo
+        case _ =>
+          val cands = eligible.toArray
+          val pg = new PriorityGraph(cands, cmpCandidates)
+
+          def loop(found: SearchResult, rfailures: List[SearchFailure]): SearchResult =
+            if (pg.hasNextSource())
+              tryImplicit(cands(pg.nextSource())) match {
+                case fail: SearchFailure =>
+                  if (fail.isAmbiguous) fail
+                  else {
+                    pg.dropLastSource()
+                    loop(found, fail :: rfailures)
+                  }
+                case best: SearchSuccess =>
+                  if (ctx.mode.is(Mode.ImplicitExploration) || isCoherent)
+                    best
+                  else disambiguate(found, best) match {
+                    case retained: SearchSuccess => loop(retained, rfailures)
+                    case ambi => ambi
+                  }
+              }
+            else if (found.isInstanceOf[SearchSuccess]) found
+            else rfailures.reverse.maxBy(_.tree.treeSize)
+
+        loop(NoMatchingImplicitsFailure, Nil)
+      }
+
       /** Given a list of implicit references, produce a list of search results,
        *  which is either a list of successes or a list of failures.
        *   - if one of the references produces an ambiguity error, return it
@@ -842,7 +970,7 @@ trait Implicits { self: Typer =>
               if (history eq ctx.searchHistory)
                 SearchFailure(new DivergingImplicit(cand.ref, pt, argument))
               else
-                typedImplicit(cand)(nestedContext.setNewTyperState().setSearchHistory(history))
+                typedImplicit(cand)(nestedContext().setNewTyperState().setSearchHistory(history))
             result match {
               case fail: SearchFailure =>
                 if (fail.isAmbiguous) fail :: Nil
@@ -852,7 +980,7 @@ trait Implicits { self: Typer =>
                   best :: Nil
                 else {
                   val newPending = pending1.filter(cand1 =>
-                    ctx.typerState.test(isAsGood(cand1.ref, best.ref, cand1.level, best.level)(nestedContext)))
+                    ctx.typerState.test(isAsGood(cand1.ref, best.ref, cand1.level, best.level)(nestedContext())))
                   rankImplicits(newPending, best :: successes, rfailures)
                 }
             }
@@ -901,7 +1029,7 @@ trait Implicits { self: Typer =>
                   case eliminated: SearchSuccess =>
                     condense(results.filter(_ ne eliminated))
                   case _ =>
-                    SearchFailure(new AmbiguousImplicits(best.ref, alt.ref, pt, argument))
+                    SearchFailure(new AmbiguousImplicits(best, alt, pt, argument))
                 }
               case None =>
                 ctx.runInfo.useCount(best.ref) += 1
@@ -920,21 +1048,20 @@ trait Implicits { self: Typer =>
        *  `cand1` has been selected as an implicit more often than `cand2`.
        */
       def prefer(cand1: Candidate, cand2: Candidate): Boolean = {
-        /*val sym1 = cand1.ref.symbol
+        val level1 = cand1.level
+        val level2 = cand2.level
+        if (level1 > level2) return true
+        if (level1 < level2) return false
+        val sym1 = cand1.ref.symbol
         val sym2 = cand2.ref.symbol
-        if (sym1.associatedFile == sym2.associatedFile) {
-          val coord1 = sym1.coord
-          val coord2 = sym2.coord
-          if (coord1.isPosition && coord2.isPosition) {
-            val pos1 = coord1.toPosition
-            val pos2 = coord2.toPosition
-            return pos1.exists && (!pos2.exists || pos1.start < pos2.start)
-          }
-          if (coord1.isIndex && coord2.isIndex)
-            return coord1.toIndex < coord2.toIndex
-        }
-        */
-        ranking(cand1) < ranking(cand2)
+        val ownerScore = compareOwner(sym1.maybeOwner, sym2.maybeOwner)
+        if (ownerScore > 0) return true
+        if (ownerScore < 0) return false
+        val arity1 = sym1.info.firstParamTypes.length
+        val arity2 = sym2.info.firstParamTypes.length
+        if (arity1 < arity2) return true
+        if (arity1 > arity2) return false
+        false
       }
 
       /** Sort list of implicit references according to their popularity
@@ -946,10 +1073,13 @@ trait Implicits { self: Typer =>
         case e1 :: e2 :: Nil =>
           if (prefer(e2, e1)) e2 :: e1 :: Nil
           else eligible
-        case _ => eligible.sortWith(prefer)
+        case _ =>
+          eligible.sortWith(prefer)
       }
 
-      condense(rankImplicits(sort(eligible), Nil, Nil))
+      if (true) rank(sort(eligible), NoMatchingImplicitsFailure, Nil)
+      else if (true) go
+      else condense(rankImplicits(sort(eligible), Nil, Nil))
     }
 
     /** Find a unique best implicit reference */

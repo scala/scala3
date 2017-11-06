@@ -1031,6 +1031,22 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
       tp.member(nme.apply).hasAltWith(d => p(TermRef(tp, nme.apply, d)))
   }
 
+  /** Compare owner inheritance level.
+    *  @param    sym1 The first owner
+    *  @param    sym2 The second owner
+    *  @return    1   if `sym1` properly derives from `sym2`
+    *            -1   if `sym2` properly derives from `sym1`
+    *             0   otherwise
+    *  Module classes also inherit the relationship from their companions.
+    */
+  def compareOwner(sym1: Symbol, sym2: Symbol)(implicit ctx: Context): Int =
+    if (sym1 == sym2) 0
+    else if (sym1 isSubClass sym2) 1
+    else if (sym2 isSubClass sym1) -1
+    else if (sym2 is Module) compareOwner(sym1, sym2.companionClass)
+    else if (sym1 is Module) compareOwner(sym1.companionClass, sym2)
+    else 0
+
   /** In a set of overloaded applicable alternatives, is `alt1` at least as good as
    *  `alt2`? Also used for implicits disambiguation.
    *
@@ -1049,22 +1065,6 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
   def compare(alt1: TermRef, alt2: TermRef, nesting1: Int = 0, nesting2: Int = 0)(implicit ctx: Context): Int = track("compare") { trace(i"compare($alt1, $alt2)", overload) {
 
     assert(alt1 ne alt2)
-
-    /** Compare owner inheritance level.
-     *  @param    sym1 The first owner
-     *  @param    sym2 The second owner
-     *  @return    1   if `sym1` properly derives from `sym2`
-     *            -1   if `sym2` properly derives from `sym1`
-     *             0   otherwise
-     *  Module classes also inherit the relationship from their companions.
-     */
-    def compareOwner(sym1: Symbol, sym2: Symbol): Int =
-      if (sym1 == sym2) 0
-      else if (sym1 isSubClass sym2) 1
-      else if (sym2 isSubClass sym1) -1
-      else if (sym2 is Module) compareOwner(sym1, sym2.companionClass)
-      else if (sym1 is Module) compareOwner(sym1.companionClass, sym2)
-      else 0
 
     /** Is alternative `alt1` with type `tp1` as specific as alternative
      *  `alt2` with type `tp2` ?

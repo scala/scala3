@@ -89,7 +89,7 @@ class TyperState(previous: TyperState /* | Null */) extends DotClass with Showab
   private[this] var testReporter: StoreReporter = null
 
   /** Test using `op`, restoring typerState to previous state afterwards */
-  def test(op: => Boolean): Boolean = {
+  def test[T](op: => T): T = {
     val savedReporter = myReporter
     val savedConstraint = myConstraint
     val savedCommittable = myIsCommittable
