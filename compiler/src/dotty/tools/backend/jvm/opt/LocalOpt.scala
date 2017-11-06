@@ -58,7 +58,7 @@ class LocalOpt(implicit ctx: Context) {
    */
   def methodOptimizations(clazz: ClassNode): Boolean = {
     // settings.Yopt.value.nonEmpty
-    ctx.settings.YbackendOpt.value && clazz.methods.asScala.foldLeft(false) {
+    true && clazz.methods.asScala.foldLeft(false) {
       case (changed, method) => methodOptimizations(method, clazz.name) || changed
     }
   }
@@ -109,7 +109,7 @@ class LocalOpt(implicit ctx: Context) {
     var codeHandlersOrJumpsChanged = false
     while (recurse) {
       // unreachable-code, empty-handlers and simplify-jumps run until reaching a fixpoint (see doc on class LocalOpt)
-      val (codeRemoved, handlersRemoved, liveHandlerRemoved) = if (ctx.settings.YbackendOpt.value) {
+      val (codeRemoved, handlersRemoved, liveHandlerRemoved) = if (true) {
         val (codeRemoved, liveLabels) = removeUnreachableCodeImpl(method, ownerClassName)
         val removedHandlers = removeEmptyExceptionHandlers(method)
         (codeRemoved, removedHandlers.nonEmpty, removedHandlers.exists(h => liveLabels(h.start)))
@@ -117,23 +117,23 @@ class LocalOpt(implicit ctx: Context) {
         (false, false, false)
       }
 
-      val jumpsChanged = if (ctx.settings.YbackendOpt.value) simplifyJumps(method) else false
+      val jumpsChanged = if (true) simplifyJumps(method) else false
 
       codeHandlersOrJumpsChanged ||= (codeRemoved || handlersRemoved || jumpsChanged)
 
       // The doc comment of class LocalOpt explains why we recurse if jumpsChanged || liveHandlerRemoved
-      recurse = ctx.settings.YbackendOpt.value && (jumpsChanged || liveHandlerRemoved)
+      recurse = true && (jumpsChanged || liveHandlerRemoved)
     }
 
     // (*) Removing stale local variable descriptors is required for correctness of unreachable-code
     val localsRemoved =
-      if (ctx.settings.YbackendOpt.value) compactLocalVariables(method)
-      else if (ctx.settings.YbackendOpt.value) removeUnusedLocalVariableNodes(method)() // (*)
+      if (true) compactLocalVariables(method)
+      else if (true) removeUnusedLocalVariableNodes(method)() // (*)
       else false
 
-    val lineNumbersRemoved = if (ctx.settings.YbackendOpt.value) removeEmptyLineNumbers(method) else false
+    val lineNumbersRemoved = if (true) removeEmptyLineNumbers(method) else false
 
-    val labelsRemoved = if (ctx.settings.YbackendOpt.value) removeEmptyLabelNodes(method) else false
+    val labelsRemoved = if (true) removeEmptyLabelNodes(method) else false
 
     // assert that local variable annotations are empty (we don't emit them) - otherwise we'd have
     // to eliminate those covering an empty range, similar to removeUnusedLocalVariableNodes.
