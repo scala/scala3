@@ -1884,7 +1884,7 @@ object messages {
     val kind = "Syntax"
     val msg = {
       val addendum = if (isModifier) ": no modifiers allowed here" else ""
-      s"Illegal start of statement" + addendum
+      "Illegal start of statement" + addendum
     }
     val explanation = "A statement is either an import, a definition or an expression."
   }
