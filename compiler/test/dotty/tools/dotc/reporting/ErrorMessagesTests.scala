@@ -1132,4 +1132,23 @@ class ErrorMessagesTests extends ErrorMessagesTest {
         assertEquals(tpParams, l2.map(_.show))
 
       }
+
+  @Test def illegalStartOfStatement =
+    checkMessagesAfter("frontend") {
+      """
+        |object Test {
+        |  { ) }
+        |  { private ) }
+        |}
+      """.stripMargin
+    }
+      .expect { (ictx, messages) =>
+        implicit val ctx: Context = ictx
+
+        assertMessageCount(2, messages)
+        val errWithModifier :: err :: Nil = messages
+
+        assertEquals(IllegalStartOfStatement(isModifier = false), err)
+        assertEquals(IllegalStartOfStatement(isModifier = true), errWithModifier)
+      }
 }

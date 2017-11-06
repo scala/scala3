@@ -2496,8 +2496,7 @@ object Parsers {
           }
         else if (!isStatSep && (in.token != CASE)) {
           exitOnError = mustStartStat
-          val addendum = if (isModifier) " (no modifiers allowed here)" else ""
-          syntaxErrorOrIncomplete("illegal start of statement" + addendum)
+          syntaxErrorOrIncomplete(IllegalStartOfStatement(isModifier))
         }
         acceptStatSepUnlessAtEnd(CASE)
       }

@@ -1879,4 +1879,13 @@ object messages {
     val msg = hl"Type parameter $undefinedName is undefined. Expected one of ${definedNames.map(_.show).mkString(", ")}."
     val explanation = ""
   }
+
+  case class IllegalStartOfStatement(isModifier: Boolean)(implicit ctx: Context) extends Message(IllegalStartOfStatementID) {
+    val kind = "Syntax"
+    val msg = {
+      val addendum = if (isModifier) ": no modifiers allowed here" else ""
+      "Illegal start of statement" + addendum
+    }
+    val explanation = "A statement is either an import, a definition or an expression."
+  }
 }
