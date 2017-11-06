@@ -16,6 +16,8 @@ class SpecializeFunctions extends MiniPhase with InfoTransformer {
   val phaseName = "specializeFunctions"
   override def runsAfter = Set(classOf[ElimByName])
 
+  private val jFunction = "scala.compat.java8.JFunction".toTermName
+
   /** Transforms the type to include decls for specialized applys  */
   override def transformInfo(tp: Type, sym: Symbol)(implicit ctx: Context) = tp match {
     case tp: ClassInfo if !sym.is(Flags.Package) && (tp.decls ne EmptyScope) =>
@@ -26,9 +28,15 @@ class SpecializeFunctions extends MiniPhase with InfoTransformer {
           val func = defn.FunctionClass(arity)
           if (parent.derivesFrom(func)) {
             val typeParams = tp.cls.typeRef.baseType(func).argInfos
-            val interface  = specInterface(typeParams)
+            val isSpecializable =
+              defn.isSpecializableFunction(
+                parent.classSymbol.asClass,
+                typeParams.init,
+                typeParams.last
+              )
 
-            if (interface.exists && tp.decls.lookup(nme.apply).exists) {
+            if (isSpecializable && tp.decls.lookup(nme.apply).exists) {
+              val interface = specInterface(typeParams)
               val specializedMethodName = nme.apply.specializedFunction(typeParams.last, typeParams.init)
               newApplys += (specializedMethodName -> interface)
             }
@@ -63,13 +71,12 @@ class SpecializeFunctions extends MiniPhase with InfoTransformer {
     val applyBuf = new mutable.ListBuffer[Tree]
     val newBody = tree.body.mapConserve {
       case dt: DefDef if dt.name == nme.apply && dt.vparamss.length == 1 =>
-        val specName = nme.apply.specializedFunction(
-          dt.tpe.widen.finalResultType,
-          dt.vparamss.head.map(_.symbol.info)
-        )
+        val cls        = tree.symbol.enclosingClass.asClass
+        val typeParams = dt.vparamss.head.map(_.symbol.info)
+        val retType    = dt.tpe.widen.finalResultType
 
-        val specializedApply = tree.symbol.enclosingClass.info.decls.lookup(specName)
-
+        val specName = specializedName(nme.apply, typeParams :+ retType)
+        val specializedApply = cls.info.decls.lookup(specName)
         if (specializedApply.exists) {
           val apply = specializedApply.asTerm
           val specializedDecl =
@@ -104,9 +111,14 @@ class SpecializeFunctions extends MiniPhase with InfoTransformer {
         fun.symbol.owner.derivesFrom(defn.FunctionClass(args.length))
       =>
         val params = (fun.tpe.widen.firstParamTypes :+ tree.tpe).map(_.widenSingleton.dealias)
-        val specializedApply = specializedName(nme.apply, params)
+        val isSpecializable =
+          defn.isSpecializableFunction(
+            fun.symbol.owner.asClass,
+            params.init,
+            params.last)
 
-        if (!params.exists(_.isInstanceOf[ExprType]) && fun.symbol.owner.info.decls.lookup(specializedApply).exists) {
+        if (isSpecializable && !params.exists(_.isInstanceOf[ExprType])) {
+          val specializedApply = specializedName(nme.apply, params)
           val newSel = fun match {
             case Select(qual, _) =>
               qual.select(specializedApply)
@@ -126,14 +138,12 @@ class SpecializeFunctions extends MiniPhase with InfoTransformer {
       case _ => tree
     }
 
-  @inline private def specializedName(name: Name, args: List[Type])(implicit ctx: Context) =
-    name.specializedFor(args, args.map(_.typeSymbol.name), Nil, Nil)
+  private def specializedName(name: Name, args: List[Type])(implicit ctx: Context) =
+    name.specializedFunction(args.last, args.init)
 
-  @inline private def specInterface(typeParams: List[Type])(implicit ctx: Context) = {
-    val specName =
-      ("JFunction" + (typeParams.length - 1)).toTermName
-      .specializedFunction(typeParams.last, typeParams.init)
+  private def functionName(typeParams: List[Type])(implicit ctx: Context) =
+    jFunction ++ (typeParams.length - 1).toString
 
-    ctx.getClassIfDefined("scala.compat.java8.".toTermName ++ specName)
-  }
+  private def specInterface(typeParams: List[Type])(implicit ctx: Context) =
+    ctx.getClassIfDefined(functionName(typeParams).specializedFunction(typeParams.last, typeParams.init))
 }

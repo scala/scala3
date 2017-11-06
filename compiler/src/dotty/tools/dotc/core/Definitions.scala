@@ -927,28 +927,33 @@ class Definitions {
   }
 
   // Specialized type parameters defined for scala.Function{0,1,2}.
-  private lazy val Function1SpecializedParams: collection.Set[Type] =
+  lazy val Function1SpecializedParams: collection.Set[Type] =
     Set(IntType, LongType, FloatType, DoubleType)
-  private lazy val Function2SpecializedParams: collection.Set[Type] =
+  lazy val Function2SpecializedParams: collection.Set[Type] =
     Set(IntType, LongType, DoubleType)
-  private lazy val Function0SpecializedReturns: collection.Set[Type] =
+  lazy val Function0SpecializedReturns: collection.Set[Type] =
     ScalaNumericValueTypeList.toSet[Type] + UnitType + BooleanType
-  private lazy val Function1SpecializedReturns: collection.Set[Type] =
+  lazy val Function1SpecializedReturns: collection.Set[Type] =
     Set(UnitType, BooleanType, IntType, FloatType, LongType, DoubleType)
-  private lazy val Function2SpecializedReturns: collection.Set[Type] =
+  lazy val Function2SpecializedReturns: collection.Set[Type] =
     Function1SpecializedReturns
 
   def isSpecializableFunction(cls: ClassSymbol, paramTypes: List[Type], retType: Type)(implicit ctx: Context) =
-    isFunctionClass(cls) && (paramTypes match {
+    cls.derivesFrom(FunctionClass(paramTypes.length)) && (paramTypes match {
       case Nil =>
-        Function0SpecializedReturns.contains(retType)
+        val specializedReturns = Function0SpecializedReturns.map(_.typeSymbol)
+        specializedReturns.contains(retType.typeSymbol)
       case List(paramType0) =>
-        Function1SpecializedParams.contains(paramType0) &&
-        Function1SpecializedReturns.contains(retType)
+        val specializedParams = Function1SpecializedParams.map(_.typeSymbol)
+        lazy val specializedReturns = Function1SpecializedReturns.map(_.typeSymbol)
+        specializedParams.contains(paramType0.typeSymbol) &&
+          specializedReturns.contains(retType.typeSymbol)
       case List(paramType0, paramType1) =>
-        Function2SpecializedParams.contains(paramType0) &&
-        Function2SpecializedParams.contains(paramType1) &&
-        Function2SpecializedReturns.contains(retType)
+        val specializedParams = Function2SpecializedParams.map(_.typeSymbol)
+        lazy val specializedReturns = Function2SpecializedReturns.map(_.typeSymbol)
+        specializedParams.contains(paramType0.typeSymbol) &&
+          specializedParams.contains(paramType1.typeSymbol) &&
+          specializedReturns.contains(retType.typeSymbol)
       case _ =>
         false
     })
