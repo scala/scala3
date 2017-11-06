@@ -1,6 +1,6 @@
 # We override the default clone step to workaround a bug with GitHub (see #3415)
 clone:
-  custom:
+  clone:
     image: plugins/git
     commands:
       - sleep 5s
