@@ -19,9 +19,9 @@ class SpecializedApplyMethods extends MiniPhase with InfoTransformer {
 
   val phaseName = "specializedApplyMethods"
 
-  private[this] var func0Applys: List[Symbol] = _
-  private[this] var func1Applys: List[Symbol] = _
-  private[this] var func2Applys: List[Symbol] = _
+  private[this] var func0Applys: collection.Set[Symbol] = _
+  private[this] var func1Applys: collection.Set[Symbol] = _
+  private[this] var func2Applys: collection.Set[Symbol] = _
   private[this] var func0: Symbol = _
   private[this] var func1: Symbol = _
   private[this] var func2: Symbol = _
@@ -30,25 +30,25 @@ class SpecializedApplyMethods extends MiniPhase with InfoTransformer {
     val definitions = ctx.definitions
     import definitions._
 
-    def specApply(sym: Symbol, args: List[Type], ret: Type)(implicit ctx: Context) = {
+    def specApply(sym: Symbol, args: List[Type], ret: Type)(implicit ctx: Context): Symbol = {
       val name = nme.apply.specializedFunction(ret, args)
       ctx.newSymbol(sym, name, Flags.Method, MethodType(args, ret))
     }
 
     func0 = FunctionClass(0)
-    func0Applys = for (r <- ScalaValueTypes.toList) yield specApply(func0, Nil, r)
+    func0Applys = for (r <- defn.Function0SpecializedReturns) yield specApply(func0, Nil, r)
 
     func1 = FunctionClass(1)
     func1Applys = for {
-      r  <- List(UnitType, BooleanType, IntType, FloatType, LongType, DoubleType)
-      t1 <- List(IntType, LongType, FloatType, DoubleType)
+      r  <- defn.Function1SpecializedReturns
+      t1 <- defn.Function1SpecializedParams
     } yield specApply(func1, List(t1), r)
 
     func2 = FunctionClass(2)
     func2Applys = for {
-      r  <- List(UnitType, BooleanType, IntType, FloatType, LongType, DoubleType)
-      t1 <- List(IntType, LongType, DoubleType)
-      t2 <- List(IntType, LongType, DoubleType)
+      r  <- Function2SpecializedReturns
+      t1 <- Function2SpecializedParams
+      t2 <- Function2SpecializedReturns
     } yield specApply(func2, List(t1, t2), r)
   }
 
