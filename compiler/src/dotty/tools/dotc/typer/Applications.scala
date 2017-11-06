@@ -1047,16 +1047,18 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
     else if (sym1 is Module) compareOwner(sym1.companionClass, sym2)
     else 0
 
-  /** In a set of overloaded applicable alternatives, is `alt1` at least as good as
-   *  `alt2`? Also used for implicits disambiguation.
+  /** Compare to alternatives of an overloaded call or an implicit search.  forIn a set of overloaded applicable alternatives, is `alt1` at least as good as
    *
    *  @param  alt1, alt2      Non-overloaded references indicating the two choices
    *  @param  level1, level2  If alternatives come from a comparison of two contextual
    *                          implicit candidates, the nesting levels of the candidates.
    *                          In all other cases the nesting levels are both 0.
+   *  @return  1   if 1st alternative is preferred over 2nd
+   *          -1   if 2nd alternative is preferred over 1st
+   *           0   if neither alternative is preferred over the other
    *
-   *  An alternative A1 is "as good as" an alternative A2 if it wins or draws in a tournament
-   *  that awards one point for each of the following
+   *  An alternative A1 is preferred over an alternative A2 if it wins in a tournament
+   *  that awards one point for each of the following:
    *
    *   - A1 is nested more deeply than A2
    *   - The nesting levels of A1 and A2 are the same, and A1's owner derives from A2's owner
