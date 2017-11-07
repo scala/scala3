@@ -823,6 +823,9 @@ trait Implicits { self: Typer =>
           SearchSuccess(generated1, ref, cand.level)(ctx.typerState)
       }}
 
+      /** Try to type-check implicit reference, after checking that this is not
+       *  a diverging search
+       */
       def tryImplicit(cand: Candidate): SearchResult = {
         val history = ctx.searchHistory nest wildProto
         if (history eq ctx.searchHistory)
@@ -831,10 +834,18 @@ trait Implicits { self: Typer =>
           typedImplicit(cand)(nestedContext().setNewTyperState().setSearchHistory(history))
       }
 
+      /** Compare previous success with reference and level to determine which one would be chosen, if
+       *  an implicit starting with the reference was found.
+       */
       def compareCandidate(prev: SearchSuccess, ref: TermRef, level: Int): Int =
         if (prev.ref eq ref) 0
         else ctx.typerState.test(compare(prev.ref, ref, prev.level, level)(nestedContext()))
 
+      /** If `alt1` is also a search success, try to disambiguate as follows:
+       *    - If alt2 is preferred over alt1, pick alt2.
+       *    - Otherwise, if both alternatives return numeric value types, pick the one
+       *      with the larger type.
+       */
       def disambiguate(alt1: SearchResult, alt2: SearchSuccess) = alt1 match {
         case alt1: SearchSuccess =>
           def isNumeric(tp: Type) = tp.typeSymbol.isNumericValueClass
