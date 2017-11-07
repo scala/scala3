@@ -38,6 +38,7 @@ import reporting.trace
 
 /** Implicit resolution */
 object Implicits {
+  import tpd._
 
   /** A reference to an implicit value to be made visible on the next nested call to
    *  inferImplicitArg with a by-name expected type.
@@ -255,7 +256,7 @@ object Implicits {
 
   /** The result of an implicit search */
   sealed abstract class SearchResult extends Showable {
-    def tree: tpd.Tree
+    def tree: Tree
     def toText(printer: Printer): Text = printer.toText(this)
     def recoverWith(other: SearchFailure => SearchResult) = this match {
       case _: SearchSuccess => this
@@ -269,10 +270,10 @@ object Implicits {
    *  @param level  The level where the reference was found
    *  @param tstate The typer state to be committed if this alternative is chosen
    */
-  case class SearchSuccess(tree: tpd.Tree, ref: TermRef, level: Int)(val tstate: TyperState) extends SearchResult with Showable
+  case class SearchSuccess(tree: Tree, ref: TermRef, level: Int)(val tstate: TyperState) extends SearchResult with Showable
 
   /** A failed search */
-  case class SearchFailure(tree: tpd.Tree) extends SearchResult {
+  case class SearchFailure(tree: Tree) extends SearchResult {
     final def isAmbiguous = tree.tpe.isInstanceOf[AmbiguousImplicits]
     final def reason = tree.tpe.asInstanceOf[SearchFailureType]
   }
@@ -288,7 +289,7 @@ object Implicits {
 
   abstract class SearchFailureType extends ErrorType {
     def expectedType: Type
-    protected def argument: tpd.Tree
+    protected def argument: Tree
 
     final protected def qualify(implicit ctx: Context) =
       if (expectedType.exists)
@@ -309,18 +310,18 @@ object Implicits {
     def whyNoConversion(implicit ctx: Context): String = ""
   }
 
-  class NoMatchingImplicits(val expectedType: Type, val argument: tpd.Tree) extends SearchFailureType {
+  class NoMatchingImplicits(val expectedType: Type, val argument: Tree) extends SearchFailureType {
     def explanation(implicit ctx: Context): String =
       em"no implicit values were found that $qualify"
   }
 
-  @sharable object NoMatchingImplicits extends NoMatchingImplicits(NoType, tpd.EmptyTree)
+  @sharable object NoMatchingImplicits extends NoMatchingImplicits(NoType, EmptyTree)
 
   @sharable val NoMatchingImplicitsFailure: SearchFailure =
     SearchFailure(NoMatchingImplicits)
 
   /** An ambiguous implicits failure */
-  class AmbiguousImplicits(val alt1: SearchSuccess, val alt2: SearchSuccess, val expectedType: Type, val argument: tpd.Tree) extends SearchFailureType {
+  class AmbiguousImplicits(val alt1: SearchSuccess, val alt2: SearchSuccess, val expectedType: Type, val argument: Tree) extends SearchFailureType {
     def explanation(implicit ctx: Context): String =
       em"both ${err.refStr(alt1.ref)} and ${err.refStr(alt2.ref)} $qualify"
     override def whyNoConversion(implicit ctx: Context) =
@@ -330,7 +331,7 @@ object Implicits {
 
   class MismatchedImplicit(ref: TermRef,
                            val expectedType: Type,
-                           val argument: tpd.Tree) extends SearchFailureType {
+                           val argument: Tree) extends SearchFailureType {
     def explanation(implicit ctx: Context): String =
       em"${err.refStr(ref)} does not $qualify"
   }
@@ -338,14 +339,14 @@ object Implicits {
   class ShadowedImplicit(ref: TermRef,
                          shadowing: Type,
                          val expectedType: Type,
-                         val argument: tpd.Tree) extends SearchFailureType {
+                         val argument: Tree) extends SearchFailureType {
     def explanation(implicit ctx: Context): String =
       em"${err.refStr(ref)} does $qualify but is shadowed by ${err.refStr(shadowing)}"
   }
 
   class DivergingImplicit(ref: TermRef,
                           val expectedType: Type,
-                          val argument: tpd.Tree) extends SearchFailureType {
+                          val argument: Tree) extends SearchFailureType {
     def explanation(implicit ctx: Context): String =
       em"${err.refStr(ref)} produces a diverging implicit search when trying to $qualify"
   }
@@ -640,7 +641,7 @@ trait Implicits { self: Typer =>
     arg
   }
 
-  def missingArgMsg(arg: tpd.Tree, pt: Type, where: String)(implicit ctx: Context): String = {
+  def missingArgMsg(arg: Tree, pt: Type, where: String)(implicit ctx: Context): String = {
     def msg(shortForm: String)(headline: String = shortForm) = arg match {
       case arg: Trees.SearchFailureIdent[_] =>
         shortForm
@@ -913,7 +914,10 @@ trait Implicits { self: Typer =>
         false
       }
 
-      /** Sort list of implicit references according to `prefer` */
+      /** Sort list of implicit references according to `prefer`.
+       *  This is just an optimization that aims at reducing the average
+       *  number of candidates to be tested.
+       */
       def sort(eligible: List[Candidate]) = eligible match {
         case Nil => eligible
         case e1 :: Nil => eligible
