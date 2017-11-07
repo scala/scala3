@@ -12,6 +12,8 @@ import java.io.{
   FileInputStream, FileOutputStream, BufferedWriter, OutputStreamWriter,
   BufferedOutputStream, IOException, PrintWriter
 }
+import java.nio.file.Files
+import java.nio.file.StandardOpenOption._
 
 import scala.io.Codec
 /**
@@ -20,7 +22,7 @@ import scala.io.Codec
 object File {
   def pathSeparator = java.io.File.pathSeparator
   def separator     = java.io.File.separator
-  def apply(path: Path)(implicit codec: Codec) = new File(path.jfile)(codec)
+  def apply(path: Path)(implicit codec: Codec) = new File(path.jpath)(codec)
 
   // Create a temporary file, which will be deleted upon jvm exit.
   def makeTemp(prefix: String = Path.randomPrefix, suffix: String = null, dir: JFile = null) = {
@@ -41,12 +43,12 @@ object File {
  *
  *  ''Note:  This is library is considered experimental and should not be used unless you know what you are doing.''
  */
-class File(jfile: JFile)(implicit constructorCodec: Codec) extends Path(jfile) with Streamable.Chars {
+class File(jpath: JPath)(implicit constructorCodec: Codec) extends Path(jpath) with Streamable.Chars {
   override val creationCodec = constructorCodec
 
   override def addExtension(ext: String): File = super.addExtension(ext).toFile
   override def toAbsolute: File = if (isAbsolute) this else super.toAbsolute.toFile
-  override def toDirectory: Directory = new Directory(jfile)
+  override def toDirectory: Directory = new Directory(jpath)
   override def toFile: File = this
   override def normalize: File = super.normalize.toFile
   override def length = super[Path].length
@@ -54,10 +56,12 @@ class File(jfile: JFile)(implicit constructorCodec: Codec) extends Path(jfile) w
     if (cond(this)) Iterator.single(this) else Iterator.empty
 
   /** Obtains an InputStream. */
-  def inputStream() = new FileInputStream(jfile)
+  def inputStream() = Files.newInputStream(jpath)
 
   /** Obtains a OutputStream. */
-  def outputStream(append: Boolean = false) = new FileOutputStream(jfile, append)
+  def outputStream(append: Boolean = false) = 
+    if (append) Files.newOutputStream(jpath, APPEND)
+    else Files.newOutputStream(jpath)
   def bufferedOutput(append: Boolean = false) = new BufferedOutputStream(outputStream(append))
 
   /** Obtains an OutputStreamWriter wrapped around a FileOutputStream.
@@ -108,7 +112,7 @@ class File(jfile: JFile)(implicit constructorCodec: Codec) extends Path(jfile) w
       try classOf[JFile].getMethod("setExecutable", classOf[Boolean], classOf[Boolean])
       catch { case _: NoSuchMethodException => return false }
 
-    try method.invoke(jfile, executable: JBoolean, ownerOnly: JBoolean).asInstanceOf[JBoolean].booleanValue
+    try method.invoke(jpath.toFile, executable: JBoolean, ownerOnly: JBoolean).asInstanceOf[JBoolean].booleanValue
     catch { case _: Exception => false }
   }
 }
