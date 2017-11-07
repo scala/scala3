@@ -41,12 +41,22 @@ pipeline:
       - cp -R . /tmp/3/ && cd /tmp/3/
       - ./project/scripts/sbt dotty-optimised/testAll
 
-  test_sbt:
+  test_sbt_1of2:
     group: test
     image: lampepfl/dotty:2017-10-20
     commands:
       - cp -R . /tmp/4/ && cd /tmp/4/
-      - ./project/scripts/sbt sbt-dotty/scripted
+      - ./project/scripts/sbt "sbt-dotty/scripted compilerReporter/* discovery/* sbt-dotty/* source-dependencies/*1of2"
+    # when:
+      # sbt scripted tests are slow and don't run on PRs
+      # event: [ push, tag, deployment ]
+
+  test_sbt_2of2:
+    group: test
+    image: lampepfl/dotty:2017-10-20
+    commands:
+      - cp -R . /tmp/5/ && cd /tmp/5/
+      - ./project/scripts/sbt "sbt-dotty/scripted source-dependencies/*2of2"
     # when:
       # sbt scripted tests are slow and don't run on PRs
       # event: [ push, tag, deployment ]
