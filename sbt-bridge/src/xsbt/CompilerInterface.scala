@@ -5,7 +5,6 @@ package xsbt
 
 import xsbti.{ AnalysisCallback, Logger, Reporter, Severity }
 import xsbti.compile._
-import Log.debug
 import java.io.File
 
 import dotty.tools.dotc.core.Contexts.ContextBase
@@ -52,7 +51,7 @@ class CachedCompilerImpl(args: Array[String], output: Output) extends CachedComp
     run(sources.toList, changes, callback, log, delegate, progress)
   }
   private[this] def run(sources: List[File], changes: DependencyChanges, callback: AnalysisCallback, log: Logger, delegate: Reporter, compileProgress: CompileProgress): Unit = {
-    debug(log, args.mkString("Calling Dotty compiler with arguments  (CompilerInterface):\n\t", "\n\t", ""))
+    log.debug(() => args.mkString("Calling Dotty compiler with arguments  (CompilerInterface):\n\t", "\n\t", ""))
     val ctx = (new ContextBase).initialCtx.fresh
       .setSbtCallback(callback)
       .setReporter(new DelegatingReporter(delegate))
