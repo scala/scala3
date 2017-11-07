@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+
+# check that benchmarks can run
+./project/scripts/sbt "dotty-bench/jmh:run 1 1 tests/pos/alias.scala"
+
+# check that `dotc` compiles and `dotr` runs it
+./project/scripts/sbt ";dotc tests/run/arraycopy.scala ;dotr Test"

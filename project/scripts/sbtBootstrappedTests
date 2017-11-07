@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+
+# check that benchmarks can run
+./project/scripts/sbt "dotty-bench-bootstrapped/jmh:run 1 1 tests/pos/alias.scala"
