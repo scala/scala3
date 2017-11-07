@@ -4,4 +4,10 @@
 ./project/scripts/sbt "dotty-bench/jmh:run 1 1 tests/pos/alias.scala"
 
 # check that `dotc` compiles and `dotr` runs it
-./project/scripts/sbt ";dotc tests/run/arraycopy.scala ;dotr Test"
+echo "testing sbt dotc and dotr"
+./project/scripts/sbt ";dotc tests/pos/sbtDotrTest.scala ;dotr dotrtest.Test" > sbtdotr.out
+if grep -e "dotr test ok" sbtdotr.out; then
+    echo "output ok"
+else
+    exit -1
+fi
