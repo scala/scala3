@@ -841,28 +841,34 @@ trait Implicits { self: Typer =>
         if (prev.ref eq ref) 0
         else ctx.typerState.test(compare(prev.ref, ref, prev.level, level)(nestedContext()))
 
+      /* Seems we don't need this anymore.
+      def numericValueTieBreak(alt1: SearchSuccess, alt2: SearchSuccess) = {
+        def isNumeric(tp: Type) = tp.typeSymbol.isNumericValueClass
+        def isProperSubType(tp1: Type, tp2: Type) =
+          tp1.isValueSubType(tp2) && !tp2.isValueSubType(tp1)
+          val rpt = pt.resultType
+          val rt1 = alt1.ref.widen.resultType
+          val rt2 = alt2.ref.widen.resultType
+        if (isNumeric(rpt) && isNumeric(rt1) && isNumeric(rt2))
+          if (isProperSubType(rt1, rt2)) alt2
+          else if (isProperSubType(rt2, rt1)) alt1
+          else NoMatchingImplicitsFailure
+        else NoMatchingImplicitsFailure
+      }
+      */
+
       /** If `alt1` is also a search success, try to disambiguate as follows:
-       *    - If alt2 is preferred over alt1, pick alt2.
-       *    - Otherwise, if both alternatives return numeric value types, pick the one
-       *      with the larger type.
+       *    - If alt2 is preferred over alt1, pick alt2, otherwise return an
+       *      ambiguous implicits error.
        */
       def disambiguate(alt1: SearchResult, alt2: SearchSuccess) = alt1 match {
         case alt1: SearchSuccess =>
-          def isNumeric(tp: Type) = tp.typeSymbol.isNumericValueClass
-          def isProperSubType(tp1: Type, tp2: Type) =
-            tp1.isValueSubType(tp2) && !tp2.isValueSubType(tp1)
-            val rpt = pt.resultType
-            val rt1 = alt1.ref.widen.resultType
-            val rt2 = alt2.ref.widen.resultType
-          def ambi = SearchFailure(new AmbiguousImplicits(alt1, alt2, pt, argument))
           val diff = compareCandidate(alt1, alt2.ref, alt2.level)
           assert(diff <= 0)
           if (diff < 0) alt2
-          else if (isNumeric(rpt) && isNumeric(rt1) && isNumeric(rt2))
-            if (isProperSubType(rt1, rt2)) alt2
-            else if (isProperSubType(rt2, rt1)) alt1
-            else ambi
-          else ambi
+          else
+            // numericValueTypeBreak(alt1, alt2) recoverWith
+            SearchFailure(new AmbiguousImplicits(alt1, alt2, pt, argument))
         case _: SearchFailure => alt2
       }
 
