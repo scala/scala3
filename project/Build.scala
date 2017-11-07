@@ -518,12 +518,12 @@ object Build {
           println("Couldn't find scala-library on classpath, please run using script in bin dir instead")
         } else {
           val dottyLib = packageAll.value("dotty-library")
-          s"""$java -classpath .:$dottyLib:$scalaLib ${args.mkString(" ")}""".!
+          s"$java -classpath .:$dottyLib:$scalaLib ${args.mkString(" ")}".!
         }
       },
       run := dotc.evaluated,
-      dotc := dotDynTask("dotty.tools.dotc.Main").evaluated,
-      repl := dotDynTask("dotty.tools.repl.Main").evaluated,
+      dotc := runCompilerMain("dotty.tools.dotc.Main").evaluated,
+      repl := runCompilerMain("dotty.tools.repl.Main").evaluated,
 
       // enable verbose exception messages for JUnit
       testOptions in Test += Tests.Argument(
@@ -617,7 +617,7 @@ object Build {
       }
   )
 
-  def dotDynTask(main: String) = Def.inputTaskDyn {
+  def runCompilerMain(main: String) = Def.inputTaskDyn {
     val dottyLib = packageAll.value("dotty-library")
     val args: List[String] = spaceDelimited("<arg>").parsed.toList
 
