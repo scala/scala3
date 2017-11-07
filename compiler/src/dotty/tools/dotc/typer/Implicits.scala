@@ -673,6 +673,18 @@ trait Implicits { self: Typer =>
     }
   }
 
+  /** A string indicating the formal parameter corresponding to a  missing argument */
+  def implicitParamString(paramName: TermName, methodStr: String, tree: Tree)(implicit ctx: Context): String =
+    tree match {
+      case Select(qual, nme.apply) if defn.isFunctionType(qual.tpe.widen) =>
+        val qt = qual.tpe.widen
+        val qt1 = qt.dealias
+        def addendum = if (qt1 eq qt) "" else (i"\nwhich is an alias of: $qt1")
+        em"parameter of ${qual.tpe.widen}$addendum"
+      case _ =>
+        em"parameter ${paramName} of $methodStr"
+    }
+
   private def assumedCanEqual(ltp: Type, rtp: Type)(implicit ctx: Context) = {
     def eqNullable: Boolean = {
       val other =

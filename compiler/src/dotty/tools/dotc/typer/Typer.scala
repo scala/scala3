@@ -2043,7 +2043,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
             arg.tpe match {
               case failure: SearchFailureType =>
                 ctx.error(
-                  missingArgMsg(arg, formal, em"parameter ${paramName} of $methodStr"),
+                  missingArgMsg(arg, formal, implicitParamString(paramName, methodStr, tree)),
                   tree.pos.endPos)
               case _ =>
             }
