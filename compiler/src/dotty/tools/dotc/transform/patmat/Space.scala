@@ -606,20 +606,19 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
       }
     }
 
-    val tvars = tp1.typeParams.map { tparam => newTypeVar(tparam.paramInfo.bounds) }
-    val protoTp1 = thisTypeMap(tp1.appliedTo(tvars))
-
-    // replace type parameter references with fresh type vars or bounds
+    // replace type parameter references with bounds
     val typeParamMap = new TypeMap {
       def apply(t: Type): Type = t match {
 
         case tp: TypeRef if tp.symbol.is(TypeParam) && tp.underlying.isInstanceOf[TypeBounds] =>
           // See tests/patmat/gadt.scala  tests/patmat/exhausting.scala
-          val bound =
-            if (variance == 0) tp.underlying.bounds      // non-variant case is not well-founded
-            else if (variance == 1) TypeBounds.upper(tp)
-            else TypeBounds.lower(tp)
-          newTypeVar(bound)
+          val exposed =
+            if (variance == 0) newTypeVar(tp.underlying.bounds)
+            else if (variance == 1) expose(tp, true)
+            else expose(tp, false)
+
+          debug.println(s"$tp exposed to =====> " + exposed)
+          exposed
         case tp: RefinedType if tp.refinedInfo.isInstanceOf[TypeBounds] =>
           // Ideally, we would expect type inference to do the job
           // Check tests/patmat/t9657.scala
@@ -628,6 +627,9 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
           mapOver(t)
       }
     }
+
+    val tvars = tp1.typeParams.map { tparam => newTypeVar(tparam.paramInfo.bounds) }
+    val protoTp1 = thisTypeMap(tp1.appliedTo(tvars))
 
     if (protoTp1 <:< tp2 && isFullyDefined(protoTp1, ForceDegree.noBottom)) protoTp1
     else {
@@ -778,13 +780,13 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
    *
    *  A <: X :> Y  B <: U :> V   M { type T <: A :> B }  ~~>  M { type T <: X :> V }
    */
-  def expose(tp: Type, refineCtx: Boolean = false, up: Boolean = true): Type = tp match {
+  def expose(tp: Type, up: Boolean = true): Type = tp match {
     case tp: AppliedType =>
-      tp.derivedAppliedType(expose(tp.tycon, refineCtx, up), tp.args.map(expose(_, refineCtx, up)))
+      tp.derivedAppliedType(expose(tp.tycon, up), tp.args.map(expose(_, up)))
 
     case tp: TypeAlias =>
-      val hi = expose(tp.alias, refineCtx, up)
-      val lo = expose(tp.alias, refineCtx, up)
+      val hi = expose(tp.alias, up)
+      val lo = expose(tp.alias, up)
 
       if (hi =:= lo)
         tp.derivedTypeAlias(hi)
@@ -792,27 +794,27 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
         tp.derivedTypeBounds(lo, hi)
 
     case tp @ TypeBounds(lo, hi) =>
-      tp.derivedTypeBounds(expose(lo, refineCtx, false), expose(hi, refineCtx, true))
+      tp.derivedTypeBounds(expose(lo, false), expose(hi, true))
 
     case tp: RefinedType =>
       tp.derivedRefinedType(
         expose(tp.parent),
         tp.refinedName,
-        expose(tp.refinedInfo, true, up)
+        expose(tp.refinedInfo, up)
       )
-    case tp: TypeProxy if refineCtx =>
+    case tp: TypeProxy =>
       tp.underlying match {
         case TypeBounds(lo, hi) =>
-          expose(if (up) hi else lo, refineCtx, up)
+          expose(if (up) hi else lo, up)
         case _ =>
           tp
       }
 
     case OrType(tp1, tp2) =>
-      OrType(expose(tp1, refineCtx, up), expose(tp2, refineCtx, up))
+      OrType(expose(tp1, up), expose(tp2, up))
 
     case AndType(tp1, tp2) =>
-      AndType(expose(tp1, refineCtx, up), expose(tp2, refineCtx, up))
+      AndType(expose(tp1, up), expose(tp2, up))
 
     case _ => tp
   }
