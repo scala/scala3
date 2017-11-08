@@ -307,11 +307,10 @@ class CompilationTests extends ParallelTesting {
 
   @Category(Array(classOf[SlowTests]))
   @Test def testOptimised: Unit = {
-    implicit val testGroup: TestGroup = TestGroup("testOptimised")
-    val outputDir = defaultOutputDir + "optimised/"
-    compileFilesInDir("../tests/pos", defaultOptimised, outputDir).checkCompile()
-    compileFilesInDir("../tests/run", defaultOptimised, outputDir).checkRuns()
-    compileShallowFilesInDir("../tests/neg", defaultOptimised, outputDir).checkExpectedErrors()
+    implicit val testGroup: TestGroup = TestGroup("optimised/testOptimised")
+    compileFilesInDir("../tests/pos", defaultOptimised).checkCompile()
+    compileFilesInDir("../tests/run", defaultOptimised).checkRuns()
+    compileShallowFilesInDir("../tests/neg", defaultOptimised).checkExpectedErrors()
   }
 
   private val (compilerSources, backendSources, backendJvmSources) = {
