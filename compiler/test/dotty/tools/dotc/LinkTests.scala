@@ -12,10 +12,10 @@ import vulpix._
 import scala.concurrent.duration._
 import scala.collection.JavaConverters._
 
-class LinkOptimiseTests extends ParallelTesting {
+class LinkTests extends ParallelTesting {
   import ParallelTesting._
   import TestConfiguration._
-  import LinkOptimiseTests._
+  import LinkTests._
 
   // Test suite configuration --------------------------------------------------
 
@@ -26,12 +26,12 @@ class LinkOptimiseTests extends ParallelTesting {
   def testFilter = Properties.testsFilter
 
 
-  @Test def linkOptimise: Unit = {
+  @Test def linkTest: Unit = {
     // Setup and compile libraries
-    val strawmanLibGroup = TestGroup("strawmanLibrary")
+    val strawmanLibGroup = TestGroup("linkTest/strawmanLibrary")
     val strawmanLibTestGroup = TestGroup(strawmanLibGroup + "/tests")
 
-    val linkCustomLibGroup = TestGroup("linkCustomLib")
+    val linkCustomLibGroup = TestGroup("linkTest/linkCustomLib")
     val linkCustomLibTestGroup = TestGroup(linkCustomLibGroup + "/tests")
 
     val strawmanLibrary = compileDir("../collection-strawman/collections/src/main", defaultOptions)(strawmanLibGroup)
@@ -87,7 +87,7 @@ class LinkOptimiseTests extends ParallelTesting {
 
 }
 
-object LinkOptimiseTests {
+object LinkTests {
   implicit val summaryReport: SummaryReporting = new SummaryReport
   @AfterClass def cleanup(): Unit = summaryReport.echoSummary()
 }

@@ -240,10 +240,10 @@ class CompilationTests extends ParallelTesting {
    *  version of Dotty
    */
   @Test def tastyBootstrap: Unit = {
-    implicit val testGroup: TestGroup = TestGroup("tastyBootstrap")
-    val dotty1Group = TestGroup("dotty1")
-    val dotty2Group = TestGroup("dotty2")
-    val libGroup = TestGroup("lib")
+    implicit val testGroup: TestGroup = TestGroup("tastyBootstrap/tests")
+    val dotty1Group = TestGroup("tastyBootstrap/dotty1")
+    val dotty2Group = TestGroup("tastyBootstrap/dotty2")
+    val libGroup = TestGroup("tastyBootstrap/lib")
 
     val opt = TestFlags(
       // compile with bootstrapped library on cp:

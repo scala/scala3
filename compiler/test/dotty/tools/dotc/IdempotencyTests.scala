@@ -37,8 +37,8 @@ class IdempotencyTests extends ParallelTesting {
     val strawmanSourcesRevSorted = strawmanSourcesSorted.reverse
 
     val posIdempotency = {
-      compileFilesInDir("../tests/pos", opt)(TestGroup("posIdempotency1")) +
-      compileFilesInDir("../tests/pos", opt)(TestGroup("posIdempotency2"))
+      compileFilesInDir("../tests/pos", opt)(TestGroup("idempotency/posIdempotency1")) +
+      compileFilesInDir("../tests/pos", opt)(TestGroup("idempotency/posIdempotency2"))
     }
 
     val orderIdempotency = {
@@ -46,8 +46,8 @@ class IdempotencyTests extends ParallelTesting {
         testDir <- new JFile("../tests/order-idempotency").listFiles() if testDir.isDirectory
       } yield {
         val sources = sourcesFrom(testDir.toPath)
-        compileList(testDir.getName, sources, opt)(TestGroup("orderIdempotency1")) +
-        compileList(testDir.getName, sources.reverse, opt)(TestGroup("orderIdempotency2"))
+        compileList(testDir.getName, sources, opt)(TestGroup("idempotency/orderIdempotency1")) +
+        compileList(testDir.getName, sources.reverse, opt)(TestGroup("idempotency/orderIdempotency2"))
       }).reduce(_ + _)
     }
 
@@ -60,7 +60,7 @@ class IdempotencyTests extends ParallelTesting {
 
     def check(name: String) = {
       val files = List(s"../tests/idempotency/$name.scala", "../tests/idempotency/IdempotencyCheck.scala")
-      compileList(name, files, defaultOptions)(TestGroup("check"))
+      compileList(name, files, defaultOptions)(TestGroup("idempotency/check"))
     }
     val allChecks = {
       check("CheckOrderIdempotency") +
