@@ -277,11 +277,11 @@ class Definitions {
         pt => MethodType(List(pt.paramRefs(0)), pt.paramRefs(0)), Final)
     lazy val Object_clone = enterMethod(ObjectClass, nme.clone_, MethodType(Nil, ObjectType), Protected)
     lazy val Object_finalize = enterMethod(ObjectClass, nme.finalize_, MethodType(Nil, UnitType), Protected)
-    lazy val Object_notify = enterMethod(ObjectClass, nme.notify_, MethodType(Nil, UnitType))
-    lazy val Object_notifyAll = enterMethod(ObjectClass, nme.notifyAll_, MethodType(Nil, UnitType))
-    lazy val Object_wait = enterMethod(ObjectClass, nme.wait_, MethodType(Nil, UnitType))
-    lazy val Object_waitL = enterMethod(ObjectClass, nme.wait_, MethodType(LongType :: Nil, UnitType))
-    lazy val Object_waitLI = enterMethod(ObjectClass, nme.wait_, MethodType(LongType :: IntType :: Nil, UnitType))
+    lazy val Object_notify = enterMethod(ObjectClass, nme.notify_, MethodType(Nil, UnitType), Final)
+    lazy val Object_notifyAll = enterMethod(ObjectClass, nme.notifyAll_, MethodType(Nil, UnitType), Final)
+    lazy val Object_wait = enterMethod(ObjectClass, nme.wait_, MethodType(Nil, UnitType), Final)
+    lazy val Object_waitL = enterMethod(ObjectClass, nme.wait_, MethodType(LongType :: Nil, UnitType), Final)
+    lazy val Object_waitLI = enterMethod(ObjectClass, nme.wait_, MethodType(LongType :: IntType :: Nil, UnitType), Final)
 
     def ObjectMethods = List(Object_eq, Object_ne, Object_synchronized, Object_clone,
         Object_finalize, Object_notify, Object_notifyAll, Object_wait, Object_waitL, Object_waitLI)
