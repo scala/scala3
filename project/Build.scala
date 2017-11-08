@@ -160,7 +160,7 @@ object Build {
 
     // Avoid having to run `dotty-sbt-bridge/publishLocal` before compiling a bootstrapped project
     scalaCompilerBridgeSource :=
-      (dottyOrganization %% "dotty-sbt-bridge" % "NOT_PUBLISHED")
+      (dottyOrganization %% "dotty-sbt-bridge" % dottyVersion)
       .artifacts(Artifact.sources("dotty-sbt-bridge").withUrl(
         // We cannot use the `packageSrc` task because a setting cannot depend
         // on a task. Instead, we make `compile` below depend on the bridge `packageSrc`
@@ -199,7 +199,7 @@ object Build {
         Seq(
           dottyOrganization % "dotty-library_2.11" % dottyNonBootstrappedVersion % Configurations.ScalaTool.name,
           dottyOrganization % "dotty-compiler_2.11" % dottyNonBootstrappedVersion % Configurations.ScalaTool.name
-        )//.map(_.withDottyCompat(scalaVersion.value))
+        ).map(_.withDottyCompat(scalaVersion.value))
       else
         Seq()
     },
