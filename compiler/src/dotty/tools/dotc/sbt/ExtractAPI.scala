@@ -17,6 +17,7 @@ import StdNames._
 import NameKinds.DefaultGetterName
 import typer.Inliner
 import typer.ErrorReporting.cyclicErrorMsg
+import transform.ValueClasses
 import transform.SymUtils._
 import dotty.tools.io.Path
 import java.io.PrintWriter
@@ -254,8 +255,17 @@ private class ExtractAPICollector(implicit val ctx: Context) extends ThunkHolder
     val cinfo = csym.classInfo
 
     val bases =
-      try linearizedAncestorTypes(cinfo)
-      catch {
+      try {
+        val ancestorTypes0 = linearizedAncestorTypes(cinfo)
+        if (ValueClasses.isDerivedValueClass(csym)) {
+          val underlying = ValueClasses.valueClassUnbox(csym).info.finalResultType
+          // The underlying type of a value class should be part of the name hash
+          // of the value class (see the test `value-class-underlying`), this is accomplished
+          // by adding the underlying type to the list of parent types.
+          underlying :: ancestorTypes0
+        } else
+          ancestorTypes0
+      } catch {
         case ex: CyclicReference =>
           // See neg/i1750a for an example where a cyclic error can arise.
           // The root cause in this example is an illegal "override" of an inner trait
