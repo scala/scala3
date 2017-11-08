@@ -29,9 +29,9 @@ class LinkOptimiseTests extends ParallelTesting {
   @Test def linkOptimise: Unit = {
     // Setup and compile libraries
     def strawmanLibrary =
-      compileDir("../collection-strawman/collections/src/main", defaultOptions)
+      compileDir("../collection-strawman/collections/src/main", defaultOptions)(TestGroup("strawmanLibrary"))
     def linkCustomLib =
-      compileDir("../tests/link/custom-lib", defaultOptions)
+      compileDir("../tests/link/custom-lib", defaultOptions)(TestGroup("linkCustomLib"))
 
     val libraries = {
       strawmanLibrary +
@@ -48,8 +48,8 @@ class LinkOptimiseTests extends ParallelTesting {
     val linkDir = "../tests/link"
     val linkStramanDir = linkDir + "/strawman"
     val linkCustomLibDir = linkDir + "/on-custom-lib"
-    def linkStrawmanTest = compileFilesInDir(linkStramanDir, strawmanClassPath)
-    def linkCustomLibTest = compileFilesInDir(linkCustomLibDir, customLibClassFlags)
+    def linkStrawmanTest = compileFilesInDir(linkStramanDir, strawmanClassPath)(TestGroup("linkStrawmanTest"))
+    def linkCustomLibTest = compileFilesInDir(linkCustomLibDir, customLibClassFlags)(TestGroup("linkCustomLibTest"))
 
     def classFileChecks(sourceDir: String, testName: String) = {
       val checkExt = ".classcheck"

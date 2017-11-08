@@ -1,6 +1,6 @@
 package dotc
 
-import dotty.tools.vulpix.{ParallelTesting, TestFlags}
+import dotty.tools.vulpix.{ParallelTesting, TestFlags, TestGroup}
 
 import scala.concurrent.duration._
 
@@ -26,5 +26,5 @@ object comptest extends ParallelTesting {
       ),
       TestFlags("", Array("-Ylog:frontend", "-Xprompt")),
       outDirectory = "."
-  )
+  )(TestGroup("comptest"))
 }
