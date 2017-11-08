@@ -46,9 +46,8 @@ class IdempotencyTests extends ParallelTesting {
         testDir <- new JFile("../tests/order-idempotency").listFiles() if testDir.isDirectory
       } yield {
         val sources = sourcesFrom(testDir.toPath)
-        def orderIdempotency1 = compileList(testDir.getName, sources, opt)(TestGroup("orderIdempotency1"))
-        def orderIdempotency2 = compileList(testDir.getName, sources.reverse, opt)(TestGroup("orderIdempotency2"))
-        orderIdempotency1 + orderIdempotency2
+        compileList(testDir.getName, sources, opt)(TestGroup("orderIdempotency1")) +
+        compileList(testDir.getName, sources.reverse, opt)(TestGroup("orderIdempotency2"))
       }).reduce(_ + _)
     }
 

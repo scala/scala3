@@ -28,10 +28,14 @@ class LinkOptimiseTests extends ParallelTesting {
 
   @Test def linkOptimise: Unit = {
     // Setup and compile libraries
-    def strawmanLibrary =
-      compileDir("../collection-strawman/collections/src/main", defaultOptions)(TestGroup("strawmanLibrary"))
-    def linkCustomLib =
-      compileDir("../tests/link/custom-lib", defaultOptions)(TestGroup("linkCustomLib"))
+    val strawmanLibGroup = TestGroup("strawmanLibrary")
+    val strawmanLibTestGroup = TestGroup(strawmanLibGroup.name + "/tests")
+
+    val linkCustomLibGroup = TestGroup("linkCustomLib")
+    val linkCustomLibTestGroup = TestGroup(linkCustomLibGroup.name + "/tests")
+
+    val strawmanLibrary = compileDir("../collection-strawman/collections/src/main", defaultOptions)(strawmanLibGroup)
+    val linkCustomLib = compileDir("../tests/link/custom-lib", defaultOptions)(linkCustomLibGroup)
 
     val libraries = {
       strawmanLibrary +
@@ -41,15 +45,16 @@ class LinkOptimiseTests extends ParallelTesting {
     // Setup class paths
     def mkLinkClassFlags(libPath: String) =
       TestFlags(mkClassPath(libPath :: Jars.dottyTestDeps), mkClassPath(Jars.dottyTestDeps), basicDefaultOptions :+ "-Xlink-optimise")
-    val strawmanClassPath = mkLinkClassFlags(defaultOutputDir + "strawmanLibrary/main/")
-    val customLibClassFlags = mkLinkClassFlags(defaultOutputDir + "linkCustomLib/custom-lib")
+    val strawmanClassPath = mkLinkClassFlags(defaultOutputDir + strawmanLibGroup.name + "/main/")
+    val customLibClassFlags = mkLinkClassFlags(defaultOutputDir + linkCustomLibGroup.name + "/custom-lib")
 
     // Link tests
     val linkDir = "../tests/link"
     val linkStramanDir = linkDir + "/strawman"
     val linkCustomLibDir = linkDir + "/on-custom-lib"
-    def linkStrawmanTest = compileFilesInDir(linkStramanDir, strawmanClassPath)(TestGroup("linkStrawmanTest"))
-    def linkCustomLibTest = compileFilesInDir(linkCustomLibDir, customLibClassFlags)(TestGroup("linkCustomLibTest"))
+
+    val linkStrawmanTest = compileFilesInDir(linkStramanDir, strawmanClassPath)(strawmanLibTestGroup)
+    val linkCustomLibTest = compileFilesInDir(linkCustomLibDir, customLibClassFlags)(linkCustomLibTestGroup)
 
     def classFileChecks(sourceDir: String, testName: String) = {
       val checkExt = ".classcheck"
@@ -73,8 +78,8 @@ class LinkOptimiseTests extends ParallelTesting {
     }.keepOutput.checkRuns()
 
     try {
-      classFileChecks(linkStramanDir, "linkStrawmanTest")
-      classFileChecks(linkCustomLibDir, "linkCustomLibTest")
+      classFileChecks(linkStramanDir, strawmanLibTestGroup.name)
+      classFileChecks(linkCustomLibDir, linkCustomLibTestGroup.name)
     } finally {
       (libraries + tests).delete()
     }
