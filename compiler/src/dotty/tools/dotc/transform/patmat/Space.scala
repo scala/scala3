@@ -405,35 +405,22 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
         Prod(pat.tpe.stripAnnots, fun.tpe.widen, fun.symbol, pats.map(project), irrefutable(fun))
     case Typed(pat @ UnApply(_, _, _), _) => project(pat)
     case Typed(expr, tpt) =>
-      val unchecked = expr.tpe.hasAnnotation(ctx.definitions.UncheckedAnnot)
-      def warn(msg: String): Unit = if (!unchecked) ctx.warning(UncheckedTypePattern(msg), tpt.pos)
-      Typ(erase(expr.tpe.stripAnnots)(warn), true)
+      Typ(erase(expr.tpe.stripAnnots), true)
     case _ =>
       debug.println(s"unknown pattern: $pat")
       Empty
   }
 
   /* Erase a type binding according to erasure semantics in pattern matching */
-  def erase(tp: Type)(implicit warn: String => Unit): Type = tp match {
+  def erase(tp: Type): Type = tp match {
     case tp @ AppliedType(tycon, args) =>
       if (tycon.isRef(defn.ArrayClass)) tp.derivedAppliedType(tycon, args.map(erase))
-      else {
-        val ignoreWarning = args.forall { p =>
-          p.typeSymbol.is(BindDefinedType) ||
-            p.hasAnnotation(defn.UncheckedAnnot) ||
-            p.isInstanceOf[TypeBounds]
-        }
-        if (!ignoreWarning)
-          warn("type arguments are not checked since they are eliminated by erasure")
-
-        tp.derivedAppliedType(tycon, args.map(t => WildcardType))
-      }
+      else tp.derivedAppliedType(tycon, args.map(t => WildcardType))
     case OrType(tp1, tp2) =>
       OrType(erase(tp1), erase(tp2))
     case AndType(tp1, tp2) =>
       AndType(erase(tp1), erase(tp2))
     case tp: RefinedType =>
-      warn("type refinement is not checked since it is eliminated by erasure")
       tp.derivedRefinedType(erase(tp.parent), tp.refinedName, WildcardType)
     case _ => tp
   }
