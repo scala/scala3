@@ -598,18 +598,14 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
       def apply(t: Type): Type = t match {
 
         case tp: TypeRef if tp.symbol.is(TypeParam) && tp.underlying.isInstanceOf[TypeBounds] =>
-          // See tests/patmat/gadt.scala  tests/patmat/exhausting.scala
+          // See tests/patmat/gadt.scala  tests/patmat/exhausting.scala  tests/patmat/t9657.scala
           val exposed =
             if (variance == 0) newTypeVar(tp.underlying.bounds)
-            else if (variance == 1) expose(tp, true)
-            else expose(tp, false)
+            else if (variance == 1) mapOver(tp.underlying.hiBound)
+            else mapOver(tp.underlying.loBound)
 
-          debug.println(s"$tp exposed to =====> " + exposed)
+          debug.println(s"$tp exposed to =====> $exposed")
           exposed
-        case tp: RefinedType if tp.refinedInfo.isInstanceOf[TypeBounds] =>
-          // Ideally, we would expect type inference to do the job
-          // Check tests/patmat/t9657.scala
-          expose(tp)
         case _ =>
           mapOver(t)
       }
@@ -761,51 +757,6 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
     debug.println(s"checkable: ${sel.show} = $res")
     res
   }
-
-
-  /** Eliminate reference to type parameters in refinements
-   *
-   *  A <: X :> Y  B <: U :> V   M { type T <: A :> B }  ~~>  M { type T <: X :> V }
-   */
-  def expose(tp: Type, up: Boolean = true): Type = tp match {
-    case tp: AppliedType =>
-      tp.derivedAppliedType(expose(tp.tycon, up), tp.args.map(expose(_, up)))
-
-    case tp: TypeAlias =>
-      val hi = expose(tp.alias, up)
-      val lo = expose(tp.alias, up)
-
-      if (hi =:= lo)
-        tp.derivedTypeAlias(hi)
-      else
-        tp.derivedTypeBounds(lo, hi)
-
-    case tp @ TypeBounds(lo, hi) =>
-      tp.derivedTypeBounds(expose(lo, false), expose(hi, true))
-
-    case tp: RefinedType =>
-      tp.derivedRefinedType(
-        expose(tp.parent),
-        tp.refinedName,
-        expose(tp.refinedInfo, up)
-      )
-    case tp: TypeProxy =>
-      tp.underlying match {
-        case TypeBounds(lo, hi) =>
-          expose(if (up) hi else lo, up)
-        case _ =>
-          tp
-      }
-
-    case OrType(tp1, tp2) =>
-      OrType(expose(tp1, up), expose(tp2, up))
-
-    case AndType(tp1, tp2) =>
-      AndType(expose(tp1, up), expose(tp2, up))
-
-    case _ => tp
-  }
-
 
   def checkExhaustivity(_match: Match): Unit = {
     val Match(sel, cases) = _match
