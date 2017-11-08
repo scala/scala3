@@ -247,9 +247,9 @@ class CompilationTests extends ParallelTesting {
 
     val opt = TestFlags(
       // compile with bootstrapped library on cp:
-      defaultOutputDir + libGroup.name + "/src/:" +
+      defaultOutputDir + libGroup + "/src/:" +
       // as well as bootstrapped compiler:
-      defaultOutputDir + dotty1Group.name + "/dotty/:" +
+      defaultOutputDir + dotty1Group + "/dotty/:" +
       Jars.dottyInterfaces,
       Array("-Ycheck-reentrant")
     )
@@ -297,9 +297,9 @@ class CompilationTests extends ParallelTesting {
       }.keepOutput :: Nil
     }.map(_.checkCompile())
 
-    assert(new java.io.File(s"../out/${dotty1Group.name}/dotty/").exists)
-    assert(new java.io.File(s"../out/${dotty2Group.name}/dotty/").exists)
-    assert(new java.io.File(s"../out/${libGroup.name}/src/").exists)
+    assert(new java.io.File(s"../out/$dotty1Group/dotty/").exists)
+    assert(new java.io.File(s"../out/$dotty2Group/dotty/").exists)
+    assert(new java.io.File(s"../out/$libGroup/src/").exists)
     compileList("idempotency", List("../tests/idempotency/BootstrapChecker.scala", "../tests/idempotency/IdempotencyCheck.scala"), defaultOptions).checkRuns()
 
     tests.foreach(_.delete())

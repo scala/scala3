@@ -29,10 +29,10 @@ class LinkOptimiseTests extends ParallelTesting {
   @Test def linkOptimise: Unit = {
     // Setup and compile libraries
     val strawmanLibGroup = TestGroup("strawmanLibrary")
-    val strawmanLibTestGroup = TestGroup(strawmanLibGroup.name + "/tests")
+    val strawmanLibTestGroup = TestGroup(strawmanLibGroup + "/tests")
 
     val linkCustomLibGroup = TestGroup("linkCustomLib")
-    val linkCustomLibTestGroup = TestGroup(linkCustomLibGroup.name + "/tests")
+    val linkCustomLibTestGroup = TestGroup(linkCustomLibGroup + "/tests")
 
     val strawmanLibrary = compileDir("../collection-strawman/collections/src/main", defaultOptions)(strawmanLibGroup)
     val linkCustomLib = compileDir("../tests/link/custom-lib", defaultOptions)(linkCustomLibGroup)
@@ -45,8 +45,8 @@ class LinkOptimiseTests extends ParallelTesting {
     // Setup class paths
     def mkLinkClassFlags(libPath: String) =
       TestFlags(mkClassPath(libPath :: Jars.dottyTestDeps), mkClassPath(Jars.dottyTestDeps), basicDefaultOptions :+ "-Xlink-optimise")
-    val strawmanClassPath = mkLinkClassFlags(defaultOutputDir + strawmanLibGroup.name + "/main/")
-    val customLibClassFlags = mkLinkClassFlags(defaultOutputDir + linkCustomLibGroup.name + "/custom-lib")
+    val strawmanClassPath = mkLinkClassFlags(defaultOutputDir + strawmanLibGroup + "/main/")
+    val customLibClassFlags = mkLinkClassFlags(defaultOutputDir + linkCustomLibGroup + "/custom-lib")
 
     // Link tests
     val linkDir = "../tests/link"

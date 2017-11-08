@@ -1038,7 +1038,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
     val sourceFile = new JFile(f)
     val parent = sourceFile.getParentFile
     val outDir =
-      outDirectory + testGroup.name + "/" +
+      outDirectory + testGroup + "/" +
       sourceFile.getName.substring(0, sourceFile.getName.lastIndexOf('.')) + "/"
 
     require(
@@ -1064,7 +1064,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
    *  can be used for randomization.
    */
   def compileDir(f: String, flags: TestFlags, randomOrder: Option[Int] = None, outDirectory: String = defaultOutputDir)(implicit testGroup: TestGroup): CompilationTest = {
-    val outDir = outDirectory + testGroup.name + "/"
+    val outDir = outDirectory + testGroup + "/"
     val sourceDir = new JFile(f)
     checkRequirements(f, sourceDir, outDir)
 
@@ -1083,7 +1083,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
     val targetDir = new JFile(outDir + "/" + sourceDir.getName + "/")
     targetDir.mkdirs()
 
-    val target = JointCompilationSource(s"compiling '$f' in test '${testGroup.name}'", randomized, flags, targetDir)
+    val target = JointCompilationSource(s"compiling '$f' in test '$testGroup'", randomized, flags, targetDir)
     new CompilationTest(target)
   }
 
@@ -1092,14 +1092,14 @@ trait ParallelTesting extends RunnerOrchestration { self =>
    *  dissociated
    */
   def compileList(testName: String, files: List[String], flags: TestFlags, outDirectory: String = defaultOutputDir)(implicit testGroup: TestGroup): CompilationTest = {
-    val outDir = outDirectory + testGroup.name + "/" + testName + "/"
+    val outDir = outDirectory + testGroup + "/" + testName + "/"
 
     // Directories in which to compile all containing files with `flags`:
     val targetDir = new JFile(outDir)
     targetDir.mkdirs()
     assert(targetDir.exists, s"couldn't create target directory: $targetDir")
 
-    val target = JointCompilationSource(s"$testName from ${testGroup.name}", files.map(new JFile(_)).toArray, flags, targetDir)
+    val target = JointCompilationSource(s"$testName from $testGroup", files.map(new JFile(_)).toArray, flags, targetDir)
 
     // Create a CompilationTest and let the user decide whether to execute a pos or a neg test
     new CompilationTest(target)
@@ -1123,7 +1123,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
    *    the same name as the directory (with the file extension `.check`)
    */
   def compileFilesInDir(f: String, flags: TestFlags, outDirectory: String = defaultOutputDir)(implicit testGroup: TestGroup): CompilationTest = {
-    val outDir = outDirectory + testGroup.name + "/"
+    val outDir = outDirectory + testGroup + "/"
     val sourceDir = new JFile(f)
     checkRequirements(f, sourceDir, outDir)
 
@@ -1142,7 +1142,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
    *  tests.
    */
   def compileShallowFilesInDir(f: String, flags: TestFlags, outDirectory: String = defaultOutputDir)(implicit testGroup: TestGroup): CompilationTest = {
-    val outDir = outDirectory + testGroup.name + "/"
+    val outDir = outDirectory + testGroup + "/"
     val sourceDir = new JFile(f)
     checkRequirements(f, sourceDir, outDir)
 
