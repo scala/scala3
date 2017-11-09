@@ -254,24 +254,25 @@ private class ExtractAPICollector(implicit val ctx: Context) extends ThunkHolder
   def apiClassStructure(csym: ClassSymbol): api.Structure = {
     val cinfo = csym.classInfo
 
-    val bases =
-      try {
-        val ancestorTypes0 = linearizedAncestorTypes(cinfo)
-        if (ValueClasses.isDerivedValueClass(csym)) {
-          val underlying = ValueClasses.valueClassUnbox(csym).info.finalResultType
-          // The underlying type of a value class should be part of the name hash
-          // of the value class (see the test `value-class-underlying`), this is accomplished
-          // by adding the underlying type to the list of parent types.
-          underlying :: ancestorTypes0
-        } else
-          ancestorTypes0
-      } catch {
-        case ex: CyclicReference =>
-          // See neg/i1750a for an example where a cyclic error can arise.
-          // The root cause in this example is an illegal "override" of an inner trait
-          ctx.error(cyclicErrorMsg(ex), csym.pos)
-          defn.ObjectType :: Nil
-       }
+    val bases = {
+      val ancestorTypes0 =
+        try linearizedAncestorTypes(cinfo)
+        catch {
+          case ex: CyclicReference =>
+            // See neg/i1750a for an example where a cyclic error can arise.
+            // The root cause in this example is an illegal "override" of an inner trait
+            ctx.error(cyclicErrorMsg(ex), csym.pos)
+            defn.ObjectType :: Nil
+        }
+      if (ValueClasses.isDerivedValueClass(csym)) {
+        val underlying = ValueClasses.valueClassUnbox(csym).info.finalResultType
+        // The underlying type of a value class should be part of the name hash
+        // of the value class (see the test `value-class-underlying`), this is accomplished
+        // by adding the underlying type to the list of parent types.
+        underlying :: ancestorTypes0
+      } else
+        ancestorTypes0
+    }
 
     val apiBases = bases.map(apiType)
 

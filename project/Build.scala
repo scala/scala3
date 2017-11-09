@@ -197,8 +197,8 @@ object Build {
     libraryDependencies ++= {
       if (bootstrapFromPublishedJars.value)
         Seq(
-          dottyOrganization % "dotty-library_2.11" % dottyNonBootstrappedVersion % Configurations.ScalaTool.name,
-          dottyOrganization % "dotty-compiler_2.11" % dottyNonBootstrappedVersion % Configurations.ScalaTool.name
+          dottyOrganization %% "dotty-library" % dottyNonBootstrappedVersion % Configurations.ScalaTool.name,
+          dottyOrganization %% "dotty-compiler" % dottyNonBootstrappedVersion % Configurations.ScalaTool.name
         ).map(_.withDottyCompat(scalaVersion.value))
       else
         Seq()
@@ -862,7 +862,7 @@ object Build {
       unmanagedSourceDirectories in Compile +=
         baseDirectory.value / "../language-server/src/dotty/tools/languageserver/config",
       sbtPlugin := true,
-      version := "0.1.6-SNAPSHOT",
+      version := "0.1.8",
       sbtTestDirectory := baseDirectory.value / "sbt-test",
       scriptedLaunchOpts += "-Dplugin.version=" + version.value,
       scriptedLaunchOpts += "-Dplugin.scalaVersion=" + dottyVersion,
