@@ -65,12 +65,6 @@ object Test extends App {
   import Configs._
   import Exceptions._
 
-  type PC[T] = Possibly[Configured[T]]
-
-  val names: PC[List[Name]] = readName :: Nil
-  val firstNames: PC[List[String]] = names.map(_.first)
-  val longest: PC[String] = firstNames.maxBy(_.length)
-
   def readName: Configured[Possibly[Name]] = {
     val parts = config.name.split(" ")
     require(parts.length >= 2)
@@ -120,4 +114,19 @@ object OptionTest extends App {
 
   println(readPerson(config1))
   println(readPerson(config2))
+}
+
+object FancyStuff {
+  import Configs._
+  import Exceptions._
+  import Test._
+
+  type PC[T] = Possibly[Configured[T]]
+
+  val names: PC[List[Name]] = readName :: Nil
+  val firstNames: PC[List[String]] = names.map(_.first)
+  val longest: PC[String] = firstNames.maxBy(_.length)
+
+  val xs: List[PC[String]] = List(longest)
+  val ys: PC[List[String]] = xs.map(x => x)
 }

@@ -942,11 +942,26 @@ class Definitions {
         false
     })
 
-
   def functionArity(tp: Type)(implicit ctx: Context) = tp.dealias.argInfos.length - 1
 
-  def isImplicitFunctionType(tp: Type)(implicit ctx: Context) =
-    isFunctionType(tp) && tp.dealias.typeSymbol.name.isImplicitFunction
+  /** Return underlying immplicit function type (i.e. instance of an ImplicitFunctionN class)
+   *  or NoType if none exists. The following types are considered as underlying types:
+   *   - the alias of an alias type
+   *   - the instance or origin of a TypeVar (i.e. the result of a stripTypeVar)
+   *   - the upper bound of a TypeParamRef in the current constraint
+   */
+  def asImplicitFunctionType(tp: Type)(implicit ctx: Context): Type =
+    tp.stripTypeVar.dealias match {
+      case tp1: TypeParamRef if ctx.typerState.constraint.contains(tp1) =>
+        asImplicitFunctionType(ctx.typeComparer.bounds(tp1).hiBound)
+      case tp1 =>
+        if (isFunctionType(tp1) && tp1.typeSymbol.name.isImplicitFunction) tp1
+        else NoType
+    }
+
+  /** Is `tp` an implicit function type? */
+  def isImplicitFunctionType(tp: Type)(implicit ctx: Context): Boolean =
+    asImplicitFunctionType(tp).exists
 
   // ----- primitive value class machinery ------------------------------------------
 

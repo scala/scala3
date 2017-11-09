@@ -1668,12 +1668,13 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
           case _ => typedUnadapted(desugar(tree), pt)
         }
 
-        if (defn.isImplicitFunctionType(pt) &&
+        val ifpt = defn.asImplicitFunctionType(pt)
+        if (ifpt.exists &&
             xtree.isTerm &&
             !untpd.isImplicitClosure(xtree) &&
             !ctx.mode.is(Mode.ImplicitShadowing) &&
             !ctx.isAfterTyper)
-          makeImplicitFunction(xtree, pt)
+          makeImplicitFunction(xtree, ifpt)
         else xtree match {
           case xtree: untpd.NameTree => typedNamed(xtree, pt)
           case xtree => typedUnnamed(xtree)
