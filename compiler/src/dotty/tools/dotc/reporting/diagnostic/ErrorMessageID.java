@@ -112,6 +112,7 @@ public enum ErrorMessageID {
     UndefinedNamedTypeParameterID,
     IllegalStartOfStatementID,
     TraitIsExpectedID,
+    TraitRedefinedFinalMethodFromAnyRefID,
     ;
 
     public int errorNumber() {

@@ -1916,4 +1916,11 @@ object messages {
           |"""
     }
   }
+
+  case class TraitRedefinedFinalMethodFromAnyRef()(implicit ctx: Context) extends Message(TraitRedefinedFinalMethodFromAnyRefID) {
+    val kind = "Syntax"
+    val msg = "Trait cannot redefine final method from class AnyRef"
+    val explanation = hl"""A method was defined in a trait trying to redefine a method declared in class AnyRef.
+    All classes inherit from AnyRef and should not redefine its methods"""
+  }
 }
