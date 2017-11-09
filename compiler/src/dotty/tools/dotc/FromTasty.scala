@@ -69,23 +69,28 @@ object FromTasty extends Driver {
 
     def readTASTY(unit: CompilationUnit)(implicit ctx: Context): CompilationUnit = unit match {
       case unit: TASTYCompilationUnit =>
+        assert(ctx.settings.YretainTrees.value)
         val className = unit.className.toTypeName
-        val clsd = ctx.base.staticRef(className)
-        def cannotUnpickle(reason: String) = {
-          ctx.error(s"class $className cannot be unpickled because $reason")
-          unit
-        }
-        clsd match {
+        ctx.base.staticRef(className) match {
           case clsd: ClassDenotation =>
-            clsd.infoOrCompleter match {
+            def cannotUnpickle(reason: String) =
+              ctx.error(s"class $className cannot be unpickled because $reason")
+            def tryToLoad = clsd.infoOrCompleter match {
               case info: ClassfileLoader =>
                 info.load(clsd)
-                val unpickled = clsd.symbol.asClass.tree
-                if (unpickled != null) CompilationUnit.mkCompilationUnit(clsd, unpickled, forceTrees = true)
-                else cannotUnpickle(s"its class file ${info.classfile} does not have a TASTY attribute")
+                Option(clsd.symbol.asClass.tree).orElse {
+                  cannotUnpickle(s"its class file ${info.classfile} does not have a TASTY attribute")
+                  None
+                }
+
               case info =>
                 cannotUnpickle(s"its info of type ${info.getClass} is not a ClassfileLoader")
+                None
             }
+            Option(clsd.symbol.asClass.tree).orElse(tryToLoad)
+              .map(unpickled => CompilationUnit.mkCompilationUnit(clsd, unpickled, forceTrees = true))
+              .getOrElse(unit)
+
           case _ =>
             ctx.error(s"class not found: $className")
             unit
