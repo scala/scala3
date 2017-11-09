@@ -36,7 +36,8 @@ class FromTastyTests extends ParallelTesting {
     implicit val testGroup: TestGroup = TestGroup("runTestFromTasty")
     val (step1, step2) = {
       // compileTastyInDir("../tests/run", defaultOptions) + // FIXME
-      compileTastyInDir("../tests/run-from-tasty", defaultOptions)
+      compileTastyInDir("../tests/run-from-tasty", defaultOptions) +
+      compileTasty("../tests/run/t493.scala", defaultOptions)
     }
     step1.keepOutput.checkCompile() // Compile all files to generate the class files with tasty
     step2.keepOutput.checkRuns() // Compile from tasty and run the result

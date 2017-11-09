@@ -6,7 +6,6 @@ package foo {
 
 }
 
-class Test
 object Test {
   def main(args: Array[String]): Unit = {
     println(new foo.A().getClass.getName)
