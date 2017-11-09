@@ -596,7 +596,6 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
     // replace type parameter references with bounds
     val typeParamMap = new TypeMap {
       def apply(t: Type): Type = t match {
-
         case tp: TypeRef if tp.symbol.is(TypeParam) && tp.underlying.isInstanceOf[TypeBounds] =>
           // See tests/patmat/gadt.scala  tests/patmat/exhausting.scala  tests/patmat/t9657.scala
           val exposed =
@@ -611,13 +610,32 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
       }
     }
 
+    // replace uninstantiated type vars with WildcardType, check tests/patmat/3333.scala
+    val instUndetMap = new TypeMap {
+      def apply(t: Type): Type = t match {
+        case tvar: TypeVar if !tvar.isInstantiated => WildcardType(tvar.origin.underlying.bounds)
+        case _ => mapOver(t)
+      }
+    }
+
+    val force = new ForceDegree.Value(
+      tvar => !(ctx.typerState.constraint.entry(tvar.origin) eq tvar.origin.underlying),
+      minimizeAll = false
+    )
+
     val tvars = tp1.typeParams.map { tparam => newTypeVar(tparam.paramInfo.bounds) }
     val protoTp1 = thisTypeMap(tp1.appliedTo(tvars))
 
-    if (protoTp1 <:< tp2 && isFullyDefined(protoTp1, ForceDegree.noBottom)) protoTp1
+    if (protoTp1 <:< tp2) {
+      isFullyDefined(protoTp1, force)
+      instUndetMap(protoTp1)
+    }
     else {
       val protoTp2 = typeParamMap(tp2)
-      if (protoTp1 <:< protoTp2 && isFullyDefined(protoTp1 & protoTp2, ForceDegree.noBottom)) protoTp1
+      if (protoTp1 <:< protoTp2) {
+        isFullyDefined(protoTp1 & protoTp2, force)
+        instUndetMap(protoTp1)
+      }
       else {
         debug.println(s"$protoTp1 <:< $protoTp2 = false")
         NoType
