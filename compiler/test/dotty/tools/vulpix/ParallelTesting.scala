@@ -1076,7 +1076,11 @@ trait ParallelTesting extends RunnerOrchestration { self =>
     new CompilationTest(target)
   }
 
-  /** Compiles a single file from the string path `f` using the supplied flags */
+  /** Compiles a single file from the string path `f` using the supplied flags
+   *
+   *  Tests in the first part of the tuple must be executed before the second.
+   *  Both testsRequires explicit delete().
+   */
   def compileTasty(f: String, flags: TestFlags)(implicit testGroup: TestGroup): (CompilationTest, CompilationTest) = {
     val sourceFile = new JFile(f)
     val parent = sourceFile.getParentFile
@@ -1097,7 +1101,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
       tastySource,
       fromTasty = true
     )
-    (compileFile(f, flags), new CompilationTest(target))
+    (compileFile(f, flags).keepOutput, new CompilationTest(target).keepOutput)
   }
 
   /** Compiles a directory `f` using the supplied `flags`. This method does
@@ -1197,6 +1201,9 @@ trait ParallelTesting extends RunnerOrchestration { self =>
    *    with file extension `.check`)
    *  - Directories can have an associated check-file, where the check file has
    *    the same name as the directory (with the file extension `.check`)
+   *
+   *  Tests in the first part of the tuple must be executed before the second.
+   *  Both testsRequires explicit delete().
    */
   def compileTastyInDir(f: String, flags0: TestFlags)(implicit testGroup: TestGroup): (CompilationTest, CompilationTest) = {
     val outDir = defaultOutputDir + testGroup + "/"
@@ -1215,7 +1222,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
 
     // Create a CompilationTest and let the user decide whether to execute a pos or a neg test
     val generateClassFiles = compileFilesInDir(f, flags0)
-    (generateClassFiles, new CompilationTest(targets))
+    (generateClassFiles.keepOutput, new CompilationTest(targets).keepOutput)
   }
 
 

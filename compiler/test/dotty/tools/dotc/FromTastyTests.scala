@@ -27,8 +27,8 @@ class FromTastyTests extends ParallelTesting {
       compileTastyInDir("../tests/pos-from-tasty", defaultOptions) +
       compileTasty("../tests/pos-from-tasty/simpleClass.scala", defaultOptions)
     }
-    step1.keepOutput.checkCompile() // Compile all files to generate the class files with tasty
-    step2.keepOutput.checkCompile() // Compile from tasty
+    step1.checkCompile() // Compile all files to generate the class files with tasty
+    step2.checkCompile() // Compile from tasty
     (step1 + step2).delete()
   }
 
@@ -39,8 +39,8 @@ class FromTastyTests extends ParallelTesting {
       compileTastyInDir("../tests/run-from-tasty", defaultOptions) +
       compileTasty("../tests/run/t493.scala", defaultOptions)
     }
-    step1.keepOutput.checkCompile() // Compile all files to generate the class files with tasty
-    step2.keepOutput.checkRuns() // Compile from tasty and run the result
+    step1.checkCompile() // Compile all files to generate the class files with tasty
+    step2.checkRuns() // Compile from tasty and run the result
     (step1 + step2).delete()
   }
 
