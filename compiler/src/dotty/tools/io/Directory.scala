@@ -49,8 +49,10 @@ class Directory(jpath: JPath) extends Path(jpath) {
   /** An iterator over the contents of this directory.
    */
   def list: Iterator[Path] =
-    if (isDirectory) Files.list(jpath).iterator.asScala.map(Path.apply)
-    else Iterator.empty
+    jpath.toFile.listFiles match {
+      case null => Iterator.empty
+      case xs => xs.iterator.map(x => Path(x.toPath))
+    }
 
   def dirs: Iterator[Directory] = list collect { case x: Directory => x }
   def files: Iterator[File] = list collect { case x: File => x }

@@ -55,13 +55,14 @@ class PlainFile(val givenPath: Path) extends AbstractFile {
 
   /** Returns all abstract subfiles of this abstract directory. */
   def iterator: Iterator[AbstractFile] = {
-    try {
-      import scala.collection.JavaConverters._
-      val it = Files.newDirectoryStream(jpath).iterator()
-      it.asScala.map(p => new PlainFile(Path(p)))
-    } catch {
-      case _: NotDirectoryException => Iterator.empty
+    // Optimization: Assume that the file was not deleted and did not have permissions changed
+    // between the call to `list` and the iteration. This saves a call to `exists`.
+    def existsFast(path: Path) = path match {
+      case (_: Directory | _: io.File) => true
+      case _ => path.exists
     }
+    if (!isDirectory) Iterator.empty
+    else givenPath.toDirectory.list filter existsFast map (new PlainFile(_))
   }
 
   /**
