@@ -10,7 +10,7 @@ import org.junit.{AfterClass, Test}
 import org.junit.experimental.categories.Category
 
 import scala.concurrent.duration._
-import vulpix.{ParallelTesting, SummaryReport, SummaryReporting, TestConfiguration}
+import vulpix._
 
 
 class IdempotencyTests extends ParallelTesting {
@@ -27,7 +27,7 @@ class IdempotencyTests extends ParallelTesting {
 
   @Category(Array(classOf[SlowTests]))
   @Test def idempotency: Unit = {
-
+    implicit val testGroup: TestGroup = TestGroup("idempotency")
     val opt = defaultOptions.and("-YemitTasty")
 
     def sourcesFrom(dir: Path) = CompilationTests.sources(Files.walk(dir))
@@ -37,9 +37,8 @@ class IdempotencyTests extends ParallelTesting {
     val strawmanSourcesRevSorted = strawmanSourcesSorted.reverse
 
     val posIdempotency = {
-      def posIdempotency1 = compileFilesInDir("../tests/pos", opt)
-      def posIdempotency2 = compileFilesInDir("../tests/pos", opt)
-      posIdempotency1 + posIdempotency2
+      compileFilesInDir("../tests/pos", opt)(TestGroup("idempotency/posIdempotency1")) +
+      compileFilesInDir("../tests/pos", opt)(TestGroup("idempotency/posIdempotency2"))
     }
 
     val orderIdempotency = {
@@ -47,9 +46,8 @@ class IdempotencyTests extends ParallelTesting {
         testDir <- new JFile("../tests/order-idempotency").listFiles() if testDir.isDirectory
       } yield {
         val sources = sourcesFrom(testDir.toPath)
-        def orderIdempotency1 = compileList(testDir.getName, sources, opt)
-        def orderIdempotency2 = compileList(testDir.getName, sources.reverse, opt)
-        orderIdempotency1 + orderIdempotency2
+        compileList(testDir.getName, sources, opt)(TestGroup("idempotency/orderIdempotency1")) +
+        compileList(testDir.getName, sources.reverse, opt)(TestGroup("idempotency/orderIdempotency2"))
       }).reduce(_ + _)
     }
 
@@ -62,7 +60,7 @@ class IdempotencyTests extends ParallelTesting {
 
     def check(name: String) = {
       val files = List(s"../tests/idempotency/$name.scala", "../tests/idempotency/IdempotencyCheck.scala")
-      compileList(name, files, defaultOptions)
+      compileList(name, files, defaultOptions)(TestGroup("idempotency/check"))
     }
     val allChecks = {
       check("CheckOrderIdempotency") +

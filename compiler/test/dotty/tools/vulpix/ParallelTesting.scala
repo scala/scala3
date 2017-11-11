@@ -1033,39 +1033,12 @@ trait ParallelTesting extends RunnerOrchestration { self =>
       else (dirs, files)
     }
 
-  /** Gets the name of the calling method via reflection.
-   *
-   *  It does this in a way that needs to work both with the bootstrapped dotty
-   *  and the non-bootstrapped version. Since the two compilers generate
-   *  different bridges, we first need to filter out methods with the same name
-   *  (bridges) - and then find the `@Test` method in our extending class
-   */
-  private def getCallingMethod(): String = {
-    val seen = mutable.Set.empty[String]
-    Thread.currentThread.getStackTrace
-      .filter { elem =>
-        if (seen.contains(elem.getMethodName)) false
-        else { seen += elem.getMethodName; true }
-      }
-      .find { elem =>
-        val callingClass = Class.forName(elem.getClassName)
-        classOf[ParallelTesting].isAssignableFrom(callingClass) &&
-        elem.getFileName != "ParallelTesting.scala"
-      }
-      .map(_.getMethodName)
-      .getOrElse {
-        throw new IllegalStateException("Unable to reflectively find calling method")
-      }
-      .takeWhile(_ != '$')
-  }
-
   /** Compiles a single file from the string path `f` using the supplied flags */
-  def compileFile(f: String, flags: TestFlags, outDirectory: String = defaultOutputDir): CompilationTest = {
-    val callingMethod = getCallingMethod()
+  def compileFile(f: String, flags: TestFlags)(implicit testGroup: TestGroup): CompilationTest = {
     val sourceFile = new JFile(f)
     val parent = sourceFile.getParentFile
     val outDir =
-      outDirectory + callingMethod + "/" +
+      defaultOutputDir + testGroup + "/" +
       sourceFile.getName.substring(0, sourceFile.getName.lastIndexOf('.')) + "/"
 
     require(
@@ -1075,7 +1048,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
     )
 
     val target = JointCompilationSource(
-      callingMethod,
+      testGroup.name,
       Array(sourceFile),
       flags,
       createOutputDirsForFile(sourceFile, parent, outDir)
@@ -1090,9 +1063,8 @@ trait ParallelTesting extends RunnerOrchestration { self =>
    *  By default, files are compiled in alphabetical order. An optional seed
    *  can be used for randomization.
    */
-  def compileDir(f: String, flags: TestFlags, randomOrder: Option[Int] = None, outDirectory: String = defaultOutputDir): CompilationTest = {
-    val callingMethod = getCallingMethod()
-    val outDir = outDirectory + callingMethod + "/"
+  def compileDir(f: String, flags: TestFlags, randomOrder: Option[Int] = None)(implicit testGroup: TestGroup): CompilationTest = {
+    val outDir = defaultOutputDir + testGroup + "/"
     val sourceDir = new JFile(f)
     checkRequirements(f, sourceDir, outDir)
 
@@ -1111,7 +1083,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
     val targetDir = new JFile(outDir + "/" + sourceDir.getName + "/")
     targetDir.mkdirs()
 
-    val target = JointCompilationSource(s"compiling '$f' in test '$callingMethod'", randomized, flags, targetDir)
+    val target = JointCompilationSource(s"compiling '$f' in test '$testGroup'", randomized, flags, targetDir)
     new CompilationTest(target)
   }
 
@@ -1119,15 +1091,15 @@ trait ParallelTesting extends RunnerOrchestration { self =>
    *  `testName` since files can be in separate directories and or be otherwise
    *  dissociated
    */
-  def compileList(testName: String, files: List[String], flags: TestFlags, callingMethod: String = getCallingMethod(), outDirectory: String = defaultOutputDir): CompilationTest = {
-    val outDir = outDirectory + callingMethod + "/" + testName + "/"
+  def compileList(testName: String, files: List[String], flags: TestFlags)(implicit testGroup: TestGroup): CompilationTest = {
+    val outDir = defaultOutputDir + testGroup + "/" + testName + "/"
 
     // Directories in which to compile all containing files with `flags`:
     val targetDir = new JFile(outDir)
     targetDir.mkdirs()
     assert(targetDir.exists, s"couldn't create target directory: $targetDir")
 
-    val target = JointCompilationSource(s"$testName from $callingMethod", files.map(new JFile(_)).toArray, flags, targetDir)
+    val target = JointCompilationSource(s"$testName from $testGroup", files.map(new JFile(_)).toArray, flags, targetDir)
 
     // Create a CompilationTest and let the user decide whether to execute a pos or a neg test
     new CompilationTest(target)
@@ -1150,17 +1122,16 @@ trait ParallelTesting extends RunnerOrchestration { self =>
    *  - Directories can have an associated check-file, where the check file has
    *    the same name as the directory (with the file extension `.check`)
    */
-  def compileFilesInDir(f: String, flags: TestFlags, outDirectory: String = defaultOutputDir): CompilationTest = {
-    val callingMethod = getCallingMethod()
-    val outDir = outDirectory + callingMethod + "/"
+  def compileFilesInDir(f: String, flags: TestFlags)(implicit testGroup: TestGroup): CompilationTest = {
+    val outDir = defaultOutputDir + testGroup + "/"
     val sourceDir = new JFile(f)
     checkRequirements(f, sourceDir, outDir)
 
     val (dirs, files) = compilationTargets(sourceDir)
 
     val targets =
-      files.map(f => JointCompilationSource(callingMethod, Array(f), flags, createOutputDirsForFile(f, sourceDir, outDir))) ++
-      dirs.map(dir => SeparateCompilationSource(callingMethod, dir, flags, createOutputDirsForDir(dir, sourceDir, outDir)))
+      files.map(f => JointCompilationSource(testGroup.name, Array(f), flags, createOutputDirsForFile(f, sourceDir, outDir))) ++
+      dirs.map(dir => SeparateCompilationSource(testGroup.name, dir, flags, createOutputDirsForDir(dir, sourceDir, outDir)))
 
     // Create a CompilationTest and let the user decide whether to execute a pos or a neg test
     new CompilationTest(targets)
@@ -1170,16 +1141,15 @@ trait ParallelTesting extends RunnerOrchestration { self =>
    *  sub-directories and as such, does **not** perform separate compilation
    *  tests.
    */
-  def compileShallowFilesInDir(f: String, flags: TestFlags, outDirectory: String = defaultOutputDir): CompilationTest = {
-    val callingMethod = getCallingMethod()
-    val outDir = outDirectory + callingMethod + "/"
+  def compileShallowFilesInDir(f: String, flags: TestFlags)(implicit testGroup: TestGroup): CompilationTest = {
+    val outDir = defaultOutputDir + testGroup + "/"
     val sourceDir = new JFile(f)
     checkRequirements(f, sourceDir, outDir)
 
     val (_, files) = compilationTargets(sourceDir)
 
     val targets = files.map { file =>
-      JointCompilationSource(callingMethod, Array(file), flags, createOutputDirsForFile(file, sourceDir, outDir))
+      JointCompilationSource(testGroup.name, Array(file), flags, createOutputDirsForFile(file, sourceDir, outDir))
     }
 
     // Create a CompilationTest and let the user decide whether to execute a pos or a neg test

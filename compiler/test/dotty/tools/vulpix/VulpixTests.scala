@@ -13,6 +13,8 @@ class VulpixTests extends ParallelTesting {
 
   implicit val _: SummaryReporting = new NoSummaryReport
 
+  implicit def testGroup: TestGroup = TestGroup("VulpixTests")
+
   def maxDuration = 3.seconds
   def numberOfSlaves = 5
   def safeMode = sys.env.get("SAFEMODE").isDefined
