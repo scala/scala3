@@ -49,6 +49,7 @@ class Compiler {
       List(new LinkAll),            // Reload compilation units from TASTY for library code (if needed)
       List(new FirstTransform,      // Some transformations to put trees into a canonical form
            new CheckReentrant,      // Internal use only: Check that compiled program has no data races involving global vars
+           new SourcePositions,     // Replace references of dotty.source.Position.XYZ by their call site positions
            new ElimJavaPackages),   // Eliminate syntactic references to Java packages
       List(new CheckStatic,         // Check restrictions that apply to @static members
            new ElimRepeated,        // Rewrite vararg parameters and arguments
