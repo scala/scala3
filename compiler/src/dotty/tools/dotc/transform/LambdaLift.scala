@@ -491,6 +491,7 @@ class LambdaLift extends MiniPhase with IdentityDenotTransformer { thisPhase =>
   val phaseName: String = "lambdaLift"
 
   override def relaxedTypingInGroup = true
+    // Because it adds free vars as additional proxy parameters
 
   override def runsAfterGroupsOf: Set[Class[_ <: Phase]] = Set(classOf[Constructors], classOf[HoistSuperArgs])
     // Constructors has to happen before LambdaLift because the lambda lift logic
