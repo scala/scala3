@@ -5,7 +5,7 @@
 package dotty.tools.dotc
 package transform
 
-import dotty.tools.dotc.transform.TreeTransforms._
+import dotty.tools.dotc.transform.MegaPhase._
 import ValueClasses._
 import dotty.tools.dotc.ast.{Trees, tpd}
 import scala.collection.{ mutable, immutable }
@@ -37,7 +37,7 @@ import SymUtils._
  * Finally, if the constructor of a value class is private pr protected
  * it is widened to public.
  */
-class ExtensionMethods extends MiniPhaseTransform with DenotTransformer with FullParameterization { thisTransformer =>
+class ExtensionMethods extends MiniPhase with DenotTransformer with FullParameterization { thisPhase =>
 
   import tpd._
   import ExtensionMethods._
@@ -61,17 +61,17 @@ class ExtensionMethods extends MiniPhaseTransform with DenotTransformer with Ful
 
           var newSuperClass: Type = null
 
-          ctx.atPhase(thisTransformer.next) { implicit ctx =>
+          ctx.atPhase(thisPhase.next) { implicit ctx =>
             // In Scala 2, extension methods are added before pickling so we should
             // not generate them again.
-            if (!(valueClass is Scala2x)) ctx.atPhase(thisTransformer) { implicit ctx =>
+            if (!(valueClass is Scala2x)) ctx.atPhase(thisPhase) { implicit ctx =>
               for (decl <- valueClass.classInfo.decls) {
                 if (isMethodWithExtension(decl)) {
                   val meth = createExtensionMethod(decl, moduleClassSym.symbol)
                   decls1.enter(meth)
                   // Workaround #1895: force denotation of `meth` to be
                   // at phase where `meth` is entered into the decls of a class
-                  meth.denot(ctx.withPhase(thisTransformer.next))
+                  meth.denot(ctx.withPhase(thisPhase.next))
                 }
               }
             }
@@ -131,10 +131,10 @@ class ExtensionMethods extends MiniPhaseTransform with DenotTransformer with Ful
   private def createExtensionMethod(imeth: Symbol, staticClass: Symbol)(implicit ctx: Context): TermSymbol = {
     val extensionName = extensionNames(imeth).head.toTermName
     val extensionMeth = ctx.newSymbol(staticClass, extensionName,
-      imeth.flags | Final &~ (Override | Protected | AbsOverride),
+      (imeth.flags | Final) &~ (Override | Protected | AbsOverride),
       fullyParameterizedType(imeth.info, imeth.owner.asClass),
       privateWithin = imeth.privateWithin, coord = imeth.coord)
-    extensionMeth.addAnnotations(imeth.annotations)(ctx.withPhase(thisTransformer))
+    extensionMeth.addAnnotations(imeth.annotations)(ctx.withPhase(thisPhase))
       // need to change phase to add tailrec annotation which gets removed from original method in the same phase.
     extensionMeth
   }
@@ -143,7 +143,7 @@ class ExtensionMethods extends MiniPhaseTransform with DenotTransformer with Ful
   // TODO: this is state and should be per-run
   // todo: check that when transformation finished map is empty
 
-  override def transformTemplate(tree: tpd.Template)(implicit ctx: Context, info: TransformerInfo): tpd.Tree = {
+  override def transformTemplate(tree: tpd.Template)(implicit ctx: Context): tpd.Tree = {
     if (isDerivedValueClass(ctx.owner)) {
       /* This is currently redundant since value classes may not
          wrap over other value classes anyway.
@@ -160,7 +160,7 @@ class ExtensionMethods extends MiniPhaseTransform with DenotTransformer with Ful
     } else tree
   }
 
-  override def transformDefDef(tree: tpd.DefDef)(implicit ctx: Context, info: TransformerInfo): tpd.Tree = {
+  override def transformDefDef(tree: tpd.DefDef)(implicit ctx: Context): tpd.Tree = {
     if (isMethodWithExtension(tree.symbol)) {
       val origMeth = tree.symbol
       val origClass = ctx.owner.asClass
@@ -175,8 +175,8 @@ class ExtensionMethods extends MiniPhaseTransform with DenotTransformer with Ful
           extensionDefs(staticClass) = newC
           newC
       }
-      store += atGroupEnd(fullyParameterizedDef(extensionMeth, tree)(_))
-      cpy.DefDef(tree)(rhs = atGroupEnd(forwarder(extensionMeth, tree)(_)))
+      store += fullyParameterizedDef(extensionMeth, tree)
+      cpy.DefDef(tree)(rhs = forwarder(extensionMeth, tree))
     } else tree
   }
 }

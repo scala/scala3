@@ -77,9 +77,9 @@ class GenBCodePipeline(val entryPoints: List[Symbol], val int: DottyBackendInter
 
 //  class BCodePhase() {
 
-    private var bytecodeWriter  : BytecodeWriter   = null
-    private var mirrorCodeGen   : JMirrorBuilder   = null
-    private var beanInfoCodeGen : JBeanInfoBuilder = null
+    private[this] var bytecodeWriter  : BytecodeWriter   = null
+    private[this] var mirrorCodeGen   : JMirrorBuilder   = null
+    private[this] var beanInfoCodeGen : JBeanInfoBuilder = null
 
     /* ---------------- q1 ---------------- */
 

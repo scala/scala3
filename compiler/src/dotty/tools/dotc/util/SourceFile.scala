@@ -100,7 +100,7 @@ case class SourceFile(file: AbstractFile, content: Array[Char]) extends interfac
   def lineToOffset(index: Int): Int = lineIndices(index)
 
   /** A cache to speed up offsetToLine searches to similar lines */
-  private var lastLine = 0
+  private[this] var lastLine = 0
 
   /** Convert offset to line in this source file
    *  Lines are numbered from 0

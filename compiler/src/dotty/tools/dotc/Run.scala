@@ -10,7 +10,6 @@ import Types._
 import Scopes._
 import typer.{FrontEnd, Typer, ImportInfo, RefChecks}
 import Decorators._
-import dotty.tools.dotc.transform.TreeTransforms.TreeTransformer
 import io.PlainFile
 import scala.io.Codec
 import util._
@@ -116,23 +115,30 @@ class Run(comp: Compiler, ictx: Context) {
     val phases = ctx.squashPhases(ctx.phasePlan,
       ctx.settings.Yskip.value, ctx.settings.YstopBefore.value, stopAfter, ctx.settings.Ycheck.value)
     ctx.usePhases(phases)
-    var lastPrintedTree: PrintedTree = NoPrintedTree
-    for (phase <- ctx.allPhases)
-      if (phase.isRunnable)
-        Stats.trackTime(s"$phase ms ") {
-          val start = System.currentTimeMillis
-          units = phase.runOn(units)
-          if (ctx.settings.Xprint.value.containsPhase(phase)) {
-            for (unit <- units) {
-              lastPrintedTree =
-                printTree(lastPrintedTree)(ctx.fresh.setPhase(phase.next).setCompilationUnit(unit))
+
+    def runPhases(implicit ctx: Context) = {
+      var lastPrintedTree: PrintedTree = NoPrintedTree
+      for (phase <- ctx.allPhases)
+        if (phase.isRunnable)
+          Stats.trackTime(s"$phase ms ") {
+            val start = System.currentTimeMillis
+            units = phase.runOn(units)
+            if (ctx.settings.Xprint.value.containsPhase(phase)) {
+              for (unit <- units) {
+                lastPrintedTree =
+                  printTree(lastPrintedTree)(ctx.fresh.setPhase(phase.next).setCompilationUnit(unit))
+              }
             }
+            ctx.informTime(s"$phase ", start)
+            Stats.record(s"total trees at end of $phase", ast.Trees.ntrees)
+            for (unit <- units)
+              Stats.record(s"retained typed trees at end of $phase", unit.tpdTree.treeSize)
           }
-          ctx.informTime(s"$phase ", start)
-          Stats.record(s"total trees at end of $phase", ast.Trees.ntrees)
-          for (unit <- units)
-            Stats.record(s"retained typed trees at end of $phase", unit.tpdTree.treeSize)
-        }
+    }
+
+    val runCtx = ctx.fresh
+    ctx.phases.foreach(_.initContext(runCtx))
+    runPhases(runCtx)
     if (!ctx.reporter.hasErrors) Rewrites.writeBack()
   }
 

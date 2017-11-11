@@ -14,7 +14,7 @@ import NameKinds._
 import StdNames.nme
 import rewrite.Rewrites.patch
 import util.Positions.Position
-import dotty.tools.dotc.transform.TreeTransforms.{TransformerInfo, TreeTransformer, MiniPhaseTransform}
+import dotty.tools.dotc.transform.MegaPhase._
 import dotty.tools.dotc.ast.Trees._
 import dotty.tools.dotc.ast.{untpd, tpd}
 import dotty.tools.dotc.core.Constants.Constant
@@ -27,7 +27,7 @@ import dotty.tools.dotc.core.SymDenotations.SymDenotation
 import dotty.tools.dotc.core.DenotTransformers.{SymTransformer, IdentityDenotTransformer, DenotTransformer}
 import Erasure.Boxing.adaptToType
 
-class LazyVals extends MiniPhaseTransform with IdentityDenotTransformer {
+class LazyVals extends MiniPhase with IdentityDenotTransformer {
   import LazyVals._
   import tpd._
 
@@ -51,15 +51,15 @@ class LazyVals extends MiniPhaseTransform with IdentityDenotTransformer {
 
   val containerFlagsMask = Flags.Method | Flags.Lazy | Flags.Accessor | Flags.Module
 
-  override def transformDefDef(tree: tpd.DefDef)(implicit ctx: Context, info: TransformerInfo): tpd.Tree =
+  override def transformDefDef(tree: tpd.DefDef)(implicit ctx: Context): tpd.Tree =
    transformLazyVal(tree)
 
 
-  override def transformValDef(tree: tpd.ValDef)(implicit ctx: Context, info: TransformerInfo): tpd.Tree = {
+  override def transformValDef(tree: tpd.ValDef)(implicit ctx: Context): tpd.Tree = {
     transformLazyVal(tree)
   }
 
-  def transformLazyVal(tree: ValOrDefDef)(implicit ctx: Context, info: TransformerInfo): Tree = {
+  def transformLazyVal(tree: ValOrDefDef)(implicit ctx: Context): Tree = {
     val sym = tree.symbol
     if (!(sym is Flags.Lazy) || sym.owner.is(Flags.Trait) || (sym.isStatic && sym.is(Flags.Module))) tree
     else {
@@ -85,7 +85,7 @@ class LazyVals extends MiniPhaseTransform with IdentityDenotTransformer {
 
   /** Append offset fields to companion objects
     */
-  override def transformTemplate(template: tpd.Template)(implicit ctx: Context, info: TransformerInfo): tpd.Tree = {
+  override def transformTemplate(template: tpd.Template)(implicit ctx: Context): tpd.Tree = {
     val cls = ctx.owner.asClass
 
     appendOffsetDefs.get(cls) match {
@@ -162,16 +162,14 @@ class LazyVals extends MiniPhaseTransform with IdentityDenotTransformer {
     }
 
 
-  override def transformStats(trees: List[tpd.Tree])(implicit ctx: Context, info: TransformerInfo): List[tpd.Tree] = {
+  override def transformStats(trees: List[tpd.Tree])(implicit ctx: Context): List[tpd.Tree] = {
     // backend requires field usage to be after field definition
     // need to bring containers to start of method
     val (holders, stats) =
-      atGroupEnd { implicit ctx: Context =>
-        trees.partition {
-          _.symbol.flags.&~(Flags.Touched) == containerFlags
-          // Filtering out Flags.Touched is not required currently, as there are no LazyTypes involved here
-          // but just to be more safe
-        }
+      trees.partition {
+        _.symbol.flags.&~(Flags.Touched) == containerFlags
+        // Filtering out Flags.Touched is not required currently, as there are no LazyTypes involved here
+        // but just to be more safe
       }
     holders:::stats
   }

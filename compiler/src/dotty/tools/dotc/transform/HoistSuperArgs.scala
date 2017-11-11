@@ -1,7 +1,7 @@
 package dotty.tools.dotc
 package transform
 
-import TreeTransforms._
+import MegaPhase._
 import core.DenotTransformers._
 import core.Symbols._
 import core.Contexts._
@@ -37,7 +37,7 @@ import SymUtils._
  *  as method parameters. The definition is installed in the scope enclosing the class,
  *  or, if that is a package, it is made a static method of the class itself.
  */
-class HoistSuperArgs extends MiniPhaseTransform with IdentityDenotTransformer { thisTransform =>
+class HoistSuperArgs extends MiniPhase with IdentityDenotTransformer { thisPhase =>
   import ast.tpd._
 
   def phaseName = "hoistSuperArgs"
@@ -94,7 +94,7 @@ class HoistSuperArgs extends MiniPhaseTransform with IdentityDenotTransformer { 
           flags = Synthetic | Private | Method | staticFlag,
           info = replaceResult(constr.info, argTypeWrtConstr),
           coord = constr.coord)
-        if (methOwner.isClass) meth.enteredAfter(thisTransform) else meth
+        if (methOwner.isClass) meth.enteredAfter(thisPhase) else meth
       }
 
       /** Type of a reference implies that it needs to be hoisted */
@@ -142,7 +142,7 @@ class HoistSuperArgs extends MiniPhaseTransform with IdentityDenotTransformer { 
                 case tree =>
                   tree
               })
-            tmap(arg).changeOwnerAfter(constr, superMeth, thisTransform)
+            tmap(arg).changeOwnerAfter(constr, superMeth, thisPhase)
           })
           superArgDefs += superArgDef
           def termParamRefs(tp: Type, params: List[Symbol]): List[List[Tree]] = tp match {
@@ -189,7 +189,7 @@ class HoistSuperArgs extends MiniPhaseTransform with IdentityDenotTransformer { 
     }
   }
 
-  override def transformTypeDef(tdef: TypeDef)(implicit ctx: Context, info: TransformerInfo): Tree =
+  override def transformTypeDef(tdef: TypeDef)(implicit ctx: Context): Tree =
     tdef.rhs match {
       case impl @ Template(cdef, superCall :: others, _, _) =>
         val hoist = new Hoister(tdef.symbol)

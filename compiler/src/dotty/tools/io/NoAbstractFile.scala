@@ -17,7 +17,7 @@ object NoAbstractFile extends AbstractFile {
   def container: AbstractFile = this
   def create(): Unit = ???
   def delete(): Unit = ???
-  def file: java.io.File = null
+  def jpath: JPath = null
   def input: InputStream = null
   def isDirectory: Boolean = false
   override def isVirtual: Boolean = true

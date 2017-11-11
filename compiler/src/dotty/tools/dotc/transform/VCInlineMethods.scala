@@ -4,7 +4,7 @@ package transform
 import ast.{Trees, tpd}
 import core._, core.Decorators._
 import Contexts._, Trees._, Types._
-import DenotTransformers._, TreeTransforms._, Phases.Phase
+import DenotTransformers._, MegaPhase._, Phases.Phase
 import ExtensionMethods._, ValueClasses._
 
 import collection.mutable.ListBuffer
@@ -39,7 +39,7 @@ import collection.mutable.ListBuffer
  *  methods (like [[TypeSpecializer]]), this way [[VCInlineMethods]] does not
  *  need to have any knowledge of the name mangling done by other phases.
  */
-class VCInlineMethods extends MiniPhaseTransform with IdentityDenotTransformer {
+class VCInlineMethods extends MiniPhase with IdentityDenotTransformer {
   import tpd._
 
   override def phaseName: String = "vcInlineMethods"
@@ -98,10 +98,10 @@ class VCInlineMethods extends MiniPhaseTransform with IdentityDenotTransformer {
         tree
   }
 
-  override def transformSelect(tree: Select)(implicit ctx: Context, info: TransformerInfo): Tree =
+  override def transformSelect(tree: Select)(implicit ctx: Context): Tree =
     rewireIfNeeded(tree)
-  override def transformTypeApply(tree: TypeApply)(implicit ctx: Context, info: TransformerInfo): Tree =
+  override def transformTypeApply(tree: TypeApply)(implicit ctx: Context): Tree =
     rewireIfNeeded(tree)
-  override def transformApply(tree: Apply)(implicit ctx: Context, info: TransformerInfo): Tree =
+  override def transformApply(tree: Apply)(implicit ctx: Context): Tree =
     rewireIfNeeded(tree)
 }

@@ -156,10 +156,10 @@ object Checking {
     private val locked = mutable.Set[TypeRef]()
 
     /** Are cycles allowed within nested refinedInfos of currently checked type? */
-    private var nestedCycleOK = false
+    private[this] var nestedCycleOK = false
 
     /** Are cycles allowed within currently checked type? */
-    private var cycleOK = false
+    private[this] var cycleOK = false
 
     /** A diagnostic output string that indicates the position of the last
      *  part of a type bounds checked by checkInfo. Possible choices:

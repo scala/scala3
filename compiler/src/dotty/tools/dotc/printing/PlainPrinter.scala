@@ -17,7 +17,7 @@ import scala.annotation.switch
 class PlainPrinter(_ctx: Context) extends Printer {
   protected[this] implicit def ctx: Context = _ctx.addMode(Mode.Printing)
 
-  private var openRecs: List[RecType] = Nil
+  private[this] var openRecs: List[RecType] = Nil
 
   protected def maxToTextRecursions = 100
 
@@ -526,7 +526,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
   }
 
 
-  private var maxSummarized = Int.MaxValue
+  private[this] var maxSummarized = Int.MaxValue
 
   def summarized[T](depth: Int)(op: => T): T = {
     val saved = maxSummarized

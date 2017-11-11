@@ -4,6 +4,7 @@ package dotc
 package transform
 
 import java.io._
+import java.nio.file.{Path => JPath}
 
 import scala.io.Source._
 import dotty.tools.io.Directory
@@ -16,53 +17,53 @@ class PatmatExhaustivityTest {
   // stop-after: patmatexhaust-huge.scala crash compiler
   val options = List("-color:never", "-Ystop-after:splitter", "-Ycheck-all-patmat", "-classpath", TestConfiguration.classPath)
 
-  private def compileFile(file: File) = {
+  private def compileFile(path: JPath) = {
     val stringBuffer = new StringWriter()
     val reporter = TestReporter.simplifiedReporter(new PrintWriter(stringBuffer))
 
     try {
-      Main.process((file.getPath::options).toArray, reporter, null)
+      Main.process((path.toString::options).toArray, reporter, null)
     } catch {
       case e: Throwable =>
-        println(s"Compile $file exception:")
+        println(s"Compile $path exception:")
         e.printStackTrace()
     }
 
     val actual = stringBuffer.toString.trim.replaceAll("\\s+\n", "\n")
-    val checkFilePath = file.getAbsolutePath.stripSuffix(".scala") + ".check"
+    val checkFilePath = path.toAbsolutePath.toString.stripSuffix(".scala") + ".check"
     val checkContent =
       if (new File(checkFilePath).exists)
         fromFile(checkFilePath).getLines().map(_.replaceAll("\\s+$", "")).mkString("\n").trim
       else ""
 
-    (file, checkContent, actual)
+    (path, checkContent, actual)
   }
 
   /** A single test with multiple files grouped in a folder */
-  private def compileDir(file: File) = {
+  private def compileDir(path: JPath) = {
     val stringBuffer = new StringWriter()
     val reporter = TestReporter.simplifiedReporter(new PrintWriter(stringBuffer))
 
-    val files = Directory(file.getPath).list.toList
+    val files = Directory(path).list.toList
       .filter(f => f.extension == "scala" || f.extension == "java" )
-      .map(_.jfile.getPath)
+      .map(_.jpath.toString)
 
     try {
       Main.process((options ++ files).toArray, reporter, null)
     } catch {
       case e: Throwable =>
-        println(s"Compile $file exception:")
+        println(s"Compile $path exception:")
         e.printStackTrace()
     }
 
     val actual = stringBuffer.toString.trim.replaceAll("\\s+\n", "\n")
-    val checkFilePath = file.getPath + File.separator + "expected.check"
+    val checkFilePath = path + File.separator + "expected.check"
     val checkContent =
       if (new File(checkFilePath).exists)
         fromFile(checkFilePath).getLines().map(_.replaceAll("\\s+$", "")).mkString("\n").trim
       else ""
 
-    (file, checkContent, actual)
+    (path, checkContent, actual)
   }
 
   @Test
@@ -71,9 +72,9 @@ class PatmatExhaustivityTest {
       .filter(f => f.extension == "scala" || f.isDirectory)
       .map { f =>
         if (f.isDirectory)
-          compileDir(f.jfile)
+          compileDir(f.jpath)
         else
-          compileFile(f.jfile)
+          compileFile(f.jpath)
       }
 
     val failed = res.filter { case (_, expected, actual) => expected != actual }

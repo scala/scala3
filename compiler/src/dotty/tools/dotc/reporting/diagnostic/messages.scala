@@ -1770,4 +1770,122 @@ object messages {
           |"""
   }
 
+  case class ExtendFinalClass(clazz:Symbol, finalClazz: Symbol)(implicit ctx: Context)
+    extends Message(ExtendFinalClassID) {
+    val kind = "Syntax"
+    val msg = hl"$clazz cannot extend ${"final"} $finalClazz"
+    val explanation =
+      hl"""A class marked with the ${"final"} keyword cannot be extended"""
+  }
+
+  case class EnumCaseDefinitionInNonEnumOwner(owner: Symbol)(implicit ctx: Context)
+    extends Message(EnumCaseDefinitionInNonEnumOwnerID) {
+      val kind = "Syntax"
+      val msg = em"case not allowed here, since owner ${owner} is not an ${"enum"} object"
+      val explanation =
+        hl"""${"enum"} cases are only allowed within the companion ${"object"} of an ${"enum class"}.
+            |If you want to create an ${"enum"} case, make sure the corresponding ${"enum class"} exists
+            |and has the ${"enum"} keyword."""
+  }
+
+  case class ExpectedTypeBoundOrEquals(found: Token)(implicit ctx: Context)
+    extends Message(ExpectedTypeBoundOrEqualsID) {
+    val kind = "Syntax"
+    val msg = hl"${"="}, ${">:"}, or ${"<:"} expected, but ${Tokens.showToken(found)} found"
+
+    val explanation =
+      hl"""Type parameters and abstract types may be constrained by a type bound.
+           |Such type bounds limit the concrete values of the type variables and possibly
+           |reveal more information about the members of such types.
+           |
+           |A lower type bound ${"B >: A"} expresses that the type variable ${"B"}
+           |refers to a supertype of type ${"A"}.
+           |
+           |An upper type bound ${"T <: A"} declares that type variable ${"T"}
+           |refers to a subtype of type ${"A"}.
+           |"""
+  }
+
+  case class ClassAndCompanionNameClash(cls: Symbol, other: Symbol)(implicit ctx: Context)
+    extends Message(ClassAndCompanionNameClashID) {
+    val kind = "Naming"
+    val msg = hl"Name clash: both ${cls.owner} and its companion object defines ${cls.name.stripModuleClassSuffix}"
+    val explanation = {
+      val kind = if (cls.owner.is(Flags.Trait)) "trait" else "class"
+
+      hl"""|A $kind and its companion object cannot both define a ${"class"}, ${"trait"} or ${"object"} with the same name:
+           |  - ${cls.owner} defines ${cls}
+           |  - ${other.owner} defines ${other}"""
+      }
+  }
+
+  case class TailrecNotApplicable(method: Symbol)(implicit ctx: Context)
+    extends Message(TailrecNotApplicableID) {
+    val kind = "Syntax"
+    val msg = hl"TailRec optimisation not applicable, $method is neither ${"private"} nor ${"final"}."
+    val explanation =
+      hl"A method annotated ${"@tailrec"} must be declared ${"private"} or ${"final"} so it can't be overridden."
+  }
+
+  case class FailureToEliminateExistential(tp: Type, tp1: Type, tp2: Type, boundSyms: List[Symbol])(implicit ctx: Context)
+    extends Message(FailureToEliminateExistentialID) {
+    val kind = "Compatibility"
+    val msg = "Failure to eliminate existential type. Proceed at own risk."
+    val explanation = {
+      val originalType = ctx.dclsText(boundSyms, "; ").show
+      hl"""original type    : $tp forSome ${originalType}
+          |reduces to       : $tp1
+          |type used instead: $tp2"""
+    }
+  }
+
+  case class OnlyFunctionsCanBeFollowedByUnderscore(pt: Type)(implicit ctx: Context)
+    extends Message(OnlyFunctionsCanBeFollowedByUnderscoreID) {
+    val kind = "Syntax"
+    val msg = hl"Not a function: $pt: cannot be followed by ${"_"}"
+    val explanation =
+      hl"""The syntax ${"x _"} is no longer supported if ${"x"} is not a function.
+          |To convert to a function value, you need to explicitly write ${"() => x"}"""
+  }
+
+  case class MissingEmptyArgumentList(method: Symbol)(implicit ctx: Context)
+    extends Message(MissingEmptyArgumentListID) {
+    val kind = "Syntax"
+    val msg = hl"$method must be called with ${"()"} argument"
+    val explanation = {
+      val codeExample =
+        """def next(): T = ...
+          |next     // is expanded to next()"""
+
+      hl"""Previously an empty argument list () was implicitly inserted when calling a nullary method without arguments. E.g.
+          |
+          |$codeExample
+          |
+          |In Dotty, this idiom is an error. The application syntax has to follow exactly the parameter syntax.
+          |Excluded from this rule are methods that are defined in Java or that override methods defined in Java."""
+    }
+  }
+
+  case class DuplicateNamedTypeParameter(name: Name)(implicit ctx: Context)
+    extends Message(DuplicateNamedTypeParameterID) {
+    val kind = "Syntax"
+    val msg = hl"Type parameter $name was defined multiple times."
+    val explanation = ""
+  }
+
+  case class UndefinedNamedTypeParameter(undefinedName: Name, definedNames: List[Name])(implicit ctx: Context)
+    extends Message(UndefinedNamedTypeParameterID) {
+    val kind = "Syntax"
+    val msg = hl"Type parameter $undefinedName is undefined. Expected one of ${definedNames.map(_.show).mkString(", ")}."
+    val explanation = ""
+  }
+
+  case class IllegalStartOfStatement(isModifier: Boolean)(implicit ctx: Context) extends Message(IllegalStartOfStatementID) {
+    val kind = "Syntax"
+    val msg = {
+      val addendum = if (isModifier) ": no modifiers allowed here" else ""
+      "Illegal start of statement" + addendum
+    }
+    val explanation = "A statement is either an import, a definition or an expression."
+  }
 }

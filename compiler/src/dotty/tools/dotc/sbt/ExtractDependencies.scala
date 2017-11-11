@@ -47,7 +47,7 @@ class ExtractDependencies extends Phase {
     val dumpInc = ctx.settings.YdumpSbtInc.value
     val forceRun = dumpInc || ctx.settings.YforceSbtPhases.value
     if ((ctx.sbtCallback != null || forceRun) && !unit.isJava) {
-      val sourceFile = unit.source.file.file
+      val sourceFile = unit.source.file
       val extractDeps = new ExtractDependenciesCollector
       extractDeps.traverse(unit.tpdTree)
 
@@ -59,7 +59,7 @@ class ExtractDependencies extends Phase {
         Arrays.sort(deps)
         Arrays.sort(inhDeps)
 
-        val pw = Path(sourceFile).changeExtension("inc").toFile.printWriter()
+        val pw = Path(sourceFile.jpath).changeExtension("inc").toFile.printWriter()
         try {
           pw.println(s"// usedNames: ${names.mkString(",")}")
           pw.println(s"// topLevelDependencies: ${deps.mkString(",")}")
@@ -69,11 +69,11 @@ class ExtractDependencies extends Phase {
 
       if (ctx.sbtCallback != null) {
         extractDeps.usedNames.foreach(name =>
-          ctx.sbtCallback.usedName(sourceFile, name.toString))
+          ctx.sbtCallback.usedName(sourceFile.file, name.toString))
         extractDeps.topLevelDependencies.foreach(dep =>
-          recordDependency(sourceFile, dep, DependencyContext.DependencyByMemberRef))
+          recordDependency(sourceFile.file, dep, DependencyContext.DependencyByMemberRef))
         extractDeps.topLevelInheritanceDependencies.foreach(dep =>
-          recordDependency(sourceFile, dep, DependencyContext.DependencyByInheritance))
+          recordDependency(sourceFile.file, dep, DependencyContext.DependencyByInheritance))
       }
     }
   }

@@ -12,6 +12,7 @@ import config.Printers.{typr, constr, subtyping, noPrinter}
 import TypeErasure.{erasedLub, erasedGlb}
 import TypeApplications._
 import scala.util.control.NonFatal
+import reporting.trace
 
 /** Provides methods to compare types.
  */
@@ -21,10 +22,10 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
   val state = ctx.typerState
   import state.constraint
 
-  private var pendingSubTypes: mutable.Set[(Type, Type)] = null
-  private var recCount = 0
+  private[this] var pendingSubTypes: mutable.Set[(Type, Type)] = null
+  private[this] var recCount = 0
 
-  private var needsGc = false
+  private[this] var needsGc = false
 
   /** Is a subtype check in progress? In that case we may not
    *  permanently instantiate type variables, because the corresponding
@@ -41,16 +42,16 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
   }
 
   /** For statistics: count how many isSubTypes are part of successful comparisons */
-  private var successCount = 0
-  private var totalCount = 0
+  private[this] var successCount = 0
+  private[this] var totalCount = 0
 
-  private var myAnyClass: ClassSymbol = null
-  private var myNothingClass: ClassSymbol = null
-  private var myNullClass: ClassSymbol = null
-  private var myPhantomNothingClass: ClassSymbol = null
-  private var myObjectClass: ClassSymbol = null
-  private var myAnyType: TypeRef = null
-  private var myNothingType: TypeRef = null
+  private[this] var myAnyClass: ClassSymbol = null
+  private[this] var myNothingClass: ClassSymbol = null
+  private[this] var myNullClass: ClassSymbol = null
+  private[this] var myPhantomNothingClass: ClassSymbol = null
+  private[this] var myObjectClass: ClassSymbol = null
+  private[this] var myAnyType: TypeRef = null
+  private[this] var myNothingType: TypeRef = null
 
   def AnyClass = {
     if (myAnyClass == null) myAnyClass = defn.AnyClass
@@ -105,7 +106,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
         assert(isSatisfiable, constraint.show)
   }
 
-  protected def isSubType(tp1: Type, tp2: Type): Boolean = ctx.traceIndented(s"isSubType ${traceInfo(tp1, tp2)}", subtyping) {
+  protected def isSubType(tp1: Type, tp2: Type): Boolean = trace(s"isSubType ${traceInfo(tp1, tp2)}", subtyping) {
     if (tp2 eq NoType) false
     else if (tp1 eq tp2) true
     else {
@@ -948,7 +949,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
    *  rebase both itself and the member info of `tp` on a freshly created skolem type.
    */
   protected def hasMatchingMember(name: Name, tp1: Type, tp2: RefinedType): Boolean =
-    /*>|>*/ ctx.traceIndented(i"hasMatchingMember($tp1 . $name :? ${tp2.refinedInfo}), mbr: ${tp1.member(name).info}", subtyping) /*<|<*/ {
+    /*>|>*/ trace(i"hasMatchingMember($tp1 . $name :? ${tp2.refinedInfo}), mbr: ${tp1.member(name).info}", subtyping) /*<|<*/ {
       val rinfo2 = tp2.refinedInfo
 
       // If the member is an abstract type, compare the member itself
@@ -1159,7 +1160,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
   /** Same as `isSameType` but also can be applied to overloaded TermRefs, where
    *  two overloaded refs are the same if they have pairwise equal alternatives
    */
-  def isSameRef(tp1: Type, tp2: Type): Boolean = ctx.traceIndented(s"isSameRef($tp1, $tp2") {
+  def isSameRef(tp1: Type, tp2: Type): Boolean = trace(s"isSameRef($tp1, $tp2") {
     def isSubRef(tp1: Type, tp2: Type): Boolean = tp1 match {
       case tp1: TermRef if tp1.isOverloaded =>
         tp1.alternatives forall (isSubRef(_, tp2))
@@ -1175,7 +1176,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
   }
 
   /** The greatest lower bound of two types */
-  def glb(tp1: Type, tp2: Type): Type = /*>|>*/ ctx.traceIndented(s"glb(${tp1.show}, ${tp2.show})", subtyping, show = true) /*<|<*/ {
+  def glb(tp1: Type, tp2: Type): Type = /*>|>*/ trace(s"glb(${tp1.show}, ${tp2.show})", subtyping, show = true) /*<|<*/ {
     if (tp1 eq tp2) tp1
     else if (!tp1.exists) tp2
     else if (!tp2.exists) tp1
@@ -1224,7 +1225,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
    *  @param canConstrain  If true, new constraints might be added to simplify the lub.
    *  @note  We do not admit singleton types in or-types as lubs.
    */
-  def lub(tp1: Type, tp2: Type, canConstrain: Boolean = false): Type = /*>|>*/ ctx.traceIndented(s"lub(${tp1.show}, ${tp2.show}, canConstrain=$canConstrain)", subtyping, show = true) /*<|<*/ {
+  def lub(tp1: Type, tp2: Type, canConstrain: Boolean = false): Type = /*>|>*/ trace(s"lub(${tp1.show}, ${tp2.show}, canConstrain=$canConstrain)", subtyping, show = true) /*<|<*/ {
     if (tp1 eq tp2) tp1
     else if (!tp1.exists) tp1
     else if (!tp2.exists) tp2
@@ -1383,7 +1384,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
    *
    *  In these cases, a MergeError is thrown.
    */
-  final def andType(tp1: Type, tp2: Type, erased: Boolean = ctx.erasedTypes) = ctx.traceIndented(s"glb(${tp1.show}, ${tp2.show})", subtyping, show = true) {
+  final def andType(tp1: Type, tp2: Type, erased: Boolean = ctx.erasedTypes) = trace(s"glb(${tp1.show}, ${tp2.show})", subtyping, show = true) {
     val t1 = distributeAnd(tp1, tp2)
     if (t1.exists) t1
     else {
@@ -1426,12 +1427,13 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
   private def liftIfHK(tp1: Type, tp2: Type, op: (Type, Type) => Type, original: (Type, Type) => Type) = {
     val tparams1 = tp1.typeParams
     val tparams2 = tp2.typeParams
+    def applied(tp: Type) = tp.appliedTo(tp.typeParams.map(_.paramInfoAsSeenFrom(tp)))
     if (tparams1.isEmpty)
       if (tparams2.isEmpty) op(tp1, tp2)
-      else original(tp1, tp2.appliedTo(tp2.typeParams.map(_.paramInfoAsSeenFrom(tp2))))
+      else original(tp1, applied(tp2))
     else if (tparams2.isEmpty)
-      original(tp1.appliedTo(tp1.typeParams.map(_.paramInfoAsSeenFrom(tp1))), tp2)
-    else
+      original(applied(tp1), tp2)
+    else if (tparams1.hasSameLengthAs(tparams2))
       HKTypeLambda(
         paramNames = (HKTypeLambda.syntheticParamNames(tparams1.length), tparams1, tparams2)
           .zipped.map((pname, tparam1, tparam2) =>
@@ -1441,6 +1443,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
           tl.integrate(tparams2, tparam2.paramInfoAsSeenFrom(tp2)).bounds),
         resultTypeExp = tl =>
           original(tp1.appliedTo(tl.paramRefs), tp2.appliedTo(tl.paramRefs)))
+    else original(applied(tp1), applied(tp2))
   }
 
   /** Try to distribute `&` inside type, detect and handle conflicts
@@ -1605,10 +1608,10 @@ object TypeComparer {
 
 /** A type comparer that can record traces of subtype operations */
 class ExplainingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
-  private var indent = 0
+  private[this] var indent = 0
   private val b = new StringBuilder
 
-  private var skipped = false
+  private[this] var skipped = false
 
   override def traceIndented[T](str: String)(op: => T): T =
     if (skipped) op

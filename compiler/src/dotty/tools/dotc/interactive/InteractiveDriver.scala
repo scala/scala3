@@ -38,7 +38,7 @@ class InteractiveDriver(settings: List[String]) extends Driver {
     ctx
   }
 
-  private var myCtx: Context = myInitCtx
+  private[this] var myCtx: Context = myInitCtx
 
   def currentCtx: Context = myCtx
 

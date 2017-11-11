@@ -29,6 +29,12 @@ class TabcompleteTests extends ReplTest {
       comp.suggestions.sorted == List("slice", "sliding"))
   }
 
+  @Test def tabCompleteModule: Unit =
+    fromInitialState{ implicit s =>
+      val comp = tabComplete("scala.Pred")
+      assertEquals(comp.suggestions,List("Predef"))
+    }
+
   @Test def autoCompleteValAssign: Unit =
     fromInitialState { implicit s => tabComplete("val x = 5") }
 
@@ -52,4 +58,10 @@ class TabcompleteTests extends ReplTest {
       assert(tabComplete(src2).suggestions.nonEmpty)
     }
   }
+
+  @Test def i3309: Unit =
+    fromInitialState { implicit s =>
+      List("\"", "#", ")", "=", "'", "¨", "£", ".", ":", ",", ";", "@", "}", "[", "]")
+        .foreach(src => assertTrue(tabComplete(src).suggestions.isEmpty))
+    }
 }

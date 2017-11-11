@@ -6,6 +6,7 @@ import core._
 import util.Positions._, Types._, Contexts._, Constants._, Names._, NameOps._, Flags._
 import SymDenotations._, Symbols._, StdNames._, Annotations._, Trees._
 import Decorators._
+import reporting.diagnostic.messages.EnumCaseDefinitionInNonEnumOwner
 import collection.mutable.ListBuffer
 import util.Property
 import typer.ErrorReporting._
@@ -32,7 +33,7 @@ object DesugarEnums {
   /** Is enum case `tree` situated in a companion object of an enum class? */
   def enumCaseIsLegal(tree: Tree)(implicit ctx: Context): Boolean = (
     ctx.owner.is(ModuleClass) && enumClass.derivesFrom(defn.EnumClass)
-    || { ctx.error(em"case not allowed here, since owner ${ctx.owner} is not an `enum' object", tree.pos)
+    || { ctx.error(EnumCaseDefinitionInNonEnumOwner(ctx.owner), tree.pos)
          false
        }
     )

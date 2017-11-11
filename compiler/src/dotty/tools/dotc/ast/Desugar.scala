@@ -12,6 +12,7 @@ import typer.FrontEnd
 import collection.mutable.ListBuffer
 import util.Property
 import reporting.diagnostic.messages._
+import reporting.trace
 
 object desugar {
   import untpd._
@@ -886,7 +887,7 @@ object desugar {
      *  @param enums        The enumerators in the for expression
      *  @param body         The body of the for expression
      */
-    def makeFor(mapName: TermName, flatMapName: TermName, enums: List[Tree], body: Tree): Tree = ctx.traceIndented(i"make for ${ForYield(enums, body)}", show = true) {
+    def makeFor(mapName: TermName, flatMapName: TermName, enums: List[Tree], body: Tree): Tree = trace(i"make for ${ForYield(enums, body)}", show = true) {
 
       /** Make a function value pat => body.
        *  If pat is a var pattern id: T then this gives (id: T) => body

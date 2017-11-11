@@ -1,5 +1,5 @@
 
 object Test {
   def main(args: Array[String]): Unit =
-    IdempotencyCheck.checkIdempotency("../out/posIdempotency1", "../out/posIdempotency2")
+    IdempotencyCheck.checkIdempotency("../out/idempotency/posIdempotency1", "../out/idempotency/posIdempotency2")
 }

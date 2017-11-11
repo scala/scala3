@@ -8,7 +8,7 @@ case class Mode(val bits: Int) extends AnyVal {
   def &~ (that: Mode) = Mode(bits & ~that.bits)
   def is (that: Mode) = (bits & that.bits) == that.bits
 
-  def isExpr = (this & PatternOrType) == None
+  def isExpr = (this & PatternOrTypeBits) == None
 
   override def toString =
     (0 until 31).filter(i => (bits & (1 << i)) != 0).map(modeName).mkString("Mode(", ",", ")")
@@ -41,6 +41,9 @@ object Mode {
 
   /** We are looking at the arguments of a supercall */
   val InSuperCall = newMode(6, "InSuperCall")
+
+  /** We are in a pattern alternative */
+  val InPatternAlternative = newMode(7, "InPatternAlternative")
 
   /** Allow GADTFlexType labelled types to have their bounds adjusted */
   val GADTflexible = newMode(8, "GADTflexible")
@@ -87,7 +90,7 @@ object Mode {
   /** Don't suppress exceptions thrown during show */
   val PrintShowExceptions = newMode(18, "PrintShowExceptions")
 
-  val PatternOrType = Pattern | Type
+  val PatternOrTypeBits = Pattern | Type | InPatternAlternative
 
   /** We are elaborating the fully qualified name of a package clause.
    *  In this case, identifiers should never be imported.

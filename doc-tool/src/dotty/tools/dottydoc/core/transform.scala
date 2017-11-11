@@ -14,7 +14,7 @@ import util.traversing._
 object transform {
   /**
    * The idea behind DocMiniTransformations is to fuse transformations to the
-   * doc AST, much like `MiniPhaseTransform` in dotty core - but in a much more
+   * doc AST, much like `MiniPhase` in dotty core - but in a much more
    * simple implementation
    *
    * Usage

@@ -334,21 +334,26 @@ trait TypeAssigner {
     else tp.substParam(pref, SkolemType(argType.widen))
   }
 
+  /** Substitute types of all arguments `args` for corresponding `params` in `tp`.
+   *  The number of parameters `params` may exceed the number of arguments.
+   *  In this case, only the common prefix is substituted.
+   */
+  def safeSubstParams(tp: Type, params: List[ParamRef], argTypes: List[Type])(implicit ctx: Context): Type = argTypes match {
+    case argType :: argTypes1 =>
+      val tp1 = safeSubstParam(tp, params.head, argType)
+      safeSubstParams(tp1, params.tail, argTypes1)
+    case Nil =>
+      tp
+    }
+
   def assignType(tree: untpd.Apply, fn: Tree, args: List[Tree])(implicit ctx: Context) = {
     val ownType = fn.tpe.widen match {
       case fntpe: MethodType =>
-        def safeSubstParams(tp: Type, params: List[ParamRef], args: List[Tree]): Type = params match {
-          case param :: params1 =>
-            val tp1 = safeSubstParam(tp, param, args.head.tpe)
-            safeSubstParams(tp1, params1, args.tail)
-          case Nil =>
-            tp
-          }
-        if (sameLength(fntpe.paramInfos, args) || ctx.phase.prev.relaxedTyping)
-          if (fntpe.isDependent) safeSubstParams(fntpe.resultType, fntpe.paramRefs, args)
+        if (sameLength(fntpe.paramInfos, args) || ctx.phase.prev.relaxedTyping || true)
+          if (fntpe.isDependent) safeSubstParams(fntpe.resultType, fntpe.paramRefs, args.tpes)
           else fntpe.resultType
         else
-          errorType(i"wrong number of arguments for $fntpe: ${fn.tpe}, expected: ${fntpe.paramInfos.length}, found: ${args.length}", tree.pos)
+          errorType(i"wrong number of arguments at ${ctx.phase.prev} for $fntpe: ${fn.tpe}, expected: ${fntpe.paramInfos.length}, found: ${args.length}", tree.pos)
       case t =>
         errorType(err.takesNoParamsStr(fn, ""), tree.pos)
     }
@@ -366,9 +371,9 @@ trait TypeAssigner {
           val namedArgMap = new mutable.HashMap[Name, Type]
           for (NamedArg(name, arg) <- args)
             if (namedArgMap.contains(name))
-              ctx.error("duplicate name", arg.pos)
+              ctx.error(DuplicateNamedTypeParameter(name), arg.pos)
             else if (!paramNames.contains(name))
-              ctx.error(s"undefined parameter name, required: ${paramNames.mkString(" or ")}", arg.pos)
+              ctx.error(UndefinedNamedTypeParameter(name, paramNames), arg.pos)
             else
               namedArgMap(name) = preCheckKind(arg, paramBoundsByName(name.asTypeName)).tpe
 
@@ -404,7 +409,7 @@ trait TypeAssigner {
         }
         else {
           val argTypes = preCheckKinds(args, pt.paramInfos).tpes
-          if (sameLength(argTypes, paramNames) || ctx.phase.prev.relaxedTyping) pt.instantiate(argTypes)
+          if (sameLength(argTypes, paramNames)) pt.instantiate(argTypes)
           else wrongNumberOfTypeArgs(fn.tpe, pt.typeParams, args, tree.pos)
         }
       case _ =>

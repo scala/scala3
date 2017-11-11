@@ -2,7 +2,7 @@ package dotty.tools.dotc
 package transform
 
 import core._
-import TreeTransforms._
+import MegaPhase._
 import Contexts.Context
 import Flags._
 import SymUtils._
@@ -28,7 +28,7 @@ import ast.Trees._
  *  Furthermore, it expands the names of all private getters and setters as well as super accessors in the trait and makes
  *  them not-private.
  */
-class AugmentScala2Traits extends MiniPhaseTransform with IdentityDenotTransformer with FullParameterization { thisTransform =>
+class AugmentScala2Traits extends MiniPhase with IdentityDenotTransformer with FullParameterization { thisPhase =>
   import ast.tpd._
 
   override def changesMembers = true
@@ -37,7 +37,7 @@ class AugmentScala2Traits extends MiniPhaseTransform with IdentityDenotTransform
 
   override def rewiredTarget(referenced: Symbol, derived: Symbol)(implicit ctx: Context) = NoSymbol
 
-  override def transformTemplate(impl: Template)(implicit ctx: Context, info: TransformerInfo) = {
+  override def transformTemplate(impl: Template)(implicit ctx: Context) = {
     val cls = impl.symbol.owner.asClass
     for (mixin <- cls.mixins)
       if (mixin.is(Scala2x))
@@ -49,7 +49,7 @@ class AugmentScala2Traits extends MiniPhaseTransform with IdentityDenotTransform
     if (mixin.implClass.is(Scala2x)) () // nothing to do, mixin was already augmented
     else {
       //println(i"creating new implclass for $mixin ${mixin.implClass}")
-      val ops = new MixinOps(cls, thisTransform)
+      val ops = new MixinOps(cls, thisPhase)
       import ops._
 
       val implClass = ctx.newCompleteClassSymbol(
@@ -57,7 +57,7 @@ class AugmentScala2Traits extends MiniPhaseTransform with IdentityDenotTransform
         name = mixin.name.implClassName,
         flags = Abstract | Scala2x | ImplClass,
         parents = defn.ObjectType :: Nil,
-        assocFile = mixin.assocFile).enteredAfter(thisTransform)
+        assocFile = mixin.assocFile).enteredAfter(thisPhase)
 
       def implMethod(meth: TermSymbol): Symbol = {
         val mold =
@@ -91,11 +91,11 @@ class AugmentScala2Traits extends MiniPhaseTransform with IdentityDenotTransform
           }
           else if (!sym.is(Deferred) && !sym.setter.exists &&
                    !sym.info.resultType.isInstanceOf[ConstantType])
-            traitSetter(sym.asTerm).enteredAfter(thisTransform)
+            traitSetter(sym.asTerm).enteredAfter(thisPhase)
         if ((sym.is(PrivateAccessor) && !sym.name.is(ExpandedName) &&
           (sym.isGetter || sym.isSetter)) // strangely, Scala 2 fields are also methods that have Accessor set.
           || sym.isSuperAccessor) // scala2 superaccessors are pickled as private, but are compiled as public expanded
-          sym.ensureNotPrivate.installAfter(thisTransform)
+          sym.ensureNotPrivate.installAfter(thisPhase)
       }
       ctx.log(i"Scala2x trait decls of $mixin = ${mixin.info.decls.toList.map(_.showDcl)}%\n %")
       ctx.log(i"Scala2x impl decls of $mixin = ${implClass.info.decls.toList.map(_.showDcl)}%\n %")

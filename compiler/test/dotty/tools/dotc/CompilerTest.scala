@@ -121,7 +121,7 @@ abstract class CompilerTest {
   def compileFiles(path: String, args: List[String] = Nil, verbose: Boolean = true, runTest: Boolean = false,
                    compileSubDirs: Boolean = true)(implicit defaultOptions: List[String]): Unit = {
     val dir = Directory(path)
-    val fileNames = dir.files.toArray.map(_.jfile.getName).filter(name => (name endsWith ".scala") || (name endsWith ".java"))
+    val fileNames = dir.files.toArray.map(_.name).filter(name => (name endsWith ".scala") || (name endsWith ".java"))
     for (name <- fileNames) {
       if (verbose) log(s"testing $path$name")
       compileFile(path, name, args, "", runTest)
@@ -129,7 +129,7 @@ abstract class CompilerTest {
     if (compileSubDirs)
       for (subdir <- dir.dirs) {
         if (verbose) log(s"testing $subdir")
-        compileDir(path, subdir.jfile.getName, args, runTest)
+        compileDir(path, subdir.name, args, runTest)
       }
   }
   def runFiles(path: String, args: List[String] = Nil, verbose: Boolean = true)
@@ -363,13 +363,13 @@ abstract class CompilerTest {
 
     processFileDir(sourceFile, { sf =>
       if (extensionsToCopy.contains(sf.extension)) {
-        dest.parent.jfile.mkdirs
+        dest.parent.createDirectory(force = true)
         copyfile(sf, false)
       } else {
         log(s"WARNING: ignoring $sf")
       }
     }, { sdir =>
-      dest.jfile.mkdirs
+      dest.createDirectory(force = true)
       sdir.list.foreach(path => recCopyFiles(path, dest / path.name))
     }, Some("DPCompilerTest.recCopyFiles: sourceFile not found: " + sourceFile))
   }

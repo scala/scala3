@@ -1,14 +1,14 @@
 package dotty.tools.dotc
 package transform
 
-import TreeTransforms._
+import MegaPhase._
 import ast.Trees._
 import core._
 import Contexts._, Types._, Decorators._, Denotations._, Symbols._, SymDenotations._, Names._
 
 /** Distribute applications into Block and If nodes
  */
-class Splitter extends MiniPhaseTransform { thisTransform =>
+class Splitter extends MiniPhase {
   import ast.tpd._
 
   override def phaseName: String = "splitter"
@@ -23,10 +23,10 @@ class Splitter extends MiniPhaseTransform { thisTransform =>
     recur(tree.fun)
   }
 
-  override def transformTypeApply(tree: TypeApply)(implicit ctx: Context, info: TransformerInfo) =
+  override def transformTypeApply(tree: TypeApply)(implicit ctx: Context) =
     distribute(tree, typeApply)
 
-  override def transformApply(tree: Apply)(implicit ctx: Context, info: TransformerInfo) =
+  override def transformApply(tree: Apply)(implicit ctx: Context) =
     distribute(tree, apply)
 
   private val typeApply = (fn: Tree, args: List[Tree]) => (ctx: Context) => TypeApply(fn, args)(ctx)
@@ -48,7 +48,7 @@ class Splitter extends MiniPhaseTransform { thisTransform =>
    *      if (ev$1.isInstanceOf[A]) ev$1.asInstanceOf[A].f(a)
    *      else ev$1.asInstanceOf[B].f(a)
    */
-  override def transformSelect(tree: Select)(implicit ctx: Context, info: TransformerInfo) = {
+  override def transformSelect(tree: Select)(implicit ctx: Context) = {
     val Select(qual, name) = tree
 
     def memberDenot(tp: Type): SingleDenotation = {

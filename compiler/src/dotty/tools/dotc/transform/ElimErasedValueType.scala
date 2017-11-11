@@ -3,7 +3,7 @@ package transform
 
 import ast.{Trees, tpd}
 import core._, core.Decorators._
-import TreeTransforms._, Phases.Phase
+import MegaPhase._, Phases.Phase
 import Types._, Contexts._, Constants._, Names._, NameOps._, Flags._, DenotTransformers._
 import SymDenotations._, Symbols._, StdNames._, Annotations._, Trees._, Scopes._, Denotations._
 import TypeErasure.ErasedValueType, ValueClasses._
@@ -15,7 +15,7 @@ import TypeErasure.ErasedValueType, ValueClasses._
  *  of methods that now have the same signature but were not considered matching
  *  before erasure.
  */
-class ElimErasedValueType extends MiniPhaseTransform with InfoTransformer {
+class ElimErasedValueType extends MiniPhase with InfoTransformer {
 
   import tpd._
 
@@ -57,7 +57,7 @@ class ElimErasedValueType extends MiniPhaseTransform with InfoTransformer {
   def transformTypeOfTree(tree: Tree)(implicit ctx: Context): Tree =
     tree.withType(elimEVT(tree.tpe))
 
-  override def transformApply(tree: Apply)(implicit ctx: Context, info: TransformerInfo): Tree = {
+  override def transformApply(tree: Apply)(implicit ctx: Context): Tree = {
     val Apply(fun, args) = tree
 
     // The casts to and from ErasedValueType are no longer needed once ErasedValueType
@@ -117,23 +117,23 @@ class ElimErasedValueType extends MiniPhaseTransform with InfoTransformer {
     }
   }
 
-  override def transformTypeDef(tree: TypeDef)(implicit ctx: Context, info: TransformerInfo): Tree = {
+  override def transformTypeDef(tree: TypeDef)(implicit ctx: Context): Tree = {
     checkNoClashes(tree.symbol)
     tree
   }
 
-  override def transformInlined(tree: Inlined)(implicit ctx: Context, info: TransformerInfo): Tree =
+  override def transformInlined(tree: Inlined)(implicit ctx: Context): Tree =
     transformTypeOfTree(tree)
 
   // FIXME: transformIf and transformBlock won't be required anymore once #444 is fixed.
-  override def transformIdent(tree: Ident)(implicit ctx: Context, info: TransformerInfo): Tree =
+  override def transformIdent(tree: Ident)(implicit ctx: Context): Tree =
     transformTypeOfTree(tree)
-  override def transformSelect(tree: Select)(implicit ctx: Context, info: TransformerInfo): Tree =
+  override def transformSelect(tree: Select)(implicit ctx: Context): Tree =
     transformTypeOfTree(tree)
-  override def transformBlock(tree: Block)(implicit ctx: Context, info: TransformerInfo): Tree =
+  override def transformBlock(tree: Block)(implicit ctx: Context): Tree =
     transformTypeOfTree(tree)
-  override def transformIf(tree: If)(implicit ctx: Context, info: TransformerInfo): Tree =
+  override def transformIf(tree: If)(implicit ctx: Context): Tree =
     transformTypeOfTree(tree)
-  override def transformTypeTree(tree: TypeTree)(implicit ctx: Context, info: TransformerInfo): Tree =
+  override def transformTypeTree(tree: TypeTree)(implicit ctx: Context): Tree =
     transformTypeOfTree(tree)
 }

@@ -1,7 +1,7 @@
 package dotty.tools.dotc
 package transform
 
-import TreeTransforms._
+import MegaPhase._
 import core.DenotTransformers._
 import core.Symbols._
 import core.Contexts._
@@ -34,7 +34,7 @@ import scala.annotation.tailrec
  *   replacement of outer this by outer paths is done in Erasure.
  *   needs to run after pattern matcher as it can add outer checks and force creation of $outer
  */
-class ExplicitOuter extends MiniPhaseTransform with InfoTransformer { thisTransformer =>
+class ExplicitOuter extends MiniPhase with InfoTransformer { thisPhase =>
   import ExplicitOuter._
   import ast.tpd._
 
@@ -72,7 +72,7 @@ class ExplicitOuter extends MiniPhaseTransform with InfoTransformer { thisTransf
    *  a separate phase which needs to run after erasure. However, we make sure here
    *  that the super class constructor is indeed a New, and not just a type.
    */
-  override def transformTemplate(impl: Template)(implicit ctx: Context, info: TransformerInfo): Tree = {
+  override def transformTemplate(impl: Template)(implicit ctx: Context): Tree = {
     val cls = ctx.owner.asClass
     val isTrait = cls.is(Trait)
     if (needsOuterIfReferenced(cls) &&
@@ -97,7 +97,7 @@ class ExplicitOuter extends MiniPhaseTransform with InfoTransformer { thisTransf
       for (parentTrait <- cls.mixins) {
         if (needsOuterIfReferenced(parentTrait)) {
           val parentTp = cls.denot.thisType.baseType(parentTrait)
-          val outerAccImpl = newOuterAccessor(cls, parentTrait).enteredAfter(thisTransformer)
+          val outerAccImpl = newOuterAccessor(cls, parentTrait).enteredAfter(thisPhase)
           newDefs += DefDef(outerAccImpl, singleton(fixThis(outerPrefix(parentTp))))
         }
       }
@@ -118,7 +118,7 @@ class ExplicitOuter extends MiniPhaseTransform with InfoTransformer { thisTransf
     else impl
   }
 
-  override def transformClosure(tree: Closure)(implicit ctx: Context, info: TransformerInfo): tpd.Tree = {
+  override def transformClosure(tree: Closure)(implicit ctx: Context): tpd.Tree = {
     if (tree.tpt ne EmptyTree) {
       val cls = tree.tpt.asInstanceOf[TypeTree].tpe.classSymbol
       if (cls.exists && hasOuter(cls.asClass))
@@ -132,15 +132,11 @@ object ExplicitOuter {
   import ast.tpd._
 
   /** Ensure that class `cls` has outer accessors */
-  def ensureOuterAccessors(cls: ClassSymbol)(implicit ctx: Context): Unit = {
-    //todo: implementing  #165 would simplify this logic
-    val prevPhase = ctx.phase.prev
-    assert(prevPhase.id <= ctx.explicitOuterPhase.id, "can add $outer symbols only before ExplicitOuter")
-    assert(prevPhase.isInstanceOf[DenotTransformer], "adding outerAccessors requires being DenotTransformer")
-    if (!hasOuter(cls)) {
-      newOuterAccessors(cls).foreach(_.enteredAfter(prevPhase.asInstanceOf[DenotTransformer]))
+  def ensureOuterAccessors(cls: ClassSymbol)(implicit ctx: Context): Unit =
+    ctx.atPhase(ctx.explicitOuterPhase.next) { implicit ctx =>
+      if (!hasOuter(cls))
+        newOuterAccessors(cls).foreach(_.enteredAfter(ctx.explicitOuterPhase.asInstanceOf[DenotTransformer]))
     }
-  }
 
   /** The outer accessor and potentially outer param accessor needed for class `cls` */
   private def newOuterAccessors(cls: ClassSymbol)(implicit ctx: Context) =

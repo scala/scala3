@@ -1,7 +1,7 @@
 package dotty.tools.dotc
 package transform
 
-import TreeTransforms._
+import MegaPhase._
 import core.DenotTransformers._
 import core.Contexts._
 import ast.tpd
@@ -11,7 +11,7 @@ import ast.tpd
   *    `val x : T = _` to `val x : T = <zero of T>`
   *
   */
-class TransformWildcards extends MiniPhaseTransform with IdentityDenotTransformer { thisTransform =>
+class TransformWildcards extends MiniPhase with IdentityDenotTransformer {
   import tpd._
 
   override def phaseName = "transformWildcards"
@@ -23,7 +23,7 @@ class TransformWildcards extends MiniPhaseTransform with IdentityDenotTransforme
     }
   }
 
-  override def transformValDef(tree: ValDef)(implicit ctx: Context, info: TransformerInfo): Tree = {
+  override def transformValDef(tree: ValDef)(implicit ctx: Context): Tree = {
     if (ctx.owner.isClass) tree
     else cpy.ValDef(tree)(rhs = tree.rhs.wildcardToDefault)
   }

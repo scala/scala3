@@ -30,7 +30,7 @@ class Bridges(root: ClassSymbol)(implicit ctx: Context) {
 
   //val site = root.thisType
 
-  private var toBeRemoved = immutable.Set[Symbol]()
+  private[this] var toBeRemoved = immutable.Set[Symbol]()
   private val bridges = mutable.ListBuffer[Tree]()
   private val bridgesScope = newScope
   private val bridgeTarget = mutable.HashMap[Symbol, Symbol]()

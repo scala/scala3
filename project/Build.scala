@@ -36,12 +36,12 @@ object ExposedValues extends AutoPlugin {
 
 object Build {
 
-  val scalacVersion = "2.12.3"
+  val baseVersion = "0.5.0"
+  val scalacVersion = "2.12.4"
 
   val dottyOrganization = "ch.epfl.lamp"
   val dottyGithubUrl = "https://github.com/lampepfl/dotty"
   val dottyVersion = {
-    val baseVersion = "0.4.0"
     val isNightly = sys.env.get("NIGHTLYBUILD") == Some("yes")
     val isRelease = sys.env.get("RELEASEBUILD") == Some("yes")
     if (isNightly)
@@ -239,6 +239,7 @@ object Build {
   )
 
   lazy val commonBenchmarkSettings = Seq(
+    outputStrategy := Some(StdoutOutput),
     mainClass in (Jmh, run) := Some("dotty.tools.benchmarks.Bench"), // custom main for jmh:run
     javaOptions += "-DBENCH_CLASS_PATH=" + Attributed.data((fullClasspath in Compile).value).mkString("", ":", "")
   )
@@ -307,6 +308,11 @@ object Build {
     parallelExecution in Test := false,
 
     genDocs := Def.taskDyn {
+      // Make majorVersion available at dotty.epfl.ch/versions/latest-nightly-base
+      // Used by sbt-dotty to resolve the latest nightly
+      val majorVersion = baseVersion.take(baseVersion.lastIndexOf('.'))
+      IO.write(file("./docs/_site/versions/latest-nightly-base"), majorVersion)
+
       val dottyLib = (packageAll in `dotty-compiler`).value("dotty-library")
       val dottyInterfaces = (packageAll in `dotty-compiler`).value("dotty-interfaces")
       val otherDeps = (dependencyClasspath in Compile).value.map(_.data).mkString(":")
@@ -320,9 +326,9 @@ object Build {
         "-project-url", dottyGithubUrl,
         "-classpath", s"$dottyLib:$dottyInterfaces:$otherDeps"
       )
-        (runMain in Compile).toTask(
-          s""" dotty.tools.dottydoc.Main ${args.mkString(" ")} ${sources.mkString(" ")}"""
-        )
+      (runMain in Compile).toTask(
+        s""" dotty.tools.dottydoc.Main ${args.mkString(" ")} ${sources.mkString(" ")}"""
+      )
     }.value,
 
     dottydoc := Def.inputTaskDyn {
@@ -518,8 +524,8 @@ object Build {
         val args: Seq[String] = spaceDelimited("<arg>").parsed
 
         val fullArgs = args.span(_ != "-classpath") match {
-          case (beforeCp, Nil) => beforeCp ++ ("-classpath" :: dottyLib :: Nil)
-          case (beforeCp, rest) => beforeCp ++ rest
+          case (beforeCp, "-classpath" :: cp :: rest) => beforeCp ++ List("-classpath", cp + ":" + dottyLib) ++ rest
+          case (beforeCp, _) => beforeCp ++ List("-classpath", dottyLib)
         }
 
         (runMain in Compile).toTask(
@@ -533,8 +539,8 @@ object Build {
         val args: Seq[String] = spaceDelimited("<arg>").parsed
 
         val fullArgs = args.span(_ != "-classpath") match {
-          case (beforeCp, Nil) => beforeCp ++ ("-classpath" :: dottyLib :: Nil)
-          case (beforeCp, rest) => beforeCp ++ rest
+          case (beforeCp, "-classpath" :: cp :: rest) => beforeCp ++ List("-classpath", cp + ":" + dottyLib) ++ rest
+          case (beforeCp, _) => beforeCp ++ List("-classpath", dottyLib)
         }
 
         (runMain in Compile).toTask(
@@ -854,10 +860,9 @@ object Build {
 
 
       sbtPlugin := true,
-      version := "0.1.6-SNAPSHOT",
+      version := "0.1.7",
       ScriptedPlugin.scriptedSettings,
       ScriptedPlugin.sbtTestDirectory := baseDirectory.value / "sbt-test",
-      ScriptedPlugin.scriptedBufferLog := false,
       ScriptedPlugin.scriptedLaunchOpts += "-Dplugin.version=" + version.value,
       ScriptedPlugin.scriptedLaunchOpts += "-Dplugin.scalaVersion=" + dottyVersion,
      // By default scripted tests use $HOME/.ivy2 for the ivy cache. We need to override this value for the CI.
@@ -878,7 +883,7 @@ object Build {
     settings(
       EclipseKeys.skipProject := true,
 
-      version := "0.1.0", // Keep in sync with package.json
+      version := "0.1.2", // Keep in sync with package.json
 
       autoScalaLibrary := false,
       publishArtifact := false,

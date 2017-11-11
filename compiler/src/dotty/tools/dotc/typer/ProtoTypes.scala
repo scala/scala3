@@ -101,7 +101,9 @@ object ProtoTypes {
         val mbr = if (privateOK) tp1.member(name) else tp1.nonPrivateMember(name)
         def qualifies(m: SingleDenotation) =
           memberProto.isRef(defn.UnitClass) ||
-          compat.normalizedCompatible(m.info, memberProto)
+          compat.normalizedCompatible(NamedType(tp1, name, m), memberProto)
+            // Note: can't use `m.info` here because if `m` is a method, `m.info`
+            //       loses knowledge about `m`'s default arguments.
         mbr match { // hasAltWith inlined for performance
           case mbr: SingleDenotation => mbr.exists && qualifies(mbr)
           case _ => mbr hasAltWith qualifies
@@ -174,15 +176,15 @@ object ProtoTypes {
    */
   case class FunProto(args: List[untpd.Tree], resType: Type, typer: Typer)(implicit ctx: Context)
   extends UncachedGroundType with ApplyingProto {
-    private var myTypedArgs: List[Tree] = Nil
+    private[this] var myTypedArgs: List[Tree] = Nil
 
     override def resultType(implicit ctx: Context) = resType
 
     /** A map in which typed arguments can be stored to be later integrated in `typedArgs`. */
-    private var myTypedArg: SimpleIdentityMap[untpd.Tree, Tree] = SimpleIdentityMap.Empty
+    private[this] var myTypedArg: SimpleIdentityMap[untpd.Tree, Tree] = SimpleIdentityMap.Empty
 
     /** A map recording the typer states in which arguments stored in myTypedArg were typed */
-    private var evalState: SimpleIdentityMap[untpd.Tree, TyperState] = SimpleIdentityMap.Empty
+    private[this] var evalState: SimpleIdentityMap[untpd.Tree, TyperState] = SimpleIdentityMap.Empty
 
     def isMatchedBy(tp: Type)(implicit ctx: Context) =
       typer.isApplicable(tp, Nil, typedArgs, resultType)
@@ -246,7 +248,7 @@ object ProtoTypes {
     def typeOfArg(arg: untpd.Tree)(implicit ctx: Context): Type =
       myTypedArg(arg).tpe
 
-    private var myTupled: Type = NoType
+    private[this] var myTupled: Type = NoType
 
     /** The same proto-type but with all arguments combined in a single tuple */
     def tupled: FunProto = myTupled match {
@@ -261,7 +263,7 @@ object ProtoTypes {
     def isTupled: Boolean = myTupled.isInstanceOf[FunProto]
 
     /** If true, the application of this prototype was canceled. */
-    private var toDrop: Boolean = false
+    private[this] var toDrop: Boolean = false
 
     /** Cancel the application of this prototype. This can happen for a nullary
      *  application `f()` if `f` refers to a symbol that exists both in parameterless
@@ -431,6 +433,7 @@ object ProtoTypes {
    *   - skips implicit parameters of methods and functions;
    *     if result type depends on implicit parameter, replace with fresh type dependent parameter.
    *   - converts non-dependent method types to the corresponding function types
+   *     unless the expected type is an ApplyingProto or IgnoredProto.
    *   - dereferences parameterless method types
    *   - dereferences nullary method types provided the corresponding function type
    *     is not a subtype of the expected type.
@@ -451,8 +454,11 @@ object ProtoTypes {
         else {
           val rt = normalize(mt.resultType, pt)
           pt match {
-            case pt: IgnoredProto  => mt
-            case pt: ApplyingProto => mt.derivedLambdaType(mt.paramNames, mt.paramInfos, rt)
+            case pt: IgnoredProto  =>
+              tp
+            case pt: ApplyingProto =>
+              if (rt eq mt.resultType) tp
+              else mt.derivedLambdaType(mt.paramNames, mt.paramInfos, rt)
             case _ =>
               val ft = defn.FunctionOf(mt.paramInfos, rt)
               if (mt.paramInfos.nonEmpty || ft <:< pt) ft else rt

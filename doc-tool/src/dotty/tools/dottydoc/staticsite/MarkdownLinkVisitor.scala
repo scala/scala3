@@ -3,18 +3,21 @@ package dottydoc
 package staticsite
 
 import com.vladsch.flexmark.ast._
-import com.vladsch.flexmark.util.sequence.CharSubSequence
-import model.{ Package, NonEntity, Val, Def, TypeAlias }
+import com.vladsch.flexmark.util.sequence.{BasedSequence, CharSubSequence}
+import model.{Def, NonEntity, Package, TypeAlias, Val}
 import dottydoc.util.MemberLookup
 
 object MarkdownLinkVisitor {
   private val EntityLink = """([^\.]+)(\.[^\.]+)*""".r
   def apply(node: Node, docs: Map[String, Package], params: Map[String, AnyRef]): Unit =
-    (new NodeVisitor(
+    new NodeVisitor(
       new VisitHandler(classOf[Link], new Visitor[Link] with MemberLookup {
         override def visit(node: Link): Unit = {
+          def isExternal(url: BasedSequence) =
+            url.startsWith("http") || url.startsWith("https")
+
           val url = node.getUrl
-          if (url.endsWith(".md")) node.setUrl {
+          if (url.endsWith(".md") && !isExternal(url)) node.setUrl {
             url.subSequence(0, url.lastIndexOf('.')).append(".html")
           }
           else if (EntityLink.unapplySeq(url.toString).isDefined) {
@@ -37,6 +40,6 @@ object MarkdownLinkVisitor {
           }
         }
       })
-    ))
+    )
     .visit(node)
 }

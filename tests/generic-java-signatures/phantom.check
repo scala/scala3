@@ -1,0 +1,3 @@
+public <U,T> T MyOtherPhantom$.f1(int,int)
+U <: java.lang.Object
+T <: dotty.runtime.ErasedPhantom

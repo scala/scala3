@@ -3,9 +3,9 @@ package dotty.tools.dotc.util
 /** A hash set that allows some privileged protected access to its internals
  */
 class HashSet[T >: Null <: AnyRef](powerOfTwoInitialCapacity: Int, loadFactor: Float = 0.25f) extends Set[T] {
-  private var used: Int = _
-  private var limit: Int = _
-  private var table: Array[AnyRef] = _
+  private[this] var used: Int = _
+  private[this] var limit: Int = _
+  private[this] var table: Array[AnyRef] = _
 
   protected def isEqual(x: T, y: T): Boolean = x.equals(y)
 
@@ -66,7 +66,7 @@ class HashSet[T >: Null <: AnyRef](powerOfTwoInitialCapacity: Int, loadFactor: F
     entry.asInstanceOf[T]
   }
 
-  private var rover: Int = -1
+  private[this] var rover: Int = -1
 
   /** Add entry `x` to set */
   def addEntry(x: T): Unit = {
@@ -89,7 +89,7 @@ class HashSet[T >: Null <: AnyRef](powerOfTwoInitialCapacity: Int, loadFactor: F
 
   /** The iterator of all elements in the set */
   def iterator = new Iterator[T] {
-    private var i = 0
+    private[this] var i = 0
     def hasNext: Boolean = {
       while (i < table.length && (table(i) eq null)) i += 1
       i < table.length

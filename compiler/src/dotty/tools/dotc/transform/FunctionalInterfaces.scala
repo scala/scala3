@@ -1,7 +1,7 @@
 package dotty.tools.dotc
 package transform
 
-import TreeTransforms._
+import MegaPhase._
 import core.DenotTransformers._
 import core.Symbols._
 import core.Contexts._
@@ -21,7 +21,7 @@ import collection.mutable.{ LinkedHashMap, LinkedHashSet, TreeSet }
 /**
  *  Rewires closures to implement more specific types of Functions.
  */
-class FunctionalInterfaces extends MiniPhaseTransform {
+class FunctionalInterfaces extends MiniPhase {
   import tpd._
 
   def phaseName: String = "functionalInterfaces"
@@ -29,7 +29,7 @@ class FunctionalInterfaces extends MiniPhaseTransform {
   val functionName = "JFunction".toTermName
   val functionPackage = "scala.compat.java8.".toTermName
 
-  override def transformClosure(tree: Closure)(implicit ctx: Context, info: TransformerInfo): Tree = {
+  override def transformClosure(tree: Closure)(implicit ctx: Context): Tree = {
     val cls = tree.tpe.widen.classSymbol.asClass
 
     val implType = tree.meth.tpe.widen

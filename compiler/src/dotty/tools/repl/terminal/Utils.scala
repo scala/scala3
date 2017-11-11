@@ -178,8 +178,8 @@ object FrontEndUtils {
   def transpose[A](xs: List[List[A]]): List[List[A]] = {
     @tailrec def transpose(xs: List[List[A]], result: List[List[A]]): List[List[A]] = {
       xs.filter(_.nonEmpty) match {
-        case Nil =>  result
-        case ys: List[List[A]] => transpose(ys.map(_.tail), ys.map(_.head) :: result)
+        case Nil => result
+        case ys  => transpose(ys.map(_.tail), ys.map(_.head) :: result)
       }
     }
 

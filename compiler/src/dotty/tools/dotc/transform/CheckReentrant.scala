@@ -3,7 +3,7 @@ package transform
 
 import core._
 import Names._
-import dotty.tools.dotc.transform.TreeTransforms.{TransformerInfo, MiniPhaseTransform, TreeTransformer}
+import dotty.tools.dotc.transform.MegaPhase._
 import ast.Trees._
 import Flags._
 import Types._
@@ -40,14 +40,14 @@ import StdNames._
  *     in an immutable way anyway. To do better, it would be helpful to have a type
  *     for immutable array.
  */
-class CheckReentrant extends MiniPhaseTransform { thisTransformer =>
+class CheckReentrant extends MiniPhase {
   import ast.tpd._
 
   override def phaseName = "checkReentrant"
 
-  private var shared: Set[Symbol] = Set()
-  private var seen: Set[ClassSymbol] = Set()
-  private var indent: Int = 0
+  private[this] var shared: Set[Symbol] = Set()
+  private[this] var seen: Set[ClassSymbol] = Set()
+  private[this] var indent: Int = 0
 
   private val sharableAnnot = new CtxLazy(implicit ctx =>
     ctx.requiredClass("dotty.tools.sharable"))
@@ -87,7 +87,7 @@ class CheckReentrant extends MiniPhaseTransform { thisTransformer =>
     }
   }
 
-  override def transformTemplate(tree: Template)(implicit ctx: Context, info: TransformerInfo): Tree = {
+  override def transformTemplate(tree: Template)(implicit ctx: Context): Tree = {
     if (ctx.settings.YcheckReentrant.value && tree.symbol.owner.isStaticOwner)
       addVars(tree.symbol.owner.asClass)
     tree

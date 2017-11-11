@@ -3,7 +3,7 @@ package dotc
 package transform
 
 import org.junit.{Assert, Test}
-import TreeTransforms.{TransformerInfo, TreeTransformer, MiniPhaseTransform}
+import MegaPhase._
 import ast.tpd
 import core.Constants.Constant
 import core.Contexts.Context
@@ -14,16 +14,12 @@ class TreeTransformerTest extends DottyTest {
   def shouldReturnSameTreeIfUnchanged: Unit = checkCompile("frontend", "class A{ val d = 1}") {
     (tree, context) =>
       implicit val ctx = context
-      class EmptyTransform extends MiniPhaseTransform {
+      class EmptyTransform extends MiniPhase {
         override def phaseName: String = "empty"
         init(ctx, ctx.period.firstPhaseId, ctx.period.lastPhaseId)
       }
-      val transformer = new TreeTransformer {
-        override def miniPhases = Array(new EmptyTransform)
-
-        override def phaseName: String = "test"
-      }
-      val transformed = transformer.macroTransform(tree)
+      val transformer = new MegaPhase(Array(new EmptyTransform))
+      val transformed = transformer.transformUnit(tree)
 
       Assert.assertTrue("returns same tree if unmodified",
         tree eq transformed
@@ -34,18 +30,14 @@ class TreeTransformerTest extends DottyTest {
   def canReplaceConstant: Unit = checkCompile("frontend", "class A{ val d = 1}") {
     (tree, context) =>
       implicit val ctx = context
-      class ConstantTransform extends MiniPhaseTransform {
+      class ConstantTransform extends MiniPhase {
 
-        override def transformLiteral(tree: tpd.Literal)(implicit ctx: Context, info: TransformerInfo): tpd.Tree = tpd.Literal(Constant(2))
+        override def transformLiteral(tree: tpd.Literal)(implicit ctx: Context): tpd.Tree = tpd.Literal(Constant(2))
         override def phaseName: String = "canReplaceConstant"
         init(ctx, ctx.period.firstPhaseId, ctx.period.lastPhaseId)
       }
-      val transformer = new TreeTransformer {
-        override def miniPhases = Array(new ConstantTransform)
-
-        override def phaseName: String = "test"
-      }
-      val transformed = transformer.macroTransform(tree)
+      val transformer = new MegaPhase(Array(new ConstantTransform))
+      val transformed = transformer.transformUnit(tree)
 
       Assert.assertTrue("returns same tree if unmodified",
         transformed.toString.contains("List(ValDef(Modifiers(,,List()),d,TypeTree[TypeRef(ThisType(module class scala),Int)],Literal(Constant(2)))")
@@ -56,12 +48,12 @@ class TreeTransformerTest extends DottyTest {
   def canOverwrite: Unit = checkCompile("frontend", "class A{ val d = 1}") {
     (tree, context) =>
       implicit val ctx = context
-      class Transformation extends MiniPhaseTransform {
+      class Transformation extends MiniPhase {
 
-        override def transformLiteral(tree: tpd.Literal)(implicit ctx: Context, info: TransformerInfo): tpd.Tree = tpd.Literal(Constant(-1))
+        override def transformLiteral(tree: tpd.Literal)(implicit ctx: Context): tpd.Tree = tpd.Literal(Constant(-1))
         override def phaseName: String = "canOverwrite"
 
-        override def transformValDef(tree: tpd.ValDef)(implicit ctx: Context, info: TransformerInfo): tpd.ValDef = {
+        override def transformValDef(tree: tpd.ValDef)(implicit ctx: Context): tpd.ValDef = {
           Assert.assertTrue("transformation of children succeeded",
             tree.rhs.toString == "Literal(Constant(-1))"
           )
@@ -70,13 +62,8 @@ class TreeTransformerTest extends DottyTest {
 
         init(ctx, ctx.period.firstPhaseId, ctx.period.lastPhaseId)
       }
-      val transformer = new TreeTransformer {
-        override def miniPhases = Array(new Transformation)
-
-        override def phaseName: String = "test"
-
-      }
-      val tr = transformer.macroTransform(tree).toString
+      val transformer = new MegaPhase(Array(new Transformation))
+      val tr = transformer.transformUnit(tree).toString
 
       Assert.assertTrue("node can rewrite children",
         tr.contains("Literal(Constant(2))") && !tr.contains("Literal(Constant(-1))")
@@ -87,17 +74,17 @@ class TreeTransformerTest extends DottyTest {
   def transformationOrder: Unit = checkCompile("frontend", "class A{ val d = 1}") {
     (tree, context) =>
       implicit val ctx = context
-      class Transformation1 extends MiniPhaseTransform {
+      class Transformation1 extends MiniPhase {
         override def phaseName: String = "transformationOrder1"
 
-        override def transformLiteral(tree: tpd.Literal)(implicit ctx: Context, info: TransformerInfo): tpd.Tree = {
+        override def transformLiteral(tree: tpd.Literal)(implicit ctx: Context): tpd.Tree = {
           Assert.assertTrue("correct constant",
             tree.const.toString == "Constant(1)"
           )
           tpd.cpy.Literal(tree)(Constant(-1))
         }
 
-        override def transformValDef(tree: tpd.ValDef)(implicit ctx: Context, info: TransformerInfo): tpd.ValDef = {
+        override def transformValDef(tree: tpd.ValDef)(implicit ctx: Context): tpd.ValDef = {
           Assert.assertTrue("transformation of children succeeded",
             tree.rhs.toString == "Literal(Constant(-1))"
           )
@@ -106,9 +93,9 @@ class TreeTransformerTest extends DottyTest {
 
         init(ctx, ctx.period.firstPhaseId, ctx.period.lastPhaseId)
       }
-      class Transformation2 extends MiniPhaseTransform {
+      class Transformation2 extends MiniPhase {
         override def phaseName: String = "transformationOrder2"
-        override def transformValDef(tree: tpd.ValDef)(implicit ctx: Context, info: TransformerInfo): tpd.ValDef = {
+        override def transformValDef(tree: tpd.ValDef)(implicit ctx: Context): tpd.ValDef = {
           Assert.assertTrue("transformation of children succeeded",
             tree.rhs.toString == "Literal(Constant(2))"
           )
@@ -117,12 +104,8 @@ class TreeTransformerTest extends DottyTest {
 
         init(ctx, ctx.period.firstPhaseId, ctx.period.lastPhaseId)
       }
-      val transformer = new TreeTransformer {
-        override def miniPhases = Array(new Transformation1, new Transformation2)
-
-        override def phaseName: String = "test"
-      }
-      val tr = transformer.macroTransform(tree).toString
+      val transformer = new MegaPhase(Array(new Transformation1, new Transformation2))
+      val tr = transformer.transformUnit(tree).toString
 
       Assert.assertTrue("node can rewrite children",
         tr.contains("Literal(Constant(3))")
@@ -134,9 +117,9 @@ class TreeTransformerTest extends DottyTest {
     (tree, context) =>
       implicit val ctx = context
       var transformed1 = 0
-      class Transformation1 extends MiniPhaseTransform {
+      class Transformation1 extends MiniPhase {
         override def phaseName: String = "invocationCount1"
-        override def transformLiteral(tree: tpd.Literal)(implicit ctx: Context, info: TransformerInfo): tpd.Tree = {
+        override def transformLiteral(tree: tpd.Literal)(implicit ctx: Context): tpd.Tree = {
           transformed1 += 1
           Assert.assertTrue("correct constant",
             tree.const.toString == "Constant(1)"
@@ -144,7 +127,7 @@ class TreeTransformerTest extends DottyTest {
           tpd.cpy.Literal(tree)(Constant(-1))
         }
 
-        override def transformValDef(tree: tpd.ValDef)(implicit ctx: Context, info: TransformerInfo) = {
+        override def transformValDef(tree: tpd.ValDef)(implicit ctx: Context) = {
           transformed1 += 1
           Assert.assertTrue("transformation of children succeeded",
             tree.rhs.toString == "Literal(Constant(-3))"
@@ -155,10 +138,10 @@ class TreeTransformerTest extends DottyTest {
         init(ctx, ctx.period.firstPhaseId, ctx.period.lastPhaseId)
       }
       var transformed2 = 0
-      class Transformation2 extends MiniPhaseTransform {
+      class Transformation2 extends MiniPhase {
         var constantsSeen = 0
         override def phaseName: String = "invocationCount2"
-        override def transformLiteral(tree: tpd.Literal)(implicit ctx: Context, info: TransformerInfo): tpd.Tree = {
+        override def transformLiteral(tree: tpd.Literal)(implicit ctx: Context): tpd.Tree = {
           transformed2 += 1
           constantsSeen match {
             case 0 =>
@@ -175,7 +158,7 @@ class TreeTransformerTest extends DottyTest {
           tpd.cpy.Literal(tree)(Constant(-3))
         }
 
-        override def transformValDef(tree: tpd.ValDef)(implicit ctx: Context, info: TransformerInfo) = {
+        override def transformValDef(tree: tpd.ValDef)(implicit ctx: Context) = {
           transformed2 += 1
           Assert.assertTrue("transformation of children succeeded",
             tree.rhs.toString == "Literal(Constant(-3))"
@@ -185,12 +168,8 @@ class TreeTransformerTest extends DottyTest {
 
         init(ctx, ctx.period.firstPhaseId, ctx.period.lastPhaseId)
       }
-      val transformer = new TreeTransformer {
-        override def miniPhases = Array(new Transformation1, new Transformation2)
-
-        override def phaseName: String = "test"
-      }
-      val tr = transformer.macroTransform(tree).toString
+      val transformer = new MegaPhase(Array(new Transformation1, new Transformation2))
+      val tr = transformer.transformUnit(tree).toString
       Assert.assertTrue("transformations aren't invoked multiple times",
         transformed1 == 2 && transformed2 == 3
       )

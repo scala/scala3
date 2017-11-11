@@ -31,6 +31,7 @@ import config.{Settings, ScalaSettings, Platform, JavaPlatform}
 import language.implicitConversions
 import DenotTransformers.DenotTransformer
 import util.Property.Key
+import util.Store
 import xsbti.AnalysisCallback
 
 object Contexts {
@@ -157,15 +158,8 @@ object Contexts {
     protected def runInfo_=(runInfo: RunInfo) = _runInfo = runInfo
     def runInfo: RunInfo = _runInfo
 
-    /** An optional diagostics buffer than is used by some checking code
-     *  to provide more information in the buffer if it exists.
-     */
-    private var _diagnostics: Option[StringBuilder] = _
-    protected def diagnostics_=(diagnostics: Option[StringBuilder]) = _diagnostics = diagnostics
-    def diagnostics: Option[StringBuilder] = _diagnostics
-
     /** The current bounds in force for type parameters appearing in a GADT */
-    private var _gadt: GADTMap = _
+    private[this] var _gadt: GADTMap = _
     protected def gadt_=(gadt: GADTMap) = _gadt = gadt
     def gadt: GADTMap = _gadt
 
@@ -174,15 +168,20 @@ object Contexts {
     protected def freshNames_=(freshNames: FreshNameCreator) = _freshNames = freshNames
     def freshNames: FreshNameCreator = _freshNames
 
+    /** A store that can be used by sub-components */
+    private var _store: Store = _
+    protected def store_=(store: Store) = _store = store
+    def store: Store = _store
+
     /** A map in which more contextual properties can be stored */
-    private var _moreProperties: Map[Key[Any], Any] = _
+    private[this] var _moreProperties: Map[Key[Any], Any] = _
     protected def moreProperties_=(moreProperties: Map[Key[Any], Any]) = _moreProperties = moreProperties
     def moreProperties: Map[Key[Any], Any] = _moreProperties
 
     def property[T](key: Key[T]): Option[T] =
       moreProperties.get(key).asInstanceOf[Option[T]]
 
-    private var _typeComparer: TypeComparer = _
+    private[this] var _typeComparer: TypeComparer = _
     protected def typeComparer_=(typeComparer: TypeComparer) = _typeComparer = typeComparer
     def typeComparer: TypeComparer = {
       if (_typeComparer.ctx ne this)
@@ -224,7 +223,7 @@ object Contexts {
     }
 
     /** The history of implicit searches that are currently active */
-    private var _searchHistory: SearchHistory = null
+    private[this] var _searchHistory: SearchHistory = null
     protected def searchHistory_= (searchHistory: SearchHistory) = _searchHistory = searchHistory
     def searchHistory: SearchHistory = _searchHistory
 
@@ -233,8 +232,8 @@ object Contexts {
       * phasedCtxs is array that uses phaseId's as indexes,
       * contexts are created only on request and cached in this array
       */
-    private var phasedCtx: Context = _
-    private var phasedCtxs: Array[Context] = _
+    private[this] var phasedCtx: Context = _
+    private[this] var phasedCtxs: Array[Context] = _
 
     /** This context at given phase.
      *  This method will always return a phase period equal to phaseId, thus will never return squashed phases
@@ -268,7 +267,7 @@ object Contexts {
     /** If -Ydebug is on, the top of the stack trace where this context
      *  was created, otherwise `null`.
      */
-    private var creationTrace: Array[StackTraceElement] = _
+    private[this] var creationTrace: Array[StackTraceElement] = _
 
     private def setCreationTrace() =
       if (this.settings.YtraceContextCreation.value)
@@ -299,13 +298,6 @@ object Contexts {
     /** Is this a context that introduces a non-empty scope? */
     def isNonEmptyScopeContext: Boolean =
       (this.scope ne outer.scope) && !this.scope.isEmpty
-
-    /** Leave message in diagnostics buffer if it exists */
-    def diagnose(str: => String) =
-      for (sb <- diagnostics) {
-        sb.setLength(0)
-        sb.append(str)
-      }
 
     /** The next outer context whose tree is a template or package definition
      *  Note: Currently unused
@@ -393,7 +385,7 @@ object Contexts {
 
     /** A condensed context containing essential information of this but
      *  no outer contexts except the initial context.
-    private var _condensed: CondensedContext = null
+    private[this] var _condensed: CondensedContext = null
     def condensed: CondensedContext = {
       if (_condensed eq outer.condensed)
         _condensed = base.initialCtx.fresh
@@ -406,7 +398,6 @@ object Contexts {
           .withSettings(sstate)
           // tree is not preserved in condensed
           .withRunInfo(runInfo)
-          .withDiagnostics(diagnostics)
           .withMoreProperties(moreProperties)
       _condensed
     }
@@ -474,12 +465,12 @@ object Contexts {
     def setImportInfo(importInfo: ImportInfo): this.type = { this.importInfo = importInfo; this }
     def setImplicits(implicits: ContextualImplicits): this.type = { this.implicitsCache = implicits; this }
     def setRunInfo(runInfo: RunInfo): this.type = { this.runInfo = runInfo; this }
-    def setDiagnostics(diagnostics: Option[StringBuilder]): this.type = { this.diagnostics = diagnostics; this }
     def setGadt(gadt: GADTMap): this.type = { this.gadt = gadt; this }
     def setFreshGADTBounds: this.type = setGadt(new GADTMap(gadt.bounds))
     def setTypeComparerFn(tcfn: Context => TypeComparer): this.type = { this.typeComparer = tcfn(this); this }
     def setSearchHistory(searchHistory: SearchHistory): this.type = { this.searchHistory = searchHistory; this }
     def setFreshNames(freshNames: FreshNameCreator): this.type = { this.freshNames = freshNames; this }
+    def setStore(store: Store): this.type = { this.store = store; this }
     def setMoreProperties(moreProperties: Map[Key[Any], Any]): this.type = { this.moreProperties = moreProperties; this }
 
     def setProperty[T](key: Key[T], value: T): this.type =
@@ -488,12 +479,26 @@ object Contexts {
     def dropProperty(key: Key[_]): this.type =
       setMoreProperties(moreProperties - key)
 
+    def addLocation[T](initial: T): Store.Location[T] = {
+      val (loc, store1) = store.newLocation(initial)
+      setStore(store1)
+      loc
+    }
+
+    def addLocation[T](): Store.Location[T] = {
+      val (loc, store1) = store.newLocation[T]()
+      setStore(store1)
+      loc
+    }
+
+    def updateStore[T](loc: Store.Location[T], value: T): this.type =
+      setStore(store.updated(loc, value))
+
     def setPhase(pid: PhaseId): this.type = setPeriod(Period(runId, pid))
     def setPhase(phase: Phase): this.type = setPeriod(Period(runId, phase.start, phase.end))
 
     def setSetting[T](setting: Setting[T], value: T): this.type =
       setSettings(setting.updateIn(sstate, value))
-
 
     def setDebug = setSetting(base.settings.debug, true)
   }
@@ -527,9 +532,9 @@ object Contexts {
     tree = untpd.EmptyTree
     typeAssigner = TypeAssigner
     runInfo = new RunInfo(this)
-    diagnostics = None
     freshNames = new FreshNameCreator.Default
     moreProperties = Map.empty
+    store = Store.empty
     typeComparer = new TypeComparer(this)
     searchHistory = new SearchHistory(0, Map())
     gadt = EmptyGADTMap
@@ -557,7 +562,7 @@ object Contexts {
     val loaders = new SymbolLoaders
 
     /** The platform, initialized by `initPlatform()`. */
-    private var _platform: Platform = _
+    private[this] var _platform: Platform = _
 
     /** The platform */
     def platform: Platform = {
@@ -643,7 +648,7 @@ object Contexts {
     private[core] var phasesPlan: List[List[Phase]] = _
 
     /** Phases by id */
-    private[core] var phases: Array[Phase] = _
+    private[dotc] var phases: Array[Phase] = _
 
     /** Phases with consecutive Transforms grouped into a single phase, Empty array if squashing is disabled */
     private[core] var squashedPhases: Array[Phase] = Array.empty[Phase]
@@ -670,7 +675,7 @@ object Contexts {
     // Test that access is single threaded
 
     /** The thread on which `checkSingleThreaded was invoked last */
-    @sharable private var thread: Thread = null
+    @sharable private[this] var thread: Thread = null
 
     /** Check that we are on the same thread as before */
     def checkSingleThreaded() =
@@ -695,7 +700,7 @@ object Contexts {
   }
 
   class GADTMap(initBounds: SimpleIdentityMap[Symbol, TypeBounds]) extends util.DotClass {
-    private var myBounds = initBounds
+    private[this] var myBounds = initBounds
     def setBounds(sym: Symbol, b: TypeBounds): Unit =
       myBounds = myBounds.updated(sym, b)
     def bounds = myBounds

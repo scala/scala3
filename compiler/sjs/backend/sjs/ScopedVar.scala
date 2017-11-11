@@ -5,7 +5,7 @@ import language.implicitConversions
 class ScopedVar[A](init: A) {
   import ScopedVar.Assignment
 
-  private var value = init
+  private[this] var value = init
 
   def this()(implicit ev: Null <:< A) = this(ev(null))
 

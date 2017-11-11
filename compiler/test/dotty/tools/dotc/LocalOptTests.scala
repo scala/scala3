@@ -175,67 +175,8 @@ abstract class LocalOptTests(val optimise: Boolean) extends DottyBytecodeTest {
       """)
 
 
-  /*
-   * Valify tests
-   */
-
-  @Test def BasicValify =
-    check(
-      """
-        |var i = 7
-        |i = 9
-        |i = 4
-        |print(i)
-      """,
-      """
-        |val i = 4
-        |print(i)
-      """)
-
-  @Test def FoldValify =
-    check(
-      """
-        |var i = 3
-        |print(i + 4)
-      """,
-      """
-        |var i = 3
-        |print(7)
-      """)
-
-  @Test def ConditionalValify =
-    check(
-      """
-        |var i = 0
-        |if(readBoolean()) {
-        |  i = 4
-        |  print(i)
-        |}
-        |i = 5
-        |print(i)
-      """,
-      """
-        |if(readBoolean()) print(4)
-        |print(5)
-      """)
-
-  @Test def IncrementValify =
-    check(
-      """
-        |val z = 37
-        |var i = 3
-        |i = i + 1
-        |i = i + 1
-        |print(i + z)
-      """,
-      """
-        |var i = 5
-        |print(i + 37)
-      """)
-
-
   // check for incorrecly eliminated statements with side effects 
-  @Test def ArrayLoadInitValify =
+  /*@Test def ArrayLoadInitValify =
     checkneq(
       """
         |val ar = Array.ofDim[Int](5)
@@ -259,6 +200,6 @@ abstract class LocalOptTests(val optimise: Boolean) extends DottyBytecodeTest {
         |  println(x)
         |  x+=1
         |}
-      """)
+      """)*/
 
 }

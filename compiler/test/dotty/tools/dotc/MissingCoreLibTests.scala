@@ -2,32 +2,21 @@ package dotty
 package tools
 package dotc
 
-import org.junit.{AfterClass, Test}
-import vulpix._
+import org.junit.Test
+import org.junit.Assert._
 
-import scala.concurrent.duration._
+import vulpix.TestConfiguration.mkClassPath
 
-class MissingCoreLibTests extends ParallelTesting {
-  import MissingCoreLibTests._
-  import TestConfiguration._
-
-  // Test suite configuration --------------------------------------------------
-
-  def maxDuration = 30.seconds
-  def numberOfSlaves = 5
-  def safeMode = Properties.testsSafeMode
-  def isInteractive = SummaryReport.isInteractive
-  def testFilter = Properties.testsFilter
+class MissingCoreLibTests {
 
   @Test def missingDottyLib: Unit = {
     val classPath = mkClassPath(Jars.dottyCompiler :: Jars.dottyInterfaces :: Jars.dottyExtras) // missing Jars.dottyLib
-    val options = noCheckOptions ++ checkOptions ++ yCheckOptions
-    compileFile("../tests/neg/nolib/Foo.scala", TestFlags(classPath, options)).checkExpectedErrors()
+    val source = "../tests/neg/nolib/Foo.scala"
+    val options = Array("-classpath", classPath, source)
+    val reporter = Main.process(options)
+    assertEquals(1, reporter.errorCount)
+    val errorMessage = reporter.allErrors.head.message
+    assertTrue(errorMessage.contains("Make sure the compiler core libraries are on the classpath"))
   }
 
-}
-
-object MissingCoreLibTests {
-  implicit val summaryReport: SummaryReporting = new SummaryReport
-  @AfterClass def cleanup(): Unit = summaryReport.echoSummary()
 }

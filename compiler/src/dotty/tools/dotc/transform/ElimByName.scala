@@ -1,7 +1,7 @@
 package dotty.tools.dotc
 package transform
 
-import TreeTransforms._
+import MegaPhase._
 import core._
 import DenotTransformers.InfoTransformer
 import Symbols._
@@ -37,7 +37,7 @@ import ast.Trees._
  *  Option 2: Merge ElimByName with erasure, or have it run immediately before. This has not been
  *  tried yet.
  */
-class ElimByName extends TransformByNameApply with InfoTransformer { thisTransformer =>
+class ElimByName extends TransformByNameApply with InfoTransformer {
   import ast.tpd._
 
   override def phaseName: String = "elimByName"
@@ -47,16 +47,17 @@ class ElimByName extends TransformByNameApply with InfoTransformer { thisTransfo
 
   /** Map `tree` to `tree.apply()` is `ftree` was of ExprType and becomes now a function */
   private def applyIfFunction(tree: Tree, ftree: Tree)(implicit ctx: Context) =
-    if (isByNameRef(ftree)) tree.select(defn.Function0_apply).appliedToNone
+    if (isByNameRef(ftree))
+      ctx.atPhase(next) { implicit ctx => tree.select(defn.Function0_apply).appliedToNone }
     else tree
 
-  override def transformIdent(tree: Ident)(implicit ctx: Context, info: TransformerInfo): Tree =
+  override def transformIdent(tree: Ident)(implicit ctx: Context): Tree =
     applyIfFunction(tree, tree)
 
-  override def transformSelect(tree: Select)(implicit ctx: Context, info: TransformerInfo): Tree =
+  override def transformSelect(tree: Select)(implicit ctx: Context): Tree =
     applyIfFunction(tree, tree)
 
-  override def transformTypeApply(tree: TypeApply)(implicit ctx: Context, info: TransformerInfo): Tree = tree match {
+  override def transformTypeApply(tree: TypeApply)(implicit ctx: Context): Tree = tree match {
     case TypeApply(Select(_, nme.asInstanceOf_), arg :: Nil) =>
       // tree might be of form e.asInstanceOf[x.type] where x becomes a function.
       // See pos/t296.scala
@@ -64,10 +65,12 @@ class ElimByName extends TransformByNameApply with InfoTransformer { thisTransfo
     case _ => tree
   }
 
-  override def transformValDef(tree: ValDef)(implicit ctx: Context, info: TransformerInfo): Tree =
-    if (exprBecomesFunction(tree.symbol))
-      cpy.ValDef(tree)(tpt = tree.tpt.withType(tree.symbol.info))
-    else tree
+  override def transformValDef(tree: ValDef)(implicit ctx: Context): Tree =
+    ctx.atPhase(next) { implicit ctx =>
+      if (exprBecomesFunction(tree.symbol))
+        cpy.ValDef(tree)(tpt = tree.tpt.withType(tree.symbol.info))
+      else tree
+    }
 
   def transformInfo(tp: Type, sym: Symbol)(implicit ctx: Context): Type = tp match {
     case ExprType(rt) if exprBecomesFunction(sym) => defn.FunctionOf(Nil, rt)

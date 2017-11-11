@@ -1,7 +1,9 @@
 package dotty.tools
 package repl
 
-import java.lang.ClassLoader
+import java.io.{ StringWriter, PrintWriter }
+import java.lang.{ ClassLoader, ExceptionInInitializerError }
+import java.lang.reflect.InvocationTargetException
 
 import scala.util.control.NonFatal
 
@@ -21,24 +23,24 @@ import dotc.core.StdNames.str
  *       `Rendering` is no longer valid.
  */
 private[repl] class Rendering(compiler: ReplCompiler,
-                              private var currentClassLoader: Option[ClassLoader] = None) {
+                              parentClassLoader: Option[ClassLoader] = None) {
 
-  private def classLoader()(implicit ctx: Context) =
-    currentClassLoader.getOrElse {
-      import java.net.{URL, URLClassLoader}
+  private[this] var myClassLoader: ClassLoader = _
 
-      /** the compiler's classpath, as URL's */
-      val compilerClasspath: Seq[URL] = ctx.platform.classPath(ctx).asURLs
+  /** Class loader used to load compiled code */
+  private[this] def classLoader()(implicit ctx: Context) =
+    if (myClassLoader != null) myClassLoader
+    else {
+      val parent = parentClassLoader.getOrElse {
+        // the compiler's classpath, as URL's
+        val compilerClasspath = ctx.platform.classPath(ctx).asURLs
+        new java.net.URLClassLoader(compilerClasspath.toArray, classOf[ReplDriver].getClassLoader)
+      }
 
-      def parent = new URLClassLoader(compilerClasspath.toArray,
-                                      classOf[ReplDriver].getClassLoader)
-
-      val newClsLoader = new AbstractFileClassLoader(compiler.directory,
-                                  currentClassLoader.getOrElse(parent))
-
-      Thread.currentThread.setContextClassLoader(newClsLoader)
-      currentClassLoader = Some(newClsLoader)
-      newClsLoader
+      myClassLoader = new AbstractFileClassLoader(compiler.directory, parent)
+      // Set the current Java "context" class loader to this rendering class loader
+      Thread.currentThread.setContextClassLoader(myClassLoader)
+      myClassLoader
     }
 
   /** Load the value of the symbol using reflection
@@ -70,10 +72,26 @@ private[repl] class Rendering(compiler: ReplCompiler,
   /** Render value definition result */
   def renderVal(d: Denotation)(implicit ctx: Context): Option[String] = {
     val dcl = d.symbol.showUser
-    val resultValue =
-      if (d.symbol.is(Flags.Lazy)) Some("<lazy>")
-      else valueOf(d.symbol)
 
-    resultValue.map(value => s"$dcl = $value")
+    try {
+      val resultValue =
+        if (d.symbol.is(Flags.Lazy)) Some("<lazy>")
+        else valueOf(d.symbol)
+
+      resultValue.map(value => s"$dcl = $value")
+    }
+    catch { case ex: InvocationTargetException => Some(renderError(ex)) }
+  }
+
+  /** Render the stack trace of the underlying exception */
+  private def renderError(ex: InvocationTargetException): String = {
+    val cause = ex.getCause match {
+      case ex: ExceptionInInitializerError => ex.getCause
+      case ex => ex
+    }
+    val sw = new StringWriter()
+    val pw = new PrintWriter(sw)
+    cause.printStackTrace(pw)
+    sw.toString
   }
 }

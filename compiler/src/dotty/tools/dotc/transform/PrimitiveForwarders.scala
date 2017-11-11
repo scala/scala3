@@ -2,7 +2,7 @@ package dotty.tools.dotc
 package transform
 
 import core._
-import TreeTransforms._
+import MegaPhase._
 import Contexts.Context
 import Flags._
 import SymUtils._
@@ -30,7 +30,7 @@ import ResolveSuper._
   *  IMPORTANT: When\If Valhalla happens, we'll need to move mixin before erasure and than this code will need to be rewritten
   *  as it will instead change super-class.
   */
-class PrimitiveForwarders extends MiniPhaseTransform with IdentityDenotTransformer { thisTransform =>
+class PrimitiveForwarders extends MiniPhase with IdentityDenotTransformer { thisPhase =>
   import ast.tpd._
 
   override def phaseName: String = "primitiveForwarders"
@@ -39,9 +39,9 @@ class PrimitiveForwarders extends MiniPhaseTransform with IdentityDenotTransform
 
   override def changesMembers = true   // the phase adds primitive forwarders
 
-  override def transformTemplate(impl: Template)(implicit ctx: Context, info: TransformerInfo) = {
+  override def transformTemplate(impl: Template)(implicit ctx: Context) = {
     val cls = impl.symbol.owner.asClass
-    val ops = new MixinOps(cls, thisTransform)
+    val ops = new MixinOps(cls, thisPhase)
     import ops._
 
     def methodPrimitiveForwarders: List[Tree] =

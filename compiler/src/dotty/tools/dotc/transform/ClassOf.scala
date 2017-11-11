@@ -7,7 +7,7 @@ import core.Contexts.Context
 import core.StdNames.nme
 import core.Symbols.{defn,TermSymbol}
 import core.TypeErasure
-import TreeTransforms.{MiniPhaseTransform, TransformerInfo, TreeTransform}
+import MegaPhase._
 
 /** Rewrite `classOf` calls as follow:
  *
@@ -16,12 +16,12 @@ import TreeTransforms.{MiniPhaseTransform, TransformerInfo, TreeTransform}
  *  For every non-primitive class D:
  *    classOf[D]    -> Literal(Constant(erasure(D)))
  */
-class ClassOf extends MiniPhaseTransform {
+class ClassOf extends MiniPhase {
   import tpd._
 
   override def phaseName: String = "classOf"
 
-  override def transformTypeApply(tree: TypeApply)(implicit ctx: Context, info: TransformerInfo): Tree =
+  override def transformTypeApply(tree: TypeApply)(implicit ctx: Context): Tree =
     if (tree.symbol eq defn.Predef_classOf) {
       val targ = tree.args.head.tpe
       clsOf(targ).ensureConforms(tree.tpe).withPos(tree.pos)

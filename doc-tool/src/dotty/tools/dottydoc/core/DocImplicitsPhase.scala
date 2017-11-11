@@ -2,17 +2,17 @@ package dotty.tools
 package dottydoc
 package core
 
-import dotty.tools.dotc.transform.TreeTransforms.{ MiniPhaseTransform, TransformerInfo }
+import dotty.tools.dotc.transform.MegaPhase.MiniPhase
 import dotty.tools.dotc.core.Flags
 import dotc.core.Contexts.Context
 import util.syntax._
 
-class DocImplicitsPhase extends MiniPhaseTransform { thisTransformer =>
+class DocImplicitsPhase extends MiniPhase {
   import dotty.tools.dotc.ast.tpd._
 
   def phaseName = "addImplicitsPhase"
 
-  override def transformDefDef(tree: DefDef)(implicit ctx: Context, info: TransformerInfo): Tree = {
+  override def transformDefDef(tree: DefDef)(implicit ctx: Context): Tree = {
     if (
       tree.symbol.is(Flags.Implicit)  && // has to have an implicit flag
       tree.symbol.owner.isStaticOwner && // owner has to be static (e.g. top-level `object`)

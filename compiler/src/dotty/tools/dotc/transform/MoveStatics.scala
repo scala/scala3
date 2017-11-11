@@ -13,10 +13,10 @@ import dotty.tools.dotc.core.StdNames.nme
 import dotty.tools.dotc.core.Phases.Phase
 import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.core.Types.MethodType
-import dotty.tools.dotc.transform.TreeTransforms.{MiniPhaseTransform, TransformerInfo}
+import dotty.tools.dotc.transform.MegaPhase.MiniPhase
 
 /** Move static methods from companion to the class itself */
-class MoveStatics extends MiniPhaseTransform with SymTransformer { thisTransformer =>
+class MoveStatics extends MiniPhase with SymTransformer {
 
   import tpd._
   override def phaseName = "moveStatic"
@@ -31,7 +31,7 @@ class MoveStatics extends MiniPhaseTransform with SymTransformer { thisTransform
     else sym
   }
 
-  override def transformStats(trees: List[Tree])(implicit ctx: Context, info: TransformerInfo): List[Tree] = {
+  override def transformStats(trees: List[Tree])(implicit ctx: Context): List[Tree] = {
     if (ctx.owner.is(Flags.Package)) {
       val (classes, others) = trees.partition(x => x.isInstanceOf[TypeDef] && x.symbol.isClass)
       val pairs = classes.groupBy(_.symbol.name.stripModuleClassSuffix).asInstanceOf[Map[Name, List[TypeDef]]]

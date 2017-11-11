@@ -38,6 +38,7 @@ import config.Printers.{gadts, typr}
 import rewrite.Rewrites.patch
 import NavigateAST._
 import transform.SymUtils._
+import reporting.trace
 
 import language.implicitConversions
 import printing.SyntaxHighlighting._
@@ -80,14 +81,14 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
    *  Note: It would be more proper to move importedFromRoot into typedIdent.
    *  We should check that this has no performance degradation, however.
    */
-  private var unimported: Set[Symbol] = Set()
+  private[this] var unimported: Set[Symbol] = Set()
 
   /** Temporary data item for single call to typed ident:
    *  This symbol would be found under Scala2 mode, but is not
    *  in dotty (because dotty conforms to spec section 2
    *  wrt to package member resolution but scalac doe not).
    */
-  private var foundUnderScala2: Type = NoType
+  private[this] var foundUnderScala2: Type = NoType
 
   def newLikeThis: Typer = new Typer
 
@@ -899,7 +900,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
      *              which appear with variances +1 and -1 (in different
      *              places) be considered as well?
      */
-    val gadtSyms: Set[Symbol] = ctx.traceIndented(i"GADT syms of $selType", gadts) {
+    val gadtSyms: Set[Symbol] = trace(i"GADT syms of $selType", gadts) {
       val accu = new TypeAccumulator[Set[Symbol]] {
         def apply(tsyms: Set[Symbol], t: Type): Set[Symbol] = {
           val tsyms1 = t match {
@@ -1209,13 +1210,19 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
         tpd.cpy.UnApply(body1)(fn, Nil,
             typed(untpd.Bind(tree.name, untpd.TypedSplice(arg)).withPos(tree.pos), arg.tpe) :: Nil)
       case _ =>
-        val sym = newPatternBoundSym(tree.name, body1.tpe, tree.pos)
-        assignType(cpy.Bind(tree)(tree.name, body1), sym)
+        if (tree.name == nme.WILDCARD) body1
+        else {
+          val sym = newPatternBoundSym(tree.name, body1.tpe, tree.pos)
+          if (ctx.mode.is(Mode.InPatternAlternative))
+            ctx.error(i"Illegal variable ${sym.name} in pattern alternative", tree.pos)
+          assignType(cpy.Bind(tree)(tree.name, body1), sym)
+        }
     }
   }
 
   def typedAlternative(tree: untpd.Alternative, pt: Type)(implicit ctx: Context): Alternative = track("typedAlternative") {
-    val trees1 = tree.trees mapconserve (typed(_, pt))
+    val nestedCtx = ctx.addMode(Mode.InPatternAlternative)
+    val trees1 = tree.trees.mapconserve(typed(_, pt)(nestedCtx))
     assignType(cpy.Alternative(tree)(trees1), trees1)
   }
 
@@ -1547,17 +1554,21 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
   def typedAsFunction(tree: untpd.PostfixOp, pt: Type)(implicit ctx: Context): Tree = {
     val untpd.PostfixOp(qual, Ident(nme.WILDCARD)) = tree
     val pt1 = if (defn.isFunctionType(pt)) pt else AnyFunctionProto
-    var res = typed(qual, pt1)
-    if (pt1.eq(AnyFunctionProto) && !defn.isFunctionClass(res.tpe.classSymbol)) {
-      ctx.errorOrMigrationWarning(i"not a function: ${res.tpe}; cannot be followed by `_'", tree.pos)
-      if (ctx.scala2Mode) {
-        // Under -rewrite, patch `x _` to `(() => x)`
-        patch(Position(tree.pos.start), "(() => ")
-        patch(Position(qual.pos.end, tree.pos.end), ")")
-        res = typed(untpd.Function(Nil, untpd.TypedSplice(res)))
-      }
+    val nestedCtx = ctx.fresh.setNewTyperState()
+    val res = typed(qual, pt1)(nestedCtx)
+    res match {
+      case res @ closure(_, _, _) =>
+      case _ =>
+        ctx.errorOrMigrationWarning(OnlyFunctionsCanBeFollowedByUnderscore(res.tpe), tree.pos)
+        if (ctx.scala2Mode) {
+          // Under -rewrite, patch `x _` to `(() => x)`
+          patch(Position(tree.pos.start), "(() => ")
+          patch(Position(qual.pos.end, tree.pos.end), ")")
+          return typed(untpd.Function(Nil, qual), pt)
+        }
     }
-    else if (ctx.settings.strict.value) {
+    nestedCtx.typerState.commit()
+    if (ctx.settings.strict.value) {
       lazy val (prefix, suffix) = res match {
         case Block(mdef @ DefDef(_, _, vparams :: Nil, _, _) :: Nil, _: Closure) =>
           val arity = vparams.length
@@ -1688,7 +1699,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     typed(ifun, pt)
   }
 
-  def typed(tree: untpd.Tree, pt: Type = WildcardType)(implicit ctx: Context): Tree = /*>|>*/ ctx.traceIndented (i"typing $tree", typr, show = true) /*<|<*/ {
+  def typed(tree: untpd.Tree, pt: Type = WildcardType)(implicit ctx: Context): Tree = /*>|>*/ trace(i"typing $tree", typr, show = true) /*<|<*/ {
     record(s"typed $getClass")
     record("typed total")
     assertPositioned(tree)
@@ -1749,7 +1760,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
         Inliner.removeInlineAccessors(mdef.symbol)
 
   def typedExpr(tree: untpd.Tree, pt: Type = WildcardType)(implicit ctx: Context): Tree =
-    typed(tree, pt)(ctx retractMode Mode.PatternOrType)
+    typed(tree, pt)(ctx retractMode Mode.PatternOrTypeBits)
   def typedType(tree: untpd.Tree, pt: Type = WildcardType)(implicit ctx: Context): Tree = // todo: retract mode between Type and Pattern?
     typed(tree, pt)(ctx addMode Mode.Type)
   def typedPattern(tree: untpd.Tree, selType: Type = WildcardType)(implicit ctx: Context): Tree =
@@ -1839,7 +1850,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
   /** If this tree is a select node `qual.name`, try to insert an implicit conversion
    *  `c` around `qual` so that `c(qual).name` conforms to `pt`.
    */
-  def tryInsertImplicitOnQualifier(tree: Tree, pt: Type)(implicit ctx: Context): Option[Tree] = ctx.traceIndented(i"try insert impl on qualifier $tree $pt") {
+  def tryInsertImplicitOnQualifier(tree: Tree, pt: Type)(implicit ctx: Context): Option[Tree] = trace(i"try insert impl on qualifier $tree $pt") {
     tree match {
       case Select(qual, name) =>
         val qualProto = SelectionProto(name, pt, NoViewsAllowed, privateOK = false)
@@ -1854,7 +1865,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
   }
 
   def adapt(tree: Tree, pt: Type)(implicit ctx: Context): Tree = /*>|>*/ track("adapt") /*<|<*/ {
-    /*>|>*/ ctx.traceIndented(i"adapting $tree of type ${tree.tpe} to $pt", typr, show = true) /*<|<*/ {
+    /*>|>*/ trace(i"adapting $tree of type ${tree.tpe} to $pt", typr, show = true) /*<|<*/ {
       if (tree.isDef) interpolateUndetVars(tree, tree.symbol)
       else if (!tree.tpe.widen.isInstanceOf[LambdaType]) interpolateUndetVars(tree, NoSymbol)
       tree.overwriteType(tree.tpe.simplified)
@@ -1907,7 +1918,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     def methodStr = err.refStr(methPart(tree).tpe)
 
     def missingArgs(mt: MethodType) = {
-      ctx.error(em"missing arguments for $methodStr", tree.pos)
+      ctx.error(MissingEmptyArgumentList(methPart(tree).symbol), tree.pos)
       tree.withType(mt.resultType)
     }
 
@@ -2075,7 +2086,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
       def isAutoApplied(sym: Symbol): Boolean = {
         sym.isConstructor ||
         sym.matchNullaryLoosely ||
-        ctx.testScala2Mode(em"${sym.showLocated} requires () argument", tree.pos,
+        ctx.testScala2Mode(MissingEmptyArgumentList(sym), tree.pos,
             patch(tree.pos.endPos, "()"))
       }
 

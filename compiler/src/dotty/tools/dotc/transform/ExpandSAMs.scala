@@ -4,7 +4,7 @@ package transform
 import core._
 import Contexts._, Symbols._, Types._, Flags._, Decorators._, StdNames._, Constants._
 import SymDenotations.SymDenotation
-import TreeTransforms._
+import MegaPhase._
 import SymUtils._
 import ast.untpd
 import ast.Trees._
@@ -21,7 +21,7 @@ import dotty.tools.dotc.util.Positions.Position
  *   5. Closures that get synthesized abstract methods in the transformation pipeline. These methods can be
  *      (1) superaccessors, (2) outer references, (3) accessors for fields.
  */
-class ExpandSAMs extends MiniPhaseTransform { thisTransformer =>
+class ExpandSAMs extends MiniPhase {
   override def phaseName = "expandSAMs"
 
   import ast.tpd._
@@ -30,7 +30,7 @@ class ExpandSAMs extends MiniPhaseTransform { thisTransformer =>
   def isPlatformSam(cls: ClassSymbol)(implicit ctx: Context): Boolean =
     ctx.platform.isSam(cls)
 
-  override def transformBlock(tree: Block)(implicit ctx: Context, info: TransformerInfo): Tree = tree match {
+  override def transformBlock(tree: Block)(implicit ctx: Context): Tree = tree match {
     case Block(stats @ (fn: DefDef) :: Nil, Closure(_, fnRef, tpt)) if fnRef.symbol == fn.symbol =>
       tpt.tpe match {
         case NoType => tree // it's a plain function
@@ -50,7 +50,7 @@ class ExpandSAMs extends MiniPhaseTransform { thisTransformer =>
       tree
   }
 
-  private def toPartialFunction(tree: Block)(implicit ctx: Context, info: TransformerInfo): Tree = {
+  private def toPartialFunction(tree: Block)(implicit ctx: Context): Tree = {
     val Block(
           (applyDef @ DefDef(nme.ANON_FUN, Nil, List(List(param)), _, _)) :: Nil,
           Closure(_, _, tpt)) = tree

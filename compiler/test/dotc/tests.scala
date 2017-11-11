@@ -69,8 +69,8 @@ class tests extends CompilerTest {
   }
 
   implicit val defaultOptions: List[String] = noCheckOptions ++ {
-    if (dotty.Properties.isRunByDrone) List("-Ycheck:tailrec,resolveSuper,erasure,mixin,getClass,restoreScopes,labelDef") // should be Ycheck:all, but #725
-    else List("-Ycheck:tailrec,resolveSuper,mixin,restoreScopes,labelDef,simplify")
+    if (dotty.Properties.isRunByDrone) List("-Ycheck:tailrec,resolveSuper,erasure,mixin,getClass,elimStaticThis,labelDef") // should be Ycheck:all, but #725
+    else List("-Ycheck:tailrec,resolveSuper,mixin,elimStaticThis,labelDef,simplify")
   } ++ checkOptions ++ classPath
 
   val testPickling = List("-Xprint-types", "-Ytest-pickler", "-Ystop-after:pickler", "-Yprintpos")
@@ -348,7 +348,7 @@ class tests extends CompilerTest {
     "NormalizeFlags.scala", "OverridingPairs.scala", "ParamForwarding.scala", "Pickler.scala", "PostTyper.scala",
     "ResolveSuper.scala", "RestoreScopes.scala", "SeqLiterals.scala", "Splitter.scala", "SuperAccessors.scala",
     "SymUtils.scala", "SyntheticMethods.scala", "TailRec.scala", "TreeChecker.scala", "TreeExtractors.scala",
-    "TreeGen.scala", "TreeTransform.scala", "TypeTestsCasts.scala", "TypeUtils.scala", "ValueClasses.scala",
+    "TreeGen.scala", "MegaPhase.scala", "TypeTestsCasts.scala", "TypeUtils.scala", "ValueClasses.scala",
     "VCElideAllocations.scala", "VCInlineMethods.scala"
   ) map (s"${dotcDir}transform/" + _), testPickling)
 

@@ -25,8 +25,8 @@ object Settings {
   val DirectoryTag = ClassTag(classOf[Directory])
 
   class SettingsState(initialValues: Seq[Any]) {
-    private var values = ArrayBuffer(initialValues: _*)
-    private var _wasRead: Boolean = false
+    private[this] var values = ArrayBuffer(initialValues: _*)
+    private[this] var _wasRead: Boolean = false
 
     override def toString = s"SettingsState(values: ${values.toList})"
 
@@ -68,7 +68,7 @@ object Settings {
     depends: List[(Setting[_], Any)] = Nil,
     propertyClass: Option[Class[_]] = None)(private[Settings] val idx: Int) {
 
-    private var changed: Boolean = false
+    private[this] var changed: Boolean = false
 
     def withAbbreviation(abbrv: String): Setting[T] =
       copy(aliases = aliases :+ abbrv)(idx)

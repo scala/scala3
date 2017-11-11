@@ -5,7 +5,7 @@ import core._
 import Symbols._, Types._, Contexts._, Names._, StdNames._, Constants._, SymUtils._
 import scala.collection.{ mutable, immutable }
 import Flags._
-import TreeTransforms._
+import MegaPhase._
 import DenotTransformers._
 import ast.Trees._
 import ast.untpd
@@ -36,12 +36,12 @@ import scala.language.postfixOps
  *    def equals(other: Any): Boolean
  *    def hashCode(): Int
  */
-class SyntheticMethods(thisTransformer: DenotTransformer) {
+class SyntheticMethods(thisPhase: DenotTransformer) {
   import ast.tpd._
 
-  private var myValueSymbols: List[Symbol] = Nil
-  private var myCaseSymbols: List[Symbol] = Nil
-  private var myCaseModuleSymbols: List[Symbol] = Nil
+  private[this] var myValueSymbols: List[Symbol] = Nil
+  private[this] var myCaseSymbols: List[Symbol] = Nil
+  private[this] var myCaseModuleSymbols: List[Symbol] = Nil
 
   private def initSymbols(implicit ctx: Context) =
     if (myValueSymbols.isEmpty) {
@@ -80,7 +80,7 @@ class SyntheticMethods(thisTransformer: DenotTransformer) {
       val synthetic = sym.copy(
         owner = clazz,
         flags = sym.flags &~ Deferred | Synthetic | Override,
-        coord = clazz.coord).enteredAfter(thisTransformer).asTerm
+        coord = clazz.coord).enteredAfter(thisPhase).asTerm
 
       def forwardToRuntime(vrefss: List[List[Tree]]): Tree =
         ref(defn.runtimeMethodRef("_" + sym.name.toString)).appliedToArgs(This(clazz) :: vrefss.head)

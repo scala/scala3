@@ -75,4 +75,4 @@ $ sbt
 ```
 
 Before contributing to Dotty, we invite you to consult the
-[Dotty Developer Guidelines](https://github.com/lampepfl/dotty/blob/master/CONTRIBUTING).
+[Dotty Developer Guidelines](https://github.com/lampepfl/dotty/blob/master/CONTRIBUTING.md).

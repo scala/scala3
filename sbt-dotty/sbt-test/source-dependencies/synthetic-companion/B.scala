@@ -1,3 +1,4 @@
 object B {
-  A(0)
+  val f: Int => A = A
+  f(0)
 }

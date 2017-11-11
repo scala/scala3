@@ -31,6 +31,7 @@ import TypeApplications._
 
 import language.implicitConversions
 import reporting.diagnostic.Message
+import reporting.trace
 import Constants.{Constant, IntTag, LongTag}
 
 import scala.collection.mutable.ListBuffer
@@ -535,9 +536,9 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
   extends Application(methRef, fun.tpe, args, resultType) {
     type TypedArg = Tree
     def isVarArg(arg: Trees.Tree[T]): Boolean = untpd.isWildcardStarArg(arg)
-    private var typedArgBuf = new mutable.ListBuffer[Tree]
-    private var liftedDefs: mutable.ListBuffer[Tree] = null
-    private var myNormalizedFun: Tree = fun
+    private[this] var typedArgBuf = new mutable.ListBuffer[Tree]
+    private[this] var liftedDefs: mutable.ListBuffer[Tree] = null
+    private[this] var myNormalizedFun: Tree = fun
     init()
 
     def addArg(arg: Tree, formal: Type): Unit =
@@ -1045,7 +1046,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
    *   - The nesting levels of A1 and A2 are the same, and A1's owner derives from A2's owner
    *   - A1's type is more specific than A2's type.
    */
-  def isAsGood(alt1: TermRef, alt2: TermRef, nesting1: Int = 0, nesting2: Int = 0)(implicit ctx: Context): Boolean = track("isAsGood") { ctx.traceIndented(i"isAsGood($alt1, $alt2)", overload) {
+  def isAsGood(alt1: TermRef, alt2: TermRef, nesting1: Int = 0, nesting2: Int = 0)(implicit ctx: Context): Boolean = track("isAsGood") { trace(i"isAsGood($alt1, $alt2)", overload) {
 
     assert(alt1 ne alt2)
 
@@ -1072,7 +1073,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
      *       b. as specific as a member of any other type `tp2` if `tp1` is compatible
      *          with `tp2`.
      */
-    def isAsSpecific(alt1: TermRef, tp1: Type, alt2: TermRef, tp2: Type): Boolean = ctx.traceIndented(i"isAsSpecific $tp1 $tp2", overload) { tp1 match {
+    def isAsSpecific(alt1: TermRef, tp1: Type, alt2: TermRef, tp2: Type): Boolean = trace(i"isAsSpecific $tp1 $tp2", overload) { tp1 match {
       case tp1: MethodType => // (1)
         val formals1 =
           if (tp1.isVarArgsMethod && tp2.isVarArgsMethod) tp1.paramInfos.map(_.repeatedToSingle)
@@ -1085,14 +1086,16 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
         {
           implicit val ctx = nestedCtx
 
-          // Fully define the type so that the types of the tparams created
-          // below never contain TypeRefs whose underling types contain
-          // uninstantiated TypeVars, this could lead to cycles in `isSubType`
-          // as a TypeVar might get constrained by a TypeRef it's part of.
-          val tp1a = fullyDefinedType(tp1, "alternative", alt1.symbol.pos).asInstanceOf[PolyType]
+          // Fully define the PolyType parameters so that the infos of the
+          // tparams created below never contain TypeRefs whose underling types
+          // contain uninstantiated TypeVars, this could lead to cycles in
+          // `isSubType` as a TypeVar might get constrained by a TypeRef it's
+          // part of.
+          val tp1Params = tp1.newLikeThis(tp1.paramNames, tp1.paramInfos, defn.AnyType)
+          fullyDefinedType(tp1Params, "type parameters of alternative", alt1.symbol.pos)
 
-          val tparams = ctx.newTypeParams(alt1.symbol, tp1.paramNames, EmptyFlags, tp1a.instantiateBounds)
-          isAsSpecific(alt1, tp1a.instantiate(tparams.map(_.typeRef)), alt2, tp2)
+          val tparams = ctx.newTypeParams(alt1.symbol, tp1.paramNames, EmptyFlags, tp1.instantiateBounds)
+          isAsSpecific(alt1, tp1.instantiate(tparams.map(_.typeRef)), alt2, tp2)
         }
       case _ => // (3)
         tp2 match {

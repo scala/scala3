@@ -10,7 +10,7 @@ import reporting.Reporter
  */
 object Bench extends Driver {
 
-  @sharable private var numRuns = 1
+  @sharable private[this] var numRuns = 1
 
   private def ntimes(n: Int)(op: => Reporter): Reporter =
     (emptyReporter /: (0 until n)) ((_, _) => op)

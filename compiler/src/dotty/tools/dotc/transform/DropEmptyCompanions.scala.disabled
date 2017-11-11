@@ -12,8 +12,8 @@ import ast.Trees._
 import collection.mutable
 import Decorators._
 import NameOps._
-import TreeTransforms.MiniPhaseTransform
-import dotty.tools.dotc.transform.TreeTransforms.TransformerInfo
+import MegaPhase.MiniPhase
+import dotty.tools.dotc.transform.MegaPhase.TransformerInfo
 
 /** Remove companion objects that are empty
  *  Lots of constraints here:
@@ -28,12 +28,12 @@ import dotty.tools.dotc.transform.TreeTransforms.TransformerInfo
  *  level, so we know that all objects moved by LambdaLift and Flatten have arrived
  *  at their destination.
  */
-class DropEmptyCompanions extends MiniPhaseTransform { thisTransform =>
+class DropEmptyCompanions extends MiniPhase { thisTransform =>
   import ast.tpd._
   override def phaseName = "dropEmptyCompanions"
   override def runsAfter: Set[Class[_ <: Phase]] = Set(classOf[Flatten])
 
-  override def transformPackageDef(pdef: PackageDef)(implicit ctx: Context, info: TransformerInfo) = {
+  override def transformPackageDef(pdef: PackageDef)(implicit ctx: Context) = {
 
     /** Is `tree` an empty companion object? */
     def isEmptyCompanion(tree: Tree) = tree match {

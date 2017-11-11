@@ -41,7 +41,7 @@ import java.lang.ref.WeakReference
 
 object Types {
 
-  @sharable private var nextId = 0
+  @sharable private[this] var nextId = 0
 
   implicit def eqType: Eq[Type, Type] = Eq
 
@@ -830,7 +830,7 @@ object Types {
       }
 
     /** The basetype of this type with given class symbol, NoType if `base` is not a class. */
-    final def baseType(base: Symbol)(implicit ctx: Context): Type = /*ctx.traceIndented(s"$this baseType $base")*/ /*>|>*/ track("base type") /*<|<*/ {
+    final def baseType(base: Symbol)(implicit ctx: Context): Type = /*trace(s"$this baseType $base")*/ /*>|>*/ track("base type") /*<|<*/ {
       base.denot match {
         case classd: ClassDenotation => classd.baseTypeOf(this)
         case _ => NoType
@@ -1523,9 +1523,9 @@ object Types {
           if (mySig == null) mySig = Signature.NotAMethod
         case designator: Symbol =>
           uncheckedSetSym(designator)
-        case LocalName(underlying, space) =>
-          myNameSpace = space
-          decompose(underlying)
+        case designator: LocalName[_] =>
+          myNameSpace = designator.nameSpace
+          decompose(designator.name)
       }
       decompose(designator)
       this
@@ -3380,6 +3380,8 @@ object Types {
 
   // ------ ClassInfo, Type Bounds ------------------------------------------------------------
 
+  type TypeOrSymbol = AnyRef /* should be: Type | Symbol */
+
   /** Roughly: the info of a class during a period.
    *  @param prefix       The prefix on which parents, decls, and selfType need to be rebased.
    *  @param cls          The class symbol.
@@ -3396,7 +3398,7 @@ object Types {
       cls: ClassSymbol,
       classParents: List[Type],
       decls: Scope,
-      selfInfo: DotClass /* should be: Type | Symbol */) extends CachedGroundType with TypeType {
+      selfInfo: TypeOrSymbol) extends CachedGroundType with TypeType {
 
     private[this] var selfTypeCache: Type = null
     private[this] var appliedRefCache: Type = null
@@ -3444,7 +3446,7 @@ object Types {
       if (prefix eq this.prefix) this
       else ClassInfo(prefix, cls, classParents, decls, selfInfo)
 
-    def derivedClassInfo(prefix: Type = this.prefix, classParents: List[Type] = this.classParents, decls: Scope = this.decls, selfInfo: DotClass = this.selfInfo)(implicit ctx: Context) =
+    def derivedClassInfo(prefix: Type = this.prefix, classParents: List[Type] = this.classParents, decls: Scope = this.decls, selfInfo: TypeOrSymbol = this.selfInfo)(implicit ctx: Context) =
       if ((prefix eq this.prefix) && (classParents eq this.classParents) && (decls eq this.decls) && (selfInfo eq this.selfInfo)) this
       else ClassInfo(prefix, cls, classParents, decls, selfInfo)
 
@@ -3463,11 +3465,11 @@ object Types {
     override def toString = s"ClassInfo($prefix, $cls, $classParents)"
   }
 
-  class CachedClassInfo(prefix: Type, cls: ClassSymbol, classParents: List[Type], decls: Scope, selfInfo: DotClass)
+  class CachedClassInfo(prefix: Type, cls: ClassSymbol, classParents: List[Type], decls: Scope, selfInfo: TypeOrSymbol)
     extends ClassInfo(prefix, cls, classParents, decls, selfInfo)
 
   /** A class for temporary class infos where `parents` are not yet known */
-  final class TempClassInfo(prefix: Type, cls: ClassSymbol, decls: Scope, selfInfo: DotClass)
+  final class TempClassInfo(prefix: Type, cls: ClassSymbol, decls: Scope, selfInfo: TypeOrSymbol)
   extends CachedClassInfo(prefix, cls, Nil, decls, selfInfo) {
 
     /** Install classinfo with known parents in `denot` s */
@@ -3482,7 +3484,7 @@ object Types {
   }
 
   object ClassInfo {
-    def apply(prefix: Type, cls: ClassSymbol, classParents: List[Type], decls: Scope, selfInfo: DotClass = NoType)(implicit ctx: Context) =
+    def apply(prefix: Type, cls: ClassSymbol, classParents: List[Type], decls: Scope, selfInfo: TypeOrSymbol = NoType)(implicit ctx: Context) =
       unique(new CachedClassInfo(prefix, cls, classParents, decls, selfInfo))
   }
 

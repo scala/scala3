@@ -9,7 +9,7 @@ import Definitions._
 import DenotTransformers._
 import StdNames._
 import Symbols._
-import TreeTransforms._
+import MegaPhase._
 import Types._
 
 
@@ -22,12 +22,12 @@ import Types._
  *    `def apply(xs: Array[Object]): R = this.apply(xs(0).asInstanceOf[T1], ..., xs(n-1).asInstanceOf[Tn]).asInstanceOf[R]`
  *  is generated.
  */
-class FunctionXXLForwarders extends MiniPhaseTransform with IdentityDenotTransformer { thisTransform =>
+class FunctionXXLForwarders extends MiniPhase with IdentityDenotTransformer {
   import ast.tpd._
 
   override def phaseName: String = "functionXXLForwarders"
 
-  override def transformTemplate(impl: Template)(implicit ctx: Context, info: TransformerInfo): Template = {
+  override def transformTemplate(impl: Template)(implicit ctx: Context): Template = {
 
     def forwarderRhs(receiver: Tree, xsTree: Tree): Tree =  {
       val argsApply = ref(xsTree.symbol).select(nme.apply)

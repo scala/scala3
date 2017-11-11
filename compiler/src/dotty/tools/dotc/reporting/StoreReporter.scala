@@ -20,7 +20,7 @@ import diagnostic.messages._
   */
 class StoreReporter(outer: Reporter) extends Reporter {
 
-  private var infos: mutable.ListBuffer[MessageContainer] = null
+  private[this] var infos: mutable.ListBuffer[MessageContainer] = null
 
   def reset() = infos = null
 

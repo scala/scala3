@@ -4,7 +4,7 @@ import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.core.Contexts._
 import dotty.tools.dotc.core.NameKinds._
 import dotty.tools.dotc.core.Types._
-import dotty.tools.dotc.transform.TreeTransforms.{MiniPhaseTransform, TransformerInfo}
+import dotty.tools.dotc.transform.MegaPhase.MiniPhase
 import dotty.tools.dotc.typer.EtaExpansion
 
 import scala.collection.mutable.ListBuffer
@@ -24,7 +24,7 @@ import scala.collection.mutable.ListBuffer
  *  `ev$f(ev$x1,...)(ev$y1,...)...(...)`
  *
  */
-class PhantomArgLift extends MiniPhaseTransform {
+class PhantomArgLift extends MiniPhase {
   import tpd._
 
   override def phaseName: String = "phantomArgLift"
@@ -40,7 +40,7 @@ class PhantomArgLift extends MiniPhaseTransform {
 
   /* Tree transform */
 
-  override def transformApply(tree: Apply)(implicit ctx: Context, info: TransformerInfo): Tree = tree.tpe.widen match {
+  override def transformApply(tree: Apply)(implicit ctx: Context): Tree = tree.tpe.widen match {
     case _: MethodType => tree // Do the transformation higher in the tree if needed
     case _ =>
       if (!hasImpurePhantomArgs(tree)) tree

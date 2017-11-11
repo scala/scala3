@@ -1,7 +1,6 @@
 package dotty.tools.dotc
 package transform
 
-import dotty.tools.dotc.transform.TreeTransforms.{TransformerInfo, TreeTransform, TreeTransformer}
 import dotty.tools.dotc.ast.{Trees, tpd, untpd}
 import scala.collection.{ mutable, immutable }
 import ValueClasses._
@@ -15,7 +14,7 @@ import util.Positions._
 import Decorators._
 import config.Printers.typr
 import Symbols._, TypeUtils._, SymUtils._
-import reporting.diagnostic.messages.SuperCallsNotAllowedInline
+import reporting.diagnostic.messages.{NotAMember, SuperCallsNotAllowedInline}
 
 /** A macro transform that runs immediately after typer and that performs the following functions:
  *
@@ -54,7 +53,7 @@ import reporting.diagnostic.messages.SuperCallsNotAllowedInline
  *  mini-phase or subfunction of a macro phase equally well. But taken by themselves
  *  they do not warrant their own group of miniphases before pickling.
  */
-class PostTyper extends MacroTransform with IdentityDenotTransformer { thisTransformer =>
+class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase =>
   import tpd._
 
   /** the following two members override abstract members in Transform */
@@ -62,14 +61,14 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisTrans
 
   override def changesMembers = true // the phase adds super accessors and synthetic methods
 
-  override def transformPhase(implicit ctx: Context) = thisTransformer.next
+  override def transformPhase(implicit ctx: Context) = thisPhase.next
 
   protected def newTransformer(implicit ctx: Context): Transformer =
     new PostTyperTransformer
 
-  val superAcc = new SuperAccessors(thisTransformer)
-  val paramFwd = new ParamForwarding(thisTransformer)
-  val synthMth = new SyntheticMethods(thisTransformer)
+  val superAcc = new SuperAccessors(thisPhase)
+  val paramFwd = new ParamForwarding(thisPhase)
+  val synthMth = new SyntheticMethods(thisPhase)
 
   private def newPart(tree: Tree): Option[New] = methPart(tree) match {
     case Select(nu: New, _) => Some(nu)
@@ -93,9 +92,9 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisTrans
 
   class PostTyperTransformer extends Transformer {
 
-    private var inJavaAnnot: Boolean = false
+    private[this] var inJavaAnnot: Boolean = false
 
-    private var noCheckNews: Set[New] = Set()
+    private[this] var noCheckNews: Set[New] = Set()
 
     def withNoCheckNews[T](ts: List[New])(op: => T): T = {
       val saved = noCheckNews
@@ -273,7 +272,7 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisTrans
           def checkIdent(ident: untpd.Ident): Unit = {
             val name = ident.name.asTermName
             if (name != nme.WILDCARD && !exprTpe.member(name).exists && !exprTpe.member(name.toTypeName).exists)
-              ctx.error(s"${ident.name} is not a member of ${expr.show}", ident.pos)
+              ctx.error(NotAMember(exprTpe, name, "value"), ident.pos)
           }
           selectors.foreach {
             case ident: untpd.Ident                 => checkIdent(ident)

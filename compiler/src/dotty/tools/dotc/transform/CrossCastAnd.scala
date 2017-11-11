@@ -4,7 +4,7 @@ import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.Flags
 import dotty.tools.dotc.core.Types.{NoType, Type, AndType}
-import dotty.tools.dotc.transform.TreeTransforms._
+import dotty.tools.dotc.transform.MegaPhase._
 import tpd._
 
 import scala.collection.mutable.ListBuffer
@@ -15,11 +15,11 @@ import scala.collection.mutable.ListBuffer
  * AndTypes are performed from the first component of AndType.
  * This is needed for correctness of erasure. See `tests/run/PrivateAnd.scala`
  */
-class CrossCastAnd extends MiniPhaseTransform { thisTransform =>
+class CrossCastAnd extends MiniPhase {
 
   override def phaseName: String = "crossCast"
 
-  override def transformSelect(tree: tpd.Select)(implicit ctx: Context, info: TransformerInfo): tpd.Tree = {
+  override def transformSelect(tree: tpd.Select)(implicit ctx: Context): tpd.Tree = {
 
     lazy val qtype = tree.qualifier.tpe.widen
     val sym = tree.symbol

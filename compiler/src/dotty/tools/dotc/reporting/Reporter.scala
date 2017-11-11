@@ -6,7 +6,6 @@ import core.Contexts._
 import util.{SourcePosition, NoSourcePosition}
 import core.Decorators.PhaseListDecorator
 import collection.mutable
-import config.Printers
 import java.lang.System.currentTimeMillis
 import core.Mode
 import dotty.tools.dotc.core.Symbols.Symbol
@@ -118,63 +117,13 @@ trait Reporting { this: Context =>
   def informProgress(msg: => String) =
     inform("[" + msg + "]")
 
-  def trace[T](msg: => String)(value: T) = {
+  def logWith[T](msg: => String)(value: T) = {
     log(msg + " " + value)
     value
   }
 
   def debugwarn(msg: => String, pos: SourcePosition = NoSourcePosition): Unit =
     if (this.settings.debug.value) warning(msg, pos)
-
-  @inline
-  def debugTraceIndented[TD](question: => String, printer: Printers.Printer = Printers.default, show: Boolean = false)(op: => TD): TD =
-    conditionalTraceIndented(this.settings.debugTrace.value, question, printer, show)(op)
-
-  @inline
-  def conditionalTraceIndented[TC](cond: Boolean, question: => String, printer: Printers.Printer = Printers.default, show: Boolean = false)(op: => TC): TC =
-    if (cond) traceIndented[TC](question, printer, show)(op)
-    else op
-
-  @inline
-  def traceIndented[T](question: => String, printer: Printers.Printer = Printers.default, show: Boolean = false)(op: => T): T =
-    if (printer eq config.Printers.noPrinter) op
-    else doTraceIndented[T](question, printer, show)(op)
-
-  private def doTraceIndented[T](question: => String, printer: Printers.Printer = Printers.default, show: Boolean = false)(op: => T): T = {
-    def resStr(res: Any): String = res match {
-      case res: printing.Showable if show => res.show
-      case _ => String.valueOf(res)
-    }
-    // Avoid evaluating question multiple time, since each evaluation
-    // may cause some extra logging output.
-    lazy val q: String = question
-    doTraceIndented[T](s"==> $q?", (res: Any) => s"<== $q = ${resStr(res)}")(op)
-  }
-
-  def doTraceIndented[T](leading: => String, trailing: Any => String)(op: => T): T =
-    if (ctx.mode.is(Mode.Printing)) op
-    else {
-      var finalized = false
-      var logctx = this
-      while (logctx.reporter.isInstanceOf[StoreReporter]) logctx = logctx.outer
-      def finalize(result: Any, note: String) =
-        if (!finalized) {
-          base.indent -= 1
-          logctx.log(s"${base.indentTab * base.indent}${trailing(result)}$note")
-          finalized = true
-        }
-    try {
-      logctx.log(s"${base.indentTab * base.indent}$leading")
-      base.indent += 1
-      val res = op
-      finalize(res, "")
-      res
-    } catch {
-      case ex: Throwable =>
-        finalize("<missing>", s" (with exception $ex)")
-        throw ex
-    }
-  }
 }
 
 /**
@@ -190,7 +139,7 @@ abstract class Reporter extends interfaces.ReporterResult {
    *  debugging information (like printing the classpath) is not rendered
    *  invisible due to the max message length.
    */
-  private var _truncationOK: Boolean = true
+  private[this] var _truncationOK: Boolean = true
   def truncationOK = _truncationOK
   def withoutTruncating[T](body: => T): T = {
     val saved = _truncationOK
@@ -200,7 +149,7 @@ abstract class Reporter extends interfaces.ReporterResult {
   }
 
   type ErrorHandler = MessageContainer => Context => Unit
-  private var incompleteHandler: ErrorHandler = d => c => report(d)(c)
+  private[this] var incompleteHandler: ErrorHandler = d => c => report(d)(c)
   def withIncompleteHandler[T](handler: ErrorHandler)(op: => T): T = {
     val saved = incompleteHandler
     incompleteHandler = handler
@@ -212,7 +161,7 @@ abstract class Reporter extends interfaces.ReporterResult {
   var warningCount = 0
   def hasErrors = errorCount > 0
   def hasWarnings = warningCount > 0
-  private var errors: List[Error] = Nil
+  private[this] var errors: List[Error] = Nil
   def allErrors = errors
 
   /** Have errors been reported by this reporter, or in the

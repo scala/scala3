@@ -1,35 +1,26 @@
-class Foo(i: Int) {
+class Foo(val x: String) {
+
   def this() = this({
-    def bar() = {
-      println(Thread.currentThread.getStackTrace.apply(1).getMethodName)
-      5
-    }
+    def bar() = Thread.currentThread.getStackTrace.apply(1).getMethodName
     bar()
   })
 
-  def this(i: String) = this({
-    def bar() = {
-      println(Thread.currentThread.getStackTrace.apply(1).getMethodName)
-      5
-    }
+  def this(i: Int) = this({
+    def bar() = Thread.currentThread.getStackTrace.apply(1).getMethodName
     bar()
   })
 }
 
-class Bar(i: Int) {
+class Bar(val x: String) {
   def this() = this({
-    def bar() = {
-      println(Thread.currentThread.getStackTrace.apply(1).getMethodName)
-      5
-    }
+    def bar() = Thread.currentThread.getStackTrace.apply(1).getMethodName
     bar()
   })
 }
 
 object Test {
   def main(args: Array[String]): Unit = {
-    new Foo()
-    new Foo("")
-    new Bar()
+    List(new Foo().x, new Foo(2).x).sorted.foreach(println)
+    println(new Bar().x)
   }
 }

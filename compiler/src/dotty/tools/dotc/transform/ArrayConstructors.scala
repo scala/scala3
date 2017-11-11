@@ -2,7 +2,7 @@ package dotty.tools.dotc
 package transform
 
 import core._
-import TreeTransforms._
+import MegaPhase._
 import Contexts.Context
 import Flags._
 import SymUtils._
@@ -29,12 +29,12 @@ import scala.collection.immutable.::
  * It assummes that generic arrays have already been handled by typer(see Applications.convertNewGenericArray).
  * Additionally it optimizes calls to scala.Array.ofDim functions by replacing them with calls to newArray with specific dimensions
  */
-class ArrayConstructors extends MiniPhaseTransform { thisTransform =>
+class ArrayConstructors extends MiniPhase {
   import ast.tpd._
 
   override def phaseName: String = "arrayConstructors"
 
-  override def transformApply(tree: tpd.Apply)(implicit ctx: Context, info: TransformerInfo): tpd.Tree = {
+  override def transformApply(tree: tpd.Apply)(implicit ctx: Context): tpd.Tree = {
     def rewrite(elemType: Type, dims: List[Tree]) =
       tpd.newArray(elemType, tree.tpe, tree.pos, JavaSeqLiteral(dims, TypeTree(defn.IntClass.typeRef)))
 

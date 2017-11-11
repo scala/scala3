@@ -3,14 +3,14 @@
  */
 package dotty.tools.dotc.classpath
 
-import java.io.File
+import java.io.{File => JFile}
 import java.net.{URI, URL}
 import java.nio.file.{FileSystems, Files, SimpleFileVisitor}
 import java.util.function.IntFunction
 import java.util
 import java.util.Comparator
 
-import dotty.tools.io.{AbstractFile, PlainFile, ClassPath, ClassRepresentation, PlainNioFile}
+import dotty.tools.io.{AbstractFile, PlainFile, ClassPath, ClassRepresentation}
 import FileUtils._
 import scala.collection.JavaConverters._
 
@@ -86,15 +86,15 @@ trait DirectoryLookup[FileEntryType <: ClassRepresentation] extends ClassPath {
 }
 
 trait JFileDirectoryLookup[FileEntryType <: ClassRepresentation] extends DirectoryLookup[FileEntryType] {
-  type F = File
+  type F = JFile
 
-  protected def emptyFiles: Array[File] = Array.empty
-  protected def getSubDir(packageDirName: String): Option[File] = {
-    val packageDir = new File(dir, packageDirName)
+  protected def emptyFiles: Array[JFile] = Array.empty
+  protected def getSubDir(packageDirName: String): Option[JFile] = {
+    val packageDir = new JFile(dir, packageDirName)
     if (packageDir.exists && packageDir.isDirectory) Some(packageDir)
     else None
   }
-  protected def listChildren(dir: File, filter: Option[File => Boolean]): Array[File] = {
+  protected def listChildren(dir: JFile, filter: Option[JFile => Boolean]): Array[JFile] = {
     val listing = filter match {
       case Some(f) => dir.listFiles(mkFileFilter(f))
       case None => dir.listFiles()
@@ -112,15 +112,15 @@ trait JFileDirectoryLookup[FileEntryType <: ClassRepresentation] extends Directo
       // Note this behaviour can be enabled in javac with `javac -XDsortfiles`, but that's only
       // intended to improve determinism of the compiler for compiler hackers.
       java.util.Arrays.sort(listing,
-        new java.util.Comparator[File] {
-          def compare(o1: File, o2: File) = o1.getName.compareTo(o2.getName)
+        new java.util.Comparator[JFile] {
+          def compare(o1: JFile, o2: JFile) = o1.getName.compareTo(o2.getName)
         })
       listing
     } else Array()
   }
-  protected def getName(f: File): String = f.getName
-  protected def toAbstractFile(f: File): AbstractFile = new PlainFile(new dotty.tools.io.File(f))
-  protected def isPackage(f: File): Boolean = f.isPackage
+  protected def getName(f: JFile): String = f.getName
+  protected def toAbstractFile(f: JFile): AbstractFile = new PlainFile(new dotty.tools.io.File(f.toPath))
+  protected def isPackage(f: JFile): Boolean = f.isPackage
 
   assert(dir != null, "Directory file in DirectoryFileLookup cannot be null")
 
@@ -178,7 +178,7 @@ final class JrtClassPath(fs: java.nio.file.FileSystem) extends ClassPath with No
     else {
       packageToModuleBases.getOrElse(inPackage, Nil).flatMap(x =>
         Files.list(x.resolve(inPackage.replace('.', '/'))).iterator().asScala.filter(_.getFileName.toString.endsWith(".class"))).map(x =>
-        ClassFileEntryImpl(new PlainNioFile(x))).toVector
+        ClassFileEntryImpl(new PlainFile(new dotty.tools.io.File(x)))).toVector
     }
   }
 
@@ -197,7 +197,7 @@ final class JrtClassPath(fs: java.nio.file.FileSystem) extends ClassPath with No
       val inPackage = packageOf(className)
       packageToModuleBases.getOrElse(inPackage, Nil).iterator.flatMap{x =>
         val file = x.resolve(className.replace('.', '/') + ".class")
-        if (Files.exists(file)) new PlainNioFile(file) :: Nil else Nil
+        if (Files.exists(file)) new PlainFile(new dotty.tools.io.File(file)) :: Nil else Nil
       }.take(1).toList.headOption
     }
   }
@@ -205,41 +205,41 @@ final class JrtClassPath(fs: java.nio.file.FileSystem) extends ClassPath with No
     dottedClassName.substring(0, dottedClassName.lastIndexOf("."))
 }
 
-case class DirectoryClassPath(dir: File) extends JFileDirectoryLookup[ClassFileEntryImpl] with NoSourcePaths {
+case class DirectoryClassPath(dir: JFile) extends JFileDirectoryLookup[ClassFileEntryImpl] with NoSourcePaths {
   override def findClass(className: String): Option[ClassRepresentation] = findClassFile(className) map ClassFileEntryImpl
 
   def findClassFile(className: String): Option[AbstractFile] = {
     val relativePath = FileUtils.dirPath(className)
-    val classFile = new File(s"$dir/$relativePath.class")
+    val classFile = new JFile(s"$dir/$relativePath.class")
     if (classFile.exists) {
-      val wrappedClassFile = new dotty.tools.io.File(classFile)
+      val wrappedClassFile = new dotty.tools.io.File(classFile.toPath)
       val abstractClassFile = new PlainFile(wrappedClassFile)
       Some(abstractClassFile)
     } else None
   }
 
   protected def createFileEntry(file: AbstractFile): ClassFileEntryImpl = ClassFileEntryImpl(file)
-  protected def isMatchingFile(f: File): Boolean = f.isClass
+  protected def isMatchingFile(f: JFile): Boolean = f.isClass
 
   private[dotty] def classes(inPackage: String): Seq[ClassFileEntry] = files(inPackage)
 }
 
-case class DirectorySourcePath(dir: File) extends JFileDirectoryLookup[SourceFileEntryImpl] with NoClassPaths {
+case class DirectorySourcePath(dir: JFile) extends JFileDirectoryLookup[SourceFileEntryImpl] with NoClassPaths {
   def asSourcePathString: String = asClassPathString
 
   protected def createFileEntry(file: AbstractFile): SourceFileEntryImpl = SourceFileEntryImpl(file)
-  protected def isMatchingFile(f: File): Boolean = endsScalaOrJava(f.getName)
+  protected def isMatchingFile(f: JFile): Boolean = endsScalaOrJava(f.getName)
 
   override def findClass(className: String): Option[ClassRepresentation] = findSourceFile(className) map SourceFileEntryImpl
 
   private def findSourceFile(className: String): Option[AbstractFile] = {
     val relativePath = FileUtils.dirPath(className)
     val sourceFile = Stream("scala", "java")
-      .map(ext => new File(s"$dir/$relativePath.$ext"))
+      .map(ext => new JFile(s"$dir/$relativePath.$ext"))
       .collectFirst { case file if file.exists() => file }
 
     sourceFile.map { file =>
-      val wrappedSourceFile = new dotty.tools.io.File(file)
+      val wrappedSourceFile = new dotty.tools.io.File(file.toPath)
       val abstractSourceFile = new PlainFile(wrappedSourceFile)
       abstractSourceFile
     }

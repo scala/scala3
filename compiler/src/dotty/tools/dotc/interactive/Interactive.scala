@@ -115,7 +115,7 @@ object Interactive {
   /** Filter for names that should appear when looking for completions. */
   private[this] object completionsFilter extends NameFilter {
     def apply(pre: Type, name: Name)(implicit ctx: Context): Boolean =
-      !name.isConstructorName && name.is(SimpleNameKind)
+      !name.isConstructorName && name.toTermName.info.kind == SimpleNameKind
   }
 
   /** Find named trees with a non-empty position whose symbol match `sym` in `trees`.

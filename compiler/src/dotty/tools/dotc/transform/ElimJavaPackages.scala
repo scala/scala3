@@ -4,17 +4,17 @@ import dotty.tools.dotc.ast.tpd._
 import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.Flags._
 import dotty.tools.dotc.core.Types.{Type, TypeRef}
-import dotty.tools.dotc.transform.TreeTransforms.{MiniPhaseTransform, TransformerInfo}
+import dotty.tools.dotc.transform.MegaPhase.MiniPhase
 
 /**
   * Eliminates syntactic references to Java packages, so that there's no chance
   * they accidentally end up in the backend.
   */
-class ElimJavaPackages extends MiniPhaseTransform {
+class ElimJavaPackages extends MiniPhase {
 
   override def phaseName: String = "elimJavaPackages"
 
-  override def transformSelect(tree: Select)(implicit ctx: Context, info: TransformerInfo): Tree = {
+  override def transformSelect(tree: Select)(implicit ctx: Context): Tree = {
     if (isJavaPackage(tree)) {
       assert(tree.tpe.isInstanceOf[TypeRef], s"Expected tree with type TypeRef, but got ${tree.tpe.show}")
       Ident(tree.tpe.asInstanceOf[TypeRef])

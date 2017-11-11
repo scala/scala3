@@ -48,15 +48,15 @@ class TreeUnpickler(reader: TastyReader, nameAtRef: NameRef => TermName, posUnpi
   /** The root symbol denotation which are defined by the Tasty file associated with this
    *  TreeUnpickler. Set by `enterTopLevel`.
    */
-  private var roots: Set[SymDenotation] = null
+  private[this] var roots: Set[SymDenotation] = null
 
   /** The root symbols that are defined in this Tasty file. This
    *  is a subset of `roots.map(_.symbol)`.
    */
-  private var seenRoots: Set[Symbol] = Set()
+  private[this] var seenRoots: Set[Symbol] = Set()
 
   /** The root owner tree. See `OwnerTree` class definition. Set by `enterTopLevel`. */
-  private var ownerTree: OwnerTree = _
+  private[this] var ownerTree: OwnerTree = _
 
   private def registerSym(addr: Addr, sym: Symbol) =
     symAtAddr(addr) = sym

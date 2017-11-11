@@ -6,7 +6,7 @@ import DenotTransformers.SymTransformer
 import Phases.Phase
 import Contexts.Context
 import SymDenotations.SymDenotation
-import TreeTransforms.MiniPhaseTransform
+import MegaPhase.MiniPhase
 import Flags._, Symbols._
 
 /** 1. Widens all private[this] and protected[this] qualifiers to just private/protected
@@ -14,7 +14,7 @@ import Flags._, Symbols._
  *     do not have initialization code. A pure interface member is either an abstract
  *     or alias type definition or a deferred val or def.
  */
-class NormalizeFlags extends MiniPhaseTransform with SymTransformer { thisTransformer =>
+class NormalizeFlags extends MiniPhase with SymTransformer {
   override def phaseName = "normalizeFlags"
 
   def transformSym(ref: SymDenotation)(implicit ctx: Context) = {

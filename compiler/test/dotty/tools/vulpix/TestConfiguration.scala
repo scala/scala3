@@ -12,7 +12,8 @@ object TestConfiguration {
   val checkOptions = Array(
     "-Yno-deep-subtypes",
     "-Yno-double-bindings",
-    "-Yforce-sbt-phases"
+    "-Yforce-sbt-phases",
+    "-Xverify-signatures"
   )
 
   val classPath = mkClassPath(Jars.dottyTestDeps)
@@ -42,7 +43,7 @@ object TestConfiguration {
     } mkString(":")
   }
 
-  val yCheckOptions = Array("-Ycheck:tailrec,resolveSuper,erasure,mixin,getClass,restoreScopes,labelDef")
+  val yCheckOptions = Array("-Ycheck:tailrec,resolveSuper,erasure,mixin,getClass,elimStaticThis,labelDef")
 
   val basicDefaultOptions = checkOptions ++ noCheckOptions ++ yCheckOptions
   val defaultUnoptimised = TestFlags(classPath, basicDefaultOptions)

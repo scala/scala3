@@ -100,6 +100,17 @@ public enum ErrorMessageID {
     NoReturnFromInlineID,
     ReturnOutsideMethodDefinitionID,
     UncheckedTypePatternID,
+    ExtendFinalClassID,
+    EnumCaseDefinitionInNonEnumOwnerID,
+    ExpectedTypeBoundOrEqualsID,
+    ClassAndCompanionNameClashID,
+    TailrecNotApplicableID,
+    FailureToEliminateExistentialID,
+    OnlyFunctionsCanBeFollowedByUnderscoreID,
+    MissingEmptyArgumentListID,
+    DuplicateNamedTypeParameterID,
+    UndefinedNamedTypeParameterID,
+    IllegalStartOfStatementID
     ;
 
     public int errorNumber() {

@@ -3,7 +3,7 @@ package transform
 
 import core._
 import Contexts._, Symbols._, Types._, Flags._, Decorators._, StdNames._, Constants._, Phases._
-import TreeTransforms._
+import MegaPhase._
 import ast.Trees._
 import NameKinds.NonLocalReturnKeyName
 import collection.mutable
@@ -16,7 +16,7 @@ object NonLocalReturns {
 
 /** Implement non-local returns using NonLocalReturnControl exceptions.
  */
-class NonLocalReturns extends MiniPhaseTransform { thisTransformer =>
+class NonLocalReturns extends MiniPhase {
   override def phaseName = "nonLocalReturns"
 
   import NonLocalReturns._
@@ -81,13 +81,13 @@ class NonLocalReturns extends MiniPhaseTransform { thisTransformer =>
     Block(keyDef :: Nil, tryCatch)
   }
 
-  override def transformDefDef(tree: DefDef)(implicit ctx: Context, info: TransformerInfo): Tree =
+  override def transformDefDef(tree: DefDef)(implicit ctx: Context): Tree =
     nonLocalReturnKeys.remove(tree.symbol) match {
       case Some(key) => cpy.DefDef(tree)(rhs = nonLocalReturnTry(tree.rhs, key, tree.symbol))
       case _ => tree
     }
 
-  override def transformReturn(tree: Return)(implicit ctx: Context, info: TransformerInfo): Tree =
+  override def transformReturn(tree: Return)(implicit ctx: Context): Tree =
     if (isNonLocalReturn(tree)) nonLocalReturnThrow(tree.expr, tree.from.symbol).withPos(tree.pos)
     else tree
 }

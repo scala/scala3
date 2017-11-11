@@ -5,7 +5,7 @@ import core._
 import Names._
 import StdNames.nme
 import Types._
-import dotty.tools.dotc.transform.TreeTransforms.{AnnotationTransformer, TransformerInfo, MiniPhaseTransform, TreeTransformer}
+import dotty.tools.dotc.transform.MegaPhase._
 import ast.Trees._
 import Flags._
 import Contexts.Context
@@ -25,7 +25,7 @@ import TypeUtils._
 /** A transformer that removes repeated parameters (T*) from all types, replacing
  *  them with Seq types.
  */
-class ElimRepeated extends MiniPhaseTransform with InfoTransformer with AnnotationTransformer { thisTransformer =>
+class ElimRepeated extends MiniPhase with InfoTransformer { thisPhase =>
   import ast.tpd._
 
   override def phaseName = "elimRepeated"
@@ -67,16 +67,17 @@ class ElimRepeated extends MiniPhaseTransform with InfoTransformer with Annotati
   def transformTypeOfTree(tree: Tree)(implicit ctx: Context): Tree =
     tree.withType(elimRepeated(tree.tpe))
 
-  override def transformIdent(tree: Ident)(implicit ctx: Context, info: TransformerInfo): Tree =
+  override def transformIdent(tree: Ident)(implicit ctx: Context): Tree =
     transformTypeOfTree(tree)
 
-  override def transformSelect(tree: Select)(implicit ctx: Context, info: TransformerInfo): Tree =
+  override def transformSelect(tree: Select)(implicit ctx: Context): Tree =
     transformTypeOfTree(tree)
 
-  override def transformApply(tree: Apply)(implicit ctx: Context, info: TransformerInfo): Tree = {
-    val formals = (tree.fun.tpe.widen: @unchecked) match {
-      case mt: MethodType => mt.paramInfos
-    }
+  override def transformApply(tree: Apply)(implicit ctx: Context): Tree = {
+    val formals =
+      ctx.atPhase(thisPhase) { implicit ctx =>
+        tree.fun.tpe.widen.asInstanceOf[MethodType].paramInfos
+      }
     val args1 = tree.args.zipWithConserve(formals) { (arg, formal) =>
       arg match {
         case arg: Typed if isWildcardStarArg(arg) =>
@@ -105,19 +106,19 @@ class ElimRepeated extends MiniPhaseTransform with InfoTransformer with Annotati
           // Because of phantomclasses, the Java array's type might not conform to the return type
   }
 
-  override def transformTypeApply(tree: TypeApply)(implicit ctx: Context, info: TransformerInfo): Tree =
+  override def transformTypeApply(tree: TypeApply)(implicit ctx: Context): Tree =
     transformTypeOfTree(tree)
 
   /** If method overrides a Java varargs method, add a varargs bridge.
    *  Also transform trees inside method annotation
    */
-  override def transformDefDef(tree: DefDef)(implicit ctx: Context, info: TransformerInfo): Tree = {
-    assert(ctx.phase == thisTransformer)
-    if (tree.symbol.info.isVarArgsMethod && overridesJava(tree.symbol))
-      addVarArgsBridge(tree)
-    else
-      tree
-  }
+  override def transformDefDef(tree: DefDef)(implicit ctx: Context): Tree =
+    ctx.atPhase(thisPhase) { implicit ctx =>
+      if (tree.symbol.info.isVarArgsMethod && overridesJava(tree.symbol))
+        addVarArgsBridge(tree)
+      else
+        tree
+    }
 
   /** Add a Java varargs bridge
    *  @param  ddef  the original method definition which is assumed to override
@@ -130,7 +131,7 @@ class ElimRepeated extends MiniPhaseTransform with InfoTransformer with Annotati
     val original = ddef.symbol.asTerm
     val bridge = original.copy(
       flags = ddef.symbol.flags &~ Private | Artifact,
-      info = toJavaVarArgs(ddef.symbol.info)).enteredAfter(thisTransformer).asTerm
+      info = toJavaVarArgs(ddef.symbol.info)).enteredAfter(thisPhase).asTerm
     val bridgeDef = polyDefDef(bridge, trefs => vrefss => {
       val (vrefs :+ varArgRef) :: vrefss1 = vrefss
       val elemtp = varArgRef.tpe.widen.argTypes.head

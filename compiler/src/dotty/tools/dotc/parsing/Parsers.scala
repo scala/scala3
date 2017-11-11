@@ -34,7 +34,7 @@ object Parsers {
   case class OpInfo(operand: Tree, operator: Ident, offset: Offset)
 
   class ParensCounters {
-    private var parCounts = new Array[Int](lastParen - firstParen)
+    private[this] var parCounts = new Array[Int](lastParen - firstParen)
 
     def count(tok: Token) = parCounts(tok - firstParen)
     def change(tok: Token, delta: Int) = parCounts(tok - firstParen) += delta
@@ -175,7 +175,7 @@ object Parsers {
     /** The offset of the last time when a statement on a new line was definitely
      *  encountered in the current scope or an outer scope.
      */
-    private var lastStatOffset = -1
+    private[this] var lastStatOffset = -1
 
     def setLastStatOffset() =
       if (mustStartStat && in.isAfterLineEnd())
@@ -253,7 +253,7 @@ object Parsers {
     /** If at end of file, issue an incompleteInputError.
      *  Otherwise issue a syntax error and skip to next safe point.
      */
-   def syntaxErrorOrIncomplete(msg: => Message) =
+    def syntaxErrorOrIncomplete(msg: => Message) =
       if (in.token == EOF) incompleteInputError(msg)
       else {
         syntaxError(msg)
@@ -297,7 +297,7 @@ object Parsers {
 
     def errorTermTree    = atPos(in.offset) { Literal(Constant(null)) }
 
-    private var inFunReturnType = false
+    private[this] var inFunReturnType = false
     private def fromWithinReturnType[T](body: => T): T = {
       val saved = inFunReturnType
       try {
@@ -312,7 +312,7 @@ object Parsers {
     /** A flag indicating we are parsing in the annotations of a primary
      *  class constructor
      */
-    private var inClassConstrAnnots = false
+    private[this] var inClassConstrAnnots = false
 
     private def fromWithinClassConstr[T](body: => T): T = {
       val saved = inClassConstrAnnots
@@ -332,7 +332,7 @@ object Parsers {
      *  We store tokens in lookahead as long as they can form a valid prefix
      *  of a class parameter clause.
      */
-    private var lookaheadTokens = new ListBuffer[TokenData]
+    private[this] var lookaheadTokens = new ListBuffer[TokenData]
 
     /** Copy current token to end of lookahead */
     private def saveLookahead() = {
@@ -1557,10 +1557,10 @@ object Parsers {
       else p
     }
 
-    /**  Pattern2    ::=  [varid `@'] InfixPattern
+    /**  Pattern2    ::=  [id `@'] InfixPattern
      */
     val pattern2 = () => infixPattern() match {
-      case p @ Ident(name) if isVarPattern(p) && in.token == AT =>
+      case p @ Ident(name) if in.token == AT =>
         val offset = in.skipToken()
 
         // compatibility for Scala2 `x @ _*` syntax
@@ -2156,7 +2156,7 @@ object Parsers {
           case SUPERTYPE | SUBTYPE | SEMI | NEWLINE | NEWLINES | COMMA | RBRACE | EOF =>
             TypeDef(name, lambdaAbstract(tparams, typeBounds())).withMods(mods).setComment(in.getDocComment(start))
           case _ =>
-            syntaxErrorOrIncomplete("`=', `>:', or `<:' expected")
+            syntaxErrorOrIncomplete(ExpectedTypeBoundOrEquals(in.token))
             EmptyTree
         }
       }
@@ -2496,8 +2496,7 @@ object Parsers {
           }
         else if (!isStatSep && (in.token != CASE)) {
           exitOnError = mustStartStat
-          val addendum = if (isModifier) " (no modifiers allowed here)" else ""
-          syntaxErrorOrIncomplete("illegal start of statement" + addendum)
+          syntaxErrorOrIncomplete(IllegalStartOfStatement(isModifier))
         }
         acceptStatSepUnlessAtEnd(CASE)
       }

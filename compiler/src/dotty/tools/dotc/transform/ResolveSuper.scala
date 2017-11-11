@@ -2,7 +2,7 @@ package dotty.tools.dotc
 package transform
 
 import core._
-import TreeTransforms._
+import MegaPhase._
 import Contexts.Context
 import Flags._
 import SymUtils._
@@ -45,7 +45,7 @@ import ResolveSuper._
  *  This is the first part of what was the mixin phase. It is complemented by
  *  Mixin, which runs after erasure.
  */
-class ResolveSuper extends MiniPhaseTransform with IdentityDenotTransformer { thisTransform =>
+class ResolveSuper extends MiniPhase with IdentityDenotTransformer { thisPhase =>
   import ast.tpd._
 
   override def phaseName: String = "resolveSuper"
@@ -55,13 +55,13 @@ class ResolveSuper extends MiniPhaseTransform with IdentityDenotTransformer { th
 
   override def changesMembers = true // the phase adds super accessors and method forwarders
 
-  override def transformTemplate(impl: Template)(implicit ctx: Context, info: TransformerInfo) = {
+  override def transformTemplate(impl: Template)(implicit ctx: Context) = {
     val cls = impl.symbol.owner.asClass
-    val ops = new MixinOps(cls, thisTransform)
+    val ops = new MixinOps(cls, thisPhase)
     import ops._
 
     def superAccessors(mixin: ClassSymbol): List[Tree] =
-      for (superAcc <- mixin.info.decls.filter(_.isSuperAccessor).toList)
+      for (superAcc <- mixin.info.decls.filter(_.isSuperAccessor))
         yield {
           util.Stats.record("super accessors")
           polyDefDef(implementation(superAcc.asTerm), forwarder(rebindSuper(cls, superAcc)))
@@ -79,12 +79,12 @@ class ResolveSuper extends MiniPhaseTransform with IdentityDenotTransformer { th
     cpy.Template(impl)(body = overrides ::: impl.body)
   }
 
-  override def transformDefDef(ddef: DefDef)(implicit ctx: Context, info: TransformerInfo) = {
+  override def transformDefDef(ddef: DefDef)(implicit ctx: Context) = {
     val meth = ddef.symbol.asTerm
     if (meth.isSuperAccessor && !meth.is(Deferred)) {
       assert(ddef.rhs.isEmpty)
       val cls = meth.owner.asClass
-      val ops = new MixinOps(cls, thisTransform)
+      val ops = new MixinOps(cls, thisPhase)
       import ops._
       polyDefDef(meth, forwarder(rebindSuper(cls, meth)))
     }

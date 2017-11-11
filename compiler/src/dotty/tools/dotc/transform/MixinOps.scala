@@ -8,7 +8,7 @@ import SymUtils._
 import StdNames._, NameOps._
 import Decorators._
 
-class MixinOps(cls: ClassSymbol, thisTransform: DenotTransformer)(implicit ctx: Context) {
+class MixinOps(cls: ClassSymbol, thisPhase: DenotTransformer)(implicit ctx: Context) {
   import ast.tpd._
 
   val superCls: Symbol = cls.superClass
@@ -23,7 +23,7 @@ class MixinOps(cls: ClassSymbol, thisTransform: DenotTransformer)(implicit ctx: 
       owner = cls,
       name = member.name.stripScala2LocalSuffix,
       flags = member.flags &~ Deferred,
-      info = cls.thisType.memberInfo(member)).enteredAfter(thisTransform).asTerm
+      info = cls.thisType.memberInfo(member)).enteredAfter(thisPhase).asTerm
     res.addAnnotations(member.annotations)
     res
   }
@@ -40,10 +40,10 @@ class MixinOps(cls: ClassSymbol, thisTransform: DenotTransformer)(implicit ctx: 
   }
 
   /** Is `sym` a member of implementing class `cls`?
-   *  The test is performed at phase `thisTransform`.
+   *  The test is performed at phase `thisPhase`.
    */
   def isCurrent(sym: Symbol) =
-    ctx.atPhase(thisTransform) { implicit ctx =>
+    ctx.atPhase(thisPhase) { implicit ctx =>
       cls.info.member(sym.name).hasAltWith(_.symbol == sym)
       // this is a hot spot, where we spend several seconds while compiling stdlib
       // unfortunately it will discard and recompute all the member chaches,

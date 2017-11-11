@@ -7,18 +7,17 @@ import Contexts.Context
 import Symbols._
 import Scopes._
 import collection.mutable
-import TreeTransforms.MiniPhaseTransform
+import MegaPhase.MiniPhase
 import SymDenotations._
 import ast.Trees._
 import NameOps._
-import TreeTransforms.TransformerInfo
 import StdNames._
 
 /** The preceding lambda lift and flatten phases move symbols to different scopes
  *  and rename them. This miniphase cleans up afterwards and makes sure that all
  *  class scopes contain the symbols defined in them.
  */
-class RestoreScopes extends MiniPhaseTransform with IdentityDenotTransformer { thisTransform =>
+class RestoreScopes extends MiniPhase with IdentityDenotTransformer { thisPhase =>
   import ast.tpd._
   override def phaseName = "restoreScopes"
 
@@ -29,12 +28,12 @@ class RestoreScopes extends MiniPhaseTransform with IdentityDenotTransformer { t
    * enclosing package definitions. So by the time RestoreScopes gets to
    * see a typedef or template, it still might be changed by DropEmptyConstructors.
    */
-  override def transformPackageDef(pdef: PackageDef)(implicit ctx: Context, info: TransformerInfo) = {
+  override def transformPackageDef(pdef: PackageDef)(implicit ctx: Context) = {
     pdef.stats.foreach(restoreScope)
     pdef
   }
 
-  private def restoreScope(tree: Tree)(implicit ctx: Context, info: TransformerInfo) = tree match {
+  private def restoreScope(tree: Tree)(implicit ctx: Context) = tree match {
     case TypeDef(_, impl: Template) =>
       val restoredDecls = newScope
       for (stat <- impl.constr :: impl.body)
@@ -61,7 +60,7 @@ class RestoreScopes extends MiniPhaseTransform with IdentityDenotTransformer { t
       val cinfo = cls.classInfo
       tree.symbol.copySymDenotation(
         info = cinfo.derivedClassInfo( // Dotty deviation: Cannot expand cinfo inline without a type error
-          decls = restoredDecls: Scope)).installAfter(thisTransform)
+          decls = restoredDecls: Scope)).installAfter(thisPhase)
       tree
     case tree => tree
   }

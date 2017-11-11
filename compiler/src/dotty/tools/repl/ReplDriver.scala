@@ -89,7 +89,7 @@ class ReplDriver(settings: Array[String],
   /** Create a fresh and initialized context with IDE mode enabled */
   private[this] def initialCtx = {
     val rootCtx = initCtx.fresh.addMode(Mode.ReadPositions).addMode(Mode.Interactive)
-    val ictx = setup(settings.toArray, rootCtx)._2.fresh
+    val ictx = setup(settings, rootCtx)._2.fresh
     ictx.base.initialize()(ictx)
     ictx
   }
@@ -132,7 +132,10 @@ class ReplDriver(settings: Array[String],
   @tailrec final def runUntilQuit(state: State = initState): State = {
     val res = readLine()(state)
 
-    if (res == Quit) state
+    if (res == Quit) {
+      out.println()
+      state
+    }
     else {
       // readLine potentially destroys the run, so a new one is needed for the
       // rest of the interpretation:
@@ -183,7 +186,7 @@ class ReplDriver(settings: Array[String],
 
   private def interpret(res: ParseResult)(implicit state: State): State =
     res match {
-      case parsed: Parsed =>
+      case parsed: Parsed if parsed.trees.nonEmpty =>
         compile(parsed)
           .withHistory(parsed.sourceCode :: state.history)
           .newRun(compiler, rootCtx)
@@ -192,9 +195,13 @@ class ReplDriver(settings: Array[String],
         displayErrors(errs)
         state.withHistory(src :: state.history)
 
-      case Newline | SigKill => state
-
       case cmd: Command => interpretCommand(cmd)
+
+      case SigKill => // TODO
+        state
+
+      case _ => // new line, empty tree
+        state
     }
 
   /** Compile `parsed` trees and evolve `state` in accordance */
