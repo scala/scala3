@@ -49,6 +49,27 @@ object Inferencing {
   def instantiateSelected(tp: Type, tvars: List[Type])(implicit ctx: Context): Unit =
     new IsFullyDefinedAccumulator(new ForceDegree.Value(tvars.contains, minimizeAll = true)).process(tp)
 
+  /** Instantiate any type variables in `tp` whose bounds contain a reference to
+   *  one of the parameters in `tparams` or `vparamss`.
+   */
+  def instantiateDependent(tp: Type, tparams: List[Symbol], vparamss: List[List[Symbol]])(implicit ctx: Context): Unit = {
+    val dependentVars = new TypeAccumulator[Set[TypeVar]] {
+      lazy val params = (vparamss :\ tparams)( _ ::: _)
+      def apply(tvars: Set[TypeVar], tp: Type) = tp match {
+        case tp: TypeVar
+        if !tp.isInstantiated &&
+            ctx.typeComparer.bounds(tp.origin)
+              .namedPartsWith(ref => params.contains(ref.symbol))
+              .nonEmpty =>
+          tvars + tp
+        case _ =>
+          foldOver(tvars, tp)
+      }
+    }
+    val depVars = dependentVars(Set(), tp)
+    if (depVars.nonEmpty) instantiateSelected(tp, depVars.toList)
+  }
+
   /** The accumulator which forces type variables using the policy encoded in `force`
    *  and returns whether the type is fully defined. The direction in which
    *  a type variable is instantiated is determined as follows:
