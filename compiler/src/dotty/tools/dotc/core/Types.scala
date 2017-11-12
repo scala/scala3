@@ -1014,6 +1014,12 @@ object Types {
       case _ => this
     }
 
+    /** If this is a dependent function type, drop the `apply` refinement */
+    final def dropDependentRefinement(implicit ctx: Context): Type = stripTypeVar match {
+      case RefinedType(parent, nme.apply, _) => parent
+      case _ => this
+    }
+
     /** The type constructor of an applied type, otherwise the type itself */
     final def typeConstructor(implicit ctx: Context): Type = this match {
       case AppliedType(tycon, _) => tycon
@@ -1317,10 +1323,13 @@ object Types {
      *                   when forming the function type.
      */
     def toFunctionType(dropLast: Int = 0)(implicit ctx: Context): Type = this match {
-      case mt: MethodType if !mt.isDependent =>
+      case mt: MethodType if !mt.isParamDependent =>
         val formals1 = if (dropLast == 0) mt.paramInfos else mt.paramInfos dropRight dropLast
-        defn.FunctionOf(
-          formals1 mapConserve (_.underlyingIfRepeated(mt.isJavaMethod)), mt.resultType, mt.isImplicitMethod && !ctx.erasedTypes)
+        val funType = defn.FunctionOf(
+          formals1 mapConserve (_.underlyingIfRepeated(mt.isJavaMethod)),
+          mt.nonDependentResultApprox, mt.isImplicitMethod && !ctx.erasedTypes)
+        if (mt.isDependent) RefinedType(funType, nme.apply, mt)
+        else funType
     }
 
     /** The signature of this type. This is by default NotAMethod,
@@ -3745,7 +3754,7 @@ object Types {
         // println(s"absMems: ${absMems map (_.show) mkString ", "}")
         if (absMems.size == 1)
           absMems.head.info match {
-            case mt: MethodType if !mt.isDependent => Some(absMems.head)
+            case mt: MethodType if !mt.isParamDependent => Some(absMems.head)
             case _ => None
           }
         else if (tp isRef defn.PartialFunctionClass)

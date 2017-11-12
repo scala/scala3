@@ -688,10 +688,11 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
       // if expected parameter type(s) are wildcards, approximate from below.
       // if expected result type is a wildcard, approximate from above.
       // this can type the greatest set of admissible closures.
-      (pt.dealias.argTypesLo.init, pt.dealias.argTypesHi.last)
+      val funType = pt.dealias
+      (funType.argTypesLo.init, funType.argTypesHi.last)
     case SAMType(meth) =>
-      val MethodTpe(_, formals, restpe) = meth.info
-      (formals, restpe)
+      val mt @ MethodTpe(_, formals, restpe) = meth.info
+      (formals, if (mt.isDependent) WildcardType else restpe)
     case _ =>
       (List.tabulate(defaultArity)(alwaysWildcardType), WildcardType)
   }
@@ -891,13 +892,17 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
         meth1.tpe.widen match {
           case mt: MethodType =>
             pt match {
-              case SAMType(meth) if !defn.isFunctionType(pt) && mt <:< meth.info =>
+              case SAMType(meth)
+              if !defn.isFunctionType(pt.dealias.dropDependentRefinement) && mt <:< meth.info =>
                 if (!isFullyDefined(pt, ForceDegree.all))
                   ctx.error(ex"result type of closure is an underspecified SAM type $pt", tree.pos)
                 TypeTree(pt)
               case _ =>
-                if (!mt.isDependent) EmptyTree
-                else throw new java.lang.Error(i"internal error: cannot turn dependent method type $mt into closure, position = ${tree.pos}, raw type = ${mt.toString}") // !!! DEBUG. Eventually, convert to an error?
+                if (!mt.isParamDependent) EmptyTree
+                else throw new java.lang.Error(
+                  i"""internal error: cannot turn method type $mt into closure
+                     |because it has internal parameter dependencies,
+                     |position = ${tree.pos}, raw type = ${mt.toString}""") // !!! DEBUG. Eventually, convert to an error?
             }
           case tp =>
             throw new java.lang.Error(i"internal error: closing over non-method $tp, pos = ${tree.pos}")
@@ -1331,7 +1336,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     val vparamss1 = vparamss nestedMapconserve (typed(_).asInstanceOf[ValDef])
     vparamss1.foreach(checkNoForwardDependencies)
     if (sym is Implicit) checkImplicitParamsNotSingletons(vparamss1)
-    var tpt1 = checkSimpleKinded(typedType(tpt))
+    val tpt1 = checkSimpleKinded(typedType(tpt))
 
     var rhsCtx = ctx
     if (sym.isConstructor && !sym.isPrimaryConstructor && tparams1.nonEmpty) {
@@ -1346,13 +1351,6 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
 
     // Overwrite inline body to make sure it is not evaluated twice
     if (sym.isInlineMethod) Inliner.registerInlineInfo(sym, _ => rhs1)
-
-    if (sym.isAnonymousFunction) {
-      // If we define an anonymous function, make sure the return type does not
-      // refer to parameters. This is necessary because closure types are
-      // function types so no dependencies on parameters are allowed.
-      tpt1 = tpt1.withType(avoid(tpt1.tpe, vparamss1.flatMap(_.map(_.symbol))))
-    }
 
     assignType(cpy.DefDef(ddef)(name, tparams1, vparamss1, tpt1, rhs1), sym)
     //todo: make sure dependent method types do not depend on implicits or by-name params

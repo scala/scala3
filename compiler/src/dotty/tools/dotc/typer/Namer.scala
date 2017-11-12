@@ -1150,12 +1150,8 @@ class Namer { typer: Typer =>
     vparamss foreach completeParams
     def typeParams = tparams map symbolOfTree
     val paramSymss = ctx.normalizeIfConstructor(vparamss.nestedMap(symbolOfTree), isConstructor)
-    def wrapMethType(restpe: Type): Type = {
-      val restpe1 = // try to make anonymous functions non-dependent, so that they can be used in closures
-        if (name == nme.ANON_FUN) avoid(restpe, paramSymss.flatten)
-        else restpe
-      ctx.methodType(tparams map symbolOfTree, paramSymss, restpe1, isJava = ddef.mods is JavaDefined)
-    }
+    def wrapMethType(restpe: Type): Type =
+      ctx.methodType(tparams map symbolOfTree, paramSymss, restpe, isJava = ddef.mods is JavaDefined)
     if (isConstructor) {
       // set result type tree to unit, but take the current class as result type of the symbol
       typedAheadType(ddef.tpt, defn.UnitType)

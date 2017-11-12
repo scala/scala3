@@ -702,7 +702,8 @@ class Definitions {
       val tsym = ft.typeSymbol
       if (isFunctionClass(tsym)) {
         val targs = ft.dealias.argInfos
-        Some(targs.init, targs.last, tsym.name.isImplicitFunction)
+        if (targs.isEmpty) None
+        else Some(targs.init, targs.last, tsym.name.isImplicitFunction)
       }
       else None
     }
@@ -919,6 +920,11 @@ class Definitions {
     val arity = functionArity(tp)
     val sym = tp.dealias.typeSymbol
     arity >= 0 && isFunctionClass(sym) && tp.isRef(FunctionType(arity, sym.name.isImplicitFunction).typeSymbol)
+  }
+
+  def isDependentFunctionType(tp: Type)(implicit ctx: Context) = tp.stripTypeVar match {
+    case RefinedType(parent, nme.apply, _) => isFunctionType(parent)
+    case _ => false
   }
 
   // Specialized type parameters defined for scala.Function{0,1,2}.
