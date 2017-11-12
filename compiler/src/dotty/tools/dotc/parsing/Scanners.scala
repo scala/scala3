@@ -390,7 +390,16 @@ object Scanners {
         val nextLastOffset = lastCharOffset
         lookahead()
         if (token != ELSE) reset(nextLastOffset)
+      } else if (token == COMMA){
+        val nextLastOffset = lastCharOffset
+        lookahead()
+        if (isAfterLineEnd() && (token == RPAREN || token == RBRACKET || token == RBRACE)) {
+          /* skip the trailing comma */
+        } else if (token == EOF) { // e.g. when the REPL is parsing "val List(x, y, _*,"
+          /* skip the trailing comma */
+        } else reset(nextLastOffset)
       }
+
     }
 
     /** Is current token first one after a newline? */
