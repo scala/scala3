@@ -2723,6 +2723,20 @@ object Types {
     def isParamDependent(implicit ctx: Context): Boolean = paramDependencyStatus == TrueDeps
 
     def newParamRef(n: Int) = new TermParamRef(this, n) {}
+
+    /** The least supertype of `resultType` that does not contain parameter dependencies */
+    def nonDependentResultApprox(implicit ctx: Context): Type =
+      if (isDependent) {
+        val dropDependencies = new ApproximatingTypeMap {
+          def apply(tp: Type) = tp match {
+            case tp @ TermParamRef(thisLambdaType, _) =>
+              range(tp.bottomType, atVariance(1)(apply(tp.underlying)))
+            case _ => mapOver(tp)
+          }
+        }
+        dropDependencies(resultType)
+      }
+      else resultType
   }
 
   abstract case class MethodType(paramNames: List[TermName])(

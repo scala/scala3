@@ -999,8 +999,7 @@ class TreeUnpickler(reader: TastyReader, nameAtRef: NameRef => TermName, posUnpi
               val argPats = until(end)(readTerm())
               UnApply(fn, implicitArgs, argPats, patType)
             case REFINEDtpt =>
-              val refineCls = ctx.newCompleteClassSymbol(
-                ctx.owner, tpnme.REFINE_CLASS, NonMember, parents = Nil)
+              val refineCls = ctx.newRefinedClassSymbol
               typeAtAddr(start) = refineCls.typeRef
               val parent = readTpt()
               val refinements = readStats(refineCls, end)(localContext(refineCls))
