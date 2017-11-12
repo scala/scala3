@@ -522,8 +522,8 @@ object Build {
         }
       },
       run := dotc.evaluated,
-      dotc := runCompilerMain("dotty.tools.dotc.Main").evaluated,
-      repl := runCompilerMain("dotty.tools.repl.Main").evaluated,
+      dotc := runCompilerMain(Nil).evaluated,
+      repl := runCompilerMain(List("-repl")).evaluated,
 
       // enable verbose exception messages for JUnit
       testOptions in Test += Tests.Argument(
@@ -617,11 +617,24 @@ object Build {
       }
   )
 
-  def runCompilerMain(main: String) = Def.inputTaskDyn {
+  def runCompilerMain(otherArgs: List[String]) = Def.inputTaskDyn {
     val dottyLib = packageAll.value("dotty-library")
-    val args: List[String] = spaceDelimited("<arg>").parsed.toList
+    val args0: List[String] = spaceDelimited("<arg>").parsed.toList ++ otherArgs
+    val args = args0.filter(arg => arg != "-tasty" && arg != "-repl")
 
-    val fullArgs = main :: {
+    val repl = args0.contains("-repl")
+    val tasty = args0.contains("-tasty")
+
+    val main =
+      if (repl) "dotty.tools.repl.Main"
+      else if (tasty) "dotty.tools.dotc.FromTasty"
+      else "dotty.tools.dotc.Main"
+
+    val extraArgs =
+      if (tasty && !args.contains("-Yretain-trees")) List("-Yretain-trees")
+      else Nil
+
+    val fullArgs = main :: extraArgs ::: {
       val (beforeCp, fromCp) = args.span(_ != "-classpath")
       val classpath = fromCp.drop(1).headOption.fold(dottyLib)(_ + ":" + dottyLib)
       beforeCp ::: "-classpath" :: classpath :: fromCp.drop(2)
