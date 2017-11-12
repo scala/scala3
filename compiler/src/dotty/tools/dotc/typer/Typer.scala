@@ -719,10 +719,12 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
       completeParams(params)
       val params1 = params.map(typedExpr(_).asInstanceOf[ValDef])
       val resultTpt = typed(body)
-      val companion = if (isImplicit) ImplicitMethodType else MethodType
-      val mt = companion.fromSymbols(params1.map(_.symbol), resultTpt.tpe)
+      val mt = MethodType.fromSymbols(params1.map(_.symbol), resultTpt.tpe)
       if (mt.isParamDependent)
-        ctx.error(i"$mt is an illegal function type because it has inter-parameter dependencies")
+        ctx.error(i"$mt is an illegal function type because it has inter-parameter dependencies", tree.pos)
+      if (isImplicit)
+        ctx.error(i"dependent function type $mt may not be implicit", tree.pos)
+
       val resTpt = TypeTree(mt.nonDependentResultApprox).withPos(body.pos)
       val typeArgs = params1.map(_.tpt) :+ resTpt
       val tycon = TypeTree(funCls.typeRef)
