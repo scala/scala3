@@ -915,17 +915,18 @@ class Definitions {
   def isProductSubType(tp: Type)(implicit ctx: Context) =
     tp.derivesFrom(ProductType.symbol)
 
-  /** Is `tp` (an alias) of either a scala.FunctionN or a scala.ImplicitFunctionN? */
-  def isFunctionType(tp: Type)(implicit ctx: Context) = {
+  /** Is `tp` (an alias) of either a scala.FunctionN or a scala.ImplicitFunctionN
+   *  instance?
+   */
+  def isNonDepFunctionType(tp: Type)(implicit ctx: Context) = {
     val arity = functionArity(tp)
     val sym = tp.dealias.typeSymbol
     arity >= 0 && isFunctionClass(sym) && tp.isRef(FunctionType(arity, sym.name.isImplicitFunction).typeSymbol)
   }
 
-  def isDependentFunctionType(tp: Type)(implicit ctx: Context) = tp.stripTypeVar match {
-    case RefinedType(parent, nme.apply, _) => isFunctionType(parent)
-    case _ => false
-  }
+  /** Is `tp` a representation of a (possibly depenent) function type or an alias of such? */
+  def isFunctionType(tp: Type)(implicit ctx: Context) =
+    isNonDepFunctionType(tp.dropDependentRefinement)
 
   // Specialized type parameters defined for scala.Function{0,1,2}.
   private lazy val Function1SpecializedParams: collection.Set[Type] =

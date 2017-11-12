@@ -1328,7 +1328,10 @@ object Types {
         val funType = defn.FunctionOf(
           formals1 mapConserve (_.underlyingIfRepeated(mt.isJavaMethod)),
           mt.nonDependentResultApprox, mt.isImplicitMethod && !ctx.erasedTypes)
-        if (mt.isDependent && !mt.isImplicitMethod) RefinedType(funType, nme.apply, mt)
+        if (mt.isDependent) {
+          assert(!mt.isImplicitMethod)
+          RefinedType(funType, nme.apply, mt)
+        }
         else funType
     }
 
@@ -2590,7 +2593,7 @@ object Types {
     def integrate(tparams: List[ParamInfo], tp: Type)(implicit ctx: Context): Type =
       tparams match {
         case LambdaParam(lam, _) :: _ => tp.subst(lam, this)
-        case tparams: List[Symbol @unchecked] => tp.subst(tparams, paramRefs)
+        case params: List[Symbol @unchecked] => tp.subst(params, paramRefs)
       }
 
     final def derivedLambdaType(paramNames: List[ThisName] = this.paramNames,
@@ -2697,7 +2700,7 @@ object Types {
      *    def f(x: C)(y: x.S)       // dependencyStatus = TrueDeps
      *    def f(x: C)(y: x.T)       // dependencyStatus = FalseDeps, i.e.
      *                              // dependency can be eliminated by dealiasing.
-      */
+     */
     private def dependencyStatus(implicit ctx: Context): DependencyStatus = {
       if (myDependencyStatus != Unknown) myDependencyStatus
       else {
@@ -3220,8 +3223,10 @@ object Types {
       case _ => false
     }
 
+    protected def kindString: String
+
     override def toString =
-      try s"ParamRef($paramName)"
+      try s"${kindString}ParamRef($paramName)"
       catch {
         case ex: IndexOutOfBoundsException => s"ParamRef(<bad index: $paramNum>)"
       }
@@ -3230,8 +3235,9 @@ object Types {
   /** Only created in `binder.paramRefs`. Use `binder.paramRefs(paramNum)` to
    *  refer to `TermParamRef(binder, paramNum)`.
    */
-  abstract case class TermParamRef(binder: TermLambda, paramNum: Int) extends ParamRef {
+  abstract case class TermParamRef(binder: TermLambda, paramNum: Int) extends ParamRef with SingletonType {
     type BT = TermLambda
+    def kindString = "Term"
     def copyBoundType(bt: BT) = bt.paramRefs(paramNum)
   }
 
@@ -3240,6 +3246,7 @@ object Types {
    */
   abstract case class TypeParamRef(binder: TypeLambda, paramNum: Int) extends ParamRef {
     type BT = TypeLambda
+    def kindString = "Type"
     def copyBoundType(bt: BT) = bt.paramRefs(paramNum)
 
     /** Looking only at the structure of `bound`, is one of the following true?

@@ -13,6 +13,6 @@ object Test {
   val depfun3: DF = depfun2
 
   val d: C = c
-  val z = depfun1(d)
+  val z = depfun3(d)
   val z1: d.M = z
 }

@@ -684,7 +684,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
   }
 
   private def decomposeProtoFunction(pt: Type, defaultArity: Int)(implicit ctx: Context): (List[Type], Type) = pt match {
-    case _ if defn.isFunctionType(pt) =>
+    case _ if defn.isNonDepFunctionType(pt) =>
       // if expected parameter type(s) are wildcards, approximate from below.
       // if expected result type is a wildcard, approximate from above.
       // this can type the greatest set of admissible closures.
@@ -895,7 +895,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
           case mt: MethodType =>
             pt match {
               case SAMType(meth)
-              if !defn.isFunctionType(pt.dealias.dropDependentRefinement) && mt <:< meth.info =>
+              if !defn.isFunctionType(pt) && mt <:< meth.info =>
                 if (!isFullyDefined(pt, ForceDegree.all))
                   ctx.error(ex"result type of closure is an underspecified SAM type $pt", tree.pos)
                 TypeTree(pt)
