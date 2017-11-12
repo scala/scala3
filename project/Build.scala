@@ -501,7 +501,7 @@ object Build {
 
       // Override run to be able to run compiled classfiles
       dotr := {
-        val args: Seq[String] = spaceDelimited("<arg>").parsed
+        val args: List[String] = spaceDelimited("<arg>").parsed.toList
         val java: String = Process("which" :: "java" :: Nil).!!
         val attList = (dependencyClasspath in Runtime).value
         val _ = packageAll.value
@@ -518,7 +518,8 @@ object Build {
           println("Couldn't find scala-library on classpath, please run using script in bin dir instead")
         } else {
           val dottyLib = packageAll.value("dotty-library")
-          s"$java -classpath .:$dottyLib:$scalaLib ${args.mkString(" ")}".!
+          val fullArgs = insertClasspathInArgs(args, s".:$dottyLib:$scalaLib")
+          s"$java ${fullArgs.mkString(" ")}".!
         }
       },
       run := dotc.evaluated,
@@ -634,13 +635,15 @@ object Build {
       if (tasty && !args.contains("-Yretain-trees")) List("-Yretain-trees")
       else Nil
 
-    val fullArgs = main :: extraArgs ::: {
-      val (beforeCp, fromCp) = args.span(_ != "-classpath")
-      val classpath = fromCp.drop(1).headOption.fold(dottyLib)(_ + ":" + dottyLib)
-      beforeCp ::: "-classpath" :: classpath :: fromCp.drop(2)
-    }
+    val fullArgs = main :: extraArgs ::: insertClasspathInArgs(args, dottyLib)
 
     (runMain in Compile).toTask(fullArgs.mkString(" ", " ", ""))
+  }
+
+  def insertClasspathInArgs(args: List[String], cp: String): List[String] = {
+    val (beforeCp, fromCp) = args.span(_ != "-classpath")
+    val classpath = fromCp.drop(1).headOption.fold(cp)(_ + ":" + cp)
+    beforeCp ::: "-classpath" :: classpath :: fromCp.drop(2)
   }
 
   lazy val nonBootstrapedDottyCompilerSettings = commonDottyCompilerSettings ++ Seq(
