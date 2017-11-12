@@ -11,6 +11,9 @@ final case class TestFlags(
   def without(flags: String*): TestFlags =
     TestFlags(defaultClassPath, runClassPath, options diff flags)
 
+  def withClasspath(classPath: String): TestFlags =
+    TestFlags(s"$defaultClassPath:$classPath", runClassPath, options)
+
   def all: Array[String] = Array("-classpath", defaultClassPath) ++ options
 }
 

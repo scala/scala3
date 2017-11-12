@@ -12,12 +12,12 @@ import SymDenotations._
 import typer.FrontEnd
 import Phases.Phase
 import util._
-import reporting.Reporter
 import Decorators._
+import dotty.tools.dotc.ast.tpd
+import dotty.tools.dotc.core._
+import dotty.tools.dotc.core.Names._
+import dotty.tools.dotc.core.NameOps._
 import dotty.tools.dotc.transform.Pickler
-import tasty.DottyUnpickler
-import ast.tpd._
-import NameKinds.QualifiedName
 
 /** Compiler for TASTY files.
  *  Usage:
@@ -65,31 +65,44 @@ object FromTasty extends Driver {
     override def isTyper = false
 
     override def runOn(units: List[CompilationUnit])(implicit ctx: Context): List[CompilationUnit] =
-      units.map(readTASTY)
+      units.flatMap(readTASTY)
 
-    def readTASTY(unit: CompilationUnit)(implicit ctx: Context): CompilationUnit = unit match {
+    def readTASTY(unit: CompilationUnit)(implicit ctx: Context): List[CompilationUnit] = unit match {
       case unit: TASTYCompilationUnit =>
+        assert(ctx.settings.YretainTrees.value)
         val className = unit.className.toTypeName
-        val clsd = ctx.base.staticRef(className)
-        def cannotUnpickle(reason: String) = {
-          ctx.error(s"class $className cannot be unpickled because $reason")
-          unit
+        val compilationUnits = List(tree(className), tree(className.moduleClassName)).flatMap {
+          case Some((clsd, unpickled)) if !unpickled.isEmpty =>
+            List(CompilationUnit.mkCompilationUnit(clsd, unpickled, forceTrees = true))
+          case _ => Nil
         }
-        clsd match {
-          case clsd: ClassDenotation =>
-            clsd.infoOrCompleter match {
-              case info: ClassfileLoader =>
-                info.load(clsd)
-                val unpickled = clsd.symbol.asClass.tree
-                if (unpickled != null) CompilationUnit.mkCompilationUnit(clsd, unpickled, forceTrees = true)
-                else cannotUnpickle(s"its class file ${info.classfile} does not have a TASTY attribute")
-              case info =>
-                cannotUnpickle(s"its info of type ${info.getClass} is not a ClassfileLoader")
-            }
-          case _ =>
-            ctx.error(s"class not found: $className")
-            unit
-        }
+        compilationUnits
+    }
+
+    private def tree(className: TypeName)(implicit ctx: Context): Option[(ClassDenotation, tpd.Tree)] = {
+      val clsd = ctx.base.staticRef(className)
+      ctx.base.staticRef(className) match {
+        case clsd: ClassDenotation =>
+          def cannotUnpickle(reason: String) =
+            ctx.error(s"class $className cannot be unpickled because $reason")
+          def tryToLoad = clsd.infoOrCompleter match {
+            case info: ClassfileLoader =>
+              info.load(clsd)
+              Option(clsd.symbol.asClass.tree).orElse {
+                cannotUnpickle(s"its class file ${info.classfile} does not have a TASTY attribute")
+                None
+              }
+
+            case info =>
+              cannotUnpickle(s"its info of type ${info.getClass} is not a ClassfileLoader")
+              None
+          }
+          Option(clsd.symbol.asClass.tree).orElse(tryToLoad).map(tree => (clsd, tree))
+
+        case _ =>
+          ctx.error(s"class not found: $className")
+          None
+      }
     }
   }
 }
