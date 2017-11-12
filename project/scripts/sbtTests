@@ -5,8 +5,20 @@
 
 # check that `dotc` compiles and `dotr` runs it
 echo "testing sbt dotc and dotr"
-./project/scripts/sbt ";dotc tests/pos/sbtDotrTest.scala ;dotr dotrtest.Test" > sbtdotr.out
-if grep -e "dotr test ok" sbtdotr.out; then
+mkdir out/scriptedtest0
+./project/scripts/sbt ";dotc tests/pos/sbtDotrTest.scala -d out/scriptedtest0 ;dotr -classpath out/scriptedtest0 dotrtest.Test" > sbtdotr1.out
+if grep -e "dotr test ok" sbtdotr1.out; then
+    echo "output ok"
+else
+    exit -1
+fi
+
+# check that `dotc` compiles and `dotr` runs it
+echo "testing sbt dotc -tasty and dotr -classpath"
+mkdir out/scriptedtest1
+mkdir out/scriptedtest2
+./project/scripts/sbt ";dotc tests/pos/sbtDotrTest.scala -d out/scriptedtest1/; dotc -tasty -classpath out/scriptedtest1/ -d out/scriptedtest2/ dotrtest.Test; dotr -classpath out/scriptedtest2/ dotrtest.Test" > sbtdotr2.out
+if grep -e "dotr test ok" sbtdotr2.out; then
     echo "output ok"
 else
     exit -1
