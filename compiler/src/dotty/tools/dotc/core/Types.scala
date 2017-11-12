@@ -1312,12 +1312,12 @@ object Types {
 // ----- misc -----------------------------------------------------------
 
     /** Turn type into a function type.
-     *  @pre this is a non-dependent method type.
+     *  @pre this is a method type without parameter dependencies.
      *  @param dropLast  The number of trailing parameters that should be dropped
      *                   when forming the function type.
      */
     def toFunctionType(dropLast: Int = 0)(implicit ctx: Context): Type = this match {
-      case mt: MethodType if !mt.isDependent || ctx.mode.is(Mode.AllowDependentFunctions) =>
+      case mt: MethodType if !mt.isDependent =>
         val formals1 = if (dropLast == 0) mt.paramInfos else mt.paramInfos dropRight dropLast
         defn.FunctionOf(
           formals1 mapConserve (_.underlyingIfRepeated(mt.isJavaMethod)), mt.resultType, mt.isImplicitMethod && !ctx.erasedTypes)

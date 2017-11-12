@@ -1,5 +1,5 @@
 object Test {
 
-  type T = (x: Int) // error: `=>' expected
+  type T = (x: Int)
 
-}
+}  // error: `=>' expected
