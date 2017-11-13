@@ -185,7 +185,7 @@ class JSCodeGen()(implicit ctx: Context) {
     import dotty.tools.io._
 
     val outputDirectory: AbstractFile = // TODO Support virtual files
-      new PlainDirectory(new Directory(new java.io.File(ctx.settings.d.value)))
+      new PlainDirectory(ctx.settings.outputDir.value)
 
     val pathParts = sym.fullName.toString.split("[./]")
     val dir = (outputDirectory /: pathParts.init)(_.subdirectoryNamed(_))
@@ -285,9 +285,9 @@ class JSCodeGen()(implicit ctx: Context) {
           js.ModuleExportDef("hello.world"),
           js.MethodDef(static = false, js.StringLiteral("main"),
               Nil, jstpe.AnyType,
-              js.Block(List(
+              Some(js.Block(List(
                 js.Apply(js.This()(jstpe.ClassType(classIdent.name)), js.Ident("main__V"), Nil)(jstpe.NoType),
-                js.Undefined())))(
+                js.Undefined()))))(
               OptimizerHints.empty, None))
       } else {
         /*
@@ -339,17 +339,22 @@ class JSCodeGen()(implicit ctx: Context) {
     implicit val pos = sym.pos
 
     val classIdent = encodeClassFullNameIdent(sym)
+    val kind = {
+      if (sym.is(Trait)) ClassKind.AbstractJSType
+      else if (sym.is(ModuleClass)) ClassKind.NativeJSModuleClass
+      else ClassKind.NativeJSClass
+    }
     val superClass =
       if (sym.is(Trait)) None
       else Some(encodeClassFullNameIdent(sym.superClass))
-    val jsName =
-      if (sym.is(Trait) || sym.is(ModuleClass)) None
-      else Some(fullJSNameOf(sym))
+    val jsNativeLoadSpec =
+      if (sym.is(Trait)) None
+      else Some(js.JSNativeLoadSpec.Global(fullJSNameOf(sym).split('.').toList))
 
-    js.ClassDef(classIdent, ClassKind.RawJSType,
+    js.ClassDef(classIdent, kind,
         superClass,
         genClassInterfaces(sym),
-        jsName,
+        jsNativeLoadSpec,
         Nil)(
         OptimizerHints.empty)
   }
@@ -404,10 +409,7 @@ class JSCodeGen()(implicit ctx: Context) {
         "genClassFields called with a ClassDef other than the current one")
 
     // Non-method term members are fields
-    (for {
-      f <- classSym.info.decls
-      if !f.is(Method) && f.isTerm
-    } yield {
+    classSym.info.decls.filter(f => !f.is(Method) && f.isTerm).map({ f =>
       implicit val pos = f.pos
 
       val name =
@@ -451,7 +453,7 @@ class JSCodeGen()(implicit ctx: Context) {
         }
       }*/
 
-      js.FieldDef(name, irTpe, f.is(Mutable))
+      js.FieldDef(static = false, name, irTpe, f.is(Mutable))
     }).toList
   }
 
@@ -510,7 +512,7 @@ class JSCodeGen()(implicit ctx: Context) {
         None
       } else*/ if (sym.is(Deferred)) {
         Some(js.MethodDef(static = false, methodName,
-            jsParams, toIRType(patchedResultType(sym)), js.EmptyTree)(
+            jsParams, toIRType(patchedResultType(sym)), None)(
             OptimizerHints.empty, None))
       } else /*if (isJSNativeCtorDefaultParam(sym)) {
         None
@@ -549,7 +551,7 @@ class JSCodeGen()(implicit ctx: Context) {
           } else*/ if (sym.isConstructor) {
             js.MethodDef(static = false, methodName,
                 jsParams, jstpe.NoType,
-                genStat(rhs))(optimizerHints, None)
+                Some(genStat(rhs)))(optimizerHints, None)
           } else {
             val resultIRType = toIRType(patchedResultType(sym))
             genMethodDef(static = false, methodName,
@@ -576,7 +578,7 @@ class JSCodeGen()(implicit ctx: Context) {
       tree: Tree, optimizerHints: OptimizerHints): js.MethodDef = {
     implicit val pos = tree.pos
 
-    ctx.debuglog("genMethod " + methodName.name)
+    ctx.debuglog("genMethod " + methodName.encodedName)
     ctx.debuglog("")
 
     val jsParams = for (param <- paramsSyms) yield {
@@ -590,7 +592,7 @@ class JSCodeGen()(implicit ctx: Context) {
       else genExpr(tree)
 
     //if (!isScalaJSDefinedJSClass(currentClassSym)) {
-      js.MethodDef(static, methodName, jsParams, resultIRType, genBody())(
+      js.MethodDef(static, methodName, jsParams, resultIRType, Some(genBody()))(
           optimizerHints, None)
     /*} else {
       assert(!static, tree.pos)
@@ -1021,7 +1023,7 @@ class JSCodeGen()(implicit ctx: Context) {
 
   /** Gen JS code for a primitive method call. */
   private def genPrimitiveOp(tree: Apply, isStat: Boolean): js.Tree = {
-    import scala.tools.nsc.backend.ScalaPrimitives._
+    import scala.tools.nsc.backend.ScalaPrimitivesOps._
 
     implicit val pos = tree.pos
 
@@ -1061,7 +1063,7 @@ class JSCodeGen()(implicit ctx: Context) {
 
   /** Gen JS code for a simple unary operation. */
   private def genSimpleUnaryOp(tree: Apply, arg: Tree, code: Int): js.Tree = {
-    import scala.tools.nsc.backend.ScalaPrimitives._
+    import scala.tools.nsc.backend.ScalaPrimitivesOps._
 
     implicit val pos = tree.pos
 
@@ -1102,7 +1104,7 @@ class JSCodeGen()(implicit ctx: Context) {
 
   /** Gen JS code for a simple binary operation. */
   private def genSimpleBinaryOp(tree: Apply, lhs: Tree, rhs: Tree, code: Int): js.Tree = {
-    import scala.tools.nsc.backend.ScalaPrimitives._
+    import scala.tools.nsc.backend.ScalaPrimitivesOps._
     import js.UnaryOp._
 
     /* Codes for operation types, in an object so that they can be 'final val'
@@ -1280,7 +1282,7 @@ class JSCodeGen()(implicit ctx: Context) {
   private def genUniversalEqualityOp(lhs: Tree, rhs: Tree, code: Int)(
       implicit pos: Position): js.Tree = {
 
-    import scala.tools.nsc.backend.ScalaPrimitives._
+    import scala.tools.nsc.backend.ScalaPrimitivesOps._
 
     val genLhs = genExpr(lhs)
     val genRhs = genExpr(rhs)
@@ -1409,7 +1411,7 @@ class JSCodeGen()(implicit ctx: Context) {
 
   /** Gen JS code for an array operation (get, set or length) */
   private def genArrayOp(tree: Tree, code: Int): js.Tree = {
-    import scala.tools.nsc.backend.ScalaPrimitives._
+    import scala.tools.nsc.backend.ScalaPrimitivesOps._
 
     implicit val pos = tree.pos
 
@@ -1423,8 +1425,9 @@ class JSCodeGen()(implicit ctx: Context) {
       case defn.ArrayOf(el)  => el
       case JavaArrayType(el) => el
       case tpe =>
-        ctx.error(s"expected Array $tpe")
-        ErrorType
+        val msg = ex"expected Array $tpe"
+        ctx.error(msg)
+        ErrorType(msg)
     }
 
     def genSelect(): js.Tree =
@@ -1472,7 +1475,7 @@ class JSCodeGen()(implicit ctx: Context) {
 
   /** Gen JS code for a coercion */
   private def genCoercion(tree: Apply, receiver: Tree, code: Int): js.Tree = {
-    import scala.tools.nsc.backend.ScalaPrimitives._
+    import scala.tools.nsc.backend.ScalaPrimitivesOps._
 
     implicit val pos = tree.pos
 
@@ -1881,7 +1884,7 @@ class JSCodeGen()(implicit ctx: Context) {
     }.unzip
 
     val formalParamNames = sym.info.paramNamess.flatten.drop(envSize)
-    val formalParamTypes = sym.info.paramTypess.flatten.drop(envSize)
+    val formalParamTypes = sym.info.paramInfoss.flatten.drop(envSize)
     val (formalParams, actualParams) = formalParamNames.zip(formalParamTypes).map {
       case (name, tpe) =>
         val formalParam = js.ParamDef(freshLocalIdent(name.toString),
@@ -2175,7 +2178,7 @@ class JSCodeGen()(implicit ctx: Context) {
       implicit pos: Position): List[js.Tree] = {
 
     def paramNamesAndTypes(implicit ctx: Context): List[(Names.TermName, Type)] =
-      sym.info.paramNamess.flatten.zip(sym.info.paramTypess.flatten)
+      sym.info.paramNamess.flatten.zip(sym.info.paramInfoss.flatten)
 
     val wereRepeated = ctx.atPhase(ctx.elimRepeatedPhase) { implicit ctx =>
       for ((name, tpe) <- paramNamesAndTypes)

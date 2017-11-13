@@ -6,6 +6,7 @@ import Flags._
 import Symbols._
 import NameOps._
 import StdNames._
+import NameKinds.DefaultGetterName
 
 import JSDefinitions._
 
@@ -66,11 +67,17 @@ object JSInterop {
    *  is a JS type.
    */
   def isJSDefaultParam(sym: Symbol)(implicit ctx: Context): Boolean = {
-    sym.name.isDefaultGetterName && {
+    sym.name.is(DefaultGetterName) && {
       val owner = sym.owner
-      if (owner.is(ModuleClass) &&
-          sym.name.asTermName.defaultGetterToMethod == nme.CONSTRUCTOR) {
-        isJSType(owner.linkedClass)
+      if (owner.is(ModuleClass)) {
+        val isConstructor = sym.name match {
+          case DefaultGetterName(methName, _) => methName == nme.CONSTRUCTOR
+          case _ => false
+        }
+        if (isConstructor)
+          isJSType(owner.linkedClass)
+        else
+          isJSType(owner)
       } else {
         isJSType(owner)
       }

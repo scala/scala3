@@ -33,6 +33,7 @@ class ScalaSettings extends Settings.SettingGroup {
   val color = ChoiceSetting("-color", "mode", "Colored output", List("always", "never"/*, "auto"*/), "always"/* "auto"*/)
   val target = ChoiceSetting("-target", "target", "Target platform for object files. All JVM 1.5 targets are deprecated.",
     List("jvm-1.5", "jvm-1.5-fjbg", "jvm-1.5-asm", "jvm-1.6", "jvm-1.7", "jvm-1.8", "msil"), "jvm-1.8")
+  val scalajs = BooleanSetting("-scalajs", "Compile in Scala.js mode (requires scalajs-library.jar on the classpath).")
   val unchecked = BooleanSetting("-unchecked", "Enable additional warnings where generated code depends on assumptions.")
   val uniqid = BooleanSetting("-uniqid", "Uniquely tag all identifiers in debugging output.")
   val usejavacp = BooleanSetting("-usejavacp", "Utilize the java.class.path in classpath resolution.")

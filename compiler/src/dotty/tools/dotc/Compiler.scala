@@ -15,6 +15,7 @@ import util.FreshNameCreator
 import core.DenotTransformers.DenotTransformer
 import core.Denotations.SingleDenotation
 
+import dotty.tools.backend.sjs
 import dotty.tools.backend.jvm.{LabelDefs, GenBCode, CollectSuperCalls}
 import dotty.tools.dotc.transform.localopt.Simplify
 
@@ -109,6 +110,7 @@ class Compiler {
            new CollectSuperCalls,   // Find classes that are called with super
            new DropInlined,         // Drop Inlined nodes, since backend has no use for them
            new LabelDefs),          // Converts calls to labels to jumps
+      List(new sjs.GenSJSIR),       // Generate .js code (not enabled by default)
       List(new GenBCode)            // Generate JVM bytecode
     )
 

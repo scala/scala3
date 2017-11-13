@@ -183,17 +183,15 @@ final class JSDefinitions()(implicit ctx: Context) {
    *
    *  This is similar to `isVarArityClass` in `Definitions.scala`.
    */
-  private def isScalaJSVarArityClass(cls: Symbol, prefix: Name): Boolean = {
+  private def isScalaJSVarArityClass(cls: Symbol, prefix: String): Boolean = {
     val name = scalajsClassName(cls)
-    name.startsWith(prefix) && name.drop(prefix.length).forall(_.isDigit)
+    name.startsWith(prefix) && name.toString.drop(prefix.length).forall(_.isDigit)
   }
 
   def isJSFunctionClass(cls: Symbol): Boolean =
-    isScalaJSVarArityClass(cls, nme.Function)
-
-  private val ThisFunctionName = termName("ThisFunction")
+    isScalaJSVarArityClass(cls, str.Function)
 
   def isJSThisFunctionClass(cls: Symbol): Boolean =
-    isScalaJSVarArityClass(cls, ThisFunctionName)
+    isScalaJSVarArityClass(cls, "ThisFunction")
 
 }
