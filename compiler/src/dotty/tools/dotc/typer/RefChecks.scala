@@ -597,17 +597,6 @@ object RefChecks {
 
       if (abstractErrors.nonEmpty)
         ctx.error(abstractErrorMessage, clazz.pos)
-    } else if (clazz.is(Trait) && !(clazz derivesFrom defn.AnyValClass)) {
-      // For non-AnyVal classes, prevent abstract methods in interfaces that override
-      // final members in Object; see #4431
-      for (decl <- clazz.info.decls) {
-        // Have to use matchingSymbol, not a method involving overridden symbols,
-        // because the scala type system understands that an abstract method here does not
-        // override a concrete method in Object. The jvm, however, does not.
-        val overridden = decl.matchingDecl(defn.ObjectClass, defn.ObjectType)
-        if (overridden.is(Final))
-          ctx.error("trait cannot redefine final method from class AnyRef", decl.pos)
-      }
     }
 
     /* Returns whether there is a symbol declared in class `inclazz`
