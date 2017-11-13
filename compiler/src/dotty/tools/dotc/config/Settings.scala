@@ -180,9 +180,9 @@ object Settings {
 
   object Setting {
     implicit class SettingDecorator[T](val setting: Setting[T]) extends AnyVal {
-      def value(implicit ctx: Context): T = setting.valueIn(ctx.sstate)
-      def update(x: T)(implicit ctx: Context): SettingsState = setting.updateIn(ctx.sstate, x)
-      def isDefault(implicit ctx: Context): Boolean = setting.isDefaultIn(ctx.sstate)
+      def value(implicit ctx: Context): T = setting.valueIn(ctx.settingsState)
+      def update(x: T)(implicit ctx: Context): SettingsState = setting.updateIn(ctx.settingsState, x)
+      def isDefault(implicit ctx: Context): Boolean = setting.isDefaultIn(ctx.settingsState)
     }
   }
 
@@ -248,7 +248,7 @@ object Settings {
     }
 
     def processArguments(arguments: List[String], processAll: Boolean)(implicit ctx: Context): ArgsSummary =
-      processArguments(ArgsSummary(ctx.sstate, arguments, Nil, Nil), processAll, Nil)
+      processArguments(ArgsSummary(ctx.settingsState, arguments, Nil, Nil), processAll, Nil)
 
     def publish[T](settingf: Int => Setting[T]): Setting[T] = {
       val setting = settingf(_allSettings.length)

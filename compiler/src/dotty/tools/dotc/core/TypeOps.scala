@@ -328,7 +328,7 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
 object TypeOps {
   @sharable var track = false // !!!DEBUG
 
-  /** When a property with this key is set in a context, it limit the number
+  /** When a property with this key is set in a context, it limits the number
    *  of recursive member searches. If the limit is reached, findMember returns
    *  NoDenotation.
    */

@@ -170,7 +170,7 @@ object Config {
    *  dotty itself only causes small pending names lists to be generated (we measured
    *  at max 6 elements) and these lists are never searched with contains.
    */
-  final val LogPendingFindMemberThreshold = 10
+  final val LogPendingFindMemberThreshold = 9
 
   /** Maximal number of outstanding recursive calls to findMember before backing out
    *  when findMemberLimit is set.
