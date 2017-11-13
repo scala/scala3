@@ -1081,4 +1081,10 @@ class Definitions {
 
   def ErasedPhantom_UNIT(implicit ctx: Context) = ErasedPhantomClass.linkedClass.requiredValue("UNIT")
 
+
+  // ----- Sources ----------------------------------------------------------
+
+  lazy val DottySourceLineNumberModuleClass = ctx.requiredModuleRef("dotty.source.position.LineNumber").termSymbol.moduleClass
+  lazy val DottySourceSourcePathModuleClass = ctx.requiredModuleRef("dotty.source.position.SourcePath").termSymbol.moduleClass
+
 }
