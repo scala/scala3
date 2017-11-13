@@ -111,7 +111,7 @@ public enum ErrorMessageID {
     DuplicateNamedTypeParameterID,
     UndefinedNamedTypeParameterID,
     IllegalStartOfStatementID,
-    TraitIsExpectedID
+    TraitIsExpectedID,
     ;
 
     public int errorNumber() {
