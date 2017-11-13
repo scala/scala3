@@ -584,6 +584,12 @@ class Definitions {
 
     def Eq_eqAny(implicit ctx: Context) = EqModule.requiredMethod(nme.eqAny)
 
+  lazy val NotType = ctx.requiredClassRef("scala.implicits.Not")
+  def NotClass(implicit ctx: Context) = NotType.symbol.asClass
+  def NotModule(implicit ctx: Context) = NotClass.companionModule
+
+    def Not_value(implicit ctx: Context) = NotModule.requiredMethod(nme.value)
+
   lazy val XMLTopScopeModuleRef = ctx.requiredModuleRef("scala.xml.TopScope")
 
   // Annotation base classes

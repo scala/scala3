@@ -262,6 +262,7 @@ object Implicits {
       case _: SearchSuccess => this
       case fail: SearchFailure => other(fail)
     }
+    def isSuccess = isInstanceOf[SearchSuccess]
   }
 
   /** A successful search
@@ -503,8 +504,7 @@ trait Implicits { self: Typer =>
     && from.isValueType
     && (  from.isValueSubType(to)
        || inferView(dummyTreeOfType(from), to)
-            (ctx.fresh.addMode(Mode.ImplicitExploration).setExploreTyperState())
-            .isInstanceOf[SearchSuccess]
+            (ctx.fresh.addMode(Mode.ImplicitExploration).setExploreTyperState()).isSuccess
           // TODO: investigate why we can't TyperState#test here
        )
     )
@@ -583,7 +583,7 @@ trait Implicits { self: Typer =>
     }
 
     def hasEq(tp: Type): Boolean =
-      inferImplicit(defn.EqType.appliedTo(tp, tp), EmptyTree, pos).isInstanceOf[SearchSuccess]
+      inferImplicit(defn.EqType.appliedTo(tp, tp), EmptyTree, pos).isSuccess
 
     def validEqAnyArgs(tp1: Type, tp2: Type)(implicit ctx: Context) = {
       List(tp1, tp2).foreach(fullyDefinedType(_, "eqAny argument", pos))
@@ -787,6 +787,8 @@ trait Implicits { self: Typer =>
     /** The expected type where parameters and uninstantiated typevars are replaced by wildcard types */
     val wildProto = implicitProto(pt, wildApprox(_, null, Set.empty))
 
+    val isNot = wildProto.classSymbol == defn.NotClass
+
     /** Search a list of eligible implicit references */
     def searchImplicits(eligible: List[Candidate], contextual: Boolean): SearchResult = {
       val constr = ctx.typerState.constraint
@@ -896,10 +898,23 @@ trait Implicits { self: Typer =>
         case cand :: pending1 =>
           tryImplicit(cand) match {
             case fail: SearchFailure =>
-              if (fail.isAmbiguous) healAmbiguous(pending1, fail)
-              else rank(pending1, found, fail :: rfailures)
+              if (isNot)
+                SearchSuccess(ref(defn.Not_value), defn.Not_value.termRef, 0)(ctx.typerState)
+              else if (fail.isAmbiguous)
+                if (ctx.scala2Mode) {
+                  val result = rank(pending1, found, NoMatchingImplicitsFailure :: rfailures)
+                  if (result.isSuccess)
+                    warnAmbiguousNegation(fail.reason.asInstanceOf[AmbiguousImplicits])
+                  result
+                }
+                else
+                  healAmbiguous(pending1, fail)
+              else
+                rank(pending1, found, fail :: rfailures)
             case best: SearchSuccess =>
-              if (ctx.mode.is(Mode.ImplicitExploration) || isCoherent)
+              if (isNot)
+                NoMatchingImplicitsFailure
+              else if (ctx.mode.is(Mode.ImplicitExploration) || isCoherent)
                 best
               else disambiguate(found, best) match {
                 case retained: SearchSuccess =>
@@ -916,6 +931,15 @@ trait Implicits { self: Typer =>
           if (rfailures.isEmpty) found
           else found.recoverWith(_ => rfailures.reverse.maxBy(_.tree.treeSize))
       }
+
+      def warnAmbiguousNegation(ambi: AmbiguousImplicits) =
+        ctx.migrationWarning(
+          i"""Ambiguous implicits ${ambi.alt1.ref.symbol.showLocated} and ${ambi.alt2.ref.symbol.showLocated}
+             |seem to be used to implement a local failure in order to negate an implicit search.
+             |According to the new implicit resolution rules this is no longer possible;
+             |the search will fail with a global ambiguity error instead.
+             |
+             |Consider using the scala.implicits.Not class to implement similar functionality.""", pos)
 
       /** A relation that imfluences the order in which implicits are tried.
        *  We prefer (in order of importance)
