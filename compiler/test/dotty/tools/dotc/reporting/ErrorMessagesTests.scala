@@ -1169,7 +1169,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
       implicit val ctx: Context = ictx
 
       assertMessageCount(1, messages)
-      val TraitIsExpected(tref) :: Nil = messages
-      assertEquals("B", tref.show)
+      val TraitIsExpected(symbol) :: Nil = messages
+      assertEquals("class B", symbol.show)
     }
 }
