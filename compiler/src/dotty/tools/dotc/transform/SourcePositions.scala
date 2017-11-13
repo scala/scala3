@@ -21,9 +21,11 @@ class SourcePositions extends MiniPhase {
     transformPosition(tree)
 
   private def transformPosition(tree: RefTree)(implicit ctx: Context): Tree = {
-    if (!tree.symbol.exists || tree.symbol.owner != defn.DottySourcePositionModuleRef.termSymbol.moduleClass) tree
-    else if (tree.symbol.name == nme.thisLine) newPositionValue(tree, tree.pos.line + 1)
-    else if (tree.symbol.name == nme.thisSource) newPositionValue(tree, ctx.compilationUnit.source.path)
+    if (!tree.symbol.exists) tree
+    else if (tree.symbol.name == nme.thisLine && tree.symbol.owner == defn.DottySourceLineNumberModuleClass)
+      newPositionValue(tree, tree.pos.line + 1)
+    else if (tree.symbol.name == nme.thisSource && tree.symbol.owner == defn.DottySourceSourcePathModuleClass)
+      newPositionValue(tree, ctx.compilationUnit.source.path)
     else tree
   }
 

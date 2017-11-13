@@ -1,9 +1,9 @@
-import dotty.source.Position._
-
+import dotty.source.position.LineNumber
+import dotty.source.position.SourcePath
 object Test {
   def main(args: Array[String]): Unit = {
-    println(thisSource)
-    println(thisLine)
+    println(SourcePath.thisSource)
+    println(LineNumber.thisLine)
     println()
     println(implicitly[SourcePath])
     println(implicitly[LineNumber])
