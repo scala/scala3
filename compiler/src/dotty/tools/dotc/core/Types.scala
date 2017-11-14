@@ -1328,10 +1328,7 @@ object Types {
         val funType = defn.FunctionOf(
           formals1 mapConserve (_.underlyingIfRepeated(mt.isJavaMethod)),
           mt.nonDependentResultApprox, mt.isImplicitMethod && !ctx.erasedTypes)
-        if (mt.isDependent) {
-          assert(!mt.isImplicitMethod)
-          RefinedType(funType, nme.apply, mt)
-        }
+        if (mt.isDependent) RefinedType(funType, nme.apply, mt)
         else funType
     }
 
