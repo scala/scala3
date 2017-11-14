@@ -584,10 +584,9 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
     // precondition: `tp1` should have the shape `path.Child`, thus `ThisType` is always covariant
     val thisTypeMap = new TypeMap {
       def apply(t: Type): Type = t match {
-        case tp @ ThisType(tref) if !tref.symbol.isStaticOwner && !tref.symbol.is(Module)  =>
-          // TODO: stackoverflow here
-          // newTypeVar(TypeBounds.upper(mapOver(tp.underlying)))
-          newTypeVar(TypeBounds.upper(mapOver(tref & tref.classSymbol.asClass.givenSelfType)))
+        case tp @ ThisType(tref) if !tref.symbol.isStaticOwner  =>
+          if (tref.symbol.is(Module)) mapOver(tref)
+          else newTypeVar(TypeBounds.upper(tp.underlying))
         case _ =>
           mapOver(t)
       }
@@ -633,7 +632,7 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
     else {
       val protoTp2 = typeParamMap(tp2)
       if (protoTp1 <:< protoTp2) {
-        isFullyDefined(protoTp1 & protoTp2, force)
+        isFullyDefined(AndType(protoTp1, protoTp2), force)
         instUndetMap(protoTp1)
       }
       else {
