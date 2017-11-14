@@ -17,7 +17,6 @@ import Decorators._
 import Denotations._
 import Periods._
 import Designators._
-import util.Positions.{Position, NoPosition}
 import util.Stats._
 import util.DotClass
 import reporting.diagnostic.Message
@@ -26,16 +25,14 @@ import ast.tpd._
 import ast.TreeTypeMap
 import printing.Texts._
 import ast.untpd
-import dotty.tools.dotc.transform.Erasure
 import printing.Printer
 import Hashable._
 import Uniques._
-import collection.{mutable, Seq, breakOut}
+import collection.{mutable, Seq}
 import config.Config
 import annotation.tailrec
 import Flags.FlagSet
 import language.implicitConversions
-import scala.util.hashing.{ MurmurHash3 => hashing }
 import config.Printers.{core, typr, cyclicErrors}
 import java.lang.ref.WeakReference
 
@@ -936,7 +933,7 @@ object Types {
     }
 
     /** If this type contains embedded union types, replace them by their joins.
-     *  "Embedded" means: inside intersectons or recursive types, or in prefixes of refined types.
+     *  "Embedded" means: inside intersections or recursive types, or in prefixes of refined types.
      *  If an embedded union is found, we first try to simplify or eliminate it by
      *  re-lubbing it while allowing type parameters to be constrained further.
      *  Any remaining union types are replaced by their joins.
@@ -3295,7 +3292,7 @@ object Types {
    *  @param  creatorState  The typer state in which the variable was created.
    *  @param  bindingTree   The TypeTree which introduces the type variable, or EmptyTree
    *                        if the type variable does not correspond to a source term.
-   *  @paran  owner         The current owner if the context where the variable was created.
+   *  @param  owner         The current owner if the context where the variable was created.
    *
    *  `owningTree` and `owner` are used to determine whether a type-variable can be instantiated
    *  at some given point. See `Inferencing#interpolateUndetVars`.
@@ -3332,7 +3329,7 @@ object Types {
     private def instantiateWith(tp: Type)(implicit ctx: Context): Type = {
       assert(tp ne this, s"self instantiation of ${tp.show}, constraint = ${ctx.typerState.constraint.show}")
       typr.println(s"instantiating ${this.show} with ${tp.show}")
-      if ((ctx.typerState eq owningState.get) && !ctx.typeComparer.subtypeCheckInProgress)
+      if (owningState != null && (ctx.typerState eq owningState.get) && !ctx.typeComparer.subtypeCheckInProgress)
         inst = tp
       ctx.typerState.constraint = ctx.typerState.constraint.replace(origin, tp)
       tp
