@@ -111,7 +111,7 @@ class ReplDriver(settings: Array[String],
       else {
         val path = rootCtx.settings.outputDir.value(rootCtx)
         assert(path.isDirectory)
-        new PlainDirectory(Directory(path))
+        new PlainDirectory(path.toDirectory)
       }
     }
     compiler = new ReplCompiler(outDir)

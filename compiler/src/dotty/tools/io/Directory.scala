@@ -8,7 +8,7 @@
 
 package dotty.tools.io
 
-import java.nio.file.Files
+import java.nio.file.{Files, Paths}
 import java.util.stream.Collectors
 
 import scala.collection.JavaConverters._
@@ -19,18 +19,12 @@ import scala.collection.JavaConverters._
 object Directory {
   import scala.util.Properties.userDir
 
-  private def normalizePath(s: String) = Some(apply(Path(s).normalize))
-  def Current: Option[Directory]  = if (userDir == "") None else normalizePath(userDir)
+  def Current: Option[Directory] =
+    if (userDir == "") None
+    else Some(apply(userDir).normalize)
 
-  def apply(path: Path): Directory = path.toDirectory
-  def apply(jpath: JPath): Directory = new Directory(jpath)
-
-  // Like File.makeTemp but creates a directory instead
-  def makeTemp(prefix: String = Path.randomPrefix, suffix: String = null, dir: JFile = null): Directory = {
-    val path = File.makeTemp(prefix, suffix, dir)
-    path.delete()
-    path.createDirectory()
-  }
+  def apply(path: String): Directory = apply(Paths.get(path))
+  def apply(path: JPath): Directory = new Directory(path)
 }
 
 /** An abstraction for directories.
@@ -49,10 +43,13 @@ class Directory(jpath: JPath) extends Path(jpath) {
   /** An iterator over the contents of this directory.
    */
   def list: Iterator[Path] =
-    jpath.toFile.listFiles match {
-      case null => Iterator.empty
-      case xs => xs.iterator.map(x => Path(x.toPath))
+    if (isDirectory) {
+      val fileStream = Files.list(jpath)
+      val files = fileStream.toArray(size => new Array[JPath](size))
+      fileStream.close()
+      files.iterator.map(Path.apply)
     }
+    else Iterator.empty
 
   def dirs: Iterator[Directory] = list collect { case x: Directory => x }
   def files: Iterator[File] = list collect { case x: File => x }

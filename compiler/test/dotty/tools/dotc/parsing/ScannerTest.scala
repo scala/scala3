@@ -15,7 +15,7 @@ class ScannerTest extends DottyTest {
       "/scaladoc/scala/tools/nsc/doc/html/page/Template.scala"
     )
 
-  def scan(name: String): Unit = scan(new PlainFile(name))
+  def scan(name: String): Unit = scan(new PlainFile(File(name)))
 
   def scan(file: PlainFile): Unit = {
     //println("***** scanning " + file)

@@ -163,7 +163,7 @@ object Settings {
           }
         case (DirectoryJarTag, arg :: args) =>
           val path = Path(arg)
-          if (path.isDirectory) update(Directory(path), args)
+          if (path.isDirectory) update(path, args)
           else if (path.extension == "jar") update(path, args)
           else fail(s"'$arg' does not exist or is not a directory", args)
         case (_, Nil) =>

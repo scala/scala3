@@ -53,7 +53,7 @@ class GenBCode extends Phase {
 
   def outputDir(implicit ctx: Context): AbstractFile = {
     val path = ctx.settings.outputDir.value
-    if (path.isDirectory) new PlainDirectory(Directory(path))
+    if (path.isDirectory) new PlainDirectory(path.toDirectory)
     else {
       if (jarFS == null) {
         path.delete()
