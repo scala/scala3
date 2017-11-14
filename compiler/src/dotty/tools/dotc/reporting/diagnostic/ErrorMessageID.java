@@ -117,6 +117,7 @@ public enum ErrorMessageID {
     UnapplyInvalidNumberOfArgumentsID,
     StaticFieldsOnlyAllowedInObjectsID,
     CyclicInheritanceID,
+    UnableToExtendSealedClassID,
     ;
 
     public int errorNumber() {
