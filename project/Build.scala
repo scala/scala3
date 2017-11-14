@@ -523,8 +523,8 @@ object Build {
         }
       },
       run := dotc.evaluated,
-      dotc := runCompilerMain(Nil).evaluated,
-      repl := runCompilerMain(List("-repl")).evaluated,
+      dotc := runCompilerMain(false).evaluated,
+      repl := runCompilerMain(true).evaluated,
 
       // enable verbose exception messages for JUnit
       testOptions in Test += Tests.Argument(
@@ -618,17 +618,15 @@ object Build {
       }
   )
 
-  def runCompilerMain(otherArgs: List[String]) = Def.inputTaskDyn {
+  def runCompilerMain(repl: Boolean) = Def.inputTaskDyn {
     val dottyLib = packageAll.value("dotty-library")
-    val args0: List[String] = spaceDelimited("<arg>").parsed.toList ++ otherArgs
-    val args = args0.filter(arg => arg != "-tasty" && arg != "-repl")
+    val args0: List[String] = spaceDelimited("<arg>").parsed.toList
+    val args = args0.filter(arg => arg != "-repl")
 
-    val repl = args0.contains("-repl")
     val tasty = args0.contains("-tasty")
 
     val main =
       if (repl) "dotty.tools.repl.Main"
-      else if (tasty) "dotty.tools.dotc.FromTasty"
       else "dotty.tools.dotc.Main"
 
     val extraArgs =

@@ -43,6 +43,7 @@ class ScalaSettings extends Settings.SettingGroup {
   val language = MultiStringSetting("-language", "feature", "Enable one or more language features.")
   val rewrite = OptionSetting[Rewrites]("-rewrite", "When used in conjunction with -language:Scala2 rewrites sources to migrate to new syntax")
   val silentWarnings = BooleanSetting("-nowarn", "Silence all warnings.")
+  val tasty = BooleanSetting("-tasty", "Compile classes from tasty in classpath. The arguments are used as class names.")
 
   /** -X "Advanced" settings
    */
