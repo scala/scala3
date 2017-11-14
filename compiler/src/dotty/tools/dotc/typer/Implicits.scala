@@ -991,7 +991,7 @@ trait Implicits { self: Typer =>
         else implicitScope(wildProto).eligible
       searchImplicits(eligible, contextual).recoverWith {
         failure => failure.reason match {
-          case (_: AmbiguousImplicits) | (_: DivergingImplicit) => failure
+          case _: AmbiguousImplicits => failure
           case _ => if (contextual) bestImplicit(contextual = false) else failure
         }
       }
