@@ -110,7 +110,8 @@ public enum ErrorMessageID {
     MissingEmptyArgumentListID,
     DuplicateNamedTypeParameterID,
     UndefinedNamedTypeParameterID,
-    IllegalStartOfStatementID
+    IllegalStartOfStatementID,
+    TraitIsExpectedID,
     ;
 
     public int errorNumber() {

@@ -1151,4 +1151,25 @@ class ErrorMessagesTests extends ErrorMessagesTest {
         assertEquals(IllegalStartOfStatement(isModifier = false), err)
         assertEquals(IllegalStartOfStatement(isModifier = true), errWithModifier)
       }
+
+  @Test def traitIsExpected =
+    checkMessagesAfter("frontend") {
+      """
+        |class A
+        |class B
+        |
+        |object Test {
+        |  def main(args: Array[String]): Unit = {
+        |    val a = new A with B
+        |  }
+        |}
+      """.stripMargin
+    }
+    .expect { (ictx, messages) =>
+      implicit val ctx: Context = ictx
+
+      assertMessageCount(1, messages)
+      val TraitIsExpected(symbol) :: Nil = messages
+      assertEquals("class B", symbol.show)
+    }
 }

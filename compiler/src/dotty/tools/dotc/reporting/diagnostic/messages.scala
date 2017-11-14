@@ -1888,4 +1888,32 @@ object messages {
     }
     val explanation = "A statement is either an import, a definition or an expression."
   }
+
+  case class TraitIsExpected(symbol: Symbol)(implicit ctx: Context) extends Message(TraitIsExpectedID) {
+    val kind = "Syntax"
+    val msg = hl"$symbol is not a trait"
+    val explanation = {
+      val errorCodeExample =
+        """class A
+          |class B
+          |
+          |val a = new A with B // will fail with a compile error - class B is not a trait""".stripMargin
+      val codeExample =
+        """class A
+          |trait B
+          |
+          |val a = new A with B // compiles normally""".stripMargin
+
+      hl"""Only traits can be mixed into classes using a ${"with"} keyword.
+          |Consider the following example:
+          |
+          |$errorCodeExample
+          |
+          |The example mentioned above would fail because B is not a trait.
+          |But if you make B a trait it will be compiled without any errors:
+          |
+          |$codeExample
+          |"""
+    }
+  }
 }
