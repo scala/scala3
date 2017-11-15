@@ -8,7 +8,7 @@
 ./project/scripts/sbt dist-bootstrapped/pack
 
 # check that `dotc` compiles and `dotr` runs it
-echo "testing sbt dotc and dotr"
+echo "testing ./bin/dotc and ./bin/dotr"
 mkdir out/scriptedtest0
 ./bin/dotc tests/pos/sbtDotrTest.scala -d out/scriptedtest0
 # FIXME #3477
@@ -21,7 +21,7 @@ mkdir out/scriptedtest0
 
 
 # check that `dotc` compiles and `dotr` runs it
-echo "testing sbt dotc -from-tasty and dotr -classpath"
+echo "testing ./bin/dotc -from-tasty and dotr -classpath"
 mkdir out/scriptedtest1
 mkdir out/scriptedtest2
 ./bin/dotc tests/pos/sbtDotrTest.scala -d out/scriptedtest1/

@@ -31,6 +31,7 @@ default_java_opts="-Xmx768m -Xms768m"
 bootcp=true
 
 CompilerMain=dotty.tools.dotc.Main
+DecompilerMain=dotty.tools.dotc.decompiler.Main
 ReplMain=dotty.tools.repl.Main
 
 PROG_NAME=$CompilerMain
@@ -82,6 +83,7 @@ case "$1" in
     -Oshort) addJava "-XX:+TieredCompilation -XX:TieredStopAtLevel=1" && shift ;;
         -repl) PROG_NAME="$ReplMain" && shift ;;
      -compile) PROG_NAME="$CompilerMain" && shift ;;
+   -decompile) PROG_NAME="$DecompilerMain" && shift ;;
          -run) PROG_NAME="$ReplMain" && shift ;;
       -bootcp) bootcp=true && shift ;;
    -nobootcp) unset bootcp && shift ;;

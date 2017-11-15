@@ -11,6 +11,7 @@ cat sbtdotr1.out
 if grep -e "dotr test ok" sbtdotr1.out; then
     echo "output ok"
 else
+    echo "failed output check"
     exit -1
 fi
 
@@ -23,13 +24,25 @@ cat sbtdotr2.out
 if grep -e "dotr test ok" sbtdotr2.out; then
     echo "output ok"
 else
+    echo "failed output check"
+    exit -1
+fi
+
+# check that `sbt dotc -decompile` runs
+echo "testing sbt dotc -decompile"
+./project/scripts/sbt ";dotc -decompile -code -color:never -classpath out/scriptedtest1 dotrtest.Test" >  sbtdotc3.out
+cat sbtdotc3.out
+if grep -e "def main(args: Array\[String\]): Unit =" sbtdotc3.out; then
+    echo "output ok"
+else
+    echo "failed output check"
     exit -1
 fi
 echo "testing sbt dotr with no -classpath"
 
-./project/scripts/sbt ";dotc tests/pos/sbtDotrTest.scala; dotr dotrtest.Test" > sbtdotp1.out
-cat sbtdotp1.out
-if grep -e "dotr test ok" sbtdotp1.out; then
+./project/scripts/sbt ";dotc tests/pos/sbtDotrTest.scala; dotr dotrtest.Test" > sbtdotr3.out
+cat sbtdotr3.out
+if grep -e "dotr test ok" sbtdotr3.out; then
     echo "output ok"
 else
     exit -1
