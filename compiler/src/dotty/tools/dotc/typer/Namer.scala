@@ -869,7 +869,7 @@ class Namer { typer: Typer =>
                 "\n(Note that inheriting a class of the same name is no longer allowed)"
               case _ => ""
             }
-            ctx.error(i"cyclic inheritance: $cls extends itself$addendum", parent.pos)
+            ctx.error(CyclicInheritance(cls, addendum), parent.pos)
             defn.ObjectType
           }
           else {

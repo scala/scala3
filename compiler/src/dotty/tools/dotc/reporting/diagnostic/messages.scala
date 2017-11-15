@@ -1949,4 +1949,21 @@ object messages {
     val explanation =
       hl"${"@static"} members are only allowed inside objects."
   }
+
+  case class CyclicInheritance(symbol: Symbol, addendum: String)(implicit ctx: Context) extends Message(CyclicInheritanceID) {
+    val kind = "Syntax"
+    val msg = hl"Cyclic inheritance: $symbol extends itself$addendum"
+    val explanation = {
+      val codeExample = "class A extends A"
+
+      hl"""Cyclic inheritance is prohibited in Dotty.
+          |Consider the following example:
+          |
+          |$codeExample
+          |
+          |The example mentioned above would fail because this type of inheritance hierarchy
+          |creates a "cycle" where a not yet defined class A extends itself which makes
+          |impossible to instantiate an object of this class"""
+    }
+  }
 }
