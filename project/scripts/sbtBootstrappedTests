@@ -10,9 +10,9 @@
 # check that `dotc` compiles and `dotr` runs it
 echo "testing sbt dotc and dotr"
 mkdir out/scriptedtest0
-./dist-bootstrapped/target/pack/bin/dotc tests/pos/sbtDotrTest.scala -d out/scriptedtest0
+./bin/dotc tests/pos/sbtDotrTest.scala -d out/scriptedtest0
 # FIXME #3477
-#./dist-bootstrapped/target/pack/bin/dotr -classpath out/scriptedtest0 dotrtest.Test" > sbtdotr1.out
+#./bin/dotr -classpath out/scriptedtest0 dotrtest.Test" > sbtdotr1.out
 #if grep -e "dotr test ok" sbtdotr1.out; then
 #    echo "output ok"
 #else
@@ -24,10 +24,10 @@ mkdir out/scriptedtest0
 echo "testing sbt dotc -tasty and dotr -classpath"
 mkdir out/scriptedtest1
 mkdir out/scriptedtest2
-./dist-bootstrapped/target/pack/bin/dotc tests/pos/sbtDotrTest.scala -d out/scriptedtest1/
-./dist-bootstrapped/target/pack/bin/dotc -tasty -classpath out/scriptedtest1/ -d out/scriptedtest2/ dotrtest.Test
+./bin/dotc tests/pos/sbtDotrTest.scala -d out/scriptedtest1/
+./bin/dotc -tasty -classpath out/scriptedtest1/ -d out/scriptedtest2/ dotrtest.Test
 # FIXME #3477
-#./dist-bootstrapped/target/pack/bin/dotr -classpath out/scriptedtest2/ dotrtest.Test" > sbtdotr2.out
+#./bin/dotr -classpath out/scriptedtest2/ dotrtest.Test" > sbtdotr2.out
 #if grep -e "dotr test ok" sbtdotr2.out; then
 #    echo "output ok"
 #else
