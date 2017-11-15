@@ -917,13 +917,13 @@ trait Implicits { self: Typer =>
        *    - otherwise add the failure to `rfailures` and continue testing the other candidates.
        */
       def rank(pending: List[Candidate], found: SearchResult, rfailures: List[SearchFailure]): SearchResult = {
-        def recur(result: SearchResult, remaining: List[Candidate]): SearchResult = result match {
+        def recur(result: SearchResult, remaining: List[Candidate], isNot: Boolean): SearchResult = result match {
           case fail: SearchFailure =>
             if (isNot)
               recur(
                 SearchSuccess(ref(defn.Not_value), defn.Not_value.termRef, 0)(
                   ctx.typerState.fresh().setCommittable(true)),
-                remaining)
+                remaining, false)
             else if (fail.isAmbiguous)
               if (ctx.scala2Mode) {
                 val result = rank(remaining, found, NoMatchingImplicitsFailure :: rfailures)
@@ -937,7 +937,7 @@ trait Implicits { self: Typer =>
               rank(remaining, found, fail :: rfailures)
           case best: SearchSuccess =>
             if (isNot)
-              recur(NoMatchingImplicitsFailure, remaining)
+              recur(NoMatchingImplicitsFailure, remaining, false)
             else if (ctx.mode.is(Mode.ImplicitExploration) || isCoherent)
               best
             else disambiguate(found, best) match {
@@ -953,7 +953,7 @@ trait Implicits { self: Typer =>
         }
         pending match  {
           case cand :: pending1 =>
-            recur(tryImplicit(cand), pending1)
+            recur(tryImplicit(cand), pending1, this.isNot)
           case nil =>
             if (rfailures.isEmpty) found
             else found.recoverWith(_ => rfailures.reverse.maxBy(_.tree.treeSize))
