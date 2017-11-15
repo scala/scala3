@@ -1200,7 +1200,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
     }.expect { (ictx, messages) =>
       implicit val ctx: Context = ictx
 
-      assertMessageCount(1, messages)
-      assert(messages.head.isInstanceOf[PackageNameAlreadyDefined])
+      val PackageNameAlreadyDefined(pkg) = messages.head
+      assertEquals(pkg.show, "object bar")
     }
 }
