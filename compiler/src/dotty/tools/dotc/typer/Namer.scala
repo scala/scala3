@@ -1096,6 +1096,8 @@ class Namer { typer: Typer =>
         WildcardType
       case TypeTree() =>
         inferredType
+      case DependentTypeTree(tpFun) =>
+        tpFun(paramss.head)
       case TypedSplice(tpt: TypeTree) if !isFullyDefined(tpt.tpe, ForceDegree.none) =>
         val rhsType = typedAheadExpr(mdef.rhs, tpt.tpe).tpe
         mdef match {

@@ -683,18 +683,37 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     assignType(cpy.If(tree)(cond1, thenp2, elsep2), thenp2, elsep2)
   }
 
-  private def decomposeProtoFunction(pt: Type, defaultArity: Int)(implicit ctx: Context): (List[Type], Type) = pt match {
-    case _ if defn.isNonDepFunctionType(pt) =>
-      // if expected parameter type(s) are wildcards, approximate from below.
-      // if expected result type is a wildcard, approximate from above.
-      // this can type the greatest set of admissible closures.
-      val funType = pt.dealias
-      (funType.argTypesLo.init, funType.argTypesHi.last)
-    case SAMType(meth) =>
-      val mt @ MethodTpe(_, formals, restpe) = meth.info
-      (formals, if (mt.isDependent) WildcardType else restpe)
-    case _ =>
-      (List.tabulate(defaultArity)(alwaysWildcardType), WildcardType)
+  /** Decompose function prototype into a list of parameter prototypes and a result prototype
+   *  tree, using WildcardTypes where a type is not known.
+   *  For the result type we do this even if the expected type is not fully
+   *  defined, which is a bit of a hack. But it's needed to make the following work
+   *  (see typers.scala and printers/PlainPrinter.scala for examples).
+   *
+   *     def double(x: Char): String = s"$x$x"
+   *     "abc" flatMap double
+   */
+  private def decomposeProtoFunction(pt: Type, defaultArity: Int)(implicit ctx: Context): (List[Type], untpd.Tree) = {
+    def typeTree(tp: Type) = tp match {
+      case _: WildcardType => untpd.TypeTree()
+      case _ => untpd.TypeTree(tp)
+    }
+    pt match {
+      case _ if defn.isNonDepFunctionType(pt) =>
+        // if expected parameter type(s) are wildcards, approximate from below.
+        // if expected result type is a wildcard, approximate from above.
+        // this can type the greatest set of admissible closures.
+        val funType = pt.dealias
+        (funType.argTypesLo.init, typeTree(funType.argTypesHi.last))
+      case SAMType(meth) =>
+        val mt @ MethodTpe(_, formals, restpe) = meth.info
+        (formals,
+         if (mt.isDependent)
+           untpd.DependentTypeTree(syms => restpe.substParams(mt, syms.map(_.termRef)))
+         else
+           typeTree(restpe))
+      case _ =>
+        (List.tabulate(defaultArity)(alwaysWildcardType), untpd.TypeTree())
+    }
   }
 
   def typedFunction(tree: untpd.Function, pt: Type)(implicit ctx: Context) = track("typedFunction") {
@@ -756,7 +775,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
       case _ =>
     }
 
-    val (protoFormals, protoResult) = decomposeProtoFunction(pt, params.length)
+    val (protoFormals, resultTpt) = decomposeProtoFunction(pt, params.length)
 
     def refersTo(arg: untpd.Tree, param: untpd.ValDef): Boolean = arg match {
       case Ident(name) => name == param.name
@@ -865,19 +884,6 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
             else cpy.ValDef(param)(
               tpt = untpd.TypeTree(
                 inferredParamType(param, protoFormal(i)).underlyingIfRepeated(isJava = false)))
-
-        // Define result type of closure as the expected type, thereby pushing
-        // down any implicit searches. We do this even if the expected type is not fully
-        // defined, which is a bit of a hack. But it's needed to make the following work
-        // (see typers.scala and printers/PlainPrinter.scala for examples).
-        //
-        //     def double(x: Char): String = s"$x$x"
-        //     "abc" flatMap double
-        //
-        val resultTpt = protoResult match {
-          case WildcardType(_) => untpd.TypeTree()
-          case _ => untpd.TypeTree(protoResult)
-        }
         val inlineable = pt.hasAnnotation(defn.InlineParamAnnot)
         desugar.makeClosure(inferredParams, fnBody, resultTpt, inlineable)
       }
@@ -1700,7 +1706,8 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
           case tree: untpd.PackageDef => typedPackageDef(tree)
           case tree: untpd.Annotated => typedAnnotated(tree, pt)
           case tree: untpd.TypedSplice => typedTypedSplice(tree)
-          case tree:  untpd.UnApply => typedUnApply(tree, pt)
+          case tree: untpd.UnApply => typedUnApply(tree, pt)
+          case tree: untpd.DependentTypeTree => typed(untpd.TypeTree().withPos(tree.pos), pt)
           case tree @ untpd.PostfixOp(qual, Ident(nme.WILDCARD)) => typedAsFunction(tree, pt)
           case untpd.EmptyTree => tpd.EmptyTree
           case _ => typedUnadapted(desugar(tree), pt)

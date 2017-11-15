@@ -86,6 +86,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   case class GenAlias(pat: Tree, expr: Tree) extends Tree
   case class ContextBounds(bounds: TypeBoundsTree, cxBounds: List[Tree]) extends TypTree
   case class PatDef(mods: Modifiers, pats: List[Tree], tpt: Tree, rhs: Tree) extends DefTree
+  case class DependentTypeTree(tp: List[Symbol] => Type) extends Tree
 
   @sharable object EmptyTypeIdent extends Ident(tpnme.EMPTY) with WithoutTypeOrPos[Untyped] {
     override def isEmpty = true
