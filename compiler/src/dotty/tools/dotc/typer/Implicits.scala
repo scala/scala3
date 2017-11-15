@@ -922,7 +922,7 @@ trait Implicits { self: Typer =>
             if (isNot)
               recur(
                 SearchSuccess(ref(defn.Not_value), defn.Not_value.termRef, 0)(
-                  ctx.typerState.fresh().setCommittable(true))
+                  ctx.typerState.fresh().setCommittable(true)),
                 remaining)
             else if (fail.isAmbiguous)
               if (ctx.scala2Mode) {
