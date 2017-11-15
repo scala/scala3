@@ -1099,7 +1099,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
     val target = JointCompilationSource(
       testGroup.name,
       Array(sourceFile),
-      flags.withClasspath(tastySource.getPath) and "-Yretain-trees",
+      flags.withClasspath(tastySource.getPath) and "-tasty",
       tastySource,
       fromTasty = true
     )

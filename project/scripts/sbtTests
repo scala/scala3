@@ -3,7 +3,7 @@
 # check that benchmarks can run
 ./project/scripts/sbt "dotty-bench/jmh:run 1 1 tests/pos/alias.scala"
 
-# check that `dotc` compiles and `dotr` runs it
+# check that `sbt dotc` compiles and `sbt dotr` runs it
 echo "testing sbt dotc and dotr"
 mkdir out/scriptedtest0
 ./project/scripts/sbt ";dotc tests/pos/sbtDotrTest.scala -d out/scriptedtest0 ;dotr -classpath out/scriptedtest0 dotrtest.Test" > sbtdotr1.out
@@ -13,7 +13,7 @@ else
     exit -1
 fi
 
-# check that `dotc` compiles and `dotr` runs it
+# check that `sbt dotc` compiles and `sbt dotr` runs it
 echo "testing sbt dotc -tasty and dotr -classpath"
 mkdir out/scriptedtest1
 mkdir out/scriptedtest2

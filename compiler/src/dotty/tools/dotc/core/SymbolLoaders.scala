@@ -326,7 +326,7 @@ class ClassfileLoader(val classfile: AbstractFile) extends SymbolLoader {
     val (classRoot, moduleRoot) = rootDenots(root.asClass)
     val classfileParser = new ClassfileParser(classfile, classRoot, moduleRoot)(ctx)
     val result = classfileParser.run()
-    if (ctx.settings.YretainTrees.value || ctx.settings.XlinkOptimise.value) {
+    if (mayLoadTreesFromTasty) {
       result match {
         case Some(unpickler: tasty.DottyUnpickler) =>
           classRoot.symbol.asClass.unpickler = unpickler
@@ -335,6 +335,9 @@ class ClassfileLoader(val classfile: AbstractFile) extends SymbolLoader {
       }
     }
   }
+
+  private def mayLoadTreesFromTasty(implicit ctx: Context): Boolean =
+    ctx.settings.YretainTrees.value || ctx.settings.XlinkOptimise.value || ctx.settings.tasty.value
 }
 
 class SourcefileLoader(val srcfile: AbstractFile) extends SymbolLoader {

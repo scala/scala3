@@ -623,17 +623,11 @@ object Build {
     val args0: List[String] = spaceDelimited("<arg>").parsed.toList
     val args = args0.filter(arg => arg != "-repl")
 
-    val tasty = args0.contains("-tasty")
-
     val main =
       if (repl) "dotty.tools.repl.Main"
       else "dotty.tools.dotc.Main"
 
-    val extraArgs =
-      if (tasty && !args.contains("-Yretain-trees")) List("-Yretain-trees")
-      else Nil
-
-    val fullArgs = main :: extraArgs ::: insertClasspathInArgs(args, dottyLib)
+    val fullArgs = main :: insertClasspathInArgs(args, dottyLib)
 
     (runMain in Compile).toTask(fullArgs.mkString(" ", " ", ""))
   }

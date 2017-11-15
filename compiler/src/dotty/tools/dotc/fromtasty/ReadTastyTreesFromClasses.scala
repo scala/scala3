@@ -20,7 +20,6 @@ class ReadTastyTreesFromClasses extends FrontEnd {
 
   def readTASTY(unit: CompilationUnit)(implicit ctx: Context): Option[CompilationUnit] = unit match {
     case unit: TASTYCompilationUnit =>
-      assert(ctx.settings.YretainTrees.value)
       val className = unit.className.toTypeName
       def compilationUnit(className: TypeName): Option[CompilationUnit] = {
         tree(className).flatMap {
