@@ -49,18 +49,16 @@ class GenBCode extends Phase {
     superCallsMap.put(sym, old + calls)
   }
 
-  private[this] var jarFS: JarFS = _
+  private[this] var myOutput: AbstractFile = _
 
-  def outputDir(implicit ctx: Context): AbstractFile = {
-    val path = Directory(ctx.settings.outputDir.value)
-    if (path.extension == "jar") {
-      if (jarFS == null) {
-        path.delete()
-        jarFS = JarFS.create(path)
-      }
-      jarFS.getRoot()
+  protected def outputDir(implicit ctx: Context): AbstractFile = {
+    if (myOutput eq null) {
+      val path = Directory(ctx.settings.outputDir.value)
+      myOutput =
+        if (path.extension == "jar") JarArchive.create(path)
+        else new PlainDirectory(path)
     }
-    else new PlainDirectory(path)
+    myOutput
   }
 
   def run(implicit ctx: Context): Unit = {
@@ -71,9 +69,10 @@ class GenBCode extends Phase {
 
   override def runOn(units: List[CompilationUnit])(implicit ctx: Context) = {
     try super.runOn(units)
-    finally if (jarFS ne null) {
-      jarFS.close()
-      jarFS = null
+    finally myOutput match {
+      case jar: JarArchive =>
+        jar.close()
+      case _ =>
     }
   }
 }
