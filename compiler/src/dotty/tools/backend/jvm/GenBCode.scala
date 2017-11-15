@@ -72,7 +72,7 @@ class GenBCode extends Phase {
   override def runOn(units: List[CompilationUnit])(implicit ctx: Context) = {
     try super.runOn(units)
     finally if (jarFS ne null) {
-      try { jarFS.close() } catch { case _: Throwable => }
+      jarFS.close()
       jarFS = null
     }
   }
