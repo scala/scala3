@@ -1014,10 +1014,10 @@ object Types {
       case _ => this
     }
 
-    /** If this is a dependent function type, drop the `apply` refinement */
-    final def dropDependentRefinement(implicit ctx: Context): Type = stripTypeVar match {
+    /** Dealias, and if result is a dependent function type, drop the `apply` refinement. */
+    final def dropDependentRefinement(implicit ctx: Context): Type = dealias match {
       case RefinedType(parent, nme.apply, _) => parent
-      case _ => this
+      case tp => tp
     }
 
     /** The type constructor of an applied type, otherwise the type itself */

@@ -715,7 +715,8 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     }
     val funCls = defn.FunctionClass(args.length, isImplicit)
 
-    def typedDependent(params: List[ValDef])(implicit ctx: Context) = {
+    /** Typechecks dependent function type with given parameters `params` */
+    def typedDependent(params: List[ValDef])(implicit ctx: Context): Tree = {
       completeParams(params)
       val params1 = params.map(typedExpr(_).asInstanceOf[ValDef])
       val resultTpt = typed(body)
@@ -744,8 +745,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
   }
 
   def typedFunctionValue(tree: untpd.Function, pt: Type)(implicit ctx: Context) = {
-    val untpd.Function(args, body) = tree
-    val params = args.asInstanceOf[List[untpd.ValDef]]
+    val untpd.Function(params: List[untpd.ValDef], body) = tree
 
     pt match {
       case pt: TypeVar if untpd.isFunctionWithUnknownParamType(tree) =>
@@ -837,7 +837,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
           }
         case _ =>
       }
-      errorType(AnonymousFunctionMissingParamType(param, args, tree, pt), param.pos)
+      errorType(AnonymousFunctionMissingParamType(param, params, tree, pt), param.pos)
     }
 
     def protoFormal(i: Int): Type =
@@ -1721,7 +1721,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
   }
 
   protected def makeImplicitFunction(tree: untpd.Tree, pt: Type)(implicit ctx: Context): Tree = {
-    val defn.FunctionOf(formals, _, true) = pt.dealias.dropDependentRefinement
+    val defn.FunctionOf(formals, _, true) = pt.dropDependentRefinement
     val paramTypes = formals.map(fullyDefinedType(_, "implicit function parameter", tree.pos))
     val ifun = desugar.makeImplicitFunction(paramTypes, tree)
     typr.println(i"make implicit function $tree / $pt ---> $ifun")

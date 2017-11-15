@@ -54,7 +54,7 @@ object Inferencing {
    */
   def instantiateDependent(tp: Type, tparams: List[Symbol], vparamss: List[List[Symbol]])(implicit ctx: Context): Unit = {
     val dependentVars = new TypeAccumulator[Set[TypeVar]] {
-      lazy val params = (vparamss :\ tparams)( _ ::: _)
+      lazy val params = (tparams :: vparamss).flatten
       def apply(tvars: Set[TypeVar], tp: Type) = tp match {
         case tp: TypeVar
         if !tp.isInstantiated &&
