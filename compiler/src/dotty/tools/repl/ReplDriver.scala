@@ -109,9 +109,9 @@ class ReplDriver(settings: Array[String],
       if (rootCtx.settings.outputDir.isDefault(rootCtx))
         new VirtualDirectory("(memory)", None)
       else {
-        val path = rootCtx.settings.outputDir.value(rootCtx)
+        val path = Directory(rootCtx.settings.outputDir.value(rootCtx))
         assert(path.isDirectory)
-        new PlainDirectory(path.toDirectory)
+        new PlainDirectory(path)
       }
     }
     compiler = new ReplCompiler(outDir)

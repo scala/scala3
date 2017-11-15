@@ -52,15 +52,15 @@ class GenBCode extends Phase {
   private[this] var jarFS: JarFS = _
 
   def outputDir(implicit ctx: Context): AbstractFile = {
-    val path = ctx.settings.outputDir.value
-    if (path.isDirectory) new PlainDirectory(path.toDirectory)
-    else {
+    val path = Directory(ctx.settings.outputDir.value)
+    if (path.extension == "jar") {
       if (jarFS == null) {
         path.delete()
         jarFS = JarFS.create(path)
       }
       jarFS.getRoot()
     }
+    else new PlainDirectory(path)
   }
 
   def run(implicit ctx: Context): Unit = {

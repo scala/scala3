@@ -15,10 +15,7 @@ class JarFS private (private[this] var jarFS: FileSystem) {
     new PlainDirectory(Directory(root))
   }
 
-  def close() = {
-    jarFS.close()
-    jarFS = null
-  }
+  def close() = jarFS.close()
 }
 
 object JarFS {
