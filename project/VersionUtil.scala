@@ -6,7 +6,7 @@ object VersionUtil {
       if (System.getProperty("os.name").toLowerCase.contains("windows"))
         s"cmd.exe /c project\\scripts\\build\\$scriptName.bat -p"
       else s"project/scripts/build/$scriptName"
-    Process(cmd).lines.head.trim
+    Process(cmd).lineStream.head.trim
   }
 
   /** Seven letters of the SHA hash is considered enough to uniquely identify a

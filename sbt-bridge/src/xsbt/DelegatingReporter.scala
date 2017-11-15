@@ -9,7 +9,8 @@ import reporting._
 import reporting.diagnostic.MessageContainer
 import reporting.diagnostic.messages
 import core.Contexts._
-import xsbti.{Maybe, Position}
+import xsbti.{Position, Severity}
+import java.util.Optional
 
 final class DelegatingReporter(delegate: xsbti.Reporter) extends Reporter
   with UniqueMessagePositions
@@ -22,9 +23,9 @@ final class DelegatingReporter(delegate: xsbti.Reporter) extends Reporter
   def doReport(cont: MessageContainer)(implicit ctx: Context): Unit = {
     val severity =
       cont match {
-        case _: messages.Error   => xsbti.Severity.Error
-        case _: messages.Warning => xsbti.Severity.Warn
-        case _                   => xsbti.Severity.Info
+        case _: messages.Error   => Severity.Error
+        case _: messages.Warning => Severity.Warn
+        case _                   => Severity.Info
       }
 
     val position =
@@ -32,13 +33,13 @@ final class DelegatingReporter(delegate: xsbti.Reporter) extends Reporter
         val pos = cont.pos
         val src = pos.source
         new Position {
-          val sourceFile: Maybe[java.io.File] = maybe(Option(src.file.file))
-          val sourcePath: Maybe[String] = maybe(Option(src.file.path))
-          val line: Maybe[Integer] = Maybe.just(pos.line)
+          val sourceFile: Optional[java.io.File] = maybe(Option(src.file.file))
+          val sourcePath: Optional[String] = maybe(Option(src.file.path))
+          val line: Optional[Integer] = Optional.of(pos.line)
           val lineContent: String = pos.lineContent.stripLineEnd
-          val offset: Maybe[Integer] = Maybe.just(pos.point)
-          val pointer: Maybe[Integer] = Maybe.just(pos.point - src.startOfLine(pos.point))
-          val pointerSpace: Maybe[String] = Maybe.just(
+          val offset: Optional[Integer] = Optional.of(pos.point)
+          val pointer: Optional[Integer] = Optional.of(pos.point - src.startOfLine(pos.point))
+          val pointerSpace: Optional[String] = Optional.of(
             ((lineContent: Seq[Char]).take(pointer.get).map { case '\t' => '\t'; case x => ' ' }).mkString
           )
         }
@@ -51,21 +52,21 @@ final class DelegatingReporter(delegate: xsbti.Reporter) extends Reporter
       sb.append(explanation(cont.contained()))
     }
 
-    delegate.log(position, sb.toString(), severity)
+    delegate.log(Problem(position, sb.toString(), severity))
   }
 
-  private[this] def maybe[T](opt: Option[T]): Maybe[T] = opt match {
-    case None => Maybe.nothing[T]
-    case Some(s) => Maybe.just[T](s)
+  private[this] def maybe[T](opt: Option[T]): Optional[T] = opt match {
+    case None => Optional.empty[T]
+    case Some(s) => Optional.of[T](s)
   }
 
   private[this] val noPosition = new Position {
-    val line: Maybe[Integer] = Maybe.nothing[Integer]
+    val line: Optional[Integer] = Optional.empty[Integer]
     val lineContent: String = ""
-    val offset: Maybe[Integer] = Maybe.nothing[Integer]
-    val pointer: Maybe[Integer] = Maybe.nothing[Integer]
-    val pointerSpace: Maybe[String] = Maybe.nothing[String]
-    val sourceFile: Maybe[java.io.File] = Maybe.nothing[java.io.File]
-    val sourcePath: Maybe[String] = Maybe.nothing[String]
+    val offset: Optional[Integer] = Optional.empty[Integer]
+    val pointer: Optional[Integer] = Optional.empty[Integer]
+    val pointerSpace: Optional[String] = Optional.empty[String]
+    val sourceFile: Optional[java.io.File] = Optional.empty[java.io.File]
+    val sourcePath: Optional[String] = Optional.empty[String]
   }
 }

@@ -55,7 +55,7 @@ object DottyIDEPlugin extends AutoPlugin {
     else {
       def matchingSetting(setting: Setting[_]) =
         setting.key.key == scalaVersion.key &&
-        setting.key.scope.project.fold(ref => projRefs.contains(ref), ifGlobal = true, ifThis = true)
+        setting.key.scope.project.fold(ref => projRefs.contains(ref), ifZero = true, ifThis = true)
 
       val newSettings = extracted.session.mergeSettings.collect {
         case setting if matchingSetting(setting) =>
@@ -205,9 +205,9 @@ object DottyIDEPlugin extends AutoPlugin {
     origState
   }
 
-  private def projectConfigTask(config: Configuration): Initialize[Task[Option[ProjectConfig]]] = Def.task {
-    if ((sources in config).value.isEmpty) None
-    else {
+  private def projectConfigTask(config: Configuration): Initialize[Task[Option[ProjectConfig]]] = Def.taskDyn {
+    if ((sources in config).value.isEmpty) Def.task { None }
+    else Def.task {
       // Not needed to generate the config, but this guarantees that the
       // generated config is usable by an IDE without any extra compilation
       // step.

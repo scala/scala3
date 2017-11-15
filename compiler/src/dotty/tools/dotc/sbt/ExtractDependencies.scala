@@ -3,6 +3,7 @@ package sbt
 
 import ast.{Trees, tpd}
 import core._, core.Decorators._
+import util.NoSource.{file => NoSourceFile}
 import Contexts._, Flags._, Phases._, Trees._, Types._, Symbols._
 import Names._, NameOps._, StdNames._
 
@@ -11,9 +12,11 @@ import scala.collection.{Set, mutable}
 import dotty.tools.io.{AbstractFile, Path, ZipArchive, PlainFile}
 import java.io.File
 
-import java.util.{Arrays, Comparator}
+import java.util.{Arrays, Comparator, EnumSet}
 
-import xsbti.DependencyContext
+import xsbti.api.DependencyContext
+import xsbti.UseScope
+
 
 /** This phase sends information on classes' dependencies to sbt via callbacks.
  *
@@ -35,6 +38,8 @@ import xsbti.DependencyContext
  *  @see ExtractAPI
  */
 class ExtractDependencies extends Phase {
+  import ExtractDependencies._
+
   override def phaseName: String = "sbt-deps"
 
   // This phase should be run directly after `Frontend`, if it is run after
@@ -48,7 +53,16 @@ class ExtractDependencies extends Phase {
     val forceRun = dumpInc || ctx.settings.YforceSbtPhases.value
     if ((ctx.sbtCallback != null || forceRun) && !unit.isJava) {
       val sourceFile = unit.source.file
-      val extractDeps = new ExtractDependenciesCollector
+      val responsibleOfImports = firstClassOrModule(unit.tpdTree) match {
+        case None =>
+          ctx.warning("""|No class, trait or object is defined in the compilation unit.
+                         |The incremental compiler cannot record the dependency information in such case.
+                         |Some errors like unused import referring to a non-existent class might not be reported.
+                         |""".stripMargin, unit.tpdTree.pos)
+          defn.RootClass
+        case Some(sym) => sym
+      }
+      val extractDeps = new ExtractDependenciesCollector(responsibleOfImports)
       extractDeps.traverse(unit.tpdTree)
 
       if (dumpInc) {
@@ -68,15 +82,75 @@ class ExtractDependencies extends Phase {
       }
 
       if (ctx.sbtCallback != null) {
-        extractDeps.usedNames.foreach(name =>
-          ctx.sbtCallback.usedName(sourceFile.file, name.toString))
+        extractDeps.usedNames.foreach{
+          case (rawClassName, usedNames) =>
+            val className = rawClassName.toString
+            usedNames.defaultNames.foreach { rawUsedName =>
+              val useName = rawUsedName.toString
+              val useScopes =
+                usedNames.scopedNames.get(rawUsedName) match {
+                  case None => EnumSet.of(UseScope.Default)
+                  case Some(existingScopes) =>
+                    existingScopes.add(UseScope.Default)
+                    existingScopes
+                }
+
+              ctx.sbtCallback.usedName(className, useName, useScopes)
+            }
+        }
         extractDeps.topLevelDependencies.foreach(dep =>
-          recordDependency(sourceFile.file, dep, DependencyContext.DependencyByMemberRef))
+          recordDependency(sourceFile.file, dep._2, DependencyContext.DependencyByMemberRef)(ctx.withOwner(dep._1)))
         extractDeps.topLevelInheritanceDependencies.foreach(dep =>
-          recordDependency(sourceFile.file, dep, DependencyContext.DependencyByInheritance))
+            recordDependency(sourceFile.file, dep._2, DependencyContext.DependencyByInheritance)(ctx.withOwner(dep._1)))
       }
     }
   }
+
+  private def firstClassOrModule(tree: tpd.Tree)(implicit ctx: Context): Option[Symbol] = {
+    import tpd._
+    val acc = new TreeAccumulator[Option[Symbol]] {
+      def apply(x: Option[Symbol], t: Tree)(implicit ctx: Context) =
+        if (x.isDefined) x
+        else t match {
+          case moduleDef: Thicket =>
+            Some(moduleDef.symbol)
+          case typeDef: TypeDef =>
+            Some(typeDef.symbol)
+          case other =>
+            foldOver(x, other)
+        }
+    }
+    acc(None, tree)
+  }
+
+  private def classFile(sym: Symbol)(implicit ctx: Context): Option[AbstractFile] = {
+    // package can never have a corresponding class file; this test does not
+    // catch package objects (that do not have this flag set)
+    if (sym.is(Package)) None
+    else {
+      val file = Option(sym.associatedFile)
+
+      Option(sym.associatedFile).flatMap {
+        case NoSourceFile =>
+          if (isTopLevelModule(sym)) {
+            val linked = sym.companionClass
+            if (linked == NoSymbol)
+              None
+            else
+              classFile(linked)
+          } else
+            None
+        case file =>
+          Some(file)
+      }
+    }
+  }
+
+  protected def isTopLevelModule(sym: Symbol)(implicit ctx: Context): Boolean =
+    // enteringPhase(currentRun.picklerPhase.next) {
+      sym.is(ModuleClass) && sym.owner.is(PackageClass)
+    // }
+
 
   /** Record that `currentSourceFile` depends on the file where `dep` was loaded from.
    *
@@ -86,35 +160,81 @@ class ExtractDependencies extends Phase {
    */
   def recordDependency(currentSourceFile: File, dep: Symbol, context: DependencyContext)
       (implicit ctx: Context) = {
-    val depFile = dep.associatedFile
-    if (depFile != null) {
-      if (depFile.path.endsWith(".class")) {
-        /** Transform `List(java, lang, String.class)` into `java.lang.String` */
-        def className(classSegments: List[String]) =
-          classSegments.mkString(".").stripSuffix(".class")
-        def binaryDependency(file: File, className: String) =
-          ctx.sbtCallback.binaryDependency(file, className, currentSourceFile, context)
+    val onSource = dep.sourceFile
+    if (onSource == null) {
+      // Dependency is external -- source is undefined
+      classFile(dep) match {
+        case Some(at) =>
+          def className(classSegments: List[String]) =
+            classSegments.mkString(".").stripSuffix(".class")
+          def binaryDependency(file: File, className: String) = {
+            ctx.sbtCallback.binaryDependency(file, className, extractedName(currentClass), currentSourceFile, context)
+          }
 
-        depFile match {
-          case ze: ZipArchive#Entry =>
-            for (zip <- ze.underlyingSource; zipFile <- Option(zip.file)) {
-              val classSegments = Path(ze.path).segments
-              binaryDependency(zipFile, className(classSegments))
-            }
-          case pf: PlainFile =>
-            val packages = dep.ownersIterator
-              .filter(x => x.is(PackageClass) && !x.isEffectiveRoot).length
-            // We can recover the fully qualified name of a classfile from
-            // its path
-            val classSegments = pf.givenPath.segments.takeRight(packages + 1)
-            binaryDependency(pf.file, className(classSegments))
-          case _ =>
-            ctx.warning(s"sbt-deps: Ignoring dependency $depFile of class ${depFile.getClass}")
-        }
-      } else if (depFile.file != currentSourceFile) {
-        ctx.sbtCallback.sourceDependency(depFile.file, currentSourceFile, context)
+          at match {
+            case ze: ZipArchive#Entry =>
+              for (zip <- ze.underlyingSource; zipFile <- Option(zip.file)) {
+                val classSegments = Path(ze.path).segments
+                binaryDependency(zipFile, className(classSegments))
+              }
+            case pf: PlainFile =>
+              val packages = dep.ownersIterator
+                .filter(x => x.is(PackageClass) && !x.isEffectiveRoot).length
+                // We can recover the fully qualified name of a classfile from
+                // its path
+                val classSegments = pf.givenPath.segments.takeRight(packages + 1)
+                binaryDependency(pf.file, className(classSegments))
+            case _ =>
+              ctx.warning(s"sbt-deps: Ignoring dependency $at of class ${at.getClass}")
+          }
+
+        case None =>
+          ctx.debuglog(s"No file for external symbol $dep")
       }
+    } else if (onSource.file != currentSourceFile) {
+      ctx.sbtCallback.classDependency(extractedName(dep.enclosingClass), extractedName(currentClass), context)
+    } else {
+      ()
     }
+  }
+}
+
+object ExtractDependencies {
+  def extractedName(sym: Symbol)(implicit ctx: Context): String =
+    // ctx.atPhase(ctx.flattenPhase.next) { implicit ctx =>
+      if (sym.is(ModuleClass))
+        sym.fullName.stripModuleClassSuffix.toString
+      else
+        sym.fullName.toString
+    // }
+}
+
+private final class NameUsedInClass {
+  // Default names and other scopes are separated for performance reasons
+  val defaultNames: mutable.Set[Name] = new mutable.HashSet[Name]
+  val scopedNames: mutable.Map[Name, EnumSet[UseScope]] = new mutable.HashMap[Name, EnumSet[UseScope]].withDefault(_ => EnumSet.noneOf(classOf[UseScope]))
+
+  // We have to leave with commas on ends
+  override def toString(): String = {
+    val builder = new StringBuilder(": ")
+    defaultNames.foreach { name =>
+      builder.append(name.toString.trim)
+      val otherScopes = scopedNames.get(name)
+      scopedNames.get(name) match {
+        case None =>
+        case Some(otherScopes) =>
+          // Pickling tests fail when this is turned in an anonymous class
+          class Consumer extends java.util.function.Consumer[UseScope]() {
+            override def accept(scope: UseScope): Unit =
+              builder.append(scope.name()).append(", ")
+          }
+          builder.append(" in [")
+          otherScopes.forEach(new Consumer)
+          builder.append("]")
+      }
+      builder.append(", ")
+    }
+    builder.toString()
   }
 }
 
@@ -126,38 +246,66 @@ class ExtractDependencies extends Phase {
  *  specially, see the subsection "Dependencies introduced by member reference and
  *  inheritance" in the "Name hashing algorithm" section.
  */
-private class ExtractDependenciesCollector(implicit val ctx: Context) extends tpd.TreeTraverser {
+private class ExtractDependenciesCollector(responsibleForImports: Symbol)(implicit val ctx: Context) extends tpd.TreeTraverser { thisTreeTraverser =>
   import tpd._
+  import ExtractDependencies._
 
-  private[this] val _usedNames = new mutable.HashSet[Name]
-  private[this] val _topLevelDependencies = new mutable.HashSet[Symbol]
-  private[this] val _topLevelInheritanceDependencies = new mutable.HashSet[Symbol]
+  private[this] val _usedNames = new mutable.HashMap[String, NameUsedInClass]
+  private[this] val _topLevelDependencies = new mutable.HashSet[(Symbol, Symbol)]
+  private[this] val _topLevelInheritanceDependencies = new mutable.HashSet[(Symbol, Symbol)]
 
   /** The names used in this class, this does not include names which are only
    *  defined and not referenced.
    */
-  def usedNames: Set[Name] = _usedNames
+  def usedNames: collection.Map[String, NameUsedInClass] = _usedNames
 
   /** The set of top-level classes that the compilation unit depends on
    *  because it refers to these classes or something defined in them.
    *  This is always a superset of `topLevelInheritanceDependencies` by definition.
    */
-  def topLevelDependencies: Set[Symbol] = _topLevelDependencies
+  def topLevelDependencies: Set[(Symbol, Symbol)] = _topLevelDependencies
 
   /** The set of top-level classes that the compilation unit extends or that
    *  contain a non-top-level class that the compilaion unit extends.
    */
-  def topLevelInheritanceDependencies: Set[Symbol] = _topLevelInheritanceDependencies
+  def topLevelInheritanceDependencies: Set[(Symbol, Symbol)] = _topLevelInheritanceDependencies
 
-  private def addUsedName(name: Name) =
-    _usedNames += name
+  private def addUsedName(enclosingSym: Symbol, name: Name) = {
+    val enclosingName = enclosingSym match {
+      case sym if sym == defn.RootClass => ExtractDependencies.extractedName(responsibleForImports)
+      case sym => extractedName(sym)
+    }
+    val nameUsed = _usedNames.getOrElseUpdate(enclosingName, new NameUsedInClass)
+    nameUsed.defaultNames += name
+    // TODO: Set correct scope
+    nameUsed.scopedNames(name).add(UseScope.Default)
+  }
 
-  private def addDependency(sym: Symbol): Unit =
+  private def addDependency(sym: Symbol)(implicit ctx: Context): Unit =
     if (!ignoreDependency(sym)) {
       val tlClass = sym.topLevelClass
-      if (tlClass.ne(NoSymbol)) // Some synthetic type aliases like AnyRef do not belong to any class
-        _topLevelDependencies += sym.topLevelClass
-      addUsedName(sym.name)
+      if (tlClass.ne(NoSymbol)) {
+        if (currentClass == defn.RootClass) {
+          _topLevelDependencies += ((responsibleForImports, tlClass))
+        } else {
+          // Some synthetic type aliases like AnyRef do not belong to any class
+          _topLevelDependencies += ((currentClass, tlClass))
+        }
+      }
+      addUsedName(nonLocalEnclosingClass(ctx.owner), sym.name)
+    }
+
+  private def isLocal(sym: Symbol)(implicit ctx: Context): Boolean =
+    sym.ownersIterator.exists(_.isTerm)
+
+  private def nonLocalEnclosingClass(sym: Symbol)(implicit ctx: Context): Symbol =
+    sym.enclosingClass match {
+      case NoSymbol => NoSymbol
+      case csym =>
+        if (isLocal(csym))
+          nonLocalEnclosingClass(csym.owner)
+        else
+          csym
     }
 
   private def ignoreDependency(sym: Symbol) =
@@ -166,8 +314,20 @@ private class ExtractDependenciesCollector(implicit val ctx: Context) extends tp
     sym.isAnonymousFunction ||
     sym.isAnonymousClass
 
-  private def addInheritanceDependency(sym: Symbol): Unit =
-    _topLevelInheritanceDependencies += sym.topLevelClass
+  private def addInheritanceDependency(sym: Symbol)(implicit ctx: Context): Unit =
+    _topLevelInheritanceDependencies += ((currentClass, sym.topLevelClass))
+
+  private class PatMatDependencyTraverser(ctx0: Context) extends ExtractTypesCollector(ctx0) {
+    override protected def addDependency(symbol: Symbol)(implicit ctx: Context): Unit = {
+      if (!ignoreDependency(symbol) && symbol.is(Sealed)) {
+        val encName = nonLocalEnclosingClass(ctx.owner).fullName.stripModuleClassSuffix.mangledString
+        val nameUsed = _usedNames.getOrElseUpdate(encName, new NameUsedInClass)
+
+        nameUsed.defaultNames += symbol.name
+        nameUsed.scopedNames(symbol.name).add(UseScope.PatMatTarget)
+      }
+    }
+  }
 
   /** Traverse the tree of a source file and record the dependencies which
    *  can be retrieved using `topLevelDependencies`, `topLevelInheritanceDependencies`,
@@ -175,6 +335,8 @@ private class ExtractDependenciesCollector(implicit val ctx: Context) extends tp
    */
   override def traverse(tree: Tree)(implicit ctx: Context): Unit = {
     tree match {
+      case v @ ValDef(_, tpt, _) if v.symbol.is(Case) && v.symbol.is(Synthetic) =>
+        new PatMatDependencyTraverser(ctx).traverse(tpt.tpe)
       case Import(expr, selectors) =>
         def lookupImported(name: Name) = expr.tpe.member(name).symbol
         def addImported(name: Name) = {
@@ -187,8 +349,9 @@ private class ExtractDependenciesCollector(implicit val ctx: Context) extends tp
             addImported(name)
           case Thicket(Ident(name) :: Ident(rename) :: Nil) =>
             addImported(name)
-            if (rename ne nme.WILDCARD)
-              addUsedName(rename)
+            if (rename ne nme.WILDCARD) {
+              addUsedName(nonLocalEnclosingClass(ctx.owner), rename)
+            }
           case _ =>
         }
       case Inlined(call, _, _) =>
@@ -196,10 +359,10 @@ private class ExtractDependenciesCollector(implicit val ctx: Context) extends tp
         // record it as a dependency
         traverse(call)
       case t: TypeTree =>
-        usedTypeTraverser.traverse(t.tpe)
+        new usedTypeTraverser(ctx).traverse(t.tpe)
       case ref: RefTree =>
         addDependency(ref.symbol)
-        usedTypeTraverser.traverse(ref.tpe)
+        new usedTypeTraverser(ctx).traverse(ref.tpe)
       case t @ Template(_, parents, _, _) =>
         t.parents.foreach(p => addInheritanceDependency(p.tpe.classSymbol))
       case _ =>
@@ -240,7 +403,7 @@ private class ExtractDependenciesCollector(implicit val ctx: Context) extends tp
    *  The tests in sbt `types-in-used-names-a`, `types-in-used-names-b`,
    *  `as-seen-from-a` and `as-seen-from-b` rely on this.
    */
-  private object usedTypeTraverser extends TypeTraverser {
+  private class ExtractTypesCollector(ctx0: Context) extends TypeTraverser()(ctx0) {
     val seen = new mutable.HashSet[Type]
     def traverse(tp: Type): Unit = if (!seen.contains(tp)) {
       seen += tp
@@ -263,5 +426,10 @@ private class ExtractDependenciesCollector(implicit val ctx: Context) extends tp
           traverseChildren(tp)
       }
     }
+
+    protected def addDependency(symbol: Symbol)(implicit ctx: Context): Unit =
+      thisTreeTraverser.addDependency(symbol)
   }
+
+  private class usedTypeTraverser(ctx0: Context) extends ExtractTypesCollector(ctx0)
 }

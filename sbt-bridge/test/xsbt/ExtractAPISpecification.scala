@@ -16,26 +16,25 @@ class ExtractAPISpecification extends Specification {
 
   def stableExistentialNames: Boolean = {
     def compileAndGetFooMethodApi(src: String): Def = {
-      val compilerForTesting = new ScalaCompilerForUnitTesting(nameHashing = false)
+      val compilerForTesting = new ScalaCompilerForUnitTesting
       val sourceApi = compilerForTesting.extractApiFromSrc(src)
-      val FooApi = sourceApi.definitions().find(_.name() == "Foo").get.asInstanceOf[ClassLike]
+      val FooApi = sourceApi.find(_.name() == "Foo").get.asInstanceOf[ClassLike]
       val fooMethodApi = FooApi.structure().declared().find(_.name == "foo").get
       fooMethodApi.asInstanceOf[Def]
     }
     val src1 = """
-				|class Box[T]
-				|class Foo {
-				|	def foo: Box[_] = null
-				|
-				}""".stripMargin
+                 |class Box[T]
+                 |class Foo {
+                 |	def foo: Box[_] = null
+                 |
+                 }""".stripMargin
     val fooMethodApi1 = compileAndGetFooMethodApi(src1)
     val src2 = """
-				|class Box[T]
-				|class Foo {
-			    |   def bar: Box[_] = null
-				|	def foo: Box[_] = null
-				|
-				}""".stripMargin
+                 |class Box[T]
+                 |class Foo {
+                 |  def bar: Box[_] = null
+                 |  def foo: Box[_] = null
+                 |}""".stripMargin
     val fooMethodApi2 = compileAndGetFooMethodApi(src2)
 
     fooMethodApi1 == fooMethodApi2
@@ -52,13 +51,11 @@ class ExtractAPISpecification extends Specification {
    * See https://github.com/sbt/sbt/issues/2504
    */
   "Self variable and no self type" in {
-    def selectNamer(api: SourceAPI): ClassLike = {
+    def selectNamer(api: Seq[Definition]): ClassLike = {
       def selectClass(defs: Iterable[Definition], name: String): ClassLike = defs.collectFirst {
         case cls: ClassLike if cls.name == name => cls
       }.get
-      val global = selectClass(api.definitions, "Global")
-      val foo = selectClass(global.structure.declared, "Global.Foo")
-      selectClass(foo.structure.inherited, "Namers.Namer")
+      selectClass(api, "Namers.Namer")
     }
     val src1 =
       """|class Namers {
@@ -70,7 +67,7 @@ class ExtractAPISpecification extends Specification {
          |  class Foo extends Namers
          |}
          |""".stripMargin
-    val compilerForTesting = new ScalaCompilerForUnitTesting(nameHashing = false)
+    val compilerForTesting = new ScalaCompilerForUnitTesting
     val apis = compilerForTesting.extractApisFromSrcs(reuseCompilerInstance = false)(List(src1, src2), List(src2))
     val _ :: src2Api1 :: src2Api2 :: Nil = apis.toList
     val namerApi1 = selectNamer(src2Api1)
@@ -86,7 +83,7 @@ class ExtractAPISpecification extends Specification {
    * with our without a self variable.
    */
   "Self type" in {
-    def collectFirstClass(defs: Array[Definition]): ClassLike = defs.collectFirst {
+    def collectFirstClass(defs: Iterable[Definition]): ClassLike = defs.collectFirst {
       case c: ClassLike => c
     }.get
     val srcX = "trait X"
@@ -99,11 +96,11 @@ class ExtractAPISpecification extends Specification {
     val srcC6 = "class C6 extends AnyRef with X { self: X with Y => }"
     // val srcC7 = "class C7 { _ => }" // DOTTY: Syntax not supported
     val srcC8 = "class C8 { self => }"
-    val compilerForTesting = new ScalaCompilerForUnitTesting(nameHashing = false)
+    val compilerForTesting = new ScalaCompilerForUnitTesting
     val apis = compilerForTesting.extractApisFromSrcs(reuseCompilerInstance = true)(
       List(srcX, srcY, srcC1, srcC2, srcC3, srcC4, srcC5, srcC6, srcC8)
-    ).map(x => collectFirstClass(x.definitions))
-    val emptyType = new EmptyType
+    ).map(collectFirstClass)
+    val emptyType = EmptyType.create()
     def hasSelfType(c: ClassLike): Boolean =
       c.selfType != emptyType
     val (withSelfType, withoutSelfType) = apis.partition(hasSelfType)

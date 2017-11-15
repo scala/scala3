@@ -501,7 +501,7 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
 
   /** Decompose a type into subspaces -- assume the type can be decomposed */
   def decompose(tp: Type): List[Space] = {
-    val children = tp.classSymbol.children
+    val children = tp.classSymbol.denot.children
 
     debug.println(s"candidates for ${tp.show} : [${children.map(_.show).mkString(", ")}]")
 
