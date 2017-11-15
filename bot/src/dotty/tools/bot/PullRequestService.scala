@@ -267,7 +267,7 @@ trait PullRequestService {
          |> 1. Limit the subject line to 72 characters
          |> 1. Capitalize the subject line
          |> 1. Do not end the subject line with a period
-         |> 1. Use the imperative mood in the subject line ("Added" instead of "Add")
+         |> 1. Use the imperative mood in the subject line ("Add" instead of "Added")
          |> 1. Wrap the body at 80 characters
          |> 1. Use the body to explain what and why vs. how
          |>
