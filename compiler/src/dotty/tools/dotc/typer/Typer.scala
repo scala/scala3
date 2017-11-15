@@ -548,7 +548,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
       require(ctx.mode.is(Mode.Pattern))
       inferImplicit(defn.ClassTagType.appliedTo(tref),
                     EmptyTree, tree.tpt.pos)(ctx.retractMode(Mode.Pattern)) match {
-        case SearchSuccess(clsTag, _, _, _) =>
+        case SearchSuccess(clsTag, _, _) =>
           typed(untpd.Apply(untpd.TypedSplice(clsTag), untpd.TypedSplice(tree.expr)), pt)
         case _ =>
           tree
@@ -2010,23 +2010,58 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
       val tvarsToInstantiate = tvarsInParams(tree)
       wtp.paramInfos.foreach(instantiateSelected(_, tvarsToInstantiate))
       val constr = ctx.typerState.constraint
+
+      def dummyArg(tp: Type) = untpd.Ident(nme.???).withTypeUnchecked(tp)
+
       def addImplicitArgs(implicit ctx: Context) = {
-        val errors = new mutable.ListBuffer[() => String]
-        def implicitArgError(msg: => String) = {
-          errors += (() => msg)
-          EmptyTree
+        def implicitArgs(formals: List[Type]): List[Tree] = formals match {
+          case Nil => Nil
+          case formal :: formals1 =>
+            val arg = inferImplicitArg(formal, tree.pos.endPos)
+            arg.tpe match {
+              case failed: SearchFailureType
+              if !failed.isInstanceOf[AmbiguousImplicits] && !tree.symbol.hasDefaultParams =>
+                // no need to search further, the adapt fails in any case
+                // the reason why we continue inferring arguments in case of an AmbiguousImplicits
+                // is that we need to know whether there are further errors.
+                // If there are none, we have to propagate the ambiguity to the caller.
+                arg :: formals1.map(dummyArg)
+              case _ =>
+                arg :: implicitArgs(formals1)
+            }
         }
-        def issueErrors() = {
-          for (err <- errors) ctx.error(err(), tree.pos.endPos)
-          tree.withType(wtp.resultType)
+        val args = implicitArgs(wtp.paramInfos)
+
+        def propagatedFailure(args: List[Tree]): Type = args match {
+          case arg :: args1 =>
+            arg.tpe match {
+              case ambi: AmbiguousImplicits =>
+                propagatedFailure(args1) match {
+                  case NoType | (_: AmbiguousImplicits) => ambi
+                  case failed => failed
+                }
+              case failed: SearchFailureType => failed
+              case _ => propagatedFailure(args1)
+            }
+          case Nil => NoType
         }
-        val args = (wtp.paramNames, wtp.paramInfos).zipped map { (pname, formal) =>
-          def implicitArgError(msg: String => String) =
-            errors += (() => msg(em"parameter $pname of $methodStr"))
-          if (errors.nonEmpty) EmptyTree
-          else inferImplicitArg(formal, implicitArgError, tree.pos.endPos)
+
+        val propFail = propagatedFailure(args)
+
+        def issueErrors(): Tree = {
+          (wtp.paramNames, wtp.paramInfos, args).zipped.foreach { (paramName, formal, arg) =>
+            arg.tpe match {
+              case failure: SearchFailureType =>
+                ctx.error(
+                  missingArgMsg(arg, formal, implicitParamString(paramName, methodStr, tree)),
+                  tree.pos.endPos)
+              case _ =>
+            }
+          }
+          untpd.Apply(tree, args).withType(propFail)
         }
-        if (errors.nonEmpty) {
+
+        if (propFail.exists) {
           // If there are several arguments, some arguments might already
           // have influenced the context, binding variables, but later ones
           // might fail. In that case the constraint needs to be reset.
@@ -2034,12 +2069,9 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
 
           // If method has default params, fall back to regular application
           // where all inferred implicits are passed as named args.
-          if (tree.symbol.hasDefaultParams) {
+          if (tree.symbol.hasDefaultParams && !propFail.isInstanceOf[AmbiguousImplicits]) {
             val namedArgs = (wtp.paramNames, args).zipped.flatMap { (pname, arg) =>
-              arg match {
-                case EmptyTree => Nil
-                case _ => untpd.NamedArg(pname, untpd.TypedSplice(arg)) :: Nil
-              }
+              if (arg.tpe.isError) Nil else untpd.NamedArg(pname, untpd.TypedSplice(arg)) :: Nil
             }
             tryEither { implicit ctx =>
               typed(untpd.Apply(untpd.TypedSplice(tree), namedArgs), pt)
@@ -2160,13 +2192,19 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
 
     def adaptNoArgs(wtp: Type): Tree = {
       val ptNorm = underlyingApplied(pt)
-      val functionExpected = defn.isFunctionType(ptNorm)
+      lazy val functionExpected = defn.isFunctionType(ptNorm)
+      lazy val resultMatch = constrainResult(wtp, followAlias(pt))
       wtp match {
         case wtp: ExprType =>
           adaptInterpolated(tree.withType(wtp.resultType), pt)
-        case wtp: MethodType
-        if wtp.isImplicitMethod && (constrainResult(wtp, followAlias(pt)) || !functionExpected) =>
-          adaptNoArgsImplicitMethod(wtp)
+        case wtp: MethodType if wtp.isImplicitMethod && (resultMatch || !functionExpected) =>
+          if (resultMatch || ctx.mode.is(Mode.ImplicitsEnabled)) adaptNoArgsImplicitMethod(wtp)
+          else {
+            // Don't proceed with implicit search if result type cannot match - the search
+            // will likely be under-constrained, which means that an unbounded number of alternatives
+            // is tried. See strawman-contrib MapDecoratorTest.scala for an example where this happens.
+            err.typeMismatch(tree, pt)
+          }
         case wtp: MethodType if !pt.isInstanceOf[SingletonType] =>
           val arity =
             if (functionExpected)
@@ -2230,23 +2268,23 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
       }
       // try an implicit conversion
       val prevConstraint = ctx.typerState.constraint
-      def recover(failure: SearchFailure) =
+      def recover(failure: SearchFailureType) =
         if (isFullyDefined(wtp, force = ForceDegree.all) &&
             ctx.typerState.constraint.ne(prevConstraint)) adapt(tree, pt)
         else err.typeMismatch(tree, pt, failure)
       if (ctx.mode.is(Mode.ImplicitsEnabled))
         inferView(tree, pt) match {
-          case SearchSuccess(inferred, _, _, _) =>
+          case SearchSuccess(inferred, _, _) =>
             adapt(inferred, pt)(ctx.retractMode(Mode.ImplicitsEnabled))
           case failure: SearchFailure =>
-            if (pt.isInstanceOf[ProtoType] && !failure.isInstanceOf[AmbiguousImplicits])
+            if (pt.isInstanceOf[ProtoType] && !failure.isAmbiguous)
               // don't report the failure but return the tree unchanged. This
-              // wil cause a failure at the next level out, which usually gives
+              // will cause a failure at the next level out, which usually gives
               // a better error message.
               tree
-            else recover(failure)
+            else recover(failure.reason)
         }
-      else recover(NoImplicitMatches)
+      else recover(NoMatchingImplicits)
     }
 
     def adaptType(tp: Type): Tree = {

@@ -69,9 +69,9 @@ object Trees {
     }
 
     /** A unique identifier for this tree. Used for debugging, and potentially
-     *  tracking presentation compiler interactions
+     *  tracking presentation compiler interactions.
      */
-    private var myUniqueId: Int = nxId
+    @sharable private var myUniqueId: Int = nxId
 
     def uniqueId = myUniqueId
 
@@ -368,6 +368,11 @@ object Trees {
     override def isBackquoted: Boolean = true
 
     override def toString = s"BackquotedIdent($name)"
+  }
+
+  class SearchFailureIdent[-T >: Untyped] private[ast] (name: Name)
+    extends Ident[T](name) {
+    override def toString = s"SearchFailureIdent($name)"
   }
 
   /** qualifier.name, or qualifier#name, if qualifier is a type */
@@ -830,6 +835,7 @@ object Trees {
 
     type Ident = Trees.Ident[T]
     type BackquotedIdent = Trees.BackquotedIdent[T]
+    type SearchFailureIdent = Trees.SearchFailureIdent[T]
     type Select = Trees.Select[T]
     type SelectWithSig = Trees.SelectWithSig[T]
     type This = Trees.This[T]

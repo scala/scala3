@@ -171,8 +171,8 @@ class PlainPrinter(_ctx: Context) extends Printer {
         changePrec(AndPrec) { toText(tp1) ~ " & " ~ toText(tp2) }
       case OrType(tp1, tp2) =>
         changePrec(OrPrec) { toText(tp1) ~ " | " ~ toText(tp2) }
-      case _: ErrorType =>
-        "<error>"
+      case tp: ErrorType =>
+        s"<error ${tp.msg.msg}>"
       case tp: WildcardType =>
         if (tp.optBounds.exists) "(?" ~ toTextRHS(tp.bounds) ~ ")" else "?"
       case NoType =>
@@ -202,8 +202,6 @@ class PlainPrinter(_ctx: Context) extends Printer {
         ParamRefNameString(tp) ~ ".type"
       case AnnotatedType(tpe, annot) =>
         toTextLocal(tpe) ~ " " ~ toText(annot)
-      case AppliedType(tycon, args) =>
-        toTextLocal(tycon) ~ "[" ~ Text(args.map(argText), ", ") ~ "]"
       case tp: TypeVar =>
         if (tp.isInstantiated)
           toTextLocal(tp.instanceOpt) ~ ("^" provided ctx.settings.YprintDebug.value)
@@ -501,18 +499,16 @@ class PlainPrinter(_ctx: Context) extends Printer {
   def toText(result: SearchResult): Text = result match {
     case result: SearchSuccess =>
       "SearchSuccess: " ~ toText(result.ref) ~ " via " ~ toText(result.tree)
-    case _: NonMatchingImplicit | NoImplicitMatches =>
-      "NoImplicitMatches"
-    case _: DivergingImplicit | DivergingImplicit =>
-      "Diverging Implicit"
-    case result: ShadowedImplicit =>
-      "Shadowed Implicit"
-    case result: FailedImplicit =>
-      "Failed Implicit"
-    case result: AmbiguousImplicits =>
-      "Ambiguous Implicit: " ~ toText(result.alt1) ~ " and " ~ toText(result.alt2)
-    case _ =>
-      "?Unknown Implicit Result?" + result.getClass
+    case result: SearchFailure =>
+      result.reason match {
+        case _: NoMatchingImplicits => "No Matching Implicit"
+        case _: DivergingImplicit => "Diverging Implicit"
+        case _: ShadowedImplicit => "Shadowed Implicit"
+        case result: AmbiguousImplicits =>
+          "Ambiguous Implicit: " ~ toText(result.alt1.ref) ~ " and " ~ toText(result.alt2.ref)
+        case _ =>
+          "?Unknown Implicit Result?" + result.getClass
+    }
   }
 
   def toText(importInfo: ImportInfo): Text = {

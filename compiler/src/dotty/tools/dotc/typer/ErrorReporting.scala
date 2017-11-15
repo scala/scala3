@@ -104,11 +104,11 @@ object ErrorReporting {
 
     def patternConstrStr(tree: Tree): String = ???
 
-    def typeMismatch(tree: Tree, pt: Type, implicitFailure: SearchFailure = NoImplicitMatches): Tree = {
+    def typeMismatch(tree: Tree, pt: Type, implicitFailure: SearchFailureType = NoMatchingImplicits): Tree = {
       val normTp = normalize(tree.tpe, pt)
       val treeTp = if (normTp <:< pt) tree.tpe else normTp
         // use normalized type if that also shows an error, original type otherwise
-      errorTree(tree, typeMismatchMsg(treeTp, pt, implicitFailure.postscript))
+      errorTree(tree, typeMismatchMsg(treeTp, pt, implicitFailure.whyNoConversion))
     }
 
     /** A subtype log explaining why `found` does not conform to `expected` */

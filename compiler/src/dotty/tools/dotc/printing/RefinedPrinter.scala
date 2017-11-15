@@ -7,7 +7,7 @@ import TypeErasure.ErasedValueType
 import Contexts.Context, Scopes.Scope, Denotations._, SymDenotations._, Annotations.Annotation
 import StdNames.{nme, tpnme}
 import ast.{Trees, untpd, tpd}
-import typer.{Namer, Inliner}
+import typer.{Namer, Inliner, Implicits}
 import typer.ProtoTypes.{SelectionProto, ViewProto, FunProto, IgnoredProto, dummyTreeOfType}
 import Trees._
 import TypeApplications._
@@ -332,6 +332,13 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
     def toTextCore(tree: Tree): Text = tree match {
       case id: Trees.BackquotedIdent[_] if !homogenizedView =>
         "`" ~ toText(id.name) ~ "`"
+      case id: Trees.SearchFailureIdent[_] =>
+        tree.typeOpt match {
+          case reason: Implicits.SearchFailureType =>
+            toText(id.name) ~ "implicitly[" ~ toText(reason.expectedType) ~ "]"
+          case _ =>
+            toText(id.name)
+        }
       case Ident(name) =>
         tree.typeOpt match {
           case tp: NamedType if name != nme.WILDCARD =>
