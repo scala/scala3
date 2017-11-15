@@ -916,49 +916,49 @@ trait Implicits { self: Typer =>
        *      treated as a simple failure, with a warning that semantics will change.
        *    - otherwise add the failure to `rfailures` and continue testing the other candidates.
        */
-      def rank(pending: List[Candidate], found: SearchResult, rfailures: List[SearchFailure]): SearchResult = {
-        def recur(result: SearchResult, remaining: List[Candidate], isNot: Boolean): SearchResult = result match {
-          case fail: SearchFailure =>
-            if (isNot)
-              recur(
-                SearchSuccess(ref(defn.Not_value), defn.Not_value.termRef, 0)(
-                  ctx.typerState.fresh().setCommittable(true)),
-                remaining, false)
-            else if (fail.isAmbiguous)
-              if (ctx.scala2Mode) {
-                val result = rank(remaining, found, NoMatchingImplicitsFailure :: rfailures)
-                if (result.isSuccess)
-                  warnAmbiguousNegation(fail.reason.asInstanceOf[AmbiguousImplicits])
-                result
-              }
-              else
-                healAmbiguous(remaining, fail)
-            else
-              rank(remaining, found, fail :: rfailures)
-          case best: SearchSuccess =>
-            if (isNot)
-              recur(NoMatchingImplicitsFailure, remaining, false)
-            else if (ctx.mode.is(Mode.ImplicitExploration) || isCoherent)
-              best
-            else disambiguate(found, best) match {
-              case retained: SearchSuccess =>
-                val newPending =
-                  if (retained eq found) remaining
-                  else remaining.filter(cand =>
-                    compareCandidate(retained, cand.ref, cand.level) <= 0)
-                rank(newPending, retained, rfailures)
-              case fail: SearchFailure =>
-                healAmbiguous(remaining, fail)
-            }
-        }
+      def rank(pending: List[Candidate], found: SearchResult, rfailures: List[SearchFailure]): SearchResult =
         pending match  {
-          case cand :: pending1 =>
-            recur(tryImplicit(cand), pending1, this.isNot)
+          case cand :: remaining =>
+            negateIfNot(tryImplicit(cand)) match {
+              case fail: SearchFailure =>
+                if (fail.isAmbiguous)
+                  if (ctx.scala2Mode) {
+                    val result = rank(remaining, found, NoMatchingImplicitsFailure :: rfailures)
+                    if (result.isSuccess)
+                      warnAmbiguousNegation(fail.reason.asInstanceOf[AmbiguousImplicits])
+                    result
+                  }
+                  else healAmbiguous(remaining, fail)
+                else rank(remaining, found, fail :: rfailures)
+              case best: SearchSuccess =>
+                if (ctx.mode.is(Mode.ImplicitExploration) || isCoherent)
+                  best
+                else disambiguate(found, best) match {
+                  case retained: SearchSuccess =>
+                    val newPending =
+                      if (retained eq found) remaining
+                      else remaining.filter(cand =>
+                        compareCandidate(retained, cand.ref, cand.level) <= 0)
+                    rank(newPending, retained, rfailures)
+                  case fail: SearchFailure =>
+                    healAmbiguous(remaining, fail)
+                }
+            }
           case nil =>
             if (rfailures.isEmpty) found
             else found.recoverWith(_ => rfailures.reverse.maxBy(_.tree.treeSize))
         }
-      }
+
+      def negateIfNot(result: SearchResult) =
+        if (isNot)
+          result match {
+            case _: SearchFailure =>
+              SearchSuccess(ref(defn.Not_value), defn.Not_value.termRef, 0)(
+                ctx.typerState.fresh().setCommittable(true))
+            case _: SearchSuccess =>
+              NoMatchingImplicitsFailure
+          }
+      else result
 
       def warnAmbiguousNegation(ambi: AmbiguousImplicits) =
         ctx.migrationWarning(
