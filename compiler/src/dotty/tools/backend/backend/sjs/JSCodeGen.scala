@@ -127,7 +127,7 @@ class JSCodeGen()(implicit ctx: Context) {
     /* Finally, we emit true code for the remaining class defs. */
     for (td <- allTypeDefs) {
       val sym = td.symbol
-      implicit val pos = sym.pos
+      implicit val pos: Position = sym.pos
 
       /* Do not actually emit code for primitive types nor scala.Array. */
       val isPrimitive =
@@ -203,7 +203,7 @@ class JSCodeGen()(implicit ctx: Context) {
    */
   private def genScalaClass(td: TypeDef): js.ClassDef = {
     val sym = td.symbol.asClass
-    implicit val pos = sym.pos
+    implicit val pos: Position = sym.pos
 
     assert(!sym.is(Trait),
         "genScalaClass() must be called only for normal classes: "+sym)
@@ -336,7 +336,7 @@ class JSCodeGen()(implicit ctx: Context) {
    */
   private def genRawJSClassData(td: TypeDef): js.ClassDef = {
     val sym = td.symbol.asClass
-    implicit val pos = sym.pos
+    implicit val pos: Position = sym.pos
 
     val classIdent = encodeClassFullNameIdent(sym)
     val kind = {
@@ -363,7 +363,7 @@ class JSCodeGen()(implicit ctx: Context) {
    */
   private def genInterface(td: TypeDef): js.ClassDef = {
     val sym = td.symbol.asClass
-    implicit val pos = sym.pos
+    implicit val pos: Position = sym.pos
 
     val classIdent = encodeClassFullNameIdent(sym)
 
