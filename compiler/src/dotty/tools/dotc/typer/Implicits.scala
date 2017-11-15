@@ -305,7 +305,7 @@ object Implicits {
 
     def msg(implicit ctx: Context): Message = explanation
 
-    /** If search was a for an implicit conversion, a note describing the failure
+    /** If search was for an implicit conversion, a note describing the failure
      *  in more detail - this is either empty or starts with a '\n'
      */
     def whyNoConversion(implicit ctx: Context): String = ""
@@ -878,7 +878,7 @@ trait Implicits { self: Typer =>
       def disambiguate(alt1: SearchResult, alt2: SearchSuccess) = alt1 match {
         case alt1: SearchSuccess =>
           val diff = compareCandidate(alt1, alt2.ref, alt2.level)
-          assert(diff <= 0)
+          assert(diff <= 0)   // diff > 0 candidates should already have been eliminated in `rank`
           if (diff < 0) alt2
           else
             // numericValueTypeBreak(alt1, alt2) recoverWith
@@ -886,6 +886,10 @@ trait Implicits { self: Typer =>
         case _: SearchFailure => alt2
       }
 
+      /** Faced with an ambiguous implicits failure `fail`, try to find another
+       *  alternative among `pending` that is strictly better than both ambiguous
+       *  alternatives.  If that fails, return `fail`
+       */
       def healAmbiguous(pending: List[Candidate], fail: SearchFailure) = {
         val ambi = fail.reason.asInstanceOf[AmbiguousImplicits]
         val newPending = pending.filter(cand =>
@@ -894,42 +898,66 @@ trait Implicits { self: Typer =>
         rank(newPending, fail, Nil).recoverWith(_ => fail)
       }
 
-      def rank(pending: List[Candidate], found: SearchResult, rfailures: List[SearchFailure]): SearchResult = pending match {
-        case cand :: pending1 =>
-          tryImplicit(cand) match {
-            case fail: SearchFailure =>
-              if (isNot)
-                SearchSuccess(ref(defn.Not_value), defn.Not_value.termRef, 0)(ctx.typerState)
-              else if (fail.isAmbiguous)
-                if (ctx.scala2Mode) {
-                  val result = rank(pending1, found, NoMatchingImplicitsFailure :: rfailures)
-                  if (result.isSuccess)
-                    warnAmbiguousNegation(fail.reason.asInstanceOf[AmbiguousImplicits])
-                  result
-                }
-                else
-                  healAmbiguous(pending1, fail)
-              else
-                rank(pending1, found, fail :: rfailures)
-            case best: SearchSuccess =>
-              if (isNot)
-                NoMatchingImplicitsFailure
-              else if (ctx.mode.is(Mode.ImplicitExploration) || isCoherent)
-                best
-              else disambiguate(found, best) match {
-                case retained: SearchSuccess =>
-                  val newPending =
-                    if (retained eq found) pending1
-                    else pending1.filter(cand =>
-                      compareCandidate(retained, cand.ref, cand.level) <= 0)
-                  rank(newPending, retained, rfailures)
-                case fail: SearchFailure =>
-                  healAmbiguous(pending1, fail)
+      /** Try to find a best matching implicit term among all the candidates in `pending`.
+       *  @param pending   The list of candidates that remain to be tested
+       *  @param found     The result obtained from previously tried candidates
+       *  @param rfailures A list of all failures from previously tried candidates in reverse order
+       *
+       *  The scheme is to try candidates one-by-one. If a trial is successful:
+       *   - if the query term is a `Not[T]` treat it a failure,
+       *   - otherwise, if a previous search was also successful, handle the ambiguity
+       *     in `disambiguate`,
+       *   - otherwise, continue the search with all candidates that are not strictly
+       *     worse than the succesful candidate.
+       *  If a trial failed:
+       *    - if the query term is a `Not[T]` treat it as a success,
+       *    - otherwise, if the failure is an ambiguity, try to heal it (see @healAmbiguous)
+       *      and return an ambiguous error otherwise. However, under Scala2 mode this is
+       *      treated as a simple failure, with a warning that semantics will change.
+       *    - otherwise add the failure to `rfailures` and continue testing the other candidates.
+       */
+      def rank(pending: List[Candidate], found: SearchResult, rfailures: List[SearchFailure]): SearchResult = {
+        def recur(result: SearchResult, remaining: List[Candidate]): SearchResult = result match {
+          case fail: SearchFailure =>
+            if (isNot)
+              recur(
+                SearchSuccess(ref(defn.Not_value), defn.Not_value.termRef, 0)(
+                  ctx.typerState.fresh().setCommittable(true))
+                remaining)
+            else if (fail.isAmbiguous)
+              if (ctx.scala2Mode) {
+                val result = rank(remaining, found, NoMatchingImplicitsFailure :: rfailures)
+                if (result.isSuccess)
+                  warnAmbiguousNegation(fail.reason.asInstanceOf[AmbiguousImplicits])
+                result
               }
-          }
-        case nil =>
-          if (rfailures.isEmpty) found
-          else found.recoverWith(_ => rfailures.reverse.maxBy(_.tree.treeSize))
+              else
+                healAmbiguous(remaining, fail)
+            else
+              rank(remaining, found, fail :: rfailures)
+          case best: SearchSuccess =>
+            if (isNot)
+              recur(NoMatchingImplicitsFailure, remaining)
+            else if (ctx.mode.is(Mode.ImplicitExploration) || isCoherent)
+              best
+            else disambiguate(found, best) match {
+              case retained: SearchSuccess =>
+                val newPending =
+                  if (retained eq found) remaining
+                  else remaining.filter(cand =>
+                    compareCandidate(retained, cand.ref, cand.level) <= 0)
+                rank(newPending, retained, rfailures)
+              case fail: SearchFailure =>
+                healAmbiguous(remaining, fail)
+            }
+        }
+        pending match  {
+          case cand :: pending1 =>
+            recur(tryImplicit(cand), pending1)
+          case nil =>
+            if (rfailures.isEmpty) found
+            else found.recoverWith(_ => rfailures.reverse.maxBy(_.tree.treeSize))
+        }
       }
 
       def warnAmbiguousNegation(ambi: AmbiguousImplicits) =
