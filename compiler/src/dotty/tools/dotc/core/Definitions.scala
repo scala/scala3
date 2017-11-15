@@ -597,6 +597,10 @@ class Definitions {
 
     def Not_value(implicit ctx: Context) = NotModule.requiredMethod(nme.value)
 
+  lazy val RepresentableType = ctx.requiredClassRef("dotty.generic.Representable")
+  def RepresentableClass(implicit ctx: Context) = RepresentableType.symbol.asClass
+  def RepresentableModule(implicit ctx: Context) = RepresentableClass.companionModule
+
   lazy val XMLTopScopeModuleRef = ctx.requiredModuleRef("scala.xml.TopScope")
 
   // Annotation base classes

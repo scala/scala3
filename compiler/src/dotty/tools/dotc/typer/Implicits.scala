@@ -585,7 +585,7 @@ trait Implicits { self: Typer =>
 
     /** If `formal` is of the form Eq[T, U], where no `Eq` instance exists for
      *  either `T` or `U`, synthesize `Eq.eqAny[T, U]` as solution.
-   	 */
+     */
     def synthesizedEq(formal: Type)(implicit ctx: Context): Tree = {
       //println(i"synth eq $formal / ${formal.argTypes}%, %")
       formal.argTypes match {
@@ -596,6 +596,11 @@ trait Implicits { self: Typer =>
         case _ =>
           EmptyTree
       }
+    }
+
+    /** */
+    def synthesizedRepresentable(formal: Type)(implicit ctx: Context): Tree = {
+      ???
     }
 
     def hasEq(tp: Type): Boolean =
@@ -645,6 +650,8 @@ trait Implicits { self: Typer =>
           synthesizedClassTag(formalValue).orElse(tree)
         else if (formalValue.isRef(defn.EqClass))
           synthesizedEq(formalValue).orElse(tree)
+        else if (formalValue.isRef(defn.RepresentableClass))
+          synthesizedRepresentable(formalValue).orElse(tree)
         else
           tree
     }
