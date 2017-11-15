@@ -67,16 +67,22 @@ object FromTasty extends Driver {
     override def runOn(units: List[CompilationUnit])(implicit ctx: Context): List[CompilationUnit] =
       units.flatMap(readTASTY)
 
-    def readTASTY(unit: CompilationUnit)(implicit ctx: Context): List[CompilationUnit] = unit match {
+    def readTASTY(unit: CompilationUnit)(implicit ctx: Context): Option[CompilationUnit] = unit match {
       case unit: TASTYCompilationUnit =>
         assert(ctx.settings.YretainTrees.value)
         val className = unit.className.toTypeName
-        val compilationUnits = List(tree(className), tree(className.moduleClassName)).flatMap {
-          case Some((clsd, unpickled)) if !unpickled.isEmpty =>
-            List(CompilationUnit.mkCompilationUnit(clsd, unpickled, forceTrees = true))
-          case _ => Nil
+        def compilationUnit(className: TypeName): Option[CompilationUnit] = {
+          tree(className).flatMap { case (clsd, unpickled) =>
+            if (unpickled.isEmpty) None
+            else Some(CompilationUnit.mkCompilationUnit(clsd, unpickled, forceTrees = true))
+          }
         }
-        compilationUnits
+        // The TASTY section in a/b/C.class may either contain a class a.b.C, an object a.b.C, or both.
+        // We first try to load the class and fallback to loading the object if the class doesn't exist.
+        // Note that if both the class and the object are present, then loading the class will also load
+        // the object, this is why we use orElse here, otherwise we could load the object twice and
+        // create ambiguities!
+        compilationUnit(className).orElse(compilationUnit(className.moduleClassName))
     }
 
     private def tree(className: TypeName)(implicit ctx: Context): Option[(ClassDenotation, tpd.Tree)] = {
