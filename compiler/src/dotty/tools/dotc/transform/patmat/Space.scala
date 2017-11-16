@@ -708,18 +708,18 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
     else text
   }
 
-  /** Whether the counterexample is satisfiable */
+  /** Whether the counterexample is satisfiable. The space is flattened and non-empty. */
   def satisfiable(sp: Space): Boolean = {
     def genConstraint(space: Space): List[(Type, Type)] = space match {
       case Prod(tp, unappTp, unappSym, ss, _) =>
         val tps = signature(unappTp, unappSym, ss.length)
         ss.zip(tps).flatMap {
-          case (sp: Prod, _) => genConstraint(sp)
+          case (sp : Prod, tp) => sp.tp -> tp :: genConstraint(sp)
           case (Typ(tp1, _), tp2) => tp1 -> tp2 :: Nil
-          // case _ => ???  // impossible
+          case _ => ???  // impossible
         }
       case Typ(_, _) => Nil
-      // case _ => ??? // impossible
+      case _ => ??? // impossible
     }
 
     def checkConstraint(constrs: List[(Type, Type)]): Boolean = {
@@ -738,7 +738,7 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
         }
       }
 
-      constrs.foldLeft(true) { case (acc, (tp1, tp2)) => acc && typeParamMap(tp1) <:< typeParamMap(tp2) }
+      constrs.forall { case (tp1, tp2) => typeParamMap(tp1) <:< typeParamMap(tp2) }
     }
 
     checkConstraint(genConstraint(sp))
