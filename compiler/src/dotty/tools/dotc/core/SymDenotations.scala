@@ -391,18 +391,23 @@ object SymDenotations {
      *  Drops package objects. Represents each term in the owner chain by a simple `_$`.
      */
     def fullNameSeparated(kind: QualifiedNameKind)(implicit ctx: Context): Name =
-      if (symbol == NoSymbol ||
-          owner == NoSymbol ||
-          owner.isEffectiveRoot ||
-          kind == FlatName && owner.is(PackageClass)) name
+      maybeOwner.fullNameSeparated(kind, kind, name)
+
+    /** The encoded full path name of this denotation (separated by `prefixKind`),
+     *  followed by the separator implied by `kind` and the given `name`.
+     *  Drops package objects. Represents each term in the owner chain by a simple `_$`.
+     */
+     def fullNameSeparated(prefixKind: QualifiedNameKind, kind: QualifiedNameKind, name: Name)(implicit ctx: Context): Name =
+      if (symbol == NoSymbol || isEffectiveRoot || kind == FlatName && is(PackageClass))
+        name
       else {
         var filler = ""
-        var encl = owner
+        var encl = symbol
         while (!encl.isClass && !encl.isPackageObject) {
           encl = encl.owner
           filler += "_$"
         }
-        var prefix = encl.fullNameSeparated(kind)
+        var prefix = encl.fullNameSeparated(prefixKind)
         if (kind.separator == "$")
           // duplicate scalac's behavior: don't write a double '$$' for module class members.
           prefix = prefix.exclude(ModuleClassName)
@@ -412,9 +417,8 @@ object SymDenotations {
           case name: SimpleName => qualify(name)
           case name @ AnyQualifiedName(_, _) => qualify(name.mangled.toSimpleName)
         }
-        if (isType) fn.toTypeName else fn.toTermName
+        if (name.isType) fn.toTypeName else fn.toTermName
       }
-
 
     /** The encoded flat name of this denotation, where joined names are separated by `separator` characters. */
     def flatName(implicit ctx: Context): Name = fullNameSeparated(FlatName)
