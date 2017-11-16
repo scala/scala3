@@ -382,7 +382,7 @@ class TreeUnpickler(reader: TastyReader, nameAtRef: NameRef => TermName, posUnpi
       if (lacksDefinition && tag != PARAM) flags |= Deferred
       if (tag == DEFDEF) flags |= Method
       if (givenFlags is Module)
-        flags = flags | (if (tag == VALDEF) ModuleCreationFlags else ModuleClassCreationFlags)
+        flags = flags | (if (tag == VALDEF) ModuleValCreationFlags else ModuleClassCreationFlags)
       if (ctx.owner.isClass) {
         if (tag == TYPEPARAM) flags |= Param
         else if (tag == PARAM) flags |= ParamAccessor
