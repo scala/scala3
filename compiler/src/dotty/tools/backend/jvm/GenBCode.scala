@@ -7,6 +7,7 @@ import dotty.tools.dotc.core.Phases.Phase
 import dotty.tools.dotc.core.Names.TypeName
 
 import scala.collection.mutable
+import scala.collection.JavaConverters._
 import scala.tools.asm.{ClassVisitor, CustomAttr, FieldVisitor, MethodVisitor}
 import scala.tools.nsc.backend.jvm._
 import dotty.tools.dotc
@@ -26,14 +27,16 @@ import Denotations._
 import Phases._
 import java.lang.AssertionError
 import java.io.{DataOutputStream, File => JFile}
+import java.nio.file.{Files, FileSystem, FileSystems, Path => JPath}
+
+import dotty.tools.io.{Directory, File, Jar}
 
 import scala.tools.asm
 import scala.tools.asm.tree._
 import dotty.tools.dotc.util.{DotClass, Positions}
 import tpd._
 import StdNames._
-
-import dotty.tools.io.{AbstractFile, Directory, PlainDirectory}
+import dotty.tools.io._
 
 class GenBCode extends Phase {
   def phaseName: String = "genBCode"
@@ -46,17 +49,35 @@ class GenBCode extends Phase {
     superCallsMap.put(sym, old + calls)
   }
 
-  def outputDir(implicit ctx: Context): AbstractFile =
-    new PlainDirectory(ctx.settings.outputDir.value)
+  private[this] var myOutput: AbstractFile = _
+
+  protected def outputDir(implicit ctx: Context): AbstractFile = {
+    if (myOutput eq null) {
+      val path = Directory(ctx.settings.outputDir.value)
+      myOutput =
+        if (path.extension == "jar") JarArchive.create(path)
+        else new PlainDirectory(path)
+    }
+    myOutput
+  }
 
   def run(implicit ctx: Context): Unit = {
     new GenBCodePipeline(entryPoints.toList,
         new DottyBackendInterface(outputDir, superCallsMap.toMap)(ctx))(ctx).run(ctx.compilationUnit.tpdTree)
     entryPoints.clear()
   }
+
+  override def runOn(units: List[CompilationUnit])(implicit ctx: Context) = {
+    try super.runOn(units)
+    finally myOutput match {
+      case jar: JarArchive =>
+        jar.close()
+      case _ =>
+    }
+  }
 }
 
-class GenBCodePipeline(val entryPoints: List[Symbol], val int: DottyBackendInterface)(implicit val ctx: Context) extends BCodeSyncAndTry{
+class GenBCodePipeline(val entryPoints: List[Symbol], val int: DottyBackendInterface)(implicit val ctx: Context) extends BCodeSyncAndTry {
 
   var tree: Tree = _
 

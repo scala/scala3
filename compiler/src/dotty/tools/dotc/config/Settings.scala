@@ -6,7 +6,7 @@ import scala.util.{ Try, Success, Failure }
 import reflect.ClassTag
 import core.Contexts._
 import scala.annotation.tailrec
-import dotty.tools.io.{ Directory, Path }
+import dotty.tools.io.{ Directory, File, Path }
 
 // import annotation.unchecked
   // Dotty deviation: Imports take precedence over definitions in enclosing package
@@ -22,7 +22,6 @@ object Settings {
   val ListTag = ClassTag(classOf[List[_]])
   val VersionTag = ClassTag(classOf[ScalaVersion])
   val OptionTag = ClassTag(classOf[Option[_]])
-  val DirectoryTag = ClassTag(classOf[Directory])
 
   class SettingsState(initialValues: Seq[Any]) {
     private[this] var values = ArrayBuffer(initialValues: _*)
@@ -141,6 +140,15 @@ object Settings {
           else if (!choices.contains(argRest))
             fail(s"$arg is not a valid choice for $name", args)
           else update(argRest, args)
+        case (StringTag, arg :: args) if name == "-d" =>
+          Path(arg) match {
+            case _: Directory =>
+              update(arg, args)
+            case p if p.extension == "jar" =>
+              update(arg, args)
+            case _ =>
+              fail(s"'$arg' does not exist or is not a directory", args)
+          }
         case (StringTag, arg2 :: args2) =>
           update(arg2, args2)
         case (IntTag, arg2 :: args2) =>
@@ -161,10 +169,6 @@ object Settings {
             case Success(v) => update(v, args)
             case Failure(ex) => fail(ex.getMessage, args)
           }
-        case (DirectoryTag, arg :: args) =>
-          val path = Path(arg)
-          if (path.isDirectory) update(Directory(path), args)
-          else fail(s"'$arg' does not exist or is not a directory", args)
         case (_, Nil) =>
           missingArg
       }
@@ -274,6 +278,9 @@ object Settings {
     def PathSetting(name: String, descr: String, default: String): Setting[String] =
       publish(Setting(name, descr, default))
 
+    def PathSetting(name: String, helpArg: String, descr: String, default: String): Setting[String] =
+        publish(Setting(name, descr, default, helpArg))
+
     def PhasesSetting(name: String, descr: String, default: String = ""): Setting[List[String]] =
       publish(Setting(name, descr, if (default.isEmpty) Nil else List(default)))
 
@@ -285,8 +292,5 @@ object Settings {
 
     def OptionSetting[T: ClassTag](name: String, descr: String): Setting[Option[T]] =
       publish(Setting(name, descr, None, propertyClass = Some(implicitly[ClassTag[T]].runtimeClass)))
-
-    def DirectorySetting(name: String, helpArg: String, descr: String, default: Directory): Setting[Directory] =
-      publish(Setting(name, descr, default, helpArg))
   }
 }

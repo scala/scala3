@@ -19,7 +19,7 @@ class ZipAndJarFileLookupFactoryTest {
     implicit val ctx: Context = new ContextBase().initialCtx
     assert(!ctx.settings.YdisableFlatCpCaching.value) // we're testing with our JAR metadata caching enabled.
 
-    def createCp = ZipAndJarClassPathFactory.create(AbstractFile.getFile(f.toFile))
+    def createCp = ZipAndJarClassPathFactory.create(AbstractFile.getFile(f))
     try {
       createZip(f, Array(), "p1/C.class")
       createZip(f, Array(), "p2/X.class")

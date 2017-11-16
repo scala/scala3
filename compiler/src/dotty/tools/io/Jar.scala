@@ -35,7 +35,7 @@ import scala.annotation.tailrec
 // static Attributes.Name   SPECIFICATION_VERSION
 
 class Jar(file: File) extends Iterable[JarEntry] {
-  def this(jfile: JFile) = this(File(jfile))
+  def this(jfile: JFile) = this(File(jfile.toPath))
   def this(path: String) = this(File(path))
 
   protected def errorFn(msg: String): Unit = Console println msg

@@ -60,7 +60,7 @@ class Run(comp: Compiler, ictx: Context) {
   assert(ctx.runId <= Periods.MaxPossibleRunId)
 
   def getSource(fileName: String): SourceFile = {
-    val f = new PlainFile(fileName)
+    val f = new PlainFile(io.Path(fileName))
     if (f.isDirectory) {
       ctx.error(s"expected file, received directory '$fileName'")
       NoSource

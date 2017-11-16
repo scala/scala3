@@ -31,7 +31,7 @@ class OutputDirs {
     if (dir != null && dir.isDirectory)
       dir
     // was:      else if (allowJar && dir == null && Path.isJarOrZip(name, false))
-    else if (allowJar && dir == null && Jar.isJarOrZip(name, false))
+    else if (allowJar && dir == null && Jar.isJarOrZip(File(name), false))
       new PlainFile(Path(name))
     else
       throw new FatalError(name + " does not exist or is not a directory"))
