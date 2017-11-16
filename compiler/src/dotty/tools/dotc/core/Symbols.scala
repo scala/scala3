@@ -153,7 +153,7 @@ trait Symbols { this: Context =>
         modcls, owner, modclsName, modclsFlags,
         infoFn(module, modcls), privateWithin)
     val mdenot = SymDenotation(
-        module, owner, name, modFlags | ModuleCreationFlags,
+        module, owner, name, modFlags | ModuleValCreationFlags,
         if (cdenot.isCompleted) TypeRef.withSym(owner.thisType, modcls, modclsName)
         else new ModuleCompleter(modcls))
     module.denot = mdenot

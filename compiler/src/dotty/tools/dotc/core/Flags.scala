@@ -472,7 +472,7 @@ object Flags {
   final val RetainedTypeArgFlags = VarianceFlags | Protected | Local
 
   /** Modules always have these flags set */
-  final val ModuleCreationFlags = ModuleVal | Lazy | Final | Stable
+  final val ModuleValCreationFlags = ModuleVal | Lazy | Final | Stable
 
   /** Module classes always have these flags set */
   final val ModuleClassCreationFlags = ModuleClass | Final
@@ -503,7 +503,7 @@ object Flags {
   /** Flags that can apply to a module val */
   final val RetainedModuleValFlags: FlagSet = RetainedModuleValAndClassFlags |
     Override | Final | Method | Implicit | Lazy |
-    Accessor | AbsOverride | Stable | Captured | Synchronized
+    Accessor | AbsOverride | Stable | Captured | Synchronized | Inline
 
   /** Flags that can apply to a module class */
   final val RetainedModuleClassFlags: FlagSet = RetainedModuleValAndClassFlags | ImplClass | Enum

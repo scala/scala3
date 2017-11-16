@@ -578,7 +578,7 @@ object desugar {
       val clsName = moduleName.moduleClassName
       val clsRef = Ident(clsName)
       val modul = ValDef(moduleName, clsRef, New(clsRef, Nil))
-        .withMods(mods | ModuleCreationFlags | mods.flags & AccessFlags)
+        .withMods(mods.toTermFlags & RetainedModuleValFlags | ModuleValCreationFlags)
         .withPos(mdef.pos.startPos)
       val ValDef(selfName, selfTpt, _) = impl.self
       val selfMods = impl.self.mods
