@@ -66,7 +66,6 @@ unused val unusedEvidence: Ev = ...
 methodWithUnusedEv(unusedEvidence)
 ```
 
-
 What happens with unused values at runtime?
 -------------------------------------------
 As `unused` are guaranteed not to be used in computations, they can and will be erased.
@@ -79,11 +78,8 @@ def evidence1: Ev = ...
 unused def unusedEvidence2: Ev = ... // does not exist at runtime
 unused val unusedEvidence3: Ev = ... // does not exist at runtime
 
-// evidence1 is evaluated but the result is not passed to methodWithUnusedEv
+// evidence1 is not evaluated and no value is passed to methodWithUnusedEv
 methodWithUnusedEv(evidence1)
-
-// unusedEvidence2 is not evaluated and its result is not passed to methodWithUnusedEv
-methodWithUnusedEv(unusedEvidence2)
 ```
 
 State machine with unused evidence example
@@ -111,14 +107,14 @@ final class Off extends State
 @implicitNotFound("State is must be Off")
 class IsOff[S <: State]
 object IsOff {
-  // def isOff will not exist at runtime
-  unused implicit def isOff: IsOff[Off] = new IsOff[Off]
+  // def isOff will not be called at runtime for turnedOn, the compiler will only require that this evidence exists
+  implicit def isOff: IsOff[Off] = new IsOff[Off]
 }
 
 @implicitNotFound("State is must be On")
 class IsOn[S <: State]
 object IsOn {
-  // val isOn will not exist at runtime
+  // def isOn will not exist at runtime, the compiler will only require that this evidence exists at compile time
   unused implicit val isOn: IsOn[On] = new IsOn[On]
 }
 

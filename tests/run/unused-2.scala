@@ -2,7 +2,7 @@ object Test {
 
   def main(args: Array[String]): Unit = {
 
-    def !!! : Null = ???
+    unused def !!! : Null = ???
 
     try {
       fun(!!!)

@@ -8,8 +8,8 @@ object Test {
     println("pacFun4")
   }
 
-  def inky: Int = {
-    println("inky")
+  unused def inky: Int = {
+    println("inky") // in erased function
     42
   }
 

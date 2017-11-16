@@ -31,7 +31,10 @@ class UnusedDecls extends MiniPhase with InfoTransformer {
 
   /* Tree transform */
 
-  override def transformValDef(tree: ValDef)(implicit ctx: Context): Tree =
+  override def transformDefDef(tree: DefDef)(implicit ctx: Context): Tree = transformValOrDefDef(tree)
+  override def transformValDef(tree: ValDef)(implicit ctx: Context): Tree = transformValOrDefDef(tree)
+
+  private def transformValOrDefDef(tree: ValOrDefDef)(implicit ctx: Context): Tree =
     if (tree.symbol.is(Unused, butNot = Param)) EmptyTree else tree
 
 

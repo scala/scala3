@@ -29,6 +29,7 @@ import dotty.tools.dotc.transform.Erasure.Boxing
 import util.Positions._
 import util.common._
 import util.{Property, SourcePosition}
+import UnusedUtil._
 
 import collection.mutable
 import annotation.tailrec
@@ -1344,7 +1345,7 @@ class Typer extends Namer
     val tpt1 = checkSimpleKinded(typedType(tpt))
     val rhs1 = vdef.rhs match {
       case rhs @ Ident(nme.WILDCARD) => rhs withType tpt1.tpe
-      case rhs => typedExpr(rhs, tpt1.tpe)
+      case rhs => normalizeUnusedRhs(typedExpr(rhs, tpt1.tpe), sym)
     }
     val vdef1 = assignType(cpy.ValDef(vdef)(name, tpt1, rhs1), sym)
     if (sym.is(Inline, butNot = DeferredOrTermParamOrAccessor))
@@ -1402,7 +1403,7 @@ class Typer extends Namer
       (tparams1, sym.owner.typeParams).zipped.foreach ((tdef, tparam) =>
         rhsCtx.gadt.setBounds(tdef.symbol, TypeAlias(tparam.typeRef)))
     }
-    val rhs1 = typedExpr(ddef.rhs, tpt1.tpe)(rhsCtx)
+    val rhs1 = normalizeUnusedRhs(typedExpr(ddef.rhs, tpt1.tpe)(rhsCtx), sym)
 
     // Overwrite inline body to make sure it is not evaluated twice
     if (sym.isInlineMethod) Inliner.registerInlineInfo(sym, _ => rhs1)
