@@ -1,0 +1,35 @@
+#!/usr/bin/env bash
+
+# check that benchmarks can run
+./project/scripts/sbt "dotty-bench-bootstrapped/jmh:run 1 1 tests/pos/alias.scala"
+
+
+# setup for `dotc`/`dotr` script tests
+./project/scripts/sbt dist-bootstrapped/pack
+
+# check that `dotc` compiles and `dotr` runs it
+echo "testing sbt dotc and dotr"
+mkdir out/scriptedtest0
+./bin/dotc tests/pos/sbtDotrTest.scala -d out/scriptedtest0
+# FIXME #3477
+#./bin/dotr -classpath out/scriptedtest0 dotrtest.Test" > sbtdotr1.out
+#if grep -e "dotr test ok" sbtdotr1.out; then
+#    echo "output ok"
+#else
+#    exit -1
+#fi
+
+
+# check that `dotc` compiles and `dotr` runs it
+echo "testing sbt dotc -tasty and dotr -classpath"
+mkdir out/scriptedtest1
+mkdir out/scriptedtest2
+./bin/dotc tests/pos/sbtDotrTest.scala -d out/scriptedtest1/
+./bin/dotc -tasty -classpath out/scriptedtest1/ -d out/scriptedtest2/ dotrtest.Test
+# FIXME #3477
+#./bin/dotr -classpath out/scriptedtest2/ dotrtest.Test" > sbtdotr2.out
+#if grep -e "dotr test ok" sbtdotr2.out; then
+#    echo "output ok"
+#else
+#    exit -1
+#fi

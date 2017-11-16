@@ -6,6 +6,7 @@ import core.Contexts.{Context, ContextBase}
 import util.DotClass
 import reporting._
 import scala.util.control.NonFatal
+import fromtasty.TASTYCompiler
 
 /** Run the Dotty compiler.
  *
@@ -15,7 +16,9 @@ import scala.util.control.NonFatal
  */
 class Driver extends DotClass {
 
-  protected def newCompiler(implicit ctx: Context): Compiler = new Compiler
+  protected def newCompiler(implicit ctx: Context): Compiler =
+    if (ctx.settings.tasty.value) new TASTYCompiler
+    else new Compiler
 
   protected def emptyReporter: Reporter = new StoreReporter(null)
 
