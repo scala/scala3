@@ -46,9 +46,6 @@ object Test {
     case (Bar2, Bar3) => ()
     case (Bar3, _) => ()
   }
-  // fails for: (Bar1, Bar2)
-  // fails for: (Bar1, Bar3)
-  // fails for: (Bar2, Bar1)
   // fails for: (Bar2, Bar2)
   def fail5[T](xx: (Foo[T], Foo[T])) = xx match {
     case (Bar1, Bar1) => ()
