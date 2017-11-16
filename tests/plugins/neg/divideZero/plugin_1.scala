@@ -13,6 +13,8 @@ class DivideZero extends MiniPhase with Plugin {
   val name: String = "divideZero"
   override val description: String = "divide zero check"
 
+  override val research = true
+
   val phaseName = name
 
   override def init(phases: List[List[Phase]])(implicit ctx: Context): List[List[Phase]] = {

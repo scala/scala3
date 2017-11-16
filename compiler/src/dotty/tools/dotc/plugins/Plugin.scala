@@ -11,6 +11,10 @@ import java.io.InputStream
 import scala.collection.mutable
 import scala.util.{ Try, Success, Failure }
 
+trait PluginPhase extends Phase {
+  def runsBefore: Set[Class[_ <: Phase]] = Set.empty
+}
+
 trait Plugin {
   /** The name of this plugin */
   def name: String
@@ -18,23 +22,36 @@ trait Plugin {
   /** A one-line description of the plugin */
   def description: String
 
+  /** The phases that this plugin defines */
+  def components: List[PluginPhase] = Nil
+
+  /** Is this plugin a research plugin?
+   *
+   *  Research plugin receives a phase plan and return a new phase plan, while
+   *  non-research plugin returns a list of phases to be inserted.
+   */
+  def research: Boolean = false
+
+ /** Handle any plugin-specific options.
+  *  The user writes `-P:plugname:opt1,opt2`,
+  *  but the plugin sees `List(opt1, opt2)`.
+  */
   def options(implicit ctx: Context): List[String] = {
     // Process plugin options of form plugin:option
     def namec = name + ":"
     ctx.settings.pluginOptions.value filter (_ startsWith namec) map (_ stripPrefix namec)
   }
 
-  /** Handle any plugin-specific options.
-   *  The user writes `-P:plugname:opt1,opt2`,
-   *  but the plugin sees `List(opt1, opt2)`.
-   *  The plugin can opt out of further processing
-   *  by returning false.  For example, if the plugin
-   *  has an "enable" flag, now would be a good time
-   *  to sit on the bench.
-   *  @param options plugin arguments
-   *  @param error error function
-   *  @return true to continue, or false to opt out
+  /** Non-research plugins should override this method to return the phases
+   *
+   *  @return a list of phases to be added to the phase plan
    */
+  def init()(implicit ctx: Context): List[Phase] = Nil
+
+   /** Research plugins should override this method to return the new phase plan
+    *
+    *  @return the new phase plan
+    */
   def init(phases: List[List[Phase]])(implicit ctx: Context): List[List[Phase]] = phases
 
   /** A description of this plugin's options, suitable as a response
@@ -72,11 +89,11 @@ object Plugin {
       else PluginDescription.fromXML(is)
 
     val xmlEntry = new java.util.jar.JarEntry(PluginXML)
-    Try(read(new Jar(jarp.jfile).getEntryStream(xmlEntry)))
+    Try(read(new Jar(jarp.jpath.toFile).getEntryStream(xmlEntry)))
   }
 
   private def loadDescriptionFromFile(f: Path): Try[PluginDescription] =
-    Try(PluginDescription.fromXML(new java.io.FileInputStream(f.jfile)))
+    Try(PluginDescription.fromXML(new java.io.FileInputStream(f.jpath.toFile)))
 
   type AnyClass = Class[_]
 

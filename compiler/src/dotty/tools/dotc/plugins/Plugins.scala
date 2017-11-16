@@ -3,8 +3,9 @@ package plugins
 
 import core._
 import Contexts._
-import dotty.tools.dotc.config.PathResolver
+import config.PathResolver
 import dotty.tools.io._
+import Phases._
 
 /** Support for run-time loading of compiler plugins.
  *
@@ -80,7 +81,7 @@ trait Plugins {
       }
     }
 
-    val plugs = pick(roughPluginsList, Set())
+    val plugs = pick(roughPluginsList, ctx.phasePlan.flatten.map(_.phaseName).toSet)
 
     // Verify required plugins are present.
     for (req <- ctx.settings.require.value ; if !(plugs exists (_.name == req)))
@@ -113,4 +114,65 @@ trait Plugins {
     (for (plug <- roughPluginsList ; help <- plug.optionsHelp) yield {
       "\nOptions for plugin '%s':\n%s\n".format(plug.name, help)
     }).mkString
+
+  /** Add plugin phases to phase plan */
+  def addPluginPhases(plan: List[List[Phase]])(implicit ctx: Context): List[List[Phase]] = {
+    import scala.collection.mutable.{ Set => MSet, Map => MMap }
+    type OrderingReq = (MSet[Class[_]], MSet[Class[_]])
+
+    val orderRequirements = MMap[Class[_], OrderingReq]()
+
+    def updateOrdering(phase: PluginPhase): Unit = {
+      val runsBefore: MSet[Class[_]] = MSet(phase.runsBefore.toSeq: _*)
+      val runsAfter: MSet[Class[_]]  = MSet(phase.runsAfter.toSeq: _*)
+
+      if (!orderRequirements.contains(phase.getClass)) {
+        orderRequirements.update(phase.getClass, (runsBefore, runsAfter) )
+      }
+
+      runsBefore.foreach { phaseClass =>
+        if (!orderRequirements.contains(phaseClass))
+          orderRequirements.update(phaseClass, (MSet.empty, MSet.empty))
+        val (_, runsAfter) = orderRequirements(phaseClass)
+        runsAfter += phase.getClass
+      }
+
+      runsAfter.foreach { phaseClass =>
+        if (!orderRequirements.contains(phaseClass))
+          orderRequirements.update(phaseClass, (MSet.empty, MSet.empty))
+        val (runsBefore, _) = orderRequirements(phaseClass)
+        runsBefore += phase.getClass
+      }
+    }
+
+    // add non-research plugins
+    var updatedPlan = plan
+    plugins.filter(!_.research).foreach { plug =>
+      plug.components.foreach { phase =>
+        updateOrdering(phase)
+
+        val beforePhases: MSet[Class[_]] = MSet(phase.runsBefore.toSeq: _*)
+        val afterPhases: MSet[Class[_]]  = MSet(phase.runsAfter.toSeq: _*)
+
+        val (before, after) = updatedPlan.span { ps =>
+          val classes = ps.map(_.getClass)
+          afterPhases --= classes
+          !classes.exists(beforePhases.contains)  // beforeReq satisfied
+        }
+
+        // check afterReq
+        // error can occur if: a < b, b < c, c < a
+        after.foreach { ps =>
+          val classes = ps.map(_.getClass)
+          if (classes.exists(afterPhases))  // afterReq satisfied
+            throw new Exception(s"Ordering conflict for plugin ${plug.name}")
+        }
+
+        updatedPlan = before ++ (List(phase) :: after)
+      }
+    }
+
+    // add research plugins
+    ctx.plugins.filter(_.research).foldRight(updatedPlan) { (plug, plan) => plug.init(plan) }
+  }
 }
