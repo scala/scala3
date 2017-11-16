@@ -611,7 +611,6 @@ trait ParallelTesting extends RunnerOrchestration { self =>
               if (checkFile.exists && checkCompileOutput)
                 verifyCompileOutput(testSource, checkFile, reporters(index).asInstanceOf[StoredTestReporter])
             }
-          }
         }
       }
     }
