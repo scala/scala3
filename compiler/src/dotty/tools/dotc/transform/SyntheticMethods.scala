@@ -99,7 +99,7 @@ class SyntheticMethods(thisPhase: DenotTransformer) {
         case nme.productElement => vrefss => productElementBody(accessors.length, vrefss.head.head)
       }
       ctx.log(s"adding $synthetic to $clazz at ${ctx.phase}")
-      DefDef(synthetic, syntheticRHS(ctx.withOwner(synthetic)))
+      DefDef(synthetic, syntheticRHS(ctx.withOwner(synthetic))).withPos(ctx.owner.pos.focus)
     }
 
     /** The class

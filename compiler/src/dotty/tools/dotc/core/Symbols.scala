@@ -288,7 +288,7 @@ trait Symbols { this: Context =>
     val tparamBuf = new mutable.ListBuffer[TypeSymbol]
     val trefBuf = new mutable.ListBuffer[TypeRef]
     for (name <- names) {
-      val tparam = newNakedSymbol[TypeName](NoCoord)
+      val tparam = newNakedSymbol[TypeName](owner.coord)
       tparamBuf += tparam
       trefBuf += TypeRef(owner.thisType, tparam)
     }
