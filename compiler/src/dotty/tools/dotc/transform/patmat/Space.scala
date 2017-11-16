@@ -626,14 +626,14 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
     val protoTp1 = thisTypeMap(tp1.appliedTo(tvars))
 
     if (protoTp1 <:< tp2) {
-      isFullyDefined(protoTp1, force)
-      instUndetMap(protoTp1)
+      if (isFullyDefined(protoTp1, force)) protoTp1
+      else instUndetMap(protoTp1)
     }
     else {
       val protoTp2 = typeParamMap(tp2)
       if (protoTp1 <:< protoTp2) {
-        isFullyDefined(AndType(protoTp1, protoTp2), force)
-        instUndetMap(protoTp1)
+        if (isFullyDefined(AndType(protoTp1, protoTp2), force)) protoTp1
+        else instUndetMap(protoTp1)
       }
       else {
         debug.println(s"$protoTp1 <:< $protoTp2 = false")
