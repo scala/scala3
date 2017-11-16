@@ -19,7 +19,7 @@ import Inferencing._
 import ProtoTypes._
 import transform.SymUtils._
 import reporting.diagnostic.messages._
-import config.Printers.{exhaustivity => debug}
+import config.Printers.exhaustivity
 
 /** Space logic for checking exhaustivity and unreachability of pattern matching
  *
@@ -178,7 +178,7 @@ trait SpaceLogic {
         sym1 == sym2 && isEqualType(fun1, fun2) && ss1.zip(ss2).forall((isSubspace _).tupled)
     }
 
-    debug.println(s"${show(a)} < ${show(b)} = $res")
+    exhaustivity.println(s"${show(a)} < ${show(b)} = $res")
 
     res
   }
@@ -222,7 +222,7 @@ trait SpaceLogic {
         else Prod(tp1, fun1, sym1, ss1.zip(ss2).map((intersect _).tupled), full)
     }
 
-    debug.println(s"${show(a)} & ${show(b)} = ${show(res)}")
+    exhaustivity.println(s"${show(a)} & ${show(b)} = ${show(res)}")
 
     res
   }
@@ -272,7 +272,7 @@ trait SpaceLogic {
 
     }
 
-    debug.println(s"${show(a)} - ${show(b)} = ${show(res)}")
+    exhaustivity.println(s"${show(a)} - ${show(b)} = ${show(res)}")
 
     res
   }
@@ -300,6 +300,28 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
   private val scalaListType        = ctx.requiredClassRef("scala.collection.immutable.List")
   private val scalaNilType         = ctx.requiredModuleRef("scala.collection.immutable.Nil")
   private val scalaConsType        = ctx.requiredClassRef("scala.collection.immutable.::")
+
+  private var indent = 0
+  private def indentStr = "|  " * indent
+  def doDebug[T](pre: => String, post: (T) => String = (_: T) => "")(thunk: => T): T = {
+    val pre0 = pre
+    if (pre0.nonEmpty) exhaustivity.println(indentStr + pre)
+    var unindented = false
+    try {
+      indent += 1
+      val t = thunk
+      indent -= 1
+      unindented = true
+      val post0 = post(t)
+      if (post0.nonEmpty) exhaustivity.println(s"$indentStr$pre0 $post0")
+      else exhaustivity.println(indentStr + "-")
+      t
+    } finally if (!unindented) indent -= 1
+  }
+
+  def debug(msg: => String): Unit = {
+    exhaustivity.println(indentStr + msg)
+  }
 
   /** Checks if it's possible to create a trait/class which is a subtype of `tp`.
    *
@@ -366,7 +388,7 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
     // which is a subtype of all the leaves of `and`.
     val imp = implementability(and)
 
-    debug.println(s"atomic intersection: ${and.show} ~ ${imp.show}")
+    debug(s"atomic intersection: ${and.show} ~ ${imp.show}")
 
     imp match {
       case Unimplementable => Empty
@@ -407,7 +429,7 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
     case Typed(expr, tpt) =>
       Typ(erase(expr.tpe.stripAnnots), true)
     case _ =>
-      debug.println(s"unknown pattern: $pat")
+      debug(s"unknown pattern: $pat")
       Empty
   }
 
@@ -446,7 +468,7 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
   /** Is `tp1` a subtype of `tp2`?  */
   def isSubType(tp1: Type, tp2: Type): Boolean = {
     val res = tp1 <:< tp2
-    debug.println(s"${tp1.show} <:< ${tp2.show} = $res")
+    debug(s"${tp1.show} <:< ${tp2.show} = $res")
     res
   }
 
@@ -494,7 +516,7 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
         }
       }
 
-    debug.println(s"signature of ${unappSym.showFullName} ----> ${sig.map(_.show).mkString(", ")}")
+    debug(s"signature of ${unappSym.showFullName} ----> ${sig.map(_.show).mkString(", ")}")
 
     sig
   }
@@ -503,7 +525,7 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
   def decompose(tp: Type): List[Space] = {
     val children = tp.classSymbol.children
 
-    debug.println(s"candidates for ${tp.show} : [${children.map(_.show).mkString(", ")}]")
+    debug(s"candidates for ${tp.show} : [${children.map(_.show).mkString(", ")}]")
 
     tp.dealias match {
       case AndType(tp1, tp2) =>
@@ -528,7 +550,7 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
             refine(tp, sym)
         } filter(_.exists)
 
-        debug.println(s"${tp.show} decomposes to [${parts.map(_.show).mkString(", ")}]")
+        debug(s"${tp.show} decomposes to [${parts.map(_.show).mkString(", ")}]")
 
         parts.map(Typ(_, true))
     }
@@ -562,11 +584,11 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
     val resTp = instantiate(childTp, parent)(ctx.fresh.setNewTyperState())
 
     if (!resTp.exists)  {
-      debug.println(s"[refine] unqualified child ousted: ${childTp.show} !< ${parent.show}")
+      debug(s"[refine] unqualified child ousted: ${childTp.show} !< ${parent.show}")
       NoType
     }
     else {
-      debug.println(s"$child instantiated ------> $resTp")
+      debug(s"$child instantiated ------> $resTp")
       resTp.dealias
     }
   }
@@ -602,7 +624,7 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
             else if (variance == 1) mapOver(tp.underlying.hiBound)
             else mapOver(tp.underlying.loBound)
 
-          debug.println(s"$tp exposed to =====> $exposed")
+          debug(s"$tp exposed to =====> $exposed")
           exposed
         case _ =>
           mapOver(t)
@@ -636,7 +658,7 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
         else instUndetMap(protoTp1)
       }
       else {
-        debug.println(s"$protoTp1 <:< $protoTp2 = false")
+        debug(s"$protoTp1 <:< $protoTp2 = false")
         NoType
       }
     }
@@ -655,7 +677,7 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
       tp.isRef(defn.BooleanClass) ||
       tp.classSymbol.is(allOf(Enum, Sealed))  // Enum value doesn't have Sealed flag
 
-    debug.println(s"decomposable: ${tp.show} = $res")
+    debug(s"decomposable: ${tp.show} = $res")
 
     res
   }
@@ -771,7 +793,7 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
 
     val Match(sel, cases) = tree
     val res = isCheckable(sel.tpe.widen.dealiasKeepAnnots)
-    debug.println(s"checkable: ${sel.show} = $res")
+    debug(s"checkable: ${sel.show} = $res")
     res
   }
 
@@ -782,7 +804,7 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
 
     val patternSpace = cases.map({ x =>
       val space = project(x.pat)
-      debug.println(s"${x.pat.show} ====> ${show(space)}")
+      debug(s"${x.pat.show} ====> ${show(space)}")
       space
     }).reduce((a, b) => Or(List(a, b)))
     val uncovered = simplify(minus(Typ(selTyp, true), patternSpace), aggressive = true)
@@ -807,9 +829,9 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
       }.reduce((a, b) => Or(List(a, b)))
 
       val curr = project(cases(i).pat)
+      debug(s"---------------reachable? ${show(curr)}")
+      debug(s"prev: ${show(prevs)}")
 
-      debug.println(s"---------------reachable? ${show(curr)}")
-      debug.println(s"prev: ${show(prevs)}")
 
       if (isSubspace(curr, prevs)) {
         ctx.warning(MatchCaseUnreachable(), cases(i).body.pos)
