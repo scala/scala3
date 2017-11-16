@@ -743,6 +743,7 @@ object StdNames {
     final val Conforms = encode("<:<")
 
     final val Uninstantiated: TypeName = "?$"
+    final val Repr: TypeName = "Repr"
   }
 
   abstract class JavaNames[N <: Name] extends DefinedNames[N] {

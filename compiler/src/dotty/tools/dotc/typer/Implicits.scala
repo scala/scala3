@@ -600,7 +600,26 @@ trait Implicits { self: Typer =>
 
     /** */
     def synthesizedRepresentable(formal: Type)(implicit ctx: Context): Tree = {
-      ???
+      formal.argTypes match {
+        case arg :: Nil if defn.isProductSubType(arg) =>
+          typed {
+            import untpd._
+            val x = tpnme.syntheticTypeParamName(0)
+            val noBounds = TypeBoundsTree(EmptyTree, EmptyTree)
+            val reprRhs  =
+              productSelectorTypes(arg).foldRight[Tree](TypeTree(defn.PNilType)) { case (cur, acc) =>
+                val constCur  = LambdaTypeTree(TypeDef(x, noBounds) :: Nil, TypeTree(cur))
+                val pconsArgs = constCur :: acc :: Ident(x) :: Nil
+                val rhs       = AppliedTypeTree(TypeTree(defn.PConsType), pconsArgs)
+                LambdaTypeTree(TypeDef(x, noBounds) :: Nil, rhs)
+              }
+            val repr = TypeDef(tpnme.Repr, reprRhs) // TODO: val from =; val to =
+            val parents  = TypeTree(defn.RepresentableType.appliedTo(arg)) :: Nil
+            New(Template(emptyConstructor, parents, EmptyValDef, List(repr))).withPos(pos)
+          }
+        case _ =>
+          EmptyTree
+      }
     }
 
     def hasEq(tp: Type): Boolean =

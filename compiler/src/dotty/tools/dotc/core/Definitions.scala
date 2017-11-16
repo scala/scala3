@@ -597,9 +597,16 @@ class Definitions {
 
     def Not_value(implicit ctx: Context) = NotModule.requiredMethod(nme.value)
 
+  // Generic classes
   lazy val RepresentableType = ctx.requiredClassRef("dotty.generic.Representable")
   def RepresentableClass(implicit ctx: Context) = RepresentableType.symbol.asClass
   def RepresentableModule(implicit ctx: Context) = RepresentableClass.companionModule
+  lazy val PNilType = ctx.requiredClassRef("dotty.generic.PNil")
+  def PNilClass(implicit ctx: Context) = PNilType.symbol.asClass
+  def PNilModule(implicit ctx: Context) = PNilClass.companionModule
+  lazy val PConsType = ctx.requiredClassRef("dotty.generic.PCons")
+  def PConsClass(implicit ctx: Context) = PConsType.symbol.asClass
+  def PConsModule(implicit ctx: Context) = PConsClass.companionModule
 
   lazy val XMLTopScopeModuleRef = ctx.requiredModuleRef("scala.xml.TopScope")
 
