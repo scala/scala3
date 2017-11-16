@@ -274,7 +274,7 @@ class Namer { typer: Typer =>
       def preExisting = ctx.effectiveScope.lookup(name)
       if (ctx.owner is PackageClass)
         if (preExisting.isDefinedInCurrentRun)
-          errorName(s"${preExisting.showLocated} has already been compiled\nonce during this run")
+          errorName(s"${preExisting.showLocated} has already been compiled once during this run")
         else name
       else
         if ((!ctx.owner.isClass || name.isTypeName) && preExisting.exists)
