@@ -814,7 +814,7 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
   def checkGADT(tp: Type): Boolean = {
     new TypeAccumulator[Boolean] {
       override def apply(b: Boolean, tp: Type): Boolean = tp match {
-        case tref: TypeRef if tref.symbol.is(TypeParam) => true
+        case tref: TypeRef if tref.symbol.is(TypeParam) && variance == 0 => true
         case tp => b || foldOver(b, tp)
       }
     }.apply(false, tp)
