@@ -1,5 +1,4 @@
 package dotty.tools.dotc.transform.patmat
-package `new logic`
 
 import dotty.tools.dotc.core.Contexts.Context
 
