@@ -1,25 +1,26 @@
 import dotty.tools.dotc._
 import core._
 import Contexts.Context
-import plugins.{Plugin, PluginPhase}
+import plugins.Plugin
 import Phases.Phase
 import ast.tpd
 import transform.MegaPhase.MiniPhase
 import Decorators._
 import Symbols.Symbol
 import Constants.Constant
-import transform.{LinkAll, Pickler}
 
-class DivideZero extends PluginPhase with Plugin {
+class DivideZero extends MiniPhase with Plugin {
   val name: String = "divideZero"
   override val description: String = "divide zero check"
 
+  override val research = true
+
   val phaseName = name
 
-  override val runsAfter = Set(classOf[Pickler])
-  override val runsBefore = Set(classOf[LinkAll])
-
-  override def init()(implicit ctx: Context): List[PluginPhase] = this :: Nil
+  override def init(phases: List[List[Phase]])(implicit ctx: Context): List[List[Phase]] = {
+    val (before, after) = phases.span(ps => !ps.exists(_.phaseName == "pickler"))
+    before ++ (List(this) :: after)
+  }
 
   private def isNumericDivide(sym: Symbol)(implicit ctx: Context): Boolean = {
     def test(tpe: String): Boolean =

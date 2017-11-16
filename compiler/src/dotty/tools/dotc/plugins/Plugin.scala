@@ -5,13 +5,14 @@ import core._
 import Contexts._
 import Phases._
 import dotty.tools.io._
+import transform.MegaPhase.MiniPhase
 
 import java.io.InputStream
 
 import scala.collection.mutable
 import scala.util.{ Try, Success, Failure }
 
-trait PluginPhase extends Phase {
+trait PluginPhase extends MiniPhase {
   def runsBefore: Set[Class[_ <: Phase]] = Set.empty
 }
 
@@ -21,9 +22,6 @@ trait Plugin {
 
   /** A one-line description of the plugin */
   def description: String
-
-  /** The phases that this plugin defines */
-  def components: List[PluginPhase] = Nil
 
   /** Is this plugin a research plugin?
    *
@@ -46,13 +44,13 @@ trait Plugin {
    *
    *  @return a list of phases to be added to the phase plan
    */
-  def init()(implicit ctx: Context): List[Phase] = Nil
+  def init()(implicit ctx: Context): List[PluginPhase] = ???
 
    /** Research plugins should override this method to return the new phase plan
     *
     *  @return the new phase plan
     */
-  def init(phases: List[List[Phase]])(implicit ctx: Context): List[List[Phase]] = phases
+  def init(phases: List[List[Phase]])(implicit ctx: Context): List[List[Phase]] = ???
 
   /** A description of this plugin's options, suitable as a response
    *  to the -help command-line option.  Conventionally, the options

@@ -148,7 +148,7 @@ trait Plugins {
     // add non-research plugins
     var updatedPlan = plan
     plugins.filter(!_.research).foreach { plug =>
-      plug.components.foreach { phase =>
+      plug.init().foreach { phase =>
         updateOrdering(phase)
 
         val beforePhases: MSet[Class[_]] = MSet(phase.runsBefore.toSeq: _*)
