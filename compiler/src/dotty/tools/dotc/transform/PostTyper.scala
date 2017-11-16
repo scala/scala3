@@ -180,18 +180,18 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
     override def transform(tree: Tree)(implicit ctx: Context): Tree =
       try tree match {
         case tree: Ident if !tree.isType =>
-          chekedUnused(tree)
+          checkNotUnused(tree)
           handleMeta(tree.symbol)
           tree.tpe match {
             case tpe: ThisType => This(tpe.cls).withPos(tree.pos)
             case _ => tree
           }
         case tree @ Select(qual, name) =>
-          chekedUnused(tree)
+          checkNotUnused(tree)
           handleMeta(tree.symbol)
           if (name.isTypeName) {
             Checking.checkRealizable(qual.tpe, qual.pos.focus)
-            super.transform(tree)(ctx.addMode(Mode.Unused))
+            super.transform(tree)(ctx.addMode(Mode.Type))
           }
           else
             transformSelect(tree, Nil)
@@ -200,17 +200,14 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
             ctx.error(SuperCallsNotAllowedInline(ctx.owner), tree.pos)
           super.transform(tree)
         case tree: Apply =>
-          def transformApply() = {
-            val ctx1 = if (tree.fun.tpe.widen.isUnusedMethod) ctx.addMode(Mode.Unused) else ctx
-            cpy.Apply(tree)(transform(tree.fun), transform(tree.args)(ctx1))
-          }
           methPart(tree) match {
             case Select(nu: New, nme.CONSTRUCTOR) if isCheckable(nu) =>
               // need to check instantiability here, because the type of the New itself
               // might be a type constructor.
               Checking.checkInstantiable(tree.tpe, nu.pos)
-              withNoCheckNews(nu :: Nil)(transformApply())
-            case _ => transformApply()
+              withNoCheckNews(nu :: Nil)(super.transform(tree))
+            case _ =>
+              super.transform(tree)
           }
         case tree: TypeApply =>
           val tree1 @ TypeApply(fn, args) = normalizeTypeArgs(tree)
@@ -324,8 +321,8 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
           throw ex
       }
 
-    private def chekedUnused(tree: RefTree)(implicit ctx: Context): Unit = {
-      if (tree.symbol.is(Unused) && !ctx.mode.is(Mode.Unused))
+    private def checkNotUnused(tree: RefTree)(implicit ctx: Context): Unit = {
+      if (tree.symbol.is(Unused) && !ctx.mode.is(Mode.Type))
         ctx.error(i"`unused` value $tree can only be used as unused arguments", tree.pos)
     }
   }

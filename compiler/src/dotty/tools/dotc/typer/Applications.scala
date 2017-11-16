@@ -779,7 +779,16 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
             checkCanEqual(left.tpe.widen, right.tpe.widen, app.pos)
         case _ =>
       }
-      app
+      app match {
+        case Apply(fun, args) if fun.tpe.widen.isUnusedMethod =>
+          val erasedArgs = args.map { arg =>
+            if (!isPureExpr(arg))
+              ctx.warning("This argument is given to an unused parameter. This expression will not be evaluated.", arg.pos)
+            defaultValue(arg.tpe)
+          }
+          tpd.cpy.Apply(app)(fun = fun, args = erasedArgs)
+        case _ => app
+      }
     }
   }
 
