@@ -1,1 +1,1 @@
-sealed object Fun // error
+sealed object Fun
