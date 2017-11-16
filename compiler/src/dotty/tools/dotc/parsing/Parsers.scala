@@ -1181,7 +1181,8 @@ object Parsers {
         t
     }
 
-    def ascription(t: Tree, location: Location.Value) = atPos(startOffset(t), in.skipToken()) {
+    def ascription(t: Tree, location: Location.Value) = atPos(startOffset(t)) {
+      in.skipToken()
       in.token match {
         case USCORE =>
           val uscoreStart = in.skipToken()
