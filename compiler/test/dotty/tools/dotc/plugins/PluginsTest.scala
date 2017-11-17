@@ -36,6 +36,8 @@ class PluginsTest {
     List(new P8)
   )
 
+  def classOfPhase(p: PluginPhase): Class[_ <: PluginPhase] = p.getClass.asInstanceOf[Class[_ <: PluginPhase]]
+
   @Test
   def insertAfter = {
     object M1 extends TestPhase {
@@ -87,7 +89,7 @@ class PluginsTest {
   def orderingTwoPlugins1 = {
     object M1 extends TestPhase {
       override val runsAfter = Set(classOf[P3d])
-      override val runsBefore = Set(M2.getClass, classOf[P7], classOf[P8])
+      override val runsBefore = Set(classOfPhase(M2), classOf[P7], classOf[P8])
     }
     object M2 extends TestPhase {
       override val runsAfter = Set(classOf[P3d])
@@ -108,7 +110,7 @@ class PluginsTest {
   @Test
   def orderingTwoPlugins2 = {
     object M1 extends TestPhase {
-      override val runsAfter = Set(classOf[P3d], M2.getClass)
+      override val runsAfter = Set(classOf[P3d], classOfPhase(M2))
     }
     object M2 extends TestPhase {
       override val runsAfter = Set(classOf[P3d])
@@ -129,7 +131,7 @@ class PluginsTest {
   @Test
   def orderingTwoPlugins3 = {
     object M1 extends TestPhase {
-      override val runsAfter = Set(classOf[P3d], M2.getClass)
+      override val runsAfter = Set(classOf[P3d], classOfPhase(M2))
       override val runsBefore = Set(classOf[P7], classOf[P8])
     }
     object M2 extends TestPhase {
