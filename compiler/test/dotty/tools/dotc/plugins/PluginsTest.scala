@@ -163,8 +163,8 @@ class PluginsTest {
 
     // M1 inserted to plan first
     val updatedPlan1 = Plugins.schedule(basicPlan, M1 :: M2 :: Nil)
-    assert(updatedPlan1(6)(0) eq M1)
-    assert(updatedPlan1(7)(0) eq M2)
+    assert(updatedPlan1(4)(0) eq M1)
+    assert(updatedPlan1(5)(0) eq M2)
 
     // M2 inserted to plan first
     val updatedPlan2 = Plugins.schedule(basicPlan, M2 :: M1 :: Nil)

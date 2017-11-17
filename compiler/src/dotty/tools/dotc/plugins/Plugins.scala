@@ -6,6 +6,7 @@ import Contexts._
 import config.PathResolver
 import dotty.tools.io._
 import Phases._
+import config.Printers.plugins.{ println => debug }
 
 import scala.collection.mutable.ListBuffer
 
@@ -144,56 +145,107 @@ object Plugins {
    *  Note: this algorithm is factored out for unit test.
    */
   def schedule(plan: List[List[Phase]], pluginPhases: List[PluginPhase]): List[List[Phase]] = {
-    import scala.collection.mutable.{ Set => MSet, Map => MMap }
-    type OrderingReq = (MSet[Class[_]], MSet[Class[_]])
+    import scala.collection.mutable.{ Map => MMap, Set => MSet }
+    type OrderingReq = (Set[Class[_]], Set[Class[_]])
 
     val orderRequirements = MMap[Class[_], OrderingReq]()
-    val existingPhases = {
-      val set = MSet.empty[Class[_]]
-      for (ps <- plan; p <- ps) set += p.getClass
-      set
+    val primitivePhases   = plan.flatMap(ps => ps.map(_.getClass.asInstanceOf[Class[_]])).toSet
+
+    def isPrimitive(phase: Class[_]): Boolean = primitivePhases.contains(phase)
+
+    def constraintConflict(phase: Phase): String = {
+      val (runsAfter, runsBefore) = orderRequirements(phase.getClass)
+      s"""
+         |Ordering conflict for phase ${phase.phaseName}
+         |after: ${runsAfter.mkString("[", ", ", "]")}
+         |before: ${runsBefore.mkString("[", ", ", "]")}
+       """.stripMargin
     }
 
-    def updateOrdering(phase: PluginPhase): Unit = {
-      val runsBefore: MSet[Class[_]] = MSet(phase.runsBefore.toSeq: _*)
-      val runsAfter: MSet[Class[_]]  = MSet(phase.runsAfter.toSeq: _*)
+    // init ordering map, no propagation
+    pluginPhases.foreach { phase =>
+      val runsAfter  : Set[Class[_]] = phase.runsAfter.asInstanceOf[Set[Class[_]]]
+      val runsBefore : Set[Class[_]] = phase.runsBefore.asInstanceOf[Set[Class[_]]]
 
-      if (!orderRequirements.contains(phase.getClass)) {
-        orderRequirements.update(phase.getClass, (runsBefore, runsAfter) )
-      } else {
-        val (runsBefore1, runsAfter1) = orderRequirements(phase.getClass)
-        runsAfter1  ++= runsAfter
-        runsBefore1 ++= runsBefore
-      }
-
-      runsBefore.foreach { phaseClass =>
-        if (!orderRequirements.contains(phaseClass))
-          orderRequirements.update(phaseClass, (MSet.empty, MSet.empty))
-        val (_, runsAfter) = orderRequirements(phaseClass)
-        runsAfter += phase.getClass
-      }
-
-      runsAfter.foreach { phaseClass =>
-        if (!orderRequirements.contains(phaseClass))
-          orderRequirements.update(phaseClass, (MSet.empty, MSet.empty))
-        val (runsBefore, _) = orderRequirements(phaseClass)
-        runsBefore += phase.getClass
-      }
+      orderRequirements.update(phase.getClass, (runsAfter, runsBefore))
     }
 
-    pluginPhases.foreach(updateOrdering)
+    // propagate ordering constraint : reflexivity
+    pluginPhases.foreach { phase =>
+
+      var (runsAfter, runsBefore) = orderRequirements(phase.getClass)
+
+      // propagate transitive constraints to related phases
+      runsAfter.filter(!isPrimitive(_)).foreach { phaseClass =>
+        val (runsAfter1, runsBefore1) = orderRequirements(phaseClass)
+        orderRequirements.update(phaseClass, (runsAfter1, runsBefore1 + phase.getClass))
+      }
+
+      runsBefore.filter(!isPrimitive(_)).foreach { phaseClass =>
+        val (runsAfter1, runsBefore1) = orderRequirements(phaseClass)
+        orderRequirements.update(phaseClass, (runsAfter1 + phase.getClass, runsBefore1))
+      }
+
+    }
+
+    debug(
+      s""" reflexive constraints:
+         | ${orderRequirements.mkString("\n")}
+       """.stripMargin
+    )
+
+    // propagate transitive constraints from related phases to current phase: transitivity
+    def propagate(phase: Phase): OrderingReq = {
+      def propagateRunsBefore(beforePhase: Class[_]): Set[Class[_]] =
+        if (beforePhase == phase.getClass)
+          throw new Exception(constraintConflict(phase))
+        else if (primitivePhases.contains(beforePhase))
+          Set(beforePhase)
+        else {
+          val (_, runsBefore) = orderRequirements(beforePhase)
+          runsBefore.flatMap(propagateRunsBefore) + beforePhase
+        }
+
+      def propagateRunsAfter(afterPhase: Class[_]): Set[Class[_]] =
+        if (afterPhase == phase.getClass)
+          throw new Exception(constraintConflict(phase))
+        else if (primitivePhases.contains(afterPhase))
+          Set(afterPhase)
+        else {
+          val (runsAfter, _) = orderRequirements(afterPhase)
+          runsAfter.flatMap(propagateRunsAfter) + afterPhase
+        }
+
+      var (runsAfter, runsBefore) = orderRequirements(phase.getClass)
+
+      runsAfter  = runsAfter.flatMap(propagateRunsAfter)
+      runsBefore = runsBefore.flatMap(propagateRunsBefore)
+
+      // orderRequirements.update(phase.getClass, (runsBefore, runsAfter) )
+
+      (runsAfter, runsBefore)
+    }
 
     var updatedPlan = plan
+    var insertedPhase = primitivePhases
     pluginPhases.sortBy(_.phaseName).foreach { phase =>
-      val (runsBefore1, runsAfter1) = orderRequirements(phase.getClass)
-      val runsBefore = runsBefore1 & existingPhases
-      val runsAfter = runsAfter1 & existingPhases
+      var (runsAfter1, runsBefore1) = propagate(phase)
+
+      debug(
+        s"""propagated constraints for ${phase}:
+           |after: ${runsAfter1.mkString("[", ", ", "]")}
+           |before: ${runsBefore1.mkString("[", ", ", "]")}
+         """.stripMargin
+      )
+
+      var runsAfter  = runsAfter1 & insertedPhase
+      val runsBefore = runsBefore1 & insertedPhase
 
       // beforeReq met after the split
       val (before, after) = updatedPlan.span { ps =>
         val classes = ps.map(_.getClass)
         val runsAfterSat = runsAfter.isEmpty
-        runsAfter --= classes
+        runsAfter = runsAfter -- classes
         // Prefer the point immediately before the first beforePhases.
         // If beforePhases not specified, insert at the point immediately
         // after the last afterPhases.
@@ -209,7 +261,7 @@ object Plugins {
           throw new Exception(s"Ordering conflict for phase ${phase.phaseName}")
       }
 
-      existingPhases += phase.getClass
+      insertedPhase = insertedPhase + phase.getClass
       updatedPlan = before ++ (List(phase) :: after)
     }
 
