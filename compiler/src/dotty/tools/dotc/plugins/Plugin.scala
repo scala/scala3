@@ -30,27 +30,21 @@ trait Plugin {
    */
   def research: Boolean = false
 
- /** Handle any plugin-specific options.
-  *  The user writes `-P:plugname:opt1,opt2`,
-  *  but the plugin sees `List(opt1, opt2)`.
-  */
-  def options(implicit ctx: Context): List[String] = {
-    // Process plugin options of form plugin:option
-    def namec = name + ":"
-    ctx.settings.pluginOptions.value filter (_ startsWith namec) map (_ stripPrefix namec)
-  }
 
   /** Non-research plugins should override this method to return the phases
    *
+   *  @param options: commandline options to the plugin, `-P:plugname:opt1,opt2`
    *  @return a list of phases to be added to the phase plan
    */
-  def init()(implicit ctx: Context): List[PluginPhase] = ???
+  def init(options: List[String]): List[PluginPhase] = ???
 
-   /** Research plugins should override this method to return the new phase plan
-    *
-    *  @return the new phase plan
-    */
-  def init(phases: List[List[Phase]])(implicit ctx: Context): List[List[Phase]] = ???
+  /** Research plugins should override this method to return the new phase plan
+   *
+   *  @param options: commandline options to the plugin, `-P:plugname:opt1,opt2`
+   *  @param plan: the given phase plan
+   *  @return the new phase plan
+   */
+  def init(options: List[String], plan: List[List[Phase]])(implicit ctx: Context): List[List[Phase]] = ???
 
   /** A description of this plugin's options, suitable as a response
    *  to the -help command-line option.  Conventionally, the options

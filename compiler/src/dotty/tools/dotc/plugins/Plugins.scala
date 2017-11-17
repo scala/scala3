@@ -117,6 +117,30 @@ trait Plugins {
 
   /** Add plugin phases to phase plan */
   def addPluginPhases(plan: List[List[Phase]])(implicit ctx: Context): List[List[Phase]] = {
+    // plugin-specific options.
+    // The user writes `-P:plugname:opt1,opt2`, but the plugin sees `List(opt1, opt2)`.
+    def options(plugin: Plugin): List[String] = {
+      def namec = plugin.name + ":"
+      ctx.settings.pluginOptions.value filter (_ startsWith namec) map (_ stripPrefix namec)
+    }
+
+    // schedule plugins according to ordering constraints
+    val updatedPlan = Plugins.schedule(plan, plugins.filter(!_.research), options)
+
+    // add research plugins
+    plugins.filter(_.research).foldRight(updatedPlan) { (plug, plan) => plug.init(options(plug), plan) }
+  }
+}
+
+object Plugins {
+  /** Insert plugin phases in the right place of the phase plan
+   *
+   *  The scheduling makes sure the ordering constraints of plugin phases are satisfied.
+   *  If the ordering constraints are unsatisfiable, an exception is thrown.
+   *
+   *  Note: this algorithm is factored out for unit test.
+   */
+  def schedule(plan: List[List[Phase]], plugins: List[Plugin], optionFn: Plugin => List[String]): List[List[Phase]] = {
     import scala.collection.mutable.{ Set => MSet, Map => MMap }
     type OrderingReq = (MSet[Class[_]], MSet[Class[_]])
 
@@ -145,19 +169,23 @@ trait Plugins {
       }
     }
 
-    // add non-research plugins
     var updatedPlan = plan
-    plugins.filter(!_.research).foreach { plug =>
-      plug.init().foreach { phase =>
+    plugins.foreach { plug =>
+      plug.init(optionFn(plug)).foreach { phase =>
         updateOrdering(phase)
 
         val beforePhases: MSet[Class[_]] = MSet(phase.runsBefore.toSeq: _*)
         val afterPhases: MSet[Class[_]]  = MSet(phase.runsAfter.toSeq: _*)
 
+        // beforeReq met after the split
         val (before, after) = updatedPlan.span { ps =>
           val classes = ps.map(_.getClass)
           afterPhases --= classes
-          !classes.exists(beforePhases.contains)  // beforeReq satisfied
+          // Prefer the point immediately before the first beforePhases.
+          // If beforePhases not specified, insert at the point immediately
+          // after the last afterPhases.
+          !classes.exists(beforePhases.contains) &&
+            !(beforePhases.isEmpty && afterPhases.isEmpty)
         }
 
         // check afterReq
@@ -172,7 +200,6 @@ trait Plugins {
       }
     }
 
-    // add research plugins
-    ctx.plugins.filter(_.research).foldRight(updatedPlan) { (plug, plan) => plug.init(plan) }
+    updatedPlan
   }
 }

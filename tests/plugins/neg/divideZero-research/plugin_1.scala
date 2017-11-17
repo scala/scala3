@@ -17,7 +17,7 @@ class DivideZero extends MiniPhase with Plugin {
 
   val phaseName = name
 
-  override def init(phases: List[List[Phase]])(implicit ctx: Context): List[List[Phase]] = {
+  override def init(options: List[String], phases: List[List[Phase]])(implicit ctx: Context): List[List[Phase]] = {
     val (before, after) = phases.span(ps => !ps.exists(_.phaseName == "pickler"))
     before ++ (List(this) :: after)
   }
