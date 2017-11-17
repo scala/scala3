@@ -7,6 +7,7 @@
 echo "testing sbt dotc and dotr"
 mkdir out/scriptedtest0
 ./project/scripts/sbt ";dotc tests/pos/sbtDotrTest.scala -d out/scriptedtest0 ;dotr -classpath out/scriptedtest0 dotrtest.Test" > sbtdotr1.out
+cat sbtdotr1.out
 if grep -e "dotr test ok" sbtdotr1.out; then
     echo "output ok"
 else
@@ -18,7 +19,17 @@ echo "testing sbt dotc -tasty and dotr -classpath"
 mkdir out/scriptedtest1
 mkdir out/scriptedtest2
 ./project/scripts/sbt ";dotc tests/pos/sbtDotrTest.scala -d out/scriptedtest1/; dotc -tasty -classpath out/scriptedtest1/ -d out/scriptedtest2/ dotrtest.Test; dotr -classpath out/scriptedtest2/ dotrtest.Test" > sbtdotr2.out
+cat sbtdotr2.out
 if grep -e "dotr test ok" sbtdotr2.out; then
+    echo "output ok"
+else
+    exit -1
+fi
+echo "testing sbt dotr with no -classpath"
+
+./project/scripts/sbt ";dotc tests/pos/sbtDotrTest.scala; dotr dotrtest.Test" > sbtdotp1.out
+cat sbtdotp1.out
+if grep -e "dotr test ok" sbtdotp1.out; then
     echo "output ok"
 else
     exit -1
