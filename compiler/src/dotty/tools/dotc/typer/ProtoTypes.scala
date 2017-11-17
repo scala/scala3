@@ -467,8 +467,8 @@ object ProtoTypes {
       case et: ExprType =>
         normalize(et.resultType, pt)
       case wtp =>
-        if (defn.isImplicitFunctionType(wtp)) normalize(wtp.dealias.argInfos.last, pt)
-        else tp
+        val iftp = defn.asImplicitFunctionType(wtp)
+        if (iftp.exists) normalize(iftp.argInfos.last, pt) else tp
     }
   }
 
