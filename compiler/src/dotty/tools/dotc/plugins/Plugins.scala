@@ -194,7 +194,7 @@ object Plugins {
        """.stripMargin
     )
 
-    // propagate transitive constraints from related phases to current phase: transitivity
+    // propagate constraints from related phases to current phase: transitivity
     def propagate(phase: Phase): OrderingReq = {
       def propagateRunsBefore(beforePhase: Class[_]): Set[Class[_]] =
         if (beforePhase == phase.getClass)
@@ -220,8 +220,6 @@ object Plugins {
 
       runsAfter  = runsAfter.flatMap(propagateRunsAfter)
       runsBefore = runsBefore.flatMap(propagateRunsBefore)
-
-      // orderRequirements.update(phase.getClass, (runsBefore, runsAfter) )
 
       (runsAfter, runsBefore)
     }
