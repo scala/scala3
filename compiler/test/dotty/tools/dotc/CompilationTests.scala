@@ -338,7 +338,6 @@ class CompilationTests extends ParallelTesting {
     }
 
     compileFilesInDir("../tests/plugins/neg").checkExpectedErrors()
-    compileFilesInDir("../tests/plugins/pos").checkCompile(checkCompileOutput = true)
   }
 
   private val (compilerSources, backendSources, backendJvmSources) = {

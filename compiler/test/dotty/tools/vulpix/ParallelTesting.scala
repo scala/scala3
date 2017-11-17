@@ -6,8 +6,8 @@ import java.io.{ File => JFile }
 import java.text.SimpleDateFormat
 import java.util.HashMap
 import java.nio.file.StandardCopyOption.REPLACE_EXISTING
-import java.nio.file.{ Files, NoSuchFileException, Path, Paths }
-import java.util.concurrent.{ TimeUnit, TimeoutException, Executors => JExecutors }
+import java.nio.file.{ Files, Path, Paths, NoSuchFileException }
+import java.util.concurrent.{ Executors => JExecutors, TimeUnit, TimeoutException }
 
 import scala.io.Source
 import scala.util.control.NonFatal
@@ -15,8 +15,9 @@ import scala.util.Try
 import scala.collection.mutable
 import scala.util.matching.Regex
 import scala.util.Random
+
 import dotc.core.Contexts._
-import dotc.reporting.{ Reporter, StoredTestReporter, TestReporter }
+import dotc.reporting.{ Reporter, TestReporter }
 import dotc.reporting.diagnostic.MessageContainer
 import dotc.interfaces.Diagnostic.ERROR
 import dotc.util.DiffUtil
@@ -128,7 +129,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
   /** A group of files that may all be compiled together, with the same flags
    *  and output directory
    */
-  case class JointCompilationSource(
+  private final case class JointCompilationSource(
     name: String,
     files: Array[JFile],
     flags: TestFlags,
@@ -178,7 +179,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
   /** Each `Test` takes the `testSources` and performs the compilation and assertions
    *  according to the implementing class "neg", "run" or "pos".
    */
-  private abstract class Test(testSources: List[TestSource], times: Int, threadLimit: Option[Int], suppressAllOutput: Boolean, checkCompileOutput: Boolean = false)(implicit val summaryReport: SummaryReporting) { test =>
+  private abstract class Test(testSources: List[TestSource], times: Int, threadLimit: Option[Int], suppressAllOutput: Boolean)(implicit val summaryReport: SummaryReporting) { test =>
 
     import summaryReport._
 
@@ -354,12 +355,9 @@ trait ParallelTesting extends RunnerOrchestration { self =>
         else None
       } else None
 
-      val logLevel = if (suppressErrors || suppressAllOutput) ERROR + 1 else ERROR
       val reporter =
-        if (checkCompileOutput)
-          TestReporter.storedReporter(realStdout, logLevel = logLevel)
-        else
-          TestReporter.reporter(realStdout, logLevel = logLevel)
+        TestReporter.reporter(realStdout, logLevel =
+          if (suppressErrors || suppressAllOutput) ERROR + 1 else ERROR)
 
       val driver =
         if (times == 1) new Driver
@@ -499,33 +497,10 @@ trait ParallelTesting extends RunnerOrchestration { self =>
     private def flattenFiles(f: JFile): Array[JFile] =
       if (f.isDirectory) f.listFiles.flatMap(flattenFiles)
       else Array(f)
-
-    protected def verifyCompileOutput(source: TestSource, checkFile: JFile, reporter: StoredTestReporter): Unit = {
-      reporter.writer.flush()
-      val checkLines = Source.fromFile(checkFile).getLines().mkString("\n")
-      val outputLines = reporter.writer.toString.trim.replaceAll("\\s+\n", "\n")
-
-      if (outputLines != checkLines) {
-        val msg =
-          s"""|Output from '${source.title}' did not match check file '${checkFile.getName}'.
-              |-------------------------------------
-              |expected:
-              |$checkLines
-              |
-              |actual:
-              |$outputLines
-              |-------------------------------------
-           """.stripMargin
-
-        echo(msg)
-        addFailureInstruction(msg)
-        failTestSource(source)
-      }
-    }
   }
 
-  private final class PosTest(testSources: List[TestSource], times: Int, threadLimit: Option[Int], suppressAllOutput: Boolean, checkCompileOutput: Boolean = false)(implicit summaryReport: SummaryReporting)
-  extends Test(testSources, times, threadLimit, suppressAllOutput, checkCompileOutput) {
+  private final class PosTest(testSources: List[TestSource], times: Int, threadLimit: Option[Int], suppressAllOutput: Boolean)(implicit summaryReport: SummaryReporting)
+  extends Test(testSources, times, threadLimit, suppressAllOutput) {
     protected def encapsulatedCompilation(testSource: TestSource) = new LoggedRunnable {
       def checkTestSource(): Unit = tryCompile(testSource) {
         testSource match {
@@ -602,14 +577,6 @@ trait ParallelTesting extends RunnerOrchestration { self =>
             if (compilerCrashed || errorCount > 0) {
               reporters.foreach(logReporterContents)
               logBuildInstructions(reporters.head, testSource, errorCount, warningCount)
-            }
-
-            // verify compilation check file
-            (1 to testSource.compilationGroups.length).foreach { index =>
-              val checkFile = new JFile(dir.getAbsolutePath.reverse.dropWhile(_ == '/').reverse + "/" + index + ".check")
-
-              if (checkFile.exists && checkCompileOutput)
-                verifyCompileOutput(testSource, checkFile, reporters(index).asInstanceOf[StoredTestReporter])
             }
         }
       }
@@ -734,8 +701,8 @@ trait ParallelTesting extends RunnerOrchestration { self =>
     }
   }
 
-  private final class NegTest(testSources: List[TestSource], times: Int, threadLimit: Option[Int], suppressAllOutput: Boolean, checkCompileOutput: Boolean = false)(implicit summaryReport: SummaryReporting)
-  extends Test(testSources, times, threadLimit, suppressAllOutput, checkCompileOutput) {
+  private final class NegTest(testSources: List[TestSource], times: Int, threadLimit: Option[Int], suppressAllOutput: Boolean)(implicit summaryReport: SummaryReporting)
+  extends Test(testSources, times, threadLimit, suppressAllOutput) {
     protected def encapsulatedCompilation(testSource: TestSource) = new LoggedRunnable {
       def checkTestSource(): Unit = tryCompile(testSource) {
         // In neg-tests we allow two types of error annotations,
@@ -811,14 +778,6 @@ trait ParallelTesting extends RunnerOrchestration { self =>
 
             if (actualErrors > 0)
               reporters.foreach(logReporterContents)
-
-             // Compilation check file: for testing plugins
-            (1 to testSource.compilationGroups.length).foreach { index =>
-              val checkFile = new JFile(dir.getAbsolutePath.reverse.dropWhile(_ == '/').reverse + "/" + index + ".check")
-
-              if (checkFile.exists && checkCompileOutput)
-                verifyCompileOutput(testSource, checkFile, reporters(index).asInstanceOf[StoredTestReporter])
-            }
 
             (compilerCrashed, expectedErrors, actualErrors, () => getMissingExpectedErrors(errorMap, errors), errorMap)
           }
@@ -992,8 +951,8 @@ trait ParallelTesting extends RunnerOrchestration { self =>
      *  compilation without generating errors and that they do not crash the
      *  compiler
      */
-    def checkCompile(checkCompileOutput: Boolean = false)(implicit summaryReport: SummaryReporting): this.type = {
-      val test = new PosTest(targets, times, threadLimit, shouldFail || shouldSuppressOutput, checkCompileOutput).executeTestSuite()
+    def checkCompile()(implicit summaryReport: SummaryReporting): this.type = {
+      val test = new PosTest(targets, times, threadLimit, shouldFail || shouldSuppressOutput).executeTestSuite()
 
       cleanup()
 
@@ -1011,8 +970,8 @@ trait ParallelTesting extends RunnerOrchestration { self =>
      *  correct amount of errors at the correct positions. It also makes sure
      *  that none of these tests crash the compiler
      */
-    def checkExpectedErrors(checkCompileOutput : Boolean = false)(implicit summaryReport: SummaryReporting): this.type = {
-      val test = new NegTest(targets, times, threadLimit, shouldFail || shouldSuppressOutput, checkCompileOutput).executeTestSuite()
+    def checkExpectedErrors()(implicit summaryReport: SummaryReporting): this.type = {
+      val test = new NegTest(targets, times, threadLimit, shouldFail || shouldSuppressOutput).executeTestSuite()
 
       cleanup()
 
