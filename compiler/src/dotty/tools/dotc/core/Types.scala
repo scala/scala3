@@ -1638,7 +1638,7 @@ object Types {
             else if (hasFixedSym && d.validFor == Nowhere) // denotation was invalidated
               d.current
             else try {
-              val newd = loadDenot
+              val newd = loadDenot // TODO: If symbolic re-enter in uniques map.
               if (newd.exists) newd
               else if (ctx.mode.is(Mode.Interactive)) d
               else d.staleSymbolError

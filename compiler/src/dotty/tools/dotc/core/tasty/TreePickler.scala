@@ -73,10 +73,8 @@ class TreePickler(pickler: TastyPickler) {
     forwardSymRefs(sym) = ref :: forwardSymRefs.getOrElse(sym, Nil)
   }
 
-  private def isLocallyDefined(sym: Symbol)(implicit ctx: Context) = symRefs.get(sym) match {
-    case Some(label) => assert(sym.exists); label != NoAddr
-    case None => false
-  }
+  private def isLocallyDefined(sym: Symbol)(implicit ctx: Context) =
+    sym.topLevelClass.isLinkedWith(pickler.rootCls)
 
   def pickleConstant(c: Constant)(implicit ctx: Context): Unit = c.tag match {
     case UnitTag =>
