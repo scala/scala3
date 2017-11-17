@@ -39,12 +39,10 @@ import reporting.diagnostic.messages.{NotAMember, SuperCallsNotAllowedInline}
  *
  *  (9) Adds SourceFile annotations to all top-level classes and objects
  *
- *  (10) Adds Child annotations to all sealed classes
- *
- *  (11) Minimizes `call` fields of `Inline` nodes to just point to the toplevel
+ *  (10) Minimizes `call` fields of `Inline` nodes to just point to the toplevel
  *       class from which code was inlined.
  *
- *  (12) Converts GADT bounds into normal type bounds
+ *  (11) Converts GADT bounds into normal type bounds
  *
  *  The reason for making this a macro transform is that some functions (in particular
  *  super and protected accessors and instantiation checks) are naturally top-down and
@@ -104,11 +102,8 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
     private def transformAnnot(annot: Annotation)(implicit ctx: Context): Annotation =
       annot.derivedAnnotation(transformAnnot(annot.tree))
 
-    private def transformMemberDef(tree: MemberDef)(implicit ctx: Context): Unit = {
-      val sym = tree.symbol
-      sym.registerIfChild()
-      sym.transformAnnotations(transformAnnot)
-    }
+    private def transformMemberDef(tree: MemberDef)(implicit ctx: Context): Unit =
+      tree.symbol.transformAnnotations(transformAnnot)
 
     private def transformSelect(tree: Select, targs: List[Tree])(implicit ctx: Context): Tree = {
       val qual = tree.qualifier

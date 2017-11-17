@@ -1476,6 +1476,10 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
 
       cls.registerTree(cdef1)
 
+      // Adds Child annotations to sealed classes
+      if (!cdef1.symbol.denot.isRefinementClass)
+        cdef1.symbol.registerIfChild()
+
       cdef1
 
       // todo later: check that
