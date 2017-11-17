@@ -151,6 +151,29 @@ class PluginsTest {
   }
 
   @Test
+  def orderingTwoPlugins4 = {
+    object M1 extends TestPhase {
+      override val runsAfter = Set(classOf[P3d])
+      override val runsBefore = Set(classOfPhase(M2), classOf[P7])
+    }
+    object M2 extends TestPhase {
+      override val runsAfter = Set(classOf[P3d])
+      override val runsBefore = Set(classOf[P5], classOf[P8])
+    }
+
+    // M1 inserted to plan first
+    val updatedPlan1 = Plugins.schedule(basicPlan, M1 :: M2 :: Nil)
+    assert(updatedPlan1(6)(0) eq M1)
+    assert(updatedPlan1(7)(0) eq M2)
+
+    // M2 inserted to plan first
+    val updatedPlan2 = Plugins.schedule(basicPlan, M2 :: M1 :: Nil)
+    assert(updatedPlan2(4)(0) eq M1)
+    assert(updatedPlan2(5)(0) eq M2)
+  }
+
+
+  @Test
   def deterministic = {
     object M1 extends TestPhase {
       override val runsAfter = Set(classOf[P3d])
