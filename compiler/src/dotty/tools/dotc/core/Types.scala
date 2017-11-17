@@ -1627,18 +1627,30 @@ object Types {
             val sym = lastSymbol
             if (sym != null && sym.isValidInCurrentRun) denotOfSym(sym) else loadDenot
           case d: SymDenotation =>
-            if (hasFixedSym) d.current
-            else if (d.validFor.runId == ctx.runId || ctx.stillValid(d))
-              if (nameSpace != noNameSpace ||
+            if (d.validFor.runId == ctx.runId || ctx.stillValid(d))
+              if (hasFixedSym)
+                d.current
+              else if (nameSpace != noNameSpace ||
                   d.exists && prefix.isTightPrefix(d.owner) ||
                   d.isConstructor) d.current
               else
                 recomputeMember(d) // symbol could have been overridden, recompute membership
-            else {
+            else if (hasFixedSym && d.validFor == Nowhere) // denotation was invalidated
+              d.current
+            else try {
               val newd = loadDenot
               if (newd.exists) newd
               else if (ctx.mode.is(Mode.Interactive)) d
               else d.staleSymbolError
+            }
+            catch {
+              case ex: Error =>
+                println(d)
+                println(d.validFor.runId)
+                println(ctx.runId)
+                println(hasFixedSym)
+                println(i"prefix = $prefix / ${prefix.member(name)}")
+                throw ex
             }
           case d =>
             if (d.validFor.runId != ctx.period.runId) loadDenot
@@ -1768,10 +1780,22 @@ object Types {
 
     protected def loadDenot(implicit ctx: Context): Denotation = {
       val d = asMemberOf(prefix, allowPrivate = false)
+      def atSig(sig: Signature): Denotation =
+        if (sig.ne(Signature.OverloadedSignature)) d.atSignature(sig).checkUnique
+        else d
       if (d.exists || ctx.phaseId == FirstPhaseId || !lastDenotation.isInstanceOf[SymDenotation])
-        if (mySig != null && mySig.ne(Signature.OverloadedSignature)) d.atSignature(mySig).checkUnique
+        if (d.isOverloaded)
+          if (hasFixedSym) {
+            val last =
+              if (lastDenotation != null) lastDenotation
+              else symbol.lastKnownDenotation.asSeenFrom(prefix)
+            atSig(last.signature)
+          }
+          else if (mySig != null) atSig(mySig)
+          else d
         else d
       else { // name has changed; try load in earlier phase and make current
+
         val d = loadDenot(ctx.withPhase(ctx.phaseId - 1)).current
         if (d.exists) d
         else throw new Error(s"failure to reload $this of class $getClass")
