@@ -1961,10 +1961,10 @@ object Parsers {
 
     /** ImportSelectors ::= `{' {ImportSelector `,'} (ImportSelector | `_') `}'
      */
-    def importSelectors(): List[Tree] =
-      if (in.token == RBRACE) Nil
+    def importSelectors(): List[Tree] = {
+      val sel = importSelector()
+      if (in.token == RBRACE) sel :: Nil
       else {
-        val sel = importSelector()
         sel :: {
           if (!isWildcardArg(sel) && in.token == COMMA) {
             in.nextToken()
@@ -1973,7 +1973,7 @@ object Parsers {
           else Nil
         }
       }
-
+    }
    /** ImportSelector ::= id [`=>' id | `=>' `_']
      */
     def importSelector(): Tree = {
