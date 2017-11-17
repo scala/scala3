@@ -1,0 +1,4 @@
+<plugin>
+  <name>divideZero</name>
+  <classname>dividezero.DivideZero</classname>
+</plugin>

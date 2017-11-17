@@ -145,7 +145,7 @@ object Plugins {
    *  Note: this algorithm is factored out for unit test.
    */
   def schedule(plan: List[List[Phase]], pluginPhases: List[PluginPhase]): List[List[Phase]] = {
-    import scala.collection.mutable.{ Map => MMap, Set => MSet }
+    import scala.collection.mutable.{ Map => MMap }
     type OrderingReq = (Set[Class[_]], Set[Class[_]])
 
     val orderRequirements = MMap[Class[_], OrderingReq]()
