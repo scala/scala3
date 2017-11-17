@@ -145,6 +145,11 @@ object Plugins {
     type OrderingReq = (MSet[Class[_]], MSet[Class[_]])
 
     val orderRequirements = MMap[Class[_], OrderingReq]()
+    val existingPhases = {
+      val set = MSet.empty[Class[_]]
+      for (ps <- plan; p <- ps) set += p.getClass
+      set
+    }
 
     def updateOrdering(phase: PluginPhase): Unit = {
       val runsBefore: MSet[Class[_]] = MSet(phase.runsBefore.toSeq: _*)
@@ -152,6 +157,10 @@ object Plugins {
 
       if (!orderRequirements.contains(phase.getClass)) {
         orderRequirements.update(phase.getClass, (runsBefore, runsAfter) )
+      } else {
+        val (runsBefore1, runsAfter1) = orderRequirements(phase.getClass)
+        runsAfter1  ++= runsAfter
+        runsBefore1 ++= runsBefore
       }
 
       runsBefore.foreach { phaseClass =>
@@ -174,28 +183,32 @@ object Plugins {
       plug.init(optionFn(plug)).foreach { phase =>
         updateOrdering(phase)
 
-        val beforePhases: MSet[Class[_]] = MSet(phase.runsBefore.toSeq: _*)
-        val afterPhases: MSet[Class[_]]  = MSet(phase.runsAfter.toSeq: _*)
+        val (runsBefore1, runsAfter1) = orderRequirements(phase.getClass)
+        val runsBefore: MSet[Class[_]] = runsBefore1 & existingPhases // MSet(runsBefore1.filter(existingPhases.contains).toSeq: _*)
+        val runsAfter: MSet[Class[_]]  = runsAfter1 & existingPhases // MSet(runsAfter1.filter(existingPhases.contains).toSeq: _*)
 
         // beforeReq met after the split
         val (before, after) = updatedPlan.span { ps =>
           val classes = ps.map(_.getClass)
-          afterPhases --= classes
+          val runsAfterSat = runsAfter.isEmpty
+          runsAfter --= classes
           // Prefer the point immediately before the first beforePhases.
           // If beforePhases not specified, insert at the point immediately
           // after the last afterPhases.
-          !classes.exists(beforePhases.contains) &&
-            !(beforePhases.isEmpty && afterPhases.isEmpty)
+          !classes.exists(runsBefore.contains) &&
+            !(runsBefore.isEmpty && runsAfterSat)
         }
 
         // check afterReq
         // error can occur if: a < b, b < c, c < a
         after.foreach { ps =>
           val classes = ps.map(_.getClass)
-          if (classes.exists(afterPhases))  // afterReq satisfied
+          if (classes.exists(runsAfter))  // afterReq satisfied
             throw new Exception(s"Ordering conflict for plugin ${plug.name}")
         }
 
+
+        existingPhases += phase.getClass
         updatedPlan = before ++ (List(phase) :: after)
       }
     }
