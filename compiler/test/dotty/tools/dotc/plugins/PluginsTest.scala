@@ -25,13 +25,6 @@ class PluginsTest {
   class P7  extends TestPhase
   class P8  extends TestPhase
 
-  class TestPlugin extends TestPhase with Plugin {
-    def name = this.getClass.getName
-    override def description = ""
-
-    override def init(options: List[String]): List[PluginPhase] = this :: Nil
-  }
-
   val basicPlan = List(
     List(new P1),
     List(new P2),
@@ -45,45 +38,45 @@ class PluginsTest {
 
   @Test
   def insertAfter = {
-    object M1 extends TestPlugin {
+    object M1 extends TestPhase {
       override val runsAfter = Set(classOf[P3d])
     }
 
-    val updatedPlan = Plugins.schedule(basicPlan, M1 :: Nil, _ => Nil)
+    val updatedPlan = Plugins.schedule(basicPlan, M1 :: Nil)
     assert(updatedPlan(3)(0) eq M1)
   }
 
   @Test
   def insertBefore = {
-    object ConstFold extends TestPlugin {
+    object ConstFold extends TestPhase {
       override val runsBefore = Set(classOf[P7])
     }
 
-    val updatedPlan = Plugins.schedule(basicPlan, ConstFold :: Nil, _ => Nil)
+    val updatedPlan = Plugins.schedule(basicPlan, ConstFold :: Nil)
     assert(updatedPlan(6)(0) eq ConstFold)
   }
 
   @Test
   def insertBeforeAfter = {
-    object ConstFold extends TestPlugin {
+    object ConstFold extends TestPhase {
       override val runsAfter = Set(classOf[P3d])
       override val runsBefore = Set(classOf[P7], classOf[P8])
     }
 
     // prefers the runsBefore
-    val updatedPlan = Plugins.schedule(basicPlan, ConstFold :: Nil, _ => Nil)
+    val updatedPlan = Plugins.schedule(basicPlan, ConstFold :: Nil)
     assert(updatedPlan(6)(0) eq ConstFold)
   }
 
   @Test
   def constraintUnsatisfiable = {
-    object ConstFold extends TestPlugin {
+    object ConstFold extends TestPhase {
       override val runsAfter = Set(classOf[P6d])
       override val runsBefore = Set(classOf[P2], classOf[P8])
     }
 
     try {
-      Plugins.schedule(basicPlan, ConstFold :: Nil, _ => Nil)
+      Plugins.schedule(basicPlan, ConstFold :: Nil)
       assert(false, "unsatisfiable constraint should throw exception, but not")
     } catch {
       case _: Exception =>
@@ -92,44 +85,86 @@ class PluginsTest {
 
   @Test
   def orderingTwoPlugins1 = {
-    object M1 extends TestPlugin {
+    object M1 extends TestPhase {
       override val runsAfter = Set(classOf[P3d])
       override val runsBefore = Set(M2.getClass, classOf[P7], classOf[P8])
     }
-    object M2 extends TestPlugin {
+    object M2 extends TestPhase {
       override val runsAfter = Set(classOf[P3d])
       override val runsBefore = Set(classOf[P7], classOf[P8])
     }
 
     // M1 inserted to plan first
-    val updatedPlan1 = Plugins.schedule(basicPlan, M1 :: M2 :: Nil, _ => Nil)
+    val updatedPlan1 = Plugins.schedule(basicPlan, M1 :: M2 :: Nil)
     assert(updatedPlan1(6)(0) eq M1)
     assert(updatedPlan1(7)(0) eq M2)
 
     // M2 inserted to plan first
-    val updatedPlan2 = Plugins.schedule(basicPlan, M2 :: M1 :: Nil, _ => Nil)
+    val updatedPlan2 = Plugins.schedule(basicPlan, M2 :: M1 :: Nil)
     assert(updatedPlan2(6)(0) eq M1)
     assert(updatedPlan2(7)(0) eq M2)
   }
 
   @Test
   def orderingTwoPlugins2 = {
-    object M1 extends TestPlugin {
+    object M1 extends TestPhase {
       override val runsAfter = Set(classOf[P3d], M2.getClass)
     }
-    object M2 extends TestPlugin {
+    object M2 extends TestPhase {
       override val runsAfter = Set(classOf[P3d])
       override val runsBefore = Set(classOf[P7], classOf[P8])
     }
 
     // M1 inserted to plan first
-    val updatedPlan1 = Plugins.schedule(basicPlan, M1 :: M2 :: Nil, _ => Nil)
+    val updatedPlan1 = Plugins.schedule(basicPlan, M1 :: M2 :: Nil)
     assert(updatedPlan1(4)(0) eq M1)
     assert(updatedPlan1(3)(0) eq M2)
 
     // M2 inserted to plan first
-    val updatedPlan2 = Plugins.schedule(basicPlan, M2 :: M1 :: Nil, _ => Nil)
+    val updatedPlan2 = Plugins.schedule(basicPlan, M2 :: M1 :: Nil)
+    assert(updatedPlan2(4)(0) eq M1)
+    assert(updatedPlan2(3)(0) eq M2)
+  }
+
+  @Test
+  def orderingTwoPlugins3 = {
+    object M1 extends TestPhase {
+      override val runsAfter = Set(classOf[P3d], M2.getClass)
+      override val runsBefore = Set(classOf[P7], classOf[P8])
+    }
+    object M2 extends TestPhase {
+      override val runsAfter = Set(classOf[P3d])
+      override val runsBefore = Set(classOf[P5])
+    }
+
+    // M1 inserted to plan first
+    val updatedPlan1 = Plugins.schedule(basicPlan, M1 :: M2 :: Nil)
+    assert(updatedPlan1(7)(0) eq M1)
+    assert(updatedPlan1(4)(0) eq M2)
+
+    // M2 inserted to plan first
+    val updatedPlan2 = Plugins.schedule(basicPlan, M2 :: M1 :: Nil)
     assert(updatedPlan2(7)(0) eq M1)
-    assert(updatedPlan2(6)(0) eq M2)
+    assert(updatedPlan2(4)(0) eq M2)
+  }
+
+  @Test
+  def deterministic = {
+    object M1 extends TestPhase {
+      override val runsAfter = Set(classOf[P3d])
+      override val runsBefore = Set(classOf[P7], classOf[P8])
+    }
+    object M2 extends TestPhase {
+      override val runsAfter = Set(classOf[P3d])
+      override val runsBefore = Set(classOf[P7], classOf[P8])
+    }
+
+    val updatedPlan1 = Plugins.schedule(basicPlan, M1 :: M2 :: Nil)
+    assert(updatedPlan1(6)(0) eq M1)
+    assert(updatedPlan1(7)(0) eq M2)
+
+    val updatedPlan2 = Plugins.schedule(basicPlan, M2 :: M1 :: Nil)
+    assert(updatedPlan1(6)(0) eq M1)
+    assert(updatedPlan1(7)(0) eq M2)
   }
 }

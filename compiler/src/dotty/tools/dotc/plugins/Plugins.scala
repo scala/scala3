@@ -7,6 +7,8 @@ import config.PathResolver
 import dotty.tools.io._
 import Phases._
 
+import scala.collection.mutable.ListBuffer
+
 /** Support for run-time loading of compiler plugins.
  *
  *  @author Lex Spoon
@@ -125,7 +127,8 @@ trait Plugins {
     }
 
     // schedule plugins according to ordering constraints
-    val updatedPlan = Plugins.schedule(plan, plugins.filter(!_.research), options)
+    val pluginPhases = plugins.filter(!_.research).flatMap(plug => plug.init(options(plug)))
+    val updatedPlan = Plugins.schedule(plan, pluginPhases)
 
     // add research plugins
     plugins.filter(_.research).foldRight(updatedPlan) { (plug, plan) => plug.init(options(plug), plan) }
@@ -140,7 +143,7 @@ object Plugins {
    *
    *  Note: this algorithm is factored out for unit test.
    */
-  def schedule(plan: List[List[Phase]], plugins: List[Plugin], optionFn: Plugin => List[String]): List[List[Phase]] = {
+  def schedule(plan: List[List[Phase]], pluginPhases: List[PluginPhase]): List[List[Phase]] = {
     import scala.collection.mutable.{ Set => MSet, Map => MMap }
     type OrderingReq = (MSet[Class[_]], MSet[Class[_]])
 
@@ -178,39 +181,36 @@ object Plugins {
       }
     }
 
+    pluginPhases.foreach(updateOrdering)
+
     var updatedPlan = plan
-    plugins.foreach { plug =>
-      plug.init(optionFn(plug)).foreach { phase =>
-        updateOrdering(phase)
+    pluginPhases.sortBy(_.phaseName).foreach { phase =>
+      val (runsBefore1, runsAfter1) = orderRequirements(phase.getClass)
+      val runsBefore = runsBefore1 & existingPhases
+      val runsAfter = runsAfter1 & existingPhases
 
-        val (runsBefore1, runsAfter1) = orderRequirements(phase.getClass)
-        val runsBefore: MSet[Class[_]] = runsBefore1 & existingPhases // MSet(runsBefore1.filter(existingPhases.contains).toSeq: _*)
-        val runsAfter: MSet[Class[_]]  = runsAfter1 & existingPhases // MSet(runsAfter1.filter(existingPhases.contains).toSeq: _*)
-
-        // beforeReq met after the split
-        val (before, after) = updatedPlan.span { ps =>
-          val classes = ps.map(_.getClass)
-          val runsAfterSat = runsAfter.isEmpty
-          runsAfter --= classes
-          // Prefer the point immediately before the first beforePhases.
-          // If beforePhases not specified, insert at the point immediately
-          // after the last afterPhases.
-          !classes.exists(runsBefore.contains) &&
-            !(runsBefore.isEmpty && runsAfterSat)
-        }
-
-        // check afterReq
-        // error can occur if: a < b, b < c, c < a
-        after.foreach { ps =>
-          val classes = ps.map(_.getClass)
-          if (classes.exists(runsAfter))  // afterReq satisfied
-            throw new Exception(s"Ordering conflict for plugin ${plug.name}")
-        }
-
-
-        existingPhases += phase.getClass
-        updatedPlan = before ++ (List(phase) :: after)
+      // beforeReq met after the split
+      val (before, after) = updatedPlan.span { ps =>
+        val classes = ps.map(_.getClass)
+        val runsAfterSat = runsAfter.isEmpty
+        runsAfter --= classes
+        // Prefer the point immediately before the first beforePhases.
+        // If beforePhases not specified, insert at the point immediately
+        // after the last afterPhases.
+        !classes.exists(runsBefore.contains) &&
+          !(runsBefore.isEmpty && runsAfterSat)
       }
+
+      // check afterReq
+      // error can occur if: a < b, b < c, c < a
+      after.foreach { ps =>
+        val classes = ps.map(_.getClass)
+        if (classes.exists(runsAfter)) // afterReq satisfied
+          throw new Exception(s"Ordering conflict for phase ${phase.phaseName}")
+      }
+
+      existingPhases += phase.getClass
+      updatedPlan = before ++ (List(phase) :: after)
     }
 
     updatedPlan
