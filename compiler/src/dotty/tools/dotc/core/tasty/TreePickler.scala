@@ -146,6 +146,19 @@ class TreePickler(pickler: TastyPickler) {
         writeByte(if (tpe.isType) TYPEREFdirect else TERMREFdirect)
         pickleSymRef(sym)
       }
+      def pickleExternalRef(sym: Symbol) =
+        if (sym.is(Flags.Private)) {
+          writeByte(if (tpe.isType) TYPEREFin else TERMREFin)
+          withLength {
+            pickleName(sym.name)
+            pickleType(tpe.prefix)
+            pickleType(sym.owner.typeRef)
+          }
+        }
+        else {
+          writeByte(if (tpe.isType) TYPEREF else TERMREF)
+          pickleName(sym.name); pickleType(tpe.prefix)
+        }
       if (sym.is(Flags.Package)) {
         writeByte(if (tpe.isType) TYPEREFpkg else TERMREFpkg)
         pickleName(sym.fullName)
@@ -176,6 +189,8 @@ class TreePickler(pickler: TastyPickler) {
             pickleType(tpe.prefix)
             pickleType(space)
           }
+        case sym: Symbol =>
+          pickleExternalRef(sym)
       }
     case tpe: ThisType =>
       if (tpe.cls.is(Flags.Package) && !tpe.cls.isEffectiveRoot) {
