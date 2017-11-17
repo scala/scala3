@@ -172,12 +172,24 @@ object Flags {
   }
 
   /** The union of all flags in given flag set */
-  def union(flagss: FlagSet*) = (EmptyFlags /: flagss)(_ | _)
+  def union(flagss: FlagSet*): FlagSet = {
+    var flag = EmptyFlags
+    for (f <- flagss)
+      flag |= f
+    flag
+  }
 
   /** The conjunction of all flags in given flag set */
-  def allOf(flagss: FlagSet*) = {
-    assert(flagss forall (_.numFlags == 1), "Flags.allOf doesn't support flag " + flagss.find(_.numFlags != 1))
-    FlagConjunction(union(flagss: _*).bits)
+  def allOf(flags1: FlagSet, flags2: FlagSet): FlagConjunction = {
+    assert(flags1.numFlags == 1 && flags2.numFlags == 1, "Flags.allOf doesn't support flag " + (if (flags1.numFlags != 1) flags1 else flags2))
+    FlagConjunction((flags1 | flags2).bits)
+  }
+
+  /** The conjunction of all flags in given flag set */
+  def allOf(flags1: FlagSet, flags2: FlagSet, flags3: FlagSet, flagss: FlagSet*): FlagConjunction = {
+    val flags0 = allOf(flags1, flags2) | flags3
+    assert(flags3.numFlags == 1 && flagss.forall(_.numFlags == 1), "Flags.allOf doesn't support flag " + (if (flags3.numFlags != 1) flags3 else flagss.find(_.numFlags != 1)))
+    FlagConjunction((flags0 | union(flagss: _*)).bits)
   }
 
   def commonFlags(flagss: FlagSet*) = union(flagss.map(_.toCommonFlags): _*)
