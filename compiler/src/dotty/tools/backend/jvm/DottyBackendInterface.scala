@@ -499,7 +499,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
     // generic information could disappear as a consequence of a seemingly
     // unrelated change.
        ctx.base.settings.YnoGenericSig.value
-    || sym.is(Flags.Artifact)
+    || sym.is(Flags.Artifact | Flags.Synthetic)
     || sym.is(Flags.allOf(Flags.Method, Flags.Lifted))
     || sym.is(Flags.Bridge)
   )
