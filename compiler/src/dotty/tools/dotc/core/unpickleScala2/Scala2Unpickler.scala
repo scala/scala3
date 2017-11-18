@@ -702,8 +702,8 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
       case SINGLEtpe =>
         val pre = readTypeRef()
         val sym = readDisambiguatedSymbolRef(_.info.isParameterless)
-        if (isLocal(sym) || (pre eq NoPrefix)) pre select sym
-        else TermRef(pre, sym.name.asTermName)
+        if (config.Config.newScheme || isLocal(sym) || (pre eq NoPrefix)) pre select sym
+        else TermRef.applyOLD(pre, sym.name.asTermName)
       case SUPERtpe =>
         val thistpe = readTypeRef()
         val supertpe = readTypeRef()
@@ -731,11 +731,11 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
           case _ =>
         }
         val tycon =
-          if (sym.isClass && sym.is(Scala2x) && sym.owner.isClass && !sym.owner.is(Package))
+          if (!config.Config.newScheme && sym.isClass && sym.is(Scala2x) && sym.owner.isClass && !sym.owner.is(Package))
             // There can be multiple Scala2 inner classes with the same prefix and name; use a namespace
             // to pick a particular one.
-            TypeRef(pre, sym.name.asTypeName.withNameSpace(sym.owner.typeRef))
-          else if (isLocal(sym) || pre == NoPrefix) {
+            TypeRef.applyOLD(pre, sym.name.asTypeName.withNameSpace(sym.owner.typeRef))
+          else if (config.Config.newScheme || isLocal(sym) || pre == NoPrefix) {
             val pre1 = if ((pre eq NoPrefix) && (sym is TypeParam)) sym.owner.thisType else pre
             pre1 select sym
           }

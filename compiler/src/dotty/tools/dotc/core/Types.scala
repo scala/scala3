@@ -1134,11 +1134,21 @@ object Types {
 
     /** The type <this . name> , reduced if possible */
     def select(name: Name)(implicit ctx: Context): Type =
-      NamedType(this, name).reduceProjection
+      if (Config.newScheme) NamedType.withDenot(this, member(name)).reduceProjection
+      else NamedType.applyOLD(this, name).reduceProjection
+
+    def select(name: TermName)(implicit ctx: Context): TermRef =
+      if (Config.newScheme) TermRef.withDenot(this, member(name))
+      else TermRef.applyOLD(this, name)
+
+    def select(name: TermName, sig: Signature)(implicit ctx: Context): TermRef = {
+      assert(Config.newScheme)
+      TermRef.withDenot(this, member(name).atSignature(sig))
+    }
 
     /** The type <this . name> , reduced if possible, with given denotation if unreduced */
-    def select(name: Name, denot: Denotation)(implicit ctx: Context): Type =
-      NamedType(this, name, denot).reduceProjection
+    def select(name: Name, denot: Denotation)(implicit ctx: Context): Type = // ### drop name
+      NamedType.apply(this, name, denot).reduceProjection
 
     /** The type <this . name> with either `sym` or its signed name as designator, reduced if possible */
     def select(sym: Symbol)(implicit ctx: Context): Type =
@@ -1625,7 +1635,11 @@ object Types {
         val d = lastDenotation match {
           case null =>
             val sym = lastSymbol
-            if (sym != null && sym.isValidInCurrentRun) denotOfSym(sym) else loadDenot
+            if (sym != null && sym.isValidInCurrentRun &&
+                (!Config.newScheme ||
+                 (prefix eq NoPrefix) || (prefix eq sym.owner.thisType) || sym.isReferencedSymbolically))
+              denotOfSym(sym)
+            else loadDenot
           case d: SymDenotation =>
             if (d.validFor.runId == ctx.runId || ctx.stillValid(d))
               if (hasFixedSym)
@@ -1733,8 +1747,10 @@ object Types {
       	  this
       	else if (signature != denot.signature)
           withSig(denot.signature)
-        else if (denot.symbol.isPrivate)
-          withNameSpace(denot.symbol.owner.typeRef)
+        else if (denot.symbol.isPrivate) {
+          assert(!Config.newScheme)
+          withNameSpaceOLD(denot.symbol.owner.typeRef)
+        }
         else
           this
       if (adapted ne this) adapted.withDenot(denot).asInstanceOf[ThisType]
@@ -1775,11 +1791,13 @@ object Types {
       checkedPeriod = Nowhere
     }
 
-    private def withSig(sig: Signature)(implicit ctx: Context): NamedType =
-      TermRef(prefix, designator.withSig(sig))
+    private def withSig(sig: Signature)(implicit ctx: Context): NamedType = {
+      assert(!Config.newScheme)
+      TermRef.applyOLD(prefix, designator.withSig(sig))
+    }
 
     protected def loadDenot(implicit ctx: Context): Denotation = {
-      val d = asMemberOf(prefix, allowPrivate = false)
+      val d = asMemberOf(prefix, allowPrivate = Config.newScheme && hasFixedSym)
       def atSig(sig: Signature): Denotation =
         if (sig.ne(Signature.OverloadedSignature)) d.atSignature(sig).checkUnique
         else d
@@ -1954,9 +1972,9 @@ object Types {
 
     /** Create a NamedType of the same kind as this type, but with a new namespace.
      */
-    def withNameSpace(nameSpace: NameSpace)(implicit ctx: Context): NamedType =
+    def withNameSpaceOLD(nameSpace: NameSpace)(implicit ctx: Context): NamedType =
       if (nameSpace == this.nameSpace) this
-      else NamedType(prefix, designator.withNameSpace(nameSpace))
+      else NamedType.applyOLD(prefix, designator.withNameSpace(nameSpace))
 
     override def equals(that: Any) = that match {
       case that: NamedType =>
@@ -1994,7 +2012,8 @@ object Types {
     override def isOverloaded(implicit ctx: Context) = denot.isOverloaded
 
     private def rewrap(sd: SingleDenotation)(implicit ctx: Context) =
-      TermRef(prefix, name, sd)
+      if (Config.newScheme) TermRef.withDenot(prefix, sd)
+      else TermRef.apply(prefix, name, sd)
 
     def alternatives(implicit ctx: Context): List[TermRef] =
       denot.alternatives map rewrap
@@ -2028,7 +2047,8 @@ object Types {
             designator.withSig(newSig)
           }
           else designator
-        fixDenot(TermRef(prefix, designator1), prefix)
+        assert(!Config.newScheme)
+        fixDenot(TermRef.applyOLD(prefix, designator1), prefix)
     }
   }
 
@@ -2040,7 +2060,8 @@ object Types {
     override def underlying(implicit ctx: Context): Type = info
 
     def withPrefix(prefix: Type)(implicit ctx: Context): NamedType =
-      TypeRef(prefix, designator)
+      if (Config.newScheme) TypeRef(prefix, designator.asInstanceOf[TypeSymbol])
+      else TypeRef.applyOLD(prefix, designator)
   }
 
   final class CachedTermRef(prefix: Type, designator: TermDesignator, hc: Int) extends TermRef(prefix, designator) {
@@ -2058,12 +2079,19 @@ object Types {
     if (Config.checkUnerased) assert(!ctx.phase.erasedTypes)
 
   object NamedType {
-    def apply(prefix: Type, designator: Designator)(implicit ctx: Context) =
+    def applyOLD(prefix: Type, designator: Designator)(implicit ctx: Context) =
+      if (designator.isType) TypeRef.applyOLD(prefix, designator.asType)
+      else TermRef.applyOLD(prefix, designator.asTerm)
+    def apply(prefix: Type, designator: Symbol)(implicit ctx: Context) =
       if (designator.isType) TypeRef(prefix, designator.asType)
       else TermRef(prefix, designator.asTerm)
+    def withDenot(prefix: Type, denot: Denotation)(implicit ctx: Context) =
+      if (denot.isTerm) TermRef.withDenot(prefix, denot)
+      else TypeRef.withDenot(prefix, denot)
     def apply(prefix: Type, designator: Name, denot: Denotation)(implicit ctx: Context) =
-      if (designator.isTermName) TermRef(prefix, designator.asTermName, denot)
-      else TypeRef(prefix, designator.asTypeName, denot)
+      if (Config.newScheme) withDenot(prefix, denot)
+      else if (designator.isTermName) TermRef.apply(prefix, designator.asTermName, denot)
+      else TypeRef.apply(prefix, designator.asTypeName, denot)
     def withSym(prefix: Type, sym: Symbol)(implicit ctx: Context): NamedType =
       if (sym.isType) TypeRef.withSym(prefix, sym.asType)
       else TermRef.withSym(prefix, sym.asTerm)
@@ -2075,7 +2103,10 @@ object Types {
      *  Its meaning is the (potentially multi-) denotation of the member(s)
      *  of prefix with given name.
      */
-    def apply(prefix: Type, designator: TermDesignator)(implicit ctx: Context): TermRef =
+    def applyOLD(prefix: Type, designator: TermDesignator)(implicit ctx: Context): TermRef =
+      ctx.uniqueNamedTypes.enterIfNew(prefix, designator, isTerm = true).asInstanceOf[TermRef]
+
+    def apply(prefix: Type, designator: TermSymbol)(implicit ctx: Context): TermRef =
       ctx.uniqueNamedTypes.enterIfNew(prefix, designator, isTerm = true).asInstanceOf[TermRef]
 
     /** Create term ref to given initial denotation, taking the signature
@@ -2083,50 +2114,62 @@ object Types {
      *  signature, if denotation is not yet completed.
      */
     def apply(prefix: Type, name: TermName, denot: Denotation)(implicit ctx: Context): TermRef = {
-      if ((prefix eq NoPrefix) || denot.symbol.isReferencedSymbolically) apply(prefix, denot.symbol.asTerm)
+      if (Config.newScheme) withDenot(prefix, denot)
+      else if ((prefix eq NoPrefix) || denot.symbol.isReferencedSymbolically) apply(prefix, denot.symbol.asTerm)
       else denot match {
         case denot: SingleDenotation =>
-          apply(prefix, name.withSig(denot.signature).localizeIfPrivate(denot.symbol))
-        case _ => apply(prefix, name)
+          applyOLD(prefix, name.withSig(denot.signature).localizeIfPrivate(denot.symbol))
+        case _ => applyOLD(prefix, name)
       }
     } withDenot denot
+
+    def withDenot(prefix: Type, denot: Denotation)(implicit ctx: Context): TermRef =
+      apply(prefix, denot.symbol.asTerm).withDenot(denot)
 
     /** Create a term ref referring to given symbol with given name.
      *  This is similar to TermRef(Type, Symbol), except:
      *  (1) the symbol might not yet have a denotation, so the name needs to be given explicitly.
      *  (2) the designator of the TermRef is either the symbol or its name & unforced signature.
      */
-    def withSym(prefix: Type, sym: TermSymbol, name: TermName)(implicit ctx: Context): TermRef =
+    def withSymOLD(prefix: Type, sym: TermSymbol, name: TermName)(implicit ctx: Context): TermRef =
       if ((prefix eq NoPrefix) || sym.isReferencedSymbolically) apply(prefix, sym)
-      else apply(prefix, name.withSig(sym.signature).localizeIfPrivate(sym)).withSym(sym)
+      else applyOLD(prefix, name.withSig(sym.signature).localizeIfPrivate(sym)).withSym(sym)
 
     def withSym(prefix: Type, sym: TermSymbol)(implicit ctx: Context): TermRef =
-      withSym(prefix, sym, sym.name)
+      if (Config.newScheme) apply(prefix, sym) else withSymOLD(prefix, sym, sym.name)
   }
 
   object TypeRef {
 
     /** Create type ref with given prefix and name */
-    def apply(prefix: Type, desig: TypeDesignator)(implicit ctx: Context): TypeRef =
+    def applyOLD(prefix: Type, desig: TypeDesignator)(implicit ctx: Context): TypeRef =
+      ctx.uniqueNamedTypes.enterIfNew(prefix, desig, isTerm = false).asInstanceOf[TypeRef]
+
+    /** Create type ref with given prefix and name */
+    def apply(prefix: Type, desig: TypeSymbol)(implicit ctx: Context): TypeRef =
       ctx.uniqueNamedTypes.enterIfNew(prefix, desig, isTerm = false).asInstanceOf[TypeRef]
 
     /** Create a type ref with given name and initial denotation */
     def apply(prefix: Type, name: TypeName, denot: Denotation)(implicit ctx: Context): TypeRef = {
-      if ((prefix eq NoPrefix) || denot.symbol.isReferencedSymbolically) apply(prefix, denot.symbol.asType)
-      else apply(prefix, name.localizeIfPrivate(denot.symbol))
+      if (Config.newScheme) withDenot(prefix, denot)
+      else if ((prefix eq NoPrefix) || denot.symbol.isReferencedSymbolically) apply(prefix, denot.symbol.asType)
+      else applyOLD(prefix, name.localizeIfPrivate(denot.symbol))
     } withDenot denot
+
+    def withDenot(prefix: Type, denot: Denotation)(implicit ctx: Context): TypeRef =
+      apply(prefix, denot.symbol.asType).withDenot(denot)
 
     /** Create a type ref referring to either a given symbol or its name.
      *  This is similar to TypeRef(prefix, sym), except:
      *  (1) the symbol might not yet have a denotation, so the name needs to be given explicitly.
      *  (2) the designator of the TypeRef is either the symbol or its name
      */
-    def withSym(prefix: Type, sym: TypeSymbol, name: TypeName)(implicit ctx: Context): TypeRef =
+    def withSymOLD(prefix: Type, sym: TypeSymbol, name: TypeName)(implicit ctx: Context): TypeRef =
       if ((prefix eq NoPrefix) || sym.isReferencedSymbolically) apply(prefix, sym)
-      else apply(prefix, name.localizeIfPrivate(sym)).withSym(sym)
+      else applyOLD(prefix, name.localizeIfPrivate(sym)).withSym(sym)
 
     def withSym(prefix: Type, sym: TypeSymbol)(implicit ctx: Context): TypeRef =
-      withSym(prefix, sym, sym.name)
+      if (Config.newScheme) apply(prefix, sym) else withSymOLD(prefix, sym, sym.name)
   }
 
   // --- Other SingletonTypes: ThisType/SuperType/ConstantType ---------------------------
@@ -3472,7 +3515,8 @@ object Types {
       if (appliedRefCache == null) {
         val tref =
           if ((cls is PackageClass) || cls.owner.isTerm) symbolicTypeRef // ??? not always symbolicRef
-          else TypeRef(prefix, cls.name, clsDenot)
+          else if (Config.newScheme) TypeRef.withDenot(prefix, clsDenot)
+          else TypeRef.apply(prefix, cls.name, clsDenot)
         appliedRefCache =
           tref.appliedTo(cls.typeParams.map(_.typeRef))
       }
@@ -3554,7 +3598,20 @@ object Types {
       case tp: ClassInfo =>
         // Note: Taking a normal typeRef does not work here. A normal ref might contain
         // also other information about the named type (e.g. bounds).
-        contains(tp.symbolicTypeRef) // ??? not clear
+        if (Config.newScheme) {
+        val loOK =
+          lo.isRef(tp.cls) ||
+          lo.isRef(defn.NothingClass) ||
+          lo.isRef(defn.NullClass) && !tp.cls.isValueClass
+        val hiOK =
+          hi.isRef(tp.cls) ||
+          tp.parents.exists(p => p <:< hi)
+        loOK && hiOK || {
+          println(i"NOT CONTAINS: $this / $tp")
+          false
+        }
+        }
+        else contains(tp.symbolicTypeRef)
       case _ => lo <:< tp && tp <:< hi
     }
 

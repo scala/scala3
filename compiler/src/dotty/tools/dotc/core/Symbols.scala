@@ -158,7 +158,9 @@ trait Symbols { this: Context =>
         infoFn(module, modcls), privateWithin)
     val mdenot = SymDenotation(
         module, owner, name, modFlags | ModuleValCreationFlags,
-        if (cdenot.isCompleted) TypeRef.withSym(owner.thisType, modcls, modclsName)
+        if (cdenot.isCompleted)
+          if (config.Config.newScheme) TypeRef.withSym(owner.thisType, modcls)
+          else TypeRef.withSymOLD(owner.thisType, modcls, modclsName)
         else new ModuleCompleter(modcls))
     module.denot = mdenot
     modcls.denot = cdenot
@@ -183,7 +185,9 @@ trait Symbols { this: Context =>
     newModuleSymbol(
         owner, name, modFlags, clsFlags,
         (module, modcls) => ClassInfo(
-          owner.thisType, modcls, parents, decls, TermRef.withSym(owner.thisType, module, name)),
+          owner.thisType, modcls, parents, decls,
+          if (config.Config.newScheme) TermRef.withSym(owner.thisType, module)
+          else TermRef.withSymOLD(owner.thisType, module, name)),
         privateWithin, coord, assocFile)
 
   val companionMethodFlags = Flags.Synthetic | Flags.Private | Flags.Method
@@ -291,7 +295,10 @@ trait Symbols { this: Context =>
     for (name <- names) {
       val tparam = newNakedSymbol[TypeName](NoCoord)
       tparamBuf += tparam
-      trefBuf += TypeRef.withSym(owner.thisType, tparam, name)
+      trefBuf += (
+        if (config.Config.newScheme) TypeRef.withSym(owner.thisType, tparam)
+        else TypeRef.withSymOLD(owner.thisType, tparam, name)
+      )
     }
     val tparams = tparamBuf.toList
     val bounds = boundsFn(trefBuf.toList)
@@ -469,7 +476,7 @@ object Symbols {
      */
     final def isReferencedSymbolically(implicit ctx: Context) = {
       val d = lastDenot
-      d != null && (d.is(NonMember) || d.isTerm && ctx.phase.symbolicRefs)
+      d != null && (d.is(NonMember) || ctx.phase.symbolicRefs)
     }
 
     /** Test whether symbol is private. This

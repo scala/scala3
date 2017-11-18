@@ -187,8 +187,8 @@ trait TypeAssigner {
           // it could be that we found an inaccessible private member, but there is
           // an inherited non-private member with the same name and signature.
           val d2 = pre.nonPrivateMember(name)
-          if (reallyExists(d2) && firstTry)
-            test(tpe.withNameSpace(noNameSpace).withDenot(d2), false)
+          if (reallyExists(d2) && firstTry && !config.Config.newScheme)
+            test(tpe.withNameSpaceOLD(noNameSpace).withDenot(d2), false)
           else if (pre.derivesFrom(defn.DynamicClass)) {
             TryDynamicCallType
           } else {

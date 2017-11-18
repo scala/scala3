@@ -69,11 +69,11 @@ class ParamForwarding(thisPhase: DenotTransformer) {
                       .installAfter(thisPhase)
                     var superAcc =
                       Super(This(currentClass), tpnme.EMPTY, inConstrCall = false).select(alias)
-                    if (alias.owner != currentClass.superClass)
+                    if (alias.owner != currentClass.superClass && !config.Config.newScheme)
                       // need to use shadowed in order not to accidentally address an
                       // intervening private forwarder in the superclass
                       superAcc = superAcc.withType(
-                        superAcc.tpe.asInstanceOf[TermRef].withNameSpace(noNameSpace))
+                        superAcc.tpe.asInstanceOf[TermRef].withNameSpaceOLD(noNameSpace))
                     typr.println(i"adding param forwarder $superAcc")
                     DefDef(sym, superAcc.ensureConforms(sym.info.widen))
                   }
@@ -93,12 +93,12 @@ class ParamForwarding(thisPhase: DenotTransformer) {
 
   def adaptRef[T <: RefTree](tree: T)(implicit ctx: Context): T = tree.tpe match {
     case tpe: TermRef
-    if tpe.prefix.ne(NoPrefix) && tpe.signature.eq(Signature.NotAMethod) && tpe.symbol.is(Method) =>
+    if !config.Config.newScheme && tpe.prefix.ne(NoPrefix) && tpe.signature.eq(Signature.NotAMethod) && tpe.symbol.is(Method) =>
       // It could be a param forwarder; adapt the signature
       val newSig = tpe.prefix.memberInfo(tpe.symbol).signature
       if (newSig.eq(Signature.NotAMethod)) tree
       else tree.withType(
-        TermRef(tpe.prefix, tpe.name.withSig(newSig).localizeIfPrivate(tpe.symbol)))
+        TermRef.applyOLD(tpe.prefix, tpe.name.withSig(newSig).localizeIfPrivate(tpe.symbol)))
           .asInstanceOf[T]
     case _ =>
       tree

@@ -1134,10 +1134,12 @@ object SymDenotations {
     def thisType(implicit ctx: Context): Type = NoPrefix
 
     override def typeRef(implicit ctx: Context): TypeRef =
-      TypeRef(owner.thisType, name.asTypeName, this)
+      if (Config.newScheme) TypeRef.withSym(owner.thisType, symbol.asType)
+      else TypeRef(owner.thisType, name.asTypeName, this)
 
     override def termRef(implicit ctx: Context): TermRef =
-      TermRef(owner.thisType, name.asTermName, this)
+      if (Config.newScheme) TermRef.withSym(owner.thisType, symbol.asTerm)
+      else TermRef(owner.thisType, name.asTermName, this)
 
     /** The variance of this type parameter or type member as an Int, with
      *  +1 = Covariant, -1 = Contravariant, 0 = Nonvariant, or not a type parameter
@@ -1852,10 +1854,10 @@ object SymDenotations {
     }
   }
 
-  class NoDenotation(sym: Symbol, name: Name, override val isTerm: Boolean)
+  class NoDenotation(sym: Symbol, name: Name, override val exists: Boolean)
   extends SymDenotation(sym, NoSymbol, name, Permanent, NoType) {
-    override def exists = false
     override def isType = false
+    override def isTerm = exists
     override def owner: Symbol = throw new AssertionError("NoDenotation.owner")
     override def computeAsSeenFrom(pre: Type)(implicit ctx: Context): SingleDenotation = this
     override def mapInfo(f: Type => Type)(implicit ctx: Context): SingleDenotation = this
@@ -1863,10 +1865,10 @@ object SymDenotations {
   }
 
   @sharable val NoDenotation =
-    new NoDenotation(NoSymbol, "<none>".toTermName, isTerm = false)
+    new NoDenotation(NoSymbol, "<none>".toTermName, exists = false)
 
   @sharable val OverloadedDenotation =
-    new NoDenotation(OverloadedSymbol, "<overloaded>".toTermName, isTerm = true)
+    new NoDenotation(OverloadedSymbol, "<overloaded>".toTermName, exists = true)
 
   // ---- Completion --------------------------------------------------------
 
