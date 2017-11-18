@@ -1852,10 +1852,9 @@ object SymDenotations {
     }
   }
 
-  class NoDenotation extends SymDenotation(
-    NoSymbol, NoSymbol, "<none>".toTermName, Permanent, NoType) {
+  class NoDenotation(sym: Symbol, name: Name, override val isTerm: Boolean)
+  extends SymDenotation(sym, NoSymbol, name, Permanent, NoType) {
     override def exists = false
-    override def isTerm = false
     override def isType = false
     override def owner: Symbol = throw new AssertionError("NoDenotation.owner")
     override def computeAsSeenFrom(pre: Type)(implicit ctx: Context): SingleDenotation = this
@@ -1863,7 +1862,11 @@ object SymDenotations {
     validFor = Period.allInRun(NoRunId)
   }
 
-  @sharable val NoDenotation = new NoDenotation
+  @sharable val NoDenotation =
+    new NoDenotation(NoSymbol, "<none>".toTermName, isTerm = false)
+
+  @sharable val OverloadedDenotation =
+    new NoDenotation(OverloadedSymbol, "<overloaded>".toTermName, isTerm = true)
 
   // ---- Completion --------------------------------------------------------
 

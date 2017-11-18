@@ -648,10 +648,18 @@ object Symbols {
     denot = underlying.denot
   }
 
-  @sharable object NoSymbol extends Symbol(NoCoord, 0) {
-    denot = NoDenotation
+  class NonExistingSymbol extends Symbol(NoCoord, 0) {
     override def associatedFile(implicit ctx: Context): AbstractFile = NoSource.file
     override def recomputeDenot(lastd: SymDenotation)(implicit ctx: Context): SymDenotation = NoDenotation
+  }
+
+  @sharable object NoSymbol extends NonExistingSymbol {
+    denot = NoDenotation
+  }
+
+  @sharable object OverloadedSymbol extends NonExistingSymbol {
+    denot = OverloadedDenotation
+    type ThisName = TermName
   }
 
   implicit class Copier[N <: Name](sym: Symbol { type ThisName = N })(implicit ctx: Context) {
