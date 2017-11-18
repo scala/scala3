@@ -805,7 +805,7 @@ object desugar {
    *  If `inlineable` is true, tag $anonfun with an @inline annotation.
    */
   def makeClosure(params: List[ValDef], body: Tree, tpt: Tree = TypeTree(), inlineable: Boolean)(implicit ctx: Context) = {
-    var mods = synthetic
+    var mods = synthetic | Artifact
     if (inlineable) mods |= Inline
     Block(
       DefDef(nme.ANON_FUN, Nil, params :: Nil, tpt, body).withMods(mods),
