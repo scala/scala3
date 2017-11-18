@@ -1185,9 +1185,8 @@ class ErrorMessagesTests extends ErrorMessagesTest {
       implicit val ctx: Context = ictx
 
       assertMessageCount(1, messages)
-      val err :: Nil = messages
-
-      assertEquals(TraitRedefinedFinalMethodFromAnyRef(), err)
+      val TraitRedefinedFinalMethodFromAnyRef(method) = messages.head
+      assertEquals("method wait", method.show)
     }
 
 }

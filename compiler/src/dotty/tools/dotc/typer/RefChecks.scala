@@ -606,7 +606,7 @@ object RefChecks {
         // override a concrete method in Object. The jvm, however, does not.
         val overridden = decl.matchingDecl(defn.ObjectClass, defn.ObjectType)
         if (overridden.is(Final))
-          ctx.error(TraitRedefinedFinalMethodFromAnyRef(), decl.pos)
+          ctx.error(TraitRedefinedFinalMethodFromAnyRef(overridden), decl.pos)
       }
     }
 
