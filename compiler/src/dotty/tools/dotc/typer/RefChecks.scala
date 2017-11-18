@@ -116,7 +116,7 @@ object RefChecks {
     if (!cls.owner.is(ModuleClass)) {
       def clashes(sym: Symbol) =
         sym.isClass &&
-        sym.name.stripModuleClassSuffix == cls.name.stripModuleClassSuffix        
+        sym.name.stripModuleClassSuffix == cls.name.stripModuleClassSuffix
 
       val others = cls.owner.linkedClass.info.decls.filter(clashes)
       others.foreach { other =>
@@ -606,7 +606,7 @@ object RefChecks {
         // override a concrete method in Object. The jvm, however, does not.
         val overridden = decl.matchingDecl(defn.ObjectClass, defn.ObjectType)
         if (overridden.is(Final))
-          ctx.error("trait cannot redefine final method from class AnyRef", decl.pos)
+          ctx.error(TraitRedefinedFinalMethodFromAnyRef(overridden), decl.pos)
       }
     }
 

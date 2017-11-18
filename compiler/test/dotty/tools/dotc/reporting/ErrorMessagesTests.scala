@@ -1172,4 +1172,21 @@ class ErrorMessagesTests extends ErrorMessagesTest {
       val TraitIsExpected(symbol) :: Nil = messages
       assertEquals("class B", symbol.show)
     }
+
+  @Test def traitRedefinedFinalMethodFromAnyRef =
+    checkMessagesAfter("refchecks") {
+      """
+        |trait C {
+        |  def wait (): Unit
+        |}
+      """.stripMargin
+    }
+    .expect { (ictx, messages) =>
+      implicit val ctx: Context = ictx
+
+      assertMessageCount(1, messages)
+      val TraitRedefinedFinalMethodFromAnyRef(method) = messages.head
+      assertEquals("method wait", method.show)
+    }
+
 }

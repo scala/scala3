@@ -1916,4 +1916,10 @@ object messages {
           |"""
     }
   }
+
+  case class TraitRedefinedFinalMethodFromAnyRef(method: Symbol)(implicit ctx: Context) extends Message(TraitRedefinedFinalMethodFromAnyRefID) {
+    val kind = "Syntax"
+    val msg = hl"Traits cannot redefine final $method from ${"class AnyRef"}."
+    val explanation = ""
+  }
 }
