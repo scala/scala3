@@ -200,7 +200,7 @@ object Denotations {
           }
           else NoSymbol
         case NoDenotation | _: NoQualifyingRef =>
-          throw new TypeError(s"None of the alternatives of $this satisfies required predicate")
+          throw new TypeError(i"None of the alternatives of $this satisfies required predicate")
         case denot =>
           denot.symbol
       }
@@ -210,10 +210,16 @@ object Denotations {
     def requiredMethodRef(name: PreName)(implicit ctx: Context): TermRef =
       requiredMethod(name).termRef
 
-    def requiredMethod(name: PreName, argTypes: List[Type])(implicit ctx: Context): TermSymbol =
-      info.member(name.toTermName).requiredSymbol(x=>
-        (x is Method) && x.info.paramInfoss == List(argTypes)
-      ).asTerm
+    def requiredMethod(name: PreName, argTypes: List[Type])(implicit ctx: Context): TermSymbol = {
+      info.member(name.toTermName).requiredSymbol { x =>
+        (x is Method) && {
+          x.info.paramInfoss match {
+            case paramInfos :: Nil => paramInfos.corresponds(argTypes)(_ =:= _)
+            case _ => false
+          }
+        }
+      }.asTerm
+    }
     def requiredMethodRef(name: PreName, argTypes: List[Type])(implicit ctx: Context): TermRef =
       requiredMethod(name, argTypes).termRef
 
