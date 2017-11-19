@@ -86,7 +86,7 @@ class Erasure extends Phase with DenotTransformer {
         }
       }
     case ref =>
-      ref.derivedSingleDenotation(ref.symbol, transformInfo(ref.symbol, ref.info))
+      ref.derivedSingleDenotation(ref.symbol, transformInfo(ref.symbol, ref.symbol.info))
   }
 
   val eraser = new Erasure.Typer
