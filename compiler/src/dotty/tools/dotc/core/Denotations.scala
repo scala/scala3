@@ -72,6 +72,78 @@ object Denotations {
 
   implicit def eqDenotation: Eq[Denotation, Denotation] = Eq
 
+  /** A PreDenotation represents a group of single denotations or a single multi-denotation
+   *  It is used as an optimization to avoid forming MultiDenotations too eagerly.
+   */
+  abstract class PreDenotation extends util.DotClass {
+
+    /** A denotation in the group exists */
+    def exists: Boolean
+
+    /** First/last denotation in the group */
+    def first: Denotation
+    def last: Denotation
+
+    /** Convert to full denotation by &-ing all elements */
+    def toDenot(pre: Type)(implicit ctx: Context): Denotation
+
+    /** Group contains a denotation that refers to given symbol */
+    def containsSym(sym: Symbol): Boolean
+
+    /** Group contains a denotation with the same signature as `other` */
+    def matches(other: SingleDenotation)(implicit ctx: Context): Boolean
+
+    /** Keep only those denotations in this group which satisfy predicate `p`. */
+    def filterWithPredicate(p: SingleDenotation => Boolean): PreDenotation
+
+    /** Keep only those denotations in this group which have a signature
+     *  that's not already defined by `denots`.
+     */
+    def filterDisjoint(denots: PreDenotation)(implicit ctx: Context): PreDenotation
+
+    /** Keep only those inherited members M of this predenotation for which the following is true
+     *   - M is not marked Private
+     *   - If M has a unique symbol, it does not appear in `prevDenots`.
+     *   - M's signature as seen from prefix `pre` does not appear in `ownDenots`
+     *  Return the denotation as seen from `pre`.
+     *  Called from SymDenotations.computeMember. There, `ownDenots` are the denotations found in
+     *  the base class, which shadow any inherited denotations with the same signature.
+     *  `prevDenots` are the denotations that are defined in the class or inherited from
+     *  a base type which comes earlier in the linearization.
+     */
+    def mapInherited(ownDenots: PreDenotation, prevDenots: PreDenotation, pre: Type)(implicit ctx: Context): PreDenotation
+
+    /** Keep only those denotations in this group whose flags do not intersect
+     *  with `excluded`.
+     */
+    def filterExcluded(excluded: FlagSet)(implicit ctx: Context): PreDenotation
+
+    private[this] var cachedPrefix: Type = _
+    private[this] var cachedAsSeenFrom: AsSeenFromResult = _
+    private[this] var validAsSeenFrom: Period = Nowhere
+
+    type AsSeenFromResult <: PreDenotation
+
+    /** The denotation with info(s) as seen from prefix type */
+    final def asSeenFrom(pre: Type)(implicit ctx: Context): AsSeenFromResult =
+      if (Config.cacheAsSeenFrom) {
+        if ((cachedPrefix ne pre) || ctx.period != validAsSeenFrom) {
+          cachedAsSeenFrom = computeAsSeenFrom(pre)
+          cachedPrefix = pre
+          validAsSeenFrom = ctx.period
+        }
+        cachedAsSeenFrom
+      } else computeAsSeenFrom(pre)
+
+    protected def computeAsSeenFrom(pre: Type)(implicit ctx: Context): AsSeenFromResult
+
+    /** The union of two groups. */
+    def union(that: PreDenotation): PreDenotation =
+      if (!this.exists) that
+      else if (!that.exists) this
+      else DenotUnion(this, that)
+  }
+
   /** A denotation is the result of resolving
    *  a name (either simple identifier or select) during a given period.
    *
@@ -99,7 +171,9 @@ object Denotations {
    *
    *  @param symbol  The referencing symbol, or NoSymbol is none exists
    */
-  abstract class Denotation(val symbol: Symbol) extends util.DotClass with printing.Showable {
+  abstract class Denotation(val symbol: Symbol) extends PreDenotation with printing.Showable {
+
+    type AsSeenFromResult <: Denotation
 
     /** The type info of the denotation, exists only for non-overloaded denotations */
     def info(implicit ctx: Context): Type
@@ -120,6 +194,14 @@ object Denotations {
 
     /** Is this denotation overloaded? */
     final def isOverloaded = isInstanceOf[MultiDenotation]
+
+    /** Denotation points to unique symbol; false for overloaded denotations
+     * and JointRef denotations.
+     */
+    def hasUniqueSym: Boolean
+
+    /** The name of the denotation */
+    def name(implicit ctx: Context): Name
 
     /** The signature of the denotation. */
     def signature(implicit ctx: Context): Signature
@@ -553,60 +635,18 @@ object Denotations {
     final def asSymDenotation = asInstanceOf[SymDenotation]
 
     def toText(printer: Printer): Text = printer.toText(this)
-  }
 
-  /** An overloaded denotation consisting of the alternatives of both given denotations.
-   */
-  case class MultiDenotation(denot1: Denotation, denot2: Denotation) extends Denotation(NoSymbol) {
-    final def infoOrCompleter = multiHasNot("info")
-    final def info(implicit ctx: Context) = infoOrCompleter
-    final def validFor = denot1.validFor & denot2.validFor
-    final def isType = false
-    final def signature(implicit ctx: Context) = Signature.OverloadedSignature
-    def atSignature(sig: Signature, site: Type, relaxed: Boolean)(implicit ctx: Context): Denotation =
-      if (sig eq Signature.OverloadedSignature) this
-      else derivedUnionDenotation(denot1.atSignature(sig, site, relaxed), denot2.atSignature(sig, site, relaxed))
-    def current(implicit ctx: Context): Denotation =
-      derivedUnionDenotation(denot1.current, denot2.current)
-    def altsWith(p: Symbol => Boolean): List[SingleDenotation] =
-      denot1.altsWith(p) ++ denot2.altsWith(p)
-    def suchThat(p: Symbol => Boolean)(implicit ctx: Context): SingleDenotation = {
-      val sd1 = denot1.suchThat(p)
-      val sd2 = denot2.suchThat(p)
-      if (sd1.exists)
-        if (sd2.exists)
-          if (isDoubleDef(denot1.symbol, denot2.symbol)) doubleDefError(denot1, denot2)
-          else throw new TypeError(i"failure to disambiguate overloaded reference at $this")
-        else sd1
-      else sd2
-    }
-    def hasAltWith(p: SingleDenotation => Boolean): Boolean =
-      denot1.hasAltWith(p) || denot2.hasAltWith(p)
-    def accessibleFrom(pre: Type, superAccess: Boolean)(implicit ctx: Context): Denotation = {
-      val d1 = denot1 accessibleFrom (pre, superAccess)
-      val d2 = denot2 accessibleFrom (pre, superAccess)
-      if (!d1.exists) d2
-      else if (!d2.exists) d1
-      else derivedUnionDenotation(d1, d2)
-    }
-    def mapInfo(f: Type => Type)(implicit ctx: Context): Denotation =
-      derivedUnionDenotation(denot1.mapInfo(f), denot2.mapInfo(f))
-    def derivedUnionDenotation(d1: Denotation, d2: Denotation): Denotation =
-      if ((d1 eq denot1) && (d2 eq denot2)) this
-      else if (!d1.exists) d2
-      else if (!d2.exists) d1
-      else MultiDenotation(d1, d2)
-    override def toString = alternatives.mkString(" <and> ")
+    // ------ PreDenotation ops ----------------------------------------------
 
-    private def multiHasNot(op: String): Nothing =
-      throw new UnsupportedOperationException(
-        s"multi-denotation with alternatives $alternatives does not implement operation $op")
+    final def toDenot(pre: Type)(implicit ctx: Context): Denotation = this
+    final def containsSym(sym: Symbol): Boolean = hasUniqueSym && (symbol eq sym)
   }
 
   /** A non-overloaded denotation */
-  abstract class SingleDenotation(symbol: Symbol) extends Denotation(symbol) with PreDenotation {
-    def hasUniqueSym: Boolean
+  abstract class SingleDenotation(symbol: Symbol) extends Denotation(symbol) {
     protected def newLikeThis(symbol: Symbol, info: Type): SingleDenotation
+
+    final def name(implicit ctx: Context): Name = symbol.name
 
     final def signature(implicit ctx: Context): Signature =
       if (isType) Signature.NotAMethod // don't force info if this is a type SymDenotation
@@ -979,13 +1019,13 @@ object Denotations {
 
     final def first = this
     final def last = this
-    final def toDenot(pre: Type)(implicit ctx: Context): Denotation = this
-    final def containsSym(sym: Symbol): Boolean = hasUniqueSym && (symbol eq sym)
+
     final def matches(other: SingleDenotation)(implicit ctx: Context): Boolean = {
       val d = signature.matchDegree(other.signature)
       d == Signature.FullMatch ||
       d >= Signature.ParamMatch && info.matches(other.info)
     }
+
     final def filterWithPredicate(p: SingleDenotation => Boolean): SingleDenotation =
       if (p(this)) this else NoDenotation
     final def filterDisjoint(denots: PreDenotation)(implicit ctx: Context): SingleDenotation =
@@ -1080,105 +1120,92 @@ object Denotations {
       denot2.info, denot2.info)
   }
 
-  // --------------- PreDenotations -------------------------------------------------
+  // --- Overloaded denotations and predenotations -------------------------------------------------
 
-  /** A PreDenotation represents a group of single denotations
-   *  It is used as an optimization to avoid forming MultiDenotations too eagerly.
-   */
-  trait PreDenotation {
+  trait MultiPreDenotation extends PreDenotation {
+    def denot1: PreDenotation
+    def denot2: PreDenotation
 
-    /** A denotation in the group exists */
-    def exists: Boolean
-
-    /** First/last denotation in the group */
-    def first: Denotation
-    def last: Denotation
-
-    /** Convert to full denotation by &-ing all elements */
-    def toDenot(pre: Type)(implicit ctx: Context): Denotation
-
-    /** Group contains a denotation that refers to given symbol */
-    def containsSym(sym: Symbol): Boolean
-
-    /** Group contains a denotation with given signature */
-    def matches(other: SingleDenotation)(implicit ctx: Context): Boolean
-
-    /** Keep only those denotations in this group which satisfy predicate `p`. */
-    def filterWithPredicate(p: SingleDenotation => Boolean): PreDenotation
-
-    /** Keep only those denotations in this group which have a signature
-     *  that's not already defined by `denots`.
-     */
-    def filterDisjoint(denots: PreDenotation)(implicit ctx: Context): PreDenotation
-
-    /** Keep only those inherited members M of this predenotation for which the following is true
-     *   - M is not marked Private
-     *   - If M has a unique symbol, it does not appear in `prevDenots`.
-     *   - M's signature as seen from prefix `pre` does not appear in `ownDenots`
-     *  Return the denotation as seen from `pre`.
-     *  Called from SymDenotations.computeMember. There, `ownDenots` are the denotations found in
-     *  the base class, which shadow any inherited denotations with the same signature.
-     *  `prevDenots` are the denotations that are defined in the class or inherited from
-     *  a base type which comes earlier in the linearization.
-     */
-    def mapInherited(ownDenots: PreDenotation, prevDenots: PreDenotation, pre: Type)(implicit ctx: Context): PreDenotation
-
-    /** Keep only those denotations in this group whose flags do not intersect
-     *  with `excluded`.
-     */
-    def filterExcluded(excluded: FlagSet)(implicit ctx: Context): PreDenotation
-
-    private[this] var cachedPrefix: Type = _
-    private[this] var cachedAsSeenFrom: AsSeenFromResult = _
-    private[this] var validAsSeenFrom: Period = Nowhere
-    type AsSeenFromResult <: PreDenotation
-
-    /** The denotation with info(s) as seen from prefix type */
-    final def asSeenFrom(pre: Type)(implicit ctx: Context): AsSeenFromResult =
-      if (Config.cacheAsSeenFrom) {
-        if ((cachedPrefix ne pre) || ctx.period != validAsSeenFrom) {
-          cachedAsSeenFrom = computeAsSeenFrom(pre)
-          cachedPrefix = pre
-          validAsSeenFrom = ctx.period
-        }
-        cachedAsSeenFrom
-      } else computeAsSeenFrom(pre)
-
-    protected def computeAsSeenFrom(pre: Type)(implicit ctx: Context): AsSeenFromResult
-
-    /** The union of two groups. */
-    def union(that: PreDenotation) =
-      if (!this.exists) that
-      else if (!that.exists) this
-      else DenotUnion(this, that)
+    assert(denot1.exists && denot2.exists, s"Union of non-existing denotations ($denot1) and ($denot2)")
+    def first = denot1.first
+    def last = denot2.last
+    def matches(other: SingleDenotation)(implicit ctx: Context): Boolean =
+      denot1.matches(other) || denot2.matches(other)
+    def filterWithPredicate(p: SingleDenotation => Boolean): PreDenotation =
+      derivedUnion(denot1 filterWithPredicate p, denot2 filterWithPredicate p)
+    def filterDisjoint(denot: PreDenotation)(implicit ctx: Context): PreDenotation =
+      derivedUnion(denot1 filterDisjoint denot, denot2 filterDisjoint denot)
+    def mapInherited(owndenot: PreDenotation, prevdenot: PreDenotation, pre: Type)(implicit ctx: Context): PreDenotation =
+      derivedUnion(denot1.mapInherited(owndenot, prevdenot, pre), denot2.mapInherited(owndenot, prevdenot, pre))
+    def filterExcluded(excluded: FlagSet)(implicit ctx: Context): PreDenotation =
+      derivedUnion(denot1.filterExcluded(excluded), denot2.filterExcluded(excluded))
+    protected def derivedUnion(denot1: PreDenotation, denot2: PreDenotation) =
+      if ((denot1 eq this.denot1) && (denot2 eq this.denot2)) this
+      else denot1 union denot2
   }
 
-  final case class DenotUnion(denots1: PreDenotation, denots2: PreDenotation) extends PreDenotation {
-    assert(denots1.exists && denots2.exists, s"Union of non-existing denotations ($denots1) and ($denots2)")
+  final case class DenotUnion(denot1: PreDenotation, denot2: PreDenotation) extends MultiPreDenotation {
     def exists = true
-    def first = denots1.first
-    def last = denots2.last
     def toDenot(pre: Type)(implicit ctx: Context) =
-      (denots1 toDenot pre) & (denots2 toDenot pre, pre)
+      (denot1 toDenot pre) & (denot2 toDenot pre, pre)
     def containsSym(sym: Symbol) =
-      (denots1 containsSym sym) || (denots2 containsSym sym)
-    def matches(other: SingleDenotation)(implicit ctx: Context): Boolean =
-      denots1.matches(other) || denots2.matches(other)
-    def filterWithPredicate(p: SingleDenotation => Boolean): PreDenotation =
-      derivedUnion(denots1 filterWithPredicate p, denots2 filterWithPredicate p)
-    def filterDisjoint(denots: PreDenotation)(implicit ctx: Context): PreDenotation =
-      derivedUnion(denots1 filterDisjoint denots, denots2 filterDisjoint denots)
-    def mapInherited(ownDenots: PreDenotation, prevDenots: PreDenotation, pre: Type)(implicit ctx: Context): PreDenotation =
-      derivedUnion(denots1.mapInherited(ownDenots, prevDenots, pre), denots2.mapInherited(ownDenots, prevDenots, pre))
-    def filterExcluded(excluded: FlagSet)(implicit ctx: Context): PreDenotation =
-      derivedUnion(denots1.filterExcluded(excluded), denots2.filterExcluded(excluded))
-
+      (denot1 containsSym sym) || (denot2 containsSym sym)
     type AsSeenFromResult = PreDenotation
-    protected def computeAsSeenFrom(pre: Type)(implicit ctx: Context): PreDenotation =
-      derivedUnion(denots1.asSeenFrom(pre), denots2.asSeenFrom(pre))
-    private def derivedUnion(denots1: PreDenotation, denots2: PreDenotation) =
-      if ((denots1 eq this.denots1) && (denots2 eq this.denots2)) this
-      else denots1 union denots2
+    def computeAsSeenFrom(pre: Type)(implicit ctx: Context): PreDenotation =
+      derivedUnion(denot1.asSeenFrom(pre), denot2.asSeenFrom(pre))
+  }
+
+  /** An overloaded denotation consisting of the alternatives of both given denotations.
+   */
+  case class MultiDenotation(denot1: Denotation, denot2: Denotation) extends Denotation(NoSymbol) with MultiPreDenotation {
+    final def infoOrCompleter = multiHasNot("info")
+    final def info(implicit ctx: Context) = infoOrCompleter
+    final def validFor = denot1.validFor & denot2.validFor
+    final def isType = false
+    final def hasUniqueSym = false
+    final def name(implicit ctx: Context) = denot1.name
+    final def signature(implicit ctx: Context) = Signature.OverloadedSignature
+    def atSignature(sig: Signature, site: Type, relaxed: Boolean)(implicit ctx: Context): Denotation =
+      if (sig eq Signature.OverloadedSignature) this
+      else derivedUnionDenotation(denot1.atSignature(sig, site, relaxed), denot2.atSignature(sig, site, relaxed))
+    def current(implicit ctx: Context): Denotation =
+      derivedUnionDenotation(denot1.current, denot2.current)
+    def altsWith(p: Symbol => Boolean): List[SingleDenotation] =
+      denot1.altsWith(p) ++ denot2.altsWith(p)
+    def suchThat(p: Symbol => Boolean)(implicit ctx: Context): SingleDenotation = {
+      val sd1 = denot1.suchThat(p)
+      val sd2 = denot2.suchThat(p)
+      if (sd1.exists)
+        if (sd2.exists)
+          if (isDoubleDef(denot1.symbol, denot2.symbol)) doubleDefError(denot1, denot2)
+          else throw new TypeError(i"failure to disambiguate overloaded reference at $this")
+        else sd1
+      else sd2
+    }
+    def hasAltWith(p: SingleDenotation => Boolean): Boolean =
+      denot1.hasAltWith(p) || denot2.hasAltWith(p)
+    def accessibleFrom(pre: Type, superAccess: Boolean)(implicit ctx: Context): Denotation = {
+      val d1 = denot1 accessibleFrom (pre, superAccess)
+      val d2 = denot2 accessibleFrom (pre, superAccess)
+      if (!d1.exists) d2
+      else if (!d2.exists) d1
+      else derivedUnionDenotation(d1, d2)
+    }
+    def mapInfo(f: Type => Type)(implicit ctx: Context): Denotation =
+      derivedUnionDenotation(denot1.mapInfo(f), denot2.mapInfo(f))
+    def derivedUnionDenotation(d1: Denotation, d2: Denotation): Denotation =
+      if ((d1 eq denot1) && (d2 eq denot2)) this
+      else if (!d1.exists) d2
+      else if (!d2.exists) d1
+      else MultiDenotation(d1, d2)
+    type AsSeenFromResult = Denotation
+    def computeAsSeenFrom(pre: Type)(implicit ctx: Context): Denotation =
+      derivedUnionDenotation(denot1.asSeenFrom(pre), denot2.asSeenFrom(pre))
+    override def toString = alternatives.mkString(" <and> ")
+
+    private def multiHasNot(op: String): Nothing =
+      throw new UnsupportedOperationException(
+        s"multi-denotation with alternatives $alternatives does not implement operation $op")
   }
 
   // --------------- Context Base Trait -------------------------------
