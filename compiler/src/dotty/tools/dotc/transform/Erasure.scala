@@ -85,7 +85,10 @@ class Erasure extends Phase with DenotTransformer {
           ref.copySymDenotation(symbol = newSymbol, owner = newOwner, initFlags = newFlags, info = newInfo)
         }
       }
-    case ref =>
+    case ref: JointRefDenotation =>
+      new UniqueRefDenotation(
+        ref.symbol, transformInfo(ref.symbol, ref.symbol.info), ref.validFor)
+    case _ =>
       ref.derivedSingleDenotation(ref.symbol, transformInfo(ref.symbol, ref.symbol.info))
   }
 
