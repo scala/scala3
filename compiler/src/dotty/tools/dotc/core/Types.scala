@@ -1548,7 +1548,11 @@ object Types {
     }
 
     final def name(implicit ctx: Context): ThisName = {
-      if (myName == null) myName = designator.asInstanceOf[Symbol].name.asInstanceOf[ThisName]
+      if (myName == null) {
+        val sym = designator.asInstanceOf[Symbol]
+        val d = if (sym.exists || lastDenotation == null) sym.denot else lastDenotation
+        myName = d.name.asInstanceOf[ThisName]
+      }
       myName
     }
 
@@ -2031,7 +2035,9 @@ object Types {
 
     def withPrefix(prefix: Type)(implicit ctx: Context): NamedType = designator match {
       case designator: TermSymbol @unchecked =>
-        TermRef(prefix, designator)
+        val core = TermRef(prefix, designator)
+        if (isOverloaded && Config.newScheme) core.withDenot(denot.asSeenFrom(prefix))
+        else core
       case _ =>
         // If symbol exists, the new signature is the symbol's signature as seen
         // from the new prefix, modulo consistency
