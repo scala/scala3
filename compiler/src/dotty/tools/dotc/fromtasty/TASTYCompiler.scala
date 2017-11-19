@@ -14,10 +14,7 @@ class TASTYCompiler extends Compiler {
       case List(_: Pickler) => false
       case _ => true
     }.tail
-
-    List(new ReadTastyTreesFromClasses) ::
-    List(new Pickler) ::
-    backendPhases
+    List(new ReadTastyTreesFromClasses) :: backendPhases
   }
 
   override def newRun(implicit ctx: Context): Run = {

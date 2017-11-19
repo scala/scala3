@@ -99,4 +99,6 @@ class TastyUnpickler(reader: TastyReader) {
   def unpickle[R](sec: SectionUnpickler[R]): Option[R] =
     for (reader <- sectionReader.get(sec.name)) yield
       sec.unpickle(reader, nameAtRef)
+
+  private[dotc] def bytes: Array[Byte] = reader.bytes
 }

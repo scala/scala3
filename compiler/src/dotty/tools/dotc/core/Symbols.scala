@@ -604,22 +604,38 @@ object Symbols {
 
     /** If this is either:
       *   - a top-level class and `-Yretain-trees` is set
-     *    - a top-level class loaded from TASTY and `-Xlink-optimise` is set
+     *    - a top-level class loaded from TASTY and `-tasty` or `-Xlink` is set
       * then return the TypeDef tree (possibly wrapped inside PackageDefs) for this class, otherwise EmptyTree.
       * This will force the info of the class.
       */
     def tree(implicit ctx: Context): tpd.Tree /* tpd.PackageDef | tpd.TypeDef | tpd.EmptyTree */ = {
+      load()
+      myTree
+    }
+
+    /** If this is either:
+      *  - a top-level class loaded from TASTY with `-tasty`
+      * then return the bytes of the tasty.
+      */
+    def pickled(implicit ctx: Context): Array[Byte] = {
+      load()
+      myTasty
+    }
+
+    private def load()(implicit ctx: Context): Unit = {
       denot.info
       // TODO: Consider storing this tree like we store lazy trees for inline functions
       if (unpickler != null && !denot.isAbsent) {
         assert(myTree.isEmpty)
         val body = unpickler.body(ctx.addMode(Mode.ReadPositions))
         myTree = body.headOption.getOrElse(tpd.EmptyTree)
+        if (ctx.settings.tasty.value)
+          myTasty = unpickler.unpickler.bytes
         unpickler = null
       }
-      myTree
     }
     private[this] var myTree: tpd.Tree /* tpd.PackageDef | tpd.TypeDef | tpd.EmptyTree */ = tpd.EmptyTree
+    private[this] var myTasty: Array[Byte] = _
     private[dotc] var unpickler: tasty.DottyUnpickler = _
 
     private[dotc] def registerTree(tree: tpd.TypeDef)(implicit ctx: Context): Unit = {

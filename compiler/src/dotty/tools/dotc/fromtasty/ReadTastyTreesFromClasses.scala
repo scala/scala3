@@ -25,8 +25,12 @@ class ReadTastyTreesFromClasses extends FrontEnd {
         tree(className).flatMap {
           case (clsd, unpickled) =>
             if (unpickled.isEmpty) None
-            else Some(CompilationUnit.mkCompilationUnit(clsd, unpickled, forceTrees = true))
-
+            else {
+              val unit = CompilationUnit.mkCompilationUnit(clsd, unpickled, forceTrees = true)
+              val cls = clsd.symbol.asClass
+              unit.pickled += (cls -> cls.pickled)
+              Some(unit)
+            }
         }
       }
       // The TASTY section in a/b/C.class may either contain a class a.b.C, an object a.b.C, or both.
@@ -41,12 +45,13 @@ class ReadTastyTreesFromClasses extends FrontEnd {
     val clsd = ctx.base.staticRef(className)
     ctx.base.staticRef(className) match {
       case clsd: ClassDenotation =>
+        val cls = clsd.symbol.asClass
         def cannotUnpickle(reason: String) =
           ctx.error(s"class $className cannot be unpickled because $reason")
         def tryToLoad = clsd.infoOrCompleter match {
           case info: ClassfileLoader =>
             info.load(clsd)
-            Option(clsd.symbol.asClass.tree).orElse {
+            Option(cls.tree).orElse {
               cannotUnpickle(s"its class file ${info.classfile} does not have a TASTY attribute")
               None
             }
@@ -55,7 +60,7 @@ class ReadTastyTreesFromClasses extends FrontEnd {
             cannotUnpickle(s"its info of type ${info.getClass} is not a ClassfileLoader")
             None
         }
-        Option(clsd.symbol.asClass.tree).orElse(tryToLoad).map(tree => (clsd, tree))
+        Option(cls.tree).orElse(tryToLoad).map(tree => (clsd, tree))
 
       case _ =>
         ctx.error(s"class not found: $className")
