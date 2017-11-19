@@ -20,28 +20,28 @@ class SpecializeFunctions extends MiniPhase with InfoTransformer {
 
   /** Transforms the type to include decls for specialized applys  */
   override def transformInfo(tp: Type, sym: Symbol)(implicit ctx: Context) = tp match {
-    case tp: ClassInfo if !sym.is(Flags.Package) && (tp.decls ne EmptyScope) =>
+    case tp: ClassInfo if !sym.is(Flags.Package) && (tp.decls ne EmptyScope) && derivesFromFn012(sym) =>
       var newApplys = Map.empty[Name, Symbol]
 
-      tp.parents.foreach { parent =>
-        List(0, 1, 2).foreach { arity =>
-          val func = defn.FunctionClass(arity)
-          if (parent.derivesFrom(func)) {
-            val typeParams = tp.cls.typeRef.baseType(func).argInfos
-            val isSpecializable =
-              defn.isSpecializableFunction(
-                parent.classSymbol.asClass,
-                typeParams.init,
-                typeParams.last
-              )
+      var arity = 0
+      while (arity < 3) {
+        val func = defn.FunctionClass(arity)
+        if (tp.derivesFrom(func)) {
+          val typeParams = tp.cls.typeRef.baseType(func).argInfos
+          val isSpecializable =
+            defn.isSpecializableFunction(
+              sym.asClass,
+              typeParams.init,
+              typeParams.last
+            )
 
-            if (isSpecializable && tp.decls.lookup(nme.apply).exists) {
-              val interface = specInterface(typeParams)
-              val specializedMethodName = nme.apply.specializedFunction(typeParams.last, typeParams.init)
-              newApplys += (specializedMethodName -> interface)
-            }
+          if (isSpecializable && tp.decls.lookup(nme.apply).exists) {
+            val interface = specInterface(typeParams)
+            val specializedMethodName = nme.apply.specializedFunction(typeParams.last, typeParams.init)
+            newApplys += (specializedMethodName -> interface)
           }
         }
+        arity += 1
       }
 
       def newDecls =
@@ -68,39 +68,41 @@ class SpecializeFunctions extends MiniPhase with InfoTransformer {
    *  in the template body.
    */
   override def transformTemplate(tree: Template)(implicit ctx: Context) = {
-    val applyBuf = new mutable.ListBuffer[Tree]
-    val newBody = tree.body.mapConserve {
-      case dt: DefDef if dt.name == nme.apply && dt.vparamss.length == 1 =>
-        val cls        = tree.symbol.enclosingClass.asClass
-        val typeParams = dt.vparamss.head.map(_.symbol.info)
-        val retType    = dt.tpe.widen.finalResultType
+    val cls = tree.symbol.enclosingClass.asClass
+    if (derivesFromFn012(cls)) {
+      val applyBuf = new mutable.ListBuffer[Tree]
+      val newBody = tree.body.mapConserve {
+        case dt: DefDef if dt.name == nme.apply && dt.vparamss.length == 1 =>
+          val typeParams = dt.vparamss.head.map(_.symbol.info)
+          val retType = dt.tpe.widen.finalResultType
 
-        val specName = specializedName(nme.apply, typeParams :+ retType)
-        val specializedApply = cls.info.decls.lookup(specName)
-        if (specializedApply.exists) {
-          val apply = specializedApply.asTerm
-          val specializedDecl =
-            polyDefDef(apply, trefs => vrefss => {
-              dt.rhs
-                .changeOwner(dt.symbol, apply)
-                .subst(dt.vparamss.flatten.map(_.symbol), vrefss.flatten.map(_.symbol))
+          val specName = specializedName(nme.apply, typeParams :+ retType)
+          val specializedApply = cls.info.decls.lookup(specName)
+          if (specializedApply.exists) {
+            val apply = specializedApply.asTerm
+            val specializedDecl =
+              polyDefDef(apply, trefs => vrefss => {
+                dt.rhs
+                  .changeOwner(dt.symbol, apply)
+                  .subst(dt.vparamss.flatten.map(_.symbol), vrefss.flatten.map(_.symbol))
+              })
+            applyBuf += specializedDecl
+
+            // create a forwarding to the specialized apply
+            cpy.DefDef(dt)(rhs = {
+              tpd
+                .ref(apply)
+                .appliedToArgs(dt.vparamss.head.map(vparam => ref(vparam.symbol)))
             })
-          applyBuf += specializedDecl
+          } else dt
 
-          // create a forwarding to the specialized apply
-          cpy.DefDef(dt)(rhs = {
-            tpd
-            .ref(apply)
-            .appliedToArgs(dt.vparamss.head.map(vparam => ref(vparam.symbol)))
-          })
-        } else dt
+        case x => x
+      }
 
-      case x => x
-    }
-
-    cpy.Template(tree)(
-      body = applyBuf.toList ++ newBody
-    )
+      cpy.Template(tree)(
+        body = applyBuf.toList ::: newBody
+      )
+    } else tree
   }
 
   /** Dispatch to specialized `apply`s in user code when available */
@@ -146,4 +148,9 @@ class SpecializeFunctions extends MiniPhase with InfoTransformer {
 
   private def specInterface(typeParams: List[Type])(implicit ctx: Context) =
     ctx.getClassIfDefined(functionName(typeParams).specializedFunction(typeParams.last, typeParams.init))
+
+  private def derivesFromFn012(sym: Symbol)(implicit ctx: Context): Boolean =
+    sym.derivesFrom(defn.FunctionClass(0)) ||
+      sym.derivesFrom(defn.FunctionClass(1)) ||
+      sym.derivesFrom(defn.FunctionClass(2))
 }
