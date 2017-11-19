@@ -29,6 +29,7 @@ class TastyPrinter(bytes: Array[Byte])(implicit ctx: Context) {
   def printContents(): Unit = {
     println("Names:")
     printNames()
+    println()
     println("Trees:")
     unpickle(new TreeSectionUnpickler)
     unpickle(new PositionSectionUnpickler)
@@ -111,7 +112,7 @@ class TastyPrinter(bytes: Array[Byte])(implicit ctx: Context) {
       val positions = new PositionUnpickler(reader).positions
       println(s" position bytes:")
       val sorted = positions.toSeq.sortBy(_._1.index)
-      for ((addr, pos) <- sorted) println(s"${addr.index}: ${offsetToInt(pos.start)} .. ${pos.end}")
+      for ((addr, pos) <- sorted) println(s"       ${addr.index}: ${offsetToInt(pos.start)} .. ${pos.end}")
     }
   }
 }
