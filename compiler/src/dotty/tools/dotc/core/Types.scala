@@ -2106,7 +2106,7 @@ object Types {
     def applyOLD(prefix: Type, designator: TermDesignator)(implicit ctx: Context): TermRef =
       ctx.uniqueNamedTypes.enterIfNew(prefix, designator, isTerm = true).asInstanceOf[TermRef]
 
-    def apply(prefix: Type, designator: TermSymbol)(implicit ctx: Context): TermRef =
+    def apply(prefix: Type, designator: Symbol)(implicit ctx: Context): TermRef =
       ctx.uniqueNamedTypes.enterIfNew(prefix, designator, isTerm = true).asInstanceOf[TermRef]
 
     /** Create term ref to given initial denotation, taking the signature
@@ -2124,7 +2124,7 @@ object Types {
     } withDenot denot
 
     def withDenot(prefix: Type, denot: Denotation)(implicit ctx: Context): TermRef =
-      apply(prefix, denot.symbol.asTerm).withDenot(denot)
+      apply(prefix, denot.symbol).withDenot(denot)
 
     /** Create a term ref referring to given symbol with given name.
      *  This is similar to TermRef(Type, Symbol), except:
@@ -2146,7 +2146,7 @@ object Types {
       ctx.uniqueNamedTypes.enterIfNew(prefix, desig, isTerm = false).asInstanceOf[TypeRef]
 
     /** Create type ref with given prefix and name */
-    def apply(prefix: Type, desig: TypeSymbol)(implicit ctx: Context): TypeRef =
+    def apply(prefix: Type, desig: Symbol)(implicit ctx: Context): TypeRef =
       ctx.uniqueNamedTypes.enterIfNew(prefix, desig, isTerm = false).asInstanceOf[TypeRef]
 
     /** Create a type ref with given name and initial denotation */
@@ -2157,7 +2157,7 @@ object Types {
     } withDenot denot
 
     def withDenot(prefix: Type, denot: Denotation)(implicit ctx: Context): TypeRef =
-      apply(prefix, denot.symbol.asType).withDenot(denot)
+      apply(prefix, denot.symbol).withDenot(denot)
 
     /** Create a type ref referring to either a given symbol or its name.
      *  This is similar to TypeRef(prefix, sym), except:

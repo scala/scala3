@@ -1861,14 +1861,12 @@ object SymDenotations {
     override def owner: Symbol = throw new AssertionError("NoDenotation.owner")
     override def computeAsSeenFrom(pre: Type)(implicit ctx: Context): SingleDenotation = this
     override def mapInfo(f: Type => Type)(implicit ctx: Context): SingleDenotation = this
+    sym.denot = this
     validFor = Period.allInRun(NoRunId)
   }
 
-  @sharable val NoDenotation =
+  @sharable val NoDenotation: NoDenotation =
     new NoDenotation(NoSymbol, "<none>".toTermName, exists = false)
-
-  @sharable val OverloadedDenotation =
-    new NoDenotation(OverloadedSymbol, "<overloaded>".toTermName, exists = true)
 
   // ---- Completion --------------------------------------------------------
 
