@@ -1924,9 +1924,8 @@ object messages {
   }
 
   case class PackageNameAlreadyDefined(pkg: Symbol)(implicit ctx: Context) extends Message(PackageNameAlreadyDefinedID) {
-
     val msg = hl"${pkg} is already defined, cannot be a ${"package"}"
-    val kind = "Syntax"
+    val kind = "Naming"
     val explanation =
       hl"An ${"object"} cannot have the same name as an existing ${"package"}. Rename either one of them."
   }
