@@ -189,7 +189,7 @@ trait TypeAssigner {
           val d2 = pre.nonPrivateMember(name)
           if (reallyExists(d2) && firstTry)
             test(
-              if (config.Config.newScheme) TermRef.withDenot(pre, d2)
+              if (config.Config.newScheme) NamedType.withDenot(pre, d2)
               else tpe.withNameSpaceOLD(noNameSpace).withDenot(d2),
               false)
           else if (pre.derivesFrom(defn.DynamicClass)) {
