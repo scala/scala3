@@ -34,7 +34,7 @@ class LinkAll extends Phase {
       }
     }
 
-    if (ctx.settings.XlinkOptimise.value) allUnits(Set.empty, units.toSet, Set.empty)
+    if (doLink) allUnits(Set.empty, units.toSet, Set.empty)
     else units
   }
 
@@ -62,12 +62,22 @@ class LinkAll extends Phase {
       else acc + topClass
     }
   }
+
+  private def doLink(implicit ctx: Context): Boolean = {
+    val link = ctx.settings.Xlink
+    if (link.value) {
+      val out = ctx.settings.outputDir
+      if (out.value.endsWith(".jar"))
+        ctx.error("With " + link.name + " the output directory " + out.name + " should be a .jar\n" + out.value)
+      true
+    } else false
+  }
 }
 
 object LinkAll {
 
   private[LinkAll] def loadCompilationUnit(clsd: ClassDenotation)(implicit ctx: Context): Option[CompilationUnit] = {
-    assert(ctx.settings.XlinkOptimise.value)
+    assert(ctx.settings.Xlink.value)
     val tree = clsd.symbol.asClass.tree
     if (tree.isEmpty) None
     else {

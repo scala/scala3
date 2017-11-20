@@ -604,7 +604,7 @@ object Symbols {
 
     /** If this is either:
       *   - a top-level class and `-Yretain-trees` is set
-     *    - a top-level class loaded from TASTY and `-Xlink-optimise` is set
+     *    - a top-level class loaded from TASTY and `-Xlink` is set
       * then return the TypeDef tree (possibly wrapped inside PackageDefs) for this class, otherwise EmptyTree.
       * This will force the info of the class.
       */
