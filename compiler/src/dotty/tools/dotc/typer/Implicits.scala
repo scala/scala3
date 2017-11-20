@@ -341,8 +341,14 @@ object Implicits {
                          shadowing: Type,
                          val expectedType: Type,
                          val argument: Tree) extends SearchFailureType {
+    /** same as err.refStr but always prints owner even if it is a term */
+    def show(ref: Type)(implicit ctx: Context) = ref match {
+      case ref: NamedType if ref.symbol.maybeOwner.isTerm =>
+        i"${ref.symbol} in ${ref.symbol.owner}"
+      case _ => err.refStr(ref)
+    }
     def explanation(implicit ctx: Context): String =
-      em"${err.refStr(ref)} does $qualify but is shadowed by ${err.refStr(shadowing)}"
+      em"${show(ref)} does $qualify but it is shadowed by ${show(shadowing)}"
   }
 
   class DivergingImplicit(ref: TermRef,
@@ -646,12 +652,18 @@ trait Implicits { self: Typer =>
       case arg: Trees.SearchFailureIdent[_] =>
         shortForm
       case _ =>
-        i"""$headline.
-           |I found:
-           |
-           |    ${arg.show.replace("\n", "\n    ")}
-           |
-           |But ${arg.tpe.asInstanceOf[SearchFailureType].explanation}."""
+        arg.tpe match {
+          case tpe: ShadowedImplicit =>
+            i"""$headline;
+               |${tpe.explanation}."""
+          case tpe: SearchFailureType =>
+            i"""$headline.
+              |I found:
+              |
+              |    ${arg.show.replace("\n", "\n    ")}
+              |
+              |But $tpe.explanation}."""
+        }
     }
     arg.tpe match {
       case ambi: AmbiguousImplicits =>
@@ -1020,7 +1032,15 @@ trait Implicits { self: Typer =>
       searchImplicits(eligible, contextual).recoverWith {
         failure => failure.reason match {
           case _: AmbiguousImplicits => failure
-          case _ => if (contextual) bestImplicit(contextual = false) else failure
+          case reason =>
+            if (contextual)
+              bestImplicit(contextual = false).recoverWith {
+                failure2 => reason match {
+                  case (_: DivergingImplicit) | (_: ShadowedImplicit) => failure
+                  case _ => failure2
+                }
+              }
+            else failure
         }
       }
     }
