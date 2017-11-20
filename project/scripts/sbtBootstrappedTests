@@ -3,7 +3,6 @@
 # check that benchmarks can run
 ./project/scripts/sbt "dotty-bench-bootstrapped/jmh:run 1 1 tests/pos/alias.scala"
 
-
 # setup for `dotc`/`dotr` script tests
 ./project/scripts/sbt dist-bootstrapped/pack
 
@@ -12,7 +11,6 @@ echo "testing sbt dotc and dotr"
 mkdir out/scriptedtest0
 ./bin/dotc tests/pos/sbtDotrTest.scala -d out/scriptedtest0
 
-# FIXME #3477
 ./bin/dotr -classpath out/scriptedtest0 dotrtest.Test" > sbtdotr1.out
 if grep -e "dotr test ok" sbtdotr1.out; then
     echo "output ok"

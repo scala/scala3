@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
 
-IFS=""
 # Try to autodetect real location of the script
 
 if [ -z "$PROG_HOME" ] ; then
@@ -30,54 +29,45 @@ fi
 
 source "$PROG_HOME/bin/common"
 
-CLASS_PATH=".$PSEP$DOTTY_LIB$PSEP$SCALA_LIB"
-
-addResidual () {
-  residual_args+=("$1")
-}
-
-addCustomClassPath () {
-  classpath_args+=("$1:")
-}
-
+declare -a residual_args
 run_repl=false
+CLASS_PATH=""
 
 while [[ $# -gt 0 ]]; do
-key=$1
-case $key in
-        -repl)
-         run_repl=true
-         shift
-         ;;
-        -classpath)
-          addCustomClassPath "$2"
-          shift
-          shift
-          ;;
-        -d)
-        DEBUG="$DEBUG_STR"
-         shift
-         ;;
-         *)
-           addResidual "$1"
-           shift
-           ;;
+  case "$1" in
+    -repl)
+      run_repl=true
+      shift
+      ;;
+    -classpath)
+      CLASS_PATH="$2"
+      shift
+      shift
+      ;;
+    -d)
+      DEBUG="$DEBUG_STR"
+      shift
+      ;;
+    *)
+      residual_args+=("$1")
+      shift
+      ;;
 
   esac
 done
 
-if [ $run_repl == true ]; then
-    echo "Starting dotty REPL"
-    if [ -z $classpath_args ]; then
-        classpath_args=""
-    else
-        classpath_args="-classpath \"${classpath_args[*]}\""
-    fi
-    eval "$PROG_HOME/bin/dotc $classpath_args -repl ${residual_args[@]}"
-elif [ -z $residual_args ]; then
-    echo "Starting dotty REPL..."
-    eval "$PROG_HOME/bin/dotc -repl"
+if [ $run_repl == true ] || [ ${#residual_args[@]} -eq 0 ]; then
+  if [ "$CLASS_PATH" ]; then
+    cp_arg="-classpath $CLASS_PATH"
+  fi
+  echo "Starting dotty REPL"
+  eval "$PROG_HOME/bin/dotc $cp_arg -repl ${residual_args[@]}"
 else
-    CLASS_PATH="${classpath_args[*]}$CLASS_PATH"
-    eval exec "\"$JAVACMD\"" "$DEBUG" "-classpath \"$CLASS_PATH\"" "${residual_args[@]}"
+  cp_arg="-classpath $DOTTY_LIB$PSEP$SCALA_LIB"
+  if [ -z "$CLASS_PATH" ]; then
+    cp_arg+="$PSEP."
+  else
+    cp_arg+="$PSEP$CLASS_PATH"
+  fi
+  eval exec "\"$JAVACMD\"" "$DEBUG" "$cp_arg" "${residual_args[@]}"
 fi
