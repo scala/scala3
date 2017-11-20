@@ -1110,14 +1110,20 @@ object Denotations {
     val sym1 = denot1.symbol
     val sym2 = denot2.symbol
     def fromWhere = if (pre == NoPrefix) "" else i"\nwhen seen as members of $pre"
-    throw new MergeError(
-      i"""cannot merge
-         |  $sym1: ${sym1.info}  and
-         |  $sym2: ${sym2.info};
-         |they are both defined in ${sym1.owner} but have matching signatures
-         |  ${denot1.info} and
-         |  ${denot2.info}$fromWhere""",
-      denot2.info, denot2.info)
+    val msg =
+      if (denot1.isTerm)
+        i"""cannot merge
+           |  $sym1: ${sym1.info}  and
+           |  $sym2: ${sym2.info};
+           |they are both defined in ${sym1.owner} but have matching signatures
+           |  ${denot1.info} and
+           |  ${denot2.info}$fromWhere"""
+      else
+        i"""cannot merge
+           |  $sym1 ${denot1.info}
+           |  $sym2 ${denot2.info}
+           |they are conflicting definitions$fromWhere"""
+    throw new MergeError(msg, denot2.info, denot2.info)
   }
 
   // --- Overloaded denotations and predenotations -------------------------------------------------
