@@ -15,10 +15,10 @@ else
 fi
 
 # check that `sbt dotc` compiles and `sbt dotr` runs it
-echo "testing sbt dotc -tasty and dotr -classpath"
+echo "testing sbt dotc -from-tasty and dotr -classpath"
 mkdir out/scriptedtest1
 mkdir out/scriptedtest2
-./project/scripts/sbt ";dotc tests/pos/sbtDotrTest.scala -d out/scriptedtest1/; dotc -tasty -classpath out/scriptedtest1/ -d out/scriptedtest2/ dotrtest.Test; dotr -classpath out/scriptedtest2/ dotrtest.Test" > sbtdotr2.out
+./project/scripts/sbt ";dotc tests/pos/sbtDotrTest.scala -d out/scriptedtest1/; dotc -from-tasty -classpath out/scriptedtest1/ -d out/scriptedtest2/ dotrtest.Test; dotr -classpath out/scriptedtest2/ dotrtest.Test" > sbtdotr2.out
 cat sbtdotr2.out
 if grep -e "dotr test ok" sbtdotr2.out; then
     echo "output ok"
