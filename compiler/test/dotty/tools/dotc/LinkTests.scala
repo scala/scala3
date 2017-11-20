@@ -44,7 +44,7 @@ class LinkTests extends ParallelTesting {
 
     // Setup class paths
     def mkLinkClassFlags(libPath: String) =
-      TestFlags(mkClassPath(libPath :: Jars.dottyTestDeps), mkClassPath(Jars.dottyTestDeps), basicDefaultOptions :+ "-Xlink-optimise")
+      TestFlags(mkClassPath(libPath :: Jars.dottyTestDeps), mkClassPath(Jars.dottyTestDeps), basicDefaultOptions :+ "-Xlink")
     val strawmanClassPath = mkLinkClassFlags(defaultOutputDir + strawmanLibGroup + "/main/")
     val customLibClassFlags = mkLinkClassFlags(defaultOutputDir + linkCustomLibGroup + "/custom-lib")
 
