@@ -604,7 +604,7 @@ object Symbols {
 
     /** If this is either:
       *   - a top-level class and `-Yretain-trees` is set
-     *    - a top-level class loaded from TASTY and `-Xlink-optimise` is set
+     *    - a top-level class loaded from TASTY and `-tasty` or `-Xlink` is set
       * then return the TypeDef tree (possibly wrapped inside PackageDefs) for this class, otherwise EmptyTree.
       * This will force the info of the class.
       */
@@ -615,7 +615,8 @@ object Symbols {
         assert(myTree.isEmpty)
         val body = unpickler.body(ctx.addMode(Mode.ReadPositions))
         myTree = body.headOption.getOrElse(tpd.EmptyTree)
-        unpickler = null
+        if (!ctx.settings.tasty.value)
+          unpickler = null
       }
       myTree
     }
