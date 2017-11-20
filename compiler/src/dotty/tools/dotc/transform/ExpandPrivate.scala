@@ -71,29 +71,33 @@ class ExpandPrivate extends MiniPhase with IdentityDenotTransformer { thisPhase 
    *  If we change the scheme at one point to make static module class computations
    *  static members of the companion class, we should tighten the condition below.
    */
-  private def ensurePrivateAccessible(d: SymDenotation)(implicit ctx: Context) =
+  private def ensurePrivateAccessible(d: SymDenotation)(implicit ctx: Context): Unit =
     if (isVCPrivateParamAccessor(d))
       d.ensureNotPrivate.installAfter(thisPhase)
-    else if (d.is(PrivateTerm) && !d.owner.is(Package) && d.owner != ctx.owner.enclosingClass) {
-      // Paths `p1` and `p2` are similar if they have a common suffix that follows
-      // possibly different directory paths. That is, their common suffix extends
-      // in both cases either to the start of the path or to a file separator character.
-      def isSimilar(p1: String, p2: String): Boolean = {
-        var i = p1.length - 1
-        var j = p2.length - 1
-        while (i >= 0 && j >= 0 && p1(i) == p2(j) && p1(i) != separatorChar) {
-          i -= 1
-          j -= 1
+    else if (d.is(Private))
+      if (d.owner.is(Package) && d.owner != ctx.owner.enclosingClass.maybeOwner)
+        // Private classes accessed from inner packages become public; see i3339.scala.
+        d.copySymDenotation(initFlags = d.flags &~ Private).installAfter(thisPhase)
+      else if (d.isTerm && d.owner != ctx.owner.enclosingClass) {
+        // Paths `p1` and `p2` are similar if they have a common suffix that follows
+        // possibly different directory paths. That is, their common suffix extends
+        // in both cases either to the start of the path or to a file separator character.
+        def isSimilar(p1: String, p2: String): Boolean = {
+          var i = p1.length - 1
+          var j = p2.length - 1
+          while (i >= 0 && j >= 0 && p1(i) == p2(j) && p1(i) != separatorChar) {
+            i -= 1
+            j -= 1
+          }
+          (i < 0 || p1(i) == separatorChar) &&
+          (j < 0 || p1(j) == separatorChar)
         }
-        (i < 0 || p1(i) == separatorChar) &&
-        (j < 0 || p1(j) == separatorChar)
-      }
 
-      assert(d.symbol.sourceFile != null &&
-             isSimilar(d.symbol.sourceFile.path, ctx.source.file.path),
-          s"private ${d.symbol.showLocated} in ${d.symbol.sourceFile} accessed from ${ctx.owner.showLocated} in ${ctx.source.file}")
-      d.ensureNotPrivate.installAfter(thisPhase)
-    }
+        assert(d.symbol.sourceFile != null &&
+               isSimilar(d.symbol.sourceFile.path, ctx.source.file.path),
+            s"private ${d.symbol.showLocated} in ${d.symbol.sourceFile} accessed from ${ctx.owner.showLocated} in ${ctx.source.file}")
+        d.ensureNotPrivate.installAfter(thisPhase)
+      }
 
   override def transformIdent(tree: Ident)(implicit ctx: Context) = {
     ensurePrivateAccessible(tree.symbol)
@@ -102,6 +106,11 @@ class ExpandPrivate extends MiniPhase with IdentityDenotTransformer { thisPhase 
 
   override def transformSelect(tree: Select)(implicit ctx: Context) = {
     ensurePrivateAccessible(tree.symbol)
+    tree
+  }
+
+  override def transformNew(tree: New)(implicit ctx: Context) = {
+    ensurePrivateAccessible(tree.tpe.typeSymbol)
     tree
   }
 
