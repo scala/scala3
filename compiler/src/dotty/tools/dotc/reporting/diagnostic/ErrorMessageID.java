@@ -113,6 +113,7 @@ public enum ErrorMessageID {
     IllegalStartOfStatementID,
     TraitIsExpectedID,
     TraitRedefinedFinalMethodFromAnyRefID,
+    UnapplyInvalidNumberOfArgumentsID,
     ;
 
     public int errorNumber() {
