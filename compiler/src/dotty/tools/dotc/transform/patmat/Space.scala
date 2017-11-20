@@ -722,8 +722,7 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
       case _ => ??? // impossible
     }
 
-    def checkConstraint(constrs: List[(Type, Type)]): Boolean = {
-      implicit val ctx1 = ctx.fresh.setNewTyperState()
+    def checkConstraint(constrs: List[(Type, Type)])(implicit ctx: Context): Boolean = {
       val tvarMap = collection.mutable.Map.empty[Symbol, TypeVar]
       val typeParamMap = new TypeMap() {
         override def apply(tp: Type): Type = tp match {
@@ -741,7 +740,7 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
       constrs.forall { case (tp1, tp2) => typeParamMap(tp1) <:< typeParamMap(tp2) }
     }
 
-    checkConstraint(genConstraint(sp))
+    checkConstraint(genConstraint(sp))(ctx.fresh.setNewTyperState())
   }
 
   /** Display spaces */
