@@ -6,10 +6,12 @@ import core.Contexts.Context
 import core.Symbols._
 import core.Types._
 import core.Flags._
+import core.Names._
+import core.StdNames._
 import ast.Trees._
 import scala.collection.mutable
 
-/** Eliminated null checks based on the following observations:
+/** Eliminate unnecessary null checks
  *
  *  - (this)  cannot be null
  *  - (new C) cannot be null
@@ -17,93 +19,126 @@ import scala.collection.mutable
  *  - fallsback to `tpe.isNotNull`, which will eventually be true for non nullable types.
  *  - in (a.call; a == null), the first call throws a NPE if a is null; the test can be removed.
  *
- *  @author DarkDimius, Jvican, OlivierBlanvillain
+ *  
+ *  @author DarkDimius, Jvican, OlivierBlanvillain, gan74
  */
- class RemoveUnnecessaryNullChecks extends Optimisation {
+class RemoveUnnecessaryNullChecks extends Optimisation {
   import ast.tpd._
 
-  val initializedVals = mutable.HashSet[Symbol]()
+  final class IdentityHashMap[K <: AnyRef, E]() extends mutable.HashMap[K, E] with mutable.MapLike[K, E, IdentityHashMap[K, E]] {
+    override protected def elemEquals(a: K, b: K): Boolean = a eq b
+    override protected def elemHashCode(k: K) = System.identityHashCode(k)
+    override def empty = new IdentityHashMap[K, E]
+  }
 
-  val checkGood = mutable.HashMap[Symbol, Set[Symbol]]()
+
+  // tree to replace
+  val replace: IdentityHashMap[Tree, Tree] = new IdentityHashMap[Tree, Tree]
+  // trees that are duplicated and can't be replaced safely
+  val duplicate: IdentityHashMap[Tree, Int] = new IdentityHashMap[Tree, Int]
 
   def clear(): Unit = {
-    initializedVals.clear()
-    checkGood.clear()
+    replace.clear()
+    duplicate.clear()
   }
 
-  def isGood(t: Symbol)(implicit ctx: Context): Boolean = {
-    t.exists && initializedVals.contains(t) && {
-      var changed = true
-      var set = Set(t)
-      while (changed) {
-        val oldSet = set
-        set = set ++ set.flatMap(x => checkGood.getOrElse(x, Nil))
-        changed = set != oldSet
-      }
-      !set.exists(x => !initializedVals.contains(x))
+  def transformer(implicit ctx: Context): Tree => Tree = 
+    tree => if (duplicate.getOrElse(tree, 1) == 1) replace.getOrElse(tree, tree) else tree
+
+
+  def visitor(implicit ctx: Context): Tree => Unit =
+    tree => {
+      duplicate(tree) = duplicate.getOrElse(tree, 0) + 1
+
+      tree match {
+
+        case Block(stats, expr) => 
+          def visitStatements(stats: List[Tree]): Unit =
+            stats match {
+              case s :: tail =>
+                s match {
+                  case t: ValDef if !isVar(t.symbol) => 
+                    if (isNeverNull(t.rhs)) tail.foreach(flagAsNotNull(t.symbol, _))
+                    else if (isAlwaysNull(t.rhs)) tail.foreach(flagAsNull(t.symbol, _))
+
+                  case Apply(Select(id: Ident, _), _) if !isVar(id.symbol) => 
+                    tail.foreach(flagAsNotNull(id.symbol, _))
+
+                  case _ =>
+                }
+                visitStatements(tail)
+              case Nil => 
+            }
+
+          visitStatements(stats :+ expr)
+
+        case If(cond, th, el) => 
+          def visitBranches(cond: Tree, th: Tree, el: Tree): Unit = {
+            cond match {
+              case cond @ Select(expr, _) if cond.symbol == defn.Boolean_! =>
+                visitBranches(expr, el, th) 
+              case cond @ Apply(Select(lhs, _), List(rhs)) if cond.symbol == defn.Boolean_&& =>
+                visitBranches(lhs, th, el)
+                visitBranches(rhs, th, el)
+              case expr =>
+                nullCheckInExpr(expr) match {
+                  case Some(symbol) => 
+                    flagAsNull(symbol, th)
+                    flagAsNotNull(symbol, el)
+                  case None =>
+
+                }
+            }
+          }
+         
+          visitBranches(cond, th, el)
+
+        case _ =>
+      } 
     }
-  }
 
-  def visitor(implicit ctx: Context): Tree => Unit = {
-    case vd: ValDef =>
-      val rhs = vd.rhs
-      if (!vd.symbol.is(Mutable) && !rhs.isEmpty) {
-        def checkNonNull(t: Tree, target: Symbol): Boolean = t match {
-          case Block(_ , expr) =>
-            checkNonNull(expr, target)
+  // return nullchecked symbol in expr (if any)
+  private def nullCheckInExpr(expr: Tree)(implicit ctx: Context): Option[Symbol] =
+    expr match {
+      case t @ Apply(Select(id: Ident, op), List(rhs)) if (t.symbol == defn.Object_eq || t.symbol == defn.Any_==) && !isVar(id.symbol) && isAlwaysNull(rhs) => Some(id.symbol)
+      case t @ Apply(Select(lhs, op), List(id: Ident)) if (t.symbol == defn.Object_eq || t.symbol == defn.Any_==) && !isVar(id.symbol) && isAlwaysNull(lhs) => Some(id.symbol)
+      case _ => None
+    }
 
-          case If(_, thenp, elsep) =>
-            checkNonNull(thenp, target) && checkNonNull(elsep, target)
-
-          case _: New | _: This => true
-
-          case t: Apply if t.symbol.isPrimaryConstructor => true
-
-          case t: Literal => t.const.value != null
-
-          case t: Ident if !t.symbol.owner.isClass =>
-            checkGood.put(target, checkGood.getOrElse(target, Set.empty) + t.symbol)
-            true
-
-          case t: Apply if !t.symbol.owner.isClass =>
-            checkGood.put(target, checkGood.getOrElse(target, Set.empty) + t.symbol)
-            true
-
-          case t: Typed =>
-            checkNonNull(t.expr, target)
-
-          case _ => t.tpe.isNotNull
-
-        }
-        if (checkNonNull(vd.rhs, vd.symbol))
-          initializedVals += vd.symbol
-      }
-    case t: Tree =>
-  }
+  // return all sub-trees of tree containing a nullcheck for symbol
+  private def findNullChecksFor(symbol: Symbol, tree: Tree)(implicit ctx: Context): List[Tree] =
+    tree.filterSubTrees(nullCheckInExpr(_).contains(symbol))
 
 
-  def transformer(implicit ctx: Context): Tree => Tree = {
-    def isNullLiteral(tree: Tree) = tree match {
-      case literal: Literal =>
-        literal.const.tag == NullTag
+  // fill replace using findNullCheckFor
+  private def flagAsNull(symbol: Symbol, tree: Tree)(implicit ctx: Context): Unit =
+    replace ++= findNullChecksFor(symbol, tree).map((_, Literal(Constant(true))))
+
+  private def flagAsNotNull(symbol: Symbol, tree: Tree)(implicit ctx: Context): Unit = 
+    replace ++= findNullChecksFor(symbol, tree).map((_, Literal(Constant(false))))
+
+  private def isNeverNull(tree: Tree)(implicit ctx: Context): Boolean =
+    tree match {
+      case Block(_, expr) => isNeverNull(expr)
+      case If(_, th, el) => isNeverNull(th) && isNeverNull(el)
+      case t: Typed => isNeverNull(t.expr)
+      case t: Literal => t.const.tag != NullTag
+      case _: This => true
+      case _: New => true
+      case t: Apply if t.symbol.isPrimaryConstructor => true
+      case Apply(Select(New(_), _), _) => true
+      case t => t.tpe.isNotNull
+    }
+
+  private def isAlwaysNull(tree: Tree)(implicit ctx: Context): Boolean = 
+    tree match {
+      case Block(_, expr) => isAlwaysNull(expr)
+      case If(_, th, el) => isAlwaysNull(th) && isAlwaysNull(el)
+      case t: Typed => isAlwaysNull(t.expr)
+      case t: Literal => t.const.tag == NullTag
+      case EmptyTree => true
       case _ => false
     }
-    val transformation: Tree => Tree = {
-      case check @ Apply(Select(lhs, _), List(rhs)) =>
-        val sym = check.symbol
-        val eqOrNe  = sym == defn.Object_eq || sym == defn.Object_ne
-        val nullLhs = isNullLiteral(lhs) && isGood(rhs.symbol)
-        val nullRhs = isNullLiteral(rhs) && isGood(lhs.symbol)
 
-        if (eqOrNe && (nullLhs || nullRhs)) {
-          def block(b: Boolean) = Block(List(lhs, rhs), Literal(Constant(b)))
-          if (sym == defn.Object_eq) block(false)
-          else if (sym == defn.Object_ne) block(true)
-          else check
-        } else check
-
-      case t => t
-    }
-    transformation
-  }
+  private def isVar(s: Symbol)(implicit ctx: Context): Boolean = s.is(Mutable | Lazy)
 }

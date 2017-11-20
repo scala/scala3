@@ -113,6 +113,104 @@ abstract class SimplifyTests(val optimise: Boolean) extends DottyBytecodeTest {
          |println(true)
       """)
 
+  /* 
+   * Null check removal tests
+   */
+
+  @Test def redundantNullChecks =
+    check(
+      """
+        |val i = readLine()
+        |if (i != null) {
+        |  if (null == i) () else print(i)
+        |}
+        |i.length
+        |if (i != null) print(i)
+      """,
+      """
+        |val i = readLine()
+        |if (i != null) print(i)
+        |i.length
+        |print(i)
+      """)
+
+  @Test def multipleNullChecks =
+    check(
+      """
+        |val i = readLine()
+        |val j = readLine()
+        |val k = readLine()
+        |if (i != null && j != null && k == null) {
+        |  if(i == null) () else print(i)
+        |  if(j != null) print(j)
+        |  if(k != null) print(k)
+        |}
+      """,
+      """
+        |val i = readLine()
+        |val j = readLine()
+        |val k = readLine()
+        |if (i != null && j != null && k == null) {
+        |  print(i)
+        |  print(j)
+        |}
+      """)
+
+  @Test def literalNullCheck =
+    check(
+      """
+        |val i = "a string lit"
+        |if (i != null) {
+        |  print(i)
+        |}
+      """,
+      """
+        |val i = "a string lit"
+        |print(i)
+      """)
+
+  @Test def nullCheckAsBool =
+    check(
+      """
+        |val i = "a string lit"
+        |val isNull = i == null
+      """,
+      """
+        |val i = "a string lit"
+        |val isNull = false
+      """)
+
+  // (this != null) won't be optimized but I don't expect it to ever happen
+  @Test def thisNullChecks =
+    check(
+      """
+        |val self = this
+        |if(self != null) {
+        |  print(13)
+        |} else {
+        |  print(9)
+        |}
+      """,
+      """
+        |val self = this
+        |print(13)
+      """)
+
+  @Test def newNullChecks =
+    check(
+      """
+        |val i = new String("a string")
+        |if(i != null) {
+        |  print(7)
+        |} else {
+        |  print(9)
+        |}
+      """,
+      """
+        |val i = new String("a string")
+        |print(7)
+      """)
+
 
   /*
    * Constant folding tests
