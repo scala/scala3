@@ -24,8 +24,7 @@ class DecompilationPrinter extends Phase {
     println(unit.source)
     println(line)
 
-    val code = unit.tpdTree.show
-    println(if (ctx.useColors) printing.SyntaxHighlighting(code) else code)
+    println(unit.tpdTree.show)
     println(line)
   }
 }
