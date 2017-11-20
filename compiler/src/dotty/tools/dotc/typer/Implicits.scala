@@ -607,6 +607,7 @@ trait Implicits { self: Typer =>
      */
     val (formalValue, lazyImplicit, argCtx) = formal match {
       case ExprType(fv) =>
+        fullyDefinedType(fv, "implicit by-name parameter", pos)
         val lazyImplicit = ctx.newLazyImplicit(fv)
         (fv, lazyImplicit, lazyImplicitCtx(lazyImplicit))
       case _ => (formal, NoSymbol, ctx)
