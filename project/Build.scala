@@ -87,6 +87,7 @@ object Build {
   lazy val dotr =
     inputKey[Unit]("run compiled binary using the correct classpath, or the user supplied classpath")
 
+
   // Compiles the documentation and static site
   lazy val genDocs = taskKey[Unit]("run dottydoc to generate static documentation site")
 
@@ -523,8 +524,8 @@ object Build {
         }
       },
       run := dotc.evaluated,
-      dotc := runCompilerMain(false).evaluated,
-      repl := runCompilerMain(true).evaluated,
+      dotc := runCompilerMain().evaluated,
+      repl := runCompilerMain(repl = true).evaluated,
 
       // enable verbose exception messages for JUnit
       testOptions in Test += Tests.Argument(
@@ -618,16 +619,22 @@ object Build {
       }
   )
 
-  def runCompilerMain(repl: Boolean) = Def.inputTaskDyn {
+  def runCompilerMain(repl: Boolean = false) = Def.inputTaskDyn {
     val dottyLib = packageAll.value("dotty-library")
     val args0: List[String] = spaceDelimited("<arg>").parsed.toList
-    val args = args0.filter(arg => arg != "-repl")
+    val decompile = args0.contains("-decompile")
+    val args = args0.filter(arg => arg != "-repl" || arg != "-decompile")
 
     val main =
       if (repl) "dotty.tools.repl.Main"
+      else if (decompile) "dotty.tools.dotc.decompiler.Main"
       else "dotty.tools.dotc.Main"
 
-    val fullArgs = main :: insertClasspathInArgs(args, dottyLib)
+    val extraClasspath =
+      if (decompile && !args.contains("-classpath")) dottyLib + ":."
+      else dottyLib
+
+    val fullArgs = main :: insertClasspathInArgs(args, extraClasspath)
 
     (runMain in Compile).toTask(fullArgs.mkString(" ", " ", ""))
   }
