@@ -615,7 +615,7 @@ object Symbols {
         assert(myTree.isEmpty)
         val body = unpickler.body(ctx.addMode(Mode.ReadPositions))
         myTree = body.headOption.getOrElse(tpd.EmptyTree)
-        if (!ctx.settings.tasty.value)
+        if (!ctx.settings.fromTasty.value)
           unpickler = null
       }
       myTree
