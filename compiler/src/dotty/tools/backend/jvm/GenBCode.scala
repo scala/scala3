@@ -223,9 +223,7 @@ class GenBCodePipeline(val entryPoints: List[Symbol], val int: DottyBackendInter
 
         if (claszSymbol.isClass) // @DarkDimius is this test needed here?
           for (binary <- ctx.compilationUnit.pickled.get(claszSymbol.asClass)) {
-            val dataAttr = new CustomAttr(nme.TASTYATTR.mangledString, binary)
             val store = if (mirrorC ne null) mirrorC else plainC
-            store.visitAttribute(dataAttr)
             if (ctx.settings.emitTasty.value) {
               val outTastyFile = getFileForClassfile(outF, store.name, ".tasty")
               val outstream = new DataOutputStream(outTastyFile.bufferedOutput)
@@ -233,6 +231,8 @@ class GenBCodePipeline(val entryPoints: List[Symbol], val int: DottyBackendInter
               try outstream.write(binary)
               finally outstream.close()
             } else {
+              val dataAttr = new CustomAttr(nme.TASTYATTR.mangledString, binary)
+              store.visitAttribute(dataAttr)
               // Create an empty file to signal that a tasty section exist in the corresponding .class
               // This is much cheaper and simpler to check than doing classfile parsing
               getFileForClassfile(outF, store.name, ".hasTasty")
