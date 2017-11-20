@@ -1224,4 +1224,18 @@ class ErrorMessagesTests extends ErrorMessagesTest {
         assertEquals("Boo", qual.show)
         assertEquals("(class Int, class String)", argTypes.map(_.typeSymbol).mkString("(", ", ", ")"))
       }
+
+
+  @Test def staticOnlyAllowedInsideObjects =
+    checkMessagesAfter("checkStatic") {
+      """
+        |class Foo {
+        |  @annotation.static def bar(): Unit = bar()
+        |}
+      """.stripMargin
+    }.expect { (ictx, messages) =>
+      implicit val ctx: Context = ictx
+      val StaticFieldsOnlyAllowedInObjects(field) = messages.head
+      assertEquals(field.show, "method bar")
+    }
 }

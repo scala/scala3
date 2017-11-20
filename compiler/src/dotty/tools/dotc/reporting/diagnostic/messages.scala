@@ -1942,4 +1942,11 @@ object messages {
         |where subsequent arguments would have following types: ($argTypes%, %).
         |""".stripMargin
   }
+
+  case class StaticFieldsOnlyAllowedInObjects(member: Symbol)(implicit ctx: Context) extends Message(StaticFieldsOnlyAllowedInObjectsID) {
+    val msg = hl"${"@static"} $member in ${member.owner} must be defined inside an ${"object"}."
+    val kind = "Syntax"
+    val explanation =
+      hl"${"@static"} members are only allowed inside objects."
+  }
 }
