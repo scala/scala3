@@ -1189,7 +1189,6 @@ class ErrorMessagesTests extends ErrorMessagesTest {
       assertEquals("method wait", method.show)
     }
 
-
   @Test def packageNameAlreadyDefined =
     checkMessagesAfter("frontend") {
       """
@@ -1203,4 +1202,26 @@ class ErrorMessagesTests extends ErrorMessagesTest {
       val PackageNameAlreadyDefined(pkg) = messages.head
       assertEquals(pkg.show, "object bar")
     }
+
+  @Test def unapplyInvalidNumberOfArguments =
+    checkMessagesAfter("frontend") {
+      """
+        |case class Boo(a: Int, b: String)
+        |
+        |object autoTuplingNeg2 {
+        |  val z = Boo(1, "foo")
+        |
+        |  z match {
+        |    case Boo(a, b, c) => a
+        |  }
+        |}
+      """.stripMargin
+    }
+      .expect { (ictx, messages) =>
+        implicit val ctx: Context = ictx
+        assertMessageCount(1, messages)
+        val UnapplyInvalidNumberOfArguments(qual, argTypes) :: Nil = messages
+        assertEquals("Boo", qual.show)
+        assertEquals("(class Int, class String)", argTypes.map(_.typeSymbol).mkString("(", ", ", ")"))
+      }
 }

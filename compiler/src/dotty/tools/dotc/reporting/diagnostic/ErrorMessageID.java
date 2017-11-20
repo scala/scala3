@@ -114,6 +114,7 @@ public enum ErrorMessageID {
     TraitIsExpectedID,
     TraitRedefinedFinalMethodFromAnyRefID,
     PackageNameAlreadyDefinedID,
+    UnapplyInvalidNumberOfArgumentsID,
     ;
 
     public int errorNumber() {

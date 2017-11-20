@@ -1929,4 +1929,17 @@ object messages {
     val explanation =
       hl"An ${"object"} cannot have the same name as an existing ${"package"}. Rename either one of them."
   }
+
+  case class UnapplyInvalidNumberOfArguments(qual: untpd.Tree, argTypes: List[Type])(implicit ctx: Context)
+    extends Message(UnapplyInvalidNumberOfArgumentsID) {
+    val kind = "Syntax"
+    val msg = hl"Wrong number of argument patterns for $qual; expected: ($argTypes%, %)"
+    val explanation =
+      hl"""The Unapply method of $qual was used with incorrect number of arguments.
+          |Expected usage would be something like:
+          |case $qual(${argTypes.map(_ => '_')}%, %) => ...
+          |
+        |where subsequent arguments would have following types: ($argTypes%, %).
+        |""".stripMargin
+  }
 }
