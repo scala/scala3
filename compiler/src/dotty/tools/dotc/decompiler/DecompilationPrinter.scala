@@ -3,6 +3,7 @@ package decompiler
 
 import dotty.tools.dotc.core.Contexts._
 import dotty.tools.dotc.core.Phases.Phase
+import dotty.tools.dotc.core.tasty.TastyPrinter
 
 /** Phase that prints the trees in all loaded compilation units.
  *
@@ -26,5 +27,10 @@ class DecompilationPrinter extends Phase {
 
     println(unit.tpdTree.show)
     println(line)
+
+    if (ctx.settings.printTasty.value) {
+      new TastyPrinter(unit.pickled.head._2).printContents()
+      println(line)
+    }
   }
 }

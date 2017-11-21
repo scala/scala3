@@ -43,6 +43,7 @@ class ScalaSettings extends Settings.SettingGroup {
   val rewrite = OptionSetting[Rewrites]("-rewrite", "When used in conjunction with -language:Scala2 rewrites sources to migrate to new syntax")
   val silentWarnings = BooleanSetting("-nowarn", "Silence all warnings.")
   val fromTasty = BooleanSetting("-from-tasty", "Compile classes from tasty in classpath. The arguments are used as class names.")
+  val printTasty = BooleanSetting("-print-tasty", "Prints the raw tasty when decompiling.")
 
   /** -X "Advanced" settings
    */
