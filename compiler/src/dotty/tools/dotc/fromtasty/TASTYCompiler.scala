@@ -19,6 +19,6 @@ class TASTYCompiler extends Compiler {
 
   override def newRun(implicit ctx: Context): Run = {
     reset()
-    new TASTYRun(this, ctx)
+    new TASTYRun(this, ctx.addMode(Mode.ReadPositions))
   }
 }
