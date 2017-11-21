@@ -396,6 +396,7 @@ class Definitions {
 
   lazy val UnitType: TypeRef = valueTypeRef("scala.Unit", BoxedUnitType, java.lang.Void.TYPE, UnitEnc, nme.specializedTypeNames.Void)
   def UnitClass(implicit ctx: Context) = UnitType.symbol.asClass
+  def UnitModuleClass(implicit ctx: Context) = UnitType.symbol.asClass.linkedClass
   lazy val BooleanType = valueTypeRef("scala.Boolean", BoxedBooleanType, java.lang.Boolean.TYPE, BooleanEnc, nme.specializedTypeNames.Boolean)
   def BooleanClass(implicit ctx: Context) = BooleanType.symbol.asClass
     lazy val Boolean_notR   = BooleanClass.requiredMethodRef(nme.UNARY_!)
