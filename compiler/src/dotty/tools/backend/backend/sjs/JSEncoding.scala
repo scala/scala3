@@ -209,7 +209,7 @@ object JSEncoding {
   }
 
   def foreignIsImplClass(sym: Symbol)(implicit ctx: Context): Boolean =
-    sym.name.isImplClassName
+    sym.name.endsWith(nme.IMPL_CLASS_SUFFIX.toString)
 
   def encodeClassType(sym: Symbol)(implicit ctx: Context): jstpe.Type = {
     if (sym == defn.ObjectClass) jstpe.AnyType
