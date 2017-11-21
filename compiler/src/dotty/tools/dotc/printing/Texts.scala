@@ -1,6 +1,5 @@
 package dotty.tools.dotc
 package printing
-import core.Contexts.Context
 import language.implicitConversions
 
 object Texts {
@@ -12,7 +11,7 @@ object Texts {
     def relems: List[Text]
 
     def isEmpty: Boolean = this match {
-      case Str(s) => s.isEmpty
+      case Str(s, _, _) => s.isEmpty
       case Fluid(relems) => relems forall (_.isEmpty)
       case Vertical(relems) => relems.isEmpty
     }
@@ -25,7 +24,7 @@ object Texts {
     def close = new Closed(relems)
 
     def remaining(width: Int): Int = this match {
-      case Str(s) =>
+      case Str(s, _, _) =>
         width - s.length
       case Fluid(Nil) =>
         width
@@ -37,15 +36,15 @@ object Texts {
     }
 
     def lastLine: String = this match {
-      case Str(s) => s
+      case Str(s, _, _) => s
       case _ => relems.head.lastLine
     }
 
     def appendToLastLine(that: Text): Text = that match {
-      case Str(s2) =>
+      case Str(s2, start1, end1) =>
         this match {
-          case Str(s1) => Str(s1 + s2)
-          case Fluid(Str(s1) :: prev) => Fluid(Str(s1 + s2) :: prev)
+          case Str(s1, start2, end2) => Str(s1 + s2, start1 min start2, end1 max end2)
+          case Fluid(Str(s1, start2, end2) :: prev) => Fluid(Str(s1 + s2, start1 min start2, end1 max end2) :: prev)
           case Fluid(relems) => Fluid(that :: relems)
         }
       case Fluid(relems) =>
@@ -66,7 +65,7 @@ object Texts {
     }
 
     def layout(width: Int): Text = this match {
-      case Str(_) =>
+      case Str(s, _, _) =>
         this
       case Fluid(relems) =>
         ((Str(""): Text) /: relems.reverse)(_.append(width)(_))
@@ -75,13 +74,13 @@ object Texts {
     }
 
     def map(f: String => String): Text = this match {
-      case Str(s) => Str(f(s))
+      case Str(s, start, end) => Str(f(s), start, end)
       case Fluid(relems) => Fluid(relems map (_ map f))
       case Vertical(relems) => Vertical(relems map (_ map f))
     }
 
     def stripPrefix(pre: String): Text = this match {
-      case Str(s) =>
+      case Str(s, _, _) =>
         if (s.startsWith(pre)) s drop pre.length else s
       case Fluid(relems) =>
         val elems = relems.reverse
@@ -94,14 +93,18 @@ object Texts {
     }
 
     private def indented: Text = this match {
-      case Str(s) => Str((" " * indentMargin) + s)
+      case Str(s, start, end) => Str((" " * indentMargin) + s, start, end)
       case Fluid(relems) => Fluid(relems map (_.indented))
       case Vertical(relems) => Vertical(relems map (_.indented))
     }
 
     def print(sb: StringBuilder): Unit = this match {
-      case Str(s) =>
+      case Str(s, start, end) =>
         sb.append(s)
+        if (start == end)
+          sb.append(s"   // @line ${start + 1}")
+        else if (start != Int.MaxValue)
+          sb.append(s"   // @lines ${start + 1} to ${end + 1}")
       case _ =>
         var follow = false
         for (elem <- relems.reverse) {
@@ -155,7 +158,7 @@ object Texts {
     def lines(xs: Traversable[Text]) = Vertical(xs.toList.reverse)
   }
 
-  case class Str(s: String) extends Text {
+  case class Str(s: String, startLine: Int = Int.MaxValue, endLine: Int = -1) extends Text {
     override def relems: List[Text] = List(this)
   }
 
