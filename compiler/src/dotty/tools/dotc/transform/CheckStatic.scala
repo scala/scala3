@@ -21,6 +21,7 @@ import Names.Name
 import NameOps._
 import Decorators._
 import TypeUtils._
+import reporting.diagnostic.messages.StaticFieldsOnlyAllowedInObjects
 
 /** A transformer that check that requirements of Static fields\methods are implemented:
   *  1. Only objects can have members annotated with `@static`
@@ -45,7 +46,7 @@ class CheckStatic extends MiniPhase {
     for(defn <- defns) {
       if (defn.symbol.hasAnnotation(ctx.definitions.ScalaStaticAnnot)) {
         if(!ctx.owner.is(Module)) {
-          ctx.error("@static fields are only allowed inside objects", defn.pos)
+          ctx.error(StaticFieldsOnlyAllowedInObjects(defn.symbol), defn.pos)
         }
 
         if (defn.isInstanceOf[ValDef] && hadNonStaticField) {

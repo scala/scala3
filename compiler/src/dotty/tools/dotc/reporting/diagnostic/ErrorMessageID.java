@@ -115,6 +115,7 @@ public enum ErrorMessageID {
     TraitRedefinedFinalMethodFromAnyRefID,
     PackageNameAlreadyDefinedID,
     UnapplyInvalidNumberOfArgumentsID,
+    StaticFieldsOnlyAllowedInObjectsID,
     ;
 
     public int errorNumber() {
