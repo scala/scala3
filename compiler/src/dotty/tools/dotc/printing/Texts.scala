@@ -98,25 +98,38 @@ object Texts {
       case Vertical(relems) => Vertical(relems map (_.indented))
     }
 
-    def print(sb: StringBuilder): Unit = this match {
+    def print(sb: StringBuilder, numberWidth: Int): Unit = this match {
       case Str(s, start, end) =>
+        def printLine(ln: String) = {
+          val pad = (numberWidth - ln.length - 1)
+          assert(pad >= 0)
+          sb.append(" " * pad)
+          sb.append(ln)
+          sb.append("|")
+        }
+        if (numberWidth == 0) () // Do not print line numbers
+        else if (start == end) printLine((start + 1).toString)
+        else if (start != Int.MaxValue) printLine(s"${start + 1}-${end + 1}")
+        else printLine("")
         sb.append(s)
-        if (start == end)
-          sb.append(s"   // @line ${start + 1}")
-        else if (start != Int.MaxValue)
-          sb.append(s"   // @lines ${start + 1} to ${end + 1}")
       case _ =>
         var follow = false
         for (elem <- relems.reverse) {
           if (follow) sb.append("\n")
-          elem.print(sb)
+          elem.print(sb, numberWidth)
           follow = true
         }
     }
 
-    def mkString(width: Int): String = {
+    def maxLine: Int = this match {
+      case Str(_, _, end) => end
+      case _ => (-1 /: relems)((acc, relem) => acc max relem.maxLine)
+    }
+
+    def mkString(width: Int, withLineNumbers: Boolean): String = {
       val sb = new StringBuilder
-      layout(width).print(sb)
+      val numberWidth = if (withLineNumbers) (2 * maxLine.toString.length) + 2 else 0
+      layout(width - numberWidth).print(sb, numberWidth)
       sb.toString
     }
 
