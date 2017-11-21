@@ -607,6 +607,12 @@ class Definitions {
   lazy val PConsType = ctx.requiredClassRef("dotty.generic.PCons")
   def PConsClass(implicit ctx: Context) = PConsType.symbol.asClass
   def PConsModule(implicit ctx: Context) = PConsClass.companionModule
+  lazy val SNilType = ctx.requiredClassRef("dotty.generic.SNil")
+  def SNilClass(implicit ctx: Context) = SNilType.symbol.asClass
+  def SNilModule(implicit ctx: Context) = SNilClass.companionModule
+  lazy val SConsType = ctx.requiredClassRef("dotty.generic.SCons")
+  def SConsClass(implicit ctx: Context) = SConsType.symbol.asClass
+  def SConsModule(implicit ctx: Context) = SConsClass.companionModule
 
   lazy val XMLTopScopeModuleRef = ctx.requiredModuleRef("scala.xml.TopScope")
 

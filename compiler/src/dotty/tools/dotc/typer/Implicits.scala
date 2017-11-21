@@ -698,6 +698,30 @@ trait Implicits { self: Typer =>
             val parents  = TypeTree(defn.RepresentableType.appliedTo(A)) :: Nil
             New(Template(emptyConstructor, parents, EmptyValDef, repr :: to :: from :: Nil)).withPos(pos)
           }
+        case (A @ _) :: Nil if A.typeSymbol.is(Sealed) =>
+          typed {
+            import untpd._
+            import transform.SymUtils._
+
+            val sumTypes = A.classSymbol.children.map(_.typeRef).reverse // Reveresed to match definition order
+            val sumTypesSize = sumTypes.size
+
+            val noBounds = TypeBoundsTree(EmptyTree, EmptyTree)
+            val reprRhs  =
+              sumTypes.zipWithIndex.foldRight[Tree](TypeTree(defn.SNilType)) { case ((cur, i), acc) =>
+                val arg = tpnme.syntheticTypeParamName(i)
+                val constCur  = LambdaTypeTree(TypeDef(arg, noBounds) :: Nil, TypeTree(cur))
+                val pconsArgs = constCur :: acc :: Ident(arg) :: Nil
+                val rhs       = AppliedTypeTree(TypeTree(defn.SConsType), pconsArgs)
+                LambdaTypeTree(TypeDef(arg, noBounds) :: Nil, rhs)
+              }
+            val repr: Tree = TypeDef(tpnme.Repr, reprRhs)
+            // val to: Tree = ???
+            // val from: Tree = ???
+
+            val parents  = TypeTree(defn.RepresentableType.appliedTo(A)) :: Nil
+            New(Template(emptyConstructor, parents, EmptyValDef, repr /*:: to :: from*/ :: Nil)).withPos(pos)
+          }
         case _ =>
           EmptyTree
       }
