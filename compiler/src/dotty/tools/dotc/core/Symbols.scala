@@ -130,8 +130,8 @@ trait Symbols { this: Context =>
     newClassSymbol(owner, name, flags, completer, privateWithin, coord, assocFile)
   }
 
-  def newRefinedClassSymbol = newCompleteClassSymbol(
-    ctx.owner, tpnme.REFINE_CLASS, NonMember, parents = Nil)
+  def newRefinedClassSymbol(coord: Coord = NoCoord) =
+    newCompleteClassSymbol(ctx.owner, tpnme.REFINE_CLASS, NonMember, parents = Nil, coord = coord)
 
   /** Create a module symbol with associated module class
    *  from its non-info fields and a function producing the info
@@ -444,6 +444,7 @@ object Symbols {
 
     /** Does this symbol come from a currently compiled source file? */
     final def isDefinedInCurrentRun(implicit ctx: Context): Boolean = {
+      // FIXME: broken now now that symbols unpickled from TASTY have a position
       pos.exists && defRunId == ctx.runId
     }
 
@@ -563,8 +564,12 @@ object Symbols {
       }
     }
 
-    /** The position of this symbol, or NoPosition is symbol was not loaded
-     *  from source.
+    /** The position of this symbol, or NoPosition if the symbol was not loaded
+     *  from source or from TASTY. This is always a zero-extent position.
+     *
+     *  NOTE: If the symbol was not loaded from the current compilation unit,
+     *  the implicit conversion `sourcePos` will return the wrong result, careful!
+     *  TODO: Consider changing this method return type to `SourcePosition`.
      */
     def pos: Position = if (coord.isPosition) coord.toPosition else NoPosition
 
