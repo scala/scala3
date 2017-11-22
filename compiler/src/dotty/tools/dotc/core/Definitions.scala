@@ -613,6 +613,12 @@ class Definitions {
   lazy val SConsType = ctx.requiredClassRef("dotty.generic.SCons")
   def SConsClass(implicit ctx: Context) = SConsType.symbol.asClass
   def SConsModule(implicit ctx: Context) = SConsClass.companionModule
+  lazy val SLeftType = ctx.requiredClassRef("dotty.generic.SLeft")
+  def SLeftClass(implicit ctx: Context) = SLeftType.symbol.asClass
+  def SLeftModule(implicit ctx: Context) = SLeftClass.companionModule
+  lazy val SRightType = ctx.requiredClassRef("dotty.generic.SRight")
+  def SRightClass(implicit ctx: Context) = SRightType.symbol.asClass
+  def SRightModule(implicit ctx: Context) = SRightClass.companionModule
 
   lazy val XMLTopScopeModuleRef = ctx.requiredModuleRef("scala.xml.TopScope")
 

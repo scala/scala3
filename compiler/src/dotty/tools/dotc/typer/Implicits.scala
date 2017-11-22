@@ -36,6 +36,7 @@ import config.Config
 import config.Printers.{implicits, implicitsDetailed, typr}
 import collection.mutable
 import reporting.trace
+import annotation.tailrec
 
 /** Implicit resolution */
 object Implicits {
@@ -675,7 +676,7 @@ trait Implicits { self: Typer =>
             val from = {
               val arg = makeSyntheticParameter(tpt = reprX)
               var cur = Ident(arg.name)
-              var body: List[Tree] = ValDef(nme._1, TypeTree(), Select(cur, nme.head)) :: Nil
+              var body: List[Tree] = ValDef(nme._1, TypeTree(), Select(cur, nme.head)) :: Nil // TODO: handle productTypesSize == 0
               var i = 1
               while (i < productTypesSize) {
                 i += 1
@@ -705,8 +706,9 @@ trait Implicits { self: Typer =>
 
             val sumTypes = A.classSymbol.children.map(_.typeRef).reverse // Reveresed to match definition order
             val sumTypesSize = sumTypes.size
-
+            val X = tpnme.syntheticTypeParamName(0)
             val noBounds = TypeBoundsTree(EmptyTree, EmptyTree)
+
             val reprRhs  =
               sumTypes.zipWithIndex.foldRight[Tree](TypeTree(defn.SNilType)) { case ((cur, i), acc) =>
                 val arg = tpnme.syntheticTypeParamName(i)
@@ -716,11 +718,72 @@ trait Implicits { self: Typer =>
                 LambdaTypeTree(TypeDef(arg, noBounds) :: Nil, rhs)
               }
             val repr: Tree = TypeDef(tpnme.Repr, reprRhs)
-            // val to: Tree = ???
-            // val from: Tree = ???
+            val reprX = AppliedTypeTree(Ident(tpnme.Repr), Ident(X) :: Nil)
+
+            def rootQual(n: Name): Tree = Ident(n) // TODO
+
+            implicit class TreeOps(val tree: Tree) {
+              def select(name: Name): Select = Select(tree, name)
+              def appliedToTypeTrees(targs: List[Tree]): Tree = TypeApply(tree, targs)
+              def isInstance(tp: Type): Tree = tree.select(nme.isInstanceOf_).appliedToType(tp)
+              def appliedToType(targ: Type): Tree = appliedToTypeTrees(TypeTree(targ) :: Nil)
+              def asInstance(tp: Type): Tree = tree.select(nme.asInstanceOf_).appliedToType(tp)
+            }
+
+            val to: Tree = {
+              val arg = makeSyntheticParameter(tpt = TypeTree(A))
+              def sumInjector(elem: Tree, depth: List[Any]): Tree = {
+                def SLeft(t: Tree) = Apply(rootQual(nme.SLeft), t)
+                def SRight(t: Tree) = Apply(rootQual(nme.SRight), t)
+                depth.tail.foldLeft[Tree](SLeft(elem)) { case (acc, _) => SRight(acc) }
+              }
+
+              @tailrec def mkIfChain(typesToTest: List[Type], acc: Tree): Tree =
+                typesToTest match {
+                  case x :: xs =>
+                    mkIfChain(xs,
+                      If(cond  = Ident(arg.name).isInstance(x),
+                         thenp = sumInjector(Ident(arg.name).asInstance(x), typesToTest),
+                         elsep = acc
+                      )
+                    )
+                  case Nil => acc
+                }
+              val (last :: typesToTest) = sumTypes.reverse // TODO: handle productTypesSize == 0
+              val body = mkIfChain(typesToTest, sumInjector(Ident(arg.name).asInstance(last), sumTypes))
+              DefDef(
+                name     = nme.to,
+                tparams  = TypeDef(X, noBounds) :: Nil,
+                vparamss = (arg :: Nil) :: Nil,
+                tpt      = reprX,
+                rhs      = body
+              ).withFlags(Synthetic)
+            }
+
+            val from: Tree = {
+              val arg = makeSyntheticParameter(tpt = reprX)
+              val cases = {
+                val x = nme.syntheticParamName(0)
+                (1 to sumTypesSize).map { depth =>
+                  val pat = (1 until depth).foldLeft(Apply(Ident(nme.SLeft), Ident(x))) {
+                    case (acc, _) => Apply(Ident(nme.SRight), acc)
+                  }
+                  CaseDef(pat, EmptyTree, Ident(x))
+                }.toList
+              }
+              val body = Match(Ident(arg.name), cases).asInstance(A)
+
+              DefDef(
+                name     = nme.from,
+                tparams  = TypeDef(X, noBounds) :: Nil,
+                vparamss = (arg :: Nil) :: Nil,
+                tpt      = TypeTree(A),
+                rhs      = body
+              ).withFlags(Synthetic)
+            }
 
             val parents  = TypeTree(defn.RepresentableType.appliedTo(A)) :: Nil
-            New(Template(emptyConstructor, parents, EmptyValDef, repr /*:: to :: from*/ :: Nil)).withPos(pos)
+            New(Template(emptyConstructor, parents, EmptyValDef, repr :: to :: from :: Nil)).withPos(pos)
           }
         case _ =>
           EmptyTree

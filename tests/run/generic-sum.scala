@@ -16,8 +16,8 @@ object Test {
     // Type is inferred correctly
     val a: Representable[Foo] { type Repr = Bar |: Bus |: SNil } = g
 
-    // // Representable#to and Representable#from behave as expected:
-    // assert(g.from(g.to(Bar(1))) == Bar(1))
-    // assert(g.from(g.to(Bus("s"))) == Bus("s"))
+    // Representable#to and Representable#from behave as expected:
+    assert(g.from(g.to(Bar(1))) == Bar(1))
+    assert(g.from(g.to(Bus("s"))) == Bus("s"))
   }
 }
