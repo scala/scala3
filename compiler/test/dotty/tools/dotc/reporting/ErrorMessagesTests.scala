@@ -1225,7 +1225,6 @@ class ErrorMessagesTests extends ErrorMessagesTest {
         assertEquals("(class Int, class String)", argTypes.map(_.typeSymbol).mkString("(", ", ", ")"))
       }
 
-
   @Test def staticOnlyAllowedInsideObjects =
     checkMessagesAfter("checkStatic") {
       """
@@ -1237,5 +1236,17 @@ class ErrorMessagesTests extends ErrorMessagesTest {
       implicit val ctx: Context = ictx
       val StaticFieldsOnlyAllowedInObjects(field) = messages.head
       assertEquals(field.show, "method bar")
+    }
+
+  @Test def cyclicInheritance =
+    checkMessagesAfter("frontend") {
+      "class A extends A"
+    }
+    .expect { (ictx, messages) =>
+      implicit val ctx: Context = ictx
+
+      assertMessageCount(1, messages)
+      val CyclicInheritance(symbol, _) :: Nil = messages
+      assertEquals("class A", symbol.show)
     }
 }

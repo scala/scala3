@@ -116,6 +116,7 @@ public enum ErrorMessageID {
     PackageNameAlreadyDefinedID,
     UnapplyInvalidNumberOfArgumentsID,
     StaticFieldsOnlyAllowedInObjectsID,
+    CyclicInheritanceID,
     ;
 
     public int errorNumber() {
