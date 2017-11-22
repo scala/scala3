@@ -1966,4 +1966,10 @@ object messages {
           |impossible to instantiate an object of this class"""
     }
   }
+
+  case class UnableToExtendSealedClass(pclazz: Symbol)(implicit ctx: Context) extends Message(UnableToExtendSealedClassID) {
+    val kind = "Syntax"
+    val msg = hl"Cannot extend ${"sealed"} $pclazz in a different source file"
+    val explanation = "A sealed class or trait can only be extended in the same file as its declaration"
+  }
 }

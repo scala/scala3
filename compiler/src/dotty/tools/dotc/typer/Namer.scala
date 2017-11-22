@@ -877,7 +877,7 @@ class Namer { typer: Typer =>
             if (pclazz.is(Final))
               ctx.error(ExtendFinalClass(cls, pclazz), cls.pos)
             if (pclazz.is(Sealed) && pclazz.associatedFile != cls.associatedFile)
-              ctx.error(em"cannot extend sealed $pclazz in different compilation unit", cls.pos)
+              ctx.error(UnableToExtendSealedClass(pclazz), cls.pos)
             pt
           }
         }
