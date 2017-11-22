@@ -600,7 +600,7 @@ trait Implicits { self: Typer =>
     }
 
     /**
-     *  When A is a product, synthesize an instance of the following shape:
+     *  When A is a product, synthesize an instance with the following shape:
      *
      *  ```
      *  new Representable[A] {
@@ -611,6 +611,27 @@ trait Implicits { self: Typer =>
      *
      *    def from[T](r: Repr[T]): A = r match {
      *      case PCons(_1, Pcons(_2, ..., Pcons(_n, PNil()))) => new A(_1, _2, ..., _n)
+     *    }
+     *  ```
+     *
+     *  When A is a sum, synthesize an instance with the following shape:
+     *
+     *  ```
+     *  new Representable[A] {
+     *    type Repr[t] = T1 |: T2 |: ... |: Tn |: PNil
+     *
+     *    def to[T](a: A): Repr[T] = a match {
+     *      case x: T1 => SLeft(x)
+     *      case x: T2 => SRight(SLeft(x))
+     *      ...
+     *      case x: Tn => SRight(SRight(...SRight(SLeft(x))))
+     *    }
+     *
+     *    def from[T](r: Repr[T]): A = r match {
+     *      case SLeft(x) => x
+     *      case SRight(SLeft(x)) => x
+     *      ...
+     *      case SRight(SRight(...SRight(SLeft(x)))) => x
      *    }
      *  ```
      */
@@ -667,7 +688,6 @@ trait Implicits { self: Typer =>
               }
               val newArgs = (1 to productTypesSize).map(i => Ident(nme.productAccessorName(i))).toList :: Nil
               val body = Match(Ident(arg.name), CaseDef(pat, EmptyTree, New(TypeTree(A), newArgs)) :: Nil)
-
               DefDef(
                 name     = nme.from,
                 tparams  = TypeDef(X, noBounds) :: Nil,
@@ -685,11 +705,13 @@ trait Implicits { self: Typer =>
             import untpd._
             import transform.SymUtils._
 
-            val sumTypes = A.classSymbol.children.map(_.typeRef).reverse // Reveresed to match definition order
+            val sumTypes = A.classSymbol.children.map(_.typeRef).reverse // Reveresed to match order in source
             val sumTypesSize = sumTypes.size
             val X = tpnme.syntheticTypeParamName(0)
             val noBounds = TypeBoundsTree(EmptyTree, EmptyTree)
 
+            // This fold generates T1 |: T2 |: ... |: Tn |: PNil, where
+            // type |:[H, T[t] <: Sum[t]] = [X] => SCons[[Y] => H, T, X]
             val reprRhs  =
               sumTypes.zipWithIndex.foldRight[Tree](TypeTree(defn.SNilType)) { case ((cur, i), acc) =>
                 val arg = tpnme.syntheticTypeParamName(i)
@@ -698,6 +720,7 @@ trait Implicits { self: Typer =>
                 val rhs       = AppliedTypeTree(TypeTree(defn.SConsType), pconsArgs)
                 LambdaTypeTree(TypeDef(arg, noBounds) :: Nil, rhs)
               }
+            // type Repr[t] = T1 |: T2 |: ... |: Tn |: PNil
             val repr: Tree = TypeDef(tpnme.Repr, reprRhs)
             val reprX = AppliedTypeTree(Ident(tpnme.Repr), Ident(X) :: Nil)
 
@@ -711,6 +734,12 @@ trait Implicits { self: Typer =>
               def asInstance(tp: Type): Tree = tree.select(nme.asInstanceOf_).appliedToType(tp)
             }
 
+            // def to[T](a: A): Repr[T] = a match {
+            //   case x: T1 => SLeft(x)
+            //   case x: T2 => SRight(SLeft(x))
+            //   ...
+            //   case x: Tn => SRight(SRight(...SRight(SLeft(x))))
+            // }
             val to: Tree = {
               val arg = makeSyntheticParameter(tpt = TypeTree(A))
               def sumInjector(elem: Tree, depth: List[Any]): Tree = {
@@ -718,7 +747,10 @@ trait Implicits { self: Typer =>
                 def SRight(t: Tree) = Apply(rootQual(nme.SRight), t)
                 depth.tail.foldLeft[Tree](SLeft(elem)) { case (acc, _) => SRight(acc) }
               }
-
+              // The current implementation directly generates an expended
+              // version of the above match expression. Assuming a case-of-case
+              // like optimization was added to Dotty this would need to be
+              // refactored into a proper match.
               @tailrec def mkIfChain(typesToTest: List[Type], acc: Tree): Tree =
                 typesToTest match {
                   case x :: xs =>
@@ -741,11 +773,18 @@ trait Implicits { self: Typer =>
               ).withFlags(Synthetic)
             }
 
+            // def from[T](r: Repr[T]): A = r match {
+            //   case SLeft(x) => x
+            //   case SRight(SLeft(x)) => x
+            //   ...
+            //   case SRight(SRight(...SRight(SLeft(x)))) => x
+            // }
             val from: Tree = {
               val arg = makeSyntheticParameter(tpt = reprX)
               val cases = {
                 val x = nme.syntheticParamName(0)
                 (1 to sumTypesSize).map { depth =>
+                  // Generates the appropriate level nesting of SRight(...SRight(SLeft(x)))
                   val pat = (1 until depth).foldLeft(Apply(Ident(nme.SLeft), Ident(x))) {
                     case (acc, _) => Apply(Ident(nme.SRight), acc)
                   }
@@ -753,7 +792,6 @@ trait Implicits { self: Typer =>
                 }.toList
               }
               val body = Match(Ident(arg.name), cases).asInstance(A)
-
               DefDef(
                 name     = nme.from,
                 tparams  = TypeDef(X, noBounds) :: Nil,
