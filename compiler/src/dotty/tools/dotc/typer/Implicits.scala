@@ -609,16 +609,9 @@ trait Implicits { self: Typer =>
      *    def to[T](a: A): Repr[T] =
      *      PCons(a._1, (PCons(a._2, ... PCons(a._m, PNil()))))
      *
-     *    def from[T](r: Repr[T]): A = {
-     *      val _1  = r.head
-     *      val x$1 = r.tail
-     *      val _2  = x$1.head
-     *      val x$2 = x$1.tail
-     *      ...
-     *      val _n  = x$n-1.head
-     *      new A(_1, _2, ..., _n)
+     *    def from[T](r: Repr[T]): A = r match {
+     *      case PCons(_1, Pcons(_2, ..., Pcons(_n, PNil()))) => new A(_1, _2, ..., _n)
      *    }
-     *  }
      *  ```
      */
     def synthesizedRepresentable(formal: Type)(implicit ctx: Context): Tree = {
@@ -645,15 +638,15 @@ trait Implicits { self: Typer =>
             val reprX = AppliedTypeTree(Ident(tpnme.Repr), Ident(X) :: Nil)
 
             def rootQual(n: Name): Tree = Ident(n) // TODO
+            val pNil  = Apply(rootQual(nme.PNil), Nil)
             // val prefix =
             //   ((Ident(nme.ROOTPKG): Tree) /: parts.init)((qual, name) =>
             //     Select(qual, name.toTermName))
 
             // def to[T](a: A): Repr[T] =
-            //   PCons(a._1, (PCons(a._2, ... PCons(a._m, PNil()))))
+            //   PCons(a._1, (PCons(a._2, ... PCons(a._n, PNil()))))
             val to = {
               val arg = makeSyntheticParameter(tpt = TypeTree(A))
-              val pNil  = Apply(rootQual(nme.PNil), Nil)
               def pCons(i: Int, acc: Tree) = Apply(rootQual(nme.PCons), Select(Ident(arg.name), nme.productAccessorName(i)) :: acc :: Nil)
               DefDef(
                 name     = nme.to,
@@ -664,35 +657,23 @@ trait Implicits { self: Typer =>
               ).withFlags(Synthetic)
             }
 
-            // def from[T](r: Repr[T]): A = {
-            //   val _1  = r.head
-            //   val x$1 = r.tail
-            //   val _2  = x$1.head     ─ x$1 here is cur
-            //   val x$2 = x$1.tail
-            //   ...
-            //   val _n  = x$n-1.head   ─ note the absence of .tail, that's why
-            //   new A(_1, _2, ..., _n) ─ body gets one element before the loop
+            // def from[T](r: Repr[T]): A = r match {
+            //   case PCons(_1, Pcons(_2, ..., Pcons(_n, PNil()))) => new A(_1, _2, ..., _n)
             // }
             val from = {
               val arg = makeSyntheticParameter(tpt = reprX)
-              var cur = Ident(arg.name)
-              var body: List[Tree] = ValDef(nme._1, TypeTree(), Select(cur, nme.head)) :: Nil // TODO: handle productTypesSize == 0
-              var i = 1
-              while (i < productTypesSize) {
-                i += 1
-                val dotTail = ValDef(nme.syntheticParamName(i), TypeTree(), Select(cur, nme.tail))
-                cur = Ident(dotTail.name)
-                val dotHead = ValDef(nme.productAccessorName(i), TypeTree(), Select(cur, nme.head))
-                body ::= dotTail
-                body ::= dotHead
+              val pat = (1 to productTypesSize).reverse.foldLeft(pNil) { case (acc, i) =>
+                Apply(rootQual(nme.PCons), Ident(nme.productAccessorName(i)) :: acc :: Nil)
               }
               val newArgs = (1 to productTypesSize).map(i => Ident(nme.productAccessorName(i))).toList :: Nil
+              val body = Match(Ident(arg.name), CaseDef(pat, EmptyTree, New(TypeTree(A), newArgs)) :: Nil)
+
               DefDef(
                 name     = nme.from,
                 tparams  = TypeDef(X, noBounds) :: Nil,
                 vparamss = (arg :: Nil) :: Nil,
                 tpt      = TypeTree(A),
-                rhs      = Block(body.reverse, New(TypeTree(A), newArgs))
+                rhs      = body
               ).withFlags(Synthetic)
             }
 
