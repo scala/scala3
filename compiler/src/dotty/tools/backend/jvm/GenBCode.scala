@@ -224,19 +224,23 @@ class GenBCodePipeline(val entryPoints: List[Symbol], val int: DottyBackendInter
         if (claszSymbol.isClass) // @DarkDimius is this test needed here?
           for (binary <- ctx.compilationUnit.pickled.get(claszSymbol.asClass)) {
             val store = if (mirrorC ne null) mirrorC else plainC
-            if (ctx.settings.emitTasty.value) {
-              val outTastyFile = getFileForClassfile(outF, store.name, ".tasty")
-              val outstream = new DataOutputStream(outTastyFile.bufferedOutput)
-
-              try outstream.write(binary)
-              finally outstream.close()
-            } else {
-              val dataAttr = new CustomAttr(nme.TASTYATTR.mangledString, binary)
-              store.visitAttribute(dataAttr)
-              // Create an empty file to signal that a tasty section exist in the corresponding .class
-              // This is much cheaper and simpler to check than doing classfile parsing
-              getFileForClassfile(outF, store.name, ".hasTasty")
-            }
+            val tasty =
+              if (ctx.settings.emitTasty.value) {
+                val outTastyFile = getFileForClassfile(outF, store.name, ".tasty")
+                val outstream = new DataOutputStream(outTastyFile.bufferedOutput)
+                try outstream.write(binary)
+                finally outstream.close()
+                // TASTY attribute is created but 0 bytes are stored in it.
+                // A TASTY attribute has length 0 if and only if the .tasty file exists.
+                Array.empty[Byte]
+              } else {
+                // Create an empty file to signal that a tasty section exist in the corresponding .class
+                // This is much cheaper and simpler to check than doing classfile parsing
+                getFileForClassfile(outF, store.name, ".hasTasty")
+                binary
+              }
+            val dataAttr = new CustomAttr(nme.TASTYATTR.mangledString, tasty)
+            store.visitAttribute(dataAttr)
           }
 
         // -------------- bean info class, if needed --------------

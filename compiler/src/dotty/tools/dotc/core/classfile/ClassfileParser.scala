@@ -13,7 +13,7 @@ import scala.collection.{ mutable, immutable }
 import scala.collection.mutable.{ ListBuffer, ArrayBuffer }
 import scala.annotation.switch
 import typer.Checking.checkNonCyclic
-import io.AbstractFile
+import io.{AbstractFile, PlainFile}
 import scala.util.control.NonFatal
 
 object ClassfileParser {
@@ -781,7 +781,13 @@ class ClassfileParser(
 
       if (scan(tpnme.TASTYATTR)) {
         val attrLen = in.nextInt
-        return unpickleTASTY(in.nextBytes(attrLen))
+        if (attrLen == 0) {
+          // A tasty attribute implies the existence of the .tasty file
+          val file = new PlainFile(io.File(classfile.jpath).changeExtension("tasty"))
+          if (file.exists) return unpickleTASTY(new AbstractFileReader(file).nextBytes(file.sizeOption.get))
+          else ctx.error("Could not find " + file)
+        }
+        else return unpickleTASTY(in.nextBytes(attrLen))
       }
 
       if (scan(tpnme.ScalaATTR) && !scalaUnpickleWhitelist.contains(classRoot.name)) {
