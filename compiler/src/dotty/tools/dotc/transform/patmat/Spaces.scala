@@ -32,8 +32,11 @@ case class ConstrainedSpace(
   def withTypeConstraints(typeConstraints: List[TypeConstraint]) = copy(typeConstraints = typeConstraints)
 }
 
-/** A term-level constraint */
-sealed trait TermConstraint {
+/** A term-level constraint
+ *
+ * @note Cannot be sealed because of #3479 #1932
+ */
+/*sealed*/ trait TermConstraint {
   final def neg: TermConstraint = this match {
     case Neg(c) => c
     case c: PositiveTermConstraint => Neg(c)
