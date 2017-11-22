@@ -43,10 +43,10 @@ class GenBCode extends Phase {
   private val entryPoints = new mutable.HashSet[Symbol]()
   def registerEntryPoint(sym: Symbol) = entryPoints += sym
 
-  private val superCallsMap = new mutable.HashMap[Symbol, Set[ClassSymbol]]()
+  private val superCallsMap = newMutableSymbolMap[Set[ClassSymbol]]
   def registerSuperCall(sym: Symbol, calls: ClassSymbol) = {
     val old = superCallsMap.getOrElse(sym, Set.empty)
-    superCallsMap.put(sym, old + calls)
+    superCallsMap.update(sym, old + calls)
   }
 
   private[this] var myOutput: AbstractFile = _

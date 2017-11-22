@@ -76,8 +76,8 @@ object PatternMatcher {
     /** A map from variable symbols to their defining trees
      *  and from labels to their defining plans
      */
-    private val initializer = mutable.Map[Symbol, Tree]()
-    private val labelled = mutable.Map[Symbol, Plan]()
+    private val initializer = newMutableSymbolMap[Tree]
+    private val labelled = newMutableSymbolMap[Plan]
 
     private def newVar(rhs: Tree, flags: FlagSet): TermSymbol =
       ctx.newSymbol(ctx.owner, PatMatStdBinderName.fresh(), Synthetic | Case | flags,
@@ -529,7 +529,7 @@ object PatternMatcher {
         tests1.filter { case(test, outcome) => tests2.get(test) == Some(outcome) }
 
       /** The tests with known outcomes valid at entry to label */
-      val seenAtLabel = mutable.HashMap[Symbol, SeenTests]()
+      val seenAtLabel = newMutableSymbolMap[SeenTests]
 
       class ElimRedundant(seenTests: SeenTests) extends PlanTransform {
         override def apply(plan: TestPlan): Plan = {
@@ -609,12 +609,12 @@ object PatternMatcher {
       type SeenVars = Map[RHS, TermSymbol]
 
       /** The variables known at entry to label */
-      val seenAtLabel = mutable.HashMap[Symbol, SeenVars]()
+      val seenAtLabel = newMutableSymbolMap[SeenVars]
 
       /** Parameters of label; these are passed additional variables
        *  which are known at all callsites.
        */
-      val paramsOfLabel = mutable.HashMap[Symbol, SeenVars]()
+      val paramsOfLabel = newMutableSymbolMap[SeenVars]
 
       class Merge(seenVars: SeenVars) extends PlanTransform {
         override val treeMap = new TreeMap {

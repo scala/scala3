@@ -23,8 +23,8 @@ class TreePickler(pickler: TastyPickler) {
   import pickler.nameBuffer.nameIndex
   import ast.tpd._
 
-  private val symRefs = new mutable.HashMap[Symbol, Addr]
-  private val forwardSymRefs = new mutable.HashMap[Symbol, List[Addr]]
+  private val symRefs = Symbols.newMutableSymbolMap[Addr]
+  private val forwardSymRefs = Symbols.newMutableSymbolMap[List[Addr]]
   private val pickledTypes = new java.util.IdentityHashMap[Type, Any] // Value type is really Addr, but that's not compatible with null
 
   private def withLength(op: => Unit) = {
@@ -586,15 +586,15 @@ class TreePickler(pickler: TastyPickler) {
 
   def pickle(trees: List[Tree])(implicit ctx: Context) = {
     trees.foreach(tree => if (!tree.isEmpty) pickleTree(tree))
-    def missing = forwardSymRefs.keySet.toList.map(_.showLocated)
+    def missing = forwardSymRefs.keysIterator.map(_.showLocated).toList
     assert(forwardSymRefs.isEmpty, i"unresolved symbols: $missing%, % when pickling ${ctx.source}")
   }
 
   def compactify() = {
     buf.compactify()
 
-    def updateMapWithDeltas[T](mp: collection.mutable.Map[T, Addr]) =
-      for (key <- mp.keysIterator.toBuffer[T]) mp(key) = adjusted(mp(key))
+    def updateMapWithDeltas(mp: MutableSymbolMap[Addr]) =
+      for (key <- mp.keysIterator.toBuffer[Symbol]) mp(key) = adjusted(mp(key))
 
     updateMapWithDeltas(symRefs)
   }

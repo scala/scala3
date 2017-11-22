@@ -55,11 +55,11 @@ class ShortcutImplicits extends MiniPhase with IdentityDenotTransformer { thisPh
   /** A map to cache mapping local methods to their direct counterparts.
    *  A fresh map is created for each unit.
    */
-  private var DirectMeth: Store.Location[mutable.HashMap[Symbol, Symbol]] = _
+  private var DirectMeth: Store.Location[MutableSymbolMap[Symbol]] = _
   private def directMeth(implicit ctx: Context) = ctx.store(DirectMeth)
 
   override def initContext(ctx: FreshContext) =
-    DirectMeth = ctx.addLocation[mutable.HashMap[Symbol, Symbol]]()
+    DirectMeth = ctx.addLocation[MutableSymbolMap[Symbol]]()
 
   /** If this option is true, we don't specialize symbols that are known to be only
    *  targets of monomorphic calls.
@@ -70,7 +70,7 @@ class ShortcutImplicits extends MiniPhase with IdentityDenotTransformer { thisPh
   final val specializeMonoTargets = true
 
   override def prepareForUnit(tree: Tree)(implicit ctx: Context) =
-    ctx.fresh.updateStore(DirectMeth, new mutable.HashMap[Symbol, Symbol])
+    ctx.fresh.updateStore(DirectMeth, newMutableSymbolMap[Symbol])
 
   /** Should `sym` get a ..$direct companion?
     *  This is the case if (1) `sym` is a method with an implicit function type as final result type.

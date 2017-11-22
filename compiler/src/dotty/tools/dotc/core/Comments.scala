@@ -23,10 +23,8 @@ object Comments {
     * docstrings via `Symbol` and expanding templates
     */
   class ContextDocstrings {
-    import scala.collection.mutable
 
-    private[this] val _docstrings: mutable.Map[Symbol, Comment] =
-      mutable.Map.empty
+    private[this] val _docstrings: MutableSymbolMap[Comment] = newMutableSymbolMap
 
     val templateExpander = new CommentExpander
 
@@ -35,7 +33,7 @@ object Comments {
     def docstring(sym: Symbol): Option[Comment] = _docstrings.get(sym)
 
     def addDocstring(sym: Symbol, doc: Option[Comment]): Unit =
-      doc.map(d => _docstrings += (sym -> d))
+      doc.map(d => _docstrings.update(sym, d))
   }
 
   /** A `Comment` contains the unformatted docstring as well as a position
@@ -182,7 +180,7 @@ object Comments {
     protected def superComment(sym: Symbol)(implicit ctx: Context): Option[String] =
       allInheritedOverriddenSymbols(sym).iterator map (x => cookedDocComment(x)) find (_ != "")
 
-    private val cookedDocComments = mutable.HashMap[Symbol, String]()
+    private val cookedDocComments = newMutableSymbolMap[String]
 
     /** The raw doc comment of symbol `sym`, minus usecase and define sections, augmented by
      *  missing sections of an inherited doc comment.
