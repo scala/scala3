@@ -56,10 +56,14 @@ object Uniques {
     def enterIfNew(prefix: Type, designator: Designator, isTerm: Boolean)(implicit ctx: Context): NamedType = {
       val h = doHash(designator, prefix)
       if (monitored) recordCaching(h, classOf[NamedType])
-      def newType = {
-        if (isTerm) new CachedTermRef(prefix, designator.asInstanceOf[TermDesignator], h)
-        else new CachedTypeRef(prefix, designator.asInstanceOf[TypeDesignator], h)
-      }.init()
+      def newType =
+        if (Config.newScheme)
+          if (isTerm) new CachedTermRefNEW(prefix, designator.asInstanceOf[TermDesignator], h)
+          else new CachedTypeRefNEW(prefix, designator.asInstanceOf[TypeDesignator], h)
+        else {
+          if (isTerm) new CachedTermRef(prefix, designator.asInstanceOf[TermDesignator], h)
+          else new CachedTypeRef(prefix, designator.asInstanceOf[TypeDesignator], h)
+        }.init()
       if (h == NotCached) newType
       else {
         val r = findPrevious(h, prefix, designator)

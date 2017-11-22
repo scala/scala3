@@ -710,7 +710,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
         if (sym.isType) {
           assert(!sym.is(TypeParam))
           if (config.Config.newScheme) TypeRef.withSym(tree.tpe, sym.asType)
-          else TypeRef.applyOLD(tree.tpe, sym.name.asTypeName)
+          else TypeRef(tree.tpe, sym.name.asTypeName)
         }
         else
           TermRef(tree.tpe, sym.name.asTermName, sym.denot.asSeenFrom(tree.tpe))
@@ -722,7 +722,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       untpd.SelectWithSig(tree, name, sig)
         .withType(
           if (config.Config.newScheme) tree.tpe.select(name.asTermName, sig)
-          else TermRef.applyOLD(tree.tpe, name.asTermName.withSig(sig)))
+          else TermRef(tree.tpe, name.asTermName.withSig(sig)))
 
     /** A select node with selector name and signature taken from `sym`.
      *  Note: Use this method instead of select(sym) if the referenced symbol

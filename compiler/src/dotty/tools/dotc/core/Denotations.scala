@@ -1044,7 +1044,7 @@ object Denotations {
         case thisd: SymDenotation => thisd.owner
         case _ => if (symbol.exists) symbol.owner else NoSymbol
       }
-      if (!owner.membersNeedAsSeenFrom(pre)) this
+      if (!owner.membersNeedAsSeenFrom(pre) || symbol.is(NonMember)) this
       else derivedSingleDenotation(symbol, symbol.info.asSeenFrom(pre, owner))
     }
 

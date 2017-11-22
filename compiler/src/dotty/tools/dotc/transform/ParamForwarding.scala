@@ -98,7 +98,7 @@ class ParamForwarding(thisPhase: DenotTransformer) {
       val newSig = tpe.prefix.memberInfo(tpe.symbol).signature
       if (newSig.eq(Signature.NotAMethod)) tree
       else tree.withType(
-        TermRef.applyOLD(tpe.prefix, tpe.name.withSig(newSig).localizeIfPrivate(tpe.symbol)))
+        TermRef(tpe.prefix, tpe.name.withSig(newSig).localizeIfPrivate(tpe.symbol)))
           .asInstanceOf[T]
     case _ =>
       tree

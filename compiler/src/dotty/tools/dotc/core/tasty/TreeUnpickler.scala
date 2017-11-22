@@ -225,21 +225,20 @@ class TreeUnpickler(reader: TastyReader, nameAtRef: NameRef => TermName, posUnpi
               var sname = readName()
               val prefix = readType()
               val space = readType().asInstanceOf[TypeRef]
-              if (Config.newScheme) {
-                val d = sname match {
-                  case SignedName(name, sig) => space.decl(name).atSignature(sig)
-                  case name => space.decl(name)
+              if (Config.newScheme)
+                sname match {
+                  case SignedName(name, sig) =>
+                    TermRef(prefix, name, space.decl(name).atSignature(sig))
+                  case name =>
+                    TermRef(prefix, name, space.decl(name))
                 }
-                assert(d.symbol.exists)
-                TermRef.withDenot(prefix, d)
-              }
-              else TermRef.applyOLD(prefix, sname.withNameSpace(space))
+              else TermRef(prefix, sname.withNameSpace(space))
             case TYPEREFin =>
               val name = readName().toTypeName
               val prefix = readType()
               val space = readType().asInstanceOf[TypeRef]
-              if (Config.newScheme) TermRef.withDenot(prefix, space.decl(name))
-              else TypeRef.applyOLD(prefix, name.withNameSpace(space))
+              if (Config.newScheme) TypeRef(prefix, name, space.decl(name))
+              else TypeRef(prefix, name.withNameSpace(space))
             case REFINEDtype =>
               var name: Name = readName()
               val parent = readType()
@@ -299,20 +298,20 @@ class TreeUnpickler(reader: TastyReader, nameAtRef: NameRef => TermName, posUnpi
           val name = readName().toTypeName
           if (Config.newScheme) {
             val prefix = readType()
-            TypeRef.withDenot(prefix, prefix.member(name))
+            TypeRef(prefix, name, prefix.member(name))
           }
-          else TypeRef.applyOLD(readType(), name)
+          else TypeRef(readType(), name)
         case TERMREF =>
           val sname = readName()
-          if (Config.newScheme) {
-            val prefix = readType()
-            val d = sname match {
-              case SignedName(name, sig) => prefix.member(name).atSignature(sig)
-              case name => prefix.member(name)
+          val prefix = readType()
+          if (Config.newScheme)
+            sname match {
+              case SignedName(name, sig) =>
+                TermRef(prefix, name, prefix.member(name).atSignature(sig))
+              case name =>
+                TermRef(prefix, name, prefix.member(name))
             }
-            TermRef.withDenot(prefix, d)
-          }
-          else TermRef.applyOLD(readType(), sname)
+          else TermRef(prefix, sname)
         case THIS =>
           ThisType.raw(readType().asInstanceOf[TypeRef])
         case RECtype =>
@@ -364,7 +363,7 @@ class TreeUnpickler(reader: TastyReader, nameAtRef: NameRef => TermName, posUnpi
       val prefix = readType()
       val res = NamedType.withSym(prefix, sym)
       prefix match {
-        case prefix: ThisType if !Config.newScheme && (prefix.cls eq sym.owner) => res.withDenot(sym.denot)
+        case prefix: ThisType if prefix.cls eq sym.owner => res.withDenot(sym.denot)
           // without this precaution we get an infinite cycle when unpickling pos/extmethods.scala
           // the problem arises when a self type of a trait is a type parameter of the same trait.
         case _ => res
@@ -744,8 +743,10 @@ class TreeUnpickler(reader: TastyReader, nameAtRef: NameRef => TermName, posUnpi
       val start = currentAddr
       val cls = ctx.owner.asClass
       val assumedSelfType =
-        if (cls.is(Module) && cls.owner.isClass && !Config.newScheme /*???*/)
-          TermRef.applyOLD(cls.owner.thisType, cls.name.sourceModuleName.localizeIfPrivate(cls))
+        if (cls.is(Module) && cls.owner.isClass)
+          TermRef(cls.owner.thisType,
+            if (Config.newScheme) cls.name.sourceModuleName
+            else cls.name.sourceModuleName.localizeIfPrivate(cls))
         else NoType
       cls.info = new TempClassInfo(cls.owner.thisType, cls, cls.unforcedDecls, assumedSelfType)
       val localDummy = symbolAtCurrent()

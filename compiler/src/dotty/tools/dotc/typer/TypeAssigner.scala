@@ -189,7 +189,7 @@ trait TypeAssigner {
           val d2 = pre.nonPrivateMember(name)
           if (reallyExists(d2) && firstTry)
             test(
-              if (config.Config.newScheme) NamedType.withDenot(pre, d2)
+              if (config.Config.newScheme) NamedType(pre, name, d2)
               else tpe.withNameSpaceOLD(noNameSpace).withDenot(d2),
               false)
           else if (pre.derivesFrom(defn.DynamicClass)) {
@@ -211,8 +211,7 @@ trait TypeAssigner {
             else errorType(ex"$what cannot be accessed as a member of $pre$where.$whyNot", pos)
           }
         }
-        else
-          ctx.makePackageObjPrefixExplicit(tpe withDenot d)
+        else ctx.makePackageObjPrefixExplicit(tpe withDenot d)
       case _ =>
         tpe
     }
