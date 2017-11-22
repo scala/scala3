@@ -11,7 +11,7 @@ object Texts {
     def relems: List[Text]
 
     def isEmpty: Boolean = this match {
-      case Str(s, _, _) => s.isEmpty
+      case Str(s, _) => s.isEmpty
       case Fluid(relems) => relems forall (_.isEmpty)
       case Vertical(relems) => relems.isEmpty
     }
@@ -24,7 +24,7 @@ object Texts {
     def close = new Closed(relems)
 
     def remaining(width: Int): Int = this match {
-      case Str(s, _, _) =>
+      case Str(s, _) =>
         width - s.length
       case Fluid(Nil) =>
         width
@@ -36,15 +36,15 @@ object Texts {
     }
 
     def lastLine: String = this match {
-      case Str(s, _, _) => s
+      case Str(s, _) => s
       case _ => relems.head.lastLine
     }
 
     def appendToLastLine(that: Text): Text = that match {
-      case Str(s2, start1, end1) =>
+      case Str(s2, lines1) =>
         this match {
-          case Str(s1, start2, end2) => Str(s1 + s2, start1 min start2, end1 max end2)
-          case Fluid(Str(s1, start2, end2) :: prev) => Fluid(Str(s1 + s2, start1 min start2, end1 max end2) :: prev)
+          case Str(s1, lines2) => Str(s1 + s2, lines1 union lines2)
+          case Fluid(Str(s1, lines2) :: prev) => Fluid(Str(s1 + s2, lines1 union lines2) :: prev)
           case Fluid(relems) => Fluid(that :: relems)
         }
       case Fluid(relems) =>
@@ -65,7 +65,7 @@ object Texts {
     }
 
     def layout(width: Int): Text = this match {
-      case Str(s, _, _) =>
+      case Str(s, _) =>
         this
       case Fluid(relems) =>
         ((Str(""): Text) /: relems.reverse)(_.append(width)(_))
@@ -74,13 +74,13 @@ object Texts {
     }
 
     def map(f: String => String): Text = this match {
-      case Str(s, start, end) => Str(f(s), start, end)
+      case Str(s, lines) => Str(f(s), lines)
       case Fluid(relems) => Fluid(relems map (_ map f))
       case Vertical(relems) => Vertical(relems map (_ map f))
     }
 
     def stripPrefix(pre: String): Text = this match {
-      case Str(s, _, _) =>
+      case Str(s, _) =>
         if (s.startsWith(pre)) s drop pre.length else s
       case Fluid(relems) =>
         val elems = relems.reverse
@@ -93,24 +93,21 @@ object Texts {
     }
 
     private def indented: Text = this match {
-      case Str(s, start, end) => Str((" " * indentMargin) + s, start, end)
+      case Str(s, lines) => Str((" " * indentMargin) + s, lines)
       case Fluid(relems) => Fluid(relems map (_.indented))
       case Vertical(relems) => Vertical(relems map (_.indented))
     }
 
     def print(sb: StringBuilder, numberWidth: Int): Unit = this match {
-      case Str(s, start, end) =>
-        def printLine(ln: String) = {
+      case Str(s, lines) =>
+        if (numberWidth != 0) {
+          val ln = lines.show
           val pad = (numberWidth - ln.length - 1)
           assert(pad >= 0)
           sb.append(" " * pad)
           sb.append(ln)
           sb.append("|")
         }
-        if (numberWidth == 0) () // Do not print line numbers
-        else if (start == end) printLine((start + 1).toString)
-        else if (start != Int.MaxValue) printLine(s"${start + 1}-${end + 1}")
-        else printLine("")
         sb.append(s)
       case _ =>
         var follow = false
@@ -122,7 +119,7 @@ object Texts {
     }
 
     def maxLine: Int = this match {
-      case Str(_, _, end) => end
+      case Str(_, lines) => lines.end
       case _ => (-1 /: relems)((acc, relem) => acc max relem.maxLine)
     }
 
@@ -171,7 +168,7 @@ object Texts {
     def lines(xs: Traversable[Text]) = Vertical(xs.toList.reverse)
   }
 
-  case class Str(s: String, startLine: Int = Int.MaxValue, endLine: Int = -1) extends Text {
+  case class Str(s: String, lineRange: LineRange = EmptyLineRange) extends Text {
     override def relems: List[Text] = List(this)
   }
 
@@ -181,4 +178,15 @@ object Texts {
   class Closed(relems: List[Text]) extends Fluid(relems)
 
   implicit def stringToText(s: String): Text = Str(s)
+
+  /** Inclusive line range */
+  case class LineRange(start: Int, end: Int) {
+    def union(that: LineRange): LineRange = LineRange(start min that.start, end max that.end)
+    def show: String =
+      if (start == end) (start + 1).toString
+      else if (start < end) s"${start + 1}-${end + 1}"
+      else "" // empty range
+  }
+
+  object EmptyLineRange extends LineRange(Int.MaxValue, Int.MinValue)
 }
