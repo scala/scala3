@@ -707,20 +707,12 @@ object Build {
 
   lazy val dottySbtBridgeSettings = Seq(
     cleanSbtBridge := {
-      val dottySbtBridgeVersion = version.value
-      val dottyVersion = (version in `dotty-compiler`).value
-      val classVersion = System.getProperty("java.class.version")
-
-      val sbtV = sbtVersion.value
-      val sbtOrg = "org.scala-sbt"
-      val sbtScalaVersion = "2.10.6"
-
       val home = System.getProperty("user.home")
-      val org = organization.value
-      val artifact = moduleName.value
+      val sbtOrg = "org.scala-sbt"
+      val bridgeDirectoryPattern = s"*${dottyVersion}*"
 
-      IO.delete(file(home) / ".ivy2" / "cache" / sbtOrg / s"$org-$artifact-$dottySbtBridgeVersion-bin_${dottyVersion}__$classVersion")
-      IO.delete(file(home) / ".sbt"  / "boot" / s"scala-$sbtScalaVersion" / sbtOrg / "sbt" / sbtV / s"$org-$artifact-$dottySbtBridgeVersion-bin_${dottyVersion}__$classVersion")
+      IO.delete((file(home) / ".ivy2" / "cache" / sbtOrg * bridgeDirectoryPattern).get)
+      IO.delete((file(home) / ".sbt"  / "boot" * "scala-*" / sbtOrg / "sbt" * "*" * bridgeDirectoryPattern).get)
     },
     packageSrc in Compile := (packageSrc in Compile).dependsOn(cleanSbtBridge).value,
     description := "sbt compiler bridge for Dotty",
