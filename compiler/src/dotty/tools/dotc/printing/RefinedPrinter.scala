@@ -17,7 +17,7 @@ import transform.SymUtils._
 import scala.annotation.switch
 import language.implicitConversions
 import dotty.tools.dotc.util.SourcePosition
-
+import Highlighting._
 
 class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
 
@@ -80,7 +80,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
   override def toTextRef(tp: SingletonType): Text = controlled {
     tp match {
       case tp: ThisType =>
-        if (tp.cls.isAnonymousClass) return "this"
+        if (tp.cls.isAnonymousClass) return keywordStr("this")
         if (tp.cls is ModuleClass) return fullNameString(tp.cls.sourceModule)
       case _ =>
     }
@@ -123,7 +123,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
             atPrec(InfixPrec) { argText(args.head) }
           else
             toTextTuple(args.init)
-        ("implicit " provided isImplicit) ~ argStr ~ " => " ~ argText(args.last)
+        (keywordStr("implicit ") provided isImplicit) ~ argStr ~ " => " ~ argText(args.last)
       }
 
     def isInfixType(tp: Type): Boolean = tp match {
@@ -236,18 +236,18 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
 
     def enumText(tree: untpd.Tree) = tree match { // DD
       case _: untpd.GenFrom | _: untpd.GenAlias => toText(tree)
-      case _ => "if " ~ toText(tree)
+      case _ => keywordStr("if ") ~ toText(tree)
     }
 
     def forText(enums: List[untpd.Tree], expr: untpd.Tree, sep: String): Text = // DD
-      changePrec(GlobalPrec) { "for " ~ Text(enums map enumText, "; ") ~ sep ~ toText(expr) }
+      changePrec(GlobalPrec) { keywordStr("for ") ~ Text(enums map enumText, "; ") ~ sep ~ toText(expr) }
 
     def cxBoundToText(bound: untpd.Tree): Text = bound match { // DD
       case AppliedTypeTree(tpt, _) => " : " ~ toText(tpt)
       case untpd.Function(_, tpt) => " <% " ~ toText(tpt)
     }
 
-    def constrText(tree: untpd.Tree): Text = toTextLocal(tree).stripPrefix("new ") // DD
+    def constrText(tree: untpd.Tree): Text = toTextLocal(tree).stripPrefix(keywordStr("new ")) // DD
 
     def annotText(tree: untpd.Tree): Text = "@" ~ constrText(tree) // DD
 
@@ -314,9 +314,9 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
           if (constr.mods.hasAnnotations && !constr.mods.hasFlags) modsText = modsText ~~ " this"
           withEnclosingDef(constr) { addVparamssText(tparamsTxt ~~ modsText, vparamss) }
         }
-      val parentsText = Text(parents map constrText, " with ")
+      val parentsText = Text(parents map constrText, keywordStr(" with "))
       val selfText = {
-        val selfName = if (self.name == nme.WILDCARD) "this" else self.name.toString
+        val selfName = if (self.name == nme.WILDCARD) keywordStr("this") else self.name.toString
         (selfName ~ optText(self.tpt)(": " ~ _) ~ " =>").close
       } provided !self.isEmpty
 
@@ -333,7 +333,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
 
       val bodyText = "{" ~~ selfText ~~ toTextGlobal(primaryConstrs ::: body, "\n") ~ "}"
 
-      prefix ~ (" extends" provided !ofNew) ~~ parentsText ~~ bodyText
+      prefix ~ (keywordStr(" extends") provided !ofNew) ~~ parentsText ~~ bodyText
     }
 
     def toTextPackageId(pid: Tree): Text =
@@ -346,29 +346,31 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       case id: Trees.SearchFailureIdent[_] =>
         tree.typeOpt match {
           case reason: Implicits.SearchFailureType =>
-            toText(id.name) ~ "implicitly[" ~ toText(reason.expectedType) ~ "]"
+            toText(id.name) ~ "implicitly" ~ toText(reason.expectedType) ~ "]"
           case _ =>
             toText(id.name)
         }
       case Ident(name) =>
-        tree.typeOpt match {
+        val txt = tree.typeOpt match {
           case tp: NamedType if name != nme.WILDCARD =>
             val pre = if (tp.symbol is JavaStatic) tp.prefix.widen else tp.prefix
             toTextPrefix(pre) ~ withPos(selectionString(tp), tree.pos)
           case _ =>
             toText(name)
         }
+        if (name.isType) typeText(txt)
+        else txt
       case tree @ Select(qual, name) =>
-        if (qual.isType) toTextLocal(qual) ~ "#" ~ toText(name)
+        if (qual.isType) toTextLocal(qual) ~ "#" ~ typeText(toText(name))
         else toTextLocal(qual) ~ ("." ~ nameIdText(tree) provided name != nme.CONSTRUCTOR)
       case tree: This =>
-        optDotPrefix(tree) ~ "this" ~ idText(tree)
+        optDotPrefix(tree) ~ keywordStr("this") ~ idText(tree)
       case Super(qual: This, mix) =>
-        optDotPrefix(qual) ~ "super" ~ optText(mix)("[" ~ _ ~ "]")
+        optDotPrefix(qual) ~ keywordStr("super") ~ optText(mix)("[" ~ _ ~ "]")
       case Apply(fun, args) =>
         if (fun.hasType && fun.symbol == defn.throwMethod)
           changePrec (GlobalPrec) {
-            "throw " ~ toText(args.head)
+            keywordStr("throw ") ~ toText(args.head)
           }
         else
           toTextLocal(fun) ~ "(" ~ toTextGlobal(args, ", ") ~ ")"
@@ -380,7 +382,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
           case _ => withPos(toText(c), tree.pos)
         }
       case New(tpt) =>
-        "new " ~ {
+        keywordStr("new ") ~ {
           tpt match {
             case tpt: Template => toTextTemplate(tpt, ofNew = true)
             case _ =>
@@ -400,25 +402,25 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         blockText(stats :+ expr)
       case If(cond, thenp, elsep) =>
         changePrec(GlobalPrec) {
-          "if " ~ toText(cond) ~ (" then" provided !cond.isInstanceOf[Parens]) ~~ toText(thenp) ~ optText(elsep)(" else " ~ _)
+          keywordStr("if ") ~ toText(cond) ~ (keywordStr(" then") provided !cond.isInstanceOf[Parens]) ~~ toText(thenp) ~ optText(elsep)(keywordStr(" else ") ~ _)
         }
       case Closure(env, ref, target) =>
         "closure(" ~ (toTextGlobal(env, ", ") ~ " | " provided env.nonEmpty) ~
         toTextGlobal(ref) ~ (":" ~ toText(target) provided !target.isEmpty) ~ ")"
       case Match(sel, cases) =>
         if (sel.isEmpty) blockText(cases)
-        else changePrec(GlobalPrec) { toText(sel) ~ " match " ~ blockText(cases) }
+        else changePrec(GlobalPrec) { toText(sel) ~ keywordStr(" match ") ~ blockText(cases) }
       case CaseDef(pat, guard, body) =>
-        "case " ~ inPattern(toText(pat)) ~ optText(guard)(" if " ~ _) ~ " => " ~ caseBlockText(body)
+        keywordStr("case ") ~ inPattern(toText(pat)) ~ optText(guard)(" if " ~ _) ~ " => " ~ caseBlockText(body)
       case Return(expr, from) =>
-        changePrec(GlobalPrec) { "return" ~ optText(expr)(" " ~ _) }
+        changePrec(GlobalPrec) { keywordStr("return") ~ optText(expr)(" " ~ _) }
       case Try(expr, cases, finalizer) =>
         changePrec(GlobalPrec) {
-          "try " ~ toText(expr) ~ optText(cases)(" catch " ~ _) ~ optText(finalizer)(" finally " ~ _)
+          keywordStr("try ") ~ toText(expr) ~ optText(cases)(keywordStr(" catch ") ~ _) ~ optText(finalizer)(keywordStr(" finally ") ~ _)
         }
       case Throw(expr) =>
         changePrec(GlobalPrec) {
-          "throw " ~ toText(expr)
+          keywordStr("throw ") ~ toText(expr)
         }
       case SeqLiteral(elems, elemtpt) =>
         "[" ~ toTextGlobal(elems, ",") ~ " : " ~ toText(elemtpt) ~ "]"
@@ -428,9 +430,9 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       case tpt: untpd.DerivedTypeTree =>
         "<derived typetree watching " ~ summarized(toText(tpt.watched)) ~ ">"
       case TypeTree() =>
-        toText(tree.typeOpt)
+        typeText(toText(tree.typeOpt))
       case SingletonTypeTree(ref) =>
-        toTextLocal(ref) ~ ".type"
+        toTextLocal(ref) ~ "." ~ keywordStr("type")
       case AndTypeTree(l, r) =>
         changePrec(AndPrec) { toText(l) ~ " & " ~ toText(r) }
       case OrTypeTree(l, r) =>
@@ -461,13 +463,13 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         ("(" ~ toTextGlobal(implicits, ", ") ~ ")" provided implicits.nonEmpty)
       case tree @ ValDef(name, tpt, _) =>
         dclTextOr {
-          modText(tree.mods, if (tree.mods is Mutable) "var" else "val") ~~
+          modText(tree.mods, keywordStr(if (tree.mods is Mutable) "var" else "val")) ~~
           nameIdText(tree) ~ optAscription(tpt) ~
           withEnclosingDef(tree) { optText(tree.rhs)(" = " ~ _) }
         }
       case tree @ DefDef(name, tparams, vparamss, tpt, _) =>
         dclTextOr {
-          val prefix = modText(tree.mods, "def") ~~ nameIdText(tree)
+          val prefix = modText(tree.mods, keywordStr("def")) ~~ nameIdText(tree)
           withEnclosingDef(tree) {
             addVparamssText(prefix ~ tparamsText(tparams), vparamss) ~ optAscription(tpt) ~
             optText(tree.rhs)(" = " ~ _)
@@ -476,7 +478,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       case tree @ TypeDef(name, rhs) =>
         def typeDefText(tparamsText: => Text, rhsText: => Text) =
           dclTextOr {
-            modText(tree.mods, "type") ~~ (varianceText(tree.mods) ~ nameIdText(tree)) ~
+            modText(tree.mods, keywordStr("type")) ~~ (varianceText(tree.mods) ~ typeText(nameIdText(tree))) ~
             withEnclosingDef(tree) {
               if (tree.hasType) toText(tree.symbol.info) // TODO: always print RHS, once we pickle/unpickle type trees
               else tparamsText ~ rhsText
@@ -484,8 +486,8 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
           }
         def recur(rhs: Tree, tparamsTxt: => Text): Text = rhs match {
           case impl: Template =>
-            modText(tree.mods, if ((tree).mods is Trait) "trait" else "class") ~~
-            nameIdText(tree) ~ withEnclosingDef(tree) { toTextTemplate(impl) } ~
+            modText(tree.mods, keywordStr(if ((tree).mods is Trait) "trait" else "class")) ~~
+            typeText(nameIdText(tree)) ~ withEnclosingDef(tree) { toTextTemplate(impl) } ~
             (if (tree.hasType && ctx.settings.verbose.value) i"[decls = ${tree.symbol.info.decls}]" else "")
           case rhs: TypeBoundsTree =>
             typeDefText(tparamsTxt, toText(rhs))
@@ -504,7 +506,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
           case id :: Nil => toText(id)
           case _ => "{" ~ Text(selectors map selectorText, ", ") ~ "}"
         }
-        "import " ~ toTextLocal(expr) ~ "." ~ selectorsText
+        keywordStr("import ") ~ toTextLocal(expr) ~ "." ~ selectorsText
       case PackageDef(pid, stats) =>
         val statsText = stats match {
           case (pdef: PackageDef) :: Nil => toText(pdef)
@@ -512,7 +514,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         }
         val bodyText =
           if (currentPrecedence == TopLevelPrec) "\n" ~ statsText else " {" ~ statsText ~ "}"
-        "package " ~ toTextPackageId(pid) ~ bodyText
+        keywordStr("package ") ~ toTextPackageId(pid) ~ bodyText
       case tree: Template =>
         toTextTemplate(tree)
       case Annotated(arg, annot) =>
@@ -523,7 +525,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         toText(t)
       case tree @ ModuleDef(name, impl) =>
         withEnclosingDef(tree) {
-          modText(tree.mods, "object") ~~ nameIdText(tree) ~ toTextTemplate(impl)
+          modText(tree.mods, keywordStr("object")) ~~ nameIdText(tree) ~ toTextTemplate(impl)
         }
       case SymbolLit(str) =>
         "'" + str
@@ -539,7 +541,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         def argToText(arg: Tree) = arg match {
           case arg @ ValDef(name, tpt, _) =>
             val implicitText =
-              if ((arg.mods is Implicit) && !implicitSeen) { implicitSeen = true; "implicit " }
+              if ((arg.mods is Implicit) && !implicitSeen) { implicitSeen = true; keywordStr("implicit ") }
               else ""
             implicitText ~ toText(name) ~ optAscription(tpt)
           case _ =>
@@ -564,13 +566,13 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       case Tuple(ts) =>
         "(" ~ toTextGlobal(ts, ", ") ~ ")"
       case WhileDo(cond, body) =>
-        changePrec(GlobalPrec) { "while " ~ toText(cond) ~ " do " ~ toText(body) }
+        changePrec(GlobalPrec) { keywordStr("while ") ~ toText(cond) ~ keywordStr(" do ") ~ toText(body) }
       case DoWhile(cond, body) =>
-        changePrec(GlobalPrec) { "do " ~ toText(body) ~ " while " ~ toText(cond) }
+        changePrec(GlobalPrec) { keywordStr("do ") ~ toText(body) ~ keywordStr(" while ") ~ toText(cond) }
       case ForYield(enums, expr) =>
-        forText(enums, expr, " yield ")
+        forText(enums, expr, keywordStr(" yield "))
       case ForDo(enums, expr) =>
-        forText(enums, expr, " do ")
+        forText(enums, expr, keywordStr(" do "))
       case GenFrom(pat, expr) =>
         toText(pat) ~ " <- " ~ toText(expr)
       case GenAlias(pat, expr) =>
@@ -580,11 +582,11 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
           t ~ cxBoundToText(cxb)
         }
       case PatDef(mods, pats, tpt, rhs) =>
-        modText(mods, "val") ~~ toText(pats, ", ") ~ optAscription(tpt) ~
+        modText(mods, keywordStr("val")) ~~ toText(pats, ", ") ~ optAscription(tpt) ~
           optText(rhs)(" = " ~ _)
       case ParsedTry(expr, handler, finalizer) =>
         changePrec(GlobalPrec) {
-          "try " ~ toText(expr) ~ " catch {" ~ toText(handler) ~ "}" ~ optText(finalizer)(" finally " ~ _)
+          keywordStr("try ") ~ toText(expr) ~ " " ~ keywordStr("catch") ~ " {" ~ toText(handler) ~ "}" ~ optText(finalizer)(keywordStr(" finally ") ~ _)
         }
       case Thicket(trees) =>
         "Thicket {" ~~ toTextGlobal(trees, "\n") ~~ "}"

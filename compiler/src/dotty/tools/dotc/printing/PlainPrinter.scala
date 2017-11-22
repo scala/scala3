@@ -456,12 +456,12 @@ class PlainPrinter(_ctx: Context) extends Printer {
   }
 
   def toText(const: Constant): Text = const.tag match {
-    case StringTag => "\"" + escapedString(const.value.toString) + "\""
+    case StringTag => stringText("\"" + escapedString(const.value.toString) + "\"")
     case ClazzTag => "classOf[" ~ toText(const.typeValue.classSymbol) ~ "]"
-    case CharTag => s"'${escapedChar(const.charValue)}'"
-    case LongTag => const.longValue.toString + "L"
-    case EnumTag => const.symbolValue.name.toString
-    case _ => String.valueOf(const.value)
+    case CharTag => literalText(s"'${escapedChar(const.charValue)}'")
+    case LongTag => literalText(const.longValue.toString + "L")
+    case EnumTag => literalText(const.symbolValue.name.toString)
+    case _ => literalText(String.valueOf(const.value))
   }
 
   def toText(annot: Annotation): Text = s"@${annot.symbol.name}" // for now
@@ -534,5 +534,15 @@ class PlainPrinter(_ctx: Context) extends Printer {
   def summarized[T](op: => T): T = summarized(summarizeDepth)(op)
 
   def plain = this
+
+  protected def keywordStr(text: String): String = coloredStr(text, SyntaxHighlighting.KeywordColor)
+  protected def typeText(text: Text): Text = coloredText(text, SyntaxHighlighting.TypeColor)
+  protected def literalText(text: Text): Text = coloredText(text, SyntaxHighlighting.LiteralColor)
+  protected def stringText(text: Text): Text = coloredText(text, SyntaxHighlighting.StringColor)
+
+  private def coloredStr(text: String, color: String): String =
+    if (ctx.useColors) color + text + SyntaxHighlighting.NoColor else text
+  private def coloredText(text: Text, color: String): Text =
+    if (ctx.useColors) color ~ text ~ SyntaxHighlighting.NoColor else text
 }
 
