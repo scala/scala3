@@ -409,9 +409,15 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
            *  @return  A type transformation to apply to all arguments following this one.
            */
           def addTyped(arg: Arg, formal: Type): Type => Type = {
-            addArg(typedArg(arg, formal), formal)
-            if (methodType.isParamDependent)
-              safeSubstParam(_, methodType.paramRefs(n), typeOfArg(arg))
+            val targ = typedArg(arg, formal)
+            addArg(targ, formal)
+            if (methodType.isParamDependent) {
+              val typeOfArg = targ match {
+                case tp: Type => tp
+                case tree: tpd.Tree => tree.tpe
+              }
+              safeSubstParam(_, methodType.paramRefs(n), typeOfArg)
+            }
             else identity
           }
 
