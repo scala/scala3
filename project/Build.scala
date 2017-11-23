@@ -574,6 +574,11 @@ object Build {
       // Add git-hash used to package the distribution to the manifest to know it in runtime and report it in REPL
       packageOptions += ManifestAttributes(("Git-Hash", VersionUtil.gitHash)),
 
+      scalacOptions ++= Seq(
+        "-Xfatal-warnings",
+        "-unchecked"
+      ),
+
       // http://grokbase.com/t/gg/simple-build-tool/135ke5y90p/sbt-setting-jvm-boot-paramaters-for-scala
       // packageAll should always be run before tests
       javaOptions ++= {
