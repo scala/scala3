@@ -1,6 +1,6 @@
 [submodule "scala-backend"]
 	path = scala-backend
-	url = https://github.com/lampepfl/scala.git
+	url = https://github.com/dotty-staging/scala.git
 	branch = sharing-backend
 [submodule "scala2-library"]
 	path = scala2-library
