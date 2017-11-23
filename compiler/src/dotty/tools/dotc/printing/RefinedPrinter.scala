@@ -706,7 +706,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
 
   override def plain = new PlainPrinter(_ctx)
 
-  def withPos(txt: Text, pos: SourcePosition): Text = {
+  private def withPos(txt: Text, pos: SourcePosition): Text = {
     if (!printLines || !pos.exists) txt
     else txt match {
       case Str(s, _) => Str(s, LineRange(pos.line, pos.endLine))
