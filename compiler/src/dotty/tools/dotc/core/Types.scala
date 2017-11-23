@@ -1510,15 +1510,53 @@ object Types {
 
   trait NamedTypeNEW extends NamedType { self =>
 
-    override def name(implicit ctx: Context) = designator match {
-      case name: Name => name.asInstanceOf[ThisName]
-      case sym: Symbol => sym.name.asInstanceOf[ThisName]
+    private[this] var myName: Name = null
+    private[this] var mySig: Signature = null
+    private[this] var lastSymbol: Symbol = null
+
+    override def name(implicit ctx: Context): ThisName = {
+      if (myName == null) myName = computeName
+      myName.asInstanceOf[ThisName]
     }
 
-    override def symbol(implicit ctx: Context): Symbol = designator match {
-      case sym: Symbol => sym
-      case _ => (if (denotationIsCurrent) lastDenotation else denot).symbol
+    private def computeName: Name = designator match {
+      case name: Name => name
+      case sym: Symbol => sym.lastKnownDenotation.initial.name
     }
+
+    final override def signature(implicit ctx: Context): Signature = {
+      if (mySig == null) mySig = computeSignature
+      mySig
+    }
+
+    def computeSignature(implicit ctx: Context): Signature = {
+      val lastd = lastDenotation
+      if (lastd != null) lastd.signature
+      else symbol.asSeenFrom(prefix).signature
+    }
+
+    private def currentSignature(implicit ctx: Context): Signature =
+      if (mySig != null) mySig
+      else {
+        val lastd = lastDenotation
+        if (lastd != null) lastd.signature
+        else {
+          val sym = currentSymbol
+          if (sym.exists) sym.asSeenFrom(prefix).signature
+          else null
+        }
+      }
+
+    override def symbol(implicit ctx: Context): Symbol =
+      if (checkedPeriod == ctx.period) lastSymbol else computeSymbol
+
+    private def computeSymbol(implicit ctx: Context): Symbol =
+      designator match {
+        case sym: Symbol =>
+          if (sym.isValidInCurrentRun) sym else denot.symbol
+        case name =>
+          (if (denotationIsCurrent) lastDenotation else denot).symbol
+      }
 
     /** If the reference is symbolic or the denotation is current, its symbol, otherwise NoDenotation.
      *
@@ -1540,6 +1578,9 @@ object Types {
     private def lastKnownSymbol =
       if (lastDenotation != null) lastDenotation.symbol else NoSymbol
 
+    private def infoDependsOnPrefix(sym: Symbol, prefix: Type)(implicit ctx: Context): Boolean =
+      sym.maybeOwner.membersNeedAsSeenFrom(prefix) && !sym.is(NonMember)
+
     override protected def computeDenot(implicit ctx: Context): Denotation = {
       def finish(d: Denotation) = {
         if (ctx.typerState.ephemeral)
@@ -1553,54 +1594,79 @@ object Types {
           setDenot(d)
         d
       }
+      //def isStillValidSym(d: Denotation) = d match {
+      //  case sym: SymDenotation => ctx.stillValid(sym)
+      //  case _ => false
+      //}
       val savedEphemeral = ctx.typerState.ephemeral
       ctx.typerState.ephemeral = false
-      try {
-        designator match {
+      try { finish {
+      	val now = {
+          val lastd = lastDenotation
+          if (lastd != null && lastd.validFor.runId == ctx.runId || lastd.isInstanceOf[SymDenotation])
+            lastd.current
+          else designator match {
+            case name: Name =>
+              loadDenot(name, lastSymbol)
+            case sym: Symbol =>
+              if (infoDependsOnPrefix(sym, prefix)) loadDenot(sym.name, sym)
+              else sym.denot
+          }
+        }/*
+        val was = designator match {
           case sym: Symbol =>
+            //if (sym.name.toString == "Long")
+            //  println(i"compute denot of $sym at ${ctx.runId} ${sym.isValidInCurrentRun}")
             if (sym.isValidInCurrentRun) {
               val lastd = lastDenotation
               if (lastd == null)
-                finish(sym.asSeenFrom(prefix))
+                (sym.asSeenFrom(prefix))
               else if (lastd.validFor.runId == ctx.runId || lastd.isInstanceOf[SymDenotation])
-                finish(lastd.current)
+                (lastd.current)
               else
-                finish(loadDenot(sym.name, sym))
+                (loadDenot(sym.name, sym))
             }
-            else finish(loadDenot(sym.name, sym))
+            else (loadDenot(sym.name, sym))
           case name: Name =>
-            finish(loadDenot(name, lastKnownSymbol))
+            (loadDenot(name, lastKnownSymbol))
         }
+        if (now.symbol ne was.symbol)
+          println(s"""diff for computeDenot $toString, ${lastDenotation} ${checkedPeriod.runId} ${ctx.runId}
+                     |was: $was
+                     |now: $now""")*/
+        now
+      }
       }
       finally ctx.typerState.ephemeral |= savedEphemeral
     }
 
     private def loadDenot(name: Name, lastSym: Symbol)(implicit ctx: Context): Denotation = {
-      val d = memberDenot(prefix, name, !lastSym.exists || lastSym.is(Private))
+      var d = memberDenot(prefix, name, lastSym == null || !lastSym.exists || lastSym.is(Private))
       if (!d.exists && ctx.phaseId > FirstPhaseId && lastDenotation.isInstanceOf[SymDenotation]) {
         // name has changed; try load in earlier phase and make current
-        val d = loadDenot(name, lastSym)(ctx.withPhase(ctx.phaseId - 1)).current
-        if (d.exists) d
-        else throw new Error(s"failure to reload $this of class $getClass")
+        d = loadDenot(name, lastSym)(ctx.withPhase(ctx.phaseId - 1)).current
       }
-      else if (d.isOverloaded && lastDenotation != null)
-        d.atSignature(lastDenotation.signature)
-      else d
+      if (d.isOverloaded) {
+        val sig = currentSignature
+        if (sig != null) d = d.atSignature(sig)
+      }
+      d
     }
 
     protected def memberDenot(prefix: Type, name: Name, allowPrivate: Boolean)(implicit ctx: Context): Denotation =
       if (allowPrivate) prefix.member(name) else prefix.nonPrivateMember(name)
 
-    override def checkDenot()(implicit ctx: Context) = {
-      if (name.toString == "TT" && false) {
-        println(i"$toString gets denot $lastDenotation, hash = $hash")
-        assert(lastDenotation.exists)
-      }
-    }
+    override def checkDenot()(implicit ctx: Context) = {}
 
     protected[dotc] override def setDenot(denot: Denotation)(implicit ctx: Context): Unit = {
       lastDenotation = denot
+      lastSymbol = denot.symbol
       checkedPeriod = ctx.period
+      designator match {
+        case sym: Symbol if designator ne lastSymbol =>
+          designator = lastSymbol.asInstanceOf[Designator{ type ThisName = self.ThisName }]
+        case _ =>
+      }
       checkDenot()
     }
 
@@ -1623,6 +1689,33 @@ object Types {
     /** Create a NamedType of the same kind as this type, but with a new prefix.
      */
     override def withPrefix(prefix: Type)(implicit ctx: Context): NamedType = {
+      val now = {
+      def reload(): NamedType = {
+        val allowPrivate = !lastSymbol.exists || lastSymbol.is(Private) && prefix.classSymbol == this.prefix.classSymbol
+        var d = memberDenot(prefix, name, allowPrivate)
+        if (d.isOverloaded && lastSymbol.exists)
+          d = d.atSignature(
+            if (lastSymbol.signature == Signature.NotAMethod) Signature.NotAMethod
+            else lastSymbol.asSeenFrom(prefix).signature)
+        NamedType(prefix, name, d)
+      }
+      if (lastDenotation == null) NamedType(prefix, designator)
+      else designator match {
+        case sym: Symbol =>
+          if (infoDependsOnPrefix(sym, prefix)) {
+            val candidate = reload()
+            val falseOverride = sym.isClass && candidate.symbol.exists && candidate.symbol != symbol
+              // A false override happens if we rebind an inner class to another type with the same name
+              // in an outer subclass. This is wrong, since classes do not override. We need to
+              // return a type with the existing class info as seen from the new prefix instead.
+            if (falseOverride) NamedType(prefix, sym.name, denot.asSeenFrom(prefix))
+            else candidate
+          }
+          else NamedType(prefix, sym)
+        case name: Name => reload()
+      }
+    }/*
+    val was = {
       def reload(name: Name, lastSym: Symbol): NamedType = {
         val allowPrivate = !lastSym.exists || lastSym.is(Private) && prefix.classSymbol == this.prefix.classSymbol
         var d = memberDenot(prefix, name, allowPrivate)
@@ -1652,6 +1745,12 @@ object Types {
       }
       //if (name.toString == "TT") println(i"$this withPrefix $prefix = $res")
       res
+    }
+    if (now ne was)
+          println(s"""diff for withPrefix $toString, prefix = $prefix
+                     |was: $was
+                     |now: $now""")*/
+        now
     }
   }
 
@@ -1683,7 +1782,8 @@ object Types {
     type ThisName <: Name
 
     val prefix: Type
-    val designator: Designator { type ThisName = self.ThisName }
+    def designator: Designator { type ThisName = self.ThisName }
+    def designator_=(d: Designator { type ThisName = self.ThisName }): Unit
 
     assert(prefix.isValueType || (prefix eq NoPrefix), s"invalid prefix $prefix")
 
@@ -1721,7 +1821,7 @@ object Types {
       myName
     }
 
-    final override def signature(implicit ctx: Context): Signature = { // keep
+    override def signature(implicit ctx: Context): Signature = {
       if (mySig == null) mySig = denot.signature
       mySig
     }
@@ -1817,8 +1917,6 @@ object Types {
           // forth also in these cases.
 
           // Don't use setDenot here; double binding checks can give spurious failures after erasure
-          if (name.toString == "Ops")
-            assert(lastSymbol == d.symbol, i"${lastSymbol.showLocated} != ${d.symbol.showLocated}")
           lastDenotation = d
           lastSymbol = d.symbol
           checkedPeriod = ctx.period
@@ -2201,7 +2299,7 @@ object Types {
     */
   }
 
-  abstract case class TermRef(override val prefix: Type, designator: TermDesignator) extends NamedType with SingletonType {
+  abstract case class TermRef(override val prefix: Type, var designator: TermDesignator) extends NamedType with SingletonType {
 
     type ThisType = TermRef
     type ThisName = TermName
@@ -2263,7 +2361,7 @@ object Types {
     }
   }
 
-  abstract case class TypeRef(override val prefix: Type, designator: TypeDesignator) extends NamedType {
+  abstract case class TypeRef(override val prefix: Type, var designator: TypeDesignator) extends NamedType {
 
     type ThisType = TypeRef
     type ThisName = TypeName

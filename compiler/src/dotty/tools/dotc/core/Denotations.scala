@@ -760,22 +760,27 @@ object Denotations {
     /** Invalidate all caches and fields that depend on base classes and their contents */
     def invalidateInheritedInfo(): Unit = ()
 
+    private def updateValidity()(implicit ctx: Context): this.type = {
+      assert(ctx.runId > validFor.runId || ctx.settings.YtestPickler.value, // mixing test pickler with debug printing can travel back in time
+          s"denotation $this invalid in run ${ctx.runId}. ValidFor: $validFor")
+      var d: SingleDenotation = this
+      do {
+        d.validFor = Period(ctx.period.runId, d.validFor.firstPhaseId, d.validFor.lastPhaseId)
+        d.invalidateInheritedInfo()
+        d = d.nextInRun
+      } while (d ne this)
+      this
+    }
+
     /** Move validity period of this denotation to a new run. Throw a StaleSymbol error
      *  if denotation is no longer valid.
      */
     private def bringForward()(implicit ctx: Context): SingleDenotation = this match {
       case denot: SymDenotation if ctx.stillValid(denot) || ctx.acceptStale(denot) =>
-        assert(ctx.runId > validFor.runId || ctx.settings.YtestPickler.value, // mixing test pickler with debug printing can travel back in time
-            s"denotation $denot invalid in run ${ctx.runId}. ValidFor: $validFor")
-        var d: SingleDenotation = denot
-        do {
-          d.validFor = Period(ctx.period.runId, d.validFor.firstPhaseId, d.validFor.lastPhaseId)
-          d.invalidateInheritedInfo()
-          d = d.nextInRun
-        } while (d ne denot)
-        this
+        updateValidity()
       case _ =>
-        if (coveredInterval.containsPhaseId(ctx.phaseId)) {
+        if (!symbol.exists) updateValidity()
+        else if (coveredInterval.containsPhaseId(ctx.phaseId)) {
           if (ctx.debug) ctx.traceInvalid(this)
           staleSymbolError
         }

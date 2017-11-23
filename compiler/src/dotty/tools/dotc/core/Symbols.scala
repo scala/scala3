@@ -451,8 +451,13 @@ object Symbols {
       pos.exists && defRunId == ctx.runId
     }
 
+    /** Is symbol valid in current run? */
     final def isValidInCurrentRun(implicit ctx: Context): Boolean =
-      lastDenot.validFor.runId == ctx.runId || ctx.stillValid(lastDenot)
+      (lastDenot.validFor.runId == ctx.runId || ctx.stillValid(lastDenot)) &&
+      (lastDenot.symbol eq this)
+        // the last condition is needed because overwritten package members keep
+        // denotations pointing to the new symbol, so the validity periods check out OK.
+        // But once a package member is overridden it is not longerr valid.
 
     /** Designator overrides */
     final override def isTerm(implicit ctx: Context): Boolean =
