@@ -8,11 +8,11 @@ class phantomOverload {
   def foo1(): C = nothing2 // error
   def foo1(): N = nothing // error
 
-  def foo2(x: A) = ???
-  def foo2(x: A) = ??? // error
-  def foo2(x: B) = ??? // error
-  def foo2(x: C) = ??? // error
-  def foo2(x: N) = ??? // error
+  def foo2(unused x: A) = ???
+  def foo2(unused x: A) = ??? // error
+  def foo2(unused x: B) = ??? // error
+  def foo2(unused x: C) = ??? // error
+  def foo2(unused x: N) = ??? // error
 }
 
 object Boo extends Phantom {

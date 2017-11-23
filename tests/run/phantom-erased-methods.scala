@@ -1,5 +1,3 @@
-import dotty.runtime.ErasedPhantom
-
 object Test {
   import Boo._
 
@@ -11,18 +9,23 @@ object Test {
     foo.getClass.getDeclaredMethod("fun1")
     foo.getClass.getDeclaredMethod("fun2", classOf[String])
 
-    assert(foo.getClass.getDeclaredMethod("fun3").getReturnType == classOf[ErasedPhantom])
+    try {
+      foo.getClass.getDeclaredMethod("fun3")
+      assert(false)
+    } catch {
+      case _: NoSuchMethodException => // OK
+    }
   }
 }
 
 class Foo {
   import Boo._
-  def fun1(b: BooAny): Unit = ()
-  def fun2(b: BooAny, s: String): Unit = ()
-  def fun3(): BooAny = boo
+  def fun1(unused b: BooAny): Unit = ()
+  def fun2(unused b: BooAny)(s: String): Unit = ()
+  unused def fun3(): BooAny = boo
 }
 
 object Boo extends Phantom {
   type BooAny = Boo.Any
-  def boo: BooAny = assume
+  unused def boo: BooAny = assume
 }

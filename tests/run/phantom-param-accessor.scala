@@ -2,13 +2,14 @@ import Boo._
 
 object Test {
   def main(args: Array[String]): Unit = {
-    new Foo(a).aVal
+    foo(new Foo(a).aVal)
   }
+  def foo(unused a: A) = ()
 }
 
-class Foo(val aVal: A)
+class Foo(unused val aVal: A)
 
 object Boo extends Phantom {
   type A = this.Nothing
-  def a = assume
+  unused def a: A = assume
 }

@@ -9,9 +9,9 @@ object Test {
     fun(hkFun2(boo[Pinky]))
   }
 
-  def fun(top: BooAny): Unit = println("hk2")
+  def fun(unused top: BooAny): Unit = println("hk2")
 
-  def hkFun2[Y <: BooAny](p10: HKPhantom[Y]): HKPhantom[Y] = p10
+  unused def hkFun2[Y <: BooAny](unused p10: HKPhantom[Y]): HKPhantom[Y] = p10
 }
 
 
@@ -20,5 +20,5 @@ object Boo extends Phantom {
   type Blinky <: Boo.Any
   type Inky <: Blinky
   type Pinky <: Inky
-  def boo[B <: Boo.Any]: B = assume
+  unused def boo[B <: Boo.Any]: B = assume
 }

@@ -4,17 +4,18 @@ object MyPhantoms extends Phantom {
   type Pinky <: Inky
   type Clyde <: Pinky
 
-  def pinky: Pinky = assume
-  def clyde: Clyde = assume
+  unused def pinky: Pinky = assume
+  unused def clyde: Clyde = assume
 }
 
 import MyPhantoms._
 object MyApp {
-  def run(phantom: Inky) = println("run")
-  def hide(phantom: Blinky) = println("run")
+  def run(unused phantom: Inky) = println("run")
+  def hide(unused phantom: Blinky) = println("run")
 
   run(pinky)
   run(clyde)
 
-  hide(null.asInstanceOf[Blinky]) // error
+  val a: Blinky = null.asInstanceOf[Blinky] // error
+  hide(a)
 }

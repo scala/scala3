@@ -2,8 +2,8 @@
 class phantomFunApp {
   import Boo._ // Note: this is dangerous as it imports Boo.Any as Any
 
-  def foo1(a: Any) = ???
-  def foo2(b: BooAny) = ???
+  def foo1(unused a: Any) = ???
+  def foo2(unused b: BooAny) = ???
 
   foo1(1)
   foo1(boo[Blinky]) // error

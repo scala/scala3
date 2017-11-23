@@ -1,6 +1,6 @@
 
 class Foo {
-  var foo = Boo.boo // error
+  unused var foo = Boo.boo // error
 }
 
 object Boo extends Phantom {

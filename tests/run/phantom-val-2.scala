@@ -3,15 +3,17 @@ object Test {
   def main(args: Array[String]): Unit = {
     val f = new Foo
     println(1)
-    f.foo
-    f.foo
+    bar(f.foo)
+    bar(f.foo)
     assert(!f.getClass.getDeclaredFields.exists(_.getName.startsWith("foo")), "field foo not erased")
   }
+
+  def bar(unused x: Boo.BooAny) = ()
 }
 
 class Foo {
   import Boo._
-  val foo = {
+  unused val foo = {
     println("foo")
     any
   }
@@ -19,5 +21,5 @@ class Foo {
 
 object Boo extends Phantom {
   type BooAny = this.Any
-  def any: BooAny = assume
+  unused def any: BooAny = assume
 }

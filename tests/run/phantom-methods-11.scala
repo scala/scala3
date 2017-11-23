@@ -43,21 +43,21 @@ object Test {
     )
   }
 
-  def fun(x1: Inky, x2: Inky)(x3: Inky)(x4: Inky, x5: Inky) = {
+  def fun(unused x1: Inky, x2: Inky)(unused x3: Inky)(unused x4: Inky, x5: Inky) = {
     println("fun")
   }
 
-  class Fun(y1: Inky, y2: Inky)(y3: Inky)(y4: Inky, y5: Inky) {
+  class Fun(unused y1: Inky, y2: Inky)(unused y3: Inky)(unused y4: Inky, y5: Inky) {
     println("Fun")
   }
 
   class Fun2 {
     println("Fun2")
-    def fun(z1: Inky, z2: Inky)(z3: Inky)(z4: Inky, z5: Inky) = {
+    def fun(unused z1: Inky, z2: Inky)(unused z3: Inky)(unused z4: Inky, z5: Inky) = {
       println("Fun2fun")
     }
 
-    def fun2[T](z1: Inky, z2: Inky)(z3: Inky)(z4: Inky, z5: Inky) = {
+    def fun2[T](unused z1: Inky, z2: Inky)(unused z3: Inky)(unused z4: Inky, z5: Inky) = {
       println("Fun2fun2")
     }
   }
@@ -65,5 +65,5 @@ object Test {
 
 object Boo extends Phantom {
   type Inky <: this.Any
-  def boo: Inky = assume
+  unused def boo: Inky = assume
 }

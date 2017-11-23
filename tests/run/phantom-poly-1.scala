@@ -14,5 +14,5 @@ object Test {
 
 object Boo extends Phantom {
   type Casper <: this.Any
-  def boo[B <: this.Any]: B = assume
+  unused def boo[B <: this.Any]: B = assume
 }

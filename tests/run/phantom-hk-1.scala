@@ -10,7 +10,7 @@ object Test {
 
   type HKPhantom[X <: Blinky] = X
 
-  def hkFun1[Y <: Blinky](p9: HKPhantom[Y]) = {
+  def hkFun1[Y <: Blinky](unused p9: HKPhantom[Y]) = {
     println("hkFun1")
   }
 
@@ -23,5 +23,5 @@ object Boo extends Phantom {
   type Blinky <: this.Any
   type Inky <: Blinky
   type Pinky <: Inky
-  def boo[B <: this.Any]: B = assume
+  unused def boo[B <: this.Any]: B = assume
 }

@@ -15,9 +15,9 @@ class BooFunDef1 {
   funMulti(a, b, 42) // error
   funMulti(one, two, one) // error // error
 
-  def fun1(x: One, y: Two) = ???
-  def funA(k: A, l: B) = ???
-  def funMulti(k: A, x: One, i: Int) = ???
+  def fun1(unused x: One, y: Two) = ???
+  def funA(unused k: A, l: B) = ???
+  def funMulti(unused k: A, x: One, i: Int) = ???
 }
 
 object Universe1 extends Phantom {

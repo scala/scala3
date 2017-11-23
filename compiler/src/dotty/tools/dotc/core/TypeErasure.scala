@@ -380,7 +380,7 @@ class TypeErasure(isJava: Boolean, semiEraseVCs: Boolean, isConstructor: Boolean
       else if (semiEraseVCs && isDerivedValueClass(sym)) eraseDerivedValueClassRef(tp)
       else if (sym == defn.ArrayClass) apply(tp.appliedTo(TypeBounds.empty)) // i966 shows that we can hit a raw Array type.
       else if (defn.isSyntheticFunctionClass(sym)) defn.erasedFunctionType(sym)
-      else if (defn.isPhantomTerminalClass(sym)) PhantomErasure.erasedPhantomType
+      else if (defn.isPhantomTerminalClass(sym)) defn.ErasedPhantomType
       else if (sym eq defn.PhantomClass) defn.ObjectType // To erase the definitions of Phantom.{assume, Any, Nothing}
       else eraseNormalClassRef(tp)
     case tp: AppliedType =>
@@ -401,10 +401,7 @@ class TypeErasure(isJava: Boolean, semiEraseVCs: Boolean, isConstructor: Boolean
     case tp: MethodType =>
       def paramErasure(tpToErase: Type) =
         erasureFn(tp.isJavaMethod, semiEraseVCs, isConstructor, wildcardOK)(tpToErase)
-      val (names, formals0) =
-        if (tp.isUnusedMethod) (Nil, Nil)
-        else if (tp.paramInfos.exists(_.isPhantom)) tp.paramNames.zip(tp.paramInfos).filterNot(_._2.isPhantom).unzip
-        else (tp.paramNames, tp.paramInfos)
+      val (names, formals0) = if (tp.isUnusedMethod) (Nil, Nil) else (tp.paramNames, tp.paramInfos)
       val formals = formals0.mapConserve(paramErasure)
       eraseResult(tp.resultType) match {
         case rt: MethodType =>
@@ -527,8 +524,6 @@ class TypeErasure(isJava: Boolean, semiEraseVCs: Boolean, isConstructor: Boolean
         }
         if (defn.isSyntheticFunctionClass(sym))
           sigName(defn.erasedFunctionType(sym))
-        else if (defn.isPhantomTerminalClass(tp.symbol))
-          sigName(PhantomErasure.erasedPhantomType)
         else
           normalizeClass(sym.asClass).fullName.asTypeName
       case tp: AppliedType =>

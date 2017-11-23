@@ -1,7 +1,7 @@
 import MyPhantom._
 
 
-class Cursed1(val p: Boo) extends AnyVal // error
+class Cursed1(unused val p: Boo) extends AnyVal // error
 
 class Cursed2(val n: Int)(val a: Int) extends AnyVal // error
 

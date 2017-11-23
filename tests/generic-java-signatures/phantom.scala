@@ -1,11 +1,11 @@
 object MyOtherPhantom extends Phantom {
   type MyPhantom[V] <: this.Any
-  def myPhantom[X]: MyPhantom[X] = assume
+  unused def myPhantom[X]: MyPhantom[X] = assume
 
-  def f1[U, T <: MyPhantom[U]](a: Int, b: T,  c: Int): T = b
+  def f1[U, T <: MyPhantom[U]](a: Int, c: Int)(unused b: T): Int = a
 
   def f2 = {
-    f1(3, myPhantom[Int], 2)
+    f1(3 ,2)(myPhantom[Int])
   }
 }
 

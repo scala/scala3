@@ -3,18 +3,19 @@ object Test {
 
   def main(args: Array[String]): Unit = {
     println(1)
-    foo
-    foo
-
+    bar(foo)
+    bar(foo)
   }
 
-  val foo = {
+  unused val foo = {
     println("foo")
     any
   }
+
+  def bar(unused a: BooAny) = ()
 }
 
 object Boo extends Phantom {
   type BooAny = this.Any
-  def any: BooAny = assume
+  unused def any: BooAny = assume
 }

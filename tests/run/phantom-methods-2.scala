@@ -7,9 +7,9 @@ object Test {
     fun(phantomFun2(Boo.boo[Pinky]))
   }
 
-  def fun(top: Blinky): Unit = println("fun")
+  def fun(unused top: Blinky): Unit = println("fun")
 
-  def phantomFun2(p6: Blinky): Blinky = p6
+  unused def phantomFun2(unused p6: Blinky): Blinky = p6
 
 }
 
@@ -17,5 +17,5 @@ object Boo extends Phantom {
   type Blinky <: Boo.Any
   type Inky <: Blinky
   type Pinky <: Inky
-  def boo[B <: Boo.Any]: B = assume
+  unused def boo[B <: Boo.Any]: B = assume
 }

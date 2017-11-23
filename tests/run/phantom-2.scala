@@ -5,12 +5,12 @@ object Test {
     fun2(Boo.nothig)
   }
 
-  def fun2(bottom: BooNothing): Unit = {
+  def fun2(unused bottom: BooNothing): Unit = {
     println("fun2")
   }
 }
 
 object Boo extends Phantom {
   type BooNothing = this.Nothing
-  def nothig: BooNothing = assume
+  unused def nothig: BooNothing = assume
 }

@@ -7,11 +7,11 @@ object Test {
     bar2(Foo.a)(null)
   }
 
-  def bar1(ev: Foo.A) = ()
-  def bar2(ev: Foo.A)(implicit c: ClassTag[Int]) = implicitly[ClassTag[Int]]
+  def bar1(unused ev: Foo.A) = ()
+  def bar2(unused ev: Foo.A)(implicit c: ClassTag[Int]) = implicitly[ClassTag[Int]]
 }
 
 object Foo extends Phantom {
   type A <: this.Any
-  def a: A = assume
+  unused def a: A = assume
 }

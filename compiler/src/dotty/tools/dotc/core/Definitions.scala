@@ -1198,21 +1198,15 @@ class Definitions {
 
     val any = enterCompleteClassSymbol(cls, tpnme.Any, Protected | Final | NoInitsTrait, Nil)
     val nothing = enterCompleteClassSymbol(cls, tpnme.Nothing, Protected | Final | NoInitsTrait, List(any.typeRef))
-    enterMethod(cls, nme.assume_, ExprType(nothing.typeRef), Protected | Final | Method)
+    enterMethod(cls, nme.assume_, ExprType(nothing.typeRef), Protected | Final | Method | Unused)
 
     cls
   }
   lazy val Phantom_AnyClass = PhantomClass.unforcedDecls.find(_.name eq tpnme.Any).asClass
   lazy val Phantom_NothingClass = PhantomClass.unforcedDecls.find(_.name eq tpnme.Nothing).asClass
-  lazy val Phantom_assume = PhantomClass.unforcedDecls.find(_.name eq nme.assume_)
 
   /** If the symbol is of the class scala.Phantom.Any or scala.Phantom.Nothing */
   def isPhantomTerminalClass(sym: Symbol) = (sym eq Phantom_AnyClass) || (sym eq Phantom_NothingClass)
 
-
   lazy val ErasedPhantomType: TypeRef = ctx.requiredClassRef("dotty.runtime.ErasedPhantom")
-  def ErasedPhantomClass(implicit ctx: Context) = ErasedPhantomType.symbol.asClass
-
-  def ErasedPhantom_UNIT(implicit ctx: Context) = ErasedPhantomClass.linkedClass.requiredValue("UNIT")
-
 }

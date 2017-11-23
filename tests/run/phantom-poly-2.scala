@@ -7,7 +7,7 @@ object Test {
     polyfun2(boo[Pinky])
   }
 
-  def polyfun2[G <: Blinky](p: G): Unit = {
+  def polyfun2[G <: Blinky](unused p: G): Unit = {
     println("polyfun2")
   }
 }
@@ -16,5 +16,5 @@ object Boo extends Phantom {
   type Blinky <: this.Any
   type Inky <: Blinky
   type Pinky <: Inky
-  def boo[B <: this.Any]: B = assume
+  unused def boo[B <: this.Any]: B = assume
 }

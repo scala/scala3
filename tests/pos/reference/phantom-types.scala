@@ -4,14 +4,14 @@ object MyPhantoms extends Phantom {
   type Pinky <: Inky
   type Clyde <: Pinky
 
-  def pinky: Pinky = assume
-  def clyde: Clyde = assume
+  unused def pinky: Pinky = assume
+  unused def clyde: Clyde = assume
 }
 
 import MyPhantoms._
 object MyApp {
-  def run(phantom: Inky) = println("run")
-  def hide(phantom: Blinky) = println("run")
+  def run(unused phantom: Inky) = println("run")
+  def hide(unused phantom: Blinky) = println("run")
 
   run(pinky)
   run(clyde)
@@ -19,11 +19,11 @@ object MyApp {
 
 object MyOtherPhantom extends Phantom {
   type MyPhantom <: this.Any
-  def myPhantom: MyPhantom = assume
+  unused def myPhantom: MyPhantom = assume
 
-  def f1(a: Int, b: MyPhantom, c: Int): Int = a + c
+  def f1(a: Int, b: Int)(unused c: MyPhantom): Int = a + b
 
   def f2 = {
-    f1(3, myPhantom, 2)
+    f1(3, 2)(myPhantom)
   }
 }

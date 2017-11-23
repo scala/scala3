@@ -5,11 +5,11 @@ object Test {
     pacFun4(inky)
   }
 
-  def pacFun4(clyde: Inky) = {
+  def pacFun4(unused clyde: Inky) = {
     println("pacFun4")
   }
 
-  def inky: Inky = {
+  unused def inky: Inky = {
     println("inky")
     Boo.boo[Inky]
   }
@@ -17,5 +17,5 @@ object Test {
 
 object Boo extends Phantom {
   type Inky <: Boo.Any
-  def boo[B <: Boo.Any]: B = assume
+  unused def boo[B <: Boo.Any]: B = assume
 }

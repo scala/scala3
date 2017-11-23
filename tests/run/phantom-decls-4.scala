@@ -7,7 +7,7 @@ object Test {
     new Boo4(boo[Pinky])
   }
 
-  class Boo4(p4: Blinky) {
+  class Boo4(unused p4: Blinky) {
     println("Boo4")
   }
 }
@@ -16,5 +16,5 @@ object Boo extends Phantom {
   type Blinky <: this.Any
   type Inky <: Blinky
   type Pinky <: Inky
-  def boo[B <: Blinky]: B = assume
+  unused def boo[B <: Blinky]: B = assume
 }

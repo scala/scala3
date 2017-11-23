@@ -16,7 +16,7 @@ When saying that they have no effect on the runtime we do not only mean side eff
 like IO, field mutation, exceptions and so on. We also imply that if a function receives 
 a phantom its result will not be affected by this argument.
 
-As phantoms do not live at runtime they cannot be subtypes of `scala.Any`, which defines 
+As phantoms do not live at runtime they cannot be subtypes of `scala.Any`, which defines
 methods such as `hashCode`, `equals`, `getClass`, `asInstanceOf` and `isInstanceOf`. 
 All these operations cannot exist on phantoms as there will not be an underlying object 
 instance at runtime. At first glance this could look like a limitation, but in fact not 
@@ -49,13 +49,13 @@ In fact we allow multiple phantom universes to exist.
          +---------+                +-------------------+       +------------------------+
 ```
 
-Inside a universe the full Dotty type system is supported. But we cannot mix types from 
+Inside a universe the full Dotty type system is supported. But we cannot mix types from
 different universes with `&`, `|` or in type bounds. Each type must be fully defined in a single universe.
 
 
 Implement your own phantom type
 -------------------------------
-Phantom types are defined by an `object` extending `scala.Phantom`. This object will represent 
+Phantom types are defined by an `object` extending `scala.Phantom`. This object will represent
 a universe of phantom types that is completely separated from types in `scala.Any` or other 
 phantom universes. We can define our phantom universe `MyPhantoms`.
 
@@ -68,7 +68,7 @@ package scala
 trait Phantom { // only an `object` can extend this trait
   protected final type Any // not a subtype of scala.Any
   protected final type Nothing // subtype of every subtype of this.Any
-  protected final def assume: this.Nothing
+  protected final unused def assume: this.Nothing
 }
 ```
 
@@ -78,7 +78,7 @@ of the phantom types in `MyPhantoms`, these bounds are `protected` and can not b
 from outside `MyPhantoms` unless an alias is defined for them.
 
 New phantom types can be defined using `type XYZ <: OtherPhantom` (where `>: MyPhantom.Nothing` 
-will be inferred), this would be the equivalent of `class XYZ extends OtherClass` on types 
+will be inferred), this would be the equivalent of `class XYZ extends OtherClass` on types
 only (no runtime definitions). Or aliased with `type MyAny = OtherPhantom`. Within `MyPhantoms` 
 it is possible to refer to `MyPhantoms.Any` and `MyPhantoms.Nothing` with `this.Any` and 
 `this.Nothing` (or just `Any` and `Nothing` but not recommended). Using this we will define
@@ -94,7 +94,7 @@ object MyPhantoms extends Phantom {
 ```
 
 Values of phantom type can be created using the `protected def assume`. This value can be 
-used as a value of this phantom type as its type is `this.Nothing` (or `MyPhantoms.Nothing`). 
+used as a value of this phantom type as its type is `this.Nothing` (or `MyPhantoms.Nothing`).
 Usually this value will be used to define a `implicit def` that returns the phantom with a more 
 precise type. In our example we will only create values of type `Pinky` and `Clyde`
 
@@ -102,8 +102,8 @@ precise type. In our example we will only create values of type `Pinky` and `Cly
 object MyPhantoms extends Phantom {
   ... // Type definition
 
-  def pinky: Pinky = assume
-  def clyde: Clyde = assume
+  unused def pinky: Pinky = assume
+  unused def clyde: Clyde = assume
 }
 ```
 
@@ -115,8 +115,8 @@ We can look at the following simple application:
 ```scala
 import MyPhantoms._
 object MyApp {
-  def run(phantom: Inky) = println("run")
-  def hide(phantom: Blinky) = println("run")
+  def run(unused phantom: Inky) = println("run")
+  def hide(unused phantom: Blinky) = println("run")
 
   run(pinky)
   run(clyde)
@@ -134,48 +134,4 @@ mistakes before when compiling the code, no surprises at runtime (hopefully not 
 What happens with Phantoms at runtime?
 --------------------------------------
 
-Disclaimer: Most of phantom erasure is implemented, but not all of is has been merged in `dotty/master` yet.
-
-As phantoms have no effect on the result of a method invocation we just remove them for the call and definition. 
-The evaluation of the phantom parameter is still done unless it can be optimized away. 
-By removing them we also restrict overloading as `def f()` and `def f(x: MyPhantom)` will 
-have the same signature in the bytecode, just use different names to avoid this.
-
-At runtime the `scala.Phantom` trait will not exist.
-* The object extending `Phantom` will not extend it anymore
-* All phantom types will be erased on a single erased type (important in overloading for methods returning a phantom)
-* Calls to `Phantom.assume` will become a reference to a singleton of the erased phantom type and will be removed wherever possible
-
-```scala
-object MyOtherPhantom extends Phantom {
-  type MyPhantom <: this.Any
-  def myPhantom: MyPhantom = assume
-
-  def f1(a: Int, b: MyPhantom, c: Int): Int = a + c
-
-  def f2 = {
-    f1(3, myPhantom, 2)
-  }
-}
-```
-
-will be compiled to
-
-```scala
-object MyOtherPhantom {
-  def myPhantom(): <ErasedPhantom> = <ErasedPhantom.UNIT>
-
-  def f1(a: Int, c: Int): Int = a + c
-
-  def f2 = {
-    val a$ = 3
-    myPhantom()
-    val b$ = 3
-    f1(a$, b$)
-  }
-}
-```
-
-Note that `myPhantom` is not removed as it could have some side effect before returning the phantom. 
-To remove it just use `inline def myPhantom` instead this will remove the call and allow the 
-`<ErasedPhantom.UNIT>` to be optimized away.
+All phantoms are erased using the `unused` keyword. They will simply not exist at runtime.
