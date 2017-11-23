@@ -725,23 +725,23 @@ object Symbols {
     def clear(): Unit = value.clear()
 
     def filter(p: ((Symbol, T)) => Boolean): Map[Symbol, T] = {
-      import scala.collection.JavaConversions._
-      value.toMap.filter(p)
+      import scala.collection.JavaConverters._
+      value.asScala.toMap.filter(p)
     }
 
     def iterator: Iterator[(Symbol, T)] = {
-      import scala.collection.JavaConversions._
-      value.iterator
+      import scala.collection.JavaConverters._
+      value.asScala.iterator
     }
 
     def keysIterator: Iterator[Symbol] = {
-      import scala.collection.JavaConversions._
-      value.keySet().iterator
+      import scala.collection.JavaConverters._
+      value.keySet().asScala.iterator
     }
 
     def toMap: Map[Symbol, T] = {
-      import scala.collection.JavaConversions._
-      value.toMap
+      import scala.collection.JavaConverters._
+      value.asScala.toMap
     }
   }
 
