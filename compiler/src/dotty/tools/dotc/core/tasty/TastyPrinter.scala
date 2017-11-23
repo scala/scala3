@@ -10,6 +10,7 @@ import TastyUnpickler._
 import TastyBuffer.{Addr, NameRef}
 import util.Positions.{Position, offsetToInt}
 import collection.mutable
+import printing.Highlighting._
 
 class TastyPrinter(bytes: Array[Byte])(implicit ctx: Context) {
 
@@ -22,8 +23,8 @@ class TastyPrinter(bytes: Array[Byte])(implicit ctx: Context) {
 
   def printNames() =
     for ((name, idx) <- nameAtRef.contents.zipWithIndex) {
-      val index = "%4d: ".format(idx)
-      println(index + nameToString(name))
+      val index = nameColor("%4d".format(idx))
+      println(index + ": " + nameToString(name))
     }
 
   def printContents(): Unit = {
@@ -41,13 +42,13 @@ class TastyPrinter(bytes: Array[Byte])(implicit ctx: Context) {
       import reader._
       var indent = 0
       def newLine() = {
-        val length = "%5d:".format(index(currentAddr) - index(startAddr))
-        print(s"\n $length" + " " * indent)
+        val length = treeColor("%5d".format(index(currentAddr) - index(startAddr)))
+        print(s"\n $length:" + " " * indent)
       }
-      def printNat() = print(" " + readNat())
+      def printNat() = print(Yellow(" " + readNat()).show)
       def printName() = {
         val idx = readNat()
-        print(" ") ;print(idx); print("["); print(nameRefToString(NameRef(idx))); print("]")
+        print(nameColor(" " + idx + " [" + nameRefToString(NameRef(idx)) + "]").show)
       }
       def printTree(): Unit = {
         newLine()
@@ -56,7 +57,7 @@ class TastyPrinter(bytes: Array[Byte])(implicit ctx: Context) {
         indent += 2
         if (tag >= firstLengthTreeTag) {
           val len = readNat()
-          print(s"($len)")
+          print(s"(${lengthColor(len.toString)})")
           val end = currentAddr + len
           def printTrees() = until(end)(printTree())
           tag match {
@@ -83,7 +84,7 @@ class TastyPrinter(bytes: Array[Byte])(implicit ctx: Context) {
         }
         else if (tag >= firstNatASTTreeTag) {
           tag match {
-            case IDENT | SELECT | TERMREF | TYPEREF | SELFDEF => printName()
+            case IDENT | IDENTtpt | SELECT | TERMREF | TYPEREF | SELFDEF => printName()
             case _ => printNat()
           }
           printTree()
@@ -108,11 +109,18 @@ class TastyPrinter(bytes: Array[Byte])(implicit ctx: Context) {
 
   class PositionSectionUnpickler extends SectionUnpickler[Unit]("Positions") {
     def unpickle(reader: TastyReader, tastyName: NameTable): Unit = {
-      print(s"${reader.endAddr.index - reader.currentAddr.index}")
+      print(s" ${reader.endAddr.index - reader.currentAddr.index}")
       val positions = new PositionUnpickler(reader).positions
       println(s" position bytes:")
       val sorted = positions.toSeq.sortBy(_._1.index)
-      for ((addr, pos) <- sorted) println(s"       ${addr.index}: ${offsetToInt(pos.start)} .. ${pos.end}")
+      for ((addr, pos) <- sorted) {
+        print(treeColor("%10d".format(addr.index)))
+        println(s": ${offsetToInt(pos.start)} .. ${pos.end}")
+      }
     }
   }
+
+  private def nameColor(str: String): String = Magenta(str).show
+  private def treeColor(str: String): String = Yellow(str).show
+  private def lengthColor(str: String): String = Cyan(str).show
 }
