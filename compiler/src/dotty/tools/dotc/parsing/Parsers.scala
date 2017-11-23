@@ -928,9 +928,9 @@ object Parsers {
             in.nextToken()
             otherArgs(NamedArg(name, typ()), namedTypeArg)
           case firstArg =>
-            otherArgs(firstArg, typ)
+            otherArgs(firstArg, () => typ())
         }
-      else commaSeparated(typParser)
+      else commaSeparated(() => typParser())
     }
 
     /** FunArgType ::=  Type | `=>' Type
@@ -1851,7 +1851,7 @@ object Parsers {
           TypeDef(name, lambdaAbstract(hkparams, bounds)).withMods(mods)
         }
       }
-      commaSeparated(typeParam)
+      commaSeparated(() => typeParam())
     }
 
     def typeParamClauseOpt(ownerKind: ParamOwner.Value): List[TypeDef] =
@@ -1924,7 +1924,7 @@ object Parsers {
             implicitOffset = in.offset
             imods = implicitMods()
           }
-          commaSeparated(param)
+          commaSeparated(() => param())
         }
       }
       def clauses(): List[List[ValDef]] = {
@@ -2309,7 +2309,7 @@ object Parsers {
           classDefRest(start, mods1, id.name.toTypeName)
         else if (in.token == COMMA) {
           in.nextToken()
-          val ids = commaSeparated(termIdent)
+          val ids = commaSeparated(() => termIdent())
           PatDef(mods1, id :: ids, TypeTree(), EmptyTree)
         }
         else
