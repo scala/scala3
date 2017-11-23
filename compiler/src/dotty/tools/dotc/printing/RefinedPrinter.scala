@@ -16,6 +16,8 @@ import config.Config
 import transform.SymUtils._
 import scala.annotation.switch
 import language.implicitConversions
+import dotty.tools.dotc.util.SourcePosition
+
 
 class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
 
@@ -23,6 +25,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
   private[this] var enclosingDef: untpd.Tree = untpd.EmptyTree
   private[this] var myCtx: Context = _ctx
   private[this] var printPos = ctx.settings.Yprintpos.value
+  private[this] val printLines = ctx.settings.printLines.value
   override protected[this] implicit def ctx: Context = myCtx
 
   def withEnclosingDef(enclDef: Tree[_ >: Untyped])(op: => Text): Text = {
@@ -287,9 +290,17 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       if (ctx.settings.uniqid.value && tree.hasType && tree.symbol.exists) s"#${tree.symbol.id}" else ""
     }
 
-    def nameIdText(tree: untpd.NameTree): Text =
-      if (tree.hasType && tree.symbol.exists) nameString(tree.symbol)
+    def nameIdText(tree: untpd.NameTree): Text = {
+      if (tree.hasType && tree.symbol.exists) {
+        val str: Text = nameString(tree.symbol)
+        tree match {
+          case tree: RefTree => withPos(str, tree.pos)
+          case tree: MemberDef => withPos(str, tree.namePos)
+          case _ => str
+        }
+      }
       else toText(tree.name) ~ idText(tree)
+    }
 
     def toTextTemplate(impl: Template, ofNew: Boolean = false): Text = {
       val Template(constr @ DefDef(_, tparams, vparamss, _, _), parents, self, _) = impl
@@ -343,7 +354,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         tree.typeOpt match {
           case tp: NamedType if name != nme.WILDCARD =>
             val pre = if (tp.symbol is JavaStatic) tp.prefix.widen else tp.prefix
-            toTextPrefix(pre) ~ selectionString(tp)
+            toTextPrefix(pre) ~ withPos(selectionString(tp), tree.pos)
           case _ =>
             toText(name)
         }
@@ -365,8 +376,8 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         toTextLocal(fun) ~ "[" ~ toTextGlobal(args, ", ") ~ "]"
       case Literal(c) =>
         tree.typeOpt match {
-          case ConstantType(tc) => toText(tc)
-          case _ => toText(c)
+          case ConstantType(tc) => withPos(toText(tc), tree.pos)
+          case _ => withPos(toText(c), tree.pos)
         }
       case New(tpt) =>
         "new " ~ {
@@ -517,7 +528,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       case SymbolLit(str) =>
         "'" + str
       case InterpolatedString(id, segments) =>
-        def strText(str: Literal) = Str(escapedString(str.const.stringValue))
+        def strText(str: Literal) = withPos(escapedString(str.const.stringValue), tree.pos)
         def segmentText(segment: Tree) = segment match {
           case Thicket(List(str: Literal, expr)) => strText(str) ~ "{" ~ toTextGlobal(expr) ~ "}"
           case str: Literal => strText(str)
@@ -694,4 +705,12 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
   }
 
   override def plain = new PlainPrinter(_ctx)
+
+  private def withPos(txt: Text, pos: SourcePosition): Text = {
+    if (!printLines || !pos.exists) txt
+    else txt match {
+      case Str(s, _) => Str(s, LineRange(pos.line, pos.endLine))
+      case _ => txt
+    }
+  }
 }
