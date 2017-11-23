@@ -620,7 +620,7 @@ trait Implicits { self: Typer =>
      *  new Representable[A] {
      *    type Repr[t] = T1 |: T2 |: ... |: Tn |: PNil
      *
-     *    def to[T](a: A): Repr[T] = a match {
+     *    def to[T](a: A): Repr[T] = (@unchecked a) match {
      *      case x: T1 => SLeft(x)
      *      case x: T2 => SRight(SLeft(x))
      *      ...
@@ -637,6 +637,7 @@ trait Implicits { self: Typer =>
      */
     def synthesizedRepresentable(formal: Type)(implicit ctx: Context): Tree = {
       formal.argTypes match {
+        // Products
         case (A @ _) :: Nil if defn.isProductSubType(A) =>
           typed {
             import untpd._
@@ -700,12 +701,15 @@ trait Implicits { self: Typer =>
             val parents  = TypeTree(defn.RepresentableType.appliedTo(A)) :: Nil
             New(Template(emptyConstructor, parents, EmptyValDef, repr :: to :: from :: Nil)).withPos(pos)
           }
+
+        // Sums
         case (A @ _) :: Nil if A.typeSymbol.is(Sealed) =>
           typed {
             import untpd._
             import transform.SymUtils._
 
             val sumTypes = A.classSymbol.children.map(_.typeRef).reverse // Reveresed to match order in source
+            if (sumTypes.isEmpty) return typed(EmptyTree)
             val sumTypesSize = sumTypes.size
             val X = tpnme.syntheticTypeParamName(0)
             val noBounds = TypeBoundsTree(EmptyTree, EmptyTree)
@@ -734,7 +738,7 @@ trait Implicits { self: Typer =>
               def asInstance(tp: Type): Tree = tree.select(nme.asInstanceOf_).appliedToType(tp)
             }
 
-            // def to[T](a: A): Repr[T] = a match {
+            // def to[T](a: A): Repr[T] = (@unchecked a) match {
             //   case x: T1 => SLeft(x)
             //   case x: T2 => SRight(SLeft(x))
             //   ...
@@ -742,28 +746,19 @@ trait Implicits { self: Typer =>
             // }
             val to: Tree = {
               val arg = makeSyntheticParameter(tpt = TypeTree(A))
-              def sumInjector(elem: Tree, depth: List[Any]): Tree = {
+              def sumInjector(elem: Tree, depth: Int): Tree = {
                 def SLeft(t: Tree) = Apply(rootQual(nme.SLeft), t)
                 def SRight(t: Tree) = Apply(rootQual(nme.SRight), t)
-                depth.tail.foldLeft[Tree](SLeft(elem)) { case (acc, _) => SRight(acc) }
+                (1 to depth).foldLeft[Tree](SLeft(elem)) { case (acc, _) => SRight(acc) }
               }
-              // The current implementation directly generates an expended
-              // version of the above match expression. Assuming a case-of-case
-              // like optimization was added to Dotty this would need to be
-              // refactored into a proper match.
-              @tailrec def mkIfChain(typesToTest: List[Type], acc: Tree): Tree =
-                typesToTest match {
-                  case x :: xs =>
-                    mkIfChain(xs,
-                      If(cond  = Ident(arg.name).isInstance(x),
-                         thenp = sumInjector(Ident(arg.name).asInstance(x), typesToTest),
-                         elsep = acc
-                      )
-                    )
-                  case Nil => acc
+              val cases = {
+                val x = nme.syntheticParamName(0)
+                sumTypes.zipWithIndex.map { case (tpe, depth) =>
+                  CaseDef(Typed(Ident(x), TypeTree(tpe)), EmptyTree, sumInjector(Ident(x), depth))
                 }
-              val (last :: typesToTest) = sumTypes.reverse // TODO: handle productTypesSize == 0
-              val body = mkIfChain(typesToTest, sumInjector(Ident(arg.name).asInstance(last), sumTypes))
+              }
+              val unchecked = Select(Ident(nme.scala_), "unchecked".toTypeName)
+              val body = Match(Annotated(Ident(arg.name), untpd.New(unchecked, Nil)), cases)
               DefDef(
                 name     = nme.to,
                 tparams  = TypeDef(X, noBounds) :: Nil,
