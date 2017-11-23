@@ -340,15 +340,11 @@ object StdNames {
     val NoSymbol: N             = "NoSymbol"
     val NoType: N               = "NoType"
     val Pair: N                 = "Pair"
-    val PCons: N                = "PCons"
-    val PNil: N                 = "PNil"
     val Ref: N                  = "Ref"
     val RootPackage: N          = "RootPackage"
     val RootClass: N            = "RootClass"
     val Scala2: N               = "Scala2"
     val Select: N               = "Select"
-    val SLeft: N                = "SLeft"
-    val SRight: N               = "SRight"
     val StringContext: N        = "StringContext"
     val This: N                 = "This"
     val ThisType: N             = "ThisType"
@@ -425,7 +421,6 @@ object StdNames {
     val flagsFromBits : N       = "flagsFromBits"
     val flatMap: N              = "flatMap"
     val foreach: N              = "foreach"
-    val from: N                 = "from"
     val genericArrayOps: N      = "genericArrayOps"
     val get: N                  = "get"
     val getClass_ : N           = "getClass"
@@ -520,7 +515,6 @@ object StdNames {
     val this_ : N               = "this"
     val thisPrefix : N          = "thisPrefix"
     val throw_ : N              = "throw"
-    val to: N                   = "to"
     val toArray: N              = "toArray"
     val toList: N               = "toList"
     val toObjectArray : N       = "toObjectArray"
@@ -749,7 +743,6 @@ object StdNames {
     final val Conforms = encode("<:<")
 
     final val Uninstantiated: TypeName = "?$"
-    final val Repr: TypeName = "Repr"
   }
 
   abstract class JavaNames[N <: Name] extends DefinedNames[N] {
