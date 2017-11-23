@@ -1017,7 +1017,17 @@ object desugar {
     }
 
     // begin desugar
+
+    // Special case for `Parens` desugaring: unlike all the desugarings below,
+    // its output is not a new tree but an existing one whose position should
+    // be preserved, so we shouldn't call `withPos` on it.
     tree match {
+      case Parens(t) =>
+        return t
+      case _ =>
+    }
+
+    val desugared = tree match {
       case SymbolLit(str) =>
         Apply(
           ref(defn.SymbolClass.companionModule.termRef),
@@ -1057,8 +1067,6 @@ object desugar {
         }
       case PrefixOp(op, t) =>
         Select(t, nme.UNARY_PREFIX ++ op.name)
-      case Parens(t) =>
-        t
       case Tuple(ts) =>
         val arity = ts.length
         def tupleTypeRef = defn.TupleType(arity)
@@ -1096,7 +1104,8 @@ object desugar {
               finalizer)
         }
     }
-  }.withPos(tree.pos)
+    desugared.withPos(tree.pos)
+  }
 
   /** Create a class definition with the same info as the refined type given by `parent`
    *  and `refinements`.
