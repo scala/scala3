@@ -9,7 +9,7 @@ class Test {
 
     xs match {
       case Yes(x) :: ls => println("Yes")
-      case No(y) :: ls => println("No") // unreachable code
+      case No(y) :: ls => println("No")
       case _ =>
     }
   }
@@ -26,7 +26,7 @@ class Test2 {
 
     xs match {
       case No() :: ls => println("No")
-      case Yes() :: ls => println("Yes") // unreachable code
+      case Yes() :: ls => println("Yes")
       case _ =>
     }
   }
