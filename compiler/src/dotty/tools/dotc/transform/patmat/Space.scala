@@ -400,9 +400,9 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
         if (fun.symbol.owner == scalaSeqFactoryClass)
           projectSeq(pats)
         else
-          Prod(pat.tpe.stripAnnots, fun.tpe.widen, fun.symbol, projectSeq(pats) :: Nil, irrefutable(fun))
+          Prod(pat.tpe.stripAnnots, fun.tpe, fun.symbol, projectSeq(pats) :: Nil, irrefutable(fun))
       else
-        Prod(pat.tpe.stripAnnots, fun.tpe.widen, fun.symbol, pats.map(project), irrefutable(fun))
+        Prod(pat.tpe.stripAnnots, fun.tpe, fun.symbol, pats.map(project), irrefutable(fun))
     case Typed(pat @ UnApply(_, _, _), _) => project(pat)
     case Typed(expr, tpt) =>
       Typ(erase(expr.tpe.stripAnnots), true)
