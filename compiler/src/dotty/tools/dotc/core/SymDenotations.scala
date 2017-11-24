@@ -1847,7 +1847,6 @@ object SymDenotations {
       if (entry != null) {
         if (entry.sym == sym) return false
         mscope.unlink(entry)
-        entry.sym.denot = sym.denot // to avoid stale symbols
         if (sym.name == nme.PACKAGE) packageObjRunId = NoRunId
       }
       true
