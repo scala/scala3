@@ -103,7 +103,7 @@ trait Reporting { this: Context =>
    *  "contains" here.
    */
   def log(msg: => String, pos: SourcePosition = NoSourcePosition): Unit =
-    if (this.settings.log.value.containsPhase(phase))
+    if (this.settings.Ylog.value.containsPhase(phase))
       echo(s"[log ${ctx.phasesStack.reverse.mkString(" -> ")}] $msg", pos)
 
   def debuglog(msg: => String): Unit =
@@ -123,7 +123,7 @@ trait Reporting { this: Context =>
   }
 
   def debugwarn(msg: => String, pos: SourcePosition = NoSourcePosition): Unit =
-    if (this.settings.debug.value) warning(msg, pos)
+    if (this.settings.Ydebug.value) warning(msg, pos)
 }
 
 /**

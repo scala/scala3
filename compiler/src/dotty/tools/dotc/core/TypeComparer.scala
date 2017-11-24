@@ -1625,7 +1625,7 @@ class ExplainingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
     }
 
   private def show(res: Any) = res match {
-    case res: printing.Showable if !ctx.settings.Yexplainlowlevel.value => res.show
+    case res: printing.Showable if !ctx.settings.YexplainLowlevel.value => res.show
     case _ => String.valueOf(res)
   }
 

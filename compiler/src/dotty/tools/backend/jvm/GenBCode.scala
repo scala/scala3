@@ -225,7 +225,7 @@ class GenBCodePipeline(val entryPoints: List[Symbol], val int: DottyBackendInter
           for (binary <- ctx.compilationUnit.pickled.get(claszSymbol.asClass)) {
             val store = if (mirrorC ne null) mirrorC else plainC
             val tasty =
-              if (ctx.settings.emitTasty.value) {
+              if (ctx.settings.YemitTasty.value) {
                 val outTastyFile = getFileForClassfile(outF, store.name, ".tasty")
                 val outstream = new DataOutputStream(outTastyFile.bufferedOutput)
                 try outstream.write(binary)

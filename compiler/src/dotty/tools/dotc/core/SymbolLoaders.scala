@@ -71,11 +71,11 @@ class SymbolLoaders {
       // offer a setting to resolve the conflict one way or the other.
       // This was motivated by the desire to use YourKit probes, which
       // require yjp.jar at runtime. See SI-2089.
-      if (ctx.settings.termConflict.isDefault)
+      if (ctx.settings.YtermConflict.isDefault)
         throw new TypeError(
           i"""$owner contains object and package with same name: $pname
              |one of them needs to be removed from classpath""")
-      else if (ctx.settings.termConflict.value == "package") {
+      else if (ctx.settings.YtermConflict.value == "package") {
         ctx.warning(
           s"Resolving package/object name conflict in favor of package ${preExisting.fullName}. The object will be inaccessible.")
         owner.asClass.delete(preExisting)
@@ -265,7 +265,7 @@ abstract class SymbolLoader extends LazyType {
     }
     try {
       val start = currentTime
-      if (ctx.settings.debugTrace.value)
+      if (ctx.settings.YdebugTrace.value)
         trace(s">>>> loading ${root.debugString}", _ => s"<<<< loaded ${root.debugString}") {
           doComplete(root)
         }

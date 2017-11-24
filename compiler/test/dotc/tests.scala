@@ -73,7 +73,7 @@ class tests extends CompilerTest {
     else List("-Ycheck:tailrec,resolveSuper,mixin,elimStaticThis,labelDef,simplify")
   } ++ checkOptions ++ classPath
 
-  val testPickling = List("-Xprint-types", "-Ytest-pickler", "-Ystop-after:pickler", "-Yprintpos")
+  val testPickling = List("-Xprint-types", "-Ytest-pickler", "-Ystop-after:pickler", "-Yprint-pos")
 
   val twice = List("#runs", "2")
   val staleSymbolError: List[String] = List()
