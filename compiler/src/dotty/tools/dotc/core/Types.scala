@@ -1582,6 +1582,7 @@ object Types {
       symd.maybeOwner.membersNeedAsSeenFrom(prefix) && !symd.is(NonMember)
 
     override protected def computeDenot(implicit ctx: Context): Denotation = {
+
       def finish(d: Denotation) = {
         if (ctx.typerState.ephemeral)
           record("ephemeral cache miss: loadDenot")
@@ -1594,36 +1595,56 @@ object Types {
           setDenot(d)
         d
       }
+
+      def fromDesignator = designator match {
+        case name: Name =>
+          val sym = lastSymbol
+          val allowPrivate = sym == null || (sym == NoSymbol) || sym.lastKnownDenotation.flagsUNSAFE.is(Private)
+          finish(loadDenot(name, allowPrivate))
+        case sym: Symbol =>
+          val symd = sym.lastKnownDenotation
+          if (symd.validFor.runId != ctx.runId && !ctx.stillValid(symd))
+            finish(loadDenot(symd.name, allowPrivate = false))
+          else if (infoDependsOnPrefix(symd, prefix))
+            finish(loadDenot(symd.name, allowPrivate = symd.is(Private)))
+          else
+            finish(symd.current)
+      }
+
       val savedEphemeral = ctx.typerState.ephemeral
       ctx.typerState.ephemeral = false
       try
         lastDenotation match {
-          case lastd: SingleDenotation =>
+          case lastd0: SingleDenotation =>
+            val lastd = lastd0.skipRemoved
             if (lastd.validFor.runId == ctx.runId) finish(lastd.current)
             else lastd match {
               case lastd: SymDenotation =>
                 if (ctx.stillValid(lastd)) finish(lastd.current)
-                else finish(loadDenot(lastd.name, lastd))
+                else
+                  try finish(loadDenot(lastd.name, allowPrivate = false))
+                  catch {
+                    case ex: AssertionError =>
+                      println(i"assertion failed while $this . $lastd . ${lastd.validFor} ${lastd.flagsUNSAFE}")
+                      throw ex
+                  }
+              case _ =>
+                fromDesignator
             }
-          case _ =>
-            designator match {
-              case name: Name =>
-                val symd = if (lastSymbol == null) NoDenotation else lastSymbol.denot
-                finish(loadDenot(name, symd))
-              case sym: Symbol =>
-                val symd = sym.denot
-                if (infoDependsOnPrefix(symd, prefix)) finish(loadDenot(sym.name, symd))
-                else finish(symd)
-            }
+          case _ => fromDesignator
         }
       finally ctx.typerState.ephemeral |= savedEphemeral
     }
 
-    private def loadDenot(name: Name, lastd: SymDenotation)(implicit ctx: Context): Denotation = {
-      var d = memberDenot(prefix, name, !lastd.exists || lastd.is(Private))
+    private def loadDenot(name: Name, allowPrivate: Boolean)(implicit ctx: Context): Denotation = {
+      var d = memberDenot(prefix, name, allowPrivate)
+      if (!d.exists) {
+        val d1 = memberDenot(prefix, name, true)
+        assert(!d1.exists, i"bad allow private $this $name $d1 at ${ctx.phase}")
+      }
       if (!d.exists && ctx.phaseId > FirstPhaseId && lastDenotation.isInstanceOf[SymDenotation]) {
         // name has changed; try load in earlier phase and make current
-        d = loadDenot(name, lastd)(ctx.withPhase(ctx.phaseId - 1)).current
+        d = loadDenot(name, allowPrivate)(ctx.withPhase(ctx.phaseId - 1)).current
       }
       if (d.isOverloaded) {
         val sig = currentSignature

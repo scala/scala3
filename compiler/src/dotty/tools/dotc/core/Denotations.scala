@@ -801,6 +801,12 @@ object Denotations {
       p1
     }
 
+    /** Skip any denotations that have been removed by an installAfter or that
+     *  are otherwise undefined.
+     */
+    def skipRemoved(implicit ctx: Context): SingleDenotation =
+      if (myValidFor.code <= 0) nextDefined else this
+
     /** Produce a denotation that is valid for the given context.
      *  Usually called when !(validFor contains ctx.period)
      *  (even though this is not a precondition).
