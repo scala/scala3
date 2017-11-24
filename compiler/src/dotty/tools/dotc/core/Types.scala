@@ -1150,7 +1150,7 @@ object Types {
       else TermRef(this, name)
 
     def select(name: TermName, sig: Signature)(implicit ctx: Context): TermRef =
-      TermRef(this, name, member(name).atSignature(sig))
+      TermRef(this, name, member(name).atSignature(sig, relaxed = !ctx.erasedTypes))
 
 // ----- Access to parts --------------------------------------------
 
@@ -1578,8 +1578,8 @@ object Types {
     private def lastKnownSymbol =
       if (lastDenotation != null) lastDenotation.symbol else NoSymbol
 
-    private def infoDependsOnPrefix(sym: Symbol, prefix: Type)(implicit ctx: Context): Boolean =
-      sym.maybeOwner.membersNeedAsSeenFrom(prefix) && !sym.is(NonMember)
+    private def infoDependsOnPrefix(symd: SymDenotation, prefix: Type)(implicit ctx: Context): Boolean =
+      symd.maybeOwner.membersNeedAsSeenFrom(prefix) && !symd.is(NonMember)
 
     override protected def computeDenot(implicit ctx: Context): Denotation = {
       def finish(d: Denotation) = {
@@ -1594,61 +1594,40 @@ object Types {
           setDenot(d)
         d
       }
-      //def isStillValidSym(d: Denotation) = d match {
-      //  case sym: SymDenotation => ctx.stillValid(sym)
-      //  case _ => false
-      //}
       val savedEphemeral = ctx.typerState.ephemeral
       ctx.typerState.ephemeral = false
-      try { finish {
-      	val now = {
-          val lastd = lastDenotation
-          if (lastd != null && lastd.validFor.runId == ctx.runId || lastd.isInstanceOf[SymDenotation])
-            lastd.current
-          else designator match {
-            case name: Name =>
-              loadDenot(name, lastSymbol)
-            case sym: Symbol =>
-              if (infoDependsOnPrefix(sym, prefix)) loadDenot(sym.name, sym)
-              else sym.denot
-          }
-        }/*
-        val was = designator match {
-          case sym: Symbol =>
-            //if (sym.name.toString == "Long")
-            //  println(i"compute denot of $sym at ${ctx.runId} ${sym.isValidInCurrentRun}")
-            if (sym.isValidInCurrentRun) {
-              val lastd = lastDenotation
-              if (lastd == null)
-                (sym.asSeenFrom(prefix))
-              else if (lastd.validFor.runId == ctx.runId || lastd.isInstanceOf[SymDenotation])
-                (lastd.current)
-              else
-                (loadDenot(sym.name, sym))
+      try
+        lastDenotation match {
+          case lastd: SingleDenotation =>
+            if (lastd.validFor.runId == ctx.runId) finish(lastd.current)
+            else lastd match {
+              case lastd: SymDenotation =>
+                if (ctx.stillValid(lastd)) finish(lastd.current)
+                else finish(loadDenot(lastd.name, lastd))
             }
-            else (loadDenot(sym.name, sym))
-          case name: Name =>
-            (loadDenot(name, lastKnownSymbol))
+          case _ =>
+            designator match {
+              case name: Name =>
+                val symd = if (lastSymbol == null) NoDenotation else lastSymbol.denot
+                finish(loadDenot(name, symd))
+              case sym: Symbol =>
+                val symd = sym.denot
+                if (infoDependsOnPrefix(symd, prefix)) finish(loadDenot(sym.name, symd))
+                else finish(symd)
+            }
         }
-        if (now.symbol ne was.symbol)
-          println(s"""diff for computeDenot $toString, ${lastDenotation} ${checkedPeriod.runId} ${ctx.runId}
-                     |was: $was
-                     |now: $now""")*/
-        now
-      }
-      }
       finally ctx.typerState.ephemeral |= savedEphemeral
     }
 
-    private def loadDenot(name: Name, lastSym: Symbol)(implicit ctx: Context): Denotation = {
-      var d = memberDenot(prefix, name, lastSym == null || !lastSym.exists || lastSym.is(Private))
+    private def loadDenot(name: Name, lastd: SymDenotation)(implicit ctx: Context): Denotation = {
+      var d = memberDenot(prefix, name, !lastd.exists || lastd.is(Private))
       if (!d.exists && ctx.phaseId > FirstPhaseId && lastDenotation.isInstanceOf[SymDenotation]) {
         // name has changed; try load in earlier phase and make current
-        d = loadDenot(name, lastSym)(ctx.withPhase(ctx.phaseId - 1)).current
+        d = loadDenot(name, lastd)(ctx.withPhase(ctx.phaseId - 1)).current
       }
       if (d.isOverloaded) {
         val sig = currentSignature
-        if (sig != null) d = d.atSignature(sig)
+        if (sig != null) d = d.atSignature(sig, relaxed = !ctx.erasedTypes)
       }
       d
     }
@@ -1670,10 +1649,9 @@ object Types {
       checkDenot()
     }
 
-    protected[dotc] override def withSym(sym: Symbol)(implicit ctx: Context): ThisType = designator match {
-      case desig: Symbol if desig ne sym => NamedType(prefix, sym).asInstanceOf[ThisType]
-      case _ => this
-    }
+    protected[dotc] override def withSym(sym: Symbol)(implicit ctx: Context): ThisType =
+      if ((designator ne sym) && sym.exists) NamedType(prefix, sym).asInstanceOf[ThisType]
+      else this
 
     override protected[dotc] def withDenot(denot: Denotation)(implicit ctx: Context): ThisType =
       if (denot.exists) {
@@ -1684,19 +1662,21 @@ object Types {
           this
         }
       }
-      else this
+      else // don't assign NoDenotation, we might need to recover later. Test case is pos/avoid.scala.
+        this
 
     /** Create a NamedType of the same kind as this type, but with a new prefix.
      */
     override def withPrefix(prefix: Type)(implicit ctx: Context): NamedType = {
-      val now = {
       def reload(): NamedType = {
         val allowPrivate = !lastSymbol.exists || lastSymbol.is(Private) && prefix.classSymbol == this.prefix.classSymbol
         var d = memberDenot(prefix, name, allowPrivate)
-        if (d.isOverloaded && lastSymbol.exists)
-          d = d.atSignature(
+        if (d.isOverloaded && lastSymbol.exists) {
+          val targetSig =
             if (lastSymbol.signature == Signature.NotAMethod) Signature.NotAMethod
-            else lastSymbol.asSeenFrom(prefix).signature)
+            else lastSymbol.asSeenFrom(prefix).signature
+          d = d.atSignature(targetSig, relaxed = !ctx.erasedTypes)
+        }
         NamedType(prefix, name, d)
       }
       if (lastDenotation == null) NamedType(prefix, designator)
@@ -1714,43 +1694,6 @@ object Types {
           else NamedType(prefix, sym)
         case name: Name => reload()
       }
-    }/*
-    val was = {
-      def reload(name: Name, lastSym: Symbol): NamedType = {
-        val allowPrivate = !lastSym.exists || lastSym.is(Private) && prefix.classSymbol == this.prefix.classSymbol
-        var d = memberDenot(prefix, name, allowPrivate)
-        if (d.isOverloaded && lastSym.exists)
-          d = d.atSignature(
-            if (lastSym.signature == Signature.NotAMethod) Signature.NotAMethod
-            else lastSym.asSeenFrom(prefix).signature)
-        NamedType(prefix, name, d)
-      }
-      val res = designator match {
-        case sym: Symbol =>
-          if (!sym.owner.membersNeedAsSeenFrom(prefix) || sym.is(NonMember))
-            NamedType(prefix, sym)
-          else {
-           // NamedType(prefix, sym.name,
-           //   sym.derivedSingleDenotation(sym, sym.asClass.classInfo.derivedClassInfo(prefix)))
-            val candidate = reload(sym.name, sym)
-            val falseOverride = sym.isClass && candidate.symbol.exists && candidate.symbol != symbol
-              // A false override happens if we rebind an inner class to another type with the same name
-              // in an outer subclass. This is wrong, since classes do not override. We need to
-              // return a type with the existing class info as seen from the new prefix instead.
-            if (falseOverride) NamedType(prefix, sym.name, denot.asSeenFrom(prefix))
-            else candidate
-          }
-        case name: Name =>
-          reload(name, lastKnownSymbol)
-      }
-      //if (name.toString == "TT") println(i"$this withPrefix $prefix = $res")
-      res
-    }
-    if (now ne was)
-          println(s"""diff for withPrefix $toString, prefix = $prefix
-                     |was: $was
-                     |now: $now""")*/
-        now
     }
   }
 
