@@ -771,7 +771,7 @@ object PatternMatcher {
             val expectedClass = expectedTp.dealias.classSymbol.asClass
             ExplicitOuter.ensureOuterAccessors(expectedClass)
             scrutinee.ensureConforms(expectedTp)
-              .outerSelect(1, expectedOuter.tpe.widen)
+              .outerSelect(1, expectedClass.owner.typeRef)
               .select(defn.Object_eq)
               .appliedTo(expectedOuter)
           }
