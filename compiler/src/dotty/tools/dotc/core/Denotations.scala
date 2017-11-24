@@ -739,7 +739,7 @@ object Denotations {
      *  of this run.
      */
     def initial: SingleDenotation =
-      if (validFor == Nowhere) this
+      if (validFor.firstPhaseId <= 1) this
       else {
         var current = nextInRun
         while (current.validFor.code > this.myValidFor.code) current = current.nextInRun
@@ -775,16 +775,21 @@ object Denotations {
     /** Move validity period of this denotation to a new run. Throw a StaleSymbol error
      *  if denotation is no longer valid.
      */
-    private def bringForward()(implicit ctx: Context): SingleDenotation = this match {
-      case denot: SymDenotation if ctx.stillValid(denot) || ctx.acceptStale(denot) =>
-        updateValidity()
-      case _ =>
-        if (!symbol.exists) updateValidity()
-        else if (coveredInterval.containsPhaseId(ctx.phaseId)) {
-          if (ctx.debug) ctx.traceInvalid(this)
-          staleSymbolError
-        }
-        else NoDenotation
+    private def bringForward()(implicit ctx: Context): SingleDenotation = {
+      this match {
+        case symd: SymDenotation =>
+          if (ctx.stillValid(symd)) return updateValidity()
+          if (symd.owner.is(Package)) {
+            val newd = symd.owner.info.decls.lookup(symd.name)
+            if (newd.exists) return newd
+          }
+          if (ctx.acceptStale(symd)) return updateValidity()
+        case _ =>
+      }
+      if (!symbol.exists) return updateValidity()
+      if (!coveredInterval.containsPhaseId(ctx.phaseId)) return NoDenotation
+      if (ctx.debug) ctx.traceInvalid(this)
+      staleSymbolError
     }
 
     /** The next defined denotation (following `nextInRun`) or an arbitrary
