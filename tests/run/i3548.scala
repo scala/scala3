@@ -9,11 +9,12 @@ object Test {
 
     val data = O2.Data("test")
 
-    // Runtime error: java.lang.ClassCastException: O2$ cannot be cast to O1$
-    data match {
-        case O1.Data(s) => println("O1 data")
-        case O2.Data(s) => println("O2 data")
-        case _ => println("Unknown")
+    val result = data match {
+      case O1.Data(s) => 1
+      case O2.Data(s) => 2
+      case _ => 3
     }
+
+    assert(result == 2)
   }
 }
