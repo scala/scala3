@@ -156,7 +156,9 @@ class TreePickler(pickler: TastyPickler) {
           pickleNameAndSig(sym.name, tpe.signature)
           pickleType(tpe.prefix)
         }
-        if (sym.is(Flags.Private)) {
+        val isShadowedRef =
+          sym.isClass && tpe.prefix.member(sym.name).symbol != sym
+        if (sym.is(Flags.Private) || isShadowedRef) {
           writeByte(if (tpe.isType) TYPEREFin else TERMREFin)
           withLength {
             pickleCore()
