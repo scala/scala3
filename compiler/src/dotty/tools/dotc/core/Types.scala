@@ -1581,6 +1581,11 @@ object Types {
     private def infoDependsOnPrefix(symd: SymDenotation, prefix: Type)(implicit ctx: Context): Boolean =
       symd.maybeOwner.membersNeedAsSeenFrom(prefix) && !symd.is(NonMember)
 
+    override def isMemberRef(implicit ctx: Context) = designator match {
+      case sym: Symbol => infoDependsOnPrefix(sym, prefix)
+      case _ => true
+    }
+
     override protected def computeDenot(implicit ctx: Context): Denotation = {
 
       def finish(d: Denotation) = {
@@ -2087,6 +2092,8 @@ object Types {
       else if (allowPrivate) prefix.member(name)
       else prefix.nonPrivateMember(name)
     }
+
+    def isMemberRef(implicit ctx: Context) = !hasFixedSym
 
     /** (1) Reduce a type-ref `W # X` or `W { ... } # U`, where `W` is a wildcard type
      *  to an (unbounded) wildcard type.

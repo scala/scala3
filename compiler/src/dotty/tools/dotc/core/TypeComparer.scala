@@ -183,24 +183,24 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
                     // However the original judgment should be true.
                 case _ =>
               }
-              val sym1 =
-                if (tp1.symbol.is(ModuleClass) && tp2.symbol.is(ModuleVal))
-                  // For convenience we want X$ <:< X.type
-                  // This is safe because X$ self-type is X.type
-                  tp1.symbol.companionModule
-                else
-                  tp1.symbol
-              if ((sym1 ne NoSymbol) && (sym1 eq tp2.symbol))
+              val sym2 = tp2.symbol
+              var sym1 = tp1.symbol
+              if (sym1.is(ModuleClass) && sym2.is(ModuleVal))
+                // For convenience we want X$ <:< X.type
+                // This is safe because X$ self-type is X.type
+                 sym1 = sym1.companionModule
+              if ((sym1 ne NoSymbol) && (sym1 eq sym2))
                 ctx.erasedTypes ||
                 sym1.isStaticOwner ||
                 isSubType(tp1.prefix, tp2.prefix) ||
                 thirdTryNamed(tp1, tp2)
               else
                 (  (tp1.name eq tp2.name)
+                && tp1.isMemberRef
+                && tp2.isMemberRef
                 && isSubType(tp1.prefix, tp2.prefix)
                 && tp1.signature == tp2.signature
-                && !tp1.hasFixedSym
-                && !tp2.hasFixedSym
+                && !(sym1.isClass && sym2.isClass)  // class types don't subtype each other
                 ) ||
                 thirdTryNamed(tp1, tp2)
             case _ =>
