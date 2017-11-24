@@ -80,7 +80,10 @@ class FirstTransform extends MiniPhase with InfoTransformer { thisPhase =>
   override def checkPostCondition(tree: Tree)(implicit ctx: Context): Unit = {
     tree match {
       case Select(qual, name) if !name.is(OuterSelectName) && tree.symbol.exists =>
-        assert(qual.tpe derivesFrom tree.symbol.owner, i"non member selection of ${tree.symbol.showLocated} from ${qual.tpe} in $tree")
+        assert(
+          qual.tpe.derivesFrom(tree.symbol.owner) ||
+            tree.symbol.is(JavaStatic) && qual.tpe.derivesFrom(tree.symbol.enclosingClass),
+          i"non member selection of ${tree.symbol.showLocated} from ${qual.tpe} in $tree")
       case _: TypeTree =>
       case _: Import | _: NamedArg | _: TypTree =>
         assert(false, i"illegal tree: $tree")
