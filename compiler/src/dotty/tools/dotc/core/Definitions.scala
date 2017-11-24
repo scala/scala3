@@ -510,7 +510,6 @@ class Definitions {
   lazy val IndexOutOfBoundsException = ctx.requiredClass("java.lang.IndexOutOfBoundsException")
   lazy val ClassClass                = ctx.requiredClass("java.lang.Class")
   lazy val BoxedNumberClass          = ctx.requiredClass("java.lang.Number")
-  lazy val ThrowableClass            = ctx.requiredClass("java.lang.Throwable")
   lazy val ClassCastExceptionClass   = ctx.requiredClass("java.lang.ClassCastException")
   lazy val ArithmeticExceptionClass  = ctx.requiredClass("java.lang.ArithmeticException")
     lazy val ArithmeticExceptionClass_stringConstructor  = ArithmeticExceptionClass.info.member(nme.CONSTRUCTOR).suchThat(_.info.firstParamTypes match {
@@ -525,6 +524,8 @@ class Definitions {
 
   // in scalac modified to have Any as parent
 
+  lazy val ThrowableType: TypeRef          = ctx.requiredClassRef("java.lang.Throwable")
+  def ThrowableClass(implicit ctx: Context) = ThrowableType.symbol.asClass
   lazy val SerializableType: TypeRef       = ctx.requiredClassRef("scala.Serializable")
   def SerializableClass(implicit ctx: Context) = SerializableType.symbol.asClass
   lazy val StringBuilderType: TypeRef      = ctx.requiredClassRef("scala.collection.mutable.StringBuilder")
@@ -680,7 +681,6 @@ class Definitions {
   // Derived types
 
   def RepeatedParamType = RepeatedParamClass.typeRef
-  def ThrowableType = ThrowableClass.typeRef
 
   def ClassType(arg: Type)(implicit ctx: Context) = {
     val ctype = ClassClass.typeRef
