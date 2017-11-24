@@ -1609,9 +1609,9 @@ object Types {
         case sym: Symbol =>
           val symd = sym.lastKnownDenotation
           if (symd.validFor.runId != ctx.runId && !ctx.stillValid(symd))
-            finish(loadDenot(symd.name, allowPrivate = false))
+            finish(loadDenot(symd.initial.name, allowPrivate = false))
           else if (infoDependsOnPrefix(symd, prefix))
-            finish(loadDenot(symd.name, allowPrivate = symd.is(Private)))
+            finish(loadDenot(symd.initial.name, allowPrivate = symd.is(Private)))
           else
             finish(symd.current)
       }
@@ -1627,7 +1627,7 @@ object Types {
               case lastd: SymDenotation =>
                 if (ctx.stillValid(lastd)) finish(lastd.current)
                 else
-                  try finish(loadDenot(lastd.name, allowPrivate = false))
+                  try finish(loadDenot(lastd.initial.name, allowPrivate = false))
                   catch {
                     case ex: AssertionError =>
                       println(i"assertion failed while $this . $lastd . ${lastd.validFor} ${lastd.flagsUNSAFE}")
@@ -1647,23 +1647,36 @@ object Types {
         val d1 = memberDenot(prefix, name, true)
         assert(!d1.exists, i"bad allow private $this $name $d1 at ${ctx.phase}")
       }
-      if (!d.exists && ctx.phaseId > FirstPhaseId && lastDenotation.isInstanceOf[SymDenotation]) {
+      if (!d.exists && ctx.phaseId > FirstPhaseId && lastDenotation.isInstanceOf[SymDenotation])
         // name has changed; try load in earlier phase and make current
         d = loadDenot(name, allowPrivate)(ctx.withPhase(ctx.phaseId - 1)).current
-      }
-      if (d.isOverloaded) {
-        val sig = currentSignature
-        if (sig != null) d = d.atSignature(sig, relaxed = !ctx.erasedTypes)
-      }
+      if (d.isOverloaded)
+        d = disambiguate(d)
       d
     }
 
     protected def memberDenot(prefix: Type, name: Name, allowPrivate: Boolean)(implicit ctx: Context): Denotation =
       if (allowPrivate) prefix.member(name) else prefix.nonPrivateMember(name)
 
+    private def disambiguate(d: Denotation)(implicit ctx: Context): Denotation = {
+      val sig = currentSignature
+      //if (ctx.isAfterTyper) println(i"overloaded $this / $d / sig = $sig")
+      if (sig != null)
+        d.atSignature(sig, relaxed = !ctx.erasedTypes) match {
+          case d1: SingleDenotation => d1
+          case d1 =>
+            d1.atSignature(sig, relaxed = false) match {
+              case d2: SingleDenotation => d2
+              case d2 => d2.suchThat(currentSymbol.eq).orElse(d2)
+            }
+        }
+      else d
+    }
+
     override def checkDenot()(implicit ctx: Context) = {}
 
     protected[dotc] override def setDenot(denot: Denotation)(implicit ctx: Context): Unit = {
+      if (ctx.isAfterTyper) assert(!denot.isOverloaded, this)
       lastDenotation = denot
       lastSymbol = denot.symbol
       checkedPeriod = ctx.period
