@@ -110,10 +110,7 @@ trait Substituters { this: Context =>
         var ts = to
         while (fs.nonEmpty) {
           if (fs.head eq sym)
-            return {
-              if (tp.hasFixedSym) NamedType(tp.prefix, ts.head) // ### why the different treatement of prefix?
-              else substSym(tp.prefix, from, to, theMap) select ts.head
-            }
+            return substSym(tp.prefix, from, to, theMap) select ts.head
           fs = fs.tail
           ts = ts.tail
         }
