@@ -502,7 +502,7 @@ object Symbols {
 
     /** Special cased here, because it may be used on naked symbols in substituters */
     final def isStatic(implicit ctx: Context): Boolean =
-      lastDenot != null && denot.isStatic
+      lastDenot != null && lastDenot.initial.isStatic
 
     /** A unique, densely packed integer tag for each class symbol, -1
      *  for all other symbols. To save memory, this method
