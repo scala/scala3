@@ -528,7 +528,13 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
       }
       compareExpr
     case tp2: TypeArgRef =>
-      isSubType(tp1, tp2.underlying.loBound) || fourthTry(tp1, tp2)
+      def sameTypeArgRef = tp1 match {
+        case tp1: TypeArgRef =>
+          tp1.clsRef == tp2.clsRef && tp1.idx == tp2.idx && tp1.prefix =:= tp2.prefix
+        case _ =>
+          false
+      }
+      sameTypeArgRef || isSubType(tp1, tp2.underlying.loBound) || fourthTry(tp1, tp2)
     case tp2 @ TypeBounds(lo2, hi2) =>
       def compareTypeBounds = tp1 match {
         case tp1 @ TypeBounds(lo1, hi1) =>
