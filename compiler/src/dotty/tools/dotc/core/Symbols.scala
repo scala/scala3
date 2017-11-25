@@ -439,6 +439,10 @@ object Symbols {
       newd
     }
 
+    /** The original denotation of this symbol, without forcing anything */
+    final def originDenotation: SymDenotation =
+      lastDenot.initial
+
     /** The last known denotation of this symbol, without going through `current` */
     final def lastKnownDenotation: SymDenotation =
       lastDenot
