@@ -779,7 +779,7 @@ object Denotations {
       this match {
         case symd: SymDenotation =>
           if (ctx.stillValid(symd)) return updateValidity()
-          if (symd.owner.is(Package)) {
+          if (Config.autoUpdatePackageMembers && symd.owner.is(Package)) {
             val newd = symd.owner.info.decls.lookup(symd.name)
             if (newd.exists) return newd
           }
