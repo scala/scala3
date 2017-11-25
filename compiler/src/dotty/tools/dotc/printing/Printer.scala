@@ -110,4 +110,10 @@ abstract class Printer {
   /** A plain printer without any embellishments */
   def plain: Printer
 }
+object Printer {
 
+  /** Debug hook; set to true if you want to see unique ids but cannot run with option
+   *  -uniqid. A typical use case is for further exploration after a -Ytest-pickler failure.
+   */
+  @sharable var debugPrintUnique: Boolean = false
+}
