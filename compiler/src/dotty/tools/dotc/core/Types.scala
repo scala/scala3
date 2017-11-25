@@ -1572,8 +1572,14 @@ object Types {
       case _ => if (denotationIsCurrent) lastDenotation.symbol else NoSymbol
     }
 
-    override protected[Types] def stableInRunSymbol(implicit ctx: Context): Symbol =
-      currentSymbol // ### todo: drop
+    /** Retrieves currently valid symbol without necessarily updating denotation.
+     *  Assumes that symbols do not change between periods in the same run.
+     *  Used to get the class underlying a ThisType.
+     */
+    override protected[Types] def stableInRunSymbol(implicit ctx: Context): Symbol = {
+      if (checkedPeriod.runId == ctx.runId) lastSymbol
+      else symbol
+    }
 
     private def lastKnownSymbol =
       if (lastDenotation != null) lastDenotation.symbol else NoSymbol
