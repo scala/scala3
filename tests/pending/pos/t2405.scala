@@ -9,7 +9,7 @@ object Test1 {
 // Testing for the absense of shadowing #1.
 object Test2 {
     import A.{x => y}
-    val x = 2
+    //val x = 2
     implicitly[Int]
 }
 
