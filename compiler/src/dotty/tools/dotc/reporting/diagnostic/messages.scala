@@ -1975,25 +1975,16 @@ object messages {
     val explanation = "A sealed class or trait can only be extended in the same file as its declaration"
   }
 
-  case class SymbolHasUnparsableVersionNumber(symbol: Symbol, message: String)(implicit ctx: Context)
+  case class SymbolHasUnparsableVersionNumber(symbol: Symbol, migrationMessage: String)(implicit ctx: Context)
   extends Message(SymbolHasUnparsableVersionNumberID) {
     val kind = "Syntax"
-    val msg = hl"${symbol.showLocated} has an unparsable version number: $message"
-    val explanation = {
-      val scalaVersionExample =
-        hl"""
-          |There was a problem parsing $message.
-          |Versions should be in the form major[.minor[.revision]]
-          |where each part is a positive number, as in 2.10.1.
-          |The minor and revision parts are optional
-        """.stripMargin
-
-      hl"""$scalaVersionExample
+    val msg = hl"${symbol.showLocated} has an unparsable version number: $migrationMessage"
+    val explanation =
+      hl"""$migrationMessage
           |
           |The symbol is marked with ${"@migration"} indicating it has changed semantics
           |between versions and the ${"-Xmigration"} settings is used to warn about constructs
           |whose behavior may have changed since version.""".stripMargin
-    }
   }
 
   case class SymbolChangedSemanticsInVersion(
