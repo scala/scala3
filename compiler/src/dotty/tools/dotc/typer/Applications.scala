@@ -386,7 +386,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
           val companion = cls.companionModule
           if (companion.isTerm) {
             val prefix = receiver.tpe.baseType(cls).normalizedPrefix
-            if (prefix.exists) selectGetter(ref(TermRef.withSym(prefix, companion.asTerm)))
+            if (prefix.exists) selectGetter(ref(TermRef(prefix, companion.asTerm)))
             else EmptyTree
           }
           else EmptyTree

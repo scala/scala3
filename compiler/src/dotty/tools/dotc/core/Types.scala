@@ -709,7 +709,7 @@ object Types {
     final def implicitMembers(implicit ctx: Context): List[TermRef] = track("implicitMembers") {
       memberDenots(implicitFilter,
           (name, buf) => buf ++= member(name).altsWith(_ is Implicit))
-        .toList.map(d => TermRef.withSym(this, d.symbol.asTerm))
+        .toList.map(d => TermRef(this, d.symbol.asTerm))
     }
 
     /** The set of member classes of this type */
@@ -1141,7 +1141,7 @@ object Types {
 
     /** The type <this . name> with either `sym` or its signed name as designator, reduced if possible */
     def select(sym: Symbol)(implicit ctx: Context): Type =
-      NamedType.withSym(this, sym).reduceProjection
+      NamedType(this, sym).reduceProjection
 
     def select(name: TermName)(implicit ctx: Context): TermRef =
       TermRef(this, name, member(name))
@@ -2019,43 +2019,32 @@ object Types {
     def apply(prefix: Type, designator: Name, denot: Denotation)(implicit ctx: Context) =
       if (designator.isTermName) TermRef.apply(prefix, designator.asTermName, denot)
       else TypeRef.apply(prefix, designator.asTypeName, denot)
-    def withSym(prefix: Type, sym: Symbol)(implicit ctx: Context): NamedType =
-      if (sym.isType) TypeRef.withSym(prefix, sym.asType)
-      else TermRef.withSym(prefix, sym.asTerm)
   }
 
   object TermRef {
 
-    /** Create term ref with given name, without specifying a signature.
-     *  Its meaning is the (potentially multi-) denotation of the member(s)
-     *  of prefix with given name.
-     */
+    /** Create a term ref with given designator */
     def apply(prefix: Type, desig: Designator)(implicit ctx: Context): TermRef =
       ctx.uniqueNamedTypes.enterIfNew(prefix, desig, isTerm = true).asInstanceOf[TermRef]
 
-    /** Create term ref to given initial denotation, taking the signature
-     *  from the denotation if it is completed, or creating a term ref without
-     *  signature, if denotation is not yet completed.
+    /** Create a term ref with given initial denotation. The name of the reference is taken
+     *  from the denotation's symbol if the latter exists, or else it is the given name.
      */
     def apply(prefix: Type, name: TermName, denot: Denotation)(implicit ctx: Context): TermRef =
       apply(prefix, if (denot.symbol.exists) denot.symbol.asTerm else name).withDenot(denot)
-
-    def withSym(prefix: Type, sym: TermSymbol)(implicit ctx: Context): TermRef =
-      apply(prefix, sym) // ###
   }
 
   object TypeRef {
 
-    /** Create type ref with given prefix and name */
+    /** Create a type ref with given prefix and name */
     def apply(prefix: Type, desig: Designator)(implicit ctx: Context): TypeRef =
       ctx.uniqueNamedTypes.enterIfNew(prefix, desig, isTerm = false).asInstanceOf[TypeRef]
 
-    /** Create a type ref with given name and initial denotation */
+    /** Create a type ref with given initial denotation. The name of the reference is taken
+     *  from the denotation's symbol if the latter exists, or else it is the given name.
+     */
     def apply(prefix: Type, name: TypeName, denot: Denotation)(implicit ctx: Context): TypeRef =
       apply(prefix, if (denot.symbol.exists) denot.symbol.asType else name).withDenot(denot)
-
-    def withSym(prefix: Type, sym: TypeSymbol)(implicit ctx: Context): TypeRef =
-      apply(prefix, sym) // ###
   }
 
   // --- Other SingletonTypes: ThisType/SuperType/ConstantType ---------------------------
