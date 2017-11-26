@@ -1490,6 +1490,8 @@ object SymDenotations {
         if (nxt.validFor.code > this.validFor.code) {
           this.nextInRun.asSymDenotation.asClass.enter(sym)
         }
+        if (defn.isScalaShadowingPackageClass(sym.owner))
+          defn.ScalaPackageClass.enter(sym)  // ScalaShadowing members are mirrored in ScalaPackage
       }
     }
 
@@ -1847,6 +1849,7 @@ object SymDenotations {
       if (entry != null) {
         if (entry.sym == sym) return false
         mscope.unlink(entry)
+        if (sym.owner == defn.ScalaShadowingPackageClass)
         if (sym.name == nme.PACKAGE) packageObjRunId = NoRunId
       }
       true

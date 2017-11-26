@@ -144,11 +144,6 @@ object Config {
    */
   final val simplifyApplications = true
 
-  /** If this flag is on, automatically being forward no-longer valid package members.
-   *  If it is off, raise a StaleSymbol error instead.
-   */
-  final val autoUpdatePackageMembers = true
-
   /** If set, prints a trace of all symbol completions */
   final val showCompletions = false
 

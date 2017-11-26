@@ -209,7 +209,7 @@ class Definitions {
    *  members at runtime.
    */
   lazy val ScalaShadowingPackageVal = ctx.requiredPackage(nme.scalaShadowing)
-  lazy val ScalaShadowingPackageClass = ScalaShadowingPackageVal.moduleClass.asClass
+  def ScalaShadowingPackageClass(implicit ctx: Context) = ScalaShadowingPackageVal.moduleClass.asClass
 
   /** Note: We cannot have same named methods defined in Object and Any (and AnyVal, for that matter)
    *  because after erasure the Any and AnyVal references get remapped to the Object methods
@@ -828,6 +828,9 @@ class Definitions {
   def isAbstractFunctionClass(cls: Symbol) = isVarArityClass(cls, str.AbstractFunction)
   def isTupleClass(cls: Symbol) = isVarArityClass(cls, str.Tuple)
   def isProductClass(cls: Symbol) = isVarArityClass(cls, str.Product)
+
+  def isScalaShadowingPackageClass(cls: Symbol) =
+    cls.name == tpnme.scalaShadowing && cls.owner == RootClass
 
   /** Returns the erased class of the function class `cls`
    *    - FunctionN for N > 22 becomes FunctionXXL
