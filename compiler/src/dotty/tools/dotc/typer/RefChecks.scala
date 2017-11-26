@@ -797,8 +797,7 @@ import RefChecks._
 class RefChecks extends MiniPhase { thisPhase =>
 
   import tpd._
-  import reporting.diagnostic.messages.ForwardReferenceExtendsOverDefinition
-  import dotty.tools.dotc.reporting.diagnostic.messages.UnboundPlaceholderParameter
+  import reporting.diagnostic.messages._ //ForwardReferenceExtendsOverDefinition, UnboundPlaceholderParameter
 
   override def phaseName: String = "refchecks"
 
@@ -871,7 +870,7 @@ class RefChecks extends MiniPhase { thisPhase =>
       if (level.maxIndex > 0) {
         // An implementation restriction to avoid VerifyErrors and lazyvals mishaps; see SI-4717
         ctx.debuglog("refsym = " + level.refSym)
-        ctx.error("forward reference not allowed from self constructor invocation", level.refPos)
+        ctx.error(ForwardReferenceNotAllowedFromSelfConstructor(), level.refPos)
       }
     }
     tree
