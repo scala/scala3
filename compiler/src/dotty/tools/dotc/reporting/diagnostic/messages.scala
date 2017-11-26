@@ -1990,16 +1990,15 @@ object messages {
           |}""".stripMargin
 
       hl"""If annotated with ${"@switch"}, the compiler will verify that the match has been compiled to a
-           |tableswitch or lookupswitch and issue an error if it instead compiles into a series of conditional
-           |expressions. Example usage:
-           |
-           |$codeExample
-           |
-           |The compiler will not apply the optimisation if:
-           |- the matched value is not of type ${"Int"}, ${"Byte"}, ${"Short"} or ${"Char"}
-           |- the matched value is not a constant literal
-           |- there are less than three cases
-        """.stripMargin
+          |tableswitch or lookupswitch and issue an error if it instead compiles into a series of conditional
+          |expressions. Example usage:
+          |
+          |$codeExample
+          |
+          |The compiler will not apply the optimisation if:
+          |- the matched value is not of type ${"Int"}, ${"Byte"}, ${"Short"} or ${"Char"}
+          |- the matched value is not a constant literal
+          |- there are less than three cases"""
     }
   }
 }
