@@ -1972,4 +1972,36 @@ object messages {
     val msg = hl"Cannot extend ${"sealed"} $pclazz in a different source file"
     val explanation = "A sealed class or trait can only be extended in the same file as its declaration"
   }
+
+  case class UnableToEmitSwitch()(implicit ctx: Context)
+  extends Message(UnableToEmitSwitchID) {
+    val kind = "Syntax"
+    val msg = hl"""Could not emit switch for ${"@switch"} annotated match"""
+    val explanation = {
+      val errorCodeExample =
+        """val middle = 'm'
+          |val last   = 'z'
+          |
+          |val number   = (middle: @switch) match {
+          |  case 'a'  => 1
+          |  case 'm'  => 13
+          |  case last => 26  //a non-literal may prevent switch generation: this would not compile.
+          |  case _    => 0
+          |}""".stripMargin
+
+      hl"""The compiler verifies that the match has been compiled to a tableswitch or lookupswitch.
+          |An error will be issued in case it compiles into a series of conditional expressions.
+          |
+          |Consider the following example:
+          |
+          |$errorCodeExample
+          |
+          |The example above would fail as it matches a non-literal value.
+          |The compiler will apply the tableswitch optimization when:
+          |-The matched value is a known integer or types implicitly convertible to integer.
+          |-The matched expression only matches literal values, without type checks, if statements, or extractors.
+          |-The expression have its value available at compile time.
+          |-There are more than two case statements."""
+    }
+  }
 }

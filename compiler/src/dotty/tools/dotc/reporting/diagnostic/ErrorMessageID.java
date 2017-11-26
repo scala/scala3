@@ -118,6 +118,7 @@ public enum ErrorMessageID {
     StaticFieldsOnlyAllowedInObjectsID,
     CyclicInheritanceID,
     UnableToExtendSealedClassID,
+    UnableToEmitSwitchID,
     ;
 
     public int errorNumber() {
