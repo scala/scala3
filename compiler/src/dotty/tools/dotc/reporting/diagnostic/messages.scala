@@ -1976,32 +1976,30 @@ object messages {
   case class UnableToEmitSwitch()(implicit ctx: Context)
   extends Message(UnableToEmitSwitchID) {
     val kind = "Syntax"
-    val msg = hl"""Could not emit switch for ${"@switch"} annotated match"""
+    val msg = hl"Could not emit switch for ${"@switch"} annotated match"
     val explanation = {
-      val errorCodeExample =
-        """val Middle = 'm'
-          |val Last   = 'z'
-          |
-          |val number   = (Middle: @switch) match {
-          |  case 'a'  => 1
-          |  case 'm'  => 13
-          |  case Last => 26  //a non-literal may prevent switch generation: this would not compile.
-          |  case _    => 0
+      val codeExample =
+        """val ConstantB = 'B'
+          |final val ConstantC = 'C'
+          |def tokenMe(ch: Char) = (ch: @switch) match {
+          |  case '\t' | '\n' => 1
+          |  case 'A'         => 2
+          |  case ConstantB   => 3  // a non-literal may prevent switch generation: this would not compile
+          |  case ConstantC   => 4  // a constant value is allowed
+          |  case _           => 5
           |}""".stripMargin
 
-      hl"""The compiler verifies that the match has been compiled to a tableswitch or lookupswitch.
-          |An error will be issued in case it compiles into a series of conditional expressions.
-          |
-          |Consider the following example:
-          |
-          |$errorCodeExample
-          |
-          |The example above would fail as it matches a non-literal value.
-          |The compiler will apply the tableswitch optimization when:
-          |-The matched value is a known integer or types implicitly convertible to integer.
-          |-The matched expression only matches literal values, without type checks, if statements, or extractors.
-          |-The expression have its value available at compile time.
-          |-There are more than two case statements."""
+      hl"""If annotated with ${"@switch"}, the compiler will verify that the match has been compiled to a
+           |tableswitch or lookupswitch and issue an error if it instead compiles into a series of conditional
+           |expressions. Example usage:
+           |
+           |$codeExample
+           |
+           |The compiler will not apply the optimisation if:
+           |- the matched value is not of type ${"Int"}, ${"Byte"}, ${"Short"} or ${"Char"}
+           |- the matched value is not a constant literal
+           |- there are less than three cases
+        """.stripMargin
     }
   }
 }
