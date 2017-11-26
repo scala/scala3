@@ -25,7 +25,10 @@ import dotc.core.NameKinds.SimpleNameKind
 import dotc.config.CompilerCommand
 import dotc.{ Compiler, Driver }
 import dotc.printing.SyntaxHighlighting
+import dotc.reporting.diagnostic.Message
 import dotc.util.Positions.Position
+import dotc.util.SourcePosition
+
 import io._
 
 import AmmoniteReader._
@@ -56,7 +59,7 @@ import results._
 case class State(objectIndex: Int,
                  valIndex: Int,
                  history: History,
-                 imports: List[(untpd.Import, String)],
+                 imports: List[untpd.Import],
                  run: Run) {
 
   def withHistory(newEntry: String) = copy(history = newEntry :: history)
@@ -184,8 +187,8 @@ class ReplDriver(settings: Array[String],
   private def readLine()(implicit state: State): ParseResult =
     AmmoniteReader(out, state.history, completions(_, _, state))(state.run.runContext).prompt
 
-  private def extractImports(trees: List[untpd.Tree])(implicit context: Context): List[(untpd.Import, String)] =
-    trees.collect { case imp: untpd.Import => (imp, imp.show) }
+  private def extractImports(trees: List[untpd.Tree]): List[untpd.Import] =
+    trees.collect { case imp: untpd.Import => imp }
 
   private def interpret(res: ParseResult)(implicit state: State): State =
     res match {
@@ -223,7 +226,7 @@ class ReplDriver(settings: Array[String],
         {
           case (unit: CompilationUnit, newState: State) => {
             val newestWrapper = extractNewestWrapper(unit.untpdTree)
-            val newImports = newState.imports ++ extractImports(parsed.trees)(newState.run.runContext)
+            val newImports = newState.imports ++ extractImports(parsed.trees)
             val newStateWithImports = newState.copy(imports = newImports)
 
             displayDefinitions(unit.tpdTree, newestWrapper)(newStateWithImports)
@@ -323,7 +326,7 @@ class ReplDriver(settings: Array[String],
     }
 
     case Imports => {
-      state.imports foreach { case (_, i) => println(SyntaxHighlighting(i)) }
+      state.imports.foreach(i => out.println(SyntaxHighlighting(i.show(state.run.runContext))))
       state.withHistory(Imports.command)
     }
 
@@ -361,18 +364,7 @@ class ReplDriver(settings: Array[String],
 
   /** A `MessageRenderer` without file positions */
   private val messageRenderer = new MessageRendering {
-    import dotc.reporting.diagnostic._
-    import dotc.util._
-    override def messageAndPos(msg: Message, pos: SourcePosition, diagnosticLevel: String)(implicit ctx: Context): String = {
-      val sb = scala.collection.mutable.StringBuilder.newBuilder
-      if (pos.exists) {
-        val (srcBefore, srcAfter, offset) = sourceLines(pos)
-        val marker = columnMarker(pos, offset)
-        val err = errorMsg(pos, msg.msg, offset)
-        sb.append((srcBefore ::: marker :: err :: outer(pos, " " * (offset - 1)) ::: srcAfter).mkString("\n"))
-      }
-      sb.toString
-    }
+    override def posStr(pos: SourcePosition, diagnosticLevel: String, message: Message)(implicit ctx: Context): String = ""
   }
 
   /** Render messages using the `MessageRendering` trait */

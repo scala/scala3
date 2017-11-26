@@ -12,19 +12,17 @@ import dotc.core.Contexts.Context
  *  compiler pipeline.
  */
 private[repl] class REPLFrontEnd extends FrontEnd {
-  override def phaseName = "replFrontEnd"
+  override def phaseName = "frontend"
 
   override def isRunnable(implicit ctx: Context) = true
 
   override def runOn(units: List[CompilationUnit])(implicit ctx: Context) = {
-    val unitContexts = for (unit <- units) yield ctx.fresh.setCompilationUnit(unit)
-    var remaining = unitContexts
-    while (remaining.nonEmpty) {
-      enterSyms(remaining.head)
-      remaining = remaining.tail
-    }
-    unitContexts.foreach(enterAnnotations(_))
-    unitContexts.foreach(typeCheck(_))
-    unitContexts.map(_.compilationUnit).filterNot(discardAfterTyper)
+    assert(units.size == 1) // REPl runs one compilation unit at a time
+
+    val unitContext = ctx.fresh.setCompilationUnit(units.head)
+    enterSyms(unitContext)
+    enterAnnotations(unitContext)
+    typeCheck(unitContext)
+    List(unitContext.compilationUnit)
   }
 }
