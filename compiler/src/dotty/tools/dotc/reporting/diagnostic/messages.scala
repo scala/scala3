@@ -1972,4 +1972,25 @@ object messages {
     val msg = hl"Cannot extend ${"sealed"} $pclazz in a different source file"
     val explanation = "A sealed class or trait can only be extended in the same file as its declaration"
   }
+
+  case class SymbolHasUnparsableVersionNumber(symbol: Symbol, message: String)(implicit ctx: Context)extends Message(SymbolHasUnparsableVersionNumberID) {
+    val kind = "Syntax"
+    val msg = hl"${symbol.showLocated} has an unparsable version number: $message"
+    val explanation = {
+      val scalaVersionExample =
+        hl"""
+          |There was a problem parsing $message.
+          |Versions should be in the form major[.minor[.revision]]
+          |where each part is a positive number, as in 2.10.1.
+          |The minor and revision parts are optional
+        """.stripMargin
+
+      hl"""$scalaVersionExample
+          |
+          |When a symbol is marked with ${"@migration"} indicating it has changed semantics
+          |between versions and the ${"-Xmigration"} settings is used to warn about constructs
+          |whose behavior may have changed since version, the version used in the annotation
+          |must be in a valid format.""".stripMargin
+    }
+  }
 }

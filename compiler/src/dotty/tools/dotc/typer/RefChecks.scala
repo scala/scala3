@@ -691,7 +691,7 @@ object RefChecks {
         case scala.util.Success(v) =>
           ctx.settings.Xmigration.value < v
         case Failure(ex) =>
-          ctx.warning(s"${sym.showLocated} has an unparsable version number: ${ex.getMessage()}", pos)
+          ctx.warning(SymbolHasUnparsableVersionNumber(sym, ex.getMessage()), pos)
           false
       }
       if (changed)

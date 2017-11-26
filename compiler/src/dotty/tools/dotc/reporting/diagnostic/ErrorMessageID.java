@@ -118,6 +118,7 @@ public enum ErrorMessageID {
     StaticFieldsOnlyAllowedInObjectsID,
     CyclicInheritanceID,
     UnableToExtendSealedClassID,
+    SymbolHasUnparsableVersionNumberID,
     ;
 
     public int errorNumber() {
