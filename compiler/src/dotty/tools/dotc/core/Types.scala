@@ -1135,11 +1135,11 @@ object Types {
     def select(name: Name)(implicit ctx: Context): Type =
       NamedType(this, name, member(name)).reduceProjection
 
-    /** The type <this . name> , reduced if possible, with given denotation if unreduced */
-    def select(name: Name, denot: Denotation)(implicit ctx: Context): Type = // ### drop name
+    /** The type <this . name> with given denotation, reduced if possible. */
+    def select(name: Name, denot: Denotation)(implicit ctx: Context): Type =
       NamedType(this, name, denot).reduceProjection
 
-    /** The type <this . name> with either `sym` or its signed name as designator, reduced if possible */
+    /** The type <this . sym>, reduced if possible */
     def select(sym: Symbol)(implicit ctx: Context): Type =
       NamedType(this, sym).reduceProjection
 
@@ -1609,9 +1609,6 @@ object Types {
       else symbol
     }
 
-    private def lastKnownSymbol = // ### always combine with initial?
-      if (lastDenotation != null) lastDenotation.symbol else NoSymbol
-
     def info(implicit ctx: Context): Type = denot.info
 
     /** The denotation currently denoted by this type */
@@ -1722,7 +1719,7 @@ object Types {
       else d
     }
 
-    private[dotc] final def setDenot(denot: Denotation)(implicit ctx: Context): Unit = { // ### make private? (also others)
+    private def setDenot(denot: Denotation)(implicit ctx: Context): Unit = { // ### make private? (also others)
       if (ctx.isAfterTyper)
         assert(!denot.isOverloaded, this)
       if (Config.checkNoDoubleBindings)
@@ -1900,11 +1897,6 @@ object Types {
         case _: WildcardType => WildcardType
         case _ => withPrefix(prefix)
       }
-
-    private[dotc] final def invalidateDenot()(implicit ctx: Context): Unit = {
-      lastDenotation = null
-      lastSymbol = null
-    }
 
     private[dotc] final def withSym(sym: Symbol)(implicit ctx: Context): ThisType =
       if ((designator ne sym) && sym.exists) NamedType(prefix, sym).asInstanceOf[ThisType]

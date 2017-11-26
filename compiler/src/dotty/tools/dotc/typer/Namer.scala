@@ -1195,12 +1195,12 @@ class Namer { typer: Typer =>
     }
 
     // Here we pay the price for the cavalier setting info to TypeBounds.empty above.
-    // We need to compensate by invalidating caches in references that might
+    // We need to compensate by reloading the denotation of references that might
     // still contain the TypeBounds.empty. If we do not do this, stdlib factories
     // fail with a bounds error in PostTyper.
     def ensureUpToDate(tp: Type, outdated: Type) = tp match {
       case tref: TypeRef if tref.info == outdated && sym.info != outdated =>
-        tref.invalidateDenot() // ### verify still needed
+        tref.reloadDenot()
       case _ =>
     }
     ensureUpToDate(sym.typeRef, dummyInfo)
