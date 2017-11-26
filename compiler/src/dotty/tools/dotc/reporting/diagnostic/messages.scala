@@ -24,7 +24,6 @@ import dotty.tools.dotc.ast.untpd.Modifiers
 import dotty.tools.dotc.config.ScalaVersion
 import dotty.tools.dotc.core.Flags.{FlagSet, Mutable}
 import dotty.tools.dotc.core.SymDenotations.SymDenotation
-
 import scala.util.control.NonFatal
 
 object messages {
