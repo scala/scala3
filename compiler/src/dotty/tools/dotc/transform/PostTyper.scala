@@ -79,12 +79,6 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
     // TODO fill in
   }
 
-  /** If the type of `tree` is a TermRef with an underdefined
-   *  signature, narrow the type by re-computing the signature (which should
-   *  be fully-defined by now).
-   */
-  private def fixSignature[T <: Tree](tree: T)(implicit ctx: Context): T = tree // ###
-
   class PostTyperTransformer extends Transformer {
 
     private[this] var inJavaAnnot: Boolean = false
@@ -170,7 +164,7 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
         case tree: Ident if !tree.isType =>
           tree.tpe match {
             case tpe: ThisType => This(tpe.cls).withPos(tree.pos)
-            case _ => paramFwd.adaptRef(fixSignature(tree))
+            case _ => tree
           }
         case tree @ Select(qual, name) =>
           if (name.isTypeName) {
@@ -178,7 +172,7 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
             super.transform(tree)
           }
           else
-            transformSelect(paramFwd.adaptRef(fixSignature(tree)), Nil)
+            transformSelect(tree, Nil)
         case tree: Super =>
           if (ctx.owner.enclosingMethod.isInlineMethod)
             ctx.error(SuperCallsNotAllowedInline(ctx.owner), tree.pos)

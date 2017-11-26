@@ -63,8 +63,6 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
             toPrefix(pre, cls, tp.cls)
           case _: BoundType | NoPrefix =>
             tp
-          case tp: RefinedType =>  //@!!! todo: remove
-            derivedRefinedType(tp, apply(tp.parent), apply(tp.refinedInfo))
           case _ =>
             mapOver(tp)
         }
@@ -101,8 +99,6 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
       }
     case  _: ThisType | _: BoundType | NoPrefix =>
       tp
-    case tp: RefinedType => // @!!!
-      tp.derivedRefinedType(simplify(tp.parent, theMap), tp.refinedName, simplify(tp.refinedInfo, theMap))
     case tp: TypeAlias =>
       tp.derivedTypeAlias(simplify(tp.alias, theMap))
     case AndType(l, r) if !ctx.mode.is(Mode.Type) =>

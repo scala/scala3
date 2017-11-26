@@ -754,7 +754,7 @@ class Namer { typer: Typer =>
           else levels(c.outer) + 1
         println(s"!!!completing ${denot.symbol.showLocated} in buried typerState, gap = ${levels(ctx)}")
       }
-      assert(ctx.runId == creationContext.runId, "completing $denot in wrong run ${ctx.runId}, was created in ${creationContext.runId}")
+      assert(ctx.runId == creationContext.runId, s"completing $denot in wrong run ${ctx.runId}, was created in ${creationContext.runId}")
       completeInCreationContext(denot)
     }
 

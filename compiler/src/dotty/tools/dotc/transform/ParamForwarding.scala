@@ -85,6 +85,4 @@ class ParamForwarding(thisPhase: DenotTransformer) {
 
     cpy.Template(impl)(body = fwd(impl.body)(ctx.withPhase(thisPhase)))
   }
-
-  def adaptRef[T <: RefTree](tree: T)(implicit ctx: Context): T = tree // ###
 }

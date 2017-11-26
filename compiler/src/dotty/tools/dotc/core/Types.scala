@@ -3461,23 +3461,10 @@ object Types {
         val cls = tp.cls
         // Note: Taking a normal typeRef does not work here. A normal ref might contain
         // also other information about the named type (e.g. bounds).
-        if (true) { // ###
-        val loOK =
-          lo.isRef(tp.cls) ||
-          lo.isRef(defn.NothingClass) ||
-          lo.isRef(defn.NullClass) && !tp.cls.isValueClass
-        val hiOK =
-          hi.isRef(tp.cls) ||
-          tp.parents.exists(p => p <:< hi)
-        loOK && hiOK || {
-          println(i"NOT CONTAINS: $this / $tp")
-          false
-        }
-        }
-        else contains(
-          TypeRef(tp.prefix, cls)
-            .withDenot(new UniqueRefDenotation(cls, tp, cls.validFor)))
-      case _ => lo <:< tp && tp <:< hi
+        contains(
+          TypeRef(tp.prefix, cls).withDenot(new UniqueRefDenotation(cls, tp, cls.validFor)))
+      case _ =>
+        lo <:< tp && tp <:< hi
     }
 
     def & (that: TypeBounds)(implicit ctx: Context): TypeBounds =

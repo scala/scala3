@@ -772,7 +772,6 @@ object SymDenotations {
       isPackageObject ||
       isTerm && !is(MethodOrLazy, butNot = Label) && !isLocalDummy
 
-    //    def isOverridable: Boolean = !!! need to enforce that classes cannot be redefined
     def isSkolem: Boolean = name == nme.SKOLEM
 
     def isInlineMethod(implicit ctx: Context): Boolean = is(InlineMethod, butNot = Accessor)
@@ -1678,7 +1677,7 @@ object SymDenotations {
 
       /*>|>*/ trace.onDebug(s"$tp.baseType($this)") /*<|<*/ {
         Stats.record("baseTypeOf")
-        tp.stripTypeVar match { // @!!! dealias?
+        tp.stripTypeVar match {
           case tp: CachedType =>
           val btrCache = baseTypeCache
             try {

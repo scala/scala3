@@ -728,7 +728,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
               }
             }
           case NoPrefix if sym is TypeParam =>
-            pre = sym.owner.thisType // ### needed?
+            pre = sym.owner.thisType
           case _ =>
         }
         val tycon = pre.select(sym)
