@@ -21,8 +21,10 @@ import ErrorMessageID._
 import Denotations.SingleDenotation
 import dotty.tools.dotc.ast.Trees
 import dotty.tools.dotc.ast.untpd.Modifiers
+import dotty.tools.dotc.config.ScalaVersion
 import dotty.tools.dotc.core.Flags.{FlagSet, Mutable}
 import dotty.tools.dotc.core.SymDenotations.SymDenotation
+
 import scala.util.control.NonFatal
 
 object messages {
@@ -140,7 +142,7 @@ object messages {
   }
 
   case class EmptyCatchBlock(tryBody: untpd.Tree)(implicit ctx: Context)
- extends EmptyCatchOrFinallyBlock(tryBody, EmptyCatchBlockID) {
+  extends EmptyCatchOrFinallyBlock(tryBody, EmptyCatchBlockID) {
     val kind = "Syntax"
     val msg =
       hl"""|The ${"catch"} block does not contain a valid expression, try
@@ -1973,7 +1975,8 @@ object messages {
     val explanation = "A sealed class or trait can only be extended in the same file as its declaration"
   }
 
-  case class SymbolHasUnparsableVersionNumber(symbol: Symbol, message: String)(implicit ctx: Context)extends Message(SymbolHasUnparsableVersionNumberID) {
+  case class SymbolHasUnparsableVersionNumber(symbol: Symbol, message: String)(implicit ctx: Context)
+  extends Message(SymbolHasUnparsableVersionNumberID) {
     val kind = "Syntax"
     val msg = hl"${symbol.showLocated} has an unparsable version number: $message"
     val explanation = {
@@ -1987,10 +1990,25 @@ object messages {
 
       hl"""$scalaVersionExample
           |
-          |When a symbol is marked with ${"@migration"} indicating it has changed semantics
+          |The symbol is marked with ${"@migration"} indicating it has changed semantics
           |between versions and the ${"-Xmigration"} settings is used to warn about constructs
-          |whose behavior may have changed since version, the version used in the annotation
-          |must be in a valid format.""".stripMargin
+          |whose behavior may have changed since version.""".stripMargin
+    }
+  }
+
+  case class SymbolChangedSemanticsInVersion(
+    symbol: Symbol,
+    symbolVersion: scala.util.Try[ScalaVersion],
+    migrationVersion: scala.util.Try[ScalaVersion]
+  )(implicit ctx: Context) extends Message(SymbolChangedSemanticsInVersionID) {
+    val kind = "Syntax"
+    val msg =
+      hl"""${symbol.showLocated} has changed semantics in version $symbolVersion:
+          |$migrationVersion""".stripMargin
+    val explanation = {
+      hl"""The symbol is marked with ${"@migration"} indicating it has changed semantics
+          |between versions and the ${"-Xmigration"} settings is used to warn about constructs
+          |whose behavior may have changed since version.""".stripMargin
     }
   }
 }

@@ -695,7 +695,7 @@ object RefChecks {
           false
       }
       if (changed)
-        ctx.warning(s"${sym.showLocated} has changed semantics in version $symVersion:\n${sym.migrationMessage.get}")
+        ctx.warning(SymbolChangedSemanticsInVersion(sym, symVersion, sym.migrationMessage.get))
     }
     /*  (Not enabled yet)
        *  See an explanation of compileTimeOnly in its scaladoc at scala.annotation.compileTimeOnly.

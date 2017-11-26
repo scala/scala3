@@ -119,6 +119,7 @@ public enum ErrorMessageID {
     CyclicInheritanceID,
     UnableToExtendSealedClassID,
     SymbolHasUnparsableVersionNumberID,
+    SymbolChangedSemanticsInVersionID,
     ;
 
     public int errorNumber() {
