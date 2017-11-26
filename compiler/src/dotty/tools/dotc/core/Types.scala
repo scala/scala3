@@ -1604,7 +1604,7 @@ object Types {
      *  Assumes that symbols do not change between periods in the same run.
      *  Used to get the class underlying a ThisType.
      */
-    final private[Types] def stableInRunSymbol(implicit ctx: Context): Symbol = {
+    private[Types] def stableInRunSymbol(implicit ctx: Context): Symbol = {
       if (checkedPeriod.runId == ctx.runId) lastSymbol
       else symbol
     }
@@ -1698,10 +1698,10 @@ object Types {
       d
     }
 
-    def reloadDenot()(implicit ctx: Context) = // ### combine with invalidate(?)
+    def reloadDenot()(implicit ctx: Context) =
       setDenot(loadDenot(name, allowPrivate = !symbol.exists || symbol.is(Private)))
 
-    protected def memberDenot(prefix: Type, name: Name, allowPrivate: Boolean)(implicit ctx: Context): Denotation =
+    private def memberDenot(prefix: Type, name: Name, allowPrivate: Boolean)(implicit ctx: Context): Denotation =
       if (allowPrivate) prefix.member(name) else prefix.nonPrivateMember(name)
 
     private def disambiguate(d: Denotation)(implicit ctx: Context): Denotation = {
@@ -1719,7 +1719,7 @@ object Types {
       else d
     }
 
-    private def setDenot(denot: Denotation)(implicit ctx: Context): Unit = { // ### make private? (also others)
+    private def setDenot(denot: Denotation)(implicit ctx: Context): Unit = {
       if (ctx.isAfterTyper)
         assert(!denot.isOverloaded, this)
       if (Config.checkNoDoubleBindings)
@@ -1768,8 +1768,10 @@ object Types {
            |period = ${ctx.phase} at run ${ctx.runId}""")
     }
 
-    // ### make private or add comment
-    def infoDependsOnPrefix(symd: SymDenotation, prefix: Type)(implicit ctx: Context): Boolean =
+    /** A reference with the initial symbol in `symd` has an info that
+     *  might depend on the given prefix.
+     */
+    private def infoDependsOnPrefix(symd: SymDenotation, prefix: Type)(implicit ctx: Context): Boolean =
       symd.maybeOwner.membersNeedAsSeenFrom(prefix) && !symd.is(NonMember)
 
     /** Is this a reference to a class or object member? */
@@ -1898,11 +1900,11 @@ object Types {
         case _ => withPrefix(prefix)
       }
 
-    private[dotc] final def withSym(sym: Symbol)(implicit ctx: Context): ThisType =
+    final def withSym(sym: Symbol)(implicit ctx: Context): ThisType =
       if ((designator ne sym) && sym.exists) NamedType(prefix, sym).asInstanceOf[ThisType]
       else this
 
-    private[dotc] final def withDenot(denot: Denotation)(implicit ctx: Context): ThisType =
+    final def withDenot(denot: Denotation)(implicit ctx: Context): ThisType =
       if (denot.exists) {
         val adapted = withSym(denot.symbol)
         if (adapted ne this) adapted.withDenot(denot).asInstanceOf[ThisType]
@@ -3379,14 +3381,9 @@ object Types {
 
     def appliedRef(implicit ctx: Context): Type = {
       def clsDenot = if (prefix eq cls.owner.thisType) cls.denot else cls.denot.copySymDenotation(info = this)
-      if (appliedRefCache == null) {
-        val tref =
-          if ((cls is PackageClass) || cls.owner.isTerm)
-            TypeRef(prefix, cls) // ### not always symbolicRef?
-          else TypeRef(prefix, cls.name, clsDenot)
+      if (appliedRefCache == null)
         appliedRefCache =
-          tref.appliedTo(cls.typeParams.map(_.typeRef))
-      }
+          TypeRef(prefix, cls.name, clsDenot).appliedTo(cls.typeParams.map(_.typeRef))
       appliedRefCache
     }
 
