@@ -1979,13 +1979,13 @@ object messages {
     val msg = hl"""Could not emit switch for ${"@switch"} annotated match"""
     val explanation = {
       val errorCodeExample =
-        """val middle = 'm'
-          |val last   = 'z'
+        """val Middle = 'm'
+          |val Last   = 'z'
           |
-          |val number   = (middle: @switch) match {
+          |val number   = (Middle: @switch) match {
           |  case 'a'  => 1
           |  case 'm'  => 13
-          |  case last => 26  //a non-literal may prevent switch generation: this would not compile.
+          |  case Last => 26  //a non-literal may prevent switch generation: this would not compile.
           |  case _    => 0
           |}""".stripMargin
 
