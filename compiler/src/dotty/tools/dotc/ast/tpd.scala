@@ -709,8 +709,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       val tp =
         if (sym.isType) {
           assert(!sym.is(TypeParam))
-          if (config.Config.newScheme) TypeRef.withSym(tree.tpe, sym.asType)
-          else TypeRef(tree.tpe, sym.name.asTypeName)
+          TypeRef(tree.tpe, sym.asType)
         }
         else
           TermRef(tree.tpe, sym.name.asTermName, sym.denot.asSeenFrom(tree.tpe))
@@ -719,10 +718,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
 
     /** A select node with the given selector name and signature and a computed type */
     def selectWithSig(name: Name, sig: Signature)(implicit ctx: Context): Tree =
-      untpd.SelectWithSig(tree, name, sig)
-        .withType(
-          if (config.Config.newScheme) tree.tpe.select(name.asTermName, sig)
-          else TermRef(tree.tpe, name.asTermName.withSig(sig)))
+      untpd.SelectWithSig(tree, name, sig).withType(tree.tpe.select(name.asTermName, sig))
 
     /** A select node with selector name and signature taken from `sym`.
      *  Note: Use this method instead of select(sym) if the referenced symbol

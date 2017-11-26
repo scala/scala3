@@ -702,8 +702,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
       case SINGLEtpe =>
         val pre = readTypeRef()
         val sym = readDisambiguatedSymbolRef(_.info.isParameterless)
-        if (config.Config.newScheme || isLocal(sym) || (pre eq NoPrefix)) pre select sym
-        else TermRef(pre, sym.name.asTermName)
+        pre.select(sym)
       case SUPERtpe =>
         val thistpe = readTypeRef()
         val supertpe = readTypeRef()
@@ -728,19 +727,11 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
                 pre = SuperType(thispre, base)
               }
             }
+          case NoPrefix if sym is TypeParam =>
+            pre = sym.owner.thisType // ### needed?
           case _ =>
         }
-        val tycon =
-          if (!config.Config.newScheme && sym.isClass && sym.is(Scala2x) && sym.owner.isClass && !sym.owner.is(Package))
-            // There can be multiple Scala2 inner classes with the same prefix and name; use a namespace
-            // to pick a particular one.
-            TypeRef(pre, sym.name.asTypeName.withNameSpace(sym.owner.typeRef))
-          else if (config.Config.newScheme || isLocal(sym) || pre == NoPrefix) {
-            val pre1 = if ((pre eq NoPrefix) && (sym is TypeParam)) sym.owner.thisType else pre
-            pre1 select sym
-          }
-          else
-            TypeRef(pre, sym.name.asTypeName)
+        val tycon = pre.select(sym)
         val args = until(end, () => readTypeRef())
         if (sym == defn.ByNameParamClass2x) ExprType(args.head)
         else if (args.nonEmpty) tycon.safeAppliedTo(EtaExpandIfHK(sym.typeParams, args.map(translateTempPoly)))

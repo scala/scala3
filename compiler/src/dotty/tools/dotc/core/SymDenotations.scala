@@ -1134,12 +1134,10 @@ object SymDenotations {
     def thisType(implicit ctx: Context): Type = NoPrefix
 
     override def typeRef(implicit ctx: Context): TypeRef =
-      if (Config.newScheme) TypeRef.withSym(owner.thisType, symbol.asType)
-      else TypeRef(owner.thisType, name.asTypeName, this)
+      TypeRef(owner.thisType, symbol)
 
     override def termRef(implicit ctx: Context): TermRef =
-      if (Config.newScheme) TermRef.withSym(owner.thisType, symbol.asTerm)
-      else TermRef(owner.thisType, name.asTermName, this)
+      TermRef(owner.thisType, symbol)
 
     /** The variance of this type parameter or type member as an Int, with
      *  +1 = Covariant, -1 = Contravariant, 0 = Nonvariant, or not a type parameter
@@ -1440,10 +1438,9 @@ object SymDenotations {
       if (classParents.isEmpty && !emptyParentsExpected)
         onBehalf.signalProvisional()
       val builder = new BaseDataBuilder
-      for (p <- classParents) {
-        assert(p.typeSymbol.isClass, s"$this has $p")
+      for (p <- classParents)
         builder.addAll(p.typeSymbol.asClass.baseClasses)
-      }
+
       (classSymbol :: builder.baseClasses, builder.baseClassSet)
     }
 
@@ -1849,8 +1846,7 @@ object SymDenotations {
       if (entry != null) {
         if (entry.sym == sym) return false
         mscope.unlink(entry)
-        if (sym.owner == defn.ScalaShadowingPackageClass)
-        if (sym.name == nme.PACKAGE) packageObjRunId = NoRunId
+        if (sym.name == nme.PACKAGE) packageObjRunId = NoRunId // ### check if needed
       }
       true
     }

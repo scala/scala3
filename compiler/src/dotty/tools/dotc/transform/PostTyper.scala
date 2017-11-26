@@ -83,13 +83,7 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
    *  signature, narrow the type by re-computing the signature (which should
    *  be fully-defined by now).
    */
-  private def fixSignature[T <: Tree](tree: T)(implicit ctx: Context): T = tree.tpe match {
-    case tpe: TermRef if tpe.signature.isUnderDefined =>
-      assert(!config.Config.newScheme)
-      typr.println(i"fixing $tree with type ${tree.tpe.widen.toString} with sig ${tpe.signature} to ${tpe.widen.signature}")
-      tree.withType(TermRef(tpe.prefix, tpe.name.withSig(tpe.widen.signature))).asInstanceOf[T]
-    case _ => tree
-  }
+  private def fixSignature[T <: Tree](tree: T)(implicit ctx: Context): T = tree // ###
 
   class PostTyperTransformer extends Transformer {
 

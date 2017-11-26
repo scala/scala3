@@ -9,7 +9,7 @@ import TastyFormat._
 import Contexts._, Symbols._, Types._, Names._, Constants._, Decorators._, Annotations._, StdNames.tpnme, NameOps._
 import collection.mutable
 import typer.Inliner
-import NameOps._, NameKinds._, Designators._
+import NameOps._, NameKinds._
 import StdNames.nme
 import TastyBuffer._
 import TypeApplications._
@@ -193,13 +193,6 @@ class TreePickler(pickler: TastyPickler) {
         case name: Name =>
           writeByte(if (tpe.isType) TYPEREF else TERMREF)
           pickleName(name); pickleType(tpe.prefix)
-        case LocalName(name, space) =>
-          writeByte(if (tpe.isType) TYPEREFin else TERMREFin)
-          withLength {
-            pickleName(name)
-            pickleType(tpe.prefix)
-            pickleType(space)
-          }
         case sym: Symbol =>
           pickleExternalRef(sym)
       }

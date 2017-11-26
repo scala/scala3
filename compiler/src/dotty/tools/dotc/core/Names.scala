@@ -9,7 +9,6 @@ import Texts.Text
 import Decorators._
 import Contexts.Context
 import StdNames.str
-import Designators._
 import util.Chars.isIdentifierStart
 import collection.IndexedSeqOptimized
 import collection.immutable
@@ -29,6 +28,11 @@ object Names {
   }
 
   implicit def eqName: Eq[Name, Name] = Eq
+
+  /** A common superclass of Name and Symbol. After bootstrap, this should be
+   *  just the type alias Name | Symbol
+   */
+  abstract class Designator extends util.DotClass
 
   /** A name if either a term name or a type name. Term names can be simple
    *  or derived. A simple term name is essentially an interned string stored
@@ -150,12 +154,6 @@ object Names {
 
     /** Does (the last part of) this name end with `str`? */
     def endsWith(str: String): Boolean = lastPart.endsWith(str)
-
-    /** Designator overrides */
-    override def isTerm(implicit ctx: Context) = isTermName
-    override def isType(implicit ctx: Context) = isTypeName
-    override def asTerm(implicit ctx: Context) = asTermName
-    override def asType(implicit ctx: Context) = asTypeName
 
     override def hashCode = System.identityHashCode(this)
     override def equals(that: Any) = this eq that.asInstanceOf[AnyRef]

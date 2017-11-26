@@ -224,21 +224,18 @@ class TreeUnpickler(reader: TastyReader, nameAtRef: NameRef => TermName, posUnpi
             case TERMREFin =>
               var sname = readName()
               val prefix = readType()
-              val space = readType().asInstanceOf[TypeRef]
-              if (Config.newScheme)
-                sname match {
-                  case SignedName(name, sig) =>
-                    TermRef(prefix, name, space.decl(name).atSignature(sig))
-                  case name =>
-                    TermRef(prefix, name, space.decl(name))
-                }
-              else TermRef(prefix, sname.withNameSpace(space))
+              val space = readType()
+              sname match {
+                case SignedName(name, sig) =>
+                  TermRef(prefix, name, space.decl(name).atSignature(sig))
+                case name =>
+                  TermRef(prefix, name, space.decl(name))
+              }
             case TYPEREFin =>
               val name = readName().toTypeName
               val prefix = readType()
-              val space = readType().asInstanceOf[TypeRef]
-              if (Config.newScheme) TypeRef(prefix, name, space.decl(name))
-              else TypeRef(prefix, name.withNameSpace(space))
+              val space = readType()
+              TypeRef(prefix, name, space.decl(name))
             case REFINEDtype =>
               var name: Name = readName()
               val parent = readType()
@@ -737,10 +734,7 @@ class TreeUnpickler(reader: TastyReader, nameAtRef: NameRef => TermName, posUnpi
       val start = currentAddr
       val cls = ctx.owner.asClass
       val assumedSelfType =
-        if (cls.is(Module) && cls.owner.isClass)
-          TermRef(cls.owner.thisType,
-            if (Config.newScheme) cls.name.sourceModuleName
-            else cls.name.sourceModuleName.localizeIfPrivate(cls))
+        if (cls.is(Module) && cls.owner.isClass) TermRef(cls.owner.thisType, cls.name.sourceModuleName)
         else NoType
       cls.info = new TempClassInfo(cls.owner.thisType, cls, cls.unforcedDecls, assumedSelfType)
       val localDummy = symbolAtCurrent()

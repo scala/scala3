@@ -16,7 +16,6 @@ import SymDenotations._
 import Decorators._
 import Denotations._
 import Periods._
-import Designators._
 import util.Positions.{Position, NoPosition}
 import util.Stats._
 import util.DotClass
@@ -1134,8 +1133,7 @@ object Types {
 
     /** The type <this . name> , reduced if possible */
     def select(name: Name)(implicit ctx: Context): Type =
-      if (Config.newScheme) NamedType(this, name, member(name)).reduceProjection
-      else NamedType(this, name).reduceProjection
+      NamedType(this, name, member(name)).reduceProjection
 
     /** The type <this . name> , reduced if possible, with given denotation if unreduced */
     def select(name: Name, denot: Denotation)(implicit ctx: Context): Type = // ### drop name
@@ -1146,8 +1144,7 @@ object Types {
       NamedType.withSym(this, sym).reduceProjection
 
     def select(name: TermName)(implicit ctx: Context): TermRef =
-      if (Config.newScheme) TermRef(this, name, member(name))
-      else TermRef(this, name)
+      TermRef(this, name, member(name))
 
     def select(name: TermName, sig: Signature)(implicit ctx: Context): TermRef =
       TermRef(this, name, member(name).atSignature(sig, relaxed = !ctx.erasedTypes))
@@ -1505,25 +1502,46 @@ object Types {
 
 // --- NamedTypes ------------------------------------------------------------------
 
-  type NameSpace = TypeRef /* | Null */
-  @sharable val noNameSpace: NameSpace = null
+  abstract class NamedType extends CachedProxyType with ValueType { self =>
 
-  trait NamedTypeNEW extends NamedType { self =>
+    type ThisType >: this.type <: NamedType
+    type ThisName <: Name
+
+    val prefix: Type
+    def designator: Designator
+    protected def designator_=(d: Designator): Unit
+
+    assert(prefix.isValueType || (prefix eq NoPrefix), s"invalid prefix $prefix")
 
     private[this] var myName: Name = null
     private[this] var mySig: Signature = null
+    private[this] var lastDenotation: Denotation = null
     private[this] var lastSymbol: Symbol = null
+    private[this] var checkedPeriod: Period = Nowhere
 
-    override def name(implicit ctx: Context): ThisName = {
+    // Invariants:
+    // (1) checkedPeriod != Nowhere  =>  lastDenotation != null
+    // (2) lastDenotation != null    =>  lastSymbol != null
+
+    def isType = isInstanceOf[TypeRef]
+    def isTerm = isInstanceOf[TermRef]
+
+    /** If designator is a name, this name. Otherwise, the original name
+     *  of the designator symbol.
+     */
+    final def name(implicit ctx: Context): ThisName = {
       if (myName == null) myName = computeName
       myName.asInstanceOf[ThisName]
     }
 
     private def computeName: Name = designator match {
       case name: Name => name
-      case sym: Symbol => sym.lastKnownDenotation.initial.name
+      case sym: Symbol => sym.originDenotation.name
     }
 
+    /** The signature of the last known denotation, or if there is none, the
+     *  signature of the symbol
+     */
     final override def signature(implicit ctx: Context): Signature = {
       if (mySig == null) mySig = computeSignature
       mySig
@@ -1551,7 +1569,7 @@ object Types {
         }
       }
 
-    override def symbol(implicit ctx: Context): Symbol =
+    final def symbol(implicit ctx: Context): Symbol =
       if (checkedPeriod == ctx.period) lastSymbol else computeSymbol
 
     private def computeSymbol(implicit ctx: Context): Symbol =
@@ -1562,6 +1580,12 @@ object Types {
           (if (denotationIsCurrent) lastDenotation else denot).symbol
       }
 
+    /** There is a denotation computed which is valid (somewhere in) the
+     *  current run.
+     */
+    def denotationIsCurrent(implicit ctx: Context) =
+      lastDenotation != null && lastDenotation.validFor.runId == ctx.runId
+
     /** If the reference is symbolic or the denotation is current, its symbol, otherwise NoDenotation.
      *
      *  Note: This operation does not force the denotation, and is therefore
@@ -1571,7 +1595,7 @@ object Types {
      *  type accumulators, as well as to be safe in diagnostic printing.
      *  Normally, it's better to use `symbol`, not `currentSymbol`.
      */
-    override def currentSymbol(implicit ctx: Context) = designator match {
+    final def currentSymbol(implicit ctx: Context) = designator match {
       case sym: Symbol => sym
       case _ => if (denotationIsCurrent) lastDenotation.symbol else NoSymbol
     }
@@ -1580,23 +1604,35 @@ object Types {
      *  Assumes that symbols do not change between periods in the same run.
      *  Used to get the class underlying a ThisType.
      */
-    override protected[Types] def stableInRunSymbol(implicit ctx: Context): Symbol = {
+    final private[Types] def stableInRunSymbol(implicit ctx: Context): Symbol = {
       if (checkedPeriod.runId == ctx.runId) lastSymbol
       else symbol
     }
 
-    private def lastKnownSymbol =
+    private def lastKnownSymbol = // ### always combine with initial?
       if (lastDenotation != null) lastDenotation.symbol else NoSymbol
 
-    private def infoDependsOnPrefix(symd: SymDenotation, prefix: Type)(implicit ctx: Context): Boolean =
-      symd.maybeOwner.membersNeedAsSeenFrom(prefix) && !symd.is(NonMember)
+    def info(implicit ctx: Context): Type = denot.info
 
-    override def isMemberRef(implicit ctx: Context) = designator match {
-      case sym: Symbol => infoDependsOnPrefix(sym, prefix)
-      case _ => true
+    /** The denotation currently denoted by this type */
+    final def denot(implicit ctx: Context): Denotation = {
+      val now = ctx.period
+      val lastd = lastDenotation
+      if (checkedPeriod == now) lastd else denotAt(lastd, now)
     }
 
-    override protected def computeDenot(implicit ctx: Context): Denotation = {
+    /** A first fall back to do a somewhat more expensive calculation in case the first
+     *  attempt in `denot` does not yield a denotation.
+     */
+    private def denotAt(lastd: Denotation, now: Period)(implicit ctx: Context): Denotation = {
+      if (lastd != null && (lastd.validFor contains now)) {
+        checkedPeriod = now
+        lastd
+      }
+      else computeDenot
+    }
+
+    private def computeDenot(implicit ctx: Context): Denotation = {
 
       def finish(d: Denotation) = {
         if (ctx.typerState.ephemeral)
@@ -1665,6 +1701,9 @@ object Types {
       d
     }
 
+    def reloadDenot()(implicit ctx: Context) = // ### combine with invalidate(?)
+      setDenot(loadDenot(name, allowPrivate = !symbol.exists || symbol.is(Private)))
+
     protected def memberDenot(prefix: Type, name: Name, allowPrivate: Boolean)(implicit ctx: Context): Denotation =
       if (allowPrivate) prefix.member(name) else prefix.nonPrivateMember(name)
 
@@ -1683,10 +1722,13 @@ object Types {
       else d
     }
 
-    override def checkDenot()(implicit ctx: Context) = {}
+    private[dotc] final def setDenot(denot: Denotation)(implicit ctx: Context): Unit = { // ### make private? (also others)
+      if (ctx.isAfterTyper)
+        assert(!denot.isOverloaded, this)
+      if (Config.checkNoDoubleBindings)
+        if (ctx.settings.YnoDoubleBindings.value)
+          checkSymAssign(denot.symbol)
 
-    protected[dotc] override def setDenot(denot: Denotation)(implicit ctx: Context): Unit = {
-      if (ctx.isAfterTyper) assert(!denot.isOverloaded, this)
       lastDenotation = denot
       lastSymbol = denot.symbol
       checkedPeriod = ctx.period
@@ -1698,306 +1740,17 @@ object Types {
       checkDenot()
     }
 
-    protected[dotc] override def withSym(sym: Symbol)(implicit ctx: Context): ThisType =
-      if ((designator ne sym) && sym.exists) NamedType(prefix, sym).asInstanceOf[ThisType]
-      else this
-
-    override protected[dotc] def withDenot(denot: Denotation)(implicit ctx: Context): ThisType =
-      if (denot.exists) {
-        val adapted = withSym(denot.symbol)
-        if (adapted ne this) adapted.withDenot(denot).asInstanceOf[ThisType]
-        else {
-          setDenot(denot)
-          this
-        }
-      }
-      else // don't assign NoDenotation, we might need to recover later. Test case is pos/avoid.scala.
-        this
-
-    /** Create a NamedType of the same kind as this type, but with a new prefix.
-     */
-    override def withPrefix(prefix: Type)(implicit ctx: Context): NamedType = {
-      def reload(): NamedType = {
-        val allowPrivate = !lastSymbol.exists || lastSymbol.is(Private) && prefix.classSymbol == this.prefix.classSymbol
-        var d = memberDenot(prefix, name, allowPrivate)
-        if (d.isOverloaded && lastSymbol.exists) {
-          val targetSig =
-            if (lastSymbol.signature == Signature.NotAMethod) Signature.NotAMethod
-            else lastSymbol.asSeenFrom(prefix).signature
-          d = d.atSignature(targetSig, relaxed = !ctx.erasedTypes)
-        }
-        NamedType(prefix, name, d)
-      }
-      if (lastDenotation == null) NamedType(prefix, designator)
-      else designator match {
-        case sym: Symbol =>
-          if (infoDependsOnPrefix(sym, prefix)) {
-            val candidate = reload()
-            val falseOverride = sym.isClass && candidate.symbol.exists && candidate.symbol != symbol
-              // A false override happens if we rebind an inner class to another type with the same name
-              // in an outer subclass. This is wrong, since classes do not override. We need to
-              // return a type with the existing class info as seen from the new prefix instead.
-            if (falseOverride) NamedType(prefix, sym.name, denot.asSeenFrom(prefix))
-            else candidate
-          }
-          else NamedType(prefix, sym)
-        case name: Name => reload()
-      }
-    }
-  }
-
-  trait TermRefNEW extends TermRef with NamedTypeNEW {
-
-    override def alternatives(implicit ctx: Context): List[TermRef] =
-      denot.alternatives.map(withDenot(_))
-
-    override def altsWith(p: Symbol => Boolean)(implicit ctx: Context): List[TermRef] =
-      denot.altsWith(p).map(withDenot(_))
-  }
-
-  trait TypeRefNEW extends TypeRef with NamedTypeNEW
-
-  final class CachedTermRefNEW(prefix: Type, designator: TermDesignator, hc: Int) extends TermRef(prefix, designator) with TermRefNEW {
-    assert((prefix ne NoPrefix) || hasFixedSym)
-    myHash = hc
-  }
-
-  final class CachedTypeRefNEW(prefix: Type, designator: TypeDesignator, hc: Int) extends TypeRef(prefix, designator) with TypeRefNEW {
-    assert((prefix ne NoPrefix) || hasFixedSym)
-    myHash = hc
-  }
-
-  /** A NamedType of the form Prefix # name */
-  abstract class NamedType extends CachedProxyType with ValueType { self =>
-
-    type ThisType >: this.type <: NamedType
-    type ThisName <: Name
-
-    val prefix: Type
-    def designator: Designator { type ThisName = self.ThisName }
-    def designator_=(d: Designator { type ThisName = self.ThisName }): Unit
-
-    assert(prefix.isValueType || (prefix eq NoPrefix), s"invalid prefix $prefix")
-
-    def isType = isInstanceOf[TypeRef]
-    def isTerm = isInstanceOf[TermRef]
-    def hasFixedSym = designator.isInstanceOf[Symbol]
-
-    private[this] var myName: ThisName = _
-    private[this] var mySig: Signature = null
-    private[this] var myNameSpace: NameSpace = noNameSpace
-
-    private[dotc] def init()(implicit ctx: Context): this.type = {
-      assert(!Config.newScheme)
-      def decompose(designator: Designator): Unit = designator match {
-        case DerivedName(underlying, info: SignedName.SignedInfo) =>
-          mySig = info.sig
-          decompose(underlying)
-        case designator: Name =>
-          myName = designator.asInstanceOf[ThisName]
-          if (mySig == null) mySig = Signature.NotAMethod
-        case designator: Symbol =>
-          uncheckedSetSym(designator)
-        case designator: LocalName[_] =>
-          myNameSpace = designator.nameSpace
-          decompose(designator.name)
-      }
-      decompose(designator)
-      this
-    }
-
-    def name(implicit ctx: Context): ThisName = {
-      assert(!Config.newScheme)
-      if (myName == null)
-        myName = designator.asInstanceOf[Symbol].name.asInstanceOf[ThisName]
-      myName
-    }
-
-    override def signature(implicit ctx: Context): Signature = {
-      if (mySig == null) mySig = denot.signature
-      mySig
-    }
-
-    final def nameSpace: NameSpace = myNameSpace
-
-    protected[this] var lastDenotation: Denotation = _
-    private[this] var lastSymbol: Symbol = _
-    protected[this] var checkedPeriod = Nowhere
-
-    // Invariants:
-    // (1) checkedPeriod != Nowhere  =>  lastDenotation != null
-    // (2) lastDenotation != null    =>  lastSymbol != null
-
-    /** There is a denotation computed which is valid (somewhere in) the
-     *  current run.
-     */
-    def denotationIsCurrent(implicit ctx: Context) =
-      lastDenotation != null && lastDenotation.validFor.runId == ctx.runId
-
-    /** The denotation is current, its symbol, otherwise NoDenotation.
-     *
-     *  Note: This operation does not force the denotation, and is therefore
-     *  timing dependent. It should only be used if the outcome of the
-     *  essential computation does not depend on the symbol being present or not.
-     *  It's currently used to take an optimized path in substituters and
-     *  type accumulators, as well as to be safe in diagnostic printing.
-     *  Normally, it's better to use `symbol`, not `currentSymbol`.
-     */
-    def currentSymbol(implicit ctx: Context) = {
-      assert(!Config.newScheme)
-      if (denotationIsCurrent) symbol else NoSymbol
-    }
-
-    /** The denotation currently denoted by this type */
-    final def denot(implicit ctx: Context): Denotation = {
-      val now = ctx.period
-      val lastd = lastDenotation
-      if (checkedPeriod == now) lastd else denotAt(lastd, now)
-    }
-
-    /** A first fall back to do a somewhat more expensive calculation in case the first
-     *  attempt in `denot` does not yield a denotation.
-     */
-    private def denotAt(lastd: Denotation, now: Period)(implicit ctx: Context): Denotation = {
-      if (lastd != null && (lastd.validFor contains now)) {
-        checkedPeriod = now
-        lastd
-      }
-      else computeDenot
-    }
-
-    var prevDenotation: Denotation = _
-
-    /** Hook for adding debug check code when denotations are assigned */
-    def checkDenot()(implicit ctx: Context) = {
-      if (Config.checkTypeRefCycles)
-        lastDenotation match {
-          case d: SingleDenotation =>
-            d.infoOrCompleter match {
-              case TypeBounds(lo, hi) =>
-                assert(lo ne this, this)
-                assert(hi ne this, this)
-              case _ =>
-            }
-          case _ =>
-        }
-      if (Config.checkTypeParamRefs)
-        lastDenotation match {
-          case d: SingleDenotation if d.symbol.is(ClassTypeParam) =>
-            prefix match {
-              case prefix: Types.ThisType => assert(prefix.cls == d.symbol.owner, this)
-              case _ => assert(false, this)
-            }
-          case _ =>
-        }
-    }
-
-    /** A second fallback to recompute the denotation if necessary */
-    protected def computeDenot(implicit ctx: Context): Denotation = {
-      assert(!Config.newScheme)
-      val savedEphemeral = ctx.typerState.ephemeral
-      ctx.typerState.ephemeral = false
-      try {
-        prevDenotation = lastDenotation
-        def finish(d: Denotation) =
-        if (ctx.typerState.ephemeral) { record("ephemeral cache miss: loadDenot"); d }
-        else if (d.exists) {
-          // Avoid storing NoDenotations in the cache - we will not be able to recover from
-          // them. The situation might arise that a type has NoDenotation in some later
-          // phase but a defined denotation earlier (e.g. a TypeRef to an abstract type
-          // is undefined after erasure.) We need to be able to do time travel back and
-          // forth also in these cases.
-
-          // Don't use setDenot here; double binding checks can give spurious failures after erasure
-          lastDenotation = d
-          lastSymbol = d.symbol
-          checkedPeriod = ctx.period
-          checkDenot()
-          d
-        }
-        else d
-        val d = lastDenotation match {
-          case null =>
-            val sym = lastSymbol
-            if (sym != null && sym.isValidInCurrentRun)
-              if (!Config.newScheme ||
-                  (prefix eq NoPrefix) || (prefix eq sym.maybeOwner.thisType) || sym.isReferencedSymbolically)
-                finish(denotOfSym(sym))
-              else if (Config.newScheme && sym.isClass) finish(denotOfSym(sym))
-              else finish(loadDenot)
-            else finish(loadDenot)
-          case d: SymDenotation =>
-            if (d.validFor.runId == ctx.runId || ctx.stillValid(d))
-              if (hasFixedSym)
-                finish(d.current)
-              else if (nameSpace != noNameSpace ||
-                  d.exists && prefix.isTightPrefix(d.owner) ||
-                  d.isConstructor) finish(d.current)
-              else
-                finish(recomputeMember(d)) // symbol could have been overridden, recompute membership
-            else if (hasFixedSym && d.validFor == Nowhere) // denotation was invalidated
-              finish(d.current)
-            else finish(try {
-              val newd = loadDenot // TODO: If symbolic re-enter in uniques map.
-              if (newd.exists) newd
-              else if (ctx.mode.is(Mode.Interactive)) d
-              else d.staleSymbolError
-            }
-            catch {
-              case ex: Error =>
-                println(d)
-                println(d.validFor.runId)
-                println(ctx.runId)
-                println(hasFixedSym)
-                println(i"prefix = $prefix / ${prefix.member(name)}")
-                throw ex
-            })
-          case d =>
-            if (d.validFor.runId != ctx.period.runId) finish(loadDenot)
-            else finish(d.current)
-        }
-        d
-      }
-      finally ctx.typerState.ephemeral |= savedEphemeral
-    }
-
-    /** A member of `prefix` (disambiguated by `d.signature`) or, if none was found, `d.current`. */
-    private def recomputeMember(d: SymDenotation)(implicit ctx: Context): Denotation = {
-      assert(!Config.newScheme)
-      asMemberOf(prefix, allowPrivate = d.is(Private)) match {
-        case NoDenotation => d.current
-        case newd: SingleDenotation => newd
-        case newd =>
-          newd.atSignature(d.signature) match {
-            case newd1: SingleDenotation if newd1.exists => newd1
-            case _ => d.current
-          }
-      }
-    }
-
-    protected def denotOfSym(sym: Symbol)(implicit ctx: Context): Denotation = {
-      assert(!Config.newScheme)
-      val d = sym.denot
-      val owner = d.owner
-      if (owner.isTerm) d else d.asSeenFrom(prefix)
-    }
+    private def checkDenot()(implicit ctx: Context) = {}
 
     private def checkSymAssign(sym: Symbol)(implicit ctx: Context) = {
-      assert(!Config.newScheme)
       def selfTypeOf(sym: Symbol) =
         if (sym.isClass) sym.asClass.givenSelfType else NoType
       assert(
         (lastSymbol eq sym)
         ||
         (lastSymbol eq null)
-        || {
-          val lastDefRunId = lastDenotation match {
-            case d: SymDenotation => d.validFor.runId
-            case _ => lastSymbol.defRunId
-          }
-          (lastDefRunId != sym.defRunId) ||
-          (lastDefRunId == NoRunId)
-        }
+        ||
+        !denotationIsCurrent
         ||
         lastSymbol.infoOrCompleter.isInstanceOf[ErrorType]
         ||
@@ -2009,114 +1762,24 @@ object Types {
            selfTypeOf(sym).derivesFrom(lastSymbol.owner)
            ||
            selfTypeOf(lastSymbol).derivesFrom(sym.owner)
-          ),
-        i"""data race? overwriting symbol of type $this,
-           |long form = $toString of class $getClass,
+          )
+        ||
+        sym == defn.AnyClass.primaryConstructor,
+        s"""data race? overwriting $lastSymbol with $sym in type $this,
            |last sym id = ${lastSymbol.id}, new sym id = ${sym.id},
            |last owner = ${lastSymbol.owner}, new owner = ${sym.owner},
            |period = ${ctx.phase} at run ${ctx.runId}""")
     }
 
-    protected[dotc] def withDenot(denot: Denotation)(implicit ctx: Context): ThisType = {
-      assert(!Config.newScheme)
-      val adapted =
-      	if (hasFixedSym)
-      	  if (Config.newScheme) withSym(denot.symbol)
-          else this
-      	else if (signature != denot.signature)
-          withSig(denot.signature)
-        else if (denot.symbol.isPrivate) {
-          assert(!Config.newScheme)
-          withNameSpaceOLD(denot.symbol.owner.typeRef)
-        }
-        else
-          this
-      if (adapted ne this) adapted.withDenot(denot).asInstanceOf[ThisType]
-      else {
-        setDenot(denot)
-        this
-      }
+    // ### make private or add comment
+    def infoDependsOnPrefix(symd: SymDenotation, prefix: Type)(implicit ctx: Context): Boolean =
+      symd.maybeOwner.membersNeedAsSeenFrom(prefix) && !symd.is(NonMember)
+
+    /** Is this a reference to a class or object member? */
+    def isMemberRef(implicit ctx: Context) = designator match {
+      case sym: Symbol => infoDependsOnPrefix(sym, prefix)
+      case _ => true
     }
-
-    protected[dotc] def setDenot(denot: Denotation)(implicit ctx: Context): Unit = {
-      assert(!Config.newScheme)
-      if (Config.checkNoDoubleBindings)
-        if (ctx.settings.YnoDoubleBindings.value)
-          checkSymAssign(denot.symbol)
-
-      // additional checks that intercept `denot` can be added here
-
-      lastDenotation = denot
-      checkDenot()
-      lastSymbol = denot.symbol
-      checkedPeriod = Nowhere
-    }
-
-    protected[dotc] def withSym(sym: Symbol)(implicit ctx: Context): ThisType = {
-        assert(!Config.newScheme)
-        setSym(sym)
-        this
-      }
-
-    private[dotc] final def setSym(sym: Symbol)(implicit ctx: Context): Unit = {
-      assert(!Config.newScheme)
-      if (Config.checkNoDoubleBindings)
-        if (ctx.settings.YnoDoubleBindings.value)
-          checkSymAssign(sym)
-      uncheckedSetSym(sym)
-    }
-
-    private[dotc] final def uncheckedSetSym(sym: Symbol): Unit = {
-      assert(!Config.newScheme)
-      lastDenotation = null
-      lastSymbol = sym
-      checkedPeriod = Nowhere
-    }
-
-    private def withSig(sig: Signature)(implicit ctx: Context): NamedType = {
-      assert(!Config.newScheme)
-      TermRef(prefix, designator.withSig(sig))
-    }
-
-    private def loadDenot(implicit ctx: Context): Denotation = {
-      assert(!Config.newScheme)
-      val d = asMemberOf(prefix, allowPrivate =
-        Config.newScheme && lastSymbol != null && lastSymbol.is(Private))
-      def atSig(sig: Signature): Denotation =
-        if (sig.ne(Signature.OverloadedSignature)) d.atSignature(sig).checkUnique
-        else d
-      if (d.exists || ctx.phaseId == FirstPhaseId || !lastDenotation.isInstanceOf[SymDenotation])
-        if (d.isOverloaded)
-          if (hasFixedSym) {
-            val last =
-              if (lastDenotation != null) lastDenotation
-              else symbol.lastKnownDenotation.asSeenFrom(prefix)
-            atSig(last.signature)
-          }
-          else if (mySig != null) atSig(mySig)
-          else d
-        else d
-      else { // name has changed; try load in earlier phase and make current
-
-        val d = loadDenot(ctx.withPhase(ctx.phaseId - 1)).current
-        if (d.exists) d
-        else throw new Error(s"failure to reload $this of class $getClass")
-      }
-    }
-
-    def reloadDenot()(implicit ctx: Context) = {
-      assert(!Config.newScheme)
-      setDenot(loadDenot)
-    }
-
-    protected def asMemberOf(prefix: Type, allowPrivate: Boolean)(implicit ctx: Context): Denotation = {
-      assert(!Config.newScheme)
-      if (nameSpace != noNameSpace) nameSpace.findMember(name, prefix, EmptyFlags)
-      else if (allowPrivate) prefix.member(name)
-      else prefix.nonPrivateMember(name)
-    }
-
-    def isMemberRef(implicit ctx: Context) = !hasFixedSym
 
     /** (1) Reduce a type-ref `W # X` or `W { ... } # U`, where `W` is a wildcard type
      *  to an (unbounded) wildcard type.
@@ -2131,27 +1794,6 @@ object Types {
         if (reduced.exists) reduced else this
       }
       else this
-
-    def symbol(implicit ctx: Context): Symbol = {
-      assert(!Config.newScheme)
-      if (checkedPeriod == ctx.period ||
-          lastDenotation == null && lastSymbol != null && lastSymbol.isValidInCurrentRun)
-        lastSymbol
-      else
-        denot.symbol
-    }
-
-    /** Retrieves currently valid symbol without necessarily updating denotation.
-     *  Assumes that symbols do not change between periods in the same run.
-     *  Used to get the class underlying a ThisType.
-     */
-    protected[Types] def stableInRunSymbol(implicit ctx: Context): Symbol = {
-      assert(!Config.newScheme)
-      if (checkedPeriod.runId == ctx.runId) lastSymbol
-      else symbol
-    }
-
-    def info(implicit ctx: Context): Type = denot.info
 
     /** Guard against cycles that can arise if given `op`
      *  follows info. The problematic cases are a type alias to itself or
@@ -2179,8 +1821,6 @@ object Types {
     } finally {
       ctx.underlyingRecursions -= 1
     }
-
-    // def noArg = throw new AssertionError(s"$pre contains no matching argument for ${sym.showLocated}")
 
     /** The argument corresponding to class type parameter `tparam` as seen from
      *  prefix `pre`.
@@ -2261,15 +1901,57 @@ object Types {
         case _ => withPrefix(prefix)
       }
 
+    private[dotc] final def invalidateDenot()(implicit ctx: Context): Unit = {
+      lastDenotation = null
+      lastSymbol = null
+    }
+
+    private[dotc] final def withSym(sym: Symbol)(implicit ctx: Context): ThisType =
+      if ((designator ne sym) && sym.exists) NamedType(prefix, sym).asInstanceOf[ThisType]
+      else this
+
+    private[dotc] final def withDenot(denot: Denotation)(implicit ctx: Context): ThisType =
+      if (denot.exists) {
+        val adapted = withSym(denot.symbol)
+        if (adapted ne this) adapted.withDenot(denot).asInstanceOf[ThisType]
+        else {
+          setDenot(denot)
+          this
+        }
+      }
+      else // don't assign NoDenotation, we might need to recover later. Test case is pos/avoid.scala.
+        this
+
     /** Create a NamedType of the same kind as this type, but with a new prefix.
      */
-    def withPrefix(prefix: Type)(implicit ctx: Context): NamedType
-
-    /** Create a NamedType of the same kind as this type, but with a new namespace.
-     */
-    def withNameSpaceOLD(nameSpace: NameSpace)(implicit ctx: Context): NamedType =
-      if (nameSpace == this.nameSpace) this
-      else NamedType(prefix, designator.withNameSpace(nameSpace))
+    final def withPrefix(prefix: Type)(implicit ctx: Context): NamedType = {
+      def reload(): NamedType = {
+        val allowPrivate = !lastSymbol.exists || lastSymbol.is(Private) && prefix.classSymbol == this.prefix.classSymbol
+        var d = memberDenot(prefix, name, allowPrivate)
+        if (d.isOverloaded && lastSymbol.exists) {
+          val targetSig =
+            if (lastSymbol.signature == Signature.NotAMethod) Signature.NotAMethod
+            else lastSymbol.asSeenFrom(prefix).signature
+          d = d.atSignature(targetSig, relaxed = !ctx.erasedTypes)
+        }
+        NamedType(prefix, name, d)
+      }
+      if (lastDenotation == null) NamedType(prefix, designator)
+      else designator match {
+        case sym: Symbol =>
+          if (infoDependsOnPrefix(sym, prefix)) {
+            val candidate = reload()
+            val falseOverride = sym.isClass && candidate.symbol.exists && candidate.symbol != symbol
+              // A false override happens if we rebind an inner class to another type with the same name
+              // in an outer subclass. This is wrong, since classes do not override. We need to
+              // return a type with the existing class info as seen from the new prefix instead.
+            if (falseOverride) NamedType(prefix, sym.name, denot.asSeenFrom(prefix))
+            else candidate
+          }
+          else NamedType(prefix, sym)
+        case name: Name => reload()
+      }
+    }
 
     override def equals(that: Any) = that match {
       case that: NamedType =>
@@ -2282,18 +1964,9 @@ object Types {
     override def computeHash = unsupported("computeHash")
 
     override def eql(that: Type) = this eq that // safe because named types are hash-consed separately
-
-    /* A version of toString which also prints aliases. Can be used for debugging
-    override def toString =
-      if (isTerm) s"TermRef($prefix, $name)"
-      else s"TypeRef($prefix, $name)${
-        if (lastDenotation != null && lastDenotation.infoOrCompleter.isAlias)
-          s"@@@ ${lastDenotation.infoOrCompleter.asInstanceOf[TypeAlias].hi}"
-        else ""}"
-    */
   }
 
-  abstract case class TermRef(override val prefix: Type, var designator: TermDesignator) extends NamedType with SingletonType {
+  abstract case class TermRef(override val prefix: Type, var designator: Designator) extends NamedType with SingletonType {
 
     type ThisType = TermRef
     type ThisName = TermName
@@ -2306,75 +1979,28 @@ object Types {
 
     override def isOverloaded(implicit ctx: Context) = denot.isOverloaded
 
-    private def rewrap(sd: SingleDenotation)(implicit ctx: Context) = {
-      assert(!Config.newScheme)
-      TermRef.apply(prefix, name, sd)
-    }
+    def alternatives(implicit ctx: Context): List[TermRef] =
+      denot.alternatives.map(withDenot(_))
 
-    def alternatives(implicit ctx: Context): List[TermRef] = {
-      assert(!Config.newScheme)
-      denot.alternatives map rewrap
-    }
-
-    def altsWith(p: Symbol => Boolean)(implicit ctx: Context): List[TermRef] = {
-      assert(!Config.newScheme)
-      denot.altsWith(p) map rewrap
-    }
-
-    private def fixDenot(candidate: TermRef, prefix: Type)(implicit ctx: Context): TermRef =
-      if (symbol.exists && !candidate.symbol.exists) { // recompute from previous symbol
-        assert(!Config.newScheme)
-        val ownSym = symbol
-        val newd = asMemberOf(prefix, allowPrivate = ownSym.is(Private))
-        candidate.withDenot(newd.suchThat(_.signature == ownSym.signature))
-      }
-      else candidate
-
-    def withPrefix(prefix: Type)(implicit ctx: Context): NamedType = designator match {
-      case designator: TermSymbol @unchecked =>
-        assert(!Config.newScheme)
-        TermRef(prefix, designator)
-      case _ =>
-        assert(!Config.newScheme)
-        // If symbol exists, the new signature is the symbol's signature as seen
-        // from the new prefix, modulo consistency
-        val curSig = signature
-        val newSig =
-          if (curSig.eq(Signature.NotAMethod) || !symbol.exists)
-            curSig
-          else
-            curSig.updateWith(symbol.info.asSeenFrom(prefix, symbol.owner).signature)
-        val designator1 =
-          if (newSig ne curSig) {
-            core.println(i"sig change at ${ctx.phase} for $this, pre = $prefix, sig: $curSig --> $newSig")
-            designator.withSig(newSig)
-          }
-          else designator
-        assert(!Config.newScheme)
-        fixDenot(TermRef(prefix, designator1), prefix)
-    }
+    def altsWith(p: Symbol => Boolean)(implicit ctx: Context): List[TermRef] =
+      denot.altsWith(p).map(withDenot(_))
   }
 
-  abstract case class TypeRef(override val prefix: Type, var designator: TypeDesignator) extends NamedType {
+  abstract case class TypeRef(override val prefix: Type, var designator: Designator) extends NamedType {
 
     type ThisType = TypeRef
     type ThisName = TypeName
 
     override def underlying(implicit ctx: Context): Type = info
-
-    def withPrefix(prefix: Type)(implicit ctx: Context): NamedType = {
-      assert(!Config.newScheme)
-      TypeRef(prefix, designator)
-    }
   }
 
-  final class CachedTermRef(prefix: Type, designator: TermDesignator, hc: Int) extends TermRef(prefix, designator) {
-    assert((prefix ne NoPrefix) || hasFixedSym)
+  final class CachedTermRef(prefix: Type, designator: Designator, hc: Int) extends TermRef(prefix, designator) {
+    assert((prefix ne NoPrefix) || designator.isInstanceOf[Symbol])
     myHash = hc
   }
 
-  final class CachedTypeRef(prefix: Type, designator: TypeDesignator, hc: Int) extends TypeRef(prefix, designator) {
-    assert((prefix ne NoPrefix) || hasFixedSym)
+  final class CachedTypeRef(prefix: Type, designator: Designator, hc: Int) extends TypeRef(prefix, designator) {
+    assert((prefix ne NoPrefix) || designator.isInstanceOf[Symbol])
     myHash = hc
   }
 
@@ -2383,9 +2009,13 @@ object Types {
     if (Config.checkUnerased) assert(!ctx.phase.erasedTypes)
 
   object NamedType {
+    def isType(desig: Designator)(implicit ctx: Context) = desig match {
+      case sym: Symbol => sym.isType
+      case name: Name => name.isTypeName
+    }
     def apply(prefix: Type, designator: Designator)(implicit ctx: Context) =
-      if (designator.isType) TypeRef.apply(prefix, designator.asType)
-      else TermRef.apply(prefix, designator.asTerm)
+      if (isType(designator)) TypeRef.apply(prefix, designator)
+      else TermRef.apply(prefix, designator)
     def apply(prefix: Type, designator: Name, denot: Denotation)(implicit ctx: Context) =
       if (designator.isTermName) TermRef.apply(prefix, designator.asTermName, denot)
       else TypeRef.apply(prefix, designator.asTypeName, denot)
@@ -2400,7 +2030,7 @@ object Types {
      *  Its meaning is the (potentially multi-) denotation of the member(s)
      *  of prefix with given name.
      */
-    def apply(prefix: Type, desig: TermDesignator)(implicit ctx: Context): TermRef =
+    def apply(prefix: Type, desig: Designator)(implicit ctx: Context): TermRef =
       ctx.uniqueNamedTypes.enterIfNew(prefix, desig, isTerm = true).asInstanceOf[TermRef]
 
     /** Create term ref to given initial denotation, taking the signature
@@ -2408,60 +2038,24 @@ object Types {
      *  signature, if denotation is not yet completed.
      */
     def apply(prefix: Type, name: TermName, denot: Denotation)(implicit ctx: Context): TermRef =
-      if (Config.newScheme)
-        apply(prefix, if (denot.symbol.exists) denot.symbol.asTerm else name).withDenot(denot)
-      else {
-        if ((prefix eq NoPrefix) || denot.symbol.isReferencedSymbolically) apply(prefix, denot.symbol.asTerm)
-        else denot match {
-          case denot: SingleDenotation =>
-            apply(prefix, name.withSig(denot.signature).localizeIfPrivate(denot.symbol))
-          case _ => apply(prefix, name)
-        }
-      } withDenot denot
-
-    /** Create a term ref referring to given symbol with given name.
-     *  This is similar to TermRef(Type, Symbol), except:
-     *  (1) the symbol might not yet have a denotation, so the name needs to be given explicitly.
-     *  (2) the designator of the TermRef is either the symbol or its name & unforced signature.
-     */
-    def withSymOLD(prefix: Type, sym: TermSymbol, name: TermName)(implicit ctx: Context): TermRef = {
-      assert(!Config.newScheme)
-      if ((prefix eq NoPrefix) || sym.isReferencedSymbolically) apply(prefix, sym)
-      else apply(prefix, name.withSig(sym.signature).localizeIfPrivate(sym)).withSym(sym)
-    }
+      apply(prefix, if (denot.symbol.exists) denot.symbol.asTerm else name).withDenot(denot)
 
     def withSym(prefix: Type, sym: TermSymbol)(implicit ctx: Context): TermRef =
-      if (Config.newScheme) apply(prefix, sym) else withSymOLD(prefix, sym, sym.name)
+      apply(prefix, sym) // ###
   }
 
   object TypeRef {
 
     /** Create type ref with given prefix and name */
-    def apply(prefix: Type, desig: TypeDesignator)(implicit ctx: Context): TypeRef =
+    def apply(prefix: Type, desig: Designator)(implicit ctx: Context): TypeRef =
       ctx.uniqueNamedTypes.enterIfNew(prefix, desig, isTerm = false).asInstanceOf[TypeRef]
 
     /** Create a type ref with given name and initial denotation */
     def apply(prefix: Type, name: TypeName, denot: Denotation)(implicit ctx: Context): TypeRef =
-      if (Config.newScheme)
-        apply(prefix, if (denot.symbol.exists) denot.symbol.asType else name).withDenot(denot)
-      else {
-        if ((prefix eq NoPrefix) || denot.symbol.isReferencedSymbolically) apply(prefix, denot.symbol.asType)
-        else apply(prefix, name.localizeIfPrivate(denot.symbol))
-      } withDenot denot
-
-    /** Create a type ref referring to either a given symbol or its name.
-     *  This is similar to TypeRef(prefix, sym), except:
-     *  (1) the symbol might not yet have a denotation, so the name needs to be given explicitly.
-     *  (2) the designator of the TypeRef is either the symbol or its name
-     */
-    def withSymOLD(prefix: Type, sym: TypeSymbol, name: TypeName)(implicit ctx: Context): TypeRef = {
-      assert(!Config.newScheme)
-      if ((prefix eq NoPrefix) || sym.isReferencedSymbolically) apply(prefix, sym)
-      else apply(prefix, name.localizeIfPrivate(sym)).withSym(sym)
-    }
+      apply(prefix, if (denot.symbol.exists) denot.symbol.asType else name).withDenot(denot)
 
     def withSym(prefix: Type, sym: TypeSymbol)(implicit ctx: Context): TypeRef =
-      if (Config.newScheme) apply(prefix, sym) else withSymOLD(prefix, sym, sym.name)
+      apply(prefix, sym) // ###
   }
 
   // --- Other SingletonTypes: ThisType/SuperType/ConstantType ---------------------------
@@ -3806,15 +3400,14 @@ object Types {
       def clsDenot = if (prefix eq cls.owner.thisType) cls.denot else cls.denot.copySymDenotation(info = this)
       if (appliedRefCache == null) {
         val tref =
-          if ((cls is PackageClass) || cls.owner.isTerm) symbolicTypeRef // ??? not always symbolicRef
+          if ((cls is PackageClass) || cls.owner.isTerm)
+            TypeRef(prefix, cls) // ### not always symbolicRef?
           else TypeRef(prefix, cls.name, clsDenot)
         appliedRefCache =
           tref.appliedTo(cls.typeParams.map(_.typeRef))
       }
       appliedRefCache
     }
-
-    def symbolicTypeRef(implicit ctx: Context): TypeRef = TypeRef.withSym(prefix, cls)
 
     // cached because baseType needs parents
     private[this] var parentsCache: List[Type] = null
@@ -3887,9 +3480,10 @@ object Types {
     def contains(tp: Type)(implicit ctx: Context): Boolean = tp match {
       case tp: TypeBounds => lo <:< tp.lo && tp.hi <:< hi
       case tp: ClassInfo =>
+        val cls = tp.cls
         // Note: Taking a normal typeRef does not work here. A normal ref might contain
         // also other information about the named type (e.g. bounds).
-        if (Config.newScheme) {
+        if (true) { // ###
         val loOK =
           lo.isRef(tp.cls) ||
           lo.isRef(defn.NothingClass) ||
@@ -3902,7 +3496,9 @@ object Types {
           false
         }
         }
-        else contains(tp.symbolicTypeRef)
+        else contains(
+          TypeRef(tp.prefix, cls)
+            .withDenot(new UniqueRefDenotation(cls, tp, cls.validFor)))
       case _ => lo <:< tp && tp <:< hi
     }
 
