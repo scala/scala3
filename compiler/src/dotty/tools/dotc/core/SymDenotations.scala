@@ -417,7 +417,7 @@ object SymDenotations {
           case name: SimpleName => qualify(name)
           case name @ AnyQualifiedName(_, _) => qualify(name.mangled.toSimpleName)
         }
-        if (name.isType) fn.toTypeName else fn.toTermName
+        if (name.isTypeName) fn.toTypeName else fn.toTermName
       }
 
     /** The encoded flat name of this denotation, where joined names are separated by `separator` characters. */
