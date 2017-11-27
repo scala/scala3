@@ -14,7 +14,7 @@ trait ErrorMessagesTest extends DottyTest {
   private def newContext = {
     val rep = new StoreReporter(null)
               with UniqueMessagePositions with HideNonSensicalMessages
-    initialCtx.setReporter(rep)
+    initialCtx.setReporter(rep).setSetting(ctx.settings.color, "never")
   }
 
   class Report(messages: List[Message], ictx: Context) {

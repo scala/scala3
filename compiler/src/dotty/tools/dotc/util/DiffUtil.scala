@@ -5,31 +5,29 @@ import scala.collection.mutable
 
 object DiffUtil {
 
-  private final val ANSI_DEFAULT = "\u001B[0m"
-  private final val ANSI_RED = "\u001B[31m"
-  private final val ANSI_GREEN = "\u001B[32m"
-  private final val ANSI_EOF = "\u001B[2m"
-
-  private final val DELETION_COLOR = ANSI_RED
-  private final val ADDITION_COLOR = ANSI_GREEN
-
   val EOF = new String("EOF") // Unique string up to reference
+
+  val ansiColorToken = '\u001b'
 
   @tailrec private def splitTokens(str: String, acc: List[String] = Nil): List[String] = {
       if (str == "") {
         acc.reverse
       } else {
         val head = str.charAt(0)
-        val (token, rest) = if (Character.isAlphabetic(head) || Character.isDigit(head)) {
-          str.span(c => Character.isAlphabetic(c) || Character.isDigit(c))
-        } else if (Character.isMirrored(head) || Character.isWhitespace(head)) {
-          str.splitAt(1)
-        } else {
-          str.span { c =>
-            !Character.isAlphabetic(c) && !Character.isDigit(c) &&
-              !Character.isMirrored(c) && !Character.isWhitespace(c)
+        val (token, rest) =
+          if (head == ansiColorToken) { // ansi color token
+            val splitIndex = str.indexOf('m') + 1
+            (str.substring(0, splitIndex), str.substring(splitIndex))
+          } else if (Character.isAlphabetic(head) || Character.isDigit(head)) {
+            str.span(c => Character.isAlphabetic(c) || Character.isDigit(c) && c != ansiColorToken)
+          } else if (Character.isMirrored(head) || Character.isWhitespace(head)) {
+            str.splitAt(1)
+          } else {
+            str.span { c =>
+              !Character.isAlphabetic(c) && !Character.isDigit(c) &&
+                !Character.isMirrored(c) && !Character.isWhitespace(c) && c != ansiColorToken
+            }
           }
-        }
         splitTokens(rest, token :: acc)
       }
     }
@@ -48,14 +46,14 @@ object DiffUtil {
       case Unmodified(str) => str
       case Inserted(str) =>
         totalChange += str.length
-        ADDITION_COLOR + str + ANSI_DEFAULT
+        added(str)
     }.mkString
 
     val fnd = diffAct.collect {
       case Unmodified(str) => str
       case Inserted(str) =>
         totalChange += str.length
-        DELETION_COLOR + str + ANSI_DEFAULT
+        deleted(str)
     }.mkString
 
     (fnd, exp, totalChange.toDouble / (expected.length + found.length))
@@ -69,25 +67,21 @@ object DiffUtil {
     }
 
     val expectedDiff =
-      if (expected eq EOF) ANSI_EOF + expected + ANSI_DEFAULT
+      if (expected eq EOF) eof()
       else diff.collect {
         case Unmodified(str) => str
-        case Inserted(str) =>
-          ADDITION_COLOR + str + ANSI_DEFAULT
-        case Modified(_, str) =>
-          ADDITION_COLOR + str + ANSI_DEFAULT
+        case Inserted(str) => added(str)
+        case Modified(_, str) => added(str)
         case Deleted(_) => ""
       }.mkString
 
     val actualDiff =
-      if (actual eq EOF) ANSI_EOF + actual + ANSI_DEFAULT
+      if (actual eq EOF) eof()
       else diff.collect {
         case Unmodified(str) => str
         case Inserted(_) => ""
-        case Modified(str, _) =>
-          DELETION_COLOR + str + ANSI_DEFAULT
-        case Deleted(str) =>
-          DELETION_COLOR + str + ANSI_DEFAULT
+        case Modified(str, _) => deleted(str)
+        case Deleted(str) => deleted(str)
       }.mkString
 
     val pad = " " * 0.max(expectedSize - expected.length)
@@ -103,12 +97,26 @@ object DiffUtil {
 
     diff.collect {
       case Unmodified(str) => str
-      case Inserted(str)                      => ADDITION_COLOR + str + ANSI_DEFAULT
-      case Modified(old, str) if printDiffDel => DELETION_COLOR + old + ADDITION_COLOR + str + ANSI_DEFAULT
-      case Modified(_, str)                   => ADDITION_COLOR + str + ANSI_DEFAULT
-      case Deleted(str) if printDiffDel       => DELETION_COLOR + str + ANSI_DEFAULT
+      case Inserted(str)                      => added(str)
+      case Modified(old, str) if printDiffDel => deleted(str) + added(str)
+      case Modified(_, str)                   => added(str)
+      case Deleted(str) if printDiffDel       => deleted(str)
     }.mkString
   }
+
+  private def added(str: String): String = bgColored(str, Console.GREEN_B)
+  private def deleted(str: String) = bgColored(str, Console.RED_B)
+  private def bgColored(str: String, color: String): String = {
+    if (str.isEmpty) ""
+    else {
+      val (spaces, rest) = str.span(_ == '\n')
+      if (spaces.isEmpty) {
+        val (text, rest2) = str.span(_ != '\n')
+        color + text + Console.RESET + bgColored(rest2, color)
+      } else spaces + bgColored(rest, color)
+    }
+  }
+  private def eof() = "\u001B[51m" + "EOF" + Console.RESET
 
   private sealed trait Patch
   private final case class Unmodified(str: String) extends Patch

@@ -25,7 +25,7 @@ object Texts {
 
     def remaining(width: Int): Int = this match {
       case Str(s, _) =>
-        width - s.length
+        width - lengthWithoutAnsi(s)
       case Fluid(Nil) =>
         width
       case Fluid(last :: prevs) =>
@@ -59,10 +59,13 @@ object Texts {
       else if (that.isEmpty) this
       else if (that.isVertical) appendIndented(that)(width)
       else if (this.isVertical) Fluid(that.layout(width) :: this.relems)
-      else if (that.remaining(width - lastLine.length) >= 0) appendToLastLine(that)
+      else if (that.remaining(width - lengthWithoutAnsi(lastLine)) >= 0) appendToLastLine(that)
       else if (that.isSplittable) (this /: that.relems.reverse)(_.append(width)(_))
       else appendIndented(that)(width)
     }
+
+    private def lengthWithoutAnsi(str: String): Int =
+      str.replaceAll("\u001b\\[\\d+m", "").length
 
     def layout(width: Int): Text = this match {
       case Str(s, _) =>
