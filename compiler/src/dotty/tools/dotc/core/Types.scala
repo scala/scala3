@@ -1014,6 +1014,12 @@ object Types {
       case _ => this
     }
 
+    /** Dealias, and if result is a dependent function type, drop the `apply` refinement. */
+    final def dropDependentRefinement(implicit ctx: Context): Type = dealias match {
+      case RefinedType(parent, nme.apply, _) => parent
+      case tp => tp
+    }
+
     /** The type constructor of an applied type, otherwise the type itself */
     final def typeConstructor(implicit ctx: Context): Type = this match {
       case AppliedType(tycon, _) => tycon
@@ -1312,15 +1318,18 @@ object Types {
 // ----- misc -----------------------------------------------------------
 
     /** Turn type into a function type.
-     *  @pre this is a non-dependent method type.
+     *  @pre this is a method type without parameter dependencies.
      *  @param dropLast  The number of trailing parameters that should be dropped
      *                   when forming the function type.
      */
     def toFunctionType(dropLast: Int = 0)(implicit ctx: Context): Type = this match {
-      case mt: MethodType if !mt.isDependent || ctx.mode.is(Mode.AllowDependentFunctions) =>
+      case mt: MethodType if !mt.isParamDependent =>
         val formals1 = if (dropLast == 0) mt.paramInfos else mt.paramInfos dropRight dropLast
-        defn.FunctionOf(
-          formals1 mapConserve (_.underlyingIfRepeated(mt.isJavaMethod)), mt.resultType, mt.isImplicitMethod && !ctx.erasedTypes)
+        val funType = defn.FunctionOf(
+          formals1 mapConserve (_.underlyingIfRepeated(mt.isJavaMethod)),
+          mt.nonDependentResultApprox, mt.isImplicitMethod && !ctx.erasedTypes)
+        if (mt.isDependent) RefinedType(funType, nme.apply, mt)
+        else funType
     }
 
     /** The signature of this type. This is by default NotAMethod,
@@ -2581,7 +2590,7 @@ object Types {
     def integrate(tparams: List[ParamInfo], tp: Type)(implicit ctx: Context): Type =
       tparams match {
         case LambdaParam(lam, _) :: _ => tp.subst(lam, this)
-        case tparams: List[Symbol @unchecked] => tp.subst(tparams, paramRefs)
+        case params: List[Symbol @unchecked] => tp.subst(params, paramRefs)
       }
 
     final def derivedLambdaType(paramNames: List[ThisName] = this.paramNames,
@@ -2688,7 +2697,7 @@ object Types {
      *    def f(x: C)(y: x.S)       // dependencyStatus = TrueDeps
      *    def f(x: C)(y: x.T)       // dependencyStatus = FalseDeps, i.e.
      *                              // dependency can be eliminated by dealiasing.
-      */
+     */
     private def dependencyStatus(implicit ctx: Context): DependencyStatus = {
       if (myDependencyStatus != Unknown) myDependencyStatus
       else {
@@ -2723,6 +2732,20 @@ object Types {
     def isParamDependent(implicit ctx: Context): Boolean = paramDependencyStatus == TrueDeps
 
     def newParamRef(n: Int) = new TermParamRef(this, n) {}
+
+    /** The least supertype of `resultType` that does not contain parameter dependencies */
+    def nonDependentResultApprox(implicit ctx: Context): Type =
+      if (isDependent) {
+        val dropDependencies = new ApproximatingTypeMap {
+          def apply(tp: Type) = tp match {
+            case tp @ TermParamRef(thisLambdaType, _) =>
+              range(tp.bottomType, atVariance(1)(apply(tp.underlying)))
+            case _ => mapOver(tp)
+          }
+        }
+        dropDependencies(resultType)
+      }
+      else resultType
   }
 
   abstract case class MethodType(paramNames: List[TermName])(
@@ -3197,8 +3220,10 @@ object Types {
       case _ => false
     }
 
+    protected def kindString: String
+
     override def toString =
-      try s"ParamRef($paramName)"
+      try s"${kindString}ParamRef($paramName)"
       catch {
         case ex: IndexOutOfBoundsException => s"ParamRef(<bad index: $paramNum>)"
       }
@@ -3207,8 +3232,9 @@ object Types {
   /** Only created in `binder.paramRefs`. Use `binder.paramRefs(paramNum)` to
    *  refer to `TermParamRef(binder, paramNum)`.
    */
-  abstract case class TermParamRef(binder: TermLambda, paramNum: Int) extends ParamRef {
+  abstract case class TermParamRef(binder: TermLambda, paramNum: Int) extends ParamRef with SingletonType {
     type BT = TermLambda
+    def kindString = "Term"
     def copyBoundType(bt: BT) = bt.paramRefs(paramNum)
   }
 
@@ -3217,6 +3243,7 @@ object Types {
    */
   abstract case class TypeParamRef(binder: TypeLambda, paramNum: Int) extends ParamRef {
     type BT = TypeLambda
+    def kindString = "Type"
     def copyBoundType(bt: BT) = bt.paramRefs(paramNum)
 
     /** Looking only at the structure of `bound`, is one of the following true?
@@ -3731,7 +3758,7 @@ object Types {
         // println(s"absMems: ${absMems map (_.show) mkString ", "}")
         if (absMems.size == 1)
           absMems.head.info match {
-            case mt: MethodType if !mt.isDependent => Some(absMems.head)
+            case mt: MethodType if !mt.isParamDependent => Some(absMems.head)
             case _ => None
           }
         else if (tp isRef defn.PartialFunctionClass)

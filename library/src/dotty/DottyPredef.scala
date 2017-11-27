@@ -38,4 +38,5 @@ object DottyPredef {
   final def assertFail(): Unit = throw new java.lang.AssertionError("assertion failed")
   final def assertFail(message: => Any): Unit = throw new java.lang.AssertionError("assertion failed: " + message)
 
+  @inline final def implicitly[T](implicit ev: T): T = ev
 }

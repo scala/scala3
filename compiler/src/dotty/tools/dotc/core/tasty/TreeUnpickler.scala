@@ -74,7 +74,7 @@ class TreeUnpickler(reader: TastyReader, nameAtRef: NameRef => TermName, posUnpi
   /** The unpickled trees */
   def unpickle()(implicit ctx: Context): List[Tree] = {
     assert(roots != null, "unpickle without previous enterTopLevel")
-    new TreeReader(reader).readTopLevel()(ctx.addMode(Mode.AllowDependentFunctions))
+    new TreeReader(reader).readTopLevel()
   }
 
   class Completer(owner: Symbol, reader: TastyReader) extends LazyType {
@@ -999,8 +999,7 @@ class TreeUnpickler(reader: TastyReader, nameAtRef: NameRef => TermName, posUnpi
               val argPats = until(end)(readTerm())
               UnApply(fn, implicitArgs, argPats, patType)
             case REFINEDtpt =>
-              val refineCls = ctx.newCompleteClassSymbol(
-                ctx.owner, tpnme.REFINE_CLASS, NonMember, parents = Nil)
+              val refineCls = ctx.newRefinedClassSymbol
               typeAtAddr(start) = refineCls.typeRef
               val parent = readTpt()
               val refinements = readStats(refineCls, end)(localContext(refineCls))
@@ -1096,7 +1095,7 @@ class TreeUnpickler(reader: TastyReader, nameAtRef: NameRef => TermName, posUnpi
   class LazyReader[T <: AnyRef](reader: TreeReader, op: TreeReader => Context => T) extends Trees.Lazy[T] {
     def complete(implicit ctx: Context): T = {
       pickling.println(i"starting to read at ${reader.reader.currentAddr}")
-      op(reader)(ctx.addMode(Mode.AllowDependentFunctions).withPhaseNoLater(ctx.picklerPhase))
+      op(reader)(ctx.withPhaseNoLater(ctx.picklerPhase))
     }
   }
 

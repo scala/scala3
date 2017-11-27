@@ -146,10 +146,14 @@ class PlainPrinter(_ctx: Context) extends Printer {
         toTextRef(tp) ~ ".type"
       case tp: TermRef if tp.denot.isOverloaded =>
         "<overloaded " ~ toTextRef(tp) ~ ">"
-      case tp: SingletonType =>
-        toTextLocal(tp.underlying) ~ "(" ~ toTextRef(tp) ~ ")"
       case tp: TypeRef =>
         toTextPrefix(tp.prefix) ~ selectionString(tp)
+      case tp: TermParamRef =>
+        ParamRefNameString(tp) ~ ".type"
+      case tp: TypeParamRef =>
+        ParamRefNameString(tp) ~ lambdaHash(tp.binder)
+      case tp: SingletonType =>
+        toTextLocal(tp.underlying) ~ "(" ~ toTextRef(tp) ~ ")"
       case AppliedType(tycon, args) =>
         (toTextLocal(tycon) ~ "[" ~ Text(args map argText, ", ") ~ "]").close
       case tp: RefinedType =>
@@ -180,26 +184,19 @@ class PlainPrinter(_ctx: Context) extends Printer {
       case NoPrefix =>
         "<noprefix>"
       case tp: MethodType =>
-        def paramText(name: TermName, tp: Type) = toText(name) ~ ": " ~ toText(tp)
         changePrec(GlobalPrec) {
-          (if (tp.isImplicitMethod) "(implicit " else "(") ~
-            Text((tp.paramNames, tp.paramInfos).zipped map paramText, ", ") ~
+          (if (tp.isImplicitMethod) "(implicit " else "(") ~ paramsText(tp) ~
           (if (tp.resultType.isInstanceOf[MethodType]) ")" else "): ") ~
           toText(tp.resultType)
         }
       case tp: ExprType =>
         changePrec(GlobalPrec) { "=> " ~ toText(tp.resultType) }
       case tp: TypeLambda =>
-        def paramText(name: Name, bounds: TypeBounds): Text = name.unexpandedName.toString ~ toText(bounds)
         changePrec(GlobalPrec) {
-          "[" ~ Text((tp.paramNames, tp.paramInfos).zipped.map(paramText), ", ") ~
-          "]" ~ lambdaHash(tp) ~ (" => " provided !tp.resultType.isInstanceOf[MethodType]) ~
+          "[" ~ paramsText(tp) ~ "]" ~ lambdaHash(tp) ~
+          (" => " provided !tp.resultType.isInstanceOf[MethodType]) ~
           toTextGlobal(tp.resultType)
         }
-      case tp: TypeParamRef =>
-        ParamRefNameString(tp) ~ lambdaHash(tp.binder)
-      case tp: TermParamRef =>
-        ParamRefNameString(tp) ~ ".type"
       case AnnotatedType(tpe, annot) =>
         toTextLocal(tpe) ~ " " ~ toText(annot)
       case tp: TypeVar =>
@@ -220,6 +217,11 @@ class PlainPrinter(_ctx: Context) extends Printer {
         tp.fallbackToText(this)
     }
   }.close
+
+  protected def paramsText(tp: LambdaType): Text = {
+    def paramText(name: Name, tp: Type) = toText(name) ~ toTextRHS(tp)
+    Text((tp.paramNames, tp.paramInfos).zipped.map(paramText), ", ")
+  }
 
   protected def ParamRefNameString(name: Name): String = name.toString
 

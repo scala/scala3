@@ -116,6 +116,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
   override def toText(tp: Type): Text = controlled {
     def toTextTuple(args: List[Type]): Text =
       "(" ~ Text(args.map(argText), ", ") ~ ")"
+
     def toTextFunction(args: List[Type], isImplicit: Boolean): Text =
       changePrec(GlobalPrec) {
         val argStr: Text =
@@ -125,6 +126,11 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
             toTextTuple(args.init)
         ("implicit " provided isImplicit) ~ argStr ~ " => " ~ argText(args.last)
       }
+
+    def toTextDependentFunction(appType: MethodType): Text = {
+      ("implicit " provided appType.isImplicitMethod) ~
+      "(" ~ paramsText(appType) ~ ") => " ~ toText(appType.resultType)
+    }
 
     def isInfixType(tp: Type): Boolean = tp match {
       case AppliedType(tycon, args) =>
@@ -158,6 +164,8 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         if (isInfixType(tp)) return toTextInfixType(tycon, args)
       case EtaExpansion(tycon) =>
         return toText(tycon)
+      case tp: RefinedType if defn.isFunctionType(tp) =>
+        return toTextDependentFunction(tp.refinedInfo.asInstanceOf[MethodType])
       case tp: TypeRef =>
         if (tp.symbol.isAnonymousClass && !ctx.settings.uniqid.value)
           return toText(tp.info)

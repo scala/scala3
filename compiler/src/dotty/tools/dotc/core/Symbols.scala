@@ -130,6 +130,9 @@ trait Symbols { this: Context =>
     newClassSymbol(owner, name, flags, completer, privateWithin, coord, assocFile)
   }
 
+  def newRefinedClassSymbol = newCompleteClassSymbol(
+    ctx.owner, tpnme.REFINE_CLASS, NonMember, parents = Nil)
+
   /** Create a module symbol with associated module class
    *  from its non-info fields and a function producing the info
    *  of the module class (this info may be lazy).

@@ -48,12 +48,6 @@ object Mode {
   /** Allow GADTFlexType labelled types to have their bounds adjusted */
   val GADTflexible = newMode(8, "GADTflexible")
 
-  /** Allow dependent functions. This is currently necessary for unpickling, because
-   *  some dependent functions are passed through from the front end(s?), even though they
-   *  are technically speaking illegal.
-   */
-  val AllowDependentFunctions = newMode(9, "AllowDependentFunctions")
-
   /** We are currently printing something: avoid to produce more logs about
    *  the printing
    */
