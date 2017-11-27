@@ -321,7 +321,6 @@ object Phases {
     private[this] var myErasedTypes = false
     private[this] var myFlatClasses = false
     private[this] var myRefChecked = false
-    private[this] var mySymbolicRefs = false
     private[this] var myLabelsReordered = false
 
     private[this] var mySameMembersStartId = NoPhaseId
@@ -340,7 +339,6 @@ object Phases {
     final def erasedTypes = myErasedTypes   // Phase is after erasure
     final def flatClasses = myFlatClasses   // Phase is after flatten
     final def refChecked = myRefChecked     // Phase is after RefChecks
-    final def symbolicRefs = mySymbolicRefs // Phase is after ResolveSuper, newly generated TermRefs should be symbolic
     final def labelsReordered = myLabelsReordered // Phase is after LabelDefs, labels are flattened and owner chains don't mirror this
 
     final def sameMembersStartId = mySameMembersStartId
@@ -357,7 +355,6 @@ object Phases {
       myErasedTypes  = prev.getClass == classOf[Erasure]      || prev.erasedTypes
       myFlatClasses  = prev.getClass == classOf[Flatten]      || prev.flatClasses
       myRefChecked   = prev.getClass == classOf[RefChecks]    || prev.refChecked
-      mySymbolicRefs = getClass == classOf[Erasure] || prev.symbolicRefs
       myLabelsReordered = prev.getClass == classOf[LabelDefs] || prev.labelsReordered
       mySameMembersStartId = if (changesMembers) id else prev.sameMembersStartId
       mySameParentsStartId = if (changesParents) id else prev.sameMembersStartId

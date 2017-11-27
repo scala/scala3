@@ -1686,10 +1686,8 @@ object Types {
 
     private def loadDenot(name: Name, allowPrivate: Boolean)(implicit ctx: Context): Denotation = {
       var d = memberDenot(prefix, name, allowPrivate)
-      if (!d.exists) {
-        val d1 = memberDenot(prefix, name, true)
-        assert(!d1.exists, i"bad allow private $this $name $d1 at ${ctx.phase}")
-      }
+      if (!d.exists && ctx.mode.is(Mode.Interactive))
+        d = memberDenot(prefix, name, true)
       if (!d.exists && ctx.phaseId > FirstPhaseId && lastDenotation.isInstanceOf[SymDenotation])
         // name has changed; try load in earlier phase and make current
         d = loadDenot(name, allowPrivate)(ctx.withPhase(ctx.phaseId - 1)).current
@@ -1698,6 +1696,9 @@ object Types {
       d
     }
 
+    /** Reload denotation by computing the member with the reference's name as seen
+     *  from the reference's prefix.
+     */
     def reloadDenot()(implicit ctx: Context) =
       setDenot(loadDenot(name, allowPrivate = !symbol.exists || symbol.is(Private)))
 
@@ -1706,7 +1707,7 @@ object Types {
 
     private def disambiguate(d: Denotation)(implicit ctx: Context): Denotation = {
       val sig = currentSignature
-      //if (ctx.isAfterTyper) println(i"overloaded $this / $d / sig = $sig")
+      //if (ctx.isAfterTyper) println(i"overloaded $this / $d / sig = $sig") // DEBUG
       if (sig != null)
         d.atSignature(sig, relaxed = !ctx.erasedTypes) match {
           case d1: SingleDenotation => d1
@@ -1900,10 +1901,12 @@ object Types {
         case _ => withPrefix(prefix)
       }
 
+    /** A reference like this one, but with the given symbol, if it exists */
     final def withSym(sym: Symbol)(implicit ctx: Context): ThisType =
       if ((designator ne sym) && sym.exists) NamedType(prefix, sym).asInstanceOf[ThisType]
       else this
 
+    /** A reference like this one, but with the given denotation, if it exists */
     final def withDenot(denot: Denotation)(implicit ctx: Context): ThisType =
       if (denot.exists) {
         val adapted = withSym(denot.symbol)
@@ -1916,8 +1919,7 @@ object Types {
       else // don't assign NoDenotation, we might need to recover later. Test case is pos/avoid.scala.
         this
 
-    /** Create a NamedType of the same kind as this type, but with a new prefix.
-     */
+    /** A reference like this one, but with the given prefix. */
     final def withPrefix(prefix: Type)(implicit ctx: Context): NamedType = {
       def reload(): NamedType = {
         val allowPrivate = !lastSymbol.exists || lastSymbol.is(Private) && prefix.classSymbol == this.prefix.classSymbol
@@ -1930,7 +1932,8 @@ object Types {
         }
         NamedType(prefix, name, d)
       }
-      if (lastDenotation == null) NamedType(prefix, designator)
+      if (prefix eq this.prefix) this
+      else if (lastDenotation == null) NamedType(prefix, designator)
       else designator match {
         case sym: Symbol =>
           if (infoDependsOnPrefix(sym, prefix)) {

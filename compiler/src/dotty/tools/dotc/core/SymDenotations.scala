@@ -1437,9 +1437,10 @@ object SymDenotations {
       if (classParents.isEmpty && !emptyParentsExpected)
         onBehalf.signalProvisional()
       val builder = new BaseDataBuilder
-      for (p <- classParents)
+      for (p <- classParents) {
+        assert(p.typeSymbol.isClass, s"$this has non-class parent: $p")
         builder.addAll(p.typeSymbol.asClass.baseClasses)
-
+      }
       (classSymbol :: builder.baseClasses, builder.baseClassSet)
     }
 
@@ -1851,19 +1852,17 @@ object SymDenotations {
     }
   }
 
-  class NoDenotation(sym: Symbol, name: Name, override val exists: Boolean)
-  extends SymDenotation(sym, NoSymbol, name, Permanent, NoType) {
+  @sharable object NoDenotation
+  extends SymDenotation(NoSymbol, NoSymbol, "<none>".toTermName, Permanent, NoType) {
     override def isType = false
-    override def isTerm = exists
+    override def isTerm = false
+    override def exists = false
     override def owner: Symbol = throw new AssertionError("NoDenotation.owner")
     override def computeAsSeenFrom(pre: Type)(implicit ctx: Context): SingleDenotation = this
     override def mapInfo(f: Type => Type)(implicit ctx: Context): SingleDenotation = this
-    sym.denot = this
+    NoSymbol.denot = this
     validFor = Period.allInRun(NoRunId)
   }
-
-  @sharable val NoDenotation: NoDenotation =
-    new NoDenotation(NoSymbol, "<none>".toTermName, exists = false)
 
   // ---- Completion --------------------------------------------------------
 

@@ -451,9 +451,10 @@ object Symbols {
     final def isValidInCurrentRun(implicit ctx: Context): Boolean =
       (lastDenot.validFor.runId == ctx.runId || ctx.stillValid(lastDenot)) &&
       (lastDenot.symbol eq this)
-        // the last condition is needed because overwritten package members keep
-        // denotations pointing to the new symbol, so the validity periods check out OK.
-        // But once a package member is overridden it is not longerr valid.
+        // the last condition is needed because under option -Yupdate-stale overwritten
+        // package members keep denotations pointing to the new symbol, so the validity
+        // periods check out OK. But once a package member is overridden it is not longer
+        // valid. If the option would be removed, the check would be no longer needed.
 
     final def isTerm(implicit ctx: Context): Boolean =
       (if (defRunId == ctx.runId) lastDenot else denot).isTerm
@@ -470,14 +471,6 @@ object Symbols {
 
     final def isClass: Boolean = isInstanceOf[ClassSymbol]
     final def asClass: ClassSymbol = asInstanceOf[ClassSymbol]
-
-    /** Test whether symbol is referenced symbolically. This
-     *  conservatively returns `false` if symbol does not yet have a denotation
-     */
-    final def isReferencedSymbolically(implicit ctx: Context) = {
-      val d = lastDenot
-      d != null && (d.is(NonMember) || ctx.phase.symbolicRefs)
-    }
 
     /** Test whether symbol is private. This
      *  conservatively returns `false` if symbol does not yet have a denotation, or denotation
