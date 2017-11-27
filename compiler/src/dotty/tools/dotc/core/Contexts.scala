@@ -368,7 +368,7 @@ object Contexts {
     def erasedTypes: Boolean = phase.erasedTypes
 
     /** Is the debug option set? */
-    def debug: Boolean = base.settings.debug.value
+    def debug: Boolean = base.settings.Ydebug.value
 
     /** Is the verbose option set? */
     def verbose: Boolean = base.settings.verbose.value
@@ -475,7 +475,7 @@ object Contexts {
     def setSetting[T](setting: Setting[T], value: T): this.type =
       setSettings(setting.updateIn(settingsState, value))
 
-    def setDebug = setSetting(base.settings.debug, true)
+    def setDebug = setSetting(base.settings.Ydebug, true)
   }
 
   implicit class ModeChanges(val c: Context) extends AnyVal {

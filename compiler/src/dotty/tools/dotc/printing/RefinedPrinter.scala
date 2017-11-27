@@ -24,7 +24,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
   /** A stack of enclosing DefDef, TypeDef, or ClassDef, or ModuleDefs nodes */
   private[this] var enclosingDef: untpd.Tree = untpd.EmptyTree
   private[this] var myCtx: Context = _ctx
-  private[this] var printPos = ctx.settings.Yprintpos.value
+  private[this] var printPos = ctx.settings.YprintPos.value
   private[this] val printLines = ctx.settings.printLines.value
   override protected[this] implicit def ctx: Context = myCtx
 
@@ -63,7 +63,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
   protected val PrintableFlags = (SourceModifierFlags | Label | Module | Local).toCommonFlags
 
   override def nameString(name: Name): String =
-    if (ctx.settings.debugNames.value) name.debugString else name.toString
+    if (ctx.settings.YdebugNames.value) name.debugString else name.toString
 
   override protected def simpleNameString(sym: Symbol): String =
     nameString(if (ctx.property(XprintMode).isEmpty) sym.originalName else sym.name)
@@ -257,7 +257,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
     def modText(mods: untpd.Modifiers, kw: String): Text = { // DD
       val suppressKw = if (enclDefIsClass) mods is ParamAndLocal else mods is Param
       var flagMask =
-        if (ctx.settings.debugFlags.value) AnyFlags
+        if (ctx.settings.YdebugFlags.value) AnyFlags
         else if (suppressKw) PrintableFlags &~ Private
         else PrintableFlags
       if (homogenizedView && mods.flags.isTypeFlags) flagMask &~= Implicit // drop implicit from classes
@@ -283,7 +283,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
     def dclTextOr(treeText: => Text) =
       if (useSymbol)
         annotsText(tree.symbol) ~~ dclText(tree.symbol) ~
-        ( " <in " ~ toText(tree.symbol.owner) ~ ">" provided ctx.settings.debugOwners.value)
+        ( " <in " ~ toText(tree.symbol.owner) ~ ">" provided ctx.settings.YdebugOwners.value)
       else treeText
 
     def idText(tree: untpd.Tree): Text = {
@@ -608,8 +608,8 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       case _ => false
     }
 
-    if (ctx.settings.printtypes.value && tree.hasType) {
-      // add type to term nodes; replace type nodes with their types unless -Yprintpos is also set.
+    if (ctx.settings.XprintTypes.value && tree.hasType) {
+      // add type to term nodes; replace type nodes with their types unless -Yprint-pos is also set.
       def tp = tree.typeOpt match {
         case tp: TermRef if tree.isInstanceOf[RefTree] && !tp.denot.isOverloaded => tp.underlying
         case tp => tp
@@ -688,7 +688,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
   }
 
   override def toTextFlags(sym: Symbol) =
-    if (ctx.settings.debugFlags.value)
+    if (ctx.settings.YdebugFlags.value)
       super.toTextFlags(sym)
     else {
       var flags = sym.flagsUNSAFE

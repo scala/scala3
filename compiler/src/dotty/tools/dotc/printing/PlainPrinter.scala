@@ -326,7 +326,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
         }
         val trueDecls = otherDecls.filterNot(treatAsTypeArg)
         val declsText =
-          if (trueDecls.isEmpty || !ctx.settings.debug.value) Text()
+          if (trueDecls.isEmpty || !ctx.settings.Ydebug.value) Text()
           else dclsText(trueDecls)
         tparamsText ~ " extends " ~ toTextParents(tp.parents) ~ "{" ~ selfText ~ declsText ~
           "} at " ~ preText
@@ -485,12 +485,12 @@ class PlainPrinter(_ctx: Context) extends Printer {
         val elems =
           Text(node.productIterator.map(toTextElem).toList, ", ")
         val tpSuffix =
-          if (ctx.settings.printtypes.value && tree.hasType)
+          if (ctx.settings.XprintTypes.value && tree.hasType)
             " | " ~ toText(tree.typeOpt)
           else
             Text()
 
-        nodeName ~ "(" ~ elems ~ tpSuffix ~ ")" ~ (node.pos.toString provided ctx.settings.Yprintpos.value)
+        nodeName ~ "(" ~ elems ~ tpSuffix ~ ")" ~ (node.pos.toString provided ctx.settings.YprintPos.value)
       case _ =>
         tree.fallbackToText(this)
     }
