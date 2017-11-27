@@ -346,7 +346,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       case id: Trees.SearchFailureIdent[_] =>
         tree.typeOpt match {
           case reason: Implicits.SearchFailureType =>
-            toText(id.name) ~ "implicitly" ~ toText(reason.expectedType) ~ "]"
+            toText(id.name) ~ "implicitly[" ~ toText(reason.expectedType) ~ "]"
           case _ =>
             toText(id.name)
         }
@@ -411,7 +411,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         if (sel.isEmpty) blockText(cases)
         else changePrec(GlobalPrec) { toText(sel) ~ keywordStr(" match ") ~ blockText(cases) }
       case CaseDef(pat, guard, body) =>
-        keywordStr("case ") ~ inPattern(toText(pat)) ~ optText(guard)(" if " ~ _) ~ " => " ~ caseBlockText(body)
+        keywordStr("case ") ~ inPattern(toText(pat)) ~ optText(guard)(keywordStr(" if ") ~ _) ~ " => " ~ caseBlockText(body)
       case Return(expr, from) =>
         changePrec(GlobalPrec) { keywordStr("return") ~ optText(expr)(" " ~ _) }
       case Try(expr, cases, finalizer) =>

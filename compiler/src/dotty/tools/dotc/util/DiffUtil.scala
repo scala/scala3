@@ -7,23 +7,25 @@ object DiffUtil {
 
   val EOF = new String("EOF") // Unique string up to reference
 
+  val ansiColorToken = '\u001b'
+
   @tailrec private def splitTokens(str: String, acc: List[String] = Nil): List[String] = {
       if (str == "") {
         acc.reverse
       } else {
         val head = str.charAt(0)
         val (token, rest) =
-          if (head == '\u001b') { // ansi color token
+          if (head == ansiColorToken) { // ansi color token
             val splitIndex = str.indexOf('m') + 1
             (str.substring(0, splitIndex), str.substring(splitIndex))
           } else if (Character.isAlphabetic(head) || Character.isDigit(head)) {
-            str.span(c => Character.isAlphabetic(c) || Character.isDigit(c) && c != '\u001b')
+            str.span(c => Character.isAlphabetic(c) || Character.isDigit(c) && c != ansiColorToken)
           } else if (Character.isMirrored(head) || Character.isWhitespace(head)) {
             str.splitAt(1)
           } else {
             str.span { c =>
               !Character.isAlphabetic(c) && !Character.isDigit(c) &&
-                !Character.isMirrored(c) && !Character.isWhitespace(c) && c != '\u001b'
+                !Character.isMirrored(c) && !Character.isWhitespace(c) && c != ansiColorToken
             }
           }
         splitTokens(rest, token :: acc)
