@@ -851,6 +851,7 @@ object Build {
   // https://github.com/lampepfl/dotty-example-project for usage.
   lazy val `sbt-dotty` = project.in(file("sbt-dotty")).
     settings(commonSettings).
+    settings(scalacOptions -= "-Xfatal-warnings").
     settings(
       // Keep in sync with inject-sbt-dotty.sbt
       libraryDependencies += Dependencies.`jackson-databind`,
