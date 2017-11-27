@@ -120,6 +120,7 @@ public enum ErrorMessageID {
     UnableToExtendSealedClassID,
     SymbolHasUnparsableVersionNumberID,
     SymbolChangedSemanticsInVersionID,
+    UnableToEmitSwitchID,
     ;
 
     public int errorNumber() {
