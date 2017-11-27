@@ -56,7 +56,7 @@ object GenericSignatures {
       ps.foreach(boxedSig)
     }
 
-    def boxedSig(tp: Type): Unit = jsig(tp, primitiveOK = false)
+    def boxedSig(tp: Type): Unit = jsig(tp.widenDealias, primitiveOK = false)
 
     def boundsSig(bounds: List[Type]): Unit = {
       val (isTrait, isClass) = bounds partition (_.typeSymbol.is(Trait))
