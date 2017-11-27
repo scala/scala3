@@ -702,7 +702,7 @@ trait Implicits { self: Typer =>
 
           import transform.SymUtils._
 
-          val sumTypes = A.classSymbol.children.map(_.namedType).reverse // Reveresed to match order in source
+          val sumTypes = A.classSymbol.children.map(_.namedType.asSeenFrom(A, A.classSymbol)).reverse // Reveresed to match order in source
           if (sumTypes.isEmpty) return typed(EmptyTree)
           val sumTypesSize = sumTypes.size
           val X = tpnme.syntheticTypeParamName(0)
