@@ -14,6 +14,7 @@ import Decorators._
 import patmat.Space
 import NameKinds.{UniqueNameKind, PatMatStdBinderName, PatMatCaseName}
 import config.Printers.patmatch
+import reporting.diagnostic.messages._
 
 /** The pattern matching transform.
  *  After this phase, the only Match nodes remaining in the code are simple switches
@@ -908,7 +909,7 @@ object PatternMatcher {
           tpes.toSet.size: Int // without the type ascription, testPickling fails because of #2840.
         }
         if (numConsts(resultCases) < numConsts(original.cases))
-          ctx.warning(i"could not emit switch for @switch annotated match", original.pos)
+          ctx.warning(UnableToEmitSwitch(), original.pos)
       case _ =>
     }
 
