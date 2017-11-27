@@ -366,7 +366,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
           case _ =>
             toText(name)
         }
-        if (name.isType) typeText(txt)
+        if (name.isTypeName) typeText(txt)
         else txt
       case tree @ Select(qual, name) =>
         if (qual.isType) toTextLocal(qual) ~ "#" ~ typeText(toText(name))
