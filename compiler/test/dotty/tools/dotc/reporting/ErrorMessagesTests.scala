@@ -1249,4 +1249,17 @@ class ErrorMessagesTests extends ErrorMessagesTest {
       val CyclicInheritance(symbol, _) :: Nil = messages
       assertEquals("class A", symbol.show)
     }
+
+  @Test def missingCompanionForStatic =
+    checkMessagesAfter("checkStatic") {
+      """
+        |object Foo {
+        |  @annotation.static def bar(): Unit = ()
+        |}
+      """.stripMargin
+    }.expect { (itcx, messages) =>
+      implicit val ctx: Context = itcx
+      val MissingCompanionForStatic(member) = messages.head
+      assertEquals(member.show, "method bar")
+    }
 }

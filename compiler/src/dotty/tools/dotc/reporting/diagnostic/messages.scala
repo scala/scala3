@@ -2001,4 +2001,11 @@ object messages {
           |- there are less than three cases"""
     }
   }
+
+  case class MissingCompanionForStatic(member: Symbol)(implicit ctx: Context) extends Message(MissingCompanionForStaticID) {
+    val msg = hl"${member.owner} does not have a companion class"
+    val kind = "Syntax"
+    val explanation =
+      hl"An object that contains ${"@static"} members must have a companion class."
+  }
 }

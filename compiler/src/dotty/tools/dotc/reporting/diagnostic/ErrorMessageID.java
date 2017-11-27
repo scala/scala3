@@ -119,6 +119,7 @@ public enum ErrorMessageID {
     CyclicInheritanceID,
     UnableToExtendSealedClassID,
     UnableToEmitSwitchID,
+    MissingCompanionForStaticID,
     ;
 
     public int errorNumber() {
