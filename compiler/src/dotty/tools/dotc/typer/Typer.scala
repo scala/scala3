@@ -697,7 +697,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
       case _: WildcardType => untpd.TypeTree()
       case _ => untpd.TypeTree(tp)
     }
-    pt match {
+    pt.stripTypeVar match {
       case _ if defn.isNonDepFunctionType(pt) =>
         // if expected parameter type(s) are wildcards, approximate from below.
         // if expected result type is a wildcard, approximate from above.
@@ -711,6 +711,8 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
            untpd.DependentTypeTree(syms => restpe.substParams(mt, syms.map(_.termRef)))
          else
            typeTree(restpe))
+      case tp: TypeParamRef =>
+        decomposeProtoFunction(ctx.typerState.constraint.entry(tp).bounds.hi, defaultArity)
       case _ =>
         (List.tabulate(defaultArity)(alwaysWildcardType), untpd.TypeTree())
     }
