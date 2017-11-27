@@ -764,7 +764,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
   }
 
   def typedFunctionValue(tree: untpd.Function, pt: Type)(implicit ctx: Context) = {
-    val untpd.Function(params: List[untpd.ValDef], body) = tree
+    val untpd.Function(params: List[untpd.ValDef] @unchecked, body) = tree
 
     pt match {
       case pt: TypeVar if untpd.isFunctionWithUnknownParamType(tree) =>
