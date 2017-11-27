@@ -545,8 +545,12 @@ class Definitions {
   lazy val FunctionXXLType: TypeRef         = ctx.requiredClassRef("scala.FunctionXXL")
   def FunctionXXLClass(implicit ctx: Context) = FunctionXXLType.symbol.asClass
 
-  lazy val SymbolType: TypeRef                  = ctx.requiredClassRef("scala.Symbol")
-  def SymbolClass(implicit ctx: Context) = SymbolType.symbol.asClass
+  lazy val ScalaSymbolType: TypeRef                    = ctx.requiredClassRef("scala.Symbol")
+  def ScalaSymbolClass(implicit ctx: Context)          = ScalaSymbolType.symbol.asClass
+  def ScalaSymbolModule(implicit ctx: Context)         = ScalaSymbolClass.companionModule
+    lazy val ScalaSymbolModule_applyR                  = ScalaSymbolModule.requiredMethodRef(nme.apply, List(StringType))
+    def ScalaSymbolModule_apply(implicit ctx: Context) = ScalaSymbolModule_applyR.symbol
+
   lazy val DynamicType: TypeRef                 = ctx.requiredClassRef("scala.Dynamic")
   def DynamicClass(implicit ctx: Context) = DynamicType.symbol.asClass
   lazy val OptionType: TypeRef                  = ctx.requiredClassRef("scala.Option")

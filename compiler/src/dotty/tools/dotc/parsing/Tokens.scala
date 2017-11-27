@@ -201,8 +201,8 @@ object Tokens extends TokensCommon {
 
   final val allTokens = tokenRange(minToken, maxToken)
 
-  final val simpleLiteralTokens = tokenRange(CHARLIT, STRINGLIT) | BitSet(TRUE, FALSE)
-  final val literalTokens = simpleLiteralTokens | BitSet(INTERPOLATIONID, SYMBOLLIT, NULL)
+  final val simpleLiteralTokens = tokenRange(CHARLIT, STRINGLIT) | BitSet(TRUE, FALSE, SYMBOLLIT)
+  final val literalTokens = simpleLiteralTokens | BitSet(INTERPOLATIONID, NULL)
 
   final val atomicExprTokens = literalTokens | identifierTokens | BitSet(
     USCORE, NULL, THIS, SUPER, TRUE, FALSE, RETURN, XMLSTART)

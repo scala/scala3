@@ -331,6 +331,8 @@ class TreeUnpickler(reader: TastyReader, nameAtRef: NameRef => TermName, posUnpi
           ConstantType(Constant(readType()))
         case ENUMconst =>
           ConstantType(Constant(readTermRef().termSymbol))
+        case SYMBOLconst =>
+          ConstantType(Constant(scala.Symbol(readName().toString)))
         case BYNAMEtype =>
           ExprType(readType())
       }

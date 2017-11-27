@@ -5,7 +5,5 @@ object Test {
 
   val n: null = null // error: Null is not a legal singleton type // error: only classes can have declared but undefined members
 
-  val sym: 'sym = 'sym // error: Symbol is not a legal singleton type // error: only classes can have declared but undefined members
-
   val foo: s"abc" = "abc"  // error: not a legal singleton type // error: only classes can have declared but undefined members
 }
