@@ -28,21 +28,22 @@ object Show {
   implicit val stringShow: Show[String] = new Show[String] {
     // From 2.12 spec, `charEscapeSeq`:
     // ‘\‘ (‘b‘ | ‘t‘ | ‘n‘ | ‘f‘ | ‘r‘ | ‘"‘ | ‘'‘ | ‘\‘)
-    def show(str: String) =
-      "\"" + {
-        val sb = new StringBuilder
-        str.foreach {
-          case '\b' => sb.append("\\b")
-          case '\t' => sb.append("\\t")
-          case '\n' => sb.append("\\n")
-          case '\f' => sb.append("\\f")
-          case '\r' => sb.append("\\r")
-          case '\'' => sb.append("\\'")
-          case '\"' => sb.append("\\\"")
-          case c => sb.append(c)
-        }
-        sb.toString
-      } + "\""
+    def show(str: String) = {
+      val sb = new StringBuilder
+      sb.append("\"")
+      str.foreach {
+        case '\b' => sb.append("\\b")
+        case '\t' => sb.append("\\t")
+        case '\n' => sb.append("\\n")
+        case '\f' => sb.append("\\f")
+        case '\r' => sb.append("\\r")
+        case '\'' => sb.append("\\'")
+        case '\"' => sb.append("\\\"")
+        case c => sb.append(c)
+      }
+      sb.append("\"")
+      sb.toString
+    }
   }
 
   implicit val intShow: Show[Int] = new Show[Int] {
@@ -72,12 +73,12 @@ object Show {
 
   implicit def showList[T](implicit st: Show[T]): Show[List[T]] = new Show[List[T]] {
     def show(xs: List[T]) =
-      if (xs.isEmpty) "Nil"
+      if (xs.isEmpty) "List()"
       else "List(" + xs.map(_.show).mkString(", ") + ")"
   }
 
   implicit val showNil: Show[Nil.type] = new Show[Nil.type] {
-    def show(xs: Nil.type) = "Nil"
+    def show(xs: Nil.type) = "List()"
   }
 
   implicit def showOption[T](implicit st: Show[T]): Show[Option[T]] = new Show[Option[T]] {
