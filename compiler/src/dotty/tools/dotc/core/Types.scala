@@ -1963,7 +1963,16 @@ object Types {
     override def eql(that: Type) = this eq that // safe because named types are hash-consed separately
   }
 
-  abstract case class TermRef(override val prefix: Type, var designator: Designator) extends NamedType with SingletonType {
+  /** A reference to an implicit definition. This can be either a TermRef or a
+   *  Implicits.RenamedImplicitDef.
+   */
+  trait ImplicitDef {
+    def implicitName(implicit ctx: Context): TermName
+    def implicitRef: TermRef
+  }
+
+  abstract case class TermRef(override val prefix: Type, var designator: Designator)
+  extends NamedType with SingletonType with ImplicitDef {
 
     type ThisType = TermRef
     type ThisName = TermName
@@ -1981,6 +1990,9 @@ object Types {
 
     def altsWith(p: Symbol => Boolean)(implicit ctx: Context): List[TermRef] =
       denot.altsWith(p).map(withDenot(_))
+
+    def implicitName(implicit ctx: Context): TermName = name
+    def implicitRef = this
   }
 
   abstract case class TypeRef(override val prefix: Type, var designator: Designator) extends NamedType {
