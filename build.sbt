@@ -31,3 +31,4 @@ val `sbt-dotty` = Build.`sbt-dotty`
 val `vscode-dotty` = Build.`vscode-dotty`
 
 inThisBuild(Build.thisBuildSettings)
+inScope(Global)(Build.globalSettings)
