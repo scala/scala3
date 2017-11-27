@@ -791,7 +791,7 @@ object Denotations {
           lazy val staleOK = ctx.acceptStale(symd)
           if (ctx.settings.YupdateStale.value && symd.owner.is(Package) || staleOK) {
             val newd = symd.owner.info.decls.lookup(symd.name)
-            if (newd.exists) return newd
+            if (newd.exists) return (newd.denot: SingleDenotation).updateValidity()
             else if (staleOK) return updateValidity()
           }
         case _ =>
