@@ -2001,4 +2001,47 @@ object messages {
           |- there are less than three cases"""
     }
   }
+
+  case class ForwardReferenceNotAllowedFromSelfConstructor()(implicit ctx: Context)
+  extends Message(ForwardReferenceNotAllowedFromSelfConstructorID){
+    val kind = "Reference"
+    val msg = "Forward reference not allowed from self constructor invocation"
+    val explanation = {
+
+      val errorCodeExample =
+        """class A(a: Any) {
+          |  def this() = {
+          |    this(b)                      // forward reference
+          |    def b = new {}
+          |  }
+          |
+          |  def this(x: Int) = {
+          |    this(b)                      // forward reference
+          |    lazy val b = new {}
+          |  }
+          |
+          |  def this(x: Int, y: Int) = {
+          |    this(b)                      // forward reference
+          |    val b = new {}
+          |  }
+          |
+          |  def this(x: Int, y: Int, z: Int) = {
+          |    this(b)                      // forward reference
+          |    println(".")
+          |    def b = new {}
+          |  }
+          |}""".stripMargin
+
+      hl"""
+          |Forward reference is not allowed from self constructors.
+          |
+          |$errorCodeExample
+          |
+          |The example above would fail as it contains a forward reference inside each self constructor.
+          |When not inside self constructors, a forward reference is allowed when:
+          |-The reference is not a variable definition
+          |-If it is a variable definition, it must be lazy
+        """.stripMargin
+    }
+  }
 }
