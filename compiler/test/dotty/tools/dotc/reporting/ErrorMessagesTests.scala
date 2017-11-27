@@ -493,7 +493,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
       val DoesNotConformToBound(tpe, which, bound) :: Nil = messages
       assertEquals("Int", tpe.show)
       assertEquals("upper", which)
-      assertEquals("scala.collection.immutable.List[Int]", bound.show)
+      assertEquals("List[Int]", bound.show)
     }
 
   @Test def doesNotConformToSelfType =

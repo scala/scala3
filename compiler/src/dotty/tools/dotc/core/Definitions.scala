@@ -357,8 +357,15 @@ class Definitions {
     def newGenericArrayMethod(implicit ctx: Context) = DottyArraysModule.requiredMethod("newGenericArray")
     def newArrayMethod(implicit ctx: Context) = DottyArraysModule.requiredMethod("newArray")
 
+  lazy val ListType = ctx.requiredClassRef("scala.collection.immutable.List")
+  def ListClass(implicit ctx: Context) = ListType.symbol.asClass
   lazy val NilModuleRef = ctx.requiredModuleRef("scala.collection.immutable.Nil")
   def NilModule(implicit ctx: Context) = NilModuleRef.symbol
+
+  lazy val immutableMapType = ctx.requiredClassRef("scala.collection.immutable.Map")
+  def immutableMapClass(implicit ctx: Context) = immutableMapType.symbol.asClass
+  lazy val immutableSetType = ctx.requiredClassRef("scala.collection.immutable.Set")
+  def immutableSetClass(implicit ctx: Context) = immutableSetType.symbol.asClass
 
   lazy val SingletonClass: ClassSymbol =
     // needed as a synthetic class because Scala 2.x refers to it in classfiles
