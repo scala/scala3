@@ -48,13 +48,13 @@ object Implicits {
   /** An implicit definition `implicitRef` that is visible under a different name, `alias`.
    *  Gets generated if an implicit ref is imported via a renaming import.
    */
-  class RenamedImplicitDef(val implicitRef: TermRef, val alias: TermName) extends ImplicitDef {
+  class RenamedImplicitRef(val underlyingRef: TermRef, val alias: TermName) extends ImplicitRef {
     def implicitName(implicit ctx: Context): TermName = alias
   }
 
   /** An eligible implicit candidate, consisting of an implicit reference and a nesting level */
-  case class Candidate(implicitDef: ImplicitDef, level: Int) {
-    def ref: TermRef = implicitDef.implicitRef
+  case class Candidate(implicitRef: ImplicitRef, level: Int) {
+    def ref: TermRef = implicitRef.underlyingRef
   }
 
   /** A common base class of contextual implicits and of-type implicits which
@@ -68,7 +68,7 @@ object Implicits {
     def level: Int = 0
 
     /** The implicit references */
-    def refs: List[ImplicitDef]
+    def refs: List[ImplicitRef]
 
     /** Return those references in `refs` that are compatible with type `pt`. */
     protected def filterMatching(pt: Type)(implicit ctx: Context): List[Candidate] = track("filterMatching") {
@@ -147,7 +147,7 @@ object Implicits {
       else {
         val nestedCtx = ctx.fresh.addMode(Mode.TypevarsMissContext)
         refs
-          .filter(ref => nestedCtx.typerState.test(refMatches(ref.implicitRef)(nestedCtx)))
+          .filter(ref => nestedCtx.typerState.test(refMatches(ref.underlyingRef)(nestedCtx)))
           .map(Candidate(_, level))
       }
     }
@@ -159,7 +159,7 @@ object Implicits {
    */
   class OfTypeImplicits(tp: Type, val companionRefs: TermRefSet)(initctx: Context) extends ImplicitRefs(initctx) {
     assert(initctx.typer != null)
-    lazy val refs: List[ImplicitDef] = {
+    lazy val refs: List[ImplicitRef] = {
       val buf = new mutable.ListBuffer[TermRef]
       for (companion <- companionRefs) buf ++= companion.implicitMembers
       buf.toList
@@ -185,7 +185,7 @@ object Implicits {
    *                   name, b, whereas the name of the symbol is the original name, a.
    *  @param outerCtx  the next outer context that makes visible further implicits
    */
-  class ContextualImplicits(val refs: List[ImplicitDef], val outerImplicits: ContextualImplicits)(initctx: Context) extends ImplicitRefs(initctx) {
+  class ContextualImplicits(val refs: List[ImplicitRef], val outerImplicits: ContextualImplicits)(initctx: Context) extends ImplicitRefs(initctx) {
     private val eligibleCache = new mutable.AnyRefMap[Type, List[Candidate]]
 
     /** The level increases if current context has a different owner or scope than
@@ -827,7 +827,7 @@ trait Implicits { self: Typer =>
             pt)
         val generated1 = adapt(generated, pt)
         lazy val shadowing =
-          typed(untpd.Ident(cand.implicitDef.implicitName) withPos pos.toSynthetic, funProto)(
+          typed(untpd.Ident(cand.implicitRef.implicitName) withPos pos.toSynthetic, funProto)(
             nestedContext().addMode(Mode.ImplicitShadowing).setExploreTyperState())
         def refSameAs(shadowing: Tree): Boolean =
           ref.symbol == closureBody(shadowing).symbol || {

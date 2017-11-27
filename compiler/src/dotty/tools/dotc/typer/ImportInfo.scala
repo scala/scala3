@@ -9,7 +9,7 @@ import printing.{Printer, Showable}
 import util.SimpleIdentityMap
 import Symbols._, Names._, Denotations._, Types._, Contexts._, StdNames._, Flags._
 import Decorators.StringInterpolators
-import Implicits.RenamedImplicitDef
+import Implicits.RenamedImplicitRef
 
 object ImportInfo {
   /** The import info for a root import from given symbol `sym` */
@@ -93,7 +93,7 @@ class ImportInfo(symf: Context => Symbol, val selectors: List[untpd.Tree],
   }
 
   /** The implicit references imported by this import clause */
-  def importedImplicits(implicit ctx: Context): List[ImplicitDef] = {
+  def importedImplicits(implicit ctx: Context): List[ImplicitRef] = {
     val pre = site
     if (isWildcardImport) {
       val refs = pre.implicitMembers
@@ -107,7 +107,7 @@ class ImportInfo(symf: Context => Symbol, val selectors: List[untpd.Tree],
         val original = reverseMapping(renamed)
         val ref = TermRef(pre, original, denot)
         if (renamed == original) ref
-        else new RenamedImplicitDef(ref, renamed)
+        else new RenamedImplicitRef(ref, renamed)
       }
   }
 

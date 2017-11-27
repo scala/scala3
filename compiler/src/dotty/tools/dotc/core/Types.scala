@@ -1964,15 +1964,15 @@ object Types {
   }
 
   /** A reference to an implicit definition. This can be either a TermRef or a
-   *  Implicits.RenamedImplicitDef.
+   *  Implicits.RenamedImplicitRef.
    */
-  trait ImplicitDef {
+  trait ImplicitRef {
     def implicitName(implicit ctx: Context): TermName
-    def implicitRef: TermRef
+    def underlyingRef: TermRef
   }
 
   abstract case class TermRef(override val prefix: Type, var designator: Designator)
-  extends NamedType with SingletonType with ImplicitDef {
+  extends NamedType with SingletonType with ImplicitRef {
 
     type ThisType = TermRef
     type ThisName = TermName
@@ -1992,7 +1992,7 @@ object Types {
       denot.altsWith(p).map(withDenot(_))
 
     def implicitName(implicit ctx: Context): TermName = name
-    def implicitRef = this
+    def underlyingRef = this
   }
 
   abstract case class TypeRef(override val prefix: Type, var designator: Designator) extends NamedType {

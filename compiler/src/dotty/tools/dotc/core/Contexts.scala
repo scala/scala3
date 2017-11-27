@@ -201,7 +201,7 @@ object Contexts {
     def implicits: ContextualImplicits = {
       if (implicitsCache == null )
         implicitsCache = {
-          val implicitRefs: List[ImplicitDef] =
+          val implicitRefs: List[ImplicitRef] =
             if (isClassDefContext)
               try owner.thisType.implicitMembers
               catch {
