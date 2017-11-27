@@ -112,7 +112,7 @@ object DiffUtil {
       val (spaces, rest) = str.span(_ == '\n')
       if (spaces.isEmpty) {
         val (text, rest2) = str.span(_ != '\n')
-        color + text + Console.RESET + bgColored(rest2, color)
+        Console.BOLD + color + text + Console.RESET + bgColored(rest2, color)
       } else spaces + bgColored(rest, color)
     }
   }
