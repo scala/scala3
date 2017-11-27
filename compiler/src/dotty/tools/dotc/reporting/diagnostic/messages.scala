@@ -2013,6 +2013,34 @@ object messages {
           |-The reference is not a variable definition
           |-If it is a variable definition, it must be lazy
         """.stripMargin
+
+  case class UnableToEmitSwitch()(implicit ctx: Context)
+  extends Message(UnableToEmitSwitchID) {
+    val kind = "Syntax"
+    val msg = hl"Could not emit switch for ${"@switch"} annotated match"
+    val explanation = {
+      val codeExample =
+        """val ConstantB = 'B'
+          |final val ConstantC = 'C'
+          |def tokenMe(ch: Char) = (ch: @switch) match {
+          |  case '\t' | '\n' => 1
+          |  case 'A'         => 2
+          |  case ConstantB   => 3  // a non-literal may prevent switch generation: this would not compile
+          |  case ConstantC   => 4  // a constant value is allowed
+          |  case _           => 5
+          |}""".stripMargin
+
+      hl"""If annotated with ${"@switch"}, the compiler will verify that the match has been compiled to a
+          |tableswitch or lookupswitch and issue an error if it instead compiles into a series of conditional
+          |expressions. Example usage:
+          |
+          |$codeExample
+          |
+          |The compiler will not apply the optimisation if:
+          |- the matched value is not of type ${"Int"}, ${"Byte"}, ${"Short"} or ${"Char"}
+          |- the matched value is not a constant literal
+          |- there are less than three cases"""
+
     }
   }
 }

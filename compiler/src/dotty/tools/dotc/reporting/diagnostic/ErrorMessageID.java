@@ -119,6 +119,7 @@ public enum ErrorMessageID {
     CyclicInheritanceID,
     UnableToExtendSealedClassID,
     ForwardReferenceNotAllowedFromSelfConstructorID,
+    UnableToEmitSwitchID,
     ;
 
     public int errorNumber() {
