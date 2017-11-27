@@ -219,8 +219,8 @@ trait CommentParser extends util.MemberLookup {
     def name: String
   }
 
-  private final case class SimpleTagKey(name: String) extends TagKey
-  private final case class SymbolTagKey(name: String, symbol: String) extends TagKey
+  private /*final*/ case class SimpleTagKey(name: String) extends TagKey
+  private /*final*/ case class SymbolTagKey(name: String, symbol: String) extends TagKey
 
   /** Something that should not have happened, happened, and Scaladoc should exit. */
   private def oops(msg: String): Nothing =

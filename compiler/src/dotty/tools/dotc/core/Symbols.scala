@@ -31,6 +31,7 @@ import collection.mutable
 import io.AbstractFile
 import language.implicitConversions
 import util.{NoSource, DotClass}
+import scala.collection.JavaConverters._
 
 /** Creation methods for symbols */
 trait Symbols { this: Context =>
@@ -724,25 +725,14 @@ object Symbols {
 
     def clear(): Unit = value.clear()
 
-    def filter(p: ((Symbol, T)) => Boolean): Map[Symbol, T] = {
-      import scala.collection.JavaConversions._
-      value.toMap.filter(p)
-    }
+    def filter(p: ((Symbol, T)) => Boolean): Map[Symbol, T] =
+      value.asScala.toMap.filter(p)
 
-    def iterator: Iterator[(Symbol, T)] = {
-      import scala.collection.JavaConversions._
-      value.iterator
-    }
+    def iterator: Iterator[(Symbol, T)] = value.asScala.iterator
 
-    def keysIterator: Iterator[Symbol] = {
-      import scala.collection.JavaConversions._
-      value.keySet().iterator
-    }
+    def keysIterator: Iterator[Symbol] = value.keySet().asScala.iterator
 
-    def toMap: Map[Symbol, T] = {
-      import scala.collection.JavaConversions._
-      value.toMap
-    }
+    def toMap: Map[Symbol, T] = value.asScala.toMap
   }
 
   @inline def newMutableSymbolMap[T]: MutableSymbolMap[T] =

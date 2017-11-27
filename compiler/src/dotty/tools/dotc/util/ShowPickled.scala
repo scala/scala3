@@ -197,17 +197,17 @@ object ShowPickled {
         case CONSTANTtpe =>
           printTypeRef(); printConstantRef()
         case TYPEREFtpe =>
-          printTypeRef(); printSymbolRef(); buf.until(end, printTypeRef)
+          printTypeRef(); printSymbolRef(); buf.until(end, () =>  printTypeRef())
         case TYPEBOUNDStpe =>
           printTypeRef(); printTypeRef()
         case REFINEDtpe =>
-          printSymbolRef(); buf.until(end, printTypeRef)
+          printSymbolRef(); buf.until(end, () =>  printTypeRef())
         case CLASSINFOtpe =>
-          printSymbolRef(); buf.until(end, printTypeRef)
+          printSymbolRef(); buf.until(end, () =>  printTypeRef())
         case METHODtpe | IMPLICITMETHODtpe =>
-          printTypeRef(); buf.until(end, printTypeRef)
+          printTypeRef(); buf.until(end, () =>  printTypeRef())
         case POLYtpe =>
-          printTypeRef(); buf.until(end, printSymbolRef)
+          printTypeRef(); buf.until(end, () => printSymbolRef())
         case LITERALboolean =>
           out.print(if (buf.readLong(len) == 0L) " false" else " true")
         case LITERALbyte    =>
@@ -233,17 +233,17 @@ object ShowPickled {
         case LITERALclass   =>
           printTypeRef()
         case CHILDREN       =>
-          printSymbolRef(); buf.until(end, printSymbolRef)
+          printSymbolRef(); buf.until(end, () => printSymbolRef())
         case SYMANNOT       =>
-          printSymbolRef(); printTypeRef(); buf.until(end, printAnnotArgRef)
+          printSymbolRef(); printTypeRef(); buf.until(end, () =>  printAnnotArgRef())
         case ANNOTATEDtpe   =>
-          printTypeRef(); buf.until(end, printAnnotInfoRef)
+          printTypeRef(); buf.until(end, () => printAnnotInfoRef())
         case ANNOTINFO      =>
-          printTypeRef(); buf.until(end, printAnnotArgRef)
+          printTypeRef(); buf.until(end, () =>  printAnnotArgRef())
         case ANNOTARGARRAY  =>
-          buf.until(end, printConstAnnotArgRef)
+          buf.until(end, () => printConstAnnotArgRef())
         case EXISTENTIALtpe =>
-          printTypeRef(); buf.until(end, printSymbolRef)
+          printTypeRef(); buf.until(end, () => printSymbolRef())
 
         case _ =>
       }

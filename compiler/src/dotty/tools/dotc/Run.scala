@@ -143,7 +143,7 @@ class Run(comp: Compiler, ictx: Context) {
   }
 
   private sealed trait PrintedTree
-  private final case class SomePrintedTree(phase: String, tree: String) extends PrintedTree
+  private /*final*/ case class SomePrintedTree(phase: String, tree: String) extends PrintedTree
   private object NoPrintedTree extends PrintedTree
 
   private def printTree(last: PrintedTree)(implicit ctx: Context): PrintedTree = {
