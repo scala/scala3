@@ -267,8 +267,8 @@ trait SpaceLogic {
         else
           // `(_, _, _) - (Some, None, _)` becomes `(None, _, _) | (_, Some, _) | (_, _, Empty)`
           Or(ss1.zip(ss2).map((minus _).tupled).zip(0 to ss2.length - 1).map {
-              case (ri, i) => Prod(tp1, fun1, sym1, ss1.updated(i, ri), full)
-            })
+            case (ri, i) => Prod(tp1, fun1, sym1, ss1.updated(i, ri), full)
+          })
 
     }
 
@@ -561,7 +561,7 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
 
     val resTp = instantiate(childTp, parent)(ctx.fresh.setNewTyperState())
 
-    if (!resTp.exists) {
+    if (!resTp.exists || !inhabited(resTp)) {
       debug.println(s"[refine] unqualified child ousted: ${childTp.show} !< ${parent.show}")
       NoType
     }
@@ -569,6 +569,25 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
       debug.println(s"$child instantiated ------> $resTp")
       resTp.dealias
     }
+  }
+
+  /** Can this type be inhabited by a value?
+   *
+   *  Intersection between singleton types and other types is always empty
+   *  the singleton type is not a subtype of the other type.
+   *  See patmat/i3573.scala for an example.
+   */
+  def inhabited(tpe: Type)(implicit ctx: Context): Boolean = {
+    val emptySingletonIntersection = new ExistsAccumulator({
+      case AndType(s: SingletonType, t) =>
+        !(s <:< t)
+      case AndType(t, s: SingletonType) =>
+        !(s <:< t)
+      case x =>
+        false
+    })
+
+    !emptySingletonIntersection(false, tpe)
   }
 
   /** Instantiate type `tp1` to be a subtype of `tp2`
@@ -625,7 +644,7 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
     val tvars = tp1.typeParams.map { tparam => newTypeVar(tparam.paramInfo.bounds) }
     val protoTp1 = thisTypeMap(tp1.appliedTo(tvars))
 
-    val result = if (protoTp1 <:< tp2) {
+    if (protoTp1 <:< tp2) {
       if (isFullyDefined(protoTp1, force)) protoTp1
       else instUndetMap(protoTp1)
     }
@@ -639,24 +658,6 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
         debug.println(s"$protoTp1 <:< $protoTp2 = false")
         NoType
       }
-    }
-
-    // The intersection between a singleton type s and another type t is
-    // always empty when s is not a subtype of t. See patmat/i3573.scala
-    val hasEmptyIntersections = new ExistsAccumulator({
-      case AndType(s: SingletonType, t) =>
-        !(s <:< t)
-      case AndType(t, s: SingletonType) =>
-        !(s <:< t)
-      case x =>
-        false
-    })
-
-    if (hasEmptyIntersections(false, result)) {
-      debug.println(s"hasEmptyIntersections($protoTp1) = true")
-      NoType
-    } else {
-      result
     }
   }
 
