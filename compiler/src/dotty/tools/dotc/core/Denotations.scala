@@ -761,7 +761,7 @@ object Denotations {
     def invalidateInheritedInfo(): Unit = ()
 
     private def updateValidity()(implicit ctx: Context): this.type = {
-      assert(ctx.runId > validFor.runId || ctx.settings.YtestPickler.value, // mixing test pickler with debug printing can travel back in time
+      assert(ctx.runId >= validFor.runId || ctx.settings.YtestPickler.value, // mixing test pickler with debug printing can travel back in time
           s"denotation $this invalid in run ${ctx.runId}. ValidFor: $validFor")
       var d: SingleDenotation = this
       do {
