@@ -375,7 +375,7 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
   }
 
   /* Whether the extractor is irrefutable */
-  def irrefutable(unapp: tpd.Tree): Boolean = {
+  def irrefutable(unapp: Tree): Boolean = {
     // TODO: optionless patmat
     unapp.tpe.widen.finalResultType.isRef(scalaSomeClass) ||
       (unapp.symbol.is(Synthetic) && unapp.symbol.owner.linkedClass.is(Case)) ||
@@ -557,11 +557,11 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
   def refine(parent: Type, child: Symbol): Type = {
     if (child.isTerm && child.is(Case, butNot = Module)) return child.termRef // enum vals always match
 
-    val childTp  = if (child.isTerm) child.termRef else child.typeRef
+    val childTp = if (child.isTerm) child.termRef else child.typeRef
 
     val resTp = instantiate(childTp, parent)(ctx.fresh.setNewTyperState())
 
-    if (!resTp.exists)  {
+    if (!resTp.exists) {
       debug.println(s"[refine] unqualified child ousted: ${childTp.show} !< ${parent.show}")
       NoType
     }
@@ -625,7 +625,7 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
     val tvars = tp1.typeParams.map { tparam => newTypeVar(tparam.paramInfo.bounds) }
     val protoTp1 = thisTypeMap(tp1.appliedTo(tvars))
 
-    if (protoTp1 <:< tp2) {
+    val result = if (protoTp1 <:< tp2) {
       if (isFullyDefined(protoTp1, force)) protoTp1
       else instUndetMap(protoTp1)
     }
@@ -639,6 +639,24 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
         debug.println(s"$protoTp1 <:< $protoTp2 = false")
         NoType
       }
+    }
+
+    // The intersection between a singleton type s and another type t is
+    // always empty when s is not a subtype of t. See patmat/i3573.scala
+    val hasEmptyIntersections = new ExistsAccumulator({
+      case AndType(s: SingletonType, t) =>
+        !(s <:< t)
+      case AndType(t, s: SingletonType) =>
+        !(s <:< t)
+      case x =>
+        false
+    })
+
+    if (hasEmptyIntersections(false, result)) {
+      debug.println(s"hasEmptyIntersections($protoTp1) = true")
+      NoType
+    } else {
+      result
     }
   }
 
