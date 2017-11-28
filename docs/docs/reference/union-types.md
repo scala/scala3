@@ -26,10 +26,9 @@ Union types are dual of intersection types. Values of type `A | B` are
 all values of type `A` and all values of type `B`. `|` is _commutative_:
 `A | B` is the same type as `B | A`.
 
-The compiler will assign an expression a union type only if such a
+The compiler will assign a union type to an expression only if such a
 type is explicitly given.
-This can be seen in the folling REPL
-transcript:
+This can be seen in the following REPL transcript:
 
 ```scala
 scala> val password = Password(123)
@@ -45,7 +44,7 @@ val either: Password | UserName = UserName(Eve)
 The type of `res2` is `Object & Product`, which is a supertype of
 `UserName` and `Product`, but not the least supertype `Password |
 UserName`.  If we want the least supertype, we have to give it
-explicitely, as is done for the type of `either`. More precisely, the
+explicitly, as is done for the type of `either`. More precisely, the
 typechecker will _widen_ a union type to a non-union type when
 inferring the type of `val` or `var`, or the result type of a `def`,
 or the argument to pass for a type parameter.  The widened type of `A
