@@ -66,4 +66,10 @@ class ShowTests {
     assertEquals("Car(Mustang,Ford,1967)", Car("Mustang", "Ford", 1967).show)
     assertEquals("Map()", Map().show)
   }
+
+  @Test def partialShow = {
+    case object Foo
+
+    assertEquals("Map(Foo -> \"Hello\")", Map(Foo -> "Hello").show)
+  }
 }
