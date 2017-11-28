@@ -1,9 +1,9 @@
 import sbt.Keys._
 import sbt._
 import complete.DefaultParsers._
-import java.io.{File, RandomAccessFile}
+import java.io.File
 import java.nio.channels.FileLock
-import java.nio.file.{ Files, FileSystemException }
+import java.nio.file._
 import java.util.Calendar
 
 import scala.reflect.io.Path
@@ -19,6 +19,8 @@ import dotty.tools.sbtplugin.DottyIDEPlugin.{ prepareCommand, runProcess }
 import dotty.tools.sbtplugin.DottyIDEPlugin.autoImport._
 import org.scalajs.sbtplugin.ScalaJSPlugin
 import org.scalajs.sbtplugin.ScalaJSPlugin.autoImport._
+
+import com.typesafe.sbt.pgp.PgpKeys
 
 import pl.project13.scala.sbt.JmhPlugin
 import JmhPlugin.JmhKeys.Jmh
@@ -96,27 +98,14 @@ object Build {
 
   lazy val bootstrapFromPublishedJars = settingKey[Boolean]("If true, bootstrap dotty from published non-bootstrapped dotty")
 
-  // Used in build.sbt
-  lazy val thisBuildSettings = Def.settings(
-    // Change this to true if you want to bootstrap using a published non-bootstrapped compiler
-    bootstrapFromPublishedJars := false,
-
-    // Override `runCode` from sbt-dotty to use the language-server and
-    // vscode extension from the source repository of dotty instead of a
-    // published version.
-    runCode := (run in `dotty-language-server`).toTask("").value
-  )
-
   // Only available in vscode-dotty
   lazy val unpublish = taskKey[Unit]("Unpublish a package")
 
-
-
-  lazy val commonSettings = publishSettings ++ Seq(
+  // Settings shared by the build (scoped in ThisBuild). Used in build.sbt
+  lazy val thisBuildSettings = Def.settings(
     organization := dottyOrganization,
     organizationName := "LAMP/EPFL",
     organizationHomepage := Some(url("http://lamp.epfl.ch")),
-    homepage := Some(url(dottyGithubUrl)),
 
     scalacOptions ++= Seq(
       "-feature",
@@ -129,6 +118,60 @@ object Build {
 
     javacOptions ++= Seq("-Xlint:unchecked", "-Xlint:deprecation"),
 
+    // Change this to true if you want to bootstrap using a published non-bootstrapped compiler
+    bootstrapFromPublishedJars := false,
+
+    // Override `runCode` from sbt-dotty to use the language-server and
+    // vscode extension from the source repository of dotty instead of a
+    // published version.
+    runCode := (run in `dotty-language-server`).toTask("").value
+  )
+
+  // Settings shared globally (scoped in Global). Used in build.sbt
+  lazy val globalSettings = Def.settings(
+    // Override `runCode` from sbt-dotty to use the language-server and
+    // vscode extension from the source repository of dotty instead of a
+    // published version.
+    runCode := (run in `dotty-language-server`).toTask("").value,
+
+    onLoad := (onLoad in Global).value andThen { state =>
+      def exists(submodule: String) = {
+        val path = Paths.get(submodule)
+        Files.exists(path) && {
+          val fileStream = Files.list(path)
+          val nonEmpty = fileStream.iterator().hasNext()
+          fileStream.close()
+          nonEmpty
+        }
+      }
+
+      // Make sure all submodules are properly cloned
+      val submodules = List("scala-backend", "scala2-library", "collection-strawman")
+      if (!submodules.forall(exists)) {
+        sLog.value.log(Level.Error,
+          s"""Missing some of the submodules
+             |You can initialize the modules with:
+             |  > git submodule update --init
+          """.stripMargin)
+      }
+
+      // Copy default configuration from .vscode-template/ unless configuration files already exist in .vscode/
+      sbt.IO.copyDirectory(new File(".vscode-template/"), new File(".vscode/"), overwrite = false)
+
+      state
+    },
+
+    // Credentials to release to Sonatype
+    credentials ++= (
+      for {
+        username <- sys.env.get("SONATYPE_USER")
+        password <- sys.env.get("SONATYPE_PW")
+      } yield Credentials("Sonatype Nexus Repository Manager", "oss.sonatype.org", username, password)
+    ).toList,
+    PgpKeys.pgpPassphrase := sys.env.get("PGP_PW").map(_.toCharArray())
+  )
+
+  lazy val commonSettings = publishSettings ++ Seq(
     scalaSource       in Compile    := baseDirectory.value / "src",
     scalaSource       in Test       := baseDirectory.value / "test",
     javaSource        in Compile    := baseDirectory.value / "src",
@@ -881,7 +924,6 @@ object Build {
     settings(commonSettings).
     settings(
       EclipseKeys.skipProject := true,
-
       version := "0.1.2", // Keep in sync with package.json
 
       autoScalaLibrary := false,
@@ -1097,22 +1139,6 @@ object Build {
     ))
   }
 
-  lazy val dottyProjectFolderChecks = onLoad in Global := (onLoad in Global).value andThen { state =>
-    val submodules = List(new File("scala-backend"), new File("scala2-library"), new File("collection-strawman"))
-    if (!submodules.forall(f => f.exists && f.listFiles().nonEmpty)) {
-      sLog.value.log(Level.Error,
-        s"""Missing some of the submodules
-           |You can initialize the modules with:
-           |  > git submodule update --init
-        """.stripMargin)
-    }
-
-    // Copy default configuration from .vscode-template/ unless configuration files already exist in .vscode/
-    sbt.IO.copyDirectory(new File(".vscode-template/"), new File(".vscode/"), overwrite = false)
-
-    state
-  }
-
   lazy val commonDistSettings = packSettings ++ Seq(
     packMain := Map(),
     publishArtifact := false,
@@ -1134,9 +1160,6 @@ object Build {
       dependsOn(dottyCompiler).
       dependsOn(dottyLibrary).
       nonBootstrappedSettings(
-        triggeredMessage in ThisBuild := Watched.clearWhenTriggered,
-        dottyProjectFolderChecks,
-
         addCommandAlias("run", "dotty-compiler/run") ++
         addCommandAlias("legacyTests", "dotty-compiler/testOnly dotc.tests")
       )
