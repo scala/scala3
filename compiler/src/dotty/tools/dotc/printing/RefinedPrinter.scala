@@ -269,7 +269,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         else if (suppressKw) PrintableFlags &~ Private
         else PrintableFlags
       if (homogenizedView && mods.flags.isTypeFlags) flagMask &~= Implicit // drop implicit from classes
-      val flagsText = (mods.flags & flagMask).toString
+      val flagsText = keywordStr((mods.flags & flagMask).toString)
       Text(mods.annotations.map(annotText), " ") ~~ flagsText ~~ (kw provided !suppressKw)
     }
 
@@ -703,7 +703,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
     else {
       var flags = sym.flagsUNSAFE
       if (flags is TypeParam) flags = flags &~ Protected
-      Text((flags & PrintableFlags).flagStrings map stringToText, " ")
+      Text((flags & PrintableFlags).flagStrings map (flag => stringToText(keywordStr(flag))), " ")
     }
 
   override def toText(denot: Denotation): Text = denot match {
