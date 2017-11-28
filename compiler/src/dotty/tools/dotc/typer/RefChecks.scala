@@ -685,10 +685,10 @@ object RefChecks {
     }
     // Similar to deprecation: check if the symbol is marked with @migration
     // indicating it has changed semantics between versions.
-    if (sym.hasAnnotation(defn.MigrationAnnot) && ctx.settings.Xmigration.value != NoScalaVersion) {
+    val xMigrationValue = ctx.settings.Xmigration.value
+    if (sym.hasAnnotation(defn.MigrationAnnot) && xMigrationValue != NoScalaVersion) {
       sym.migrationVersion.get match {
-        case scala.util.Success(symVersion) =>
-          ctx.settings.Xmigration.value < symVersion
+        case scala.util.Success(symVersion) if xMigrationValue < symVersion =>
           ctx.warning(SymbolChangedSemanticsInVersion(sym, symVersion, sym.migrationMessage.get))
         case Failure(ex) =>
           ctx.warning(SymbolHasUnparsableVersionNumber(sym, ex.getMessage()), pos)
