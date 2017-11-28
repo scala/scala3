@@ -538,7 +538,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
   def plain = this
 
   protected def keywordStr(text: String): String = coloredStr(text, SyntaxHighlighting.KeywordColor)
-  protected def valDefStr(text: String): String = coloredStr(text, SyntaxHighlighting.ValDefColor)
+  protected def valDefText(text: Text): Text = coloredText(text, SyntaxHighlighting.ValDefColor)
   protected def typeText(text: Text): Text = coloredText(text, SyntaxHighlighting.TypeColor)
   protected def literalText(text: Text): Text = coloredText(text, SyntaxHighlighting.LiteralColor)
   protected def stringText(text: Text): Text = coloredText(text, SyntaxHighlighting.StringColor)
