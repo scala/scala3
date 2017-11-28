@@ -33,7 +33,7 @@ class ReplCompiler(val directory: AbstractFile) extends Compiler {
 
   /** A GenBCode phase that outputs to a virtual directory */
   private class REPLGenBCode extends GenBCode {
-    override def phaseName = "replGenBCode"
+    override def phaseName = "genBCode"
     override def outputDir(implicit ctx: Context) = directory
   }
 
@@ -51,6 +51,25 @@ class ReplCompiler(val directory: AbstractFile) extends Compiler {
     )
   }
 
+  def newRun(initCtx: Context, objectIndex: Int) = new Run(this, initCtx) {
+    override protected[this] def rootContext(implicit ctx: Context) =
+      addMagicImports(super.rootContext.fresh.setReporter(storeReporter))
+
+    private def addMagicImports(initCtx: Context): Context = {
+      def addImport(path: TermName)(implicit ctx: Context) = {
+        val importInfo = ImportInfo.rootImport { () =>
+          ctx.requiredModuleRef(path)
+        }
+        ctx.fresh.setNewScope.setImportInfo(importInfo)
+      }
+
+      (1 to objectIndex)
+        .foldLeft(addImport("dotty.Show".toTermName)(initCtx)) { (ictx, i) =>
+          addImport(nme.EMPTY_PACKAGE ++ "." ++ objectNames(i))(ictx)
+        }
+    }
+  }
+
   private[this] var objectNames = Map.empty[Int, TermName]
   private def objectName(state: State) =
     objectNames.get(state.objectIndex).getOrElse {
@@ -59,9 +78,9 @@ class ReplCompiler(val directory: AbstractFile) extends Compiler {
       newName
     }
 
-  sealed case class Definitions(stats: List[untpd.Tree], state: State)
+  private case class Definitions(stats: List[untpd.Tree], state: State)
 
-  def definitions(trees: List[untpd.Tree], state: State): Result[Definitions] = {
+  private def definitions(trees: List[untpd.Tree], state: State): Definitions = {
     import untpd._
 
     implicit val ctx: Context = state.run.runContext
@@ -80,7 +99,7 @@ class ReplCompiler(val directory: AbstractFile) extends Compiler {
 
     def createPatDefShows(patDef: PatDef) = {
       def createDeepShows(tree: untpd.Tree) = {
-        object PatFolder extends UntypedDeepFolder[List[DefDef]] (
+        class PatFolder extends UntypedDeepFolder[List[DefDef]] (
           (acc, tree) => tree match {
             case Ident(name) if name.isVariableName && name != nme.WILDCARD =>
               createShow(name.toTermName, tree.pos) :: acc
@@ -90,7 +109,7 @@ class ReplCompiler(val directory: AbstractFile) extends Compiler {
               acc
           }
         )
-        PatFolder.apply(Nil, tree).reverse
+        (new PatFolder).apply(Nil, tree).reverse
       }
 
       // cannot fold over the whole tree because we need to generate show methods
@@ -130,12 +149,12 @@ class ReplCompiler(val directory: AbstractFile) extends Compiler {
     }
 
     Definitions(
-      state.imports.map(_._1) ++ defs,
+      state.imports ++ defs,
       state.copy(
         objectIndex = state.objectIndex + (if (defs.isEmpty) 0 else 1),
         valIndex = valIdx
       )
-    ).result
+    )
   }
 
   /** Wrap trees in an object and add imports from the previous compilations
@@ -153,65 +172,40 @@ class ReplCompiler(val directory: AbstractFile) extends Compiler {
    *  }
    *  ```
    */
-  def wrapped(defs: Definitions, sourceCode: String): untpd.PackageDef = {
+  private def wrapped(defs: Definitions): untpd.PackageDef = {
     import untpd._
+
+    assert(defs.stats.nonEmpty)
 
     implicit val ctx: Context = defs.state.run.runContext
 
-    val module = {
-      val tmpl = Template(emptyConstructor(ctx), Nil, EmptyValDef, defs.stats)
-      List(
-        ModuleDef(objectName(defs.state), tmpl)
-          .withMods(new Modifiers(Module | Final))
-          .withPos(Position(0, sourceCode.length))
-      )
-    }
+    val tmpl = Template(emptyConstructor, Nil, EmptyValDef, defs.stats)
+    val module = ModuleDef(objectName(defs.state), tmpl)
+      .withMods(new Modifiers(Module | Final))
+      .withPos(Position(0, defs.stats.last.pos.end))
 
-    PackageDef(Ident(nme.EMPTY_PACKAGE), module)
+    PackageDef(Ident(nme.EMPTY_PACKAGE), List(module))
   }
 
-  def newRun(initCtx: Context, objectIndex: Int) = new Run(this, initCtx) {
-    override protected[this] def rootContext(implicit ctx: Context) =
-      addMagicImports(super.rootContext.fresh.setReporter(storeReporter), objectIndex)
-  }
-
-  def createUnit(defs: Definitions, sourceCode: String): Result[CompilationUnit] = {
+  private def createUnit(defs: Definitions, sourceCode: String): CompilationUnit = {
     val unit = new CompilationUnit(new SourceFile(objectName(defs.state).toString, sourceCode))
-    unit.untpdTree = wrapped(defs, sourceCode)
-    unit.result
+    unit.untpdTree = wrapped(defs)
+    unit
   }
 
-  def runCompilation(unit: CompilationUnit, state: State): Result[State] = {
+  private def runCompilationUnit(unit: CompilationUnit, state: State): Result[(CompilationUnit, State)] = {
     val run = state.run
     val reporter = state.run.runContext.reporter
     run.compileUnits(unit :: Nil)
 
-    if (!reporter.hasErrors) state.result
+    if (!reporter.hasErrors) (unit, state).result
     else run.runContext.flushBufferedMessages().errors
   }
 
   def compile(parsed: Parsed)(implicit state: State): Result[(CompilationUnit, State)] = {
-    for {
-      defs  <- definitions(parsed.trees, state)
-      unit  <- createUnit(defs, parsed.sourceCode)
-      state <- runCompilation(unit, defs.state)
-    } yield (unit, state)
-  }
-
-  private[this] def addMagicImports(initCtx: Context, objectIndex: Int): Context = {
-    def addImport(path: TermName)(implicit ctx: Context) = {
-      val ref = tpd.ref(ctx.requiredModuleRef(path.toTermName))
-      val symbol = ctx.newImportSymbol(ctx.owner, ref)
-      val importInfo =
-        new ImportInfo(implicit ctx => symbol, untpd.Ident(nme.WILDCARD) :: Nil, None)
-      ctx.fresh.setNewScope.setImportInfo(importInfo)
-    }
-
-    List
-      .range(1, objectIndex + 1)
-      .foldLeft(addImport("dotty.Show".toTermName)(initCtx)) { (ictx, i) =>
-        addImport(nme.EMPTY_PACKAGE ++ "." ++ objectNames(i))(ictx)
-      }
+    val defs = definitions(parsed.trees, state)
+    val unit = createUnit(defs, parsed.sourceCode)
+    runCompilationUnit(unit, defs.state)
   }
 
   def typeOf(expr: String)(implicit state: State): Result[String] =
@@ -223,7 +217,7 @@ class ReplCompiler(val directory: AbstractFile) extends Compiler {
         case _ =>
           """Couldn't compute the type of your expression, so sorry :(
             |
-            |Please report this to my masters at Github.com/lampepfl/dotty
+            |Please report this to my masters at github.com/lampepfl/dotty
           """.stripMargin
       }
     }
@@ -240,7 +234,7 @@ class ReplCompiler(val directory: AbstractFile) extends Compiler {
         val tmpl = Template(emptyConstructor,
                             List(Ident(tpnme.Any)),
                             EmptyValDef,
-                            state.imports.map(_._1) :+ valdef)
+                            state.imports :+ valdef)
 
         PackageDef(Ident(nme.EMPTY_PACKAGE),
           TypeDef("EvaluateExpr".toTypeName, tmpl)
@@ -286,7 +280,7 @@ class ReplCompiler(val directory: AbstractFile) extends Compiler {
     val src = new SourceFile(s"EvaluateExpr", expr)
     val runCtx =
       run.runContext.fresh
-         .setSetting(run.runContext.settings.YstopAfter, List("replFrontEnd"))
+         .setSetting(run.runContext.settings.YstopAfter, List("frontend"))
 
     wrapped(expr, src, state)(runCtx).flatMap { pkg =>
       val unit = new CompilationUnit(src)

@@ -144,8 +144,8 @@ trait Dynamic { self: Typer with Applications =>
 
     tree.tpe.widen match {
       case tpe: MethodType =>
-        if (tpe.isDependent)
-          fail(i"has a dependent method type")
+        if (tpe.isParamDependent)
+          fail(i"has a method type with inter-parameter dependencies")
         else if (tpe.paramNames.length > Definitions.MaxStructuralMethodArity)
           fail(i"""takes too many parameters.
                   |Structural types only support methods taking up to ${Definitions.MaxStructuralMethodArity} arguments""")

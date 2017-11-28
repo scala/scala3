@@ -96,12 +96,12 @@ trait NamerContextOps { this: Context =>
     else given
 
   /** if isConstructor, make sure it has one non-implicit parameter list */
-  def normalizeIfConstructor(paramSymss: List[List[Symbol]], isConstructor: Boolean) =
+  def normalizeIfConstructor(termParamss: List[List[Symbol]], isConstructor: Boolean) =
     if (isConstructor &&
-      (paramSymss.isEmpty || paramSymss.head.nonEmpty && (paramSymss.head.head is Implicit)))
-      Nil :: paramSymss
+      (termParamss.isEmpty || termParamss.head.nonEmpty && (termParamss.head.head is Implicit)))
+      Nil :: termParamss
     else
-      paramSymss
+      termParamss
 
   /** The method type corresponding to given parameters and result type */
   def methodType(typeParams: List[Symbol], valueParamss: List[List[Symbol]], resultType: Type, isJava: Boolean = false)(implicit ctx: Context): Type = {
@@ -1096,6 +1096,8 @@ class Namer { typer: Typer =>
         WildcardType
       case TypeTree() =>
         inferredType
+      case DependentTypeTree(tpFun) =>
+        tpFun(paramss.head)
       case TypedSplice(tpt: TypeTree) if !isFullyDefined(tpt.tpe, ForceDegree.none) =>
         val rhsType = typedAheadExpr(mdef.rhs, tpt.tpe).tpe
         mdef match {
@@ -1149,19 +1151,17 @@ class Namer { typer: Typer =>
 
     vparamss foreach completeParams
     def typeParams = tparams map symbolOfTree
-    val paramSymss = ctx.normalizeIfConstructor(vparamss.nestedMap(symbolOfTree), isConstructor)
+    val termParamss = ctx.normalizeIfConstructor(vparamss.nestedMap(symbolOfTree), isConstructor)
     def wrapMethType(restpe: Type): Type = {
-      val restpe1 = // try to make anonymous functions non-dependent, so that they can be used in closures
-        if (name == nme.ANON_FUN) avoid(restpe, paramSymss.flatten)
-        else restpe
-      ctx.methodType(tparams map symbolOfTree, paramSymss, restpe1, isJava = ddef.mods is JavaDefined)
+      instantiateDependent(restpe, typeParams, termParamss)
+      ctx.methodType(tparams map symbolOfTree, termParamss, restpe, isJava = ddef.mods is JavaDefined)
     }
     if (isConstructor) {
       // set result type tree to unit, but take the current class as result type of the symbol
       typedAheadType(ddef.tpt, defn.UnitType)
       wrapMethType(ctx.effectiveResultType(sym, typeParams, NoType))
     }
-    else valOrDefDefSig(ddef, sym, typeParams, paramSymss, wrapMethType)
+    else valOrDefDefSig(ddef, sym, typeParams, termParamss, wrapMethType)
   }
 
   def typeDefSig(tdef: TypeDef, sym: Symbol, tparamSyms: List[TypeSymbol])(implicit ctx: Context): Type = {

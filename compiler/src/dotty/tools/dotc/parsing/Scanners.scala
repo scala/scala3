@@ -540,9 +540,9 @@ object Scanners {
           def fetchSingleQuote() = {
             nextChar()
             if (isIdentifierStart(ch))
-              charLitOr(getIdentRest)
+              charLitOr(() => getIdentRest())
             else if (isOperatorPart(ch) && (ch != '\\'))
-              charLitOr(getOperatorRest)
+              charLitOr(() => getOperatorRest())
             else {
               getLitChar()
               if (ch == '\'') {

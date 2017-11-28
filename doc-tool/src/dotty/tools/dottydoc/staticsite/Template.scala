@@ -74,7 +74,7 @@ case class LiquidTemplate(path: String, content: SourceFile) extends Template wi
           None
         }
         case ex => {
-          if (true || ctx.settings.debug.value)
+          if (true || ctx.settings.Ydebug.value)
             throw ex
 
           None

@@ -30,7 +30,7 @@ fi
 
 # check that `sbt dotc -decompile` runs
 echo "testing sbt dotc -decompile"
-./project/scripts/sbt ";dotc -decompile -code -color:never -classpath out/scriptedtest1 dotrtest.Test" >  sbtdotc3.out
+./project/scripts/sbt ";dotc -decompile -color:never -classpath out/scriptedtest1 dotrtest.Test" >  sbtdotc3.out
 cat sbtdotc3.out
 if grep -e "def main(args: Array\[String\]): Unit =" sbtdotc3.out; then
     echo "output ok"
@@ -39,11 +39,20 @@ else
     exit -1
 fi
 echo "testing sbt dotr with no -classpath"
-
 ./project/scripts/sbt ";dotc tests/pos/sbtDotrTest.scala; dotr dotrtest.Test" > sbtdotr3.out
 cat sbtdotr3.out
 if grep -e "dotr test ok" sbtdotr3.out; then
     echo "output ok"
 else
+    exit -1
+fi
+
+echo "testing loading tasty from .tasty file in jar"
+./project/scripts/sbt ";dotc -d out/scriptedtest4.jar -YemitTasty tests/pos/sbtDotrTest.scala; dotc -decompile -classpath out/scriptedtest4.jar -color:never dotrtest.Test" > sbtdot4.out
+cat sbtdot4.out
+if grep -e "def main(args: Array\[String\]): Unit =" sbtdot4.out; then
+    echo "output ok"
+else
+    echo "failed output check"
     exit -1
 fi

@@ -218,7 +218,7 @@ object RefChecks {
             ";\n (Note that %s is abstract,\n  and is therefore overridden by concrete %s)".format(
               infoStringWithLocation(other),
               infoStringWithLocation(member))
-          else if (ctx.settings.debug.value)
+          else if (ctx.settings.Ydebug.value)
             err.typeMismatchMsg(memberTp(self), otherTp(self))
           else ""
 
@@ -355,7 +355,7 @@ object RefChecks {
         other.accessedFieldOrGetter.is(Mutable, butNot = Lazy)) {
         // !?! this is not covered by the spec. We need to resolve this either by changing the spec or removing the test here.
         // !!! is there a !?! convention? I'm !!!ing this to make sure it turns up on my searches.
-        if (!ctx.settings.overrideVars.value)
+        if (!ctx.settings.YoverrideVars.value)
           overrideError("cannot override a mutable variable")
       } else if (member.isAnyOverride &&
         !(member.owner.thisType.baseClasses exists (_ isSubClass other.owner)) &&

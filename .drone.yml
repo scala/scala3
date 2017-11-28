@@ -72,9 +72,7 @@ pipeline:
       - NIGHTLYBUILD=yes
     commands:
       - ./project/scripts/sbtPublish ";dotty-bootstrapped/publishSigned ;sonatypeRelease"
-    volumes:
-      - /home/drone/keys:/keys
-    secrets: [ sonatype_user, sonatype_pw, pgp_pw ]
+    secrets: [ sonatype_user, sonatype_pw, pgp_pw, pgp_secret ]
     when:
       event: deployment
       environment: nightly
@@ -87,9 +85,7 @@ pipeline:
       # Produces dotty-version.{tar.gz, zip}
       - ./project/scripts/sbt dist-bootstrapped/packArchive
       - ./project/scripts/sbtPublish ";dotty-bootstrapped/publishSigned ;sonatypeRelease"
-    volumes:
-      - /home/drone/keys:/keys
-    secrets: [ sonatype_user, sonatype_pw, pgp_pw ]
+    secrets: [ sonatype_user, sonatype_pw, pgp_pw, pgp_secret ]
     when:
       event: tag
 
@@ -111,9 +107,7 @@ pipeline:
       - RELEASEBUILD=yes
     commands:
       - ./project/scripts/sbtPublish ";sbt-dotty/publishSigned ;sonatypeRelease"
-    volumes:
-      - /home/drone/keys:/keys
-    secrets: [ sonatype_user, sonatype_pw, pgp_pw ]
+    secrets: [ sonatype_user, sonatype_pw, pgp_pw, pgp_secret ]
     when:
       event: deployment
       environment: sbt_release

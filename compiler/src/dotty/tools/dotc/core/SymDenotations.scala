@@ -1959,7 +1959,7 @@ object SymDenotations {
       val (location, src) =
         if (file != null) (s" in $file", file.toString)
         else ("", "the signature")
-      val name = ctx.fresh.setSetting(ctx.settings.debugNames, true).nameString(denot.name)
+      val name = ctx.fresh.setSetting(ctx.settings.YdebugNames, true).nameString(denot.name)
       def errMsg =
         i"""bad symbolic reference. A signature$location
            |refers to $name in ${denot.owner.showKind} ${denot.owner.showFullName} which is not available.

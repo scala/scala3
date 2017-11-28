@@ -55,8 +55,8 @@ class ShowClassTests extends DottyTest {
     "dotty.tools.dotc.core.pickling.AbstractFileReader")
 
   def doTwice(test: Context => Unit)(implicit ctx: Context): Unit = {
-    test(ctx.fresh.setSetting(ctx.base.settings.debug, true))
-    test(ctx.fresh.setSetting(ctx.base.settings.debug, false))
+    test(ctx.fresh.setSetting(ctx.base.settings.Ydebug, true))
+    test(ctx.fresh.setSetting(ctx.base.settings.Ydebug, false))
   }
 
   def showPackage(pkg: TermSymbol)(implicit ctx: Context): Unit = {

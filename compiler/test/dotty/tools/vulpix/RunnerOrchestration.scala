@@ -92,7 +92,7 @@ trait RunnerOrchestration {
         if (didAddCleanupCallback.compareAndSet(false, true)) {
           // If for some reason the test runner (i.e. sbt) doesn't kill the VM, we
           // need to clean up ourselves.
-          summaryReport.addCleanup(killAll)
+          summaryReport.addCleanup(() => killAll())
         }
         assert(process ne null,
           "Runner was killed and then reused without setting a new process")

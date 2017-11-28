@@ -565,7 +565,7 @@ private class ExtractAPICollector(implicit val ctx: Context) extends ThunkHolder
       // typed tree of the method as part of the signature we send to sbt.
       // To do this properly we would need a way to hash trees and types in
       // dotty itself.
-      val printTypesCtx = ctx.fresh.setSetting(ctx.settings.printtypes, true)
+      val printTypesCtx = ctx.fresh.setSetting(ctx.settings.XprintTypes, true)
       annots += marker(Inliner.bodyToInline(s).show(printTypesCtx).toString)
     }
 

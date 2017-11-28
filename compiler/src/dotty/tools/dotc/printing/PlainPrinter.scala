@@ -146,10 +146,14 @@ class PlainPrinter(_ctx: Context) extends Printer {
         toTextRef(tp) ~ ".type"
       case tp: TermRef if tp.denot.isOverloaded =>
         "<overloaded " ~ toTextRef(tp) ~ ">"
-      case tp: SingletonType =>
-        toTextLocal(tp.underlying) ~ "(" ~ toTextRef(tp) ~ ")"
       case tp: TypeRef =>
         toTextPrefix(tp.prefix) ~ selectionString(tp)
+      case tp: TermParamRef =>
+        ParamRefNameString(tp) ~ ".type"
+      case tp: TypeParamRef =>
+        ParamRefNameString(tp) ~ lambdaHash(tp.binder)
+      case tp: SingletonType =>
+        toTextLocal(tp.underlying) ~ "(" ~ toTextRef(tp) ~ ")"
       case AppliedType(tycon, args) =>
         (toTextLocal(tycon) ~ "[" ~ Text(args map argText, ", ") ~ "]").close
       case tp: RefinedType =>
@@ -180,26 +184,19 @@ class PlainPrinter(_ctx: Context) extends Printer {
       case NoPrefix =>
         "<noprefix>"
       case tp: MethodType =>
-        def paramText(name: TermName, tp: Type) = toText(name) ~ ": " ~ toText(tp)
         changePrec(GlobalPrec) {
-          (if (tp.isImplicitMethod) "(implicit " else "(") ~
-            Text((tp.paramNames, tp.paramInfos).zipped map paramText, ", ") ~
+          (if (tp.isImplicitMethod) "(implicit " else "(") ~ paramsText(tp) ~
           (if (tp.resultType.isInstanceOf[MethodType]) ")" else "): ") ~
           toText(tp.resultType)
         }
       case tp: ExprType =>
         changePrec(GlobalPrec) { "=> " ~ toText(tp.resultType) }
       case tp: TypeLambda =>
-        def paramText(name: Name, bounds: TypeBounds): Text = name.unexpandedName.toString ~ toText(bounds)
         changePrec(GlobalPrec) {
-          "[" ~ Text((tp.paramNames, tp.paramInfos).zipped.map(paramText), ", ") ~
-          "]" ~ lambdaHash(tp) ~ (" => " provided !tp.resultType.isInstanceOf[MethodType]) ~
+          "[" ~ paramsText(tp) ~ "]" ~ lambdaHash(tp) ~
+          (" => " provided !tp.resultType.isInstanceOf[MethodType]) ~
           toTextGlobal(tp.resultType)
         }
-      case tp: TypeParamRef =>
-        ParamRefNameString(tp) ~ lambdaHash(tp.binder)
-      case tp: TermParamRef =>
-        ParamRefNameString(tp) ~ ".type"
       case AnnotatedType(tpe, annot) =>
         toTextLocal(tpe) ~ " " ~ toText(annot)
       case tp: TypeVar =>
@@ -220,6 +217,11 @@ class PlainPrinter(_ctx: Context) extends Printer {
         tp.fallbackToText(this)
     }
   }.close
+
+  protected def paramsText(tp: LambdaType): Text = {
+    def paramText(name: Name, tp: Type) = toText(name) ~ toTextRHS(tp)
+    Text((tp.paramNames, tp.paramInfos).zipped.map(paramText), ", ")
+  }
 
   protected def ParamRefNameString(name: Name): String = name.toString
 
@@ -326,7 +328,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
         }
         val trueDecls = otherDecls.filterNot(treatAsTypeArg)
         val declsText =
-          if (trueDecls.isEmpty || !ctx.settings.debug.value) Text()
+          if (trueDecls.isEmpty || !ctx.settings.Ydebug.value) Text()
           else dclsText(trueDecls)
         tparamsText ~ " extends " ~ toTextParents(tp.parents) ~ "{" ~ selfText ~ declsText ~
           "} at " ~ preText
@@ -456,12 +458,12 @@ class PlainPrinter(_ctx: Context) extends Printer {
   }
 
   def toText(const: Constant): Text = const.tag match {
-    case StringTag => "\"" + escapedString(const.value.toString) + "\""
+    case StringTag => stringText("\"" + escapedString(const.value.toString) + "\"")
     case ClazzTag => "classOf[" ~ toText(const.typeValue.classSymbol) ~ "]"
-    case CharTag => s"'${escapedChar(const.charValue)}'"
-    case LongTag => const.longValue.toString + "L"
-    case EnumTag => const.symbolValue.name.toString
-    case _ => String.valueOf(const.value)
+    case CharTag => literalText(s"'${escapedChar(const.charValue)}'")
+    case LongTag => literalText(const.longValue.toString + "L")
+    case EnumTag => literalText(const.symbolValue.name.toString)
+    case _ => literalText(String.valueOf(const.value))
   }
 
   def toText(annot: Annotation): Text = s"@${annot.symbol.name}" // for now
@@ -485,12 +487,12 @@ class PlainPrinter(_ctx: Context) extends Printer {
         val elems =
           Text(node.productIterator.map(toTextElem).toList, ", ")
         val tpSuffix =
-          if (ctx.settings.printtypes.value && tree.hasType)
+          if (ctx.settings.XprintTypes.value && tree.hasType)
             " | " ~ toText(tree.typeOpt)
           else
             Text()
 
-        nodeName ~ "(" ~ elems ~ tpSuffix ~ ")" ~ (node.pos.toString provided ctx.settings.Yprintpos.value)
+        nodeName ~ "(" ~ elems ~ tpSuffix ~ ")" ~ (node.pos.toString provided ctx.settings.YprintPos.value)
       case _ =>
         tree.fallbackToText(this)
     }
@@ -534,5 +536,16 @@ class PlainPrinter(_ctx: Context) extends Printer {
   def summarized[T](op: => T): T = summarized(summarizeDepth)(op)
 
   def plain = this
+
+  protected def keywordStr(text: String): String = coloredStr(text, SyntaxHighlighting.KeywordColor)
+  protected def valDefText(text: Text): Text = coloredText(text, SyntaxHighlighting.ValDefColor)
+  protected def typeText(text: Text): Text = coloredText(text, SyntaxHighlighting.TypeColor)
+  protected def literalText(text: Text): Text = coloredText(text, SyntaxHighlighting.LiteralColor)
+  protected def stringText(text: Text): Text = coloredText(text, SyntaxHighlighting.StringColor)
+
+  private def coloredStr(text: String, color: String): String =
+    if (ctx.useColors) color + text + SyntaxHighlighting.NoColor else text
+  private def coloredText(text: Text, color: String): Text =
+    if (ctx.useColors) color ~ text ~ SyntaxHighlighting.NoColor else text
 }
 

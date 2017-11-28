@@ -53,7 +53,7 @@ class ContextDottydoc extends ContextDocstrings {
   def echo(msg: String)(implicit ctx: Context): Unit = echo(msg, NoSourcePosition)
 
   def debug(msg: String, pos: SourcePosition)(implicit ctx: Context): Unit =
-    if (ctx.settings.debug.value) ctx.inform({
+    if (ctx.settings.Ydebug.value) ctx.inform({
       "[doc debug] " + msg
     }.toString, pos)
 

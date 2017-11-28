@@ -735,6 +735,7 @@ object Parsers {
      *                |  InfixType
      *  FunArgTypes ::=  InfixType
      *                |  `(' [ FunArgType {`,' FunArgType } ] `)'
+     *                |  '(' TypedFunParam {',' TypedFunParam } ')'
      */
     def typ(): Tree = {
       val start = in.offset
@@ -745,6 +746,16 @@ object Parsers {
           val t = typ()
           if (isImplicit) new ImplicitFunction(params, t) else Function(params, t)
         }
+      def funArgTypesRest(first: Tree, following: () => Tree) = {
+        val buf = new ListBuffer[Tree] += first
+        while (in.token == COMMA) {
+          in.nextToken()
+          buf += following()
+        }
+        buf.toList
+      }
+      var isValParamList = false
+
       val t =
         if (in.token == LPAREN) {
           in.nextToken()
@@ -754,10 +765,19 @@ object Parsers {
           }
           else {
             openParens.change(LPAREN, 1)
-            val ts = commaSeparated(funArgType)
+            val paramStart = in.offset
+            val ts = funArgType() match {
+              case Ident(name) if name != tpnme.WILDCARD && in.token == COLON =>
+                isValParamList = true
+                funArgTypesRest(
+                    typedFunParam(paramStart, name.toTermName),
+                    () => typedFunParam(in.offset, ident()))
+              case t =>
+                funArgTypesRest(t, funArgType)
+            }
             openParens.change(LPAREN, -1)
             accept(RPAREN)
-            if (isImplicit || in.token == ARROW) functionRest(ts)
+            if (isImplicit || isValParamList || in.token == ARROW) functionRest(ts)
             else {
               for (t <- ts)
                 if (t.isInstanceOf[ByNameTypeTree])
@@ -788,6 +808,12 @@ object Parsers {
             syntaxError("Types with implicit keyword can only be function types", Position(start, start + nme.IMPLICITkw.asSimpleName.length))
           t
       }
+    }
+
+    /** TypedFunParam   ::= id ':' Type */
+    def typedFunParam(start: Offset, name: TermName): Tree = atPos(start) {
+      accept(COLON)
+      makeParameter(name, typ(), Modifiers(Param))
     }
 
     /** InfixType ::= RefinedType {id [nl] refinedType}
@@ -902,9 +928,9 @@ object Parsers {
             in.nextToken()
             otherArgs(NamedArg(name, typ()), namedTypeArg)
           case firstArg =>
-            otherArgs(firstArg, typ)
+            otherArgs(firstArg, () => typ())
         }
-      else commaSeparated(typParser)
+      else commaSeparated(() => typParser())
     }
 
     /** FunArgType ::=  Type | `=>' Type
@@ -1825,7 +1851,7 @@ object Parsers {
           TypeDef(name, lambdaAbstract(hkparams, bounds)).withMods(mods)
         }
       }
-      commaSeparated(typeParam)
+      commaSeparated(() => typeParam())
     }
 
     def typeParamClauseOpt(ownerKind: ParamOwner.Value): List[TypeDef] =
@@ -1898,7 +1924,7 @@ object Parsers {
             implicitOffset = in.offset
             imods = implicitMods()
           }
-          commaSeparated(param)
+          commaSeparated(() => param())
         }
       }
       def clauses(): List[List[ValDef]] = {
@@ -2283,7 +2309,7 @@ object Parsers {
           classDefRest(start, mods1, id.name.toTypeName)
         else if (in.token == COMMA) {
           in.nextToken()
-          val ids = commaSeparated(termIdent)
+          val ids = commaSeparated(() => termIdent())
           PatDef(mods1, id :: ids, TypeTree(), EmptyTree)
         }
         else
