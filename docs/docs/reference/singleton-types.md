@@ -3,7 +3,7 @@ layout: doc-page
 title: "Literal Singleton Types"
 ---
 
-Literal Singleton Types allows primitive literals to be used as types. For example:
+Literal Singleton Types allow primitive literals to be used as types. For example:
 
 ```scala
 val t: 42 = 42
