@@ -1981,9 +1981,9 @@ object messages {
     val explanation =
       hl"""$migrationMessage
           |
-          |The symbol is marked with ${"@migration"} indicating it has changed semantics
+          |The ${symbol.showLocated} is marked with ${"@migration"} indicating it has changed semantics
           |between versions and the ${"-Xmigration"} settings is used to warn about constructs
-          |whose behavior may have changed since version.""".stripMargin
+          |whose behavior may have changed since version change.""".stripMargin
   }
 
   case class SymbolChangedSemanticsInVersion(
@@ -1996,9 +1996,9 @@ object messages {
       hl"""${symbol.showLocated} has changed semantics in version $symbolVersion:
           |$migrationVersion""".stripMargin
     val explanation = {
-      hl"""The symbol is marked with ${"@migration"} indicating it has changed semantics
+      hl"""The ${symbol.showLocated} is marked with ${"@migration"} indicating it has changed semantics
           |between versions and the ${"-Xmigration"} settings is used to warn about constructs
-          |whose behavior may have changed since version.""".stripMargin
+          |whose behavior may have changed since version change.""".stripMargin
     }
   }
 
