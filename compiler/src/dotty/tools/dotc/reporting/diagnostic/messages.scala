@@ -1988,7 +1988,7 @@ object messages {
 
   case class SymbolChangedSemanticsInVersion(
     symbol: Symbol,
-    symbolVersion: scala.util.Try[ScalaVersion],
+    symbolVersion: ScalaVersion,
     migrationVersion: scala.util.Try[ScalaVersion]
   )(implicit ctx: Context) extends Message(SymbolChangedSemanticsInVersionID) {
     val kind = "Syntax"
