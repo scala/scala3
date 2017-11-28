@@ -104,8 +104,8 @@ object DiffUtil {
     }.mkString
   }
 
-  private def added(str: String): String = bgColored(str, Console.GREEN_B)
-  private def deleted(str: String) = bgColored(str, Console.RED_B)
+  private def added(str: String): String = bgColored(str, Console.GREEN)
+  private def deleted(str: String) = bgColored(str, Console.RED)
   private def bgColored(str: String, color: String): String = {
     if (str.isEmpty) ""
     else {
