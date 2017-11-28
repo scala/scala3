@@ -29,7 +29,7 @@ affect implicits on the language level.
         /*!*/ def f(implicit x: y.type) // error `y.type` not allowed as type of implicit
 
  3. Nesting is now taken into account for selecting an implicit.
-    Consider for instance the following scenario
+    Consider for instance the following scenario:
 
         def f(implicit i: C) = {
           def g(implicit j: C) = {
