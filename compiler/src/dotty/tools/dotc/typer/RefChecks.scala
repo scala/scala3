@@ -688,10 +688,11 @@ object RefChecks {
     val xMigrationValue = ctx.settings.Xmigration.value
     if (sym.hasAnnotation(defn.MigrationAnnot) && xMigrationValue != NoScalaVersion) {
       sym.migrationVersion.get match {
-        case scala.util.Success(symVersion) if xMigrationValue < symVersion =>
-          ctx.warning(SymbolChangedSemanticsInVersion(sym, symVersion, sym.migrationMessage.get))
+        case scala.util.Success(symVersion) if xMigrationValue < symVersion=>
+          ctx.warning(SymbolChangedSemanticsInVersion(sym, symVersion), pos)
         case Failure(ex) =>
           ctx.warning(SymbolHasUnparsableVersionNumber(sym, ex.getMessage()), pos)
+        case _ => ()
       }
     }
     /*  (Not enabled yet)

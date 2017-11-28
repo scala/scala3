@@ -1983,22 +1983,19 @@ object messages {
           |
           |The ${symbol.showLocated} is marked with ${"@migration"} indicating it has changed semantics
           |between versions and the ${"-Xmigration"} settings is used to warn about constructs
-          |whose behavior may have changed since version change.""".stripMargin
+          |whose behavior may have changed since version change."""
   }
 
   case class SymbolChangedSemanticsInVersion(
     symbol: Symbol,
-    symbolVersion: ScalaVersion,
-    migrationVersion: scala.util.Try[ScalaVersion]
+    migrationVersion: ScalaVersion
   )(implicit ctx: Context) extends Message(SymbolChangedSemanticsInVersionID) {
     val kind = "Syntax"
-    val msg =
-      hl"""${symbol.showLocated} has changed semantics in version $symbolVersion:
-          |$migrationVersion""".stripMargin
+    val msg = hl"${symbol.showLocated} has changed semantics in version $migrationVersion"
     val explanation = {
       hl"""The ${symbol.showLocated} is marked with ${"@migration"} indicating it has changed semantics
           |between versions and the ${"-Xmigration"} settings is used to warn about constructs
-          |whose behavior may have changed since version change.""".stripMargin
+          |whose behavior may have changed since version change."""
     }
   }
 
