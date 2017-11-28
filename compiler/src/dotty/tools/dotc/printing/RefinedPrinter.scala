@@ -471,13 +471,13 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         ("(" ~ toTextGlobal(implicits, ", ") ~ ")" provided implicits.nonEmpty)
       case tree @ ValDef(name, tpt, _) =>
         dclTextOr {
-          modText(tree.mods, valDefStr(if (tree.mods is Mutable) "var" else "val")) ~~
-          nameIdText(tree) ~ optAscription(tpt) ~
+          modText(tree.mods, keywordStr(if (tree.mods is Mutable) "var" else "val")) ~~
+          valDefText(nameIdText(tree)) ~ optAscription(tpt) ~
           withEnclosingDef(tree) { optText(tree.rhs)(" = " ~ _) }
         }
       case tree @ DefDef(name, tparams, vparamss, tpt, _) =>
         dclTextOr {
-          val prefix = modText(tree.mods, valDefStr("def")) ~~ nameIdText(tree)
+          val prefix = modText(tree.mods, keywordStr("def")) ~~ valDefText(nameIdText(tree))
           withEnclosingDef(tree) {
             addVparamssText(prefix ~ tparamsText(tparams), vparamss) ~ optAscription(tpt) ~
             optText(tree.rhs)(" = " ~ _)
@@ -590,7 +590,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
           t ~ cxBoundToText(cxb)
         }
       case PatDef(mods, pats, tpt, rhs) =>
-        modText(mods, valDefStr("val")) ~~ toText(pats, ", ") ~ optAscription(tpt) ~
+        modText(mods, keywordStr("val")) ~~ toText(pats, ", ") ~ optAscription(tpt) ~
           optText(rhs)(" = " ~ _)
       case ParsedTry(expr, handler, finalizer) =>
         changePrec(GlobalPrec) {
