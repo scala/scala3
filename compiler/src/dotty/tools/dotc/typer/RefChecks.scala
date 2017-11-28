@@ -692,7 +692,7 @@ object RefChecks {
           ctx.warning(SymbolChangedSemanticsInVersion(sym, symVersion), pos)
         case Failure(ex) =>
           ctx.warning(SymbolHasUnparsableVersionNumber(sym, ex.getMessage()), pos)
-        case _ => ()
+        case _ =>
       }
     }
     /*  (Not enabled yet)
