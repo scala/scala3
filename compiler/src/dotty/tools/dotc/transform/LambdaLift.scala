@@ -341,7 +341,7 @@ object LambdaLift {
         local.copySymDenotation(
           owner = newOwner,
           name = newName(local),
-          initFlags = local.flags &~ Module &~ Final | Private | maybeStatic,
+          initFlags = local.flags &~ Module &~ Final | Private | Lifted | maybeStatic,
             // drop Module because class is no longer a singleton in the lifted context.
           info = liftedInfo(local)).installAfter(thisPhase)
       }
