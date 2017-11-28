@@ -685,17 +685,15 @@ object RefChecks {
     }
     // Similar to deprecation: check if the symbol is marked with @migration
     // indicating it has changed semantics between versions.
-    if (sym.hasAnnotation(defn.MigrationAnnot) && ctx.settings.Xmigration.value != NoScalaVersion) {
-      val symVersion: scala.util.Try[ScalaVersion] = sym.migrationVersion.get
-      val changed = symVersion match {
-        case scala.util.Success(v) =>
-          ctx.settings.Xmigration.value < v
+    val xMigrationValue = ctx.settings.Xmigration.value
+    if (sym.hasAnnotation(defn.MigrationAnnot) && xMigrationValue != NoScalaVersion) {
+      sym.migrationVersion.get match {
+        case scala.util.Success(symVersion) if xMigrationValue < symVersion=>
+          ctx.warning(SymbolChangedSemanticsInVersion(sym, symVersion), pos)
         case Failure(ex) =>
-          ctx.warning(s"${sym.showLocated} has an unparsable version number: ${ex.getMessage()}", pos)
-          false
+          ctx.warning(SymbolHasUnparsableVersionNumber(sym, ex.getMessage()), pos)
+        case _ =>
       }
-      if (changed)
-        ctx.warning(s"${sym.showLocated} has changed semantics in version $symVersion:\n${sym.migrationMessage.get}")
     }
     /*  (Not enabled yet)
        *  See an explanation of compileTimeOnly in its scaladoc at scala.annotation.compileTimeOnly.

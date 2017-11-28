@@ -118,6 +118,8 @@ public enum ErrorMessageID {
     StaticFieldsOnlyAllowedInObjectsID,
     CyclicInheritanceID,
     UnableToExtendSealedClassID,
+    SymbolHasUnparsableVersionNumberID,
+    SymbolChangedSemanticsInVersionID,
     UnableToEmitSwitchID,
     MissingCompanionForStaticID,
     ;

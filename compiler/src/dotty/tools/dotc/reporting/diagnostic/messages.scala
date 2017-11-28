@@ -21,6 +21,7 @@ import ErrorMessageID._
 import Denotations.SingleDenotation
 import dotty.tools.dotc.ast.Trees
 import dotty.tools.dotc.ast.untpd.Modifiers
+import dotty.tools.dotc.config.ScalaVersion
 import dotty.tools.dotc.core.Flags.{FlagSet, Mutable}
 import dotty.tools.dotc.core.SymDenotations.SymDenotation
 import scala.util.control.NonFatal
@@ -140,7 +141,7 @@ object messages {
   }
 
   case class EmptyCatchBlock(tryBody: untpd.Tree)(implicit ctx: Context)
- extends EmptyCatchOrFinallyBlock(tryBody, EmptyCatchBlockID) {
+  extends EmptyCatchOrFinallyBlock(tryBody, EmptyCatchBlockID) {
     val kind = "Syntax"
     val msg =
       hl"""|The ${"catch"} block does not contain a valid expression, try
@@ -1971,6 +1972,31 @@ object messages {
     val kind = "Syntax"
     val msg = hl"Cannot extend ${"sealed"} $pclazz in a different source file"
     val explanation = "A sealed class or trait can only be extended in the same file as its declaration"
+  }
+
+  case class SymbolHasUnparsableVersionNumber(symbol: Symbol, migrationMessage: String)(implicit ctx: Context)
+  extends Message(SymbolHasUnparsableVersionNumberID) {
+    val kind = "Syntax"
+    val msg = hl"${symbol.showLocated} has an unparsable version number: $migrationMessage"
+    val explanation =
+      hl"""$migrationMessage
+          |
+          |The ${symbol.showLocated} is marked with ${"@migration"} indicating it has changed semantics
+          |between versions and the ${"-Xmigration"} settings is used to warn about constructs
+          |whose behavior may have changed since version change."""
+  }
+
+  case class SymbolChangedSemanticsInVersion(
+    symbol: Symbol,
+    migrationVersion: ScalaVersion
+  )(implicit ctx: Context) extends Message(SymbolChangedSemanticsInVersionID) {
+    val kind = "Syntax"
+    val msg = hl"${symbol.showLocated} has changed semantics in version $migrationVersion"
+    val explanation = {
+      hl"""The ${symbol.showLocated} is marked with ${"@migration"} indicating it has changed semantics
+          |between versions and the ${"-Xmigration"} settings is used to warn about constructs
+          |whose behavior may have changed since version change."""
+    }
   }
 
   case class UnableToEmitSwitch()(implicit ctx: Context)
