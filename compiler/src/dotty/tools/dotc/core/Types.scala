@@ -1747,7 +1747,7 @@ object Types {
       assert(args.nonEmpty,
       	i"""bad parameter reference $this at ${ctx.phase}
       	   |the parameter is ${param.showLocated} but the prefix $prefix
-      	   |does not define any corresponding arguments."""
+      	   |does not define any corresponding arguments.""")
 
       val argInfo = args(idx) match {
         case arg: TypeBounds =>
