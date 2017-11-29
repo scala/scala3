@@ -168,7 +168,6 @@ Standard-Section: "ASTs" TopLevelStat*
                                         // for type-variables defined in a type pattern
                   BYNAMEtype            underlying_Type
                   PARAMtype      Length binder_ASTref paramNum_Nat
-                  TYPEARGtype    Length prefix_Type clsRef_Type idx_Nat
                   POLYtype       Length result_Type NamesTypes
                   METHODtype     Length result_Type NamesTypes      // needed for refinements
                   TYPELAMBDAtype Length result_Type NamesTypes      // variance encoded in front of name: +/-/(nothing)
@@ -394,7 +393,6 @@ object TastyFormat {
   final val LAMBDAtpt = 173
   final val PARAMtype = 174
   final val ANNOTATION = 175
-  final val TYPEARGtype = 176
   final val TERMREFin = 177
   final val TYPEREFin = 178
 
@@ -580,7 +578,6 @@ object TastyFormat {
     case SYMBOLconst => "SYMBOLconst"
     case SINGLETONtpt => "SINGLETONtpt"
     case SUPERtype => "SUPERtype"
-    case TYPEARGtype => "TYPEARGtype"
     case TERMREFin => "TERMREFin"
     case TYPEREFin => "TYPEREFin"
     case REFINEDtype => "REFINEDtype"
