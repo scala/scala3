@@ -4019,7 +4019,16 @@ object Types {
       else pre match {
         case Range(preLo, preHi) =>
           val forwarded =
-            if (tp.symbol.is(ClassTypeParam)) tp.argForParam(preHi)
+            if (tp.symbol.is(ClassTypeParam)) {
+              tp.argForParam(preHi) match {
+                case arg: TypeArgRef =>
+                  arg.underlying match {
+                    case TypeBounds(lo, hi) => range(atVariance(-variance)(reapply(lo)), reapply(hi))
+                    case arg => reapply(arg)
+                  }
+                case arg => reapply(arg)
+              }
+            }
             else tryWiden(tp, preHi)
           forwarded.orElse(
             range(super.derivedSelect(tp, preLo), super.derivedSelect(tp, preHi)))
