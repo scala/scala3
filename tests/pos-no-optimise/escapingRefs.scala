@@ -29,13 +29,13 @@ object Test {
       x
     }
 
-    val d: Foo[Int] = {
+/*    val d: Foo[Int] = {
       class Bar[B] extends Foo[B]
       new Bar[Int]
     }
-
+*/
     val e: Foo[_] = {
-      class Bar[B] extends Foo[B]
+      class Bar[B11] extends Foo[B11]
       new Bar[Int]: Bar[_ <: Int]
     }
   }
