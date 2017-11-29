@@ -829,7 +829,9 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
 
       def compareCaptured(arg1: Type, arg2: Type): Boolean = arg1 match {
         case arg1: TypeBounds =>
-          val captured = TypeArgRef.fromParam(tp1, tparam.asInstanceOf[TypeSymbol])
+          val captured =
+            if (Config.newScheme) TypeRef(tp1, tparam.asInstanceOf[TypeSymbol])
+            else TypeArgRef.fromParam(tp1, tparam.asInstanceOf[TypeSymbol])
           isSubArg(captured, arg2)
         case _ =>
           false

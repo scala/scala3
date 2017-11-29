@@ -182,6 +182,18 @@ object Types {
       loop(this)
     }
 
+    /** True iff `symd` is a denotation of a class type parameter and the reference
+     *  `<this> . <symd>` is an actual argument reference, i.e. `this` is different
+     *  from the ThisType of `symd`'s owner.
+     */
+    def isArgPrefix(symd: SymDenotation)(implicit ctx: Context) =
+      Config.newScheme && symd.is(ClassTypeParam) && {
+        this match {
+          case tp: ThisType => tp.cls ne symd.owner
+          case _ => true
+        }
+      }
+
     /** Returns true if the type is a phantom type
      *   - true if XYZ extends scala.Phantom and this type is upper bounded XYZ.Any
      *   - false otherwise
@@ -1659,6 +1671,8 @@ object Types {
           val symd = sym.lastKnownDenotation
           if (symd.validFor.runId != ctx.runId && !ctx.stillValid(symd))
             finish(memberDenot(symd.initial.name, allowPrivate = false))
+          else if (prefix.isArgPrefix(symd))
+            finish(argDenot(sym.asType))
           else if (infoDependsOnPrefix(symd, prefix))
             finish(memberDenot(symd.initial.name, allowPrivate = symd.is(Private)))
           else
@@ -1714,6 +1728,32 @@ object Types {
 
     private def memberDenot(prefix: Type, name: Name, allowPrivate: Boolean)(implicit ctx: Context): Denotation =
       if (allowPrivate) prefix.member(name) else prefix.nonPrivateMember(name)
+
+    private def argDenot(param: TypeSymbol)(implicit ctx: Context): Denotation = {
+      val cls = param.owner
+      val args = prefix.baseType(cls).argInfos
+      val typeParams = cls.typeParams
+
+      def concretize(arg: Type, tparam: TypeSymbol) = arg match {
+        case arg: TypeBounds => TypeRef(prefix, tparam)
+        case arg => arg
+      }
+      val concretized = args.zipWithConserve(typeParams)(concretize)
+
+      def rebase(arg: Type) = arg.subst(typeParams, concretized)
+
+      val idx = typeParams.indexOf(param)
+      val argInfo = args(idx) match {
+        case arg: TypeBounds =>
+          val v = param.paramVariance
+          val pbounds = param.paramInfo
+          if (v > 0 && pbounds.loBound.dealias.isBottomType) TypeAlias(arg.hiBound & rebase(pbounds.hiBound))
+          else if (v < 0 && pbounds.hiBound.dealias.isTopType) TypeAlias(arg.loBound | rebase(pbounds.loBound))
+          else arg recoverable_& rebase(pbounds)
+        case arg => TypeAlias(arg)
+      }
+      param.derivedSingleDenotation(param, argInfo)
+    }
 
     /** Reload denotation by computing the member with the reference's name as seen
      *  from the reference's prefix.
@@ -1838,7 +1878,9 @@ object Types {
           while (tparams.nonEmpty && args.nonEmpty) {
             if (tparams.head.eq(tparam))
               return args.head match {
-                case _: TypeBounds => TypeArgRef(pre, cls.typeRef, idx)
+                case _: TypeBounds =>
+                  if (Config.newScheme) TypeRef(pre, tparam)
+                  else TypeArgRef(pre, cls.typeRef, idx)
                 case arg => arg
               }
             tparams = tparams.tail
@@ -1940,7 +1982,7 @@ object Types {
       else if (lastDenotation == null) NamedType(prefix, designator)
       else designator match {
         case sym: Symbol =>
-          if (infoDependsOnPrefix(sym, prefix)) {
+          if (infoDependsOnPrefix(sym, prefix) && !prefix.isArgPrefix(sym)) {
             val candidate = reload()
             val falseOverride = sym.isClass && candidate.symbol.exists && candidate.symbol != symbol
               // A false override happens if we rebind an inner class to another type with the same name
@@ -4023,6 +4065,11 @@ object Types {
               tp.argForParam(preHi) match {
                 case arg: TypeArgRef =>
                   arg.underlying match {
+                    case TypeBounds(lo, hi) => range(atVariance(-variance)(reapply(lo)), reapply(hi))
+                    case arg => reapply(arg)
+                  }
+                case arg @ TypeRef(pre, _) if pre.isArgPrefix(arg.symbol) =>
+                  arg.info match {
                     case TypeBounds(lo, hi) => range(atVariance(-variance)(reapply(lo)), reapply(hi))
                     case arg => reapply(arg)
                   }
