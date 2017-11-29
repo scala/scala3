@@ -1968,6 +1968,24 @@ object messages {
     }
   }
 
+  case class BadSymbolicReference(
+    location: String,
+    name: String,
+    denotationOwner: Symbol,
+    src: String
+  )(implicit ctx: Context) extends Message(BadSymbolicReferenceID) {
+    val kind = "Reference"
+    val msg =
+      hl"""Bad symbolic reference. A signature$location
+          |refers to $name in ${denotationOwner.showKind} ${denotationOwner.showFullName} which is not available.
+          |It may be completely missing from the current classpath, or the version on
+          |the classpath might be incompatible with the version used when compiling $src."""
+    val explanation =
+      hl"""A missing or invalid dependency was detected while loading class file '$name'.
+          |Check your build definition for missing or conflicting dependencies.
+          |Re-run with ${"-Ylog-classpath"} to obtain the information about what classpath is being applied."""
+  }
+
   case class UnableToExtendSealedClass(pclazz: Symbol)(implicit ctx: Context) extends Message(UnableToExtendSealedClassID) {
     val kind = "Syntax"
     val msg = hl"Cannot extend ${"sealed"} $pclazz in a different source file"
