@@ -1203,7 +1203,7 @@ class Namer { typer: Typer =>
     // fail with a bounds error in PostTyper.
     def ensureUpToDate(tp: Type, outdated: Type) = tp match {
       case tref: TypeRef if tref.info == outdated && sym.info != outdated =>
-        tref.reloadDenot()
+        tref.recomputeDenot()
       case _ =>
     }
     ensureUpToDate(sym.typeRef, dummyInfo)

@@ -1174,7 +1174,7 @@ object Types {
         tycon.parents.map(_.subst(tycon.typeSymbol.typeParams, args))
       case tp: TypeRef =>
         if (tp.info.isInstanceOf[TempClassInfo]) {
-          tp.reloadDenot()
+          tp.recomputeDenot()
           assert(!tp.info.isInstanceOf[TempClassInfo])
         }
         tp.info.parents
@@ -1633,7 +1633,7 @@ object Types {
 
       def finish(d: Denotation) = {
         if (ctx.typerState.ephemeral)
-          record("ephemeral cache miss: loadDenot")
+          record("ephemeral cache miss: memberDenot")
         else if (d.exists)
           // Avoid storing NoDenotations in the cache - we will not be able to recover from
           // them. The situation might arise that a type has NoDenotation in some later
@@ -1648,13 +1648,13 @@ object Types {
         case name: Name =>
           val sym = lastSymbol
           val allowPrivate = sym == null || (sym == NoSymbol) || sym.lastKnownDenotation.flagsUNSAFE.is(Private)
-          finish(loadDenot(name, allowPrivate))
+          finish(memberDenot(name, allowPrivate))
         case sym: Symbol =>
           val symd = sym.lastKnownDenotation
           if (symd.validFor.runId != ctx.runId && !ctx.stillValid(symd))
-            finish(loadDenot(symd.initial.name, allowPrivate = false))
+            finish(memberDenot(symd.initial.name, allowPrivate = false))
           else if (infoDependsOnPrefix(symd, prefix))
-            finish(loadDenot(symd.initial.name, allowPrivate = symd.is(Private)))
+            finish(memberDenot(symd.initial.name, allowPrivate = symd.is(Private)))
           else
             finish(symd.current)
       }
@@ -1669,13 +1669,7 @@ object Types {
             else lastd match {
               case lastd: SymDenotation =>
                 if (ctx.stillValid(lastd)) finish(lastd.current)
-                else
-                  try finish(loadDenot(lastd.initial.name, allowPrivate = false))
-                  catch {
-                    case ex: AssertionError =>
-                      println(i"assertion failed while $this . $lastd . ${lastd.validFor} ${lastd.flagsUNSAFE}")
-                      throw ex
-                  }
+                else finish(memberDenot(lastd.initial.name, allowPrivate = false))
               case _ =>
                 fromDesignator
             }
@@ -1683,27 +1677,6 @@ object Types {
         }
       finally ctx.typerState.ephemeral |= savedEphemeral
     }
-
-    private def loadDenot(name: Name, allowPrivate: Boolean)(implicit ctx: Context): Denotation = {
-      var d = memberDenot(prefix, name, allowPrivate)
-      if (!d.exists && ctx.mode.is(Mode.Interactive))
-        d = memberDenot(prefix, name, true)
-      if (!d.exists && ctx.phaseId > FirstPhaseId && lastDenotation.isInstanceOf[SymDenotation])
-        // name has changed; try load in earlier phase and make current
-        d = loadDenot(name, allowPrivate)(ctx.withPhase(ctx.phaseId - 1)).current
-      if (d.isOverloaded)
-        d = disambiguate(d)
-      d
-    }
-
-    /** Reload denotation by computing the member with the reference's name as seen
-     *  from the reference's prefix.
-     */
-    def reloadDenot()(implicit ctx: Context) =
-      setDenot(loadDenot(name, allowPrivate = !symbol.exists || symbol.is(Private)))
-
-    private def memberDenot(prefix: Type, name: Name, allowPrivate: Boolean)(implicit ctx: Context): Denotation =
-      if (allowPrivate) prefix.member(name) else prefix.nonPrivateMember(name)
 
     private def disambiguate(d: Denotation)(implicit ctx: Context): Denotation = {
       val sig = currentSignature
@@ -1719,6 +1692,27 @@ object Types {
         }
       else d
     }
+
+    private def memberDenot(name: Name, allowPrivate: Boolean)(implicit ctx: Context): Denotation = {
+      var d = memberDenot(prefix, name, allowPrivate)
+      if (!d.exists && ctx.mode.is(Mode.Interactive))
+        d = memberDenot(prefix, name, true)
+      if (!d.exists && ctx.phaseId > FirstPhaseId && lastDenotation.isInstanceOf[SymDenotation])
+        // name has changed; try load in earlier phase and make current
+        d = memberDenot(name, allowPrivate)(ctx.withPhase(ctx.phaseId - 1)).current
+      if (d.isOverloaded)
+        d = disambiguate(d)
+      d
+    }
+
+    private def memberDenot(prefix: Type, name: Name, allowPrivate: Boolean)(implicit ctx: Context): Denotation =
+      if (allowPrivate) prefix.member(name) else prefix.nonPrivateMember(name)
+
+    /** Reload denotation by computing the member with the reference's name as seen
+     *  from the reference's prefix.
+     */
+    def recomputeDenot()(implicit ctx: Context) =
+      setDenot(memberDenot(name, allowPrivate = !symbol.exists || symbol.is(Private)))
 
     private def setDenot(denot: Denotation)(implicit ctx: Context): Unit = {
       if (ctx.isAfterTyper)
@@ -3745,7 +3739,7 @@ object Types {
     def apply(tp: Type): Type
 
     protected def derivedSelect(tp: NamedType, pre: Type): Type =
-      tp.derivedSelect(pre)  match {
+      tp.derivedSelect(pre) match {
         case tp: TypeArgRef if variance != 0 =>
           val tp1 = tp.underlying
           if (variance > 0) tp1.hiBound else tp1.loBound
