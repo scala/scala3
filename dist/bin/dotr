@@ -61,7 +61,7 @@ if [ $run_repl == true ] || [ ${#residual_args[@]} -eq 0 ]; then
     cp_arg="-classpath \"$CLASS_PATH\""
   fi
   echo "Starting dotty REPL..."
-  eval "$PROG_HOME/bin/dotc $cp_arg -repl ${residual_args[@]}"
+  eval "\"$PROG_HOME/bin/dotc\" $cp_arg -repl ${residual_args[@]}"
 else
   cp_arg="$DOTTY_LIB$PSEP$SCALA_LIB"
   if [ -z "$CLASS_PATH" ]; then
