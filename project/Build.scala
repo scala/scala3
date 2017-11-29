@@ -996,6 +996,12 @@ object Build {
         name = "Allan Renucci",
         email = "allan.renucci@gmail.com",
         url = url("https://github.com/allanrenucci")
+      ),
+      Developer(
+        id = "Duhemm",
+        name = "Martin Duhem",
+        email = "martin.duhem@gmail.com",
+        url = url("https://github.com/Duhemm")
       )
     )
   )
