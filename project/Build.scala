@@ -756,10 +756,12 @@ object Build {
       val sbtOrg = "org.scala-sbt"
       val bridgeDirectoryPattern = s"*${dottyVersion}*"
 
+      val log = streams.value.log
+      log.info("Cleaning the dotty-sbt-bridge cache")
       IO.delete((file(home) / ".ivy2" / "cache" / sbtOrg * bridgeDirectoryPattern).get)
       IO.delete((file(home) / ".sbt"  / "boot" * "scala-*" / sbtOrg / "sbt" * "*" * bridgeDirectoryPattern).get)
     },
-    packageSrc in Compile := (packageSrc in Compile).dependsOn(cleanSbtBridge).value,
+    compile in Compile := (compile in Compile).dependsOn(cleanSbtBridge).value,
     description := "sbt compiler bridge for Dotty",
     resolvers += Resolver.typesafeIvyRepo("releases"), // For org.scala-sbt:api
     libraryDependencies ++= Seq(
