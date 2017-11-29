@@ -3060,7 +3060,7 @@ object Types {
     def isTypeParam(implicit ctx: Context) = tl.paramNames.head.isTypeName
     def paramName(implicit ctx: Context) = tl.paramNames(n)
     def paramInfo(implicit ctx: Context) = tl.paramInfos(n)
-    def paramInfoAsSeenFrom(pre: Type)(implicit ctx: Context) = paramInfo
+    def paramInfoAsSeenFrom(pre: Type)(implicit ctx: Context) = paramInfo.asSeenFrom(pre, pre.classSymbol)
     def paramInfoOrCompleter(implicit ctx: Context): Type = paramInfo
     def paramVariance(implicit ctx: Context): Int = tl.paramNames(n).variance
     def paramRef(implicit ctx: Context): Type = tl.paramRefs(n)
