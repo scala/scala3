@@ -37,14 +37,14 @@ refinement. In fact, the dependent function type above is just syntactic sugar f
       def apply(e: Entry): e.Key
     }
 
-In general, a dependent functon type `(x<sub>1</sub>: K<sub>1</sub>, ..., x<sub>n</sub>: K<sub>n</sub>) => R` of arity `n`
+In general, a dependent functon type `(x1: K1, ..., xN: KN) => R` of arity `N`
 translates to
 
-    Function<sub>n</sub>[K<sub>1</sub>, ..., Kn, R'] {
-      def apply(x<sub>1</sub>: K<sub>1</sub>, ..., x<sub>n</sub>: K<sub>n</sub>): R
+    FunctionN[K1, ..., Kn, R'] {
+      def apply(x1: K1, ..., xN: KN): R
     }
 
 where the result type parameter `R'` is an upper approximation of the
-true result type `R` that does not mention any of the parameters `e<sub>1</sub>, ..., e<sub>n</sub>`.
+true result type `R` that does not mention any of the parameters `e1, ..., eN`.
 
 
