@@ -474,8 +474,6 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
     def finishSym(sym: Symbol): Symbol = {
       if (sym.isClass) {
         sym.setFlag(Scala2x)
-        if (flags.is(Trait) && ctx.mode.is(Mode.Java8Unpickling))
-          sym.setFlag(Scala_2_12_Trait)
       }
       if (!(isRefinementClass(sym) || isUnpickleRoot(sym) || (sym is Scala2Existential))) {
         val owner = sym.owner

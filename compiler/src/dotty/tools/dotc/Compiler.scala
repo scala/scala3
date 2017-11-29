@@ -81,7 +81,7 @@ class Compiler {
          new ElimByName,             // Expand by-name parameter references
          new CollectNullableFields,  // Collect fields that can be nulled out after use in lazy initialization
          new ElimOuterSelect,        // Expand outer selections
-         new AugmentScala2Traits,    // Expand traits defined in Scala 2.x to simulate old-style rewritings
+         new AugmentScala2Traits,    // Augments Scala2 traits with additional members needed for mixin composition.
          new ResolveSuper,           // Implement super accessors and add forwarders to trait methods
          new FunctionXXLForwarders,  // Add forwarders for FunctionXXL apply method
          new ArrayConstructors) ::   // Intercept creation of (non-generic) arrays and intrinsify.

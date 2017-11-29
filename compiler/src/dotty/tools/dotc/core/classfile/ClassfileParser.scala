@@ -99,8 +99,6 @@ class ClassfileParser(
       throw new IOException(s"class file '${in.file}' has wrong magic number 0x${toHexString(magic)}, should be 0x${toHexString(JAVA_MAGIC)}")
     val minorVersion = in.nextChar.toInt
     val majorVersion = in.nextChar.toInt
-    if (majorVersion >= JAVA8_MAJOR_VERSION)
-      Scala2UnpicklingMode |= Mode.Java8Unpickling
     if ((majorVersion < JAVA_MAJOR_VERSION) ||
         ((majorVersion == JAVA_MAJOR_VERSION) &&
          (minorVersion < JAVA_MINOR_VERSION)))

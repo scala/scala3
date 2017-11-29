@@ -368,7 +368,6 @@ class PlainPrinter(_ctx: Context) extends Printer {
     else if (sym.isAnonymousClass) "anonymous class"
     else if (flags is ModuleClass) "module class"
     else if (flags is ModuleVal) "module"
-    else if (flags is ImplClass) "implementation class"
     else if (flags is Trait) "trait"
     else if (sym.isClass) "class"
     else if (sym.isType) "type"
