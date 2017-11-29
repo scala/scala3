@@ -527,14 +527,6 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
         case _ => isSubType(tp1.widenExpr, restpe2)
       }
       compareExpr
-    case tp2: TypeArgRef =>
-      def sameTypeArgRef = tp1 match {
-        case tp1: TypeArgRef =>
-          tp1.clsRef == tp2.clsRef && tp1.idx == tp2.idx && tp1.prefix =:= tp2.prefix
-        case _ =>
-          false
-      }
-      sameTypeArgRef || isSubType(tp1, tp2.underlying.loBound) || fourthTry(tp1, tp2)
     case tp2 @ TypeBounds(lo2, hi2) =>
       def compareTypeBounds = tp1 match {
         case tp1 @ TypeBounds(lo1, hi1) =>
@@ -605,8 +597,6 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
       isNewSubType(tp1.parent, tp2)
     case tp1: RecType =>
       isNewSubType(tp1.parent, tp2)
-    case tp1: TypeArgRef =>
-      isSubType(tp1.underlying.hiBound, tp2)
     case tp1: HKTypeLambda =>
       def compareHKLambda = tp1 match {
         case EtaExpansion(tycon1) => isSubType(tycon1, tp2)
@@ -829,9 +819,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
 
       def compareCaptured(arg1: Type, arg2: Type): Boolean = arg1 match {
         case arg1: TypeBounds =>
-          val captured =
-            if (Config.newScheme) TypeRef(tp1, tparam.asInstanceOf[TypeSymbol])
-            else TypeArgRef.fromParam(tp1, tparam.asInstanceOf[TypeSymbol])
+          val captured = TypeRef(tp1, tparam.asInstanceOf[TypeSymbol])
           isSubArg(captured, arg2)
         case _ =>
           false

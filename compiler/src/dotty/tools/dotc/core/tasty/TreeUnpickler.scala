@@ -259,8 +259,6 @@ class TreeUnpickler(reader: TastyReader, nameAtRef: NameRef => TermName, posUnpi
               OrType(readType(), readType())
             case SUPERtype =>
               SuperType(readType(), readType())
-            case TYPEARGtype =>
-              TypeArgRef(readType(), readType().asInstanceOf[TypeRef], readNat())
             case BIND =>
               val sym = ctx.newSymbol(ctx.owner, readName().toTypeName, BindDefinedType, readType())
               registerSym(start, sym)

@@ -147,7 +147,6 @@ private class ExtractAPICollector(implicit val ctx: Context) extends ThunkHolder
     new api.Annotated(tp, Array(marker))
   private def marker(name: String) =
     new api.Annotation(new api.Constant(Constants.emptyType, name), Array())
-  val typeArgRefMarker = marker("TypeArgRef")
   val orMarker = marker("Or")
   val byNameMarker = marker("ByName")
 
@@ -478,9 +477,6 @@ private class ExtractAPICollector(implicit val ctx: Context) extends ThunkHolder
         apiType(tp.ref)
       case tp: TypeVar =>
         apiType(tp.underlying)
-      case TypeArgRef(prefix, clsRef, idx) =>
-        val apiClsWithIdx = withMarker(apiType(clsRef), marker(idx.toString))
-        withMarker(combineApiTypes(apiType(prefix), apiClsWithIdx), typeArgRefMarker)
       case _ => {
         ctx.warning(i"sbt-api: Unhandled type ${tp.getClass} : $tp")
         Constants.emptyType
