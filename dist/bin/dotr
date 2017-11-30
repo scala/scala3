@@ -58,16 +58,16 @@ done
 
 if [ $run_repl == true ] || [ ${#residual_args[@]} -eq 0 ]; then
   if [ "$CLASS_PATH" ]; then
-    cp_arg="-classpath $CLASS_PATH"
+    cp_arg="-classpath \"$CLASS_PATH\""
   fi
   echo "Starting dotty REPL..."
-  eval "$PROG_HOME/bin/dotc $cp_arg -repl ${residual_args[@]}"
+  eval "\"$PROG_HOME/bin/dotc\" $cp_arg -repl ${residual_args[@]}"
 else
-  cp_arg="-classpath $DOTTY_LIB$PSEP$SCALA_LIB"
+  cp_arg="$DOTTY_LIB$PSEP$SCALA_LIB"
   if [ -z "$CLASS_PATH" ]; then
     cp_arg+="$PSEP."
   else
     cp_arg+="$PSEP$CLASS_PATH"
   fi
-  eval exec "\"$JAVACMD\"" "$DEBUG" "$cp_arg" "${residual_args[@]}"
+  eval exec "\"$JAVACMD\"" "$DEBUG" "-classpath \"$cp_arg\"" "${residual_args[@]}"
 fi
