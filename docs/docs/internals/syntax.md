@@ -99,9 +99,9 @@ SimpleLiteral     ::=  [‘-’] integerLiteral
                     |  booleanLiteral
                     |  characterLiteral
                     |  stringLiteral
+                    |  symbolLiteral
 Literal           ::=  SimpleLiteral
                     |  processedStringLiteral
-                    |  symbolLiteral
                     |  ‘null’
 
 QualId            ::=  id {‘.’ id}

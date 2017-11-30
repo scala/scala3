@@ -1029,9 +1029,7 @@ object desugar {
 
     val desugared = tree match {
       case SymbolLit(str) =>
-        Apply(
-          ref(defn.SymbolClass.companionModule.termRef),
-          Literal(Constant(str)) :: Nil)
+        Literal(Constant(scala.Symbol(str)))
       case InterpolatedString(id, segments) =>
         val strs = segments map {
           case ts: Thicket => ts.trees.head

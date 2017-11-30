@@ -271,9 +271,11 @@ trait ConstraintHandling {
     var inst = approximation(param, fromBelow).simplified
 
     // Then, approximate by (1.) - (3.) and simplify as follows.
-    // 1. If instance is from below and is a singleton type, yet
-    // upper bound is not a singleton type, widen the instance.
-    if (fromBelow && isSingleton(inst) && !isSingleton(upperBound))
+    // 1. If instance is from below and is a singleton type, yet upper bound is
+    // not a singleton type or a reference to `scala.Singleton`, widen the
+    // instance.
+    if (fromBelow && isSingleton(inst) && !isSingleton(upperBound)
+        && !upperBound.isRef(defn.SingletonClass))
       inst = inst.widen
 
     // 2. If instance is from below and is a fully-defined union type, yet upper bound

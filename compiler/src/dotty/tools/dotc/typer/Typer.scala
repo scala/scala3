@@ -449,7 +449,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     }
   }
 
-  def typedLiteral(tree: untpd.Literal)(implicit ctx: Context) = track("typedLiteral") {
+  def typedLiteral(tree: untpd.Literal)(implicit ctx: Context): Tree = track("typedLiteral") {
     assignType(tree)
   }
 
