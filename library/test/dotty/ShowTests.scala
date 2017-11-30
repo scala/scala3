@@ -64,7 +64,7 @@ class ShowTests {
     case class Car(model: String, manufacturer: String, year: Int)
 
     assertEquals("Car(Mustang,Ford,1967)", Car("Mustang", "Ford", 1967).show)
-    assertEquals("Map()", Map().show)
+    assertEquals("Map()", Map[Nothing, Nothing]().show)
   }
 
   @Test def partialShow = {
