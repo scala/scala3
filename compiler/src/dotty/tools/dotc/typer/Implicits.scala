@@ -618,6 +618,7 @@ trait Implicits { self: Typer =>
      *      case SRight(SLeft(x)) => x
      *      ...
      *      case SRight(SRight(...SRight(SLeft(x)))) => x
+     *      case _ => throw new MatchError()
      *    }
      *  ```
      *
@@ -671,8 +672,9 @@ trait Implicits { self: Typer =>
           // type Repr[t] = T1 |: T2 |: ... |: Tn |: PNil
           val repr: Tree = TypeDef(ReprNme, reprRhs)
           val reprX = AppliedTypeTree(Ident(ReprNme), Ident(X) :: Nil)
+          def unchecked(t: Tree): Tree = Annotated(t, untpd.New(TypeTree(defn.UncheckedAnnotType), Nil))
 
-          // def to[T](a: A): Repr[T] = (@unchecked a) match {
+          // def to[T](a: A): Repr[T] = (a: @unchecked) match {
           //   case x: T1 => SLeft(x)
           //   case x: T2 => SRight(SLeft(x))
           //   ...
@@ -689,12 +691,11 @@ trait Implicits { self: Typer =>
                 CaseDef(Typed(Ident(x), TypeTree(tpe)), EmptyTree, rhs)
               }
             }
-            val unchecked = Select(Ident(nme.scala_), "unchecked".toTypeName)
-            val body = Match(Annotated(Ident(arg.name), untpd.New(unchecked, Nil)), cases)
+            val body = Match(unchecked(Ident(arg.name)), cases)
             DefDef(toNme, TypeDef(X, noBounds) :: Nil, (arg :: Nil) :: Nil, reprX, body).withFlags(Synthetic)
           }
 
-          // def from[T](r: Repr[T]): A = r match {
+          // def from[T](r: Repr[T]): A = (r: @unchecked) match {
           //   case SLeft(x) => x
           //   case SRight(SLeft(x)) => x
           //   ...
@@ -711,7 +712,7 @@ trait Implicits { self: Typer =>
                 CaseDef(pat, EmptyTree, Ident(x))
               }.toList
             }
-            val matsh = Match(Ident(arg.name), cases)
+            val matsh = Match(unchecked(Ident(arg.name)), cases)
             val body = TypeApply(Select(matsh, nme.asInstanceOf_), TypeTree(A) :: Nil)
             DefDef(fromNme, TypeDef(X, noBounds) :: Nil, (arg :: Nil) :: Nil, TypeTree(A), body).withFlags(Synthetic)
           }
