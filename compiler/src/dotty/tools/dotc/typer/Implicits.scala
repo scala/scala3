@@ -739,7 +739,7 @@ trait Implicits { self: Typer =>
               LambdaTypeTree(TypeDef(X, noBounds) :: Nil, rhs)
             }
           // type Repr[t] = T1 &: T2 &: ... &: Tn &: PNil
-          val repr = TypeDef(ReprNme, reprRhs)
+          val repr  = TypeDef(ReprNme, reprRhs)
           val reprX = AppliedTypeTree(Ident(ReprNme), Ident(X) :: Nil)
           val pNil  = Apply(PNilTree, Nil)
 
@@ -766,8 +766,10 @@ trait Implicits { self: Typer =>
                 case tpe: NamedType if tpe.termSymbol.exists => // case object
                   untpd.ref(tpe)
                 case _ if A.classSymbol.exists =>               // case class
-                  val newArgs = (1 to productTypesSize).map(i => Ident(nme.productAccessorName(i))).toList :: Nil
-                  New(TypeTree(A), newArgs)
+                  val newArgs    = (1 to productTypesSize).map(i => Ident(nme.productAccessorName(i))).toList
+                  val hasVarargs = A.classSymbol.primaryConstructor.info.isVarArgsMethod
+                  val newArgs0   = if (hasVarargs) newArgs.init :+ repeated(newArgs.last) else newArgs
+                  New(TypeTree(A), newArgs0 :: Nil)
               }
             }
             val body = Match(Ident(arg.name), CaseDef(pat, EmptyTree, neuu) :: Nil)
