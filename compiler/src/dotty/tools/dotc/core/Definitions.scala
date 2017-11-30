@@ -194,6 +194,7 @@ class Definitions {
         else NoSymbol)
     cls
   }
+  lazy val ScalaPackageObjectRef = ctx.requiredModuleRef("scala.package")
   lazy val JavaPackageVal = ctx.requiredPackage("java")
   lazy val JavaLangPackageVal = ctx.requiredPackage("java.lang")
   // fundamental modules

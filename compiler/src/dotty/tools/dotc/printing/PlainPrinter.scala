@@ -136,6 +136,13 @@ class PlainPrinter(_ctx: Context) extends Printer {
       case _ => Nil
     })
 
+  /** Direct references to these symbols are printed without their prefix for convenience.
+   *  They are either aliased in scala.Predef or in the scala package object.
+   */
+  private[this] lazy val printWithoutPrefix: Set[Symbol] =
+    (defn.ScalaPredefModuleRef.typeAliasMembers
+      ++ defn.ScalaPackageObjectRef.typeAliasMembers).map(_.info.classSymbol).toSet
+
   def toText(tp: Type): Text = controlled {
     homogenize(tp) match {
       case tp: TypeType =>
@@ -147,7 +154,10 @@ class PlainPrinter(_ctx: Context) extends Printer {
       case tp: TermRef if tp.denot.isOverloaded =>
         "<overloaded " ~ toTextRef(tp) ~ ">"
       case tp: TypeRef =>
-        toTextPrefix(tp.prefix) ~ selectionString(tp)
+        if (printWithoutPrefix.contains(tp.symbol))
+          toText(tp.name)
+        else
+          toTextPrefix(tp.prefix) ~ selectionString(tp)
       case tp: TermParamRef =>
         ParamRefNameString(tp) ~ ".type"
       case tp: TypeParamRef =>
