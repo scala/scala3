@@ -230,8 +230,8 @@ Standard Section: "Positions" Assoc*
 object TastyFormat {
 
   final val header = Array(0x5C, 0xA1, 0xAB, 0x1F)
-  val MajorVersion = 1
-  val MinorVersion = 1
+  val MajorVersion = 2
+  val MinorVersion = 0
 
   // Name tags
 
@@ -393,8 +393,8 @@ object TastyFormat {
   final val LAMBDAtpt = 173
   final val PARAMtype = 174
   final val ANNOTATION = 175
-  final val TERMREFin = 177
-  final val TYPEREFin = 178
+  final val TERMREFin = 176
+  final val TYPEREFin = 177
 
   final val firstSimpleTreeTag = UNITconst
   final val firstNatTreeTag = SHARED
