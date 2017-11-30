@@ -563,7 +563,7 @@ trait Implicits { self: Typer =>
 
     /** If `formal` is of the form ClassTag[T], where `T` is a class type,
      *  synthesize a class tag for `T`.
-   	 */
+     */
     def synthesizedClassTag(formal: Type)(implicit ctx: Context): Tree =
       formal.argTypes match {
         case arg :: Nil =>
@@ -761,8 +761,16 @@ trait Implicits { self: Typer =>
             val pat = (1 to productTypesSize).reverse.foldLeft(pNil) { case (acc, i) =>
               Apply(PConsTree, Ident(nme.productAccessorName(i)) :: acc :: Nil)
             }
-            val newArgs = (1 to productTypesSize).map(i => Ident(nme.productAccessorName(i))).toList :: Nil
-            val body = Match(Ident(arg.name), CaseDef(pat, EmptyTree, New(TypeTree(A), newArgs)) :: Nil)
+            val neuu = {
+              A match {
+                case tpe: NamedType if tpe.termSymbol.exists => // case object
+                  untpd.ref(tpe)
+                case _ if A.classSymbol.exists =>               // case class
+                  val newArgs = (1 to productTypesSize).map(i => Ident(nme.productAccessorName(i))).toList :: Nil
+                  New(TypeTree(A), newArgs)
+              }
+            }
+            val body = Match(Ident(arg.name), CaseDef(pat, EmptyTree, neuu) :: Nil)
             DefDef(fromNme, TypeDef(X, noBounds) :: Nil, (arg :: Nil) :: Nil, TypeTree(A), body).withFlags(Synthetic)
           }
 
