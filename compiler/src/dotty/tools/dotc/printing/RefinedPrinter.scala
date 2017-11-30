@@ -269,7 +269,8 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         else if (suppressKw) PrintableFlags &~ Private
         else PrintableFlags
       if (homogenizedView && mods.flags.isTypeFlags) flagMask &~= Implicit // drop implicit from classes
-      val flagsText = keywordStr((mods.flags & flagMask).toString)
+      val flags = mods.flags & flagMask
+      val flagsText = if (flags.isEmpty) "" else keywordStr((mods.flags & flagMask).toString)
       Text(mods.annotations.map(annotText), " ") ~~ flagsText ~~ (kw provided !suppressKw)
     }
 
