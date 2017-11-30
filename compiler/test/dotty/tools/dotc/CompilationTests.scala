@@ -99,7 +99,7 @@ class CompilationTests extends ParallelTesting {
     compileDir("../tests/pos/i1137-1", defaultOptions and "-Yemit-tasty") +
     compileFile(
       // succeeds despite -Xfatal-warnings because of -nowarn
-      "../tests/neg/customArgs/xfatalWarnings.scala",
+      "../tests/neg-custom-args/xfatalWarnings.scala",
       defaultOptions.and("-nowarn", "-Xfatal-warnings")
     )
   }.checkCompile()
@@ -165,30 +165,25 @@ class CompilationTests extends ParallelTesting {
 
   @Test def compileNeg: Unit = {
     implicit val testGroup: TestGroup = TestGroup("compileNeg")
-    compileShallowFilesInDir("../tests/neg", defaultOptions) +
-    compileShallowFilesInDir("../tests/neg/no-optimise", defaultOptions) +
-    compileFile("../tests/neg/customArgs/typers.scala", allowDoubleBindings) +
-    compileFile("../tests/neg/customArgs/overrideClass.scala", scala2Mode) +
-    compileFile("../tests/neg/customArgs/autoTuplingTest.scala", defaultOptions.and("-language:noAutoTupling")) +
-    compileFile("../tests/neg/customArgs/i1050.scala", defaultOptions.and("-strict")) +
-    compileFile("../tests/neg/customArgs/i1240.scala", allowDoubleBindings) +
-    compileFile("../tests/neg/customArgs/i2002.scala", allowDoubleBindings) +
-    compileFile("../tests/neg/customArgs/nopredef.scala", defaultOptions.and("-Yno-predef")) +
-    compileFile("../tests/neg/customArgs/noimports.scala", defaultOptions.and("-Yno-imports")) +
-    compileFile("../tests/neg/customArgs/noimports2.scala", defaultOptions.and("-Yno-imports")) +
-    compileFile("../tests/neg/customArgs/overloadsOnAbstractTypes.scala", allowDoubleBindings) +
-    compileFile("../tests/neg/customArgs/xfatalWarnings.scala", defaultOptions.and("-Xfatal-warnings")) +
-    compileFile("../tests/neg/customArgs/pureStatement.scala", defaultOptions.and("-Xfatal-warnings")) +
-    compileFile("../tests/neg/customArgs/phantom-overload.scala", allowDoubleBindings) +
-    compileFile("../tests/neg/customArgs/phantom-overload-2.scala", allowDoubleBindings) +
-    compileFile("../tests/neg/tailcall/t1672b.scala", defaultOptions) +
-    compileFile("../tests/neg/tailcall/t3275.scala", defaultOptions) +
-    compileFile("../tests/neg/tailcall/t6574.scala", defaultOptions) +
-    compileFile("../tests/neg/tailcall/tailrec.scala", defaultOptions) +
-    compileFile("../tests/neg/tailcall/tailrec-2.scala", defaultOptions) +
-    compileFile("../tests/neg/tailcall/tailrec-3.scala", defaultOptions) +
-    compileFile("../tests/neg/i3246.scala", scala2Mode) +
-    compileDir("../tests/neg/typedIdents", defaultOptions)
+    compileFilesInDir("../tests/neg", defaultOptions) +
+    compileFilesInDir("../tests/neg-tailcall", defaultOptions) +
+    compileFilesInDir("../tests/neg-no-optimise", defaultOptions) +
+    compileFile("../tests/neg-custom-args/i3246.scala", scala2Mode) +
+    compileFile("../tests/neg-custom-args/typers.scala", allowDoubleBindings) +
+    compileFile("../tests/neg-custom-args/overrideClass.scala", scala2Mode) +
+    compileFile("../tests/neg-custom-args/autoTuplingTest.scala", defaultOptions.and("-language:noAutoTupling")) +
+    compileFile("../tests/neg-custom-args/i1050.scala", defaultOptions.and("-strict")) +
+    compileFile("../tests/neg-custom-args/i1240.scala", allowDoubleBindings) +
+    compileFile("../tests/neg-custom-args/i2002.scala", allowDoubleBindings) +
+    compileFile("../tests/neg-custom-args/nopredef.scala", defaultOptions.and("-Yno-predef")) +
+    compileFile("../tests/neg-custom-args/noimports.scala", defaultOptions.and("-Yno-imports")) +
+    compileFile("../tests/neg-custom-args/noimports2.scala", defaultOptions.and("-Yno-imports")) +
+    compileFile("../tests/neg-custom-args/overloadsOnAbstractTypes.scala", allowDoubleBindings) +
+    compileFile("../tests/neg-custom-args/xfatalWarnings.scala", defaultOptions.and("-Xfatal-warnings")) +
+    compileFile("../tests/neg-custom-args/pureStatement.scala", defaultOptions.and("-Xfatal-warnings")) +
+    compileFile("../tests/neg-custom-args/phantom-overload.scala", allowDoubleBindings) +
+    compileFile("../tests/neg-custom-args/phantom-overload-2.scala", allowDoubleBindings) +
+    compileFile("../tests/neg-custom-args/structural.scala", defaultOptions.and("-Xfatal-warnings"))
   }.checkExpectedErrors()
 
   // Run tests -----------------------------------------------------------------
@@ -311,7 +306,7 @@ class CompilationTests extends ParallelTesting {
     implicit val testGroup: TestGroup = TestGroup("optimised/testOptimised")
     compileFilesInDir("../tests/pos", defaultOptimised).checkCompile()
     compileFilesInDir("../tests/run", defaultOptimised).checkRuns()
-    compileShallowFilesInDir("../tests/neg", defaultOptimised).checkExpectedErrors()
+    compileFilesInDir("../tests/neg", defaultOptimised).checkExpectedErrors()
   }
 
   private val (compilerSources, backendSources, backendJvmSources) = {
@@ -340,10 +335,14 @@ object CompilationTests {
   implicit val summaryReport: SummaryReporting = new SummaryReport
   @AfterClass def cleanup(): Unit = summaryReport.echoSummary()
 
-  def sources(paths: JStream[Path], excludedFiles: List[String] = Nil): List[String] =
-    paths.iterator().asScala
+  def sources(paths: JStream[Path], excludedFiles: List[String] = Nil): List[String] = {
+    val sources = paths.iterator().asScala
       .filter(path =>
         (path.toString.endsWith(".scala") || path.toString.endsWith(".java"))
           && !excludedFiles.contains(path.getFileName.toString))
       .map(_.toString).toList
+
+    paths.close()
+    sources
+  }
 }

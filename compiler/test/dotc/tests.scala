@@ -186,7 +186,7 @@ class tests extends CompilerTest {
 
   @Test def negVarargsT1625 = compileFiles(negDir + "varargsInMethodsT1625/")
 
-  val negCustomArgs = negDir + "customArgs/"
+  val negCustomArgs = testsDir + "neg-custom-args/"
 
   @Test def neg_typers() = compileFile(negCustomArgs, "typers")(allowDoubleBindings)
   @Test def neg_overrideClass = compileFile(negCustomArgs, "overrideClass", scala2mode)
@@ -198,7 +198,7 @@ class tests extends CompilerTest {
   @Test def neg_valueclasses_pavlov = compileFile(negCustomArgs, "valueclasses-pavlov")(allowDoubleBindings)
   @Test def neg_trailingUnderscore = compileFile(negCustomArgs, "trailingUnderscore", args = "-strict" :: Nil)
 
-  val negTailcallDir = negDir + "tailcall/"
+  val negTailcallDir = testsDir + "neg-tailcall/"
   @Test def neg_tailcall_t1672b = compileFile(negTailcallDir, "t1672b")
   @Test def neg_tailcall_t3275 = compileFile(negTailcallDir, "t3275")
   @Test def neg_tailcall_t6574 = compileFile(negTailcallDir, "t6574")
