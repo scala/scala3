@@ -700,6 +700,12 @@ object Types {
           (name, buf) => buf += member(name).asSingleDenotation)
     }
 
+    /** The set of type alias members of this type */
+    final def typeAliasMembers(implicit ctx: Context): Seq[SingleDenotation] = track("typeAlias") {
+      memberDenots(typeAliasNameFilter,
+          (name, buf) => buf += member(name).asSingleDenotation)
+    }
+
     /** The set of type members of this type */
     final def typeMembers(implicit ctx: Context): Seq[SingleDenotation] = track("typeMembers") {
       memberDenots(typeNameFilter,
@@ -4409,6 +4415,15 @@ object Types {
   object abstractTermNameFilter extends NameFilter {
     def apply(pre: Type, name: Name)(implicit ctx: Context): Boolean =
       name.isTermName && pre.nonPrivateMember(name).hasAltWith(_.symbol is Deferred)
+  }
+
+  /** A filter for names of type aliases of a given type */
+  object typeAliasNameFilter extends NameFilter {
+    def apply(pre: Type, name: Name)(implicit ctx: Context): Boolean =
+      name.isTypeName && {
+        val mbr = pre.nonPrivateMember(name)
+        mbr.symbol.isAliasType
+      }
   }
 
   object typeNameFilter extends NameFilter {
