@@ -44,6 +44,8 @@ object RepresentableTestsAux {
 
   case class PersonWithPseudonims(name: String, nicks: String*)
 
+  case class PersonWithPseudonimsT[T](name: T, nicks: T*)
+
   // NOT SUPPORTED
   // sealed trait AbstractNonCC
   // class NonCCA(val i: Int, val s: String) extends AbstractNonCC
@@ -88,37 +90,36 @@ class RepresentableTests {
     val gen = Representable[Person]
 
     val p0 = gen.to(p)
-    identity(p0: SSI[Nothing]) // Typed?
+    identity[SSI[Nothing]](p0)
     assert(("Joe Soap" &: "Brighton" &: 23 &: PNil()) == p0)
 
     val p1 = gen.from(p0)
-    identity(p1: Person) // Typed?
+    identity[Person](p1)
     assert(p == p1)
   }
 
-  // TODO
-  // def testProductVarargs(): Unit = {
-  //   val p = PersonWithPseudonims("Joe Soap", "X", "M", "Z")
-  //   val gen = Representable[PersonWithPseudonims]
+  def testProductVarargs(): Unit = {
+    val p = PersonWithPseudonims("Joe Soap", "X", "M", "Z")
+    val gen = Representable[PersonWithPseudonims]
 
-  //   val p0 = gen.to(p)
-  //   // identity(p0: String &: Seq[String] &: PNil) // Typed?
-  //   assert(("Joe Soap" &: Seq("X", "M", "Z") &: PNil()) == p0)
+    val p0 = gen.to(p)
+    // identity[String &: Seq[String] &: PNil](p0)
+    assert(("Joe Soap" &: Seq("X", "M", "Z") &: PNil()) == p0)
 
-  //   val p1 = gen.from(p0)
-  //   identity(p1: PersonWithPseudonims) // Typed?
-  //   assert(p == p1)
-  // }
+    val p1 = gen.from(p0)
+    identity[PersonWithPseudonims](p1)
+    assert(p == p1)
+  }
 
   def testTuples(): Unit = {
     val gen1 = Representable[Tuple1[Int]]
-    identity(gen1: Representable[Tuple1[Int]] { type Repr = Int &: PNil }) // Typed?
+    identity[Representable[Tuple1[Int]] { type Repr = Int &: PNil }](gen1)
 
     val gen2 = Representable[(Int, String)]
-    identity(gen2: Representable[(Int, String)] { type Repr = Int &: String &: PNil }) // Typed?
+    identity[Representable[(Int, String)] { type Repr = Int &: String &: PNil }](gen2)
 
     val gen3 = Representable[(Int, String, Boolean)]
-    identity(gen3: Representable[(Int, String, Boolean)] { type Repr = Int &: String &: Boolean &: PNil }) // Typed?
+    identity[Representable[(Int, String, Boolean)] { type Repr = Int &: String &: Boolean &: PNil }](gen3)
   }
 
   def testCoproductBasics(): Unit = {
@@ -130,31 +131,31 @@ class RepresentableTests {
     val gen = Representable[Fruit]
 
     val a0 = gen.to(a)
-    identity(a0: APBO[Nothing]) // Typed?
+    identity[APBO[Nothing]](a0)
 
     val p0 = gen.to(p)
 
-    identity(p0: APBO[Nothing]) // Typed?
+    identity[APBO[Nothing]](p0)
 
     val b0 = gen.to(b)
 
-    identity(b0: APBO[Nothing]) // Typed?
+    identity[APBO[Nothing]](b0)
 
     val o0 = gen.to(o)
 
-    identity(o0: APBO[Nothing]) // Typed?
+    identity[APBO[Nothing]](o0)
 
     val a1 = gen.from(a0)
-    identity(a1: Fruit) // Typed?
+    identity[Fruit](a1)
 
     val p1 = gen.from(p0)
-    identity(p1: Fruit) // Typed?
+    identity[Fruit](p1)
 
     val b1 = gen.from(b0)
-    identity(b1: Fruit) // Typed?
+    identity[Fruit](b1)
 
     val o1 = gen.from(o0)
-    identity(o1: Fruit) // Typed?
+    identity[Fruit](o1)
   }
 
   def testSingletonCoproducts(): Unit = {
@@ -165,125 +166,118 @@ class RepresentableTests {
     val s: AbstractSingle = Single()
 
     val s0 = gen.to(s)
-    identity(s0: (Single |: SNil)[Nothing]) // Typed?
+    identity[(Single |: SNil)[Nothing]](s0)
 
     val s1 = gen.from(s0)
-    identity(s1: AbstractSingle) // Typed?
+    identity[AbstractSingle](s1)
   }
 
   // TODO
   // def testOverlappingCoproducts(): Unit = {
   //   val gen = Representable[Overlapping]
   //   val o: Overlapping = OAB(1)
-
-  //   // sealed trait Overlapping
-  //   // sealed trait OA extends Overlapping
-  //   // case class OAC(s: String) extends OA
-  //   // sealed trait OB extends Overlapping
-  //   // case class OBC(s: String) extends OB
-  //   // case class OAB(i: Int) extends OA with OB
-
-
   //   val o0 = gen.to(o)
-  //   val xxxxxxxx: String = gen
-  //   // identity(o0: (OAC |: OBC |: OAB |: SNil)[Nothing]) // Typed?
+  //   typed[(OAB |: OAC |: OBC |: CNil)[Nothing]](o0)
 
   //   val o1 = gen.from(o0)
-  //   identity(o1: Overlapping) // Typed?
+  //   typed[Overlapping](o1)
   // }
 
-  // TODO
   def testCaseObjects(): Unit = {
     val a: Enum = A
     val b: Enum = B
     val c: Enum = C
 
-    // val gen = Representable[Enum]
+    val gen = Representable[Enum]
 
-    // val a0 = gen.to(a)
-    // identity(a0: ABC) // Typed?
+    val a0 = gen.to(a)
+    identity[ABC[Nothing]](a0)
 
-    // val b0 = gen.to(b)
-    // identity(b0: ABC) // Typed?
+    val b0 = gen.to(b)
+    identity[ABC[Nothing]](b0)
 
-    // val c0 = gen.to(c)
-    // identity(c0: ABC) // Typed?
+    val c0 = gen.to(c)
+    identity[ABC[Nothing]](c0)
 
-    // val a1 = gen.from(a0)
-    // identity(a1: Enum) // Typed?
+    val a1 = gen.from(a0)
+    identity[Enum](a1)
 
-    // val b1 = gen.from(b0)
-    // identity(b1: Enum) // Typed?
+    val b1 = gen.from(b0)
+    identity[Enum](b1)
 
-    // val c1 = gen.from(c0)
-    // identity(c1: Enum) // Typed?
+    val c1 = gen.from(c0)
+    identity[Enum](c1)
   }
 
-  // TODO
-  // def testParametrized(): Unit = {
-  //   val t: Tree[Int] = Node(Node(Leaf(23), Leaf(13)), Leaf(11))
-  //   type NI = Leaf[Int] |: Node[Int] |: SNil
+  def testParametrized(): Unit = {
+    val t: Tree[Int] = Node(Node(Leaf(23), Leaf(13)), Leaf(11))
+    type NI = Node[Int] |: Leaf[Int] |: SNil
 
-  //   val gen = Representable[Tree[Int]]
+    val gen = Representable[Tree[Int]]
 
-  //   val t0 = gen.to(t)
-  //   identity(t0: NI[Nothing]) // Typed?
+    val t0 = gen.to(t)
+    identity[NI[Nothing]](t0)
 
-  //   val t1 = gen.from(t0)
-  //   identity(t1: Tree[Int]) // Typed?
-  // }
+    val t1 = gen.from(t0)
+    identity[Tree[Int]](t1)
+  }
 
-  // def testParametrizedWithVarianceOption(): Unit = {
-  //   val o: Option[Int] = Option(23)
-  //   type SN = None.type |: Some[Int] |: SNil
+  def testParametrizedWithVarianceOption(): Unit = {
+    val o: Option[Int] = Option(23)
+    type SN = None.type |: Some[Int] |: SNil
 
-  //   val gen = Representable[Option[Int]]
+    val gen = Representable[Option[Int]]
 
-  //   val o0 = gen.to(o)
-  //   identity(o0: SN[Nothing]) // Typed?
+    val o0 = gen.to(o)
+    identity[SN[Nothing]](o0)
 
-  //   val o1 = gen.from(o0)
-  //   identity(o1: Option[Int]) // Typed?
-  // }
+    val o1 = gen.from(o0)
+    identity[Option[Int]](o1)
+  }
 
+  // TODO ???
   // def testParametrizedWithVarianceList(): Unit = {
-  //   import scala.collection.immutable.{ &: => Cons }
-
   //   val l: List[Int] = List(1, 2, 3)
-  //   type CN = Cons[Int] |: Nil.type |: SNil
+  //   type CN = ::[Int] |: Nil.type |: SNil
 
   //   val gen = Representable[List[Int]]
 
   //   val l0 = gen.to(l)
-  //   identity(l0: CN) // Typed?
+  //   identity[CN[Nothing]](l0)
 
   //   val l1 = gen.from(l0)
-  //   identity(l1: List[Int]) // Typed?
+  //   identity[List[Int]](l1)
   // }
 
-  // def testParametrzedSubset(): Unit = {
-  //   val l = Left(23)
-  //   val r = Right(true)
-  //   type IB = Left[Int] |: Right[Boolean] |: SNil
+  def testParametrzedSubset(): Unit = {
+    val l = Left(23)
+    val r = Right(true)
+    type IB = Left[Int] |: Right[Boolean] |: SNil
 
-  //   val gen = Representable[Xor[Int, Boolean]]
+    val gen = Representable[Xor[Int, Boolean]]
 
-  //   val c0 = gen.to(l)
-  //   assertTypedEquals[IB](SLeft(l), c0)
+    val c0 = gen.to(l)
+    val d0 = SLeft(l)
+    identity[IB[Nothing]](c0)
+    assert(d0 == c0)
 
-  //   val c1 = gen.to(r)
-  //   assertTypedEquals[IB](SRight(SLeft(r)), c1)
-  // }
+    val c1 = gen.to(r)
+    val d1 = SRight(SLeft(r))
+    identity[IB[Nothing]](c1)
+    assert(d1 == c1)
+  }
 
-  // def testParametrizedPermute(): Unit = {
-  //   val s = Swap(23, true)
-  //   type IB = Swap[Int, Boolean] |: SNil
+  def testParametrizedPermute(): Unit = {
+    val s = Swap(23, true)
+    type IB = Swap[Int, Boolean] |: SNil
 
-  //   val gen = Representable[Base[Boolean, Int]]
+    val gen = Representable[Base[Boolean, Int]]
 
-  //   val s0 = gen.to(s)
-  //   assertTypedEquals[IB](SLeft(s), s0)
-  // }
+    val s0 = gen.to(s)
+    val s1 = SLeft(s)
+    identity[IB[Nothing]](s0)
+    assert(s1 == s0)
+  }
 
   // NOT SUPPORTED
   // def testAbstractNonCC(): Unit = {
@@ -310,17 +304,17 @@ class RepresentableTests {
   //   assertTypedEquals[NonCCA |: NonCCB |: NonCCWithVars |: SNil](SLeft(ncca), rAbs)
 
   //   val fA = genA.from(13 &: "bar" &: PNil)
-  //   identity(fA: NonCCA) // Typed?
+  //   identity[NonCCA](fA)
   //   assert(13 == fA.i)
   //   assert("bar" == fA.s)
 
   //   val fB = genB.from(false &: 3.0 &: PNil)
-  //   identity(fB: NonCCB) // Typed?
+  //   identity[NonCCB](fB)
   //   assert(false == fB.b)
   //   assert(3.0 == fB.d) // , Double.MinPositiveValue)
 
   //   val fC = genC.from('k' &: 313l &: PNil)
-  //   identity(fC: NonCCWithVars) // Typed?
+  //   identity[NonCCWithVars](fC)
   //   assert('k' == fC.c)
   //   assert(313l == fC.l)
 
@@ -357,49 +351,48 @@ class RepresentableTests {
   //   assertTypedEquals[NonCCLazy &: NonCCLazy &: PNil](a &: c &: PNil, rB)
 
   //   val fD = gen.from(a &: c &: PNil)
-  //   identity(fD: NonCCLazy) // Typed?
+  //   identity[NonCCLazy](fD)
   //   assert(a == fD.prev)
   //   assert(c == fD.next)
   // }
 
-  // TODO
-  // trait Parent {
-  //   case class Nested(i: Int, s: String)
+  trait Parent {
+    case class Nested(i: Int, s: String)
 
-  //   sealed abstract class Foo extends Product with Serializable
+    sealed abstract class Foo extends Product with Serializable
 
-  //   case object A extends Foo
-  //   case object B extends Foo
-  //   case class C() extends Foo
-  // }
+    case object A extends Foo
+    case object B extends Foo
+    case class C() extends Foo
+  }
 
-  // trait Child extends Parent {
-  //   val gen = Representable[Nested]
-  //   val adtGen = Representable[Foo]
-  // }
+  trait Child extends Parent {
+    val gen = Representable[Nested]
+    val adtGen = Representable[Foo]
+  }
 
-  // object O extends Child
+  object O extends Child
 
-  // def testNestedInherited(): Unit = {
-  //   val n0 = O.Nested(23, "foo")
-  //   val repr = O.gen.to(n0)
-  //   identity(repr: Int &: String &: PNil) // Typed?
-  //   val n1 = O.gen.from(repr)
-  //   identity(n1: O.Nested) // Typed?
-  //   assert(n0 == n1)
+  def testNestedInherited(): Unit = {
+    val n0 = O.Nested(23, "foo")
+    val repr = O.gen.to(n0)
+    identity[(Int &: String &: PNil)[Nothing]](repr)
+    val n1 = O.gen.from(repr)
+    identity[O.Nested](n1)
+    assert(n0 == n1)
 
-  //   {
-  //     val foo0 = O.B
-  //     val repr = O.adtGen.to(foo0)
-  //     identity(repr: O.A.type |: O.B.type |: O.C |: SNil) // Typed?
-  //   }
+    {
+      val foo0 = O.B
+      val repr = O.adtGen.to(foo0)
+      identity[(O.A.type |: O.B.type |: O.C |: SNil)[Nothing]](repr)
+    }
 
-  //   {
-  //     val foo0 = O.C()
-  //     val repr = O.adtGen.to(foo0)
-  //     identity(repr: O.A.type |: O.B.type |: O.C |: SNil) // Typed?
-  //   }
-  // }
+    {
+      val foo0 = O.C()
+      val repr = O.adtGen.to(foo0)
+      identity[(O.A.type |: O.B.type |: O.C |: SNil)[Nothing]](repr)
+    }
+  }
 
   def testNonRepresentable(): Unit = {
     import scala.implicits.Not
@@ -407,24 +400,25 @@ class RepresentableTests {
     implicitly[Not[Representable[Int]]]
     implicitly[Not[Representable[Array[Int]]]]
     implicitly[Not[Representable[String]]]
-    implicitly[Not[Representable[PNil]]]
-    implicitly[Not[Representable[Int &: String &: PNil]]]
-    implicitly[Not[Representable[SNil]]]
-    implicitly[Not[Representable[Int |: String |: SNil]]]
+    implicitly[Not[Representable[PNil[Nothing]]]]
+    implicitly[Not[Representable[(Int &: String &: PNil)[Nothing]]]]
+    implicitly[Not[Representable[SNil[Nothing]]]]
+    implicitly[Not[Representable[(Int |: String |: SNil)[Nothing]]]]
   }
 
-  // sealed trait Color
-  // case object Green extends Color
-  // object Color {
-  //   case object Red extends Color
-  // }
+  sealed trait Color
+  case object Green extends Color
+  object Color {
+    case object Red extends Color
+  }
 
-  // def testNestedCaseObjects(): Unit = {
-  //   Representable[Green.type]
-  //   Representable[Color.Red.type]
-  //   // LabelledRepresentable[Green.type]
-  //   // LabelledRepresentable[Color.Red.type]
-  // }
+  def testNestedCaseObjects(): Unit = {
+    val a: Option[Green.type] = None
+    Representable[Green.type]
+    Representable[Color.Red.type]
+    // LabelledRepresentable[Green.type]
+    // LabelledRepresentable[Color.Red.type]
+  }
 
   // sealed trait Base1
   // case object Foo1 extends Base1
@@ -436,12 +430,12 @@ class RepresentableTests {
   //   def apply[T](implicit tc: TC[T]): TC[T] = tc
 
   //   implicit def hnilTC: TC[PNil] = new TC[PNil] {}
-  //   implicit def hconsTC[H, T <: HList](implicit hd: Lazy[TC[H]], tl: Lazy[TC[T]]): TC[H &: T] = new TC[H &: T] {}
+  //   implicit def hconsTC[H, T <: HList](implicit hd: => TC[H], tl: => TC[T]): TC[H &: T] = new TC[H &: T] {}
 
   //   implicit def cnilTC: TC[SNil] = new TC[SNil] {}
-  //   implicit def cconsTC[H, T <: Coproduct](implicit hd: Lazy[TC[H]], tl: Lazy[TC[T]]): TC[H |: T] = new TC[H |: T] {}
+  //   implicit def cconsTC[H, T <: Coproduct](implicit hd: => TC[H], tl: => TC[T]): TC[H |: T] = new TC[H |: T] {}
 
-  //   implicit def projectTC[F, G](implicit gen: Representable.Aux[F, G], tc: Lazy[TC[G]]): TC[F] = new TC[F] {}
+  //   implicit def projectTC[F, G](implicit gen: Representable.Aux[F, G], tc: => TC[G]): TC[F] = new TC[F] {}
   // }
 
   // def testCaseObjectsAndLazy(): Unit = {
@@ -449,26 +443,28 @@ class RepresentableTests {
   // }
 }
 
-// package RepresentableTestsAux2 {
-//   trait Foo[T]
+// object RepresentableTestsAux2 {
+//   sealed trait Foo[T]
 
 //   object Foo {
-//     implicit val derivePNil: Foo[PNil] = ???
+//     implicit def derivePNil[X]: Foo[PNil[X]] = ???
 
-//     implicit def deriveLabelledRepresentable[A, Rec <: HList]
-//       (implicit gen: Representable.Aux[A, Rec], auto: Foo[Rec]): Foo[A] = ???
+//     implicit def deriveRepresentable[A, Rec[t] <: Prod[t], X]
+//       (implicit gen: Representable[A] { type Repr = Rec }, auto: Foo[Rec[X]]): Foo[A] = ???
 //   }
 
-//   class Bar[A]
+//   sealed class Bar[A]
 
-//   object Bar {
-//     implicit def cnil: Bar[SNil] = ???
+//   object Bar extends Bar0 {
+//     implicit def cnil[X]: Bar[SNil[X]] = ???
+//   }
 
-//     implicit def deriveCoproduct[H, T <: Coproduct]
-//       (implicit headFoo: Foo[H], tailAux: Bar[T]): Bar[H |: T] = ???
+//   trait Bar0 {
+//     implicit def deriveCoproduct[H, T[t] <: Sum[t], X]
+//       (implicit headFoo: Foo[H], tailAux: Bar[T[X]]): Bar[(H |: T)[X]] = ???
 
-//     implicit def labelledRepresentable[A, U <: Coproduct]
-//       (implicit gen: Representable.Aux[A, U], auto: Bar[U]): Bar[A] = ???
+//     implicit def representable[A, U[t] <: Sum[t], X]
+//       (implicit gen: Representable[A] { type Repr = U }, auto: Bar[U[X]]): Bar[A] = ???
 //   }
 
 //   class Outer1 {
@@ -477,57 +473,60 @@ class RepresentableTests {
 //       case object Red extends Color
 //     }
 
-//     implicitly[Bar[Color]]
-//   }
-
-//   object Outer2 {
-//     class Wrapper {
-//       sealed trait Color
-//     }
-//     val wrapper = new Wrapper
-//     import wrapper.Color
-//     case object Red extends Color
-//     case object Green extends Color
-//     case object Blue extends Color
+//     val r = Representable[Bar[Color]]
+//     Bar.representable(r, implicitly)
 
 //     implicitly[Bar[Color]]
 //   }
 
-//   object Outer3 {
-//     class Wrapper {
-//       sealed trait Color
-//     }
-//     val wrapper = new Wrapper
-//     case object Red extends wrapper.Color
-//     case object Green extends wrapper.Color
-//     case object Blue extends wrapper.Color
+  // object Outer2 {
+  //   class Wrapper {
+  //     sealed trait Color
+  //   }
+  //   val wrapper = new Wrapper
+  //   import wrapper.Color
+  //   case object Red extends Color
+  //   case object Green extends Color
+  //   case object Blue extends Color
 
-//     implicitly[Bar[wrapper.Color]]
-//   }
+  //   implicitly[Bar[Color]]
+  // }
 
-//   object Outer4 {
-//     val wrapper = new Wrapper
-//     case object Red extends wrapper.Color
-//     case object Green extends wrapper.Color
-//     case object Blue extends wrapper.Color
+  // object Outer3 {
+  //   class Wrapper {
+  //     sealed trait Color
+  //   }
+  //   val wrapper = new Wrapper
+  //   case object Red extends wrapper.Color
+  //   case object Green extends wrapper.Color
+  //   case object Blue extends wrapper.Color
 
-//     class Wrapper {
-//       sealed trait Color
-//       implicitly[Bar[wrapper.Color]]
-//     }
-//   }
+  //   implicitly[Bar[wrapper.Color]]
+  // }
 
-//   object Outer5 {
-//     trait Command
-//     object Command {
-//       sealed trait Execution extends Command
-//     }
+  // object Outer4 {
+  //   val wrapper = new Wrapper
+  //   case object Red extends wrapper.Color
+  //   case object Green extends wrapper.Color
+  //   case object Blue extends wrapper.Color
 
-//     case class Buzz() extends Command.Execution
-//     case class Door() extends Command.Execution
+  //   class Wrapper {
+  //     sealed trait Color
+  //     implicitly[Bar[wrapper.Color]]
+  //   }
+  // }
 
-//     Representable[Command.Execution]
-//   }
+  // object Outer5 {
+  //   trait Command
+  //   object Command {
+  //     sealed trait Execution extends Command
+  //   }
+
+  //   case class Buzz() extends Command.Execution
+  //   case class Door() extends Command.Execution
+
+  //   Representable[Command.Execution]
+  // }
 // }
 
 // object MixedCCNonCCNested {
@@ -634,250 +633,231 @@ class RepresentableTests {
 //   Representable[Baz]
 // }
 
-// object EnumDefns0 {
-//   sealed trait EnumVal
-//   val BarA = new EnumVal { val name = "A" }
-//   val BarB = new EnumVal { val name = "B" }
-//   val BarC = new EnumVal { val name = "C" }
-// }
+object EnumDefns1 {
+  sealed trait EnumVal
+  object BarA extends EnumVal { val name = "A" }
+  object BarB extends EnumVal { val name = "B" }
+  object BarC extends EnumVal { val name = "C" }
+}
 
-// object EnumDefns1 {
-//   sealed trait EnumVal
-//   object BarA extends EnumVal { val name = "A" }
-//   object BarB extends EnumVal { val name = "B" }
-//   object BarC extends EnumVal { val name = "C" }
-// }
+object EnumDefns2 {
+  sealed trait EnumVal
+  case object BarA extends EnumVal { val name = "A" }
+  case object BarB extends EnumVal { val name = "B" }
+  case object BarC extends EnumVal { val name = "C" }
+}
 
-// object EnumDefns2 {
-//   sealed trait EnumVal
-//   case object BarA extends EnumVal { val name = "A" }
-//   case object BarB extends EnumVal { val name = "B" }
-//   case object BarC extends EnumVal { val name = "C" }
-// }
+object EnumDefns5 {
+  sealed trait EnumVal
+  object EnumVal {
+    object BarA extends EnumVal { val name = "A" }
+    object BarB extends EnumVal { val name = "B" }
+    object BarC extends EnumVal { val name = "C" }
+  }
+}
 
-// object EnumDefns3 {
-//   sealed trait EnumVal
-//   val BarA, BarB, BarC = new EnumVal {}
-// }
+object EnumDefns6 {
+  sealed trait EnumVal
+  object EnumVal {
+    case object BarA extends EnumVal { val name = "A" }
+    case object BarB extends EnumVal { val name = "B" }
+    case object BarC extends EnumVal { val name = "C" }
+  }
+}
 
-// object EnumDefns4 {
-//   sealed trait EnumVal
-//   object EnumVal {
-//     val BarA = new EnumVal { val name = "A" }
-//     val BarB = new EnumVal { val name = "B" }
-//     val BarC = new EnumVal { val name = "C" }
-//   }
-// }
+class TestEnum {
+  // NOT SUPPORTED
+  // object EnumDefns0 {
+  //   sealed trait EnumVal
+  //   val BarA = new EnumVal { val name = "A" }
+  //   val BarB = new EnumVal { val name = "B" }
+  //   val BarC = new EnumVal { val name = "C" }
+  // }
 
-// object EnumDefns5 {
-//   sealed trait EnumVal
-//   object EnumVal {
-//     object BarA extends EnumVal { val name = "A" }
-//     object BarB extends EnumVal { val name = "B" }
-//     object BarC extends EnumVal { val name = "C" }
-//   }
-// }
+  // def testEnum0(): Unit = {
+  //   import EnumDefns0._
 
-// object EnumDefns6 {
-//   sealed trait EnumVal
-//   object EnumVal {
-//     case object BarA extends EnumVal { val name = "A" }
-//     case object BarB extends EnumVal { val name = "B" }
-//     case object BarC extends EnumVal { val name = "C" }
-//   }
-// }
+  //   val gen = Representable[EnumVal]
+  //   val a0 = gen.to(BarA)
+  //   assert(a0 == SLeft(BarA))
 
-// object EnumDefns7 {
-//   sealed trait EnumVal
-//   object EnumVal {
-//     val BarA, BarB, BarC = new EnumVal {}
-//   }
-// }
+  //   val b0 = gen.to(BarB)
+  //   assert(b0 == SRight(SLeft(BarB)))
 
-// class TestEnum {
-//   def testEnum0(): Unit = {
-//     import EnumDefns0._
+  //   val c0 = gen.to(BarC)
+  //   assert(c0 == SRight(SRight(SLeft(BarC))))
+  // }
 
-//     val gen = Representable[EnumVal]
-//     val a0 = gen.to(BarA)
-//     assert(a0 == SLeft(BarA))
+  def testEnum1(): Unit = {
+    import EnumDefns1._
 
-//     val b0 = gen.to(BarB)
-//     assert(b0 == SRight(SLeft(BarB)))
+    val gen = Representable[EnumVal]
+    val a0 = gen.to(BarA)
+    val a1 = SLeft[[X] => BarA.type, SNil, Nothing](BarA)
+    assert(a0 == a1)
 
-//     val c0 = gen.to(BarC)
-//     assert(c0 == SRight(SRight(SLeft(BarC))))
-//   }
+    val b0 = gen.to(BarB)
+    val b1 = SRight(SLeft[[X] => BarB.type, SNil, Nothing](BarB))
+    assert(b0 == b1)
 
-//   def testEnum1(): Unit = {
-//     import EnumDefns1._
+    val c0 = gen.to(BarC)
+    val c1 = SRight(SRight(SLeft[[X] => BarC.type, SNil, Nothing](BarC)))
+    assert(c0 == c1)
+  }
 
-//     val gen = Representable[EnumVal]
-//     val a0 = gen.to(BarA)
-//     assert(a0 == SLeft(BarA))
+  def testEnum2(): Unit = {
+    import EnumDefns2._
 
-//     val b0 = gen.to(BarB)
-//     assert(b0 == SRight(SLeft(BarB)))
+    val gen = Representable[EnumVal]
+    val a0 = gen.to(BarA)
+    val a1 = SLeft[[X] => BarA.type, SNil, Nothing](BarA)
+    assert(a0 == a1)
 
-//     val c0 = gen.to(BarC)
-//     assert(c0 == SRight(SRight(SLeft(BarC))))
-//   }
+    val b0 = gen.to(BarB)
+    val b1 = SRight(SLeft[[X] => BarB.type, SNil, Nothing](BarB))
+    assert(b0 == b1)
 
-//   def testEnum2(): Unit = {
-//     import EnumDefns2._
+    val c0 = gen.to(BarC)
+    val c1 = SRight(SRight(SLeft[[X] => BarC.type, SNil, Nothing](BarC)))
+    assert(c0 == c1)
+  }
 
-//     val gen = Representable[EnumVal]
-//     val a0 = gen.to(BarA)
-//     assert(a0 == SLeft(BarA))
+  // NOT SUPPORTED
+  // object EnumDefns3 {
+  //   sealed trait EnumVal
+  //   val BarA, BarB, BarC = new EnumVal {}
+  // }
 
-//     val b0 = gen.to(BarB)
-//     assert(b0 == SRight(SLeft(BarB)))
+  // def testEnum3(): Unit = {
+  //   import EnumDefns3._
 
-//     val c0 = gen.to(BarC)
-//     assert(c0 == SRight(SRight(SLeft(BarC))))
-//   }
+  //   val gen = Representable[EnumVal]
+  //   val a0 = gen.to(BarA)
+  //   assert(a0 == SLeft(BarA))
 
-//   def testEnum3(): Unit = {
-//     import EnumDefns3._
+  //   val b0 = gen.to(BarB)
+  //   assert(b0 == SRight(SLeft(BarB)))
 
-//     val gen = Representable[EnumVal]
-//     val a0 = gen.to(BarA)
-//     assert(a0 == SLeft(BarA))
+  //   val c0 = gen.to(BarC)
+  //   assert(c0 == SRight(SRight(SLeft(BarC))))
+  // }
 
-//     val b0 = gen.to(BarB)
-//     assert(b0 == SRight(SLeft(BarB)))
+  // NOT SUPPORTED
+  // object EnumDefns4 {
+  //   sealed trait EnumVal
+  //   object EnumVal {
+  //     val BarA = new EnumVal { val name = "A" }
+  //     val BarB = new EnumVal { val name = "B" }
+  //     val BarC = new EnumVal { val name = "C" }
+  //   }
+  // }
 
-//     val c0 = gen.to(BarC)
-//     assert(c0 == SRight(SRight(SLeft(BarC))))
-//   }
+  // def testEnum4(): Unit = {
+  //   import EnumDefns4._
+  //   import EnumVal._
 
-//   def testEnum4(): Unit = {
-//     import EnumDefns4._
-//     import EnumVal._
+  //   val gen = Representable[EnumVal]
+  //   val a0 = gen.to(BarA)
+  //   assert(a0 == SLeft(BarA))
 
-//     val gen = Representable[EnumVal]
-//     val a0 = gen.to(BarA)
-//     assert(a0 == SLeft(BarA))
+  //   val b0 = gen.to(BarB)
+  //   assert(b0 == SRight(SLeft(BarB)))
 
-//     val b0 = gen.to(BarB)
-//     assert(b0 == SRight(SLeft(BarB)))
+  //   val c0 = gen.to(BarC)
+  //   assert(c0 == SRight(SRight(SLeft(BarC))))
+  // }
 
-//     val c0 = gen.to(BarC)
-//     assert(c0 == SRight(SRight(SLeft(BarC))))
-//   }
+  def testEnum5(): Unit = {
+    import EnumDefns5._
+    import EnumVal._
 
-//   def testEnum5(): Unit = {
-//     import EnumDefns5._
-//     import EnumVal._
+    val gen = Representable[EnumVal]
+    val a0 = gen.to(BarA)
+    val a1 = SLeft[[X] => BarA.type, SNil, Nothing](BarA)
+    assert(a0 == a1)
 
-//     val gen = Representable[EnumVal]
-//     val a0 = gen.to(BarA)
-//     assert(a0 == SLeft(BarA))
+    val b0 = gen.to(BarB)
+    val b1 = SRight(SLeft[[X] => BarB.type, SNil, Nothing](BarB))
+    assert(b0 == b1)
 
-//     val b0 = gen.to(BarB)
-//     assert(b0 == SRight(SLeft(BarB)))
+    val c0 = gen.to(BarC)
+    val c1 = SRight(SRight(SLeft[[X] => BarC.type, SNil, Nothing](BarC)))
+    assert(c0 == c1)
+  }
 
-//     val c0 = gen.to(BarC)
-//     assert(c0 == SRight(SRight(SLeft(BarC))))
-//   }
+  def testEnum6(): Unit = {
+    import EnumDefns6._
+    import EnumVal._
 
-//   def testEnum6(): Unit = {
-//     import EnumDefns6._
-//     import EnumVal._
+    val gen = Representable[EnumVal]
+    val a0 = gen.to(BarA)
+    val a1 = SLeft[[X] => BarA.type, SNil, Nothing](BarA)
+    assert(a0 == a1)
 
-//     val gen = Representable[EnumVal]
-//     val a0 = gen.to(BarA)
-//     assert(a0 == SLeft(BarA))
+    val b0 = gen.to(BarB)
+    val b1 = SRight(SLeft[[X] => BarB.type, SNil, Nothing](BarB))
+    assert(b0 == b1)
 
-//     val b0 = gen.to(BarB)
-//     assert(b0 == SRight(SLeft(BarB)))
+    val c0 = gen.to(BarC)
+    val c1 = SRight(SRight(SLeft[[X] => BarC.type, SNil, Nothing](BarC)))
+    assert(c0 == c1)
+  }
 
-//     val c0 = gen.to(BarC)
-//     assert(c0 == SRight(SRight(SLeft(BarC))))
-//   }
+  // NOT SUPPORTED
+  // object EnumDefns7 {
+  //   sealed trait EnumVal
+  //   object EnumVal {
+  //     val BarA, BarB, BarC = new EnumVal {}
+  //   }
+  // }
 
-//   def testEnum7(): Unit = {
-//     import EnumDefns7._
-//     import EnumVal._
+  // def testEnum7(): Unit = {
+  //   import EnumDefns7._
+  //   import EnumVal._
 
-//     val gen = Representable[EnumVal]
-//     val a0 = gen.to(BarA)
-//     assert(a0 == SLeft(BarA))
+  //   val gen = Representable[EnumVal]
+  //   val a0 = gen.to(BarA)
+  //   assert(a0 == SLeft(BarA))
 
-//     val b0 = gen.to(BarB)
-//     assert(b0 == SRight(SLeft(BarB)))
+  //   val b0 = gen.to(BarB)
+  //   assert(b0 == SRight(SLeft(BarB)))
 
-//     val c0 = gen.to(BarC)
-//     assert(c0 == SRight(SRight(SLeft(BarC))))
-//   }
+  //   val c0 = gen.to(BarC)
+  //   assert(c0 == SRight(SRight(SLeft(BarC))))
+  // }
+}
 
-//   def main(args: Array[String]): Unit = {
-//     testProductBasics()
-//     testProductVarargs()
-//     testTuples()
-//     testCoproductBasics()
-//     testCoproductMapBasics()
-//     testSingletonCoproducts()
-//     testOverlappingCoproducts()
-//     testCaseObjects()
-//     testCaseObjectMap()
-//     testParametrized()
-//     testParametrizedWithVarianceOption()
-//     testParametrizedWithVarianceList()
-//     testParametrzedSubset()
-//     testParametrizedPermute()
-//     testAbstractNonCC()
-//     testNonCCWithCompanion()
-//     testNonCCLazy()
-//     testNestedInherited()
-//     testIsTuple()
-//     testHasProductRepresentable()
-//     testHasCoproductRepresentable()
-//     testNonRepresentable()
-//     testNestedCaseObjects()
-//     testCaseObjectsAndLazy()
-//     testEnum0()
-//     testEnum1()
-//     testEnum2()
-//     testEnum3()
-//     testEnum4()
-//     testEnum5()
-//     testEnum6()
-//     testEnum7()
-//   }
-// }
+object TestPrefixes1 {
+  trait Defs {
+    case class CC(i: Int, s: String)
 
-// package TestPrefixes1 {
-//   trait Defs {
-//     case class CC(i: Int, s: String)
+    sealed trait Sum
+    case class SumI(i: Int) extends Sum
+    case class SumS(s: String) extends Sum
+  }
 
-//     sealed trait Sum
-//     case class SumI(i: Int) extends Sum
-//     case class SumS(s: String) extends Sum
-//   }
+  object Defs extends Defs
 
-//   object Defs extends Defs
+  object Derivations {
+    Representable[Defs.CC]
+    Representable[Defs.SumI]
+    Representable[Defs.SumS]
 
-//   object Derivations {
-//     import shapeless._
+    Representable[Defs.Sum]
+    // Representable.materialize[Defs.Sum, Defs.SumI |: Defs.SumS |: SNil]
+  }
+}
 
-//     Representable[Defs.CC]
-//     Representable[Defs.SumI]
-//     Representable[Defs.SumS]
-
-//     Representable[Defs.Sum]
-//     // Representable.materialize[Defs.Sum, Defs.SumI |: Defs.SumS |: SNil]
-//   }
-// }
-
+// #3564, should work otherwise
 // package TestSingletonMembers {
-//   case class CC(i: Int, s: Witness.`"msg"`.T)
+//   case class CC(i: Int, s: "msg")
 
 //   object Derivations2 {
 //     Representable[CC]
 //   }
 // }
 
+// TRICKY, there is no infrastructure to get "reachable" children, see #3574
 // object PathVariantDefns {
 //   sealed trait AtomBase {
 //     sealed trait Atom
@@ -906,70 +886,68 @@ class RepresentableTests {
 //   implicitly[gen2.Repr =:= (Atoms02.Two |: Atoms02.Zero |: SNil)]
 // }
 
-// object PrivateCtorDefns {
-//   sealed trait PublicFamily
-//   case class PublicChild() extends PublicFamily
-//   private case class PrivateChild() extends PublicFamily
-// }
+object PrivateCtorDefns {
+  sealed trait PublicFamily
+  case class PublicChild() extends PublicFamily
+  private case class PrivateChild() extends PublicFamily
+}
 
-// // object PrivateCtor {
-//   // import PrivateCtorDefns._
-// //
-//   // implicitlyped ""
-//   // Representable[Access.PublicFamily]
-//   // """)
-// // }
+object PrivateCtor {
+  import PrivateCtorDefns._
 
-// object Thrift {
-//   object TProduct {
-//     def apply(a: Double, b: String): TProduct = new Immutable(a, b)
+  // implicitlyped Representable[PublicFamily]
+}
 
-//     def unapply(tp: TProduct): Option[Product2[Double, String]] = Some(tp)
+object Thrift {
+  object TProduct {
+    def apply(a: Double, b: String): TProduct = new Immutable(a, b)
 
-//     //class Immutable(val a: Double, val b: String) extends TProduct
+    def unapply(tp: TProduct): Option[Product2[Double, String]] = Some(tp)
 
-//     class Immutable(
-//       val a: Double,
-//       val b: String,
-//       val _passthroughFields: scala.collection.immutable.Map[Short, Byte]
-//     ) extends TProduct {
-//       def this(
-//         a: Double,
-//         b: String
-//       ) = this(
-//         a,
-//         b,
-//         Map.empty
-//       )
-//     }
-//   }
+    // class Immutable(val a: Double, val b: String) extends TProduct
 
-//   trait TProduct extends Product2[Double, String] {
-//     def a: Double
-//     def b: String
+    class Immutable(
+      val a: Double,
+      val b: String,
+      val _passthroughFields: scala.collection.immutable.Map[Short, Byte]
+    ) extends TProduct {
+      def this(
+        a: Double,
+        b: String
+      ) = this(
+        a,
+        b,
+        Map.empty
+      )
+    }
+  }
 
-//     def _1 = a
-//     def _2 = b
+  trait TProduct extends Product2[Double, String] {
+    def a: Double
+    def b: String
 
-//     override def productPrefix: String = "TProduct"
+    def _1 = a
+    def _2 = b
 
-//     def canEqual(t: Any): Boolean = true
-//   }
+    override def productPrefix: String = "TProduct"
 
-//   Representable[TProduct.Immutable]
-// }
+    def canEqual(t: Any): Boolean = true
+  }
 
-// object HigherKinded {
-//   type Id[A] = A
+  Representable[TProduct.Immutable]
+}
 
-//   sealed trait Foo[A[_]]
-//   case class Bar[A[_]]() extends Foo[A]
+object HigherKinded {
+  type Id[A] = A
 
-//   Representable[Bar[Id]]
-//   Representable[Foo[Id]]
+  sealed trait Foo[A[_]]
+  case class Bar[A[_]]() extends Foo[A]
 
-//   sealed trait Pipo[A[_]]
-//   case class Lino() extends Pipo[Id]
+  Representable[Bar[Id]]
+  Representable[Foo[Id]]
 
-//   Representable[Pipo[Id]]
-// }
+  sealed trait Pipo[A[_]]
+  case class Lino() extends Pipo[Id]
+
+  Representable[Pipo[Id]]
+}
