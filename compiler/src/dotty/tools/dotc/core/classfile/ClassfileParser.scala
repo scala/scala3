@@ -198,7 +198,7 @@ class ClassfileParser(
     var sym = classRoot.owner
     while (sym.isClass && !(sym is Flags.ModuleClass)) {
       for (tparam <- sym.typeParams) {
-        classTParams = classTParams.updated(tparam.name.unexpandedName, tparam)
+        classTParams = classTParams.updated(tparam.name, tparam)
       }
       sym = sym.owner
     }

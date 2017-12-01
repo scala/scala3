@@ -656,7 +656,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
     if (tree.exists(!_.isEmpty)) encl(blockText(tree)) else ""
 
   override protected def ParamRefNameString(name: Name): String =
-    name.unexpandedName.invariantName.toString
+    name.invariantName.toString
 
   override protected def treatAsTypeParam(sym: Symbol): Boolean = sym is TypeParam
 

@@ -358,7 +358,6 @@ object NameKinds {
       override def mkString(underlying: TermName, info: ThisInfo) = underlying.toString
   }
   val ExtMethName = new SuffixNameKind(EXTMETH, "$extension")
-  val ModuleVarName = new SuffixNameKind(OBJECTVAR, "$module")
   val ModuleClassName = new SuffixNameKind(OBJECTCLASS, "$", optInfoString = "ModuleClass")
   val ImplMethName = new SuffixNameKind(IMPLMETH, "$")
   val AdaptedClosureName = new SuffixNameKind(ADAPTEDCLOSURE, "$adapted") { override def definesNewName = true }
