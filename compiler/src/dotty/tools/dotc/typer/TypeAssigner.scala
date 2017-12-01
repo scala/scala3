@@ -520,26 +520,13 @@ trait TypeAssigner {
     tree.withType(proto)
 
   def assignType(tree: untpd.ValDef, sym: Symbol)(implicit ctx: Context) =
-    tree.withType(if (sym.exists) assertExists(symbolicIfNeeded(sym).orElse(sym.termRef)) else NoType)
+    tree.withType(if (sym.exists) assertExists(sym.termRef) else NoType)
 
   def assignType(tree: untpd.DefDef, sym: Symbol)(implicit ctx: Context) =
-    tree.withType(symbolicIfNeeded(sym).orElse(sym.termRef))
+    tree.withType(sym.termRef)
 
   def assignType(tree: untpd.TypeDef, sym: Symbol)(implicit ctx: Context) =
-    tree.withType(symbolicIfNeeded(sym).orElse(sym.typeRef))
-
-  private def symbolicIfNeeded(sym: Symbol)(implicit ctx: Context) = { // ??? can we drop this?
-    val owner = sym.owner
-    if (owner.isClass && owner.isCompleted && owner.asClass.givenSelfType.exists)
-      // In that case a simple typeRef/termWithWithSig could return a member of
-      // the self type, not the symbol itself. To avoid this, we make the reference
-      // symbolic. In general it seems to be faster to keep the non-symbolic
-      // reference, since there is less pressure on the uniqueness tables that way
-      // and less work to update all the different references. That's why symbolic references
-      // are only used if necessary.
-      NamedType(owner.thisType, sym)
-    else NoType
-  }
+    tree.withType(sym.typeRef)
 
   def assertExists(tp: Type) = { assert(tp != NoType); tp }
 
