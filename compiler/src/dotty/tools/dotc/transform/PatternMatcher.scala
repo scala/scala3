@@ -812,7 +812,8 @@ object PatternMatcher {
           plan :: Nil
       }
 
-      recur(plan)
+      if (isSwitchableType(scrutinee.tpe.widen)) recur(plan)
+      else Nil
     }
 
     /** Emit cases of a switch */
