@@ -19,7 +19,7 @@ import java.util.WeakHashMap
 import config.Config
 import config.Printers.{incremental, noPrinter}
 import reporting.diagnostic.Message
-import reporting.diagnostic.messages._
+import reporting.diagnostic.messages.BadSymbolicReference
 import reporting.trace
 
 trait SymDenotations { this: Context =>
@@ -1957,12 +1957,7 @@ object SymDenotations {
 
     def complete(denot: SymDenotation)(implicit ctx: Context): Unit = {
       val sym = denot.symbol
-      val file = sym.associatedFile
-      val (location, src) =
-        if (file != null) (s" in $file", file.toString)
-        else ("", "the signature")
-      val name = ctx.fresh.setSetting(ctx.settings.YdebugNames, true).nameString(denot.name)
-      val errMsg = BadSymbolicReference(location, name, denot.owner, src)
+      def errMsg = BadSymbolicReference(denot)
       ctx.error(errMsg, sym.pos)
       if (ctx.debug) throw new scala.Error()
       initializeToDefaults(denot, errMsg)
