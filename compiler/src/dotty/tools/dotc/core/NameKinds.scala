@@ -6,7 +6,7 @@ import Names._
 import NameOps._
 import StdNames._
 import util.DotClass
-import tasty.TastyFormat._
+import NameTags._
 import Decorators._
 import Contexts.Context
 import collection.mutable
