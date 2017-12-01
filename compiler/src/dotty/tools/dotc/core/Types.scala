@@ -186,7 +186,7 @@ object Types {
      *  `<this> . <symd>` is an actual argument reference, i.e. `this` is different
      *  from the ThisType of `symd`'s owner.
      */
-    def isArgPrefix(symd: SymDenotation)(implicit ctx: Context) =
+    def isArgPrefixOf(symd: SymDenotation)(implicit ctx: Context) =
       symd.is(ClassTypeParam) && {
         this match {
           case tp: ThisType => tp.cls ne symd.owner
@@ -1671,7 +1671,7 @@ object Types {
           val symd = sym.lastKnownDenotation
           if (symd.validFor.runId != ctx.runId && !ctx.stillValid(symd))
             finish(memberDenot(symd.initial.name, allowPrivate = false))
-          else if (prefix.isArgPrefix(symd))
+          else if (prefix.isArgPrefixOf(symd))
             finish(argDenot(sym.asType))
           else if (infoDependsOnPrefix(symd, prefix))
             finish(memberDenot(symd.initial.name, allowPrivate = symd.is(Private)))
@@ -1986,7 +1986,7 @@ object Types {
       else if (lastDenotation == null) NamedType(prefix, designator)
       else designator match {
         case sym: Symbol =>
-          if (infoDependsOnPrefix(sym, prefix) && !prefix.isArgPrefix(sym)) {
+          if (infoDependsOnPrefix(sym, prefix) && !prefix.isArgPrefixOf(sym)) {
             val candidate = reload()
             val falseOverride = sym.isClass && candidate.symbol.exists && candidate.symbol != symbol
               // A false override happens if we rebind an inner class to another type with the same name
@@ -3986,7 +3986,7 @@ object Types {
      *  underlying bounds to a range, otherwise return the expansion.
      */
     def expandParam(tp: NamedType, pre: Type) = tp.argForParam(pre) match {
-      case arg @ TypeRef(pre, _) if pre.isArgPrefix(arg.symbol) =>
+      case arg @ TypeRef(pre, _) if pre.isArgPrefixOf(arg.symbol) =>
         arg.info match {
           case TypeBounds(lo, hi) => range(atVariance(-variance)(reapply(lo)), reapply(hi))
           case arg => reapply(arg)
