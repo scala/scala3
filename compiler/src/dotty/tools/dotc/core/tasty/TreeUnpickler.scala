@@ -236,7 +236,7 @@ class TreeUnpickler(reader: TastyReader, nameAtRef: NameRef => TermName, posUnpi
               val prefix = readType()
               val space = readType()
               space.decl(name) match {
-                case symd: SymDenotation if prefix.isArgPrefix(symd.symbol) => TypeRef(prefix, symd.symbol)
+                case symd: SymDenotation if prefix.isArgPrefixOf(symd.symbol) => TypeRef(prefix, symd.symbol)
                 case _ => TypeRef(prefix, name, space.decl(name))
               }
             case REFINEDtype =>
