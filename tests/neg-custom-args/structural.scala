@@ -1,3 +1,5 @@
+import scala.reflect.Selectable.reflectiveSelectable
+
 package p1 {
 
 object test123 {
@@ -36,12 +38,13 @@ object RClose {
 }
 
 package p3 {
+
 object Test {
-  def idMap[C[_],T](m: { def map[U](f: T => U): C[U] }): C[T] = m.map(t => t)
+  def idMap[C[_],T](m: { def map[U](f: T => U): C[U] }): C[T] = m.map(t => t) // error: polymorphic refinement method map without matching type in parent Object is no longer allowed
 
   def main(args: Array[String]): Unit = {
-    idMap(Some(5))
-    idMap(Responder.constant(5))
+    idMap(Some(5)) // error: type mismatch: found Some[Int], required Object{map: [U](f: Any => U): Any}
+    idMap(Responder.constant(5)) // error: type mismatch: found Responder[Int], required Object{map: [U](f: Any => U): Any}
   }
 }
 }
@@ -49,7 +52,7 @@ package p4 {
 
 trait A { self: Any { def p: Any } =>
   def f(b: => Unit): Unit = {}
-  f { p } // error: cannot access member 'p' from structural type
+  f { p } // OK
 }
 }
 
@@ -64,7 +67,7 @@ object Test {
 package p6 {
 
   class Refinements {
-    val y: C { val x: T; type T }  // was adeprecated warning: illegal forward reference in refinement; now illegal
+    val y: { val x: T; type T }  // error: deprecated warning: illegal forward reference in refinement; now illegal
   }
 
 }
