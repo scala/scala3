@@ -443,10 +443,11 @@ object Symbols {
       if (lastDenot == null) NoRunId else lastDenot.validFor.runId
 
     /** Does this symbol come from a currently compiled source file? */
-    final def isDefinedInCurrentRun(implicit ctx: Context): Boolean = {
-      // FIXME: broken now now that symbols unpickled from TASTY have a position
-      pos.exists && defRunId == ctx.runId
-    }
+    final def isDefinedInCurrentRun(implicit ctx: Context): Boolean =
+      pos.exists && defRunId == ctx.runId && {
+        val file = associatedFile
+        file != null && ctx.runInfo.files.contains(file)
+      }
 
     /** Is symbol valid in current run? */
     final def isValidInCurrentRun(implicit ctx: Context): Boolean =
@@ -540,7 +541,7 @@ object Symbols {
      *  Overridden in ClassSymbol
      */
     def associatedFile(implicit ctx: Context): AbstractFile =
-      denot.topLevelClass.symbol.associatedFile
+      if (lastDenot == null) null else lastDenot.topLevelClass.symbol.associatedFile
 
     /** The class file from which this class was generated, null if not applicable. */
     final def binaryFile(implicit ctx: Context): AbstractFile = {

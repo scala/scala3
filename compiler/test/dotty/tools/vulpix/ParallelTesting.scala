@@ -151,7 +151,8 @@ trait ParallelTesting extends RunnerOrchestration { self =>
   ) extends TestSource {
 
     /** Get the files grouped by `_X` as a list of groups, files missing this
-     *  suffix will be put into the same group
+     *  suffix will be put into the same group.
+     *  Files in each group are sorted alphabetically.
      *
      *  Filters out all none source files
      */
@@ -170,7 +171,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
         .toOption
         .getOrElse("")
       }
-      .toList.sortBy(_._1).map(_._2.filter(isSourceFile))
+      .toList.sortBy(_._1).map(_._2.filter(isSourceFile).sorted)
   }
 
   /** Each `Test` takes the `testSources` and performs the compilation and assertions

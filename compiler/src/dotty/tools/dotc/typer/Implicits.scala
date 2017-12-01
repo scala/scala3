@@ -9,6 +9,7 @@ import util.Stats.{track, record, monitored}
 import printing.{Showable, Printer}
 import printing.Texts._
 import Contexts._
+import Run.RunInfo
 import Types._
 import Flags._
 import TypeErasure.{erasure, hasStableErasure}

@@ -2,6 +2,7 @@ package dotty.tools.dotc
 package core
 
 import Contexts._
+import Run.RunInfo
 import config.Printers.typr
 
 trait ConstraintRunInfo { self: RunInfo =>

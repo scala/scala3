@@ -226,7 +226,7 @@ class InteractiveDriver(settings: List[String]) extends Driver {
 
       run.compileSources(List(source))
       run.printSummary()
-      val t = run.units.head.tpdTree
+      val t = ctx.runInfo.units.head.tpdTree
       cleanup(t)
       myOpenedTrees(uri) = topLevelClassTrees(t, source)
 

@@ -104,7 +104,7 @@ abstract class CompilerTest {
           else (fp, jfp)
         }
       val expErrors = expectedErrors(filePaths.toList)
-      (filePaths, javaFilePaths, normArgs, expErrors)
+      (filePaths.sorted, javaFilePaths.sorted, normArgs, expErrors)
     }
     if (runTest)
       log(s"WARNING: run tests can only be run by partest, JUnit just verifies compilation: $prefix$dirName")
