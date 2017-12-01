@@ -652,9 +652,13 @@ trait Implicits { self: Typer =>
           val SRightTree = rootQual("SRight")
 
           import transform.SymUtils._
+          import dotty.tools.dotc.transform.patmat.SpaceEngine
 
-          val sumTypes = A.classSymbol.children.map(_.namedType.asSeenFrom(A, A.classSymbol)).reverse // Reveresed to match order in source
-          if (sumTypes.isEmpty) return typed(EmptyTree)
+          val sumTypes =
+            A .classSymbol.children.map(_.namedType)
+              .map(t => new SpaceEngine().instantiate(t, A)) // Instantiate type all parameters
+              .reverse                                       // Reveresed to match source order
+
           val sumTypesSize = sumTypes.size
           val X = tpnme.syntheticTypeParamName(0)
           val noBounds = TypeBoundsTree(EmptyTree, EmptyTree)
