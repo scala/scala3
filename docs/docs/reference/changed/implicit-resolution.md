@@ -59,15 +59,15 @@ affect implicits on the language level.
     there are two possible solutions, `b(a1)` and `b(a2)`, neither of which is better
     than the other and both of which are better than the third solution, `c`.
     By contrast, Scala 2 would have rejected the search for `A` as
-    ambiguous, and subsequently have classified the query `b(implictly[A])` as a normal fail,
+    ambiguous, and subsequently have classified the query `b(implicitly[A])` as a normal fail,
     which means that the alternative `c` would be chosen as solution!
 
-    Scala 2's somewhat puzzling behavior wrt ambiguity has been exploited to implement the analogue
-    of a "negated" search in implicit resolution, where a query `Q1` fails if some other
-    query `Q2` succeeds and `Q1` succeeds if `Q2` fails. With the new cleaned up behavior these
-    techniques no longer work. But there is now a new special type `scala.implicits.Not` which
-    implements negation directly. For any query type `Q`: `Not[Q]` succeeds if and only if the
-    implicit search for `Q` fails.
+    Scala 2's somewhat puzzling behavior with respect to ambiguity has been exploited to implement
+    the analogue of a "negated" search in implicit resolution, where a query `Q1` fails if some
+    other query `Q2` succeeds and `Q1` succeeds if `Q2` fails. With the new cleaned up behavior
+    these techniques no longer work. But there is now a new special type `scala.implicits.Not`
+    which implements negation directly. For any query type `Q`: `Not[Q]` succeeds if and only if
+    the implicit search for `Q` fails.
 
  5. The treatment of divergence errors has also changed. A divergent implicit is
     treated as a normal failure, after which alternatives are still tried. This also makes

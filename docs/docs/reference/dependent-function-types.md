@@ -1,6 +1,6 @@
 ---
-layout: doc-page`%
-title: "Dependent`% Function Types"
+layout: doc-page
+title: "Dependent Function Types"
 ---
 
 A dependent function type describes functions where the result type may depend
