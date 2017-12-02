@@ -2125,7 +2125,12 @@ object Types {
   abstract case class ThisType(tref: TypeRef) extends CachedProxyType with SingletonType {
     def cls(implicit ctx: Context): ClassSymbol = tref.stableInRunSymbol.asClass
     override def underlying(implicit ctx: Context): Type =
-      if (ctx.erasedTypes) tref else cls.classInfo.selfType
+      if (ctx.erasedTypes) tref
+      else cls.info match {
+        case cinfo: ClassInfo => cinfo.selfType
+        case cinfo: ErrorType if ctx.mode.is(Mode.Interactive) => cinfo
+          // can happen in IDE if `cls` is stale
+      }
 
     override def computeHash = doHash(tref)
 
