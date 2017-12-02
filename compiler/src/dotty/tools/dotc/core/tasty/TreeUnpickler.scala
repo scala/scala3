@@ -208,15 +208,17 @@ class TreeUnpickler(reader: TastyReader, nameAtRef: NameRef => TermName, posUnpi
 
         def readMethodic[N <: Name, PInfo <: Type, LT <: LambdaType]
             (companion: LambdaTypeCompanion[N, PInfo, LT], nameMap: Name => N): LT = {
-          val nameReader = fork
-          nameReader.skipTree() // skip result
-          val paramReader = nameReader.fork
-          val paramNames = nameReader.readParamNames(end).map(nameMap)
-          val result = companion(paramNames)(
+          val result = typeAtAddr.getOrElse(start, {
+              val nameReader = fork
+              nameReader.skipTree() // skip result
+              val paramReader = nameReader.fork
+              val paramNames = nameReader.readParamNames(end).map(nameMap)
+              companion(paramNames)(
                 pt => registeringType(pt, paramReader.readParamTypes[PInfo](end)),
                 pt => readType())
+            })
           goto(end)
-          result
+          result.asInstanceOf[LT]
         }
 
         val result =
@@ -308,7 +310,7 @@ class TreeUnpickler(reader: TastyReader, nameAtRef: NameRef => TermName, posUnpi
         case THIS =>
           ThisType.raw(readType().asInstanceOf[TypeRef])
         case RECtype =>
-          RecType(rt => registeringType(rt, readType()))
+          typeAtAddr.getOrElse(start, RecType(rt => registeringType(rt, readType())))
         case RECthis =>
           readTypeRef().asInstanceOf[RecType].recThis
         case TYPEALIAS =>
