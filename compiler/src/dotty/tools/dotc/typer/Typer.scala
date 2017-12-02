@@ -1300,7 +1300,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
       case rhs => typedExpr(rhs, tpt1.tpe)
     }
     val vdef1 = assignType(cpy.ValDef(vdef)(name, tpt1, rhs1), sym)
-    if (sym.is(Inline, butNot = DeferredOrParamAccessor))
+    if (sym.is(Inline, butNot = DeferredOrParamOrAccessor))
       checkInlineConformant(rhs1, em"right-hand side of inline $sym")
     patchIfLazy(vdef1)
     patchFinalVals(vdef1)
