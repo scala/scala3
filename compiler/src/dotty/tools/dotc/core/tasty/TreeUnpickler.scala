@@ -385,10 +385,8 @@ class TreeUnpickler(reader: TastyReader, nameAtRef: NameRef => TermName, posUnpi
     private def noRhs(end: Addr): Boolean =
       currentAddr == end || isModifierTag(nextByte)
 
-    private def localContext(owner: Symbol)(implicit ctx: Context) = {
-      val lctx = ctx.fresh.setOwner(owner)
-      if (owner.isClass) lctx.setScope(owner.unforcedDecls) else lctx.setNewScope
-    }
+    private def localContext(owner: Symbol)(implicit ctx: Context) =
+      ctx.fresh.setOwner(owner)
 
     private def normalizeFlags(tag: Int, givenFlags: FlagSet, name: Name, isAbsType: Boolean, rhsIsEmpty: Boolean)(implicit ctx: Context): FlagSet = {
       val lacksDefinition =
@@ -642,19 +640,18 @@ class TreeUnpickler(reader: TastyReader, nameAtRef: NameRef => TermName, posUnpi
         }
       }
 
+      val localCtx = localContext(sym)
+
       def readRhs(implicit ctx: Context) =
         if (noRhs(end)) EmptyTree
         else readLater(end, rdr => ctx => rdr.readTerm()(ctx))
-
-      def localCtx = localContext(sym)
 
       def ValDef(tpt: Tree) =
         ta.assignType(untpd.ValDef(sym.name.asTermName, tpt, readRhs(localCtx)), sym)
 
       def DefDef(tparams: List[TypeDef], vparamss: List[List[ValDef]], tpt: Tree) =
          ta.assignType(
-            untpd.DefDef(
-              sym.name.asTermName, tparams, vparamss, tpt, readRhs(localCtx)),
+            untpd.DefDef(sym.name.asTermName, tparams, vparamss, tpt, readRhs(localCtx)),
             sym)
 
       def TypeDef(rhs: Tree) =
@@ -668,7 +665,7 @@ class TreeUnpickler(reader: TastyReader, nameAtRef: NameRef => TermName, posUnpi
         case DEFDEF =>
           val tparams = readParams[TypeDef](TYPEPARAM)(localCtx)
           val vparamss = readParamss(localCtx)
-          val tpt = readTpt()
+          val tpt = readTpt()(localCtx)
           val typeParams = tparams.map(_.symbol)
           val valueParamss = ctx.normalizeIfConstructor(
               vparamss.nestedMap(_.symbol), name == nme.CONSTRUCTOR)
@@ -681,7 +678,7 @@ class TreeUnpickler(reader: TastyReader, nameAtRef: NameRef => TermName, posUnpi
           }
           DefDef(tparams, vparamss, tpt)
         case VALDEF =>
-          val tpt = readTpt()
+          val tpt = readTpt()(localCtx)
           sym.info = tpt.tpe
           ValDef(tpt)
         case TYPEDEF | TYPEPARAM =>
@@ -700,7 +697,7 @@ class TreeUnpickler(reader: TastyReader, nameAtRef: NameRef => TermName, posUnpi
             }
             TypeDef(readTemplate(localCtx))
           } else {
-            val rhs = readTpt()
+            val rhs = readTpt()(localCtx)
             sym.info = NoCompleter
             sym.info = rhs.tpe match {
               case _: TypeBounds | _: ClassInfo => checkNonCyclic(sym, rhs.tpe, reportErrors = false)
@@ -709,7 +706,7 @@ class TreeUnpickler(reader: TastyReader, nameAtRef: NameRef => TermName, posUnpi
             TypeDef(rhs)
           }
         case PARAM =>
-          val tpt = readTpt()
+          val tpt = readTpt()(localCtx)
           if (noRhs(end)) {
             sym.info = tpt.tpe
             ValDef(tpt)
@@ -930,9 +927,8 @@ class TreeUnpickler(reader: TastyReader, nameAtRef: NameRef => TermName, posUnpi
         def readBlock(mkTree: (List[Tree], Tree) => Tree): Tree = {
           val exprReader = fork
           skipTree()
-          val localCtx = ctx.fresh.setNewScope
-          val stats = readStats(ctx.owner, end)(localCtx)
-          val expr = exprReader.readTerm()(localCtx)
+          val stats = readStats(ctx.owner, end)
+          val expr = exprReader.readTerm()
           mkTree(stats, expr)
         }
 
@@ -1030,13 +1026,8 @@ class TreeUnpickler(reader: TastyReader, nameAtRef: NameRef => TermName, posUnpi
             case ANNOTATEDtpt =>
               Annotated(readTpt(), readTerm())
             case LAMBDAtpt =>
-              var localCtx = ctx.fresh.setNewScope
-              ctx.owner match {
-                case cls: ClassSymbol => localCtx = localCtx.setOwner(localDummies(cls))
-                case _ =>
-              }
-              val tparams = readParams[TypeDef](TYPEPARAM)(localCtx)
-              val body = readTpt()(localCtx)
+              val tparams = readParams[TypeDef](TYPEPARAM)
+              val body = readTpt()
               LambdaTypeTree(tparams, body)
             case TYPEBOUNDStpt =>
               TypeBoundsTree(readTpt(), readTpt())
