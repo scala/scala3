@@ -55,6 +55,9 @@ class TreeUnpickler(reader: TastyReader, nameAtRef: NameRef => TermName, posUnpi
    */
   private[this] var seenRoots: Set[Symbol] = Set()
 
+  /** A map from unpickled class symbols to their local dummies */
+  private[this] val localDummies = new mutable.HashMap[ClassSymbol, Symbol]
+
   /** The root owner tree. See `OwnerTree` class definition. Set by `enterTopLevel`. */
   private[this] var ownerTree: OwnerTree = _
 
@@ -424,7 +427,7 @@ class TreeUnpickler(reader: TastyReader, nameAtRef: NameRef => TermName, posUnpi
       case VALDEF | DEFDEF | TYPEDEF | TYPEPARAM | PARAM =>
         createMemberSymbol()
       case TEMPLATE =>
-        val localDummy = ctx.newLocalDummy(ctx.owner)
+        val localDummy = localDummies(ctx.owner.asClass)
         registerSym(currentAddr, localDummy)
         localDummy
       case tag =>
@@ -478,6 +481,7 @@ class TreeUnpickler(reader: TastyReader, nameAtRef: NameRef => TermName, posUnpi
       ctx.enter(sym)
       registerSym(start, sym)
       if (isClass) {
+        localDummies(sym.asClass) = ctx.newLocalDummy(sym)
         sym.completer.withDecls(newScope)
         forkAt(templateStart).indexTemplateParams()(localContext(sym))
       }
@@ -745,14 +749,15 @@ class TreeUnpickler(reader: TastyReader, nameAtRef: NameRef => TermName, posUnpi
         else NoType
       cls.info = new TempClassInfo(cls.owner.thisType, cls, cls.unforcedDecls, assumedSelfType)
       val localDummy = symbolAtCurrent()
+      val parentCtx = ctx.withOwner(localDummy)
       assert(readByte() == TEMPLATE)
       val end = readEnd()
       val tparams = readIndexedParams[TypeDef](TYPEPARAM)
       val vparams = readIndexedParams[ValDef](PARAM)
       val parents = collectWhile(nextByte != SELFDEF && nextByte != DEFDEF) {
         nextByte match {
-          case APPLY | TYPEAPPLY => readTerm()
-          case _ => readTpt()
+          case APPLY | TYPEAPPLY => readTerm()(parentCtx)
+          case _ => readTpt()(parentCtx)
         }
       }
       val parentTypes = parents.map(_.tpe.dealias)
@@ -766,13 +771,14 @@ class TreeUnpickler(reader: TastyReader, nameAtRef: NameRef => TermName, posUnpi
         if (self.isEmpty) NoType else self.tpt.tpe)
       cls.setNoInitsFlags(fork.indexStats(end))
       val constr = readIndexedDef().asInstanceOf[DefDef]
+      val mappedParents = parents.map(_.changeOwner(localDummy, constr.symbol))
 
       val lazyStats = readLater(end, rdr => implicit ctx => {
         val stats = rdr.readIndexedStats(localDummy, end)
         tparams ++ vparams ++ stats
       })
       setPos(start,
-        untpd.Template(constr, parents, self, lazyStats)
+        untpd.Template(constr, mappedParents, self, lazyStats)
           .withType(localDummy.termRef))
     }
 
@@ -922,15 +928,10 @@ class TreeUnpickler(reader: TastyReader, nameAtRef: NameRef => TermName, posUnpi
       def readLengthTerm(): Tree = {
         val end = readEnd()
 
-        def localNonClassCtx = {
-          val ctx1 = ctx.fresh.setNewScope
-          if (ctx.owner.isClass) ctx1.setOwner(ctx1.newLocalDummy(ctx.owner)) else ctx1
-        }
-
         def readBlock(mkTree: (List[Tree], Tree) => Tree): Tree = {
           val exprReader = fork
           skipTree()
-          val localCtx = localNonClassCtx
+          val localCtx = ctx.fresh.setNewScope
           val stats = readStats(ctx.owner, end)(localCtx)
           val expr = exprReader.readTerm()(localCtx)
           mkTree(stats, expr)
@@ -1030,7 +1031,11 @@ class TreeUnpickler(reader: TastyReader, nameAtRef: NameRef => TermName, posUnpi
             case ANNOTATEDtpt =>
               Annotated(readTpt(), readTerm())
             case LAMBDAtpt =>
-              val localCtx = localNonClassCtx
+              var localCtx = ctx.fresh.setNewScope
+              ctx.owner match {
+                case cls: ClassSymbol => localCtx = localCtx.setOwner(localDummies(cls))
+                case _ =>
+              }
               val tparams = readParams[TypeDef](TYPEPARAM)(localCtx)
               val body = readTpt()(localCtx)
               LambdaTypeTree(tparams, body)
