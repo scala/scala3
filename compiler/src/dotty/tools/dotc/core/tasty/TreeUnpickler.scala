@@ -474,7 +474,10 @@ class TreeUnpickler(reader: TastyReader, nameAtRef: NameRef => TermName, posUnpi
               ctx.newSymbol(ctx.owner, name, flags, completer, privateWithin, coord = start.index)
         } // TODO set position somehow (but take care not to upset Symbol#isDefinedInCurrentRun)
       sym.annotations = annots
-      ctx.enter(sym)
+      ctx.owner match {
+        case cls: ClassSymbol => cls.enter(sym)
+        case _ =>
+      }
       registerSym(start, sym)
       if (isClass) {
         localDummies(sym.asClass) = ctx.newLocalDummy(sym)
