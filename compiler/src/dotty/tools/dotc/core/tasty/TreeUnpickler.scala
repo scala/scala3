@@ -55,9 +55,6 @@ class TreeUnpickler(reader: TastyReader, nameAtRef: NameRef => TermName, posUnpi
    */
   private[this] var seenRoots: Set[Symbol] = Set()
 
-  /** A map from unpickled class symbols to their local dummies */
-  private[this] val localDummies = new mutable.HashMap[ClassSymbol, Symbol]
-
   /** The root owner tree. See `OwnerTree` class definition. Set by `enterTopLevel`. */
   private[this] var ownerTree: OwnerTree = _
 
@@ -425,7 +422,7 @@ class TreeUnpickler(reader: TastyReader, nameAtRef: NameRef => TermName, posUnpi
       case VALDEF | DEFDEF | TYPEDEF | TYPEPARAM | PARAM =>
         createMemberSymbol()
       case TEMPLATE =>
-        val localDummy = localDummies(ctx.owner.asClass)
+        val localDummy = ctx.newLocalDummy(ctx.owner)
         registerSym(currentAddr, localDummy)
         localDummy
       case tag =>
@@ -482,7 +479,6 @@ class TreeUnpickler(reader: TastyReader, nameAtRef: NameRef => TermName, posUnpi
       }
       registerSym(start, sym)
       if (isClass) {
-        localDummies(sym.asClass) = ctx.newLocalDummy(sym)
         sym.completer.withDecls(newScope)
         forkAt(templateStart).indexTemplateParams()(localContext(sym))
       }
