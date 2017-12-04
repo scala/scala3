@@ -128,7 +128,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
   /** A group of files that may all be compiled together, with the same flags
    *  and output directory
    */
-  private final case class JointCompilationSource(
+  private case class JointCompilationSource(
     name: String,
     files: Array[JFile],
     flags: TestFlags,
@@ -143,7 +143,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
   /** A test source whose files will be compiled separately according to their
    *  suffix `_X`
    */
-  private final case class SeparateCompilationSource(
+  private case class SeparateCompilationSource(
     name: String,
     dir: JFile,
     flags: TestFlags,
@@ -395,7 +395,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
     protected def compileFromTasty(flags0: TestFlags, suppressErrors: Boolean, targetDir: JFile): TestReporter = {
       val tastyOutput = new JFile(targetDir.getPath + "_from-tasty")
       tastyOutput.mkdir()
-      val flags = flags0 and ("-d", tastyOutput.getAbsolutePath) and "-tasty"
+      val flags = flags0 and ("-d", tastyOutput.getAbsolutePath) and "-from-tasty"
 
       def hasTastyFileToClassName(f: JFile): String =
         targetDir.toPath.relativize(f.toPath).toString.dropRight(".hasTasty".length).replace('/', '.')
@@ -1099,7 +1099,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
     val target = JointCompilationSource(
       testGroup.name,
       Array(sourceFile),
-      flags.withClasspath(tastySource.getPath) and "-tasty",
+      flags.withClasspath(tastySource.getPath) and "-from-tasty",
       tastySource,
       fromTasty = true
     )

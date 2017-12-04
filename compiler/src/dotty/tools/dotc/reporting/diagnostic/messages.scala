@@ -21,6 +21,7 @@ import ErrorMessageID._
 import Denotations.SingleDenotation
 import dotty.tools.dotc.ast.Trees
 import dotty.tools.dotc.ast.untpd.Modifiers
+import dotty.tools.dotc.config.ScalaVersion
 import dotty.tools.dotc.core.Flags.{FlagSet, Mutable}
 import dotty.tools.dotc.core.SymDenotations.SymDenotation
 import scala.util.control.NonFatal
@@ -140,7 +141,7 @@ object messages {
   }
 
   case class EmptyCatchBlock(tryBody: untpd.Tree)(implicit ctx: Context)
- extends EmptyCatchOrFinallyBlock(tryBody, EmptyCatchBlockID) {
+  extends EmptyCatchOrFinallyBlock(tryBody, EmptyCatchBlockID) {
     val kind = "Syntax"
     val msg =
       hl"""|The ${"catch"} block does not contain a valid expression, try
@@ -1928,5 +1929,109 @@ object messages {
     val kind = "Naming"
     val explanation =
       hl"An ${"object"} cannot have the same name as an existing ${"package"}. Rename either one of them."
+  }
+
+  case class UnapplyInvalidNumberOfArguments(qual: untpd.Tree, argTypes: List[Type])(implicit ctx: Context)
+    extends Message(UnapplyInvalidNumberOfArgumentsID) {
+    val kind = "Syntax"
+    val msg = hl"Wrong number of argument patterns for $qual; expected: ($argTypes%, %)"
+    val explanation =
+      hl"""The Unapply method of $qual was used with incorrect number of arguments.
+          |Expected usage would be something like:
+          |case $qual(${argTypes.map(_ => '_')}%, %) => ...
+          |
+        |where subsequent arguments would have following types: ($argTypes%, %).
+        |""".stripMargin
+  }
+
+  case class StaticFieldsOnlyAllowedInObjects(member: Symbol)(implicit ctx: Context) extends Message(StaticFieldsOnlyAllowedInObjectsID) {
+    val msg = hl"${"@static"} $member in ${member.owner} must be defined inside an ${"object"}."
+    val kind = "Syntax"
+    val explanation =
+      hl"${"@static"} members are only allowed inside objects."
+  }
+
+  case class CyclicInheritance(symbol: Symbol, addendum: String)(implicit ctx: Context) extends Message(CyclicInheritanceID) {
+    val kind = "Syntax"
+    val msg = hl"Cyclic inheritance: $symbol extends itself$addendum"
+    val explanation = {
+      val codeExample = "class A extends A"
+
+      hl"""Cyclic inheritance is prohibited in Dotty.
+          |Consider the following example:
+          |
+          |$codeExample
+          |
+          |The example mentioned above would fail because this type of inheritance hierarchy
+          |creates a "cycle" where a not yet defined class A extends itself which makes
+          |impossible to instantiate an object of this class"""
+    }
+  }
+
+  case class UnableToExtendSealedClass(pclazz: Symbol)(implicit ctx: Context) extends Message(UnableToExtendSealedClassID) {
+    val kind = "Syntax"
+    val msg = hl"Cannot extend ${"sealed"} $pclazz in a different source file"
+    val explanation = "A sealed class or trait can only be extended in the same file as its declaration"
+  }
+
+  case class SymbolHasUnparsableVersionNumber(symbol: Symbol, migrationMessage: String)(implicit ctx: Context)
+  extends Message(SymbolHasUnparsableVersionNumberID) {
+    val kind = "Syntax"
+    val msg = hl"${symbol.showLocated} has an unparsable version number: $migrationMessage"
+    val explanation =
+      hl"""$migrationMessage
+          |
+          |The ${symbol.showLocated} is marked with ${"@migration"} indicating it has changed semantics
+          |between versions and the ${"-Xmigration"} settings is used to warn about constructs
+          |whose behavior may have changed since version change."""
+  }
+
+  case class SymbolChangedSemanticsInVersion(
+    symbol: Symbol,
+    migrationVersion: ScalaVersion
+  )(implicit ctx: Context) extends Message(SymbolChangedSemanticsInVersionID) {
+    val kind = "Syntax"
+    val msg = hl"${symbol.showLocated} has changed semantics in version $migrationVersion"
+    val explanation = {
+      hl"""The ${symbol.showLocated} is marked with ${"@migration"} indicating it has changed semantics
+          |between versions and the ${"-Xmigration"} settings is used to warn about constructs
+          |whose behavior may have changed since version change."""
+    }
+  }
+
+  case class UnableToEmitSwitch()(implicit ctx: Context)
+  extends Message(UnableToEmitSwitchID) {
+    val kind = "Syntax"
+    val msg = hl"Could not emit switch for ${"@switch"} annotated match"
+    val explanation = {
+      val codeExample =
+        """val ConstantB = 'B'
+          |final val ConstantC = 'C'
+          |def tokenMe(ch: Char) = (ch: @switch) match {
+          |  case '\t' | '\n' => 1
+          |  case 'A'         => 2
+          |  case ConstantB   => 3  // a non-literal may prevent switch generation: this would not compile
+          |  case ConstantC   => 4  // a constant value is allowed
+          |  case _           => 5
+          |}""".stripMargin
+
+      hl"""If annotated with ${"@switch"}, the compiler will verify that the match has been compiled to a
+          |tableswitch or lookupswitch and issue an error if it instead compiles into a series of conditional
+          |expressions. Example usage:
+          |
+          |$codeExample
+          |
+          |The compiler will not apply the optimisation if:
+          |- the matched value is not of type ${"Int"}, ${"Byte"}, ${"Short"} or ${"Char"}
+          |- the matched value is not a constant literal
+          |- there are less than three cases"""
+    }
+  }
+
+  case class MissingCompanionForStatic(member: Symbol)(implicit ctx: Context) extends Message(MissingCompanionForStaticID) {
+    val msg = hl"${member.owner} does not have a companion class"
+    val kind = "Syntax"
+    val explanation =
+      hl"An object that contains ${"@static"} members must have a companion class."
   }
 }

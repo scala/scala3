@@ -17,7 +17,7 @@ import fromtasty.TASTYCompiler
 class Driver extends DotClass {
 
   protected def newCompiler(implicit ctx: Context): Compiler =
-    if (ctx.settings.tasty.value) new TASTYCompiler
+    if (ctx.settings.fromTasty.value) new TASTYCompiler
     else new Compiler
 
   protected def emptyReporter: Reporter = new StoreReporter(null)

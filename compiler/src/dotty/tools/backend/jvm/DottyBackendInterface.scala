@@ -402,14 +402,14 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
     else Some(ctx.settings.Ydumpclasses.value)
 
   def mainClass: Option[String] =
-    if (ctx.settings.mainClass.isDefault) None
-    else Some(ctx.settings.mainClass.value)
-  def setMainClass(name: String): Unit = ctx.settings.mainClass.update(name)
+    if (ctx.settings.XmainClass.isDefault) None
+    else Some(ctx.settings.XmainClass.value)
+  def setMainClass(name: String): Unit = ctx.settings.XmainClass.update(name)
 
 
-  def noForwarders: Boolean = ctx.settings.noForwarders.value
+  def noForwarders: Boolean = ctx.settings.XnoForwarders.value
   def debuglevel: Int = 3 // 0 -> no debug info; 1-> filename; 2-> lines; 3-> varnames
-  def settings_debug: Boolean = ctx.settings.debug.value
+  def settings_debug: Boolean = ctx.settings.Ydebug.value
   def targetPlatform: String = ctx.settings.target.value
 
   val perRunCaches: Caches = new Caches {
@@ -522,8 +522,8 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
       }
     }
 
-    if(!valid) {
-      ctx.warning(
+    if (!valid) {
+      ctx.error(
         i"""|compiler bug: created invalid generic signature for $sym in ${sym.denot.owner.showFullName}
             |signature: $sig
             |if this is reproducible, please report bug at https://github.com/lampepfl/dotty/issues

@@ -33,7 +33,7 @@ class NonLocalReturns extends MiniPhase {
     defn.NonLocalReturnControlType.appliedTo(argtype)
 
   /** A hashmap from method symbols to non-local return keys */
-  private val nonLocalReturnKeys = mutable.Map[Symbol, TermSymbol]()
+  private val nonLocalReturnKeys = newMutableSymbolMap[TermSymbol]
 
   /** Return non-local return key for given method */
   private def nonLocalReturnKey(meth: Symbol)(implicit ctx: Context) =

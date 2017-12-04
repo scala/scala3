@@ -16,7 +16,7 @@ When saying that they have no effect on the runtime we do not only mean side eff
 like IO, field mutation, exceptions and so on. We also imply that if a function receives 
 a phantom its result will not be affected by this argument.
 
-As phantom do not live at runtime they cannot be subtypes of `scala.Any`, which defines 
+As phantoms do not live at runtime they cannot be subtypes of `scala.Any`, which defines 
 methods such as `hashCode`, `equals`, `getClass`, `asInstanceOf` and `isInstanceOf`. 
 All these operations cannot exist on phantoms as there will not be an underlying object 
 instance at runtime. At first glance this could look like a limitation, but in fact not 
@@ -49,13 +49,13 @@ In fact we allow multiple phantom universes to exist.
          +---------+                +-------------------+       +------------------------+
 ```
 
-Inside a universe it types support the full Dotty type system. But we cannot mix types from 
-different universes with `&`, `|` or in type bounds. Each type must be fully defined one universe.
+Inside a universe the full Dotty type system is supported. But we cannot mix types from 
+different universes with `&`, `|` or in type bounds. Each type must be fully defined in a single universe.
 
 
 Implement your own phantom type
 -------------------------------
-Phantom types are definded by an `object` extending `scala.Phantom`. This object will represent 
+Phantom types are defined by an `object` extending `scala.Phantom`. This object will represent 
 a universe of phantom types that is completely separated from types in `scala.Any` or other 
 phantom universes. We can define our phantom universe `MyPhantoms`.
 
@@ -78,7 +78,7 @@ of the phantom types in `MyPhantoms`, these bounds are `protected` and can not b
 from outside `MyPhantoms` unless an alias is defined for them.
 
 New phantom types can be defined using `type XYZ <: OtherPhantom` (where `>: MyPhantom.Nothing` 
-will be inferred), this would be the equivalent of `class XYZ extends OtherClass` on a types 
+will be inferred), this would be the equivalent of `class XYZ extends OtherClass` on types 
 only (no runtime definitions). Or aliased with `type MyAny = OtherPhantom`. Within `MyPhantoms` 
 it is possible to refer to `MyPhantoms.Any` and `MyPhantoms.Nothing` with `this.Any` and 
 `this.Nothing` (or just `Any` and `Nothing` but not recommended). Using this we will define
@@ -94,7 +94,7 @@ object MyPhantoms extends Phantom {
 ```
 
 Values of phantom type can be created using the `protected def assume`. This value can be 
-used as a value of this phantom type as it's type is `this.Nothing` (or `MyPhantoms.Nothing`). 
+used as a value of this phantom type as its type is `this.Nothing` (or `MyPhantoms.Nothing`). 
 Usually this value will be used to define a `implicit def` that returns the phantom with a more 
 precise type. In our example we will only create values of type `Pinky` and `Clyde`
 
@@ -136,8 +136,8 @@ What happens with Phantoms at runtime?
 
 Disclaimer: Most of phantom erasure is implemented, but not all of is has been merged in `dotty/master` yet.
 
-As phantom have no effect on the result of a method invocation we just remove them for the call an definition. 
-The evaluation of the phantom parameter is still be done unless it can be optimized away. 
+As phantoms have no effect on the result of a method invocation we just remove them for the call and definition. 
+The evaluation of the phantom parameter is still done unless it can be optimized away. 
 By removing them we also restrict overloading as `def f()` and `def f(x: MyPhantom)` will 
 have the same signature in the bytecode, just use different names to avoid this.
 

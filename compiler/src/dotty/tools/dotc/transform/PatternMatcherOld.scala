@@ -286,7 +286,7 @@ class PatternMatcherOld extends MiniPhase with DenotTransformer {
       }
     }
   }
-  final case class Suppression(exhaustive: Boolean, unreachable: Boolean)
+  /*final*/ case class Suppression(exhaustive: Boolean, unreachable: Boolean)
   object Suppression {
     val NoSuppression = Suppression(false, false)
   }
@@ -1061,7 +1061,7 @@ class PatternMatcherOld extends MiniPhase with DenotTransformer {
       case _                      => BoundTree(freshSym(tree.pos, pt, PatMatPName), tree)
     }
 
-    final case class BoundTree(binder: Symbol, tree: Tree) {
+    /*final*/ case class BoundTree(binder: Symbol, tree: Tree) {
       private lazy val extractor = ExtractorCall(tree, binder)
 
       def pos = tree.pos
@@ -1179,7 +1179,7 @@ class PatternMatcherOld extends MiniPhase with DenotTransformer {
     }
 
     // a list of TreeMakers that encode `patTree`, and a list of arguments for recursive invocations of `translatePattern` to encode its subpatterns
-    final case class TranslationStep(makers: List[TreeMaker], subpatterns: List[BoundTree]) {
+    /*final*/ case class TranslationStep(makers: List[TreeMaker], subpatterns: List[BoundTree]) {
       def merge(f: BoundTree => List[TreeMaker]): List[TreeMaker] = makers ::: (subpatterns flatMap f)
       override def toString = if (subpatterns.isEmpty) "" else subpatterns.mkString("(", ", ", ")")
     }
@@ -1611,7 +1611,7 @@ class PatternMatcherOld extends MiniPhase with DenotTransformer {
       override def toString = "<none>"
     }
 
-    final case class Patterns(fixed: List[Pattern], star: Pattern) {
+    /*final*/ case class Patterns(fixed: List[Pattern], star: Pattern) {
       def hasStar      = star != NoPattern
       def starArity    = if (hasStar) 1 else 0
       def nonStarArity = fixed.length
@@ -1645,7 +1645,7 @@ class PatternMatcherOld extends MiniPhase with DenotTransformer {
       *  @param  fixed     The non-sequence types which are extracted
       *  @param  repeated  The sequence type which is extracted
       */
-    final case class Extractor(whole: Type, fixed: List[Type], repeated: Repeated) {
+    /*final*/ case class Extractor(whole: Type, fixed: List[Type], repeated: Repeated) {
       require(whole != NoType, s"expandTypes($whole, $fixed, $repeated)")
 
       def prodArity    = fixed.length
@@ -1666,7 +1666,7 @@ class PatternMatcherOld extends MiniPhase with DenotTransformer {
       override def toString = "%s => %s".format(whole, offeringString)
     }
 
-    final case class TypedPat(pat: Pattern, tpe: Type) {
+    /*final*/ case class TypedPat(pat: Pattern, tpe: Type) {
       override def toString = s"$pat: $tpe"
     }
 
@@ -1677,7 +1677,7 @@ class PatternMatcherOld extends MiniPhase with DenotTransformer {
       *       sequence which can populate at least <elementArity> patterns.
       *  < 0: There are more products than patterns: compile time error.
       */
-    final case class Aligned(patterns: Patterns, extractor: Extractor) {
+    /*final*/ case class Aligned(patterns: Patterns, extractor: Extractor) {
       def elementArity = patterns.nonStarArity - prodArity
       def prodArity    = extractor.prodArity
       def starArity    = patterns.starArity

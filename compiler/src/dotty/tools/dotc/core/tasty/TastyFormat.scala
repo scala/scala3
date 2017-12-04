@@ -147,6 +147,7 @@ Standard-Section: "ASTs" TopLevelStat*
                   NULLconst
                   CLASSconst            Type
                   ENUMconst             Path
+                  SYMBOLconst           NameRef
 
   Type          = Path
                   TYPEREFdirect         sym_ASTRef
@@ -231,7 +232,7 @@ object TastyFormat {
 
   final val header = Array(0x5C, 0xA1, 0xAB, 0x1F)
   val MajorVersion = 1
-  val MinorVersion = 0
+  val MinorVersion = 1
 
   // Name tags
 
@@ -315,6 +316,7 @@ object TastyFormat {
   final val STRINGconst = 77
   final val IMPORTED = 78
   final val RENAMED = 79
+  final val SYMBOLconst = 80
 
   // Cat. 3:    tag AST
 
@@ -575,6 +577,7 @@ object TastyFormat {
     case SUPER => "SUPER"
     case CLASSconst => "CLASSconst"
     case ENUMconst => "ENUMconst"
+    case SYMBOLconst => "SYMBOLconst"
     case SINGLETONtpt => "SINGLETONtpt"
     case SUPERtype => "SUPERtype"
     case TYPEARGtype => "TYPEARGtype"

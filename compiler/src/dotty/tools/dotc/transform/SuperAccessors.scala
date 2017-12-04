@@ -65,7 +65,7 @@ class SuperAccessors(thisPhase: DenotTransformer) {
       ctx.owner.enclosingClass != invalidEnclClass
 
     /** List buffers for new accessor definitions, indexed by class */
-    private val accDefs = mutable.Map[Symbol, mutable.ListBuffer[Tree]]()
+    private val accDefs = newMutableSymbolMap[mutable.ListBuffer[Tree]]
 
     /** A super accessor call corresponding to `sel` */
     private def superAccessorCall(sel: Select)(implicit ctx: Context) = {

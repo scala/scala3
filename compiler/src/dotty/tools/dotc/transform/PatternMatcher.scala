@@ -14,6 +14,7 @@ import Decorators._
 import patmat.Space
 import NameKinds.{UniqueNameKind, PatMatStdBinderName, PatMatCaseName}
 import config.Printers.patmatch
+import reporting.diagnostic.messages._
 
 /** The pattern matching transform.
  *  After this phase, the only Match nodes remaining in the code are simple switches
@@ -76,8 +77,8 @@ object PatternMatcher {
     /** A map from variable symbols to their defining trees
      *  and from labels to their defining plans
      */
-    private val initializer = mutable.Map[Symbol, Tree]()
-    private val labelled = mutable.Map[Symbol, Plan]()
+    private val initializer = newMutableSymbolMap[Tree]
+    private val labelled = newMutableSymbolMap[Plan]
 
     private def newVar(rhs: Tree, flags: FlagSet): TermSymbol =
       ctx.newSymbol(ctx.owner, PatMatStdBinderName.fresh(), Synthetic | Case | flags,
@@ -529,7 +530,7 @@ object PatternMatcher {
         tests1.filter { case(test, outcome) => tests2.get(test) == Some(outcome) }
 
       /** The tests with known outcomes valid at entry to label */
-      val seenAtLabel = mutable.HashMap[Symbol, SeenTests]()
+      val seenAtLabel = newMutableSymbolMap[SeenTests]
 
       class ElimRedundant(seenTests: SeenTests) extends PlanTransform {
         override def apply(plan: TestPlan): Plan = {
@@ -609,12 +610,12 @@ object PatternMatcher {
       type SeenVars = Map[RHS, TermSymbol]
 
       /** The variables known at entry to label */
-      val seenAtLabel = mutable.HashMap[Symbol, SeenVars]()
+      val seenAtLabel = newMutableSymbolMap[SeenVars]
 
       /** Parameters of label; these are passed additional variables
        *  which are known at all callsites.
        */
-      val paramsOfLabel = mutable.HashMap[Symbol, SeenVars]()
+      val paramsOfLabel = newMutableSymbolMap[SeenVars]
 
       class Merge(seenVars: SeenVars) extends PlanTransform {
         override val treeMap = new TreeMap {
@@ -811,7 +812,8 @@ object PatternMatcher {
           plan :: Nil
       }
 
-      recur(plan)
+      if (isSwitchableType(scrutinee.tpe.widen)) recur(plan)
+      else Nil
     }
 
     /** Emit cases of a switch */
@@ -908,7 +910,7 @@ object PatternMatcher {
           tpes.toSet.size: Int // without the type ascription, testPickling fails because of #2840.
         }
         if (numConsts(resultCases) < numConsts(original.cases))
-          ctx.warning(i"could not emit switch for @switch annotated match", original.pos)
+          ctx.warning(UnableToEmitSwitch(), original.pos)
       case _ =>
     }
 

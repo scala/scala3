@@ -67,7 +67,7 @@ object OverridingPairs {
     }
 
     private val subParents = {
-      val subParents = new mutable.HashMap[Symbol, BitSet]
+      val subParents = newMutableSymbolMap[BitSet]
       for (bc <- base.info.baseClasses)
         subParents(bc) = BitSet(parents.indices.filter(parents(_).derivesFrom(bc)): _*)
       subParents

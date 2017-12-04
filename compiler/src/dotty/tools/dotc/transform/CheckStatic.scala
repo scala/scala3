@@ -11,7 +11,8 @@ import Flags._
 import Contexts.Context
 import Symbols._
 import Constants._
-import Denotations._, SymDenotations._
+import Denotations._
+import SymDenotations._
 import Decorators.StringInterpolators
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.core.Annotations.ConcreteAnnotation
@@ -21,6 +22,7 @@ import Names.Name
 import NameOps._
 import Decorators._
 import TypeUtils._
+import reporting.diagnostic.messages.{MissingCompanionForStatic, StaticFieldsOnlyAllowedInObjects}
 
 /** A transformer that check that requirements of Static fields\methods are implemented:
   *  1. Only objects can have members annotated with `@static`
@@ -45,7 +47,7 @@ class CheckStatic extends MiniPhase {
     for(defn <- defns) {
       if (defn.symbol.hasAnnotation(ctx.definitions.ScalaStaticAnnot)) {
         if(!ctx.owner.is(Module)) {
-          ctx.error("@static fields are only allowed inside objects", defn.pos)
+          ctx.error(StaticFieldsOnlyAllowedInObjects(defn.symbol), defn.pos)
         }
 
         if (defn.isInstanceOf[ValDef] && hadNonStaticField) {
@@ -56,7 +58,7 @@ class CheckStatic extends MiniPhase {
         def clashes = companion.asClass.membersNamed(defn.name)
 
         if (!companion.exists) {
-          ctx.error("object that contains @static members should have companion class", defn.pos)
+          ctx.error(MissingCompanionForStatic(defn.symbol), defn.pos)
         } else if (clashes.exists) {
           ctx.error("companion classes cannot define members with same name as @static member", defn.pos)
          } else if (defn.symbol.is(Flags.Mutable) && companion.is(Flags.Trait)) {

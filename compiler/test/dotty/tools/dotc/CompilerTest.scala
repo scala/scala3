@@ -149,7 +149,8 @@ abstract class CompilerTest {
 
   private def expectedErrors(filePath: String): List[ErrorsInFile] = expectedErrors(List(filePath))
 
-  private def isNegTest(testPath: String) = testPath.contains("/neg/")
+  private def isNegTest(testPath: String) =
+    testPath.contains("/neg/") || testPath.contains("/neg-custom-args/") || testPath.contains("/neg-tailcall/")
 
   private def compileArgs(args: Array[String], expectedErrorsPerFile: List[ErrorsInFile])
       (implicit defaultOptions: List[String]): Unit = {

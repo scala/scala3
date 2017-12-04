@@ -20,7 +20,7 @@ object Bench extends Driver {
       val start = System.nanoTime()
       val r = super.doCompile(compiler, fileNames)
       println(s"time elapsed: ${(System.nanoTime - start) / 1000000}ms")
-      if (ctx.settings.prompt.value) {
+      if (ctx.settings.Xprompt.value) {
         print("hit <return> to continue >")
         System.in.read()
         println()

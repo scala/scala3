@@ -3,7 +3,7 @@ package dotc
 package typer
 
 import core._
-import ast.{Trees, untpd, tpd, TreeInfo}
+import ast.{TreeInfo, Trees, tpd, untpd}
 import util.Positions._
 import util.Stats.track
 import Trees.Untyped
@@ -26,13 +26,14 @@ import EtaExpansion._
 import Inferencing._
 
 import collection.mutable
-import config.Printers.{typr, unapp, overload}
+import config.Printers.{overload, typr, unapp}
 import TypeApplications._
 
 import language.implicitConversions
 import reporting.diagnostic.Message
 import reporting.trace
 import Constants.{Constant, IntTag, LongTag}
+import dotty.tools.dotc.reporting.diagnostic.messages.UnapplyInvalidNumberOfArguments
 
 import scala.collection.mutable.ListBuffer
 
@@ -969,7 +970,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
           case _ => args
         }
         if (argTypes.length != bunchedArgs.length) {
-          ctx.error(em"wrong number of argument patterns for $qual; expected: ($argTypes%, %)", tree.pos)
+          ctx.error(UnapplyInvalidNumberOfArguments(qual, argTypes), tree.pos)
           argTypes = argTypes.take(args.length) ++
             List.fill(argTypes.length - args.length)(WildcardType)
         }

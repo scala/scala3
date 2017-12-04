@@ -8,12 +8,13 @@ import SymDenotations._, unpickleScala2.Scala2Unpickler._, Constants._, Annotati
 import NameKinds.{ModuleClassName, DefaultGetterName}
 import ast.tpd._
 import java.io.{ ByteArrayInputStream, DataInputStream, File, IOException }
+import java.nio
 import java.lang.Integer.toHexString
 import scala.collection.{ mutable, immutable }
 import scala.collection.mutable.{ ListBuffer, ArrayBuffer }
 import scala.annotation.switch
 import typer.Checking.checkNonCyclic
-import io.AbstractFile
+import io.{AbstractFile, PlainFile, Path, ZipArchive, JarArchive}
 import scala.util.control.NonFatal
 
 object ClassfileParser {
@@ -781,7 +782,30 @@ class ClassfileParser(
 
       if (scan(tpnme.TASTYATTR)) {
         val attrLen = in.nextInt
-        return unpickleTASTY(in.nextBytes(attrLen))
+        if (attrLen == 0) { // A tasty attribute implies the existence of the .tasty file
+          def readTastyForClass(jpath: nio.file.Path): Array[Byte] = {
+            val plainFile = new PlainFile(io.File(jpath).changeExtension("tasty"))
+            if (plainFile.exists) plainFile.toByteArray
+            else {
+              ctx.error("Could not find " + plainFile)
+              Array.empty
+            }
+          }
+          val tastyBytes = classfile.underlyingSource match { // TODO: simplify when #3552 is fixed
+            case None =>
+              ctx.error("Could not load TASTY from .tasty for virtual file " + classfile)
+              Array.empty[Byte]
+            case Some(jar: ZipArchive) => // We are in a jar
+              val jarFile = JarArchive.open(io.File(jar.jpath))
+              try readTastyForClass(jarFile.jpath.resolve(classfile.path))
+              finally jarFile.close()
+            case _ =>
+              readTastyForClass(classfile.jpath)
+          }
+          if (tastyBytes.nonEmpty)
+            return unpickleTASTY(tastyBytes)
+        }
+        else return unpickleTASTY(in.nextBytes(attrLen))
       }
 
       if (scan(tpnme.ScalaATTR) && !scalaUnpickleWhitelist.contains(classRoot.name)) {

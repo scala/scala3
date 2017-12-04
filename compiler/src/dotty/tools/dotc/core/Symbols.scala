@@ -31,6 +31,7 @@ import collection.mutable
 import io.AbstractFile
 import language.implicitConversions
 import util.{NoSource, DotClass}
+import scala.collection.JavaConverters._
 
 /** Creation methods for symbols */
 trait Symbols { this: Context =>
@@ -129,6 +130,9 @@ trait Symbols { this: Context =>
     }
     newClassSymbol(owner, name, flags, completer, privateWithin, coord, assocFile)
   }
+
+  def newRefinedClassSymbol = newCompleteClassSymbol(
+    ctx.owner, tpnme.REFINE_CLASS, NonMember, parents = Nil)
 
   /** Create a module symbol with associated module class
    *  from its non-info fields and a function producing the info
@@ -604,7 +608,7 @@ object Symbols {
 
     /** If this is either:
       *   - a top-level class and `-Yretain-trees` is set
-     *    - a top-level class loaded from TASTY and `-Xlink-optimise` is set
+     *    - a top-level class loaded from TASTY and `-tasty` or `-Xlink` is set
       * then return the TypeDef tree (possibly wrapped inside PackageDefs) for this class, otherwise EmptyTree.
       * This will force the info of the class.
       */
@@ -615,7 +619,8 @@ object Symbols {
         assert(myTree.isEmpty)
         val body = unpickler.body(ctx.addMode(Mode.ReadPositions))
         myTree = body.headOption.getOrElse(tpd.EmptyTree)
-        unpickler = null
+        if (!ctx.settings.fromTasty.value)
+          unpickler = null
       }
       myTree
     }
@@ -678,4 +683,59 @@ object Symbols {
   def currentClass(implicit ctx: Context): ClassSymbol = ctx.owner.enclosingClass.asClass
 
   @sharable var stubs: List[Symbol] = Nil // diagnostic only
+
+  /* Mutable map from symbols any T */
+  class MutableSymbolMap[T](private[Symbols] val value: java.util.IdentityHashMap[Symbol, T]) extends AnyVal {
+
+    def apply(sym: Symbol): T = value.get(sym)
+
+    def get(sym: Symbol): Option[T] = Option(value.get(sym))
+
+    def getOrElse[U >: T](sym: Symbol, default: => U): U = {
+      val v = value.get(sym)
+      if (v != null) v else default
+    }
+
+    def getOrElseUpdate(sym: Symbol, op: => T): T = {
+      val v = value.get(sym)
+      if (v != null) v
+      else {
+        val v = op
+        assert(v != null)
+        value.put(sym, v)
+        v
+      }
+    }
+
+    def update(sym: Symbol, x: T): Unit = {
+      assert(x != null)
+      value.put(sym, x)
+    }
+    def put(sym: Symbol, x: T): T = {
+      assert(x != null)
+      value.put(sym, x)
+    }
+
+    def -=(sym: Symbol): Unit = value.remove(sym)
+    def remove(sym: Symbol): Option[T] = Option(value.remove(sym))
+
+    def contains(sym: Symbol): Boolean = value.containsKey(sym)
+
+    def isEmpty: Boolean = value.isEmpty
+
+    def clear(): Unit = value.clear()
+
+    def filter(p: ((Symbol, T)) => Boolean): Map[Symbol, T] =
+      value.asScala.toMap.filter(p)
+
+    def iterator: Iterator[(Symbol, T)] = value.asScala.iterator
+
+    def keysIterator: Iterator[Symbol] = value.keySet().asScala.iterator
+
+    def toMap: Map[Symbol, T] = value.asScala.toMap
+  }
+
+  @inline def newMutableSymbolMap[T]: MutableSymbolMap[T] =
+    new MutableSymbolMap(new java.util.IdentityHashMap[Symbol, T]())
+
 }

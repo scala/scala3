@@ -5,14 +5,12 @@ object Test {
 
   class B
 
-  val x: C[C] = ??? // error: missing type parameter(s)
+  val x: C[C] = ??? // error: Type argument has not the same kind as its bound
   val y: C2[C] = ???
 
   def f[T] = ???
 
   def f2[T[X]] = ???
 
-  f[C] // error: missing type parameter(s)
   f2[C]
-
 }

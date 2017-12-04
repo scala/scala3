@@ -22,7 +22,7 @@ package object repl {
     def showUser(implicit ctx: Context): String = {
       val printer = new UserFacingPrinter(ctx)
       val text = printer.dclText(s)
-      text.mkString(ctx.settings.pageWidth.value)
+      text.mkString(ctx.settings.pageWidth.value, ctx.settings.printLines.value)
     }
   }
 

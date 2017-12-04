@@ -218,7 +218,7 @@ object RefChecks {
             ";\n (Note that %s is abstract,\n  and is therefore overridden by concrete %s)".format(
               infoStringWithLocation(other),
               infoStringWithLocation(member))
-          else if (ctx.settings.debug.value)
+          else if (ctx.settings.Ydebug.value)
             err.typeMismatchMsg(memberTp(self), otherTp(self))
           else ""
 
@@ -355,7 +355,7 @@ object RefChecks {
         other.accessedFieldOrGetter.is(Mutable, butNot = Lazy)) {
         // !?! this is not covered by the spec. We need to resolve this either by changing the spec or removing the test here.
         // !!! is there a !?! convention? I'm !!!ing this to make sure it turns up on my searches.
-        if (!ctx.settings.overrideVars.value)
+        if (!ctx.settings.YoverrideVars.value)
           overrideError("cannot override a mutable variable")
       } else if (member.isAnyOverride &&
         !(member.owner.thisType.baseClasses exists (_ isSubClass other.owner)) &&
@@ -685,17 +685,15 @@ object RefChecks {
     }
     // Similar to deprecation: check if the symbol is marked with @migration
     // indicating it has changed semantics between versions.
-    if (sym.hasAnnotation(defn.MigrationAnnot) && ctx.settings.Xmigration.value != NoScalaVersion) {
-      val symVersion: scala.util.Try[ScalaVersion] = sym.migrationVersion.get
-      val changed = symVersion match {
-        case scala.util.Success(v) =>
-          ctx.settings.Xmigration.value < v
+    val xMigrationValue = ctx.settings.Xmigration.value
+    if (sym.hasAnnotation(defn.MigrationAnnot) && xMigrationValue != NoScalaVersion) {
+      sym.migrationVersion.get match {
+        case scala.util.Success(symVersion) if xMigrationValue < symVersion=>
+          ctx.warning(SymbolChangedSemanticsInVersion(sym, symVersion), pos)
         case Failure(ex) =>
-          ctx.warning(s"${sym.showLocated} has an unparsable version number: ${ex.getMessage()}", pos)
-          false
+          ctx.warning(SymbolHasUnparsableVersionNumber(sym, ex.getMessage()), pos)
+        case _ =>
       }
-      if (changed)
-        ctx.warning(s"${sym.showLocated} has changed semantics in version $symVersion:\n${sym.migrationMessage.get}")
     }
     /*  (Not enabled yet)
        *  See an explanation of compileTimeOnly in its scaladoc at scala.annotation.compileTimeOnly.

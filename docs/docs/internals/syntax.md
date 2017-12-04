@@ -99,9 +99,9 @@ SimpleLiteral     ::=  [‘-’] integerLiteral
                     |  booleanLiteral
                     |  characterLiteral
                     |  stringLiteral
+                    |  symbolLiteral
 Literal           ::=  SimpleLiteral
                     |  processedStringLiteral
-                    |  symbolLiteral
                     |  ‘null’
 
 QualId            ::=  id {‘.’ id}
@@ -122,6 +122,8 @@ Type              ::=  [‘implicit’] FunArgTypes ‘=>’ Type               
                     |  InfixType
 FunArgTypes       ::=  InfixType
                     |  ‘(’ [ FunArgType {‘,’ FunArgType } ] ‘)’
+                    |  '(' TypedFunParam {',' TypedFunParam } ')'
+TypedFunParam     ::=  id ':' Type
 InfixType         ::=  RefinedType {id [nl] RefinedType}                        InfixOp(t1, op, t2)
 RefinedType       ::=  WithType {[nl] Refinement}                               RefinedTypeTree(t, ds)
 WithType          ::=  AnnotType {‘with’ AnnotType}                             (deprecated)

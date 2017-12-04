@@ -194,6 +194,7 @@ class Definitions {
         else NoSymbol)
     cls
   }
+  lazy val ScalaPackageObjectRef = ctx.requiredModuleRef("scala.package")
   lazy val JavaPackageVal = ctx.requiredPackage("java")
   lazy val JavaLangPackageVal = ctx.requiredPackage("java.lang")
   // fundamental modules
@@ -545,8 +546,12 @@ class Definitions {
   lazy val FunctionXXLType: TypeRef         = ctx.requiredClassRef("scala.FunctionXXL")
   def FunctionXXLClass(implicit ctx: Context) = FunctionXXLType.symbol.asClass
 
-  lazy val SymbolType: TypeRef                  = ctx.requiredClassRef("scala.Symbol")
-  def SymbolClass(implicit ctx: Context) = SymbolType.symbol.asClass
+  lazy val ScalaSymbolType: TypeRef                    = ctx.requiredClassRef("scala.Symbol")
+  def ScalaSymbolClass(implicit ctx: Context)          = ScalaSymbolType.symbol.asClass
+  def ScalaSymbolModule(implicit ctx: Context)         = ScalaSymbolClass.companionModule
+    lazy val ScalaSymbolModule_applyR                  = ScalaSymbolModule.requiredMethodRef(nme.apply, List(StringType))
+    def ScalaSymbolModule_apply(implicit ctx: Context) = ScalaSymbolModule_applyR.symbol
+
   lazy val DynamicType: TypeRef                 = ctx.requiredClassRef("scala.Dynamic")
   def DynamicClass(implicit ctx: Context) = DynamicType.symbol.asClass
   lazy val OptionType: TypeRef                  = ctx.requiredClassRef("scala.Option")
@@ -702,7 +707,8 @@ class Definitions {
       val tsym = ft.typeSymbol
       if (isFunctionClass(tsym)) {
         val targs = ft.dealias.argInfos
-        Some(targs.init, targs.last, tsym.name.isImplicitFunction)
+        if (targs.isEmpty) None
+        else Some(targs.init, targs.last, tsym.name.isImplicitFunction)
       }
       else None
     }
@@ -914,12 +920,18 @@ class Definitions {
   def isProductSubType(tp: Type)(implicit ctx: Context) =
     tp.derivesFrom(ProductType.symbol)
 
-  /** Is `tp` (an alias) of either a scala.FunctionN or a scala.ImplicitFunctionN? */
-  def isFunctionType(tp: Type)(implicit ctx: Context) = {
+  /** Is `tp` (an alias) of either a scala.FunctionN or a scala.ImplicitFunctionN
+   *  instance?
+   */
+  def isNonDepFunctionType(tp: Type)(implicit ctx: Context) = {
     val arity = functionArity(tp)
     val sym = tp.dealias.typeSymbol
     arity >= 0 && isFunctionClass(sym) && tp.isRef(FunctionType(arity, sym.name.isImplicitFunction).typeSymbol)
   }
+
+  /** Is `tp` a representation of a (possibly depenent) function type or an alias of such? */
+  def isFunctionType(tp: Type)(implicit ctx: Context) =
+    isNonDepFunctionType(tp.dropDependentRefinement)
 
   // Specialized type parameters defined for scala.Function{0,1,2}.
   private lazy val Function1SpecializedParams: collection.Set[Type] =

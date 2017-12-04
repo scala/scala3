@@ -23,13 +23,13 @@ import transform.SymUtils._
 class Devalify extends Optimisation {
   import ast.tpd._
 
-  val timesUsed = mutable.HashMap[Symbol, Int]()
-  val timesUsedAsType = mutable.HashMap[Symbol, Int]()
+  val timesUsed = newMutableSymbolMap[Int]
+  val timesUsedAsType = newMutableSymbolMap[Int]
 
   val defined = mutable.HashSet[Symbol]()
-  val usedInInnerClass = mutable.HashMap[Symbol, Int]()
+  val usedInInnerClass = newMutableSymbolMap[Int]
   // Either a duplicate or a read through series of immutable fields
-  val copies = mutable.HashMap[Symbol, Tree]()
+  val copies = newMutableSymbolMap[Tree]
 
   def clear(): Unit = {
     timesUsed.clear()
@@ -43,19 +43,19 @@ class Devalify extends Optimisation {
     tp.foreachPart(x => x match {
       case TermRef(NoPrefix, _) =>
         val b4 = timesUsedAsType.getOrElseUpdate(x.termSymbol, 0)
-        timesUsedAsType.put(x.termSymbol, b4 + 1)
+        timesUsedAsType.update(x.termSymbol, b4 + 1)
       case _ =>
     })
   }
 
-  def doVisit(tree: Tree, used: mutable.HashMap[Symbol, Int])(implicit ctx: Context): Unit = tree match {
+  def doVisit(tree: Tree, used: MutableSymbolMap[Int])(implicit ctx: Context): Unit = tree match {
     case valdef: ValDef if !valdef.symbol.is(Param | Mutable | Module | Lazy) &&
                            valdef.symbol.exists && !valdef.symbol.owner.isClass =>
       defined += valdef.symbol
 
       dropCasts(valdef.rhs) match {
         case t: Tree if readingOnlyVals(t) =>
-          copies.put(valdef.symbol, valdef.rhs)
+          copies.update(valdef.symbol, valdef.rhs)
         case _ =>
       }
       visitType(valdef.symbol.info)
@@ -63,7 +63,7 @@ class Devalify extends Optimisation {
       val normalized = t.tpt.tpe.normalizedPrefix
       val symIfExists = normalized.termSymbol
       val b4 = used.getOrElseUpdate(symIfExists, 0)
-      used.put(symIfExists, b4 + 1)
+      used(symIfExists) = b4 + 1
       visitType(normalized)
 
     case valdef: ValDef if valdef.symbol.exists && !valdef.symbol.owner.isClass &&
@@ -77,7 +77,7 @@ class Devalify extends Optimisation {
     case t: TypeApply   => t.args.foreach(x => visitType(x.tpe))
     case t: RefTree =>
       val b4 = used.getOrElseUpdate(t.symbol, 0)
-      used.put(t.symbol, b4 + 1)
+      used.update(t.symbol, b4 + 1)
     case _ =>
   }
 
@@ -107,11 +107,11 @@ class Devalify extends Optimisation {
   }
 
   def transformer(implicit ctx: Context): Tree => Tree = {
-    val valsToDrop = defined -- timesUsed.keySet -- timesUsedAsType.keySet
+    val valsToDrop = defined -- timesUsed.keysIterator -- timesUsedAsType.keysIterator
     val copiesToReplaceAsDuplicates = copies.filter { x =>
       val rhs = dropCasts(x._2)
       rhs.isInstanceOf[Literal] || (!rhs.symbol.owner.isClass && !rhs.symbol.is(Method | Mutable))
-    } -- timesUsedAsType.keySet
+    } -- timesUsedAsType.keysIterator
     // TODO: if a non-synthetic val is duplicate of a synthetic one, rename a synthetic one and drop synthetic flag?
 
     val copiesToReplaceAsUsedOnce =
@@ -119,9 +119,9 @@ class Devalify extends Optimisation {
         .flatMap(x => copies.get(x._1) match {
           case Some(tr) => List((x._1, tr))
           case None => Nil
-        }) -- timesUsedAsType.keySet
+        }) -- timesUsedAsType.keysIterator
 
-    val replacements = copiesToReplaceAsDuplicates ++ copiesToReplaceAsUsedOnce -- usedInInnerClass.keySet
+    val replacements = copiesToReplaceAsDuplicates ++ copiesToReplaceAsUsedOnce -- usedInInnerClass.keysIterator
 
     val deepReplacer = new TreeMap() {
       override def transform(tree: Tree)(implicit ctx: Context): Tree = {

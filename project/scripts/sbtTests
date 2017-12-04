@@ -11,26 +11,48 @@ cat sbtdotr1.out
 if grep -e "dotr test ok" sbtdotr1.out; then
     echo "output ok"
 else
+    echo "failed output check"
     exit -1
 fi
 
 # check that `sbt dotc` compiles and `sbt dotr` runs it
-echo "testing sbt dotc -tasty and dotr -classpath"
+echo "testing sbt dotc -from-tasty and dotr -classpath"
 mkdir out/scriptedtest1
 mkdir out/scriptedtest2
-./project/scripts/sbt ";dotc tests/pos/sbtDotrTest.scala -d out/scriptedtest1/; dotc -tasty -classpath out/scriptedtest1/ -d out/scriptedtest2/ dotrtest.Test; dotr -classpath out/scriptedtest2/ dotrtest.Test" > sbtdotr2.out
+./project/scripts/sbt ";dotc tests/pos/sbtDotrTest.scala -d out/scriptedtest1/; dotc -from-tasty -classpath out/scriptedtest1/ -d out/scriptedtest2/ dotrtest.Test; dotr -classpath out/scriptedtest2/ dotrtest.Test" > sbtdotr2.out
 cat sbtdotr2.out
 if grep -e "dotr test ok" sbtdotr2.out; then
     echo "output ok"
 else
+    echo "failed output check"
+    exit -1
+fi
+
+# check that `sbt dotc -decompile` runs
+echo "testing sbt dotc -decompile"
+./project/scripts/sbt ";dotc -decompile -color:never -classpath out/scriptedtest1 dotrtest.Test" >  sbtdotc3.out
+cat sbtdotc3.out
+if grep -e "def main(args: Array\[String\]): Unit =" sbtdotc3.out; then
+    echo "output ok"
+else
+    echo "failed output check"
     exit -1
 fi
 echo "testing sbt dotr with no -classpath"
-
-./project/scripts/sbt ";dotc tests/pos/sbtDotrTest.scala; dotr dotrtest.Test" > sbtdotp1.out
-cat sbtdotp1.out
-if grep -e "dotr test ok" sbtdotp1.out; then
+./project/scripts/sbt ";dotc tests/pos/sbtDotrTest.scala; dotr dotrtest.Test" > sbtdotr3.out
+cat sbtdotr3.out
+if grep -e "dotr test ok" sbtdotr3.out; then
     echo "output ok"
 else
+    exit -1
+fi
+
+echo "testing loading tasty from .tasty file in jar"
+./project/scripts/sbt ";dotc -d out/scriptedtest4.jar -YemitTasty tests/pos/sbtDotrTest.scala; dotc -decompile -classpath out/scriptedtest4.jar -color:never dotrtest.Test" > sbtdot4.out
+cat sbtdot4.out
+if grep -e "def main(args: Array\[String\]): Unit =" sbtdot4.out; then
+    echo "output ok"
+else
+    echo "failed output check"
     exit -1
 fi

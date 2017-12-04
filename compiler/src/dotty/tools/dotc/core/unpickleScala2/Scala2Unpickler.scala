@@ -425,7 +425,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
 
     // symbols that were pickled with Pickler.writeSymInfo
     val nameref = readNat()
-    var name = at(nameref, readName)
+    var name = at(nameref, () => readName()(ctx))
     val owner = readSymbolRef()
 
     var flags = unpickleScalaFlags(readLongNat(), name.isTypeName)
@@ -543,12 +543,12 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
         denot.privateWithin =
           if (!isSymbolRef(inforef)) NoSymbol
           else {
-            val pw = at(inforef, readSymbol)
+            val pw = at(inforef, () => readSymbol())
             inforef = readNat()
             pw
           }
         // println("reading type for " + denot) // !!! DEBUG
-        val tp = at(inforef, readType)
+        val tp = at(inforef, () => readType()(ctx))
         denot match {
           case denot: ClassDenotation =>
             val selfInfo = if (atEnd) NoType else readTypeRef()
@@ -599,11 +599,11 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
       val end = readNat() + readIndex
       if (tag == POLYtpe) {
         val unusedRestpeRef = readNat()
-        until(end, readSymbolRef).asInstanceOf[List[TypeSymbol]]
+        until(end, () => readSymbolRef()(ctx)).asInstanceOf[List[TypeSymbol]]
       } else Nil
     }
     private def loadTypeParams(implicit ctx: Context) =
-      atReadPos(index(infoRef), readTypeParams)
+      atReadPos(index(infoRef), () => readTypeParams()(ctx))
 
     /** Force reading type params early, we need them in setClassInfo of subclasses. */
     def init()(implicit ctx: Context) = loadTypeParams
@@ -741,7 +741,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
           }
           else
             TypeRef(pre, sym.name.asTypeName)
-        val args = until(end, readTypeRef)
+        val args = until(end, () => readTypeRef())
         if (sym == defn.ByNameParamClass2x) ExprType(args.head)
         else if (args.nonEmpty) tycon.safeAppliedTo(EtaExpandIfHK(sym.typeParams, args.map(translateTempPoly)))
         else if (sym.typeParams.nonEmpty) tycon.EtaExpand(sym.typeParams)
@@ -752,7 +752,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
         val clazz = readSymbolRef()
         val decls = symScope(clazz)
         symScopes(clazz) = EmptyScope // prevent further additions
-        val parents = until(end, readTypeRef)
+        val parents = until(end, () => readTypeRef())
         val parent = parents.reduceLeft(AndType(_, _))
         if (decls.isEmpty) parent
         else {
@@ -765,10 +765,10 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
         }
       case CLASSINFOtpe =>
         val clazz = readSymbolRef()
-        TempClassInfoType(until(end, readTypeRef), symScope(clazz), clazz)
+        TempClassInfoType(until(end, () => readTypeRef()), symScope(clazz), clazz)
       case METHODtpe | IMPLICITMETHODtpe =>
         val restpe = readTypeRef()
-        val params = until(end, readSymbolRef).asInstanceOf[List[TermSymbol]]
+        val params = until(end, () => readSymbolRef()).asInstanceOf[List[TermSymbol]]
         def isImplicit =
           tag == IMPLICITMETHODtpe ||
           params.nonEmpty && (params.head is Implicit)
@@ -776,15 +776,15 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
         maker.fromSymbols(params, restpe)
       case POLYtpe =>
         val restpe = readTypeRef()
-        val typeParams = until(end, readSymbolRef)
+        val typeParams = until(end, () => readSymbolRef())
         if (typeParams.nonEmpty) TempPolyType(typeParams.asInstanceOf[List[TypeSymbol]], restpe.widenExpr)
         else ExprType(restpe)
       case EXISTENTIALtpe =>
         val restpe = readTypeRef()
-        val boundSyms = until(end, readSymbolRef)
+        val boundSyms = until(end, () => readSymbolRef())
         elimExistentials(boundSyms, restpe)
       case ANNOTATEDtpe =>
-        AnnotatedType.make(readTypeRef(), until(end, readAnnotationRef))
+        AnnotatedType.make(readTypeRef(), until(end, () => readAnnotationRef()))
       case _ =>
         noSuchTypeTag(tag, end)
     }
@@ -795,7 +795,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
     val end = readNat() + readIndex
     if (tag == POLYtpe) {
       val unusedRestperef = readNat()
-      until(end, readSymbolRef)
+      until(end, () => readSymbolRef())
     } else Nil
   }
 
@@ -859,26 +859,26 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
   }
 
   protected def readDisambiguatedSymbolRef(p: Symbol => Boolean)(implicit ctx: Context): Symbol =
-    at(readNat(), readDisambiguatedSymbol(p))
+    at(readNat(), () => readDisambiguatedSymbol(p)())
 
-  protected def readNameRef()(implicit ctx: Context): Name = at(readNat(), readName)
+  protected def readNameRef()(implicit ctx: Context): Name = at(readNat(), () => readName())
   protected def readTypeRef()(implicit ctx: Context): Type = at(readNat(), () => readType()) // after the NMT_TRANSITION period, we can leave off the () => ... ()
-  protected def readConstantRef()(implicit ctx: Context): Constant = at(readNat(), readConstant)
+  protected def readConstantRef()(implicit ctx: Context): Constant = at(readNat(), () => readConstant())
 
   protected def readTypeNameRef()(implicit ctx: Context): TypeName = readNameRef().toTypeName
   protected def readTermNameRef()(implicit ctx: Context): TermName = readNameRef().toTermName
 
-  protected def readAnnotationRef()(implicit ctx: Context): Annotation = at(readNat(), readAnnotation)
+  protected def readAnnotationRef()(implicit ctx: Context): Annotation = at(readNat(), () => readAnnotation())
 
   protected def readModifiersRef(isType: Boolean)(implicit ctx: Context): Modifiers = at(readNat(), () => readModifiers(isType))
-  protected def readTreeRef()(implicit ctx: Context): Tree = at(readNat(), readTree)
+  protected def readTreeRef()(implicit ctx: Context): Tree = at(readNat(), () => readTree())
 
   /** Read an annotation argument, which is pickled either
    *  as a Constant or a Tree.
    */
   protected def readAnnotArg(i: Int)(implicit ctx: Context): Tree = bytes(index(i)) match {
-    case TREE => at(i, readTree)
-    case _ => Literal(at(i, readConstant))
+    case TREE => at(i, () => readTree())
+    case _ => Literal(at(i, () => readConstant()))
   }
 
   /** Read a ClassfileAnnotArg (argument to a classfile annotation)
@@ -899,8 +899,8 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
   }
 
   protected def readClassfileAnnotArg(i: Int)(implicit ctx: Context): Tree = bytes(index(i)) match {
-    case ANNOTINFO => at(i, readAnnotInfoArg)
-    case ANNOTARGARRAY => at(i, readArrayAnnotArg)
+    case ANNOTINFO => at(i, () => readAnnotInfoArg())
+    case ANNOTARGARRAY => at(i, () => readArrayAnnotArg())
     case _ => readAnnotArg(i)
   }
 
@@ -916,7 +916,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
         val argref = readNat()
         t += {
           if (isNameEntry(argref)) {
-            val name = at(argref, readName)
+            val name = at(argref, () => readName())
             val arg = readClassfileAnnotArg(readNat())
             NamedArg(name.asTermName, arg)
           } else readAnnotArg(argref)
@@ -1007,13 +1007,13 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
       case PACKAGEtree =>
         setSym()
         val pid = readTreeRef().asInstanceOf[RefTree]
-        val stats = until(end, readTreeRef)
+        val stats = until(end, () => readTreeRef())
         PackageDef(pid, stats)
 
       case CLASStree =>
         setSymModsName()
         val impl = readTemplateRef()
-        val tparams = until(end, readTypeDefRef)
+        val tparams = until(end, () => readTypeDefRef())
         val cls = symbol.asClass
         val ((constr: DefDef) :: Nil, stats) =
           impl.body.partition(_.symbol == cls.primaryConstructor)
@@ -1031,8 +1031,8 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
 
       case DEFDEFtree =>
         setSymModsName()
-        val tparams = times(readNat(), readTypeDefRef)
-        val vparamss = times(readNat(), () => times(readNat(), readValDefRef))
+        val tparams = times(readNat(), () => readTypeDefRef())
+        val vparamss = times(readNat(), () => times(readNat(), () => readValDefRef()))
         val tpt = readTreeRef()
         val rhs = readTreeRef()
         DefDef(symbol.asTerm, rhs)
@@ -1040,13 +1040,13 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
       case TYPEDEFtree =>
         setSymModsName()
         val rhs = readTreeRef()
-        val tparams = until(end, readTypeDefRef)
+        val tparams = until(end, () => readTypeDefRef())
         TypeDef(symbol.asType)
 
       case LABELtree =>
         setSymName()
         val rhs = readTreeRef()
-        val params = until(end, readIdentRef)
+        val params = until(end, () => readIdentRef())
         val ldef = DefDef(symbol.asTerm, rhs)
         def isCaseLabel(sym: Symbol) = sym.name.startsWith(nme.CASEkw.toString)
         if (isCaseLabel(symbol)) ldef
@@ -1067,15 +1067,15 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
 
       case TEMPLATEtree =>
         setSym()
-        val parents = times(readNat(), readTreeRef)
+        val parents = times(readNat(), () => readTreeRef())
         val self = readValDefRef()
-        val body = until(end, readTreeRef)
+        val body = until(end, () => readTreeRef())
         untpd.Template(???, parents, self, body) // !!! TODO: pull out primary constructor
           .withType(symbol.namedType)
 
       case BLOCKtree =>
         val expr = readTreeRef()
-        val stats = until(end, readTreeRef)
+        val stats = until(end, () => readTreeRef())
         Block(stats, expr)
 
       case CASEtree =>
@@ -1085,7 +1085,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
         CaseDef(pat, guard, body)
 
       case ALTERNATIVEtree =>
-        Alternative(until(end, readTreeRef))
+        Alternative(until(end, () => readTreeRef()))
 
       case STARtree =>
         readTreeRef()
@@ -1097,19 +1097,19 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
 
       case UNAPPLYtree =>
         val fun = readTreeRef()
-        val args = until(end, readTreeRef)
+        val args = until(end, () => readTreeRef())
         UnApply(fun, Nil, args, defn.AnyType) // !!! this is wrong in general
 
       case ARRAYVALUEtree =>
         val elemtpt = readTreeRef()
-        val trees = until(end, readTreeRef)
+        val trees = until(end, () => readTreeRef())
         SeqLiteral(trees, elemtpt)
           // note can't deal with trees passed to Java methods as arrays here
 
       case FUNCTIONtree =>
         setSym()
         val body = readTreeRef()
-        val vparams = until(end, readValDefRef)
+        val vparams = until(end, () => readValDefRef())
         val applyType = MethodType(vparams map (_.name), vparams map (_.tpt.tpe), body.tpe)
         val applyMeth = ctx.newSymbol(symbol.owner, nme.apply, Method, applyType)
         Closure(applyMeth, Function.const(body.changeOwner(symbol, applyMeth)) _)
@@ -1127,7 +1127,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
 
       case MATCHtree =>
         val selector = readTreeRef()
-        val cases = until(end, readCaseDefRef)
+        val cases = until(end, () => readCaseDefRef())
         Match(selector, cases)
 
       case RETURNtree =>
@@ -1137,7 +1137,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
       case TREtree =>
         val block = readTreeRef()
         val finalizer = readTreeRef()
-        val catches = until(end, readCaseDefRef)
+        val catches = until(end, () => readCaseDefRef())
         Try(block, catches, finalizer)
 
       case THROWtree =>
@@ -1153,12 +1153,12 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
 
       case TYPEAPPLYtree =>
         val fun = readTreeRef()
-        val args = until(end, readTreeRef)
+        val args = until(end, () => readTreeRef())
         TypeApply(fun, args)
 
       case APPLYtree =>
         val fun = readTreeRef()
-        val args = until(end, readTreeRef)
+        val args = until(end, () => readTreeRef())
         /*
           if (fun.symbol.isOverloaded) {
             fun.setType(fun.symbol.info)
@@ -1170,7 +1170,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
       case APPLYDYNAMICtree =>
         setSym()
         val qual = readTreeRef()
-        val args = until(end, readTreeRef)
+        val args = until(end, () => readTreeRef())
         unimplementedTree("APPLYDYNAMIC")
 
       case SUPERtree =>
@@ -1218,7 +1218,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
 
       case APPLIEDTYPEtree =>
         val tpt = readTreeRef()
-        val args = until(end, readTreeRef)
+        val args = until(end, () => readTreeRef())
         AppliedTypeTree(tpt, args)
 
       case TYPEBOUNDStree =>
@@ -1228,7 +1228,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
 
       case EXISTENTIALTYPEtree =>
         val tpt = readTreeRef()
-        val whereClauses = until(end, readTreeRef)
+        val whereClauses = until(end, () => readTreeRef())
         TypeTree(tpe)
 
       case _ =>

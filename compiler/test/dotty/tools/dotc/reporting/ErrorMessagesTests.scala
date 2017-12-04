@@ -493,7 +493,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
       val DoesNotConformToBound(tpe, which, bound) :: Nil = messages
       assertEquals("Int", tpe.show)
       assertEquals("upper", which)
-      assertEquals("scala.collection.immutable.List[Int]", bound.show)
+      assertEquals("List[Int]", bound.show)
     }
 
   @Test def doesNotConformToSelfType =
@@ -1189,7 +1189,6 @@ class ErrorMessagesTests extends ErrorMessagesTest {
       assertEquals("method wait", method.show)
     }
 
-
   @Test def packageNameAlreadyDefined =
     checkMessagesAfter("frontend") {
       """
@@ -1202,5 +1201,65 @@ class ErrorMessagesTests extends ErrorMessagesTest {
 
       val PackageNameAlreadyDefined(pkg) = messages.head
       assertEquals(pkg.show, "object bar")
+    }
+
+  @Test def unapplyInvalidNumberOfArguments =
+    checkMessagesAfter("frontend") {
+      """
+        |case class Boo(a: Int, b: String)
+        |
+        |object autoTuplingNeg2 {
+        |  val z = Boo(1, "foo")
+        |
+        |  z match {
+        |    case Boo(a, b, c) => a
+        |  }
+        |}
+      """.stripMargin
+    }
+      .expect { (ictx, messages) =>
+        implicit val ctx: Context = ictx
+        assertMessageCount(1, messages)
+        val UnapplyInvalidNumberOfArguments(qual, argTypes) :: Nil = messages
+        assertEquals("Boo", qual.show)
+        assertEquals("(class Int, class String)", argTypes.map(_.typeSymbol).mkString("(", ", ", ")"))
+      }
+
+  @Test def staticOnlyAllowedInsideObjects =
+    checkMessagesAfter("checkStatic") {
+      """
+        |class Foo {
+        |  @annotation.static def bar(): Unit = bar()
+        |}
+      """.stripMargin
+    }.expect { (ictx, messages) =>
+      implicit val ctx: Context = ictx
+      val StaticFieldsOnlyAllowedInObjects(field) = messages.head
+      assertEquals(field.show, "method bar")
+    }
+
+  @Test def cyclicInheritance =
+    checkMessagesAfter("frontend") {
+      "class A extends A"
+    }
+    .expect { (ictx, messages) =>
+      implicit val ctx: Context = ictx
+
+      assertMessageCount(1, messages)
+      val CyclicInheritance(symbol, _) :: Nil = messages
+      assertEquals("class A", symbol.show)
+    }
+
+  @Test def missingCompanionForStatic =
+    checkMessagesAfter("checkStatic") {
+      """
+        |object Foo {
+        |  @annotation.static def bar(): Unit = ()
+        |}
+      """.stripMargin
+    }.expect { (itcx, messages) =>
+      implicit val ctx: Context = itcx
+      val MissingCompanionForStatic(member) = messages.head
+      assertEquals(member.show, "method bar")
     }
 }

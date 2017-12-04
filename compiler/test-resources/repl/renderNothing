@@ -1,0 +1,6 @@
+scala> List()
+val res0: List[Nothing] = List()
+scala> Option.empty
+val res1: Option[Nothing] = None
+scala> Map()
+val res2: Map[Nothing, Nothing] = Map()

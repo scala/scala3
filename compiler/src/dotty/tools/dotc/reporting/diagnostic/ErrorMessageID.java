@@ -114,6 +114,14 @@ public enum ErrorMessageID {
     TraitIsExpectedID,
     TraitRedefinedFinalMethodFromAnyRefID,
     PackageNameAlreadyDefinedID,
+    UnapplyInvalidNumberOfArgumentsID,
+    StaticFieldsOnlyAllowedInObjectsID,
+    CyclicInheritanceID,
+    UnableToExtendSealedClassID,
+    SymbolHasUnparsableVersionNumberID,
+    SymbolChangedSemanticsInVersionID,
+    UnableToEmitSwitchID,
+    MissingCompanionForStaticID,
     ;
 
     public int errorNumber() {
