@@ -290,13 +290,20 @@ class Definitions {
   /** Marker method to indicate an argument to a call-by-name parameter.
    *  Created by byNameClosures and elimByName, eliminated by Erasure,
    */
-  lazy val cbnArg = enterPolyMethod(
-      OpsPackageClass, nme.cbnArg, 1,
+  lazy val cbnArg = enterPolyMethod(OpsPackageClass, nme.cbnArg, 1,
       pt => MethodType(List(FunctionOf(Nil, pt.paramRefs(0))), pt.paramRefs(0)))
 
   /** Method representing a throw */
   lazy val throwMethod = enterMethod(OpsPackageClass, nme.THROWkw,
       MethodType(List(ThrowableType), NothingType))
+
+  /** Method representing a term quote */
+  lazy val quoteMethod = enterPolyMethod(OpsPackageClass, nme.QUOTE, 1,
+      pt => MethodType(pt.paramRefs(0) :: Nil, MetaExprType.appliedTo(pt.paramRefs(0) :: Nil)))
+
+  /** Method representing a type quote */
+  lazy val typeQuoteMethod = enterPolyMethod(OpsPackageClass, nme.QUOTE, 1,
+      pt => MetaTypeType.appliedTo(pt.paramRefs(0) :: Nil))
 
   lazy val NothingClass: ClassSymbol = enterCompleteClassSymbol(
     ScalaPackageClass, tpnme.Nothing, AbstractFinal, List(AnyClass.typeRef))
@@ -584,6 +591,14 @@ class Definitions {
   lazy val ClassTagType = ctx.requiredClassRef("scala.reflect.ClassTag")
   def ClassTagClass(implicit ctx: Context) = ClassTagType.symbol.asClass
   def ClassTagModule(implicit ctx: Context) = ClassTagClass.companionModule
+
+  lazy val MetaExprType = ctx.requiredClassRef("scala.meta.Expr")
+  def MetaExprClass(implicit ctx: Context) = MetaExprType.symbol.asClass
+
+  lazy val MetaTypeType = ctx.requiredClassRef("scala.meta.Type")
+  def MetaTypeClass(implicit ctx: Context) = MetaTypeType.symbol.asClass
+
+  def Reifier_reify = ctx.requiredMethod("scala.meta.Reifier.reify")
 
   lazy val EqType = ctx.requiredClassRef("scala.Eq")
   def EqClass(implicit ctx: Context) = EqType.symbol.asClass
