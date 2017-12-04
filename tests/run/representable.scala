@@ -1,11 +1,11 @@
 import dotty.generic._
 
 object Syntax {
-  type &:[H, T[t] <: Prod[t]] = [X] => PCons[[Y] => H, T, X]
-  type |:[H, T[t] <: Sum[t]] = [X] => SCons[[Y] => H, T, X]
+  type &:[H, T <: Prod] = PCons[H, T]
+  type |:[H, T <: Sum] = SCons[H, T]
 
-  implicit class ProdSyntax1[T[t] <: Prod[t], X](t: T[X]) extends AnyVal {
-    def &:[H](h: H): PCons[[_] => H, T, X] = PCons(h, t)
+  implicit class ProdSyntax1[T <: Prod](t: T) extends AnyVal {
+    def &:[H](h: H): PCons[H, T] = PCons(h, t)
   }
 }
 
@@ -78,7 +78,7 @@ object RepresentableTestsAux {
   case class OAB(i: Int) extends OA with OB
 }
 
-class RepresentableTests {
+object RepresentableTests {
   import RepresentableTestsAux._
 
   type APBO = Apple |: Banana |: Orange |: Pear |: SNil
@@ -90,7 +90,7 @@ class RepresentableTests {
     val gen = Representable[Person]
 
     val p0 = gen.to(p)
-    identity[SSI[Nothing]](p0)
+    identity[SSI](p0)
     assert(("Joe Soap" &: "Brighton" &: 23 &: PNil()) == p0)
 
     val p1 = gen.from(p0)
@@ -131,19 +131,19 @@ class RepresentableTests {
     val gen = Representable[Fruit]
 
     val a0 = gen.to(a)
-    identity[APBO[Nothing]](a0)
+    identity[APBO](a0)
 
     val p0 = gen.to(p)
 
-    identity[APBO[Nothing]](p0)
+    identity[APBO](p0)
 
     val b0 = gen.to(b)
 
-    identity[APBO[Nothing]](b0)
+    identity[APBO](b0)
 
     val o0 = gen.to(o)
 
-    identity[APBO[Nothing]](o0)
+    identity[APBO](o0)
 
     val a1 = gen.from(a0)
     identity[Fruit](a1)
@@ -166,7 +166,7 @@ class RepresentableTests {
     val s: AbstractSingle = Single()
 
     val s0 = gen.to(s)
-    identity[(Single |: SNil)[Nothing]](s0)
+    identity[(Single |: SNil)](s0)
 
     val s1 = gen.from(s0)
     identity[AbstractSingle](s1)
@@ -177,7 +177,7 @@ class RepresentableTests {
   //   val gen = Representable[Overlapping]
   //   val o: Overlapping = OAB(1)
   //   val o0 = gen.to(o)
-  //   typed[(OAB |: OAC |: OBC |: CNil)[Nothing]](o0)
+  //   typed[(OAB |: OAC |: OBC |: CNil)](o0)
 
   //   val o1 = gen.from(o0)
   //   typed[Overlapping](o1)
@@ -191,13 +191,13 @@ class RepresentableTests {
     val gen = Representable[Enum]
 
     val a0 = gen.to(a)
-    identity[ABC[Nothing]](a0)
+    identity[ABC](a0)
 
     val b0 = gen.to(b)
-    identity[ABC[Nothing]](b0)
+    identity[ABC](b0)
 
     val c0 = gen.to(c)
-    identity[ABC[Nothing]](c0)
+    identity[ABC](c0)
 
     val a1 = gen.from(a0)
     identity[Enum](a1)
@@ -216,7 +216,7 @@ class RepresentableTests {
     val gen = Representable[Tree[Int]]
 
     val t0 = gen.to(t)
-    identity[NI[Nothing]](t0)
+    identity[NI](t0)
 
     val t1 = gen.from(t0)
     identity[Tree[Int]](t1)
@@ -229,7 +229,7 @@ class RepresentableTests {
     val gen = Representable[Option[Int]]
 
     val o0 = gen.to(o)
-    identity[SN[Nothing]](o0)
+    identity[SN](o0)
 
     val o1 = gen.from(o0)
     identity[Option[Int]](o1)
@@ -243,7 +243,7 @@ class RepresentableTests {
   //   val gen = Representable[List[Int]]
 
   //   val l0 = gen.to(l)
-  //   identity[CN[Nothing]](l0)
+  //   identity[CN](l0)
 
   //   val l1 = gen.from(l0)
   //   identity[List[Int]](l1)
@@ -258,12 +258,12 @@ class RepresentableTests {
 
     val c0 = gen.to(l)
     val d0 = SLeft(l)
-    identity[IB[Nothing]](c0)
+    identity[IB](c0)
     assert(d0 == c0)
 
     val c1 = gen.to(r)
     val d1 = SRight(SLeft(r))
-    identity[IB[Nothing]](c1)
+    identity[IB](c1)
     assert(d1 == c1)
   }
 
@@ -275,7 +275,7 @@ class RepresentableTests {
 
     val s0 = gen.to(s)
     val s1 = SLeft(s)
-    identity[IB[Nothing]](s0)
+    identity[IB](s0)
     assert(s1 == s0)
   }
 
@@ -366,7 +366,7 @@ class RepresentableTests {
     case class C() extends Foo
   }
 
-  trait Child extends Parent {
+  trait Child extends Parent { self =>
     val gen = Representable[Nested]
     val adtGen = Representable[Foo]
   }
@@ -376,7 +376,7 @@ class RepresentableTests {
   def testNestedInherited(): Unit = {
     val n0 = O.Nested(23, "foo")
     val repr = O.gen.to(n0)
-    identity[(Int &: String &: PNil)[Nothing]](repr)
+    identity[(Int &: String &: PNil)](repr)
     val n1 = O.gen.from(repr)
     identity[O.Nested](n1)
     assert(n0 == n1)
@@ -384,14 +384,14 @@ class RepresentableTests {
     {
       val foo0 = O.B
       val repr = O.adtGen.to(foo0)
-      identity[(O.A.type |: O.B.type |: O.C |: SNil)[Nothing]](repr)
+      identity[(O.A.type |: O.B.type |: O.C |: SNil)](repr)
     }
 
-    {
-      val foo0 = O.C()
-      val repr = O.adtGen.to(foo0)
-      identity[(O.A.type |: O.B.type |: O.C |: SNil)[Nothing]](repr)
-    }
+    // {
+    //   val foo0 = O.C()
+    //   val repr = O.adtGen.to(foo0)
+    //   identity[(O.A.type |: O.B.type |: O.C |: SNil)](repr)
+    // }
   }
 
   def testNonRepresentable(): Unit = {
@@ -400,10 +400,10 @@ class RepresentableTests {
     implicitly[Not[Representable[Int]]]
     implicitly[Not[Representable[Array[Int]]]]
     implicitly[Not[Representable[String]]]
-    implicitly[Not[Representable[PNil[Nothing]]]]
-    implicitly[Not[Representable[(Int &: String &: PNil)[Nothing]]]]
-    implicitly[Not[Representable[SNil[Nothing]]]]
-    implicitly[Not[Representable[(Int |: String |: SNil)[Nothing]]]]
+    implicitly[Not[Representable[PNil]]]
+    implicitly[Not[Representable[(Int &: String &: PNil)]]]
+    implicitly[Not[Representable[SNil]]]
+    implicitly[Not[Representable[(Int |: String |: SNil)]]]
   }
 
   sealed trait Color
@@ -420,9 +420,9 @@ class RepresentableTests {
     // LabelledRepresentable[Color.Red.type]
   }
 
-  // sealed trait Base1
-  // case object Foo1 extends Base1
-  // case object Bar1 extends Base1
+  sealed trait Base1
+  case object Foo1 extends Base1
+  case object Bar1 extends Base1
 
   // trait TC[T]
 
@@ -430,12 +430,12 @@ class RepresentableTests {
   //   def apply[T](implicit tc: TC[T]): TC[T] = tc
 
   //   implicit def hnilTC: TC[PNil] = new TC[PNil] {}
-  //   implicit def hconsTC[H, T <: HList](implicit hd: => TC[H], tl: => TC[T]): TC[H &: T] = new TC[H &: T] {}
+  //   implicit def hconsTC[H, T <: Prod](implicit hd: => TC[H], tl: => TC[T]): TC[H &: T] = new TC[H &: T] {}
 
   //   implicit def cnilTC: TC[SNil] = new TC[SNil] {}
-  //   implicit def cconsTC[H, T <: Coproduct](implicit hd: => TC[H], tl: => TC[T]): TC[H |: T] = new TC[H |: T] {}
+  //   implicit def cconsTC[H, T <: Sum](implicit hd: => TC[H], tl: => TC[T]): TC[H |: T] = new TC[H |: T] {}
 
-  //   implicit def projectTC[F, G](implicit gen: Representable.Aux[F, G], tc: => TC[G]): TC[F] = new TC[F] {}
+  //   implicit def projectTC[F, G](implicit gen: Representable[F] { type Repr = G }, tc: => TC[G]): TC[F] = new TC[F] {}
   // }
 
   // def testCaseObjectsAndLazy(): Unit = {
@@ -447,24 +447,24 @@ class RepresentableTests {
 //   sealed trait Foo[T]
 
 //   object Foo {
-//     implicit def derivePNil[X]: Foo[PNil[X]] = ???
+//     implicit def derivePNil: Foo[PNil] = ???
 
-//     implicit def deriveRepresentable[A, Rec[t] <: Prod[t], X]
-//       (implicit gen: Representable[A] { type Repr = Rec }, auto: Foo[Rec[X]]): Foo[A] = ???
+//     implicit def deriveRepresentable[A, Rec <: Prod]
+//       (implicit gen: Representable[A] { type Repr = Rec }, auto: Foo[Rec]): Foo[A] = ???
 //   }
 
 //   sealed class Bar[A]
 
 //   object Bar extends Bar0 {
-//     implicit def cnil[X]: Bar[SNil[X]] = ???
+//     implicit def cnil: Bar[SNil] = ???
 //   }
 
 //   trait Bar0 {
-//     implicit def deriveCoproduct[H, T[t] <: Sum[t], X]
-//       (implicit headFoo: Foo[H], tailAux: Bar[T[X]]): Bar[(H |: T)[X]] = ???
+//     implicit def deriveCoproduct[H, T <: Sum]
+//       (implicit headFoo: Foo[H], tailAux: Bar[T]): Bar[(H |: T)] = ???
 
-//     implicit def representable[A, U[t] <: Sum[t], X]
-//       (implicit gen: Representable[A] { type Repr = U }, auto: Bar[U[X]]): Bar[A] = ???
+//     implicit def representable[A, U <: Sum]
+//       (implicit gen: Representable[A] { type Repr = U }, auto: Bar[U]): Bar[A] = ???
 //   }
 
 //   class Outer1 {
@@ -665,7 +665,7 @@ object EnumDefns6 {
   }
 }
 
-class TestEnum {
+object TestEnum {
   // NOT SUPPORTED
   // object EnumDefns0 {
   //   sealed trait EnumVal
@@ -693,15 +693,15 @@ class TestEnum {
 
     val gen = Representable[EnumVal]
     val a0 = gen.to(BarA)
-    val a1 = SLeft[[X] => BarA.type, SNil, Nothing](BarA)
+    val a1 = SLeft[BarA.type, SNil](BarA)
     assert(a0 == a1)
 
     val b0 = gen.to(BarB)
-    val b1 = SRight(SLeft[[X] => BarB.type, SNil, Nothing](BarB))
+    val b1 = SRight(SLeft[BarB.type, SNil](BarB))
     assert(b0 == b1)
 
     val c0 = gen.to(BarC)
-    val c1 = SRight(SRight(SLeft[[X] => BarC.type, SNil, Nothing](BarC)))
+    val c1 = SRight(SRight(SLeft[BarC.type, SNil](BarC)))
     assert(c0 == c1)
   }
 
@@ -710,15 +710,15 @@ class TestEnum {
 
     val gen = Representable[EnumVal]
     val a0 = gen.to(BarA)
-    val a1 = SLeft[[X] => BarA.type, SNil, Nothing](BarA)
+    val a1 = SLeft[BarA.type, SNil](BarA)
     assert(a0 == a1)
 
     val b0 = gen.to(BarB)
-    val b1 = SRight(SLeft[[X] => BarB.type, SNil, Nothing](BarB))
+    val b1 = SRight(SLeft[BarB.type, SNil](BarB))
     assert(b0 == b1)
 
     val c0 = gen.to(BarC)
-    val c1 = SRight(SRight(SLeft[[X] => BarC.type, SNil, Nothing](BarC)))
+    val c1 = SRight(SRight(SLeft[BarC.type, SNil](BarC)))
     assert(c0 == c1)
   }
 
@@ -773,15 +773,15 @@ class TestEnum {
 
     val gen = Representable[EnumVal]
     val a0 = gen.to(BarA)
-    val a1 = SLeft[[X] => BarA.type, SNil, Nothing](BarA)
+    val a1 = SLeft[BarA.type, SNil](BarA)
     assert(a0 == a1)
 
     val b0 = gen.to(BarB)
-    val b1 = SRight(SLeft[[X] => BarB.type, SNil, Nothing](BarB))
+    val b1 = SRight(SLeft[BarB.type, SNil](BarB))
     assert(b0 == b1)
 
     val c0 = gen.to(BarC)
-    val c1 = SRight(SRight(SLeft[[X] => BarC.type, SNil, Nothing](BarC)))
+    val c1 = SRight(SRight(SLeft[BarC.type, SNil](BarC)))
     assert(c0 == c1)
   }
 
@@ -791,15 +791,15 @@ class TestEnum {
 
     val gen = Representable[EnumVal]
     val a0 = gen.to(BarA)
-    val a1 = SLeft[[X] => BarA.type, SNil, Nothing](BarA)
+    val a1 = SLeft[BarA.type, SNil](BarA)
     assert(a0 == a1)
 
     val b0 = gen.to(BarB)
-    val b1 = SRight(SLeft[[X] => BarB.type, SNil, Nothing](BarB))
+    val b1 = SRight(SLeft[BarB.type, SNil](BarB))
     assert(b0 == b1)
 
     val c0 = gen.to(BarC)
-    val c1 = SRight(SRight(SLeft[[X] => BarC.type, SNil, Nothing](BarC)))
+    val c1 = SRight(SRight(SLeft[BarC.type, SNil](BarC)))
     assert(c0 == c1)
   }
 
@@ -895,7 +895,7 @@ object PrivateCtorDefns {
 object PrivateCtor {
   import PrivateCtorDefns._
 
-  // implicitlyped Representable[PublicFamily]
+  // illTyped Representable[PublicFamily]
 }
 
 object Thrift {
@@ -950,4 +950,47 @@ object HigherKinded {
   case class Lino() extends Pipo[Id]
 
   Representable[Pipo[Id]]
+}
+
+object Test {
+  def main(args: Array[String]): Unit = {
+    Syntax
+    RepresentableTestsAux
+    EnumDefns1
+    EnumDefns2
+    EnumDefns5
+    EnumDefns6
+    TestPrefixes1
+    PrivateCtorDefns
+    PrivateCtor
+    Thrift
+    HigherKinded
+    RepresentableTests.testProductBasics()
+    RepresentableTests.testProductVarargs()
+    RepresentableTests.testTuples()
+    RepresentableTests.testCoproductBasics()
+    RepresentableTests.testSingletonCoproducts()
+    // RepresentableTests.testOverlappingCoproducts()
+    RepresentableTests.testCaseObjects()
+    RepresentableTests.testParametrized()
+    RepresentableTests.testParametrizedWithVarianceOption()
+    // RepresentableTests.testParametrizedWithVarianceList()
+    RepresentableTests.testParametrzedSubset()
+    RepresentableTests.testParametrizedPermute()
+    // RepresentableTests.testAbstractNonCC()
+    // RepresentableTests.testNonCCWithCompanion()
+    // RepresentableTests.testNonCCLazy()
+    // RepresentableTests.testNestedInherited() // Fails at runtime because of #3624
+    RepresentableTests.testNonRepresentable()
+    RepresentableTests.testNestedCaseObjects()
+    // RepresentableTests.testCaseObjectsAndLazy()
+    // TestEnum.testEnum0()
+    TestEnum.testEnum1()
+    TestEnum.testEnum2()
+    // TestEnum.testEnum3()
+    // TestEnum.testEnum4()
+    TestEnum.testEnum5()
+    TestEnum.testEnum6()
+    // TestEnum.testEnum7()
+  }
 }
