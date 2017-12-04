@@ -25,97 +25,79 @@ import scala.collection.mutable
 class RemoveUnnecessaryNullChecks extends Optimisation {
   import ast.tpd._
 
-  final class IdentityHashMap[K <: AnyRef, E]() extends mutable.HashMap[K, E] with mutable.MapLike[K, E, IdentityHashMap[K, E]] {
-    override protected def elemEquals(a: K, b: K): Boolean = a eq b
-    override protected def elemHashCode(k: K) = System.identityHashCode(k)
-    override def empty = new IdentityHashMap[K, E]
+  // matches sym == null or null == sym
+  object NullCheck {
+    def unapply(t: Apply)(implicit ctx: Context): Option[Symbol] =
+      t match {
+        case t @ Apply(Select(id: Ident, op), List(rhs)) if (t.symbol == defn.Object_eq || t.symbol == defn.Any_==) && !isVar(id.symbol) && isAlwaysNull(rhs) => Some(id.symbol)
+        case t @ Apply(Select(lhs, op), List(id: Ident)) if (t.symbol == defn.Object_eq || t.symbol == defn.Any_==) && !isVar(id.symbol) && isAlwaysNull(lhs) => Some(id.symbol)
+        case _ => None
+      }
   }
 
+  def clear(): Unit = ()
 
-  // tree to replace
-  val replace: IdentityHashMap[Tree, Tree] = new IdentityHashMap[Tree, Tree]
-  // trees that are duplicated and can't be replaced safely
-  val duplicate: IdentityHashMap[Tree, Int] = new IdentityHashMap[Tree, Int]
-
-  def clear(): Unit = {
-    replace.clear()
-    duplicate.clear()
-  }
-
-  def transformer(implicit ctx: Context): Tree => Tree = 
-    tree => if (duplicate.getOrElse(tree, 1) == 1) replace.getOrElse(tree, tree) else tree
+  def visitor(implicit ctx: Context): Tree => Unit = NoVisitor
 
 
-  def visitor(implicit ctx: Context): Tree => Unit =
-    tree => {
-      duplicate(tree) = duplicate.getOrElse(tree, 0) + 1
-
-      tree match {
-
-        case Block(stats, expr) => 
-          def visitStatements(stats: List[Tree]): Unit =
-            stats match {
-              case s :: tail =>
-                s match {
-                  case t: ValDef if !isVar(t.symbol) => 
-                    if (isNeverNull(t.rhs)) tail.foreach(flagAsNotNull(t.symbol, _))
-                    else if (isAlwaysNull(t.rhs)) tail.foreach(flagAsNull(t.symbol, _))
-
-                  case Apply(Select(id: Ident, _), _) if !isVar(id.symbol) => 
-                    tail.foreach(flagAsNotNull(id.symbol, _))
-
-                  case _ =>
-                }
-                visitStatements(tail)
-              case Nil => 
-            }
-
-          visitStatements(stats :+ expr)
-
-        case If(cond, th, el) => 
-          def visitBranches(cond: Tree, th: Tree, el: Tree): Unit = {
-            cond match {
-              case cond @ Select(expr, _) if cond.symbol == defn.Boolean_! =>
-                visitBranches(expr, el, th) 
-              case cond @ Apply(Select(lhs, _), List(rhs)) if cond.symbol == defn.Boolean_&& =>
-                visitBranches(lhs, th, el)
-                visitBranches(rhs, th, el)
-              case expr =>
-                nullCheckInExpr(expr) match {
-                  case Some(symbol) => 
-                    flagAsNull(symbol, th)
-                    flagAsNotNull(symbol, el)
-                  case None =>
-
-                }
+  def transformer(implicit ctx: Context): Tree => Tree = {
+    // transform tree recursively replacing nullchecks for symbols in nullness
+    def transform(tree: Tree, nullness: mutable.Map[Symbol, Boolean]) =
+      if (nullness.isEmpty) tree
+      else new TreeMap() {
+          override def transform(tree: Tree)(implicit ctx: Context): Tree = {
+            val innerCtx = if (tree.isDef && tree.symbol.exists) ctx.withOwner(tree.symbol) else ctx
+            super.transform(tree)(innerCtx) match {
+              case t @ NullCheck(sym) if nullness.contains(sym) => Literal(Constant(nullness(sym)))
+              case t => t
             }
           }
-         
-          visitBranches(cond, th, el)
+        }.transform(tree)
 
-        case _ =>
-      } 
+    {
+      case blk @ Block(stats, expr) => 
+        // (symbol -> is null) elements for which we don't have informations aren't in the map
+        val nullness = mutable.Map[Symbol, Boolean]()
+
+        // map statements and propagate nullness
+        val newStats = stats.mapConserve {
+          case t: ValDef if !isVar(t.symbol) => 
+            if (isAlwaysNull(t.rhs)) nullness += t.symbol -> true
+            if (isNeverNull(t.rhs)) nullness += t.symbol -> false
+            t
+
+          // throw NPE if id is null
+          case t @ Apply(Select(id: Ident, _), _) if !isVar(id.symbol) => 
+            nullness += id.symbol -> false
+            t
+
+          case t => 
+            transform(t, nullness)
+        }
+
+        val newExpr = transform(expr, nullness)
+
+        if ((newStats eq stats) && (newExpr eq expr)) blk 
+        else Block(newStats, newExpr)
+
+      // if (x == null)
+      case br @ If(cond @ NullCheck(sym), thenp, elsep) => 
+        val newThen = transform(thenp, mutable.Map(sym -> true))
+        val newElse = transform(elsep, mutable.Map(sym -> false))
+        if ((newThen eq thenp) && (newElse eq elsep)) br
+        else If(cond, newThen, newElse)
+
+      // if (x != null)
+      case br @ If(cond @ Select(NullCheck(sym), _), thenp, elsep) if cond.symbol eq defn.Boolean_! =>
+        val newThen = transform(thenp, mutable.Map(sym -> false))
+        val newElse = transform(elsep, mutable.Map(sym -> true))
+        if ((newThen eq thenp) && (newElse eq elsep)) br
+        else If(cond, newThen, newElse)
+
+      case t => t
     }
+  }
 
-  // return nullchecked symbol in expr (if any)
-  private def nullCheckInExpr(expr: Tree)(implicit ctx: Context): Option[Symbol] =
-    expr match {
-      case t @ Apply(Select(id: Ident, op), List(rhs)) if (t.symbol == defn.Object_eq || t.symbol == defn.Any_==) && !isVar(id.symbol) && isAlwaysNull(rhs) => Some(id.symbol)
-      case t @ Apply(Select(lhs, op), List(id: Ident)) if (t.symbol == defn.Object_eq || t.symbol == defn.Any_==) && !isVar(id.symbol) && isAlwaysNull(lhs) => Some(id.symbol)
-      case _ => None
-    }
-
-  // return all sub-trees of tree containing a nullcheck for symbol
-  private def findNullChecksFor(symbol: Symbol, tree: Tree)(implicit ctx: Context): List[Tree] =
-    tree.filterSubTrees(nullCheckInExpr(_).contains(symbol))
-
-
-  // fill replace using findNullCheckFor
-  private def flagAsNull(symbol: Symbol, tree: Tree)(implicit ctx: Context): Unit =
-    replace ++= findNullChecksFor(symbol, tree).map((_, Literal(Constant(true))))
-
-  private def flagAsNotNull(symbol: Symbol, tree: Tree)(implicit ctx: Context): Unit = 
-    replace ++= findNullChecksFor(symbol, tree).map((_, Literal(Constant(false))))
 
   private def isNeverNull(tree: Tree)(implicit ctx: Context): Boolean =
     tree match {
@@ -136,7 +118,6 @@ class RemoveUnnecessaryNullChecks extends Optimisation {
       case If(_, th, el) => isAlwaysNull(th) && isAlwaysNull(el)
       case t: Typed => isAlwaysNull(t.expr)
       case t: Literal => t.const.tag == NullTag
-      case EmptyTree => true
       case _ => false
     }
 

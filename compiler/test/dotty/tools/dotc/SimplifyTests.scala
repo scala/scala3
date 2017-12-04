@@ -140,7 +140,7 @@ abstract class SimplifyTests(val optimise: Boolean) extends DottyBytecodeTest {
         |val i = readLine()
         |val j = readLine()
         |val k = readLine()
-        |if (i != null && j != null && k == null) {
+        |if (i != null) if (j != null) if (k == null) {
         |  if(i == null) () else print(i)
         |  if(j != null) print(j)
         |  if(k != null) print(k)
@@ -173,11 +173,10 @@ abstract class SimplifyTests(val optimise: Boolean) extends DottyBytecodeTest {
     check(
       """
         |val i = "a string lit"
-        |val isNull = i == null
+        |print((i == null))
       """,
       """
-        |val i = "a string lit"
-        |val isNull = false
+        |print(false)
       """)
 
   // (this != null) won't be optimized but I don't expect it to ever happen
