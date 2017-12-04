@@ -131,6 +131,7 @@ AnnotType         ::=  SimpleType {Annotation}                                  
 SimpleType        ::=  SimpleType TypeArgs                                      AppliedTypeTree(t, args)
                     |  SimpleType ‘#’ id                                        Select(t, name)
                     |  StableId
+                    |  [‘-’ | ‘+’ | ‘~’ | ‘!’] StableId                         PrefixOp(expr, op)
                     |  Path ‘.’ ‘type’                                          SingletonTypeTree(p)
                     |  ‘(’ ArgTypes ‘)’                                         Tuple(ts)
                     |  ‘_’ TypeBounds

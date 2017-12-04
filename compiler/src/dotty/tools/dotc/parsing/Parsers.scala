@@ -857,6 +857,7 @@ object Parsers {
     /** SimpleType       ::=  SimpleType TypeArgs
      *                     |  SimpleType `#' id
      *                     |  StableId
+     *                     |  [‘-’ | ‘+’ | ‘~’ | ‘!’] StableId
      *                     |  Path `.' type
      *                     |  `(' ArgTypes `)'
      *                     |  `_' TypeBounds
@@ -875,6 +876,8 @@ object Parsers {
         val start = in.skipToken()
         typeBounds().withPos(Position(start, in.lastOffset, start))
       }
+      else if (isIdent && nme.raw.isUnary(in.name))
+        atPos(in.offset) { PrefixOp(termIdent(), path(thisOK = true)) }
       else path(thisOK = false, handleSingletonType) match {
         case r @ SingletonTypeTree(_) => r
         case r => convertToTypeId(r)
