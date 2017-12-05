@@ -2,6 +2,8 @@ package scala.meta
 
 object Reifier {
 
-  def reify(repr: String, args: Expr[_]*) = ???
+  def reifyExpr[T](repr: String, args: Seq[Expr[_]]): Expr[T] = ???
+
+  def reifyType[T](repr: String, args: Seq[Expr[_]]): Type[T] = ???
 
 }
