@@ -38,13 +38,17 @@ class DottyUnpickler(bytes: Array[Byte]) extends ClassfileParser.Embedded {
 
   val unpickler = new TastyUnpickler(bytes)
   private val posUnpicklerOpt = unpickler.unpickle(new PositionsSectionUnpickler)
-  private val treeUnpickler = unpickler.unpickle(new TreeSectionUnpickler(posUnpicklerOpt)).get
+  private val treeUnpickler = unpickler.unpickle(treeSectionUnpickler(posUnpicklerOpt)).get
 
   /** Enter all toplevel classes and objects into their scopes
    *  @param roots          a set of SymDenotations that should be overwritten by unpickling
    */
   def enter(roots: Set[SymDenotation])(implicit ctx: Context): Unit =
     treeUnpickler.enterTopLevel(roots)
+
+  protected def treeSectionUnpickler(posUnpicklerOpt: Option[PositionUnpickler]): TreeSectionUnpickler = {
+    new TreeSectionUnpickler(posUnpicklerOpt)
+  }
 
   /** Only used if `-Yretain-trees` is set. */
   private[this] var myBody: List[Tree] = _
