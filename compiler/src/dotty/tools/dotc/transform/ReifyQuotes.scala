@@ -9,8 +9,6 @@ import MegaPhase.MiniPhase
 import scala.collection.mutable
 
 /** Translates quoted terms and types to reify method calls.
- *  The mini phase needs to run in the same group as FirstTransform. So far we lack
- *  the machinery to express this constraint in code.
  */
 class ReifyQuotes extends MacroTransform {
   import ast.tpd._
