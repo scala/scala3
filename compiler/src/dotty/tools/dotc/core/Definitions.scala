@@ -603,8 +603,8 @@ class Definitions {
     def MetaType_~(implicit ctx: Context) =
       MetaTypeClass.info.member(tpnme.UNARY_~).symbol.asType
 
-  def Reifier_reifyExpr = ctx.requiredMethod("scala.meta.Reifier.reifyExpr")
-  def Reifier_reifyType = ctx.requiredMethod("scala.meta.Reifier.reifyType")
+  def Unpickler_unpickleExpr = ctx.requiredMethod("scala.meta.Unpickler.unpickleExpr")
+  def Unpickler_unpickleType = ctx.requiredMethod("scala.meta.Unpickler.unpickleType")
 
   lazy val EqType = ctx.requiredClassRef("scala.Eq")
   def EqClass(implicit ctx: Context) = EqType.symbol.asClass

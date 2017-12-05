@@ -25,7 +25,8 @@ class ReifyQuotes extends MiniPhase {
    *  the `qual` part will be of the form `Typed(EmptyTree, TypeTree(<underlying type>))`,
    *  but that knowledge is not needed to uniquely identify a splice node.
    */
-  def reifyTree(tree: Tree)(implicit ctx: Context): String = tree.show // TODO: replace with TASTY
+  def pickleTree(tree: Tree, isType: Boolean)(implicit ctx: Context): String =
+    tree.show // TODO: replace with TASTY
 
   private def reifyCall(body: Tree, isType: Boolean)(implicit ctx: Context) = {
 
@@ -34,7 +35,11 @@ class ReifyQuotes extends MiniPhase {
       override def transform(tree: Tree)(implicit ctx: Context) = tree match {
         case tree @ Select(qual, name)
         if tree.symbol == defn.MetaExpr_~ || tree.symbol == defn.MetaType_~ =>
-          splices += qual
+          splices += {
+            if (isType) // transform splice again because embedded type trees were not rewritten before
+              transformAllDeep(qual)(ctx.retractMode(Mode.InQuotedType))
+            else qual
+          }
           val placeHolder = Typed(EmptyTree, TypeTree(qual.tpe.widen))
           cpy.Select(tree)(placeHolder, name)
         case _ =>
@@ -42,13 +47,11 @@ class ReifyQuotes extends MiniPhase {
       }
     }
 
-    val reified = reifyTree(liftSplices.transform(body))
-    var splices = liftSplices.splices.toList
-    if (isType) // transform splices again because embedded type trees were not rewritten before
-      splices = splices.map(transformAllDeep(_)(ctx.retractMode(Mode.InQuotedType)))
+    val reified = pickleTree(liftSplices.transform(body), isType)
+    val splices = liftSplices.splices.toList
     val spliceType = if (isType) defn.MetaTypeType else defn.MetaExprType
 
-    ref(if (isType) defn.Reifier_reifyType else defn.Reifier_reifyExpr)
+    ref(if (isType) defn.Unpickler_unpickleType else defn.Unpickler_unpickleExpr)
       .appliedToType(if (isType) body.tpe else body.tpe.widen)
       .appliedTo(
         Literal(Constant(reified)),
