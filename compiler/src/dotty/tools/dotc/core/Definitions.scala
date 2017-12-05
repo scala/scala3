@@ -1096,7 +1096,9 @@ class Definitions {
 
   /** Lists core methods that don't have underlying bytecode, but are synthesized on-the-fly in every reflection universe */
   lazy val syntheticCoreMethods =
-    AnyMethods ++ ObjectMethods ++ List(String_+, throwMethod, quoteMethod, typeQuoteMethod)
+    AnyMethods ++ ObjectMethods ++ List(String_+, throwMethod
+      //, quoteMethod, typeQuoteMethod // we omit these because they force Expr and Type too early
+    )
 
   lazy val reservedScalaClassNames: Set[Name] = syntheticScalaClasses.map(_.name).toSet
 
@@ -1111,8 +1113,6 @@ class Definitions {
         ScalaPackageClass.enter(m)
 
       // force initialization of every symbol that is synthesized or hijacked by the compiler
-      // Placed here so that an abort with a MissingCoreLibraryException because scalaShadowing
-      // is not found comes before any additional errors are reported.
       val forced = syntheticCoreClasses ++ syntheticCoreMethods ++ ScalaValueClasses()
 
       _isInitialized = true
