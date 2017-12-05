@@ -13,7 +13,11 @@ import tasty.TreePickler.Hole
 import MegaPhase.MiniPhase
 import SymUtils._
 import NameKinds.OuterSelectName
+
 import scala.collection.mutable
+import dotty.tools.dotc.core.StdNames._
+import dotty.tools.dotc.quoted.PickledQuotes
+
 
 /** Translates quoted terms and types to `unpickle` method calls.
  *  Checks that the phase consistency principle (PCP) holds.
@@ -28,17 +32,6 @@ class ReifyQuotes extends MacroTransform {
 
   protected def newTransformer(implicit ctx: Context): Transformer =
     new Reifier(inQuote = false, null, 0, new LevelInfo)
-
-  /** Serialize `tree`. Embedded splices are represented as nodes of the form
-   *
-   *      Select(qual, sym)
-   *
-   *  where `sym` is either `defn.QuotedExpr_~` or `defn.QuotedType_~`. For any splice,
-   *  the `qual` part should not be pickled, since it will be added separately later
-   *  as a splice.
-   */
-  def pickleTree(tree: Tree, isType: Boolean)(implicit ctx: Context): String =
-    tree.show // TODO: replace with TASTY
 
   private class LevelInfo {
     /** A map from locally defined symbols to the staging levels of their definitions */
@@ -276,7 +269,7 @@ class ReifyQuotes extends MacroTransform {
         ref(if (isType) defn.Unpickler_unpickleType else defn.Unpickler_unpickleExpr)
           .appliedToType(if (isType) body1.tpe else body1.tpe.widen)
           .appliedTo(
-            Literal(Constant(pickleTree(body1, isType))),
+            Literal(Constant(PickledQuotes.pickleQuote(body1))),
             SeqLiteral(splices, TypeTree(defn.AnyType)))
       }
     }.withPos(quote.pos)
@@ -336,7 +329,8 @@ class ReifyQuotes extends MacroTransform {
           case Inlined(call, bindings, expansion @ Select(body, name)) if expansion.symbol.isSplice =>
             // To maintain phase consistency, convert inlined expressions of the form
             // `{ bindings; ~expansion }` to `~{ bindings; expansion }`
-            transform(cpy.Select(expansion)(cpy.Inlined(tree)(call, bindings, body), name))
+            if (level == 0) transform(Splicer.splice(cpy.Inlined(tree)(call, bindings, body)))
+            else transform(cpy.Select(expansion)(cpy.Inlined(tree)(call, bindings, body), name))
           case _: Import =>
             tree
           case tree: DefDef if tree.symbol.is(Macro) && level == 0 =>
