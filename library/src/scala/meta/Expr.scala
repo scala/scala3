@@ -1,5 +1,5 @@
 package scala.meta
 
-class Expr[T] {
+class Expr[T] extends Quoted {
   def unary_~ : T = ???
 }

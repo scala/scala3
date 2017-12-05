@@ -189,8 +189,8 @@ class FirstTransform extends MiniPhase with InfoTransformer { thisPhase =>
     ast.Trees.flatten(reorderAndComplete(trees)(ctx.withPhase(thisPhase.next)))
 
   private def toTypeTree(tree: Tree)(implicit ctx: Context) =
-    if (ctx.mode.is(Mode.InQuotedType)) tree else TypeTree(tree.tpe).withPos(tree.pos)
-    
+    TypeTree(tree.tpe).withPos(tree.pos)
+
   override def transformOther(tree: Tree)(implicit ctx: Context) = tree match {
     case tree: Import => EmptyTree
     case tree: NamedArg => transformAllDeep(tree.arg)

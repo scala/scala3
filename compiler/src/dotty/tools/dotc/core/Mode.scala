@@ -93,7 +93,4 @@ object Mode {
 
   /** We are in the IDE */
   val Interactive = newMode(20, "Interactive")
-
-  /** We are in a quoted type during the ReifyQuotes phase */
-  val InQuotedType = newMode(21, "InQuotedType")
 }

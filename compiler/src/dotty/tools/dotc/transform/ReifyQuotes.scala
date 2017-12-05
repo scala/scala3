@@ -12,60 +12,64 @@ import scala.collection.mutable
  *  The mini phase needs to run in the same group as FirstTransform. So far we lack
  *  the machinery to express this constraint in code.
  */
-class ReifyQuotes extends MiniPhase {
+class ReifyQuotes extends MacroTransform {
   import ast.tpd._
 
   override def phaseName: String = "reifyQuotes"
+
+  override def run(implicit ctx: Context): Unit =
+    if (ctx.compilationUnit.containsQuotes) super.run
+
+  protected def newTransformer(implicit ctx: Context): Transformer = new Reifier
 
   /** Serialize `tree`. Embedded splices are represented as nodes of the form
    *
    *      Select(qual, sym)
    *
    *  where `sym` is either `defn.MetaExpr_~` or `defn.MetaType_~`. For any splice,
-   *  the `qual` part will be of the form `Typed(EmptyTree, TypeTree(<underlying type>))`,
-   *  but that knowledge is not needed to uniquely identify a splice node.
+   *  the `qual` part should not be pickled, since it will be added separately later
+   *  as a splice.
    */
   def pickleTree(tree: Tree, isType: Boolean)(implicit ctx: Context): String =
     tree.show // TODO: replace with TASTY
 
-  private def reifyCall(body: Tree, isType: Boolean)(implicit ctx: Context) = {
+  private class Reifier extends Transformer {
 
-    object liftSplices extends TreeMap {
-      val splices = new mutable.ListBuffer[Tree]
-      override def transform(tree: Tree)(implicit ctx: Context) = tree match {
-        case tree @ Select(qual, name)
-        if tree.symbol == defn.MetaExpr_~ || tree.symbol == defn.MetaType_~ =>
-          splices += {
-            if (isType) // transform splice again because embedded type trees were not rewritten before
-              transformAllDeep(qual)(ctx.retractMode(Mode.InQuotedType))
-            else qual
-          }
-          val placeHolder = Typed(EmptyTree, TypeTree(qual.tpe.widen))
-          cpy.Select(tree)(placeHolder, name)
-        case _ =>
-          super.transform(tree)
+    /** Turn `body` of quote into a call of `scala.meta.Unpickler.unpickleType` or
+     *  `scala.meta.Unpickler.unpickleExpr` depending onwhether `isType` is true or not.
+     *  The arguments to the method are:
+     *
+     *    - the serialized `body`, as returned from `pickleTree`
+     *    - all splices found in `body`
+     */
+    private def reifyCall(body: Tree, isType: Boolean)(implicit ctx: Context) = {
+
+      object collectSplices extends TreeAccumulator[mutable.ListBuffer[Tree]] {
+        override def apply(splices: mutable.ListBuffer[Tree], tree: Tree)(implicit ctx: Context) = tree match {
+          case tree @ Select(qual, _)
+          if tree.symbol == defn.MetaExpr_~ || tree.symbol == defn.MetaType_~ =>
+            splices += transform(qual)
+          case _ =>
+            foldOver(splices, tree)
+        }
       }
+      val splices = collectSplices(new mutable.ListBuffer[Tree], body).toList
+      val reified = pickleTree(body, isType)
+
+      ref(if (isType) defn.Unpickler_unpickleType else defn.Unpickler_unpickleExpr)
+        .appliedToType(if (isType) body.tpe else body.tpe.widen)
+        .appliedTo(
+          Literal(Constant(reified)),
+          SeqLiteral(splices, TypeTree(defn.MetaQuotedType)))
     }
 
-    val reified = pickleTree(liftSplices.transform(body), isType)
-    val splices = liftSplices.splices.toList
-    val spliceType = if (isType) defn.MetaTypeType else defn.MetaExprType
-
-    ref(if (isType) defn.Unpickler_unpickleType else defn.Unpickler_unpickleExpr)
-      .appliedToType(if (isType) body.tpe else body.tpe.widen)
-      .appliedTo(
-        Literal(Constant(reified)),
-        SeqLiteral(splices, TypeTree(spliceType.appliedTo(TypeBounds.empty))))
+    override def transform(tree: Tree)(implicit ctx: Context): Tree = tree match {
+      case Apply(fn, arg :: Nil) if fn.symbol == defn.quoteMethod =>
+        reifyCall(arg, isType = false)
+      case TypeApply(fn, arg :: Nil) if fn.symbol == defn.typeQuoteMethod =>
+        reifyCall(arg, isType = true)
+      case _ =>
+        super.transform(tree)
+    }
   }
-
-  override def transformApply(tree: Apply)(implicit ctx: Context): Tree =
-    if (tree.fun.symbol == defn.quoteMethod) reifyCall(tree.args.head, isType = false)
-    else tree
-
-  override def prepareForTypeApply(tree: TypeApply)(implicit ctx: Context): Context =
-    if (tree.symbol == defn.typeQuoteMethod) ctx.addMode(Mode.InQuotedType) else ctx
-
-  override def transformTypeApply(tree: TypeApply)(implicit ctx: Context): Tree =
-    if (tree.fun.symbol == defn.typeQuoteMethod) reifyCall(tree.args.head, isType = true)
-    else tree
 }

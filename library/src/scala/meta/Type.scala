@@ -1,5 +1,5 @@
 package scala.meta
 
-class Type[T] {
+class Type[T] extends Quoted {
   type unary_~ = T
 }

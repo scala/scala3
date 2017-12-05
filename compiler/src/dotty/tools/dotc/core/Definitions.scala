@@ -592,6 +592,9 @@ class Definitions {
   def ClassTagClass(implicit ctx: Context) = ClassTagType.symbol.asClass
   def ClassTagModule(implicit ctx: Context) = ClassTagClass.companionModule
 
+  lazy val MetaQuotedType = ctx.requiredClassRef("scala.meta.Quoted")
+  def MetaQuotedClass(implicit ctx: Context) = MetaQuotedType.symbol.asClass
+
   lazy val MetaExprType = ctx.requiredClassRef("scala.meta.Expr")
   def MetaExprClass(implicit ctx: Context) = MetaExprType.symbol.asClass
 

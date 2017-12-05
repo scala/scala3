@@ -11,10 +11,10 @@ object Unpickler {
   /** Unpickle `repr` which represents a pickled `Expr` tree,
    *  replacing splice nodes with `args`
    */
-  def unpickleExpr[T](repr: Pickled, args: Seq[Expr[_]]): Expr[T] = ???
+  def unpickleExpr[T](repr: Pickled, args: Seq[Quoted]): Expr[T] = ???
 
   /** Unpickle `repr` which represents a pickled `Type` tree,
    *  replacing splice nodes with `args`
    */
-  def unpickleType[T](repr: Pickled, args: Seq[Type[_]]): Type[T] = ???
+  def unpickleType[T](repr: Pickled, args: Seq[Quoted]): Type[T] = ???
 }

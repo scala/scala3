@@ -1073,6 +1073,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
   }
 
   def typedQuote(tree: untpd.Quote, pt: Type)(implicit ctx: Context): Tree = track("typedQuote") {
+    ctx.compilationUnit.containsQuotes = true
     val untpd.Quote(body) = tree
     val isType = body.isType
     val resultClass = if (isType) defn.MetaTypeClass else defn.MetaExprClass

@@ -47,10 +47,10 @@ class Compiler {
       List(new sbt.ExtractAPI),     // Sends a representation of the API of classes to sbt via callbacks
       List(new Pickler),            // Generate TASTY info
       List(new LinkAll),            // Reload compilation units from TASTY for library code (if needed)
+      List(new ReifyQuotes),        // Turn quoted trees into explicit run-time data structures
       List(new FirstTransform,      // Some transformations to put trees into a canonical form
            new CheckReentrant,      // Internal use only: Check that compiled program has no data races involving global vars
-           new ElimPackagePrefixes, // Eliminate syntactic references to Java packages
-           new ReifyQuotes),        // Eliminate syntactic references to Java packages
+           new ElimPackagePrefixes), // Eliminate references to package prefixes in Select nodes
       List(new CheckStatic,         // Check restrictions that apply to @static members
            new ElimRepeated,        // Rewrite vararg parameters and arguments
            new NormalizeFlags,      // Rewrite some definition flags
