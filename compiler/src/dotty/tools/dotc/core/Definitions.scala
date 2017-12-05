@@ -595,10 +595,16 @@ class Definitions {
   lazy val MetaExprType = ctx.requiredClassRef("scala.meta.Expr")
   def MetaExprClass(implicit ctx: Context) = MetaExprType.symbol.asClass
 
+    def MetaExpr_~(implicit ctx: Context) = MetaExprClass.requiredMethod(nme.UNARY_~)
+
   lazy val MetaTypeType = ctx.requiredClassRef("scala.meta.Type")
   def MetaTypeClass(implicit ctx: Context) = MetaTypeType.symbol.asClass
 
-  def Reifier_reify = ctx.requiredMethod("scala.meta.Reifier.reify")
+    def MetaType_~(implicit ctx: Context) =
+      MetaTypeClass.info.member(tpnme.UNARY_~).symbol.asType
+
+  def Reifier_reifyExpr = ctx.requiredMethod("scala.meta.Reifier.reifyExpr")
+  def Reifier_reifyType = ctx.requiredMethod("scala.meta.Reifier.reifyType")
 
   lazy val EqType = ctx.requiredClassRef("scala.Eq")
   def EqClass(implicit ctx: Context) = EqType.symbol.asClass
@@ -1086,7 +1092,8 @@ class Definitions {
     OpsPackageClass)
 
   /** Lists core methods that don't have underlying bytecode, but are synthesized on-the-fly in every reflection universe */
-  lazy val syntheticCoreMethods = AnyMethods ++ ObjectMethods ++ List(String_+, throwMethod)
+  lazy val syntheticCoreMethods =
+    AnyMethods ++ ObjectMethods ++ List(String_+, throwMethod, quoteMethod, typeQuoteMethod)
 
   lazy val reservedScalaClassNames: Set[Name] = syntheticScalaClasses.map(_.name).toSet
 

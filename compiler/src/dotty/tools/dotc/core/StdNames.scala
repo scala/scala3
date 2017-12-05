@@ -143,6 +143,7 @@ object StdNames {
     val INITIALIZER_PREFIX: N         = "initial$"
     val COMPANION_MODULE_METHOD: N    = "companion$module"
     val COMPANION_CLASS_METHOD: N     = "companion$class"
+    val QUOTE: N                      = "'"
     val TRAIT_SETTER_SEPARATOR: N     = str.TRAIT_SETTER_SEPARATOR
 
     // value types (and AnyRef) are all used as terms as well
