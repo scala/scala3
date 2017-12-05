@@ -183,6 +183,9 @@ InfixExpr         ::=  PrefixExpr
 PrefixExpr        ::=  [‘-’ | ‘+’ | ‘~’ | ‘!’] SimpleExpr                       PrefixOp(expr, op)
 SimpleExpr        ::=  ‘new’ Template                                           New(templ)
                     |  BlockExpr
+                    |  ‘'’ BlockExpr
+                    |  ‘'’ ‘(’ ExprsInParens ‘)’
+                    |  ‘'’ ‘[’ Type ‘]’
                     |  SimpleExpr1 [‘_’]                                        PostfixOp(expr, _)
 SimpleExpr1       ::=  Literal
                     |  Path

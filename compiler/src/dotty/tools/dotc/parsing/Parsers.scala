@@ -1285,6 +1285,9 @@ object Parsers {
 
     /** SimpleExpr    ::= new Template
      *                 |  BlockExpr
+     *                 |  ‘'’ BlockExpr
+     *                 |  ‘'’ ‘(’ ExprsInParens ‘)’
+     *                 |  ‘'’ ‘[’ Type ‘]’
      *                 |  SimpleExpr1 [`_']
      *  SimpleExpr1   ::= literal
      *                 |  xmlLiteral
@@ -1313,6 +1316,15 @@ object Parsers {
         case LBRACE =>
           canApply = false
           blockExpr()
+        case QPAREN =>
+          in.token = LPAREN
+          atPos(in.offset)(Quote(simpleExpr()))
+        case QBRACE =>
+          in.token = LBRACE
+          atPos(in.offset)(Quote(simpleExpr()))
+        case QBRACKET =>
+          in.token = LBRACKET
+          atPos(in.offset)(Quote(inBrackets(typ())))
         case NEW =>
           canApply = false
           val start = in.skipToken()
@@ -2076,8 +2088,6 @@ object Parsers {
           PatDef(mods, lhs, tpt, rhs)
       }
     }
-
-
 
     private def checkVarArgsRules(vparamss: List[List[untpd.ValDef]]): List[untpd.ValDef] = {
       def isVarArgs(tpt: Trees.Tree[Untyped]): Boolean = tpt match {
