@@ -1103,12 +1103,14 @@ class Definitions {
   def init()(implicit ctx: Context) = {
     this.ctx = ctx
     if (!_isInitialized) {
-      // force initialization of every symbol that is synthesized or hijacked by the compiler
-      val forced = syntheticCoreClasses ++ syntheticCoreMethods ++ ScalaValueClasses()
-
       // Enter all symbols from the scalaShadowing package in the scala package
       for (m <- ScalaShadowingPackageClass.info.decls)
         ScalaPackageClass.enter(m)
+
+      // force initialization of every symbol that is synthesized or hijacked by the compiler
+      // Placed here so that an abort with a MissingCoreLibraryException because scalaShadowing
+      // is not found comes before any additional errors are reported.
+      val forced = syntheticCoreClasses ++ syntheticCoreMethods ++ ScalaValueClasses()
 
       _isInitialized = true
     }
