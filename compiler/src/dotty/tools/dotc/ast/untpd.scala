@@ -69,7 +69,10 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
 
   case class InfixOp(left: Tree, op: Ident, right: Tree) extends OpTree
   case class PostfixOp(od: Tree, op: Ident) extends OpTree
-  case class PrefixOp(op: Ident, od: Tree) extends OpTree
+  case class PrefixOp(op: Ident, od: Tree) extends OpTree {
+    override def isType = op.isType
+    override def isTerm = op.isTerm
+  }
   case class Parens(t: Tree) extends ProxyTree {
     def forwardTo = t
   }

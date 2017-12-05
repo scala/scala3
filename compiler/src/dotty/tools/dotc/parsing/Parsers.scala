@@ -877,7 +877,7 @@ object Parsers {
         typeBounds().withPos(Position(start, in.lastOffset, start))
       }
       else if (isIdent && nme.raw.isUnary(in.name))
-        atPos(in.offset) { PrefixOp(termIdent(), path(thisOK = true)) }
+        atPos(in.offset) { PrefixOp(typeIdent(), path(thisOK = true)) }
       else path(thisOK = false, handleSingletonType) match {
         case r @ SingletonTypeTree(_) => r
         case r => convertToTypeId(r)
