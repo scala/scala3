@@ -387,11 +387,11 @@ object RepresentableTests {
       identity[(O.A.type |: O.B.type |: O.C |: SNil)](repr)
     }
 
-    // {
-    //   val foo0 = O.C()
-    //   val repr = O.adtGen.to(foo0)
-    //   identity[(O.A.type |: O.B.type |: O.C |: SNil)](repr)
-    // }
+    {
+      val foo0 = O.C()
+      val repr = O.adtGen.to(foo0)
+      identity[(O.A.type |: O.B.type |: O.C |: SNil)](repr)
+    }
   }
 
   def testNonRepresentable(): Unit = {
@@ -443,195 +443,196 @@ object RepresentableTests {
   }
 }
 
-// object RepresentableTestsAux2 {
-//   sealed trait Foo[T]
+object RepresentableTestsAux2 {
+  sealed trait Foo[T]
 
-//   object Foo {
-//     implicit def derivePNil: Foo[PNil] = ???
+  object Foo {
+    implicit def derivePNil: Foo[PNil] = ???
 
-//     implicit def deriveRepresentable[A, Rec <: Prod]
-//       (implicit gen: Representable[A] { type Repr = Rec }, auto: Foo[Rec]): Foo[A] = ???
-//   }
+    implicit def deriveRepresentable[A, Rec <: Prod]
+      (implicit gen: Representable[A] { type Repr = Rec }, auto: Foo[Rec]): Foo[A] = ???
+  }
 
-//   sealed class Bar[A]
+  sealed class Bar[A]
 
-//   object Bar extends Bar0 {
-//     implicit def cnil: Bar[SNil] = ???
-//   }
+  object Bar extends Bar0 {
+    implicit def cnil: Bar[SNil] = ???
+  }
 
-//   trait Bar0 {
-//     implicit def deriveCoproduct[H, T <: Sum]
-//       (implicit headFoo: Foo[H], tailAux: Bar[T]): Bar[(H |: T)] = ???
+  trait Bar0 {
+    implicit def deriveCoproduct[H, T <: Sum]
+      (implicit headFoo: Foo[H], tailAux: Bar[T]): Bar[(H |: T)] = ???
 
-//     implicit def representable[A, U <: Sum]
-//       (implicit gen: Representable[A] { type Repr = U }, auto: Bar[U]): Bar[A] = ???
-//   }
+    implicit def representable[A, U <: Sum]
+      (implicit gen: Representable[A] { type Repr = U }, auto: Bar[U]): Bar[A] = ???
+  }
 
-//   class Outer1 {
-//     sealed trait Color
-//     object Inner {
-//       case object Red extends Color
-//     }
-
-//     val r = Representable[Bar[Color]]
-//     Bar.representable(r, implicitly)
-
-//     implicitly[Bar[Color]]
-//   }
-
-  // object Outer2 {
-  //   class Wrapper {
-  //     sealed trait Color
+  // TODO
+  // class Outer1 {
+  //   sealed trait Color
+  //   object Inner {
+  //     case object Red extends Color
   //   }
-  //   val wrapper = new Wrapper
-  //   import wrapper.Color
-  //   case object Red extends Color
-  //   case object Green extends Color
-  //   case object Blue extends Color
-
+  //   implicit val r: Representable[Bar[Color]] { type Repr = SNil } = null
   //   implicitly[Bar[Color]]
+    // Fails with "Unexpected tree in genLoad" caused by the untpd.ref(tpe)...
+    // Unexpected tree in genLoad: TypeTree[TypeRef(ThisType(TypeRef(ThisType(TypeRef(ThisType(TypeRef(NoPrefix,module class generic)),module class RepresentableTestsAux2$)),class Outer1)),module class RepresentableTestsAux2$Outer1$Inner$)]
   // }
 
-  // object Outer3 {
-  //   class Wrapper {
-  //     sealed trait Color
+  object Outer2 {
+    class Wrapper {
+      sealed trait Color
+    }
+    val wrapper = new Wrapper
+    import wrapper.Color
+    case object Red extends Color
+    case object Green extends Color
+    case object Blue extends Color
+
+    implicitly[Bar[Color]]
+  }
+
+  object Outer3 {
+    class Wrapper {
+      sealed trait Color
+    }
+    val wrapper = new Wrapper
+    case object Red extends wrapper.Color
+    case object Green extends wrapper.Color
+    case object Blue extends wrapper.Color
+
+    implicitly[Bar[wrapper.Color]]
+  }
+
+  object Outer4 {
+    val wrapper = new Wrapper
+    case object Red extends wrapper.Color
+    case object Green extends wrapper.Color
+    case object Blue extends wrapper.Color
+
+    class Wrapper {
+      sealed trait Color
+      implicitly[Bar[wrapper.Color]]
+    }
+  }
+
+  object Outer5 {
+    trait Command
+    object Command {
+      sealed trait Execution extends Command
+    }
+
+    case class Buzz() extends Command.Execution
+    case class Door() extends Command.Execution
+
+    Representable[Command.Execution]
+  }
+}
+
+object MixedCCNonCCNested {
+  // Block local
+  // Fails because of dotty.tools.dotc.typer.Typer.ensureNoLocalRefs(Typer.scala:671)
+  // {
+  //   object T1 {
+  //     sealed abstract class Tree
+  //     final case class Node(left: Tree, right: Tree, v: Int) extends Tree
+  //     case object Leaf extends Tree
   //   }
-  //   val wrapper = new Wrapper
-  //   case object Red extends wrapper.Color
-  //   case object Green extends wrapper.Color
-  //   case object Blue extends wrapper.Color
 
-  //   implicitly[Bar[wrapper.Color]]
+  //   // Representable[T1.Tree]
+  //   import T1._
+  //   // Representable[Tree]
+
+  //   sealed trait A
+  //   sealed case class B(i: Int, s: String) extends A
+  //   case object C extends A
+  //   sealed trait D extends A
+  //   final case class E(a: Double, b: Option[Float]) extends D
+  //   case object F extends D
+  //   sealed abstract class Foo extends D
+  //   case object Baz extends Foo
+  //   final case class Bar() extends Foo
+  //   final case class Baz(i1: Int, s1: String) extends Foo
+
+  //   // Representable[A]
+  //   // Representable[B]
+  //   // Representable[C.type]
+  //   // Representable[D]
+  //   // Representable[E]
+  //   // Representable[F.type]
+  //   // Representable[Foo]
+  //   // Representable[Baz.type]
+  //   // Representable[Bar]
+  //   // Representable[Baz]
   // }
 
-  // object Outer4 {
-  //   val wrapper = new Wrapper
-  //   case object Red extends wrapper.Color
-  //   case object Green extends wrapper.Color
-  //   case object Blue extends wrapper.Color
+  def methodLocal: Unit = {
+    object T1 {
+      sealed abstract class Tree
+      final case class Node(left: Tree, right: Tree, v: Int) extends Tree
+      case object Leaf extends Tree
+    }
 
-  //   class Wrapper {
-  //     sealed trait Color
-  //     implicitly[Bar[wrapper.Color]]
-  //   }
-  // }
+    // Representable[T1.Tree] // TODO genLoad
+    import T1._
+    // Representable[Tree] // TODO genLoad
 
-  // object Outer5 {
-  //   trait Command
-  //   object Command {
-  //     sealed trait Execution extends Command
-  //   }
+    sealed trait A
+    sealed case class B(i: Int, s: String) extends A
+    case object C extends A
+    sealed trait D extends A
+    final case class E(a: Double, b: Option[Float]) extends D
+    case object F extends D
+    sealed abstract class Foo extends D
+    case object Baz extends Foo
+    final case class Bar() extends Foo
+    final case class Baz(i1: Int, s1: String) extends Foo
 
-  //   case class Buzz() extends Command.Execution
-  //   case class Door() extends Command.Execution
+    Representable[A]
+    Representable[B]
+    Representable[C.type]
+    Representable[D]
+    Representable[E]
+    Representable[F.type]
+    Representable[Foo]
+    Representable[Baz.type]
+    Representable[Bar]
+    Representable[Baz]
+  }
 
-  //   Representable[Command.Execution]
-  // }
-// }
+  // Top level
+  object T1 {
+    sealed abstract class Tree
+    final case class Node(left: Tree, right: Tree, v: Int) extends Tree
+    case object Leaf extends Tree
+  }
 
-// object MixedCCNonCCNested {
-//   // Block local
-//   {
-//     object T1{
-//       sealed abstract class Tree
-//       final case class Node(left: Tree, right: Tree, v: Int) extends Tree
-//       case object Leaf extends Tree
-//     }
+  Representable[T1.Tree]
+  import T1._
+  Representable[Tree]
 
-//     Representable[T1.Tree]
-//     import T1._
-//     Representable[Tree]
+  sealed trait A
+  sealed case class B(i: Int, s: String) extends A
+  case object C extends A
+  sealed trait D extends A
+  final case class E(a: Double, b: Option[Float]) extends D
+  case object F extends D
+  sealed abstract class Foo extends D
+  case object Baz extends Foo
+  final case class Bar() extends Foo
+  final case class Baz(i1: Int, s1: String) extends Foo
 
-//     sealed trait A
-//     sealed case class B(i: Int, s: String) extends A
-//     case object C extends A
-//     sealed trait D extends A
-//     final case class E(a: Double, b: Option[Float]) extends D
-//     case object F extends D
-//     sealed abstract class Foo extends D
-//     case object Baz extends Foo
-//     final class Bar extends Foo
-//     final class Baz(val i1: Int, val s1: String) extends Foo
-
-//     Representable[A]
-//     Representable[B]
-//     Representable[C.type]
-//     Representable[D]
-//     Representable[E]
-//     Representable[F.type]
-//     Representable[Foo]
-//     Representable[Baz.type]
-//     Representable[Bar]
-//     Representable[Baz]
-//   }
-
-//   def methodLocal: Unit = {
-//     object T1{
-//       sealed abstract class Tree
-//       final case class Node(left: Tree, right: Tree, v: Int) extends Tree
-//       case object Leaf extends Tree
-//     }
-
-//     Representable[T1.Tree]
-//     import T1._
-//     Representable[Tree]
-
-//     sealed trait A
-//     sealed case class B(i: Int, s: String) extends A
-//     case object C extends A
-//     sealed trait D extends A
-//     final case class E(a: Double, b: Option[Float]) extends D
-//     case object F extends D
-//     sealed abstract class Foo extends D
-//     case object Baz extends Foo
-//     final class Bar extends Foo
-//     final class Baz(val i1: Int, val s1: String) extends Foo
-
-//     Representable[A]
-//     Representable[B]
-//     Representable[C.type]
-//     Representable[D]
-//     Representable[E]
-//     Representable[F.type]
-//     Representable[Foo]
-//     Representable[Baz.type]
-//     Representable[Bar]
-//     Representable[Baz]
-//   }
-
-//   // Top level
-//   object T1{
-//     sealed abstract class Tree
-//     final case class Node(left: Tree, right: Tree, v: Int) extends Tree
-//     case object Leaf extends Tree
-//   }
-
-//   Representable[T1.Tree]
-//   import T1._
-//   Representable[Tree]
-
-//   sealed trait A
-//   sealed case class B(i: Int, s: String) extends A
-//   case object C extends A
-//   sealed trait D extends A
-//   final case class E(a: Double, b: Option[Float]) extends D
-//   case object F extends D
-//   sealed abstract class Foo extends D
-//   case object Baz extends Foo
-//   final class Bar extends Foo
-//   final class Baz(val i1: Int, val s1: String) extends Foo
-
-//   Representable[A]
-//   Representable[B]
-//   Representable[C.type]
-//   Representable[D]
-//   Representable[E]
-//   Representable[F.type]
-//   Representable[Foo]
-//   Representable[Baz.type]
-//   Representable[Bar]
-//   Representable[Baz]
-// }
+  Representable[A]
+  Representable[B]
+  Representable[C.type]
+  Representable[D]
+  Representable[E]
+  Representable[F.type]
+  Representable[Foo]
+  Representable[Baz.type]
+  Representable[Bar]
+  Representable[Baz]
+}
 
 object EnumDefns1 {
   sealed trait EnumVal
@@ -751,18 +752,14 @@ object TestEnum {
   //     val BarC = new EnumVal { val name = "C" }
   //   }
   // }
-
   // def testEnum4(): Unit = {
   //   import EnumDefns4._
   //   import EnumVal._
-
   //   val gen = Representable[EnumVal]
   //   val a0 = gen.to(BarA)
   //   assert(a0 == SLeft(BarA))
-
   //   val b0 = gen.to(BarB)
   //   assert(b0 == SRight(SLeft(BarB)))
-
   //   val c0 = gen.to(BarC)
   //   assert(c0 == SRight(SRight(SLeft(BarC))))
   // }
@@ -810,18 +807,14 @@ object TestEnum {
   //     val BarA, BarB, BarC = new EnumVal {}
   //   }
   // }
-
   // def testEnum7(): Unit = {
   //   import EnumDefns7._
   //   import EnumVal._
-
   //   val gen = Representable[EnumVal]
   //   val a0 = gen.to(BarA)
   //   assert(a0 == SLeft(BarA))
-
   //   val b0 = gen.to(BarB)
   //   assert(b0 == SRight(SLeft(BarB)))
-
   //   val c0 = gen.to(BarC)
   //   assert(c0 == SRight(SRight(SLeft(BarC))))
   // }
