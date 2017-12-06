@@ -776,9 +776,7 @@ object Denotations {
      *  if denotation is no longer valid.
      *  However, StaleSymbol error is not thrown in the following situations:
      *
-     *   - If the symbol is a toplevel class or object and -Yupdate-stale is set.
-     *     update the denotation to the new symbol with the same name instead.
-     *   - If ctx.acceptStale returns true (because we are in the IDE),
+     *   - If ctx.acceptStale returns true (e.g. because we are in the IDE),
      *     update the symbol to the new version if it exists, or return
      *     the old version otherwise.
      *   - If the symbol did not have a denotation that was defined at the current phase
@@ -788,11 +786,9 @@ object Denotations {
       this match {
         case symd: SymDenotation =>
           if (ctx.stillValid(symd)) return updateValidity()
-          lazy val staleOK = ctx.acceptStale(symd)
-          if (ctx.settings.YupdateStale.value && symd.owner.is(Package) || staleOK) {
+          if (ctx.acceptStale(symd)) {
             val newd = symd.owner.info.decls.lookup(symd.name)
-            if (newd.exists) return (newd.denot: SingleDenotation).updateValidity()
-            else if (staleOK) return updateValidity()
+            return (newd.denot: SingleDenotation).orElse(symd).updateValidity()
           }
         case _ =>
       }

@@ -451,8 +451,8 @@ object Symbols {
     final def isValidInCurrentRun(implicit ctx: Context): Boolean =
       (lastDenot.validFor.runId == ctx.runId || ctx.stillValid(lastDenot)) &&
       (lastDenot.symbol eq this)
-        // the last condition is needed because under option -Yupdate-stale overwritten
-        // package members keep denotations pointing to the new symbol, so the validity
+        // the last condition is needed because under ctx.staleOK overwritten
+        // members keep denotations pointing to the new symbol, so the validity
         // periods check out OK. But once a package member is overridden it is not longer
         // valid. If the option would be removed, the check would be no longer needed.
 

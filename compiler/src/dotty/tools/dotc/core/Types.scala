@@ -1695,7 +1695,8 @@ object Types {
 
     private def memberDenot(name: Name, allowPrivate: Boolean)(implicit ctx: Context): Denotation = {
       var d = memberDenot(prefix, name, allowPrivate)
-      if (!d.exists && ctx.mode.is(Mode.Interactive))
+      if (!d.exists && !allowPrivate && ctx.mode.is(Mode.Interactive))
+        // In the IDE we might change a public symbol to private, and would still expect to find it.
         d = memberDenot(prefix, name, true)
       if (!d.exists && ctx.phaseId > FirstPhaseId && lastDenotation.isInstanceOf[SymDenotation])
         // name has changed; try load in earlier phase and make current
@@ -1900,7 +1901,10 @@ object Types {
       if ((designator ne sym) && sym.exists) NamedType(prefix, sym).asInstanceOf[ThisType]
       else this
 
-    /** A reference like this one, but with the given denotation, if it exists */
+    /** A reference like this one, but with the given denotation, if it exists.
+     *  If the symbol of `denot` is the same as the current symbol, the denotation
+     *  is re-used, otherwise a new one is created.
+     */
     final def withDenot(denot: Denotation)(implicit ctx: Context): ThisType =
       if (denot.exists) {
         val adapted = withSym(denot.symbol)
@@ -1965,11 +1969,15 @@ object Types {
     def underlyingRef: TermRef
   }
 
-  abstract case class TermRef(override val prefix: Type, var designator: Designator)
-  extends NamedType with SingletonType with ImplicitRef {
+  abstract case class TermRef(override val prefix: Type,
+                              private var myDesignator: Designator)
+    extends NamedType with SingletonType with ImplicitRef {
 
     type ThisType = TermRef
     type ThisName = TermName
+
+    override def designator = myDesignator
+    override protected def designator_=(d: Designator) = myDesignator = d
 
     //assert(name.toString != "<local Coder>")
     override def underlying(implicit ctx: Context): Type = {
@@ -1989,10 +1997,15 @@ object Types {
     def underlyingRef = this
   }
 
-  abstract case class TypeRef(override val prefix: Type, var designator: Designator) extends NamedType {
+  abstract case class TypeRef(override val prefix: Type,
+                              private var myDesignator: Designator)
+    extends NamedType {
 
     type ThisType = TypeRef
     type ThisName = TypeName
+
+    override def designator = myDesignator
+    override protected def designator_=(d: Designator) = myDesignator = d
 
     override def underlying(implicit ctx: Context): Type = info
   }
