@@ -635,146 +635,147 @@ trait Implicits { self: Typer =>
      *    }
      *  ```
      */
-    def synthesizedRepresentable(formal: Type)(implicit ctx: Context): Tree = typed {
+    def synthesizedRepresentable(formal: Type)(implicit ctx: Context): Tree = {
       import untpd._
 
       def rootQual(genericClass: String): Tree =
         Select(Select(Select(Ident(nme.ROOTPKG), "dotty".toTermName), "generic".toTermName), genericClass.toTermName)
-      val ReprNme = "Repr".toTypeName
-      val toNme   = "to"  .toTermName
-      val fromNme = "from".toTermName
 
-      formal.argTypes match {
+      val args = formal.baseType(defn.RepresentableClass).argTypes
+      val generated = args match {
         case (arg @ _) :: Nil =>
-          fullyDefinedType(arg, "Representable argument", pos) match {
-            // Sums -----------------------------------------------------------
-            case (A @ _) if A.typeSymbol.is(Sealed) =>
-              val SLeftTree = rootQual("SLeft")
-              val SRightTree = rootQual("SRight")
+          val A = fullyDefinedType(arg, "Representable argument", pos).stripTypeVar
 
-              import transform.SymUtils._
-              import dotty.tools.dotc.transform.patmat.SpaceEngine
+          // Sums -----------------------------------------------------------
+          if (A.typeSymbol.is(Sealed)) {
+            val SLeftTree = rootQual("SLeft")
+            val SRightTree = rootQual("SRight")
 
-              val sumTypes =
-                A .classSymbol.children.map(_.namedType)
-                  .map(t => new SpaceEngine().instantiate(t, A)) // Instantiate type all parameters
-                  .reverse                                       // Reveresed to match source order
+            import transform.SymUtils._
+            import dotty.tools.dotc.transform.patmat.SpaceEngine
 
-              val sumTypesSize = sumTypes.size
-              val noBounds = TypeBoundsTree(EmptyTree, EmptyTree)
+            val sumTypes =
+              A .classSymbol.children.map(_.namedType)
+                .map(t => new SpaceEngine().instantiate(t, A)) // Instantiate type all parameters
+                .reverse                                       // Reveresed to match source order
 
-              // type Repr[t] = SCons[T1, SCons[T2, ..., SCons[Tn, SNil]]]
-              val repr = TypeDef(ReprNme,
-                sumTypes.zipWithIndex.foldRight[Tree](TypeTree(defn.SNilType)) { case ((cur, i), acc) =>
-                  AppliedTypeTree(TypeTree(defn.SConsType), TypeTree(cur) :: acc :: Nil)
-                }
-              )
+            val sumTypesSize = sumTypes.size
+            val noBounds = TypeBoundsTree(EmptyTree, EmptyTree)
 
-              def unchecked(t: Tree): Tree = Annotated(t, untpd.New(TypeTree(defn.UncheckedAnnotType), Nil))
+            // type Repr[t] = SCons[T1, SCons[T2, ..., SCons[Tn, SNil]]]
+            val repr = TypeDef("Repr".toTypeName,
+              sumTypes.zipWithIndex.foldRight[Tree](TypeTree(defn.SNilType)) { case ((cur, i), acc) =>
+                AppliedTypeTree(TypeTree(defn.SConsType), TypeTree(cur) :: acc :: Nil)
+              }
+            )
 
-              // def to(a: A): Repr = (a: @unchecked) match {
-              //   case x: T1 => SLeft(x)
-              //   case x: T2 => SRight(SLeft(x))
-              //   ...
-              //   case x: Tn => SRight(SRight(...SRight(SLeft(x))))
-              // }
-              val to: Tree = {
-                val arg = makeSyntheticParameter(tpt = TypeTree(A))
-                val cases = {
-                  val x = nme.syntheticParamName(0)
-                  sumTypes.zipWithIndex.map { case (tpe, depth) =>
-                    val rhs = (1 to depth).foldLeft[Tree](Apply(SLeftTree, Ident(x))) {
-                      case (acc, _) => Apply(SRightTree, acc)
-                    }
-                    CaseDef(Typed(Ident(x), TypeTree(tpe)), EmptyTree, rhs)
+            def unchecked(t: Tree): Tree = Annotated(t, untpd.New(TypeTree(defn.UncheckedAnnotType), Nil))
+
+            // def to(a: A): Repr = (a: @unchecked) match {
+            //   case x: T1 => SLeft(x)
+            //   case x: T2 => SRight(SLeft(x))
+            //   ...
+            //   case x: Tn => SRight(SRight(...SRight(SLeft(x))))
+            // }
+            val to: Tree = {
+              val arg = makeSyntheticParameter(tpt = TypeTree(A))
+              val cases = {
+                val x = nme.syntheticParamName(0)
+                sumTypes.zipWithIndex.map { case (tpe, depth) =>
+                  val rhs = (1 to depth).foldLeft[Tree](Apply(SLeftTree, Ident(x))) {
+                    case (acc, _) => Apply(SRightTree, acc)
                   }
+                  CaseDef(Typed(Ident(x), TypeTree(tpe)), EmptyTree, rhs)
                 }
-                val body = Match(unchecked(Ident(arg.name)), cases)
-                DefDef(toNme, Nil, (arg :: Nil) :: Nil, Ident(repr.name), body).withFlags(Synthetic)
               }
+              val body = Match(unchecked(Ident(arg.name)), cases)
+              DefDef("to".toTermName, Nil, (arg :: Nil) :: Nil, Ident(repr.name), body).withFlags(Synthetic)
+            }
 
-              // def from(r: Repr): A = (r: @unchecked) match {
-              //   case SLeft(x) => x
-              //   case SRight(SLeft(x)) => x
-              //   ...
-              //   case SRight(SRight(...SRight(SLeft(x)))) => x
-              // }
-              val from: Tree = {
-                val arg = makeSyntheticParameter(tpt = Ident(repr.name))
-                val cases = {
-                  val x = nme.syntheticParamName(0)
-                  (1 to sumTypesSize).map { depth =>
-                    val pat = (1 until depth).foldLeft(Apply(SLeftTree, Ident(x))) {
-                      case (acc, _) => Apply(SRightTree, acc)
-                    }
-                    CaseDef(pat, EmptyTree, Ident(x))
-                  }.toList
-                }
-                val matsh = Match(unchecked(Ident(arg.name)), cases)
-                val body = TypeApply(Select(matsh, nme.asInstanceOf_), TypeTree(A) :: Nil)
-                DefDef(fromNme, Nil, (arg :: Nil) :: Nil, TypeTree(A), body).withFlags(Synthetic)
-              }
-
-              val parents  = TypeTree(defn.RepresentableType.appliedTo(A)) :: Nil
-              New(Template(emptyConstructor, parents, EmptyValDef, repr :: to :: from :: Nil)).withPos(pos)
-
-            // Products -----------------------------------------------------------
-            case (A @ _) if defn.isProductSubType(A) =>
-              val PNilTree = rootQual("PNil")
-              val PConsTree = rootQual("PCons")
-
-              val productTypes = productSelectorTypes(A)
-              val productTypesSize = productTypes.size
-              val noBounds = TypeBoundsTree(EmptyTree, EmptyTree)
-
-              // type Repr[t] = PCons[T1, PCons[T2, ..., PCons[Tn, PNil]]]
-              val repr  = TypeDef(ReprNme,
-                productTypes.foldRight[Tree](TypeTree(defn.PNilType)) { case (cur, acc) =>
-                  AppliedTypeTree(TypeTree(defn.PConsType), TypeTree(cur) :: acc :: Nil)
-                }
-              )
-              val pNil  = Apply(PNilTree, Nil)
-
-              // def to(a: A): Repr =
-              //   PCons(a._1, (PCons(a._2, ... PCons(a._n, PNil()))))
-              val to = {
-                val arg = makeSyntheticParameter(tpt = TypeTree(A))
-                val body = (1 to productTypesSize).foldRight(pNil) { case (i, acc) =>
-                  Apply(PConsTree, Select(Ident(arg.name), nme.productAccessorName(i)) :: acc :: Nil)
-                }
-                DefDef(toNme, Nil, (arg :: Nil) :: Nil, Ident(repr.name), body).withFlags(Synthetic)
-              }
-
-              // def from(r: Repr): A = r match {
-              //   case PCons(_1, Pcons(_2, ..., Pcons(_n, PNil()))) => new A(_1, _2, ..., _n)
-              // }
-              val from = {
-                val arg = makeSyntheticParameter(tpt = Ident(repr.name))
-                val pat = (1 to productTypesSize).reverse.foldLeft(pNil) { case (acc, i) =>
-                  Apply(PConsTree, Ident(nme.productAccessorName(i)) :: acc :: Nil)
-                }
-                val neuu = {
-                  A match {
-                    case tpe: NamedType if tpe.termSymbol.exists => // case object
-                      untpd.ref(tpe)
-                    case _ if A.classSymbol.exists =>               // case class
-                      val newArgs    = (1 to productTypesSize).map(i => Ident(nme.productAccessorName(i))).toList
-                      val hasVarargs = A.classSymbol.primaryConstructor.info.isVarArgsMethod
-                      val newArgs0   = if (hasVarargs) newArgs.init :+ repeated(newArgs.last) else newArgs
-                      New(TypeTree(A), newArgs0 :: Nil)
+            // def from(r: Repr): A = (r: @unchecked) match {
+            //   case SLeft(x) => x
+            //   case SRight(SLeft(x)) => x
+            //   ...
+            //   case SRight(SRight(...SRight(SLeft(x)))) => x
+            // }
+            val from: Tree = {
+              val arg = makeSyntheticParameter(tpt = Ident(repr.name))
+              val cases = {
+                val x = nme.syntheticParamName(0)
+                (1 to sumTypesSize).map { depth =>
+                  val pat = (1 until depth).foldLeft(Apply(SLeftTree, Ident(x))) {
+                    case (acc, _) => Apply(SRightTree, acc)
                   }
-                }
-                val body = Match(Ident(arg.name), CaseDef(pat, EmptyTree, neuu) :: Nil)
-                DefDef(fromNme, Nil, (arg :: Nil) :: Nil, TypeTree(A), body).withFlags(Synthetic)
+                  CaseDef(pat, EmptyTree, Ident(x))
+                }.toList
               }
+              val matsh = Match(unchecked(Ident(arg.name)), cases)
+              val body = TypeApply(Select(matsh, nme.asInstanceOf_), TypeTree(A) :: Nil)
+              DefDef("from".toTermName, Nil, (arg :: Nil) :: Nil, TypeTree(A), body).withFlags(Synthetic)
+            }
 
-              val parents = TypeTree(defn.RepresentableType.appliedTo(A)) :: Nil
-              New(Template(emptyConstructor, parents, EmptyValDef, repr :: to :: from :: Nil)).withPos(pos)
-
-            case _ => EmptyTree
+            val parents  = TypeTree(defn.RepresentableType.appliedTo(A)) :: Nil
+            New(Template(emptyConstructor, parents, EmptyValDef, repr :: to :: from :: Nil)).withPos(pos)
           }
+          // Products -----------------------------------------------------------
+          else if (defn.isProductSubType(A)) {
+            val PNilTree = rootQual("PNil")
+            val PConsTree = rootQual("PCons")
+
+            val productTypes = productSelectorTypes(A)
+            val productTypesSize = productTypes.size
+            val noBounds = TypeBoundsTree(EmptyTree, EmptyTree)
+
+            // type Repr[t] = PCons[T1, PCons[T2, ..., PCons[Tn, PNil]]]
+            val repr  = TypeDef("Repr".toTypeName,
+              productTypes.foldRight[Tree](TypeTree(defn.PNilType)) { case (cur, acc) =>
+                AppliedTypeTree(TypeTree(defn.PConsType), TypeTree(cur) :: acc :: Nil)
+              }
+            )
+            val pNil  = Apply(PNilTree, Nil)
+
+            // def to(a: A): Repr =
+            //   PCons(a._1, (PCons(a._2, ... PCons(a._n, PNil()))))
+            val to = {
+              val arg = makeSyntheticParameter(tpt = TypeTree(A))
+              val body = (1 to productTypesSize).foldRight(pNil) { case (i, acc) =>
+                Apply(PConsTree, Select(Ident(arg.name), nme.productAccessorName(i)) :: acc :: Nil)
+              }
+              DefDef("to".toTermName, Nil, (arg :: Nil) :: Nil, Ident(repr.name), body).withFlags(Synthetic)
+            }
+
+            // def from(r: Repr): A = r match {
+            //   case PCons(_1, Pcons(_2, ..., Pcons(_n, PNil()))) => new A(_1, _2, ..., _n)
+            // }
+            val from = {
+              val arg = makeSyntheticParameter(tpt = Ident(repr.name))
+              val pat = (1 to productTypesSize).reverse.foldLeft(pNil) { case (acc, i) =>
+                Apply(PConsTree, Ident(nme.productAccessorName(i)) :: acc :: Nil)
+              }
+              val neuu = {
+                A match {
+                  case tpe: NamedType if tpe.termSymbol.exists => // case object
+                    untpd.ref(tpe)
+                  case _ if A.classSymbol.exists =>               // case class
+                    val newArgs    = (1 to productTypesSize).map(i => Ident(nme.productAccessorName(i))).toList
+                    val hasVarargs = A.classSymbol.primaryConstructor.info.isVarArgsMethod
+                    val newArgs0   = if (hasVarargs) newArgs.init :+ repeated(newArgs.last) else newArgs
+                    New(TypeTree(A), newArgs0 :: Nil)
+                }
+              }
+              val body = Match(Ident(arg.name), CaseDef(pat, EmptyTree, neuu) :: Nil)
+              DefDef("from".toTermName, Nil, (arg :: Nil) :: Nil, TypeTree(A), body).withFlags(Synthetic)
+            }
+
+            val parents = TypeTree(defn.RepresentableType.appliedTo(A)) :: Nil
+            New(Template(emptyConstructor, parents, EmptyValDef, repr :: to :: from :: Nil)).withPos(pos)
+          }
+          else EmptyTree
         case _ => EmptyTree
       }
+
+      val typed = typedUnadapted(generated)
+      adapt(typed, formal)
     }
 
     def hasEq(tp: Type): Boolean =

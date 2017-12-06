@@ -424,23 +424,23 @@ object RepresentableTests {
   case object Foo1 extends Base1
   case object Bar1 extends Base1
 
-  // trait TC[T]
+  trait TC[T]
 
-  // object TC {
-  //   def apply[T](implicit tc: TC[T]): TC[T] = tc
+  object TC {
+    def apply[T](implicit tc: TC[T]): TC[T] = tc
 
-  //   implicit def hnilTC: TC[PNil] = new TC[PNil] {}
-  //   implicit def hconsTC[H, T <: Prod](implicit hd: => TC[H], tl: => TC[T]): TC[H &: T] = new TC[H &: T] {}
+    implicit def hnilTC: TC[PNil] = new TC[PNil] {}
+    implicit def hconsTC[H, T <: Prod](implicit hd: => TC[H], tl: => TC[T]): TC[H &: T] = new TC[H &: T] {}
 
-  //   implicit def cnilTC: TC[SNil] = new TC[SNil] {}
-  //   implicit def cconsTC[H, T <: Sum](implicit hd: => TC[H], tl: => TC[T]): TC[H |: T] = new TC[H |: T] {}
+    implicit def cnilTC: TC[SNil] = new TC[SNil] {}
+    implicit def cconsTC[H, T <: Sum](implicit hd: => TC[H], tl: => TC[T]): TC[H |: T] = new TC[H |: T] {}
 
-  //   implicit def projectTC[F, G](implicit gen: Representable[F] { type Repr = G }, tc: => TC[G]): TC[F] = new TC[F] {}
-  // }
+    implicit def projectTC[F, G](implicit gen: Representable[F] { type Repr = G }, tc: => TC[G]): TC[F] = new TC[F] {}
+  }
 
-  // def testCaseObjectsAndLazy(): Unit = {
-  //   TC[Base1]
-  // }
+  def testCaseObjectsAndLazy(): Unit = {
+    TC[Base1]
+  }
 }
 
 // object RepresentableTestsAux2 {
