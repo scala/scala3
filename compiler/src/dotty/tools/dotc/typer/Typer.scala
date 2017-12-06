@@ -1076,7 +1076,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     ctx.compilationUnit.containsQuotes = true
     val untpd.Quote(body) = tree
     val isType = body.isType
-    val resultClass = if (isType) defn.MetaTypeClass else defn.MetaExprClass
+    val resultClass = if (isType) defn.QuotedTypeClass else defn.QuotedExprClass
     val proto1 = pt.baseType(resultClass) match {
       case AppliedType(_, argType :: Nil) => argType
       case _ => WildcardType

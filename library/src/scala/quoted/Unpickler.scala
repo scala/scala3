@@ -1,4 +1,4 @@
-package scala.meta
+package scala.quoted
 
 /** Provides methods to unpickle `Expr` and `Type` trees. */
 object Unpickler {

@@ -1,8 +1,8 @@
-import scala.meta._
+import scala.quoted._
 
 object Test {
 
-  def f[T](t: Type[T], x: Expr[T]) = {
+  def f[T](t: Type[T], x: Expr[T]) = '{
     val y: t.unary_~ = x.unary_~
     val z: ~t = ~x
   }

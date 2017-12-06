@@ -5,7 +5,6 @@ package core
 import Types._, Contexts._, Symbols._, Denotations._, SymDenotations._, StdNames._, Names._
 import Flags._, Scopes._, Decorators._, NameOps._, util.Positions._, Periods._
 import unpickleScala2.Scala2Unpickler.ensureConstructor
-import scala.annotation.{ switch, meta }
 import scala.collection.{ mutable, immutable }
 import PartialFunction._
 import collection.mutable
@@ -299,11 +298,11 @@ class Definitions {
 
   /** Method representing a term quote */
   lazy val quoteMethod = enterPolyMethod(OpsPackageClass, nme.QUOTE, 1,
-      pt => MethodType(pt.paramRefs(0) :: Nil, MetaExprType.appliedTo(pt.paramRefs(0) :: Nil)))
+      pt => MethodType(pt.paramRefs(0) :: Nil, QuotedExprType.appliedTo(pt.paramRefs(0) :: Nil)))
 
   /** Method representing a type quote */
   lazy val typeQuoteMethod = enterPolyMethod(OpsPackageClass, nme.QUOTE, 1,
-      pt => MetaTypeType.appliedTo(pt.paramRefs(0) :: Nil))
+      pt => QuotedTypeType.appliedTo(pt.paramRefs(0) :: Nil))
 
   lazy val NothingClass: ClassSymbol = enterCompleteClassSymbol(
     ScalaPackageClass, tpnme.Nothing, AbstractFinal, List(AnyClass.typeRef))
@@ -592,22 +591,22 @@ class Definitions {
   def ClassTagClass(implicit ctx: Context) = ClassTagType.symbol.asClass
   def ClassTagModule(implicit ctx: Context) = ClassTagClass.companionModule
 
-  lazy val MetaQuotedType = ctx.requiredClassRef("scala.meta.Quoted")
-  def MetaQuotedClass(implicit ctx: Context) = MetaQuotedType.symbol.asClass
+  lazy val QuotedType = ctx.requiredClassRef("scala.quoted.Quoted")
+  def QuotedClass(implicit ctx: Context) = QuotedType.symbol.asClass
 
-  lazy val MetaExprType = ctx.requiredClassRef("scala.meta.Expr")
-  def MetaExprClass(implicit ctx: Context) = MetaExprType.symbol.asClass
+  lazy val QuotedExprType = ctx.requiredClassRef("scala.quoted.Expr")
+  def QuotedExprClass(implicit ctx: Context) = QuotedExprType.symbol.asClass
 
-    def MetaExpr_~(implicit ctx: Context) = MetaExprClass.requiredMethod(nme.UNARY_~)
+    def QuotedExpr_~(implicit ctx: Context) = QuotedExprClass.requiredMethod(nme.UNARY_~)
 
-  lazy val MetaTypeType = ctx.requiredClassRef("scala.meta.Type")
-  def MetaTypeClass(implicit ctx: Context) = MetaTypeType.symbol.asClass
+  lazy val QuotedTypeType = ctx.requiredClassRef("scala.quoted.Type")
+  def QuotedTypeClass(implicit ctx: Context) = QuotedTypeType.symbol.asClass
 
-    def MetaType_~(implicit ctx: Context) =
-      MetaTypeClass.info.member(tpnme.UNARY_~).symbol.asType
+    def QuotedType_~(implicit ctx: Context) =
+      QuotedTypeClass.info.member(tpnme.UNARY_~).symbol.asType
 
-  def Unpickler_unpickleExpr = ctx.requiredMethod("scala.meta.Unpickler.unpickleExpr")
-  def Unpickler_unpickleType = ctx.requiredMethod("scala.meta.Unpickler.unpickleType")
+  def Unpickler_unpickleExpr = ctx.requiredMethod("scala.quoted.Unpickler.unpickleExpr")
+  def Unpickler_unpickleType = ctx.requiredMethod("scala.quoted.Unpickler.unpickleType")
 
   lazy val EqType = ctx.requiredClassRef("scala.Eq")
   def EqClass(implicit ctx: Context) = EqType.symbol.asClass

@@ -25,7 +25,7 @@ class ReifyQuotes extends MacroTransform {
    *
    *      Select(qual, sym)
    *
-   *  where `sym` is either `defn.MetaExpr_~` or `defn.MetaType_~`. For any splice,
+   *  where `sym` is either `defn.QuotedExpr_~` or `defn.QuotedType_~`. For any splice,
    *  the `qual` part should not be pickled, since it will be added separately later
    *  as a splice.
    */
@@ -76,8 +76,8 @@ class ReifyQuotes extends MacroTransform {
         else check(sym, _.show)
     }
 
-    /** Turn `body` of quote into a call of `scala.meta.Unpickler.unpickleType` or
-     *  `scala.meta.Unpickler.unpickleExpr` depending onwhether `isType` is true or not.
+    /** Turn `body` of quote into a call of `scala.quoted.Unpickler.unpickleType` or
+     *  `scala.quoted.Unpickler.unpickleExpr` depending onwhether `isType` is true or not.
      *  The arguments to the method are:
      *
      *    - the serialized `body`, as returned from `pickleTree`
@@ -88,7 +88,7 @@ class ReifyQuotes extends MacroTransform {
         .appliedToType(if (isType) body.tpe else body.tpe.widen)
         .appliedTo(
           Literal(Constant(pickleTree(body, isType))),
-          SeqLiteral(splicesAtLevel(currentLevel).toList, TypeTree(defn.MetaQuotedType)))
+          SeqLiteral(splicesAtLevel(currentLevel).toList, TypeTree(defn.QuotedType)))
 
     /** Perform operation `op` in quoted context */
     private def inQuote(op: => Tree)(implicit ctx: Context) = {
@@ -109,7 +109,7 @@ class ReifyQuotes extends MacroTransform {
       case TypeApply(fn, arg :: Nil) if fn.symbol == defn.typeQuoteMethod =>
         inQuote(reifyCall(transform(arg), isType = true))
       case Select(body, name)
-      if tree.symbol == defn.MetaExpr_~ || tree.symbol == defn.MetaType_~ =>
+      if tree.symbol == defn.QuotedExpr_~ || tree.symbol == defn.QuotedType_~ =>
         currentLevel -= 1
         val body1 = try transform(body) finally currentLevel += 1
         if (currentLevel > 0) {
