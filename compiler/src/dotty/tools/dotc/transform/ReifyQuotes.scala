@@ -62,12 +62,16 @@ class ReifyQuotes extends MacroTransform {
     def checkLevel(tree: Tree)(implicit ctx: Context): Unit = {
 
       def check(sym: Symbol, show: Symbol => String): Unit =
-        if (levelOf.getOrElse(sym, currentLevel) != currentLevel)
+        if (!sym.isStaticOwner &&
+            !ctx.owner.ownersIterator.exists(_.isInlineMethod) &&
+            levelOf.getOrElse(sym, currentLevel) != currentLevel)
           ctx.error(em"""access to ${show(sym)} from wrong staging level:
                         | - the definition is at level ${levelOf(sym)},
                         | - but the access is at level $currentLevel.""", tree.pos)
 
-      def showThis(sym: Symbol) = i"${sym.name}.this"
+      def showThis(sym: Symbol) =
+        if (sym.is(ModuleClass)) sym.sourceModule.show
+        else i"${sym.name}.this"
 
       val sym = tree.symbol
       if (sym.exists)
@@ -136,6 +140,8 @@ class ReifyQuotes extends MacroTransform {
             levelOf -= enteredSyms.head
             enteredSyms = enteredSyms.tail
           }
+      case _: Import =>
+        tree
       case _ =>
         super.transform(tree)
     }
