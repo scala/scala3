@@ -1064,7 +1064,8 @@ object desugar {
           Select(t, op.name)
         }
       case PrefixOp(op, t) =>
-        Select(t, nme.UNARY_PREFIX ++ op.name)
+        val nspace = if (ctx.mode.is(Mode.Type)) tpnme else nme
+        Select(t, nspace.UNARY_PREFIX ++ op.name)
       case Tuple(ts) =>
         val arity = ts.length
         def tupleTypeRef = defn.TupleType(arity)

@@ -211,9 +211,6 @@ class TreePickler(pickler: TastyPickler) {
     case tpe: SuperType =>
       writeByte(SUPERtype)
       withLength { pickleType(tpe.thistpe); pickleType(tpe.supertpe) }
-    case tpe: TypeArgRef =>
-      writeByte(TYPEARGtype)
-      withLength { pickleType(tpe.prefix); pickleType(tpe.clsRef); writeNat(tpe.idx) }
     case tpe: RecThis =>
       writeByte(RECthis)
       val binderAddr = pickledTypes.get(tpe.binder)
@@ -345,10 +342,21 @@ class TreePickler(pickler: TastyPickler) {
             pickleTree(qual.withType(tref))
           }
         case Select(qual, name) =>
-          writeByte(if (name.isTypeName) SELECTtpt else SELECT)
-          val sig = tree.tpe.signature
-          pickleNameAndSig(name, sig)
-          pickleTree(qual)
+          name match {
+            case OuterSelectName(_, levels) =>
+              writeByte(SELECTouter)
+              withLength {
+                writeNat(levels)
+                pickleTree(qual)
+                val SkolemType(tp) = tree.tpe
+                pickleType(tp)
+              }
+            case _ =>
+              writeByte(if (name.isTypeName) SELECTtpt else SELECT)
+              val sig = tree.tpe.signature
+              pickleNameAndSig(name, sig)
+              pickleTree(qual)
+          }
         case Apply(fun, args) =>
           writeByte(APPLY)
           withLength {
@@ -385,7 +393,8 @@ class TreePickler(pickler: TastyPickler) {
           withLength { pickleTree(expr); pickleTpt(tpt) }
         case NamedArg(name, arg) =>
           writeByte(NAMEDARG)
-          withLength { pickleName(name); pickleTree(arg) }
+          pickleName(name)
+          pickleTree(arg)
         case Assign(lhs, rhs) =>
           writeByte(ASSIGN)
           withLength { pickleTree(lhs); pickleTree(rhs) }

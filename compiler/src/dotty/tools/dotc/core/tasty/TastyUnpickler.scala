@@ -4,6 +4,7 @@ package tasty
 
 import scala.collection.mutable
 import TastyFormat._
+import TastyFormat.NameTags._
 import TastyBuffer.NameRef
 import Names.{Name, TermName, termName, EmptyTermName}
 import NameKinds._
@@ -49,7 +50,7 @@ class TastyUnpickler(reader: TastyReader) {
       case UTF8 =>
         goto(end)
         termName(bytes, start.index, length)
-      case QUALIFIED | FLATTENED | EXPANDED | EXPANDPREFIX =>
+      case QUALIFIED | EXPANDED | EXPANDPREFIX =>
         qualifiedNameKindOfTag(tag)(readName(), readName().asSimpleName)
       case UNIQUE =>
         val separator = readName().toString
@@ -57,7 +58,7 @@ class TastyUnpickler(reader: TastyReader) {
         val originals = until(end)(readName())
         val original = if (originals.isEmpty) EmptyTermName else originals.head
         uniqueNameKindOfSeparator(separator)(original, num)
-      case DEFAULTGETTER | VARIANT | OUTERSELECT =>
+      case DEFAULTGETTER | VARIANT =>
         numberedNameKindOfTag(tag)(readName(), readNat())
       case SIGNED =>
         val original = readName()
