@@ -86,6 +86,7 @@ object TypeErasure {
 
   object ErasedValueType {
     def apply(tycon: TypeRef, erasedUnderlying: Type)(implicit ctx: Context) = {
+      assert(erasedUnderlying.exists)
       unique(new CachedErasedValueType(tycon, erasedUnderlying))
     }
   }
@@ -506,7 +507,10 @@ class TypeErasure(isJava: Boolean, semiEraseVCs: Boolean, isConstructor: Boolean
   private def sigName(tp: Type)(implicit ctx: Context): TypeName = try {
     tp match {
       case tp: TypeRef =>
-        if (!tp.denot.exists) throw new MissingType(tp.prefix, tp.name)
+        if (!tp.denot.exists) {
+          // println(i"missing: ${tp.toString} ${tp.denot} / ${tp.prefix.member(tp.name)}")
+          throw new MissingType(tp.prefix, tp.name)
+        }
         val sym = tp.symbol
         if (!sym.isClass) {
           val info = tp.info

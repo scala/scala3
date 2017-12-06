@@ -78,7 +78,7 @@ object Checking {
       case _ => false
     }.getOrElse(TypeTree(tparam.paramRef))
     val orderedArgs = if (hasNamedArg(args)) tparams.map(argNamed) else args
-    val bounds = tparams.map(_.paramInfoAsSeenFrom(tycon.tpe).bounds)
+    val bounds = tparams.map(_.paramInfoAsSeenFrom(tree.tpe).bounds)
     def instantiate(bound: Type, args: List[Type]) =
       HKTypeLambda.fromParams(tparams, bound).appliedTo(args)
     if (boundsCheck) checkBounds(orderedArgs, bounds, instantiate)
@@ -244,7 +244,7 @@ object Checking {
             locked += tp
             try checkInfo(tp.info)
             finally locked -= tp
-            if (pre1 eq pre) tp else tp.withPrefix(pre1)
+            tp.withPrefix(pre1)
           }
           else tp
         } catch {

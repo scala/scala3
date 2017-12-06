@@ -1904,9 +1904,12 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
 
   def adapt(tree: Tree, pt: Type)(implicit ctx: Context): Tree = /*>|>*/ track("adapt") /*<|<*/ {
     /*>|>*/ trace(i"adapting $tree of type ${tree.tpe} to $pt", typr, show = true) /*<|<*/ {
-      if (tree.isDef) interpolateUndetVars(tree, tree.symbol)
-      else if (!tree.tpe.widen.isInstanceOf[LambdaType]) interpolateUndetVars(tree, NoSymbol)
-      tree.overwriteType(tree.tpe.simplified)
+      if (!tree.denot.isOverloaded) {
+      	// for overloaded trees: resolve overloading before simplifying
+        if (tree.isDef) interpolateUndetVars(tree, tree.symbol)
+        else if (!tree.tpe.widen.isInstanceOf[LambdaType]) interpolateUndetVars(tree, NoSymbol)
+        tree.overwriteType(tree.tpe.simplified)
+      }
       adaptInterpolated(tree, pt)
     }
   }

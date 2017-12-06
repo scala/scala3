@@ -222,15 +222,20 @@ class TreeUnpickler(reader: TastyReader, nameAtRef: NameRef => TermName, posUnpi
         val result =
           (tag: @switch) match {
             case TERMREFin =>
-              var name = readName()
+              var sname = readName()
               val prefix = readType()
-              val space = readType().asInstanceOf[TypeRef]
-              TermRef(prefix, name.withNameSpace(space))
+              val space = readType()
+              sname match {
+                case SignedName(name, sig) =>
+                  TermRef(prefix, name, space.decl(name).atSignature(sig))
+                case name =>
+                  TermRef(prefix, name, space.decl(name))
+              }
             case TYPEREFin =>
               val name = readName().toTypeName
               val prefix = readType()
-              val space = readType().asInstanceOf[TypeRef]
-              TypeRef(prefix, name.withNameSpace(space))
+              val space = readType()
+              TypeRef(prefix, name, space.decl(name))
             case REFINEDtype =>
               var name: Name = readName()
               val parent = readType()
@@ -287,11 +292,17 @@ class TreeUnpickler(reader: TastyReader, nameAtRef: NameRef => TermName, posUnpi
         case TERMREFpkg =>
           readPackageRef().termRef
         case TYPEREF =>
-          val name =  readName().toTypeName
+          val name = readName().toTypeName
           TypeRef(readType(), name)
         case TERMREF =>
-          val name = readName()
-          TermRef(readType(), name)
+          val sname = readName()
+          val prefix = readType()
+          sname match {
+            case SignedName(name, sig) =>
+              TermRef(prefix, name, prefix.member(name).atSignature(sig))
+            case name =>
+              TermRef(prefix, name)
+          }
         case THIS =>
           ThisType.raw(readType().asInstanceOf[TypeRef])
         case RECtype =>
@@ -343,7 +354,7 @@ class TreeUnpickler(reader: TastyReader, nameAtRef: NameRef => TermName, posUnpi
     private def readSymNameRef()(implicit ctx: Context): Type = {
       val sym = readSymRef()
       val prefix = readType()
-      val res = NamedType.withSym(prefix, sym)
+      val res = NamedType(prefix, sym)
       prefix match {
         case prefix: ThisType if prefix.cls eq sym.owner => res.withDenot(sym.denot)
           // without this precaution we get an infinite cycle when unpickling pos/extmethods.scala
@@ -725,8 +736,7 @@ class TreeUnpickler(reader: TastyReader, nameAtRef: NameRef => TermName, posUnpi
       val start = currentAddr
       val cls = ctx.owner.asClass
       val assumedSelfType =
-        if (cls.is(Module) && cls.owner.isClass)
-          TermRef(cls.owner.thisType, cls.name.sourceModuleName.localizeIfPrivate(cls))
+        if (cls.is(Module) && cls.owner.isClass) TermRef(cls.owner.thisType, cls.name.sourceModuleName)
         else NoType
       cls.info = new TempClassInfo(cls.owner.thisType, cls, cls.unforcedDecls, assumedSelfType)
       val localDummy = symbolAtCurrent()

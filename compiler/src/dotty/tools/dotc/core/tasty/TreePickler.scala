@@ -9,7 +9,7 @@ import TastyFormat._
 import Contexts._, Symbols._, Types._, Names._, Constants._, Decorators._, Annotations._, StdNames.tpnme, NameOps._
 import collection.mutable
 import typer.Inliner
-import NameOps._, NameKinds._, Designators._
+import NameOps._, NameKinds._
 import StdNames.nme
 import TastyBuffer._
 import TypeApplications._
@@ -55,6 +55,11 @@ class TreePickler(pickler: TastyPickler) {
 
   private def pickleName(name: Name): Unit = writeNat(nameIndex(name).index)
 
+  private def pickleNameAndSig(name: Name, sig: Signature): Unit =
+    pickleName(
+      if (sig eq Signature.NotAMethod) name
+      else SignedName(name.toTermName, sig))
+
   private def pickleSymRef(sym: Symbol)(implicit ctx: Context) = symRefs.get(sym) match {
     case Some(label) =>
       if (label != NoAddr) writeRef(label) else pickleForwardSymRef(sym)
@@ -73,10 +78,8 @@ class TreePickler(pickler: TastyPickler) {
     forwardSymRefs(sym) = ref :: forwardSymRefs.getOrElse(sym, Nil)
   }
 
-  private def isLocallyDefined(sym: Symbol)(implicit ctx: Context) = symRefs.get(sym) match {
-    case Some(label) => assert(sym.exists); label != NoAddr
-    case None => false
-  }
+  private def isLocallyDefined(sym: Symbol)(implicit ctx: Context) =
+    sym.topLevelClass.isLinkedWith(pickler.rootCls)
 
   def pickleConstant(c: Constant)(implicit ctx: Context): Unit = c.tag match {
     case UnitTag =>
@@ -151,6 +154,25 @@ class TreePickler(pickler: TastyPickler) {
         writeByte(if (tpe.isType) TYPEREFdirect else TERMREFdirect)
         pickleSymRef(sym)
       }
+      def pickleExternalRef(sym: Symbol) = {
+        def pickleCore() = {
+          pickleNameAndSig(sym.name, tpe.signature)
+          pickleType(tpe.prefix)
+        }
+        val isShadowedRef =
+          sym.isClass && tpe.prefix.member(sym.name).symbol != sym
+        if (sym.is(Flags.Private) || isShadowedRef) {
+          writeByte(if (tpe.isType) TYPEREFin else TERMREFin)
+          withLength {
+            pickleCore()
+            pickleType(sym.owner.typeRef)
+          }
+        }
+        else {
+          writeByte(if (tpe.isType) TYPEREF else TERMREF)
+          pickleCore()
+        }
+      }
       if (sym.is(Flags.Package)) {
         writeByte(if (tpe.isType) TYPEREFpkg else TERMREFpkg)
         pickleName(sym.fullName)
@@ -174,13 +196,8 @@ class TreePickler(pickler: TastyPickler) {
         case name: Name =>
           writeByte(if (tpe.isType) TYPEREF else TERMREF)
           pickleName(name); pickleType(tpe.prefix)
-        case LocalName(name, space) =>
-          writeByte(if (tpe.isType) TYPEREFin else TERMREFin)
-          withLength {
-            pickleName(name)
-            pickleType(tpe.prefix)
-            pickleType(space)
-          }
+        case sym: Symbol =>
+          pickleExternalRef(sym)
       }
     case tpe: ThisType =>
       if (tpe.cls.is(Flags.Package) && !tpe.cls.isEffectiveRoot) {
@@ -330,9 +347,7 @@ class TreePickler(pickler: TastyPickler) {
         case Select(qual, name) =>
           writeByte(if (name.isTypeName) SELECTtpt else SELECT)
           val sig = tree.tpe.signature
-          pickleName(
-            if (sig eq Signature.NotAMethod) name
-            else SignedName(name.toTermName, sig))
+          pickleNameAndSig(name, sig)
           pickleTree(qual)
         case Apply(fun, args) =>
           writeByte(APPLY)

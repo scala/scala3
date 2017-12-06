@@ -188,7 +188,7 @@ trait TypeAssigner {
           // an inherited non-private member with the same name and signature.
           val d2 = pre.nonPrivateMember(name)
           if (reallyExists(d2) && firstTry)
-            test(tpe.withNameSpace(noNameSpace).withDenot(d2), false)
+            test(NamedType(pre, name, d2), false)
           else if (pre.derivesFrom(defn.DynamicClass)) {
             TryDynamicCallType
           } else {
@@ -208,8 +208,7 @@ trait TypeAssigner {
             else errorType(ex"$what cannot be accessed as a member of $pre$where.$whyNot", pos)
           }
         }
-        else
-          ctx.makePackageObjPrefixExplicit(tpe withDenot d)
+        else ctx.makePackageObjPrefixExplicit(tpe withDenot d)
       case _ =>
         tpe
     }
@@ -413,6 +412,7 @@ trait TypeAssigner {
           else wrongNumberOfTypeArgs(fn.tpe, pt.typeParams, args, tree.pos)
         }
       case _ =>
+        //println(i"bad type: $fn: ${fn.symbol} / ${fn.symbol.isType} / ${fn.symbol.info}") // DEBUG
         errorType(err.takesNoParamsStr(fn, "type "), tree.pos)
     }
 

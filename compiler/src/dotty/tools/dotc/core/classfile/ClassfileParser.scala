@@ -320,7 +320,7 @@ class ClassfileParser(
         case 'L' =>
           def processInner(tp: Type): Type = tp match {
             case tp: TypeRef if !(tp.symbol.owner is Flags.ModuleClass) =>
-              TypeRef.withSym(processInner(tp.prefix.widen), tp.symbol.asType, tp.name)
+              TypeRef(processInner(tp.prefix.widen), tp.symbol.asType)
             case _ =>
               tp
           }

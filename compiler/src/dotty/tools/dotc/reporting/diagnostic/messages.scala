@@ -357,12 +357,7 @@ object messages {
         )
       }
 
-      val siteType = site match {
-        case tp: NamedType => tp.info
-        case tp => tp
-      }
-
-      ex"$selected `$name` is not a member of $siteType$closeMember"
+      ex"$selected `$name` is not a member of ${site.widen}$closeMember"
     }
 
     val explanation = ""

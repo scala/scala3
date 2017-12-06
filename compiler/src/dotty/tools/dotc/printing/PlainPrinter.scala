@@ -247,7 +247,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
 
   /** If -uniqid is set, the unique id of symbol, after a # */
   protected def idString(sym: Symbol): String =
-    if (ctx.settings.uniqid.value) "#" + sym.id else ""
+    if (ctx.settings.uniqid.value || Printer.debugPrintUnique) "#" + sym.id else ""
 
   def nameString(sym: Symbol): String =
     simpleNameString(sym) + idString(sym) // + "<" + (if (sym.exists) sym.owner else "") + ">"

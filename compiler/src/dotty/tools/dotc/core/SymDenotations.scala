@@ -102,8 +102,11 @@ trait SymDenotations { this: Context =>
   }
 
   /** Configurable: Accept stale symbol with warning if in IDE */
+  def staleOK = Config.ignoreStaleInIDE && mode.is(Mode.Interactive)
+
+  /** Possibly accept stale symbol with warning if in IDE */
   def acceptStale(denot: SingleDenotation): Boolean =
-    mode.is(Mode.Interactive) && Config.ignoreStaleInIDE && {
+    staleOK && {
       ctx.echo(denot.staleSymbolMsg)
       true
     }
@@ -417,7 +420,7 @@ object SymDenotations {
           case name: SimpleName => qualify(name)
           case name @ AnyQualifiedName(_, _) => qualify(name.mangled.toSimpleName)
         }
-        if (name.isType) fn.toTypeName else fn.toTermName
+        if (name.isTypeName) fn.toTypeName else fn.toTermName
       }
 
     /** The encoded flat name of this denotation, where joined names are separated by `separator` characters. */
@@ -566,7 +569,7 @@ object SymDenotations {
 
     /** Is this denotation static (i.e. with no outer instance)? */
     final def isStatic(implicit ctx: Context) =
-      (if (maybeOwner eq NoSymbol) isRoot else maybeOwner.isStaticOwner) ||
+      (if (maybeOwner eq NoSymbol) isRoot else maybeOwner.originDenotation.isStaticOwner) ||
         myFlags.is(JavaStatic)
 
     /** Is this a package class or module class that defines static symbols? */
@@ -772,7 +775,6 @@ object SymDenotations {
       isPackageObject ||
       isTerm && !is(MethodOrLazy, butNot = Label) && !isLocalDummy
 
-    //    def isOverridable: Boolean = !!! need to enforce that classes cannot be redefined
     def isSkolem: Boolean = name == nme.SKOLEM
 
     def isInlineMethod(implicit ctx: Context): Boolean = is(InlineMethod, butNot = Accessor)
@@ -1134,10 +1136,10 @@ object SymDenotations {
     def thisType(implicit ctx: Context): Type = NoPrefix
 
     override def typeRef(implicit ctx: Context): TypeRef =
-      TypeRef(owner.thisType, name.asTypeName, this)
+      TypeRef(owner.thisType, symbol)
 
     override def termRef(implicit ctx: Context): TermRef =
-      TermRef(owner.thisType, name.asTermName, this)
+      TermRef(owner.thisType, symbol)
 
     /** The variance of this type parameter or type member as an Int, with
      *  +1 = Covariant, -1 = Contravariant, 0 = Nonvariant, or not a type parameter
@@ -1405,7 +1407,7 @@ object SymDenotations {
     private def computeThisType(implicit ctx: Context): Type = {
       val cls = symbol.asType
       val pre = if (this is Package) NoPrefix else owner.thisType
-      ThisType.raw(TypeRef.withSym(pre, cls))
+      ThisType.raw(TypeRef(pre, cls))
     }
 
     private[this] var myTypeRef: TypeRef = null
@@ -1439,7 +1441,7 @@ object SymDenotations {
         onBehalf.signalProvisional()
       val builder = new BaseDataBuilder
       for (p <- classParents) {
-        assert(p.typeSymbol.isClass, s"$this has $p")
+        assert(p.typeSymbol.isClass, s"$this has non-class parent: $p")
         builder.addAll(p.typeSymbol.asClass.baseClasses)
       }
       (classSymbol :: builder.baseClasses, builder.baseClassSet)
@@ -1488,6 +1490,8 @@ object SymDenotations {
         if (nxt.validFor.code > this.validFor.code) {
           this.nextInRun.asSymDenotation.asClass.enter(sym)
         }
+        if (defn.isScalaShadowingPackageClass(sym.owner))
+          defn.ScalaPackageClass.enter(sym)  // ScalaShadowing members are mirrored in ScalaPackage
       }
     }
 
@@ -1677,7 +1681,7 @@ object SymDenotations {
 
       /*>|>*/ trace.onDebug(s"$tp.baseType($this)") /*<|<*/ {
         Stats.record("baseTypeOf")
-        tp.stripTypeVar match { // @!!! dealias?
+        tp.stripTypeVar match {
           case tp: CachedType =>
           val btrCache = baseTypeCache
             try {
@@ -1845,25 +1849,23 @@ object SymDenotations {
       if (entry != null) {
         if (entry.sym == sym) return false
         mscope.unlink(entry)
-        entry.sym.denot = sym.denot // to avoid stale symbols
         if (sym.name == nme.PACKAGE) packageObjRunId = NoRunId
       }
       true
     }
   }
 
-  class NoDenotation extends SymDenotation(
-    NoSymbol, NoSymbol, "<none>".toTermName, Permanent, NoType) {
-    override def exists = false
-    override def isTerm = false
+  @sharable object NoDenotation
+  extends SymDenotation(NoSymbol, NoSymbol, "<none>".toTermName, Permanent, NoType) {
     override def isType = false
+    override def isTerm = false
+    override def exists = false
     override def owner: Symbol = throw new AssertionError("NoDenotation.owner")
     override def computeAsSeenFrom(pre: Type)(implicit ctx: Context): SingleDenotation = this
     override def mapInfo(f: Type => Type)(implicit ctx: Context): SingleDenotation = this
+    NoSymbol.denot = this
     validFor = Period.allInRun(NoRunId)
   }
-
-  @sharable val NoDenotation = new NoDenotation
 
   // ---- Completion --------------------------------------------------------
 
