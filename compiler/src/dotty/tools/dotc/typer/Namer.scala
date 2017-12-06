@@ -349,7 +349,16 @@ class Namer { typer: Typer =>
     }
     val existing = pkgOwner.info.decls.lookup(pid.name)
 
-    if ((existing is Package) && (pkgOwner eq existing.owner)) existing
+    if ((existing is Package) && (pkgOwner eq existing.owner)) {
+      existing.moduleClass.denot match {
+        case d: PackageClassDenotation =>
+          // Remove existing members coming from a previous compilation of this file,
+          // they are obsolete.
+          d.unlinkFromFile(ctx.source.file)
+        case _ =>
+      }
+      existing
+    }
     else {
       /** If there's already an existing type, then the package is a dup of this type */
       val existingType = pkgOwner.info.decls.lookup(pid.name.toTypeName)
