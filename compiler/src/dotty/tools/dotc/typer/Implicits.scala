@@ -637,20 +637,12 @@ trait Implicits { self: Typer =>
      */
     def synthesizedRepresentable(formal: Type)(implicit ctx: Context): Tree = {
       import untpd._
-
-      def rootQual(genericClass: String): Tree =
-        Select(Select(Select(Ident(nme.ROOTPKG), "dotty".toTermName), "generic".toTermName), genericClass.toTermName)
-
-      val args = formal.baseType(defn.RepresentableClass).argTypes
-      val generated = args match {
+      val generated = formal.baseType(defn.RepresentableClass).argTypes match {
         case (arg @ _) :: Nil =>
           val A = fullyDefinedType(arg, "Representable argument", pos).stripTypeVar
 
           // Sums -----------------------------------------------------------
           if (A.typeSymbol.is(Sealed)) {
-            val SLeftTree = rootQual("SLeft")
-            val SRightTree = rootQual("SRight")
-
             import transform.SymUtils._
             import dotty.tools.dotc.transform.patmat.SpaceEngine
 
@@ -682,8 +674,8 @@ trait Implicits { self: Typer =>
               val cases = {
                 val x = nme.syntheticParamName(0)
                 sumTypes.zipWithIndex.map { case (tpe, depth) =>
-                  val rhs = (1 to depth).foldLeft[Tree](Apply(SLeftTree, Ident(x))) {
-                    case (acc, _) => Apply(SRightTree, acc)
+                  val rhs = (1 to depth).foldLeft[Tree](Apply(tpd.ref(defn.SLeftModule), Ident(x))) {
+                    case (acc, _) => Apply(tpd.ref(defn.SRightModule), acc)
                   }
                   CaseDef(Typed(Ident(x), TypeTree(tpe)), EmptyTree, rhs)
                 }
@@ -703,8 +695,8 @@ trait Implicits { self: Typer =>
               val cases = {
                 val x = nme.syntheticParamName(0)
                 (1 to sumTypesSize).map { depth =>
-                  val pat = (1 until depth).foldLeft(Apply(SLeftTree, Ident(x))) {
-                    case (acc, _) => Apply(SRightTree, acc)
+                  val pat = (1 until depth).foldLeft(Apply(tpd.ref(defn.SLeftModule), Ident(x))) {
+                    case (acc, _) => Apply(tpd.ref(defn.SRightModule), acc)
                   }
                   CaseDef(pat, EmptyTree, Ident(x))
                 }.toList
@@ -719,9 +711,6 @@ trait Implicits { self: Typer =>
           }
           // Products -----------------------------------------------------------
           else if (defn.isProductSubType(A)) {
-            val PNilTree = rootQual("PNil")
-            val PConsTree = rootQual("PCons")
-
             val productTypes = productSelectorTypes(A)
             val productTypesSize = productTypes.size
             val noBounds = TypeBoundsTree(EmptyTree, EmptyTree)
@@ -732,14 +721,14 @@ trait Implicits { self: Typer =>
                 AppliedTypeTree(TypeTree(defn.PConsType), TypeTree(cur) :: acc :: Nil)
               }
             )
-            val pNil  = Apply(PNilTree, Nil)
+            val pNil  = Apply(tpd.ref(defn.PNilModule), Nil)
 
             // def to(a: A): Repr =
             //   PCons(a._1, (PCons(a._2, ... PCons(a._n, PNil()))))
             val to = {
               val arg = makeSyntheticParameter(tpt = TypeTree(A))
               val body = (1 to productTypesSize).foldRight(pNil) { case (i, acc) =>
-                Apply(PConsTree, Select(Ident(arg.name), nme.productAccessorName(i)) :: acc :: Nil)
+                Apply(tpd.ref(defn.PConsModule), Select(Ident(arg.name), nme.productAccessorName(i)) :: acc :: Nil)
               }
               DefDef("to".toTermName, Nil, (arg :: Nil) :: Nil, Ident(repr.name), body).withFlags(Synthetic)
             }
@@ -750,12 +739,12 @@ trait Implicits { self: Typer =>
             val from = {
               val arg = makeSyntheticParameter(tpt = Ident(repr.name))
               val pat = (1 to productTypesSize).reverse.foldLeft(pNil) { case (acc, i) =>
-                Apply(PConsTree, Ident(nme.productAccessorName(i)) :: acc :: Nil)
+                Apply(tpd.ref(defn.PConsModule), Ident(nme.productAccessorName(i)) :: acc :: Nil)
               }
               val neuu = {
                 A match {
                   case tpe: NamedType if tpe.termSymbol.exists => // case object
-                    untpd.ref(tpe)
+                    ref(tpe)
                   case _ if A.classSymbol.exists =>               // case class
                     val newArgs    = (1 to productTypesSize).map(i => Ident(nme.productAccessorName(i))).toList
                     val hasVarargs = A.classSymbol.primaryConstructor.info.isVarArgsMethod
