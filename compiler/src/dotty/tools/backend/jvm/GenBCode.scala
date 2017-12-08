@@ -100,7 +100,6 @@ class GenBCodePipeline(val entryPoints: List[Symbol], val int: DottyBackendInter
 
     private[this] var bytecodeWriter  : BytecodeWriter   = null
     private[this] var mirrorCodeGen   : JMirrorBuilder   = null
-    private[this] var beanInfoCodeGen : JBeanInfoBuilder = null
 
     /* ---------------- q1 ---------------- */
 
@@ -126,7 +125,7 @@ class GenBCodePipeline(val entryPoints: List[Symbol], val int: DottyBackendInter
 
     /*
      *  An item of queue-3 (the last queue before serializing to disk) contains three of these
-     *  (one for each of mirror, plain, and bean classes).
+     *  (one for each of mirror and plain classes).
      *
      *  @param jclassName  internal name of the class
      *  @param jclassBytes bytecode emitted for the class SubItem3 represents
@@ -180,7 +179,7 @@ class GenBCodePipeline(val entryPoints: List[Symbol], val int: DottyBackendInter
 
       /*
        *  Checks for duplicate internal names case-insensitively,
-       *  builds ASM ClassNodes for mirror, plain, and bean classes;
+       *  builds ASM ClassNodes for mirror and plain classes;
        *  enqueues them in queue-2.
        *
        */
@@ -339,7 +338,6 @@ class GenBCodePipeline(val entryPoints: List[Symbol], val int: DottyBackendInter
       // initBytecodeWriter invokes fullName, thus we have to run it before the typer-dependent thread is activated.
       bytecodeWriter  = initBytecodeWriter(entryPoints)
       mirrorCodeGen   = new JMirrorBuilder
-      beanInfoCodeGen = new JBeanInfoBuilder
 
       val needsOutfileForSymbol = bytecodeWriter.isInstanceOf[ClassBytecodeWriter]
       buildAndSendToDisk(needsOutfileForSymbol)

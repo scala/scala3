@@ -691,7 +691,6 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
     def hasPackageFlag: Boolean = sym is Flags.Package
     def isImplClass: Boolean = sym is Flags.ImplClass
     def isInterface: Boolean = (sym is Flags.PureInterface) || (sym is Flags.Trait)
-    def hasGetter: Boolean = false // used only for generaration of beaninfo todo: implement
     def isGetter: Boolean = toDenot(sym).isGetter
     def isSetter: Boolean = toDenot(sym).isSetter
     def isGetClass: Boolean = sym eq defn.Any_getClass
