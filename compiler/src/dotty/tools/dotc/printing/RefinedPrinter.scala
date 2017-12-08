@@ -125,11 +125,11 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
             atPrec(InfixPrec) { argText(args.head) }
           else
             toTextTuple(args.init)
-        (keywordStr("implicit ") provided isImplicit) ~ argStr ~ " => " ~ argText(args.last)
+        (keywordText("implicit ") provided isImplicit) ~ argStr ~ " => " ~ argText(args.last)
       }
 
     def toTextDependentFunction(appType: MethodType): Text = {
-      ("implicit " provided appType.isImplicitMethod) ~
+      (keywordText("implicit ") provided appType.isImplicitMethod) ~
       "(" ~ paramsText(appType) ~ ") => " ~ toText(appType.resultType)
     }
 
@@ -186,7 +186,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         withoutPos(super.toText(tp))
       case tp: SelectionProto =>
         return "?{ " ~ toText(tp.name) ~
-           (" " provided !tp.name.toSimpleName.last.isLetterOrDigit) ~
+           (Str(" ") provided !tp.name.toSimpleName.last.isLetterOrDigit) ~
            ": " ~ toText(tp.memberProto) ~ " }"
       case tp: ViewProto =>
         return toText(tp.argType) ~ " ?=>? " ~ toText(tp.resultType)
@@ -272,7 +272,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       if (homogenizedView && mods.flags.isTypeFlags) flagMask &~= Implicit // drop implicit from classes
       val flags = mods.flags & flagMask
       val flagsText = if (flags.isEmpty) "" else keywordStr((mods.flags & flagMask).toString)
-      Text(mods.annotations.map(annotText), " ") ~~ flagsText ~~ (kw provided !suppressKw)
+      Text(mods.annotations.map(annotText), " ") ~~ flagsText ~~ (Str(kw) provided !suppressKw)
     }
 
     def varianceText(mods: untpd.Modifiers) =
@@ -343,7 +343,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
 
       val bodyText = "{" ~~ selfText ~~ toTextGlobal(primaryConstrs ::: body, "\n") ~ "}"
 
-      prefix ~ (keywordStr(" extends") provided !ofNew) ~~ parentsText ~~ bodyText
+      prefix ~ (keywordText(" extends") provided !ofNew) ~~ parentsText ~~ bodyText
     }
 
     def toTextPackageId(pid: Tree): Text =
@@ -412,7 +412,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         blockText(stats :+ expr)
       case If(cond, thenp, elsep) =>
         changePrec(GlobalPrec) {
-          keywordStr("if ") ~ toText(cond) ~ (keywordStr(" then") provided !cond.isInstanceOf[Parens]) ~~ toText(thenp) ~ optText(elsep)(keywordStr(" else ") ~ _)
+          keywordStr("if ") ~ toText(cond) ~ (keywordText(" then") provided !cond.isInstanceOf[Parens]) ~~ toText(thenp) ~ optText(elsep)(keywordStr(" else ") ~ _)
         }
       case Closure(env, ref, target) =>
         "closure(" ~ (toTextGlobal(env, ", ") ~ " | " provided env.nonEmpty) ~

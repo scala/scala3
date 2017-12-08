@@ -146,8 +146,6 @@ object Texts {
     def over (that: Text) =
       if (this.isVertical) Vertical(that :: this.relems)
       else Vertical(that :: this :: Nil)
-
-    def provided(pred: Boolean) = if (pred) this else Str("")
   }
 
   object Text {
@@ -169,6 +167,10 @@ object Texts {
 
     /** The given texts `xs`, each on a separate line */
     def lines(xs: Traversable[Text]) = Vertical(xs.toList.reverse)
+
+    implicit class textDeco(text: => Text) {
+      def provided(cond: Boolean): Text = if (cond) text else Str("")
+    }
   }
 
   case class Str(s: String, lineRange: LineRange = EmptyLineRange) extends Text {
