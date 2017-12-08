@@ -1853,6 +1853,17 @@ object SymDenotations {
       }
       true
     }
+
+    /** Unlink all package members defined in `file` in a previous run. */
+    def unlinkFromFile(file: AbstractFile)(implicit ctx: Context): Unit = {
+      val scope = unforcedDecls.openForMutations
+      for (sym <- scope.toList.iterator) {
+        // We need to be careful to not force the denotation of `sym` here,
+        // otherwise it will be brought forward to the current run.
+        if (sym.defRunId != ctx.runId && sym.isClass && sym.asClass.assocFile == file)
+          scope.unlink(sym, sym.lastKnownDenotation.name)
+      }
+    }
   }
 
   @sharable object NoDenotation
