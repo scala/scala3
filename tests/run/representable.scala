@@ -467,7 +467,7 @@ object RepresentableTestsAux2 {
       (implicit gen: Representable[A] { type Repr = U }, auto: Bar[U]): Bar[A] = ???
   }
 
-  // TODO
+  // TODO genLoad
   // class Outer1 {
   //   sealed trait Color
   //   object Inner {
@@ -530,8 +530,7 @@ object RepresentableTestsAux2 {
 }
 
 object MixedCCNonCCNested {
-  // Block local
-  // Fails because of dotty.tools.dotc.typer.Typer.ensureNoLocalRefs(Typer.scala:671)
+  // #3637
   // {
   //   object T1 {
   //     sealed abstract class Tree
@@ -573,9 +572,9 @@ object MixedCCNonCCNested {
       case object Leaf extends Tree
     }
 
-    // Representable[T1.Tree] // TODO genLoad
+    Representable[T1.Tree]
     import T1._
-    // Representable[Tree] // TODO genLoad
+    Representable[Tree]
 
     sealed trait A
     sealed case class B(i: Int, s: String) extends A
@@ -850,7 +849,9 @@ object TestPrefixes1 {
 //   }
 // }
 
-// TRICKY, there is no infrastructure to get "reachable" children, see #3574
+// Rather tricky given than there is no infrastructure to get "reachable"
+// children, see #3574. I would postpone these cases for later (this is also
+// an issue in pattern matching exhaustivity)
 // object PathVariantDefns {
 //   sealed trait AtomBase {
 //     sealed trait Atom
@@ -896,8 +897,6 @@ object Thrift {
     def apply(a: Double, b: String): TProduct = new Immutable(a, b)
 
     def unapply(tp: TProduct): Option[Product2[Double, String]] = Some(tp)
-
-    // class Immutable(val a: Double, val b: String) extends TProduct
 
     class Immutable(
       val a: Double,
@@ -976,7 +975,7 @@ object Test {
     // RepresentableTests.testNestedInherited() // Fails at runtime because of #3624
     RepresentableTests.testNonRepresentable()
     RepresentableTests.testNestedCaseObjects()
-    // RepresentableTests.testCaseObjectsAndLazy()
+    RepresentableTests.testCaseObjectsAndLazy()
     // TestEnum.testEnum0()
     TestEnum.testEnum1()
     TestEnum.testEnum2()

@@ -677,7 +677,7 @@ trait Implicits { self: Typer =>
                   val rhs = (1 to depth).foldLeft[Tree](Apply(tpd.ref(defn.SLeftModule), Ident(x))) {
                     case (acc, _) => Apply(tpd.ref(defn.SRightModule), acc)
                   }
-                  CaseDef(Typed(Ident(x), TypeTree(tpe)), EmptyTree, rhs)
+                  CaseDef(Typed(Ident(x), TypeTree(tpe.widen)), EmptyTree, rhs)
                 }
               }
               val body = Match(unchecked(Ident(arg.name)), cases)
@@ -709,6 +709,7 @@ trait Implicits { self: Typer =>
             val parents  = TypeTree(defn.RepresentableType.appliedTo(A)) :: Nil
             New(Template(emptyConstructor, parents, EmptyValDef, repr :: to :: from :: Nil)).withPos(pos)
           }
+
           // Products -----------------------------------------------------------
           else if (defn.isProductSubType(A)) {
             val productTypes = productSelectorTypes(A)
