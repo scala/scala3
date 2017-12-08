@@ -21,6 +21,10 @@ class ReifyQuotes extends MacroTransform {
 
   protected def newTransformer(implicit ctx: Context): Transformer = new Reifier
 
+  /** is tree splice operation? */
+  def isSplice(tree: Select)(implicit ctx: Context) =
+    tree.symbol == defn.QuotedExpr_~ || tree.symbol == defn.QuotedType_~
+
   /** Serialize `tree`. Embedded splices are represented as nodes of the form
    *
    *      Select(qual, sym)
@@ -112,8 +116,7 @@ class ReifyQuotes extends MacroTransform {
         inQuote(reifyCall(transform(arg), isType = false))
       case TypeApply(fn, arg :: Nil) if fn.symbol == defn.typeQuoteMethod =>
         inQuote(reifyCall(transform(arg), isType = true))
-      case Select(body, name)
-      if tree.symbol == defn.QuotedExpr_~ || tree.symbol == defn.QuotedType_~ =>
+      case tree @ Select(body, name) if isSplice(tree) =>
         currentLevel -= 1
         val body1 = try transform(body) finally currentLevel += 1
         if (currentLevel > 0) {
@@ -140,6 +143,10 @@ class ReifyQuotes extends MacroTransform {
             levelOf -= enteredSyms.head
             enteredSyms = enteredSyms.tail
           }
+      case Inlined(call, bindings, expansion @ Select(body, name)) if isSplice(expansion) =>
+        // To maintain phase consistency, convert inlined expressions of the form
+        // `{ bindings; ~expansion }` to `~{ bindings; expansion }`
+        cpy.Select(expansion)(cpy.Inlined(tree)(call, bindings, body), name)
       case _: Import =>
         tree
       case _ =>
