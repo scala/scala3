@@ -210,14 +210,14 @@ class CompilationTests extends ParallelTesting {
 
   @Test def testPickling: Unit = {
     implicit val testGroup: TestGroup = TestGroup("testPickling")
-    compileDir("../compiler/src/dotty/tools", picklingOptions) +
-    compileDir("../compiler/src/dotty/tools/dotc", picklingOptions) +
+    compileDir("../compiler/src/dotty/tools", picklingOptions, recursive = false) +
+    compileDir("../compiler/src/dotty/tools/dotc", picklingOptions, recursive = false) +
     compileFilesInDir("../tests/new", picklingOptions) +
     compileFilesInDir("../tests/pickling", picklingOptions) +
     compileDir("../library/src/dotty/runtime", picklingOptions) +
     compileDir("../compiler/src/dotty/tools/backend/jvm", picklingOptions) +
     compileDir("../compiler/src/dotty/tools/dotc/ast", picklingOptions) +
-    compileDir("../compiler/src/dotty/tools/dotc/core", picklingOptions) +
+    compileDir("../compiler/src/dotty/tools/dotc/core", picklingOptions, recursive = false) +
     compileDir("../compiler/src/dotty/tools/dotc/config", picklingOptions) +
     compileDir("../compiler/src/dotty/tools/dotc/parsing", picklingOptions) +
     compileDir("../compiler/src/dotty/tools/dotc/printing", picklingOptions) +
