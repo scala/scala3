@@ -76,6 +76,7 @@ class SuperAccessors(thisPhase: DenotTransformer) {
       if (clazz is Trait) superName = superName.expandedName(clazz)
       val superInfo = sel.tpe.widenSingleton.ensureMethodic
 
+      val accPos = sel.pos.focus
       val superAcc = clazz.info.decl(superName)
         .suchThat(_.signature == superInfo.signature).symbol
         .orElse {
@@ -83,11 +84,11 @@ class SuperAccessors(thisPhase: DenotTransformer) {
           val deferredOrPrivate = if (clazz is Trait) Deferred else Private
           val acc = ctx.newSymbol(
               clazz, superName, Artifact | Method | deferredOrPrivate,
-              superInfo, coord = sym.coord).enteredAfter(thisPhase)
+              superInfo, coord = accPos).enteredAfter(thisPhase)
           // Diagnostic for SI-7091
           if (!accDefs.contains(clazz))
             ctx.error(s"Internal error: unable to store accessor definition in ${clazz}. clazz.hasPackageFlag=${clazz is Package}. Accessor required for ${sel} (${sel.show})", sel.pos)
-          else accDefs(clazz) += DefDef(acc, EmptyTree)
+          else accDefs(clazz) += DefDef(acc, EmptyTree).withPos(accPos)
           acc
         }
 
@@ -181,13 +182,14 @@ class SuperAccessors(thisPhase: DenotTransformer) {
         }
         accTypeOf(sym.info)
       }
+      val accPos = sel.pos.focus
       val protectedAccessor = clazz.info.decl(accName).suchThat(_.signature == accType.signature).symbol orElse {
         val newAcc = ctx.newSymbol(
-          clazz, accName, Artifact | Method, accType, coord = sel.pos).enteredAfter(thisPhase)
+          clazz, accName, Artifact | Method, accType, coord = accPos).enteredAfter(thisPhase)
         val code = polyDefDef(newAcc, trefs => vrefss => {
           val (receiver :: _) :: tail = vrefss
           val base = receiver.select(sym).appliedToTypes(trefs)
-          (base /: tail)(Apply(_, _))
+          (base /: tail)(Apply(_, _)).withPos(accPos)
         })
         ctx.debuglog("created protected accessor: " + code)
         accDefs(clazz) += code
@@ -233,13 +235,14 @@ class SuperAccessors(thisPhase: DenotTransformer) {
           MethodType(receiverType :: Nil)(mt => tpe.substThis(sym.owner.asClass, mt.newParamRef(0)))
       }
       val accType = accTypeOf(sym.info)
+      val accPos = tree.pos.focus
       val protectedAccessor = clazz.info.decl(accName).suchThat(_.signature == accType.signature).symbol orElse {
         val newAcc = ctx.newSymbol(
-            clazz, accName, Artifact, accType, coord = tree.pos).enteredAfter(thisPhase)
+            clazz, accName, Artifact, accType, coord = accPos).enteredAfter(thisPhase)
         val code = polyDefDef(newAcc, trefs => vrefss => {
           val (receiver :: _) :: tail = vrefss
           val base = receiver.select(sym).appliedToTypes(trefs)
-          (base /: vrefss)(Apply(_, _))
+          (base /: vrefss)(Apply(_, _)).withPos(accPos)
         })
         ctx.debuglog("created protected accessor: " + code)
         accDefs(clazz) += code
@@ -265,12 +268,13 @@ class SuperAccessors(thisPhase: DenotTransformer) {
 
       val accName = ProtectedSetterName(field.name)
       val accType = MethodType(clazz.classInfo.selfType :: field.info :: Nil, defn.UnitType)
+      val accPos = tree.pos.focus
       val protectedAccessor = clazz.info.decl(accName).symbol orElse {
         val newAcc = ctx.newSymbol(
-            clazz, accName, Artifact, accType, coord = tree.pos).enteredAfter(thisPhase)
+            clazz, accName, Artifact, accType, coord = accPos).enteredAfter(thisPhase)
         val code = DefDef(newAcc, vrefss => {
           val (receiver :: value :: Nil) :: Nil = vrefss
-          Assign(receiver.select(field), value).withPos(tree.pos)
+          Assign(receiver.select(field), value).withPos(accPos)
         })
         ctx.debuglog("created protected setter: " + code)
         accDefs(clazz) += code

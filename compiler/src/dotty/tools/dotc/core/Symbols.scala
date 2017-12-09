@@ -130,8 +130,8 @@ trait Symbols { this: Context =>
     newClassSymbol(owner, name, flags, completer, privateWithin, coord, assocFile)
   }
 
-  def newRefinedClassSymbol = newCompleteClassSymbol(
-    ctx.owner, tpnme.REFINE_CLASS, NonMember, parents = Nil)
+  def newRefinedClassSymbol(coord: Coord = NoCoord) =
+    newCompleteClassSymbol(ctx.owner, tpnme.REFINE_CLASS, NonMember, parents = Nil, coord = coord)
 
   /** Create a module symbol with associated module class
    *  from its non-info fields and a function producing the info
@@ -288,7 +288,7 @@ trait Symbols { this: Context =>
     val tparamBuf = new mutable.ListBuffer[TypeSymbol]
     val trefBuf = new mutable.ListBuffer[TypeRef]
     for (name <- names) {
-      val tparam = newNakedSymbol[TypeName](NoCoord)
+      val tparam = newNakedSymbol[TypeName](owner.coord)
       tparamBuf += tparam
       trefBuf += TypeRef(owner.thisType, tparam)
     }
@@ -443,9 +443,11 @@ object Symbols {
       if (lastDenot == null) NoRunId else lastDenot.validFor.runId
 
     /** Does this symbol come from a currently compiled source file? */
-    final def isDefinedInCurrentRun(implicit ctx: Context): Boolean = {
-      pos.exists && defRunId == ctx.runId
-    }
+    final def isDefinedInCurrentRun(implicit ctx: Context): Boolean =
+      pos.exists && defRunId == ctx.runId && {
+        val file = associatedFile
+        file != null && ctx.runInfo.files.contains(file)
+      }
 
     /** Is symbol valid in current run? */
     final def isValidInCurrentRun(implicit ctx: Context): Boolean =
@@ -539,7 +541,7 @@ object Symbols {
      *  Overridden in ClassSymbol
      */
     def associatedFile(implicit ctx: Context): AbstractFile =
-      denot.topLevelClass.symbol.associatedFile
+      if (lastDenot == null) null else lastDenot.topLevelClass.symbol.associatedFile
 
     /** The class file from which this class was generated, null if not applicable. */
     final def binaryFile(implicit ctx: Context): AbstractFile = {
@@ -563,8 +565,12 @@ object Symbols {
       }
     }
 
-    /** The position of this symbol, or NoPosition is symbol was not loaded
-     *  from source.
+    /** The position of this symbol, or NoPosition if the symbol was not loaded
+     *  from source or from TASTY. This is always a zero-extent position.
+     *
+     *  NOTE: If the symbol was not loaded from the current compilation unit,
+     *  the implicit conversion `sourcePos` will return the wrong result, careful!
+     *  TODO: Consider changing this method return type to `SourcePosition`.
      */
     def pos: Position = if (coord.isPosition) coord.toPosition else NoPosition
 

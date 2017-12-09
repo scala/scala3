@@ -196,7 +196,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       case tp: MethodType =>
         def valueParam(name: TermName, info: Type): TermSymbol = {
           val maybeImplicit = if (tp.isImplicitMethod) Implicit else EmptyFlags
-          ctx.newSymbol(sym, name, TermParam | maybeImplicit, info)
+          ctx.newSymbol(sym, name, TermParam | maybeImplicit, info, coord = sym.coord)
         }
         val params = (tp.paramNames, tp.paramInfos).zipped.map(valueParam)
         val (paramss, rtp) = valueParamss(tp.instantiate(params map (_.termRef)))
@@ -262,7 +262,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     val parents1 =
       if (parents.head.classSymbol.is(Trait)) parents.head.parents.head :: parents
       else parents
-    val cls = ctx.newNormalizedClassSymbol(owner, tpnme.ANON_FUN, Synthetic, parents1,
+    val cls = ctx.newNormalizedClassSymbol(owner, tpnme.ANON_CLASS, Synthetic, parents1,
         coord = fns.map(_.pos).reduceLeft(_ union _))
     val constr = ctx.newConstructor(cls, Synthetic, Nil, Nil).entered
     def forwarder(fn: TermSymbol, name: TermName) = {

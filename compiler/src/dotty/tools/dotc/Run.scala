@@ -10,14 +10,15 @@ import Types._
 import Scopes._
 import typer.{FrontEnd, Typer, ImportInfo, RefChecks}
 import Decorators._
-import io.PlainFile
+import io.{AbstractFile, PlainFile}
 import scala.io.Codec
-import util._
+import util.{Set => _, _}
 import reporting.Reporter
 import transform.TreeChecker
 import rewrite.Rewrites
 import java.io.{BufferedWriter, OutputStreamWriter}
 import printing.XprintMode
+import typer.ImplicitRunInfo
 
 import scala.annotation.tailrec
 import dotty.tools.io.VirtualFile
@@ -25,8 +26,7 @@ import scala.util.control.NonFatal
 
 /** A compiler run. Exports various methods to compile source files */
 class Run(comp: Compiler, ictx: Context) {
-
-  var units: List[CompilationUnit] = _
+  import Run._
 
   /** Produces the following contexts, from outermost to innermost
    *
@@ -78,7 +78,7 @@ class Run(comp: Compiler, ictx: Context) {
     compileSources(sources)
   } catch {
     case NonFatal(ex) =>
-      ctx.echo(i"exception occurred while compiling $units%, %")
+      ctx.echo(i"exception occurred while compiling ${ctx.runInfo.units}%, %")
       throw ex
   }
 
@@ -90,17 +90,17 @@ class Run(comp: Compiler, ictx: Context) {
    */
   def compileSources(sources: List[SourceFile]) =
     if (sources forall (_.exists)) {
-      units = sources map (new CompilationUnit(_))
+      ctx.runInfo.units = sources map (new CompilationUnit(_))
       compileUnits()
     }
 
   def compileUnits(us: List[CompilationUnit]): Unit = {
-    units = us
+    ctx.runInfo.units = us
     compileUnits()
   }
 
   def compileUnits(us: List[CompilationUnit], ctx: Context): Unit = {
-    units = us
+    ctx.runInfo.units = us
     compileUnits()(ctx)
   }
 
@@ -122,16 +122,16 @@ class Run(comp: Compiler, ictx: Context) {
         if (phase.isRunnable)
           Stats.trackTime(s"$phase ms ") {
             val start = System.currentTimeMillis
-            units = phase.runOn(units)
+            ctx.runInfo.units = phase.runOn(ctx.runInfo.units)
             if (ctx.settings.Xprint.value.containsPhase(phase)) {
-              for (unit <- units) {
+              for (unit <- ctx.runInfo.units) {
                 lastPrintedTree =
                   printTree(lastPrintedTree)(ctx.fresh.setPhase(phase.next).setCompilationUnit(unit))
               }
             }
             ctx.informTime(s"$phase ", start)
             Stats.record(s"total trees at end of $phase", ast.Trees.ntrees)
-            for (unit <- units)
+            for (unit <- ctx.runInfo.units)
               Stats.record(s"retained typed trees at end of $phase", unit.tpdTree.treeSize)
           }
     }
@@ -189,5 +189,37 @@ class Run(comp: Compiler, ictx: Context) {
     val r = ctx.reporter
     r.printSummary
     r
+  }
+}
+
+object Run {
+  /** Info that changes on each compiler run */
+  class RunInfo(initctx: Context) extends ImplicitRunInfo with ConstraintRunInfo {
+    implicit val ctx: Context = initctx
+
+    private[this] var myUnits: List[CompilationUnit] = _
+    private[this] var myUnitsCached: List[CompilationUnit] = _
+    private[this] var myFiles: Set[AbstractFile] = _
+
+    /** The compilation units currently being compiled, this may return different
+     *  results over time.
+     */
+    def units: List[CompilationUnit] = myUnits
+
+    private[Run] def units_=(us: List[CompilationUnit]): Unit =
+      myUnits = us
+
+
+    /** The files currently being compiled, this may return different results over time.
+     *  These files do not have to be source files since it's possible to compile
+     *  from TASTY.
+     */
+    def files: Set[AbstractFile] = {
+      if (myUnits ne myUnitsCached) {
+        myUnitsCached = myUnits
+        myFiles = myUnits.map(_.source.file).toSet
+      }
+      myFiles
+    }
   }
 }

@@ -14,11 +14,12 @@ import NameOps._
 import Uniques._
 import SymDenotations._
 import Comments._
+import Run.RunInfo
 import util.Positions._
 import ast.Trees._
 import ast.untpd
 import util.{FreshNameCreator, SimpleIdentityMap, SourceFile, NoSource}
-import typer.{Implicits, ImplicitRunInfo, ImportInfo, Inliner, NamerContextOps, SearchHistory, TypeAssigner, Typer}
+import typer.{Implicits, ImportInfo, Inliner, NamerContextOps, SearchHistory, TypeAssigner, Typer}
 import Implicits.ContextualImplicits
 import config.Settings._
 import config.Config
@@ -673,11 +674,6 @@ object Contexts {
     implicit def toBase(ctx: Context): ContextBase = ctx.base
 
     // @sharable val theBase = new ContextBase // !!! DEBUG, so that we can use a minimal context for reporting even in code that normally cannot access a context
-  }
-
-  /** Info that changes on each compiler run */
-  class RunInfo(initctx: Context) extends ImplicitRunInfo with ConstraintRunInfo {
-    implicit val ctx: Context = initctx
   }
 
   class GADTMap(initBounds: SimpleIdentityMap[Symbol, TypeBounds]) extends util.DotClass {

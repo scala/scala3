@@ -759,7 +759,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     args match {
       case ValDef(_, _, _) :: _ =>
         typedDependent(args.asInstanceOf[List[ValDef]])(
-          ctx.fresh.setOwner(ctx.newRefinedClassSymbol).setNewScope)
+          ctx.fresh.setOwner(ctx.newRefinedClassSymbol(tree.pos)).setNewScope)
       case _ =>
         typed(cpy.AppliedTypeTree(tree)(untpd.TypeTree(funCls.typeRef), args :+ body), pt)
     }

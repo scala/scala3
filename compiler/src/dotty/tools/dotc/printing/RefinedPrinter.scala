@@ -13,6 +13,7 @@ import Trees._
 import TypeApplications._
 import Decorators._
 import config.Config
+import util.Positions._
 import transform.SymUtils._
 import scala.annotation.switch
 import language.implicitConversions
@@ -630,14 +631,18 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       else if (tree.isType && !homogenizedView)
         txt = toText(tp)
     }
-    if (printPos && !suppressPositions) {
-      // add positions
-      val pos =
-        if (homogenizedView && !tree.isInstanceOf[MemberDef]) tree.pos.toSynthetic
-        else tree.pos
-      val clsStr = ""//if (tree.isType) tree.getClass.toString else ""
-      txt = (txt ~ "@" ~ pos.toString ~ clsStr).close
-    }
+    if (!suppressPositions) {
+      if (printPos) {
+        val pos =
+          if (homogenizedView && !tree.isInstanceOf[MemberDef]) tree.pos.toSynthetic
+          else tree.pos
+        val clsStr = ""//if (tree.isType) tree.getClass.toString else ""
+        txt = (txt ~ "@" ~ pos.toString ~ clsStr).close
+      }
+      if (ctx.settings.YprintPosSyms.value && tree.isDef)
+        txt = (txt ~
+          s"@@(${tree.symbol.name}=" ~ tree.symbol.pos.toString ~ ")").close
+   }
     if (ctx.settings.YshowTreeIds.value)
       txt = (txt ~ "#" ~ tree.uniqueId.toString).close
     tree match {

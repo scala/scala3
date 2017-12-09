@@ -98,8 +98,8 @@ object Inliner {
             val accessorType = accessedType.ensureMethodic
             val accessor = accessorSymbol(tree, accessorType).asTerm
             val accessorDef = polyDefDef(accessor, tps => argss =>
-              rhs(refPart, tps, argss))
-            val accessorRef = ref(accessor).appliedToTypeTrees(targs).appliedToArgss(argss)
+              rhs(refPart, tps, argss).withPos(tree.pos.focus))
+            val accessorRef = ref(accessor).appliedToTypeTrees(targs).appliedToArgss(argss).withPos(tree.pos)
             (accessorDef, accessorRef)
           } else {
             // Hard case: Reference needs to go via a dynamic prefix
@@ -135,11 +135,14 @@ object Inliner {
             val accessor = accessorSymbol(tree, accessorType).asTerm
 
             val accessorDef = polyDefDef(accessor, tps => argss =>
-              rhs(argss.head.head.select(refPart.symbol), tps.drop(localRefs.length), argss.tail))
+              rhs(argss.head.head.select(refPart.symbol), tps.drop(localRefs.length), argss.tail)
+              .withPos(tree.pos.focus)
+            )
 
             val accessorRef = ref(accessor)
               .appliedToTypeTrees(localRefs.map(TypeTree(_)) ++ targs)
               .appliedToArgss((qual :: Nil) :: argss)
+              .withPos(tree.pos)
             (accessorDef, accessorRef)
           }
         accessors += accessorDef
@@ -168,8 +171,8 @@ object Inliner {
               // Draft code (incomplete):
               //
               //  val accessor = accessorSymbol(tree, TypeAlias(tree.tpe)).asType
-              //  myAccessors += TypeDef(accessor)
-              //  ref(accessor)
+              //  myAccessors += TypeDef(accessor).withPos(tree.pos.focus)
+              //  ref(accessor).withPos(tree.pos)
               //
               tree
             }

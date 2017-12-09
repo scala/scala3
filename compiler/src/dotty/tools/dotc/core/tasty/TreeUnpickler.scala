@@ -259,7 +259,8 @@ class TreeUnpickler(reader: TastyReader, nameAtRef: NameRef => TermName, posUnpi
             case TYPEARGtype =>
               TypeArgRef(readType(), readType().asInstanceOf[TypeRef], readNat())
             case BIND =>
-              val sym = ctx.newSymbol(ctx.owner, readName().toTypeName, BindDefinedType, readType())
+              val sym = ctx.newSymbol(ctx.owner, readName().toTypeName, BindDefinedType, readType(),
+                coord = coordAt(start))
               registerSym(start, sym)
               if (currentAddr != end) readType()
               TypeRef(NoPrefix, sym)
@@ -464,11 +465,14 @@ class TreeUnpickler(reader: TastyReader, nameAtRef: NameRef => TermName, posUnpi
             rootd.symbol
           case _ =>
             val completer = adjustIfModule(new Completer(ctx.owner, subReader(start, end)))
+
+            val coord = coordAt(start)
+
             if (isClass)
-              ctx.newClassSymbol(ctx.owner, name.asTypeName, flags, completer, privateWithin, coord = start.index)
+              ctx.newClassSymbol(ctx.owner, name.asTypeName, flags, completer, privateWithin, coord)
             else
-              ctx.newSymbol(ctx.owner, name, flags, completer, privateWithin, coord = start.index)
-        } // TODO set position somehow (but take care not to upset Symbol#isDefinedInCurrentRun)
+              ctx.newSymbol(ctx.owner, name, flags, completer, privateWithin, coord)
+        }
       sym.annotations = annots
       ctx.enter(sym)
       registerSym(start, sym)
@@ -995,7 +999,7 @@ class TreeUnpickler(reader: TastyReader, nameAtRef: NameRef => TermName, posUnpi
             case BIND =>
               val name = readName()
               val info = readType()
-              val sym = ctx.newSymbol(ctx.owner, name, EmptyFlags, info)
+              val sym = ctx.newSymbol(ctx.owner, name, EmptyFlags, info, coord = coordAt(start))
               registerSym(start, sym)
               Bind(sym, readTerm())
             case ALTERNATIVE =>
@@ -1011,7 +1015,7 @@ class TreeUnpickler(reader: TastyReader, nameAtRef: NameRef => TermName, posUnpi
               val argPats = until(end)(readTerm())
               UnApply(fn, implicitArgs, argPats, patType)
             case REFINEDtpt =>
-              val refineCls = ctx.newRefinedClassSymbol
+              val refineCls = ctx.newRefinedClassSymbol(coordAt(start))
               typeAtAddr(start) = refineCls.typeRef
               val parent = readTpt()
               val refinements = readStats(refineCls, end)(localContext(refineCls))
@@ -1087,21 +1091,32 @@ class TreeUnpickler(reader: TastyReader, nameAtRef: NameRef => TermName, posUnpi
 
 // ------ Setting positions ------------------------------------------------
 
-    /** Set position of `tree` at given `addr`. */
-    def setPos[T <: untpd.Tree](addr: Addr, tree: T)(implicit ctx: Context): tree.type =
+    /** Pickled position for `addr`. */
+    def posAt(addr: Addr)(implicit ctx: Context): Position =
       if (ctx.mode.is(Mode.ReadPositions)) {
         posUnpicklerOpt match {
           case Some(posUnpickler) =>
-            //println(i"setPos $tree / ${tree.getClass} at $addr to ${posUnpickler.posAt(addr)}")
-            val pos = posUnpickler.posAt(addr)
-            if (pos.exists) tree.setPosUnchecked(pos)
-            tree
+            posUnpickler.posAt(addr)
           case _  =>
-            //println(i"no pos $tree")
-            tree
+            NoPosition
         }
-      }
-      else tree
+      } else NoPosition
+
+    /** Coordinate for the symbol at `addr`. */
+    def coordAt(addr: Addr)(implicit ctx: Context): Coord = {
+      val pos = posAt(addr)
+      if (pos.exists)
+        positionCoord(pos)
+      else
+        indexCoord(addr.index)
+    }
+
+    /** Set position of `tree` at given `addr`. */
+    def setPos[T <: untpd.Tree](addr: Addr, tree: T)(implicit ctx: Context): tree.type = {
+      val pos = posAt(addr)
+      if (pos.exists) tree.setPosUnchecked(pos)
+      tree
+    }
   }
 
   class LazyReader[T <: AnyRef](reader: TreeReader, op: TreeReader => Context => T) extends Trees.Lazy[T] {
