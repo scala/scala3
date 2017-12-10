@@ -607,11 +607,13 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
           if (tref.symbol.is(Module)) mapOver(tref)
           else newTypeVar(TypeBounds.upper(tp.underlying))
         case tp: TypeRef if tp.underlying.isInstanceOf[TypeBounds] =>
-          // See tests/patmat/3645b.scala
+          // Note that the logic for contra- and co-variance is reverse of `typeParamMap`
+          // This is because we are checking the possibility of `tp1 <:< tp2`, thus we should
+          // minimize `tp1` while maximize `tp2`.    See tests/patmat/3645b.scala
           val exposed =
             if (variance == 0) newTypeVar(tp.underlying.bounds)
-            else if (variance == 1) mapOver(tp.underlying.hiBound)
-            else mapOver(tp.underlying.loBound)
+            else if (variance == 1) mapOver(tp.underlying.loBound)
+            else mapOver(tp.underlying.hiBound)
 
           debug.println(s"$tp exposed to =====> $exposed")
           exposed
@@ -653,7 +655,11 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
     val tvars = tp1.typeParams.map { tparam => newTypeVar(tparam.paramInfo.bounds) }
     val protoTp1 = thisTypeMap(tp1.appliedTo(tvars))
 
-    // tests/patmat/3645b.scala
+    // If parent contains a reference to an abstract type, then we should
+    // refine subtype checking to eliminate abstract types according to
+    // variance. As this logic is only needed in exhaustivity check, thus
+    // we manually patch subtyping check instead of changing TypeComparer.
+    // See tests/patmat/3645b.scala
     def parentQualify = tp1.widen.classSymbol.info.parents.exists { parent =>
       (parent.argInfos.nonEmpty || parent.abstractTypeMembers.nonEmpty) &&
         instantiate(parent, tp2)(ctx.fresh.setNewTyperState()).exists
