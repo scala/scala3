@@ -411,31 +411,6 @@ object Build {
     case BootstrappedOptimised => `dotty-doc-optimised`
   }
 
-  lazy val `dotty-bot` = project.in(file("bot")).
-    settings(commonScala2Settings).
-    settings(
-      resourceDirectory in Test := baseDirectory.value / "test" / "resources",
-
-      // specify main and ignore tests when assembling
-      mainClass in assembly := Some("dotty.tools.bot.Main"),
-      test in assembly := {},
-
-      libraryDependencies ++= {
-        val circeVersion = "0.7.0"
-        val http4sVersion = "0.15.3"
-        Seq(
-          "com.novocode" % "junit-interface" % "0.11" % "test",
-          "io.circe" %% "circe-generic" % circeVersion,
-          "io.circe" %% "circe-parser" % circeVersion,
-          "ch.qos.logback" % "logback-classic" % "1.1.7",
-          "org.http4s" %% "http4s-dsl" % http4sVersion,
-          "org.http4s" %% "http4s-blaze-server" % http4sVersion,
-          "org.http4s" %% "http4s-blaze-client" % http4sVersion,
-          "org.http4s" %% "http4s-circe" % http4sVersion
-        )
-      }
-    )
-
   // Settings shared between dotty-compiler and dotty-compiler-bootstrapped
   lazy val commonDottyCompilerSettings = Seq(
 
