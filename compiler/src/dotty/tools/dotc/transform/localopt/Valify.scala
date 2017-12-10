@@ -7,87 +7,193 @@ import core.Types._
 import core.Flags._
 import ast.Trees._
 import scala.collection.mutable
+import java.util.IdentityHashMap
+import core.NameKinds.LocalOptValifyName
 
-/** Rewrite vars with exactly one assignment as vals.
+/** Rewrite vars as vals when possible.
  *
- *  @author DarkDimius, OlivierBlanvillain
+ *  @author gan74
  */
 class Valify(val simplifyPhase: Simplify) extends Optimisation {
   import ast.tpd._
 
-  // Either a duplicate or a read through series of immutable fields.
-  val defined: MutableSymbolMap[ValDef] = newMutableSymbolMap
-
-  val firstRead: MutableSymbolMap[RefTree] = newMutableSymbolMap
-
-  val firstWrite: MutableSymbolMap[Assign] = newMutableSymbolMap
-
-  val secondWrite: MutableSymbolMap[Assign] = newMutableSymbolMap
-
-  def clear(): Unit = {
-    defined.clear()
-    firstRead.clear()
-    firstWrite.clear()
-    secondWrite.clear()
+  object VarDef {
+    def unapply(t: ValDef)(implicit ctx: Context): Option[(Symbol, Tree)] =
+      if (isVar(t.symbol)) Some(t.symbol, t.rhs)
+      else None
   }
 
-  def visitor(implicit ctx: Context): Tree => Unit = {
-    case t: ValDef if t.symbol.is(Mutable, Lazy) && !t.symbol.is(Method) && !t.symbol.owner.isClass =>
-      if (isPureExpr(t.rhs))
-        defined(t.symbol) = t
-
-    case t: RefTree if t.symbol.exists && !t.symbol.is(Method) && !t.symbol.owner.isClass =>
-      if (!firstWrite.contains(t.symbol)) firstRead(t.symbol) = t
-
-    case t @ Assign(l, expr) if !l.symbol.is(Method) && !l.symbol.owner.isClass =>
-      if (!firstRead.contains(l.symbol)) {
-        if (firstWrite.contains(l.symbol)) {
-          if (!secondWrite.contains(l.symbol))
-            secondWrite(l.symbol) = t
-        } else if (!expr.existsSubTree(x => x match {
-          case tree: RefTree if x.symbol == l.symbol => firstRead(l.symbol) = tree; true
-          case _ => false
-        })) {
-          firstWrite(l.symbol) = t
-        }
-      }
-    case _ =>
+  object VarAssign {
+    def unapply(t: Assign)(implicit ctx: Context): Option[(Symbol, Tree)] =
+      if (t.lhs.isInstanceOf[Ident] && isVar(t.lhs.symbol)) Some(t.lhs.symbol, t.rhs)
+      else None
   }
+
+
+  def clear(): Unit = ()
+
+  def visitor(implicit ctx: Context): Tree => Unit = NoVisitor
+
 
   def transformer(implicit ctx: Context): Tree => Tree = {
-    case t: Block => // Drop non-side-effecting stats
-      val valdefs = t.stats.collect {
-        case t: ValDef if defined.contains(t.symbol) => t
-      }
+    case blk @ Block(stats, expr) => 
 
-      val assigns = t.stats.filter {
-        case t @ Assign(lhs, r) =>
-          firstWrite.contains(lhs.symbol) && !secondWrite.contains(lhs.symbol)
-        case _ => false
-      }
+      val valified = mutable.Map[Symbol, Symbol]()
 
-      val pairs = valdefs.flatMap(x => assigns.find(y => y.asInstanceOf[Assign].lhs.symbol == x.symbol) match {
-        case Some(y: Assign) => List((x, y))
-        case _ => Nil
-      })
+      // did we replace anything ?
+      var replaced = false
 
-      val valsToDrop = pairs.map(_._1).toSet
-      val assignsToReplace: Map[Assign, ValDef] = pairs.map(_.swap).toMap
+      // recursively replace vars in tree
+      def transform(tree: Tree) = {
+        if (valified.isEmpty) tree
+        else {
+          // abort the valification for vars that are modified in a nested (ie: potentially conditional) subtree
+          tree.foreachSubTree { 
+            case VarAssign(sym, _) if valified.contains(sym) => 
+              valified -= sym
+            case _ => 
+          }
 
-      val newStats = t.stats.mapConserve {
-        case x: ValDef if valsToDrop.contains(x) => EmptyTree
-        case t: Assign => assignsToReplace.get(t) match {
-          case Some(vd) =>
-            val newD = vd.symbol.asSymDenotation.copySymDenotation(initFlags = vd.symbol.flags.&~(Mutable))
-            newD.installAfter(simplifyPhase)
-            ValDef(vd.symbol.asTerm, t.rhs)
-          case None => t
+          if (valified.isEmpty) tree
+          else new TreeMap() {
+              override def transform(tree: Tree)(implicit ctx: Context): Tree = {
+                // abort valification in captures
+                if (tree.isDef && tree.symbol.exists) tree
+                else super.transform(tree)(ctx) match {
+                  case id: Ident if valified.contains(id.symbol) => 
+                    replaced = true
+                    ref(valified(id.symbol))
+                  case t => t
+                }
+              }
+            }.transform(tree)
         }
-        case x => x
       }
 
-      if (newStats eq t.stats) t
-      else cpy.Block(t)(newStats, t.expr)
-    case tree => tree
+      def valify(sym: Symbol) = {
+        val newSym = valifiedSymbol(sym);
+        valified += sym -> newSym
+        newSym
+      }
+
+      val newStats = stats.mapConserve {
+        case t @ VarDef(sym, rhs) => 
+          rhs match {
+            // reuse val symbol if possible
+            case id: Ident if isVal(id.symbol) => 
+              valified += sym -> id.symbol
+              t
+
+            case _ =>
+              val newRhs = transform(rhs)
+              val newSym = valify(sym) 
+              Thicket(ValDef(newSym.asTerm, newRhs.changeOwnerAfter(sym, ctx.owner, simplifyPhase)), ValDef(sym.asTerm, ref(newSym)))
+          }
+
+        case t @ VarAssign(sym, rhs) =>
+          rhs match {
+            // reuse val symbol if possible
+            case id: Ident if isVal(id.symbol) => 
+              valified += sym -> id.symbol
+              t
+
+            case _ =>
+              val newRhs = transform(rhs)
+              val newSym = valify(sym)
+              Thicket(ValDef(newSym.asTerm, newRhs.changeOwnerAfter(sym, ctx.owner, simplifyPhase)), Assign(ref(sym), ref(newSym)))
+          }
+
+        case t => 
+          transform(t)
+      }
+
+      if ((newStats ne stats) || !valified.isEmpty) {
+        val newExpr = transform(expr)
+        if (!replaced) blk // valification didn't do anything -> return early
+        else cleanUpBlock(Block(newStats, newExpr))
+      } else  blk 
+
+    case t => t
   }
+
+  // remove all the unused declaration and assignations 
+  private def cleanUpBlock(block: Block)(implicit ctx: Context): Block = {
+    // valified symbols for which the var assign should not be dropped
+    val dontDrop = mutable.Set[Symbol]()
+    // vars defined in this block
+    val defined = mutable.Set[Symbol]()
+
+    val valified = mutable.Map[Symbol, Symbol]()
+
+    def lookForVars(tree: Tree) = {
+      def findInUse(t: Tree) =
+        t.foreachSubTree({ 
+          case id: Ident if valified.contains(id.symbol) => dontDrop += valified(id.symbol)
+          case _ =>
+        })
+      
+      tree match {
+        case Thicket(List(valDef: ValDef, VarDef(sym, rhs))) if rhs.symbol == valDef.symbol => 
+          findInUse(valDef.rhs)
+          valified += sym -> valDef.symbol
+          defined += sym
+
+        case Thicket(List(valDef: ValDef, VarAssign(sym, rhs))) if rhs.symbol == valDef.symbol => 
+          findInUse(valDef.rhs)
+          valified += sym -> valDef.symbol
+
+        case t => 
+          findInUse(t)
+      }
+    }
+
+    // var which declaration has been dropped and that should be redeclared if still in use
+    val redecl = mutable.Set[Symbol]()
+
+    def cleanup(tree: Tree) = tree match {
+      case Thicket(List(valDef: ValDef, VarDef(sym, rhs))) 
+        if rhs.symbol == valDef.symbol && 
+           !dontDrop.contains(valDef.symbol) && 
+           defined.contains(sym) => 
+
+        redecl += sym
+        valDef
+
+      case Thicket(List(valDef: ValDef, VarAssign(sym, rhs))) 
+        if rhs.symbol == valDef.symbol && 
+           defined.contains(sym) && 
+           !dontDrop.contains(valDef.symbol) => 
+
+        valDef
+
+      case Thicket(List(valDef: ValDef, VarAssign(sym, rhs))) 
+        if rhs.symbol == valDef.symbol && 
+           defined.contains(sym) &&
+           redecl.contains(sym) =>
+
+        redecl -= sym
+        Thicket(List(valDef, ValDef(sym.asTerm, rhs)))
+      
+      case t => t
+    }
+
+    block.stats.foreach(lookForVars(_))
+    lookForVars(block.expr)
+
+    val newStats = block.stats.mapConserve(cleanup(_))
+    val newExpr = cleanup(block.expr)
+    Block(newStats, newExpr)
+  }
+
+  private def isVar(s: Symbol)(implicit ctx: Context): Boolean =  s.is(Mutable) && !s.is(Method) && !s.owner.isClass
+  private def isVal(s: Symbol)(implicit ctx: Context): Boolean = !s.is(Mutable) && !s.is(Method) && !s.owner.isClass
+
+  private def valifiedSymbol(sym: Symbol)(implicit ctx: Context): Symbol = 
+    ctx.newSymbol(
+      ctx.owner,       // valified symbols can have a narrower scope than the original symbol
+      LocalOptValifyName.fresh(), 
+      (sym.flags &~ Mutable) | Synthetic, 
+      sym.info, 
+      sym.privateWithin, 
+      sym.coord)
 }

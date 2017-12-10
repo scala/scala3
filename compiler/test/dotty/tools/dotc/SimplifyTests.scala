@@ -20,7 +20,10 @@ abstract class SimplifyTests(val optimise: Boolean) extends DottyBytecodeTest {
     }
   }
 
-  def check(source: String, expected: String, shared: String = ""): Unit = {
+  def checkNotEquals(source: String, expected: String, shared: String = ""): Unit = 
+    check(source, expected, shared, false)
+
+  def check(source: String, expected: String, shared: String = "", equal: Boolean = true): Unit = {
     import ASMConverters._
     val src =
       s"""
@@ -46,7 +49,7 @@ abstract class SimplifyTests(val optimise: Boolean) extends DottyBytecodeTest {
       val B = instructions("B")
       val diff = diffInstructions(A, B)
       if (optimise)
-        assert(A == B, s"Bytecode doesn't match: (lhs = source, rhs = expected) \n$diff")
+        assert(if (equal) A == B else A != B, s"Bytecode doesn't match: (lhs = source, rhs = expected) \n$diff")
       else
         assert(A != B, s"Same Bytecodes without -optimise: you are testing the wrong thing!")
     }
@@ -111,6 +114,118 @@ abstract class SimplifyTests(val optimise: Boolean) extends DottyBytecodeTest {
       """,
       """
          |println(true)
+      """)
+
+
+  /*
+   * Valify tests
+   */ 
+
+ @Test def valifyInlinedObjects =
+  check(
+    """
+       |var t = new Tuple2(1, 3)
+       |print(t._1 + t._2)
+    """,
+    """
+       |print(4)
+    """)
+
+ @Test def valifySimpleVar =
+  check(
+    """
+       |var t = 1
+       |print(t + 1)
+    """,
+    """
+       |print(2)
+    """)
+
+  @Test def valifyConditional =
+    check(
+      """
+        |var i = 0
+        |if(readBoolean()) {
+        |  i = 4
+        |  print(i)
+        |}
+        |i = 5
+        |print(i)
+      """,
+      """
+        |var i = 0
+        |if(readBoolean()) {
+        |  i = 4
+        |  print(4)
+        |}
+        |print(5)
+      """)
+
+  @Test def valifyPartial =
+    check(
+      """
+        |var i = 0
+        |if(readBoolean()) i = 4
+        |print(i)
+        |i = 5
+        |print(i)
+      """,
+      """
+        |var i = 0
+        |if(readBoolean()) i = 4
+        |print(i)
+        |print(5)
+      """)
+
+  @Test def valifyDropPartial =
+    check(
+      """
+        |var i = 1
+        |i = 2
+        |i = i + 2
+        |print(i)
+      """,
+      """
+        |print(4)
+      """)
+
+  @Test def valifyVarVal =
+    check(
+      """
+        |val cst = readInt()
+        |var i = cst
+        |print(i)
+      """,
+      """
+        |val i = readInt()
+        |print(i)
+      """)
+
+  // check for incorrecly eliminated statements with side effects 
+  @Test def valifySideEffects =
+    checkNotEquals(
+      """
+        |val ar = Array.ofDim[Int](5)
+      """, """""")
+
+  @Test def valifyAdvancedSideEffects =
+    checkNotEquals(
+      """
+        |val ar = Array.ofDim[Int](5)
+        |var x = 0
+        |while (x <= 5) {
+        |  print(x)
+        |  val a = ar(x)
+        |  x += 1
+        |}
+      """,
+      """
+        |val ar = Array.ofDim[Int](5)
+        |var x = 0
+        |while (x <= 5) {
+        |  print(x)
+        |  x += 1
+        |}
       """)
 
 
