@@ -602,10 +602,19 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
     // map `ThisType` of `tp1` to a type variable
     // precondition: `tp1` should have the shape `path.Child`, thus `ThisType` is always covariant
     val thisTypeMap = new TypeMap {
-      def apply(t: Type): Type = t match {
+      def apply(t: Type): Type = t.dealias match {
         case tp @ ThisType(tref) if !tref.symbol.isStaticOwner  =>
           if (tref.symbol.is(Module)) mapOver(tref)
           else newTypeVar(TypeBounds.upper(tp.underlying))
+        case tp: TypeRef if tp.underlying.isInstanceOf[TypeBounds] =>
+          // See tests/patmat/3645b.scala
+          val exposed =
+            if (variance == 0) newTypeVar(tp.underlying.bounds)
+            else if (variance == 1) mapOver(tp.underlying.hiBound)
+            else mapOver(tp.underlying.loBound)
+
+          debug.println(s"$tp exposed to =====> $exposed")
+          exposed
         case _ =>
           mapOver(t)
       }
@@ -644,13 +653,19 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
     val tvars = tp1.typeParams.map { tparam => newTypeVar(tparam.paramInfo.bounds) }
     val protoTp1 = thisTypeMap(tp1.appliedTo(tvars))
 
+    // tests/patmat/3645b.scala
+    def parentQualify = tp1.widen.classSymbol.info.parents.exists { parent =>
+      (parent.argInfos.nonEmpty || parent.abstractTypeMembers.nonEmpty) &&
+        instantiate(parent, tp2)(ctx.fresh.setNewTyperState()).exists
+    }
+
     if (protoTp1 <:< tp2) {
       if (isFullyDefined(protoTp1, force)) protoTp1
       else instUndetMap(protoTp1)
     }
     else {
       val protoTp2 = typeParamMap(tp2)
-      if (protoTp1 <:< protoTp2) {
+      if (protoTp1 <:< protoTp2 || parentQualify) {
         if (isFullyDefined(AndType(protoTp1, protoTp2), force)) protoTp1
         else instUndetMap(protoTp1)
       }
