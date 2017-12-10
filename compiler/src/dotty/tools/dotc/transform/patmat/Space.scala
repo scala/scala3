@@ -613,8 +613,8 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
 
     // replace type parameter references with bounds
     val typeParamMap = new TypeMap {
-      def apply(t: Type): Type = t match {
-        case tp: TypeRef if tp.symbol.is(TypeParam) && tp.underlying.isInstanceOf[TypeBounds] =>
+      def apply(t: Type): Type = t.dealias match {
+        case tp: TypeRef if tp.underlying.isInstanceOf[TypeBounds] =>
           // See tests/patmat/gadt.scala  tests/patmat/exhausting.scala  tests/patmat/t9657.scala
           val exposed =
             if (variance == 0) newTypeVar(tp.underlying.bounds)
