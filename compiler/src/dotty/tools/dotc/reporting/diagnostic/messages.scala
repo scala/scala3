@@ -455,7 +455,7 @@ object messages {
   case class ImplicitClassPrimaryConstructorArity()(implicit ctx: Context)
   extends Message(ImplicitClassPrimaryConstructorArityID){
     val kind = "Syntax"
-    val msg = hl"Implicit classes must accept exactly one primary constructor parameter"
+    val msg = "Implicit classes must accept exactly one primary constructor parameter"
     val explanation = {
       val example = "implicit class RichDate(date: java.util.Date)"
       hl"""Implicit classes may only take one non-implicit argument in their constructor. For example:
