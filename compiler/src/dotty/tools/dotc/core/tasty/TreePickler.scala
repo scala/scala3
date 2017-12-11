@@ -211,9 +211,6 @@ class TreePickler(pickler: TastyPickler) {
     case tpe: SuperType =>
       writeByte(SUPERtype)
       withLength { pickleType(tpe.thistpe); pickleType(tpe.supertpe) }
-    case tpe: TypeArgRef =>
-      writeByte(TYPEARGtype)
-      withLength { pickleType(tpe.prefix); pickleType(tpe.clsRef); writeNat(tpe.idx) }
     case tpe: RecThis =>
       writeByte(RECthis)
       val binderAddr = pickledTypes.get(tpe.binder)
