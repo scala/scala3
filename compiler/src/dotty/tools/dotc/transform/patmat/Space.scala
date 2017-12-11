@@ -708,6 +708,38 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
     else text
   }
 
+  /** Whether the counterexample is satisfiable. The space is flattened and non-empty. */
+  def satisfiable(sp: Space): Boolean = {
+    def impossible: Nothing = throw new AssertionError("`satisfiable` only accepts flattened space.")
+
+    def genConstraint(space: Space): List[(Type, Type)] = space match {
+      case Prod(tp, unappTp, unappSym, ss, _) =>
+        val tps = signature(unappTp, unappSym, ss.length)
+        ss.zip(tps).flatMap {
+          case (sp : Prod, tp) => sp.tp -> tp :: genConstraint(sp)
+          case (Typ(tp1, _), tp2) => tp1 -> tp2 :: Nil
+          case _ => impossible
+        }
+      case Typ(_, _) => Nil
+      case _ => impossible
+    }
+
+    def checkConstraint(constrs: List[(Type, Type)])(implicit ctx: Context): Boolean = {
+      val tvarMap = collection.mutable.Map.empty[Symbol, TypeVar]
+      val typeParamMap = new TypeMap() {
+        override def apply(tp: Type): Type = tp match {
+          case tref: TypeRef if tref.symbol.is(TypeParam) =>
+            tvarMap.getOrElseUpdate(tref.symbol, newTypeVar(tref.underlying.bounds))
+          case tp => mapOver(tp)
+        }
+      }
+
+      constrs.forall { case (tp1, tp2) => typeParamMap(tp1) <:< typeParamMap(tp2) }
+    }
+
+    checkConstraint(genConstraint(sp))(ctx.fresh.setNewTyperState())
+  }
+
   /** Display spaces */
   def show(s: Space): String = {
     def params(tp: Type): List[Type] = tp.classSymbol.primaryConstructor.info.firstParamTypes
@@ -775,6 +807,16 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
     res
   }
 
+  /** Whehter counter-examples should be further checked? True for GADTs. */
+  def shouldCheckExamples(tp: Type): Boolean = {
+    new TypeAccumulator[Boolean] {
+      override def apply(b: Boolean, tp: Type): Boolean = tp match {
+        case tref: TypeRef if tref.symbol.is(TypeParam) && variance != 1 => true
+        case tp => b || foldOver(b, tp)
+      }
+    }.apply(false, tp)
+  }
+
   def checkExhaustivity(_match: Match): Unit = {
     val Match(sel, cases) = _match
     val selTyp = sel.tpe.widen.dealias
@@ -785,10 +827,15 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
       debug.println(s"${x.pat.show} ====> ${show(space)}")
       space
     }).reduce((a, b) => Or(List(a, b)))
-    val uncovered = simplify(minus(Typ(selTyp, true), patternSpace), aggressive = true)
 
-    if (uncovered != Empty)
-      ctx.warning(PatternMatchExhaustivity(show(uncovered)), sel.pos)
+    val checkGADTSAT = shouldCheckExamples(selTyp)
+
+    val uncovered =
+      flatten(simplify(minus(Typ(selTyp, true), patternSpace), aggressive = true))
+        .filter(s => s != Empty && (!checkGADTSAT || satisfiable(s)))
+
+    if (uncovered.nonEmpty)
+      ctx.warning(PatternMatchExhaustivity(show(Or(uncovered))), sel.pos)
   }
 
   def checkRedundancy(_match: Match): Unit = {
