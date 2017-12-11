@@ -213,6 +213,22 @@ object PatternMatcher {
 
       /** Plan for matching `selectors` against argument patterns `args` */
       def matchArgsPlan(selectors: List[Tree], args: List[Tree], onSuccess: Plan): Plan = {
+        /* For a case with arguments that have some test on them such as
+         * ```
+         * case Foo(1, 2) => someCode
+         * ```
+         * all arguments values are extracted before the checks are performed. This shape is expected by `emit`
+         * to avoid generating deep trees.
+         * ```
+         * val x1: Foo = ...
+         * val x2: Int = x1._1
+         * val x3: Int = x1._2
+         * if (x2 == 1) {
+         *   if (x3 == 2) someCode
+         *   else label$1()
+         * } else label$1()
+         * ```
+         */
         def matchArgsSelectorsPlan(selectors: List[Tree], syms: List[Symbol]): Plan =
           selectors match {
             case selector :: selectors1 => letAbstract(selector)(sym => matchArgsSelectorsPlan(selectors1, sym :: syms))
@@ -850,6 +866,23 @@ object PatternMatcher {
           else {
             /** Merge nested `if`s that have the same `else` branch into a single `if`.
              *  This optimization targets calls to label defs for case failure jumps to next case.
+             *
+             *  Plan for
+             *  ```
+             *  val x1: Int = ...
+             *  val x2: Int = ...
+             *  if (x1 == y1) {
+             *    if (x2 == y2) someCode
+             *    else label$1()
+             *  } else label$1()
+             *  ```
+             *  is emitted as
+             *  ```
+             *  val x1: Int = ...
+             *  val x2: Int = ...
+             *  if (x1 == y1 && x2 == y2) someCode
+             *  else label$1()
+             *  ```
              */
             def emitWithMashedConditions(plans: List[TestPlan]): Tree = {
               val plan = plans.head
