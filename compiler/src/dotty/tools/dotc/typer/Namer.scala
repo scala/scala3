@@ -385,15 +385,6 @@ class Namer { typer: Typer =>
     case _ => tree
   }
 
-  /** A new context that summarizes an import statement */
-  def importContext(imp: Import, sym: Symbol)(implicit ctx: Context) = {
-    val impNameOpt = imp.expr match {
-      case ref: RefTree => Some(ref.name.asTermName)
-      case _            => None
-    }
-    ctx.fresh.setImportInfo(new ImportInfo(implicit ctx => sym, imp.selectors, impNameOpt))
-  }
-
   /** A new context for the interior of a class */
   def inClassContext(selfInfo: DotClass /* Should be Type | Symbol*/)(implicit ctx: Context): Context = {
     val localCtx: Context = ctx.fresh.setNewScope
@@ -441,7 +432,7 @@ class Namer { typer: Typer =>
         setDocstring(pkg, stat)
         ctx
       case imp: Import =>
-        importContext(imp, createSymbol(imp))
+        ctx.importContext(imp, createSymbol(imp))
       case mdef: DefTree =>
         val sym = enterSymbol(createSymbol(mdef))
         setDocstring(sym, origStat)

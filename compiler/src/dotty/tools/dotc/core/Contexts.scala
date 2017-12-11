@@ -359,6 +359,15 @@ object Contexts {
       else if (untpd.isSuperConstrCall(stat) && this.owner.isClass) superCallContext
       else ctx.fresh.setOwner(exprOwner)
 
+    /** A new context that summarizes an import statement */
+    def importContext(imp: Import[_], sym: Symbol) = {
+      val impNameOpt = imp.expr match {
+        case ref: RefTree[_] => Some(ref.name.asTermName)
+        case _               => None
+      }
+      ctx.fresh.setImportInfo(new ImportInfo(implicit ctx => sym, imp.selectors, impNameOpt))
+    }
+
     /** The current source file; will be derived from current
      *  compilation unit.
      */

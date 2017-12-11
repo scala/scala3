@@ -276,6 +276,10 @@ object Phases {
      *  and type applications.
      */
     def relaxedTyping: Boolean = false
+
+    /** If set, implicit search is enabled */
+    def allowsImplicitSearch: Boolean = false
+
      /** List of names of phases that should precede this phase */
     def runsAfter: Set[Class[_ <: Phase]] = Set.empty
 
