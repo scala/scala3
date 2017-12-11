@@ -96,6 +96,7 @@ class CompilationTests extends ParallelTesting {
     compileFilesInDir("../tests/new", defaultOptions) +
     compileFilesInDir("../tests/pos-scala2", scala2Mode) +
     compileFilesInDir("../tests/pos", defaultOptions) +
+    compileFilesInDir("../tests/pos-no-optimise", defaultOptions) +
     compileFilesInDir("../tests/pos-deep-subtype", allowDeepSubtypes) +
     compileDir("../tests/pos/i1137-1", defaultOptions and "-Yemit-tasty") +
     compileFile(

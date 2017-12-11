@@ -235,7 +235,10 @@ class TreeUnpickler(reader: TastyReader, nameAtRef: NameRef => TermName, posUnpi
               val name = readName().toTypeName
               val prefix = readType()
               val space = readType()
-              TypeRef(prefix, name, space.decl(name))
+              space.decl(name) match {
+                case symd: SymDenotation if prefix.isArgPrefixOf(symd.symbol) => TypeRef(prefix, symd.symbol)
+                case _ => TypeRef(prefix, name, space.decl(name))
+              }
             case REFINEDtype =>
               var name: Name = readName()
               val parent = readType()
@@ -256,8 +259,6 @@ class TreeUnpickler(reader: TastyReader, nameAtRef: NameRef => TermName, posUnpi
               OrType(readType(), readType())
             case SUPERtype =>
               SuperType(readType(), readType())
-            case TYPEARGtype =>
-              TypeArgRef(readType(), readType().asInstanceOf[TypeRef], readNat())
             case BIND =>
               val sym = ctx.newSymbol(ctx.owner, readName().toTypeName, BindDefinedType, readType(),
                 coord = coordAt(start))
@@ -766,20 +767,9 @@ class TreeUnpickler(reader: TastyReader, nameAtRef: NameRef => TermName, posUnpi
       cls.setNoInitsFlags(fork.indexStats(end))
       val constr = readIndexedDef().asInstanceOf[DefDef]
 
-      def mergeTypeParamsAndAliases(tparams: List[TypeDef], stats: List[Tree])(implicit ctx: Context): (List[Tree], List[Tree]) =
-        (tparams, stats) match {
-          case (tparam :: tparams1, (alias: TypeDef) :: stats1)
-          if tparam.name == alias.name.expandedName(cls) =>
-            val (tas, stats2) = mergeTypeParamsAndAliases(tparams1, stats1)
-            (tparam :: alias :: tas, stats2)
-          case _ =>
-            (tparams, stats)
-        }
-
       val lazyStats = readLater(end, rdr => implicit ctx => {
-        val stats0 = rdr.readIndexedStats(localDummy, end)
-        val (tparamsAndAliases, stats) = mergeTypeParamsAndAliases(tparams, stats0)
-        tparamsAndAliases ++ vparams ++ stats
+        val stats = rdr.readIndexedStats(localDummy, end)
+        tparams ++ vparams ++ stats
       })
       setPos(start,
         untpd.Template(constr, parents, self, lazyStats)
