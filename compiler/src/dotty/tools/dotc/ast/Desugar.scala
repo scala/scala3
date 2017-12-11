@@ -285,10 +285,11 @@ object desugar {
 
     val isCaseClass  = mods.is(Case) && !mods.is(Module)
     val isCaseObject = mods.is(Case) && mods.is(Module)
+    val isImplicit = mods.is(Implicit)
     val isEnum = mods.hasMod[Mod.Enum] && !mods.is(Module)
     val isEnumCase = isLegalEnumCase(cdef)
     val isValueClass = parents.nonEmpty && isAnyVal(parents.head)
-      // This is not watertight, but `extends AnyVal` will be replaced by `inline` later.
+    // This is not watertight, but `extends AnyVal` will be replaced by `inline` later.
 
 
     val originalTparams = constr1.tparams
@@ -505,7 +506,7 @@ object desugar {
     //     synthetic implicit C[Ts](p11: T11, ..., p1N: T1N) ... (pM1: TM1, ..., pMN: TMN): C[Ts] =
     //       new C[Ts](p11, ..., p1N) ... (pM1, ..., pMN) =
     val implicitWrappers =
-      if (!mods.is(Implicit))
+      if (!isImplicit)
         Nil
       else if (ctx.owner is Package) {
         ctx.error(TopLevelImplicitClass(cdef), cdef.pos)
@@ -513,6 +514,10 @@ object desugar {
       }
       else if (isCaseClass) {
         ctx.error(ImplicitCaseClass(cdef), cdef.pos)
+        Nil
+      }
+      else if (arity != 1) {
+        ctx.error(ImplicitClassPrimaryConstructorArity(), cdef.pos)
         Nil
       }
       else

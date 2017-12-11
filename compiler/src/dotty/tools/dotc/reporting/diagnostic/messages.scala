@@ -20,7 +20,6 @@ import printing.Formatting
 import ErrorMessageID._
 import Denotations.SingleDenotation
 import dotty.tools.dotc.ast.Trees
-import dotty.tools.dotc.ast.untpd.Modifiers
 import dotty.tools.dotc.config.ScalaVersion
 import dotty.tools.dotc.core.Flags.{FlagSet, Mutable}
 import dotty.tools.dotc.core.SymDenotations.SymDenotation
@@ -451,6 +450,22 @@ object messages {
            |implicit class ${cdef.name}...
            |
            |""" + implicitClassRestrictionsText
+  }
+
+  case class ImplicitClassPrimaryConstructorArity()(implicit ctx: Context)
+  extends Message(ImplicitClassPrimaryConstructorArityID){
+    val kind = "Syntax"
+    val msg = "Implicit classes must accept exactly one primary constructor parameter"
+    val explanation = {
+      val example = "implicit class RichDate(date: java.util.Date)"
+      hl"""Implicit classes may only take one non-implicit argument in their constructor. For example:
+          |
+          | $example
+          |
+          |While it’s possible to create an implicit class with more than one non-implicit argument,
+          |such classes aren’t used during implicit lookup.
+          |""" + implicitClassRestrictionsText
+    }
   }
 
   case class ObjectMayNotHaveSelfType(mdef: untpd.ModuleDef)(implicit ctx: Context)

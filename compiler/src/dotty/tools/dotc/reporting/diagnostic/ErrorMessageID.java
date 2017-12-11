@@ -20,6 +20,7 @@ public enum ErrorMessageID {
     EarlyDefinitionsNotSupportedID,
     TopLevelImplicitClassID,
     ImplicitCaseClassID,
+    ImplicitClassPrimaryConstructorArityID,
     ObjectMayNotHaveSelfTypeID,
     TupleTooLongID,
     RepeatedModifierID,

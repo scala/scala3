@@ -801,6 +801,21 @@ class ErrorMessagesTests extends ErrorMessagesTest {
       assertEquals(err, ExpectedClassOrObjectDef())
     }
 
+  @Test def implicitClassPrimaryConstructorArity =
+    checkMessagesAfter("frontend") {
+      """
+        |object Test {
+        |  implicit class Foo(i: Int, s: String)
+        |}
+      """.stripMargin
+    }
+    .expect { (itcx, messages) =>
+      implicit val ctx: Context = itcx
+      assertMessageCount(1, messages)
+      val err :: Nil = messages
+      assertEquals(err, ImplicitClassPrimaryConstructorArity())
+    }
+
   @Test def anonymousFunctionMissingParamType =
     checkMessagesAfter("refchecks") {
       """
