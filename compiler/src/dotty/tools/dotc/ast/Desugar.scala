@@ -825,7 +825,7 @@ object desugar {
 
   def makeImplicitFunction(formals: List[Type], body: Tree)(implicit ctx: Context): Tree = {
     val params = makeImplicitParameters(formals.map(TypeTree))
-    new ImplicitFunction(params, body)
+    new NonEmptyFunction(params, body, Modifiers(Implicit))
   }
 
   /** Add annotation to tree:
