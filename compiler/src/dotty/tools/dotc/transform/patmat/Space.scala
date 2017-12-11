@@ -619,8 +619,8 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
             else this(hi)
           debug.println(s"$tp exposed to =====> $exposed")
           exposed
-        case _ =>
-          mapOver(t)
+        case tp =>
+          mapOver(tp)
       }
     }
 
@@ -638,8 +638,8 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
 
           debug.println(s"$tp exposed to =====> $exposed")
           exposed
-        case _ =>
-          mapOver(t)
+        case tp =>
+          mapOver(tp)
       }
     }
 
