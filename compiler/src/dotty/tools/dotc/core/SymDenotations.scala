@@ -18,6 +18,8 @@ import util.Stats
 import java.util.WeakHashMap
 import config.Config
 import config.Printers.{incremental, noPrinter}
+import reporting.diagnostic.Message
+import reporting.diagnostic.messages.BadSymbolicReference
 import reporting.trace
 
 trait SymDenotations { this: Context =>
@@ -1956,7 +1958,7 @@ object SymDenotations {
   /** A completer for missing references */
   class StubInfo() extends LazyType {
 
-    def initializeToDefaults(denot: SymDenotation, errMsg: => String)(implicit ctx: Context) = {
+    def initializeToDefaults(denot: SymDenotation, errMsg: => Message)(implicit ctx: Context): Unit = {
       denot.info = denot match {
         case denot: ClassDenotation =>
           ClassInfo(denot.owner.thisType, denot.classSymbol, Nil, EmptyScope)
@@ -1968,18 +1970,9 @@ object SymDenotations {
 
     def complete(denot: SymDenotation)(implicit ctx: Context): Unit = {
       val sym = denot.symbol
-      val file = sym.associatedFile
-      val (location, src) =
-        if (file != null) (s" in $file", file.toString)
-        else ("", "the signature")
-      val name = ctx.fresh.setSetting(ctx.settings.YdebugNames, true).nameString(denot.name)
-      def errMsg =
-        i"""bad symbolic reference. A signature$location
-           |refers to $name in ${denot.owner.showKind} ${denot.owner.showFullName} which is not available.
-           |It may be completely missing from the current classpath, or the version on
-           |the classpath might be incompatible with the version used when compiling $src."""
-      ctx.error(errMsg)
-      if (ctx.debug) throw new Error()
+      def errMsg = BadSymbolicReference(denot)
+      ctx.error(errMsg, sym.pos)
+      if (ctx.debug) throw new scala.Error()
       initializeToDefaults(denot, errMsg)
     }
   }

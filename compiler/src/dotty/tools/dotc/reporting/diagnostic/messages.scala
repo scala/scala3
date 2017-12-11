@@ -1963,6 +1963,26 @@ object messages {
     }
   }
 
+  case class BadSymbolicReference(denot: SymDenotation)(implicit ctx: Context) extends Message(BadSymbolicReferenceID) {
+    val kind = "Reference"
+
+    val msg = {
+      val denotationOwner = denot.owner
+      val denotationName = ctx.fresh.setSetting(ctx.settings.YdebugNames, true).nameString(denot.name)
+      val file = denot.symbol.associatedFile
+      val (location, src) =
+        if (file != null) (s" in $file", file.toString)
+        else ("", "the signature")
+
+      hl"""Bad symbolic reference. A signature$location
+          |refers to $denotationName in ${denotationOwner.showKind} ${denotationOwner.showFullName} which is not available.
+          |It may be completely missing from the current classpath, or the version on
+          |the classpath might be incompatible with the version used when compiling $src."""
+    }
+
+    val explanation = ""
+  }
+
   case class UnableToExtendSealedClass(pclazz: Symbol)(implicit ctx: Context) extends Message(UnableToExtendSealedClassID) {
     val kind = "Syntax"
     val msg = hl"Cannot extend ${"sealed"} $pclazz in a different source file"
