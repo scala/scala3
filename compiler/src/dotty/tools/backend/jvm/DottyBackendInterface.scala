@@ -169,8 +169,10 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
     s eq defn.newArrayMethod
   }
 
-  def isBox(sym: Symbol): Boolean = Erasure.Boxing.isBox(sym)
-  def isUnbox(sym: Symbol): Boolean = Erasure.Boxing.isUnbox(sym)
+  def isBox(sym: Symbol): Boolean =
+    Erasure.Boxing.isBox(sym) && sym.denot.owner != defn.UnitModuleClass
+  def isUnbox(sym: Symbol): Boolean =
+    Erasure.Boxing.isUnbox(sym) && sym.denot.owner != defn.UnitModuleClass
 
   val primitives: Primitives = new Primitives {
     val primitives = new DottyPrimitives(ctx)
