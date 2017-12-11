@@ -601,7 +601,7 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
   def instantiate(tp1: Type, tp2: Type)(implicit ctx: Context): Type = {
     // map `ThisType` of `tp1` to a type variable
     // precondition: `tp1` should have the shape `path.Child`, thus `ThisType` is always covariant
-    val thisTypeMap = new TypeMap {
+    def childTypeMap(implicit ctx: Context) = new TypeMap {
       def apply(t: Type): Type = t.dealias match {
         case tp @ ThisType(tref) if !tref.symbol.isStaticOwner  =>
           if (tref.symbol.is(Module)) mapOver(tref)
@@ -623,7 +623,7 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
     }
 
     // replace type parameter references with bounds
-    val typeParamMap = new TypeMap {
+    def parentTypeMap(implicit ctx: Context) = new TypeMap {
       def apply(t: Type): Type = t.dealias match {
         case tp: TypeRef if tp.underlying.isInstanceOf[TypeBounds] =>
           // See tests/patmat/gadt.scala  tests/patmat/exhausting.scala  tests/patmat/t9657.scala
@@ -640,7 +640,7 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
     }
 
     // replace uninstantiated type vars with WildcardType, check tests/patmat/3333.scala
-    val instUndetMap = new TypeMap {
+    def instUndetMap(implicit ctx: Context) = new TypeMap {
       def apply(t: Type): Type = t match {
         case tvar: TypeVar if !tvar.isInstantiated => WildcardType(tvar.origin.underlying.bounds)
         case _ => mapOver(t)
@@ -653,7 +653,7 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
     )
 
     val tvars = tp1.typeParams.map { tparam => newTypeVar(tparam.paramInfo.bounds) }
-    val protoTp1 = thisTypeMap(tp1.appliedTo(tvars))
+    val protoTp1 = childTypeMap.apply(tp1.appliedTo(tvars))
 
     // If parent contains a reference to an abstract type, then we should
     // refine subtype checking to eliminate abstract types according to
@@ -661,19 +661,19 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
     // we manually patch subtyping check instead of changing TypeComparer.
     // See tests/patmat/3645b.scala
     def parentQualify = tp1.widen.classSymbol.info.parents.exists { parent =>
-      (parent.argInfos.nonEmpty || parent.abstractTypeMembers.nonEmpty) &&
-        instantiate(parent, tp2)(ctx.fresh.setNewTyperState()).exists
+      implicit val ictx = ctx.fresh.setNewTyperState()
+      parent.argInfos.nonEmpty && childTypeMap.apply(parent) <:< parentTypeMap.apply(tp2)
     }
 
     if (protoTp1 <:< tp2) {
       if (isFullyDefined(protoTp1, force)) protoTp1
-      else instUndetMap(protoTp1)
+      else instUndetMap.apply(protoTp1)
     }
     else {
-      val protoTp2 = typeParamMap(tp2)
+      val protoTp2 = parentTypeMap.apply(tp2)
       if (protoTp1 <:< protoTp2 || parentQualify) {
         if (isFullyDefined(AndType(protoTp1, protoTp2), force)) protoTp1
-        else instUndetMap(protoTp1)
+        else instUndetMap.apply(protoTp1)
       }
       else {
         debug.println(s"$protoTp1 <:< $protoTp2 = false")
