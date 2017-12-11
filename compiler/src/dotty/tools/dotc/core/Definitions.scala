@@ -88,7 +88,7 @@ class Definitions {
     newClassSymbol(ScalaPackageClass, name, EmptyFlags, completer).entered
   }
 
-  /** The trait FunctionN or ImplicitFunctionN, for some N
+  /** The trait FunctionN, ImplicitFunctionN, UnusedFunctionN or UnusedImplicitFunction, for some N
    *  @param  name   The name of the trait to be created
    *
    *  FunctionN traits follow this template:
@@ -106,6 +106,20 @@ class Definitions {
    *      trait ImplicitFunctionN[T0,...,T{N-1}, R] extends Object with FunctionN[T0,...,T{N-1}, R] {
    *        def apply(implicit $x0: T0, ..., $x{N_1}: T{N-1}): R
    *      }
+   *
+   *  UnusedFunctionN traits follow this template:
+   *
+   *      trait UnusedFunctionN[T0,...,T{N-1}, R] extends Object {
+   *        def apply(unused $x0: T0, ..., $x{N_1}: T{N-1}): R
+   *      }
+   *
+   *  UnusedImplicitFunctionN traits follow this template:
+   *
+   *      trait UnusedImplicitFunctionN[T0,...,T{N-1}, R] extends Object with UnusedFunctionN[T0,...,T{N-1}, R] {
+   *        def apply(unused implicit $x0: T0, ..., $x{N_1}: T{N-1}): R
+   *      }
+   *
+   *  UnusedFunctionN and UnusedImplicitFunctionN erase to Function0.
    */
   def newFunctionNTrait(name: TypeName): ClassSymbol = {
     val completer = new LazyType {
