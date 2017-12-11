@@ -971,10 +971,7 @@ class Definitions {
    *  trait gets screwed up. Therefore, it is mandatory that FunctionXXL
    *  is treated as a NoInit trait.
    */
-  private lazy val NoInitClasses = NotRuntimeClasses + FunctionXXLClass
-
-  def isNoInitClass(cls: Symbol): Boolean =
-    cls.is(NoInitsTrait) || NoInitClasses.contains(cls) || isFunctionClass(cls)
+  lazy val NoInitClasses = NotRuntimeClasses + FunctionXXLClass
 
   def isPolymorphicAfterErasure(sym: Symbol) =
      (sym eq Any_isInstanceOf) || (sym eq Any_asInstanceOf)
