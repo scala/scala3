@@ -604,17 +604,19 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
     def childTypeMap(implicit ctx: Context) = new TypeMap {
       def apply(t: Type): Type = t.dealias match {
         case tp @ ThisType(tref) if !tref.symbol.isStaticOwner  =>
-          if (tref.symbol.is(Module)) mapOver(tref)
+          if (tref.symbol.is(Module)) this(tref)
           else newTypeVar(TypeBounds.upper(tp.underlying))
+
         case tp: TypeRef if tp.underlying.isInstanceOf[TypeBounds] =>
-          // Note that the logic for contra- and co-variance is reverse of `typeParamMap`
+          // Note that the logic for contra- and co-variance is reverse of `parentTypeMap`
           // This is because we are checking the possibility of `tp1 <:< tp2`, thus we should
           // minimize `tp1` while maximize `tp2`.    See tests/patmat/3645b.scala
+          val lo = tp.underlying.loBound
+          val hi = tp.underlying.hiBound
           val exposed =
-            if (variance == 0) newTypeVar(tp.underlying.bounds)
-            else if (variance == 1) mapOver(tp.underlying.loBound)
-            else mapOver(tp.underlying.hiBound)
-
+            if (variance == 0) newTypeVar(TypeBounds(this(lo), this(hi)))
+            else if (variance == 1) this(lo)
+            else this(hi)
           debug.println(s"$tp exposed to =====> $exposed")
           exposed
         case _ =>
@@ -627,10 +629,12 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
       def apply(t: Type): Type = t.dealias match {
         case tp: TypeRef if tp.underlying.isInstanceOf[TypeBounds] =>
           // See tests/patmat/gadt.scala  tests/patmat/exhausting.scala  tests/patmat/t9657.scala
+          val lo = tp.underlying.loBound
+          val hi = tp.underlying.hiBound
           val exposed =
-            if (variance == 0) newTypeVar(tp.underlying.bounds)
-            else if (variance == 1) mapOver(tp.underlying.hiBound)
-            else mapOver(tp.underlying.loBound)
+            if (variance == 0) newTypeVar(TypeBounds(this(lo), this(hi)))
+            else if (variance == 1) this(hi)
+            else this(lo)
 
           debug.println(s"$tp exposed to =====> $exposed")
           exposed
