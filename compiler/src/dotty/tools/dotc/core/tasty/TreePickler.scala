@@ -329,10 +329,10 @@ class TreePickler(pickler: TastyPickler) {
             case tp: TermRef if name != nme.WILDCARD =>
               // wildcards are pattern bound, need to be preserved as ids.
               pickleType(tp)
-            case _ =>
+            case tp =>
               writeByte(if (tree.isType) IDENTtpt else IDENT)
               pickleName(name)
-              pickleType(tree.tpe)
+              pickleType(tp)
           }
         case This(qual) =>
           if (qual.isEmpty) pickleType(tree.tpe)
@@ -483,7 +483,7 @@ class TreePickler(pickler: TastyPickler) {
               else {
                 if (!tree.self.isEmpty) registerTreeAddr(tree.self)
                 pickleType {
-                  cinfo.selfInfo match {
+                  selfInfo match {
                     case sym: Symbol => sym.info
                     case tp: Type => tp
                   }
