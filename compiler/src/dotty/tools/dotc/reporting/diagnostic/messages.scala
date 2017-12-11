@@ -1970,10 +1970,10 @@ object messages {
 
   case class BadSymbolicReference(denot: SymDenotation)(implicit ctx: Context) extends Message(BadSymbolicReferenceID) {
     val kind = "Reference"
-    private val denotationName = ctx.fresh.setSetting(ctx.settings.YdebugNames, true).nameString(denot.name)
 
     val msg = {
       val denotationOwner = denot.owner
+      val denotationName = ctx.fresh.setSetting(ctx.settings.YdebugNames, true).nameString(denot.name)
       val file = denot.symbol.associatedFile
       val (location, src) =
         if (file != null) (s" in $file", file.toString)
@@ -1985,10 +1985,7 @@ object messages {
           |the classpath might be incompatible with the version used when compiling $src."""
     }
 
-    val explanation =
-      hl"""A missing or invalid dependency was detected while loading class file '$denotationName'.
-          |Check your build definition for missing or conflicting dependencies.
-          |Re-run with ${"-Ylog-classpath"} to obtain the information about what classpath is being applied."""
+    val explanation = ""
   }
 
   case class UnableToExtendSealedClass(pclazz: Symbol)(implicit ctx: Context) extends Message(UnableToExtendSealedClassID) {
