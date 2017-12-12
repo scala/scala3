@@ -146,7 +146,7 @@ abstract class Constraint extends Showable {
   def checkClosed()(implicit ctx: Context): Unit
 
   /** Constraint has not yet been retracted from a typer state */
-  def isRetracted(): Boolean
+  def isRetracted: Boolean
 
   /** Indicate that constraint has been retracted from a typer state */
   def markRetracted(): Unit
