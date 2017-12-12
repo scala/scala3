@@ -254,14 +254,6 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
               ctx.compilationUnit.source.exists &&
               sym != defn.SourceFileAnnot)
               sym.addAnnotation(Annotation.makeSourceFile(ctx.compilationUnit.source.file.path))
-            if (sym.is(Case)) {
-              tree.rhs match {
-                case rhs: Template =>
-                  for (param <- rhs.constr.vparamss.head if param.symbol.is(Unused))
-                    ctx.error("First parameter list of case classes may not contain `unused` parameters", param.pos)
-                case _ =>
-              }
-            }
             tree
           }
           super.transform(tree)
@@ -322,8 +314,12 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
       }
 
     private def checkNotUnused(tree: RefTree)(implicit ctx: Context): Unit = {
-      if (tree.symbol.is(Unused) && !ctx.mode.is(Mode.Type))
-        ctx.error(i"`unused` value $tree can only be used as unused arguments", tree.pos)
+      if (tree.symbol.is(Unused) && !ctx.mode.is(Mode.Type)) {
+        val msg =
+          if (tree.symbol.is(CaseAccessor)) "First parameter list of case class may not contain `unused` parameters"
+          else i"`unused` value $tree can only be used as unused arguments"
+        ctx.error(msg, tree.pos)
+      }
     }
   }
 }
