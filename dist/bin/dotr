@@ -27,20 +27,31 @@ if [ -z "$PROG_HOME" ] ; then
   cd "$saveddir"
 fi
 
+addJvmOptions () {
+  jvm_options+=("$1")
+}
+
 source "$PROG_HOME/bin/common"
 
 declare -a residual_args
-run_repl=false
+execute_repl=false
+execute_run=false
+class_path_count=0
 CLASS_PATH=""
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
     -repl)
-      run_repl=true
+      execute_repl=true
+      shift
+      ;;
+    -run)
+      execute_run=true
       shift
       ;;
     -classpath)
       CLASS_PATH="$2"
+      class_path_count+=1
       shift
       shift
       ;;
@@ -48,6 +59,9 @@ while [[ $# -gt 0 ]]; do
       DEBUG="$DEBUG_STR"
       shift
       ;;
+    -J*)
+      addJvmOptions "${1:2}"
+      shift ;;
     *)
       residual_args+=("$1")
       shift
@@ -56,18 +70,23 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-if [ $run_repl == true ] || [ ${#residual_args[@]} -eq 0 ]; then
+if [ $execute_repl == true ] || ([ $execute_run == false ] && [ ${#residual_args[@]} -eq 0 ]); then
   if [ "$CLASS_PATH" ]; then
     cp_arg="-classpath \"$CLASS_PATH\""
   fi
   echo "Starting dotty REPL..."
   eval "\"$PROG_HOME/bin/dotc\" $cp_arg -repl ${residual_args[@]}"
-else
+elif [ $execute_repl == true ] || [ ${#residual_args[@]} -ne 0 ]; then
   cp_arg="$DOTTY_LIB$PSEP$SCALA_LIB"
   if [ -z "$CLASS_PATH" ]; then
     cp_arg+="$PSEP."
   else
     cp_arg+="$PSEP$CLASS_PATH"
   fi
-  eval exec "\"$JAVACMD\"" "$DEBUG" "-classpath \"$cp_arg\"" "${residual_args[@]}"
+  if [ $class_path_count > 1 ]; then
+    echo "warning: multiple classpaths are found, dotr only use the last one."
+  fi
+  eval exec "\"$JAVACMD\"" "$DEBUG"  "-classpath \"$cp_arg\"" "${jvm_options[@]}" "${residual_args[@]}"
+else
+    echo "warning: command option is not correct."
 fi
