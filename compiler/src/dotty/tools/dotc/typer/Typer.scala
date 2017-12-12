@@ -946,7 +946,7 @@ class Typer extends Namer
                     i"""internal error: cannot turn method type $mt into closure
                      |because it has internal parameter dependencies,
                      |position = ${tree.pos}, raw type = ${mt.toString}""") // !!! DEBUG. Eventually, convert to an error?
-                } else if (mt.isUnusedMethod) TypeTree(mt.toFunctionType(env1.length))
+                }
                 else EmptyTree
             }
           case tp =>
