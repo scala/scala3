@@ -1698,9 +1698,10 @@ object Types {
       finally ctx.typerState.ephemeral |= savedEphemeral
     }
 
-    private def disambiguate(d: Denotation)(implicit ctx: Context): Denotation = {
-      val sig = currentSignature
-      //if (ctx.isAfterTyper) println(i"overloaded $this / $d / sig = $sig") // DEBUG
+    private def disambiguate(d: Denotation)(implicit ctx: Context): Denotation =
+      disambiguate(d, currentSignature)
+
+    private def disambiguate(d: Denotation, sig: Signature)(implicit ctx: Context): Denotation =
       if (sig != null)
         d.atSignature(sig, relaxed = !ctx.erasedTypes) match {
           case d1: SingleDenotation => d1
@@ -1711,7 +1712,6 @@ object Types {
             }
         }
       else d
-    }
 
     private def memberDenot(name: Name, allowPrivate: Boolean)(implicit ctx: Context): Denotation = {
       var d = memberDenot(prefix, name, allowPrivate)
@@ -1974,12 +1974,10 @@ object Types {
       def reload(): NamedType = {
         val allowPrivate = !lastSymbol.exists || lastSymbol.is(Private) && prefix.classSymbol == this.prefix.classSymbol
         var d = memberDenot(prefix, name, allowPrivate)
-        if (d.isOverloaded && lastSymbol.exists) {
-          val targetSig =
-            if (lastSymbol.signature == Signature.NotAMethod) Signature.NotAMethod
-            else lastSymbol.asSeenFrom(prefix).signature
-          d = d.atSignature(targetSig, relaxed = !ctx.erasedTypes)
-        }
+        if (d.isOverloaded && lastSymbol.exists)
+          d = disambiguate(d,
+                if (lastSymbol.signature == Signature.NotAMethod) Signature.NotAMethod
+                else lastSymbol.asSeenFrom(prefix).signature)
         NamedType(prefix, name, d)
       }
       if (prefix eq this.prefix) this
