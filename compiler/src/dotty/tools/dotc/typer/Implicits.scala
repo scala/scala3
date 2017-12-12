@@ -649,7 +649,7 @@ trait Implicits { self: Typer =>
 
       val sumTypes =
         A .classSymbol.children.map(_.namedType)
-          .map(t => new SpaceEngine().instantiate(t, A)) // Instantiate type all parameters
+          .map(t => new SpaceEngine().instantiate(t, A)) // Instantiate type parameters
           .reverse                                       // Reveresed to match source order
 
       val sumTypesSize = sumTypes.size

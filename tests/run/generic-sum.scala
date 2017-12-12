@@ -3,7 +3,6 @@ import dotty.generic._
 sealed trait Foo
 case class Bar(i: Int)    extends Foo
 case class Bus(s: String) extends Foo
-// case class Bip(s: String) extends Foo
 
 object Test {
   def main(args: Array[String]): Unit = {

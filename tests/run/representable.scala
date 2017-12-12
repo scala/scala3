@@ -1,5 +1,8 @@
 import dotty.generic._
 
+// Adapted from shapeless' Generic test suite available at
+// https://github.com/milessabin/shapeless/blob/shapeless-2.3.2/core/src/test/scala/shapeless/generic.scala
+
 object Syntax {
   type &:[H, T <: Prod] = PCons[H, T]
   type |:[H, T <: Sum] = SCons[H, T]
@@ -45,18 +48,6 @@ object RepresentableTestsAux {
   case class PersonWithPseudonims(name: String, nicks: String*)
 
   case class PersonWithPseudonimsT[T](name: T, nicks: T*)
-
-  // NOT SUPPORTED
-  // sealed trait AbstractNonCC
-  // class NonCCA(val i: Int, val s: String) extends AbstractNonCC
-  // class NonCCB(val b: Boolean, val d: Double) extends AbstractNonCC
-  // class NonCCWithVars(var c: Char, var l: Long) extends AbstractNonCC
-
-  // class NonCCWithCompanion private (val i: Int, val s: String)
-  // object NonCCWithCompanion {
-  //   def apply(i: Int, s: String) = new NonCCWithCompanion(i, s)
-  //   def unapply(s: NonCCWithCompanion): Option[(Int, String)] = Some((s.i, s.s))
-  // }
 
   class NonCCLazy(prev0: => NonCCLazy, next0: => NonCCLazy) {
     lazy val prev = prev0
@@ -172,16 +163,18 @@ object RepresentableTests {
     identity[AbstractSingle](s1)
   }
 
-  // TODO
-  // def testOverlappingCoproducts(): Unit = {
-  //   val gen = Representable[Overlapping]
-  //   val o: Overlapping = OAB(1)
-  //   val o0 = gen.to(o)
-  //   typed[(OAB |: OAC |: OBC |: CNil)](o0)
+  // Dotty deviation: we infer `type Repr = OA |: OB |: SNil`
+  // instead of `type Repr = OAB |: OAC |: OBC |: SNil` in this case.
+  def testOverlappingCoproducts(): Unit = {
+    val gen = Representable[Overlapping]
 
-  //   val o1 = gen.from(o0)
-  //   typed[Overlapping](o1)
-  // }
+    val o: Overlapping = OAB(1)
+    val o0 = gen.to(o)
+    identity[(OA |: OB |: SNil)](o0)
+
+    val o1 = gen.from(o0)
+    identity[Overlapping](o1)
+  }
 
   def testCaseObjects(): Unit = {
     val a: Enum = A
@@ -235,19 +228,18 @@ object RepresentableTests {
     identity[Option[Int]](o1)
   }
 
-  // TODO ???
-  // def testParametrizedWithVarianceList(): Unit = {
-  //   val l: List[Int] = List(1, 2, 3)
-  //   type CN = ::[Int] |: Nil.type |: SNil
+  def testParametrizedWithVarianceList(): Unit = {
+    val l: List[Int] = List(1, 2, 3)
+    type CN = ::[Int] |: scala.collection.immutable.Nil.type |: SNil
 
-  //   val gen = Representable[List[Int]]
+    val gen = Representable[List[Int]]
 
-  //   val l0 = gen.to(l)
-  //   identity[CN](l0)
+    val l0 = gen.to(l)
+    identity[CN](l0)
 
-  //   val l1 = gen.from(l0)
-  //   identity[List[Int]](l1)
-  // }
+    val l1 = gen.from(l0)
+    identity[List[Int]](l1)
+  }
 
   def testParametrzedSubset(): Unit = {
     val l = Left(23)
@@ -278,83 +270,6 @@ object RepresentableTests {
     identity[IB](s0)
     assert(s1 == s0)
   }
-
-  // NOT SUPPORTED
-  // def testAbstractNonCC(): Unit = {
-  //   val ncca = new NonCCA(23, "foo")
-  //   val nccb = new NonCCB(true, 2.0)
-  //   val nccc = new NonCCWithVars('c', 42)
-  //   val ancc: AbstractNonCC = ncca
-
-  //   val genA = Representable[NonCCA]
-  //   val genB = Representable[NonCCB]
-  //   val genC = Representable[NonCCWithVars]
-  //   val genAbs = Representable[AbstractNonCC]
-
-  //   val rA = genA.to(ncca)
-  //   assertTypedEquals[Int &: String &: PNil](23 &: "foo" &: PNil, rA)
-
-  //   val rB = genB.to(nccb)
-  //   assertTypedEquals[Boolean &: Double &: PNil](true &: 2.0 &: PNil, rB)
-
-  //   val rC = genC.to(nccc)
-  //   assertTypedEquals[Char &: Long &: PNil]('c' &: 42l &: PNil, rC)
-
-  //   val rAbs = genAbs.to(ancc)
-  //   assertTypedEquals[NonCCA |: NonCCB |: NonCCWithVars |: SNil](SLeft(ncca), rAbs)
-
-  //   val fA = genA.from(13 &: "bar" &: PNil)
-  //   identity[NonCCA](fA)
-  //   assert(13 == fA.i)
-  //   assert("bar" == fA.s)
-
-  //   val fB = genB.from(false &: 3.0 &: PNil)
-  //   identity[NonCCB](fB)
-  //   assert(false == fB.b)
-  //   assert(3.0 == fB.d) // , Double.MinPositiveValue)
-
-  //   val fC = genC.from('k' &: 313l &: PNil)
-  //   identity[NonCCWithVars](fC)
-  //   assert('k' == fC.c)
-  //   assert(313l == fC.l)
-
-  //   val fAbs = genAbs.from(SRight(SLeft(nccb)))
-  //   identity(fAbs: AbstractNonCC) // Typed?
-  //   assertTrue(fAbs.isInstanceOf[NonCCB])
-  //   assert(true == fAbs.asInstanceOf[NonCCB].b)
-  //   assert(2.0 == fAbs.asInstanceOf[NonCCB].d) // , Double.MinPositiveValue)
-  // }
-
-  // NOT SUPPORTED
-  // def testNonCCWithCompanion(): Unit = {
-  //   val nccc = NonCCWithCompanion(23, "foo")
-
-  //   val gen = Representable[NonCCWithCompanion]
-
-  //   val r = gen.to(nccc)
-  //   assertTypedEquals[Int &: String &: PNil](23 &: "foo" &: PNil, r)
-
-  //   val f = gen.from(13 &: "bar" &: PNil)
-  //   identity(f: NonCCWithCompanion) // Typed?
-  //   assert(13 == f.i)
-  //   assert("bar" == f.s)
-  // }
-
-  // NOT SUPPORTED
-  // def testNonCCLazy(): Unit = {
-  //   lazy val (a: NonCCLazy, b: NonCCLazy, c: NonCCLazy) =
-  //     (new NonCCLazy(c, b), new NonCCLazy(a, c), new NonCCLazy(b, a))
-
-  //   val gen = Representable[NonCCLazy]
-
-  //   val rB = gen.to(b)
-  //   assertTypedEquals[NonCCLazy &: NonCCLazy &: PNil](a &: c &: PNil, rB)
-
-  //   val fD = gen.from(a &: c &: PNil)
-  //   identity[NonCCLazy](fD)
-  //   assert(a == fD.prev)
-  //   assert(c == fD.next)
-  // }
 
   trait Parent {
     case class Nested(i: Int, s: String)
@@ -416,8 +331,6 @@ object RepresentableTests {
     val a: Option[Green.type] = None
     Representable[Green.type]
     Representable[Color.Red.type]
-    // LabelledRepresentable[Green.type]
-    // LabelledRepresentable[Color.Red.type]
   }
 
   sealed trait Base1
@@ -467,7 +380,9 @@ object RepresentableTestsAux2 {
       (implicit gen: Representable[A] { type Repr = U }, auto: Bar[U]): Bar[A] = ???
   }
 
-  // TODO genLoad
+  // TODO "Unexpected tree in genLoad", somehow `untpd.ref` generates something
+  // that survives until backend but shouldn't. To be investigated...
+  // Unexpected tree in genLoad: TypeTree[TypeRef(ThisType(TypeRef(ThisType(TypeRef(ThisType(TypeRef(NoPrefix,module class generic)),module class RepresentableTestsAux2$)),class Outer1)),module class RepresentableTestsAux2$Outer1$Inner$)]
   // class Outer1 {
   //   sealed trait Color
   //   object Inner {
@@ -475,8 +390,6 @@ object RepresentableTestsAux2 {
   //   }
   //   implicit val r: Representable[Bar[Color]] { type Repr = SNil } = null
   //   implicitly[Bar[Color]]
-    // Fails with "Unexpected tree in genLoad" caused by the untpd.ref(tpe)...
-    // Unexpected tree in genLoad: TypeTree[TypeRef(ThisType(TypeRef(ThisType(TypeRef(ThisType(TypeRef(NoPrefix,module class generic)),module class RepresentableTestsAux2$)),class Outer1)),module class RepresentableTestsAux2$Outer1$Inner$)]
   // }
 
   object Outer2 {
@@ -666,28 +579,6 @@ object EnumDefns6 {
 }
 
 object TestEnum {
-  // NOT SUPPORTED
-  // object EnumDefns0 {
-  //   sealed trait EnumVal
-  //   val BarA = new EnumVal { val name = "A" }
-  //   val BarB = new EnumVal { val name = "B" }
-  //   val BarC = new EnumVal { val name = "C" }
-  // }
-
-  // def testEnum0(): Unit = {
-  //   import EnumDefns0._
-
-  //   val gen = Representable[EnumVal]
-  //   val a0 = gen.to(BarA)
-  //   assert(a0 == SLeft(BarA))
-
-  //   val b0 = gen.to(BarB)
-  //   assert(b0 == SRight(SLeft(BarB)))
-
-  //   val c0 = gen.to(BarC)
-  //   assert(c0 == SRight(SRight(SLeft(BarC))))
-  // }
-
   def testEnum1(): Unit = {
     import EnumDefns1._
 
@@ -721,47 +612,6 @@ object TestEnum {
     val c1 = SRight(SRight(SLeft[BarC.type, SNil](BarC)))
     assert(c0 == c1)
   }
-
-  // NOT SUPPORTED
-  // object EnumDefns3 {
-  //   sealed trait EnumVal
-  //   val BarA, BarB, BarC = new EnumVal {}
-  // }
-
-  // def testEnum3(): Unit = {
-  //   import EnumDefns3._
-
-  //   val gen = Representable[EnumVal]
-  //   val a0 = gen.to(BarA)
-  //   assert(a0 == SLeft(BarA))
-
-  //   val b0 = gen.to(BarB)
-  //   assert(b0 == SRight(SLeft(BarB)))
-
-  //   val c0 = gen.to(BarC)
-  //   assert(c0 == SRight(SRight(SLeft(BarC))))
-  // }
-
-  // NOT SUPPORTED
-  // object EnumDefns4 {
-  //   sealed trait EnumVal
-  //   object EnumVal {
-  //     val BarA = new EnumVal { val name = "A" }
-  //     val BarB = new EnumVal { val name = "B" }
-  //     val BarC = new EnumVal { val name = "C" }
-  //   }
-  // }
-  // def testEnum4(): Unit = {
-  //   import EnumDefns4._
-  //   import EnumVal._
-  //   val gen = Representable[EnumVal]
-  //   val a0 = gen.to(BarA)
-  //   assert(a0 == SLeft(BarA))
-  //   val b0 = gen.to(BarB)
-  //   assert(b0 == SRight(SLeft(BarB)))
-  //   val c0 = gen.to(BarC)
-  //   assert(c0 == SRight(SRight(SLeft(BarC))))
-  // }
 
   def testEnum5(): Unit = {
     import EnumDefns5._
@@ -798,25 +648,6 @@ object TestEnum {
     val c1 = SRight(SRight(SLeft[BarC.type, SNil](BarC)))
     assert(c0 == c1)
   }
-
-  // NOT SUPPORTED
-  // object EnumDefns7 {
-  //   sealed trait EnumVal
-  //   object EnumVal {
-  //     val BarA, BarB, BarC = new EnumVal {}
-  //   }
-  // }
-  // def testEnum7(): Unit = {
-  //   import EnumDefns7._
-  //   import EnumVal._
-  //   val gen = Representable[EnumVal]
-  //   val a0 = gen.to(BarA)
-  //   assert(a0 == SLeft(BarA))
-  //   val b0 = gen.to(BarB)
-  //   assert(b0 == SRight(SLeft(BarB)))
-  //   val c0 = gen.to(BarC)
-  //   assert(c0 == SRight(SRight(SLeft(BarC))))
-  // }
 }
 
 object TestPrefixes1 {
@@ -836,7 +667,6 @@ object TestPrefixes1 {
     Representable[Defs.SumS]
 
     Representable[Defs.Sum]
-    // Representable.materialize[Defs.Sum, Defs.SumI |: Defs.SumS |: SNil]
   }
 }
 
@@ -962,27 +792,20 @@ object Test {
     RepresentableTests.testTuples()
     RepresentableTests.testCoproductBasics()
     RepresentableTests.testSingletonCoproducts()
-    // RepresentableTests.testOverlappingCoproducts()
+    RepresentableTests.testOverlappingCoproducts()
     RepresentableTests.testCaseObjects()
     RepresentableTests.testParametrized()
     RepresentableTests.testParametrizedWithVarianceOption()
-    // RepresentableTests.testParametrizedWithVarianceList()
+    RepresentableTests.testParametrizedWithVarianceList()
     RepresentableTests.testParametrzedSubset()
     RepresentableTests.testParametrizedPermute()
-    // RepresentableTests.testAbstractNonCC()
-    // RepresentableTests.testNonCCWithCompanion()
-    // RepresentableTests.testNonCCLazy()
     // RepresentableTests.testNestedInherited() // Fails at runtime because of #3624
     RepresentableTests.testNonRepresentable()
     RepresentableTests.testNestedCaseObjects()
     RepresentableTests.testCaseObjectsAndLazy()
-    // TestEnum.testEnum0()
     TestEnum.testEnum1()
     TestEnum.testEnum2()
-    // TestEnum.testEnum3()
-    // TestEnum.testEnum4()
     TestEnum.testEnum5()
     TestEnum.testEnum6()
-    // TestEnum.testEnum7()
   }
 }
