@@ -744,7 +744,7 @@ object messages {
     val msg =
       hl"""|${NoColor(msgPrefix)} type arguments for $prettyName$expectedArgString
            |expected: $expectedArgString
-           |actual:   $actualArgString""".stripMargin
+           |actual:   ${NoColor(actualArgString)}""".stripMargin
 
     val explanation = {
       val tooManyTypeParams =
@@ -1433,11 +1433,11 @@ object messages {
     val msg = hl"$tpe does not take type parameters"
 
     private val ps =
-      if (params.size == 1) hl"a type parameter ${params.head}"
-      else hl"type parameters ${params.map(_.show).mkString(", ")}"
+      if (params.size == 1) s"a type parameter ${params.head}"
+      else s"type parameters ${params.map(_.show).mkString(", ")}"
 
     val explanation =
-      i"""You specified $ps for ${hl"$tpe"}, which is not
+      i"""You specified ${NoColor(ps)} for ${hl"$tpe"}, which is not
          |declared to take any.
          |"""
   }
