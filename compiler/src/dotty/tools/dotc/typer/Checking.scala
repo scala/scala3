@@ -384,11 +384,8 @@ object Checking {
         sym.setFlag(Private) // break the overriding relationship by making sym Private
       }
     checkApplicable(UnusedType, !sym.is(UnusedType))
-    if (sym.is(Unused)) {
+    if (sym.is(Unused))
       checkApplicable(Unused, !sym.is(MutableOrLazy))
-      if (sym.info.widen.finalResultType.isBottomType)
-        fail("unused " + sym.showKind + " cannot have type Nothing")
-    }
   }
 
   /** Check the type signature of the symbol `M` defined by `tree` does not refer

@@ -2,7 +2,7 @@ object Test {
 
   def main(args: Array[String]): Unit = {
 
-    unused def !!! : Null = ???
+    unused def !!! : Nothing = ???
 
     try {
       fun(!!!)
@@ -12,7 +12,7 @@ object Test {
     }
   }
 
-  def fun(unused bottom: Null): Unit = {
+  def fun(unused bottom: Nothing): Unit = {
     println("fun")
   }
 }
