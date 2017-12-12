@@ -317,7 +317,7 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
       if (tree.symbol.is(Unused) && !ctx.mode.is(Mode.Type)) {
         val msg =
           if (tree.symbol.is(CaseAccessor)) "First parameter list of case class may not contain `unused` parameters"
-          else i"`unused` value $tree can only be used as unused arguments"
+          else i"${tree.symbol} is declared as unused, but is in fact used"
         ctx.error(msg, tree.pos)
       }
     }
