@@ -2135,7 +2135,8 @@ class Typer extends Namer
           if (!wtp.isUnusedMethod) args
           else args.map { arg =>
             arg.tpe match {
-              case _: AmbiguousImplicits | _: SearchFailureType => arg
+              case tpe if tpe.isStable => arg
+              case _: AmbiguousImplicits => arg
               case tpe => defaultValue(tpe)
             }
           }
