@@ -12,6 +12,7 @@ import printing.Texts._
 import config.Config
 import collection.mutable
 import java.lang.ref.WeakReference
+import Decorators._
 
 class TyperState(previous: TyperState /* | Null */) extends DotClass with Showable {
 
@@ -29,7 +30,13 @@ class TyperState(previous: TyperState /* | Null */) extends DotClass with Showab
 
   def constraint = myConstraint
   def constraint_=(c: Constraint)(implicit ctx: Context) = {
+//      println(i"assigning $c to $hashesStr")
     if (Config.debugCheckConstraintsClosed && isGlobalCommittable) c.checkClosed()
+    myConstraint = c
+  }
+
+  def resetConstraintTo(c: Constraint) = {
+    if (c `ne` myConstraint) myConstraint.markRetracted()
     myConstraint = c
   }
 
@@ -90,8 +97,8 @@ class TyperState(previous: TyperState /* | Null */) extends DotClass with Showab
 
   /** Test using `op`, restoring typerState to previous state afterwards */
   def test[T](op: => T): T = {
-    val savedReporter = myReporter
     val savedConstraint = myConstraint
+    val savedReporter = myReporter
     val savedCommittable = myIsCommittable
     val savedCommitted = isCommitted
     myIsCommittable = false
@@ -105,8 +112,8 @@ class TyperState(previous: TyperState /* | Null */) extends DotClass with Showab
     }
     try op
     finally {
+      resetConstraintTo(savedConstraint)
       myReporter = savedReporter
-      myConstraint = savedConstraint
       myIsCommittable = savedCommittable
       isCommitted = savedCommitted
     }

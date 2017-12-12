@@ -118,7 +118,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
           if (recCount < Config.LogPendingSubTypesThreshold) firstTry(tp1, tp2)
           else monitoredIsSubType(tp1, tp2)
         recCount = recCount - 1
-        if (!result) constraint = saved
+        if (!result) state.resetConstraintTo(saved)
         else if (recCount == 0 && needsGc) {
           state.gc()
           needsGc = false
@@ -129,7 +129,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
         case NonFatal(ex) =>
           if (ex.isInstanceOf[AssertionError]) showGoal(tp1, tp2)
           recCount -= 1
-          constraint = saved
+          state.resetConstraintTo(saved)
           successCount = savedSuccessCount
           throw ex
       }
