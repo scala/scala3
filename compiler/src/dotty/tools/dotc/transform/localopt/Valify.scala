@@ -58,7 +58,7 @@ class Valify(val simplifyPhase: Simplify) extends Optimisation {
           else new TreeMap() {
               override def transform(tree: Tree)(implicit ctx: Context): Tree = {
                 // abort valification in captures
-                if (tree.isDef && tree.symbol.exists) tree
+                if (tree.isDef && tree.symbol.exists && tree.symbol.is(Method)) tree
                 else super.transform(tree)(ctx) match {
                   case id: Ident if valified.contains(id.symbol) => 
                     replaced = true

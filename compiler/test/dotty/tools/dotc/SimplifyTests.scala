@@ -201,6 +201,17 @@ abstract class SimplifyTests(val optimise: Boolean) extends DottyBytecodeTest {
         |print(i)
       """)
 
+  @Test def valifyValVar =
+    check(
+      """
+        |var i = 7
+        |val cst = i
+        |print(cst)
+      """,
+      """
+        |print(7)
+      """)
+
   // check for incorrecly eliminated statements with side effects 
   @Test def valifySideEffects =
     checkNotEquals(
