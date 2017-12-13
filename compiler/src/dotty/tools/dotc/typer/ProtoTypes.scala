@@ -195,10 +195,9 @@ object ProtoTypes {
 
     override def notApplied = WildcardType
 
-    /** Forget the types of any arguments that have been typed producing a constraint that is
-     *  either
-     *    - in a typer state that is not yet committed into the one of the current context `ctx`, or
-     *    - has been retracted from its typestate because oif a failed operation.
+    /** Forget the types of any arguments that have been typed producing a constraint
+     *    - that is in a typer state that is not yet committed into the one of the current context `ctx`,
+     *    - or that has been retracted from its typestate because oif a failed operation.
      *  This is necessary to avoid "orphan" TypeParamRefs that are referred to from
      *  type variables in the typed arguments, but that are not registered in the
      *  current constraint. Test cases are pos/t1756.scala and pos/i3538.scala.
@@ -208,6 +207,7 @@ object ProtoTypes {
       evalState foreachBinding { (arg, tstateConstr) =>
         if ((tstateConstr._1.uncommittedAncestor.constraint `ne` ctx.typerState.constraint) ||
             tstateConstr._2.isRetracted) {
+          typr.println(i"need to invalidate $arg / ${myTypedArg(arg)}, ${tstateConstr._2}, current = ${ctx.typerState.constraint}")
           myTypedArg = myTypedArg.remove(arg)
           evalState = evalState.remove(arg)
         }

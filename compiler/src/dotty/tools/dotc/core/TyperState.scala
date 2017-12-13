@@ -12,7 +12,6 @@ import printing.Texts._
 import config.Config
 import collection.mutable
 import java.lang.ref.WeakReference
-import Decorators._
 
 class TyperState(previous: TyperState /* | Null */) extends DotClass with Showable {
 
@@ -30,11 +29,11 @@ class TyperState(previous: TyperState /* | Null */) extends DotClass with Showab
 
   def constraint = myConstraint
   def constraint_=(c: Constraint)(implicit ctx: Context) = {
-//      println(i"assigning $c to $hashesStr")
     if (Config.debugCheckConstraintsClosed && isGlobalCommittable) c.checkClosed()
     myConstraint = c
   }
 
+  /** Reset constraint to `c` and mark current constraint as retracted if it differs from `c` */
   def resetConstraintTo(c: Constraint) = {
     if (c `ne` myConstraint) myConstraint.markRetracted()
     myConstraint = c
