@@ -721,7 +721,7 @@ object Parsers {
      */
     def typ(): Tree = {
       val start = in.offset
-      val imods = funArgMods(EmptyModifiers)
+      val imods = modifiers(funArgMods)
       def functionRest(params: List[Tree]): Tree =
         atPos(start, accept(ARROW)) {
           val t = typ()
@@ -1064,7 +1064,7 @@ object Parsers {
     def expr(location: Location.Value): Tree = {
       val start = in.offset
       if (in.token == IMPLICIT || in.token == UNUSED) {
-        val imods = funArgMods(EmptyModifiers)
+        val imods = modifiers(funArgMods)
         implicitClosure(start, location, imods)
       } else {
         val saved = placeholderParams
@@ -1729,14 +1729,7 @@ object Parsers {
     /** FunArgMods ::= `implicit' FunArgMods
      *               | `unused' FunArgMods
      */
-    def funArgMods(imods: Modifiers, doIfImplicit: () => Unit = () => ()): Modifiers = {
-      if (in.token == IMPLICIT) {
-        doIfImplicit()
-        funArgMods(addMod(imods, atPos(accept(IMPLICIT)) { Mod.Implicit() }), doIfImplicit)
-      } else if (in.token == UNUSED)
-        funArgMods(addMod(imods, atPos(accept(UNUSED)) { Mod.Unused() }), doIfImplicit)
-      else imods
-    }
+    def funArgMods = BitSet(IMPLICIT, UNUSED)
 
     /** Wrap annotation or constructor in New(...).<init> */
     def wrapNew(tpt: Tree) = Select(New(tpt), nme.CONSTRUCTOR)
@@ -1828,7 +1821,7 @@ object Parsers {
      *  ClsParamClause    ::=  [nl] `(' [`unused'] [ClsParams] ')'
      *  ClsParams         ::=  ClsParam {`' ClsParam}
      *  ClsParam          ::=  {Annotation} [{Modifier} (`val' | `var') | `inline'] Param
-     *  DefParamClauses   ::=  {DefParamClause} [[nl] `(' [`unused'] `implicit' DefParams `)']
+     *  DefParamClauses   ::=  {DefParamClause} [[nl] `(' [`FunArgMods'] DefParams `)']
      *  DefParamClause    ::=  [nl] `(' [`unused'] [DefParams] ')'
      *  DefParams         ::=  DefParam {`,' DefParam}
      *  DefParam          ::=  {Annotation} [`inline'] Param
@@ -1882,8 +1875,18 @@ object Parsers {
       def paramClause(): List[ValDef] = inParens {
         if (in.token == RPAREN) Nil
         else {
-          if (in.token == IMPLICIT || in.token == UNUSED)
-            imods = funArgMods(imods, () => implicitOffset = in.offset)
+          def funArgMods(): Unit = {
+            if (in.token == IMPLICIT) {
+              implicitOffset = in.offset
+              imods = addMod(imods, atPos(accept(IMPLICIT)) { Mod.Implicit() })
+              funArgMods()
+            } else if (in.token == UNUSED) {
+              imods = addMod(imods, atPos(accept(UNUSED)) { Mod.Unused() })
+              funArgMods()
+            }
+          }
+          funArgMods()
+
           commaSeparated(() => param())
         }
       }
@@ -2479,7 +2482,7 @@ object Parsers {
         else if (isDefIntro(localModifierTokens))
           if (in.token == IMPLICIT || in.token == UNUSED) {
             val start = in.offset
-            var imods = funArgMods(EmptyModifiers)
+            var imods = modifiers(funArgMods)
             if (isBindingIntro) stats += implicitClosure(start, Location.InBlock, imods)
             else stats +++= localDef(start, imods)
           } else {
