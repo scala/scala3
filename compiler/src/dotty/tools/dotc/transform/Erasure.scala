@@ -461,9 +461,11 @@ object Erasure {
       ref(meth).appliedToArgs(args.toList ++ followingArgs)
     }
 
-    private def protoArgs(pt: Type, tp: Type): List[untpd.Tree] = (pt, tp) match {
-      case (pt: FunProto, tp: MethodType) if tp.isUnusedMethod => protoArgs(pt.resType, tp.resType)
-      case (pt: FunProto, tp: MethodType) => pt.args ++ protoArgs(pt.resType, tp.resType)
+    private def protoArgs(pt: Type, methTp: Type): List[untpd.Tree] = (pt, methTp) match {
+      case (pt: FunProto, methTp: MethodType) if methTp.isUnusedMethod =>
+        protoArgs(pt.resType, methTp.resType)
+      case (pt: FunProto, methTp: MethodType) =>
+        pt.args ++ protoArgs(pt.resType, methTp.resType)
       case _ => Nil
     }
 
@@ -497,9 +499,8 @@ object Erasure {
           fun1.tpe.widen match {
             case mt: MethodType =>
               val outers = outer.args(fun.asInstanceOf[tpd.Tree]) // can't use fun1 here because its type is already erased
-              var args0 = protoArgs(pt, tree.typeOpt)
-              if (mt.paramNames.nonEmpty && !mt.isUnusedMethod) args0 = args ::: args0
-              args0 = outers ::: args0
+              val ownArgs = if (mt.paramNames.nonEmpty && !mt.isUnusedMethod) args else Nil
+              var args0 = outers ::: ownArgs ::: protoArgs(pt, tree.typeOpt)
 
               if (args0.length > MaxImplementedFunctionArity && mt.paramInfos.length == 1) {
                 val bunchedArgs = untpd.JavaSeqLiteral(args0, TypeTree(defn.ObjectType))
