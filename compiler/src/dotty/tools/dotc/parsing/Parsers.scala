@@ -1028,8 +1028,6 @@ object Parsers {
 
     /** Expr              ::=  [FunArgMods] FunParams =>' Expr
      *                      |  Expr1
-     *  FunArgMods        ::=  `implicit' FunArgMods
-     *                      |  `unused' FunArgMods
      *  FunParams         ::=  Bindings
      *                      |  id
      *                      |  `_'
@@ -1817,11 +1815,11 @@ object Parsers {
     def typeParamClauseOpt(ownerKind: ParamOwner.Value): List[TypeDef] =
       if (in.token == LBRACKET) typeParamClause(ownerKind) else Nil
 
-    /** ClsParamClauses   ::=  {ClsParamClause} [[nl] `(' [`unused'] `implicit' [`unused'] ClsParams `)']
+    /** ClsParamClauses   ::=  {ClsParamClause} [[nl] `(' [FunArgMods] ClsParams `)']
      *  ClsParamClause    ::=  [nl] `(' [`unused'] [ClsParams] ')'
      *  ClsParams         ::=  ClsParam {`' ClsParam}
      *  ClsParam          ::=  {Annotation} [{Modifier} (`val' | `var') | `inline'] Param
-     *  DefParamClauses   ::=  {DefParamClause} [[nl] `(' [`FunArgMods'] DefParams `)']
+     *  DefParamClauses   ::=  {DefParamClause} [[nl] `(' [FunArgMods] DefParams `)']
      *  DefParamClause    ::=  [nl] `(' [`unused'] [DefParams] ')'
      *  DefParams         ::=  DefParam {`,' DefParam}
      *  DefParam          ::=  {Annotation} [`inline'] Param

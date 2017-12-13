@@ -155,9 +155,9 @@ TypeParamBounds   ::=  TypeBounds {‘<%’ Type} {‘:’ Type}                
 
 ### Expressions
 ```ebnf
-Expr              ::=  [‘implicit’] FunParams ‘=>’ Expr                         Function(args, expr), Function(ValDef([implicit], id, TypeTree(), EmptyTree), expr)
+Expr              ::=  [FunArgMods] FunParams ‘=>’ Expr                         Function(args, expr), Function(ValDef([implicit], id, TypeTree(), EmptyTree), expr)
                     |  Expr1
-BlockResult       ::=  [‘implicit’] FunParams ‘=>’ Block
+BlockResult       ::=  [FunArgMods] FunParams ‘=>’ Block
                     |  Expr1
 FunParams         ::=  Bindings
                     |  id
@@ -260,7 +260,7 @@ HkTypeParamClause ::=  ‘[’ HkTypeParam {‘,’ HkTypeParam} ‘]’
 HkTypeParam       ::=  {Annotation} [‘+’ | ‘-’] (Id[HkTypeParamClause] | ‘_’)
                        TypeBounds
 
-ClsParamClauses   ::=  {ClsParamClause} [[nl] ‘(’ ‘implicit’ ClsParams ‘)’]
+ClsParamClauses   ::=  {ClsParamClause} [[nl] ‘(’ [FunArgMods] ClsParams ‘)’]
 ClsParamClause    ::=  [nl] ‘(’ [ClsParams] ‘)’
 ClsParams         ::=  ClsParam {‘,’ ClsParam}
 ClsParam          ::=  {Annotation}                                             ValDef(mods, id, tpe, expr) -- point of mods on val/var
@@ -268,7 +268,7 @@ ClsParam          ::=  {Annotation}                                             
 Param             ::=  id ‘:’ ParamType [‘=’ Expr]
                     |  INT
 
-DefParamClauses   ::=  {DefParamClause} [[nl] ‘(’ ‘implicit’ DefParams ‘)’]
+DefParamClauses   ::=  {DefParamClause} [[nl] ‘(’ [FunArgMods] DefParams ‘)’]
 DefParamClause    ::=  [nl] ‘(’ [DefParams] ‘)’
 DefParams         ::=  DefParam {‘,’ DefParam}
 DefParam          ::=  {Annotation} [‘inline’] Param                            ValDef(mods, id, tpe, expr) -- point of mods at id.
