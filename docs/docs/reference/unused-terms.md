@@ -32,7 +32,7 @@ m.turnedOn.turnedOn // ERROR
 //                  State is must be Off
 ```
 
-These constraint that only depend on the types at the call site are completly resolved at compile time and never used at runtime.
+Note that in the code above the actual implicit arguments for `IsOff` are never used at runtime; they serve only to establish the right constraints at compile time.
 As these parameters are never used at runtime there is not real need to have them around, but they still need to be
 present at runtime to be able to do separate compilation and retain binary compatiblity. Unused parameters are contractually
 obligated to not be used at runtime, enforcing the essence of evidences on types and allows them to always be optimized away.
