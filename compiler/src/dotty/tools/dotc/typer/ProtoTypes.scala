@@ -202,25 +202,12 @@ object ProtoTypes {
      *  current constraint. A test case is pos/t1756.scala.
      *  @return True if all arguments have types (in particular, no types were forgotten).
      */
-    def allArgTypesAreCurrent()(implicit ctx: Context): Boolean = {
-      evalState foreachBinding { (arg, tstate) =>
-        if (tstate.uncommittedAncestor.constraint ne ctx.typerState.constraint) {
-          typr.println(i"need to invalidate $arg / ${myTypedArg(arg)}, ${tstate.constraint}, current = ${ctx.typerState.constraint}")
-          myTypedArg = myTypedArg.remove(arg)
-          evalState = evalState.remove(arg)
-        }
-      }
-      myTypedArg.size == args.length
-    }
+    def allArgTypesAreCurrent()(implicit ctx: Context): Boolean = false
 
     private def cacheTypedArg(arg: untpd.Tree, typerFn: untpd.Tree => Tree)(implicit ctx: Context): Tree = {
       var targ = myTypedArg(arg)
       if (targ == null) {
         targ = typerFn(arg)
-        if (!ctx.reporter.hasPending) {
-          myTypedArg = myTypedArg.updated(arg, targ)
-          evalState = evalState.updated(arg, ctx.typerState)
-        }
       }
       targ
     }
@@ -229,9 +216,7 @@ object ProtoTypes {
      *  `typedArg` into account.
      */
     def typedArgs: List[Tree] = {
-      if (myTypedArgs.size != args.length)
-        myTypedArgs = args.mapconserve(cacheTypedArg(_, typer.typed(_)))
-      myTypedArgs
+      args.mapconserve(cacheTypedArg(_, typer.typed(_)))
     }
 
     /** Type single argument and remember the unadapted result in `myTypedArg`.
@@ -245,8 +230,7 @@ object ProtoTypes {
     /** The type of the argument `arg`.
      *  @pre `arg` has been typed before
      */
-    def typeOfArg(arg: untpd.Tree)(implicit ctx: Context): Type =
-      myTypedArg(arg).tpe
+    def typeOfArg(arg: untpd.Tree)(implicit ctx: Context): Type = ???
 
     private[this] var myTupled: Type = NoType
 
