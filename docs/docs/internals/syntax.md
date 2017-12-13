@@ -117,9 +117,11 @@ ClassQualifier    ::=  ‘[’ id ‘]’
 
 ### Types
 ```ebnf
-Type              ::=  [‘implicit’] FunArgTypes ‘=>’ Type                       Function(ts, t)
+Type              ::=  [FunArgMods] FunArgTypes ‘=>’ Type                       Function(ts, t)
                     |  HkTypeParamClause ‘=>’ Type                              TypeLambda(ps, t)
                     |  InfixType
+FunArgMods        ::=  `implicit' FunArgMods
+                    |  `unused' FunArgMods
 FunArgTypes       ::=  InfixType
                     |  ‘(’ [ FunArgType {‘,’ FunArgType } ] ‘)’
                     |  '(' TypedFunParam {',' TypedFunParam } ')'

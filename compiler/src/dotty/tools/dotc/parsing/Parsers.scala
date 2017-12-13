@@ -715,15 +715,13 @@ object Parsers {
     /** Type        ::=  [FunArgMods] FunArgTypes `=>' Type
      *                |  HkTypeParamClause `->' Type
      *                |  InfixType
-     *  FunArgMods  ::=  `implicit' FunArgMods
-     *                |  `unused' FunArgMods
      *  FunArgTypes ::=  InfixType
      *                |  `(' [ FunArgType {`,' FunArgType } ] `)'
      *                |  '(' TypedFunParam {',' TypedFunParam } ')'
      */
     def typ(): Tree = {
       val start = in.offset
-      val imods = allFunctionMods(EmptyModifiers)
+      val imods = funArgMods(EmptyModifiers)
       def functionRest(params: List[Tree]): Tree =
         atPos(start, accept(ARROW)) {
           val t = typ()
@@ -1066,7 +1064,7 @@ object Parsers {
     def expr(location: Location.Value): Tree = {
       val start = in.offset
       if (in.token == IMPLICIT || in.token == UNUSED) {
-        val imods = allFunctionMods(EmptyModifiers)
+        val imods = funArgMods(EmptyModifiers)
         implicitClosure(start, location, imods)
       } else {
         val saved = placeholderParams
@@ -1728,12 +1726,15 @@ object Parsers {
       normalize(loop(start))
     }
 
-    def allFunctionMods(imods: Modifiers, doIfImplicit: () => Unit = () => ()): Modifiers = {
+    /** FunArgMods ::= `implicit' FunArgMods
+     *               | `unused' FunArgMods
+     */
+    def funArgMods(imods: Modifiers, doIfImplicit: () => Unit = () => ()): Modifiers = {
       if (in.token == IMPLICIT) {
         doIfImplicit()
-        allFunctionMods(addMod(imods, atPos(accept(IMPLICIT)) { Mod.Implicit() }), doIfImplicit)
+        funArgMods(addMod(imods, atPos(accept(IMPLICIT)) { Mod.Implicit() }), doIfImplicit)
       } else if (in.token == UNUSED)
-        allFunctionMods(addMod(imods, atPos(accept(UNUSED)) { Mod.Unused() }), doIfImplicit)
+        funArgMods(addMod(imods, atPos(accept(UNUSED)) { Mod.Unused() }), doIfImplicit)
       else imods
     }
 
@@ -1882,7 +1883,7 @@ object Parsers {
         if (in.token == RPAREN) Nil
         else {
           if (in.token == IMPLICIT || in.token == UNUSED)
-            imods = allFunctionMods(imods, () => implicitOffset = in.offset)
+            imods = funArgMods(imods, () => implicitOffset = in.offset)
           commaSeparated(() => param())
         }
       }
@@ -2478,7 +2479,7 @@ object Parsers {
         else if (isDefIntro(localModifierTokens))
           if (in.token == IMPLICIT || in.token == UNUSED) {
             val start = in.offset
-            var imods = allFunctionMods(EmptyModifiers)
+            var imods = funArgMods(EmptyModifiers)
             if (isBindingIntro) stats += implicitClosure(start, Location.InBlock, imods)
             else stats +++= localDef(start, imods)
           } else {
