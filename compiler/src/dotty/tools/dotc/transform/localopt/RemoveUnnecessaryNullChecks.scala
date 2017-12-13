@@ -75,24 +75,19 @@ class RemoveUnnecessaryNullChecks extends Optimisation {
             transform(t, nullness)
         }
 
-        val newExpr = transform(expr, nullness)
-
-        if ((newStats eq stats) && (newExpr eq expr)) blk 
-        else Block(newStats, newExpr)
+        cpy.Block(blk)(newStats, transform(expr, nullness))
 
       // if (x == null)
       case br @ If(cond @ NullCheck(sym), thenp, elsep) => 
         val newThen = transform(thenp, mutable.Map(sym -> true))
         val newElse = transform(elsep, mutable.Map(sym -> false))
-        if ((newThen eq thenp) && (newElse eq elsep)) br
-        else If(cond, newThen, newElse)
+        cpy.If(br)(cond, newThen, newElse)
 
       // if (x != null)
       case br @ If(cond @ Select(NullCheck(sym), _), thenp, elsep) if cond.symbol eq defn.Boolean_! =>
         val newThen = transform(thenp, mutable.Map(sym -> false))
         val newElse = transform(elsep, mutable.Map(sym -> true))
-        if ((newThen eq thenp) && (newElse eq elsep)) br
-        else If(cond, newThen, newElse)
+        cpy.If(br)(cond, newThen, newElse)
 
       case t => t
     }
@@ -107,13 +102,14 @@ class RemoveUnnecessaryNullChecks extends Optimisation {
       case t: Literal => t.const.tag != NullTag
       case _: This => true
       case _: New => true
-      case t: Apply if t.symbol.isPrimaryConstructor => true
+      case t: Apply if t.symbol.isConstructor => true
       case Apply(Select(New(_), _), _) => true
       case t => t.tpe.isNotNull
     }
 
   private def isAlwaysNull(tree: Tree)(implicit ctx: Context): Boolean = 
     tree match {
+      case EmptyTree => true
       case Block(_, expr) => isAlwaysNull(expr)
       case If(_, th, el) => isAlwaysNull(th) && isAlwaysNull(el)
       case t: Typed => isAlwaysNull(t.expr)
