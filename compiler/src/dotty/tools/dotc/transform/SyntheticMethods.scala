@@ -59,7 +59,7 @@ class SyntheticMethods(thisPhase: DenotTransformer) {
   def syntheticMethods(clazz: ClassSymbol)(implicit ctx: Context): List[Tree] = {
     val clazzType = clazz.appliedRef
     lazy val accessors =
-      if (isDerivedValueClass(clazz)) clazz.paramAccessors
+      if (isDerivedValueClass(clazz)) clazz.paramAccessors.take(1) // Tail parameters can only be `unused`
       else clazz.caseAccessors
 
     val symbolsToSynthesize: List[Symbol] =
