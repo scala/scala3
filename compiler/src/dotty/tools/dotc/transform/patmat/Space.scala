@@ -267,8 +267,8 @@ trait SpaceLogic {
         else
           // `(_, _, _) - (Some, None, _)` becomes `(None, _, _) | (_, Some, _) | (_, _, Empty)`
           Or(ss1.zip(ss2).map((minus _).tupled).zip(0 to ss2.length - 1).map {
-              case (ri, i) => Prod(tp1, fun1, sym1, ss1.updated(i, ri), full)
-            })
+            case (ri, i) => Prod(tp1, fun1, sym1, ss1.updated(i, ri), full)
+          })
 
     }
 
@@ -375,7 +375,7 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
   }
 
   /* Whether the extractor is irrefutable */
-  def irrefutable(unapp: tpd.Tree): Boolean = {
+  def irrefutable(unapp: Tree): Boolean = {
     // TODO: optionless patmat
     unapp.tpe.widen.finalResultType.isRef(scalaSomeClass) ||
       (unapp.symbol.is(Synthetic) && unapp.symbol.owner.linkedClass.is(Case)) ||
@@ -557,11 +557,11 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
   def refine(parent: Type, child: Symbol): Type = {
     if (child.isTerm && child.is(Case, butNot = Module)) return child.termRef // enum vals always match
 
-    val childTp  = if (child.isTerm) child.termRef else child.typeRef
+    val childTp = if (child.isTerm) child.termRef else child.typeRef
 
     val resTp = instantiate(childTp, parent)(ctx.fresh.setNewTyperState())
 
-    if (!resTp.exists)  {
+    if (!resTp.exists || !inhabited(resTp)) {
       debug.println(s"[refine] unqualified child ousted: ${childTp.show} !< ${parent.show}")
       NoType
     }
@@ -569,6 +569,25 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
       debug.println(s"$child instantiated ------> $resTp")
       resTp.dealias
     }
+  }
+
+  /** Can this type be inhabited by a value?
+   *
+   *  Intersection between singleton types and other types is always empty
+   *  the singleton type is not a subtype of the other type.
+   *  See patmat/i3573.scala for an example.
+   */
+  def inhabited(tpe: Type)(implicit ctx: Context): Boolean = {
+    val emptySingletonIntersection = new ExistsAccumulator({
+      case AndType(s: SingletonType, t) =>
+        !(s <:< t)
+      case AndType(t, s: SingletonType) =>
+        !(s <:< t)
+      case x =>
+        false
+    })
+
+    !emptySingletonIntersection(false, tpe)
   }
 
   /** Instantiate type `tp1` to be a subtype of `tp2`
