@@ -368,9 +368,7 @@ object Flags {
   final val Enum = commonFlag(40, "<enum>")
 
   /** Labeled with `unused` modifier (unused value)  */
-  final val UnusedCommon = commonFlag(42, "unused")
-  final val Unused = UnusedCommon.toTermFlags
-  final val UnusedType = UnusedCommon.toTypeFlags
+  final val Unused = termFlag(42, "unused")
 
   // Flags following this one are not pickled
 
