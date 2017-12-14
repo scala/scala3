@@ -1,4 +1,5 @@
 import scala.quoted._
+import dotty.tools.dotc.quoted.Runners._
 
 class Test {
 

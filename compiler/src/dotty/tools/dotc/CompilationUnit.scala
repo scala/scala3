@@ -31,9 +31,13 @@ class CompilationUnit(val source: SourceFile) {
 object CompilationUnit {
 
   /** Make a compilation unit for top class `clsd` with the contends of the `unpickled` */
-  def mkCompilationUnit(clsd: ClassDenotation, unpickled: Tree, forceTrees: Boolean)(implicit ctx: Context): CompilationUnit = {
+  def mkCompilationUnit(clsd: ClassDenotation, unpickled: Tree, forceTrees: Boolean)(implicit ctx: Context): CompilationUnit =
+    mkCompilationUnit(new SourceFile(clsd.symbol.associatedFile, Seq()), unpickled, forceTrees)
+
+  /** Make a compilation unit the given unpickled tree */
+  def mkCompilationUnit(source: SourceFile, unpickled: Tree, forceTrees: Boolean)(implicit ctx: Context): CompilationUnit = {
     assert(!unpickled.isEmpty, unpickled)
-    val unit1 = new CompilationUnit(new SourceFile(clsd.symbol.associatedFile, Seq()))
+    val unit1 = new CompilationUnit(source)
     unit1.tpdTree = unpickled
     if (forceTrees)
       force.traverse(unit1.tpdTree)

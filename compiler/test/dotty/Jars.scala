@@ -14,6 +14,10 @@ object Jars {
   val dottyInterfaces: String = sys.env.get("DOTTY_INTERFACE")
     .getOrElse(Properties.dottyInterfaces)
 
+  /** Scala asm Jar */
+  lazy val scalaAsm: String =
+    findJarFromRuntime("scala-asm-6.0.0-scala-1")
+
   /** Dotty extras classpath from env or properties */
   val dottyExtras: List[String] = sys.env.get("DOTTY_EXTRAS")
     .map(_.split(":").toList).getOrElse(Properties.dottyExtras)
@@ -24,6 +28,10 @@ object Jars {
   /** Dotty test dependencies */
   val dottyTestDeps: List[String] =
     dottyLib :: dottyCompiler :: dottyInterfaces :: dottyExtras
+
+  /** Dotty runtime with compiler dependencies, used for quoted.Expr.run */
+  val dottyRunWithCompiler: List[String] =
+    dottyLib :: dottyCompiler :: dottyInterfaces :: scalaAsm :: Nil
 
   def scalaLibrary: String = sys.env.get("DOTTY_SCALA_LIBRARY")
     .getOrElse(findJarFromRuntime("scala-library-2."))

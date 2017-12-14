@@ -12,6 +12,7 @@ public class ChildJVMMain {
     static final String MessageEnd = "##THIS IS THE END FOR ME, GOODBYE##";
 
     private static void runMain(String dir) throws Exception {
+        System.setProperty("dotty.tools.dotc.classpath", dir);
         ArrayList<URL> cp = new ArrayList<>();
         for (String path : dir.split(":"))
             cp.add(new File(path).toURI().toURL());

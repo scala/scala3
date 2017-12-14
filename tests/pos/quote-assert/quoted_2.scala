@@ -1,3 +1,4 @@
+import dotty.tools.dotc.quoted.Runners.runner
 import scala.quoted._
 import Macros._
 
