@@ -27,7 +27,9 @@ object Test {
         compile(body, env + (x -> compile(e, env)))
   }
 
-  val res1 = (x: Int) => ~compile(exp, Map("x" -> '(x)))
+  val res1 = '{ (x: Int) => ~compile(exp, Map("x" -> '(x))) }
 
   val res2 = compile(letExp, Map())
+
+  res1.run
 }

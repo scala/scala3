@@ -9,14 +9,13 @@ import util.Positions._
 import StdNames._
 import ast.untpd
 import MegaPhase.MiniPhase
-import typer.Implicits._
 import NameKinds.OuterSelectName
 import scala.collection.mutable
 
 /** Translates quoted terms and types to `unpickle` method calls.
  *  Checks that the phase consistency principle (PCP) holds.
  */
-class ReifyQuotes extends MacroTransformWithImplicits {
+class ReifyQuotes extends MacroTransform {
   import ast.tpd._
 
   override def phaseName: String = "reifyQuotes"
@@ -41,7 +40,7 @@ class ReifyQuotes extends MacroTransformWithImplicits {
   def pickleTree(tree: Tree, isType: Boolean)(implicit ctx: Context): String =
     tree.show // TODO: replace with TASTY
 
-  private class Reifier extends ImplicitsTransformer {
+  private class Reifier extends Transformer {
 
     /** A class for collecting the splices of some quoted expression */
     private class Splices {
@@ -83,7 +82,7 @@ class ReifyQuotes extends MacroTransformWithImplicits {
           val (trefs, tags) = assocs.unzip
           tags ++=: buf
           typeTagOfRef.clear()
-          Block(typeDefs, expr).subst(trefs.map(_.symbol), typeDefs.map(_.symbol))
+          Block(typeDefs, expr.subst(trefs.map(_.symbol), typeDefs.map(_.symbol)))
         }
     }
 
@@ -113,38 +112,16 @@ class ReifyQuotes extends MacroTransformWithImplicits {
      *  check that its staging level matches the current level. References to types
      *  that are phase-incorrect can still be healed as follows.
      *
-     *  If `T` is a reference to a type at the wrong level, and there is an implicit value `tag`
-     *  of type `quoted.Type[T]`, transform `tag` yielding `tag1` and add the binding `T -> tag1`
-     *   to the `typeTagOfRef` map of the current `Splices` structure. These entries will be turned
-     *  info additional type definitions in method `addTags`.
+     *  If `T` is a reference to a type at the wrong level, heal it by setting things up
+     *  so that we later add a type definition
+     *
+     *     type T' = ~quoted.Type[T]
+     *
+     *  to the quoted text and rename T to T' in it. This is done later in `reify` via
+     *  `Splice#addTags`. checkLevel itself only records what needs to be done in the
+     *  `typeTagOfRef` field of the current `Splice` structure.
      */
     private def checkLevel(tree: Tree)(implicit ctx: Context): Tree = {
-
-      /** Try to heal phase-inconsistent reference to type `T` using a local type definition.
-       *  @return None      if successful
-       *  @return Some(msg) if unsuccessful where `msg` is a potentially empty error message
-       *                    to be added to the "inconsistent phase" message.
-       */
-      def heal(tp: Type): Option[String] = tp match {
-        case tp: TypeRef =>
-          val reqType = defn.QuotedTypeType.appliedTo(tp)
-          val tag = ctx.typer.inferImplicitArg(reqType, tree.pos)
-          tag.tpe match {
-            case fail: SearchFailureType =>
-              Some(i"""
-                      |
-                      | The access would be accepted with the right type tag, but
-                      | ${ctx.typer.missingArgMsg(tag, reqType, "")}""")
-            case _ =>
-              splicesAtLevel(currentLevel).typeTagOfRef(tp) = {
-                currentLevel -= 1
-                try transform(tag) finally currentLevel += 1
-              }
-              None
-          }
-        case _ =>
-          Some("")
-      }
 
       /** Check reference to `sym` for phase consistency, where `tp` is the underlying type
        *  by which we refer to `sym`.
@@ -160,12 +137,18 @@ class ReifyQuotes extends MacroTransformWithImplicits {
         else if (sym.exists && !sym.isStaticOwner &&
                  !ctx.owner.ownersIterator.exists(_.isInlineMethod) &&
                  levelOf.getOrElse(sym, currentLevel) != currentLevel)
-          heal(tp) match {
-            case Some(errMsg) =>
+          tp match {
+            case tp: TypeRef =>
+              // Legalize reference to phase-inconstent type
+              splicesAtLevel(currentLevel).typeTagOfRef(tp) = {
+                currentLevel -= 1
+                val tag = New(defn.QuotedTypeType.appliedTo(tp), Nil)
+                try transform(tag) finally currentLevel += 1
+              }
+            case _ =>
               ctx.error(em"""access to $symStr from wrong staging level:
                             | - the definition is at level ${levelOf(sym)},
-                            | - but the access is at level $currentLevel.$errMsg""", tree.pos)
-            case None =>
+                            | - but the access is at level $currentLevel.""", tree.pos)
           }
       }
 
