@@ -14,6 +14,9 @@ final case class TestFlags(
   def withClasspath(classPath: String): TestFlags =
     TestFlags(s"$defaultClassPath:$classPath", runClassPath, options)
 
+  def withRunClasspath(classPath: String): TestFlags =
+    TestFlags(defaultClassPath, s"$runClassPath:$classPath", options)
+
   def all: Array[String] = Array("-classpath", defaultClassPath) ++ options
 }
 
