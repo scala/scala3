@@ -14,6 +14,7 @@ import StdNames.nme
 import TastyBuffer._
 import TypeApplications._
 import transform.SymUtils._
+import Splicing.Hole
 import config.Config
 
 class TreePickler(pickler: TastyPickler) {
@@ -26,6 +27,8 @@ class TreePickler(pickler: TastyPickler) {
   private val symRefs = Symbols.newMutableSymbolMap[Addr]
   private val forwardSymRefs = Symbols.newMutableSymbolMap[List[Addr]]
   private val pickledTypes = new java.util.IdentityHashMap[Type, Any] // Value type is really Addr, but that's not compatible with null
+
+  private var holeCount = 0
 
   private def withLength(op: => Unit) = {
     val lengthAddr = reserveRef(relative = true)
@@ -542,6 +545,13 @@ class TreePickler(pickler: TastyPickler) {
         case TypeBoundsTree(lo, hi) =>
           writeByte(TYPEBOUNDStpt)
           withLength { pickleTree(lo); pickleTree(hi) }
+        case Hole(args) =>
+          writeByte(HOLE)
+          withLength {
+            writeNat(holeCount)
+            holeCount += 1
+            args.foreach(pickleTree)
+          }
       }
       catch {
         case ex: AssertionError =>

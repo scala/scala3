@@ -11,6 +11,7 @@ import util.Positions._
 import ast.{tpd, Trees, untpd}
 import Trees._
 import Decorators._
+import Splicing.Splice
 import transform.SymUtils._
 import TastyUnpickler._, TastyBuffer._
 import scala.annotation.{tailrec, switch}
@@ -25,7 +26,10 @@ import config.Config
  *  @param tastyName       the nametable
  *  @param posUNpicklerOpt the unpickler for positions, if it exists
  */
-class TreeUnpickler(reader: TastyReader, nameAtRef: NameRef => TermName, posUnpicklerOpt: Option[PositionUnpickler]) {
+class TreeUnpickler(reader: TastyReader,
+                    nameAtRef: NameRef => TermName,
+                    posUnpicklerOpt: Option[PositionUnpickler],
+                    splices: Seq[Splice]) {
   import TastyFormat._
   import TreeUnpickler._
   import tpd._
@@ -1031,6 +1035,10 @@ class TreeUnpickler(reader: TastyReader, nameAtRef: NameRef => TermName, posUnpi
               LambdaTypeTree(tparams, body)
             case TYPEBOUNDStpt =>
               TypeBoundsTree(readTpt(), readTpt())
+            case HOLE =>
+              val idx = readNat()
+              val args = until(end)(readTerm())
+              (splices(idx) /: args)(_.asInstanceOf[Tree => Tree](_)).asInstanceOf[Tree]
             case _ =>
               readPathTerm()
           }
