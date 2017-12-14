@@ -197,7 +197,9 @@ class CompilationTests extends ParallelTesting {
   @Test def runAll: Unit = {
     implicit val testGroup: TestGroup = TestGroup("runAll")
     compileFilesInDir("../tests/run", defaultOptions) +
-    compileFilesInDir("../tests/run-no-optimise", defaultOptions)
+    compileFilesInDir("../tests/run-no-optimise", defaultOptions) +
+    compileFile("../tests/run-special/quote-run.scala", defaultRunWithCompilerOptions) +
+    compileFile("../tests/run-special/quote-run-2.scala", defaultRunWithCompilerOptions)
   }.checkRuns()
 
   // Generic java signatures tests ---------------------------------------------

@@ -24,7 +24,7 @@ object Splicer {
   /** Splice the Tree for a Quoted expression which is constructed via a reflective call to the given method */
   private def reflectiveSplice(tree: Tree)(implicit ctx: Context): Tree = {
     val interpreter = new Interpreter
-    interpreter.interpretTree[quoted.Expr[_]](tree).map(PickledQuotes.quotedToTree(_)).getOrElse(tree)
+    interpreter.interpretTree[scala.quoted.Expr[_]](tree).map(PickledQuotes.quotedToTree(_)).getOrElse(tree)
   }
 
 }
