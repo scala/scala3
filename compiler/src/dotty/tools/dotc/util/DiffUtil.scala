@@ -104,16 +104,17 @@ object DiffUtil {
     }.mkString
   }
 
-  private def added(str: String): String = bgColored(str, Console.GREEN)
-  private def deleted(str: String) = bgColored(str, Console.RED)
-  private def bgColored(str: String, color: String): String = {
+  private def added(str: String): String = bgColored(str, Console.GREEN, Console.GREEN_B)
+  private def deleted(str: String) = bgColored(str, Console.RED, Console.GREEN_B)
+  private def bgColored(str: String, color: String, spaceColor: String): String = {
     if (str.isEmpty) ""
     else {
       val (spaces, rest) = str.span(_ == '\n')
       if (spaces.isEmpty) {
         val (text, rest2) = str.span(_ != '\n')
-        Console.BOLD + color + text + Console.RESET + bgColored(rest2, color)
-      } else spaces + bgColored(rest, color)
+        val coloredSpaces = text.replaceAll("\\s", spaceColor + " " + color)
+        Console.BOLD + color + coloredSpaces + Console.RESET + bgColored(rest2, color, spaceColor)
+      } else spaces + bgColored(rest, color, spaceColor)
     }
   }
   private def eof() = "\u001B[51m" + "EOF" + Console.RESET
