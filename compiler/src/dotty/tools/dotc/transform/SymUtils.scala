@@ -175,4 +175,8 @@ class SymUtils(val self: Symbol) extends AnyVal {
     else if (owner.is(Package)) false
     else owner.isLocal
   }
+
+  /** Is symbol a splice operation? */
+  def isSplice(implicit ctx: Context): Boolean =
+    self == defn.QuotedExpr_~ || self == defn.QuotedType_~
 }

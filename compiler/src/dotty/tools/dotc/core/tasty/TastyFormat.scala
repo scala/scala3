@@ -181,7 +181,8 @@ Standard-Section: "ASTs" TopLevelStat*
                   IMPLICIT
                   LAZY
                   OVERRIDE
-                  INLINE                              // macro
+                  INLINE                              // inline method
+                  MACRO                               // inline method containing toplevel splices
                   STATIC                              // mapped to static Java member
                   OBJECT                              // an object or its class
                   TRAIT                               // a trait
@@ -226,7 +227,7 @@ object TastyFormat {
 
   final val header = Array(0x5C, 0xA1, 0xAB, 0x1F)
   val MajorVersion = 2
-  val MinorVersion = 0
+  val MinorVersion = 1
 
   /** Tags used to serialize names */
   class NameTags {
@@ -297,6 +298,7 @@ object TastyFormat {
   final val SCALA2X = 29
   final val DEFAULTparameterized = 30
   final val STABLE = 31
+  final val MACRO = 32
 
   // Cat. 2:    tag Nat
 
@@ -419,6 +421,7 @@ object TastyFormat {
        | LAZY
        | OVERRIDE
        | INLINE
+       | MACRO
        | STATIC
        | OBJECT
        | TRAIT
@@ -472,6 +475,7 @@ object TastyFormat {
     case LAZY => "LAZY"
     case OVERRIDE => "OVERRIDE"
     case INLINE => "INLINE"
+    case MACRO => "MACRO"
     case STATIC => "STATIC"
     case OBJECT => "OBJECT"
     case TRAIT => "TRAIT"

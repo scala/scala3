@@ -414,7 +414,7 @@ object Flags {
   /** A Scala 2.12 or higher trait */
   final val Scala_2_12_Trait = typeFlag(58, "<scala_2_12_trait>")
 
-  /** A macro (Scala 2.x only) */
+  /** A macro */
   final val Macro = commonFlag(59, "<macro>")
 
   /** A method that is known to have inherited default parameters */

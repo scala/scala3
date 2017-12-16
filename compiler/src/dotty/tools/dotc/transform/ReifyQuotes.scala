@@ -11,11 +11,11 @@ import StdNames._
 import ast.untpd
 import tasty.TreePickler.Hole
 import MegaPhase.MiniPhase
+import SymUtils._
 import NameKinds.OuterSelectName
 import scala.collection.mutable
 
 // TODO
-//   implement hole substitution directly
 //   check that inline methods override nothing
 //   drop inline methods
 //   adapt to Expr/Type when passing arguments to splices
@@ -175,10 +175,6 @@ class ReifyQuotes extends MacroTransform {
       case _ =>
     }
 
-    /** Is symbol a splice operation? */
-    def isSplice(sym: Symbol)(implicit ctx: Context) =
-      sym == defn.QuotedExpr_~ || sym == defn.QuotedType_~
-
     /** Are we in the body of an inline method? */
     def inInline(implicit ctx: Context) = ctx.owner.ownersIterator.exists(_.isInlineMethod)
 
@@ -213,7 +209,7 @@ class ReifyQuotes extends MacroTransform {
     def checkType(pos: Position)(implicit ctx: Context): TypeAccumulator[Unit] = new TypeAccumulator[Unit] {
       def apply(acc: Unit, tp: Type): Unit = reporting.trace(i"check type level $tp at $level") {
         tp match {
-          case tp: NamedType if isSplice(tp.symbol) =>
+          case tp: NamedType if tp.symbol.isSplice =>
             if (inQuote) outer.checkType(pos).foldOver(acc, tp)
             else {
               spliceOutsideQuotes(pos)
@@ -328,13 +324,13 @@ class ReifyQuotes extends MacroTransform {
             quotation(arg, tree)
           case TypeApply(fn, arg :: Nil) if fn.symbol == defn.typeQuoteMethod =>
              quotation(arg, tree)
-          case Select(body, _) if isSplice(tree.symbol) =>
+          case Select(body, _) if tree.symbol.isSplice =>
             splice(body, tree)
           case Block(stats, _) =>
             val last = enteredSyms
             stats.foreach(markDef)
             mapOverTree(last)
-          case Inlined(call, bindings, expansion @ Select(body, name)) if isSplice(expansion.symbol) =>
+          case Inlined(call, bindings, expansion @ Select(body, name)) if expansion.symbol.isSplice =>
             // To maintain phase consistency, convert inlined expressions of the form
             // `{ bindings; ~expansion }` to `~{ bindings; expansion }`
             cpy.Select(expansion)(cpy.Inlined(tree)(call, bindings, body), name)
