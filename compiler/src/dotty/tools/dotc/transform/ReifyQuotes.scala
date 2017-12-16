@@ -5,12 +5,20 @@ import core._
 import Decorators._, Flags._, Types._, Contexts._, Symbols._, Constants._
 import Flags._
 import ast.Trees._
+import ast.TreeTypeMap
 import util.Positions._
 import StdNames._
 import ast.untpd
+import tasty.TreePickler.Hole
 import MegaPhase.MiniPhase
 import NameKinds.OuterSelectName
 import scala.collection.mutable
+
+// TODO
+//   implement hole substitution directly
+//   check that inline methods override nothing
+//   drop inline methods
+//   adapt to Expr/Type when passing arguments to splices
 
 /** Translates quoted terms and types to `unpickle` method calls.
  *  Checks that the phase consistency principle (PCP) holds.
@@ -23,11 +31,8 @@ class ReifyQuotes extends MacroTransform {
   override def run(implicit ctx: Context): Unit =
     if (ctx.compilationUnit.containsQuotes) super.run
 
-  protected def newTransformer(implicit ctx: Context): Transformer = new Reifier
-
-  /** Is symbol a splice operation? */
-  def isSplice(sym: Symbol)(implicit ctx: Context) =
-    sym == defn.QuotedExpr_~ || sym == defn.QuotedType_~
+  protected def newTransformer(implicit ctx: Context): Transformer =
+    new Reifier(inQuote = false, null, 0, new LevelInfo)
 
   /** Serialize `tree`. Embedded splices are represented as nodes of the form
    *
@@ -40,77 +45,195 @@ class ReifyQuotes extends MacroTransform {
   def pickleTree(tree: Tree, isType: Boolean)(implicit ctx: Context): String =
     tree.show // TODO: replace with TASTY
 
-  private class Reifier extends Transformer {
+  private class LevelInfo {
+    /** A map from locally defined symbols to the staging levels of their definitions */
+    val levelOf = new mutable.HashMap[Symbol, Int]
 
-    /** A class for collecting the splices of some quoted expression */
-    private class Splices {
+    /** A stack of entered symbols, to be unwound after scope exit */
+    var enteredSyms: List[Symbol] = Nil
+  }
 
-      /** A listbuffer collecting splices */
-      val buf = new mutable.ListBuffer[Tree]
+  /** A tree substituter that also works for holes */
+  class SubstMap(
+    typeMap: Type => Type = IdentityTypeMap,
+    treeMap: Tree => Tree = identity _,
+    oldOwners: List[Symbol] = Nil,
+    newOwners: List[Symbol] = Nil,
+    substFrom: List[Symbol],
+    substTo: List[Symbol])(implicit ctx: Context)
+  extends TreeTypeMap(typeMap, treeMap, oldOwners, newOwners, substFrom, substTo) {
 
-      /** A map from type ref T to "expression of type quoted.Type[T]".
-       *  These will be turned into splices using `addTags`
-       */
-      val typeTagOfRef = new mutable.LinkedHashMap[TypeRef, Tree]()
-
-      /** Assuming typeTagOfRef = `Type1 -> tag1, ..., TypeN -> tagN`, the expression
-       *
-       *      { type <Type1> = <tag1>.unary_~
-       *        ...
-       *        type <TypeN> = <tagN>.unary.~
-       *        <expr>
-       *      }
-       *
-       *  where all references to `TypeI` in `expr` are rewired to point to the locally
-       *  defined versions. As a side effect, append the expressions `tag1, ..., `tagN`
-       *  as splices to `buf`.
-       */
-      def addTags(expr: Tree)(implicit ctx: Context): Tree =
-        if (typeTagOfRef.isEmpty) expr
-        else {
-          val assocs = typeTagOfRef.toList
-          val typeDefs = for ((tp, tag) <- assocs) yield {
-            val original = tp.symbol.asType
-            val rhs = tag.select(tpnme.UNARY_~)
-            val alias = ctx.typeAssigner.assignType(untpd.TypeBoundsTree(rhs, rhs), rhs, rhs)
-            val local = original.copy(
-              owner = ctx.owner,
-              flags = Synthetic,
-              info = TypeAlias(tag.tpe.select(tpnme.UNARY_~)))
-            ctx.typeAssigner.assignType(untpd.TypeDef(original.name, alias), local)
-          }
-          val (trefs, tags) = assocs.unzip
-          tags ++=: buf
-          typeTagOfRef.clear()
-          Block(typeDefs, expr.subst(trefs.map(_.symbol), typeDefs.map(_.symbol)))
-        }
+    override def transform(tree: Tree)(implicit ctx: Context): Tree = tree match {
+      case Hole(n, args) =>
+        Hole(n, args.mapConserve(transform)).withPos(tree.pos).withType(mapType(tree.tpe))
+      case _ =>
+        super.transform(tree)
     }
 
-    /** The current staging level */
-    private var currentLevel = 0
+    override def newMap(
+        typeMap: Type => Type,
+        treeMap: Tree => Tree,
+        oldOwners: List[Symbol],
+        newOwners: List[Symbol],
+        substFrom: List[Symbol],
+        substTo: List[Symbol])(implicit ctx: Context) =
+      new SubstMap(typeMap, treeMap, oldOwners, newOwners, substFrom, substTo)
+  }
 
-    /** The splices encountered so far, indexed by staging level */
-    private val splicesAtLevel = mutable.ArrayBuffer(new Splices)
+  /** Requiring that `paramRefs` consists of a single reference `seq` to a Seq[Any],
+   *  a tree map that replaces each hole with index `n` with `seq(n)`, applied
+   *  to any arguments in the hole.
+   */
+  private def replaceHoles(paramRefs: List[Tree]) = new TreeMap {
+    val seq :: Nil = paramRefs
+    override def transform(tree: Tree)(implicit ctx: Context): Tree = tree match {
+      case Hole(n, args) =>
+        val arg =
+          seq.select(nme.apply).appliedTo(Literal(Constant(n))).ensureConforms(tree.tpe)
+        if (args.isEmpty) arg
+        else arg.select(nme.apply).appliedTo(SeqLiteral(args, TypeTree(defn.AnyType)))
+      case _ =>
+        super.transform(tree)
+    }
+  }
 
-    // Invariant: -1 <= currentLevel <= splicesAtLevel.length
+  /** If `tree` has holes, convert it to a function taking a `Seq` of elements as arguments
+   *  where each hole is replaced by the corresponding sequence element.
+   */
+  private def elimHoles(tree: Tree)(implicit ctx: Context): Tree =
+    if (tree.existsSubTree(_.isInstanceOf[Hole]))
+      Lambda(
+        MethodType(defn.SeqType.appliedTo(defn.AnyType) :: Nil, tree.tpe),
+        replaceHoles(_).transform(tree))
+    else tree
 
-    /** A map from locally defined symbol's to the staging levels of their definitions */
-    private val levelOf = new mutable.HashMap[Symbol, Int]
+  /** The main transformer class
+   *  @param  inQuote    we are within a `'(...)` context that is not shadowed by a nested `~(...)`
+   *  @param  outer      the next outer reifier, null is this is the topmost transformer
+   *  @param  level      the current level, where quotes add one and splices subtract one level
+   *  @param  levels     a stacked map from symbols to the levels in which they were defined
+   */
+  private class Reifier(inQuote: Boolean, val outer: Reifier, val level: Int, levels: LevelInfo) extends Transformer {
+    import levels._
 
-    /** A stack of entered symbol's, to be unwound after block exit */
-    private var enteredSyms: List[Symbol] = Nil
+    /** A nested reifier for a quote (if `isQuote = true`) or a splice (if not) */
+    def nested(isQuote: Boolean): Reifier =
+      new Reifier(isQuote, this, if (isQuote) level + 1 else level - 1, levels)
+
+    /** We are in a `~(...)` context that is not shadowed by a nested `'(...)` */
+    def inSplice = outer != null && !inQuote
+
+    /** A list of embedded quotes (if `inSplice = true`) or splices (if `inQuote = true`) */
+    val embedded = new mutable.ListBuffer[Tree]
+
+    /** A map from type ref T to "expression of type `quoted.Type[T]`".
+     *  These will be turned into splices using `addTags`
+     */
+    val importedTypes = new mutable.LinkedHashSet[TypeRef]()
+
+    /** Assuming typeTagOfRef = `Type1 -> tag1, ..., TypeN -> tagN`, the expression
+     *
+     *      { type <Type1> = <tag1>.unary_~
+     *        ...
+     *        type <TypeN> = <tagN>.unary.~
+     *        <expr>
+     *      }
+     *
+     *  where all references to `TypeI` in `expr` are rewired to point to the locally
+     *  defined versions. As a side effect, prepend the expressions `tag1, ..., `tagN`
+     *  as splices to `buf`.
+     */
+    def addTags(expr: Tree)(implicit ctx: Context): Tree =
+      if (importedTypes.isEmpty) expr
+      else {
+        val trefs = importedTypes.toList
+        val typeDefs = for (tref <- trefs) yield {
+          val tag = New(defn.QuotedTypeType.appliedTo(tref), Nil)
+          val rhs = transform(tag.select(tpnme.UNARY_~))
+          val alias = ctx.typeAssigner.assignType(untpd.TypeBoundsTree(rhs, rhs), rhs, rhs)
+          val original = tref.symbol.asType
+          val local = original.copy(
+            owner = ctx.owner,
+            flags = Synthetic,
+            info = TypeAlias(tag.tpe.select(tpnme.UNARY_~)))
+          ctx.typeAssigner.assignType(untpd.TypeDef(original.name, alias), local)
+        }
+        importedTypes.clear()
+        Block(typeDefs,
+          new SubstMap(substFrom = trefs.map(_.symbol), substTo = typeDefs.map(_.symbol))
+            .apply(expr))
+      }
 
     /** Enter staging level of symbol defined by `tree`, if applicable. */
     def markDef(tree: Tree)(implicit ctx: Context) = tree match {
-      case tree: DefTree if !levelOf.contains(tree.symbol) =>
-        levelOf(tree.symbol) = currentLevel
-        enteredSyms = tree.symbol :: enteredSyms
+      case tree: DefTree =>
+        val sym = tree.symbol
+        if ((sym.isClass || !sym.maybeOwner.isType) && !levelOf.contains(sym)) {
+          levelOf(sym) = level
+          enteredSyms = sym :: enteredSyms
+        }
       case _ =>
+    }
+
+    /** Is symbol a splice operation? */
+    def isSplice(sym: Symbol)(implicit ctx: Context) =
+      sym == defn.QuotedExpr_~ || sym == defn.QuotedType_~
+
+    /** Are we in the body of an inline method? */
+    def inInline(implicit ctx: Context) = ctx.owner.ownersIterator.exists(_.isInlineMethod)
+
+    /** Issue a "splice outside quote" error unless we ar in the body of an inline method */
+    def spliceOutsideQuotes(pos: Position)(implicit ctx: Context) =
+      if (!inInline) ctx.error(i"splice outside quotes", pos)
+
+    /** Check reference to `sym` for phase consistency, where `tp` is the underlying type
+     *  by which we refer to `sym`.
+     */
+    def check(sym: Symbol, tp: Type, pos: Position)(implicit ctx: Context): Unit = {
+      val isThis = tp.isInstanceOf[ThisType]
+      def symStr =
+        if (!isThis) sym.show
+        else if (sym.is(ModuleClass)) sym.sourceModule.show
+        else i"${sym.name}.this"
+      if (!isThis && sym.maybeOwner.isType)
+        check(sym.owner, sym.owner.thisType, pos)
+      else if (sym.exists && !sym.isStaticOwner && !inInline &&
+              levelOf.getOrElse(sym, level) != level)
+        tp match {
+          case tp: TypeRef =>
+            importedTypes += tp
+          case _ =>
+            ctx.error(em"""access to $symStr from wrong staging level:
+                          | - the definition is at level ${levelOf(sym)},
+                          | - but the access is at level $level.""", pos)
+        }
+    }
+
+    /** Check all named types and this-types in a given type for phase consistency. */
+    def checkType(pos: Position)(implicit ctx: Context): TypeAccumulator[Unit] = new TypeAccumulator[Unit] {
+      def apply(acc: Unit, tp: Type): Unit = reporting.trace(i"check type level $tp at $level") {
+        tp match {
+          case tp: NamedType if isSplice(tp.symbol) =>
+            if (inQuote) outer.checkType(pos).foldOver(acc, tp)
+            else {
+              spliceOutsideQuotes(pos)
+              tp
+            }
+          case tp: NamedType =>
+            check(tp.symbol, tp, pos)
+            foldOver(acc, tp)
+          case tp: ThisType =>
+            check(tp.cls, tp, pos)
+            foldOver(acc, tp)
+          case _ =>
+            foldOver(acc, tp)
+        }
+      }
     }
 
     /** If `tree` refers to a locally defined symbol (either directly, or in a pickled type),
      *  check that its staging level matches the current level. References to types
-     *  that are phase-incorrect can still be healed as follows.
+     *  that are phase-incorrect can still be healed as follows:
      *
      *  If `T` is a reference to a type at the wrong level, heal it by setting things up
      *  so that we later add a type definition
@@ -118,134 +241,99 @@ class ReifyQuotes extends MacroTransform {
      *     type T' = ~quoted.Type[T]
      *
      *  to the quoted text and rename T to T' in it. This is done later in `reify` via
-     *  `Splice#addTags`. checkLevel itself only records what needs to be done in the
+     *  `addTags`. `checkLevel` itself only records what needs to be done in the
      *  `typeTagOfRef` field of the current `Splice` structure.
      */
     private def checkLevel(tree: Tree)(implicit ctx: Context): Tree = {
-
-      /** Check reference to `sym` for phase consistency, where `tp` is the underlying type
-       *  by which we refer to `sym`.
-       */
-      def check(sym: Symbol, tp: Type): Unit = {
-        val isThis = tp.isInstanceOf[ThisType]
-        def symStr =
-          if (!isThis) sym.show
-          else if (sym.is(ModuleClass)) sym.sourceModule.show
-          else i"${sym.name}.this"
-        if (!isThis && sym.maybeOwner.isType)
-          check(sym.owner, sym.owner.thisType)
-        else if (sym.exists && !sym.isStaticOwner &&
-                 !ctx.owner.ownersIterator.exists(_.isInlineMethod) &&
-                 levelOf.getOrElse(sym, currentLevel) != currentLevel)
-          tp match {
-            case tp: TypeRef =>
-              // Legalize reference to phase-inconstent type
-              splicesAtLevel(currentLevel).typeTagOfRef(tp) = {
-                currentLevel -= 1
-                val tag = New(defn.QuotedTypeType.appliedTo(tp), Nil)
-                try transform(tag) finally currentLevel += 1
-              }
-            case _ =>
-              ctx.error(em"""access to $symStr from wrong staging level:
-                            | - the definition is at level ${levelOf(sym)},
-                            | - but the access is at level $currentLevel.""", tree.pos)
-          }
-      }
-
-      /** Check all named types and this types in a given type for phase consistency */
-      object checkType extends TypeAccumulator[Unit] {
-        /** Check that all NamedType and ThisType parts of `tp` are level-correct.
-         *  If they are not, try to heal with a local binding to a typetag splice
-         */
-        def apply(tp: Type): Unit = apply((), tp)
-        def apply(acc: Unit, tp: Type): Unit = reporting.trace(i"check type level $tp at $currentLevel") {
-          tp match {
-            case tp: NamedType if isSplice(tp.symbol) =>
-              currentLevel -= 1
-              try foldOver(acc, tp) finally currentLevel += 1
-            case tp: NamedType =>
-              check(tp.symbol, tp)
-              foldOver(acc, tp)
-            case tp: ThisType =>
-              check(tp.cls, tp)
-              foldOver(acc, tp)
-            case _ =>
-              foldOver(acc, tp)
-          }
-        }
-      }
-
       tree match {
         case (_: Ident) | (_: This) =>
-          check(tree.symbol, tree.tpe)
+          check(tree.symbol, tree.tpe, tree.pos)
         case (_: UnApply)  | (_: TypeTree) =>
-          checkType(tree.tpe)
+          checkType(tree.pos).apply((), tree.tpe)
         case Select(qual, OuterSelectName(_, levels)) =>
-          checkType(tree.tpe.widen)
+          checkType(tree.pos).apply((), tree.tpe.widen)
         case _: Bind =>
-          checkType(tree.symbol.info)
+          checkType(tree.pos).apply((), tree.symbol.info)
         case _: Template =>
-          checkType(tree.symbol.owner.asClass.givenSelfType)
+          checkType(tree.pos).apply((), tree.symbol.owner.asClass.givenSelfType)
         case _ =>
       }
       tree
     }
 
-    /** Turn `body` of quote into a call of `scala.quoted.Unpickler.unpickleType` or
-     *  `scala.quoted.Unpickler.unpickleExpr` depending onwhether `isType` is true or not.
-     *  The arguments to the method are:
-     *
-     *    - the serialized `body`, as returned from `pickleTree`
-     *    - all splices found in `body`
+    /** Split `body` into a core and a list of embedded splices.
+     *  Then if inside a splice, make a hole from these parts.
+     *  If outside a splice, generate a call tp `scala.quoted.Unpickler.unpickleType` or
+     *  `scala.quoted.Unpickler.unpickleExpr` that matches `tpe` with
+     *  core and splices as arguments.
      */
-    private def reify(body: Tree, isType: Boolean)(implicit ctx: Context) = {
-      currentLevel += 1
-      if (currentLevel == splicesAtLevel.length) splicesAtLevel += null
-      val splices = new Splices
-      val savedSplices = splicesAtLevel(currentLevel)
-      splicesAtLevel(currentLevel) = splices
-      try {
-        val body1 = splices.addTags(transform(body))
+    private def quotation(body: Tree, quote: Tree)(implicit ctx: Context) = {
+      val (body1, splices) = nested(isQuote = true).split(body)
+      if (inSplice)
+        makeHole(body1, splices, quote.tpe)
+      else {
+        val isType = quote.tpe.isRef(defn.QuotedTypeClass)
         ref(if (isType) defn.Unpickler_unpickleType else defn.Unpickler_unpickleExpr)
           .appliedToType(if (isType) body1.tpe else body1.tpe.widen)
           .appliedTo(
             Literal(Constant(pickleTree(body1, isType))),
-            SeqLiteral(splices.buf.toList, TypeTree(defn.QuotedType)))
+            SeqLiteral(splices, TypeTree(defn.AnyType)))
       }
-      finally {
-        splicesAtLevel(currentLevel) = savedSplices
-        currentLevel -= 1
+    }.withPos(quote.pos)
+
+    /** If inside a quote, split `body` into a core and a list of embedded quotes
+     *  and make a hole from these parts. Otherwise issue an error, unless we
+     *  are in the body of an inline method.
+     */
+    private def splice(body: Tree, splice: Tree)(implicit ctx: Context): Tree = {
+      if (inQuote) {
+        val (body1, quotes) = nested(isQuote = false).split(body)
+        makeHole(body1, quotes, splice.tpe)
       }
+      else {
+        spliceOutsideQuotes(splice.pos)
+        if (splice.isType) TypeTree(splice.tpe.dealias)
+        else transform(body).select(defn.QuotedExpr_run)
+      }
+    }.withPos(splice.pos)
+
+    /** Transform `tree` and return the resulting tree and all `embedded` quotes
+     *  or splices as a pair, after performing the `addTags` transform.
+     */
+    private def split(tree: Tree)(implicit ctx: Context): (Tree, List[Tree]) = {
+      val tree1 = addTags(transform(tree))
+      (tree1, embedded.toList.map(elimHoles))
+    }
+
+    /** Register `body` as an `embedded` quote or splice
+     *  and return a hole with `splices` as arguments and the given type `tpe`.
+     */
+    private def makeHole(body: Tree, splices: List[Tree], tpe: Type)(implicit ctx: Context): Hole = {
+      val idx = embedded.length
+      embedded += body
+      Hole(idx, splices).withType(tpe).asInstanceOf[Hole]
     }
 
     override def transform(tree: Tree)(implicit ctx: Context): Tree =
-      reporting.trace(i"reify $tree at $currentLevel", show = true) {
+      reporting.trace(i"reify $tree at $level", show = true) {
+        def mapOverTree(lastEntered: List[Symbol]) =
+          try super.transform(tree)
+          finally
+            while (enteredSyms ne lastEntered) {
+              levelOf -= enteredSyms.head
+              enteredSyms = enteredSyms.tail
+            }
         tree match {
           case Apply(fn, arg :: Nil) if fn.symbol == defn.quoteMethod =>
-            reify(arg, isType = false)
+            quotation(arg, tree)
           case TypeApply(fn, arg :: Nil) if fn.symbol == defn.typeQuoteMethod =>
-            reify(arg, isType = true)
-          case tree @ Select(body, name) if isSplice(tree.symbol) =>
-            currentLevel -= 1
-            val body1 = try transform(body) finally currentLevel += 1
-            if (currentLevel > 0) {
-              splicesAtLevel(currentLevel).buf += body1
-              tree
-            }
-            else {
-              if (currentLevel < 0)
-                ctx.error(i"splice ~ not allowed under toplevel splice", tree.pos)
-              cpy.Select(tree)(body1, name)
-            }
+             quotation(arg, tree)
+          case Select(body, _) if isSplice(tree.symbol) =>
+            splice(body, tree)
           case Block(stats, _) =>
             val last = enteredSyms
             stats.foreach(markDef)
-            try super.transform(tree)
-            finally
-              while (enteredSyms ne last) {
-                levelOf -= enteredSyms.head
-                enteredSyms = enteredSyms.tail
-              }
+            mapOverTree(last)
           case Inlined(call, bindings, expansion @ Select(body, name)) if isSplice(expansion.symbol) =>
             // To maintain phase consistency, convert inlined expressions of the form
             // `{ bindings; ~expansion }` to `~{ bindings; expansion }`
@@ -254,7 +342,7 @@ class ReifyQuotes extends MacroTransform {
             tree
           case _ =>
             markDef(tree)
-            checkLevel(super.transform(tree))
+            checkLevel(mapOverTree(enteredSyms))
         }
       }
   }

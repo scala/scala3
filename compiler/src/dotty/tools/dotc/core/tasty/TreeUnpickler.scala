@@ -8,10 +8,9 @@ import StdNames._, Denotations._, Flags._, Constants._, Annotations._
 import NameKinds._
 import typer.Checking.checkNonCyclic
 import util.Positions._
-import ast.{tpd, Trees, untpd}
+import ast.{tpd, untpd, Trees}
 import Trees._
 import Decorators._
-import Splicing.Splice
 import transform.SymUtils._
 import TastyUnpickler._, TastyBuffer._
 import scala.annotation.{tailrec, switch}
@@ -29,7 +28,7 @@ import config.Config
 class TreeUnpickler(reader: TastyReader,
                     nameAtRef: NameRef => TermName,
                     posUnpicklerOpt: Option[PositionUnpickler],
-                    splices: Seq[Splice]) {
+                    splices: Seq[Any]) {
   import TastyFormat._
   import TreeUnpickler._
   import tpd._
@@ -1038,7 +1037,9 @@ class TreeUnpickler(reader: TastyReader,
             case HOLE =>
               val idx = readNat()
               val args = until(end)(readTerm())
-              (splices(idx) /: args)(_.asInstanceOf[Tree => Tree](_)).asInstanceOf[Tree]
+              val splice = splices(idx)
+              if (args.isEmpty) splice.asInstanceOf[Tree]
+              else splice.asInstanceOf[Seq[Any] => Tree](args)
             case _ =>
               readPathTerm()
           }

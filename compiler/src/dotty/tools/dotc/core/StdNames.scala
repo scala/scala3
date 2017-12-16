@@ -485,6 +485,7 @@ object StdNames {
     val reflect : N             = "reflect"
     val reify : N               = "reify"
     val rootMirror : N          = "rootMirror"
+    val run: N                  = "run"
     val runOrElse: N            = "runOrElse"
     val runtime: N              = "runtime"
     val runtimeClass: N         = "runtimeClass"

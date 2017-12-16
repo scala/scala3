@@ -591,13 +591,11 @@ class Definitions {
   def ClassTagClass(implicit ctx: Context) = ClassTagType.symbol.asClass
   def ClassTagModule(implicit ctx: Context) = ClassTagClass.companionModule
 
-  lazy val QuotedType = ctx.requiredClassRef("scala.quoted.Quoted")
-  def QuotedClass(implicit ctx: Context) = QuotedType.symbol.asClass
-
   lazy val QuotedExprType = ctx.requiredClassRef("scala.quoted.Expr")
   def QuotedExprClass(implicit ctx: Context) = QuotedExprType.symbol.asClass
 
     def QuotedExpr_~(implicit ctx: Context) = QuotedExprClass.requiredMethod(nme.UNARY_~)
+    def QuotedExpr_run(implicit ctx: Context) = QuotedExprClass.requiredMethod(nme.run)
 
   lazy val QuotedTypeType = ctx.requiredClassRef("scala.quoted.Type")
   def QuotedTypeClass(implicit ctx: Context) = QuotedTypeType.symbol.asClass

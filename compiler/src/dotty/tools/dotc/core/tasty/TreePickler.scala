@@ -4,7 +4,7 @@ package core
 package tasty
 
 import ast.Trees._
-import ast.untpd
+import ast.{untpd, tpd}
 import TastyFormat._
 import Contexts._, Symbols._, Types._, Names._, Constants._, Decorators._, Annotations._, StdNames.tpnme, NameOps._
 import collection.mutable
@@ -14,21 +14,29 @@ import StdNames.nme
 import TastyBuffer._
 import TypeApplications._
 import transform.SymUtils._
-import Splicing.Hole
+import printing.Printer
+import printing.Texts._
 import config.Config
+
+object TreePickler {
+
+  case class Hole(idx: Int, args: List[tpd.Tree]) extends tpd.TermTree {
+    override def fallbackToText(printer: Printer): Text =
+      s"[[$idx|" ~~ printer.toTextGlobal(args, ", ") ~~ "]]"
+  }
+}
 
 class TreePickler(pickler: TastyPickler) {
   val buf = new TreeBuffer
   pickler.newSection("ASTs", buf)
+  import TreePickler._
   import buf._
   import pickler.nameBuffer.nameIndex
-  import ast.tpd._
+  import tpd._
 
   private val symRefs = Symbols.newMutableSymbolMap[Addr]
   private val forwardSymRefs = Symbols.newMutableSymbolMap[List[Addr]]
   private val pickledTypes = new java.util.IdentityHashMap[Type, Any] // Value type is really Addr, but that's not compatible with null
-
-  private var holeCount = 0
 
   private def withLength(op: => Unit) = {
     val lengthAddr = reserveRef(relative = true)
@@ -545,11 +553,10 @@ class TreePickler(pickler: TastyPickler) {
         case TypeBoundsTree(lo, hi) =>
           writeByte(TYPEBOUNDStpt)
           withLength { pickleTree(lo); pickleTree(hi) }
-        case Hole(args) =>
+        case Hole(idx, args) =>
           writeByte(HOLE)
           withLength {
-            writeNat(holeCount)
-            holeCount += 1
+            writeNat(idx)
             args.foreach(pickleTree)
           }
       }
