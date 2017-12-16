@@ -16,8 +16,6 @@ import NameKinds.OuterSelectName
 import scala.collection.mutable
 
 // TODO
-//   check that inline methods override nothing
-//   drop inline methods
 //   adapt to Expr/Type when passing arguments to splices
 
 /** Translates quoted terms and types to `unpickle` method calls.
@@ -175,12 +173,9 @@ class ReifyQuotes extends MacroTransform {
       case _ =>
     }
 
-    /** Are we in the body of an inline method? */
-    def inInline(implicit ctx: Context) = ctx.owner.ownersIterator.exists(_.isInlineMethod)
-
     /** Issue a "splice outside quote" error unless we ar in the body of an inline method */
     def spliceOutsideQuotes(pos: Position)(implicit ctx: Context) =
-      if (!inInline) ctx.error(i"splice outside quotes", pos)
+      ctx.error(i"splice outside quotes", pos)
 
     /** Check reference to `sym` for phase consistency, where `tp` is the underlying type
      *  by which we refer to `sym`.
@@ -193,8 +188,7 @@ class ReifyQuotes extends MacroTransform {
         else i"${sym.name}.this"
       if (!isThis && sym.maybeOwner.isType)
         check(sym.owner, sym.owner.thisType, pos)
-      else if (sym.exists && !sym.isStaticOwner && !inInline &&
-              levelOf.getOrElse(sym, level) != level)
+      else if (sym.exists && !sym.isStaticOwner && levelOf.getOrElse(sym, level) != level)
         tp match {
           case tp: TypeRef =>
             importedTypes += tp
@@ -288,8 +282,7 @@ class ReifyQuotes extends MacroTransform {
       }
       else {
         spliceOutsideQuotes(splice.pos)
-        if (splice.isType) TypeTree(splice.tpe.dealias)
-        else transform(body).select(defn.QuotedExpr_run)
+        splice
       }
     }.withPos(splice.pos)
 
@@ -336,6 +329,8 @@ class ReifyQuotes extends MacroTransform {
             cpy.Select(expansion)(cpy.Inlined(tree)(call, bindings, body), name)
           case _: Import =>
             tree
+          case tree: DefDef if tree.symbol.is(Macro) =>
+            cpy.DefDef(tree)(rhs = EmptyTree)
           case _ =>
             markDef(tree)
             checkLevel(mapOverTree(enteredSyms))
