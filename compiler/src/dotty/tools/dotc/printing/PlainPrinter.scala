@@ -76,24 +76,6 @@ class PlainPrinter(_ctx: Context) extends Printer {
 
   private def selfRecName(n: Int) = s"z$n"
 
-  /** Render elements alternating with `sep` string */
-  protected def toText(elems: Traversable[Showable], sep: String) =
-    Text(elems map (_ toText this), sep)
-
-  /** Render element within highest precedence */
-  protected def toTextLocal(elem: Showable): Text =
-    atPrec(DotPrec) { elem.toText(this) }
-
-  /** Render element within lowest precedence */
-  protected def toTextGlobal(elem: Showable): Text =
-    atPrec(GlobalPrec) { elem.toText(this) }
-
-  protected def toTextLocal(elems: Traversable[Showable], sep: String) =
-    atPrec(DotPrec) { toText(elems, sep) }
-
-  protected def toTextGlobal(elems: Traversable[Showable], sep: String) =
-    atPrec(GlobalPrec) { toText(elems, sep) }
-
   /** If the name of the symbol's owner should be used when you care about
    *  seeing an interesting name: in such cases this symbol is e.g. a method
    *  parameter with a synthetic name, a constructor named "this", an object
