@@ -458,7 +458,8 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       case ByNameTypeTree(tpt) =>
         "=> " ~ toTextLocal(tpt)
       case TypeBoundsTree(lo, hi) =>
-        optText(lo)(" >: " ~ _) ~ optText(hi)(" <: " ~ _)
+        if (lo eq hi) optText(lo)(" = " ~ _)
+        else optText(lo)(" >: " ~ _) ~ optText(hi)(" <: " ~ _)
       case Bind(name, body) =>
         changePrec(InfixPrec) { toText(name) ~ " @ " ~ toText(body) }
       case Alternative(trees) =>
@@ -489,10 +490,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         def typeDefText(tparamsText: => Text, rhsText: => Text) =
           dclTextOr {
             modText(tree.mods, keywordStr("type")) ~~ (varianceText(tree.mods) ~ typeText(nameIdText(tree))) ~
-            withEnclosingDef(tree) {
-              if (tree.hasType) toText(tree.symbol.info) // TODO: always print RHS, once we pickle/unpickle type trees
-              else tparamsText ~ rhsText
-            }
+            withEnclosingDef(tree) { tparamsText ~ rhsText }
           }
         def recur(rhs: Tree, tparamsTxt: => Text): Text = rhs match {
           case impl: Template =>
@@ -503,6 +501,8 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
             typeDefText(tparamsTxt, toText(rhs))
           case LambdaTypeTree(tparams, body) =>
             recur(body, tparamsText(tparams))
+          case rhs: TypeTree if rhs.tpe.isInstanceOf[TypeBounds] =>
+            typeDefText(tparamsTxt, toText(rhs))
           case rhs =>
             typeDefText(tparamsTxt, optText(rhs)(" = " ~ _))
         }
