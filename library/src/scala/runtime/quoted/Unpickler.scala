@@ -1,4 +1,6 @@
-package scala.quoted
+package scala.runtime.quoted
+
+import scala.quoted._
 
 /** Provides methods to unpickle `Expr` and `Type` trees. */
 object Unpickler {
@@ -11,10 +13,10 @@ object Unpickler {
   /** Unpickle `repr` which represents a pickled `Expr` tree,
    *  replacing splice nodes with `args`
    */
-  def unpickleExpr[T](repr: Pickled, args: Seq[Quoted]): Expr[T] = ???
+  def unpickleExpr[T](repr: Pickled, args: Seq[Any]): Expr[T] = ???
 
   /** Unpickle `repr` which represents a pickled `Type` tree,
    *  replacing splice nodes with `args`
    */
-  def unpickleType[T](repr: Pickled, args: Seq[Quoted]): Type[T] = ???
+  def unpickleType[T](repr: Pickled, args: Seq[Any]): Type[T] = ???
 }

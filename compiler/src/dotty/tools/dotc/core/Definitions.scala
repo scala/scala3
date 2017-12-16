@@ -605,8 +605,8 @@ class Definitions {
     def QuotedType_~(implicit ctx: Context) =
       QuotedTypeClass.info.member(tpnme.UNARY_~).symbol.asType
 
-  def Unpickler_unpickleExpr = ctx.requiredMethod("scala.quoted.Unpickler.unpickleExpr")
-  def Unpickler_unpickleType = ctx.requiredMethod("scala.quoted.Unpickler.unpickleType")
+  def Unpickler_unpickleExpr = ctx.requiredMethod("scala.runtime.quoted.Unpickler.unpickleExpr")
+  def Unpickler_unpickleType = ctx.requiredMethod("scala.runtime.quoted.Unpickler.unpickleType")
 
   lazy val EqType = ctx.requiredClassRef("scala.Eq")
   def EqClass(implicit ctx: Context) = EqType.symbol.asClass
