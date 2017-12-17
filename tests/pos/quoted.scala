@@ -10,6 +10,13 @@ class Test {
     def assertImpl(expr: Expr[Boolean]) =
       '{ if !(~expr) then throw new AssertionError(s"failed assertion: ${~expr}") }
 
+    inline def power(inline n: Int, x: Double) = ~powerCode(n, '(x))
+
+    def powerCode(n: Int, x: Expr[Double]): Expr[Double] =
+      if (n == 0) '(1.0)
+      else if (n == 1) x
+      else if (n % 2 == 0) '{ { val y = ~x * ~x; ~powerCode(n / 2, '(y)) } }
+      else '{ ~x * ~powerCode(n - 1, x) }
   }
 
   val program = '{
@@ -19,6 +26,12 @@ class Test {
     assert(x != 0)
 
     ~assertImpl('(x != 0))
+
+    val y = math.sqrt(2.0)
+
+    power(3, y)
+
+    ~powerCode(3, '{math.sqrt(2.0)})
   }
 
   program.run

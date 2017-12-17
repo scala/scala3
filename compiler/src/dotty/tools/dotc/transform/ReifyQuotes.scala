@@ -15,9 +15,6 @@ import SymUtils._
 import NameKinds.OuterSelectName
 import scala.collection.mutable
 
-// TODO
-//   adapt to Expr/Type when passing arguments to splices
-
 /** Translates quoted terms and types to `unpickle` method calls.
  *  Checks that the phase consistency principle (PCP) holds.
  */
@@ -173,6 +170,19 @@ class ReifyQuotes extends MacroTransform {
       case _ =>
     }
 
+    /** Does the level of `sym` match the current level?
+     *  An exception is made for inline vals in macros. These are also OK if their level
+     *  is one higher than the current level, because on execution such values
+     *  are constant expression trees and we can pull out the constant from the tree.
+     */
+    def levelOK(sym: Symbol)(implicit ctx: Context): Boolean = levelOf.get(sym) match {
+      case Some(l) =>
+        l == level ||
+        sym.is(Inline) && sym.owner.is(Macro) && sym.info.isValueType && l - 1 == level
+      case None =>
+        true
+    }
+
     /** Issue a "splice outside quote" error unless we ar in the body of an inline method */
     def spliceOutsideQuotes(pos: Position)(implicit ctx: Context) =
       ctx.error(i"splice outside quotes", pos)
@@ -188,7 +198,7 @@ class ReifyQuotes extends MacroTransform {
         else i"${sym.name}.this"
       if (!isThis && sym.maybeOwner.isType)
         check(sym.owner, sym.owner.thisType, pos)
-      else if (sym.exists && !sym.isStaticOwner && levelOf.getOrElse(sym, level) != level)
+      else if (sym.exists && !sym.isStaticOwner && !levelOK(sym))
         tp match {
           case tp: TypeRef =>
             importedTypes += tp
@@ -329,7 +339,8 @@ class ReifyQuotes extends MacroTransform {
             cpy.Select(expansion)(cpy.Inlined(tree)(call, bindings, body), name)
           case _: Import =>
             tree
-          case tree: DefDef if tree.symbol.is(Macro) =>
+          case tree: DefDef if tree.symbol.is(Macro) && level == 0 =>
+            markDef(tree)
             val tree1 = nested(isQuote = true).transform(tree)
               // check macro code as it if appeared in a quoted context
             cpy.DefDef(tree)(rhs = EmptyTree)
