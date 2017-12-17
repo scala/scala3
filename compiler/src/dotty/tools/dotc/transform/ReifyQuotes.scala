@@ -330,6 +330,8 @@ class ReifyQuotes extends MacroTransform {
           case _: Import =>
             tree
           case tree: DefDef if tree.symbol.is(Macro) =>
+            val tree1 = nested(isQuote = true).transform(tree)
+              // check macro code as it if appeared in a quoted context
             cpy.DefDef(tree)(rhs = EmptyTree)
           case _ =>
             markDef(tree)
