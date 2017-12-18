@@ -114,4 +114,4 @@ object Nat {
 // 5 is a natural number
 ```
 
-In case of ambiguities, *Product Pattern* is preferred over *Name Based Pattern*. This document reflects the state of pattern matching as currently implemented in Dotty. They are plans for further simplification, in particular to factor out *Product Pattern* and *Name Based Pattern* into a single type of extractor.
+In case of ambiguities, *Product Pattern* is preferred over *Name Based Pattern*. This document reflects the state of pattern matching as currently implemented in Dotty. There are plans for further simplification, in particular to factor out *Product Pattern* and *Name Based Pattern* into a single type of extractor.
