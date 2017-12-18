@@ -24,14 +24,14 @@ $ sbt
 > dotty-compiler/test
 ```
 
-To run a single test class you use `testOnly` and the fully qualified class name. 
+To run a single test class you use `testOnly` and the fully qualified class name.
 For example:
 
 ```bash
 > testOnly dotty.tools.dotc.transform.TreeTransformerTest
 ```
 
-The test command follows a regular expression-based syntax `testOnly * -- *`. 
+The test command follows a regular expression-based syntax `testOnly * -- *`.
 The right-hand side picks a range of names for methods and the left-hand side picks a range of class names and their
 fully-qualified paths.
 
@@ -58,13 +58,13 @@ You can also run all paths of classes of a certain name:
 These tests are Scala source files expected to compile with Dotty (pos tests),
 along with their expected output (run tests) or errors (neg tests).
 
-All of these tests are contained in the `./tests/*` directories and can be run with the `vulpix` command.
+All of these tests are contained in the `./tests/*` directories and can be run with the `testCompilation` command.
 
 Currently to run these tests you need to invoke from sbt:
 
 ```bash
 $ sbt
-> vulpix
+> testCompilation
 ```
 
 (which is effectively the same with `testOnly dotty.tools.dotc.CompilationTests`)
@@ -73,9 +73,9 @@ It is also possible to run tests filtered, again from sbt:
 
 ```bash
 $ sbt
-> vulpix i2147.scala
+> testCompilation companions
 ```
 
-This will run both the test `./tests/pos/i2147.scala` and
-`./tests/partest-test/i2147.scala` since both of these match the given string.
-This also means that you could run `vulpix` with no arguments to run all integration tests.
+This will run both the test `./tests/pos/companions.scala` and
+`./tests/neg/companions.scala` since both of these match the given string.
+This also means that you could run `testCompilation` with no arguments to run all integration tests.
