@@ -72,11 +72,11 @@ object Build {
   lazy val packageAll =
     taskKey[Map[String, String]]("Package everything needed to run tests")
 
+  // Run tests with filter through vulpix test suite
+  lazy val testCompilation = inputKey[Unit]("runs integration test with the supplied filter")
+
   // Spawns a repl with the correct classpath
   lazy val repl = inputKey[Unit]("run the REPL with correct classpath")
-
-  // Run tests with filter through vulpix test suite
-  lazy val vulpix = inputKey[Unit]("runs integration test with the supplied filter")
 
   // Used to compile files similar to ./bin/dotc script
   lazy val dotc =
@@ -556,7 +556,7 @@ object Build {
         jars ::: tuning ::: agentOptions ::: ci_build ::: path.toList
       },
 
-      vulpix := Def.inputTaskDyn {
+      testCompilation := Def.inputTaskDyn {
         val args: Seq[String] = spaceDelimited("<arg>").parsed
         val cmd = " dotty.tools.dotc.CompilationTests -- --exclude-categories=dotty.SlowTests" + {
           if (args.nonEmpty) " -Ddotty.tests.filter=" + args.mkString(" ")
