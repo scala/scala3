@@ -913,6 +913,8 @@ class TreeUnpickler(reader: TastyReader, nameAtRef: NameRef => TermName, posUnpi
           SingletonTypeTree(readTerm())
         case BYNAMEtpt =>
           ByNameTypeTree(readTpt())
+        case NAMEDARG =>
+          NamedArg(readName(), readTerm())
         case _ =>
           readPathTerm()
       }
@@ -960,8 +962,6 @@ class TreeUnpickler(reader: TastyReader, nameAtRef: NameRef => TermName, posUnpi
                 case expr => expr
               }
               Typed(expr1, tpt)
-            case NAMEDARG =>
-              NamedArg(readName(), readTerm())
             case ASSIGN =>
               Assign(readTerm(), readTerm())
             case BLOCK =>
@@ -983,6 +983,9 @@ class TreeUnpickler(reader: TastyReader, nameAtRef: NameRef => TermName, posUnpi
               Return(expr, Ident(from.termRef))
             case TRY =>
               Try(readTerm(), readCases(end), ifBefore(end)(readTerm(), EmptyTree))
+            case SELECTouter =>
+              val levels = readNat()
+              readTerm().outerSelect(levels, SkolemType(readType()))
             case REPEATED =>
               val elemtpt = readTpt()
               SeqLiteral(until(end)(readTerm()), elemtpt)
