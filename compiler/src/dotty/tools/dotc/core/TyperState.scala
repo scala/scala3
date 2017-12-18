@@ -33,6 +33,12 @@ class TyperState(previous: TyperState /* | Null */) extends DotClass with Showab
     myConstraint = c
   }
 
+  /** Reset constraint to `c` and mark current constraint as retracted if it differs from `c` */
+  def resetConstraintTo(c: Constraint) = {
+    if (c `ne` myConstraint) myConstraint.markRetracted()
+    myConstraint = c
+  }
+
   private val previousConstraint =
     if (previous == null) constraint else previous.constraint
 
@@ -90,8 +96,8 @@ class TyperState(previous: TyperState /* | Null */) extends DotClass with Showab
 
   /** Test using `op`, restoring typerState to previous state afterwards */
   def test[T](op: => T): T = {
-    val savedReporter = myReporter
     val savedConstraint = myConstraint
+    val savedReporter = myReporter
     val savedCommittable = myIsCommittable
     val savedCommitted = isCommitted
     myIsCommittable = false
@@ -105,8 +111,8 @@ class TyperState(previous: TyperState /* | Null */) extends DotClass with Showab
     }
     try op
     finally {
+      resetConstraintTo(savedConstraint)
       myReporter = savedReporter
-      myConstraint = savedConstraint
       myIsCommittable = savedCommittable
       isCommitted = savedCommitted
     }

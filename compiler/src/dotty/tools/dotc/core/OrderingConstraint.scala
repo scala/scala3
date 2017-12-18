@@ -570,6 +570,14 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
   private def checkNonCyclic(param: TypeParamRef)(implicit ctx: Context): Unit =
     assert(!isLess(param, param), i"cyclic constraint involving $param in $this")
 
+// ---------- Invalidation -------------------------------------------
+
+  private var retracted = false
+
+  def isRetracted: Boolean = retracted
+
+  def markRetracted(): Unit = retracted = true
+
 // ---------- toText -----------------------------------------------------
 
   override def toText(printer: Printer): Text = {
