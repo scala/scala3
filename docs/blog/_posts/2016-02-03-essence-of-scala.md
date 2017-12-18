@@ -3,7 +3,7 @@ layout: blog-page
 title: The Essence of Scala
 author: Martin Odersky
 authorImg: /images/martin.jpg
-date: 2016-02-03
+date: 2016-02-03 00:00:00
 ---
 
 What do you get if you boil Scala on a slow flame and wait until all
@@ -143,4 +143,3 @@ project are important.
     either to increase our confidence that they are indeed sound, or
     to show that they are unsound. In my next blog I will
     present some of the issues we have discovered through that exercise.
-

@@ -3,7 +3,7 @@ layout: blog-page
 title: Scaling DOT to Scala - Soundness
 author: Martin Odersky
 authorImg: /images/martin.jpg
-date: 2016-02-17
+date: 2016-02-17 00:00:00
 ---
 
 In my [last
@@ -150,10 +150,3 @@ should make sure not to back-slide. And if the experience of the past
 10 years has taught us one thing, it is that the meta theory of type
 systems has many more surprises in store than one might think. That's
 why mechanical proofs are essential.
-
-
-
-
-
-
-

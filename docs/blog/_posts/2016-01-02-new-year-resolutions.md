@@ -3,7 +3,7 @@ layout: blog-page
 title: New Year Resolutions
 author: Martin Odersky
 authorImg: /images/martin.jpg
-date: 2016-01-02
+date: 2016-01-02 00:00:00
 ---
 
 For most of us, the change of the year is an occasion for thinking
@@ -60,7 +60,3 @@ simpler: The language, its foundations, its libraries. I hope you
 will join me in that venture.
 
 With that thought, I wish you a happy new year 2016.
-
-
-
-
