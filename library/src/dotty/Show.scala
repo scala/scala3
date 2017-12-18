@@ -16,7 +16,7 @@ object Show extends LowPrioShow {
     * any `T`, we default to `T#toString`.
     */
   implicit class ShowValue[V](val v: V) extends AnyVal {
-    def show(implicit ev: Show[V] = defaultShow): String =
+    def show(implicit ev: Show[V]): String =
       ev.show(v)
   }
 
@@ -69,6 +69,10 @@ object Show extends LowPrioShow {
       case Some(t) => "Some("+ st.show(t) + ")"
       case none => "None"
     }
+  }
+
+  implicit def showSome[T](implicit st: Show[T]): Show[Some[T]] = new Show[Some[T]] {
+    def show(ot: Some[T]): String = "Some("+ st.show(ot.get) + ")"
   }
 
   implicit def showMap[K,V](implicit sk: Show[K], sv: Show[V]): Show[Map[K,V]] = new Show[Map[K,V]] {
