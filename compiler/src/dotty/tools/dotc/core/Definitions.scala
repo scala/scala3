@@ -145,11 +145,20 @@ class Definitions {
   }
 
   private def enterPolyMethod(cls: ClassSymbol, name: TermName, typeParamCount: Int,
-                    resultTypeFn: PolyType => Type, flags: FlagSet = EmptyFlags) = {
+                    resultTypeFn: PolyType => Type, flags: FlagSet = EmptyFlags,
+                    useCompleter: Boolean = false) = {
     val tparamNames = PolyType.syntheticParamNames(typeParamCount)
     val tparamInfos = tparamNames map (_ => TypeBounds.empty)
-    val ptype = PolyType(tparamNames)(_ => tparamInfos, resultTypeFn)
-    enterMethod(cls, name, ptype, flags)
+    def ptype = PolyType(tparamNames)(_ => tparamInfos, resultTypeFn)
+    val info =
+      if (useCompleter)
+        new LazyType {
+          def complete(denot: SymDenotation)(implicit ctx: Context): Unit = {
+            denot.info = ptype
+          }
+        }
+      else ptype
+    enterMethod(cls, name, info, flags)
   }
 
   private def enterT1ParameterlessMethod(cls: ClassSymbol, name: TermName, resultTypeFn: PolyType => Type, flags: FlagSet) =
@@ -298,11 +307,13 @@ class Definitions {
 
   /** Method representing a term quote */
   lazy val quoteMethod = enterPolyMethod(OpsPackageClass, nme.QUOTE, 1,
-      pt => MethodType(pt.paramRefs(0) :: Nil, QuotedExprType.appliedTo(pt.paramRefs(0) :: Nil)))
+      pt => MethodType(pt.paramRefs(0) :: Nil, QuotedExprType.appliedTo(pt.paramRefs(0) :: Nil)),
+      useCompleter = true)
 
   /** Method representing a type quote */
   lazy val typeQuoteMethod = enterPolyMethod(OpsPackageClass, nme.QUOTE, 1,
-      pt => QuotedTypeType.appliedTo(pt.paramRefs(0) :: Nil))
+      pt => QuotedTypeType.appliedTo(pt.paramRefs(0) :: Nil),
+      useCompleter = true)
 
   lazy val NothingClass: ClassSymbol = enterCompleteClassSymbol(
     ScalaPackageClass, tpnme.Nothing, AbstractFinal, List(AnyClass.typeRef))
@@ -1093,9 +1104,7 @@ class Definitions {
 
   /** Lists core methods that don't have underlying bytecode, but are synthesized on-the-fly in every reflection universe */
   lazy val syntheticCoreMethods =
-    AnyMethods ++ ObjectMethods ++ List(String_+, throwMethod
-      //, quoteMethod, typeQuoteMethod // we omit these because they force Expr and Type too early
-    )
+    AnyMethods ++ ObjectMethods ++ List(String_+, throwMethod, quoteMethod, typeQuoteMethod)
 
   lazy val reservedScalaClassNames: Set[Name] = syntheticScalaClasses.map(_.name).toSet
 
