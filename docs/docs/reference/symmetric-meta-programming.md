@@ -4,8 +4,8 @@ Symmetric meta programming is a new framework for staging and for some
 forms of macros. It is is expressed as strongly and statically typed
 code using two fundamental operations: quotations and splicing. A
 novel aspect of the approach is that these two operations are
-regulated by a phase consistency principle that treats splices and
-quotes in exactly the same way.
+regulated by a phase consistency principle that treats quotes and
+splices in exactly the same way.
 
 ## Overview
 
@@ -104,8 +104,8 @@ create nor remove quotes or splices individually. So the PCP ensures
 that program elaboration will lead to neither of the two unwanted
 situations described above.
 
-In the the range of features it covers, symmetric meta programming is
-quite close to the MetaML family. One difference is that MetaML does
+In what concerns the range of features it covers, symmetric meta programming is
+quite close to the MetaML family of languages. One difference is that MetaML does
 not have an equivalent of the PCP - quoted code in MetaML _can_ access
 variables in its immediately enclosing environment, with some
 restrictions and caveats since such accesses involve serialization.
@@ -456,7 +456,7 @@ is defined in the companion object of class `Expr` as follows:
 The conversion says that values of types implementing the `Liftable`
 type class can be converted ("lifted") automatically to `Expr`
 values. Dotty comes with instance definitions of `Liftable` for
-several types including all underlying types of literals. For instance
+several types including all underlying types of literals. For example,
 `Int` values can be converted to `Expr[Int]` values by wrapping the
 value in a `Literal` tree node. This makes use of the underlying tree
 representation in the compiler for efficiency. But the `Liftable`
@@ -592,9 +592,7 @@ combinators `’` and `~`.
                           ~
 
 The two environment combinators are both associative with left and
-right identity `()`. The initial environment contains among other
-predefined operations also a "run" operation `! : expr T => T`. That
-is, `!` is treated just like any other function.
+right identity `()`.
 
 ### Operational semantics:
 
@@ -616,6 +614,14 @@ splice evaluation context `e_s` are defined syntactically as follows:
 
     Eval context    e    ::=  [ ]  |  e t  |  v e  |  ’e_s[~e]
     Splice context  e_s  ::=  [ ]  |  (x: T) => e_s  |  e_s t  |  q e_s
+
+A _run_ operation can be added to the calculus by adding a binding
+`run : expr T -> T` to the initial environment, together with the evaluation rule
+
+                        run('t)  -->  t
+
+That is, `run` reduces in the same way as `~` when in evaluation position. But unlike splices,
+`run` operations are only evaluated outside of quotes, which means they are not affected by the PCP.
 
 ### Typing rules
 
@@ -649,7 +655,6 @@ environment of the stack.
                    Es |- t: T’ -> T    Es |- t’: T’
                    --------------------------------
                             Es |- t t’: T
-
 
 The rules for quotes and splices map between `expr T` and `T` by trading `’` and `~` between
 environments and terms.
@@ -736,12 +741,10 @@ envisage a solution that allows the former but not the latter.
 
 ## Conclusion
 
-Meta-programming always made my head hurt (I believe that’s the same
-for many people). But with explicit `Expr/Type` types and quotes and
-splices it has become downright pleasant. The method I was following
-was to first define the underlying quoted or unquoted types using
-`Expr` and `Type` and then insert quotes and splices to make the types
-line up. Phase consistency was at the same time a great guideline
-where to insert a splice or a quote and a vital sanity check that I
-did the right thing.
-
+Meta-programming has a reputation of being difficult and confusing.
+But with explicit `Expr/Type` types and quotes and splices it can become
+downright pleasant. A simple strategy first defines the underlying quoted or unquoted
+values using `Expr` and `Type` and then inserts quotes and splices to make the types
+line up. Phase consistency is at the same time a great guideline
+where to insert a splice or a quote and a vital sanity check that
+the result makes sense.
