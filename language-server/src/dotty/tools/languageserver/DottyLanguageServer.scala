@@ -165,11 +165,9 @@ class DottyLanguageServer extends LanguageServer
     // Do most of the initialization asynchronously so that we can return early
     // from this method and thus let the client know our capabilities.
     CompletableFuture.supplyAsync(() => drivers)
-      .exceptionally {
-        (ex: Throwable) => {
-            ex.printStackTrace
-            sys.exit(1)
-          }
+      .exceptionally { (ex: Throwable) =>
+        ex.printStackTrace
+        sys.exit(1)
       }
 
     new InitializeResult(c)
