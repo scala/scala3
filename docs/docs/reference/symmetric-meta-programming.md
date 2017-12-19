@@ -1,0 +1,745 @@
+# Symmetric Meta Programming
+
+Symmetric meta programming is a new framework for staging and certain
+forms of macros. It is is expressed as strongly and statically typed
+code using two fundamental operations: quotations and splicing. A
+novel aspect of the approach is that these two operations are
+regulated by a phase consistency principle that treats splices and
+quotes in exactly the same way.
+
+## Overview
+
+### Quotes and Splices
+
+Symmetric meta programming is built on two well-known fundamental
+operations: quotation and splicing.  Quotation is expressed as
+`'(...)` or `'{...}` for expressions (both forms are equivalent) and
+as `'[...]` for types. Splicing is expressed as a prefix `~` operator.
+
+For example, the code below presents an inline function `assert`
+which calls at compile-time a method `assertImpl` with a boolean
+expression tree as argument. `assertImpl` evaluates the expression and
+prints it again in an error message if it evaluates to `false`.
+
+    import scala.quoted._
+
+    inline def assert(expr: => Boolean): Unit =
+      ~ assertImpl('(expr))
+
+    def assertImpl(expr: Expr[Boolean]) =
+      '{ if !(~expr) then throw new AssertionError(s"failed assertion: ${~expr}") }
+
+
+If `e` is an expression, then `'(e)` or `'{e}` represent the typed
+abstract syntax tree representing `e`. If `T` is a type, then `'[T]`
+represents the type structure representing `T`.  The precise
+definitions of "typed abstract syntax tree" or "type-structure" do not
+matter for now, the terms are used only to give some
+intuition. Conversely, `~ e` evaluates the expression `e`, which must
+yield a typed abstract syntax tree or type structure, and embeds the
+result as an expression (respectively, type) in the enclosing program.
+
+Quotations can have spliced parts in them; in this case the embedded
+splices are evaluated and embedded as part of the formation of the
+quotation.
+
+Quotes and splices are duals of each other. For arbitrary
+expressions `e` and types `T` we have:
+
+    ~'(e) = e
+    '(~e) = e
+    ~'[T] = T
+    '[~T] = T
+
+### Types for Quotations
+
+The type signatures of quotes and splices can be described using
+two fundamental types:
+
+  - `Expr[T]`: abstract syntax trees representing expressions of type `T`
+  - `Type[T]`: type structures representing type `T`.
+
+Quoting takes expressions of type `T` to expressions of type `Expr[T]`
+and it takes types `T` to expressions of type `Type[T]`. Splicing
+takes expressions of type `Expr[T]` to expressions of type `T` and it
+takes expressions of type `Type[T]` to types `T`.
+
+The two types can be are defined in package `scala.quoted` as follows:
+
+    package scala.quoted
+
+    abstract class Expr[T] {
+      def unary_~: T   // splice operation
+    }
+    class Type[T] {
+      type unary_~ = T  // splice type
+    }
+
+The `Expr` class has a `private` constructor, so only
+
+### The Phase Consistency Principle
+
+A fundamental *phase consistency principle* (PCP) regulates accesses
+to free variables in quoted and spliced code:
+
+ - _For any free variable reference `x`, the number of quoted scopes and the number of spliced scopes between the reference to `x` and the definition of `x` must be equal_.
+
+Here, `this`-references count as free variables. On the other
+hand, we assume that all imports are fully expanded and that `_root_` is
+not a free variable. So references to global definitions are
+allowed everywhere.
+
+The phase consistency principle can be motivated as follows: First,
+suppose the result of a program `P` is some quoted text `'{ ... x
+... }` that refers to a free variable `x` in `P` This can be
+represented only by referring to original the variable `x`. Hence, the
+result of the program will need to persist the program state itself as
+one of its parts. We don't want to do this, hence this situation
+should be made illegal. Dually, suppose a top-level part of a program
+is a spliced text `~{ ... x ... }` that refers to a free variable `x`
+in `P`.  This would mean that we refer during _construction_ of `P` to
+a value that is available only during _execution_ of `P`. This is of
+course impossible and therefore needs to be ruled out.  Now, the
+small-step evaluation of a program will reduce quotes and splices in
+equal measure using the cancellation rules above. But it will neither
+create nor remove quotes or splices individually. So the PCP ensures
+that program elaboration will lead to neither of the two unwanted
+situations described above.
+
+In the the range of features it covers, symmetric meta programming is
+quite close to the MetaML family. One difference is that MetaML does
+not have an equivalent of the PCP - quoted code in MetaML _can_ access
+variables in its immediately enclosing environment, with some
+restrictions and caveats since such accesses involve serialization.
+However, this does not constitute a fundamental gain in
+expressiveness. Symmetric meta programming allows to define a `Liftable`
+type-class which can implement such accesses within the confines of the
+PCP. This is explained further in a later section.
+
+## Details
+
+### `Expr` as an Applicative
+
+We postulate an implicit "Apply" decorator that turns a tree
+describing a function into a function mapping trees to trees.
+
+    implicit class AsApplicative[T, U](f: Expr[T => U]) extends AnyVal {
+      def apply(x: Expr[T]): Expr[U] = ???
+    }
+
+This decorator turns `Expr` into an applicative functor, where `Expr`s
+over function types can be applied to `Expr` arguments. The definition
+of `AsApplicative(f).apply(x)` is assumed to be functionally the same as
+`'((~f)(~x))`, however it should optimize this call by returning the
+result of beta-reducing `f(x)` if `f` is a known lambda expression
+
+The `AsApplicative` decorator distributes applications of `Expr` over function
+arrows:
+
+    AsApplicative(_).apply: Expr[S => T] => (Expr[S] => Expr[T])
+
+The dual of expansion, let's call it `reflect`, can be defined as follows:
+
+    def reflect[T, U](f: Expr[T] => Expr[U]): Expr[T => U] = '{
+      (x: T) => ~f('(x))
+    }
+
+Note how the fundamental phase consistency principle works in two
+different directions here for `f` and `x`.  The reference to `f` is
+legal because it is quoted, then spliced, whereas the reference to `x`
+is legal because it is spliced, then quoted.
+
+### Types and the PCP
+
+In principle, The phase consistency principle applies to types as well
+as for expressions. This might seem too restrictive. Indeed, the
+definition of `reflect` above is not phase correct since there is a
+quote but no splice between the parameter binding of `T` and its
+usage. But the code can be made phase correct by adding a binding
+of a `Type[T]` tag:
+
+    def reflect[T, U](f: Expr[T] => Expr[U]): Expr[T => U] = {
+      val Ttag = new Type[T]
+      '{ (x: ~Ttag) => ~f('(x))
+    }
+
+To avoid clutter, the Scala implementation will add these tags
+automatically in the case of a PCP violation involving types. As a consequence,
+types can be effectively ignored for phase consistency checking.
+
+### Example Expansion
+
+Assume an `Array` class with an inline `map` method that forwards to a macro implementation.
+
+    class Array[T] {
+      inline def map[U](f: T => U): Array[U] = ~ Macros.mapImpl[T, U]('[U], '(this), '(f))
+    }
+
+Here's the definition of the `mapImpl` macro, which takes quoted types and expressions to a quoted expression:
+
+    object Macros {
+
+      def mapImpl[T, U](u: Type[U], arr: Expr[Array[T]], op: Expr[T => U])(implicit ctx: Context): Expr[Array[U]] = '{
+        var i = 0
+        val xs = ~arr
+        var len = xs.length
+        val ys = new Array[~u]
+        while (i < len) {
+          ys(i) = ~op('(xs(i)))
+          i += 1
+        }
+        ys
+      }
+    }
+
+Here's an application of `map` and how it rewrites to optimized code:
+
+    genSeq[Int]().map(x => x + 1)
+
+==> (inline)
+
+    val $this: Seq[Int] = genSeq[Int]()
+    val f: Int => Int = x => x * x
+    ~ _root_.Macros.mapImpl[Int, Int]('[Int], '($this), '(f))
+
+==> (splice)
+
+    val $this: Seq[Int] = genSeq[Int]()
+    val f: Int => Int = x => x * x
+
+    {
+      var i = 0
+      val xs = ~'($this)
+      var len = xs.length
+      val ys = new Array[~'[Int]]
+      while (i < len) {
+        ys(i) = ~('(f)('(xs(i))))
+        i += 1
+      }
+      ys
+    }
+
+==> (expand and splice inside quotes)
+
+    val $this: Seq[Int] = genSeq[Int]()
+    val f: Int => Int = x => x * x
+
+    {
+      var i = 0
+      val xs = $this
+      var len = xs.length
+      val ys = new Array[Int]
+      while (i < len) {
+        ys(i) = xs(i) + 1
+        i += 1
+      }
+      ys
+    }
+
+==> (elim dead code)
+
+    val $this: Seq[Int] = genSeq[Int]()
+
+    {
+      var i = 0
+      val xs = $this
+      var len = xs.length
+      val ys = new Array[Int]
+      while (i < len) {
+        ys(i) = xs(i) + 1
+        i += 1
+      }
+      ys
+    }
+
+
+### Relationship with Inline and Macros
+
+Seen by itself, principled meta-programming looks more like a
+framework for staging than one for compile-time meta programming with
+macros. But combined with Dotty's `inline` it can be turned into a
+compile-time system.  The idea is that macro elaboration can be
+understood as a combination of a macro library and a quoted
+program. For instance, here's the `assert` macro again together with a
+program that calls `assert`.
+
+    object Macros {
+
+      inline def assert(expr: => Boolean): Unit =
+        ~ assertImpl('(expr))
+
+      def assertImpl(expr: Expr[Boolean]) =
+        '{ if !(~expr) then throw new AssertionError(s"failed assertion: ${~expr}") }
+    }
+
+    val program = {
+      val x = 1
+      Macros.assert(x != 0)
+    }
+
+Inlining the `assert` function would give the following program:
+
+    val program = {
+      val x = 1
+      ~Macros.assertImpl('(x != 0))
+    }
+
+The example is only phase correct because Macros is a global value and
+as such not subject to phase consistency checking. Conceptually that's
+a bit unsatisfactory. If the PCP is so fundamental, it should be
+applicable without the global value exception. But in the example as
+given this does not hold since both `assert` and `program` call
+`assertImpl` with a splice but no quote.
+
+However, one can could argue that the example is really missing
+an important aspect: The macro library has to be compiled in a phase
+prior to the program using it, but in the code above, macro
+and program are defined together. A more accurate view of
+macros would be to have the user program be in a phase after the macro
+definitions, reflecting the fact that macros have to be defined and
+compiled before they are used. Hence, conceptually the program part
+should be treated by the compiler as if it was quoted:
+
+    val program = '{
+      val x = 1
+      ~Macros.assertImpl('(x != 0))
+    }
+
+If `program` is treated as a quoted expression, the call to
+`Macro.assertImpl` becomes phase correct even if macro library and
+program are conceptualized as local definitions.
+
+But what about the call from `assert` to `assertImpl? Here, we need a
+tweak of the typing rules. An inline function such as `assert` that
+contains a splice operation outside an enclosing quote is called a
+_macro_. Macros are supposed to be expanded in a subsequent phase,
+i.e. in a quoted context. Therefore, they are also type checked as if
+they were in a quoted context, For instance, the definition of
+`assert` is typechecked as if it appeared inside quotes.  This makes
+the call from `assert` to `assertImpl` phase-correct, even if we
+assume that both definitions are local.
+
+The second role of `inline` in Dotty is to mark a `val` that is
+constant or a parameter that will be constant when instantiated. This
+aspect is also important for macro expansion.  To illustrate this,
+consider an implementation of the `power` function that makes use of a
+statically known exponent:
+
+    inline def power(inline n: Int, x: Double) = ~powerCode(n, '(x))
+
+    private def powerCode(n: Int, x: Expr[Double]): Expr[Double] =
+      if (n == 0) '(1.0)
+      else if (n == 1) x
+      else if (n % 2 == 0) '{ { val y = ~x * ~x; ~powerCode(n / 2, '(y)) } }
+      else '{ ~x * ~powerCode(n - 1, x) }
+
+The usage of `n` as an argument in `~powerCode(n, '(x))` is not
+phase-consistent, since `n` appears in a splice without an enclosing
+quote. Normally that would be a problem because it means that we need
+the _value_ of `n` at compile time, which is not available for general
+parameters. But since `n` is an inline parameter of a macro, we know
+that at the macro's expansion point `n` will be instantiated to a
+constant, so the value of `n` will in fact be known at this
+point. To reflect this, we loosen the phase consistency requirements
+as follows:
+
+ - If `x` is an inline value (or an inline parameter of an inline
+function), it can be accessed in all contexts where the number of
+splices minus the number of quotes between use and definition is
+either 0 or 1.
+
+### Relationship with Staging
+
+The framework expresses at the same time compile-time meta-programming
+and staging. The phase in which code is run is determined by the
+difference between the number of splice scopes and quote scopes in
+which it is embedded.
+
+ - If there are more splices than quotes, the code is run at
+   "compile-time" i.e. as a macro. In the general case, this means
+   running an interpreter that evaluates the code, which is
+   represented as a typed abstract syntax tree. The interpreter can
+   fall back to reflective calls when evaluating an application of a
+   previously compiled method.  If the splice excess is more than one,
+   it would mean that a macro's implementation code (as opposed to the
+   code it expands to) invokes other macros. If macros are realized by
+   interpretation, this would lead to towers of interpreters, where
+   the first interpreter would itself interpret an interpreter code
+   that possibly interprets another interpreter and so on.
+
+ - If the number of splices equals the number of quotes, the code is
+   compiled and run as usual.
+
+ - If the number of quotes exceeds the number of splices, the code is
+   staged. That is, it produces a typed abstract syntax tree or type
+   structure at run-time. A quote excess of more than one corresponds
+   to multi-staged programming.
+
+Providing an interpreter for the full language is quite difficult, and
+it is even more difficult to make that interpreter run efficiently. So
+we currently impose the following restrictions on the use of splices.
+
+ 1. A top-level splice must appear in an inline function (turning that function
+    into a macro)
+
+ 2. The splice must call a previously compiled method.
+
+ 3. Splices inside splices (but no intervening quotes) are not allowed.
+
+ 4. A macro method is effectively final and it may override no other method.
+
+The framework as discussed so far allows code to be staged, i.e. be prepared
+to be executed at a later stage. To run that code, there is another method
+in class `Expr` called `run`. Note that `~` and `run` both map from `Expr[T]`
+to `T` but only `~` is subject to the PCP, whereas `run` is just a normal method.
+
+    abstract class Expr[T] {
+      def unary_~: T
+      def run: T     // run staged code
+    }
+
+### The `Liftable` type-class
+
+Consider the following implementation of a staged interpreter that implements
+a compiler through staging.
+
+    import scala.quoted._
+
+    enum Exp {
+      case Num(n: Int)
+      case Plus(e1: Exp, e2: Exp)
+      case Var(x: String)
+      case Let(x: String, e: Exp, in: Exp)
+    }
+
+The interpreted language consists of numbers `Num`, addition `Plus`, and variables
+`Var` which are bound by `Let`. Here are two sample expressions in the language:
+
+    val exp = Plus(Plus(Num(2), Var("x")), Num(4))
+    val letExp = Let("x", Num(3), exp)
+
+Here's a compiler that maps an expression given in the interpreted
+language to quoted Scala code of type `Expr[Int]`.
+The compiler takes an environment that maps variable names to Scala `Expr`s.
+
+    def compile(e: Exp, env: Map[String, Expr[Int]]): Expr[Int] = e match {
+      case Num(n) =>
+        n
+      case Plus(e1, e2) =>
+        '(~compile(e1, env) + ~compile(e2, env))
+      case Var(x) =>
+        env(x)
+      case Let(x, e, body) =>
+        '{ val y = ~compile(e, env); ~compile(body, env + (x -> '(y))) }
+    }
+
+Running `compile(letExp, Map())` would yield the following Scala code:
+
+    '{ val y = 3; (2 + y) + 4 }
+
+The body the first clause (`case Num(n) => n`) looks suspicious. `n`
+is declared as an `Int`, yet the result of `compile` is declared to be
+`Expr[Int]`. Shouldn't `n be quoted? The answer is that this would not
+work since replacing `n by `'n` in the clause would not be phase
+correct.
+
+What happens instead "under the hood" is an implicit conversion: `n`
+is expanded to `scala.quoted.Expr.toExpr(n)`. The `toExpr` conversion
+is defined in the companion object of class `Expr` as follows:
+
+    object Expr {
+      implicit def toExpr[T](x: T)(implicit ev: Liftable[T]): Expr[T] =
+        ev.toExpr(x)
+    }
+
+The conversion says that values of types implementing the `Liftable`
+type class can be converted ("lifted") automatically to `Expr`
+values. Dotty comes with instance definitions of `Liftable` for
+several types including all underlying types of literals. For instance
+`Int` values can be converted to `Expr[Int]` values by wrapping the
+value in a `Literal` tree node. This makes use of the underlying tree
+representation in the compiler for efficiency. But the `Liftable`
+instances are nevertheless not "magic" in the sense that they could
+all be defined in a user program without knowing anything about the
+representation of `Expr` trees. For instance, here is a possible
+instance of `Liftable[Boolean]`:
+
+    implicit def BooleanIsLiftable: Liftable[Boolean] = new {
+      implicit def toExpr(b: Boolean) = if (b) '(true) else '(false)
+    }
+
+Once we can lift bits, we can work our way up. For instance, here is a
+possible implementation of `Liftable[Int]` that does not use the underlying
+tree machinery:
+
+    implicit def IntIsLiftable: Liftable[Int] = new {
+      def toExpr(n: Int): Expr[Int] = n match {
+        case Int.MinValue    => '(Int.MinValue)
+        case _ if n < 0      => '(-(~toExpr(n)))
+        case 0               => '(0)
+        case _ if n % 2 == 0 => '(~toExpr(n / 2) * 2)
+        case _               => '(~toExpr(n / 2) * 2 + 1)
+      }
+    }
+
+Since `Liftable` is a type class, instances can be conditional. For instance
+a `List` is liftable if its element type is:
+
+    implicit def ListIsLiftable[T: Liftable]: Liftable[List[T]] = new {
+      def toExpr(xs: List[T]): Expr[List[T]] = xs match {
+        case x :: xs1 => '(~implicitly[Liftable[T]].toExpr(x) :: ~toExpr(xs1))
+        case Nil => '(Nil: List[T])
+      }
+    }
+
+In the end, `Liftable` resembles very much a serialization
+framework. Like the latter it can be derived systematically for all
+collections, case classes and enums.
+
+## Implementation
+
+### Syntax changes:
+
+A splice `~e` on an expression of type `Expr[T]` is a normal prefix
+operator. To make it work as a type operator on `Type[T]` as well, we
+need a syntax change that introduces prefix operators as types.
+
+      SimpleType        ::=  ...
+                             [‘-’ | ‘+’ | ‘~’ | ‘!’] StableId
+
+Analogously to the situation with expressions a prefix type operator
+such as `~ e` is treated as a shorthand for the type `e.unary_~`.
+
+Quotes are supported by introducing new tokens `'(`, `'{`, and `'[`
+and adding quoted variants `'(...)`, `'{...}` and `'[...]` to the
+`SimpleExpr` productions.
+
+      SimpleExpr        ::=  ...
+                          |  ‘'{’ BlockExprContents ‘}’
+                          |  ‘'’ ‘(’ ExprsInParens ‘)’
+                          |  ‘'’ ‘[’ Type ‘]’
+
+Syntax changes are given relative to the [Dotty reference
+grammar](../internal/syntax.md).
+
+An alternative syntax would treat `'` as a separate operator. This
+would be attractive since it enables quoting single identifies as
+e.g. `'x` instead of `'(x)`. But it would clash with symbol
+literals. So it could be done only if symbol literals were abolished.
+
+### Implementation in `dotc`
+
+Quotes and splices are primitive forms in the generated abstract
+syntax trees. They are eliminated in an expansion phase
+`ReifyQuotes`. This phase runs after typing and pickling.
+
+Macro-expansion works outside-in. If the outermost scope is a splice,
+the spliced AST will be evaluated in an interpreter. A call to a
+previously compiled method can be implemented as a reflective call to
+that method. With the restrictions on splices that are currently in
+place that's all that's needed. We might allow more interpretation in
+splices in the future, which would allow us to loosen the
+restriction.  Quotes in spliced, interpreted code are kept as they
+are, after splices nested in the quotes are expanded recursively.
+
+If the outermost scope is a quote, we need to generate code that
+constructs the quoted tree at run-time. We implement this by
+serializing the tree as a Tasty structure, which is stored
+in a string literal. At runtime, an unpickler method is called to
+deserialize the string into a tree.
+
+Splices inside quoted code insert the spliced tree as is, after
+expanding any quotes in the spliced code recursively.
+
+## Formalization
+
+The phase consistency principle can be formalized in a calculus that
+extends simply-typed lambda calculus with quotes and splices.
+
+### Syntax
+
+The syntax of terms, values, and types is given as follows:
+
+    Terms         t  ::=  x                 variable
+                          (x: T) => t       lambda
+                          t t               application
+                          't                quote
+                          ~t                splice
+
+    Values        v  ::=  (x: T) => t       lambda
+                          'q                pure quote
+
+    Quoted        q  ::=  x  |  (x: T) => q  |  q q  |  't
+
+    Types         T  ::=  A                 base type
+                          T -> T            function type
+                          expr T            quoted
+
+Typing rules are formulated using a stack of environments
+`Es`. Individual environments `E` consist as usual of variable
+bindings `x: T`. Environments can be combined using one of two
+combinators `'` and `~`.
+
+    Environment   E  ::=  ()                empty
+                          E, x: T
+
+    Env. stack    Es ::=  ()                empty
+                          E                 simple
+                          Es * Es           combined
+
+    Separator     *  ::=  '
+                          ~
+
+The two environment combinators are both associative with left and
+right identity `()`. The initial environment contains among other
+predefined operations also a "run" operation `! : expr T => T`. That
+is, `!` is treated just like any other function.
+
+### Operational semantics:
+
+We define a small step reduction relation `-->` with the following rules:
+
+                ((x: T) => t) v  -->  [x := v]t
+
+                          ~('t)  -->  t
+
+                              t  -->  t'
+                           ----------------
+                           e[t]  -->  e[t']
+
+The first rule is standard call-by-value beta-reduction. The second
+rule says that splice and quotes cancel each other out. The third rule
+is a context rule; it says that reduction is allowed in the hole `[ ]`
+position of an evaluation contexts.  Evaluation contexts `e` and
+splice evaluation context `e_s` are defined syntactically as follows:
+
+    Eval context    e    ::=  [ ]  |  e t  |  v e  |  'e_s[~e]
+    Splice context  e_s  ::=  [ ]  |  (x: T) => e_s  |  e_s t  |  q e_s
+
+### Typing rules
+
+Typing judgments are of the form `Es |- t: T`. There are two
+substructural rules which express the fact that quotes and splices
+cancel each other out:
+
+                          Es1 * Es2 |- t: T
+                     ---------------------------
+                     Es1 ~ E1 ' E2 * Es2 |- t: T
+
+
+                          Es1 * Es2 |- t: T
+                     ---------------------------
+                     Es1 ' E1 ~ E2 * Es2 |- t: T
+
+The lambda calculus fragment of the rules is standard, except that we
+use a stack of environments. The rules only interact with the topmost
+environment of the stack.
+
+                              x: T in E
+                            --------------
+                            Es * E |- x: T
+
+
+                        Es * E, x: T |- t: T'
+                    ------------------------------
+                    Es * E |- (x: T) => t: T -> T'
+
+
+                   Es |- t: T' -> T    Es |- t': T'
+                   --------------------------------
+                            Es |- t t': T
+
+
+The rules for quotes and splices map between `expr T` and `T` by trading `'` and `~` between
+environments and terms.
+
+                         Es ~ () |- t: expr T
+                         --------------------
+                             Es |- ~t: T
+
+
+                           Es ' () |- t: T
+                           ----------------
+                           Es |- 't: expr T
+
+## Going Further
+
+The presented meta-programming framework is so far quite restrictive
+in that it does not allow for the inspection of quoted expressions and
+types. It's possible to work around this by providing all necessary
+information as normal, unquoted inline parameters. But we would gain
+more flexibility by allowing for the inspection of quoted code with
+pattern matching. This opens new possibilities. For instance, here is a
+version of `power` that generates the multiplications directly if the
+exponent is statically known and falls back to the dynamic
+implementation of power otherwise.
+
+    inline def power(n: Int, x: Double): Double = ~{
+      '(n) match {
+        case Constant(n1) => powerCode(n1, '(x))
+        case _ => '{ dynamicPower(n, x) }
+      }
+    }
+
+    private def dynamicPower(n: Int, x: Double): Double =
+      if (n == 0) 1.0
+      else if (n % 2 == 0) dynamicPower(n / 2, x * x)
+      else x * dynamicPower(n - 1, x)
+
+This assumes a `Constant` extractor that maps tree nodes representing
+constants to their values.
+
+Once we allow for inspection of code, the "AsApplicative" operation
+that maps expressions over functions to functions over expressions can
+be implemented in user code:
+
+    implicit class AsApplicative[T, U](f: Expr[T => U]) extends AnyVal {
+      def apply(x: Expr[T]): Expr[U] =
+        f match {
+          case Lambda(g) => g(x)
+          case _ => '((~f)(~x))
+        }
+
+This assumes an extractor
+
+    object Lambda {
+      def unapply[T, U](x: Expr[T => U]): Option[Expr[T] => Expr[U]]
+    }
+
+Once we allow inspection of code via extractors, it's tempting to also
+add constructors that construct typed trees directly without going
+through quotes. Most likely, those constructors would work over `Expr`
+types which lack a known type argument. For instance, an `Apply`
+constructor could be typed as follows:
+
+    def Apply(fn: Expr[_], args: List[Expr[_]]): Expr[_]
+
+This would allow constructing applications from lists of arguments
+without having to match the arguments one-by-one with the
+corresponding formal parameter types of the function. We need then "at
+the end" a method to convert an `Expr[_]` to an `Expr[T]` where `T` is
+given from the outside. E.g. if `code` yields a `Expr[_]`, then
+`code.atType[T]` yields an `Expr[T]`. The `atType` method has to be
+implemented as a primitive; it would check that the computed type
+structure of `Expr` is a subtype of the type structure representing
+`T`.
+
+Before going down that route, we should carefully evaluate its
+tradeoffs.  Constructing trees that are only verified _a posteriori_
+to be type correct loses a lot of guidance for constructing the right
+trees.  So we should wait with this addition until we have more
+use-cases that help us decide whether the loss in type-safety is worth
+the gain in flexibility.
+
+
+## Conclusion
+
+Meta-programming always made my head hurt (I believe that's the same
+for many people). But with explicit `Expr/Type` types and quotes and
+splices it has become downright pleasant. The method I was following
+was to first define the underlying quoted or unquoted types using
+`Expr` and `Type` and then insert quotes and splices to make the types
+line up. Phase consistency was at the same time a great guideline
+where to insert a splice or a quote and a vital sanity check that I
+did the right thing.
+
