@@ -1,6 +1,6 @@
 # Symmetric Meta Programming
 
-Symmetric meta programming is a new framework for staging and certain
+Symmetric meta programming is a new framework for staging and for some
 forms of macros. It is is expressed as strongly and statically typed
 code using two fundamental operations: quotations and splicing. A
 novel aspect of the approach is that these two operations are
@@ -116,27 +116,30 @@ PCP. This is explained further in a later section.
 
 ## Details
 
-### `Expr` as an Applicative
+### From `Expr`s to Functions and Back
 
-We postulate an implicit "Apply" decorator that turns a tree
+The `Expr` companion object contains an "AsFunction" decorator that turns a tree
 describing a function into a function mapping trees to trees.
 
-    implicit class AsApplicative[T, U](f: Expr[T => U]) extends AnyVal {
-      def apply(x: Expr[T]): Expr[U] = ???
+    object Expr {
+      ...
+      implicit class AsFunction[T, U](f: Expr[T => U]) extends AnyVal {
+        def apply(x: Expr[T]): Expr[U] = ???
+      }
     }
 
-This decorator turns `Expr` into an applicative functor, where `Expr`s
+This decorator gives `Expr` the `apply` operation of an applicative functor, where `Expr`s
 over function types can be applied to `Expr` arguments. The definition
-of `AsApplicative(f).apply(x)` is assumed to be functionally the same as
+of `AsFunction(f).apply(x)` is assumed to be functionally the same as
 `’((~f)(~x))`, however it should optimize this call by returning the
 result of beta-reducing `f(x)` if `f` is a known lambda expression
 
-The `AsApplicative` decorator distributes applications of `Expr` over function
+The `AsFunction` decorator distributes applications of `Expr` over function
 arrows:
 
-    AsApplicative(_).apply: Expr[S => T] => (Expr[S] => Expr[T])
+    AsFunction(_).apply: Expr[S => T] => (Expr[S] => Expr[T])
 
-The dual of expansion, let’s call it `reflect`, can be defined as follows:
+Its dual, let’s call it `reflect`, can be defined as follows:
 
     def reflect[T, U](f: Expr[T] => Expr[U]): Expr[T => U] = ’{
       (x: T) => ~f(’(x))
@@ -253,7 +256,7 @@ Here’s an application of `map` and how it rewrites to optimized code:
 
 ### Relationship with Inline and Macros
 
-Seen by itself, principled meta-programming looks more like a
+Seen by itself, symmetric meta-programming looks more like a
 framework for staging than one for compile-time meta programming with
 macros. But combined with Dotty’s `inline` it can be turned into a
 compile-time system.  The idea is that macro elaboration can be
@@ -307,7 +310,7 @@ If `program` is treated as a quoted expression, the call to
 `Macro.assertImpl` becomes phase correct even if macro library and
 program are conceptualized as local definitions.
 
-But what about the call from `assert` to `assertImpl? Here, we need a
+But what about the call from `assert` to `assertImpl`? Here, we need a
 tweak of the typing rules. An inline function such as `assert` that
 contains a splice operation outside an enclosing quote is called a
 _macro_. Macros are supposed to be expanded in a subsequent phase,
@@ -318,7 +321,7 @@ the call from `assert` to `assertImpl` phase-correct, even if we
 assume that both definitions are local.
 
 The second role of `inline` in Dotty is to mark a `val` that is
-constant or a parameter that will be constant when instantiated. This
+either a constant or is a parameter that will be a constant when instantiated. This
 aspect is also important for macro expansion.  To illustrate this,
 consider an implementation of the `power` function that makes use of a
 statically known exponent:
@@ -331,7 +334,7 @@ statically known exponent:
       else if (n % 2 == 0) ’{ { val y = ~x * ~x; ~powerCode(n / 2, ’(y)) } }
       else ’{ ~x * ~powerCode(n - 1, x) }
 
-The usage of `n` as an argument in `~powerCode(n, ’(x))` is not
+The reference to `n` as an argument in `~powerCode(n, ’(x))` is not
 phase-consistent, since `n` appears in a splice without an enclosing
 quote. Normally that would be a problem because it means that we need
 the _value_ of `n` at compile time, which is not available for general
@@ -435,10 +438,10 @@ Running `compile(letExp, Map())` would yield the following Scala code:
 
     ’{ val y = 3; (2 + y) + 4 }
 
-The body the first clause (`case Num(n) => n`) looks suspicious. `n`
+The body of the first clause, `case Num(n) => n`, looks suspicious. `n`
 is declared as an `Int`, yet the result of `compile` is declared to be
-`Expr[Int]`. Shouldn’t `n be quoted? The answer is that this would not
-work since replacing `n by `’n` in the clause would not be phase
+`Expr[Int]`. Shouldn’t `n` be quoted? In fact this would not
+work since replacing `n` by `’n` in the clause would not be phase
 correct.
 
 What happens instead "under the hood" is an implicit conversion: `n`
@@ -480,7 +483,7 @@ tree machinery:
       }
     }
 
-Since `Liftable` is a type class, instances can be conditional. For instance
+Since `Liftable` is a type class, its instances can be conditional. For example,
 a `List` is liftable if its element type is:
 
     implicit def ListIsLiftable[T: Liftable]: Liftable[List[T]] = new {
@@ -505,7 +508,7 @@ need a syntax change that introduces prefix operators as types.
       SimpleType        ::=  ...
                              [‘-’ | ‘+’ | ‘~’ | ‘!’] StableId
 
-Analogously to the situation with expressions a prefix type operator
+Analogously to the situation with expressions, a prefix type operator
 such as `~ e` is treated as a shorthand for the type `e.unary_~`.
 
 Quotes are supported by introducing new tokens `’(`, `’{`, and `’[`
@@ -521,7 +524,7 @@ Syntax changes are given relative to the [Dotty reference
 grammar](../internal/syntax.md).
 
 An alternative syntax would treat `’` as a separate operator. This
-would be attractive since it enables quoting single identifies as
+would be attractive since it enables quoting single identifiers as
 e.g. `’x` instead of `’(x)`. But it would clash with symbol
 literals. So it could be done only if symbol literals were abolished.
 
@@ -538,7 +541,7 @@ that method. With the restrictions on splices that are currently in
 place that’s all that’s needed. We might allow more interpretation in
 splices in the future, which would allow us to loosen the
 restriction.  Quotes in spliced, interpreted code are kept as they
-are, after splices nested in the quotes are expanded recursively.
+are, after splices nested in the quotes are expanded.
 
 If the outermost scope is a quote, we need to generate code that
 constructs the quoted tree at run-time. We implement this by
@@ -575,7 +578,7 @@ The syntax of terms, values, and types is given as follows:
 
 Typing rules are formulated using a stack of environments
 `Es`. Individual environments `E` consist as usual of variable
-bindings `x: T`. Environments can be combined using one of two
+bindings `x: T`. Environments can be combined using the two
 combinators `’` and `~`.
 
     Environment   E  ::=  ()                empty
@@ -608,7 +611,7 @@ We define a small step reduction relation `-->` with the following rules:
 The first rule is standard call-by-value beta-reduction. The second
 rule says that splice and quotes cancel each other out. The third rule
 is a context rule; it says that reduction is allowed in the hole `[ ]`
-position of an evaluation contexts.  Evaluation contexts `e` and
+position of an evaluation context.  Evaluation contexts `e` and
 splice evaluation context `e_s` are defined syntactically as follows:
 
     Eval context    e    ::=  [ ]  |  e t  |  v e  |  ’e_s[~e]
@@ -662,7 +665,7 @@ environments and terms.
 
 ## Going Further
 
-The presented meta-programming framework is so far quite restrictive
+The meta-programming framework as presented and currently implemented is quite restrictive
 in that it does not allow for the inspection of quoted expressions and
 types. It’s possible to work around this by providing all necessary
 information as normal, unquoted inline parameters. But we would gain
@@ -687,11 +690,11 @@ implementation of power otherwise.
 This assumes a `Constant` extractor that maps tree nodes representing
 constants to their values.
 
-Once we allow for inspection of code, the "AsApplicative" operation
+With the right extractors the "AsFunction" operation
 that maps expressions over functions to functions over expressions can
 be implemented in user code:
 
-    implicit class AsApplicative[T, U](f: Expr[T => U]) extends AnyVal {
+    implicit class AsFunction[T, U](f: Expr[T => U]) extends AnyVal {
       def apply(x: Expr[T]): Expr[U] =
         f match {
           case Lambda(g) => g(x)
@@ -705,7 +708,7 @@ This assumes an extractor
     }
 
 Once we allow inspection of code via extractors, it’s tempting to also
-add constructors that construct typed trees directly without going
+add constructors that create typed trees directly without going
 through quotes. Most likely, those constructors would work over `Expr`
 types which lack a known type argument. For instance, an `Apply`
 constructor could be typed as follows:
@@ -722,13 +725,14 @@ implemented as a primitive; it would check that the computed type
 structure of `Expr` is a subtype of the type structure representing
 `T`.
 
-Before going down that route, we should carefully evaluate its
-tradeoffs.  Constructing trees that are only verified _a posteriori_
+Before going down that route, we should evaluate in detail the tradeoffs it
+presents.  Constructing trees that are only verified _a posteriori_
 to be type correct loses a lot of guidance for constructing the right
 trees.  So we should wait with this addition until we have more
 use-cases that help us decide whether the loss in type-safety is worth
-the gain in flexibility.
-
+the gain in flexibility. In this context, it seems that deconstructing types is
+less error-prone than deconstructing tersm, so one might also
+envisage a solution that allows the former but not the latter.
 
 ## Conclusion
 
