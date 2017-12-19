@@ -253,7 +253,6 @@ Here’s an application of `map` and how it rewrites to optimized code:
       ys
     }
 
-
 ### Relationship with Inline and Macros
 
 Seen by itself, symmetric meta-programming looks more like a
@@ -398,6 +397,36 @@ to `T` but only `~` is subject to the PCP, whereas `run` is just a normal method
       def unary_~: T
       def run: T     // run staged code
     }
+
+### Limitations to Splicing
+
+Quotes and splices are duals as far as the PCP is concerned. But there is an additional
+restriction that needs to be imposed on splices to guarantee soundness:
+code in splices must be free of side effects. The restriction prevents code like this:
+
+     var x: Expr[T]
+     ’{ (y: T) => ~{ x = ’(y); 1 } }
+
+This code, if it was accepted, would "extrude" a reference to a quoted variable `y` from its scope.
+This means we an subsequently access a variable outside the scope where it is defined, which is
+likely problematic. The code is clearly phase consistent, so we cannot use PCP to
+rule it out. Instead we postulate a future effect system that can guarantee that splices
+are pure. In the absence of such a system we simply demand that spliced expressions are
+pure by convention, and allow for undefined compiler behavior if they are not. This is analogous
+to the status of pattern guards in Scala, which are also required, but not verified, to be pure.
+
+There is also a problem with `run` in splices. Consider the following expression:
+
+    ’{ (x: Int) => ~{ {’(x)}.run; 1 } }
+
+This is again phase correct, but will lead us into trouble. Indeed, evaluating the splice will reduce the
+expression `{’(x)}.run` to `x`. But then the result
+
+    ’{ (x: Int) => ~{ x; 1 } }
+
+is no longer phase correct. To prevent this soundness hole it seems easiest to classify `run` as a side-effecting
+operation. It would thus be prevented from appearing in splices. In a base language with side-effects we'd have to
+do this anyway: Since `run` runs arbitrary code it can always produce a side effect if the code it runs produces one.
 
 ### The `Liftable` type-class
 
@@ -614,14 +643,6 @@ splice evaluation context `e_s` are defined syntactically as follows:
 
     Eval context    e    ::=  [ ]  |  e t  |  v e  |  ’e_s[~e]
     Splice context  e_s  ::=  [ ]  |  (x: T) => e_s  |  e_s t  |  q e_s
-
-A _run_ operation can be added to the calculus by adding a binding
-`run : expr T -> T` to the initial environment, together with the evaluation rule
-
-                        run('t)  -->  t
-
-That is, `run` reduces in the same way as `~` when in evaluation position. But unlike splices,
-`run` operations are only evaluated outside of quotes, which means they are not affected by the PCP.
 
 ### Typing rules
 
