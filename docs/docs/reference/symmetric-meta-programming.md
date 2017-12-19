@@ -1,7 +1,7 @@
 # Symmetric Meta Programming
 
 Symmetric meta programming is a new framework for staging and for some
-forms of macros. It is is expressed as strongly and statically typed
+forms of macros. It is expressed as strongly and statically typed
 code using two fundamental operations: quotations and splicing. A
 novel aspect of the approach is that these two operations are
 regulated by a phase consistency principle that treats quotes and
@@ -90,7 +90,7 @@ allowed everywhere.
 The phase consistency principle can be motivated as follows: First,
 suppose the result of a program `P` is some quoted text `’{ ... x
 ... }` that refers to a free variable `x` in `P` This can be
-represented only by referring to original the variable `x`. Hence, the
+represented only by referring to the original variable `x`. Hence, the
 result of the program will need to persist the program state itself as
 one of its parts. We don’t want to do this, hence this situation
 should be made illegal. Dually, suppose a top-level part of a program
@@ -180,7 +180,7 @@ Here’s the definition of the `mapImpl` macro, which takes quoted types and exp
 
     object Macros {
 
-      def mapImpl[T, U](u: Type[U], arr: Expr[Array[T]], op: Expr[T => U])(implicit ctx: Context): Expr[Array[U]] = ’{
+      def mapImpl[T, U](u: Type[U], arr: Expr[Array[T]], op: Expr[T => U]): Expr[Array[U]] = ’{
         var i = 0
         val xs = ~arr
         var len = xs.length
@@ -314,7 +314,7 @@ tweak of the typing rules. An inline function such as `assert` that
 contains a splice operation outside an enclosing quote is called a
 _macro_. Macros are supposed to be expanded in a subsequent phase,
 i.e. in a quoted context. Therefore, they are also type checked as if
-they were in a quoted context, For instance, the definition of
+they were in a quoted context. For instance, the definition of
 `assert` is typechecked as if it appeared inside quotes.  This makes
 the call from `assert` to `assertImpl` phase-correct, even if we
 assume that both definitions are local.
@@ -631,9 +631,9 @@ We define a small step reduction relation `-->` with the following rules:
 
                           ~(’t)  -->  t
 
-                              t  -->  t’
-                           ----------------
-                           e[t]  -->  e[t’]
+                             t1  -->  t2
+                          -----------------
+                          e[t1]  -->  e[t2]
 
 The first rule is standard call-by-value beta-reduction. The second
 rule says that splice and quotes cancel each other out. The third rule
@@ -668,14 +668,14 @@ environment of the stack.
                             Es * E |- x: T
 
 
-                        Es * E, x: T |- t: T’
-                    ------------------------------
-                    Es * E |- (x: T) => t: T -> T’
+                        Es * E, x: T1 |- t: T2
+                    -------------------------------
+                    Es * E |- (x: T1) => t: T -> T2
 
 
-                   Es |- t: T’ -> T    Es |- t’: T’
-                   --------------------------------
-                            Es |- t t’: T
+                   Es |- t1: T2 -> T    Es |- t2: T2
+                   ---------------------------------
+                          Es |- t1 t2: T
 
 The rules for quotes and splices map between `expr T` and `T` by trading `’` and `~` between
 environments and terms.
@@ -743,7 +743,7 @@ constructor could be typed as follows:
 
 This would allow constructing applications from lists of arguments
 without having to match the arguments one-by-one with the
-corresponding formal parameter types of the function. We need then "at
+corresponding formal parameter types of the function. We then need "at
 the end" a method to convert an `Expr[_]` to an `Expr[T]` where `T` is
 given from the outside. E.g. if `code` yields a `Expr[_]`, then
 `code.atType[T]` yields an `Expr[T]`. The `atType` method has to be
@@ -757,7 +757,7 @@ to be type correct loses a lot of guidance for constructing the right
 trees.  So we should wait with this addition until we have more
 use-cases that help us decide whether the loss in type-safety is worth
 the gain in flexibility. In this context, it seems that deconstructing types is
-less error-prone than deconstructing tersm, so one might also
+less error-prone than deconstructing terms, so one might also
 envisage a solution that allows the former but not the latter.
 
 ## Conclusion
