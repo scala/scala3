@@ -17,7 +17,7 @@ object Test {
       if (b) '(true) else '(false)
   }
 
-  implicit def ListIsQuotable[T: Type: Quotable]: Quotable[List[T]] = new {
+  implicit def ListIsQuotable[T: Quotable]: Quotable[List[T]] = new {
     def toExpr(xs: List[T]): Expr[List[T]] = xs match {
       case x :: xs1 => '{ ~implicitly[Quotable[T]].toExpr(x) :: ~toExpr(xs1) }
       case Nil => '(Nil: List[T])

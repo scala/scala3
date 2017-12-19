@@ -6,6 +6,6 @@ class Expr[T] extends Quoted {
 }
 
 object Expr {
-  implicit def toExpr[T](x: T)(implicit ev: Quotable[T]): Expr[T] =
+  implicit def toExpr[T](x: T)(implicit ev: Liftable[T]): Expr[T] =
     ev.toExpr(x)
 }
