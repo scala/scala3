@@ -1285,9 +1285,9 @@ object Parsers {
 
     /** SimpleExpr    ::= new Template
      *                 |  BlockExpr
-     *                 |  ‘'’ BlockExpr
-     *                 |  ‘'’ ‘(’ ExprsInParens ‘)’
-     *                 |  ‘'’ ‘[’ Type ‘]’
+     *                 |  ‘'{’ BlockExprContents ‘}’
+     *                 |  ‘'(’ ExprsInParens ‘)’
+     *                 |  ‘'[’ Type ‘]’
      *                 |  SimpleExpr1 [`_']
      *  SimpleExpr1   ::= literal
      *                 |  xmlLiteral
@@ -1467,7 +1467,8 @@ object Parsers {
       }
       else fn
 
-    /** BlockExpr ::= `{' (CaseClauses | Block) `}'
+    /** BlockExpr         ::= `{' BlockExprContents `}'
+     *  BlockExprContents ::= CaseClauses | Block
      */
     def blockExpr(): Tree = atPos(in.offset) {
       inDefScopeBraces {
