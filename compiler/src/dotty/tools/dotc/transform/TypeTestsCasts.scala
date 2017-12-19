@@ -44,7 +44,8 @@ object TypeTestsCasts {
           fun.symbol == defn.Any_typeTest ||  // new scheme
           expr.symbol.is(Case)                // old scheme
 
-        def transformIsInstanceOf(expr:Tree, testType: Type, flagUnrelated: Boolean): Tree = {
+        /** Transform isInstanceOf after its argument has been erased. */
+        def postErasureTransformIsInstanceOf(expr: Tree, testType: Type, flagUnrelated: Boolean): Tree = {
           def testCls = testType.classSymbol
 
           def unreachable(why: => String) =
@@ -102,12 +103,16 @@ object TypeTestsCasts {
             if (foundCls.isPrimitiveValueClass)
               constant(expr, Literal(Constant(foundCls == testCls)))
             else
-              transformIsInstanceOf(expr, defn.boxedType(testCls.typeRef), flagUnrelated)
+              postErasureTransformIsInstanceOf(expr, defn.boxedType(testCls.typeRef), flagUnrelated)
           else
             derivedTree(expr, defn.Any_isInstanceOf, testType)
         }
 
-        def transformAsInstanceOf(testType: Type): Tree = {
+        /** Transform asInstanceOf after its argument has been erased.
+         *  NOTE: asInstanceOf semantics is entirely based on its post-erasure arguments,
+         *  this is why there is no preErasureTransformAsInstanceOf.
+         */
+        def postErasureTransformAsInstanceOf(testType: Type): Tree = {
           def testCls = testType.widen.classSymbol
           if (expr.tpe <:< testType)
             Typed(expr, tree.args.head)
@@ -124,26 +129,21 @@ object TypeTestsCasts {
             derivedTree(expr, defn.Any_asInstanceOf, testType)
         }
 
-        /** Transform isInstanceOf OrType
-         *
-         *    expr.isInstanceOf[A | B]  ~~>  expr.isInstanceOf[A] | expr.isInstanceOf[B]
-         *    expr.isInstanceOf[A & B]  ~~>  expr.isInstanceOf[A] & expr.isInstanceOf[B]
-         *
-         *  The transform happens before erasure of `testType`, thus cannot be merged
-         *  with `transformIsInstanceOf`, which depends on erased type of `testType`.
-         */
-        def transformTypeTest(expr: Tree, testType: Type, flagUnrelated: Boolean): Tree = testType.dealias match {
+        /** Transform isInstanceOf before its argument has been erased. */
+        def preErasureTransformIsInstanceOf(expr: Tree, testType: Type, flagUnrelated: Boolean): Tree = testType.dealias match {
           case _: SingletonType =>
             expr.isInstance(testType).withPos(tree.pos)
+          // expr.isInstanceOf[A | B]  ~~>  expr.isInstanceOf[A] | expr.isInstanceOf[B]
           case OrType(tp1, tp2) =>
             evalOnce(expr) { e =>
-              transformTypeTest(e, tp1, flagUnrelated = false)
-                .or(transformTypeTest(e, tp2, flagUnrelated = false))
+              preErasureTransformIsInstanceOf(e, tp1, flagUnrelated = false)
+                .or(preErasureTransformIsInstanceOf(e, tp2, flagUnrelated = false))
             }
+          // expr.isInstanceOf[A & B]  ~~>  expr.isInstanceOf[A] & expr.isInstanceOf[B]
           case AndType(tp1, tp2) =>
             evalOnce(expr) { e =>
-              transformTypeTest(e, tp1, flagUnrelated)
-                .and(transformTypeTest(e, tp2, flagUnrelated))
+              preErasureTransformIsInstanceOf(e, tp1, flagUnrelated)
+                .and(preErasureTransformIsInstanceOf(e, tp2, flagUnrelated))
             }
           case defn.MultiArrayOf(elem, ndims) if isUnboundedGeneric(elem) =>
             def isArrayTest(arg: Tree) =
@@ -153,14 +153,41 @@ object TypeTestsCasts {
               derivedTree(e, defn.Any_isInstanceOf, e.tpe)
                 .and(isArrayTest(e))
             }
+          case arg if arg.isRef(defn.SingletonClass) =>
+            // Does the expression type contain a union type?
+            var containsUnion: Boolean = false
+
+            def isSingleton(tp: Type): Boolean = tp.dealias match {
+              case tp: SingletonType =>
+                true
+              case AndType(tp1, tp2) =>
+                isSingleton(tp1) || isSingleton(tp2)
+              case tp =>
+                if (tp.isInstanceOf[OrType])
+                  containsUnion = true
+                false
+            }
+
+            val res = isSingleton(expr.tpe.dealias)
+
+            // Warn about potential false-negatives
+            // Note that this should never happen currently since singleton types are disallowed
+            // in union types: https://github.com/lampepfl/dotty/issues/1551,
+            // but future-proofing doesn't hurt.
+            if (containsUnion && !res)
+              ctx.warning(
+                em"Checking whether a union type is a singleton type is not implemented and will always return false.",
+                expr.pos)
+
+            constant(expr, Literal(Constant(res)))
           case _ =>
-            transformIsInstanceOf(expr, erasure(testType), flagUnrelated)
+            postErasureTransformIsInstanceOf(expr, erasure(testType), flagUnrelated)
         }
 
         if (sym.isTypeTest)
-          transformTypeTest(expr, tree.args.head.tpe, flagUnrelated = true)
+          preErasureTransformIsInstanceOf(expr, tree.args.head.tpe, flagUnrelated = true)
         else if (sym eq defn.Any_asInstanceOf)
-          transformAsInstanceOf(erasure(tree.args.head.tpe))
+          postErasureTransformAsInstanceOf(erasure(tree.args.head.tpe))
         else tree
 
       case _ =>
