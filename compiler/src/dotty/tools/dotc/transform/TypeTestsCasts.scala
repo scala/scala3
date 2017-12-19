@@ -153,6 +153,33 @@ object TypeTestsCasts {
               derivedTree(e, defn.Any_isInstanceOf, e.tpe)
                 .and(isArrayTest(e))
             }
+          case arg if arg.isRef(defn.SingletonClass) =>
+            // Does the expression type contain a union type?
+            var containsUnion: Boolean = false
+
+            def isSingleton(tp: Type): Boolean = tp.dealias match {
+              case tp: SingletonType =>
+                true
+              case AndType(tp1, tp2) =>
+                isSingleton(tp1) || isSingleton(tp2)
+              case tp =>
+                if (tp.isInstanceOf[OrType])
+                  containsUnion = true
+                false
+            }
+
+            val res = isSingleton(expr.tpe.dealias)
+
+            // Warn about potential false-negatives
+            // Note that this should never happen currently since singleton types are disallowed
+            // in union types: https://github.com/lampepfl/dotty/issues/1551,
+            // but future-proofing doesn't hurt.
+            if (containsUnion && !res)
+              ctx.warning(
+                em"Checking whether a union type is a singleton type is not implemented and will always return false.",
+                expr.pos)
+
+            constant(expr, Literal(Constant(res)))
           case _ =>
             postErasureTransformIsInstanceOf(expr, erasure(testType), flagUnrelated)
         }
