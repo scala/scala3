@@ -944,24 +944,13 @@ class TreeUnpickler(reader: TastyReader, nameAtRef: NameRef => TermName, posUnpi
               tpd.Super(qual, mixId, ctx.mode.is(Mode.InSuperCall), mixTpe.typeSymbol)
             case APPLY =>
               val fn = readTerm()
-              val isJava = fn.symbol.is(JavaDefined)
-              def readArg() = readTerm() match {
-                case SeqLiteral(elems, elemtpt) if isJava =>
-                  JavaSeqLiteral(elems, elemtpt)
-                case arg => arg
-              }
-              tpd.Apply(fn, until(end)(readArg()))
+              tpd.Apply(fn, until(end)(readTerm()))
             case TYPEAPPLY =>
               tpd.TypeApply(readTerm(), until(end)(readTpt()))
             case TYPED =>
               val expr = readTerm()
               val tpt = readTpt()
-              val expr1 = expr match {
-                case SeqLiteral(elems, elemtpt) if tpt.tpe.isRef(defn.ArrayClass) =>
-                  JavaSeqLiteral(elems, elemtpt)
-                case expr => expr
-              }
-              Typed(expr1, tpt)
+              Typed(expr, tpt)
             case ASSIGN =>
               Assign(readTerm(), readTerm())
             case BLOCK =>
