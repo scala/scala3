@@ -129,7 +129,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
   /** A group of files that may all be compiled together, with the same flags
    *  and output directory
    */
-  private final case class JointCompilationSource(
+  private case class JointCompilationSource(
     name: String,
     files: Array[JFile],
     flags: TestFlags,
