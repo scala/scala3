@@ -504,6 +504,21 @@ class PlainPrinter(_ctx: Context) extends Printer {
     }
   }.close // todo: override in refined printer
 
+
+  def toText(ref: RenamedImplicitRef): Text =
+    "RenamedImplicitRef(" ~ toText(ref.underlyingRef) ~ ", " ~ toText(ref.alias) ~ ")"
+
+  // This is only in Printer to have access to a Context
+  def toText(irefs: ImplicitRefs): Text = irefs match {
+    case irefs: OfTypeImplicits =>
+      s"""OfTypeImplicits(${irefs.tp.show}):
+         |  companions = ${irefs.companionRefs.toList.map(_.show).mkString(", ")}
+         |  refs = ${irefs.refs.map(_.show).mkString(", ")}.""".stripMargin
+    case irefs: ContextualImplicits =>
+      val own = s"ContextualImplicits: ${irefs.refs.map(_.show).mkString(", ")}"
+      if (irefs.isOuterMost) own else own + "\n " + irefs.outerImplicits.show
+  }
+
   def toText(result: SearchResult): Text = result match {
     case result: SearchSuccess =>
       "SearchSuccess: " ~ toText(result.ref) ~ " via " ~ toText(result.tree)

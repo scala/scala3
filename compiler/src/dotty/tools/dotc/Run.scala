@@ -53,7 +53,7 @@ class Run(comp: Compiler, ictx: Context) {
     ctx.initialize()(start) // re-initialize the base context with start
     def addImport(ctx: Context, refFn: () => TermRef) =
       ctx.fresh.setImportInfo(ImportInfo.rootImport(refFn)(ctx))
-    (start.setRunInfo(new RunInfo(start)) /: defn.RootImportFns)(addImport)
+    (start.setRunInfo(new RunInfo) /: defn.RootImportFns)(addImport)
   }
 
   protected[this] implicit val ctx: Context = rootContext(ictx)
@@ -194,9 +194,7 @@ class Run(comp: Compiler, ictx: Context) {
 
 object Run {
   /** Info that changes on each compiler run */
-  class RunInfo(initctx: Context) extends ImplicitRunInfo with ConstraintRunInfo {
-    implicit val ctx: Context = initctx
-
+  class RunInfo extends ImplicitRunInfo with ConstraintRunInfo {
     private[this] var myUnits: List[CompilationUnit] = _
     private[this] var myUnitsCached: List[CompilationUnit] = _
     private[this] var myFiles: Set[AbstractFile] = _

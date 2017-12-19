@@ -217,7 +217,7 @@ object Contexts {
             else
               outer.implicits
           if (implicitRefs.isEmpty) outerImplicits
-          else new ContextualImplicits(implicitRefs, outerImplicits)(this)
+          else new ContextualImplicits(implicitRefs, outerImplicits, this)
         }
       implicitsCache
     }
@@ -508,7 +508,7 @@ object Contexts {
     moreProperties = Map.empty
     store = initialStore
               .updated(settingsStateLoc, settings.defaultState)
-              .updated(runInfoLoc, new RunInfo(this))
+              .updated(runInfoLoc, new RunInfo)
     typeComparer = new TypeComparer(this)
     searchHistory = new SearchHistory(0, Map())
     gadt = EmptyGADTMap
@@ -516,7 +516,7 @@ object Contexts {
 
   @sharable object NoContext extends Context {
     val base = null
-    override val implicits: ContextualImplicits = new ContextualImplicits(Nil, null)(this)
+    override val implicits: ContextualImplicits = new ContextualImplicits(Nil, null, this)
   }
 
   /** A context base defines state and associated methods that exist once per

@@ -2014,7 +2014,7 @@ object Types {
   /** A reference to an implicit definition. This can be either a TermRef or a
    *  Implicits.RenamedImplicitRef.
    */
-  trait ImplicitRef {
+  trait ImplicitRef extends printing.Showable {
     def implicitName(implicit ctx: Context): TermName
     def underlyingRef: TermRef
   }
