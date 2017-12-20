@@ -25,7 +25,7 @@ class CompilationUnit(val source: SourceFile) {
   /** Will be reset to `true` if `untpdTree` contains `Quote` trees. The information
    *  is used in phase ReifyQuotes in order to avoid traversing a quote-less tree.
    */
-  var containsQuotes: Boolean = false
+  var containsQuotesOrSplices: Boolean = false
 }
 
 object CompilationUnit {

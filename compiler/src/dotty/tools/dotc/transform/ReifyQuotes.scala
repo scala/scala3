@@ -24,7 +24,7 @@ class ReifyQuotes extends MacroTransform {
   override def phaseName: String = "reifyQuotes"
 
   override def run(implicit ctx: Context): Unit =
-    if (ctx.compilationUnit.containsQuotes) super.run
+    if (ctx.compilationUnit.containsQuotesOrSplices) super.run
 
   protected def newTransformer(implicit ctx: Context): Transformer =
     new Reifier(inQuote = false, null, 0, new LevelInfo)
@@ -336,7 +336,7 @@ class ReifyQuotes extends MacroTransform {
           case Inlined(call, bindings, expansion @ Select(body, name)) if expansion.symbol.isSplice =>
             // To maintain phase consistency, convert inlined expressions of the form
             // `{ bindings; ~expansion }` to `~{ bindings; expansion }`
-            cpy.Select(expansion)(cpy.Inlined(tree)(call, bindings, body), name)
+            transform(cpy.Select(expansion)(cpy.Inlined(tree)(call, bindings, body), name))
           case _: Import =>
             tree
           case tree: DefDef if tree.symbol.is(Macro) && level == 0 =>

@@ -176,6 +176,10 @@ class SymUtils(val self: Symbol) extends AnyVal {
     else owner.isLocal
   }
 
+  /** Is symbol a quote operation? */
+  def isQuote(implicit ctx: Context): Boolean =
+    self == defn.quoteMethod || self == defn.typeQuoteMethod
+
   /** Is symbol a splice operation? */
   def isSplice(implicit ctx: Context): Boolean =
     self == defn.QuotedExpr_~ || self == defn.QuotedType_~

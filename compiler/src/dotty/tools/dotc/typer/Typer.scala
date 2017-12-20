@@ -394,23 +394,11 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
 
   def typedSelect(tree: untpd.Select, pt: Type)(implicit ctx: Context): Tree = track("typedSelect") {
 
-    /** If we are an an inline method but not in a nested quote, mark the inline method
-     *  as a macro.
-     */
-    def markAsMacro(c: Context): Unit =
-      if (!c.tree.isInstanceOf[untpd.Quote])
-        if (c.owner eq c.outer.owner) markAsMacro(c.outer)
-        else if (c.owner.isInlineMethod) c.owner.setFlag(Macro)
-        else if (!c.outer.owner.is(Package)) markAsMacro(c.outer)
-
     def typeSelectOnTerm(implicit ctx: Context): Tree = {
       val qual1 = typedExpr(tree.qualifier, selectionProto(tree.name, pt, this))
       if (tree.name.isTypeName) checkStable(qual1.tpe, qual1.pos)
       val select = typedSelect(tree, pt, qual1)
-      if (select.tpe ne TryDynamicCallType) {
-        if (select.symbol.isSplice) markAsMacro(ctx)
-        select
-      }
+      if (select.tpe ne TryDynamicCallType) select
       else if (pt.isInstanceOf[PolyProto] || pt.isInstanceOf[FunProto] || pt == AssignProto) select
       else typedDynamicSelect(tree, Nil, pt)
     }
@@ -1086,7 +1074,6 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
   }
 
   def typedQuote(tree: untpd.Quote, pt: Type)(implicit ctx: Context): Tree = track("typedQuote") {
-    ctx.compilationUnit.containsQuotes = true
     val untpd.Quote(body) = tree
     val isType = body.isType
     val resultClass = if (isType) defn.QuotedTypeClass else defn.QuotedExprClass
