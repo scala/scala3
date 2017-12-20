@@ -11,26 +11,27 @@ object Printers {
   }
 
   val default: Printer = new Printer
-  val dottydoc: Printer = noPrinter
-  val core: Printer = noPrinter
-  val typr: Printer = noPrinter
+
   val constr: Printer = noPrinter
+  val core: Printer = noPrinter
   val checks: Printer = noPrinter
-  val overload: Printer = noPrinter
-  val implicits: Printer = noPrinter
-  val implicitsDetailed: Printer = noPrinter
-  val subtyping: Printer = noPrinter
-  val unapp: Printer = noPrinter
+  val config: Printer = noPrinter
+  val cyclicErrors: Printer = noPrinter
+  val dottydoc: Printer = noPrinter
+  val exhaustivity: Printer = noPrinter
+  val incremental: Printer = noPrinter
   val gadts: Printer = noPrinter
   val hk: Printer = noPrinter
-  val variances: Printer = noPrinter
-  val incremental: Printer = noPrinter
-  val config: Printer = noPrinter
-  val transforms: Printer = noPrinter
-  val cyclicErrors: Printer = noPrinter
-  val pickling: Printer = noPrinter
+  val implicits: Printer = noPrinter
+  val implicitsDetailed: Printer = noPrinter
   val inlining: Printer = noPrinter
-  val exhaustivity: Printer = noPrinter
+  val overload: Printer = noPrinter
   val patmatch: Printer = noPrinter
+  val pickling: Printer = noPrinter
   val simplify: Printer = noPrinter
+  val subtyping: Printer = noPrinter
+  val transforms: Printer = noPrinter
+  val typr: Printer = noPrinter
+  val unapp: Printer = noPrinter
+  val variances: Printer = noPrinter
 }
