@@ -185,12 +185,16 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
           tp1.rebind(approximateOr(tp1.parent, tp2))
         case tp1: TypeProxy if !isClassRef(tp1) =>
           orDominator(tp1.superType | tp2)
+        case err: ErrorType =>
+          err
         case _ =>
           tp2 match {
             case tp2: RecType =>
               tp2.rebind(approximateOr(tp1, tp2.parent))
             case tp2: TypeProxy if !isClassRef(tp2) =>
               orDominator(tp1 | tp2.superType)
+            case err: ErrorType =>
+              err
             case _ =>
               val commonBaseClasses = tp.mapReduceOr(_.baseClasses)(intersect)
               val doms = dominators(commonBaseClasses, Nil)

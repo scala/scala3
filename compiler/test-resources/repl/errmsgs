@@ -68,3 +68,7 @@ scala> while (((  foo ))) {}
 1 | while (((  foo ))) {}
   |            ^^^
   |            not found: foo
+scala> val a: iDontExist = 1
+1 | val a: iDontExist = 1
+  |        ^^^^^^^^^^
+  |        not found: type iDontExist

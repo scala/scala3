@@ -411,6 +411,8 @@ trait TypeAssigner {
           if (sameLength(argTypes, paramNames)) pt.instantiate(argTypes)
           else wrongNumberOfTypeArgs(fn.tpe, pt.typeParams, args, tree.pos)
         }
+      case err: ErrorType =>
+        err
       case _ =>
         //println(i"bad type: $fn: ${fn.symbol} / ${fn.symbol.isType} / ${fn.symbol.info}") // DEBUG
         errorType(err.takesNoParamsStr(fn, "type "), tree.pos)
