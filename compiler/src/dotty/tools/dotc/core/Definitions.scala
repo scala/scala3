@@ -311,7 +311,7 @@ class Definitions {
       useCompleter = true)
 
   /** Method representing a type quote */
-  lazy val typeQuoteMethod = enterPolyMethod(OpsPackageClass, nme.QUOTE, 1,
+  lazy val typeQuoteMethod = enterPolyMethod(OpsPackageClass, nme.TYPE_QUOTE, 1,
       pt => QuotedTypeType.appliedTo(pt.paramRefs(0) :: Nil),
       useCompleter = true)
 
