@@ -50,11 +50,8 @@ class QuoteDriver extends Driver {
 
   override def initCtx: Context = {
     val ictx = super.initCtx.fresh
-    val compilerClasspath = System.getProperty("dotty.tools.dotc.classpath")
-    assert(compilerClasspath ne null, "System property `dotty.tools.dotc.classpath` is not set.")
     val classpath = System.getProperty("java.class.path")
-    val scalaLib = classpath.split(":").filter(_.contains("scala-library")).mkString(":")
-    ictx.settings.classpath.update(compilerClasspath + ":" + scalaLib)(ictx)
+    ictx.settings.classpath.update(classpath)(ictx)
     ictx
   }
 

@@ -596,9 +596,7 @@ object Build {
           val asm = findLib("scala-asm")
           val dottyCompiler = packageAll.value("dotty-compiler")
           val dottyInterfaces = packageAll.value("dotty-interfaces")
-          val deps = s"$dottyCompiler:$dottyInterfaces:$asm"
-          val args2 = s"-Ddotty.tools.dotc.classpath=$deps:$dottyLib" :: insertClasspathInArgs(args1, deps)
-          run(args2)
+          run(insertClasspathInArgs(args1, s"$dottyCompiler:$dottyInterfaces:$asm"))
         } else run(args)
       },
       run := dotc.evaluated,
