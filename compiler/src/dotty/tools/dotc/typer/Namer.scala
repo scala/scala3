@@ -204,6 +204,9 @@ class Namer { typer: Typer =>
    */
   val scope = newScope
 
+  /** We are entering symbols coming from a SourceLoader */
+  private[this] var lateCompile = false
+
   /** The symbol of the given expanded tree. */
   def symbolOfTree(tree: Tree)(implicit ctx: Context): Symbol = {
     val xtree = expanded(tree)
@@ -334,6 +337,15 @@ class Namer { typer: Typer =>
     */
   def enterSymbol(sym: Symbol)(implicit ctx: Context) = {
     if (sym.exists) {
+      if (lateCompile && sym.owner.is(Package)) {
+        val preExisting = ctx.effectiveScope.lookup(sym.name)
+        if (preExisting.exists) {
+          typr.println(i"overwriting $preExisting to late loaded $sym")
+          val old = preExisting.denot
+          old.replaceWith(sym.denot)
+          old.info = sym.info
+        }
+      }
       typr.println(s"entered: $sym in ${ctx.owner}")
       ctx.enter(sym)
     }
@@ -715,6 +727,16 @@ class Namer { typer: Typer =>
     val localCtx = index(stats)
     annotate(stats)
     localCtx
+  }
+
+  /** Index and annotate symbols in `tree` while asserting the `lateCompile` flag.
+   *  This will cause any old top-level symbol with the same fully qualified
+   *  name as a newly created symbol to be replaced.
+   */
+  def lateEnter(tree: Tree)(implicit ctx: Context) = {
+    val saved = lateCompile
+    lateCompile = true
+    try indexAndAnnotate(tree :: Nil) finally lateCompile = saved
   }
 
   def missingType(sym: Symbol, modifier: String)(implicit ctx: Context) = {

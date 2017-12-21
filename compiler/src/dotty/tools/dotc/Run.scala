@@ -18,6 +18,7 @@ import transform.TreeChecker
 import rewrite.Rewrites
 import java.io.{BufferedWriter, OutputStreamWriter}
 import printing.XprintMode
+import parsing.Parsers.Parser
 import typer.ImplicitRunInfo
 
 import scala.annotation.tailrec
@@ -168,6 +169,20 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
     ctx.phases.foreach(_.initContext(runCtx))
     runPhases(runCtx)
     if (!ctx.reporter.hasErrors) Rewrites.writeBack()
+  }
+  
+  /** Enter top-level definitions of classes and objects contain in Scala source file `file`.
+   *  The newly added symbols replace any previously entered symbols.
+   */
+  def enterRoots(file: AbstractFile)(implicit ctx: Context): Unit =
+    if (!files.contains(file)) {
+      val unit = new CompilationUnit(getSource(file.path))
+      enterRoots(unit)(runContext.fresh.setCompilationUnit(unit))
+    }
+
+  private def enterRoots(unit: CompilationUnit)(implicit ctx: Context): Unit = {
+    unit.untpdTree = new Parser(unit.source).parse()
+    ctx.typer.lateEnter(unit.untpdTree)
   }
 
   private sealed trait PrintedTree

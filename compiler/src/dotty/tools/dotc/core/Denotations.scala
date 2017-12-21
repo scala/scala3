@@ -929,7 +929,7 @@ object Denotations {
         // printPeriods(current)
         this.validFor = Period(ctx.runId, targetId, current.validFor.lastPhaseId)
         if (current.validFor.firstPhaseId >= targetId)
-          insertInsteadOf(current)
+          current.replaceWith(this)
         else {
           current.validFor = Period(ctx.runId, current.validFor.firstPhaseId, targetId - 1)
           insertAfter(current)
@@ -950,7 +950,7 @@ object Denotations {
         val current1: SingleDenotation = f(current.asSymDenotation)
         if (current1 ne current) {
           current1.validFor = current.validFor
-          current1.insertInsteadOf(current)
+          current.replaceWith(current1)
         }
         hasNext = current1.nextInRun.validFor.code > current1.validFor.code
         current = current1.nextInRun
@@ -972,14 +972,14 @@ object Denotations {
      *  The code to achieve this is subtle in that it works correctly
      *  whether the replaced denotation is the only one in its cycle or not.
      */
-    private def insertInsteadOf(old: SingleDenotation): Unit = {
-      var prev = old
-      while (prev.nextInRun ne old) prev = prev.nextInRun
+    private[dotc] def replaceWith(newd: SingleDenotation): Unit = {
+      var prev = this
+      while (prev.nextInRun ne this) prev = prev.nextInRun
       // order of next two assignments is important!
-      prev.nextInRun = this
-      this.nextInRun = old.nextInRun
-      old.validFor = Nowhere
-      old.nextInRun = this
+      prev.nextInRun = newd
+      newd.nextInRun = nextInRun
+      validFor = Nowhere
+      nextInRun = newd
     }
 
     def staleSymbolError(implicit ctx: Context) =

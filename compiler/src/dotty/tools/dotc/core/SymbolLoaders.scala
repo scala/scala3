@@ -1,8 +1,3 @@
-/* NSC -- new Scala compiler
- * Copyright 2005-2012 LAMP/EPFL
- * @author  Martin Odersky
- */
-
 package dotty.tools
 package dotc
 package core
@@ -199,7 +194,7 @@ class SymbolLoaders {
         !root.unforcedDecls.lookup(classRep.name.toTypeName).exists
 
       if (!root.isRoot) {
-        val classReps = classPath.classes(packageName)
+        val classReps = classPath.list(packageName).classesAndSources
 
         for (classRep <- classReps)
           if (!maybeModuleClass(classRep) && isFlatName(classRep) == flat &&
@@ -343,5 +338,6 @@ class ClassfileLoader(val classfile: AbstractFile) extends SymbolLoader {
 class SourcefileLoader(val srcfile: AbstractFile) extends SymbolLoader {
   def description(implicit ctx: Context) = "source file " + srcfile.toString
   override def sourceFileOrNull = srcfile
-  def doComplete(root: SymDenotation)(implicit ctx: Context): Unit = unsupported("doComplete")
+  def doComplete(root: SymDenotation)(implicit ctx: Context): Unit =
+    ctx.run.enterRoots(srcfile)
 }
