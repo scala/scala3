@@ -64,7 +64,7 @@ and it takes types `T` to expressions of type `Type[T]`. Splicing
 takes expressions of type `Expr[T]` to expressions of type `T` and it
 takes expressions of type `Type[T]` to types `T`.
 
-The two types can be are defined in package `scala.quoted` as follows:
+The two types can be defined in package `scala.quoted` as follows:
 
     package scala.quoted
 
@@ -200,13 +200,13 @@ Here’s an application of `map` and how it rewrites to optimized code:
 ==> (inline)
 
     val $this: Seq[Int] = genSeq[Int]()
-    val f: Int => Int = x => x * x
+    val f: Int => Int = x => x + 1
     ~ _root_.Macros.mapImpl[Int, Int](’[Int], ’($this), ’(f))
 
 ==> (splice)
 
     val $this: Seq[Int] = genSeq[Int]()
-    val f: Int => Int = x => x * x
+    val f: Int => Int = x => x + 1
 
     {
       var i = 0
@@ -223,7 +223,7 @@ Here’s an application of `map` and how it rewrites to optimized code:
 ==> (expand and splice inside quotes)
 
     val $this: Seq[Int] = genSeq[Int]()
-    val f: Int => Int = x => x * x
+    val f: Int => Int = x => x + 1
 
     {
       var i = 0
