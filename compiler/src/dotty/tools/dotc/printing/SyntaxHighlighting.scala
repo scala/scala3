@@ -12,7 +12,7 @@ import Highlighting.{Highlight, HighlightBuffer}
 /** This object provides functions for syntax highlighting in the REPL */
 object SyntaxHighlighting {
 
-  val NoColor         = Console.RESET
+  val NoColor         = "\u001b[39m"
   val CommentColor    = Console.BLUE
   val KeywordColor    = Console.YELLOW
   val ValDefColor     = Console.CYAN

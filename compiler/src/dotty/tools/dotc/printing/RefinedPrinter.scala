@@ -29,6 +29,9 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
   private[this] val printLines = ctx.settings.printLines.value
   override protected[this] implicit def ctx: Context = myCtx
 
+  final val Faint = "\u001b[2m"
+  final val NormalIntensity ="\u001b[22m"
+
   def withEnclosingDef(enclDef: Tree[_ >: Untyped])(op: => Text): Text = {
     val savedCtx = myCtx
     if (enclDef.hasType && enclDef.symbol.exists)
@@ -258,7 +261,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
 
     def constrText(tree: untpd.Tree): Text = toTextLocal(tree).stripPrefix(keywordStr("new ")) // DD
 
-    def annotText(tree: untpd.Tree): Text = "@" ~ constrText(tree) // DD
+    def annotText(tree: untpd.Tree): Text = "@" ~ constrText(tree) ~ NormalIntensity // DD
 
     def useSymbol =
       tree.hasType && tree.symbol.exists && ctx.settings.YprintSyms.value
@@ -371,7 +374,8 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         if (name.isTypeName) typeText(txt)
         else txt
       case tree @ Select(qual, name) =>
-        if (qual.isType) toTextLocal(qual) ~ "#" ~ typeText(toText(name))
+        if (tree.symbol == defn.QuotedExpr_~) toTextSplice(qual)
+        else if (qual.isType) toTextLocal(qual) ~ "#" ~ typeText(toText(name))
         else toTextLocal(qual) ~ ("." ~ nameIdText(tree) provided name != nme.CONSTRUCTOR)
       case tree: This =>
         optDotPrefix(tree) ~ keywordStr("this") ~ idText(tree)
@@ -382,6 +386,8 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
           changePrec (GlobalPrec) {
             keywordStr("throw ") ~ toText(args.head)
           }
+        if (fun.hasType && fun.symbol == defn.quoteMethod)
+          toTextQuoted(args.head)
         else
           toTextLocal(fun) ~ "(" ~ toTextGlobal(args, ", ") ~ ")"
       case TypeApply(fun, args) =>
@@ -484,7 +490,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
           withEnclosingDef(tree) {
             addVparamssText(prefix ~ tparamsText(tparams), vparamss) ~ optAscription(tpt) ~
             optText(tree.rhs)(" = " ~ _)
-          }
+          } ~ NormalIntensity
         }
       case tree @ TypeDef(name, rhs) =>
         def typeDefText(tparamsText: => Text, rhsText: => Text) =
@@ -599,12 +605,19 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
           keywordStr("try ") ~ toText(expr) ~ " " ~ keywordStr("catch") ~ " {" ~ toText(handler) ~ "}" ~ optText(finalizer)(keywordStr(" finally ") ~ _)
         }
       case Quote(tree) =>
-        if (tree.isType) "'[" ~ toTextGlobal(tree) ~ "]" else "'(" ~ toTextGlobal(tree) ~ ")"
+        toTextQuoted(tree)
       case Thicket(trees) =>
         "Thicket {" ~~ toTextGlobal(trees, "\n") ~~ "}"
       case _ =>
         tree.fallbackToText(this)
     }
+
+    def toTextQuoted(tree: Tree): Text =
+      if (tree.isType) "'[" ~ Faint ~ toTextGlobal(tree) ~ NormalIntensity ~ "]"
+      else "'(" ~ Faint ~ toTextGlobal(tree) ~ NormalIntensity ~ ")"
+
+    def toTextSplice(tree: Tree): Text =
+      NormalIntensity ~ "~" ~ toTextGlobal(tree) ~ Faint
 
     var txt = toTextCore(tree)
 
