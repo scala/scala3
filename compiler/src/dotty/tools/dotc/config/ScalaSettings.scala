@@ -80,7 +80,7 @@ class ScalaSettings extends Settings.SettingGroup {
   val YtermConflict = ChoiceSetting("-Yresolve-term-conflict", "strategy", "Resolve term conflicts", List("package", "object", "error"), "error")
   val Ylog = PhasesSetting("-Ylog", "Log operations during")
   val YemitTasty = BooleanSetting("-Yemit-tasty", "Generate tasty in separate *.tasty file.")
-  val Ylogcp = BooleanSetting("-Ylog-classpath", "Output information about what classpath is being applied.")
+  val YlogClasspath = BooleanSetting("-Ylog-classpath", "Output information about what classpath is being applied.")
   val YdisableFlatCpCaching  = BooleanSetting("-YdisableFlatCpCaching", "Do not cache flat classpath representation of classpath elements from jars across compiler instances.")
 
   val YnoImports = BooleanSetting("-Yno-imports", "Compile without importing scala.*, java.lang.*, or Predef.")
