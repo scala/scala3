@@ -19,6 +19,9 @@ import scala.collection.{ mutable, immutable }
 import config.Printers.pickling
 import typer.Checking
 import config.Config
+import dotty.tools.dotc.quoted.PickledQuotes
+import dotty.tools.dotc.interpreter.RawExpr
+import scala.quoted.Expr
 
 /** Unpickler for typed trees
  *  @param reader          the reader from which to unpickle
@@ -1030,8 +1033,10 @@ class TreeUnpickler(reader: TastyReader,
               val idx = readNat()
               val args = until(end)(readTerm())
               val splice = splices(idx)
-              if (args.isEmpty) splice.asInstanceOf[Tree]
-              else splice.asInstanceOf[Seq[Any] => Tree](args)
+              val expr =
+                if (args.isEmpty) splice.asInstanceOf[Expr[_]]
+                else splice.asInstanceOf[Seq[Any] => Expr[_]](args.map(arg => new RawExpr(arg)))
+              PickledQuotes.quotedToTree(expr)
             case _ =>
               readPathTerm()
           }

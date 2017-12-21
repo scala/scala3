@@ -8,9 +8,8 @@ object Test {
     println(macro3(1))
     println(power(0, 5))
     println(power(1, 5))
-    // FIXME
-//    println(power(2, 5))
-//    println(power(3, 5))
+    println(power(2, 5))
+    println(power(3, 5))
   }
 
 }

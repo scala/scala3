@@ -34,11 +34,7 @@ object PickledQuotes {
   /** Unpickle the tree contained in the TastyQuoted */
   private def unpickleQuote(expr: quoted.TastyQuoted)(implicit ctx: Context): Tree = {
     val tastyBytes = TastyString.stringToTasty(expr.tasty)
-    val splices = expr.args.map {
-      case arg: quoted.Quoted => quotedToTree(arg)
-      case arg => arg
-    }
-    val unpickled = unpickle(tastyBytes, splices)
+    val unpickled = unpickle(tastyBytes, expr.args)
     unpickled match { // Expects `package _root_ { val ': Any = <tree> }`
       case PackageDef(_, (vdef: ValDef) :: Nil) => vdef.rhs
     }
