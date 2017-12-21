@@ -672,13 +672,14 @@ trait Implicits { self: Typer =>
               |
               |    ${arg.show.replace("\n", "\n    ")}
               |
-              |But $tpe.explanation}."""
+              |But ${tpe.explanation}."""
         }
     }
+    def location(preposition: String) = if (where.isEmpty) "" else s" $preposition $where"
     arg.tpe match {
       case ambi: AmbiguousImplicits =>
-        msg(s"ambiguous implicit arguments: ${ambi.explanation} of $where")(
-            s"ambiguous implicit arguments of type ${pt.show} found for $where")
+        msg(s"ambiguous implicit arguments: ${ambi.explanation}${location("of")}")(
+            s"ambiguous implicit arguments of type ${pt.show} found${location("for")}")
       case _ =>
         val userDefined =
           for {
@@ -691,7 +692,7 @@ trait Implicits { self: Typer =>
               pt.typeSymbol.typeParams.map(_.name.unexpandedName.toString),
               pt.argInfos)
           }
-        msg(userDefined.getOrElse(em"no implicit argument of type $pt was found for $where"))()
+        msg(userDefined.getOrElse(em"no implicit argument of type $pt was found${location("for")}"))()
     }
   }
 
@@ -748,7 +749,7 @@ trait Implicits { self: Typer =>
    *  !!! todo: catch potential cycles
    */
   def inferImplicit(pt: Type, argument: Tree, pos: Position)(implicit ctx: Context): SearchResult = track("inferImplicit") {
-    assert(!ctx.isAfterTyper,
+    assert(ctx.phase.allowsImplicitSearch,
       if (argument.isEmpty) i"missing implicit parameter of type $pt after typer"
       else i"type error: ${argument.tpe} does not conform to $pt${err.whyNoMatchStr(argument.tpe, pt)}")
     trace(s"search implicit ${pt.show}, arg = ${argument.show}: ${argument.tpe.show}", implicits, show = true) {

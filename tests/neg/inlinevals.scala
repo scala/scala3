@@ -17,6 +17,12 @@ object Test {
 
   inline val M = X  // error: rhs must be constant expression
 
+  inline val xs = List(1, 2, 3) // error: must be a constant expression
+
+  def f(inline xs: List[Int]) = xs
+
+  f(List(1, 2, 3)) // error: must be a constant expression
+
   def byname(inline f: => String): Int = ??? // ok
 
   byname("hello" ++ " world")

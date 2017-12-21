@@ -19,6 +19,8 @@ class FrontEnd extends Phase {
   override def isTyper = true
   import ast.tpd
 
+  override def allowsImplicitSearch = true
+
   /** The contexts for compilation units that are parsed but not yet entered */
   private[this] var remaining: List[Context] = Nil
 

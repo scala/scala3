@@ -264,7 +264,7 @@ trait UntypedTreeInfo extends TreeInfo[Untyped] { self: Trees.Instance[Untyped] 
    */
   def lacksDefinition(mdef: MemberDef)(implicit ctx: Context) = mdef match {
     case mdef: ValOrDefDef =>
-      mdef.unforcedRhs == EmptyTree && !mdef.name.isConstructorName && !mdef.mods.is(ParamAccessor)
+      mdef.unforcedRhs == EmptyTree && !mdef.name.isConstructorName && !mdef.mods.is(TermParamOrAccessor)
     case mdef: TypeDef =>
       def isBounds(rhs: Tree): Boolean = rhs match {
         case _: TypeBoundsTree => true

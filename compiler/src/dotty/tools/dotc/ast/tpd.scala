@@ -104,6 +104,12 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       Closure(Nil, call, targetTpt))
   }
 
+  /** A closure whole anonymous function has the given method type */
+  def Lambda(tpe: MethodType, rhsFn: List[Tree] => Tree)(implicit ctx: Context): Block = {
+    val meth = ctx.newSymbol(ctx.owner, nme.ANON_FUN, Synthetic | Method, tpe)
+    Closure(meth, tss => rhsFn(tss.head).changeOwner(ctx.owner, meth))
+  }
+
   def CaseDef(pat: Tree, guard: Tree, body: Tree)(implicit ctx: Context): CaseDef =
     ta.assignType(untpd.CaseDef(pat, guard, body), body)
 

@@ -109,6 +109,7 @@ Standard-Section: "ASTs" TopLevelStat*
                   BYNAMEtpt             underlying_Term
                   EMPTYTREE
                   SHARED                term_ASTRef
+                  HOLE           Length idx_Nat arg_Tree*
   Application   = APPLY          Length fn_Term arg_Term*
 
                   TYPEAPPLY      Length fn_Term arg_Type*
@@ -180,7 +181,8 @@ Standard-Section: "ASTs" TopLevelStat*
                   IMPLICIT
                   LAZY
                   OVERRIDE
-                  INLINE                              // macro
+                  INLINE                              // inline method
+                  MACRO                               // inline method containing toplevel splices
                   STATIC                              // mapped to static Java member
                   OBJECT                              // an object or its class
                   TRAIT                               // a trait
@@ -225,7 +227,7 @@ object TastyFormat {
 
   final val header = Array(0x5C, 0xA1, 0xAB, 0x1F)
   val MajorVersion = 2
-  val MinorVersion = 0
+  val MinorVersion = 1
 
   /** Tags used to serialize names */
   class NameTags {
@@ -296,6 +298,7 @@ object TastyFormat {
   final val SCALA2X = 29
   final val DEFAULTparameterized = 30
   final val STABLE = 31
+  final val MACRO = 32
 
   // Cat. 2:    tag Nat
 
@@ -396,6 +399,7 @@ object TastyFormat {
   final val ANNOTATION = 173
   final val TERMREFin = 174
   final val TYPEREFin = 175
+  final val HOLE = 255
 
   final val firstSimpleTreeTag = UNITconst
   final val firstNatTreeTag = SHARED
@@ -417,6 +421,7 @@ object TastyFormat {
        | LAZY
        | OVERRIDE
        | INLINE
+       | MACRO
        | STATIC
        | OBJECT
        | TRAIT
@@ -470,6 +475,7 @@ object TastyFormat {
     case LAZY => "LAZY"
     case OVERRIDE => "OVERRIDE"
     case INLINE => "INLINE"
+    case MACRO => "MACRO"
     case STATIC => "STATIC"
     case OBJECT => "OBJECT"
     case TRAIT => "TRAIT"
@@ -555,6 +561,7 @@ object TastyFormat {
     case SUPERtype => "SUPERtype"
     case TERMREFin => "TERMREFin"
     case TYPEREFin => "TYPEREFin"
+
     case REFINEDtype => "REFINEDtype"
     case REFINEDtpt => "REFINEDtpt"
     case APPLIEDtype => "APPLIEDtype"
@@ -576,6 +583,7 @@ object TastyFormat {
     case ANNOTATION => "ANNOTATION"
     case PRIVATEqualified => "PRIVATEqualified"
     case PROTECTEDqualified => "PROTECTEDqualified"
+    case HOLE => "HOLE"
   }
 
   /** @return If non-negative, the number of leading references (represented as nats) of a length/trees entry.
@@ -583,7 +591,7 @@ object TastyFormat {
    */
   def numRefs(tag: Int) = tag match {
     case VALDEF | DEFDEF | TYPEDEF | TYPEPARAM | PARAM | NAMEDARG | RETURN | BIND |
-         SELFDEF | REFINEDtype | TERMREFin | TYPEREFin => 1
+         SELFDEF | REFINEDtype | TERMREFin | TYPEREFin | HOLE => 1
     case RENAMED | PARAMtype => 2
     case POLYtype | METHODtype | TYPELAMBDAtype => -1
     case _ => 0

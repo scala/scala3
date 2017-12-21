@@ -540,9 +540,13 @@ object Scanners {
           def fetchSingleQuote() = {
             nextChar()
             if (isIdentifierStart(ch))
-              charLitOr(() => getIdentRest())
+              charLitOr { getIdentRest(); SYMBOLLIT }
             else if (isOperatorPart(ch) && (ch != '\\'))
-              charLitOr(() => getOperatorRest())
+              charLitOr { getOperatorRest(); SYMBOLLIT }
+            else if (ch == '(' || ch == '{' || ch == '[') {
+              val tok = quote(ch)
+              charLitOr(tok)
+            }
             else {
               getLitChar()
               if (ch == '\'') {
@@ -965,7 +969,7 @@ object Scanners {
     /** Parse character literal if current character is followed by \',
      *  or follow with given op and return a symbol literal token
      */
-    def charLitOr(op: () => Unit): Unit = {
+    def charLitOr(op: => Token): Unit = {
       putChar(ch)
       nextChar()
       if (ch == '\'') {
@@ -973,11 +977,19 @@ object Scanners {
         token = CHARLIT
         setStrVal()
       } else {
-        op()
-        token = SYMBOLLIT
+        token = op
         strVal = name.toString
+        litBuf.clear()
       }
     }
+
+    /** The opening quote bracket token corresponding to `c` */
+    def quote(c: Char): Token = c match {
+      case '(' => QPAREN
+      case '{' => QBRACE
+      case '[' => QBRACKET
+    }
+
     override def toString =
       showTokenDetailed(token) + {
         if ((identifierTokens contains token) || (literalTokens contains token)) " " + name

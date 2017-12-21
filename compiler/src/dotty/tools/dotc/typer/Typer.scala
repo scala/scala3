@@ -393,6 +393,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     checkValue(assignType(cpy.Select(tree)(qual, tree.name), qual), pt)
 
   def typedSelect(tree: untpd.Select, pt: Type)(implicit ctx: Context): Tree = track("typedSelect") {
+
     def typeSelectOnTerm(implicit ctx: Context): Tree = {
       val qual1 = typedExpr(tree.qualifier, selectionProto(tree.name, pt, this))
       if (tree.name.isTypeName) checkStable(qual1.tpe, qual1.pos)
@@ -1072,6 +1073,25 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     Throw(expr1).withPos(tree.pos)
   }
 
+  def typedQuote(tree: untpd.Quote, pt: Type)(implicit ctx: Context): Tree = track("typedQuote") {
+    val untpd.Quote(body) = tree
+    val isType = body.isType
+    val resultClass = if (isType) defn.QuotedTypeClass else defn.QuotedExprClass
+    val proto1 = pt.baseType(resultClass) match {
+      case AppliedType(_, argType :: Nil) => argType
+      case _ => WildcardType
+    }
+    val nestedCtx = ctx.fresh.setTree(tree)
+    if (isType) {
+      val body1 = typedType(body, proto1)(nestedCtx)
+      ref(defn.typeQuoteMethod).appliedToTypeTrees(body1 :: Nil)
+    }
+    else {
+      val body1 = typed(body, proto1)(nestedCtx)
+      ref(defn.quoteMethod).appliedToType(body1.tpe.widen).appliedTo(body1)
+    }
+  }
+
   def typedSeqLiteral(tree: untpd.SeqLiteral, pt: Type)(implicit ctx: Context): SeqLiteral = track("typedSeqLiteral") {
     val proto1 = pt.elemType match {
       case NoType => WildcardType
@@ -1300,7 +1320,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
       case rhs => typedExpr(rhs, tpt1.tpe)
     }
     val vdef1 = assignType(cpy.ValDef(vdef)(name, tpt1, rhs1), sym)
-    if (sym.is(Inline, butNot = DeferredOrParamAccessor))
+    if (sym.is(Inline, butNot = DeferredOrParamOrAccessor))
       checkInlineConformant(rhs1, em"right-hand side of inline $sym")
     patchIfLazy(vdef1)
     patchFinalVals(vdef1)
@@ -1695,6 +1715,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
           case tree: untpd.Super => typedSuper(tree, pt)
           case tree: untpd.SeqLiteral => typedSeqLiteral(tree, pt)
           case tree: untpd.Inlined => typedInlined(tree, pt)
+          case tree: untpd.Quote => typedQuote(tree, pt)
           case tree: untpd.TypeTree => typedTypeTree(tree, pt)
           case tree: untpd.SingletonTypeTree => typedSingletonTypeTree(tree)
           case tree: untpd.AndTypeTree => typedAndTypeTree(tree)
@@ -1757,7 +1778,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
       case (imp: untpd.Import) :: rest =>
         val imp1 = typed(imp)
         buf += imp1
-        traverse(rest)(importContext(imp, imp1.symbol))
+        traverse(rest)(ctx.importContext(imp, imp1.symbol))
       case (mdef: untpd.DefTree) :: rest =>
         mdef.removeAttachment(ExpandedTree) match {
           case Some(xtree) =>

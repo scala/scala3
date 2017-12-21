@@ -130,7 +130,7 @@ object RefChecks {
    *  That is for overriding member M and overridden member O:
    *
    *    1.1. M must have the same or stronger access privileges as O.
-   *    1.2. O must not be final.
+   *    1.2. O must not be effectively final.
    *    1.3. O is deferred, or M has `override` modifier.
    *    1.4. If O is stable, then so is M.
    *     // @M: LIFTED 1.5. Neither M nor O are a parameterized type alias
@@ -144,8 +144,9 @@ object RefChecks {
    *    1.8.1  M's type is a subtype of O's type, or
    *    1.8.2  M is of type []S, O is of type ()T and S <: T, or
    *    1.8.3  M is of type ()S, O is of type []T and S <: T, or
-   *    1.9.  If M is a macro def, O cannot be deferred unless there's a concrete method overriding O.
-   *    1.10. If M is not a macro def, O cannot be a macro def.
+   *    1.9    M must not be a Dotty macro def
+   *    1.10.  If M is a 2.x macro def, O cannot be deferred unless there's a concrete method overriding O.
+   *    1.11.  If M is not a macro def, O cannot be a macro def.
    *  2. Check that only abstract classes have deferred members
    *  3. Check that concrete classes do not have deferred definitions
    *     that are not implemented in a subclass.
@@ -372,9 +373,11 @@ object RefChecks {
         overrideError("may not override a non-lazy value")
       } else if (other.is(Lazy) && !other.isRealMethod && !member.is(Lazy)) {
         overrideError("must be declared lazy to override a lazy value")
-      } else if (other.is(Deferred) && member.is(Macro) && member.extendedOverriddenSymbols.forall(_.is(Deferred))) { // (1.9)
+      } else if (member.is(Macro, butNot = Scala2x)) { // (1.9)
+        overrideError("is a macro, may not override anything")
+      } else if (other.is(Deferred) && member.is(Scala2Macro) && member.extendedOverriddenSymbols.forall(_.is(Deferred))) { // (1.10)
         overrideError("cannot be used here - term macros cannot override abstract methods")
-      } else if (other.is(Macro) && !member.is(Macro)) { // (1.10)
+      } else if (other.is(Macro) && !member.is(Macro)) { // (1.11)
         overrideError("cannot be used here - only term macros can override term macros")
       } else if (!compatibleTypes(memberTp(self), otherTp(self)) &&
                  !compatibleTypes(memberTp(upwardsSelf), otherTp(upwardsSelf))) {

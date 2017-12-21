@@ -4,7 +4,7 @@ package core
 package tasty
 
 import ast.Trees._
-import ast.untpd
+import ast.{untpd, tpd}
 import TastyFormat._
 import Contexts._, Symbols._, Types._, Names._, Constants._, Decorators._, Annotations._, StdNames.tpnme, NameOps._
 import collection.mutable
@@ -14,14 +14,25 @@ import StdNames.nme
 import TastyBuffer._
 import TypeApplications._
 import transform.SymUtils._
+import printing.Printer
+import printing.Texts._
 import config.Config
+
+object TreePickler {
+
+  case class Hole(idx: Int, args: List[tpd.Tree]) extends tpd.TermTree {
+    override def fallbackToText(printer: Printer): Text =
+      s"[[$idx|" ~~ printer.toTextGlobal(args, ", ") ~~ "]]"
+  }
+}
 
 class TreePickler(pickler: TastyPickler) {
   val buf = new TreeBuffer
   pickler.newSection("ASTs", buf)
+  import TreePickler._
   import buf._
   import pickler.nameBuffer.nameIndex
-  import ast.tpd._
+  import tpd._
 
   private val symRefs = Symbols.newMutableSymbolMap[Addr]
   private val forwardSymRefs = Symbols.newMutableSymbolMap[List[Addr]]
@@ -329,10 +340,10 @@ class TreePickler(pickler: TastyPickler) {
             case tp: TermRef if name != nme.WILDCARD =>
               // wildcards are pattern bound, need to be preserved as ids.
               pickleType(tp)
-            case _ =>
+            case tp =>
               writeByte(if (tree.isType) IDENTtpt else IDENT)
               pickleName(name)
-              pickleType(tree.tpe)
+              pickleType(tp)
           }
         case This(qual) =>
           if (qual.isEmpty) pickleType(tree.tpe)
@@ -483,7 +494,7 @@ class TreePickler(pickler: TastyPickler) {
               else {
                 if (!tree.self.isEmpty) registerTreeAddr(tree.self)
                 pickleType {
-                  cinfo.selfInfo match {
+                  selfInfo match {
                     case sym: Symbol => sym.info
                     case tp: Type => tp
                   }
@@ -542,6 +553,12 @@ class TreePickler(pickler: TastyPickler) {
         case TypeBoundsTree(lo, hi) =>
           writeByte(TYPEBOUNDStpt)
           withLength { pickleTree(lo); pickleTree(hi) }
+        case Hole(idx, args) =>
+          writeByte(HOLE)
+          withLength {
+            writeNat(idx)
+            args.foreach(pickleTree)
+          }
       }
       catch {
         case ex: AssertionError =>
@@ -570,6 +587,7 @@ class TreePickler(pickler: TastyPickler) {
     if (flags is Case) writeByte(CASE)
     if (flags is Override) writeByte(OVERRIDE)
     if (flags is Inline) writeByte(INLINE)
+    if (flags is Macro) writeByte(MACRO)
     if (flags is JavaStatic) writeByte(STATIC)
     if (flags is Module) writeByte(OBJECT)
     if (flags is Local) writeByte(LOCAL)

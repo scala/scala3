@@ -857,6 +857,7 @@ object Parsers {
     /** SimpleType       ::=  SimpleType TypeArgs
      *                     |  SimpleType `#' id
      *                     |  StableId
+     *                     |  [‘-’ | ‘+’ | ‘~’ | ‘!’] StableId
      *                     |  Path `.' type
      *                     |  `(' ArgTypes `)'
      *                     |  `_' TypeBounds
@@ -875,6 +876,8 @@ object Parsers {
         val start = in.skipToken()
         typeBounds().withPos(Position(start, in.lastOffset, start))
       }
+      else if (isIdent && nme.raw.isUnary(in.name))
+        atPos(in.offset) { PrefixOp(typeIdent(), path(thisOK = true)) }
       else path(thisOK = false, handleSingletonType) match {
         case r @ SingletonTypeTree(_) => r
         case r => convertToTypeId(r)
@@ -1282,6 +1285,9 @@ object Parsers {
 
     /** SimpleExpr    ::= new Template
      *                 |  BlockExpr
+     *                 |  ‘'{’ BlockExprContents ‘}’
+     *                 |  ‘'(’ ExprsInParens ‘)’
+     *                 |  ‘'[’ Type ‘]’
      *                 |  SimpleExpr1 [`_']
      *  SimpleExpr1   ::= literal
      *                 |  xmlLiteral
@@ -1310,6 +1316,15 @@ object Parsers {
         case LBRACE =>
           canApply = false
           blockExpr()
+        case QPAREN =>
+          in.token = LPAREN
+          atPos(in.offset)(Quote(simpleExpr()))
+        case QBRACE =>
+          in.token = LBRACE
+          atPos(in.offset)(Quote(simpleExpr()))
+        case QBRACKET =>
+          in.token = LBRACKET
+          atPos(in.offset)(Quote(inBrackets(typ())))
         case NEW =>
           canApply = false
           val start = in.skipToken()
@@ -1452,7 +1467,8 @@ object Parsers {
       }
       else fn
 
-    /** BlockExpr ::= `{' (CaseClauses | Block) `}'
+    /** BlockExpr         ::= `{' BlockExprContents `}'
+     *  BlockExprContents ::= CaseClauses | Block
      */
     def blockExpr(): Tree = atPos(in.offset) {
       inDefScopeBraces {
@@ -2073,8 +2089,6 @@ object Parsers {
           PatDef(mods, lhs, tpt, rhs)
       }
     }
-
-
 
     private def checkVarArgsRules(vparamss: List[List[untpd.ValDef]]): List[untpd.ValDef] = {
       def isVarArgs(tpt: Trees.Tree[Untyped]): Boolean = tpt match {

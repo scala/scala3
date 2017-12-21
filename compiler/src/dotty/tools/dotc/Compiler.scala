@@ -47,9 +47,10 @@ class Compiler {
       List(new sbt.ExtractAPI),     // Sends a representation of the API of classes to sbt via callbacks
       List(new Pickler),            // Generate TASTY info
       List(new LinkAll),            // Reload compilation units from TASTY for library code (if needed)
+      List(new ReifyQuotes),        // Turn quoted trees into explicit run-time data structures
       List(new FirstTransform,      // Some transformations to put trees into a canonical form
            new CheckReentrant,      // Internal use only: Check that compiled program has no data races involving global vars
-           new ElimJavaPackages),   // Eliminate syntactic references to Java packages
+           new ElimPackagePrefixes), // Eliminate references to package prefixes in Select nodes
       List(new CheckStatic,         // Check restrictions that apply to @static members
            new ElimRepeated,        // Rewrite vararg parameters and arguments
            new NormalizeFlags,      // Rewrite some definition flags
@@ -59,8 +60,8 @@ class Compiler {
            new ByNameClosures,      // Expand arguments to by-name parameters to closures
            new LiftTry,             // Put try expressions that might execute on non-empty stacks into their own methods
            new HoistSuperArgs,      // Hoist complex arguments of supercalls to enclosing scope
-           new ClassOf,            // Expand `Predef.classOf` calls.
-           new RefChecks),           // Various checks mostly related to abstract members and overriding
+           new ClassOf,             // Expand `Predef.classOf` calls.
+           new RefChecks),          // Various checks mostly related to abstract members and overriding
       List(new TryCatchPatterns,    // Compile cases in try/catch
            new PatternMatcher,      // Compile pattern matches
            new ExplicitOuter,       // Add accessors to outer classes from nested ones.
@@ -68,7 +69,7 @@ class Compiler {
            new ShortcutImplicits,   // Allow implicit functions without creating closures
            new CrossCastAnd,        // Normalize selections involving intersection types.
            new Splitter),           // Expand selections involving union types into conditionals
-      List(new PhantomArgLift, // Extracts the evaluation of phantom arguments placing them before the call.
+      List(new PhantomArgLift,      // Extracts the evaluation of phantom arguments placing them before the call.
            new VCInlineMethods,     // Inlines calls to value class methods
            new SeqLiterals,         // Express vararg arguments as arrays
            new InterceptedMethods,  // Special handling of `==`, `|=`, `getClass` methods

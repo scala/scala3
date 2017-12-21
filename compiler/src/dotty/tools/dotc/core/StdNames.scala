@@ -143,6 +143,8 @@ object StdNames {
     val INITIALIZER_PREFIX: N         = "initial$"
     val COMPANION_MODULE_METHOD: N    = "companion$module"
     val COMPANION_CLASS_METHOD: N     = "companion$class"
+    val QUOTE: N                      = "'"
+    val TYPE_QUOTE: N                = "type_'"
     val TRAIT_SETTER_SEPARATOR: N     = str.TRAIT_SETTER_SEPARATOR
 
     // value types (and AnyRef) are all used as terms as well
@@ -484,6 +486,7 @@ object StdNames {
     val reflect : N             = "reflect"
     val reify : N               = "reify"
     val rootMirror : N          = "rootMirror"
+    val run: N                  = "run"
     val runOrElse: N            = "runOrElse"
     val runtime: N              = "runtime"
     val runtimeClass: N         = "runtimeClass"

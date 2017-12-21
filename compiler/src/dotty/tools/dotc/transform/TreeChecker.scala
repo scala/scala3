@@ -375,7 +375,8 @@ class TreeChecker extends Phase with SymTransformer {
       def isNonMagicalMethod(x: Symbol) =
         x.is(Method) &&
           !x.isCompanionMethod &&
-          !x.isValueClassConvertMethod
+          !x.isValueClassConvertMethod &&
+          !(x.is(Macro) && ctx.phase.refChecked)
 
       val symbolsNotDefined = cls.classInfo.decls.toList.toSet.filter(isNonMagicalMethod) -- impl.body.map(_.symbol) - constr.symbol
 

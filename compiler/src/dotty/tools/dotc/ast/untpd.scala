@@ -69,7 +69,10 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
 
   case class InfixOp(left: Tree, op: Ident, right: Tree) extends OpTree
   case class PostfixOp(od: Tree, op: Ident) extends OpTree
-  case class PrefixOp(op: Ident, od: Tree) extends OpTree
+  case class PrefixOp(op: Ident, od: Tree) extends OpTree {
+    override def isType = op.isType
+    override def isTerm = op.isTerm
+  }
   case class Parens(t: Tree) extends ProxyTree {
     def forwardTo = t
   }
@@ -78,6 +81,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
     override def isType = !isTerm
   }
   case class Throw(expr: Tree) extends TermTree
+  case class Quote(expr: Tree) extends TermTree
   case class WhileDo(cond: Tree, body: Tree) extends TermTree
   case class DoWhile(body: Tree, cond: Tree) extends TermTree
   case class ForYield(enums: List[Tree], expr: Tree) extends TermTree
@@ -449,6 +453,10 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
       case tree: Throw if expr eq tree.expr => tree
       case _ => finalize(tree, untpd.Throw(expr))
     }
+    def Quote(tree: Tree)(expr: Tree) = tree match {
+      case tree: Quote if expr eq tree.expr => tree
+      case _ => finalize(tree, untpd.Quote(expr))
+    }
     def WhileDo(tree: Tree)(cond: Tree, body: Tree) = tree match {
       case tree: WhileDo if (cond eq tree.cond) && (body eq tree.body) => tree
       case _ => finalize(tree, untpd.WhileDo(cond, body))
@@ -507,6 +515,8 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
         cpy.Tuple(tree)(transform(trees))
       case Throw(expr) =>
         cpy.Throw(tree)(transform(expr))
+      case Quote(expr) =>
+        cpy.Quote(tree)(transform(expr))
       case WhileDo(cond, body) =>
         cpy.WhileDo(tree)(transform(cond), transform(body))
       case DoWhile(body, cond) =>
@@ -553,6 +563,8 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
       case Tuple(trees) =>
         this(x, trees)
       case Throw(expr) =>
+        this(x, expr)
+      case Quote(expr) =>
         this(x, expr)
       case WhileDo(cond, body) =>
         this(this(x, cond), body)
