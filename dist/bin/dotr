@@ -30,7 +30,6 @@ fi
 source "$PROG_HOME/bin/common"
 
 declare -a residual_args
-declare -a system_properties
 run_repl=false
 with_compiler=false
 CLASS_PATH=""
@@ -77,7 +76,6 @@ else
   fi
   if [ $with_compiler == true ]; then
     cp_arg+="$PSEP$DOTTY_COMP$PSEP$DOTTY_INTF$PSEP$SCALA_ASM"
-    system_properties+=("-Ddotty.tools.dotc.classpath=$DOTTY_COMP$PSEP$DOTTY_LIB$PSEP$DOTTY_INTF$PSEP$SCALA_ASM")
   fi
-  eval exec "\"$JAVACMD\"" "$DEBUG" "-classpath \"$cp_arg\"" "${system_properties[@]}" "${residual_args[@]}"
+  eval exec "\"$JAVACMD\"" "$DEBUG" "-classpath \"$cp_arg\"" "${residual_args[@]}"
 fi
