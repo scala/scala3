@@ -639,18 +639,19 @@ object Build {
 
   def runCompilerMain(repl: Boolean = false) = Def.inputTaskDyn {
     val dottyLib = packageAll.value("dotty-library")
+    lazy val dottyCompiler = packageAll.value("dotty-compiler")
     val args0: List[String] = spaceDelimited("<arg>").parsed.toList
     val decompile = args0.contains("-decompile")
-    val args = args0.filter(arg => arg != "-repl" || arg != "-decompile")
+    val args = args0.filter(arg => arg != "-repl" && arg != "-decompile" && arg != "-with-compiler")
 
     val main =
       if (repl) "dotty.tools.repl.Main"
       else if (decompile) "dotty.tools.dotc.decompiler.Main"
       else "dotty.tools.dotc.Main"
 
-    val extraClasspath =
-      if (decompile && !args.contains("-classpath")) dottyLib + ":."
-      else dottyLib
+    var extraClasspath = dottyLib
+    if (decompile && !args.contains("-classpath")) extraClasspath += ":."
+    if (args0.contains("-with-compiler")) extraClasspath += s":$dottyCompiler"
 
     val fullArgs = main :: insertClasspathInArgs(args, extraClasspath)
 
