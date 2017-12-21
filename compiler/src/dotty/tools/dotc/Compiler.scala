@@ -135,7 +135,7 @@ class Compiler {
 
   def reset()(implicit ctx: Context): Unit = {
     ctx.base.reset()
-    ctx.runInfo.clear()
+    if (ctx.run != null) ctx.run.reset()
   }
 
   def newRun(implicit ctx: Context): Run = {

@@ -449,7 +449,7 @@ object Symbols {
     final def isDefinedInCurrentRun(implicit ctx: Context): Boolean =
       pos.exists && defRunId == ctx.runId && {
         val file = associatedFile
-        file != null && ctx.runInfo.files.contains(file)
+        file != null && ctx.run.files.contains(file)
       }
 
     /** Is symbol valid in current run? */

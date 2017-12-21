@@ -26,7 +26,7 @@ object OrderingConstraint {
   private def newConstraint(boundsMap: ParamBounds, lowerMap: ParamOrdering, upperMap: ParamOrdering)(implicit ctx: Context) : OrderingConstraint = {
     val result = new OrderingConstraint(boundsMap, lowerMap, upperMap)
     if (Config.checkConstraintsNonCyclic) result.checkNonCyclic()
-    ctx.runInfo.recordConstraintSize(result, result.boundsMap.size)
+    ctx.run.recordConstraintSize(result, result.boundsMap.size)
     result
   }
 

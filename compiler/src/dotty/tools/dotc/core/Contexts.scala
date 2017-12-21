@@ -14,7 +14,6 @@ import NameOps._
 import Uniques._
 import SymDenotations._
 import Comments._
-import Run.RunInfo
 import util.Positions._
 import ast.Trees._
 import ast.untpd
@@ -43,7 +42,7 @@ object Contexts {
   private val (settingsStateLoc,    store4) = store3.newLocation[SettingsState]()
   private val (freshNamesLoc,       store5) = store4.newLocation[FreshNameCreator](new FreshNameCreator.Default)
   private val (compilationUnitLoc,  store6) = store5.newLocation[CompilationUnit]()
-  private val (runInfoLoc,          store7) = store6.newLocation[RunInfo]()
+  private val (runLoc,              store7) = store6.newLocation[Run]()
   private val initialStore = store7
 
   /** A context is passed basically everywhere in dotc.
@@ -194,8 +193,8 @@ object Contexts {
     /** The current compilation unit */
     def compilationUnit: CompilationUnit = store(compilationUnitLoc)
 
-    /** The current compiler-run specific Info */
-    def runInfo: RunInfo = store(runInfoLoc)
+    /** The current compiler-run */
+    def run: Run = store(runLoc)
 
     /** The new implicit references that are introduced by this scope */
     protected var implicitsCache: ContextualImplicits = null
@@ -460,7 +459,7 @@ object Contexts {
     def setPrinterFn(printer: Context => Printer): this.type = updateStore(printerFnLoc, printer)
     def setSettings(settingsState: SettingsState): this.type = updateStore(settingsStateLoc, settingsState)
     def setCompilationUnit(compilationUnit: CompilationUnit): this.type = updateStore(compilationUnitLoc, compilationUnit)
-    def setRunInfo(runInfo: RunInfo): this.type = updateStore(runInfoLoc, runInfo)
+    def setRun(run: Run): this.type = updateStore(runLoc, run)
     def setFreshNames(freshNames: FreshNameCreator): this.type = updateStore(freshNamesLoc, freshNames)
 
     def setProperty[T](key: Key[T], value: T): this.type =
@@ -520,9 +519,7 @@ object Contexts {
     tree = untpd.EmptyTree
     typeAssigner = TypeAssigner
     moreProperties = Map.empty
-    store = initialStore
-              .updated(settingsStateLoc, settings.defaultState)
-              .updated(runInfoLoc, new RunInfo(this))
+    store = initialStore.updated(settingsStateLoc, settings.defaultState)
     typeComparer = new TypeComparer(this)
     searchHistory = new SearchHistory(0, Map())
     gadt = EmptyGADTMap
