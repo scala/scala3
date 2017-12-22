@@ -27,7 +27,7 @@ object PickledQuotes {
   /** Transform the expression into it's fully spliced Tree */
   def quotedToTree(expr: quoted.Quoted)(implicit ctx: Context): Tree = expr match {
     case expr: quoted.TastyQuoted => unpickleQuote(expr)
-    case expr: quoted.ValueExpr[_] => Literal(Constant(expr.value))
+    case expr: quoted.Liftable.PrimitiveExpr[_] => Literal(Constant(expr.value))
     case expr: RawQuoted => expr.tree
   }
 
