@@ -1,7 +1,9 @@
 package dotty.tools.dotc.quoted
 
-import dotty.tools.dotc.ast.Trees.Literal
-import dotty.tools.dotc.core.Constants.Constant
+import dotty.tools.dotc.ast.Trees._
+import dotty.tools.dotc.ast.tpd
+import dotty.tools.dotc.core.Constants._
+import dotty.tools.dotc.core.Contexts._
 import dotty.tools.dotc.printing.RefinedPrinter
 
 import scala.quoted.Expr
@@ -10,6 +12,7 @@ import scala.runtime.quoted._
 
 /** Default runners for quoted expressions */
 object Runners {
+  import tpd._
 
   implicit def runner[T]: Runner[T] = new Runner[T] {
 
@@ -17,12 +20,26 @@ object Runners {
 
     def show(expr: Expr[T]): String = expr match {
       case expr: ConstantExpr[T] =>
-        val ctx = new QuoteDriver().initCtx
-        ctx.settings.color.update("never")(ctx)
+        implicit val ctx = new QuoteDriver().initCtx
+        ctx.settings.color.update("never")
         val printer = new RefinedPrinter(ctx)
         printer.toText(Literal(Constant(expr.value))).mkString(Int.MaxValue, false)
       case _ => new QuoteDriver().show(expr)
     }
+
+    def toConstantOpt(expr: Expr[T]): Option[T] = {
+      def toConstantOpt(tree: Tree): Option[T] = tree match {
+        case Literal(Constant(c)) => Some(c.asInstanceOf[T])
+        case Block(Nil, e) => toConstantOpt(e)
+        case Inlined(_, Nil, e) => toConstantOpt(e)
+        case _ => None
+      }
+      expr match {
+        case expr: ConstantExpr[T] => Some(expr.value)
+        case _ => new QuoteDriver().withTree(expr, (tree, _) => toConstantOpt(tree))
+      }
+    }
+
   }
 
   def run[T](expr: Expr[T], settings: RunSettings): T = expr match {
