@@ -13,6 +13,12 @@ abstract class Liftable[T] {
  *  gives an alternative implementation using just the basic staging system.
  */
 object Liftable {
-  implicit def IntIsLiftable: Liftable[Int] = (x: Int) => new ValueExpr(x)
   implicit def BooleanIsLiftable: Liftable[Boolean] = (x: Boolean) => new ValueExpr(x)
+  implicit def ByteLiftable: Liftable[Byte] = (x: Byte) => new ValueExpr(x)
+  implicit def CharIsLiftable: Liftable[Char] = (x: Char) => new ValueExpr(x)
+  implicit def ShortIsLiftable: Liftable[Short] = (x: Short) => new ValueExpr(x)
+  implicit def IntIsLiftable: Liftable[Int] = (x: Int) => new ValueExpr(x)
+  implicit def LongIsLiftable: Liftable[Long] = (x: Long) => new ValueExpr(x)
+  implicit def FloatIsLiftable: Liftable[Float] = (x: Float) => new ValueExpr(x)
+  implicit def DoubleIsLiftable: Liftable[Double] = (x: Double) => new ValueExpr(x)
 }
