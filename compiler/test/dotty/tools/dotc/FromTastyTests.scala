@@ -22,39 +22,38 @@ class FromTastyTests extends ParallelTesting {
 
   @Test def posTestFromTasty: Unit = {
     implicit val testGroup: TestGroup = TestGroup("posTestFromTasty")
-    val (step1, step2) = {
-      // compileTastyInDir("../tests/pos", defaultOptions) + // FIXME
-      // compileTasty("../tests/pos/t115.scala", defaultOptions) +
-      // compileTasty("../tests/pos/t2127.scala", defaultOptions) +
-      // compileTasty("../tests/pos/i1570.scala", defaultOptions) +
-      // compileTasty("../tests/pos/t1279a.scala", defaultOptions) +
-      // compileTasty("../tests/pos/i3129.scala", defaultOptions) +
-      // compileTasty("../tests/pos/i2250.scala", defaultOptions) +
-      // compileTasty("../tests/pos/i966.scala", defaultOptions) +
-      // compileTasty("../tests/pos/t0049.scala", defaultOptions) +
-      // compileTasty("../tests/pos/i0306.scala", defaultOptions) +
-      // compileTasty("../tests/pos/t0055.scala", defaultOptions) +
-      // compileTasty("../tests/pos/i2397.scala", defaultOptions) +
-      // compileTasty("../tests/pos/i1365.scala", defaultOptions) +
-      // compileTasty("../tests/pos/t1957.scala", defaultOptions) +
-      // compileTasty("../tests/pos/i1756.scala", defaultOptions) +
-      // compileTasty("../tests/pos/i3130d.scala", defaultOptions) +
-      // compileTasty("../tests/pos/i1990a.scala", defaultOptions) +
-      // compileTasty("../tests/pos/i996.scala", defaultOptions) +
-      // compileTasty("../tests/pos/companions.scala", defaultOptions) +
-      // compileTasty("../tests/pos/i1812.scala", defaultOptions) +
-      // compileTasty("../tests/pos/i2944.scala", defaultOptions) +
-      // compileTasty("../tests/pos/i2468.scala", defaultOptions) +
-      // compileTasty("../tests/pos/i2300.scala", defaultOptions) +
-      // compileTasty("../tests/pos/i1990.scala", defaultOptions) +
-      // compileTasty("../tests/pos/i1812b.scala", defaultOptions) +
-      // compileTasty("../tests/pos/t2405.scala", defaultOptions) +
-      // compileTasty("../tests/pos/supercalls.scala", defaultOptions) +
-      // compileTasty("../tests/pos/hklub0.scala", defaultOptions) +
-      // compileTasty("../tests/pos/i3130a.scala", defaultOptions) +
-      compileTastyInDir("../tests/pos-from-tasty", defaultOptions) +
-      compileTasty("../tests/pos-from-tasty/simpleClass.scala", defaultOptions)
-    }
+    val (step1, step2) = compileTastyInDir("../tests/pos", defaultOptions,
+      blacklist = Set(
+        "Meter.scala",
+        "NoCyclicReference.scala",
+        "depfuntype.scala",
+        "hklub0.scala",
+        "i0306.scala",
+        "i1365.scala",
+        "i1795.scala",
+        "i2345.scala",
+        "i2888.scala",
+        "i2944.scala",
+        "i2980.scala",
+        "i3000.scala",
+        "i536.scala",
+        "i974.scala",
+        "liftable.scala",
+        "quoteTest.scala",
+        "quoted.scala",
+        "stagedInterpreter.scala",
+        "superacc.scala",
+        "t0231.scala",
+        "t1203a.scala",
+        "t2260.scala",
+        "t3612.scala", // Test never finishes
+        "t3800.scala",
+        "t4579.scala",
+        "t8023.scala",
+        "tcpoly_ticket2096.scala",
+        "t247.scala",
+      )
+    )
     step1.checkCompile() // Compile all files to generate the class files with tasty
     step2.checkCompile() // Compile from tasty
     (step1 + step2).delete()
@@ -62,36 +61,36 @@ class FromTastyTests extends ParallelTesting {
 
   @Test def runTestFromTasty: Unit = {
     implicit val testGroup: TestGroup = TestGroup("runTestFromTasty")
-    val (step1, step2) = {
-      // compileTastyInDir("../tests/run", defaultOptions) + // FIXME
-      // compileTasty("../tests/run/t3613.scala", defaultOptions) +
-      // compileTasty("../tests/run/i1569.scala", defaultOptions) +
-      // compileTasty("../tests/run/i2337.scala", defaultOptions) +
-      // compileTasty("../tests/run/t2127.scala", defaultOptions) +
-      // compileTasty("../tests/run/scala2trait-lazyval.scala", defaultOptions) +
-      // compileTasty("../tests/run/t6666a.scala", defaultOptions) +
-      // compileTasty("../tests/run/t3452f.scala", defaultOptions) +
-      // compileTasty("../tests/run/t6957.scala", defaultOptions) +
-      // compileTasty("../tests/run/inlinedAssign.scala", defaultOptions) +
-      // compileTasty("../tests/run/bridges.scala", defaultOptions) +
-      // compileTasty("../tests/run/t8002.scala", defaultOptions) +
-      // compileTasty("../tests/run/t6506.scala", defaultOptions) +
-      // compileTasty("../tests/run/enum-approx.scala", defaultOptions) +
-      // compileTasty("../tests/run/i2337b.scala", defaultOptions) +
-      // compileTasty("../tests/run/array-addition.scala", defaultOptions) +
-      // compileTasty("../tests/run/t1909c.scala", defaultOptions) +
-      // compileTasty("../tests/run/i2163.scala", defaultOptions) +
-      // compileTasty("../tests/run/t8395.scala", defaultOptions) +
-      // compileTasty("../tests/run/view-iterator-stream.scala", defaultOptions) +
-      // compileTasty("../tests/run/Course-2002-13.scala", defaultOptions) +
-      // compileTasty("../tests/run/NestedClasses.scala", defaultOptions) +
-      // compileTasty("../tests/run/inlineForeach.scala", defaultOptions) +
-      // compileTasty("../tests/run/i1990b.scala", defaultOptions) +
-      // compileTasty("../tests/run/t3048.scala", defaultOptions) +
-      // compileTasty("../tests/run/patmat-bind-typed.scala", defaultOptions) +
-      compileTastyInDir("../tests/run-from-tasty", defaultOptions) +
-      compileTasty("../tests/run/t493.scala", defaultOptions)
-    }
+    val (step1, step2) = compileTastyInDir("../tests/run", defaultOptions,
+       blacklist = Set(
+         "Course-2002-13.scala",
+         "NestedClasses.scala",
+         "bridges.scala",
+         "eff-dependent.scala",
+         "enum-approx.scala",
+         "i2337.scala",
+         "i2337b.scala",
+         "inlineForeach.scala",
+         "patmat-bind-typed.scala",
+         "phantom-decls-1.scala",
+         "phantom-decls-3.scala",
+         "phantom-decls-5.scala",
+         "phantom-hk-1.scala",
+         "phantom-hk-2.scala",
+         "phantom-in-value-class.scala",
+         "phantom-methods-3.scala",
+         "phantom-methods-4.scala",
+         "phantom-poly-1.scala",
+         "phantom-poly-2.scala",
+         "phantom-poly-3.scala",
+         "phantom-poly-4.scala",
+         "scala2trait-lazyval.scala",
+         "t3452f.scala",
+         "t493.scala",
+         "t8395.scala",
+         "t3613.scala",
+       )
+    )
     step1.checkCompile() // Compile all files to generate the class files with tasty
     step2.checkRuns() // Compile from tasty and run the result
     (step1 + step2).delete()
