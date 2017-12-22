@@ -524,7 +524,6 @@ trait ParallelTesting extends RunnerOrchestration { self =>
                     val output = Source.fromFile(outDir + ".decompiled").getLines().map {line =>
                       stripTrailingWhitespaces.unapplySeq(line).map(_.head).getOrElse(line)
                     }.mkString("\n")
-                      .replaceFirst("@scala\\.annotation\\.internal\\.SourceFile\\([^\\)]+\\)( |\\n   )", "") // FIXME: should not be printed in the decompiler
 
                     val check: String = Source.fromFile(checkFile).getLines().mkString("\n")
 

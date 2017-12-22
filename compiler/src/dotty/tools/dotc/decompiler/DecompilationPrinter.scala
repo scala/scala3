@@ -6,6 +6,7 @@ import java.io.{OutputStream, PrintStream}
 import dotty.tools.dotc.core.Contexts._
 import dotty.tools.dotc.core.Phases.Phase
 import dotty.tools.dotc.core.tasty.TastyPrinter
+import dotty.tools.dotc.printing.DecompilerPrinter
 import dotty.tools.io.{File, Path}
 
 /** Phase that prints the trees in all loaded compilation units.
@@ -36,7 +37,7 @@ class DecompilationPrinter extends Phase {
   private def printToOutput(out: PrintStream)(implicit ctx: Context): Unit = {
     val unit = ctx.compilationUnit
     val pageWidth = ctx.settings.pageWidth.value
-
+    val printLines = ctx.settings.printLines.value
     val doubleLine = "=" * pageWidth
     val line = "-" * pageWidth
 
@@ -44,7 +45,9 @@ class DecompilationPrinter extends Phase {
     out.println(unit.source)
     out.println(line)
 
-    out.println(unit.tpdTree.show)
+    val printer = new DecompilerPrinter(ctx)
+
+    out.println(printer.toText(unit.tpdTree).mkString(pageWidth, printLines))
     out.println(line)
 
     if (ctx.settings.printTasty.value) {

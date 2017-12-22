@@ -5,8 +5,7 @@ package foo {
   class Foo() extends Object() {
     val a: Int => Int =
       {
-        def $anonfun(x: Int): Int = x.*(x)
-        closure($anonfun)
+        (x: Int) => x.*(x)
       }
   }
 }

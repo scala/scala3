@@ -2,8 +2,7 @@
 ../out/posTestFromTasty/pos/simpleCaseObject/foo/Foo.class
 --------------------------------------------------------------------------------
 package foo {
-  final lazy module case val Foo: foo.Foo = new foo.Foo()
-  final module case class Foo() extends Object() with _root_.scala.Product {
+  case object Foo() extends Object() with _root_.scala.Product {
     this: foo.Foo.type =>
 
     override def hashCode(): Int = 1045991777
