@@ -88,7 +88,7 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
     myFiles
   }
 
-  private def getSource(fileName: String): SourceFile = {
+  def getSource(fileName: String): SourceFile = {
     val f = new PlainFile(io.Path(fileName))
     if (f.isDirectory) {
       ctx.error(s"expected file, received directory '$fileName'")
@@ -170,7 +170,7 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
     runPhases(runCtx)
     if (!ctx.reporter.hasErrors) Rewrites.writeBack()
   }
-  
+
   /** Enter top-level definitions of classes and objects contain in Scala source file `file`.
    *  The newly added symbols replace any previously entered symbols.
    */

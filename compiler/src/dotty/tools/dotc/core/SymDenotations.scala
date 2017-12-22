@@ -275,7 +275,7 @@ object SymDenotations {
     final def privateWithin(implicit ctx: Context): Symbol = { ensureCompleted(); myPrivateWithin }
 
     /** Set privateWithin. */
-    protected[core] final def privateWithin_=(sym: Symbol): Unit =
+    protected[dotc] final def privateWithin_=(sym: Symbol): Unit =
       myPrivateWithin = sym
 
     /** The annotations of this denotation */

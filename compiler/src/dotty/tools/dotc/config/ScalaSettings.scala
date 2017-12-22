@@ -16,7 +16,9 @@ class ScalaSettings extends Settings.SettingGroup {
   val extdirs = PathSetting("-extdirs", "Override location of installed extensions.", Defaults.scalaExtDirs)
   val javabootclasspath = PathSetting("-javabootclasspath", "Override java boot classpath.", Defaults.javaBootClassPath)
   val javaextdirs = PathSetting("-javaextdirs", "Override java extdirs classpath.", Defaults.javaExtDirs)
-  val sourcepath = PathSetting("-sourcepath", "Specify location(s) of source files.", "") // Defaults.scalaSourcePath
+  val sourcepath = PathSetting("-sourcepath", "Specify location(s) of source files.", Defaults.scalaSourcePath)
+  val scansource = BooleanSetting("-scansource", "Scan source files to locate classes for which class-name != file-name")
+
   val classpath = PathSetting("-classpath", "Specify where to find user class files.", defaultClasspath) withAbbreviation "-cp"
   val outputDir = PathSetting("-d", "directory|jar", "destination for generated classfiles.", ".")
   val priorityclasspath = PathSetting("-priorityclasspath", "class path that takes precedence over all other paths (or testing only)", "")
@@ -130,6 +132,7 @@ class ScalaSettings extends Settings.SettingGroup {
     "A directory containing static files from which to generate documentation",
     sys.props("user.dir")
   )
+
 
   val projectName = StringSetting (
     "-project",
