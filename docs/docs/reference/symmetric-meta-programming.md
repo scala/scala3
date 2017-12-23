@@ -184,7 +184,7 @@ Here’s the definition of the `mapImpl` macro, which takes quoted types and exp
         var i = 0
         val xs = ~arr
         var len = xs.length
-        val ys = new Array[~u]
+        val ys = new Array[~u](len)
         while (i < len) {
           ys(i) = ~op(’(xs(i)))
           i += 1
@@ -212,7 +212,7 @@ Here’s an application of `map` and how it rewrites to optimized code:
       var i = 0
       val xs = ~’($this)
       var len = xs.length
-      val ys = new Array[~’[Int]]
+      val ys = new Array[~’[Int]](len)
       while (i < len) {
         ys(i) = ~(’(f)(’(xs(i))))
         i += 1
@@ -229,7 +229,7 @@ Here’s an application of `map` and how it rewrites to optimized code:
       var i = 0
       val xs = $this
       var len = xs.length
-      val ys = new Array[Int]
+      val ys = new Array[Int](len)
       while (i < len) {
         ys(i) = xs(i) + 1
         i += 1
@@ -245,7 +245,7 @@ Here’s an application of `map` and how it rewrites to optimized code:
       var i = 0
       val xs = $this
       var len = xs.length
-      val ys = new Array[Int]
+      val ys = new Array[Int](len)
       while (i < len) {
         ys(i) = xs(i) + 1
         i += 1
@@ -291,7 +291,7 @@ applicable without the global value exception. But in the example as
 given this does not hold since both `assert` and `program` call
 `assertImpl` with a splice but no quote.
 
-However, one can could argue that the example is really missing
+However, one could argue that the example is really missing
 an important aspect: The macro library has to be compiled in a phase
 prior to the program using it, but in the code above, macro
 and program are defined together. A more accurate view of
