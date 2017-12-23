@@ -1,13 +1,19 @@
-# Simple Symmetric Metaprogramming
+---
+layout: doc-page
+title: "The Meta-theory of Symmetric Meta-programming"
+---
+
+# The Meta-theory of Symmetric Meta-programming
 
 23.12.2017
 
-This note presents a simplified variant of symmetric metaprogramming
-which only treats dialgogues between two stages.  We could have quotes
-containing splices (which can contain quotes, which can contain
-splices, and so on).  Or we could start with a splice with embedded
-quotes. The important restriction is that (1) a term contains toplevel
-quotes or toplevel splices, but not both and (2) quotes cannot appear
+This note presents a simplified variant of symmetric meta-programming
+and sketches its soundness proof. The variant treats only dialogues
+between two stages.  A program can have quotes which can contain
+splices (which can contain quotes, which can contain splices, and so
+on).  Or the program could start with a splice with embedded
+quotes. The essential restriction is that (1) a term can contain top-level
+quotes or top-level splices, but not both, and (2) quotes cannot appear
 directly inside quotes and splices cannot appear directly inside
 splices. In other words, the universe is restricted to two phases
 only.
@@ -95,12 +101,12 @@ Typing judgments are of the form  `E1 * E2 |- t: T` where `E1, E2` are environme
                          E1 * E2 |- t1 t2: T
 
 
-                           E1 ’ E2 |- t: T
+                           E2 ’ E1 |- t: T
                           -----------------
                           E1 ~ E2 |- ’t: ’T
 
 
-                           E1 ~ E2 |- t: ’T
+                           E2 ~ E1 |- t: ’T
                            ----------------
                            E1 ’ E2 |- ~t: T
 
@@ -109,7 +115,7 @@ Typing judgments are of the form  `E1 * E2 |- t: T` where `E1, E2` are environme
 
 ## Soundness
 
-The meta-theory typically requires mutual inductions over two judgements.
+The meta-theory typically requires mutual inductions over two judgments.
 
 ### Progress Theorem
 
@@ -122,7 +128,7 @@ To prove (1):
 
  - the cases for variables, lambdas and applications are as in STL.
  - If `t = ’t2`, then by inversion we have ` ’ E1 |- t2: T2` for some type `T2`.
-   By second I.H., we have one of:
+   By the second I.H., we have one of:
    - `t2 = u`, hence `’t2` is a value,
    - `t2 ==> t3`, hence `’t2 --> ’t3`.
  - The case `t = ~t2` is not typable.
@@ -150,7 +156,7 @@ To prove (2):
 ### Substitution Lemma
 
  1. If `E1 ~ E2 |- s: S` and `E1 ~ E2, x: S |- t: T` then `E1 ~ E2 |- [x := s]t: T`.
- 2. If `E1 ’ E2 |- s: S` and `E2, x: S ’ E1 |- t: T` then `E2 ’ E1 |- [x := s]t: T`.
+ 2. If `E1 ~ E2 |- s: S` and `E2, x: S ’ E1 |- t: T` then `E2 ’ E1 |- [x := s]t: T`.
 
 The proofs are by induction on typing derivations for `t`, analogous
 to the proof for STL (with (2) a bit simpler than (1) since we do not
