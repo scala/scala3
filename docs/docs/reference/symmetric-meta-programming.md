@@ -1,3 +1,8 @@
+---
+layout: doc-page
+title: "Symmetric Meta Programming"
+---
+
 # Symmetric Meta Programming
 
 Symmetric meta programming is a new framework for staging and for some
