@@ -12,6 +12,9 @@ public class ChildJVMMain {
     static final String MessageEnd = "##THIS IS THE END FOR ME, GOODBYE##";
 
     private static void runMain(String dir) throws Exception {
+        String jcp = System.getProperty("java.class.path");
+        System.setProperty("java.class.path", jcp == null ? dir : dir + ":" + jcp);
+
         ArrayList<URL> cp = new ArrayList<>();
         for (String path : dir.split(":"))
             cp.add(new File(path).toURI().toURL());

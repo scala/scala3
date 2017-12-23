@@ -13,4 +13,3 @@ object Test {
   def g(es: Expr[String], t: Type[String]) =
     f('{ (~es + "!") :: Nil })('[List[~t]])
 }
-

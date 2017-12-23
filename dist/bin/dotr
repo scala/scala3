@@ -31,6 +31,7 @@ source "$PROG_HOME/bin/common"
 
 declare -a residual_args
 run_repl=false
+with_compiler=false
 CLASS_PATH=""
 
 while [[ $# -gt 0 ]]; do
@@ -42,6 +43,10 @@ while [[ $# -gt 0 ]]; do
     -classpath)
       CLASS_PATH="$2"
       shift
+      shift
+      ;;
+    -with-compiler)
+      with_compiler=true
       shift
       ;;
     -d)
@@ -68,6 +73,9 @@ else
     cp_arg+="$PSEP."
   else
     cp_arg+="$PSEP$CLASS_PATH"
+  fi
+  if [ $with_compiler == true ]; then
+    cp_arg+="$PSEP$DOTTY_COMP$PSEP$DOTTY_INTF$PSEP$SCALA_ASM"
   fi
   eval exec "\"$JAVACMD\"" "$DEBUG" "-classpath \"$cp_arg\"" "${residual_args[@]}"
 fi

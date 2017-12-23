@@ -29,6 +29,7 @@ source "$PROG_HOME/bin/common"
 
 default_java_opts="-Xmx768m -Xms768m"
 bootcp=true
+withCompiler=true
 
 CompilerMain=dotty.tools.dotc.Main
 DecompilerMain=dotty.tools.dotc.decompiler.Main
@@ -89,6 +90,7 @@ case "$1" in
    -nobootcp) unset bootcp && shift ;;
       -colors) colors=true && shift ;;
    -no-colors) unset colors && shift ;;
+  -with-compiler) jvm_cp_args="$PSEP$DOTTY_COMP" && shift ;;
 
           # break out -D and -J options and add them to JAVA_OPTS as well
           # so they reach the JVM in time to do some good. The -D options
