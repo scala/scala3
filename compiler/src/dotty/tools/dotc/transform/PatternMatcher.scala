@@ -212,14 +212,39 @@ object PatternMatcher {
     private def patternPlan(scrutinee: Symbol, tree: Tree, onSuccess: Plan, onFailure: Plan): Plan = {
 
       /** Plan for matching `selectors` against argument patterns `args` */
-      def matchArgsPlan(selectors: List[Tree], args: List[Tree], onSuccess: Plan): Plan =
-        args match {
-          case arg :: args1 =>
-            val selector :: selectors1 = selectors
-            letAbstract(selector)(
-              patternPlan(_, arg, matchArgsPlan(selectors1, args1, onSuccess), onFailure))
-          case Nil => onSuccess
-        }
+      def matchArgsPlan(selectors: List[Tree], args: List[Tree], onSuccess: Plan): Plan = {
+        /* For a case with arguments that have some test on them such as
+         * ```
+         * case Foo(1, 2) => someCode
+         * ```
+         * all arguments values are extracted before the checks are performed. This shape is expected by `emit`
+         * to avoid generating deep trees.
+         * ```
+         * val x1: Foo = ...
+         * val x2: Int = x1._1
+         * val x3: Int = x1._2
+         * if (x2 == 1) {
+         *   if (x3 == 2) someCode
+         *   else label$1()
+         * } else label$1()
+         * ```
+         */
+        def matchArgsSelectorsPlan(selectors: List[Tree], syms: List[Symbol]): Plan =
+          selectors match {
+            case selector :: selectors1 => letAbstract(selector)(sym => matchArgsSelectorsPlan(selectors1, sym :: syms))
+            case Nil => matchArgsPatternPlan(args, syms.reverse)
+          }
+        def matchArgsPatternPlan(args: List[Tree], syms: List[Symbol]): Plan =
+          args match {
+            case arg :: args1 =>
+              val sym :: syms1 = syms
+              patternPlan(sym, arg, matchArgsPatternPlan(args1, syms1), onFailure)
+            case Nil =>
+              assert(syms.isEmpty)
+              onSuccess
+          }
+        matchArgsSelectorsPlan(selectors, Nil)
+      }
 
       /** Plan for matching the sequence in `seqSym` against sequence elements `args`.
        *  If `exact` is true, the sequence is not permitted to have any elements following `args`.
@@ -838,8 +863,45 @@ object PatternMatcher {
           val switchCases = collectSwitchCases(plan)
           if (switchCases.lengthCompare(4) >= 0) // at least 3 cases + default
             Match(plan.scrutinee, emitSwitchCases(switchCases))
-          else
-            If(emitCondition(plan).withPos(plan.pos), emit(plan.onSuccess), emit(plan.onFailure))
+          else {
+            /** Merge nested `if`s that have the same `else` branch into a single `if`.
+             *  This optimization targets calls to label defs for case failure jumps to next case.
+             *
+             *  Plan for
+             *  ```
+             *  val x1: Int = ...
+             *  val x2: Int = ...
+             *  if (x1 == y1) {
+             *    if (x2 == y2) someCode
+             *    else label$1()
+             *  } else label$1()
+             *  ```
+             *  is emitted as
+             *  ```
+             *  val x1: Int = ...
+             *  val x2: Int = ...
+             *  if (x1 == y1 && x2 == y2) someCode
+             *  else label$1()
+             *  ```
+             */
+            def emitWithMashedConditions(plans: List[TestPlan]): Tree = {
+              val plan = plans.head
+              plan.onSuccess match {
+                case plan2: TestPlan if plan.onFailure == plan2.onFailure =>
+                  emitWithMashedConditions(plan2 :: plans)
+                case _ =>
+                  def emitCondWithPos(plan: TestPlan) = emitCondition(plan).withPos(plan.pos)
+                  val conditions =
+                    plans.foldRight[Tree](EmptyTree) { (otherPlan, acc) =>
+                      if (acc.isEmpty) emitCondWithPos(otherPlan)
+                      else acc.select(nme.ZAND).appliedTo(emitCondWithPos(otherPlan))
+                    }
+                  If(conditions, emit(plan.onSuccess), emit(plan.onFailure))
+              }
+
+            }
+            emitWithMashedConditions(plan :: Nil)
+          }
         case LetPlan(sym, body) =>
           seq(ValDef(sym, initializer(sym).ensureConforms(sym.info)) :: Nil, emit(body))
         case LabelledPlan(label, body, params) =>
