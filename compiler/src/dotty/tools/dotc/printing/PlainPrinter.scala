@@ -316,6 +316,8 @@ class PlainPrinter(_ctx: Context) extends Printer {
           else dclsText(trueDecls)
         tparamsText ~ " extends " ~ toTextParents(tp.parents) ~ "{" ~ selfText ~ declsText ~
           "} at " ~ preText
+      case mt: MethodType =>
+        toTextGlobal(mt)
       case tp =>
         ": " ~ toTextGlobal(tp)
     }
