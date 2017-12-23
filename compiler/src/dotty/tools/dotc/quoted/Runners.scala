@@ -5,6 +5,12 @@ import scala.runtime.quoted._
 
 /** Default runners for quoted expressions */
 object Runners {
-  implicit def runner[T]: Runner[T] = (expr: Expr[T]) => new QuoteDriver().run(expr)
-  implicit def show[T]: Show[T] = (expr: Expr[T]) => new QuoteDriver().show(expr)
+  implicit def runner[T]: Runner[T] = new Runner[T] {
+
+    def run(expr: Expr[T]): T =
+      new QuoteDriver().run(expr)
+
+    def show(expr: Expr[T]): String =
+      new QuoteDriver().show(expr)
+  }
 }
