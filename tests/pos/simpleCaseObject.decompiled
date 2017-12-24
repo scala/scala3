@@ -1,0 +1,25 @@
+================================================================================
+../out/posTestFromTasty/pos/simpleCaseObject/foo/Foo.class
+--------------------------------------------------------------------------------
+package foo {
+  final lazy module case val Foo: foo.Foo = new foo.Foo()
+  final module case class Foo() extends Object() with _root_.scala.Product {
+    this: foo.Foo.type =>
+
+    override def hashCode(): Int =
+      {
+        var acc: Int = 329201766
+        scala.runtime.Statics#finalizeHash(acc, 0)
+      }
+    override def toString(): String = "Foo"
+    override def canEqual(that: Any): Boolean = that.isInstanceOf[foo.Foo]
+    override def productArity: Int = 0
+    override def productPrefix: String = "Foo"
+    override def productElement(n: Int): Any =
+      n match
+        {
+          case _ => throw new IndexOutOfBoundsException(n.toString())
+        }
+  }
+}
+--------------------------------------------------------------------------------

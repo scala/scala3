@@ -1,0 +1,18 @@
+================================================================================
+../out/runTestFromTasty/run/puzzle/Test.class
+--------------------------------------------------------------------------------
+package <empty> {
+  final lazy module val Test: Test = new Test()
+  final module class Test() extends Object() { this: Test.type =>
+    def main(args: Array[String]): Unit =
+      {
+        println(if false then 5.0 else 53.0)
+        val x: Double = if false then 5.0 else 53.0
+        println(x)
+        val z: Long = 1L
+        val y: Float = Long.long2float(z)
+        ()
+      }
+  }
+}
+--------------------------------------------------------------------------------
