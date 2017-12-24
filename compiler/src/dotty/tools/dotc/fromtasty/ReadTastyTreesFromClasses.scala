@@ -28,9 +28,12 @@ class ReadTastyTreesFromClasses extends FrontEnd {
             else {
               val unit = CompilationUnit.mkCompilationUnit(clsd, unpickled, forceTrees = true)
               val cls = clsd.symbol.asClass
-              unit.pickled += (cls -> cls.unpickler.unpickler.bytes)
-              cls.unpickler = null
-              Some(unit)
+              if (cls.unpickler == null) None // Has already been loaded by some other compilation unit
+              else {
+                unit.pickled += (cls -> cls.unpickler.unpickler.bytes)
+                cls.unpickler = null
+                Some(unit)
+              }
             }
         }
       }
