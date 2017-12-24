@@ -32,8 +32,7 @@ prints it again in an error message if it evaluates to `false`.
       ~ assertImpl(’(expr))
 
     def assertImpl(expr: Expr[Boolean]) =
-      ’{ if !(~expr) then throw new AssertionError(s"failed assertion: ${~expr.toString}") }
-
+      ’{ if !(~expr) then throw new AssertionError(s"failed assertion: ${~showExpr(expr)}") }
 
 If `e` is an expression, then `’(e)` or `’{e}` represent the typed
 abstract syntax tree representing `e`. If `T` is a type, then `’[T]`
@@ -532,15 +531,12 @@ In the end, `Liftable` resembles very much a serialization
 framework. Like the latter it can be derived systematically for all
 collections, case classes and enums.
 
-In fact, the initial example of assertions also uses a lifting conversion under the hood.
-Recall the failure clause:
+Using lifting, we can now give the missing definition of `showExpr` in the introductory example:
 
-    throw new AssertionError(s"failed assertion: ${~expr.toString}") }
+    def showExpr[T](expr: Expr[T]): Expr[String] = expr.toString
 
-Here, `expr.toString` yields `expr`'s representation in String form. That string
-is lifted to an `Expr[String]` since the required type of a splice argument is an `Expr`.
-The lifted result is then spliced in into the `AssertionError` argument, giving
-back again the original string representation of `expr`.
+That is, the `showExpr` method converts its `Expr` argument to a string, and lifts
+the result back to an `Expr[String]` using the implicit `toExpr` conversion.
 
 ## Implementation
 
