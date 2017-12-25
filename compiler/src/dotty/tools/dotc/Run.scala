@@ -20,6 +20,7 @@ import java.io.{BufferedWriter, OutputStreamWriter}
 import printing.XprintMode
 import parsing.Parsers.Parser
 import typer.ImplicitRunInfo
+import collection.mutable
 
 import scala.annotation.tailrec
 import dotty.tools.io.VirtualFile
@@ -67,6 +68,12 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
   private[this] var myUnits: List[CompilationUnit] = _
   private[this] var myUnitsCached: List[CompilationUnit] = _
   private[this] var myFiles: Set[AbstractFile] = _
+
+  /** Units that are added because of source completers but that are not
+   *  compiled in current run.
+   */
+  val lateUnits = mutable.ListBuffer[CompilationUnit]()
+  var lateFiles = mutable.Set[AbstractFile]()
 
   /** The compilation units currently being compiled, this may return different
     *  results over time.
@@ -175,8 +182,10 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
    *  The newly added symbols replace any previously entered symbols.
    */
   def enterRoots(file: AbstractFile)(implicit ctx: Context): Unit =
-    if (!files.contains(file)) {
+    if (!files.contains(file) && !lateFiles.contains(file)) {
       val unit = new CompilationUnit(getSource(file.path))
+      lateUnits += unit
+      lateFiles += file
       enterRoots(unit)(runContext.fresh.setCompilationUnit(unit))
     }
 
