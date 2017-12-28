@@ -7,6 +7,7 @@ import dotty.tools.dotc.ast.Trees._
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.interpreter._
 import dotty.tools.dotc.quoted.PickledQuotes
+import dotty.tools.dotc.quoted.Quoted
 
 import scala.quoted
 
@@ -19,8 +20,7 @@ object Splicer {
    *  resulting expression is return as a `Tree`
    */
   def splice(tree: Tree)(implicit ctx: Context): Tree = tree match {
-    case Apply(quote, quoted :: Nil) if quote.symbol == defn.quoteMethod => quoted
-    case TypeApply(quote, quoted :: Nil) if quote.symbol == defn.typeQuoteMethod => quoted
+    case Quoted(quotedTree) => quotedTree
     case tree: RefTree => reflectiveSplice(tree)
     case tree: Apply => reflectiveSplice(tree)
     case tree: Inlined => reflectiveSplice(tree)

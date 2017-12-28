@@ -8,7 +8,7 @@ import dotty.tools.dotc.core.Contexts._
 import dotty.tools.dotc.core.Flags._
 import dotty.tools.dotc.core.Decorators._
 import dotty.tools.dotc.core.Symbols._
-
+import dotty.tools.dotc.quoted.Quoted
 import scala.reflect.ClassTag
 import java.net.URLClassLoader
 
@@ -53,13 +53,9 @@ class Interpreter(implicit ctx: Context) {
   private def interpretTreeImpl(tree: Tree): Object = {
     try {
       tree match {
-        case Apply(_, quote :: Nil) if tree.symbol eq defn.quoteMethod =>
-          RawQuoted(quote)
-        case TypeApply(_, quote :: Nil) if tree.symbol eq defn.typeQuoteMethod =>
-          RawQuoted(quote)
+        case Quoted(quotedTree) => RawQuoted(quotedTree)
 
-        case Literal(Constant(c)) =>
-          c.asInstanceOf[AnyRef]
+        case Literal(Constant(c)) => c.asInstanceOf[AnyRef]
 
         case Apply(fn, args) if fn.symbol.isConstructor =>
           val cls = fn.symbol.owner

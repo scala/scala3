@@ -17,6 +17,7 @@ import NameKinds.OuterSelectName
 import scala.collection.mutable
 import dotty.tools.dotc.core.StdNames._
 import dotty.tools.dotc.quoted.PickledQuotes
+import dotty.tools.dotc.quoted.Quoted
 
 
 /** Translates quoted terms and types to `unpickle` method calls.
@@ -316,10 +317,8 @@ class ReifyQuotes extends MacroTransform {
               enteredSyms = enteredSyms.tail
             }
         tree match {
-          case Apply(fn, arg :: Nil) if fn.symbol == defn.quoteMethod =>
-            quotation(arg, tree)
-          case TypeApply(fn, arg :: Nil) if fn.symbol == defn.typeQuoteMethod =>
-             quotation(arg, tree)
+          case Quoted(quotedTree) =>
+            quotation(quotedTree, tree)
           case Select(body, _) if tree.symbol.isSplice =>
             splice(body, tree)
           case Block(stats, _) =>
