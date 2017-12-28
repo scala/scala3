@@ -19,7 +19,7 @@ import scala.collection.{ mutable, immutable }
 import config.Printers.pickling
 import typer.Checking
 import config.Config
-import dotty.tools.dotc.quoted.PickledQuotes
+import dotty.tools.dotc.core.quoted.PickledQuotes
 import dotty.tools.dotc.interpreter.RawQuoted
 import scala.quoted.Expr
 

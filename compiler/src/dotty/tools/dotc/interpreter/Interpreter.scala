@@ -10,7 +10,7 @@ import dotty.tools.dotc.core.Contexts._
 import dotty.tools.dotc.core.Decorators._
 import dotty.tools.dotc.core.Names._
 import dotty.tools.dotc.core.Symbols._
-import dotty.tools.dotc.quoted.Quoted
+import dotty.tools.dotc.core.quoted.Quoted
 import dotty.tools.dotc.util.Positions.Position
 
 import scala.reflect.ClassTag

@@ -1,4 +1,4 @@
-package dotty.tools.dotc.quoted
+package dotty.tools.dotc.core.quoted
 
 import dotty.tools.dotc.ast.Trees._
 import dotty.tools.dotc.ast.tpd
@@ -8,7 +8,7 @@ import dotty.tools.dotc.core.Contexts._
 import dotty.tools.dotc.core.Decorators._
 import dotty.tools.dotc.core.Flags._
 import dotty.tools.dotc.core.Symbols._
-import dotty.tools.dotc.core.tasty._
+import dotty.tools.dotc.core.tasty.{TastyPickler, TastyPrinter, TastyString}
 import dotty.tools.dotc.interpreter.RawQuoted
 
 object PickledQuotes {
@@ -79,7 +79,7 @@ object PickledQuotes {
 
   /** Unpickle TASTY bytes into it's tree */
   private def unpickle(bytes: Array[Byte], splices: Seq[Any])(implicit ctx: Context): Tree = {
-    val unpickler = new dotty.tools.dotc.quoted.TastyUnpickler(bytes, splices)
+    val unpickler = new TastyUnpickler(bytes, splices)
     unpickler.enter(roots = Set(defn.RootPackage))
     val tree = unpickler.body.head
     if (pickling ne noPrinter) {

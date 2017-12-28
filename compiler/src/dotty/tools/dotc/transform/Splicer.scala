@@ -1,15 +1,10 @@
 package dotty.tools.dotc
 package transform
 
-import dotty.tools.dotc.core.Contexts._
-import dotty.tools.dotc.core.Symbols._
-import dotty.tools.dotc.ast.Trees._
 import dotty.tools.dotc.ast.tpd
+import dotty.tools.dotc.core.Contexts._
+import dotty.tools.dotc.core.quoted._
 import dotty.tools.dotc.interpreter._
-import dotty.tools.dotc.quoted.PickledQuotes
-import dotty.tools.dotc.quoted.Quoted
-
-import scala.quoted
 
 /** Utility class to slice quoted expressions */
 object Splicer {

@@ -16,8 +16,7 @@ import NameKinds.OuterSelectName
 
 import scala.collection.mutable
 import dotty.tools.dotc.core.StdNames._
-import dotty.tools.dotc.quoted.PickledQuotes
-import dotty.tools.dotc.quoted.Quoted
+import dotty.tools.dotc.core.quoted._
 
 
 /** Translates quoted terms and types to `unpickle` method calls.

@@ -1,4 +1,4 @@
-package dotty.tools.dotc.quoted
+package dotty.tools.dotc.core.quoted
 
 import dotty.tools.dotc.core.tasty._
 import dotty.tools.dotc.core.tasty.TastyUnpickler.NameTable
