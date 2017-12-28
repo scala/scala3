@@ -1,6 +1,6 @@
 object test1 {
   class C[A] { def foo(a: A) = "c" }
-  class D extends C[String] { override def foo(implicit s: String) = "d" } // error
+  class D extends C[String] { override def foo(implicit s: String) = "d" } // used to be error, now ok
 }
 
 object test2 {

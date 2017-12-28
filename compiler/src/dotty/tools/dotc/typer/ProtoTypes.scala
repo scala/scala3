@@ -470,7 +470,7 @@ object ProtoTypes {
         normalize(et.resultType, pt)
       case wtp =>
         val iftp = defn.asImplicitFunctionType(wtp)
-        if (iftp.exists) normalize(iftp.argInfos.last, pt) else tp
+        if (iftp.exists) normalize(iftp.dropDependentRefinement.argInfos.last, pt) else tp
     }
   }
 
