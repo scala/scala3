@@ -110,16 +110,10 @@ class Interpreter(implicit ctx: Context) {
   /** List of classes of the parameters of the signature of `sym` */
   private def paramsSig(sym: Symbol): List[Class[_]] = {
     sym.signature.paramsSig.map { param =>
-      val paramString = param.toString
-      if (paramString == defn.BooleanClass.showFullName) classOf[Boolean]
-      else if (paramString == defn.ByteClass.showFullName) classOf[Byte]
-      else if (paramString == defn.CharClass.showFullName) classOf[Char]
-      else if (paramString == defn.ShortClass.showFullName) classOf[Short]
-      else if (paramString == defn.IntClass.showFullName) classOf[Int]
-      else if (paramString == defn.LongClass.showFullName) classOf[Long]
-      else if (paramString == defn.DoubleClass.showFullName) classOf[Float]
-      else if (paramString == defn.DoubleClass.showFullName) classOf[Double]
-      else classLoader.loadClass(paramString)
+      defn.valueTypeNameToJavaType(param) match {
+        case Some(clazz) => clazz
+        case None => classLoader.loadClass(param.toString)
+      }
     }
   }
 
