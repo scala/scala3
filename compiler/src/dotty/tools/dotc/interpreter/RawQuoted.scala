@@ -10,3 +10,13 @@ trait RawQuoted extends quoted.Quoted {
   def tree: tpd.Tree
   override def toString: String = s"${this.getClass.getName}(${tree.toString})"
 }
+
+object RawQuoted {
+
+  def apply(tree: tpd.Tree): RawQuoted =
+    if (tree.isTerm) new RawExpr(tree)
+    else new RawType(tree)
+
+  private final class RawExpr(val tree: tpd.Tree) extends quoted.Expr[Any] with RawQuoted
+  private final class RawType(val tree: tpd.Tree) extends quoted.Type[Any] with RawQuoted
+}

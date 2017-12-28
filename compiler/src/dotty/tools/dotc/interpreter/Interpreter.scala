@@ -54,9 +54,9 @@ class Interpreter(implicit ctx: Context) {
     try {
       tree match {
         case Apply(_, quote :: Nil) if tree.symbol eq defn.quoteMethod =>
-          new RawExpr(quote)
+          RawQuoted(quote)
         case TypeApply(_, quote :: Nil) if tree.symbol eq defn.typeQuoteMethod =>
-          new RawType(quote)
+          RawQuoted(quote)
 
         case Literal(Constant(c)) =>
           c.asInstanceOf[AnyRef]
