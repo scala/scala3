@@ -11,6 +11,9 @@ object Macros {
   inline def macro3(n: Int) = ~ macro3Impl('(n))
   def macro3Impl(p: Expr[Int]) = '{ 2 + ~p }
 
+  inline def macro4(i: Int)(j: Int) = ~ macro4Impl('(i))('(j))
+  def macro4Impl(i: Expr[Int])(j: Expr[Int]) = '{ ~i + ~j }
+
   inline def power(inline n: Int, x: Double) = ~powerCode(n, '(x))
 
   def powerCode(n: Int, x: Expr[Double]): Expr[Double] =

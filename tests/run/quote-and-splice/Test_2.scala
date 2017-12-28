@@ -6,6 +6,7 @@ object Test {
     println(macro2(true))
     println(macro2(false))
     println(macro3(1))
+    println(macro4(2)(3))
     println(power(0, 5))
     println(power(1, 5))
     println(power(2, 5))

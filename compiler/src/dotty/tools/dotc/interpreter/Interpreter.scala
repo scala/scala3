@@ -1,16 +1,22 @@
 package dotty.tools.dotc
 package interpreter
 
+import java.io.{PrintWriter, StringWriter}
+
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.ast.Trees._
 import dotty.tools.dotc.core.Constants._
 import dotty.tools.dotc.core.Contexts._
-import dotty.tools.dotc.core.Flags._
 import dotty.tools.dotc.core.Decorators._
+import dotty.tools.dotc.core.Names._
 import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.quoted.Quoted
+import dotty.tools.dotc.util.Positions.Position
+
 import scala.reflect.ClassTag
 import java.net.URLClassLoader
+import java.lang.reflect.Constructor
+import java.lang.reflect.Method
 
 /** Tree interpreter that can interpret
  *   * Literal constants
@@ -37,11 +43,14 @@ class Interpreter(implicit ctx: Context) {
       interpretTreeImpl(tree) match {
         case obj: T => Some(obj)
         case obj =>
+          // TODO upgrade to a full type tag check or something similar
           ctx.error(s"Interpreted tree returned a result of an unexpected type. Expected ${ct.runtimeClass} but was ${obj.getClass}", tree.pos)
-          throw new StopInterpretation
+          None
       }
     } catch {
-      case _: StopInterpretation => None
+      case ex: StopInterpretation =>
+        ctx.error(ex.msg, ex.pos)
+        None
     }
   }
 
@@ -50,56 +59,88 @@ class Interpreter(implicit ctx: Context) {
    *
    *  If some error is encountered while interpreting a ctx.error is emited and a StopInterpretation is thrown.
    */
-  private def interpretTreeImpl(tree: Tree): Object = {
-    try {
-      tree match {
-        case Quoted(quotedTree) => RawQuoted(quotedTree)
+  private def interpretTreeImpl(tree: Tree): Object = { // TODO add environment
+    implicit val pos: Position = tree.pos
+    tree match {
+      case Quoted(quotedTree) => RawQuoted(quotedTree)
 
-        case Literal(Constant(c)) => c.asInstanceOf[AnyRef]
+      case Literal(Constant(c)) => c.asInstanceOf[AnyRef]
 
-        case Apply(fn, args) if fn.symbol.isConstructor =>
-          val cls = fn.symbol.owner
-          val clazz = classLoader.loadClass(cls.symbol.fullName.toString)
-          val paramClasses = paramsSig(fn.symbol)
-          val args1: List[Object] = args.map(arg => interpretTreeImpl(arg))
-          clazz.getConstructor(paramClasses: _*).newInstance(args1: _*).asInstanceOf[Object]
+      case Apply(fn, args) if fn.symbol.isConstructor =>
+        val clazz = loadClass(fn.symbol.owner.symbol.fullName)
+        val paramClasses = paramsSig(fn.symbol)
+        val interpretedArgs = args.map(arg => interpretTreeImpl(arg))
+        val constructor = getConstructor(clazz, paramClasses)
+        interpreted(constructor.newInstance(interpretedArgs: _*))
 
-        case Apply(fun, args) if fun.symbol.isStatic =>
-          val clazz = classLoader.loadClass(fun.symbol.owner.companionModule.fullName.toString)
-          val paramClasses = paramsSig(fun.symbol)
-          val args1: List[Object] = args.map(arg => interpretTreeImpl(arg))
-          val method = clazz.getMethod(fun.symbol.name.toString, paramClasses: _*)
-          method.invoke(null, args1: _*)
+      case _: RefTree | _: Apply if tree.symbol.isStatic =>
+        val clazz = loadClass(tree.symbol.owner.companionModule.fullName)
+        val paramClasses = paramsSig(tree.symbol)
 
-        case tree: RefTree if tree.symbol.isStatic =>
-          val clazz = classLoader.loadClass(tree.symbol.owner.companionModule.fullName.toString)
-          val method = clazz.getMethod(tree.name.toString)
-          method.invoke(null)
+        val interpretedArgs = Array.newBuilder[Object]
+        def interpretArgs(tree: Tree): Unit = tree match {
+          case Apply(fn, args) =>
+            interpretArgs(fn)
+            args.foreach(arg => interpretedArgs += interpretTreeImpl(arg))
+          case _ =>
+        }
+        interpretArgs(tree)
 
-        case tree: RefTree if tree.symbol.is(Module) =>
-          ??? // TODO
+        val method = getMethod(clazz, tree.symbol.name, paramClasses)
+        interpreted(method.invoke(null, interpretedArgs.result(): _*))
 
-        case Inlined(_, bindings, expansion) =>
-          if (bindings.nonEmpty) ??? // TODO evaluate bindings and add environment
-          interpretTreeImpl(expansion)
-        case _ =>
-          val msg =
-            if (tree.tpe.derivesFrom(defn.QuotedExprClass)) "Quote needs to be explicit or a call to a static method"
-            else "Value needs to be a explicit or a call to a static method"
-          ctx.error(msg, tree.pos)
-          throw new StopInterpretation
-      }
-    } catch {
-      case ex: NoSuchMethodException =>
-        ctx.error("Could not find interpreted method in classpath: " + ex.getMessage, tree.pos)
-        throw new StopInterpretation
-      case ex: ClassNotFoundException =>
-        ctx.error("Could not find interpreted class in classpath: " + ex.getMessage, tree.pos)
-        throw new StopInterpretation
+      // case tree: RefTree if tree.symbol.is(Module) => // TODO
+      // case Block(stats, expr) => // TODO evaluate bindings add environment
+      // case ValDef(_, _, rhs) =>  // TODO evaluate bindings add environment
+
+      case Inlined(_, bindings, expansion) =>
+        assert(bindings.isEmpty) // TODO evaluate bindings and add environment
+        interpretTreeImpl(expansion)
+      case _ =>
+        // TODO Add more precise descriptions of why it could not be interpreted.
+        // This should be done after the full interpreter is implemented.
+        throw new StopInterpretation(s"Could not interpret ${tree.show}", tree.pos)
+    }
+  }
+
+  private def loadClass(name: Name)(implicit pos: Position): Class[_] = {
+    try classLoader.loadClass(name.toString)
+    catch {
+      case _: ClassNotFoundException =>
+        val msg = s"Could not find interpreted class $name in classpath"
+        throw new StopInterpretation(msg, pos)
+    }
+  }
+
+  private def getMethod(clazz: Class[_], name: Name, paramClasses: List[Class[_]])(implicit pos: Position): Method = {
+    try clazz.getMethod(name.toString, paramClasses: _*)
+    catch {
+      case _: NoSuchMethodException =>
+        val msg = s"Could not find interpreted method ${clazz.getCanonicalName}.$name with parameters $paramClasses"
+        throw new StopInterpretation(msg, pos)
+    }
+  }
+
+  private def getConstructor(clazz: Class[_], paramClasses: List[Class[_]])(implicit pos: Position): Constructor[Object] = {
+    try clazz.getConstructor(paramClasses: _*).asInstanceOf[Constructor[Object]]
+    catch {
+      case _: NoSuchMethodException =>
+        val msg = s"Could not find interpreted constructor of ${clazz.getCanonicalName} with parameters $paramClasses"
+        throw new StopInterpretation(msg, pos)
+    }
+  }
+
+  private def interpreted[T](thunk: => T)(implicit pos: Position): T = {
+    try thunk
+    catch {
       case ex: RuntimeException =>
-        ex.printStackTrace()
-        ctx.error("A runtime exception occurred while interpreting: " + ex.getMessage, tree.pos)
-        throw new StopInterpretation
+        val sw = new StringWriter()
+        sw.write("A runtime exception occurred while interpreting")
+        sw.write(ex.getMessage)
+        sw.write("\n")
+        ex.printStackTrace(new PrintWriter(sw))
+        sw.write("\n")
+        throw new StopInterpretation(sw.toString, pos)
     }
   }
 
@@ -114,6 +155,6 @@ class Interpreter(implicit ctx: Context) {
   }
 
   /** Exception that stops interpretation if some issue is found */
-  private class StopInterpretation extends Exception
+  private class StopInterpretation(val msg: String, val pos: Position) extends Exception
 
 }
