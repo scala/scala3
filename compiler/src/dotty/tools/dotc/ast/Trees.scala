@@ -116,7 +116,7 @@ object Trees {
         assert(!Config.checkUnreportedErrors ||
                ctx.reporter.errorsReported ||
                ctx.settings.YshowPrintErrors.value
-                 // under -Yprint-show-errors, errors might arise during printing, but they do not count as reported
+                 // under -Yshow-print-errors, errors might arise during printing, but they do not count as reported
               )
       else if (Config.checkTreesConsistent)
         checkChildrenTyped(productIterator)
