@@ -30,6 +30,8 @@ import java.lang.reflect.Method
 class Interpreter(implicit ctx: Context) {
   import tpd._
 
+  type Env = Map[Symbol, Object]
+
   private[this] val classLoader = {
     val urls = ctx.settings.classpath.value.split(':').map(cp => java.nio.file.Paths.get(cp).toUri.toURL)
     new URLClassLoader(urls, getClass.getClassLoader)
@@ -40,7 +42,7 @@ class Interpreter(implicit ctx: Context) {
    */
   def interpretTree[T](tree: Tree)(implicit ct: ClassTag[T]): Option[T] = {
     try {
-      interpretTreeImpl(tree) match {
+      interpretTreeImpl(tree, Map.empty) match {
         case obj: T => Some(obj)
         case obj =>
           // TODO upgrade to a full type tag check or something similar
@@ -57,31 +59,37 @@ class Interpreter(implicit ctx: Context) {
   /** Returns the interpreted result of interpreting the code represented by the tree.
    *  Returns the result of the interpreted tree.
    *
-   *  If some error is encountered while interpreting a ctx.error is emited and a StopInterpretation is thrown.
+   *  If some error is encountered while interpreting a ctx.error is emitted and a StopInterpretation is thrown.
    */
-  private def interpretTreeImpl(tree: Tree): Object = { // TODO add environment
+  private def interpretTreeImpl(tree: Tree, env: Env): Object = {
+    ctx.debuglog(
+      s"""Interpreting:
+        |${tree.show}
+        |$env
+      """.stripMargin)
+
     implicit val pos: Position = tree.pos
+
     tree match {
       case Quoted(quotedTree) => RawQuoted(quotedTree)
 
-      case Literal(Constant(c)) => c.asInstanceOf[AnyRef]
+      case Literal(Constant(c)) => c.asInstanceOf[Object]
 
       case Apply(fn, args) if fn.symbol.isConstructor =>
         val clazz = loadClass(fn.symbol.owner.symbol.fullName)
         val paramClasses = paramsSig(fn.symbol)
-        val interpretedArgs = args.map(arg => interpretTreeImpl(arg))
+        val interpretedArgs = args.map(arg => interpretTreeImpl(arg, env))
         val constructor = getConstructor(clazz, paramClasses)
         interpreted(constructor.newInstance(interpretedArgs: _*))
 
       case _: RefTree | _: Apply if tree.symbol.isStatic =>
         val clazz = loadClass(tree.symbol.owner.companionModule.fullName)
         val paramClasses = paramsSig(tree.symbol)
-
         val interpretedArgs = Array.newBuilder[Object]
         def interpretArgs(tree: Tree): Unit = tree match {
           case Apply(fn, args) =>
             interpretArgs(fn)
-            args.foreach(arg => interpretedArgs += interpretTreeImpl(arg))
+            args.foreach(arg => interpretedArgs += interpretTreeImpl(arg, env))
           case _ =>
         }
         interpretArgs(tree)
@@ -89,18 +97,36 @@ class Interpreter(implicit ctx: Context) {
         val method = getMethod(clazz, tree.symbol.name, paramClasses)
         interpreted(method.invoke(null, interpretedArgs.result(): _*))
 
-      // case tree: RefTree if tree.symbol.is(Module) => // TODO
-      // case Block(stats, expr) => // TODO evaluate bindings add environment
-      // case ValDef(_, _, rhs) =>  // TODO evaluate bindings add environment
+      case tree: Ident if env.contains(tree.symbol) =>
+        env(tree.symbol)
+
+      case Block(stats, expr) =>
+        val env2 = stats.foldLeft(env)((acc, x) => interpretStat(x, acc))
+        interpretTreeImpl(expr, env2)
+
+      case tree: NamedArg =>
+        interpretTreeImpl(tree.arg, env)
 
       case Inlined(_, bindings, expansion) =>
-        assert(bindings.isEmpty) // TODO evaluate bindings and add environment
-        interpretTreeImpl(expansion)
+        val env2 = bindings.foldLeft(env)((acc, x) => interpretStat(x, acc))
+        interpretTreeImpl(expansion, env2)
+
       case _ =>
         // TODO Add more precise descriptions of why it could not be interpreted.
         // This should be done after the full interpreter is implemented.
-        throw new StopInterpretation(s"Could not interpret ${tree.show}", tree.pos)
+        throw new StopInterpretation(s"Could not interpret ${tree.show}\n${tree}", tree.pos)
     }
+  }
+
+  /** Interprets the statement and returns the updated environment */
+  private def interpretStat(stat: Tree, env: Env): Env = stat match {
+    case tree: ValDef =>
+      val obj = interpretTreeImpl(tree.rhs, env)
+      env.updated(tree.symbol, obj)
+
+    case _ =>
+      interpretTreeImpl(stat, env)
+      env
   }
 
   private def loadClass(name: Name)(implicit pos: Position): Class[_] = {
@@ -135,7 +161,7 @@ class Interpreter(implicit ctx: Context) {
     catch {
       case ex: RuntimeException =>
         val sw = new StringWriter()
-        sw.write("A runtime exception occurred while interpreting")
+        sw.write("A runtime exception occurred while interpreting\n")
         sw.write(ex.getMessage)
         sw.write("\n")
         ex.printStackTrace(new PrintWriter(sw))
