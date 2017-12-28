@@ -79,7 +79,7 @@ object PickledQuotes {
 
   /** Unpickle TASTY bytes into it's tree */
   private def unpickle(bytes: Array[Byte], splices: Seq[Any])(implicit ctx: Context): Tree = {
-    val unpickler = new QuoteUnpickler(bytes, splices)
+    val unpickler = new dotty.tools.dotc.quoted.TastyUnpickler(bytes, splices)
     unpickler.enter(roots = Set(defn.RootPackage))
     val tree = unpickler.body.head
     if (pickling ne noPrinter) {
