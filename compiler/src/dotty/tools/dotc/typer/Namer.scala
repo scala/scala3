@@ -48,7 +48,6 @@ trait NamerContextOps { this: Context =>
           val elem = scope.lastEntry
           if (elem.name == name) return elem.sym.denot // return self
         }
-        assert(scope.size <= 1, scope)
         owner.thisType.member(name)
       }
       else // we are in the outermost context belonging to a class; self is invisible here. See inClassContext.
