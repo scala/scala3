@@ -113,7 +113,11 @@ object Trees {
      */
     def withType(tpe: Type)(implicit ctx: Context): ThisTree[Type] = {
       if (tpe.isInstanceOf[ErrorType])
-        assert(!Config.checkUnreportedErrors || ctx.reporter.errorsReported)
+        assert(!Config.checkUnreportedErrors ||
+               ctx.reporter.errorsReported ||
+               ctx.settings.YshowPrintErrors.value
+                 // under -Yprint-show-errors, errors might arise during printing, but they do not count as reported
+              )
       else if (Config.checkTreesConsistent)
         checkChildrenTyped(productIterator)
       withTypeUnchecked(tpe)
