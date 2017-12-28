@@ -1,7 +1,7 @@
 package dotty.tools.dotc.core.quoted
 
 import dotty.tools.dotc.ast.Trees._
-import dotty.tools.dotc.ast.tpd
+import dotty.tools.dotc.ast.{tpd, untpd}
 import dotty.tools.dotc.config.Printers._
 import dotty.tools.dotc.core.Constants.Constant
 import dotty.tools.dotc.core.Contexts._
@@ -35,22 +35,28 @@ object PickledQuotes {
   private def unpickleQuote(expr: quoted.TastyQuoted)(implicit ctx: Context): Tree = {
     val tastyBytes = TastyString.stringToTasty(expr.tasty)
     val unpickled = unpickle(tastyBytes, expr.args)
-    unpickled match { // Expects `package _root_ { val ': Any = <tree> }`
+    unpickled match {
       case PackageDef(_, (vdef: ValDef) :: Nil) => vdef.rhs
+      case PackageDef(_, (tdef: TypeDef) :: Nil) => tdef.rhs
     }
   }
 
-  /** Encapsulate the tree in a top level `val`
+  /** Encapsulate the tree in a top level `val` or `type`
    *    `<tree>` ==> `package _root_ { val ': Any = <tree> }`
-   *
-   *  Note: Trees for types are also encapsulated this way to preserve the holes in the tree.
-   *        Encapsulating the type of the tree in a `type ' = <tree.tpe>` can potentially
-   *        contain references to the outer environment.
+   *    or
+   *    `<type tree>` ==> `package _root_ { type ' = <tree tree> }`
    */
   private def encapsulateQuote(tree: Tree)(implicit ctx: Context): Tree = {
-    val sym = ctx.newSymbol(ctx.owner, "'".toTermName, Synthetic, defn.AnyType, coord = tree.pos)
-    val quotedVal = ValDef(sym, tree).withPos(tree.pos)
-    PackageDef(ref(defn.RootPackage).asInstanceOf[Ident], quotedVal :: Nil).withPos(tree.pos)
+    def encapsulatedTerm = {
+      val sym = ctx.newSymbol(ctx.owner, "'".toTermName, Synthetic, defn.AnyType, coord = tree.pos)
+      ValDef(sym, tree).withPos(tree.pos)
+    }
+
+    def encapsulatedType =
+      untpd.TypeDef("'".toTypeName, tree).withPos(tree.pos).withType(defn.AnyType)
+
+    val quoted = if (tree.isTerm) encapsulatedTerm else encapsulatedType
+    PackageDef(ref(defn.RootPackage).asInstanceOf[Ident], quoted :: Nil).withPos(tree.pos)
   }
 
   // TASTY picklingtests/pos/quoteTest.scala
