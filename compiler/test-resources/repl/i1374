@@ -1,0 +1,8 @@
+scala> implicit class Padder(val sb: StringBuilder) extends AnyVal { def pad2(width: Int) = { 1 to width - sb.length foreach { sb append '*' }; sb } }
+// defined class Padder
+scala> val greeting = new StringBuilder("Hello, kitteh!")
+val greeting: StringBuilder = Hello, kitteh!
+scala> val a = greeting pad2 20
+val a: StringBuilder = Hello, kitteh!*
+scala> val farewell = new StringBuilder("U go now.")  // I hatez long bye-bye.
+val farewell: StringBuilder = U go now.
