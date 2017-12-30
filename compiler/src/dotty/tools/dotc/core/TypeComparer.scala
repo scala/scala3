@@ -475,12 +475,17 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
             isSubType(tp1.resType, tp2.resType.subst(tp2, tp1))
           finally comparedTypeLambdas = saved
         case _ =>
-          if (!tp1.isHK) {
-            tp2 match {
-              case EtaExpansion(tycon2) if tycon2.symbol.isClass =>
-                return isSubType(tp1, tycon2)
-              case _ =>
-            }
+          if (tp1.isHK) {
+            val tparams1 = tp1.typeParams
+            return isSubType(
+              HKTypeLambda.fromParams(tparams1, tp1.appliedTo(tparams1.map(_.paramRef))),
+              tp2
+            )
+          }
+          else tp2 match {
+            case EtaExpansion(tycon2) if tycon2.symbol.isClass =>
+              return isSubType(tp1, tycon2)
+            case _ =>
           }
           fourthTry(tp1, tp2)
       }
