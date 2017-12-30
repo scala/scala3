@@ -98,10 +98,12 @@ class Constructors extends MiniPhase with IdentityDenotTransformer { thisPhase =
    *  in this phase and for other methods in memoize).
    */
   override def checkPostCondition(tree: tpd.Tree)(implicit ctx: Context): Unit = {
+    def emptyRhsOK(sym: Symbol) =
+      sym.is(LazyOrDeferred) || sym.isConstructor && sym.owner.is(NoInitsTrait)
     tree match {
       case tree: ValDef if tree.symbol.exists && tree.symbol.owner.isClass && !tree.symbol.is(Lazy) && !tree.symbol.hasAnnotation(defn.ScalaStaticAnnot) =>
         assert(tree.rhs.isEmpty, i"$tree: initializer should be moved to constructors")
-      case tree: DefDef if !tree.symbol.is(LazyOrDeferred) =>
+      case tree: DefDef if !emptyRhsOK(tree.symbol) =>
         assert(!tree.rhs.isEmpty, i"unimplemented: $tree")
       case _ =>
     }
@@ -269,9 +271,16 @@ class Constructors extends MiniPhase with IdentityDenotTransformer { thisPhase =
       case _ => false
     }
 
+    val finalConstrStats = copyParams ::: mappedSuperCalls ::: lazyAssignments ::: stats
+    val expandedConstr =
+      if (cls.is(NoInitsTrait)) {
+        assert(finalConstrStats.isEmpty)
+        constr
+      }
+      else cpy.DefDef(constr)(rhs = Block(finalConstrStats, unitLiteral))
+
     cpy.Template(tree)(
-      constr = cpy.DefDef(constr)(
-        rhs = Block(copyParams ::: mappedSuperCalls ::: lazyAssignments ::: stats, unitLiteral)),
+      constr = expandedConstr,
       body = clsStats.toList)
   }
 }

@@ -1171,7 +1171,9 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
   object Template extends TemplateDeconstructor {
     def _1: List[Tree] = field.parents
     def _2: ValDef = field.self
-    def _3: List[Tree] = field.constr :: field.body
+    def _3: List[Tree] =
+      if (field.constr.rhs.isEmpty) field.body
+      else field.constr :: field.body
   }
 
   object Bind extends BindDeconstructor {
