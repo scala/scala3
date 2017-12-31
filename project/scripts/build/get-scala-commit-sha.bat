@@ -1,9 +1,9 @@
 @echo off
-for %%X in (bash.exe) do (set FOUND=%%~$PATH:X)
-if defined FOUND (
-  bash "%~dp0\get-scala-commit-sha" 2>NUL
-) else (
-  rem echo this script does not work with cmd.exe. please, install bash
-  echo unknown
-  exit 1
-)
+rem See more documentation in the corresponding Shell script.
+
+if not [%1]==[] cd /d %1
+
+for /f "delims=" %%s in ('git log -1 --format^=""%%H"" HEAD') do set hash=%%s
+rem If some errors happen; e.g. Git is not installed.
+if not defined hash exit 1
+echo %hash%

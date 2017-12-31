@@ -1,9 +1,12 @@
 @echo off
-for %%X in (bash.exe) do (set FOUND=%%~$PATH:X)
-if defined FOUND (
-  bash "%~dp0\get-scala-commit-date" 2>NUL
-) else (
-  rem echo this script does not work with cmd.exe. please, install bash
-  echo unknown
-  exit 1
-)
+rem See more documentation in the corresponding Shell script.
+
+if not [%1]==[] cd /d %1
+
+for /f "delims=" %%s in ('git log -1 --format^=""%%ci"" HEAD') do set last_commit_date_time=%%s
+rem If some errors happen; e.g. Git is not installed.
+if not defined last_commit_date_time exit 1
+rem remove time
+for /f "tokens=1 delims= " %%s in ("%last_commit_date_time%") do set last_commit_date=%%s
+rem remove "-"
+echo %last_commit_date:-=%

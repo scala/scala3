@@ -4,7 +4,7 @@ object VersionUtil {
   def executeScript(scriptName: String) = {
     val cmd =
       if (System.getProperty("os.name").toLowerCase.contains("windows"))
-        s"cmd.exe /c project\\scripts\\build\\$scriptName.bat -p"
+        s"cmd.exe /c project\\scripts\\build\\$scriptName.bat"
       else s"project/scripts/build/$scriptName"
     Process(cmd).lines.head.trim
   }
