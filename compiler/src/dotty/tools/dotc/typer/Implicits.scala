@@ -564,7 +564,7 @@ trait Implicits { self: Typer =>
      *  synthesize a class tag for `T`.
    	 */
     def synthesizedClassTag(formal: Type)(implicit ctx: Context): Tree =
-      formal.argTypes match {
+      formal.argInfos match {
         case arg :: Nil =>
           fullyDefinedType(arg, "ClassTag argument", pos) match {
             case defn.ArrayOf(elemTp) =>
