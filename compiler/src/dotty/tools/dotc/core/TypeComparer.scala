@@ -288,6 +288,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
           if (isSubType(info1.alias, tp2)) return true
           if (tp1.prefix.isStable) return false
         case _ =>
+          if (tp1 eq NothingType) return tp1 == tp2.bottomType
       }
       thirdTry(tp1, tp2)
     case tp1: TypeParamRef =>
