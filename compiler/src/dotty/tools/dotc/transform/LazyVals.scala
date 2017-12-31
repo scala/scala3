@@ -62,8 +62,8 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
   def transformLazyVal(tree: ValOrDefDef)(implicit ctx: Context): Tree = {
     val sym = tree.symbol
     if (!(sym is Flags.Lazy) ||
-        sym.owner.is(Flags.Trait) ||
-        (sym.isStatic && sym.is(Flags.Module, butNot = Flags.Method)))
+        sym.owner.is(Flags.Trait) || // val is accessor, lazy field will be implemented in subclass
+        (sym.isStatic && sym.is(Flags.Module, butNot = Flags.Method))) // static module vals are implemented in the JVM by lazy loading
       tree
     else {
       val isField = sym.owner.isClass
