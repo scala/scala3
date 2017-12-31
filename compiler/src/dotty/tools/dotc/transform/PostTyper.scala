@@ -218,7 +218,7 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
               super.transform(tree1)
           }
         case tree @ Assign(sel: Select, _) =>
-          superAcc.transformAssign(super.transform(tree))
+          super.transform(superAcc.transformAssign(tree))
         case Inlined(call, bindings, expansion) =>
           // Leave only a call trace consisting of
           //  - a reference to the top-level class from which the call was inlined,

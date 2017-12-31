@@ -271,7 +271,7 @@ class SuperAccessors(thisPhase: DenotTransformer) {
       val accPos = tree.pos.focus
       val protectedAccessor = clazz.info.decl(accName).symbol orElse {
         val newAcc = ctx.newSymbol(
-            clazz, accName, Artifact, accType, coord = accPos).enteredAfter(thisPhase)
+            clazz, accName, Artifact | Method, accType, coord = accPos).enteredAfter(thisPhase)
         val code = DefDef(newAcc, vrefss => {
           val (receiver :: value :: Nil) :: Nil = vrefss
           Assign(receiver.select(field), value).withPos(accPos)
