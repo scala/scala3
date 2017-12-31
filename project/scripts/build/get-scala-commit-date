@@ -8,9 +8,13 @@
 #   20120312
 #
 
+# Exit immediately if any command returns a non-zero status.
+set -eo pipefail
+
 [[ $# -eq 0 ]] || cd "$1"
 
-lastcommitdate=$(git log --format="%ci" HEAD | head -n 1 | cut -d ' ' -f 1)
-
-# 20120324
-echo "${lastcommitdate//-/}"
+# A better version could use `git log -n 1 --pretty='format:%cd' --date=format:'%Y%m%d'`.
+# But it requires everybody to use Git v2.6.0 or above.
+last_commit_date=$(git log -1 --format="%ci" HEAD | cut -d ' ' -f 1)
+# remove "-"
+echo "${last_commit_date//-/}"
