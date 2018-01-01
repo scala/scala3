@@ -352,8 +352,8 @@ class Inliner(call: tpd.Tree, rhs: tpd.Tree)(implicit ctx: Context) {
     case tp: MethodType =>
       (tp.paramNames, tp.paramInfos, argss.head).zipped.foreach { (name, paramtp, arg) =>
         def isByName = paramtp.dealias.isInstanceOf[ExprType]
-        paramBinding(name) = arg.tpe.stripAnnots.stripTypeVar match {
-          case argtpe: SingletonType if isIdempotentExpr(arg) => argtpe
+        paramBinding(name) = arg.tpe.dealias match {
+          case _: SingletonType if isIdempotentExpr(arg) => arg.tpe
           case argtpe =>
             val inlineFlag = if (paramtp.hasAnnotation(defn.InlineParamAnnot)) Inline else EmptyFlags
             val (bindingFlags, bindingType) =
@@ -476,7 +476,7 @@ class Inliner(call: tpd.Tree, rhs: tpd.Tree)(implicit ctx: Context) {
         }
       case _: Ident =>
         paramProxy.get(tree.tpe) match {
-          case Some(t: SingletonType) if tree.isTerm => singleton(t).withPos(tree.pos)
+          case Some(t) if tree.isTerm && t.isSingleton => singleton(t).withPos(tree.pos)
           case Some(t) if tree.isType => TypeTree(t).withPos(tree.pos)
           case None => tree
         }

@@ -244,11 +244,11 @@ object Erasure {
      *  in ExtensionMethods#transform.
      */
     def cast(tree: Tree, pt: Type)(implicit ctx: Context): Tree = trace(i"cast ${tree.tpe.widen} --> $pt", show = true) {
+
       def wrap(tycon: TypeRef) =
         ref(u2evt(tycon.typeSymbol.asClass)).appliedTo(tree)
       def unwrap(tycon: TypeRef) =
         ref(evt2u(tycon.typeSymbol.asClass)).appliedTo(tree)
-
 
       assert(!pt.isInstanceOf[SingletonType], pt)
       if (pt isRef defn.UnitClass) unbox(tree, pt)
