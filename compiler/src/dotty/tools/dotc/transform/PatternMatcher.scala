@@ -845,10 +845,10 @@ object PatternMatcher {
 
     /** Emit cases of a switch */
     private def emitSwitchCases(cases: List[Plan]): List[CaseDef] = (cases: @unchecked) match {
-      case TestPlan(EqualTest(tree), _, _, ons, _) :: cases1 =>
-        CaseDef(tree, EmptyTree, emit(ons)) :: emitSwitchCases(cases1)
       case (default: Plan) :: Nil =>
         CaseDef(Underscore(defn.IntType), EmptyTree, emit(default)) :: Nil
+      case TestPlan(EqualTest(tree), _, _, ons, _) :: cases1 =>
+        CaseDef(tree, EmptyTree, emit(ons)) :: emitSwitchCases(cases1)
     }
 
     /** If selfCheck is `true`, used to check whether a tree gets generated twice */
