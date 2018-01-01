@@ -969,11 +969,15 @@ object PatternMatcher {
           case Block(_, Match(_, cases)) => cases
           case _ => Nil
         }
-        def numConsts(cdefs: List[CaseDef]): Int = {
-          val tpes = cdefs.map(_.pat.tpe)
-          tpes.toSet.size
+        def numTypes(cdefs: List[CaseDef]): Int = {
+          def patTypes(pat: Tree): List[Type] = pat match {
+            case Alternative(pats) => pats.flatMap(patTypes)
+            case _ => pat.tpe :: Nil
+          }
+          val tpes = cdefs.flatMap(patTypes)
+          tpes.toSet.size: Int // without the type ascription, testPickling fails because of #2840.
         }
-        if (numConsts(resultCases) < numConsts(original.cases))
+        if (numTypes(resultCases) < numTypes(original.cases))
           ctx.warning(UnableToEmitSwitch(), original.pos)
       case _ =>
     }
