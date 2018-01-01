@@ -635,7 +635,9 @@ trait Implicits { self: Typer =>
           case _ => false
         }
         if (lazyImplicit.exists && refersToLazyImplicit)
-          Block(ValDef(lazyImplicit.asTerm, arg).withPos(pos) :: Nil, ref(lazyImplicit))
+          Block(
+            ValDef(lazyImplicit.asTerm, arg.changeOwner(ctx.owner, lazyImplicit)).withPos(pos) :: Nil,
+            ref(lazyImplicit))
         else
           arg
       case fail @ SearchFailure(tree) =>
