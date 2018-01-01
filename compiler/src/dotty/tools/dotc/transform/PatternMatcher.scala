@@ -969,16 +969,21 @@ object PatternMatcher {
           case Block(_, Match(_, cases)) => cases
           case _ => Nil
         }
-        def numTypes(cdefs: List[CaseDef]): Int = {
-          def patTypes(pat: Tree): List[Type] = pat match {
-            case Alternative(pats) => pats.flatMap(patTypes)
-            case _ => pat.tpe :: Nil
-          }
-          val tpes = cdefs.flatMap(patTypes)
-          tpes.toSet.size: Int // without the type ascription, testPickling fails because of #2840.
+        def typesInPattern(pat: Tree): List[Type] = pat match {
+          case Alternative(pats) => pats.flatMap(typesInPattern)
+          case _ => pat.tpe :: Nil
         }
-        if (numTypes(resultCases) < numTypes(original.cases))
+        def typesInCases(cdefs: List[CaseDef]): List[Type] =
+          cdefs.flatMap(cdef => typesInPattern(cdef.pat))
+        def numTypes(cdefs: List[CaseDef]): Int =
+          typesInCases(cdefs).toSet.size: Int // without the type ascription, testPickling fails because of #2840.
+        if (numTypes(resultCases) < numTypes(original.cases)) {
+          patmatch.println(i"switch warning for ${ctx.compilationUnit}")
+          patmatch.println(i"original types: ${typesInCases(original.cases)}%, %")
+          patmatch.println(i"switch types  : ${typesInCases(resultCases)}%, %")
+          patmatch.println(i"tree = $result")
           ctx.warning(UnableToEmitSwitch(), original.pos)
+        }
       case _ =>
     }
 
