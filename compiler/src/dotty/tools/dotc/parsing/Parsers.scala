@@ -1914,15 +1914,10 @@ object Parsers {
         }
         atPos(start, nameStart) {
           val name = ident()
-          val tpt =
-            if (ctx.settings.YmethodInfer.value && owner.isTermName && in.token != COLON) {
-              TypeTree()  // XX-METHOD-INFER
-            } else {
-              accept(COLON)
-              if (in.token == ARROW && owner.isTypeName && !(mods is Local))
-                syntaxError(VarValParametersMayNotBeCallByName(name, mods is Mutable))
-              paramType()
-            }
+          accept(COLON)
+          if (in.token == ARROW && owner.isTypeName && !(mods is Local))
+            syntaxError(VarValParametersMayNotBeCallByName(name, mods is Mutable))
+          val tpt = paramType()
           val default =
             if (in.token == EQUALS) { in.nextToken(); expr() }
             else EmptyTree
