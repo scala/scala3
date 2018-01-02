@@ -925,7 +925,7 @@ object SymDenotations {
     /** The top-level class containing this denotation,
      *  except for a toplevel module, where its module class is returned.
      */
-    def topLevelClass(implicit ctx: Context): Symbol = {
+    final def topLevelClass(implicit ctx: Context): Symbol = {
 
       def topLevel(d: SymDenotation): Symbol =
         if (!exists || d.isEffectiveRoot || (d is PackageClass) || (d.owner is PackageClass))
