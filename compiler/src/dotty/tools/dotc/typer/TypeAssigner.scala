@@ -195,19 +195,30 @@ trait TypeAssigner {
             TryDynamicCallType
           } else {
             val alts = tpe.denot.alternatives.map(_.symbol).filter(_.exists)
+            var packageAccess = false
             val what = alts match {
               case Nil =>
-                name.toString
+                i"$name cannot be accessed as a member of $pre"
               case sym :: Nil =>
-                if (sym.owner == pre.typeSymbol) sym.show else sym.showLocated
+                if (sym.owner.is(Package)) {
+                  packageAccess = true
+                  i"${sym.showLocated} cannot be accessed"
+                }
+                else {
+                  val symStr = if (sym.owner == pre.typeSymbol) sym.show else sym.showLocated
+                  i"$symStr cannot be accessed as a member of $pre"
+                }
               case _ =>
-                em"none of the overloaded alternatives named $name"
+                em"none of the overloaded alternatives named $name can be accessed as members of $pre"
             }
-            val where = if (ctx.owner.exists) s" from ${ctx.owner.enclosingClass}" else ""
+            val where =
+              if (!ctx.owner.exists) ""
+              else if (packageAccess) i" from nested ${ctx.owner.enclosingPackageClass}"
+              else i" from ${ctx.owner.enclosingClass}"
             val whyNot = new StringBuffer
             alts foreach (_.isAccessibleFrom(pre, superAccess, whyNot))
             if (tpe.isError) tpe
-            else errorType(ex"$what cannot be accessed as a member of $pre$where.$whyNot", pos)
+            else errorType(ex"$what$where.$whyNot", pos)
           }
         }
         else ctx.makePackageObjPrefixExplicit(tpe withDenot d)
