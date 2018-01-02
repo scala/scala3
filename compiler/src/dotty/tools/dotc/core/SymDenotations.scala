@@ -674,10 +674,7 @@ object SymDenotations {
     final def isAccessibleFrom(pre: Type, superAccess: Boolean = false, whyNot: StringBuffer = null)(implicit ctx: Context): Boolean = {
 
       /** Are we inside definition of `boundary`? */
-      def accessWithin(boundary: Symbol) =
-        ctx.owner.isContainedIn(boundary) &&
-          (!(this is JavaDefined) || // disregard package nesting for Java
-             ctx.owner.enclosingPackageClass == boundary.enclosingPackageClass)
+      def accessWithin(boundary: Symbol) = ctx.owner.isContainedIn(boundary)
 
       /** Are we within definition of linked class of `boundary`? */
       def accessWithinLinked(boundary: Symbol) = {
@@ -733,7 +730,9 @@ object SymDenotations {
              (  !(this is Local)
              || (owner is ImplClass) // allow private local accesses to impl class members
              || isCorrectThisType(pre)
-             )
+             ) &&
+             (!(this.is(Private) && owner.is(Package)) ||
+              owner == ctx.owner.enclosingPackageClass)
         || (this is Protected) &&
              (  superAccess
              || pre.isInstanceOf[ThisType]
