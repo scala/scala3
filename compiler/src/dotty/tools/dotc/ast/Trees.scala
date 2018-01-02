@@ -112,9 +112,9 @@ object Trees {
      *  type. (Overridden by empty trees)
      */
     def withType(tpe: Type)(implicit ctx: Context): ThisTree[Type] = {
-      if (tpe.isInstanceOf[ErrorType])
-        assert(ctx.mode.is(Mode.Interactive) || ctx.reporter.errorsReported)
-      else if (Config.checkTreesConsistent)
+      if (Config.checkUnreportedErrors)
+        if (tpe.isInstanceOf[ErrorType]) assert(ctx.reporter.errorsReported)
+      if (Config.checkTreesConsistent)
         checkChildrenTyped(productIterator)
       withTypeUnchecked(tpe)
     }
