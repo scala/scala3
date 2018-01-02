@@ -2055,6 +2055,7 @@ object Parsers {
         typeDefOrDcl(start, posMods(start, mods))
       case CASE =>
         enumCase(start, mods)
+          .reporting(t => i"case $t, current = ${in.show} / ${in.sepRegions}%, %")
       case _ =>
         tmplDef(start, mods)
     }
@@ -2313,6 +2314,11 @@ object Parsers {
     def enumCase(start: Offset, mods: Modifiers): DefTree = {
       val mods1 = mods.withAddedMod(atPos(in.offset)(Mod.EnumCase())) | Case
       accept(CASE)
+
+      in.adjustSepRegions(ARROW)
+        // Scanner thinks it is in a pattern match after seeing the `case`.
+        // We need to get it out of that mode by telling it we are past the `=>`
+
       atPos(start, nameStart) {
         val id = termIdent()
         if (in.token == LBRACKET || in.token == LPAREN)
