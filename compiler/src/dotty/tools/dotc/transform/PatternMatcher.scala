@@ -969,7 +969,7 @@ object PatternMatcher {
         }
         def numConsts(cdefs: List[CaseDef]): Int = {
           val tpes = cdefs.map(_.pat.tpe)
-          tpes.toSet.size: Int // without the type ascription, testPickling fails because of #2840.
+          tpes.toSet.size
         }
         if (numConsts(resultCases) < numConsts(original.cases))
           ctx.warning(UnableToEmitSwitch(), original.pos)
