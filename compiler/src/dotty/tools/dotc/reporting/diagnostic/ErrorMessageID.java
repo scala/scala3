@@ -124,6 +124,7 @@ public enum ErrorMessageID {
     SymbolChangedSemanticsInVersionID,
     UnableToEmitSwitchID,
     MissingCompanionForStaticID,
+    PolymorphicMethodMissingTypeInParentID,
     ;
 
     public int errorNumber() {
