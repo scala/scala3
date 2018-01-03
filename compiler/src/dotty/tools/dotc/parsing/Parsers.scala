@@ -2055,7 +2055,6 @@ object Parsers {
         typeDefOrDcl(start, posMods(start, mods))
       case CASE =>
         enumCase(start, mods)
-          .reporting(t => i"case $t, current = ${in.show} / ${in.sepRegions}%, %")
       case _ =>
         tmplDef(start, mods)
     }
