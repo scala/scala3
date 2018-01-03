@@ -292,16 +292,19 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
       if (!sym.exists || (sym eq defn.LanguageModuleClass)) ""
       else toPrefix(sym.owner) + sym.name + "."
     def featureName = toPrefix(owner) + feature
-    def hasImport(implicit ctx: Context): Boolean =
-      ctx.importInfo != null && {
-        ctx.importInfo.site.widen.typeSymbol == owner &&
-        !ctx.importInfo.excluded.contains(feature) &&
-        ctx.importInfo.originals.contains(feature) || {
+    def hasImport(implicit ctx: Context): Boolean = {
+      if (ctx.importInfo eq null) false
+      else {
+        val isImportOwner = ctx.importInfo.site.widen.typeSymbol eq owner
+        if (isImportOwner && ctx.importInfo.excluded.contains(feature)) false
+        else if (isImportOwner && ctx.importInfo.originals.contains(feature)) true
+        else {
           var c = ctx.outer
           while (c.importInfo eq ctx.importInfo) c = c.outer
           hasImport(c)
         }
       }
+    }
     def hasOption = ctx.base.settings.language.value exists (s => s == featureName || s == "_")
     hasImport(ctx.withPhase(ctx.typerPhase)) || hasOption
   }
