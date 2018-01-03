@@ -145,7 +145,7 @@ abstract class TokensCommon {
 
 object Tokens extends TokensCommon {
   final val minToken = EMPTY
-  final def maxToken = XMLSTART
+  final def maxToken = Q2BRACKET
 
   final val INTERPOLATIONID = 10;  enter(INTERPOLATIONID, "string interpolator")
   final val SYMBOLLIT = 11;        enter(SYMBOLLIT, "symbol literal") // TODO: deprecate
@@ -193,6 +193,9 @@ object Tokens extends TokensCommon {
   final val QPAREN = 85;           enter(QPAREN, "'(")
   final val QBRACE = 86;           enter(QBRACE, "'{")
   final val QBRACKET = 87;         enter(QBRACKET, "'[")
+  final val Q2PAREN = 97;          enter(Q2PAREN, "’(")
+  final val Q2BRACE = 98;          enter(Q2BRACE, "’{")
+  final val Q2BRACKET = 99;        enter(Q2BRACKET, "’[")
 
   /** XML mode */
   final val XMLSTART = 96;         enter(XMLSTART, "$XMLSTART$<") // TODO: deprecate
@@ -211,7 +214,7 @@ object Tokens extends TokensCommon {
     USCORE, NULL, THIS, SUPER, TRUE, FALSE, RETURN, XMLSTART)
 
   final val canStartExpressionTokens = atomicExprTokens | BitSet(
-    LBRACE, LPAREN, QBRACE, QPAREN, IF, DO, WHILE, FOR, NEW, TRY, THROW)
+    LBRACE, LPAREN, QBRACE, Q2BRACE, QPAREN, Q2PAREN, IF, DO, WHILE, FOR, NEW, TRY, THROW)
 
   final val canStartTypeTokens = literalTokens | identifierTokens | BitSet(
     THIS, SUPER, USCORE, LPAREN, AT)

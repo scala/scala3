@@ -1316,13 +1316,13 @@ object Parsers {
         case LBRACE =>
           canApply = false
           blockExpr()
-        case QPAREN =>
+        case QPAREN | Q2PAREN =>
           in.token = LPAREN
           atPos(in.offset)(Quote(simpleExpr()))
-        case QBRACE =>
+        case QBRACE | Q2BRACE =>
           in.token = LBRACE
           atPos(in.offset)(Quote(simpleExpr()))
-        case QBRACKET =>
+        case QBRACKET | Q2BRACKET =>
           in.token = LBRACKET
           atPos(in.offset)(Quote(inBrackets(typ())))
         case NEW =>
