@@ -277,8 +277,11 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
    *
    *       import owner.feature
    *
-   *  (the feature may be bunched with others, or renamed, but wildcard imports
-   *  don't count).
+   *     and there is no visible nested import that excludes the feature, as in
+   *
+   *       import owner.{ feature => _ }
+   *
+   *  The feature may be bunched with others, or renamed, but wildcard imports don't count.
    *
    *  2. The feature is enabled by a compiler option
    *
@@ -293,13 +296,16 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
       else toPrefix(sym.owner) + sym.name + "."
     def featureName = toPrefix(owner) + feature
     def hasImport(implicit ctx: Context): Boolean = {
-      if (ctx.importInfo == null || (ctx.importInfo.site.widen.typeSymbol ne owner)) false
-      else if (ctx.importInfo.excluded.contains(feature)) false
-      else if (ctx.importInfo.originals.contains(feature)) true
+      if (ctx.importInfo eq null) false
       else {
-        var c = ctx.outer
-        while (c.importInfo eq ctx.importInfo) c = c.outer
-        hasImport(c)
+        val isImportOwner = ctx.importInfo.site.widen.typeSymbol eq owner
+        if (isImportOwner && ctx.importInfo.originals.contains(feature)) true
+        else if (isImportOwner && ctx.importInfo.excluded.contains(feature)) false
+        else {
+          var c = ctx.outer
+          while (c.importInfo eq ctx.importInfo) c = c.outer
+          hasImport(c)
+        }
       }
     }
     def hasOption = ctx.base.settings.language.value exists (s => s == featureName || s == "_")
