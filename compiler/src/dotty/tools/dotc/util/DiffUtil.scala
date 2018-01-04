@@ -59,6 +59,13 @@ object DiffUtil {
     (fnd, exp, totalChange.toDouble / (expected.length + found.length))
   }
 
+  def mkColoredLineDiff(expected: Seq[String], actual: Seq[String]): String = {
+    val expectedSize = DiffUtil.EOF.length max expected.map(_.length).max
+    actual.padTo(expected.length, "").zip(expected.padTo(actual.length, "")).map { case (act, exp) =>
+      mkColoredLineDiff(exp, act, expectedSize)
+    }.mkString("\n")
+  }
+
   def mkColoredLineDiff(expected: String, actual: String, expectedSize: Int): String = {
     lazy val diff = {
       val tokens = splitTokens(expected, Nil).toArray

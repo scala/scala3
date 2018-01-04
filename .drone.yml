@@ -43,11 +43,18 @@ pipeline:
       - cp -R . /tmp/3/ && cd /tmp/3/
       - ./project/scripts/sbt dotty-optimised/test
 
-  test_sbt:
+  test_ide:
     group: test
     image: lampepfl/dotty:2018-04-10
     commands:
       - cp -R . /tmp/4/ && cd /tmp/4/
+      - ./project/scripts/sbt dotty-language-server/test:run
+
+  test_sbt:
+    group: test
+    image: lampepfl/dotty:2017-11-17
+    commands:
+      - cp -R . /tmp/5/ && cd /tmp/5/
       - ./project/scripts/sbt sbt-dotty/scripted
     when:
       # sbt scripted tests are slow and only run on nightly or deployment

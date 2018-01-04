@@ -772,6 +772,8 @@ object Build {
       ),
       javaOptions := (javaOptions in `dotty-compiler-bootstrapped`).value,
 
+      test := {}, // Tests should be run with dotty-language-server/test:run
+
       run := Def.inputTaskDyn {
         val inputArgs = spaceDelimited("<arg>").parsed
 
