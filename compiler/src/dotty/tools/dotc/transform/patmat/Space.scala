@@ -806,22 +806,23 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
   def checkable(tree: Match): Boolean = {
     // Possible to check everything, but be compatible with scalac by default
     def isCheckable(tp: Type): Boolean =
-        !tp.hasAnnotation(defn.UncheckedAnnot) && (
-          ctx.settings.YcheckAllPatmat.value ||
-          tp.typeSymbol.is(Sealed) ||
-          tp.isInstanceOf[OrType] ||
-          (tp.isInstanceOf[AndType] && {
-            val and = tp.asInstanceOf[AndType]
-            isCheckable(and.tp1) || isCheckable(and.tp2)
-          }) ||
-          tp.isRef(defn.BooleanClass) ||
-          tp.typeSymbol.is(Enum) ||
-          canDecompose(tp) ||
-          (defn.isTupleType(tp) && tp.dealias.argInfos.exists(isCheckable(_)))
-        )
+      !tp.hasAnnotation(defn.UncheckedAnnot) && {
+        val tpw = tp.widen.dealias
+        ctx.settings.YcheckAllPatmat.value ||
+        tpw.typeSymbol.is(Sealed) ||
+        tpw.isInstanceOf[OrType] ||
+        (tpw.isInstanceOf[AndType] && {
+          val and = tpw.asInstanceOf[AndType]
+          isCheckable(and.tp1) || isCheckable(and.tp2)
+        }) ||
+        tpw.isRef(defn.BooleanClass) ||
+        tpw.typeSymbol.is(Enum) ||
+        canDecompose(tpw) ||
+        (defn.isTupleType(tpw) && tpw.argInfos.exists(isCheckable(_)))
+      }
 
     val Match(sel, cases) = tree
-    val res = isCheckable(sel.tpe.widen.dealiasKeepAnnots)
+    val res = isCheckable(sel.tpe)
     debug.println(s"checkable: ${sel.show} = $res")
     res
   }

@@ -561,8 +561,7 @@ trait Checking {
    */
   def checkImplicitParamsNotSingletons(vparamss: List[List[ValDef]])(implicit ctx: Context): Unit = vparamss match {
     case (vparam :: Nil) :: _ if !(vparam.symbol is Implicit) =>
-      if (vparam.tpt.tpe.isInstanceOf[SingletonType])
-        ctx.error(s"implicit conversion may not have a parameter of singleton type", vparam.tpt.pos)
+      checkNotSingleton(vparam.tpt, " to be parameter type of an implicit conversion")
     case _ =>
   }
 
@@ -660,9 +659,7 @@ trait Checking {
 
   /** Check that `tpt` does not refer to a singleton type */
   def checkNotSingleton(tpt: Tree, where: String)(implicit ctx: Context): Tree =
-    if (tpt.tpe.isInstanceOf[SingletonType]) {
-      errorTree(tpt, ex"Singleton type ${tpt.tpe} is not allowed $where")
-    }
+    if (tpt.tpe.isSingleton) errorTree(tpt, ex"Singleton type ${tpt.tpe} is not allowed $where")
     else tpt
 
   /** Verify classes extending AnyVal meet the requirements */

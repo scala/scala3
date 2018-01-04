@@ -114,6 +114,7 @@ object Types {
       case _: SingletonType | NoPrefix => true
       case tp: RefinedOrRecType => tp.parent.isStable
       case tp: ExprType => tp.resultType.isStable
+      case tp: AnnotatedType => tp.tpe.isStable
       case _ => false
     }
 
@@ -247,6 +248,9 @@ object Types {
       case _ => NoType
     }
 
+    /** Is this type a (possibly aliased) singleton type? */
+    def isSingleton(implicit ctx: Context) = dealias.isInstanceOf[SingletonType]
+
     /** Is this type guaranteed not to have `null` as a value? */
     final def isNotNull(implicit ctx: Context): Boolean = this match {
       case tp: ConstantType => tp.value.value != null
@@ -354,7 +358,6 @@ object Types {
     @tailrec final def typeSymbol(implicit ctx: Context): Symbol = this match {
       case tp: TypeRef => tp.symbol
       case tp: ClassInfo => tp.cls
-//    case ThisType(cls) => cls // needed?
       case tp: SingletonType => NoSymbol
       case tp: TypeProxy => tp.underlying.typeSymbol
       case _ => NoSymbol
@@ -918,7 +921,7 @@ object Types {
     /** Widen from singleton type to its underlying non-singleton
      *  base type by applying one or more `underlying` dereferences.
      */
-    final def widenSingleton(implicit ctx: Context): Type = stripTypeVar match {
+    final def widenSingleton(implicit ctx: Context): Type = stripTypeVar.stripAnnots match {
       case tp: SingletonType if !tp.isOverloaded => tp.underlying.widenSingleton
       case _ => this
     }
@@ -3555,16 +3558,18 @@ object Types {
   // ----- Annotated and Import types -----------------------------------------------
 
   /** An annotated type tpe @ annot */
-  case class AnnotatedType(tpe: Type, annot: Annotation)
-      extends UncachedProxyType with ValueType {
+  case class AnnotatedType(tpe: Type, annot: Annotation) extends UncachedProxyType with ValueType {
     // todo: cache them? but this makes only sense if annotations and trees are also cached.
+
     override def underlying(implicit ctx: Context): Type = tpe
+
     def derivedAnnotatedType(tpe: Type, annot: Annotation) =
       if ((tpe eq this.tpe) && (annot eq this.annot)) this
       else AnnotatedType(tpe, annot)
 
     override def stripTypeVar(implicit ctx: Context): Type =
       derivedAnnotatedType(tpe.stripTypeVar, annot)
+
     override def stripAnnots(implicit ctx: Context): Type = tpe.stripAnnots
   }
 
@@ -3965,7 +3970,7 @@ object Types {
      */
     def tryWiden(tp: NamedType, pre: Type): Type = pre.member(tp.name) match {
       case d: SingleDenotation =>
-        d.info match {
+        d.info.dealias match {
           case TypeAlias(alias) =>
             // if H#T = U, then for any x in L..H, x.T =:= U,
             // hence we can replace with U under all variances

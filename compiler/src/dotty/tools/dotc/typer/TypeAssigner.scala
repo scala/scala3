@@ -93,7 +93,7 @@ trait TypeAssigner {
       def apply(tp: Type): Type = tp match {
         case tp: TermRef
         if toAvoid(tp.symbol) || partsToAvoid(mutable.Set.empty, tp.info).nonEmpty =>
-          tp.info.widenExpr match {
+          tp.info.widenExpr.dealias match {
             case info: SingletonType => apply(info)
             case info => range(tp.info.bottomType, apply(info))
           }
@@ -124,7 +124,7 @@ trait TypeAssigner {
        *   1. We first try a widening conversion to the type's info with
        *      the original prefix. Since the original prefix is known to
        *      be a subtype of the returned prefix, this can improve results.
-       *   2. IThen, if the approximation result is a singleton reference C#x.type, we
+       *   2. Then, if the approximation result is a singleton reference C#x.type, we
        *      replace by the widened type, which is usually more natural.
        *   3. Finally, we need to handle the case where the prefix type does not have a member
        *      named `tp.name` anymmore. In that case, we need to fall back to Bot..Top.
@@ -133,7 +133,7 @@ trait TypeAssigner {
         if (pre eq tp.prefix)
           tp
         else tryWiden(tp, tp.prefix).orElse {
-          if (tp.isTerm && variance > 0 && !pre.isInstanceOf[SingletonType])
+          if (tp.isTerm && variance > 0 && !pre.isSingleton)
           	apply(tp.info.widenExpr)
           else if (upper(pre).member(tp.name).exists)
             super.derivedSelect(tp, pre)
@@ -538,7 +538,7 @@ trait TypeAssigner {
     tree.withType(sym.termRef)
 
   def assignType(tree: untpd.Annotated, arg: Tree, annot: Tree)(implicit ctx: Context) =
-    tree.withType(AnnotatedType(arg.tpe.widen, Annotation(annot)))
+    tree.withType(AnnotatedType(arg.tpe, Annotation(annot)))
 
   def assignType(tree: untpd.PackageDef, pid: Tree)(implicit ctx: Context) =
     tree.withType(pid.symbol.termRef)

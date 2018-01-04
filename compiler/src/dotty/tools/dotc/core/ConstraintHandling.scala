@@ -247,10 +247,10 @@ trait ConstraintHandling {
    */
   def instanceType(param: TypeParamRef, fromBelow: Boolean): Type = {
     def upperBound = constraint.fullUpperBound(param)
-    def isSingleton(tp: Type): Boolean = tp match {
+    def isMultiSingleton(tp: Type): Boolean = tp.stripAnnots match {
       case tp: SingletonType => true
-      case AndType(tp1, tp2) => isSingleton(tp1) | isSingleton(tp2)
-      case OrType(tp1, tp2) => isSingleton(tp1) & isSingleton(tp2)
+      case AndType(tp1, tp2) => isMultiSingleton(tp1) | isMultiSingleton(tp2)
+      case OrType(tp1, tp2) => isMultiSingleton(tp1) & isMultiSingleton(tp2)
       case _ => false
     }
     def isFullyDefined(tp: Type): Boolean = tp match {
@@ -274,7 +274,7 @@ trait ConstraintHandling {
     // 1. If instance is from below and is a singleton type, yet upper bound is
     // not a singleton type or a reference to `scala.Singleton`, widen the
     // instance.
-    if (fromBelow && isSingleton(inst) && !isSingleton(upperBound)
+    if (fromBelow && isMultiSingleton(inst) && !isMultiSingleton(upperBound)
         && !upperBound.isRef(defn.SingletonClass))
       inst = inst.widen
 

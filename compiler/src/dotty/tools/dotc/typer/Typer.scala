@@ -1593,7 +1593,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     if (ctx.mode is Mode.Type)
       assignType(cpy.Annotated(tree)(arg1, annot1), arg1, annot1)
     else {
-      val tpt = TypeTree(AnnotatedType(arg1.tpe.widen, Annotation(annot1)))
+      val tpt = TypeTree(AnnotatedType(arg1.tpe, Annotation(annot1)))
       assignType(cpy.Typed(tree)(arg1, tpt), tpt)
     }
   }
@@ -2268,7 +2268,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
             // is tried. See strawman-contrib MapDecoratorTest.scala for an example where this happens.
             err.typeMismatch(tree, pt)
           }
-        case wtp: MethodType if !pt.isInstanceOf[SingletonType] =>
+        case wtp: MethodType if !pt.isSingleton =>
           val arity =
             if (functionExpected)
               if (!isFullyDefined(pt, ForceDegree.none) && isFullyDefined(wtp, ForceDegree.none))
