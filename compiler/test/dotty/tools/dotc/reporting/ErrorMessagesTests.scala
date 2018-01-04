@@ -1278,7 +1278,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
       assertEquals(member.show, "method bar")
     }
 
-  @Test def symbolIsNotAValue =
+  @Test def javaSymbolIsNotAValue =
     checkMessagesAfter("checkStatic") {
       """
         |package p
@@ -1288,7 +1288,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
       """.stripMargin
     }.expect { (itcx, messages) =>
       implicit val ctx: Context = itcx
-      val SymbolIsNotAValue(symbol) = messages.head
+      val JavaSymbolIsNotAValue(symbol) = messages.head
       assertEquals(symbol.show, "package p")
     }
 }

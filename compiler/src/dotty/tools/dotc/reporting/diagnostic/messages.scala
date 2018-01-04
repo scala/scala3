@@ -2065,10 +2065,9 @@ object messages {
       hl"An object that contains ${"@static"} members must have a companion class."
   }
 
-  case class SymbolIsNotAValue(symbol: Symbol)(implicit ctx: Context) extends Message(SymbolIsNotAValueID) {
-    val msg = hl"${symbol.show} is not a value"
+  case class JavaSymbolIsNotAValue(symbol: Symbol)(implicit ctx: Context) extends Message(JavaSymbolIsNotAValueID) {
+    val msg = hl"$symbol is not a value"
     val kind = "Type Mismatch"
-    val explanation =
-      hl"Scala or Java packages cannot be assigned to a value"
+    val explanation = hl"Java packages cannot be used as a value"
   }
 }
