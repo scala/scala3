@@ -11,7 +11,7 @@
 
       def expression(adder: Addition) = {
         import adder._
-        add(num(1), num(2)) // error // error
+        add(num(1), num(2)) // error // error (not found: num)
         }
       }
 
@@ -25,7 +25,7 @@
         }
 
         object Main {
-          def expression(adder: Addition) = { // error (?)
+          def expression(adder: Addition) = { // error: adder.F is not defined in inferred type
             adder.foo
           }
         }
