@@ -1,0 +1,3 @@
+package scala
+
+object collection

@@ -369,7 +369,10 @@ trait Symbols { this: Context =>
   def requiredPackageRef(path: PreName): TermRef = requiredPackage(path).termRef
 
   def requiredClass(path: PreName): ClassSymbol =
-    base.staticRef(path.toTypeName).requiredSymbol(_.isClass).asClass
+    base.staticRef(path.toTypeName).requiredSymbol(_.isClass) match {
+      case cls: ClassSymbol => cls
+      case sym => defn.AnyClass
+    }
 
   def requiredClassRef(path: PreName): TypeRef = requiredClass(path).typeRef
 
