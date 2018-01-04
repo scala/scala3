@@ -80,7 +80,7 @@ class SuperAccessors(thisPhase: DenotTransformer) {
       val superAcc = clazz.info.decl(superName)
         .suchThat(_.signature == superInfo.signature).symbol
         .orElse {
-          ctx.debugLog(s"add super acc ${sym.showLocated} to $clazz")
+          ctx.debuglog(s"add super acc ${sym.showLocated} to $clazz")
           val maybeDeferred = if (clazz is Trait) Deferred else EmptyFlags
           val acc = ctx.newSymbol(
               clazz, superName, Artifact | Method | maybeDeferred,
