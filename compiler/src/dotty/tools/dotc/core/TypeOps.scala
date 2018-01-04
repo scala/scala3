@@ -277,8 +277,11 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
    *
    *       import owner.feature
    *
-   *  (the feature may be bunched with others, or renamed, but wildcard imports
-   *  don't count).
+   *     and there is no visible nested import that excludes the feature, as in
+   *
+   *       import owner.{ feature => _ }
+   *
+   *  The feature may be bunched with others, or renamed, but wildcard imports don't count.
    *
    *  2. The feature is enabled by a compiler option
    *
@@ -296,8 +299,8 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
       if (ctx.importInfo eq null) false
       else {
         val isImportOwner = ctx.importInfo.site.widen.typeSymbol eq owner
-        if (isImportOwner && ctx.importInfo.excluded.contains(feature)) false
-        else if (isImportOwner && ctx.importInfo.originals.contains(feature)) true
+        if (isImportOwner && ctx.importInfo.originals.contains(feature)) true
+        else if (isImportOwner && ctx.importInfo.excluded.contains(feature)) false
         else {
           var c = ctx.outer
           while (c.importInfo eq ctx.importInfo) c = c.outer
