@@ -69,7 +69,6 @@ class CompilationTests extends ParallelTesting {
       ),
       scala2Mode
     ) +
-    compileFilesInDir("../tests/pos-special/i3273", defaultOptions) +
     compileFilesInDir("../tests/pos-special/spec-t5545", defaultOptions) +
     compileFilesInDir("../tests/pos-special/strawman-collections", defaultOptions) +
     compileFile("../scala2-library/src/library/scala/collection/immutable/IndexedSeq.scala", defaultOptions) +
@@ -110,6 +109,7 @@ class CompilationTests extends ParallelTesting {
     implicit val testGroup: TestGroup = TestGroup("posTwice")
     compileFile("../tests/pos/Labels.scala", defaultOptions) +
     compileFilesInDir("../tests/pos-java-interop", defaultOptions) +
+    compileFilesInDir("../tests/pos-java-interop-separate", defaultOptions) +
     compileFile("../tests/pos/t2168.scala", defaultOptions) +
     compileFile("../tests/pos/erasure.scala", defaultOptions) +
     compileFile("../tests/pos/Coder.scala", defaultOptions) +
