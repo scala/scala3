@@ -161,7 +161,7 @@ class ClassfileParser(
 
       for (i <- 0 until in.nextChar) parseMember(method = false)
       for (i <- 0 until in.nextChar) parseMember(method = true)
-      classInfo = cook.apply(parseAttributes(classRoot.symbol, classInfo))
+      classInfo = parseAttributes(classRoot.symbol, classInfo)
       if (isAnnotation) addAnnotationConstructor(classInfo)
 
       val companionClassMethod = ctx.synthesizeCompanionMethod(nme.COMPANION_CLASS_METHOD, classRoot, moduleRoot)
@@ -261,7 +261,7 @@ class ClassfileParser(
           addConstructorTypeParams(denot)
         }
 
-        denot.info = cook.apply(pool.getType(in.nextChar))
+        denot.info = pool.getType(in.nextChar)
         if (isEnum) denot.info = ConstantType(Constant(sym))
         if (isConstructor) normalizeConstructorParams()
         setPrivateWithin(denot, jflags)
@@ -625,7 +625,8 @@ class ClassfileParser(
     for (i <- 0 until in.nextChar) {
       parseAttribute()
     }
-    newType
+
+    cook.apply(newType)
   }
 
   /** Add synthetic constructor(s) and potentially also default getters which
