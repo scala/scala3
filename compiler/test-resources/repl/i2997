@@ -1,0 +1,8 @@
+scala> trait A
+// defined trait A
+scala> trait B
+// defined trait B
+scala> class C extends A with B
+// defined class C
+scala> class C extends A with B
+// defined class C
