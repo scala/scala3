@@ -115,4 +115,9 @@ class ReplCompilerTests extends ReplTest {
     //   storedOutput().startsWith("scala.MatchError: null")
     // }
   }
+
+  @Test def i2789: Unit = fromInitialState { implicit state =>
+    compile("(x: Int) => println(x)")
+    assertTrue(storedOutput().startsWith("val res0: Int => Unit ="))
+  }
 }
