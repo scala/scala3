@@ -1277,4 +1277,18 @@ class ErrorMessagesTests extends ErrorMessagesTest {
       val MissingCompanionForStatic(member) = messages.head
       assertEquals(member.show, "method bar")
     }
+
+  @Test def symbolIsNotAValue =
+    checkMessagesAfter("checkStatic") {
+      """
+        |package p
+        |object O {
+        |  val v = p
+        |}
+      """.stripMargin
+    }.expect { (itcx, messages) =>
+      implicit val ctx: Context = itcx
+      val SymbolIsNotAValue(symbol) = messages.head
+      assertEquals(symbol.show, "package p")
+    }
 }

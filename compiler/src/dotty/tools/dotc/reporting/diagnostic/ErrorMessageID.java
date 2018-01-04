@@ -124,6 +124,7 @@ public enum ErrorMessageID {
     SymbolChangedSemanticsInVersionID,
     UnableToEmitSwitchID,
     MissingCompanionForStaticID,
+    SymbolIsNotAValueID,
     ;
 
     public int errorNumber() {
