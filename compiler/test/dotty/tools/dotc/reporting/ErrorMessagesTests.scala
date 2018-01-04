@@ -1290,8 +1290,8 @@ class ErrorMessagesTests extends ErrorMessagesTest {
       implicit val ctx: Context = ictx
 
       assertMessageCount(1, messages)
-      val PolymorphicMethodMissingTypeInParent(rsym, parentTpt) = messages.head
+      val PolymorphicMethodMissingTypeInParent(rsym, parentSym) = messages.head
       assertEquals("method get", rsym.show)
-      assertEquals("Object", parentTpt.show)
+      assertEquals("class Object", parentSym.show)
     }
 }
