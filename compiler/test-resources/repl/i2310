@@ -1,0 +1,8 @@
+scala> trait T(x: Int)
+// defined trait T
+scala> trait U extends T
+// defined trait U
+scala> class C extends U with T(22) { override def toString = "C" }
+// defined class C
+scala> new C
+val res0: C = C
