@@ -208,7 +208,7 @@ object messages {
 
   case class WildcardOnTypeArgumentNotAllowedOnNew()(implicit ctx: Context)
   extends Message(WildcardOnTypeArgumentNotAllowedOnNewID) {
-    val kind = "syntax"
+    val kind = "Syntax"
     val msg = "type argument must be fully defined"
 
     val code1 =
@@ -2063,5 +2063,11 @@ object messages {
     val kind = "Syntax"
     val explanation =
       hl"An object that contains ${"@static"} members must have a companion class."
+  }
+
+  case class JavaSymbolIsNotAValue(symbol: Symbol)(implicit ctx: Context) extends Message(JavaSymbolIsNotAValueID) {
+    val msg = hl"$symbol is not a value"
+    val kind = "Type Mismatch"
+    val explanation = hl"Java packages cannot be used as a value"
   }
 }
