@@ -1,0 +1,3 @@
+scala> import scala.annotation.unspecialized
+scala> class Foo[@unspecialized T]
+// defined class Foo
