@@ -2064,4 +2064,14 @@ object messages {
     val explanation =
       hl"An object that contains ${"@static"} members must have a companion class."
   }
+
+  case class PolymorphicMethodMissingTypeInParent(rsym: Symbol, parentSym: Symbol)(implicit ctx: Context)
+  extends Message(PolymorphicMethodMissingTypeInParentID) {
+    val kind = "Syntax"
+    val msg = hl"polymorphic refinement $rsym without matching type in parent $parentSym is no longer allowed"
+    val explanation =
+      hl"""Polymorphic $rsym is not allowed in the structural refinement of $parentSym because
+          |$rsym does not override any method in $parentSym. Structural refinement does not allow for
+          |polymorphic methods."""
+  }
 }
