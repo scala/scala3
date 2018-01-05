@@ -60,7 +60,7 @@ class DottyLanguageServer extends LanguageServer
       val configFile = new File(new URI(rootUri + '/' + IDE_CONFIG_FILE))
       val configs: List[ProjectConfig] = (new ObjectMapper).readValue(configFile, classOf[Array[ProjectConfig]]).toList
 
-      val defaultFlags = List(/*"-Yplain-printer","-Yprint-pos"*/)
+      val defaultFlags = List("-color:never" /*, "-Yplain-printer","-Yprint-pos"*/)
 
       myDrivers = new mutable.HashMap
       for (config <- configs) {
