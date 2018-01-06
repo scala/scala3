@@ -52,6 +52,7 @@ class FromTastyTests extends ParallelTesting {
         "t8023.scala",
         "tcpoly_ticket2096.scala",
         "t247.scala",
+        "i3067.scala",
       )
     )
     step1.checkCompile() // Compile all files to generate the class files with tasty
