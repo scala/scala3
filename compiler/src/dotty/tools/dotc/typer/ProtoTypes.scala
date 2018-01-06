@@ -39,10 +39,11 @@ object ProtoTypes {
       (tp.widenExpr relaxed_<:< pt.widenExpr) || viewExists(tp, pt)
 
     /** Test compatibility after normalization in a fresh typerstate. */
-    def normalizedCompatible(tp: Type, pt: Type)(implicit ctx: Context) = ctx.typerState.test {
-      val normTp = normalize(tp, pt)
-      isCompatible(normTp, pt) || pt.isRef(defn.UnitClass) && normTp.isParameterless
-    }
+    def normalizedCompatible(tp: Type, pt: Type)(implicit ctx: Context) =
+      ctx.test { implicit ctx =>
+        val normTp = normalize(tp, pt)
+        isCompatible(normTp, pt) || pt.isRef(defn.UnitClass) && normTp.isParameterless
+      }
 
     private def disregardProto(pt: Type)(implicit ctx: Context): Boolean = pt.dealias match {
       case _: OrType => true

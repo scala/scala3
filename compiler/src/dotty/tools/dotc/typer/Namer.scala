@@ -730,6 +730,7 @@ class Namer { typer: Typer =>
 
     /** The context with which this completer was created */
     def creationContext = ctx
+    ctx.typerState.markShared()
 
     protected def typeSig(sym: Symbol): Type = original match {
       case original: ValDef =>
@@ -857,7 +858,7 @@ class Namer { typer: Typer =>
           val ptype = typedAheadType(tpt).tpe appliedTo targs1.tpes
           if (ptype.typeParams.isEmpty) ptype
           else {
-            if (denot.is(ModuleClass) && denot.sourceModule.is(Implicit)) 
+            if (denot.is(ModuleClass) && denot.sourceModule.is(Implicit))
               missingType(denot.symbol, "parent ")(creationContext)
             fullyDefinedType(typedAheadExpr(parent).tpe, "class parent", parent.pos)
           }
