@@ -62,4 +62,7 @@ object TestConfiguration {
   val scala2Mode = defaultOptions and "-language:Scala2"
   val explicitUTF8 = defaultOptions and ("-encoding", "UTF8")
   val explicitUTF16 = defaultOptions and ("-encoding", "UTF16")
+
+  val depByNameOptions = // disable -Ycheck:arrayConstructors
+    TestFlags(classPath, runClassPath, basicDefaultOptions.map(_.replace(",arrayConstructors", "")))
 }

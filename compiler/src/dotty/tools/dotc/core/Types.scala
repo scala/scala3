@@ -115,7 +115,7 @@ object Types {
       case tp: RefinedOrRecType => tp.parent.isStable
       case tp: ExprType => tp.resultType.isStable
       case tp: AnnotatedType => tp.tpe.isStable
-      case _ => false
+      case tp => tp.derivesFrom(defn.SingletonClass)
     }
 
     /** Is this type a (possibly refined or applied or aliased) type reference

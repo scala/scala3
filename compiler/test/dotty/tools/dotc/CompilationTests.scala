@@ -56,6 +56,7 @@ class CompilationTests extends ParallelTesting {
     compileFile("../tests/pos-special/utf8encoded.scala", explicitUTF8) +
     compileFile("../tests/pos-special/utf16encoded.scala", explicitUTF16) +
     compileFile("../tests/pos-special/i3589-b.scala", defaultOptions.and("-Xfatal-warnings")) +
+    compileFile("../tests/pos-special/i3005.scala", depByNameOptions) +
     compileList(
       "compileMixed",
       List(

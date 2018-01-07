@@ -595,8 +595,11 @@ object SymDenotations {
       )
 
     /** Is this a denotation of a stable term (or an arbitrary type)? */
-    final def isStable(implicit ctx: Context) =
-      isType || is(Stable) || !(is(UnstableValue) || info.isInstanceOf[ExprType])
+    final def isStable(implicit ctx: Context) = {
+      def isUnstable =
+      	is(UnstableValue) || info.isInstanceOf[ExprType] && !info.isStable
+      isType || is(Stable) || !isUnstable
+    }
 
     /** Is this a "real" method? A real method is a method which is:
      *  - not an accessor
