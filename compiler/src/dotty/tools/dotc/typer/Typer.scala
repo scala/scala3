@@ -66,7 +66,14 @@ object Typer {
   private val InsertedApply = new Property.Key[Unit]
 }
 
-class Typer extends Namer with TypeAssigner with Applications with Implicits with Dynamic with Checking with Docstrings {
+class Typer extends Namer
+               with TypeAssigner
+               with Applications
+               with Implicits
+               with Inferencing
+               with Dynamic
+               with Checking
+               with Docstrings {
 
   import Typer._
   import tpd.{cpy => _, _}
@@ -1929,8 +1936,8 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     /*>|>*/ trace(i"adapting $tree of type ${tree.tpe} to $pt", typr, show = true) /*<|<*/ {
       if (!tree.denot.isOverloaded) {
       	// for overloaded trees: resolve overloading before simplifying
-        if (tree.isDef) interpolateUndetVars(tree, tree.symbol)
-        else if (!tree.tpe.widen.isInstanceOf[LambdaType]) interpolateUndetVars(tree, NoSymbol)
+        if (tree.isDef) interpolateUndetVars(tree, tree.symbol, pt)
+        else if (!tree.tpe.widen.isInstanceOf[LambdaType]) interpolateUndetVars(tree, NoSymbol, pt)
         tree.overwriteType(tree.tpe.simplified)
       }
       adaptInterpolated(tree, pt)
