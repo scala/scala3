@@ -64,6 +64,7 @@ object Typer {
 
   private val ExprOwner = new Property.Key[Symbol]
   private val InsertedApply = new Property.Key[Unit]
+  private val DroppedEmptyArgs = new Property.Key[Unit]
 }
 
 class Typer extends Namer with TypeAssigner with Applications with Implicits with Dynamic with Checking with Docstrings {
@@ -1862,6 +1863,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
    *
    *  0th strategy: If `tree` overrides a nullary method, mark the prototype
    *                so that the argument is dropped and return `tree` itself.
+   *                (but do this at most once per tree).
    *
    *  After that, two strategies are tried, and the first that is successful is picked.
    *  If neither of the strategies are successful, continues with`fallBack`.
@@ -1899,7 +1901,9 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
 
     pt match {
       case pt @ FunProto(Nil, _, _)
-      if tree.symbol.allOverriddenSymbols.exists(_.info.isNullaryMethod) =>
+      if tree.symbol.allOverriddenSymbols.exists(_.info.isNullaryMethod) &&
+         tree.getAttachment(DroppedEmptyArgs).isEmpty =>
+        tree.putAttachment(DroppedEmptyArgs, ())
         pt.markAsDropped()
         tree
       case _ =>
