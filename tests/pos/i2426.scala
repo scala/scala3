@@ -22,3 +22,7 @@ class ann(x: C)(y: C, s: String) extends scala.annotation.Annotation
 
 class Bam @ann(obj)(obj, "h")(n: String)
 
+// #2515
+class Foo2 @deprecated() (@deprecated() id: String)
+
+
