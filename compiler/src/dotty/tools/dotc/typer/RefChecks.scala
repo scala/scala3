@@ -86,7 +86,7 @@ object RefChecks {
    */
   private def upwardsThisType(cls: Symbol)(implicit ctx: Context) = cls.info match {
     case ClassInfo(_, _, _, _, tp: Type) if (tp ne cls.typeRef) && !cls.is(ModuleOrFinal) =>
-      SkolemType(cls.typeRef).withName(nme.this_)
+      SkolemType(cls.appliedRef).withName(nme.this_)
     case _ =>
       cls.thisType
   }
