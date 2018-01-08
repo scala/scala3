@@ -2074,4 +2074,21 @@ object messages {
           |$rsym does not override any method in $parentSym. Structural refinement does not allow for
           |polymorphic methods."""
   }
+
+  case class NotAValidResultTypeOfUnapply(sym: Symbol, resultType: Type, args: List[untpd.Tree])(implicit ctx: Context) extends Message(NotAValidResultTypeOfUnapplyID) {
+    val kind = "Reference"
+    val resultClassName = resultType.classSymbol.name
+    val msg = hl"Cannot extract (${sym.name}) from ${sym.owner}. $resultClassName is not a valid extractor return type"
+    val explanation =
+      hl"""${sym.name} method of ${sym.owner} has been tried as a candidate to extract ${args.map(_.show).mkString("[", ", ", "]")}
+          |Its return type: ${s"$resultClassName"} is not a valid return type for an extractor.
+          |
+          |The return type of an extractor should be chosen as follows:
+          | - If it is just a test, return a ${"Boolean"}. For instance ${"case even()"}
+          | - If it returns a single sub-value of type ${s"$resultClassName"}, return an ${s"Option[$resultClassName]"}
+          | - If you want to return several sub-values ${"T1,...,Tn"}, group them in an optional tuple ${"Option[(T1,...,Tn)]"}.
+        """.stripMargin
+
+  }
+
 }

@@ -2,12 +2,10 @@ package dotty.tools
 package dotc
 package reporting
 
-import core.Contexts.Context
-import diagnostic.messages._
-import dotty.tools.dotc.core.Flags
-import dotty.tools.dotc.core.Flags.FlagSet
+import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.Types.WildcardType
 import dotty.tools.dotc.parsing.Tokens
+import dotty.tools.dotc.reporting.diagnostic.messages._
 import org.junit.Assert._
 import org.junit.Test
 
@@ -1294,4 +1292,26 @@ class ErrorMessagesTests extends ErrorMessagesTest {
       assertEquals("method get", rsym.show)
       assertEquals("class Object", parentSym.show)
     }
+
+    @Test def notAValidReturnTypeOfUnapply =
+      checkMessagesAfter("frontend") {
+        """
+           |object Test {
+           | object Foo {
+           |  def unapply(arg: String): String = arg.toUpperCase
+           | }
+           | val Foo(unextractedValue) = "test"
+           |}
+        """.stripMargin
+      }.expect { (ictx, messages) =>
+        implicit val ctx: Context = ictx
+
+        assertMessageCount(1, messages)
+        val NotAValidResultTypeOfUnapply(sym, resultType, args) = messages.head
+        assertEquals("method unapply", sym.show)
+        assertEquals("String", resultType.show)
+        assertEquals(1, args.length)
+        assertEquals("unextractedValue", args.head.show)
+      }
+
 }

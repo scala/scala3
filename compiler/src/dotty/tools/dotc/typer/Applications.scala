@@ -33,7 +33,7 @@ import language.implicitConversions
 import reporting.diagnostic.Message
 import reporting.trace
 import Constants.{Constant, IntTag, LongTag}
-import dotty.tools.dotc.reporting.diagnostic.messages.UnapplyInvalidNumberOfArguments
+import dotty.tools.dotc.reporting.diagnostic.messages.{NotAValidResultTypeOfUnapply, UnapplyInvalidNumberOfArguments}
 
 import scala.collection.mutable.ListBuffer
 
@@ -93,7 +93,8 @@ object Applications {
     def getTp = extractorMemberType(unapplyResult, nme.get, pos)
 
     def fail = {
-      ctx.error(i"$unapplyResult is not a valid result type of an $unapplyName method of an extractor", pos)
+      // ctx.error(i"$unapplyResult is not a valid result type of an $unapplyName method of an extractor", pos)
+      ctx.error(NotAValidResultTypeOfUnapply(unapplyFn.symbol, unapplyResult, args), pos)
       Nil
     }
 
