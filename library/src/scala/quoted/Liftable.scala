@@ -13,6 +13,17 @@ abstract class Liftable[T] {
  *  gives an alternative implementation using just the basic staging system.
  */
 object Liftable {
-  implicit def IntIsLiftable: Liftable[Int] = ???
-  implicit def BooleanIsLiftable: Liftable[Boolean] = ???
+
+  final class ConstantExpr[T] private[Liftable](val value: T) extends Expr[T]
+
+  implicit def BooleanIsLiftable: Liftable[Boolean] = (x: Boolean) => new ConstantExpr(x)
+  implicit def ByteLiftable: Liftable[Byte] = (x: Byte) => new ConstantExpr(x)
+  implicit def CharIsLiftable: Liftable[Char] = (x: Char) => new ConstantExpr(x)
+  implicit def ShortIsLiftable: Liftable[Short] = (x: Short) => new ConstantExpr(x)
+  implicit def IntIsLiftable: Liftable[Int] = (x: Int) => new ConstantExpr(x)
+  implicit def LongIsLiftable: Liftable[Long] = (x: Long) => new ConstantExpr(x)
+  implicit def FloatIsLiftable: Liftable[Float] = (x: Float) => new ConstantExpr(x)
+  implicit def DoubleIsLiftable: Liftable[Double] = (x: Double) => new ConstantExpr(x)
+
+  implicit def StringIsLiftable: Liftable[String] = (x: String) => new ConstantExpr(x)
 }

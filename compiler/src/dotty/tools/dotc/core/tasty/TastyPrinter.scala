@@ -67,7 +67,7 @@ class TastyPrinter(bytes: Array[Byte])(implicit ctx: Context) {
               printName(); printTrees()
             case REFINEDtype =>
               printName(); printTree(); printTrees()
-            case RETURN =>
+            case RETURN | HOLE =>
               printNat(); printTrees()
             case METHODtype | POLYtype | TYPELAMBDAtype =>
               printTree()

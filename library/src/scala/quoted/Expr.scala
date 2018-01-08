@@ -1,7 +1,7 @@
 package scala.quoted
 
-class Expr[T] extends Quoted {
-  def unary_~ : T = ???
+abstract class Expr[T] extends Quoted {
+  def unary_~ : T = throw new Error("~ should have been compiled away")
   def run: T = ???
 }
 
