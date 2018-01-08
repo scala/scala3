@@ -1,7 +1,6 @@
 package dotty.tools
 package dotc
 
-import dotty.tools.dotc.core.Types.Type // Do not remove me #3383
 import util.SourceFile
 import ast.{tpd, untpd}
 import dotty.tools.dotc.ast.tpd.{ Tree, TreeTraverser }
