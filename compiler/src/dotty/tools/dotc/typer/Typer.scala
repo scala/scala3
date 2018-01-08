@@ -62,8 +62,20 @@ object Typer {
     if (!tree.isEmpty && !tree.isInstanceOf[untpd.TypedSplice] && ctx.typerState.isGlobalCommittable)
       assert(tree.pos.exists, s"position not set for $tree # ${tree.uniqueId}")
 
+  /** A context property that indicates the owner of any expressions to be typed in the context
+   *  if that owner is different from the context's owner. Typically, a context with a class
+   *  as owner would have a local dummy as ExprOwner value.
+   */
   private val ExprOwner = new Property.Key[Symbol]
+
+  /** An attachment on a Select node with an `apply` field indicating that the `apply`
+   *  was inserted by the Typer.
+   */
   private val InsertedApply = new Property.Key[Unit]
+
+  /** An attachment on a tree `t` occurring as part of a `t()` where
+   *  the `()` was dropped by the Typer.
+   */
   private val DroppedEmptyArgs = new Property.Key[Unit]
 }
 
