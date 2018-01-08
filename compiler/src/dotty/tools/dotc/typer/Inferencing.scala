@@ -345,7 +345,13 @@ trait Inferencing { this: Typer =>
       def ensureConstrained() =
         if (!isConstrained) {
           isConstrained = true
-          constrainResult(tree.tpe, pt)
+          tree match {
+            case tree: Apply => // already constrained
+            case _ => tree.tpe match {
+              case _: MethodOrPoly => // already constrained
+              case tp => constrainResult(tp, pt)
+            }
+          }
         }
 
       // Avoid interpolating variables if typerstate has unreported errors.
