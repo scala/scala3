@@ -180,6 +180,7 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
     override def transform(tree: Tree)(implicit ctx: Context): Tree =
       try tree match {
         case tree: Ident if !tree.isType =>
+          handleMeta(tree.symbol)
           tree.tpe match {
             case tpe: ThisType => This(tpe.cls).withPos(tree.pos)
             case _ => tree
@@ -203,9 +204,7 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
               // might be a type constructor.
               Checking.checkInstantiable(tree.tpe, nu.pos)
               withNoCheckNews(nu :: Nil)(super.transform(tree))
-            case meth =>
-              if (meth.symbol.isQuote)
-                ctx.compilationUnit.containsQuotesOrSplices = true
+            case _ =>
               super.transform(tree)
           }
         case tree: TypeApply =>

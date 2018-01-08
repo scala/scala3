@@ -8,6 +8,7 @@ import dotty.tools.dotc.ast.tpd.{ Tree, TreeTraverser }
 import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.SymDenotations.ClassDenotation
 import dotty.tools.dotc.core.Symbols._
+import dotty.tools.dotc.transform.SymUtils._
 
 class CompilationUnit(val source: SourceFile) {
 
@@ -39,13 +40,21 @@ object CompilationUnit {
     assert(!unpickled.isEmpty, unpickled)
     val unit1 = new CompilationUnit(source)
     unit1.tpdTree = unpickled
-    if (forceTrees)
+    if (forceTrees) {
+      val force = new Force
       force.traverse(unit1.tpdTree)
+      unit1.containsQuotesOrSplices = force.containsQuotes
+    }
     unit1
   }
 
   /** Force the tree to be loaded */
-  private object force extends TreeTraverser {
-    def traverse(tree: Tree)(implicit ctx: Context): Unit = traverseChildren(tree)
+  private class Force extends TreeTraverser {
+    var containsQuotes = false
+    def traverse(tree: Tree)(implicit ctx: Context): Unit = {
+      if (tree.symbol.isQuote)
+        containsQuotes = true
+      traverseChildren(tree)
+    }
   }
 }
