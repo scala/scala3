@@ -1,14 +1,12 @@
 package dotty.tools.dotc.quoted
 
 import dotty.tools.dotc.Driver
-import dotty.tools.dotc.core.Contexts.Context
+import dotty.tools.dotc.core.Contexts.{Context, FreshContext}
 import dotty.tools.dotc.core.StdNames._
 import dotty.tools.io.VirtualDirectory
-
 import dotty.tools.repl.AbstractFileClassLoader
 
 import scala.quoted.Expr
-
 import java.io.ByteArrayOutputStream
 import java.io.PrintStream
 import java.nio.charset.StandardCharsets
