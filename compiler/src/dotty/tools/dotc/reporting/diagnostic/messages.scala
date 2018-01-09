@@ -2074,4 +2074,11 @@ object messages {
           |$rsym does not override any method in $parentSym. Structural refinement does not allow for
           |polymorphic methods."""
   }
+
+  case class NonObjectPhantomType()(implicit ctx: Context)
+    extends Message(NonObjectPhantomTypeID) {
+    val kind = "Syntax"
+    val msg = hl"only static objects can extend scala.Phantom"
+    val explanation = ""
+  }
 }
