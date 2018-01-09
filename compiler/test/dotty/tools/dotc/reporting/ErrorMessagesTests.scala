@@ -1294,4 +1294,20 @@ class ErrorMessagesTests extends ErrorMessagesTest {
       assertEquals("method get", rsym.show)
       assertEquals("class Object", parentSym.show)
     }
+
+    @Test def nonObjectPhantomType =
+      checkMessagesAfter("frontend") {
+        """
+          |class Boo1 extends Phantom
+          |trait Boo2 extends Phantom
+          |object Boo3 extends Phantom
+        """.stripMargin
+    }.expect { (ictx, messages) =>
+      implicit val ctx: Context = ictx
+
+      val expectedErr = NonObjectPhantomType()
+      assertMessageCount(2, messages)
+      assertEquals(expectedErr, messages(0))
+      assertEquals(expectedErr, messages(1))
+    }
 }
