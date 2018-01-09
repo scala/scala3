@@ -272,10 +272,10 @@ trait ConstraintHandling {
 
     // Then, approximate by (1.) - (3.) and simplify as follows.
     // 1. If instance is from below and is a singleton type, yet upper bound is
-    // not a singleton type or a reference to `scala.Singleton`, widen the
+    // not a singleton type or a subtype of `scala.Singleton`, widen the
     // instance.
     if (fromBelow && isMultiSingleton(inst) && !isMultiSingleton(upperBound)
-        && !upperBound.isRef(defn.SingletonClass))
+        && !isSubTypeWhenFrozen(upperBound, defn.SingletonType))
       inst = inst.widen
 
     // 2. If instance is from below and is a fully-defined union type, yet upper bound
