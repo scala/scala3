@@ -1,13 +1,3 @@
-#scala/collection/parallel/mutable/ParMap.scala
-# -- [E007] Type Mismatch Error: ../scala2-library/src/library/scala/collection/parallel/mutable/ParMap.scala:42:71 ------
-# 42 |  override def updated [U >: V](key: K, value: U): ParMap[K, U] = this + ((key, value))
-#    |                                                                  ^^^^^^^^^^^^^^^^^^^^^
-#    |                                          found:    scala.collection.parallel.ParMap[ParMap'.this.K, U]
-#    |                                          required: scala.collection.parallel.mutable.ParMap'[ParMap'.this.K, U]
-#    |
-#    |                                          where:    ParMap  is a trait in package parallel
-#    |                                                    ParMap' is a trait in package mutable
-
 ## Errors having to do with unavailable APIs or language features:
 
 scala/text/Document.scala
