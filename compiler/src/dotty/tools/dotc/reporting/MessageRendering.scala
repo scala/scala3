@@ -117,7 +117,7 @@ trait MessageRendering {
           s"[E${"0" * (3 - errorNumber.toString.length) + errorNumber}] "
         } else ""
       val kind =
-        if (message.kind == ErrorKind.NO_KIND) diagnosticLevel
+        if (message.kind == ErrorCategories.NO_KIND) diagnosticLevel
         else s"${message.kind} $diagnosticLevel"
       val prefix = s"-- ${errId}${kind}: $file "
 

@@ -48,7 +48,7 @@ abstract class Message(val errorId: ErrorMessageID) { self =>
   /** The kind of the error message is something like "Syntax" or "Type
     * Mismatch"
     */
-  def kind: ErrorKind
+  def kind: ErrorCategory
 
   /** The explanation should provide a detailed description of why the error
     * occurred and use examples from the user's own code to illustrate how to
@@ -117,7 +117,7 @@ class ExtendMessage(_msg: () => Message)(f: String => String) { self =>
 /** The fallback `Message` containing no explanation and having no `kind` */
 class NoExplanation(val msg: String) extends Message(ErrorMessageID.NoExplanationID) {
   val explanation = ""
-  val kind = ErrorKind.NO_KIND
+  val kind = ErrorCategories.NO_KIND
 
   override def toString(): String = s"NoExplanation($msg)"
 }

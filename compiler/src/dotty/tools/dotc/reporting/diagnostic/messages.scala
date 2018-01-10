@@ -6,7 +6,7 @@ package diagnostic
 import dotc.core._
 import Contexts.Context
 import Decorators._
-import ErrorKind._
+import ErrorCategories._
 import Symbols._
 import Names._
 import NameOps._
