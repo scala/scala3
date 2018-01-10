@@ -120,6 +120,9 @@ object factories {
 
       case ref @ RefinedType(parent, rn, info) =>
         expandTpe(parent) //FIXME: will be a refined HK, aka class Foo[X] { def bar: List[X] } or similar
+
+      case tp: LazyRef =>
+        expandTpe(tp.ref)
     }
 
     expandTpe(t)
@@ -175,9 +178,7 @@ object factories {
     case annot: AnnotatedType =>
       paramLists(annot.tpe)
 
-    case (_: TypeParamRef | _: RefinedType | _: TypeRef | _: ThisType |
-          _: ExprType  | _: OrType      | _: AndType | _: AppliedType |
-          _: TermRef   | _: ConstantType) =>
+    case _ =>
       Nil // return types should not be in the paramlist
   }
 
