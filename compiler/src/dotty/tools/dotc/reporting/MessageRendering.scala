@@ -6,12 +6,12 @@ import core.Contexts.Context
 import core.Decorators._
 import printing.Highlighting.{Blue, Red}
 import printing.SyntaxHighlighting
-import diagnostic.{ErrorMessageID, Message, MessageContainer, NoExplanation}
+import diagnostic._
 import diagnostic.messages._
 import util.SourcePosition
-import util.Chars.{ LF, CR, FF, SU }
-import scala.annotation.switch
+import util.Chars.{CR, FF, LF, SU}
 
+import scala.annotation.switch
 import scala.collection.mutable
 
 trait MessageRendering {
@@ -117,7 +117,7 @@ trait MessageRendering {
           s"[E${"0" * (3 - errorNumber.toString.length) + errorNumber}] "
         } else ""
       val kind =
-        if (message.kind == "") diagnosticLevel
+        if (message.kind == ErrorKind.NO_KIND) diagnosticLevel
         else s"${message.kind} $diagnosticLevel"
       val prefix = s"-- ${errId}${kind}: $file "
 
