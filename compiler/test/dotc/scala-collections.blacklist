@@ -1,53 +1,14 @@
-scala/runtime/ScalaRunTime.scala
-# Doesn't compile since we're not on 2.11 anymore
-
-
-## Errors having to do with deep subtypes
-
-scala/collection/generic/ParSetFactory.scala
-# This gives a deep subtype violation when run with the rest of the whitelist.
-# Works without -Yno-deep-subtypes, though.
-
-scala/collection/parallel/mutable/ParMap.scala
-# -Yno-deep-subtypes fails
-
-scala/collection/parallel/ParMap.scala
-# -Yno-deep-subtypes fails
-
-scala/collection/parallel/ParMapLike.scala
-# -Yno-deep-subtypes fails
-
-
-
-## Ycheck failures, presumably linked to TailCalls
-
-scala/collection/parallel/ParIterableLike.scala
-# -Ycheck:classOf fails
-
-scala/collection/parallel/ParSeqLike.scala
-# -Ycheck:classOf fails
-
-scala/util/control/TailCalls.scala
-# -Ycheck:classOf fails
-
-
+#scala/collection/parallel/mutable/ParMap.scala
+# -- [E007] Type Mismatch Error: ../scala2-library/src/library/scala/collection/parallel/mutable/ParMap.scala:42:71 ------
+# 42 |  override def updated [U >: V](key: K, value: U): ParMap[K, U] = this + ((key, value))
+#    |                                                                  ^^^^^^^^^^^^^^^^^^^^^
+#    |                                          found:    scala.collection.parallel.ParMap[ParMap'.this.K, U]
+#    |                                          required: scala.collection.parallel.mutable.ParMap'[ParMap'.this.K, U]
+#    |
+#    |                                          where:    ParMap  is a trait in package parallel
+#    |                                                    ParMap' is a trait in package mutable
 
 ## Errors having to do with unavailable APIs or language features:
-
-scala/reflect/ClassManifestDeprecatedApis.scala
-# 51 |      import Manifest._
-#    |             ^^^^^^^^
-#    |             not found: Manifest
-
-scala/reflect/ClassTag.scala
-# 124 |  val Short   : ClassTag[scala.Short]      = Manifest.Short
-#     |                                             ^^^^^^^^
-#     |                                             not found: Manifest
-
-scala/reflect/Manifest.scala
-# 104 |    private def readResolve(): Any = Manifest.Short
-#     |                                     ^^^^^^^^
-#     |                                     not found: Manifest
 
 scala/text/Document.scala
 # Lots of type errors for pattern matches, having to do with the fact
@@ -70,8 +31,3 @@ scala/StringContext.scala
 # 168 |  def f[A >: Any](args: A*): String = macro ???
 #     |                                      ^^^^^
 #     |                                      not found: macro
-
-scala/util/control/Exception.scala
-# 51 |  implicit def throwableSubtypeToCatcher[Ex <: Throwable: ClassTag, T](pf: PartialFunction[Ex, T]) =
-#    |                                                                                                 ^
-#    |                                                                     cyclic reference involving method mkCatcher
