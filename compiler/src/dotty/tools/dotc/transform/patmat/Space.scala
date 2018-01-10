@@ -395,6 +395,7 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
       Typ(pat.tpe.stripAnnots, false)
     case Alternative(trees) => Or(trees.map(project(_)))
     case Bind(_, pat) => project(pat)
+    case SeqLiteral(pats, _) => projectSeq(pats)
     case UnApply(fun, _, pats) =>
       if (fun.symbol.name == nme.unapplySeq)
         if (fun.symbol.owner == scalaSeqFactoryClass)
@@ -496,7 +497,7 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
 
     debug.println(s"signature of ${unappSym.showFullName} ----> ${sig.map(_.show).mkString(", ")}")
 
-    sig
+    sig.map(_.annotatedToRepeated)
   }
 
   /** Decompose a type into subspaces -- assume the type can be decomposed */

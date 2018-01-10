@@ -13,6 +13,7 @@ object Test extends App {
 
   def bar(f: Any) = f match {
     case Bar(1, 2, 3) => 0
+    case Bar(a, b) => a + b
     case Bar(ns: _*) => ns.length
   }
 

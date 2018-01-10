@@ -77,7 +77,10 @@ class Definitions {
         val cls = denot.asClass.classSymbol
         val paramDecls = newScope
         val typeParam = enterSyntheticTypeParam(cls, paramFlags, paramDecls)
-        val parents = parentConstrs.toList
+        def instantiate(tpe: Type) =
+          if (tpe.typeParams.nonEmpty) tpe.appliedTo(typeParam.typeRef)
+          else tpe
+        val parents = parentConstrs.toList map instantiate
         denot.info = ClassInfo(ScalaPackageClass.thisType, cls, parents, paramDecls)
       }
     }
