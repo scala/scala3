@@ -1,12 +1,6 @@
 scala/runtime/ScalaRunTime.scala
 # Doesn't compile since we're not on 2.11 anymore
 
-## Errors having to do with bootstrap
-
-scala/Function1.scala
-scala/Function2.scala
-# Cyclic reference because of @specialized annotation
-
 
 ## Errors having to do with deep subtypes
 
