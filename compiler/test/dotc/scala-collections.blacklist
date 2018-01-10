@@ -10,19 +10,9 @@ scala/Function2.scala
 
 ## Errors having to do with deep subtypes
 
-scala/collection/generic/ParSetFactory.scala
-# This gives a deep subtype violation when run with the rest of the whitelist.
-# Works without -Yno-deep-subtypes, though.
 
 scala/collection/parallel/mutable/ParMap.scala
 # -Yno-deep-subtypes fails
-
-scala/collection/parallel/ParMap.scala
-# -Yno-deep-subtypes fails
-
-scala/collection/parallel/ParMapLike.scala
-# -Yno-deep-subtypes fails
-
 
 
 ## Ycheck failures, presumably linked to TailCalls
