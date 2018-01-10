@@ -630,11 +630,13 @@ object Build {
     val dottyLib = packageAll.value("dotty-library")
     val args0: List[String] = spaceDelimited("<arg>").parsed.toList
     val decompile = args0.contains("-decompile")
-    val args = args0.filter(arg => arg != "-repl" || arg != "-decompile")
+    val debugFromTasty = args0.contains("-Yfrom-tasty")
+    val args = args0.filter(arg => arg != "-repl" && arg != "-decompile" && arg != "-Yfrom-tasty")
 
     val main =
       if (repl) "dotty.tools.repl.Main"
       else if (decompile) "dotty.tools.dotc.decompiler.Main"
+      else if (debugFromTasty) "dotty.tools.dotc.fromtasty.Debug"
       else "dotty.tools.dotc.Main"
 
     val extraClasspath =
