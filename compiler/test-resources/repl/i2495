@@ -1,0 +1,16 @@
+scala> object TypeParam { sealed trait F[A]; case object FI extends F[Int]; case object FS extends F[String]; trait FFn { def apply[A](f: F[A]): A }; val test4: FFn = { case FI => 1; case FS => "" } }
+1 | object TypeParam { sealed trait F[A]; case object FI extends F[Int]; case object FS extends F[String]; trait FFn { def apply[A](f: F[A]): A }; val test4: FFn = { case FI => 1; case FS => "" } }
+  |                                                                                                                                                                   ^
+  |missing parameter type
+  |
+  |The argument types of an anonymous function must be fully known. (SLS 8.5)
+  |Expected type: TypeParam.FFn
+  |Missing type for parameter x$1 of expanded function:
+  |x$1 =>
+  |  x$1 match
+  |    {
+  |      case FI =>
+  |        1
+  |      case FS =>
+  |        ""
+  |    }
