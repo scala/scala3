@@ -285,30 +285,31 @@ private[profile] class RealProfiler(reporter : ProfileReporter)(implicit ctx: Co
   }
 }
 
-object EventType extends Enumeration {
+case class EventType(name: String)
+object EventType {
   // only one report for a phase
-  val SINGLE = Value("single")
+  val SINGLE = EventType("single")
   //main thread with other tasks
-  val MAIN = Value("main")
+  val MAIN = EventType("main")
   //other task ( background thread)
-  val TASK = Value("task")
+  val TASK = EventType("task")
   //total for phase
-  val TOTAL = Value("total")
+  val TOTAL = EventType("total")
   //total for compile
-  val ALL = Value("all")
+  val ALL = EventType("all")
 }
 sealed trait ProfileReporter {
   def reportGc(data: GcEventData): Unit
 
-  def report(profiler: RealProfiler, phase: Phase, eventType:EventType.Value, id:Int, desc:String, diff: ProfileCounters) : Unit
+  def report(profiler: RealProfiler, phase: Phase, eventType:EventType, id:Int, desc:String, diff: ProfileCounters) : Unit
 
   def header(profiler: RealProfiler) :Unit
   def close(profiler: RealProfiler) :Unit
 }
 
 object ConsoleProfileReporter extends ProfileReporter {
-  override def report(profiler: RealProfiler, phase: Phase, eventType:EventType.Value, id:Int, desc:String, diff: ProfileCounters): Unit =
-    println(f"Profiler compile ${profiler.id} after phase ${phase.id}%2d:${phase.phaseName.replace(',', ' ')}%20s ${eventType}%10s ${desc}%20s wallClockTime: ${diff.wallClockTimeMillis}%12.4fms, idleTime: ${diff.idleTimeMillis}%12.4fms, cpuTime ${diff.cpuTimeMillis}%12.4fms, userTime ${diff.userTimeMillis}%12.4fms, allocatedBytes ${diff.allocatedMB}%12.4fMB, retainedHeapBytes ${diff.retainedHeapMB}%12.4fMB, gcTime ${diff.gcTimeMillis}%6.0fms")
+  override def report(profiler: RealProfiler, phase: Phase, eventType:EventType, id:Int, desc:String, diff: ProfileCounters): Unit =
+    println(f"Profiler compile ${profiler.id} after phase ${phase.id}%2d:${phase.phaseName.replace(',', ' ')}%20s ${eventType.name}%10s ${desc}%20s wallClockTime: ${diff.wallClockTimeMillis}%12.4fms, idleTime: ${diff.idleTimeMillis}%12.4fms, cpuTime ${diff.cpuTimeMillis}%12.4fms, userTime ${diff.userTimeMillis}%12.4fms, allocatedBytes ${diff.allocatedMB}%12.4fMB, retainedHeapBytes ${diff.retainedHeapMB}%12.4fMB, gcTime ${diff.gcTimeMillis}%6.0fms")
 
   override def close(profiler: RealProfiler): Unit = ()
 
@@ -326,8 +327,8 @@ class StreamProfileReporter(out:PrintWriter) extends ProfileReporter {
     out.println(s"info, ${profiler.id}, ${profiler.outDir}")
     out.println(s"header,id,phaseId,phaseName,type,id,comment,wallClockTimeMs,idleTimeMs,cpuTimeMs,userTimeMs,allocatedMB,retainedHeapMB,gcTimeMs")
   }
-  override def report(profiler: RealProfiler, phase: Phase, eventType:EventType.Value, id:Int, desc:String, diff: ProfileCounters): Unit = {
-    out.println(s"data,${profiler.id},${phase.id},${phase.phaseName.replace(',', ' ')},${eventType},$id,$desc, ${diff.wallClockTimeMillis},${diff.idleTimeMillis},${diff.cpuTimeMillis},${diff.userTimeMillis},${diff.allocatedMB},${diff.retainedHeapMB},${diff.gcTimeMillis}")
+  override def report(profiler: RealProfiler, phase: Phase, eventType:EventType, id:Int, desc:String, diff: ProfileCounters): Unit = {
+    out.println(s"data,${profiler.id},${phase.id},${phase.phaseName.replace(',', ' ')},${eventType.name},$id,$desc, ${diff.wallClockTimeMillis},${diff.idleTimeMillis},${diff.cpuTimeMillis},${diff.userTimeMillis},${diff.allocatedMB},${diff.retainedHeapMB},${diff.gcTimeMillis}")
   }
 
   override def reportGc(data: GcEventData): Unit = {
