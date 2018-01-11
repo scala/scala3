@@ -193,7 +193,8 @@ object messages {
         else
           ""
 
-      i"missing parameter type for parameter ${param.name}$ofFun, expected = $pt"
+      i"""missing parameter type for parameter ${param.name}$ofFun, expected = $pt
+         |The argument types of an anonymous function must be fully known. (SLS 8.5)"""
     }
 
     val explanation =
