@@ -8,15 +8,18 @@ import Symbols._
 import Phases._
 import Types._
 import Scopes._
-import typer.{FrontEnd, Typer, ImportInfo, RefChecks}
+import typer.{FrontEnd, ImportInfo, RefChecks, Typer}
 import Decorators._
 import io.{AbstractFile, PlainFile}
+
 import scala.io.Codec
 import util.{Set => _, _}
 import reporting.Reporter
 import transform.TreeChecker
 import rewrite.Rewrites
 import java.io.{BufferedWriter, OutputStreamWriter}
+
+import dotty.tools.dotc.profile.Profiler
 import printing.XprintMode
 import parsing.Parsers.Parser
 import typer.ImplicitRunInfo
@@ -24,6 +27,7 @@ import collection.mutable
 
 import scala.annotation.tailrec
 import dotty.tools.io.VirtualFile
+
 import scala.util.control.NonFatal
 
 /** A compiler run. Exports various methods to compile source files */
@@ -156,11 +160,14 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
 
     def runPhases(implicit ctx: Context) = {
       var lastPrintedTree: PrintedTree = NoPrintedTree
+      val profiler = Profiler()
       for (phase <- ctx.allPhases)
         if (phase.isRunnable)
           Stats.trackTime(s"$phase ms ") {
             val start = System.currentTimeMillis
+            val profileBefore = profiler.beforePhase(phase)
             units = phase.runOn(units)
+            profiler.afterPhase(phase, profileBefore)
             if (ctx.settings.Xprint.value.containsPhase(phase)) {
               for (unit <- units) {
                 lastPrintedTree =
@@ -172,6 +179,8 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
             for (unit <- units)
               Stats.record(s"retained typed trees at end of $phase", unit.tpdTree.treeSize)
           }
+
+      profiler.finished()
     }
 
     val runCtx = ctx.fresh
