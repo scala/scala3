@@ -396,6 +396,8 @@ class Typer extends Namer
       }
       else if (name.toTermName == nme.ERROR)
         UnspecifiedErrorType
+      else if (ctx.owner.isConstructor && ctx.owner.owner.unforcedDecls.toList.exists(_.name == tree.name))
+        errorType(ex"$tree is not accessible from super constructor arguments", tree.pos)
       else
         errorType(new MissingIdent(tree, kind, name.show), tree.pos)
 
