@@ -155,7 +155,7 @@ trait RunnerOrchestration {
         classOf[ChildJVMMain].getProtectionDomain.getCodeSource.getLocation.getFile + ":" +
         Jars.scalaLibrary
       val javaBin = sys.props("java.home") + sep + "bin" + sep + "java"
-      new ProcessBuilder(javaBin, "-cp", cp, "dotty.tools.vulpix.ChildJVMMain")
+      new ProcessBuilder(javaBin, "-Xmx1g", "-cp", cp, "dotty.tools.vulpix.ChildJVMMain")
         .redirectErrorStream(true)
         .redirectInput(ProcessBuilder.Redirect.PIPE)
         .redirectOutput(ProcessBuilder.Redirect.PIPE)
