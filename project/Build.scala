@@ -8,7 +8,9 @@ import java.util.Calendar
 
 import scala.reflect.io.Path
 import sbtassembly.AssemblyKeys.assembly
-import xerial.sbt.Pack._
+
+import xerial.sbt.pack.PackPlugin
+import xerial.sbt.pack.PackPlugin.autoImport._
 
 import sbt.Package.ManifestAttributes
 
@@ -1121,9 +1123,10 @@ object Build {
     ))
   }
 
-  lazy val commonDistSettings = packSettings ++ Seq(
+  lazy val commonDistSettings = Seq(
     packMain := Map(),
     publishArtifact := false,
+    packGenerateMakefile := false,
     packExpandedClasspath := true,
     packResourceDir += (baseDirectory.value / "bin" -> "bin"),
     packArchiveName := "dotty-" + dottyVersion
@@ -1171,11 +1174,10 @@ object Build {
       settings(commonBenchmarkSettings).
       enablePlugins(JmhPlugin)
 
-    def asDist(implicit mode: Mode): Project = project.withCommonSettings.
-      dependsOn(`dotty-interfaces`).
-      dependsOn(dottyCompiler).
-      dependsOn(dottyLibrary).
-      dependsOn(dottyDoc).
+    def asDist(implicit mode: Mode): Project = project.
+      enablePlugins(PackPlugin).
+      withCommonSettings.
+      dependsOn(`dotty-interfaces`, dottyCompiler, dottyLibrary, dottyDoc).
       settings(commonDistSettings).
       bootstrappedSettings(target := baseDirectory.value / "target") // override setting in commonBootstrappedSettings
 
