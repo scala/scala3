@@ -117,7 +117,7 @@ class ExtendMessage(_msg: () => Message)(f: String => String) { self =>
 /** The fallback `Message` containing no explanation and having no `kind` */
 class NoExplanation(val msg: String) extends Message(ErrorMessageID.NoExplanationID) {
   val explanation = ""
-  val kind = ErrorCategories.NO_KIND
+  val kind = ErrorCategory.NoKind
 
   override def toString(): String = s"NoExplanation($msg)"
 }

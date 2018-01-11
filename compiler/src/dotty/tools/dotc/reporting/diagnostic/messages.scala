@@ -6,7 +6,6 @@ package diagnostic
 import dotc.core._
 import Contexts.Context
 import Decorators._
-import ErrorCategories._
 import Symbols._
 import Names._
 import NameOps._
@@ -142,7 +141,7 @@ object messages {
 
   case class EmptyCatchBlock(tryBody: untpd.Tree)(implicit ctx: Context)
   extends EmptyCatchOrFinallyBlock(tryBody, EmptyCatchBlockID) {
-    val kind = SYNTAX
+    val kind = ErrorCategory.Syntax
     val msg =
       hl"""|The ${"catch"} block does not contain a valid expression, try
            |adding a case like - `${"case e: Exception =>"}` to the block"""
@@ -150,7 +149,7 @@ object messages {
 
   case class EmptyCatchAndFinallyBlock(tryBody: untpd.Tree)(implicit ctx: Context)
   extends EmptyCatchOrFinallyBlock(tryBody, EmptyCatchAndFinallyBlockID) {
-    val kind = SYNTAX
+    val kind = ErrorCategory.Syntax
     val msg =
       hl"""|A ${"try"} without ${"catch"} or ${"finally"} is equivalent to putting
            |its body in a block; no exceptions are handled."""
@@ -158,7 +157,7 @@ object messages {
 
   case class DeprecatedWithOperator()(implicit ctx: Context)
   extends Message(DeprecatedWithOperatorID) {
-    val kind = SYNTAX
+    val kind = ErrorCategory.Syntax
     val msg =
       hl"""${"with"} as a type operator has been deprecated; use `&' instead"""
     val explanation =
@@ -169,7 +168,7 @@ object messages {
 
   case class CaseClassMissingParamList(cdef: untpd.TypeDef)(implicit ctx: Context)
   extends Message(CaseClassMissingParamListID) {
-    val kind = SYNTAX
+    val kind = ErrorCategory.Syntax
     val msg =
       hl"""|A ${"case class"} must have at least one parameter list"""
 
@@ -185,7 +184,7 @@ object messages {
                                                pt: Type)
                                               (implicit ctx: Context)
   extends Message(AnonymousFunctionMissingParamTypeID) {
-    val kind = SYNTAX
+    val kind = ErrorCategory.Syntax
 
     val msg = {
       val ofFun =
@@ -209,7 +208,7 @@ object messages {
 
   case class WildcardOnTypeArgumentNotAllowedOnNew()(implicit ctx: Context)
   extends Message(WildcardOnTypeArgumentNotAllowedOnNewID) {
-    val kind = SYNTAX
+    val kind = ErrorCategory.Syntax
     val msg = "type argument must be fully defined"
 
     val code1 =
@@ -244,7 +243,7 @@ object messages {
   // Type Errors ------------------------------------------------------------ //
   case class DuplicateBind(bind: untpd.Bind, tree: untpd.CaseDef)(implicit ctx: Context)
   extends Message(DuplicateBindID) {
-    val kind = NAMING
+    val kind = ErrorCategory.Naming
     val msg = em"duplicate pattern variable: `${bind.name}`"
 
     val explanation = {
@@ -271,7 +270,7 @@ object messages {
 
   case class MissingIdent(tree: untpd.Ident, treeKind: String, name: String)(implicit ctx: Context)
   extends Message(MissingIdentID) {
-    val kind = UNBOUND_IDENTIFIER
+    val kind = ErrorCategory.UnboundIdentifier
     val msg = em"not found: $treeKind$name"
 
     val explanation = {
@@ -284,7 +283,7 @@ object messages {
 
   case class TypeMismatch(found: Type, expected: Type, whyNoMatch: String = "", implicitFailure: String = "")(implicit ctx: Context)
   extends Message(TypeMismatchID) {
-    val kind = TYPE_MISMATCH
+    val kind = ErrorCategory.TypeMismatch
     val msg = {
       val (where, printCtx) = Formatting.disambiguateTypes(found, expected)
       val (fnd, exp) = Formatting.typeDiff(found, expected)(printCtx)
@@ -299,7 +298,7 @@ object messages {
 
   case class NotAMember(site: Type, name: Name, selected: String)(implicit ctx: Context)
   extends Message(NotAMemberID) {
-    val kind = MEMBER_NOT_FOUND
+    val kind = ErrorCategory.MemberNotFound
 
     //println(i"site = $site, decls = ${site.decls}, source = ${site.widen.typeSymbol.sourceFile}") //DEBUG
 
@@ -365,7 +364,7 @@ object messages {
 
   case class EarlyDefinitionsNotSupported()(implicit ctx: Context)
   extends Message(EarlyDefinitionsNotSupportedID) {
-    val kind = SYNTAX
+    val kind = ErrorCategory.Syntax
     val msg = "early definitions are not supported; use trait parameters instead"
 
     val explanation = {
@@ -411,7 +410,7 @@ object messages {
 
   case class TopLevelImplicitClass(cdef: untpd.TypeDef)(implicit ctx: Context)
   extends Message(TopLevelImplicitClassID) {
-    val kind = SYNTAX
+    val kind = ErrorCategory.Syntax
     val msg = hl"""An ${"implicit class"} may not be top-level"""
 
     val explanation = {
@@ -442,7 +441,7 @@ object messages {
 
   case class ImplicitCaseClass(cdef: untpd.TypeDef)(implicit ctx: Context)
   extends Message(ImplicitCaseClassID) {
-    val kind = SYNTAX
+    val kind = ErrorCategory.Syntax
     val msg = hl"""A ${"case class"} may not be defined as ${"implicit"}"""
 
     val explanation =
@@ -455,7 +454,7 @@ object messages {
 
   case class ImplicitClassPrimaryConstructorArity()(implicit ctx: Context)
   extends Message(ImplicitClassPrimaryConstructorArityID){
-    val kind = SYNTAX
+    val kind = ErrorCategory.Syntax
     val msg = "Implicit classes must accept exactly one primary constructor parameter"
     val explanation = {
       val example = "implicit class RichDate(date: java.util.Date)"
@@ -471,7 +470,7 @@ object messages {
 
   case class ObjectMayNotHaveSelfType(mdef: untpd.ModuleDef)(implicit ctx: Context)
   extends Message(ObjectMayNotHaveSelfTypeID) {
-    val kind = SYNTAX
+    val kind = ErrorCategory.Syntax
     val msg = hl"""${"object"}s must not have a self ${"type"}"""
 
     val explanation = {
@@ -490,7 +489,7 @@ object messages {
   case class TupleTooLong(ts: List[untpd.Tree])(implicit ctx: Context)
   extends Message(TupleTooLongID) {
     import Definitions.MaxTupleArity
-    val kind = SYNTAX
+    val kind = ErrorCategory.Syntax
     val msg = hl"""A ${"tuple"} cannot have more than ${MaxTupleArity} members"""
 
     val explanation = {
@@ -505,7 +504,7 @@ object messages {
 
   case class RepeatedModifier(modifier: String)(implicit ctx:Context)
   extends Message(RepeatedModifierID) {
-    val kind = SYNTAX
+    val kind = ErrorCategory.Syntax
     val msg = hl"""repeated modifier $modifier"""
 
     val explanation = {
@@ -527,7 +526,7 @@ object messages {
 
   case class InterpolatedStringError()(implicit ctx:Context)
   extends Message(InterpolatedStringErrorID) {
-    val kind = SYNTAX
+    val kind = ErrorCategory.Syntax
     val msg = "error in interpolated string: identifier or block expected"
     val explanation = {
       val code1 = "s\"$new Point(0, 0)\""
@@ -545,7 +544,7 @@ object messages {
 
   case class UnboundPlaceholderParameter()(implicit ctx:Context)
   extends Message(UnboundPlaceholderParameterID) {
-    val kind = SYNTAX
+    val kind = ErrorCategory.Syntax
     val msg = "unbound placeholder parameter; incorrect use of `_`"
     val explanation =
       hl"""|The `_` placeholder syntax was used where it could not be bound.
@@ -581,7 +580,7 @@ object messages {
 
   case class IllegalStartSimpleExpr(illegalToken: String)(implicit ctx: Context)
   extends Message(IllegalStartSimpleExprID) {
-    val kind = SYNTAX
+    val kind = ErrorCategory.Syntax
     val msg = "illegal start of simple expression"
     val explanation = {
       hl"""|An expression yields a value. In the case of the simple expression, this error
@@ -600,7 +599,7 @@ object messages {
 
   case class MissingReturnType()(implicit ctx:Context)
   extends Message(MissingReturnTypeID) {
-    val kind = SYNTAX
+    val kind = ErrorCategory.Syntax
     val msg = "missing return type"
     val explanation =
       hl"""|An abstract declaration must have a return type. For example:
@@ -612,7 +611,7 @@ object messages {
 
   case class MissingReturnTypeWithReturnStatement(method: Symbol)(implicit ctx: Context)
   extends Message(MissingReturnTypeWithReturnStatementID) {
-    val kind = SYNTAX
+    val kind = ErrorCategory.Syntax
     val msg = hl"$method has a return statement; it needs a result type"
     val explanation =
       hl"""|If a method contains a ${"return"} statement, it must have an
@@ -623,7 +622,7 @@ object messages {
 
   case class YieldOrDoExpectedInForComprehension()(implicit ctx: Context)
   extends Message(YieldOrDoExpectedInForComprehensionID) {
-    val kind = SYNTAX
+    val kind = ErrorCategory.Syntax
     val msg = hl"${"yield"} or ${"do"} expected"
 
     val explanation =
@@ -656,7 +655,7 @@ object messages {
 
   case class ProperDefinitionNotFound()(implicit ctx: Context)
   extends Message(ProperDefinitionNotFoundID) {
-    val kind = DEFINITION_NOT_FOUND
+    val kind = ErrorCategory.DefinitionNotFound
     val msg = hl"""Proper definition was not found in ${"@usecase"}"""
 
     val explanation = {
@@ -695,7 +694,7 @@ object messages {
 
   case class ByNameParameterNotSupported()(implicit ctx: Context)
   extends Message(ByNameParameterNotSupportedID) {
-    val kind = SYNTAX
+    val kind = ErrorCategory.Syntax
     val msg = "By-name parameter type not allowed here."
 
     val explanation =
@@ -719,7 +718,7 @@ object messages {
 
   case class WrongNumberOfTypeArgs(fntpe: Type, expectedArgs: List[ParamInfo], actual: List[untpd.Tree])(implicit ctx: Context)
   extends Message(WrongNumberOfTypeArgsID) {
-    val kind = SYNTAX
+    val kind = ErrorCategory.Syntax
 
     private val expectedCount = expectedArgs.length
     private val actualCount = actual.length
@@ -769,7 +768,7 @@ object messages {
 
   case class IllegalVariableInPatternAlternative()(implicit ctx: Context)
   extends Message(IllegalVariableInPatternAlternativeID) {
-    val kind = SYNTAX
+    val kind = ErrorCategory.Syntax
     val msg = "Variables are not allowed in alternative patterns"
     val explanation = {
       val varInAlternative =
@@ -798,7 +797,7 @@ object messages {
 
   case class IdentifierExpected(identifier: String)(implicit ctx: Context)
   extends Message(IdentifierExpectedID) {
-    val kind = SYNTAX
+    val kind = ErrorCategory.Syntax
     val msg = "identifier expected"
     val explanation = {
       val wrongIdentifier = s"def foo: $identifier = {...}"
@@ -819,7 +818,7 @@ object messages {
 
   case class AuxConstructorNeedsNonImplicitParameter()(implicit ctx:Context)
   extends Message(AuxConstructorNeedsNonImplicitParameterID) {
-    val kind = SYNTAX
+    val kind = ErrorCategory.Syntax
     val msg = "auxiliary constructor needs non-implicit parameter list"
     val explanation =
       hl"""|Only the primary constructor is allowed an ${"implicit"} parameter list;
@@ -835,7 +834,7 @@ object messages {
 
   case class IncorrectRepeatedParameterSyntax()(implicit ctx: Context)
   extends Message(IncorrectRepeatedParameterSyntaxID) {
-    val kind = SYNTAX
+    val kind = ErrorCategory.Syntax
     val msg = "'*' expected"
     val explanation =
       hl"""|Expected * in '_*' operator.
@@ -862,7 +861,7 @@ object messages {
 
   case class IllegalLiteral()(implicit ctx: Context)
   extends Message(IllegalLiteralID) {
-    val kind = SYNTAX
+    val kind = ErrorCategory.Syntax
     val msg = "illegal literal"
     val explanation =
       hl"""|Available literals can be divided into several groups:
@@ -877,7 +876,7 @@ object messages {
 
   case class PatternMatchExhaustivity(uncovered: String)(implicit ctx: Context)
   extends Message(PatternMatchExhaustivityID) {
-    val kind = PATTERN_MATCH_EXHAUSTIVITY
+    val kind = ErrorCategory.PatternMatchExhaustivity
     val msg =
       hl"""|match may not be exhaustive.
            |
@@ -894,7 +893,7 @@ object messages {
 
   case class UncheckedTypePattern(msg: String)(implicit ctx: Context)
     extends Message(UncheckedTypePatternID) {
-    val kind = PATTERN_MATCH_EXHAUSTIVITY
+    val kind = ErrorCategory.PatternMatchExhaustivity
 
     val explanation =
       hl"""|Type arguments and type refinements are erased during compile time, thus it's
@@ -906,14 +905,14 @@ object messages {
 
   case class MatchCaseUnreachable()(implicit ctx: Context)
   extends Message(MatchCaseUnreachableID) {
-    val kind = MATCH_CASE_UNREACHABLE
+    val kind = ErrorCategory.MatchCaseUnreachable
     val msg = "unreachable code"
     val explanation = ""
   }
 
   case class SeqWildcardPatternPos()(implicit ctx: Context)
   extends Message(SeqWildcardPatternPosID) {
-    val kind = SYNTAX
+    val kind = ErrorCategory.Syntax
     val msg = "`_*' can be used only for last argument"
     val explanation = {
       val code =
@@ -937,7 +936,7 @@ object messages {
 
   case class IllegalStartOfSimplePattern()(implicit ctx: Context)
   extends Message(IllegalStartOfSimplePatternID) {
-    val kind = SYNTAX
+    val kind = ErrorCategory.Syntax
     val msg = "illegal start of simple pattern"
     val explanation = {
       val sipCode =
@@ -1017,14 +1016,14 @@ object messages {
 
   case class PkgDuplicateSymbol(existing: Symbol)(implicit ctx: Context)
   extends Message(PkgDuplicateSymbolID) {
-    val kind = DUPLICATE_SYMBOL
+    val kind = ErrorCategory.DuplicateSymbol
     val msg = hl"trying to define package with same name as `$existing`"
     val explanation = ""
   }
 
   case class ExistentialTypesNoLongerSupported()(implicit ctx: Context)
   extends Message(ExistentialTypesNoLongerSupportedID) {
-    val kind = SYNTAX
+    val kind = ErrorCategory.Syntax
     val msg =
       hl"""|Existential types are no longer supported -
            |use a wildcard or dependent type instead"""
@@ -1047,7 +1046,7 @@ object messages {
 
   case class UnboundWildcardType()(implicit ctx: Context)
   extends Message(UnboundWildcardTypeID) {
-    val kind = SYNTAX
+    val kind = ErrorCategory.Syntax
     val msg = "Unbound wildcard type"
     val explanation =
       hl"""|The wildcard type syntax (`_`) was used where it could not be bound.
@@ -1091,7 +1090,7 @@ object messages {
   }
 
   case class DanglingThisInPath()(implicit ctx: Context) extends Message(DanglingThisInPathID) {
-    val kind = SYNTAX
+    val kind = ErrorCategory.Syntax
     val msg = hl"""Expected an additional member selection after the keyword ${"this"}"""
 
     val contextCode =
@@ -1128,7 +1127,7 @@ object messages {
 
   case class OverridesNothing(member: Symbol)(implicit ctx: Context)
   extends Message(OverridesNothingID) {
-    val kind = REFERENCE
+    val kind = ErrorCategory.Reference
     val msg = hl"""${member} overrides nothing"""
 
     val explanation =
@@ -1140,7 +1139,7 @@ object messages {
 
   case class OverridesNothingButNameExists(member: Symbol, existing: List[Denotations.SingleDenotation])(implicit ctx: Context)
   extends Message(OverridesNothingButNameExistsID) {
-    val kind = REFERENCE
+    val kind = ErrorCategory.Reference
     val msg = hl"""${member} has a different signature than the overridden declaration"""
 
     val existingDecl = existing.map(_.showDcl).mkString("  \n")
@@ -1159,7 +1158,7 @@ object messages {
 
   case class ForwardReferenceExtendsOverDefinition(value: Symbol, definition: Symbol)(implicit ctx: Context)
   extends Message(ForwardReferenceExtendsOverDefinitionID) {
-    val kind = REFERENCE
+    val kind = ErrorCategory.Reference
     val msg = hl"`${definition.name}` is a forward reference extending over the definition of `${value.name}`"
 
     val explanation =
@@ -1178,7 +1177,7 @@ object messages {
 
   case class ExpectedTokenButFound(expected: Token, found: Token)(implicit ctx: Context)
   extends Message(ExpectedTokenButFoundID) {
-    val kind = SYNTAX
+    val kind = ErrorCategory.Syntax
 
     private val expectedText =
       if (Tokens.isIdentifier(expected)) "an identifier"
@@ -1199,7 +1198,7 @@ object messages {
 
   case class MixedLeftAndRightAssociativeOps(op1: Name, op2: Name, op2LeftAssoc: Boolean)(implicit ctx: Context)
   extends Message(MixedLeftAndRightAssociativeOpsID) {
-    val kind = SYNTAX
+    val kind = ErrorCategory.Syntax
     val op1Asso = if (op2LeftAssoc) "which is right-associative" else "which is left-associative"
     val op2Asso = if (op2LeftAssoc) "which is left-associative" else "which is right-associative"
     val msg = s"`${op1}` (${op1Asso}) and `${op2}` ($op2Asso) have same precedence and may not be mixed"
@@ -1233,7 +1232,7 @@ object messages {
 
   case class CantInstantiateAbstractClassOrTrait(cls: Symbol, isTrait: Boolean)(implicit ctx: Context)
   extends Message(CantInstantiateAbstractClassOrTraitID) {
-    val kind = USAGE
+    val kind = ErrorCategory.Usage
     private val traitOrAbstract = if (isTrait) hl"a trait" else hl"abstract"
     val msg = hl"""${cls.name} is ${traitOrAbstract}; it cannot be instantiated"""
     val explanation =
@@ -1252,7 +1251,7 @@ object messages {
 
   case class OverloadedOrRecursiveMethodNeedsResultType private (termName: String)(implicit ctx: Context)
   extends Message(OverloadedOrRecursiveMethodNeedsResultTypeID) {
-    val kind = SYNTAX
+    val kind = ErrorCategory.Syntax
     val msg = hl"""overloaded or recursive method $termName needs return type"""
     val explanation =
       hl"""Case 1: $termName is overloaded
@@ -1275,7 +1274,7 @@ object messages {
 
   case class RecursiveValueNeedsResultType(tree: Names.TermName)(implicit ctx: Context)
   extends Message(RecursiveValueNeedsResultTypeID) {
-    val kind = SYNTAX
+    val kind = ErrorCategory.Syntax
     val msg = hl"""recursive value ${tree.name} needs type"""
     val explanation =
       hl"""The definition of `${tree.name}` is recursive and you need to specify its type.
@@ -1284,7 +1283,7 @@ object messages {
 
   case class CyclicReferenceInvolving(denot: SymDenotation)(implicit ctx: Context)
   extends Message(CyclicReferenceInvolvingID) {
-    val kind = SYNTAX
+    val kind = ErrorCategory.Syntax
     val msg = hl"""cyclic reference involving $denot"""
     val explanation =
       hl"""|$denot is declared as part of a cycle which makes it impossible for the
@@ -1294,7 +1293,7 @@ object messages {
 
   case class CyclicReferenceInvolvingImplicit(cycleSym: Symbol)(implicit ctx: Context)
   extends Message(CyclicReferenceInvolvingImplicitID) {
-    val kind = SYNTAX
+    val kind = ErrorCategory.Syntax
     val msg = hl"""cyclic reference involving implicit $cycleSym"""
     val explanation =
       hl"""|This happens when the right hand-side of $cycleSym's definition involves an implicit search.
@@ -1306,7 +1305,7 @@ object messages {
   extends Message(SuperQualMustBeParentID) {
 
     val msg = hl"""|$qual does not name a parent of $cls"""
-    val kind = REFERENCE
+    val kind = ErrorCategory.Reference
 
     private val parents: Seq[String] = (cls.info.parents map (_.typeSymbol.name.show)).sorted
 
@@ -1322,7 +1321,7 @@ object messages {
   case class VarArgsParamMustComeLast()(implicit ctx: Context)
   extends Message(IncorrectRepeatedParameterSyntaxID) {
     val msg = "varargs parameter must come last"
-    val kind = SYNTAX
+    val kind = ErrorCategory.Syntax
     val explanation =
       hl"""|The varargs field must be the last field in the method signature.
            |Attempting to define a field in a method signature after a varargs field is an error.
@@ -1357,7 +1356,7 @@ object messages {
           |it is both ${bindingString(newPrec, ctx)}
           |and ${bindingString(prevPrec, prevCtx, " subsequently")}"""
 
-    val kind = REFERENCE
+    val kind = ErrorCategory.Reference
 
     val explanation =
       hl"""|The compiler can't decide which of the possible choices you
@@ -1380,7 +1379,7 @@ object messages {
 
     val msg = hl"${err.refStr(methPartType)} does not take$more parameters"
 
-    val kind = REFERENCE
+    val kind = ErrorCategory.Reference
 
     private val noParameters = if (methPartType.widenSingleton.isInstanceOf[ExprType])
       hl"""|As ${err.refStr(methPartType)} is defined without parenthesis, you may
@@ -1404,7 +1403,7 @@ object messages {
     val msg =
       s"""|Ambiguous overload. The ${err.overloadedAltsStr(alts)}
           |$all match ${err.expectedTypeStr(pt)}""".stripMargin
-    val kind = REFERENCE
+    val kind = ErrorCategory.Reference
     val explanation =
       hl"""|There are ${alts.length} methods that could be referenced as the compiler knows too little
            |about the expected type.
@@ -1416,7 +1415,7 @@ object messages {
 
   case class ReassignmentToVal(name: Names.Name)(implicit ctx: Context)
     extends Message(ReassignmentToValID) {
-    val kind = REFERENCE
+    val kind = ErrorCategory.Reference
     val msg = hl"""reassignment to val `$name`"""
     val explanation =
       hl"""|You can not assign a new value to `$name` as values can't be changed.
@@ -1430,7 +1429,7 @@ object messages {
 
   case class TypeDoesNotTakeParameters(tpe: Types.Type, params: List[Trees.Tree[Trees.Untyped]])(implicit ctx: Context)
     extends Message(TypeDoesNotTakeParametersID) {
-    val kind = REFERENCE
+    val kind = ErrorCategory.Reference
     val msg = hl"$tpe does not take type parameters"
 
     private val ps =
@@ -1446,7 +1445,7 @@ object messages {
   case class ParameterizedTypeLacksArguments(psym: Symbol)(implicit ctx: Context)
     extends Message(ParameterizedTypeLacksArgumentsID) {
     val msg = hl"parameterized $psym lacks argument list"
-    val kind = REFERENCE
+    val kind = ErrorCategory.Reference
     val explanation =
       hl"""The $psym is declared with non-implicit parameters, you may not leave
           |out the parameter list when extending it.
@@ -1456,7 +1455,7 @@ object messages {
   case class VarValParametersMayNotBeCallByName(name: Names.TermName, mutable: Boolean)(implicit ctx: Context)
     extends Message(VarValParametersMayNotBeCallByNameID) {
     val msg = s"${if (mutable) "`var'" else "`val'"} parameters may not be call-by-name"
-    val kind = SYNTAX
+    val kind = ErrorCategory.Syntax
     val explanation =
       hl"""${"var"} and ${"val"} parameters of classes and traits may no be call-by-name. In case you
           |want the parameter to be evaluated on demand, consider making it just a parameter
@@ -1470,7 +1469,7 @@ object messages {
   case class MissingTypeParameterFor(tpe: Type)(implicit ctx: Context)
     extends Message(MissingTypeParameterForID) {
     val msg = hl"missing type parameter for ${tpe}"
-    val kind = SYNTAX
+    val kind = ErrorCategory.Syntax
     val explanation = ""
   }
 
@@ -1478,7 +1477,7 @@ object messages {
     err: typer.ErrorReporting.Errors)(implicit ctx: Context)
     extends Message(DoesNotConformToBoundID) {
     val msg = hl"Type argument ${tpe} does not conform to $which bound $bound ${err.whyNoMatchStr(tpe, bound)}"
-    val kind = TYPE_MISMATCH
+    val kind = ErrorCategory.TypeMismatch
     val explanation = ""
   }
 
@@ -1488,7 +1487,7 @@ object messages {
     extends Message(DoesNotConformToSelfTypeID) {
     val msg = hl"""$category: self type $selfType of $cls does not conform to self type $otherSelf
                   |of $relation $other"""
-    val kind = TYPE_MISMATCH
+    val kind = ErrorCategory.TypeMismatch
     val explanation =
       hl"""You mixed in $other which requires self type $otherSelf, but $cls has self type
           |$selfType and does not inherit from $otherSelf.
@@ -1502,7 +1501,7 @@ object messages {
     implicit ctx: Context)
     extends Message(DoesNotConformToSelfTypeCantBeInstantiatedID) {
     val msg = hl"""$tp does not conform to its self type $selfType; cannot be instantiated"""
-    val kind = TYPE_MISMATCH
+    val kind = ErrorCategory.TypeMismatch
     val explanation =
       hl"""To create an instance of $tp it needs to inherit $selfType in some way.
           |
@@ -1515,7 +1514,7 @@ object messages {
     implicit ctx: Context)
     extends Message(AbstractMemberMayNotHaveModifierID) {
     val msg = hl"""${"abstract"} $sym may not have `$flag' modifier"""
-    val kind = SYNTAX
+    val kind = ErrorCategory.Syntax
     val explanation = ""
   }
 
@@ -1523,7 +1522,7 @@ object messages {
     implicit ctx: Context)
     extends Message(TopLevelCantBeImplicitID) {
     val msg = hl"""${"implicit"} modifier cannot be used for top-level definitions"""
-    val kind = SYNTAX
+    val kind = ErrorCategory.Syntax
     val explanation = ""
   }
 
@@ -1531,7 +1530,7 @@ object messages {
     implicit ctx: Context)
     extends Message(TypesAndTraitsCantBeImplicitID) {
     val msg = hl"""${"implicit"} modifier cannot be used for types or traits"""
-    val kind = SYNTAX
+    val kind = ErrorCategory.Syntax
     val explanation = ""
   }
 
@@ -1539,7 +1538,7 @@ object messages {
     implicit ctx: Context)
     extends Message(OnlyClassesCanBeAbstractID) {
     val msg = hl"""${"abstract"} modifier can be used only for classes; it should be omitted for abstract members"""
-    val kind = SYNTAX
+    val kind = ErrorCategory.Syntax
     val explanation = ""
   }
 
@@ -1547,7 +1546,7 @@ object messages {
     implicit ctx: Context)
     extends Message(AbstractOverrideOnlyInTraitsID) {
     val msg = hl"""${"abstract override"} modifier only allowed for members of traits"""
-    val kind = SYNTAX
+    val kind = ErrorCategory.Syntax
     val explanation = ""
   }
 
@@ -1555,7 +1554,7 @@ object messages {
     implicit ctx: Context)
     extends Message(TraitsMayNotBeFinalID) {
     val msg = hl"""$sym may not be ${"final"}"""
-    val kind = SYNTAX
+    val kind = ErrorCategory.Syntax
     val explanation =
       "A trait can never be final since it is abstract and must be extended to be useful."
   }
@@ -1564,7 +1563,7 @@ object messages {
     implicit ctx: Context)
     extends Message(NativeMembersMayNotHaveImplementationID) {
     val msg = hl"""${"@native"} members may not have an implementation"""
-    val kind = SYNTAX
+    val kind = ErrorCategory.Syntax
     val explanation = ""
   }
 
@@ -1576,14 +1575,14 @@ object messages {
       if (sym.is(Mutable)) "Note that variables need to be initialized to be defined."
       else ""
     val msg = hl"""only classes can have declared but undefined members"""
-    val kind = SYNTAX
+    val kind = ErrorCategory.Syntax
     val explanation = s"$varNote"
   }
 
   case class CannotExtendAnyVal(sym: Symbol)(implicit ctx: Context)
     extends Message(CannotExtendAnyValID) {
     val msg = hl"""$sym cannot extend ${"AnyVal"}"""
-    val kind = SYNTAX
+    val kind = ErrorCategory.Syntax
     val explanation =
       hl"""Only classes (not traits) are allowed to extend ${"AnyVal"}, but traits may extend
           |${"Any"} to become ${Green("\"universal traits\"")} which may only have ${"def"} members.
@@ -1603,7 +1602,7 @@ object messages {
     }
 
     val msg = hl"""$sym cannot have the same name as ${cls.showLocated} -- """ + reasonMessage
-    val kind = SYNTAX
+    val kind = ErrorCategory.Syntax
     val explanation = ""
   }
   object CannotHaveSameNameAs {
@@ -1615,35 +1614,35 @@ object messages {
   case class ValueClassesMayNotDefineInner(valueClass: Symbol, inner: Symbol)(implicit ctx: Context)
     extends Message(ValueClassesMayNotDefineInnerID) {
     val msg = hl"""value classes may not define an inner class"""
-    val kind = SYNTAX
+    val kind = ErrorCategory.Syntax
     val explanation = ""
   }
 
   case class ValueClassesMayNotDefineNonParameterField(valueClass: Symbol, field: Symbol)(implicit ctx: Context)
     extends Message(ValueClassesMayNotDefineNonParameterFieldID) {
     val msg = hl"""value classes may not define non-parameter field"""
-    val kind = SYNTAX
+    val kind = ErrorCategory.Syntax
     val explanation = ""
   }
 
   case class ValueClassesMayNotDefineASecondaryConstructor(valueClass: Symbol, constructor: Symbol)(implicit ctx: Context)
     extends Message(ValueClassesMayNotDefineASecondaryConstructorID) {
     val msg = hl"""value classes may not define a secondary constructor"""
-    val kind = SYNTAX
+    val kind = ErrorCategory.Syntax
     val explanation = ""
   }
 
   case class ValueClassesMayNotContainInitalization(valueClass: Symbol)(implicit ctx: Context)
     extends Message(ValueClassesMayNotContainInitalizationID) {
     val msg = hl"""value classes may not contain initialization statements"""
-    val kind = SYNTAX
+    val kind = ErrorCategory.Syntax
     val explanation = ""
   }
 
   case class ValueClassesMayNotBeAbstract(valueClass: Symbol)(implicit ctx: Context)
     extends Message(ValueClassesMayNotBeAbstractID) {
     val msg = hl"""value classes may not be ${"abstract"}"""
-    val kind = SYNTAX
+    val kind = ErrorCategory.Syntax
     val explanation = ""
   }
 
@@ -1651,21 +1650,21 @@ object messages {
     extends Message(ValueClassesMayNotBeContaintedID) {
     private val localOrMember = if (valueClass.owner.isTerm) "local class" else "member of another class"
     val msg = s"""value classes may not be a $localOrMember"""
-    val kind = SYNTAX
+    val kind = ErrorCategory.Syntax
     val explanation = ""
   }
 
   case class ValueClassesMayNotWrapItself(valueClass: Symbol)(implicit ctx: Context)
     extends Message(ValueClassesMayNotWrapItselfID) {
     val msg = """a value class may not wrap itself"""
-    val kind = SYNTAX
+    val kind = ErrorCategory.Syntax
     val explanation = ""
   }
 
   case class ValueClassParameterMayNotBeAVar(valueClass: Symbol, param: Symbol)(implicit ctx: Context)
     extends Message(ValueClassParameterMayNotBeAVarID) {
     val msg = hl"""a value class parameter may not be a ${"var"}"""
-    val kind = SYNTAX
+    val kind = ErrorCategory.Syntax
     val explanation =
       hl"""A value class must have exactly one ${"val"} parameter.
           |"""
@@ -1674,34 +1673,34 @@ object messages {
   case class ValueClassNeedsOneValParam(valueClass: Symbol)(implicit ctx: Context)
     extends Message(ValueClassNeedsExactlyOneValParamID) {
     val msg = hl"""value class needs one ${"val"} parameter"""
-    val kind = SYNTAX
+    val kind = ErrorCategory.Syntax
     val explanation = ""
   }
 
   case class OnlyCaseClassOrCaseObjectAllowed()(implicit ctx: Context)
     extends Message(OnlyCaseClassOrCaseObjectAllowedID) {
     val msg = "only `case class` or `case object` allowed"
-    val kind = SYNTAX
+    val kind = ErrorCategory.Syntax
     val explanation = ""
   }
 
   case class ExpectedClassOrObjectDef()(implicit ctx: Context)
     extends Message(ExpectedClassOrObjectDefID) {
-    val kind = SYNTAX
+    val kind = ErrorCategory.Syntax
     val msg = "expected class or object definition"
     val explanation = ""
   }
 
   case class SuperCallsNotAllowedInline(symbol: Symbol)(implicit ctx: Context)
     extends Message(SuperCallsNotAllowedInlineID) {
-    val kind = SYNTAX
+    val kind = ErrorCategory.Syntax
     val msg = s"super call not allowed in inline $symbol"
     val explanation = "Method inlining prohibits calling superclass methods, as it may lead to confusion about which super is being called."
   }
 
   case class ModifiersNotAllowed(flags: FlagSet, printableType: Option[String])(implicit ctx: Context)
     extends Message(ModifiersNotAllowedID) {
-    val kind = SYNTAX
+    val kind = ErrorCategory.Syntax
     val msg = s"modifier(s) `$flags' not allowed for ${printableType.getOrElse("combination")}"
     val explanation = {
       val first = "sealed def y: Int = 1"
@@ -1722,7 +1721,7 @@ object messages {
 
   case class ImplicitFunctionTypeNeedsNonEmptyParameterList()(implicit ctx: Context)
     extends Message(ImplicitFunctionTypeNeedsNonEmptyParameterListID) {
-    val kind = SYNTAX
+    val kind = ErrorCategory.Syntax
     val msg = "implicit function type needs non-empty parameter list"
     val explanation = {
       val code1 = "type Transactional[T] = implicit Transaction => T"
@@ -1740,14 +1739,14 @@ object messages {
 
   case class WrongNumberOfParameters(expected: Int)(implicit ctx: Context)
     extends Message(WrongNumberOfParametersID) {
-    val kind = SYNTAX
+    val kind = ErrorCategory.Syntax
     val msg = s"wrong number of parameters, expected: $expected"
     val explanation = ""
   }
 
   case class DuplicatePrivateProtectedQualifier()(implicit ctx: Context)
     extends Message(DuplicatePrivateProtectedQualifierID) {
-    val kind = SYNTAX
+    val kind = ErrorCategory.Syntax
     val msg = "duplicate private/protected qualifier"
     val explanation =
       hl"It is not allowed to combine `private` and `protected` modifiers even if they are qualified to different scopes"
@@ -1755,7 +1754,7 @@ object messages {
 
   case class ExpectedStartOfTopLevelDefinition()(implicit ctx: Context)
     extends Message(ExpectedStartOfTopLevelDefinitionID) {
-    val kind = SYNTAX
+    val kind = ErrorCategory.Syntax
     val msg = "expected start of definition"
     val explanation =
       hl"you have to provide either ${"class"}, ${"trait"}, ${"object"}, or ${"enum"} definitions after qualifiers"
@@ -1763,7 +1762,7 @@ object messages {
 
   case class NoReturnFromInline(owner: Symbol)(implicit ctx: Context)
     extends Message(NoReturnFromInlineID) {
-    val kind = SYNTAX
+    val kind = ErrorCategory.Syntax
     val msg = hl"no explicit ${"return"} allowed from inline $owner"
     val explanation =
       hl"""Methods marked with ${"@inline"} may not use ${"return"} statements.
@@ -1774,7 +1773,7 @@ object messages {
 
   case class ReturnOutsideMethodDefinition(owner: Symbol)(implicit ctx: Context)
     extends Message(ReturnOutsideMethodDefinitionID) {
-    val kind = SYNTAX
+    val kind = ErrorCategory.Syntax
     val msg = hl"${"return"} outside method definition"
     val explanation =
       hl"""You used ${"return"} in ${owner}.
@@ -1784,7 +1783,7 @@ object messages {
 
   case class ExtendFinalClass(clazz:Symbol, finalClazz: Symbol)(implicit ctx: Context)
     extends Message(ExtendFinalClassID) {
-    val kind = SYNTAX
+    val kind = ErrorCategory.Syntax
     val msg = hl"$clazz cannot extend ${"final"} $finalClazz"
     val explanation =
       hl"""A class marked with the ${"final"} keyword cannot be extended"""
@@ -1792,7 +1791,7 @@ object messages {
 
   case class EnumCaseDefinitionInNonEnumOwner(owner: Symbol)(implicit ctx: Context)
     extends Message(EnumCaseDefinitionInNonEnumOwnerID) {
-      val kind = SYNTAX
+      val kind = ErrorCategory.Syntax
       val msg = em"case not allowed here, since owner ${owner} is not an ${"enum"} object"
       val explanation =
         hl"""${"enum"} cases are only allowed within the companion ${"object"} of an ${"enum class"}.
@@ -1802,7 +1801,7 @@ object messages {
 
   case class ExpectedTypeBoundOrEquals(found: Token)(implicit ctx: Context)
     extends Message(ExpectedTypeBoundOrEqualsID) {
-    val kind = SYNTAX
+    val kind = ErrorCategory.Syntax
     val msg = hl"${"="}, ${">:"}, or ${"<:"} expected, but ${Tokens.showToken(found)} found"
 
     val explanation =
@@ -1820,7 +1819,7 @@ object messages {
 
   case class ClassAndCompanionNameClash(cls: Symbol, other: Symbol)(implicit ctx: Context)
     extends Message(ClassAndCompanionNameClashID) {
-    val kind = NAMING
+    val kind = ErrorCategory.Naming
     val msg = hl"Name clash: both ${cls.owner} and its companion object defines ${cls.name.stripModuleClassSuffix}"
     val explanation = {
       val kind = if (cls.owner.is(Flags.Trait)) "trait" else "class"
@@ -1833,7 +1832,7 @@ object messages {
 
   case class TailrecNotApplicable(method: Symbol)(implicit ctx: Context)
     extends Message(TailrecNotApplicableID) {
-    val kind = SYNTAX
+    val kind = ErrorCategory.Syntax
     val msg = hl"TailRec optimisation not applicable, $method is neither ${"private"} nor ${"final"}."
     val explanation =
       hl"A method annotated ${"@tailrec"} must be declared ${"private"} or ${"final"} so it can't be overridden."
@@ -1841,7 +1840,7 @@ object messages {
 
   case class FailureToEliminateExistential(tp: Type, tp1: Type, tp2: Type, boundSyms: List[Symbol])(implicit ctx: Context)
     extends Message(FailureToEliminateExistentialID) {
-    val kind = COMPATIBILITY
+    val kind = ErrorCategory.Compatibility
     val msg = "Failure to eliminate existential type. Proceed at own risk."
     val explanation = {
       val originalType = ctx.dclsText(boundSyms, "; ").show
@@ -1853,7 +1852,7 @@ object messages {
 
   case class OnlyFunctionsCanBeFollowedByUnderscore(pt: Type)(implicit ctx: Context)
     extends Message(OnlyFunctionsCanBeFollowedByUnderscoreID) {
-    val kind = SYNTAX
+    val kind = ErrorCategory.Syntax
     val msg = hl"Not a function: $pt: cannot be followed by ${"_"}"
     val explanation =
       hl"""The syntax ${"x _"} is no longer supported if ${"x"} is not a function.
@@ -1862,7 +1861,7 @@ object messages {
 
   case class MissingEmptyArgumentList(method: Symbol)(implicit ctx: Context)
     extends Message(MissingEmptyArgumentListID) {
-    val kind = SYNTAX
+    val kind = ErrorCategory.Syntax
     val msg = hl"$method must be called with ${"()"} argument"
     val explanation = {
       val codeExample =
@@ -1880,20 +1879,20 @@ object messages {
 
   case class DuplicateNamedTypeParameter(name: Name)(implicit ctx: Context)
     extends Message(DuplicateNamedTypeParameterID) {
-    val kind = SYNTAX
+    val kind = ErrorCategory.Syntax
     val msg = hl"Type parameter $name was defined multiple times."
     val explanation = ""
   }
 
   case class UndefinedNamedTypeParameter(undefinedName: Name, definedNames: List[Name])(implicit ctx: Context)
     extends Message(UndefinedNamedTypeParameterID) {
-    val kind = SYNTAX
+    val kind = ErrorCategory.Syntax
     val msg = hl"Type parameter $undefinedName is undefined. Expected one of ${definedNames.map(_.show).mkString(", ")}."
     val explanation = ""
   }
 
   case class IllegalStartOfStatement(isModifier: Boolean)(implicit ctx: Context) extends Message(IllegalStartOfStatementID) {
-    val kind = SYNTAX
+    val kind = ErrorCategory.Syntax
     val msg = {
       val addendum = if (isModifier) ": no modifiers allowed here" else ""
       "Illegal start of statement" + addendum
@@ -1902,7 +1901,7 @@ object messages {
   }
 
   case class TraitIsExpected(symbol: Symbol)(implicit ctx: Context) extends Message(TraitIsExpectedID) {
-    val kind = SYNTAX
+    val kind = ErrorCategory.Syntax
     val msg = hl"$symbol is not a trait"
     val explanation = {
       val errorCodeExample =
@@ -1930,21 +1929,21 @@ object messages {
   }
 
   case class TraitRedefinedFinalMethodFromAnyRef(method: Symbol)(implicit ctx: Context) extends Message(TraitRedefinedFinalMethodFromAnyRefID) {
-    val kind = SYNTAX
+    val kind = ErrorCategory.Syntax
     val msg = hl"Traits cannot redefine final $method from ${"class AnyRef"}."
     val explanation = ""
   }
 
   case class PackageNameAlreadyDefined(pkg: Symbol)(implicit ctx: Context) extends Message(PackageNameAlreadyDefinedID) {
     val msg = hl"${pkg} is already defined, cannot be a ${"package"}"
-    val kind = NAMING
+    val kind = ErrorCategory.Naming
     val explanation =
       hl"An ${"object"} cannot have the same name as an existing ${"package"}. Rename either one of them."
   }
 
   case class UnapplyInvalidNumberOfArguments(qual: untpd.Tree, argTypes: List[Type])(implicit ctx: Context)
     extends Message(UnapplyInvalidNumberOfArgumentsID) {
-    val kind = SYNTAX
+    val kind = ErrorCategory.Syntax
     val msg = hl"Wrong number of argument patterns for $qual; expected: ($argTypes%, %)"
     val explanation =
       hl"""The Unapply method of $qual was used with incorrect number of arguments.
@@ -1957,13 +1956,13 @@ object messages {
 
   case class StaticFieldsOnlyAllowedInObjects(member: Symbol)(implicit ctx: Context) extends Message(StaticFieldsOnlyAllowedInObjectsID) {
     val msg = hl"${"@static"} $member in ${member.owner} must be defined inside an ${"object"}."
-    val kind = SYNTAX
+    val kind = ErrorCategory.Syntax
     val explanation =
       hl"${"@static"} members are only allowed inside objects."
   }
 
   case class CyclicInheritance(symbol: Symbol, addendum: String)(implicit ctx: Context) extends Message(CyclicInheritanceID) {
-    val kind = SYNTAX
+    val kind = ErrorCategory.Syntax
     val msg = hl"Cyclic inheritance: $symbol extends itself$addendum"
     val explanation = {
       val codeExample = "class A extends A"
@@ -1980,7 +1979,7 @@ object messages {
   }
 
   case class BadSymbolicReference(denot: SymDenotation)(implicit ctx: Context) extends Message(BadSymbolicReferenceID) {
-    val kind = REFERENCE
+    val kind = ErrorCategory.Reference
 
     val msg = {
       val denotationOwner = denot.owner
@@ -2000,14 +1999,14 @@ object messages {
   }
 
   case class UnableToExtendSealedClass(pclazz: Symbol)(implicit ctx: Context) extends Message(UnableToExtendSealedClassID) {
-    val kind = SYNTAX
+    val kind = ErrorCategory.Syntax
     val msg = hl"Cannot extend ${"sealed"} $pclazz in a different source file"
     val explanation = "A sealed class or trait can only be extended in the same file as its declaration"
   }
 
   case class SymbolHasUnparsableVersionNumber(symbol: Symbol, migrationMessage: String)(implicit ctx: Context)
   extends Message(SymbolHasUnparsableVersionNumberID) {
-    val kind = SYNTAX
+    val kind = ErrorCategory.Syntax
     val msg = hl"${symbol.showLocated} has an unparsable version number: $migrationMessage"
     val explanation =
       hl"""$migrationMessage
@@ -2021,7 +2020,7 @@ object messages {
     symbol: Symbol,
     migrationVersion: ScalaVersion
   )(implicit ctx: Context) extends Message(SymbolChangedSemanticsInVersionID) {
-    val kind = SYNTAX
+    val kind = ErrorCategory.Syntax
     val msg = hl"${symbol.showLocated} has changed semantics in version $migrationVersion"
     val explanation = {
       hl"""The ${symbol.showLocated} is marked with ${"@migration"} indicating it has changed semantics
@@ -2032,7 +2031,7 @@ object messages {
 
   case class UnableToEmitSwitch()(implicit ctx: Context)
   extends Message(UnableToEmitSwitchID) {
-    val kind = SYNTAX
+    val kind = ErrorCategory.Syntax
     val msg = hl"Could not emit switch for ${"@switch"} annotated match"
     val explanation = {
       val codeExample =
@@ -2061,14 +2060,14 @@ object messages {
 
   case class MissingCompanionForStatic(member: Symbol)(implicit ctx: Context) extends Message(MissingCompanionForStaticID) {
     val msg = hl"${member.owner} does not have a companion class"
-    val kind = SYNTAX
+    val kind = ErrorCategory.Syntax
     val explanation =
       hl"An object that contains ${"@static"} members must have a companion class."
   }
 
   case class PolymorphicMethodMissingTypeInParent(rsym: Symbol, parentSym: Symbol)(implicit ctx: Context)
   extends Message(PolymorphicMethodMissingTypeInParentID) {
-    val kind = SYNTAX
+    val kind = ErrorCategory.Syntax
     val msg = hl"polymorphic refinement $rsym without matching type in parent $parentSym is no longer allowed"
     val explanation =
       hl"""Polymorphic $rsym is not allowed in the structural refinement of $parentSym because
