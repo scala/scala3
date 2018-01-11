@@ -257,8 +257,11 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
         case tree: MemberDef =>
           transformMemberDef(tree)
           super.transform(tree)
-        case tree: New if isCheckable(tree) =>
-          Checking.checkInstantiable(tree.tpe, tree.pos)
+        case tree: New =>
+          if (tree.tpe.classSymbol.hasAnnotation(defn.DeprecatedAnnot))
+            ctx.deprecationWarning(s"${tree.tpe.typeSymbol} is deprecated", tree.pos)
+          if (isCheckable(tree))
+            Checking.checkInstantiable(tree.tpe, tree.pos)
           super.transform(tree)
         case tree @ Annotated(annotated, annot) =>
           cpy.Annotated(tree)(transform(annotated), transformAnnot(annot))
