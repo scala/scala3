@@ -4,7 +4,7 @@ package fromtasty
 
 import scala.util.control.NonFatal
 
-import dotty.tools.io.Path
+import dotty.tools.io.Directory
 
 import java.nio.file.{Files, Paths}
 
@@ -15,13 +15,13 @@ object Debug {
     // see <https://groups.google.com/forum/#!topic/scala-user/kte6nak-zPM>.
     val _ = NonFatal
 
-
-    println("From tasty debug driver")
     assert(!args.contains("-d"))
 
-    val fromSourcesOut = Files.createTempDirectory(Paths.get("out").toAbsolutePath, "from-sources-tmp")
+    val tmpOut = Files.createTempDirectory(Paths.get("out").toAbsolutePath, "from-tasty-tmp")
 
-    println(s"Compiling scala to sources to $fromSourcesOut")
+    val fromSourcesOut = Files.createDirectory(tmpOut.resolve("from-source"))
+
+    println(s"Compiling .scala")
     val compilation1 = dotc.Main.process("-d" +: fromSourcesOut.toString +: args)
 
     if (compilation1.hasErrors) {
@@ -29,27 +29,31 @@ object Debug {
       sys.exit(1)
     }
 
-    val fromTastyOut = Files.createTempDirectory(Paths.get("out").toAbsolutePath, "from-tasty-tmp")
+    val fromTastyOut = Files.createDirectory(tmpOut.resolve("from-tasty"))
 
     val ext = "hasTasty"
-    val classes = Path(fromSourcesOut).walk.filter(x => x.isFile && x.extension == ext).map { x =>
+    val classes = Directory(fromSourcesOut).walk.filter(x => x.isFile && x.extension == ext).map { x =>
       val source = x.toString
       source.substring(fromSourcesOut.toString.length + 1, source.length - ext.length - 1).replace('/', '.')
     }.toList
 
-    val fromTastyArgs =
-      "-from-tasty" :: insertClasspathInArgs(args.filterNot(_.endsWith(".scala")).toList, fromSourcesOut.toString) ::: classes
+    val fromTastyArgs = {
+      "-from-tasty" ::
+      "-d" :: fromTastyOut.toString ::
+      insertClasspathInArgs(args.filterNot(_.endsWith(".scala")).toList, fromSourcesOut.toString) :::
+      classes
+    }
 
-    println(s"Compiling TASTY to sources from $fromSourcesOut to $fromTastyOut")
+    println(s"Compiling TASTY")
     val compilation2 = dotc.Main.process(fromTastyArgs.toArray)
 
     if (compilation2.hasErrors) {
-      println("Failed compilation from sources")
+      println("Failed compilation from TASTY")
+      println("Compilation input: " + fromSourcesOut)
       sys.exit(1)
     }
 
-    Path(fromSourcesOut).deleteRecursively()
-    Path(fromTastyOut).deleteRecursively()
+    Directory(tmpOut).deleteRecursively()
   }
 
   private def insertClasspathInArgs(args: List[String], cp: String): List[String] = {
