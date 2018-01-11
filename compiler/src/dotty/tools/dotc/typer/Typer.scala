@@ -2453,7 +2453,7 @@ class Typer extends Namer
     */
   protected def checkEqualityEvidence(tree: tpd.Tree, pt: Type)(implicit ctx: Context) : Unit = {
     tree match {
-      case _: RefTree | _: Literal
+      case _: RefTree | _: Literal | _: Apply
         if !isVarPattern(tree) &&
           !(tree.tpe <:< pt) (ctx.addMode(Mode.GADTflexible)) =>
         val cmp =
