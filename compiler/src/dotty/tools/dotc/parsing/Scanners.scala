@@ -508,7 +508,7 @@ object Scanners {
             }
           }
           fetchDoubleQuote()
-        case '\'' =>
+        case '\'' | '’' =>
           def fetchSingleQuote() = {
             nextChar()
             if (isIdentifierStart(ch))
@@ -521,7 +521,7 @@ object Scanners {
             }
             else {
               getLitChar()
-              if (ch == '\'') {
+              if (ch == '\'' || ch == '’') {
                 nextChar()
                 token = CHARLIT
                 setStrVal()
