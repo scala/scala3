@@ -13,7 +13,7 @@ import dotty.tools.dotc.core.StdNames.nme
 import dotty.tools.dotc.core.Symbols.defn
 import dotty.tools.dotc.core.Types.ExprType
 import dotty.tools.dotc.core.quoted.PickledQuotes
-import dotty.tools.dotc.transform.Pickler
+import dotty.tools.dotc.transform.ReifyQuotes
 import dotty.tools.dotc.typer.FrontEnd
 import dotty.tools.dotc.util.Positions.Position
 import dotty.tools.dotc.util.SourceFile
@@ -33,15 +33,14 @@ class ExprCompiler(directory: VirtualDirectory) extends Compiler {
     override def outputDir(implicit ctx: Context) = directory
   }
 
-  override def phases: List[List[Phase]] = {
-    val backendPhases = super.phases.dropWhile {
-      case List(_: Pickler) => false
-      case _ => true
-    }.tail
+  override protected def frontendPhases: List[List[Phase]] =
+    List(List(new ExprFrontend(putInClass = true)))
 
-    List(new ExprFrontend(putInClass = true)) ::
-    Phases.replace(classOf[GenBCode], _ => new ExprGenBCode :: Nil, backendPhases)
-  }
+  override protected def picklerPhases: List[List[Phase]] =
+    List(List(new ReifyQuotes))
+
+  override protected def backendPhases: List[List[Phase]] =
+    List(List(new ExprGenBCode))
 
   override def newRun(implicit ctx: Context): ExprRun = {
     reset()
