@@ -1,23 +1,5 @@
-## Errors having to do with unavailable APIs or language features:
-
-scala/text/Document.scala
-# Lots of type errors for pattern matches, having to do with the fact
-# that Document contains a :: method without corresponding extractor,
-# but still wants to extract lists using ::. We won't support that.
-# Since Document should have been removed already, let's ignore it.
-
-scala/AnyVal.scala
-# 55 |abstract class AnyVal extends Any {
-#    |^
-#    |illegal redefinition of standard class AnyVal
-# (This is intended)
-
+## Compiling the scala.reflect package object together with other files sometimes leads to cycles,
+## but only when compiling with a non-bootstrapped dotty-library, because unpickling DottyPredef
+## requires scala.reflect.ScalaSignature which forces the scala.reflect package object.
+## Since we'll eventually be fully bootstrapped, it's not worth fixing by adding workarounds.
 scala/reflect/package.scala
-# 63 |  private[scala] def materializeClassTag[T](): ClassTag[T] = macro ???
-#    |                                                             ^^^^^
-#    |                                                             not found: macro
-
-scala/StringContext.scala
-# 168 |  def f[A >: Any](args: A*): String = macro ???
-#     |                                      ^^^^^
-#     |                                      not found: macro
