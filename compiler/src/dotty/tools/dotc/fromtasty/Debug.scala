@@ -24,11 +24,12 @@ object Debug {
 
     val fromSourcesOut = Files.createDirectory(tmpOut.resolve("from-source"))
 
-    println(s"Compiling .scala")
+    println("Compiling from .scala sources")
     val compilation1 = dotc.Main.process("-d" +: fromSourcesOut.toString +: args)
 
     if (compilation1.hasErrors) {
       println("Failed compilation from sources")
+      Directory(tmpOut).deleteRecursively()
       sys.exit(1)
     }
 
@@ -37,6 +38,7 @@ object Debug {
     val ext = "hasTasty"
     val classes = Directory(fromSourcesOut).walk.filter(x => x.isFile && x.extension == ext).map { x =>
       val source = x.toString
+      // transform foo/bar/Baz.hasTasty into foo.bar.Baz
       source.substring(fromSourcesOut.toString.length + 1, source.length - ext.length - 1).replace('/', '.')
     }.toList
 
@@ -47,12 +49,14 @@ object Debug {
       classes
     }
 
-    println(s"Compiling TASTY")
+    println("Compiling TASTY from .class sources")
     val compilation2 = dotc.Main.process(fromTastyArgs.toArray)
 
     if (compilation2.hasErrors) {
       println("Failed compilation from TASTY")
       println("Compilation input: " + fromSourcesOut)
+      // In this case we do not delete the generated class files to allow further debugging.
+      // For example `dotc -decompile` on one of the intermediate class files.
       sys.exit(1)
     }
 
