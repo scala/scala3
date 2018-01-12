@@ -3,7 +3,9 @@ clone:
   clone:
     image: plugins/git
     commands:
-      - git clone -b "$DRONE_BRANCH" "$DRONE_REMOTE_URL" .
+      - git init
+      - git remote add origin "$DRONE_REMOTE_URL"
+      - git pull origin "$DRONE_BRANCH"
       - git fetch origin "$DRONE_COMMIT_REF"
       - if [ "$DRONE_BUILD_EVENT" = "pull_request" ]; then git merge "$DRONE_COMMIT_SHA"; else git checkout -qf "$DRONE_COMMIT_SHA"; fi
       - git submodule update --init --recursive --jobs 3
