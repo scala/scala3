@@ -17,7 +17,10 @@ object Debug {
 
     assert(!args.contains("-d"))
 
-    val tmpOut = Files.createTempDirectory(Paths.get("out").toAbsolutePath, "from-tasty-tmp")
+    val outPath = Paths.get("out")
+    Directory(outPath).createDirectory()
+
+    val tmpOut = Files.createTempDirectory(outPath.toAbsolutePath, "from-tasty-tmp")
 
     val fromSourcesOut = Files.createDirectory(tmpOut.resolve("from-source"))
 
