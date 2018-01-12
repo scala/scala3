@@ -204,7 +204,7 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
               Checking.checkInstantiable(tree.tpe, nu.pos)
               withNoCheckNews(nu :: Nil)(super.transform(tree))
             case meth =>
-              if (meth.symbol.name.eq(nme.QUOTE) && meth.symbol.owner.eq(defn.OpsPackageClass))
+              if (meth.symbol.isQuote)
                 ctx.compilationUnit.containsQuotesOrSplices = true
               super.transform(tree)
           }
