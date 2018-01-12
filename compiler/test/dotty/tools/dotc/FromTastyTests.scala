@@ -24,7 +24,6 @@ class FromTastyTests extends ParallelTesting {
     implicit val testGroup: TestGroup = TestGroup("posTestFromTasty")
     val (step1, step2) = compileTastyInDir("../tests/pos", defaultOptions,
       blacklist = Set(
-        "Meter.scala",
         "NoCyclicReference.scala",
         "depfuntype.scala",
         "hklub0.scala",
@@ -42,8 +41,6 @@ class FromTastyTests extends ParallelTesting {
         "quote-0.scala",
         "quote-1.scala",
         "quote-stagedInterpreter.scala",
-        "superacc.scala",
-        "t0231.scala",
         "t1203a.scala",
         "t2260.scala",
         "t3612.scala", // Test never finishes
@@ -64,7 +61,6 @@ class FromTastyTests extends ParallelTesting {
     val (step1, step2) = compileTastyInDir("../tests/run", defaultOptions,
        blacklist = Set(
          "Course-2002-13.scala",
-         "NestedClasses.scala",
          "bridges.scala",
          "eff-dependent.scala",
          "enum-approx.scala",
@@ -86,7 +82,6 @@ class FromTastyTests extends ParallelTesting {
          "phantom-poly-4.scala",
          "scala2trait-lazyval.scala",
          "t3452f.scala",
-         "t493.scala",
          "t8395.scala",
          "t3613.scala",
        )
