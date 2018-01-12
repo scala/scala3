@@ -2377,7 +2377,16 @@ class Typer extends Namer
     def adaptType(tp: Type): Tree = {
       val tree1 =
         if ((pt eq AnyTypeConstructorProto) || tp.typeParamSymbols.isEmpty) tree
-        else tree.withType(tree.tpe.EtaExpand(tp.typeParamSymbols))
+        else {
+          val tp1 =
+            if (ctx.compilationUnit.isJava)
+              // Cook raw type
+              AppliedType(tree.tpe, tp.typeParams.map(Function.const(TypeBounds.empty)))
+            else
+              // Eta-expand higher-kinded type
+              tree.tpe.EtaExpand(tp.typeParamSymbols)
+          tree.withType(tp1)
+        }
       if ((ctx.mode is Mode.Pattern) || tree1.tpe <:< pt) tree1
       else err.typeMismatch(tree1, pt)
     }
