@@ -9,7 +9,6 @@ object Test {
     x match { case { "42".toInt }   => () } // ok
     x match { case { Y.toInt }      => () } // ok
     x match { case { Y }.toInt      => () } // ok
-
-    // x match { case Y.toInt          => () } // compiles but rejected by Ycheck
+    x match { case Y.toInt          => () } // ok
   }
 }

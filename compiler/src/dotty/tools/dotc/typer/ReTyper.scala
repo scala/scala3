@@ -35,7 +35,8 @@ class ReTyper extends Typer {
 
   override def typedSelect(tree: untpd.Select, pt: Type)(implicit ctx: Context): Tree = {
     assert(tree.hasType, tree)
-    val qual1 = typed(tree.qualifier, AnySelectionProto)
+    // a qualifier cannot be a pattern
+    val qual1 = typed(tree.qualifier, AnySelectionProto)(ctx.retractMode(Mode.Pattern))
     untpd.cpy.Select(tree)(qual1, tree.name).withType(tree.typeOpt)
   }
 
