@@ -1,18 +1,21 @@
 object Test {
   def main(args: Array[String]): Unit = {
     val x = 42
-    val Y = "h"
+    val Y = "42"
 
-    x match { case { 42 } => 42 }                      // ok
-    x match { case { 42.toString } => 42 }             // error
-    x match { case { 42 }.toString => 42 }             // error
-    x match { case { "h" }.toString => println(42) }   // error
-    x match { case { "h".toString } => println(42) }   // error
-    x match { case Y => println(42) }                  // error
-    x match { case Y.toString => println(42) }         // error
-
-    Y match { case Y.toString => println(42) }         // ok
-    Y match { case { Y.toString } => println(42) }     // ok
-    Y match { case { Y }.toString => println(42) }     // ok
+    x match { case { 42 }           => () } // ok
+    x match { case { 42.toString }  => () } // error
+    x match { case { 42 }.toString  => () } // error
+    x match { case "42".toInt       => () } // error
+    x match { case { "42".toInt }   => () } // ok
+    x match { case { "42" }.toInt   => () } // ok
+    x match { case { "42".toInt }   => () } // ok
+    x match { case Y                => () } // error
+    x match { case Y.toInt          => () } // ok
+    x match { case { Y.toInt }      => () } // ok
+    x match { case { Y }.toInt      => () } // ok
+    x match { case Y.toString       => () } // error
+    x match { case { Y }.toString   => () } // error
+    x match { case { Y.toString }   => () } // error
   }
 }
