@@ -144,3 +144,55 @@ object Test {
   }
 }
 ```
+
+
+Rules
+-----
+
+1) The `unused` modifier can appear:
+* At the start of a parameter block of a method, function or class
+* In a method definition
+* In a `val` definition (but not `lazy val` or `var`)
+
+```scala
+unused val x = ...
+unused def f = ...
+
+def g(unused x: Int) = ...
+
+(unused x: Int) => ...
+def h(x: unused Int => Int) = ...
+
+class K(unused x: Int) { ... }
+```
+
+2) A reference to an `unused` definition can only be used
+* Inside the expression of argument to an `unused` parameter
+* Inside the body of an `unused` `val` or `def`
+
+3) Functions
+* `(unused x1: T1, x2: T2, ..., xN: TN) => y : (unused T1, T2, ..., TN) => R`
+* `(implicit unused x1: T1, x2: T2, ..., xN: TN) => y : (implicit unused T1, T2, ..., TN) => R`
+* `implicit unused T1 => R  <:<  unused T1 => R`
+* `(implicit unused T1, T2) => R  <:<  (unused T1, T2) => R`
+*  ...
+
+Note that there is no subtype relation between `unused T => R` and `T => R` (or `implicit unused T => R` and `implicit T => R`)
+
+4) Eta expansion
+if `def f(unused x: T): U` then `f: (unused T) => U`.
+
+
+5) Erasure Semantics
+* All `unused` paramters are removed from the function
+* All argument to `unused` paramters are not passed to the function
+* All `unused` definitions are removed
+* All `(unused T1, T2, ..., TN) => R` and `(implicit unused T1, T2, ..., TN) => R` become `() => R`
+
+6) Overloading
+Method with `unused` parameters will follow the normal overloading constraints after erasure.
+
+7) Overriding
+* Member definitions overidding each other must both be `unused` or not be `unused`
+* `def foo(x: T): U` cannot be overriden by `def foo(unused x: T): U` an viceversa
+
