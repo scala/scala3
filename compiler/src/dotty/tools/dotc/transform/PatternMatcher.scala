@@ -351,6 +351,8 @@ object PatternMatcher {
           }
         case WildcardPattern() =>
           onSuccess
+        case SeqLiteral(pats, _) =>
+          matchElemsPlan(scrutinee, pats, exact = true, onSuccess)
         case _ =>
           TestPlan(EqualTest(tree), scrutinee, tree.pos, onSuccess, onFailure)
       }
