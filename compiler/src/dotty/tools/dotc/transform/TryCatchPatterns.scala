@@ -92,7 +92,7 @@ class TryCatchPatterns(merged: MergedPatMat) extends MiniPhase {
       Some(CaseDef(
           Bind(fallbackSelector, Underscore(fallbackSelector.info).withPos(pos)),
           EmptyTree,
-          merged.transformMatch(Match(sel, patternMatchCases ::: rethrow :: Nil)))
+          merged.pm.transformMatch(Match(sel, patternMatchCases ::: rethrow :: Nil)))
       )
     }
   }

@@ -2,6 +2,7 @@ package dotty.tools.dotc
 package transform
 
 import core.Symbols._
+import core.Phases._
 import core.DenotTransformers._
 import core.StdNames._
 import ast.Trees._
@@ -13,7 +14,7 @@ import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.transform.MegaPhase.MiniPhase
 import dotty.tools.dotc.util.Positions.Position
 
-class MergedPatMat extends MiniPhase with InfoTransformer {
+class MergedPatMat extends MacroTransform with InfoTransformer {
   import dotty.tools.dotc.ast.tpd._
 
   def phaseName: String = "mergedPatMat"
@@ -25,6 +26,11 @@ class MergedPatMat extends MiniPhase with InfoTransformer {
   }
 
   override def changesMembers = true
+
+  override def transformPhase(implicit ctx: Context) = this.next
+
+  protected def newTransformer(implicit ctx: Context): Transformer =
+    new MergedPatMatTransformer
 
   override def transformInfo(tp: Type, sym: Symbol)(implicit ctx: Context) = {
     eo.transformInfo(tp, sym)
@@ -41,65 +47,67 @@ class MergedPatMat extends MiniPhase with InfoTransformer {
   val cca = new CrossCastAnd
   val s = new Splitter
 
-  override def prepareForUnit(tree: Tree)(implicit ctx: Context) = {
-    si.prepareForUnit(tree)
+  val transformer = new MergedPatMatTransformer
+
+  // Used in PatternMatcher
+  def transformOuter(tree: Tree)(implicit ctx: Context): Tree = {
+    transformer.transform(tree)
   }
 
-  override def transformTry(tree: Try)(implicit ctx: Context): Try = {
-    tcp.transformTry(tree)
+  override def run(implicit ctx: Context): Unit = {
+    val unit = ctx.compilationUnit
+    si.prepareForUnit(unit.tpdTree)(ctx.withPhase(transformPhase))
+    super.run(ctx)
   }
 
-  override def transformTemplate(tree: Template)(implicit ctx: Context): Template = {
-    eo.transformTemplate(tree)
-  }
+  class MergedPatMatTransformer extends Transformer {
+    override def transform(tree: Tree)(implicit ctx: Context): Tree = {
+      val tree1 = super.transform(tree)
+      tree1 match {
+        case tree1: Try =>
+          tcp.transformTry(tree1)
+        case tree1: Template =>
+          eo.transformTemplate(tree1)
+        case tree1: Select =>
+          val tree2 = si.transformSelect(es.transformSelect(tree1))
+          tree2 match {
+            case tree2: Select =>
+              cca.transformSelect(tree2)
+            case tree2: Apply =>
+              s.transformApply(tree2)
+            case tree2: TypeApply =>
+              s.transformTypeApply(tree2)
+            case _ => // Block | Ident
+              tree2
+          }
+        case tree1: Ident =>
+          es.transformIdent(tree1) // This | Ident
+        case tree1: Closure =>
+          es.transformClosure(tree1)
+        case tree1: Match =>
+          val tree2 = pm.transformMatch(tree1)
+          // assert(!(
+          //   tree2.isInstanceOf[Template] ||
+          //   tree2.isInstanceOf[Select] ||
+          //   tree2.isInstanceOf[Ident] ||
+          //   tree2.isInstanceOf[Closure] ||
+          //   tree2.isInstanceOf[DefDef] ||
+          //   tree2.isInstanceOf[TypeApply] ||
+          //   tree2.isInstanceOf[Apply]
+          // ))
+          tree2
+        case tree1: DefDef =>
+          si.transformDefDef(tree1) // DefDef | Thicket[DefDef]
 
-  override def transformSelect(tree: Select)(implicit ctx: Context): Tree = {
-    val tree1 = si.transformSelect(es.transformSelect(tree))
-    tree1 match {
-      case tree1: Select =>
-        cca.transformSelect(tree1)
-      case tree1: Apply =>
-        s.transformApply(tree1)
-      case tree1: TypeApply =>
-        s.transformTypeApply(tree1)
-      case _ => // Block | Ident
-        tree1
+        // Last mini-phase only
+
+        case tree1: TypeApply =>
+          s.transformTypeApply(tree1)
+        case tree1: Apply =>
+          s.transformApply(tree1)
+        case _ =>
+          tree1
+      }
     }
-  }
-
-  override def transformIdent(tree: Ident)(implicit ctx: Context): Tree = {
-    es.transformIdent(tree) // This | Ident
-  }
-
-
-  override def transformClosure(tree: Closure)(implicit ctx: Context): Closure = {
-    eo.transformClosure(tree)
-  }
-
-  override def transformMatch(tree: Match)(implicit ctx: Context): Tree = {
-    val tree1 = pm.transformMatch(tree)
-    // assert(!(
-    //   tree1.isInstanceOf[Template] ||
-    //   tree1.isInstanceOf[Select] ||
-    //   tree1.isInstanceOf[Ident] ||
-    //   tree1.isInstanceOf[Closure] ||
-    //   tree1.isInstanceOf[DefDef] ||
-    //   tree1.isInstanceOf[TypeApply] ||
-    //   tree1.isInstanceOf[Apply]
-    // ))
-    tree1
-  }
-
-  override def transformDefDef(tree: DefDef)(implicit ctx: Context) = {
-    si.transformDefDef(tree) // DefDef | Thicket[DefDef]
-  }
-
-  // Last mini-phase only
-
-  override def transformTypeApply(tree: TypeApply)(implicit ctx: Context) = {
-    s.transformTypeApply(tree)
-  }
-  override def transformApply(tree: Apply)(implicit ctx: Context) = {
-    s.transformApply(tree)
   }
 }

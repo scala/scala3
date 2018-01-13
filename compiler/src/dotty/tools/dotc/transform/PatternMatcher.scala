@@ -2,6 +2,7 @@ package dotty.tools.dotc
 package transform
 
 import core._
+import Phases._
 import MegaPhase._
 import collection.mutable
 import SymDenotations._, Symbols._, Contexts._, Types._, Names._, StdNames._, NameOps._
@@ -70,7 +71,7 @@ object PatternMatcher {
    *  It's represented by its own data type. Plans are optimized by
    *  inlining, hoisting, and the elimination of redundant tests and dead code.
    */
-  class Translator(resultType: Type, thisPhase: MiniPhase)(implicit ctx: Context) {
+  class Translator(resultType: Type, thisPhase: MergedPatMat)(implicit ctx: Context) {
 
     // ------- Bindings for variables and labels ---------------------
 
@@ -793,7 +794,7 @@ object PatternMatcher {
             }
           }
 
-          def outerTest: Tree = thisPhase.transformAllDeep {
+          def outerTest: Tree = thisPhase.transformOuter {
             val expectedOuter = singleton(expectedTp.normalizedPrefix)
             val expectedClass = expectedTp.dealias.classSymbol.asClass
             ExplicitOuter.ensureOuterAccessors(expectedClass)
