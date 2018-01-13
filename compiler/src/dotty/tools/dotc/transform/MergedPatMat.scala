@@ -1,6 +1,7 @@
 package dotty.tools.dotc
 package transform
 
+import core.Contexts._
 import core.Symbols._
 import core.Phases._
 import core.DenotTransformers._
@@ -54,10 +55,14 @@ class MergedPatMat extends MacroTransform with InfoTransformer {
     transformer.transform(tree)
   }
 
+  override def initContext(ctx: FreshContext) = {
+    si.initContext(ctx)
+  }
+
   override def run(implicit ctx: Context): Unit = {
     val unit = ctx.compilationUnit
-    si.prepareForUnit(unit.tpdTree)(ctx.withPhase(transformPhase))
-    super.run(ctx)
+    val ctx2 = si.prepareForUnit(unit.tpdTree)(ctx)
+    super.run(ctx2)
   }
 
   class MergedPatMatTransformer extends Transformer {
