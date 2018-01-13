@@ -9,7 +9,9 @@ class Test {
       ~ assertImpl('(expr))
 
     def assertImpl(expr: Expr[Boolean]) =
-      '{ if !(~expr) then throw new AssertionError(s"failed assertion: ${~expr}") }
+      '{ if !(~expr) then throw new AssertionError(s"failed assertion: ${~showExpr(expr)}") }
+
+    def showExpr[T](expr: Expr[T]): Expr[String] = expr.toString
 
     inline def power(inline n: Int, x: Double) = ~powerCode(n, '(x))
 
