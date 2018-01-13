@@ -1,8 +1,11 @@
 package scala.quoted
 
+import scala.runtime.quoted.Runner
+
 abstract class Expr[T] extends Quoted {
-  def unary_~ : T = throw new Error("~ should have been compiled away")
-  def run: T = ???
+  final def unary_~ : T = throw new Error("~ should have been compiled away")
+  final def run(implicit runner: Runner[T]): T = runner.run(this)
+  final def show(implicit runner: Runner[T]): String = runner.show(this)
 }
 
 object Expr {

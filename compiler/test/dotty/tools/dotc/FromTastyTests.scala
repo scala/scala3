@@ -37,10 +37,6 @@ class FromTastyTests extends ParallelTesting {
         "i3000.scala",
         "i536.scala",
         "i974.scala",
-        "quote-liftable.scala",
-        "quote-0.scala",
-        "quote-1.scala",
-        "quote-stagedInterpreter.scala",
         "t1203a.scala",
         "t2260.scala",
         "t3612.scala", // Test never finishes

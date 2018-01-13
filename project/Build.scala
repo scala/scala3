@@ -571,10 +571,19 @@ object Build {
         val java: String = Process("which" :: "java" :: Nil).!!
         val attList = (dependencyClasspath in Runtime).value
         val _ = packageAll.value
-        val scalaLib = attList
+
+        def findLib(name: String) = attList
           .map(_.data.getAbsolutePath)
-          .find(_.contains("scala-library"))
+          .find(_.contains(name))
           .toList.mkString(":")
+
+        val scalaLib = findLib("scala-library")
+        val dottyLib = packageAll.value("dotty-library")
+
+        def run(args: List[String]): Unit = {
+          val fullArgs = insertClasspathInArgs(args, s".:$dottyLib:$scalaLib")
+          s"$java ${fullArgs.mkString(" ")}".!
+        }
 
         if (args.isEmpty) {
           println("Couldn't run `dotr` without args. Use `repl` to run the repl or add args to run the dotty application")
@@ -582,11 +591,13 @@ object Build {
           println("Couldn't find java executable on path, please install java to a default location")
         } else if (scalaLib == "") {
           println("Couldn't find scala-library on classpath, please run using script in bin dir instead")
-        } else {
-          val dottyLib = packageAll.value("dotty-library")
-          val fullArgs = insertClasspathInArgs(args, s".:$dottyLib:$scalaLib")
-          s"$java ${fullArgs.mkString(" ")}".!
-        }
+        } else if (args.contains("-with-compiler")) {
+          val args1 = args.filter(_ != "-with-compiler")
+          val asm = findLib("scala-asm")
+          val dottyCompiler = packageAll.value("dotty-compiler")
+          val dottyInterfaces = packageAll.value("dotty-interfaces")
+          run(insertClasspathInArgs(args1, s"$dottyCompiler:$dottyInterfaces:$asm"))
+        } else run(args)
       },
       run := dotc.evaluated,
       dotc := runCompilerMain().evaluated,
@@ -628,10 +639,12 @@ object Build {
 
   def runCompilerMain(repl: Boolean = false) = Def.inputTaskDyn {
     val dottyLib = packageAll.value("dotty-library")
+    lazy val dottyCompiler = packageAll.value("dotty-compiler")
     val args0: List[String] = spaceDelimited("<arg>").parsed.toList
     val decompile = args0.contains("-decompile")
     val debugFromTasty = args0.contains("-Ythrough-tasty")
-    val args = args0.filter(arg => arg != "-repl" && arg != "-decompile" && arg != "-Ythrough-tasty")
+    val args = args0.filter(arg => arg != "-repl" && arg != "-decompile" &&
+        arg != "-with-compiler" && arg != "-Ythrough-tasty")
 
     val main =
       if (repl) "dotty.tools.repl.Main"
@@ -639,9 +652,9 @@ object Build {
       else if (debugFromTasty) "dotty.tools.dotc.fromtasty.Debug"
       else "dotty.tools.dotc.Main"
 
-    val extraClasspath =
-      if (decompile && !args.contains("-classpath")) dottyLib + ":."
-      else dottyLib
+    var extraClasspath = dottyLib
+    if (decompile && !args.contains("-classpath")) extraClasspath += ":."
+    if (args0.contains("-with-compiler")) extraClasspath += s":$dottyCompiler"
 
     val fullArgs = main :: insertClasspathInArgs(args, extraClasspath)
 
