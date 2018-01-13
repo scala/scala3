@@ -170,6 +170,12 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       case tp: TypeRef =>
         if (tp.symbol.isAnonymousClass && !ctx.settings.uniqid.value)
           return toText(tp.info)
+        if (tp.symbol.is(Param))
+          tp.prefix match {
+            case pre: ThisType if pre.cls == tp.symbol.owner =>
+              return nameString(tp.symbol)
+            case _ =>
+          }
       case ExprType(result) =>
         return "=> " ~ toText(result)
       case ErasedValueType(tycon, underlying) =>
@@ -501,7 +507,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
             typeDefText(tparamsTxt, toText(rhs))
           case LambdaTypeTree(tparams, body) =>
             recur(body, tparamsText(tparams))
-          case rhs: TypeTree if rhs.tpe.isInstanceOf[TypeBounds] =>
+          case rhs: TypeTree if rhs.typeOpt.isInstanceOf[TypeBounds] =>
             typeDefText(tparamsTxt, toText(rhs))
           case rhs =>
             typeDefText(tparamsTxt, optText(rhs)(" = " ~ _))
