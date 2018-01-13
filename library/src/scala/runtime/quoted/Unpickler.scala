@@ -8,7 +8,7 @@ object Unpickler {
   /** Representation of pickled trees. For now it's String, but it
    *  should be changed to some kind of TASTY bundle.
    */
-  type Pickled = String
+  type Pickled = Seq[String]
 
   /** Unpickle `repr` which represents a pickled `Expr` tree,
    *  replacing splice nodes with `args`

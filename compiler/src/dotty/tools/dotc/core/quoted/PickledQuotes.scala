@@ -11,16 +11,18 @@ import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.core.tasty.{TastyPickler, TastyPrinter, TastyString}
 import dotty.tools.dotc.interpreter.RawQuoted
 
+import scala.runtime.quoted.Unpickler.Pickled
+
 object PickledQuotes {
   import tpd._
 
   /** Pickle the quote into a TASTY string */
-  def pickleQuote(tree: Tree)(implicit ctx: Context): String = {
-    if (ctx.reporter.hasErrors) "<error>"
+  def pickleQuote(tree: Tree)(implicit ctx: Context): Pickled = {
+    if (ctx.reporter.hasErrors) List("<error>")
     else {
       val encapsulated = encapsulateQuote(tree)
       val pickled = pickle(encapsulated)
-      TastyString.tastyToString(pickled)
+      TastyString.pickle(pickled)
     }
   }
 
@@ -33,7 +35,7 @@ object PickledQuotes {
 
   /** Unpickle the tree contained in the TastyQuoted */
   private def unpickleQuote(expr: quoted.TastyQuoted)(implicit ctx: Context): Tree = {
-    val tastyBytes = TastyString.stringToTasty(expr.tasty)
+    val tastyBytes = TastyString.unpickle(expr.tasty)
     val unpickled = unpickle(tastyBytes, expr.args)
     unpickled match {
       case PackageDef(_, (vdef: ValDef) :: Nil) => vdef.rhs

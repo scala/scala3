@@ -266,10 +266,11 @@ class ReifyQuotes extends MacroTransform {
         makeHole(body1, splices, quote.tpe)
       else {
         val isType = quote.tpe.isRef(defn.QuotedTypeClass)
+        val strings = PickledQuotes.pickleQuote(body1).map(x => Literal(Constant(x)))
         ref(if (isType) defn.Unpickler_unpickleType else defn.Unpickler_unpickleExpr)
           .appliedToType(if (isType) body1.tpe else body1.tpe.widen)
           .appliedTo(
-            Literal(Constant(PickledQuotes.pickleQuote(body1))),
+            SeqLiteral(strings.toList, TypeTree(defn.StringType)),
             SeqLiteral(splices, TypeTree(defn.AnyType)))
       }
     }.withPos(quote.pos)
