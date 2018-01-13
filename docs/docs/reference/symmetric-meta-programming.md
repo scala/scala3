@@ -701,6 +701,9 @@ environments and terms.
                            ----------------
                            Es |- ’t: expr T
 
+The meta theory of a slightly simplified variant 2-stage variant of this calculus
+is studied [separatey](../simple-smp.md)
+
 ## Going Further
 
 The meta-programming framework as presented and currently implemented is quite restrictive

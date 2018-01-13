@@ -7,11 +7,12 @@ title: "The Meta-theory of Symmetric Meta-programming"
 
 23.12.2017
 
-This note presents a simplified variant of symmetric meta-programming
+This note presents a simplified variant of
+[symmetric meta-programming](./symmetric-meta-programming.md)
 and sketches its soundness proof. The variant treats only dialogues
-between two stages.  A program can have quotes which can contain
+between two stages. A program can have quotes which can contain
 splices (which can contain quotes, which can contain splices, and so
-on).  Or the program could start with a splice with embedded
+on). Or the program could start with a splice with embedded
 quotes. The essential restriction is that (1) a term can contain top-level
 quotes or top-level splices, but not both, and (2) quotes cannot appear
 directly inside quotes and splices cannot appear directly inside
