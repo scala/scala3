@@ -38,6 +38,10 @@ class MergedPatMat extends MiniPhase with InfoTransformer {
   val cca = new CrossCastAnd
   val s = new Splitter
 
+  override def prepareForUnit(tree: Tree)(implicit ctx: Context) = {
+    si.prepareForUnit(tree)
+  }
+
   override def transformTry(tree: Try)(implicit ctx: Context): Try = {
     tcp.transformTry(tree)
   }
