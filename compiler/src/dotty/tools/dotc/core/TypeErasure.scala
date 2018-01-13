@@ -320,6 +320,7 @@ object TypeErasure {
         case _ => false
       }
     case tp: TypeParamRef => false
+    case tp: TypeBounds => false
     case tp: TypeProxy => hasStableErasure(tp.superType)
     case tp: AndOrType => hasStableErasure(tp.tp1) && hasStableErasure(tp.tp2)
     case _ => false
