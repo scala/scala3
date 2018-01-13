@@ -793,7 +793,7 @@ object PatternMatcher {
             }
           }
 
-          def outerTest: Tree = thisPhase.transformFollowingDeep {
+          def outerTest: Tree = thisPhase.transformAllDeep {
             val expectedOuter = singleton(expectedTp.normalizedPrefix)
             val expectedClass = expectedTp.dealias.classSymbol.asClass
             ExplicitOuter.ensureOuterAccessors(expectedClass)
