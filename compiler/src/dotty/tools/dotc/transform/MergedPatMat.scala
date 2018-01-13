@@ -29,6 +29,9 @@ class MergedPatMat extends MiniPhase with InfoTransformer {
   override def transformInfo(tp: Type, sym: Symbol)(implicit ctx: Context) = {
     eo.transformInfo(tp, sym)
   }
+  override def mayChange(sym: Symbol)(implicit ctx: Context): Boolean = {
+    eo.mayChange(sym)
+  }
 
   val tcp = new TryCatchPatterns(this)
   val pm = new PatternMatcher(this)
