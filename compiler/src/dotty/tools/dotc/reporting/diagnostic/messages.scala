@@ -2030,10 +2030,11 @@ object messages {
     }
   }
 
-  case class UnableToEmitSwitch()(implicit ctx: Context)
+  case class UnableToEmitSwitch(tooFewCases: Boolean)(implicit ctx: Context)
   extends Message(UnableToEmitSwitchID) {
     val kind = "Syntax"
-    val msg = hl"Could not emit switch for ${"@switch"} annotated match"
+    val tooFewStr = if (tooFewCases) " since there are not enough cases" else ""
+    val msg = hl"Could not emit switch for ${"@switch"} annotated match$tooFewStr"
     val explanation = {
       val codeExample =
         """val ConstantB = 'B'
