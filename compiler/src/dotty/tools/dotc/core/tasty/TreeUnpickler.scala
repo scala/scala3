@@ -760,7 +760,7 @@ class TreeUnpickler(reader: TastyReader,
       val tparams = readIndexedParams[TypeDef](TYPEPARAM)
       val vparams = readIndexedParams[ValDef](PARAM)
       val parents = collectWhile(nextByte != SELFDEF && nextByte != DEFDEF) {
-        nextByte match {
+        nextUnsharedTag match {
           case APPLY | TYPEAPPLY => readTerm()(parentCtx)
           case _ => readTpt()(parentCtx)
         }
