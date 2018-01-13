@@ -33,7 +33,7 @@ import scala.annotation.tailrec
  *   replacement of outer this by outer paths is done in Erasure.
  *   needs to run after pattern matcher as it can add outer checks and force creation of $outer
  */
-class ExplicitOuter extends MiniPhase with InfoTransformer { thisPhase =>
+class ExplicitOuter(thisPhase: MergedPatMat) extends MiniPhase with InfoTransformer {
   import ExplicitOuter._
   import ast.tpd._
 
@@ -69,7 +69,7 @@ class ExplicitOuter extends MiniPhase with InfoTransformer { thisPhase =>
    *  a separate phase which needs to run after erasure. However, we make sure here
    *  that the super class constructor is indeed a New, and not just a type.
    */
-  override def transformTemplate(impl: Template)(implicit ctx: Context): Tree = {
+  override def transformTemplate(impl: Template)(implicit ctx: Context): Template = {
     val cls = ctx.owner.asClass
     val isTrait = cls.is(Trait)
     if (needsOuterIfReferenced(cls) &&
@@ -115,7 +115,7 @@ class ExplicitOuter extends MiniPhase with InfoTransformer { thisPhase =>
     else impl
   }
 
-  override def transformClosure(tree: Closure)(implicit ctx: Context): tpd.Tree = {
+  override def transformClosure(tree: Closure)(implicit ctx: Context): Closure = {
     if (tree.tpt ne EmptyTree) {
       val cls = tree.tpt.asInstanceOf[TypeTree].tpe.classSymbol
       if (cls.exists && hasOuter(cls.asClass))
@@ -130,9 +130,9 @@ object ExplicitOuter {
 
   /** Ensure that class `cls` has outer accessors */
   def ensureOuterAccessors(cls: ClassSymbol)(implicit ctx: Context): Unit =
-    ctx.atPhase(ctx.explicitOuterPhase.next) { implicit ctx =>
+    ctx.atPhase(ctx.mergedPatMatPhase.next) { implicit ctx =>
       if (!hasOuter(cls))
-        newOuterAccessors(cls).foreach(_.enteredAfter(ctx.explicitOuterPhase.asInstanceOf[DenotTransformer]))
+        newOuterAccessors(cls).foreach(_.enteredAfter(ctx.mergedPatMatPhase.asInstanceOf[DenotTransformer]))
     }
 
   /** The outer accessor and potentially outer param accessor needed for class `cls` */
@@ -162,7 +162,7 @@ object ExplicitOuter {
         outerThis.baseType(outerCls).orElse(
   		    outerCls.typeRef.appliedTo(outerCls.typeParams.map(_ => TypeBounds.empty)))
     val info = if (flags.is(Method)) ExprType(target) else target
-    ctx.withPhaseNoEarlier(ctx.explicitOuterPhase.next) // outer accessors are entered at explicitOuter + 1, should not be defined before.
+    ctx.withPhaseNoEarlier(ctx.mergedPatMatPhase.next) // outer accessors are entered at explicitOuter + 1, should not be defined before.
        .newSymbol(owner, name, Synthetic | flags, info, coord = cls.coord)
   }
 

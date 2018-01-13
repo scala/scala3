@@ -73,13 +73,14 @@ class Compiler {
          new HoistSuperArgs,         // Hoist complex arguments of supercalls to enclosing scope
          new ClassOf,                // Expand `Predef.classOf` calls.
          new RefChecks) ::           // Various checks mostly related to abstract members and overriding
-    List(new TryCatchPatterns,       // Compile cases in try/catch
-         new PatternMatcher,         // Compile pattern matches
-         new ExplicitOuter,          // Add accessors to outer classes from nested ones.
-         new ExplicitSelf,           // Make references to non-trivial self types explicit as casts
-         new ShortcutImplicits,      // Allow implicit functions without creating closures
-         new CrossCastAnd,           // Normalize selections involving intersection types.
-         new Splitter) ::            // Expand selections involving union types into conditionals
+    List(new MergedPatMat) ::
+    // List(new TryCatchPatterns,       // Compile cases in try/catch
+    //      new PatternMatcher,         // Compile pattern matches
+    //      new ExplicitOuter,          // Add accessors to outer classes from nested ones.
+    //      new ExplicitSelf,           // Make references to non-trivial self types explicit as casts
+    //      new ShortcutImplicits,      // Allow implicit functions without creating closures
+    //      new CrossCastAnd,           // Normalize selections involving intersection types.
+    //      new Splitter) ::            // Expand selections involving union types into conditionals
     List(new PhantomArgLift,         // Extracts the evaluation of phantom arguments placing them before the call.
          new VCInlineMethods,        // Inlines calls to value class methods
          new SeqLiterals,            // Express vararg arguments as arrays

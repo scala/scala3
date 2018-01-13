@@ -40,7 +40,7 @@ import dotty.tools.dotc.util.Positions.Position
  *   - `case _: T =>` where `T` is not `Throwable`
  *
  */
-class TryCatchPatterns extends MiniPhase {
+class TryCatchPatterns(merged: MergedPatMat) extends MiniPhase {
   import dotty.tools.dotc.ast.tpd._
 
   def phaseName: String = "tryCatchPatterns"
@@ -58,7 +58,7 @@ class TryCatchPatterns extends MiniPhase {
     case _ =>
   }
 
-  override def transformTry(tree: Try)(implicit ctx: Context): Tree = {
+  override def transformTry(tree: Try)(implicit ctx: Context): Try = {
     val (tryCases, patternMatchCases) = tree.cases.span(isCatchCase)
     val fallbackCase = mkFallbackPatterMatchCase(patternMatchCases, tree.pos)
     cpy.Try(tree)(cases = tryCases ++ fallbackCase)
@@ -92,7 +92,7 @@ class TryCatchPatterns extends MiniPhase {
       Some(CaseDef(
           Bind(fallbackSelector, Underscore(fallbackSelector.info).withPos(pos)),
           EmptyTree,
-          transformFollowing(Match(sel, patternMatchCases ::: rethrow :: Nil)))
+          merged.transformMatch(Match(sel, patternMatchCases ::: rethrow :: Nil)))
       )
     }
   }

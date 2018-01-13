@@ -215,7 +215,7 @@ object Phases {
     private[this] var myPatmatPhase: Phase = _
     private[this] var myElimRepeatedPhase: Phase = _
     private[this] var myExtensionMethodsPhase: Phase = _
-    private[this] var myExplicitOuterPhase: Phase = _
+    private[this] var myMergedPatMatPhase: Phase = _
     private[this] var myGettersPhase: Phase = _
     private[this] var myErasurePhase: Phase = _
     private[this] var myElimErasedValueTypePhase: Phase = _
@@ -229,7 +229,7 @@ object Phases {
     final def patmatPhase = myPatmatPhase
     final def elimRepeatedPhase = myElimRepeatedPhase
     final def extensionMethodsPhase = myExtensionMethodsPhase
-    final def explicitOuterPhase = myExplicitOuterPhase
+    final def mergedPatMatPhase = myMergedPatMatPhase
     final def gettersPhase = myGettersPhase
     final def erasurePhase = myErasurePhase
     final def elimErasedValueTypePhase = myElimErasedValueTypePhase
@@ -250,7 +250,7 @@ object Phases {
       myPatmatPhase = phaseOfClass(classOf[PatternMatcher])
       myLambdaLiftPhase = phaseOfClass(classOf[LambdaLift])
       myFlattenPhase = phaseOfClass(classOf[Flatten])
-      myExplicitOuterPhase = phaseOfClass(classOf[ExplicitOuter])
+      myMergedPatMatPhase = phaseOfClass(classOf[MergedPatMat])
       myGettersPhase = phaseOfClass(classOf[Getters])
       myGenBCodePhase =  phaseOfClass(classOf[GenBCode])
     }

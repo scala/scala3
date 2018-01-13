@@ -20,7 +20,7 @@ import reporting.diagnostic.messages._
  *  After this phase, the only Match nodes remaining in the code are simple switches
  *  where every pattern is an integer constant
  */
-class PatternMatcher extends MiniPhase {
+class PatternMatcher(thisPhase: MergedPatMat) extends MiniPhase {
   import ast.tpd._
   import PatternMatcher._
 
@@ -29,7 +29,7 @@ class PatternMatcher extends MiniPhase {
   override def runsAfterGroupsOf = Set(classOf[TailRec]) // tailrec is not capable of reversing the patmat tranformation made for tree
 
   override def transformMatch(tree: Match)(implicit ctx: Context): Tree = {
-    val translated = new Translator(tree.tpe, this).translateMatch(tree)
+    val translated = new Translator(tree.tpe, thisPhase).translateMatch(tree)
 
     // check exhaustivity and unreachability
     val engine = new patmat.SpaceEngine

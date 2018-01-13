@@ -728,7 +728,7 @@ class PatternMatcherOld extends MiniPhase with DenotTransformer {
           val expectedClass = expectedTp.dealias.classSymbol.asClass
           val test = codegen._asInstanceOf(testedBinder, expectedTp)
           // TODO: Use nme.OUTER_SELECT, like the Inliner does?
-          val outerAccessorTested = ctx.atPhase(ctx.explicitOuterPhase.next) { implicit ctx =>
+          val outerAccessorTested = ctx.atPhase(ctx.mergedPatMatPhase.next) { implicit ctx =>
             ExplicitOuter.ensureOuterAccessors(expectedClass)
             test.select(ExplicitOuter.outerAccessor(expectedClass)).select(defn.Object_eq).appliedTo(expectedOuter)
           }

@@ -45,7 +45,7 @@ import collection.mutable
  *  `qual` refers to a method `m` is rewritten to a reference to `m$direct`,
  *  keeping the same type and value arguments as they are found in `qual`.
  */
-class ShortcutImplicits extends MiniPhase with IdentityDenotTransformer { thisPhase =>
+class ShortcutImplicits(thisPhase: MergedPatMat) extends MiniPhase with IdentityDenotTransformer {
   import tpd._
 
   override def phaseName: String = "shortcutImplicits"
