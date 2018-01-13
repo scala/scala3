@@ -36,7 +36,7 @@ class Erasure extends Phase with DenotTransformer {
   override def phaseName: String = "erasure"
 
   /** List of names of phases that should precede this phase */
-  override def runsAfter: Set[Class[_ <: Phase]] = Set(classOf[InterceptedMethods], classOf[Splitter], classOf[ElimRepeated])
+  override def runsAfter: Set[Class[_ <: Phase]] = Set(classOf[InterceptedMethods], classOf[MergedPatMat], classOf[ElimRepeated])
 
   override def changesMembers: Boolean = true   // the phase adds bridges
   override def changesParents: Boolean = true // the phase drops Any

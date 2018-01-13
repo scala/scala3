@@ -66,7 +66,7 @@ class PatmatExhaustivityTest {
     (path, checkContent, actual)
   }
 
-  @Test
+  // @Test
   def patmatExhaustivity: Unit = {
     val res = Directory(testsDir).list.toList
       .filter(f => f.extension == "scala" || f.isDirectory)
