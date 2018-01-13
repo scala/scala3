@@ -201,6 +201,7 @@ class CompilationTests extends ParallelTesting {
     compileFile("../tests/run-special/quote-run-constants.scala", defaultRunWithCompilerOptions) +
     compileFile("../tests/run-special/quote-run.scala", defaultRunWithCompilerOptions) +
     compileFile("../tests/run-special/quote-run-2.scala", defaultRunWithCompilerOptions) +
+    compileFile("../tests/run-special/quote-run-large.scala", defaultRunWithCompilerOptions) +
     compileFile("../tests/run-special/quote-run-staged-interpreter.scala", defaultRunWithCompilerOptions)
   }.checkRuns()
 

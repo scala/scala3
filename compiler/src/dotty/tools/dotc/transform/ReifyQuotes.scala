@@ -269,7 +269,7 @@ class ReifyQuotes extends MacroTransform {
         ref(if (isType) defn.Unpickler_unpickleType else defn.Unpickler_unpickleExpr)
           .appliedToType(if (isType) body1.tpe else body1.tpe.widen)
           .appliedTo(
-            Literal(Constant(PickledQuotes.pickleQuote(body1))),
+            PickledQuotes.pickleQuote(body1),
             SeqLiteral(splices, TypeTree(defn.AnyType)))
       }
     }.withPos(quote.pos)

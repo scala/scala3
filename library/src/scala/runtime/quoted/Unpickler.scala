@@ -5,10 +5,10 @@ import scala.quoted._
 /** Provides methods to unpickle `Expr` and `Type` trees. */
 object Unpickler {
 
-  /** Representation of pickled trees. For now it's String, but it
-   *  should be changed to some kind of TASTY bundle.
+  /** Representation of pickled trees. For now a List[String],
+   *  but it should be changed to some kind of TASTY bundle.
    */
-  type Pickled = String
+  type Pickled = List[String]
 
   /** Unpickle `repr` which represents a pickled `Expr` tree,
    *  replacing splice nodes with `args`
