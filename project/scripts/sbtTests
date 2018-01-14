@@ -58,7 +58,7 @@ else
 fi
 
 echo "testing scala.quoted.Expr.run from sbt dotr"
-./project/scripts/sbt ";dotc -classpath compiler/target/scala-2.12/classes tests/run-special/quote-run.scala; dotr -with-compiler Test" > sbtdot5.out
+./project/scripts/sbt ";dotc -classpath compiler/target/scala-2.12/classes tests/run-with-compiler/quote-run.scala; dotr -with-compiler Test" > sbtdot5.out
 cat sbtdot5.out
 if grep -e "val a: Int = 3" sbtdot5.out; then
     echo "output ok"
