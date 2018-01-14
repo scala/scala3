@@ -3327,6 +3327,10 @@ object Types {
     def instantiate(fromBelow: Boolean)(implicit ctx: Context): Type =
       instantiateWith(ctx.typeComparer.instanceType(origin, fromBelow))
 
+    /** For uninstantiated type variables: Is the lower bound different from Nothing? */
+    def hasLowerBound(implicit ctx: Context) =
+      !ctx.typerState.constraint.entry(origin).loBound.isBottomType
+
     /** Unwrap to instance (if instantiated) or origin (if not), until result
      *  is no longer a TypeVar
      */

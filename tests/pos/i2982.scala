@@ -1,8 +1,6 @@
-object A {
-  def fun[E >: B](a: A[E]): E => Unit = ???
-  val x = fun(new A[C])
-}
-class B extends C
-class C
 
-class A[-X >: B]
+object A {
+  def fun[E](a: A[E]): Unit = ()
+  fun(new A[Int])
+}
+class A[-X]
