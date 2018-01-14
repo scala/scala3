@@ -21,7 +21,7 @@ import typer.Checking
 import config.Config
 import dotty.tools.dotc.core.quoted.PickledQuotes
 import dotty.tools.dotc.interpreter.RawQuoted
-import scala.quoted.Expr
+import scala.quoted
 
 /** Unpickler for typed trees
  *  @param reader          the reader from which to unpickle
@@ -287,6 +287,8 @@ class TreeUnpickler(reader: TastyReader,
               ConstantType(Constant(readType()))
             case ENUMconst =>
               ConstantType(Constant(readTermRef().termSymbol))
+            case HOLE =>
+              readHole(end).tpe
           }
         assert(currentAddr == end, s"$start $currentAddr $end ${astTagToString(tag)}")
         result
@@ -1030,13 +1032,7 @@ class TreeUnpickler(reader: TastyReader,
             case TYPEBOUNDStpt =>
               TypeBoundsTree(readTpt(), readTpt())
             case HOLE =>
-              val idx = readNat()
-              val args = until(end)(readTerm())
-              val splice = splices(idx)
-              val expr =
-                if (args.isEmpty) splice.asInstanceOf[Expr[_]]
-                else splice.asInstanceOf[Seq[Any] => Expr[_]](args.map(RawQuoted.apply))
-              PickledQuotes.quotedToTree(expr)
+              readHole(end)
             case _ =>
               readPathTerm()
           }
@@ -1081,6 +1077,16 @@ class TreeUnpickler(reader: TastyReader,
       val localReader = fork
       goto(end)
       new LazyReader(localReader, op)
+    }
+
+    def readHole(end: Addr)(implicit ctx: Context): Tree = {
+      val idx = readNat()
+      val args = until(end)(readTerm())
+      val splice = splices(idx)
+      val quotedType =
+        if (args.isEmpty) splice.asInstanceOf[quoted.Quoted]
+        else splice.asInstanceOf[Seq[Any] => quoted.Quoted](args.map(RawQuoted.apply))
+      PickledQuotes.quotedToTree(quotedType)
     }
 
 // ------ Setting positions ------------------------------------------------
