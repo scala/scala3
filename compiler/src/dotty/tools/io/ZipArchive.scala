@@ -205,11 +205,12 @@ final class ManifestResources(val url: URL) extends ZipArchive(null) {
     for (zipEntry <- iter) {
       val dir = getDir(dirs, zipEntry)
       if (!zipEntry.isDirectory) {
-        val f = new Entry(zipEntry.getName) {
+        class FileEntry() extends Entry(zipEntry.getName) {
           override def lastModified = zipEntry.getTime()
           override def input        = resourceInputStream(path)
           override def sizeOption   = None
         }
+        val f = new FileEntry()
         dir.entries(f.name) = f
       }
     }
