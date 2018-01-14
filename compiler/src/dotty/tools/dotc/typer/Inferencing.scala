@@ -389,7 +389,7 @@ trait Inferencing { this: Typer =>
         if (!(vs contains tvar) && qualifies(tvar)) {
           typr.println(s"instantiating non-occurring ${tvar.show} in ${tp.show} / $tp")
           ensureConstrained()
-          tvar.instantiate(fromBelow = true)
+          tvar.instantiate(fromBelow = tvar.hasLowerBound)
         }
     }
     if (constraint.uninstVars exists qualifies) interpolate()
