@@ -548,7 +548,7 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
 
   /** The uninstantiated typevars of this constraint */
   def uninstVars: collection.Seq[TypeVar] = {
-    if (myUninstVars == null) {
+    if (myUninstVars == null || myUninstVars.exists(_.inst.exists)) {
       myUninstVars = new mutable.ArrayBuffer[TypeVar]
       boundsMap.foreachBinding { (poly, entries) =>
         for (i <- 0 until paramCount(entries)) {
