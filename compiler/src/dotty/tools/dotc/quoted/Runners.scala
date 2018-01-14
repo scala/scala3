@@ -13,10 +13,7 @@ object Runners {
 
   implicit def runner[T]: Runner[T] = new Runner[T] {
 
-    def run(expr: Expr[T]): T = expr match {
-      case expr: ConstantExpr[T] => expr.value
-      case _ => new QuoteDriver().run(expr)
-    }
+    def run(expr: Expr[T]): T = Runners.run(expr, optimise = false)
 
     def show(expr: Expr[T]): String = expr match {
       case expr: ConstantExpr[T] =>
@@ -26,5 +23,10 @@ object Runners {
         printer.toText(Literal(Constant(expr.value))).mkString(Int.MaxValue, false)
       case _ => new QuoteDriver().show(expr)
     }
+  }
+
+  def run[T](expr: Expr[T], optimise: Boolean): T = expr match {
+    case expr: ConstantExpr[T] => expr.value
+    case _ => new QuoteDriver().run(expr, optimise)
   }
 }
