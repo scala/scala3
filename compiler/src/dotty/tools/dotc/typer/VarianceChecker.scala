@@ -95,8 +95,8 @@ class VarianceChecker()(implicit ctx: Context) {
             this(status, tp.resultType) // params will be checked in their TypeDef or ValDef nodes.
           case AnnotatedType(_, annot) if annot.symbol == defn.UncheckedVarianceAnnot =>
             status
-          //case tp: ClassInfo =>
-          //  ???  not clear what to do here yet. presumably, it's all checked at local typedefs
+          case tp: ClassInfo =>
+            foldOver(status, tp.classParents)
           case _ =>
             foldOver(status, tp)
         }
@@ -142,14 +142,16 @@ class VarianceChecker()(implicit ctx: Context) {
           ctx.debuglog(s"Skipping variance check of ${sym.showDcl}")
         case tree: TypeDef =>
           checkVariance(sym, tree.pos)
+          tree.rhs match {
+            case rhs: Template => traverseChildren(rhs)
+            case _ =>
+          }
         case tree: ValDef =>
           checkVariance(sym, tree.pos)
         case DefDef(_, tparams, vparamss, _, _) =>
           checkVariance(sym, tree.pos)
           tparams foreach traverse
           vparamss foreach (_ foreach traverse)
-        case Template(_, _, _, body) =>
-          traverseChildren(tree)
         case _ =>
       }
     }
