@@ -133,7 +133,7 @@ class SymbolLoaders {
           def checkPathMatches(path: List[TermName], what: String, tree: MemberDef): Boolean = {
             val ok = filePath == path
             if (!ok)
-              ctx.warning(i"""$what ${tree.name} is in wrong directory.
+              ctx.warning(i"""$what ${tree.name} is in the wrong directory.
                               |It was declared to be in package ${path.reverse.mkString(".")}
                               |But it is found in directory     ${filePath.reverse.mkString(File.separator)}""",
                           tree.pos)
