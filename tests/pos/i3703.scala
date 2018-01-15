@@ -4,6 +4,7 @@ package bar {
   object S {
     def apply[X[_] <: M[X], A](x: X[A]): S[X, A] = S[X, A](x)
     def unapply[X[_] <: M[X], A](p: S[X, A]): S[X, A] = S(p.x)
+  }
 }
 
 
