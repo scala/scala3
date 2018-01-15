@@ -8,6 +8,7 @@ import dotty.tools.dotc.ast.tpd.{ Tree, TreeTraverser }
 import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.SymDenotations.ClassDenotation
 import dotty.tools.dotc.core.Symbols._
+import dotty.tools.dotc.transform.SymUtils._
 
 class CompilationUnit(val source: SourceFile) {
 
@@ -31,17 +32,29 @@ class CompilationUnit(val source: SourceFile) {
 object CompilationUnit {
 
   /** Make a compilation unit for top class `clsd` with the contends of the `unpickled` */
-  def mkCompilationUnit(clsd: ClassDenotation, unpickled: Tree, forceTrees: Boolean)(implicit ctx: Context): CompilationUnit = {
+  def mkCompilationUnit(clsd: ClassDenotation, unpickled: Tree, forceTrees: Boolean)(implicit ctx: Context): CompilationUnit =
+    mkCompilationUnit(new SourceFile(clsd.symbol.associatedFile, Seq()), unpickled, forceTrees)
+
+  /** Make a compilation unit the given unpickled tree */
+  def mkCompilationUnit(source: SourceFile, unpickled: Tree, forceTrees: Boolean)(implicit ctx: Context): CompilationUnit = {
     assert(!unpickled.isEmpty, unpickled)
-    val unit1 = new CompilationUnit(new SourceFile(clsd.symbol.associatedFile, Seq()))
+    val unit1 = new CompilationUnit(source)
     unit1.tpdTree = unpickled
-    if (forceTrees)
+    if (forceTrees) {
+      val force = new Force
       force.traverse(unit1.tpdTree)
+      unit1.containsQuotesOrSplices = force.containsQuotes
+    }
     unit1
   }
 
   /** Force the tree to be loaded */
-  private object force extends TreeTraverser {
-    def traverse(tree: Tree)(implicit ctx: Context): Unit = traverseChildren(tree)
+  private class Force extends TreeTraverser {
+    var containsQuotes = false
+    def traverse(tree: Tree)(implicit ctx: Context): Unit = {
+      if (tree.symbol.isQuote)
+        containsQuotes = true
+      traverseChildren(tree)
+    }
   }
 }

@@ -64,6 +64,14 @@ class TyperState(previous: TyperState /* | Null */) extends DotClass with Showab
   def isGlobalCommittable: Boolean =
     isCommittable && (previous == null || previous.isGlobalCommittable)
 
+  private[this] var isShared = false
+
+  /** Mark typer state as shared (typically because it is the typer state of
+   *  the creation context of a source definition that potentially still needs
+   *  to be completed). Members of shared typer states are never overwritten in `test`.
+   */
+  def markShared(): Unit = isShared = true
+
   private[this] var isCommitted = false
 
   /** A fresh typer state with the same constraint as this one. */
@@ -94,29 +102,35 @@ class TyperState(previous: TyperState /* | Null */) extends DotClass with Showab
 
   private[this] var testReporter: StoreReporter = null
 
-  /** Test using `op`, restoring typerState to previous state afterwards */
-  def test[T](op: => T): T = {
-    val savedConstraint = myConstraint
-    val savedReporter = myReporter
-    val savedCommittable = myIsCommittable
-    val savedCommitted = isCommitted
-    myIsCommittable = false
-    myReporter = {
-      if (testReporter == null) {
-        testReporter = new StoreReporter(reporter)
-      } else {
-        testReporter.reset()
+  /** Test using `op`. If current typerstate is shared, run `op` in a fresh exploration
+   *  typerstate. If it is unshared, run `op` in current typerState, restoring typerState
+   *  to previous state afterwards.
+   */
+  def test[T](op: Context => T)(implicit ctx: Context): T =
+    if (isShared)
+      op(ctx.fresh.setExploreTyperState())
+    else {
+      val savedConstraint = myConstraint
+      val savedReporter = myReporter
+      val savedCommittable = myIsCommittable
+      val savedCommitted = isCommitted
+      myIsCommittable = false
+      myReporter = {
+        if (testReporter == null) {
+          testReporter = new StoreReporter(reporter)
+        } else {
+          testReporter.reset()
+        }
+        testReporter
       }
-      testReporter
+      try op(ctx)
+      finally {
+        resetConstraintTo(savedConstraint)
+        myReporter = savedReporter
+        myIsCommittable = savedCommittable
+        isCommitted = savedCommitted
+      }
     }
-    try op
-    finally {
-      resetConstraintTo(savedConstraint)
-      myReporter = savedReporter
-      myIsCommittable = savedCommittable
-      isCommitted = savedCommitted
-    }
-  }
 
   /** Commit typer state so that its information is copied into current typer state
    *  In addition (1) the owning state of undetermined or temporarily instantiated

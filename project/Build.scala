@@ -8,7 +8,9 @@ import java.util.Calendar
 
 import scala.reflect.io.Path
 import sbtassembly.AssemblyKeys.assembly
-import xerial.sbt.Pack._
+
+import xerial.sbt.pack.PackPlugin
+import xerial.sbt.pack.PackPlugin.autoImport._
 
 import sbt.Package.ManifestAttributes
 
@@ -571,10 +573,19 @@ object Build {
         val java: String = Process("which" :: "java" :: Nil).!!
         val attList = (dependencyClasspath in Runtime).value
         val _ = packageAll.value
-        val scalaLib = attList
+
+        def findLib(name: String) = attList
           .map(_.data.getAbsolutePath)
-          .find(_.contains("scala-library"))
+          .find(_.contains(name))
           .toList.mkString(":")
+
+        val scalaLib = findLib("scala-library")
+        val dottyLib = packageAll.value("dotty-library")
+
+        def run(args: List[String]): Unit = {
+          val fullArgs = insertClasspathInArgs(args, s".:$dottyLib:$scalaLib")
+          s"$java ${fullArgs.mkString(" ")}".!
+        }
 
         if (args.isEmpty) {
           println("Couldn't run `dotr` without args. Use `repl` to run the repl or add args to run the dotty application")
@@ -582,11 +593,13 @@ object Build {
           println("Couldn't find java executable on path, please install java to a default location")
         } else if (scalaLib == "") {
           println("Couldn't find scala-library on classpath, please run using script in bin dir instead")
-        } else {
-          val dottyLib = packageAll.value("dotty-library")
-          val fullArgs = insertClasspathInArgs(args, s".:$dottyLib:$scalaLib")
-          s"$java ${fullArgs.mkString(" ")}".!
-        }
+        } else if (args.contains("-with-compiler")) {
+          val args1 = args.filter(_ != "-with-compiler")
+          val asm = findLib("scala-asm")
+          val dottyCompiler = packageAll.value("dotty-compiler")
+          val dottyInterfaces = packageAll.value("dotty-interfaces")
+          run(insertClasspathInArgs(args1, s"$dottyCompiler:$dottyInterfaces:$asm"))
+        } else run(args)
       },
       run := dotc.evaluated,
       dotc := runCompilerMain().evaluated,
@@ -628,18 +641,22 @@ object Build {
 
   def runCompilerMain(repl: Boolean = false) = Def.inputTaskDyn {
     val dottyLib = packageAll.value("dotty-library")
+    lazy val dottyCompiler = packageAll.value("dotty-compiler")
     val args0: List[String] = spaceDelimited("<arg>").parsed.toList
     val decompile = args0.contains("-decompile")
-    val args = args0.filter(arg => arg != "-repl" || arg != "-decompile")
+    val debugFromTasty = args0.contains("-Ythrough-tasty")
+    val args = args0.filter(arg => arg != "-repl" && arg != "-decompile" &&
+        arg != "-with-compiler" && arg != "-Ythrough-tasty")
 
     val main =
       if (repl) "dotty.tools.repl.Main"
       else if (decompile) "dotty.tools.dotc.decompiler.Main"
+      else if (debugFromTasty) "dotty.tools.dotc.fromtasty.Debug"
       else "dotty.tools.dotc.Main"
 
-    val extraClasspath =
-      if (decompile && !args.contains("-classpath")) dottyLib + ":."
-      else dottyLib
+    var extraClasspath = dottyLib
+    if (decompile && !args.contains("-classpath")) extraClasspath += ":."
+    if (args0.contains("-with-compiler")) extraClasspath += s":$dottyCompiler"
 
     val fullArgs = main :: insertClasspathInArgs(args, extraClasspath)
 
@@ -1106,9 +1123,10 @@ object Build {
     ))
   }
 
-  lazy val commonDistSettings = packSettings ++ Seq(
+  lazy val commonDistSettings = Seq(
     packMain := Map(),
     publishArtifact := false,
+    packGenerateMakefile := false,
     packExpandedClasspath := true,
     packResourceDir += (baseDirectory.value / "bin" -> "bin"),
     packArchiveName := "dotty-" + dottyVersion
@@ -1156,11 +1174,10 @@ object Build {
       settings(commonBenchmarkSettings).
       enablePlugins(JmhPlugin)
 
-    def asDist(implicit mode: Mode): Project = project.withCommonSettings.
-      dependsOn(`dotty-interfaces`).
-      dependsOn(dottyCompiler).
-      dependsOn(dottyLibrary).
-      dependsOn(dottyDoc).
+    def asDist(implicit mode: Mode): Project = project.
+      enablePlugins(PackPlugin).
+      withCommonSettings.
+      dependsOn(`dotty-interfaces`, dottyCompiler, dottyLibrary, dottyDoc).
       settings(commonDistSettings).
       bootstrappedSettings(target := baseDirectory.value / "target") // override setting in commonBootstrappedSettings
 

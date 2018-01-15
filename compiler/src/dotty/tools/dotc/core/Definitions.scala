@@ -77,7 +77,10 @@ class Definitions {
         val cls = denot.asClass.classSymbol
         val paramDecls = newScope
         val typeParam = enterSyntheticTypeParam(cls, paramFlags, paramDecls)
-        val parents = parentConstrs.toList
+        def instantiate(tpe: Type) =
+          if (tpe.typeParams.nonEmpty) tpe.appliedTo(typeParam.typeRef)
+          else tpe
+        val parents = parentConstrs.toList map instantiate
         denot.info = ClassInfo(ScalaPackageClass.thisType, cls, parents, paramDecls)
       }
     }
@@ -1047,7 +1050,7 @@ class Definitions {
 
 //  private val unboxedTypeRef = mutable.Map[TypeName, TypeRef]()
 //  private val javaTypeToValueTypeRef = mutable.Map[Class[_], TypeRef]()
-//  private val valueTypeNameToJavaType = mutable.Map[TypeName, Class[_]]()
+  private val valueTypeNamesToJavaType = mutable.Map[TypeName, Class[_]]()
 
   private def valueTypeRef(name: String, boxed: TypeRef, jtype: Class[_], enc: Int, tag: Name): TypeRef = {
     val vcls = ctx.requiredClassRef(name)
@@ -1056,7 +1059,7 @@ class Definitions {
     typeTags(vcls.name) = tag
 //    unboxedTypeRef(boxed.name) = vcls
 //    javaTypeToValueTypeRef(jtype) = vcls
-//    valueTypeNameToJavaType(vcls.name) = jtype
+    valueTypeNamesToJavaType(vcls.name) = jtype
     vcls
   }
 
@@ -1065,6 +1068,10 @@ class Definitions {
 
   /** The JVM tag for `tp` if it's a primitive, `java.lang.Object` otherwise. */
   def typeTag(tp: Type)(implicit ctx: Context): Name = typeTags(scalaClassName(tp))
+
+  /** The `Class[_]` of a primitive value type name */
+  def valueTypeNameToJavaType(name: TypeName)(implicit ctx: Context): Option[Class[_]] =
+    valueTypeNamesToJavaType.get(if (name.firstPart eq nme.scala_) name.lastPart.toTypeName else name)
 
   type PrimitiveClassEnc = Int
 

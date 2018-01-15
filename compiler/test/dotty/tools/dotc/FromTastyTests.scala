@@ -21,10 +21,13 @@ class FromTastyTests extends ParallelTesting {
 
 
   @Test def posTestFromTasty: Unit = {
+    // Can be reproduced with
+    // > sbt
+    // > dotc -Ythrough-tasty -Ycheck:all <source>
+
     implicit val testGroup: TestGroup = TestGroup("posTestFromTasty")
     val (step1, step2) = compileTastyInDir("../tests/pos", defaultOptions,
       blacklist = Set(
-        "Meter.scala",
         "NoCyclicReference.scala",
         "depfuntype.scala",
         "hklub0.scala",
@@ -38,12 +41,6 @@ class FromTastyTests extends ParallelTesting {
         "i3000.scala",
         "i536.scala",
         "i974.scala",
-        "liftable.scala",
-        "quoteTest.scala",
-        "quoted.scala",
-        "stagedInterpreter.scala",
-        "superacc.scala",
-        "t0231.scala",
         "t1203a.scala",
         "t2260.scala",
         "t3612.scala", // Test never finishes
@@ -52,6 +49,7 @@ class FromTastyTests extends ParallelTesting {
         "t8023.scala",
         "tcpoly_ticket2096.scala",
         "t247.scala",
+        "i3067.scala",
       )
     )
     step1.checkCompile() // Compile all files to generate the class files with tasty
@@ -60,11 +58,15 @@ class FromTastyTests extends ParallelTesting {
   }
 
   @Test def runTestFromTasty: Unit = {
+    // Can be reproduced with
+    // > sbt
+    // > dotc -Ythrough-tasty -Ycheck:all <source>
+    // > dotr Test
+
     implicit val testGroup: TestGroup = TestGroup("runTestFromTasty")
     val (step1, step2) = compileTastyInDir("../tests/run", defaultOptions,
        blacklist = Set(
          "Course-2002-13.scala",
-         "NestedClasses.scala",
          "bridges.scala",
          "eff-dependent.scala",
          "enum-approx.scala",
@@ -86,7 +88,6 @@ class FromTastyTests extends ParallelTesting {
          "phantom-poly-4.scala",
          "scala2trait-lazyval.scala",
          "t3452f.scala",
-         "t493.scala",
          "t8395.scala",
          "t3613.scala",
        )

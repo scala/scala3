@@ -189,11 +189,15 @@ object messages {
     val msg = {
       val ofFun =
         if (MethodType.syntheticParamNames(args.length + 1) contains param.name)
-          i" of expanded function $tree"
+          i" of expanded function:\n$tree"
         else
           ""
 
-      i"missing parameter type for parameter ${param.name}$ofFun, expected = $pt"
+      i"""missing parameter type
+         |
+         |The argument types of an anonymous function must be fully known. (SLS 8.5)
+         |Expected type: $pt
+         |Missing type for parameter ${param.name}$ofFun"""
     }
 
     val explanation =
@@ -2029,10 +2033,11 @@ object messages {
     }
   }
 
-  case class UnableToEmitSwitch()(implicit ctx: Context)
+  case class UnableToEmitSwitch(tooFewCases: Boolean)(implicit ctx: Context)
   extends Message(UnableToEmitSwitchID) {
     val kind = ErrorCategory.Syntax
-    val msg = hl"Could not emit switch for ${"@switch"} annotated match"
+    val tooFewStr = if (tooFewCases) " since there are not enough cases" else ""
+    val msg = hl"Could not emit switch for ${"@switch"} annotated match$tooFewStr"
     val explanation = {
       val codeExample =
         """val ConstantB = 'B'

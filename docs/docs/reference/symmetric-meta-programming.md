@@ -32,8 +32,7 @@ prints it again in an error message if it evaluates to `false`.
       ~ assertImpl(’(expr))
 
     def assertImpl(expr: Expr[Boolean]) =
-      ’{ if !(~expr) then throw new AssertionError(s"failed assertion: ${~expr}") }
-
+      ’{ if !(~expr) then throw new AssertionError(s"failed assertion: ${~showExpr(expr)}") }
 
 If `e` is an expression, then `’(e)` or `’{e}` represent the typed
 abstract syntax tree representing `e`. If `T` is a type, then `’[T]`
@@ -400,7 +399,8 @@ to `T` but only `~` is subject to the PCP, whereas `run` is just a normal method
 
     abstract class Expr[T] {
       def unary_~: T
-      def run: T     // run staged code
+      def run(implicit runner: Runner[T]): T       // run staged code
+      def show(implicit runner: Runner[T]): String // show staged code
     }
 
 ### Limitations to Splicing
@@ -490,14 +490,14 @@ is defined in the companion object of class `Expr` as follows:
 The conversion says that values of types implementing the `Liftable`
 type class can be converted ("lifted") automatically to `Expr`
 values. Dotty comes with instance definitions of `Liftable` for
-several types including all underlying types of literals. For example,
-`Int` values can be converted to `Expr[Int]` values by wrapping the
-value in a `Literal` tree node. This makes use of the underlying tree
-representation in the compiler for efficiency. But the `Liftable`
-instances are nevertheless not "magic" in the sense that they could
-all be defined in a user program without knowing anything about the
-representation of `Expr` trees. For instance, here is a possible
-instance of `Liftable[Boolean]`:
+several types including `Boolean`, `String`, and all primitive number
+types. For example, `Int` values can be converted to `Expr[Int]`
+values by wrapping the value in a `Literal` tree node. This makes use
+of the underlying tree representation in the compiler for
+efficiency. But the `Liftable` instances are nevertheless not "magic"
+in the sense that they could all be defined in a user program without
+knowing anything about the representation of `Expr` trees. For
+instance, here is a possible instance of `Liftable[Boolean]`:
 
     implicit def BooleanIsLiftable: Liftable[Boolean] = new {
       implicit def toExpr(b: Boolean) = if (b) ’(true) else ’(false)
@@ -530,6 +530,13 @@ a `List` is liftable if its element type is:
 In the end, `Liftable` resembles very much a serialization
 framework. Like the latter it can be derived systematically for all
 collections, case classes and enums.
+
+Using lifting, we can now give the missing definition of `showExpr` in the introductory example:
+
+    def showExpr[T](expr: Expr[T]): Expr[String] = expr.toString
+
+That is, the `showExpr` method converts its `Expr` argument to a string, and lifts
+the result back to an `Expr[String]` using the implicit `toExpr` conversion.
 
 ## Implementation
 
@@ -602,9 +609,9 @@ The syntax of terms, values, and types is given as follows:
                           ~t                splice
 
     Values        v  ::=  (x: T) => t       lambda
-                          ’q                pure quote
+                          ’u                quote
 
-    Quoted        q  ::=  x  |  (x: T) => q  |  q q  |  ’t
+    Simple terms  u  ::=  x  |  (x: T) => u  |  u u  |  ’t
 
     Types         T  ::=  A                 base type
                           T -> T            function type
@@ -634,7 +641,7 @@ We define a small step reduction relation `-->` with the following rules:
 
                 ((x: T) => t) v  -->  [x := v]t
 
-                          ~(’t)  -->  t
+                          ~(’u)  -->  u
 
                              t1  -->  t2
                           -----------------
@@ -647,7 +654,7 @@ position of an evaluation context.  Evaluation contexts `e` and
 splice evaluation context `e_s` are defined syntactically as follows:
 
     Eval context    e    ::=  [ ]  |  e t  |  v e  |  ’e_s[~e]
-    Splice context  e_s  ::=  [ ]  |  (x: T) => e_s  |  e_s t  |  q e_s
+    Splice context  e_s  ::=  [ ]  |  (x: T) => e_s  |  e_s t  |  u e_s
 
 ### Typing rules
 
@@ -693,6 +700,9 @@ environments and terms.
                            Es ’ () |- t: T
                            ----------------
                            Es |- ’t: expr T
+
+The meta theory of a slightly simplified variant 2-stage variant of this calculus
+is studied [separatey](../simple-smp.md)
 
 ## Going Further
 

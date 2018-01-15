@@ -80,7 +80,7 @@ object Implicits {
           case mt: MethodType =>
             mt.isImplicitMethod ||
             mt.paramInfos.length != 1 ||
-            !ctx.typerState.test(argType relaxed_<:< mt.paramInfos.head)
+            !ctx.test(implicit ctx => argType relaxed_<:< mt.paramInfos.head)
           case poly: PolyType =>
             // We do not need to call ProtoTypes#constrained on `poly` because
             // `refMatches` is always called with mode TypevarsMissContext enabled.
@@ -88,7 +88,7 @@ object Implicits {
               case mt: MethodType =>
                 mt.isImplicitMethod ||
                 mt.paramInfos.length != 1 ||
-                !ctx.typerState.test(argType relaxed_<:< wildApprox(mt.paramInfos.head, null, Set.empty))
+                !ctx.test(implicit ctx => argType relaxed_<:< wildApprox(mt.paramInfos.head, null, Set.empty))
               case rtp =>
                 discardForView(wildApprox(rtp, null, Set.empty), argType)
             }
@@ -148,7 +148,7 @@ object Implicits {
       else {
         val nestedCtx = ctx.fresh.addMode(Mode.TypevarsMissContext)
         refs
-          .filter(ref => nestedCtx.typerState.test(refMatches(ref.underlyingRef)(nestedCtx)))
+          .filter(ref => nestedCtx.test(implicit ctx => refMatches(ref.underlyingRef)))
           .map(Candidate(_, level))
       }
     }
@@ -564,7 +564,7 @@ trait Implicits { self: Typer =>
      *  synthesize a class tag for `T`.
    	 */
     def synthesizedClassTag(formal: Type)(implicit ctx: Context): Tree =
-      formal.argTypes match {
+      formal.argInfos match {
         case arg :: Nil =>
           fullyDefinedType(arg, "ClassTag argument", pos) match {
             case defn.ArrayOf(elemTp) =>
@@ -591,7 +591,7 @@ trait Implicits { self: Typer =>
       formal.argTypes match {
         case args @ (arg1 :: arg2 :: Nil)
         if !ctx.featureEnabled(defn.LanguageModuleClass, nme.strictEquality) &&
-           ctx.typerState.test(validEqAnyArgs(arg1, arg2)) =>
+           ctx.test(implicit ctx => validEqAnyArgs(arg1, arg2)) =>
           ref(defn.Eq_eqAny).appliedToTypes(args).withPos(pos)
         case _ =>
           EmptyTree
@@ -789,7 +789,8 @@ trait Implicits { self: Typer =>
     assert(argument.isEmpty || argument.tpe.isValueType || argument.tpe.isInstanceOf[ExprType],
         em"found: $argument: ${argument.tpe}, expected: $pt")
 
-    private def nestedContext() = ctx.fresh.setMode(ctx.mode &~ Mode.ImplicitsEnabled)
+    private def nestedContext() =
+      ctx.fresh.setMode(ctx.mode &~ Mode.ImplicitsEnabled)
 
     private def implicitProto(resultType: Type, f: Type => Type) =
       if (argument.isEmpty) f(resultType) else ViewProto(f(argument.tpe.widen), f(resultType))
@@ -878,7 +879,7 @@ trait Implicits { self: Typer =>
        */
       def compareCandidate(prev: SearchSuccess, ref: TermRef, level: Int): Int =
         if (prev.ref eq ref) 0
-        else ctx.typerState.test(compare(prev.ref, ref, prev.level, level)(nestedContext()))
+        else nestedContext().test(implicit ctx => compare(prev.ref, ref, prev.level, level))
 
       /* Seems we don't need this anymore.
       def numericValueTieBreak(alt1: SearchSuccess, alt2: SearchSuccess) = {

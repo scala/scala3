@@ -282,6 +282,11 @@ object Contexts {
     /** The current reporter */
     def reporter: Reporter = typerState.reporter
 
+    /** Run `op` as if it was run in a fresh explore typer state, but possibly
+     *  optimized to re-use the current typer state.
+     */
+    final def test[T](op: Context => T): T = typerState.test(op)(this)
+
     /** Is this a context for the members of a class definition? */
     def isClassDefContext: Boolean =
       owner.isClass && (owner ne outer.owner)

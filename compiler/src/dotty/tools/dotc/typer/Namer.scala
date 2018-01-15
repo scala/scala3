@@ -48,7 +48,6 @@ trait NamerContextOps { this: Context =>
           val elem = scope.lastEntry
           if (elem.name == name) return elem.sym.denot // return self
         }
-        assert(scope.size <= 1, scope)
         owner.thisType.member(name)
       }
       else // we are in the outermost context belonging to a class; self is invisible here. See inClassContext.
@@ -718,6 +717,11 @@ class Namer { typer: Typer =>
     localCtx
   }
 
+  def missingType(sym: Symbol, modifier: String)(implicit ctx: Context) = {
+    ctx.error(s"${modifier}type of implicit definition needs to be given explicitly", sym.pos)
+    sym.resetFlag(Implicit)
+  }
+
   /** The completer of a symbol defined by a member def or import (except ClassSymbols) */
   class Completer(val original: Tree)(implicit ctx: Context) extends LazyType {
 
@@ -725,6 +729,7 @@ class Namer { typer: Typer =>
 
     /** The context with which this completer was created */
     def creationContext = ctx
+    ctx.typerState.markShared()
 
     protected def typeSig(sym: Symbol): Type = original match {
       case original: ValDef =>
@@ -851,7 +856,11 @@ class Namer { typer: Typer =>
           val targs1 = targs map (typedAheadType(_))
           val ptype = typedAheadType(tpt).tpe appliedTo targs1.tpes
           if (ptype.typeParams.isEmpty) ptype
-          else fullyDefinedType(typedAheadExpr(parent).tpe, "class parent", parent.pos)
+          else {
+            if (denot.is(ModuleClass) && denot.sourceModule.is(Implicit))
+              missingType(denot.symbol, "parent ")(creationContext)
+            fullyDefinedType(typedAheadExpr(parent).tpe, "class parent", parent.pos)
+          }
         }
 
       /* Check parent type tree `parent` for the following well-formedness conditions:
@@ -1080,14 +1089,10 @@ class Namer { typer: Typer =>
           lhsType // keep constant types that fill in for a non-constant (to be revised when inline has landed).
         else inherited
       else {
-        def missingType(modifier: String) = {
-          ctx.error(s"${modifier}type of implicit definition needs to be given explicitly", mdef.pos)
-          sym.resetFlag(Implicit)
-        }
         if (sym is Implicit)
           mdef match {
-            case _: DefDef => missingType("result")
-            case _: ValDef if sym.owner.isType => missingType("")
+            case _: DefDef => missingType(sym, "result ")
+            case _: ValDef if sym.owner.isType => missingType(sym, "")
             case _ =>
           }
         lhsType orElse WildcardType

@@ -77,7 +77,7 @@ object typers {
 
   class C {
 
-    @tailrec final def factorial(acc: Int, n: Int): Int = (n: @switch) match {
+    @tailrec final def factorial(acc: Int, n: Int): Int = n match {
       case 0 => acc
       case _ => factorial(acc * n, n - 1)
     }

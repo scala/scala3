@@ -1,8 +1,5 @@
 package dotty
 
-import scala.reflect.ClassTag
-import scala.Predef.???
-
 object DottyPredef {
 
   /** A class for implicit values that can serve as implicit conversions
