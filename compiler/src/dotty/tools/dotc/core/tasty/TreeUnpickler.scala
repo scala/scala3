@@ -631,8 +631,16 @@ class TreeUnpickler(reader: TastyReader,
      *  or else read definition.
      */
     def readIndexedDef()(implicit ctx: Context): Tree = treeAtAddr.remove(currentAddr) match {
-      case Some(tree) => skipTree(); tree
-      case none => readNewDef()
+      case Some(tree) =>
+        assert(tree != PoisonTree, s"Cyclic reference while unpickling definition at address ${currentAddr.index} in unit ${ctx.compilationUnit}")
+        skipTree()
+        tree
+      case none =>
+        val start = currentAddr
+        treeAtAddr(start) = PoisonTree
+        val tree = readNewDef()
+        treeAtAddr.remove(start)
+        tree
     }
 
     private def readNewDef()(implicit ctx: Context): Tree = {
@@ -1168,6 +1176,9 @@ class TreeUnpickler(reader: TastyReader,
 }
 
 object TreeUnpickler {
+
+  /** A marker value used to detect cyclic reference while unpickling definitions. */
+  @sharable val PoisonTree: tpd.Tree = Thicket(Nil)
 
   /** An enumeration indicating which subtrees should be added to an OwnerTree. */
   type MemberDefMode = Int
