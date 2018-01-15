@@ -136,7 +136,7 @@ class ReifyQuotes extends MacroTransform {
       else {
         val trefs = importedTypes.toList
         val typeDefs = for (tref <- trefs) yield {
-          val tag = New(defn.QuotedTypeType.appliedTo(tref), Nil)
+          val tag = New(defn.QuotedTypeType.appliedTo(tref), Nil) // FIXME: should be an implicitly inferred defn.QuotedTypeType.appliedTo(tref)
           val rhs = transform(tag.select(tpnme.UNARY_~))
           val alias = ctx.typeAssigner.assignType(untpd.TypeBoundsTree(rhs, rhs), rhs, rhs)
           val original = tref.symbol.asType
