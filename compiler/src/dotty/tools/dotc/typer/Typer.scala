@@ -1693,7 +1693,8 @@ class Typer extends Namer
       val defs = new mutable.ListBuffer[Tree]
       def lift(app: Tree): Tree = (app: @unchecked) match {
         case Apply(fn, args) =>
-          tpd.cpy.Apply(app)(fn, LiftImpure.liftArgs(defs, fn.tpe, args))
+          if (app.tpe.isError) app
+          else tpd.cpy.Apply(app)(fn, LiftImpure.liftArgs(defs, fn.tpe, args))
         case Assign(lhs, rhs) =>
           tpd.cpy.Assign(app)(lhs, lift(rhs))
         case Block(stats, expr) =>
