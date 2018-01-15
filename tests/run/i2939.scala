@@ -26,8 +26,10 @@ object Tag {
 
 object Test {
   def foo(x: Int => Int)(y: Int = 0) = {}
+  def bar(x: => Int)(y: Int = 0) = {}
 
   def main(args: Array[String]): Unit = {
     foo(x => x)()
+    bar(args.length)()
   }
 }
