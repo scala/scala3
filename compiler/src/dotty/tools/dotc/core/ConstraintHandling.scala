@@ -227,15 +227,15 @@ trait ConstraintHandling {
         }
       }
     }
-    if (constraint.contains(param)) {
-      val bound = if (fromBelow) constraint.fullLowerBound(param) else constraint.fullUpperBound(param)
-      val inst = avoidParam(bound)
-      typr.println(s"approx ${param.show}, from below = $fromBelow, bound = ${bound.show}, inst = ${inst.show}")
-      inst
-    }
-    else {
-      assert(ctx.mode.is(Mode.Interactive))
-      UnspecifiedErrorType
+    constraint.entry(param) match {
+      case _: TypeBounds =>
+        val bound = if (fromBelow) constraint.fullLowerBound(param) else constraint.fullUpperBound(param)
+        val inst = avoidParam(bound)
+        typr.println(s"approx ${param.show}, from below = $fromBelow, bound = ${bound.show}, inst = ${inst.show}")
+        inst
+      case inst =>
+        assert(inst.exists, i"param = $param\n constraint = $constraint")
+        inst
     }
   }
 
