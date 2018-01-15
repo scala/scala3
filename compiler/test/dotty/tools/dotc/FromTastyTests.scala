@@ -21,6 +21,10 @@ class FromTastyTests extends ParallelTesting {
 
 
   @Test def posTestFromTasty: Unit = {
+    // Can be reproduced with
+    // > sbt
+    // > dotc -Ythrough-tasty -Ycheck:all <source>
+
     implicit val testGroup: TestGroup = TestGroup("posTestFromTasty")
     val (step1, step2) = compileTastyInDir("../tests/pos", defaultOptions,
       blacklist = Set(
@@ -54,6 +58,11 @@ class FromTastyTests extends ParallelTesting {
   }
 
   @Test def runTestFromTasty: Unit = {
+    // Can be reproduced with
+    // > sbt
+    // > dotc -Ythrough-tasty -Ycheck:all <source>
+    // > dotr Test
+
     implicit val testGroup: TestGroup = TestGroup("runTestFromTasty")
     val (step1, step2) = compileTastyInDir("../tests/run", defaultOptions,
        blacklist = Set(
