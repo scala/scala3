@@ -189,12 +189,15 @@ object messages {
     val msg = {
       val ofFun =
         if (MethodType.syntheticParamNames(args.length + 1) contains param.name)
-          i" of expanded function $tree"
+          i" of expanded function:\n$tree"
         else
           ""
 
-      i"""missing parameter type for parameter ${param.name}$ofFun, expected = $pt
-         |The argument types of an anonymous function must be fully known. (SLS 8.5)"""
+      i"""missing parameter type
+         |
+         |The argument types of an anonymous function must be fully known. (SLS 8.5)
+         |Expected type: $pt
+         |Missing type for parameter ${param.name}$ofFun"""
     }
 
     val explanation =

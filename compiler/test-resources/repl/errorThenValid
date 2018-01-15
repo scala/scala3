@@ -1,7 +1,10 @@
 scala> val xs = scala.collection.mutable.ListBuffer[Int]
 1 | val xs = scala.collection.mutable.ListBuffer[Int]
   |          ^
-  |missing parameter type for parameter elems, expected = ?
+  |missing parameter type
+  |
   |The argument types of an anonymous function must be fully known. (SLS 8.5)
+  |Expected type: ?
+  |Missing type for parameter elems
 scala> val xs = scala.collection.mutable.ListBuffer[Int]()
 val xs: scala.collection.mutable.ListBuffer[Int] = ListBuffer()
