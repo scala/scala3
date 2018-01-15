@@ -743,6 +743,8 @@ object Symbols {
     def keysIterator: Iterator[Symbol] = value.keySet().asScala.iterator
 
     def toMap: Map[Symbol, T] = value.asScala.toMap
+
+    override def toString: String = value.asScala.toString()
   }
 
   @inline def newMutableSymbolMap[T]: MutableSymbolMap[T] =
