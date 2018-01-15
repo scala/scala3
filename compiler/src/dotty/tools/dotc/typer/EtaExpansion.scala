@@ -13,23 +13,43 @@ import Decorators._
 import Names._
 import StdNames._
 import NameKinds.UniqueName
-import Trees._
 import Inferencing._
 import util.Positions._
 import collection.mutable
+import Trees._
 
-object EtaExpansion {
-
+/** A class that handles argument lifting. Argument lifting is needed in the following
+ *  scenarios:
+ *   - eta expansion
+ *   - applications with default arguments
+ *   - applications with out-of-order named arguments
+ *  Lifting generally lifts impure expressions only, except in the case of possible
+ *  default arguments, where we lift also complex pure expressions, since in that case
+ *  arguments can be duplicated as arguments to default argument methods.
+ */
+abstract class Lifter {
   import tpd._
 
+  /** Test indicating `expr` does not need lifting */
+  def noLift(expr: Tree)(implicit ctx: Context): Boolean
+
+  /** The corresponding lifter for paam-by-name arguments */
+  protected def exprLifter: Lifter = NoLift
+
+  /** The flags of a lifted definition */
+  protected def liftedFlags: FlagSet = EmptyFlags
+
+  /** The tree of a lifted definition */
+  protected def liftedDef(sym: TermSymbol, rhs: Tree)(implicit ctx: Context): MemberDef = ValDef(sym, rhs)
+
   private def lift(defs: mutable.ListBuffer[Tree], expr: Tree, prefix: TermName = EmptyTermName)(implicit ctx: Context): Tree =
-    if (isPureExpr(expr)) expr
+    if (noLift(expr)) expr
     else {
       val name = UniqueName.fresh(prefix)
       val liftedType = fullyDefinedType(expr.tpe.widen, "lifted expression", expr.pos)
-      val sym = ctx.newSymbol(ctx.owner, name, EmptyFlags, liftedType, coord = positionCoord(expr.pos))
-      defs += ValDef(sym, expr).withPos(expr.pos.focus)
-      ref(sym.termRef).withPos(expr.pos)
+      val lifted = ctx.newSymbol(ctx.owner, name, liftedFlags, liftedType, coord = positionCoord(expr.pos))
+      defs += liftedDef(lifted, expr).withPos(expr.pos.focus)
+      ref(lifted.termRef).withPos(expr.pos)
     }
 
   /** Lift out common part of lhs tree taking part in an operator assignment such as
@@ -49,7 +69,7 @@ object EtaExpansion {
   }
 
   /** Lift a function argument, stripping any NamedArg wrapper */
-  def liftArg(defs: mutable.ListBuffer[Tree], arg: Tree, prefix: TermName = EmptyTermName)(implicit ctx: Context): Tree =
+  private def liftArg(defs: mutable.ListBuffer[Tree], arg: Tree, prefix: TermName = EmptyTermName)(implicit ctx: Context): Tree =
     arg match {
       case arg @ NamedArg(name, arg1) => cpy.NamedArg(arg)(name, lift(defs, arg1, prefix))
       case arg => lift(defs, arg, prefix)
@@ -61,12 +81,12 @@ object EtaExpansion {
   def liftArgs(defs: mutable.ListBuffer[Tree], methRef: Type, args: List[Tree])(implicit ctx: Context) =
     methRef.widen match {
       case mt: MethodType =>
-        (args, mt.paramNames, mt.paramInfos).zipped map { (arg, name, tp) =>
-          if (tp.isInstanceOf[ExprType]) arg
-          else liftArg(defs, arg, if (name.firstPart contains '$') EmptyTermName else name)
+        (args, mt.paramNames, mt.paramInfos).zipped.map { (arg, name, tp) =>
+          val lifter = if (tp.isInstanceOf[ExprType]) exprLifter else this
+          lifter.liftArg(defs, arg, if (name.firstPart contains '$') EmptyTermName else name)
         }
       case _ =>
-        args map (liftArg(defs, _))
+        args.map(liftArg(defs, _))
     }
 
   /** Lift out function prefix and all arguments from application
@@ -108,6 +128,35 @@ object EtaExpansion {
     case New(_) => tree
     case _ => if (isIdempotentExpr(tree)) tree else lift(defs, tree)
   }
+}
+
+/** No lifting at all */
+object NoLift extends Lifter {
+  def noLift(expr: tpd.Tree)(implicit ctx: Context) = true
+}
+
+/** Lift all impure arguments */
+class LiftImpure extends Lifter {
+  def noLift(expr: tpd.Tree)(implicit ctx: Context) = tpd.isPureExpr(expr)
+}
+object LiftImpure extends LiftImpure
+
+/** Lift all impure or complex arguments */
+class LiftComplex extends Lifter {
+  def noLift(expr: tpd.Tree)(implicit ctx: Context) = tpd.isPurePath(expr)
+  override def exprLifter = LiftToDefs
+}
+object LiftComplex extends LiftComplex
+
+/** Lift all impure or complex arguments to `def`s */
+object LiftToDefs extends LiftComplex {
+  override def liftedFlags: FlagSet = Method
+  override def liftedDef(sym: TermSymbol, rhs: tpd.Tree)(implicit ctx: Context) = tpd.DefDef(sym, rhs)
+}
+
+/** Lifter for eta expansion */
+object EtaExpansion extends LiftImpure {
+  import tpd._
 
   /** Eta-expanding a tree means converting a method reference to a function value.
    *  @param    tree       The tree to expand
@@ -152,41 +201,3 @@ object EtaExpansion {
     if (defs.nonEmpty) untpd.Block(defs.toList map (untpd.TypedSplice(_)), fn) else fn
   }
 }
-
-  /** <p> not needed
-   *    Expand partial function applications of type `type`.
-   *  </p><pre>
-   *  p.f(es_1)...(es_n)
-   *     ==>  {
-   *            <b>private synthetic val</b> eta$f   = p.f   // if p is not stable
-   *            ...
-   *            <b>private synthetic val</b> eta$e_i = e_i    // if e_i is not stable
-   *            ...
-   *            (ps_1 => ... => ps_m => eta$f([es_1])...([es_m])(ps_1)...(ps_m))
-   *          }</pre>
-   *  <p>
-   *    tree is already attributed
-   *  </p>
-  def etaExpandUntyped(tree: Tree)(implicit ctx: Context): untpd.Tree = { // kept as a reserve for now
-    def expand(tree: Tree): untpd.Tree = tree.tpe match {
-      case mt @ MethodType(paramNames, paramTypes) if !mt.isImplicit =>
-        val paramsArgs: List[(untpd.ValDef, untpd.Tree)] =
-          (paramNames, paramTypes).zipped.map { (name, tp) =>
-            val droppedStarTpe = defn.underlyingOfRepeated(tp)
-            val param = ValDef(
-              Modifiers(Param), name,
-              untpd.TypedSplice(TypeTree(droppedStarTpe)), untpd.EmptyTree)
-            var arg: untpd.Tree = Ident(name)
-            if (defn.isRepeatedParam(tp))
-              arg = Typed(arg, Ident(tpnme.WILDCARD_STAR))
-            (param, arg)
-          }
-        val (params, args) = paramsArgs.unzip
-        untpd.Function(params, Apply(untpd.TypedSplice(tree), args))
-    }
-
-    val defs = new mutable.ListBuffer[Tree]
-    val tree1 = liftApp(defs, tree)
-    Block(defs.toList map untpd.TypedSplice, expand(tree1))
-  }
-   */
