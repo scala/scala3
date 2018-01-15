@@ -1,9 +1,9 @@
 package dotty.tools.dotc.quoted
 
 import dotty.tools.dotc.Driver
-import dotty.tools.dotc.core.Contexts.{Context, FreshContext}
+import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.StdNames._
-import dotty.tools.io.VirtualDirectory
+import dotty.tools.io.{AbstractFile, Directory, PlainDirectory, VirtualDirectory}
 import dotty.tools.repl.AbstractFileClassLoader
 
 import scala.quoted.Expr
@@ -17,13 +17,21 @@ class QuoteDriver extends Driver {
     val ctx: Context = initCtx.fresh
     ctx.settings.optimise.update(settings.optimise)(ctx)
 
-    val outDir = new VirtualDirectory("(memory)", None)
+    val outDir: AbstractFile = settings.outDir match {
+      case Some(out) =>
+        val dir = Directory(out)
+        dir.createDirectory()
+        new PlainDirectory(Directory(out))
+      case None =>
+        new VirtualDirectory("(memory)", None)
+    }
 
-    new ExprCompiler(outDir).newRun(ctx).compileExpr(expr)
+    val driver = new ExprCompiler(outDir)
+    driver.newRun(ctx).compileExpr(expr)
 
     val classLoader = new AbstractFileClassLoader(outDir, this.getClass.getClassLoader)
 
-    val clazz = classLoader.loadClass(nme.QUOTE.toString)
+    val clazz = classLoader.loadClass(driver.outputClassName.toString)
     val method = clazz.getMethod("apply")
     val instance = clazz.newInstance()
 

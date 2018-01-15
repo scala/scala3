@@ -3,10 +3,11 @@ package quoted
 
 import dotty.tools.backend.jvm.GenBCode
 import dotty.tools.dotc.ast.tpd
-
 import dotty.tools.dotc.core.Contexts.Context
-import dotty.tools.dotc.core.Flags.{EmptyFlags, Method}
-import dotty.tools.dotc.core.{Mode, Phases}
+import dotty.tools.dotc.core.Decorators._
+import dotty.tools.dotc.core.Flags._
+import dotty.tools.dotc.core.Mode
+import dotty.tools.dotc.core.Names.TypeName
 import dotty.tools.dotc.core.Phases.Phase
 import dotty.tools.dotc.core.Scopes.{EmptyScope, newScope}
 import dotty.tools.dotc.core.StdNames.nme
@@ -17,14 +18,14 @@ import dotty.tools.dotc.transform.ReifyQuotes
 import dotty.tools.dotc.typer.FrontEnd
 import dotty.tools.dotc.util.Positions.Position
 import dotty.tools.dotc.util.SourceFile
-import dotty.tools.io.{Path, PlainFile, VirtualDirectory}
+import dotty.tools.io.{AbstractFile, Path, PlainFile}
 
 import scala.quoted.Expr
 
 /** Compiler that takes the contents of a quoted expression `expr` and produces
  *  a class file with `class ' { def apply: Object = expr }`.
  */
-class ExprCompiler(directory: VirtualDirectory) extends Compiler {
+class ExprCompiler(directory: AbstractFile) extends Compiler {
   import tpd._
 
   /** A GenBCode phase that outputs to a virtual directory */
@@ -46,6 +47,8 @@ class ExprCompiler(directory: VirtualDirectory) extends Compiler {
     reset()
     new ExprRun(this, ctx.addMode(Mode.ReadPositions))
   }
+
+  def outputClassName: TypeName = "Quoted".toTypeName
 
   /** Frontend that receives scala.quoted.Expr as input */
   class ExprFrontend(putInClass: Boolean) extends FrontEnd {
@@ -72,7 +75,7 @@ class ExprCompiler(directory: VirtualDirectory) extends Compiler {
       val pos = Position(0)
       val assocFile = new PlainFile(Path("<quote>"))
 
-      val cls = ctx.newCompleteClassSymbol(defn.RootClass, nme.QUOTE.toTypeName, EmptyFlags,
+      val cls = ctx.newCompleteClassSymbol(defn.RootClass, outputClassName, EmptyFlags,
         defn.ObjectType :: Nil, newScope, coord = pos, assocFile = assocFile).entered.asClass
       cls.enter(ctx.newDefaultConstructor(cls), EmptyScope)
       val meth = ctx.newSymbol(cls, nme.apply, Method, ExprType(defn.AnyType), coord = pos).entered

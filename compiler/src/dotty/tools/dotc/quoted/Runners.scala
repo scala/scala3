@@ -31,6 +31,9 @@ object Runners {
   }
 
   case class RunSettings(
-    optimise: Boolean = false
+    /** Enable optimisation when compiling the quoted code */
+    optimise: Boolean = false,
+    /** Output directory for the copiled quote. If set to None the output will be in memory */
+    outDir: Option[String] = None
   )
 }
