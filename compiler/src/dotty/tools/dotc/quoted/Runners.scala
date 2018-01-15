@@ -13,10 +13,7 @@ object Runners {
 
   implicit def runner[T]: Runner[T] = new Runner[T] {
 
-    def run(expr: Expr[T]): T = expr match {
-      case expr: ConstantExpr[T] => expr.value
-      case _ => new QuoteDriver().run(expr)
-    }
+    def run(expr: Expr[T]): T = Runners.run(expr, RunSettings())
 
     def show(expr: Expr[T]): String = expr match {
       case expr: ConstantExpr[T] =>
@@ -27,4 +24,16 @@ object Runners {
       case _ => new QuoteDriver().show(expr)
     }
   }
+
+  def run[T](expr: Expr[T], settings: RunSettings): T = expr match {
+    case expr: ConstantExpr[T] => expr.value
+    case _ => new QuoteDriver().run(expr, settings)
+  }
+
+  case class RunSettings(
+    /** Enable optimisation when compiling the quoted code */
+    optimise: Boolean = false,
+    /** Output directory for the copiled quote. If set to None the output will be in memory */
+    outDir: Option[String] = None
+  )
 }

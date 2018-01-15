@@ -1,0 +1,10 @@
+{
+  val a: Int = 3
+  println("foo")
+  2.+(a)
+}
+foo
+5
+
+foo
+5

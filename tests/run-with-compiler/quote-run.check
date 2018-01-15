@@ -13,4 +13,4 @@ lambda(5)
 Foo
 false
 Bar
-class '$A$1
+class Quoted$A$1
