@@ -731,10 +731,10 @@ object desugar {
     *                ==>    r.op(l)  if op is right-associative
     */
   def binop(left: Tree, op: Ident, right: Tree)(implicit ctx: Context): Apply = {
-      def assignToNamedArg(arg: Tree) = arg match {
-        case Assign(Ident(name), rhs) => cpy.NamedArg(arg)(name, rhs)
-        case _ => arg
-      }
+    def assignToNamedArg(arg: Tree) = arg match {
+      case Assign(Ident(name), rhs) => cpy.NamedArg(arg)(name, rhs)
+      case _ => arg
+    }
     def makeOp(fn: Tree, arg: Tree, selectPos: Position) = {
       val args: List[Tree] = arg match {
         case Parens(arg) => assignToNamedArg(arg) :: Nil

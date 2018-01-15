@@ -57,7 +57,7 @@ scala> class Foo() { def bar: Int = 1 }; val foo = new Foo(); foo.barr
 scala> val x: List[Int] = "foo" :: List(1)
 1 | val x: List[Int] = "foo" :: List(1)
   |                    ^^^^^
-  |                    found:    String($1$)
+  |                    found:    String("foo")
   |                    required: Int
   |
 scala> { def f: Int = g; val x: Int = 1; def g: Int = 5; }
