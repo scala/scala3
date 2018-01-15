@@ -61,7 +61,7 @@ would not always work, so we'd end up sometimes with code being
 evaluated at runtime to compute a result that is already known at
 compile-time. Since typelevel programming is based on information
 known at compile-time, staging is a natural complement to it since it
-distinuguishes syntactically between computations done at compile time
+distinguishes syntactically between computations done at compile time
 and computations done at runtime. The syntactic distinctions also help
 understanding the code better because they make clear what gets
 computed when.
@@ -117,18 +117,18 @@ methods.
 
 ### Second Step: Nicer Syntax for Type Definitions
 
-The syntax for `ToNat` was a bit clunky, and it turns out that most
-inline type definitions use similar staging constructions. All
+The syntax for `ToNat` was a bit clunky. This is no outlier - it turns out
+that most inline type definitions use similar staging constructs. All
 parameters tend to be inline, and the body is typically a conditional
 expression which returns a quoted type in each branch. We can cut down
-this boilerplate by introducing a shorthand form for parameterized type
-definitions, which allows us to express `ToNat` as follows:
+this boilerplate by introducing a shorthand form for parameterized
+type definitions, which allows us to express `ToNat` as follows:
 
     type ToNat(n: Int) =
       if n == 0 then Z
       else S[ToNat(n = 1)]
 
-The short form expands to exactly the previous definition of `ToNat`.
+The short form expands precisely to the previous definition of `ToNat`.
 To get from a short form type definition to a long form type macro,
 the following rewritings are performed:
 
@@ -156,11 +156,11 @@ as conditions in spliced code. Example:
       case N =:= S[type N1] => '(1 + toInt[N1])
     }
 
-A query conditional is written ` { <cases> }` where each case of the form
+A query conditional is written ` { <cases> }` where each case is of the form
 
     case <type-pattern> <guard> => <expr>
 
-<guard> is either empty or of the form `if <expr>`. Some examples of legal cases are
+`<guard>` is either empty or of the form `if <expr>`. Some examples of legal cases are
 
     case Ord[X] => e1
     case X <:< List[Y] if n == 0 => e2
@@ -208,7 +208,7 @@ constant without relying on constant folding:
 
 ### Example: HLists
 
-Consider the standard definition of `HLists`:
+Consider the standard definition of `HList`s:
 
     class HList
 
@@ -222,7 +222,7 @@ A type-level length function on HLists can be written as follows:
       case Xs =:= HCons[type X, type Xs1] => S[Length[Xs1]]
     }
 
-If we don't want to introduce the type variable `X`, which is undused`, we could
+If we don't want to introduce the type variable `X`, which is unused, we could
 also formulate the type pattern with `<:<` instead of `=:=`:
 
     type Length[Xs <: HList] = {
@@ -241,10 +241,6 @@ Here's a `Concat` type with associated `concat` method:
       case Xs =:= HNil => 'ys
       case Xs =:= HCons[type X, type Xs1] => '(xs.hd :: concat(xs.tl, ys))
     }
-
-    case Xs =:= HNil => 'ys
-
-    type Concat[X, Xs] = typeOf(concat[X, Xs](X.init, Xs.init))
 
 ### Typechecking Query Conditionals
 
@@ -363,7 +359,7 @@ We can then use such comparisons as follows:
       Select[Xs, N]
 
 The example demonstrates how one can get from the world of functional
-programming to te world of logic programming and back. The `<` type
+programming to the world of logic programming and back. The `<` type
 performs implicit queries and wraps the result in a function. The
 `SafeSelect` type uses the result of the function as an implicit
 evidence parameter. This works because `True` is implicit but `False`
@@ -440,7 +436,7 @@ following language extensions:
     of the implicit search may also be bound to a variable. Query conditionals
     can only appear in spliced code.
 
-(1-3) together constitute a logical complement to `inline `def`
+(1-3) together constitute a logical complement to `inline def`
 macros.  After all, if we can abstract over a splice that maps
 expressions of type `Expr[T]` to expressions of type `T`, we should
 also be able to abstract over a splice that maps expresssions of type
@@ -482,14 +478,15 @@ now types can be computed as macros, which means that splice expansion
 must be done during typing, so it cannot be a separate phase anymore.
 This style of "white box macros" poses implementation challenges, such
 as how to keep compilers and IDEs working well in the presence of
-resource hungry or mis-behaving macros. A mis-behaving macros could
+resource hungry or mis-behaving macros. A mis-behaving macro could
 slow down typechecking to unacceptable degrees, consume too much memory,
 or pose a security risk.
 
 Maybe the best way to mitigate the risks is to interpret all macro
 code in the compiler. That way, one can impose limits on the number of
 interpretaton steps per macro or prevent macros from calling external
-libraries or doing system calls.
+libraries or doing system calls. Precedent for this is the D Language
+implementation of meta programming, which seems to be well accepted.
 
 A typer-based implementation of macros also strongly suggests that
 splicing should be treated as syntax instead of being a user-defined
