@@ -143,7 +143,7 @@ class TreePickler(pickler: TastyPickler) {
         pickleNewType(tpe, richTypes)
       }
       else {
-        writeByte(SHARED)
+        writeByte(SHAREDtype)
         writeRef(prev.asInstanceOf[Addr])
       }
     } catch {
@@ -330,7 +330,7 @@ class TreePickler(pickler: TastyPickler) {
   def pickleTree(tree: Tree)(implicit ctx: Context): Unit = {
     val addr = registerTreeAddr(tree)
     if (addr != currentAddr) {
-      writeByte(SHARED)
+      writeByte(SHAREDterm)
       writeRef(addr)
     }
     else

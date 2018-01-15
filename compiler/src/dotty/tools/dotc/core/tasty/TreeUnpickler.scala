@@ -152,7 +152,7 @@ class TreeUnpickler(reader: TastyReader,
     /** The next tag, following through SHARED tags */
     def nextUnsharedTag: Int = {
       val tag = nextByte
-      if (tag == SHARED) {
+      if (tag == SHAREDtype || tag == SHAREDterm) {
         val lookAhead = fork
         lookAhead.reader.readByte()
         forkAt(lookAhead.reader.readAddr()).nextUnsharedTag
@@ -321,7 +321,7 @@ class TreeUnpickler(reader: TastyReader,
           readTypeRef().asInstanceOf[RecType].recThis
         case TYPEALIAS =>
           TypeAlias(readType())
-        case SHARED =>
+        case SHAREDtype =>
           val ref = readAddr()
           typeAtAddr.getOrElseUpdate(ref, forkAt(ref).readType())
         case UNITconst =>
@@ -760,7 +760,7 @@ class TreeUnpickler(reader: TastyReader,
       val tparams = readIndexedParams[TypeDef](TYPEPARAM)
       val vparams = readIndexedParams[ValDef](PARAM)
       val parents = collectWhile(nextByte != SELFDEF && nextByte != DEFDEF) {
-        nextByte match {
+        nextUnsharedTag match {
           case APPLY | TYPEAPPLY => readTerm()(parentCtx)
           case _ => readTpt()(parentCtx)
         }
@@ -899,7 +899,7 @@ class TreeUnpickler(reader: TastyReader,
       }
 
       def readSimpleTerm(): Tree = tag match {
-        case SHARED =>
+        case SHAREDterm =>
           forkAt(readAddr()).readTerm()
         case IDENT =>
           untpd.Ident(readName()).withType(readType())
@@ -1051,7 +1051,7 @@ class TreeUnpickler(reader: TastyReader,
     }
 
     def readTpt()(implicit ctx: Context) =
-      if (isTypeTreeTag(nextUnsharedTag)) readTerm()
+      if (nextByte == SHAREDterm || isTypeTreeTag(nextUnsharedTag)) readTerm()
       else {
         val start = currentAddr
         val tp = readType()
@@ -1059,8 +1059,8 @@ class TreeUnpickler(reader: TastyReader,
       }
 
     def readCases(end: Addr)(implicit ctx: Context): List[CaseDef] =
-      collectWhile((nextByte == CASEDEF || nextByte == SHARED) && currentAddr != end) {
-        if (nextByte == SHARED) {
+      collectWhile((nextByte == CASEDEF || nextByte == SHAREDterm) && currentAddr != end) {
+        if (nextByte == SHAREDterm) {
           readByte()
           forkAt(readAddr()).readCase()(ctx.fresh.setNewScope)
         }

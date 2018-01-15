@@ -37,7 +37,6 @@ class FromTastyTests extends ParallelTesting {
         "i2345.scala",
         "i2888.scala",
         "i2944.scala",
-        "i2980.scala",
         "i3000.scala",
         "i536.scala",
         "i974.scala",

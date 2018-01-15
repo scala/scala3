@@ -108,7 +108,7 @@ Standard-Section: "ASTs" TopLevelStat*
                   ORtpt          Length left_Term right_Term
                   BYNAMEtpt             underlying_Term
                   EMPTYTREE
-                  SHARED                term_ASTRef
+                  SHAREDterm            term_ASTRef
                   HOLE           Length idx_Nat arg_Tree*
   Application   = APPLY          Length fn_Term arg_Term*
 
@@ -125,7 +125,7 @@ Standard-Section: "ASTs" TopLevelStat*
                   TERMREF               possiblySigned_NameRef qual_Type
                   THIS                  clsRef_Type
                   RECthis               recType_ASTRef
-                  SHARED                path_ASTRef
+                  SHAREDtype            path_ASTRef
 
   Constant      = UNITconst
                   FALSEconst
@@ -165,7 +165,7 @@ Standard-Section: "ASTs" TopLevelStat*
                   POLYtype       Length result_Type NamesTypes
                   METHODtype     Length result_Type NamesTypes      // needed for refinements
                   TYPELAMBDAtype Length result_Type NamesTypes      // variance encoded in front of name: +/-/(nothing)
-                  SHARED                type_ASTRef
+                  SHAREDtype            type_ASTRef
   NamesTypes    = NameType*
   NameType      = paramName_NameRef typeOrBounds_ASTRef
 
@@ -226,8 +226,8 @@ Standard Section: "Positions" Assoc*
 object TastyFormat {
 
   final val header = Array(0x5C, 0xA1, 0xAB, 0x1F)
-  val MajorVersion = 2
-  val MinorVersion = 1
+  val MajorVersion = 3
+  val MinorVersion = 0
 
   /** Tags used to serialize names */
   class NameTags {
@@ -302,23 +302,24 @@ object TastyFormat {
 
   // Cat. 2:    tag Nat
 
-  final val SHARED = 50
-  final val TERMREFdirect = 51
-  final val TYPEREFdirect = 52
-  final val TERMREFpkg = 53
-  final val TYPEREFpkg = 54
-  final val RECthis = 55
-  final val BYTEconst = 56
-  final val SHORTconst = 57
-  final val CHARconst = 58
-  final val INTconst = 59
-  final val LONGconst = 60
-  final val FLOATconst = 61
-  final val DOUBLEconst = 62
-  final val STRINGconst = 63
-  final val IMPORTED = 64
-  final val RENAMED = 65
-  final val SYMBOLconst = 66
+  final val SHAREDterm = 50
+  final val SHAREDtype = 51
+  final val TERMREFdirect = 52
+  final val TYPEREFdirect = 53
+  final val TERMREFpkg = 54
+  final val TYPEREFpkg = 55
+  final val RECthis = 56
+  final val BYTEconst = 57
+  final val SHORTconst = 58
+  final val CHARconst = 59
+  final val INTconst = 60
+  final val LONGconst = 61
+  final val FLOATconst = 62
+  final val DOUBLEconst = 63
+  final val STRINGconst = 64
+  final val IMPORTED = 65
+  final val RENAMED = 66
+  final val SYMBOLconst = 67
 
   // Cat. 3:    tag AST
 
@@ -402,7 +403,7 @@ object TastyFormat {
   final val HOLE = 255
 
   final val firstSimpleTreeTag = UNITconst
-  final val firstNatTreeTag = SHARED
+  final val firstNatTreeTag = SHAREDterm
   final val firstASTTreeTag = THIS
   final val firstNatASTTreeTag = IDENT
   final val firstLengthTreeTag = PACKAGE
@@ -492,7 +493,8 @@ object TastyFormat {
     case DEFAULTparameterized => "DEFAULTparameterized"
     case STABLE => "STABLE"
 
-    case SHARED => "SHARED"
+    case SHAREDterm => "SHAREDterm"
+    case SHAREDtype => "SHAREDtype"
     case TERMREFdirect => "TERMREFdirect"
     case TYPEREFdirect => "TYPEREFdirect"
     case TERMREFpkg => "TERMREFpkg"
