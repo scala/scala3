@@ -19,7 +19,7 @@ class PositionPickler(pickler: TastyPickler, addrOfTree: tpd.Tree => Option[Addr
   import buf._
   import ast.tpd._
 
-  private val remainingAddrs = new java.util.IdentityHashMap[Tree, Iterator[Addr]]
+  private val pickledIndices = new mutable.BitSet
 
   def header(addrDelta: Int, hasStartDelta: Boolean, hasEndDelta: Boolean, hasPoint: Boolean) = {
     def toInt(b: Boolean) = if (b) 1 else 0
@@ -39,6 +39,8 @@ class PositionPickler(pickler: TastyPickler, addrOfTree: tpd.Tree => Option[Addr
       if (!pos.isSynthetic) buf.writeInt(pos.pointDelta)
       lastIndex = index
       lastPos = pos
+
+      pickledIndices += index
     }
 
     /** True if x's position shouldn't be reconstructed automatically from its initialPos
@@ -64,7 +66,7 @@ class PositionPickler(pickler: TastyPickler, addrOfTree: tpd.Tree => Option[Addr
         val pos = if (x.isInstanceOf[MemberDef]) x.pos else x.pos.toSynthetic
         if (pos.exists && (pos != x.initialPos.toSynthetic || alwaysNeedsPos(x))) {
           addrOfTree(x) match {
-            case Some(addr) =>
+            case Some(addr) if !pickledIndices.contains(addr.index) =>
               //println(i"pickling $x with $pos at $addr")
               pickleDeltas(addr.index, pos)
             case _ =>
