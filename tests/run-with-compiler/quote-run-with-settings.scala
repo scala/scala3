@@ -11,7 +11,7 @@ object Test {
       2 + a
     }
     println(expr.show)
-    println(run(expr.run, optimise = true))
+    println(run(expr.run, RunSettings(optimise = true)))
     println(expr.run)
   }
 }

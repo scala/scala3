@@ -13,9 +13,9 @@ import java.nio.charset.StandardCharsets
 
 class QuoteDriver extends Driver {
 
-  def run[T](expr: Expr[T], optimise: Boolean): T = {
+  def run[T](expr: Expr[T], settings: Runners.RunSettings): T = {
     val ctx: Context = initCtx.fresh
-    ctx.settings.optimise.update(optimise)(ctx)
+    ctx.settings.optimise.update(settings.optimise)(ctx)
 
     val outDir = new VirtualDirectory("(memory)", None)
 

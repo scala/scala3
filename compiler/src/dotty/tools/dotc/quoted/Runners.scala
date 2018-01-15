@@ -13,7 +13,7 @@ object Runners {
 
   implicit def runner[T]: Runner[T] = new Runner[T] {
 
-    def run(expr: Expr[T]): T = Runners.run(expr, optimise = false)
+    def run(expr: Expr[T]): T = Runners.run(expr, RunSettings())
 
     def show(expr: Expr[T]): String = expr match {
       case expr: ConstantExpr[T] =>
@@ -25,8 +25,12 @@ object Runners {
     }
   }
 
-  def run[T](expr: Expr[T], optimise: Boolean): T = expr match {
+  def run[T](expr: Expr[T], settings: RunSettings): T = expr match {
     case expr: ConstantExpr[T] => expr.value
-    case _ => new QuoteDriver().run(expr, optimise)
+    case _ => new QuoteDriver().run(expr, settings)
   }
+
+  case class RunSettings(
+    optimise: Boolean = false
+  )
 }
