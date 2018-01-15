@@ -25,7 +25,7 @@ pipeline:
     image: lampepfl/dotty:2017-11-17
     commands:
       - cp -R . /tmp/1/ && cd /tmp/1/
-      - ./project/scripts/sbt ";compile ;testAll"
+      - ./project/scripts/sbt ";compile ;test"
       - ./project/scripts/sbtTests
 
   test_bootstrapped:
@@ -33,7 +33,7 @@ pipeline:
     image: lampepfl/dotty:2017-11-17
     commands:
       - cp -R . /tmp/2/ && cd /tmp/2/
-      - ./project/scripts/sbt ";dotty-bootstrapped/compile ;dotty-bootstrapped/testAll"
+      - ./project/scripts/sbt ";dotty-bootstrapped/compile ;dotty-bootstrapped/test"
       - ./project/scripts/sbtBootstrappedTests
 
   test_optimised:
@@ -41,7 +41,7 @@ pipeline:
     image: lampepfl/dotty:2017-11-17
     commands:
       - cp -R . /tmp/3/ && cd /tmp/3/
-      - ./project/scripts/sbt dotty-optimised/testAll
+      - ./project/scripts/sbt dotty-optimised/test
 
   test_sbt:
     group: test

@@ -62,11 +62,31 @@ object Typer {
     if (!tree.isEmpty && !tree.isInstanceOf[untpd.TypedSplice] && ctx.typerState.isGlobalCommittable)
       assert(tree.pos.exists, s"position not set for $tree # ${tree.uniqueId}")
 
+  /** A context property that indicates the owner of any expressions to be typed in the context
+   *  if that owner is different from the context's owner. Typically, a context with a class
+   *  as owner would have a local dummy as ExprOwner value.
+   */
   private val ExprOwner = new Property.Key[Symbol]
+
+  /** An attachment on a Select node with an `apply` field indicating that the `apply`
+   *  was inserted by the Typer.
+   */
   private val InsertedApply = new Property.Key[Unit]
+
+  /** An attachment on a tree `t` occurring as part of a `t()` where
+   *  the `()` was dropped by the Typer.
+   */
+  private val DroppedEmptyArgs = new Property.Key[Unit]
 }
 
-class Typer extends Namer with TypeAssigner with Applications with Implicits with Dynamic with Checking with Docstrings {
+class Typer extends Namer
+               with TypeAssigner
+               with Applications
+               with Implicits
+               with Inferencing
+               with Dynamic
+               with Checking
+               with Docstrings {
 
   import Typer._
   import tpd.{cpy => _, _}
@@ -393,6 +413,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     checkValue(assignType(cpy.Select(tree)(qual, tree.name), qual), pt)
 
   def typedSelect(tree: untpd.Select, pt: Type)(implicit ctx: Context): Tree = track("typedSelect") {
+
     def typeSelectOnTerm(implicit ctx: Context): Tree = {
       val qual1 = typedExpr(tree.qualifier, selectionProto(tree.name, pt, this))
       if (tree.name.isTypeName) checkStable(qual1.tpe, qual1.pos)
@@ -1072,6 +1093,25 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     Throw(expr1).withPos(tree.pos)
   }
 
+  def typedQuote(tree: untpd.Quote, pt: Type)(implicit ctx: Context): Tree = track("typedQuote") {
+    val untpd.Quote(body) = tree
+    val isType = body.isType
+    val resultClass = if (isType) defn.QuotedTypeClass else defn.QuotedExprClass
+    val proto1 = pt.baseType(resultClass) match {
+      case AppliedType(_, argType :: Nil) => argType
+      case _ => WildcardType
+    }
+    val nestedCtx = ctx.fresh.setTree(tree)
+    if (isType) {
+      val body1 = typedType(body, proto1)(nestedCtx)
+      ref(defn.typeQuoteMethod).appliedToTypeTrees(body1 :: Nil)
+    }
+    else {
+      val body1 = typed(body, proto1)(nestedCtx)
+      ref(defn.quoteMethod).appliedToType(body1.tpe.widen).appliedTo(body1)
+    }
+  }
+
   def typedSeqLiteral(tree: untpd.SeqLiteral, pt: Type)(implicit ctx: Context): SeqLiteral = track("typedSeqLiteral") {
     val proto1 = pt.elemType match {
       case NoType => WildcardType
@@ -1149,7 +1189,8 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
       checkRefinementNonCyclic(refinement, refineCls, seen)
       val rsym = refinement.symbol
       if (rsym.info.isInstanceOf[PolyType] && rsym.allOverriddenSymbols.isEmpty)
-        ctx.error(i"polymorphic refinement $rsym without matching type in parent $tpt1 is no longer allowed", refinement.pos)    }
+        ctx.error(PolymorphicMethodMissingTypeInParent(rsym, tpt1.symbol), refinement.pos)
+    }
     assignType(cpy.RefinedTypeTree(tree)(tpt1, refinements1), tpt1, refinements1, refineCls)
   }
 
@@ -1255,7 +1296,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
       case _ =>
         if (tree.name == nme.WILDCARD) body1
         else {
-          val sym = newPatternBoundSym(tree.name, body1.tpe, tree.pos)
+          val sym = newPatternBoundSym(tree.name, body1.tpe.underlyingIfRepeated(isJava = false), tree.pos)
           if (ctx.mode.is(Mode.InPatternAlternative))
             ctx.error(i"Illegal variable ${sym.name} in pattern alternative", tree.pos)
           assignType(cpy.Bind(tree)(tree.name, body1), sym)
@@ -1300,7 +1341,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
       case rhs => typedExpr(rhs, tpt1.tpe)
     }
     val vdef1 = assignType(cpy.ValDef(vdef)(name, tpt1, rhs1), sym)
-    if (sym.is(Inline, butNot = DeferredOrParamAccessor))
+    if (sym.is(Inline, butNot = DeferredOrParamOrAccessor))
       checkInlineConformant(rhs1, em"right-hand side of inline $sym")
     patchIfLazy(vdef1)
     patchFinalVals(vdef1)
@@ -1449,7 +1490,8 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     } else {
       val dummy = localDummy(cls, impl)
       val body1 = typedStats(impl.body, dummy)(inClassContext(self1.symbol))
-      cls.setNoInitsFlags((NoInitsInterface /: body1) ((fs, stat) => fs & defKind(stat)))
+      if (!ctx.isAfterTyper)
+        cls.setNoInitsFlags((NoInitsInterface /: body1) ((fs, stat) => fs & defKind(stat)))
 
       // Expand comments and type usecases
       cookComments(body1.map(_.symbol), self1.symbol)(localContext(cdef, cls).setNewScope)
@@ -1572,7 +1614,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     if (ctx.mode is Mode.Type)
       assignType(cpy.Annotated(tree)(arg1, annot1), arg1, annot1)
     else {
-      val tpt = TypeTree(AnnotatedType(arg1.tpe.widen, Annotation(annot1)))
+      val tpt = TypeTree(AnnotatedType(arg1.tpe, Annotation(annot1)))
       assignType(cpy.Typed(tree)(arg1, tpt), tpt)
     }
   }
@@ -1695,6 +1737,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
           case tree: untpd.Super => typedSuper(tree, pt)
           case tree: untpd.SeqLiteral => typedSeqLiteral(tree, pt)
           case tree: untpd.Inlined => typedInlined(tree, pt)
+          case tree: untpd.Quote => typedQuote(tree, pt)
           case tree: untpd.TypeTree => typedTypeTree(tree, pt)
           case tree: untpd.SingletonTypeTree => typedSingletonTypeTree(tree)
           case tree: untpd.AndTypeTree => typedAndTypeTree(tree)
@@ -1757,7 +1800,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
       case (imp: untpd.Import) :: rest =>
         val imp1 = typed(imp)
         buf += imp1
-        traverse(rest)(importContext(imp, imp1.symbol))
+        traverse(rest)(ctx.importContext(imp, imp1.symbol))
       case (mdef: untpd.DefTree) :: rest =>
         mdef.removeAttachment(ExpandedTree) match {
           case Some(xtree) =>
@@ -1839,6 +1882,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
    *
    *  0th strategy: If `tree` overrides a nullary method, mark the prototype
    *                so that the argument is dropped and return `tree` itself.
+   *                (but do this at most once per tree).
    *
    *  After that, two strategies are tried, and the first that is successful is picked.
    *  If neither of the strategies are successful, continues with`fallBack`.
@@ -1876,7 +1920,9 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
 
     pt match {
       case pt @ FunProto(Nil, _, _)
-      if tree.symbol.allOverriddenSymbols.exists(_.info.isNullaryMethod) =>
+      if tree.symbol.allOverriddenSymbols.exists(_.info.isNullaryMethod) &&
+         tree.getAttachment(DroppedEmptyArgs).isEmpty =>
+        tree.putAttachment(DroppedEmptyArgs, ())
         pt.markAsDropped()
         tree
       case _ =>
@@ -1890,7 +1936,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
    */
   def tryInsertImplicitOnQualifier(tree: Tree, pt: Type)(implicit ctx: Context): Option[Tree] = trace(i"try insert impl on qualifier $tree $pt") {
     tree match {
-      case Select(qual, name) =>
+      case Select(qual, name) if name != nme.CONSTRUCTOR =>
         val qualProto = SelectionProto(name, pt, NoViewsAllowed, privateOK = false)
         tryEither { implicit ctx =>
           val qual1 = adaptInterpolated(qual, qualProto)
@@ -1906,8 +1952,8 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     /*>|>*/ trace(i"adapting $tree of type ${tree.tpe} to $pt", typr, show = true) /*<|<*/ {
       if (!tree.denot.isOverloaded) {
       	// for overloaded trees: resolve overloading before simplifying
-        if (tree.isDef) interpolateUndetVars(tree, tree.symbol)
-        else if (!tree.tpe.widen.isInstanceOf[LambdaType]) interpolateUndetVars(tree, NoSymbol)
+        if (tree.isDef) interpolateUndetVars(tree, tree.symbol, pt)
+        else if (!tree.tpe.widen.isInstanceOf[LambdaType]) interpolateUndetVars(tree, NoSymbol, pt)
         tree.overwriteType(tree.tpe.simplified)
       }
       adaptInterpolated(tree, pt)
@@ -2034,7 +2080,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
       val constraint = ctx.typerState.constraint
       def inst(tp: Type): Type = tp match {
         case TypeBounds(lo, hi)
-        if (lo eq hi) || ctx.typerState.test(hi <:< lo) =>
+        if (lo eq hi) || ctx.test(implicit ctx => hi <:< lo) =>
           inst(lo)
         case tp: TypeParamRef =>
           constraint.typeVarOfParam(tp).orElse(tp)
@@ -2246,7 +2292,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
             // is tried. See strawman-contrib MapDecoratorTest.scala for an example where this happens.
             err.typeMismatch(tree, pt)
           }
-        case wtp: MethodType if !pt.isInstanceOf[SingletonType] =>
+        case wtp: MethodType if !pt.isSingleton =>
           val arity =
             if (functionExpected)
               if (!isFullyDefined(pt, ForceDegree.none) && isFullyDefined(wtp, ForceDegree.none))
@@ -2331,7 +2377,16 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     def adaptType(tp: Type): Tree = {
       val tree1 =
         if ((pt eq AnyTypeConstructorProto) || tp.typeParamSymbols.isEmpty) tree
-        else tree.withType(tree.tpe.EtaExpand(tp.typeParamSymbols))
+        else {
+          val tp1 =
+            if (ctx.compilationUnit.isJava)
+              // Cook raw type
+              AppliedType(tree.tpe, tp.typeParams.map(Function.const(TypeBounds.empty)))
+            else
+              // Eta-expand higher-kinded type
+              tree.tpe.EtaExpand(tp.typeParamSymbols)
+          tree.withType(tp1)
+        }
       if ((ctx.mode is Mode.Pattern) || tree1.tpe <:< pt) tree1
       else err.typeMismatch(tree1, pt)
     }

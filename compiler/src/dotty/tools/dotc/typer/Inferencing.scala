@@ -222,72 +222,6 @@ object Inferencing {
       case _ => NoType
     }
 
-  /** Interpolate those undetermined type variables in the widened type of this tree
-   *  which are introduced by type application contained in the tree.
-   *  If such a variable appears covariantly in type `tp` or does not appear at all,
-   *  approximate it by its lower bound. Otherwise, if it appears contravariantly
-   *  in type `tp` approximate it by its upper bound.
-   *  @param ownedBy  if it is different from NoSymbol, all type variables owned by
-   *                  `ownedBy` qualify, independent of position.
-   *                  Without that second condition, it can be that certain variables escape
-   *                  interpolation, for instance when their tree was eta-lifted, so
-   *                  the typechecked tree is no longer the tree in which the variable
-   *                  was declared. A concrete example of this phenomenon can be
-   *                  observed when compiling core.TypeOps#asSeenFrom.
-   */
-  def interpolateUndetVars(tree: Tree, ownedBy: Symbol)(implicit ctx: Context): Unit = {
-    val constraint = ctx.typerState.constraint
-    val qualifies = (tvar: TypeVar) =>
-      (tree contains tvar.bindingTree) || ownedBy.exists && tvar.owner == ownedBy
-    def interpolate() = Stats.track("interpolateUndetVars") {
-      val tp = tree.tpe.widen
-      constr.println(s"interpolate undet vars in ${tp.show}, pos = ${tree.pos}, mode = ${ctx.mode}, undets = ${constraint.uninstVars map (tvar => s"${tvar.show}@${tvar.bindingTree.pos}")}")
-      constr.println(s"qualifying undet vars: ${constraint.uninstVars filter qualifies map (tvar => s"$tvar / ${tvar.show}")}, constraint: ${constraint.show}")
-
-      val vs = variances(tp, qualifies)
-      val hasUnreportedErrors = ctx.typerState.reporter match {
-        case r: StoreReporter if r.hasErrors => true
-        case _ => false
-      }
-      // Avoid interpolating variables if typerstate has unreported errors.
-      // Reason: The errors might reflect unsatisfiable constraints. In that
-      // case interpolating without taking account the constraints risks producing
-      // nonsensical types that then in turn produce incomprehensible errors.
-      // An example is in neg/i1240.scala. Without the condition in the next code line
-      // we get for
-      //
-      //      val y: List[List[String]] = List(List(1))
-      //
-      //     i1430.scala:5: error: type mismatch:
-      //     found   : Int(1)
-      //     required: Nothing
-      //     val y: List[List[String]] = List(List(1))
-      //                                           ^
-      // With the condition, we get the much more sensical:
-      //
-      //     i1430.scala:5: error: type mismatch:
-      //     found   : Int(1)
-      //     required: String
-      //     val y: List[List[String]] = List(List(1))
-      if (!hasUnreportedErrors)
-        vs foreachBinding { (tvar, v) =>
-          if (v != 0 && ctx.typerState.constraint.contains(tvar)) {
-            // previous interpolations could have already instantiated `tvar`
-            // through unification, that's why we have to check again whether `tvar`
-            // is contained in the current constraint.
-            typr.println(s"interpolate ${if (v == 1) "co" else "contra"}variant ${tvar.show} in ${tp.show}")
-            tvar.instantiate(fromBelow = v == 1)
-          }
-        }
-      for (tvar <- constraint.uninstVars)
-        if (!(vs contains tvar) && qualifies(tvar)) {
-          typr.println(s"instantiating non-occurring ${tvar.show} in ${tp.show} / $tp")
-          tvar.instantiate(fromBelow = true)
-        }
-    }
-    if (constraint.uninstVars exists qualifies) interpolate()
-  }
-
   /** Instantiate undetermined type variables to that type `tp` is
    *  maximized and return None. If this is not possible, because a non-variant
    *  typevar is not uniquely determined, return that typevar in a Some.
@@ -372,6 +306,93 @@ object Inferencing {
     }
 
     propagate(accu(SimpleIdentityMap.Empty, tp))
+  }
+}
+
+trait Inferencing { this: Typer =>
+  import Inferencing._
+  import tpd._
+
+  /** Interpolate those undetermined type variables in the widened type of this tree
+   *  which are introduced by type application contained in the tree.
+   *  If such a variable appears covariantly in type `tp` or does not appear at all,
+   *  approximate it by its lower bound. Otherwise, if it appears contravariantly
+   *  in type `tp` approximate it by its upper bound.
+   *  @param ownedBy  if it is different from NoSymbol, all type variables owned by
+   *                  `ownedBy` qualify, independent of position.
+   *                  Without that second condition, it can be that certain variables escape
+   *                  interpolation, for instance when their tree was eta-lifted, so
+   *                  the typechecked tree is no longer the tree in which the variable
+   *                  was declared. A concrete example of this phenomenon can be
+   *                  observed when compiling core.TypeOps#asSeenFrom.
+   */
+  def interpolateUndetVars(tree: Tree, ownedBy: Symbol, pt: Type)(implicit ctx: Context): Unit = {
+    val constraint = ctx.typerState.constraint
+    val qualifies = (tvar: TypeVar) =>
+      (tree contains tvar.bindingTree) || ownedBy.exists && tvar.owner == ownedBy
+    def interpolate() = Stats.track("interpolateUndetVars") {
+      val tp = tree.tpe.widen
+      constr.println(s"interpolate undet vars in ${tp.show}, pos = ${tree.pos}, mode = ${ctx.mode}, undets = ${constraint.uninstVars map (tvar => s"${tvar.show}@${tvar.bindingTree.pos}")}")
+      constr.println(s"qualifying undet vars: ${constraint.uninstVars filter qualifies map (tvar => s"$tvar / ${tvar.show}")}, constraint: ${constraint.show}")
+
+      val vs = variances(tp, qualifies)
+      val hasUnreportedErrors = ctx.typerState.reporter match {
+        case r: StoreReporter if r.hasErrors => true
+        case _ => false
+      }
+
+      var isConstrained = false
+      def ensureConstrained() =
+        if (!isConstrained) {
+          isConstrained = true
+          tree match {
+            case tree: Apply => // already constrained
+            case _ => tree.tpe match {
+              case _: MethodOrPoly => // already constrained
+              case tp => constrainResult(tp, pt)
+            }
+          }
+        }
+
+      // Avoid interpolating variables if typerstate has unreported errors.
+      // Reason: The errors might reflect unsatisfiable constraints. In that
+      // case interpolating without taking account the constraints risks producing
+      // nonsensical types that then in turn produce incomprehensible errors.
+      // An example is in neg/i1240.scala. Without the condition in the next code line
+      // we get for
+      //
+      //      val y: List[List[String]] = List(List(1))
+      //
+      //     i1430.scala:5: error: type mismatch:
+      //     found   : Int(1)
+      //     required: Nothing
+      //     val y: List[List[String]] = List(List(1))
+      //                                           ^
+      // With the condition, we get the much more sensical:
+      //
+      //     i1430.scala:5: error: type mismatch:
+      //     found   : Int(1)
+      //     required: String
+      //     val y: List[List[String]] = List(List(1))
+      if (!hasUnreportedErrors)
+        vs foreachBinding { (tvar, v) =>
+          if (v != 0 && ctx.typerState.constraint.contains(tvar)) {
+            // previous interpolations could have already instantiated `tvar`
+            // through unification, that's why we have to check again whether `tvar`
+            // is contained in the current constraint.
+            typr.println(s"interpolate ${if (v == 1) "co" else "contra"}variant ${tvar.show} in ${tp.show}")
+            ensureConstrained()
+            tvar.instantiate(fromBelow = v == 1)
+          }
+        }
+      for (tvar <- constraint.uninstVars)
+        if (!(vs contains tvar) && qualifies(tvar)) {
+          typr.println(s"instantiating non-occurring ${tvar.show} in ${tp.show} / $tp")
+          ensureConstrained()
+          tvar.instantiate(fromBelow = tvar.hasLowerBound)
+        }
+    }
+    if (constraint.uninstVars exists qualifies) interpolate()
   }
 }
 

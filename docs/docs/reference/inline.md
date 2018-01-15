@@ -69,9 +69,9 @@ we'd get
 
 instead. This behavior is designed so that calling an inline method is
 semantically the same as calling a normal method: By-value arguments
-are evaluated before the call wherea by-name arguments are evaluated
+are evaluated before the call whereas by-name arguments are evaluated
 each time they are referenced. As a consequence, it is often
-preferrable to make arguments of inline methods by-name in order to
+preferable to make arguments of inline methods by-name in order to
 avoid unnecessary evaluations.
 
 Inline methods can be recursive. For instance, when called with a constant
@@ -114,8 +114,8 @@ overhead:
 Existing Scala defines a `@inline` annotation which is used as a hint
 for the backend to inline. For most purposes, this annotation is
 superseded by the `inline` modifier. The modifier is more powerful
-than the annotation: Expansion is guarenteed instead of best effort,
-it happens in the fronend instead of in the backend, and it also applies
+than the annotation: Expansion is guaranteed instead of best effort,
+it happens in the frontend instead of in the backend, and it also applies
 to method arguments and recursive methods.
 
 Since `inline` is now a keyword, it would be a syntax error to write

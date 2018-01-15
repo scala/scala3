@@ -18,7 +18,7 @@ object Test extends App {
     case _ => 4
   }
 
-  val x3 = (x: @switch) match {
+  val x3 = x match {
     case '0' if x > 0 => 0
     case '1' => 1
     case '2' => 2

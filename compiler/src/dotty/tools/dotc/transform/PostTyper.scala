@@ -159,14 +159,34 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
         }
     }
 
+    /** 1. If we are an an inline method but not in a nested quote, mark the inline method
+     *  as a macro.
+     *
+     *  2. If selection is a quote or splice node, record that fact in the current compilation unit.
+     */
+    private def handleMeta(sym: Symbol)(implicit ctx: Context): Unit = {
+
+      def markAsMacro(c: Context): Unit =
+        if (c.owner eq c.outer.owner) markAsMacro(c.outer)
+        else if (c.owner.isInlineMethod) c.owner.setFlag(Macro)
+        else if (!c.outer.owner.is(Package)) markAsMacro(c.outer)
+
+      if (sym.isSplice || sym.isQuote) {
+        markAsMacro(ctx)
+        ctx.compilationUnit.containsQuotesOrSplices = true
+      }
+    }
+
     override def transform(tree: Tree)(implicit ctx: Context): Tree =
       try tree match {
         case tree: Ident if !tree.isType =>
+          handleMeta(tree.symbol)
           tree.tpe match {
             case tpe: ThisType => This(tpe.cls).withPos(tree.pos)
             case _ => tree
           }
         case tree @ Select(qual, name) =>
+          handleMeta(tree.symbol)
           if (name.isTypeName) {
             Checking.checkRealizable(qual.tpe, qual.pos.focus)
             super.transform(tree)
@@ -199,7 +219,7 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
               super.transform(tree1)
           }
         case tree @ Assign(sel: Select, _) =>
-          superAcc.transformAssign(super.transform(tree))
+          super.transform(superAcc.transformAssign(tree))
         case Inlined(call, bindings, expansion) =>
           // Leave only a call trace consisting of
           //  - a reference to the top-level class from which the call was inlined,

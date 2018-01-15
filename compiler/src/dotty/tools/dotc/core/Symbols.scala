@@ -383,6 +383,9 @@ trait Symbols { this: Context =>
     base.staticRef(path.toTermName).requiredSymbol(_ is Module).asTerm
 
   def requiredModuleRef(path: PreName): TermRef = requiredModule(path).termRef
+
+  def requiredMethod(path: PreName): TermSymbol =
+    base.staticRef(path.toTermName).requiredSymbol(_ is Method).asTerm
 }
 
 object Symbols {

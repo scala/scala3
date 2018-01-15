@@ -1065,11 +1065,12 @@ object desugar {
             AppliedTypeTree(ref(seqType), t),
             New(ref(defn.RepeatedAnnotType), Nil :: Nil))
         } else {
-          assert(ctx.mode.isExpr || ctx.reporter.hasErrors, ctx.mode)
+          assert(ctx.mode.isExpr || ctx.reporter.hasErrors || ctx.mode.is(Mode.Interactive), ctx.mode)
           Select(t, op.name)
         }
       case PrefixOp(op, t) =>
-        Select(t, nme.UNARY_PREFIX ++ op.name)
+        val nspace = if (ctx.mode.is(Mode.Type)) tpnme else nme
+        Select(t, nspace.UNARY_PREFIX ++ op.name)
       case Tuple(ts) =>
         val arity = ts.length
         def tupleTypeRef = defn.TupleType(arity)

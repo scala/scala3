@@ -14,14 +14,18 @@ object trace {
     conditionally(ctx.settings.YdebugTrace.value, question, false)(op)
 
   @inline
-  def conditionally[TC](cond: Boolean, question: => String, show: Boolean)(op: => TC)(implicit ctx: Context): TC =
-    if (Config.tracingEnabled && cond) apply[TC](question, Printers.default, show)(op)
-    else op
+  def conditionally[TC](cond: Boolean, question: => String, show: Boolean)(op: => TC)(implicit ctx: Context): TC = {
+    def op1 = op
+    if (Config.tracingEnabled && cond) apply[TC](question, Printers.default, show)(op1)
+    else op1
+  }
 
   @inline
-  def apply[T](question: => String, printer: Printers.Printer, show: Boolean)(op: => T)(implicit ctx: Context): T =
-    if (!Config.tracingEnabled || printer.eq(config.Printers.noPrinter)) op
-    else doTrace[T](question, printer, show)(op)
+  def apply[T](question: => String, printer: Printers.Printer, show: Boolean)(op: => T)(implicit ctx: Context): T = {
+    def op1 = op
+    if (!Config.tracingEnabled || printer.eq(config.Printers.noPrinter)) op1
+    else doTrace[T](question, printer, show)(op1)
+  }
 
   @inline
   def apply[T](question: => String, printer: Printers.Printer)(op: => T)(implicit ctx: Context): T =

@@ -103,7 +103,27 @@ abstract class Printer {
   /** Textual representation of info relating to an import clause */
   def toText(result: ImportInfo): Text
 
-      /** Perform string or text-producing operation `op` so that only a
+  /** Render element within highest precedence */
+  def toTextLocal(elem: Showable): Text =
+    atPrec(DotPrec) { elem.toText(this) }
+
+  /** Render element within lowest precedence */
+  def toTextGlobal(elem: Showable): Text =
+    atPrec(GlobalPrec) { elem.toText(this) }
+
+  /** Render elements alternating with `sep` string */
+  def toText(elems: Traversable[Showable], sep: String) =
+    Text(elems map (_ toText this), sep)
+
+  /** Render elements within highest precedence */
+  def toTextLocal(elems: Traversable[Showable], sep: String) =
+    atPrec(DotPrec) { toText(elems, sep) }
+
+  /** Render elements within lowest precedence */
+  def toTextGlobal(elems: Traversable[Showable], sep: String) =
+    atPrec(GlobalPrec) { toText(elems, sep) }
+
+  /** Perform string or text-producing operation `op` so that only a
    *  summarized text with given recursion depth is shown
    */
   def summarized[T](depth: Int)(op: => T): T

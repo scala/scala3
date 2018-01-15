@@ -26,7 +26,7 @@ upper            ::=  ‘A’ | … | ‘Z’ | ‘\$’ | ‘_’  “… and U
 lower            ::=  ‘a’ | … | ‘z’ “… and Unicode category Ll”
 letter           ::=  upper | lower “… and Unicode categories Lo, Lt, Nl”
 digit            ::=  ‘0’ | … | ‘9’
-paren            ::=  ‘(’ | ‘)’ | ‘[’ | ‘]’ | ‘{’ | ‘}’
+paren            ::=  ‘(’ | ‘)’ | ‘[’ | ‘]’ | ‘{’ | ‘}’ | ‘'(’ | ‘'[’ | ‘'{’
 delim            ::=  ‘`’ | ‘'’ | ‘"’ | ‘.’ | ‘;’ | ‘,’
 opchar           ::=  “printableChar not matched by (whiteSpace | upper | lower |
                        letter | digit | paren | delim | opchar | Unicode_Sm |
@@ -131,6 +131,7 @@ AnnotType         ::=  SimpleType {Annotation}                                  
 SimpleType        ::=  SimpleType TypeArgs                                      AppliedTypeTree(t, args)
                     |  SimpleType ‘#’ id                                        Select(t, name)
                     |  StableId
+                    |  [‘-’ | ‘+’ | ‘~’ | ‘!’] StableId                         PrefixOp(expr, op)
                     |  Path ‘.’ ‘type’                                          SingletonTypeTree(p)
                     |  ‘(’ ArgTypes ‘)’                                         Tuple(ts)
                     |  ‘_’ TypeBounds
@@ -182,6 +183,9 @@ InfixExpr         ::=  PrefixExpr
 PrefixExpr        ::=  [‘-’ | ‘+’ | ‘~’ | ‘!’] SimpleExpr                       PrefixOp(expr, op)
 SimpleExpr        ::=  ‘new’ Template                                           New(templ)
                     |  BlockExpr
+                    |  ''{’ BlockExprContents ‘}’
+                    |  ‘'(’ ExprsInParens ‘)’
+                    |  ‘'[’ Type ‘]’
                     |  SimpleExpr1 [‘_’]                                        PostfixOp(expr, _)
 SimpleExpr1       ::=  Literal
                     |  Path
@@ -198,8 +202,8 @@ ParArgumentExprs  ::=  ‘(’ ExprsInParens ‘)’                            
                     |  ‘(’ [ExprsInParens] PostfixExpr ‘:’ ‘_’ ‘*’ ‘)’          exprs :+ Typed(expr, Ident(wildcardStar))
 ArgumentExprs     ::=  ParArgumentExprs
                     |  [nl] BlockExpr
-BlockExpr         ::=  ‘{’ CaseClauses ‘}’                                      Match(EmptyTree, cases)
-                    |  ‘{’ Block ‘}’                                            block // starts at {
+BlockExpr         ::=  ‘{’ BlockExprContents ‘}’                                
+BlockExprContents ::=  CaseClauses | Block
 Block             ::=  {BlockStat semi} [BlockResult]                           Block(stats, expr?)
 BlockStat         ::=  Import
                     |  {Annotation} [‘implicit’ | ‘lazy’] Def
@@ -216,8 +220,8 @@ Enumerator        ::=  Generator
 Generator         ::=  Pattern1 ‘<-’ Expr                                       GenFrom(pat, expr)
 Guard             ::=  ‘if’ PostfixExpr
 
-CaseClauses       ::=  CaseClause { CaseClause }                                CaseDef(pat, guard?, block)   // block starts at =>
-CaseClause        ::=  ‘case’ (Pattern [Guard] ‘=>’ Block | INT)
+CaseClauses       ::=  CaseClause { CaseClause }                                Match(EmptyTree, cases)
+CaseClause        ::=  ‘case’ (Pattern [Guard] ‘=>’ Block | INT)                CaseDef(pat, guard?, block)   // block starts at =>
 
 Pattern           ::=  Pattern1 { ‘|’ Pattern1 }                                Alternative(pats)
 Pattern1          ::=  PatVar ‘:’ RefinedType                                   Bind(name, Typed(Ident(wildcard), tpe))

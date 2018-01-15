@@ -31,7 +31,7 @@ import dotty.tools.dotc.transform.SymUtils._
  *  gets two different denotations in the same period. Hence, if -Yno-double-bindings is
  *  set, we would get a data race assertion error.
  */
-final class TreeTypeMap(
+class TreeTypeMap(
   val typeMap: Type => Type = IdentityTypeMap,
   val treeMap: tpd.Tree => tpd.Tree = identity _,
   val oldOwners: List[Symbol] = Nil,
@@ -154,7 +154,7 @@ final class TreeTypeMap(
       assert(!to.exists(substFrom contains _))
       assert(!from.exists(newOwners contains _))
       assert(!to.exists(oldOwners contains _))
-      new TreeTypeMap(
+      newMap(
         typeMap,
         treeMap,
         from ++ oldOwners,
@@ -162,6 +162,16 @@ final class TreeTypeMap(
         from ++ substFrom,
         to ++ substTo)
     }
+
+  /** A new map of the same class this one */
+  protected def newMap(
+      typeMap: Type => Type,
+      treeMap: Tree => Tree,
+      oldOwners: List[Symbol],
+      newOwners: List[Symbol],
+      substFrom: List[Symbol],
+      substTo: List[Symbol])(implicit ctx: Context) =
+    new TreeTypeMap(typeMap, treeMap, oldOwners, newOwners, substFrom, substTo)
 
   /** Apply `typeMap` and `ownerMap` to given symbols `syms`
    *  and return a treemap that contains the substitution

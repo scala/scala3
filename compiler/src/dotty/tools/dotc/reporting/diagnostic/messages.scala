@@ -193,7 +193,8 @@ object messages {
         else
           ""
 
-      i"missing parameter type for parameter ${param.name}$ofFun, expected = $pt"
+      i"""missing parameter type for parameter ${param.name}$ofFun, expected = $pt
+         |The argument types of an anonymous function must be fully known. (SLS 8.5)"""
     }
 
     val explanation =
@@ -2029,10 +2030,11 @@ object messages {
     }
   }
 
-  case class UnableToEmitSwitch()(implicit ctx: Context)
+  case class UnableToEmitSwitch(tooFewCases: Boolean)(implicit ctx: Context)
   extends Message(UnableToEmitSwitchID) {
     val kind = "Syntax"
-    val msg = hl"Could not emit switch for ${"@switch"} annotated match"
+    val tooFewStr = if (tooFewCases) " since there are not enough cases" else ""
+    val msg = hl"Could not emit switch for ${"@switch"} annotated match$tooFewStr"
     val explanation = {
       val codeExample =
         """val ConstantB = 'B'
@@ -2063,5 +2065,15 @@ object messages {
     val kind = "Syntax"
     val explanation =
       hl"An object that contains ${"@static"} members must have a companion class."
+  }
+
+  case class PolymorphicMethodMissingTypeInParent(rsym: Symbol, parentSym: Symbol)(implicit ctx: Context)
+  extends Message(PolymorphicMethodMissingTypeInParentID) {
+    val kind = "Syntax"
+    val msg = hl"polymorphic refinement $rsym without matching type in parent $parentSym is no longer allowed"
+    val explanation =
+      hl"""Polymorphic $rsym is not allowed in the structural refinement of $parentSym because
+          |$rsym does not override any method in $parentSym. Structural refinement does not allow for
+          |polymorphic methods."""
   }
 }

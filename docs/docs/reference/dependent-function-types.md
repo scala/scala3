@@ -6,11 +6,14 @@ title: "Dependent Function Types"
 A dependent function type describes functions where the result type may depend
 on the function's parameter values. Example:
 
-    class Entry { type Key; key: Key }
+    trait Entry { type Key; val key: Key }
 
     def extractKey(e: Entry): e.Key = e.key          // a dependent method
     val extractor: (e: Entry) => e.Key = extractKey  // a dependent function value
-
+    //            ║   ⇓ ⇓ ⇓ ⇓ ⇓ ⇓ ⇓   ║ 
+    //            ║     Dependent     ║  
+    //            ║   Function Type   ║  
+    //            ╚═══════════════════╝
 Scala already has _dependent methods_, i.e. methods where the result
 type refers to some of the parameters of the method. Method
 `extractKey` is an example. Its result type, `e.key` refers its

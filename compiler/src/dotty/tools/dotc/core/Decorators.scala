@@ -175,6 +175,10 @@ object Decorators {
     recur(enclosingInlineds, pos)
   }
 
+  implicit class reportingDeco[T](val x: T) extends AnyVal {
+    def reporting(op: T => String): T = { println(op(x)); x }
+  }
+
   implicit class StringInterpolators(val sc: StringContext) extends AnyVal {
 
     /** General purpose string formatting */

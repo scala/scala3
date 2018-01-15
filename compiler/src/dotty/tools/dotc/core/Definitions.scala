@@ -5,7 +5,6 @@ package core
 import Types._, Contexts._, Symbols._, Denotations._, SymDenotations._, StdNames._, Names._
 import Flags._, Scopes._, Decorators._, NameOps._, util.Positions._, Periods._
 import unpickleScala2.Scala2Unpickler.ensureConstructor
-import scala.annotation.{ switch, meta }
 import scala.collection.{ mutable, immutable }
 import PartialFunction._
 import collection.mutable
@@ -78,7 +77,10 @@ class Definitions {
         val cls = denot.asClass.classSymbol
         val paramDecls = newScope
         val typeParam = enterSyntheticTypeParam(cls, paramFlags, paramDecls)
-        val parents = parentConstrs.toList
+        def instantiate(tpe: Type) =
+          if (tpe.typeParams.nonEmpty) tpe.appliedTo(typeParam.typeRef)
+          else tpe
+        val parents = parentConstrs.toList map instantiate
         denot.info = ClassInfo(ScalaPackageClass.thisType, cls, parents, paramDecls)
       }
     }
@@ -146,11 +148,20 @@ class Definitions {
   }
 
   private def enterPolyMethod(cls: ClassSymbol, name: TermName, typeParamCount: Int,
-                    resultTypeFn: PolyType => Type, flags: FlagSet = EmptyFlags) = {
+                    resultTypeFn: PolyType => Type, flags: FlagSet = EmptyFlags,
+                    useCompleter: Boolean = false) = {
     val tparamNames = PolyType.syntheticParamNames(typeParamCount)
     val tparamInfos = tparamNames map (_ => TypeBounds.empty)
-    val ptype = PolyType(tparamNames)(_ => tparamInfos, resultTypeFn)
-    enterMethod(cls, name, ptype, flags)
+    def ptype = PolyType(tparamNames)(_ => tparamInfos, resultTypeFn)
+    val info =
+      if (useCompleter)
+        new LazyType {
+          def complete(denot: SymDenotation)(implicit ctx: Context): Unit = {
+            denot.info = ptype
+          }
+        }
+      else ptype
+    enterMethod(cls, name, info, flags)
   }
 
   private def enterT1ParameterlessMethod(cls: ClassSymbol, name: TermName, resultTypeFn: PolyType => Type, flags: FlagSet) =
@@ -290,13 +301,22 @@ class Definitions {
   /** Marker method to indicate an argument to a call-by-name parameter.
    *  Created by byNameClosures and elimByName, eliminated by Erasure,
    */
-  lazy val cbnArg = enterPolyMethod(
-      OpsPackageClass, nme.cbnArg, 1,
+  lazy val cbnArg = enterPolyMethod(OpsPackageClass, nme.cbnArg, 1,
       pt => MethodType(List(FunctionOf(Nil, pt.paramRefs(0))), pt.paramRefs(0)))
 
   /** Method representing a throw */
   lazy val throwMethod = enterMethod(OpsPackageClass, nme.THROWkw,
       MethodType(List(ThrowableType), NothingType))
+
+  /** Method representing a term quote */
+  lazy val quoteMethod = enterPolyMethod(OpsPackageClass, nme.QUOTE, 1,
+      pt => MethodType(pt.paramRefs(0) :: Nil, QuotedExprType.appliedTo(pt.paramRefs(0) :: Nil)),
+      useCompleter = true)
+
+  /** Method representing a type quote */
+  lazy val typeQuoteMethod = enterPolyMethod(OpsPackageClass, nme.TYPE_QUOTE, 1,
+      pt => QuotedTypeType.appliedTo(pt.paramRefs(0) :: Nil),
+      useCompleter = true)
 
   lazy val NothingClass: ClassSymbol = enterCompleteClassSymbol(
     ScalaPackageClass, tpnme.Nothing, AbstractFinal, List(AnyClass.typeRef))
@@ -584,6 +604,21 @@ class Definitions {
   lazy val ClassTagType = ctx.requiredClassRef("scala.reflect.ClassTag")
   def ClassTagClass(implicit ctx: Context) = ClassTagType.symbol.asClass
   def ClassTagModule(implicit ctx: Context) = ClassTagClass.companionModule
+
+  lazy val QuotedExprType = ctx.requiredClassRef("scala.quoted.Expr")
+  def QuotedExprClass(implicit ctx: Context) = QuotedExprType.symbol.asClass
+
+    def QuotedExpr_~(implicit ctx: Context) = QuotedExprClass.requiredMethod(nme.UNARY_~)
+    def QuotedExpr_run(implicit ctx: Context) = QuotedExprClass.requiredMethod(nme.run)
+
+  lazy val QuotedTypeType = ctx.requiredClassRef("scala.quoted.Type")
+  def QuotedTypeClass(implicit ctx: Context) = QuotedTypeType.symbol.asClass
+
+    def QuotedType_~(implicit ctx: Context) =
+      QuotedTypeClass.info.member(tpnme.UNARY_~).symbol.asType
+
+  def Unpickler_unpickleExpr = ctx.requiredMethod("scala.runtime.quoted.Unpickler.unpickleExpr")
+  def Unpickler_unpickleType = ctx.requiredMethod("scala.runtime.quoted.Unpickler.unpickleType")
 
   lazy val EqType = ctx.requiredClassRef("scala.Eq")
   def EqClass(implicit ctx: Context) = EqType.symbol.asClass
@@ -1015,7 +1050,7 @@ class Definitions {
 
 //  private val unboxedTypeRef = mutable.Map[TypeName, TypeRef]()
 //  private val javaTypeToValueTypeRef = mutable.Map[Class[_], TypeRef]()
-//  private val valueTypeNameToJavaType = mutable.Map[TypeName, Class[_]]()
+  private val valueTypeNamesToJavaType = mutable.Map[TypeName, Class[_]]()
 
   private def valueTypeRef(name: String, boxed: TypeRef, jtype: Class[_], enc: Int, tag: Name): TypeRef = {
     val vcls = ctx.requiredClassRef(name)
@@ -1024,7 +1059,7 @@ class Definitions {
     typeTags(vcls.name) = tag
 //    unboxedTypeRef(boxed.name) = vcls
 //    javaTypeToValueTypeRef(jtype) = vcls
-//    valueTypeNameToJavaType(vcls.name) = jtype
+    valueTypeNamesToJavaType(vcls.name) = jtype
     vcls
   }
 
@@ -1033,6 +1068,10 @@ class Definitions {
 
   /** The JVM tag for `tp` if it's a primitive, `java.lang.Object` otherwise. */
   def typeTag(tp: Type)(implicit ctx: Context): Name = typeTags(scalaClassName(tp))
+
+  /** The `Class[_]` of a primitive value type name */
+  def valueTypeNameToJavaType(name: TypeName)(implicit ctx: Context): Option[Class[_]] =
+    valueTypeNamesToJavaType.get(if (name.firstPart eq nme.scala_) name.lastPart.toTypeName else name)
 
   type PrimitiveClassEnc = Int
 
@@ -1071,7 +1110,8 @@ class Definitions {
     OpsPackageClass)
 
   /** Lists core methods that don't have underlying bytecode, but are synthesized on-the-fly in every reflection universe */
-  lazy val syntheticCoreMethods = AnyMethods ++ ObjectMethods ++ List(String_+, throwMethod)
+  lazy val syntheticCoreMethods =
+    AnyMethods ++ ObjectMethods ++ List(String_+, throwMethod, quoteMethod, typeQuoteMethod)
 
   lazy val reservedScalaClassNames: Set[Name] = syntheticScalaClasses.map(_.name).toSet
 
@@ -1081,12 +1121,12 @@ class Definitions {
   def init()(implicit ctx: Context) = {
     this.ctx = ctx
     if (!_isInitialized) {
-      // force initialization of every symbol that is synthesized or hijacked by the compiler
-      val forced = syntheticCoreClasses ++ syntheticCoreMethods ++ ScalaValueClasses()
-
       // Enter all symbols from the scalaShadowing package in the scala package
       for (m <- ScalaShadowingPackageClass.info.decls)
         ScalaPackageClass.enter(m)
+
+      // force initialization of every symbol that is synthesized or hijacked by the compiler
+      val forced = syntheticCoreClasses ++ syntheticCoreMethods ++ ScalaValueClasses()
 
       _isInitialized = true
     }

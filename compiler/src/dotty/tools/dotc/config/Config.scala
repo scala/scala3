@@ -106,6 +106,18 @@ object Config {
    */
   final val checkTypeRefCycles = false
 
+  /** If this flag is set, we check that types assigned to trees are error types only
+   *  if some error was already reported. There are complicicated scenarios where this
+   *  is not true. An example is TestNonCyclic in posTwice. If we remove the
+   *  first (unused) import `import dotty.tools.dotc.core.Types.Type` in `CompilationUnit`,
+   *  we end up assigning a CyclicReference error type to an import expression `annotation`
+   *  before the cyclic reference is reported. What happens is that the error was reported
+   *  as a result of a completion in a not-yet committed typerstate. So we cannot enforce
+   *  this in all circumstances. But since it is almost always true it is useful to
+   *  keep the Config option for debugging.
+   */
+  final val checkUnreportedErrors = false
+
   /** If this flag is set, it is checked that class type parameters are
    *  only references with NoPrefix or ThisTypes as prefixes. This option
    *  is usally disabled, because there are still some legitimate cases where

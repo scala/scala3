@@ -282,6 +282,11 @@ object Contexts {
     /** The current reporter */
     def reporter: Reporter = typerState.reporter
 
+    /** Run `op` as if it was run in a fresh explore typer state, but possibly
+     *  optimized to re-use the current typer state.
+     */
+    final def test[T](op: Context => T): T = typerState.test(op)(this)
+
     /** Is this a context for the members of a class definition? */
     def isClassDefContext: Boolean =
       owner.isClass && (owner ne outer.owner)
@@ -358,6 +363,15 @@ object Contexts {
       if (exprOwner == this.owner) this
       else if (untpd.isSuperConstrCall(stat) && this.owner.isClass) superCallContext
       else ctx.fresh.setOwner(exprOwner)
+
+    /** A new context that summarizes an import statement */
+    def importContext(imp: Import[_], sym: Symbol) = {
+      val impNameOpt = imp.expr match {
+        case ref: RefTree[_] => Some(ref.name.asTermName)
+        case _               => None
+      }
+      ctx.fresh.setImportInfo(new ImportInfo(implicit ctx => sym, imp.selectors, impNameOpt))
+    }
 
     /** The current source file; will be derived from current
      *  compilation unit.

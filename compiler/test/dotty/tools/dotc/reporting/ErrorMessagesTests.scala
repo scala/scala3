@@ -1277,4 +1277,21 @@ class ErrorMessagesTests extends ErrorMessagesTest {
       val MissingCompanionForStatic(member) = messages.head
       assertEquals(member.show, "method bar")
     }
+
+  @Test def polymorphicMethodMissingTypeInParent =
+    checkMessagesAfter("frontend") {
+      """
+        |object Test {
+        |  import scala.reflect.Selectable.reflectiveSelectable
+        |  def foo(x: { def get[T](a: T): Int }) = 5
+        |}
+      """.stripMargin
+    }.expect { (ictx, messages) =>
+      implicit val ctx: Context = ictx
+
+      assertMessageCount(1, messages)
+      val PolymorphicMethodMissingTypeInParent(rsym, parentSym) = messages.head
+      assertEquals("method get", rsym.show)
+      assertEquals("class Object", parentSym.show)
+    }
 }

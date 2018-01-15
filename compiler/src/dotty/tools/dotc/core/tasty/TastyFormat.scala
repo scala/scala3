@@ -37,12 +37,11 @@ Macro-format:
                   UNIQUE            Length separator_NameRef uniqid_Nat underlying_NameRef?
                   DEFAULTGETTER     Length underlying_NameRef index_Nat
                   VARIANT           Length underlying_NameRef variance_Nat      // 0: Contravariant, 1: Covariant
-                  OUTERSELECT       Length underlying_NameRef nhops_Nat
 
                   SUPERACCESSOR     Length underlying_NameRef
                   PROTECTEDACCESSOR Length underlying_NameRef
                   PROTECTEDSETTER   Length underlying_NameRef
-                  INITIALIZER       Length underlying_NameRef
+                  OBJECTCLASS       Length underlying_NameRef
 
                   SIGNED            Length original_NameRef resultSig_NameRef paramSig_NameRef*
 
@@ -81,9 +80,9 @@ Standard-Section: "ASTs" TopLevelStat*
                   SELECT                possiblySigned_NameRef qual_Term
                   QUALTHIS              typeIdent_Tree
                   NEW                   cls_Type
+                  NAMEDARG              paramName_NameRef arg_Term
                   SUPER          Length this_Term mixinTypeIdent_Tree?
                   TYPED          Length expr_Term ascription_Type
-                  NAMEDARG       Length paramName_NameRef arg_Term
                   ASSIGN         Length lhs_Term rhs_Term
                   BLOCK          Length expr_Term Stat*
                   INLINED        Length call_Term expr_Term Stat*
@@ -93,6 +92,7 @@ Standard-Section: "ASTs" TopLevelStat*
                   TRY            Length expr_Term CaseDef* finalizer_Term?
                   RETURN         Length meth_ASTRef expr_Term?
                   REPEATED       Length elem_Type elem_Term*
+                  SELECTouter    Length levels_Nat qual_Term underlying_Type
                   BIND           Length boundName_NameRef patType_Type pat_Term
                   ALTERNATIVE    Length alt_Term*
                   UNAPPLY        Length fun_Term ImplicitArg* pat_Type pat_Term*
@@ -109,6 +109,7 @@ Standard-Section: "ASTs" TopLevelStat*
                   BYNAMEtpt             underlying_Term
                   EMPTYTREE
                   SHARED                term_ASTRef
+                  HOLE           Length idx_Nat arg_Tree*
   Application   = APPLY          Length fn_Term arg_Term*
 
                   TYPEAPPLY      Length fn_Term arg_Type*
@@ -180,7 +181,8 @@ Standard-Section: "ASTs" TopLevelStat*
                   IMPLICIT
                   LAZY
                   OVERRIDE
-                  INLINE                              // macro
+                  INLINE                              // inline method
+                  MACRO                               // inline method containing toplevel splices
                   STATIC                              // mapped to static Java member
                   OBJECT                              // an object or its class
                   TRAIT                               // a trait
@@ -225,7 +227,7 @@ object TastyFormat {
 
   final val header = Array(0x5C, 0xA1, 0xAB, 0x1F)
   val MajorVersion = 2
-  val MinorVersion = 0
+  val MinorVersion = 1
 
   /** Tags used to serialize names */
   class NameTags {
@@ -247,10 +249,6 @@ object TastyFormat {
 
     final val VARIANT = 12           // A name `+<name>` o `-<name>` indicating
                                      // a co- or contra-variant parameter of a type lambda.
-
-    final val OUTERSELECT = 13       // A name `<num>_outer`, used by the inliner to indicate an
-                                     // outer accessor that will be filled in by ExplicitOuter.
-                                     // <num> indicates the number of hops needed to select the outer field.
 
     final val SUPERACCESSOR = 20     // The name of a super accessor `super$name` created by SuperAccesors.
 
@@ -300,6 +298,7 @@ object TastyFormat {
   final val SCALA2X = 29
   final val DEFAULTparameterized = 30
   final val STABLE = 31
+  final val MACRO = 32
 
   // Cat. 2:    tag Nat
 
@@ -336,6 +335,7 @@ object TastyFormat {
   final val RECtype = 90
   final val TYPEALIAS = 91
   final val SINGLETONtpt = 92
+  final val NAMEDARG = 93
 
   // Cat. 4:    tag Nat AST
 
@@ -362,15 +362,15 @@ object TastyFormat {
   final val APPLY = 136
   final val TYPEAPPLY = 137
   final val TYPED = 138
-  final val NAMEDARG = 139
-  final val ASSIGN = 140
-  final val BLOCK = 141
-  final val IF = 142
-  final val LAMBDA = 143
-  final val MATCH = 144
-  final val RETURN = 145
-  final val TRY = 146
-  final val INLINED = 147
+  final val ASSIGN = 139
+  final val BLOCK = 140
+  final val IF = 141
+  final val LAMBDA = 142
+  final val MATCH = 143
+  final val RETURN = 144
+  final val TRY = 145
+  final val INLINED = 146
+  final val SELECTouter = 147
   final val REPEATED = 148
   final val BIND = 149
   final val ALTERNATIVE = 150
@@ -399,6 +399,7 @@ object TastyFormat {
   final val ANNOTATION = 173
   final val TERMREFin = 174
   final val TYPEREFin = 175
+  final val HOLE = 255
 
   final val firstSimpleTreeTag = UNITconst
   final val firstNatTreeTag = SHARED
@@ -420,6 +421,7 @@ object TastyFormat {
        | LAZY
        | OVERRIDE
        | INLINE
+       | MACRO
        | STATIC
        | OBJECT
        | TRAIT
@@ -473,6 +475,7 @@ object TastyFormat {
     case LAZY => "LAZY"
     case OVERRIDE => "OVERRIDE"
     case INLINE => "INLINE"
+    case MACRO => "MACRO"
     case STATIC => "STATIC"
     case OBJECT => "OBJECT"
     case TRAIT => "TRAIT"
@@ -536,6 +539,7 @@ object TastyFormat {
     case MATCH => "MATCH"
     case RETURN => "RETURN"
     case INLINED => "INLINED"
+    case SELECTouter => "SELECTouter"
     case TRY => "TRY"
     case REPEATED => "REPEATED"
     case BIND => "BIND"
@@ -557,6 +561,7 @@ object TastyFormat {
     case SUPERtype => "SUPERtype"
     case TERMREFin => "TERMREFin"
     case TYPEREFin => "TYPEREFin"
+
     case REFINEDtype => "REFINEDtype"
     case REFINEDtpt => "REFINEDtpt"
     case APPLIEDtype => "APPLIEDtype"
@@ -578,6 +583,7 @@ object TastyFormat {
     case ANNOTATION => "ANNOTATION"
     case PRIVATEqualified => "PRIVATEqualified"
     case PROTECTEDqualified => "PROTECTEDqualified"
+    case HOLE => "HOLE"
   }
 
   /** @return If non-negative, the number of leading references (represented as nats) of a length/trees entry.
@@ -585,7 +591,7 @@ object TastyFormat {
    */
   def numRefs(tag: Int) = tag match {
     case VALDEF | DEFDEF | TYPEDEF | TYPEPARAM | PARAM | NAMEDARG | RETURN | BIND |
-         SELFDEF | REFINEDtype | TERMREFin | TYPEREFin => 1
+         SELFDEF | REFINEDtype | TERMREFin | TYPEREFin | HOLE => 1
     case RENAMED | PARAMtype => 2
     case POLYtype | METHODtype | TYPELAMBDAtype => -1
     case _ => 0

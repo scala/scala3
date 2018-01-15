@@ -267,8 +267,8 @@ trait SpaceLogic {
         else
           // `(_, _, _) - (Some, None, _)` becomes `(None, _, _) | (_, Some, _) | (_, _, Empty)`
           Or(ss1.zip(ss2).map((minus _).tupled).zip(0 to ss2.length - 1).map {
-              case (ri, i) => Prod(tp1, fun1, sym1, ss1.updated(i, ri), full)
-            })
+            case (ri, i) => Prod(tp1, fun1, sym1, ss1.updated(i, ri), full)
+          })
 
     }
 
@@ -375,7 +375,7 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
   }
 
   /* Whether the extractor is irrefutable */
-  def irrefutable(unapp: tpd.Tree): Boolean = {
+  def irrefutable(unapp: Tree): Boolean = {
     // TODO: optionless patmat
     unapp.tpe.widen.finalResultType.isRef(scalaSomeClass) ||
       (unapp.symbol.is(Synthetic) && unapp.symbol.owner.linkedClass.is(Case)) ||
@@ -395,6 +395,7 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
       Typ(pat.tpe.stripAnnots, false)
     case Alternative(trees) => Or(trees.map(project(_)))
     case Bind(_, pat) => project(pat)
+    case SeqLiteral(pats, _) => projectSeq(pats)
     case UnApply(fun, _, pats) =>
       if (fun.symbol.name == nme.unapplySeq)
         if (fun.symbol.owner == scalaSeqFactoryClass)
@@ -496,7 +497,7 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
 
     debug.println(s"signature of ${unappSym.showFullName} ----> ${sig.map(_.show).mkString(", ")}")
 
-    sig
+    sig.map(_.annotatedToRepeated)
   }
 
   /** Decompose a type into subspaces -- assume the type can be decomposed */
@@ -557,11 +558,11 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
   def refine(parent: Type, child: Symbol): Type = {
     if (child.isTerm && child.is(Case, butNot = Module)) return child.termRef // enum vals always match
 
-    val childTp  = if (child.isTerm) child.termRef else child.typeRef
+    val childTp = if (child.isTerm) child.termRef else child.typeRef
 
     val resTp = instantiate(childTp, parent)(ctx.fresh.setNewTyperState())
 
-    if (!resTp.exists)  {
+    if (!resTp.exists || !inhabited(resTp)) {
       debug.println(s"[refine] unqualified child ousted: ${childTp.show} !< ${parent.show}")
       NoType
     }
@@ -569,6 +570,25 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
       debug.println(s"$child instantiated ------> $resTp")
       resTp.dealias
     }
+  }
+
+  /** Can this type be inhabited by a value?
+   *
+   *  Intersection between singleton types and other types is always empty
+   *  the singleton type is not a subtype of the other type.
+   *  See patmat/i3573.scala for an example.
+   */
+  def inhabited(tpe: Type)(implicit ctx: Context): Boolean = {
+    val emptySingletonIntersection = new ExistsAccumulator({
+      case AndType(s: SingletonType, t) =>
+        !(s <:< t)
+      case AndType(t, s: SingletonType) =>
+        !(s <:< t)
+      case x =>
+        false
+    })
+
+    !emptySingletonIntersection(false, tpe)
   }
 
   /** Instantiate type `tp1` to be a subtype of `tp2`
@@ -787,22 +807,23 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
   def checkable(tree: Match): Boolean = {
     // Possible to check everything, but be compatible with scalac by default
     def isCheckable(tp: Type): Boolean =
-        !tp.hasAnnotation(defn.UncheckedAnnot) && (
-          ctx.settings.YcheckAllPatmat.value ||
-          tp.typeSymbol.is(Sealed) ||
-          tp.isInstanceOf[OrType] ||
-          (tp.isInstanceOf[AndType] && {
-            val and = tp.asInstanceOf[AndType]
-            isCheckable(and.tp1) || isCheckable(and.tp2)
-          }) ||
-          tp.isRef(defn.BooleanClass) ||
-          tp.typeSymbol.is(Enum) ||
-          canDecompose(tp) ||
-          (defn.isTupleType(tp) && tp.dealias.argInfos.exists(isCheckable(_)))
-        )
+      !tp.hasAnnotation(defn.UncheckedAnnot) && {
+        val tpw = tp.widen.dealias
+        ctx.settings.YcheckAllPatmat.value ||
+        tpw.typeSymbol.is(Sealed) ||
+        tpw.isInstanceOf[OrType] ||
+        (tpw.isInstanceOf[AndType] && {
+          val and = tpw.asInstanceOf[AndType]
+          isCheckable(and.tp1) || isCheckable(and.tp2)
+        }) ||
+        tpw.isRef(defn.BooleanClass) ||
+        tpw.typeSymbol.is(Enum) ||
+        canDecompose(tpw) ||
+        (defn.isTupleType(tpw) && tpw.argInfos.exists(isCheckable(_)))
+      }
 
     val Match(sel, cases) = tree
-    val res = isCheckable(sel.tpe.widen.dealiasKeepAnnots)
+    val res = isCheckable(sel.tpe)
     debug.println(s"checkable: ${sel.show} = $res")
     res
   }

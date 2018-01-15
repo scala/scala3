@@ -414,7 +414,7 @@ object Flags {
   /** A Scala 2.12 or higher trait */
   final val Scala_2_12_Trait = typeFlag(58, "<scala_2_12_trait>")
 
-  /** A macro (Scala 2.x only) */
+  /** A macro */
   final val Macro = commonFlag(59, "<macro>")
 
   /** A method that is known to have inherited default parameters */
@@ -575,7 +575,7 @@ object Flags {
   final val SyntheticOrPrivate = Synthetic | Private
 
   /** A deferred member or a parameter accessor (these don't have right hand sides) */
-  final val DeferredOrParamAccessor = Deferred | ParamAccessor
+  final val DeferredOrParamOrAccessor = Deferred | Param | ParamAccessor
 
   /** value that's final or inline */
   final val FinalOrInline = Final | Inline
@@ -597,6 +597,9 @@ object Flags {
 
   /** Is a default parameter in Scala 2*/
   final val DefaultParameter = allOf(Param, DefaultParameterized)
+
+  /** A Scala 2 Macro */
+  final val Scala2Macro = allOf(Macro, Scala2x)
 
   /** A trait that does not need to be initialized */
   final val NoInitsTrait = allOf(Trait, NoInits)

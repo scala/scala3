@@ -1,12 +1,10 @@
 package dotty.tools
 package repl
 
-import java.io.{ File => JFile }
-
 import dotc.ast.Trees._
 import dotc.ast.{ untpd, tpd }
 import dotc.{ Run, CompilationUnit, Compiler }
-import dotc.core.Decorators._, dotc.core.Flags._, dotc.core.Phases
+import dotc.core.Decorators._, dotc.core.Flags._, dotc.core.Phases, Phases.Phase
 import dotc.core.Names._, dotc.core.Contexts._, dotc.core.StdNames._
 import dotc.core.Constants.Constant
 import dotc.util.SourceFile
@@ -14,8 +12,7 @@ import dotc.typer.{ ImportInfo, FrontEnd }
 import backend.jvm.GenBCode
 import dotc.core.NameOps._
 import dotc.util.Positions._
-import dotc.reporting.diagnostic.{ messages, MessageContainer }
-import dotc.reporting._
+import dotc.reporting.diagnostic.messages
 import io._
 
 import results._
@@ -37,19 +34,11 @@ class ReplCompiler(val directory: AbstractFile) extends Compiler {
     override def outputDir(implicit ctx: Context) = directory
   }
 
-  override def phases = {
-    val replacedFrontend = Phases.replace(
-      classOf[FrontEnd],
-      _ => new REPLFrontEnd :: Nil,
-      super.phases
-    )
+  override protected def frontendPhases: List[List[Phase]] =
+    Phases.replace(classOf[FrontEnd], _ => new REPLFrontEnd :: Nil, super.frontendPhases)
 
-    Phases.replace(
-      classOf[GenBCode],
-      _ => new REPLGenBCode :: Nil,
-      replacedFrontend
-    )
-  }
+  override protected def backendPhases: List[List[Phase]] =
+    List(new REPLGenBCode) :: Nil
 
   def newRun(initCtx: Context, objectIndex: Int) = new Run(this, initCtx) {
     override protected[this] def rootContext(implicit ctx: Context) =

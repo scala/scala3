@@ -36,7 +36,7 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
   class OffsetInfo(var defs: List[Tree], var ord:Int)
   val appendOffsetDefs = mutable.Map.empty[Symbol, OffsetInfo]
 
-  override def phaseName: String = "LazyVals"
+  override def phaseName: String = "lazyVals"
 
   /** List of names of phases that should have finished processing of tree
     * before this phase starts processing same tree */
@@ -61,7 +61,10 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
 
   def transformLazyVal(tree: ValOrDefDef)(implicit ctx: Context): Tree = {
     val sym = tree.symbol
-    if (!(sym is Flags.Lazy) || sym.owner.is(Flags.Trait) || (sym.isStatic && sym.is(Flags.Module))) tree
+    if (!(sym is Flags.Lazy) ||
+        sym.owner.is(Flags.Trait) || // val is accessor, lazy field will be implemented in subclass
+        (sym.isStatic && sym.is(Flags.Module, butNot = Flags.Method))) // static module vals are implemented in the JVM by lazy loading
+      tree
     else {
       val isField = sym.owner.isClass
       if (isField) {

@@ -118,7 +118,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
           if (recCount < Config.LogPendingSubTypesThreshold) firstTry(tp1, tp2)
           else monitoredIsSubType(tp1, tp2)
         recCount = recCount - 1
-        if (!result) constraint = saved
+        if (!result) state.resetConstraintTo(saved)
         else if (recCount == 0 && needsGc) {
           state.gc()
           needsGc = false
@@ -129,7 +129,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
         case NonFatal(ex) =>
           if (ex.isInstanceOf[AssertionError]) showGoal(tp1, tp2)
           recCount -= 1
-          constraint = saved
+          state.resetConstraintTo(saved)
           successCount = savedSuccessCount
           throw ex
       }
@@ -475,12 +475,17 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
             isSubType(tp1.resType, tp2.resType.subst(tp2, tp1))
           finally comparedTypeLambdas = saved
         case _ =>
-          if (!tp1.isHK) {
-            tp2 match {
-              case EtaExpansion(tycon2) if tycon2.symbol.isClass =>
-                return isSubType(tp1, tycon2)
-              case _ =>
-            }
+          if (tp1.isHK) {
+            val tparams1 = tp1.typeParams
+            return isSubType(
+              HKTypeLambda.fromParams(tparams1, tp1.appliedTo(tparams1.map(_.paramRef))),
+              tp2
+            )
+          }
+          else tp2 match {
+            case EtaExpansion(tycon2) if tycon2.symbol.isClass =>
+              return isSubType(tp1, tycon2)
+            case _ =>
           }
           fourthTry(tp1, tp2)
       }
@@ -513,7 +518,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
         case tp1: MethodOrPoly =>
           (tp1.signature consistentParams tp2.signature) &&
             matchingParams(tp1, tp2) &&
-            tp1.isImplicitMethod == tp2.isImplicitMethod &&
+            (!tp2.isImplicitMethod || tp1.isImplicitMethod) &&
             isSubType(tp1.resultType, tp2.resultType.subst(tp2, tp1))
         case _ =>
           false

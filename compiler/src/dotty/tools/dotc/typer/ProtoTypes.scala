@@ -39,10 +39,11 @@ object ProtoTypes {
       (tp.widenExpr relaxed_<:< pt.widenExpr) || viewExists(tp, pt)
 
     /** Test compatibility after normalization in a fresh typerstate. */
-    def normalizedCompatible(tp: Type, pt: Type)(implicit ctx: Context) = ctx.typerState.test {
-      val normTp = normalize(tp, pt)
-      isCompatible(normTp, pt) || pt.isRef(defn.UnitClass) && normTp.isParameterless
-    }
+    def normalizedCompatible(tp: Type, pt: Type)(implicit ctx: Context) =
+      ctx.test { implicit ctx =>
+        val normTp = normalize(tp, pt)
+        isCompatible(normTp, pt) || pt.isRef(defn.UnitClass) && normTp.isParameterless
+      }
 
     private def disregardProto(pt: Type)(implicit ctx: Context): Boolean = pt.dealias match {
       case _: OrType => true
@@ -67,7 +68,7 @@ object ProtoTypes {
         case _ =>
           true
       }
-      if (!res) ctx.typerState.constraint = savedConstraint
+      if (!res) ctx.typerState.resetConstraintTo(savedConstraint)
       res
     }
   }
@@ -183,8 +184,8 @@ object ProtoTypes {
     /** A map in which typed arguments can be stored to be later integrated in `typedArgs`. */
     private[this] var myTypedArg: SimpleIdentityMap[untpd.Tree, Tree] = SimpleIdentityMap.Empty
 
-    /** A map recording the typer states in which arguments stored in myTypedArg were typed */
-    private[this] var evalState: SimpleIdentityMap[untpd.Tree, TyperState] = SimpleIdentityMap.Empty
+    /** A map recording the typer states and constraints in which arguments stored in myTypedArg were typed */
+    private[this] var evalState: SimpleIdentityMap[untpd.Tree, (TyperState, Constraint)] = SimpleIdentityMap.Empty
 
     def isMatchedBy(tp: Type)(implicit ctx: Context) =
       typer.isApplicable(tp, Nil, typedArgs, resultType)
@@ -195,17 +196,19 @@ object ProtoTypes {
 
     override def notApplied = WildcardType
 
-    /** Forget the types of any arguments that have been typed producing a constraint in a
-     *  typer state that is not yet committed into the one of the current context `ctx`.
+    /** Forget the types of any arguments that have been typed producing a constraint
+     *    - that is in a typer state that is not yet committed into the one of the current context `ctx`,
+     *    - or that has been retracted from its typestate because oif a failed operation.
      *  This is necessary to avoid "orphan" TypeParamRefs that are referred to from
      *  type variables in the typed arguments, but that are not registered in the
-     *  current constraint. A test case is pos/t1756.scala.
+     *  current constraint. Test cases are pos/t1756.scala and pos/i3538.scala.
      *  @return True if all arguments have types (in particular, no types were forgotten).
      */
     def allArgTypesAreCurrent()(implicit ctx: Context): Boolean = {
-      evalState foreachBinding { (arg, tstate) =>
-        if (tstate.uncommittedAncestor.constraint ne ctx.typerState.constraint) {
-          typr.println(i"need to invalidate $arg / ${myTypedArg(arg)}, ${tstate.constraint}, current = ${ctx.typerState.constraint}")
+      evalState foreachBinding { (arg, tstateConstr) =>
+        if ((tstateConstr._1.uncommittedAncestor.constraint `ne` ctx.typerState.constraint) ||
+            tstateConstr._2.isRetracted) {
+          typr.println(i"need to invalidate $arg / ${myTypedArg(arg)}, ${tstateConstr._2}, current = ${ctx.typerState.constraint}")
           myTypedArg = myTypedArg.remove(arg)
           evalState = evalState.remove(arg)
         }
@@ -219,7 +222,7 @@ object ProtoTypes {
         targ = typerFn(arg)
         if (!ctx.reporter.hasPending) {
           myTypedArg = myTypedArg.updated(arg, targ)
-          evalState = evalState.updated(arg, ctx.typerState)
+          evalState = evalState.updated(arg, (ctx.typerState, ctx.typerState.constraint))
         }
       }
       targ
@@ -468,7 +471,7 @@ object ProtoTypes {
         normalize(et.resultType, pt)
       case wtp =>
         val iftp = defn.asImplicitFunctionType(wtp)
-        if (iftp.exists) normalize(iftp.argInfos.last, pt) else tp
+        if (iftp.exists) normalize(iftp.dropDependentRefinement.argInfos.last, pt) else tp
     }
   }
 

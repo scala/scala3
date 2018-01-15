@@ -674,10 +674,7 @@ object SymDenotations {
     final def isAccessibleFrom(pre: Type, superAccess: Boolean = false, whyNot: StringBuffer = null)(implicit ctx: Context): Boolean = {
 
       /** Are we inside definition of `boundary`? */
-      def accessWithin(boundary: Symbol) =
-        ctx.owner.isContainedIn(boundary) &&
-          (!(this is JavaDefined) || // disregard package nesting for Java
-             ctx.owner.enclosingPackageClass == boundary.enclosingPackageClass)
+      def accessWithin(boundary: Symbol) = ctx.owner.isContainedIn(boundary)
 
       /** Are we within definition of linked class of `boundary`? */
       def accessWithinLinked(boundary: Symbol) = {
@@ -733,7 +730,9 @@ object SymDenotations {
              (  !(this is Local)
              || (owner is ImplClass) // allow private local accesses to impl class members
              || isCorrectThisType(pre)
-             )
+             ) &&
+             (!(this.is(Private) && owner.is(Package)) ||
+              owner == ctx.owner.enclosingPackageClass)
         || (this is Protected) &&
              (  superAccess
              || pre.isInstanceOf[ThisType]
@@ -926,10 +925,13 @@ object SymDenotations {
      *  except for a toplevel module, where its module class is returned.
      */
     final def topLevelClass(implicit ctx: Context): Symbol = {
-      def topLevel(d: SymDenotation): Symbol = {
-        if (d.isEffectiveRoot || (d is PackageClass) || (d.owner is PackageClass)) d.symbol
-        else topLevel(d.owner)
-      }
+
+      def topLevel(d: SymDenotation): Symbol =
+        if (!exists || d.isEffectiveRoot || (d is PackageClass) || (d.owner is PackageClass))
+          d.symbol
+        else
+          topLevel(d.owner)
+
       val sym = topLevel(this)
       if (sym.isClass) sym else sym.moduleClass
     }
@@ -1443,7 +1445,8 @@ object SymDenotations {
         onBehalf.signalProvisional()
       val builder = new BaseDataBuilder
       for (p <- classParents) {
-        assert(p.typeSymbol.isClass, s"$this has non-class parent: $p")
+        if (p.typeSymbol.isClass) builder.addAll(p.typeSymbol.asClass.baseClasses)
+        else assert(ctx.mode.is(Mode.Interactive), s"$this has non-class parent: $p")
         builder.addAll(p.typeSymbol.asClass.baseClasses)
       }
       (classSymbol :: builder.baseClasses, builder.baseClassSet)

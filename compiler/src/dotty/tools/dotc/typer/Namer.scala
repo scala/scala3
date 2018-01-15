@@ -48,7 +48,6 @@ trait NamerContextOps { this: Context =>
           val elem = scope.lastEntry
           if (elem.name == name) return elem.sym.denot // return self
         }
-        assert(scope.size <= 1, scope)
         owner.thisType.member(name)
       }
       else // we are in the outermost context belonging to a class; self is invisible here. See inClassContext.
@@ -385,15 +384,6 @@ class Namer { typer: Typer =>
     case _ => tree
   }
 
-  /** A new context that summarizes an import statement */
-  def importContext(imp: Import, sym: Symbol)(implicit ctx: Context) = {
-    val impNameOpt = imp.expr match {
-      case ref: RefTree => Some(ref.name.asTermName)
-      case _            => None
-    }
-    ctx.fresh.setImportInfo(new ImportInfo(implicit ctx => sym, imp.selectors, impNameOpt))
-  }
-
   /** A new context for the interior of a class */
   def inClassContext(selfInfo: DotClass /* Should be Type | Symbol*/)(implicit ctx: Context): Context = {
     val localCtx: Context = ctx.fresh.setNewScope
@@ -441,7 +431,7 @@ class Namer { typer: Typer =>
         setDocstring(pkg, stat)
         ctx
       case imp: Import =>
-        importContext(imp, createSymbol(imp))
+        ctx.importContext(imp, createSymbol(imp))
       case mdef: DefTree =>
         val sym = enterSymbol(createSymbol(mdef))
         setDocstring(sym, origStat)
@@ -727,6 +717,11 @@ class Namer { typer: Typer =>
     localCtx
   }
 
+  def missingType(sym: Symbol, modifier: String)(implicit ctx: Context) = {
+    ctx.error(s"${modifier}type of implicit definition needs to be given explicitly", sym.pos)
+    sym.resetFlag(Implicit)
+  }
+
   /** The completer of a symbol defined by a member def or import (except ClassSymbols) */
   class Completer(val original: Tree)(implicit ctx: Context) extends LazyType {
 
@@ -734,6 +729,7 @@ class Namer { typer: Typer =>
 
     /** The context with which this completer was created */
     def creationContext = ctx
+    ctx.typerState.markShared()
 
     protected def typeSig(sym: Symbol): Type = original match {
       case original: ValDef =>
@@ -860,7 +856,11 @@ class Namer { typer: Typer =>
           val targs1 = targs map (typedAheadType(_))
           val ptype = typedAheadType(tpt).tpe appliedTo targs1.tpes
           if (ptype.typeParams.isEmpty) ptype
-          else fullyDefinedType(typedAheadExpr(parent).tpe, "class parent", parent.pos)
+          else {
+            if (denot.is(ModuleClass) && denot.sourceModule.is(Implicit))
+              missingType(denot.symbol, "parent ")(creationContext)
+            fullyDefinedType(typedAheadExpr(parent).tpe, "class parent", parent.pos)
+          }
         }
 
       /* Check parent type tree `parent` for the following well-formedness conditions:
@@ -1089,14 +1089,10 @@ class Namer { typer: Typer =>
           lhsType // keep constant types that fill in for a non-constant (to be revised when inline has landed).
         else inherited
       else {
-        def missingType(modifier: String) = {
-          ctx.error(s"${modifier}type of implicit definition needs to be given explicitly", mdef.pos)
-          sym.resetFlag(Implicit)
-        }
         if (sym is Implicit)
           mdef match {
-            case _: DefDef => missingType("result")
-            case _: ValDef if sym.owner.isType => missingType("")
+            case _: DefDef => missingType(sym, "result ")
+            case _: ValDef if sym.owner.isType => missingType(sym, "")
             case _ =>
           }
         lhsType orElse WildcardType
@@ -1115,7 +1111,7 @@ class Namer { typer: Typer =>
         mdef match {
           case mdef: DefDef if mdef.name == nme.ANON_FUN =>
             val hygienicType = avoid(rhsType, paramss.flatten)
-            if (!(hygienicType <:< tpt.tpe))
+            if (!hygienicType.isValueType || !(hygienicType <:< tpt.tpe))
               ctx.error(i"return type ${tpt.tpe} of lambda cannot be made hygienic;\n" +
                 i"it is not a supertype of the hygienic type $hygienicType", mdef.pos)
             //println(i"lifting $rhsType over $paramss -> $hygienicType = ${tpt.tpe}")

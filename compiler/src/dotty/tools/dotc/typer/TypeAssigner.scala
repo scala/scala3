@@ -93,7 +93,7 @@ trait TypeAssigner {
       def apply(tp: Type): Type = tp match {
         case tp: TermRef
         if toAvoid(tp.symbol) || partsToAvoid(mutable.Set.empty, tp.info).nonEmpty =>
-          tp.info.widenExpr match {
+          tp.info.widenExpr.dealias match {
             case info: SingletonType => apply(info)
             case info => range(tp.info.bottomType, apply(info))
           }
@@ -110,8 +110,11 @@ trait TypeAssigner {
           }
         case tp: ThisType if toAvoid(tp.cls) =>
           range(tp.bottomType, apply(classBound(tp.cls.classInfo)))
+        case tp: SkolemType if partsToAvoid(mutable.Set.empty, tp.info).nonEmpty =>
+          range(tp.info.bottomType, apply(tp.info))
         case tp: TypeVar if ctx.typerState.constraint.contains(tp) =>
-          val lo = ctx.typeComparer.instanceType(tp.origin, fromBelow = variance >= 0)
+          val lo = ctx.typeComparer.instanceType(
+            tp.origin, fromBelow = variance > 0 || variance == 0 && tp.hasLowerBound)
           val lo1 = apply(lo)
           if (lo1 ne lo) lo1 else tp
         case _ =>
@@ -122,7 +125,7 @@ trait TypeAssigner {
        *   1. We first try a widening conversion to the type's info with
        *      the original prefix. Since the original prefix is known to
        *      be a subtype of the returned prefix, this can improve results.
-       *   2. IThen, if the approximation result is a singleton reference C#x.type, we
+       *   2. Then, if the approximation result is a singleton reference C#x.type, we
        *      replace by the widened type, which is usually more natural.
        *   3. Finally, we need to handle the case where the prefix type does not have a member
        *      named `tp.name` anymmore. In that case, we need to fall back to Bot..Top.
@@ -131,7 +134,7 @@ trait TypeAssigner {
         if (pre eq tp.prefix)
           tp
         else tryWiden(tp, tp.prefix).orElse {
-          if (tp.isTerm && variance > 0 && !pre.isInstanceOf[SingletonType])
+          if (tp.isTerm && variance > 0 && !pre.isSingleton)
           	apply(tp.info.widenExpr)
           else if (upper(pre).member(tp.name).exists)
             super.derivedSelect(tp, pre)
@@ -193,19 +196,30 @@ trait TypeAssigner {
             TryDynamicCallType
           } else {
             val alts = tpe.denot.alternatives.map(_.symbol).filter(_.exists)
+            var packageAccess = false
             val what = alts match {
               case Nil =>
-                name.toString
+                i"$name cannot be accessed as a member of $pre"
               case sym :: Nil =>
-                if (sym.owner == pre.typeSymbol) sym.show else sym.showLocated
+                if (sym.owner.is(Package)) {
+                  packageAccess = true
+                  i"${sym.showLocated} cannot be accessed"
+                }
+                else {
+                  val symStr = if (sym.owner == pre.typeSymbol) sym.show else sym.showLocated
+                  i"$symStr cannot be accessed as a member of $pre"
+                }
               case _ =>
-                em"none of the overloaded alternatives named $name"
+                em"none of the overloaded alternatives named $name can be accessed as members of $pre"
             }
-            val where = if (ctx.owner.exists) s" from ${ctx.owner.enclosingClass}" else ""
+            val where =
+              if (!ctx.owner.exists) ""
+              else if (packageAccess) i" from nested ${ctx.owner.enclosingPackageClass}"
+              else i" from ${ctx.owner.enclosingClass}"
             val whyNot = new StringBuffer
             alts foreach (_.isAccessibleFrom(pre, superAccess, whyNot))
             if (tpe.isError) tpe
-            else errorType(ex"$what cannot be accessed as a member of $pre$where.$whyNot", pos)
+            else errorType(ex"$what$where.$whyNot", pos)
           }
         }
         else ctx.makePackageObjPrefixExplicit(tpe withDenot d)
@@ -411,6 +425,8 @@ trait TypeAssigner {
           if (sameLength(argTypes, paramNames)) pt.instantiate(argTypes)
           else wrongNumberOfTypeArgs(fn.tpe, pt.typeParams, args, tree.pos)
         }
+      case err: ErrorType =>
+        err
       case _ =>
         //println(i"bad type: $fn: ${fn.symbol} / ${fn.symbol.isType} / ${fn.symbol.info}") // DEBUG
         errorType(err.takesNoParamsStr(fn, "type "), tree.pos)
@@ -534,7 +550,7 @@ trait TypeAssigner {
     tree.withType(sym.termRef)
 
   def assignType(tree: untpd.Annotated, arg: Tree, annot: Tree)(implicit ctx: Context) =
-    tree.withType(AnnotatedType(arg.tpe.widen, Annotation(annot)))
+    tree.withType(AnnotatedType(arg.tpe, Annotation(annot)))
 
   def assignType(tree: untpd.PackageDef, pid: Tree)(implicit ctx: Context) =
     tree.withType(pid.symbol.termRef)

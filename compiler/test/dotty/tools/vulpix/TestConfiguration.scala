@@ -17,6 +17,7 @@ object TestConfiguration {
   )
 
   val classPath = mkClassPath(Jars.dottyTestDeps)
+  val runClassPath = mkClassPath(Jars.dottyLib :: Nil)
 
   def mkClassPath(classPaths: List[String]): String = {
     classPaths map { p =>
@@ -43,12 +44,14 @@ object TestConfiguration {
     } mkString(":")
   }
 
-  val yCheckOptions = Array("-Ycheck:tailrec,resolveSuper,erasure,mixin,getClass,elimStaticThis,labelDef")
+  // Ideally should be Ycheck:all
+  val yCheckOptions = Array("-Ycheck:elimJavaPackages,refchecks,splitter,arrayConstructors,erasure,capturedVars,getClass,elimStaticThis,labelDef")
 
   val basicDefaultOptions = checkOptions ++ noCheckOptions ++ yCheckOptions
-  val defaultUnoptimised = TestFlags(classPath, basicDefaultOptions)
+  val defaultUnoptimised = TestFlags(classPath, runClassPath, basicDefaultOptions)
   val defaultOptimised = defaultUnoptimised and "-optimise"
   val defaultOptions = defaultUnoptimised
+  val defaultRunWithCompilerOptions = defaultOptions.withRunClasspath(Jars.dottyRunWithCompiler.mkString(":"))
   val allowDeepSubtypes = defaultOptions without "-Yno-deep-subtypes"
   val allowDoubleBindings = defaultOptions without "-Yno-double-bindings"
   val picklingOptions = defaultUnoptimised and (
