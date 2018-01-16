@@ -83,7 +83,7 @@ yielding a type.
 
 Example:
 
-    inline type def ToNat(inline n: Int) = ~{
+    inline type def ToNat(inline n: Int) <: Nat = ~{
       if n == 0 then '[Z]
       else '[S[ToNat(n - 1)]]
     }
@@ -92,13 +92,17 @@ The right-hand side of an `inline type def` must be a splice
 containing an expression of type `scala.quoted.Type[T]`, for some type
 `T`.  A call to the macro in type position is then expanded to `T`.
 
+A type macro may have a declared upper bound, e.g. `<: Nat` in the
+example above. If an aupper bound is given, the computed type `T` must
+conform to it.  If no upper bound is given, `Any` is assumed. The
+upper bound is used to type check recursive calls.
+
 The `toNat` function can now be given a more precise type:
 
     inline def toNat(inline n: Int): ToNat(n) = ~{
       if n == 0 then 'Z
       else 'S[toNat(n - 1)]
     }
-
 
 ### Handling Recursion
 
@@ -115,6 +119,35 @@ prevent the compiler from going into an infinite loop or producing a
 stack overflow, exactly in the same way it is done for normal `inline`
 methods.
 
+### Checking Correspondence Between Types and Terms
+
+Another tricky aspect is how to ensure that the right-hand side of
+`toNat` corresponds to its declared type. In the example above it is
+easy to see that we use the same recursive decomposition of `n` in
+both cases and that the result types of each case correspond. But to
+prove this correspondence in general would require some sort of
+symbolic computation and it is not yet clear what the details of that
+would be.
+
+But there is a simpler way: We can _delay_ checking the precise result
+type of the body of an `macro` until the macro is inlined.  The
+declared result type can be fully unfolded based on the static
+information available at the inlining point. At that point the inlined
+expansion of the macro is type-checked using the fully computed types.
+
+That still begs the question how we are going to typecheck the
+_definition_ of a macro. The idea is to to approximate any computed
+type at the definition that depends on unknown parameters by its upper
+bound.
+
+E.g., in the case of `toNat`, the type of the recursive call `toNat(n
+- 1)` would be the upper bound `Nat` of the declared return type
+`ToNat(n - 1)`. This gives `S[Nat]` as the type of the else
+clause. The full type of the right hand side `Z | S[Nat]` would then
+be checked against the upper approximation of the result type
+`Nat`. This succeeds, so the definition is deemed type-correct.
+
+
 ### Second Step: Nicer Syntax for Type Definitions
 
 The syntax for `ToNat` was a bit clunky. This is no outlier - it turns out
@@ -124,9 +157,9 @@ expression which returns a quoted type in each branch. We can cut down
 this boilerplate by introducing a shorthand form for parameterized
 type definitions, which allows us to express `ToNat` as follows:
 
-    type ToNat(n: Int) =
+    type ToNat(n: Int) <: Nat =
       if n == 0 then Z
-      else S[ToNat(n = 1)]
+      else S[ToNat(n - 1)]
 
 The short form expands precisely to the previous definition of `ToNat`.
 To get from a short form type definition to a long form type macro,
@@ -189,11 +222,12 @@ if they start with a lower-case letter and as free otherwise. This
 mirrors the convention for names, but is not very visible. Requiring
 `type` prefixes instead would make programs clearer.
 
-In the code above, the macro interpreter would perform an implicit
-search for the type `N =:= S[type N1]` where `N` is the actual type
-passed to `toInt` and `N1` is a type variable bound by the search.
-If the search succeeds, it returns one plus the result of evaluating
-`toInt[N1]`. If the search fails it returns zero.
+In last clause of the code above, the macro interpreter would perform
+an implicit search for the type `N =:= S[type N1]` where `N` is the
+actual type passed to `toInt` and `N1` is a type variable bound by the
+search.  If the search succeeds, it returns one plus the result of
+evaluating `toInt[N1]`. If the search fails, it results in compilation
+failure.
 
 The result of `toInt[S[S[Z]]]` would hence be the integer `1 + (1 +
 0)`, which can be constant-folded to `2`. Alternatvely, we could drop
@@ -217,7 +251,7 @@ Consider the standard definition of `HList`s:
 
 A type-level length function on HLists can be written as follows:
 
-    type Length[Xs <: HList] = {
+    type Length[Xs <: HList] <: Nat = {
       case Xs =:= HNil => Z
       case Xs =:= HCons[type X, type Xs1] => S[Length[Xs1]]
     }
@@ -225,21 +259,21 @@ A type-level length function on HLists can be written as follows:
 If we don't want to introduce the type variable `X`, which is unused, we could
 also formulate the type pattern with `<:<` instead of `=:=`:
 
-    type Length[Xs <: HList] = {
+    type Length[Xs <: HList] <: Nat = {
       case Xs <:< HNil => Z
       case Xs <:< HCons[_, type Xs1] => S[Length[Xs1]]
     }
 
 Here's a `Concat` type with associated `concat` method:
 
-    type Concat[Xs <: HList, Ys <: HList] = {
+    type Concat[Xs <: HList, Ys <: HList] <: HList = {
       case Xs =:= HNil => Ys
       case Xs =:= HCons[type X, type Xs1] => HCons[X, Concat[Xs1, Ys]]
     }
 
     inline def concat[Xs <: HList, Ys <: HList](xs: Xs, ys: Ys): Concat[Xs, Ys] = ~ {
       case Xs =:= HNil => 'ys
-      case Xs =:= HCons[type X, type Xs1] => '(xs.hd :: concat(xs.tl, ys))
+      case Xs =:= HCons[type X, type Xs1] => 'HCons(xs.hd, concat(xs.tl, ys))
     }
 
 ### Typechecking Query Conditionals
@@ -283,12 +317,12 @@ Using this device we can make the conversions in the `concat` function above exp
 
 With the projected identification of tuples and HLists, we can reformulate _length_ and _concat_ as follows:
 
-    type Length[Xs <: HList] = {
+    type Length[Xs <: Tuple] <: Nat = {
       case Xs =:= () => Z
       case Xs =:= (_, type Xs1) => S[Length[Xs1]]
     }
 
-    type Concat[Xs <: Tuple, Ys <: Tuple] = {
+    type Concat[Xs <: Tuple, Ys <: Tuple] <: Tuple = {
       case Xs =:= () => Ys
       case Xs =:= (type X, type Xs1) => (X, Concat[Xs1, Ys])
     }
@@ -300,7 +334,7 @@ With the projected identification of tuples and HLists, we can reformulate _leng
 
 Here's another operation, _reverse_:
 
-    type Reverse[Xs <: Tuple] = {
+    type Reverse[Xs <: Tuple] <: Tuple = {
       case Xs =:= () => ()
       case Xs =:= (type X, type Xs1) => Concat[Reverse[Xs1], (X,())]
     }
@@ -347,7 +381,7 @@ Here's a type function that returns the result of comparing two `Nat`
 types `X` and `Y`, returning `True` iff the peano number defined by
 `X` is smaller than the peano number defined by `Y` and `False otherwise:
 
-    type < [X <: Nat, Y <: Nat] = {
+    type < [X <: Nat, Y <: Nat] <: Bool = {
       case X =:= Z, Y =:= S[type T1] => True
       case X =:= S[type X1], Y =:= S[type Y1] => Less[X1, Y1]
       case _ => False
