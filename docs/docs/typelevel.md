@@ -140,8 +140,8 @@ _definition_ of a macro. The idea is to to approximate any computed
 type at the definition that depends on unknown parameters by its upper
 bound.
 
-E.g., in the case of `toNat`, the type of the recursive call `toNat(n
-- 1)` would be the upper bound `Nat` of the declared return type
+E.g., in the case of `toNat`, the type of the recursive call
+`toNat(n - 1)` would be the upper bound `Nat` of the declared return type
 `ToNat(n - 1)`. This gives `S[Nat]` as the type of the else
 clause. The full type of the right hand side `Z | S[Nat]` would then
 be checked against the upper approximation of the result type
