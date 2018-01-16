@@ -526,23 +526,26 @@ trait ParallelTesting extends RunnerOrchestration { self =>
                     }.mkString("\n")
                       .replaceFirst("@scala\\.annotation\\.internal\\.SourceFile\\([^\\)]+\\)( |\\n   )", "") // FIXME: should not be printed in the decompiler
 
-                    checkDiff(output, checkFile, testSource, 0) match {
-                      case Some(diff) =>
-                        println("Expected:")
-                        println(checkFile)
-                        println("Actual output;")
-                        println(output)
-                        println("Diff;")
-                        echo(diff)
-                        addFailureInstruction(diff)
+                    val check: String = Source.fromFile(checkFile).getLines().mkString("\n")
 
-                        // Print build instructions to file and summary:
-                        val buildInstr = testSource.buildInstructions(0, rep.warningCount)
-                        addFailureInstruction(buildInstr)
 
-                        // Fail target:
-                        failTestSource(testSource)
-                      case None =>
+                    if (output != check) {
+                      val outFile = dotty.tools.io.File(checkFile.toPath).addExtension(".out")
+                      outFile.writeAll(output)
+                      val msg =
+                        s"""Output differed for test $name, use the following command to see the diff:
+                           |  > diff $checkFile $outFile
+                        """.stripMargin
+
+                      echo(msg)
+                      addFailureInstruction(msg)
+
+                      // Print build instructions to file and summary:
+                      val buildInstr = testSource.buildInstructions(0, rep.warningCount)
+                      addFailureInstruction(buildInstr)
+
+                      // Fail target:
+                      failTestSource(testSource)
                     }
                   case _ =>
                 }

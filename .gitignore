@@ -71,3 +71,5 @@ compiler/test/debug/Gen.jar
 compiler/before-pickling.txt
 compiler/after-pickling.txt
 *.dotty-ide-version
+
+*.decompiled.out
