@@ -17,7 +17,7 @@ import com.vladsch.flexmark.ext.gfm.tasklist.TaskListExtension
 import com.vladsch.flexmark.ext.emoji.EmojiExtension
 import com.vladsch.flexmark.ext.autolink.AutolinkExtension
 import com.vladsch.flexmark.ext.anchorlink.AnchorLinkExtension
-import com.vladsch.flexmark.ext.front.matter.YamlFrontMatterExtension
+import com.vladsch.flexmark.ext.yaml.front.matter.YamlFrontMatterExtension
 import com.vladsch.flexmark.util.options.{ DataHolder, MutableDataSet }
 
 import dotc.core.Contexts.Context

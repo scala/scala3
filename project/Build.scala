@@ -392,14 +392,14 @@ object Build {
     }.evaluated,
 
     libraryDependencies ++= Seq(
-      "com.vladsch.flexmark" % "flexmark" % "0.11.1",
-      "com.vladsch.flexmark" % "flexmark-ext-gfm-tasklist" % "0.11.1",
-      "com.vladsch.flexmark" % "flexmark-ext-gfm-tables" % "0.11.1",
-      "com.vladsch.flexmark" % "flexmark-ext-autolink" % "0.11.1",
-      "com.vladsch.flexmark" % "flexmark-ext-anchorlink" % "0.11.1",
-      "com.vladsch.flexmark" % "flexmark-ext-emoji" % "0.11.1",
-      "com.vladsch.flexmark" % "flexmark-ext-gfm-strikethrough" % "0.11.1",
-      "com.vladsch.flexmark" % "flexmark-ext-yaml-front-matter" % "0.11.1",
+      "com.vladsch.flexmark" % "flexmark" % "0.28.32",
+      "com.vladsch.flexmark" % "flexmark-ext-gfm-tasklist" % "0.28.32",
+      "com.vladsch.flexmark" % "flexmark-ext-gfm-tables" % "0.28.32",
+      "com.vladsch.flexmark" % "flexmark-ext-autolink" % "0.28.32",
+      "com.vladsch.flexmark" % "flexmark-ext-anchorlink" % "0.28.32",
+      "com.vladsch.flexmark" % "flexmark-ext-emoji" % "0.28.32",
+      "com.vladsch.flexmark" % "flexmark-ext-gfm-strikethrough" % "0.28.32",
+      "com.vladsch.flexmark" % "flexmark-ext-yaml-front-matter" % "0.28.32",
       Dependencies.`jackson-dataformat-yaml`,
       "nl.big-o" % "liqp" % "0.6.7"
     )
