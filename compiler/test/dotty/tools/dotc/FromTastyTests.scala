@@ -28,69 +28,25 @@ class FromTastyTests extends ParallelTesting {
     implicit val testGroup: TestGroup = TestGroup("posTestFromTasty")
     val (step1, step2) = compileTastyInDir("../tests/pos", defaultOptions,
       blacklist = Set(
-        /* assertion failed: owner discrepancy for type CC, expected: class <refinement>, found: class <refinement>
-            at scala.Predef$.assert(Predef.scala:219)
-            at dotty.tools.dotc.core.tasty.TreeUnpickler$TreeReader.symbolAtCurrent(TreeUnpickler.scala:195)
-         */
+        // Owner discrepancy for refinements
         "NoCyclicReference.scala",
         "i1795.scala",
 
-        /* Exception in thread "main" dotty.tools.dotc.core.Types$MergeError: cannot merge (implicit x$0: Test.C): Test.C#M with (x: Test.C): x.M as members of type Test.IDF(Test.ifun)
-            at dotty.tools.dotc.core.Denotations$Denotation.mergeSingleDenot$1(Denotations.scala:527)
-         */
+        // Cannot merge members
         "depfuntype.scala",
 
-        /* Exception in thread "main" java.lang.AssertionError: assertion failed: found:    collection.generic.GenericCompanion[collection.immutable.Seq](Test.a)
-            required: scala.collection.generic.GenericCompanion[
-              [X0] => scala.collection.immutable.Seq[X0] | scala.collection.mutable.Seq'[X0]
-            ]
-
-            where:    Seq  is a trait in package immutable
-                      Seq' is a trait in package mutable
-
-            tree = Test.a
-              at scala.Predef$.assert(Predef.scala:219)
-              at dotty.tools.dotc.transform.TreeChecker$Checker.adapt(TreeChecker.scala:448)
-         */
-        "hklub0.scala",
-        "i1365.scala",
-
-        /* assertion failed: position not set for Ident(u) # 1086
-	          at scala.Predef$.assert(Predef.scala:219)
-	          at dotty.tools.dotc.typer.Typer$.assertPositioned(Typer.scala:63)
-         */
-        "i0306.scala",
-
-        /* java.lang.NullPointerException
-            at dotty.tools.dotc.core.Hashable.finishHash(Hashable.scala:65)
-            at dotty.tools.dotc.core.Hashable.finishHash$(Hashable.scala:64)
-            at dotty.tools.dotc.core.Types$Type.finishHash(Types.scala:87)
-            at dotty.tools.dotc.core.Hashable.doHash(Hashable.scala:89)
-            at dotty.tools.dotc.core.Hashable.doHash$(Hashable.scala:88)
-            at dotty.tools.dotc.core.Types$Type.doHash(Types.scala:87)
-            at dotty.tools.dotc.core.Types$HKLambda.computeHash(Types.scala:2639)
-         */
+        // NPE in HKLambda.computeHash
         "i2888.scala",
         "i974.scala",
         "t3800.scala",
 
-        /* assertion failed: found:    b
-            required: b'
-
-            where:    b  is a type in method foo with bounds
-                      b' is a type in method foo with bounds
-
-            tree = 3.asInstanceOf[b]
-              at scala.Predef$.assert(Predef.scala:219)
-              at dotty.tools.dotc.transform.TreeChecker$Checker.adapt(TreeChecker.scala:448)
-         */
+        // Type miss match after unpickling
         "i2944.scala",
         "t8023.scala",
+        "hklub0.scala",
+        "i1365.scala",
 
-        /* assertion failed: position not set for Ident(bar) # 502
-            at scala.Predef$.assert(Predef.scala:219)
-            at dotty.tools.dotc.typer.Typer$.assertPositioned(Typer.scala:63)
-         */
+        // Missing position
         "i3000.scala",
         "t1203a.scala",
         "t2260.scala",
@@ -98,24 +54,12 @@ class FromTastyTests extends ParallelTesting {
         "tcpoly_ticket2096.scala",
         "t247.scala",
         "i2345.scala",
+        "i0306.scala",
 
-        /* cyclic reference involving type M
-            at dotty.tools.dotc.core.Types$CyclicReference$.apply(Types.scala:4416)
-            at dotty.tools.dotc.core.SymDenotations$SymDenotation.completeFrom(SymDenotations.scala:244)
-            at dotty.tools.dotc.core.SymDenotations$SymDenotation.completeInfo$1(SymDenotations.scala:209)
-            at dotty.tools.dotc.core.SymDenotations$SymDenotation.info(SymDenotations.scala:211)
-            at dotty.tools.dotc.core.Types$NamedType.info(Types.scala:1642)
-            at dotty.tools.dotc.core.Types$TypeRef.underlying(Types.scala:2072)
-            at dotty.tools.dotc.core.Types$Type.phantomLatticeType(Types.scala:246)
-         */
+        // cyclic type references
         "i536.scala",
 
-        /* assertion failed:  object a tree does not define methods: method $anonfun
-            expected: Set(method <init>, method $anonfun)%, %
-            defined:
-              at scala.Predef$.assert(Predef.scala:219)
-              at dotty.tools.dotc.transform.TreeChecker$Checker.typedClassDef(TreeChecker.scala:385)
-         */
+        // Anonymous method not defined
         "i3067.scala",
 
         // Infinite compilation
@@ -138,10 +82,7 @@ class FromTastyTests extends ParallelTesting {
        blacklist = Set(
          "t3613.scala",
 
-         /* position not set for DefDef(min,List(),List(List(ValDef(cmp,TypeTree[TypeRef(ThisType(TypeRef(NoPrefix,module class math)),class Ordering)],EmptyTree))),TypeTree[TypeRef(ThisType(TypeRef(NoPrefix,module class lang)),class Object)],Apply(Select(This(Ident(Tokenizer)),min),List(Ident(cmp)))) # 44104
-            at scala.Predef$.assert(Predef.scala:219)
-            at dotty.tools.dotc.typer.Typer$.assertPositioned(Typer.scala:63)
-          */
+         // Missing position
          "Course-2002-13.scala",
          "bridges.scala",
          "i2337.scala",
@@ -151,27 +92,14 @@ class FromTastyTests extends ParallelTesting {
          "scala2trait-lazyval.scala",
          "t3452f.scala",
 
-         /* assertion failed: found:    (f: Test.Fun[A, B]) => (g: Test.Fun[B, C]) => A => implicit f.Eff => implicit
-              g.Eff
-             => C
-            required: {z1 => (f: Test.Fun[A, B]) => (g: Test.Fun[B, C]) => A => implicit z1.f.Eff =>
-              implicit
-            g.Eff => C}
-
-
-            tree = closure($anonfun)
-              at scala.Predef$.assert(Predef.scala:219)
-              at dotty.tools.dotc.transform.TreeChecker$Checker.adapt(TreeChecker.scala:448)
-          */
+         // Closure type miss match
          "eff-dependent.scala",
 
-         /* dotty.tools.dotc.core.tasty.TreeUnpickler$TreeWithoutOwner
-	           at dotty.tools.dotc.core.tasty.TreeUnpickler$OwnerTree.search$1(TreeUnpickler.scala:1156)
-          */
+         // Unpickling tree without owner
          "patmat-bind-typed.scala",
          "t8395.scala",
 
-         /* Issue unpickling universes */
+         // Issue unpickling universes
          "phantom-decls-1.scala",
          "phantom-decls-3.scala",
          "phantom-decls-5.scala",
