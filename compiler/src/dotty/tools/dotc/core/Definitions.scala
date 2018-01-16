@@ -387,7 +387,6 @@ class Definitions {
     enterCompleteClassSymbol(
       ScalaPackageClass, tpnme.Singleton, PureInterfaceCreationFlags | Final,
       List(AnyClass.typeRef), EmptyScope)
-  lazy val SingletonType: TypeRef = SingletonClass.typeRef
 
   lazy val SeqType: TypeRef = ctx.requiredClassRef("scala.collection.Seq")
   def SeqClass(implicit ctx: Context) = SeqType.symbol.asClass
