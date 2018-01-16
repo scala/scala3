@@ -48,7 +48,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
   /** A test source whose files or directory of files is to be compiled
    *  in a specific way defined by the `Test`
    */
-  protected sealed trait TestSource { self =>
+  private sealed trait TestSource { self =>
     def name: String
     def outDir: JFile
     def flags: TestFlags
@@ -602,20 +602,39 @@ trait ParallelTesting extends RunnerOrchestration { self =>
       if (Properties.testsNoRun) addNoRunWarning()
       else runMain(testSource.runClassPath) match {
         case Success(_) if !checkFile.isDefined || !checkFile.get.exists => // success!
-        case Success(output) =>
-          checkDiff(output, checkFile.get, testSource, warnings) match {
-            case Some(msg) =>
-              echo(msg)
-              addFailureInstruction(msg)
+        case Success(output) => {
+          val outputLines = output.lines.toArray :+ DiffUtil.EOF
+          val checkLines: Array[String] = Source.fromFile(checkFile.get).getLines().toArray :+ DiffUtil.EOF
+          val sourceTitle = testSource.title
 
-              // Print build instructions to file and summary:
-              val buildInstr = testSource.buildInstructions(0, warnings)
-              addFailureInstruction(buildInstr)
+          def linesMatch =
+            outputLines
+            .zip(checkLines)
+            .forall { case (x, y) => x == y }
 
-              // Fail target:
-              failTestSource(testSource)
-            case None =>
+          if (outputLines.length != checkLines.length || !linesMatch) {
+            // Print diff to files and summary:
+            val expectedSize = DiffUtil.EOF.length max checkLines.map(_.length).max
+            val diff = outputLines.padTo(checkLines.length, "").zip(checkLines.padTo(outputLines.length, "")).map { case (act, exp) =>
+              DiffUtil.mkColoredLineDiff(exp, act, expectedSize)
+            }.mkString("\n")
+
+            val msg =
+              s"""|Output from '$sourceTitle' did not match check file.
+                  |Diff (expected on the left, actual right):
+                  |""".stripMargin + diff + "\n"
+            echo(msg)
+            addFailureInstruction(msg)
+
+            // Print build instructions to file and summary:
+            val buildInstr = testSource.buildInstructions(0, warnings)
+            addFailureInstruction(buildInstr)
+
+            // Fail target:
+            failTestSource(testSource)
           }
+        }
+
         case Failure(output) =>
           echo(s"Test '${testSource.title}' failed with output:")
           echo(output)
@@ -791,31 +810,6 @@ trait ParallelTesting extends RunnerOrchestration { self =>
         registerCompletion(actualErrors)
       }
     }
-  }
-
-  private def checkDiff(output: String, checkFile: JFile, testSource: TestSource, warnings: Int): Option[String] = {
-    val outputLines = output.lines.toArray :+ DiffUtil.EOF
-    val checkLines: Array[String] = Source.fromFile(checkFile).getLines().toArray :+ DiffUtil.EOF
-    val sourceTitle = testSource.title
-
-    def linesMatch =
-      outputLines
-        .zip(checkLines)
-        .forall { case (x, y) => x == y }
-
-    if (outputLines.length != checkLines.length || !linesMatch) {
-      // Print diff to files and summary:
-      val expectedSize = DiffUtil.EOF.length max checkLines.map(_.length).max
-      val diff = outputLines.padTo(checkLines.length, "").zip(checkLines.padTo(outputLines.length, "")).map { case (act, exp) =>
-        DiffUtil.mkColoredLineDiff(exp, act, expectedSize)
-      }.mkString("\n")
-
-      val msg =
-        s"""|Output from '$sourceTitle' did not match check file.
-            |Diff (expected on the left, actual right):
-            |""".stripMargin + diff + "\n"
-      Some(msg)
-    } else None
   }
 
   /** The `CompilationTest` is the main interface to `ParallelTesting`, it
