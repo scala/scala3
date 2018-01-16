@@ -126,7 +126,7 @@ Another tricky aspect is how to ensure that the right-hand side of
 easy to see that we use the same recursive decomposition of `n` in
 both cases and that the result types of each case correspond. But to
 prove this correspondence in general would require some sort of
-symbolic computation and it is not yet clear what the details of that
+symbolic evaluation and it is not yet clear what the details of that
 would be.
 
 But there is a simpler way: We can _delay_ checking the precise result
@@ -136,7 +136,7 @@ information available at the inlining point. At that point the inlined
 expansion of the macro is type-checked using the fully computed types.
 
 That still begs the question how we are going to typecheck the
-_definition_ of a macro. The idea is to to approximate any computed
+_definition_ of a macro. The idea is to approximate any computed
 type at the definition that depends on unknown parameters by its upper
 bound.
 
@@ -144,8 +144,8 @@ E.g., in the case of `toNat`, the type of the recursive call
 `toNat(n - 1)` would be the upper bound `Nat` of the declared return type
 `ToNat(n - 1)`. This gives `S[Nat]` as the type of the else
 clause. The full type of the right hand side `Z | S[Nat]` would then
-be checked against the upper approximation of the result type
-`Nat`. This succeeds, so the definition is deemed type-correct.
+be checked against the upper approximation of the declared result type
+`ToNat(n)`, which is again `Nat`. This succeeds, so the definition is deemed type-correct.
 
 
 ### Second Step: Nicer Syntax for Type Definitions
@@ -379,7 +379,7 @@ We can define type-level Booleans analogously to Peano numbers:
 
 Here's a type function that returns the result of comparing two `Nat`
 types `X` and `Y`, returning `True` iff the peano number defined by
-`X` is smaller than the peano number defined by `Y` and `False otherwise:
+`X` is smaller than the peano number defined by `Y` and `Falsesy` otherwise:
 
     type < [X <: Nat, Y <: Nat] <: Bool = {
       case X =:= Z, Y =:= S[type T1] => True
@@ -489,8 +489,8 @@ grammar](../internal/syntax.md).
                    |  ‘'’ ‘[’ Type ‘]’
 
     Def          ::=  ...
-                   |  ‘type’ ‘def’ DefSig ‘=’ ‘~’ SimpleExpr
-                   |  ‘type’ id [TypTypeParamClause] DefParamClauses ‘=’ Type
+                   |  ‘type’ ‘def’ DefSig [‘<:’ Type] ‘=’ ‘~’ SimpleExpr
+                   |  ‘type’ id [TypTypeParamClause] DefParamClauses [‘<:’ Type] ‘=’ Type
 
     SimpleExpr   ::=  ...
                    |  ‘{’ {Query ‘=>’ Block} ‘}’
