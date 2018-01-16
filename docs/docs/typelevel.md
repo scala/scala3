@@ -93,7 +93,7 @@ containing an expression of type `scala.quoted.Type[T]`, for some type
 `T`.  A call to the macro in type position is then expanded to `T`.
 
 A type macro may have a declared upper bound, e.g. `<: Nat` in the
-example above. If an aupper bound is given, the computed type `T` must
+example above. If an upper bound is given, the computed type `T` must
 conform to it.  If no upper bound is given, `Any` is assumed. The
 upper bound is used to type check recursive calls.
 
