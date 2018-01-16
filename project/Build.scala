@@ -772,7 +772,7 @@ object Build {
       // (you need to have `cancelable in Global := true` in your global sbt config to ctrl+c a run)
       fork in run := true,
       libraryDependencies ++= Seq(
-        "org.eclipse.lsp4j" % "org.eclipse.lsp4j" % "0.2.0",
+        "org.eclipse.lsp4j" % "org.eclipse.lsp4j" % "0.3.0",
         Dependencies.`jackson-databind`
       ),
       javaOptions := (javaOptions in `dotty-compiler-bootstrapped`).value,
