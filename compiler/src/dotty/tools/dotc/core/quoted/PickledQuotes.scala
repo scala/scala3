@@ -7,11 +7,12 @@ import dotty.tools.dotc.core.Constants.Constant
 import dotty.tools.dotc.core.Contexts._
 import dotty.tools.dotc.core.Decorators._
 import dotty.tools.dotc.core.Flags._
+import dotty.tools.dotc.core.StdNames._
 import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.core.tasty.{TastyPickler, TastyPrinter, TastyString}
 import dotty.tools.dotc.interpreter.RawQuoted
 
-import scala.runtime.quoted.Unpickler.Pickled
+import scala.reflect.ClassTag
 
 object PickledQuotes {
   import tpd._
@@ -34,6 +35,18 @@ object PickledQuotes {
   def quotedToTree(expr: quoted.Quoted)(implicit ctx: Context): Tree = expr match {
     case expr: quoted.TastyQuoted => unpickleQuote(expr)
     case expr: quoted.Liftable.ConstantExpr[_] => Literal(Constant(expr.value))
+    case expr: quoted.Type.TaggedPrimitive[_] =>
+      val tpe = expr.ct match {
+        case ClassTag.Unit => defn.UnitType
+        case ClassTag.Byte => defn.ByteType
+        case ClassTag.Char => defn.CharType
+        case ClassTag.Short => defn.ShortType
+        case ClassTag.Int => defn.IntType
+        case ClassTag.Long => defn.LongType
+        case ClassTag.Float => defn.FloatType
+        case ClassTag.Double => defn.FloatType
+      }
+      TypeTree(tpe)
     case expr: RawQuoted => expr.tree
   }
 
@@ -42,26 +55,24 @@ object PickledQuotes {
     val tastyBytes = TastyString.unpickle(expr.tasty)
     val unpickled = unpickle(tastyBytes, expr.args)
     unpickled match {
-      case PackageDef(_, (vdef: ValDef) :: Nil) => vdef.rhs
-      case PackageDef(_, (tdef: TypeDef) :: Nil) => tdef.rhs
+      case PackageDef(_, (vdef: ValDef) :: Nil) =>
+        if (vdef.name == "$quote".toTermName) vdef.rhs
+        else vdef.rhs.asInstanceOf[TypeApply].args.head
     }
   }
 
   /** Encapsulate the tree in a top level `val` or `type`
-   *    `<tree>` ==> `package _root_ { val ': Any = <tree> }`
+   *    `<tree>` ==> `package _root_ { val $quote: Any = <tree> }`
    *    or
-   *    `<type tree>` ==> `package _root_ { type ' = <tree tree> }`
+   *    `<type tree>` ==> `package _root_ { val $typeQuote: Any = null.asInstanceOf[<tree>] }`
    */
   private def encapsulateQuote(tree: Tree)(implicit ctx: Context): Tree = {
-    def encapsulatedTerm = {
-      val sym = ctx.newSymbol(ctx.owner, "'".toTermName, Synthetic, defn.AnyType, coord = tree.pos)
-      ValDef(sym, tree).withPos(tree.pos)
-    }
-
-    def encapsulatedType =
-      untpd.TypeDef("'".toTypeName, tree).withPos(tree.pos).withType(defn.AnyType)
-
-    val quoted = if (tree.isTerm) encapsulatedTerm else encapsulatedType
+    val name = (if (tree.isTerm) "$quote" else "$typeQuote").toTermName
+    val sym = ctx.newSymbol(ctx.owner, name, Synthetic, defn.AnyType, coord = tree.pos)
+    val encoded =
+      if (tree.isTerm) tree
+      else Literal(Constant(null)).select(nme.asInstanceOf_).appliedToTypeTrees(tree :: Nil)
+    val quoted = ValDef(sym, encoded).withPos(tree.pos)
     PackageDef(ref(defn.RootPackage).asInstanceOf[Ident], quoted :: Nil).withPos(tree.pos)
   }
 
