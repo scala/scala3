@@ -56,18 +56,18 @@ object PickledQuotes {
     val unpickled = unpickle(tastyBytes, expr.args)
     unpickled match {
       case PackageDef(_, (vdef: ValDef) :: Nil) =>
-        if (vdef.name == "quote".toTermName) vdef.rhs
+        if (vdef.name == "$quote".toTermName) vdef.rhs
         else vdef.rhs.asInstanceOf[TypeApply].args.head
     }
   }
 
   /** Encapsulate the tree in a top level `val` or `type`
-   *    `<tree>` ==> `package _root_ { val quote: Any = <tree> }`
+   *    `<tree>` ==> `package _root_ { val $quote: Any = <tree> }`
    *    or
-   *    `<type tree>` ==> `package _root_ { val typeQuote: Any = null.asInstanceOf[<tree>] }`
+   *    `<type tree>` ==> `package _root_ { val $typeQuote: Any = null.asInstanceOf[<tree>] }`
    */
   private def encapsulateQuote(tree: Tree)(implicit ctx: Context): Tree = {
-    val name = (if (tree.isTerm) "quote" else "typeQuote").toTermName
+    val name = (if (tree.isTerm) "$quote" else "$typeQuote").toTermName
     val sym = ctx.newSymbol(ctx.owner, name, Synthetic, defn.AnyType, coord = tree.pos)
     val encoded =
       if (tree.isTerm) tree
