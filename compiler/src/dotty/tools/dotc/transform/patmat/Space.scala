@@ -642,11 +642,11 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
     }
 
     // We are checking the possibility of `tp1 <:< tp2`, thus we should
-    // minimize `tp1` while maximize `tp2`.    See tests/patmat/3645b.scala
+    // minimize `tp1` while maximizing `tp2`. See tests/patmat/3645b.scala
     def childTypeMap(implicit ctx: Context) = new AbstractTypeMap(maximize = false) {
       def apply(t: Type): Type = t.dealias match {
         // map `ThisType` of `tp1` to a type variable
-        // precondition: `tp1` should have the shape `path.Child`, thus `ThisType` is always covariant
+        // precondition: `tp1` should have the same shape as `path.Child`, thus `ThisType` is always covariant
         case tp @ ThisType(tref) if !tref.symbol.isStaticOwner  =>
           if (tref.symbol.is(Module)) this(tref)
           else newTypeVar(TypeBounds.upper(tp.underlying))
@@ -679,7 +679,7 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
 
     // If parent contains a reference to an abstract type, then we should
     // refine subtype checking to eliminate abstract types according to
-    // variance. As this logic is only needed in exhaustivity check, thus
+    // variance. As this logic is only needed in exhaustivity check,
     // we manually patch subtyping check instead of changing TypeComparer.
     // See tests/patmat/3645b.scala
     def parentQualify = tp1.widen.classSymbol.info.parents.exists { parent =>
