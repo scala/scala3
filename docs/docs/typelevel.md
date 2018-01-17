@@ -95,7 +95,7 @@ containing an expression of type `scala.quoted.Type[T]`, for some type
 A type macro may have a declared upper bound, e.g. `<: Nat` in the
 example above. If an upper bound is given, the computed type `T` must
 conform to it.  If no upper bound is given, `Any` is assumed. The
-upper bound is used to type check recursive calls.
+upper bound is used to type-check recursive calls.
 
 The `toNat` function can now be given a more precise type:
 
@@ -130,7 +130,7 @@ symbolic evaluation and it is not yet clear what the details of that
 would be.
 
 But there is a simpler way: We can _delay_ checking the precise result
-type of the body of an `macro` until the macro is inlined.  The
+type of the body of a macro until the macro is inlined.  The
 declared result type can be fully unfolded based on the static
 information available at the inlining point. At that point the inlined
 expansion of the macro is type-checked using the fully computed types.
@@ -236,7 +236,7 @@ the use of quotes and rely on lifting to go from `Int` to
 constant without relying on constant folding:
 
     inline def toInt[N <: Nat]: Int = ~{
-      case N =: Z => 0
+      case N =:= Z => 0
       case N =:= S[type N1] => 1 + toInt[N1]
     }
 
@@ -286,7 +286,7 @@ typechecks because `=:=` (and `<:<`) will inherit from
 `U`. But we still need to explain why a search for `Xs =:= HCons[type X, type Xs1]`
 will succeed in the right hand side of the case. What happens in detail is this:
 
-When type checking a query case, the type pattern is type-checked
+When type-checking a query case, the type pattern is type-checked
 according to the usual rules. Then the guard and right-hand side are type-checked
 under the assumption that an implicit value of the type pattern is available.
 For instance, when checking
@@ -379,7 +379,7 @@ We can define type-level Booleans analogously to Peano numbers:
 
 Here's a type function that returns the result of comparing two `Nat`
 types `X` and `Y`, returning `True` iff the peano number defined by
-`X` is smaller than the peano number defined by `Y` and `Falsesy` otherwise:
+`X` is smaller than the peano number defined by `Y` and `False` otherwise:
 
     type < [X <: Nat, Y <: Nat] <: Bool = {
       case X =:= Z, Y =:= S[type T1] => True
