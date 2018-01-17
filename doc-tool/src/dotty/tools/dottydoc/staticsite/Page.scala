@@ -6,7 +6,7 @@ package staticsite
 import dotc.util.SourceFile
 import com.vladsch.flexmark.html.HtmlRenderer
 import com.vladsch.flexmark.parser.Parser
-import com.vladsch.flexmark.ext.front.matter.AbstractYamlFrontMatterVisitor
+import com.vladsch.flexmark.ext.yaml.front.matter.AbstractYamlFrontMatterVisitor
 import java.util.{ Map => JMap, List => JList }
 import java.io.{ OutputStreamWriter, BufferedWriter }
 

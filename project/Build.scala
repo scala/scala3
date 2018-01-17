@@ -391,18 +391,21 @@ object Build {
         (runMain in Compile).toTask(s""" dotty.tools.dottydoc.Main ${cp.mkString(" ")} """ + args.mkString(" "))
     }.evaluated,
 
-    libraryDependencies ++= Seq(
-      "com.vladsch.flexmark" % "flexmark" % "0.11.1",
-      "com.vladsch.flexmark" % "flexmark-ext-gfm-tasklist" % "0.11.1",
-      "com.vladsch.flexmark" % "flexmark-ext-gfm-tables" % "0.11.1",
-      "com.vladsch.flexmark" % "flexmark-ext-autolink" % "0.11.1",
-      "com.vladsch.flexmark" % "flexmark-ext-anchorlink" % "0.11.1",
-      "com.vladsch.flexmark" % "flexmark-ext-emoji" % "0.11.1",
-      "com.vladsch.flexmark" % "flexmark-ext-gfm-strikethrough" % "0.11.1",
-      "com.vladsch.flexmark" % "flexmark-ext-yaml-front-matter" % "0.11.1",
-      Dependencies.`jackson-dataformat-yaml`,
-      "nl.big-o" % "liqp" % "0.6.7"
-    )
+    libraryDependencies ++= {
+      val flexmarkVersion = "0.28.32"
+      Seq(
+        "com.vladsch.flexmark" % "flexmark" % flexmarkVersion,
+        "com.vladsch.flexmark" % "flexmark-ext-gfm-tasklist" % flexmarkVersion,
+        "com.vladsch.flexmark" % "flexmark-ext-gfm-tables" % flexmarkVersion,
+        "com.vladsch.flexmark" % "flexmark-ext-autolink" % flexmarkVersion,
+        "com.vladsch.flexmark" % "flexmark-ext-anchorlink" % flexmarkVersion,
+        "com.vladsch.flexmark" % "flexmark-ext-emoji" % flexmarkVersion,
+        "com.vladsch.flexmark" % "flexmark-ext-gfm-strikethrough" % flexmarkVersion,
+        "com.vladsch.flexmark" % "flexmark-ext-yaml-front-matter" % flexmarkVersion,
+        Dependencies.`jackson-dataformat-yaml`,
+        "nl.big-o" % "liqp" % "0.6.7"
+      )
+    }
   )
 
   lazy val `dotty-doc` = project.in(file("doc-tool")).asDottyDoc(NonBootstrapped)
@@ -772,7 +775,7 @@ object Build {
       // (you need to have `cancelable in Global := true` in your global sbt config to ctrl+c a run)
       fork in run := true,
       libraryDependencies ++= Seq(
-        "org.eclipse.lsp4j" % "org.eclipse.lsp4j" % "0.2.0",
+        "org.eclipse.lsp4j" % "org.eclipse.lsp4j" % "0.3.0",
         Dependencies.`jackson-databind`
       ),
       javaOptions := (javaOptions in `dotty-compiler-bootstrapped`).value,
@@ -902,7 +905,7 @@ object Build {
     settings(commonSettings).
     settings(
       EclipseKeys.skipProject := true,
-      version := "0.1.2", // Keep in sync with package.json
+      version := "0.1.3", // Keep in sync with package.json
 
       autoScalaLibrary := false,
       publishArtifact := false,
