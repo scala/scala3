@@ -78,9 +78,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
   protected val PrintableFlags = (SourceModifierFlags | Label | Module | Local).toCommonFlags
 
   override def nameString(name: Name): String =
-    if (name.isReplAssignName) name.decode.toString.takeWhile(_ != '$')
-    else if (ctx.settings.YdebugNames.value) name.debugString
-    else name.toString
+    if (ctx.settings.YdebugNames.value) name.debugString else name.toString
 
   override protected def simpleNameString(sym: Symbol): String =
     nameString(if (ctx.property(XprintMode).isEmpty) sym.originalName else sym.name)
