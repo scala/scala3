@@ -12,18 +12,8 @@ import scala.language.implicitConversions
 
 class DecompilerPrinter(_ctx: Context) extends RefinedPrinter(_ctx) {
 
-  override protected def modText(mods: untpd.Modifiers, kw: String): Text = { // DD
-    val suppressKw = if (enclDefIsClass) mods is ParamAndLocal else mods is Param
-    var flagMask =
-      if (ctx.settings.YdebugFlags.value) AnyFlags
-      else if (suppressKw) PrintableFlags &~ Private
-      else PrintableFlags
-    if (homogenizedView && mods.flags.isTypeFlags) flagMask &~= Implicit // drop implicit from classes
-    val flags = mods.flags & flagMask
-    val flagsText = if (flags.isEmpty) "" else keywordStr((mods.flags & flagMask).toString)
-    val annotations = mods.annotations.filter(_.tpe != defn.SourceFileAnnotType)
-    Text(annotations.map(annotText), " ") ~~ flagsText ~~ (Str(kw) provided !suppressKw)
-  }
+  override protected def filterModTextAnnots(annots: List[untpd.Tree]): List[untpd.Tree] =
+    annots.filter(_.tpe != defn.SourceFileAnnotType)
 
   override protected def blockText[T >: Untyped](trees: List[Trees.Tree[T]]): Text = {
     super.blockText(trees.filterNot(_.isInstanceOf[Closure[_]]))

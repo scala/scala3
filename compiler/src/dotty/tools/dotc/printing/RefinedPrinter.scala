@@ -690,8 +690,11 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
     if (homogenizedView && mods.flags.isTypeFlags) flagMask &~= Implicit // drop implicit from classes
     val flags = mods.flags & flagMask
     val flagsText = if (flags.isEmpty) "" else keywordStr((mods.flags & flagMask).toString)
-    Text(mods.annotations.map(annotText), " ") ~~ flagsText ~~ (Str(kw) provided !suppressKw)
+    val annotations = filterModTextAnnots(mods.annotations)
+    Text(annotations.map(annotText), " ") ~~ flagsText ~~ (Str(kw) provided !suppressKw)
   }
+
+  protected def filterModTextAnnots(annots: List[untpd.Tree]): List[untpd.Tree] = annots
 
   def optText(name: Name)(encl: Text => Text): Text =
     if (name.isEmpty) "" else encl(toText(name))
