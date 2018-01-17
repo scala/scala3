@@ -52,7 +52,7 @@ pipeline:
       - ./project/scripts/sbt sbt-dotty/scripted
     when:
       # sbt scripted tests are slow and don't run on PRs
-      event: [ push, tag, deployment ]
+      event: [ tag, deployment ]
 
   # DOCUMENTATION:
   documentation:
