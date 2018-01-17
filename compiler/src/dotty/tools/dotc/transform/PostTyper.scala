@@ -278,10 +278,14 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
           )
         case Import(expr, selectors) =>
           val exprTpe = expr.tpe
+          val seen = mutable.Set.empty[Name]
           def checkIdent(ident: untpd.Ident): Unit = {
             val name = ident.name.asTermName
             if (name != nme.WILDCARD && !exprTpe.member(name).exists && !exprTpe.member(name.toTypeName).exists)
               ctx.error(NotAMember(exprTpe, name, "value"), ident.pos)
+            if (seen(ident.name))
+              ctx.error(s"${ident.show} is renamed twice", ident.pos)
+            seen += ident.name
           }
           selectors.foreach {
             case ident: untpd.Ident                 => checkIdent(ident)
