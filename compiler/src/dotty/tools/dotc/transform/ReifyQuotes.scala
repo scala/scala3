@@ -113,6 +113,8 @@ class ReifyQuotes extends MacroTransformWithImplicits {
      */
     val importedTags = new mutable.LinkedHashMap[TypeRef, Tree]()
 
+    val explicitTags = new mutable.LinkedHashSet[TypeRef]()
+
     /** A stack of entered symbols, to be unwound after scope exit */
     var enteredSyms: List[Symbol] = Nil
 
@@ -129,7 +131,7 @@ class ReifyQuotes extends MacroTransformWithImplicits {
      *  as splices to `embedded`.
      */
     private def addTags(expr: Tree)(implicit ctx: Context): Tree =
-      if (importedTags.isEmpty) expr
+      if (importedTags.isEmpty && explicitTags.isEmpty) expr
       else {
         val itags = importedTags.toList
         val typeDefs = for ((tref, tag) <- itags) yield {
@@ -138,13 +140,43 @@ class ReifyQuotes extends MacroTransformWithImplicits {
           val original = tref.symbol.asType
           val local = original.copy(
             owner = ctx.owner,
+            name = (original.name + "$$").toTypeName,
             flags = Synthetic,
-            info = TypeAlias(tag.tpe.select(tpnme.UNARY_~)))
-          ctx.typeAssigner.assignType(untpd.TypeDef(original.name, alias), local)
+            info = TypeAlias(tag.tpe.select(tpnme.UNARY_~))).asType
+
+          ctx.typeAssigner.assignType(untpd.TypeDef(local.name, alias), local)
         }
         importedTags.clear()
-        Block(typeDefs,
-          new TreeTypeMap(substFrom = itags.map(_._1.symbol), substTo = typeDefs.map(_.symbol))
+
+
+        val explicitTypeDefs = for (tref <- explicitTags) yield {
+          val tag = ref(tref.prefix.termSymbol)
+          val rhs = transform(tag.select(tpnme.UNARY_~))
+
+          val alias = ctx.typeAssigner.assignType(untpd.TypeBoundsTree(rhs, rhs), rhs, rhs)
+
+          val local = ctx.newSymbol(
+            owner = ctx.owner,
+            name = UniqueName.fresh("ttt".toTermName).toTypeName,
+            flags = Synthetic,
+            info = TypeAlias(tag.tpe.select(tpnme.UNARY_~)),
+            coord = tref.prefix.termSymbol.coord).asType
+
+          (tref, ctx.typeAssigner.assignType(untpd.TypeDef(local.name, alias), local))
+        }
+        val map: Map[Type, Type] = explicitTypeDefs.map(x => (x._1, x._2.symbol.typeRef)).toMap
+        val tMap = new TypeMap() {
+          override def apply(tp: Type): Type = {
+            if (map.contains(tp))
+              map.apply(tp)
+            else
+              mapOver(tp)
+          }
+        }
+
+        Block(typeDefs ++ explicitTypeDefs.map(_._2),
+          new TreeTypeMap(typeMap = tMap,
+            substFrom = itags.map(_._1.symbol), substTo = typeDefs.map(_.symbol))
             .apply(expr))
       }
 
@@ -226,8 +258,11 @@ class ReifyQuotes extends MacroTransformWithImplicits {
     def checkType(pos: Position)(implicit ctx: Context): TypeAccumulator[Unit] = new TypeAccumulator[Unit] {
       def apply(acc: Unit, tp: Type): Unit = reporting.trace(i"check type level $tp at $level") {
         tp match {
-          case tp: NamedType if tp.symbol.isSplice =>
-            if (inQuote) outer.checkType(pos).foldOver(acc, tp)
+          case tp: TypeRef if tp.symbol.isSplice =>
+            if (inQuote) {
+              explicitTags += tp
+              outer.checkType(pos).foldOver(acc, tp)
+            }
             else {
               if (tp.isTerm) spliceOutsideQuotes(pos)
               tp
