@@ -391,18 +391,21 @@ object Build {
         (runMain in Compile).toTask(s""" dotty.tools.dottydoc.Main ${cp.mkString(" ")} """ + args.mkString(" "))
     }.evaluated,
 
-    libraryDependencies ++= Seq(
-      "com.vladsch.flexmark" % "flexmark" % "0.28.32",
-      "com.vladsch.flexmark" % "flexmark-ext-gfm-tasklist" % "0.28.32",
-      "com.vladsch.flexmark" % "flexmark-ext-gfm-tables" % "0.28.32",
-      "com.vladsch.flexmark" % "flexmark-ext-autolink" % "0.28.32",
-      "com.vladsch.flexmark" % "flexmark-ext-anchorlink" % "0.28.32",
-      "com.vladsch.flexmark" % "flexmark-ext-emoji" % "0.28.32",
-      "com.vladsch.flexmark" % "flexmark-ext-gfm-strikethrough" % "0.28.32",
-      "com.vladsch.flexmark" % "flexmark-ext-yaml-front-matter" % "0.28.32",
-      Dependencies.`jackson-dataformat-yaml`,
-      "nl.big-o" % "liqp" % "0.6.7"
-    )
+    libraryDependencies ++= {
+      val flexmarkVersion = "0.28.32"
+      Seq(
+        "com.vladsch.flexmark" % "flexmark" % flexmarkVersion,
+        "com.vladsch.flexmark" % "flexmark-ext-gfm-tasklist" % flexmarkVersion,
+        "com.vladsch.flexmark" % "flexmark-ext-gfm-tables" % flexmarkVersion,
+        "com.vladsch.flexmark" % "flexmark-ext-autolink" % flexmarkVersion,
+        "com.vladsch.flexmark" % "flexmark-ext-anchorlink" % flexmarkVersion,
+        "com.vladsch.flexmark" % "flexmark-ext-emoji" % flexmarkVersion,
+        "com.vladsch.flexmark" % "flexmark-ext-gfm-strikethrough" % flexmarkVersion,
+        "com.vladsch.flexmark" % "flexmark-ext-yaml-front-matter" % flexmarkVersion,
+        Dependencies.`jackson-dataformat-yaml`,
+        "nl.big-o" % "liqp" % "0.6.7"
+      )
+    }
   )
 
   lazy val `dotty-doc` = project.in(file("doc-tool")).asDottyDoc(NonBootstrapped)
