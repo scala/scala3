@@ -600,37 +600,70 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
    *
    */
   def instantiate(tp1: Type, tp2: Type)(implicit ctx: Context): Type = {
-    // map `ThisType` of `tp1` to a type variable
-    // precondition: `tp1` should have the shape `path.Child`, thus `ThisType` is always covariant
-    val thisTypeMap = new TypeMap {
-      def apply(t: Type): Type = t match {
-        case tp @ ThisType(tref) if !tref.symbol.isStaticOwner  =>
-          if (tref.symbol.is(Module)) mapOver(tref)
-          else newTypeVar(TypeBounds.upper(tp.underlying))
+    // expose abstract type references to their bounds or tvars according to variance
+    abstract class AbstractTypeMap(maximize: Boolean)(implicit ctx: Context) extends TypeMap {
+      def expose(tp: TypeRef): Type = {
+        val lo = this(tp.info.loBound)
+        val hi = this(tp.info.hiBound)
+        val exposed =
+          if (variance == 0)
+            newTypeVar(TypeBounds(lo, hi))
+          else if (variance == 1)
+            if (maximize) hi else lo
+          else
+            if (maximize) lo else hi
+
+        debug.println(s"$tp exposed to =====> $exposed")
+        exposed
+      }
+
+      override def mapOver(tp: Type): Type = tp match {
+        case tp: TypeRef if tp.underlying.isInstanceOf[TypeBounds] =>
+          // See tests/patmat/gadt.scala  tests/patmat/exhausting.scala  tests/patmat/t9657.scala
+          expose(tp)
+
+        case AppliedType(tycon: TypeRef, args) if tycon.underlying.isInstanceOf[TypeBounds] =>
+          val args2 = args.map(this)
+          val lo = this(tycon.info.loBound).applyIfParameterized(args2)
+          val hi = this(tycon.info.hiBound).applyIfParameterized(args2)
+          val exposed =
+            if (variance == 0)
+              newTypeVar(TypeBounds(lo, hi))
+            else if (variance == 1)
+              if (maximize) hi else lo
+            else
+              if (maximize) lo else hi
+
+          debug.println(s"$tp exposed to =====> $exposed")
+          exposed
+
         case _ =>
-          mapOver(t)
+          super.mapOver(tp)
+      }
+    }
+
+    // We are checking the possibility of `tp1 <:< tp2`, thus we should
+    // minimize `tp1` while maximizing `tp2`. See tests/patmat/3645b.scala
+    def childTypeMap(implicit ctx: Context) = new AbstractTypeMap(maximize = false) {
+      def apply(t: Type): Type = t.dealias match {
+        // map `ThisType` of `tp1` to a type variable
+        // precondition: `tp1` should have the same shape as `path.Child`, thus `ThisType` is always covariant
+        case tp @ ThisType(tref) if !tref.symbol.isStaticOwner  =>
+          if (tref.symbol.is(Module)) this(tref)
+          else newTypeVar(TypeBounds.upper(tp.underlying))
+
+        case tp =>
+          mapOver(tp)
       }
     }
 
     // replace type parameter references with bounds
-    val typeParamMap = new TypeMap {
-      def apply(t: Type): Type = t match {
-        case tp: TypeRef if tp.symbol.is(TypeParam) && tp.underlying.isInstanceOf[TypeBounds] =>
-          // See tests/patmat/gadt.scala  tests/patmat/exhausting.scala  tests/patmat/t9657.scala
-          val exposed =
-            if (variance == 0) newTypeVar(tp.underlying.bounds)
-            else if (variance == 1) mapOver(tp.underlying.hiBound)
-            else mapOver(tp.underlying.loBound)
-
-          debug.println(s"$tp exposed to =====> $exposed")
-          exposed
-        case _ =>
-          mapOver(t)
-      }
+    def parentTypeMap(implicit ctx: Context) = new AbstractTypeMap(maximize = true) {
+      def apply(tp: Type): Type = mapOver(tp.dealias)
     }
 
     // replace uninstantiated type vars with WildcardType, check tests/patmat/3333.scala
-    val instUndetMap = new TypeMap {
+    def instUndetMap(implicit ctx: Context) = new TypeMap {
       def apply(t: Type): Type = t match {
         case tvar: TypeVar if !tvar.isInstantiated => WildcardType(tvar.origin.underlying.bounds)
         case _ => mapOver(t)
@@ -643,17 +676,27 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
     )
 
     val tvars = tp1.typeParams.map { tparam => newTypeVar(tparam.paramInfo.bounds) }
-    val protoTp1 = thisTypeMap(tp1.appliedTo(tvars))
+    val protoTp1 = childTypeMap.apply(tp1.appliedTo(tvars))
+
+    // If parent contains a reference to an abstract type, then we should
+    // refine subtype checking to eliminate abstract types according to
+    // variance. As this logic is only needed in exhaustivity check,
+    // we manually patch subtyping check instead of changing TypeComparer.
+    // See tests/patmat/3645b.scala
+    def parentQualify = tp1.widen.classSymbol.info.parents.exists { parent =>
+      implicit val ictx = ctx.fresh.setNewTyperState()
+      parent.argInfos.nonEmpty && childTypeMap.apply(parent) <:< parentTypeMap.apply(tp2)
+    }
 
     if (protoTp1 <:< tp2) {
       if (isFullyDefined(protoTp1, force)) protoTp1
-      else instUndetMap(protoTp1)
+      else instUndetMap.apply(protoTp1)
     }
     else {
-      val protoTp2 = typeParamMap(tp2)
-      if (protoTp1 <:< protoTp2) {
+      val protoTp2 = parentTypeMap.apply(tp2)
+      if (protoTp1 <:< protoTp2 || parentQualify) {
         if (isFullyDefined(AndType(protoTp1, protoTp2), force)) protoTp1
-        else instUndetMap(protoTp1)
+        else instUndetMap.apply(protoTp1)
       }
       else {
         debug.println(s"$protoTp1 <:< $protoTp2 = false")
