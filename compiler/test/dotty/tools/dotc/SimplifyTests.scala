@@ -164,6 +164,35 @@ abstract class SimplifyTests(val optimise: Boolean) extends DottyBytecodeTest {
         |print(8)
       """)
 
+  @Test def localDefinitionElimination =
+    check(
+      """
+        |lazy val foo = 1
+        |def bar = 2
+        |val baz = 3
+      """,
+      """
+      """)
+
+  @Test def localDefinitionNoElimination =
+    check(
+      """
+        |val j = 0 // dummy
+        |class Foo {
+        |  lazy val foo = 1
+        |  def bar = 2
+        |  val baz = 3
+        |}
+      """,
+      """
+        |class Foo {
+        |  lazy val foo = 1
+        |  def bar = 2
+        |  val baz = 3
+        |}
+      """)
+
+
   // @Test def listPatmapExample =
   //   check(
   //     """

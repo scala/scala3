@@ -159,6 +159,12 @@ class Devalify extends Optimisation {
         if (replacements.contains(t.symbol))
           deepReplacer.transform(replacements(t.symbol)).ensureConforms(t.tpe.widen)
         else t
+      case t: DefDef if !t.symbol.owner.isClass =>
+        if (timesUsed.getOrElse(t.symbol, 0) + timesUsedAsType.getOrElse(t.symbol, 0) != 0) t
+        else {
+          simplify.println(s"Dropping definition of ${t.symbol.showFullName} as not used")
+          EmptyTree
+        }
       case tree => tree
     }
 
