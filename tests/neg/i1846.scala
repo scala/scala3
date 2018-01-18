@@ -11,7 +11,6 @@ object Test {
     x match { case { "42" }.toInt   => () } // error
     x match { case { "42".toInt }   => () } // error
     x match { case Y                => () } // error
-    x match { case Y.toInt          => () } // ok
     x match { case { Y.toInt }      => () } // error
     x match { case { Y }.toInt      => () } // error
     x match { case Y.toString       => () } // error

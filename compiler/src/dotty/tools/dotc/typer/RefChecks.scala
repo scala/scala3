@@ -75,6 +75,15 @@ object RefChecks {
     }
   }
 
+  /** Check that a stable identifier pattern is indeed stable (SLS 8.1.5)
+   */
+  private def checkStableIdentPattern(tree: Tree)(implicit ctx: Context) = tree match {
+    case _: Select | _: Ident if !isWildcardArg(tree)  =>
+      if (!tree.tpe.isStable)
+        ctx.error(s"stable identifier required, but ${tree.show} found", tree.pos)
+    case _ =>
+  }
+
   /** The this-type of `cls` which should be used when looking at the types of
    *  inherited members. If `cls` has a non-trivial self type, this returns a skolem
    *  with the class type instead of the `this-type` of the class as usual.
@@ -882,6 +891,26 @@ class RefChecks extends MiniPhase { thisPhase =>
     val sym = tree.tpe.typeSymbol
     checkUndesiredProperties(sym, tree.pos)
     currentLevel.enterReference(sym, tree.pos)
+    tree
+  }
+
+  override def transformUnApply(tree: UnApply)(implicit ctx: Context): Tree = {
+    tree.patterns.foreach(checkStableIdentPattern(_))
+    tree
+  }
+
+  override def transformAlternative(tree: Alternative)(implicit ctx: Context): Tree = {
+    tree.trees.foreach(checkStableIdentPattern(_))
+    tree
+  }
+
+  override def transformBind(tree: Bind)(implicit ctx: Context): Tree = {
+     checkStableIdentPattern(tree.body)
+    tree
+  }
+
+  override def transformCaseDef(tree: CaseDef)(implicit ctx: Context) = {
+    checkStableIdentPattern(tree.pat)
     tree
   }
 }
