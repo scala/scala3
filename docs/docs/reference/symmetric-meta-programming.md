@@ -72,12 +72,17 @@ The two types can be defined in package `scala.quoted` as follows:
 
     package scala.quoted
 
-    abstract class Expr[T] {
+    sealed abstract class Expr[T] {
       def unary_~: T   // splice operation
     }
-    class Type[T] {
+    sealed abstract class Type[T] {
       type unary_~ = T  // splice type
     }
+
+Both `Expr` and `Type` are abstract and sealed, so all constructors for
+these types are provided by the system. One way to construct values of
+these types is by quoting, the other is by type-specific lifting
+operations that will be discussed later on.
 
 ### The Phase Consistency Principle
 
@@ -163,14 +168,57 @@ quote but no splice between the parameter binding of `T` and its
 usage. But the code can be made phase correct by adding a binding
 of a `Type[T]` tag:
 
-    def reflect[T, U](f: Expr[T] => Expr[U]): Expr[T => U] = {
-      val Ttag = new Type[T]
-      ’{ (x: ~Ttag) => ~f(’(x))
-    }
+    def reflect[T, U](f: Expr[T] => Expr[U])(implicit t: Type[T]): Expr[T => U] =
+      ’{ (x: ~t) => ~f(’(x))
 
-To avoid clutter, the Scala implementation will add these tags
-automatically in the case of a PCP violation involving types. As a consequence,
-types can be effectively ignored for phase consistency checking.
+In this version of `reflect`, the type of `x` is now the result of
+splicing the `Type` value `t`. This operation _is_ splice correct -- there
+is one quote and one splice between the use of `t` and its definition.
+
+To avoid clutter, the Scala implementation tries to convert any phase-incorrect
+reference to a type `T` to a type-splice, by rewriting `T` to `~implicitly[Type[T]]`.
+For instance, the user-level definition of `reflect`
+
+    def reflect[T: Type, U](f: Expr[T] => Expr[U]) Expr[T => U] =
+      ’{ (x: T) => ~f(’(x)) }
+
+would be rewritten to
+
+    def reflect[T: Type, U](f: Expr[T] => Expr[U]) Expr[T => U] =
+      ’{ (x: ~implicitly[Type[T]]) => ~f(’(x)) }
+
+The `implicitly` query succeeds because there is an implicit value of
+type `Type[T]` available (namely the evidence parameter corresponding
+to the context bound `: Type`), and the reference to that value is
+phase-correct. If that was not the case, the phase inconsistency for
+`T` would be reported as an error.
+
+### Lifting Types
+
+The previous section has shown that the metaprogramming framework has
+to be able to take a type `T` and convert it to a type tree of type
+`Type[T]` that can be reified. This means that all free variables of
+the type tree refer to types and values defined in the current stage.
+
+For a reference to a global class, this is easy: Just issue the fully
+qualified name of the class. Members of reifiable types are handled by
+just reifying the containing type together with the member name. But
+what to do for references to type parameters or local type definitions
+that are not defined in the current stage? Here, we cannot construct
+the `Type[T]` tree directly, so we need to get it from a recursive
+implicit search. For instance, to implemenent
+
+    implicitly[Type[List[T]]]
+
+where `T` is not defined in the current stage, we construct the type constructor
+of `List` applied to the splice of the result of searching for an implicit `Type[T]`:
+
+    '[List[~implicitly[Type[T]]]]
+
+This is in exactly the algorithm that Scala 2 uses to search for type tags.
+In fact Scala 2's type tag feature can be understood as a more ad-hoc version of
+`quoted.Type`. As was the case for type tags, the implicit search for a `quoted.Type`
+is handled by the compiler, using the algorithm sketched above.
 
 ### Example Expansion
 
@@ -529,7 +577,9 @@ a `List` is liftable if its element type is:
 
 In the end, `Liftable` resembles very much a serialization
 framework. Like the latter it can be derived systematically for all
-collections, case classes and enums.
+collections, case classes and enums. Note also that the implicit synthesis
+of "type-tag" values of type `Type[T]` is essentially the type-level
+analogue of lifting.
 
 Using lifting, we can now give the missing definition of `showExpr` in the introductory example:
 
