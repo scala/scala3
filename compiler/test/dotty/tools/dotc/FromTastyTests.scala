@@ -26,7 +26,7 @@ class FromTastyTests extends ParallelTesting {
     // > dotc -Ythrough-tasty -Ycheck:all <source>
 
     implicit val testGroup: TestGroup = TestGroup("posTestFromTasty")
-    val (step1, step2) = compileTastyInDir("../tests/pos", defaultOptions,
+    val (step1, step2, step3) = compileTastyInDir("../tests/pos", defaultOptions,
       blacklist = Set(
         // Owner discrepancy for refinements
         "NoCyclicReference.scala",
@@ -68,7 +68,8 @@ class FromTastyTests extends ParallelTesting {
     )
     step1.checkCompile() // Compile all files to generate the class files with tasty
     step2.checkCompile() // Compile from tasty
-    (step1 + step2).delete()
+    step3.checkCompile() // Decompile from tasty
+    (step1 + step2 + step3).delete()
   }
 
   @Test def runTestFromTasty: Unit = {
@@ -78,7 +79,7 @@ class FromTastyTests extends ParallelTesting {
     // > dotr Test
 
     implicit val testGroup: TestGroup = TestGroup("runTestFromTasty")
-    val (step1, step2) = compileTastyInDir("../tests/run", defaultOptions,
+    val (step1, step2, step3) = compileTastyInDir("../tests/run", defaultOptions,
        blacklist = Set(
          "t3613.scala",
 
@@ -116,7 +117,8 @@ class FromTastyTests extends ParallelTesting {
     )
     step1.checkCompile() // Compile all files to generate the class files with tasty
     step2.checkRuns() // Compile from tasty and run the result
-    (step1 + step2).delete()
+    step3.checkCompile() // Decompile from tasty
+    (step1 + step2 + step3).delete()
   }
 
   private implicit class tastyCompilationTuples(tup: (CompilationTest, CompilationTest)) {

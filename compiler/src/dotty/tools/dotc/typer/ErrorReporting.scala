@@ -4,12 +4,9 @@ package typer
 
 import ast._
 import core._
-import Trees._
 import Types._, ProtoTypes._, Contexts._, Decorators._, Denotations._, Symbols._
-import Applications._, Implicits._, Flags._
+import Implicits._, Flags._
 import util.Positions._
-import printing.{Showable, RefinedPrinter}
-import scala.collection.mutable
 import java.util.regex.Matcher.quoteReplacement
 import reporting.diagnostic.Message
 import reporting.diagnostic.messages._
