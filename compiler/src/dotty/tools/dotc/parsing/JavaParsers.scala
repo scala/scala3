@@ -132,8 +132,8 @@ object JavaParsers {
 
     def makeSyntheticParam(count: Int, tpt: Tree): ValDef =
       makeParam(nme.syntheticParamName(count), tpt)
-    def makeParam(name: TermName, tpt: Tree): ValDef =
-      ValDef(name, tpt, EmptyTree).withMods(Modifiers(Flags.JavaDefined | Flags.ParamAccessor))
+    def makeParam(name: TermName, tpt: Tree, defaultValue: Tree = EmptyTree): ValDef =
+      ValDef(name, tpt, defaultValue).withMods(Modifiers(Flags.JavaDefined | Flags.ParamAccessor))
 
     def makeConstructor(formals: List[Tree], tparams: List[TypeDef], flags: FlagSet = Flags.JavaDefined) = {
       val vparams = formals.zipWithIndex.map { case (p, i) => makeSyntheticParam(i + 1, p) }
@@ -772,7 +772,18 @@ object JavaParsers {
       val name = identForType()
       val (statics, body) = typeBody(AT, name, List())
       val constructorParams = body.collect {
-        case dd: DefDef => makeParam(dd.name, dd.tpt)
+        case dd: DefDef =>
+          val hasDefault =
+            dd.mods.annotations.exists {
+              case Apply(Select(New(Select(_, tpnme.AnnotationDefaultATTR)), nme.CONSTRUCTOR), Nil) =>
+                true
+              case _ =>
+                false
+            }
+          // If the annotation has a default value we don't need to parse it, providing
+          // any value at all is enough to typecheck usages of annotations correctly.
+          val defaultParam = if (hasDefault) unimplementedExpr else EmptyTree
+          makeParam(dd.name, dd.tpt, defaultParam)
       }
       val constr = DefDef(nme.CONSTRUCTOR,
         List(), List(constructorParams), TypeTree(), EmptyTree).withMods(Modifiers(Flags.JavaDefined))
