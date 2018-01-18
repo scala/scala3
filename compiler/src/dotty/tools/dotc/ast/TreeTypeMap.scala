@@ -7,6 +7,7 @@ import Types._, Contexts._, Constants._, Names._, Flags._
 import SymDenotations._, Symbols._, Annotations._, Trees._, Symbols._
 import Denotations._, Decorators._
 import dotty.tools.dotc.transform.SymUtils._
+import core.tasty.TreePickler.Hole
 
 /** A map that applies three functions and a substitution together to a tree and
  *  makes sure they are coordinated so that the result is well-typed. The functions are
@@ -115,6 +116,8 @@ class TreeTypeMap(
           val guard1 = tmap.transform(guard)
           val rhs1 = tmap.transform(rhs)
           cpy.CaseDef(cdef)(pat1, guard1, rhs1)
+        case Hole(n, args) =>
+          Hole(n, args.mapConserve(transform)).withPos(tree.pos).withType(mapType(tree.tpe))
         case tree1 =>
           super.transform(tree1)
       }
@@ -154,7 +157,7 @@ class TreeTypeMap(
       assert(!to.exists(substFrom contains _))
       assert(!from.exists(newOwners contains _))
       assert(!to.exists(oldOwners contains _))
-      newMap(
+      new TreeTypeMap(
         typeMap,
         treeMap,
         from ++ oldOwners,
@@ -162,16 +165,6 @@ class TreeTypeMap(
         from ++ substFrom,
         to ++ substTo)
     }
-
-  /** A new map of the same class this one */
-  protected def newMap(
-      typeMap: Type => Type,
-      treeMap: Tree => Tree,
-      oldOwners: List[Symbol],
-      newOwners: List[Symbol],
-      substFrom: List[Symbol],
-      substTo: List[Symbol])(implicit ctx: Context) =
-    new TreeTypeMap(typeMap, treeMap, oldOwners, newOwners, substFrom, substTo)
 
   /** Apply `typeMap` and `ownerMap` to given symbols `syms`
    *  and return a treemap that contains the substitution
