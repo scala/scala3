@@ -288,7 +288,7 @@ class TreeChecker extends Phase with SymTransformer {
     }
 
     def checkNotRepeated(tree: Tree)(implicit ctx: Context): tree.type = {
-      def allowedRepeated = (tree.symbol.flags is Case) && tree.tpe.widen.isRepeatedParam
+      def allowedRepeated = tree.tpe.widen.isRepeatedParam
 
       assert(!tree.tpe.widen.isRepeatedParam || allowedRepeated, i"repeated parameter type not allowed here: $tree")
       tree
