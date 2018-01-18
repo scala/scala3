@@ -955,7 +955,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
           }
         val dummyArg = dummyTreeOfType(ownType)
         val unapplyApp = typedExpr(untpd.TypedSplice(Apply(unapplyFn, dummyArg :: Nil)))
-        def unapplyImplicits(unapp: Tree = unapplyApp): List[Tree] = unapp match {
+        def unapplyImplicits(unapp: Tree): List[Tree] = unapp match {
           case Apply(Apply(unapply, `dummyArg` :: Nil), args2) => assert(args2.nonEmpty); args2
           case Apply(unapply, `dummyArg` :: Nil) => Nil
           case Inlined(u, _, _) => unapplyImplicits(u)
@@ -982,7 +982,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
             List.fill(argTypes.length - args.length)(WildcardType)
         }
         val unapplyPatterns = (bunchedArgs, argTypes).zipped map (typed(_, _))
-        val result = assignType(cpy.UnApply(tree)(unapplyFn, unapplyImplicits(), unapplyPatterns), ownType)
+        val result = assignType(cpy.UnApply(tree)(unapplyFn, unapplyImplicits(unapplyApp), unapplyPatterns), ownType)
         unapp.println(s"unapply patterns = $unapplyPatterns")
         if ((ownType eq selType) || ownType.isError) result
         else tryWithClassTag(Typed(result, TypeTree(ownType)), selType)

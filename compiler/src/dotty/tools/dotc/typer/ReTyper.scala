@@ -54,13 +54,13 @@ class ReTyper extends Typer {
 
   override def typedTyped(tree: untpd.Typed, pt: Type)(implicit ctx: Context): Tree = {
     assertTyped(tree)
-    val type1 = checkSimpleKinded(typedType(tree.tpt))
-    val tree1 = tree.expr match {
+    val tpt1 = checkSimpleKinded(typedType(tree.tpt))
+    val expr1 = tree.expr match {
       case id: untpd.Ident if (ctx.mode is Mode.Pattern) && untpd.isVarPattern(id) && (id.name == nme.WILDCARD || id.name == nme.WILDCARD_STAR) =>
-        tree.expr.withType(type1.tpe)
+        tree.expr.withType(tpt1.tpe)
       case _ => typed(tree.expr)
     }
-   untpd.cpy.Typed(tree)(tree1, type1).withType(tree.typeOpt)
+   untpd.cpy.Typed(tree)(expr1, tpt1).withType(tree.typeOpt)
   }
 
   override def typedTypeTree(tree: untpd.TypeTree, pt: Type)(implicit ctx: Context): TypeTree =
