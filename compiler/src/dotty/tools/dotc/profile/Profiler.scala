@@ -190,14 +190,14 @@ private [profile] class RealProfiler(reporter : ProfileReporter)(implicit ctx: C
 
 }
 
-object EventType extends Enumeration {
-  type value = Value
+case class EventType(name: String)
+object EventType {
   //main thread with other tasks
-  val MAIN = Value("main")
+  val MAIN = EventType("main")
   //other task ( background thread)
-  val BACKGROUND = Value("background")
+  val BACKGROUND = EventType("background")
   //total for compile
-  val GC = Value("GC")
+  val GC = EventType("GC")
 }
 
 sealed trait ProfileReporter {
@@ -244,7 +244,7 @@ class StreamProfileReporter(out:PrintWriter) extends ProfileReporter {
   override def reportForeground(profiler: RealProfiler, threadRange: ProfileRange): Unit = {
     reportCommon(EventType.MAIN, profiler, threadRange)
   }
-  private def reportCommon(tpe:EventType.value, profiler: RealProfiler, threadRange: ProfileRange): Unit = {
+  private def reportCommon(tpe:EventType, profiler: RealProfiler, threadRange: ProfileRange): Unit = {
     out.println(s"$tpe,${threadRange.start.snapTimeNanos},${threadRange.end.snapTimeNanos},${profiler.id},${threadRange.phase.id},${threadRange.phase.phaseName.replace(',', ' ')},${threadRange.purpose},${threadRange.taskCount},${threadRange.thread.getId},${threadRange.thread.getName},${threadRange.runNs},${threadRange.idleNs},${threadRange.cpuNs},${threadRange.userNs},${threadRange.allocatedBytes},${threadRange.end.heapBytes} ")
   }
 
