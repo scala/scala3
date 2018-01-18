@@ -313,6 +313,9 @@ object Denotations {
     def requiredClass(name: PreName)(implicit ctx: Context): ClassSymbol =
       info.member(name.toTypeName).requiredSymbol(_.isClass).asClass
 
+    def requiredType(name: PreName)(implicit ctx: Context): TypeSymbol =
+      info.member(name.toTypeName).requiredSymbol(_.isType).asType
+
     /** The alternative of this denotation that has a type matching `targetType` when seen
      *  as a member of type `site`, `NoDenotation` if none exists.
      */

@@ -22,7 +22,7 @@ import dotty.tools.dotc.core.quoted._
 /** Translates quoted terms and types to `unpickle` method calls.
  *  Checks that the phase consistency principle (PCP) holds.
  */
-class ReifyQuotes extends MacroTransform {
+class ReifyQuotes extends MacroTransformWithImplicits {
   import ast.tpd._
 
   override def phaseName: String = "reifyQuotes"
