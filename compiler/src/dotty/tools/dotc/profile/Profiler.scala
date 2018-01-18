@@ -2,11 +2,10 @@ package dotty.tools.dotc.profile
 
 import java.io.{FileWriter, PrintWriter}
 import java.lang.management.ManagementFactory
+import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
 import javax.management.openmbean.CompositeData
 import javax.management.{Notification, NotificationEmitter, NotificationListener}
-
-import scala.collection.mutable
 
 import dotty.tools.dotc.core.Phases.Phase
 import dotty.tools.dotc.core.Contexts.Context
@@ -20,96 +19,66 @@ object Profiler {
       else ConsoleProfileReporter
       new RealProfiler(reporter)
     }
+
+  private[profile] val emptySnap = ProfileSnap(0, "", 0, 0, 0, 0, 0, 0)
 }
-case class GcEventData(pool:String, gcStartMillis:Long, gcEndMillis:Long)
-//TODO separate the main thread wall clock time from the background threads times
-case class ProfileCounters(wallClockTimeNanos : Long,
-                           idleTimeNanos:Long, cpuTimeNanos: Long, userTimeNanos: Long,
-                           allocatedBytes:Long, retainedHeapBytes:Long, gcTimeMillis:Long) {
-  def +(that: ProfileCounters) = {
-    ProfileCounters(
-      wallClockTimeNanos = this.wallClockTimeNanos + that.wallClockTimeNanos,
-      idleTimeNanos = this.idleTimeNanos + that.idleTimeNanos,
-      cpuTimeNanos = this.cpuTimeNanos + that.cpuTimeNanos,
-      userTimeNanos = this.userTimeNanos + that.userTimeNanos,
-      allocatedBytes = this.allocatedBytes + that.allocatedBytes,
-      retainedHeapBytes = this.retainedHeapBytes + that.retainedHeapBytes,
-      gcTimeMillis = this.gcTimeMillis + that.gcTimeMillis)
-  }
 
-  def -(that: ProfileCounters) = {
-    ProfileCounters(
-      wallClockTimeNanos = this.wallClockTimeNanos - that.wallClockTimeNanos,
-      idleTimeNanos = this.idleTimeNanos - that.idleTimeNanos,
-      cpuTimeNanos = this.cpuTimeNanos - that.cpuTimeNanos,
-      userTimeNanos = this.userTimeNanos - that.userTimeNanos,
-      allocatedBytes = this.allocatedBytes - that.allocatedBytes,
-      retainedHeapBytes = this.retainedHeapBytes - that.retainedHeapBytes,
-      gcTimeMillis = this.gcTimeMillis - that.gcTimeMillis)
-  }
+case class GcEventData(pool:String, reportTimeNs: Long, gcStartMillis:Long, gcEndMillis:Long, name:String, action:String, cause:String, threads:Long)
 
-  def updateHeap(heapDetails: ProfileCounters) = {
-    copy(retainedHeapBytes = heapDetails.retainedHeapBytes)
+case class ProfileSnap(threadId: Long, threadName: String, snapTimeNanos : Long,
+                       idleTimeNanos:Long, cpuTimeNanos: Long, userTimeNanos: Long,
+                       allocatedBytes:Long, heapBytes:Long) {
+  def updateHeap(heapBytes:Long) = {
+    copy(heapBytes = heapBytes)
   }
+}
+case class ProfileRange(start: ProfileSnap, end:ProfileSnap, phase:Phase, id:Int, purpose:String, thread:Thread) {
+  def allocatedBytes = end.allocatedBytes - start.allocatedBytes
+
+  def userNs = end.userTimeNanos - start.userTimeNanos
+
+  def cpuNs = end.cpuTimeNanos - start.cpuTimeNanos
+
+  def idleNs = end.idleTimeNanos - start.idleTimeNanos
+
+  def runNs = end.snapTimeNanos - start.snapTimeNanos
+
 
   private def toMillis(ns: Long) = ns / 1000000.0D
 
   private def toMegaBytes(bytes: Long) = bytes / 1000000.0D
 
-  def wallClockTimeMillis = toMillis(wallClockTimeNanos)
 
-  def idleTimeMillis = toMillis(idleTimeNanos)
+  def wallClockTimeMillis = toMillis(end.snapTimeNanos - start.snapTimeNanos)
 
-  def cpuTimeMillis = toMillis(cpuTimeNanos)
+  def idleTimeMillis = toMillis(end.idleTimeNanos - start.idleTimeNanos)
 
-  def userTimeMillis = toMillis(userTimeNanos)
+  def cpuTimeMillis = toMillis(end.cpuTimeNanos - start.cpuTimeNanos)
 
-  def allocatedMB = toMegaBytes(allocatedBytes)
+  def userTimeMillis = toMillis(end.userTimeNanos - start.userTimeNanos)
 
-  def retainedHeapMB = toMegaBytes(retainedHeapBytes)
+  def allocatedMB = toMegaBytes(end.allocatedBytes - start.allocatedBytes)
 
+  def retainedHeapMB = toMegaBytes(end.heapBytes - start.heapBytes)
 }
 
 sealed trait Profiler {
-  /** Register an action. The action may be in the main thread or more typically in a background thread.
-   * registration may occur in a different thread to execution
-   */
-  private[profile] def registerInPhase(action: InPhase): Unit
-
-  /** Start to record an action. The action may be in the main thread or more typically in a background thread
-   */
-  private[profile] def beforeInPhase(action: InPhase): ProfileCounters
-
-  /** Called after an action completes work
-   */
-  private[profile] def afterInPhase(action: InPhase, counterBefore: ProfileCounters, idleNs: Long): Unit
 
   def finished(): Unit
 
-  def beforePhase(phase: Phase): ProfileCounters
+  def beforePhase(phase: Phase): ProfileSnap
 
-  def afterPhase(phase: Phase, profileBefore: ProfileCounters): Unit
-
-  protected val emptySnap = ProfileCounters(0, 0, 0, 0, 0, 0, 0)
+  def afterPhase(phase: Phase, profileBefore: ProfileSnap): Unit
 }
-private[profile] object NoOpProfiler extends Profiler {
+private [profile] object NoOpProfiler extends Profiler {
 
-  private[profile] override def registerInPhase(action: InPhase): Unit = ()
-  /** Start to record an action. The action may be in the main thread or more typically in a background thread
-   */
-  private[profile] override def beforeInPhase(action: InPhase): ProfileCounters = emptySnap
+  override def beforePhase(phase: Phase): ProfileSnap = Profiler.emptySnap
 
-  /** Called after an action completes work
-   */
-  private[profile] override def afterInPhase(action: InPhase, counterBefore: ProfileCounters, idleNs: Long): Unit = ()
-
-  override def beforePhase(phase: Phase): ProfileCounters = emptySnap
-
-  override def afterPhase(phase: Phase, profileBefore: ProfileCounters): Unit = ()
+  override def afterPhase(phase: Phase, profileBefore: ProfileSnap): Unit = ()
 
   override def finished(): Unit = ()
 }
-private[profile] object RealProfiler {
+private [profile] object RealProfiler {
   import scala.collection.JavaConverters._
   val runtimeMx = ManagementFactory.getRuntimeMXBean
   val memoryMx = ManagementFactory.getMemoryMXBean
@@ -121,7 +90,11 @@ private[profile] object RealProfiler {
   private val idGen = new AtomicInteger()
 }
 
-private[profile] class RealProfiler(reporter : ProfileReporter)(implicit ctx: Context) extends Profiler with NotificationListener {
+private [profile] class RealProfiler(reporter : ProfileReporter)(implicit ctx: Context) extends Profiler with NotificationListener {
+  def completeBackground(threadRange: ProfileRange): Unit = {
+    reporter.reportBackground(this, threadRange)
+  }
+
   def outDir = ctx.settings.outputDir.value
 
   val id = RealProfiler.idGen.incrementAndGet()
@@ -132,32 +105,22 @@ private[profile] class RealProfiler(reporter : ProfileReporter)(implicit ctx: Co
 
   private val mainThread = Thread.currentThread()
 
-  private def snap: ProfileCounters = {
+  private[profile] def snapThread(): ProfileSnap = {
     import RealProfiler._
-    ProfileCounters(
-      wallClockTimeNanos = System.nanoTime(),
-      idleTimeNanos = 0L,
+    val current = Thread.currentThread()
+
+    ProfileSnap(
+      threadId = current.getId,
+      threadName = current.getName,
+      snapTimeNanos = System.nanoTime(),
+      idleTimeNanos = 0,
       cpuTimeNanos = threadMx.getCurrentThreadCpuTime,
       userTimeNanos = threadMx.getCurrentThreadUserTime,
       allocatedBytes = threadMx.getThreadAllocatedBytes(Thread.currentThread().getId),
-      retainedHeapBytes = memoryMx.getHeapMemoryUsage.getUsed,
-      gcTimeMillis = gcMx.foldLeft(0L) { case (sum, bean) => bean.getCollectionTime + sum }
+      heapBytes = readHeapUsage()
     )
   }
-
-  private def snapBackground(idleNs:Long): ProfileCounters = {
-    import RealProfiler._
-    ProfileCounters(
-      wallClockTimeNanos = System.nanoTime(),
-      idleTimeNanos = idleNs,
-      cpuTimeNanos = threadMx.getCurrentThreadCpuTime,
-      userTimeNanos = threadMx.getCurrentThreadUserTime,
-      allocatedBytes = threadMx.getThreadAllocatedBytes(Thread.currentThread().getId),
-      retainedHeapBytes = 0L,
-      gcTimeMillis = 0L
-
-    )
-  }
+  private def readHeapUsage() = RealProfiler.memoryMx.getHeapMemoryUsage.getUsed
 
   private def doGC: Unit = {
     System.gc()
@@ -178,6 +141,8 @@ private[profile] class RealProfiler(reporter : ProfileReporter)(implicit ctx: Co
 
   override def handleNotification(notification: Notification, handback: scala.Any): Unit = {
     import java.lang.{Long => jLong}
+    import java.lang.{Integer => jInt}
+    val reportNs = System.nanoTime()
     val data = notification.getUserData
     val seq = notification.getSequenceNumber
     val message = notification.getMessage
@@ -185,40 +150,34 @@ private[profile] class RealProfiler(reporter : ProfileReporter)(implicit ctx: Co
     val time= notification.getTimeStamp
     data match {
       case cd: CompositeData if tpe == "com.sun.management.gc.notification" =>
-        //        val name = cd.get("gcName").toString
-        //        val action = cd.get("gcAction").toString
-        //        val cause = cd.get("gcCause").toString
+        val name = cd.get("gcName").toString
+        val action = cd.get("gcAction").toString
+        val cause = cd.get("gcCause").toString
         val info = cd.get("gcInfo").asInstanceOf[CompositeData]
-        //        val duration = info.get("duration").asInstanceOf[jLong].longValue()
+        val duration = info.get("duration").asInstanceOf[jLong].longValue()
         val startTime = info.get("startTime").asInstanceOf[jLong].longValue()
         val endTime = info.get("endTime").asInstanceOf[jLong].longValue()
-        //        val threads = info.get("GcThreadCount").asInstanceOf[jLong].longValue()
-        reporter.reportGc(new GcEventData("", startTime, endTime))
+        val threads = info.get("GcThreadCount").asInstanceOf[jInt].longValue()
+        reporter.reportGc(new GcEventData("", reportNs, startTime, endTime, name, action, cause, threads))
     }
-
   }
 
-  var total = emptySnap
-
-  override def afterPhase(phase: Phase, profileBefore: ProfileCounters): Unit = {
+  override def afterPhase(phase: Phase, snapBefore: ProfileSnap): Unit = {
     assert(mainThread eq Thread.currentThread())
-    val initialSnap = snap
+    val initialSnap = snapThread()
     if (ctx.settings.YprofileExternalTool.value.contains(phase.toString)) {
       println("Profile hook stop")
       ExternalToolHook.after()
     }
     val finalSnap = if (ctx.settings.YprofileRunGcBetweenPhases.value.contains(phase.toString)) {
       doGC
-      initialSnap.updateHeap(snap)
+      initialSnap.updateHeap(readHeapUsage())
     } else initialSnap
-    val mainThreadUsage = finalSnap - profileBefore
-    threadInfo.synchronized {
-      total += mainThreadUsage
-      threadInfo(phase).afterPhase(mainThreadUsage)
-    }
+
+    reporter.reportForeground(this, new ProfileRange(snapBefore, finalSnap, phase, id, "", Thread.currentThread))
   }
 
-  override def beforePhase(phase: Phase): ProfileCounters = {
+  override def beforePhase(phase: Phase): ProfileSnap = {
     assert(mainThread eq Thread.currentThread())
     if (ctx.settings.YprofileRunGcBetweenPhases.value.contains(phase.toString))
       doGC
@@ -226,90 +185,40 @@ private[profile] class RealProfiler(reporter : ProfileReporter)(implicit ctx: Co
       println("Profile hook start")
       ExternalToolHook.before()
     }
-    threadInfo(phase) = new ThreadInfo(phase)
-    snap
+    snapThread()
   }
 
-  private val threadInfo = mutable.Map[Phase, ThreadInfo]()
-
-  /** called after an action completes work
-   */
-
-  override def registerInPhase(action: InPhase): Unit = threadInfo.synchronized{
-    threadInfo.getOrElseUpdate(action.phase, new ThreadInfo(action.phase)).registerInPhase(action)
-  }
-
-  override def beforeInPhase(action: InPhase) = snapBackground(0L)
-
-  override def afterInPhase(action: InPhase, profileBefore: ProfileCounters, idleNs: Long): Unit = threadInfo.synchronized {
-    val inPhaseUsage = snapBackground(idleNs) - profileBefore
-    threadInfo(action.phase).afterInPhase(action, inPhaseUsage)
-  }
-
-  class ThreadInfo(phase: Phase) {
-    private var otherThreadsTotalUsage = emptySnap
-    private var mainThreadUsage: ProfileCounters = _
-    private var hasInPhase = false
-    private val pending = mutable.Set[Int]()
-
-    def registerInPhase(action: InPhase): Unit = {
-      hasInPhase = true
-      pending += action.id
-    }
-
-    def afterInPhase(action: InPhase, inPhaseUsage: ProfileCounters): Unit = {
-      pending -= action.id
-      if (mainThread != Thread.currentThread()) {
-        otherThreadsTotalUsage += inPhaseUsage
-        reporter.report(RealProfiler.this, phase, EventType.TASK, action.id, action.comment, inPhaseUsage)
-        if ((pending.isEmpty) && (mainThreadUsage ne null)) {
-          reporter.report(RealProfiler.this, phase, EventType.TOTAL, -1, "--", mainThreadUsage + otherThreadsTotalUsage)
-        }
-      } else {
-        reporter.report(RealProfiler.this, phase, EventType.TASK, action.id, action.comment, inPhaseUsage)
-      }
-    }
-
-    def afterPhase(mainThreadUsage: ProfileCounters): Unit = {
-      this.mainThreadUsage = mainThreadUsage
-      val eventType = if (hasInPhase) EventType.MAIN else EventType.SINGLE
-      reporter.report(RealProfiler.this, phase, eventType, -1, "--", mainThreadUsage)
-
-      if (pending.isEmpty) {
-        reporter.report(RealProfiler.this, phase, EventType.TOTAL, -1, "--", mainThreadUsage + otherThreadsTotalUsage)
-        total += otherThreadsTotalUsage
-      } else {
-        println("late reporting for " + phase)
-      }
-    }
-  }
 }
 
-case class EventType(name: String)
-object EventType {
-  // only one report for a phase
-  val SINGLE = EventType("single")
+object EventType extends Enumeration {
+  type value = Value
   //main thread with other tasks
-  val MAIN = EventType("main")
+  val MAIN = Value("main")
   //other task ( background thread)
-  val TASK = EventType("task")
-  //total for phase
-  val TOTAL = EventType("total")
+  val BACKGROUND = Value("background")
   //total for compile
-  val ALL = EventType("all")
+  val GC = Value("GC")
 }
-sealed trait ProfileReporter {
-  def reportGc(data: GcEventData): Unit
 
-  def report(profiler: RealProfiler, phase: Phase, eventType:EventType, id:Int, desc:String, diff: ProfileCounters) : Unit
+sealed trait ProfileReporter {
+  def reportBackground(profiler: RealProfiler, threadRange: ProfileRange): Unit
+  def reportForeground(profiler: RealProfiler, threadRange: ProfileRange): Unit
+
+  def reportGc(data: GcEventData): Unit
 
   def header(profiler: RealProfiler) :Unit
   def close(profiler: RealProfiler) :Unit
 }
 
 object ConsoleProfileReporter extends ProfileReporter {
-  override def report(profiler: RealProfiler, phase: Phase, eventType:EventType, id:Int, desc:String, diff: ProfileCounters): Unit =
-    println(f"Profiler compile ${profiler.id} after phase ${phase.id}%2d:${phase.phaseName.replace(',', ' ')}%20s ${eventType.name}%10s ${desc}%20s wallClockTime: ${diff.wallClockTimeMillis}%12.4fms, idleTime: ${diff.idleTimeMillis}%12.4fms, cpuTime ${diff.cpuTimeMillis}%12.4fms, userTime ${diff.userTimeMillis}%12.4fms, allocatedBytes ${diff.allocatedMB}%12.4fMB, retainedHeapBytes ${diff.retainedHeapMB}%12.4fMB, gcTime ${diff.gcTimeMillis}%6.0fms")
+
+
+  override def reportBackground(profiler: RealProfiler, threadRange: ProfileRange): Unit =
+  // TODO
+    ???
+  override def reportForeground(profiler: RealProfiler, threadRange: ProfileRange): Unit =
+  // TODO
+    ???
 
   override def close(profiler: RealProfiler): Unit = ()
 
@@ -325,14 +234,24 @@ object ConsoleProfileReporter extends ProfileReporter {
 class StreamProfileReporter(out:PrintWriter) extends ProfileReporter {
   override def header(profiler: RealProfiler): Unit = {
     out.println(s"info, ${profiler.id}, ${profiler.outDir}")
-    out.println(s"header,id,phaseId,phaseName,type,id,comment,wallClockTimeMs,idleTimeMs,cpuTimeMs,userTimeMs,allocatedMB,retainedHeapMB,gcTimeMs")
+    out.println(s"header(main/background),startNs,endNs,runId,phaseId,phaseName,purpose,threadId,threadName,runNs,idleNs,cpuTimeNs,userTimeNs,allocatedByte,heapSize")
+    out.println(s"header(GC),startNs,endNs,startMs,endMs,name,action,cause,threads")
   }
-  override def report(profiler: RealProfiler, phase: Phase, eventType:EventType, id:Int, desc:String, diff: ProfileCounters): Unit = {
-    out.println(s"data,${profiler.id},${phase.id},${phase.phaseName.replace(',', ' ')},${eventType.name},$id,$desc, ${diff.wallClockTimeMillis},${diff.idleTimeMillis},${diff.cpuTimeMillis},${diff.userTimeMillis},${diff.allocatedMB},${diff.retainedHeapMB},${diff.gcTimeMillis}")
+
+  override def reportBackground(profiler: RealProfiler, threadRange: ProfileRange): Unit = {
+    reportCommon(EventType.BACKGROUND, profiler, threadRange)
+  }
+  override def reportForeground(profiler: RealProfiler, threadRange: ProfileRange): Unit = {
+    reportCommon(EventType.MAIN, profiler, threadRange)
+  }
+  private def reportCommon(tpe:EventType.value, profiler: RealProfiler, threadRange: ProfileRange): Unit = {
+    out.println(s"$tpe,${threadRange.start.snapTimeNanos},${threadRange.end.snapTimeNanos},${profiler.id},${threadRange.phase.id},${threadRange.phase.phaseName.replace(',', ' ')},${threadRange.purpose},${threadRange.thread.getId},${threadRange.thread.getName},${threadRange.runNs},${threadRange.idleNs},${threadRange.cpuNs},${threadRange.userNs},${threadRange.allocatedBytes},${if(tpe == EventType.MAIN) threadRange.end.heapBytes else ""}")
   }
 
   override def reportGc(data: GcEventData): Unit = {
-    out.println(s"GC,${data.gcStartMillis}, ${data.gcEndMillis}")
+    val duration = TimeUnit.MILLISECONDS.toNanos(data.gcEndMillis - data.gcStartMillis + 1)
+    val start = data.reportTimeNs - duration
+    out.println(s"${EventType.GC},$start,${data.reportTimeNs},${data.gcStartMillis}, ${data.gcEndMillis},${data.name},${data.action},${data.cause},${data.threads}")
   }
 
 

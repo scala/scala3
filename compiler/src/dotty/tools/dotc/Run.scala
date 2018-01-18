@@ -160,7 +160,8 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
 
     def runPhases(implicit ctx: Context) = {
       var lastPrintedTree: PrintedTree = NoPrintedTree
-      val profiler = Profiler()
+      val profiler = ctx.profiler
+
       for (phase <- ctx.allPhases)
         if (phase.isRunnable)
           Stats.trackTime(s"$phase ms ") {
@@ -184,6 +185,7 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
     }
 
     val runCtx = ctx.fresh
+    runCtx.setProfiler(Profiler())
     ctx.phases.foreach(_.initContext(runCtx))
     runPhases(runCtx)
     if (!ctx.reporter.hasErrors) Rewrites.writeBack()

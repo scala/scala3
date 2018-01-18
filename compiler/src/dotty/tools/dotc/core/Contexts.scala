@@ -17,7 +17,7 @@ import Comments._
 import util.Positions._
 import ast.Trees._
 import ast.untpd
-import util.{FreshNameCreator, SimpleIdentityMap, SourceFile, NoSource}
+import util.{FreshNameCreator, NoSource, SimpleIdentityMap, SourceFile}
 import typer.{Implicits, ImportInfo, Inliner, NamerContextOps, SearchHistory, TypeAssigner, Typer}
 import Implicits.ContextualImplicits
 import config.Settings._
@@ -27,9 +27,11 @@ import reporting.diagnostic.Message
 import collection.mutable
 import collection.immutable.BitSet
 import printing._
-import config.{Settings, ScalaSettings, Platform, JavaPlatform}
+import config.{JavaPlatform, Platform, ScalaSettings, Settings}
+
 import language.implicitConversions
 import DenotTransformers.DenotTransformer
+import dotty.tools.dotc.profile.Profiler
 import util.Property.Key
 import util.Store
 import xsbti.AnalysisCallback
@@ -43,7 +45,8 @@ object Contexts {
   private val (freshNamesLoc,       store5) = store4.newLocation[FreshNameCreator](new FreshNameCreator.Default)
   private val (compilationUnitLoc,  store6) = store5.newLocation[CompilationUnit]()
   private val (runLoc,              store7) = store6.newLocation[Run]()
-  private val initialStore = store7
+  private val (profilerLoc,         store8) = store7.newLocation[Profiler]()
+  private val initialStore = store8
 
   /** A context is passed basically everywhere in dotc.
    *  This is convenient but carries the risk of captured contexts in
@@ -195,6 +198,9 @@ object Contexts {
 
     /** The current compiler-run */
     def run: Run = store(runLoc)
+
+    /**  The current compiler-run profiler */
+    def profiler: Profiler = store(profilerLoc)
 
     /** The new implicit references that are introduced by this scope */
     protected var implicitsCache: ContextualImplicits = null
@@ -460,6 +466,7 @@ object Contexts {
     def setSettings(settingsState: SettingsState): this.type = updateStore(settingsStateLoc, settingsState)
     def setCompilationUnit(compilationUnit: CompilationUnit): this.type = updateStore(compilationUnitLoc, compilationUnit)
     def setRun(run: Run): this.type = updateStore(runLoc, run)
+    def setProfiler(profiler: Profiler): this.type = updateStore(profilerLoc, profiler)
     def setFreshNames(freshNames: FreshNameCreator): this.type = updateStore(freshNamesLoc, freshNames)
 
     def setProperty[T](key: Key[T], value: T): this.type =
