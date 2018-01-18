@@ -65,7 +65,7 @@ while [[ $# -gt 0 ]]; do
       shift
       ;;
     -J*)
-      addJvmOptions "${1:2}"
+      addJvmOptions "-${1:2}"
       shift ;;
     *)
       residual_args+=("$1")
