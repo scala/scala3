@@ -111,10 +111,13 @@ class Interpreter(implicit ctx: Context) {
         val env2 = bindings.foldLeft(env)((acc, x) => interpretStat(x, acc))
         interpretTreeImpl(expansion, env2)
 
+      case Typed(expr, _) =>
+        interpretTreeImpl(expr, env)
+
       case _ =>
         // TODO Add more precise descriptions of why it could not be interpreted.
         // This should be done after the full interpreter is implemented.
-        throw new StopInterpretation(s"Could not interpret ${tree.show}\n${tree}", tree.pos)
+        throw new StopInterpretation(s"Could not interpret ${tree.show}. Consider extracting logic into a helper def.", tree.pos)
     }
   }
 
