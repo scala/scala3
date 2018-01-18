@@ -193,7 +193,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
       assertTrue("expected trait", isTrait)
     }
 
-  @Test def overloadedMethodNeedsReturnType = {
+  @Test def overloadedMethodNeedsReturnType =
     checkMessagesAfter("frontend") {
       """
         |class Scope() {
@@ -206,24 +206,9 @@ class ErrorMessagesTests extends ErrorMessagesTest {
       implicit val ctx: Context = ictx
 
       assertMessageCount(1, messages)
-      val OverloadedOrRecursiveMethodNeedsResultType(treeName) :: Nil = messages
-      assertEquals("foo", treeName)
+      val OverloadedOrRecursiveMethodNeedsResultType(tree) :: Nil = messages
+      assertEquals("foo", tree.show)
     }
-
-
-    checkMessagesAfter("frontend") {
-      """
-        |case class Foo[T](x: T)
-        |object Foo { def apply[T]() = Foo(null.asInstanceOf[T]) }
-      """.stripMargin
-    }.expect { (ictx, messages) =>
-      implicit val ctx: Context = ictx
-
-      assertMessageCount(1, messages)
-      val OverloadedOrRecursiveMethodNeedsResultType(treeName2) :: Nil = messages
-      assertEquals("Foo", treeName2)
-    }
-  }
 
   @Test def recursiveMethodNeedsReturnType =
     checkMessagesAfter("frontend") {
@@ -237,8 +222,8 @@ class ErrorMessagesTests extends ErrorMessagesTest {
       implicit val ctx: Context = ictx
 
       assertMessageCount(1, messages)
-      val OverloadedOrRecursiveMethodNeedsResultType(treeName) :: Nil = messages
-      assertEquals("i", treeName)
+      val OverloadedOrRecursiveMethodNeedsResultType(tree) :: Nil = messages
+      assertEquals("i", tree.show)
     }
 
   @Test def recursiveValueNeedsReturnType =

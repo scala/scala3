@@ -29,7 +29,7 @@ object ErrorReporting {
       if (cx.mode is Mode.InferringReturnType) {
         cx.tree match {
           case tree: untpd.DefDef if !tree.tpt.typeOpt.exists =>
-            OverloadedOrRecursiveMethodNeedsResultType(tree)
+            OverloadedOrRecursiveMethodNeedsResultType(tree.name)
           case tree: untpd.ValDef if !tree.tpt.typeOpt.exists =>
             RecursiveValueNeedsResultType(tree.name)
           case _ =>

@@ -2056,13 +2056,7 @@ class Typer extends Namer
         else
           tree
       case _ => tryInsertApplyOrImplicit(tree, pt) {
-        pt.resType match {
-          case IgnoredProto(WildcardType(optBounds))
-            if (optBounds == NoType) && (pt.args.size == tree.productArity) =>
-              errorTree(tree, OverloadedOrRecursiveMethodNeedsResultType(tree.symbol))
-          case resType =>
-            errorTree(tree, MethodDoesNotTakeParameters(tree, methPart(tree).tpe)(err))
-        }
+        errorTree(tree, MethodDoesNotTakeParameters(tree, methPart(tree).tpe)(err))
       }
     }
 
