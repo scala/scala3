@@ -9,7 +9,6 @@ import util.Stats.{track, record, monitored}
 import printing.{Showable, Printer}
 import printing.Texts._
 import Contexts._
-import Run.RunInfo
 import Types._
 import Flags._
 import TypeErasure.{erasure, hasStableErasure}
@@ -372,7 +371,7 @@ object Implicits {
 import Implicits._
 
 /** Info relating to implicits that is kept for one run */
-trait ImplicitRunInfo { self: RunInfo =>
+trait ImplicitRunInfo { self: Run =>
 
   private val implicitScopeCache = mutable.AnyRefMap[Type, OfTypeImplicits]()
 
@@ -502,7 +501,7 @@ trait ImplicitRunInfo { self: RunInfo =>
     iscope(rootTp)
   }
 
-  def clear() = {
+  protected def reset() = {
     implicitScopeCache.clear()
   }
 }
@@ -1059,7 +1058,7 @@ trait Implicits { self: Typer =>
       }
     }
 
-    def implicitScope(tp: Type): OfTypeImplicits = ctx.runInfo.implicitScope(tp, ctx)
+    def implicitScope(tp: Type): OfTypeImplicits = ctx.run.implicitScope(tp, ctx)
   }
 }
 

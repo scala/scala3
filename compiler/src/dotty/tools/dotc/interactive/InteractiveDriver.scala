@@ -191,8 +191,8 @@ class InteractiveDriver(settings: List[String]) extends Driver {
           if (!t.symbol.isCompleted) t.symbol.info = UnspecifiedErrorType
           t.symbol.annotations.foreach { annot =>
             /* In some cases annotations are are used on themself (possibly larger cycles).
-            *  This is the case with the java.lang.annotation.Target annotation, would end 
-            *  in an infinite loop while cleaning. The `seen` is added to ensure that those 
+            *  This is the case with the java.lang.annotation.Target annotation, would end
+            *  in an infinite loop while cleaning. The `seen` is added to ensure that those
             *  trees are not cleand twice.
             *  TODO: Find a less expensive way to check for those cycles.
             */
@@ -226,7 +226,7 @@ class InteractiveDriver(settings: List[String]) extends Driver {
 
       run.compileSources(List(source))
       run.printSummary()
-      val t = ctx.runInfo.units.head.tpdTree
+      val t = ctx.run.units.head.tpdTree
       cleanup(t)
       myOpenedTrees(uri) = topLevelClassTrees(t, source)
 

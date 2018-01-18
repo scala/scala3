@@ -204,6 +204,9 @@ class Namer { typer: Typer =>
    */
   val scope = newScope
 
+  /** We are entering symbols coming from a SourceLoader */
+  private[this] var lateCompile = false
+
   /** The symbol of the given expanded tree. */
   def symbolOfTree(tree: Tree)(implicit ctx: Context): Symbol = {
     val xtree = expanded(tree)
@@ -281,14 +284,32 @@ class Namer { typer: Typer =>
         else name
     }
 
+    /** Create new symbol or redefine existing symbol under lateCompile. */
+    def createOrRefine[S <: Symbol](
+        tree: MemberDef, name: Name, flags: FlagSet, infoFn: S => Type,
+        symFn: (FlagSet, S => Type, Symbol) => S): Symbol = {
+      val prev =
+        if (lateCompile && ctx.owner.is(Package)) ctx.effectiveScope.lookup(name)
+        else NoSymbol
+      val sym =
+        if (prev.exists) {
+          prev.flags = flags
+          prev.info = infoFn(prev.asInstanceOf[S])
+          prev.privateWithin = privateWithinClass(tree.mods)
+          prev
+        }
+        else symFn(flags, infoFn, privateWithinClass(tree.mods))
+      recordSym(sym, tree)
+    }
+
     tree match {
       case tree: TypeDef if tree.isClassDef =>
         val name = checkNoConflict(tree.name).asTypeName
         val flags = checkFlags(tree.mods.flags &~ Implicit)
-        val cls = recordSym(ctx.newClassSymbol(
-          ctx.owner, name, flags,
-          cls => adjustIfModule(new ClassCompleter(cls, tree)(ctx), tree),
-          privateWithinClass(tree.mods), tree.namePos, ctx.source.file), tree)
+        val cls =
+          createOrRefine[ClassSymbol](tree, name, flags,
+            cls => adjustIfModule(new ClassCompleter(cls, tree)(ctx), tree),
+            ctx.newClassSymbol(ctx.owner, name, _, _, _, tree.namePos, ctx.source.file))
         cls.completer.asInstanceOf[ClassCompleter].init()
         cls
       case tree: MemberDef =>
@@ -317,11 +338,10 @@ class Namer { typer: Typer =>
           case tree: TypeDef => new TypeDefCompleter(tree)(cctx)
           case _ => new Completer(tree)(cctx)
         }
-
-        recordSym(ctx.newSymbol(
-          ctx.owner, name, flags | deferred | method | higherKinded,
-          adjustIfModule(completer, tree),
-          privateWithinClass(tree.mods), tree.namePos), tree)
+        val info = adjustIfModule(completer, tree)
+        createOrRefine[Symbol](tree, name, flags | deferred | method | higherKinded,
+          _ => info,
+          (fs, _, pwithin) => ctx.newSymbol(ctx.owner, name, fs, info, pwithin, tree.namePos))
       case tree: Import =>
         recordSym(ctx.newImportSymbol(ctx.owner, new Completer(tree), tree.pos), tree)
       case _ =>
@@ -717,13 +737,23 @@ class Namer { typer: Typer =>
     localCtx
   }
 
+  /** Index and annotate symbols in `tree` while asserting the `lateCompile` flag.
+   *  This will cause any old top-level symbol with the same fully qualified
+   *  name as a newly created symbol to be replaced.
+   */
+  def lateEnter(tree: Tree)(implicit ctx: Context) = {
+    val saved = lateCompile
+    lateCompile = true
+    try indexAndAnnotate(tree :: Nil) finally lateCompile = saved
+  }
+
   def missingType(sym: Symbol, modifier: String)(implicit ctx: Context) = {
     ctx.error(s"${modifier}type of implicit definition needs to be given explicitly", sym.pos)
     sym.resetFlag(Implicit)
   }
 
   /** The completer of a symbol defined by a member def or import (except ClassSymbols) */
-  class Completer(val original: Tree)(implicit ctx: Context) extends LazyType {
+  class Completer(val original: Tree)(implicit ctx: Context) extends LazyType with SymbolLoaders.SecondCompleter {
 
     protected def localContext(owner: Symbol) = ctx.fresh.setOwner(owner).setTree(original)
 

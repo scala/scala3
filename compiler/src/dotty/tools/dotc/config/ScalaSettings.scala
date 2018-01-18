@@ -16,7 +16,9 @@ class ScalaSettings extends Settings.SettingGroup {
   val extdirs = PathSetting("-extdirs", "Override location of installed extensions.", Defaults.scalaExtDirs)
   val javabootclasspath = PathSetting("-javabootclasspath", "Override java boot classpath.", Defaults.javaBootClassPath)
   val javaextdirs = PathSetting("-javaextdirs", "Override java extdirs classpath.", Defaults.javaExtDirs)
-  val sourcepath = PathSetting("-sourcepath", "Specify location(s) of source files.", "") // Defaults.scalaSourcePath
+  val sourcepath = PathSetting("-sourcepath", "Specify location(s) of source files.", Defaults.scalaSourcePath)
+  val scansource = BooleanSetting("-scansource", "Scan source files to locate classes for which class-name != file-name")
+
   val classpath = PathSetting("-classpath", "Specify where to find user class files.", defaultClasspath) withAbbreviation "-cp"
   val outputDir = PathSetting("-d", "directory|jar", "destination for generated classfiles.", ".")
   val priorityclasspath = PathSetting("-priorityclasspath", "class path that takes precedence over all other paths (or testing only)", "")
@@ -80,7 +82,7 @@ class ScalaSettings extends Settings.SettingGroup {
   val YtermConflict = ChoiceSetting("-Yresolve-term-conflict", "strategy", "Resolve term conflicts", List("package", "object", "error"), "error")
   val Ylog = PhasesSetting("-Ylog", "Log operations during")
   val YemitTasty = BooleanSetting("-Yemit-tasty", "Generate tasty in separate *.tasty file.")
-  val Ylogcp = BooleanSetting("-Ylog-classpath", "Output information about what classpath is being applied.")
+  val YlogClasspath = BooleanSetting("-Ylog-classpath", "Output information about what classpath is being applied.")
   val YdisableFlatCpCaching  = BooleanSetting("-YdisableFlatCpCaching", "Do not cache flat classpath representation of classpath elements from jars across compiler instances.")
 
   val YnoImports = BooleanSetting("-Yno-imports", "Compile without importing scala.*, java.lang.*, or Predef.")
@@ -130,6 +132,7 @@ class ScalaSettings extends Settings.SettingGroup {
     "A directory containing static files from which to generate documentation",
     sys.props("user.dir")
   )
+
 
   val projectName = StringSetting (
     "-project",
