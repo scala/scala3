@@ -77,11 +77,17 @@ object RefChecks {
 
   /** Check that a stable identifier pattern is indeed stable (SLS 8.1.5)
    */
-  private def checkStableIdentPattern(tree: Tree)(implicit ctx: Context) = tree match {
-    case _: Select | _: Ident if !isWildcardArg(tree)  =>
-      if (!tree.tpe.isStable)
-        ctx.error(s"stable identifier required, but ${tree.show} found", tree.pos)
-    case _ =>
+  private def checkStableIdentPattern(tree: Tree)(implicit ctx: Context) = {
+    def error = ctx.error(s"stable identifier required, but ${tree.show} found", tree.pos)
+    tree match {
+      case _: Ident if !isWildcardArg(tree) =>
+        if (!tree.tpe.isStable) error
+      case _: Select =>
+        if (!tree.tpe.isStable) error
+      case _: Apply =>
+        error
+      case _ =>
+    }
   }
 
   /** The this-type of `cls` which should be used when looking at the types of

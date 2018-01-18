@@ -10,6 +10,7 @@ object Test {
 
     x match { case Y1                => () } // error
     x match { case Y2.toInt          => () } // error
+    x match { case Y1.toString       => () } // error
 
     x match { case Z1.v              => () } // error
     x match { case Z2.v              => () } // ok

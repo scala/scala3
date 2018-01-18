@@ -13,7 +13,6 @@ object Test {
     x match { case Y                => () } // error
     x match { case { Y.toInt }      => () } // error
     x match { case { Y }.toInt      => () } // error
-    x match { case Y.toString       => () } // error
     x match { case { Y }.toString   => () } // error
     x match { case { Y.toString }   => () } // error
   }
