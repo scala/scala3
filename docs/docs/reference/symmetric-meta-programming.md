@@ -1,11 +1,11 @@
 ---
 layout: doc-page
-title: "Symmetric Meta Programming"
+title: "Principled Meta Programming"
 ---
 
-# Symmetric Meta Programming
+# Principled Meta Programming
 
-Symmetric meta programming is a new framework for staging and for some
+Principled meta programming is a new framework for staging and for some
 forms of macros. It is expressed as strongly and statically typed
 code using two fundamental operations: quotations and splicing. A
 novel aspect of the approach is that these two operations are
@@ -16,7 +16,7 @@ splices in exactly the same way.
 
 ### Quotes and Splices
 
-Symmetric meta programming is built on two well-known fundamental
+Principled meta programming is built on two well-known fundamental
 operations: quotation and splicing.  Quotation is expressed as
 `'(...)` or `'{...}` for expressions (both forms are equivalent) and
 as `'[...]` for types. Splicing is expressed as a prefix `~` operator.
@@ -113,13 +113,13 @@ create nor remove quotes or splices individually. So the PCP ensures
 that program elaboration will lead to neither of the two unwanted
 situations described above.
 
-In what concerns the range of features it covers, symmetric meta programming is
+In what concerns the range of features it covers, principled meta programming is
 quite close to the MetaML family of languages. One difference is that MetaML does
 not have an equivalent of the PCP - quoted code in MetaML _can_ access
 variables in its immediately enclosing environment, with some
 restrictions and caveats since such accesses involve serialization.
 However, this does not constitute a fundamental gain in
-expressiveness. Symmetric meta programming allows to define a `Liftable`
+expressiveness. Principled meta programming allows to define a `Liftable`
 type-class which can implement such accesses within the confines of the
 PCP. This is explained further in a later section.
 
@@ -307,7 +307,7 @@ Here’s an application of `map` and how it rewrites to optimized code:
 
 ### Relationship with Inline and Macros
 
-Seen by itself, symmetric meta-programming looks more like a
+Seen by itself, principled meta-programming looks more like a
 framework for staging than one for compile-time meta programming with
 macros. But combined with Dotty’s `inline` it can be turned into a
 compile-time system.  The idea is that macro elaboration can be
