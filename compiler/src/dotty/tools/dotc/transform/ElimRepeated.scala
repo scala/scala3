@@ -94,6 +94,8 @@ class ElimRepeated extends MiniPhase with InfoTransformer { thisPhase =>
   private def seqToArray(tree: Tree, pt: Type)(implicit ctx: Context): Tree = tree match {
     case SeqLiteral(elems, elemtpt) =>
       JavaSeqLiteral(elems, elemtpt)
+    case app@Apply(fun, args) if isWrappedArray(app) =>
+      args.head // There's only one argument: the wrapped array
     case _ =>
       val elemType = tree.tpe.elemType
       var elemClass = elemType.classSymbol
@@ -104,6 +106,14 @@ class ElimRepeated extends MiniPhase with InfoTransformer { thisPhase =>
         .appliedTo(tree, Literal(Constant(elemClass.typeRef)))
         .ensureConforms(pt)
           // Because of phantomclasses, the Java array's type might not conform to the return type
+  }
+
+  /** Determines whether the given `tree` represents a wrapped array */
+  private def isWrappedArray(tree: Apply)(implicit ctx: Context): Boolean = {
+    val elemTpe = tree.tpe.elemType
+    val wrapMethodName = TreeGen.wrapArrayMethodName(elemTpe)
+    val wrapMethodSym = defn.ScalaPredefModuleRef.denot.requiredMethod(wrapMethodName)
+    tree.fun.symbol == wrapMethodSym
   }
 
   override def transformTypeApply(tree: TypeApply)(implicit ctx: Context): Tree =
