@@ -5,7 +5,7 @@ set -eux
 if [ "$DRONE_BUILD_EVENT" = "pull_request" ]; then
   git config user.email "allan.renucci@gmail.com"
   git config user.name "Allan Renucci"
-  git pull --rebase "$DRONE_REMOTE_URL" "$DRONE_BRANCH"
+  git pull "$DRONE_REMOTE_URL" "$DRONE_BRANCH"
 fi
 
 # clone submodules in parallel
