@@ -498,9 +498,9 @@ object Build {
       // get libraries onboard
       libraryDependencies ++= Seq(
         "org.scala-lang.modules" % "scala-asm" % "6.0.0-scala-1", // used by the backend
-        "com.typesafe.sbt" % "sbt-interface" % sbtVersion.value,
         ("org.scala-lang.modules" %% "scala-xml" % "1.0.6").withDottyCompat(scalaVersion.value),
-        "org.scala-lang" % "scala-library" % scalacVersion % "test"
+        "org.scala-lang" % "scala-library" % scalacVersion % "test",
+        Dependencies.`compiler-interface`,
       ),
 
       // For convenience, change the baseDirectory when running the compiler
@@ -699,7 +699,7 @@ object Build {
     packageAll := {
       (packageAll in `dotty-compiler`).value ++ Seq(
         ("dotty-compiler" -> (packageBin in Compile).value.getAbsolutePath),
-        ("dotty-library" -> (packageBin in (dottyLibrary(Bootstrapped), Compile)).value.getAbsolutePath)
+        ("dotty-library" -> (packageBin in (`dotty-library-bootstrapped`, Compile)).value.getAbsolutePath)
       )
     }
   )
@@ -750,10 +750,10 @@ object Build {
     description := "sbt compiler bridge for Dotty",
     resolvers += Resolver.typesafeIvyRepo("releases"), // For org.scala-sbt:api
     libraryDependencies ++= Seq(
-      "org.scala-sbt" % "compiler-interface" % "1.0.2",
-      ("org.scala-sbt" %% "zinc-apiinfo" % "1.0.2" % "test").withDottyCompat(scalaVersion.value),
-      ("org.specs2" %% "specs2-core" % "3.9.1" % "test").withDottyCompat(scalaVersion.value),
-      ("org.specs2" %% "specs2-junit" % "3.9.1" % "test").withDottyCompat(scalaVersion.value)
+      Dependencies.`compiler-interface`,
+      (Dependencies.`zinc-apiinfo` % Test).withDottyCompat(scalaVersion.value),
+      ("org.specs2" %% "specs2-core" % "3.9.1" % Test).withDottyCompat(scalaVersion.value),
+      ("org.specs2" %% "specs2-junit" % "3.9.1" % Test).withDottyCompat(scalaVersion.value)
     ),
     // The sources should be published with crossPaths := false since they
     // need to be compiled by the project using the bridge.
@@ -882,11 +882,10 @@ object Build {
   lazy val `sbt-dotty` = project.in(file("sbt-dotty")).
     settings(commonSettings).
     settings(
-      scalaVersion := "2.12.2",
       // Keep in sync with inject-sbt-dotty.sbt
       libraryDependencies ++= Seq(
         Dependencies.`jackson-databind`,
-        "org.scala-sbt" % "compiler-interface" % "1.0.2"
+        Dependencies.`compiler-interface`
       ),
       unmanagedSourceDirectories in Compile +=
         baseDirectory.value / "../language-server/src/dotty/tools/languageserver/config",
@@ -897,6 +896,7 @@ object Build {
       scriptedLaunchOpts += "-Dplugin.scalaVersion=" + dottyVersion,
       // By default scripted tests use $HOME/.ivy2 for the ivy cache. We need to override this value for the CI.
       scriptedLaunchOpts ++= ivyPaths.value.ivyHome.map("-Dsbt.ivy.home=" + _.getAbsolutePath).toList,
+      scriptedBufferLog := false,
       scripted := scripted.dependsOn(Def.task {
         val x0 = (publishLocal in `dotty-sbt-bridge-bootstrapped`).value
         val x1 = (publishLocal in `dotty-interfaces`).value
