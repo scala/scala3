@@ -1,7 +1,7 @@
 package dotty.tools.dotc
 package core
 
-import Types._, Symbols._, Contexts._, util.Stats._, Hashable._, Names._, Designators._
+import Types._, Symbols._, Contexts._, util.Stats._, Hashable._, Names._
 import config.Config
 import Decorators._
 import util.HashSet
@@ -56,10 +56,9 @@ object Uniques {
     def enterIfNew(prefix: Type, designator: Designator, isTerm: Boolean)(implicit ctx: Context): NamedType = {
       val h = doHash(designator, prefix)
       if (monitored) recordCaching(h, classOf[NamedType])
-      def newType = {
-        if (isTerm) new CachedTermRef(prefix, designator.asInstanceOf[TermDesignator], h)
-        else new CachedTypeRef(prefix, designator.asInstanceOf[TypeDesignator], h)
-      }.init()
+      def newType =
+        if (isTerm) new CachedTermRef(prefix, designator, h)
+        else new CachedTypeRef(prefix, designator, h)
       if (h == NotCached) newType
       else {
         val r = findPrevious(h, prefix, designator)

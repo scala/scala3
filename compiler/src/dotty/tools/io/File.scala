@@ -12,7 +12,7 @@ import java.io.{
   FileInputStream, FileOutputStream, BufferedWriter, OutputStreamWriter,
   BufferedOutputStream, IOException, PrintWriter
 }
-import java.nio.file.Files
+import java.nio.file.{Files, Paths}
 import java.nio.file.StandardOpenOption._
 
 import scala.io.Codec
@@ -22,14 +22,9 @@ import scala.io.Codec
 object File {
   def pathSeparator = java.io.File.pathSeparator
   def separator     = java.io.File.separator
-  def apply(path: Path)(implicit codec: Codec) = new File(path.jpath)(codec)
 
-  // Create a temporary file, which will be deleted upon jvm exit.
-  def makeTemp(prefix: String = Path.randomPrefix, suffix: String = null, dir: JFile = null) = {
-    val jfile = java.io.File.createTempFile(prefix, suffix, dir)
-    jfile.deleteOnExit()
-    apply(jfile)
-  }
+  def apply(path: String)(implicit codec: Codec): File = apply(Paths.get(path))
+  def apply(path: JPath)(implicit codec: Codec): File = new File(path)
 }
 
 /** An abstraction for files.  For character data, a Codec
@@ -59,9 +54,9 @@ class File(jpath: JPath)(implicit constructorCodec: Codec) extends Path(jpath) w
   def inputStream() = Files.newInputStream(jpath)
 
   /** Obtains a OutputStream. */
-  def outputStream(append: Boolean = false) = 
-    if (append) Files.newOutputStream(jpath, APPEND)
-    else Files.newOutputStream(jpath)
+  def outputStream(append: Boolean = false) =
+    if (append) Files.newOutputStream(jpath, CREATE, APPEND)
+    else Files.newOutputStream(jpath, CREATE, TRUNCATE_EXISTING)
   def bufferedOutput(append: Boolean = false) = new BufferedOutputStream(outputStream(append))
 
   /** Obtains an OutputStreamWriter wrapped around a FileOutputStream.

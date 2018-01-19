@@ -143,7 +143,7 @@ object Decorators {
   }
 
   implicit class TextToString(val text: Text) extends AnyVal {
-    def show(implicit ctx: Context) = text.mkString(ctx.settings.pageWidth.value)
+    def show(implicit ctx: Context) = text.mkString(ctx.settings.pageWidth.value, ctx.settings.printLines.value)
   }
 
   /** Test whether a list of strings representing phases contains
@@ -173,6 +173,10 @@ object Decorators {
         ctx.source.atPos(pos)
     }
     recur(enclosingInlineds, pos)
+  }
+
+  implicit class reportingDeco[T](val x: T) extends AnyVal {
+    def reporting(op: T => String): T = { println(op(x)); x }
   }
 
   implicit class StringInterpolators(val sc: StringContext) extends AnyVal {

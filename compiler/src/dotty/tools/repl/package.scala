@@ -2,15 +2,9 @@ package dotty.tools
 
 import dotc.core.Contexts.Context
 import dotc.core.Symbols.Symbol
-import dotc.core.Denotations.Denotation
 import dotc.reporting.diagnostic.MessageContainer
-import dotc.printing.UserFacingPrinter
-
-import dotc.reporting.{
-  StoreReporter,
-  UniqueMessagePositions,
-  HideNonSensicalMessages
-}
+import dotc.printing.ReplPrinter
+import dotc.reporting.{HideNonSensicalMessages, StoreReporter, UniqueMessagePositions}
 
 package object repl {
   /** Create empty outer store reporter */
@@ -20,9 +14,9 @@ package object repl {
 
   private[repl] implicit class ShowUser(val s: Symbol) extends AnyVal {
     def showUser(implicit ctx: Context): String = {
-      val printer = new UserFacingPrinter(ctx)
+      val printer = new ReplPrinter(ctx)
       val text = printer.dclText(s)
-      text.mkString(ctx.settings.pageWidth.value)
+      text.mkString(ctx.settings.pageWidth.value, ctx.settings.printLines.value)
     }
   }
 

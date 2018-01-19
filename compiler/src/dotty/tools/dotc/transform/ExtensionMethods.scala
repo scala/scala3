@@ -139,7 +139,7 @@ class ExtensionMethods extends MiniPhase with DenotTransformer with FullParamete
     extensionMeth
   }
 
-  private val extensionDefs = mutable.Map[Symbol, mutable.ListBuffer[Tree]]()
+  private val extensionDefs = newMutableSymbolMap[mutable.ListBuffer[Tree]]
   // TODO: this is state and should be per-run
   // todo: check that when transformation finished map is empty
 

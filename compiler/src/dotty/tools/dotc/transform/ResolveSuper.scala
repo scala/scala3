@@ -107,7 +107,7 @@ object ResolveSuper {
     ctx.debuglog(i"starting rebindsuper from $base of ${acc.showLocated}: ${acc.info} in $bcs, name = $memberName")
     while (bcs.nonEmpty && sym == NoSymbol) {
       val other = bcs.head.info.nonPrivateDecl(memberName)
-      if (ctx.settings.debug.value)
+      if (ctx.settings.Ydebug.value)
         ctx.log(i"rebindsuper ${bcs.head} $other deferred = ${other.symbol.is(Deferred)}")
       sym = other.matchingDenotation(base.thisType, base.thisType.memberInfo(acc)).symbol
       bcs = bcs.tail

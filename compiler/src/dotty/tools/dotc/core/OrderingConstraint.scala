@@ -26,7 +26,7 @@ object OrderingConstraint {
   private def newConstraint(boundsMap: ParamBounds, lowerMap: ParamOrdering, upperMap: ParamOrdering)(implicit ctx: Context) : OrderingConstraint = {
     val result = new OrderingConstraint(boundsMap, lowerMap, upperMap)
     if (Config.checkConstraintsNonCyclic) result.checkNonCyclic()
-    ctx.runInfo.recordConstraintSize(result, result.boundsMap.size)
+    ctx.run.recordConstraintSize(result, result.boundsMap.size)
     result
   }
 
@@ -548,7 +548,7 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
 
   /** The uninstantiated typevars of this constraint */
   def uninstVars: collection.Seq[TypeVar] = {
-    if (myUninstVars == null) {
+    if (myUninstVars == null || myUninstVars.exists(_.inst.exists)) {
       myUninstVars = new mutable.ArrayBuffer[TypeVar]
       boundsMap.foreachBinding { (poly, entries) =>
         for (i <- 0 until paramCount(entries)) {
@@ -569,6 +569,14 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
 
   private def checkNonCyclic(param: TypeParamRef)(implicit ctx: Context): Unit =
     assert(!isLess(param, param), i"cyclic constraint involving $param in $this")
+
+// ---------- Invalidation -------------------------------------------
+
+  private var retracted = false
+
+  def isRetracted: Boolean = retracted
+
+  def markRetracted(): Unit = retracted = true
 
 // ---------- toText -----------------------------------------------------
 

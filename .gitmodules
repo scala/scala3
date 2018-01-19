@@ -5,7 +5,7 @@
 [submodule "scala2-library"]
 	path = scala2-library
 	url = https://github.com/lampepfl/scala.git
-	branch = dotty-library
+	branch = dotty-library2.12
 [submodule "collection-strawman"]
 	path = collection-strawman
 	url = https://github.com/scala/collection-strawman.git

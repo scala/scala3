@@ -19,10 +19,16 @@ import dotc.Compiler
  *  3. Serialize to JS object
  */
 class DocCompiler extends Compiler {
-  override def phases: List[List[Phase]] = List(
-    List(new DocFrontEnd),
-    List(new DocImplicitsPhase),
-    List(new DocASTPhase),
+
+  override protected def frontendPhases: List[List[Phase]] =
+    List(new DocFrontEnd) :: Nil
+
+  override protected def picklerPhases: List[List[Phase]] =
+    Nil
+
+  override protected def transformPhases: List[List[Phase]] =
+    List(new DocImplicitsPhase) ::
+    List(new DocASTPhase) ::
     List(DocMiniTransformations(new UsecasePhase,
                                 new DocstringPhase,
                                 new PackageObjectsPhase,
@@ -32,8 +38,11 @@ class DocCompiler extends Compiler {
                                 new LinkSuperTypes,
                                 new LinkCompanions,
                                 new AlternateConstructors,
-                                new SortMembers)),
-    List(DocMiniTransformations(new RemoveEmptyPackages)),
-    List(new StatisticsPhase)
-  )
+                                new SortMembers)) ::
+    List(DocMiniTransformations(new RemoveEmptyPackages)) ::
+    Nil
+
+  override protected def backendPhases: List[List[Phase]] =
+    List(new StatisticsPhase) :: Nil
+
 }

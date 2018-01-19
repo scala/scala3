@@ -31,7 +31,7 @@ would not typecheck if an implicit was declared like this for type `T`
 This definition effectively says that value of type `T` can (only) be
 compared with `==` or `!=` to other values of type `T`. The definition
 is used only for type checking; it has no significance for runtime
-behavior, since `==` always maps to `equals` and `!=` alwatys maps to
+behavior, since `==` always maps to `equals` and `!=` always maps to
 the negation of `equals`. The right hand side of the definition is a value
 that has any `Eq` instance as its type. Here is the definition of class
 `Eq` and its companion object:
@@ -63,7 +63,7 @@ other numbers, sequences only comparable to other
 sequences and sets only comparable to other sets.
 
 There's also a "fallback" instance named `eqAny` that allows comparisons
-over all types that do not themeselves have an `Eq` instance.  `eqAny` is
+over all types that do not themselves have an `Eq` instance.  `eqAny` is
 defined as follows:
 
     def eqAny[L, R]: Eq[L, R] = Eq
@@ -102,8 +102,7 @@ The precise rules for equality checking are as follows.
 
     Here _lifting_ a type `S` means replacing all references to  abstract types
     in covariant positions of `S` by their upper bound, and to replacing
-    all refinement types in in covariant positions of `S` by their parent.
-    The purpose if lifte
+    all refinement types in covariant positions of `S` by their parent.
 
 More on multiversal equality is found in a [blog post](http://www.scala-lang.org/blog/2016/05/06/multiversal-equality.html)
 and a [Github issue](https://github.com/lampepfl/dotty/issues/1247).

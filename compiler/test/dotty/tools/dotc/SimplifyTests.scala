@@ -79,17 +79,6 @@ abstract class SimplifyTests(val optimise: Boolean) extends DottyBytecodeTest {
          |print(new Some(new Tuple2(1, "s")))
       """)
 
-  @Test def constantFold =
-    check(
-      """
-         |val t = true // val needed, or typer takes care of this
-         |if (t) print(1)
-         |else   print(2)
-      """,
-      """
-         |print(1)
-      """)
-
   @Test def dropNoEffects =
     check(
       """
@@ -123,6 +112,86 @@ abstract class SimplifyTests(val optimise: Boolean) extends DottyBytecodeTest {
       """
          |println(true)
       """)
+
+
+  /*
+   * Constant folding tests
+   */
+
+  @Test def basicConstantFold =
+    check(
+      """
+        |val i = 3
+        |val j = i + 4
+        |print(j)
+      """,
+      """
+        |print(7)
+      """)
+
+  @Test def branchConstantFold =
+    check(
+      """
+         |val t = true // val needed, or typer takes care of this
+         |if (t) print(1)
+         |else   print(2)
+      """,
+      """
+         |print(1)
+      """)
+
+  @Test def arithmeticConstantFold =
+    check(
+      """
+        |val i = 3
+        |val j = i + 4
+        |if(j - i >= (i + 1) / 2) 
+        |  print(i + 1)
+      """,
+      """
+        |print(4)
+      """)
+
+  @Test def twoValConstantFold =
+    check(
+      """
+        |val i = 3
+        |val j = 4
+        |val k = i * j
+        |print(k - j)
+      """,
+      """
+        |print(8)
+      """)
+
+  @Test def localDefinitionElimination =
+    check(
+      """
+        |lazy val foo = 1
+        |def bar = 2
+        |val baz = 3
+      """,
+      """
+      """)
+
+  @Test def localDefinitionNoElimination =
+    check(
+      """
+        |val j = 0 // dummy
+        |class Foo {
+        |  lazy val foo = 1
+        |  def bar = 2
+        |  val baz = 3
+        |}
+      """,
+      """
+        |class Foo {
+        |  lazy val foo = 1
+        |  def bar = 2
+        |  val baz = 3
+        |}
+      """)
+
 
   // @Test def listPatmapExample =
   //   check(

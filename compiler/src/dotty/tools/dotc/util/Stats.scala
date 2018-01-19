@@ -46,11 +46,13 @@ import collection.mutable
   def trackTime[T](fn: String)(op: => T) =
     if (enabled) doTrackTime(fn)(op) else op
 
-  def doTrackTime[T](fn: String)(op: => T) =
+  def doTrackTime[T](fn: String)(op: => T) = {
+    def op1 = op
     if (monitored) {
       val start = System.nanoTime
-      try op finally record(fn, ((System.nanoTime - start) / 1000).toInt)
-    } else op
+      try op1 finally record(fn, ((System.nanoTime - start) / 1000).toInt)
+    } else op1
+  }
 
   class HeartBeat extends Thread() {
     @volatile private[Stats] var continue = true

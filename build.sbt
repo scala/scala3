@@ -5,7 +5,6 @@ val `dotty-interfaces` = Build.`dotty-interfaces`
 val `dotty-doc` = Build.`dotty-doc`
 val `dotty-doc-bootstrapped` = Build.`dotty-doc-bootstrapped`
 val `dotty-doc-optimised` = Build.`dotty-doc-optimised`
-val `dotty-bot` = Build.`dotty-bot`
 val `dotty-compiler` = Build.`dotty-compiler`
 val `dotty-compiler-bootstrapped` = Build.`dotty-compiler-bootstrapped`
 val `dotty-compiler-optimised` = Build.`dotty-compiler-optimised`
@@ -30,3 +29,4 @@ val `sbt-dotty` = Build.`sbt-dotty`
 val `vscode-dotty` = Build.`vscode-dotty`
 
 inThisBuild(Build.thisBuildSettings)
+inScope(Global)(Build.globalSettings)

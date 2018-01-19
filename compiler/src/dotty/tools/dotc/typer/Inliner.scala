@@ -98,8 +98,8 @@ object Inliner {
             val accessorType = accessedType.ensureMethodic
             val accessor = accessorSymbol(tree, accessorType).asTerm
             val accessorDef = polyDefDef(accessor, tps => argss =>
-              rhs(refPart, tps, argss))
-            val accessorRef = ref(accessor).appliedToTypeTrees(targs).appliedToArgss(argss)
+              rhs(refPart, tps, argss).withPos(tree.pos.focus))
+            val accessorRef = ref(accessor).appliedToTypeTrees(targs).appliedToArgss(argss).withPos(tree.pos)
             (accessorDef, accessorRef)
           } else {
             // Hard case: Reference needs to go via a dynamic prefix
@@ -135,11 +135,14 @@ object Inliner {
             val accessor = accessorSymbol(tree, accessorType).asTerm
 
             val accessorDef = polyDefDef(accessor, tps => argss =>
-              rhs(argss.head.head.select(refPart.symbol), tps.drop(localRefs.length), argss.tail))
+              rhs(argss.head.head.select(refPart.symbol), tps.drop(localRefs.length), argss.tail)
+              .withPos(tree.pos.focus)
+            )
 
             val accessorRef = ref(accessor)
               .appliedToTypeTrees(localRefs.map(TypeTree(_)) ++ targs)
               .appliedToArgss((qual :: Nil) :: argss)
+              .withPos(tree.pos)
             (accessorDef, accessorRef)
           }
         accessors += accessorDef
@@ -168,8 +171,8 @@ object Inliner {
               // Draft code (incomplete):
               //
               //  val accessor = accessorSymbol(tree, TypeAlias(tree.tpe)).asType
-              //  myAccessors += TypeDef(accessor)
-              //  ref(accessor)
+              //  myAccessors += TypeDef(accessor).withPos(tree.pos.focus)
+              //  ref(accessor).withPos(tree.pos)
               //
               tree
             }
@@ -349,8 +352,8 @@ class Inliner(call: tpd.Tree, rhs: tpd.Tree)(implicit ctx: Context) {
     case tp: MethodType =>
       (tp.paramNames, tp.paramInfos, argss.head).zipped.foreach { (name, paramtp, arg) =>
         def isByName = paramtp.dealias.isInstanceOf[ExprType]
-        paramBinding(name) = arg.tpe.stripAnnots.stripTypeVar match {
-          case argtpe: SingletonType if isIdempotentExpr(arg) => argtpe
+        paramBinding(name) = arg.tpe.dealias match {
+          case _: SingletonType if isIdempotentExpr(arg) => arg.tpe
           case argtpe =>
             val inlineFlag = if (paramtp.hasAnnotation(defn.InlineParamAnnot)) Inline else EmptyFlags
             val (bindingFlags, bindingType) =
@@ -473,7 +476,7 @@ class Inliner(call: tpd.Tree, rhs: tpd.Tree)(implicit ctx: Context) {
         }
       case _: Ident =>
         paramProxy.get(tree.tpe) match {
-          case Some(t: SingletonType) if tree.isTerm => singleton(t).withPos(tree.pos)
+          case Some(t) if tree.isTerm && t.isSingleton => singleton(t).withPos(tree.pos)
           case Some(t) if tree.isType => TypeTree(t).withPos(tree.pos)
           case None => tree
         }
@@ -493,32 +496,34 @@ class Inliner(call: tpd.Tree, rhs: tpd.Tree)(implicit ctx: Context) {
       val expansion1 = InlineTyper.typed(expansion, pt)(inlineCtx)
 
       /** Does given definition bind a closure that will be inlined? */
-      def bindsDeadClosure(defn: ValOrDefDef) = Ident(defn.symbol.termRef) match {
-        case InlineableClosure(_) => !InlineTyper.retainedClosures.contains(defn.symbol)
+      def bindsDeadInlineable(defn: ValOrDefDef) = Ident(defn.symbol.termRef) match {
+        case InlineableArg(_) => !InlineTyper.retainedInlineables.contains(defn.symbol)
         case _ => false
       }
 
       /** All bindings in `bindingsBuf` except bindings of inlineable closures */
-      val bindings = bindingsBuf.toList.filterNot(bindsDeadClosure).map(_.withPos(call.pos))
+      val bindings = bindingsBuf.toList.filterNot(bindsDeadInlineable).map(_.withPos(call.pos))
 
       tpd.Inlined(call, bindings, expansion1)
     }
   }
 
-  /** An extractor for references to closure arguments that refer to `@inline` methods */
-  private object InlineableClosure {
+  /** An extractor for references to inlineable arguments. These are :
+   *   - by-value arguments marked with `inline`
+   *   - all by-name arguments
+   */
+  private object InlineableArg {
     lazy val paramProxies = paramProxy.values.toSet
     def unapply(tree: Ident)(implicit ctx: Context): Option[Tree] =
-      if (paramProxies.contains(tree.tpe)) {
+      if (paramProxies.contains(tree.tpe))
         bindingsBuf.find(_.name == tree.name) match {
-          case Some(ddef: ValDef) if ddef.symbol.is(Inline) =>
-            ddef.rhs match {
-              case closure(_, meth, _) => Some(meth)
-              case _ => None
-            }
+          case Some(vdef: ValDef) if vdef.symbol.is(Inline) =>
+            Some(vdef.rhs.changeOwner(vdef.symbol, ctx.owner))
+          case Some(ddef: DefDef) =>
+            Some(ddef.rhs.changeOwner(ddef.symbol, ctx.owner))
           case _ => None
         }
-      } else None
+      else None
   }
 
   /** A typer for inlined code. Its purpose is:
@@ -530,16 +535,13 @@ class Inliner(call: tpd.Tree, rhs: tpd.Tree)(implicit ctx: Context) {
    */
   private object InlineTyper extends ReTyper {
 
-    var retainedClosures = Set[Symbol]()
+    var retainedInlineables = Set[Symbol]()
 
-    override def typedIdent(tree: untpd.Ident, pt: Type)(implicit ctx: Context) = {
-      val tree1 = super.typedIdent(tree, pt)
-      tree1 match {
-        case InlineableClosure(_) => retainedClosures += tree.symbol
-        case _ =>
+    override def typedIdent(tree: untpd.Ident, pt: Type)(implicit ctx: Context) =
+      tree.asInstanceOf[tpd.Tree] match {
+        case InlineableArg(rhs) => inlining.println(i"inline arg $tree -> $rhs"); rhs
+        case _ => super.typedIdent(tree, pt)
       }
-      tree1
-    }
 
     override def typedSelect(tree: untpd.Select, pt: Type)(implicit ctx: Context): Tree = {
       assert(tree.hasType, tree)
@@ -562,12 +564,13 @@ class Inliner(call: tpd.Tree, rhs: tpd.Tree)(implicit ctx: Context) {
       }
     }
 
-    override def typedApply(tree: untpd.Apply, pt: Type)(implicit ctx: Context) = tree.asInstanceOf[tpd.Tree] match {
-      case Apply(Select(InlineableClosure(fn), nme.apply), args) =>
-        inlining.println(i"reducing $tree with closure $fn")
-        typed(fn.appliedToArgs(args), pt)
-      case _ =>
-        super.typedApply(tree, pt)
-    }
+    override def typedApply(tree: untpd.Apply, pt: Type)(implicit ctx: Context) =
+      tree.asInstanceOf[tpd.Tree] match {
+        case Apply(Select(InlineableArg(closure(_, fn, _)), nme.apply), args) =>
+          inlining.println(i"reducing $tree with closure $fn")
+          typed(fn.appliedToArgs(args), pt)
+        case _ =>
+          super.typedApply(tree, pt)
+      }
   }
 }

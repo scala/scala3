@@ -20,7 +20,7 @@ import printing.Formatting
 import ErrorMessageID._
 import Denotations.SingleDenotation
 import dotty.tools.dotc.ast.Trees
-import dotty.tools.dotc.ast.untpd.Modifiers
+import dotty.tools.dotc.config.ScalaVersion
 import dotty.tools.dotc.core.Flags.{FlagSet, Mutable}
 import dotty.tools.dotc.core.SymDenotations.SymDenotation
 import scala.util.control.NonFatal
@@ -140,7 +140,7 @@ object messages {
   }
 
   case class EmptyCatchBlock(tryBody: untpd.Tree)(implicit ctx: Context)
- extends EmptyCatchOrFinallyBlock(tryBody, EmptyCatchBlockID) {
+  extends EmptyCatchOrFinallyBlock(tryBody, EmptyCatchBlockID) {
     val kind = "Syntax"
     val msg =
       hl"""|The ${"catch"} block does not contain a valid expression, try
@@ -189,11 +189,15 @@ object messages {
     val msg = {
       val ofFun =
         if (MethodType.syntheticParamNames(args.length + 1) contains param.name)
-          i" of expanded function $tree"
+          i" of expanded function:\n$tree"
         else
           ""
 
-      i"missing parameter type for parameter ${param.name}$ofFun, expected = $pt"
+      i"""missing parameter type
+         |
+         |The argument types of an anonymous function must be fully known. (SLS 8.5)
+         |Expected type: $pt
+         |Missing type for parameter ${param.name}$ofFun"""
     }
 
     val explanation =
@@ -356,12 +360,7 @@ object messages {
         )
       }
 
-      val siteType = site match {
-        case tp: NamedType => tp.info
-        case tp => tp
-      }
-
-      ex"$selected `$name` is not a member of $siteType$closeMember"
+      ex"$selected `$name` is not a member of ${site.widen}$closeMember"
     }
 
     val explanation = ""
@@ -455,6 +454,22 @@ object messages {
            |implicit class ${cdef.name}...
            |
            |""" + implicitClassRestrictionsText
+  }
+
+  case class ImplicitClassPrimaryConstructorArity()(implicit ctx: Context)
+  extends Message(ImplicitClassPrimaryConstructorArityID){
+    val kind = "Syntax"
+    val msg = "Implicit classes must accept exactly one primary constructor parameter"
+    val explanation = {
+      val example = "implicit class RichDate(date: java.util.Date)"
+      hl"""Implicit classes may only take one non-implicit argument in their constructor. For example:
+          |
+          | $example
+          |
+          |While it’s possible to create an implicit class with more than one non-implicit argument,
+          |such classes aren’t used during implicit lookup.
+          |""" + implicitClassRestrictionsText
+    }
   }
 
   case class ObjectMayNotHaveSelfType(mdef: untpd.ModuleDef)(implicit ctx: Context)
@@ -733,7 +748,7 @@ object messages {
     val msg =
       hl"""|${NoColor(msgPrefix)} type arguments for $prettyName$expectedArgString
            |expected: $expectedArgString
-           |actual:   $actualArgString""".stripMargin
+           |actual:   ${NoColor(actualArgString)}""".stripMargin
 
     val explanation = {
       val tooManyTypeParams =
@@ -1238,27 +1253,18 @@ object messages {
            |""".stripMargin
   }
 
-  case class OverloadedOrRecursiveMethodNeedsResultType private (termName: String)(implicit ctx: Context)
+  case class OverloadedOrRecursiveMethodNeedsResultType(tree: Names.TermName)(implicit ctx: Context)
   extends Message(OverloadedOrRecursiveMethodNeedsResultTypeID) {
     val kind = "Syntax"
-    val msg = hl"""overloaded or recursive method $termName needs return type"""
+    val msg = hl"""overloaded or recursive method ${tree} needs return type"""
     val explanation =
-      hl"""Case 1: $termName is overloaded
-          |If there are multiple methods named `$termName` and at least one definition of
+      hl"""Case 1: ${tree} is overloaded
+          |If there are multiple methods named `${tree.name}` and at least one definition of
           |it calls another, you need to specify the calling method's return type.
           |
-          |Case 2: $termName is recursive
-          |If `$termName` calls itself on any path, you need to specify its return type.
+          |Case 2: ${tree} is recursive
+          |If `${tree.name}` calls itself on any path, you need to specify its return type.
           |""".stripMargin
-  }
-
-  object OverloadedOrRecursiveMethodNeedsResultType {
-    def apply[T >: Trees.Untyped](tree: NameTree[T])(implicit ctx: Context)
-    : OverloadedOrRecursiveMethodNeedsResultType =
-      OverloadedOrRecursiveMethodNeedsResultType(tree.name.show)(ctx)
-    def apply(symbol: Symbol)(implicit ctx: Context)
-    : OverloadedOrRecursiveMethodNeedsResultType =
-      OverloadedOrRecursiveMethodNeedsResultType(symbol.name.show)(ctx)
   }
 
   case class RecursiveValueNeedsResultType(tree: Names.TermName)(implicit ctx: Context)
@@ -1358,8 +1364,7 @@ object messages {
            |"""
   }
 
-  case class MethodDoesNotTakeParameters(tree: tpd.Tree, methPartType: Types.Type)
-  (err: typer.ErrorReporting.Errors)(implicit ctx: Context)
+  case class MethodDoesNotTakeParameters(tree: tpd.Tree, methPartType: Types.Type)(err: typer.ErrorReporting.Errors)(implicit ctx: Context)
   extends Message(MethodDoesNotTakeParametersId) {
     private val more = tree match {
       case Apply(_, _) => " more"
@@ -1422,11 +1427,11 @@ object messages {
     val msg = hl"$tpe does not take type parameters"
 
     private val ps =
-      if (params.size == 1) hl"a type parameter ${params.head}"
-      else hl"type parameters ${params.map(_.show).mkString(", ")}"
+      if (params.size == 1) s"a type parameter ${params.head}"
+      else s"type parameters ${params.map(_.show).mkString(", ")}"
 
     val explanation =
-      i"""You specified $ps for ${hl"$tpe"}, which is not
+      i"""You specified ${NoColor(ps)} for ${hl"$tpe"}, which is not
          |declared to take any.
          |"""
   }
@@ -1887,5 +1892,181 @@ object messages {
       "Illegal start of statement" + addendum
     }
     val explanation = "A statement is either an import, a definition or an expression."
+  }
+
+  case class TraitIsExpected(symbol: Symbol)(implicit ctx: Context) extends Message(TraitIsExpectedID) {
+    val kind = "Syntax"
+    val msg = hl"$symbol is not a trait"
+    val explanation = {
+      val errorCodeExample =
+        """class A
+          |class B
+          |
+          |val a = new A with B // will fail with a compile error - class B is not a trait""".stripMargin
+      val codeExample =
+        """class A
+          |trait B
+          |
+          |val a = new A with B // compiles normally""".stripMargin
+
+      hl"""Only traits can be mixed into classes using a ${"with"} keyword.
+          |Consider the following example:
+          |
+          |$errorCodeExample
+          |
+          |The example mentioned above would fail because B is not a trait.
+          |But if you make B a trait it will be compiled without any errors:
+          |
+          |$codeExample
+          |"""
+    }
+  }
+
+  case class TraitRedefinedFinalMethodFromAnyRef(method: Symbol)(implicit ctx: Context) extends Message(TraitRedefinedFinalMethodFromAnyRefID) {
+    val kind = "Syntax"
+    val msg = hl"Traits cannot redefine final $method from ${"class AnyRef"}."
+    val explanation = ""
+  }
+
+  case class PackageNameAlreadyDefined(pkg: Symbol)(implicit ctx: Context) extends Message(PackageNameAlreadyDefinedID) {
+    val msg = hl"${pkg} is already defined, cannot be a ${"package"}"
+    val kind = "Naming"
+    val explanation =
+      hl"An ${"object"} cannot have the same name as an existing ${"package"}. Rename either one of them."
+  }
+
+  case class UnapplyInvalidNumberOfArguments(qual: untpd.Tree, argTypes: List[Type])(implicit ctx: Context)
+    extends Message(UnapplyInvalidNumberOfArgumentsID) {
+    val kind = "Syntax"
+    val msg = hl"Wrong number of argument patterns for $qual; expected: ($argTypes%, %)"
+    val explanation =
+      hl"""The Unapply method of $qual was used with incorrect number of arguments.
+          |Expected usage would be something like:
+          |case $qual(${argTypes.map(_ => '_')}%, %) => ...
+          |
+        |where subsequent arguments would have following types: ($argTypes%, %).
+        |""".stripMargin
+  }
+
+  case class StaticFieldsOnlyAllowedInObjects(member: Symbol)(implicit ctx: Context) extends Message(StaticFieldsOnlyAllowedInObjectsID) {
+    val msg = hl"${"@static"} $member in ${member.owner} must be defined inside an ${"object"}."
+    val kind = "Syntax"
+    val explanation =
+      hl"${"@static"} members are only allowed inside objects."
+  }
+
+  case class CyclicInheritance(symbol: Symbol, addendum: String)(implicit ctx: Context) extends Message(CyclicInheritanceID) {
+    val kind = "Syntax"
+    val msg = hl"Cyclic inheritance: $symbol extends itself$addendum"
+    val explanation = {
+      val codeExample = "class A extends A"
+
+      hl"""Cyclic inheritance is prohibited in Dotty.
+          |Consider the following example:
+          |
+          |$codeExample
+          |
+          |The example mentioned above would fail because this type of inheritance hierarchy
+          |creates a "cycle" where a not yet defined class A extends itself which makes
+          |impossible to instantiate an object of this class"""
+    }
+  }
+
+  case class BadSymbolicReference(denot: SymDenotation)(implicit ctx: Context) extends Message(BadSymbolicReferenceID) {
+    val kind = "Reference"
+
+    val msg = {
+      val denotationOwner = denot.owner
+      val denotationName = ctx.fresh.setSetting(ctx.settings.YdebugNames, true).nameString(denot.name)
+      val file = denot.symbol.associatedFile
+      val (location, src) =
+        if (file != null) (s" in $file", file.toString)
+        else ("", "the signature")
+
+      hl"""Bad symbolic reference. A signature$location
+          |refers to $denotationName in ${denotationOwner.showKind} ${denotationOwner.showFullName} which is not available.
+          |It may be completely missing from the current classpath, or the version on
+          |the classpath might be incompatible with the version used when compiling $src."""
+    }
+
+    val explanation = ""
+  }
+
+  case class UnableToExtendSealedClass(pclazz: Symbol)(implicit ctx: Context) extends Message(UnableToExtendSealedClassID) {
+    val kind = "Syntax"
+    val msg = hl"Cannot extend ${"sealed"} $pclazz in a different source file"
+    val explanation = "A sealed class or trait can only be extended in the same file as its declaration"
+  }
+
+  case class SymbolHasUnparsableVersionNumber(symbol: Symbol, migrationMessage: String)(implicit ctx: Context)
+  extends Message(SymbolHasUnparsableVersionNumberID) {
+    val kind = "Syntax"
+    val msg = hl"${symbol.showLocated} has an unparsable version number: $migrationMessage"
+    val explanation =
+      hl"""$migrationMessage
+          |
+          |The ${symbol.showLocated} is marked with ${"@migration"} indicating it has changed semantics
+          |between versions and the ${"-Xmigration"} settings is used to warn about constructs
+          |whose behavior may have changed since version change."""
+  }
+
+  case class SymbolChangedSemanticsInVersion(
+    symbol: Symbol,
+    migrationVersion: ScalaVersion
+  )(implicit ctx: Context) extends Message(SymbolChangedSemanticsInVersionID) {
+    val kind = "Syntax"
+    val msg = hl"${symbol.showLocated} has changed semantics in version $migrationVersion"
+    val explanation = {
+      hl"""The ${symbol.showLocated} is marked with ${"@migration"} indicating it has changed semantics
+          |between versions and the ${"-Xmigration"} settings is used to warn about constructs
+          |whose behavior may have changed since version change."""
+    }
+  }
+
+  case class UnableToEmitSwitch(tooFewCases: Boolean)(implicit ctx: Context)
+  extends Message(UnableToEmitSwitchID) {
+    val kind = "Syntax"
+    val tooFewStr = if (tooFewCases) " since there are not enough cases" else ""
+    val msg = hl"Could not emit switch for ${"@switch"} annotated match$tooFewStr"
+    val explanation = {
+      val codeExample =
+        """val ConstantB = 'B'
+          |final val ConstantC = 'C'
+          |def tokenMe(ch: Char) = (ch: @switch) match {
+          |  case '\t' | '\n' => 1
+          |  case 'A'         => 2
+          |  case ConstantB   => 3  // a non-literal may prevent switch generation: this would not compile
+          |  case ConstantC   => 4  // a constant value is allowed
+          |  case _           => 5
+          |}""".stripMargin
+
+      hl"""If annotated with ${"@switch"}, the compiler will verify that the match has been compiled to a
+          |tableswitch or lookupswitch and issue an error if it instead compiles into a series of conditional
+          |expressions. Example usage:
+          |
+          |$codeExample
+          |
+          |The compiler will not apply the optimisation if:
+          |- the matched value is not of type ${"Int"}, ${"Byte"}, ${"Short"} or ${"Char"}
+          |- the matched value is not a constant literal
+          |- there are less than three cases"""
+    }
+  }
+
+  case class MissingCompanionForStatic(member: Symbol)(implicit ctx: Context) extends Message(MissingCompanionForStaticID) {
+    val msg = hl"${member.owner} does not have a companion class"
+    val kind = "Syntax"
+    val explanation =
+      hl"An object that contains ${"@static"} members must have a companion class."
+  }
+
+  case class PolymorphicMethodMissingTypeInParent(rsym: Symbol, parentSym: Symbol)(implicit ctx: Context)
+  extends Message(PolymorphicMethodMissingTypeInParentID) {
+    val kind = "Syntax"
+    val msg = hl"polymorphic refinement $rsym without matching type in parent $parentSym is no longer allowed"
+    val explanation =
+      hl"""Polymorphic $rsym is not allowed in the structural refinement of $parentSym because
+          |$rsym does not override any method in $parentSym. Structural refinement does not allow for
+          |polymorphic methods."""
   }
 }

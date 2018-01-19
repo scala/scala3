@@ -63,7 +63,8 @@ object Test extends dotty.runtime.LegacyApp {
     testSet(immutable.TreeSet(keys:_*), keys)
     testSet(mutable.TreeSet(keys:_*), keys)
     val days = keys map {n => Weekday(n % Weekday.values.size)}
-    testSet(Weekday.ValueSet(days:_*), days)
+
+    testSet(Weekday.ValueSet(days:_*), days) // Note: produces divergent search in scalac
 
     val treeMap = immutable.TreeMap(keyValues:_*)
     testMap(treeMap, keyValues)

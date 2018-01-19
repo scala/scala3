@@ -31,26 +31,18 @@ Macro-format:
 
   Name          = UTF8              Length UTF8-CodePoint*
                   QUALIFIED         Length qualified_NameRef selector_NameRef
-                  FLATTENED         Length qualified_NameRef selector_NameRef
                   EXPANDED          Length qualified_NameRef selector_NameRef
-                  EXPANDEDPREFIX    Length qualified_NameRef selector_NameRef
-                  TRAITSETTER       Length qualified_NameRef selector_NameRef
+                  EXPANDPREFIX      Length qualified_NameRef selector_NameRef
+
                   UNIQUE            Length separator_NameRef uniqid_Nat underlying_NameRef?
                   DEFAULTGETTER     Length underlying_NameRef index_Nat
                   VARIANT           Length underlying_NameRef variance_Nat      // 0: Contravariant, 1: Covariant
-                  OUTERSELECT       Length underlying_NameRef nhops_Nat         // a reference to `nhops` <outer> selections, followed by `underlying`
 
                   SUPERACCESSOR     Length underlying_NameRef
                   PROTECTEDACCESSOR Length underlying_NameRef
                   PROTECTEDSETTER   Length underlying_NameRef
-                  INITIALIZER       Length underlying_NameRef
-                  AVOIDCLASH        Length underlying_NameRef
-                  DIRECT            Length underlying_NameRef
-                  FIELD             Length underlying_NameRef
-                  EXTMETH           Length underlying_NameRef
-                  ADAPTEDCLOSURE    Length underlying_NameRef
-                  OBJECTVAR         Length underlying_NameRef
                   OBJECTCLASS       Length underlying_NameRef
+
                   SIGNED            Length original_NameRef resultSig_NameRef paramSig_NameRef*
 
   NameRef       = Nat                    // ordinal number of name in name table, starting from 1.
@@ -88,9 +80,9 @@ Standard-Section: "ASTs" TopLevelStat*
                   SELECT                possiblySigned_NameRef qual_Term
                   QUALTHIS              typeIdent_Tree
                   NEW                   cls_Type
+                  NAMEDARG              paramName_NameRef arg_Term
                   SUPER          Length this_Term mixinTypeIdent_Tree?
                   TYPED          Length expr_Term ascription_Type
-                  NAMEDARG       Length paramName_NameRef arg_Term
                   ASSIGN         Length lhs_Term rhs_Term
                   BLOCK          Length expr_Term Stat*
                   INLINED        Length call_Term expr_Term Stat*
@@ -100,6 +92,7 @@ Standard-Section: "ASTs" TopLevelStat*
                   TRY            Length expr_Term CaseDef* finalizer_Term?
                   RETURN         Length meth_ASTRef expr_Term?
                   REPEATED       Length elem_Type elem_Term*
+                  SELECTouter    Length levels_Nat qual_Term underlying_Type
                   BIND           Length boundName_NameRef patType_Type pat_Term
                   ALTERNATIVE    Length alt_Term*
                   UNAPPLY        Length fun_Term ImplicitArg* pat_Type pat_Term*
@@ -115,7 +108,8 @@ Standard-Section: "ASTs" TopLevelStat*
                   ORtpt          Length left_Term right_Term
                   BYNAMEtpt             underlying_Term
                   EMPTYTREE
-                  SHARED                term_ASTRef
+                  SHAREDterm            term_ASTRef
+                  HOLE           Length idx_Nat arg_Tree*
   Application   = APPLY          Length fn_Term arg_Term*
 
                   TYPEAPPLY      Length fn_Term arg_Type*
@@ -131,7 +125,7 @@ Standard-Section: "ASTs" TopLevelStat*
                   TERMREF               possiblySigned_NameRef qual_Type
                   THIS                  clsRef_Type
                   RECthis               recType_ASTRef
-                  SHARED                path_ASTRef
+                  SHAREDtype            path_ASTRef
 
   Constant      = UNITconst
                   FALSEconst
@@ -147,6 +141,7 @@ Standard-Section: "ASTs" TopLevelStat*
                   NULLconst
                   CLASSconst            Type
                   ENUMconst             Path
+                  SYMBOLconst           NameRef
 
   Type          = Path
                   TYPEREFdirect         sym_ASTRef
@@ -167,19 +162,18 @@ Standard-Section: "ASTs" TopLevelStat*
                                         // for type-variables defined in a type pattern
                   BYNAMEtype            underlying_Type
                   PARAMtype      Length binder_ASTref paramNum_Nat
-                  TYPEARGtype    Length prefix_Type clsRef_Type idx_Nat
                   POLYtype       Length result_Type NamesTypes
                   METHODtype     Length result_Type NamesTypes      // needed for refinements
                   TYPELAMBDAtype Length result_Type NamesTypes      // variance encoded in front of name: +/-/(nothing)
-                  SHARED                type_ASTRef
+                  SHAREDtype            type_ASTRef
   NamesTypes    = NameType*
   NameType      = paramName_NameRef typeOrBounds_ASTRef
 
   Modifier      = PRIVATE
-                  INTERNAL                        // package private
+                  INTERNAL                            // package private
                   PROTECTED
-                  PRIVATEqualified     qualifier_Type       // will be dropped
-                  PROTECTEDqualified   qualifier_Type   // will be dropped
+                  PRIVATEqualified     qualifier_Type // to be dropped(?)
+                  PROTECTEDqualified   qualifier_Type // to be dropped(?)
                   ABSTRACT
                   FINAL
                   SEALED
@@ -187,31 +181,33 @@ Standard-Section: "ASTs" TopLevelStat*
                   IMPLICIT
                   LAZY
                   OVERRIDE
-                  INLINE                // macro
-                  STATIC                            // mapped to static Java member
-                  OBJECT                            // an object or its class
-                  TRAIT                 // a trait
-                  LOCAL                           // private[this] or protected[this]
-                  SYNTHETIC                     // generated by Scala compiler
-                  ARTIFACT                        // to be tagged Java Synthetic
-                  MUTABLE                         // a var
-                  LABEL                           // method generated as a label
-                  FIELDaccessor               // getter or setter
-                  CASEaccessor              // getter for case class param
-                  COVARIANT                     // type param marked “+”
-                  CONTRAVARIANT             // type param marked “-”
-                  SCALA2X                           // Imported from Scala2.x
-                  DEFAULTparameterized  // Method with default params
-                  STABLE                // Method that is assumed to be stable
+                  INLINE                              // inline method
+                  MACRO                               // inline method containing toplevel splices
+                  STATIC                              // mapped to static Java member
+                  OBJECT                              // an object or its class
+                  TRAIT                               // a trait
+                  LOCAL                               // private[this] or protected[this]
+                  SYNTHETIC                           // generated by Scala compiler
+                  ARTIFACT                            // to be tagged Java Synthetic
+                  MUTABLE                             // a var
+                  LABEL                               // method generated as a label
+                  FIELDaccessor                       // getter or setter
+                  CASEaccessor                        // getter for case class param
+                  COVARIANT                           // type parameter marked “+”
+                  CONTRAVARIANT                       // type parameter marked “-”
+                  SCALA2X                             // Imported from Scala2.x
+                  DEFAULTparameterized                // Method with default parameters
+                  STABLE                              // Method that is assumed to be stable
                   Annotation
+
   Annotation    = ANNOTATION     Length tycon_Type fullAnnotation_Term
 
 Note: Tree tags are grouped into 5 categories that determine what follows, and thus allow to compute the size of the tagged tree in a generic way.
 
-  Category 1 (tags 0-63)   :  tag
-  Category 2 (tags 64-95)  :  tag Nat
-  Category 3 (tags 96-111) :  tag AST
-  Category 4 (tags 112-127):  tag Nat AST
+  Category 1 (tags 1-49)   :  tag
+  Category 2 (tags 50-79)  :  tag Nat
+  Category 3 (tags 80-109) :  tag AST
+  Category 4 (tags 110-127):  tag Nat AST
   Category 5 (tags 128-255):  tag Length <payload>
 
 Standard Section: "Positions" Assoc*
@@ -230,38 +226,44 @@ Standard Section: "Positions" Assoc*
 object TastyFormat {
 
   final val header = Array(0x5C, 0xA1, 0xAB, 0x1F)
-  val MajorVersion = 1
+  val MajorVersion = 3
   val MinorVersion = 0
 
-  // Name tags
+  /** Tags used to serialize names */
+  class NameTags {
+    final val UTF8 = 1               // A simple name in UTF8 encoding.
 
-  final val UTF8 = 1
-  final val QUALIFIED = 2
-  final val FLATTENED = 3
-  final val EXPANDED = 4
-  final val EXPANDPREFIX = 5
-  final val TRAITSETTER = 6
-  final val UNIQUE = 10
-  final val DEFAULTGETTER = 11
-  final val VARIANT = 12
-  final val OUTERSELECT = 13
+    final val QUALIFIED = 2          // A fully qualified name `<prefix>.<suffix>`.
 
-  final val SUPERACCESSOR = 20
-  final val PROTECTEDACCESSOR = 21
-  final val PROTECTEDSETTER = 22
-  final val INITIALIZER = 23
-  final val AVOIDCLASH = 30
-  final val DIRECT = 31
-  final val FIELD = 32
-  final val EXTMETH = 33
-  final val ADAPTEDCLOSURE = 34
-  final val OBJECTVAR = 39
-  final val OBJECTCLASS = 40
+    final val EXPANDED = 3           // An expanded name `<prefix>$$<suffix>`,
+                                     // used by Scala-2 for private names.
 
-  final val SIGNED = 63
+    final val EXPANDPREFIX = 4       // An expansion prefix `<prefix>$<suffix>`,
+                                     // used by Scala-2 for private names.
 
-  final val firstInternalTag = 64
-  final val IMPLMETH = 64
+    final val UNIQUE = 10            // A unique name `<name>$<num>` where `<num>`
+                                     // is used only once for each `<name>`.
+
+    final val DEFAULTGETTER = 11     // The name `<meth-name>$default$<param-num>`
+                                     // of a default getter that returns a default argument.
+
+    final val VARIANT = 12           // A name `+<name>` o `-<name>` indicating
+                                     // a co- or contra-variant parameter of a type lambda.
+
+    final val SUPERACCESSOR = 20     // The name of a super accessor `super$name` created by SuperAccesors.
+
+    final val PROTECTEDACCESSOR = 21 // The name of a protected accessor `protected$<name>` created by SuperAccesors.
+
+    final val PROTECTEDSETTER = 22   // The name of a protected setter `protected$set<name>` created by SuperAccesors.
+                                     // This is a dubious encoding for its risk for ambiguity.
+                                     // It is kept for Scala-2 compatibility.
+
+    final val OBJECTCLASS = 23       // The name of an object class (or: module class) `<name>$`.
+
+    final val SIGNED = 63            // A pair of a name and a signature, used to idenitfy
+                                     // possibly overloaded methods.
+  }
+  object NameTags extends NameTags
 
   // AST tags
   // Cat. 1:    tag
@@ -296,53 +298,57 @@ object TastyFormat {
   final val SCALA2X = 29
   final val DEFAULTparameterized = 30
   final val STABLE = 31
+  final val MACRO = 32
 
   // Cat. 2:    tag Nat
 
-  final val SHARED = 64
-  final val TERMREFdirect = 65
-  final val TYPEREFdirect = 66
-  final val TERMREFpkg = 67
-  final val TYPEREFpkg = 68
-  final val RECthis = 69
-  final val BYTEconst = 70
-  final val SHORTconst = 71
-  final val CHARconst = 72
-  final val INTconst = 73
-  final val LONGconst = 74
-  final val FLOATconst = 75
-  final val DOUBLEconst = 76
-  final val STRINGconst = 77
-  final val IMPORTED = 78
-  final val RENAMED = 79
+  final val SHAREDterm = 50
+  final val SHAREDtype = 51
+  final val TERMREFdirect = 52
+  final val TYPEREFdirect = 53
+  final val TERMREFpkg = 54
+  final val TYPEREFpkg = 55
+  final val RECthis = 56
+  final val BYTEconst = 57
+  final val SHORTconst = 58
+  final val CHARconst = 59
+  final val INTconst = 60
+  final val LONGconst = 61
+  final val FLOATconst = 62
+  final val DOUBLEconst = 63
+  final val STRINGconst = 64
+  final val IMPORTED = 65
+  final val RENAMED = 66
+  final val SYMBOLconst = 67
 
   // Cat. 3:    tag AST
 
-  final val THIS = 96
-  final val QUALTHIS = 97
-  final val CLASSconst = 98
-  final val ENUMconst = 99
-  final val BYNAMEtype = 100
-  final val BYNAMEtpt = 101
-  final val NEW = 102
-  final val IMPLICITarg = 103
-  final val PRIVATEqualified = 104
-  final val PROTECTEDqualified = 105
-  final val RECtype = 106
-  final val TYPEALIAS = 107
-  final val SINGLETONtpt = 108
+  final val THIS = 80
+  final val QUALTHIS = 81
+  final val CLASSconst = 82
+  final val ENUMconst = 83
+  final val BYNAMEtype = 84
+  final val BYNAMEtpt = 85
+  final val NEW = 86
+  final val IMPLICITarg = 87
+  final val PRIVATEqualified = 88
+  final val PROTECTEDqualified = 89
+  final val RECtype = 90
+  final val TYPEALIAS = 91
+  final val SINGLETONtpt = 92
+  final val NAMEDARG = 93
 
   // Cat. 4:    tag Nat AST
 
-  final val IDENT = 112
-  final val IDENTtpt = 113
-  final val SELECT = 114
-  final val SELECTtpt = 115
-  final val TERMREFsymbol = 116
-  final val TERMREF = 117
-  final val TYPEREFsymbol = 118
-  final val TYPEREF = 119
-  final val SELFDEF = 120
+  final val IDENT = 110
+  final val IDENTtpt = 111
+  final val SELECT = 112
+  final val SELECTtpt = 113
+  final val TERMREFsymbol = 114
+  final val TERMREF = 115
+  final val TYPEREFsymbol = 116
+  final val TYPEREF = 117
+  final val SELFDEF = 118
 
   // Cat. 5:    tag Length ...
 
@@ -353,51 +359,51 @@ object TastyFormat {
   final val IMPORT = 132
   final val TYPEPARAM = 133
   final val PARAMS = 134
-  final val PARAM = 136
-  final val APPLY = 137
-  final val TYPEAPPLY = 138
-  final val TYPED = 139
-  final val NAMEDARG = 140
-  final val ASSIGN = 141
-  final val BLOCK = 142
-  final val IF = 143
-  final val LAMBDA = 144
-  final val MATCH = 145
-  final val RETURN = 146
-  final val TRY = 147
-  final val INLINED = 148
-  final val REPEATED = 149
-  final val BIND = 150
-  final val ALTERNATIVE = 151
-  final val UNAPPLY = 152
-  final val ANNOTATEDtype = 153
-  final val ANNOTATEDtpt = 154
-  final val CASEDEF = 155
-  final val TEMPLATE = 156
-  final val SUPER = 157
-  final val SUPERtype = 158
-  final val REFINEDtype = 159
-  final val REFINEDtpt = 160
-  final val APPLIEDtype = 161
-  final val APPLIEDtpt = 162
-  final val TYPEBOUNDS = 163
-  final val TYPEBOUNDStpt = 164
-  final val ANDtype = 166
-  final val ANDtpt = 167
-  final val ORtype = 168
-  final val ORtpt = 169
-  final val METHODtype = 170
-  final val POLYtype = 171
-  final val TYPELAMBDAtype = 172
-  final val LAMBDAtpt = 173
-  final val PARAMtype = 174
-  final val ANNOTATION = 175
-  final val TYPEARGtype = 176
-  final val TERMREFin = 177
-  final val TYPEREFin = 178
+  final val PARAM = 135
+  final val APPLY = 136
+  final val TYPEAPPLY = 137
+  final val TYPED = 138
+  final val ASSIGN = 139
+  final val BLOCK = 140
+  final val IF = 141
+  final val LAMBDA = 142
+  final val MATCH = 143
+  final val RETURN = 144
+  final val TRY = 145
+  final val INLINED = 146
+  final val SELECTouter = 147
+  final val REPEATED = 148
+  final val BIND = 149
+  final val ALTERNATIVE = 150
+  final val UNAPPLY = 151
+  final val ANNOTATEDtype = 152
+  final val ANNOTATEDtpt = 153
+  final val CASEDEF = 154
+  final val TEMPLATE = 155
+  final val SUPER = 156
+  final val SUPERtype = 157
+  final val REFINEDtype = 158
+  final val REFINEDtpt = 159
+  final val APPLIEDtype = 160
+  final val APPLIEDtpt = 161
+  final val TYPEBOUNDS = 162
+  final val TYPEBOUNDStpt = 163
+  final val ANDtype = 164
+  final val ANDtpt = 165
+  final val ORtype = 166
+  final val ORtpt = 167
+  final val METHODtype = 168
+  final val POLYtype = 169
+  final val TYPELAMBDAtype = 170
+  final val LAMBDAtpt = 171
+  final val PARAMtype = 172
+  final val ANNOTATION = 173
+  final val TERMREFin = 174
+  final val TYPEREFin = 175
+  final val HOLE = 255
 
   final val firstSimpleTreeTag = UNITconst
-  final val firstNatTreeTag = SHARED
+  final val firstNatTreeTag = SHAREDterm
   final val firstASTTreeTag = THIS
   final val firstNatASTTreeTag = IDENT
   final val firstLengthTreeTag = PACKAGE
@@ -416,6 +422,7 @@ object TastyFormat {
        | LAZY
        | OVERRIDE
        | INLINE
+       | MACRO
        | STATIC
        | OBJECT
        | TRAIT
@@ -453,33 +460,6 @@ object TastyFormat {
     case _ => false
   }
 
-  def nameTagToString(tag: Int): String = tag match {
-    case UTF8 => "UTF8"
-    case QUALIFIED => "QUALIFIED"
-    case FLATTENED => "FLATTENED"
-    case EXPANDED => "EXPANDED"
-    case EXPANDPREFIX => "EXPANDPREFIX"
-    case TRAITSETTER => "TRAITSETTER"
-    case UNIQUE => "UNIQUE"
-    case DEFAULTGETTER => "DEFAULTGETTER"
-    case VARIANT => "VARIANT"
-    case OUTERSELECT => "OUTERSELECT"
-
-    case SUPERACCESSOR => "SUPERACCESSOR"
-    case PROTECTEDACCESSOR => "PROTECTEDACCESSOR"
-    case PROTECTEDSETTER => "PROTECTEDSETTER"
-    case INITIALIZER => "INITIALIZER"
-    case AVOIDCLASH => "AVOIDCLASH"
-    case DIRECT => "DIRECT"
-    case FIELD => "FIELD"
-    case EXTMETH => "EXTMETH"
-    case ADAPTEDCLOSURE => "ADAPTEDCLOSURE"
-    case OBJECTVAR => "OBJECTVAR"
-    case OBJECTCLASS => "OBJECTCLASS"
-
-    case SIGNED => "SIGNED"
-  }
-
   def astTagToString(tag: Int): String = tag match {
     case UNITconst => "UNITconst"
     case FALSEconst => "FALSEconst"
@@ -496,6 +476,7 @@ object TastyFormat {
     case LAZY => "LAZY"
     case OVERRIDE => "OVERRIDE"
     case INLINE => "INLINE"
+    case MACRO => "MACRO"
     case STATIC => "STATIC"
     case OBJECT => "OBJECT"
     case TRAIT => "TRAIT"
@@ -512,7 +493,8 @@ object TastyFormat {
     case DEFAULTparameterized => "DEFAULTparameterized"
     case STABLE => "STABLE"
 
-    case SHARED => "SHARED"
+    case SHAREDterm => "SHAREDterm"
+    case SHAREDtype => "SHAREDtype"
     case TERMREFdirect => "TERMREFdirect"
     case TYPEREFdirect => "TYPEREFdirect"
     case TERMREFpkg => "TERMREFpkg"
@@ -559,6 +541,7 @@ object TastyFormat {
     case MATCH => "MATCH"
     case RETURN => "RETURN"
     case INLINED => "INLINED"
+    case SELECTouter => "SELECTouter"
     case TRY => "TRY"
     case REPEATED => "REPEATED"
     case BIND => "BIND"
@@ -575,11 +558,12 @@ object TastyFormat {
     case SUPER => "SUPER"
     case CLASSconst => "CLASSconst"
     case ENUMconst => "ENUMconst"
+    case SYMBOLconst => "SYMBOLconst"
     case SINGLETONtpt => "SINGLETONtpt"
     case SUPERtype => "SUPERtype"
-    case TYPEARGtype => "TYPEARGtype"
     case TERMREFin => "TERMREFin"
     case TYPEREFin => "TYPEREFin"
+
     case REFINEDtype => "REFINEDtype"
     case REFINEDtpt => "REFINEDtpt"
     case APPLIEDtype => "APPLIEDtype"
@@ -601,6 +585,7 @@ object TastyFormat {
     case ANNOTATION => "ANNOTATION"
     case PRIVATEqualified => "PRIVATEqualified"
     case PROTECTEDqualified => "PROTECTEDqualified"
+    case HOLE => "HOLE"
   }
 
   /** @return If non-negative, the number of leading references (represented as nats) of a length/trees entry.
@@ -608,7 +593,7 @@ object TastyFormat {
    */
   def numRefs(tag: Int) = tag match {
     case VALDEF | DEFDEF | TYPEDEF | TYPEPARAM | PARAM | NAMEDARG | RETURN | BIND |
-         SELFDEF | REFINEDtype | TERMREFin | TYPEREFin => 1
+         SELFDEF | REFINEDtype | TERMREFin | TYPEREFin | HOLE => 1
     case RENAMED | PARAMtype => 2
     case POLYtype | METHODtype | TYPELAMBDAtype => -1
     case _ => 0

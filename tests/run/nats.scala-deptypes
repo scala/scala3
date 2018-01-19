@@ -1,0 +1,89 @@
+abstract class Nat {
+  def toInt: Int
+}
+object Nat {
+  case class S[N <: Nat](pred: N) extends Nat {
+    def toInt = pred.toInt + 1
+  }
+  class Z extends Nat {
+    def toInt = 0
+  }
+  val Z = new Z
+}
+
+type NatOf(inline x: Int where x >= 0) =
+  if (x == 0) Z
+  else S[NatOf(x - 1)]
+
+inline def natOf(inline x: Int where x >= 0): NatOf(x) =
+  if (x == 0) Z
+  else S(natOf(x - 1))
+
+
+
+
+
+type Plus[X <: Nat, Y <: Nat] =
+  if [X <:< Z] then Y
+  else if [X <:< S[type X1]] then S[Plus[X1, Y]]
+
+object Test {
+  import Nat._
+  def plus[X <: Nat, Y <: Nat](x: X, y: Y): Plus[X, Y] =
+    if [X <:< Z] then y
+    else if [X <:< S[_]] then S(plus(x.pred, y))
+
+  // Expanded version of `plus`:
+  def plus2[X <: Nat, Y <: Nat](x: X, y: Y): Plus[X, Y] =
+    if [X <:< Z] y
+    else if [implicit ev: X <:< S[_]] then S(plus(ev(x).pred, y))
+
+  // This typechecks as follows:
+
+  //     X <:< S[_]
+  //     X <:< S[T']  for some T' <: Nat
+  // =>  ev(x): S[T']
+  // =>  ev(x).pred: T'
+  // =>  plus(ev(x).pred, y): Plus[T', Y]
+  // =>  S(plus(ev(x).pred, y)): S[Plus[T', Y]]
+
+  //     X <:< S[T']
+  // =>  Plus[X, Y] = S[Plus[T', Y]]
+
+  // Expanded version of `plus`:
+  def plus3[X <:< Nat, Y <:< Nat](x: Nat, y: Nat): Plus[x.type, y.type] = x match {
+    case (x: Z) => y
+    case S(x1) => S(plus(x1, y))
+  }
+
+
+
+
+  //     x: Z
+  // =>  x.type <:< Z
+  // =>  Plus[x.type, y.type] = y.type
+
+  //     x =?= S(x1)
+  // =>  x.type <: S[T1], s1: T1
+  // =>  plus(x1, y): Plus[T1, y.type]
+  // =>
+
+
+  def main(args: Array[String]) = {
+    val x = S(S(Z))
+    val x1: S[S[Z]] = x
+    val y = S(Z)
+    val z = plus(x, y)
+    val z1: S[S[S[Z]]] = z
+    println(z.toInt)
+  }
+
+  type Concat[X <: Tuple, Y <: Tuple] =
+    if [X <:< ()] then Y
+    else if [X <:< (type F, type R)] then (F, Concat[R, Y])
+
+  def concat[X <: Tuple, Y <: Tuple](x: X, y: Y): Concat[X, Y] =
+    if [X <:< ()] then Y
+    else if [X <:< (type F, type R)] then (x.head, concat(x.tail, y))
+}
+

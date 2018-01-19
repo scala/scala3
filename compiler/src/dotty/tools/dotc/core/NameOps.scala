@@ -30,7 +30,7 @@ object NameOps {
      */
     def apply(s: String)(implicit ctx: Context): String = {
       val marker = "$$$$"
-      val limit: Int = ctx.settings.maxClassfileName.value
+      val limit: Int = ctx.settings.XmaxClassfileName.value
       val MaxNameLength = (limit - 6) min 2 * (limit - 6 - 2 * marker.length - 32)
 
       def toMD5(s: String, edge: Int): String = {
@@ -114,11 +114,12 @@ object NameOps {
       else name.toTermName.exclude(AvoidClashName)
     }
 
-    def expandedName(base: Symbol, kind: QualifiedNameKind = ExpandedName)(implicit ctx: Context): N = {
-      val prefix =
-        if (base.name.is(ExpandedName)) base.name else base.fullNameSeparated(ExpandPrefixName)
-      likeSpaced { kind(prefix.toTermName, name.toTermName) }
-    }
+    /** The expanded name.
+     *  This is the fully qualified name of `base` with `ExpandPrefixName` as separator,
+     *  followed by `kind` and the name.
+     */
+    def expandedName(base: Symbol, kind: QualifiedNameKind = ExpandedName)(implicit ctx: Context): N =
+      likeSpaced { base.fullNameSeparated(ExpandPrefixName, kind, name) }
 
     /** Revert the expanded name. */
     def unexpandedName: N = likeSpaced {

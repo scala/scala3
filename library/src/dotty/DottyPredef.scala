@@ -1,8 +1,5 @@
 package dotty
 
-import scala.reflect.ClassTag
-import scala.Predef.???
-
 object DottyPredef {
 
   /** A class for implicit values that can serve as implicit conversions
@@ -38,4 +35,5 @@ object DottyPredef {
   final def assertFail(): Unit = throw new java.lang.AssertionError("assertion failed")
   final def assertFail(message: => Any): Unit = throw new java.lang.AssertionError("assertion failed: " + message)
 
+  @inline final def implicitly[T](implicit ev: T): T = ev
 }

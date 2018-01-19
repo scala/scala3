@@ -10,7 +10,7 @@ import java.io.{
   ByteArrayOutputStream
 }
 import java.net.URL
-import java.nio.file.{FileAlreadyExistsException, Files}
+import java.nio.file.{FileAlreadyExistsException, Files, Paths}
 
 /**
  * An abstraction over files for use in the reflection/compiler libraries.
@@ -21,28 +21,26 @@ import java.nio.file.{FileAlreadyExistsException, Files}
  * @version 1.0, 23/03/2004
  */
 object AbstractFile {
-  /** Returns "getFile(new File(path))". */
   def getFile(path: String): AbstractFile = getFile(File(path))
-  def getFile(path: Path): AbstractFile = getFile(path.toFile)
+  def getDirectory(path: String): AbstractFile = getDirectory(Directory(path))
+  def getFile(path: JPath): AbstractFile = getFile(File(path))
+  def getDirectory(path: JPath): AbstractFile = getDirectory(Directory(path))
 
   /**
    * If the specified File exists and is a regular file, returns an
    * abstract regular file backed by it. Otherwise, returns `null`.
    */
-  def getFile(file: File): AbstractFile =
-    if (file.isFile) new PlainFile(file) else null
-
-  /** Returns "getDirectory(new File(path))". */
-  def getDirectory(path: Path): AbstractFile = getDirectory(path.toFile)
+  def getFile(path: Path): AbstractFile =
+    if (path.isFile) new PlainFile(path) else null
 
   /**
    * If the specified File exists and is either a directory or a
    * readable zip or jar archive, returns an abstract directory
    * backed by it. Otherwise, returns `null`.
    */
-  def getDirectory(file: File): AbstractFile =
-    if (file.isDirectory) new PlainFile(file)
-    else if (file.isFile && Path.isExtensionJarOrZip(file.jpath)) ZipArchive fromFile file
+  def getDirectory(path: Path): AbstractFile =
+    if (path.isDirectory) new PlainFile(path)
+    else if (path.isFile && Path.isExtensionJarOrZip(path.jpath)) ZipArchive fromFile path.toFile
     else null
 
   /**
@@ -51,11 +49,8 @@ object AbstractFile {
    * Otherwise, returns `null`.
    */
   def getURL(url: URL): AbstractFile =
-    if (url.getProtocol == "file") {
-      val f = new java.io.File(url.getPath)
-      if (f.isDirectory) getDirectory(f)
-      else getFile(f)
-    } else null
+    if (url.getProtocol != "file") null
+    else new PlainFile(new Path(Paths.get(url.toURI)))
 
   def getResources(url: URL): AbstractFile = ZipArchive fromManifestURL url
 }

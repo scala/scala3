@@ -151,8 +151,8 @@ object DottyIDEPlugin extends AutoPlugin {
    *  @param directory  If not null, run `cmd` in this directory.
    */
   def runProcess(cmd: Seq[String], wait: Boolean = false, directory: File = null): Unit = {
-    val pb0 = new ProcessBuilder(prepareCommand(cmd): _*).inheritIO()
-    val pb = if (directory != null) pb0.directory(directory) else pb0
+    val pb = new ProcessBuilder(prepareCommand(cmd): _*).inheritIO()
+    if (directory != null) pb.directory(directory)
     if (wait) {
       val exitCode = pb.start().waitFor()
       if (exitCode != 0) {

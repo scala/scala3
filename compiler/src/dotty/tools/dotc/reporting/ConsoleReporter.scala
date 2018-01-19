@@ -25,7 +25,7 @@ class ConsoleReporter(
     val didPrint = m match {
       case m: Error =>
         printMessage(messageAndPos(m.contained(), m.pos, diagnosticLevel(m)))
-        if (ctx.settings.prompt.value) displayPrompt()
+        if (ctx.settings.Xprompt.value) displayPrompt()
         true
       case m: ConditionalWarning if !m.enablingOption.value =>
         false

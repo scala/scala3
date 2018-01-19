@@ -190,6 +190,9 @@ object Tokens extends TokensCommon {
   final val SUPERTYPE = 81;        enter(SUPERTYPE, ">:")
   final val HASH = 82;             enter(HASH, "#")
   final val VIEWBOUND = 84;        enter(VIEWBOUND, "<%") // TODO: deprecate
+  final val QPAREN = 85;           enter(QPAREN, "'(")
+  final val QBRACE = 86;           enter(QBRACE, "'{")
+  final val QBRACKET = 87;         enter(QBRACKET, "'[")
 
   /** XML mode */
   final val XMLSTART = 96;         enter(XMLSTART, "$XMLSTART$<") // TODO: deprecate
@@ -201,14 +204,14 @@ object Tokens extends TokensCommon {
 
   final val allTokens = tokenRange(minToken, maxToken)
 
-  final val simpleLiteralTokens = tokenRange(CHARLIT, STRINGLIT) | BitSet(TRUE, FALSE)
-  final val literalTokens = simpleLiteralTokens | BitSet(INTERPOLATIONID, SYMBOLLIT, NULL)
+  final val simpleLiteralTokens = tokenRange(CHARLIT, STRINGLIT) | BitSet(TRUE, FALSE, SYMBOLLIT)
+  final val literalTokens = simpleLiteralTokens | BitSet(INTERPOLATIONID, NULL)
 
   final val atomicExprTokens = literalTokens | identifierTokens | BitSet(
     USCORE, NULL, THIS, SUPER, TRUE, FALSE, RETURN, XMLSTART)
 
   final val canStartExpressionTokens = atomicExprTokens | BitSet(
-    LBRACE, LPAREN, IF, DO, WHILE, FOR, NEW, TRY, THROW)
+    LBRACE, LPAREN, QBRACE, QPAREN, IF, DO, WHILE, FOR, NEW, TRY, THROW)
 
   final val canStartTypeTokens = literalTokens | identifierTokens | BitSet(
     THIS, SUPER, USCORE, LPAREN, AT)

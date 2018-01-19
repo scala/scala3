@@ -1,14 +1,10 @@
 #!/usr/bin/env bash
+set -e
 
 # Usage:
 # ./sbt <cmd>
 
-CMD="$1"
-
-if [ -z "$CMD" ]; then
-  echo "Error: missing sbt command"
-  exit 1
-fi
+CMD="${1:?Missing sbt command}"
 
 # run sbt with the supplied arg
 sbt -J-Xmx4096m \

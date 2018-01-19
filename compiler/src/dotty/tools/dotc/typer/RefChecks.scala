@@ -86,7 +86,7 @@ object RefChecks {
    */
   private def upwardsThisType(cls: Symbol)(implicit ctx: Context) = cls.info match {
     case ClassInfo(_, _, _, _, tp: Type) if (tp ne cls.typeRef) && !cls.is(ModuleOrFinal) =>
-      SkolemType(cls.typeRef).withName(nme.this_)
+      SkolemType(cls.appliedRef).withName(nme.this_)
     case _ =>
       cls.thisType
   }
@@ -116,7 +116,7 @@ object RefChecks {
     if (!cls.owner.is(ModuleClass)) {
       def clashes(sym: Symbol) =
         sym.isClass &&
-        sym.name.stripModuleClassSuffix == cls.name.stripModuleClassSuffix        
+        sym.name.stripModuleClassSuffix == cls.name.stripModuleClassSuffix
 
       val others = cls.owner.linkedClass.info.decls.filter(clashes)
       others.foreach { other =>
@@ -130,7 +130,7 @@ object RefChecks {
    *  That is for overriding member M and overridden member O:
    *
    *    1.1. M must have the same or stronger access privileges as O.
-   *    1.2. O must not be final.
+   *    1.2. O must not be effectively final.
    *    1.3. O is deferred, or M has `override` modifier.
    *    1.4. If O is stable, then so is M.
    *     // @M: LIFTED 1.5. Neither M nor O are a parameterized type alias
@@ -144,8 +144,9 @@ object RefChecks {
    *    1.8.1  M's type is a subtype of O's type, or
    *    1.8.2  M is of type []S, O is of type ()T and S <: T, or
    *    1.8.3  M is of type ()S, O is of type []T and S <: T, or
-   *    1.9.  If M is a macro def, O cannot be deferred unless there's a concrete method overriding O.
-   *    1.10. If M is not a macro def, O cannot be a macro def.
+   *    1.9    M must not be a Dotty macro def
+   *    1.10.  If M is a 2.x macro def, O cannot be deferred unless there's a concrete method overriding O.
+   *    1.11.  If M is not a macro def, O cannot be a macro def.
    *  2. Check that only abstract classes have deferred members
    *  3. Check that concrete classes do not have deferred definitions
    *     that are not implemented in a subclass.
@@ -218,7 +219,7 @@ object RefChecks {
             ";\n (Note that %s is abstract,\n  and is therefore overridden by concrete %s)".format(
               infoStringWithLocation(other),
               infoStringWithLocation(member))
-          else if (ctx.settings.debug.value)
+          else if (ctx.settings.Ydebug.value)
             err.typeMismatchMsg(memberTp(self), otherTp(self))
           else ""
 
@@ -355,7 +356,7 @@ object RefChecks {
         other.accessedFieldOrGetter.is(Mutable, butNot = Lazy)) {
         // !?! this is not covered by the spec. We need to resolve this either by changing the spec or removing the test here.
         // !!! is there a !?! convention? I'm !!!ing this to make sure it turns up on my searches.
-        if (!ctx.settings.overrideVars.value)
+        if (!ctx.settings.YoverrideVars.value)
           overrideError("cannot override a mutable variable")
       } else if (member.isAnyOverride &&
         !(member.owner.thisType.baseClasses exists (_ isSubClass other.owner)) &&
@@ -372,9 +373,11 @@ object RefChecks {
         overrideError("may not override a non-lazy value")
       } else if (other.is(Lazy) && !other.isRealMethod && !member.is(Lazy)) {
         overrideError("must be declared lazy to override a lazy value")
-      } else if (other.is(Deferred) && member.is(Macro) && member.extendedOverriddenSymbols.forall(_.is(Deferred))) { // (1.9)
+      } else if (member.is(Macro, butNot = Scala2x)) { // (1.9)
+        overrideError("is a macro, may not override anything")
+      } else if (other.is(Deferred) && member.is(Scala2Macro) && member.extendedOverriddenSymbols.forall(_.is(Deferred))) { // (1.10)
         overrideError("cannot be used here - term macros cannot override abstract methods")
-      } else if (other.is(Macro) && !member.is(Macro)) { // (1.10)
+      } else if (other.is(Macro) && !member.is(Macro)) { // (1.11)
         overrideError("cannot be used here - only term macros can override term macros")
       } else if (!compatibleTypes(memberTp(self), otherTp(self)) &&
                  !compatibleTypes(memberTp(upwardsSelf), otherTp(upwardsSelf))) {
@@ -606,7 +609,7 @@ object RefChecks {
         // override a concrete method in Object. The jvm, however, does not.
         val overridden = decl.matchingDecl(defn.ObjectClass, defn.ObjectType)
         if (overridden.is(Final))
-          ctx.error("trait cannot redefine final method from class AnyRef", decl.pos)
+          ctx.error(TraitRedefinedFinalMethodFromAnyRef(overridden), decl.pos)
       }
     }
 
@@ -685,17 +688,15 @@ object RefChecks {
     }
     // Similar to deprecation: check if the symbol is marked with @migration
     // indicating it has changed semantics between versions.
-    if (sym.hasAnnotation(defn.MigrationAnnot) && ctx.settings.Xmigration.value != NoScalaVersion) {
-      val symVersion: scala.util.Try[ScalaVersion] = sym.migrationVersion.get
-      val changed = symVersion match {
-        case scala.util.Success(v) =>
-          ctx.settings.Xmigration.value < v
+    val xMigrationValue = ctx.settings.Xmigration.value
+    if (sym.hasAnnotation(defn.MigrationAnnot) && xMigrationValue != NoScalaVersion) {
+      sym.migrationVersion.get match {
+        case scala.util.Success(symVersion) if xMigrationValue < symVersion=>
+          ctx.warning(SymbolChangedSemanticsInVersion(sym, symVersion), pos)
         case Failure(ex) =>
-          ctx.warning(s"${sym.showLocated} has an unparsable version number: ${ex.getMessage()}", pos)
-          false
+          ctx.warning(SymbolHasUnparsableVersionNumber(sym, ex.getMessage()), pos)
+        case _ =>
       }
-      if (changed)
-        ctx.warning(s"${sym.showLocated} has changed semantics in version $symVersion:\n${sym.migrationMessage.get}")
     }
     /*  (Not enabled yet)
        *  See an explanation of compileTimeOnly in its scaladoc at scala.annotation.compileTimeOnly.
@@ -878,7 +879,9 @@ class RefChecks extends MiniPhase { thisPhase =>
   }
 
   override def transformNew(tree: New)(implicit ctx: Context) = {
-    currentLevel.enterReference(tree.tpe.typeSymbol, tree.pos)
+    val sym = tree.tpe.typeSymbol
+    checkUndesiredProperties(sym, tree.pos)
+    currentLevel.enterReference(sym, tree.pos)
     tree
   }
 }

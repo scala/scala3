@@ -18,7 +18,7 @@ import core.Flags._
 class Jumpjump extends Optimisation {
   import ast.tpd._
 
-  val defined = mutable.HashMap[Symbol, Symbol]()
+  val defined = newMutableSymbolMap[Symbol]
 
   def clear(): Unit = defined.clear()
 

@@ -1,13 +1,8 @@
-/* NSC -- new Scala compiler
- * Copyright 2005-2012 LAMP/EPFL
- * @author  Martin Odersky
- */
-
 package dotty.tools
 package dotc
 package core
 
-import java.io.IOException
+import java.io.{IOException, File}
 import scala.compat.Platform.currentTime
 import dotty.tools.io.{ ClassPath, ClassRepresentation, AbstractFile }
 import classpath._
@@ -16,8 +11,10 @@ import StdNames._, NameOps._
 import Decorators.{PreNamedString, StringInterpolators}
 import classfile.ClassfileParser
 import util.Stats
+import Decorators._
 import scala.util.control.NonFatal
 import ast.Trees._
+import parsing.Parsers.OutlineParser
 import reporting.trace
 
 object SymbolLoaders {
@@ -29,11 +26,15 @@ object SymbolLoaders {
 
 /** A base class for Symbol loaders with some overridable behavior  */
 class SymbolLoaders {
+  import ast.untpd._
 
   protected def enterNew(
       owner: Symbol, member: Symbol,
       completer: SymbolLoader, scope: Scope = EmptyScope)(implicit ctx: Context): Symbol = {
-    assert(scope.lookup(member.name) == NoSymbol, s"${owner.fullName}.${member.name} already has a symbol")
+    val comesFromScan =
+      completer.isInstanceOf[SourcefileLoader] && ctx.settings.scansource.value
+    assert(comesFromScan || scope.lookup(member.name) == NoSymbol,
+           s"${owner.fullName}.${member.name} already has a symbol")
     owner.asClass.enter(member, scope)
     member
   }
@@ -71,11 +72,11 @@ class SymbolLoaders {
       // offer a setting to resolve the conflict one way or the other.
       // This was motivated by the desire to use YourKit probes, which
       // require yjp.jar at runtime. See SI-2089.
-      if (ctx.settings.termConflict.isDefault)
+      if (ctx.settings.YtermConflict.isDefault)
         throw new TypeError(
           i"""$owner contains object and package with same name: $pname
              |one of them needs to be removed from classpath""")
-      else if (ctx.settings.termConflict.value == "package") {
+      else if (ctx.settings.YtermConflict.value == "package") {
         ctx.warning(
           s"Resolving package/object name conflict in favor of package ${preExisting.fullName}. The object will be inaccessible.")
         owner.asClass.delete(preExisting)
@@ -103,16 +104,65 @@ class SymbolLoaders {
       scope = scope)
   }
 
-  /** In batch mode: Enter class and module with given `name` into scope of `owner`
-   *  and give them a source completer for given `src` as type.
-   *  In IDE mode: Find all toplevel definitions in `src` and enter then into scope of `owner`
-   *  with source completer for given `src` as type.
-   *  (overridden in interactive.Global).
+  /** If setting -scansource is set:
+   *    Enter all toplevel classes and objects in file `src` into package `owner`, provided
+   *    they are in the right package. Issue a warning if a class or object is in the wrong
+   *    package, i.e. if the file path differs from the declared package clause.
+   *  If -scansource is not set:
+   *    Enter class and module with given `name` into scope of `owner`.
+   *
+   *  All entered symbols are given a source completer of `src` as info.
    */
   def enterToplevelsFromSource(
       owner: Symbol, name: PreName, src: AbstractFile,
       scope: Scope = EmptyScope)(implicit ctx: Context): Unit = {
-    enterClassAndModule(owner, name, new SourcefileLoader(src), scope = scope)
+
+    val completer = new SourcefileLoader(src)
+    if (ctx.settings.scansource.value) {
+      if (src.exists && !src.isDirectory) {
+        val filePath = owner.ownersIterator.takeWhile(!_.isRoot).map(_.name.toTermName).toList
+
+        def addPrefix(pid: RefTree, path: List[TermName]): List[TermName] = pid match {
+          case Ident(name: TermName) => name :: path
+          case Select(qual: RefTree, name: TermName) => name :: addPrefix(qual, path)
+          case _ => path
+        }
+
+        def enterScanned(unit: CompilationUnit)(implicit ctx: Context) = {
+
+          def checkPathMatches(path: List[TermName], what: String, tree: MemberDef): Boolean = {
+            val ok = filePath == path
+            if (!ok)
+              ctx.warning(i"""$what ${tree.name} is in the wrong directory.
+                              |It was declared to be in package ${path.reverse.mkString(".")}
+                              |But it is found in directory     ${filePath.reverse.mkString(File.separator)}""",
+                          tree.pos)
+            ok
+          }
+
+          def traverse(tree: Tree, path: List[TermName]): Unit = tree match {
+            case PackageDef(pid, body) =>
+              val path1 = addPrefix(pid, path)
+              for (stat <- body) traverse(stat, path1)
+            case tree: TypeDef if tree.isClassDef =>
+              if (checkPathMatches(path, "class", tree))
+                enterClassAndModule(owner, tree.name, completer, scope = scope)
+                  // It might be a case class or implicit class,
+                  // so enter class and module to be on the safe side
+            case tree: ModuleDef =>
+              if (checkPathMatches(path, "object", tree))
+                enterModule(owner, tree.name, completer, scope = scope)
+            case _ =>
+          }
+
+          traverse(new OutlineParser(unit.source).parse(), Nil)
+        }
+
+        val unit = new CompilationUnit(ctx.run.getSource(src.path))
+        enterScanned(unit)(ctx.run.runContext.fresh.setCompilationUnit(unit))
+      }
+    }
+    else enterClassAndModule(owner, name, completer, scope = scope)
   }
 
   /** The package objects of scala and scala.reflect should always
@@ -199,7 +249,7 @@ class SymbolLoaders {
         !root.unforcedDecls.lookup(classRep.name.toTypeName).exists
 
       if (!root.isRoot) {
-        val classReps = classPath.classes(packageName)
+        val classReps = classPath.list(packageName).classesAndSources
 
         for (classRep <- classReps)
           if (!maybeModuleClass(classRep) && isFlatName(classRep) == flat &&
@@ -265,7 +315,7 @@ abstract class SymbolLoader extends LazyType {
     }
     try {
       val start = currentTime
-      if (ctx.settings.debugTrace.value)
+      if (ctx.settings.YdebugTrace.value)
         trace(s">>>> loading ${root.debugString}", _ => s"<<<< loaded ${root.debugString}") {
           doComplete(root)
         }
@@ -326,7 +376,7 @@ class ClassfileLoader(val classfile: AbstractFile) extends SymbolLoader {
     val (classRoot, moduleRoot) = rootDenots(root.asClass)
     val classfileParser = new ClassfileParser(classfile, classRoot, moduleRoot)(ctx)
     val result = classfileParser.run()
-    if (ctx.settings.YretainTrees.value || ctx.settings.XlinkOptimise.value) {
+    if (mayLoadTreesFromTasty) {
       result match {
         case Some(unpickler: tasty.DottyUnpickler) =>
           classRoot.symbol.asClass.unpickler = unpickler
@@ -335,10 +385,14 @@ class ClassfileLoader(val classfile: AbstractFile) extends SymbolLoader {
       }
     }
   }
+
+  private def mayLoadTreesFromTasty(implicit ctx: Context): Boolean =
+    ctx.settings.YretainTrees.value || ctx.settings.Xlink.value || ctx.settings.fromTasty.value
 }
 
 class SourcefileLoader(val srcfile: AbstractFile) extends SymbolLoader {
   def description(implicit ctx: Context) = "source file " + srcfile.toString
   override def sourceFileOrNull = srcfile
-  def doComplete(root: SymDenotation)(implicit ctx: Context): Unit = unsupported("doComplete")
+  def doComplete(root: SymDenotation)(implicit ctx: Context): Unit =
+    ctx.run.enterRoots(srcfile)
 }

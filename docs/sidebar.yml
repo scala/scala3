@@ -25,6 +25,8 @@ sidebar:
               url: docs/reference/type-lambdas.html
             - title: Implicit Function Types
               url: docs/reference/implicit-function-types.html
+            - title: Dependent Function Types
+              url: docs/reference/dependent-function-types.html
             - title: Phantom Types
               url: docs/reference/phantom-types.html
             - title: Literal Singleton Types
@@ -41,10 +43,12 @@ sidebar:
           subsection:
             - title: Multiversal Equality
               url: docs/reference/multiversal-equality.html
-            - title: Inline
-              url: docs/reference/inline.html
             - title: Trait Parameters
               url: docs/reference/trait-parameters.html
+            - title: Inline
+              url: docs/reference/inline.html
+            - title: Symmetric Meta Programming
+              url: docs/reference/symmetric-meta-programming.html
             - title: By-Name Implicits
               url: docs/reference/implicit-by-name-parameters.html
             - title: Auto Parameter Tupling

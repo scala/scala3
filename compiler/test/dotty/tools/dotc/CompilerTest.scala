@@ -6,7 +6,7 @@ import reporting._
 import diagnostic.MessageContainer
 import util.SourcePosition
 import config.CompilerCommand
-import dotty.tools.io.PlainFile
+import dotty.tools.io.{PlainFile, Path}
 import scala.collection.mutable.ListBuffer
 import dotty.tools.io.{ Path, Directory, File => SFile, AbstractFile }
 import scala.annotation.tailrec
@@ -44,7 +44,7 @@ abstract class CompilerTest {
     if (runTest)
       log(s"WARNING: run tests can only be run by partest, JUnit just verifies compilation: $prefix$fileName$extension")
     if (args.contains("-rewrite")) {
-      val file = new PlainFile(filePath)
+      val file = new PlainFile(Path(filePath))
       val data = file.toByteArray
       // compile with rewrite
       compileArgs((filePath :: args).toArray, expErrors)
@@ -104,13 +104,17 @@ abstract class CompilerTest {
           else (fp, jfp)
         }
       val expErrors = expectedErrors(filePaths.toList)
-      (filePaths, javaFilePaths, normArgs, expErrors)
+      (filePaths.sorted, javaFilePaths.sorted, normArgs, expErrors)
     }
     if (runTest)
       log(s"WARNING: run tests can only be run by partest, JUnit just verifies compilation: $prefix$dirName")
     val (filePaths, javaFilePaths, normArgs, expErrors) = computeFilePathsAndExpErrors
-    compileWithJavac(javaFilePaths, Array.empty) // javac needs to run first on dotty-library
-    compileArgs(javaFilePaths ++ filePaths ++ normArgs, expErrors)
+    if (filePaths.exists(_.endsWith("_1.scala"))) {
+      log(s"WARNING: separate compilation test can not be run as legacy test: $prefix$dirName")
+    } else {
+      compileWithJavac(javaFilePaths, Array.empty) // javac needs to run first on dotty-library
+      compileArgs(javaFilePaths ++ filePaths ++ normArgs, expErrors)
+    }
   }
   def runDir(prefix: String, dirName: String, args: List[String] = Nil)
       (implicit defaultOptions: List[String]): Unit =
@@ -149,7 +153,8 @@ abstract class CompilerTest {
 
   private def expectedErrors(filePath: String): List[ErrorsInFile] = expectedErrors(List(filePath))
 
-  private def isNegTest(testPath: String) = testPath.contains("/neg/")
+  private def isNegTest(testPath: String) =
+    testPath.contains("/neg/") || testPath.contains("/neg-custom-args/") || testPath.contains("/neg-tailcall/")
 
   private def compileArgs(args: Array[String], expectedErrorsPerFile: List[ErrorsInFile])
       (implicit defaultOptions: List[String]): Unit = {
@@ -338,7 +343,7 @@ abstract class CompilerTest {
     @tailrec def copyfile(file: SFile, bytewise: Boolean): Unit = {
       if (bytewise) {
         val in = file.inputStream()
-        val out = SFile(dest).outputStream()
+        val out = dest.toFile.outputStream()
         val buffer = new Array[Byte](1024)
         @tailrec def loop(available: Int):Unit = {
           if (available < 0) {()}
@@ -353,7 +358,7 @@ abstract class CompilerTest {
         out.close()
       } else {
         try {
-          SFile(dest)(scala.io.Codec.UTF8).writeAll((s"/* !!!!! WARNING: DO NOT MODIFY. Original is at: $file !!!!! */").replace("\\", "/"), file.slurp("UTF-8"))
+          SFile(dest.jpath)(scala.io.Codec.UTF8).writeAll((s"/* !!!!! WARNING: DO NOT MODIFY. Original is at: $file !!!!! */").replace("\\", "/"), file.slurp("UTF-8"))
         } catch {
           case unmappable: java.nio.charset.MalformedInputException =>
             copyfile(file, true) //there are bytes that can't be mapped with UTF-8. Bail and just do a straight byte-wise copy without the warning header.
@@ -390,7 +395,7 @@ abstract class CompilerTest {
       if (!genSrc.isDefined) {
         NotExists
       } else {
-        val source = processFileDir(sourceFile, { f => try Some(f.slurp("UTF8")) catch {case _: java.io.IOException => None} }, { d => Some("") },
+        val source = processFileDir(Path(sourceFile.toPath), { f => try Some(f.slurp("UTF8")) catch {case _: java.io.IOException => None} }, { d => Some("") },
             Some("DPCompilerTest sourceFile doesn't exist: " + sourceFile)).get
         if (source == genSrc) {
           nerr match {

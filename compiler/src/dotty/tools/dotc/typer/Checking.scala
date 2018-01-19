@@ -78,7 +78,7 @@ object Checking {
       case _ => false
     }.getOrElse(TypeTree(tparam.paramRef))
     val orderedArgs = if (hasNamedArg(args)) tparams.map(argNamed) else args
-    val bounds = tparams.map(_.paramInfoAsSeenFrom(tycon.tpe).bounds)
+    val bounds = tparams.map(_.paramInfoAsSeenFrom(tree.tpe).bounds)
     def instantiate(bound: Type, args: List[Type]) =
       HKTypeLambda.fromParams(tparams, bound).appliedTo(args)
     if (boundsCheck) checkBounds(orderedArgs, bounds, instantiate)
@@ -244,7 +244,7 @@ object Checking {
             locked += tp
             try checkInfo(tp.info)
             finally locked -= tp
-            if (pre1 eq pre) tp else tp.withPrefix(pre1)
+            tp.withPrefix(pre1)
           }
           else tp
         } catch {
@@ -548,7 +548,7 @@ trait Checking {
   def checkClassType(tp: Type, pos: Position, traitReq: Boolean, stablePrefixReq: Boolean)(implicit ctx: Context): Type =
     tp.underlyingClassRef(refinementOK = false) match {
       case tref: TypeRef =>
-        if (traitReq && !(tref.symbol is Trait)) ctx.error(ex"$tref is not a trait", pos)
+        if (traitReq && !(tref.symbol is Trait)) ctx.error(TraitIsExpected(tref.symbol), pos)
         if (stablePrefixReq && ctx.phase <= ctx.refchecksPhase) checkStable(tref.prefix, pos)
         tp
       case _ =>
@@ -561,8 +561,7 @@ trait Checking {
    */
   def checkImplicitParamsNotSingletons(vparamss: List[List[ValDef]])(implicit ctx: Context): Unit = vparamss match {
     case (vparam :: Nil) :: _ if !(vparam.symbol is Implicit) =>
-      if (vparam.tpt.tpe.isInstanceOf[SingletonType])
-        ctx.error(s"implicit conversion may not have a parameter of singleton type", vparam.tpt.pos)
+      checkNotSingleton(vparam.tpt, " to be parameter type of an implicit conversion")
     case _ =>
   }
 
@@ -660,9 +659,7 @@ trait Checking {
 
   /** Check that `tpt` does not refer to a singleton type */
   def checkNotSingleton(tpt: Tree, where: String)(implicit ctx: Context): Tree =
-    if (tpt.tpe.isInstanceOf[SingletonType]) {
-      errorTree(tpt, ex"Singleton type ${tpt.tpe} is not allowed $where")
-    }
+    if (tpt.tpe.isSingleton) errorTree(tpt, ex"Singleton type ${tpt.tpe} is not allowed $where")
     else tpt
 
   /** Verify classes extending AnyVal meet the requirements */

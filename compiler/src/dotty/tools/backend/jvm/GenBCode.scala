@@ -7,6 +7,7 @@ import dotty.tools.dotc.core.Phases.Phase
 import dotty.tools.dotc.core.Names.TypeName
 
 import scala.collection.mutable
+import scala.collection.JavaConverters._
 import scala.tools.asm.{ClassVisitor, CustomAttr, FieldVisitor, MethodVisitor}
 import scala.tools.nsc.backend.jvm._
 import dotty.tools.dotc
@@ -27,37 +28,57 @@ import Denotations._
 import Phases._
 import java.lang.AssertionError
 import java.io.{DataOutputStream, File => JFile}
+import java.nio.file.{Files, FileSystem, FileSystems, Path => JPath}
+
+import dotty.tools.io.{Directory, File, Jar}
 
 import scala.tools.asm
 import scala.tools.asm.tree._
 import dotty.tools.dotc.util.{DotClass, Positions}
 import tpd._
 import StdNames._
-
-import dotty.tools.io.{AbstractFile, Directory, PlainDirectory}
+import dotty.tools.io._
 
 class GenBCode extends Phase {
   def phaseName: String = "genBCode"
   private val entryPoints = new mutable.HashSet[Symbol]()
   def registerEntryPoint(sym: Symbol) = entryPoints += sym
 
-  private val superCallsMap = new mutable.HashMap[Symbol, Set[ClassSymbol]]()
+  private val superCallsMap = newMutableSymbolMap[Set[ClassSymbol]]
   def registerSuperCall(sym: Symbol, calls: ClassSymbol) = {
     val old = superCallsMap.getOrElse(sym, Set.empty)
-    superCallsMap.put(sym, old + calls)
+    superCallsMap.update(sym, old + calls)
   }
 
-  def outputDir(implicit ctx: Context): AbstractFile =
-    new PlainDirectory(ctx.settings.outputDir.value)
+  private[this] var myOutput: AbstractFile = _
+
+  protected def outputDir(implicit ctx: Context): AbstractFile = {
+    if (myOutput eq null) {
+      val path = Directory(ctx.settings.outputDir.value)
+      myOutput =
+        if (path.extension == "jar") JarArchive.create(path)
+        else new PlainDirectory(path)
+    }
+    myOutput
+  }
 
   def run(implicit ctx: Context): Unit = {
     new GenBCodePipeline(entryPoints.toList,
         new DottyBackendInterface(outputDir, superCallsMap.toMap)(ctx))(ctx).run(ctx.compilationUnit.tpdTree)
     entryPoints.clear()
   }
+
+  override def runOn(units: List[CompilationUnit])(implicit ctx: Context) = {
+    try super.runOn(units)
+    finally myOutput match {
+      case jar: JarArchive =>
+        jar.close()
+      case _ =>
+    }
+  }
 }
 
-class GenBCodePipeline(val entryPoints: List[Symbol], val int: DottyBackendInterface)(implicit val ctx: Context) extends BCodeSyncAndTry{
+class GenBCodePipeline(val entryPoints: List[Symbol], val int: DottyBackendInterface)(implicit val ctx: Context) extends BCodeSyncAndTry {
 
   var tree: Tree = _
 
@@ -80,7 +101,6 @@ class GenBCodePipeline(val entryPoints: List[Symbol], val int: DottyBackendInter
 
     private[this] var bytecodeWriter  : BytecodeWriter   = null
     private[this] var mirrorCodeGen   : JMirrorBuilder   = null
-    private[this] var beanInfoCodeGen : JBeanInfoBuilder = null
 
     /* ---------------- q1 ---------------- */
 
@@ -97,19 +117,18 @@ class GenBCodePipeline(val entryPoints: List[Symbol], val int: DottyBackendInter
 
     case class Item2(arrivalPos: Int,
                      mirror:     SubItem2,
-                     plain:      SubItem2,
-                     bean:       SubItem2) {
+                     plain:      SubItem2) {
       def isPoison = { arrivalPos == Int.MaxValue }
     }
 
-    private val poison2 = Item2(Int.MaxValue, null, null, null)
+    private val poison2 = Item2(Int.MaxValue, null, null)
     private val q2 = new _root_.java.util.LinkedList[Item2]
 
     /* ---------------- q3 ---------------- */
 
     /*
      *  An item of queue-3 (the last queue before serializing to disk) contains three of these
-     *  (one for each of mirror, plain, and bean classes).
+     *  (one for each of mirror and plain classes).
      *
      *  @param jclassName  internal name of the class
      *  @param jclassBytes bytecode emitted for the class SubItem3 represents
@@ -122,8 +141,7 @@ class GenBCodePipeline(val entryPoints: List[Symbol], val int: DottyBackendInter
 
     case class Item3(arrivalPos: Int,
                      mirror:     SubItem3,
-                     plain:      SubItem3,
-                     bean:       SubItem3) {
+                     plain:      SubItem3) {
 
       def isPoison  = { arrivalPos == Int.MaxValue }
     }
@@ -134,7 +152,7 @@ class GenBCodePipeline(val entryPoints: List[Symbol], val int: DottyBackendInter
         else 1
       }
     }
-    private val poison3 = Item3(Int.MaxValue, null, null, null)
+    private val poison3 = Item3(Int.MaxValue, null, null)
     private val q3 = new java.util.PriorityQueue[Item3](1000, i3comparator)
 
     /*
@@ -164,7 +182,7 @@ class GenBCodePipeline(val entryPoints: List[Symbol], val int: DottyBackendInter
 
       /*
        *  Checks for duplicate internal names case-insensitively,
-       *  builds ASM ClassNodes for mirror, plain, and bean classes;
+       *  builds ASM ClassNodes for mirror and plain classes;
        *  enqueues them in queue-2.
        *
        */
@@ -205,35 +223,30 @@ class GenBCodePipeline(val entryPoints: List[Symbol], val int: DottyBackendInter
 
         if (claszSymbol.isClass) // @DarkDimius is this test needed here?
           for (binary <- ctx.compilationUnit.pickled.get(claszSymbol.asClass)) {
-            val dataAttr = new CustomAttr(nme.TASTYATTR.mangledString, binary)
             val store = if (mirrorC ne null) mirrorC else plainC
+            val tasty =
+              if (ctx.settings.YemitTasty.value) {
+                val outTastyFile = getFileForClassfile(outF, store.name, ".tasty")
+                val outstream = new DataOutputStream(outTastyFile.bufferedOutput)
+                try outstream.write(binary)
+                finally outstream.close()
+                // TASTY attribute is created but 0 bytes are stored in it.
+                // A TASTY attribute has length 0 if and only if the .tasty file exists.
+                Array.empty[Byte]
+              } else {
+                // Create an empty file to signal that a tasty section exist in the corresponding .class
+                // This is much cheaper and simpler to check than doing classfile parsing
+                getFileForClassfile(outF, store.name, ".hasTasty")
+                binary
+              }
+            val dataAttr = new CustomAttr(nme.TASTYATTR.mangledString, tasty)
             store.visitAttribute(dataAttr)
-            if (ctx.settings.emitTasty.value) {
-              val outTastyFile = getFileForClassfile(outF, store.name, ".tasty")
-              val outstream = new DataOutputStream(outTastyFile.bufferedOutput)
-
-              try outstream.write(binary)
-              finally outstream.close()
-            } else {
-              // Create an empty file to signal that a tasty section exist in the corresponding .class
-              // This is much cheaper and simpler to check than doing classfile parsing
-              getFileForClassfile(outF, store.name, ".hasTasty")
-            }
           }
 
-        // -------------- bean info class, if needed --------------
-        val beanC =
-          if (claszSymbol hasAnnotation int.BeanInfoAttr) {
-            beanInfoCodeGen.genBeanInfoClass(
-              claszSymbol, cunit,
-              int.symHelper(claszSymbol).fieldSymbols,
-              int.symHelper(claszSymbol).methodSymbols
-            )
-          } else null
 
         // ----------- create files
 
-        val classNodes = List(mirrorC, plainC, beanC)
+        val classNodes = List(mirrorC, plainC)
         val classFiles = classNodes.map(cls =>
           if (outF != null && cls != null) {
             try {
@@ -248,9 +261,8 @@ class GenBCodePipeline(val entryPoints: List[Symbol], val int: DottyBackendInter
 
         // ----------- sbt's callbacks
 
-        val fullClassName = ctx.atPhase(ctx.typerPhase) { implicit ctx =>
-          ExtractDependencies.extractedName(claszSymbol)
-        }
+        val fullClassName =
+          ExtractDependencies.extractedName(claszSymbol)(ctx.withPhase(ctx.typerPhase))
         val isLocal = fullClassName.contains("_$")
 
         for ((cls, clsFile) <- classNodes.zip(classFiles)) {
@@ -275,8 +287,7 @@ class GenBCodePipeline(val entryPoints: List[Symbol], val int: DottyBackendInter
         val item2 =
           Item2(arrivalPos,
             SubItem2(mirrorC, classFiles(0)),
-            SubItem2(plainC, classFiles(1)),
-            SubItem2(beanC, classFiles(2)))
+            SubItem2(plainC, classFiles(1)))
 
         q2 add item2 // at the very end of this method so that no Worker2 thread starts mutating before we're done.
 
@@ -325,23 +336,17 @@ class GenBCodePipeline(val entryPoints: List[Symbol], val int: DottyBackendInter
           cw.toByteArray
         }
 
-        val Item2(arrivalPos,
-                  SubItem2(mirror, mirrorFile),
-                  SubItem2(plain, plainFile),
-                  SubItem2(bean, beanFile)) = item
+        val Item2(arrivalPos, SubItem2(mirror, mirrorFile), SubItem2(plain, plainFile)) = item
 
         val mirrorC = if (mirror == null) null else SubItem3(mirror.name, getByteArray(mirror), mirrorFile)
         val plainC  = SubItem3(plain.name, getByteArray(plain), plainFile)
-        val beanC   = if (bean == null)   null else SubItem3(bean.name, getByteArray(bean), beanFile)
 
         if (AsmUtils.traceSerializedClassEnabled && plain.name.contains(AsmUtils.traceSerializedClassPattern)) {
           if (mirrorC != null) AsmUtils.traceClass(mirrorC.jclassBytes)
           AsmUtils.traceClass(plainC.jclassBytes)
-          if (beanC != null) AsmUtils.traceClass(beanC.jclassBytes)
         }
 
-        q3 add Item3(arrivalPos, mirrorC, plainC, beanC)
-
+        q3 add Item3(arrivalPos, mirrorC, plainC)
       }
 
     } // end of class BCodePhase.Worker2
@@ -373,7 +378,6 @@ class GenBCodePipeline(val entryPoints: List[Symbol], val int: DottyBackendInter
       // initBytecodeWriter invokes fullName, thus we have to run it before the typer-dependent thread is activated.
       bytecodeWriter  = initBytecodeWriter(entryPoints)
       mirrorCodeGen   = new JMirrorBuilder
-      beanInfoCodeGen = new JBeanInfoBuilder
 
       val needsOutfileForSymbol = bytecodeWriter.isInstanceOf[ClassBytecodeWriter]
       buildAndSendToDisk(needsOutfileForSymbol)
@@ -458,7 +462,6 @@ class GenBCodePipeline(val entryPoints: List[Symbol], val int: DottyBackendInter
           val item = incoming
           sendToDisk(item.mirror)
           sendToDisk(item.plain)
-          sendToDisk(item.bean)
           expected += 1
         }
       }

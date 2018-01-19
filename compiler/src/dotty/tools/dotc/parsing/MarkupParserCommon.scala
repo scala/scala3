@@ -159,7 +159,7 @@ private[dotty] trait MarkupParserCommon {
     Utility.parseCharRef(() => c, () => { c = it.next() }, reportSyntaxError _, truncatedError _)
   }
 
-  def xCharRef: String = xCharRef(() => ch, nextch)
+  def xCharRef: String = xCharRef(() => ch, () => nextch())
 
   /** Create a lookahead reader which does not influence the input */
   def lookahead(): BufferedIterator[Char]

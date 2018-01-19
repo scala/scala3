@@ -79,17 +79,6 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
     // TODO fill in
   }
 
-  /** If the type of `tree` is a TermRef with an underdefined
-   *  signature, narrow the type by re-computing the signature (which should
-   *  be fully-defined by now).
-   */
-  private def fixSignature[T <: Tree](tree: T)(implicit ctx: Context): T = tree.tpe match {
-    case tpe: TermRef if tpe.signature.isUnderDefined =>
-      typr.println(i"fixing $tree with type ${tree.tpe.widen.toString} with sig ${tpe.signature} to ${tpe.widen.signature}")
-      tree.withType(TermRef(tpe.prefix, tpe.name.withSig(tpe.widen.signature))).asInstanceOf[T]
-    case _ => tree
-  }
-
   class PostTyperTransformer extends Transformer {
 
     private[this] var inJavaAnnot: Boolean = false
@@ -170,20 +159,40 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
         }
     }
 
+    /** 1. If we are an an inline method but not in a nested quote, mark the inline method
+     *  as a macro.
+     *
+     *  2. If selection is a quote or splice node, record that fact in the current compilation unit.
+     */
+    private def handleMeta(sym: Symbol)(implicit ctx: Context): Unit = {
+
+      def markAsMacro(c: Context): Unit =
+        if (c.owner eq c.outer.owner) markAsMacro(c.outer)
+        else if (c.owner.isInlineMethod) c.owner.setFlag(Macro)
+        else if (!c.outer.owner.is(Package)) markAsMacro(c.outer)
+
+      if (sym.isSplice || sym.isQuote) {
+        markAsMacro(ctx)
+        ctx.compilationUnit.containsQuotesOrSplices = true
+      }
+    }
+
     override def transform(tree: Tree)(implicit ctx: Context): Tree =
       try tree match {
         case tree: Ident if !tree.isType =>
+          handleMeta(tree.symbol)
           tree.tpe match {
             case tpe: ThisType => This(tpe.cls).withPos(tree.pos)
-            case _ => paramFwd.adaptRef(fixSignature(tree))
+            case _ => tree
           }
         case tree @ Select(qual, name) =>
+          handleMeta(tree.symbol)
           if (name.isTypeName) {
             Checking.checkRealizable(qual.tpe, qual.pos.focus)
             super.transform(tree)
           }
           else
-            transformSelect(paramFwd.adaptRef(fixSignature(tree)), Nil)
+            transformSelect(tree, Nil)
         case tree: Super =>
           if (ctx.owner.enclosingMethod.isInlineMethod)
             ctx.error(SuperCallsNotAllowedInline(ctx.owner), tree.pos)
@@ -210,7 +219,7 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
               super.transform(tree1)
           }
         case tree @ Assign(sel: Select, _) =>
-          superAcc.transformAssign(super.transform(tree))
+          super.transform(superAcc.transformAssign(tree))
         case Inlined(call, bindings, expansion) =>
           // Leave only a call trace consisting of
           //  - a reference to the top-level class from which the call was inlined,
@@ -269,10 +278,14 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
           )
         case Import(expr, selectors) =>
           val exprTpe = expr.tpe
+          val seen = mutable.Set.empty[Name]
           def checkIdent(ident: untpd.Ident): Unit = {
             val name = ident.name.asTermName
             if (name != nme.WILDCARD && !exprTpe.member(name).exists && !exprTpe.member(name.toTypeName).exists)
               ctx.error(NotAMember(exprTpe, name, "value"), ident.pos)
+            if (seen(ident.name))
+              ctx.error(s"${ident.show} is renamed twice", ident.pos)
+            seen += ident.name
           }
           selectors.foreach {
             case ident: untpd.Ident                 => checkIdent(ident)

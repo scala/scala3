@@ -19,6 +19,8 @@ import util.Stats
 import java.util.WeakHashMap
 import config.Config
 import config.Printers.{incremental, noPrinter}
+import reporting.diagnostic.Message
+import reporting.diagnostic.messages.BadSymbolicReference
 import reporting.trace
 
 trait SymDenotations { this: Context =>
@@ -103,8 +105,11 @@ trait SymDenotations { this: Context =>
   }
 
   /** Configurable: Accept stale symbol with warning if in IDE */
+  def staleOK = Config.ignoreStaleInIDE && mode.is(Mode.Interactive)
+
+  /** Possibly accept stale symbol with warning if in IDE */
   def acceptStale(denot: SingleDenotation): Boolean =
-    mode.is(Mode.Interactive) && Config.ignoreStaleInIDE && {
+    staleOK && {
       ctx.echo(denot.staleSymbolMsg)
       true
     }
@@ -271,7 +276,7 @@ object SymDenotations {
     final def privateWithin(implicit ctx: Context): Symbol = { ensureCompleted(); myPrivateWithin }
 
     /** Set privateWithin. */
-    protected[core] final def privateWithin_=(sym: Symbol): Unit =
+    protected[dotc] final def privateWithin_=(sym: Symbol): Unit =
       myPrivateWithin = sym
 
     /** The annotations of this denotation */
@@ -400,18 +405,23 @@ object SymDenotations {
      *  Drops package objects. Represents each term in the owner chain by a simple `_$`.
      */
     def fullNameSeparated(kind: QualifiedNameKind)(implicit ctx: Context): Name =
-      if (symbol == NoSymbol ||
-          owner == NoSymbol ||
-          owner.isEffectiveRoot ||
-          kind == FlatName && owner.is(PackageClass)) name
+      maybeOwner.fullNameSeparated(kind, kind, name)
+
+    /** The encoded full path name of this denotation (separated by `prefixKind`),
+     *  followed by the separator implied by `kind` and the given `name`.
+     *  Drops package objects. Represents each term in the owner chain by a simple `_$`.
+     */
+     def fullNameSeparated(prefixKind: QualifiedNameKind, kind: QualifiedNameKind, name: Name)(implicit ctx: Context): Name =
+      if (symbol == NoSymbol || isEffectiveRoot || kind == FlatName && is(PackageClass))
+        name
       else {
         var filler = ""
-        var encl = owner
+        var encl = symbol
         while (!encl.isClass && !encl.isPackageObject) {
           encl = encl.owner
           filler += "_$"
         }
-        var prefix = encl.fullNameSeparated(kind)
+        var prefix = encl.fullNameSeparated(prefixKind)
         if (kind.separator == "$")
           // duplicate scalac's behavior: don't write a double '$$' for module class members.
           prefix = prefix.exclude(ModuleClassName)
@@ -421,9 +431,8 @@ object SymDenotations {
           case name: SimpleName => qualify(name)
           case name @ AnyQualifiedName(_, _) => qualify(name.mangled.toSimpleName)
         }
-        if (isType) fn.toTypeName else fn.toTermName
+        if (name.isTypeName) fn.toTypeName else fn.toTermName
       }
-
 
     /** The encoded flat name of this denotation, where joined names are separated by `separator` characters. */
     def flatName(implicit ctx: Context): Name = fullNameSeparated(FlatName)
@@ -571,7 +580,7 @@ object SymDenotations {
 
     /** Is this denotation static (i.e. with no outer instance)? */
     final def isStatic(implicit ctx: Context) =
-      (if (maybeOwner eq NoSymbol) isRoot else maybeOwner.isStaticOwner) ||
+      (if (maybeOwner eq NoSymbol) isRoot else maybeOwner.originDenotation.isStaticOwner) ||
         myFlags.is(JavaStatic)
 
     /** Is this a package class or module class that defines static symbols? */
@@ -674,10 +683,7 @@ object SymDenotations {
     final def isAccessibleFrom(pre: Type, superAccess: Boolean = false, whyNot: StringBuffer = null)(implicit ctx: Context): Boolean = {
 
       /** Are we inside definition of `boundary`? */
-      def accessWithin(boundary: Symbol) =
-        ctx.owner.isContainedIn(boundary) &&
-          (!(this is JavaDefined) || // disregard package nesting for Java
-             ctx.owner.enclosingPackageClass == boundary.enclosingPackageClass)
+      def accessWithin(boundary: Symbol) = ctx.owner.isContainedIn(boundary)
 
       /** Are we within definition of linked class of `boundary`? */
       def accessWithinLinked(boundary: Symbol) = {
@@ -733,7 +739,9 @@ object SymDenotations {
              (  !(this is Local)
              || (owner is ImplClass) // allow private local accesses to impl class members
              || isCorrectThisType(pre)
-             )
+             ) &&
+             (!(this.is(Private) && owner.is(Package)) ||
+              owner == ctx.owner.enclosingPackageClass)
         || (this is Protected) &&
              (  superAccess
              || pre.isInstanceOf[ThisType]
@@ -777,7 +785,6 @@ object SymDenotations {
       isPackageObject ||
       isTerm && !is(MethodOrLazy, butNot = Label) && !isLocalDummy
 
-    //    def isOverridable: Boolean = !!! need to enforce that classes cannot be redefined
     def isSkolem: Boolean = name == nme.SKOLEM
 
     def isInlineMethod(implicit ctx: Context): Boolean = is(InlineMethod, butNot = Accessor)
@@ -931,6 +938,7 @@ object SymDenotations {
         if (d.isTopLevelClass) d.symbol
         else topLevel(d.owner)
       }
+
       val sym = topLevel(this)
       if (sym.isClass) sym else sym.moduleClass
     }
@@ -1142,10 +1150,10 @@ object SymDenotations {
     def thisType(implicit ctx: Context): Type = NoPrefix
 
     override def typeRef(implicit ctx: Context): TypeRef =
-      TypeRef(owner.thisType, name.asTypeName, this)
+      TypeRef(owner.thisType, symbol)
 
     override def termRef(implicit ctx: Context): TermRef =
-      TermRef(owner.thisType, name.asTermName, this)
+      TermRef(owner.thisType, symbol)
 
     /** The variance of this type parameter or type member as an Int, with
      *  +1 = Covariant, -1 = Contravariant, 0 = Nonvariant, or not a type parameter
@@ -1413,7 +1421,7 @@ object SymDenotations {
     private def computeThisType(implicit ctx: Context): Type = {
       val cls = symbol.asType
       val pre = if (this is Package) NoPrefix else owner.thisType
-      ThisType.raw(TypeRef.withSym(pre, cls))
+      ThisType.raw(TypeRef(pre, cls))
     }
 
     private[this] var myTypeRef: TypeRef = null
@@ -1447,7 +1455,8 @@ object SymDenotations {
         onBehalf.signalProvisional()
       val builder = new BaseDataBuilder
       for (p <- classParents) {
-        assert(p.typeSymbol.isClass, s"$this has $p")
+        if (p.typeSymbol.isClass) builder.addAll(p.typeSymbol.asClass.baseClasses)
+        else assert(ctx.mode.is(Mode.Interactive), s"$this has non-class parent: $p")
         builder.addAll(p.typeSymbol.asClass.baseClasses)
       }
       (classSymbol :: builder.baseClasses, builder.baseClassSet)
@@ -1496,6 +1505,8 @@ object SymDenotations {
         if (nxt.validFor.code > this.validFor.code) {
           this.nextInRun.asSymDenotation.asClass.enter(sym)
         }
+        if (defn.isScalaShadowingPackageClass(sym.owner))
+          defn.ScalaPackageClass.enter(sym)  // ScalaShadowing members are mirrored in ScalaPackage
       }
     }
 
@@ -1685,7 +1696,7 @@ object SymDenotations {
 
       /*>|>*/ trace.onDebug(s"$tp.baseType($this)") /*<|<*/ {
         Stats.record("baseTypeOf")
-        tp.stripTypeVar match { // @!!! dealias?
+        tp.stripTypeVar match {
           case tp: CachedType =>
           val btrCache = baseTypeCache
             try {
@@ -1853,25 +1864,34 @@ object SymDenotations {
       if (entry != null) {
         if (entry.sym == sym) return false
         mscope.unlink(entry)
-        entry.sym.denot = sym.denot // to avoid stale symbols
         if (sym.name == nme.PACKAGE) packageObjRunId = NoRunId
       }
       true
     }
+
+    /** Unlink all package members defined in `file` in a previous run. */
+    def unlinkFromFile(file: AbstractFile)(implicit ctx: Context): Unit = {
+      val scope = unforcedDecls.openForMutations
+      for (sym <- scope.toList.iterator) {
+        // We need to be careful to not force the denotation of `sym` here,
+        // otherwise it will be brought forward to the current run.
+        if (sym.defRunId != ctx.runId && sym.isClass && sym.asClass.assocFile == file)
+          scope.unlink(sym, sym.lastKnownDenotation.name)
+      }
+    }
   }
 
-  class NoDenotation extends SymDenotation(
-    NoSymbol, NoSymbol, "<none>".toTermName, Permanent, NoType) {
-    override def exists = false
-    override def isTerm = false
+  @sharable object NoDenotation
+  extends SymDenotation(NoSymbol, NoSymbol, "<none>".toTermName, Permanent, NoType) {
     override def isType = false
+    override def isTerm = false
+    override def exists = false
     override def owner: Symbol = throw new AssertionError("NoDenotation.owner")
     override def computeAsSeenFrom(pre: Type)(implicit ctx: Context): SingleDenotation = this
     override def mapInfo(f: Type => Type)(implicit ctx: Context): SingleDenotation = this
+    NoSymbol.denot = this
     validFor = Period.allInRun(NoRunId)
   }
-
-  @sharable val NoDenotation = new NoDenotation
 
   // ---- Completion --------------------------------------------------------
 
@@ -1951,7 +1971,7 @@ object SymDenotations {
   /** A completer for missing references */
   class StubInfo() extends LazyType {
 
-    def initializeToDefaults(denot: SymDenotation, errMsg: => String)(implicit ctx: Context) = {
+    def initializeToDefaults(denot: SymDenotation, errMsg: => Message)(implicit ctx: Context): Unit = {
       denot.info = denot match {
         case denot: ClassDenotation =>
           ClassInfo(denot.owner.thisType, denot.classSymbol, Nil, EmptyScope)
@@ -1963,18 +1983,9 @@ object SymDenotations {
 
     def complete(denot: SymDenotation)(implicit ctx: Context): Unit = {
       val sym = denot.symbol
-      val file = sym.associatedFile
-      val (location, src) =
-        if (file != null) (s" in $file", file.toString)
-        else ("", "the signature")
-      val name = ctx.fresh.setSetting(ctx.settings.debugNames, true).nameString(denot.name)
-      def errMsg =
-        i"""bad symbolic reference. A signature$location
-           |refers to $name in ${denot.owner.showKind} ${denot.owner.showFullName} which is not available.
-           |It may be completely missing from the current classpath, or the version on
-           |the classpath might be incompatible with the version used when compiling $src."""
-      ctx.error(errMsg)
-      if (ctx.debug) throw new Error()
+      def errMsg = BadSymbolicReference(denot)
+      ctx.error(errMsg, sym.pos)
+      if (ctx.debug) throw new scala.Error()
       initializeToDefaults(denot, errMsg)
     }
   }

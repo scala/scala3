@@ -39,7 +39,7 @@ class ReTyper extends Typer {
     untpd.cpy.Select(tree)(qual1, tree.name).withType(tree.typeOpt)
   }
 
-  override def typedLiteral(tree: untpd.Literal)(implicit ctc: Context): Literal =
+  override def typedLiteral(tree: untpd.Literal)(implicit ctc: Context): Tree =
     promote(tree)
 
   override def typedThis(tree: untpd.This)(implicit ctx: Context): Tree =
@@ -101,7 +101,7 @@ class ReTyper extends Typer {
 
   override def checkVariance(tree: Tree)(implicit ctx: Context) = ()
   override def inferView(from: Tree, to: Type)(implicit ctx: Context): Implicits.SearchResult =
-    Implicits.NoImplicitMatches
+    Implicits.NoMatchingImplicitsFailure
   override def checkCanEqual(ltp: Type, rtp: Type, pos: Position)(implicit ctx: Context): Unit = ()
   override def inlineExpansion(mdef: DefDef)(implicit ctx: Context): List[Tree] = mdef :: Nil
 

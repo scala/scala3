@@ -169,7 +169,6 @@ private class ExtractAPICollector(implicit val ctx: Context) extends ThunkHolder
     api.Annotated.of(tp, Array(marker))
   private def marker(name: String) =
     api.Annotation.of(api.Constant.of(Constants.emptyType, name), Array())
-  val typeArgRefMarker = marker("TypeArgRef")
   val orMarker = marker("Or")
   val byNameMarker = marker("ByName")
 
@@ -543,9 +542,6 @@ private class ExtractAPICollector(implicit val ctx: Context) extends ThunkHolder
         apiType(tp.ref)
       case tp: TypeVar =>
         apiType(tp.underlying)
-      case TypeArgRef(prefix, clsRef, idx) =>
-        val apiClsWithIdx = withMarker(apiType(clsRef), marker(idx.toString))
-        withMarker(combineApiTypes(apiType(prefix), apiClsWithIdx), typeArgRefMarker)
       case _ => {
         ctx.warning(i"sbt-api: Unhandled type ${tp.getClass} : $tp")
         Constants.emptyType
@@ -621,7 +617,7 @@ private class ExtractAPICollector(implicit val ctx: Context) extends ThunkHolder
       // typed tree of the method as part of the signature we send to sbt.
       // To do this properly we would need a way to hash trees and types in
       // dotty itself.
-      val printTypesCtx = ctx.fresh.setSetting(ctx.settings.printtypes, true)
+      val printTypesCtx = ctx.fresh.setSetting(ctx.settings.XprintTypes, true)
       annots += marker(Inliner.bodyToInline(s).show(printTypesCtx).toString)
     }
 

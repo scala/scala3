@@ -172,12 +172,24 @@ object Flags {
   }
 
   /** The union of all flags in given flag set */
-  def union(flagss: FlagSet*) = (EmptyFlags /: flagss)(_ | _)
+  def union(flagss: FlagSet*): FlagSet = {
+    var flag = EmptyFlags
+    for (f <- flagss)
+      flag |= f
+    flag
+  }
 
   /** The conjunction of all flags in given flag set */
-  def allOf(flagss: FlagSet*) = {
-    assert(flagss forall (_.numFlags == 1), "Flags.allOf doesn't support flag " + flagss.find(_.numFlags != 1))
-    FlagConjunction(union(flagss: _*).bits)
+  def allOf(flags1: FlagSet, flags2: FlagSet): FlagConjunction = {
+    assert(flags1.numFlags == 1 && flags2.numFlags == 1, "Flags.allOf doesn't support flag " + (if (flags1.numFlags != 1) flags1 else flags2))
+    FlagConjunction((flags1 | flags2).bits)
+  }
+
+  /** The conjunction of all flags in given flag set */
+  def allOf(flags1: FlagSet, flags2: FlagSet, flags3: FlagSet, flagss: FlagSet*): FlagConjunction = {
+    val flags0 = allOf(flags1, flags2) | flags3
+    assert(flags3.numFlags == 1 && flagss.forall(_.numFlags == 1), "Flags.allOf doesn't support flag " + (if (flags3.numFlags != 1) flags3 else flagss.find(_.numFlags != 1)))
+    FlagConjunction((flags0 | union(flagss: _*)).bits)
   }
 
   def commonFlags(flagss: FlagSet*) = union(flagss.map(_.toCommonFlags): _*)
@@ -402,7 +414,7 @@ object Flags {
   /** A Scala 2.12 or higher trait */
   final val Scala_2_12_Trait = typeFlag(58, "<scala_2_12_trait>")
 
-  /** A macro (Scala 2.x only) */
+  /** A macro */
   final val Macro = commonFlag(59, "<macro>")
 
   /** A method that is known to have inherited default parameters */
@@ -472,7 +484,7 @@ object Flags {
   final val RetainedTypeArgFlags = VarianceFlags | Protected | Local
 
   /** Modules always have these flags set */
-  final val ModuleCreationFlags = ModuleVal | Lazy | Final | Stable
+  final val ModuleValCreationFlags = ModuleVal | Lazy | Final | Stable
 
   /** Module classes always have these flags set */
   final val ModuleClassCreationFlags = ModuleClass | Final
@@ -503,7 +515,7 @@ object Flags {
   /** Flags that can apply to a module val */
   final val RetainedModuleValFlags: FlagSet = RetainedModuleValAndClassFlags |
     Override | Final | Method | Implicit | Lazy |
-    Accessor | AbsOverride | Stable | Captured | Synchronized
+    Accessor | AbsOverride | Stable | Captured | Synchronized | Inline
 
   /** Flags that can apply to a module class */
   final val RetainedModuleClassFlags: FlagSet = RetainedModuleValAndClassFlags | ImplClass | Enum
@@ -563,7 +575,7 @@ object Flags {
   final val SyntheticOrPrivate = Synthetic | Private
 
   /** A deferred member or a parameter accessor (these don't have right hand sides) */
-  final val DeferredOrParamAccessor = Deferred | ParamAccessor
+  final val DeferredOrParamOrAccessor = Deferred | Param | ParamAccessor
 
   /** value that's final or inline */
   final val FinalOrInline = Final | Inline
@@ -585,6 +597,9 @@ object Flags {
 
   /** Is a default parameter in Scala 2*/
   final val DefaultParameter = allOf(Param, DefaultParameterized)
+
+  /** A Scala 2 Macro */
+  final val Scala2Macro = allOf(Macro, Scala2x)
 
   /** A trait that does not need to be initialized */
   final val NoInitsTrait = allOf(Trait, NoInits)

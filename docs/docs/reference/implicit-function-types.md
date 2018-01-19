@@ -10,7 +10,7 @@ An implicit function type describes functions with implicit parameters. Example:
 A value of implicit function type is applied to implicit arguments, in
 the same way a method with implicit parameters is applied. For instance:
 
-    implicit ctx: Context = ...
+    implicit val ctx: Context = ...
 
     def f(x: Int): Contextual[Int] = ...
 
@@ -93,7 +93,7 @@ With that setup, the table construction code above compiles and expands to:
         cell("top right")($r)
       }($t)
       row { implicit $r: Row =>
-        cell("botttom left")($r)
+        cell("bottom left")($r)
         cell("bottom right")($r)
       }($t)
     }

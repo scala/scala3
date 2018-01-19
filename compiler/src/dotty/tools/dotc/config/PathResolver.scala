@@ -80,11 +80,11 @@ object PathResolver {
     def scalaHome         = Environment.scalaHome
     def scalaHomeDir      = Directory(scalaHome)
     def scalaHomeExists   = scalaHomeDir.isDirectory
-    def scalaLibDir       = Directory(scalaHomeDir / "lib")
-    def scalaClassesDir   = Directory(scalaHomeDir / "classes")
+    def scalaLibDir       = (scalaHomeDir / "lib").toDirectory
+    def scalaClassesDir   = (scalaHomeDir / "classes").toDirectory
 
-    def scalaLibAsJar     = File(scalaLibDir / "scala-library.jar")
-    def scalaLibAsDir     = Directory(scalaClassesDir / "library")
+    def scalaLibAsJar     = (scalaLibDir / "scala-library.jar").toFile
+    def scalaLibAsDir     = (scalaClassesDir / "library").toDirectory
 
     def scalaLibDirFound: Option[Directory] =
       if (scalaLibAsJar.isFile) Some(scalaLibDir)
@@ -262,8 +262,8 @@ class PathResolver(implicit ctx: Context) {
   lazy val result: ClassPath = {
     val cp = AggregateClassPath(containers.toIndexedSeq)
 
-    if (settings.Ylogcp.value) {
-      Console.println("Classpath built from " + settings.toConciseString(ctx.sstate))
+    if (settings.YlogClasspath.value) {
+      Console.println("Classpath built from " + settings.toConciseString(ctx.settingsState))
       Console.println("Defaults: " + PathResolver.Defaults)
       Console.println("Calculated: " + Calculated)
 

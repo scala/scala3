@@ -7,7 +7,7 @@ scala> import o._
 scala> buf += xs
 1 | buf += xs
   |        ^^
-  |        found:    scala.collection.immutable.List[Int](o.xs)
+  |        found:    List[Int](o.xs)
   |        required: Int
   |
 scala> buf ++= xs

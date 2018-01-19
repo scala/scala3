@@ -140,7 +140,8 @@ trait MessageRendering {
   /** The whole message rendered from `msg` */
   def messageAndPos(msg: Message, pos: SourcePosition, diagnosticLevel: String)(implicit ctx: Context): String = {
     val sb = mutable.StringBuilder.newBuilder
-    sb.append(posStr(pos, diagnosticLevel, msg)).append('\n')
+    val posString = posStr(pos, diagnosticLevel, msg)
+    if (posString.nonEmpty) sb.append(posString).append('\n')
     if (pos.exists) {
       val (srcBefore, srcAfter, offset) = sourceLines(pos)
       val marker = columnMarker(pos, offset)

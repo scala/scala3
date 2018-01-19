@@ -4,7 +4,7 @@ package core
 import Contexts._
 import config.Printers.typr
 
-trait ConstraintRunInfo { self: RunInfo =>
+trait ConstraintRunInfo { self: Run =>
   private[this] var maxSize = 0
   private[this] var maxConstraint: Constraint = _
   def recordConstraintSize(c: Constraint, size: Int) =
@@ -14,4 +14,6 @@ trait ConstraintRunInfo { self: RunInfo =>
     }
   def printMaxConstraint()(implicit ctx: Context) =
     if (maxSize > 0) typr.println(s"max constraint = ${maxConstraint.show}")
+
+  protected def reset() = maxConstraint = null
 }

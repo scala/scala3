@@ -32,8 +32,8 @@ class CompilationTests extends ParallelTesting {
   // Positive tests ------------------------------------------------------------
 
   // @Test  // enable to test compileStdLib separately with detailed stats
-  def compileStdLib: Unit = {
-    implicit val testGroup: TestGroup = TestGroup("compileStdLib")
+  def compileStdLibOnly: Unit = {
+    implicit val testGroup: TestGroup = TestGroup("compileStdLibOnly")
     compileList("compileStdLib", StdLibSources.whitelisted, scala2Mode.and("-migration", "-Yno-inline", "-Ydetailed-stats"))
   }.checkCompile()
 
@@ -55,6 +55,12 @@ class CompilationTests extends ParallelTesting {
     compileFile("../tests/pos-scala2/rewrites.scala", scala2Mode.and("-rewrite")).copyToTarget() +
     compileFile("../tests/pos-special/utf8encoded.scala", explicitUTF8) +
     compileFile("../tests/pos-special/utf16encoded.scala", explicitUTF16) +
+    compileFile("../tests/pos-special/i3323.scala", defaultOptions.and("-Xfatal-warnings")) +
+    compileFile("../tests/pos-special/i3323b.scala", defaultOptions.and("-Xfatal-warnings")) +
+    compileFile("../tests/pos-special/i3589-b.scala", defaultOptions.and("-Xfatal-warnings")) +
+    compileFile("../tests/pos-special/completeFromSource/Test.scala", defaultOptions.and("-sourcepath", "../tests/pos-special")) +
+    compileFile("../tests/pos-special/completeFromSource/Test2.scala", defaultOptions.and("-sourcepath", "../tests/pos-special")) +
+    compileFile("../tests/pos-special/completeFromSource/Test3.scala", defaultOptions.and("-sourcepath", "../tests/pos-special", "-scansource")) +
     compileList(
       "compileMixed",
       List(
@@ -68,7 +74,6 @@ class CompilationTests extends ParallelTesting {
       ),
       scala2Mode
     ) +
-    compileFilesInDir("../tests/pos-special/i3273", defaultOptions) +
     compileFilesInDir("../tests/pos-special/spec-t5545", defaultOptions) +
     compileFilesInDir("../tests/pos-special/strawman-collections", defaultOptions) +
     compileFile("../scala2-library/src/library/scala/collection/immutable/IndexedSeq.scala", defaultOptions) +
@@ -95,10 +100,12 @@ class CompilationTests extends ParallelTesting {
     compileFilesInDir("../tests/new", defaultOptions) +
     compileFilesInDir("../tests/pos-scala2", scala2Mode) +
     compileFilesInDir("../tests/pos", defaultOptions) +
+    compileFilesInDir("../tests/pos-no-optimise", defaultOptions) +
     compileFilesInDir("../tests/pos-deep-subtype", allowDeepSubtypes) +
+    compileDir("../tests/pos/i1137-1", defaultOptions and "-Yemit-tasty") +
     compileFile(
       // succeeds despite -Xfatal-warnings because of -nowarn
-      "../tests/neg/customArgs/xfatalWarnings.scala",
+      "../tests/neg-custom-args/xfatalWarnings.scala",
       defaultOptions.and("-nowarn", "-Xfatal-warnings")
     )
   }.checkCompile()
@@ -107,6 +114,7 @@ class CompilationTests extends ParallelTesting {
     implicit val testGroup: TestGroup = TestGroup("posTwice")
     compileFile("../tests/pos/Labels.scala", defaultOptions) +
     compileFilesInDir("../tests/pos-java-interop", defaultOptions) +
+    compileFilesInDir("../tests/pos-java-interop-separate", defaultOptions) +
     compileFile("../tests/pos/t2168.scala", defaultOptions) +
     compileFile("../tests/pos/erasure.scala", defaultOptions) +
     compileFile("../tests/pos/Coder.scala", defaultOptions) +
@@ -164,30 +172,28 @@ class CompilationTests extends ParallelTesting {
 
   @Test def compileNeg: Unit = {
     implicit val testGroup: TestGroup = TestGroup("compileNeg")
-    compileShallowFilesInDir("../tests/neg", defaultOptions) +
-    compileShallowFilesInDir("../tests/neg/no-optimise", defaultOptions) +
-    compileFile("../tests/neg/customArgs/typers.scala", allowDoubleBindings) +
-    compileFile("../tests/neg/customArgs/overrideClass.scala", scala2Mode) +
-    compileFile("../tests/neg/customArgs/autoTuplingTest.scala", defaultOptions.and("-language:noAutoTupling")) +
-    compileFile("../tests/neg/customArgs/i1050.scala", defaultOptions.and("-strict")) +
-    compileFile("../tests/neg/customArgs/i1240.scala", allowDoubleBindings) +
-    compileFile("../tests/neg/customArgs/i2002.scala", allowDoubleBindings) +
-    compileFile("../tests/neg/customArgs/nopredef.scala", defaultOptions.and("-Yno-predef")) +
-    compileFile("../tests/neg/customArgs/noimports.scala", defaultOptions.and("-Yno-imports")) +
-    compileFile("../tests/neg/customArgs/noimports2.scala", defaultOptions.and("-Yno-imports")) +
-    compileFile("../tests/neg/customArgs/overloadsOnAbstractTypes.scala", allowDoubleBindings) +
-    compileFile("../tests/neg/customArgs/xfatalWarnings.scala", defaultOptions.and("-Xfatal-warnings")) +
-    compileFile("../tests/neg/customArgs/pureStatement.scala", defaultOptions.and("-Xfatal-warnings")) +
-    compileFile("../tests/neg/customArgs/phantom-overload.scala", allowDoubleBindings) +
-    compileFile("../tests/neg/customArgs/phantom-overload-2.scala", allowDoubleBindings) +
-    compileFile("../tests/neg/tailcall/t1672b.scala", defaultOptions) +
-    compileFile("../tests/neg/tailcall/t3275.scala", defaultOptions) +
-    compileFile("../tests/neg/tailcall/t6574.scala", defaultOptions) +
-    compileFile("../tests/neg/tailcall/tailrec.scala", defaultOptions) +
-    compileFile("../tests/neg/tailcall/tailrec-2.scala", defaultOptions) +
-    compileFile("../tests/neg/tailcall/tailrec-3.scala", defaultOptions) +
-    compileFile("../tests/neg/i3246.scala", scala2Mode) +
-    compileDir("../tests/neg/typedIdents", defaultOptions)
+    compileFilesInDir("../tests/neg", defaultOptions) +
+    compileFilesInDir("../tests/neg-tailcall", defaultOptions) +
+    compileFilesInDir("../tests/neg-no-optimise", defaultOptions) +
+    compileFile("../tests/neg-custom-args/i3246.scala", scala2Mode) +
+    compileFile("../tests/neg-custom-args/typers.scala", allowDoubleBindings) +
+    compileFile("../tests/neg-custom-args/overrideClass.scala", scala2Mode) +
+    compileFile("../tests/neg-custom-args/autoTuplingTest.scala", defaultOptions.and("-language:noAutoTupling")) +
+    compileFile("../tests/neg-custom-args/i1050.scala", defaultOptions.and("-strict")) +
+    compileFile("../tests/neg-custom-args/i1240.scala", allowDoubleBindings) +
+    compileFile("../tests/neg-custom-args/i2002.scala", allowDoubleBindings) +
+    compileFile("../tests/neg-custom-args/nopredef.scala", defaultOptions.and("-Yno-predef")) +
+    compileFile("../tests/neg-custom-args/noimports.scala", defaultOptions.and("-Yno-imports")) +
+    compileFile("../tests/neg-custom-args/noimports2.scala", defaultOptions.and("-Yno-imports")) +
+    compileFile("../tests/neg-custom-args/overloadsOnAbstractTypes.scala", allowDoubleBindings) +
+    compileFile("../tests/neg-custom-args/xfatalWarnings.scala", defaultOptions.and("-Xfatal-warnings")) +
+    compileFile("../tests/neg-custom-args/i3561.scala", defaultOptions.and("-Xfatal-warnings")) +
+    compileFile("../tests/neg-custom-args/pureStatement.scala", defaultOptions.and("-Xfatal-warnings")) +
+    compileFile("../tests/neg-custom-args/i3589-a.scala", defaultOptions.and("-Xfatal-warnings")) +
+    compileFile("../tests/neg-custom-args/i2333.scala", defaultOptions.and("-Xfatal-warnings")) +
+    compileFile("../tests/neg-custom-args/phantom-overload.scala", allowDoubleBindings) +
+    compileFile("../tests/neg-custom-args/phantom-overload-2.scala", allowDoubleBindings) +
+    compileFile("../tests/neg-custom-args/structural.scala", defaultOptions.and("-Xfatal-warnings"))
   }.checkExpectedErrors()
 
   // Run tests -----------------------------------------------------------------
@@ -195,7 +201,8 @@ class CompilationTests extends ParallelTesting {
   @Test def runAll: Unit = {
     implicit val testGroup: TestGroup = TestGroup("runAll")
     compileFilesInDir("../tests/run", defaultOptions) +
-    compileFilesInDir("../tests/run-no-optimise", defaultOptions)
+    compileFilesInDir("../tests/run-no-optimise", defaultOptions) +
+    compileFilesInDir("../tests/run-with-compiler", defaultRunWithCompilerOptions)
   }.checkRuns()
 
   // Generic java signatures tests ---------------------------------------------
@@ -212,14 +219,14 @@ class CompilationTests extends ParallelTesting {
 
   @Test def testPickling: Unit = {
     implicit val testGroup: TestGroup = TestGroup("testPickling")
-    compileDir("../compiler/src/dotty/tools", picklingOptions) +
-    compileDir("../compiler/src/dotty/tools/dotc", picklingOptions) +
+    compileDir("../compiler/src/dotty/tools", picklingOptions, recursive = false) +
+    compileDir("../compiler/src/dotty/tools/dotc", picklingOptions, recursive = false) +
     compileFilesInDir("../tests/new", picklingOptions) +
     compileFilesInDir("../tests/pickling", picklingOptions) +
     compileDir("../library/src/dotty/runtime", picklingOptions) +
     compileDir("../compiler/src/dotty/tools/backend/jvm", picklingOptions) +
     compileDir("../compiler/src/dotty/tools/dotc/ast", picklingOptions) +
-    compileDir("../compiler/src/dotty/tools/dotc/core", picklingOptions) +
+    compileDir("../compiler/src/dotty/tools/dotc/core", picklingOptions, recursive = false) +
     compileDir("../compiler/src/dotty/tools/dotc/config", picklingOptions) +
     compileDir("../compiler/src/dotty/tools/dotc/parsing", picklingOptions) +
     compileDir("../compiler/src/dotty/tools/dotc/printing", picklingOptions) +
@@ -310,7 +317,7 @@ class CompilationTests extends ParallelTesting {
     implicit val testGroup: TestGroup = TestGroup("optimised/testOptimised")
     compileFilesInDir("../tests/pos", defaultOptimised).checkCompile()
     compileFilesInDir("../tests/run", defaultOptimised).checkRuns()
-    compileShallowFilesInDir("../tests/neg", defaultOptimised).checkExpectedErrors()
+    compileFilesInDir("../tests/neg", defaultOptimised).checkExpectedErrors()
   }
 
   private val (compilerSources, backendSources, backendJvmSources) = {
@@ -339,10 +346,14 @@ object CompilationTests {
   implicit val summaryReport: SummaryReporting = new SummaryReport
   @AfterClass def cleanup(): Unit = summaryReport.echoSummary()
 
-  def sources(paths: JStream[Path], excludedFiles: List[String] = Nil): List[String] =
-    paths.iterator().asScala
+  def sources(paths: JStream[Path], excludedFiles: List[String] = Nil): List[String] = {
+    val sources = paths.iterator().asScala
       .filter(path =>
         (path.toString.endsWith(".scala") || path.toString.endsWith(".java"))
           && !excludedFiles.contains(path.getFileName.toString))
       .map(_.toString).toList
+
+    paths.close()
+    sources
+  }
 }

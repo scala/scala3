@@ -16,9 +16,11 @@ class ScalaSettings extends Settings.SettingGroup {
   val extdirs = PathSetting("-extdirs", "Override location of installed extensions.", Defaults.scalaExtDirs)
   val javabootclasspath = PathSetting("-javabootclasspath", "Override java boot classpath.", Defaults.javaBootClassPath)
   val javaextdirs = PathSetting("-javaextdirs", "Override java extdirs classpath.", Defaults.javaExtDirs)
-  val sourcepath = PathSetting("-sourcepath", "Specify location(s) of source files.", "") // Defaults.scalaSourcePath
+  val sourcepath = PathSetting("-sourcepath", "Specify location(s) of source files.", Defaults.scalaSourcePath)
+  val scansource = BooleanSetting("-scansource", "Scan source files to locate classes for which class-name != file-name")
+
   val classpath = PathSetting("-classpath", "Specify where to find user class files.", defaultClasspath) withAbbreviation "-cp"
-  val outputDir = DirectorySetting("-d", "directory|jar", "destination for generated classfiles.", Directory(Path(".")))
+  val outputDir = PathSetting("-d", "directory|jar", "destination for generated classfiles.", ".")
   val priorityclasspath = PathSetting("-priorityclasspath", "class path that takes precedence over all other paths (or testing only)", "")
 
   /** Other settings */
@@ -26,7 +28,6 @@ class ScalaSettings extends Settings.SettingGroup {
   val migration = BooleanSetting("-migration", "Emit warning and location for migration issues from Scala 2.")
   val encoding = StringSetting("-encoding", "encoding", "Specify character encoding used by source files.", Properties.sourceEncoding)
   val explainTypes = BooleanSetting("-explain-types", "Explain type errors in more detail.")
-  val explainImplicits = BooleanSetting("-explain-implicits", "Explain implicit search errors in more detail.")
   val explain = BooleanSetting("-explain", "Explain errors in more detail.")
   val feature = BooleanSetting("-feature", "Emit warning and location for usages of features that should be imported explicitly.")
   val help = BooleanSetting("-help", "Print a synopsis of standard options")
@@ -43,40 +44,45 @@ class ScalaSettings extends Settings.SettingGroup {
   val language = MultiStringSetting("-language", "feature", "Enable one or more language features.")
   val rewrite = OptionSetting[Rewrites]("-rewrite", "When used in conjunction with -language:Scala2 rewrites sources to migrate to new syntax")
   val silentWarnings = BooleanSetting("-nowarn", "Silence all warnings.")
+  val fromTasty = BooleanSetting("-from-tasty", "Compile classes from tasty in classpath. The arguments are used as class names.")
+
+  /** Decompiler settings */
+  val printTasty = BooleanSetting("-print-tasty", "Prints the raw tasty when decompiling.")
+  val printLines = BooleanSetting("-print-lines", "Show source code line numbers.")
 
   /** -X "Advanced" settings
    */
   val Xhelp = BooleanSetting("-X", "Print a synopsis of advanced options.")
-  val noForwarders = BooleanSetting("-Xno-forwarders", "Do not generate static forwarders in mirror classes.")
+  val XnoForwarders = BooleanSetting("-Xno-forwarders", "Do not generate static forwarders in mirror classes.")
   val XminImplicitSearchDepth = IntSetting("-Xmin-implicit-search-depth", "Set number of levels of implicit searches undertaken before checking for divergence.", 5)
   val xmaxInlines = IntSetting("-Xmax-inlines", "Maximal number of successive inlines", 32)
-  val maxClassfileName = IntSetting("-Xmax-classfile-name", "Maximum filename length for generated classes", 255, 72 to 255)
+  val XmaxClassfileName = IntSetting("-Xmax-classfile-name", "Maximum filename length for generated classes", 255, 72 to 255)
   val Xmigration = VersionSetting("-Xmigration", "Warn about constructs whose behavior may have changed since version.")
   val Xprint = PhasesSetting("-Xprint", "Print out program after")
-  val printtypes = BooleanSetting("-Xprint-types", "Print tree types (debugging option).")
+  val XprintTypes = BooleanSetting("-Xprint-types", "Print tree types (debugging option).")
   val XprintDiff = BooleanSetting("-Xprint-diff", "Print changed parts of the tree since last print.")
   val XprintDiffDel = BooleanSetting("-Xprint-diff-del", "Print chaged parts of the tree since last print including deleted parts.")
-  val prompt = BooleanSetting("-Xprompt", "Display a prompt after each error (debugging option).")
-  val mainClass = StringSetting("-Xmain-class", "path", "Class for manifest's Main-Class entry (only useful with -d <jar>)", "")
+  val Xprompt = BooleanSetting("-Xprompt", "Display a prompt after each error (debugging option).")
+  val XmainClass = StringSetting("-Xmain-class", "path", "Class for manifest's Main-Class entry (only useful with -d <jar>)", "")
   val XnoValueClasses = BooleanSetting("-Xno-value-classes", "Do not use value classes. Helps debugging.")
   val XreplLineWidth = IntSetting("-Xrepl-line-width", "Maximial number of columns per line for REPL output", 390)
   val XfatalWarnings = BooleanSetting("-Xfatal-warnings", "Fail the compilation if there are any warnings.")
   val XverifySignatures = BooleanSetting("-Xverify-signatures", "Verify generic signatures in generated bytecode.")
 
   /** -Y "Private" settings */
-  val overrideVars = BooleanSetting("-Yoverride-vars", "Allow vars to be overridden.")
+  val YoverrideVars = BooleanSetting("-Yoverride-vars", "Allow vars to be overridden.")
   val Yhelp = BooleanSetting("-Y", "Print a synopsis of private options.")
   val Ycheck = PhasesSetting("-Ycheck", "Check the tree at the end of")
   val YcheckMods = BooleanSetting("-Ycheck-mods", "Check that symbols and their defining trees have modifiers in sync")
-  val debug = BooleanSetting("-Ydebug", "Increase the quantity of debugging output.")
-  val debugTrace = BooleanSetting("-Ydebug-trace", "Trace core operations")
-  val debugFlags = BooleanSetting("-Ydebug-flags", "Print all flags of definitions")
-  val debugNames = BooleanSetting("-Ydebug-names", "Show internal representation of names")
-  val debugOwners = BooleanSetting("-Ydebug-owners", "Print all owners of definitions (requires -Yprint-syms)")
-  val termConflict = ChoiceSetting("-Yresolve-term-conflict", "strategy", "Resolve term conflicts", List("package", "object", "error"), "error")
-  val log = PhasesSetting("-Ylog", "Log operations during")
-  val emitTasty = BooleanSetting("-YemitTasty", "Generate tasty in separate *.tasty file.")
-  val Ylogcp = BooleanSetting("-Ylog-classpath", "Output information about what classpath is being applied.")
+  val Ydebug = BooleanSetting("-Ydebug", "Increase the quantity of debugging output.")
+  val YdebugTrace = BooleanSetting("-Ydebug-trace", "Trace core operations")
+  val YdebugFlags = BooleanSetting("-Ydebug-flags", "Print all flags of definitions")
+  val YdebugNames = BooleanSetting("-Ydebug-names", "Show internal representation of names")
+  val YdebugOwners = BooleanSetting("-Ydebug-owners", "Print all owners of definitions (requires -Yprint-syms)")
+  val YtermConflict = ChoiceSetting("-Yresolve-term-conflict", "strategy", "Resolve term conflicts", List("package", "object", "error"), "error")
+  val Ylog = PhasesSetting("-Ylog", "Log operations during")
+  val YemitTasty = BooleanSetting("-Yemit-tasty", "Generate tasty in separate *.tasty file.")
+  val YlogClasspath = BooleanSetting("-Ylog-classpath", "Output information about what classpath is being applied.")
   val YdisableFlatCpCaching  = BooleanSetting("-YdisableFlatCpCaching", "Do not cache flat classpath representation of classpath elements from jars across compiler instances.")
 
   val YnoImports = BooleanSetting("-Yno-imports", "Compile without importing scala.*, java.lang.*, or Predef.")
@@ -86,17 +92,18 @@ class ScalaSettings extends Settings.SettingGroup {
   val Ydumpclasses = StringSetting("-Ydump-classes", "dir", "Dump the generated bytecode to .class files (useful for reflective compilation that utilizes in-memory classloaders).", "")
   val YstopAfter = PhasesSetting("-Ystop-after", "Stop after") withAbbreviation ("-stop") // backward compat
   val YstopBefore = PhasesSetting("-Ystop-before", "Stop before") // stop before erasure as long as we have not debugged it fully
-  val YmethodInfer = BooleanSetting("-Yinfer-argument-types", "Infer types for arguments of overriden methods.")
   val YtraceContextCreation = BooleanSetting("-Ytrace-context-creation", "Store stack trace of context creations.")
   val YshowSuppressedErrors = BooleanSetting("-Yshow-suppressed-errors", "Also show follow-on errors and warnings that are normally supressed.")
   val YdetailedStats = BooleanSetting("-Ydetailed-stats", "show detailed internal compiler stats (needs Stats.enabled to be set to true).")
   val Yheartbeat = BooleanSetting("-Ydetailed-stats", "show heartbeat stack trace of compiler operations (needs Stats.enabled to be set to true).")
-  val Yprintpos = BooleanSetting("-Yprintpos", "show tree positions.")
+  val YprintPos = BooleanSetting("-Yprint-pos", "show tree positions.")
+  val YprintPosSyms = BooleanSetting("-Yprint-pos-syms", "show symbol definitions positions.")
   val YnoDeepSubtypes = BooleanSetting("-Yno-deep-subtypes", "throw an exception on deep subtyping call stacks.")
   val YnoPatmatOpt = BooleanSetting("-Yno-patmat-opt", "disable all pattern matching optimizations.")
   val YplainPrinter = BooleanSetting("-Yplain-printer", "Pretty-print using a plain printer.")
   val YprintSyms = BooleanSetting("-Yprint-syms", "when printing trees print info in symbols instead of corresponding info in trees.")
   val YprintDebug = BooleanSetting("-Yprint-debug", "when printing trees, print some extra information useful for debugging.")
+  val YshowPrintErrors = BooleanSetting("-Yshow-print-errors", "don't suppress exceptions thrown during tree printing.")
   val YtestPickler = BooleanSetting("-Ytest-pickler", "self-test for pickling functionality; should be used with -Ystop-after:pickler")
   val YcheckReentrant = BooleanSetting("-Ycheck-reentrant", "check that compiled program does not contain vars that can be accessed from a global root.")
   val YkeepComments = BooleanSetting("-Ykeep-comments", "Keep comments when scanning source files.")
@@ -107,16 +114,16 @@ class ScalaSettings extends Settings.SettingGroup {
   val YshowTreeIds = BooleanSetting("-Yshow-tree-ids", "Uniquely tag all tree nodes in debugging output.")
 
   /** Area-specific debug output */
-  val Yexplainlowlevel = BooleanSetting("-Yexplain-lowlevel", "When explaining type errors, show types at a lower level.")
+  val YexplainLowlevel = BooleanSetting("-Yexplain-lowlevel", "When explaining type errors, show types at a lower level.")
   val YnoDoubleBindings = BooleanSetting("-Yno-double-bindings", "Assert no namedtype is bound twice (should be enabled only if program is error-free).")
   val YshowVarBounds = BooleanSetting("-Yshow-var-bounds", "Print type variables with their bounds")
   val YnoInline = BooleanSetting("-Yno-inline", "Suppress inlining.")
 
   /** Linker specific flags */
+  val optimise = BooleanSetting("-optimise", "Generates faster bytecode by applying local optimisations to the .program") withAbbreviation "-optimize"
+  val Xlink = BooleanSetting("-Xlink", "Recompile library code with the application.")
   val YoptPhases = PhasesSetting("-Yopt-phases", "Restrict the optimisation phases to execute under -optimise.")
   val YoptFuel = IntSetting("-Yopt-fuel", "Maximum number of optimisations performed under -optimise.", -1)
-  val optimise = BooleanSetting("-optimise", "Generates faster bytecode by applying local optimisations to the .program") withAbbreviation "-optimize"
-  val XlinkOptimise = BooleanSetting("-Xlink-optimise", "Recompile library code with the application.").withAbbreviation("-Xlink-optimize")
 
   /** Dottydoc specific settings */
   val siteRoot = StringSetting(
@@ -125,6 +132,7 @@ class ScalaSettings extends Settings.SettingGroup {
     "A directory containing static files from which to generate documentation",
     sys.props("user.dir")
   )
+
 
   val projectName = StringSetting (
     "-project",
