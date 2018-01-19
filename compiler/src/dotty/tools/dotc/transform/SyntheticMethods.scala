@@ -99,7 +99,7 @@ class SyntheticMethods(thisPhase: DenotTransformer) {
         case nme.productElement => vrefss => productElementBody(accessors.length, vrefss.head.head)
       }
       ctx.log(s"adding $synthetic to $clazz at ${ctx.phase}")
-      DefDef(synthetic, syntheticRHS(ctx.withOwner(synthetic)))
+      DefDef(synthetic, syntheticRHS(ctx.withOwner(synthetic))).withPos(ctx.owner.pos.focus)
     }
 
     /** The class
@@ -214,12 +214,19 @@ class SyntheticMethods(thisPhase: DenotTransformer) {
      *  ```
      */
     def caseHashCodeBody(implicit ctx: Context): Tree = {
-      val acc = ctx.newSymbol(ctx.owner, "acc".toTermName, Mutable | Synthetic, defn.IntType, coord = ctx.owner.pos)
-      val accDef = ValDef(acc, Literal(Constant(clazz.fullName.toString.hashCode)))
-      val mixes = for (accessor <- accessors.toList) yield
-        Assign(ref(acc), ref(defn.staticsMethod("mix")).appliedTo(ref(acc), hashImpl(accessor)))
-      val finish = ref(defn.staticsMethod("finalizeHash")).appliedTo(ref(acc), Literal(Constant(accessors.size)))
-      Block(accDef :: mixes, finish)
+      val seed = clazz.fullName.toString.hashCode
+      if (accessors.nonEmpty) {
+        val acc = ctx.newSymbol(ctx.owner, "acc".toTermName, Mutable | Synthetic, defn.IntType, coord = ctx.owner.pos)
+        val accDef = ValDef(acc, Literal(Constant(seed)))
+        val mixes = for (accessor <- accessors) yield
+          Assign(ref(acc), ref(defn.staticsMethod("mix")).appliedTo(ref(acc), hashImpl(accessor)))
+        val finish = ref(defn.staticsMethod("finalizeHash")).appliedTo(ref(acc), Literal(Constant(accessors.size)))
+        Block(accDef :: mixes, finish)
+      } else {
+        // Pre-compute the hash code
+        val hash = scala.runtime.Statics.finalizeHash(seed, 0)
+        Literal(Constant(hash))
+      }
     }
 
     /** The `hashCode` implementation for given symbol `sym`. */

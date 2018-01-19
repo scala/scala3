@@ -13,9 +13,9 @@ shift # Mutates $@ by deleting the first element ($1)
 version="$ROOT/dist-bootstrapped/target/pack/VERSION"
 
 # Create the target if absent or if file changed in ROOT/compiler
-new_files="$(find "$ROOT/compiler" \( -iname "*.scala" -o -iname "*.java" \) -newer "$version" >& /dev/null)"
+new_files="$(find "$ROOT/compiler" \( -iname "*.scala" -o -iname "*.java" \) -newer "$version" 2> /dev/null)"
 
-if [ ! -f "$target" ] || [ ! -z "$new_files" ]; then
+if [ ! -f "$version" ] || [ ! -z "$new_files" ]; then
   echo "Building Dotty..."
   sbt "dist-bootstrapped/pack"
 fi

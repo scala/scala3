@@ -118,7 +118,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
           if (recCount < Config.LogPendingSubTypesThreshold) firstTry(tp1, tp2)
           else monitoredIsSubType(tp1, tp2)
         recCount = recCount - 1
-        if (!result) constraint = saved
+        if (!result) state.resetConstraintTo(saved)
         else if (recCount == 0 && needsGc) {
           state.gc()
           needsGc = false
@@ -129,7 +129,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
         case NonFatal(ex) =>
           if (ex.isInstanceOf[AssertionError]) showGoal(tp1, tp2)
           recCount -= 1
-          constraint = saved
+          state.resetConstraintTo(saved)
           successCount = savedSuccessCount
           throw ex
       }
@@ -183,24 +183,24 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
                     // However the original judgment should be true.
                 case _ =>
               }
-              val sym1 =
-                if (tp1.symbol.is(ModuleClass) && tp2.symbol.is(ModuleVal))
-                  // For convenience we want X$ <:< X.type
-                  // This is safe because X$ self-type is X.type
-                  tp1.symbol.companionModule
-                else
-                  tp1.symbol
-              if ((sym1 ne NoSymbol) && (sym1 eq tp2.symbol))
+              val sym2 = tp2.symbol
+              var sym1 = tp1.symbol
+              if (sym1.is(ModuleClass) && sym2.is(ModuleVal))
+                // For convenience we want X$ <:< X.type
+                // This is safe because X$ self-type is X.type
+                 sym1 = sym1.companionModule
+              if ((sym1 ne NoSymbol) && (sym1 eq sym2))
                 ctx.erasedTypes ||
                 sym1.isStaticOwner ||
                 isSubType(tp1.prefix, tp2.prefix) ||
                 thirdTryNamed(tp1, tp2)
               else
                 (  (tp1.name eq tp2.name)
+                && tp1.isMemberRef
+                && tp2.isMemberRef
                 && isSubType(tp1.prefix, tp2.prefix)
                 && tp1.signature == tp2.signature
-                && !tp1.hasFixedSym
-                && !tp2.hasFixedSym
+                && !(sym1.isClass && sym2.isClass)  // class types don't subtype each other
                 ) ||
                 thirdTryNamed(tp1, tp2)
             case _ =>
@@ -369,14 +369,18 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
     case _ =>
       val cls2 = tp2.symbol
       if (cls2.isClass) {
-        val base = tp1.baseType(cls2)
-        if (base.exists) {
-          if (cls2.is(JavaDefined))
-            // If `cls2` is parameterized, we are seeing a raw type, so we need to compare only the symbol
-            return base.typeSymbol == cls2
-          if (base ne tp1) return isSubType(base, tp2)
+        if (cls2.typeParams.nonEmpty && tp1.isHK)
+          isSubType(tp1, EtaExpansion(cls2.typeRef))
+        else {
+          val base = tp1.baseType(cls2)
+          if (base.exists) {
+            if (cls2.is(JavaDefined))
+              // If `cls2` is parameterized, we are seeing a raw type, so we need to compare only the symbol
+              return base.typeSymbol == cls2
+            if (base ne tp1) return isSubType(base, tp2)
+          }
+          if (cls2 == defn.SingletonClass && tp1.isStable) return true
         }
-        if (cls2 == defn.SingletonClass && tp1.isStable) return true
       }
       fourthTry(tp1, tp2)
   }
@@ -471,12 +475,17 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
             isSubType(tp1.resType, tp2.resType.subst(tp2, tp1))
           finally comparedTypeLambdas = saved
         case _ =>
-          if (!tp1.isHK) {
-            tp2 match {
-              case EtaExpansion(tycon2) if tycon2.symbol.isClass =>
-                return isSubType(tp1, tycon2)
-              case _ =>
-            }
+          if (tp1.isHK) {
+            val tparams1 = tp1.typeParams
+            return isSubType(
+              HKTypeLambda.fromParams(tparams1, tp1.appliedTo(tparams1.map(_.paramRef))),
+              tp2
+            )
+          }
+          else tp2 match {
+            case EtaExpansion(tycon2) if tycon2.symbol.isClass =>
+              return isSubType(tp1, tycon2)
+            case _ =>
           }
           fourthTry(tp1, tp2)
       }
@@ -509,7 +518,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
         case tp1: MethodOrPoly =>
           (tp1.signature consistentParams tp2.signature) &&
             matchingParams(tp1, tp2) &&
-            tp1.isImplicitMethod == tp2.isImplicitMethod &&
+            (!tp2.isImplicitMethod || tp1.isImplicitMethod) &&
             isSubType(tp1.resultType, tp2.resultType.subst(tp2, tp1))
         case _ =>
           false
@@ -527,8 +536,6 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
         case _ => isSubType(tp1.widenExpr, restpe2)
       }
       compareExpr
-    case tp2: TypeArgRef =>
-      isSubType(tp1, tp2.underlying.loBound) || fourthTry(tp1, tp2)
     case tp2 @ TypeBounds(lo2, hi2) =>
       def compareTypeBounds = tp1 match {
         case tp1 @ TypeBounds(lo1, hi1) =>
@@ -599,8 +606,6 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
       isNewSubType(tp1.parent, tp2)
     case tp1: RecType =>
       isNewSubType(tp1.parent, tp2)
-    case tp1: TypeArgRef =>
-      isSubType(tp1.underlying.hiBound, tp2)
     case tp1: HKTypeLambda =>
       def compareHKLambda = tp1 match {
         case EtaExpansion(tycon1) => isSubType(tycon1, tp2)
@@ -823,7 +828,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
 
       def compareCaptured(arg1: Type, arg2: Type): Boolean = arg1 match {
         case arg1: TypeBounds =>
-          val captured = TypeArgRef.fromParam(tp1, tparam.asInstanceOf[TypeSymbol])
+          val captured = TypeRef(tp1, tparam.asInstanceOf[TypeSymbol])
           isSubArg(captured, arg2)
         case _ =>
           false
@@ -1625,7 +1630,7 @@ class ExplainingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
     }
 
   private def show(res: Any) = res match {
-    case res: printing.Showable if !ctx.settings.Yexplainlowlevel.value => res.show
+    case res: printing.Showable if !ctx.settings.YexplainLowlevel.value => res.show
     case _ => String.valueOf(res)
   }
 

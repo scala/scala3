@@ -117,7 +117,7 @@ trait Enum {
 }
 ```
 
-Enum values with `extends` clauses get expanded to anonymus class instances.
+Enum values with `extends` clauses get expanded to anonymous class instances.
 For instance, the `VENUS` value above would be defined like this:
 
 ```scala

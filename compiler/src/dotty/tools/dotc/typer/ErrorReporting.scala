@@ -4,12 +4,9 @@ package typer
 
 import ast._
 import core._
-import Trees._
 import Types._, ProtoTypes._, Contexts._, Decorators._, Denotations._, Symbols._
-import Applications._, Implicits._, Flags._
+import Implicits._, Flags._
 import util.Positions._
-import printing.{Showable, RefinedPrinter}
-import scala.collection.mutable
 import java.util.regex.Matcher.quoteReplacement
 import reporting.diagnostic.Message
 import reporting.diagnostic.messages._
@@ -32,7 +29,7 @@ object ErrorReporting {
       if (cx.mode is Mode.InferringReturnType) {
         cx.tree match {
           case tree: untpd.DefDef if !tree.tpt.typeOpt.exists =>
-            OverloadedOrRecursiveMethodNeedsResultType(tree)
+            OverloadedOrRecursiveMethodNeedsResultType(tree.name)
           case tree: untpd.ValDef if !tree.tpt.typeOpt.exists =>
             RecursiveValueNeedsResultType(tree.name)
           case _ =>
@@ -100,15 +97,15 @@ object ErrorReporting {
       if (tree.tpe.widen.exists)
         i"${exprStr(tree)} does not take ${kind}parameters"
       else
-        i"undefined: $tree # ${tree.uniqueId}: ${tree.tpe.toString}"
+        i"undefined: $tree # ${tree.uniqueId}: ${tree.tpe.toString} at ${ctx.phase}"
 
     def patternConstrStr(tree: Tree): String = ???
 
-    def typeMismatch(tree: Tree, pt: Type, implicitFailure: SearchFailure = NoImplicitMatches): Tree = {
+    def typeMismatch(tree: Tree, pt: Type, implicitFailure: SearchFailureType = NoMatchingImplicits): Tree = {
       val normTp = normalize(tree.tpe, pt)
       val treeTp = if (normTp <:< pt) tree.tpe else normTp
         // use normalized type if that also shows an error, original type otherwise
-      errorTree(tree, typeMismatchMsg(treeTp, pt, implicitFailure.postscript))
+      errorTree(tree, typeMismatchMsg(treeTp, pt, implicitFailure.whyNoConversion))
     }
 
     /** A subtype log explaining why `found` does not conform to `expected` */

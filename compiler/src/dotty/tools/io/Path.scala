@@ -47,10 +47,6 @@ object Path {
     else name.substring(i + 1).toLowerCase
   }
 
-  // not certain these won't be problematic, but looks good so far
-  implicit def string2path(s: String): Path = apply(s)
-  implicit def jfile2path(jfile: JFile): Path = apply(jfile.toPath)
-
   def onlyDirs(xs: Iterator[Path]): Iterator[Directory] = xs filter (_.isDirectory) map (_.toDirectory)
   def onlyDirs(xs: List[Path]): List[Directory] = xs filter (_.isDirectory) map (_.toDirectory)
   def onlyFiles(xs: Iterator[Path]): Iterator[File] = xs filter (_.isFile) map (_.toFile)
@@ -95,6 +91,7 @@ class Path private[io] (val jpath: JPath) {
   /** Creates a new Path with the specified path appended.  Assumes
    *  the type of the new component implies the type of the result.
    */
+  def /(child: String): Path = new Path(jpath.resolve(child))
   def /(child: Path): Path = resolve(child)
   def /(child: Directory): Directory = /(child: Path).toDirectory
   def /(child: File): File = /(child: Path).toFile
@@ -117,31 +114,24 @@ class Path private[io] (val jpath: JPath) {
   def walk: Iterator[Path] = walkFilter(_ => true)
 
   // identity
-  def name: String = jpath.getFileName().toString
+  def name: String = jpath.getFileName() match {
+    case null => ""
+    case name => name.toString
+  }
   def path: String = jpath.toString
-  def normalize: Path = Path(jpath.normalize)
+  def normalize: Path = new Path(jpath.normalize)
 
-  def resolve(other: Path) = Path(jpath.resolve(other.jpath))
-  def relativize(other: Path) = Path(jpath.relativize(other.jpath))
+  def resolve(other: Path) = new Path(jpath.resolve(other.jpath))
+  def relativize(other: Path) = new Path(jpath.relativize(other.jpath))
 
   def segments: List[String] = (path split separator).toList filterNot (_.length == 0)
 
   /**
    * @return The path of the parent directory, or root if path is already root
    */
-  def parent: Directory = path match {
-    case "" | "." => Directory("..")
-    case _        =>
-      // the only solution <-- a comment which could have used elaboration
-      if (segments.nonEmpty && segments.last == "..")
-        (path / "..").toDirectory
-      else jpath.getParent match {
-        case null =>
-          if (isAbsolute) toDirectory // it should be a root. BTW, don't need to worry about relative pathed root
-          else Directory(".")         // a dir under pwd
-        case x    =>
-          Directory(x)
-      }
+  def parent: Directory = jpath.normalize.getParent match {
+    case null => Directory(jpath)
+    case parent => Directory(parent)
   }
   def parents: List[Directory] = {
     val p = parent
@@ -164,12 +154,12 @@ class Path private[io] (val jpath: JPath) {
   // returns the filename without the extension.
   def stripExtension: String = name stripSuffix ("." + extension)
   // returns the Path with the extension.
-  def addExtension(ext: String): Path = Path(path + "." + ext)
+  def addExtension(ext: String): Path = new Path(jpath.resolveSibling(name + ext))
   // changes the existing extension out for a new one, or adds it
   // if the current path has none.
   def changeExtension(ext: String): Path =
     if (extension == "") addExtension(ext)
-    else Path(path.stripSuffix(extension) + ext)
+    else new Path(jpath.resolveSibling(stripExtension + "." + ext))
 
   // conditionally execute
   def ifFile[T](f: File => T): Option[T] = if (isFile) Some(f(toFile)) else None

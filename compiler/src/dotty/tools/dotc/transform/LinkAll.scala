@@ -34,7 +34,7 @@ class LinkAll extends Phase {
       }
     }
 
-    if (ctx.settings.XlinkOptimise.value) allUnits(Set.empty, units.toSet, Set.empty)
+    if (ctx.settings.Xlink.value) allUnits(Set.empty, units.toSet, Set.empty)
     else units
   }
 
@@ -67,7 +67,7 @@ class LinkAll extends Phase {
 object LinkAll {
 
   private[LinkAll] def loadCompilationUnit(clsd: ClassDenotation)(implicit ctx: Context): Option[CompilationUnit] = {
-    assert(ctx.settings.XlinkOptimise.value)
+    assert(ctx.settings.Xlink.value)
     val tree = clsd.symbol.asClass.tree
     if (tree.isEmpty) None
     else {

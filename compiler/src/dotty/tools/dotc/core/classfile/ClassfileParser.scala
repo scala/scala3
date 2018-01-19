@@ -8,12 +8,13 @@ import SymDenotations._, unpickleScala2.Scala2Unpickler._, Constants._, Annotati
 import NameKinds.{ModuleClassName, DefaultGetterName}
 import ast.tpd._
 import java.io.{ ByteArrayInputStream, DataInputStream, File, IOException }
+import java.nio
 import java.lang.Integer.toHexString
 import scala.collection.{ mutable, immutable }
 import scala.collection.mutable.{ ListBuffer, ArrayBuffer }
 import scala.annotation.switch
 import typer.Checking.checkNonCyclic
-import io.AbstractFile
+import io.{AbstractFile, PlainFile, Path, ZipArchive, JarArchive}
 import scala.util.control.NonFatal
 
 object ClassfileParser {
@@ -160,7 +161,7 @@ class ClassfileParser(
 
       for (i <- 0 until in.nextChar) parseMember(method = false)
       for (i <- 0 until in.nextChar) parseMember(method = true)
-      classInfo = cook.apply(parseAttributes(classRoot.symbol, classInfo))
+      classInfo = parseAttributes(classRoot.symbol, classInfo)
       if (isAnnotation) addAnnotationConstructor(classInfo)
 
       val companionClassMethod = ctx.synthesizeCompanionMethod(nme.COMPANION_CLASS_METHOD, classRoot, moduleRoot)
@@ -197,7 +198,7 @@ class ClassfileParser(
     var sym = classRoot.owner
     while (sym.isClass && !(sym is Flags.ModuleClass)) {
       for (tparam <- sym.typeParams) {
-        classTParams = classTParams.updated(tparam.name.unexpandedName, tparam)
+        classTParams = classTParams.updated(tparam.name, tparam)
       }
       sym = sym.owner
     }
@@ -260,7 +261,7 @@ class ClassfileParser(
           addConstructorTypeParams(denot)
         }
 
-        denot.info = cook.apply(pool.getType(in.nextChar))
+        denot.info = pool.getType(in.nextChar)
         if (isEnum) denot.info = ConstantType(Constant(sym))
         if (isConstructor) normalizeConstructorParams()
         setPrivateWithin(denot, jflags)
@@ -319,7 +320,7 @@ class ClassfileParser(
         case 'L' =>
           def processInner(tp: Type): Type = tp match {
             case tp: TypeRef if !(tp.symbol.owner is Flags.ModuleClass) =>
-              TypeRef.withSym(processInner(tp.prefix.widen), tp.symbol.asType, tp.name)
+              TypeRef(processInner(tp.prefix.widen), tp.symbol.asType)
             case _ =>
               tp
           }
@@ -624,7 +625,8 @@ class ClassfileParser(
     for (i <- 0 until in.nextChar) {
       parseAttribute()
     }
-    newType
+
+    cook.apply(newType)
   }
 
   /** Add synthetic constructor(s) and potentially also default getters which
@@ -781,7 +783,30 @@ class ClassfileParser(
 
       if (scan(tpnme.TASTYATTR)) {
         val attrLen = in.nextInt
-        return unpickleTASTY(in.nextBytes(attrLen))
+        if (attrLen == 0) { // A tasty attribute implies the existence of the .tasty file
+          def readTastyForClass(jpath: nio.file.Path): Array[Byte] = {
+            val plainFile = new PlainFile(io.File(jpath).changeExtension("tasty"))
+            if (plainFile.exists) plainFile.toByteArray
+            else {
+              ctx.error("Could not find " + plainFile)
+              Array.empty
+            }
+          }
+          val tastyBytes = classfile.underlyingSource match { // TODO: simplify when #3552 is fixed
+            case None =>
+              ctx.error("Could not load TASTY from .tasty for virtual file " + classfile)
+              Array.empty[Byte]
+            case Some(jar: ZipArchive) => // We are in a jar
+              val jarFile = JarArchive.open(io.File(jar.jpath))
+              try readTastyForClass(jarFile.jpath.resolve(classfile.path))
+              finally jarFile.close()
+            case _ =>
+              readTastyForClass(classfile.jpath)
+          }
+          if (tastyBytes.nonEmpty)
+            return unpickleTASTY(tastyBytes)
+        }
+        else return unpickleTASTY(in.nextBytes(attrLen))
       }
 
       if (scan(tpnme.ScalaATTR) && !scalaUnpickleWhitelist.contains(classRoot.name)) {

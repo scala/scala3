@@ -13,7 +13,7 @@ import scala.collection.mutable.ListBuffer
 
 class ParserTest extends DottyTest {
 
-  def parse(name: String): Tree = parse(new PlainFile(name))
+  def parse(name: String): Tree = parse(new PlainFile(File(name)))
 
   var parsed = 0
   val parsedTrees = new ListBuffer[Tree]

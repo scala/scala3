@@ -52,8 +52,8 @@ trait DottyDocTest extends MessageRendering {
           }
       }) :: Nil
 
-    override def phases =
-      super.phases ++ assertionPhase
+    override protected def backendPhases: List[List[Phase]] =
+      super.backendPhases ++ assertionPhase
   }
 
   private def callingMethod: String =

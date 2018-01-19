@@ -31,7 +31,9 @@ object Formatting {
       case arg: Showable =>
         try arg.show
         catch {
-          case NonFatal(ex) if !ctx.mode.is(Mode.PrintShowExceptions) =>
+          case NonFatal(ex)
+          if !ctx.mode.is(Mode.PrintShowExceptions) &&
+             !ctx.settings.YshowPrintErrors.value =>
             s"[cannot display due to $ex, raw string = $toString]"
         }
       case _ => arg.toString
@@ -77,10 +79,6 @@ object Formatting {
   class SyntaxFormatter(sc: StringContext) extends StringFormatter(sc) {
     override protected def showArg(arg: Any)(implicit ctx: Context): String =
       arg match {
-        case arg: Showable if ctx.settings.color.value != "never" =>
-          val highlighted =
-            SyntaxHighlighting(wrapNonSensical(arg, super.showArg(arg)))
-          new String(highlighted.toArray)
         case hl: Highlight =>
           hl.show
         case hb: HighlightBuffer =>

@@ -98,7 +98,9 @@ object ParseResult {
 
   @sharable private[this] val CommandExtract = """(:[\S]+)\s*(.*)""".r
 
-  private def parseStats(parser: Parser): List[untpd.Tree] = {
+  private def parseStats(sourceCode: String)(implicit ctx: Context): List[untpd.Tree] = {
+    val source = new SourceFile("<console>", sourceCode.toCharArray)
+    val parser = new Parser(source)
     val stats = parser.blockStatSeq()
     parser.accept(Tokens.EOF)
     stats
@@ -118,10 +120,7 @@ object ParseResult {
         case _ => UnknownCommand(cmd)
       }
       case _ => {
-        val source = new SourceFile("<console>", sourceCode.toCharArray)
-        val parser = new Parser(source)
-
-        val stats = parseStats(parser)
+        val stats = parseStats(sourceCode)
 
         if (ctx.reporter.hasErrors) {
           SyntaxErrors(sourceCode,
@@ -145,9 +144,7 @@ object ParseResult {
         val reporter = storeReporter
         var needsMore = false
         reporter.withIncompleteHandler(_ => _ => needsMore = true) {
-          val source = new SourceFile("<console>", sourceCode.toCharArray)
-          val parser = new Parser(source)(ctx.fresh.setReporter(reporter))
-          parseStats(parser)
+          parseStats(sourceCode)(ctx.fresh.setReporter(reporter))
           !reporter.hasErrors && needsMore
         }
       }

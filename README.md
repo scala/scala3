@@ -7,8 +7,6 @@ Community build: [![Community Build Status](https://travis-ci.org/lampepfl/dotty
 
 * [Homepage](http://dotty.epfl.ch)
 * [Documentation](http://dotty.epfl.ch/docs)
-* [FAQ](http://dotty.epfl.ch/#why-dotty)
-* [Mailing list](https://groups.google.com/forum/#!forum/dotty-internals)
 
 Try it out
 ==========

@@ -9,7 +9,6 @@ This is the process for committing code to the Scala project. There are of cours
 1. Make sure you have signed the [Scala CLA](http://typesafe.com/contribute/cla/scala), if not, sign it.
 2. Before starting to work on a feature or a fix, it's good practice to ensure that:
     1. There is a ticket for your work in the project's [issue tracker](https://github.com/lampepfl/dotty/issues);
-    2. If not, create it first (perhaps given a thumbs up from the dotty-internals mailing list first);
     2. The ticket has been discussed and prioritized by the team.
 3. You should always perform your work in its own Git branch. The branch should be given a descriptive name that explains its intent. Some teams also like adding the ticket number and/or the [GitHub](http://github.com) user ID to the branch name, these details is up to each of the individual teams. (See below for more details on branch naming.)
 4. When the feature or fix is completed you should open a [Pull Request](https://help.github.com/articles/using-pull-requests) on GitHub.

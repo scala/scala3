@@ -333,8 +333,12 @@ object Scopes {
     }
 
     /** remove symbol from this scope if it is present */
-    final def unlink(sym: Symbol)(implicit ctx: Context): Unit = {
-      var e = lookupEntry(sym.name)
+    final def unlink(sym: Symbol)(implicit ctx: Context): Unit =
+      unlink(sym, sym.name)
+
+    /** remove symbol from this scope if it is present under the given name */
+    final def unlink(sym: Symbol, name: Name)(implicit ctx: Context): Unit = {
+      var e = lookupEntry(name)
       while (e ne null) {
         if (e.sym == sym) unlink(e)
         e = lookupNextEntry(e)

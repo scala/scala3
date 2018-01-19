@@ -142,7 +142,7 @@ class TreeChecker extends Phase with SymTransformer {
   class Checker(phasesToCheck: Seq[Phase]) extends ReTyper with Checking {
 
     val nowDefinedSyms = new mutable.HashSet[Symbol]
-    val everDefinedSyms = new mutable.HashMap[Symbol, untpd.Tree]
+    val everDefinedSyms = newMutableSymbolMap[untpd.Tree]
 
     // don't check value classes after typer, as the constraint about constructors doesn't hold after transform
     override def checkDerivedValueClass(clazz: Symbol, stats: List[Tree])(implicit ctx: Context) = ()
@@ -321,7 +321,7 @@ class TreeChecker extends Phase with SymTransformer {
       val tpe = tree.typeOpt
       val sym = tree.symbol
       val symIsFixed = tpe match {
-        case tpe: TermRef => tpe.hasFixedSym
+        case tpe: TermRef => ctx.erasedTypes || !tpe.isMemberRef
         case _ => false
       }
       if (sym.exists && !sym.is(Private) &&
@@ -375,7 +375,8 @@ class TreeChecker extends Phase with SymTransformer {
       def isNonMagicalMethod(x: Symbol) =
         x.is(Method) &&
           !x.isCompanionMethod &&
-          !x.isValueClassConvertMethod
+          !x.isValueClassConvertMethod &&
+          !(x.is(Macro) && ctx.phase.refChecked)
 
       val symbolsNotDefined = cls.classInfo.decls.toList.toSet.filter(isNonMagicalMethod) -- impl.body.map(_.symbol) - constr.symbol
 

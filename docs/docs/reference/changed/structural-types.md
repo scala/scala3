@@ -6,7 +6,7 @@ title: "Programmatic Structural Types"
 Previously, Scala supported structural types by means of
 reflection. This is problematic on other platforms, because Scala's
 reflection is JVM-based. Consequently, Scala.js and Scala.native don't
-support structural types fully. The reflction based implementation is
+support structural types fully. The reflection based implementation is
 also needlessly restrictive, since it rules out other implementation
 schemes. This makes structural types unsuitable for e.g. modelling
 rows in a database, for which they would otherwise seem to be an ideal
@@ -113,20 +113,20 @@ warrant the additional complexity of supporting it.
 both select members programmatically. But there are also some
 differences.
 
- - Fully dynamic selection is not typesafe, but structural selection
-   is, as long as the correspondence of the structural type with the
-   underlying value is as stated.
+   - Fully dynamic selection is not typesafe, but structural selection
+     is, as long as the correspondence of the structural type with the
+     underlying value is as stated.
 
- - `Dynamic` is just a marker trait, which gives more leeway where and
-   how to define reflective access operations. By contrast
-   `Selectable` is a trait which declares the access operations.
+   - `Dynamic` is just a marker trait, which gives more leeway where and
+     how to define reflective access operations. By contrast
+     `Selectable` is a trait which declares the access operations.
 
- - One access operation, `selectDynamic` is shared between both
-   approaches, but the other access operations are
-   different. `Selectable` defines a `selectDynamicMethod`, which
-   takes class tags indicating the method's formal parameter types as
-   additional argument. `Dynamic` comes with `applyDynamic` and
-   `updateDynamic` methods, which take actual argument values.
+   - One access operation, `selectDynamic` is shared between both
+     approaches, but the other access operations are
+     different. `Selectable` defines a `selectDynamicMethod`, which
+     takes class tags indicating the method's formal parameter types as
+     additional argument. `Dynamic` comes with `applyDynamic` and
+     `updateDynamic` methods, which take actual argument values.
 
 ### Reference
 

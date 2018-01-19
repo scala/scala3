@@ -6,11 +6,11 @@ package tasty
 import TastyFormat._
 import collection.mutable
 import TastyBuffer._
-import core.Symbols.Symbol
+import core.Symbols.{Symbol, ClassSymbol}
 import ast.tpd
 import Decorators._
 
-class TastyPickler {
+class TastyPickler(val rootCls: ClassSymbol) {
 
   private val sections = new mutable.ArrayBuffer[(NameRef, TastyBuffer)]
 

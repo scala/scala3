@@ -33,7 +33,7 @@ In summary, previous code using implicit conversion parameters such as
 
     def useConversion(implicit f: A => B) = {
       val y: A = ...
-      val x: B = a    // error under Dotty
+      val x: B = y    // error under Dotty
     }
 
 is no longer legal and has to be rewritten to

@@ -63,8 +63,6 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
             toPrefix(pre, cls, tp.cls)
           case _: BoundType | NoPrefix =>
             tp
-          case tp: RefinedType =>  //@!!! todo: remove
-            derivedRefinedType(tp, apply(tp.parent), apply(tp.refinedInfo))
           case _ =>
             mapOver(tp)
         }
@@ -101,8 +99,6 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
       }
     case  _: ThisType | _: BoundType | NoPrefix =>
       tp
-    case tp: RefinedType => // @!!!
-      tp.derivedRefinedType(simplify(tp.parent, theMap), tp.refinedName, simplify(tp.refinedInfo, theMap))
     case tp: TypeAlias =>
       tp.derivedTypeAlias(simplify(tp.alias, theMap))
     case AndType(l, r) if !ctx.mode.is(Mode.Type) =>
@@ -189,12 +185,16 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
           tp1.rebind(approximateOr(tp1.parent, tp2))
         case tp1: TypeProxy if !isClassRef(tp1) =>
           orDominator(tp1.superType | tp2)
+        case err: ErrorType =>
+          err
         case _ =>
           tp2 match {
             case tp2: RecType =>
               tp2.rebind(approximateOr(tp1, tp2.parent))
             case tp2: TypeProxy if !isClassRef(tp2) =>
               orDominator(tp1 | tp2.superType)
+            case err: ErrorType =>
+              err
             case _ =>
               val commonBaseClasses = tp.mapReduceOr(_.baseClasses)(intersect)
               val doms = dominators(commonBaseClasses, Nil)
@@ -277,8 +277,11 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
    *
    *       import owner.feature
    *
-   *  (the feature may be bunched with others, or renamed, but wildcard imports
-   *  don't count).
+   *     and there is no visible nested import that excludes the feature, as in
+   *
+   *       import owner.{ feature => _ }
+   *
+   *  The feature may be bunched with others, or renamed, but wildcard imports don't count.
    *
    *  2. The feature is enabled by a compiler option
    *
@@ -293,13 +296,16 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
       else toPrefix(sym.owner) + sym.name + "."
     def featureName = toPrefix(owner) + feature
     def hasImport(implicit ctx: Context): Boolean = {
-      if (ctx.importInfo == null || (ctx.importInfo.site.widen.typeSymbol ne owner)) false
-      else if (ctx.importInfo.excluded.contains(feature)) false
-      else if (ctx.importInfo.originals.contains(feature)) true
+      if (ctx.importInfo eq null) false
       else {
-        var c = ctx.outer
-        while (c.importInfo eq ctx.importInfo) c = c.outer
-        hasImport(c)
+        val isImportOwner = ctx.importInfo.site.widen.typeSymbol eq owner
+        if (isImportOwner && ctx.importInfo.originals.contains(feature)) true
+        else if (isImportOwner && ctx.importInfo.excluded.contains(feature)) false
+        else {
+          var c = ctx.outer
+          while (c.importInfo eq ctx.importInfo) c = c.outer
+          hasImport(c)
+        }
       }
     }
     def hasOption = ctx.base.settings.language.value exists (s => s == featureName || s == "_")
@@ -328,7 +334,7 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
 object TypeOps {
   @sharable var track = false // !!!DEBUG
 
-  /** When a property with this key is set in a context, it limit the number
+  /** When a property with this key is set in a context, it limits the number
    *  of recursive member searches. If the limit is reached, findMember returns
    *  NoDenotation.
    */

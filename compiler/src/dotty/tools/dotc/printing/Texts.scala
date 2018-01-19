@@ -1,6 +1,5 @@
 package dotty.tools.dotc
 package printing
-import core.Contexts.Context
 import language.implicitConversions
 
 object Texts {
@@ -12,7 +11,7 @@ object Texts {
     def relems: List[Text]
 
     def isEmpty: Boolean = this match {
-      case Str(s) => s.isEmpty
+      case Str(s, _) => s.isEmpty
       case Fluid(relems) => relems forall (_.isEmpty)
       case Vertical(relems) => relems.isEmpty
     }
@@ -25,8 +24,8 @@ object Texts {
     def close = new Closed(relems)
 
     def remaining(width: Int): Int = this match {
-      case Str(s) =>
-        width - s.length
+      case Str(s, _) =>
+        width - lengthWithoutAnsi(s)
       case Fluid(Nil) =>
         width
       case Fluid(last :: prevs) =>
@@ -37,15 +36,15 @@ object Texts {
     }
 
     def lastLine: String = this match {
-      case Str(s) => s
+      case Str(s, _) => s
       case _ => relems.head.lastLine
     }
 
     def appendToLastLine(that: Text): Text = that match {
-      case Str(s2) =>
+      case Str(s2, lines1) =>
         this match {
-          case Str(s1) => Str(s1 + s2)
-          case Fluid(Str(s1) :: prev) => Fluid(Str(s1 + s2) :: prev)
+          case Str(s1, lines2) => Str(s1 + s2, lines1 union lines2)
+          case Fluid(Str(s1, lines2) :: prev) => Fluid(Str(s1 + s2, lines1 union lines2) :: prev)
           case Fluid(relems) => Fluid(that :: relems)
         }
       case Fluid(relems) =>
@@ -60,13 +59,16 @@ object Texts {
       else if (that.isEmpty) this
       else if (that.isVertical) appendIndented(that)(width)
       else if (this.isVertical) Fluid(that.layout(width) :: this.relems)
-      else if (that.remaining(width - lastLine.length) >= 0) appendToLastLine(that)
+      else if (that.remaining(width - lengthWithoutAnsi(lastLine)) >= 0) appendToLastLine(that)
       else if (that.isSplittable) (this /: that.relems.reverse)(_.append(width)(_))
       else appendIndented(that)(width)
     }
 
+    private def lengthWithoutAnsi(str: String): Int =
+      str.replaceAll("\u001b\\[\\d+m", "").length
+
     def layout(width: Int): Text = this match {
-      case Str(_) =>
+      case Str(s, _) =>
         this
       case Fluid(relems) =>
         ((Str(""): Text) /: relems.reverse)(_.append(width)(_))
@@ -75,13 +77,13 @@ object Texts {
     }
 
     def map(f: String => String): Text = this match {
-      case Str(s) => Str(f(s))
+      case Str(s, lines) => Str(f(s), lines)
       case Fluid(relems) => Fluid(relems map (_ map f))
       case Vertical(relems) => Vertical(relems map (_ map f))
     }
 
     def stripPrefix(pre: String): Text = this match {
-      case Str(s) =>
+      case Str(s, _) =>
         if (s.startsWith(pre)) s drop pre.length else s
       case Fluid(relems) =>
         val elems = relems.reverse
@@ -94,26 +96,40 @@ object Texts {
     }
 
     private def indented: Text = this match {
-      case Str(s) => Str((" " * indentMargin) + s)
+      case Str(s, lines) => Str((" " * indentMargin) + s, lines)
       case Fluid(relems) => Fluid(relems map (_.indented))
       case Vertical(relems) => Vertical(relems map (_.indented))
     }
 
-    def print(sb: StringBuilder): Unit = this match {
-      case Str(s) =>
+    def print(sb: StringBuilder, numberWidth: Int): Unit = this match {
+      case Str(s, lines) =>
+        if (numberWidth != 0) {
+          val ln = lines.show
+          val pad = (numberWidth - ln.length - 1)
+          assert(pad >= 0)
+          sb.append(" " * pad)
+          sb.append(ln)
+          sb.append("|")
+        }
         sb.append(s)
       case _ =>
         var follow = false
         for (elem <- relems.reverse) {
           if (follow) sb.append("\n")
-          elem.print(sb)
+          elem.print(sb, numberWidth)
           follow = true
         }
     }
 
-    def mkString(width: Int): String = {
+    def maxLine: Int = this match {
+      case Str(_, lines) => lines.end
+      case _ => (-1 /: relems)((acc, relem) => acc max relem.maxLine)
+    }
+
+    def mkString(width: Int, withLineNumbers: Boolean): String = {
       val sb = new StringBuilder
-      layout(width).print(sb)
+      val numberWidth = if (withLineNumbers) (2 * maxLine.toString.length) + 2 else 0
+      layout(width - numberWidth).print(sb, numberWidth)
       sb.toString
     }
 
@@ -130,8 +146,6 @@ object Texts {
     def over (that: Text) =
       if (this.isVertical) Vertical(that :: this.relems)
       else Vertical(that :: this :: Nil)
-
-    def provided(pred: Boolean) = if (pred) this else Str("")
   }
 
   object Text {
@@ -153,9 +167,13 @@ object Texts {
 
     /** The given texts `xs`, each on a separate line */
     def lines(xs: Traversable[Text]) = Vertical(xs.toList.reverse)
+
+    implicit class textDeco(text: => Text) {
+      def provided(cond: Boolean): Text = if (cond) text else Str("")
+    }
   }
 
-  case class Str(s: String) extends Text {
+  case class Str(s: String, lineRange: LineRange = EmptyLineRange) extends Text {
     override def relems: List[Text] = List(this)
   }
 
@@ -165,4 +183,15 @@ object Texts {
   class Closed(relems: List[Text]) extends Fluid(relems)
 
   implicit def stringToText(s: String): Text = Str(s)
+
+  /** Inclusive line range */
+  case class LineRange(start: Int, end: Int) {
+    def union(that: LineRange): LineRange = LineRange(start min that.start, end max that.end)
+    def show: String =
+      if (start == end) (start + 1).toString
+      else if (start < end) s"${start + 1}-${end + 1}"
+      else "" // empty range
+  }
+
+  object EmptyLineRange extends LineRange(Int.MaxValue, Int.MinValue)
 }

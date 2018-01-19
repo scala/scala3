@@ -323,7 +323,7 @@ object JavaParsers {
       if (in.token == LT) {
         in.nextToken()
         val t1 = convertToTypeId(t)
-        val args = repsep(typeArg, COMMA)
+        val args = repsep(() => typeArg(), COMMA)
         acceptClosingAngle()
         atPos(t1.pos.start) {
           AppliedTypeTree(t1, args)
@@ -435,7 +435,7 @@ object JavaParsers {
 
     def formalParams(): List[ValDef] = {
       accept(LPAREN)
-      val vparams = if (in.token == RPAREN) List() else repsep(formalParam, COMMA)
+      val vparams = if (in.token == RPAREN) List() else repsep(() => formalParam(), COMMA)
       accept(RPAREN)
       vparams
     }
@@ -459,7 +459,7 @@ object JavaParsers {
     def optThrows(): Unit = {
       if (in.token == THROWS) {
         in.nextToken()
-        repsep(typ, COMMA)
+        repsep(() => typ(), COMMA)
       }
     }
 
@@ -675,7 +675,7 @@ object JavaParsers {
     def interfacesOpt() =
       if (in.token == IMPLEMENTS) {
         in.nextToken()
-        repsep(typ, COMMA)
+        repsep(() => typ(), COMMA)
       } else {
         List()
       }
@@ -708,7 +708,7 @@ object JavaParsers {
       val parents =
         if (in.token == EXTENDS) {
           in.nextToken()
-          repsep(typ, COMMA)
+          repsep(() => typ(), COMMA)
         } else {
           List(javaLangObject())
         }

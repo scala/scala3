@@ -22,7 +22,7 @@ ambiguities. For instance, you might try to extend `Greeting` twice,
 with different parameters.
 
 ```scala
-/*!*/ class D extends C with Greeting("Bill") // error: parameters passed twice
+/*!*/ class D extends C with Greeting("Bill") // error: parameter passed twice
 ```
 
 Should this print "Bob" or "Bill"? In fact this program is illegal,

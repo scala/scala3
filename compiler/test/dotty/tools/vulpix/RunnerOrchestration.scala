@@ -92,7 +92,7 @@ trait RunnerOrchestration {
         if (didAddCleanupCallback.compareAndSet(false, true)) {
           // If for some reason the test runner (i.e. sbt) doesn't kill the VM, we
           // need to clean up ourselves.
-          summaryReport.addCleanup(killAll)
+          summaryReport.addCleanup(() => killAll())
         }
         assert(process ne null,
           "Runner was killed and then reused without setting a new process")
@@ -155,7 +155,7 @@ trait RunnerOrchestration {
         classOf[ChildJVMMain].getProtectionDomain.getCodeSource.getLocation.getFile + ":" +
         Jars.scalaLibrary
       val javaBin = sys.props("java.home") + sep + "bin" + sep + "java"
-      new ProcessBuilder(javaBin, "-cp", cp, "dotty.tools.vulpix.ChildJVMMain")
+      new ProcessBuilder(javaBin, "-Xmx1g", "-cp", cp, "dotty.tools.vulpix.ChildJVMMain")
         .redirectErrorStream(true)
         .redirectInput(ProcessBuilder.Redirect.PIPE)
         .redirectOutput(ProcessBuilder.Redirect.PIPE)

@@ -36,7 +36,7 @@ sealed class StoringPrintStream extends PrintStream(new NullPrintStream) {
 }
 
 class ReplTest extends ReplDriver(
-  Array("-classpath", List(Jars.dottyLib, Jars.dottyInterfaces).mkString(":")),
+  Array("-classpath", List(Jars.dottyLib, Jars.dottyInterfaces).mkString(":"), "-color:never"),
   new StoringPrintStream
 ) with MessageRendering {
 

@@ -1,0 +1,3 @@
+scala> class A; 1
+// defined class A
+val res0: Int = 1

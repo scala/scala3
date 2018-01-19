@@ -216,41 +216,10 @@ object Scanners {
 
     private class TokenData0 extends TokenData
 
-    /** The scanner itself needs one token lookahead and one token history
+    /** We need one token lookahead and one token history
      */
     val next : TokenData = new TokenData0
     private val prev : TokenData = new TokenData0
-
-    /** The parser can also add more lookahead tokens via `insertTokens`.
-     *  Tokens beyond `next` are stored in `following`.
-     */
-    private[this] var following: List[TokenData] = Nil
-
-    /** Push a copy of token data `td` to `following` */
-    private def pushCopy(td: TokenData) = {
-      val copy = new TokenData0
-      copy.copyFrom(td)
-      following = copy :: following
-    }
-
-    /** If following is empty, invalidate token data `td` by setting
-     *  `td.token` to `EMPTY`. Otherwise pop head of `following` into `td`.
-     */
-    private def popCopy(td: TokenData) =
-      if (following.isEmpty) td.token = EMPTY
-      else {
-        td.copyFrom(following.head)
-        following = following.tail
-      }
-
-    /** Insert tokens `tds` in front of current token */
-    def insertTokens(tds: List[TokenData]) = {
-      if (next.token != EMPTY) pushCopy(next)
-      pushCopy(this)
-      following = tds ++ following
-      popCopy(this)
-      if (following.nonEmpty) popCopy(next)
-    }
 
     /** a stack of tokens which indicates whether line-ends can be statement separators
      *  also used for keeping track of nesting levels.
@@ -326,6 +295,9 @@ object Scanners {
       case _ =>
     }
 
+    /** A new Scanner that starts at the current token offset */
+    def lookaheadScanner = new Scanner(source, offset)
+
     /** Produce next token, filling TokenData fields of Scanner.
      */
     def nextToken(): Unit = {
@@ -340,7 +312,7 @@ object Scanners {
         if (token == ERROR) adjustSepRegions(STRINGLIT)
       } else {
         this copyFrom next
-        popCopy(next)
+        next.token = EMPTY
       }
 
       /** Insert NEWLINE or NEWLINES if
@@ -390,7 +362,16 @@ object Scanners {
         val nextLastOffset = lastCharOffset
         lookahead()
         if (token != ELSE) reset(nextLastOffset)
+      } else if (token == COMMA){
+        val nextLastOffset = lastCharOffset
+        lookahead()
+        if (isAfterLineEnd() && (token == RPAREN || token == RBRACKET || token == RBRACE)) {
+          /* skip the trailing comma */
+        } else if (token == EOF) { // e.g. when the REPL is parsing "val List(x, y, _*,"
+          /* skip the trailing comma */
+        } else reset(nextLastOffset)
       }
+
     }
 
     /** Is current token first one after a newline? */
@@ -531,9 +512,13 @@ object Scanners {
           def fetchSingleQuote() = {
             nextChar()
             if (isIdentifierStart(ch))
-              charLitOr(getIdentRest)
+              charLitOr { getIdentRest(); SYMBOLLIT }
             else if (isOperatorPart(ch) && (ch != '\\'))
-              charLitOr(getOperatorRest)
+              charLitOr { getOperatorRest(); SYMBOLLIT }
+            else if (ch == '(' || ch == '{' || ch == '[') {
+              val tok = quote(ch)
+              charLitOr(tok)
+            }
             else {
               getLitChar()
               if (ch == '\'') {
@@ -956,7 +941,7 @@ object Scanners {
     /** Parse character literal if current character is followed by \',
      *  or follow with given op and return a symbol literal token
      */
-    def charLitOr(op: () => Unit): Unit = {
+    def charLitOr(op: => Token): Unit = {
       putChar(ch)
       nextChar()
       if (ch == '\'') {
@@ -964,11 +949,19 @@ object Scanners {
         token = CHARLIT
         setStrVal()
       } else {
-        op()
-        token = SYMBOLLIT
+        token = op
         strVal = name.toString
+        litBuf.clear()
       }
     }
+
+    /** The opening quote bracket token corresponding to `c` */
+    def quote(c: Char): Token = c match {
+      case '(' => QPAREN
+      case '{' => QBRACE
+      case '[' => QBRACKET
+    }
+
     override def toString =
       showTokenDetailed(token) + {
         if ((identifierTokens contains token) || (literalTokens contains token)) " " + name

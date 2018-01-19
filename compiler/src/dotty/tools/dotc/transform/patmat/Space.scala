@@ -267,8 +267,8 @@ trait SpaceLogic {
         else
           // `(_, _, _) - (Some, None, _)` becomes `(None, _, _) | (_, Some, _) | (_, _, Empty)`
           Or(ss1.zip(ss2).map((minus _).tupled).zip(0 to ss2.length - 1).map {
-              case (ri, i) => Prod(tp1, fun1, sym1, ss1.updated(i, ri), full)
-            })
+            case (ri, i) => Prod(tp1, fun1, sym1, ss1.updated(i, ri), full)
+          })
 
     }
 
@@ -375,7 +375,7 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
   }
 
   /* Whether the extractor is irrefutable */
-  def irrefutable(unapp: tpd.Tree): Boolean = {
+  def irrefutable(unapp: Tree): Boolean = {
     // TODO: optionless patmat
     unapp.tpe.widen.finalResultType.isRef(scalaSomeClass) ||
       (unapp.symbol.is(Synthetic) && unapp.symbol.owner.linkedClass.is(Case)) ||
@@ -395,14 +395,15 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
       Typ(pat.tpe.stripAnnots, false)
     case Alternative(trees) => Or(trees.map(project(_)))
     case Bind(_, pat) => project(pat)
+    case SeqLiteral(pats, _) => projectSeq(pats)
     case UnApply(fun, _, pats) =>
       if (fun.symbol.name == nme.unapplySeq)
         if (fun.symbol.owner == scalaSeqFactoryClass)
           projectSeq(pats)
         else
-          Prod(pat.tpe.stripAnnots, fun.tpe.widen, fun.symbol, projectSeq(pats) :: Nil, irrefutable(fun))
+          Prod(pat.tpe.stripAnnots, fun.tpe, fun.symbol, projectSeq(pats) :: Nil, irrefutable(fun))
       else
-        Prod(pat.tpe.stripAnnots, fun.tpe.widen, fun.symbol, pats.map(project), irrefutable(fun))
+        Prod(pat.tpe.stripAnnots, fun.tpe, fun.symbol, pats.map(project), irrefutable(fun))
     case Typed(pat @ UnApply(_, _, _), _) => project(pat)
     case Typed(expr, tpt) =>
       Typ(erase(expr.tpe.stripAnnots), true)
@@ -496,7 +497,7 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
 
     debug.println(s"signature of ${unappSym.showFullName} ----> ${sig.map(_.show).mkString(", ")}")
 
-    sig
+    sig.map(_.annotatedToRepeated)
   }
 
   /** Decompose a type into subspaces -- assume the type can be decomposed */
@@ -557,11 +558,11 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
   def refine(parent: Type, child: Symbol): Type = {
     if (child.isTerm && child.is(Case, butNot = Module)) return child.termRef // enum vals always match
 
-    val childTp  = if (child.isTerm) child.termRef else child.typeRef
+    val childTp = if (child.isTerm) child.termRef else child.typeRef
 
     val resTp = instantiate(childTp, parent)(ctx.fresh.setNewTyperState())
 
-    if (!resTp.exists)  {
+    if (!resTp.exists || !inhabited(resTp)) {
       debug.println(s"[refine] unqualified child ousted: ${childTp.show} !< ${parent.show}")
       NoType
     }
@@ -569,6 +570,25 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
       debug.println(s"$child instantiated ------> $resTp")
       resTp.dealias
     }
+  }
+
+  /** Can this type be inhabited by a value?
+   *
+   *  Intersection between singleton types and other types is always empty
+   *  the singleton type is not a subtype of the other type.
+   *  See patmat/i3573.scala for an example.
+   */
+  def inhabited(tpe: Type)(implicit ctx: Context): Boolean = {
+    val emptySingletonIntersection = new ExistsAccumulator({
+      case AndType(s: SingletonType, t) =>
+        !(s <:< t)
+      case AndType(t, s: SingletonType) =>
+        !(s <:< t)
+      case x =>
+        false
+    })
+
+    !emptySingletonIntersection(false, tpe)
   }
 
   /** Instantiate type `tp1` to be a subtype of `tp2`
@@ -580,44 +600,104 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
    *
    */
   def instantiate(tp1: Type, tp2: Type)(implicit ctx: Context): Type = {
-    // map `ThisType` of `tp1` to a type variable
-    // precondition: `tp1` should have the shape `path.Child`, thus `ThisType` is always covariant
-    val thisTypeMap = new TypeMap {
-      def apply(t: Type): Type = t match {
-        case tp @ ThisType(tref) if !tref.symbol.isStaticOwner && !tref.symbol.is(Module)  =>
-          // TODO: stackoverflow here
-          // newTypeVar(TypeBounds.upper(mapOver(tp.underlying)))
-          newTypeVar(TypeBounds.upper(mapOver(tref & tref.classSymbol.asClass.givenSelfType)))
+    // expose abstract type references to their bounds or tvars according to variance
+    abstract class AbstractTypeMap(maximize: Boolean)(implicit ctx: Context) extends TypeMap {
+      def expose(tp: TypeRef): Type = {
+        val lo = this(tp.info.loBound)
+        val hi = this(tp.info.hiBound)
+        val exposed =
+          if (variance == 0)
+            newTypeVar(TypeBounds(lo, hi))
+          else if (variance == 1)
+            if (maximize) hi else lo
+          else
+            if (maximize) lo else hi
+
+        debug.println(s"$tp exposed to =====> $exposed")
+        exposed
+      }
+
+      override def mapOver(tp: Type): Type = tp match {
+        case tp: TypeRef if tp.underlying.isInstanceOf[TypeBounds] =>
+          // See tests/patmat/gadt.scala  tests/patmat/exhausting.scala  tests/patmat/t9657.scala
+          expose(tp)
+
+        case AppliedType(tycon: TypeRef, args) if tycon.underlying.isInstanceOf[TypeBounds] =>
+          val args2 = args.map(this)
+          val lo = this(tycon.info.loBound).applyIfParameterized(args2)
+          val hi = this(tycon.info.hiBound).applyIfParameterized(args2)
+          val exposed =
+            if (variance == 0)
+              newTypeVar(TypeBounds(lo, hi))
+            else if (variance == 1)
+              if (maximize) hi else lo
+            else
+              if (maximize) lo else hi
+
+          debug.println(s"$tp exposed to =====> $exposed")
+          exposed
+
         case _ =>
-          mapOver(t)
+          super.mapOver(tp)
+      }
+    }
+
+    // We are checking the possibility of `tp1 <:< tp2`, thus we should
+    // minimize `tp1` while maximizing `tp2`. See tests/patmat/3645b.scala
+    def childTypeMap(implicit ctx: Context) = new AbstractTypeMap(maximize = false) {
+      def apply(t: Type): Type = t.dealias match {
+        // map `ThisType` of `tp1` to a type variable
+        // precondition: `tp1` should have the same shape as `path.Child`, thus `ThisType` is always covariant
+        case tp @ ThisType(tref) if !tref.symbol.isStaticOwner  =>
+          if (tref.symbol.is(Module)) this(tref)
+          else newTypeVar(TypeBounds.upper(tp.underlying))
+
+        case tp =>
+          mapOver(tp)
       }
     }
 
     // replace type parameter references with bounds
-    val typeParamMap = new TypeMap {
+    def parentTypeMap(implicit ctx: Context) = new AbstractTypeMap(maximize = true) {
+      def apply(tp: Type): Type = mapOver(tp.dealias)
+    }
+
+    // replace uninstantiated type vars with WildcardType, check tests/patmat/3333.scala
+    def instUndetMap(implicit ctx: Context) = new TypeMap {
       def apply(t: Type): Type = t match {
-
-        case tp: TypeRef if tp.symbol.is(TypeParam) && tp.underlying.isInstanceOf[TypeBounds] =>
-          // See tests/patmat/gadt.scala  tests/patmat/exhausting.scala  tests/patmat/t9657.scala
-          val exposed =
-            if (variance == 0) newTypeVar(tp.underlying.bounds)
-            else if (variance == 1) mapOver(tp.underlying.hiBound)
-            else mapOver(tp.underlying.loBound)
-
-          debug.println(s"$tp exposed to =====> $exposed")
-          exposed
-        case _ =>
-          mapOver(t)
+        case tvar: TypeVar if !tvar.isInstantiated => WildcardType(tvar.origin.underlying.bounds)
+        case _ => mapOver(t)
       }
     }
 
-    val tvars = tp1.typeParams.map { tparam => newTypeVar(tparam.paramInfo.bounds) }
-    val protoTp1 = thisTypeMap(tp1.appliedTo(tvars))
+    val force = new ForceDegree.Value(
+      tvar => !(ctx.typerState.constraint.entry(tvar.origin) eq tvar.origin.underlying),
+      minimizeAll = false
+    )
 
-    if (protoTp1 <:< tp2 && isFullyDefined(protoTp1, ForceDegree.noBottom)) protoTp1
+    val tvars = tp1.typeParams.map { tparam => newTypeVar(tparam.paramInfo.bounds) }
+    val protoTp1 = childTypeMap.apply(tp1.appliedTo(tvars))
+
+    // If parent contains a reference to an abstract type, then we should
+    // refine subtype checking to eliminate abstract types according to
+    // variance. As this logic is only needed in exhaustivity check,
+    // we manually patch subtyping check instead of changing TypeComparer.
+    // See tests/patmat/3645b.scala
+    def parentQualify = tp1.widen.classSymbol.info.parents.exists { parent =>
+      implicit val ictx = ctx.fresh.setNewTyperState()
+      parent.argInfos.nonEmpty && childTypeMap.apply(parent) <:< parentTypeMap.apply(tp2)
+    }
+
+    if (protoTp1 <:< tp2) {
+      if (isFullyDefined(protoTp1, force)) protoTp1
+      else instUndetMap.apply(protoTp1)
+    }
     else {
-      val protoTp2 = typeParamMap(tp2)
-      if (protoTp1 <:< protoTp2 && isFullyDefined(protoTp1 & protoTp2, ForceDegree.noBottom)) protoTp1
+      val protoTp2 = parentTypeMap.apply(tp2)
+      if (protoTp1 <:< protoTp2 || parentQualify) {
+        if (isFullyDefined(AndType(protoTp1, protoTp2), force)) protoTp1
+        else instUndetMap.apply(protoTp1)
+      }
       else {
         debug.println(s"$protoTp1 <:< $protoTp2 = false")
         NoType
@@ -691,6 +771,38 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
     else text
   }
 
+  /** Whether the counterexample is satisfiable. The space is flattened and non-empty. */
+  def satisfiable(sp: Space): Boolean = {
+    def impossible: Nothing = throw new AssertionError("`satisfiable` only accepts flattened space.")
+
+    def genConstraint(space: Space): List[(Type, Type)] = space match {
+      case Prod(tp, unappTp, unappSym, ss, _) =>
+        val tps = signature(unappTp, unappSym, ss.length)
+        ss.zip(tps).flatMap {
+          case (sp : Prod, tp) => sp.tp -> tp :: genConstraint(sp)
+          case (Typ(tp1, _), tp2) => tp1 -> tp2 :: Nil
+          case _ => impossible
+        }
+      case Typ(_, _) => Nil
+      case _ => impossible
+    }
+
+    def checkConstraint(constrs: List[(Type, Type)])(implicit ctx: Context): Boolean = {
+      val tvarMap = collection.mutable.Map.empty[Symbol, TypeVar]
+      val typeParamMap = new TypeMap() {
+        override def apply(tp: Type): Type = tp match {
+          case tref: TypeRef if tref.symbol.is(TypeParam) =>
+            tvarMap.getOrElseUpdate(tref.symbol, newTypeVar(tref.underlying.bounds))
+          case tp => mapOver(tp)
+        }
+      }
+
+      constrs.forall { case (tp1, tp2) => typeParamMap(tp1) <:< typeParamMap(tp2) }
+    }
+
+    checkConstraint(genConstraint(sp))(ctx.fresh.setNewTyperState())
+  }
+
   /** Display spaces */
   def show(s: Space): String = {
     def params(tp: Type): List[Type] = tp.classSymbol.primaryConstructor.info.firstParamTypes
@@ -738,24 +850,35 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
   def checkable(tree: Match): Boolean = {
     // Possible to check everything, but be compatible with scalac by default
     def isCheckable(tp: Type): Boolean =
-        !tp.hasAnnotation(defn.UncheckedAnnot) && (
-          ctx.settings.YcheckAllPatmat.value ||
-          tp.typeSymbol.is(Sealed) ||
-          tp.isInstanceOf[OrType] ||
-          (tp.isInstanceOf[AndType] && {
-            val and = tp.asInstanceOf[AndType]
-            isCheckable(and.tp1) || isCheckable(and.tp2)
-          }) ||
-          tp.isRef(defn.BooleanClass) ||
-          tp.typeSymbol.is(Enum) ||
-          canDecompose(tp) ||
-          (defn.isTupleType(tp) && tp.dealias.argInfos.exists(isCheckable(_)))
-        )
+      !tp.hasAnnotation(defn.UncheckedAnnot) && {
+        val tpw = tp.widen.dealias
+        ctx.settings.YcheckAllPatmat.value ||
+        tpw.typeSymbol.is(Sealed) ||
+        tpw.isInstanceOf[OrType] ||
+        (tpw.isInstanceOf[AndType] && {
+          val and = tpw.asInstanceOf[AndType]
+          isCheckable(and.tp1) || isCheckable(and.tp2)
+        }) ||
+        tpw.isRef(defn.BooleanClass) ||
+        tpw.typeSymbol.is(Enum) ||
+        canDecompose(tpw) ||
+        (defn.isTupleType(tpw) && tpw.argInfos.exists(isCheckable(_)))
+      }
 
     val Match(sel, cases) = tree
-    val res = isCheckable(sel.tpe.widen.dealiasKeepAnnots)
+    val res = isCheckable(sel.tpe)
     debug.println(s"checkable: ${sel.show} = $res")
     res
+  }
+
+  /** Whehter counter-examples should be further checked? True for GADTs. */
+  def shouldCheckExamples(tp: Type): Boolean = {
+    new TypeAccumulator[Boolean] {
+      override def apply(b: Boolean, tp: Type): Boolean = tp match {
+        case tref: TypeRef if tref.symbol.is(TypeParam) && variance != 1 => true
+        case tp => b || foldOver(b, tp)
+      }
+    }.apply(false, tp)
   }
 
   def checkExhaustivity(_match: Match): Unit = {
@@ -768,10 +891,15 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
       debug.println(s"${x.pat.show} ====> ${show(space)}")
       space
     }).reduce((a, b) => Or(List(a, b)))
-    val uncovered = simplify(minus(Typ(selTyp, true), patternSpace), aggressive = true)
 
-    if (uncovered != Empty)
-      ctx.warning(PatternMatchExhaustivity(show(uncovered)), sel.pos)
+    val checkGADTSAT = shouldCheckExamples(selTyp)
+
+    val uncovered =
+      flatten(simplify(minus(Typ(selTyp, true), patternSpace), aggressive = true))
+        .filter(s => s != Empty && (!checkGADTSAT || satisfiable(s)))
+
+    if (uncovered.nonEmpty)
+      ctx.warning(PatternMatchExhaustivity(show(Or(uncovered))), sel.pos)
   }
 
   def checkRedundancy(_match: Match): Unit = {

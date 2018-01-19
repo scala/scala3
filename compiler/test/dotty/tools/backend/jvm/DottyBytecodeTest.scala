@@ -45,25 +45,18 @@ trait DottyBytecodeTest extends DottyTest {
     val javaString     = "java/lang/String"
   }
 
-  private def bCodeCheckingComp(phase: TestGenBCode)(check: Directory => Unit) =
-    new Compiler {
-      override def phases = {
-        val updatedPhases = {
-          def replacePhase: Phase => Phase =
-            { p => if (p.phaseName == "genBCode") phase else p }
-
-          for (phaseList <- super.phases) yield phaseList.map(replacePhase)
-        }
-
-        val checkerPhase = List(List(new Phase {
-          def phaseName = "assertionChecker"
-          override def run(implicit ctx: Context): Unit =
-            check(phase.virtualDir)
-        }))
-
-        updatedPhases ::: checkerPhase
-      }
+  private def bCodeCheckingComp(testPhase: TestGenBCode)(check: Directory => Unit) = {
+    class AssertionChecker extends Phase {
+      def phaseName = "assertionChecker"
+      def run(implicit ctx: Context): Unit = check(testPhase.virtualDir)
     }
+    new Compiler {
+      override protected def backendPhases: List[List[Phase]] =
+        List(testPhase) ::
+        List(new AssertionChecker) ::
+        Nil
+    }
+  }
 
   private def outPath(obj: Any) =
       "/genBCodeTest" + math.abs(obj.hashCode) + System.currentTimeMillis

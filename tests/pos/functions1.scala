@@ -33,4 +33,11 @@ object Functions {
     val z: Spore[String, String] = x => x + x
     val z2: Spore2[String, String] = x => x + x
   }
+
+  object retType {
+    val a: List[() => 4] = List(() => 4)
+
+    class Inv[T]
+    val b: List[() => Inv[Int]] = List(() => new Inv)
+  }
 }

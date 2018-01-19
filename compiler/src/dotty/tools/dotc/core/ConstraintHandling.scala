@@ -227,15 +227,15 @@ trait ConstraintHandling {
         }
       }
     }
-    if (constraint.contains(param)) {
-      val bound = if (fromBelow) constraint.fullLowerBound(param) else constraint.fullUpperBound(param)
-      val inst = avoidParam(bound)
-      typr.println(s"approx ${param.show}, from below = $fromBelow, bound = ${bound.show}, inst = ${inst.show}")
-      inst
-    }
-    else {
-      assert(ctx.mode.is(Mode.Interactive))
-      UnspecifiedErrorType
+    constraint.entry(param) match {
+      case _: TypeBounds =>
+        val bound = if (fromBelow) constraint.fullLowerBound(param) else constraint.fullUpperBound(param)
+        val inst = avoidParam(bound)
+        typr.println(s"approx ${param.show}, from below = $fromBelow, bound = ${bound.show}, inst = ${inst.show}")
+        inst
+      case inst =>
+        assert(inst.exists, i"param = $param\n constraint = $constraint")
+        inst
     }
   }
 
@@ -247,10 +247,10 @@ trait ConstraintHandling {
    */
   def instanceType(param: TypeParamRef, fromBelow: Boolean): Type = {
     def upperBound = constraint.fullUpperBound(param)
-    def isSingleton(tp: Type): Boolean = tp match {
+    def isMultiSingleton(tp: Type): Boolean = tp.stripAnnots match {
       case tp: SingletonType => true
-      case AndType(tp1, tp2) => isSingleton(tp1) | isSingleton(tp2)
-      case OrType(tp1, tp2) => isSingleton(tp1) & isSingleton(tp2)
+      case AndType(tp1, tp2) => isMultiSingleton(tp1) | isMultiSingleton(tp2)
+      case OrType(tp1, tp2) => isMultiSingleton(tp1) & isMultiSingleton(tp2)
       case _ => false
     }
     def isFullyDefined(tp: Type): Boolean = tp match {
@@ -271,9 +271,11 @@ trait ConstraintHandling {
     var inst = approximation(param, fromBelow).simplified
 
     // Then, approximate by (1.) - (3.) and simplify as follows.
-    // 1. If instance is from below and is a singleton type, yet
-    // upper bound is not a singleton type, widen the instance.
-    if (fromBelow && isSingleton(inst) && !isSingleton(upperBound))
+    // 1. If instance is from below and is a singleton type, yet upper bound is
+    // not a singleton type or a subtype of `scala.Singleton`, widen the
+    // instance.
+    if (fromBelow && isMultiSingleton(inst) && !isMultiSingleton(upperBound)
+        && !isSubTypeWhenFrozen(upperBound, defn.SingletonType))
       inst = inst.widen
 
     // 2. If instance is from below and is a fully-defined union type, yet upper bound

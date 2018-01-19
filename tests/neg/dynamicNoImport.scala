@@ -9,5 +9,10 @@ package A {
     class Foo extends scala.Dynamic // error
     trait Bar extends scala.Dynamic // error
     object Baz extends scala.Dynamic // error
+
+    package C {
+      import scala.language.{ dynamics => d }
+      class Foo extends scala.Dynamic // OK
+    }
   }
 }

@@ -16,13 +16,13 @@ class Valify(val simplifyPhase: Simplify) extends Optimisation {
   import ast.tpd._
 
   // Either a duplicate or a read through series of immutable fields.
-  val defined: mutable.Map[Symbol, ValDef] = mutable.Map()
+  val defined: MutableSymbolMap[ValDef] = newMutableSymbolMap
 
-  val firstRead: mutable.Map[Symbol, RefTree] = mutable.Map()
+  val firstRead: MutableSymbolMap[RefTree] = newMutableSymbolMap
 
-  val firstWrite: mutable.Map[Symbol, Assign] = mutable.Map()
+  val firstWrite: MutableSymbolMap[Assign] = newMutableSymbolMap
 
-  val secondWrite: mutable.Map[Symbol, Assign] = mutable.Map()
+  val secondWrite: MutableSymbolMap[Assign] = newMutableSymbolMap
 
   def clear(): Unit = {
     defined.clear()

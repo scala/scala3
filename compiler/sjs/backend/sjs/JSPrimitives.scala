@@ -59,7 +59,7 @@ class JSPrimitives(ctx: Context) extends DottyPrimitives(ctx) {
   /** Initialize the primitive map */
   private def initJSPrimitives(implicit ctx: Context): Map[Symbol, Int] = {
 
-    val primitives = new mutable.HashMap[Symbol, Int]()
+    val primitives = newMutableSymbolMap[Int]
 
     // !!! Code duplicate with DottyPrimitives
     /** Add a primitive operation to the map */

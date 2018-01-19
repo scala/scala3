@@ -22,6 +22,7 @@ You can learn more about Dotty on our [website](http://dotty.epfl.ch).
 This is our third scheduled release according to our [6-week release schedule](http://dotty.epfl.ch/docs/usage/version-numbers.html).
 The [previous technology preview](/blog/2017/07/12/second-dotty-milestone-release.html) improved
 stability and reliability:
+
  - substantial improvement of quality of generated code for pattern matching
  - improvements in VS Code IDE stability
  - support Windows in VS Code IDE
@@ -30,6 +31,7 @@ stability and reliability:
 
 ## What’s in the 0.3.0-RC2 technology preview?
 This technology preview further improves stability and reliability. Some highlighted PRs are:
+
  - IDE bug fixes:
  [#2986](https://github.com/lampepfl/dotty/pull/2986),
  [#2932](https://github.com/lampepfl/dotty/pull/2932),
@@ -42,8 +44,8 @@ This technology preview further improves stability and reliability. Some highlig
 ## How can you try it out?
 We ship with tools that help you try out the Dotty platform:
 
-  - [IDE features for Visual Studio Code](http://dotty.epfl.ch/docs/usage/ide-support.html)
-  - [sbt support, including retro-compatibility with Scala 2](https://github.com/lampepfl/dotty-example-project)
+ - [IDE features for Visual Studio Code](http://dotty.epfl.ch/docs/usage/ide-support.html)
+ - [sbt support, including retro-compatibility with Scala 2](https://github.com/lampepfl/dotty-example-project)
 
 
 You have several alternatives; use the `sbt-dotty` plugin, get a standalone

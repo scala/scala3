@@ -6,7 +6,7 @@ import Names._
 import NameOps._
 import StdNames._
 import util.DotClass
-import tasty.TastyFormat._
+import NameTags._
 import Decorators._
 import Contexts.Context
 import collection.mutable
@@ -358,7 +358,6 @@ object NameKinds {
       override def mkString(underlying: TermName, info: ThisInfo) = underlying.toString
   }
   val ExtMethName = new SuffixNameKind(EXTMETH, "$extension")
-  val ModuleVarName = new SuffixNameKind(OBJECTVAR, "$module")
   val ModuleClassName = new SuffixNameKind(OBJECTCLASS, "$", optInfoString = "ModuleClass")
   val ImplMethName = new SuffixNameKind(IMPLMETH, "$")
   val AdaptedClosureName = new SuffixNameKind(ADAPTEDCLOSURE, "$adapted") { override def definesNewName = true }

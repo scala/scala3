@@ -17,6 +17,7 @@ object SyntaxHighlighting {
   val KeywordColor    = Console.YELLOW
   val ValDefColor     = Console.CYAN
   val LiteralColor    = Console.RED
+  val StringColor     = Console.GREEN
   val TypeColor       = Console.MAGENTA
   val AnnotationColor = Console.MAGENTA
 

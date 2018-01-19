@@ -104,6 +104,12 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       Closure(Nil, call, targetTpt))
   }
 
+  /** A closure whole anonymous function has the given method type */
+  def Lambda(tpe: MethodType, rhsFn: List[Tree] => Tree)(implicit ctx: Context): Block = {
+    val meth = ctx.newSymbol(ctx.owner, nme.ANON_FUN, Synthetic | Method, tpe)
+    Closure(meth, tss => rhsFn(tss.head).changeOwner(ctx.owner, meth))
+  }
+
   def CaseDef(pat: Tree, guard: Tree, body: Tree)(implicit ctx: Context): CaseDef =
     ta.assignType(untpd.CaseDef(pat, guard, body), body)
 
@@ -196,7 +202,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       case tp: MethodType =>
         def valueParam(name: TermName, info: Type): TermSymbol = {
           val maybeImplicit = if (tp.isImplicitMethod) Implicit else EmptyFlags
-          ctx.newSymbol(sym, name, TermParam | maybeImplicit, info)
+          ctx.newSymbol(sym, name, TermParam | maybeImplicit, info, coord = sym.coord)
         }
         val params = (tp.paramNames, tp.paramInfos).zipped.map(valueParam)
         val (paramss, rtp) = valueParamss(tp.instantiate(params map (_.termRef)))
@@ -262,7 +268,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     val parents1 =
       if (parents.head.classSymbol.is(Trait)) parents.head.parents.head :: parents
       else parents
-    val cls = ctx.newNormalizedClassSymbol(owner, tpnme.ANON_FUN, Synthetic, parents1,
+    val cls = ctx.newNormalizedClassSymbol(owner, tpnme.ANON_CLASS, Synthetic, parents1,
         coord = fns.map(_.pos).reduceLeft(_ union _))
     val constr = ctx.newConstructor(cls, Synthetic, Nil, Nil).entered
     def forwarder(fn: TermSymbol, name: TermName) = {
@@ -331,10 +337,11 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       followOuterLinks(This(tp.symbol.moduleClass.asClass))
     else if (tp.symbol hasAnnotation defn.ScalaStaticAnnot)
       Ident(tp)
-    else tp.prefix match {
-      case pre: SingletonType => followOuterLinks(singleton(pre)).select(tp)
-      case pre => Select(TypeTree(pre), tp)
-    } // no checks necessary
+    else {
+      val pre = tp.prefix
+      if (pre.isSingleton) followOuterLinks(singleton(pre.dealias)).select(tp)
+      else Select(TypeTree(pre), tp)
+    }
 
   def ref(sym: Symbol)(implicit ctx: Context): Tree =
     ref(NamedType(sym.owner.thisType, sym.name, sym.denot))
@@ -382,7 +389,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     val targs = tp.argTypes
     val tycon = tp.typeConstructor
     New(tycon)
-      .select(TermRef.withSym(tycon, constr))
+      .select(TermRef(tycon, constr))
       .appliedToTypes(targs)
       .appliedToArgs(args)
   }
@@ -560,6 +567,15 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       }
     }
 
+    override def Inlined(tree: Tree)(call: Tree, bindings: List[MemberDef], expansion: Tree)(implicit ctx: Context): Inlined = {
+      val tree1 = untpd.cpy.Inlined(tree)(call, bindings, expansion)
+      tree match {
+        case tree: Inlined if sameTypes(bindings, tree.bindings) && (expansion.tpe eq tree.expansion.tpe) =>
+          tree1.withTypeUnchecked(tree.tpe)
+        case _ => ta.assignType(tree1, bindings, expansion)
+      }
+    }
+
     override def SeqLiteral(tree: Tree)(elems: List[Tree], elemtpt: Tree)(implicit ctx: Context): SeqLiteral = {
       val tree1 = untpd.cpy.SeqLiteral(tree)(elems, elemtpt)
       tree match {
@@ -700,7 +716,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       val tp =
         if (sym.isType) {
           assert(!sym.is(TypeParam))
-          TypeRef(tree.tpe, sym.name.asTypeName)
+          TypeRef(tree.tpe, sym.asType)
         }
         else
           TermRef(tree.tpe, sym.name.asTermName, sym.denot.asSeenFrom(tree.tpe))
@@ -709,8 +725,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
 
     /** A select node with the given selector name and signature and a computed type */
     def selectWithSig(name: Name, sig: Signature)(implicit ctx: Context): Tree =
-      untpd.SelectWithSig(tree, name, sig)
-        .withType(TermRef(tree.tpe, name.asTermName.withSig(sig)))
+      untpd.SelectWithSig(tree, name, sig).withType(tree.tpe.select(name.asTermName, sig))
 
     /** A select node with selector name and signature taken from `sym`.
      *  Note: Use this method instead of select(sym) if the referenced symbol
@@ -762,7 +777,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       applyOverloaded(tree, nme.EQ, that :: Nil, Nil, defn.BooleanType)
 
     /** `tree.isInstanceOf[tp]`, with special treatment of singleton types */
-    def isInstance(tp: Type)(implicit ctx: Context): Tree = tp match {
+    def isInstance(tp: Type)(implicit ctx: Context): Tree = tp.dealias match {
       case tp: SingletonType =>
         if (tp.widen.derivesFrom(defn.ObjectClass))
           tree.ensureConforms(defn.ObjectType).select(defn.Object_eq).appliedTo(singleton(tp))
@@ -918,7 +933,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       }
       else denot.asSingleDenotation.termRef
     val fun = receiver
-      .select(TermRef.withSym(receiver.tpe, selected.termSymbol.asTerm))
+      .select(TermRef(receiver.tpe, selected.termSymbol.asTerm))
       .appliedToTypes(targs)
 
     def adaptLastArg(lastParam: Tree, expectedType: Type) = {

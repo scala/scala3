@@ -1,34 +1,27 @@
 #!/usr/bin/env bash
-
-# Usage:
-# SONATYPE_USER=<sonatype user> SONATYPE_PW=<sonatype pw> PGP_PW=<pgp pw> ./sbtPublish <publish cmd>
-
 set -e
 
-# Release command:
-RELEASE_CMD="$1"
+# Usage:
+# SONATYPE_USER=<sonatype user> SONATYPE_PW=<sonatype pw> PGP_PW=<pgp pw> PGP_SECRET=<pgp secret> ./sbtPublish <publish cmd>
 
-if [ -z "$SONATYPE_USER" ] || [ -z "$SONATYPE_PW" ] || [ -z "$PGP_PW" ]; then
-    echo "Error: SONATYPE_USER, SONATYPE_PW or PGP_PW env unset"
-    exit 1
-fi
+# Release command:
+RELEASE_CMD="${1:?Missing publish command}"
+
+# Make sure required environment variable are set
+: "${SONATYPE_USER:?not set}"
+: "${SONATYPE_PW:?not set}"
+: "${PGP_PW:?not set}"
+: "${PGP_SECRET:?is not set}"
 
 if [ ! "$NIGHTLYBUILD" = "yes" ] && [ ! "$RELEASEBUILD" = "yes" ]; then
     echo "Neither NIGHTLYBUILD nor RELEASEBUILD env var set to \"yes\""
     exit 1
 fi
 
-if [ -z "$RELEASE_CMD" ]; then
-  echo "Error: missing publish command"
-  exit 1
-fi
-
-CMD="     ;set credentials in ThisBuild := Seq(Credentials(\"Sonatype Nexus Repository Manager\", \"oss.sonatype.org\", \"$SONATYPE_USER\", \"$SONATYPE_PW\"))"
-CMD="$CMD ;set pgpPassphrase := Some(\"\"\"$PGP_PW\"\"\".toCharArray)"
-CMD="$CMD ;set pgpSecretRing := file(\"/keys/secring.asc\")"
-CMD="$CMD ;set pgpPublicRing := file(\"/keys/pubring.asc\")"
-CMD="$CMD $RELEASE_CMD"
+# Write down PGP secret key to the location expected by sbt-pgp
+mkdir -p "$HOME/.sbt/gpg"
+echo "$PGP_SECRET" > "$HOME/.sbt/gpg/secring.asc"
 
 # run sbt with the supplied arg
 SBT="$(cd "$(dirname "${BASH_SOURCE[0]}")" >& /dev/null && pwd)/sbt"
-"$SBT" "$CMD"
+"$SBT" "$RELEASE_CMD"

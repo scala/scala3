@@ -8,7 +8,7 @@ Scala's other language features. As such, enums in Scala are
 convenient _syntactic sugar_, but they are not essential to understand
 Scala's core.
 
-We now explain the expansion of enums is explained in detail. First,
+We now explain the expansion of enums in detail. First,
 some terminology and notational conventions:
 
  - We use `E` as a name of an enum class, and `C` as a name of an enum case that appears in the companion object of `E`.
@@ -20,7 +20,7 @@ some terminology and notational conventions:
    - _Simple cases_ are cases of a non-generic enum class that have neither parameters nor an extends clause or body. That is, they consist of a name only.
    - _Value cases_ are all cases that do not have a parameter section but that do have a (possibly generated) extends clause and/or a body.
 
-  Simple cases and value cases are called collectively _singleton cases_.
+  Simple cases and value cases are collectively called _singleton cases_.
 
 The desugaring rules imply that class cases are mapped to case classes, and singleton cases are mapped to `val` definitions.
 

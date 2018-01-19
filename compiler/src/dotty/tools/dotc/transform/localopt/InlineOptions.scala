@@ -17,7 +17,7 @@ import scala.collection.mutable
 class InlineOptions extends Optimisation {
   import ast.tpd._
 
-  val somes = mutable.HashMap[Symbol, Tree]()
+  val somes = newMutableSymbolMap[Tree]
   val nones = mutable.HashSet[Symbol]()
 
   def clear(): Unit = {

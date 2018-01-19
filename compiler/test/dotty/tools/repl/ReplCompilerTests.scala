@@ -2,7 +2,7 @@ package dotty.tools
 package repl
 
 import org.junit.Assert._
-import org.junit.Test
+import org.junit.{Test, Ignore}
 
 import dotc.core.Contexts.Context
 import dotc.ast.Trees._
@@ -93,26 +93,31 @@ class ReplCompilerTests extends ReplTest {
       )
     }
 
-  @Test def i3305: Unit = {
+  // FIXME: Tests are not run in isolation, the classloader is corrupted after the first exception
+  @Ignore def i3305: Unit = {
     fromInitialState { implicit s =>
       compile("null.toString")
-      storedOutput().startsWith("java.lang.NullPointerException")
+      assertTrue(storedOutput().startsWith("java.lang.NullPointerException"))
     }
 
     fromInitialState { implicit s =>
       compile("def foo: Int = 1 + foo; foo")
-      storedOutput().startsWith("def foo: Int\njava.lang.StackOverflowError")
+      assertTrue(storedOutput().startsWith("def foo: Int\njava.lang.StackOverflowError"))
     }
 
     fromInitialState { implicit s =>
       compile("""throw new IllegalArgumentException("Hello")""")
-      storedOutput().startsWith("java.lang.IllegalArgumentException: Hello")
+      assertTrue(storedOutput().startsWith("java.lang.IllegalArgumentException: Hello"))
     }
 
-    // FIXME
-    // fromInitialState { implicit s =>
-    //   compile("val (x, y) = null")
-    //   storedOutput().startsWith("scala.MatchError: null")
-    // }
+    fromInitialState { implicit s =>
+      compile("val (x, y) = null")
+      assertTrue(storedOutput().startsWith("scala.MatchError: null"))
+    }
+  }
+
+  @Test def i2789: Unit = fromInitialState { implicit state =>
+    compile("(x: Int) => println(x)")
+    assertTrue(storedOutput().startsWith("val res0: Int => Unit ="))
   }
 }

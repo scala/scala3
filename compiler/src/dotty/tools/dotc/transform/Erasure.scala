@@ -85,8 +85,11 @@ class Erasure extends Phase with DenotTransformer {
           ref.copySymDenotation(symbol = newSymbol, owner = newOwner, initFlags = newFlags, info = newInfo)
         }
       }
-    case ref =>
-      ref.derivedSingleDenotation(ref.symbol, transformInfo(ref.symbol, ref.info))
+    case ref: JointRefDenotation =>
+      new UniqueRefDenotation(
+        ref.symbol, transformInfo(ref.symbol, ref.symbol.info), ref.validFor)
+    case _ =>
+      ref.derivedSingleDenotation(ref.symbol, transformInfo(ref.symbol, ref.symbol.info))
   }
 
   val eraser = new Erasure.Typer
@@ -241,11 +244,11 @@ object Erasure {
      *  in ExtensionMethods#transform.
      */
     def cast(tree: Tree, pt: Type)(implicit ctx: Context): Tree = trace(i"cast ${tree.tpe.widen} --> $pt", show = true) {
+
       def wrap(tycon: TypeRef) =
         ref(u2evt(tycon.typeSymbol.asClass)).appliedTo(tree)
       def unwrap(tycon: TypeRef) =
         ref(evt2u(tycon.typeSymbol.asClass)).appliedTo(tree)
-
 
       assert(!pt.isInstanceOf[SingletonType], pt)
       if (pt isRef defn.UnitClass) unbox(tree, pt)
@@ -342,10 +345,17 @@ object Erasure {
       assignType(untpd.cpy.Typed(tree)(expr1, tpt1), tpt1)
     }
 
-    override def typedLiteral(tree: untpd.Literal)(implicit ctx: Context): Literal =
-      if (tree.typeOpt.isRef(defn.UnitClass)) tree.withType(tree.typeOpt)
-      else if (tree.const.tag == Constants.ClazzTag) Literal(Constant(erasure(tree.const.typeValue)))
-      else super.typedLiteral(tree)
+    override def typedLiteral(tree: untpd.Literal)(implicit ctx: Context): Tree =
+      if (tree.typeOpt.isRef(defn.UnitClass))
+        tree.withType(tree.typeOpt)
+      else if (tree.const.tag == Constants.ClazzTag)
+        Literal(Constant(erasure(tree.const.typeValue)))
+      else if (tree.const.tag == Constants.ScalaSymbolTag)
+        ref(defn.ScalaSymbolModule)
+          .select(defn.ScalaSymbolModule_apply)
+          .appliedTo(Literal(Constant(tree.const.scalaSymbolValue.name)))
+      else
+        super.typedLiteral(tree)
 
     /** Type check select nodes, applying the following rewritings exhaustively
      *  on selections `e.m`, where `OT` is the type of the owner of `m` and `ET`

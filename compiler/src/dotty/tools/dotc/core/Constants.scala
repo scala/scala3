@@ -21,26 +21,28 @@ object Constants {
   final val ClazzTag   = 12
   // For supporting java enumerations inside java annotations (see ClassfileParser)
   final val EnumTag    = 13
+  final val ScalaSymbolTag = 14
 
   case class Constant(value: Any) extends printing.Showable {
     import java.lang.Double.doubleToRawLongBits
     import java.lang.Float.floatToRawIntBits
 
     val tag: Int = value match {
-      case null         => NullTag
-      case x: Unit      => UnitTag
-      case x: Boolean   => BooleanTag
-      case x: Byte      => ByteTag
-      case x: Short     => ShortTag
-      case x: Int       => IntTag
-      case x: Long      => LongTag
-      case x: Float     => FloatTag
-      case x: Double    => DoubleTag
-      case x: String    => StringTag
-      case x: Char      => CharTag
-      case x: Type      => ClazzTag
-      case x: Symbol    => EnumTag
-      case _            => throw new Error("bad constant value: " + value + " of class " + value.getClass)
+      case null            => NullTag
+      case x: Unit         => UnitTag
+      case x: Boolean      => BooleanTag
+      case x: Byte         => ByteTag
+      case x: Short        => ShortTag
+      case x: Int          => IntTag
+      case x: Long         => LongTag
+      case x: Float        => FloatTag
+      case x: Double       => DoubleTag
+      case x: String       => StringTag
+      case x: Char         => CharTag
+      case x: Type         => ClazzTag
+      case x: Symbol       => EnumTag
+      case x: scala.Symbol => ScalaSymbolTag
+      case _               => throw new Error("bad constant value: " + value + " of class " + value.getClass)
     }
 
     def isByteRange: Boolean  = isIntRange && Byte.MinValue <= intValue && intValue <= Byte.MaxValue
@@ -54,19 +56,20 @@ object Constants {
     def isAnyVal              = UnitTag <= tag && tag <= DoubleTag
 
     def tpe(implicit ctx: Context): Type = tag match {
-      case UnitTag    => defn.UnitType
-      case BooleanTag => defn.BooleanType
-      case ByteTag    => defn.ByteType
-      case ShortTag   => defn.ShortType
-      case CharTag    => defn.CharType
-      case IntTag     => defn.IntType
-      case LongTag    => defn.LongType
-      case FloatTag   => defn.FloatType
-      case DoubleTag  => defn.DoubleType
-      case StringTag  => defn.StringType
-      case NullTag    => defn.NullType
-      case ClazzTag   => defn.ClassType(typeValue)
-      case EnumTag    => defn.EnumType(symbolValue)
+      case UnitTag        => defn.UnitType
+      case BooleanTag     => defn.BooleanType
+      case ByteTag        => defn.ByteType
+      case ShortTag       => defn.ShortType
+      case CharTag        => defn.CharType
+      case IntTag         => defn.IntType
+      case LongTag        => defn.LongType
+      case FloatTag       => defn.FloatType
+      case DoubleTag      => defn.DoubleType
+      case StringTag      => defn.StringType
+      case NullTag        => defn.NullType
+      case ClazzTag       => defn.ClassType(typeValue)
+      case EnumTag        => defn.EnumType(symbolValue)
+      case ScalaSymbolTag => defn.ScalaSymbolType
     }
 
     /** We need the equals method to take account of tags as well as values.
@@ -206,6 +209,7 @@ object Constants {
 
     def typeValue: Type     = value.asInstanceOf[Type]
     def symbolValue: Symbol = value.asInstanceOf[Symbol]
+    def scalaSymbolValue: scala.Symbol = value.asInstanceOf[scala.Symbol]
 
     /**
      * Consider two `NaN`s to be identical, despite non-equality

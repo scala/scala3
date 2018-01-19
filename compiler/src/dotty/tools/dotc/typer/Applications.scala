@@ -3,7 +3,7 @@ package dotc
 package typer
 
 import core._
-import ast.{Trees, untpd, tpd, TreeInfo}
+import ast.{TreeInfo, Trees, tpd, untpd}
 import util.Positions._
 import util.Stats.track
 import Trees.Untyped
@@ -26,13 +26,14 @@ import EtaExpansion._
 import Inferencing._
 
 import collection.mutable
-import config.Printers.{typr, unapp, overload}
+import config.Printers.{overload, typr, unapp}
 import TypeApplications._
 
 import language.implicitConversions
 import reporting.diagnostic.Message
 import reporting.trace
 import Constants.{Constant, IntTag, LongTag}
+import dotty.tools.dotc.reporting.diagnostic.messages.UnapplyInvalidNumberOfArguments
 
 import scala.collection.mutable.ListBuffer
 
@@ -46,7 +47,7 @@ object Applications {
     val ref = extractorMember(tp, name)
     if (ref.isOverloaded)
       errorType(i"Overloaded reference to $ref is not allowed in extractor", errorPos)
-    ref.info.widenExpr.dealias
+    ref.info.widenExpr.annotatedToRepeated.dealias
   }
 
   /** Does `tp` fit the "product match" conditions as an unapply result type
@@ -92,7 +93,10 @@ object Applications {
     def getTp = extractorMemberType(unapplyResult, nme.get, pos)
 
     def fail = {
-      ctx.error(i"$unapplyResult is not a valid result type of an $unapplyName method of an extractor", pos)
+      val addendum =
+        if (ctx.scala2Mode && unapplyName == nme.unapplySeq)
+          "\n You might want to try to rewrite the extractor to use `unapply` instead."
+      ctx.error(em"$unapplyResult is not a valid result type of an $unapplyName method of an extractor$addendum", pos)
       Nil
     }
 
@@ -385,7 +389,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
           val companion = cls.companionModule
           if (companion.isTerm) {
             val prefix = receiver.tpe.baseType(cls).normalizedPrefix
-            if (prefix.exists) selectGetter(ref(TermRef.withSym(prefix, companion.asTerm)))
+            if (prefix.exists) selectGetter(ref(TermRef(prefix, companion.asTerm)))
             else EmptyTree
           }
           else EmptyTree
@@ -548,10 +552,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
       val args = typedArgBuf.takeRight(n).toList
       typedArgBuf.trimEnd(n)
       val elemtpt = TypeTree(elemFormal)
-      val seqLit =
-        if (methodType.isJavaMethod) JavaSeqLiteral(args, elemtpt)
-        else SeqLiteral(args, elemtpt)
-      typedArgBuf += seqToRepeated(seqLit)
+      typedArgBuf += seqToRepeated(SeqLiteral(args, elemtpt))
     }
 
     def harmonizeArgs(args: List[TypedArg]) = harmonize(args)
@@ -961,15 +962,21 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
 
         var argTypes = unapplyArgs(unapplyApp.tpe, unapplyFn, args, tree.pos)
         for (argType <- argTypes) assert(!argType.isInstanceOf[TypeBounds], unapplyApp.tpe.show)
-        val bunchedArgs = argTypes match {
-          case argType :: Nil =>
-            if (argType.isRepeatedParam) untpd.SeqLiteral(args, untpd.TypeTree()) :: Nil
-            else if (args.lengthCompare(1) > 0 && ctx.canAutoTuple) untpd.Tuple(args) :: Nil
-            else args
-          case _ => args
-        }
+        val bunchedArgs =
+          if (argTypes.nonEmpty && argTypes.last.isRepeatedParam)
+            args.lastOption match {
+              case Some(arg @ Typed(argSeq, _)) if untpd.isWildcardStarArg(arg) =>
+                args.init :+ argSeq
+              case _ =>
+                val (regularArgs, varArgs) = args.splitAt(argTypes.length - 1)
+                regularArgs :+ untpd.SeqLiteral(varArgs, untpd.TypeTree())
+            }
+          else if (argTypes.lengthCompare(1) == 0 && args.lengthCompare(1) > 0 && ctx.canAutoTuple)
+            untpd.Tuple(args) :: Nil
+          else
+            args
         if (argTypes.length != bunchedArgs.length) {
-          ctx.error(em"wrong number of argument patterns for $qual; expected: ($argTypes%, %)", tree.pos)
+          ctx.error(UnapplyInvalidNumberOfArguments(qual, argTypes), tree.pos)
           argTypes = argTypes.take(args.length) ++
             List.fill(argTypes.length - args.length)(WildcardType)
         }
@@ -995,19 +1002,19 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
    *  @param  resultType   The expected result type of the application
    */
   def isApplicable(methRef: TermRef, targs: List[Type], args: List[Tree], resultType: Type)(implicit ctx: Context): Boolean =
-    ctx.typerState.test(new ApplicableToTrees(methRef, targs, args, resultType).success)
+    ctx.test(implicit ctx => new ApplicableToTrees(methRef, targs, args, resultType).success)
 
   /** Is given method reference applicable to type arguments `targs` and argument trees `args` without inferring views?
     *  @param  resultType   The expected result type of the application
     */
   def isDirectlyApplicable(methRef: TermRef, targs: List[Type], args: List[Tree], resultType: Type)(implicit ctx: Context): Boolean =
-    ctx.typerState.test(new ApplicableToTreesDirectly(methRef, targs, args, resultType).success)
+    ctx.test(implicit ctx => new ApplicableToTreesDirectly(methRef, targs, args, resultType).success)
 
   /** Is given method reference applicable to argument types `args`?
    *  @param  resultType   The expected result type of the application
    */
   def isApplicable(methRef: TermRef, args: List[Type], resultType: Type)(implicit ctx: Context): Boolean =
-    ctx.typerState.test(new ApplicableToTypes(methRef, args, resultType).success)
+    ctx.test(implicit ctx => new ApplicableToTypes(methRef, args, resultType).success)
 
   /** Is given type applicable to type arguments `targs` and argument trees `args`,
    *  possibly after inserting an `apply`?
@@ -1031,32 +1038,42 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
       tp.member(nme.apply).hasAltWith(d => p(TermRef(tp, nme.apply, d)))
   }
 
-  /** In a set of overloaded applicable alternatives, is `alt1` at least as good as
-   *  `alt2`? Also used for implicits disambiguation.
+  /** Compare owner inheritance level.
+    *  @param    sym1 The first owner
+    *  @param    sym2 The second owner
+    *  @return    1   if `sym1` properly derives from `sym2`
+    *            -1   if `sym2` properly derives from `sym1`
+    *             0   otherwise
+    *  Module classes also inherit the relationship from their companions.
+    */
+  def compareOwner(sym1: Symbol, sym2: Symbol)(implicit ctx: Context): Int =
+    if (sym1 == sym2) 0
+    else if (sym1 isSubClass sym2) 1
+    else if (sym2 isSubClass sym1) -1
+    else if (sym2 is Module) compareOwner(sym1, sym2.companionClass)
+    else if (sym1 is Module) compareOwner(sym1.companionClass, sym2)
+    else 0
+
+  /** Compare to alternatives of an overloaded call or an implicit search.
    *
    *  @param  alt1, alt2      Non-overloaded references indicating the two choices
    *  @param  level1, level2  If alternatives come from a comparison of two contextual
    *                          implicit candidates, the nesting levels of the candidates.
    *                          In all other cases the nesting levels are both 0.
+   *  @return  1   if 1st alternative is preferred over 2nd
+   *          -1   if 2nd alternative is preferred over 1st
+   *           0   if neither alternative is preferred over the other
    *
-   *  An alternative A1 is "as good as" an alternative A2 if it wins or draws in a tournament
-   *  that awards one point for each of the following
+   *  An alternative A1 is preferred over an alternative A2 if it wins in a tournament
+   *  that awards one point for each of the following:
    *
    *   - A1 is nested more deeply than A2
    *   - The nesting levels of A1 and A2 are the same, and A1's owner derives from A2's owner
    *   - A1's type is more specific than A2's type.
    */
-  def isAsGood(alt1: TermRef, alt2: TermRef, nesting1: Int = 0, nesting2: Int = 0)(implicit ctx: Context): Boolean = track("isAsGood") { trace(i"isAsGood($alt1, $alt2)", overload) {
+  def compare(alt1: TermRef, alt2: TermRef, nesting1: Int = 0, nesting2: Int = 0)(implicit ctx: Context): Int = track("compare") { trace(i"compare($alt1, $alt2)", overload) {
 
     assert(alt1 ne alt2)
-
-    /** Is class or module class `sym1` derived from class or module class `sym2`?
-     *  Module classes also inherit the relationship from their companions.
-     */
-    def isDerived(sym1: Symbol, sym2: Symbol): Boolean =
-      if (sym1 isSubClass sym2) true
-      else if (sym2 is Module) isDerived(sym1, sym2.companionClass)
-      else (sym1 is Module) && isDerived(sym1.companionClass, sym2)
 
     /** Is alternative `alt1` with type `tp1` as specific as alternative
      *  `alt2` with type `tp2` ?
@@ -1102,7 +1119,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
           case tp2: MethodType => true // (3a)
           case tp2: PolyType if tp2.resultType.isInstanceOf[MethodType] => true // (3a)
           case tp2: PolyType => // (3b)
-            ctx.typerState.test(isAsSpecificValueType(tp1, constrained(tp2).resultType))
+            ctx.test(implicit ctx => isAsSpecificValueType(tp1, constrained(tp2).resultType))
           case _ => // (3b)
             isAsSpecificValueType(tp1, tp2)
         }
@@ -1165,55 +1182,56 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
 
     val owner1 = if (alt1.symbol.exists) alt1.symbol.owner else NoSymbol
     val owner2 = if (alt2.symbol.exists) alt2.symbol.owner else NoSymbol
+    val ownerScore =
+      if (nesting1 > nesting2) 1
+      else if (nesting1 < nesting2) -1
+      else compareOwner(owner1, owner2)
+
     val tp1 = stripImplicit(alt1.widen)
     val tp2 = stripImplicit(alt2.widen)
-
-    def winsOwner1 =
-      nesting1 > nesting2 || nesting1 == nesting2 && isDerived(owner1, owner2)
     def winsType1  = isAsSpecific(alt1, tp1, alt2, tp2)
-    def winsOwner2 =
-      nesting2 > nesting1 || nesting1 == nesting2 && isDerived(owner2, owner1)
     def winsType2  = isAsSpecific(alt2, tp2, alt1, tp1)
 
-    overload.println(i"isAsGood($alt1, $alt2)? $tp1 $tp2 $winsOwner1 $winsType1 $winsOwner2 $winsType2")
+    overload.println(i"compare($alt1, $alt2)? $tp1 $tp2 $ownerScore $winsType1 $winsType2")
 
-    // Assume the following probabilities:
-    //
-    // P(winsOwnerX) = 2/3
-    // P(winsTypeX) = 1/3
-    //
-    // Then the call probabilities of the 4 basic operations are as follows:
-    //
-    // winsOwner1: 1/1
-    // winsOwner2: 1/1
-    // winsType1 : 7/9
-    // winsType2 : 4/9
-
-    if (winsOwner1) /* 6/9 */ !winsOwner2 || /* 4/9 */ winsType1 || /* 8/27 */ !winsType2
-    else if (winsOwner2) /* 2/9 */ winsType1 && /* 2/27 */ !winsType2
-    else /* 1/9 */ winsType1 || /* 2/27 */ !winsType2
+    if (ownerScore == 1)
+      if (winsType1 || !winsType2) 1 else 0
+    else if (ownerScore == -1)
+      if (winsType2 || !winsType1) -1 else 0
+    else if (winsType1)
+      if (winsType2) 0 else 1
+    else
+      if (winsType2) -1 else 0
   }}
 
   def narrowMostSpecific(alts: List[TermRef])(implicit ctx: Context): List[TermRef] = track("narrowMostSpecific") {
     alts match {
       case Nil => alts
       case _ :: Nil => alts
-      case alt :: alts1 =>
-        def winner(bestSoFar: TermRef, alts: List[TermRef]): TermRef = alts match {
-          case alt :: alts1 =>
-            winner(if (isAsGood(alt, bestSoFar)) alt else bestSoFar, alts1)
-          case nil =>
-            bestSoFar
+      case alt1 :: alt2 :: Nil =>
+        compare(alt1, alt2) match {
+          case  1 => alt1 :: Nil
+          case -1 => alt2 :: Nil
+          case  0 => alts
         }
-        val best = winner(alt, alts1)
+      case alt :: alts1 =>
+        def survivors(previous: List[TermRef], alts: List[TermRef]): List[TermRef] = alts match {
+          case alt :: alts1 =>
+            compare(previous.head, alt) match {
+              case  1 => survivors(previous, alts1)
+              case -1 => survivors(alt :: previous.tail, alts1)
+              case  0 => survivors(alt :: previous, alts1)
+            }
+          case Nil => previous
+        }
+        val best :: rest = survivors(alt :: Nil, alts1)
         def asGood(alts: List[TermRef]): List[TermRef] = alts match {
           case alt :: alts1 =>
-            if ((alt eq best) || !isAsGood(alt, best)) asGood(alts1)
-            else alt :: asGood(alts1)
+            if (compare(alt, best) < 0) asGood(alts1) else alt :: asGood(alts1)
           case nil =>
             Nil
         }
-        best :: asGood(alts)
+        best :: asGood(rest)
     }
   }
 
@@ -1253,9 +1271,9 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
      *  do they prune much, on average.
      */
     def adaptByResult(chosen: TermRef) = pt match {
-      case pt: FunProto if !ctx.typerState.test(resultConforms(chosen, pt.resultType)) =>
+      case pt: FunProto if !ctx.test(implicit ctx => resultConforms(chosen, pt.resultType)) =>
         val conformingAlts = alts.filter(alt =>
-          (alt ne chosen) && ctx.typerState.test(resultConforms(alt, pt.resultType)))
+          (alt ne chosen) && ctx.test(implicit ctx => resultConforms(alt, pt.resultType)))
         conformingAlts match {
           case Nil => chosen
           case alt2 :: Nil => alt2

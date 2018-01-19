@@ -144,15 +144,14 @@ trait Dynamic { self: Typer with Applications =>
 
     tree.tpe.widen match {
       case tpe: MethodType =>
-        if (tpe.isDependent)
-          fail(i"has a dependent method type")
+        if (tpe.isParamDependent)
+          fail(i"has a method type with inter-parameter dependencies")
         else if (tpe.paramNames.length > Definitions.MaxStructuralMethodArity)
           fail(i"""takes too many parameters.
                   |Structural types only support methods taking up to ${Definitions.MaxStructuralMethodArity} arguments""")
         else {
-          def issueError(msgFn: String => String): Unit = ctx.error(msgFn(""), tree.pos)
           val ctags = tpe.paramInfos.map(pt =>
-            inferImplicitArg(defn.ClassTagType.appliedTo(pt :: Nil), issueError, tree.pos.endPos))
+            implicitArgTree(defn.ClassTagType.appliedTo(pt :: Nil), tree.pos.endPos))
           structuralCall(nme.selectDynamicMethod, ctags).asInstance(tpe.toFunctionType())
         }
       case tpe: ValueType =>

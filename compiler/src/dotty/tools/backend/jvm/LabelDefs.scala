@@ -76,7 +76,7 @@ class LabelDefs extends MiniPhase {
             case t: DefDef =>
               assert(t.symbol is Label)
               EmptyTree
-            case _ => if (labelDefs.nonEmpty) super.transform(tree) else tree
+            case _ => if (!labelDefs.isEmpty) super.transform(tree) else tree
           }
         }
       }
@@ -86,9 +86,9 @@ class LabelDefs extends MiniPhase {
     }
   }
 
-  private def collectLabelDefs(tree: Tree)(implicit ctx: Context): mutable.HashMap[Symbol, DefDef] = {
+  private def collectLabelDefs(tree: Tree)(implicit ctx: Context): MutableSymbolMap[DefDef] = {
     // labelSymbol -> Defining tree
-    val labelDefs = new mutable.HashMap[Symbol, DefDef]()
+    val labelDefs = newMutableSymbolMap[DefDef]
     new TreeTraverser {
       override def traverse(tree: Tree)(implicit ctx: Context): Unit = tree match {
         case t: DefDef =>

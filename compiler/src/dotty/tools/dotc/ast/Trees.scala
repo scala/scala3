@@ -69,9 +69,9 @@ object Trees {
     }
 
     /** A unique identifier for this tree. Used for debugging, and potentially
-     *  tracking presentation compiler interactions
+     *  tracking presentation compiler interactions.
      */
-    private var myUniqueId: Int = nxId
+    @sharable private var myUniqueId: Int = nxId
 
     def uniqueId = myUniqueId
 
@@ -85,13 +85,8 @@ object Trees {
      *  which implements copy-on-write. Another use-case is in method interpolateAndAdapt in Typer,
      *  where we overwrite with a simplified version of the type itself.
      */
-    private[dotc] def overwriteType(tpe: T) = {
-      if (this.isInstanceOf[Template[_]])
-        tpe match {
-          case tpe: TermRef => assert(tpe.hasFixedSym , s"$this <--- $tpe")
-        }
+    private[dotc] def overwriteType(tpe: T) =
       myTpe = tpe
-    }
 
     /** The type of the tree. In case of an untyped tree,
      *   an UnAssignedTypeException is thrown. (Overridden by empty trees)
@@ -118,7 +113,7 @@ object Trees {
      */
     def withType(tpe: Type)(implicit ctx: Context): ThisTree[Type] = {
       if (tpe.isInstanceOf[ErrorType])
-        assert(ctx.mode.is(Mode.Interactive) || ctx.reporter.errorsReported)
+        assert(!Config.checkUnreportedErrors || ctx.reporter.errorsReported)
       else if (Config.checkTreesConsistent)
         checkChildrenTyped(productIterator)
       withTypeUnchecked(tpe)
@@ -368,6 +363,11 @@ object Trees {
     override def isBackquoted: Boolean = true
 
     override def toString = s"BackquotedIdent($name)"
+  }
+
+  class SearchFailureIdent[-T >: Untyped] private[ast] (name: Name)
+    extends Ident[T](name) {
+    override def toString = s"SearchFailureIdent($name)"
   }
 
   /** qualifier.name, or qualifier#name, if qualifier is a type */
@@ -830,6 +830,7 @@ object Trees {
 
     type Ident = Trees.Ident[T]
     type BackquotedIdent = Trees.BackquotedIdent[T]
+    type SearchFailureIdent = Trees.SearchFailureIdent[T]
     type Select = Trees.Select[T]
     type SelectWithSig = Trees.SelectWithSig[T]
     type This = Trees.This[T]

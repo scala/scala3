@@ -83,7 +83,7 @@ object Option {
 Enumerations and ADTs have been presented as two different
 concepts. But since they share the same syntactic construct, they can
 be seen simply as two ends of a spectrum and it is perfectly possible
-to conctruct hybrids. For instance, the code below gives an
+to construct hybrids. For instance, the code below gives an
 implementation of `Color` either with three enum values or with a
 parameterized case that takes an RGB value.
 
