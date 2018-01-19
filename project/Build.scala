@@ -544,7 +544,8 @@ object Build {
             // used for tests that compile dotty
             path.contains("scala-asm") ||
             // needed for the xsbti interface
-            path.contains("sbt-interface")
+            path.contains("compiler-interface") ||
+            path.contains("util-interface")
         } yield "-Xbootclasspath/p:" + path
 
         val ci_build = // propagate if this is a ci build
@@ -890,7 +891,7 @@ object Build {
       unmanagedSourceDirectories in Compile +=
         baseDirectory.value / "../language-server/src/dotty/tools/languageserver/config",
       sbtPlugin := true,
-      version := "0.1.8",
+      version := "0.2.0",
       sbtTestDirectory := baseDirectory.value / "sbt-test",
       scriptedLaunchOpts ++= Seq(
         "-Dplugin.version=" + version.value,

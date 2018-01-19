@@ -340,14 +340,6 @@ object SymDenotations {
       case Nil => Nil
     }
 
-    final def children(implicit ctx: Context): List[Symbol] =
-      this.annotations.filter(_.symbol == ctx.definitions.ChildAnnot).map { annot =>
-        // refer to definition of Annotation.makeChild
-        annot.tree match {
-          case Apply(TypeApply(_, List(tpTree)), _) => tpTree.symbol
-        }
-      }
-
     /** The denotation is completed: info is not a lazy type and attributes have defined values */
     final def isCompleted: Boolean = !myInfo.isInstanceOf[LazyType]
 
@@ -934,7 +926,7 @@ object SymDenotations {
      *  except for a toplevel module, where its module class is returned.
      */
     final def topLevelClass(implicit ctx: Context): Symbol = {
-      def topLevel(d: SymDenotation): Symbol = {
+      @tailrec def topLevel(d: SymDenotation): Symbol = {
         if (d.isTopLevelClass) d.symbol
         else topLevel(d.owner)
       }
@@ -944,7 +936,7 @@ object SymDenotations {
     }
 
     final def isTopLevelClass(implicit ctx: Context): Boolean =
-      this.isEffectiveRoot || (this is PackageClass) || (this.owner is PackageClass)
+      !this.exists || this.isEffectiveRoot || (this is PackageClass) || (this.owner is PackageClass)
 
     /** The package class containing this denotation */
     final def enclosingPackageClass(implicit ctx: Context): Symbol =

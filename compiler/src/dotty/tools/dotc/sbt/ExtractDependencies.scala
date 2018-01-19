@@ -9,7 +9,9 @@ import Names._, NameOps._, StdNames._
 
 import scala.collection.{Set, mutable}
 
-import dotty.tools.io.{AbstractFile, Path, ZipArchive, PlainFile}
+import dotty.tools.io
+import dotty.tools.io.{AbstractFile, ZipArchive, PlainFile}
+
 import java.io.File
 
 import java.util.{Arrays, Comparator, EnumSet}
@@ -73,7 +75,7 @@ class ExtractDependencies extends Phase {
         Arrays.sort(deps)
         Arrays.sort(inhDeps)
 
-        val pw = Path(sourceFile.jpath).changeExtension("inc").toFile.printWriter()
+        val pw = io.File(sourceFile.jpath).changeExtension("inc").toFile.printWriter()
         try {
           pw.println(s"// usedNames: ${names.mkString(",")}")
           pw.println(s"// topLevelDependencies: ${deps.mkString(",")}")
@@ -127,23 +129,7 @@ class ExtractDependencies extends Phase {
     // package can never have a corresponding class file; this test does not
     // catch package objects (that do not have this flag set)
     if (sym.is(Package)) None
-    else {
-      val file = Option(sym.associatedFile)
-
-      Option(sym.associatedFile).flatMap {
-        case NoSourceFile =>
-          if (isTopLevelModule(sym)) {
-            val linked = sym.companionClass
-            if (linked == NoSymbol)
-              None
-            else
-              classFile(linked)
-          } else
-            None
-        case file =>
-          Some(file)
-      }
-    }
+    else Option(sym.associatedFile)
   }
 
   protected def isTopLevelModule(sym: Symbol)(implicit ctx: Context): Boolean =
@@ -174,7 +160,7 @@ class ExtractDependencies extends Phase {
           at match {
             case ze: ZipArchive#Entry =>
               for (zip <- ze.underlyingSource; zipFile <- Option(zip.file)) {
-                val classSegments = Path(ze.path).segments
+                val classSegments = io.File(ze.path).segments
                 binaryDependency(zipFile, className(classSegments))
               }
             case pf: PlainFile =>
