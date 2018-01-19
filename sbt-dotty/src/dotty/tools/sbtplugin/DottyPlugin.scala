@@ -143,17 +143,8 @@ object DottyPlugin extends AutoPlugin {
 
   override def projectSettings: Seq[Setting[_]] = {
     Seq(
-      isDotty := {
-        val log = sLog.value
+      isDotty := scalaVersion.value.startsWith("0."),
 
-        sbtFullVersion(sbtVersion.value) match {
-          case Some((sbtMajor, sbtMinor, sbtPatch)) if sbtMajor == 0 && sbtMinor == 13 && sbtPatch < 15 =>
-            log.error(s"The sbt-dotty plugin cannot work with this version of sbt (${sbtVersion.value}), sbt >= 0.13.15 is required.")
-            false
-          case _ =>
-            scalaVersion.value.startsWith("0.")
-        }
-      },
       scalaOrganization := {
         if (isDotty.value)
           "ch.epfl.lamp"
@@ -176,13 +167,6 @@ object DottyPlugin extends AutoPlugin {
           dottyBridge
         else
           scalaBridge
-      },
-
-      scalaBinaryVersion := {
-        if (isDotty.value)
-          scalaVersion.value.split("\\.").take(2).mkString(".") // Not needed with sbt >= 0.13.16
-        else
-          scalaBinaryVersion.value
       }
     )
   }
