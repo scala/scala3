@@ -892,11 +892,14 @@ object Build {
       sbtPlugin := true,
       version := "0.1.8",
       sbtTestDirectory := baseDirectory.value / "sbt-test",
-      scriptedLaunchOpts += "-Dplugin.version=" + version.value,
-      scriptedLaunchOpts += "-Dplugin.scalaVersion=" + dottyVersion,
+      scriptedLaunchOpts ++= Seq(
+        "-Dplugin.version=" + version.value,
+        "-Dplugin.scalaVersion=" + dottyVersion,
+        "-Dsbt.boot.directory=" + ((baseDirectory in ThisBuild).value / ".sbt-scripted").getAbsolutePath // Workaround sbt/sbt#3469
+      ),
       // By default scripted tests use $HOME/.ivy2 for the ivy cache. We need to override this value for the CI.
       scriptedLaunchOpts ++= ivyPaths.value.ivyHome.map("-Dsbt.ivy.home=" + _.getAbsolutePath).toList,
-      scriptedBufferLog := false,
+      scriptedBufferLog := true,
       scripted := scripted.dependsOn(Def.task {
         val x0 = (publishLocal in `dotty-sbt-bridge-bootstrapped`).value
         val x1 = (publishLocal in `dotty-interfaces`).value
