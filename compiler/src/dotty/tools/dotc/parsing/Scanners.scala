@@ -249,13 +249,13 @@ object Scanners {
     /** Are we directly in a string interpolation expression?
      */
     private def inStringInterpolation =
-      sepRegions.nonEmpty && sepRegions.head == STRINGLIT
+      !sepRegions.isEmpty && sepRegions.head == STRINGLIT
 
     /** Are we directly in a multiline string interpolation expression?
      *  @pre inStringInterpolation
      */
     private def inMultiLineInterpolation =
-      inStringInterpolation && sepRegions.tail.nonEmpty && sepRegions.tail.head == STRINGPART
+      inStringInterpolation && !sepRegions.tail.isEmpty && sepRegions.tail.head == STRINGPART
 
     /** read next token and return last offset
      */

@@ -771,7 +771,7 @@ object Trees {
   def flatten[T >: Untyped](trees: List[Tree[T]]): List[Tree[T]] = {
     var buf: ListBuffer[Tree[T]] = null
     var xs = trees
-    while (xs.nonEmpty) {
+    while (!xs.isEmpty) {
       xs.head match {
         case Thicket(elems) =>
           if (buf == null) {
