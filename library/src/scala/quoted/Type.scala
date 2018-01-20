@@ -9,7 +9,7 @@ abstract class Type[T] extends Quoted {
 /** Some basic type tags, currently incomplete */
 object Type {
 
-  class TaggedPrimitive[T] private[Type] (implicit val ct: ClassTag[T]) extends Type[T] {
+  final class TaggedPrimitive[T] private[Type] (implicit val ct: ClassTag[T]) extends Type[T] {
     override def toString: String = s"Type($ct)"
   }
 
