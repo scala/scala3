@@ -13,6 +13,8 @@ import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.core.tasty.{TastyPickler, TastyPrinter, TastyString}
 import dotty.tools.dotc.interpreter.RawQuoted
 
+import scala.quoted.Quoted._
+
 import scala.reflect.ClassTag
 
 object PickledQuotes {
@@ -30,20 +32,20 @@ object PickledQuotes {
 
   /** Transform the expression into its fully spliced Tree */
   def quotedToTree(expr: quoted.Quoted)(implicit ctx: Context): Tree = expr match {
-    case expr: quoted.TastyQuoted =>
+    case expr: TastyQuoted =>
       unpickleQuote(expr)
-    case expr: quoted.Liftable.ConstantExpr[_] =>
+    case expr: ConstantExpr[_] =>
       Literal(Constant(expr.value))
-    case expr: quoted.Expr.FunctionAppliedTo[_, _] =>
+    case expr: FunctionAppliedTo[_, _] =>
       functionAppliedTo(quotedToTree(expr.f), quotedToTree(expr.x))
-    case expr: quoted.Type.TaggedPrimitive[_] =>
+    case expr: TaggedType[_] =>
       classTagToTypeTree(expr.ct)
     case expr: RawQuoted =>
       expr.tree
   }
 
   /** Unpickle the tree contained in the TastyQuoted */
-  private def unpickleQuote(expr: quoted.TastyQuoted)(implicit ctx: Context): Tree = {
+  private def unpickleQuote(expr: TastyQuoted)(implicit ctx: Context): Tree = {
     val tastyBytes = TastyString.unpickle(expr.tasty)
     val unpickled = unpickle(tastyBytes, expr.args)
     unpickled match {

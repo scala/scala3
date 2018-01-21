@@ -1,6 +1,6 @@
 package scala.quoted
 
-import scala.reflect.ClassTag
+import scala.quoted.Quoted.TaggedType
 
 abstract class Type[T] extends Quoted {
   type unary_~ = T
@@ -8,18 +8,13 @@ abstract class Type[T] extends Quoted {
 
 /** Some basic type tags, currently incomplete */
 object Type {
-
-  final class TaggedPrimitive[T] private[Type] (implicit val ct: ClassTag[T]) extends Type[T] {
-    override def toString: String = s"Type($ct)"
-  }
-
-  implicit def UnitTag: Type[Unit] = new TaggedPrimitive[Unit]
-  implicit def BooleanTag: Type[Boolean] = new TaggedPrimitive[Boolean]
-  implicit def ByteTag: Type[Byte] = new TaggedPrimitive[Byte]
-  implicit def CharTag: Type[Char] = new TaggedPrimitive[Char]
-  implicit def ShortTag: Type[Short] = new TaggedPrimitive[Short]
-  implicit def IntTag: Type[Int] = new TaggedPrimitive[Int]
-  implicit def LongTag: Type[Long] = new TaggedPrimitive[Long]
-  implicit def FloatTag: Type[Float] = new TaggedPrimitive[Float]
-  implicit def DoubleTag: Type[Double] = new TaggedPrimitive[Double]
+  implicit def UnitTag: Type[Unit] = new TaggedType[Unit]
+  implicit def BooleanTag: Type[Boolean] = new TaggedType[Boolean]
+  implicit def ByteTag: Type[Byte] = new TaggedType[Byte]
+  implicit def CharTag: Type[Char] = new TaggedType[Char]
+  implicit def ShortTag: Type[Short] = new TaggedType[Short]
+  implicit def IntTag: Type[Int] = new TaggedType[Int]
+  implicit def LongTag: Type[Long] = new TaggedType[Long]
+  implicit def FloatTag: Type[Float] = new TaggedType[Float]
+  implicit def DoubleTag: Type[Double] = new TaggedType[Double]
 }

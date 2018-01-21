@@ -1,5 +1,7 @@
 package scala.quoted
 
+import scala.quoted.Quoted.ConstantExpr
+
 /** A typeclass for types that can be turned to `quoted.Expr[T]`
  *  without going through an explicit `'(...)` operation.
  */
@@ -16,10 +18,6 @@ object Liftable {
 
   implicit class LiftExprOps[T](val x: T) extends AnyVal {
     def toExpr(implicit liftable: Liftable[T]): Expr[T] = liftable.toExpr(x)
-  }
-
-  final class ConstantExpr[T] private[Liftable](val value: T) extends Expr[T] {
-    override def toString: String = s"Expr($value)"
   }
 
   implicit def UnitIsLiftable: Liftable[Unit] = (x: Unit) => new ConstantExpr(x)

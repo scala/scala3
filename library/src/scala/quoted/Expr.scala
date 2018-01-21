@@ -1,5 +1,6 @@
 package scala.quoted
 
+import scala.quoted.Quoted.FunctionAppliedTo
 import scala.runtime.quoted.Runner
 
 abstract class Expr[T] extends Quoted {
@@ -16,5 +17,4 @@ object Expr {
     def apply(x: Expr[T]): Expr[U] = new FunctionAppliedTo[T, U](f, x)
   }
 
-  final class FunctionAppliedTo[T, U] private[Expr](val f: Expr[T => U], val x: Expr[T]) extends Expr[U]
 }
