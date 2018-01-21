@@ -2,7 +2,7 @@ import scala.quoted._
 
 object Test {
 
-  def f[T](x: Expr[T])(t: Type[T]) = '{
+  def f[T](x: Expr[T])(implicit t: Type[T]) = '{
     val y: t.unary_~ = x.unary_~
     val z = ~x
   }
@@ -13,3 +13,4 @@ object Test {
   def g(es: Expr[String], t: Type[String]) =
     f('{ (~es + "!") :: Nil })('[List[~t]])
 }
+
