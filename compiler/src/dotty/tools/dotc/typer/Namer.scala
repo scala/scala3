@@ -1133,7 +1133,7 @@ class Namer { typer: Typer =>
       case _: untpd.DerivedTypeTree =>
         WildcardType
       case TypeTree() =>
-        inferredType
+        checkMembersOK(inferredType, mdef.pos)
       case DependentTypeTree(tpFun) =>
         tpFun(paramss.head)
       case TypedSplice(tpt: TypeTree) if !isFullyDefined(tpt.tpe, ForceDegree.none) =>

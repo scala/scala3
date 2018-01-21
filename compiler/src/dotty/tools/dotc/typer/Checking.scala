@@ -719,6 +719,22 @@ trait Checking {
       checkNoForwardDependencies(vparams1)
     case Nil =>
   }
+
+  /** Check that all named type that form part of this type have a denotation.
+   *  Called on inferred (result) types of ValDefs and DefDefs.
+   *  This could fail for types where the member was originally available as part
+   *  of the self type, yet is no longer visible once the `this` has been replaced
+   *  by some other prefix. See neg/i3083.scala
+   */
+  def checkMembersOK(tp: Type, pos: Position)(implicit ctx: Context): Type = {
+    val check: Type => Unit = {
+      case ref: NamedType if !ref.denot.exists =>
+        ctx.error(em"$ref is not defined in inferred type $tp", pos)
+      case _ =>
+    }
+    tp.foreachPart(check, stopAtStatic = true)
+    tp
+  }
 }
 
 trait NoChecking extends Checking {
@@ -738,4 +754,5 @@ trait NoChecking extends Checking {
   override def checkTraitInheritance(parentSym: Symbol, cls: ClassSymbol, pos: Position)(implicit ctx: Context) = ()
   override def checkCaseInheritance(parentSym: Symbol, caseCls: ClassSymbol, pos: Position)(implicit ctx: Context) = ()
   override def checkNoForwardDependencies(vparams: List[ValDef])(implicit ctx: Context): Unit = ()
+  override def checkMembersOK(tp: Type, pos: Position)(implicit ctx: Context): Type = tp
 }
