@@ -950,7 +950,7 @@ object Scanners {
         setStrVal()
       } else {
         token = op
-        strVal = name.toString
+        strVal = if (name != null) name.toString else null
         litBuf.clear()
       }
     }
