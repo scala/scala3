@@ -34,23 +34,16 @@ object PickledQuotes {
 
   /** Transform the expression into its fully spliced Tree */
   def quotedToTree(expr: quoted.Quoted)(implicit ctx: Context): Tree = expr match {
-    case expr: quoted.TastyQuoted => unpickleQuote(expr)
-    case expr: quoted.Liftable.ConstantExpr[_] => Literal(Constant(expr.value))
+    case expr: quoted.TastyQuoted =>
+      unpickleQuote(expr)
+    case expr: quoted.Liftable.ConstantExpr[_] =>
+      Literal(Constant(expr.value))
     case expr: quoted.Expr.FunctionAppliedTo[_, _] =>
       functionAppliedTo(quotedToTree(expr.f), quotedToTree(expr.x))
     case expr: quoted.Type.TaggedPrimitive[_] =>
-      val tpe = expr.ct match {
-        case ClassTag.Unit => defn.UnitType
-        case ClassTag.Byte => defn.ByteType
-        case ClassTag.Char => defn.CharType
-        case ClassTag.Short => defn.ShortType
-        case ClassTag.Int => defn.IntType
-        case ClassTag.Long => defn.LongType
-        case ClassTag.Float => defn.FloatType
-        case ClassTag.Double => defn.FloatType
-      }
-      TypeTree(tpe)
-    case expr: RawQuoted => expr.tree
+      classTagToTypeTree(expr.ct)
+    case expr: RawQuoted =>
+      expr.tree
   }
 
   /** Unpickle the tree contained in the TastyQuoted */
@@ -113,6 +106,20 @@ object PickledQuotes {
       new TastyPrinter(bytes).printContents()
     }
     tree
+  }
+
+  private def classTagToTypeTree(ct: ClassTag[_])(implicit ctx: Context): TypeTree = {
+    val tpe = ct match {
+      case ClassTag.Unit => defn.UnitType
+      case ClassTag.Byte => defn.ByteType
+      case ClassTag.Char => defn.CharType
+      case ClassTag.Short => defn.ShortType
+      case ClassTag.Int => defn.IntType
+      case ClassTag.Long => defn.LongType
+      case ClassTag.Float => defn.FloatType
+      case ClassTag.Double => defn.FloatType
+    }
+    TypeTree(tpe)
   }
 
   private def functionAppliedTo(f: Tree, x: Tree)(implicit ctx: Context): Tree = {
