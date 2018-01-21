@@ -1,4 +1,7 @@
 {
-  val z: Int = 2
-  ()
+  type T = Int
+  {
+    val z: T = 2
+    ()
+  }
 }
