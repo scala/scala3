@@ -14,6 +14,10 @@ abstract class Liftable[T] {
  */
 object Liftable {
 
+  implicit class LiftExprOps[T](val x: T) extends AnyVal {
+    def toExpr(implicit liftable: Liftable[T]): Expr[T] = liftable.toExpr(x)
+  }
+
   final class ConstantExpr[T] private[Liftable](val value: T) extends Expr[T] {
     override def toString: String = s"Expr($value)"
   }
