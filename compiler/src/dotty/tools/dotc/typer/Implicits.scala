@@ -553,9 +553,7 @@ trait Implicits { self: Typer =>
   }
 
   /** Find an implicit argument for parameter `formal`.
-   *  @param error  An error handler that gets an error message parameter
-   *                which is itself parameterized by another string,
-   *                indicating where the implicit parameter is needed
+   *  Return a failure as a SearchFailureType in the type of the returned tree.
    */
   def inferImplicitArg(formal: Type, pos: Position)(implicit ctx: Context): Tree = {
 
@@ -581,6 +579,81 @@ trait Implicits { self: Typer =>
         case _ =>
           EmptyTree
       }
+
+    def synthesizedTypeTag(tpe: Type)(implicit ctx: Context): Tree = {
+      var ok = true
+
+      def toParamSyms(tpe: LambdaType): List[Symbol { type ThisName = tpe.ThisName }] =
+        (tpe.paramNames, tpe.paramInfos).zipped.map((name, bounds) =>
+          ctx.newSymbol(ctx.owner, name, Param, bounds))
+
+      def toTreeAndDefs(tpe: Type): (List[TypeSymbol], List[List[TermSymbol]], Tree) = tpe match {
+        case tpe: TypeLambda =>
+          val tsyms = toParamSyms(tpe)
+          val (Nil, vsymss, result) = toTreeAndDefs(tpe.resultType.substParams(tpe, tsyms.map(_.typeRef)))
+          (tsyms, vsymss, result)
+        case tpe: TermLambda =>
+          val vsyms = toParamSyms(tpe)
+          val (Nil, vsymss, result) = toTreeAndDefs(tpe.resultType.substParams(tpe, vsyms.map(_.termRef)))
+          (Nil, vsyms :: vsymss, result)
+        case _ =>
+          (Nil, Nil, toTree(tpe))
+      }
+
+      def refinedToTree(tpe: Type, refinements: List[Tree], refineCls: ClassSymbol): Tree = tpe.stripTypeVar match {
+        case RefinedType(parent, rname, rinfo) =>
+          val isMethod = rinfo.isInstanceOf[MethodOrPoly]
+          val sym = ctx.newSymbol(refineCls, rname, if (isMethod) Method else EmptyFlags, rinfo)
+          val refinement = rname match {
+            case rname: TypeName =>
+              TypeDef(sym.asType)
+            case rname: TermName =>
+              if (isMethod) {
+                val (tparams, vparamss, resTpt) = toTreeAndDefs(rinfo.asInstanceOf[MethodOrPoly])
+                DefDef(sym.asTerm, tparams, vparamss, resTpt.tpe, EmptyTree)
+              }
+              else ValDef(sym.asTerm)
+           }
+          refinedToTree(parent, refinement :: refinements, refineCls)
+        case _ =>
+          RefinedTypeTree(toTree(tpe), refinements, refineCls)
+      }
+
+      def toTree(tpe: Type): Tree = tpe.stripTypeVar match {
+        case tpe @ TypeRef(NoPrefix, _) =>
+          val tag = inferImplicitArg(defn.QuotedTypeType.appliedTo(tpe), pos)
+          ok &= !tag.tpe.isInstanceOf[SearchFailureType]
+          tag.select(defn.QuotedType_~)
+        case tpe: NamedType =>
+          ref(tpe)
+        case tpe: SingletonType =>
+          singleton(tpe)
+        case AppliedType(tycon, args) =>
+          AppliedTypeTree(toTree(tycon), args.map(toTree))
+        case AndType(l, r) =>
+          AndTypeTree(toTree(l), toTree(r))
+        case OrType(l, r) =>
+          OrTypeTree(toTree(l), toTree(r))
+        case tp: HKTypeLambda =>
+          val tsyms = toParamSyms(tp)
+          toTree(tp.resType.substParams(tp, tsyms.map(_.typeRef)))
+        case tpe: RecType =>
+          refinedToTree(tpe.parent, Nil, ctx.newRefinedClassSymbol())
+        case tpe: RefinedType =>
+          refinedToTree(tpe, Nil, ctx.newRefinedClassSymbol())
+        case TypeAlias(alias) =>
+          val aliasTree = toTree(alias)
+          TypeBoundsTree(aliasTree, aliasTree)
+        case TypeBounds(lo, hi) =>
+          TypeBoundsTree(toTree(lo), toTree(hi))
+        case _ =>
+          EmptyTree
+      }
+
+      val tag = toTree(tpe)
+      if (ok) ref(defn.typeQuoteMethod).appliedToTypeTrees(tag :: Nil)
+      else EmptyTree
+    }
 
     /** If `formal` is of the form Eq[T, U], where no `Eq` instance exists for
      *  either `T` or `U`, synthesize `Eq.eqAny[T, U]` as solution.
@@ -644,6 +717,8 @@ trait Implicits { self: Typer =>
           tree
         else if (formalValue.isRef(defn.ClassTagClass))
           synthesizedClassTag(formalValue).orElse(tree)
+        else if (formalValue.isRef(defn.QuotedTypeClass))
+          synthesizedTypeTag(formalValue).orElse(tree)
         else if (formalValue.isRef(defn.EqClass))
           synthesizedEq(formalValue).orElse(tree)
         else
