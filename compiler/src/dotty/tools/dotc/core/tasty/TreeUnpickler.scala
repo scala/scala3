@@ -1054,8 +1054,12 @@ class TreeUnpickler(reader: TastyReader,
       setPos(start, tree)
     }
 
-    def readTpt()(implicit ctx: Context) =
-      if (nextByte == SHAREDterm || isTypeTreeTag(nextUnsharedTag)) readTerm()
+    def readTpt()(implicit ctx: Context): Tree =
+      if (nextByte == SHAREDterm) {
+        readByte()
+        forkAt(readAddr()).readTpt()
+      }
+      else if (isTypeTreeTag(nextByte)) readTerm()
       else {
         val start = currentAddr
         val tp = readType()
