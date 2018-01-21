@@ -552,7 +552,10 @@ class TreePickler(pickler: TastyPickler) {
           withLength { pickleParams(tparams); pickleTree(body) }
         case TypeBoundsTree(lo, hi) =>
           writeByte(TYPEBOUNDStpt)
-          withLength { pickleTree(lo); pickleTree(hi) }
+          withLength {
+            pickleTree(lo);
+            if (hi ne lo) pickleTree(hi)
+          }
         case Hole(idx, args) =>
           writeByte(HOLE)
           withLength {

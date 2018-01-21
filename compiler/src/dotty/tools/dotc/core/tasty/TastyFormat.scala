@@ -102,7 +102,7 @@ Standard-Section: "ASTs" TopLevelStat*
                   REFINEDtpt     Length underlying_Term refinement_Stat*
                   APPLIEDtpt     Length tycon_Term arg_Term*
                   POLYtpt        Length TypeParam* body_Term
-                  TYPEBOUNDStpt  Length low_Term high_Term
+                  TYPEBOUNDStpt  Length low_Term high_Term?
                   ANNOTATEDtpt   Length underlying_Term fullAnnotation_Term
                   ANDtpt         Length left_Term right_Term
                   ORtpt          Length left_Term right_Term

@@ -1038,7 +1038,9 @@ class TreeUnpickler(reader: TastyReader,
               val body = readTpt()
               LambdaTypeTree(tparams, body)
             case TYPEBOUNDStpt =>
-              TypeBoundsTree(readTpt(), readTpt())
+              val lo = readTpt()
+              val hi = if (currentAddr == end) lo else readTpt()
+              TypeBoundsTree(lo, hi)
             case HOLE =>
               readHole(end)
             case _ =>
