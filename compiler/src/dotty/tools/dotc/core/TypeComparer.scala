@@ -148,7 +148,23 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
       if (Config.traceDeepSubTypeRecursions && !this.isInstanceOf[ExplainingTypeComparer])
         ctx.log(TypeComparer.explained(implicit ctx => ctx.typeComparer.isSubType(tp1, tp2)))
     }
-    val p = (tp1, tp2)
+    // Eliminate LazyRefs before checking whether we have seen a type before
+    val normalize = new TypeMap {
+      val DerefLimit = 10
+      var derefCount = 0
+      def apply(t: Type) = t match {
+        case t: LazyRef =>
+          // Dereference a lazyref to detect underlying matching types, but
+          // be careful not to get into an infinite recursion. If recursion count
+          // exceeds `DerefLimit`, approximate with `NoType` instead.
+          derefCount += 1
+          if (derefCount >= DerefLimit) NoType
+          else try mapOver(t.ref) finally derefCount -= 1
+        case _ =>
+          mapOver(t)
+      }
+    }
+    val p = (normalize(tp1), normalize(tp2))
     !pendingSubTypes(p) && {
       try {
         pendingSubTypes += p
