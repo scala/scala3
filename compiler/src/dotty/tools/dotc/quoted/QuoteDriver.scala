@@ -3,12 +3,13 @@ package dotty.tools.dotc.quoted
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.Driver
 import dotty.tools.dotc.core.Contexts.Context
-import dotty.tools.dotc.core.StdNames._
 import dotty.tools.io.{AbstractFile, Directory, PlainDirectory, VirtualDirectory}
 import dotty.tools.repl.AbstractFileClassLoader
 import dotty.tools.dotc.printing.DecompilerPrinter
 
 import scala.quoted.Expr
+
+import java.net.URLClassLoader
 
 class QuoteDriver extends Driver {
   import tpd._
@@ -61,7 +62,15 @@ class QuoteDriver extends Driver {
 
   override def initCtx: Context = {
     val ictx = super.initCtx.fresh
-    val classpath = System.getProperty("java.class.path")
+    var classpath = System.getProperty("java.class.path")
+    this.getClass.getClassLoader match {
+      case cl: URLClassLoader =>
+        // Loads the classes loaded by this class loader
+        // When executing `run` or `test` in sbt the classpath is not in the property java.class.path
+        val newClasspath = cl.getURLs.map(_.getFile())
+        classpath = newClasspath.mkString("", ":", if (classpath == "") "" else ":" + classpath)
+      case _ =>
+    }
     ictx.settings.classpath.update(classpath)(ictx)
     ictx
   }
