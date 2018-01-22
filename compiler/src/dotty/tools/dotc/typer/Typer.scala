@@ -406,7 +406,21 @@ class Typer extends Namer
         tree.withType(ownType)
     }
 
+    checkStableIdentPattern(tree1, pt)
     checkValue(tree1, pt)
+  }
+
+  /** Check that a stable identifier pattern is indeed stable (SLS 8.1.5)
+   */
+  private def checkStableIdentPattern(tree: Tree, pt: Type)(implicit ctx: Context): Tree = {
+    if (ctx.mode.is(Mode.Pattern) &&
+        !tree.isType &&
+        !pt.isInstanceOf[ApplyingProto] &&
+        !tree.tpe.isStable &&
+        !isWildcardArg(tree))
+      ctx.error(s"stable identifier required, but ${tree.show} found", tree.pos)
+
+    tree
   }
 
   private def typedSelect(tree: untpd.Select, pt: Type, qual: Tree)(implicit ctx: Context): Select =
@@ -418,7 +432,7 @@ class Typer extends Namer
       val qual1 = typedExpr(tree.qualifier, selectionProto(tree.name, pt, this))
       if (tree.name.isTypeName) checkStable(qual1.tpe, qual1.pos)
       val select = typedSelect(tree, pt, qual1)
-      if (select.tpe ne TryDynamicCallType) select
+      if (select.tpe ne TryDynamicCallType) checkStableIdentPattern(select, pt)
       else if (pt.isInstanceOf[PolyProto] || pt.isInstanceOf[FunProto] || pt == AssignProto) select
       else typedDynamicSelect(tree, Nil, pt)
     }
