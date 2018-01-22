@@ -34,7 +34,7 @@ object PickledQuotes {
   def quotedExprToTree(expr: quoted.Expr[_])(implicit ctx: Context): Tree = expr match {
     case expr: TastyExpr[_] => unpickleExpr(expr)
     case expr: ValueExpr[_] => Literal(Constant(expr.value))
-    case expr: RawExpr[Tree] @unchecked => expr.tree
+    case expr: TreeExpr[Tree] @unchecked => expr.tree
     case expr: FunctionAppliedTo[_, _] =>
       functionAppliedTo(quotedExprToTree(expr.f), quotedExprToTree(expr.x))
   }
@@ -43,7 +43,7 @@ object PickledQuotes {
   def quotedTypeToTree(expr: quoted.Type[_])(implicit ctx: Context): Tree = expr match {
     case expr: TastyType[_] => unpickleType(expr)
     case expr: TaggedType[_] => classTagToTypeTree(expr.ct)
-    case expr: RawType[Tree] @unchecked => expr.tree
+    case expr: TreeType[Tree] @unchecked => expr.tree
   }
 
   /** Unpickle the tree contained in the TastyExpr */

@@ -21,7 +21,9 @@ object Type {
   implicit def DoubleTag: Type[Double] = new TaggedType[Double]
 }
 
-/** Implementations of Type[T] */
+/** All implementations of Type[T].
+ *  These should never be used directly.
+ */
 object Types {
   /** A Type backed by a pickled TASTY tree */
   final class TastyType[T](val tasty: Pickled, val args: Seq[Any]) extends Type[T] {
@@ -34,7 +36,7 @@ object Types {
   }
 
   /** An Type backed by a tree */
-  final class RawType[Tree](val tree: Tree) extends quoted.Type[Any] {
+  final class TreeType[Tree](val tree: Tree) extends quoted.Type[Any] {
     override def toString: String = s"Type(<raw>)"
   }
 }

@@ -21,8 +21,8 @@ import typer.Checking
 import config.Config
 import dotty.tools.dotc.core.quoted.PickledQuotes
 import scala.quoted
-import scala.quoted.Types.RawType
-import scala.quoted.Exprs.RawExpr
+import scala.quoted.Types.TreeType
+import scala.quoted.Exprs.TreeExpr
 
 /** Unpickler for typed trees
  *  @param reader          the reader from which to unpickle
@@ -1136,12 +1136,12 @@ class TreeUnpickler(reader: TastyReader,
       if (isType) {
         val quotedType =
           if (args.isEmpty) splice.asInstanceOf[quoted.Type[_]]
-          else splice.asInstanceOf[Seq[Any] => quoted.Type[_]](args.map(tree => new RawType(tree)))
+          else splice.asInstanceOf[Seq[Any] => quoted.Type[_]](args.map(tree => new TreeType(tree)))
         PickledQuotes.quotedTypeToTree(quotedType)
       } else {
         val quotedExpr =
           if (args.isEmpty) splice.asInstanceOf[quoted.Expr[_]]
-          else splice.asInstanceOf[Seq[Any] => quoted.Expr[_]](args.map(tree => new RawExpr(tree)))
+          else splice.asInstanceOf[Seq[Any] => quoted.Expr[_]](args.map(tree => new TreeExpr(tree)))
         PickledQuotes.quotedExprToTree(quotedExpr)
       }
 

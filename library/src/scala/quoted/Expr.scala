@@ -19,7 +19,9 @@ object Expr {
 
 }
 
-/** All implementations of Expr[T] */
+/** All implementations of Expr[T].
+ *  These should never be used directly.
+ */
 object Exprs {
   /** An Expr backed by a pickled TASTY tree */
   final class TastyExpr[T](val tasty: Pickled, val args: Seq[Any]) extends Expr[T] {
@@ -33,8 +35,8 @@ object Exprs {
     override def toString: String = s"Expr($value)"
   }
 
-  /** An Expr backed by a tree */
-  final class RawExpr[Tree](val tree: Tree) extends quoted.Expr[Any] {
+  /** An Expr backed by a tree. Only the current compiler trees are allowed. */
+  final class TreeExpr[Tree](val tree: Tree) extends quoted.Expr[Any] {
     override def toString: String = s"Expr(<raw>)"
   }
 
