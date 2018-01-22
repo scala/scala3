@@ -31,7 +31,7 @@ object PickledQuotes {
 
   /** Transform the expression into its fully spliced Tree */
   def quotedExprToTree(expr: quoted.Expr[_])(implicit ctx: Context): Tree = expr match {
-    case expr: TastyExpr[_] => unpickleQuote(expr)
+    case expr: TastyExpr[_] => unpickleExpr(expr)
     case expr: ConstantExpr[_] => Literal(Constant(expr.value))
     case expr: RawExpr[Tree] @unchecked => expr.tree
     case expr: FunctionAppliedTo[_, _] =>
@@ -40,19 +40,27 @@ object PickledQuotes {
 
   /** Transform the expression into its fully spliced TypeTree */
   def quotedTypeToTree(expr: quoted.Type[_])(implicit ctx: Context): Tree = expr match {
-    case expr: TastyType[_] => unpickleQuote(expr)
+    case expr: TastyType[_] => unpickleType(expr)
     case expr: TaggedType[_] => classTagToTypeTree(expr.ct)
     case expr: RawType[Tree] @unchecked => expr.tree
   }
 
-  /** Unpickle the tree contained in the TastyQuoted */
-  private def unpickleQuote(expr: TastyQuoted)(implicit ctx: Context): Tree = {
+  /** Unpickle the tree contained in the TastyExpr */
+  private def unpickleExpr(expr: TastyExpr[_])(implicit ctx: Context): Tree = {
     val tastyBytes = TastyString.unpickle(expr.tasty)
     val unpickled = unpickle(tastyBytes, expr.args)
     unpickled match {
+      case PackageDef(_, (vdef: ValDef) :: Nil) => vdef.rhs
+    }
+  }
+
+  /** Unpickle the tree contained in the TastyType */
+  private def unpickleType(ttpe: TastyType[_])(implicit ctx: Context): Tree = {
+    val tastyBytes = TastyString.unpickle(ttpe.tasty)
+    val unpickled = unpickle(tastyBytes, ttpe.args)
+    unpickled match {
       case PackageDef(_, (vdef: ValDef) :: Nil) =>
-        if (vdef.name == "$quote".toTermName) vdef.rhs
-        else vdef.rhs.asInstanceOf[TypeApply].args.head
+        vdef.rhs.asInstanceOf[TypeApply].args.head
     }
   }
 
