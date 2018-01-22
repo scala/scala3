@@ -7,7 +7,7 @@ import dotty.tools.dotc.printing.RefinedPrinter
 
 import scala.quoted.Expr
 import scala.runtime.BoxedUnit
-import scala.quoted.Exprs.ConstantExpr
+import scala.quoted.Exprs.ValueExpr
 import scala.runtime.quoted._
 
 /** Default runners for quoted expressions */
@@ -31,7 +31,7 @@ object Runners {
         case _ => None
       }
       expr match {
-        case expr: ConstantExpr[T] => Some(expr.value)
+        case expr: ValueExpr[T] => Some(expr.value)
         case _ => new QuoteDriver().withTree(expr, (tree, _) => toConstantOpt(tree), Settings.run())
       }
     }
@@ -39,12 +39,12 @@ object Runners {
   }
 
   def run[T](expr: Expr[T], settings: Settings[Run]): T = expr match {
-    case expr: ConstantExpr[T] => expr.value
+    case expr: ValueExpr[T] => expr.value
     case _ => new QuoteDriver().run(expr, settings)
   }
 
   def show[T](expr: Expr[T], settings: Settings[Show]): String = expr match {
-    case expr: ConstantExpr[T] =>
+    case expr: ValueExpr[T] =>
       implicit val ctx = new QuoteDriver().initCtx
       if (settings.compilerArgs.contains("-color:never"))
         ctx.settings.color.update("never")

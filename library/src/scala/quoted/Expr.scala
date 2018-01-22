@@ -26,8 +26,10 @@ object Exprs {
     override def toString(): String = s"Expr(<pickled>)"
   }
 
-  /** An Expr backed by a value */
-  final class ConstantExpr[T](val value: T) extends Expr[T] {
+  /** An Expr backed by a value.
+   *  Values can only be of type Boolean, Byte, Short, Char, Int, Long, Float, Double, Unit, String or Null.
+   */
+  final class ValueExpr[T](val value: T) extends Expr[T] {
     override def toString: String = s"Expr($value)"
   }
 
