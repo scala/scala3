@@ -7,11 +7,10 @@ import dotty.tools.dotc.core.Constants.Constant
 import dotty.tools.dotc.core.Contexts._
 import dotty.tools.dotc.core.Decorators._
 import dotty.tools.dotc.core.Flags._
-import dotty.tools.dotc.core.NameKinds
 import dotty.tools.dotc.core.StdNames._
+import dotty.tools.dotc.core.NameKinds
 import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.core.tasty.{TastyPickler, TastyPrinter, TastyString}
-import dotty.tools.dotc.interpreter.RawQuoted
 
 import scala.quoted.Quoted._
 
@@ -31,17 +30,19 @@ object PickledQuotes {
   }
 
   /** Transform the expression into its fully spliced Tree */
-  def quotedToTree(expr: quoted.Quoted)(implicit ctx: Context): Tree = expr match {
-    case expr: TastyQuoted =>
-      unpickleQuote(expr)
-    case expr: ConstantExpr[_] =>
-      Literal(Constant(expr.value))
+  def quotedExprToTree(expr: quoted.Expr[_])(implicit ctx: Context): Tree = expr match {
+    case expr: TastyExpr[_] => unpickleQuote(expr)
+    case expr: ConstantExpr[_] => Literal(Constant(expr.value))
+    case expr: RawExpr[Tree] @unchecked => expr.tree
     case expr: FunctionAppliedTo[_, _] =>
-      functionAppliedTo(quotedToTree(expr.f), quotedToTree(expr.x))
-    case expr: TaggedType[_] =>
-      classTagToTypeTree(expr.ct)
-    case expr: RawQuoted =>
-      expr.tree
+      functionAppliedTo(quotedExprToTree(expr.f), quotedExprToTree(expr.x))
+  }
+
+  /** Transform the expression into its fully spliced TypeTree */
+  def quotedTypeToTree(expr: quoted.Type[_])(implicit ctx: Context): Tree = expr match {
+    case expr: TastyType[_] => unpickleQuote(expr)
+    case expr: TaggedType[_] => classTagToTypeTree(expr.ct)
+    case expr: RawType[Tree] @unchecked => expr.tree
   }
 
   /** Unpickle the tree contained in the TastyQuoted */

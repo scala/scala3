@@ -14,6 +14,14 @@ object Quoted {
     def args: Seq[Any]
   }
 
+  /** Quoted for which its internal representation is its tree.
+   *  - Used for trees that cannot be serialized, such as references to local symbols that will be spliced in.
+   *  - Used for trees that do not need to be serialized to avoid the overhead of serialization/deserialization.
+   */
+  trait RawQuoted[Tree] extends quoted.Quoted {
+    def tree: Tree
+  }
+
   // Implementations of Expr[T]
 
   /** An Expr backed by a pickled TASTY tree */
@@ -25,6 +33,9 @@ object Quoted {
   final class ConstantExpr[T](val value: T) extends Expr[T] {
     override def toString: String = s"Expr($value)"
   }
+
+  /** An Expr backed by a tree */
+  final class RawExpr[Tree](val tree: Tree) extends quoted.Expr[Any] with RawQuoted[Tree]
 
   /** An Expr representing `'{(~f).apply(~x)}` but it is beta-reduced when the closure is known */
   final class FunctionAppliedTo[T, U](val f: Expr[T => U], val x: Expr[T]) extends Expr[U] {
@@ -42,5 +53,8 @@ object Quoted {
   final class TaggedType[T](implicit val ct: ClassTag[T]) extends Type[T] {
     override def toString: String = s"Type($ct)"
   }
+
+  /** An Type backed by a tree */
+  final class RawType[Tree](val tree: Tree) extends quoted.Type[Any] with RawQuoted[Tree]
 
 }
