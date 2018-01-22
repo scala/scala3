@@ -396,9 +396,11 @@ class Typer extends Namer
       }
       else if (name.toTermName == nme.ERROR)
         UnspecifiedErrorType
-      else if (ctx.owner.isConstructor && ctx.owner.owner.unforcedDecls.toList.exists(_.name == tree.name))
+      else if (ctx.owner.isConstructor && ctx.owner.owner.unforcedDecls.lookup(tree.name).exists) {
+        // If the field existed but was not found we assume that
+        // we where in the context of an argument of the super constructor
         errorType(ex"$tree is not accessible from super constructor arguments", tree.pos)
-      else
+      } else
         errorType(new MissingIdent(tree, kind, name.show), tree.pos)
 
     val tree1 = ownType match {
