@@ -1,6 +1,6 @@
 package scala.quoted
 
-import scala.quoted.Quoted.ConstantExpr
+import scala.quoted.Exprs.ConstantExpr
 
 /** A typeclass for types that can be turned to `quoted.Expr[T]`
  *  without going through an explicit `'(...)` operation.

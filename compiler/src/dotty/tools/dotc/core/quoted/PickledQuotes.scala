@@ -12,7 +12,8 @@ import dotty.tools.dotc.core.NameKinds
 import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.core.tasty.{TastyPickler, TastyPrinter, TastyString}
 
-import scala.quoted.Quoted._
+import scala.quoted.Types._
+import scala.quoted.Exprs._
 
 import scala.reflect.ClassTag
 

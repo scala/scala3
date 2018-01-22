@@ -73,8 +73,8 @@ class Interpreter(implicit ctx: Context) {
 
     tree match {
       case Quoted(quotedTree) =>
-        if (tree.isTerm) new scala.quoted.Quoted.RawExpr(quotedTree)
-        else new scala.quoted.Quoted.RawType(quotedTree)
+        if (tree.isTerm) new scala.quoted.Exprs.RawExpr(quotedTree)
+        else new scala.quoted.Types.RawType(quotedTree)
 
       case Literal(Constant(c)) => c.asInstanceOf[Object]
 

@@ -21,7 +21,8 @@ import typer.Checking
 import config.Config
 import dotty.tools.dotc.core.quoted.PickledQuotes
 import scala.quoted
-import scala.quoted.Quoted.{RawExpr, RawType}
+import scala.quoted.Types.RawType
+import scala.quoted.Exprs.RawExpr
 
 /** Unpickler for typed trees
  *  @param reader          the reader from which to unpickle

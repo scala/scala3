@@ -1,8 +1,10 @@
 package scala.quoted
 
-import scala.quoted.Quoted.TaggedType
+import scala.quoted.Types.TaggedType
+import scala.reflect.ClassTag
+import scala.runtime.quoted.Unpickler.Pickled
 
-abstract class Type[T] extends Quoted {
+sealed abstract class Type[T] extends Quoted {
   type unary_~ = T
 }
 
@@ -17,4 +19,22 @@ object Type {
   implicit def LongTag: Type[Long] = new TaggedType[Long]
   implicit def FloatTag: Type[Float] = new TaggedType[Float]
   implicit def DoubleTag: Type[Double] = new TaggedType[Double]
+}
+
+/** Implementations of Type[T] */
+object Types {
+  /** A Type backed by a pickled TASTY tree */
+  final class TastyType[T](val tasty: Pickled, val args: Seq[Any]) extends Type[T] {
+    override def toString(): String = s"Type(<pickled>)"
+  }
+
+  /** An Type backed by a value */
+  final class TaggedType[T](implicit val ct: ClassTag[T]) extends Type[T] {
+    override def toString: String = s"Type($ct)"
+  }
+
+  /** An Type backed by a tree */
+  final class RawType[Tree](val tree: Tree) extends quoted.Type[Any] {
+    override def toString: String = s"Type(<raw>)"
+  }
 }

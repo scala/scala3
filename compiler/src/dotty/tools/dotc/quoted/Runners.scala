@@ -7,7 +7,7 @@ import dotty.tools.dotc.printing.RefinedPrinter
 
 import scala.quoted.Expr
 import scala.runtime.BoxedUnit
-import scala.quoted.Quoted.ConstantExpr
+import scala.quoted.Exprs.ConstantExpr
 import scala.runtime.quoted._
 
 /** Default runners for quoted expressions */

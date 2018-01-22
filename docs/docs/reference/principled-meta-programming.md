@@ -445,7 +445,7 @@ to be executed at a later stage. To run that code, there is another method
 in class `Expr` called `run`. Note that `~` and `run` both map from `Expr[T]`
 to `T` but only `~` is subject to the PCP, whereas `run` is just a normal method.
 
-    abstract class Expr[T] {
+    sealed abstract class Expr[T] {
       def unary_~: T
       def run(implicit runner: Runner[T]): T       // run staged code
       def show(implicit runner: Runner[T]): String // show staged code
