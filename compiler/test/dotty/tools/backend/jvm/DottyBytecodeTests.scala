@@ -205,11 +205,9 @@ class TestBCode extends DottyBytecodeTest {
       val moduleNode = loadClassNode(moduleIn.input)
       val method = getMethod(moduleNode, "test")
 
-      val arrayWrapped = instructionsFromMethod(method).exists { instr: Instruction =>
-        instr match {
-          case inv: Invoke => inv.name.contains("wrapRefArray")
-          case _ => false
-        }
+      val arrayWrapped = instructionsFromMethod(method).exists {
+        case inv: Invoke => inv.name.contains("wrapRefArray")
+        case _ => false
       }
 
       assert(!arrayWrapped, "Arrays should not be wrapped when passed to a Java varargs method\n")

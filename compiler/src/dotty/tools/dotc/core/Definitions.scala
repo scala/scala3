@@ -340,11 +340,10 @@ class Definitions {
     lazy val Predef_undefinedR = ScalaPredefModule.requiredMethodRef("???")
     def Predef_undefined(implicit ctx: Context) = Predef_undefinedR.symbol
     // The set of all wrap{X, Ref}Array methods, where X is a value type
-    lazy val Predef_wrapArrayR: collection.Set[TermRef] = {
+    val Predef_wrapArray = new PerRun[collection.Set[Symbol]]({ implicit ctx =>
       val methodNames = ScalaValueTypes.map(TreeGen.wrapArrayMethodName) + nme.wrapRefArray
-      methodNames.map(ScalaPredefModule.requiredMethodRef)
-    }
-    val Predef_wrapArray = new PerRun[collection.Set[Symbol]](implicit ctx => Predef_wrapArrayR.map(_.symbol))
+      methodNames.map(ScalaPredefModule.requiredMethodRef(_).symbol)
+    })
 
   lazy val ScalaRuntimeModuleRef = ctx.requiredModuleRef("scala.runtime.ScalaRunTime")
   def ScalaRuntimeModule(implicit ctx: Context) = ScalaRuntimeModuleRef.symbol
