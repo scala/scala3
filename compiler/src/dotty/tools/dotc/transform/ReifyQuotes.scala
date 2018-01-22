@@ -228,7 +228,7 @@ class ReifyQuotes extends MacroTransformWithImplicits {
           case tp: NamedType if tp.symbol.isSplice =>
             if (inQuote) outer.checkType(pos).foldOver(acc, tp)
             else {
-              spliceOutsideQuotes(pos)
+              if (tp.isTerm) spliceOutsideQuotes(pos)
               tp
             }
           case tp: NamedType =>
