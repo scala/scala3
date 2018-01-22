@@ -534,18 +534,18 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
     }
   }
 
-  /** An extractor for closures with their def contained in a block. */
-  object closureWithDef {
-    def unapply(tree: Tree): Option[(DefDef, Closure)] = tree match {
+  /** An extractor for def of a closure contained the block of the closure. */
+  object closureDef {
+    def unapply(tree: Tree): Option[DefDef] = tree match {
       case Block((meth @ DefDef(nme.ANON_FUN, _, _, _, _)) :: Nil, closure: Closure) =>
-        Some(meth, closure)
+        Some(meth)
       case _ => None
     }
   }
 
   /** If tree is a closure, its body, otherwise tree itself */
   def closureBody(tree: Tree)(implicit ctx: Context): Tree = tree match {
-    case closureWithDef(meth, _) => meth.rhs
+    case closureDef(meth) => meth.rhs
     case _ => tree
   }
 

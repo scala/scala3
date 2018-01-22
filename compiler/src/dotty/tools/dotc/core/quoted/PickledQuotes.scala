@@ -126,7 +126,7 @@ object PickledQuotes {
     val x1 = SyntheticValDef(NameKinds.UniqueName.fresh("x".toTermName), x)
     def x1Ref() = ref(x1.symbol)
     def rec(f: Tree): Tree = f match {
-      case closureWithDef(ddef, _) =>
+      case closureDef(ddef) =>
         new TreeMap() {
           private val paramSym = ddef.vparamss.head.head.symbol
           override def transform(tree: tpd.Tree)(implicit ctx: Context): tpd.Tree = tree match {
