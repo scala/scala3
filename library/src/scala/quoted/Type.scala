@@ -4,7 +4,7 @@ import scala.quoted.Types.TaggedType
 import scala.reflect.ClassTag
 import scala.runtime.quoted.Unpickler.Pickled
 
-sealed abstract class Type[T] extends Quoted {
+sealed abstract class Type[T] {
   type unary_~ = T
 }
 
