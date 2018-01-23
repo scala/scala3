@@ -1252,7 +1252,7 @@ class Typer extends Namer
     assignType(cpy.ByNameTypeTree(tree)(result1), result1)
   }
 
-  def typedTypeBoundsTree(tree: untpd.TypeBoundsTree)(implicit ctx: Context): TypeBoundsTree = track("typedTypeBoundsTree") {
+  def typedTypeBoundsTree(tree: untpd.TypeBoundsTree)(implicit ctx: Context): Tree = track("typedTypeBoundsTree") {
     val TypeBoundsTree(lo, hi) = tree
     val lo1 = typed(lo)
     val hi1 = typed(hi)
@@ -1267,8 +1267,7 @@ class Typer extends Namer
       // with an expected type in typedTyped. The type symbol is eliminated once
       // the enclosing pattern has been typechecked; see `indexPattern` in `typedCase`.
       val wildcardSym = ctx.newPatternBoundSymbol(tpnme.WILDCARD, tree1.tpe, tree.pos)
-      wildcardSym.setFlag(BindDefinedType) // can we get rid of this?
-      tree1.withType(wildcardSym.typeRef)
+      untpd.Bind(name, tree1).withType(wildcardSym.typeRef)
     }
     else tree1
   }

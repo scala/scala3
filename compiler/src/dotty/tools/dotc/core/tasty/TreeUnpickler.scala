@@ -1032,7 +1032,9 @@ class TreeUnpickler(reader: TastyReader,
               val sym = symAtAddr.getOrElse(start, forkAt(start).createSymbol())
               readName()
               readType()
-              Bind(sym, readTerm())
+              val body = readTerm()
+              if (sym.name == tpnme.WILDCARD) untpd.Bind(sym.name, body).withType(body.tpe)
+              else Bind(sym, body)
             case ALTERNATIVE =>
               Alternative(until(end)(readTerm()))
             case UNAPPLY =>
@@ -1187,7 +1189,7 @@ class TreeUnpickler(reader: TastyReader,
   class OwnerTree(val addr: Addr, tag: Int, reader: TreeReader, val end: Addr) {
 
     private var myChildren: List[OwnerTree] = null
-    
+
     /** All definitions that have the definition at `addr` as closest enclosing definition */
     def children: List[OwnerTree] = {
       if (myChildren == null) myChildren = {
