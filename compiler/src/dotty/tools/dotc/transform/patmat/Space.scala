@@ -278,21 +278,8 @@ trait SpaceLogic {
   }
 }
 
-object SpaceEngine {
-  private sealed trait Implementability {
-    def show(implicit ctx: Context) = this match {
-      case SubclassOf(classSyms) => s"SubclassOf(${classSyms.map(_.show)})"
-      case other => other.toString
-    }
-  }
-  private case object ClassOrTrait extends Implementability
-  private case class SubclassOf(classSyms: List[Symbol]) extends Implementability
-  private case object Unimplementable extends Implementability
-}
-
 /** Scala implementation of space logic */
 class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
-  import SpaceEngine._
   import tpd._
 
   private val scalaSomeClass       = ctx.requiredClass("scala.Some")
@@ -301,77 +288,15 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
   private val scalaNilType         = ctx.requiredModuleRef("scala.collection.immutable.Nil")
   private val scalaConsType        = ctx.requiredClassRef("scala.collection.immutable.::")
 
-  /** Checks if it's possible to create a trait/class which is a subtype of `tp`.
-   *
-   * - doesn't handle member collisions (will not declare a type unimplementable because of one)
-   * - expects that neither Any nor Object reach it
-   *   (this is currently true due to both isSubType and and/or type simplification)
-   *
-   * See [[intersectUnrelatedAtomicTypes]].
-   */
-  private def implementability(tp: Type): Implementability = tp.dealias match {
-    case AndType(tp1, tp2) =>
-      (implementability(tp1), implementability(tp2)) match {
-        case (Unimplementable, _) | (_, Unimplementable) => Unimplementable
-        case (SubclassOf(classSyms1), SubclassOf(classSyms2)) =>
-          (for {
-            sym1 <- classSyms1
-            sym2 <- classSyms2
-            result <-
-              if (sym1 isSubClass sym2) List(sym1)
-              else if (sym2 isSubClass sym1) List(sym2)
-              else Nil
-          } yield result) match {
-            case Nil => Unimplementable
-            case lst => SubclassOf(lst)
-          }
-        case (ClassOrTrait, ClassOrTrait) => ClassOrTrait
-        case (SubclassOf(clss), _) => SubclassOf(clss)
-        case (_, SubclassOf(clss)) => SubclassOf(clss)
-      }
-    case OrType(tp1, tp2) =>
-      (implementability(tp1), implementability(tp2)) match {
-        case (ClassOrTrait, _) | (_, ClassOrTrait) => ClassOrTrait
-        case (SubclassOf(classSyms1), SubclassOf(classSyms2)) =>
-          SubclassOf(classSyms1 ::: classSyms2)
-        case (SubclassOf(classSyms), _) => SubclassOf(classSyms)
-        case (_, SubclassOf(classSyms)) => SubclassOf(classSyms)
-        case _ => Unimplementable
-      }
-    case _: SingletonType =>
-      // singleton types have no instantiable subtypes
-      Unimplementable
-    case tp: RefinedType =>
-      // refinement itself is not considered - it would at most make
-      // a type unimplementable because of a member collision
-      implementability(tp.parent)
-    case other =>
-      val classSym = other.classSymbol
-      if (classSym.exists) {
-        if (classSym is Final) Unimplementable
-        else if (classSym is Trait) ClassOrTrait
-        else SubclassOf(List(classSym))
-      } else {
-        // if no class symbol exists, conservatively say that anything
-        // can implement `tp`
-        ClassOrTrait
-      }
-  }
-
   override def intersectUnrelatedAtomicTypes(tp1: Type, tp2: Type) = {
     val and = AndType(tp1, tp2)
     // Precondition: !(tp1 <:< tp2) && !(tp2 <:< tp1)
     // Then, no leaf of the and-type tree `and` is a subtype of `and`.
-    // Then, to create a value of type `and` you must instantiate a trait (class/module)
-    // which is a subtype of all the leaves of `and`.
-    val imp = implementability(and)
+    val res = inhabited(and)
 
-    debug.println(s"atomic intersection: ${and.show} ~ ${imp.show}")
+    debug.println(s"atomic intersection: ${and.show} = ${res}")
 
-    imp match {
-      case Unimplementable => Empty
-      case _ => Typ(and, true)
-    }
+    if (res) Typ(and, true) else Empty
   }
 
   /* Whether the extractor is irrefutable */
@@ -574,21 +499,97 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
 
   /** Can this type be inhabited by a value?
    *
-   *  Intersection between singleton types and other types is always empty
-   *  the singleton type is not a subtype of the other type.
-   *  See patmat/i3573.scala for an example.
+   *  Check is based on the following facts:
+   *
+   *  - single inheritance of classes
+   *  - final class cannot be extended
+   *  - intersection of a singleton type with another irrelevant type  (patmat/i3574.scala)
+   *
    */
-  def inhabited(tpe: Type)(implicit ctx: Context): Boolean = {
-    val emptySingletonIntersection = new ExistsAccumulator({
-      case AndType(s: SingletonType, t) =>
-        !(s <:< t)
-      case AndType(t, s: SingletonType) =>
-        !(s <:< t)
-      case x =>
-        false
-    })
+  def inhabited(tp: Type)(implicit ctx: Context): Boolean = {
+    // convert top-level type shape into "conjunctive normal form"
+    def cnf(tp: Type): Type = tp match {
+      case AndType(OrType(l, r), tp)      =>
+        val tp1 = cnf(tp)
+        val l1  = cnf(l)
+        val r1  = cnf(r)
+        OrType(cnf(AndType(l1, tp1)), cnf(AndType(r1, tp1)))
+      case AndType(tp, o: OrType)         =>
+        cnf(AndType(o, tp))
+      case AndType(l, r)                  =>
+        val l1 = cnf(l)
+        val r1 = cnf(r)
+        if (l1.ne(l) || r1.ne(r)) cnf(AndType(l1, r1))
+        else AndType(l1, r1)
+      case OrType(l, r)                   =>
+        OrType(cnf(l), cnf(r))
+      case tp @ RefinedType(OrType(tp1, tp2), _, _)  =>
+        OrType(
+          cnf(tp.derivedRefinedType(tp1, refinedName = tp.refinedName, refinedInfo = tp.refinedInfo)),
+          cnf(tp.derivedRefinedType(tp2, refinedName = tp.refinedName, refinedInfo = tp.refinedInfo))
+        )
+      case tp: RefinedType                =>
+        val parent1 = cnf(tp.parent)
+        val tp1 = tp.derivedRefinedType(parent1, refinedName = tp.refinedName, refinedInfo = tp.refinedInfo)
 
-    !emptySingletonIntersection(false, tpe)
+        if (parent1.ne(tp.parent)) cnf(tp1) else tp1
+      case tp: TypeAlias =>
+        cnf(tp.alias)
+      case _                           =>
+        tp
+    }
+
+    def isSingleton(tp: Type): Boolean = tp.dealias match {
+      case AndType(l, r)  => isSingleton(l) || isSingleton(r)
+      case OrType(l, r)   => isSingleton(l) && isSingleton(r)
+      case tp             => tp.isSingleton
+    }
+
+    def superType(tp: Type): Type = tp match {
+      case tp: TypeProxy     => tp.superType
+      case OrType(tp1, tp2)  => OrType(superType(tp1), superType(tp2))
+      case AndType(tp1, tp2) => AndType(superType(tp1), superType(tp2))
+      case _                 => tp
+    }
+
+    def recur(tp: Type): Boolean = tp.dealias match {
+      case AndType(tp1, tp2) =>
+        recur(tp1) && recur(tp2) && {
+          val bases1 = tp1.widenDealias.classSymbols
+          val bases2 = tp2.widenDealias.classSymbols
+
+          debug.println(s"bases of ${tp1.show}: " + bases1)
+          debug.println(s"bases of ${tp2.show}: " + bases2)
+
+          val noClassConflict =
+            bases1.forall(sym1 => sym1.is(Trait) || bases2.forall(sym2 => sym2.is(Trait) || sym1.isSubClass(sym2))) ||
+            bases1.forall(sym1 => sym1.is(Trait) || bases2.forall(sym2 => sym2.is(Trait) || sym2.isSubClass(sym1)))
+
+          debug.println(s"class conflict for ${tp.show}? " + !noClassConflict)
+
+          noClassConflict &&
+            (!isSingleton(tp1) || tp1 <:< tp2) &&
+            (!isSingleton(tp2) || tp2 <:< tp1) &&
+            (!bases1.exists(_ is Final) || tp1 <:< superType(tp2)) &&
+            (!bases2.exists(_ is Final) || tp2 <:< superType(tp1))
+        }
+      case OrType(tp1, tp2) =>
+        recur(tp1) || recur(tp2)
+      case tp: RefinedType =>
+        recur(tp.parent)
+      case tp: TypeRef =>
+        recur(tp.prefix) &&
+        !(tp.classSymbol.is(Sealed) && tp.classSymbol.is(AbstractOrTrait) && tp.classSymbol.children.isEmpty) &&
+        !(tp.classSymbol.is(AbstractFinal))
+      case _ =>
+        true
+    }
+
+    val res = recur(cnf(tp))
+
+    debug.println(s"${tp.show} inhabited?  " + res)
+
+    res
   }
 
   /** Instantiate type `tp1` to be a subtype of `tp2`
