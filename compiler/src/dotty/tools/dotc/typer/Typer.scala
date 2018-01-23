@@ -29,7 +29,6 @@ import dotty.tools.dotc.transform.Erasure.Boxing
 import util.Positions._
 import util.common._
 import util.{Property, SourcePosition}
-import UnusedUtil._
 
 import collection.mutable
 import annotation.tailrec

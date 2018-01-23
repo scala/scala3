@@ -23,7 +23,6 @@ import StdNames._
 import NameKinds.DefaultGetterName
 import ProtoTypes._
 import Inferencing._
-import UnusedUtil._
 
 import collection.mutable
 import config.Printers.{overload, typr, unapp}
@@ -1540,6 +1539,23 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
     val harmonizedElems = harmonize(origElems)
     if (harmonizedElems ne origElems) ctx.typerState.constraint = origConstraint
     harmonizedElems
+  }
+
+  /** Transforms the tree into a its default tree.
+   *  Performed to shrink the tree that is known to be erased later.
+   */
+  protected def normalizeUnusedExpr(tree: Tree, msg: String)(implicit ctx: Context): Tree = {
+    if (!isPureExpr(tree))
+      ctx.warning(msg + "This expression will not be evaluated.", tree.pos)
+    defaultValue(tree.tpe)
+  }
+
+  /** Transforms the rhs tree into a its default tree if it is in an `unused` val/def.
+   *  Performed to shrink the tree that is known to be erased later.
+   */
+  protected def normalizeUnusedRhs(rhs: Tree, sym: Symbol)(implicit ctx: Context) = {
+    if (sym.is(Unused) && rhs.tpe.exists) normalizeUnusedExpr(rhs, "Expression is on the RHS of an `unused` " + sym.showKind + ". ")
+    else rhs
   }
 
   /** If all `types` are numeric value types, and they are not all the same type,
