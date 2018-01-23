@@ -1288,7 +1288,6 @@ class Typer extends Namer
         if (tree.name == nme.WILDCARD) body1
         else {
           val sym = ctx.newPatternBoundSymbol(tree.name, body1.tpe.underlyingIfRepeated(isJava = false), tree.pos)
-          if (sym.isType) sym.setFlag(BindDefinedType) // can we get rid of this?
           if (ctx.mode.is(Mode.InPatternAlternative))
             ctx.error(i"Illegal variable ${sym.name} in pattern alternative", tree.pos)
           assignType(cpy.Bind(tree)(tree.name, body1), sym)

@@ -115,7 +115,7 @@ class TreeUnpickler(reader: TastyReader,
       val start = currentAddr
       val tag = readByte()
       tag match {
-        case VALDEF | DEFDEF | TYPEDEF | TYPEPARAM | PARAM | TEMPLATE =>
+        case VALDEF | DEFDEF | TYPEDEF | TYPEPARAM | PARAM | TEMPLATE | BIND =>
           val end = readEnd()
           for (i <- 0 until numRefs(tag)) readNat()
           if (tag == TEMPLATE) scanTrees(buf, end, MemberDefsOnly)
@@ -431,12 +431,33 @@ class TreeUnpickler(reader: TastyReader,
     def createSymbol()(implicit ctx: Context): Symbol = nextByte match {
       case VALDEF | DEFDEF | TYPEDEF | TYPEPARAM | PARAM =>
         createMemberSymbol()
+      case BIND =>
+        createBindSymbol()
       case TEMPLATE =>
         val localDummy = ctx.newLocalDummy(ctx.owner)
         registerSym(currentAddr, localDummy)
         localDummy
       case tag =>
         throw new Error(s"illegal createSymbol at $currentAddr, tag = $tag")
+    }
+
+    private def createBindSymbol()(implicit ctx: Context): Symbol = {
+      val start = currentAddr
+      val tag = readByte()
+      val end = readEnd()
+      var name: Name = readName()
+      nextUnsharedTag match {
+        case TYPEBOUNDS | TYPEALIAS => name = name.toTypeName
+        case _ =>
+      }
+      val typeReader = fork
+      val completer = new LazyType {
+        def complete(denot: SymDenotation)(implicit ctx: Context) =
+          denot.info = typeReader.readType()
+      }
+      val sym = ctx.newSymbol(ctx.owner, name, EmptyFlags, completer, coord = coordAt(start))
+      registerSym(start, sym)
+      sym
     }
 
     /** Create symbol of member definition or parameter node and enter in symAtAddr map
@@ -994,11 +1015,9 @@ class TreeUnpickler(reader: TastyReader,
               val elemtpt = readTpt()
               SeqLiteral(until(end)(readTerm()), elemtpt)
             case BIND =>
-              var name: Name = readName()
-              val info = readType()
-              if (info.isInstanceOf[TypeType]) name = name.toTypeName
-              val sym = ctx.newSymbol(ctx.owner, name, EmptyFlags, info, coord = coordAt(start))
-              registerSym(start, sym)
+              val sym = symAtAddr.getOrElse(start, forkAt(start).createSymbol())
+              readName()
+              readType()
               Bind(sym, readTerm())
             case ALTERNATIVE =>
               Alternative(until(end)(readTerm()))
