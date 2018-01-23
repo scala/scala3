@@ -28,7 +28,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
       checkLinks(message.getClass.getSimpleName, message.links.map(_.url))
     }
 
-  def assertMessageCountAndCheckLinks(expected: Int, messages: List[Message]): Unit = {
+  def assertMessageCount(expected: Int, messages: List[Message]): Unit = {
     assertEquals(messages.mkString,
       expected,
       messages.length
@@ -55,7 +55,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
       val defn = ictx.definitions
 
       // Assert that we only got one error message
-      assertMessageCountAndCheckLinks(1, messages)
+      assertMessageCount(1, messages)
 
       // Pattern match out the expected error
       val TypeMismatch(found, expected, _, _) :: Nil = messages
@@ -81,7 +81,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
     .expect { (ictx, messages) =>
       implicit val ctx: Context = ictx
 
-      assertMessageCountAndCheckLinks(1, messages)
+      assertMessageCount(1, messages)
       val OverridesNothing(member) :: Nil = messages
       assertEquals("bar", member.name.show)
     }
@@ -102,7 +102,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
     .expect { (ictx, messages) =>
       implicit val ctx: Context = ictx
 
-      assertMessageCountAndCheckLinks(1, messages)
+      assertMessageCount(1, messages)
       val OverridesNothingButNameExists(member, sameName) :: Nil = messages
       // check expected context data
       assertEquals("bar", member.name.show)
@@ -126,7 +126,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
     .expect { (ictx, messages) =>
       implicit val ctx: Context = ictx
 
-      assertMessageCountAndCheckLinks(1, messages)
+      assertMessageCount(1, messages)
       val ForwardReferenceExtendsOverDefinition(value, definition) :: Nil = messages
       assertEquals("value b", value.show)
       assertEquals("value a", definition.show)
@@ -143,7 +143,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
     .expect { (ictx, messages) =>
       implicit val ctx: Context = ictx
 
-      assertMessageCountAndCheckLinks(1, messages)
+      assertMessageCount(1, messages)
       val ExpectedTokenButFound(expected, found) :: Nil = messages
       assertEquals(Tokens.IDENTIFIER, expected)
       assertEquals(Tokens.VAL, found)
@@ -174,7 +174,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
     .expect { (ictx, messages) =>
       implicit val ctx: Context = ictx
 
-      assertMessageCountAndCheckLinks(1, messages)
+      assertMessageCount(1, messages)
       val MixedLeftAndRightAssociativeOps(op1, op2, op2LeftAssoc) :: Nil = messages
       assertEquals("+-", op1.show)
       assertEquals("+:", op2.show)
@@ -193,7 +193,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
     .expect { (ictx, messages) =>
       implicit val ctx: Context = ictx
 
-      assertMessageCountAndCheckLinks(1, messages)
+      assertMessageCount(1, messages)
       val CantInstantiateAbstractClassOrTrait(cls, isTrait) :: Nil = messages
       assertEquals("Concept", cls.name.show)
       assertFalse("expected class", isTrait)
@@ -211,7 +211,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
     .expect { (ictx, messages) =>
       implicit val ctx: Context = ictx
 
-      assertMessageCountAndCheckLinks(1, messages)
+      assertMessageCount(1, messages)
       val CantInstantiateAbstractClassOrTrait(cls, isTrait) :: Nil = messages
       assertEquals("Concept", cls.name.show)
       assertTrue("expected trait", isTrait)
@@ -229,7 +229,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
     .expect { (ictx, messages) =>
       implicit val ctx: Context = ictx
 
-      assertMessageCountAndCheckLinks(1, messages)
+      assertMessageCount(1, messages)
       val OverloadedOrRecursiveMethodNeedsResultType(tree) :: Nil = messages
       assertEquals("foo", tree.show)
     }
@@ -245,7 +245,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
     .expect { (ictx, messages) =>
       implicit val ctx: Context = ictx
 
-      assertMessageCountAndCheckLinks(1, messages)
+      assertMessageCount(1, messages)
       val OverloadedOrRecursiveMethodNeedsResultType(tree) :: Nil = messages
       assertEquals("i", tree.show)
     }
@@ -261,7 +261,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
     .expect { (ictx, messages) =>
       implicit val ctx: Context = ictx
 
-      assertMessageCountAndCheckLinks(1, messages)
+      assertMessageCount(1, messages)
       val RecursiveValueNeedsResultType(tree) :: Nil = messages
       assertEquals("i", tree.show)
     }
@@ -278,7 +278,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
     .expect { (ictx, messages) =>
       implicit val ctx: Context = ictx
 
-      assertMessageCountAndCheckLinks(1, messages)
+      assertMessageCount(1, messages)
       val CyclicReferenceInvolving(denot) :: Nil = messages
       assertEquals("value x", denot.show)
     }
@@ -298,7 +298,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
     .expect { (ictx, messages) =>
       implicit val ctx: Context = ictx
 
-      assertMessageCountAndCheckLinks(1, messages)
+      assertMessageCount(1, messages)
       val CyclicReferenceInvolvingImplicit(tree) :: Nil = messages
       assertEquals("x", tree.name.show)
     }
@@ -321,7 +321,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
     .expect { (ictx, messages) =>
       implicit val ctx: Context = ictx
 
-      assertMessageCountAndCheckLinks(1, messages)
+      assertMessageCount(1, messages)
       val SuperQualMustBeParent(qual, cls) :: Nil = messages
 
       assertEquals("B", qual.show)
@@ -350,7 +350,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
 
       import typer.Typer.BindingPrec._
 
-      assertMessageCountAndCheckLinks(1, messages)
+      assertMessageCount(1, messages)
       val AmbiguousImport(name, newPrec, prevPrec, prevCtx) :: Nil = messages
       assertEquals("ToBeImported", name.show)
       assertEquals(namedImport, newPrec)
@@ -369,7 +369,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
     .expect { (ictx, messages) =>
       implicit val ctx: Context = ictx
 
-      assertMessageCountAndCheckLinks(1, messages)
+      assertMessageCount(1, messages)
       val MethodDoesNotTakeParameters(tree, methodPart) :: Nil = messages
 
       assertEquals("Scope.foo", tree.show)
@@ -388,7 +388,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
     .expect { (ictx, messages) =>
       implicit val ctx: Context = ictx
 
-      assertMessageCountAndCheckLinks(1, messages)
+      assertMessageCount(1, messages)
       val MethodDoesNotTakeParameters(tree, methodPart) :: Nil = messages
 
       assertEquals("Scope.foo(1)", tree.show)
@@ -412,7 +412,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
     .expect { (ictx, messages) =>
       implicit val ctx: Context = ictx
 
-      assertMessageCountAndCheckLinks(1, messages)
+      assertMessageCount(1, messages)
       val AmbiguousOverload(tree, List(alt1, alt2), pt: WildcardType) :: Nil = messages
       assertEquals("method foo", alt1.show)
       assertEquals("(s: String): String", alt1.info.show)
@@ -430,7 +430,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
     }
     .expect { (ictx, messages) =>
       implicit val ctx: Context = ictx
-      assertMessageCountAndCheckLinks(1, messages)
+      assertMessageCount(1, messages)
       val ReassignmentToVal(name) :: Nil = messages
       assertEquals("value", name.show)
     }
@@ -445,7 +445,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
     .expect { (ictx, messages) =>
       implicit val ctx: Context = ictx
 
-      assertMessageCountAndCheckLinks(1, messages)
+      assertMessageCount(1, messages)
       val TypeDoesNotTakeParameters(tpe, params) :: Nil = messages
       assertEquals("WithOutParams", tpe.show)
     }
@@ -460,7 +460,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
     .expect { (ictx, messages) =>
       implicit val ctx: Context = ictx
 
-      assertMessageCountAndCheckLinks(1, messages)
+      assertMessageCount(1, messages)
       val ParameterizedTypeLacksArguments(symbol) :: Nil = messages
       assertEquals("trait WithParams", symbol.show)
     }
@@ -471,7 +471,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
     }
     .expect { (ictx, messages) =>
       implicit val ctx: Context = ictx
-      assertMessageCountAndCheckLinks(1, messages)
+      assertMessageCount(1, messages)
       val VarValParametersMayNotBeCallByName(name, false) :: Nil = messages
       assertEquals("noNoNo", name.show)
     }
@@ -484,7 +484,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
     }
     .expect { (ictx, messages) =>
       implicit val ctx: Context = ictx
-      assertMessageCountAndCheckLinks(1, messages)
+      assertMessageCount(1, messages)
       val MissingTypeParameterFor(tpe) :: Nil = messages
       assertEquals("List", tpe.show)
     }
@@ -498,7 +498,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
     }
     .expect { (ictx, messages) =>
       implicit val ctx: Context = ictx
-      assertMessageCountAndCheckLinks(1, messages)
+      assertMessageCount(1, messages)
       val DoesNotConformToBound(tpe, which, bound) :: Nil = messages
       assertEquals("Int", tpe.show)
       assertEquals("upper", which)
@@ -516,7 +516,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
     }
     .expect { (ictx, messages) =>
       implicit val ctx: Context = ictx
-      assertMessageCountAndCheckLinks(1, messages)
+      assertMessageCount(1, messages)
       val DoesNotConformToSelfType(category, selfType, cls, otherSelf, relation, other) :: Nil = messages
       assertEquals("illegal inheritance", category)
       assertEquals("Blended", selfType.show)
@@ -537,7 +537,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
     }
     .expect { (ictx, messages) =>
       implicit val ctx: Context = ictx
-      assertMessageCountAndCheckLinks(1, messages)
+      assertMessageCount(1, messages)
       val DoesNotConformToSelfTypeCantBeInstantiated(tpe, selfType) :: Nil = messages
       assertEquals("RequiresBase", tpe.show)
       assertEquals("Base", selfType.show)
@@ -552,7 +552,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
     }
     .expect { (ictx, messages) =>
       implicit val ctx: Context = ictx
-      assertMessageCountAndCheckLinks(1, messages)
+      assertMessageCount(1, messages)
       val AbstractMemberMayNotHaveModifier(symbol, flags) :: Nil = messages
       assertEquals("value s", symbol.show)
       assertEquals("final", flags.toString)
@@ -567,7 +567,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
     }
     .expect { (ictx, messages) =>
       implicit val ctx: Context = ictx
-      assertMessageCountAndCheckLinks(1, messages)
+      assertMessageCount(1, messages)
       val TopLevelCantBeImplicit(symbol) :: Nil = messages
       assertEquals("object S", symbol.show)
     }
@@ -581,7 +581,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
     }
     .expect { (ictx, messages) =>
       implicit val ctx: Context = ictx
-      assertMessageCountAndCheckLinks(1, messages)
+      assertMessageCount(1, messages)
       val TypesAndTraitsCantBeImplicit(symbol) :: Nil = messages
       assertEquals("trait S", symbol.show)
     }
@@ -595,7 +595,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
     }
     .expect { (ictx, messages) =>
       implicit val ctx: Context = ictx
-      assertMessageCountAndCheckLinks(1, messages)
+      assertMessageCount(1, messages)
       val OnlyClassesCanBeAbstract(symbol) :: Nil = messages
       assertEquals("value s", symbol.show)
     }
@@ -609,7 +609,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
     }
     .expect { (ictx, messages) =>
       implicit val ctx: Context = ictx
-      assertMessageCountAndCheckLinks(1, messages)
+      assertMessageCount(1, messages)
       val AbstractOverrideOnlyInTraits(symbol) :: Nil = messages
       assertEquals("value s", symbol.show)
     }
@@ -620,7 +620,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
     }
     .expect { (ictx, messages) =>
       implicit val ctx: Context = ictx
-      assertMessageCountAndCheckLinks(1, messages)
+      assertMessageCount(1, messages)
       val TraitsMayNotBeFinal(symbol) :: Nil = messages
       assertEquals("trait Foo", symbol.show)
     }
@@ -634,7 +634,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
     }
     .expect { (ictx, messages) =>
       implicit val ctx: Context = ictx
-      assertMessageCountAndCheckLinks(1, messages)
+      assertMessageCount(1, messages)
       val NativeMembersMayNotHaveImplementation(symbol) :: Nil = messages
       assertEquals("method foo", symbol.show)
     }
@@ -648,7 +648,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
     }
     .expect { (ictx, messages) =>
       implicit val ctx: Context = ictx
-      assertMessageCountAndCheckLinks(1, messages)
+      assertMessageCount(1, messages)
       val OnlyClassesCanHaveDeclaredButUndefinedMembers(symbol) :: Nil = messages
       assertEquals("method foo", symbol.show)
     }
@@ -659,7 +659,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
     }
     .expect { (ictx, messages) =>
       implicit val ctx: Context = ictx
-      assertMessageCountAndCheckLinks(1, messages)
+      assertMessageCount(1, messages)
       val CannotExtendAnyVal(symbol) :: Nil = messages
       assertEquals("trait Foo", symbol.show)
     }
@@ -675,7 +675,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
     }
     .expect { (ictx, messages) =>
       implicit val ctx: Context = ictx
-      assertMessageCountAndCheckLinks(1, messages)
+      assertMessageCount(1, messages)
       val CannotHaveSameNameAs(symbol, cls, _) :: Nil = messages
       assertEquals("class A", symbol.show)
       assertEquals("class A", cls.show)
@@ -690,7 +690,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
     }
     .expect { (ictx, messages) =>
       implicit val ctx: Context = ictx
-      assertMessageCountAndCheckLinks(1, messages)
+      assertMessageCount(1, messages)
       val ValueClassesMayNotDefineInner(valueClass, inner) :: Nil = messages
       assertEquals("class MyValue", valueClass.show)
       assertEquals("class Inner", inner.show)
@@ -705,7 +705,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
     }
     .expect { (ictx, messages) =>
       implicit val ctx: Context = ictx
-      assertMessageCountAndCheckLinks(1, messages)
+      assertMessageCount(1, messages)
       val ValueClassesMayNotDefineNonParameterField(valueClass, field) :: Nil = messages
       assertEquals("class MyValue", valueClass.show)
       assertEquals("value illegal", field.show)
@@ -720,7 +720,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
     }
     .expect { (ictx, messages) =>
       implicit val ctx: Context = ictx
-      assertMessageCountAndCheckLinks(1, messages)
+      assertMessageCount(1, messages)
       val ValueClassesMayNotDefineASecondaryConstructor(valueClass, constuctor) :: Nil = messages
       assertEquals("class MyValue", valueClass.show)
       assertEquals("constructor MyValue", constuctor.show)
@@ -735,7 +735,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
     }
     .expect { (ictx, messages) =>
       implicit val ctx: Context = ictx
-      assertMessageCountAndCheckLinks(1, messages)
+      assertMessageCount(1, messages)
       val ValueClassesMayNotContainInitalization(valueClass) :: Nil = messages
       assertEquals("class MyValue", valueClass.show)
     }
@@ -749,7 +749,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
     }
     .expect { (ictx, messages) =>
       implicit val ctx: Context = ictx
-      assertMessageCountAndCheckLinks(1, messages)
+      assertMessageCount(1, messages)
       val ValueClassesMayNotBeContainted(valueClass) :: Nil = messages
       assertEquals("class MyValue", valueClass.show)
     }
@@ -760,7 +760,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
     }
     .expect { (ictx, messages) =>
       implicit val ctx: Context = ictx
-      assertMessageCountAndCheckLinks(1, messages)
+      assertMessageCount(1, messages)
       val ValueClassesMayNotWrapItself(valueClass) :: Nil = messages
       assertEquals("class MyValue", valueClass.show)
     }
@@ -771,7 +771,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
     }
     .expect { (ictx, messages) =>
       implicit val ctx: Context = ictx
-      assertMessageCountAndCheckLinks(1, messages)
+      assertMessageCount(1, messages)
       val ValueClassParameterMayNotBeAVar(valueClass, param) :: Nil = messages
       assertEquals("class MyValue", valueClass.show)
       assertEquals("variable i", param.show)
@@ -783,7 +783,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
     }
     .expect { (ictx, messages) =>
       implicit val ctx: Context = ictx
-      assertMessageCountAndCheckLinks(1, messages)
+      assertMessageCount(1, messages)
       val ValueClassNeedsOneValParam(valueClass) :: Nil = messages
       assertEquals("class MyValue", valueClass.show)
     }
@@ -794,7 +794,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
     }
     .expect { (ictx, messages) =>
       implicit val ctx: Context = ictx
-      assertMessageCountAndCheckLinks(1, messages)
+      assertMessageCount(1, messages)
       val err :: Nil = messages
       assertEquals(err, OnlyCaseClassOrCaseObjectAllowed())
     }
@@ -805,7 +805,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
     }
     .expect { (ictx, messages) =>
       implicit val ctx: Context = ictx
-      assertMessageCountAndCheckLinks(1, messages)
+      assertMessageCount(1, messages)
       val err :: Nil = messages
       assertEquals(err, ExpectedClassOrObjectDef())
     }
@@ -820,7 +820,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
     }
     .expect { (itcx, messages) =>
       implicit val ctx: Context = itcx
-      assertMessageCountAndCheckLinks(1, messages)
+      assertMessageCount(1, messages)
       val err :: Nil = messages
       assertEquals(err, ImplicitClassPrimaryConstructorArity())
     }
@@ -835,7 +835,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
     .expect { (ictx, messages) =>
       implicit val ctx: Context = ictx
 
-      assertMessageCountAndCheckLinks(1, messages)
+      assertMessageCount(1, messages)
       val AnonymousFunctionMissingParamType(param, args, _, pt) = messages.head
       assertEquals("x$1", param.show)
       assertEquals("?", pt.show)
@@ -855,7 +855,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
     }
     .expect { (ictx, messages) =>
       implicit val ctx: Context = ictx
-      assertMessageCountAndCheckLinks(1, messages)
+      assertMessageCount(1, messages)
       val err :: Nil = messages
       val SuperCallsNotAllowedInline(symbol) = err
       assertEquals("method bar", symbol.show)
@@ -872,7 +872,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
     checkMessagesAfter("refchecks")(code)
       .expect { (ictx, messages) =>
         implicit val ctx: Context = ictx
-        assertMessageCountAndCheckLinks(1, messages)
+        assertMessageCount(1, messages)
         val ModifiersNotAllowed(flags, sort) :: Nil = messages
         assertEquals(modifierAssertion, flags.toString)
         assertEquals(typeAssertion, sort)
@@ -890,7 +890,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
     .expect { (ictx, messages) =>
       implicit val ctx: Context = ictx
 
-      assertMessageCountAndCheckLinks(1, messages)
+      assertMessageCount(1, messages)
       val err :: Nil = messages
 
       assertEquals(err, WildcardOnTypeArgumentNotAllowedOnNew())
@@ -906,7 +906,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
     .expect { (ictx, messages) =>
       implicit val ctx: Context = ictx
 
-      assertMessageCountAndCheckLinks(2, messages)
+      assertMessageCount(2, messages)
       messages.foreach(assertEquals(_, FunctionTypeNeedsNonEmptyParameterList()))
     }
 
@@ -920,7 +920,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
     .expect { (ictx, messages) =>
       implicit val ctx: Context = ictx
 
-      assertMessageCountAndCheckLinks(1, messages)
+      assertMessageCount(1, messages)
       val err :: Nil = messages
 
       assertEquals(err, WrongNumberOfParameters(1))
@@ -935,7 +935,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
       .expect { (ictx, messages) =>
         implicit val ctx: Context = ictx
 
-        assertMessageCountAndCheckLinks(1, messages)
+        assertMessageCount(1, messages)
         val err :: Nil = messages
 
         assertEquals(DuplicatePrivateProtectedQualifier(), err)
@@ -948,7 +948,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
       .expect { (ictx, messages) =>
         implicit val ctx: Context = ictx
 
-        assertMessageCountAndCheckLinks(1, messages)
+        assertMessageCount(1, messages)
         val err :: Nil = messages
 
         assertEquals(ExpectedStartOfTopLevelDefinition(), err)
@@ -963,7 +963,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
     }.expect { (ictx, messages) =>
       implicit val ctx: Context = ictx
 
-      assertMessageCountAndCheckLinks(1, messages)
+      assertMessageCount(1, messages)
 
       val MissingReturnTypeWithReturnStatement(method) :: Nil = messages
       assertEquals(method.name.show, "bad")
@@ -978,7 +978,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
     }.expect { (ictx, messages) =>
       implicit val ctx: Context = ictx
 
-      assertMessageCountAndCheckLinks(1, messages)
+      assertMessageCount(1, messages)
 
       val NoReturnFromInline(method) :: Nil = messages
       assertEquals("method usesReturn", method.show)
@@ -992,7 +992,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
       """.stripMargin
     }.expect { (ictx, messages) =>
       implicit val ctx: Context = ictx
-      assertMessageCountAndCheckLinks(1, messages)
+      assertMessageCount(1, messages)
       val ReturnOutsideMethodDefinition(owner) :: Nil = messages
       assertEquals("object A", owner.show)
     }
@@ -1004,7 +1004,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
     """.stripMargin
   }.expect { (ictx, messages) =>
     implicit val ctx: Context = ictx
-    assertMessageCountAndCheckLinks(1, messages)
+    assertMessageCount(1, messages)
     val ExtendFinalClass(extender, parent) :: Nil = messages
     assertEquals(extender.show, "class B")
     assertEquals(parent.show, "class A")
@@ -1020,7 +1020,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
     """.stripMargin
     }.expect { (ictx, messages) =>
       implicit val ctx: Context = ictx
-      assertMessageCountAndCheckLinks(1, messages)
+      assertMessageCount(1, messages)
       val TailrecNotApplicable(method) :: Nil = messages
       assertEquals(method.show, "method foo")
     }
@@ -1034,7 +1034,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
       }.expect { (ictx, messages) =>
         implicit val ctx: Context = ictx
 
-        assertMessageCountAndCheckLinks(1, messages)
+        assertMessageCount(1, messages)
         val ExpectedTypeBoundOrEquals(found) :: Nil = messages
         assertEquals(Tokens.IDENTIFIER, found)
       }
@@ -1052,7 +1052,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
     }.expect { (ictx, messages) =>
       implicit val ctx: Context = ictx
 
-      assertMessageCountAndCheckLinks(1, messages)
+      assertMessageCount(1, messages)
       val ClassAndCompanionNameClash(cls, other) :: Nil = messages
 
       assertEquals("class T", cls.owner.show)
@@ -1075,7 +1075,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
     }.expect { (ictx, messages) =>
       implicit val ctx: Context = ictx
 
-      assertMessageCountAndCheckLinks(1, messages)
+      assertMessageCount(1, messages)
       val OnlyFunctionsCanBeFollowedByUnderscore(pt) :: Nil = messages
       assertEquals("String(n)", pt.show)
     }
@@ -1094,7 +1094,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
     .expect { (ictx, messages) =>
       implicit val ctx: Context = ictx
 
-      assertMessageCountAndCheckLinks(1, messages)
+      assertMessageCount(1, messages)
       val MissingEmptyArgumentList(method) :: Nil = messages
       assertEquals("method greet", method.show)
     }
@@ -1113,7 +1113,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
     .expect { (ictx, messages) =>
       implicit val ctx: Context = ictx
 
-      assertMessageCountAndCheckLinks(2, messages)
+      assertMessageCount(2, messages)
       val DuplicateNamedTypeParameter(n2) :: DuplicateNamedTypeParameter(n1) :: Nil = messages
       assertEquals("A", n1.show)
       assertEquals("B", n2.show)
@@ -1133,7 +1133,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
       .expect { (ictx, messages) =>
         implicit val ctx: Context = ictx
 
-        assertMessageCountAndCheckLinks(2, messages)
+        assertMessageCount(2, messages)
         val UndefinedNamedTypeParameter(n2, l2) :: UndefinedNamedTypeParameter(n1, l1) :: Nil = messages
         val tpParams = List("A", "B")
         assertEquals("C", n1.show)
@@ -1155,7 +1155,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
       .expect { (ictx, messages) =>
         implicit val ctx: Context = ictx
 
-        assertMessageCountAndCheckLinks(2, messages)
+        assertMessageCount(2, messages)
         val errWithModifier :: err :: Nil = messages
 
         assertEquals(IllegalStartOfStatement(isModifier = false), err)
@@ -1178,7 +1178,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
     .expect { (ictx, messages) =>
       implicit val ctx: Context = ictx
 
-      assertMessageCountAndCheckLinks(1, messages)
+      assertMessageCount(1, messages)
       val TraitIsExpected(symbol) :: Nil = messages
       assertEquals("class B", symbol.show)
     }
@@ -1194,7 +1194,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
     .expect { (ictx, messages) =>
       implicit val ctx: Context = ictx
 
-      assertMessageCountAndCheckLinks(1, messages)
+      assertMessageCount(1, messages)
       val TraitRedefinedFinalMethodFromAnyRef(method) = messages.head
       assertEquals("method wait", method.show)
     }
@@ -1229,7 +1229,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
     }
       .expect { (ictx, messages) =>
         implicit val ctx: Context = ictx
-        assertMessageCountAndCheckLinks(1, messages)
+        assertMessageCount(1, messages)
         val UnapplyInvalidNumberOfArguments(qual, argTypes) :: Nil = messages
         assertEquals("Boo", qual.show)
         assertEquals("(class Int, class String)", argTypes.map(_.typeSymbol).mkString("(", ", ", ")"))
@@ -1244,7 +1244,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
       """.stripMargin
     }.expect { (ictx, messages) =>
       implicit val ctx: Context = ictx
-      assertMessageCountAndCheckLinks(1, messages)
+      assertMessageCount(1, messages)
       val StaticFieldsOnlyAllowedInObjects(field) = messages.head
       assertEquals(field.show, "method bar")
     }
@@ -1256,7 +1256,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
     .expect { (ictx, messages) =>
       implicit val ctx: Context = ictx
 
-      assertMessageCountAndCheckLinks(1, messages)
+      assertMessageCount(1, messages)
       val CyclicInheritance(symbol, _) :: Nil = messages
       assertEquals("class A", symbol.show)
     }
@@ -1270,7 +1270,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
       """.stripMargin
     }.expect { (itcx, messages) =>
       implicit val ctx: Context = itcx
-      assertMessageCountAndCheckLinks(1, messages)
+      assertMessageCount(1, messages)
       val MissingCompanionForStatic(member) = messages.head
       assertEquals(member.show, "method bar")
     }
@@ -1286,7 +1286,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
     }.expect { (ictx, messages) =>
       implicit val ctx: Context = ictx
 
-      assertMessageCountAndCheckLinks(1, messages)
+      assertMessageCount(1, messages)
       val PolymorphicMethodMissingTypeInParent(rsym, parentSym) = messages.head
       assertEquals("method get", rsym.show)
       assertEquals("class Object", parentSym.show)
@@ -1303,7 +1303,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
     }.expect { (itcx, messages) =>
       implicit val ctx: Context = itcx
 
-      assertMessageCountAndCheckLinks(1, messages)
+      assertMessageCount(1, messages)
       val JavaSymbolIsNotAValue(symbol) = messages.head
       assertEquals(symbol.show, "package p")
     }
