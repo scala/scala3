@@ -1010,10 +1010,17 @@ class Typer extends Namer
       override def transform(trt: Tree)(implicit ctx: Context) =
         super.transform(trt.withType(elimWildcardSym(trt.tpe))) match {
           case b: Bind =>
-            if (ctx.scope.lookup(b.name) == NoSymbol) ctx.enter(b.symbol)
-            else ctx.error(new DuplicateBind(b, tree), b.pos)
-            b.symbol.info = elimWildcardSym(b.symbol.info)
-            b
+            val sym = b.symbol
+            if (sym.exists) {
+              if (ctx.scope.lookup(b.name) == NoSymbol) ctx.enter(sym)
+              else ctx.error(new DuplicateBind(b, tree), b.pos)
+              sym.info = elimWildcardSym(sym.info)
+              b
+            }
+            else {
+              assert(b.name == tpnme.WILDCARD)
+              b.body
+            }
           case t => t
         }
     }

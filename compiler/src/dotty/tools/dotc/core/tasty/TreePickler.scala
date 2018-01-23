@@ -432,15 +432,10 @@ class TreePickler(pickler: TastyPickler) {
           bindings.foreach(preRegister)
           withLength { pickleTree(call); pickleTree(expansion); bindings.foreach(pickleTree) }
         case Bind(name, body) =>
-          val sym = tree.symbol
-          // If name is a type wildcard, symbol was removed by Typer#indexPattern.
-          // Use the type(-bounds) of the body instead as type of the Bind
-          if (sym.exists) registerDef(sym) else assert(name == tpnme.WILDCARD)
+          registerDef(tree.symbol)
           writeByte(BIND)
           withLength {
-            pickleName(name)
-            pickleType(if (sym.exists) sym.info else body.tpe)
-            pickleTree(body)
+            pickleName(name); pickleType(tree.symbol.info); pickleTree(body)
           }
         case Alternative(alts) =>
           writeByte(ALTERNATIVE)

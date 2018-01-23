@@ -1026,9 +1026,7 @@ class TreeUnpickler(reader: TastyReader,
               val sym = symAtAddr.getOrElse(start, forkAt(start).createSymbol())
               readName()
               readType()
-              val body = readTerm()
-              if (sym.name == tpnme.WILDCARD) untpd.Bind(sym.name, body).withType(body.tpe)
-              else Bind(sym, body)
+              Bind(sym, readTerm())
             case ALTERNATIVE =>
               Alternative(until(end)(readTerm()))
             case UNAPPLY =>
