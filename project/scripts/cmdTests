@@ -66,3 +66,9 @@ else
     echo "failed output check"
     exit -1
 fi
+
+./project/scripts/sbt ";dist-bootstrapped/pack"
+./dist-bootstrapped/target/pack/bin/dotc tests/run/hello.scala
+./dist-bootstrapped/target/pack/bin/dotr Test
+echo ":quit" | ./dist-bootstrapped/target/pack/bin/dotr
+mkdir -p _site && ./dist-bootstrapped/target/pack/bin/dotd -project Hello -siteroot _site tests/run/hello.scala

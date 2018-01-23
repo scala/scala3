@@ -27,7 +27,7 @@ pipeline:
     commands:
       - cp -R . /tmp/1/ && cd /tmp/1/
       - ./project/scripts/sbt ";compile ;test"
-      - ./project/scripts/sbtTests
+      - ./project/scripts/cmdTests
 
   test_bootstrapped:
     group: test
