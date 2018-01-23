@@ -1252,16 +1252,6 @@ class Typer extends Namer
     assignType(cpy.ByNameTypeTree(tree)(result1), result1)
   }
 
-  /** Define a new symbol associated with a Bind or pattern wildcard and
-   *  make it gadt narrowable.
-   */
-  private def newPatternBoundSym(name: Name, info: Type, pos: Position)(implicit ctx: Context) = {
-    val flags = if (name.isTypeName) BindDefinedType else EmptyFlags
-    val sym = ctx.newSymbol(ctx.owner, name, flags | Case, info, coord = pos)
-    if (name.isTypeName) ctx.gadt.setBounds(sym, info.bounds)
-    sym
-  }
-
   def typedTypeBoundsTree(tree: untpd.TypeBoundsTree)(implicit ctx: Context): TypeBoundsTree = track("typedTypeBoundsTree") {
     val TypeBoundsTree(lo, hi) = tree
     val lo1 = typed(lo)
@@ -1276,7 +1266,8 @@ class Typer extends Namer
       // The bounds of the type symbol can be constrained when comparing a pattern type
       // with an expected type in typedTyped. The type symbol is eliminated once
       // the enclosing pattern has been typechecked; see `indexPattern` in `typedCase`.
-      val wildcardSym = newPatternBoundSym(tpnme.WILDCARD, tree1.tpe, tree.pos)
+      val wildcardSym = ctx.newPatternBoundSymbol(tpnme.WILDCARD, tree1.tpe, tree.pos)
+      wildcardSym.setFlag(BindDefinedType) // can we get rid of this?
       tree1.withType(wildcardSym.typeRef)
     }
     else tree1
@@ -1296,7 +1287,8 @@ class Typer extends Namer
       case _ =>
         if (tree.name == nme.WILDCARD) body1
         else {
-          val sym = newPatternBoundSym(tree.name, body1.tpe.underlyingIfRepeated(isJava = false), tree.pos)
+          val sym = ctx.newPatternBoundSymbol(tree.name, body1.tpe.underlyingIfRepeated(isJava = false), tree.pos)
+          if (sym.isType) sym.setFlag(BindDefinedType) // can we get rid of this?
           if (ctx.mode.is(Mode.InPatternAlternative))
             ctx.error(i"Illegal variable ${sym.name} in pattern alternative", tree.pos)
           assignType(cpy.Bind(tree)(tree.name, body1), sym)

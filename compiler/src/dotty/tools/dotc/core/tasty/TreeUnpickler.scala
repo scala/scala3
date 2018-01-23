@@ -994,8 +994,9 @@ class TreeUnpickler(reader: TastyReader,
               val elemtpt = readTpt()
               SeqLiteral(until(end)(readTerm()), elemtpt)
             case BIND =>
-              val name = readName()
+              var name: Name = readName()
               val info = readType()
+              if (info.isInstanceOf[TypeType]) name = name.toTypeName
               val sym = ctx.newSymbol(ctx.owner, name, EmptyFlags, info, coord = coordAt(start))
               registerSym(start, sym)
               Bind(sym, readTerm())

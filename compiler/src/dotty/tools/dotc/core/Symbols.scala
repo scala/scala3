@@ -219,6 +219,14 @@ trait Symbols { this: Context =>
       modFlags | PackageCreationFlags, clsFlags | PackageCreationFlags,
       Nil, decls)
 
+  /** Define a new symbol associated with a Bind or pattern wildcard and
+   *  make it gadt narrowable.
+   */
+  def newPatternBoundSymbol(name: Name, info: Type, pos: Position) = {
+    val sym = newSymbol(owner, name, Case, info, coord = pos)
+    if (name.isTypeName) gadt.setBounds(sym, info.bounds)
+    sym
+  }
 
   /** Create a stub symbol that will issue a missing reference error
    *  when attempted to be completed.
