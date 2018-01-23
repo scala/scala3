@@ -575,9 +575,7 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
       case tp: RefinedType =>
         recur(tp.parent)
       case tp: TypeRef =>
-        recur(tp.prefix) &&
-        !(tp.classSymbol.is(Sealed) && tp.classSymbol.is(AbstractOrTrait) && tp.classSymbol.children.isEmpty) &&
-        !(tp.classSymbol.is(AbstractFinal))
+        recur(tp.prefix) && !(tp.classSymbol.is(AbstractFinal))
       case _ =>
         true
     }
@@ -706,8 +704,10 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
   /** Abstract sealed types, or-types, Boolean and Java enums can be decomposed */
   def canDecompose(tp: Type): Boolean = {
     val dealiasedTp = tp.dealias
-    val res = tp.classSymbol.is(allOf(Abstract, Sealed)) ||
-      tp.classSymbol.is(allOf(Trait, Sealed)) ||
+    val res =
+      (tp.classSymbol.is(Sealed) &&
+        tp.classSymbol.is(AbstractOrTrait) &&
+        tp.classSymbol.children.nonEmpty ) ||
       dealiasedTp.isInstanceOf[OrType] ||
       (dealiasedTp.isInstanceOf[AndType] && {
         val and = dealiasedTp.asInstanceOf[AndType]
