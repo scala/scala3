@@ -1,3 +1,5 @@
-27: Pattern Match Exhaustivity: HasIntXIntM, HasIntXStringM
-28: Pattern Match Exhaustivity: HasIntXIntM
+28: Pattern Match Exhaustivity: HasIntXIntM, HasIntXStringM
 29: Pattern Match Exhaustivity: HasIntXIntM
+29: Match case Unreachable
+30: Pattern Match Exhaustivity: HasIntXIntM
+30: Match case Unreachable

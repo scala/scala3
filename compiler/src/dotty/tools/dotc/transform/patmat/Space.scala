@@ -903,24 +903,25 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
   def checkRedundancy(_match: Match): Unit = {
     val Match(sel, cases) = _match
     // ignore selector type for now
-    // val selTyp = sel.tpe.widen.dealias
+    val selTyp = sel.tpe.widen.dealias
 
-    if (cases.length == 1) return
-
-    // starts from the second, the first can't be redundant
-    (1 until cases.length).foreach { i =>
+    (0 until cases.length).foreach { i =>
       // in redundancy check, take guard as false in order to soundly approximate
-      val prevs = cases.take(i).map { x =>
-        if (x.guard.isEmpty) project(x.pat)
-        else Empty
-      }.reduce((a, b) => Or(List(a, b)))
+      val prevs =
+        if (i == 0)
+          Empty
+        else
+          cases.take(i).map { x =>
+            if (x.guard.isEmpty) project(x.pat)
+            else Empty
+          }.reduce((a, b) => Or(List(a, b)))
 
       val curr = project(cases(i).pat)
 
       debug.println(s"---------------reachable? ${show(curr)}")
       debug.println(s"prev: ${show(prevs)}")
 
-      if (isSubspace(curr, prevs)) {
+      if (isSubspace(intersect(curr, Typ(selTyp, false)), prevs)) {
         ctx.warning(MatchCaseUnreachable(), cases(i).body.pos)
       }
     }

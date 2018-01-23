@@ -22,6 +22,7 @@ object HasIntXIntM extends S {
 }
 
 trait T
+case class TA(val x: Int) extends T with S
 
 class Test {
   def onlyIntX(s: S { val x: Int }) = s match { case _: T => ; }
