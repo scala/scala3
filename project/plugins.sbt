@@ -5,9 +5,7 @@
 // Scala IDE project file generator
 addSbtPlugin("com.typesafe.sbteclipse" % "sbteclipse-plugin" % "5.2.4")
 
-addSbtPlugin("org.scala-js" % "sbt-scalajs" % "0.6.21")
-
-addSbtPlugin("com.eed3si9n" % "sbt-assembly" % "0.14.6")
+// addSbtPlugin("org.scala-js" % "sbt-scalajs" % "0.6.21")
 
 addSbtPlugin("org.xerial.sbt" % "sbt-sonatype" % "2.1")
 

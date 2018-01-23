@@ -19,7 +19,7 @@ import typer.Inliner
 import typer.ErrorReporting.cyclicErrorMsg
 import transform.ValueClasses
 import transform.SymUtils._
-import dotty.tools.io.Path
+import dotty.tools.io.File
 import java.io.PrintWriter
 
 import dotty.tools.dotc.config.JavaPlatform
@@ -67,7 +67,7 @@ class ExtractAPI extends Phase {
 
       if (dumpInc) {
         // Append to existing file that should have been created by ExtractDependencies
-        val pw = new PrintWriter(Path(sourceFile.jpath).changeExtension("inc").toFile
+        val pw = new PrintWriter(File(sourceFile.jpath).changeExtension("inc").toFile
           .bufferedWriter(append = true), true)
         try {
           sources.foreach(source => pw.println(DefaultShowAPI(source)))
@@ -127,7 +127,6 @@ class ExtractAPI extends Phase {
 private class ExtractAPICollector(implicit val ctx: Context) extends ThunkHolder {
   import tpd._
   import xsbti.api
-  import ExtractDependencies.extractedName
 
   /** This cache is necessary for correctness, see the comment about inherited
    *  members in `apiClassStructure`
@@ -208,7 +207,7 @@ private class ExtractAPICollector(implicit val ctx: Context) extends ThunkHolder
 
     val selfType = apiType(sym.givenSelfType)
 
-    val name = extractedName(sym)
+    val name = ExtractDependencies.classNameAsString(sym)
 
     val tparams = sym.typeParams.map(apiTypeParameter).toArray
 

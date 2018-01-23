@@ -17,6 +17,7 @@ import java.io.File
 import java.util.{Arrays, Comparator, EnumSet}
 
 import xsbti.api.DependencyContext
+import xsbti.api.DependencyContext._
 import xsbti.UseScope
 
 
@@ -100,10 +101,10 @@ class ExtractDependencies extends Phase {
               ctx.sbtCallback.usedName(className, useName, useScopes)
             }
         }
-        extractDeps.topLevelDependencies.foreach(dep =>
-          recordDependency(sourceFile.file, dep._2, DependencyContext.DependencyByMemberRef)(ctx.withOwner(dep._1)))
-        extractDeps.topLevelInheritanceDependencies.foreach(dep =>
-            recordDependency(sourceFile.file, dep._2, DependencyContext.DependencyByInheritance)(ctx.withOwner(dep._1)))
+
+        // FIXME: https://github.com/sbt/zinc/commit/05482d131346d645375263e1420d2cd19b2ea6ef
+        extractDeps.topLevelDependencies.foreach(dep => recordDependency(dep, DependencyByMemberRef, allowLocal = true))
+        extractDeps.topLevelInheritanceDependencies.foreach(dep => recordDependency(dep, DependencyByInheritance, allowLocal = true))
       }
     }
   }
@@ -125,75 +126,66 @@ class ExtractDependencies extends Phase {
     acc(None, tree)
   }
 
-  private def classFile(sym: Symbol)(implicit ctx: Context): Option[AbstractFile] = {
-    // package can never have a corresponding class file; this test does not
-    // catch package objects (that do not have this flag set)
-    if (sym.is(Package)) None
-    else Option(sym.associatedFile)
-  }
-
-  protected def isTopLevelModule(sym: Symbol)(implicit ctx: Context): Boolean =
-    // enteringPhase(currentRun.picklerPhase.next) {
-      sym.is(ModuleClass) && sym.owner.is(PackageClass)
-    // }
-
-
-  /** Record that `currentSourceFile` depends on the file where `dep` was loaded from.
-   *
-   *  @param currentSourceFile  The source file of the current unit
-   *  @param dep                The dependency
-   *  @param context            Describes how `currentSourceFile` depends on `dep`
+  /*
+   * Handles dependency on given symbol by trying to figure out if represents a term
+   * that is coming from either source code (not necessarily compiled in this compilation
+   * run) or from class file and calls respective callback method.
    */
-  def recordDependency(currentSourceFile: File, dep: Symbol, context: DependencyContext)
-      (implicit ctx: Context) = {
-    val onSource = dep.sourceFile
-    if (onSource == null) {
-      // Dependency is external -- source is undefined
-      classFile(dep) match {
-        case Some(at) =>
-          def className(classSegments: List[String]) =
+  def recordDependency(dep: ClassDependency, context: DependencyContext, allowLocal: Boolean)(implicit ctx: Context): Unit = {
+    val fromClassName = classNameAsString(dep.from)
+    val sourceFile = ctx.compilationUnit.source.file.file
+
+    def binaryDependency(file: File, binaryClassName: String) =
+      ctx.sbtCallback.binaryDependency(file, binaryClassName, fromClassName, sourceFile, context)
+
+    def processExternalDependency(depFile: AbstractFile) = {
+      def binaryClassName(classSegments: List[String]) =
             classSegments.mkString(".").stripSuffix(".class")
-          def binaryDependency(file: File, className: String) = {
-            ctx.sbtCallback.binaryDependency(file, className, extractedName(currentClass), currentSourceFile, context)
+
+      depFile match {
+        case ze: ZipArchive#Entry => // The dependency comes from a JAR
+          for (zip <- ze.underlyingSource; zipFile <- Option(zip.file)) {
+            val classSegments = io.File(ze.path).segments
+            binaryDependency(zipFile, binaryClassName(classSegments))
           }
 
-          at match {
-            case ze: ZipArchive#Entry =>
-              for (zip <- ze.underlyingSource; zipFile <- Option(zip.file)) {
-                val classSegments = io.File(ze.path).segments
-                binaryDependency(zipFile, className(classSegments))
-              }
-            case pf: PlainFile =>
-              val packages = dep.ownersIterator
-                .filter(x => x.is(PackageClass) && !x.isEffectiveRoot).length
-                // We can recover the fully qualified name of a classfile from
-                // its path
-                val classSegments = pf.givenPath.segments.takeRight(packages + 1)
-                binaryDependency(pf.file, className(classSegments))
-            case _ =>
-              ctx.warning(s"sbt-deps: Ignoring dependency $at of class ${at.getClass}")
-          }
+        case pf: PlainFile => // The dependency comes from a class file
+          val packages = dep.to.ownersIterator
+            .filter(x => x.is(PackageClass) && !x.isEffectiveRoot).length
+            // We can recover the fully qualified name of a classfile from
+            // its path
+            val classSegments = pf.givenPath.segments.takeRight(packages + 1)
+            binaryDependency(pf.file, binaryClassName(classSegments))
 
-        case None =>
-          ctx.debuglog(s"No file for external symbol $dep")
+        case _ =>
+          ctx.warning(s"sbt-deps: Ignoring dependency $depFile of class ${depFile.getClass}}")
       }
-    } else if (onSource.file != currentSourceFile) {
-      ctx.sbtCallback.classDependency(extractedName(dep.enclosingClass), extractedName(currentClass), context)
-    } else {
-      ()
+    }
+
+    val depFile = dep.to.associatedFile
+    if (depFile != null) {
+      if (depFile.extension == "class") {
+        // Dependency is external -- source is undefined
+        processExternalDependency(depFile)
+      } else if (allowLocal || depFile.file != sourceFile) {
+        // We cannot ignore dependencies coming from the same source file because
+        // the dependency info needs to propagate. See source-dependencies/trait-trait-211.
+        val toClassName = classNameAsString(dep.to)
+        ctx.sbtCallback.classDependency(toClassName, fromClassName, context)
+      }
     }
   }
 }
 
 object ExtractDependencies {
-  def extractedName(sym: Symbol)(implicit ctx: Context): String =
-    // ctx.atPhase(ctx.flattenPhase.next) { implicit ctx =>
-      if (sym.is(ModuleClass))
-        sym.fullName.stripModuleClassSuffix.toString
-      else
-        sym.fullName.toString
-    // }
+  def classNameAsString(sym: Symbol)(implicit ctx: Context): String =
+    sym.fullName.stripModuleClassSuffix.mangledString // fullName in scalac strips module class suffix
+
+  def isLocal(sym: Symbol)(implicit ctx: Context): Boolean =
+    sym.ownersIterator.exists(_.isTerm)
 }
+
+private case class ClassDependency(from: Symbol, to: Symbol)
 
 private final class NameUsedInClass {
   // Default names and other scopes are separated for performance reasons
@@ -237,8 +229,8 @@ private class ExtractDependenciesCollector(responsibleForImports: Symbol)(implic
   import ExtractDependencies._
 
   private[this] val _usedNames = new mutable.HashMap[String, NameUsedInClass]
-  private[this] val _topLevelDependencies = new mutable.HashSet[(Symbol, Symbol)]
-  private[this] val _topLevelInheritanceDependencies = new mutable.HashSet[(Symbol, Symbol)]
+  private[this] val _topLevelDependencies = new mutable.HashSet[ClassDependency]
+  private[this] val _topLevelInheritanceDependencies = new mutable.HashSet[ClassDependency]
 
   /** The names used in this class, this does not include names which are only
    *  defined and not referenced.
@@ -249,18 +241,17 @@ private class ExtractDependenciesCollector(responsibleForImports: Symbol)(implic
    *  because it refers to these classes or something defined in them.
    *  This is always a superset of `topLevelInheritanceDependencies` by definition.
    */
-  def topLevelDependencies: Set[(Symbol, Symbol)] = _topLevelDependencies
+  def topLevelDependencies: Set[ClassDependency] = _topLevelDependencies
 
   /** The set of top-level classes that the compilation unit extends or that
    *  contain a non-top-level class that the compilaion unit extends.
    */
-  def topLevelInheritanceDependencies: Set[(Symbol, Symbol)] = _topLevelInheritanceDependencies
+  def topLevelInheritanceDependencies: Set[ClassDependency] = _topLevelInheritanceDependencies
 
   private def addUsedName(enclosingSym: Symbol, name: Name) = {
-    val enclosingName = enclosingSym match {
-      case sym if sym == defn.RootClass => ExtractDependencies.extractedName(responsibleForImports)
-      case sym => extractedName(sym)
-    }
+    val enclosingName =
+      if (enclosingSym == defn.RootClass) classNameAsString(responsibleForImports)
+      else classNameAsString(enclosingSym)
     val nameUsed = _usedNames.getOrElseUpdate(enclosingName, new NameUsedInClass)
     nameUsed.defaultNames += name
     // TODO: Set correct scope
@@ -272,17 +263,14 @@ private class ExtractDependenciesCollector(responsibleForImports: Symbol)(implic
       val tlClass = sym.topLevelClass
       if (tlClass.ne(NoSymbol)) {
         if (currentClass == defn.RootClass) {
-          _topLevelDependencies += ((responsibleForImports, tlClass))
+          _topLevelDependencies += ClassDependency(responsibleForImports, tlClass)
         } else {
           // Some synthetic type aliases like AnyRef do not belong to any class
-          _topLevelDependencies += ((currentClass, tlClass))
+          _topLevelDependencies += ClassDependency(currentClass, tlClass)
         }
       }
       addUsedName(nonLocalEnclosingClass(ctx.owner), sym.name)
     }
-
-  private def isLocal(sym: Symbol)(implicit ctx: Context): Boolean =
-    sym.ownersIterator.exists(_.isTerm)
 
   private def nonLocalEnclosingClass(sym: Symbol)(implicit ctx: Context): Symbol =
     sym.enclosingClass match {
@@ -300,8 +288,8 @@ private class ExtractDependenciesCollector(responsibleForImports: Symbol)(implic
     sym.isAnonymousFunction ||
     sym.isAnonymousClass
 
-  private def addInheritanceDependency(sym: Symbol)(implicit ctx: Context): Unit =
-    _topLevelInheritanceDependencies += ((currentClass, sym.topLevelClass))
+  private def addInheritanceDependency(parent: Symbol)(implicit ctx: Context): Unit =
+    _topLevelInheritanceDependencies += ClassDependency(currentClass, parent.topLevelClass)
 
   private class PatMatDependencyTraverser(ctx0: Context) extends ExtractTypesCollector(ctx0) {
     override protected def addDependency(symbol: Symbol)(implicit ctx: Context): Unit = {

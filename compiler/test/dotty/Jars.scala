@@ -30,7 +30,7 @@ object Jars {
     dottyLib :: dottyCompiler :: dottyInterfaces :: dottyExtras
 
   /** Dotty runtime with compiler dependencies, used for quoted.Expr.run */
-  val dottyRunWithCompiler: List[String] =
+  lazy val dottyRunWithCompiler: List[String] =
     dottyLib :: dottyCompiler :: dottyInterfaces :: scalaAsm :: Nil
 
   def scalaLibrary: String = sys.env.get("DOTTY_SCALA_LIBRARY")

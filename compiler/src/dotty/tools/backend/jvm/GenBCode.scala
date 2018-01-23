@@ -261,9 +261,9 @@ class GenBCodePipeline(val entryPoints: List[Symbol], val int: DottyBackendInter
 
         // ----------- sbt's callbacks
 
-        val fullClassName =
-          ExtractDependencies.extractedName(claszSymbol)(ctx.withPhase(ctx.typerPhase))
-        val isLocal = fullClassName.contains("_$")
+        val (fullClassName, isLocal) = ctx.atPhase(ctx.sbtExtractDependenciesPhase) { implicit ctx =>
+          (ExtractDependencies.classNameAsString(claszSymbol), ExtractDependencies.isLocal(claszSymbol))
+        }
 
         for ((cls, clsFile) <- classNodes.zip(classFiles)) {
           if (cls != null) {
