@@ -1271,8 +1271,9 @@ class Typer extends Namer
     if (ctx.mode.is(Mode.Pattern)) {
       // Associate a pattern-bound type symbol with the wildcard.
       // The bounds of the type symbol can be constrained when comparing a pattern type
-      // with an expected type in typedTyped. The type symbol is eliminated once
-      // the enclosing pattern has been typechecked; see `indexPattern` in `typedCase`.
+      // with an expected type in typedTyped. The type symbol and the defining Bind node
+      // are eliminated once the enclosing pattern has been typechecked; see `indexPattern`
+      // in `typedCase`.
       val wildcardSym = ctx.newPatternBoundSymbol(tpnme.WILDCARD, tree1.tpe, tree.pos)
       untpd.Bind(tpnme.WILDCARD, tree1).withType(wildcardSym.typeRef)
     }
