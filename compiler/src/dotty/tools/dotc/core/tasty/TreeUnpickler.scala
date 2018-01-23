@@ -282,7 +282,7 @@ class TreeUnpickler(reader: TastyReader,
             case SUPERtype =>
               SuperType(readType(), readType())
             case BIND =>
-              val sym = ctx.newSymbol(ctx.owner, readName().toTypeName, BindDefinedType, readType(),
+              val sym = ctx.newSymbol(ctx.owner, readName().toTypeName, EmptyFlags, readType(),
                 coord = coordAt(start))
               registerSym(start, sym)
               if (currentAddr != end) readType()

@@ -1267,7 +1267,7 @@ class Typer extends Namer
       // with an expected type in typedTyped. The type symbol is eliminated once
       // the enclosing pattern has been typechecked; see `indexPattern` in `typedCase`.
       val wildcardSym = ctx.newPatternBoundSymbol(tpnme.WILDCARD, tree1.tpe, tree.pos)
-      untpd.Bind(name, tree1).withType(wildcardSym.typeRef)
+      untpd.Bind(tpnme.WILDCARD, tree1).withType(wildcardSym.typeRef)
     }
     else tree1
   }

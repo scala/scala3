@@ -327,9 +327,6 @@ object Flags {
   /** A method that has default params */
   final val DefaultParameterized = termFlag(27, "<defaultparam>")
 
-  /** A type that is defined by a type bind */
-  final val BindDefinedType = typeFlag(27, "<bind-defined>")
-
   /** Symbol is inlined */
   final val Inline = commonFlag(29, "inline")
 
