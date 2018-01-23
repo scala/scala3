@@ -1724,8 +1724,7 @@ object Parsers {
       normalize(loop(start))
     }
 
-    /** FunArgMods ::= `implicit' FunArgMods
-     *               | `unused' FunArgMods
+    /** FunArgMods ::= { `implicit` | `unused` }
      */
     def funArgMods = BitSet(IMPLICIT, UNUSED)
 

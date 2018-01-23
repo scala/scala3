@@ -34,9 +34,7 @@ m.turnedOn.turnedOn // ERROR
 
 Note that in the code above the actual implicit arguments for `IsOff` are never used at runtime; they serve only to establish the right constraints at compile time.
 As these parameters are never used at runtime there is not real need to have them around, but they still need to be
-present at runtime to be able to do separate compilation and retain binary compatiblity. Unused parameters are contractually
-obligated to not be used at runtime, enforcing the essence of evidences on types and allows them to always be optimized away.
-
+present at runtime to be able to do separate compilation and retain binary compatiblity.
 
 How to define unused parameter?
 -------------------------------
@@ -49,7 +47,7 @@ val lambdaWithUnusedEv: unused Ev => Int =
   unused (ev: Ev) => 42
 ```
 
-Those parameters will not be usable for computations, thought they can be used as arguments to other `unused` parameters.
+`unused` parameters will not be usable for computations, though they can be used as arguments to other `unused` parameters.
 
 ```scala
 def methodWithUnusedInt1(unused i: Int): Int =
@@ -84,7 +82,7 @@ methodWithUnusedEv(evidence1)
 
 State machine with unused evidence example
 ------------------------------------------
-The following examples is an extended implementation of a simple state machine which can be in a state `On` or `Off`.
+The following example is an extended implementation of a simple state machine which can be in a state `On` or `Off`.
 The machine can change state from `Off` to `On` with `turnedOn` only if it is currently `Off`, 
 conversely from `On` to `Off` with `turnedOff` only if it is currently `On`. These last constraint are
 captured with the `IsOff[S]` and `IsOn[S]` implicit evidence only exist for `IsOff[Off]` and `InOn[On]`. 
