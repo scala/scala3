@@ -9,6 +9,7 @@ import scala.collection.{ mutable, immutable }
 import PartialFunction._
 import collection.mutable
 import util.common.alwaysZero
+import dotty.tools.dotc.transform.TreeGen
 
 object Definitions {
 
@@ -338,6 +339,11 @@ class Definitions {
     def Predef_classOf(implicit ctx: Context) = Predef_classOfR.symbol
     lazy val Predef_undefinedR = ScalaPredefModule.requiredMethodRef("???")
     def Predef_undefined(implicit ctx: Context) = Predef_undefinedR.symbol
+    // The set of all wrap{X, Ref}Array methods, where X is a value type
+    val Predef_wrapArray = new PerRun[collection.Set[Symbol]]({ implicit ctx =>
+      val methodNames = ScalaValueTypes.map(TreeGen.wrapArrayMethodName) + nme.wrapRefArray
+      methodNames.map(ScalaPredefModule.requiredMethodRef(_).symbol)
+    })
 
   lazy val ScalaRuntimeModuleRef = ctx.requiredModuleRef("scala.runtime.ScalaRunTime")
   def ScalaRuntimeModule(implicit ctx: Context) = ScalaRuntimeModuleRef.symbol

@@ -187,4 +187,30 @@ class TestBCode extends DottyBytecodeTest {
         diffInstructions(instructions1, instructions2))
     }
   }
+
+  /** Verifies that arrays are not unnecessarily wrapped when passed to Java varargs methods */
+  @Test def dontWrapArraysInJavaVarargs = {
+    val source =
+      """
+        |import java.nio.file._
+        |class Test {
+        |  def test(xs: Array[String]) = {
+        |     val p4 = Paths.get("Hello", xs: _*)
+        |  }
+        |}
+      """.stripMargin
+
+    checkBCode(source) { dir =>
+      val moduleIn = dir.lookupName("Test.class", directory = false)
+      val moduleNode = loadClassNode(moduleIn.input)
+      val method = getMethod(moduleNode, "test")
+
+      val arrayWrapped = instructionsFromMethod(method).exists {
+        case inv: Invoke => inv.name.contains("wrapRefArray")
+        case _ => false
+      }
+
+      assert(!arrayWrapped, "Arrays should not be wrapped when passed to a Java varargs method\n")
+    }
+  }
 }

@@ -94,6 +94,8 @@ class ElimRepeated extends MiniPhase with InfoTransformer { thisPhase =>
   private def seqToArray(tree: Tree, pt: Type)(implicit ctx: Context): Tree = tree match {
     case SeqLiteral(elems, elemtpt) =>
       JavaSeqLiteral(elems, elemtpt)
+    case app@Apply(fun, args) if defn.Predef_wrapArray().contains(fun.symbol) => // rewrite a call to `wrapXArray(arr)` to `arr`
+      args.head
     case _ =>
       val elemType = tree.tpe.elemType
       var elemClass = elemType.classSymbol
