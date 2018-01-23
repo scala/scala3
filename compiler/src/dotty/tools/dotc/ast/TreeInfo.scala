@@ -544,7 +544,7 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
   def patVars(tree: Tree)(implicit ctx: Context): List[Symbol] = {
     val acc = new TreeAccumulator[List[Symbol]] {
       def apply(syms: List[Symbol], tree: Tree)(implicit ctx: Context) = tree match {
-        case Bind(_, body) if tree.symbol.exists => apply(tree.symbol :: syms, body)
+        case Bind(_, body) => apply(tree.symbol :: syms, body)
         case _ => foldOver(syms, tree)
       }
     }
