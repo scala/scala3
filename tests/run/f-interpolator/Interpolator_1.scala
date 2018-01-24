@@ -9,7 +9,14 @@ object FInterpolation {
     // ...
   }
 
+  private def liftSeq(args: Seq[Expr[Any]]): Expr[Seq[Any]] = args match {
+    case x :: xs  => '{ (~x) +: ~(liftSeq(xs))  }
+    case Nil => '(Seq(): Seq[Any])
+  }
+
   def fInterpolation(sc: StringContext, args: Seq[Expr[Any]]): Expr[String] = {
-    sc.toString
+    val str: Expr[String] = sc.parts.mkString("")
+    val args1: Expr[Seq[Any]] = liftSeq(args)
+    '{  (~str).format(~args1: _*) }
   }
 }
