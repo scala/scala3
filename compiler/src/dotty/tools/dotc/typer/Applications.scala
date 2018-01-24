@@ -920,6 +920,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
         val ownType =
           if (selType <:< unapplyArgType) {
             unapp.println(i"case 1 $unapplyArgType ${ctx.typerState.constraint}")
+            fullyDefinedType(unapplyArgType, "pattern selector", tree.pos)
             selType
           } else if (isSubTypeOfParent(unapplyArgType, selType)(ctx.addMode(Mode.GADTflexible))) {
             maximizeType(unapplyArgType) match {
@@ -952,7 +953,6 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
               ex"Pattern type $unapplyArgType is neither a subtype nor a supertype of selector type $selType",
               tree.pos)
           }
-
         val dummyArg = dummyTreeOfType(ownType)
         val unapplyApp = typedExpr(untpd.TypedSplice(Apply(unapplyFn, dummyArg :: Nil)))
         val unapplyImplicits = unapplyApp match {
