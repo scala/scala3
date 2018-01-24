@@ -2076,4 +2076,25 @@ object messages {
     val msg = hl"""${"inline"} modifier cannot be used for a ${owner.showKind} parameter"""
     val explanation = ""
   }
+
+  case class JavaSymbolIsNotAValue(symbol: Symbol)(implicit ctx: Context) extends Message(JavaSymbolIsNotAValueID) {
+    val msg = hl"$symbol is not a value"
+    val kind = "Type Mismatch"
+    val explanation = {
+      val javaCodeExample = """class A {public static int a() {return 1;}}"""
+
+      val scalaCodeExample =
+        """val objectA = A     // This does not compile
+          |val aResult = A.a() // This does compile""".stripMargin
+
+      hl"""Java statics and packages cannot be used as a value.
+          |For Java statics consider the following Java example:
+          |
+          |$javaCodeExample
+          |
+          |When used from Scala:
+          |
+          |$scalaCodeExample"""
+    }
+  }
 }

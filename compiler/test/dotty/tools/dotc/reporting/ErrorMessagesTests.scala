@@ -1278,4 +1278,18 @@ class ErrorMessagesTests extends ErrorMessagesTest {
       assertEquals("method get", rsym.show)
       assertEquals("class Object", parentSym.show)
     }
+
+  @Test def javaSymbolIsNotAValue =
+    checkMessagesAfter("checkStatic") {
+      """
+        |package p
+        |object O {
+        |  val v = p
+        |}
+      """.stripMargin
+    }.expect { (itcx, messages) =>
+      implicit val ctx: Context = itcx
+      val JavaSymbolIsNotAValue(symbol) = messages.head
+      assertEquals(symbol.show, "package p")
+    }
 }
