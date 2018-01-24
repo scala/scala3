@@ -336,7 +336,7 @@ object Implicits {
       em"both ${err.refStr(alt1.ref)} and ${err.refStr(alt2.ref)} $qualify"
     override def whyNoConversion(implicit ctx: Context) =
       "\nNote that implicit conversions cannot be applied because they are ambiguous;" +
-      "\n " + explanation
+      "\n" + explanation
   }
 
   class MismatchedImplicit(ref: TermRef,
@@ -791,7 +791,7 @@ trait Implicits { self: Typer =>
             inferImplicit(pt, argument, pos)(ctx.addMode(Mode.OldOverloadingResolution)) match {
               case altResult: SearchSuccess =>
                 ctx.migrationWarning(
-                  s"According to new implicit resolution rules, this will be ambiguous:\n ${result.reason.explanation}",
+                  s"According to new implicit resolution rules, this will be ambiguous:\n${result.reason.explanation}",
                   pos)
                 altResult
               case _ =>

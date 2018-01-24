@@ -81,7 +81,7 @@ trait SymDenotations { this: Context =>
     }
     denot match {
       case denot: SymDenotation =>
-        def explainSym(msg: String) = explain(s"$msg\n defined = ${denot.definedPeriodsString}")
+        def explainSym(msg: String) = explain(s"$msg\ndefined = ${denot.definedPeriodsString}")
         if (denot.is(ValidForever) || denot.isRefinementClass) true
         else {
           implicit val ctx = this
