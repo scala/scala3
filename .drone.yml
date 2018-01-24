@@ -35,7 +35,6 @@ pipeline:
     commands:
       - cp -R . /tmp/2/ && cd /tmp/2/
       - ./project/scripts/sbt ";dotty-bootstrapped/compile ;dotty-bootstrapped/test"
-      - ./project/scripts/sbtBootstrappedTests
 
   test_optimised:
     group: test
