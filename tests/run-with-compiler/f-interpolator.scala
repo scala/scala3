@@ -10,13 +10,13 @@ object Test {
 
     println(fInterpolation(
       new StringContext("abc", "xyz"),
-      '(Seq[Any](~x))
+      Seq(x.asInstanceOf[Expr[Any]])
     ).show)
 
   }
 
-  def fInterpolation(sc: StringContext, args: Expr[Seq[Any]]): Expr[String] = {
-    assert(sc.parts.size - 1 == args.run.size)
+  def fInterpolation(sc: StringContext, args: Seq[Expr[Any]]): Expr[String] = {
+    assert(sc.parts.size - 1 == args.size)
     sc.toString
   }
 

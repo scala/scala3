@@ -102,6 +102,23 @@ class Interpreter(implicit ctx: Context) {
       case tree: Ident if env.contains(tree.symbol) =>
         env(tree.symbol)
 
+      case tree: Apply =>
+        def prefixAndArgs(t: Tree, allArgs: List[Tree]): (Tree, List[Tree]) = t match {
+          case Apply(qual, args2) => prefixAndArgs(qual, args2 ::: allArgs)
+          case TypeApply(qual, _) => prefixAndArgs(qual, allArgs)
+          case Select(qual, _) => (qual, allArgs)
+        }
+        val (prefix, args) = prefixAndArgs(tree, Nil)
+
+        val evaluatedPrefix = interpretTreeImpl(prefix, env)
+
+        val clazz = evaluatedPrefix.getClass
+        val paramClasses = paramsSig(tree.symbol)
+        val interpretedArgs = args.map(arg => interpretTreeImpl(arg, env))
+
+        val method = getMethod(clazz, tree.symbol.name, paramClasses)
+        interpreted(method.invoke(evaluatedPrefix, interpretedArgs: _*))
+
       case Block(stats, expr) =>
         val env2 = stats.foldLeft(env)((acc, x) => interpretStat(x, acc))
         interpretTreeImpl(expr, env2)
@@ -126,8 +143,6 @@ class Interpreter(implicit ctx: Context) {
         elems.map(elem => interpretTreeImpl(elem, env))
 
       case _ =>
-        // TODO Add more precise descriptions of why it could not be interpreted.
-        // This should be done after the full interpreter is implemented.
         throw new StopInterpretation(s"Could not interpret ${tree.show}. Consider extracting logic into a helper def.", tree.pos)
     }
   }
