@@ -7,10 +7,3 @@ foo
   println("foo")
   2.+(a)
 }
-
-lambda(4)
-lambda(5)
-Foo
-false
-Bar
-class Quoted$A$1

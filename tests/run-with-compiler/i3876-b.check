@@ -1,0 +1,8 @@
+6
+{
+  val x$1: Int = 3
+  {
+    def f(x: Int): Int = x.+(x)
+    f(x$1)
+  }
+}
