@@ -456,19 +456,14 @@ object desugar {
     // For all other classes, the parent is AnyRef.
     val companions =
       if (isCaseClass) {
-        def extractType(t: Tree): Tree = t match {
-          case Apply(t1, _) => extractType(t1)
-          case TypeApply(t1, ts) => AppliedTypeTree(extractType(t1), ts)
-          case Select(t1, nme.CONSTRUCTOR) => extractType(t1)
-          case New(t1) => t1
-          case t1 => t1
-        }
         // The return type of the `apply` method
-        val applyResultTpt =
-          if (isEnumCase)
-            if (parents.isEmpty) enumClassTypeRef
-            else parents.map(extractType).reduceLeft(AndTypeTree)
-          else TypeTree()
+        val (applyResultTpt, widenDefs) =
+          if (!isEnumCase)
+            (TypeTree(), Nil)
+          else if (parents.isEmpty || derivedTparams.isEmpty || enumClass.typeParams.isEmpty)
+            (enumClassTypeRef, Nil)
+          else
+            enumApplyResult(cdef, parents, derivedTparams, appliedRef(enumClassRef, derivedTparams))
 
         val parent =
           if (constrTparams.nonEmpty ||
@@ -479,11 +474,13 @@ object desugar {
             // todo: also use anyRef if constructor has a dependent method type (or rule that out)!
             (constrVparamss :\ (if (isEnumCase) applyResultTpt else classTypeRef)) (
               (vparams, restpe) => Function(vparams map (_.tpt), restpe))
+        def widenedCreatorExpr =
+          (creatorExpr /: widenDefs)((rhs, meth) => Apply(Ident(meth.name), rhs :: Nil))
         val applyMeths =
           if (mods is Abstract) Nil
           else
-            DefDef(nme.apply, derivedTparams, derivedVparamss, applyResultTpt, creatorExpr)
-              .withFlags(Synthetic | (constr1.mods.flags & DefaultParameterized)) :: Nil
+            DefDef(nme.apply, derivedTparams, derivedVparamss, applyResultTpt, widenedCreatorExpr)
+              .withFlags(Synthetic | (constr1.mods.flags & DefaultParameterized)) :: widenDefs
         val unapplyMeth = {
           val unapplyParam = makeSyntheticParameter(tpt = classTypeRef)
           val unapplyRHS = if (arity == 0) Literal(Constant(true)) else Ident(unapplyParam.name)
