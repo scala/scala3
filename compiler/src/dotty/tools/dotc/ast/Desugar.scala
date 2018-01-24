@@ -460,7 +460,7 @@ object desugar {
         val (applyResultTpt, widenDefs) =
           if (!isEnumCase)
             (TypeTree(), Nil)
-          else if (parents.isEmpty || derivedTparams.isEmpty || enumClass.typeParams.isEmpty)
+          else if (parents.isEmpty || enumClass.typeParams.isEmpty)
             (enumClassTypeRef, Nil)
           else
             enumApplyResult(cdef, parents, derivedTparams, appliedRef(enumClassRef, derivedTparams))
