@@ -13,7 +13,7 @@ echo "testing ./bin/dotc and ./bin/dotr"
 mkdir out/scriptedtest0
 ./bin/dotc tests/pos/sbtDotrTest.scala -d out/scriptedtest0
 
-./bin/dotr -classpath out/scriptedtest0 dotrtest.Test" > sbtdotr1.out
+./bin/dotr -classpath out/scriptedtest0 dotrtest.Test > sbtdotr1.out
 if grep -e "dotr test ok" sbtdotr1.out; then
     echo "output ok"
 else
