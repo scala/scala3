@@ -27,7 +27,7 @@ mkdir out/scriptedtest1
 mkdir out/scriptedtest2
 ./bin/dotc tests/pos/sbtDotrTest.scala -d out/scriptedtest1/
 ./bin/dotc -from-tasty -classpath out/scriptedtest1/ -d out/scriptedtest2/ dotrtest.Test
-./bin/dotr -classpath out/scriptedtest2/ dotrtest.Test" > sbtdotr2.out
+./bin/dotr -classpath out/scriptedtest2/ dotrtest.Test > sbtdotr2.out
 if grep -e "dotr test ok" sbtdotr2.out; then
     echo "output ok"
 else
