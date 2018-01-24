@@ -470,11 +470,11 @@ object Parsers {
     def infixOps(
         first: Tree, canStartOperand: Token => Boolean, operand: () => Tree,
         isType: Boolean = false,
-        notAnOperator: Name = nme.EMPTY,
+        isOperator: => Boolean = true,
         maybePostfix: Boolean = false): Tree = {
       val base = opStack
       var top = first
-      while (isIdent && in.name != notAnOperator) {
+      while (isIdent && isOperator) {
         val op = if (isType) typeIdent() else termIdent()
         top = reduceStack(base, top, precedence(op.name), isLeftAssoc(op.name), op.name)
         opStack = OpInfo(top, op, in.offset) :: opStack
@@ -797,8 +797,16 @@ object Parsers {
      */
     def infixType(): Tree = infixTypeRest(refinedType())
 
+    /** Is current ident a `*`, and is it followed by a `)` or `,`? */
+    def isPostfixStar: Boolean =
+      in.name == nme.raw.STAR && {
+        val lookahead = in.lookaheadScanner
+        lookahead.nextToken()
+        (lookahead.token == RPAREN || lookahead.token == COMMA)
+      }
+
     def infixTypeRest(t: Tree): Tree =
-      infixOps(t, canStartTypeTokens, refinedType, isType = true, notAnOperator = nme.raw.STAR)
+      infixOps(t, canStartTypeTokens, refinedType, isType = true, isOperator = !isPostfixStar)
 
     /** RefinedType        ::=  WithType {Annotation | [nl] Refinement}
      */
@@ -1556,7 +1564,7 @@ object Parsers {
     /**  InfixPattern ::= SimplePattern {id [nl] SimplePattern}
      */
     def infixPattern(): Tree =
-      infixOps(simplePattern(), canStartExpressionTokens, simplePattern, notAnOperator = nme.raw.BAR)
+      infixOps(simplePattern(), canStartExpressionTokens, simplePattern, isOperator = in.name != nme.raw.BAR)
 
     /** SimplePattern    ::= PatVar
      *                    |  Literal
