@@ -78,7 +78,7 @@ fi
 
 # check that `dotc` compiles and `dotr` runs it
 echo "testing ./bin/dotc and ./bin/dotr"
-mkdir out/scriptedtest0
+mkdir -p out/scriptedtest0
 ./bin/dotc tests/pos/sbtDotrTest.scala -d out/scriptedtest0
 ./bin/dotr -classpath out/scriptedtest0 dotrtest.Test
 
