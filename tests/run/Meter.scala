@@ -69,7 +69,7 @@ object Test extends dotty.runtime.LegacyApp {
 
 
   println("x.hashCode: "+x.hashCode)
-  println("x == 1: "+(x == 1))
+  println("x == 1: "+false) // Values of types a.Meter and Int cannot be compared with == or !=
   println("x == y: "+(x == y))
   assert(x.hashCode == (1.0).hashCode)
 
