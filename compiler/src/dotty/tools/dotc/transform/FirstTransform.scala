@@ -7,6 +7,7 @@ import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.core.Phases.NeedsCompanions
 import dotty.tools.dotc.transform.MegaPhase._
 import ast.Trees._
+import ast.untpd
 import Flags._
 import Types._
 import Constants.Constant
@@ -188,8 +189,27 @@ class FirstTransform extends MiniPhase with InfoTransformer { thisPhase =>
   override def transformStats(trees: List[Tree])(implicit ctx: Context): List[Tree] =
     ast.Trees.flatten(reorderAndComplete(trees)(ctx.withPhase(thisPhase.next)))
 
-  private def toTypeTree(tree: Tree)(implicit ctx: Context) =
-    TypeTree(tree.tpe).withPos(tree.pos)
+  private object collectBinders extends TreeAccumulator[List[Ident]] {
+    def apply(annots: List[Ident], t: Tree)(implicit ctx: Context): List[Ident] = t match {
+      case t @ Bind(_, body) =>
+        val annot = untpd.Ident(tpnme.BOUNDTYPE_ANNOT).withType(t.symbol.typeRef)
+        apply(annot :: annots, body)
+      case _ =>
+        foldOver(annots, t)
+    }
+  }
+
+  /** Replace type tree `t` of type `T` with `TypeTree(T)`, but make sure all
+   *  binders in `t` are maintained by rewrapping binders around the type tree.
+   *  E.g. if `t` is  `C[t @ (>: L <: H)]`, replace with
+   *  `t @ TC[_ >: L <: H]`. The body of the binder `t` is now wrong, but this does
+   *  not matter, as we only need the info of `t`.
+   */
+  private def toTypeTree(tree: Tree)(implicit ctx: Context) = {
+    val binders = collectBinders.apply(Nil, tree)
+    val result: Tree = TypeTree(tree.tpe).withPos(tree.pos)
+    (result /: binders)(Annotated(_, _))
+  }
 
   override def transformOther(tree: Tree)(implicit ctx: Context) = tree match {
     case tree: Import => EmptyTree
