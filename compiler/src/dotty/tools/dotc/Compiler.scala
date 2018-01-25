@@ -113,7 +113,6 @@ class Compiler {
     List(new Flatten,                // Lift all inner classes to package scope
          new RestoreScopes,          // Repair scopes rendered invalid by moving definitions in prior phases of the group
          new RenameLifted,           // Renames lifted classes to local numbering scheme
-         new NormalizePackageDefs,   // Normalizes names of type definitions in packages to avoid OS-dependent name clashes/shadowing
          new TransformWildcards,     // Replace wildcards with default values
          new MoveStatics,            // Move static methods to companion classes
          new ExpandPrivate,          // Widen private definitions accessed from nested classes
