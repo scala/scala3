@@ -188,18 +188,14 @@ class GenBCodePipeline(val entryPoints: List[Symbol], val int: DottyBackendInter
         val claszSymbol = cd.symbol
 
         // GenASM checks this before classfiles are emitted, https://github.com/scala/scala/commit/e4d1d930693ac75d8eb64c2c3c69f2fc22bec739
-        // todo: add back those checks
-        /*val lowercaseJavaClassName = claszSymbol.javaClassName.toLowerCase
+        val lowercaseJavaClassName = claszSymbol.name.toString.toLowerCase
         caseInsensitively.get(lowercaseJavaClassName) match {
           case None =>
             caseInsensitively.put(lowercaseJavaClassName, claszSymbol)
           case Some(dupClassSym) =>
-            reporter.warning(
-              claszSymbol.pos,
-              s"Class ${claszSymbol.javaClassName} differs only in case from ${dupClassSym.javaClassName}. " +
-                "Such classes will overwrite one another on case-insensitive filesystems."
-            )
-        }*/
+            ctx.warning(s"Class ${claszSymbol.name.toString.toLowerCase} differs only in case from ${dupClassSym.name.toString}. " +
+                       "Such classes will overwrite one another on case-insensitive filesystems.")
+        }
 
         // -------------- mirror class, if needed --------------
         val mirrorC =
