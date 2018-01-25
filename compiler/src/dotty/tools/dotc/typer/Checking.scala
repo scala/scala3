@@ -341,6 +341,9 @@ object Checking {
       if (!ok && !sym.is(Synthetic))
         fail(i"modifier `$flag` is not allowed for this definition")
 
+    if (sym.is(Inline) && sym.is(ParamAccessor) && sym.owner.isClass)
+      fail(ParamsNoInline(sym.owner))
+
     if (sym.is(ImplicitCommon)) {
       if (sym.owner.is(Package))
         fail(TopLevelCantBeImplicit(sym))
