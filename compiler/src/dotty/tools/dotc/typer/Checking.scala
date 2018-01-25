@@ -108,12 +108,15 @@ object Checking {
    *  in order to prevent scenarios that lead to self application of
    *  types. Self application needs to be avoided since it can lead to stack overflows.
    *  Test cases are neg/i2771.scala and neg/i2771b.scala.
+   *  A NoType paramBounds is used as a sign that checking should be suppressed.
    */
-  def preCheckKind(arg: Tree, paramBounds: TypeBounds)(implicit ctx: Context): Tree =
-    if (arg.tpe.widen.isRef(defn.NothingClass) || arg.tpe.hasSameKindAs(paramBounds.hi)) arg
+  def preCheckKind(arg: Tree, paramBounds: Type)(implicit ctx: Context): Tree =
+    if (arg.tpe.widen.isRef(defn.NothingClass) ||
+        !paramBounds.exists ||
+        arg.tpe.hasSameKindAs(paramBounds.bounds.hi)) arg
     else errorTree(arg, em"Type argument ${arg.tpe} has not the same kind as its bound $paramBounds")
 
-  def preCheckKinds(args: List[Tree], paramBoundss: List[TypeBounds])(implicit ctx: Context): List[Tree] = {
+  def preCheckKinds(args: List[Tree], paramBoundss: List[Type])(implicit ctx: Context): List[Tree] = {
     val args1 = args.zipWithConserve(paramBoundss)(preCheckKind)
     args1 ++ args.drop(paramBoundss.length)
       // add any arguments that do not correspond to a parameter back,

@@ -1254,7 +1254,7 @@ class Typer extends Namer
         case (tparam, TypeBoundsTree(EmptyTree, EmptyTree)) =>
           // if type argument is a wildcard, suppress kind checking since
           // there is no real argument.
-          TypeBounds.empty
+          NoType
         case (tparam, _) =>
           tparam.paramInfo.bounds
       }
