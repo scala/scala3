@@ -33,7 +33,7 @@ object test4 {
     class Tree[-S, -T >: Option[S]]
 
     def g(x: Any): Tree[_, _ <: Option[N]] = x match {
-      case y: Tree[_, _] => y                         // works now (because of capture conversion?)
+      case y: Tree[_, _] => y                         // error -- used to work (because of capture conversion?)
     }
   }
 }

@@ -8,7 +8,7 @@ import StdNames.{nme, tpnme}
 import collection.mutable
 import util.{Stats, DotClass}
 import config.Config
-import config.Printers.{typr, constr, subtyping, noPrinter}
+import config.Printers.{typr, constr, subtyping, gadts, noPrinter}
 import TypeErasure.{erasedLub, erasedGlb}
 import TypeApplications._
 import scala.util.control.NonFatal
@@ -383,9 +383,9 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
             narrowGADTBounds(tp2, tp1, isUpper = false)) &&
           GADTusage(tp2.symbol)
       }
-      ((frozenConstraint || !isCappable(tp1)) && isSubType(tp1, lo2) ||
-        compareGADT ||
-        fourthTry(tp1, tp2))
+      val tryLowerFirst = frozenConstraint || !isCappable(tp1)
+      if (tryLowerFirst) isSubType(tp1, lo2) || compareGADT || fourthTry(tp1, tp2)
+      else compareGADT || fourthTry(tp1, tp2) || isSubType(tp1, lo2)
 
     case _ =>
       val cls2 = tp2.symbol
@@ -1076,13 +1076,15 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
     case _ => proto.isMatchedBy(tp)
   }
 
-  /** Can type `tp` be constrained from above by adding a constraint to
-   *  a typevar that it refers to? In that case we have to be careful not
-   *  to approximate with the lower bound of a type in `thirdTry`. Instead,
-   *  we should first unroll `tp1` until we hit the type variable and bind the
-   *  type variable with (the corresponding type in) `tp2` instead.
+  /** Can type `tp` be constrained from above, either by adding a constraint to
+   *  a typevar that it refers to, or by narrowing a GADT bound? In that case we have
+   *  to be careful not to approximate with the lower bound of a type in `thirdTry`.
+   *  Instead, we should first unroll `tp1` until we hit the type variable and bind the
+   *  type variable with (the corresponding type in) `tp2` instead. Or, in the
+   *  case of a GADT bounded typeref, we should narrow with `tp2` instead of its lower bound.
    */
   private def isCappable(tp: Type): Boolean = tp match {
+    case tp: TypeRef => ctx.gadt.bounds.contains(tp.symbol)
     case tp: TypeParamRef => constraint contains tp
     case tp: TypeProxy => isCappable(tp.underlying)
     case tp: AndOrType => isCappable(tp.tp1) || isCappable(tp.tp2)
@@ -1096,7 +1098,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
   private def narrowGADTBounds(tr: NamedType, bound: Type, isUpper: Boolean): Boolean =
     ctx.mode.is(Mode.GADTflexible) && !frozenConstraint && {
       val tparam = tr.symbol
-      typr.println(i"narrow gadt bound of $tparam: ${tparam.info} from ${if (isUpper) "above" else "below"} to $bound ${bound.isRef(tparam)}")
+      gadts.println(i"narrow gadt bound of $tparam: ${tparam.info} from ${if (isUpper) "above" else "below"} to $bound ${bound.toString} ${bound.isRef(tparam)}")
       if (bound.isRef(tparam)) false
       else {
         val oldBounds = ctx.gadt.bounds(tparam)
