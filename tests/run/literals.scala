@@ -90,10 +90,10 @@ object Test {
     check_success("1e1f == 10.0f", 1e1f, 10.0f)
     check_success(".3f == 0.3f", .3f, 0.3f)
     check_success("0f == 0.0f", 0f, 0.0f)
-    check_success("01.23f == 1.23f", 01.23f, 1.23f)
+    check_success("01.23f == 1.23f", /*0*/1.23f, 1.23f) // Non-zero numbers may not have a leading zero.
     check_success("3.14f == 3.14f", 3.14f, 3.14f)
     check_success("6.022e23f == 6.022e23f", 6.022e23f, 6.022e23f)
-    check_success("09f == 9.0f", 09f, 9.0f)
+    check_success("09f == 9.0f", 9f, 9.0f)
     check_success("1.asInstanceOf[Float] == 1.0", 1.asInstanceOf[Float], 1.0f)
     check_success("1l.asInstanceOf[Float] == 1.0", 1l.asInstanceOf[Float], 1.0f)
 
@@ -104,8 +104,8 @@ object Test {
     check_success(".3 == 0.3", .3, 0.3)
     check_success("0.0 == 0.0", 0.0, 0.0)
     check_success("0d == 0.0", 0d, 0.0)
-    check_success("01.23 == 1.23", 01.23, 1.23)
-    check_success("01.23d == 1.23d", 01.23d, 1.23d)
+    check_success("01.23 == 1.23", 1.23, 1.23)
+    check_success("01.23d == 1.23d", 1.23d, 1.23d)
     check_success("3.14 == 3.14", 3.14, 3.14)
     check_success("1e-9d == 1.0e-9", 1e-9d, 1.0e-9)
     check_success("1e137 == 1.0e137", 1e137, 1.0e137)
