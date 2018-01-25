@@ -115,6 +115,8 @@ class Interpreter(implicit ctx: Context) {
       case Typed(expr, _) =>
         interpretTreeImpl(expr, env)
 
+      // Getting the underlying value of a value class. The value class is evaluated as its boxed representation
+      // as values in the interpreter are `Object`s. Therefore we just get it from the enviroment as is.
       case Select(qualifier, _)
           if tree.symbol.owner.isValueClass && tree.symbol.is(ParamAccessor) && env.contains(qualifier.symbol) =>
         env(qualifier.symbol)
