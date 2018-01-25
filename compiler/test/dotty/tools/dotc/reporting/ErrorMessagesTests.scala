@@ -811,8 +811,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
     .expect { (ictx, messages) =>
       implicit val ctx: Context = ictx
 
-      assertMessageCount(1, messages)
-      val AnonymousFunctionMissingParamType(param, args, _, pt) :: Nil = messages
+      val AnonymousFunctionMissingParamType(param, args, _, pt) = messages.last
       assertEquals("x$1", param.show)
       assertEquals(s"List(ValDef(${param.show},TypeTree,EmptyTree))", args.toString)
       assertEquals("?", pt.show)
