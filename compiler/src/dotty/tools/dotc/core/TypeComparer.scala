@@ -354,9 +354,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
               narrowGADTBounds(tp2, tp1, approx, isUpper = false)) &&
             GADTusage(tp2.symbol)
         }
-        val tryLowerFirst = frozenConstraint || !isCappable(tp1)
-        if (tryLowerFirst) isSubType(tp1, lo2, approx.addHigh) || compareGADT || fourthTry
-        else compareGADT || fourthTry || isSubType(tp1, lo2, approx.addHigh)
+        isSubType(tp1, lo2, approx.addHigh) || compareGADT || fourthTry
 
       case _ =>
         val cls2 = tp2.symbol
@@ -389,7 +387,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
           val alwaysTrue =
             // The following condition is carefully formulated to catch all cases
             // where the subtype relation is true without needing to add a constraint
-            // It's tricky because we might need to either appriximate tp2 by its
+            // It's tricky because we might need to either approximate tp2 by its
             // lower bound or else widen tp1 and check that the result is a subtype of tp2.
             // So if the constraint is not yet frozen, we do the same comparison again
             // with a frozen constraint, which means that we get a chance to do the
@@ -1078,20 +1076,6 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
   def isMatchedByProto(proto: ProtoType, tp: Type) = tp.stripTypeVar match {
     case tp: TypeParamRef if constraint contains tp => true
     case _ => proto.isMatchedBy(tp)
-  }
-
-  /** Can type `tp` be constrained from above, either by adding a constraint to
-   *  a typevar that it refers to, or by narrowing a GADT bound? In that case we have
-   *  to be careful not to approximate with the lower bound of a type in `thirdTry`.
-   *  Instead, we should first unroll `tp1` until we hit the type variable and bind the
-   *  type variable with (the corresponding type in) `tp2` instead. Or, in the
-   *  case of a GADT bounded typeref, we should narrow with `tp2` instead of its lower bound.
-   */
-  private def isCappable(tp: Type): Boolean = tp match {
-    case tp: TypeParamRef => constraint contains tp
-    case tp: TypeProxy => isCappable(tp.underlying)
-    case tp: AndOrType => isCappable(tp.tp1) || isCappable(tp.tp2)
-    case _ => false
   }
 
   /** Narrow gadt.bounds for the type parameter referenced by `tr` to include
