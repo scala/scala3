@@ -19,16 +19,12 @@ object PickledQuotes {
   import tpd._
 
   /** Pickle the quote into strings */
-  def pickleQuote(tree: Tree)(implicit ctx: Context): Tree = {
-    if (ctx.reporter.hasErrors) Literal(Constant("<error>"))
+  def pickleQuote(tree: Tree)(implicit ctx: Context): scala.runtime.quoted.Unpickler.Pickled = {
+    if (ctx.reporter.hasErrors) Nil
     else {
       val encapsulated = encapsulateQuote(tree)
       val pickled = pickle(encapsulated)
-      TastyString.pickle(pickled).foldRight[Tree](ref(defn.NilModule)) { (x, acc) =>
-        acc.select("::".toTermName)
-          .appliedToType(defn.StringType)
-          .appliedTo(Literal(Constant(x)))
-      }
+      TastyString.pickle(pickled)
     }
   }
 

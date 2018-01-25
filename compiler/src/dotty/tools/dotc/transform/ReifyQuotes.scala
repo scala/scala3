@@ -265,12 +265,17 @@ class ReifyQuotes extends MacroTransform {
       if (inSplice)
         makeHole(body1, splices, quote.tpe)
       else {
+        def liftList(list: List[Tree], tpe: Type): Tree = {
+          list.foldRight[Tree](ref(defn.NilModule)) { (x, acc) =>
+            acc.select("::".toTermName).appliedToType(tpe).appliedTo(x)
+          }
+        }
         val isType = quote.tpe.isRef(defn.QuotedTypeClass)
         ref(if (isType) defn.Unpickler_unpickleType else defn.Unpickler_unpickleExpr)
           .appliedToType(if (isType) body1.tpe else body1.tpe.widen)
           .appliedTo(
-            PickledQuotes.pickleQuote(body1),
-            SeqLiteral(splices, TypeTree(defn.AnyType)))
+            liftList(PickledQuotes.pickleQuote(body1).map(x => Literal(Constant(x))), defn.StringType),
+            liftList(splices, defn.AnyType))
       }
     }.withPos(quote.pos)
 
