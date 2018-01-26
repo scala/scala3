@@ -964,7 +964,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
                 args.init :+ argSeq
               case _ =>
                 val (regularArgs, varArgs) = args.splitAt(argTypes.length - 1)
-                regularArgs :+ untpd.SeqLiteral(varArgs, untpd.TypeTree())
+                regularArgs :+ untpd.SeqLiteral(varArgs, untpd.TypeTree()).withPos(tree.pos)
             }
           else if (argTypes.lengthCompare(1) == 0 && args.lengthCompare(1) > 0 && ctx.canAutoTuple)
             untpd.Tuple(args) :: Nil
