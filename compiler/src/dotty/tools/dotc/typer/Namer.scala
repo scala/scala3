@@ -925,7 +925,7 @@ class Namer { typer: Typer =>
         }
       }
 
-     addAnnotations(denot.symbol, original)
+      addAnnotations(denot.symbol, original)
 
       val selfInfo =
         if (self.isEmpty) NoType

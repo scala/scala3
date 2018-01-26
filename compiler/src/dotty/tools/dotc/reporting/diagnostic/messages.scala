@@ -2069,4 +2069,11 @@ object messages {
           |$rsym does not override any method in $parentSym. Structural refinement does not allow for
           |polymorphic methods."""
   }
+
+  case class ParamsNoInline(owner: Symbol)(implicit ctx: Context)
+    extends Message(ParamsNoInlineID) {
+    val kind = "Syntax"
+    val msg = hl"""${"inline"} modifier cannot be used for a ${owner.showKind} parameter"""
+    val explanation = ""
+  }
 }
