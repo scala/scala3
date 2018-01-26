@@ -107,9 +107,18 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
         assert(isSatisfiable, constraint.show)
   }
 
+  private[this] var approx: ApproxState = NoApprox
+  protected def approxState = approx
+
+  protected def isSubType(tp1: Type, tp2: Type, a: ApproxState): Boolean = {
+    val saved = approx
+    this.approx = a
+    try recur(tp1, tp2) finally this.approx = saved
+  }
+
   protected def isSubType(tp1: Type, tp2: Type): Boolean = isSubType(tp1, tp2, NoApprox)
 
-  protected def isSubType(tp1: Type, tp2: Type, approx: ApproxState): Boolean = trace(s"isSubType ${traceInfo(tp1, tp2)} $approx", subtyping) {
+  protected def recur(tp1: Type, tp2: Type): Boolean = trace(s"isSubType ${traceInfo(tp1, tp2)} $approx", subtyping) {
 
     def monitoredIsSubType = {
       if (pendingSubTypes == null) {
@@ -817,9 +826,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
         false
       } else isSubType(tp1, tp2, approx.addLow)
 
-    def recur(tp1: Type, tp2: Type) = isSubType(tp1, tp2, approx)
-
-    // begin isSubType
+    // begin recur
     if (tp2 eq NoType) false
     else if (tp1 eq tp2) true
     else {
