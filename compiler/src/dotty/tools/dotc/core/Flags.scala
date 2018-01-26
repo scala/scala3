@@ -574,8 +574,11 @@ object Flags {
   /** A synthetic or private definition */
   final val SyntheticOrPrivate = Synthetic | Private
 
-  /** A deferred member or a parameter accessor (these don't have right hand sides) */
-  final val DeferredOrParamOrAccessor = Deferred | Param | ParamAccessor
+  /** A deferred term member or a parameter accessor (these don't have right hand sides) */
+  final val DeferredOrTermParamOrAccessor = Deferred | TermParam | ParamAccessor
+
+  /** A deferred term member or a parameter accessor (these don't have right hand sides) */
+  final val DeferredOrTypeParam = Deferred | TypeParam
 
   /** value that's final or inline */
   final val FinalOrInline = Final | Inline

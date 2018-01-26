@@ -529,13 +529,16 @@ object SymDenotations {
     }
 
     /** Is this symbol an abstract type? */
-    final def isAbstractType(implicit ctx: Context) = isType && (this is Deferred)
+    final def isAbstractType(implicit ctx: Context) = this is DeferredType
 
     /** Is this symbol an alias type? */
     final def isAliasType(implicit ctx: Context) = isAbstractOrAliasType && !(this is Deferred)
 
     /** Is this symbol an abstract or alias type? */
     final def isAbstractOrAliasType = isType & !isClass
+
+    /** Is this symbol an abstract type or type parameter? */
+    final def isAbstractOrParamType(implicit ctx: Context) = this is DeferredOrTypeParam
 
     /** Is this the denotation of a self symbol of some class?
      *  This is the case if one of two conditions holds:

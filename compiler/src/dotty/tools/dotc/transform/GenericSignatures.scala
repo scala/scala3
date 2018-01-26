@@ -427,7 +427,7 @@ object GenericSignatures {
        * owners (e.g. when computing lubs, <root> is used). All packageClass symbols have `isJavaDefined == true`.
        */
       case RefOrAppliedType(sym, tp, _) =>
-        if (sym.isAbstractType && (!sym.owner.is(JavaDefined) || sym.is(Scala2Existential)))
+        if (sym.isAbstractOrParamType && (!sym.owner.is(JavaDefined) || sym.is(Scala2Existential)))
           tp
         else
           NoType
