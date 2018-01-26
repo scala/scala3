@@ -432,6 +432,9 @@ object Parsers {
 
     def commaSeparated[T](part: () => T): List[T] = tokenSeparated(COMMA, part)
 
+    def lookaheadIn(tokens: Token*): Boolean =
+      tokens.contains(in.lookaheadScanner.nextToken())
+
 /* --------- OPERAND/OPERATOR STACK --------------------------------------- */
 
     var opStack: List[OpInfo] = Nil
@@ -799,11 +802,7 @@ object Parsers {
 
     /** Is current ident a `*`, and is it followed by a `)` or `,`? */
     def isPostfixStar: Boolean =
-      in.name == nme.raw.STAR && {
-        val lookahead = in.lookaheadScanner
-        lookahead.nextToken()
-        (lookahead.token == RPAREN || lookahead.token == COMMA)
-      }
+      in.name == nme.raw.STAR && lookaheadIn(RPAREN, COMMA)
 
     def infixTypeRest(t: Tree): Tree =
       infixOps(t, canStartTypeTokens, refinedType, isType = true, isOperator = !isPostfixStar)
@@ -842,7 +841,7 @@ object Parsers {
     /** SimpleType       ::=  SimpleType TypeArgs
      *                     |  SimpleType `#' id
      *                     |  StableId
-     *                     |  [‘-’ | ‘+’ | ‘~’ | ‘!’] StableId
+     *                     |  ['~'] StableId
      *                     |  Path `.' type
      *                     |  `(' ArgTypes `)'
      *                     |  `_' TypeBounds
@@ -861,7 +860,7 @@ object Parsers {
         val start = in.skipToken()
         typeBounds().withPos(Position(start, in.lastOffset, start))
       }
-      else if (isIdent && nme.raw.isUnary(in.name))
+      else if (isIdent(nme.raw.TILDE) && lookaheadIn(IDENTIFIER, BACKQUOTED_IDENT))
         atPos(in.offset) { PrefixOp(typeIdent(), path(thisOK = true)) }
       else path(thisOK = false, handleSingletonType) match {
         case r @ SingletonTypeTree(_) => r
