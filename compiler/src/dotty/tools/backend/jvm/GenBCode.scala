@@ -195,8 +195,13 @@ class GenBCodePipeline(val entryPoints: List[Symbol], val int: DottyBackendInter
           case None =>
             caseInsensitively.put(lowercaseJavaClassName, claszSymbol)
           case Some(dupClassSym) =>
-            ctx.warning(s"Class ${claszSymbol.name} differs only in case from ${dupClassSym.name}. " +
-                       "Such classes will overwrite one another on case-insensitive filesystems.", cd.pos)
+            // Order is not deterministic so we enforce lexicographic order between the duplicates for error-reporting
+            if (claszSymbol.name.toString < dupClassSym.name.toString)
+              ctx.warning(s"Class ${claszSymbol.name} differs only in case from ${dupClassSym.name}. " +
+                          "Such classes will overwrite one another on case-insensitive filesystems.", claszSymbol.pos)
+            else
+              ctx.warning(s"Class ${dupClassSym.name} differs only in case from ${claszSymbol.name}. " +
+                          "Such classes will overwrite one another on case-insensitive filesystems.", dupClassSym.pos)
         }
 
         // -------------- mirror class, if needed --------------
