@@ -510,10 +510,7 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
     // convert top-level type shape into "conjunctive normal form"
     def cnf(tp: Type): Type = tp match {
       case AndType(OrType(l, r), tp)      =>
-        val tp1 = cnf(tp)
-        val l1  = cnf(l)
-        val r1  = cnf(r)
-        OrType(cnf(AndType(l1, tp1)), cnf(AndType(r1, tp1)))
+        OrType(cnf(AndType(l, tp)), cnf(AndType(r, tp)))
       case AndType(tp, o: OrType)         =>
         cnf(AndType(o, tp))
       case AndType(l, r)                  =>
@@ -533,9 +530,9 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
         val tp1 = tp.derivedRefinedType(parent1, refinedName = tp.refinedName, refinedInfo = tp.refinedInfo)
 
         if (parent1.ne(tp.parent)) cnf(tp1) else tp1
-      case tp: TypeAlias =>
+      case tp: TypeAlias                  =>
         cnf(tp.alias)
-      case _                           =>
+      case _                              =>
         tp
     }
 
