@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+set -eux
+
 # check that benchmarks can run
 ./project/scripts/sbt "dotty-bench/jmh:run 1 1 tests/pos/alias.scala"
 
@@ -66,3 +68,27 @@ else
     echo "failed output check"
     exit -1
 fi
+
+
+# check that benchmarks can run
+./project/scripts/sbt "dotty-bench-bootstrapped/jmh:run 1 1 tests/pos/alias.scala"
+
+# setup for `dotc`/`dotr` script tests
+./project/scripts/sbt dist-bootstrapped/pack
+
+# check that `dotc` compiles and `dotr` runs it
+echo "testing ./bin/dotc and ./bin/dotr"
+mkdir -p out/scriptedtest0
+./bin/dotc tests/pos/sbtDotrTest.scala -d out/scriptedtest0
+./bin/dotr -classpath out/scriptedtest0 dotrtest.Test
+
+# check that `dotc -from-tasty` compiles and `dotr` runs it
+echo "testing ./bin/dotc -from-tasty and dotr -classpath"
+mkdir -p out/scriptedtest1
+mkdir -p out/scriptedtest2
+./bin/dotc tests/pos/sbtDotrTest.scala -d out/scriptedtest1/
+./bin/dotc -from-tasty -classpath out/scriptedtest1/ -d out/scriptedtest2/ dotrtest.Test
+./bin/dotr -classpath out/scriptedtest2/ dotrtest.Test
+
+# echo ":quit" | ./dist-bootstrapped/target/pack/bin/dotr  # not supported by CI
+mkdir -p _site && ./bin/dotd -project Hello -siteroot _site tests/run/hello.scala
