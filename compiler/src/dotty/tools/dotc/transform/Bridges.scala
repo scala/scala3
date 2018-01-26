@@ -56,7 +56,13 @@ class Bridges(root: ClassSymbol)(implicit ctx: Context) {
       bridgesScope.lookupAll(member.name).exists(bridge =>
         bridgeTarget(bridge) == member && bridge.signature == other.signature)
     def info(sym: Symbol)(implicit ctx: Context) = sym.info
-    def desc(sym: Symbol)= i"$sym${info(sym)(preErasureCtx)} in ${sym.owner}"
+    def desc(sym: Symbol)= {
+      val infoStr = info(sym)(preErasureCtx) match {
+        case ExprType(info) => i": $info"
+        case info => info.show
+      }
+      i"$sym$infoStr in ${sym.owner}"
+    }
     if (member.signature == other.signature) {
       if (!member.info.matches(other.info))
         ctx.error(em"""bridge generated for member ${desc(member)}
