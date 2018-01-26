@@ -91,4 +91,4 @@ mkdir -p out/scriptedtest2
 ./bin/dotr -classpath out/scriptedtest2/ dotrtest.Test
 
 # echo ":quit" | ./dist-bootstrapped/target/pack/bin/dotr  # not supported by CI
-mkdir -p _site && ./dist-bootstrapped/target/pack/bin/dotd -project Hello -siteroot _site tests/run/hello.scala
+mkdir -p _site && ./bin/dotd -project Hello -siteroot _site tests/run/hello.scala
