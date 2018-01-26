@@ -432,8 +432,12 @@ object Parsers {
 
     def commaSeparated[T](part: () => T): List[T] = tokenSeparated(COMMA, part)
 
-    def lookaheadIn(tokens: Token*): Boolean =
-      tokens.contains(in.lookaheadScanner.nextToken())
+    /** Is the token following the current one in `tokens`? */
+    def lookaheadIn(tokens: Token*): Boolean = {
+      val lookahead = in.lookaheadScanner
+      lookahead.nextToken()
+      tokens.contains(lookahead.token)
+    }
 
 /* --------- OPERAND/OPERATOR STACK --------------------------------------- */
 
