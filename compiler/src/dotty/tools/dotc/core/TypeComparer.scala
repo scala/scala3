@@ -363,7 +363,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
               narrowGADTBounds(tp2, tp1, approx, isUpper = false)) &&
             GADTusage(tp2.symbol)
         }
-        isSubType(tp1, lo2, approx.addHigh) || compareGADT || fourthTry
+        isSubApproxHi(tp1, lo2) || compareGADT || fourthTry
 
       case _ =>
         val cls2 = tp2.symbol
@@ -750,7 +750,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
       *  @param   tyconLo   The type constructor's lower approximation.
       */
       def fallback(tyconLo: Type) =
-        either(fourthTry, isSubType(tp1, tyconLo.applyIfParameterized(args2), approx.addHigh))
+        either(fourthTry, isSubApproxHi(tp1, tyconLo.applyIfParameterized(args2)))
 
       /** Let `tycon2bounds` be the bounds of the RHS type constructor `tycon2`.
       *  Let `app2 = tp2` where the type constructor of `tp2` is replaced by
@@ -764,7 +764,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
       def compareLower(tycon2bounds: TypeBounds, tyconIsTypeRef: Boolean): Boolean =
         if (tycon2bounds.lo eq tycon2bounds.hi)
           if (tyconIsTypeRef) recur(tp1, tp2.superType)
-          else isSubType(tp1, tycon2bounds.lo.applyIfParameterized(args2), approx.addHigh)
+          else isSubApproxHi(tp1, tycon2bounds.lo.applyIfParameterized(args2))
         else
           fallback(tycon2bounds.lo)
 
@@ -825,6 +825,9 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
         //println(s"useless subtype: $tp1 <:< $tp2")
         false
       } else isSubType(tp1, tp2, approx.addLow)
+
+    def isSubApproxHi(tp1: Type, tp2: Type): Boolean =
+      (tp2 ne NothingType) && isSubType(tp1, tp2, approx.addHigh)
 
     // begin recur
     if (tp2 eq NoType) false
