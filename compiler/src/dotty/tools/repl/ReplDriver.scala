@@ -200,9 +200,11 @@ class ReplDriver(settings: Array[String],
   private def interpret(res: ParseResult)(implicit state: State): State =
     res match {
       case parsed: Parsed if parsed.trees.nonEmpty =>
-        compile(parsed)
+        val newState = compile(parsed)
           .withHistory(parsed.sourceCode :: state.history)
           .newRun(compiler, rootCtx)
+        out.println() // Prints newline after commands, also fixes #1369
+        newState
 
       case SyntaxErrors(src, errs, _) =>
         displayErrors(errs)
