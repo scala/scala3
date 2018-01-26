@@ -10,6 +10,7 @@ object FInterpolation {
   @inline private def falsely(body: => Unit): Boolean = { body ; false }
 
   implicit class FInterpolatorHelper(val sc: StringContext) extends AnyVal {
+    inline def ff(): String = ~interpolated(sc, Seq())
     inline def ff(arg1: Any): String = ~interpolated(sc, Seq('(arg1)))
     inline def ff(arg1: Any, arg2: Any): String = ~interpolated(sc, Seq('(arg1), '(arg2)))
     inline def ff(arg1: Any, arg2: Any, arg3: Any): String = ~interpolated(sc, Seq('(arg1), '(arg2), '(arg3)))
