@@ -24,6 +24,8 @@ import Contexts._
 import Types._
 import Symbols._
 import Denotations._
+import Decorators._
+
 import Phases._
 import java.lang.AssertionError
 import java.io.{DataOutputStream, File => JFile}
@@ -193,8 +195,8 @@ class GenBCodePipeline(val entryPoints: List[Symbol], val int: DottyBackendInter
           case None =>
             caseInsensitively.put(lowercaseJavaClassName, claszSymbol)
           case Some(dupClassSym) =>
-            ctx.warning(s"Class ${claszSymbol.name.toString.toLowerCase} differs only in case from ${dupClassSym.name.toString}. " +
-                       "Such classes will overwrite one another on case-insensitive filesystems.")
+            ctx.warning(s"Class ${claszSymbol.name} differs only in case from ${dupClassSym.name}. " +
+                       "Such classes will overwrite one another on case-insensitive filesystems.", cd.pos)
         }
 
         // -------------- mirror class, if needed --------------
