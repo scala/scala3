@@ -10,9 +10,9 @@ object FInterpolation {
   @inline private def falsely(body: => Unit): Boolean = { body ; false }
 
   implicit class FInterpolatorHelper(val sc: StringContext) extends AnyVal {
-    inline def ff(arg1: Any): String = ~fInterpolation(sc, Seq('(arg1)))
-    inline def ff(arg1: Any, arg2: Any): String = ~fInterpolation(sc, Seq('(arg1), '(arg2)))
-    inline def ff(arg1: Any, arg2: Any, arg3: Any): String = ~fInterpolation(sc, Seq('(arg1), '(arg2), '(arg3)))
+    inline def ff(arg1: Any): String = ~interpolated(sc, Seq('(arg1)))
+    inline def ff(arg1: Any, arg2: Any): String = ~interpolated(sc, Seq('(arg1), '(arg2)))
+    inline def ff(arg1: Any, arg2: Any, arg3: Any): String = ~interpolated(sc, Seq('(arg1), '(arg2), '(arg3)))
     // ...
   }
 
@@ -47,7 +47,8 @@ object FInterpolation {
    *  7) "...${smth}[%illegalJavaConversion]" => error
    *  *Legal according to [[http://docs.oracle.com/javase/1.5.0/docs/api/java/util/Formatter.html]]
    */
-  def interpolated(parts: List[String], args: List[Expr[Any]]) = {
+  def interpolated(sc: StringContext, args: Seq[Expr[Any]]): Expr[String] = {
+    val parts = sc.parts
     val fstring  = new StringBuilder
     val argStack = Stack(args: _*)
 
@@ -149,7 +150,7 @@ object FInterpolation {
     }
 
     //q"{..$evals; new StringOps(${fstring.toString}).format(..$ids)}"
-    if (args.isEmpty && !fstring.contains("%")) fstring
+    if (args.isEmpty && !fstring.contains("%")) fstring.toString
     else {
       val format: Expr[String] = fstring.toString
       val args1: Expr[Seq[Any]] = liftSeq(args)
