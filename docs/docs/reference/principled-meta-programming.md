@@ -169,7 +169,7 @@ usage. But the code can be made phase correct by adding a binding
 of a `Type[T]` tag:
 
     def reflect[T, U](f: Expr[T] => Expr[U])(implicit t: Type[T]): Expr[T => U] =
-      ’{ (x: ~t) => ~f(’(x))
+      ’{ (x: ~t) => ~f(’(x)) }
 
 In this version of `reflect`, the type of `x` is now the result of
 splicing the `Type` value `t`. This operation _is_ splice correct -- there
@@ -177,7 +177,7 @@ is one quote and one splice between the use of `t` and its definition.
 
 To avoid clutter, the Scala implementation tries to convert any phase-incorrect
 reference to a type `T` to a type-splice, by rewriting `T` to `~implicitly[Type[T]]`.
-For instance, the user-level definition of `reflect`
+For instance, the user-level definition of `reflect`:
 
     def reflect[T: Type, U](f: Expr[T] => Expr[U]) Expr[T => U] =
       ’{ (x: T) => ~f(’(x)) }
