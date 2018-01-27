@@ -92,6 +92,10 @@ object desugar {
     cpy.TypeDef(tdef)(
       rhs = new DerivedFromParamTree() withPos tdef.rhs.pos watching tdef)
 
+  /** A derived type definition watching `sym` */
+  def derivedTypeParam(sym: TypeSymbol)(implicit ctx: Context): TypeDef =
+    TypeDef(sym.name, new DerivedFromParamTree().watching(sym)).withFlags(TypeParam)
+
   /** A value definition copied from `vdef` with a tpt typetree derived from it */
   def derivedTermParam(vdef: ValDef) =
     cpy.ValDef(vdef)(
@@ -462,8 +466,10 @@ object desugar {
             (TypeTree(), Nil)
           else if (parents.isEmpty || enumClass.typeParams.isEmpty)
             (enumClassTypeRef, Nil)
-          else
-            enumApplyResult(cdef, parents, derivedTparams, appliedRef(enumClassRef, derivedTparams))
+          else {
+            val tparams = enumClass.typeParams.map(derivedTypeParam)
+            enumApplyResult(cdef, parents, tparams, appliedRef(enumClassRef, tparams))
+          }
 
         val parent =
           if (constrTparams.nonEmpty ||
