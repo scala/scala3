@@ -17,7 +17,7 @@ object Test {
       if (b) '(true) else '(false)
   }
 
-  implicit def ListIsLiftable[T: Liftable]: Liftable[List[T]] = new {
+  implicit def ListIsLiftable[T: Liftable: Type]: Liftable[List[T]] = new {
     def toExpr(xs: List[T]): Expr[List[T]] = xs match {
       case x :: xs1 => '{ ~implicitly[Liftable[T]].toExpr(x) :: ~toExpr(xs1) }
       case Nil => '(Nil: List[T])

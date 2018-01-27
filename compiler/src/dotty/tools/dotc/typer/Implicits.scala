@@ -553,34 +553,54 @@ trait Implicits { self: Typer =>
   }
 
   /** Find an implicit argument for parameter `formal`.
-   *  @param error  An error handler that gets an error message parameter
-   *                which is itself parameterized by another string,
-   *                indicating where the implicit parameter is needed
+   *  Return a failure as a SearchFailureType in the type of the returned tree.
    */
   def inferImplicitArg(formal: Type, pos: Position)(implicit ctx: Context): Tree = {
 
     /** If `formal` is of the form ClassTag[T], where `T` is a class type,
      *  synthesize a class tag for `T`.
    	 */
-    def synthesizedClassTag(formal: Type)(implicit ctx: Context): Tree =
-      formal.argInfos match {
-        case arg :: Nil =>
-          fullyDefinedType(arg, "ClassTag argument", pos) match {
-            case defn.ArrayOf(elemTp) =>
-              val etag = inferImplicitArg(defn.ClassTagType.appliedTo(elemTp), pos)
-              if (etag.tpe.isError) EmptyTree else etag.select(nme.wrap)
-            case tp if hasStableErasure(tp) && !defn.isBottomClass(tp.typeSymbol) =>
-              ref(defn.ClassTagModule)
-                .select(nme.apply)
-                .appliedToType(tp)
-                .appliedTo(clsOf(erasure(tp)))
-                .withPos(pos)
-            case tp =>
-              EmptyTree
+    def synthesizedClassTag(formal: Type): Tree = formal.argInfos match {
+      case arg :: Nil =>
+        fullyDefinedType(arg, "ClassTag argument", pos) match {
+          case defn.ArrayOf(elemTp) =>
+            val etag = inferImplicitArg(defn.ClassTagType.appliedTo(elemTp), pos)
+            if (etag.tpe.isError) EmptyTree else etag.select(nme.wrap)
+          case tp if hasStableErasure(tp) && !defn.isBottomClass(tp.typeSymbol) =>
+            ref(defn.ClassTagModule)
+              .select(nme.apply)
+              .appliedToType(tp)
+              .appliedTo(clsOf(erasure(tp)))
+              .withPos(pos)
+          case tp =>
+            EmptyTree
+        }
+      case _ =>
+        EmptyTree
+    }
+
+    def synthesizedTypeTag(formal: Type): Tree = formal.argInfos match {
+      case arg :: Nil =>
+        object bindFreeVars extends TypeMap {
+          var ok = true
+          def apply(t: Type) = t match {
+            case t @ TypeRef(NoPrefix, _) =>
+              inferImplicit(defn.QuotedTypeType.appliedTo(t), EmptyTree, pos) match {
+                case SearchSuccess(tag, _, _) if tag.tpe.isStable =>
+                  tag.tpe.select(defn.QuotedType_~)
+                case _ =>
+                  ok = false
+                  t
+              }
+            case _ => t
           }
-        case _ =>
-          EmptyTree
-      }
+        }
+        val tag = bindFreeVars(arg)
+        if (bindFreeVars.ok) ref(defn.typeQuoteMethod).appliedToType(tag)
+        else EmptyTree
+      case _ =>
+        EmptyTree
+    }
 
     /** If `formal` is of the form Eq[T, U], where no `Eq` instance exists for
      *  either `T` or `U`, synthesize `Eq.eqAny[T, U]` as solution.
@@ -644,6 +664,8 @@ trait Implicits { self: Typer =>
           tree
         else if (formalValue.isRef(defn.ClassTagClass))
           synthesizedClassTag(formalValue).orElse(tree)
+        else if (formalValue.isRef(defn.QuotedTypeClass))
+          synthesizedTypeTag(formalValue).orElse(tree)
         else if (formalValue.isRef(defn.EqClass))
           synthesizedEq(formalValue).orElse(tree)
         else

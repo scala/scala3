@@ -615,14 +615,20 @@ class Definitions {
   lazy val QuotedExprType = ctx.requiredClassRef("scala.quoted.Expr")
   def QuotedExprClass(implicit ctx: Context) = QuotedExprType.symbol.asClass
 
-    def QuotedExpr_~(implicit ctx: Context) = QuotedExprClass.requiredMethod(nme.UNARY_~)
-    def QuotedExpr_run(implicit ctx: Context) = QuotedExprClass.requiredMethod(nme.run)
+    lazy val QuotedExpr_spliceR = QuotedExprClass.requiredMethod(nme.UNARY_~)
+    def QuotedExpr_~(implicit ctx: Context) = QuotedExpr_spliceR.symbol
+    lazy val QuotedExpr_runR = QuotedExprClass.requiredMethodRef(nme.run)
+    def QuotedExpr_run(implicit ctx: Context) = QuotedExpr_runR.symbol
 
   lazy val QuotedTypeType = ctx.requiredClassRef("scala.quoted.Type")
   def QuotedTypeClass(implicit ctx: Context) = QuotedTypeType.symbol.asClass
 
-    def QuotedType_~(implicit ctx: Context) =
-      QuotedTypeClass.info.member(tpnme.UNARY_~).symbol.asType
+    lazy val QuotedType_spliceR = QuotedTypeClass.requiredType(tpnme.UNARY_~).typeRef
+    def QuotedType_~ = QuotedType_spliceR.symbol
+
+  lazy val QuotedTypeModule = QuotedTypeClass.companionModule
+    lazy val QuotedType_applyR = QuotedTypeModule.requiredMethodRef(nme.apply)
+    def QuotedType_apply(implicit ctx: Context) = QuotedType_applyR.symbol
 
   def Unpickler_unpickleExpr = ctx.requiredMethod("scala.runtime.quoted.Unpickler.unpickleExpr")
   def Unpickler_unpickleType = ctx.requiredMethod("scala.runtime.quoted.Unpickler.unpickleType")
