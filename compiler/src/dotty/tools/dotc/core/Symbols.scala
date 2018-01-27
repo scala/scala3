@@ -720,7 +720,7 @@ object Symbols {
   /** Makes all denotation operations available on symbols */
   implicit def toDenot(sym: Symbol)(implicit ctx: Context): SymDenotation = sym.denot
 
-  /** Makes all class denotations available on class symbols */
+  /** Makes all class denotation operations available on class symbols */
   implicit def toClassDenot(cls: ClassSymbol)(implicit ctx: Context): ClassDenotation = cls.classDenot
 
   /** The Definitions object */

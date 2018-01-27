@@ -210,7 +210,7 @@ class SymbolLoaders {
     Stats.record("package scopes")
 
     /** The scope of a package. This is different from a normal scope
-  	 *  in three aspects:
+  	 *  in two aspects:
 	   *
 	   *   1. Names of scope entries are kept in mangled form.
 	   *   2. Some function types in the `scala` package are synthesized.
