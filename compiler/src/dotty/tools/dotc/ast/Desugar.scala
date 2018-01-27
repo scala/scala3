@@ -40,7 +40,11 @@ object desugar {
     def derivedType(sym: Symbol)(implicit ctx: Context) = sym.typeRef
   }
 
-  class DerivedFromParamTree extends DerivedTypeTree {
+  /** A type tree that computes its type from an existing parameter.
+   *  @param suffix  String difference between existing parameter (call it `P`) and parameter owning the
+   *                 DerivedTypeTree (call it `O`). We have: `O.name == P.name + suffix`.
+   */
+  class DerivedFromParamTree(suffix: String) extends DerivedTypeTree {
 
     /** Make sure that for all enclosing module classes their companion lasses
      *  are completed. Reason: We need the constructor of such companion classes to
@@ -58,12 +62,16 @@ object desugar {
 
     /** Return info of original symbol, where all references to siblings of the
      *  original symbol (i.e. sibling and original symbol have the same owner)
-     *  are rewired to same-named parameters or accessors in the scope enclosing
+     *  are rewired to like-named* parameters or accessors in the scope enclosing
      *  the current scope. The current scope is the scope owned by the defined symbol
      *  itself, that's why we have to look one scope further out. If the resulting
      *  type is an alias type, dealias it. This is necessary because the
      *  accessor of a type parameter is a private type alias that cannot be accessed
      *  from subclasses.
+     *
+     *  (*) like-named means:
+     *
+     *       parameter name  ==  reference name ++ suffix
      */
     def derivedType(sym: Symbol)(implicit ctx: Context) = {
       val relocate = new TypeMap {
@@ -71,11 +79,11 @@ object desugar {
         def apply(tp: Type) = tp match {
           case tp: NamedType if tp.symbol.exists && (tp.symbol.owner eq originalOwner) =>
             val defctx = ctx.outersIterator.dropWhile(_.scope eq ctx.scope).next()
-            var local = defctx.denotNamed(tp.name).suchThat(_.isParamOrAccessor).symbol
+            var local = defctx.denotNamed(tp.name ++ suffix).suchThat(_.isParamOrAccessor).symbol
             if (local.exists) (defctx.owner.thisType select local).dealias
             else {
               def msg =
-                s"no matching symbol for ${tp.symbol.showLocated} in ${defctx.owner} / ${defctx.effectiveScope}"
+                s"no matching symbol for ${tp.symbol.showLocated} in ${defctx.owner} / ${defctx.effectiveScope.toList}"
               if (ctx.reporter.errorsReported) ErrorType(msg)
               else throw new java.lang.Error(msg)
             }
@@ -88,18 +96,20 @@ object desugar {
   }
 
   /** A type definition copied from `tdef` with a rhs typetree derived from it */
-  def derivedTypeParam(tdef: TypeDef) =
+  def derivedTypeParam(tdef: TypeDef, suffix: String = ""): TypeDef =
     cpy.TypeDef(tdef)(
-      rhs = new DerivedFromParamTree() withPos tdef.rhs.pos watching tdef)
+      name = tdef.name ++ suffix,
+      rhs = new DerivedFromParamTree(suffix).withPos(tdef.rhs.pos).watching(tdef)
+    )
 
   /** A derived type definition watching `sym` */
   def derivedTypeParam(sym: TypeSymbol)(implicit ctx: Context): TypeDef =
-    TypeDef(sym.name, new DerivedFromParamTree().watching(sym)).withFlags(TypeParam)
+    TypeDef(sym.name, new DerivedFromParamTree("").watching(sym)).withFlags(TypeParam)
 
   /** A value definition copied from `vdef` with a tpt typetree derived from it */
   def derivedTermParam(vdef: ValDef) =
     cpy.ValDef(vdef)(
-      tpt = new DerivedFromParamTree() withPos vdef.tpt.pos watching vdef)
+      tpt = new DerivedFromParamTree("") withPos vdef.tpt.pos watching vdef)
 
 // ----- Desugar methods -------------------------------------------------
 
@@ -321,8 +331,8 @@ object desugar {
     }
     def anyRef = ref(defn.AnyRefAlias.typeRef)
 
-    val derivedTparams = constrTparams map derivedTypeParam
-    val derivedVparamss = constrVparamss nestedMap derivedTermParam
+    val derivedTparams = constrTparams.map(derivedTypeParam(_))
+    val derivedVparamss = constrVparamss.nestedMap(derivedTermParam(_))
     val arity = constrVparamss.head.length
 
     val classTycon: Tree = new TypeRefTree // watching is set at end of method
@@ -423,9 +433,8 @@ object desugar {
     //      ev1: Eq[T1$1, T1$2], ..., evn: Eq[Tn$1, Tn$2]])
     //      : Eq[C[T1$1, ..., Tn$1], C[T1$2, ..., Tn$2]] = Eq
     def eqInstance = {
-      def append(tdef: TypeDef, str: String) = cpy.TypeDef(tdef)(name = tdef.name ++ str)
-      val leftParams = derivedTparams.map(append(_, "$1"))
-      val rightParams = derivedTparams.map(append(_, "$2"))
+      val leftParams = constrTparams.map(derivedTypeParam(_, "$1"))
+      val rightParams = constrTparams.map(derivedTypeParam(_, "$2"))
       val subInstances = (leftParams, rightParams).zipped.map((param1, param2) =>
         appliedRef(ref(defn.EqType), List(param1, param2)))
       DefDef(
