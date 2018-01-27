@@ -1575,7 +1575,6 @@ object Parsers {
      *                    |  `(' [Patterns] `)'
      *                    |  SimplePattern1 [TypeArgs] [ArgumentPatterns]
      *  SimplePattern1   ::= Path
-     *                    |  `{' Block `}'
      *                    |  SimplePattern1 `.' id
      *  PatVar           ::= id
      *                    |  `_'
@@ -1598,8 +1597,6 @@ object Parsers {
         } else wildIndent
       case LPAREN =>
         atPos(in.offset) { makeTupleOrParens(inParens(patternsOpt())) }
-      case LBRACE =>
-        dotSelectors(blockExpr())
       case XMLSTART =>
         xmlLiteralPattern()
       case _ =>

@@ -202,7 +202,7 @@ ParArgumentExprs  ::=  ‘(’ ExprsInParens ‘)’                            
                     |  ‘(’ [ExprsInParens] PostfixExpr ‘:’ ‘_’ ‘*’ ‘)’          exprs :+ Typed(expr, Ident(wildcardStar))
 ArgumentExprs     ::=  ParArgumentExprs
                     |  [nl] BlockExpr
-BlockExpr         ::=  ‘{’ BlockExprContents ‘}’                                
+BlockExpr         ::=  ‘{’ BlockExprContents ‘}’
 BlockExprContents ::=  CaseClauses | Block
 Block             ::=  {BlockStat semi} [BlockResult]                           Block(stats, expr?)
 BlockStat         ::=  Import
@@ -234,7 +234,6 @@ SimplePattern     ::=  PatVar                                                   
                     |  XmlPattern
                     |  SimplePattern1 [TypeArgs] [ArgumentPatterns]
 SimplePattern1    ::=  Path
-                    |  ‘{’ Block ‘}’
                     |  SimplePattern1 ‘.’ id
 PatVar            ::=  varid
                     |  ‘_’
