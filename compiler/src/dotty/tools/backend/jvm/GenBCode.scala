@@ -24,6 +24,8 @@ import Contexts._
 import Types._
 import Symbols._
 import Denotations._
+import Decorators._
+
 import Phases._
 import java.lang.AssertionError
 import java.io.{DataOutputStream, File => JFile}
@@ -188,18 +190,19 @@ class GenBCodePipeline(val entryPoints: List[Symbol], val int: DottyBackendInter
         val claszSymbol = cd.symbol
 
         // GenASM checks this before classfiles are emitted, https://github.com/scala/scala/commit/e4d1d930693ac75d8eb64c2c3c69f2fc22bec739
-        // todo: add back those checks
-        /*val lowercaseJavaClassName = claszSymbol.javaClassName.toLowerCase
+        val lowercaseJavaClassName = claszSymbol.name.toString.toLowerCase
         caseInsensitively.get(lowercaseJavaClassName) match {
           case None =>
             caseInsensitively.put(lowercaseJavaClassName, claszSymbol)
           case Some(dupClassSym) =>
-            reporter.warning(
-              claszSymbol.pos,
-              s"Class ${claszSymbol.javaClassName} differs only in case from ${dupClassSym.javaClassName}. " +
-                "Such classes will overwrite one another on case-insensitive filesystems."
-            )
-        }*/
+            // Order is not deterministic so we enforce lexicographic order between the duplicates for error-reporting
+            if (claszSymbol.name.toString < dupClassSym.name.toString)
+              ctx.warning(s"Class ${claszSymbol.name} differs only in case from ${dupClassSym.name}. " +
+                          "Such classes will overwrite one another on case-insensitive filesystems.", claszSymbol.pos)
+            else
+              ctx.warning(s"Class ${dupClassSym.name} differs only in case from ${claszSymbol.name}. " +
+                          "Such classes will overwrite one another on case-insensitive filesystems.", dupClassSym.pos)
+        }
 
         // -------------- mirror class, if needed --------------
         val mirrorC =
