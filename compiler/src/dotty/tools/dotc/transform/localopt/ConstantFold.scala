@@ -6,7 +6,6 @@ import core.Symbols._
 import core.Types._
 import typer.ConstFold
 import ast.Trees._
-import Simplify.desugarIdent
 
 /** Various constant folding.
  *

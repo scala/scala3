@@ -829,13 +829,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
         val setter = tree.symbol.setter
         assert(setter.exists, tree.symbol.showLocated)
         val qual = tree match {
-          case id: Ident =>
-            id.tpe match {
-              case TermRef(prefix: TermRef, _) =>
-                ref(prefix)
-              case TermRef(prefix: ThisType, _) =>
-                This(prefix.cls)
-            }
+          case id: Ident => desugarIdentPrefix(id)
           case Select(qual, _) => qual
         }
         qual.select(setter).appliedTo(rhs)
@@ -1016,6 +1010,22 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     val file = call.symbol.sourceFile
     val encoding = ctx.settings.encoding.value
     if (file != null && file.exists) new SourceFile(file, Codec(encoding)) else NoSource
+  }
+
+  /** Desugar identifier into a select node. Return None if not possible */
+  def desugarIdent(tree: Ident)(implicit ctx: Context): Option[Select] = {
+    val qual = desugarIdentPrefix(tree)
+    if (qual.isEmpty) None
+    else Some(qual.select(tree.symbol))
+  }
+
+  private def desugarIdentPrefix(tree: Ident)(implicit ctx: Context): Tree = tree.tpe match {
+    case TermRef(prefix: TermRef, _) =>
+      ref(prefix)
+    case TermRef(prefix: ThisType, _) =>
+      This(prefix.cls)
+    case _ =>
+      EmptyTree
   }
 }
 

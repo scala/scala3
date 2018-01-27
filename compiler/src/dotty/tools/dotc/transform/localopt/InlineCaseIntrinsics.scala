@@ -10,7 +10,6 @@ import core.Flags._
 import core.TypeApplications.noBounds
 import ast.Trees._
 import transform.SymUtils._
-import Simplify.desugarIdent
 import dotty.tools.dotc.ast.tpd
 
 /** Inline case class specific methods using desugarings assumptions.

@@ -850,21 +850,6 @@ class JSCodeGen()(implicit ctx: Context) {
     }
   } // end of genStatOrExpr()
 
-  // !!! DUPLICATE code with DottyBackendInterface
-  private def desugarIdent(i: Ident): Option[Select] = {
-    i.tpe match {
-      case TermRef(prefix: TermRef, name) =>
-        Some(tpd.ref(prefix).select(i.symbol))
-      case TermRef(prefix: ThisType, name) =>
-        Some(tpd.This(prefix.cls).select(i.symbol))
-      /*case TermRef(NoPrefix, name) =>
-        if (i.symbol is Method) Some(This(i.symbol.topLevelClass).select(i.symbol)) // workaround #342 todo: remove after fixed
-        else None*/
-      case _ =>
-        None
-    }
-  }
-
   private def qualifierOf(fun: Tree): Tree = fun match {
     case fun: Ident =>
       fun.tpe match {
