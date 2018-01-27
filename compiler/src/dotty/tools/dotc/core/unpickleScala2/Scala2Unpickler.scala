@@ -415,7 +415,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
               owner.info.decls.checkConsistent()
               if (slowSearch(name).exists)
                 System.err.println(i"**** slow search found: ${slowSearch(name)}")
-              if (ctx.debug) Thread.dumpStack()
+              if (ctx.settings.YdebugMissingRefs.value) Thread.dumpStack()
               ctx.newStubSymbol(owner, name, source)
             }
           }
