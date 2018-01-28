@@ -3,6 +3,8 @@ package dotty.tools.backend.jvm
 import org.junit.Assert._
 import org.junit.Test
 
+import scala.tools.asm.Opcodes
+
 class TestBCode extends DottyBytecodeTest {
   import ASMConverters._
   @Test def nullChecks = {
@@ -211,6 +213,32 @@ class TestBCode extends DottyBytecodeTest {
       }
 
       assert(!arrayWrapped, "Arrays should not be wrapped when passed to a Java varargs method\n")
+    }
+  }
+
+  @Test def efficientTryCases = {
+    val source =
+      """
+        |class Test {
+        |  def test =
+        |    try print("foo")
+        |    catch {
+        |      case _: scala.runtime.NonLocalReturnControl[_] => ()
+        |    }
+        |}
+      """.stripMargin
+
+    checkBCode(source) { dir =>
+      val moduleIn = dir.lookupName("Test.class", directory = false)
+      val moduleNode = loadClassNode(moduleIn.input)
+      val method = getMethod(moduleNode, "test")
+
+      val hasInstanceof = instructionsFromMethod(method).exists {
+        case TypeOp(Opcodes.INSTANCEOF, _) => true
+        case _ => false
+      }
+
+      assert(!hasInstanceof, "Try case should not issue INSTANCEOF opcode\n")
     }
   }
 }

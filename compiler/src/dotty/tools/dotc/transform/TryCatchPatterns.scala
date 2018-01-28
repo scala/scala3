@@ -76,6 +76,8 @@ class TryCatchPatterns extends MiniPhase {
       (pre == NoPrefix || pre.widen.typeSymbol.isStatic) && // Does not require outer class check
       !tp.symbol.is(Flags.Trait) && // Traits not supported by JVM
       tp.derivesFrom(defn.ThrowableClass)
+    case tp: AppliedType =>
+      isSimpleThrowable(tp.tycon)
     case _ =>
       false
   }
