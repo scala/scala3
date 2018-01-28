@@ -2887,7 +2887,7 @@ object Types {
     }
 
     final def apply(paramNames: List[TermName])(paramInfosExp: MethodType => List[Type], resultTypeExp: MethodType => Type)(implicit ctx: Context): MethodType =
-      checkValid(new CachedMethodType(paramNames)(paramInfosExp, resultTypeExp, self))
+      checkValid(unique(new CachedMethodType(paramNames)(paramInfosExp, resultTypeExp, self)))
 
     def checkValid(mt: MethodType)(implicit ctx: Context): mt.type = {
       if (Config.checkMethodTypes)
