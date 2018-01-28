@@ -228,11 +228,7 @@ class Namer { typer: Typer =>
 
   /** Record `sym` as the symbol defined by `tree` */
   def recordSym(sym: Symbol, tree: Tree)(implicit ctx: Context): Symbol = {
-    val refs = tree.attachmentOrElse(References, Nil)
-    if (refs.nonEmpty) {
-      tree.removeAttachment(References)
-      refs foreach (_.pushAttachment(OriginalSymbol, sym))
-    }
+    for (refs <- tree.removeAttachment(References); ref <- refs) ref.watching(sym)
     tree.pushAttachment(SymOfTree, sym)
     sym
   }

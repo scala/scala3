@@ -227,6 +227,12 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
       this
     }
 
+    /** Install the derived type tree as a dependency on `sym` */
+    def watching(sym: Symbol): this.type = {
+      pushAttachment(OriginalSymbol, sym)
+      this
+    }
+
     /** A hook to ensure that all necessary symbols are completed so that
      *  OriginalSymbol attachments are propagated to this tree
      */
@@ -240,7 +246,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
    *  from the symbol in this type. These type trees have marker trees
    *  TypeRefOfSym or InfoOfSym as their originals.
    */
-  val References = new Property.Key[List[Tree]]
+  val References = new Property.Key[List[DerivedTypeTree]]
 
   /** Property key for TypeTrees marked with TypeRefOfSym or InfoOfSym
    *  which contains the symbol of the original tree from which this
