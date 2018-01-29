@@ -81,7 +81,7 @@ case class Completions(cursor: Int,
 
 /** Main REPL instance, orchestrating input, compilation and presentation */
 class ReplDriver(settings: Array[String],
-                 protected val out: PrintStream = System.out,
+                 protected val out: PrintStream = Console.out,
                  protected val classLoader: Option[ClassLoader] = None) extends Driver {
 
   /** Overridden to `false` in order to not have to give sources on the
@@ -135,26 +135,32 @@ class ReplDriver(settings: Array[String],
    *  observable outside of the CLI, for this reason, most helper methods are
    *  `protected final` to facilitate testing.
    */
-  @tailrec final def runUntilQuit(state: State = initState): State = {
-    val res = readLine()(state)
+  final def runUntilQuit(): State = {
+    @tailrec def loop(state: State): State = {
+      val res = readLine()(state)
 
-    if (res == Quit) {
-      out.println()
-      state
+      if (res == Quit) {
+        out.println()
+        state
+      }
+      else {
+        // readLine potentially destroys the run, so a new one is needed for the
+        // rest of the interpretation:
+        implicit val freshState = state.newRun(compiler, rootCtx)
+        loop(interpret(res))
+      }
     }
-    else {
-      // readLine potentially destroys the run, so a new one is needed for the
-      // rest of the interpretation:
-      implicit val freshState = state.newRun(compiler, rootCtx)
-      runUntilQuit(interpret(res))
-    }
+
+    withRedirectedOutput { loop(initState) }
   }
 
-  final def run(input: String)(implicit state: State): State =
-    run(ParseResult(input)(state.run.runContext))(state.newRun(compiler, rootCtx))
+  final def run(input: String)(implicit state: State): State = withRedirectedOutput {
+    val parsed = ParseResult(input)(state.run.runContext)
+    interpret(parsed)(state.newRun(compiler, rootCtx))
+  }
 
-  final def run(res: ParseResult)(implicit state: State): State =
-    interpret(res)
+  private def withRedirectedOutput(op: => State): State =
+    Console.withOut(out) { Console.withErr(out) { op } }
 
   /** Extract possible completions at the index of `cursor` in `expr` */
   protected[this] final def completions(cursor: Int, expr: String, state0: State): Completions = {
