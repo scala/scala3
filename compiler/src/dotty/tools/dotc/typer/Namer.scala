@@ -824,7 +824,7 @@ class Namer { typer: Typer =>
     private[this] var nestedCtx: Context = null
     assert(!original.isClassDef)
 
-    def completerTypeParams(sym: Symbol)(implicit ctx: Context): List[TypeSymbol] = {
+    override def completerTypeParams(sym: Symbol)(implicit ctx: Context): List[TypeSymbol] = {
       if (myTypeParams == null) {
         //println(i"completing type params of $sym in ${sym.owner}")
         nestedCtx = localContext(sym).setNewScope
@@ -1229,6 +1229,7 @@ class Namer { typer: Typer =>
       sym.info = NoCompleter
       sym.info = checkNonCyclic(sym, unsafeInfo, reportErrors = true)
     }
+    sym.resetFlag(Provisional)
 
     // Here we pay the price for the cavalier setting info to TypeBounds.empty above.
     // We need to compensate by reloading the denotation of references that might

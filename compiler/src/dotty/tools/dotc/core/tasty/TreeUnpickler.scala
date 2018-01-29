@@ -745,12 +745,18 @@ class TreeUnpickler(reader: TastyReader,
             }
             TypeDef(readTemplate(localCtx))
           } else {
+            sym.info = TypeBounds.empty // needed to avoid cyclic references when unpicklin rhs, see i3816.scala
+            sym.setFlag(Provisional)
             val rhs = readTpt()(localCtx)
-            sym.info = NoCompleter
+            sym.info = new NoCompleter {
+              override def completerTypeParams(sym: Symbol)(implicit ctx: Context) =
+                rhs.tpe.typeParams
+            }
             sym.info = rhs.tpe match {
               case _: TypeBounds | _: ClassInfo => checkNonCyclic(sym, rhs.tpe, reportErrors = false)
               case _ => TypeAlias(rhs.tpe)
             }
+            sym.resetFlag(Provisional)
             TypeDef(rhs)
           }
         case PARAM =>
