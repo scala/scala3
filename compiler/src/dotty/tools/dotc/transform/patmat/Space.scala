@@ -557,6 +557,8 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
 
           debug.println(s"bases of ${tp1.show}: " + bases1)
           debug.println(s"bases of ${tp2.show}: " + bases2)
+          debug.println(s"${tp1.show} <:< ${tp2.show} : " +  (tp1 <:< tp2))
+          debug.println(s"${tp2.show} <:< ${tp1.show} : " +  (tp2 <:< tp1))
 
           val noClassConflict =
             bases1.forall(sym1 => sym1.is(Trait) || bases2.forall(sym2 => sym2.is(Trait) || sym1.isSubClass(sym2))) ||
@@ -638,6 +640,20 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
       }
     }
 
+    // Fix subtype checking for child instantiation,
+    // such that `Foo(Test.this.foo) <:< Foo(Foo.this)`
+    // See tests/patmat/i3938.scala
+    def removeThisType(implicit ctx: Context) = new TypeMap {
+      def apply(tp: Type): Type = tp match {
+        case ThisType(tref: TypeRef) =>
+          if (tref.symbol.is(Module))
+            TermRef(tref.prefix, tref.symbol.sourceModule)
+          else
+            mapOver(tref)
+        case _ => mapOver(tp)
+      }
+    }
+
     // We are checking the possibility of `tp1 <:< tp2`, thus we should
     // minimize `tp1` while maximizing `tp2`. See tests/patmat/3645b.scala
     def childTypeMap(implicit ctx: Context) = new AbstractTypeMap(maximize = false) {
@@ -645,8 +661,10 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
         // map `ThisType` of `tp1` to a type variable
         // precondition: `tp1` should have the same shape as `path.Child`, thus `ThisType` is always covariant
         case tp @ ThisType(tref) if !tref.symbol.isStaticOwner  =>
-          if (tref.symbol.is(Module)) this(tref)
-          else newTypeVar(TypeBounds.upper(tp.underlying))
+          if (tref.symbol.is(Module))
+            this(TermRef(tref.prefix, tref.symbol.sourceModule))
+          else
+            newTypeVar(TypeBounds.upper(removeThisType.apply(tref)))
 
         case tp =>
           mapOver(tp)
