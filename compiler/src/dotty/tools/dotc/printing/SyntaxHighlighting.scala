@@ -44,7 +44,7 @@ object SyntaxHighlighting {
 
   private val typeEnders =
    '{'  :: '}' :: ')' :: '(' :: '[' :: ']' :: '=' :: ' ' :: ',' :: '.' :: '|' ::
-   :: '&' :: '\n' :: Nil
+   '&' :: '\n' :: Nil
 
   def apply(chars: Iterable[Char]): Iterable[Char] = {
     var prev: Char = 0
