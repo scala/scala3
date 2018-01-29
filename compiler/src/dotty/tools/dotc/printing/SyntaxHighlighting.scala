@@ -44,7 +44,7 @@ object SyntaxHighlighting {
 
   private val typeEnders =
    '{'  :: '}' :: ')' :: '(' :: '[' :: ']' :: '=' :: ' ' :: ',' :: '.' :: '|' ::
-   '\n' :: Nil
+   :: '&' :: '\n' :: Nil
 
   def apply(chars: Iterable[Char]): Iterable[Char] = {
     var prev: Char = 0
@@ -55,7 +55,7 @@ object SyntaxHighlighting {
     @inline def keywordStart =
       prev == 0    || prev == ' ' || prev == '{' || prev == '(' ||
       prev == '\n' || prev == '[' || prev == ',' || prev == ':' ||
-      prev == '|'
+      prev == '|'  || prev == '&'
 
     @inline def numberStart(c: Char) =
       c.isDigit && (!prev.isLetter || prev == '.' || prev == ' ' || prev == '(' || prev == '\u0000')
