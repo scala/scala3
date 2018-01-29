@@ -783,28 +783,21 @@ trait ParallelTesting extends RunnerOrchestration { self =>
           }
         }
 
-        if (compilerCrashed) {
-          echo(s"Compiler crashed when compiling: ${testSource.title}")
+        def fail(msg: String): Unit = {
+          echo(msg)
           failTestSource(testSource)
         }
-        else if (expectedErrors != actualErrors) {
-          echo {
-            s"\nWrong number of errors encountered when compiling $testSource, expected: $expectedErrors, actual: $actualErrors\n"
-          }
-          failTestSource(testSource)
-        }
-        else if (hasMissingAnnotations()) {
-          echo {
-            s"\nErrors found on incorrect row numbers when compiling $testSource"
-          }
-          failTestSource(testSource)
-        }
-        else if (!errorMap.isEmpty) {
-          echo {
-            s"\nExpected error(s) have {<error position>=<unreported error>}: $errorMap"
-          }
-          failTestSource(testSource)
-        }
+
+        if (compilerCrashed)
+          fail(s"Compiler crashed when compiling: ${testSource.title}")
+        else if (actualErrors == 0)
+          fail(s"\nNo errors found when compiling neg test $testSource")
+        else if (expectedErrors != actualErrors)
+          fail(s"\nWrong number of errors encountered when compiling $testSource, expected: $expectedErrors, actual: $actualErrors")
+        else if (hasMissingAnnotations())
+          fail(s"\nErrors found on incorrect row numbers when compiling $testSource")
+        else if (!errorMap.isEmpty)
+          fail(s"\nExpected error(s) have {<error position>=<unreported error>}: $errorMap")
 
         registerCompletion(actualErrors)
       }
