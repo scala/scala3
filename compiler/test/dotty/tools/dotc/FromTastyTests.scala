@@ -45,6 +45,9 @@ class FromTastyTests extends ParallelTesting {
         "t8023.scala",
         "hklub0.scala",
         "i1365.scala",
+        "dependent-class.scala",
+        "dependent-t5700.scala",
+        "dependent-1262.scala",
 
         // Missing position
         "i3000.scala",
