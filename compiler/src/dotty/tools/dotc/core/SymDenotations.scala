@@ -1665,8 +1665,7 @@ object SymDenotations {
               case tparams: List[Symbol @unchecked] =>
                 baseTypeOf(tycon).subst(tparams, args)
             }
-          case tp @ RefinedType(parent, name, AnnotatedType(refine, annot))
-          if annot.symbol eq defn.DependentAnnot =>
+          case tp @ RefinedType(parent, name, refine) if tp.isDependent =>
             val res = baseTypeOf(tp.superType)
             res.subst(tp.nonPrivateMember(name).symbol :: Nil, refine :: Nil)
           case tp: TypeProxy =>

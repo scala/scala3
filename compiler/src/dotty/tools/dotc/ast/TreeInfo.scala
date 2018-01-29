@@ -672,7 +672,7 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
   def isStructuralTermSelect(tree: Tree)(implicit ctx: Context) = tree match {
     case tree: Select =>
       def hasRefinement(qualtpe: Type): Boolean = qualtpe.dealias match {
-        case RefinedType(parent, rname, rinfo) =>
+        case tp @ RefinedType(parent, rname, rinfo) if !tp.isDependent =>
           rname == tree.name || hasRefinement(parent)
         case tp: TypeProxy =>
           hasRefinement(tp.underlying)

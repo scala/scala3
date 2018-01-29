@@ -2255,6 +2255,12 @@ object Types {
       if (parent.member(refinedName).exists) derivedRefinedType(parent, refinedName, refinedInfo)
       else parent
 
+    /** Is current type a dependent class refinement, i.e. { val x: T @dependent } ? */
+    def isDependent(implicit ctx: Context): Boolean = refinedInfo match {
+      case AnnotatedType(_, annot) => annot.symbol eq defn.DependentAnnot
+      case _ => false
+    }
+
     override def computeHash = doHash(refinedName, refinedInfo, parent)
 
     override def eql(that: Type) = that match {
