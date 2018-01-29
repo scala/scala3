@@ -85,6 +85,7 @@ class FromTastyTests extends ParallelTesting {
     val (step1, step2, step3) = compileTastyInDir("../tests/run", defaultOptions,
        blacklist = Set(
          "t3613.scala",
+         "dependent-functor.scala",
 
          // Missing position
          "Course-2002-13.scala",
