@@ -21,7 +21,7 @@ import ErrorMessageID._
 import Denotations.SingleDenotation
 import dotty.tools.dotc.ast.Trees
 import dotty.tools.dotc.config.ScalaVersion
-import dotty.tools.dotc.core.Flags.{FlagSet, Mutable}
+import dotty.tools.dotc.core.Flags._
 import dotty.tools.dotc.core.SymDenotations.SymDenotation
 import scala.util.control.NonFatal
 
@@ -203,11 +203,11 @@ object messages {
     val explanation =
       hl"""|Anonymous functions must define a type. For example, if you define a function like this one:
            |
-           |${"val f = { case xs @ List(1, 2, 3) => Some(xs) }"}
+           |${"val f = { case x: Int => x + 1 }"}
            |
            |Make sure you give it a type of what you expect to match and help the type inference system:
            |
-           |${"val f: Seq[Int] => Option[List[Int]] = { case xs @ List(1, 2, 3) => Some(xs) }"} """
+           |${"val f: Any => Int = { case x: Int => x + 1 }"} """
   }
 
   case class WildcardOnTypeArgumentNotAllowedOnNew()(implicit ctx: Context)
@@ -2078,23 +2078,14 @@ object messages {
   }
 
   case class JavaSymbolIsNotAValue(symbol: Symbol)(implicit ctx: Context) extends Message(JavaSymbolIsNotAValueID) {
-    val msg = hl"$symbol is not a value"
     val kind = "Type Mismatch"
-    val explanation = {
-      val javaCodeExample = """class A {public static int a() {return 1;}}"""
+    val msg = {
+      val kind =
+        if (symbol is Package) hl"$symbol"
+        else hl"Java defined ${"class " + symbol.name}"
 
-      val scalaCodeExample =
-        """val objectA = A     // This does not compile
-          |val aResult = A.a() // This does compile""".stripMargin
-
-      hl"""Java statics and packages cannot be used as a value.
-          |For Java statics consider the following Java example:
-          |
-          |$javaCodeExample
-          |
-          |When used from Scala:
-          |
-          |$scalaCodeExample"""
+      s"$kind is not a value"
     }
+    val explanation = ""
   }
 }
