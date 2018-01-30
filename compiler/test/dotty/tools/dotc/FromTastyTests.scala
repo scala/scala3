@@ -45,6 +45,9 @@ class FromTastyTests extends ParallelTesting {
         "t8023.scala",
         "hklub0.scala",
         "i1365.scala",
+        "dependent-class.scala",
+        "dependent-t5700.scala",
+        "dependent-1262.scala",
 
         // Missing position
         "i3000.scala",
@@ -82,6 +85,7 @@ class FromTastyTests extends ParallelTesting {
     val (step1, step2, step3) = compileTastyInDir("../tests/run", defaultOptions,
        blacklist = Set(
          "t3613.scala",
+         "dependent-functor.scala",
 
          // Missing position
          "Course-2002-13.scala",

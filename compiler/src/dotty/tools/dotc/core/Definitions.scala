@@ -702,6 +702,8 @@ class Definitions {
   def TASTYLongSignatureAnnot(implicit ctx: Context) = TASTYLongSignatureAnnotType.symbol.asClass
   lazy val TailrecAnnotType = ctx.requiredClassRef("scala.annotation.tailrec")
   def TailrecAnnot(implicit ctx: Context) = TailrecAnnotType.symbol.asClass
+  lazy val DependentAnnotType = ctx.requiredClassRef("scala.annotation.dependent")
+  def DependentAnnot(implicit ctx: Context) = DependentAnnotType.symbol.asClass
   lazy val SwitchAnnotType = ctx.requiredClassRef("scala.annotation.switch")
   def SwitchAnnot(implicit ctx: Context) = SwitchAnnotType.symbol.asClass
   lazy val ThrowsAnnotType = ctx.requiredClassRef("scala.throws")

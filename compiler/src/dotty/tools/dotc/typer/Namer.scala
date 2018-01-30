@@ -1195,7 +1195,18 @@ class Namer { typer: Typer =>
     if (isConstructor) {
       // set result type tree to unit, but take the current class as result type of the symbol
       typedAheadType(ddef.tpt, defn.UnitType)
-      wrapMethType(ctx.effectiveResultType(sym, typeParams, NoType))
+
+      val base = ctx.effectiveResultType(sym, typeParams, NoType)
+      val refined = termParamss.foldLeft(base) { (acc, termParams) =>
+        termParams.foldLeft(base) { case (acc, termParam) =>
+          val dependentAnnot = termParam.annotations.find(_.symbol eq defn.DependentAnnot)
+          if (dependentAnnot.nonEmpty)
+            RefinedType(acc, termParam.name, AnnotatedType(termParam.termRef, dependentAnnot.get))
+          else acc
+        }
+      }
+
+      wrapMethType(refined)
     }
     else valOrDefDefSig(ddef, sym, typeParams, termParamss, wrapMethType)
   }
