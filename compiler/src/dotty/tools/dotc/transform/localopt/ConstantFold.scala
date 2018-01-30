@@ -181,22 +181,19 @@ import ast.Trees._
         case _ => false
       }
     case t1: Ident =>
-      desugarIdent(t1) match {
-        case Some(t) =>
-          val t2i = t2 match {
-            case t2: Ident => desugarIdent(t2).getOrElse(t2)
-            case _ => t2
-          }
-          isSimilar(t, t2i)
-        case None => t1.symbol eq t2.symbol
+      t2 match {
+        case t2: Ident =>
+          t1.symbol eq t2.symbol
+        case _ => // Select
+          isSimilar(t2, t1)
       }
     case t1: Select => t2 match {
       case t2: Select =>
         (t1.symbol eq t2.symbol) &&
         isSimilar(t1.qualifier, t2.qualifier)
       case t2: Ident => desugarIdent(t2) match {
-        case Some(t2) => isSimilar(t1, t2)
-        case None => false
+        case t2: Select => isSimilar(t1, t2)
+        case _ => false
       }
       case _ => false
     }

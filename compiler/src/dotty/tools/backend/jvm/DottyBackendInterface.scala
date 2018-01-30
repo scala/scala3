@@ -444,8 +444,12 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
   def desugarIdent(i: Ident): Option[tpd.Select] = {
     var found = desugared.get(i.tpe)
     if (found == null) {
-      found = tpd.desugarIdent(i).orNull
-      if (found != null) desugared.put(i.tpe, found)
+      tpd.desugarIdent(i) match {
+        case sel: tpd.Select =>
+          desugared.put(i.tpe, sel)
+          found = sel
+        case _ =>
+      }
     }
     if (found == null) None else Some(found)
   }

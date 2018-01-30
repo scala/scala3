@@ -793,7 +793,7 @@ class JSCodeGen()(implicit ctx: Context) {
           throw new FatalError(s"Assignment to static member ${sym.fullName} not supported")
         val genRhs = genExpr(rhs)
         val lhs = lhs0 match {
-          case lhs: Ident => desugarIdent(lhs).getOrElse(lhs)
+          case lhs: Ident => desugarIdent(lhs)
           case lhs => lhs
         }
         lhs match {
@@ -892,7 +892,7 @@ class JSCodeGen()(implicit ctx: Context) {
     val sym = tree.fun.symbol
 
     val fun = tree.fun match {
-      case fun: Ident => desugarIdent(fun).getOrElse(fun)
+      case fun: Ident => desugarIdent(fun)
       case fun => fun
     }
 
@@ -1556,7 +1556,7 @@ class JSCodeGen()(implicit ctx: Context) {
     implicit val pos = tree.pos
 
     val fun = tree.fun match {
-      case fun: Ident => desugarIdent(fun).get
+      case fun: Ident => desugarIdent(fun).asInstanceOf[Select]
       case fun: Select => fun
     }
     val receiver = fun.qualifier

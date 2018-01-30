@@ -108,10 +108,9 @@ class InlineCaseIntrinsics(val simplifyPhase: Simplify) extends Optimisation {
       def receiver(t: Tree): Type = t match {
         case t: Apply     => receiver(t.fun)
         case t: TypeApply => receiver(t.fun)
-        case t: Ident     => desugarIdent(t) match {
-          case Some(t) => receiver(t)
-          case _ => NoType
-        }
+        case t: Ident     =>
+          val prefix = desugarIdentPrefix(t)
+          prefix.tpe.widenDealias
         case t: Select => t.qualifier.tpe.widenDealias
       }
 

@@ -1012,14 +1012,15 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     if (file != null && file.exists) new SourceFile(file, Codec(encoding)) else NoSource
   }
 
-  /** Desugar identifier into a select node. Return None if not possible */
-  def desugarIdent(tree: Ident)(implicit ctx: Context): Option[Select] = {
+  /** Desugar identifier into a select node. Return the tree itself if not possible */
+  def desugarIdent(tree: Ident)(implicit ctx: Context): Tree = {
     val qual = desugarIdentPrefix(tree)
-    if (qual.isEmpty) None
-    else Some(qual.select(tree.symbol))
+    if (qual.isEmpty) tree
+    else qual.select(tree.symbol)
   }
 
-  private def desugarIdentPrefix(tree: Ident)(implicit ctx: Context): Tree = tree.tpe match {
+  /** Recover identifier prefix (e.g. this) if it exists */
+  def desugarIdentPrefix(tree: Ident)(implicit ctx: Context): Tree = tree.tpe match {
     case TermRef(prefix: TermRef, _) =>
       ref(prefix)
     case TermRef(prefix: ThisType, _) =>
