@@ -826,14 +826,13 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
      */
     def becomes(rhs: Tree)(implicit ctx: Context): Tree =
       if (tree.symbol is Method) {
-        val setr = tree match {
-          case Ident(_) =>
-            val setter = tree.symbol.setter
-            assert(setter.exists, tree.symbol.showLocated)
-            ref(tree.symbol.setter)
-          case Select(qual, _) => qual.select(tree.symbol.setter)
+        val setter = tree.symbol.setter
+        assert(setter.exists, tree.symbol.showLocated)
+        val qual = tree match {
+          case id: Ident => desugarIdentPrefix(id)
+          case Select(qual, _) => qual
         }
-        setr.appliedTo(rhs)
+        qual.select(setter).appliedTo(rhs)
       }
       else Assign(tree, rhs)
 
@@ -1011,6 +1010,23 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     val file = call.symbol.sourceFile
     val encoding = ctx.settings.encoding.value
     if (file != null && file.exists) new SourceFile(file, Codec(encoding)) else NoSource
+  }
+
+  /** Desugar identifier into a select node. Return the tree itself if not possible */
+  def desugarIdent(tree: Ident)(implicit ctx: Context): Tree = {
+    val qual = desugarIdentPrefix(tree)
+    if (qual.isEmpty) tree
+    else qual.select(tree.symbol)
+  }
+
+  /** Recover identifier prefix (e.g. this) if it exists */
+  def desugarIdentPrefix(tree: Ident)(implicit ctx: Context): Tree = tree.tpe match {
+    case TermRef(prefix: TermRef, _) =>
+      ref(prefix)
+    case TermRef(prefix: ThisType, _) =>
+      This(prefix.cls)
+    case _ =>
+      EmptyTree
   }
 }
 

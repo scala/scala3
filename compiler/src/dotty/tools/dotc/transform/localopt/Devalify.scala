@@ -194,7 +194,7 @@ class Devalify extends Optimisation {
       readingOnlyVals(qual)
 
     case t: Ident if !t.symbol.is(Mutable | Method) && !t.symbol.info.dealias.isInstanceOf[ExprType] =>
-      desugarIdent(t).forall(readingOnlyVals)
+      desugarIdent(t) match { case s: Select => readingOnlyVals(s); case _ => true }
 
     case t: This => true
     // null => false, or the following fails devalify:
