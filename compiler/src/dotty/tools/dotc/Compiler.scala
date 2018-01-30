@@ -111,11 +111,11 @@ class Compiler {
                                         // Note: in this mini-phase block scopes are incorrect. No phases that rely on scopes should be here
          new ElimStaticThis) ::      // Replace `this` references to static objects by global identifiers
     List(new Flatten,                // Lift all inner classes to package scope
-         new RestoreScopes,          // Repair scopes rendered invalid by moving definitions in prior phases of the group
          new RenameLifted,           // Renames lifted classes to local numbering scheme
          new TransformWildcards,     // Replace wildcards with default values
          new MoveStatics,            // Move static methods to companion classes
          new ExpandPrivate,          // Widen private definitions accessed from nested classes
+         new RestoreScopes,          // Repair scopes rendered invalid by moving definitions in prior phases of the group
          new SelectStatic,           // get rid of selects that would be compiled into GetStatic
          new CollectEntryPoints,     // Find classes with main methods
          new CollectSuperCalls,      // Find classes that are called with super
