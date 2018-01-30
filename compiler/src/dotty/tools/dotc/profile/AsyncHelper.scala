@@ -25,7 +25,7 @@ object AsyncHelper {
   }
 
   private abstract class BaseAsyncHelper(phase: Phase)(implicit ctx: Context) extends AsyncHelper {
-    val baseGroup = new ThreadGroup(s"scalac-${phase.phaseName}")
+    val baseGroup = new ThreadGroup(s"dotc-${phase.phaseName}")
     private def childGroup(name: String) = new ThreadGroup(baseGroup, name)
 
     protected def wrapRunnable(r: Runnable, shortId:String): Runnable
