@@ -23,11 +23,22 @@ class Splitter extends MiniPhase {
     recur(tree.fun)
   }
 
+  private def needsDistribution(fun: Tree) = fun match {
+    case _: Block | _: If => true
+    case _ => false
+  }
+
   override def transformTypeApply(tree: TypeApply)(implicit ctx: Context) =
-    distribute(tree, typeApply)
+    if (needsDistribution(tree.fun))
+      distribute(tree, typeApply)
+    else
+      tree
 
   override def transformApply(tree: Apply)(implicit ctx: Context) =
-    distribute(tree, apply)
+    if (needsDistribution(tree.fun))
+      distribute(tree, apply)
+    else
+      tree
 
   private val typeApply = (fn: Tree, args: List[Tree]) => (ctx: Context) => TypeApply(fn, args)(ctx)
   private val apply     = (fn: Tree, args: List[Tree]) => (ctx: Context) => Apply(fn, args)(ctx)
