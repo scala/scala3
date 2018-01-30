@@ -66,8 +66,14 @@ object Scala2Unpickler {
       assert(lastArg isRef defn.ArrayClass)
       val elemtp0 :: Nil = lastArg.baseType(defn.ArrayClass).argInfos
       val elemtp = elemtp0 match {
-        case AndType(t1, t2) if t1.typeSymbol.isAbstractType && (t2 isRef defn.ObjectClass) =>
-          t1 // drop intersection with Object for abstract types in varargs. UnCurry can handle them.
+        case AndType(t1, t2) => // drop intersection with Object for abstract types an parameters in varargs. Erasure can handle them.
+          if (t2.isRef(defn.ObjectClass))
+            t1 match {
+              case t1: TypeParamRef => t1
+              case t1: TypeRef if t1.symbol.isAbstractOrParamType => t1
+              case _ => elemtp0
+            }
+          else elemtp0
         case _ =>
           elemtp0
       }

@@ -191,7 +191,7 @@ object RefChecks {
       def info = self.memberInfo(sym1)
       val infoStr =
         if (sym1.isAliasType) i", which equals ${info.bounds.hi}"
-        else if (sym1.isAbstractType) i" with bounds$info"
+        else if (sym1.isAbstractOrParamType) i" with bounds$info"
         else if (sym1.is(Module)) ""
         else if (sym1.isTerm) i" of type $info"
         else ""
@@ -913,7 +913,7 @@ class RefChecks extends MiniPhase { thisPhase =>
       }
       def underlyingClass(tp: Type): Symbol = {
         val sym = tp.widen.typeSymbol
-        if (sym.isAbstractType) underlyingClass(sym.info.bounds.hi)
+        if (sym.isAbstractOrParamType) underlyingClass(sym.info.bounds.hi)
         else sym
       }
       val actual   = underlyingClass(other.tpe)
