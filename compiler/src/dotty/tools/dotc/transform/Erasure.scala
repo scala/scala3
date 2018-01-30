@@ -535,9 +535,12 @@ object Erasure {
       }
     }
 
+    private def resultTpt(defTree: untpd.ValOrDefDef, resultTpe: Type)(implicit ctx: Context): TypeTree =
+      defTree.tpt.asInstanceOf[TypeTree].withType(resultTpe)
+
     override def typedValDef(vdef: untpd.ValDef, sym: Symbol)(implicit ctx: Context): ValDef =
       super.typedValDef(untpd.cpy.ValDef(vdef)(
-        tpt = untpd.TypedSplice(TypeTree(sym.info).withPos(vdef.tpt.pos))), sym)
+        tpt = untpd.TypedSplice(resultTpt(vdef, sym.info))), sym)
 
     /** Besides normal typing, this function also compacts anonymous functions
      *  with more than `MaxImplementedFunctionArity` parameters to ise a single
@@ -572,7 +575,7 @@ object Erasure {
       val ddef1 = untpd.cpy.DefDef(ddef)(
         tparams = Nil,
         vparamss = vparamss1,
-        tpt = untpd.TypedSplice(TypeTree(restpe).withPos(ddef.tpt.pos)),
+        tpt = untpd.TypedSplice(resultTpt(ddef, restpe)),
         rhs = rhs1)
       super.typedDefDef(ddef1, sym)
     }
