@@ -597,9 +597,9 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
    *  Otherwise, return NoType.
    *
    */
-  def instantiate(tp1: Type, tp2: Type)(implicit ctx: Context): Type = {
+  def instantiate(tp1: NamedType, tp2: Type)(implicit ctx: Context): Type = {
     // expose abstract type references to their bounds or tvars according to variance
-    abstract class AbstractTypeMap(maximize: Boolean)(implicit ctx: Context) extends TypeMap {
+    class AbstractTypeMap(maximize: Boolean)(implicit ctx: Context) extends TypeMap {
       def expose(tp: TypeRef): Type = {
         val lo = this(tp.info.loBound)
         val hi = this(tp.info.hiBound)
@@ -615,7 +615,7 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
         exposed
       }
 
-      override def mapOver(tp: Type): Type = tp match {
+      def apply(tp: Type): Type = tp match {
         case tp: TypeRef if tp.underlying.isInstanceOf[TypeBounds] =>
           // See tests/patmat/gadt.scala  tests/patmat/exhausting.scala  tests/patmat/t9657.scala
           expose(tp)
@@ -636,44 +636,31 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
           exposed
 
         case _ =>
-          super.mapOver(tp)
+          mapOver(tp)
       }
     }
+
+    def minTypeMap(implicit ctx: Context) = new AbstractTypeMap(maximize = false)
+    def maxTypeMap(implicit ctx: Context) = new AbstractTypeMap(maximize = true)
 
     // Fix subtype checking for child instantiation,
     // such that `Foo(Test.this.foo) <:< Foo(Foo.this)`
     // See tests/patmat/i3938.scala
     def removeThisType(implicit ctx: Context) = new TypeMap {
+      // is in tvarBounds? Don't create new tvars if true
+      private var tvarBounds: Boolean = false
       def apply(tp: Type): Type = tp match {
-        case ThisType(tref: TypeRef) =>
+        case ThisType(tref: TypeRef) if !tref.symbol.isStaticOwner =>
           if (tref.symbol.is(Module))
-            TermRef(tref.prefix, tref.symbol.sourceModule)
-          else
-            mapOver(tref)
-        case _ => mapOver(tp)
+            TermRef(this(tref.prefix), tref.symbol.sourceModule)
+          else if (tvarBounds)
+            this(tref)
+          else {
+            tvarBounds = true
+            newTypeVar(TypeBounds.upper(this(tref)))
+          }
+        case tp => mapOver(tp)
       }
-    }
-
-    // We are checking the possibility of `tp1 <:< tp2`, thus we should
-    // minimize `tp1` while maximizing `tp2`. See tests/patmat/3645b.scala
-    def childTypeMap(implicit ctx: Context) = new AbstractTypeMap(maximize = false) {
-      def apply(t: Type): Type = t.dealias match {
-        // map `ThisType` of `tp1` to a type variable
-        // precondition: `tp1` should have the same shape as `path.Child`, thus `ThisType` is always covariant
-        case tp @ ThisType(tref) if !tref.symbol.isStaticOwner  =>
-          if (tref.symbol.is(Module))
-            this(TermRef(tref.prefix, tref.symbol.sourceModule))
-          else
-            newTypeVar(TypeBounds.upper(removeThisType.apply(tref)))
-
-        case tp =>
-          mapOver(tp)
-      }
-    }
-
-    // replace type parameter references with bounds
-    def parentTypeMap(implicit ctx: Context) = new AbstractTypeMap(maximize = true) {
-      def apply(tp: Type): Type = mapOver(tp.dealias)
     }
 
     // replace uninstantiated type vars with WildcardType, check tests/patmat/3333.scala
@@ -690,16 +677,16 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
     )
 
     val tvars = tp1.typeParams.map { tparam => newTypeVar(tparam.paramInfo.bounds) }
-    val protoTp1 = childTypeMap.apply(tp1.appliedTo(tvars))
+    val protoTp1 = removeThisType.apply(tp1).appliedTo(tvars)
 
     // If parent contains a reference to an abstract type, then we should
     // refine subtype checking to eliminate abstract types according to
     // variance. As this logic is only needed in exhaustivity check,
     // we manually patch subtyping check instead of changing TypeComparer.
-    // See tests/patmat/3645b.scala
+    // See tests/patmat/i3645b.scala
     def parentQualify = tp1.widen.classSymbol.info.parents.exists { parent =>
       implicit val ictx = ctx.fresh.setNewTyperState()
-      parent.argInfos.nonEmpty && childTypeMap.apply(parent) <:< parentTypeMap.apply(tp2)
+      parent.argInfos.nonEmpty && minTypeMap.apply(parent) <:< maxTypeMap.apply(tp2)
     }
 
     if (protoTp1 <:< tp2) {
@@ -707,7 +694,7 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
       else instUndetMap.apply(protoTp1)
     }
     else {
-      val protoTp2 = parentTypeMap.apply(tp2)
+      val protoTp2 = maxTypeMap.apply(tp2)
       if (protoTp1 <:< protoTp2 || parentQualify) {
         if (isFullyDefined(AndType(protoTp1, protoTp2), force)) protoTp1
         else instUndetMap.apply(protoTp1)
