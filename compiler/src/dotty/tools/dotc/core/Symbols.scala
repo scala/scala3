@@ -235,7 +235,6 @@ trait Symbols { this: Context =>
       case name: TypeName =>
         newClassSymbol(normalizedOwner, name, EmptyFlags, stubCompleter, assocFile = file)
     }
-    stubs = stub :: stubs
     stub
   }
 
@@ -694,8 +693,6 @@ object Symbols {
 
   /** The current class */
   def currentClass(implicit ctx: Context): ClassSymbol = ctx.owner.enclosingClass.asClass
-
-  @sharable var stubs: List[Symbol] = Nil // diagnostic only
 
   /* Mutable map from symbols any T */
   class MutableSymbolMap[T](private[Symbols] val value: java.util.IdentityHashMap[Symbol, T]) extends AnyVal {
