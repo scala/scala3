@@ -32,7 +32,7 @@ object DottyUnpickler {
 /** A class for unpickling Tasty trees and symbols.
  *  @param bytes         the bytearray containing the Tasty file from which we unpickle
  */
-class DottyUnpickler(bytes: Array[Byte]) extends ClassfileParser.Embedded {
+class DottyUnpickler(bytes: Array[Byte]) extends ClassfileParser.Embedded with tpd.TreeProvider {
   import tpd._
   import DottyUnpickler._
 
@@ -52,7 +52,8 @@ class DottyUnpickler(bytes: Array[Byte]) extends ClassfileParser.Embedded {
 
   /** Only used if `-Yretain-trees` is set. */
   private[this] var myBody: List[Tree] = _
-  /** The unpickled trees, and the source file they come from. */
+
+  /** The unpickled trees */
   def body(implicit ctx: Context): List[Tree] = {
     def computeBody() = treeUnpickler.unpickle()
     if (ctx.settings.YretainTrees.value) {
@@ -61,4 +62,6 @@ class DottyUnpickler(bytes: Array[Byte]) extends ClassfileParser.Embedded {
       myBody
     } else computeBody()
   }
+
+  def getTree(implicit ctx: Context): Tree = body.headOption.getOrElse(tpd.EmptyTree)
 }

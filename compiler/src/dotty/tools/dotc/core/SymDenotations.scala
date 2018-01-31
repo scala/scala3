@@ -206,7 +206,7 @@ object SymDenotations {
      *  Uncompleted denotations set myInfo to a LazyType.
      */
     final def info(implicit ctx: Context): Type = {
-      def completeInfo = {
+      def completeInfo = { // Written this way so that `info` is small enough to be inlined
         completeFrom(myInfo.asInstanceOf[LazyType]); info
       }
       if (myInfo.isInstanceOf[LazyType]) completeInfo else myInfo

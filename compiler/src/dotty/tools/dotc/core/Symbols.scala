@@ -21,7 +21,7 @@ import StdNames._
 import NameOps._
 import NameKinds.LazyImplicitName
 import ast.tpd
-import tpd.Tree
+import tpd.{Tree, TreeProvider}
 import ast.TreeTypeMap
 import Constants.Constant
 import reporting.diagnostic.Message
@@ -625,31 +625,32 @@ object Symbols {
 
     type ThisName = TypeName
 
+    type TreeOrProvider = AnyRef /* tpd.TreeProvider | tpd.PackageDef | tpd.TypeDef | tpd.EmptyTree | Null */
+
+    private[this] var myTree: TreeOrProvider = tpd.EmptyTree
+
     /** If this is either:
       *   - a top-level class and `-Yretain-trees` is set
      *    - a top-level class loaded from TASTY and `-tasty` or `-Xlink` is set
       * then return the TypeDef tree (possibly wrapped inside PackageDefs) for this class, otherwise EmptyTree.
       * This will force the info of the class.
       */
-    def tree(implicit ctx: Context): tpd.Tree /* tpd.PackageDef | tpd.TypeDef | tpd.EmptyTree */ = {
-      denot.info
-      // TODO: Consider storing this tree like we store lazy trees for inline functions
-      if (unpickler != null && !denot.isAbsent) {
-        assert(myTree.isEmpty)
-        val body = unpickler.body(ctx.addMode(Mode.ReadPositions))
-        myTree = body.headOption.getOrElse(tpd.EmptyTree)
-        if (!ctx.settings.fromTasty.value)
-          unpickler = null
-      }
-      myTree
+    def tree(implicit ctx: Context): Tree = denot.infoOrCompleter match {
+      case _: NoCompleter =>
+        tpd.EmptyTree
+      case _ =>
+        denot.ensureCompleted()
+        myTree match {
+          case fn: TreeProvider => myTree = fn.getTree(ctx)
+          case _ =>
+        }
+        myTree.asInstanceOf[Tree]
     }
-    private[this] var myTree: tpd.Tree /* tpd.PackageDef | tpd.TypeDef | tpd.EmptyTree */ = tpd.EmptyTree
-    private[dotc] var unpickler: tasty.DottyUnpickler = _
 
-    private[dotc] def registerTree(tree: tpd.TypeDef)(implicit ctx: Context): Unit = {
-      if (ctx.settings.YretainTrees.value)
-        myTree = tree
-    }
+    def treeOrProvider: TreeOrProvider = myTree
+
+    private[dotc] def treeOrProvider_=(t: TreeOrProvider)(implicit ctx: Context): Unit =
+      myTree = t
 
     /** The source or class file from which this class was generated, null if not applicable. */
     override def associatedFile(implicit ctx: Context): AbstractFile =

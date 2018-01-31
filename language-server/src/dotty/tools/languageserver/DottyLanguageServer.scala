@@ -65,7 +65,8 @@ class DottyLanguageServer extends LanguageServer
       myDrivers = new mutable.HashMap
       for (config <- configs) {
         val classpathFlags = List("-classpath", (config.classDirectory +: config.dependencyClasspath).mkString(File.pathSeparator))
-        val sourcepathFlags = List("-sourcepath", config.sourceDirectories.mkString(File.pathSeparator), "-scansource")
+        val sourcepathFlags = List("-sourcepath", config.sourceDirectories.mkString(File.pathSeparator))
+        System.out.println(s"sourcepath = $sourcepathFlags")
         val settings = defaultFlags ++ config.compilerArguments.toList ++ classpathFlags ++ sourcepathFlags
         myDrivers.put(config, new InteractiveDriver(settings))
       }

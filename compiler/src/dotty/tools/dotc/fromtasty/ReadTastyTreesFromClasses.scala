@@ -2,14 +2,19 @@ package dotty.tools
 package dotc
 package fromtasty
 
-import dotty.tools.dotc.ast.tpd
-import dotty.tools.dotc.core.Contexts.Context
-import dotty.tools.dotc.core.Decorators._
-import dotty.tools.dotc.core.Names._
-import dotty.tools.dotc.core.NameOps._
-import dotty.tools.dotc.core.SymDenotations.ClassDenotation
-import dotty.tools.dotc.core._
-import dotty.tools.dotc.typer.FrontEnd
+import core._
+import Decorators._
+import Contexts.Context
+import Symbols.{Symbol, ClassSymbol}
+import SymDenotations.{SymDenotation, ClassDenotation, LazyType}
+import typer.FrontEnd
+import Names.TypeName
+import NameOps._
+import Types.Type
+import ast.tpd
+import ast.Trees.Tree
+import util.SourceFile
+import CompilationUnit.mkCompilationUnit
 
 class ReadTastyTreesFromClasses extends FrontEnd {
 
@@ -21,57 +26,53 @@ class ReadTastyTreesFromClasses extends FrontEnd {
   def readTASTY(unit: CompilationUnit)(implicit ctx: Context): Option[CompilationUnit] = unit match {
     case unit: TASTYCompilationUnit =>
       val className = unit.className.toTypeName
-      def compilationUnit(className: TypeName): Option[CompilationUnit] = {
-        tree(className).flatMap {
-          case (clsd, unpickled) =>
-            if (unpickled.isEmpty) None
-            else {
-              val unit = CompilationUnit.mkCompilationUnit(clsd, unpickled, forceTrees = true)
-              val cls = clsd.symbol.asClass
-              if (cls.unpickler == null) {
-                ctx.error(s"Error: Already loaded ${cls.showFullName}")
-                None
-              }
+
+      def cannotUnpickle(reason: String): None.type = {
+        ctx.error(s"class $className cannot be unpickled because $reason")
+        None
+      }
+
+      def alreadyLoaded(): None.type = {
+        ctx.warning("sclass $className cannot be unpickled because it is already loaded")
+        None
+      }
+
+      def compilationUnit(cls: Symbol): Option[CompilationUnit] = cls match {
+        case cls: ClassSymbol =>
+          (cls.treeOrProvider: @unchecked) match {
+            case unpickler: tasty.DottyUnpickler =>
+              //println(i"unpickling $cls, info = ${cls.infoOrCompleter.getClass}, tree = ${cls.treeOrProvider}")
+              if (cls.tree.isEmpty) None
               else {
-                unit.pickled += (cls -> cls.unpickler.unpickler.bytes)
-                cls.unpickler = null
+                val source = SourceFile(cls.associatedFile, Array())
+                val unit = mkCompilationUnit(source, cls.tree, forceTrees = true)
+                unit.pickled += (cls -> unpickler.unpickler.bytes)
                 Some(unit)
               }
-            }
-        }
+            case tree: Tree[_] =>
+               alreadyLoaded()
+            case _ =>
+              cannotUnpickle(s"its class file does not have a TASTY attribute")
+          }
+        case _ => None
       }
+
       // The TASTY section in a/b/C.class may either contain a class a.b.C, an object a.b.C, or both.
       // We first try to load the class and fallback to loading the object if the class doesn't exist.
       // Note that if both the class and the object are present, then loading the class will also load
       // the object, this is why we use orElse here, otherwise we could load the object twice and
       // create ambiguities!
-      compilationUnit(className).orElse(compilationUnit(className.moduleClassName))
-  }
-
-  private def tree(className: TypeName)(implicit ctx: Context): Option[(ClassDenotation, tpd.Tree)] = {
-    val clsd = ctx.base.staticRef(className)
-    ctx.base.staticRef(className) match {
-      case clsd: ClassDenotation =>
-        val cls = clsd.symbol.asClass
-        def cannotUnpickle(reason: String) =
-          ctx.error(s"class $className cannot be unpickled because $reason")
-        def tryToLoad = clsd.infoOrCompleter match {
-          case info: ClassfileLoader =>
-            info.load(clsd)
-            Option(cls.tree).orElse {
-              cannotUnpickle(s"its class file ${info.classfile} does not have a TASTY attribute")
-              None
-            }
-
-          case info =>
-            cannotUnpickle(s"its info of type ${info.getClass} is not a ClassfileLoader")
-            None
-        }
-        Option(cls.tree).orElse(tryToLoad).map(tree => (clsd, tree))
-
-      case _ =>
-        ctx.error(s"class not found: $className")
-        None
-    }
+      ctx.staticRef(className) match {
+        case clsd: ClassDenotation =>
+          clsd.infoOrCompleter match {
+            case info: ClassfileLoader =>
+              info.load(clsd) // sets cls.treeOrProvider and cls.moduleClass.treeProvider as a side-effect
+              compilationUnit(clsd.classSymbol).orElse(compilationUnit(clsd.moduleClass))
+            case _ =>
+              alreadyLoaded()
+          }
+        case _ =>
+          cannotUnpickle(s"no class file was found")
+      }
   }
 }

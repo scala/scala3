@@ -1523,7 +1523,7 @@ class Typer extends Namer
       // check value class constraints
       checkDerivedValueClass(cls, body1)
 
-      cls.registerTree(cdef1)
+      if (ctx.settings.YretainTrees.value) cls.treeOrProvider = cdef1
 
       cdef1
 
