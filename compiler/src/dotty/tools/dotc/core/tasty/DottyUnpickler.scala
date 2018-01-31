@@ -50,18 +50,5 @@ class DottyUnpickler(bytes: Array[Byte]) extends ClassfileParser.Embedded with t
     new TreeSectionUnpickler(posUnpicklerOpt)
   }
 
-  /** Only used if `-Yretain-trees` is set. */
-  private[this] var myBody: List[Tree] = _
-
-  /** The unpickled trees */
-  def body(implicit ctx: Context): List[Tree] = {
-    def computeBody() = treeUnpickler.unpickle()
-    if (ctx.settings.YretainTrees.value) {
-      if (myBody == null)
-        myBody = computeBody()
-      myBody
-    } else computeBody()
-  }
-
-  def getTree(implicit ctx: Context): Tree = body.headOption.getOrElse(tpd.EmptyTree)
+  protected def computeTrees(implicit ctx: Context) = treeUnpickler.unpickle()
 }

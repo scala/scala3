@@ -641,7 +641,7 @@ object Symbols {
       case _ =>
         denot.ensureCompleted()
         myTree match {
-          case fn: TreeProvider => myTree = fn.getTree(ctx)
+          case fn: TreeProvider => myTree = fn.tree
           case _ =>
         }
         myTree.asInstanceOf[Tree]

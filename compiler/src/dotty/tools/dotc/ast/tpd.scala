@@ -873,8 +873,22 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     def tpes: List[Type] = xs map (_.tpe)
   }
 
+  /** A trait for loaders that compute trees. Common base trait for DottyUnpickler and SymbolLoader */
   trait TreeProvider {
-    def getTree(implicit ctx: Context): Tree
+    protected def computeTrees(implicit ctx: Context): List[Tree]
+
+    private[this] var myTrees: List[Tree] = null
+
+    /** Get trees defined by this provider. Cache them if -Yretain-trees is set. */
+    def trees(implicit ctx: Context): List[Tree] =
+      if (ctx.settings.YretainTrees.value) {
+        if (myTrees == null) myTrees = computeTrees
+        myTrees
+      } else computeTrees
+
+    /** Get first tree defined by this provider, or EmptyTree if none exists */
+    def tree(implicit ctx: Context): Tree =
+      trees.headOption.getOrElse(EmptyTree)
   }
 
   // convert a numeric with a toXXX method
