@@ -26,7 +26,7 @@ class FromTastyTests extends ParallelTesting {
     // > dotc -Ythrough-tasty -Ycheck:all <source>
 
     implicit val testGroup: TestGroup = TestGroup("posTestFromTasty")
-    val (step1, step2, step3) = compileTastyInDir("../tests/pos", defaultOptions,
+    val (step1, step2, step3) = compileTastyInDir("tests/pos", defaultOptions,
       blacklist = Set(
         "macro-deprecate-dont-touch-backquotedidents.scala",
 
@@ -91,7 +91,7 @@ class FromTastyTests extends ParallelTesting {
     // > dotr Test
 
     implicit val testGroup: TestGroup = TestGroup("runTestFromTasty")
-    val (step1, step2, step3) = compileTastyInDir("../tests/run", defaultOptions,
+    val (step1, step2, step3) = compileTastyInDir("tests/run", defaultOptions,
        blacklist = Set(
          "t3613.scala",
          "t7223.scala",

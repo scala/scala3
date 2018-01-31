@@ -817,14 +817,14 @@ trait ParallelTesting extends RunnerOrchestration { self =>
    *  "run" test:
    *
    *  ```
-   *  compileFile("../tests/pos/i1103.scala", opts).pos()
+   *  compileFile("tests/pos/i1103.scala", opts).pos()
    *  ```
    *
    *  These tests can be customized before calling one of the execution
    *  methods, for instance:
    *
    *  ```
-   *  compileFile("../tests/pos/i1103.scala", opts).times(2).verbose.pos()
+   *  compileFile("tests/pos/i1103.scala", opts).times(2).verbose.pos()
    *  ```
    *
    *  Which would compile `i1103.scala` twice with the verbose flag as a "pos"

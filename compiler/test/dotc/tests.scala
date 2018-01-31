@@ -22,7 +22,7 @@ class tests extends CompilerTest {
   // tests that match regex '(pos|dotc|run|java|compileStdLib)\.*' would be
   // executed as benchmarks.
 
-  val defaultOutputDir = "../out/"
+  val defaultOutputDir = "out/"
 
   val noCheckOptions = List(
 //    "-verbose",
@@ -85,7 +85,7 @@ class tests extends CompilerTest {
   val explicitUTF8 = List("-encoding", "UTF8")
   val explicitUTF16 = List("-encoding", "UTF16")
 
-  val testsDir      = "../tests/"
+  val testsDir      = "tests/"
   val posDir        = testsDir + "pos/"
   val posSpecialDir = testsDir + "pos-special/"
   val posScala2Dir  = testsDir + "pos-scala2/"
@@ -94,7 +94,7 @@ class tests extends CompilerTest {
   val newDir        = testsDir + "new/"
   val javaDir       = testsDir + "pos-java-interop/"
 
-  val sourceDir = "./src/"
+  val sourceDir = "compiler/src/"
   val dottyDir  = sourceDir + "dotty/"
   val toolsDir  = dottyDir + "tools/"
   val backendDir = toolsDir + "backend/"
@@ -103,7 +103,7 @@ class tests extends CompilerTest {
   val parsingDir = dotcDir + "parsing/"
   val dottyReplDir   = dotcDir + "repl/"
   val typerDir  = dotcDir + "typer/"
-  val libDir = "../library/src/"
+  val libDir = "library/src/"
 
   def dottyBootedLib = compileDir(libDir, ".", List("-deep", "-Ycheck-reentrant", "-strict"))(allowDeepSubtypes) // note the -deep argument
   def dottyDependsOnBootedLib = compileDir(dottyDir, ".", List("-deep", "-Ycheck-reentrant"))(allowDeepSubtypes) // note the -deep argument
@@ -218,19 +218,19 @@ class tests extends CompilerTest {
     compileList("compileStdLib", stdlibFiles, "-migration" :: "-Yno-inline" :: scala2mode)
 
   @Test def compileMixed = compileLine(
-      """../tests/pos/B.scala
-        |../scala2-library/src/library/scala/collection/immutable/Seq.scala
-        |../scala2-library/src/library/scala/collection/parallel/ParSeq.scala
-        |../scala2-library/src/library/scala/package.scala
-        |../scala2-library/src/library/scala/collection/GenSeqLike.scala
-        |../scala2-library/src/library/scala/collection/SeqLike.scala
-        |../scala2-library/src/library/scala/collection/generic/GenSeqFactory.scala""".stripMargin)(scala2mode ++ defaultOptions)
-  @Test def compileIndexedSeq = compileLine("../scala2-library/src/library/scala/collection/immutable/IndexedSeq.scala")
-  @Test def compileParSetLike = compileLine("../scala2-library/src/library/scala/collection/parallel/mutable/ParSetLike.scala")
+      """tests/pos/B.scala
+        |scala2-library/src/library/scala/collection/immutable/Seq.scala
+        |scala2-library/src/library/scala/collection/parallel/ParSeq.scala
+        |scala2-library/src/library/scala/package.scala
+        |scala2-library/src/library/scala/collection/GenSeqLike.scala
+        |scala2-library/src/library/scala/collection/SeqLike.scala
+        |scala2-library/src/library/scala/collection/generic/GenSeqFactory.scala""".stripMargin)(scala2mode ++ defaultOptions)
+  @Test def compileIndexedSeq = compileLine("scala2-library/src/library/scala/collection/immutable/IndexedSeq.scala")
+  @Test def compileParSetLike = compileLine("scala2-library/src/library/scala/collection/parallel/mutable/ParSetLike.scala")
   @Test def compileParSetSubset = compileLine(
-      """../scala2-library/src/library/scala/collection/parallel/mutable/ParSetLike.scala
-        |../scala2-library/src/library/scala/collection/parallel/mutable/ParSet.scala
-        |../scala2-library/src/library/scala/collection/mutable/SetLike.scala""".stripMargin)(scala2mode ++ defaultOptions)
+      """scala2-library/src/library/scala/collection/parallel/mutable/ParSetLike.scala
+        |scala2-library/src/library/scala/collection/parallel/mutable/ParSet.scala
+        |scala2-library/src/library/scala/collection/mutable/SetLike.scala""".stripMargin)(scala2mode ++ defaultOptions)
 
   @Test def dottyBooted = {
     dottyBootedLib
