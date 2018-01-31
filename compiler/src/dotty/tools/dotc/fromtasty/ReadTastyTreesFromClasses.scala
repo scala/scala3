@@ -21,7 +21,7 @@ class ReadTastyTreesFromClasses extends FrontEnd {
   override def isTyper = false
 
   override def runOn(units: List[CompilationUnit])(implicit ctx: Context): List[CompilationUnit] =
-    units.flatMap(readTASTY)
+    units.flatMap(readTASTY(_)(ctx.addMode(Mode.ReadPositions)))
 
   def readTASTY(unit: CompilationUnit)(implicit ctx: Context): Option[CompilationUnit] = unit match {
     case unit: TASTYCompilationUnit =>
@@ -41,7 +41,6 @@ class ReadTastyTreesFromClasses extends FrontEnd {
         case cls: ClassSymbol =>
           (cls.treeOrProvider: @unchecked) match {
             case unpickler: tasty.DottyUnpickler =>
-              //println(i"unpickling $cls, info = ${cls.infoOrCompleter.getClass}, tree = ${cls.treeOrProvider}")
               if (cls.tree.isEmpty) None
               else {
                 val source = SourceFile(cls.associatedFile, Array())
