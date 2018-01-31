@@ -36,6 +36,9 @@ class FromTastyTests extends ParallelTesting {
         // Wrong number of arguments
         "i3130b.scala",
 
+        // Class not found
+        "simpleCaseObject.scala",
+
         // Owner discrepancy for refinements
         "NoCyclicReference.scala",
         "i1795.scala",
@@ -96,6 +99,10 @@ class FromTastyTests extends ParallelTesting {
     implicit val testGroup: TestGroup = TestGroup("runTestFromTasty")
     val (step1, step2, step3) = compileTastyInDir("tests/run", defaultOptions,
        blacklist = Set(
+
+        // Class not found
+        "puzzle.scala",
+
          "t3613.scala",
          "t7223.scala",
          "t7899-regression.scala",
