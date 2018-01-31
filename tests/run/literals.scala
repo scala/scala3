@@ -90,7 +90,6 @@ object Test {
     check_success("1e1f == 10.0f", 1e1f, 10.0f)
     check_success(".3f == 0.3f", .3f, 0.3f)
     check_success("0f == 0.0f", 0f, 0.0f)
-    check_success("01.23f == 1.23f", /*0*/1.23f, 1.23f) // Non-zero numbers may not have a leading zero.
     check_success("3.14f == 3.14f", 3.14f, 3.14f)
     check_success("6.022e23f == 6.022e23f", 6.022e23f, 6.022e23f)
     check_success("09f == 9.0f", 9f, 9.0f)

@@ -33,7 +33,6 @@ test 0xffffffffffffffffL == -1L was successful
 test 1e1f == 10.0f was successful
 test .3f == 0.3f was successful
 test 0f == 0.0f was successful
-test 01.23f == 1.23f was successful
 test 3.14f == 3.14f was successful
 test 6.022e23f == 6.022e23f was successful
 test 09f == 9.0f was successful
