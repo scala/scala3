@@ -889,6 +889,9 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     /** Get first tree defined by this provider, or EmptyTree if none exists */
     def tree(implicit ctx: Context): Tree =
       trees.headOption.getOrElse(EmptyTree)
+
+    /** Is it possible that the tree to load contains a definition of or reference to `id`? */
+    def mightContain(id: String)(implicit ctx: Context) = true
   }
 
   // convert a numeric with a toXXX method

@@ -635,16 +635,27 @@ object Symbols {
       * then return the TypeDef tree (possibly wrapped inside PackageDefs) for this class, otherwise EmptyTree.
       * This will force the info of the class.
       */
-    def tree(implicit ctx: Context): Tree = denot.infoOrCompleter match {
+    def tree(implicit ctx: Context): Tree = treeContaining("")
+
+    /** Same as `tree` but load only Tasty tree if the name table of the unpickler
+     *  contains `id`.
+     */
+    def treeContaining(id: String)(implicit ctx: Context): Tree = denot.infoOrCompleter match {
       case _: NoCompleter =>
         tpd.EmptyTree
       case _ =>
         denot.ensureCompleted()
         myTree match {
-          case fn: TreeProvider => myTree = fn.tree
-          case _ =>
+          case fn: TreeProvider =>
+            if (id.isEmpty || fn.mightContain(id)) {
+              val tree = fn.tree
+              myTree = tree
+              tree
+            }
+            else tpd.EmptyTree
+          case tree: Tree @ unchecked =>
+            tree
         }
-        myTree.asInstanceOf[Tree]
     }
 
     def treeOrProvider: TreeOrProvider = myTree
@@ -668,7 +679,7 @@ object Symbols {
     denot = underlying.denot
   }
 
-  @sharable val NoSymbol = new Symbol(NoCoord, 0) {
+  @sharable val NoSymbol: Symbol = new Symbol(NoCoord, 0) {
     override def associatedFile(implicit ctx: Context): AbstractFile = NoSource.file
     override def recomputeDenot(lastd: SymDenotation)(implicit ctx: Context): SymDenotation = NoDenotation
   }

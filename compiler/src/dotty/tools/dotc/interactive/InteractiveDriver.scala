@@ -53,22 +53,26 @@ class InteractiveDriver(settings: List[String]) extends Driver {
   def openedFiles: Map[URI, SourceFile] = myOpenedFiles
   def openedTrees: Map[URI, List[SourceTree]] = myOpenedTrees
 
-  def allTrees(implicit ctx: Context): List[SourceTree] = {
+  def allTrees(implicit ctx: Context): List[SourceTree] = allTreesContaining("")
+
+  def allTreesContaining(id: String)(implicit ctx: Context): List[SourceTree] = {
     val fromSource = openedTrees.values.flatten.toList
     val fromClassPath = (dirClassPathClasses ++ zipClassPathClasses).flatMap { cls =>
       val className = cls.toTypeName
-      List(tree(className), tree(className.moduleClassName)).flatten
+      List(tree(className, id), tree(className.moduleClassName, id)).flatten
     }
     (fromSource ++ fromClassPath).distinct
   }
 
-  private def tree(className: TypeName)(implicit ctx: Context): Option[SourceTree] = {
+  private def tree(className: TypeName, id: String)(implicit ctx: Context): Option[SourceTree] = {
     val clsd = ctx.base.staticRef(className)
     clsd match {
       case clsd: ClassDenotation =>
-        SourceTree.fromSymbol(clsd.symbol.asClass)
+        clsd.ensureCompleted()
+        SourceTree.fromSymbol(clsd.symbol.asClass, id)
       case _ =>
-        sys.error(s"class not found: $className")
+        //sys.error(s"class not found: $className")
+        None
     }
   }
 

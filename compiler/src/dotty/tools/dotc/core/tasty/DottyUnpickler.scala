@@ -51,4 +51,11 @@ class DottyUnpickler(bytes: Array[Byte]) extends ClassfileParser.Embedded with t
   }
 
   protected def computeTrees(implicit ctx: Context) = treeUnpickler.unpickle()
+
+  private[this] var ids: Array[String] = null
+
+  override def mightContain(id: String)(implicit ctx: Context): Boolean = {
+    if (ids == null) ids = unpickler.nameAtRef.contents.toArray.map(_.toString).sorted
+    java.util.Arrays.binarySearch(ids.asInstanceOf[Array[Object]], id) >= 0
+  }
 }

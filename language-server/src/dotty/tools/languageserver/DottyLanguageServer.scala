@@ -243,7 +243,7 @@ class DottyLanguageServer extends LanguageServer
       // FIXME: this will search for references in all trees on the classpath, but we really
       // only need to look for trees in the target directory if the symbol is defined in the
       // current project
-      val trees = driver.allTrees
+      val trees = driver.allTreesContaining(sym.name.toString)
       val refs = Interactive.namedTrees(trees, includeReferences = true, (tree: tpd.NameTree) =>
         (includeDeclaration || !Interactive.isDefinition(tree))
           && Interactive.matchSymbol(tree, sym, includeOverriden = true))
@@ -262,7 +262,7 @@ class DottyLanguageServer extends LanguageServer
 
     if (sym == NoSymbol) new WorkspaceEdit()
     else {
-      val trees = driver.allTrees
+      val trees = driver.allTreesContaining(sym.name.toString)
       val linkedSym = sym.linkedClass
       val newName = params.getNewName
 
