@@ -194,7 +194,8 @@ class CompilationTests extends ParallelTesting {
     compileFile("tests/neg-custom-args/phantom-overload.scala", allowDoubleBindings) +
     compileFile("tests/neg-custom-args/phantom-overload-2.scala", allowDoubleBindings) +
     compileFile("tests/neg-custom-args/structural.scala", defaultOptions.and("-Xfatal-warnings")) +
-    compileFile("tests/neg-custom-args/i2673.scala", defaultOptions.and("-Xfatal-warnings"))
+    compileFile("tests/neg-custom-args/i2673.scala", defaultOptions.and("-Xfatal-warnings")) +
+    compileFile("tests/neg-custom-args/t3235-minimal.scala", defaultOptions.and("-Xfatal-warnings"))
   }.checkExpectedErrors()
 
   // Run tests -----------------------------------------------------------------
