@@ -515,7 +515,7 @@ object JavaParsers {
               if (parentToken == AT && in.token == DEFAULT) {
                 val annot =
                   atPos(nameOffset) {
-                    New(Select(scalaDot(nme.runtime), tpnme.AnnotationDefaultATTR), Nil)
+                    New(Select(Select(scalaDot(nme.annotation), nme.internal), tpnme.AnnotationDefaultATTR), Nil)
                   }
                 mods1 = mods1 withAddedAnnotation annot
                 val unimplemented = unimplementedExpr
