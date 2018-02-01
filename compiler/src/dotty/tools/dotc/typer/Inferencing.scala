@@ -9,6 +9,7 @@ import Trees._
 import Constants._
 import Scopes._
 import ProtoTypes._
+import NameKinds.WildcardParamName
 import annotation.unchecked
 import util.Positions._
 import util.{Stats, SimpleIdentityMap}
@@ -222,23 +223,28 @@ object Inferencing {
       case _ => NoType
     }
 
-  /** Instantiate undetermined type variables to that type `tp` is
-   *  maximized and return None. If this is not possible, because a non-variant
-   *  typevar is not uniquely determined, return that typevar in a Some.
+  /** Instantiate undetermined type variables so that type `tp` is maximized.
+   *  @return   The list of type symbols that were created
+   *            to instantiate undetermined type variables that occur non-variantly
    */
-  def maximizeType(tp: Type)(implicit ctx: Context): Option[TypeVar] = Stats.track("maximizeType") {
+  def maximizeType(tp: Type, pos: Position, fromScala2x: Boolean)(implicit ctx: Context): List[Symbol] = Stats.track("maximizeType") {
     val vs = variances(tp, alwaysTrue)
-    var result: Option[TypeVar] = None
+    val patternBound = new mutable.ListBuffer[Symbol]
     vs foreachBinding { (tvar, v) =>
       if (v == 1) tvar.instantiate(fromBelow = false)
       else if (v == -1) tvar.instantiate(fromBelow = true)
       else {
         val bounds = ctx.typerState.constraint.fullBounds(tvar.origin)
-        if (!(bounds.hi <:< bounds.lo)) result = Some(tvar)
-        tvar.instantiate(fromBelow = false)
+        if (bounds.hi <:< bounds.lo || bounds.hi.classSymbol.is(Final) || fromScala2x)
+          tvar.instantiate(fromBelow = false)
+        else {
+          val wildCard = ctx.newPatternBoundSymbol(WildcardParamName.fresh().toTypeName, bounds, pos)
+          tvar.instantiateWith(wildCard.typeRef)
+          patternBound += wildCard
+        }
       }
     }
-    result
+    patternBound.toList
   }
 
   type VarianceMap = SimpleIdentityMap[TypeVar, Integer]

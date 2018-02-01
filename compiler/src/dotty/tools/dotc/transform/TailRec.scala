@@ -219,7 +219,6 @@ class TailRec extends MiniPhase with FullParameterization {
         val isRecursiveCall = (method eq sym)
         val recvWiden = prefix.tpe.widenDealias
 
-
         def continue = {
           val method = noTailTransform(call)
           val methodWithTargs = if (targs.nonEmpty) TypeApply(method, targs) else method
@@ -237,7 +236,9 @@ class TailRec extends MiniPhase with FullParameterization {
 
         if (isRecursiveCall) {
           if (ctx.tailPos) {
-            val receiverIsSame = enclosingClass.appliedRef.widenDealias =:= recvWiden
+            val receiverIsSame =
+              recvWiden <:< enclosingClass.appliedRef &&
+              (sym.isEffectivelyFinal || enclosingClass.appliedRef <:< recvWiden)
             val receiverIsThis = prefix.tpe =:= thisType || prefix.tpe.widen =:= thisType
 
             def rewriteTailCall(recv: Tree): Tree = {

@@ -890,10 +890,24 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
     /** Produce a typed qual.unapply or qual.unapplySeq tree, or
      *  else if this fails follow a type alias and try again.
      */
-    val unapplyFn = trySelectUnapply(qual) { sel =>
+    var unapplyFn = trySelectUnapply(qual) { sel =>
       val qual1 = followTypeAlias(qual)
       if (qual1.isEmpty) notAnExtractor(sel)
       else trySelectUnapply(qual1)(_ => notAnExtractor(sel))
+    }
+
+    /** Add a `Bind` node for each `bound` symbol in a type application `unapp` */
+    def addBinders(unapp: Tree, bound: List[Symbol]) = unapp match {
+      case TypeApply(fn, args) =>
+        def addBinder(arg: Tree) = arg.tpe.stripTypeVar match {
+          case ref: TypeRef if bound.contains(ref.symbol) =>
+            tpd.Bind(ref.symbol, Ident(ref))
+          case _ =>
+            arg
+        }
+        tpd.cpy.TypeApply(unapp)(fn, args.mapConserve(addBinder))
+      case _ =>
+        unapp
     }
 
     def fromScala2x = unapplyFn.symbol.exists && (unapplyFn.symbol.owner is Scala2x)
@@ -923,27 +937,8 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
             fullyDefinedType(unapplyArgType, "pattern selector", tree.pos)
             selType
           } else if (isSubTypeOfParent(unapplyArgType, selType)(ctx.addMode(Mode.GADTflexible))) {
-            maximizeType(unapplyArgType) match {
-              case Some(tvar) =>
-                def msg =
-                  ex"""There is no best instantiation of pattern type $unapplyArgType
-                      |that makes it a subtype of selector type $selType.
-                      |Non-variant type variable ${tvar.origin} cannot be uniquely instantiated."""
-                if (fromScala2x) {
-                  // We can't issue an error here, because in Scala 2, ::[B] is invariant
-                  // whereas List[+T] is covariant. According to the strict rule, a pattern
-                  // match of a List[C] against a case x :: xs is illegal, because
-                  // B cannot be uniquely instantiated. Of course :: should have been
-                  // covariant in the first place, but in the Scala libraries it isn't.
-                  // So for now we allow these kinds of patterns, even though they
-                  // can open unsoundness holes. See SI-7952 for an example of the hole this opens.
-                  if (ctx.settings.verbose.value) ctx.warning(msg, tree.pos)
-                } else {
-                  unapp.println(s" ${unapplyFn.symbol.owner} ${unapplyFn.symbol.owner is Scala2x}")
-                  ctx.strictWarning(msg, tree.pos)
-                }
-              case _ =>
-            }
+            val patternBound = maximizeType(unapplyArgType, tree.pos, fromScala2x)
+            if (patternBound.nonEmpty) unapplyFn = addBinders(unapplyFn, patternBound)
             unapp.println(i"case 2 $unapplyArgType ${ctx.typerState.constraint}")
             unapplyArgType
           } else {

@@ -3308,7 +3308,7 @@ object Types {
     def isInstantiated(implicit ctx: Context) = instanceOpt.exists
 
     /** Instantiate variable with given type */
-    private def instantiateWith(tp: Type)(implicit ctx: Context): Type = {
+    def instantiateWith(tp: Type)(implicit ctx: Context): Type = {
       assert(tp ne this, s"self instantiation of ${tp.show}, constraint = ${ctx.typerState.constraint.show}")
       typr.println(s"instantiating ${this.show} with ${tp.show}")
       if ((ctx.typerState eq owningState.get) && !ctx.typeComparer.subtypeCheckInProgress)

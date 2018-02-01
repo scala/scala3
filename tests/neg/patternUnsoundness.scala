@@ -10,8 +10,8 @@ object patternUnsoundness extends App {
   val y: C[Object] = x
 
   y match {
-    case d @ D(x) => d.s = new Integer(1)
+    case d @ D(x) => d.s = new Integer(1) // error
   }
 
-  val z: String = x.s // ClassCast exception
+  val z: String = x.s // used to throw ClassCast exception
 }

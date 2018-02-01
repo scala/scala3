@@ -28,6 +28,9 @@ class FromTastyTests extends ParallelTesting {
     implicit val testGroup: TestGroup = TestGroup("posTestFromTasty")
     val (step1, step2, step3) = compileTastyInDir("../tests/pos", defaultOptions,
       blacklist = Set(
+        // Wrong number of arguments
+        "i3130b.scala",
+
         // Owner discrepancy for refinements
         "NoCyclicReference.scala",
         "i1795.scala",
