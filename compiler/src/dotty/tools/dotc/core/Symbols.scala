@@ -510,12 +510,6 @@ object Symbols {
     final def isStatic(implicit ctx: Context): Boolean =
       lastDenot != null && lastDenot.initial.isStatic
 
-    /** A unique, densely packed integer tag for each class symbol, -1
-     *  for all other symbols. To save memory, this method
-     *  should be called only if class is a super class of some other class.
-     */
-    def superId(implicit ctx: Context): Int = -1
-
     /** This symbol entered into owner's scope (owner must be a class). */
     final def entered(implicit ctx: Context): this.type = {
       assert(this.owner.isClass, s"symbol ($this) entered the scope of non-class owner ${this.owner}") // !!! DEBUG
