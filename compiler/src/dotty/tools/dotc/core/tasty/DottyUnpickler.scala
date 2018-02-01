@@ -3,13 +3,12 @@ package dotc
 package core
 package tasty
 
-import Contexts._, SymDenotations._, Symbols._
+import Contexts._, SymDenotations._, Symbols._,  Decorators._
 import dotty.tools.dotc.ast.tpd
 import TastyUnpickler._, TastyBuffer._
 import util.Positions._
 import util.{SourceFile, NoSource}
 import Annotations.Annotation
-import core.Mode
 import classfile.ClassfileParser
 
 object DottyUnpickler {
@@ -56,6 +55,6 @@ class DottyUnpickler(bytes: Array[Byte]) extends ClassfileParser.Embedded with t
 
   override def mightContain(id: String)(implicit ctx: Context): Boolean = {
     if (ids == null) ids = unpickler.nameAtRef.contents.toArray.map(_.toString).sorted
-    java.util.Arrays.binarySearch(ids.asInstanceOf[Array[Object]], id) >= 0
+    ids.binarySearch(id) >= 0
   }
 }

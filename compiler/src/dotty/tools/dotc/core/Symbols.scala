@@ -21,7 +21,7 @@ import StdNames._
 import NameOps._
 import NameKinds.LazyImplicitName
 import ast.tpd
-import tpd.{Tree, TreeProvider}
+import tpd.{Tree, TreeProvider, TreeOps}
 import ast.TreeTypeMap
 import Constants.Constant
 import reporting.diagnostic.Message
@@ -29,7 +29,7 @@ import Denotations.{ Denotation, SingleDenotation, MultiDenotation }
 import collection.mutable
 import io.AbstractFile
 import language.implicitConversions
-import util.{NoSource, DotClass}
+import util.{NoSource, DotClass, Property}
 import scala.collection.JavaConverters._
 
 /** Creation methods for symbols */
@@ -402,6 +402,9 @@ object Symbols {
 
   implicit def eqSymbol: Eq[Symbol, Symbol] = Eq
 
+  /** Tree attachment containing the identifiers in a tree as a sorted array */
+  val Ids = new Property.Key[Array[String]]
+
   /** A Symbol represents a Scala definition/declaration or a package.
    *  @param coord  The coordinates of the symbol (a position or an index)
    *  @param id     A unique identifier of the symbol (unique per ContextBase)
@@ -654,7 +657,7 @@ object Symbols {
             }
             else tpd.EmptyTree
           case tree: Tree @ unchecked =>
-            tree
+            if (id.isEmpty || mightContain(tree, id)) tree else tpd.EmptyTree
         }
     }
 
@@ -662,6 +665,22 @@ object Symbols {
 
     private[dotc] def treeOrProvider_=(t: TreeOrProvider)(implicit ctx: Context): Unit =
       myTree = t
+
+    private def mightContain(tree: Tree, id: String)(implicit ctx: Context): Boolean = {
+      val ids = tree.getAttachment(Ids) match {
+        case Some(ids) => ids
+        case None =>
+          val idSet = mutable.SortedSet[String]()
+          tree.foreachSubTree {
+            case tree: tpd.RefTree => idSet += tree.name.toString
+            case _ =>
+          }
+          val ids = idSet.toArray
+          tree.putAttachment(Ids, ids)
+          ids
+      }
+      ids.binarySearch(id) >= 0
+    }
 
     /** The source or class file from which this class was generated, null if not applicable. */
     override def associatedFile(implicit ctx: Context): AbstractFile =
