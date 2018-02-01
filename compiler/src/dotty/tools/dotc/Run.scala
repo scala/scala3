@@ -72,8 +72,6 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
   private[this] var myUnits: List[CompilationUnit] = _
   private[this] var myUnitsCached: List[CompilationUnit] = _
   private[this] var myFiles: Set[AbstractFile] = _
-  private[this] val myLateUnits = mutable.ListBuffer[CompilationUnit]()
-  private[this] var myLateFiles = mutable.Set[AbstractFile]()
 
   /** The compilation units currently being compiled, this may return different
     *  results over time.
@@ -95,11 +93,8 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
     myFiles
   }
 
-  /** Units that are added from source completers but that are not compiled in current run. */
-  def lateUnits: List[CompilationUnit] = myLateUnits.toList
-
-  /** The source files of all late units, as a set */
-  def lateFiles: collection.Set[AbstractFile] = myLateFiles
+  /** The source files of all late entered symbols, as a set */
+  private[this] var lateFiles = mutable.Set[AbstractFile]()
 
   def getSource(fileName: String): SourceFile = {
     val f = new PlainFile(io.Path(fileName))
@@ -196,9 +191,8 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
    */
   def enterRoots(file: AbstractFile)(implicit ctx: Context): Unit =
     if (!files.contains(file) && !lateFiles.contains(file)) {
+      lateFiles += file
       val unit = new CompilationUnit(getSource(file.path))
-      myLateUnits += unit
-      myLateFiles += file
       enterRoots(unit)(runContext.fresh.setCompilationUnit(unit))
     }
 
