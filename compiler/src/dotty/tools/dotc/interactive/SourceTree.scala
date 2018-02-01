@@ -8,6 +8,7 @@ import ast.tpd
 import core._, core.Decorators.{sourcePos => _, _}
 import Contexts._, NameOps._, Symbols._
 import util._, util.Positions._
+import Interactive.matchSymbol
 
 /** A typechecked named `tree` coming from `source` */
 case class SourceTree(tree: tpd.NameTree, source: SourceFile) {
@@ -45,8 +46,9 @@ object SourceTree {
     else {
       import ast.Trees._
       def sourceTreeOfClass(tree: tpd.Tree): Option[SourceTree] = tree match {
-        case PackageDef(_, stats) => stats.flatMap(sourceTreeOfClass).headOption
-        case tree: tpd.TypeDef if tree.symbol == sym =>
+        case PackageDef(_, stats) =>
+          stats.flatMap(sourceTreeOfClass).headOption
+        case tree: tpd.TypeDef if matchSymbol(tree, sym, includeOverriden = false) =>
           val sourceFile = new SourceFile(sym.sourceFile, Codec.UTF8)
           Some(SourceTree(tree, sourceFile))
         case _ => None

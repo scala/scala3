@@ -14,6 +14,7 @@ import util.Stats
 import Decorators._
 import scala.util.control.NonFatal
 import ast.Trees._
+import ast.tpd
 import parsing.Parsers.OutlineParser
 import reporting.trace
 
@@ -118,7 +119,9 @@ class SymbolLoaders {
       scope: Scope = EmptyScope)(implicit ctx: Context): Unit = {
 
     val completer = new SourcefileLoader(src)
-    if (ctx.settings.scansource.value) {
+    if (ctx.settings.scansource.value && ctx.run != null) {
+      System.out.print(i"scanning $src ...")
+      System.out.flush()
       if (src.exists && !src.isDirectory) {
         val filePath = owner.ownersIterator.takeWhile(!_.isRoot).map(_.name.toTermName).toList
 
@@ -160,6 +163,7 @@ class SymbolLoaders {
 
         val unit = new CompilationUnit(ctx.run.getSource(src.path))
         enterScanned(unit)(ctx.run.runContext.fresh.setCompilationUnit(unit))
+        System.out.println(" done")
       }
     }
     else enterClassAndModule(owner, name, completer, scope = scope)
@@ -338,15 +342,8 @@ abstract class SymbolLoader extends LazyType {
         postProcess(root.scalacLinkedClass.denot)
     }
   }
-}
 
-class ClassfileLoader(val classfile: AbstractFile) extends SymbolLoader {
-
-  override def sourceFileOrNull: AbstractFile = classfile
-
-  def description(implicit ctx: Context) = "class file " + classfile.toString
-
-  def rootDenots(rootDenot: ClassDenotation)(implicit ctx: Context): (ClassDenotation, ClassDenotation) = {
+  protected def rootDenots(rootDenot: ClassDenotation)(implicit ctx: Context): (ClassDenotation, ClassDenotation) = {
     val linkedDenot = rootDenot.scalacLinkedClass.denot match {
       case d: ClassDenotation => d
       case d =>
@@ -368,6 +365,13 @@ class ClassfileLoader(val classfile: AbstractFile) extends SymbolLoader {
     if (rootDenot is ModuleClass) (linkedDenot, rootDenot)
     else (rootDenot, linkedDenot)
   }
+}
+
+class ClassfileLoader(val classfile: AbstractFile) extends SymbolLoader {
+
+  override def sourceFileOrNull: AbstractFile = classfile
+
+  def description(implicit ctx: Context) = "class file " + classfile.toString
 
   override def doComplete(root: SymDenotation)(implicit ctx: Context): Unit =
     load(root)
@@ -393,6 +397,20 @@ class ClassfileLoader(val classfile: AbstractFile) extends SymbolLoader {
 class SourcefileLoader(val srcfile: AbstractFile) extends SymbolLoader {
   def description(implicit ctx: Context) = "source file " + srcfile.toString
   override def sourceFileOrNull = srcfile
-  def doComplete(root: SymDenotation)(implicit ctx: Context): Unit =
+  def doComplete(root: SymDenotation)(implicit ctx: Context): Unit = {
     ctx.run.enterRoots(srcfile)
+    if (ctx.settings.YretainTrees.value) {
+      val (classRoot, moduleRoot) = rootDenots(root.asClass)
+      classRoot.classSymbol.treeOrProvider = treeProvider
+      moduleRoot.classSymbol.treeOrProvider = treeProvider
+    }
+  }
+  object treeProvider extends tpd.TreeProvider {
+    def computeTrees(implicit ctx: Context): List[tpd.Tree] = {
+      var units = new CompilationUnit(ctx.run.getSource(srcfile.path)) :: Nil
+      for (phase <- ctx.allPhases; if phase.isTyper)
+        units = phase.runOn(units)
+      units.map(_.tpdTree)
+    }
+  }
 }
