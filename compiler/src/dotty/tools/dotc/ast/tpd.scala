@@ -606,19 +606,34 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   }
 
   class TimeTravellingTreeCopier extends TypedTreeCopier {
-    override def Apply(tree: Tree)(fun: Tree, args: List[Tree])(implicit ctx: Context): Apply =
-      ta.assignType(untpd.cpy.Apply(tree)(fun, args), fun, args)
-      // Note: Reassigning the original type if `fun` and `args` have the same types as before
-      // does not work here: The computed type depends on the widened function type, not
-      // the function type itself. A treetransform may keep the function type the
-      // same but its widened type might change.
+    override def Apply(tree: Tree)(fun: Tree, args: List[Tree])(implicit ctx: Context): Apply = {
+      val tree1 = untpd.cpy.Apply(tree)(fun, args)
+      tree match {
+        case tree: Apply
+        if (fun.tpe eq tree.fun.tpe) && (fun.tpe.widen eq tree.fun.tpe.widen) && sameTypes(args, tree.args) =>
+          tree1.withTypeUnchecked(tree.tpe)
+        case _ => ta.assignType(tree1, fun, args)
+      }
+    }
 
-    override def TypeApply(tree: Tree)(fun: Tree, args: List[Tree])(implicit ctx: Context): TypeApply =
-      ta.assignType(untpd.cpy.TypeApply(tree)(fun, args), fun, args)
-      // Same remark as for Apply
+    override def TypeApply(tree: Tree)(fun: Tree, args: List[Tree])(implicit ctx: Context): TypeApply = {
+      val tree1 = untpd.cpy.TypeApply(tree)(fun, args)
+      tree match {
+        case tree: TypeApply
+        if (fun.tpe eq tree.fun.tpe) && (fun.tpe.widen eq tree.fun.tpe.widen) && sameTypes(args, tree.args) =>
+          tree1.withTypeUnchecked(tree.tpe)
+        case _ => ta.assignType(tree1, fun, args)
+      }
+    }
 
-    override def Closure(tree: Tree)(env: List[Tree], meth: Tree, tpt: Tree)(implicit ctx: Context): Closure =
-            ta.assignType(untpd.cpy.Closure(tree)(env, meth, tpt), meth, tpt)
+    override def Closure(tree: Tree)(env: List[Tree], meth: Tree, tpt: Tree)(implicit ctx: Context): Closure = {
+      val tree1 = untpd.cpy.Closure(tree)(env, meth, tpt)
+      tree match {
+        case tree: Closure if sameTypes(env, tree.env) && (meth.tpe eq tree.meth.tpe) && (meth.tpe.widen eq tree.meth.tpe.widen) && (tpt.tpe eq tree.tpt.tpe) =>
+          tree1.withTypeUnchecked(tree.tpe)
+        case _ => ta.assignType(tree1, meth, tpt)
+      }
+    }
 
     override def Closure(tree: Closure)(env: List[Tree] = tree.env, meth: Tree = tree.meth, tpt: Tree = tree.tpt)(implicit ctx: Context): Closure =
       Closure(tree: Tree)(env, meth, tpt)
