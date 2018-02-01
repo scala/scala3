@@ -345,7 +345,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
           "javac",
           "-encoding", "UTF-8",
           "-classpath",
-          s".:${Jars.scalaLibrary}:${targetDir.getAbsolutePath}"
+          s"${Jars.scalaLibrary}:${targetDir.getAbsolutePath}"
         ) ++ flags.all.takeRight(2) ++ fs
 
         val process = Runtime.getRuntime.exec(fullArgs)
