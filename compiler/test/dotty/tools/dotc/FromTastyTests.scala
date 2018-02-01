@@ -100,9 +100,6 @@ class FromTastyTests extends ParallelTesting {
     val (step1, step2, step3) = compileTastyInDir("tests/run", defaultOptions,
        blacklist = Set(
 
-        // Class not found
-        "puzzle.scala",
-
          "t3613.scala",
          "t7223.scala",
          "t7899-regression.scala",
