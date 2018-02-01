@@ -187,13 +187,14 @@ class tests extends CompilerTest {
   @Test def negVarargsT1625 = compileFiles(negDir + "varargsInMethodsT1625/")
 
   val negCustomArgs = testsDir + "neg-custom-args/"
+  val negAllowDoubleBindings = negCustomArgs + "allow-double-bindings/"
 
-  @Test def neg_typers() = compileFile(negCustomArgs, "typers")(allowDoubleBindings)
+  @Test def neg_typers() = compileFile(negAllowDoubleBindings, "typers")(allowDoubleBindings)
   @Test def neg_overrideClass = compileFile(negCustomArgs, "overrideClass", scala2mode)
   @Test def neg_autoTupling = compileFile(negCustomArgs, "autoTuplingTest", args = "-language:noAutoTupling" :: Nil)
   @Test def neg_i1050 = compileFile(negCustomArgs, "i1050", List("-strict"))
-  @Test def neg_i1240 = compileFile(negCustomArgs, "i1240")(allowDoubleBindings)
-  @Test def neg_i2002 = compileFile(negCustomArgs, "i2002")(allowDoubleBindings)
+  @Test def neg_i1240 = compileFile(negAllowDoubleBindings, "i1240")(allowDoubleBindings)
+  @Test def neg_i2002 = compileFile(negAllowDoubleBindings, "i2002")(allowDoubleBindings)
   @Test def neg_valueclasses_doubledefs = compileFile(negCustomArgs, "valueclasses-doubledefs")(allowDoubleBindings)
   @Test def neg_valueclasses_pavlov = compileFile(negCustomArgs, "valueclasses-pavlov")(allowDoubleBindings)
   @Test def neg_trailingUnderscore = compileFile(negCustomArgs, "trailingUnderscore", args = "-strict" :: Nil)

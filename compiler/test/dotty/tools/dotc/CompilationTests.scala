@@ -105,7 +105,7 @@ class CompilationTests extends ParallelTesting {
     compileDir("tests/pos/i1137-1", defaultOptions and "-Yemit-tasty") +
     compileFile(
       // succeeds despite -Xfatal-warnings because of -nowarn
-      "tests/neg-custom-args/xfatalWarnings.scala",
+      "tests/neg-custom-args/fatal-warnings/xfatalWarnings.scala",
       defaultOptions.and("-nowarn", "-Xfatal-warnings")
     )
   }.checkCompile()
@@ -175,27 +175,16 @@ class CompilationTests extends ParallelTesting {
     compileFilesInDir("tests/neg", defaultOptions) +
     compileFilesInDir("tests/neg-tailcall", defaultOptions) +
     compileFilesInDir("tests/neg-no-optimise", defaultOptions) +
+    compileFilesInDir("tests/neg-custom-args/fatal-warnings", defaultOptions.and("-Xfatal-warnings")) +
+    compileFilesInDir("tests/neg-custom-args/allow-double-bindings", allowDoubleBindings) +
     compileFile("tests/neg-custom-args/i3246.scala", scala2Mode) +
-    compileFile("tests/neg-custom-args/typers.scala", allowDoubleBindings) +
     compileFile("tests/neg-custom-args/overrideClass.scala", scala2Mode) +
     compileFile("tests/neg-custom-args/autoTuplingTest.scala", defaultOptions.and("-language:noAutoTupling")) +
     compileFile("tests/neg-custom-args/i1050.scala", defaultOptions.and("-strict")) +
-    compileFile("tests/neg-custom-args/i1240.scala", allowDoubleBindings) +
-    compileFile("tests/neg-custom-args/i2002.scala", allowDoubleBindings) +
     compileFile("tests/neg-custom-args/nopredef.scala", defaultOptions.and("-Yno-predef")) +
     compileFile("tests/neg-custom-args/noimports.scala", defaultOptions.and("-Yno-imports")) +
     compileFile("tests/neg-custom-args/noimports2.scala", defaultOptions.and("-Yno-imports")) +
-    compileFile("tests/neg-custom-args/overloadsOnAbstractTypes.scala", allowDoubleBindings) +
-    compileFile("tests/neg-custom-args/xfatalWarnings.scala", defaultOptions.and("-Xfatal-warnings")) +
-    compileFile("tests/neg-custom-args/i3561.scala", defaultOptions.and("-Xfatal-warnings")) +
-    compileFile("tests/neg-custom-args/pureStatement.scala", defaultOptions.and("-Xfatal-warnings")) +
-    compileFile("tests/neg-custom-args/i2333.scala", defaultOptions.and("-Xfatal-warnings")) +
-    compileFile("tests/neg-custom-args/i3882.scala", allowDeepSubtypes) +
-    compileFile("tests/neg-custom-args/phantom-overload.scala", allowDoubleBindings) +
-    compileFile("tests/neg-custom-args/phantom-overload-2.scala", allowDoubleBindings) +
-    compileFile("tests/neg-custom-args/structural.scala", defaultOptions.and("-Xfatal-warnings")) +
-    compileFile("tests/neg-custom-args/i2673.scala", defaultOptions.and("-Xfatal-warnings")) +
-    compileFile("tests/neg-custom-args/t3235-minimal.scala", defaultOptions.and("-Xfatal-warnings"))
+    compileFile("tests/neg-custom-args/i3882.scala", allowDeepSubtypes)
   }.checkExpectedErrors()
 
   // Run tests -----------------------------------------------------------------
