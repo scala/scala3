@@ -125,14 +125,14 @@ object Interactive {
    *  source code.
    *
    *  @param includeReferences  If true, include references and not just definitions
-   *  @param includeOverriden   If true, include trees whose symbol is overriden by `sym`
+   *  @param includeOverridden  If true, include trees whose symbol is overriden by `sym`
    */
-  def namedTrees(trees: List[SourceTree], includeReferences: Boolean, includeOverriden: Boolean, sym: Symbol)
+  def namedTrees(trees: List[SourceTree], includeReferences: Boolean, includeOverridden: Boolean, sym: Symbol)
    (implicit ctx: Context): List[SourceTree] =
     if (!sym.exists)
       Nil
     else
-      namedTrees(trees, includeReferences, matchSymbol(_, sym, includeOverriden))
+      namedTrees(trees, includeReferences, matchSymbol(_, sym, includeOverridden))
 
   /** Find named trees with a non-empty position whose name contains `nameSubstring` in `trees`.
    *
@@ -184,10 +184,10 @@ object Interactive {
    *  The reason for (2) is that if a symbol comes from a SourcefileLoader it is
    *  different from the symbol that was referred to, until the next run is started.
    */
-  def matchSymbol(tree: Tree, sym: Symbol, includeOverriden: Boolean)(implicit ctx: Context): Boolean =
+  def matchSymbol(tree: Tree, sym: Symbol, includeOverridden: Boolean)(implicit ctx: Context): Boolean =
     (sym == tree.symbol) ||
     sym.name == tree.symbol.name && sym.owner.isClass && sym.owner == tree.symbol.owner ||
-    (includeOverriden && tree.symbol.allOverriddenSymbols.contains(sym))
+    (includeOverridden && tree.symbol.allOverriddenSymbols.contains(sym))
 
 
   /** The reverse path to the node that closest encloses position `pos`,

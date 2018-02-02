@@ -224,7 +224,7 @@ class DottyLanguageServer extends LanguageServer
       // behave with respect to overriding and overriden definitions, ideally
       // this should be part of the LSP protocol.
       val trees = SourceTree.fromSymbol(sym.topLevelClass.asClass).toList
-      val defs = Interactive.namedTrees(trees, includeReferences = false, includeOverriden = true, sym)
+      val defs = Interactive.namedTrees(trees, includeReferences = false, includeOverridden = true, sym)
       defs.map(d => location(d.namePos)).asJava
     }
   }
@@ -246,7 +246,7 @@ class DottyLanguageServer extends LanguageServer
       val trees = driver.allTreesContaining(sym.name.toString)
       val refs = Interactive.namedTrees(trees, includeReferences = true, (tree: tpd.NameTree) =>
         (includeDeclaration || !Interactive.isDefinition(tree))
-          && Interactive.matchSymbol(tree, sym, includeOverriden = true))
+          && Interactive.matchSymbol(tree, sym, includeOverridden = true))
 
       refs.map(ref => location(ref.namePos)).asJava
     }
@@ -267,8 +267,8 @@ class DottyLanguageServer extends LanguageServer
       val newName = params.getNewName
 
       val refs = Interactive.namedTrees(trees, includeReferences = true, tree =>
-        (Interactive.matchSymbol(tree, sym, includeOverriden = true)
-          || (linkedSym != NoSymbol && Interactive.matchSymbol(tree, linkedSym, includeOverriden = true))))
+        (Interactive.matchSymbol(tree, sym, includeOverridden = true)
+          || (linkedSym != NoSymbol && Interactive.matchSymbol(tree, linkedSym, includeOverridden = true))))
 
       val changes = refs.groupBy(ref => toUri(ref.source).toString).mapValues(_.map(ref => new TextEdit(range(ref.namePos), newName)).asJava)
 
@@ -287,7 +287,7 @@ class DottyLanguageServer extends LanguageServer
 
     if (sym == NoSymbol) Nil.asJava
     else {
-      val refs = Interactive.namedTrees(uriTrees, includeReferences = true, includeOverriden = true, sym)
+      val refs = Interactive.namedTrees(uriTrees, includeReferences = true, includeOverridden = true, sym)
       refs.map(ref => new DocumentHighlight(range(ref.namePos), DocumentHighlightKind.Read)).asJava
     }
   }

@@ -48,7 +48,7 @@ object SourceTree {
       def sourceTreeOfClass(tree: tpd.Tree): Option[SourceTree] = tree match {
         case PackageDef(_, stats) =>
           stats.flatMap(sourceTreeOfClass).headOption
-        case tree: tpd.TypeDef if matchSymbol(tree, sym, includeOverriden = false) =>
+        case tree: tpd.TypeDef if matchSymbol(tree, sym, includeOverridden = false) =>
           val sourceFile = new SourceFile(sym.sourceFile, Codec.UTF8)
           Some(SourceTree(tree, sourceFile))
         case _ => None
