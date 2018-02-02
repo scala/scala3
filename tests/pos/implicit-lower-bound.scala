@@ -9,6 +9,6 @@ class Test {
   def get1(implicit lf: List[_ <: Bar]) = {}
   def get2(implicit lf: List[_ >: Bar]) = {}
 
-  get1 // works
-  get2 // error
+  get1
+  get2
 }
