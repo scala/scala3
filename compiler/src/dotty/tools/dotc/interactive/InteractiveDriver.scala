@@ -200,7 +200,7 @@ class InteractiveDriver(settings: List[String]) extends Driver {
             *  trees are not cleand twice.
             *  TODO: Find a less expensive way to check for those cycles.
             */
-            if (!seen(annot.tree))
+            if (annot.isEvaluated && !seen(annot.tree))
               cleanupTree(annot.tree)
           }
         }
