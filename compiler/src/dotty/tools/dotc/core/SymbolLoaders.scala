@@ -397,16 +397,6 @@ class ClassfileLoader(val classfile: AbstractFile) extends SymbolLoader {
 class SourcefileLoader(val srcfile: AbstractFile) extends SymbolLoader {
   def description(implicit ctx: Context) = "source file " + srcfile.toString
   override def sourceFileOrNull = srcfile
-  def doComplete(root: SymDenotation)(implicit ctx: Context): Unit = {
-    for (unit <- ctx.run.enterRoots(srcfile))
-      if (ctx.settings.YretainTrees.value) {
-        val (classRoot, moduleRoot) = rootDenots(root.asClass)
-        val treeProvider = new tpd.TreeProvider {
-          def computeTrees(implicit ctx: Context): List[tpd.Tree] =
-            ctx.run.typedTree(unit) :: Nil
-        }
-        classRoot.classSymbol.treeOrProvider = treeProvider
-        moduleRoot.classSymbol.treeOrProvider = treeProvider
-      }
-  }
+  def doComplete(root: SymDenotation)(implicit ctx: Context): Unit =
+    ctx.run.lateCompile(srcfile, typeCheck = ctx.settings.YretainTrees.value)
 }
