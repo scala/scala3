@@ -172,6 +172,7 @@ class TypeApplications(val self: Type) extends AnyVal {
       case self: TypeRef =>
         val tsym = self.symbol
         if (tsym.isClass) tsym.typeParams
+        else if (!tsym.exists) self.info.typeParams
         else if (!tsym.isCompleting) tsym.info.typeParams
         else Nil
       case self: AppliedType =>
