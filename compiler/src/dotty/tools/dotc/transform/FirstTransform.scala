@@ -61,23 +61,6 @@ class FirstTransform extends MiniPhase with InfoTransformer { thisPhase =>
       tp
   }
 
-  /*
-      tp match {
-        //create companions for value classes that are not from currently compiled source file
-        case tp@ClassInfo(_, cls, _, decls, _)
-          if (ValueClasses.isDerivedValueClass(cls)) &&
-            !sym.isDefinedInCurrentRun && sym.scalacLinkedClass == NoSymbol =>
-          val newDecls = decls.cloneScope
-          val (modul, mcMethod, symMethod) = newCompanion(sym.name.toTermName, sym)
-          modul.entered
-          mcMethod.entered
-          newDecls.enter(symMethod)
-          tp.derivedClassInfo(decls = newDecls)
-        case _ => tp
-      }
-  }
-  */
-
   override def checkPostCondition(tree: Tree)(implicit ctx: Context): Unit = {
     tree match {
       case Select(qual, name) if !name.is(OuterSelectName) && tree.symbol.exists =>
@@ -199,11 +182,9 @@ class FirstTransform extends MiniPhase with InfoTransformer { thisPhase =>
     }
   }
 
-  /** Replace type tree `t` of type `T` with `TypeTree(T)`, but make sure all
-   *  binders in `t` are maintained by rewrapping binders around the type tree.
-   *  E.g. if `t` is  `C[t @ (>: L <: H)]`, replace with
-   *  `t @ TC[_ >: L <: H]`. The body of the binder `t` is now wrong, but this does
-   *  not matter, as we only need the info of `t`.
+  /** Replace type tree `t` of type `T` with `TypeTree(T)`, but record all
+   *  nested Bind nodes in annotations. These are interpreted in TreeTypeMaps
+   *  so that bound symbols can be properly copied.
    */
   private def toTypeTree(tree: Tree)(implicit ctx: Context) = {
     val binders = collectBinders.apply(Nil, tree)
