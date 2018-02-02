@@ -959,7 +959,6 @@ object SymDenotations {
       }
     }
 
-
     /** The class with the same (type-) name as this module or module class,
       *  and which is also defined in the same scope and compilation unit.
       *  NoSymbol if this class does not exist.
@@ -1134,6 +1133,22 @@ object SymDenotations {
 
     /** The primary constructor of a class or trait, NoSymbol if not applicable. */
     def primaryConstructor(implicit ctx: Context): Symbol = NoSymbol
+
+    /** The current declaration of this symbol's class owner that has the same name
+     *  as this one, and, if there are several, also has the same signature.
+     */
+    def currentSymbol(implicit ctx: Context): Symbol = {
+      val candidates = owner.info.decls.lookupAll(name)
+      def test(sym: Symbol): Symbol =
+        if (sym == symbol || sym.signature == signature) sym
+        else if (candidates.hasNext) test(candidates.next)
+        else NoSymbol
+      if (candidates.hasNext) {
+        val sym = candidates.next
+        if (candidates.hasNext) test(sym) else sym
+      }
+      else NoSymbol
+    }
 
     // ----- type-related ------------------------------------------------
 
