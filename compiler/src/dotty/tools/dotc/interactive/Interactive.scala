@@ -9,6 +9,7 @@ import ast.{NavigateAST, Trees, tpd, untpd}
 import core._, core.Decorators.{sourcePos => _, _}
 import Contexts._, Flags._, Names._, NameOps._, Symbols._, SymDenotations._, Trees._, Types._
 import util.Positions._, util.SourcePosition
+import core.Denotations.SingleDenotation
 import NameKinds.SimpleNameKind
 
 /** High-level API to get information out of typed trees, designed to be used by IDEs.
@@ -126,13 +127,11 @@ object Interactive {
     safely {
       if (boundary != NoSymbol) {
         val boundaryCtx = ctx.withOwner(boundary)
-        prefix.memberDenots(completionsFilter, (name, buf) =>
-          buf ++= prefix.member(name).altsWith{ d =>
-            !d.isAbsent &&
-            !d.is(Synthetic) && !d.is(Artifact) &&
-            d.symbol.isAccessibleFrom(prefix)(boundaryCtx)
-          }
-        ).map(_.symbol).toList
+        def exclude(sym: Symbol) = sym.isAbsent || sym.is(Synthetic) || sym.is(Artifact)
+        def addMember(name: Name, buf: mutable.Buffer[SingleDenotation]): Unit =
+          buf ++= prefix.member(name).altsWith(d =>
+            !exclude(d) && d.symbol.isAccessibleFrom(prefix)(boundaryCtx))
+         prefix.memberDenots(completionsFilter, addMember).map(_.symbol).toList
       }
       else Nil
     }
