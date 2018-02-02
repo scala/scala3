@@ -62,6 +62,18 @@ object Interactive {
       sourceSymbol(sym.owner)
     else sym
 
+  /** Check if `tree` matches `sym`.
+   *  This is the case if the symbol defined by `tree` equals `sym`,
+   *  or the source symbol of tree equals sym,
+   *  or `includeOverridden is true, and `sym` is overriden by `tree`.
+   */
+  def matchSymbol(tree: Tree, sym: Symbol, includeOverridden: Boolean)(implicit ctx: Context): Boolean =
+    (  sym == tree.symbol
+    || sym.exists && sym == sourceSymbol(tree.symbol)
+    || includeOverridden && sym.name == tree.symbol.name &&
+       tree.symbol.owner.derivesFrom(sym.owner) && tree.symbol.overriddenSymbol(sym.owner.asClass) == sym
+    )
+
   private def safely[T](op: => List[T]): List[T] =
     try op catch { case ex: TypeError => Nil }
 
@@ -174,19 +186,6 @@ object Interactive {
 
     buf.toList
   }
-
-  /** Check if `tree` matches `sym`.
-   *  This is the case if one of the following is true:
-   *    (1) `sym` is the symbol of `tree`, or
-   *    (2) `sym` is a module value and its module class matches, or
-   *    (3) `includeOverridden is true, and `sym` is overriden by `tree`.
-   */
-  def matchSymbol(tree: Tree, sym: Symbol, includeOverridden: Boolean)(implicit ctx: Context): Boolean =
-    (  sym == tree.symbol
-    || sym.is(ModuleVal) && tree.symbol == sym.moduleClass
-    || includeOverridden && sym.name == tree.symbol.name && sym.owner.isClass &&
-       tree.symbol.overriddenSymbol(sym.owner.asClass) == sym
-    )
 
   /** The reverse path to the node that closest encloses position `pos`,
    *  or `Nil` if no such path exists. If a non-empty path is returned it starts with
