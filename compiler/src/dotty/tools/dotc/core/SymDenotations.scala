@@ -1935,7 +1935,7 @@ object SymDenotations {
    */
   trait TypeParamsCompleter extends LazyType {
     override def completerTypeParams(sym: Symbol)(implicit ctx: Context): List[TypeSymbol] =
-      unsupported("completerTypeParams") // should be abstract, but Scala-2 will then comppute wrong type for it
+      unsupported("completerTypeParams") // should be abstract, but Scala-2 will then compute the wrong type for it
   }
 
   val NoSymbolFn = (ctx: Context) => NoSymbol
