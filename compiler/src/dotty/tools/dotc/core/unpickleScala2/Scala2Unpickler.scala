@@ -614,7 +614,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
     /** Force reading type params early, we need them in setClassInfo of subclasses. */
     def init()(implicit ctx: Context) = loadTypeParams
 
-    def completerTypeParams(sym: Symbol)(implicit ctx: Context): List[TypeSymbol] =
+    override def completerTypeParams(sym: Symbol)(implicit ctx: Context): List[TypeSymbol] =
       loadTypeParams
   }
 
