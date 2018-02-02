@@ -17,6 +17,8 @@ import reporting.trace
 /** Provides methods to compare types.
  */
 class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
+  import TypeComparer.show
+
   implicit val ctx = initctx
 
   val state = ctx.typerState
@@ -24,6 +26,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
 
   private[this] var pendingSubTypes: mutable.Set[(Type, Type)] = null
   private[this] var recCount = 0
+  private[this] var monitored = false
 
   private[this] var needsGc = false
 
@@ -101,9 +104,11 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
     if (tp2 eq NoType) return false
     if ((tp2 eq tp1) || (tp2 eq WildcardType)) return true
     try isSubType(tp1, tp2)
-    finally
+    finally {
+      monitored = false
       if (Config.checkConstraintsSatisfiable)
         assert(isSatisfiable, constraint.show)
+    }
   }
 
   protected def isSubType(tp1: Type, tp2: Type): Boolean = trace(s"isSubType ${traceInfo(tp1, tp2)}", subtyping) {
@@ -114,9 +119,8 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
       val savedSuccessCount = successCount
       try {
         recCount = recCount + 1
-        val result =
-          if (recCount < Config.LogPendingSubTypesThreshold) firstTry(tp1, tp2)
-          else monitoredIsSubType(tp1, tp2)
+        if (recCount >= Config.LogPendingSubTypesThreshold) monitored = true
+        val result = if (monitored) monitoredIsSubType(tp1, tp2) else firstTry(tp1, tp2)
         recCount = recCount - 1
         if (!result) state.resetConstraintTo(saved)
         else if (recCount == 0 && needsGc) {
@@ -300,6 +304,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
           if (isSubType(info1.alias, tp2)) return true
           if (tp1.prefix.isStable) return false
         case _ =>
+          if (tp1 eq NothingType) return tp1 == tp2.bottomType
       }
       thirdTry(tp1, tp2)
     case tp1: TypeParamRef =>
@@ -1577,7 +1582,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
 
   /** Show subtype goal that led to an assertion failure */
   def showGoal(tp1: Type, tp2: Type)(implicit ctx: Context) = {
-    println(i"assertion failure for $tp1 <:< $tp2, frozen = $frozenConstraint")
+    println(i"assertion failure for ${show(tp1)} <:< ${show(tp2)}, frozen = $frozenConstraint")
     def explainPoly(tp: Type) = tp match {
       case tp: TypeParamRef => ctx.echo(s"TypeParamRef ${tp.show} found in ${tp.binder.show}")
       case tp: TypeRef if tp.symbol.exists => ctx.echo(s"typeref ${tp.show} found in ${tp.symbol.owner.show}")
@@ -1609,6 +1614,11 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
 
 object TypeComparer {
 
+  private[core] def show(res: Any)(implicit ctx: Context) = res match {
+    case res: printing.Showable if !ctx.settings.YexplainLowlevel.value => res.show
+    case _ => String.valueOf(res)
+  }
+
   /** Show trace of comparison operations when performing `op` as result string */
   def explained[T](op: Context => T)(implicit ctx: Context): String = {
     val nestedCtx = ctx.fresh.setTypeComparerFn(new ExplainingTypeComparer(_))
@@ -1619,6 +1629,8 @@ object TypeComparer {
 
 /** A type comparer that can record traces of subtype operations */
 class ExplainingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
+  import TypeComparer.show
+
   private[this] var indent = 0
   private val b = new StringBuilder
 
@@ -1634,11 +1646,6 @@ class ExplainingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
       indent -= 2
       res
     }
-
-  private def show(res: Any) = res match {
-    case res: printing.Showable if !ctx.settings.YexplainLowlevel.value => res.show
-    case _ => String.valueOf(res)
-  }
 
   override def isSubType(tp1: Type, tp2: Type) =
     traceIndented(s"${show(tp1)} <:< ${show(tp2)}${if (Config.verboseExplainSubtype) s" ${tp1.getClass} ${tp2.getClass}" else ""}${if (frozenConstraint) " frozen" else ""}") {
