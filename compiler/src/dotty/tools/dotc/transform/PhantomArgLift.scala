@@ -5,7 +5,7 @@ import dotty.tools.dotc.core.Contexts._
 import dotty.tools.dotc.core.NameKinds._
 import dotty.tools.dotc.core.Types._
 import dotty.tools.dotc.transform.MegaPhase.MiniPhase
-import dotty.tools.dotc.typer.EtaExpansion
+import dotty.tools.dotc.typer.LiftImpure
 
 import scala.collection.mutable.ListBuffer
 
@@ -46,7 +46,7 @@ class PhantomArgLift extends MiniPhase {
       if (!hasImpurePhantomArgs(tree)) tree
       else {
         val buffer = ListBuffer.empty[Tree]
-        val app = EtaExpansion.liftApp(buffer, tree)
+        val app = LiftImpure.liftApp(buffer, tree)
         if (buffer.isEmpty) app
         else Block(buffer.result(), app)
       }
