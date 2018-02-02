@@ -189,16 +189,24 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
   /** Enter top-level definitions of classes and objects contain in Scala source file `file`.
    *  The newly added symbols replace any previously entered symbols.
    */
-  def enterRoots(file: AbstractFile)(implicit ctx: Context): Unit =
+  def enterRoots(file: AbstractFile)(implicit ctx: Context): Option[CompilationUnit] =
     if (!files.contains(file) && !lateFiles.contains(file)) {
       lateFiles += file
       val unit = new CompilationUnit(getSource(file.path))
       enterRoots(unit)(runContext.fresh.setCompilationUnit(unit))
+      Some(unit)
     }
+    else None
 
   private def enterRoots(unit: CompilationUnit)(implicit ctx: Context): Unit = {
     unit.untpdTree = new Parser(unit.source).parse()
     ctx.typer.lateEnter(unit.untpdTree)
+  }
+
+  def typedTree(unit: CompilationUnit)(implicit ctx: Context) = {
+    def typeCheck(implicit ctx: Context) = ctx.typer.typedExpr(unit.untpdTree)
+    if (unit.tpdTree.isEmpty) unit.tpdTree = typeCheck(runContext.fresh.setCompilationUnit(unit))
+    unit.tpdTree
   }
 
   private sealed trait PrintedTree
