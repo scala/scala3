@@ -178,17 +178,15 @@ object Interactive {
   /** Check if `tree` matches `sym`.
    *  This is the case if one of the following is true:
    *    (1) `sym` is the symbol of `tree`, or
-   *    (2) The two symbols have the same name and class owner, or
-   *    (3) `includeOverriden is true, and `sym` is overriden by `tree`.
-   *
-   *  The reason for (2) is that if a symbol comes from a SourcefileLoader it is
-   *  different from the symbol that was referred to, until the next run is started.
+   *    (2) `sym` is a module value and its module class matches, or
+   *    (3) `includeOverridden is true, and `sym` is overriden by `tree`.
    */
   def matchSymbol(tree: Tree, sym: Symbol, includeOverridden: Boolean)(implicit ctx: Context): Boolean =
-    (sym == tree.symbol) ||
-    sym.name == tree.symbol.name && sym.owner.isClass && sym.owner == tree.symbol.owner ||
-    (includeOverridden && tree.symbol.allOverriddenSymbols.contains(sym))
-
+    (  sym == tree.symbol
+    || sym.is(ModuleVal) && tree.symbol == sym.moduleClass
+    || includeOverridden && sym.name == tree.symbol.name && sym.owner.isClass &&
+       tree.symbol.overriddenSymbol(sym.owner.asClass) == sym
+    )
 
   /** The reverse path to the node that closest encloses position `pos`,
    *  or `Nil` if no such path exists. If a non-empty path is returned it starts with
