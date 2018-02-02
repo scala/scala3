@@ -27,6 +27,11 @@ import reporting.diagnostic.messages._
 trait NamerContextOps { this: Context =>
   import NamerContextOps._
 
+  def typer = ctx.typeAssigner match {
+    case typer: Typer => typer
+    case _ => new Typer
+  }
+
   /** Enter symbol into current class, if current class is owner of current context,
    *  or into current scope, if not. Should always be called instead of scope.enter
    *  in order to make sure that updates to class members are reflected in
