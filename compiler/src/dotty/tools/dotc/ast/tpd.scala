@@ -873,7 +873,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     def tpes: List[Type] = xs map (_.tpe)
   }
 
-  /** A trait for loaders that compute trees. Common base trait for DottyUnpickler and SymbolLoader */
+  /** A trait for loaders that compute trees. Currently implemented just by DottyUnpickler. */
   trait TreeProvider {
     protected def computeTrees(implicit ctx: Context): List[Tree]
 

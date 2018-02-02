@@ -214,7 +214,6 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
       }
       process()(runContext.fresh.setCompilationUnit(unit))
     }
-    else None
 
   private sealed trait PrintedTree
   private /*final*/ case class SomePrintedTree(phase: String, tree: String) extends PrintedTree

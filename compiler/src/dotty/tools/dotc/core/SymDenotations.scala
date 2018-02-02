@@ -1134,7 +1134,7 @@ object SymDenotations {
     /** The primary constructor of a class or trait, NoSymbol if not applicable. */
     def primaryConstructor(implicit ctx: Context): Symbol = NoSymbol
 
-    /** The current declaration of this symbol's class owner that has the same name
+    /** The current declaration in this symbol's class owner that has the same name
      *  as this one, and, if there are several, also has the same signature.
      */
     def currentSymbol(implicit ctx: Context): Symbol = {

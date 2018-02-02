@@ -71,7 +71,6 @@ class InteractiveDriver(settings: List[String]) extends Driver {
         clsd.ensureCompleted()
         SourceTree.fromSymbol(clsd.symbol.asClass, id)
       case _ =>
-        //sys.error(s"class not found: $className")
         None
     }
   }

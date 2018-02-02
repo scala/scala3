@@ -634,8 +634,9 @@ object Symbols {
       */
     def tree(implicit ctx: Context): Tree = treeContaining("")
 
-    /** Same as `tree` but load only Tasty tree if the name table of the unpickler
-     *  contains `id`.
+    /** Same as `tree` but load tree only if `id == ""` or the tree might contain `id`.
+     *  For Tasty trees this means consulting whether the name table defines `id`.
+     *  For already loaded trees, we maintain the referenced ids in an attachment.
      */
     def treeContaining(id: String)(implicit ctx: Context): Tree = denot.infoOrCompleter match {
       case _: NoCompleter =>
