@@ -18,6 +18,13 @@ import NameKinds.SimpleNameKind
 object Interactive {
   import ast.tpd._
 
+  object Include { // should be an enum, really.
+    type Set = Int
+    val overridden = 1 // include trees whose symbol is overridden by `sym`
+    val overriding = 2 // include trees whose symbol overrides `sym`
+    val references = 4 // include references and not just definitions
+  }
+
   /** Does this tree define a symbol ? */
   def isDefinition(tree: Tree) =
     tree.isInstanceOf[DefTree with NameTree]
@@ -28,19 +35,17 @@ object Interactive {
     if (path.isEmpty) NoType
     else path.head.tpe
   }
+  /** The closest enclosing tree with a symbol containing position `pos`.
+   */
+  def enclosingTree(trees: List[SourceTree], pos: SourcePosition)(implicit ctx: Context): Tree =
+    pathTo(trees, pos).dropWhile(!_.symbol.exists).headOption.getOrElse(tpd.EmptyTree)
 
   /** The source symbol of the closest enclosing tree with a symbol containing position `pos`.
    *
    *  @see sourceSymbol
    */
-  def enclosingSourceSymbol(trees: List[SourceTree], pos: SourcePosition)(implicit ctx: Context): Symbol = {
-    pathTo(trees, pos).dropWhile(!_.symbol.exists).headOption match {
-      case Some(tree) =>
-        sourceSymbol(tree.symbol)
-      case None =>
-        NoSymbol
-    }
-  }
+  def enclosingSourceSymbol(trees: List[SourceTree], pos: SourcePosition)(implicit ctx: Context): Symbol =
+    sourceSymbol(enclosingTree(trees, pos).symbol)
 
   /** A symbol related to `sym` that is defined in source code.
    *
@@ -65,14 +70,22 @@ object Interactive {
   /** Check if `tree` matches `sym`.
    *  This is the case if the symbol defined by `tree` equals `sym`,
    *  or the source symbol of tree equals sym,
-   *  or `includeOverridden is true, and `sym` is overriden by `tree`.
+   *  or `include` is `overridden`, and `tree` is overridden by `sym`,
+   *  or `include` is `overriding`, and `tree` overrides `sym`.
    */
-  def matchSymbol(tree: Tree, sym: Symbol, includeOverridden: Boolean)(implicit ctx: Context): Boolean =
+  def matchSymbol(tree: Tree, sym: Symbol, include: Include.Set)(implicit ctx: Context): Boolean = {
+
+    def overrides(sym1: Symbol, sym2: Symbol) =
+      sym1.owner.derivesFrom(sym2.owner) && sym1.overriddenSymbol(sym2.owner.asClass) == sym2
+
     (  sym == tree.symbol
     || sym.exists && sym == sourceSymbol(tree.symbol)
-    || includeOverridden && sym.name == tree.symbol.name &&
-       tree.symbol.owner.derivesFrom(sym.owner) && tree.symbol.overriddenSymbol(sym.owner.asClass) == sym
+    || include != 0 && sym.name == tree.symbol.name && sym.owner != tree.symbol.owner
+       && (  (include & Include.overridden) != 0 && overrides(sym, tree.symbol)
+          || (include & Include.overriding) != 0 && overrides(tree.symbol, sym)
+          )
     )
+  }
 
   private def safely[T](op: => List[T]): List[T] =
     try op catch { case ex: TypeError => Nil }
@@ -135,16 +148,13 @@ object Interactive {
    *  Note that nothing will be found for symbols not defined in source code,
    *  use `sourceSymbol` to get a symbol related to `sym` that is defined in
    *  source code.
-   *
-   *  @param includeReferences  If true, include references and not just definitions
-   *  @param includeOverridden  If true, include trees whose symbol is overriden by `sym`
    */
-  def namedTrees(trees: List[SourceTree], includeReferences: Boolean, includeOverridden: Boolean, sym: Symbol)
+  def namedTrees(trees: List[SourceTree], include: Include.Set, sym: Symbol)
    (implicit ctx: Context): List[SourceTree] =
     if (!sym.exists)
       Nil
     else
-      namedTrees(trees, includeReferences, matchSymbol(_, sym, includeOverridden))
+      namedTrees(trees, (include & Include.references) != 0, matchSymbol(_, sym, include))
 
   /** Find named trees with a non-empty position whose name contains `nameSubstring` in `trees`.
    *
