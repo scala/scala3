@@ -166,8 +166,6 @@ object Interactive {
       (new untpd.TreeTraverser {
         override def traverse(tree: untpd.Tree)(implicit ctx: Context) = {
           tree match {
-            case _: untpd.Inlined =>
-              // Skip inlined trees
             case utree: untpd.NameTree if tree.hasType =>
               val tree = utree.asInstanceOf[tpd.NameTree]
               if (tree.symbol.exists
@@ -177,9 +175,12 @@ object Interactive {
                    && (includeReferences || isDefinition(tree))
                    && treePredicate(tree))
                 buf += SourceTree(tree, source)
+              traverseChildren(tree)
+            case tree: untpd.Inlined =>
+              traverse(tree.call)
             case _ =>
+              traverseChildren(tree)
           }
-          traverseChildren(tree)
         }
       }).traverse(topTree)
     }
