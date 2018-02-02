@@ -33,7 +33,7 @@ abstract class Lifter {
   /** Test indicating `expr` does not need lifting */
   def noLift(expr: Tree)(implicit ctx: Context): Boolean
 
-  /** The corresponding lifter for paam-by-name arguments */
+  /** The corresponding lifter for pass-by-name arguments */
   protected def exprLifter: Lifter = NoLift
 
   /** The flags of a lifted definition */
@@ -144,7 +144,7 @@ object LiftImpure extends LiftImpure
 
 /** Lift all impure or complex arguments */
 class LiftComplex extends Lifter {
-  def noLift(expr: tpd.Tree)(implicit ctx: Context) = tpd.isPurePath(expr)
+  def noLift(expr: tpd.Tree)(implicit ctx: Context) = tpd.isSimplyPure(expr)
   override def exprLifter = LiftToDefs
 }
 object LiftComplex extends LiftComplex

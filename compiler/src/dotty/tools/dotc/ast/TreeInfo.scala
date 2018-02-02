@@ -330,7 +330,7 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
   }
 
   /** The purity level of this expression.
-   *  @return   PurePath    if expression has no side effects and cannot contain local definitions
+   *  @return   SimplyPure  if expression has no side effects and cannot contain local definitions
    *            Pure        if expression has no side effects
    *            Idempotent  if running the expression a second time has no side effects
    *            Impure      otherwise
@@ -346,7 +346,7 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
        | Super(_, _)
        | Literal(_)
        | Closure(_, _, _) =>
-      PurePath
+      SimplyPure
     case Ident(_) =>
       refPurity(tree)
     case Select(qual, _) =>
@@ -383,26 +383,26 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
 
   private def minOf(l0: PurityLevel, ls: List[PurityLevel]) = (l0 /: ls)(_ min _)
 
-  def isPurePath(tree: Tree)(implicit ctx: Context) = exprPurity(tree) == PurePath
+  def isSimplyPure(tree: Tree)(implicit ctx: Context) = exprPurity(tree) == SimplyPure
   def isPureExpr(tree: Tree)(implicit ctx: Context) = exprPurity(tree) >= Pure
   def isIdempotentExpr(tree: Tree)(implicit ctx: Context) = exprPurity(tree) >= Idempotent
 
   /** The purity level of this reference.
    *  @return
-   *    PurePath    if reference is (nonlazy and stable) or to a parameterized function
+   *    SimplyPure  if reference is (nonlazy and stable) or to a parameterized function
    *    Idempotent  if reference is lazy and stable
    *    Impure      otherwise
    *  @DarkDimius: need to make sure that lazy accessor methods have Lazy and Stable
    *               flags set.
    */
   private def refPurity(tree: Tree)(implicit ctx: Context): PurityLevel =
-    if (!tree.tpe.widen.isParameterless) PurePath
+    if (!tree.tpe.widen.isParameterless) SimplyPure
     else if (!tree.symbol.isStable) Impure
     else if (tree.symbol.is(Lazy)) Idempotent // TODO add Module flag, sinxce Module vals or not Lazy from the start.
-    else PurePath
+    else SimplyPure
 
   def isPureRef(tree: Tree)(implicit ctx: Context) =
-    refPurity(tree) == PurePath
+    refPurity(tree) == SimplyPure
   def isIdempotentRef(tree: Tree)(implicit ctx: Context) =
     refPurity(tree) >= Idempotent
 
@@ -726,7 +726,7 @@ object TreeInfo {
     def min(that: PurityLevel) = new PurityLevel(x min that.x)
   }
 
-  val PurePath = new PurityLevel(3)
+  val SimplyPure = new PurityLevel(3)
   val Pure = new PurityLevel(2)
   val Idempotent = new PurityLevel(1)
   val Impure = new PurityLevel(0)
