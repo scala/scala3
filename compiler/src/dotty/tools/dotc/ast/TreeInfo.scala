@@ -556,6 +556,7 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
     val acc = new TreeAccumulator[List[Symbol]] {
       def apply(syms: List[Symbol], tree: Tree)(implicit ctx: Context) = tree match {
         case Bind(_, body) => apply(tree.symbol :: syms, body)
+        case Annotated(tree, id @ Ident(tpnme.BOUNDTYPE_ANNOT)) => apply(id.symbol :: syms, tree)
         case _ => foldOver(syms, tree)
       }
     }

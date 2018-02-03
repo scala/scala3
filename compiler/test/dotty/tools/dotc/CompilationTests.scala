@@ -175,6 +175,7 @@ class CompilationTests extends ParallelTesting {
     compileFilesInDir("../tests/neg", defaultOptions) +
     compileFilesInDir("../tests/neg-tailcall", defaultOptions) +
     compileFilesInDir("../tests/neg-no-optimise", defaultOptions) +
+    compileFile("../tests/neg-custom-args/i1754.scala", allowDeepSubtypes) +
     compileFile("../tests/neg-custom-args/i3246.scala", scala2Mode) +
     compileFile("../tests/neg-custom-args/i3627.scala", allowDeepSubtypes) +
     compileFile("../tests/neg-custom-args/typers.scala", allowDoubleBindings) +
