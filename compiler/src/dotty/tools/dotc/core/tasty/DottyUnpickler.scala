@@ -10,6 +10,7 @@ import util.Positions._
 import util.{SourceFile, NoSource}
 import Annotations.Annotation
 import classfile.ClassfileParser
+import Names.SimpleName
 
 object DottyUnpickler {
 
