@@ -54,7 +54,11 @@ class DottyUnpickler(bytes: Array[Byte]) extends ClassfileParser.Embedded with t
   private[this] var ids: Array[String] = null
 
   override def mightContain(id: String)(implicit ctx: Context): Boolean = {
-    if (ids == null) ids = unpickler.nameAtRef.contents.toArray.map(_.toString).sorted
+    if (ids == null)
+      ids =
+        unpickler.nameAtRef.contents.toArray.collect {
+          case name: SimpleName => name.toString
+        }.sorted
     ids.binarySearch(id) >= 0
   }
 }
