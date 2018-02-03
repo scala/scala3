@@ -664,12 +664,7 @@ class Typer extends Namer
 
   def typedBlock(tree: untpd.Block, pt: Type)(implicit ctx: Context) = track("typedBlock") {
     val (exprCtx, stats1) = typedBlockStats(tree.stats)
-    val ept =
-      if (tree.isInstanceOf[untpd.InfixOpBlock])
-        // Right-binding infix operations are expanded to InfixBlocks, which may be followed by arguments.
-        // Example: `(a /: bs)(op)` expands to `{ val x = a; bs./:(x) } (op)` where `{...}` is an InfixBlock.
-        pt
-      else pt.notApplied
+    val ept = pt.notApplied
     val expr1 = typedExpr(tree.expr, ept)(exprCtx)
     ensureNoLocalRefs(
       cpy.Block(tree)(stats1, expr1).withType(expr1.tpe), pt, localSyms(stats1))
@@ -1679,6 +1674,31 @@ class Typer extends Namer
     res
   }
 
+  /** Translate infix operation expression `l op r` to
+   *
+   *    l.op(r)   			    if `op` is left-associative
+   *    { val x = l; r.op(l) }  if `op` is right-associative call-by-value and `l` is impure
+   *    r.op(l)                 if `op` is right-associative call-by-name or `l` is pure
+   */
+  def typedInfixOp(tree: untpd.InfixOp, pt: Type)(implicit ctx: Context): Tree = {
+    val untpd.InfixOp(l, op, r) = tree
+    val app = typedApply(desugar.binop(l, op, r), pt)
+    if (untpd.isLeftAssoc(op.name)) app
+    else {
+      val defs = new mutable.ListBuffer[Tree]
+      def lift(app: Tree): Tree = (app: @unchecked) match {
+        case Apply(fn, args) =>
+          if (app.tpe.isError) app
+          else tpd.cpy.Apply(app)(fn, LiftImpure.liftArgs(defs, fn.tpe, args))
+        case Assign(lhs, rhs) =>
+          tpd.cpy.Assign(app)(lhs, lift(rhs))
+        case Block(stats, expr) =>
+          tpd.cpy.Block(app)(stats, lift(expr))
+      }
+      Applications.wrapDefs(defs, lift(app))
+    }
+  }
+
   /** Retrieve symbol attached to given tree */
   protected def retrieveSym(tree: untpd.Tree)(implicit ctx: Context) = tree.removeAttachment(SymOfTree) match {
     case Some(sym) =>
@@ -1765,6 +1785,7 @@ class Typer extends Namer
           case tree: untpd.TypedSplice => typedTypedSplice(tree)
           case tree: untpd.UnApply => typedUnApply(tree, pt)
           case tree: untpd.DependentTypeTree => typed(untpd.TypeTree().withPos(tree.pos), pt)
+          case tree: untpd.InfixOp if ctx.mode.isExpr => typedInfixOp(tree, pt)
           case tree @ untpd.PostfixOp(qual, Ident(nme.WILDCARD)) => typedAsFunction(tree, pt)
           case untpd.EmptyTree => tpd.EmptyTree
           case _ => typedUnadapted(desugar(tree), pt)
