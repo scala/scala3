@@ -25,6 +25,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
 
   private[this] var pendingSubTypes: mutable.Set[(Type, Type)] = null
   private[this] var recCount = 0
+  private[this] var monitored = false
 
   private[this] var needsGc = false
 
@@ -102,9 +103,11 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
     if (tp2 eq NoType) return false
     if ((tp2 eq tp1) || (tp2 eq WildcardType)) return true
     try isSubType(tp1, tp2)
-    finally
+    finally {
+      monitored = false
       if (Config.checkConstraintsSatisfiable)
         assert(isSatisfiable, constraint.show)
+    }
   }
 
   private[this] var approx: ApproxState = NoApprox
@@ -284,6 +287,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
             if (recur(info1.alias, tp2)) return true
             if (tp1.prefix.isStable) return false
           case _ =>
+            if (tp1 eq NothingType) return tp1 == tp2.bottomType
         }
         thirdTry
       case tp1: TypeParamRef =>
@@ -837,9 +841,8 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
       val savedSuccessCount = successCount
       try {
         recCount = recCount + 1
-        val result =
-          if (recCount < Config.LogPendingSubTypesThreshold) firstTry
-          else monitoredIsSubType
+        if (recCount >= Config.LogPendingSubTypesThreshold) monitored = true
+        val result = if (monitored) monitoredIsSubType else firstTry
         recCount = recCount - 1
         if (!result) state.resetConstraintTo(saved)
         else if (recCount == 0 && needsGc) {
