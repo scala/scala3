@@ -23,6 +23,7 @@ class TestMessageLaziness extends DottyTest {
     val kind = "Test"
     val msg = "Please don't blow up"
     val explanation = ""
+    val links = Nil
   }
 
   @Test def assureLazy =

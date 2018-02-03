@@ -144,7 +144,6 @@ object messages {
            |correctly handles transfer functions like ${"return"}."""
     }
 
-    override val links = tryExpressionLinks
   }
 
   case class EmptyCatchBlock(tryBody: untpd.Tree)(implicit ctx: Context)
@@ -154,7 +153,7 @@ object messages {
       hl"""|The ${"catch"} block does not contain a valid expression, try
            |adding a case like - `${"case e: Exception =>"}` to the block"""
 
-    override val links = tryExpressionLinks
+    val links = tryExpressionLinks
   }
 
   case class EmptyCatchAndFinallyBlock(tryBody: untpd.Tree)(implicit ctx: Context)
@@ -164,7 +163,7 @@ object messages {
       hl"""|A ${"try"} without ${"catch"} or ${"finally"} is equivalent to putting
            |its body in a block; no exceptions are handled."""
 
-    override val links = tryExpressionLinks
+    val links = tryExpressionLinks
   }
 
   case class DeprecatedWithOperator()(implicit ctx: Context)
@@ -177,7 +176,7 @@ object messages {
            |use of the ${"with"} keyword. There are a few differences in
            |semantics between intersection types and using `${"with"}'."""
 
-    override val links = DottyDocs("reference/intersection-types.html") :: Nil
+    val links = DottyDocs("reference/intersection-types.html") :: Nil
   }
 
   case class CaseClassMissingParamList(cdef: untpd.TypeDef)(implicit ctx: Context)
@@ -191,7 +190,7 @@ object messages {
            |have a singleton representation of ${cdef.name}, use a "${"case object"}".
            |Or, add an explicit `()' as a parameter list to ${cdef.name}."""
 
-    override val links = LanguageSpec("05-classes-and-objects.html#case-classes") :: Nil
+    val links = LanguageSpec("05-classes-and-objects.html#case-classes") :: Nil
   }
 
   case class AnonymousFunctionMissingParamType(param: untpd.ValDef,
@@ -225,7 +224,7 @@ object messages {
            |
            |${"val f: Any => Int = { case x: Int => x + 1 }"} """
 
-    override val links = LanguageSpec("06-expressions.html#anonymous-functions") :: Nil
+    val links = LanguageSpec("06-expressions.html#anonymous-functions") :: Nil
   }
 
   case class WildcardOnTypeArgumentNotAllowedOnNew()(implicit ctx: Context)
@@ -259,6 +258,8 @@ object messages {
            |You must complete all the type parameters, for instance:
            |
            |$code2 """
+
+    val links = Nil
   }
 
 
@@ -288,6 +289,8 @@ object messages {
            |
            |`${bind.name}` is not unique. Rename one of the bound variables!"""
     }
+
+    val links = Nil
   }
 
   case class MissingIdent(tree: untpd.Ident, treeKind: String, name: String)(implicit ctx: Context)
@@ -301,6 +304,8 @@ object messages {
            |That can happen for instance if $name or its declaration has either been
            |misspelt, or if you're forgetting an import"""
     }
+
+    val links = Nil
   }
 
   case class TypeMismatch(found: Type, expected: Type, whyNoMatch: String = "", implicitFailure: String = "")(implicit ctx: Context)
@@ -316,6 +321,8 @@ object messages {
     }
 
     val explanation = ""
+
+    val links = Nil
   }
 
   case class NotAMember(site: Type, name: Name, selected: String)(implicit ctx: Context)
@@ -382,6 +389,8 @@ object messages {
     }
 
     val explanation = ""
+
+    val links = Nil
   }
 
   case class EarlyDefinitionsNotSupported()(implicit ctx: Context)
@@ -430,7 +439,7 @@ object messages {
 
     }
 
-    override val links = DottyDocs("reference/trait-parameters.html") :: Nil
+    val links = DottyDocs("reference/trait-parameters.html") :: Nil
   }
 
   case class TopLevelImplicitClass(cdef: untpd.TypeDef)(implicit ctx: Context)
@@ -461,7 +470,7 @@ object messages {
            |${"import Implicits"}.${cdef.name}"""
     }
 
-    override val links = implicitClassLinks
+    val links = implicitClassLinks
   }
 
   case class ImplicitCaseClass(cdef: untpd.TypeDef)(implicit ctx: Context)
@@ -475,7 +484,7 @@ object messages {
            |${"implicit class"} ${cdef.name}...
            |"""
 
-    override val links = implicitClassLinks
+    val links = implicitClassLinks
   }
 
   case class ImplicitClassPrimaryConstructorArity()(implicit ctx: Context)
@@ -492,6 +501,8 @@ object messages {
           |such classes aren’t used during implicit lookup.
           |"""
     }
+
+    val links = Nil
   }
 
   case class ObjectMayNotHaveSelfType(mdef: untpd.ModuleDef)(implicit ctx: Context)
@@ -510,6 +521,8 @@ object messages {
            |
            |    object $name extends ${selfTpt.show}"""
     }
+
+    val links = Nil
   }
 
   case class TupleTooLong(ts: List[untpd.Tree])(implicit ctx: Context)
@@ -526,6 +539,8 @@ object messages {
            |
            |((${nestedRepresentation}))"""
     }
+
+    val links = Nil
   }
 
   case class RepeatedModifier(modifier: String)(implicit ctx:Context)
@@ -548,6 +563,8 @@ object messages {
            |
            |"""
     }
+
+    val links = Nil
   }
 
   case class InterpolatedStringError()(implicit ctx:Context)
@@ -565,7 +582,7 @@ object messages {
            |"""
     }
 
-    override val links = TourUrl("core/string-interpolation.html", "More on String Interpolation") :: Nil
+    val links = TourUrl("core/string-interpolation.html", "More on String Interpolation") :: Nil
   }
 
   case class UnboundPlaceholderParameter()(implicit ctx:Context)
@@ -602,6 +619,8 @@ object messages {
            |Only fields can be left uninitialized in this manner; local variables
            |must be initialized.
            |"""
+
+    val links = Nil
   }
 
   case class IllegalStartSimpleExpr(illegalToken: String)(implicit ctx: Context)
@@ -621,6 +640,7 @@ object messages {
            |
            |which cannot start with ${Red(illegalToken)}."""
     }
+    val links = Nil
   }
 
   case class MissingReturnType()(implicit ctx:Context)
@@ -633,6 +653,7 @@ object messages {
            |trait Shape {
            |  def area: Double // abstract declaration returning a ${"Double"}
            |}"""
+    val links = Nil
   }
 
   case class MissingReturnTypeWithReturnStatement(method: Symbol)(implicit ctx: Context)
@@ -644,6 +665,7 @@ object messages {
            |explicit return type. For example:
            |
            |${"def good: Int /* explicit return type */ = return 1"}"""
+    val links = Nil
   }
 
   case class YieldOrDoExpectedInForComprehension()(implicit ctx: Context)
@@ -677,6 +699,8 @@ object messages {
            |${"for i <- 1 to 3 do println(i) // notice the 'do' keyword"}
            |
            |"""
+
+    val links = Nil
   }
 
   case class ProperDefinitionNotFound()(implicit ctx: Context)
@@ -716,6 +740,8 @@ object messages {
            |usecase and the compiler makes sure that it is valid. Because of this, you're
            |only allowed to use ${"def"}s when defining usecases."""
     }
+
+    val links = Nil
   }
 
   case class ByNameParameterNotSupported()(implicit ctx: Context)
@@ -740,6 +766,8 @@ object messages {
            |And the usage could be as such:
            |${"func(bool => // do something...)"}
            |"""
+
+    val links = Nil
   }
 
   case class WrongNumberOfTypeArgs(fntpe: Type, expectedArgs: List[ParamInfo], actual: List[untpd.Tree])(implicit ctx: Context)
@@ -790,6 +818,8 @@ object messages {
         hl"""|You have not supplied enough type parameters
              |If you specify one type parameter then you need to specify every type parameter."""
     }
+
+    val links = Nil
   }
 
   case class IllegalVariableInPatternAlternative()(implicit ctx: Context)
@@ -819,7 +849,7 @@ object messages {
            |
            |$fixedVarInAlternative"""
     }
-    override val links = patternMatchingLinks
+    val links = patternMatchingLinks
   }
 
   case class IdentifierExpected(identifier: String)(implicit ctx: Context)
@@ -841,6 +871,8 @@ object messages {
            |
            |"""
     }
+
+    val links = Nil
   }
 
   case class AuxConstructorNeedsNonImplicitParameter()(implicit ctx:Context)
@@ -857,6 +889,8 @@ object messages {
            | - forgotten parenthesis on ${"this"} (${"def this() = { ... }"})
            | - auxiliary constructors specify the implicit value
            |"""
+
+    val links = Nil
   }
 
   case class IncorrectRepeatedParameterSyntax()(implicit ctx: Context)
@@ -884,6 +918,8 @@ object messages {
            |${"val ints = List(2, 3, 4)  // ints: List[Int] = List(2, 3, 4)"}
            |${"square(ints: _*)          // res1: List[Int] = List(4, 9, 16)"}
            |""".stripMargin
+
+    val links = Nil
   }
 
   case class IllegalLiteral()(implicit ctx: Context)
@@ -900,7 +936,7 @@ object messages {
            | - null
            |"""
 
-    override val links = LanguageSpec(suffix = "01-lexical-syntax.html#literals") :: Nil
+    val links = LanguageSpec(suffix = "01-lexical-syntax.html#literals") :: Nil
   }
 
   case class PatternMatchExhaustivity(uncovered: String)(implicit ctx: Context)
@@ -919,7 +955,7 @@ object messages {
            | - Add a 'case _ => ...' at the end to match all remaining cases
            |"""
 
-    override val links = patternMatchingLinks
+    val links = patternMatchingLinks
   }
 
   case class UncheckedTypePattern(msg: String)(implicit ctx: Context)
@@ -932,6 +968,8 @@ object messages {
            |
            |You can either replace the type arguments by `_` or use `@unchecked`.
            |"""
+
+    val links = Nil
   }
 
   case class MatchCaseUnreachable()(implicit ctx: Context)
@@ -939,7 +977,7 @@ object messages {
     val kind = s"""Match ${hl"case"} Unreachable"""
     val msg = "unreachable code"
     val explanation = ""
-    override val links = patternMatchingLinks
+    val links = patternMatchingLinks
   }
 
   case class SeqWildcardPatternPos()(implicit ctx: Context)
@@ -964,7 +1002,7 @@ object messages {
            |
            |would give 3 as a result"""
     }
-    override val links = patternMatchingLinks
+    val links = patternMatchingLinks
   }
 
   case class IllegalStartOfSimplePattern()(implicit ctx: Context)
@@ -1045,6 +1083,8 @@ object messages {
            |  ${"def unapplySeq[A](x: List[A]): Some[List[A]]"}
            |"""
     }
+
+    val links = Nil
   }
 
   case class PkgDuplicateSymbol(existing: Symbol)(implicit ctx: Context)
@@ -1052,6 +1092,7 @@ object messages {
     val kind = "Duplicate Symbol"
     val msg = hl"trying to define package with same name as `$existing`"
     val explanation = ""
+    val links = Nil
   }
 
   case class ExistentialTypesNoLongerSupported()(implicit ctx: Context)
@@ -1075,7 +1116,7 @@ object messages {
            |
            |${"List[_]"}
            |"""
-    override val links = DottyDocs("reference/dropped/existential-types.html") :: Nil
+    val links = DottyDocs("reference/dropped/existential-types.html") :: Nil
   }
 
   case class UnboundWildcardType()(implicit ctx: Context)
@@ -1121,6 +1162,8 @@ object messages {
            |  Use:
            |    ${"val foo: Int = 3"}
            |"""
+
+    val links = Nil
   }
 
   case class DanglingThisInPath()(implicit ctx: Context) extends Message(DanglingThisInPathID) {
@@ -1157,6 +1200,8 @@ object messages {
            |- this is a valid type using a path
            |${typeCode}
            |"""
+
+    val links = Nil
   }
 
   case class OverridesNothing(member: Symbol)(implicit ctx: Context)
@@ -1169,6 +1214,8 @@ object messages {
            |class of `${member.owner}` to override it. Did you misspell it?
            |Are you extending the right classes?
            |"""
+
+    val links = Nil
   }
 
   case class OverridesNothingButNameExists(member: Symbol, existing: List[Denotations.SingleDenotation])(implicit ctx: Context)
@@ -1188,6 +1235,8 @@ object messages {
            |named `${member.name}`:
            |  ${existingDecl}
            |"""
+
+    val links = Nil
   }
 
   case class ForwardReferenceExtendsOverDefinition(value: Symbol, definition: Symbol)(implicit ctx: Context)
@@ -1207,6 +1256,8 @@ object messages {
            |the declaration of `${definition.name}` and its use,
            |or define `${value.name}` as lazy.
            |""".stripMargin
+
+    val links = Nil
   }
 
   case class ExpectedTokenButFound(expected: Token, found: Token)(implicit ctx: Context)
@@ -1228,6 +1279,8 @@ object messages {
       else
         ""
     val explanation = s"$ifKeyword"
+
+    val links = Nil
   }
 
   case class MixedLeftAndRightAssociativeOps(op1: Name, op2: Name, op2LeftAssoc: Boolean)(implicit ctx: Context)
@@ -1262,7 +1315,8 @@ object messages {
           |  (all other special characters)
           |Operators starting with a letter have lowest precedence, followed by operators starting with `|`, etc.
           |""".stripMargin
-    override val links = LanguageSpec("06-expressions.html#infix-operations") :: Nil
+
+    val links = LanguageSpec("06-expressions.html#infix-operations") :: Nil
   }
 
   case class CantInstantiateAbstractClassOrTrait(cls: Symbol, isTrait: Boolean)(implicit ctx: Context)
@@ -1282,6 +1336,8 @@ object messages {
            |
            |You need to implement any abstract members in both cases.
            |""".stripMargin
+
+    val links = Nil
   }
 
   case class OverloadedOrRecursiveMethodNeedsResultType(tree: Names.TermName)(implicit ctx: Context)
@@ -1296,6 +1352,8 @@ object messages {
           |Case 2: ${tree} is recursive
           |If `${tree.name}` calls itself on any path, you need to specify its return type.
           |""".stripMargin
+
+    val links = Nil
   }
 
   case class RecursiveValueNeedsResultType(tree: Names.TermName)(implicit ctx: Context)
@@ -1305,6 +1363,7 @@ object messages {
     val explanation =
       hl"""The definition of `${tree.name}` is recursive and you need to specify its type.
           |""".stripMargin
+    val links = Nil
   }
 
   case class CyclicReferenceInvolving(denot: SymDenotation)(implicit ctx: Context)
@@ -1315,6 +1374,7 @@ object messages {
       hl"""|$denot is declared as part of a cycle which makes it impossible for the
            |compiler to decide upon ${denot.name}'s type.
            |""".stripMargin
+    val links = Nil
   }
 
   case class CyclicReferenceInvolvingImplicit(cycleSym: Symbol)(implicit ctx: Context)
@@ -1325,6 +1385,7 @@ object messages {
       hl"""|This happens when the right hand-side of $cycleSym's definition involves an implicit search.
            |To avoid this error, give `${cycleSym.name}` an explicit type.
            |""".stripMargin
+    val links = Nil
   }
 
   case class SuperQualMustBeParent(qual: untpd.Ident, cls: Symbols.ClassSymbol)(implicit ctx: Context)
@@ -1342,6 +1403,8 @@ object messages {
            |In this case, the parents of $cls are:
            |${parents.mkString("  - ", "\n  - ", "")}
            |""".stripMargin
+
+    val links = Nil
   }
 
   case class VarArgsParamMustComeLast()(implicit ctx: Context)
@@ -1352,6 +1415,7 @@ object messages {
       hl"""|The varargs field must be the last field in the method signature.
            |Attempting to define a field in a method signature after a varargs field is an error.
            |"""
+    val links = Nil
   }
 
   case class AmbiguousImport(name: Names.Name, newPrec: Int, prevPrec: Int, prevCtx: Context)(implicit ctx: Context)
@@ -1393,6 +1457,8 @@ object messages {
            |- You may replace a name when imported using
            |  ${"import"} scala.{ $name => ${name.show + "Tick"} }
            |"""
+
+    val links = Nil
   }
 
   case class MethodDoesNotTakeParameters(tree: tpd.Tree, methPartType: Types.Type)(err: typer.ErrorReporting.Errors)(implicit ctx: Context)
@@ -1417,6 +1483,7 @@ object messages {
       s"""|You have specified more parameter lists as defined in the method definition(s).
           |$noParameters""".stripMargin
 
+    val links = Nil
   }
 
   case class AmbiguousOverload(tree: tpd.Tree, alts: List[SingleDenotation], pt: Type)(
@@ -1436,6 +1503,8 @@ object messages {
            |- assigning it to a value with a specified type, or
            |- adding a type ascription as in `${"instance.myMethod: String => Int"}`
            |"""
+
+    val links = Nil
   }
 
   case class ReassignmentToVal(name: Names.Name)(implicit ctx: Context)
@@ -1450,6 +1519,7 @@ object messages {
            |variable
            |  ${"var"} $name ${"="} ...
            |""".stripMargin
+    val links = Nil
   }
 
   case class TypeDoesNotTakeParameters(tpe: Types.Type, params: List[Trees.Tree[Trees.Untyped]])(implicit ctx: Context)
@@ -1465,6 +1535,8 @@ object messages {
       i"""You specified ${NoColor(ps)} for ${hl"$tpe"}, which is not
          |declared to take any.
          |"""
+
+    val links = Nil
   }
 
   case class ParameterizedTypeLacksArguments(psym: Symbol)(implicit ctx: Context)
@@ -1475,6 +1547,7 @@ object messages {
       hl"""The $psym is declared with non-implicit parameters, you may not leave
           |out the parameter list when extending it.
           |"""
+    val links = Nil
   }
 
   case class VarValParametersMayNotBeCallByName(name: Names.TermName, mutable: Boolean)(implicit ctx: Context)
@@ -1489,6 +1562,7 @@ object messages {
           |  ${s"  def $name() = ${name}Tick"}
           |  ${"}"}
           |"""
+    val links = Nil
   }
 
   case class MissingTypeParameterFor(tpe: Type)(implicit ctx: Context)
@@ -1496,6 +1570,7 @@ object messages {
     val msg = hl"missing type parameter for ${tpe}"
     val kind = "Syntax"
     val explanation = ""
+    val links = Nil
   }
 
   case class DoesNotConformToBound(tpe: Type, which: String, bound: Type)(
@@ -1504,6 +1579,7 @@ object messages {
     val msg = hl"Type argument ${tpe} does not conform to $which bound $bound ${err.whyNoMatchStr(tpe, bound)}"
     val kind = "Type Mismatch"
     val explanation = ""
+    val links = Nil
   }
 
   case class DoesNotConformToSelfType(category: String, selfType: Type, cls: Symbol,
@@ -1520,6 +1596,7 @@ object messages {
           |Note: Self types are indicated with the notation
           |  ${s"class "}$other ${"{ this: "}$otherSelf${" => "}
         """
+    val links = Nil
   }
 
   case class DoesNotConformToSelfTypeCantBeInstantiated(tp: Type, selfType: Type)(
@@ -1533,6 +1610,7 @@ object messages {
           |Note: Self types are indicated with the notation
           |  ${s"class "}$tp ${"{ this: "}$selfType${" => "}
           |"""
+    val links = Nil
   }
 
   case class AbstractMemberMayNotHaveModifier(sym: Symbol, flag: FlagSet)(
@@ -1541,6 +1619,7 @@ object messages {
     val msg = hl"""${"abstract"} $sym may not have `$flag' modifier"""
     val kind = "Syntax"
     val explanation = ""
+    val links = Nil
   }
 
   case class TopLevelCantBeImplicit(sym: Symbol)(
@@ -1549,6 +1628,7 @@ object messages {
     val msg = hl"""${"implicit"} modifier cannot be used for top-level definitions"""
     val kind = "Syntax"
     val explanation = ""
+    val links = Nil
   }
 
   case class TypesAndTraitsCantBeImplicit(sym: Symbol)(
@@ -1557,6 +1637,7 @@ object messages {
     val msg = hl"""${"implicit"} modifier cannot be used for types or traits"""
     val kind = "Syntax"
     val explanation = ""
+    val links = Nil
   }
 
   case class OnlyClassesCanBeAbstract(sym: Symbol)(
@@ -1565,6 +1646,7 @@ object messages {
     val msg = hl"""${"abstract"} modifier can be used only for classes; it should be omitted for abstract members"""
     val kind = "Syntax"
     val explanation = ""
+    val links = Nil
   }
 
   case class AbstractOverrideOnlyInTraits(sym: Symbol)(
@@ -1573,6 +1655,7 @@ object messages {
     val msg = hl"""${"abstract override"} modifier only allowed for members of traits"""
     val kind = "Syntax"
     val explanation = ""
+    val links = Nil
   }
 
   case class TraitsMayNotBeFinal(sym: Symbol)(
@@ -1582,6 +1665,7 @@ object messages {
     val kind = "Syntax"
     val explanation =
       "A trait can never be final since it is abstract and must be extended to be useful."
+    val links = Nil
   }
 
   case class NativeMembersMayNotHaveImplementation(sym: Symbol)(
@@ -1590,6 +1674,7 @@ object messages {
     val msg = hl"""${"@native"} members may not have an implementation"""
     val kind = "Syntax"
     val explanation = ""
+    val links = Nil
   }
 
   case class OnlyClassesCanHaveDeclaredButUndefinedMembers(sym: Symbol)(
@@ -1602,6 +1687,7 @@ object messages {
     val msg = hl"""only classes can have declared but undefined members"""
     val kind = "Syntax"
     val explanation = s"$varNote"
+    val links = Nil
   }
 
   case class CannotExtendAnyVal(sym: Symbol)(implicit ctx: Context)
@@ -1613,6 +1699,7 @@ object messages {
           |${"Any"} to become ${Green("\"universal traits\"")} which may only have ${"def"} members.
           |Universal traits can be mixed into classes that extend ${"AnyVal"}.
           |"""
+    val links = Nil
   }
 
   case class CannotHaveSameNameAs(sym: Symbol, cls: Symbol, reason: CannotHaveSameNameAs.Reason)(implicit ctx: Context)
@@ -1629,6 +1716,7 @@ object messages {
     val msg = hl"""$sym cannot have the same name as ${cls.showLocated} -- """ + reasonMessage
     val kind = "Syntax"
     val explanation = ""
+    val links = Nil
   }
   object CannotHaveSameNameAs {
     sealed trait Reason
@@ -1641,6 +1729,7 @@ object messages {
     val msg = hl"""value classes may not define an inner class"""
     val kind = "Syntax"
     val explanation = ""
+    val links = Nil
   }
 
   case class ValueClassesMayNotDefineNonParameterField(valueClass: Symbol, field: Symbol)(implicit ctx: Context)
@@ -1648,6 +1737,7 @@ object messages {
     val msg = hl"""value classes may not define non-parameter field"""
     val kind = "Syntax"
     val explanation = ""
+    val links = Nil
   }
 
   case class ValueClassesMayNotDefineASecondaryConstructor(valueClass: Symbol, constructor: Symbol)(implicit ctx: Context)
@@ -1655,6 +1745,7 @@ object messages {
     val msg = hl"""value classes may not define a secondary constructor"""
     val kind = "Syntax"
     val explanation = ""
+    val links = Nil
   }
 
   case class ValueClassesMayNotContainInitalization(valueClass: Symbol)(implicit ctx: Context)
@@ -1662,6 +1753,7 @@ object messages {
     val msg = hl"""value classes may not contain initialization statements"""
     val kind = "Syntax"
     val explanation = ""
+    val links = Nil
   }
 
   case class ValueClassesMayNotBeAbstract(valueClass: Symbol)(implicit ctx: Context)
@@ -1669,6 +1761,7 @@ object messages {
     val msg = hl"""value classes may not be ${"abstract"}"""
     val kind = "Syntax"
     val explanation = ""
+    val links = Nil
   }
 
   case class ValueClassesMayNotBeContainted(valueClass: Symbol)(implicit ctx: Context)
@@ -1677,6 +1770,7 @@ object messages {
     val msg = s"""value classes may not be a $localOrMember"""
     val kind = "Syntax"
     val explanation = ""
+    val links = Nil
   }
 
   case class ValueClassesMayNotWrapItself(valueClass: Symbol)(implicit ctx: Context)
@@ -1684,6 +1778,7 @@ object messages {
     val msg = """a value class may not wrap itself"""
     val kind = "Syntax"
     val explanation = ""
+    val links = Nil
   }
 
   case class ValueClassParameterMayNotBeAVar(valueClass: Symbol, param: Symbol)(implicit ctx: Context)
@@ -1693,6 +1788,7 @@ object messages {
     val explanation =
       hl"""A value class must have exactly one ${"val"} parameter.
           |"""
+    val links = Nil
   }
 
   case class ValueClassNeedsOneValParam(valueClass: Symbol)(implicit ctx: Context)
@@ -1700,6 +1796,7 @@ object messages {
     val msg = hl"""value class needs one ${"val"} parameter"""
     val kind = "Syntax"
     val explanation = ""
+    val links = Nil
   }
 
   case class OnlyCaseClassOrCaseObjectAllowed()(implicit ctx: Context)
@@ -1707,6 +1804,7 @@ object messages {
     val msg = "only `case class` or `case object` allowed"
     val kind = "Syntax"
     val explanation = ""
+    val links = Nil
   }
 
   case class ExpectedClassOrObjectDef()(implicit ctx: Context)
@@ -1714,6 +1812,7 @@ object messages {
     val kind = "Syntax"
     val msg = "expected class or object definition"
     val explanation = ""
+    val links = Nil
   }
 
   case class SuperCallsNotAllowedInline(symbol: Symbol)(implicit ctx: Context)
@@ -1721,6 +1820,7 @@ object messages {
     val kind = "Syntax"
     val msg = s"super call not allowed in inline $symbol"
     val explanation = "Method inlining prohibits calling superclass methods, as it may lead to confusion about which super is being called."
+    val links = Nil
   }
 
   case class ModifiersNotAllowed(flags: FlagSet, printableType: Option[String])(implicit ctx: Context)
@@ -1737,7 +1837,7 @@ object messages {
          |In this instance, the modifier combination is not supported"""
     }
 
-    override val links = LanguageSpec("05-classes-and-objects.html#modifiers") :: Nil
+    val links = LanguageSpec("05-classes-and-objects.html#modifiers") :: Nil
   }
 
   case class FunctionTypeNeedsNonEmptyParameterList(isImplicit: Boolean = true, isErased: Boolean = true)(implicit ctx: Context)
@@ -1757,7 +1857,7 @@ object messages {
          |
          |$code2""".stripMargin
     }
-    override val links = DottyDocs("reference/implicit-function-types.html") :: Nil
+    val links = DottyDocs("reference/implicit-function-types.html") :: Nil
   }
 
   case class WrongNumberOfParameters(expected: Int)(implicit ctx: Context)
@@ -1765,6 +1865,7 @@ object messages {
     val kind = "Syntax"
     val msg = s"wrong number of parameters, expected: $expected"
     val explanation = ""
+    val links = Nil
   }
 
   case class DuplicatePrivateProtectedQualifier()(implicit ctx: Context)
@@ -1773,6 +1874,7 @@ object messages {
     val msg = "duplicate private/protected qualifier"
     val explanation =
       hl"It is not allowed to combine `private` and `protected` modifiers even if they are qualified to different scopes"
+    val links = Nil
   }
 
   case class ExpectedStartOfTopLevelDefinition()(implicit ctx: Context)
@@ -1781,7 +1883,7 @@ object messages {
     val msg = "expected start of definition"
     val explanation =
       hl"you have to provide either ${"class"}, ${"trait"}, ${"object"}, or ${"enum"} definitions after qualifiers"
-    override val links = LanguageSpec(suffix = "09-top-level-definitions.html") :: Nil
+    val links = LanguageSpec(suffix = "09-top-level-definitions.html") :: Nil
   }
 
   case class NoReturnFromInline(owner: Symbol)(implicit ctx: Context)
@@ -1793,6 +1895,7 @@ object messages {
           |Instead, you should rely on the last expression's value being
           |returned from a method.
           |"""
+    val links = Nil
   }
 
   case class ReturnOutsideMethodDefinition(owner: Symbol)(implicit ctx: Context)
@@ -1803,6 +1906,7 @@ object messages {
       hl"""You used ${"return"} in ${owner}.
           |${"return"} is a keyword and may only be used within method declarations.
           |"""
+    val links = Nil
   }
 
   case class ExtendFinalClass(clazz:Symbol, finalClazz: Symbol)(implicit ctx: Context)
@@ -1811,6 +1915,7 @@ object messages {
     val msg = hl"$clazz cannot extend ${"final"} $finalClazz"
     val explanation =
       hl"""A class marked with the ${"final"} keyword cannot be extended"""
+    val links = Nil
   }
 
   case class ExpectedTypeBoundOrEquals(found: Token)(implicit ctx: Context)
@@ -1829,6 +1934,8 @@ object messages {
            |An upper type bound ${"T <: A"} declares that type variable ${"T"}
            |refers to a subtype of type ${"A"}.
            |"""
+
+    val links = Nil
   }
 
   case class ClassAndCompanionNameClash(cls: Symbol, other: Symbol)(implicit ctx: Context)
@@ -1842,6 +1949,7 @@ object messages {
            |  - ${cls.owner} defines ${cls}
            |  - ${other.owner} defines ${other}"""
       }
+    val links = Nil
   }
 
   case class TailrecNotApplicable(method: Symbol)(implicit ctx: Context)
@@ -1850,6 +1958,7 @@ object messages {
     val msg = hl"TailRec optimisation not applicable, $method is neither ${"private"} nor ${"final"}."
     val explanation =
       hl"A method annotated ${"@tailrec"} must be declared ${"private"} or ${"final"} so it can't be overridden."
+    val links = Nil
   }
 
   case class FailureToEliminateExistential(tp: Type, tp1: Type, tp2: Type, boundSyms: List[Symbol])(implicit ctx: Context)
@@ -1862,6 +1971,7 @@ object messages {
           |reduces to       : $tp1
           |type used instead: $tp2"""
     }
+    val links = Nil
   }
 
   case class OnlyFunctionsCanBeFollowedByUnderscore(pt: Type)(implicit ctx: Context)
@@ -1871,6 +1981,7 @@ object messages {
     val explanation =
       hl"""The syntax ${"x _"} is no longer supported if ${"x"} is not a function.
           |To convert to a function value, you need to explicitly write ${"() => x"}"""
+    val links = Nil
   }
 
   case class MissingEmptyArgumentList(method: Symbol)(implicit ctx: Context)
@@ -1889,6 +2000,7 @@ object messages {
           |In Dotty, this idiom is an error. The application syntax has to follow exactly the parameter syntax.
           |Excluded from this rule are methods that are defined in Java or that override methods defined in Java."""
     }
+    val links = Nil
   }
 
   case class DuplicateNamedTypeParameter(name: Name)(implicit ctx: Context)
@@ -1896,6 +2008,7 @@ object messages {
     val kind = "Syntax"
     val msg = hl"Type parameter $name was defined multiple times."
     val explanation = ""
+    val links = Nil
   }
 
   case class UndefinedNamedTypeParameter(undefinedName: Name, definedNames: List[Name])(implicit ctx: Context)
@@ -1903,6 +2016,7 @@ object messages {
     val kind = "Syntax"
     val msg = hl"Type parameter $undefinedName is undefined. Expected one of ${definedNames.map(_.show).mkString(", ")}."
     val explanation = ""
+    val links = Nil
   }
 
   case class IllegalStartOfStatement(isModifier: Boolean)(implicit ctx: Context) extends Message(IllegalStartOfStatementID) {
@@ -1912,6 +2026,7 @@ object messages {
       "Illegal start of statement" + addendum
     }
     val explanation = "A statement is either an import, a definition or an expression."
+    val links = Nil
   }
 
   case class TraitIsExpected(symbol: Symbol)(implicit ctx: Context) extends Message(TraitIsExpectedID) {
@@ -1940,12 +2055,14 @@ object messages {
           |$codeExample
           |"""
     }
+    val links = Nil
   }
 
   case class TraitRedefinedFinalMethodFromAnyRef(method: Symbol)(implicit ctx: Context) extends Message(TraitRedefinedFinalMethodFromAnyRefID) {
     val kind = "Syntax"
     val msg = hl"Traits cannot redefine final $method from ${"class AnyRef"}."
     val explanation = ""
+    val links = Nil
   }
 
   case class PackageNameAlreadyDefined(pkg: Symbol)(implicit ctx: Context) extends Message(PackageNameAlreadyDefinedID) {
@@ -1953,6 +2070,7 @@ object messages {
     val kind = "Naming"
     val explanation =
       hl"An ${"object"} cannot have the same name as an existing ${"package"}. Rename either one of them."
+    val links = Nil
   }
 
   case class UnapplyInvalidNumberOfArguments(qual: untpd.Tree, argTypes: List[Type])(implicit ctx: Context)
@@ -1966,6 +2084,7 @@ object messages {
           |
         |where subsequent arguments would have following types: ($argTypes%, %).
         |""".stripMargin
+    val links = Nil
   }
 
   case class StaticFieldsOnlyAllowedInObjects(member: Symbol)(implicit ctx: Context) extends Message(StaticFieldsOnlyAllowedInObjectsID) {
@@ -1973,6 +2092,7 @@ object messages {
     val kind = "Syntax"
     val explanation =
       hl"${"@static"} members are only allowed inside objects."
+    val links = Nil
   }
 
   case class CyclicInheritance(symbol: Symbol, addendum: String)(implicit ctx: Context) extends Message(CyclicInheritanceID) {
@@ -1990,6 +2110,7 @@ object messages {
           |creates a "cycle" where a not yet defined class A extends itself which makes
           |impossible to instantiate an object of this class"""
     }
+    val links = Nil
   }
 
   case class BadSymbolicReference(denot: SymDenotation)(implicit ctx: Context) extends Message(BadSymbolicReferenceID) {
@@ -2010,12 +2131,15 @@ object messages {
     }
 
     val explanation = ""
+
+    val links = Nil
   }
 
   case class UnableToExtendSealedClass(pclazz: Symbol)(implicit ctx: Context) extends Message(UnableToExtendSealedClassID) {
     val kind = "Syntax"
     val msg = hl"Cannot extend ${"sealed"} $pclazz in a different source file"
     val explanation = "A sealed class or trait can only be extended in the same file as its declaration"
+    val links = Nil
   }
 
   case class SymbolHasUnparsableVersionNumber(symbol: Symbol, migrationMessage: String)(implicit ctx: Context)
@@ -2028,6 +2152,7 @@ object messages {
           |The ${symbol.showLocated} is marked with ${"@migration"} indicating it has changed semantics
           |between versions and the ${"-Xmigration"} settings is used to warn about constructs
           |whose behavior may have changed since version change."""
+    val links = Nil
   }
 
   case class SymbolChangedSemanticsInVersion(
@@ -2041,6 +2166,7 @@ object messages {
           |between versions and the ${"-Xmigration"} settings is used to warn about constructs
           |whose behavior may have changed since version change."""
     }
+    val links = Nil
   }
 
   case class UnableToEmitSwitch(tooFewCases: Boolean)(implicit ctx: Context)
@@ -2071,6 +2197,7 @@ object messages {
           |- the matched value is not a constant literal
           |- there are less than three cases"""
     }
+    val links = Nil
   }
 
   case class MissingCompanionForStatic(member: Symbol)(implicit ctx: Context) extends Message(MissingCompanionForStaticID) {
@@ -2078,6 +2205,7 @@ object messages {
     val kind = "Syntax"
     val explanation =
       hl"An object that contains ${"@static"} members must have a companion class."
+    val links = Nil
   }
 
   case class PolymorphicMethodMissingTypeInParent(rsym: Symbol, parentSym: Symbol)(implicit ctx: Context)
@@ -2088,6 +2216,7 @@ object messages {
       hl"""Polymorphic $rsym is not allowed in the structural refinement of $parentSym because
           |$rsym does not override any method in $parentSym. Structural refinement does not allow for
           |polymorphic methods."""
+    val links = Nil
   }
 
   case class ParamsNoInline(owner: Symbol)(implicit ctx: Context)
@@ -2095,6 +2224,7 @@ object messages {
     val kind = "Syntax"
     val msg = hl"""${"inline"} modifier cannot be used for a ${owner.showKind} parameter"""
     val explanation = ""
+    val links = Nil
   }
 
   case class JavaSymbolIsNotAValue(symbol: Symbol)(implicit ctx: Context) extends Message(JavaSymbolIsNotAValueID) {
@@ -2107,5 +2237,6 @@ object messages {
       s"$kind is not a value"
     }
     val explanation = ""
+    val links = Nil
   }
 }

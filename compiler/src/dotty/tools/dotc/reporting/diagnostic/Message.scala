@@ -89,7 +89,7 @@ abstract class Message(val errorId: ErrorMessageID) { self =>
   /** Links may list URLs to Internet resources related to the error
     * e.g. the Scala Language Specification.
     */
-  val links: List[DocumentationLink] = Nil
+  val links: List[DocumentationLink]
 
   /** The implicit `Context` in messages is a large thing that we don't want
     * persisted. This method gets around that by duplicating the message
@@ -119,6 +119,7 @@ class ExtendMessage(_msg: () => Message)(f: String => String) { self =>
     val msg = self.msg
     val kind = self.kind
     val explanation = self.explanation
+    val links = Nil
   }
 
   /** Enclose this message in an `Error` container */
@@ -154,6 +155,7 @@ class ExtendMessage(_msg: () => Message)(f: String => String) { self =>
 class NoExplanation(val msg: String) extends Message(ErrorMessageID.NoExplanationID) {
   val explanation = ""
   val kind = ""
+  val links = Nil
 
   override def toString(): String = s"NoExplanation($msg)"
 }
