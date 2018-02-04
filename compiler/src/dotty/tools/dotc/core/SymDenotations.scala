@@ -18,7 +18,7 @@ import util.SimpleIdentityMap
 import util.Stats
 import java.util.WeakHashMap
 import config.Config
-import config.Printers.{incremental, noPrinter}
+import config.Printers.noPrinter
 import reporting.diagnostic.Message
 import reporting.diagnostic.messages.BadSymbolicReference
 import reporting.trace

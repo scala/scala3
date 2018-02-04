@@ -11,6 +11,7 @@ import Contexts._, Flags._, Names._, NameOps._, Symbols._, SymDenotations._, Tre
 import util.Positions._, util.SourcePosition
 import core.Denotations.SingleDenotation
 import NameKinds.SimpleNameKind
+import config.Printers.interactiv
 
 /** High-level API to get information out of typed trees, designed to be used by IDEs.
  *
@@ -36,6 +37,7 @@ object Interactive {
     if (path.isEmpty) NoType
     else path.head.tpe
   }
+
   /** The closest enclosing tree with a symbol containing position `pos`.
    */
   def enclosingTree(trees: List[SourceTree], pos: SourcePosition)(implicit ctx: Context): Tree =
@@ -95,6 +97,7 @@ object Interactive {
    *
    *  @return offset and list of symbols for possible completions
    */
+  // deprecated
   def completions(trees: List[SourceTree], pos: SourcePosition)(implicit ctx: Context): (Int, List[Symbol]) = {
     val path = pathTo(trees, pos)
     val boundary = enclosingDefinitionInPath(path).symbol
@@ -122,6 +125,104 @@ object Interactive {
     .getOrElse((0, Nil))
   }
 
+  /** Get possible completions from tree at `pos`
+   *
+   *  @return offset and list of symbols for possible completions
+   */
+  def completions(pos: SourcePosition)(implicit ctx: Context): (Int, List[Symbol]) = {
+    val path = pathTo(ctx.compilationUnit.tpdTree, pos.pos)
+    computeCompletions(pos, path)(contextOfPath(path))
+  }
+
+  private def computeCompletions(pos: SourcePosition, path: List[Tree])(implicit ctx: Context): (Int, List[Symbol]) = {
+    val completions = Scopes.newScope.openForMutations
+
+    val (completionPos, prefix) = path match {
+      case (ref: RefTree) :: _ =>
+        (ref.pos.point, ref.name.toString.take(ref.pos.end - ref.pos.point - 1))
+      case (id @ Ident(name)) :: _ =>
+        if.pos
+        getScopeCompletions(ctx)
+        id.pos.point
+      case _ =>
+        getScopeCompletions(ctx)
+        0
+
+    def add(sym: Symbol) =
+      if (sym.exists && !completions.lookup(sym.name).exists)
+        completions.enter(sym)
+
+    def addMember(site: Type, name: Name) =
+      if (!completions.lookup(name).exists)
+        for (alt <- site.member(name).alternatives)
+          completions.enter(alt.symbol)
+
+    def allMembers(site: Type, superAccess: Boolean = true) =
+      site.membersBasedOnFlags(EmptyFlags, EmptyFlags).map(_.accessibleFrom(site, superAccess))
+
+    def getImportCompletions(ictx: Context): Unit = {
+      implicit val ctx = ictx
+      val imp = ctx.importInfo
+      if (imp != null) {
+        def addImport(name: TermName) = {
+          addMember(imp.site, name)
+          addMember(imp.site, name.toTypeName)
+        }
+        for (renamed <- imp.reverseMapping.keys) addImport(renamed)
+        for (imported <- imp.originals if !imp.excluded.contains(imported)) addImport(imported)
+        if (imp.isWildcardImport)
+          for (mbr <- allMembers(imp.site) if !imp.excluded.contains(mbr.name.toTermName))
+            addMember(imp.site, mbr.name)
+      }
+    }
+
+    def getScopeCompletions(ictx: Context): Unit = {
+      implicit val ctx = ictx
+
+      if (ctx.owner.isClass) {
+        for (sym <- ctx.owner.info.decls) // decls in same class first
+          addMember(ctx.owner.thisType, sym.name)
+        if (!ctx.owner.is(Package)) {
+          for (mbr <- allMembers(ctx.owner.thisType)) // all other members second
+            addMember(ctx.owner.thisType, mbr.name)
+          ctx.owner.asClass.classInfo.selfInfo match {
+            case selfSym: Symbol => add(selfSym)
+            case _ =>
+          }
+        }
+      }
+      else if (ctx.scope != null) ctx.scope.foreach(add)
+
+      getImportCompletions(ctx)
+
+      var outer = ctx.outer
+      while ((outer.owner `eq` ctx.owner) && (outer.scope `eq` ctx.scope)) {
+        getImportCompletions(outer)
+        outer = outer.outer
+      }
+      if (outer `ne` NoContext) getScopeCompletions(outer)
+    }
+
+    def getMemberCompletions(site: Type): Unit = {
+      for (mbr <- allMembers(site)) addMember(site, mbr.name)
+    }
+
+    val completionPos = path match {
+      case (sel @ Select(qual, name)) :: _ =>
+        getMemberCompletions(qual.tpe)
+        // When completing "`a.foo`, return the members of `a`
+        sel.pos.point
+      case (id: Ident) :: _ =>
+        getScopeCompletions(ctx)
+        id.pos.point
+      case _ =>
+        getScopeCompletions(ctx)
+        0
+    }
+    interactiv.println(i"completion = ${completions.toList}%, %")
+    (completionPos, completions.toList)
+  }
+
   /** Possible completions of members of `prefix` which are accessible when called inside `boundary` */
   def completions(prefix: Type, boundary: Symbol)(implicit ctx: Context): List[Symbol] =
     safely {
@@ -131,7 +232,7 @@ object Interactive {
         def addMember(name: Name, buf: mutable.Buffer[SingleDenotation]): Unit =
           buf ++= prefix.member(name).altsWith(d =>
             !exclude(d) && d.symbol.isAccessibleFrom(prefix)(boundaryCtx))
-         prefix.memberDenots(completionsFilter, addMember).map(_.symbol).toList
+          prefix.memberDenots(completionsFilter, addMember).map(_.symbol).toList
       }
       else Nil
     }
@@ -203,14 +304,72 @@ object Interactive {
    */
   def pathTo(trees: List[SourceTree], pos: SourcePosition)(implicit ctx: Context): List[Tree] =
     trees.find(_.pos.contains(pos)) match {
-      case Some(tree) =>
-        // FIXME: We shouldn't need a cast. Change NavigateAST.pathTo to return a List of Tree?
-        val path = NavigateAST.pathTo(pos.pos, tree.tree, skipZeroExtent = true).asInstanceOf[List[untpd.Tree]]
-
-        path.dropWhile(!_.hasType).asInstanceOf[List[tpd.Tree]]
-      case None =>
-        Nil
+      case Some(tree) => pathTo(tree.tree, pos.pos)
+      case None => Nil
     }
+
+  def pathTo(tree: Tree, pos: Position)(implicit ctx: Context): List[Tree] =
+    if (tree.pos.contains(pos)) {
+      // FIXME: We shouldn't need a cast. Change NavigateAST.pathTo to return a List of Tree?
+      val path = NavigateAST.pathTo(pos, tree, skipZeroExtent = true).asInstanceOf[List[untpd.Tree]]
+      path.dropWhile(!_.hasType).asInstanceOf[List[tpd.Tree]]
+    }
+    else Nil
+
+  def contextOfStat(stats: List[Tree], stat: Tree, exprOwner: Symbol, ctx: Context): Context = stats match {
+    case Nil =>
+      ctx
+    case first :: _ if first eq stat =>
+      ctx.exprContext(stat, exprOwner)
+    case (imp: Import) :: rest =>
+      contextOfStat(rest, stat, exprOwner, ctx.importContext(imp, imp.symbol(ctx)))
+    case _ =>
+      ctx
+  }
+
+  def contextOfPath(path: List[Tree])(implicit ctx: Context): Context = path match {
+    case Nil | _ :: Nil =>
+      ctx.run.runContext.fresh.setCompilationUnit(ctx.compilationUnit)
+    case nested :: encl :: rest =>
+      import typer.Typer._
+      val outer = contextOfPath(encl :: rest)
+      encl match {
+        case tree @ PackageDef(pkg, stats) =>
+          assert(tree.symbol.exists)
+          if (nested `eq` pkg) outer
+          else contextOfStat(stats, nested, pkg.symbol.moduleClass, outer.packageContext(tree, tree.symbol))
+        case tree: DefDef =>
+          assert(tree.symbol.exists)
+          val localCtx = outer.localContext(tree, tree.symbol).setNewScope
+          for (tparam <- tree.tparams) localCtx.enter(tparam.symbol)
+          for (vparams <- tree.vparamss; vparam <- vparams) localCtx.enter(vparam.symbol)
+            // Note: this overapproximates visibility a bit, since value parameters are only visible
+            // in subsequent parameter sections
+          localCtx
+        case tree: MemberDef =>
+          assert(tree.symbol.exists)
+          outer.localContext(tree, tree.symbol)
+        case tree @ Block(stats, expr) =>
+          val localCtx = outer.fresh.setNewScope
+          stats.foreach {
+            case stat: MemberDef => localCtx.enter(stat.symbol)
+            case _ =>
+          }
+          contextOfStat(stats, nested, ctx.owner, localCtx)
+        case tree @ CaseDef(pat, guard, rhs) if nested `eq` rhs =>
+          val localCtx = outer.fresh.setNewScope
+          pat.foreachSubTree {
+            case bind: Bind => localCtx.enter(bind.symbol)
+            case _ =>
+          }
+          localCtx
+        case tree @ Template(constr, parents, self, _) =>
+          if ((constr :: self :: parents).exists(nested `eq` _)) ctx
+          else contextOfStat(tree.body, nested, tree.symbol, outer.inClassContext(self.symbol))
+        case _ =>
+          outer
+      }
+  }
 
   /** The first tree in the path that is a definition. */
   def enclosingDefinitionInPath(path: List[Tree])(implicit ctx: Context): Tree =

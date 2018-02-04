@@ -202,7 +202,10 @@ class DottyLanguageServer extends LanguageServer
     implicit val ctx = driver.currentCtx
 
     val pos = sourcePosition(driver, uri, params.getPosition)
-    val items = Interactive.completions(driver.openedTrees(uri), pos)._2
+    val items = driver.compilationUnits.get(uri) match {
+      case Some(unit) => Interactive.completions(pos)(ctx.fresh.setCompilationUnit(unit))._2
+      case None => Nil
+    }
 
     JEither.forRight(new CompletionList(
       /*isIncomplete = */ false, items.map(completionItem).asJava))

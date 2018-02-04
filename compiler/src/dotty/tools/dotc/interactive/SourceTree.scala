@@ -37,6 +37,7 @@ case class SourceTree(tree: tpd.NameTree, source: SourceFile) {
     }
   }
 }
+
 object SourceTree {
   def fromSymbol(sym: ClassSymbol, id: String = "")(implicit ctx: Context): Option[SourceTree] = {
     if (sym == defn.SourceFileAnnot || // FIXME: No SourceFile annotation on SourceFile itself
