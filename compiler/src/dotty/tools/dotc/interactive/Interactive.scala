@@ -12,6 +12,7 @@ import util.Positions._, util.SourcePosition
 import core.Denotations.SingleDenotation
 import NameKinds.SimpleNameKind
 import config.Printers.interactiv
+import StdNames.nme
 
 /** High-level API to get information out of typed trees, designed to be used by IDEs.
  *
@@ -137,28 +138,49 @@ object Interactive {
   private def computeCompletions(pos: SourcePosition, path: List[Tree])(implicit ctx: Context): (Int, List[Symbol]) = {
     val completions = Scopes.newScope.openForMutations
 
-    val (completionPos, prefix) = path match {
+    val (completionPos, prefix, termOnly, typeOnly) = path match {
       case (ref: RefTree) :: _ =>
-        (ref.pos.point, ref.name.toString.take(ref.pos.end - ref.pos.point - 1))
-      case (id @ Ident(name)) :: _ =>
-        if.pos
-        getScopeCompletions(ctx)
-        id.pos.point
+        if (ref.name == nme.ERROR)
+          (ref.pos.point, "", false, false)
+        else
+          (ref.pos.point,
+           ref.name.toString.take(pos.pos.point - ref.pos.point),
+           ref.name.isTermName,
+           ref.name.isTypeName)
       case _ =>
-        getScopeCompletions(ctx)
-        0
+        (0, "", false, false)
+    }
+
+    /** Include in completion sets only symbols that
+     *   - start with given name prefix
+     *   - do not contain '$' except in prefix where it is explicitly written by user
+     *   - have same term/type kind as name prefix given so far
+     */
+    def include(sym: Symbol) = 
+      sym.name.startsWith(prefix) &&
+      !sym.name.toString.drop(prefix.length).contains('$') &&
+      (!termOnly || sym.isTerm) &&
+      (!typeOnly || sym.isType)
+
+    def enter(sym: Symbol) =
+      if (include(sym)) completions.enter(sym)
 
     def add(sym: Symbol) =
-      if (sym.exists && !completions.lookup(sym.name).exists)
-        completions.enter(sym)
+      if (sym.exists && !completions.lookup(sym.name).exists) enter(sym)
 
     def addMember(site: Type, name: Name) =
       if (!completions.lookup(name).exists)
-        for (alt <- site.member(name).alternatives)
-          completions.enter(alt.symbol)
+        for (alt <- site.member(name).alternatives) enter(alt.symbol)
 
-    def allMembers(site: Type, superAccess: Boolean = true) =
-      site.membersBasedOnFlags(EmptyFlags, EmptyFlags).map(_.accessibleFrom(site, superAccess))
+    def accessibleMembers(site: Type, superAccess: Boolean = true): Seq[Symbol] = site match {
+      case site: NamedType if site.symbol.is(Package) =>
+        site.decls.toList.filter(include) // Don't look inside package members -- it's too expensive.
+      case _ =>
+        site.allMembers.collect {
+          case mbr if include(mbr.symbol) => mbr.accessibleFrom(site, superAccess).symbol
+          case _ => NoSymbol
+        }.filter(_.exists)
+    }
 
     def getImportCompletions(ictx: Context): Unit = {
       implicit val ctx = ictx
@@ -171,7 +193,7 @@ object Interactive {
         for (renamed <- imp.reverseMapping.keys) addImport(renamed)
         for (imported <- imp.originals if !imp.excluded.contains(imported)) addImport(imported)
         if (imp.isWildcardImport)
-          for (mbr <- allMembers(imp.site) if !imp.excluded.contains(mbr.name.toTermName))
+          for (mbr <- accessibleMembers(imp.site) if !imp.excluded.contains(mbr.name.toTermName))
             addMember(imp.site, mbr.name)
       }
     }
@@ -180,15 +202,11 @@ object Interactive {
       implicit val ctx = ictx
 
       if (ctx.owner.isClass) {
-        for (sym <- ctx.owner.info.decls) // decls in same class first
-          addMember(ctx.owner.thisType, sym.name)
-        if (!ctx.owner.is(Package)) {
-          for (mbr <- allMembers(ctx.owner.thisType)) // all other members second
-            addMember(ctx.owner.thisType, mbr.name)
-          ctx.owner.asClass.classInfo.selfInfo match {
-            case selfSym: Symbol => add(selfSym)
-            case _ =>
-          }
+        for (mbr <- accessibleMembers(ctx.owner.thisType))
+          addMember(ctx.owner.thisType, mbr.name)
+        ctx.owner.asClass.classInfo.selfInfo match {
+          case selfSym: Symbol => add(selfSym)
+          case _ =>
         }
       }
       else if (ctx.scope != null) ctx.scope.foreach(add)
@@ -204,22 +222,14 @@ object Interactive {
     }
 
     def getMemberCompletions(site: Type): Unit = {
-      for (mbr <- allMembers(site)) addMember(site, mbr.name)
+      for (mbr <- accessibleMembers(site)) addMember(site, mbr.name)
     }
 
-    val completionPos = path match {
-      case (sel @ Select(qual, name)) :: _ =>
-        getMemberCompletions(qual.tpe)
-        // When completing "`a.foo`, return the members of `a`
-        sel.pos.point
-      case (id: Ident) :: _ =>
-        getScopeCompletions(ctx)
-        id.pos.point
-      case _ =>
-        getScopeCompletions(ctx)
-        0
+    path match {
+      case (sel @ Select(qual, name)) :: _ => getMemberCompletions(qual.tpe)
+      case _  => getScopeCompletions(ctx)
     }
-    interactiv.println(i"completion = ${completions.toList}%, %")
+    interactiv.println(i"completion with pos = $pos, prefix = $prefix, termOnly = $termOnly, typeOnly = $typeOnly = ${completions.toList}%, %")
     (completionPos, completions.toList)
   }
 

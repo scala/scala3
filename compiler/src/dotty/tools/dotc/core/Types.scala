@@ -732,7 +732,7 @@ object Types {
     }
 
     /** The set of member classes of this type */
-    final def memberClasses(implicit ctx: Context): Seq[SingleDenotation] = track("implicitMembers") {
+    final def memberClasses(implicit ctx: Context): Seq[SingleDenotation] = track("memberClasses") {
       memberDenots(typeNameFilter,
         (name, buf) => buf ++= member(name).altsWith(x => x.isClass))
     }
@@ -743,9 +743,14 @@ object Types {
     }
 
     /** The set of members of this type having at least one of `requiredFlags` but none of `excludedFlags` set */
-    final def membersBasedOnFlags(requiredFlags: FlagSet, excludedFlags: FlagSet)(implicit ctx: Context): Seq[SingleDenotation] = track("implicitMembers") {
+    final def membersBasedOnFlags(requiredFlags: FlagSet, excludedFlags: FlagSet)(implicit ctx: Context): Seq[SingleDenotation] = track("membersBasedOnFlags") {
       memberDenots(takeAllFilter,
         (name, buf) => buf ++= memberExcluding(name, excludedFlags).altsWith(x => x.is(requiredFlags)))
+    }
+
+    /** All members of this type. Warning: this can be expensive to compute! */
+    final def allMembers(implicit ctx: Context): Seq[SingleDenotation] = track("allMembers") {
+      memberDenots(takeAllFilter, (name, buf) => buf ++= member(name).alternatives)
     }
 
     /** The info of `sym`, seen as a member of this type. */
