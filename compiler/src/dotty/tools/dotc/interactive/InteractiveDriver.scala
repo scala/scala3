@@ -50,8 +50,11 @@ class InteractiveDriver(settings: List[String]) extends Driver {
     override def default(key: URI) = Nil
   }
 
+  private val myCompilationUnits = new mutable.LinkedHashMap[URI, CompilationUnit]
+
   def openedFiles: Map[URI, SourceFile] = myOpenedFiles
   def openedTrees: Map[URI, List[SourceTree]] = myOpenedTrees
+  def compilationUnits: Map[URI, CompilationUnit] = myCompilationUnits
 
   def allTrees(implicit ctx: Context): List[SourceTree] = allTreesContaining("")
 
@@ -229,9 +232,11 @@ class InteractiveDriver(settings: List[String]) extends Driver {
 
       run.compileSources(List(source))
       run.printSummary()
-      val t = ctx.run.units.head.tpdTree
+      val unit = ctx.run.units.head
+      val t = unit.tpdTree
       cleanup(t)
       myOpenedTrees(uri) = topLevelClassTrees(t, source)
+      myCompilationUnits(uri) = unit
 
       reporter.removeBufferedMessages
     }
@@ -246,6 +251,7 @@ class InteractiveDriver(settings: List[String]) extends Driver {
   def close(uri: URI): Unit = {
     myOpenedFiles.remove(uri)
     myOpenedTrees.remove(uri)
+    myCompilationUnits.remove(uri)
   }
 }
 
