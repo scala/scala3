@@ -24,7 +24,7 @@ object Interactive {
   object Include { // should be an enum, really.
     type Set = Int
     val overridden = 1 // include trees whose symbol is overridden by `sym`
-    val overriding = 2 // include trees whose symbol overrides `sym`
+    val overriding = 2 // include trees whose symbol overrides `sym` (but for performance only in same source file)
     val references = 4 // include references and not just definitions
   }
 
@@ -148,6 +148,7 @@ object Interactive {
            ref.name.isTermName,
            ref.name.isTypeName)
       case _ =>
+        println(i"COMPUTE from ${path.headOption}")
         (0, "", false, false)
     }
 
@@ -176,7 +177,10 @@ object Interactive {
       case site: NamedType if site.symbol.is(Package) =>
         site.decls.toList.filter(include) // Don't look inside package members -- it's too expensive.
       case _ =>
-        site.allMembers.collect {
+        def appendMemberSyms(name: Name, buf: mutable.Buffer[SingleDenotation]): Unit =
+          try buf ++= site.member(name).alternatives
+          catch { case ex: TypeError => }
+        site.memberDenots(takeAllFilter, appendMemberSyms).collect {
           case mbr if include(mbr.symbol) => mbr.accessibleFrom(site, superAccess).symbol
           case _ => NoSymbol
         }.filter(_.exists)
