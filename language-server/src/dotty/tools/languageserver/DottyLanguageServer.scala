@@ -211,11 +211,10 @@ class DottyLanguageServer extends LanguageServer
       /*isIncomplete = */ false, items.map(completionItem).asJava))
   }
 
-  /** If cursor is on a reference, show its definition and all overriding definitions.
+  /** If cursor is on a reference, show its definition and all overriding definitions in
+   *  the same source as the primary definition.
    *  If cursor is on a definition, show this definition together with all overridden
-   *  and overriding definitions.
-   *  For performance reasons we currently look for overrides only in the file
-   *  where `sym` is defined.
+   *  and overriding definitions (in all sources).
    */
   override def definition(params: TextDocumentPositionParams) = computeAsync { cancelToken =>
     val uri = new URI(params.getTextDocument.getUri)
@@ -228,9 +227,13 @@ class DottyLanguageServer extends LanguageServer
 
     if (sym == NoSymbol) Nil.asJava
     else {
-      val trees = SourceTree.fromSymbol(sym.topLevelClass.asClass).toList
-      var include = Include.overriding
-      if (enclTree.isInstanceOf[MemberDef]) include |= Include.overridden
+      val (trees, include) =
+        if (enclTree.isInstanceOf[MemberDef])
+          (driver.allTreesContaining(sym.name.sourceModuleName.toString),
+           Include.overriding | Include.overridden)
+        else
+          (SourceTree.fromSymbol(sym.topLevelClass.asClass).toList,
+           Include.overriding)
       val defs = Interactive.namedTrees(trees, include, sym)
       defs.map(d => location(d.namePos)).asJava
     }
