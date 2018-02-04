@@ -73,7 +73,6 @@ object Interactive {
 
   /** Check if `tree` matches `sym`.
    *  This is the case if the symbol defined by `tree` equals `sym`,
-   *  or the source symbol of tree equals sym,
    *  or `include` is `overridden`, and `tree` is overridden by `sym`,
    *  or `include` is `overriding`, and `tree` overrides `sym`.
    */
@@ -82,8 +81,7 @@ object Interactive {
     def overrides(sym1: Symbol, sym2: Symbol) =
       sym1.owner.derivesFrom(sym2.owner) && sym1.overriddenSymbol(sym2.owner.asClass) == sym2
 
-    (  sym == tree.symbol
-    || sym.exists && sym == sourceSymbol(tree.symbol)
+    (  sym.exists && sym == tree.symbol
     || include != 0 && sym.name == tree.symbol.name && sym.owner != tree.symbol.owner
        && (  (include & Include.overridden) != 0 && overrides(sym, tree.symbol)
           || (include & Include.overriding) != 0 && overrides(tree.symbol, sym)
