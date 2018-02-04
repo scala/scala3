@@ -156,7 +156,7 @@ object Interactive {
      *   - do not contain '$' except in prefix where it is explicitly written by user
      *   - have same term/type kind as name prefix given so far
      */
-    def include(sym: Symbol) = 
+    def include(sym: Symbol) =
       sym.name.startsWith(prefix) &&
       !sym.name.toString.drop(prefix.length).contains('$') &&
       (!termOnly || sym.isTerm) &&
@@ -181,6 +181,9 @@ object Interactive {
           case _ => NoSymbol
         }.filter(_.exists)
     }
+
+    def addAccessibleMembers(site: Type, superAccess: Boolean = true): Unit =
+      for (mbr <- accessibleMembers(site)) addMember(site, mbr.name)
 
     def getImportCompletions(ictx: Context): Unit = {
       implicit val ctx = ictx
@@ -221,12 +224,22 @@ object Interactive {
       if (outer `ne` NoContext) getScopeCompletions(outer)
     }
 
-    def getMemberCompletions(site: Type): Unit = {
-      for (mbr <- accessibleMembers(site)) addMember(site, mbr.name)
+    def implicitConversionTargets(qual: Tree)(implicit ctx: Context): Set[Type] = {
+      val typer = ctx.typer
+      val conversions = new typer.ImplicitSearch(defn.AnyType, qual, pos.pos).allImplicits
+      val targets = conversions.map(_.widen.finalResultType)
+      interactiv.println(i"implicit conversion targets considered: ${targets.toList}%, %")
+      targets
+    }
+
+    def getMemberCompletions(qual: Tree): Unit = {
+      addAccessibleMembers(qual.tpe)
+      implicitConversionTargets(qual)(ctx.fresh.setExploreTyperState())
+        .foreach(addAccessibleMembers(_))
     }
 
     path match {
-      case (sel @ Select(qual, name)) :: _ => getMemberCompletions(qual.tpe)
+      case (sel @ Select(qual, _)) :: _ => getMemberCompletions(qual)
       case _  => getScopeCompletions(ctx)
     }
     interactiv.println(i"completion with pos = $pos, prefix = $prefix, termOnly = $termOnly, typeOnly = $typeOnly = ${completions.toList}%, %")
