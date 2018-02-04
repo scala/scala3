@@ -92,6 +92,29 @@ trait NamerContextOps { this: Context =>
       .dropWhile(_.owner == sym)
       .next()
 
+  /** A fresh local context with given tree and owner.
+   *  Owner might not exist (can happen for self valdefs), in which case
+   *  no owner is set in result context
+   */
+  def localContext(tree: untpd.Tree, owner: Symbol): FreshContext = {
+    val freshCtx = fresh.setTree(tree)
+    if (owner.exists) freshCtx.setOwner(owner) else freshCtx
+  }
+
+  /** A new context for the interior of a class */
+  def inClassContext(selfInfo: DotClass /* Should be Type | Symbol*/): Context = {
+    val localCtx: Context = ctx.fresh.setNewScope
+    selfInfo match {
+      case sym: Symbol if sym.exists && sym.name != nme.WILDCARD => localCtx.scope.openForMutations.enter(sym)
+      case _ =>
+    }
+    localCtx
+  }
+
+  def packageContext(tree: untpd.PackageDef, pkg: Symbol): Context =
+    if (pkg is Package) ctx.fresh.setOwner(pkg.moduleClass).setTree(tree)
+    else ctx
+
   /** The given type, unless `sym` is a constructor, in which case the
    *  type of the constructed instance is returned
    */
@@ -403,17 +426,6 @@ class Namer { typer: Typer =>
   def expanded(tree: Tree)(implicit ctx: Context): Tree = tree match {
     case ddef: DefTree => ddef.attachmentOrElse(ExpandedTree, ddef)
     case _ => tree
-  }
-
-  /** A new context for the interior of a class */
-  def inClassContext(selfInfo: DotClass /* Should be Type | Symbol*/)(implicit ctx: Context): Context = {
-    val localCtx: Context = ctx.fresh.setNewScope
-    selfInfo match {
-      case sym: Symbol if sym.exists && sym.name != nme.WILDCARD =>
-        localCtx.scope.openForMutations.enter(sym)
-      case _ =>
-    }
-    localCtx
   }
 
   /** For all class definitions `stat` in `xstats`: If the companion class if
@@ -953,7 +965,7 @@ class Namer { typer: Typer =>
       index(constr)
       annotate(constr :: params)
 
-      indexAndAnnotate(rest)(inClassContext(selfInfo))
+      indexAndAnnotate(rest)(ctx.inClassContext(selfInfo))
       symbolOfTree(constr).ensureCompleted()
 
       val parentTypes = ensureFirstIsClass(parents.map(checkedParentType(_)), cls.pos)
