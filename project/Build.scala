@@ -502,7 +502,7 @@ object Build {
 
       test in Test := {
         // Exclude legacy tests by default
-        (testOnly in Test).toTask(" -- --exclude-categories=dotty.LegacyTests").value
+        (testOnly in Test).toTask(" -- --exclude-categories=dotty.VulpixMetaTests").value
       },
 
       testOptions in Test += Tests.Argument(

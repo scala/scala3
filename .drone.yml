@@ -14,13 +14,6 @@ pipeline:
 
   # TESTS:
   # We run tests in parallel. Tests run in a copy of the working directory to avoid conflict
-  test_legacy:
-    group: test
-    image: lampepfl/dotty:2018-01-17
-    commands:
-      - cp -R . /tmp/0/ && cd /tmp/0/
-      - ./project/scripts/sbt legacyTests
-
   test:
     group: test
     image: lampepfl/dotty:2018-01-17
