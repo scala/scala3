@@ -1,0 +1,43 @@
+[0m[[0minfo[0m] [0m[34mTest run started[0m[0m
+[0m[[0minfo[0m] [0mTest dotty.tools.vulpix.[33mVulpixMetaTests[0m.[36mrunAll[0m started[0m
+Testing ../tests/meta-tests/run/wrong-check-file.scala
+Output from '../tests/meta-tests/run/wrong-check-file.scala' did not match check file.
+Diff (expected on the left, actual right):
+[1m[32mhello[0m  |  [1m[31mworld[0m
+[1m[32mworld[0m  |  [1m[31mhello[0m
+[51mEOF[0m    |  [51mEOF[0m
+
+[0m[[31merror[0m] [0mTest dotty.tools.vulpix.[33mVulpixMetaTests[0m.[31mrunAll[0m failed: java.lang.[31mAssertionError[0m: Run test failed, but should not, reasons:[0m
+[0m[[31merror[0m] [0m, took 1.673 sec[0m SKIP
+[0m[[31merror[0m] [0m    at dotty.tools.vulpix.ParallelTesting$CompilationTest.checkRuns(ParallelTesting.scala:1000)[0m
+[0m[[31merror[0m] [0m    at dotty.tools.vulpix.VulpixMetaTests.runAll([35mVulpixMetaTests.scala[0m:[33m26[0m)[0m
+[0m[[31merror[0m] [0m    ...[0m
+[0m[[0minfo[0m] [0mTest dotty.tools.vulpix.[33mVulpixMetaTests[0m.[36mcompileNeg[0m started[0m
+Testing ../tests/meta-tests/neg/missing-error-annotation.scala
+
+Wrong number of errors encountered when compiling ../out/VulpixMetaTests/neg/missing-error-annotation, expected: 0, actual: 2
+
+[0m[[31merror[0m] [0mTest dotty.tools.vulpix.[33mVulpixMetaTests[0m.[31mcompileNeg[0m failed: java.lang.[31mAssertionError[0m: Neg test shouldn't have failed, but did. Reasons:[0m
+[0m[[31merror[0m] [0m[0m
+[0m[[31merror[0m] [0m  - encountered 2 error(s), took 0.072 sec[0m SKIP
+[0m[[31merror[0m] [0m    at dotty.tools.vulpix.ParallelTesting$CompilationTest.checkExpectedErrors(ParallelTesting.scala:982)[0m
+[0m[[31merror[0m] [0m    at dotty.tools.vulpix.VulpixMetaTests.compileNeg([35mVulpixMetaTests.scala[0m:[33m25[0m)[0m
+[0m[[31merror[0m] [0m    ...[0m
+[0m[[0minfo[0m] [0mTest dotty.tools.vulpix.[33mVulpixMetaTests[0m.[36mcompilePos[0m started[0m
+Testing ../tests/meta-tests/pos/does-not-compile.scala
+-- [E006] Unbound Identifier Error: /home/olivier/workspace/dotty/compiler/../tests/meta-tests/pos/does-not-compile.scala:2:2 SKIP
+2 |  a // Does not compile
+  |  ^
+  |  not found: a
+[0m[[31merror[0m] [0mTest dotty.tools.vulpix.[33mVulpixMetaTests[0m.[31mcompilePos[0m failed: java.lang.[31mAssertionError[0m: Expected no errors when compiling, failed for the following reason(s):[0m
+[0m[[31merror[0m] [0m[0m
+[0m[[31merror[0m] [0m  - encountered 1 error(s), took 0.069 sec[0m SKIP
+[0m[[31merror[0m] [0m    at dotty.tools.vulpix.ParallelTesting$CompilationTest.checkCompile(ParallelTesting.scala:965)[0m
+[0m[[31merror[0m] [0m    at dotty.tools.vulpix.VulpixMetaTests.compilePos([35mVulpixMetaTests.scala[0m:[33m24[0m)[0m
+[0m[[31merror[0m] [0m    ...[0m
+[0m[[0minfo[0m] [0m[34mTest run finished: [0m[31m3 failed[0m[34m, [0m[34m0 ignored[0m[34m, 3 total, 1.964s[0m[0m SKIP
+[0m[[31merror[0m] [0mFailed: Total 3, Failed 3, Errors 0, Passed 0[0m
+[0m[[31merror[0m] [0mFailed tests:[0m
+[0m[[31merror[0m] [0m	dotty.tools.vulpix.VulpixMetaTests[0m
+[0m[[31merror[0m] [0m(dotty-compiler/test:[31mtestOnly[0m) sbt.TestsFailedException: Tests unsuccessful[0m
+[0m[[31merror[0m] [0mTotal time: 3 s, completed Feb 5, 2018 10:08:08 AM[0m SKIP

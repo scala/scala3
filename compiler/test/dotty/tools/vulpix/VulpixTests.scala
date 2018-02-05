@@ -7,7 +7,7 @@ import org.junit.Test
 import scala.concurrent.duration._
 import scala.util.control.NonFatal
 
-/** Meta tests for the Vulpix test suite */
+/** Unit tests for the Vulpix test suite */
 class VulpixTests extends ParallelTesting {
   import TestConfiguration._
 

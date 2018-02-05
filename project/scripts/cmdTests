@@ -92,3 +92,22 @@ mkdir -p out/scriptedtest2
 
 # echo ":quit" | ./dist-bootstrapped/target/pack/bin/dotr  # not supported by CI
 mkdir -p _site && ./bin/dotd -project Hello -siteroot _site tests/run/hello.scala
+
+echo "running Vulpix meta test"
+tmp=$(mktemp)
+if sbt "dotty-compiler/testOnly dotty.tools.vulpix.VulpixMetaTests" > "$tmp" 2>&1; then
+  echo "failed: sbt exited without error on VulpixMetaTests, these tests are expected to fail"
+  exit -1
+fi
+tmp1=$(mktemp)
+cat "$tmp" | sed '/Test run started/,$!d' > "$tmp1"
+while read actual <&3 && read expected <&4; do
+  if [[ "$expected" != *"SKIP" ]]; then
+    if [ "$actual" != "$expected" ]; then
+      echo "failed Vulpix meta: the output of sbt differs from the expected output"
+      echo "expected : $expected"
+      echo "actual   : $actual"
+      exit -1
+    fi
+  fi
+done 3<"$tmp1" 4<"./tests/meta-tests/sbt-output.check"
