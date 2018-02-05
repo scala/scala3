@@ -95,7 +95,7 @@ mkdir -p _site && ./bin/dotd -project Hello -siteroot _site tests/run/hello.scal
 
 echo "running Vulpix meta test"
 tmp=$(mktemp)
-if sbt "dotty-compiler/testOnly dotty.tools.vulpix.VulpixMetaTests" > "$tmp" 2>&1; then
+if sbt -no-colors "dotty-compiler/testOnly dotty.tools.vulpix.VulpixMetaTests" > "$tmp" 2>&1; then
   echo "failed: sbt exited without error on VulpixMetaTests, these tests are expected to fail"
   exit -1
 fi
@@ -107,7 +107,7 @@ while read expected <&4 && read actual <&3; do
       echo "failed Vulpix meta: the output of sbt differs from the expected output"
       echo "expected : $expected"
       echo "actual   : $actual"
-      # exit -1
+      exit -1
     fi
   fi
 done 3<"$tmp1" 4<"./tests/vulpix-tests/meta/sbt-output.check"
