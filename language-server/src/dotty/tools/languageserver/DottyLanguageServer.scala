@@ -25,6 +25,7 @@ import reporting._, reporting.diagnostic.MessageContainer
 import util._
 import interactive._, interactive.InteractiveDriver._
 import Interactive.Include
+import config.Printers.interactiv
 
 import languageserver.config.ProjectConfig
 
@@ -78,11 +79,39 @@ class DottyLanguageServer extends LanguageServer
             .update("-classpath", (config.classDirectory +: config.dependencyClasspath).mkString(File.pathSeparator))
             .update("-sourcepath", config.sourceDirectories.mkString(File.pathSeparator)) :+
           "-scansource"
-        myDrivers.put(config, new InteractiveDriver(settings))
+        myDrivers(config) = new InteractiveDriver(settings)
       }
     }
     myDrivers
   }
+
+  /** Restart all presentation compiler drivers, copying open files over */
+  private def restart() = thisServer.synchronized {
+    interactiv.println("restarting presentation compiler")
+    val driverConfigs = for ((config, driver) <- myDrivers.toList) yield
+      (config, new InteractiveDriver(driver.settings), driver.openedFiles)
+    for ((config, driver, _) <- driverConfigs)
+      myDrivers(config) = driver
+    System.gc()
+    for ((_, driver, opened) <- driverConfigs; (uri, source) <- opened)
+      driver.run(uri, source)
+    if (Memory.isCritical())
+      println(s"WARNING: Insufficient memory to run Scala language server on these projects.")
+  }
+
+  private def checkMemory() =
+    if (Memory.isCritical())
+      CompletableFutures.computeAsync { _ => restart(); new Object() }
+        // new Object() necessary or we get a BootstrapMethodError:
+        //
+        // Caused by: java.lang.invoke.LambdaConversionException: Type mismatch for lambda expected return: void is not convertible to class java.lang.Object
+        // at java.lang.invoke.AbstractValidatingLambdaMetafactory.validateMetafactoryArgs(AbstractValidatingLambdaMetafactory.java:286)
+        // at java.lang.invoke.LambdaMetafactory.metafactory(LambdaMetafactory.java:303)
+        // at java.lang.invoke.CallSite.makeSite(CallSite.java:302)
+        // ... 11 more
+        //
+        // This looks like a problem with Dottys code generation for void-returning closures passed
+        // to Java methods. (or SAM functions in general?)
 
   /** The driver instance responsible for compiling `uri` */
   def driverFor(uri: URI): InteractiveDriver = {
@@ -112,10 +141,11 @@ class DottyLanguageServer extends LanguageServer
   }
 
   private[this] def computeAsync[R](fun: CancelChecker => R): CompletableFuture[R] =
-    CompletableFutures.computeAsync({(cancelToken: CancelChecker) =>
+    CompletableFutures.computeAsync { cancelToken =>
       // We do not support any concurrent use of the compiler currently.
       thisServer.synchronized {
         cancelToken.checkCanceled()
+        checkMemory()
         try {
           fun(cancelToken)
         } catch {
@@ -124,7 +154,7 @@ class DottyLanguageServer extends LanguageServer
             throw ex
         }
       }
-    })
+    }
 
   override def initialize(params: InitializeParams) = computeAsync { cancelToken =>
     rootUri = params.getRootUri
@@ -160,6 +190,7 @@ class DottyLanguageServer extends LanguageServer
   }
 
   override def didOpen(params: DidOpenTextDocumentParams): Unit = thisServer.synchronized {
+    checkMemory()
     val document = params.getTextDocument
     val uri = new URI(document.getUri)
     val driver = driverFor(uri)
@@ -173,6 +204,7 @@ class DottyLanguageServer extends LanguageServer
   }
 
   override def didChange(params: DidChangeTextDocumentParams): Unit = thisServer.synchronized {
+    checkMemory()
     val document = params.getTextDocument
     val uri = new URI(document.getUri)
     val driver = driverFor(uri)

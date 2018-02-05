@@ -24,7 +24,7 @@ import reporting._, reporting.diagnostic.MessageContainer
 import util._
 
 /** A Driver subclass designed to be used from IDEs */
-class InteractiveDriver(settings: List[String]) extends Driver {
+class InteractiveDriver(val settings: List[String]) extends Driver {
   import tpd._
   import InteractiveDriver._
 
@@ -216,7 +216,17 @@ class InteractiveDriver(settings: List[String]) extends Driver {
     cleanupTree(tree)
   }
 
-  def run(uri: URI, sourceCode: String): List[MessageContainer] = {
+  private def toSource(uri: URI, sourceCode: String): SourceFile = {
+    val virtualFile = new VirtualFile(uri.toString, Paths.get(uri).toString)
+    val writer = new BufferedWriter(new OutputStreamWriter(virtualFile.output, "UTF-8"))
+    writer.write(sourceCode)
+    writer.close()
+    new SourceFile(virtualFile, Codec.UTF8)
+  }
+
+  def run(uri: URI, sourceCode: String): List[MessageContainer] = run(uri, toSource(uri, sourceCode))
+
+  def run(uri: URI, source: SourceFile): List[MessageContainer] = {
     val previousCtx = myCtx
     try {
       val reporter =
@@ -227,11 +237,6 @@ class InteractiveDriver(settings: List[String]) extends Driver {
 
       implicit val ctx = myCtx
 
-      val virtualFile = new VirtualFile(uri.toString, Paths.get(uri).toString)
-      val writer = new BufferedWriter(new OutputStreamWriter(virtualFile.output, "UTF-8"))
-      writer.write(sourceCode)
-      writer.close()
-      val source = new SourceFile(virtualFile, Codec.UTF8)
       myOpenedFiles(uri) = source
 
       run.compileSources(List(source))
