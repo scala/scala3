@@ -95,7 +95,8 @@ mkdir -p _site && ./bin/dotd -project Hello -siteroot _site tests/run/hello.scal
 
 echo "running Vulpix meta test"
 tmp=$(mktemp)
-if sbt -no-colors "dotty-compiler/testOnly dotty.tools.vulpix.VulpixMetaTests" > "$tmp" 2>&1; then
+if ./project/scripts/sbt "dotty-compiler/testOnly dotty.tools.vulpix.VulpixMetaTests" > "$tmp" 2>&1; then
+  cat "$tmp"
   echo "failed: sbt exited without error on VulpixMetaTests, these tests are expected to fail"
   exit -1
 fi
