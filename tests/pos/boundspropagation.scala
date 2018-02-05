@@ -17,12 +17,15 @@ object test1 {
     }
   }
 }
+
+/** Does not work:
 object test2 {
   class Tree[S, T <: S]
 
   class Base {
     def g(x: Any): Tree[_, _ <: Int] = x match {
-      case y: Tree[Int @unchecked, _] => y
+      case y: Tree[Int @unchecked, t] => y
     }
   }
 }
+*/

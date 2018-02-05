@@ -179,7 +179,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
     val ex = new BadSignature(
       i"""error reading Scala signature of $classRoot from $source:
          |error occurred at position $readIndex: $msg""")
-    if (ctx.debug || true) original.getOrElse(ex).printStackTrace() // temporarily enable printing of original failure signature to debug failing builds
+    if (ctx.settings.YdebugMissingRefs.value) original.getOrElse(ex).printStackTrace()
     throw ex
   }
 
@@ -415,7 +415,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
               owner.info.decls.checkConsistent()
               if (slowSearch(name).exists)
                 System.err.println(i"**** slow search found: ${slowSearch(name)}")
-              if (ctx.debug) Thread.dumpStack()
+              if (ctx.settings.YdebugMissingRefs.value) Thread.dumpStack()
               ctx.newStubSymbol(owner, name, source)
             }
           }
@@ -614,7 +614,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
     /** Force reading type params early, we need them in setClassInfo of subclasses. */
     def init()(implicit ctx: Context) = loadTypeParams
 
-    def completerTypeParams(sym: Symbol)(implicit ctx: Context): List[TypeSymbol] =
+    override def completerTypeParams(sym: Symbol)(implicit ctx: Context): List[TypeSymbol] =
       loadTypeParams
   }
 

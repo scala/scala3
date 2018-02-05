@@ -77,6 +77,7 @@ class ScalaSettings extends Settings.SettingGroup {
   val Ydebug = BooleanSetting("-Ydebug", "Increase the quantity of debugging output.")
   val YdebugTrace = BooleanSetting("-Ydebug-trace", "Trace core operations")
   val YdebugFlags = BooleanSetting("-Ydebug-flags", "Print all flags of definitions")
+  val YdebugMissingRefs = BooleanSetting("-Ydebug-missing-refs", "Print a stacktrace when a required symbol is missing")
   val YdebugNames = BooleanSetting("-Ydebug-names", "Show internal representation of names")
   val YdebugOwners = BooleanSetting("-Ydebug-owners", "Print all owners of definitions (requires -Yprint-syms)")
   val YtermConflict = ChoiceSetting("-Yresolve-term-conflict", "strategy", "Resolve term conflicts", List("package", "object", "error"), "error")

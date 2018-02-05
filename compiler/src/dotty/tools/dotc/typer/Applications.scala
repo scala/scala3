@@ -22,7 +22,6 @@ import Names._
 import StdNames._
 import NameKinds.DefaultGetterName
 import ProtoTypes._
-import EtaExpansion._
 import Inferencing._
 
 import collection.mutable
@@ -426,7 +425,8 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
           }
 
           def tryDefault(n: Int, args1: List[Arg]): Unit = {
-            if (!isJavaAnnotConstr(methRef.symbol)) liftFun()
+            if (!isJavaAnnotConstr(methRef.symbol))
+              liftFun()
             val getter = findDefaultGetter(n + numArgs(normalizedFun))
             if (getter.isEmpty) missingArg(n)
             else {
@@ -571,10 +571,13 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
 
     def normalizedFun = myNormalizedFun
 
+    private def lifter(implicit ctx: Context) =
+      if (methRef.symbol.hasDefaultParams) LiftComplex else LiftImpure
+
     override def liftFun(): Unit =
       if (liftedDefs == null) {
         liftedDefs = new mutable.ListBuffer[Tree]
-        myNormalizedFun = liftApp(liftedDefs, myNormalizedFun)
+        myNormalizedFun = lifter.liftApp(liftedDefs, myNormalizedFun)
       }
 
     /** The index of the first difference between lists of trees `xs` and `ys`
@@ -608,13 +611,13 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
 
             // lift arguments in the definition order
             val argDefBuf = mutable.ListBuffer.empty[Tree]
-            typedArgs = liftArgs(argDefBuf, methType, typedArgs)
+            typedArgs = lifter.liftArgs(argDefBuf, methType, typedArgs)
 
             // Lifted arguments ordered based on the original order of typedArgBuf and
             // with all non-explicit default parameters at the end in declaration order.
             val orderedArgDefs = {
               // List of original arguments that are lifted by liftArgs
-              val impureArgs = typedArgBuf.filterNot(isPureExpr)
+              val impureArgs = typedArgBuf.filterNot(lifter.noLift)
               // Assuming stable sorting all non-explicit default parameters will remain in the end with the same order
               val defaultParamIndex = args.size
               // Mapping of index of each `liftable` into original args ordering
@@ -662,6 +665,10 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
   def argCtx(app: untpd.Tree)(implicit ctx: Context): Context =
     if (untpd.isSelfConstrCall(app)) ctx.thisCallArgContext else ctx
 
+  /** Typecheck application. Result could be an `Apply` node,
+   *  or, if application is an operator assignment, also an `Assign` or
+   *  Block node.
+   */
   def typedApply(tree: untpd.Apply, pt: Type)(implicit ctx: Context): Tree = {
 
     def realApply(implicit ctx: Context): Tree = track("realApply") {
@@ -746,7 +753,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
       val Apply(Select(lhs, name), rhss) = tree
       val lhs1 = typedExpr(lhs)
       val liftedDefs = new mutable.ListBuffer[Tree]
-      val lhs2 = untpd.TypedSplice(liftAssigned(liftedDefs, lhs1))
+      val lhs2 = untpd.TypedSplice(LiftComplex.liftAssigned(liftedDefs, lhs1))
       val assign = untpd.Assign(lhs2,
           untpd.Apply(untpd.Select(lhs2, name.asSimpleName.dropRight(1)), rhss))
       wrapDefs(liftedDefs, typed(assign))

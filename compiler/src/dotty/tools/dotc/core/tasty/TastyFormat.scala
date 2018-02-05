@@ -226,7 +226,7 @@ Standard Section: "Positions" Assoc*
 object TastyFormat {
 
   final val header = Array(0x5C, 0xA1, 0xAB, 0x1F)
-  val MajorVersion = 3
+  val MajorVersion = 4
   val MinorVersion = 0
 
   /** Tags used to serialize names */
@@ -336,7 +336,6 @@ object TastyFormat {
   final val RECtype = 90
   final val TYPEALIAS = 91
   final val SINGLETONtpt = 92
-  final val NAMEDARG = 93
 
   // Cat. 4:    tag Nat AST
 
@@ -349,6 +348,7 @@ object TastyFormat {
   final val TYPEREFsymbol = 116
   final val TYPEREF = 117
   final val SELFDEF = 118
+  final val NAMEDARG = 119
 
   // Cat. 5:    tag Length ...
 
@@ -407,6 +407,15 @@ object TastyFormat {
   final val firstASTTreeTag = THIS
   final val firstNatASTTreeTag = IDENT
   final val firstLengthTreeTag = PACKAGE
+
+  /** Useful for debugging */
+  def isLegalTag(tag: Int) =
+    firstSimpleTreeTag <= tag && tag <= MACRO ||
+    firstNatTreeTag <= tag && tag <= SYMBOLconst ||
+    firstASTTreeTag <= tag && tag <= SINGLETONtpt ||
+    firstNatASTTreeTag <= tag && tag <= NAMEDARG ||
+    firstLengthTreeTag <= tag && tag <= TYPEREFin ||
+    tag == HOLE
 
   def isParamTag(tag: Int) = tag == PARAM || tag == TYPEPARAM
 

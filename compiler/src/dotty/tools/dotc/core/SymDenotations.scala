@@ -5,6 +5,7 @@ package core
 import Periods._, Contexts._, Symbols._, Denotations._, Names._, NameOps._, Annotations._
 import Types._, Flags._, Decorators._, DenotTransformers._, StdNames._, Scopes._, Comments._
 import NameOps._, NameKinds._, Phases._
+import TypeApplications.TypeParamInfo
 import Scopes.Scope
 import collection.mutable
 import collection.BitSet
@@ -1915,6 +1916,11 @@ object SymDenotations {
       override def complete(denot: SymDenotation)(implicit ctx: Context) = self.complete(denot)
     }
 
+    /** The type parameters computed by the completer before completion has finished */
+    def completerTypeParams(sym: Symbol)(implicit ctx: Context): List[TypeParamInfo] =
+      if (sym is Touched) Nil // return `Nil` instead of throwing a cyclic reference
+      else sym.info.typeParams
+
     def decls: Scope = myDecls
     def sourceModule(implicit ctx: Context): Symbol = mySourceModuleFn(ctx)
     def moduleClass(implicit ctx: Context): Symbol = myModuleClassFn(ctx)
@@ -1924,12 +1930,12 @@ object SymDenotations {
     def withModuleClass(moduleClassFn: Context => Symbol): this.type = { myModuleClassFn = moduleClassFn; this }
   }
 
-  /** A subclass of LazyTypes where type parameters can be completed independently of
-   *  the info.
+  /** A subtrait of LazyTypes where completerTypeParams yields a List[TypeSymbol], which
+   *  should be completed independently of the info.
    */
   trait TypeParamsCompleter extends LazyType {
-    /** The type parameters computed by the completer before completion has finished */
-    def completerTypeParams(sym: Symbol)(implicit ctx: Context): List[TypeSymbol]
+    override def completerTypeParams(sym: Symbol)(implicit ctx: Context): List[TypeSymbol] =
+      unsupported("completerTypeParams") // should be abstract, but Scala-2 will then compute the wrong type for it
   }
 
   val NoSymbolFn = (ctx: Context) => NoSymbol
