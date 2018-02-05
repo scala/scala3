@@ -34,8 +34,8 @@ class LinkTests extends ParallelTesting {
     val linkCustomLibGroup = TestGroup("linkTest/linkCustomLib")
     val linkCustomLibTestGroup = TestGroup(linkCustomLibGroup + "/tests")
 
-    val strawmanLibrary = compileDir("../collection-strawman/collections/src/main", defaultOptions)(strawmanLibGroup)
-    val linkCustomLib = compileDir("../tests/link/custom-lib", defaultOptions)(linkCustomLibGroup)
+    val strawmanLibrary = compileDir("collection-strawman/collections/src/main", defaultOptions)(strawmanLibGroup)
+    val linkCustomLib = compileDir("tests/link/custom-lib", defaultOptions)(linkCustomLibGroup)
 
     val libraries = {
       strawmanLibrary +
@@ -49,7 +49,7 @@ class LinkTests extends ParallelTesting {
     val customLibClassFlags = mkLinkClassFlags(defaultOutputDir + linkCustomLibGroup + "/custom-lib")
 
     // Link tests
-    val linkDir = "../tests/link"
+    val linkDir = "tests/link"
     val linkStramanDir = linkDir + "/strawman"
     val linkCustomLibDir = linkDir + "/on-custom-lib"
 

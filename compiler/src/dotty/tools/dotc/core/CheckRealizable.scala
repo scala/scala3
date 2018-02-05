@@ -40,7 +40,7 @@ object CheckRealizable {
   extends Realizability(i" has conflicting base types $base1 and $base2")
 
   class HasProblemField(fld: SingleDenotation, problem: Realizability)(implicit ctx: Context)
-  extends Realizability(i" has a member $fld which is not a legal path\n since ${fld.symbol.name}: ${fld.info}${problem.msg}")
+  extends Realizability(i" has a member $fld which is not a legal path\nsince ${fld.symbol.name}: ${fld.info}${problem.msg}")
 
   class ProblemInUnderlying(tp: Type, problem: Realizability)(implicit ctx: Context)
   extends Realizability(i"s underlying type ${tp}${problem.msg}") {
