@@ -110,4 +110,4 @@ while read actual <&3 && read expected <&4; do
       exit -1
     fi
   fi
-done 3<"$tmp1" 4<"./tests/meta-tests/sbt-output.check"
+done 3<"$tmp1" 4<"./tests/vulpix-tests/meta/sbt-output.check"

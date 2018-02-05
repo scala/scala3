@@ -1,7 +1,7 @@
 [0m[[0minfo[0m] [0m[34mTest run started[0m[0m
 [0m[[0minfo[0m] [0mTest dotty.tools.vulpix.[33mVulpixMetaTests[0m.[36mrunAll[0m started[0m
-Testing ../tests/meta-tests/run/wrong-check-file.scala
-Output from '../tests/meta-tests/run/wrong-check-file.scala' did not match check file.
+Testing ../tests/vulpix-tests/meta/run/wrong-check-file.scala
+Output from '../tests/vulpix-tests/meta/run/wrong-check-file.scala' did not match check file.
 Diff (expected on the left, actual right):
 [1m[32mhello[0m  |  [1m[31mworld[0m
 [1m[32mworld[0m  |  [1m[31mhello[0m
@@ -13,7 +13,7 @@ Diff (expected on the left, actual right):
 [0m[[31merror[0m] [0m    at dotty.tools.vulpix.VulpixMetaTests.runAll([35mVulpixMetaTests.scala[0m:[33m26[0m)[0m
 [0m[[31merror[0m] [0m    ...[0m
 [0m[[0minfo[0m] [0mTest dotty.tools.vulpix.[33mVulpixMetaTests[0m.[36mcompileNeg[0m started[0m
-Testing ../tests/meta-tests/neg/missing-error-annotation.scala
+Testing ../tests/vulpix-tests/meta/neg/missing-error-annotation.scala
 
 Wrong number of errors encountered when compiling ../out/VulpixMetaTests/neg/missing-error-annotation, expected: 0, actual: 2
 
@@ -24,8 +24,8 @@ Wrong number of errors encountered when compiling ../out/VulpixMetaTests/neg/mis
 [0m[[31merror[0m] [0m    at dotty.tools.vulpix.VulpixMetaTests.compileNeg([35mVulpixMetaTests.scala[0m:[33m25[0m)[0m
 [0m[[31merror[0m] [0m    ...[0m
 [0m[[0minfo[0m] [0mTest dotty.tools.vulpix.[33mVulpixMetaTests[0m.[36mcompilePos[0m started[0m
-Testing ../tests/meta-tests/pos/does-not-compile.scala
--- [E006] Unbound Identifier Error: /home/olivier/workspace/dotty/compiler/../tests/meta-tests/pos/does-not-compile.scala:2:2 SKIP
+Testing ../tests/vulpix-tests/meta/pos/does-not-compile.scala
+-- [E006] Unbound Identifier Error: /home/olivier/workspace/dotty/compiler/../tests/vulpix-tests/meta/pos/does-not-compile.scala:2:2 SKIP
 2 |  a // Does not compile
   |  ^
   |  not found: a
