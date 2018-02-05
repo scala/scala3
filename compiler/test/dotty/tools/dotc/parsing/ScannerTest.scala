@@ -49,8 +49,8 @@ class ScannerTest extends DottyTest {
   @Test
   def scanList() = {
     println(System.getProperty("user.dir"))
-    scan("./src/dotty/tools/dotc/core/Symbols.scala")
-    scan("./src/dotty/tools/dotc/core/Symbols.scala")
+    scan("compiler/src/dotty/tools/dotc/core/Symbols.scala")
+    scan("compiler/src/dotty/tools/dotc/core/Symbols.scala")
   }
 
   @Test

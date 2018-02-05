@@ -234,7 +234,7 @@ trait ConstraintHandling {
         typr.println(s"approx ${param.show}, from below = $fromBelow, bound = ${bound.show}, inst = ${inst.show}")
         inst
       case inst =>
-        assert(inst.exists, i"param = $param\n constraint = $constraint")
+        assert(inst.exists, i"param = $param\nconstraint = $constraint")
         inst
     }
   }

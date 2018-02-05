@@ -23,7 +23,7 @@ class VulpixUnitTests extends ParallelTesting {
 
   @Test def missingFile: Unit =
     try {
-      compileFile("../tests/vulpix-tests/unit/i-dont-exist.scala", defaultOptions).expectFailure.checkExpectedErrors()
+      compileFile("tests/vulpix-tests/unit/i-dont-exist.scala", defaultOptions).expectFailure.checkExpectedErrors()
       fail("didn't fail properly")
     }
     catch {
@@ -32,63 +32,63 @@ class VulpixUnitTests extends ParallelTesting {
     }
 
   @Test def pos1Error: Unit =
-    compileFile("../tests/vulpix-tests/unit/posFail1Error.scala", defaultOptions).expectFailure.checkCompile()
+    compileFile("tests/vulpix-tests/unit/posFail1Error.scala", defaultOptions).expectFailure.checkCompile()
 
   @Test def negMissingAnnot: Unit =
-    compileFile("../tests/vulpix-tests/unit/negMissingAnnot.scala", defaultOptions).expectFailure.checkExpectedErrors()
+    compileFile("tests/vulpix-tests/unit/negMissingAnnot.scala", defaultOptions).expectFailure.checkExpectedErrors()
 
   @Test def negAnnotWrongLine: Unit =
-    compileFile("../tests/vulpix-tests/unit/negAnnotWrongLine.scala", defaultOptions).expectFailure.checkExpectedErrors()
+    compileFile("tests/vulpix-tests/unit/negAnnotWrongLine.scala", defaultOptions).expectFailure.checkExpectedErrors()
 
   @Test def negTooManyAnnots: Unit =
-    compileFile("../tests/vulpix-tests/unit/negTooManyAnnots.scala", defaultOptions).expectFailure.checkExpectedErrors()
+    compileFile("tests/vulpix-tests/unit/negTooManyAnnots.scala", defaultOptions).expectFailure.checkExpectedErrors()
 
   @Test def negNoPositionAnnot: Unit =
-    compileFile("../tests/vulpix-tests/unit/negNoPositionAnnots.scala", defaultOptions).expectFailure.checkExpectedErrors()
+    compileFile("tests/vulpix-tests/unit/negNoPositionAnnots.scala", defaultOptions).expectFailure.checkExpectedErrors()
 
   @Test def runCompileFail: Unit =
-    compileFile("../tests/vulpix-tests/unit/posFail1Error.scala", defaultOptions).expectFailure.checkRuns()
+    compileFile("tests/vulpix-tests/unit/posFail1Error.scala", defaultOptions).expectFailure.checkRuns()
 
   @Test def runWrongOutput1: Unit =
-    compileFile("../tests/vulpix-tests/unit/runWrongOutput1.scala", defaultOptions).expectFailure.checkRuns()
+    compileFile("tests/vulpix-tests/unit/runWrongOutput1.scala", defaultOptions).expectFailure.checkRuns()
 
   @Test def runWrongOutput2: Unit =
-    compileFile("../tests/vulpix-tests/unit/runWrongOutput2.scala", defaultOptions).expectFailure.checkRuns()
+    compileFile("tests/vulpix-tests/unit/runWrongOutput2.scala", defaultOptions).expectFailure.checkRuns()
 
   @Test def runDiffOutput1: Unit =
-    compileFile("../tests/vulpix-tests/unit/runDiffOutput1.scala", defaultOptions).expectFailure.checkRuns()
+    compileFile("tests/vulpix-tests/unit/runDiffOutput1.scala", defaultOptions).expectFailure.checkRuns()
 
   @Test def runStackOverflow: Unit =
-    compileFile("../tests/vulpix-tests/unit/stackOverflow.scala", defaultOptions).expectFailure.checkRuns()
+    compileFile("tests/vulpix-tests/unit/stackOverflow.scala", defaultOptions).expectFailure.checkRuns()
 
   @Test def runOutRedirects: Unit =
-    compileFile("../tests/vulpix-tests/unit/i2147.scala", defaultOptions).expectFailure.checkRuns()
+    compileFile("tests/vulpix-tests/unit/i2147.scala", defaultOptions).expectFailure.checkRuns()
 
   @Test def infiteNonRec: Unit =
-    compileFile("../tests/vulpix-tests/unit/infinite.scala", defaultOptions).expectFailure.checkRuns()
+    compileFile("tests/vulpix-tests/unit/infinite.scala", defaultOptions).expectFailure.checkRuns()
 
   @Test def infiteTailRec: Unit =
-    compileFile("../tests/vulpix-tests/unit/infiniteTail.scala", defaultOptions).expectFailure.checkRuns()
+    compileFile("tests/vulpix-tests/unit/infiniteTail.scala", defaultOptions).expectFailure.checkRuns()
 
   @Test def infiniteAlloc: Unit =
-    compileFile("../tests/vulpix-tests/unit/infiniteAlloc.scala", defaultOptions).expectFailure.checkRuns()
+    compileFile("tests/vulpix-tests/unit/infiniteAlloc.scala", defaultOptions).expectFailure.checkRuns()
 
   @Test def deadlock: Unit =
-    compileFile("../tests/vulpix-tests/unit/deadlock.scala", defaultOptions).expectFailure.checkRuns()
+    compileFile("tests/vulpix-tests/unit/deadlock.scala", defaultOptions).expectFailure.checkRuns()
 
   @Test def badJava: Unit =
-    try compileFile("../tests/vulpix-tests/unit/BadJava.java", defaultOptions).suppressAllOutput.checkCompile()
+    try compileFile("tests/vulpix-tests/unit/BadJava.java", defaultOptions).suppressAllOutput.checkCompile()
     catch {
       case ae: AssertionError => assert(ae.getMessage.contains("java compilation failed"))
     }
 
   @Test def runTimeout: Unit = {
     try {
-      compileFile("../tests/vulpix-tests/unit/timeout.scala", defaultOptions).checkRuns()
+      compileFile("tests/vulpix-tests/unit/timeout.scala", defaultOptions).checkRuns()
       assert(false, "unreachable")
     } catch {
       case ae: AssertionError =>
-        assert(ae.getMessage == "Run test failed, but should not, reasons:\n  - test '../tests/vulpix-tests/unit/timeout.scala' timed out")
+        assert(ae.getMessage == "Run test failed, but should not, reasons:\n  - test 'tests/vulpix-tests/unit/timeout.scala' timed out")
     }
   }
 }

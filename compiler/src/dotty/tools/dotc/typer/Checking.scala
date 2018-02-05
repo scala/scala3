@@ -147,7 +147,7 @@ object Checking {
   def checkRealizable(tp: Type, pos: Position)(implicit ctx: Context): Unit = {
     val rstatus = realizability(tp)
     if (rstatus ne Realizable)
-      ctx.errorOrMigrationWarning(em"$tp is not a legal path\n since it${rstatus.msg}", pos)
+      ctx.errorOrMigrationWarning(em"$tp is not a legal path\nsince it${rstatus.msg}", pos)
   }
 
   /** A type map which checks that the only cycles in a type are F-bounds
@@ -434,7 +434,7 @@ object Checking {
           var tp1 =
             if (isLeaked(tp.symbol)) {
               errors =
-                (() => em"non-private $sym refers to private ${tp.symbol}\n in its type signature ${sym.info}") :: errors
+                (() => em"non-private $sym refers to private ${tp.symbol}\nin its type signature ${sym.info}") :: errors
               tp
             }
             else mapOver(tp)
@@ -623,7 +623,7 @@ trait Checking {
             def ofType = if (decl.isType) "" else em": ${other.info}"
             def explanation =
               if (!decl.isRealMethod) ""
-              else "\n (the definitions have matching type signatures)"
+              else "\n(the definitions have matching type signatures)"
             ctx.error(em"$decl is already defined as $other$ofType$explanation", decl.pos)
           }
           if (decl is Synthetic) doubleDefError(other, decl)

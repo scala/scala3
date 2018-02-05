@@ -160,7 +160,7 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
           ref(initSymbol).ensureApplied).ensureConforms(tpe)
 
         val methodTree = DefDef(x.symbol.asTerm, methodBody)
-        ctx.debuglog(s"found a lazy val ${x.show},\n rewrote with ${holderTree.show}")
+        ctx.debuglog(s"found a lazy val ${x.show},\nrewrote with ${holderTree.show}")
         Thicket(holderTree, initTree, methodTree)
     }
 

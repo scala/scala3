@@ -21,7 +21,7 @@ class VulpixMetaTests extends ParallelTesting {
   implicit val summaryReport: SummaryReporting = new SummaryReport
   implicit def testGroup: TestGroup = TestGroup("VulpixMetaTests")
 
-  @Test def compilePos: Unit = compileFilesInDir("../tests/vulpix-tests/meta/pos", defaultOptions).checkCompile()
-  @Test def compileNeg: Unit = compileFilesInDir("../tests/vulpix-tests/meta/neg", defaultOptions).checkExpectedErrors()
-  @Test def runAll: Unit     = compileFilesInDir("../tests/vulpix-tests/meta/run", defaultOptions).checkRuns()
+  @Test def compilePos: Unit = compileFilesInDir("tests/vulpix-tests/meta/pos", defaultOptions).checkCompile()
+  @Test def compileNeg: Unit = compileFilesInDir("tests/vulpix-tests/meta/neg", defaultOptions).checkExpectedErrors()
+  @Test def runAll: Unit     = compileFilesInDir("tests/vulpix-tests/meta/run", defaultOptions).checkRuns()
 }

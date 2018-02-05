@@ -26,14 +26,17 @@ class FromTastyTests extends ParallelTesting {
     // > dotc -Ythrough-tasty -Ycheck:all <source>
 
     implicit val testGroup: TestGroup = TestGroup("posTestFromTasty")
-    val (step1, step2, step3) = compileTastyInDir("../tests/pos", defaultOptions,
+    val (step1, step2, step3) = compileTastyInDir("tests/pos", defaultOptions,
       blacklist = Set(
+        "macro-deprecate-dont-touch-backquotedidents.scala",
+
         // Wrong number of arguments
         "i3130b.scala",
 
         // Owner discrepancy for refinements
         "NoCyclicReference.scala",
         "i1795.scala",
+        "lambdalift-1.scala",
 
         // Cannot merge members
         "depfuntype.scala",
@@ -48,6 +51,7 @@ class FromTastyTests extends ParallelTesting {
         "t8023.scala",
         "hklub0.scala",
         "i1365.scala",
+        "t6205.scala",
 
         // Missing position
         "i3000.scala",
@@ -58,9 +62,14 @@ class FromTastyTests extends ParallelTesting {
         "t247.scala",
         "i2345.scala",
         "i0306.scala",
+        "t4731.scala",
+        "spec-super.scala",
+        "spec-sparsearray-old.scala",
+        "collections_1.scala",
 
         // cyclic type references
         "i536.scala",
+        "cyclics-pos.scala",
 
         // Anonymous method not defined
         "i3067.scala",
@@ -82,9 +91,11 @@ class FromTastyTests extends ParallelTesting {
     // > dotr Test
 
     implicit val testGroup: TestGroup = TestGroup("runTestFromTasty")
-    val (step1, step2, step3) = compileTastyInDir("../tests/run", defaultOptions,
+    val (step1, step2, step3) = compileTastyInDir("tests/run", defaultOptions,
        blacklist = Set(
          "t3613.scala",
+         "t7223.scala",
+         "t7899-regression.scala",
 
          // Missing position
          "Course-2002-13.scala",
@@ -95,6 +106,7 @@ class FromTastyTests extends ParallelTesting {
          "inlineForeach.scala",
          "scala2trait-lazyval.scala",
          "t3452f.scala",
+         "t5428.scala",
 
          // Closure type miss match
          "eff-dependent.scala",
@@ -116,6 +128,7 @@ class FromTastyTests extends ParallelTesting {
          "phantom-poly-2.scala",
          "phantom-poly-3.scala",
          "phantom-poly-4.scala",
+
        )
     )
     step1.checkCompile() // Compile all files to generate the class files with tasty
