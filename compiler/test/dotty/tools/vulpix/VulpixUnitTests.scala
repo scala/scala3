@@ -8,7 +8,7 @@ import scala.concurrent.duration._
 import scala.util.control.NonFatal
 
 /** Unit tests for the Vulpix test suite */
-class VulpixTests extends ParallelTesting {
+class VulpixUnitTests extends ParallelTesting {
   import TestConfiguration._
 
   implicit val _: SummaryReporting = new NoSummaryReport
@@ -81,4 +81,14 @@ class VulpixTests extends ParallelTesting {
     catch {
       case ae: AssertionError => assert(ae.getMessage.contains("java compilation failed"))
     }
+
+  @Test def runTimeout: Unit = {
+    try {
+      compileFile("../tests/partest-test/timeout.scala", defaultOptions).checkRuns()
+      assert(false, "unreachable")
+    } catch {
+      case ae: AssertionError =>
+        assert(ae.getMessage == "Run test failed, but should not, reasons:\n  - test '../tests/partest-test/timeout.scala' timed out")
+    }
+  }
 }
