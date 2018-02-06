@@ -130,9 +130,9 @@ object ProtoTypes {
 
     override def deepenProto(implicit ctx: Context) = derivedSelectionProto(name, memberProto.deepenProto, compat)
 
-    override def computeHash = {
+    override def computeHash(h: Hashing) = {
       val delta = (if (compat eq NoViewsAllowed) 1 else 0) | (if (privateOK) 2 else 0)
-      addDelta(doHash(name, memberProto), delta)
+      h.addDelta(h.doHash(getClass, name, memberProto), delta)
     }
   }
 
@@ -326,7 +326,7 @@ object ProtoTypes {
   }
 
   class CachedViewProto(argType: Type, resultType: Type) extends ViewProto(argType, resultType) {
-    override def computeHash = doHash(argType, resultType)
+    override def computeHash(h: Hashing) = h.doHash(getClass, argType, resultType)
   }
 
   object ViewProto {

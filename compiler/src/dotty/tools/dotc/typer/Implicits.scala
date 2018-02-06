@@ -29,7 +29,6 @@ import ErrorReporting._
 import reporting.diagnostic.{Message, MessageContainer}
 import Inferencing.fullyDefinedType
 import Trees._
-import Hashable._
 import util.Property
 import config.Config
 import config.Printers.{implicits, implicitsDetailed, typr}
@@ -210,7 +209,7 @@ object Implicits {
 
     /** The implicit references that are eligible for type `tp`. */
     def eligible(tp: Type): List[Candidate] = /*>|>*/ track(s"eligible in ctx") /*<|<*/ {
-      if (tp.hash == NotCached) computeEligible(tp)
+      if (tp.hash == Hashing.NotCached) computeEligible(tp)
       else eligibleCache get tp match {
         case Some(eligibles) =>
           def elided(ci: ContextualImplicits): Int = {
@@ -469,7 +468,7 @@ trait ImplicitRunInfo { self: Run =>
      *  @param isLifted    Type `tp` is the result of a `liftToClasses` application
      */
     def iscope(tp: Type, isLifted: Boolean = false): OfTypeImplicits = {
-      val canCache = Config.cacheImplicitScopes && tp.hash != NotCached
+      val canCache = Config.cacheImplicitScopes && tp.hash != Hashing.NotCached
       def computeIScope() = {
         val savedEphemeral = ctx.typerState.ephemeral
         ctx.typerState.ephemeral = false

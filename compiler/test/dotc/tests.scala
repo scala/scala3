@@ -310,7 +310,7 @@ class tests extends CompilerTest {
   @Test def tasty_core = compileList("tasty_core", List(
       "Annotations.scala", "Constants.scala", "Constraint.scala", "ConstraintHandling.scala",
       "ConstraintRunInfo.scala", "Contexts.scala", "Decorators.scala", "Definitions.scala",
-      "DenotTransformers.scala", "Denotations.scala", "Flags.scala", "Hashable.scala",
+      "DenotTransformers.scala", "Denotations.scala", "Flags.scala", "Hashing.scala",
       "NameOps.scala", "Names.scala", "OrderingConstraint.scala", "Periods.scala",
       "Phases.scala", "Scopes.scala", "Signature.scala", "StdNames.scala",
       "Substituters.scala", "SymDenotations.scala", "SymbolLoaders.scala", "Symbols.scala",

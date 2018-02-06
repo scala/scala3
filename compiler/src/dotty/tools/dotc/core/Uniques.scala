@@ -1,7 +1,7 @@
 package dotty.tools.dotc
 package core
 
-import Types._, Symbols._, Contexts._, util.Stats._, Hashable._, Names._
+import Types._, Symbols._, Contexts._, util.Stats._, Hashing._, Names._
 import config.Config
 import Decorators._
 import util.HashSet
@@ -41,7 +41,7 @@ object Uniques {
   )
  */
 
-  final class NamedTypeUniques extends HashSet[NamedType](Config.initialUniquesCapacity) with Hashable {
+  final class NamedTypeUniques extends HashSet[NamedType](Config.initialUniquesCapacity) {
     override def hash(x: NamedType): Int = x.hash
 
     private def findPrevious(h: Int, prefix: Type, designator: Designator): NamedType = {
@@ -54,7 +54,7 @@ object Uniques {
     }
 
     def enterIfNew(prefix: Type, designator: Designator, isTerm: Boolean)(implicit ctx: Context): NamedType = {
-      val h = doHash(designator, prefix)
+      val h = Hashing.doHash(classOf[NamedType], designator, prefix)
       if (monitored) recordCaching(h, classOf[NamedType])
       def newType =
         if (isTerm) new CachedTermRef(prefix, designator, h)
@@ -67,7 +67,7 @@ object Uniques {
     }
   }
 
-  final class AppliedUniques extends HashSet[AppliedType](Config.initialUniquesCapacity) with Hashable {
+  final class AppliedUniques extends HashSet[AppliedType](Config.initialUniquesCapacity) {
     override def hash(x: AppliedType): Int = x.hash
 
     private def findPrevious(h: Int, tycon: Type, args: List[Type]): AppliedType = {
@@ -80,7 +80,7 @@ object Uniques {
     }
 
     def enterIfNew(tycon: Type, args: List[Type]): AppliedType = {
-      val h = doHash(tycon, args)
+      val h = Hashing.doHash(classOf[AppliedType], tycon, args)
       def newType = new CachedAppliedType(tycon, args, h)
       if (monitored) recordCaching(h, classOf[CachedAppliedType])
       if (h == NotCached) newType
