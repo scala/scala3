@@ -831,7 +831,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
       } else isSubType(tp1, tp2, approx.addLow)
 
     def isSubApproxHi(tp1: Type, tp2: Type): Boolean =
-      (tp2 ne NothingType) && isSubType(tp1, tp2, approx.addHigh)
+      tp1.eq(tp2) || tp2.ne(NothingType) && isSubType(tp1, tp2, approx.addHigh)
 
     // begin recur
     if (tp2 eq NoType) false
