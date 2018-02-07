@@ -118,9 +118,12 @@ object ProtoTypes {
       if ((name eq this.name) && (memberProto eq this.memberProto) && (compat eq this.compat)) this
       else SelectionProto(name, memberProto, compat, privateOK)
 
-    override def equals(that: Any): Boolean = that match {
+    override def iso(that: Any, e: StructEquality): Boolean = that match {
       case that: SelectionProto =>
-        (name eq that.name) && (memberProto == that.memberProto) && (compat eq that.compat) && (privateOK == that.privateOK)
+        (name `eq` that.name) &&
+        e.equals(memberProto, that.memberProto) &&
+        (compat `eq` that.compat) &&
+        (privateOK == that.privateOK)
       case _ =>
         false
     }
@@ -397,9 +400,17 @@ object ProtoTypes {
         tt.withType(new TypeVar(tl.paramRefs(n), state, tt, ctx.owner))
       }
 
-    val added =
-      if (state.constraint contains tl) tl.newLikeThis(tl.paramNames, tl.paramInfos, tl.resultType)
+    /** Ensure that `tl` is not already in constraint. If necessary,
+     *  make a copy of `tl` by turning one of the bounds into a `LazyRef`
+     */
+    def ensureFresh(tl: TypeLambda): TypeLambda =
+      if (state.constraint contains tl) {
+        val TypeBounds(lo, hi) :: pinfos1 = tl.paramInfos
+        val newParamInfos = TypeBounds(lo, LazyRef(_ => hi)) :: pinfos1
+        ensureFresh(tl.newLikeThis(tl.paramNames, newParamInfos, tl.resultType))
+      }
       else tl
+    val added = ensureFresh(tl)
     val tvars = if (addTypeVars) newTypeVars(added) else Nil
     ctx.typeComparer.addToConstraint(added, tvars.tpes.asInstanceOf[List[TypeVar]])
     (added, tvars)
