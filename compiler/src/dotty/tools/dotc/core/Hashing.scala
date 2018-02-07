@@ -12,7 +12,7 @@ abstract class Hashing {
 
   protected def typeHash(tp: Type) = tp.hash
 
-  final def identityHash(tp: Type) = avoidSpecialHashes(System.identityHashCode(tp))
+  def identityHash(tp: Type) = avoidSpecialHashes(System.identityHashCode(tp))
 
   protected def finishHash(seed: Int, arity: Int, tp: Type): Int = {
     val elemHash = typeHash(tp)
@@ -78,6 +78,29 @@ abstract class Hashing {
     if (h == NotCached) NotCachedAlt
     else if (h == HashUnknown) HashUnknownAlt
     else h
+
+  val binders: Array[BindingType] = Array()
+
+  private class WithBinders(override val binders: Array[BindingType]) extends Hashing {
+
+    override def typeHash(tp: Type) = tp.computeHash(this)
+
+    override def identityHash(tp: Type) = {
+      var idx = 0
+      while (idx < binders.length && (binders(idx) `ne` tp))
+        idx += 1
+      avoidSpecialHashes(
+        if (idx < binders.length) idx * 31
+        else System.identityHashCode(binders))
+    }
+  }
+
+  def withBinder(binder: BindingType): Hashing = {
+    val newBinders = new Array[BindingType](binders.length + 1)
+    Array.copy(binders, 0, newBinders, 0, binders.length)
+    newBinders(binders.length) = binder
+    new WithBinders(newBinders)
+  }
 }
 
 object Hashing extends Hashing {

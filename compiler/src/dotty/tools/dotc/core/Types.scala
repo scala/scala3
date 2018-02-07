@@ -1403,6 +1403,9 @@ object Types {
      */
     def eql(that: Type): Boolean = this.equals(that)
 
+    /** Compute `hash` using given `Hashing` */
+    def computeHash(h: Hashing): Int
+
   } // end Type
 
 // ----- Type categories ----------------------------------------------
@@ -1446,7 +1449,6 @@ object Types {
     }
     override final def hashCode =
       if (hash == Hashing.NotCached) System.identityHashCode(this) else hash
-    def computeHash(h: Hashing): Int
   }
 
   /**  Instances of this class are cached and are proxies. */
@@ -1461,25 +1463,26 @@ object Types {
     }
     override final def hashCode =
       if (hash == Hashing.NotCached) System.identityHashCode(this) else hash
-    def computeHash(h: Hashing): Int
   }
 
   /**  Instances of this class are uncached and are not proxies. */
   abstract class UncachedGroundType extends Type {
-    final def hash = Hashing.NotCached
     if (monitored) {
       record(s"uncachable")
       record(s"uncachable: $getClass")
     }
+    final def hash = Hashing.NotCached
+    final def computeHash(h: Hashing): Int = Hashing.NotCached
   }
 
   /**  Instances of this class are uncached and are proxies. */
   abstract class UncachedProxyType extends TypeProxy {
-    final def hash = Hashing.NotCached
     if (monitored) {
       record(s"uncachable")
       record(s"uncachable: $getClass")
     }
+    final def hash = Hashing.NotCached
+    final def computeHash(h: Hashing): Int = Hashing.NotCached
   }
 
   /** A marker trait for types that apply only to type symbols */
