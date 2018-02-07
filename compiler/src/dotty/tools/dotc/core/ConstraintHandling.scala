@@ -92,12 +92,12 @@ trait ConstraintHandling {
       if (Config.failOnInstantiationToNothing) assert(false, msg)
       else ctx.log(msg)
     }
-    constr.println(i"adding $description in ${ctx.typerState.hashesStr}")
+    constr.println(i"adding $description${ctx.typerState.hashesStr(constr)}")
     val lower = constraint.lower(param)
     val res =
       addOneBound(param, bound, isUpper = true) &&
       lower.forall(addOneBound(_, bound, isUpper = true))
-    constr.println(i"added $description = $res in ${ctx.typerState.hashesStr}")
+    constr.println(i"added $description = $res${ctx.typerState.hashesStr(constr)}")
     res
   }
 
@@ -108,7 +108,7 @@ trait ConstraintHandling {
     val res =
       addOneBound(param, bound, isUpper = false) &&
       upper.forall(addOneBound(_, bound, isUpper = false))
-    constr.println(i"added $description = $res in ${ctx.typerState.hashesStr}")
+    constr.println(i"added $description = $res${ctx.typerState.hashesStr(constr)}")
     res
   }
 
@@ -121,12 +121,12 @@ trait ConstraintHandling {
         val up2 = p2 :: constraint.exclusiveUpper(p2, p1)
         val lo1 = constraint.nonParamBounds(p1).lo
         val hi2 = constraint.nonParamBounds(p2).hi
-        constr.println(i"adding $description down1 = $down1, up2 = $up2 ${ctx.typerState.hashesStr}")
+        constr.println(i"adding $description down1 = $down1, up2 = $up2${ctx.typerState.hashesStr(constr)}")
         constraint = constraint.addLess(p1, p2)
         down1.forall(addOneBound(_, hi2, isUpper = true)) &&
         up2.forall(addOneBound(_, lo1, isUpper = false))
       }
-    constr.println(i"added $description = $res ${ctx.typerState.hashesStr}")
+    constr.println(i"added $description = $res${ctx.typerState.hashesStr(constr)}")
     res
   }
 

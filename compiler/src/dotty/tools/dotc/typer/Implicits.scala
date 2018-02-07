@@ -778,7 +778,7 @@ trait Implicits { self: Typer =>
         case result: SearchSuccess =>
           result.tstate.commit()
           implicits.println(i"success: $result")
-          implicits.println(i"committing ${result.tstate.constraint} yielding ${ctx.typerState.constraint} ${ctx.typerState.hashesStr}")
+          implicits.println(i"committing ${result.tstate.constraint} yielding ${ctx.typerState.constraint}${ctx.typerState.hashesStr(implicits)}")
           result
         case result: SearchFailure if result.isAmbiguous =>
           val deepPt = pt.deepenProto
