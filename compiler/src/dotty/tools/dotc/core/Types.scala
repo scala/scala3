@@ -2351,11 +2351,6 @@ object Types {
 
     override def computeHash(h: Hashing) = h.withBinder(this).doHash(getClass, parent)
 
-    override def eql(that: Type) = that match {
-      case that: RecType => parent.eq(that.parent)
-      case _ => false
-    }
-
     override def iso(that: Any, e: StructEquality) = that match {
       case that: RecType =>
         e.withBinders(this, that).equals(parent, that.parent)
@@ -2679,21 +2674,14 @@ object Types {
     final override def toString = s"$prefixString($paramNames, $paramInfos, $resType)"
   }
 
+  /** Base class of HKTypeLambda. In the future could be base class of HKTermLambda
+   *  (aka typelevel function type) if that is added.
+   */
   abstract class HKLambda extends CachedProxyType with LambdaType {
     final override def underlying(implicit ctx: Context) = resType
 
     final override def computeHash(h: Hashing) =
       h.withBinder(this).doHash(getClass, paramNames, resType, paramInfos)
-
-    final override def eql(that: Type) = that match {
-      case that: HKLambda =>
-        paramNames.equals(that.paramNames) &&
-        paramInfos.equals(that.paramInfos) &&
-        resType.equals(that.resType) &&
-        companion.eq(that.companion)
-      case _ =>
-        false
-    }
 
     final override def iso(that: Any, e: StructEquality) = that match {
       case that: HKLambda =>
@@ -2708,7 +2696,28 @@ object Types {
     }
   }
 
-  trait MethodOrPoly extends LambdaType with MethodicType // TODO: Make PolyTypes cached
+  /** Common base class of MethodType and PolyType. It's methods are duplicated
+   *  from HKLambda for efficiency. Joining the two methods in the common supertrait
+   *  LambdaType could be slower because of trait dispatch and because the type test
+   *  in `iso` would be to a trait instead of a class
+   */
+  abstract class MethodOrPoly extends CachedGroundType with LambdaType with MethodicType {
+
+    final override def computeHash(h: Hashing) =
+      h.withBinder(this).doHash(getClass, paramNames, resType, paramInfos)
+
+    final override def iso(that: Any, e: StructEquality) = that match {
+      case that: MethodOrPoly =>
+        paramNames.eqElements(that.paramNames) &&
+        companion.eq(that.companion) && {
+          val e1 = e.withBinders(this, that)
+          e1.equals(paramInfos, that.paramInfos) &&
+          e1.equals(resType, that.resType)
+        }
+     case _ =>
+        false
+    }
+  }
 
   trait TermLambda extends LambdaType { thisLambdaType =>
     import DepStatus._
@@ -2825,7 +2834,7 @@ object Types {
   abstract case class MethodType(paramNames: List[TermName])(
       paramInfosExp: MethodType => List[Type],
       resultTypeExp: MethodType => Type)
-    extends CachedGroundType with MethodOrPoly with TermLambda with NarrowCached { thisMethodType =>
+    extends MethodOrPoly with TermLambda with NarrowCached { thisMethodType =>
     import MethodType._
 
     type This = MethodType
@@ -2842,29 +2851,6 @@ object Types {
     def computeSignature(implicit ctx: Context): Signature =
       resultSignature.prepend(paramInfos, isJavaMethod)
 
-    final override def computeHash(h: Hashing) = h.doHash(getClass, paramNames, resType, paramInfos)
-
-    final override def eql(that: Type) = that match {
-      case that: MethodType =>
-        paramNames.eqElements(that.paramNames) &&
-        paramInfos.eqElements(that.paramInfos) &&
-        resType.eq(that.resType) &&
-        companion.eq(that.companion)
-      case _ =>
-        false
-    }
-
-    final override def iso(that: Any, e: StructEquality) = that match {
-      case that: MethodType =>
-        paramNames.eqElements(that.paramNames) &&
-        companion.eq(that.companion) && {
-          val e1 = e.withBinders(this, that)
-          e1.equals(paramInfos, that.paramInfos) &&
-          e1.equals(resType, that.resType)
-        }
-     case _ =>
-        false
-    }
 
     protected def prefixString = "MethodType"
   }
@@ -3023,7 +3009,7 @@ object Types {
    */
   class PolyType(val paramNames: List[TypeName])(
       paramInfosExp: PolyType => List[TypeBounds], resultTypeExp: PolyType => Type)
-  extends UncachedGroundType with MethodOrPoly with TypeLambda {
+  extends MethodOrPoly with TypeLambda {
 
     type This = PolyType
     def companion = PolyType
@@ -3052,18 +3038,6 @@ object Types {
                that.paramInfos.mapConserve(shiftedSubst(x)(_).bounds),
           x => shiftedSubst(x)(that.resultType).subst(this, x))
       case _ => this
-    }
-
-    final override def iso(that: Any, e: StructEquality) = that match { // TODO: Move up to MethodOrPoly
-      case that: PolyType =>
-        paramNames.eqElements(that.paramNames) &&
-        companion.eq(that.companion) && {
-          val e1 = e.withBinders(this, that)
-          e1.equals(paramInfos, that.paramInfos) &&
-          e1.equals(resType, that.resType)
-        }
-      case _ =>
-        false
     }
 
     protected def prefixString = "PolyType"
