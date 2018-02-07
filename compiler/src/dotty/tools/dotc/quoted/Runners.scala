@@ -54,7 +54,7 @@ object Runners {
     case _ => new QuoteDriver().show(expr, settings)
   }
 
-  class Settings[T] private (val compilerArgs: List[String])
+  class Settings[T] private (val outDir: Option[String], val compilerArgs: List[String])
 
   object Settings {
 
@@ -70,8 +70,7 @@ object Runners {
         ): Settings[Run] = {
       var compilerArgs1 = compilerArgs
       if (optimise) compilerArgs1 = "-optimise" :: compilerArgs1
-      if (outDir.nonEmpty) compilerArgs1 = "-d" :: outDir.get :: compilerArgs1
-      new Settings(compilerArgs1)
+      new Settings(outDir, compilerArgs1)
     }
 
     /** Quote show settings
@@ -83,7 +82,7 @@ object Runners {
         ): Settings[Show] = {
       var compilerArgs1 = compilerArgs
       compilerArgs1 = s"-color:${if (color) "always" else "never"}" :: compilerArgs1
-      new Settings(compilerArgs1)
+      new Settings(None, compilerArgs1)
     }
 
   }

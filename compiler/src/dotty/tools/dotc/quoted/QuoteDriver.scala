@@ -19,12 +19,12 @@ class QuoteDriver extends Driver {
   def run[T](expr: Expr[T], settings: Settings[Run]): T = {
     val (_, ctx: Context) = setup(settings.compilerArgs.toArray :+ "dummy.scala", initCtx.fresh)
 
-    val outDir: AbstractFile = settings.compilerArgs.dropWhile(_ != "-d") match {
-      case "-d" :: out :: _ =>
+    val outDir: AbstractFile = settings.outDir match {
+      case Some(out) =>
         val dir = Directory(out)
         dir.createDirectory()
         new PlainDirectory(Directory(out))
-      case _ =>
+      case None =>
         new VirtualDirectory("(memory)", None)
     }
 
