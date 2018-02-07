@@ -4,29 +4,44 @@ package core
 import Types._
 import scala.util.hashing.{ MurmurHash3 => hashing }
 
-abstract class Hashing {
+class Hashing(binders: Array[BindingType]) {
   import Hashing._
 
-  final def finishHash(hashCode: Int, arity: Int): Int =
+  private def avoidSpecialHashes(h: Int) =
+    if (h == NotCached) NotCachedAlt
+    else if (h == HashUnknown) HashUnknownAlt
+    else h
+
+  private def finishHash(hashCode: Int, arity: Int): Int =
     avoidSpecialHashes(hashing.finalizeHash(hashCode, arity))
 
-  protected def typeHash(tp: Type) = tp.hash
+  private def typeHash(tp: Type) =
+    if (binders == null) tp.hash else tp.computeHash(this)
 
-  def identityHash(tp: Type) = avoidSpecialHashes(System.identityHashCode(tp))
+  def identityHash(tp: Type): Int = {
+    if (binders != null) {
+      var idx = 0
+      while (idx < binders.length) {
+        if (binders(idx) `eq` tp) return avoidSpecialHashes(idx * 31)
+        idx += 1
+      }
+    }
+    avoidSpecialHashes(System.identityHashCode(tp))
+  }
 
-  protected def finishHash(seed: Int, arity: Int, tp: Type): Int = {
+  private def finishHash(seed: Int, arity: Int, tp: Type): Int = {
     val elemHash = typeHash(tp)
     if (elemHash == NotCached) return NotCached
     finishHash(hashing.mix(seed, elemHash), arity + 1)
   }
 
-  protected def finishHash(seed: Int, arity: Int, tp1: Type, tp2: Type): Int = {
+  private def finishHash(seed: Int, arity: Int, tp1: Type, tp2: Type): Int = {
     val elemHash = typeHash(tp1)
     if (elemHash == NotCached) return NotCached
     finishHash(hashing.mix(seed, elemHash), arity + 1, tp2)
   }
 
-  protected def finishHash(seed: Int, arity: Int, tps: List[Type]): Int = {
+  private def finishHash(seed: Int, arity: Int, tps: List[Type]): Int = {
     var h = seed
     var xs = tps
     var len = arity
@@ -40,7 +55,7 @@ abstract class Hashing {
     finishHash(h, len)
   }
 
-  protected def finishHash(seed: Int, arity: Int, tp: Type, tps: List[Type]): Int = {
+  private def finishHash(seed: Int, arity: Int, tp: Type, tps: List[Type]): Int = {
     val elemHash = typeHash(tp)
     if (elemHash == NotCached) return NotCached
     finishHash(hashing.mix(seed, elemHash), arity + 1, tps)
@@ -74,36 +89,23 @@ abstract class Hashing {
     if (elemHash == NotCached) NotCached
     else avoidSpecialHashes(elemHash + delta)
 
-  private def avoidSpecialHashes(h: Int) =
-    if (h == NotCached) NotCachedAlt
-    else if (h == HashUnknown) HashUnknownAlt
-    else h
-
-  val binders: Array[BindingType] = Array()
-
-  private class WithBinders(override val binders: Array[BindingType]) extends Hashing {
-
-    override def typeHash(tp: Type) = tp.computeHash(this)
-
-    override def identityHash(tp: Type) = {
-      var idx = 0
-      while (idx < binders.length && (binders(idx) `ne` tp))
-        idx += 1
-      avoidSpecialHashes(
-        if (idx < binders.length) idx * 31
-        else System.identityHashCode(binders))
-    }
-  }
-
-  def withBinder(binder: BindingType): Hashing = {
-    val newBinders = new Array[BindingType](binders.length + 1)
-    Array.copy(binders, 0, newBinders, 0, binders.length)
-    newBinders(binders.length) = binder
-    new WithBinders(newBinders)
+  final def withBinder(binder: BindingType): Hashing = {
+    new Hashing(
+      if (binders == null) {
+        val bs = new Array[BindingType](1)
+        bs(0) = binder
+        bs
+      }
+      else {
+        val bs = new Array[BindingType](binders.length + 1)
+        Array.copy(binders, 0, bs, 0, binders.length)
+        bs(binders.length) = binder
+        bs
+      })
   }
 }
 
-object Hashing extends Hashing {
+object Hashing extends Hashing(null) {
 
   /** A hash value indicating that the underlying type is not
    *  cached in uniques.
