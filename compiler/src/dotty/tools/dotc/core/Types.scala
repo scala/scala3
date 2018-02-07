@@ -2398,11 +2398,11 @@ object Types {
 
   // --- AndType/OrType ---------------------------------------------------------------
 
-  trait AndOrType extends ValueType { // todo: check where we can simplify using AndOrType
+  abstract class AndOrType extends CachedGroundType with ValueType {
     def tp1: Type
     def tp2: Type
     def isAnd: Boolean
-    def derivedAndOrType(tp1: Type, tp2: Type)(implicit ctx: Context): Type  // needed?
+    def derivedAndOrType(tp1: Type, tp2: Type)(implicit ctx: Context): Type
 
     private[this] var myBaseClassesPeriod: Period = Nowhere
     private[this] var myBaseClasses: List[ClassSymbol] = _
@@ -2434,9 +2434,21 @@ object Types {
       }
       myBaseClasses
     }
+
+    override def computeHash(h: Hashing) = h.doHash(getClass, tp1, tp2)
+
+    override def eql(that: Type) = that match {
+      case that: AndOrType => isAnd == that.isAnd && tp1.eq(that.tp1) && tp2.eq(that.tp2)
+      case _ => false
+    }
+
+    override def iso(that: Any, e: StructEquality) = that match {
+      case that: AndOrType => isAnd == that.isAnd && e.equals(tp1, that.tp1) && e.equals(tp2, that.tp2)
+      case _ => false
+    }
   }
 
-  abstract case class AndType(tp1: Type, tp2: Type) extends CachedGroundType with AndOrType {
+  abstract case class AndType(tp1: Type, tp2: Type) extends AndOrType {
 
     def isAnd = true
 
@@ -2451,17 +2463,6 @@ object Types {
     def derivedAndOrType(tp1: Type, tp2: Type)(implicit ctx: Context): Type =
       derivedAndType(tp1, tp2)
 
-    override def computeHash(h: Hashing) = h.doHash(getClass, tp1, tp2)
-
-    override def eql(that: Type) = that match {
-      case that: AndType => tp1.eq(that.tp1) && tp2.eq(that.tp2)
-      case _ => false
-    }
-
-    override def iso(that: Any, e: StructEquality) = that match {
-      case that: AndType => e.equals(tp1, that.tp1) && e.equals(tp2, that.tp2)
-      case _ => false
-    }
   }
 
   final class CachedAndType(tp1: Type, tp2: Type) extends AndType(tp1, tp2)
@@ -2490,7 +2491,7 @@ object Types {
         if (checkValid) apply(tp1, tp2) else unchecked(tp1, tp2)
   }
 
-  abstract case class OrType(tp1: Type, tp2: Type) extends CachedGroundType with AndOrType {
+  abstract case class OrType(tp1: Type, tp2: Type) extends AndOrType {
 
     assert(tp1.isInstanceOf[ValueTypeOrWildcard] &&
            tp2.isInstanceOf[ValueTypeOrWildcard], s"$tp1 $tp2")
@@ -2516,18 +2517,6 @@ object Types {
 
     def derivedAndOrType(tp1: Type, tp2: Type)(implicit ctx: Context): Type =
       derivedOrType(tp1, tp2)
-
-    override def computeHash(h: Hashing) = h.doHash(getClass, tp1, tp2)
-
-    override def eql(that: Type) = that match {
-      case that: OrType => tp1.eq(that.tp1) && tp2.eq(that.tp2)
-      case _ => false
-    }
-
-    override def iso(that: Any, e: StructEquality) = that match {
-      case that: OrType => e.equals(tp1, that.tp1) && e.equals(tp2, that.tp2)
-      case _ => false
-    }
   }
 
   final class CachedOrType(tp1: Type, tp2: Type) extends OrType(tp1, tp2)
@@ -2696,7 +2685,7 @@ object Types {
     }
   }
 
-  /** Common base class of MethodType and PolyType. It's methods are duplicated
+  /** Common base class of MethodType and PolyType. Its methods are duplicated
    *  from HKLambda for efficiency. Joining the two methods in the common supertrait
    *  LambdaType could be slower because of trait dispatch and because the type test
    *  in `iso` would be to a trait instead of a class
