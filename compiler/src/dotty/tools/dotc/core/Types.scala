@@ -1528,8 +1528,15 @@ object Types {
    */
   trait BindingType extends Type {
 
-    override def identityHash(bs: Binders) =
-      if (bs == null) super.identityHash(bs) else bs.hash
+    override def identityHash(bs: Binders) = {
+       def recur(n: Int, tp: BindingType, rest: Binders): Int =
+        if (this `eq` tp) finishHash(hashing.mix(hashSeed, n), 1)
+        else if (rest == null) System.identityHashCode(this)
+        else recur(n + 1, rest.tp, rest.next)
+      avoidSpecialHashes(
+        if (bs == null) System.identityHashCode(this)
+        else recur(1, bs.tp, bs.next))
+    }
 
     def equalBinder(that: BindingType, bs: BinderPairs): Boolean =
       (this `eq` that) || bs != null && bs.matches(this, that)

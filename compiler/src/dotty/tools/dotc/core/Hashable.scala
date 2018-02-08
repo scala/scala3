@@ -7,9 +7,8 @@ import annotation.tailrec
 
 object Hashable {
 
-  class Binders(tp: BindingType, next: Binders) {
-    val hash: Int = if (next == null) 31 else next.hash * 41 + 31
-  }
+  class Binders(val tp: BindingType, val next: Binders)
+
   class BinderPairs(tp1: BindingType, tp2: BindingType, next: BinderPairs) {
     @tailrec final def matches(t1: Type, t2: Type): Boolean =
       (t1 `eq` tp1) && (t2 `eq` tp2) || next != null && next.matches(t1, t2)
@@ -107,7 +106,7 @@ trait Hashable {
     if (elemHash == NotCached) NotCached
     else avoidSpecialHashes(elemHash + delta)
 
-  private def avoidSpecialHashes(h: Int) =
+  protected def avoidSpecialHashes(h: Int) =
     if (h == NotCached) NotCachedAlt
     else if (h == HashUnknown) HashUnknownAlt
     else h
