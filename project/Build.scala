@@ -348,7 +348,7 @@ object Build {
   // Settings shared between dotty-doc and dotty-doc-bootstrapped
   lazy val dottyDocSettings = Seq(
     baseDirectory in (Compile, run) := baseDirectory.value / "..",
-    baseDirectory in (Test, run) := baseDirectory.value,
+    baseDirectory in Test := baseDirectory.value / "..",
 
     connectInput in run := true,
     outputStrategy := Some(StdoutOutput),
@@ -497,8 +497,8 @@ object Build {
 
       // For convenience, change the baseDirectory when running the compiler
       baseDirectory in (Compile, run) := baseDirectory.value / "..",
-      // .. but not when running test
-      baseDirectory in (Test, run) := baseDirectory.value,
+      // And when running the tests
+      baseDirectory in Test := baseDirectory.value / "..",
 
       test in Test := {
         // Exclude legacy tests by default

@@ -177,7 +177,7 @@ object RefChecks {
               .filter(_.name != member.name)
               .map(_.show).distinct
             if (others1.isEmpty) ""
-            else i";\n other members with override errors are:: $others1%, %"
+            else i";\nother members with override errors are:: $others1%, %"
           }
           ctx.error(msg + othersMsg, clazz.pos)
       }
@@ -216,14 +216,14 @@ object RefChecks {
           (other.owner isSubClass member.owner) && other.is(Deferred) && !member.is(Deferred)
         val addendum =
           if (isConcreteOverAbstract)
-            ";\n (Note that %s is abstract,\n  and is therefore overridden by concrete %s)".format(
+            ";\n  (Note that %s is abstract,\n  and is therefore overridden by concrete %s)".format(
               infoStringWithLocation(other),
               infoStringWithLocation(member))
           else if (ctx.settings.Ydebug.value)
             err.typeMismatchMsg(memberTp(self), otherTp(self))
           else ""
 
-        "error overriding %s;\n %s %s%s".format(
+        "error overriding %s;\n  %s %s%s".format(
           infoStringWithLocation(other), infoString(member), msg, addendum)
       }
 

@@ -94,7 +94,7 @@ object Applications {
     def fail = {
       val addendum =
         if (ctx.scala2Mode && unapplyName == nme.unapplySeq)
-          "\n You might want to try to rewrite the extractor to use `unapply` instead."
+          "\nYou might want to try to rewrite the extractor to use `unapply` instead."
       ctx.error(em"$unapplyResult is not a valid result type of an $unapplyName method of an extractor$addendum", pos)
       Nil
     }
@@ -785,7 +785,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
 
   /** Overridden in ReTyper to handle primitive operations that can be generated after erasure */
   protected def handleUnexpectedFunType(tree: untpd.Apply, fun: Tree)(implicit ctx: Context): Tree =
-    throw new Error(i"unexpected type.\n fun = $fun,\n methPart(fun) = ${methPart(fun)},\n methPart(fun).tpe = ${methPart(fun).tpe},\n tpe = ${fun.tpe}")
+    throw new Error(i"unexpected type.\n  fun = $fun,\n  methPart(fun) = ${methPart(fun)},\n  methPart(fun).tpe = ${methPart(fun).tpe},\n  tpe = ${fun.tpe}")
 
   def typedNamedArgs(args: List[untpd.Tree])(implicit ctx: Context) =
     for (arg @ NamedArg(id, argtpt) <- args) yield {
@@ -971,7 +971,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
                 args.init :+ argSeq
               case _ =>
                 val (regularArgs, varArgs) = args.splitAt(argTypes.length - 1)
-                regularArgs :+ untpd.SeqLiteral(varArgs, untpd.TypeTree())
+                regularArgs :+ untpd.SeqLiteral(varArgs, untpd.TypeTree()).withPos(tree.pos)
             }
           else if (argTypes.lengthCompare(1) == 0 && args.lengthCompare(1) > 0 && ctx.canAutoTuple)
             untpd.Tuple(args) :: Nil

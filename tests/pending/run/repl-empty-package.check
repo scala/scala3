@@ -1,7 +1,0 @@
-Type in expressions to have them evaluated.
-Type :help for more information.
-
-scala> println(Bippy.bippy)
-bippy!
-
-scala> :quit

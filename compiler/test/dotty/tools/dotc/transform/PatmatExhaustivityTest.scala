@@ -13,7 +13,7 @@ import reporting.TestReporter
 import vulpix.TestConfiguration
 
 class PatmatExhaustivityTest {
-  val testsDir = "../tests/patmat"
+  val testsDir = "tests/patmat"
   // stop-after: patmatexhaust-huge.scala crash compiler
   val options = List("-color:never", "-Ystop-after:splitter", "-Ycheck-all-patmat", "-classpath", TestConfiguration.classPath)
 
