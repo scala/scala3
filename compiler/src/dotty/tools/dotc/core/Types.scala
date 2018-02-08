@@ -2666,7 +2666,10 @@ object Types {
     }
   }
 
-  trait MethodOrPoly extends LambdaType with MethodicType
+  abstract class MethodOrPoly extends UncachedGroundType with LambdaType with MethodicType {
+    final override def hashCode = System.identityHashCode(this)
+    final override def equals(other: Any) = this `eq` other.asInstanceOf[AnyRef]
+  }
 
   trait TermLambda extends LambdaType { thisLambdaType =>
     import DepStatus._
@@ -2783,7 +2786,7 @@ object Types {
   abstract case class MethodType(paramNames: List[TermName])(
       paramInfosExp: MethodType => List[Type],
       resultTypeExp: MethodType => Type)
-    extends CachedGroundType with MethodOrPoly with TermLambda with NarrowCached { thisMethodType =>
+    extends MethodOrPoly with TermLambda with NarrowCached { thisMethodType =>
     import MethodType._
 
     type This = MethodType
@@ -2799,28 +2802,6 @@ object Types {
 
     def computeSignature(implicit ctx: Context): Signature =
       resultSignature.prepend(paramInfos, isJavaMethod)
-
-    final override def computeHash = doHash(paramNames, resType, paramInfos)
-
-    final override def equals(that: Any) = that match {
-      case that: MethodType =>
-        paramNames == that.paramNames &&
-        paramInfos == that.paramInfos &&
-        resType == that.resType &&
-        companion.eq(that.companion)
-      case _ =>
-        false
-    }
-
-    final override def eql(that: Type) = that match {
-      case that: MethodType =>
-        paramNames.eqElements(that.paramNames) &&
-        paramInfos.eqElements(that.paramInfos) &&
-        resType.eq(that.resType) &&
-        companion.eq(that.companion)
-      case _ =>
-        false
-    }
 
     protected def prefixString = "MethodType"
   }
@@ -2979,7 +2960,7 @@ object Types {
    */
   class PolyType(val paramNames: List[TypeName])(
       paramInfosExp: PolyType => List[TypeBounds], resultTypeExp: PolyType => Type)
-  extends UncachedGroundType with MethodOrPoly with TypeLambda {
+  extends MethodOrPoly with TypeLambda {
 
     type This = PolyType
     def companion = PolyType
