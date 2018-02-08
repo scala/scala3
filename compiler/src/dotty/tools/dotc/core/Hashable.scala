@@ -43,7 +43,7 @@ trait Hashable {
     avoidSpecialHashes(hashing.finalizeHash(hashCode, arity))
 
   final def typeHash(bs: Binders, tp: Type) =
-    if (bs == null) tp.hash else tp.computeHash(bs)
+    if (bs == null || tp.stableHash) tp.hash else tp.computeHash(bs)
 
   def identityHash(bs: Binders) = avoidSpecialHashes(System.identityHashCode(this))
 
@@ -99,7 +99,6 @@ trait Hashable {
 
   protected final def doHash(bs: Binders, x1: Any, tp2: Type, tps3: List[Type]): Int =
     finishHash(bs, hashing.mix(hashSeed, x1.hashCode), 1, tp2, tps3)
-
 
   protected final def doHash(x1: Int, x2: Int): Int =
     finishHash(hashing.mix(hashing.mix(hashSeed, x1), x2), 1)

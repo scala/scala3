@@ -137,6 +137,7 @@ object ProtoTypes {
       val delta = (if (compat eq NoViewsAllowed) 1 else 0) | (if (privateOK) 2 else 0)
       addDelta(doHash(bs, name, memberProto), delta)
     }
+    override def stableHash = memberProto.stableHash
   }
 
   class CachedSelectionProto(name: Name, memberProto: Type, compat: Compatibility, privateOK: Boolean)
@@ -330,6 +331,7 @@ object ProtoTypes {
 
   class CachedViewProto(argType: Type, resultType: Type) extends ViewProto(argType, resultType) {
     override def computeHash(bs: Hashable.Binders) = doHash(bs, argType, resultType)
+    override def stableHash = argType.stableHash && resultType.stableHash
   }
 
   object ViewProto {
