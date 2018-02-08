@@ -1526,10 +1526,10 @@ object Types {
   trait BindingType extends Type {
 
     override def identityHash(bs: Binders) =
-      if (bs == null) super.identityHash(bs) else ???
+      if (bs == null) super.identityHash(bs) else bs.hash
 
     def equalBinder(that: BindingType, bs: BinderPairs): Boolean =
-      (this `eq` that) /* || ??? */
+      (this `eq` that) || bs != null && bs.matches(this, that)
   }
 
   /** A trait for proto-types, used as expected types in typer */
@@ -2360,7 +2360,7 @@ object Types {
       refacc.apply(false, tp)
     }
 
-    override def computeHash(bs: Binders) = doHash(bs, parent)
+    override def computeHash(bs: Binders) = doHash(new Binders(this, bs), parent)
 
     override def eql(that: Type) = that match {
       case that: RecType => parent.eq(that.parent)
@@ -2369,7 +2369,7 @@ object Types {
 
     override def iso(that: Any, bs: BinderPairs) = that match {
       case that: RecType =>
-        parent.equals(that.parent, bs/*!!!*/)
+        parent.equals(that.parent, new BinderPairs(this, that, bs))
       case _ => false
     }
 
@@ -2693,7 +2693,8 @@ object Types {
   abstract class HKLambda extends CachedProxyType with LambdaType {
     final override def underlying(implicit ctx: Context) = resType
 
-    final override def computeHash(bs: Binders) = doHash(bs, paramNames, resType, paramInfos)
+    final override def computeHash(bs: Binders) =
+      doHash(new Binders(this, bs), paramNames, resType, paramInfos)
 
     final override def eql(that: Type) = that match {
       case that: HKLambda =>
@@ -2709,7 +2710,7 @@ object Types {
       case that: HKLambda =>
         paramNames.eqElements(that.paramNames) &&
         companion.eq(that.companion) && {
-          val bs1 = bs
+          val bs1 = new BinderPairs(this, that, bs)
           paramInfos.equalElements(that.paramInfos, bs1) &&
           resType.equals(that.resType, bs1)
         }
@@ -3210,7 +3211,7 @@ object Types {
       else infos(paramNum)
     }
 
-    override def computeHash(bs: Binders) = doHash(bs, paramNum, binder.identityHash(bs))
+    override def computeHash(bs: Binders) = doHash(paramNum, binder.identityHash(bs))
 
     override def iso(that: Any, bs: BinderPairs) = that match {
       case that: ParamRef => binder.equalBinder(that.binder, bs) && paramNum == that.paramNum

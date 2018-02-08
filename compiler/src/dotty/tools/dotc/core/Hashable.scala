@@ -3,11 +3,17 @@ package core
 
 import Types._
 import scala.util.hashing.{ MurmurHash3 => hashing }
+import annotation.tailrec
 
 object Hashable {
 
-  class Binders(tp: BindingType, next: Binders)
-  class BinderPairs(tp1: BindingType, tp2: BindingType, next: BinderPairs)
+  class Binders(tp: BindingType, next: Binders) {
+    val hash: Int = if (next == null) 31 else next.hash * 41 + 31
+  }
+  class BinderPairs(tp1: BindingType, tp2: BindingType, next: BinderPairs) {
+    @tailrec final def matches(t1: Type, t2: Type): Boolean =
+      (t1 `eq` tp1) && (t2 `eq` tp2) || next != null && next.matches(t1, t2)
+  }
 
   /** A hash value indicating that the underlying type is not
    *  cached in uniques.
@@ -95,7 +101,7 @@ trait Hashable {
     finishHash(bs, hashing.mix(hashSeed, x1.hashCode), 1, tp2, tps3)
 
 
-  protected final def doHash(bs: Binders, x1: Int, x2: Int): Int =
+  protected final def doHash(x1: Int, x2: Int): Int =
     finishHash(hashing.mix(hashing.mix(hashSeed, x1), x2), 1)
 
   protected final def addDelta(elemHash: Int, delta: Int) =
